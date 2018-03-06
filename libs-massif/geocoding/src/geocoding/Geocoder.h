@@ -36,7 +36,6 @@ namespace carto { namespace geocoding {
         struct Options {
             boost::optional<cglib::bbox2<double>> bounds; // default is no bounds
             boost::optional<cglib::vec2<double>> location; // default is no location bias
-            float locationRadius = 100000; // TODO: remove this, unused
             float locationSigma = 100000; // standard deviation, default is 100km
         };
 

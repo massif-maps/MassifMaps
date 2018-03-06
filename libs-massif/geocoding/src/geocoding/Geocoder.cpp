@@ -31,6 +31,7 @@ namespace carto { namespace geocoding {
         database->id = "db" + boost::lexical_cast<std::string>(_databases.size());
         database->db = db;
         database->origin = getOrigin(*db);
+        database->bounds = getBounds(*db);
         database->rankScale = getRankScale(*db);
         database->translationTable = getTranslationTable(*db);
         
@@ -103,6 +104,12 @@ namespace carto { namespace geocoding {
         std::vector<Result> results;
         for (int pass = 0; pass < 2; pass++) {
             for (const std::shared_ptr<Database>& database : _databases) {
+                if (options.bounds) {
+                    if (!options.bounds->inside(database->bounds)) {
+                        continue;
+                    }
+                }
+
                 Query query;
                 query.database = database;
                 if (autocomplete && pass > 0) {
@@ -561,8 +568,43 @@ namespace carto { namespace geocoding {
                     return bestRank;
                 };
 
+                auto getFeatures = [&]() -> std::vector<Feature> {
+                    EncodingStream featureStream(entityRow.features.data(), entityRow.features.size());
+                    FeatureReader featureReader(featureStream, mercatorConverter);
+
+                    std::vector<Feature> features;
+                    if (elementIndex) {
+                        EncodingStream houseNumberStream(entityRow.houseNumbers.data(), entityRow.houseNumbers.size());
+                        AddressInterpolator interpolator(houseNumberStream);
+
+                        features = interpolator.enumerateAddresses(featureReader).at(elementIndex - 1).second;
+                    }
+                    else {
+                        features = featureReader.readFeatureCollection();
+                    }
+                    return features;
+                };
+
                 // Do field match ranking
                 float matchRank = findBestMatch(0, 0);
+
+                // Check that geometry is inside bounds
+                if (options.bounds) {
+                    bool inside = false;
+                    for (const Feature& feature : getFeatures()) {
+                        if (std::shared_ptr<Geometry> geometry = feature.getGeometry()) {
+                            cglib::bbox2<double> mercatorBounds = geometry->getBounds();
+                            cglib::bbox2<double> bounds(webMercatorToWgs84(mercatorBounds.min), webMercatorToWgs84(mercatorBounds.max));
+                            if (options.bounds->inside(bounds)) {
+                                inside = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (!inside) {
+                        continue;
+                    }
+                }
 
                 // Create result
                 Result result;
@@ -579,22 +621,8 @@ namespace carto { namespace geocoding {
 
                 // Do location based ranking
                 if (options.location) {
-                    EncodingStream featureStream(entityRow.features.data(), entityRow.features.size());
-                    FeatureReader featureReader(featureStream, mercatorConverter);
-
-                    std::vector<Feature> features;
-                    if (elementIndex) {
-                        EncodingStream houseNumberStream(entityRow.houseNumbers.data(), entityRow.houseNumbers.size());
-                        AddressInterpolator interpolator(houseNumberStream);
-
-                        features = interpolator.enumerateAddresses(featureReader).at(elementIndex - 1).second;
-                    }
-                    else {
-                        features = featureReader.readFeatureCollection();
-                    }
-
-                    float minDist = options.locationRadius;
-                    for (const Feature& feature : features) {
+                    float minDist = std::numeric_limits<float>::infinity();
+                    for (const Feature& feature : getFeatures()) {
                         if (std::shared_ptr<Geometry> geometry = feature.getGeometry()) {
                             cglib::vec2<double> mercatorMeters = webMercatorMeters(*options.location);
                             cglib::vec2<double> mercatorLocation = wgs84ToWebMercator(*options.location);
@@ -605,8 +633,8 @@ namespace carto { namespace geocoding {
                         }
                     }
 
-                    float c = -std::log(MIN_LOCATION_RANK) / options.locationRadius;
-                    result.locationRank *= std::exp(-minDist * c);
+                    float distRank = std::exp(-0.5f * std::pow(minDist / options.locationSigma, 2.0f));
+                    result.locationRank *= MIN_LOCATION_RANK + (1.0f - MIN_LOCATION_RANK) * distRank;
                 }
 
                 // Early out test
@@ -774,6 +802,21 @@ namespace carto { namespace geocoding {
             return cglib::vec2<double>(boost::lexical_cast<double>(origin.at(0)), boost::lexical_cast<double>(origin.at(1)));
         }
         return cglib::vec2<double>(0, 0);
+    }
+
+    cglib::bbox2<double> Geocoder::getBounds(sqlite3pp::database& db) {
+        sqlite3pp::query query(db, "SELECT value FROM metadata WHERE name='bounds'");
+        for (auto qit = query.begin(); qit != query.end(); qit++) {
+            std::string value = qit->get<const char*>(0);
+
+            std::vector<std::string> origin;
+            boost::split(origin, value, boost::is_any_of(","), boost::token_compress_off);
+            return cglib::bbox2<double>(
+                cglib::vec2<double>(boost::lexical_cast<double>(origin.at(0)), boost::lexical_cast<double>(origin.at(1))),
+                cglib::vec2<double>(boost::lexical_cast<double>(origin.at(2)), boost::lexical_cast<double>(origin.at(3)))
+            );
+        }
+        return cglib::bbox2<double>(cglib::vec2<double>(-180, -90), cglib::vec2<double>(180, 90));
     }
 
     double Geocoder::getRankScale(sqlite3pp::database& db) {

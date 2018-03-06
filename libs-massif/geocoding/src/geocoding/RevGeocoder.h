@@ -19,6 +19,7 @@
 
 #include <stdext/lru_cache.h>
 
+#include <cglib/vec.h>
 #include <cglib/bbox.h>
 
 namespace sqlite3pp {

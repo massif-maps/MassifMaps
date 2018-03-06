@@ -23,6 +23,9 @@
 
 #include <stdext/lru_cache.h>
 
+#include <cglib/vec.h>
+#include <cglib/bbox.h>
+
 namespace sqlite3pp {
     class database;
 }
@@ -31,8 +34,10 @@ namespace carto { namespace geocoding {
     class Geocoder final {
     public:
         struct Options {
+            boost::optional<cglib::bbox2<double>> bounds; // default is no bounds
             boost::optional<cglib::vec2<double>> location; // default is no location bias
-            float locationRadius = 100000; // default is 100km
+            float locationRadius = 100000; // TODO: remove this, unused
+            float locationSigma = 100000; // standard deviation, default is 100km
         };
 
         Geocoder() : _addressCache(ADDRESS_CACHE_SIZE), _entityCache(ENTITY_CACHE_SIZE), _nameCache(NAME_CACHE_SIZE), _tokenCache(TOKEN_CACHE_SIZE), _nameRankCache(NAME_RANK_CACHE_SIZE), _nameMatchCache(NAME_MATCH_CACHE_SIZE) { }
@@ -99,6 +104,7 @@ namespace carto { namespace geocoding {
             std::string id;
             std::shared_ptr<sqlite3pp::database> db;
             cglib::vec2<double> origin = cglib::vec2<double>(0, 0);
+            cglib::bbox2<double> bounds = cglib::bbox2<double>(cglib::vec2<double>(-180, -90), cglib::vec2<double>(180, 90));
             double rankScale = 1.0;
             std::unordered_map<unichar_t, unistring> translationTable;
         };
@@ -130,6 +136,7 @@ namespace carto { namespace geocoding {
         float calculateNameRank(const Query& query, const std::string& name, const std::string& queryName, const std::vector<std::pair<std::string, float>>& tokenIDFs) const;
         
         static cglib::vec2<double> getOrigin(sqlite3pp::database& db);
+        static cglib::bbox2<double> getBounds(sqlite3pp::database& db);
         static std::unordered_map<unichar_t, unistring> getTranslationTable(sqlite3pp::database& db);
         static double getRankScale(sqlite3pp::database& db);
         static unistring getTranslatedToken(const unistring& token, const std::unordered_map<unichar_t, unistring>& translationTable);

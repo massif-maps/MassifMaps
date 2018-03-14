@@ -28,17 +28,24 @@
 namespace carto { namespace vt {
     class GLTileRenderer final {
     public:
+        // TODO: remove this constructor
         explicit GLTileRenderer(std::shared_ptr<std::mutex> mutex, std::shared_ptr<GLExtensions> glExtensions, float scale, bool useFBO, bool useDepth, bool useStencil);
+
+        explicit GLTileRenderer(std::shared_ptr<std::mutex> mutex, std::shared_ptr<GLExtensions> glExtensions, float scale);
 
         void setViewState(const cglib::mat4x4<double>& projectionMatrix, const cglib::mat4x4<double>& cameraMatrix, float zoom, float aspectRatio, float resolution);
         void setLightDir(const cglib::vec3<float>& lightDir);
-        void setSubTileBlending(bool blend);
         void setInteractionMode(bool enabled);
+        void setSubTileBlending(bool enabled);
+        void setRenderSettings(bool useFBO, bool useDepth, bool useStencil, const Color& fboClearColor, float fboOpacity);
+        void setBackground(const Color& color, std::shared_ptr<const BitmapPattern> pattern);
+        void setVisibleTiles(const std::map<TileId, std::shared_ptr<const Tile>>& tiles, bool blend);
+        std::vector<std::shared_ptr<TileLabel>> getVisibleLabels() const;
+
+        // TODO: remove 3 methods
         void setFBOClearColor(const Color& clearColor);
         void setBackgroundColor(const Color& backgroundColor);
         void setBackgroundPattern(std::shared_ptr<const BitmapPattern> pattern);
-        void setVisibleTiles(const std::map<TileId, std::shared_ptr<const Tile>>& tiles, bool blend);
-        std::vector<std::shared_ptr<TileLabel>> getVisibleLabels() const;
         
         void initializeRenderer();
         void resetRenderer();
@@ -204,7 +211,11 @@ namespace carto { namespace vt {
         void deleteScreenVBO(ScreenVBO& screenVBO);
 
         bool _subTileBlending = false;
-        bool _interactionEnabled = false;
+        bool _interactionMode = false;
+        bool _useFBO = false;
+        bool _useDepth = true;
+        bool _useStencil = true;
+        float _fboOpacity = 1.0f;
         Color _fboClearColor;
         Color _backgroundColor;
         std::shared_ptr<const BitmapPattern> _backgroundPattern;
@@ -248,9 +259,6 @@ namespace carto { namespace vt {
         int _labelBatchCounter = 0;
 
         const float _scale;
-        const bool _useFBO;
-        const bool _useDepth;
-        const bool _useStencil;
         const std::shared_ptr<GLExtensions> _glExtensions;
         const std::shared_ptr<std::mutex> _mutex;
     };

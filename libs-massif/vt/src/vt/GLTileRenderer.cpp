@@ -402,13 +402,20 @@ namespace {
 }
 
 namespace carto { namespace vt {
+    GLTileRenderer::GLTileRenderer(std::shared_ptr<std::mutex> mutex, std::shared_ptr<GLExtensions> glExtensions, float scale) :
+        _lightDir(0.5f, 0.5f, -0.707f), _projectionMatrix(cglib::mat4x4<double>::identity()), _cameraMatrix(cglib::mat4x4<double>::identity()), _cameraProjMatrix(cglib::mat4x4<double>::identity()), _labelMatrix(cglib::mat4x4<double>::identity()), _viewState(cglib::mat4x4<double>::identity(), cglib::mat4x4<double>::identity(), 0, 1, 1, scale), _scale(scale), _glExtensions(std::move(glExtensions)), _mutex(std::move(mutex))
+    {
+        _blendNodes = std::make_shared<std::vector<std::shared_ptr<BlendNode>>>();
+        _bitmapLabelMap[0] = _bitmapLabelMap[1] = std::make_shared<BitmapLabelMap>();
+    }
+
     GLTileRenderer::GLTileRenderer(std::shared_ptr<std::mutex> mutex, std::shared_ptr<GLExtensions> glExtensions, float scale, bool useFBO, bool useDepth, bool useStencil) :
         _lightDir(0.5f, 0.5f, -0.707f), _projectionMatrix(cglib::mat4x4<double>::identity()), _cameraMatrix(cglib::mat4x4<double>::identity()), _cameraProjMatrix(cglib::mat4x4<double>::identity()), _labelMatrix(cglib::mat4x4<double>::identity()), _viewState(cglib::mat4x4<double>::identity(), cglib::mat4x4<double>::identity(), 0, 1, 1, scale), _scale(scale), _useFBO(useFBO), _useDepth(useDepth), _useStencil(useStencil), _glExtensions(std::move(glExtensions)), _mutex(std::move(mutex))
     {
         _blendNodes = std::make_shared<std::vector<std::shared_ptr<BlendNode>>>();
         _bitmapLabelMap[0] = _bitmapLabelMap[1] = std::make_shared<BitmapLabelMap>();
     }
-    
+
     void GLTileRenderer::setViewState(const cglib::mat4x4<double>& projectionMatrix, const cglib::mat4x4<double>& cameraMatrix, float zoom, float aspectRatio, float resolution) {
         std::lock_guard<std::mutex> lock(*_mutex);
         
@@ -428,22 +435,32 @@ namespace carto { namespace vt {
         _lightDir = lightDir;
     }
 
-    void GLTileRenderer::setSubTileBlending(bool blend) {
-        std::lock_guard<std::mutex> lock(*_mutex);
-
-        _subTileBlending = blend;
-    }
-    
     void GLTileRenderer::setInteractionMode(bool enabled) {
         std::lock_guard<std::mutex> lock(*_mutex);
 
-        _interactionEnabled = enabled;
+        _interactionMode = enabled;
     }
 
+    void GLTileRenderer::setSubTileBlending(bool enabled) {
+        std::lock_guard<std::mutex> lock(*_mutex);
+
+        _subTileBlending = enabled;
+    }
+    
     void GLTileRenderer::setFBOClearColor(const Color& clearColor) {
         std::lock_guard<std::mutex> lock(*_mutex);
         
         _fboClearColor = clearColor;
+    }
+
+    void GLTileRenderer::setRenderSettings(bool useFBO, bool useDepth, bool useStencil, const Color& fboClearColor, float fboOpacity) {
+        std::lock_guard<std::mutex> lock(*_mutex);
+
+        _useFBO = useFBO;
+        _useDepth = useDepth;
+        _useStencil = useStencil;
+        _fboClearColor = fboClearColor;
+        _fboOpacity = fboOpacity;
     }
     
     void GLTileRenderer::setBackgroundColor(const Color& backgroundColor) {
@@ -455,6 +472,13 @@ namespace carto { namespace vt {
     void GLTileRenderer::setBackgroundPattern(std::shared_ptr<const BitmapPattern> pattern) {
         std::lock_guard<std::mutex> lock(*_mutex);
         
+        _backgroundPattern = std::move(pattern);
+    }
+
+    void GLTileRenderer::setBackground(const Color& color, std::shared_ptr<const BitmapPattern> pattern) {
+        std::lock_guard<std::mutex> lock(*_mutex);
+        
+        _backgroundColor = color;
         _backgroundPattern = std::move(pattern);
     }
     
@@ -811,7 +835,7 @@ namespace carto { namespace vt {
             }
             
             glBindFramebuffer(GL_FRAMEBUFFER, currentFBO);
-            blendScreenTexture(1.0f, _screenFBO.colorTexture);
+            blendScreenTexture(_fboOpacity, _screenFBO.colorTexture);
         }
 
         return update;
@@ -1830,7 +1854,7 @@ namespace carto { namespace vt {
                 glGenerateMipmap(GL_TEXTURE_2D);
             }
 
-            if (!_interactionEnabled) {
+            if (!_interactionMode) {
                 bitmap->releaseBitmap(); // if interaction is enabled, keep the original bitmap
             }
 
@@ -1999,7 +2023,7 @@ namespace carto { namespace vt {
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, compiledGeometry.indicesVBO);
             glBufferData(GL_ELEMENT_ARRAY_BUFFER, geometry->getIndices().size() * sizeof(unsigned short), geometry->getIndices().data(), GL_STATIC_DRAW);
 
-            if (!_interactionEnabled) {
+            if (!_interactionMode) {
                 geometry->releaseVertexArrays(); // if interaction is enabled, we must keep the vertex arrays. Otherwise optimize for lower memory usage
             }
 

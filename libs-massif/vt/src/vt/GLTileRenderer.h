@@ -28,24 +28,15 @@
 namespace carto { namespace vt {
     class GLTileRenderer final {
     public:
-        // TODO: remove this constructor
-        explicit GLTileRenderer(std::shared_ptr<std::mutex> mutex, std::shared_ptr<GLExtensions> glExtensions, float scale, bool useFBO, bool useDepth, bool useStencil);
-
         explicit GLTileRenderer(std::shared_ptr<std::mutex> mutex, std::shared_ptr<GLExtensions> glExtensions, float scale);
 
         void setViewState(const cglib::mat4x4<double>& projectionMatrix, const cglib::mat4x4<double>& cameraMatrix, float zoom, float aspectRatio, float resolution);
         void setLightDir(const cglib::vec3<float>& lightDir);
         void setInteractionMode(bool enabled);
         void setSubTileBlending(bool enabled);
-        void setRenderSettings(bool useFBO, bool useDepth, bool useStencil, const Color& fboClearColor, float fboOpacity);
         void setBackground(const Color& color, std::shared_ptr<const BitmapPattern> pattern);
         void setVisibleTiles(const std::map<TileId, std::shared_ptr<const Tile>>& tiles, bool blend);
         std::vector<std::shared_ptr<TileLabel>> getVisibleLabels() const;
-
-        // TODO: remove 3 methods
-        void setFBOClearColor(const Color& clearColor);
-        void setBackgroundColor(const Color& backgroundColor);
-        void setBackgroundPattern(std::shared_ptr<const BitmapPattern> pattern);
         
         void initializeRenderer();
         void resetRenderer();
@@ -92,11 +83,11 @@ namespace carto { namespace vt {
 
         struct ScreenFBO {
             GLuint colorTexture;
-            GLuint depthStencilRB;
-            GLuint fbo;
+            std::vector<GLuint> depthStencilRBs;
             std::vector<GLenum> depthStencilAttachments;
+            GLuint fbo;
 
-            ScreenFBO() : colorTexture(0), depthStencilRB(0), fbo(0), depthStencilAttachments() { }
+            ScreenFBO() : colorTexture(0), depthStencilRBs(), depthStencilAttachments(), fbo(0) { }
         };
 
         struct TileVBO {
@@ -180,7 +171,7 @@ namespace carto { namespace vt {
         cglib::vec3<float> decodeLineOffset(const std::shared_ptr<TileGeometry>& geometry, std::size_t index, float radius) const;
         cglib::vec3<float> decodePolygon3DOffset(const std::shared_ptr<TileGeometry>& geometry, std::size_t index) const;
 
-        bool renderBlendNodes2D(const std::vector<std::shared_ptr<BlendNode>>& blendNodes);
+        bool renderBlendNodes2D(const std::vector<std::shared_ptr<BlendNode>>& blendNodes, int stencilBits);
         bool renderBlendNodes3D(const std::vector<std::shared_ptr<BlendNode>>& blendNodes);
         bool renderLabels(const std::shared_ptr<const Bitmap>& bitmap, const std::vector<std::shared_ptr<TileLabel>>& labels);
 
@@ -203,7 +194,7 @@ namespace carto { namespace vt {
         void deleteTexture(GLuint& texture);
         LayerFBO createLayerFBO(bool useStencil);
         void deleteLayerFBO(LayerFBO& layerFBO);
-        ScreenFBO createScreenFBO(bool useDepth, bool useStencil);
+        ScreenFBO createScreenFBO(bool useColor, bool useDepth, bool useStencil);
         void deleteScreenFBO(ScreenFBO& screenFBO);
         TileVBO createTileVBO();
         void deleteTileVBO(TileVBO& tileVBO);
@@ -212,11 +203,6 @@ namespace carto { namespace vt {
 
         bool _subTileBlending = false;
         bool _interactionMode = false;
-        bool _useFBO = false;
-        bool _useDepth = true;
-        bool _useStencil = true;
-        float _fboOpacity = 1.0f;
-        Color _fboClearColor;
         Color _backgroundColor;
         std::shared_ptr<const BitmapPattern> _backgroundPattern;
 
@@ -225,7 +211,6 @@ namespace carto { namespace vt {
         GLShaderManager _shaderManager;
 
         std::vector<LayerFBO> _layerFBOs;
-        ScreenFBO _screenFBO;
         ScreenFBO _overlayFBO;
         TileVBO _tileVBO;
         ScreenVBO _screenVBO;

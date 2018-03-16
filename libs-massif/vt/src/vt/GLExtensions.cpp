@@ -32,12 +32,11 @@ namespace carto { namespace vt {
 
 #ifdef GL_EXT_discard_framebuffer
         _GL_EXT_discard_framebuffer_supported = paddedExtensions.find(" GL_EXT_discard_framebuffer ") != std::string::npos;
-#endif
-
 #ifndef __APPLE__
         if (_GL_EXT_discard_framebuffer_supported) {
             _glDiscardFramebufferEXT = reinterpret_cast<PFNGLDISCARDFRAMEBUFFEREXTPROC>(eglGetProcAddress("glDiscardFramebufferEXT"));
         }
+#endif
 #endif
 
 #ifdef GL_EXT_texture_filter_anisotropic

@@ -409,13 +409,6 @@ namespace carto { namespace vt {
         _bitmapLabelMap[0] = _bitmapLabelMap[1] = std::make_shared<BitmapLabelMap>();
     }
 
-    GLTileRenderer::GLTileRenderer(std::shared_ptr<std::mutex> mutex, std::shared_ptr<GLExtensions> glExtensions, float scale, bool useFBO, bool useDepth, bool useStencil) :
-        _lightDir(0.5f, 0.5f, -0.707f), _projectionMatrix(cglib::mat4x4<double>::identity()), _cameraMatrix(cglib::mat4x4<double>::identity()), _cameraProjMatrix(cglib::mat4x4<double>::identity()), _labelMatrix(cglib::mat4x4<double>::identity()), _viewState(cglib::mat4x4<double>::identity(), cglib::mat4x4<double>::identity(), 0, 1, 1, scale), _scale(scale), _useFBO(useFBO), _useDepth(useDepth), _useStencil(useStencil), _glExtensions(std::move(glExtensions)), _mutex(std::move(mutex))
-    {
-        _blendNodes = std::make_shared<std::vector<std::shared_ptr<BlendNode>>>();
-        _bitmapLabelMap[0] = _bitmapLabelMap[1] = std::make_shared<BitmapLabelMap>();
-    }
-
     void GLTileRenderer::setViewState(const cglib::mat4x4<double>& projectionMatrix, const cglib::mat4x4<double>& cameraMatrix, float zoom, float aspectRatio, float resolution) {
         std::lock_guard<std::mutex> lock(*_mutex);
         
@@ -447,34 +440,6 @@ namespace carto { namespace vt {
         _subTileBlending = enabled;
     }
     
-    void GLTileRenderer::setFBOClearColor(const Color& clearColor) {
-        std::lock_guard<std::mutex> lock(*_mutex);
-        
-        _fboClearColor = clearColor;
-    }
-
-    void GLTileRenderer::setRenderSettings(bool useFBO, bool useDepth, bool useStencil, const Color& fboClearColor, float fboOpacity) {
-        std::lock_guard<std::mutex> lock(*_mutex);
-
-        _useFBO = useFBO;
-        _useDepth = useDepth;
-        _useStencil = useStencil;
-        _fboClearColor = fboClearColor;
-        _fboOpacity = fboOpacity;
-    }
-    
-    void GLTileRenderer::setBackgroundColor(const Color& backgroundColor) {
-        std::lock_guard<std::mutex> lock(*_mutex);
-        
-        _backgroundColor = backgroundColor;
-    }
-    
-    void GLTileRenderer::setBackgroundPattern(std::shared_ptr<const BitmapPattern> pattern) {
-        std::lock_guard<std::mutex> lock(*_mutex);
-        
-        _backgroundPattern = std::move(pattern);
-    }
-
     void GLTileRenderer::setBackground(const Color& color, std::shared_ptr<const BitmapPattern> pattern) {
         std::lock_guard<std::mutex> lock(*_mutex);
         
@@ -676,7 +641,6 @@ namespace carto { namespace vt {
         _compiledTileGeometryMap.clear();
         _compiledLabelBatches.clear();
         _layerFBOs.clear();
-        _screenFBO = ScreenFBO();
         _overlayFBO = ScreenFBO();
         _tileVBO = TileVBO();
         _screenVBO = ScreenVBO();
@@ -724,7 +688,6 @@ namespace carto { namespace vt {
         _layerFBOs.clear();
         
         // Release screen and overlay FBOs
-        deleteScreenFBO(_screenFBO);
         deleteScreenFBO(_overlayFBO);
 
         // Release tile and screen VBOs
@@ -775,7 +738,6 @@ namespace carto { namespace vt {
             _layerFBOs.clear();
 
             // Release screen/overlay FBOs
-            deleteScreenFBO(_screenFBO);
             deleteScreenFBO(_overlayFBO);
         }
 
@@ -786,28 +748,16 @@ namespace carto { namespace vt {
     bool GLTileRenderer::renderGeometry2D() {
         std::lock_guard<std::mutex> lock(*_mutex);
         
-        // Bind screen FBO and clear it (if FBO enabled)
-        GLint currentFBO = 0;
-        if (_useFBO) {
-            glGetIntegerv(GL_FRAMEBUFFER_BINDING, &currentFBO);
-            
-            if (_screenFBO.fbo == 0) {
-                _screenFBO = createScreenFBO(_useDepth, _useStencil);
-            }
-            
-            glBindFramebuffer(GL_FRAMEBUFFER, _screenFBO.fbo);
-            glClearColor(_fboClearColor[0], _fboClearColor[1], _fboClearColor[2], _fboClearColor[3]);
-            glClearStencil(0);
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-        }
-
         // Update GL state
+        int stencilBits = 0;
+        glGetIntegerv(GL_STENCIL_BITS, &stencilBits);
+
         glEnable(GL_BLEND);
         glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
         glBlendEquation(GL_FUNC_ADD);
         glDisable(GL_DEPTH_TEST);
         glDepthMask(GL_FALSE);
-        if (_useStencil) {
+        if (stencilBits > 0) {
             glEnable(GL_STENCIL_TEST);
             glStencilMask(255);
         }
@@ -817,7 +767,7 @@ namespace carto { namespace vt {
         glDisable(GL_CULL_FACE);
 
         // 2D geometry pass
-        bool update = renderBlendNodes2D(*_renderBlendNodes);
+        bool update = renderBlendNodes2D(*_renderBlendNodes, stencilBits);
         
         // Restore GL state
         glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
@@ -828,16 +778,6 @@ namespace carto { namespace vt {
         glStencilMask(255);
         glEnable(GL_CULL_FACE);
         
-        // Blend screen FBO, if FBO rendering enabled
-        if (_useFBO) {
-            if (_glExtensions->GL_EXT_discard_framebuffer_supported() && !_screenFBO.depthStencilAttachments.empty()) {
-                _glExtensions->glDiscardFramebufferEXT(GL_FRAMEBUFFER, static_cast<unsigned int>(_screenFBO.depthStencilAttachments.size()), _screenFBO.depthStencilAttachments.data());
-            }
-            
-            glBindFramebuffer(GL_FRAMEBUFFER, currentFBO);
-            blendScreenTexture(_fboOpacity, _screenFBO.colorTexture);
-        }
-
         return update;
     }
     
@@ -1380,12 +1320,7 @@ namespace carto { namespace vt {
         return cglib::vec3<float>(0, 0, *heightPtr);
     }
 
-    bool GLTileRenderer::renderBlendNodes2D(const std::vector<std::shared_ptr<BlendNode>>& blendNodes) {
-        GLint stencilBits = 0;
-        if (_useStencil) {
-            glGetIntegerv(GL_STENCIL_BITS, &stencilBits);
-        }
-        
+    bool GLTileRenderer::renderBlendNodes2D(const std::vector<std::shared_ptr<BlendNode>>& blendNodes, int stencilBits) {
         int stencilNum = (1 << stencilBits) - 1; // forces initial stencil clear
         TileId activeTileMaskId(-1, 0, 0); // invalid mask
         bool update = false;
@@ -1533,7 +1468,7 @@ namespace carto { namespace vt {
                         glGetIntegerv(GL_FRAMEBUFFER_BINDING, &currentFBO);
 
                         if (_overlayFBO.fbo == 0) {
-                            _overlayFBO = createScreenFBO(true, false);
+                            _overlayFBO = createScreenFBO(true, true, false);
                         }
 
                         glBindFramebuffer(GL_FRAMEBUFFER, _overlayFBO.fbo);
@@ -2324,6 +2259,7 @@ namespace carto { namespace vt {
             glGenRenderbuffers(1, &layerFBO.stencilRB);
             glBindRenderbuffer(GL_RENDERBUFFER, layerFBO.stencilRB);
             glRenderbufferStorage(GL_RENDERBUFFER, GL_STENCIL_INDEX8, _screenWidth, _screenHeight);
+            glBindRenderbuffer(GL_RENDERBUFFER, 0);
             glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_RENDERBUFFER, layerFBO.stencilRB);
         }
 
@@ -2355,43 +2291,59 @@ namespace carto { namespace vt {
         deleteTexture(layerFBO.colorTexture);
     }
 
-    GLTileRenderer::ScreenFBO GLTileRenderer::createScreenFBO(bool useDepth, bool useStencil) {
+    GLTileRenderer::ScreenFBO GLTileRenderer::createScreenFBO(bool useColor, bool useDepth, bool useStencil) {
         ScreenFBO screenFBO;
 
         glGenFramebuffers(1, &screenFBO.fbo);
         glBindFramebuffer(GL_FRAMEBUFFER, screenFBO.fbo);
 
-        if (useDepth || useStencil) {
-            glGenRenderbuffers(1, &screenFBO.depthStencilRB);
-            glBindRenderbuffer(GL_RENDERBUFFER, screenFBO.depthStencilRB);
-            if (useDepth && useStencil && _glExtensions->GL_OES_packed_depth_stencil_supported()) {
-                glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8_OES, _screenWidth, _screenHeight);
-                screenFBO.depthStencilAttachments.push_back(GL_DEPTH_ATTACHMENT);
-                screenFBO.depthStencilAttachments.push_back(GL_STENCIL_ATTACHMENT);
-            }
-            else if (useDepth) {
+        if (useDepth && useStencil && _glExtensions->GL_OES_packed_depth_stencil_supported()) {
+            GLuint depthStencilRB = 0;
+            glGenRenderbuffers(1, &depthStencilRB);
+            glBindRenderbuffer(GL_RENDERBUFFER, depthStencilRB);
+            glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8_OES, _screenWidth, _screenHeight);
+            glBindRenderbuffer(GL_RENDERBUFFER, 0);
+            glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthStencilRB);
+            glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_RENDERBUFFER, depthStencilRB);
+            screenFBO.depthStencilAttachments.push_back(GL_DEPTH_ATTACHMENT);
+            screenFBO.depthStencilAttachments.push_back(GL_STENCIL_ATTACHMENT);
+            screenFBO.depthStencilRBs.push_back(depthStencilRB);
+        }
+        else {
+            if (useDepth) {
+                GLuint depthRB = 0;
+                glGenRenderbuffers(1, &depthRB);
+                glBindRenderbuffer(GL_RENDERBUFFER, depthRB);
                 glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT16, _screenWidth, _screenHeight);
+                glBindRenderbuffer(GL_RENDERBUFFER, 0);
+                glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthRB);
                 screenFBO.depthStencilAttachments.push_back(GL_DEPTH_ATTACHMENT);
+                screenFBO.depthStencilRBs.push_back(depthRB);
             }
-            else if (useStencil) {
+            if (useStencil) {
+                GLuint stencilRB = 0;
+                glGenRenderbuffers(1, &stencilRB);
+                glBindRenderbuffer(GL_RENDERBUFFER, stencilRB);
                 glRenderbufferStorage(GL_RENDERBUFFER, GL_STENCIL_INDEX8, _screenWidth, _screenHeight);
+                glBindRenderbuffer(GL_RENDERBUFFER, 0);
+                glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_RENDERBUFFER, stencilRB);
                 screenFBO.depthStencilAttachments.push_back(GL_STENCIL_ATTACHMENT);
-            }
-            for (GLenum attachment : screenFBO.depthStencilAttachments) {
-                glFramebufferRenderbuffer(GL_FRAMEBUFFER, attachment, GL_RENDERBUFFER, screenFBO.depthStencilRB);
+                screenFBO.depthStencilRBs.push_back(stencilRB);
             }
         }
 
-        screenFBO.colorTexture = createTexture();
-        glBindTexture(GL_TEXTURE_2D, screenFBO.colorTexture);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, _screenWidth, _screenHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glBindTexture(GL_TEXTURE_2D, 0);
+        if (useColor) {
+            screenFBO.colorTexture = createTexture();
+            glBindTexture(GL_TEXTURE_2D, screenFBO.colorTexture);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, _screenWidth, _screenHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+            glBindTexture(GL_TEXTURE_2D, 0);
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, screenFBO.colorTexture, 0);
+        }
 
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, screenFBO.colorTexture, 0);
         if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
             checkGLError();
         }
@@ -2403,9 +2355,9 @@ namespace carto { namespace vt {
             glDeleteFramebuffers(1, &screenFBO.fbo);
             screenFBO.fbo = 0;
         }
-        if (screenFBO.depthStencilRB != 0) {
-            glDeleteRenderbuffers(1, &screenFBO.depthStencilRB);
-            screenFBO.depthStencilRB = 0;
+        if (!screenFBO.depthStencilRBs.empty()) {
+            glDeleteRenderbuffers(static_cast<GLsizei>(screenFBO.depthStencilRBs.size()), screenFBO.depthStencilRBs.data());
+            screenFBO.depthStencilRBs.clear();
         }
         deleteTexture(screenFBO.colorTexture);
     }

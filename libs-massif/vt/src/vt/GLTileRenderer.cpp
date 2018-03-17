@@ -1386,6 +1386,10 @@ namespace carto { namespace vt {
                 for (const std::shared_ptr<TileBitmap>& bitmap : renderNode.layer->getBitmaps()) {
                     setupFrameBuffer();
                     
+                    if (stencilBits > 0) {
+                        glStencilFunc(GL_ALWAYS, stencilNum, 255);
+                    }
+
                     setBlendState(CompOp::SRC_OVER);
                     renderTileBitmap(renderNode.tileId, blendNode->tileId, renderNode.blend, geometryOpacity, bitmap);
                 }
@@ -1425,6 +1429,7 @@ namespace carto { namespace vt {
 
                 if (blendGeometry) {
                     glBindFramebuffer(GL_FRAMEBUFFER, currentFBO);
+
                     if (stencilBits > 0) {
                         glStencilFunc(GL_ALWAYS, stencilNum, 255);
                     }

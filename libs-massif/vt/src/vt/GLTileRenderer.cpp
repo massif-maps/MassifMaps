@@ -683,7 +683,7 @@ namespace carto { namespace vt {
         
         // Release FBOs
         for (auto it = _layerFBOs.begin(); it != _layerFBOs.end(); it++) {
-            deleteLayerFBO(*it);
+            deleteScreenFBO(*it);
         }
         _layerFBOs.clear();
         
@@ -733,7 +733,7 @@ namespace carto { namespace vt {
 
             // Release layer FBOs
             for (auto it = _layerFBOs.begin(); it != _layerFBOs.end(); it++) {
-                deleteLayerFBO(*it);
+                deleteScreenFBO(*it);
             }
             _layerFBOs.clear();
 
@@ -1365,7 +1365,7 @@ namespace carto { namespace vt {
                         if (it == layerFBOMap.end()) {
                             std::size_t fboIndex = layerFBOMap.size();
                             if (fboIndex >= _layerFBOs.size()) {
-                                _layerFBOs.push_back(createLayerFBO(stencilBits > 0));
+                                _layerFBOs.push_back(createScreenFBO(true, false, stencilBits > 0));
                             }
                             it = layerFBOMap.emplace(renderNode.layer->getLayerIndex(), fboIndex).first;
                         }
@@ -1428,6 +1428,12 @@ namespace carto { namespace vt {
                 update = renderNode.initialBlend < 1.0f || update;
 
                 if (blendGeometry) {
+                    const ScreenFBO& layerFBO = _layerFBOs[layerFBOMap[renderNode.layer->getLayerIndex()]];
+
+                    if (_glExtensions->GL_OES_packed_depth_stencil_supported() && !layerFBO.depthStencilAttachments.empty()) {
+                        _glExtensions->glDiscardFramebufferEXT(GL_FRAMEBUFFER, static_cast<GLsizei>(layerFBO.depthStencilAttachments.size()), layerFBO.depthStencilAttachments.data());
+                    }
+
                     glBindFramebuffer(GL_FRAMEBUFFER, currentFBO);
 
                     if (stencilBits > 0) {
@@ -1435,7 +1441,7 @@ namespace carto { namespace vt {
                     }
 
                     setBlendState(renderNode.layer->getCompOp().get());
-                    blendTileTexture(renderNode.tileId, blendOpacity, _layerFBOs[layerFBOMap[renderNode.layer->getLayerIndex()]].colorTexture);
+                    blendTileTexture(renderNode.tileId, blendOpacity, layerFBO.colorTexture);
                 }
             }
         }
@@ -1489,6 +1495,10 @@ namespace carto { namespace vt {
         
         // If any 3D geometry, blend rendered screen FBO
         if (blendGeometry) {
+            if (_glExtensions->GL_OES_packed_depth_stencil_supported() && !_overlayFBO.depthStencilAttachments.empty()) {
+                _glExtensions->glDiscardFramebufferEXT(GL_FRAMEBUFFER, static_cast<GLsizei>(_overlayFBO.depthStencilAttachments.size()), _overlayFBO.depthStencilAttachments.data());
+            }
+
             glBindFramebuffer(GL_FRAMEBUFFER, currentFBO);
 
             glDisable(GL_DEPTH_TEST);
@@ -2252,48 +2262,6 @@ namespace carto { namespace vt {
             glDeleteTextures(1, &texture);
             texture = 0;
         }
-    }
-
-    GLTileRenderer::LayerFBO GLTileRenderer::createLayerFBO(bool useStencil) {
-        LayerFBO layerFBO;
-
-        glGenFramebuffers(1, &layerFBO.fbo);
-        glBindFramebuffer(GL_FRAMEBUFFER, layerFBO.fbo);
-
-        if (useStencil) {
-            glGenRenderbuffers(1, &layerFBO.stencilRB);
-            glBindRenderbuffer(GL_RENDERBUFFER, layerFBO.stencilRB);
-            glRenderbufferStorage(GL_RENDERBUFFER, GL_STENCIL_INDEX8, _screenWidth, _screenHeight);
-            glBindRenderbuffer(GL_RENDERBUFFER, 0);
-            glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_RENDERBUFFER, layerFBO.stencilRB);
-        }
-
-        layerFBO.colorTexture = createTexture();
-        glBindTexture(GL_TEXTURE_2D, layerFBO.colorTexture);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, _screenWidth, _screenHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glBindTexture(GL_TEXTURE_2D, 0);
-
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, layerFBO.colorTexture, 0);
-        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-            checkGLError();
-        }
-        return layerFBO;
-    }
-
-    void GLTileRenderer::deleteLayerFBO(LayerFBO& layerFBO) {
-        if (layerFBO.fbo != 0) {
-            glDeleteFramebuffers(1, &layerFBO.fbo);
-            layerFBO.fbo = 0;
-        }
-        if (layerFBO.stencilRB != 0) {
-            glDeleteRenderbuffers(1, &layerFBO.stencilRB);
-            layerFBO.stencilRB = 0;
-        }
-        deleteTexture(layerFBO.colorTexture);
     }
 
     GLTileRenderer::ScreenFBO GLTileRenderer::createScreenFBO(bool useColor, bool useDepth, bool useStencil) {

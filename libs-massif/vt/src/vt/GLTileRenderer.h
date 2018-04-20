@@ -73,14 +73,6 @@ namespace carto { namespace vt {
             explicit RenderNode(const TileId& tileId, std::shared_ptr<const TileLayer> layer, float blend) : tileId(tileId), layer(std::move(layer)), initialBlend(blend), blend(blend) { }
         };
 
-        struct LayerFBO {
-            GLuint colorTexture;
-            GLuint stencilRB;
-            GLuint fbo;
-
-            LayerFBO() : colorTexture(0), stencilRB(0), fbo(0) { }
-        };
-
         struct ScreenFBO {
             GLuint colorTexture;
             std::vector<GLuint> depthStencilRBs;
@@ -192,8 +184,6 @@ namespace carto { namespace vt {
         void deleteVertexArray(GLuint& vertexArray);
         GLuint createTexture();
         void deleteTexture(GLuint& texture);
-        LayerFBO createLayerFBO(bool useStencil);
-        void deleteLayerFBO(LayerFBO& layerFBO);
         ScreenFBO createScreenFBO(bool useColor, bool useDepth, bool useStencil);
         void deleteScreenFBO(ScreenFBO& screenFBO);
         TileVBO createTileVBO();
@@ -210,7 +200,7 @@ namespace carto { namespace vt {
         GLShaderManager::ShaderContext _perspectiveAndDerivativesContext[2];
         GLShaderManager _shaderManager;
 
-        std::vector<LayerFBO> _layerFBOs;
+        std::vector<ScreenFBO> _layerFBOs;
         ScreenFBO _overlayFBO;
         TileVBO _tileVBO;
         ScreenVBO _screenVBO;

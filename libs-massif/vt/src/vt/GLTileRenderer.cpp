@@ -1365,7 +1365,8 @@ namespace carto { namespace vt {
                         if (it == layerFBOMap.end()) {
                             std::size_t fboIndex = layerFBOMap.size();
                             if (fboIndex >= _layerFBOs.size()) {
-                                _layerFBOs.push_back(createScreenFBO(true, false, stencilBits > 0));
+                                _layerFBOs.emplace_back();
+                                createScreenFBO(_layerFBOs.back(), true, false, stencilBits > 0);
                             }
                             it = layerFBOMap.emplace(renderNode.layer->getLayerIndex(), fboIndex).first;
                         }
@@ -1479,7 +1480,7 @@ namespace carto { namespace vt {
                         glGetIntegerv(GL_FRAMEBUFFER_BINDING, &currentFBO);
 
                         if (_overlayFBO.fbo == 0) {
-                            _overlayFBO = createScreenFBO(true, true, false);
+                            createScreenFBO(_overlayFBO, true, true, false);
                         }
 
                         glBindFramebuffer(GL_FRAMEBUFFER, _overlayFBO.fbo);
@@ -1613,7 +1614,7 @@ namespace carto { namespace vt {
         checkGLError();
         
         if (_screenVBO.vbo == 0) {
-            _screenVBO = createScreenVBO();
+            createScreenVBO(_screenVBO);
         }
         glBindBuffer(GL_ARRAY_BUFFER, _screenVBO.vbo);
         glVertexAttribPointer(glGetAttribLocation(shaderProgram, "aVertexPosition"), 2, GL_FLOAT, GL_FALSE, 0, 0);
@@ -1648,7 +1649,7 @@ namespace carto { namespace vt {
         checkGLError();
 
         if (_tileVBO.vbo == 0) {
-            _tileVBO = createTileVBO();
+            createTileVBO(_tileVBO);
         }
         glBindBuffer(GL_ARRAY_BUFFER, _tileVBO.vbo);
         glVertexAttribPointer(glGetAttribLocation(shaderProgram, "aVertexPosition"), 2, GL_FLOAT, GL_FALSE, 0, 0);
@@ -1679,7 +1680,7 @@ namespace carto { namespace vt {
         checkGLError();
         
         if (_tileVBO.vbo == 0) {
-            _tileVBO = createTileVBO();
+            createTileVBO(_tileVBO);
         }
         glBindBuffer(GL_ARRAY_BUFFER, _tileVBO.vbo);
         glVertexAttribPointer(glGetAttribLocation(shaderProgram, "aVertexPosition"), 2, GL_FLOAT, GL_FALSE, 0, 0);
@@ -1712,7 +1713,7 @@ namespace carto { namespace vt {
         checkGLError();
         
         if (_tileVBO.vbo == 0) {
-            _tileVBO = createTileVBO();
+            createTileVBO(_tileVBO);
         }
         glBindBuffer(GL_ARRAY_BUFFER, _tileVBO.vbo);
         glVertexAttribPointer(glGetAttribLocation(shaderProgram, "aVertexPosition"), 2, GL_FLOAT, GL_FALSE, 0, 0);
@@ -1726,7 +1727,7 @@ namespace carto { namespace vt {
             auto it = _compiledBitmapMap.find(_backgroundPattern->bitmap);
             if (it == _compiledBitmapMap.end()) {
                 std::shared_ptr<const Bitmap> patternBitmap = BitmapManager::scaleToPOT(_backgroundPattern->bitmap);
-                compiledBitmap.texture = createTexture();
+                createTexture(compiledBitmap.texture);
                 glBindTexture(GL_TEXTURE_2D, compiledBitmap.texture);
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -1766,7 +1767,7 @@ namespace carto { namespace vt {
         checkGLError();
 
         if (_tileVBO.vbo == 0) {
-            _tileVBO = createTileVBO();
+            createTileVBO(_tileVBO);
         }
         glBindBuffer(GL_ARRAY_BUFFER, _tileVBO.vbo);
         glVertexAttribPointer(glGetAttribLocation(shaderProgram, "aVertexPosition"), 2, GL_FLOAT, GL_FALSE, 0, 0);
@@ -1781,7 +1782,7 @@ namespace carto { namespace vt {
             // Use a different strategy if the bitmap is not of POT dimensions, simply do not create the mipmaps
             bool pow2Size = (bitmap->getWidth() & (bitmap->getWidth() - 1)) == 0 && (bitmap->getHeight() & (bitmap->getHeight() - 1)) == 0;
 
-            compiledTileBitmap.texture = createTexture();
+            createTexture(compiledTileBitmap.texture);
             glBindTexture(GL_TEXTURE_2D, compiledTileBitmap.texture);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, pow2Size ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -1962,14 +1963,14 @@ namespace carto { namespace vt {
         auto itGeom = _compiledTileGeometryMap.find(geometry);
         if (itGeom == _compiledTileGeometryMap.end()) {
             if (_glExtensions->GL_OES_vertex_array_object_supported()) {
-                compiledGeometry.geometryVAO = createVertexArray();
+                createVertexArray(compiledGeometry.geometryVAO);
             }
 
-            compiledGeometry.vertexGeometryVBO = createBuffer();
+            createBuffer(compiledGeometry.vertexGeometryVBO);
             glBindBuffer(GL_ARRAY_BUFFER, compiledGeometry.vertexGeometryVBO);
             glBufferData(GL_ARRAY_BUFFER, geometry->getVertexGeometry().size() * sizeof(unsigned char), geometry->getVertexGeometry().data(), GL_STATIC_DRAW);
 
-            compiledGeometry.indicesVBO = createBuffer();
+            createBuffer(compiledGeometry.indicesVBO);
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, compiledGeometry.indicesVBO);
             glBufferData(GL_ELEMENT_ARRAY_BUFFER, geometry->getIndices().size() * sizeof(unsigned short), geometry->getIndices().data(), GL_STATIC_DRAW);
 
@@ -2000,7 +2001,7 @@ namespace carto { namespace vt {
             if (itBitmap == _compiledBitmapMap.end()) {
                 bool genMipmaps = geometry->getType() != TileGeometry::Type::LINE;
                 std::shared_ptr<const Bitmap> patternBitmap = BitmapManager::scaleToPOT(styleParams.pattern->bitmap);
-                compiledBitmap.texture = createTexture();
+                createTexture(compiledBitmap.texture);
                 glBindTexture(GL_TEXTURE_2D, compiledBitmap.texture);
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, genMipmaps ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR);
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -2085,10 +2086,10 @@ namespace carto { namespace vt {
         CompiledLabelBatch compiledLabelBatch;
         auto itBatch = _compiledLabelBatches.find(_labelBatchCounter);
         if (itBatch == _compiledLabelBatches.end()) {
-            compiledLabelBatch.vertexGeometryVBO = createBuffer();
-            compiledLabelBatch.vertexUVVBO = createBuffer();
-            compiledLabelBatch.vertexAttribsVBO = createBuffer();
-            compiledLabelBatch.vertexIndicesVBO = createBuffer();
+            createBuffer(compiledLabelBatch.vertexGeometryVBO);
+            createBuffer(compiledLabelBatch.vertexUVVBO);
+            createBuffer(compiledLabelBatch.vertexAttribsVBO);
+            createBuffer(compiledLabelBatch.vertexIndicesVBO);
 
             _compiledLabelBatches[_labelBatchCounter] = compiledLabelBatch;
         }
@@ -2101,7 +2102,7 @@ namespace carto { namespace vt {
         auto itBitmap = _compiledBitmapMap.find(bitmap);
         if (itBitmap == _compiledBitmapMap.end()) {
             bool genMipMaps = false; // turn off mipmap creation as most labels are SDF texts
-            compiledBitmap.texture = createTexture();
+            createTexture(compiledBitmap.texture);
             glBindTexture(GL_TEXTURE_2D, compiledBitmap.texture);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, genMipMaps ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -2225,10 +2226,8 @@ namespace carto { namespace vt {
         }
     }
     
-    GLuint GLTileRenderer::createBuffer() {
-        GLuint buffer = 0;
+    void GLTileRenderer::createBuffer(GLuint& buffer) {
         glGenBuffers(1, &buffer);
-        return buffer;
     }
     
     void GLTileRenderer::deleteBuffer(GLuint& buffer) {
@@ -2238,10 +2237,8 @@ namespace carto { namespace vt {
         }
     }
     
-    GLuint GLTileRenderer::createVertexArray() {
-        GLuint vertexArray = 0;
+    void GLTileRenderer::createVertexArray(GLuint& vertexArray) {
         _glExtensions->glGenVertexArraysOES(1, &vertexArray);
-        return vertexArray;
     }
     
     void GLTileRenderer::deleteVertexArray(GLuint& vertexArray) {
@@ -2251,10 +2248,8 @@ namespace carto { namespace vt {
         }
     }
     
-    GLuint GLTileRenderer::createTexture() {
-        GLuint texture = 0;
+    void GLTileRenderer::createTexture(GLuint& texture) {
         glGenTextures(1, &texture);
-        return texture;
     }
     
     void GLTileRenderer::deleteTexture(GLuint& texture) {
@@ -2264,9 +2259,7 @@ namespace carto { namespace vt {
         }
     }
 
-    GLTileRenderer::ScreenFBO GLTileRenderer::createScreenFBO(bool useColor, bool useDepth, bool useStencil) {
-        ScreenFBO screenFBO;
-
+    void GLTileRenderer::createScreenFBO(ScreenFBO& screenFBO, bool useColor, bool useDepth, bool useStencil) {
         glGenFramebuffers(1, &screenFBO.fbo);
         glBindFramebuffer(GL_FRAMEBUFFER, screenFBO.fbo);
 
@@ -2306,7 +2299,7 @@ namespace carto { namespace vt {
         }
 
         if (useColor) {
-            screenFBO.colorTexture = createTexture();
+            createTexture(screenFBO.colorTexture);
             glBindTexture(GL_TEXTURE_2D, screenFBO.colorTexture);
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, _screenWidth, _screenHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -2320,7 +2313,6 @@ namespace carto { namespace vt {
         if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
             checkGLError();
         }
-        return screenFBO;
     }
 
     void GLTileRenderer::deleteScreenFBO(ScreenFBO& screenFBO) {
@@ -2335,28 +2327,24 @@ namespace carto { namespace vt {
         deleteTexture(screenFBO.colorTexture);
     }
 
-    GLTileRenderer::TileVBO GLTileRenderer::createTileVBO() {
+    void GLTileRenderer::createTileVBO(TileVBO& tileVBO) {
         static const float tileVertices[8] = { 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f };
 
-        TileVBO tileVBO;
-        tileVBO.vbo = createBuffer();
+        createBuffer(tileVBO.vbo);
         glBindBuffer(GL_ARRAY_BUFFER, tileVBO.vbo);
         glBufferData(GL_ARRAY_BUFFER, 8 * sizeof(float), tileVertices, GL_STATIC_DRAW);
-        return tileVBO;
     }
 
     void GLTileRenderer::deleteTileVBO(TileVBO& tileVBO) {
         deleteBuffer(tileVBO.vbo);
     }
 
-    GLTileRenderer::ScreenVBO GLTileRenderer::createScreenVBO() {
+    void GLTileRenderer::createScreenVBO(ScreenVBO& screenVBO) {
         static const float screenVertices[8] = { -1.0f, -1.0f, 1.0f, -1.0f, -1.0f, 1.0f, 1.0f, 1.0f };
 
-        ScreenVBO screenVBO;
-        screenVBO.vbo = createBuffer();
+        createBuffer(screenVBO.vbo);
         glBindBuffer(GL_ARRAY_BUFFER, screenVBO.vbo);
         glBufferData(GL_ARRAY_BUFFER, 8 * sizeof(float), screenVertices, GL_STATIC_DRAW);
-        return screenVBO;
     }
 
     void GLTileRenderer::deleteScreenVBO(ScreenVBO& screenVBO) {

@@ -176,19 +176,20 @@ namespace carto { namespace vt {
         void renderLabelBatch(const LabelBatchParameters& labelBatchParams, const std::shared_ptr<const Bitmap>& bitmap);
         void setBlendState(CompOp compOp);
         bool isEmptyBlendRequired(CompOp compOp) const;
+
         void checkGLError();
 
-        GLuint createBuffer();
+        void createBuffer(GLuint& buffer);
         void deleteBuffer(GLuint& buffer);
-        GLuint createVertexArray();
+        void createVertexArray(GLuint& vertexArray);
         void deleteVertexArray(GLuint& vertexArray);
-        GLuint createTexture();
+        void createTexture(GLuint& texture);
         void deleteTexture(GLuint& texture);
-        ScreenFBO createScreenFBO(bool useColor, bool useDepth, bool useStencil);
+        void createScreenFBO(ScreenFBO& screenFBO, bool useColor, bool useDepth, bool useStencil);
         void deleteScreenFBO(ScreenFBO& screenFBO);
-        TileVBO createTileVBO();
+        void createTileVBO(TileVBO& tileVBO);
         void deleteTileVBO(TileVBO& tileVBO);
-        ScreenVBO createScreenVBO();
+        void createScreenVBO(ScreenVBO& screenVBO);
         void deleteScreenVBO(ScreenVBO& screenVBO);
 
         bool _subTileBlending = false;

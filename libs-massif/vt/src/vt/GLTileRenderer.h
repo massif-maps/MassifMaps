@@ -73,31 +73,25 @@ namespace carto { namespace vt {
             explicit RenderNode(const TileId& tileId, std::shared_ptr<const TileLayer> layer, float blend) : tileId(tileId), layer(std::move(layer)), initialBlend(blend), blend(blend) { }
         };
 
-        struct ScreenFBO {
+        struct FrameBuffer {
             GLuint colorTexture;
             std::vector<GLuint> depthStencilRBs;
             std::vector<GLenum> depthStencilAttachments;
             GLuint fbo;
 
-            ScreenFBO() : colorTexture(0), depthStencilRBs(), depthStencilAttachments(), fbo(0) { }
-        };
-
-        struct TileVBO {
-            GLuint vbo;
-
-            TileVBO() : vbo(0) { }
-        };
-
-        struct ScreenVBO {
-            GLuint vbo;
-
-            ScreenVBO() : vbo(0) { }
+            FrameBuffer() : colorTexture(0), depthStencilRBs(), depthStencilAttachments(), fbo(0) { }
         };
 
         struct CompiledBitmap {
             GLuint texture;
 
             CompiledBitmap() : texture(0) { }
+        };
+
+        struct CompiledQuad {
+            GLuint vbo;
+
+            CompiledQuad() : vbo(0) { }
         };
 
         struct CompiledGeometry {
@@ -174,23 +168,22 @@ namespace carto { namespace vt {
         void renderTileBitmap(const TileId& tileId, const TileId& targetTileId, float blend, float opacity, const std::shared_ptr<TileBitmap>& bitmap);
         void renderTileGeometry(const TileId& tileId, const TileId& targetTileId, float blend, float opacity, const std::shared_ptr<TileGeometry>& geometry);
         void renderLabelBatch(const LabelBatchParameters& labelBatchParams, const std::shared_ptr<const Bitmap>& bitmap);
+
         void setBlendState(CompOp compOp);
         bool isEmptyBlendRequired(CompOp compOp) const;
 
-        void checkGLError();
+        void createFrameBuffer(FrameBuffer& frameBuffer, bool useColor, bool useDepth, bool useStencil);
+        void deleteFrameBuffer(FrameBuffer& frameBuffer);
+        void createCompiledBitmap(CompiledBitmap& compiledBitmap);
+        void deleteCompiledBitmap(CompiledBitmap& compiledBitmap);
+        void createCompiledQuad(CompiledQuad& compiledQuad, bool tileMode);
+        void deleteCompiledQuad(CompiledQuad& compiledQuad);
+        void createCompiledGeometry(CompiledGeometry& compiledGeometry);
+        void deleteCompiledGeometry(CompiledGeometry& compiledGeometry);
+        void createCompiledLabelBatch(CompiledLabelBatch& compiledLabelBatch);
+        void deleteCompiledLabelBatch(CompiledLabelBatch& compiledLabelBatch);
 
-        void createBuffer(GLuint& buffer);
-        void deleteBuffer(GLuint& buffer);
-        void createVertexArray(GLuint& vertexArray);
-        void deleteVertexArray(GLuint& vertexArray);
-        void createTexture(GLuint& texture);
-        void deleteTexture(GLuint& texture);
-        void createScreenFBO(ScreenFBO& screenFBO, bool useColor, bool useDepth, bool useStencil);
-        void deleteScreenFBO(ScreenFBO& screenFBO);
-        void createTileVBO(TileVBO& tileVBO);
-        void deleteTileVBO(TileVBO& tileVBO);
-        void createScreenVBO(ScreenVBO& screenVBO);
-        void deleteScreenVBO(ScreenVBO& screenVBO);
+        void checkGLError();
 
         bool _subTileBlending = false;
         bool _interactionMode = false;
@@ -201,10 +194,10 @@ namespace carto { namespace vt {
         GLShaderManager::ShaderContext _perspectiveAndDerivativesContext[2];
         GLShaderManager _shaderManager;
 
-        std::vector<ScreenFBO> _layerFBOs;
-        ScreenFBO _overlayFBO;
-        TileVBO _tileVBO;
-        ScreenVBO _screenVBO;
+        std::vector<FrameBuffer> _layerBuffers;
+        FrameBuffer _overlayBuffer;
+        CompiledQuad _tileQuad;
+        CompiledQuad _screenQuad;
 
         cglib::vec3<float> _lightDir;
         cglib::mat4x4<double> _projectionMatrix;

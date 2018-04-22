@@ -640,10 +640,10 @@ namespace carto { namespace vt {
         _compiledTileBitmapMap.clear();
         _compiledTileGeometryMap.clear();
         _compiledLabelBatches.clear();
-        _layerFBOs.clear();
-        _overlayFBO = ScreenFBO();
-        _tileVBO = TileVBO();
-        _screenVBO = ScreenVBO();
+        _layerBuffers.clear();
+        _overlayBuffer = FrameBuffer();
+        _tileQuad = CompiledQuad();
+        _screenQuad = CompiledQuad();
 
         // Reset shader programs
         _shaderManager.resetPrograms();
@@ -654,45 +654,40 @@ namespace carto { namespace vt {
         
         // Release compiled bitmaps (textures)
         for (auto it = _compiledBitmapMap.begin(); it != _compiledBitmapMap.end(); it++) {
-            deleteTexture(it->second.texture);
+            deleteCompiledBitmap(it->second);
         }
         _compiledBitmapMap.clear();
 
         // Release compiler tile bitmaps (textures)
         for (auto it = _compiledTileBitmapMap.begin(); it != _compiledTileBitmapMap.end(); it++) {
-            deleteTexture(it->second.texture);
+            deleteCompiledBitmap(it->second);
         }
         _compiledTileBitmapMap.clear();
 
         // Release compiled geometry (VBOs)
         for (auto it = _compiledTileGeometryMap.begin(); it != _compiledTileGeometryMap.end(); it++) {
-            deleteVertexArray(it->second.geometryVAO);
-            deleteBuffer(it->second.vertexGeometryVBO);
-            deleteBuffer(it->second.indicesVBO);
+            deleteCompiledGeometry(it->second);
         }
         _compiledTileGeometryMap.clear();
 
         // Release compiled label batches (VBOs)
         for (auto it = _compiledLabelBatches.begin(); it != _compiledLabelBatches.end(); it++) {
-            deleteBuffer(it->second.vertexGeometryVBO);
-            deleteBuffer(it->second.vertexUVVBO);
-            deleteBuffer(it->second.vertexAttribsVBO);
-            deleteBuffer(it->second.vertexIndicesVBO);
+            deleteCompiledLabelBatch(it->second);
         }
         _compiledLabelBatches.clear();
         
         // Release FBOs
-        for (auto it = _layerFBOs.begin(); it != _layerFBOs.end(); it++) {
-            deleteScreenFBO(*it);
+        for (auto it = _layerBuffers.begin(); it != _layerBuffers.end(); it++) {
+            deleteFrameBuffer(*it);
         }
-        _layerFBOs.clear();
+        _layerBuffers.clear();
         
         // Release screen and overlay FBOs
-        deleteScreenFBO(_overlayFBO);
+        deleteFrameBuffer(_overlayBuffer);
 
         // Release tile and screen VBOs
-        deleteTileVBO(_tileVBO);
-        deleteScreenVBO(_screenVBO);
+        deleteCompiledQuad(_tileQuad);
+        deleteCompiledQuad(_screenQuad);
 
         // Release shader programs
         _shaderManager.deletePrograms();
@@ -732,13 +727,13 @@ namespace carto { namespace vt {
             _screenHeight = viewport[3];
 
             // Release layer FBOs
-            for (auto it = _layerFBOs.begin(); it != _layerFBOs.end(); it++) {
-                deleteScreenFBO(*it);
+            for (auto it = _layerBuffers.begin(); it != _layerBuffers.end(); it++) {
+                deleteFrameBuffer(*it);
             }
-            _layerFBOs.clear();
+            _layerBuffers.clear();
 
             // Release screen/overlay FBOs
-            deleteScreenFBO(_overlayFBO);
+            deleteFrameBuffer(_overlayBuffer);
         }
 
         // Reset label batch counter
@@ -841,7 +836,7 @@ namespace carto { namespace vt {
         // Release unused textures
         for (auto it = _compiledBitmapMap.begin(); it != _compiledBitmapMap.end();) {
             if (it->first.expired()) {
-                deleteTexture(it->second.texture);
+                deleteCompiledBitmap(it->second);
                 it = _compiledBitmapMap.erase(it);
             }
             else {
@@ -852,7 +847,7 @@ namespace carto { namespace vt {
         // Release unused tile textures
         for (auto it = _compiledTileBitmapMap.begin(); it != _compiledTileBitmapMap.end();) {
             if (it->first.expired()) {
-                deleteTexture(it->second.texture);
+                deleteCompiledBitmap(it->second);
                 it = _compiledTileBitmapMap.erase(it);
             }
             else {
@@ -863,9 +858,7 @@ namespace carto { namespace vt {
         // Release unused VBOs
         for (auto it = _compiledTileGeometryMap.begin(); it != _compiledTileGeometryMap.end();) {
             if (it->first.expired()) {
-                deleteVertexArray(it->second.geometryVAO);
-                deleteBuffer(it->second.vertexGeometryVBO);
-                deleteBuffer(it->second.indicesVBO);
+                deleteCompiledGeometry(it->second);
                 it = _compiledTileGeometryMap.erase(it);
             }
             else {
@@ -1330,7 +1323,7 @@ namespace carto { namespace vt {
                 continue;
             }
             
-            std::unordered_map<int, std::size_t> layerFBOMap;
+            std::unordered_map<int, std::size_t> layerBufferMap;
             if (stencilBits > 0) {
                 glStencilFunc(GL_ALWAYS, stencilNum, 255);
             }
@@ -1361,16 +1354,16 @@ namespace carto { namespace vt {
 
                         glGetIntegerv(GL_FRAMEBUFFER_BINDING, &currentFBO);
 
-                        auto it = layerFBOMap.find(renderNode.layer->getLayerIndex());
-                        if (it == layerFBOMap.end()) {
-                            std::size_t fboIndex = layerFBOMap.size();
-                            if (fboIndex >= _layerFBOs.size()) {
-                                _layerFBOs.emplace_back();
-                                createScreenFBO(_layerFBOs.back(), true, false, stencilBits > 0);
+                        auto it = layerBufferMap.find(renderNode.layer->getLayerIndex());
+                        if (it == layerBufferMap.end()) {
+                            std::size_t bufferIndex = layerBufferMap.size();
+                            if (bufferIndex >= _layerBuffers.size()) {
+                                _layerBuffers.emplace_back();
+                                createFrameBuffer(_layerBuffers.back(), true, false, stencilBits > 0);
                             }
-                            it = layerFBOMap.emplace(renderNode.layer->getLayerIndex(), fboIndex).first;
+                            it = layerBufferMap.emplace(renderNode.layer->getLayerIndex(), bufferIndex).first;
                         }
-                        glBindFramebuffer(GL_FRAMEBUFFER, _layerFBOs[it->second].fbo);
+                        glBindFramebuffer(GL_FRAMEBUFFER, _layerBuffers[it->second].fbo);
                         glClearColor(0, 0, 0, 0);
                         glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
@@ -1429,10 +1422,10 @@ namespace carto { namespace vt {
                 update = renderNode.initialBlend < 1.0f || update;
 
                 if (blendGeometry) {
-                    const ScreenFBO& layerFBO = _layerFBOs[layerFBOMap[renderNode.layer->getLayerIndex()]];
+                    const FrameBuffer& layerBuffer = _layerBuffers[layerBufferMap[renderNode.layer->getLayerIndex()]];
 
-                    if (_glExtensions->GL_OES_packed_depth_stencil_supported() && !layerFBO.depthStencilAttachments.empty()) {
-                        _glExtensions->glDiscardFramebufferEXT(GL_FRAMEBUFFER, static_cast<GLsizei>(layerFBO.depthStencilAttachments.size()), layerFBO.depthStencilAttachments.data());
+                    if (_glExtensions->GL_OES_packed_depth_stencil_supported() && !layerBuffer.depthStencilAttachments.empty()) {
+                        _glExtensions->glDiscardFramebufferEXT(GL_FRAMEBUFFER, static_cast<GLsizei>(layerBuffer.depthStencilAttachments.size()), layerBuffer.depthStencilAttachments.data());
                     }
 
                     glBindFramebuffer(GL_FRAMEBUFFER, currentFBO);
@@ -1442,7 +1435,7 @@ namespace carto { namespace vt {
                     }
 
                     setBlendState(renderNode.layer->getCompOp().get());
-                    blendTileTexture(renderNode.tileId, blendOpacity, layerFBO.colorTexture);
+                    blendTileTexture(renderNode.tileId, blendOpacity, layerBuffer.colorTexture);
                 }
             }
         }
@@ -1479,11 +1472,11 @@ namespace carto { namespace vt {
                         
                         glGetIntegerv(GL_FRAMEBUFFER_BINDING, &currentFBO);
 
-                        if (_overlayFBO.fbo == 0) {
-                            createScreenFBO(_overlayFBO, true, true, false);
+                        if (_overlayBuffer.fbo == 0) {
+                            createFrameBuffer(_overlayBuffer, true, true, false);
                         }
 
-                        glBindFramebuffer(GL_FRAMEBUFFER, _overlayFBO.fbo);
+                        glBindFramebuffer(GL_FRAMEBUFFER, _overlayBuffer.fbo);
                         glClearColor(0, 0, 0, 0);
                         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
                     }
@@ -1496,8 +1489,8 @@ namespace carto { namespace vt {
         
         // If any 3D geometry, blend rendered screen FBO
         if (blendGeometry) {
-            if (_glExtensions->GL_OES_packed_depth_stencil_supported() && !_overlayFBO.depthStencilAttachments.empty()) {
-                _glExtensions->glDiscardFramebufferEXT(GL_FRAMEBUFFER, static_cast<GLsizei>(_overlayFBO.depthStencilAttachments.size()), _overlayFBO.depthStencilAttachments.data());
+            if (_glExtensions->GL_OES_packed_depth_stencil_supported() && !_overlayBuffer.depthStencilAttachments.empty()) {
+                _glExtensions->glDiscardFramebufferEXT(GL_FRAMEBUFFER, static_cast<GLsizei>(_overlayBuffer.depthStencilAttachments.size()), _overlayBuffer.depthStencilAttachments.data());
             }
 
             glBindFramebuffer(GL_FRAMEBUFFER, currentFBO);
@@ -1508,7 +1501,7 @@ namespace carto { namespace vt {
             glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
             glBlendEquation(GL_FUNC_ADD);
 
-            blendScreenTexture(1.0f, _overlayFBO.colorTexture);
+            blendScreenTexture(1.0f, _overlayBuffer.colorTexture);
 
             glEnable(GL_DEPTH_TEST);
             glDepthMask(GL_TRUE);
@@ -1613,10 +1606,10 @@ namespace carto { namespace vt {
         glUseProgram(shaderProgram);
         checkGLError();
         
-        if (_screenVBO.vbo == 0) {
-            createScreenVBO(_screenVBO);
+        if (_screenQuad.vbo == 0) {
+            createCompiledQuad(_screenQuad, false);
         }
-        glBindBuffer(GL_ARRAY_BUFFER, _screenVBO.vbo);
+        glBindBuffer(GL_ARRAY_BUFFER, _screenQuad.vbo);
         glVertexAttribPointer(glGetAttribLocation(shaderProgram, "aVertexPosition"), 2, GL_FLOAT, GL_FALSE, 0, 0);
         glEnableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexPosition"));
         
@@ -1648,10 +1641,10 @@ namespace carto { namespace vt {
         glUseProgram(shaderProgram);
         checkGLError();
 
-        if (_tileVBO.vbo == 0) {
-            createTileVBO(_tileVBO);
+        if (_tileQuad.vbo == 0) {
+            createCompiledQuad(_tileQuad, true);
         }
-        glBindBuffer(GL_ARRAY_BUFFER, _tileVBO.vbo);
+        glBindBuffer(GL_ARRAY_BUFFER, _tileQuad.vbo);
         glVertexAttribPointer(glGetAttribLocation(shaderProgram, "aVertexPosition"), 2, GL_FLOAT, GL_FALSE, 0, 0);
         glEnableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexPosition"));
 
@@ -1679,10 +1672,10 @@ namespace carto { namespace vt {
         glUseProgram(shaderProgram);
         checkGLError();
         
-        if (_tileVBO.vbo == 0) {
-            createTileVBO(_tileVBO);
+        if (_tileQuad.vbo == 0) {
+            createCompiledQuad(_tileQuad, true);
         }
-        glBindBuffer(GL_ARRAY_BUFFER, _tileVBO.vbo);
+        glBindBuffer(GL_ARRAY_BUFFER, _tileQuad.vbo);
         glVertexAttribPointer(glGetAttribLocation(shaderProgram, "aVertexPosition"), 2, GL_FLOAT, GL_FALSE, 0, 0);
         glEnableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexPosition"));
         
@@ -1712,10 +1705,10 @@ namespace carto { namespace vt {
         glUseProgram(shaderProgram);
         checkGLError();
         
-        if (_tileVBO.vbo == 0) {
-            createTileVBO(_tileVBO);
+        if (_tileQuad.vbo == 0) {
+            createCompiledQuad(_tileQuad, true);
         }
-        glBindBuffer(GL_ARRAY_BUFFER, _tileVBO.vbo);
+        glBindBuffer(GL_ARRAY_BUFFER, _tileQuad.vbo);
         glVertexAttribPointer(glGetAttribLocation(shaderProgram, "aVertexPosition"), 2, GL_FLOAT, GL_FALSE, 0, 0);
         glEnableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexPosition"));
         
@@ -1726,8 +1719,9 @@ namespace carto { namespace vt {
             CompiledBitmap compiledBitmap;
             auto it = _compiledBitmapMap.find(_backgroundPattern->bitmap);
             if (it == _compiledBitmapMap.end()) {
+                createCompiledBitmap(compiledBitmap);
+
                 std::shared_ptr<const Bitmap> patternBitmap = BitmapManager::scaleToPOT(_backgroundPattern->bitmap);
-                createTexture(compiledBitmap.texture);
                 glBindTexture(GL_TEXTURE_2D, compiledBitmap.texture);
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -1766,10 +1760,10 @@ namespace carto { namespace vt {
         glUseProgram(shaderProgram);
         checkGLError();
 
-        if (_tileVBO.vbo == 0) {
-            createTileVBO(_tileVBO);
+        if (_tileQuad.vbo == 0) {
+            createCompiledQuad(_tileQuad, true);
         }
-        glBindBuffer(GL_ARRAY_BUFFER, _tileVBO.vbo);
+        glBindBuffer(GL_ARRAY_BUFFER, _tileQuad.vbo);
         glVertexAttribPointer(glGetAttribLocation(shaderProgram, "aVertexPosition"), 2, GL_FLOAT, GL_FALSE, 0, 0);
         glEnableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexPosition"));
 
@@ -1779,12 +1773,12 @@ namespace carto { namespace vt {
         CompiledBitmap compiledTileBitmap;
         auto it = _compiledTileBitmapMap.find(bitmap);
         if (it == _compiledTileBitmapMap.end()) {
-            // Use a different strategy if the bitmap is not of POT dimensions, simply do not create the mipmaps
-            bool pow2Size = (bitmap->getWidth() & (bitmap->getWidth() - 1)) == 0 && (bitmap->getHeight() & (bitmap->getHeight() - 1)) == 0;
+            createCompiledBitmap(compiledTileBitmap);
 
-            createTexture(compiledTileBitmap.texture);
+            // Use a different strategy if the bitmap is not of POT dimensions, simply do not create the mipmaps
+            bool genMipmaps = (bitmap->getWidth() & (bitmap->getWidth() - 1)) == 0 && (bitmap->getHeight() & (bitmap->getHeight() - 1)) == 0;
             glBindTexture(GL_TEXTURE_2D, compiledTileBitmap.texture);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, pow2Size ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, genMipmaps ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -1801,7 +1795,7 @@ namespace carto { namespace vt {
                 break;
             }
             glTexImage2D(GL_TEXTURE_2D, 0, format, bitmap->getWidth(), bitmap->getHeight(), 0, format, GL_UNSIGNED_BYTE, bitmap->getData().empty() ? NULL : bitmap->getData().data());
-            if (pow2Size) {
+            if (genMipmaps) {
                 glGenerateMipmap(GL_TEXTURE_2D);
             }
 
@@ -1962,15 +1956,11 @@ namespace carto { namespace vt {
         CompiledGeometry compiledGeometry;
         auto itGeom = _compiledTileGeometryMap.find(geometry);
         if (itGeom == _compiledTileGeometryMap.end()) {
-            if (_glExtensions->GL_OES_vertex_array_object_supported()) {
-                createVertexArray(compiledGeometry.geometryVAO);
-            }
+            createCompiledGeometry(compiledGeometry);
 
-            createBuffer(compiledGeometry.vertexGeometryVBO);
             glBindBuffer(GL_ARRAY_BUFFER, compiledGeometry.vertexGeometryVBO);
             glBufferData(GL_ARRAY_BUFFER, geometry->getVertexGeometry().size() * sizeof(unsigned char), geometry->getVertexGeometry().data(), GL_STATIC_DRAW);
 
-            createBuffer(compiledGeometry.indicesVBO);
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, compiledGeometry.indicesVBO);
             glBufferData(GL_ELEMENT_ARRAY_BUFFER, geometry->getIndices().size() * sizeof(unsigned short), geometry->getIndices().data(), GL_STATIC_DRAW);
 
@@ -1999,9 +1989,11 @@ namespace carto { namespace vt {
             CompiledBitmap compiledBitmap;
             auto itBitmap = _compiledBitmapMap.find(styleParams.pattern->bitmap);
             if (itBitmap == _compiledBitmapMap.end()) {
+                createCompiledBitmap(compiledBitmap);
+
+                // Skip mipmap generation for line patterns as it simply smears the pattern
                 bool genMipmaps = geometry->getType() != TileGeometry::Type::LINE;
                 std::shared_ptr<const Bitmap> patternBitmap = BitmapManager::scaleToPOT(styleParams.pattern->bitmap);
-                createTexture(compiledBitmap.texture);
                 glBindTexture(GL_TEXTURE_2D, compiledBitmap.texture);
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, genMipmaps ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR);
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -2023,10 +2015,10 @@ namespace carto { namespace vt {
             glUniform1i(glGetUniformLocation(shaderProgram, "uPattern"), 0);
         }
 
-        if (_glExtensions->GL_OES_vertex_array_object_supported()) {
+        if (compiledGeometry.geometryVAO != 0) {
             _glExtensions->glBindVertexArrayOES(compiledGeometry.geometryVAO);
         }
-        if (!(_glExtensions->GL_OES_vertex_array_object_supported() && itGeom != _compiledTileGeometryMap.end())) {
+        if (compiledGeometry.geometryVAO == 0 || itGeom == _compiledTileGeometryMap.end()) {
             glBindBuffer(GL_ARRAY_BUFFER, compiledGeometry.vertexGeometryVBO);
             glVertexAttribPointer(glGetAttribLocation(shaderProgram, "aVertexPosition"), 2, GL_SHORT, GL_FALSE, geometryLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(geometryLayoutParams.vertexOffset));
             glEnableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexPosition"));
@@ -2053,7 +2045,7 @@ namespace carto { namespace vt {
         
         glDrawElements(GL_TRIANGLES, geometry->getIndicesCount(), GL_UNSIGNED_SHORT, 0);
         
-        if (_glExtensions->GL_OES_vertex_array_object_supported()) {
+        if (compiledGeometry.geometryVAO != 0) {
             _glExtensions->glBindVertexArrayOES(0);
         }
         else {
@@ -2086,11 +2078,7 @@ namespace carto { namespace vt {
         CompiledLabelBatch compiledLabelBatch;
         auto itBatch = _compiledLabelBatches.find(_labelBatchCounter);
         if (itBatch == _compiledLabelBatches.end()) {
-            createBuffer(compiledLabelBatch.vertexGeometryVBO);
-            createBuffer(compiledLabelBatch.vertexUVVBO);
-            createBuffer(compiledLabelBatch.vertexAttribsVBO);
-            createBuffer(compiledLabelBatch.vertexIndicesVBO);
-
+            createCompiledLabelBatch(compiledLabelBatch);
             _compiledLabelBatches[_labelBatchCounter] = compiledLabelBatch;
         }
         else {
@@ -2101,8 +2089,10 @@ namespace carto { namespace vt {
         CompiledBitmap compiledBitmap;
         auto itBitmap = _compiledBitmapMap.find(bitmap);
         if (itBitmap == _compiledBitmapMap.end()) {
-            bool genMipMaps = false; // turn off mipmap creation as most labels are SDF texts
-            createTexture(compiledBitmap.texture);
+            createCompiledBitmap(compiledBitmap);
+
+            // Turn off mipmap creation as most labels are SDF texts
+            bool genMipMaps = false;
             glBindTexture(GL_TEXTURE_2D, compiledBitmap.texture);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, genMipMaps ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -2219,49 +2209,10 @@ namespace carto { namespace vt {
             return true;
         }
     }
-    
-    void GLTileRenderer::checkGLError() {
-        for (GLenum error = glGetError(); error != GL_NONE; error = glGetError()) {
-            assert(error != GL_NONE);
-        }
-    }
-    
-    void GLTileRenderer::createBuffer(GLuint& buffer) {
-        glGenBuffers(1, &buffer);
-    }
-    
-    void GLTileRenderer::deleteBuffer(GLuint& buffer) {
-        if (buffer != 0) {
-            glDeleteBuffers(1, &buffer);
-            buffer = 0;
-        }
-    }
-    
-    void GLTileRenderer::createVertexArray(GLuint& vertexArray) {
-        _glExtensions->glGenVertexArraysOES(1, &vertexArray);
-    }
-    
-    void GLTileRenderer::deleteVertexArray(GLuint& vertexArray) {
-        if (vertexArray != 0) {
-            _glExtensions->glDeleteVertexArraysOES(1, &vertexArray);
-            vertexArray = 0;
-        }
-    }
-    
-    void GLTileRenderer::createTexture(GLuint& texture) {
-        glGenTextures(1, &texture);
-    }
-    
-    void GLTileRenderer::deleteTexture(GLuint& texture) {
-        if (texture != 0) {
-            glDeleteTextures(1, &texture);
-            texture = 0;
-        }
-    }
 
-    void GLTileRenderer::createScreenFBO(ScreenFBO& screenFBO, bool useColor, bool useDepth, bool useStencil) {
-        glGenFramebuffers(1, &screenFBO.fbo);
-        glBindFramebuffer(GL_FRAMEBUFFER, screenFBO.fbo);
+    void GLTileRenderer::createFrameBuffer(FrameBuffer& frameBuffer, bool useColor, bool useDepth, bool useStencil) {
+        glGenFramebuffers(1, &frameBuffer.fbo);
+        glBindFramebuffer(GL_FRAMEBUFFER, frameBuffer.fbo);
 
         if (useDepth && useStencil && _glExtensions->GL_OES_packed_depth_stencil_supported()) {
             GLuint depthStencilRB = 0;
@@ -2271,9 +2222,9 @@ namespace carto { namespace vt {
             glBindRenderbuffer(GL_RENDERBUFFER, 0);
             glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthStencilRB);
             glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_RENDERBUFFER, depthStencilRB);
-            screenFBO.depthStencilAttachments.push_back(GL_DEPTH_ATTACHMENT);
-            screenFBO.depthStencilAttachments.push_back(GL_STENCIL_ATTACHMENT);
-            screenFBO.depthStencilRBs.push_back(depthStencilRB);
+            frameBuffer.depthStencilAttachments.push_back(GL_DEPTH_ATTACHMENT);
+            frameBuffer.depthStencilAttachments.push_back(GL_STENCIL_ATTACHMENT);
+            frameBuffer.depthStencilRBs.push_back(depthStencilRB);
         }
         else {
             if (useDepth) {
@@ -2283,8 +2234,8 @@ namespace carto { namespace vt {
                 glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT16, _screenWidth, _screenHeight);
                 glBindRenderbuffer(GL_RENDERBUFFER, 0);
                 glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthRB);
-                screenFBO.depthStencilAttachments.push_back(GL_DEPTH_ATTACHMENT);
-                screenFBO.depthStencilRBs.push_back(depthRB);
+                frameBuffer.depthStencilAttachments.push_back(GL_DEPTH_ATTACHMENT);
+                frameBuffer.depthStencilRBs.push_back(depthRB);
             }
             if (useStencil) {
                 GLuint stencilRB = 0;
@@ -2293,21 +2244,21 @@ namespace carto { namespace vt {
                 glRenderbufferStorage(GL_RENDERBUFFER, GL_STENCIL_INDEX8, _screenWidth, _screenHeight);
                 glBindRenderbuffer(GL_RENDERBUFFER, 0);
                 glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_RENDERBUFFER, stencilRB);
-                screenFBO.depthStencilAttachments.push_back(GL_STENCIL_ATTACHMENT);
-                screenFBO.depthStencilRBs.push_back(stencilRB);
+                frameBuffer.depthStencilAttachments.push_back(GL_STENCIL_ATTACHMENT);
+                frameBuffer.depthStencilRBs.push_back(stencilRB);
             }
         }
 
         if (useColor) {
-            createTexture(screenFBO.colorTexture);
-            glBindTexture(GL_TEXTURE_2D, screenFBO.colorTexture);
+            glGenTextures(1, &frameBuffer.colorTexture);
+            glBindTexture(GL_TEXTURE_2D, frameBuffer.colorTexture);
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, _screenWidth, _screenHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
             glBindTexture(GL_TEXTURE_2D, 0);
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, screenFBO.colorTexture, 0);
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, frameBuffer.colorTexture, 0);
         }
 
         if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
@@ -2315,39 +2266,100 @@ namespace carto { namespace vt {
         }
     }
 
-    void GLTileRenderer::deleteScreenFBO(ScreenFBO& screenFBO) {
-        if (screenFBO.fbo != 0) {
-            glDeleteFramebuffers(1, &screenFBO.fbo);
-            screenFBO.fbo = 0;
+    void GLTileRenderer::deleteFrameBuffer(FrameBuffer& frameBuffer) {
+        if (frameBuffer.fbo != 0) {
+            glDeleteFramebuffers(1, &frameBuffer.fbo);
+            frameBuffer.fbo = 0;
         }
-        if (!screenFBO.depthStencilRBs.empty()) {
-            glDeleteRenderbuffers(static_cast<GLsizei>(screenFBO.depthStencilRBs.size()), screenFBO.depthStencilRBs.data());
-            screenFBO.depthStencilRBs.clear();
+        if (!frameBuffer.depthStencilRBs.empty()) {
+            glDeleteRenderbuffers(static_cast<GLsizei>(frameBuffer.depthStencilRBs.size()), frameBuffer.depthStencilRBs.data());
+            frameBuffer.depthStencilRBs.clear();
         }
-        deleteTexture(screenFBO.colorTexture);
+        if (frameBuffer.colorTexture != 0) {
+            glDeleteTextures(1, &frameBuffer.colorTexture);
+            frameBuffer.colorTexture = 0;
+        }
     }
 
-    void GLTileRenderer::createTileVBO(TileVBO& tileVBO) {
+    void GLTileRenderer::createCompiledBitmap(CompiledBitmap& compiledBitmap) {
+        glGenTextures(1, &compiledBitmap.texture);
+    }
+
+    void GLTileRenderer::deleteCompiledBitmap(CompiledBitmap& compiledBitmap) {
+        if (compiledBitmap.texture != 0) {
+            glDeleteTextures(1, &compiledBitmap.texture);
+            compiledBitmap.texture = 0;
+        }
+    }
+
+    void GLTileRenderer::createCompiledQuad(CompiledQuad& compiledQuad, bool tileMode) {
         static const float tileVertices[8] = { 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f };
-
-        createBuffer(tileVBO.vbo);
-        glBindBuffer(GL_ARRAY_BUFFER, tileVBO.vbo);
-        glBufferData(GL_ARRAY_BUFFER, 8 * sizeof(float), tileVertices, GL_STATIC_DRAW);
-    }
-
-    void GLTileRenderer::deleteTileVBO(TileVBO& tileVBO) {
-        deleteBuffer(tileVBO.vbo);
-    }
-
-    void GLTileRenderer::createScreenVBO(ScreenVBO& screenVBO) {
         static const float screenVertices[8] = { -1.0f, -1.0f, 1.0f, -1.0f, -1.0f, 1.0f, 1.0f, 1.0f };
 
-        createBuffer(screenVBO.vbo);
-        glBindBuffer(GL_ARRAY_BUFFER, screenVBO.vbo);
-        glBufferData(GL_ARRAY_BUFFER, 8 * sizeof(float), screenVertices, GL_STATIC_DRAW);
+        glGenBuffers(1, &compiledQuad.vbo);
+        glBindBuffer(GL_ARRAY_BUFFER, compiledQuad.vbo);
+        glBufferData(GL_ARRAY_BUFFER, 8 * sizeof(float), tileMode ? tileVertices : screenVertices, GL_STATIC_DRAW);
     }
 
-    void GLTileRenderer::deleteScreenVBO(ScreenVBO& screenVBO) {
-        deleteBuffer(screenVBO.vbo);
+    void GLTileRenderer::deleteCompiledQuad(CompiledQuad& compiledQuad) {
+        if (compiledQuad.vbo != 0) {
+            glDeleteBuffers(1, &compiledQuad.vbo);
+            compiledQuad.vbo = 0;
+        }
+    }
+
+    void GLTileRenderer::createCompiledGeometry(CompiledGeometry& compiledGeometry) {
+        if (_glExtensions->GL_OES_vertex_array_object_supported()) {
+            _glExtensions->glGenVertexArraysOES(1, &compiledGeometry.geometryVAO);
+        }
+        glGenBuffers(1, &compiledGeometry.vertexGeometryVBO);
+        glGenBuffers(1, &compiledGeometry.indicesVBO);
+    }
+    
+    void GLTileRenderer::deleteCompiledGeometry(CompiledGeometry& compiledGeometry) {
+        if (compiledGeometry.geometryVAO != 0) {
+            _glExtensions->glDeleteVertexArraysOES(1, &compiledGeometry.geometryVAO);
+            compiledGeometry.geometryVAO = 0;
+        }
+        if (compiledGeometry.vertexGeometryVBO != 0) {
+            glDeleteBuffers(1, &compiledGeometry.vertexGeometryVBO);
+            compiledGeometry.vertexGeometryVBO = 0;
+        }
+        if (compiledGeometry.indicesVBO != 0) {
+            glDeleteBuffers(1, &compiledGeometry.indicesVBO);
+            compiledGeometry.indicesVBO = 0;
+        }
+    }
+
+    void GLTileRenderer::createCompiledLabelBatch(CompiledLabelBatch& compiledLabelBatch) {
+        glGenBuffers(1, &compiledLabelBatch.vertexGeometryVBO);
+        glGenBuffers(1, &compiledLabelBatch.vertexUVVBO);
+        glGenBuffers(1, &compiledLabelBatch.vertexAttribsVBO);
+        glGenBuffers(1, &compiledLabelBatch.vertexIndicesVBO);
+    }
+
+    void GLTileRenderer::deleteCompiledLabelBatch(CompiledLabelBatch& compiledLabelBatch) {
+        if (compiledLabelBatch.vertexGeometryVBO != 0) {
+            glDeleteBuffers(1, &compiledLabelBatch.vertexGeometryVBO);
+            compiledLabelBatch.vertexGeometryVBO = 0;
+        }
+        if (compiledLabelBatch.vertexUVVBO != 0) {
+            glDeleteBuffers(1, &compiledLabelBatch.vertexUVVBO);
+            compiledLabelBatch.vertexUVVBO = 0;
+        }
+        if (compiledLabelBatch.vertexAttribsVBO != 0) {
+            glDeleteBuffers(1, &compiledLabelBatch.vertexAttribsVBO);
+            compiledLabelBatch.vertexAttribsVBO = 0;
+        }
+        if (compiledLabelBatch.vertexIndicesVBO != 0) {
+            glDeleteBuffers(1, &compiledLabelBatch.vertexIndicesVBO);
+            compiledLabelBatch.vertexIndicesVBO = 0;
+        }
+    }
+
+    void GLTileRenderer::checkGLError() {
+        for (GLenum error = glGetError(); error != GL_NONE; error = glGetError()) {
+            assert(error != GL_NONE);
+        }
     }
 } }

@@ -181,7 +181,21 @@ namespace carto { namespace css {
                 // Build new property set by setting the attribute and combining filters
                 PropertySet propertySet(*propertySetIt);
                 propertySet.properties[prop.property.field] = prop.property;
+
                 bool skip = false;
+                for (const std::shared_ptr<const Predicate>& propFilter : prop.filters) {
+                    for (auto filterIt = propertySet.filters.begin(); filterIt != propertySet.filters.end(); filterIt++) {
+                        // Not possible to satisfy both filters? Skip this combination in that case
+                        if (propFilter != *filterIt && !propFilter->intersects(*filterIt)) {
+                            skip = true;
+                            break;
+                        }
+                    }
+                }
+                if (skip) {
+                    continue;
+                }
+
                 for (const std::shared_ptr<const Predicate>& propFilter : prop.filters) {
                     auto filterIt = propertySet.filters.begin();
                     for (; filterIt != propertySet.filters.end(); filterIt++) {
@@ -189,19 +203,10 @@ namespace carto { namespace css {
                         if (propFilter == *filterIt || propFilter->contains(*filterIt)) {
                             break;
                         }
-
-                        // Not possible to satisfy both filters? Skip this combination in that case
-                        if (!propFilter->intersects(*filterIt)) {
-                            skip = true;
-                            break;
-                        }
                     }
                     if (filterIt == propertySet.filters.end()) {
                         propertySet.filters.push_back(propFilter);
                     }
-                }
-                if (skip) {
-                    continue;
                 }
 
                 // If filters did not change, replace existing filter otherwise we must insert the new filter and keep old one
@@ -240,7 +245,9 @@ namespace carto { namespace css {
     }
     
     bool CartoCSSCompiler::isRedundantPropertySet(std::list<PropertySet>::iterator begin, std::list<PropertySet>::iterator end, const PropertySet& propertySet) {
-        for (auto it = begin; it != end; it++) {
+        for (auto it = end; it != begin; ) {
+            --it;
+
             if (std::all_of(it->filters.begin(), it->filters.end(), [&](const std::shared_ptr<const Predicate>& filter) {
                 if (std::find(propertySet.filters.begin(), propertySet.filters.end(), filter) != propertySet.filters.end()) {
                     return true;

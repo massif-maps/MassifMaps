@@ -181,32 +181,9 @@ namespace carto { namespace css {
                 // Build new property set by setting the attribute and combining filters
                 PropertySet propertySet(*propertySetIt);
                 propertySet.properties[prop.property.field] = prop.property;
-
-                bool skip = false;
-                for (const std::shared_ptr<const Predicate>& propFilter : prop.filters) {
-                    for (auto filterIt = propertySet.filters.begin(); filterIt != propertySet.filters.end(); filterIt++) {
-                        // Not possible to satisfy both filters? Skip this combination in that case
-                        if (propFilter != *filterIt && !propFilter->intersects(*filterIt)) {
-                            skip = true;
-                            break;
-                        }
-                    }
-                }
-                if (skip) {
+                propertySet.filters.insert(propertySet.filters.end(), prop.filters.begin(), prop.filters.end());
+                if (!optimizePropertySetFilters(propertySet)) {
                     continue;
-                }
-
-                for (const std::shared_ptr<const Predicate>& propFilter : prop.filters) {
-                    auto filterIt = propertySet.filters.begin();
-                    for (; filterIt != propertySet.filters.end(); filterIt++) {
-                        // If the filter contains existing filter, then done
-                        if (propFilter == *filterIt || propFilter->contains(*filterIt)) {
-                            break;
-                        }
-                    }
-                    if (filterIt == propertySet.filters.end()) {
-                        propertySet.filters.push_back(propFilter);
-                    }
                 }
 
                 // If filters did not change, replace existing filter otherwise we must insert the new filter and keep old one
@@ -214,10 +191,10 @@ namespace carto { namespace css {
                     continue;
                 }
                 if (propertySet.filters == propertySetIt->filters) {
-                    *propertySetIt = propertySet;
+                    *propertySetIt = std::move(propertySet);
                 }
                 else {
-                    propertySets.insert(propertySetIt, propertySet);
+                    propertySets.insert(propertySetIt, std::move(propertySet));
                 }
             }
 
@@ -225,6 +202,10 @@ namespace carto { namespace css {
             PropertySet propertySet;
             propertySet.properties[prop.property.field] = prop.property;
             propertySet.filters = prop.filters;
+            if (!optimizePropertySetFilters(propertySet)) {
+                continue;
+            }
+
             if (isRedundantPropertySet(propertySets.begin(), propertySets.end(), propertySet)) {
                 continue;
             }
@@ -240,8 +221,27 @@ namespace carto { namespace css {
                 layerAttachment.order = std::min(layerAttachment.order, std::get<3>(namedProp.second.specificity));
             }
         }
-        layerAttachment.propertySets = propertySets;
+        layerAttachment.propertySets = std::move(propertySets);
         layerAttachments.push_back(std::move(layerAttachment));
+    }
+
+    bool CartoCSSCompiler::optimizePropertySetFilters(PropertySet& propertySet) {
+        for (auto filterIt1 = propertySet.filters.begin(); filterIt1 != propertySet.filters.end(); filterIt1++) {
+            for (auto filterIt2 = filterIt1; ++filterIt2 != propertySet.filters.end(); ) {
+                // Check if it is possible to satisfy both filters. If not, can skip this rule
+                if (*filterIt1 != *filterIt2 && !(*filterIt2)->intersects(*filterIt1)) {
+                    return false;
+                }
+            }
+            for (auto filterIt2 = filterIt1; ++filterIt2 != propertySet.filters.end(); ) {
+                // Check if the filter is subsumed by any other filter
+                if (*filterIt1 == *filterIt2 || (*filterIt2)->contains(*filterIt1)) {
+                    filterIt2 = propertySet.filters.erase(filterIt2);
+                    filterIt2--;
+                }
+            }
+        }
+        return true;
     }
     
     bool CartoCSSCompiler::isRedundantPropertySet(std::list<PropertySet>::iterator begin, std::list<PropertySet>::iterator end, const PropertySet& propertySet) {

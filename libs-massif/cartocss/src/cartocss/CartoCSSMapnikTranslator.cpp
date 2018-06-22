@@ -112,7 +112,8 @@ namespace carto { namespace css {
                         }
                     }
                     catch (const std::runtime_error& ex) {
-                        _logger->write(mvt::Logger::Severity::ERROR, ex.what());
+                        _logger->write(mvt::Logger::Severity::ERROR, "Error while parsing text expression in " + symbolizerType + " symbolizer: " + ex.what());
+                        return std::shared_ptr<mvt::Symbolizer>();
                     }
                 }
                 else if (prop.field == symbolizerType + "-face-name") {
@@ -142,7 +143,7 @@ namespace carto { namespace css {
                 std::static_pointer_cast<mvt::TextSymbolizer>(mapnikSymbolizer)->setTextExpression(textExpr);
             }
             else {
-                _logger->write(mvt::Logger::Severity::ERROR, "Unsupported text expression type");
+                _logger->write(mvt::Logger::Severity::ERROR, "Unsupported text expression type in " + symbolizerType + " symbolizer");
                 return std::shared_ptr<mvt::Symbolizer>();
             }
             for (const CartoCSSCompiler::Property& prop : properties) {
@@ -447,7 +448,7 @@ namespace carto { namespace css {
                 symbolizer->setParameter(name, exprStr);
             }
             catch (const std::runtime_error& ex) {
-                _logger->write(mvt::Logger::Severity::ERROR, ex.what());
+                _logger->write(mvt::Logger::Severity::ERROR, "Error while setting " + name + " parameter: " + ex.what());
             }
         }
     }

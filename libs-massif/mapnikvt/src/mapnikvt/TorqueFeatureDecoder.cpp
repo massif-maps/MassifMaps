@@ -22,15 +22,15 @@ namespace {
         return 0;
     }
 
-    int readRapidJSONDouble(const rapidjson::Value& value) {
+    double readRapidJSONDouble(const rapidjson::Value& value) {
         if (value.IsInt()) {
             return value.GetInt();
         } else if (value.IsUint()) {
             return value.GetUint();
         } else if (value.IsInt64()) {
-            return value.GetInt64();
+            return static_cast<double>(value.GetInt64());
         } else if (value.IsUint64()) {
-            return value.GetUint64();
+            return static_cast<double>(value.GetUint64());
         } else if (value.IsNumber()) {
             return value.GetDouble();
         }

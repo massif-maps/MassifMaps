@@ -327,7 +327,7 @@ namespace carto { namespace vt {
                 }
             }
 
-            auto bitmapLabel = std::make_shared<TileLabel>(_tileId, id, labelInfo.id, labelInfo.groupId, std::move(bitmapGlyphs), std::move(labelPosition), std::move(labelVertices), _labelStyle);
+            auto bitmapLabel = std::make_shared<TileLabel>(_tileId, id, labelInfo.id, labelInfo.groupId, bitmapGlyphs, std::move(labelPosition), std::move(labelVertices), _labelStyle);
             bitmapLabel->setMinimumGroupDistance(_tileSize * labelInfo.minimumGroupDistance);
             _labelList.push_back(std::move(bitmapLabel));
         }

@@ -53,7 +53,7 @@ namespace carto { namespace mvt {
             for (auto it2 = nutiParam.getEnumMap().begin(); it2 != nutiParam.getEnumMap().end(); it2++) {
                 pugi::xml_node valueNode = nutiParamNode.append_child("Value");
                 valueNode.append_attribute("id").set_value(it2->first.c_str());
-                valueNode.append_child(pugi::node_pcdata).set_value(ValueConverter<std::string>::convert(it2->second).c_str());
+                valueNode.append_attribute("value").set_value(ValueConverter<std::string>::convert(it2->second).c_str());
             }
         }
 

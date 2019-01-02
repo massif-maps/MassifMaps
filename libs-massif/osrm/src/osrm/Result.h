@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_ROUTING_RESULT_H_
-#define _CARTO_ROUTING_RESULT_H_
+#ifndef _CARTO_OSRM_RESULT_H_
+#define _CARTO_OSRM_RESULT_H_
 
 #include "Base.h"
 #include "Instruction.h"
@@ -13,7 +13,7 @@
 #include <vector>
 #include <numeric>
 
-namespace carto { namespace routing {
+namespace carto { namespace osrm {
     class Result final {
     public:
         enum class Status {
@@ -24,17 +24,9 @@ namespace carto { namespace routing {
         Result() = default;
         explicit Result(std::vector<Instruction> instructions, std::vector<WGSPos> geometry) : _status(Status::SUCCESS), _instructions(std::move(instructions)), _geometry(std::move(geometry)) { }
 
-        Status getStatus() const {
-            return _status;
-        }
-
-        const std::vector<Instruction>& getInstructions() const {
-            return _instructions;
-        }
-
-        const std::vector<WGSPos>& getGeometry() const {
-            return _geometry;
-        }
+        Status getStatus() const { return _status; }
+        const std::vector<Instruction>& getInstructions() const { return _instructions; }
+        const std::vector<WGSPos>& getGeometry() const { return _geometry; }
 
         double getTotalDistance() const {
             return std::accumulate(_instructions.begin(), _instructions.end(), 0.0, [](double dist, const Instruction& instruction) {

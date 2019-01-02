@@ -2,7 +2,7 @@
 
 #include <boost/math/constants/constants.hpp>
 
-namespace carto { namespace routing {
+namespace carto { namespace osrm {
     Result RouteFinder::find(const Query& query) const {
         std::array<std::vector<Graph::NearestNode>, 2> nearestNodes;
         std::array<std::priority_queue<SearchNode>, 2> heaps;

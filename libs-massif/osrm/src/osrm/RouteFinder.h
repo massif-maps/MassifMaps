@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_ROUTING_ROUTEFINDER_H_
-#define _CARTO_ROUTING_ROUTEFINDER_H_
+#ifndef _CARTO_OSRM_ROUTEFINDER_H_
+#define _CARTO_OSRM_ROUTEFINDER_H_
 
 #include "Query.h"
 #include "Instruction.h"
@@ -17,7 +17,7 @@
 #include <vector>
 #include <stack>
 
-namespace carto { namespace routing {
+namespace carto { namespace osrm {
     class RouteFinder final {
     public:
         explicit RouteFinder(std::shared_ptr<Graph> graph) : _graph(std::move(graph)) { }

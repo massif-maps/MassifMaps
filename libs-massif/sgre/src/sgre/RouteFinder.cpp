@@ -158,8 +158,8 @@ namespace carto { namespace sgre {
             points.push_back(getNodePoint(graph, edge.nodeIds[1], path[i].targetNodeT));
 
             if (edge.attributes.delay > 0) {
-                Instruction instruction(Instruction::Type::WAIT, feature, 0, edge.attributes.delay, points.size() - 1);
-                instructions.push_back(std::move(instruction));
+                Instruction waitInstruction(Instruction::Type::WAIT, feature, 0, edge.attributes.delay, points.size() - 2);
+                instructions.push_back(std::move(waitInstruction));
             }
 
             Instruction::Type type = Instruction::Type::HEAD_ON;
@@ -225,7 +225,7 @@ namespace carto { namespace sgre {
 
             double dist = std::sqrt(distance.first * distance.first + distance.second * distance.second);
             double time = (turnAngle > 0 ? turnAngle / edge.attributes.turnSpeed : 0) + calculateTime(edge.attributes, pos0, pos1, lngScale);
-            Instruction instruction(type, feature, dist, time, points.size() - 1);
+            Instruction instruction(type, feature, dist, time, points.size() - 2);
             instructions.push_back(std::move(instruction));
 
             if (i + 1 == path.size()) {

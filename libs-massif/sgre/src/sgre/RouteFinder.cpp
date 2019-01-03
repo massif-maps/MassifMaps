@@ -8,6 +8,27 @@
 
 #include <boost/math/constants/constants.hpp>
 
+namespace {
+    double calculateClosestT(const cglib::vec3<double>& pos0, const cglib::vec3<double>& pos1, const std::array<cglib::vec3<double>, 2>& points) {
+        cglib::vec3<double> posDelta = pos1 - pos0;
+        cglib::vec3<double> pointsDelta = points[1] - points[0];
+        if (cglib::norm(pointsDelta) == 0) {
+            return 0;
+        }
+
+        double t = 0;
+        if (cglib::norm(posDelta) != 0) {
+            cglib::vec3<double> normal = cglib::vector_product(cglib::vector_product(pointsDelta, posDelta), pointsDelta);
+            double dot = cglib::dot_product(posDelta, normal);
+            if (dot == 0) {
+                return 0.5;
+            }
+            t = cglib::dot_product(points[0] - pos0, normal) / dot;
+        }
+        return cglib::dot_product(pos0 + posDelta * t - points[0], pointsDelta) / cglib::norm(pointsDelta);
+    }
+}
+
 namespace carto { namespace sgre {
     Result RouteFinder::find(const Query& query) const {
         std::vector<std::pair<Graph::EdgeId, Point>> edgePoints[2];
@@ -101,7 +122,11 @@ namespace carto { namespace sgre {
     }
 
     RoutingAttributes RouteFinder::findFastestEdgeAttributes(const Graph& graph) {
-        RoutingAttributes fastestAttributes{ 0, 0, 0, 0 };
+        RoutingAttributes fastestAttributes;
+        fastestAttributes.speed = 0;
+        fastestAttributes.zSpeed = 0;
+        fastestAttributes.turnSpeed = 0;
+        fastestAttributes.delay = 0;
         for (Graph::EdgeId edgeId = 0; edgeId < graph.getEdgeIdRangeEnd(); edgeId++) {
             const Graph::Edge& edge = graph.getEdge(edgeId);
             fastestAttributes.speed = std::max(fastestAttributes.speed, edge.attributes.speed);
@@ -117,7 +142,8 @@ namespace carto { namespace sgre {
     }
 
     Result RouteFinder::buildResult(const Graph& graph, const Path& path, double lngScale) {
-        static constexpr double EPSILON = 1.0e-8;
+        static constexpr double DIST_EPSILON = 1.0e-8;
+        static constexpr double MIN_TURN_ANGLE = 5.0 / 180 * boost::math::constants::pi<double>();
 
         std::vector<Point> points;
         std::vector<Instruction> instructions;
@@ -143,7 +169,7 @@ namespace carto { namespace sgre {
                     double dist0 = cglib::length(points[points.size() - 2] - points[points.size() - 3]);
                     double dist1 = cglib::length(points[points.size() - 1] - points[points.size() - 2]);
                     double dist2 = cglib::length(points[points.size() - 1] - points[points.size() - 3]);
-                    if (dist0 + dist1 <= dist2 * (1 + EPSILON)) {
+                    if (dist0 + dist1 <= dist2 * (1 + DIST_EPSILON)) {
                         points[points.size() - 2] = points[points.size() - 1];
                         points.pop_back();
                         instructions.pop_back();
@@ -153,24 +179,33 @@ namespace carto { namespace sgre {
                 if (points.size() > 2) {
                     cglib::vec3<double> v0(0, 0, 0);
                     for (std::size_t j = points.size() - 2; j > 0; j--) {
-                        v0 = points[j] - points[j - 1];
+                        cglib::vec3<double> delta = points[j] - points[j - 1];
+                        v0 = cglib::vec3<double>(delta(0) * lngScale, delta(1), 0);
                         if (cglib::norm(v0) > 0) {
+                            v0 = cglib::unit(v0);
                             break;
                         }
                     }
-                    cglib::vec3<double> v1 = points[points.size() - 1] - points[points.size() - 2];
-                    cglib::vec3<double> normal = cglib::vector_product(cglib::vector_product(v0, v1), v0);
-                    double dot = cglib::dot_product(normal, v1);
-                    if (dot < -EPSILON) {
-                        type = Instruction::Type::TURN_LEFT;
-                    } else if (dot > EPSILON) {
+                    cglib::vec3<double> v1(0, 0, 0);
+                    {
+                        cglib::vec3<double> delta = points[points.size() - 1] - points[points.size() - 2];
+                        v1 = cglib::vec3<double>(delta(0) * lngScale, delta(1), 0);
+                        if (cglib::norm(v1) > 0) {
+                            v1 = cglib::unit(v1);
+                        }
+                    }
+
+                    cglib::vec3<double> cross = cglib::vector_product(v0, v1);
+                    if (cross(2) < -std::sin(MIN_TURN_ANGLE)) {
                         type = Instruction::Type::TURN_RIGHT;
+                    } else if (cross(2) > std::sin(MIN_TURN_ANGLE)) {
+                        type = Instruction::Type::TURN_LEFT;
                     } else {
                         type = Instruction::Type::GO_STRAIGHT;
                     }
 
                     if (cglib::norm(v0) > 0 && cglib::norm(v1) > 0) {
-                        double dot = cglib::dot_product(cglib::unit(v0), cglib::unit(v1));
+                        double dot = cglib::dot_product(v0, v1);
                         turnAngle = std::acos(std::max(-1.0, std::min(1.0, dot))) * 180.0 / boost::math::constants::pi<double>();
                     }
                 }
@@ -185,6 +220,7 @@ namespace carto { namespace sgre {
                 } else {
                     type = Instruction::Type::GO_DOWN;
                 }
+                turnAngle = 0;
             }
 
             double dist = std::sqrt(distance.first * distance.first + distance.second * distance.second);
@@ -193,7 +229,7 @@ namespace carto { namespace sgre {
             instructions.push_back(std::move(instruction));
 
             if (i + 1 == path.size()) {
-                Instruction finalInstruction(Instruction::Type::REACHED_YOUR_DESTINATION, feature, 0, 0, points.size());
+                Instruction finalInstruction(Instruction::Type::REACHED_YOUR_DESTINATION, feature, 0, 0, points.size() - 1);
                 instructions.push_back(std::move(finalInstruction));
             }
 
@@ -203,7 +239,9 @@ namespace carto { namespace sgre {
     }
 
     void RouteFinder::straightenPath(const Graph& graph, Path& path) {
-        for (std::size_t iter = 0; iter < path.size(); iter++) {
+        static constexpr int MAX_ITERATIONS = 1000;
+        
+        for (int iter = 0; iter < MAX_ITERATIONS; iter++) {
             bool progress = false;
             for (std::size_t i = 0; i + 1 < path.size(); i++) {
                 Point pos0 = (i == 0 ? getNodePoint(graph, path[0].edge.nodeIds[0], 0) : getNodePoint(graph, path[i - 1].edge.nodeIds[1], path[i - 1].targetNodeT));
@@ -211,32 +249,50 @@ namespace carto { namespace sgre {
 
                 const Graph::Edge& edge = path[i].edge;
                 const Graph::Node& node = graph.getNode(edge.nodeIds[1]);
-                if (node.points[0] == node.points[1]) {
-                    continue;
-                }
 
-                cglib::vec3<double> posDelta = pos1 - pos0;
-                cglib::vec3<double> nodeDelta = node.points[1] - node.points[0];
-                
-                double t = 0;
-                if (cglib::norm(posDelta) != 0) {
-                    cglib::vec3<double> nodeNormal = cglib::vector_product(cglib::vector_product(nodeDelta, posDelta), nodeDelta);
-                    double dot = cglib::dot_product(posDelta, nodeNormal);
-                    if (dot == 0) {
-                        continue;
-                    }
-                    t = cglib::dot_product(node.points[0] - pos0, nodeNormal) / dot;
-                }
-                double closestT = cglib::dot_product(pos0 + posDelta * t - node.points[0], nodeDelta) / cglib::norm(nodeDelta);
+                double closestT = calculateClosestT(pos0, pos1, node.points);
                 double clampedT = std::max(0.0, std::min(1.0, closestT));
                 
-                Point newPos = node.points[0] + nodeDelta * clampedT;
                 Point oldPos = getNodePoint(graph, edge.nodeIds[1], path[i].targetNodeT);
-                double newLength = cglib::length(newPos - pos0) + cglib::length(pos1 - newPos);
                 double oldLength = cglib::length(oldPos - pos0) + cglib::length(pos1 - oldPos);
+                Point newPos = node.points[0] + (node.points[1] - node.points[0]) * clampedT;
+                double newLength = cglib::length(newPos - pos0) + cglib::length(pos1 - newPos);
+
                 if (newLength < oldLength) {
                     path[i].targetNodeT = clampedT;
                     progress = true;
+                }
+
+                if (clampedT != closestT) {
+                    const Graph::Node& node0 = graph.getNode(path[i].edge.nodeIds[0]);
+                    for (Graph::EdgeId altEdgeId0 : node0.edgeIds) {
+                        const Graph::Edge& altEdge0 = graph.getEdge(altEdgeId0);
+                        assert(altEdge0.nodeIds[0] == path[i].edge.nodeIds[0]);
+                        if (altEdge0.nodeIds[1] == path[i].edge.nodeIds[1]) {
+                            continue;
+                        }
+
+                        const Graph::Node& altNode = graph.getNode(altEdge0.nodeIds[1]);
+                        for (Graph::EdgeId altEdgeId1 : altNode.edgeIds) {
+                            const Graph::Edge& altEdge1 = graph.getEdge(altEdgeId1);
+                            assert(altEdge1.nodeIds[0] == altEdge0.nodeIds[1]);
+                            if (altEdge1.nodeIds[1] == path[i + 1].edge.nodeIds[1]) {
+                                double altClosestT = calculateClosestT(pos0, pos1, altNode.points);
+                                double altClampedT = std::max(0.0, std::min(1.0, altClosestT));
+                                
+                                Point altPos = altNode.points[0] + (altNode.points[1] - altNode.points[0]) * altClampedT;
+                                double altLength = cglib::length(altPos - pos0) + cglib::length(pos1 - altPos);
+
+                                if (altLength < newLength && altLength < oldLength) {
+                                    path[i].edge = altEdge0;
+                                    path[i].targetNodeT = altClampedT;
+                                    path[i + 1].edge = altEdge1;
+                                    progress = true;
+                                    newLength = altLength;
+                                }
+                            }
+                        }
+                    }
                 }
             }
 

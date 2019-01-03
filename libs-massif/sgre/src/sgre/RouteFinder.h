@@ -14,6 +14,7 @@
 
 #include <string>
 #include <vector>
+#include <set>
 #include <unordered_map>
 
 #include <boost/optional.hpp>
@@ -44,7 +45,7 @@ namespace carto { namespace sgre {
 
         static Graph::NodeId createNode(DynamicGraph& graph, const Point& point);
         
-        static std::vector<Graph::EdgeId> linkNodeToEdges(DynamicGraph& graph, Graph::EdgeId edgeId, Graph::NodeId nodeId);
+        static void linkNodeToEdges(DynamicGraph& graph, const std::set<Graph::EdgeId>& edgeIds, Graph::NodeId nodeId, int nodeIdx);
 
         static RoutingAttributes findFastestEdgeAttributes(const Graph& graph);
         

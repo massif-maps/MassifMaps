@@ -174,10 +174,12 @@ namespace carto { namespace sgre {
 
     boost::optional<Point> StaticGraph::findClosestPoint(const Node& node0, const Node& node1, const Edge& edge, const Point& pos) {
         int i0 = 0, i1 = 0;
-        for (int i = 0; i < 4; i++) {
-            i0 = i / 2;
-            i1 = i % 2;
-            if (node0.points[i0] == node1.points[i1]) {
+        for (int i = 0; i < 2; i++) {
+            if (node0.points[i] == node1.points[0]) {
+                i0 = i; i1 = 0;
+                break;
+            } else if (node0.points[i] == node1.points[1]) {
+                i0 = i; i1 = 1;
                 break;
             }
         }
@@ -222,7 +224,7 @@ namespace carto { namespace sgre {
                 Point closestScaled = closestPointOnTriangle(std::array<cglib::vec3<double>, 3> {{ points0Scaled[i0], points0Scaled[1 - i0], points1Scaled[1 - i1] }}, posScaled);
                 return Point(closestScaled(0) / lngScale, closestScaled(1), closestScaled(2));
             } else {
-                Point closestScaled = closestPointOnLine(std::array<cglib::vec3<double>, 2> {{ node0.points[0], node1.points[0] }}, pos);
+                Point closestScaled = closestPointOnLine(std::array<cglib::vec3<double>, 2> {{ points0Scaled[0], points1Scaled[0] }}, posScaled);
                 return Point(closestScaled(0) / lngScale, closestScaled(1), closestScaled(2));
             }
         }

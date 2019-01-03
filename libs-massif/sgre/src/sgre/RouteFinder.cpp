@@ -31,24 +31,42 @@ namespace {
 
 namespace carto { namespace sgre {
     Result RouteFinder::find(const Query& query) const {
-        std::vector<std::pair<Graph::EdgeId, Point>> edgePoints[2];
+        static constexpr double DIST_EPSILON = 1.0e-6;
+        
+        struct EndPoint {
+            Point point;
+            Graph::TriangleId triangleId;
+            std::set<Graph::EdgeId> edgeIds;
+        };
+        
+        std::vector<EndPoint> endPoints[2];
         for (int i = 0; i < 2; i++) {
-            edgePoints[i] = _graph->findNearestEdgePoint(query.getPos(i));
-            if (edgePoints[i].empty()) {
+            std::vector<std::pair<Graph::EdgeId, Point>> edgePoints = _graph->findNearestEdgePoint(query.getPos(i));
+            if (edgePoints.empty()) {
                 return Result();
             }
 
-            std::set<Graph::TriangleId> triangleIds;
-            for (auto it = edgePoints[i].begin(); it != edgePoints[i].end(); ) {
-                const Graph::Edge& edge = _graph->getEdge(it->first);
-                if (edge.triangleId != Graph::TriangleId(-1)) {
-                    if (triangleIds.count(edge.triangleId) > 0) {
-                        it = edgePoints[i].erase(it);
-                        continue;
+            for (const std::pair<Graph::EdgeId, Point>& edgePoint : edgePoints) {
+                const Graph::Edge& edge = _graph->getEdge(edgePoint.first);
+
+                EndPoint endPoint;
+                endPoint.point = edgePoint.second;
+                endPoint.triangleId = edge.triangleId;
+                endPoint.edgeIds = std::set<Graph::EdgeId> {{ edgePoint.first }};
+
+                bool found = false;
+                for (std::size_t j = 0; j < endPoints[i].size(); j++) {
+                    std::pair<double, double> distance = calculateDistance(endPoints[i][j].point, endPoint.point, 1.0);
+                    double dist = std::sqrt(distance.first * distance.first + distance.second * distance.second);
+                    if (dist < DIST_EPSILON && endPoints[i][j].triangleId == endPoint.triangleId) {
+                        endPoints[i][j].edgeIds.insert(edgePoint.first);
+                        found = true;
+                        break;
                     }
-                    triangleIds.insert(edge.triangleId);
                 }
-                it++;
+                if (!found) {
+                    endPoints[i].push_back(endPoint);
+                }
             }
         }
         
@@ -56,17 +74,17 @@ namespace carto { namespace sgre {
         double bestTime = std::numeric_limits<double>::infinity();
         double bestLngScale = 1.0;
         std::shared_ptr<DynamicGraph> bestGraph;
-        for (std::size_t i0 = 0; i0 < edgePoints[0].size(); i0++) {
-            for (std::size_t i1 = 0; i1 < edgePoints[1].size(); i1++) {
+        for (std::size_t i0 = 0; i0 < endPoints[0].size(); i0++) {
+            for (std::size_t i1 = 0; i1 < endPoints[1].size(); i1++) {
                 auto graph = std::make_shared<DynamicGraph>(_graph);
 
-                Graph::NodeId initialNodeId = createNode(*graph, edgePoints[0][i0].second);
-                Graph::NodeId finalNodeId = createNode(*graph, edgePoints[1][i1].second);
+                Graph::NodeId initialNodeId = createNode(*graph, endPoints[0][i0].point);
+                Graph::NodeId finalNodeId = createNode(*graph, endPoints[1][i1].point);
 
-                linkNodeToEdges(*graph, edgePoints[0][i0].first, initialNodeId);
-                linkNodeToEdges(*graph, edgePoints[1][i1].first, finalNodeId);
+                linkNodeToEdges(*graph, endPoints[0][i0].edgeIds, initialNodeId, 0);
+                linkNodeToEdges(*graph, endPoints[1][i1].edgeIds, finalNodeId, 1);
 
-                double lngScale = std::max(std::cos((edgePoints[0][i0].second(1) + edgePoints[1][i1].second(1)) * 0.5 * boost::math::constants::pi<double>() / 180.0), 0.01);
+                double lngScale = std::max(std::cos((endPoints[0][i0].point(1) + endPoints[1][i1].point(1)) * 0.5 * boost::math::constants::pi<double>() / 180.0), 0.01);
 
                 if (auto path = findOptimalPath(*graph, initialNodeId, finalNodeId, _fastestAttributes, lngScale, _tesselationDistance, bestTime)) {
                     bestPath = *path;
@@ -93,32 +111,37 @@ namespace carto { namespace sgre {
         return graph.addNode(node);
     }
 
-    std::vector<Graph::EdgeId> RouteFinder::linkNodeToEdges(DynamicGraph& graph, Graph::EdgeId edgeId, Graph::NodeId nodeId) {
-        const Graph::Edge& edge = graph.getEdge(edgeId);
-
+    void RouteFinder::linkNodeToEdges(DynamicGraph& graph, const std::set<Graph::EdgeId>& edgeIds, Graph::NodeId nodeId, int nodeIdx) {
         std::set<Graph::EdgeId> linkedEdgeIds;
-        linkedEdgeIds.insert(edgeId);
-        if (edge.triangleId != Graph::TriangleId(-1)) {
-            for (int i = 0; i < 2; i++) {
-                const Graph::Node& node = graph.getNode(edge.nodeIds[i]);
+        for (Graph::EdgeId edgeId : edgeIds) {
+            const Graph::Edge& edge = graph.getEdge(edgeId);
+            linkedEdgeIds.insert(edgeId);
+            if (edge.triangleId != Graph::TriangleId(-1)) {
+                const Graph::Node& node = graph.getNode(edge.nodeIds[1 - nodeIdx]);
                 for (Graph::EdgeId linkedEdgeId : node.edgeIds) {
                     const Graph::Edge& linkedEdge = graph.getEdge(linkedEdgeId);
                     if (linkedEdge.triangleId == edge.triangleId) {
                         linkedEdgeIds.insert(linkedEdgeId);
+                        
+                        if (nodeIdx == 1) {
+                            const Graph::Node& nextNode = graph.getNode(linkedEdge.nodeIds[1]);
+                            for (Graph::EdgeId nextLinkedEdgeId : nextNode.edgeIds) {
+                                const Graph::Edge& nextLinkedEdge = graph.getEdge(nextLinkedEdgeId);
+                                if (nextLinkedEdge.triangleId == edge.triangleId) {
+                                    linkedEdgeIds.insert(nextLinkedEdgeId);
+                                }
+                            }
+                        }
                     }
                 }
             }
         }
 
-        std::vector<Graph::EdgeId> edgeIds;
         for (Graph::EdgeId linkedEdgeId : linkedEdgeIds) {
-            for (int i = 0; i < 2; i++) {
-                Graph::Edge linkedEdge = graph.getEdge(linkedEdgeId);
-                linkedEdge.nodeIds[i] = nodeId;
-                edgeIds.push_back(graph.addEdge(linkedEdge));
-            }
+            Graph::Edge linkedEdge = graph.getEdge(linkedEdgeId);
+            linkedEdge.nodeIds[nodeIdx] = nodeId;
+            graph.addEdge(linkedEdge);
         }
-        return edgeIds;
     }
 
     RoutingAttributes RouteFinder::findFastestEdgeAttributes(const Graph& graph) {

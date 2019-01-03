@@ -58,16 +58,14 @@ namespace carto { namespace sgre {
 
                 for (Graph::NodeId nodeId : triangle.nodeIds) {
                     Graph::Edge edge;
-                    edge.searchCriteria = triangle.searchCriteria;
-                    edge.attributes = triangle.attributes;
                     edge.featureId = triangle.featureId;
                     edge.triangleId = static_cast<Graph::TriangleId>(i);
                     edge.nodeIds = std::array<Graph::NodeId, 2> {{ nodeId, lineVertex.nodeId }};
-                    Graph::EdgeId edgeId0 = edges.size();
+                    edge.searchCriteria = triangle.searchCriteria;
+                    edge.attributes = triangle.attributes;
                     edges.push_back(edge);
 
                     std::swap(edge.nodeIds[0], edge.nodeIds[1]);
-                    Graph::EdgeId edgeId1 = edges.size();
                     edges.push_back(edge);
                 }
             }
@@ -213,23 +211,27 @@ namespace carto { namespace sgre {
         std::unordered_set<std::array<double, 6>, boost::hash<std::array<double, 6>>> geometryEdges;
         for (std::size_t i = 0; i < ringsArray.size(); i++) {
             const picojson::array& coordsArray = ringsArray[i].get<picojson::array>();
+            std::size_t coordsCount = coordsArray.size();
+            if (coordsCount > 1 && coordsArray.back() == coordsArray.front()) {
+                coordsCount--;
+            }
 
-            std::vector<TESSreal> coords(coordsArray.size() * 3);
-            for (std::size_t j = 0; j < coordsArray.size(); j++) {
+            std::vector<TESSreal> coords(coordsCount * 3);
+            for (std::size_t j = 0; j < coordsCount; j++) {
                 Point point = parseCoordinates(coordsArray[j]);
                 coords[j * 3 + 0] = static_cast<TESSreal>(point(0));
                 coords[j * 3 + 1] = static_cast<TESSreal>(point(1));
                 coords[j * 3 + 2] = static_cast<TESSreal>(point(2));
             }
 
-            for (std::size_t i0 = 0; i0 < coordsArray.size(); i0++) {
-                std::size_t i1 = (i0 + 1) % coordsArray.size();
+            for (std::size_t i0 = 0; i0 < coordsCount; i0++) {
+                std::size_t i1 = (i0 + 1) % coordsCount;
                 Point point0(coords[i0 * 3 + 0], coords[i0 * 3 + 1], coords[i0 * 3 + 2]);
                 Point point1(coords[i1 * 3 + 0], coords[i1 * 3 + 1], coords[i1 * 3 + 2]);
                 geometryEdges.insert(std::array<double, 6> {{ point0(0), point0(1), point0(2), point1(0), point1(1), point1(2) }});
             }
 
-            tessAddContour(tess.get(), 3, coords.data(), 3 * sizeof(TESSreal), static_cast<int>(coordsArray.size()));
+            tessAddContour(tess.get(), 3, coords.data(), 3 * sizeof(TESSreal), static_cast<int>(coordsCount));
         }
         tessTesselate(tess.get(), TESS_WINDING_ODD, TESS_POLYGONS, 3, 3, 0);
         const TESSreal* coords = tessGetVertices(tess.get());

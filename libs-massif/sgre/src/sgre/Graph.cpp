@@ -129,24 +129,23 @@ namespace {
 }
 
 namespace carto { namespace sgre {
-    std::vector<std::pair<Graph::EdgeId, Point>> StaticGraph::findNearestEdgePoint(const Point& pos) const {
-        static constexpr double EPSILON = 1.0e-8;
+    std::vector<std::pair<Graph::EdgeId, Point>> Graph::findNearestEdgePoint(const Point& pos) const {
+        static constexpr double DIST_EPSILON = 1.0e-6;
+        static constexpr double EARTH_RADIUS = 6378137.0;
 
-        // TODO: build RTRee?
+        double latScale = EARTH_RADIUS * boost::math::constants::pi<double>() / 180.0;
+        double lngScale = latScale * std::max(std::cos(pos(1) * boost::math::constants::pi<double>() / 180.0), 0.01);
 
         double bestDistance = std::numeric_limits<double>::infinity();
         std::vector<std::pair<Graph::EdgeId, Point>> results;
-        for (std::size_t i = 0; i < _edges.size(); i++) {
-            Graph::EdgeId edgeId = static_cast<EdgeId>(i);
-            const Edge& edge = _edges[i];
-            const Node& node0 = getNode(edge.nodeIds[0]);
-            const Node& node1 = getNode(edge.nodeIds[1]);
+        for (EdgeId edgeId = 0; edgeId < getEdgeIdRangeEnd(); edgeId++) {
+            const Edge& edge = getEdge(edgeId);
             
-            if (auto closestPos = findClosestPoint(node0, node1, edge, pos)) {
-                double dist = calculateDistance(pos, *closestPos);
-                if (dist * (1 - EPSILON) <= bestDistance) {
-                    if (dist * (1 + EPSILON) < bestDistance) {
-                        bestDistance = dist;
+            if (auto closestPos = findNearestEdgePoint(edge, pos, lngScale, latScale)) {
+                double distance = calculateDistance(*closestPos, pos, lngScale, latScale);
+                if (distance <= bestDistance + DIST_EPSILON) {
+                    if (distance + DIST_EPSILON < bestDistance) {
+                        bestDistance = distance;
                         results.clear();
                     }
                     results.emplace_back(edgeId, *closestPos);
@@ -156,23 +155,10 @@ namespace carto { namespace sgre {
         return results;
     }
 
-    double StaticGraph::calculateDistance(const Point& pos0, const Point& pos1) {
-        double lngScale = std::max(std::cos((pos0(1) + pos1(1)) * 0.5 * boost::math::constants::pi<double>() / 180.0), 0.01);
-        Point pos0Scaled(pos0(0) * lngScale, pos0(1), pos0(2));
-        Point pos1Scaled(pos1(0) * lngScale, pos1(1), pos1(2));
-        return cglib::length(pos0Scaled - pos1Scaled);
-    }
-
-    void StaticGraph::linkNodeEdgeIds(std::vector<Node>& nodes, const std::vector<Edge>& edges) {
-        for (std::size_t i = 0; i < edges.size(); i++) {
-            EdgeId edgeId = static_cast<EdgeId>(i);
-            const Edge& edge = edges[i];
-            Node& node0 = nodes.at(edge.nodeIds[0]);
-            node0.edgeIds.push_back(edgeId);
-        }
-    }
-
-    boost::optional<Point> StaticGraph::findClosestPoint(const Node& node0, const Node& node1, const Edge& edge, const Point& pos) {
+    boost::optional<Point> Graph::findNearestEdgePoint(const Edge& edge, const Point& pos, double lngScale, double latScale) const {
+        const Node& node0 = getNode(edge.nodeIds[0]);
+        const Node& node1 = getNode(edge.nodeIds[1]);
+        
         int i0 = 0, i1 = 0;
         for (int i = 0; i < 2; i++) {
             if (node0.points[i] == node1.points[0]) {
@@ -184,11 +170,9 @@ namespace carto { namespace sgre {
             }
         }
 
-        double lngScale = std::max(std::cos(pos(1) * boost::math::constants::pi<double>() / 180.0), 0.01);
-
-        Point posScaled(pos(0) * lngScale, pos(1), pos(2));
-        Point points0Scaled[2] = { Point(node0.points[0](0) * lngScale, node0.points[0](1), node0.points[0](2)), Point(node0.points[1](0) * lngScale, node0.points[1](1), node0.points[1](2)) };
-        Point points1Scaled[2] = { Point(node1.points[0](0) * lngScale, node1.points[0](1), node1.points[0](2)), Point(node1.points[1](0) * lngScale, node1.points[1](1), node1.points[1](2)) };
+        Point posScaled(pos(0) * lngScale, pos(1) * latScale, pos(2));
+        Point points0Scaled[2] = { Point(node0.points[0](0) * lngScale, node0.points[0](1) * latScale, node0.points[0](2)), Point(node0.points[1](0) * lngScale, node0.points[1](1) * latScale, node0.points[1](2)) };
+        Point points1Scaled[2] = { Point(node1.points[0](0) * lngScale, node1.points[0](1) * latScale, node1.points[0](2)), Point(node1.points[1](0) * lngScale, node1.points[1](1) * latScale, node1.points[1](2)) };
 
         switch (edge.searchCriteria) {
         case SearchCriteria::NONE:
@@ -216,20 +200,35 @@ namespace carto { namespace sgre {
         case SearchCriteria::EDGE:
             if ((node0.nodeFlags & NodeFlags::GEOMETRY_VERTEX) && (node1.nodeFlags & NodeFlags::GEOMETRY_VERTEX)) {
                 Point closestScaled = closestPointOnLine(std::array<cglib::vec3<double>, 2> {{ points0Scaled[1 - i0], points1Scaled[1 - i1] }}, posScaled);
-                return Point(closestScaled(0) / lngScale, closestScaled(1), closestScaled(2));
+                return Point(closestScaled(0) / lngScale, closestScaled(1) / latScale, closestScaled(2));
             }
             return boost::optional<Point>();
         case SearchCriteria::FULL:
             if (node0.points[i0] == node1.points[i1]) {
                 Point closestScaled = closestPointOnTriangle(std::array<cglib::vec3<double>, 3> {{ points0Scaled[i0], points0Scaled[1 - i0], points1Scaled[1 - i1] }}, posScaled);
-                return Point(closestScaled(0) / lngScale, closestScaled(1), closestScaled(2));
+                return Point(closestScaled(0) / lngScale, closestScaled(1) / latScale, closestScaled(2));
             } else {
                 Point closestScaled = closestPointOnLine(std::array<cglib::vec3<double>, 2> {{ points0Scaled[0], points1Scaled[0] }}, posScaled);
-                return Point(closestScaled(0) / lngScale, closestScaled(1), closestScaled(2));
+                return Point(closestScaled(0) / lngScale, closestScaled(1) / latScale, closestScaled(2));
             }
         }
 
         return boost::optional<Point>();
+    }
+
+    double Graph::calculateDistance(const Point& pos0, const Point& pos1, double lngScale, double latScale) {
+        Point pos0Scaled(pos0(0) * lngScale, pos0(1) * latScale, pos0(2));
+        Point pos1Scaled(pos1(0) * lngScale, pos1(1) * latScale, pos1(2));
+        return cglib::length(pos0Scaled - pos1Scaled);
+    }
+
+    void StaticGraph::linkNodeEdgeIds(std::vector<Node>& nodes, const std::vector<Edge>& edges) {
+        for (std::size_t i = 0; i < edges.size(); i++) {
+            EdgeId edgeId = static_cast<EdgeId>(i);
+            const Edge& edge = edges[i];
+            Node& node0 = nodes.at(edge.nodeIds[0]);
+            node0.edgeIds.push_back(edgeId);
+        }
     }
 
     Graph::NodeId DynamicGraph::getNodeIdRangeEnd() const {

@@ -51,20 +51,20 @@ namespace carto { namespace sgre {
 
         static RoutingAttributes findFastestEdgeAttributes(const Graph& graph);
         
+        static Point getNodePoint(const Graph& graph, Graph::NodeId nodeId, double t);
+
         static Result buildResult(const Graph& graph, const Path& path, double lngScale);
         
-        static Point getNodePoint(const Graph& graph, Graph::NodeId nodeId, double t);
-        
-        static void straightenPath(const Graph& graph, Path& path);
+        static void straightenPath(const Graph& graph, Path& path, double lngScale);
         
         static boost::optional<Path> findOptimalPath(const Graph& graph, Graph::NodeId initialNodeId, Graph::NodeId finalNodeId, const RoutingAttributes& fastestAttributes, double lngScale, double tesselationDistance, double& bestTime);
         
-        static std::pair<double, double> calculateDistance(const Point& pos0, const Point& pos1, double lngScale);
-        
         static double calculateTime(const RoutingAttributes& attrs, const Point& pos0, const Point& pos1, double lngScale);
 
-        static constexpr double EARTH_RADIUS = 6378137.0;
-
+        static double calculateDistance(const Point& pos0, const Point& pos1, double lngScale);
+        
+        static std::pair<double, double> calculateDistance2D(const Point& pos0, const Point& pos1, double lngScale);
+        
         bool _pathStraightening = true;
         double _tesselationDistance = std::numeric_limits<double>::infinity();
 

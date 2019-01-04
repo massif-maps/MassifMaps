@@ -39,6 +39,8 @@ namespace carto { namespace sgre {
             std::set<Graph::EdgeId> edgeIds;
         };
         
+        double lngScale = std::max(std::cos((query.getPos(0)(1) + query.getPos(1)(1)) * 0.5 * boost::math::constants::pi<double>() / 180.0), 0.01);
+
         std::vector<EndPoint> endPoints[2];
         for (int i = 0; i < 2; i++) {
             std::vector<std::pair<Graph::EdgeId, Point>> edgePoints = _graph->findNearestEdgePoint(query.getPos(i));
@@ -56,8 +58,7 @@ namespace carto { namespace sgre {
 
                 bool found = false;
                 for (std::size_t j = 0; j < endPoints[i].size(); j++) {
-                    std::pair<double, double> distance = calculateDistance(endPoints[i][j].point, endPoint.point, 1.0);
-                    double dist = std::sqrt(distance.first * distance.first + distance.second * distance.second);
+                    double dist = calculateDistance(endPoints[i][j].point, endPoint.point, lngScale);
                     if (dist < DIST_EPSILON && endPoints[i][j].triangleId == endPoint.triangleId) {
                         endPoints[i][j].edgeIds.insert(edgePoint.first);
                         found = true;
@@ -72,7 +73,6 @@ namespace carto { namespace sgre {
         
         Path bestPath;
         double bestTime = std::numeric_limits<double>::infinity();
-        double bestLngScale = 1.0;
         std::shared_ptr<DynamicGraph> bestGraph;
         for (std::size_t i0 = 0; i0 < endPoints[0].size(); i0++) {
             for (std::size_t i1 = 0; i1 < endPoints[1].size(); i1++) {
@@ -85,11 +85,8 @@ namespace carto { namespace sgre {
                 linkNodeToEdges(*graph, endPoints[1][i1].edgeIds, finalNodeId, 1);
                 linkNodesToCommonEdges(*graph, endPoints[0][i0].edgeIds, endPoints[1][i1].edgeIds, initialNodeId, finalNodeId);
 
-                double lngScale = std::max(std::cos((endPoints[0][i0].point(1) + endPoints[1][i1].point(1)) * 0.5 * boost::math::constants::pi<double>() / 180.0), 0.01);
-
                 if (auto path = findOptimalPath(*graph, initialNodeId, finalNodeId, _fastestAttributes, lngScale, _tesselationDistance, bestTime)) {
                     bestPath = *path;
-                    bestLngScale = lngScale;
                     bestGraph = graph;
                 }
             }
@@ -100,10 +97,10 @@ namespace carto { namespace sgre {
         }
 
         if (_pathStraightening) {
-            straightenPath(*bestGraph, bestPath);
+            straightenPath(*bestGraph, bestPath, lngScale);
         }
 
-        return buildResult(*bestGraph, bestPath, bestLngScale);
+        return buildResult(*bestGraph, bestPath, lngScale);
     }
 
     Graph::NodeId RouteFinder::createNode(DynamicGraph& graph, const Point& point) {
@@ -152,9 +149,9 @@ namespace carto { namespace sgre {
             const Graph::Edge& commonEdge = graph.getEdge(commonEdgeId);
             if (commonEdge.triangleId == Graph::TriangleId(-1)) {
                 const Point& pos0 = graph.getNode(commonEdge.nodeIds[0]).points[0];
-                double dist0 = cglib::length(graph.getNode(nodeId0).points[0] - pos0);
-                double dist1 = cglib::length(graph.getNode(nodeId1).points[0] - pos0);
-                if (dist0 <= dist1) {
+                double relDist0 = cglib::length(graph.getNode(nodeId0).points[0] - pos0);
+                double relDist1 = cglib::length(graph.getNode(nodeId1).points[0] - pos0);
+                if (relDist0 <= relDist1) {
                     Graph::Edge linkedEdge = commonEdge;
                     linkedEdge.nodeIds[0] = nodeId0;
                     linkedEdge.nodeIds[1] = nodeId1;
@@ -185,8 +182,8 @@ namespace carto { namespace sgre {
     }
 
     Result RouteFinder::buildResult(const Graph& graph, const Path& path, double lngScale) {
-        static constexpr double DIST_EPSILON = 1.0e-8;
-        static constexpr double MIN_TURN_ANGLE = 5.0 / 180 * boost::math::constants::pi<double>();
+        static constexpr double DIST_EPSILON = 1.0e-6;
+        static constexpr double MIN_TURN_ANGLE = 5.0 / 180.0 * boost::math::constants::pi<double>();
 
         std::vector<Point> points;
         std::vector<Instruction> instructions;
@@ -209,10 +206,10 @@ namespace carto { namespace sgre {
             double turnAngle = 0;
             if (i > 0) {
                 if (edge.featureId == lastFeatureId && edge.attributes.delay == 0) {
-                    double dist0 = cglib::length(points[points.size() - 2] - points[points.size() - 3]);
-                    double dist1 = cglib::length(points[points.size() - 1] - points[points.size() - 2]);
-                    double dist2 = cglib::length(points[points.size() - 1] - points[points.size() - 3]);
-                    if (dist0 + dist1 <= dist2 * (1 + DIST_EPSILON)) {
+                    double dist0 = calculateDistance(points[points.size() - 2], points[points.size() - 3], lngScale);
+                    double dist1 = calculateDistance(points[points.size() - 1], points[points.size() - 2], lngScale);
+                    double dist2 = calculateDistance(points[points.size() - 1], points[points.size() - 3], lngScale);
+                    if (dist0 + dist1 <= dist2 + DIST_EPSILON) {
                         points[points.size() - 2] = points[points.size() - 1];
                         points.pop_back();
                         instructions.pop_back();
@@ -256,8 +253,8 @@ namespace carto { namespace sgre {
 
             const Point& pos0 = points[points.size() - 2];
             const Point& pos1 = points[points.size() - 1];
-            std::pair<double, double> distance = calculateDistance(pos0, pos1, lngScale);
-            if (distance.second > distance.first) {
+            std::pair<double, double> dist2D = calculateDistance2D(pos0, pos1, lngScale);
+            if (dist2D.second > dist2D.first) {
                 if (pos1(2) > pos0(2)) {
                     type = Instruction::Type::GO_UP;
                 } else {
@@ -266,7 +263,7 @@ namespace carto { namespace sgre {
                 turnAngle = 0;
             }
 
-            double dist = std::sqrt(distance.first * distance.first + distance.second * distance.second);
+            double dist = calculateDistance(pos0, pos1, lngScale);
             double time = (turnAngle > 0 ? turnAngle / edge.attributes.turnSpeed : 0) + calculateTime(edge.attributes, pos0, pos1, lngScale);
             Instruction instruction(type, feature, dist, time, points.size() - 2);
             instructions.push_back(std::move(instruction));
@@ -281,7 +278,7 @@ namespace carto { namespace sgre {
         return Result(std::move(instructions), std::move(points));
     }
 
-    void RouteFinder::straightenPath(const Graph& graph, Path& path) {
+    void RouteFinder::straightenPath(const Graph& graph, Path& path, double lngScale) {
         static constexpr int MAX_ITERATIONS = 1000;
         
         for (int iter = 0; iter < MAX_ITERATIONS; iter++) {
@@ -297,11 +294,11 @@ namespace carto { namespace sgre {
                 double clampedT = std::max(0.0, std::min(1.0, closestT));
                 
                 Point oldPos = getNodePoint(graph, edge.nodeIds[1], path[i].targetNodeT);
-                double oldLength = cglib::length(oldPos - pos0) + cglib::length(pos1 - oldPos);
+                double oldDist = calculateDistance(pos0, oldPos, lngScale) + calculateDistance(oldPos, pos1, lngScale);
                 Point newPos = node.points[0] + (node.points[1] - node.points[0]) * clampedT;
-                double newLength = cglib::length(newPos - pos0) + cglib::length(pos1 - newPos);
+                double newDist = calculateDistance(pos0, newPos, lngScale) + calculateDistance(newPos, pos1, lngScale);
 
-                if (newLength < oldLength) {
+                if (newDist < oldDist) {
                     path[i].targetNodeT = clampedT;
                     progress = true;
                 }
@@ -324,14 +321,14 @@ namespace carto { namespace sgre {
                                 double altClampedT = std::max(0.0, std::min(1.0, altClosestT));
                                 
                                 Point altPos = altNode.points[0] + (altNode.points[1] - altNode.points[0]) * altClampedT;
-                                double altLength = cglib::length(altPos - pos0) + cglib::length(pos1 - altPos);
+                                double altDist = calculateDistance(pos0, altPos, lngScale) + calculateDistance(altPos, pos1, lngScale);
 
-                                if (altLength < newLength && altLength < oldLength) {
+                                if (altDist < newDist && altDist < oldDist) {
                                     path[i].edge = altEdge0;
                                     path[i].targetNodeT = altClampedT;
                                     path[i + 1].edge = altEdge1;
                                     progress = true;
-                                    newLength = altLength;
+                                    newDist = altDist;
                                 }
                             }
                         }
@@ -394,8 +391,7 @@ namespace carto { namespace sgre {
                 Graph::NodeId targetNodeId = edge.nodeIds[1];
                 const Graph::Node& targetNode = graph.getNode(targetNodeId);
 
-                std::pair<double, double> pointsDistance = calculateDistance(targetNode.points[0], targetNode.points[1], lngScale);
-                int tesselationLevel = static_cast<int>(std::floor(std::sqrt(pointsDistance.first * pointsDistance.first + pointsDistance.second * pointsDistance.second) / tesselationDistance)) + 1;
+                int tesselationLevel = static_cast<int>(std::floor(calculateDistance(targetNode.points[0], targetNode.points[1], lngScale) / tesselationDistance)) + 1;
                 for (int i = 0; i < tesselationLevel; i++) {
                     double targetNodeT = (targetNodeId == finalNodeId ? 0.0 : (i + 1.0) / (tesselationLevel + 1.0));
                     Point targetNodePos = targetNode.points[0] + (targetNode.points[1] - targetNode.points[0]) * targetNodeT;
@@ -441,15 +437,22 @@ namespace carto { namespace sgre {
         return bestPath;
     }
 
-    std::pair<double, double> RouteFinder::calculateDistance(const Point& pos0, const Point& pos1, double lngScale) {
+    double RouteFinder::calculateTime(const RoutingAttributes& attrs, const Point& pos0, const Point& pos1, double lngScale) {
+        std::pair<double, double> dist2D = calculateDistance2D(pos0, pos1, lngScale);
+        return attrs.delay + (dist2D.first > 0 ? dist2D.first / attrs.speed : 0) + (dist2D.second > 0 ? dist2D.second / attrs.zSpeed : 0);
+    }
+    
+    double RouteFinder::calculateDistance(const Point& pos0, const Point& pos1, double lngScale) {
+        std::pair<double, double> dist2D = calculateDistance2D(pos0, pos1, lngScale);
+        return std::sqrt(dist2D.first * dist2D.first + dist2D.second * dist2D.second);
+    }
+
+    std::pair<double, double> RouteFinder::calculateDistance2D(const Point& pos0, const Point& pos1, double lngScale) {
+        static constexpr double EARTH_RADIUS = 6378137.0;
+
         cglib::vec3<double> posDelta = pos1 - pos0;
         double distXY = cglib::length(cglib::vec2<double>(posDelta(0) * lngScale, posDelta(1)));
         double distZ = std::abs(posDelta(2));
         return std::make_pair(distXY * EARTH_RADIUS * boost::math::constants::pi<double>() / 180.0, distZ);
-    }
-
-    double RouteFinder::calculateTime(const RoutingAttributes& attrs, const Point& pos0, const Point& pos1, double lngScale) {
-        std::pair<double, double> distance = calculateDistance(pos0, pos1, lngScale);
-        return attrs.delay + (distance.first > 0 ? distance.first / attrs.speed : 0) + (distance.second > 0 ? distance.second / attrs.zSpeed : 0);
     }
 } }

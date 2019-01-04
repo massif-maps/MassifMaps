@@ -64,6 +64,13 @@ namespace carto { namespace sgre {
         virtual const Node& getNode(NodeId nodeId) const = 0;
         virtual const Edge& getEdge(EdgeId edgeId) const = 0;
         virtual const Feature& getFeature(FeatureId featureId) const = 0;
+
+        std::vector<std::pair<EdgeId, Point>> findNearestEdgePoint(const Point& pos) const;
+
+    private:
+        boost::optional<Point> findNearestEdgePoint(const Edge& edge, const Point& pos, double lngScale, double latScale) const;
+
+        static double calculateDistance(const Point& pos0, const Point& pos1, double lngScale, double latScale);
     };
 
     class StaticGraph final : public Graph {
@@ -79,15 +86,9 @@ namespace carto { namespace sgre {
         virtual const Edge& getEdge(EdgeId edgeId) const override { return _edges.at(edgeId); }
         virtual const Feature& getFeature(FeatureId featureId) const override { return _features.at(featureId); }
 
-        std::vector<std::pair<EdgeId, Point>> findNearestEdgePoint(const Point& pos) const;
-
     private:
-        static double calculateDistance(const Point& pos0, const Point& pos1);
-
         static void linkNodeEdgeIds(std::vector<Node>& nodes, const std::vector<Edge>& edges);
 
-        static boost::optional<Point> findClosestPoint(const Node& node0, const Node& node1, const Edge& edge, const Point& pos);
-        
         const std::vector<Node> _nodes;
         const std::vector<Edge> _edges;
         const std::vector<Feature> _features;

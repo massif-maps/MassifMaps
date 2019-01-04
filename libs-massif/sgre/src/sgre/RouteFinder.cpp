@@ -83,6 +83,7 @@ namespace carto { namespace sgre {
 
                 linkNodeToEdges(*graph, endPoints[0][i0].edgeIds, initialNodeId, 0);
                 linkNodeToEdges(*graph, endPoints[1][i1].edgeIds, finalNodeId, 1);
+                linkNodesToCommonEdges(*graph, endPoints[0][i0].edgeIds, endPoints[1][i1].edgeIds, initialNodeId, finalNodeId);
 
                 double lngScale = std::max(std::cos((endPoints[0][i0].point(1) + endPoints[1][i1].point(1)) * 0.5 * boost::math::constants::pi<double>() / 180.0), 0.01);
 
@@ -141,6 +142,25 @@ namespace carto { namespace sgre {
             Graph::Edge linkedEdge = graph.getEdge(linkedEdgeId);
             linkedEdge.nodeIds[nodeIdx] = nodeId;
             graph.addEdge(linkedEdge);
+        }
+    }
+
+    void RouteFinder::linkNodesToCommonEdges(DynamicGraph& graph, const std::set<Graph::EdgeId>& edgeIds0, const std::set<Graph::EdgeId>& edgeIds1, Graph::NodeId nodeId0, Graph::NodeId nodeId1) {
+        std::set<Graph::EdgeId> commonEdgeIds;
+        std::set_intersection(edgeIds0.begin(), edgeIds0.end(), edgeIds1.begin(), edgeIds1.end(), std::inserter(commonEdgeIds, commonEdgeIds.begin()));
+        for (Graph::EdgeId commonEdgeId : commonEdgeIds) {
+            const Graph::Edge& commonEdge = graph.getEdge(commonEdgeId);
+            if (commonEdge.triangleId == Graph::TriangleId(-1)) {
+                const Point& pos0 = graph.getNode(commonEdge.nodeIds[0]).points[0];
+                double dist0 = cglib::length(graph.getNode(nodeId0).points[0] - pos0);
+                double dist1 = cglib::length(graph.getNode(nodeId1).points[0] - pos0);
+                if (dist0 <= dist1) {
+                    Graph::Edge linkedEdge = commonEdge;
+                    linkedEdge.nodeIds[0] = nodeId0;
+                    linkedEdge.nodeIds[1] = nodeId1;
+                    graph.addEdge(linkedEdge);
+                }
+            }
         }
     }
 

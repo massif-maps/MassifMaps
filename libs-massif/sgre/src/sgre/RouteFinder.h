@@ -47,6 +47,8 @@ namespace carto { namespace sgre {
         
         static void linkNodeToEdges(DynamicGraph& graph, const std::set<Graph::EdgeId>& edgeIds, Graph::NodeId nodeId, int nodeIdx);
 
+        static void linkNodesToCommonEdges(DynamicGraph& graph, const std::set<Graph::EdgeId>& edgeIds0, const std::set<Graph::EdgeId>& edgeIds1, Graph::NodeId nodeId0, Graph::NodeId nodeId1);
+
         static RoutingAttributes findFastestEdgeAttributes(const Graph& graph);
         
         static Result buildResult(const Graph& graph, const Path& path, double lngScale);

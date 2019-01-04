@@ -151,13 +151,15 @@ namespace carto { namespace sgre {
                 const Point& pos0 = graph.getNode(commonEdge.nodeIds[0]).points[0];
                 double relDist0 = cglib::length(graph.getNode(nodeId0).points[0] - pos0);
                 double relDist1 = cglib::length(graph.getNode(nodeId1).points[0] - pos0);
-                if (relDist0 <= relDist1) {
-                    Graph::Edge linkedEdge = commonEdge;
-                    linkedEdge.nodeIds[0] = nodeId0;
-                    linkedEdge.nodeIds[1] = nodeId1;
-                    graph.addEdge(linkedEdge);
+                if (relDist0 > relDist1) {
+                    continue;
                 }
             }
+
+            Graph::Edge linkedEdge = commonEdge;
+            linkedEdge.nodeIds[0] = nodeId0;
+            linkedEdge.nodeIds[1] = nodeId1;
+            graph.addEdge(linkedEdge);
         }
     }
 

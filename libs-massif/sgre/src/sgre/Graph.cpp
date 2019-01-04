@@ -25,7 +25,7 @@ namespace {
         double u = (dot11 * dot02 - dot01 * dot12) * invDenom;
         double v = (dot00 * dot12 - dot01 * dot02) * invDenom;
 
-        return u >= 0 && v >= 0 && u + v <= 1;
+        return u >= 0 && v >= 0 && u + v <= 1 && cglib::dot_product(v2, cglib::vector_product(v0, v1)) == 0;
     }
 
     cglib::vec3<double> closestPointOnLine(const std::array<cglib::vec3<double>, 2>& line, const cglib::vec3<double>& pos) {

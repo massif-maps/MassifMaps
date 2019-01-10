@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_SGRE_GEOJSONGRAPHBUILDER_H_
-#define _CARTO_SGRE_GEOJSONGRAPHBUILDER_H_
+#ifndef _CARTO_SGRE_GRAPHBUILDER_H_
+#define _CARTO_SGRE_GRAPHBUILDER_H_
 
 #include "Base.h"
 #include "Rule.h"
@@ -20,20 +20,27 @@
 #include <picojson/picojson.h>
 
 namespace carto { namespace sgre {
-    class GeoJSONGraphBuilder final {
+    class GraphBuilder final {
     public:
-        GeoJSONGraphBuilder() = delete;
-        explicit GeoJSONGraphBuilder(RuleList ruleList) : _ruleList(std::move(ruleList)) { }
+        GraphBuilder() = delete;
+        explicit GraphBuilder(RuleList ruleList) : _ruleList(std::move(ruleList)) { }
+
+        void importPoint(const Point& coords, const picojson::value& properties);
+        void importLineString(const std::vector<Point>& coordsList, const picojson::value& properties);
+        void importPolygon(const std::vector<std::vector<Point>>& rings, const picojson::value& properties);
 
         void importGeoJSON(const picojson::value& geoJSON);
+        void importGeoJSONFeatureCollection(const picojson::value& featureCollectionDef);
+        void importGeoJSONFeature(const picojson::value& featureDef);
+        void importGeoJSONGeometry(const picojson::value& geometryDef, const picojson::value& properties);
 
         std::shared_ptr<StaticGraph> build() const;
 
     private:
         struct LineVertex {
-			Graph::NodeId nodeId;
-			Graph::SearchCriteria searchCriteria;
-			Point point;
+            Graph::NodeId nodeId;
+            Graph::LinkMode linkMode;
+            Point point;
         };
         
         struct Triangle {
@@ -44,13 +51,9 @@ namespace carto { namespace sgre {
             std::vector<Graph::NodeId> nodeIds;
         };
         
-        void importFeatureCollection(const picojson::value& featureCollectionDef);
-        void importFeature(const picojson::value& featureDef);
-        
-        void importGeometry(Graph::FeatureId featureId, const picojson::value& geometryDef, Graph::SearchCriteria searchCriteria, const std::array<RoutingAttributes, 2>& attribs);
-        void importPoint(Graph::FeatureId featureId, const picojson::value& coordsDef, Graph::SearchCriteria searchCriteria, const RoutingAttributes& attribs);
-        void importLineString(Graph::FeatureId featureId, const picojson::value& coordsDef, Graph::SearchCriteria searchCriteria, const std::array<RoutingAttributes, 2>& attribs);
-        void importPolygon(Graph::FeatureId featureId, const picojson::value& ringsDef, Graph::SearchCriteria searchCriteria, const RoutingAttributes& attribs);
+        void addPoint(Graph::FeatureId featureId, const Point& coords, const picojson::value& properties);
+        void addLineString(Graph::FeatureId featureId, const std::vector<Point>& coordsList, const picojson::value& properties);
+        void addPolygon(Graph::FeatureId featureId, const std::vector<std::vector<Point>>& rings, const picojson::value& properties);
         
         const Graph::Node& getNode(Graph::NodeId nodeId) const;
         const Graph::Edge& getEdge(Graph::EdgeId edgeId) const;
@@ -60,11 +63,13 @@ namespace carto { namespace sgre {
         Graph::EdgeId addEdge(const Graph::Edge& edge);
         Graph::FeatureId addFeature(const Graph::Feature& feature);
 
-        void applyRules(const picojson::value& properties, Graph::SearchCriteria& searchCriteria, std::array<RoutingAttributes, 2>& attribs) const;
+        void matchRules(const picojson::value& properties, Graph::LinkMode& linkMode, Graph::SearchCriteria& searchCriteria, RoutingAttributes& attribs, bool forward = true) const;
 
+        static std::vector<std::vector<Point>> parseCoordinatesRings(const picojson::value& coordsDef);
+        static std::vector<Point> parseCoordinatesList(const picojson::value& coordsDef);
         static Point parseCoordinates(const picojson::value& coordsDef);
 
-        static std::pair<double, double> calculateDistance(const Point& pos0, const Point& pos1);
+        static std::pair<double, double> calculateDistance2D(const Point& pos0, const Point& pos1);
 
         const RuleList _ruleList;
 

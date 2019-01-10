@@ -37,24 +37,32 @@ namespace carto { namespace sgre {
             rule._filters = std::move(filters);
         }
 
+        if (ruleDef.contains("link")) {
+            std::string linkMode = ruleDef.get("link").get<std::string>();
+            if (linkMode == "none") {
+                rule._linkMode = Graph::LinkMode::NONE;
+            } else if (linkMode == "endpoints") {
+                rule._linkMode = Graph::LinkMode::ENDPOINTS;
+            } else if (linkMode == "all") {
+                rule._linkMode = Graph::LinkMode::ALL;
+            } else {
+                throw std::runtime_error("Illegal link mode value");
+            }
+        }
+        
         if (ruleDef.contains("search")) {
             std::string searchCriteria = ruleDef.get("search").get<std::string>();
             if (searchCriteria == "none") {
                 rule._searchCriteria = Graph::SearchCriteria::NONE;
-            }
-            else if (searchCriteria == "full") {
-                rule._searchCriteria = Graph::SearchCriteria::FULL;
-            }
-            else if (searchCriteria == "edge") {
+            } else if (searchCriteria == "vertex") {
+                rule._searchCriteria = Graph::SearchCriteria::VERTEX;
+            } else if (searchCriteria == "firstlastvertex") {
+                rule._searchCriteria = Graph::SearchCriteria::FIRST_LAST_VERTEX;
+            } else if (searchCriteria == "edge") {
                 rule._searchCriteria = Graph::SearchCriteria::EDGE;
-            }
-            else if (searchCriteria == "anyvertex") {
-                rule._searchCriteria = Graph::SearchCriteria::ANY_VERTEX;
-            }
-            else if (searchCriteria == "endvertex") {
-                rule._searchCriteria = Graph::SearchCriteria::END_VERTEX;
-            }
-            else {
+            } else if (searchCriteria == "surface") {
+                rule._searchCriteria = Graph::SearchCriteria::SURFACE;
+            } else {
                 throw std::runtime_error("Illegal search criteria value");
             }
         }
@@ -69,13 +77,16 @@ namespace carto { namespace sgre {
     std::array<boost::optional<float>, 2> Rule::readDirectionalFloatParameter(const picojson::value& ruleDef, const std::string& param) {
         std::array<boost::optional<float>, 2> values;
         if (ruleDef.contains(param)) {
-            values[0] = values[1] = static_cast<float>(ruleDef.get(param).get<double>());
+            values[0] = static_cast<float>(ruleDef.get(param).get<double>());
+            if (*values[0] < 0) {
+                throw std::invalid_argument("Negative value for rule parameter");
+            }
         }
-        if (ruleDef.contains(param + "_forward")) {
-            values[0] = static_cast<float>(ruleDef.get(param + "_forward").get<double>());
-        }
-        if (ruleDef.contains(param + "_backward")) {
-            values[1] = static_cast<float>(ruleDef.get(param + "_backward").get<double>());
+        if (ruleDef.contains("backward_" + param)) {
+            values[1] = static_cast<float>(ruleDef.get("backward_" + param).get<double>());
+            if (*values[1] < 0) {
+                throw std::invalid_argument("Negative value for backward rule parameter");
+            }
         }
         return values;
     }

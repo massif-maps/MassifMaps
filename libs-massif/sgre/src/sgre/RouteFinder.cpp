@@ -41,6 +41,7 @@ namespace carto { namespace sgre {
         
         double lngScale = std::max(std::cos((query.getPos(0)(1) + query.getPos(1)(1)) * 0.5 * boost::math::constants::pi<double>() / 180.0), 0.01);
 
+        // Find nearest edges to the endpoints. Note that there could be multiple nearest edges for both endpoints (two-way edges)
         std::vector<EndPoint> endPoints[2];
         for (int i = 0; i < 2; i++) {
             std::vector<std::pair<Graph::EdgeId, Point>> edgePoints = _graph->findNearestEdgePoint(query.getPos(i));
@@ -71,6 +72,7 @@ namespace carto { namespace sgre {
             }
         }
         
+        // Try all endpoint combinations and find the fastest one.
         Path bestPath;
         double bestTime = std::numeric_limits<double>::infinity();
         std::shared_ptr<DynamicGraph> bestGraph;
@@ -91,25 +93,39 @@ namespace carto { namespace sgre {
                 }
             }
         }
-
         if (!bestGraph) {
             return Result();
         }
 
+        // Do optional path straightening. This is very important for polygon/hybrid graphs.
         if (_pathStraightening) {
             straightenPath(*bestGraph, bestPath, lngScale);
         }
 
+        // Build final result (remove duplicate nodes, create instructions)
         return buildResult(*bestGraph, bestPath, lngScale);
+    }
+
+    std::unique_ptr<RouteFinder> RouteFinder::create(std::shared_ptr<const StaticGraph> graph, const picojson::value& configDef) {
+        auto routeFinder = std::unique_ptr<RouteFinder>(new RouteFinder(std::move(graph)));
+        if (configDef.contains("tesselationdistance")) {
+            routeFinder->setTesselationDistance(configDef.get("tesselationdistance").get<double>());
+        }
+        if (configDef.contains("pathstraightening")) {
+            routeFinder->setPathStraightening(configDef.get("pathstraightening").get<bool>());
+        }
+        return routeFinder;
     }
 
     Graph::NodeId RouteFinder::createNode(DynamicGraph& graph, const Point& point) {
         Graph::Node node;
+        node.nodeFlags = Graph::NodeFlags(0);
         node.points = std::array<Point, 2> {{ point, point }};
         return graph.addNode(node);
     }
 
     void RouteFinder::linkNodeToEdges(DynamicGraph& graph, const std::set<Graph::EdgeId>& edgeIds, Graph::NodeId nodeId, int nodeIdx) {
+        // Find all 'linked edge' ids. For triangles this means finding all edges of the triangle.
         std::set<Graph::EdgeId> linkedEdgeIds;
         for (Graph::EdgeId edgeId : edgeIds) {
             const Graph::Edge& edge = graph.getEdge(edgeId);
@@ -120,7 +136,8 @@ namespace carto { namespace sgre {
                     const Graph::Edge& linkedEdge = graph.getEdge(linkedEdgeId);
                     if (linkedEdge.triangleId == edge.triangleId) {
                         linkedEdgeIds.insert(linkedEdgeId);
-                        
+
+                        // For final node, we need to do another hop as we do not store incoming edge ids for nodes
                         if (nodeIdx == 1) {
                             const Graph::Node& nextNode = graph.getNode(linkedEdge.nodeIds[1]);
                             for (Graph::EdgeId nextLinkedEdgeId : nextNode.edgeIds) {
@@ -135,19 +152,25 @@ namespace carto { namespace sgre {
             }
         }
 
+        // Add new edges to the graph based on the found linked edges
         for (Graph::EdgeId linkedEdgeId : linkedEdgeIds) {
             Graph::Edge linkedEdge = graph.getEdge(linkedEdgeId);
+            linkedEdge.edgeFlags = Graph::EdgeFlags(0);
             linkedEdge.nodeIds[nodeIdx] = nodeId;
             graph.addEdge(linkedEdge);
         }
     }
 
     void RouteFinder::linkNodesToCommonEdges(DynamicGraph& graph, const std::set<Graph::EdgeId>& edgeIds0, const std::set<Graph::EdgeId>& edgeIds1, Graph::NodeId nodeId0, Graph::NodeId nodeId1) {
+        // Find intersection of edge ids
         std::set<Graph::EdgeId> commonEdgeIds;
         std::set_intersection(edgeIds0.begin(), edgeIds0.end(), edgeIds1.begin(), edgeIds1.end(), std::inserter(commonEdgeIds, commonEdgeIds.begin()));
+        
+        // Connect the shared edges
         for (Graph::EdgeId commonEdgeId : commonEdgeIds) {
             const Graph::Edge& commonEdge = graph.getEdge(commonEdgeId);
             if (commonEdge.triangleId == Graph::TriangleId(-1)) {
+                // Check that the target point is further along the edge compared to the starting point
                 const Point& pos0 = graph.getNode(commonEdge.nodeIds[0]).points[0];
                 double relDist0 = cglib::length(graph.getNode(nodeId0).points[0] - pos0);
                 double relDist1 = cglib::length(graph.getNode(nodeId1).points[0] - pos0);
@@ -156,7 +179,9 @@ namespace carto { namespace sgre {
                 }
             }
 
+            // Insert the edge linking starting and target nodes
             Graph::Edge linkedEdge = commonEdge;
+            linkedEdge.edgeFlags = Graph::EdgeFlags(0);
             linkedEdge.nodeIds[0] = nodeId0;
             linkedEdge.nodeIds[1] = nodeId1;
             graph.addEdge(linkedEdge);
@@ -164,6 +189,7 @@ namespace carto { namespace sgre {
     }
 
     RoutingAttributes RouteFinder::findFastestEdgeAttributes(const Graph& graph) {
+        // Find the fastest routing attributes of all edges. This is needed for the A* path finding algorithm.
         RoutingAttributes fastestAttributes;
         fastestAttributes.speed = 0;
         fastestAttributes.zSpeed = 0;
@@ -178,15 +204,11 @@ namespace carto { namespace sgre {
         return fastestAttributes;
     }
 
-    Point RouteFinder::getNodePoint(const Graph& graph, Graph::NodeId nodeId, double t) {
-        const Graph::Node& node = graph.getNode(nodeId);
-        return node.points[0] + (node.points[1] - node.points[0]) * t;
-    }
-
     Result RouteFinder::buildResult(const Graph& graph, const Path& path, double lngScale) {
         static constexpr double DIST_EPSILON = 1.0e-6;
         static constexpr double MIN_TURN_ANGLE = 5.0 / 180.0 * boost::math::constants::pi<double>();
 
+        // Build both path geometry and instructions in one pass
         std::vector<Point> points;
         std::vector<Instruction> instructions;
         Graph::FeatureId lastFeatureId = Graph::FeatureId(-1);
@@ -194,19 +216,25 @@ namespace carto { namespace sgre {
             const Graph::Edge& edge = path[i].edge;
             const Graph::Feature& feature = graph.getFeature(edge.featureId);
             
-            if (i == 0) {
-                points.push_back(getNodePoint(graph, edge.nodeIds[0], 0));
+            // Add starting point/next point
+            if (points.empty()) {
+                const Graph::Node& node = graph.getNode(edge.nodeIds[0]);
+                points.push_back(node.points[0]);
             }
-            points.push_back(getNodePoint(graph, edge.nodeIds[1], path[i].targetNodeT));
+            const Graph::Node& targetNode = graph.getNode(edge.nodeIds[1]);
+            points.push_back(targetNode.points[0] + (targetNode.points[1] - targetNode.points[0]) * path[i].targetNodeT);
 
+            // Add optional waiting instruction.
             if (edge.attributes.delay > 0) {
                 Instruction waitInstruction(Instruction::Type::WAIT, feature, 0, edge.attributes.delay, points.size() - 2);
                 instructions.push_back(std::move(waitInstruction));
             }
 
+            // Calculate the turning angle/mode starting from the second point
             Instruction::Type type = Instruction::Type::HEAD_ON;
             double turnAngle = 0;
-            if (i > 0) {
+            if (points.size() > 2) {
+                // Drop the middle point from the 3 last consecutive points?
                 if (edge.featureId == lastFeatureId && edge.attributes.delay == 0) {
                     double dist0 = calculateDistance(points[points.size() - 2], points[points.size() - 3], lngScale);
                     double dist1 = calculateDistance(points[points.size() - 1], points[points.size() - 2], lngScale);
@@ -218,6 +246,7 @@ namespace carto { namespace sgre {
                     }
                 }
 
+                // Calculate instruction type based on the turning angle
                 if (points.size() > 2) {
                     cglib::vec3<double> v0(0, 0, 0);
                     for (std::size_t j = points.size() - 2; j > 0; j--) {
@@ -253,6 +282,7 @@ namespace carto { namespace sgre {
                 }
             }
 
+            // Check if we need to move vertically
             const Point& pos0 = points[points.size() - 2];
             const Point& pos1 = points[points.size() - 1];
             std::pair<double, double> dist2D = calculateDistance2D(pos0, pos1, lngScale);
@@ -265,11 +295,18 @@ namespace carto { namespace sgre {
                 turnAngle = 0;
             }
 
+            // Calculate distance and time. We will add turning time here and do not apply delay (as its included in the previous 'wait' instruction)
             double dist = calculateDistance(pos0, pos1, lngScale);
-            double time = (turnAngle > 0 ? turnAngle / edge.attributes.turnSpeed : 0) + calculateTime(edge.attributes, pos0, pos1, lngScale);
+            double time = calculateTime(edge.attributes, false, turnAngle, pos0, pos1, lngScale);
+            if (!std::isfinite(time)) {
+                return Result();
+            }
+
+            // Store the instruction
             Instruction instruction(type, feature, dist, time, points.size() - 2);
             instructions.push_back(std::move(instruction));
 
+            // Add the final instruction if we are at the end
             if (i + 1 == path.size()) {
                 Instruction finalInstruction(Instruction::Type::REACHED_YOUR_DESTINATION, feature, 0, 0, points.size() - 1);
                 instructions.push_back(std::move(finalInstruction));
@@ -277,79 +314,67 @@ namespace carto { namespace sgre {
 
             lastFeatureId = edge.featureId;
         }
+
         return Result(std::move(instructions), std::move(points));
     }
 
     void RouteFinder::straightenPath(const Graph& graph, Path& path, double lngScale) {
         static constexpr int MAX_ITERATIONS = 1000;
-        
+        static constexpr double DIST_EPSILON = 1.0e-9; // Note: this epsilon should be smaller than other epislon values in order to properly remove redundant points
+
+        // Store node endpoint coordinates
+        Point initialPoint = graph.getNode(path[0].edge.nodeIds[0]).points[0];
+        std::vector<std::array<Point, 2>> nodePoints;
+        for (std::size_t i = 0; i < path.size(); i++) {
+            nodePoints.push_back(graph.getNode(path[i].edge.nodeIds[1]).points);
+        }
+
+        // Path straightening may need lots of iterations
+        bool reverse = false;
         for (int iter = 0; iter < MAX_ITERATIONS; iter++) {
             bool progress = false;
-            for (std::size_t i = 0; i + 1 < path.size(); i++) {
-                Point pos0 = (i == 0 ? getNodePoint(graph, path[0].edge.nodeIds[0], 0) : getNodePoint(graph, path[i - 1].edge.nodeIds[1], path[i - 1].targetNodeT));
-                Point pos1 = getNodePoint(graph, path[i + 1].edge.nodeIds[1], path[i + 1].targetNodeT);
+            for (std::size_t n = 0; n + 1 < path.size(); n++) {
+                std::size_t i = (reverse ? path.size() - n - 2 : n);
+                Point pos0 = i > 0 ? nodePoints[i - 1][0] + (nodePoints[i - 1][1] - nodePoints[i - 1][0]) * path[i - 1].targetNodeT : initialPoint;
+                Point pos1 = nodePoints[i + 1][0] + (nodePoints[i + 1][1] - nodePoints[i + 1][0]) * path[i + 1].targetNodeT;
 
-                const Graph::Edge& edge = path[i].edge;
-                const Graph::Node& node = graph.getNode(edge.nodeIds[1]);
-
-                double closestT = calculateClosestT(pos0, pos1, node.points);
+                // Calculate optimal T value for midpoint between 0 and 1
+                double closestT = calculateClosestT(pos0, pos1, nodePoints[i]);
                 double clampedT = std::max(0.0, std::min(1.0, closestT));
-                
-                Point oldPos = getNodePoint(graph, edge.nodeIds[1], path[i].targetNodeT);
-                double oldDist = calculateDistance(pos0, oldPos, lngScale) + calculateDistance(oldPos, pos1, lngScale);
-                Point newPos = node.points[0] + (node.points[1] - node.points[0]) * clampedT;
-                double newDist = calculateDistance(pos0, newPos, lngScale) + calculateDistance(newPos, pos1, lngScale);
 
-                if (newDist < oldDist) {
+                // If this new T value results in a shorter path, store it.
+                Point oldPos = nodePoints[i][0] + (nodePoints[i][1] - nodePoints[i][0]) * path[i].targetNodeT;
+                double oldDist = calculateDistance(pos0, oldPos, lngScale) + calculateDistance(oldPos, pos1, lngScale);
+                Point newPos = nodePoints[i][0] + (nodePoints[i][1] - nodePoints[i][0]) * clampedT;
+                double newDist = calculateDistance(pos0, newPos, lngScale) + calculateDistance(newPos, pos1, lngScale);
+                if (newDist + DIST_EPSILON < oldDist) {
                     path[i].targetNodeT = clampedT;
                     progress = true;
                 }
-
-                if (clampedT != closestT) {
-                    const Graph::Node& node0 = graph.getNode(path[i].edge.nodeIds[0]);
-                    for (Graph::EdgeId altEdgeId0 : node0.edgeIds) {
-                        const Graph::Edge& altEdge0 = graph.getEdge(altEdgeId0);
-                        assert(altEdge0.nodeIds[0] == path[i].edge.nodeIds[0]);
-                        if (altEdge0.nodeIds[1] == path[i].edge.nodeIds[1]) {
-                            continue;
-                        }
-
-                        const Graph::Node& altNode = graph.getNode(altEdge0.nodeIds[1]);
-                        for (Graph::EdgeId altEdgeId1 : altNode.edgeIds) {
-                            const Graph::Edge& altEdge1 = graph.getEdge(altEdgeId1);
-                            assert(altEdge1.nodeIds[0] == altEdge0.nodeIds[1]);
-                            if (altEdge1.nodeIds[1] == path[i + 1].edge.nodeIds[1]) {
-                                double altClosestT = calculateClosestT(pos0, pos1, altNode.points);
-                                double altClampedT = std::max(0.0, std::min(1.0, altClosestT));
-                                
-                                Point altPos = altNode.points[0] + (altNode.points[1] - altNode.points[0]) * altClampedT;
-                                double altDist = calculateDistance(pos0, altPos, lngScale) + calculateDistance(altPos, pos1, lngScale);
-
-                                if (altDist < newDist && altDist < oldDist) {
-                                    path[i].edge = altEdge0;
-                                    path[i].targetNodeT = altClampedT;
-                                    path[i + 1].edge = altEdge1;
-                                    progress = true;
-                                    newDist = altDist;
-                                }
-                            }
-                        }
-                    }
-                }
             }
 
+            // If we did not make any progress during this pass, we can stop.
             if (!progress) {
                 break;
             }
+
+            // Do the next pass reverse
+            reverse = !reverse;
         }
     }
 
     boost::optional<RouteFinder::Path> RouteFinder::findOptimalPath(const Graph& graph, Graph::NodeId initialNodeId, Graph::NodeId finalNodeId, const RoutingAttributes& fastestAttributes, double lngScale, double tesselationDistance, double& bestTime) {
-        struct NodeKey {
+        struct PathNodeKey {
             Graph::NodeId nodeId;
             double nodeT;
 
-            bool operator < (const NodeKey& key) const { if (nodeId != key.nodeId) return nodeId < key.nodeId; return nodeT < key.nodeT; }
+            bool operator < (const PathNodeKey& key) const { if (nodeId != key.nodeId) return nodeId < key.nodeId; return nodeT < key.nodeT; }
+        };
+
+        struct PathElement {
+            double time;
+            Graph::EdgeId edgeId;
+            double nodeT;
         };
         
         struct NodeRecord {
@@ -363,13 +388,16 @@ namespace carto { namespace sgre {
         const Graph::Node& initialNode = graph.getNode(initialNodeId);
         const Graph::Node& finalNode = graph.getNode(finalNodeId);
 
-        std::map<NodeKey, NodeRecord> bestPathMap;
-        bestPathMap[{ initialNodeId, 0.0 }] = { 0.0, Graph::NodeId(-1), -1.0 };
+        // Initialize path map for initial node
+        std::map<PathNodeKey, PathElement> bestPathMap;
+        bestPathMap[{ initialNodeId, 0.0 }] = { 0.0, Graph::EdgeId(-1), -1.0 };
 
+        // Use priority queue for storing fastest estimations. Start with fastest estimation from initial node to final node.
         std::priority_queue<NodeRecord> nodeQueue;
-        double bestTotalEstTime = calculateTime(fastestAttributes, initialNode.points[0], finalNode.points[0], lngScale);
+        double bestTotalEstTime = calculateTime(fastestAttributes, false, 0.0, initialNode.points[0], finalNode.points[0], lngScale);
         nodeQueue.push({ bestTotalEstTime, initialNodeId, 0.0 });
 
+        // Process the node queue
         while (!nodeQueue.empty()) {
             NodeRecord rec = nodeQueue.top();
             nodeQueue.pop();
@@ -386,26 +414,34 @@ namespace carto { namespace sgre {
             const Graph::Node& node = graph.getNode(nodeId);
             double nodeT = rec.nodeT;
             Point nodePos = node.points[0] + (node.points[1] - node.points[0]) * nodeT;
+            double time = bestPathMap[{ nodeId, nodeT }].time;
 
+            // Process each edge from the current node
             for (Graph::EdgeId edgeId : node.edgeIds) {
                 const Graph::Edge& edge = graph.getEdge(edgeId);
                 assert(edge.nodeIds[0] == nodeId);
                 Graph::NodeId targetNodeId = edge.nodeIds[1];
                 const Graph::Node& targetNode = graph.getNode(targetNodeId);
 
+                // Tesselate all triangle edges based on tesselation distance
                 int tesselationLevel = static_cast<int>(std::floor(calculateDistance(targetNode.points[0], targetNode.points[1], lngScale) / tesselationDistance)) + 1;
                 for (int i = 0; i < tesselationLevel; i++) {
                     double targetNodeT = (targetNodeId == finalNodeId ? 0.0 : (i + 1.0) / (tesselationLevel + 1.0));
                     Point targetNodePos = targetNode.points[0] + (targetNode.points[1] - targetNode.points[0]) * targetNodeT;
 
-                    double targetTime = bestPathMap[{ nodeId, nodeT }].time + calculateTime(edge.attributes, nodePos, targetNodePos, lngScale);
+                    // Check if we found a better path to target node compared to existing path
+                    double targetTime = time + calculateTime(edge.attributes, true, 0.0, nodePos, targetNodePos, lngScale);
+                    if (!std::isfinite(targetTime)) {
+                        continue;
+                    }
                     auto it = bestPathMap.find({ targetNodeId, targetNodeT });
                     if (it != bestPathMap.end() && it->second.time <= targetTime) {
                         continue;
                     }
-                    bestPathMap[{ targetNodeId, targetNodeT }] = { targetTime, nodeId, nodeT };
+                    bestPathMap[{ targetNodeId, targetNodeT }] = { targetTime, edgeId, nodeT };
 
-                    double bestTotalEstTime = targetTime + calculateTime(fastestAttributes, targetNodePos, finalNode.points[0], lngScale);
+                    // Calculate the fastest possible estimation from target node to the final node
+                    double bestTotalEstTime = targetTime + calculateTime(fastestAttributes, false, 0.0, targetNodePos, finalNode.points[0], lngScale);
                     nodeQueue.push({ bestTotalEstTime, targetNodeId, targetNodeT });
                 }
             }
@@ -417,31 +453,30 @@ namespace carto { namespace sgre {
         }
         bestTime = it->second.time;
 
+        // Reconstruct the optimal path backwards.
         Path bestPath;
-        do {
-            Graph::NodeId nodeId = it->second.nodeId;
-            Graph::NodeId targetNodeId = it->first.nodeId;
-            const Graph::Node& node = graph.getNode(nodeId);
-            for (Graph::EdgeId edgeId : node.edgeIds) {
-                const Graph::Edge& edge = graph.getEdge(edgeId);
-                if (edge.nodeIds[0] == nodeId && edge.nodeIds[1] == targetNodeId) {
-                    bestPath.push_back({ edge, it->first.nodeT });
-                    break;
-                }
-            }
-            if (nodeId == initialNodeId) {
-                it = bestPathMap.end();
-            } else {
-                it = bestPathMap.find({ nodeId, it->second.nodeT });
-            }
-        } while (it != bestPathMap.end());
+        while (it->second.edgeId != Graph::EdgeId(-1)) {
+            const Graph::Edge& edge = graph.getEdge(it->second.edgeId);
+            assert(edge.nodeIds[1] == it->first.nodeId);
+            bestPath.push_back({ edge, it->first.nodeT });
+            it = bestPathMap.find({ edge.nodeIds[0], it->second.nodeT });
+            assert(it != bestPathMap.end());
+        }
         std::reverse(bestPath.begin(), bestPath.end());
         return bestPath;
     }
 
-    double RouteFinder::calculateTime(const RoutingAttributes& attrs, const Point& pos0, const Point& pos1, double lngScale) {
+    double RouteFinder::calculateTime(const RoutingAttributes& attrs, bool applyDelay, double turnAngle, const Point& pos0, const Point& pos1, double lngScale) {
         std::pair<double, double> dist2D = calculateDistance2D(pos0, pos1, lngScale);
-        return attrs.delay + (dist2D.first > 0 ? dist2D.first / attrs.speed : 0) + (dist2D.second > 0 ? dist2D.second / attrs.zSpeed : 0);
+
+        double time = 0;
+        if (applyDelay) {
+            time += attrs.delay;
+        }
+        time += (turnAngle != 0 ? turnAngle / attrs.turnSpeed : 0);
+        time += (dist2D.first > 0 ? dist2D.first / attrs.speed : 0);
+        time += (dist2D.second > 0 ? dist2D.second / attrs.zSpeed : 0);
+        return time;
     }
     
     double RouteFinder::calculateDistance(const Point& pos0, const Point& pos1, double lngScale) {

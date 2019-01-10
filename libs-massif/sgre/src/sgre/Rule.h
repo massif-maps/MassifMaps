@@ -28,6 +28,7 @@ namespace carto { namespace sgre {
 
         const boost::optional<std::vector<std::string>>& getProfiles() const { return _profiles; }
         const boost::optional<std::vector<Filter>>& getFilters() const { return _filters; }
+        const boost::optional<Graph::LinkMode>& getLinkMode() const { return _linkMode; }
         const boost::optional<Graph::SearchCriteria>& getSearchCriteria() const { return _searchCriteria; }
 
         void apply(RoutingAttributes& attribs, bool forward) const;
@@ -39,6 +40,7 @@ namespace carto { namespace sgre {
 
         boost::optional<std::vector<std::string>> _profiles;
         boost::optional<std::vector<Filter>> _filters;
+        boost::optional<Graph::LinkMode> _linkMode;
         boost::optional<Graph::SearchCriteria> _searchCriteria;
 
         std::array<boost::optional<float>, 2> _speed;

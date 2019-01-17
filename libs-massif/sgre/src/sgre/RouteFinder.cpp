@@ -473,7 +473,7 @@ namespace carto { namespace sgre {
         if (applyDelay) {
             time += attrs.delay;
         }
-        time += (turnAngle != 0 ? turnAngle / attrs.turnSpeed : 0);
+        time += (turnAngle != 0 ? std::abs(turnAngle) / attrs.turnSpeed : 0);
         time += (dist2D.first > 0 ? dist2D.first / attrs.speed : 0);
         time += (dist2D.second > 0 ? dist2D.second / attrs.zSpeed : 0);
         return time;

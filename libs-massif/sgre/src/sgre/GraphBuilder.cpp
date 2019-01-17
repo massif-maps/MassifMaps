@@ -8,7 +8,7 @@ namespace {
     bool pointInsideTriangle(const std::array<cglib::vec3<double>, 3>& triangle, const cglib::vec3<double>& pos, double epsilon = 0.0) {
         cglib::vec3<double> v0 = triangle[2] - triangle[0];
         cglib::vec3<double> v1 = triangle[1] - triangle[0];
-        cglib::vec3<double>	v2 = pos - triangle[0];
+        cglib::vec3<double> v2 = pos - triangle[0];
 
         double dot00 = cglib::dot_product(v0, v0);
         double dot01 = cglib::dot_product(v0, v1);
@@ -26,17 +26,12 @@ namespace {
 }
 
 namespace carto { namespace sgre {
-    void GraphBuilder::importPoint(const Point& coords, const picojson::value& properties) {
-        Graph::FeatureId featureId = addFeature(properties);
-        addPoint(featureId, coords, properties);
-    }
-
-    void GraphBuilder::importLineString(const std::vector<Point>& coordsList, const picojson::value& properties) {
+    void GraphBuilder::addLineString(const std::vector<Point>& coordsList, const picojson::value& properties) {
         Graph::FeatureId featureId = addFeature(properties);
         addLineString(featureId, coordsList, properties);
     }
 
-    void GraphBuilder::importPolygon(const std::vector<std::vector<Point>>& rings, const picojson::value& properties) {
+    void GraphBuilder::addPolygon(const std::vector<std::vector<Point>>& rings, const picojson::value& properties) {
         Graph::FeatureId featureId = addFeature(properties);
         addPolygon(featureId, rings, properties);
     }
@@ -78,15 +73,13 @@ namespace carto { namespace sgre {
         
         Graph::FeatureId featureId = addFeature(properties);
         if (type == "Point") {
-            addPoint(featureId, parseCoordinates(coordsDef), properties);
+            // Can ignore
         } else if (type == "LineString") {
             addLineString(featureId, parseCoordinatesList(coordsDef), properties);
         } else if (type == "Polygon") {
             addPolygon(featureId, parseCoordinatesRings(coordsDef), properties);
         } else if (type == "MultiPoint") {
-            for (const picojson::value& subCoordsDef : coordsDef.get<picojson::array>()) {
-                addPoint(featureId, parseCoordinates(subCoordsDef), properties);
-            }
+            // Can ignore
         } else if (type == "MultiLineString") {
             for (const picojson::value& subCoordsDef : coordsDef.get<picojson::array>()) {
                 addLineString(featureId, parseCoordinatesList(subCoordsDef), properties);
@@ -140,10 +133,6 @@ namespace carto { namespace sgre {
         }
 
         return std::make_shared<StaticGraph>(std::move(nodes), std::move(edges), _features);
-    }
-
-    void GraphBuilder::addPoint(Graph::FeatureId featureId, const Point& coords, const picojson::value& properties) {
-        // Note: not needed
     }
 
     void GraphBuilder::addLineString(Graph::FeatureId featureId, const std::vector<Point>& coordsList, const picojson::value& properties) {

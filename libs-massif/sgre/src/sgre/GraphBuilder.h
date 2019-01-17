@@ -25,14 +25,12 @@ namespace carto { namespace sgre {
         GraphBuilder() = delete;
         explicit GraphBuilder(RuleList ruleList) : _ruleList(std::move(ruleList)) { }
 
-        void importPoint(const Point& coords, const picojson::value& properties);
-        void importLineString(const std::vector<Point>& coordsList, const picojson::value& properties);
-        void importPolygon(const std::vector<std::vector<Point>>& rings, const picojson::value& properties);
+        void addLineString(const std::vector<Point>& coordsList, const picojson::value& properties);
+        void addPolygon(const std::vector<std::vector<Point>>& rings, const picojson::value& properties);
 
         void importGeoJSON(const picojson::value& geoJSON);
         void importGeoJSONFeatureCollection(const picojson::value& featureCollectionDef);
         void importGeoJSONFeature(const picojson::value& featureDef);
-        void importGeoJSONGeometry(const picojson::value& geometryDef, const picojson::value& properties);
 
         std::shared_ptr<StaticGraph> build() const;
 
@@ -51,7 +49,8 @@ namespace carto { namespace sgre {
             std::vector<Graph::NodeId> nodeIds;
         };
         
-        void addPoint(Graph::FeatureId featureId, const Point& coords, const picojson::value& properties);
+        void importGeoJSONGeometry(const picojson::value& geometryDef, const picojson::value& properties);
+
         void addLineString(Graph::FeatureId featureId, const std::vector<Point>& coordsList, const picojson::value& properties);
         void addPolygon(Graph::FeatureId featureId, const std::vector<std::vector<Point>>& rings, const picojson::value& properties);
         

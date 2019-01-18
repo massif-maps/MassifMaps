@@ -12,3 +12,4 @@ The libraries included in the project are:
 * NML - simple library for loading and rendering 3D models converted from Collada DAE files
 * Routing - a mobile-friendly routing library that uses routing graphs converted from OSRM data and provides optimized routing using Contraction Hierarchies.
 * Geocoding - a mobile-friendly geocoding library that uses special sqlite geocoding databased converted from Pelias importer data
+* MBVTBuilder - a simple library for building MapBox vector tiles from GeoJSON features

@@ -10,5 +10,6 @@ The libraries included in the project are:
 * MapnikVT - higher-level vector tile rendering library that uses Mapnik-like XML style definition language
 * CartoCSS - an extended CartoCSS parser and translator to MapnikVT
 * NML - simple library for loading and rendering 3D models converted from Collada DAE files
-* Routing - a mobile-friendly routing library that uses routing graphs converted from OSRM data and provides optimized routing using Contraction Hierarchies.
+* OSRM - a mobile-friendly routing library that uses routing graphs converted from OSRM data and provides optimized routing using Contraction Hierarchies.
+* SGRE - Simple GeoJSON Routing Engine - a routing engine designed for indoor scenarios, using GeoJSON input files for routing graphs.
 * Geocoding - a mobile-friendly geocoding library that uses special sqlite geocoding databased converted from Pelias importer data

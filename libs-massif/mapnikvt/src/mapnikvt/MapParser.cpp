@@ -36,6 +36,12 @@ namespace carto { namespace mvt {
         if (pugi::xml_attribute backgroundImage = mapNode.attribute("background-image")) {
             mapSettings.backgroundImage = backgroundImage.as_string();
         }
+        if (pugi::xml_attribute northPoleColor = mapNode.attribute("north-pole-color")) {
+            mapSettings.northPoleColor = parseColor(northPoleColor.as_string());
+        }
+        if (pugi::xml_attribute southPoleColor = mapNode.attribute("south-pole-color")) {
+            mapSettings.southPoleColor = parseColor(southPoleColor.as_string());
+        }
 
         // Build map
         auto map = std::make_shared<Map>(mapSettings);

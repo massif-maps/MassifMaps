@@ -7,9 +7,18 @@
 #ifndef _CARTO_VT_GLTILERENDERER_H_
 #define _CARTO_VT_GLTILERENDERER_H_
 
+#include "Bitmap.h"
 #include "Color.h"
 #include "ViewState.h"
+#include "Label.h"
 #include "Tile.h"
+#include "TileId.h"
+#include "TileTransformer.h"
+#include "TileBitmap.h"
+#include "TileBackground.h"
+#include "TileBitmap.h"
+#include "TileSurface.h"
+#include "TileSurfaceBuilder.h"
 #include "GLExtensions.h"
 #include "GLShaderManager.h"
 
@@ -18,7 +27,7 @@
 #include <array>
 #include <vector>
 #include <map>
-#include <unordered_set>
+#include <set>
 #include <unordered_map>
 #include <utility>
 #include <mutex>
@@ -28,15 +37,15 @@
 namespace carto { namespace vt {
     class GLTileRenderer final {
     public:
-        explicit GLTileRenderer(std::shared_ptr<std::mutex> mutex, std::shared_ptr<GLExtensions> glExtensions, float scale);
+        explicit GLTileRenderer(std::shared_ptr<std::mutex> mutex, std::shared_ptr<GLExtensions> glExtensions, std::shared_ptr<TileTransformer> transformer, float scale);
 
         void setViewState(const cglib::mat4x4<double>& projectionMatrix, const cglib::mat4x4<double>& cameraMatrix, float zoom, float aspectRatio, float resolution);
         void setLightDir(const cglib::vec3<float>& lightDir);
         void setInteractionMode(bool enabled);
         void setSubTileBlending(bool enabled);
-        void setBackground(const Color& color, std::shared_ptr<const BitmapPattern> pattern);
+        void setPoleColors(const Color& northPoleColor, const Color& southPoleColor);
         void setVisibleTiles(const std::map<TileId, std::shared_ptr<const Tile>>& tiles, bool blend);
-        std::vector<std::shared_ptr<TileLabel>> getVisibleLabels() const;
+        std::vector<std::shared_ptr<Label>> getVisibleLabels() const;
         
         void initializeRenderer();
         void resetRenderer();
@@ -53,7 +62,7 @@ namespace carto { namespace vt {
         bool findBitmapIntersections(const cglib::ray3<double>& ray, std::vector<std::tuple<TileId, double, TileBitmap, cglib::vec2<float>>>& results) const;
 
     private:
-        using BitmapLabelMap = std::unordered_map<std::shared_ptr<const Bitmap>, std::vector<std::shared_ptr<TileLabel>>>;
+        using BitmapLabelMap = std::unordered_map<std::shared_ptr<const Bitmap>, std::vector<std::shared_ptr<Label>>>;
 
         struct BlendNode {
             TileId tileId;
@@ -66,11 +75,12 @@ namespace carto { namespace vt {
 
         struct RenderNode {
             TileId tileId;
+            std::shared_ptr<const Tile> tile;
             std::shared_ptr<const TileLayer> layer;
             float initialBlend;
             float blend;
 
-            explicit RenderNode(const TileId& tileId, std::shared_ptr<const TileLayer> layer, float blend) : tileId(tileId), layer(std::move(layer)), initialBlend(blend), blend(blend) { }
+            explicit RenderNode(const TileId& tileId, std::shared_ptr<const Tile> tile, std::shared_ptr<const TileLayer> layer, float blend) : tileId(tileId), tile(std::move(tile)), layer(std::move(layer)), initialBlend(blend), blend(blend) { }
         };
 
         struct FrameBuffer {
@@ -94,6 +104,13 @@ namespace carto { namespace vt {
             CompiledQuad() : vbo(0) { }
         };
 
+        struct CompiledSurface {
+            GLuint vertexGeometryVBO;
+            GLuint indicesVBO;
+
+            CompiledSurface() : vertexGeometryVBO(0), indicesVBO(0) { }
+        };
+
         struct CompiledGeometry {
             GLuint vertexGeometryVBO;
             GLuint indicesVBO;
@@ -103,24 +120,27 @@ namespace carto { namespace vt {
         };
 
         struct CompiledLabelBatch {
-            GLuint vertexGeometryVBO;
-            GLuint vertexUVVBO;
-            GLuint vertexAttribsVBO;
-            GLuint vertexIndicesVBO;
+            GLuint verticesVBO;
+            GLuint normalsVBO;
+            GLuint texCoordsVBO;
+            GLuint attribsVBO;
+            GLuint indicesVBO;
 
-            CompiledLabelBatch() : vertexGeometryVBO(0), vertexUVVBO(0), vertexAttribsVBO(0), vertexIndicesVBO(0) { }
+            CompiledLabelBatch() : verticesVBO(0), normalsVBO(0), texCoordsVBO(0), attribsVBO(0), indicesVBO(0) { }
         };
 
         struct LabelBatchParameters {
             constexpr static int MAX_PARAMETERS = 16;
 
+            int labelCount;
             int parameterCount;
             float scale;
+            cglib::mat4x4<double> labelMatrix;
             std::array<cglib::vec4<float>, MAX_PARAMETERS> colorTable;
             std::array<float, MAX_PARAMETERS> widthTable;
             std::array<float, MAX_PARAMETERS> strokeWidthTable;
 
-            LabelBatchParameters() : parameterCount(0), scale(0), colorTable(), widthTable(), strokeWidthTable() { }
+            LabelBatchParameters() : labelCount(0), parameterCount(0), scale(0), labelMatrix(cglib::mat4x4<double>::identity()), colorTable(), widthTable(), strokeWidthTable() { }
         };
 
         struct LabelHash {
@@ -131,53 +151,52 @@ namespace carto { namespace vt {
 
         constexpr static float SDF_SHARPNESS_SCALE = 14.0f;
         constexpr static float HALO_RADIUS_SCALE = 2.5f; // the scaling factor for halo radius
-
-        static cglib::mat4x4<double> calculateLocalViewMatrix(const cglib::mat4x4<double>& cameraMatrix);
+        constexpr static float BUILDINGS_HEIGHT_SCALE = 20037508.34f; // scaling factor for zoom 0 heights
 
         cglib::mat4x4<double> calculateTileMatrix(const TileId& tileId, float coordScale = 1.0f) const;
         cglib::mat3x3<double> calculateTileMatrix2D(const TileId& tileId, float coordScale = 1.0f) const;
         cglib::mat4x4<float> calculateTileMVPMatrix(const TileId& tileId, float coordScale = 1.0f) const;
-        cglib::vec4<double> calculateTileOrigin(const TileId& tileId) const;
-        cglib::bbox3<double> calculateTileBBox(const TileId& tileId) const;
+
+        bool testTileVisibility(const TileId& tileId, const cglib::frustum3<double>& frustum, const cglib::vec3<float>& viewDir) const;
 
         float calculateBlendNodeOpacity(const BlendNode& blendNode, float blend) const;
         
         void updateBlendNode(BlendNode& blendNode, float dBlend) const;
         bool buildRenderNodes(const BlendNode& blendNode, float blend, std::multimap<int, RenderNode>& renderNodeMap) const;
         void addRenderNode(RenderNode renderNode, std::multimap<int, RenderNode>& renderNodeMap) const;
-        void updateLabels(const std::vector<std::shared_ptr<TileLabel>>& labels, float dOpacity) const;
+        void updateLabels(const std::vector<std::shared_ptr<Label>>& labels, float dOpacity) const;
 
-        void setupPointCoordinateSystem(PointOrientation orientation, const TileId& tileId, float vertexScale, cglib::vec3<float>& xAxis, cglib::vec3<float>& yAxis) const;
-
-        void findTileGeometryIntersections(const TileId& tileId, const std::shared_ptr<TileGeometry>& geometry, const cglib::ray3<double>& ray, float radius, std::vector<std::pair<double, long long>>& results) const;
-        bool findLabelIntersection(const std::shared_ptr<TileLabel>& label, const cglib::ray3<double>& ray, float radius, double& result) const;
-
-        cglib::vec3<float> decodeVertex(const std::shared_ptr<TileGeometry>& geometry, std::size_t index) const;
-        cglib::vec3<float> decodePointOffset(const std::shared_ptr<TileGeometry>& geometry, std::size_t index, const cglib::vec3<float>& xAxis, const cglib::vec3<float>& yAxis, float radius) const;
-        cglib::vec3<float> decodeLineOffset(const std::shared_ptr<TileGeometry>& geometry, std::size_t index, float radius) const;
-        cglib::vec3<float> decodePolygon3DOffset(const std::shared_ptr<TileGeometry>& geometry, std::size_t index) const;
+        void findTileGeometryIntersections(const TileId& tileId, const std::shared_ptr<const Tile>& tile, const std::shared_ptr<const TileGeometry>& geometry, const cglib::ray3<double>& ray, float radius, float heightScale, std::vector<std::pair<double, long long>>& results) const;
+        void findTileSurfaceIntersections(const TileId& tileId, const std::shared_ptr<const Tile>& tile, const std::shared_ptr<const TileSurface>& tileSurface, const cglib::ray3<double>& ray, std::vector<std::pair<double, cglib::vec2<float>>>& results) const;
+        bool findLabelIntersection(const std::shared_ptr<Label>& label, const cglib::ray3<double>& ray, float radius, double& result) const;
 
         bool renderBlendNodes2D(const std::vector<std::shared_ptr<BlendNode>>& blendNodes, int stencilBits);
         bool renderBlendNodes3D(const std::vector<std::shared_ptr<BlendNode>>& blendNodes);
-        bool renderLabels(const std::shared_ptr<const Bitmap>& bitmap, const std::vector<std::shared_ptr<TileLabel>>& labels);
+        bool renderLabels(const std::vector<std::shared_ptr<Label>>& labels, const std::shared_ptr<const Bitmap>& bitmap);
 
         void blendScreenTexture(float opacity, GLuint texture);
         void blendTileTexture(const TileId& tileId, float opacity, GLuint texture);
+        void renderPole(int poleZ, const Color& color, float opacity);
         void renderTileMask(const TileId& tileId);
-        void renderTileBackground(const TileId& tileId, float opacity);
+        void renderTileBackground(const TileId& tileId, const std::shared_ptr<TileBackground>& background, float tileSize, float opacity);
         void renderTileBitmap(const TileId& tileId, const TileId& targetTileId, float blend, float opacity, const std::shared_ptr<TileBitmap>& bitmap);
-        void renderTileGeometry(const TileId& tileId, const TileId& targetTileId, float blend, float opacity, const std::shared_ptr<TileGeometry>& geometry);
+        void renderTileGeometry(const TileId& tileId, const TileId& targetTileId, float blend, float opacity, const std::shared_ptr<const Tile>& tile, const std::shared_ptr<TileGeometry>& geometry);
         void renderLabelBatch(const LabelBatchParameters& labelBatchParams, const std::shared_ptr<const Bitmap>& bitmap);
 
         void setBlendState(CompOp compOp);
         bool isEmptyBlendRequired(CompOp compOp) const;
 
+        const std::vector<std::shared_ptr<TileSurface>>& buildCompiledTileSurfaces(const TileId& tileId);
+        const std::vector<std::shared_ptr<TileSurface>>& buildCompiledPoleSurfaces(int poleZ);
+
         void createFrameBuffer(FrameBuffer& frameBuffer, bool useColor, bool useDepth, bool useStencil);
         void deleteFrameBuffer(FrameBuffer& frameBuffer);
         void createCompiledBitmap(CompiledBitmap& compiledBitmap);
         void deleteCompiledBitmap(CompiledBitmap& compiledBitmap);
-        void createCompiledQuad(CompiledQuad& compiledQuad, bool tileMode);
+        void createCompiledQuad(CompiledQuad& compiledQuad);
         void deleteCompiledQuad(CompiledQuad& compiledQuad);
+        void createCompiledSurface(CompiledSurface& compiledSurface);
+        void deleteCompiledSurface(CompiledSurface& compiledSurface);
         void createCompiledGeometry(CompiledGeometry& compiledGeometry);
         void deleteCompiledGeometry(CompiledGeometry& compiledGeometry);
         void createCompiledLabelBatch(CompiledLabelBatch& compiledLabelBatch);
@@ -185,18 +204,13 @@ namespace carto { namespace vt {
 
         void checkGLError();
 
-        bool _subTileBlending = false;
-        bool _interactionMode = false;
-        Color _backgroundColor;
-        std::shared_ptr<const BitmapPattern> _backgroundPattern;
-
-        GLShaderManager::ShaderContext _patternTransformContext[2][2];
-        GLShaderManager::ShaderContext _perspectiveAndDerivativesContext[2];
+        GLShaderManager::ShaderContext _patternTransformLightingContext[2][2][2];
+        GLShaderManager::ShaderContext _derivativesLightingContext[2][2];
         GLShaderManager _shaderManager;
+        TileSurfaceBuilder _tileSurfaceBuilder;
 
         std::vector<FrameBuffer> _layerBuffers;
         FrameBuffer _overlayBuffer;
-        CompiledQuad _tileQuad;
         CompiledQuad _screenQuad;
 
         cglib::vec3<float> _lightDir;
@@ -204,32 +218,43 @@ namespace carto { namespace vt {
         cglib::mat4x4<double> _cameraMatrix;
         cglib::mat4x4<double> _cameraProjMatrix;
         cglib::frustum3<double> _frustum;
-        cglib::mat4x4<double> _labelMatrix;
+        std::array<Color, 2> _poleColors;
         ViewState _viewState;
-        VertexArray<cglib::vec3<float>> _labelVertices;
-        VertexArray<cglib::vec2<short>> _labelTexCoords;
-        VertexArray<cglib::vec4<char>> _labelAttribs;
-        VertexArray<unsigned short> _labelIndices;
+        cglib::vec3<double> _tileSurfaceBuilderOrigin;
+        std::set<TileId> _tileSurfaceBuilderOriginTileIds;
         float _zoom = 0;
         float _halfResolution = 0;
         int _screenWidth = 0;
         int _screenHeight = 0;
 
+        bool _subTileBlending = false;
+        bool _interactionMode = false;
+
         std::shared_ptr<std::vector<std::shared_ptr<BlendNode>>> _blendNodes;
         std::shared_ptr<std::vector<std::shared_ptr<BlendNode>>> _renderBlendNodes;
         std::array<std::shared_ptr<BitmapLabelMap>, 2> _bitmapLabelMap; // for 'ground' labels and for 'billboard' labels
         std::array<std::shared_ptr<BitmapLabelMap>, 2> _renderBitmapLabelMap;  // for 'ground' labels and for 'billboard' labels
-        std::vector<std::shared_ptr<TileLabel>> _labels;
-        std::unordered_map<std::pair<int, long long>, std::shared_ptr<TileLabel>, LabelHash> _labelMap;
+        std::vector<std::shared_ptr<Label>> _labels;
+        std::unordered_map<std::pair<int, long long>, std::shared_ptr<Label>, LabelHash> _labelMap;
+        std::unordered_map<TileId, std::vector<std::shared_ptr<TileSurface>>> _tileSurfaceMap;
+        std::unordered_map<int, std::vector<std::shared_ptr<TileSurface>>> _poleSurfaceMap;
         std::map<std::weak_ptr<const Bitmap>, CompiledBitmap, std::owner_less<std::weak_ptr<const Bitmap>>> _compiledBitmapMap;
         std::map<std::weak_ptr<const TileBitmap>, CompiledBitmap, std::owner_less<std::weak_ptr<const TileBitmap>>> _compiledTileBitmapMap;
         std::map<std::weak_ptr<const TileGeometry>, CompiledGeometry, std::owner_less<std::weak_ptr<const TileGeometry>>> _compiledTileGeometryMap;
+        std::map<std::weak_ptr<const TileSurface>, CompiledSurface, std::owner_less<std::weak_ptr<const TileSurface>>> _compiledTileSurfaceMap;
         std::map<int, CompiledLabelBatch> _compiledLabelBatches;
         int _labelBatchCounter = 0;
 
-        const float _scale;
-        const std::shared_ptr<GLExtensions> _glExtensions;
+        VertexArray<cglib::vec3<float>> _labelVertices;
+        VertexArray<cglib::vec3<float>> _labelNormals;
+        VertexArray<cglib::vec2<short>> _labelTexCoords;
+        VertexArray<cglib::vec4<char>> _labelAttribs;
+        VertexArray<unsigned short> _labelIndices;
+
         const std::shared_ptr<std::mutex> _mutex;
+        const std::shared_ptr<GLExtensions> _glExtensions;
+        const std::shared_ptr<TileTransformer> _transformer;
+        const float _scale;
     };
 } }
 

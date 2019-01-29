@@ -9,6 +9,7 @@
 
 #include "FeatureDecoder.h"
 #include "vt/Tile.h"
+#include "vt/TileTransformer.h"
 #include "vt/TileLayerBuilder.h"
 
 #include <memory>
@@ -34,7 +35,7 @@ namespace carto { namespace mvt {
         virtual std::shared_ptr<vt::Tile> readTile(const vt::TileId& tileId) const;
 
     protected:
-        explicit TileReader(std::shared_ptr<const Map> map, const SymbolizerContext& symbolizerContext);
+        explicit TileReader(std::shared_ptr<const Map> map, std::shared_ptr<const vt::TileTransformer> transformer, const SymbolizerContext& symbolizerContext);
 
         void processLayer(const std::shared_ptr<const Layer>& layer, const std::shared_ptr<const Style>& style, FeatureExpressionContext& exprContext, vt::TileLayerBuilder& layerBuilder) const;
 
@@ -43,6 +44,7 @@ namespace carto { namespace mvt {
         virtual std::shared_ptr<FeatureDecoder::FeatureIterator> createFeatureIterator(const std::shared_ptr<const Layer>& layer) const = 0;
 
         const std::shared_ptr<const Map> _map;
+        const std::shared_ptr<const vt::TileTransformer> _transformer;
         const SymbolizerContext& _symbolizerContext;
         const std::shared_ptr<const Filter> _trueFilter;
     };

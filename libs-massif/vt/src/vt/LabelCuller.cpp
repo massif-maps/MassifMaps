@@ -1,4 +1,4 @@
-#include "TileLabelCuller.h"
+#include "LabelCuller.h"
 
 #include <array>
 #include <vector>
@@ -48,24 +48,25 @@ namespace {
 }
 
 namespace carto { namespace vt {
-    TileLabelCuller::TileLabelCuller(std::shared_ptr<std::mutex> mutex, float scale) :
-        _mvpMatrix(cglib::mat4x4<float>::identity()), _viewState(cglib::mat4x4<double>::identity(), cglib::mat4x4<double>::identity(), 0, 1, 1, scale), _scale(scale), _mutex(std::move(mutex))
+    LabelCuller::LabelCuller(std::shared_ptr<std::mutex> mutex, std::shared_ptr<TileTransformer> transformer, float scale) :
+        _projectionMatrix(cglib::mat4x4<double>::identity()), _mvpMatrix(cglib::mat4x4<float>::identity()), _viewState(cglib::mat4x4<double>::identity(), cglib::mat4x4<double>::identity(), 0, 1, 1, scale), _mutex(std::move(mutex)), _transformer(std::move(transformer)), _scale(scale)
     {
     }
 
-    void TileLabelCuller::setViewState(const cglib::mat4x4<double>& projectionMatrix, const cglib::mat4x4<double>& cameraMatrix, float zoom, float aspectRatio, float resolution) {
+    void LabelCuller::setViewState(const cglib::mat4x4<double>& projectionMatrix, const cglib::mat4x4<double>& cameraMatrix, float zoom, float aspectRatio, float resolution) {
         std::lock_guard<std::mutex> lock(*_mutex);
 
+        _projectionMatrix = projectionMatrix;
         _mvpMatrix = cglib::mat4x4<float>::convert(projectionMatrix * calculateLocalViewMatrix(cameraMatrix));
         _viewState = ViewState(projectionMatrix, cameraMatrix, zoom, aspectRatio, resolution, _scale);
         _resolution = resolution;
     }
 
-    void TileLabelCuller::process(const std::vector<std::shared_ptr<TileLabel>>& labelList) {
+    void LabelCuller::process(const std::vector<std::shared_ptr<Label>>& labelList) {
         // Start by collecting valid labels and updating label placements
-        std::vector<std::shared_ptr<TileLabel>> validLabelList;
+        std::vector<std::shared_ptr<Label>> validLabelList;
         validLabelList.reserve(labelList.size());
-        for (const std::shared_ptr<TileLabel>& label : labelList) {
+        for (const std::shared_ptr<Label>& label : labelList) {
             std::lock_guard<std::mutex> lock(*_mutex);
             
             // Analyze only active and valid labels
@@ -85,15 +86,15 @@ namespace carto { namespace vt {
         // Sort active labels by priority/opacity
         {
             std::lock_guard<std::mutex> lock(*_mutex);
-            std::sort(validLabelList.begin(), validLabelList.end(), [](const std::shared_ptr<TileLabel>& label1, const std::shared_ptr<TileLabel>& label2) {
+            std::sort(validLabelList.begin(), validLabelList.end(), [](const std::shared_ptr<Label>& label1, const std::shared_ptr<Label>& label2) {
                 return std::pair<int, float>(-label1->getPriority(), label1->getOpacity()) > std::pair<int, float>(-label2->getPriority(), label2->getOpacity());
             });
         }
 
         // Update label visibility flag based on overlap analysis
         clearGrid();
-        std::unordered_map<long long, std::vector<std::shared_ptr<TileLabel>>> groupMap;
-        for (const std::shared_ptr<TileLabel>& label : validLabelList) {
+        std::unordered_map<long long, std::vector<std::shared_ptr<Label>>> groupMap;
+        for (const std::shared_ptr<Label>& label : validLabelList) {
             std::lock_guard<std::mutex> lock(*_mutex);
 
             // Label is always visible if its group is set to negative value. Otherwise test visibility against other labels
@@ -103,7 +104,7 @@ namespace carto { namespace vt {
                 if (!label->calculateCenter(center)) {
                     visible = false;
                 }
-                for (const std::shared_ptr<TileLabel>& otherLabel : groupMap[label->getGroupId()]) {
+                for (const std::shared_ptr<Label>& otherLabel : groupMap[label->getGroupId()]) {
                     cglib::vec3<double> otherCenter;
                     if (otherLabel->calculateCenter(otherCenter)) {
                         float minimumDistance = std::min(label->getMinimumGroupDistance(), otherLabel->getMinimumGroupDistance());
@@ -122,7 +123,7 @@ namespace carto { namespace vt {
         }
     }
 
-    void TileLabelCuller::clearGrid() {
+    void LabelCuller::clearGrid() {
         for (int y = 0; y < GRID_RESOLUTION; y++) {
             for (int x = 0; x < GRID_RESOLUTION; x++) {
                 _recordGrid[y][x].clear();
@@ -130,7 +131,7 @@ namespace carto { namespace vt {
         }
     }
 
-    bool TileLabelCuller::testOverlap(const std::shared_ptr<TileLabel>& label) {
+    bool LabelCuller::testOverlap(const std::shared_ptr<Label>& label) {
         std::array<cglib::vec3<float>, 4> mapEnvelope;
         if (!label->calculateEnvelope(_viewState, mapEnvelope)) {
             return false;
@@ -138,10 +139,24 @@ namespace carto { namespace vt {
 
         std::array<cglib::vec2<float>, 4> envelope;
         cglib::bbox2<float> bounds = cglib::bbox2<float>::smallest();
-        for (int i = 0; i < 4; i++) {
-            cglib::vec2<float> p_proj(cglib::proj_o(cglib::transform_point(mapEnvelope[i], _mvpMatrix)));
-            envelope[i] = p_proj;
-            bounds.add(p_proj);
+        if (!label->getStyle()->translate) {
+            for (int i = 0; i < 4; i++) {
+                cglib::vec2<float> p_proj(cglib::proj_o(cglib::transform_point(mapEnvelope[i], _mvpMatrix)));
+                envelope[i] = p_proj;
+                bounds.add(p_proj);
+            }
+        }
+        else {
+            float zoomScale = std::exp2(label->getTileId().zoom - _viewState.zoom);
+            cglib::vec2<float> translate = (*label->getStyle()->translate) * zoomScale;
+            cglib::mat4x4<double> translateMatrix = cglib::mat4x4<double>::convert(_transformer->calculateTileTransform(label->getTileId(), translate, 1.0f));
+            cglib::mat4x4<double> tileMatrix = _transformer->calculateTileMatrix(label->getTileId(), 1);
+            cglib::mat4x4<float> mvpMatrix = cglib::mat4x4<float>::convert(_projectionMatrix * tileMatrix * translateMatrix * cglib::inverse(tileMatrix) * cglib::translate4_matrix(_viewState.origin));
+            for (int i = 0; i < 4; i++) {
+                cglib::vec2<float> p_proj(cglib::proj_o(cglib::transform_point(mapEnvelope[i], mvpMatrix)));
+                envelope[i] = p_proj;
+                bounds.add(p_proj);
+            }
         }
 
         int x0 = getGridIndex(bounds.min(0)), y0 = getGridIndex(bounds.min(1));
@@ -166,7 +181,7 @@ namespace carto { namespace vt {
         return true;
     }
 
-    int TileLabelCuller::getGridIndex(float x) {
+    int LabelCuller::getGridIndex(float x) {
         float v = x * 0.5f + 0.5f;
         if (v < 0) {
             return 0;
@@ -177,7 +192,7 @@ namespace carto { namespace vt {
         return static_cast<int>(v * GRID_RESOLUTION);
     }
 
-    cglib::mat4x4<double> TileLabelCuller::calculateLocalViewMatrix(const cglib::mat4x4<double>& cameraMatrix) {
+    cglib::mat4x4<double> LabelCuller::calculateLocalViewMatrix(const cglib::mat4x4<double>& cameraMatrix) {
         cglib::mat4x4<double> mv = cameraMatrix;
         mv(0, 3) = mv(1, 3) = mv(2, 3) = 0;
         return mv;

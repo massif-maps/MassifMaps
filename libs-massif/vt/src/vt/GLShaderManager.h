@@ -15,11 +15,12 @@
 #include <set>
 
 namespace carto { namespace vt {
-    class GLShaderManager final {
+    class GLShaderManager {
     public:
         using ShaderContext = std::shared_ptr<const std::set<std::string>>;
 
         GLShaderManager() = default;
+        virtual ~GLShaderManager() = default;
         
         void registerShaders(const std::string& programName, const std::string& vsh, const std::string& fsh);
 

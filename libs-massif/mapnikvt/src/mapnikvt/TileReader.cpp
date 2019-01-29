@@ -9,8 +9,8 @@
 #include "Map.h"
 
 namespace carto { namespace mvt {
-    TileReader::TileReader(std::shared_ptr<const Map> map, const SymbolizerContext& symbolizerContext) :
-        _map(std::move(map)), _symbolizerContext(symbolizerContext), _trueFilter(std::make_shared<Filter>(Filter::Type::FILTER, std::make_shared<ConstPredicate>(true)))
+    TileReader::TileReader(std::shared_ptr<const Map> map, std::shared_ptr<const vt::TileTransformer> transformer, const SymbolizerContext& symbolizerContext) :
+        _map(std::move(map)), _transformer(transformer), _symbolizerContext(symbolizerContext), _trueFilter(std::make_shared<Filter>(Filter::Type::FILTER, std::make_shared<ConstPredicate>(true)))
     {
     }
 
@@ -19,7 +19,12 @@ namespace carto { namespace mvt {
         exprContext.setTileId(tileId);
         exprContext.setAdjustedZoom(tileId.zoom + static_cast<int>(_symbolizerContext.getSettings().getZoomLevelBias()));
         exprContext.setNutiParameterValueMap(_symbolizerContext.getSettings().getNutiParameterValueMap());
-        vt::TileLayerBuilder tileLayerBuilder(tileId, _symbolizerContext.getSettings().getTileSize(), _symbolizerContext.getSettings().getGeometryScale());
+        
+        std::shared_ptr<const vt::BitmapPattern> backgroundPattern;
+        if (!_map->getSettings().backgroundImage.empty()) {
+            backgroundPattern = _symbolizerContext.getBitmapManager()->loadBitmapPattern(_map->getSettings().backgroundImage, 1.0f, 1.0f);
+        }
+        auto tileBackground = std::make_shared<vt::TileBackground>(_map->getSettings().backgroundColor, backgroundPattern);
 
         std::vector<std::shared_ptr<vt::TileLayer>> tileLayers;
         int layerIdx = 0;
@@ -31,8 +36,6 @@ namespace carto { namespace mvt {
                     continue;
                 }
                 
-                processLayer(layer, style, exprContext, tileLayerBuilder);
-
                 boost::optional<vt::CompOp> compOp;
                 try {
                     if (!style->getCompOp().empty()) {
@@ -42,11 +45,14 @@ namespace carto { namespace mvt {
                 catch (const ParserException&) {
                     // ignore the error
                 }
-                
+
                 vt::FloatFunction opacityFunc(style->getOpacity());
 
                 int internalIdx = layerIdx * 65536 + static_cast<int>(layer->getStyleNames().size()) * 256 + styleIdx;
-                std::shared_ptr<vt::TileLayer> tileLayer = tileLayerBuilder.build(internalIdx, compOp, opacityFunc);
+                vt::TileLayerBuilder tileLayerBuilder(tileId, internalIdx, _transformer->createTileVertexTransformer(tileId), _symbolizerContext.getSettings().getTileSize(), _symbolizerContext.getSettings().getGeometryScale());
+                processLayer(layer, style, exprContext, tileLayerBuilder);
+
+                std::shared_ptr<vt::TileLayer> tileLayer = tileLayerBuilder.buildTileLayer(compOp, opacityFunc);
                 if (!(tileLayer->getBitmaps().empty() && tileLayer->getLabels().empty() && tileLayer->getGeometries().empty() && !compOp)) {
                     tileLayers.push_back(tileLayer);
                 }
@@ -54,7 +60,7 @@ namespace carto { namespace mvt {
             }
             layerIdx++;
         }
-        return std::make_shared<vt::Tile>(tileId, tileLayers);
+        return std::make_shared<vt::Tile>(tileId, _symbolizerContext.getSettings().getTileSize(), tileBackground, tileLayers);
     }
 
     void TileReader::processLayer(const std::shared_ptr<const Layer>& layer, const std::shared_ptr<const Style>& style, FeatureExpressionContext& exprContext, vt::TileLayerBuilder& layerBuilder) const {

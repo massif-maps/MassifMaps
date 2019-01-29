@@ -3,7 +3,7 @@
 #include <boost/lexical_cast.hpp>
 
 namespace carto { namespace vt {
-    BitmapManager::BitmapManager(const std::shared_ptr<BitmapLoader>& loader) : _bitmapLoader(loader) {
+    BitmapManager::BitmapManager(std::shared_ptr<BitmapLoader> loader) : _bitmapLoader(std::move(loader)) {
     }
 
     std::shared_ptr<const BitmapImage> BitmapManager::getBitmapImage(const std::string& fileName) const {

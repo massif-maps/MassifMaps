@@ -40,7 +40,7 @@ namespace carto { namespace vt {
         std::size_t getResidentSize() const {
             std::size_t bitmapSize = std::accumulate(_bitmaps.begin(), _bitmaps.end(), static_cast<std::size_t>(0), [](std::size_t size, const std::shared_ptr<TileBitmap>& bitmap) { return size + bitmap->getResidentSize(); });
             std::size_t geometriesSize = std::accumulate(_geometries.begin(), _geometries.end(), static_cast<std::size_t>(0), [](std::size_t size, const std::shared_ptr<TileGeometry>& geometry) { return size + geometry->getResidentSize(); });
-            std::size_t labelsSize = _labels.size() * sizeof(TileLabel);
+            std::size_t labelsSize = std::accumulate(_labels.begin(), _labels.end(), static_cast<std::size_t>(0), [](std::size_t size, const std::shared_ptr<TileLabel>& label) { return size + label->getResidentSize(); });
             return 16 + bitmapSize + geometriesSize + labelsSize;
         }
 

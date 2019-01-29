@@ -36,10 +36,6 @@ namespace carto { namespace vt {
         BILLBOARD_2D, BILLBOARD_3D, POINT, POINT_FLIPPING, LINE
     };
 
-    enum class PointOrientation {
-        BILLBOARD_2D, BILLBOARD_3D, POINT
-    };
-
     enum class LineJoinMode {
         NONE, BEVEL, MITER, ROUND
     };
@@ -50,18 +46,16 @@ namespace carto { namespace vt {
 
     struct PointStyle final {
         CompOp compOp;
-        PointOrientation orientation;
         ColorFunction colorFunc;
         FloatFunction sizeFunc;
-        std::shared_ptr<const BitmapImage> pointImage;
+        std::shared_ptr<const BitmapImage> image;
         boost::optional<cglib::mat3x3<float>> transform;
 
-        explicit PointStyle(CompOp compOp, PointOrientation orientation, ColorFunction colorFunc, FloatFunction sizeFunc, std::shared_ptr<const BitmapImage> pointImage, const boost::optional<cglib::mat3x3<float>>& transform) : compOp(compOp), orientation(orientation), colorFunc(std::move(colorFunc)), sizeFunc(std::move(sizeFunc)), pointImage(std::move(pointImage)), transform(transform) { }
+        explicit PointStyle(CompOp compOp, ColorFunction colorFunc, FloatFunction sizeFunc, std::shared_ptr<const BitmapImage> image, const boost::optional<cglib::mat3x3<float>>& transform) : compOp(compOp), colorFunc(std::move(colorFunc)), sizeFunc(std::move(sizeFunc)), image(std::move(image)), transform(transform) { }
     };
 
     struct TextStyle final {
         CompOp compOp;
-        PointOrientation orientation;
         ColorFunction colorFunc;
         FloatFunction sizeFunc;
         ColorFunction haloColorFunc;
@@ -70,9 +64,8 @@ namespace carto { namespace vt {
         float backgroundScale;
         cglib::vec2<float> backgroundOffset;
         std::shared_ptr<const BitmapImage> backgroundImage;
-        boost::optional<cglib::mat3x3<float>> transform;
 
-        explicit TextStyle(CompOp compOp, PointOrientation orientation, ColorFunction colorFunc, FloatFunction sizeFunc, ColorFunction haloColorFunc, FloatFunction haloRadiusFunc, float angle, float backgroundScale, const cglib::vec2<float>& backgroundOffset, std::shared_ptr<const BitmapImage> backgroundImage, const boost::optional<cglib::mat3x3<float>>& transform) : compOp(compOp), orientation(orientation), colorFunc(std::move(colorFunc)), sizeFunc(std::move(sizeFunc)), haloColorFunc(std::move(haloColorFunc)), haloRadiusFunc(std::move(haloRadiusFunc)), angle(angle), backgroundScale(backgroundScale), backgroundOffset(backgroundOffset), backgroundImage(std::move(backgroundImage)), transform(transform) { }
+        explicit TextStyle(CompOp compOp, ColorFunction colorFunc, FloatFunction sizeFunc, ColorFunction haloColorFunc, FloatFunction haloRadiusFunc, float angle, float backgroundScale, const cglib::vec2<float>& backgroundOffset, std::shared_ptr<const BitmapImage> backgroundImage, const boost::optional<cglib::mat3x3<float>>& transform) : compOp(compOp), colorFunc(std::move(colorFunc)), sizeFunc(std::move(sizeFunc)), haloColorFunc(std::move(haloColorFunc)), haloRadiusFunc(std::move(haloRadiusFunc)), angle(angle), backgroundScale(backgroundScale), backgroundOffset(backgroundOffset), backgroundImage(std::move(backgroundImage)) { }
     };
 
     struct LineStyle final {
@@ -103,14 +96,14 @@ namespace carto { namespace vt {
         explicit Polygon3DStyle(ColorFunction colorFunc, const boost::optional<cglib::mat3x3<float>>& transform) : colorFunc(std::move(colorFunc)), transform(transform) { }
     };
 
-    struct BitmapLabelStyle final {
+    struct PointLabelStyle final {
         LabelOrientation orientation;
         ColorFunction colorFunc;
         FloatFunction sizeFunc;
         std::shared_ptr<const BitmapImage> image;
-        cglib::mat3x3<float> transform;
+        boost::optional<cglib::mat3x3<float>> transform;
 
-        explicit BitmapLabelStyle(LabelOrientation orientation, ColorFunction colorFunc, FloatFunction sizeFunc, std::shared_ptr<const BitmapImage> image, const cglib::mat3x3<float>& transform) : orientation(orientation), colorFunc(std::move(colorFunc)), sizeFunc(std::move(sizeFunc)), image(std::move(image)), transform(transform){ }
+        explicit PointLabelStyle(LabelOrientation orientation, ColorFunction colorFunc, FloatFunction sizeFunc, std::shared_ptr<const BitmapImage> image, const boost::optional<cglib::mat3x3<float>>& transform) : orientation(orientation), colorFunc(std::move(colorFunc)), sizeFunc(std::move(sizeFunc)), image(std::move(image)), transform(transform){ }
     };
 
     struct TextLabelStyle final {

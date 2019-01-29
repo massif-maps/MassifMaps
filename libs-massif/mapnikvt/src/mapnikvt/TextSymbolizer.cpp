@@ -41,7 +41,7 @@ namespace carto { namespace mvt {
 
         float fontScale = symbolizerContext.getSettings().getFontScale();
         vt::LabelOrientation placement = convertTextPlacement(_placement);
-        float minimumDistance = _minimumDistance * std::pow(2.0f, -exprContext.getAdjustedZoom());
+        float minimumDistance = _minimumDistance * std::exp2f(-exprContext.getAdjustedZoom());
 
         vt::ColorFunction fillFunc = _functionBuilder.createColorOpacityFunction(_fillFunc, _opacityFunc);
         vt::FloatFunction sizeFunc = _functionBuilder.createChainedFloatFunction("multiply" + boost::lexical_cast<std::string>(fontScale), [fontScale](float size) { return size * fontScale; }, _sizeFunc);
@@ -70,7 +70,7 @@ namespace carto { namespace mvt {
 
         auto flushTexts = [&](const cglib::mat3x3<float>& transform) {
             if (_allowOverlap) {
-                vt::TextStyle style(compOp, convertLabelToPointOrientation(placement), fillFunc, sizeFunc, haloFillFunc, haloRadiusFunc, _orientationAngle, fontScale, cglib::vec2<float>(0, 0), std::shared_ptr<vt::BitmapImage>(), transform);
+                vt::TextStyle style(compOp, fillFunc, sizeFunc, haloFillFunc, haloRadiusFunc, _orientationAngle, fontScale, cglib::vec2<float>(0, 0), std::shared_ptr<vt::BitmapImage>(), transform);
 
                 std::size_t textInfoIndex = 0;
                 layerBuilder.addTexts([&](long long& id, vt::TileLayerBuilder::Vertex& vertex, std::string& text) {

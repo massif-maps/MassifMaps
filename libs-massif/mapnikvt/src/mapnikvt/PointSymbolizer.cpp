@@ -37,7 +37,7 @@ namespace carto { namespace mvt {
         vt::FloatFunction sizeFunc = _functionBuilder.createFloatFunction(fontScale * bitmapImage->scale);
         vt::ColorFunction fillFunc = _functionBuilder.createColorOpacityFunction(_functionBuilder.createColorFunction(vt::Color(1, 1, 1, 1)), _opacityFunc);
 
-        vt::PointStyle pointStyle(compOp, vt::PointOrientation::BILLBOARD_2D, fillFunc, sizeFunc, bitmapImage, _transform);
+        vt::PointStyle pointStyle(compOp, fillFunc, sizeFunc, bitmapImage, _transform);
 
         std::vector<std::pair<long long, vt::TileLayerBuilder::Vertex>> pointInfos;
         for (std::size_t index = 0; index < featureCollection.size(); index++) {

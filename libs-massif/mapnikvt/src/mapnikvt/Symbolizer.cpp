@@ -43,17 +43,6 @@ namespace carto { namespace mvt {
         }
     }
 
-    vt::PointOrientation Symbolizer::convertLabelToPointOrientation(vt::LabelOrientation orientation) const {
-        switch (orientation) {
-        case vt::LabelOrientation::BILLBOARD_2D:
-            return vt::PointOrientation::BILLBOARD_2D;
-        case vt::LabelOrientation::BILLBOARD_3D:
-            return vt::PointOrientation::BILLBOARD_3D;
-        default: // LabelOrientation::POINT, LabelOrientation::POINT_FLIPPING, LabelOrientation::LINE
-            return vt::PointOrientation::POINT;
-        }
-    }
-
     vt::Color Symbolizer::convertColor(const Value& val) const {
         try {
             return parseColor(boost::lexical_cast<std::string>(val));

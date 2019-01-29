@@ -40,7 +40,6 @@ namespace carto { namespace mvt {
 
         vt::CompOp convertCompOp(const std::string& compOp) const;
         vt::LabelOrientation convertLabelPlacement(const std::string& orientation) const;
-        vt::PointOrientation convertLabelToPointOrientation(vt::LabelOrientation orientation) const;
 
         vt::Color convertColor(const Value& val) const;
         cglib::mat3x3<float> convertTransform(const Value& val) const;

@@ -349,7 +349,14 @@ namespace carto { namespace css {
                 if (i > 0) {
                     exprStr += ",";
                 }
-                exprStr += (stringExpr ? "{" : "") + buildExpressionString(funcExpr->getArgs()[i], false) + (stringExpr ? "}" : "");
+                bool escapeArg = stringExpr;
+                if (auto constExpr = std::dynamic_pointer_cast<const ConstExpression>(funcExpr->getArgs()[i])) {
+                    // No need to escape integer or floating point values. This provides cleaner output and also compability with Mapnik
+                    if (boost::get<double>(&constExpr->getValue()) || boost::get<long long>(&constExpr->getValue())) {
+                        escapeArg = false;
+                    }
+                }
+                exprStr += (escapeArg ? "{" : "") + buildExpressionString(funcExpr->getArgs()[i], false) + (escapeArg ? "}" : "");
             }
             exprStr += ")";
             return exprStr;

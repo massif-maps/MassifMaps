@@ -10,7 +10,7 @@ namespace carto { namespace mvt {
             return;
         }
         
-        std::shared_ptr<const vt::BitmapPattern> pattern = symbolizerContext.getBitmapManager()->loadBitmapPattern(_file, 0.5f, 1.0f);
+        std::shared_ptr<const vt::BitmapPattern> pattern = symbolizerContext.getBitmapManager()->loadBitmapPattern(_file, PATTERN_SCALE, PATTERN_SCALE);
         if (!pattern) {
             _logger->write(Logger::Severity::ERROR, "Failed to load line pattern bitmap " + _file);
             return;
@@ -18,7 +18,7 @@ namespace carto { namespace mvt {
         
         vt::CompOp compOp = convertCompOp(_compOp);
 
-        vt::FloatFunction widthFunc = _functionBuilder.createFloatFunction(pattern->bitmap->height * PATTERN_SCALE);
+        vt::FloatFunction widthFunc = _functionBuilder.createFloatFunction(pattern->bitmap->height);
         vt::ColorFunction fillFunc = _functionBuilder.createColorOpacityFunction(_fillFunc, _opacityFunc);
 
         vt::LineStyle style(compOp, vt::LineJoinMode::MITER, vt::LineCapMode::NONE, fillFunc, widthFunc, pattern, _geometryTransform);

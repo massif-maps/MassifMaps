@@ -48,7 +48,7 @@ namespace {
 }
 
 namespace carto { namespace vt {
-    LabelCuller::LabelCuller(std::shared_ptr<std::mutex> mutex, std::shared_ptr<TileTransformer> transformer, float scale) :
+    LabelCuller::LabelCuller(std::shared_ptr<std::mutex> mutex, std::shared_ptr<const TileTransformer> transformer, float scale) :
         _projectionMatrix(cglib::mat4x4<double>::identity()), _mvpMatrix(cglib::mat4x4<float>::identity()), _viewState(cglib::mat4x4<double>::identity(), cglib::mat4x4<double>::identity(), 0, 1, 1, scale), _mutex(std::move(mutex)), _transformer(std::move(transformer)), _scale(scale)
     {
     }

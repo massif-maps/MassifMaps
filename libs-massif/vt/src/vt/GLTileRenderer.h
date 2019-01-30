@@ -37,7 +37,7 @@
 namespace carto { namespace vt {
     class GLTileRenderer final {
     public:
-        explicit GLTileRenderer(std::shared_ptr<std::mutex> mutex, std::shared_ptr<GLExtensions> glExtensions, std::shared_ptr<TileTransformer> transformer, float scale);
+        explicit GLTileRenderer(std::shared_ptr<std::mutex> mutex, std::shared_ptr<GLExtensions> glExtensions, std::shared_ptr<const TileTransformer> transformer, float scale);
 
         void setViewState(const cglib::mat4x4<double>& projectionMatrix, const cglib::mat4x4<double>& cameraMatrix, float zoom, float aspectRatio, float resolution);
         void setLightDir(const cglib::vec3<float>& lightDir);
@@ -253,7 +253,7 @@ namespace carto { namespace vt {
 
         const std::shared_ptr<std::mutex> _mutex;
         const std::shared_ptr<GLExtensions> _glExtensions;
-        const std::shared_ptr<TileTransformer> _transformer;
+        const std::shared_ptr<const TileTransformer> _transformer;
         const float _scale;
     };
 } }

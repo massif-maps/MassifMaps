@@ -7,7 +7,7 @@ namespace carto { namespace vt {
         const TileGeometry::StyleParameters& styleParams = _geometry->getStyleParameters();
         const TileGeometry::VertexGeometryLayoutParameters& vertexGeomLayoutParams = _geometry->getVertexGeometryLayoutParameters();
         if (styleParams.translate) {
-            float zoomScale = std::exp2(tileId.zoom - _viewState.zoom);
+            float zoomScale = std::pow(2.0f, tileId.zoom - _viewState.zoom);
             cglib::vec2<float> translate = (*styleParams.translate) * zoomScale;
             _transformMatrix = transformer->calculateTileTransform(tileId, translate, 1.0f / vertexGeomLayoutParams.coordScale);
         }

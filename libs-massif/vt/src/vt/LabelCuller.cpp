@@ -147,7 +147,7 @@ namespace carto { namespace vt {
             }
         }
         else {
-            float zoomScale = std::exp2(label->getTileId().zoom - _viewState.zoom);
+            float zoomScale = std::pow(2.0f, label->getTileId().zoom - _viewState.zoom);
             cglib::vec2<float> translate = (*label->getStyle()->translate) * zoomScale;
             cglib::mat4x4<double> translateMatrix = cglib::mat4x4<double>::convert(_transformer->calculateTileTransform(label->getTileId(), translate, 1.0f));
             cglib::mat4x4<double> tileMatrix = _transformer->calculateTileMatrix(label->getTileId(), 1);

@@ -19,7 +19,7 @@ namespace {
         if (maxValue == 0.0f) {
             return 1.0f;
         }
-        return std::exp2(std::floor(std::log2(32767.0f / maxValue)));
+        return std::pow(2.0f, std::floor(std::log(32767.0f / maxValue) / std::log(2.0f)));
     }
 
     template <typename T>
@@ -33,7 +33,7 @@ namespace {
         if (maxValue == 0.0f) {
             return 1.0f;
         }
-        return std::exp2(std::floor(std::log2(32767.0f / maxValue)));
+        return std::pow(2.0f, std::floor(std::log(32767.0f / maxValue) / std::log(2.0f)));
     }
 }
 

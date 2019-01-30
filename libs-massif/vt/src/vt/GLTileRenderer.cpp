@@ -873,7 +873,7 @@ namespace carto { namespace vt {
             }
         }
         else {
-            float zoomScale = std::exp2(label->getTileId().zoom - _zoom);
+            float zoomScale = std::pow(2.0f, label->getTileId().zoom - _zoom);
             cglib::vec2<float> translate = (*label->getStyle()->translate) * zoomScale;
             cglib::mat4x4<double> translateMatrix = cglib::mat4x4<double>::convert(_transformer->calculateTileTransform(label->getTileId(), translate, 1.0f));
             cglib::mat4x4<double> tileMatrix = _transformer->calculateTileMatrix(label->getTileId(), 1);
@@ -1136,7 +1136,7 @@ namespace carto { namespace vt {
                     styleIndex = labelBatchParams.parameterCount++;
                     labelBatchParams.scale = labelStyle->scale;
                     if (labelStyle->translate) {
-                        float zoomScale = std::exp2(label->getTileId().zoom - _zoom);
+                        float zoomScale = std::pow(2.0f, label->getTileId().zoom - _zoom);
                         cglib::vec2<float> translate = (*labelStyle->translate) * zoomScale;
                         cglib::mat4x4<double> translateMatrix = cglib::mat4x4<double>::convert(_transformer->calculateTileTransform(label->getTileId(), translate, 1.0f));
                         cglib::mat4x4<double> tileMatrix = _transformer->calculateTileMatrix(label->getTileId(), 1);
@@ -1570,7 +1570,7 @@ namespace carto { namespace vt {
         glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "uMVPMatrix"), 1, GL_FALSE, mvpMatrix.data());
         
         if (styleParams.translate) {
-            float zoomScale = std::exp2(tileId.zoom - _zoom);
+            float zoomScale = std::pow(2.0f, tileId.zoom - _zoom);
             cglib::vec2<float> translate = (*styleParams.translate) * zoomScale;
             cglib::mat4x4<float> transformMatrix = _transformer->calculateTileTransform(tileId, translate, 1.0f / vertexGeomLayoutParams.coordScale);
             glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "uTransformMatrix"), 1, GL_FALSE, transformMatrix.data());
@@ -1601,7 +1601,7 @@ namespace carto { namespace vt {
                 }
             }
             
-            glUniform1f(glGetUniformLocation(shaderProgram, "uBinormalScale"), vertexGeomLayoutParams.coordScale / vertexGeomLayoutParams.binormalScale / std::exp2(_zoom - tileId.zoom));
+            glUniform1f(glGetUniformLocation(shaderProgram, "uBinormalScale"), vertexGeomLayoutParams.coordScale / vertexGeomLayoutParams.binormalScale / std::pow(2.0f, _zoom - tileId.zoom));
             glUniform1f(glGetUniformLocation(shaderProgram, "uSDFScale"), SDF_SHARPNESS_SCALE / _halfResolution / BITMAP_SDF_SCALE);
             glUniform1fv(glGetUniformLocation(shaderProgram, "uWidthTable"), styleParams.parameterCount, widths.data());
             glUniform1fv(glGetUniformLocation(shaderProgram, "uStrokeWidthTable"), styleParams.parameterCount, strokeWidths.data());
@@ -1631,7 +1631,7 @@ namespace carto { namespace vt {
                 }
             }
 
-            glUniform1f(glGetUniformLocation(shaderProgram, "uBinormalScale"), vertexGeomLayoutParams.coordScale / (_halfResolution * vertexGeomLayoutParams.binormalScale * std::exp2(_zoom - tileId.zoom)));
+            glUniform1f(glGetUniformLocation(shaderProgram, "uBinormalScale"), vertexGeomLayoutParams.coordScale / (_halfResolution * vertexGeomLayoutParams.binormalScale * std::pow(2.0f, _zoom - tileId.zoom)));
             glUniform1fv(glGetUniformLocation(shaderProgram, "uWidthTable"), styleParams.parameterCount, widths.data());
             glUniform1f(glGetUniformLocation(shaderProgram, "uHalfResolution"), _halfResolution);
             glUniform1f(glGetUniformLocation(shaderProgram, "uGamma"), gamma);
@@ -1639,10 +1639,10 @@ namespace carto { namespace vt {
         else if (geometry->getType() == TileGeometry::Type::POLYGON3D) {
             glUniform1f(glGetUniformLocation(shaderProgram, "uUVScale"), 1.0f / vertexGeomLayoutParams.texCoordScale);
             glUniform1f(glGetUniformLocation(shaderProgram, "uHeightScale"), blend / vertexGeomLayoutParams.heightScale * vertexGeomLayoutParams.coordScale);
-            glUniform1f(glGetUniformLocation(shaderProgram, "uAbsHeightScale"), blend / vertexGeomLayoutParams.heightScale * BUILDINGS_HEIGHT_SCALE / std::exp2f(tileId.zoom));
+            glUniform1f(glGetUniformLocation(shaderProgram, "uAbsHeightScale"), blend / vertexGeomLayoutParams.heightScale * BUILDINGS_HEIGHT_SCALE / std::pow(2.0f, tileId.zoom));
             cglib::mat3x3<float> tileMatrix = cglib::mat3x3<float>::convert(cglib::inverse(calculateTileMatrix2D(targetTileId)) * calculateTileMatrix2D(tileId));
             if (styleParams.translate) {
-                float zoomScale = std::exp2(tileId.zoom - _zoom);
+                float zoomScale = std::pow(2.0f, tileId.zoom - _zoom);
                 cglib::vec2<float> translate = (*styleParams.translate) * zoomScale;
                 tileMatrix = tileMatrix * cglib::translate3_matrix(cglib::vec3<float>(translate(0), translate(1), 1));
             }
@@ -1683,7 +1683,7 @@ namespace carto { namespace vt {
         }
 
         if (styleParams.pattern) {
-            float zoomScale = std::exp2(std::floor(_zoom) - tileId.zoom);
+            float zoomScale = std::pow(2.0f, std::floor(_zoom) - tileId.zoom);
             float coordScale = 1.0f / (vertexGeomLayoutParams.texCoordScale * styleParams.pattern->widthScale);
             cglib::vec2<float> uvScale(coordScale, coordScale);
             if (geometry->getType() == TileGeometry::Type::LINE) {

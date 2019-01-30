@@ -20,6 +20,8 @@ namespace carto { namespace mvt {
         void setLayerNameOverride(const std::string& name);
 
     protected:
+        virtual std::shared_ptr<vt::TileBackground> createTileBackground(const vt::TileId& tileId) const override;
+        
         virtual std::shared_ptr<FeatureDecoder::FeatureIterator> createFeatureIterator(const std::shared_ptr<const Layer>& layer) const override;
 
         const MBVTFeatureDecoder& _featureDecoder;

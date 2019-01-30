@@ -19,12 +19,8 @@ namespace carto { namespace mvt {
         exprContext.setTileId(tileId);
         exprContext.setAdjustedZoom(tileId.zoom + static_cast<int>(_symbolizerContext.getSettings().getZoomLevelBias()));
         exprContext.setNutiParameterValueMap(_symbolizerContext.getSettings().getNutiParameterValueMap());
-        
-        std::shared_ptr<const vt::BitmapPattern> backgroundPattern;
-        if (!_map->getSettings().backgroundImage.empty()) {
-            backgroundPattern = _symbolizerContext.getBitmapManager()->loadBitmapPattern(_map->getSettings().backgroundImage, 1.0f, 1.0f);
-        }
-        auto tileBackground = std::make_shared<vt::TileBackground>(_map->getSettings().backgroundColor, backgroundPattern);
+
+        std::shared_ptr<vt::TileBackground> tileBackground = createTileBackground(tileId);
 
         std::vector<std::shared_ptr<vt::TileLayer>> tileLayers;
         int layerIdx = 0;

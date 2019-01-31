@@ -358,7 +358,7 @@ namespace carto { namespace vt {
         for (TileId tileId : tileIds) {
             int deltaZoom = tileId.zoom - baseTileId.zoom;
             TileId tileId0(tileId.zoom, xCoord ? tileId.x : baseTileId.x << deltaZoom, xCoord ? baseTileId.y << deltaZoom : tileId.y);
-            TileId tileId1(tileId.zoom, tileId.x + (xCoord ? 1 : 0), tileId.y + (xCoord ? 0 : 1));
+            TileId tileId1(tileId.zoom, tileId0.x + (xCoord ? 1 : 0), tileId0.y + (xCoord ? 0 : 1));
             
             float pos0 = calculatePosition(tileId0);
             float pos1 = calculatePosition(tileId1);

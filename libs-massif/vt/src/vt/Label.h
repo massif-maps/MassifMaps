@@ -67,7 +67,7 @@ namespace carto { namespace vt {
         constexpr static float EXTRA_PLACEMENT_PIXELS = 30.0f; // extra visible pixels required for placement
         constexpr static float MAX_SINGLE_SEGMENT_ANGLE = 1.0472f; // maximum angle between consecutive segments, in radians
         constexpr static float MAX_SUMMED_SEGMENT_ANGLE = 2.0944f; // maximum sum of segment angles, in radians
-        constexpr static float MIN_BILLBOARD_VIEW_NORMAL_DOTPRODUCT = 0.55f; // the minimum allowed dot product between view vector and surface normal
+        constexpr static float MIN_BILLBOARD_VIEW_NORMAL_DOTPRODUCT = 0.49f; // the minimum allowed dot product between view vector and surface normal
 
         using Vertex = cglib::vec3<double>;
         using Vertices = std::vector<Vertex>;

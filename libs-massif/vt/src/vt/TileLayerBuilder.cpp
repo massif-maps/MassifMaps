@@ -117,7 +117,7 @@ namespace carto { namespace vt {
         boost::optional<cglib::mat3x3<float>> transform;
         if (style.angle != 0) {
             float angle = -style.angle * boost::math::constants::pi<float>() / 180.0f;
-            transform = cglib::mat3x3<float> {{ std::cos(angle), -std::sin(angle), 0 }, { std::sin(angle), std::cos(angle), 0 }, { 0, 0, 1 }};
+            transform = cglib::mat3x3<float> { { std::cos(angle), -std::sin(angle), 0 }, { std::sin(angle), std::cos(angle), 0 }, { 0, 0, 1 } };
         }
 
         const std::shared_ptr<Font>& font = formatter.getFont();
@@ -372,7 +372,7 @@ namespace carto { namespace vt {
         boost::optional<cglib::vec2<float>> translate;
         if (style.angle != 0) {
             float angle = style.angle * boost::math::constants::pi<float>() / 180.0f;
-            transform = cglib::mat2x2<float> {{ std::cos(angle), -std::sin(angle) }, { std::sin(angle), std::cos(angle) }};
+            transform = cglib::mat2x2<float> { { std::cos(angle), -std::sin(angle) }, { std::sin(angle), std::cos(angle) } };
         }
 
         const std::shared_ptr<Font>& font = formatter.getFont();

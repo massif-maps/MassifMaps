@@ -15,6 +15,7 @@
 #include <cglib/bbox.h>
 
 #include <cmath>
+#include <memory>
 
 #include <boost/optional.hpp>
 #include <boost/math/constants/constants.hpp>

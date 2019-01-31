@@ -88,13 +88,11 @@ namespace carto { namespace vt {
         attribute vec3 aVertexPosition;
         attribute vec2 aVertexUV;
         uniform mat4 uMVPMatrix;
-        uniform vec2 uUVScale;
-        uniform vec2 uUVOffset;
+        uniform mat3 uUVMatrix;
         varying mediump vec2 vUV;
 
         void main(void) {
-            vec2 uv = uUVScale * aVertexUV + uUVOffset;
-            vUV = vec2(uv.x, 1.0 - uv.y);
+            vUV = vec2(uUVMatrix * vec3(aVertexUV, 1.0));
             calculateNormal();
             gl_Position = uMVPMatrix * vec4(aVertexPosition, 1.0);
         }

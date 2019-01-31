@@ -1441,7 +1441,7 @@ namespace carto { namespace vt {
             return;
         }
 
-        for (const std::shared_ptr<const TileSurface>& tileSurface : buildCompiledTileSurfaces(tileId)) {
+        for (const std::shared_ptr<const TileSurface>& tileSurface : buildCompiledTileSurfaces(targetTileId.zoom > tileId.zoom ? targetTileId : tileId)) {
             const TileSurface::VertexGeometryLayoutParameters& vertexGeomLayoutParams = tileSurface->getVertexGeometryLayoutParameters();
             const CompiledSurface& compiledTileSurface = _compiledTileSurfaceMap[tileSurface];
 
@@ -1454,7 +1454,7 @@ namespace carto { namespace vt {
             glBindBuffer(GL_ARRAY_BUFFER, compiledTileSurface.vertexGeometryVBO);
             glVertexAttribPointer(glGetAttribLocation(shaderProgram, "aVertexPosition"), 3, GL_FLOAT, GL_FALSE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.coordOffset));
             glEnableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexPosition"));
-            glVertexAttribPointer(glGetAttribLocation(shaderProgram, "aVertexUV"), 2, GL_SHORT, GL_FALSE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.texCoordOffset));
+            glVertexAttribPointer(glGetAttribLocation(shaderProgram, "aVertexUV"), 2, GL_SHORT, GL_TRUE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.texCoordOffset));
             glEnableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexUV"));
             if (applyLighting) {
                 glVertexAttribPointer(glGetAttribLocation(shaderProgram, "aVertexNormal"), 3, GL_SHORT, GL_TRUE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.normalOffset));
@@ -1513,8 +1513,8 @@ namespace carto { namespace vt {
             if (targetTileId.zoom > tileId.zoom) {
                 uvMatrix = cglib::mat3x3<float>::convert(cglib::inverse(calculateTileMatrix2D(tileId)) * calculateTileMatrix2D(targetTileId));
             }
-            glUniform2f(glGetUniformLocation(shaderProgram, "uUVScale"), uvMatrix(0, 0), uvMatrix(1, 1));
-            glUniform2f(glGetUniformLocation(shaderProgram, "uUVOffset"), uvMatrix(0, 2), uvMatrix(1, 2));
+            uvMatrix = cglib::mat3x3<float> { { 1.0, 0.0, 0.0 }, { 0.0, -1.0, 1.0 }, { 0.0, 0.0, 1.0 } } * uvMatrix;
+            glUniformMatrix3fv(glGetUniformLocation(shaderProgram, "uUVMatrix"), 1, GL_FALSE, uvMatrix.data());
 
             glUniform1f(glGetUniformLocation(shaderProgram, "uOpacity"), blend * opacity);
 

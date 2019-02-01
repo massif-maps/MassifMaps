@@ -14,6 +14,7 @@
 #include "vt/Styles.h"
 
 #include <memory>
+#include <mutex>
 #include <functional>
 
 namespace carto { namespace mvt {
@@ -102,12 +103,31 @@ namespace carto { namespace mvt {
                     return it->second;
                 }
             }
+
+            struct ViewStateFunction {
+                ViewStateFunction() = delete;
+                explicit ViewStateFunction(const std::shared_ptr<const Expression>& expr, const std::function<V(const Value&)>& convertFunc) : _expr(expr), _convertFunc(convertFunc), _mutex(std::make_shared<std::mutex>()) { }
+
+                V operator() (const vt::ViewState& viewState) const {
+                    std::lock_guard<std::mutex> lock(*_mutex);
+                    if (viewState.zoom != _cachedZoom) {
+                        ViewExpressionContext context;
+                        context.setZoom(viewState.zoom);
+                        _cachedZoom = viewState.zoom;
+                        _cachedValue = _convertFunc(_expr->evaluate(context));
+                    }
+                    return _cachedValue;
+                }
+
+            private:
+                const std::shared_ptr<const Expression> _expr;
+                const std::function<V(const Value&)> _convertFunc;
+                mutable float _cachedZoom = std::numeric_limits<float>::quiet_NaN();
+                mutable V _cachedValue;
+                mutable std::shared_ptr<std::mutex> _mutex;
+            };
             
-            Function func(std::make_shared<std::function<V(const vt::ViewState&)>>([expr, convertFunc](const vt::ViewState& viewState) {
-                ViewExpressionContext context;
-                context.setZoom(viewState.zoom);
-                return convertFunc(expr->evaluate(context));
-            }));
+            Function func(std::make_shared<std::function<V(const vt::ViewState&)>>(ViewStateFunction(expr, convertFunc)));
             
             if (_functionCache.size() >= MAX_CACHE_SIZE) {
                 _functionCache.erase(_functionCache.begin()); // erase any element to keep the cache compact

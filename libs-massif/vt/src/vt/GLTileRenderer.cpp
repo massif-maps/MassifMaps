@@ -10,7 +10,7 @@
 
 namespace carto { namespace vt {
     GLTileRenderer::GLTileRenderer(std::shared_ptr<std::mutex> mutex, std::shared_ptr<GLExtensions> glExtensions, std::shared_ptr<const TileTransformer> transformer, float scale) :
-        _tileSurfaceBuilder(transformer), _lightDir(0.5f, 0.5f, -0.707f), _projectionMatrix(cglib::mat4x4<double>::identity()), _cameraMatrix(cglib::mat4x4<double>::identity()), _cameraProjMatrix(cglib::mat4x4<double>::identity()), _viewState(cglib::mat4x4<double>::identity(), cglib::mat4x4<double>::identity(), 0, 1, 1, scale), _mutex(std::move(mutex)), _glExtensions(std::move(glExtensions)), _transformer(std::move(transformer)), _scale(scale)
+        _tileSurfaceBuilder(transformer), _lightDir(0.0f, 0.0f, 1.0f), _projectionMatrix(cglib::mat4x4<double>::identity()), _cameraMatrix(cglib::mat4x4<double>::identity()), _cameraProjMatrix(cglib::mat4x4<double>::identity()), _viewState(cglib::mat4x4<double>::identity(), cglib::mat4x4<double>::identity(), 0, 1, 1, scale), _mutex(std::move(mutex)), _glExtensions(std::move(glExtensions)), _transformer(std::move(transformer)), _scale(scale)
     {
         _blendNodes = std::make_shared<std::vector<std::shared_ptr<BlendNode>>>();
         _bitmapLabelMap[0] = _bitmapLabelMap[1] = std::make_shared<BitmapLabelMap>();
@@ -134,8 +134,7 @@ namespace carto { namespace vt {
         for (auto labelIt = _labelMap.begin(); labelIt != _labelMap.end();) {
             if (labelIt->second->getOpacity() <= 0) {
                 labelIt = _labelMap.erase(labelIt);
-            }
-            else {
+            } else {
                 labelIt->second->setActive(false);
                 labelIt++;
             }
@@ -148,8 +147,7 @@ namespace carto { namespace vt {
                 newLabelIt->second->setVisible(oldLabelIt->second->isVisible());
                 newLabelIt->second->setOpacity(oldLabelIt->second->getOpacity());
                 newLabelIt->second->snapPlacement(*oldLabelIt->second);
-            }
-            else {
+            } else {
                 newLabelIt->second->setVisible(false);
                 newLabelIt->second->setOpacity(0);
             }
@@ -208,8 +206,7 @@ namespace carto { namespace vt {
                         blendNode->childNodes.push_back(oldBlendNode);
                         oldBlendNode->blend = calculateBlendNodeOpacity(*oldBlendNode, 1.0f); // this is an optimization, to reduce extensive blending subtrees
                         oldBlendNode->childNodes.clear();
-                    }
-                    else {
+                    } else {
                         blendNode->blend = std::max(blendNode->blend, oldBlendNode->blend);
                     }
                 }
@@ -486,8 +483,7 @@ namespace carto { namespace vt {
             if (it->first.expired()) {
                 deleteCompiledBitmap(it->second);
                 it = _compiledBitmapMap.erase(it);
-            }
-            else {
+            } else {
                 it++;
             }
         }
@@ -497,8 +493,7 @@ namespace carto { namespace vt {
             if (it->first.expired()) {
                 deleteCompiledBitmap(it->second);
                 it = _compiledTileBitmapMap.erase(it);
-            }
-            else {
+            } else {
                 it++;
             }
         }
@@ -508,8 +503,7 @@ namespace carto { namespace vt {
             if (it->first.expired()) {
                 deleteCompiledSurface(it->second);
                 it = _compiledTileSurfaceMap.erase(it);
-            }
-            else {
+            } else {
                 it++;
             }
         }
@@ -519,8 +513,7 @@ namespace carto { namespace vt {
             if (it->first.expired()) {
                 deleteCompiledGeometry(it->second);
                 it = _compiledTileGeometryMap.erase(it);
-            }
-            else {
+            } else {
                 it++;
             }
         }
@@ -800,8 +793,7 @@ namespace carto { namespace vt {
                 if (baseRenderNode.tileId.zoom > renderNode.tileId.zoom) {
                     renderNode.blend = std::max(renderNode.blend, std::min(renderNode.initialBlend + baseRenderNode.blend, 1.0f));
                     it = renderNodeMap.erase(--it);
-                }
-                else {
+                } else {
                     baseRenderNode.blend = std::max(baseRenderNode.blend, std::min(baseRenderNode.initialBlend + renderNode.blend, 1.0f));
                     return;
                 }
@@ -871,8 +863,7 @@ namespace carto { namespace vt {
             for (int i = 0; i < 4; i++) {
                 quad[i] = _viewState.origin + cglib::vec3<double>::convert(envelope[i]);
             }
-        }
-        else {
+        } else {
             float zoomScale = std::pow(2.0f, label->getTileId().zoom - _zoom);
             cglib::vec2<float> translate = (*label->getStyle()->translate) * zoomScale;
             cglib::mat4x4<double> translateMatrix = cglib::mat4x4<double>::convert(_transformer->calculateTileTransform(label->getTileId(), translate, 1.0f));
@@ -1120,8 +1111,7 @@ namespace carto { namespace vt {
                                 break;
                             }
                         }
-                    }
-                    else {
+                    } else {
                         if (labelBatchParams.colorTable[styleIndex] == color && labelBatchParams.widthTable[styleIndex] == size && labelBatchParams.strokeWidthTable[styleIndex] == 0) {
                             break;
                         }
@@ -1141,8 +1131,7 @@ namespace carto { namespace vt {
                         cglib::mat4x4<double> translateMatrix = cglib::mat4x4<double>::convert(_transformer->calculateTileTransform(label->getTileId(), translate, 1.0f));
                         cglib::mat4x4<double> tileMatrix = _transformer->calculateTileMatrix(label->getTileId(), 1);
                         labelBatchParams.labelMatrix = _cameraMatrix * tileMatrix * translateMatrix * cglib::inverse(tileMatrix) * cglib::translate4_matrix(_viewState.origin);
-                    }
-                    else {
+                    } else {
                         labelBatchParams.labelMatrix = _cameraMatrix * cglib::translate4_matrix(_viewState.origin);
                     }
                     labelBatchParams.colorTable[styleIndex] = color;
@@ -1175,8 +1164,7 @@ namespace carto { namespace vt {
                 for (unsigned short* it = _labelIndices.end() - indexCount; it != _labelIndices.end(); it++) {
                     *it += static_cast<unsigned short>(vertexCount);
                 }
-            }
-            else {
+            } else {
                 label->calculateVertexData(labelBatchParams.widthTable[styleIndex], _viewState, styleIndex, _labelVertices, _labelNormals, _labelTexCoords, _labelAttribs, _labelIndices);
             }
 
@@ -1279,7 +1267,7 @@ namespace carto { namespace vt {
             const TileSurface::VertexGeometryLayoutParameters& vertexGeomLayoutParams = tileSurface->getVertexGeometryLayoutParameters();
             const CompiledSurface& compiledTileSurface = _compiledTileSurfaceMap[tileSurface];
 
-            bool applyLighting = vertexGeomLayoutParams.normalOffset >= 0;
+            bool applyLighting = _lightDir[2] < 0.99f || vertexGeomLayoutParams.normalOffset >= 0;
 
             GLuint shaderProgram = _shaderManager.createProgram("background", _patternTransformLightingContext[0][0][applyLighting ? 1 : 0]);
             glUseProgram(shaderProgram);
@@ -1289,8 +1277,12 @@ namespace carto { namespace vt {
             glVertexAttribPointer(glGetAttribLocation(shaderProgram, "aVertexPosition"), 3, GL_FLOAT, GL_FALSE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.coordOffset));
             glEnableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexPosition"));
             if (applyLighting) {
-                glVertexAttribPointer(glGetAttribLocation(shaderProgram, "aVertexNormal"), 3, GL_SHORT, GL_TRUE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.normalOffset));
-                glEnableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexNormal"));
+                if (vertexGeomLayoutParams.normalOffset >= 0) {
+                    glVertexAttribPointer(glGetAttribLocation(shaderProgram, "aVertexNormal"), 3, GL_SHORT, GL_TRUE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.normalOffset));
+                    glEnableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexNormal"));
+                } else {
+                    glVertexAttrib3f(glGetAttribLocation(shaderProgram, "aVertexNormal"), 0, 0, 1);
+                }
             }
 
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, compiledTileSurface.indicesVBO);
@@ -1308,7 +1300,9 @@ namespace carto { namespace vt {
             glDrawElements(GL_TRIANGLES, tileSurface->getIndicesCount(), GL_UNSIGNED_SHORT, 0);
 
             if (applyLighting) {
-                glDisableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexNormal"));
+                if (vertexGeomLayoutParams.normalOffset >= 0) {
+                    glDisableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexNormal"));
+                }
             }
             glDisableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexPosition"));
 
@@ -1360,7 +1354,7 @@ namespace carto { namespace vt {
             const TileSurface::VertexGeometryLayoutParameters& vertexGeomLayoutParams = tileSurface->getVertexGeometryLayoutParameters();
             const CompiledSurface& compiledTileSurface = _compiledTileSurfaceMap[tileSurface];
 
-            bool applyLighting = vertexGeomLayoutParams.normalOffset >= 0;
+            bool applyLighting = _lightDir[2] < 0.99f || vertexGeomLayoutParams.normalOffset >= 0;
 
             GLuint shaderProgram = _shaderManager.createProgram("background", _patternTransformLightingContext[background->getPattern() ? 1 : 0][0][applyLighting ? 1 : 0]);
             glUseProgram(shaderProgram);
@@ -1374,8 +1368,12 @@ namespace carto { namespace vt {
                 glEnableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexUV"));
             }
             if (applyLighting) {
-                glVertexAttribPointer(glGetAttribLocation(shaderProgram, "aVertexNormal"), 3, GL_SHORT, GL_TRUE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.normalOffset));
-                glEnableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexNormal"));
+                if (vertexGeomLayoutParams.normalOffset >= 0) {
+                    glVertexAttribPointer(glGetAttribLocation(shaderProgram, "aVertexNormal"), 3, GL_SHORT, GL_TRUE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.normalOffset));
+                    glEnableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexNormal"));
+                } else {
+                    glVertexAttrib3f(glGetAttribLocation(shaderProgram, "aVertexNormal"), 0, 0, 1);
+                }
             }
 
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, compiledTileSurface.indicesVBO);
@@ -1399,8 +1397,7 @@ namespace carto { namespace vt {
                     glGenerateMipmap(GL_TEXTURE_2D);
 
                     _compiledBitmapMap[pattern->bitmap] = compiledBitmap;
-                }
-                else {
+                } else {
                     compiledBitmap = it->second;
                 }
 
@@ -1422,7 +1419,9 @@ namespace carto { namespace vt {
             glDrawElements(GL_TRIANGLES, tileSurface->getIndicesCount(), GL_UNSIGNED_SHORT, 0);
 
             if (applyLighting) {
-                glDisableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexNormal"));
+                if (vertexGeomLayoutParams.normalOffset >= 0) {
+                    glDisableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexNormal"));
+                }
             }
             if (background->getPattern()) {
                 glBindTexture(GL_TEXTURE_2D, 0);
@@ -1445,7 +1444,7 @@ namespace carto { namespace vt {
             const TileSurface::VertexGeometryLayoutParameters& vertexGeomLayoutParams = tileSurface->getVertexGeometryLayoutParameters();
             const CompiledSurface& compiledTileSurface = _compiledTileSurfaceMap[tileSurface];
 
-            bool applyLighting = vertexGeomLayoutParams.normalOffset >= 0;
+            bool applyLighting = _lightDir[2] < 0.99f || vertexGeomLayoutParams.normalOffset >= 0;
 
             GLuint shaderProgram = _shaderManager.createProgram("bitmap", _patternTransformLightingContext[0][0][applyLighting ? 1 : 0]);
             glUseProgram(shaderProgram);
@@ -1457,8 +1456,12 @@ namespace carto { namespace vt {
             glVertexAttribPointer(glGetAttribLocation(shaderProgram, "aVertexUV"), 2, GL_SHORT, GL_TRUE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.texCoordOffset));
             glEnableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexUV"));
             if (applyLighting) {
-                glVertexAttribPointer(glGetAttribLocation(shaderProgram, "aVertexNormal"), 3, GL_SHORT, GL_TRUE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.normalOffset));
-                glEnableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexNormal"));
+                if (vertexGeomLayoutParams.normalOffset >= 0) {
+                    glVertexAttribPointer(glGetAttribLocation(shaderProgram, "aVertexNormal"), 3, GL_SHORT, GL_TRUE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.normalOffset));
+                    glEnableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexNormal"));
+                } else {
+                    glVertexAttrib3f(glGetAttribLocation(shaderProgram, "aVertexNormal"), 0, 0, 1);
+                }
             }
 
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, compiledTileSurface.indicesVBO);
@@ -1500,8 +1503,7 @@ namespace carto { namespace vt {
                 }
 
                 _compiledTileBitmapMap[bitmap] = compiledTileBitmap;
-            }
-            else {
+            } else {
                 compiledTileBitmap = it->second;
             }
 
@@ -1527,7 +1529,9 @@ namespace carto { namespace vt {
             glBindTexture(GL_TEXTURE_2D, 0);
 
             if (applyLighting) {
-                glDisableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexNormal"));
+                if (vertexGeomLayoutParams.normalOffset >= 0) {
+                    glDisableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexNormal"));
+                }
             }
             glDisableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexUV"));
             glDisableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexPosition"));
@@ -1540,7 +1544,8 @@ namespace carto { namespace vt {
     void GLTileRenderer::renderTileGeometry(const TileId& tileId, const TileId& targetTileId, float blend, float opacity, const std::shared_ptr<const Tile>& tile, const std::shared_ptr<TileGeometry>& geometry) {
         const TileGeometry::StyleParameters& styleParams = geometry->getStyleParameters();
         const TileGeometry::VertexGeometryLayoutParameters& vertexGeomLayoutParams = geometry->getVertexGeometryLayoutParameters();
-        bool applyLighting = vertexGeomLayoutParams.normalOffset >= 0 || geometry->getType() == TileGeometry::Type::POLYGON3D;
+        
+        bool applyLighting = _lightDir[2] < 0.99f || vertexGeomLayoutParams.normalOffset >= 0 || geometry->getType() == TileGeometry::Type::POLYGON3D;
         
         if (blend * opacity <= 0) {
             return;
@@ -1677,8 +1682,7 @@ namespace carto { namespace vt {
             }
 
             _compiledTileGeometryMap[geometry] = compiledGeometry;
-        }
-        else {
+        } else {
             compiledGeometry = itGeom->second;
         }
 
@@ -1688,8 +1692,7 @@ namespace carto { namespace vt {
             cglib::vec2<float> uvScale(coordScale, coordScale);
             if (geometry->getType() == TileGeometry::Type::LINE) {
                 uvScale(0) *= zoomScale;
-            }
-            else if (geometry->getType() == TileGeometry::Type::POLYGON) {
+            } else if (geometry->getType() == TileGeometry::Type::POLYGON) {
                 uvScale *= zoomScale;
             }
             glUniform2f(glGetUniformLocation(shaderProgram, "uUVScale"), uvScale(0), uvScale(1));
@@ -1713,8 +1716,7 @@ namespace carto { namespace vt {
                 }
 
                 _compiledBitmapMap[styleParams.pattern->bitmap] = compiledBitmap;
-            }
-            else {
+            } else {
                 compiledBitmap = itBitmap->second;
             }
 
@@ -1742,8 +1744,7 @@ namespace carto { namespace vt {
                 if (vertexGeomLayoutParams.normalOffset >= 0) {
                     glVertexAttribPointer(glGetAttribLocation(shaderProgram, "aVertexNormal"), vertexGeomLayoutParams.dimensions, GL_SHORT, GL_TRUE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.normalOffset));
                     glEnableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexNormal"));
-                }
-                else {
+                } else {
                     glVertexAttrib3f(glGetAttribLocation(shaderProgram, "aVertexNormal"), 0, 0, 1);
                 }
             }
@@ -1765,8 +1766,7 @@ namespace carto { namespace vt {
         
         if (compiledGeometry.geometryVAO != 0) {
             _glExtensions->glBindVertexArrayOES(0);
-        }
-        else {
+        } else {
             if (vertexGeomLayoutParams.heightOffset >= 0) {
                 glDisableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexHeight"));
             }
@@ -1803,8 +1803,7 @@ namespace carto { namespace vt {
         if (itBatch == _compiledLabelBatches.end()) {
             createCompiledLabelBatch(compiledLabelBatch);
             _compiledLabelBatches[_labelBatchCounter] = compiledLabelBatch;
-        }
-        else {
+        } else {
             compiledLabelBatch = itBatch->second;
         }
         _labelBatchCounter++;
@@ -1827,13 +1826,12 @@ namespace carto { namespace vt {
             }
 
             _compiledBitmapMap[bitmap] = compiledBitmap;
-        }
-        else {
+        } else {
             compiledBitmap = itBitmap->second;
         }
 
         bool useDerivatives = _glExtensions->GL_OES_standard_derivatives_supported();
-        bool applyLighting = !std::all_of(_labelNormals.begin(), _labelNormals.end(), [](const cglib::vec3<float>& normal) { return normal(2) == 1; });
+        bool applyLighting = _lightDir[2] < 0.99f || !std::all_of(_labelNormals.begin(), _labelNormals.end(), [](const cglib::vec3<float>& normal) { return normal(2) == 1; });
         GLuint shaderProgram = _shaderManager.createProgram("label", _derivativesLightingContext[useDerivatives ? 1 : 0][applyLighting ? 1 : 0]);
         glUseProgram(shaderProgram);
         checkGLError();
@@ -2005,8 +2003,7 @@ namespace carto { namespace vt {
             frameBuffer.depthStencilAttachments.push_back(GL_DEPTH_ATTACHMENT);
             frameBuffer.depthStencilAttachments.push_back(GL_STENCIL_ATTACHMENT);
             frameBuffer.depthStencilRBs.push_back(depthStencilRB);
-        }
-        else {
+        } else {
             if (useDepth) {
                 GLuint depthRB = 0;
                 glGenRenderbuffers(1, &depthRB);

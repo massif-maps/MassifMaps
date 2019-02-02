@@ -294,21 +294,23 @@ namespace carto { namespace css {
             }
             
             bool colorMode = false, scalarMode = false;
+            std::vector<std::pair<Value, Value>> keyFrames;
             for (std::size_t i = 1; i < funcExpr->getArgs().size(); i++) {
                 auto constExpr = std::dynamic_pointer_cast<const ConstExpression>(funcExpr->getArgs()[i]);
                 if (!constExpr) {
                     throw TranslatorException("Expecting constant interpolation list");
                 }
-                auto keyFrames = boost::get<std::vector<Value>>(&constExpr->getValue());
-                if (!keyFrames || keyFrames->size() != 2) {
+                auto keyFrame = boost::get<std::vector<Value>>(&constExpr->getValue());
+                if (!keyFrame || keyFrame->size() != 2) {
                     throw TranslatorException("Expecting interpolation elements of size 2");
                 }
-                if (boost::get<Color>(&keyFrames->at(1))) {
+                if (boost::get<Color>(&keyFrame->at(1))) {
                     colorMode = true;
                 }
                 else {
                     scalarMode = true;
                 }
+                keyFrames.emplace_back(keyFrame->at(0), keyFrame->at(1));
             }
 
             if (colorMode == scalarMode) {
@@ -324,11 +326,9 @@ namespace carto { namespace css {
                     subExprStr += "(";
                     subExprStr += buildExpressionString(funcExpr->getArgs()[0], false);
                     std::set<float> keyFrameComponents;
-                    for (std::size_t i = 1; i < funcExpr->getArgs().size(); i++) {
-                        auto constExpr = std::dynamic_pointer_cast<const ConstExpression>(funcExpr->getArgs()[i]);
-                        auto keyFrames = boost::get<std::vector<Value>>(&constExpr->getValue());
-                        float component = boost::get<Color>(keyFrames->at(1)).rgba()[c] * (c < 3 ? 255.0f : 1.0f);
-                        subExprStr += "," + boost::lexical_cast<std::string>(buildValue(keyFrames->at(0)));
+                    for (const std::pair<Value, Value>& keyFrame : keyFrames) {
+                        float component = boost::get<Color>(keyFrame.second).rgba()[c] * (c < 3 ? 255.0f : 1.0f);
+                        subExprStr += "," + boost::lexical_cast<std::string>(buildValue(keyFrame.first));
                         subExprStr += "," + boost::lexical_cast<std::string>(component);
                         keyFrameComponents.insert(component);
                     }
@@ -355,12 +355,11 @@ namespace carto { namespace css {
                 exprStr += "(";
                 exprStr += (stringExpr ? "{" : "") + buildExpressionString(funcExpr->getArgs()[0], false) + (stringExpr ? "}" : "");
                 std::set<Value> keyFrameValues;
-                for (std::size_t i = 1; i < funcExpr->getArgs().size(); i++) {
-                    auto constExpr = std::dynamic_pointer_cast<const ConstExpression>(funcExpr->getArgs()[i]);
-                    auto keyFrames = boost::get<std::vector<Value>>(&constExpr->getValue());
-                    exprStr += "," + boost::lexical_cast<std::string>(buildValue(keyFrames->at(0)));
-                    exprStr += "," + mvt::generateValueString(buildValue(keyFrames->at(1)));
-                    keyFrameValues.insert(keyFrames->at(1));
+                for (const std::pair<Value, Value>& keyFrame : keyFrames) {
+                    Value value = keyFrame.second;
+                    exprStr += "," + boost::lexical_cast<std::string>(buildValue(keyFrame.first));
+                    exprStr += "," + mvt::generateValueString(buildValue(value));
+                    keyFrameValues.insert(value);
                 }
                 exprStr += ")";
 
@@ -379,14 +378,13 @@ namespace carto { namespace css {
                 if (i > 0) {
                     exprStr += ",";
                 }
-                bool escapeArg = stringExpr;
+
                 if (auto constExpr = std::dynamic_pointer_cast<const ConstExpression>(funcExpr->getArgs()[i])) {
-                    // No need to escape integer or floating point values. This provides cleaner output and also compability with Mapnik
-                    if (boost::get<double>(&constExpr->getValue()) || boost::get<long long>(&constExpr->getValue())) {
-                        escapeArg = false;
-                    }
+                    exprStr += buildValueString(constExpr->getValue(), stringExpr);
                 }
-                exprStr += (escapeArg ? "{" : "") + buildExpressionString(funcExpr->getArgs()[i], false) + (escapeArg ? "}" : "");
+                else {
+                    exprStr += (stringExpr ? "{" : "") + buildExpressionString(funcExpr->getArgs()[i], false) + (stringExpr ? "}" : "");
+                }
             }
             exprStr += ")";
             return exprStr;

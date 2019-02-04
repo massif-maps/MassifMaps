@@ -46,6 +46,9 @@ namespace carto { namespace mvt {
             if (opacity == vt::FloatFunction(1)) {
                 return color;
             }
+            if (!color.function() && !opacity.function()) {
+                return vt::ColorFunction(vt::Color::fromColorOpacity(color.value(), opacity.value()));
+            }
 
             auto it = _colorOpacityFunctionCache.find(std::make_pair(color, opacity));
             if (it != _colorOpacityFunctionCache.end()) {

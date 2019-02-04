@@ -420,7 +420,7 @@ namespace carto { namespace vt {
             vNormal = normalize(aVertexAttribs[1] != 0.0 ? aVertexBinormal : aVertexNormal);
             vTilePos = (uTileMatrix * vec3(aVertexUV * uUVScale, 1.0)).xy;
             vColor = uColorTable[styleIndex];
-            vHeight = max(0.0, (aVertexAttribs[1] != 0.0 ? aVertexHeight * uAbsHeightScale * 2.0 : 2.0));
+            vHeight = max(0.0, (aVertexAttribs[1] != 0.0 ? aVertexHeight * uAbsHeightScale : 32.0));
             gl_Position = uMVPMatrix * vec4(pos, 1.0);
         }
     )GLSL";
@@ -439,7 +439,7 @@ namespace carto { namespace vt {
             if (min(vTilePos.x, vTilePos.y) < -0.01 || max(vTilePos.x, vTilePos.y) > 1.01) {
                 discard;
             }
-            gl_FragColor = applyLighting(vec4(vColor.rgb * ((1.0 - exp(-vHeight)) * 0.75 + 0.25), vColor.a));
+            gl_FragColor = applyLighting(vec4(vColor.rgb * (1.0 - 0.75 / (1.0 + vHeight * vHeight)), vColor.a));
         }
     )GLSL";
 } }

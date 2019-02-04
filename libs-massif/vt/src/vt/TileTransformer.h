@@ -40,7 +40,6 @@ namespace carto { namespace vt {
         virtual ~TileTransformer() = default;
 
         virtual cglib::vec3<double> calculateTileOrigin(const TileId& tileId) const = 0;
-        virtual cglib::vec3<double> calculateTileNormal(const TileId& tileId, double& maxAngle) const = 0;
         virtual cglib::bbox3<double> calculateTileBBox(const TileId& tileId) const = 0;
         virtual cglib::mat4x4<double> calculateTileMatrix(const TileId& tileId, float coordScale) const = 0;
         virtual cglib::mat4x4<float> calculateTileTransform(const TileId& tileId, const cglib::vec2<float>& translate, float coordScale) const = 0;
@@ -81,7 +80,6 @@ namespace carto { namespace vt {
         virtual ~DefaultTileTransformer() = default;
 
         virtual cglib::vec3<double> calculateTileOrigin(const TileId& tileId) const override;
-        virtual cglib::vec3<double> calculateTileNormal(const TileId& tileId, double& maxAngle) const override;
         virtual cglib::bbox3<double> calculateTileBBox(const TileId& tileId) const override;
         virtual cglib::mat4x4<double> calculateTileMatrix(const TileId& tileId, float coordScale) const override;
         virtual cglib::mat4x4<float> calculateTileTransform(const TileId& tileId, const cglib::vec2<float>& translate, float coordScale) const override;
@@ -134,7 +132,6 @@ namespace carto { namespace vt {
 
         virtual cglib::vec3<double> calculateTileOrigin(const TileId& tileId) const override;
         virtual cglib::bbox3<double> calculateTileBBox(const TileId& tileId) const override;
-        virtual cglib::vec3<double> calculateTileNormal(const TileId& tileId, double& maxAngle) const override;
         virtual cglib::mat4x4<double> calculateTileMatrix(const TileId& tileId, float coordScale) const override;
         virtual cglib::mat4x4<float> calculateTileTransform(const TileId& tileId, const cglib::vec2<float>& translate, float coordScale) const override;
 

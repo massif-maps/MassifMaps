@@ -699,18 +699,7 @@ namespace carto { namespace vt {
     
     bool GLTileRenderer::testTileVisibility(const TileId& tileId, const cglib::frustum3<double>& frustum, const cglib::vec3<float>& viewDir) const {
         cglib::bbox3<double> bbox = _transformer->calculateTileBBox(tileId);
-        if (!frustum.inside(bbox)) {
-            return false;
-        }
-
-        double maxAngle = 0;
-        cglib::vec3<float> normal = cglib::vec3<float>::convert(_transformer->calculateTileNormal(tileId, maxAngle));
-        double pi = std::atan(1.0) * 4;
-        double cos = cglib::dot_product(normal, viewDir);
-        if (maxAngle < pi * 0.5 && cos < std::cos(pi * 0.5 + maxAngle)) {
-            return false;
-        }
-        return true;
+        return frustum.inside(bbox);
     }
 
     float GLTileRenderer::calculateBlendNodeOpacity(const BlendNode& blendNode, float blend) const {

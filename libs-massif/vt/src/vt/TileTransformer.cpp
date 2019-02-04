@@ -49,11 +49,6 @@ namespace carto { namespace vt {
         return p;
     }
 
-    cglib::vec3<double> DefaultTileTransformer::calculateTileNormal(const TileId& tileId, double& maxAngle) const {
-        maxAngle = 0.0;
-        return cglib::vec3<double>(0, 0, 1);
-    }
-
     cglib::bbox3<double> DefaultTileTransformer::calculateTileBBox(const TileId& tileId) const {
         return cglib::transform_bbox(cglib::bbox3<double>(cglib::vec3<double>(0, 0, 0), cglib::vec3<double>(1, 1, 0)), calculateTileMatrix(tileId, 1.0f));
     }
@@ -255,21 +250,6 @@ namespace carto { namespace vt {
             }
         }
         return bbox;
-    }
-
-    cglib::vec3<double> SphericalTileTransformer::calculateTileNormal(const TileId& tileId, double& maxAngle) const {
-        if (tileId.zoom == 0) {
-            maxAngle = PI;
-            return cglib::vec3<double>(0, 0, 1);
-        }
-
-        cglib::vec2<double> epsg3857Pos00 = tileOffset(tileId);
-        cglib::vec2<double> epsg3857Pos11 = tileOffset(TileId(tileId.zoom, tileId.x + 1, tileId.y - 1));
-        cglib::vec3<double> p00 = epsg3857ToSpherical(epsg3857Pos00);
-        cglib::vec3<double> p11 = epsg3857ToSpherical(epsg3857Pos11);
-        cglib::vec3<double> pCC = cglib::unit(p00 + p11);
-        maxAngle = tileId.zoom > 1 ? std::acos(std::min(1.0, std::max(-1.0, cglib::dot_product(p00, pCC)))) : PI / 2;
-        return pCC;
     }
 
     cglib::mat4x4<double> SphericalTileTransformer::calculateTileMatrix(const TileId& tileId, float coordScale) const {

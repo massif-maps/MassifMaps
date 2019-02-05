@@ -404,8 +404,9 @@ namespace carto { namespace sgre {
     
     Graph::EdgeId DynamicGraph::addEdge(Edge edge) {
         EdgeId edgeId = getEdgeIdRangeEnd();
-        Node& node0 = _nodes[edge.nodeIds[0]] = getNode(edge.nodeIds[0]);
+        Node node0 = getNode(edge.nodeIds[0]);
         node0.edgeIds.push_back(edgeId);
+        _nodes[edge.nodeIds[0]] = std::move(node0);
         _edges.push_back(std::move(edge));
         return edgeId;
     }

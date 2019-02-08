@@ -28,15 +28,16 @@ namespace carto { namespace vt {
         return static_cast<float>(height / std::cos(latitude) * (1 << _tileId.zoom) / EARTH_CIRCUMFERENCE);
     }
 
-    void DefaultTileTransformer::DefaultVertexTransformer::tesselateLineString(const std::vector<cglib::vec2<float>>& linePoints, VertexArray<cglib::vec2<float>>& points) const {
-        points.reserve(linePoints.size());
-        for (const cglib::vec2<float>& pos : linePoints) {
-            points.append(pos);
+    void DefaultTileTransformer::DefaultVertexTransformer::tesselateLineString(const cglib::vec2<float>* begin, const cglib::vec2<float>* end, VertexArray<cglib::vec2<float>>& points) const {
+        while (begin != end) {
+            points.append(*begin++);
         }
     }
 
-    void DefaultTileTransformer::DefaultVertexTransformer::tesselateTriangle(unsigned int i0, unsigned int i1, unsigned int i2, VertexArray<cglib::vec2<float>>& coords, VertexArray<cglib::vec2<float>>& texCoords, VertexArray<unsigned int>& indices) const {
-        indices.append(i0, i1, i2);
+    void DefaultTileTransformer::DefaultVertexTransformer::tesselateTriangles(const unsigned int* begin, const unsigned int* end, VertexArray<cglib::vec2<float>>& coords, VertexArray<cglib::vec2<float>>& texCoords, VertexArray<unsigned int>& indices) const {
+        while (begin != end) {
+            indices.append(*begin++);
+        }
     }
 
     cglib::vec3<double> DefaultTileTransformer::calculateTileOrigin(const TileId& tileId) const {
@@ -158,23 +159,27 @@ namespace carto { namespace vt {
         return static_cast<float>(height * (1 << _tileId.zoom) / EARTH_CIRCUMFERENCE * 2 * PI);
     }
 
-    void SphericalTileTransformer::SphericalVertexTransformer::tesselateLineString(const std::vector<cglib::vec2<float>>& linePoints, VertexArray<cglib::vec2<float>>& points) const {
-        if (linePoints.empty()) {
-            return;
-        }
-
-        points.append(linePoints[0]);
-        for (std::size_t i = 1; i < linePoints.size(); i++) {
-            float dist = cglib::length(linePoints[i] - linePoints[i - 1]) * static_cast<float>(_tileScale);
-            tesselateSegment(linePoints[i - 1], linePoints[i], dist, points);
+    void SphericalTileTransformer::SphericalVertexTransformer::tesselateLineString(const cglib::vec2<float>* begin, const cglib::vec2<float>* end, VertexArray<cglib::vec2<float>>& points) const {
+        if (begin != end) {
+            points.append(*begin);
+            while (++begin != end) {
+                const cglib::vec2<float>* prev = begin - 1;
+                float dist = cglib::length(*begin - *prev) * static_cast<float>(_tileScale);
+                tesselateSegment(*prev, *begin, dist, points);
+            }
         }
     }
 
-    void SphericalTileTransformer::SphericalVertexTransformer::tesselateTriangle(unsigned int i0, unsigned int i1, unsigned int i2, VertexArray<cglib::vec2<float>>& coords, VertexArray<cglib::vec2<float>>& texCoords, VertexArray<unsigned int>& indices) const {
-        float dist01 = cglib::length(coords[i1] - coords[i0]) * static_cast<float>(_tileScale);
-        float dist02 = cglib::length(coords[i2] - coords[i0]) * static_cast<float>(_tileScale);
-        float dist12 = cglib::length(coords[i2] - coords[i1]) * static_cast<float>(_tileScale);
-        tesselateTriangle(i0, i1, i2, dist01, dist02, dist12, coords, texCoords, indices);
+    void SphericalTileTransformer::SphericalVertexTransformer::tesselateTriangles(const unsigned int* begin, const unsigned int* end, VertexArray<cglib::vec2<float>>& coords, VertexArray<cglib::vec2<float>>& texCoords, VertexArray<unsigned int>& indices) const {
+        while (begin != end) {
+            unsigned int i0 = *begin++;
+            unsigned int i1 = *begin++;
+            unsigned int i2 = *begin++;
+            float dist01 = cglib::length(coords[i1] - coords[i0]) * static_cast<float>(_tileScale);
+            float dist02 = cglib::length(coords[i2] - coords[i0]) * static_cast<float>(_tileScale);
+            float dist12 = cglib::length(coords[i2] - coords[i1]) * static_cast<float>(_tileScale);
+            tesselateTriangle(i0, i1, i2, dist01, dist02, dist12, coords, texCoords, indices);
+        }
     }
 
     cglib::vec2<double> SphericalTileTransformer::SphericalVertexTransformer::tileToEPSG3857(const cglib::vec2<float>& pos) const {

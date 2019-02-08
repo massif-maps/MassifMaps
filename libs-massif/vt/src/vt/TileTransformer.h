@@ -33,8 +33,8 @@ namespace carto { namespace vt {
             virtual cglib::vec2<float> calculateTilePosition(const cglib::vec3<float>& pos) const = 0;
             virtual float calculateHeight(const cglib::vec2<float>& pos, float height) const = 0;
 
-            virtual void tesselateLineString(const std::vector<cglib::vec2<float>>& points, VertexArray<cglib::vec2<float>>& coords) const = 0;
-            virtual void tesselateTriangle(unsigned int i0, unsigned int i1, unsigned int i2, VertexArray<cglib::vec2<float>>& coords, VertexArray<cglib::vec2<float>>& texCoords, VertexArray<unsigned int>& indices) const = 0;
+            virtual void tesselateLineString(const cglib::vec2<float>* begin, const cglib::vec2<float>* end, VertexArray<cglib::vec2<float>>& points) const = 0;
+            virtual void tesselateTriangles(const unsigned int* begin, const unsigned int* end, VertexArray<cglib::vec2<float>>& coords, VertexArray<cglib::vec2<float>>& texCoords, VertexArray<unsigned int>& indices) const = 0;
         };
 
         virtual ~TileTransformer() = default;
@@ -68,8 +68,8 @@ namespace carto { namespace vt {
             virtual cglib::vec2<float> calculateTilePosition(const cglib::vec3<float>& pos) const override;
             virtual float calculateHeight(const cglib::vec2<float>& pos, float height) const override;
 
-            virtual void tesselateLineString(const std::vector<cglib::vec2<float>>& linePoints, VertexArray<cglib::vec2<float>>& points) const override;
-            virtual void tesselateTriangle(unsigned int i0, unsigned int i1, unsigned int i2, VertexArray<cglib::vec2<float>>& coords, VertexArray<cglib::vec2<float>>& texCoords, VertexArray<unsigned int>& indices) const override;
+            virtual void tesselateLineString(const cglib::vec2<float>* begin, const cglib::vec2<float>* end, VertexArray<cglib::vec2<float>>& points) const override;
+            virtual void tesselateTriangles(const unsigned int* begin, const unsigned int* end, VertexArray<cglib::vec2<float>>& coords, VertexArray<cglib::vec2<float>>& texCoords, VertexArray<unsigned int>& indices) const override;
 
         private:
             const TileId _tileId;
@@ -106,8 +106,8 @@ namespace carto { namespace vt {
             virtual cglib::vec2<float> calculateTilePosition(const cglib::vec3<float>& pos) const override;
             virtual float calculateHeight(const cglib::vec2<float>& pos, float height) const override;
 
-            virtual void tesselateLineString(const std::vector<cglib::vec2<float>>& linePoints, VertexArray<cglib::vec2<float>>& points) const override;
-            virtual void tesselateTriangle(unsigned int i0, unsigned int i1, unsigned int i2, VertexArray<cglib::vec2<float>>& coords, VertexArray<cglib::vec2<float>>& texCoords, VertexArray<unsigned int>& indices) const override;
+            virtual void tesselateLineString(const cglib::vec2<float>* begin, const cglib::vec2<float>* end, VertexArray<cglib::vec2<float>>& points) const override;
+            virtual void tesselateTriangles(const unsigned int* begin, const unsigned int* end, VertexArray<cglib::vec2<float>>& coords, VertexArray<cglib::vec2<float>>& texCoords, VertexArray<unsigned int>& indices) const override;
 
         private:
             cglib::vec2<double> tileToEPSG3857(const cglib::vec2<float>& pos) const;

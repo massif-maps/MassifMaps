@@ -351,7 +351,7 @@ namespace carto { namespace vt {
             }
             else if (auto vertices = boost::get<Vertices>(&labelInfo.position)) {
                 VertexArray<cglib::vec2<float>> tesselatedVertices;
-                _transformer->tesselateLineString(*vertices, tesselatedVertices);
+                _transformer->tesselateLineString(vertices->data(), vertices->data() + vertices->size(), tesselatedVertices);
                 labelVertices.assign(tesselatedVertices.begin(), tesselatedVertices.end());
             }
 
@@ -405,7 +405,7 @@ namespace carto { namespace vt {
                 std::vector<cglib::vec2<float>> labelVertices;
                 if (!labelInfo.vertices.empty()) {
                     VertexArray<cglib::vec2<float>> tesselatedVertices;
-                    _transformer->tesselateLineString(labelInfo.vertices, tesselatedVertices);
+                    _transformer->tesselateLineString(labelInfo.vertices.data(), labelInfo.vertices.data() + labelInfo.vertices.size(), tesselatedVertices);
                     labelVertices.assign(tesselatedVertices.begin(), tesselatedVertices.end());
                 }
 
@@ -799,9 +799,9 @@ namespace carto { namespace vt {
 
         cglib::bbox2<float> clipBox(cglib::vec2<float>(0.0f, 0.0f), cglib::vec2<float>(1.0f, 1.0f));
         for (int i = 0; i < elementCount * 3; i += 3) {
-            int i0 = elements[i + 0];
-            int i1 = elements[i + 1];
-            int i2 = elements[i + 2];
+            unsigned int i0 = elements[i + 0];
+            unsigned int i1 = elements[i + 1];
+            unsigned int i2 = elements[i + 2];
             if (i0 == TESS_UNDEF || i1 == TESS_UNDEF || i2 == TESS_UNDEF) {
                 continue;
             }
@@ -813,7 +813,8 @@ namespace carto { namespace vt {
             bounds.add(_coords[i1]);
             bounds.add(_coords[i2]);
             if (clipBox.inside(bounds)) {
-                _transformer->tesselateTriangle(i0, i2, i1, _coords, _texCoords, _indices);
+                std::array<unsigned int, 3> srcIndices = { { i0, i2, i1 } };
+                _transformer->tesselateTriangles(srcIndices.data(), srcIndices.data() + srcIndices.size(), _coords, _texCoords, _indices);
             }
         }
 
@@ -897,9 +898,9 @@ namespace carto { namespace vt {
         }
 
         for (int i = 0; i < elementCount * 3; i += 3) {
-            int i0 = elements[i + 0];
-            int i1 = elements[i + 1];
-            int i2 = elements[i + 2];
+            unsigned int i0 = elements[i + 0];
+            unsigned int i1 = elements[i + 1];
+            unsigned int i2 = elements[i + 2];
             if (i0 == TESS_UNDEF || i1 == TESS_UNDEF || i2 == TESS_UNDEF) {
                 continue;
             }
@@ -911,7 +912,8 @@ namespace carto { namespace vt {
             bounds.add(_coords[i1]);
             bounds.add(_coords[i2]);
             if (clipBox.inside(bounds)) {
-                _transformer->tesselateTriangle(i0, i2, i1, _coords, _texCoords, _indices);
+                std::array<unsigned int, 3> srcIndices = { { i0, i2, i1 } };
+                _transformer->tesselateTriangles(srcIndices.data(), srcIndices.data() + srcIndices.size(), _coords, _texCoords, _indices);
             }
         }
 
@@ -936,7 +938,7 @@ namespace carto { namespace vt {
 
         VertexArray<cglib::vec2<float>> points;
         points.reserve(linePoints.size());
-        _transformer->tesselateLineString(linePoints, points);
+        _transformer->tesselateLineString(linePoints.data(), linePoints.data() + linePoints.size(), points);
 
         bool cycle = points[0] == points[points.size() - 1];
         bool endpoints = !cycle && style.capMode != LineCapMode::NONE;

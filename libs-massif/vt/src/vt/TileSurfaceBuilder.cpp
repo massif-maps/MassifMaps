@@ -120,7 +120,7 @@ namespace carto { namespace vt {
 
         auto tesselateTriangle = [&, this](unsigned int i0, unsigned int i1, unsigned int i2, const cglib::mat4x4<double>& matrix, const std::shared_ptr<const TileTransformer::VertexTransformer>& transformer) {
             std::array<unsigned int, 3> srcIndices = { { i0, i1, i2 } };
-            transformer->tesselateTriangles(srcIndices.data(), srcIndices.data() + 3, coords2D, texCoords, indices);
+            transformer->tesselateTriangles(srcIndices.data(), 3, coords2D, texCoords, indices);
 
             for (std::size_t i = coords3D.size(); i < coords2D.size(); i++) {
                 cglib::vec3<double> pos = cglib::transform_point(cglib::vec3<double>::convert(transformer->calculatePoint(coords2D[i])), matrix);
@@ -213,7 +213,7 @@ namespace carto { namespace vt {
 
         auto tesselateSegment = [&, this](const cglib::vec2<float>& p0, const cglib::vec2<float>& p1, const cglib::mat4x4<double>& matrix, const std::shared_ptr<const TileTransformer::VertexTransformer>& transformer) {
             std::array<cglib::vec2<float>, 2> srcPoints = { { p0, p1 } };
-            transformer->tesselateLineString(srcPoints.data(), srcPoints.data() + 2, coords2D);
+            transformer->tesselateLineString(srcPoints.data(), 2, coords2D);
 
             unsigned int i0 = -1;
             for (std::size_t i = coords3D.size(); i < coords2D.size(); i++) {

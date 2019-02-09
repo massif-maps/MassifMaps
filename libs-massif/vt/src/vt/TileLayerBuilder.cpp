@@ -351,7 +351,7 @@ namespace carto { namespace vt {
             }
             else if (auto vertices = boost::get<Vertices>(&labelInfo.position)) {
                 VertexArray<cglib::vec2<float>> tesselatedVertices;
-                _transformer->tesselateLineString(vertices->data(), vertices->data() + vertices->size(), tesselatedVertices);
+                _transformer->tesselateLineString(vertices->data(), vertices->size(), tesselatedVertices);
                 labelVertices.assign(tesselatedVertices.begin(), tesselatedVertices.end());
             }
 
@@ -405,7 +405,7 @@ namespace carto { namespace vt {
                 std::vector<cglib::vec2<float>> labelVertices;
                 if (!labelInfo.vertices.empty()) {
                     VertexArray<cglib::vec2<float>> tesselatedVertices;
-                    _transformer->tesselateLineString(labelInfo.vertices.data(), labelInfo.vertices.data() + labelInfo.vertices.size(), tesselatedVertices);
+                    _transformer->tesselateLineString(labelInfo.vertices.data(), labelInfo.vertices.size(), tesselatedVertices);
                     labelVertices.assign(tesselatedVertices.begin(), tesselatedVertices.end());
                 }
 
@@ -814,7 +814,7 @@ namespace carto { namespace vt {
             bounds.add(_coords[i2]);
             if (clipBox.inside(bounds)) {
                 std::array<unsigned int, 3> srcIndices = { { i0, i2, i1 } };
-                _transformer->tesselateTriangles(srcIndices.data(), srcIndices.data() + srcIndices.size(), _coords, _texCoords, _indices);
+                _transformer->tesselateTriangles(srcIndices.data(), srcIndices.size(), _coords, _texCoords, _indices);
             }
         }
 
@@ -913,7 +913,7 @@ namespace carto { namespace vt {
             bounds.add(_coords[i2]);
             if (clipBox.inside(bounds)) {
                 std::array<unsigned int, 3> srcIndices = { { i0, i2, i1 } };
-                _transformer->tesselateTriangles(srcIndices.data(), srcIndices.data() + srcIndices.size(), _coords, _texCoords, _indices);
+                _transformer->tesselateTriangles(srcIndices.data(), srcIndices.size(), _coords, _texCoords, _indices);
             }
         }
 
@@ -938,7 +938,7 @@ namespace carto { namespace vt {
 
         VertexArray<cglib::vec2<float>> points;
         points.reserve(linePoints.size());
-        _transformer->tesselateLineString(linePoints.data(), linePoints.data() + linePoints.size(), points);
+        _transformer->tesselateLineString(linePoints.data(), linePoints.size(), points);
 
         bool cycle = points[0] == points[points.size() - 1];
         bool endpoints = !cycle && style.capMode != LineCapMode::NONE;

@@ -28,15 +28,15 @@ namespace carto { namespace vt {
         return static_cast<float>(height / std::cos(latitude) * (1 << _tileId.zoom) / EARTH_CIRCUMFERENCE);
     }
 
-    void DefaultTileTransformer::DefaultVertexTransformer::tesselateLineString(const cglib::vec2<float>* begin, const cglib::vec2<float>* end, VertexArray<cglib::vec2<float>>& points) const {
-        while (begin != end) {
-            points.append(*begin++);
+    void DefaultTileTransformer::DefaultVertexTransformer::tesselateLineString(const cglib::vec2<float>* points, std::size_t count, VertexArray<cglib::vec2<float>>& tesselatedPoints) const {
+        for (std::size_t i = 0; i < count; i++) {
+            tesselatedPoints.append(points[i]);
         }
     }
 
-    void DefaultTileTransformer::DefaultVertexTransformer::tesselateTriangles(const unsigned int* begin, const unsigned int* end, VertexArray<cglib::vec2<float>>& coords, VertexArray<cglib::vec2<float>>& texCoords, VertexArray<unsigned int>& indices) const {
-        while (begin != end) {
-            indices.append(*begin++);
+    void DefaultTileTransformer::DefaultVertexTransformer::tesselateTriangles(const unsigned int* indices, std::size_t count, VertexArray<cglib::vec2<float>>& coords, VertexArray<cglib::vec2<float>>& texCoords, VertexArray<unsigned int>& tesselatedIndices) const {
+        for (std::size_t i = 0; i < count; i++) {
+            tesselatedIndices.append(indices[i]);
         }
     }
 
@@ -159,26 +159,27 @@ namespace carto { namespace vt {
         return static_cast<float>(height * (1 << _tileId.zoom) / EARTH_CIRCUMFERENCE * 2 * PI);
     }
 
-    void SphericalTileTransformer::SphericalVertexTransformer::tesselateLineString(const cglib::vec2<float>* begin, const cglib::vec2<float>* end, VertexArray<cglib::vec2<float>>& points) const {
-        if (begin != end) {
-            points.append(*begin);
-            while (++begin != end) {
-                const cglib::vec2<float>* prev = begin - 1;
-                float dist = cglib::length(*begin - *prev) * static_cast<float>(_tileScale);
-                tesselateSegment(*prev, *begin, dist, points);
+    void SphericalTileTransformer::SphericalVertexTransformer::tesselateLineString(const cglib::vec2<float>* points, std::size_t count, VertexArray<cglib::vec2<float>>& tesselatedPoints) const {
+        if (count > 0) {
+            tesselatedPoints.append(points[0]);
+            for (std::size_t i = 0; i + 1 < count; i++) {
+                const cglib::vec2<float>& pos0 = points[i + 0];
+                const cglib::vec2<float>& pos1 = points[i + 1];
+                float dist = cglib::length(pos1 - pos0) * static_cast<float>(_tileScale);
+                tesselateSegment(pos0, pos1, dist, tesselatedPoints);
             }
         }
     }
 
-    void SphericalTileTransformer::SphericalVertexTransformer::tesselateTriangles(const unsigned int* begin, const unsigned int* end, VertexArray<cglib::vec2<float>>& coords, VertexArray<cglib::vec2<float>>& texCoords, VertexArray<unsigned int>& indices) const {
-        while (begin != end) {
-            unsigned int i0 = *begin++;
-            unsigned int i1 = *begin++;
-            unsigned int i2 = *begin++;
+    void SphericalTileTransformer::SphericalVertexTransformer::tesselateTriangles(const unsigned int* indices, std::size_t count, VertexArray<cglib::vec2<float>>& coords, VertexArray<cglib::vec2<float>>& texCoords, VertexArray<unsigned int>& tesselatedIndices) const {
+        for (std::size_t i = 0; i + 2 < count; i += 3) {
+            unsigned int i0 = indices[i + 0];
+            unsigned int i1 = indices[i + 1];
+            unsigned int i2 = indices[i + 2];
             float dist01 = cglib::length(coords[i1] - coords[i0]) * static_cast<float>(_tileScale);
             float dist02 = cglib::length(coords[i2] - coords[i0]) * static_cast<float>(_tileScale);
             float dist12 = cglib::length(coords[i2] - coords[i1]) * static_cast<float>(_tileScale);
-            tesselateTriangle(i0, i1, i2, dist01, dist02, dist12, coords, texCoords, indices);
+            tesselateTriangle(i0, i1, i2, dist01, dist02, dist12, coords, texCoords, tesselatedIndices);
         }
     }
 

@@ -1655,8 +1655,13 @@ namespace carto { namespace vt {
             glBindBuffer(GL_ARRAY_BUFFER, compiledGeometry.vertexGeometryVBO);
             glVertexAttribPointer(glGetAttribLocation(shaderProgram, "aVertexPosition"), vertexGeomLayoutParams.dimensions, GL_SHORT, GL_FALSE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.coordOffset));
             glEnableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexPosition"));
-            glVertexAttribPointer(glGetAttribLocation(shaderProgram, "aVertexAttribs"), 4, GL_BYTE, GL_FALSE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.attribsOffset));
-            glEnableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexAttribs"));
+
+            if (vertexGeomLayoutParams.attribsOffset >= 0) {
+                glVertexAttribPointer(glGetAttribLocation(shaderProgram, "aVertexAttribs"), 4, GL_BYTE, GL_FALSE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.attribsOffset));
+                glEnableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexAttribs"));
+            } else {
+                glVertexAttrib4f(glGetAttribLocation(shaderProgram, "aVertexAttribs"), 0, 0, 0, 0);
+            }
             
             if (vertexGeomLayoutParams.texCoordOffset >= 0) {
                 glVertexAttribPointer(glGetAttribLocation(shaderProgram, "aVertexUV"), 2, GL_SHORT, GL_FALSE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.texCoordOffset));
@@ -1707,8 +1712,11 @@ namespace carto { namespace vt {
             if (vertexGeomLayoutParams.texCoordOffset >= 0) {
                 glDisableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexUV"));
             }
+
+            if (vertexGeomLayoutParams.attribsOffset >= 0) {
+                glDisableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexAttribs"));
+            }
             
-            glDisableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexAttribs"));
             glDisableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexPosition"));
         }
         

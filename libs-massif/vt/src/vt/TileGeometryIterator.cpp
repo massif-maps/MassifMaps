@@ -69,9 +69,13 @@ namespace carto { namespace vt {
         const TileGeometry::VertexGeometryLayoutParameters& vertexGeomLayoutParams = _geometry->getVertexGeometryLayoutParameters();
         std::size_t binormalOffset = index * vertexGeomLayoutParams.vertexSize + vertexGeomLayoutParams.binormalOffset;
         const short* binormalPtr = reinterpret_cast<const short*>(&_geometry->getVertexGeometry()[binormalOffset]);
-        std::size_t attribOffset = index * vertexGeomLayoutParams.vertexSize + vertexGeomLayoutParams.attribsOffset;
-        const char* attribPtr = reinterpret_cast<const char*>(&_geometry->getVertexGeometry()[attribOffset]);
-        float size = std::abs((_geometry->getStyleParameters().widthFuncs[attribPtr[0]])(_viewState));
+        int styleIndex = 0;
+        if (vertexGeomLayoutParams.attribsOffset >= 0) {
+            std::size_t attribOffset = index * vertexGeomLayoutParams.vertexSize + vertexGeomLayoutParams.attribsOffset;
+            const char* attribPtr = reinterpret_cast<const char*>(&_geometry->getVertexGeometry()[attribOffset]);
+            styleIndex = attribPtr[0];
+        }
+        float size = std::abs((_geometry->getStyleParameters().widthFuncs[styleIndex])(_viewState));
         if (size > 0) {
             size += _delta;
         }
@@ -86,9 +90,13 @@ namespace carto { namespace vt {
         const TileGeometry::VertexGeometryLayoutParameters& vertexGeomLayoutParams = _geometry->getVertexGeometryLayoutParameters();
         std::size_t binormalOffset = index * vertexGeomLayoutParams.vertexSize + vertexGeomLayoutParams.binormalOffset;
         const short* binormalPtr = reinterpret_cast<const short*>(&_geometry->getVertexGeometry()[binormalOffset]);
-        std::size_t attribOffset = index * vertexGeomLayoutParams.vertexSize + vertexGeomLayoutParams.attribsOffset;
-        const char* attribPtr = reinterpret_cast<const char*>(&_geometry->getVertexGeometry()[attribOffset]);
-        float width = 0.5f * std::abs((_geometry->getStyleParameters().widthFuncs[attribPtr[0]])(_viewState));
+        int styleIndex = 0;
+        if (vertexGeomLayoutParams.attribsOffset >= 0) {
+            std::size_t attribOffset = index * vertexGeomLayoutParams.vertexSize + vertexGeomLayoutParams.attribsOffset;
+            const char* attribPtr = reinterpret_cast<const char*>(&_geometry->getVertexGeometry()[attribOffset]);
+            styleIndex = attribPtr[0];
+        }
+        float width = 0.5f * std::abs((_geometry->getStyleParameters().widthFuncs[styleIndex])(_viewState));
         if (width > 0) {
             width += _delta;
         }

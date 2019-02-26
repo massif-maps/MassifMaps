@@ -541,6 +541,13 @@ namespace carto { namespace vt {
             heights.append(_transformer->calculateHeight(_coords[i], _heights[i]));
         }
 
+        // Compress attributes
+        VertexArray<cglib::vec4<char>> attribs;
+        attribs.copy(_attribs, 0, _attribs.size());
+        if (std::all_of(attribs.begin(), attribs.end(), [](const cglib::vec4<char>& attrib) { return attrib == cglib::vec4<char>(0, 0, 0, 0); })) {
+            attribs.clear();
+        }
+
         // Calculate number of dimensions required for coordinates/binormals
         int dimensions = 2;
         if (std::any_of(coords.begin(), coords.end(), [](const cglib::vec3<float>& coord) { return coord(2) != 0; })) {
@@ -554,7 +561,7 @@ namespace carto { namespace vt {
         }
 
         // Pack geometry
-        packGeometry(_builderParameters.type, dimensions, calculateScale(coords), calculateScale(binormals), calculateScale(texCoords), calculateScale(heights), coords, texCoords, normals, binormals, heights, _attribs, _indices, _ids, styleParameters, geometryList);
+        packGeometry(_builderParameters.type, dimensions, calculateScale(coords), calculateScale(binormals), calculateScale(texCoords), calculateScale(heights), coords, texCoords, normals, binormals, heights, attribs, _indices, _ids, styleParameters, geometryList);
     }
 
     void TileLayerBuilder::packGeometry(TileGeometry::Type type, int dimensions, float coordScale, float binormalScale, float texCoordScale, float heightScale, const VertexArray<cglib::vec3<float>>& coords, const VertexArray<cglib::vec2<float>>& texCoords, const VertexArray<cglib::vec3<float>>& normals, const VertexArray<cglib::vec3<float>>& binormals, const VertexArray<float>& heights, const VertexArray<cglib::vec4<char>>& attribs, const VertexArray<unsigned int>& indices, const VertexArray<long long>& ids, const TileGeometry::StyleParameters& styleParameters, std::vector<std::shared_ptr<TileGeometry>>& geometryList) const {
@@ -584,7 +591,9 @@ namespace carto { namespace vt {
                         indexTable[index] = remappedIndex;
 
                         remappedCoords.append(coords[index]);
-                        remappedAttribs.append(attribs[index]);
+                        if (!attribs.empty()) {
+                            remappedAttribs.append(attribs[index]);
+                        }
                         if (!texCoords.empty()) {
                             remappedTexCoords.append(texCoords[index]);
                         }
@@ -617,8 +626,10 @@ namespace carto { namespace vt {
         vertexGeomLayoutParams.vertexSize += dimensions * sizeof(short);
         vertexGeomLayoutParams.vertexSize = (vertexGeomLayoutParams.vertexSize + 3) & ~3;
 
-        vertexGeomLayoutParams.attribsOffset = vertexGeomLayoutParams.vertexSize;
-        vertexGeomLayoutParams.vertexSize += 4 * sizeof(char);
+        if (!attribs.empty()) {
+            vertexGeomLayoutParams.attribsOffset = vertexGeomLayoutParams.vertexSize;
+            vertexGeomLayoutParams.vertexSize += 4 * sizeof(char);
+        }
 
         if (!texCoords.empty()) {
             vertexGeomLayoutParams.texCoordOffset = vertexGeomLayoutParams.vertexSize;
@@ -660,12 +671,14 @@ namespace carto { namespace vt {
                 compressedCoordPtr[j] = static_cast<short>(coord(j) * coordScale);
             }
 
-            const cglib::vec4<char>& attrib = attribs[i];
-            char* compressedAttribsPtr = reinterpret_cast<char*>(baseCompressedPtr + vertexGeomLayoutParams.attribsOffset);
-            compressedAttribsPtr[0] = attrib(0);
-            compressedAttribsPtr[1] = attrib(1);
-            compressedAttribsPtr[2] = attrib(2);
-            compressedAttribsPtr[3] = attrib(3);
+            if (!attribs.empty()) {
+                const cglib::vec4<char>& attrib = attribs[i];
+                char* compressedAttribsPtr = reinterpret_cast<char*>(baseCompressedPtr + vertexGeomLayoutParams.attribsOffset);
+                compressedAttribsPtr[0] = attrib(0);
+                compressedAttribsPtr[1] = attrib(1);
+                compressedAttribsPtr[2] = attrib(2);
+                compressedAttribsPtr[3] = attrib(3);
+            }
 
             if (!texCoords.empty()) {
                 const cglib::vec2<float>& texCoord = texCoords[i];

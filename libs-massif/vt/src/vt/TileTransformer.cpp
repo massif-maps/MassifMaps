@@ -28,15 +28,15 @@ namespace carto { namespace vt {
         return static_cast<float>(height / std::cos(latitude) * (1 << _tileId.zoom) / EARTH_CIRCUMFERENCE);
     }
 
-    void DefaultTileTransformer::DefaultVertexTransformer::tesselateLineString(const cglib::vec2<float>* begin, const cglib::vec2<float>* end, VertexArray<cglib::vec2<float>>& points) const {
-        while (begin != end) {
-            points.append(*begin++);
+    void DefaultTileTransformer::DefaultVertexTransformer::tesselateLineString(const cglib::vec2<float>* points, std::size_t count, VertexArray<cglib::vec2<float>>& tesselatedPoints) const {
+        for (std::size_t i = 0; i < count; i++) {
+            tesselatedPoints.append(points[i]);
         }
     }
 
-    void DefaultTileTransformer::DefaultVertexTransformer::tesselateTriangles(const unsigned int* begin, const unsigned int* end, VertexArray<cglib::vec2<float>>& coords, VertexArray<cglib::vec2<float>>& texCoords, VertexArray<unsigned int>& indices) const {
-        while (begin != end) {
-            indices.append(*begin++);
+    void DefaultTileTransformer::DefaultVertexTransformer::tesselateTriangles(const unsigned int* indices, std::size_t count, VertexArray<cglib::vec2<float>>& coords, VertexArray<cglib::vec2<float>>& texCoords, VertexArray<unsigned int>& tesselatedIndices) const {
+        for (std::size_t i = 0; i < count; i++) {
+            tesselatedIndices.append(indices[i]);
         }
     }
 
@@ -73,14 +73,6 @@ namespace carto { namespace vt {
         return cglib::translate4_matrix(cglib::vec3<float>(translate(0) / coordScale, -translate(1) / coordScale, 0));
     }
 
-    boost::optional<cglib::vec3<double>> DefaultTileTransformer::calculatePoleOrigin(int poleZ) const {
-        return boost::optional<cglib::vec3<double>>();
-    }
-
-    boost::optional<cglib::vec3<double>> DefaultTileTransformer::calculatePoleNormal(int poleZ) const {
-        return boost::optional<cglib::vec3<double>>();
-    }
-
     std::shared_ptr<const TileTransformer::VertexTransformer> DefaultTileTransformer::createTileVertexTransformer(const TileId& tileId) const {
         return std::make_shared<DefaultVertexTransformer>(tileId, _scale);
     }
@@ -92,7 +84,7 @@ namespace carto { namespace vt {
 
     cglib::vec3<float> SphericalTileTransformer::SphericalVertexTransformer::calculatePoint(const cglib::vec2<float>& pos) const {
         if (pos(0) > 0 && pos(0) < 1 && pos(1) > 0 && pos(1) < 1) {
-            cglib::vec3<double> p = epsg3857ToSpherical(tileToEPSG3857(pos));
+            cglib::vec3<double> p = tileToSpherical(pos);
             return cglib::vec3<float>::convert((p - _origin) * static_cast<double>(1 << _tileId.zoom));
         }
         
@@ -102,17 +94,17 @@ namespace carto { namespace vt {
         float y = std::floor(pos(1) * gridSize);
         double u = pos(0) * gridSize - x;
         double v = pos(1) * gridSize - y;
-        cglib::vec3<double> p00 = epsg3857ToSpherical(tileToEPSG3857(cglib::vec2<float>((x + 0) / gridSize, (y + 0) / gridSize)));
-        cglib::vec3<double> p11 = epsg3857ToSpherical(tileToEPSG3857(cglib::vec2<float>((x + 1) / gridSize, (y + 1) / gridSize)));
+        cglib::vec3<double> p00 = tileToSpherical(cglib::vec2<float>((x + 0) / gridSize, (y + 0) / gridSize));
+        cglib::vec3<double> p11 = tileToSpherical(cglib::vec2<float>((x + 1) / gridSize, (y + 1) / gridSize));
         cglib::vec3<double> du;
         cglib::vec3<double> dv;
         if (u > v) {
-            cglib::vec3<double> p10 = epsg3857ToSpherical(tileToEPSG3857(cglib::vec2<float>((x + 1) / gridSize, (y + 0) / gridSize)));
+            cglib::vec3<double> p10 = tileToSpherical(cglib::vec2<float>((x + 1) / gridSize, (y + 0) / gridSize));
             du = p10 - p00;
             dv = p11 - p10;
         }
         else {
-            cglib::vec3<double> p01 = epsg3857ToSpherical(tileToEPSG3857(cglib::vec2<float>((x + 0) / gridSize, (y + 1) / gridSize)));
+            cglib::vec3<double> p01 = tileToSpherical(cglib::vec2<float>((x + 0) / gridSize, (y + 1) / gridSize));
             dv = p01 - p00;
             du = p11 - p01;
         }
@@ -120,17 +112,15 @@ namespace carto { namespace vt {
     }
 
     cglib::vec3<float> SphericalTileTransformer::SphericalVertexTransformer::calculateNormal(const cglib::vec2<float>& pos) const {
-        cglib::vec2<double> epsg3857Pos = tileToEPSG3857(pos);
-        return cglib::vec3<float>::convert(epsg3857ToSpherical(epsg3857Pos));
+        return cglib::vec3<float>::convert(tileToSpherical(pos));
     }
 
     cglib::vec3<float> SphericalTileTransformer::SphericalVertexTransformer::calculateVector(const cglib::vec2<float>& pos, const cglib::vec2<float>& vec) const {
-        cglib::vec2<double> epsg3857Pos = tileToEPSG3857(pos);
-        cglib::vec3<double> xyzPos = epsg3857ToSpherical(epsg3857Pos);
+        cglib::vec3<double> p = tileToSpherical(pos);
 
-        float x = static_cast<float>(xyzPos(0));
-        float y = static_cast<float>(xyzPos(1));
-        float z = static_cast<float>(xyzPos(2));
+        float x = static_cast<float>(p(0));
+        float y = static_cast<float>(p(1));
+        float z = static_cast<float>(p(2));
         
         float scale = static_cast<float>(PI) / std::sqrt(x * x + y * y);
 
@@ -142,43 +132,43 @@ namespace carto { namespace vt {
         float dy_dv = z * y;
         float dz_dv = -(x * x + y * y);
 
-        cglib::vec3<float> xyzVec;
-        xyzVec(0) = (dx_du * vec(0) + dx_dv * vec(1)) * scale;
-        xyzVec(1) = (dy_du * vec(0) + dy_dv * vec(1)) * scale;
-        xyzVec(2) = (dz_du * vec(0) + dz_dv * vec(1)) * scale;
-        return xyzVec;
+        cglib::vec3<float> v;
+        v(0) = (dx_du * vec(0) + dx_dv * vec(1)) * scale;
+        v(1) = (dy_du * vec(0) + dy_dv * vec(1)) * scale;
+        v(2) = (dz_du * vec(0) + dz_dv * vec(1)) * scale;
+        return v;
     }
 
     cglib::vec2<float> SphericalTileTransformer::SphericalVertexTransformer::calculateTilePosition(const cglib::vec3<float>& pos) const {
         cglib::vec3<double> sphericalPos = cglib::vec3<double>::convert(pos) * (1.0 / (1 << _tileId.zoom)) + _origin;
-        cglib::vec2<double> epsg3857Pos = sphericalToEPSG3857(sphericalPos);
-        return epsg3857ToTile(epsg3857Pos);
+        return sphericalToTile(sphericalPos);
     }
 
     float SphericalTileTransformer::SphericalVertexTransformer::calculateHeight(const cglib::vec2<float>& pos, float height) const {
         return static_cast<float>(height * (1 << _tileId.zoom) / EARTH_CIRCUMFERENCE * 2 * PI);
     }
 
-    void SphericalTileTransformer::SphericalVertexTransformer::tesselateLineString(const cglib::vec2<float>* begin, const cglib::vec2<float>* end, VertexArray<cglib::vec2<float>>& points) const {
-        if (begin != end) {
-            points.append(*begin);
-            while (++begin != end) {
-                const cglib::vec2<float>* prev = begin - 1;
-                float dist = cglib::length(*begin - *prev) * static_cast<float>(_tileScale);
-                tesselateSegment(*prev, *begin, dist, points);
+    void SphericalTileTransformer::SphericalVertexTransformer::tesselateLineString(const cglib::vec2<float>* points, std::size_t count, VertexArray<cglib::vec2<float>>& tesselatedPoints) const {
+        if (count > 0) {
+            tesselatedPoints.append(points[0]);
+            for (std::size_t i = 0; i + 1 < count; i++) {
+                const cglib::vec2<float>& pos0 = points[i + 0];
+                const cglib::vec2<float>& pos1 = points[i + 1];
+                float dist = cglib::length(pos1 - pos0) * static_cast<float>(_tileScale);
+                tesselateSegment(pos0, pos1, dist, tesselatedPoints);
             }
         }
     }
 
-    void SphericalTileTransformer::SphericalVertexTransformer::tesselateTriangles(const unsigned int* begin, const unsigned int* end, VertexArray<cglib::vec2<float>>& coords, VertexArray<cglib::vec2<float>>& texCoords, VertexArray<unsigned int>& indices) const {
-        while (begin != end) {
-            unsigned int i0 = *begin++;
-            unsigned int i1 = *begin++;
-            unsigned int i2 = *begin++;
+    void SphericalTileTransformer::SphericalVertexTransformer::tesselateTriangles(const unsigned int* indices, std::size_t count, VertexArray<cglib::vec2<float>>& coords, VertexArray<cglib::vec2<float>>& texCoords, VertexArray<unsigned int>& tesselatedIndices) const {
+        for (std::size_t i = 0; i + 2 < count; i += 3) {
+            unsigned int i0 = indices[i + 0];
+            unsigned int i1 = indices[i + 1];
+            unsigned int i2 = indices[i + 2];
             float dist01 = cglib::length(coords[i1] - coords[i0]) * static_cast<float>(_tileScale);
             float dist02 = cglib::length(coords[i2] - coords[i0]) * static_cast<float>(_tileScale);
             float dist12 = cglib::length(coords[i2] - coords[i1]) * static_cast<float>(_tileScale);
-            tesselateTriangle(i0, i1, i2, dist01, dist02, dist12, coords, texCoords, indices);
+            tesselateTriangle(i0, i1, i2, dist01, dist02, dist12, coords, texCoords, tesselatedIndices);
         }
     }
 
@@ -189,6 +179,34 @@ namespace carto { namespace vt {
     cglib::vec2<float> SphericalTileTransformer::SphericalVertexTransformer::epsg3857ToTile(const cglib::vec2<double>& epsg3857Pos) const {
         cglib::vec2<double> tilePosInv = (epsg3857Pos - _tileOffset) * (1.0 / _tileScale);
         return cglib::vec2<float>::convert(cglib::vec2<double>(tilePosInv(0), 1 - tilePosInv(1)));
+    }
+
+    cglib::vec3<double> SphericalTileTransformer::SphericalVertexTransformer::tileToSpherical(const cglib::vec2<float>& pos) const {
+        if (_tileId.y < 0) {
+            if (pos(1) <= 0) {
+                return cglib::vec3<double>(0, 0, 1);
+            }
+        }
+        else if (_tileId.y >= (1 << _tileId.zoom)) {
+            if (pos(1) >= 1) {
+                return cglib::vec3<double>(0, 0, -1);
+            }
+        }
+        return epsg3857ToSpherical(tileToEPSG3857(pos));
+    }
+    
+    cglib::vec2<float> SphericalTileTransformer::SphericalVertexTransformer::sphericalToTile(const cglib::vec3<double>& p) const {
+        if (_tileId.y < 0) {
+            if (p(2) == 1) {
+                return cglib::vec2<float>(0, 0);
+            }
+        }
+        else if (_tileId.y >= (1 << _tileId.zoom)) {
+            if (p(2) == -1) {
+                return cglib::vec2<float>(0, 1);
+            }
+        }
+        return epsg3857ToTile(sphericalToEPSG3857(p));
     }
 
     void SphericalTileTransformer::SphericalVertexTransformer::tesselateSegment(const cglib::vec2<float>& pos0, const cglib::vec2<float>& pos1, float dist, VertexArray<cglib::vec2<float>>& points) const {
@@ -244,16 +262,43 @@ namespace carto { namespace vt {
     }
 
     cglib::bbox3<double> SphericalTileTransformer::calculateTileBBox(const TileId& tileId) const {
-        int n = 4 - std::min(tileId.zoom, 2);
         cglib::vec2<double> epsg3857Pos = tileOffset(tileId);
         cglib::bbox3<double> bbox = cglib::bbox3<double>::smallest();
-        for (int i = 0; i <= n; i++) {
-            for (int j = 0; j <= n; j++) {
-                double x = epsg3857Pos(0) + tileScale(tileId) * i / n;
-                double y = epsg3857Pos(1) + tileScale(tileId) * j / n;
-                bbox.add(epsg3857ToSpherical(cglib::vec2<double>(x, y)) * _scale);
+
+        // Root tile?
+        if (tileId == TileId(0, 0, 0)) {
+            double rz = std::tanh(epsg3857Pos(1) / EARTH_RADIUS);
+            bbox.add(cglib::vec3<double>(-1, -1, -rz) * _scale);
+            bbox.add(cglib::vec3<double>( 1,  1,  rz) * _scale);
+            return bbox;
+        }
+        
+        // Add tile corners.
+        double x0 = epsg3857Pos(0);
+        double x1 = epsg3857Pos(0) + tileScale(tileId);
+        double y0 = epsg3857Pos(1);
+        double y1 = epsg3857Pos(1) + tileScale(tileId);
+        bbox.add(epsg3857ToSpherical(cglib::vec2<double>(x0, y0)) * _scale);
+        bbox.add(epsg3857ToSpherical(cglib::vec2<double>(x1, y0)) * _scale);
+        bbox.add(epsg3857ToSpherical(cglib::vec2<double>(x0, y1)) * _scale);
+        bbox.add(epsg3857ToSpherical(cglib::vec2<double>(x1, y1)) * _scale);
+
+        // Check if tile crosses PI * N/4 boundaries. In that case we need to explicitly add such points.
+        if (tileId.zoom < 2) {
+            for (int i = -1; i <= 1; i++) {
+                double x = EARTH_CIRCUMFERENCE * i / 4;
+                if (x0 < x && x1 > x) {
+                    bbox.add(epsg3857ToSpherical(cglib::vec2<double>(x, y0)) * _scale);
+                    bbox.add(epsg3857ToSpherical(cglib::vec2<double>(x, y1)) * _scale);
+                }
             }
         }
+        
+        // Add pole?
+        if (tileId.y < 0 || tileId.y > (1 << tileId.zoom)) {
+            bbox.add(cglib::vec3<double>(0, 0, tileId.y < 0 ? _scale : _scale));
+        }
+
         return bbox;
     }
 
@@ -288,14 +333,6 @@ namespace carto { namespace vt {
         return cglib::mat4x4<float>::convert(cglib::inverse(tileMatrix) * cglib::mat4x4<double>::convert(rotateMatrixY * rotateMatrixX) * tileMatrix);
     }
 
-    boost::optional<cglib::vec3<double>> SphericalTileTransformer::calculatePoleOrigin(int poleZ) const {
-        return cglib::vec3<double>(0, 0, -poleZ * _scale);
-    }
-
-    boost::optional<cglib::vec3<double>> SphericalTileTransformer::calculatePoleNormal(int poleZ) const {
-        return cglib::vec3<double>(0, 0, -poleZ);
-    }
-
     std::shared_ptr<const TileTransformer::VertexTransformer> SphericalTileTransformer::createTileVertexTransformer(const TileId& tileId) const {
         return std::make_shared<SphericalVertexTransformer>(tileId, static_cast<float>(_scale), calculateTileOrigin(tileId), _divideThreshold);
     }
@@ -322,10 +359,9 @@ namespace carto { namespace vt {
         return cglib::vec3<double>(rx, ry, rz);
     }
 
-    cglib::vec2<double> SphericalTileTransformer::sphericalToEPSG3857(const cglib::vec3<double>& pos) {
-        cglib::vec3<double> unitPos = cglib::unit(pos);
-        double x1 = pos(0) != 0 || pos(1) != 0 ? std::atan2(pos(1), pos(0)) : 0;
-        double y1 = std::atanh(std::max(-1.0, std::min(1.0, unitPos(2))));
+    cglib::vec2<double> SphericalTileTransformer::sphericalToEPSG3857(const cglib::vec3<double>& p) {
+        double x1 = p(0) != 0 || p(1) != 0 ? std::atan2(p(1), p(0)) : 0;
+        double y1 = std::atanh(std::max(-1.0, std::min(1.0, p(2) / cglib::length(p))));
         return cglib::vec2<double>(x1 * EARTH_RADIUS, y1 * EARTH_RADIUS);
     }
 } }

@@ -46,12 +46,6 @@ namespace carto { namespace vt {
         _subTileBlending = enabled;
     }
     
-    void GLTileRenderer::setPoleColors(const Color& northPoleColor, const Color& southPoleColor) {
-        std::lock_guard<std::mutex> lock(*_mutex);
-
-        _poleColors = std::array<Color, 2> {{ northPoleColor, southPoleColor }};
-    }
-
     void GLTileRenderer::setVisibleTiles(const std::map<TileId, std::shared_ptr<const Tile>>& tiles, bool blend) {
         using TilePair = std::pair<TileId, std::shared_ptr<const Tile>>;
 
@@ -109,7 +103,6 @@ namespace carto { namespace vt {
 
         // Reset surface caches. Note that this does not mean that the surfaces are not cached.
         _tileSurfaceMap.clear();
-        _poleSurfaceMap.clear();
 
         // Create label list, merge geometries
         std::unordered_map<std::pair<int, long long>, std::shared_ptr<Label>, LabelHash> newLabelMap;
@@ -398,10 +391,6 @@ namespace carto { namespace vt {
         glStencilMask(0);
         glEnable(GL_CULL_FACE);
         glCullFace(GL_BACK);
-
-        // Render poles
-        renderPole(-1.0, _poleColors[0], 1.0f);
-        renderPole(1.0, _poleColors[1], 1.0f);
 
         // 2D geometry pass
         if (stencilBits > 0) {
@@ -1244,62 +1233,6 @@ namespace carto { namespace vt {
         }
     }
     
-    void GLTileRenderer::renderPole(int poleZ, const Color& color, float opacity) {
-        if (opacity <= 0) {
-            return;
-        }
-        if (!color.value()) {
-            return;
-        }
-
-        for (const std::shared_ptr<const TileSurface>& tileSurface : buildCompiledPoleSurfaces(poleZ)) {
-            const TileSurface::VertexGeometryLayoutParameters& vertexGeomLayoutParams = tileSurface->getVertexGeometryLayoutParameters();
-            const CompiledSurface& compiledTileSurface = _compiledTileSurfaceMap[tileSurface];
-
-            bool applyLighting = _lightDir[2] < 0.99f || vertexGeomLayoutParams.normalOffset >= 0;
-
-            GLuint shaderProgram = _shaderManager.createProgram("background", _patternTransformLightingContext[0][0][applyLighting ? 1 : 0]);
-            glUseProgram(shaderProgram);
-            checkGLError();
-
-            glBindBuffer(GL_ARRAY_BUFFER, compiledTileSurface.vertexGeometryVBO);
-            glVertexAttribPointer(glGetAttribLocation(shaderProgram, "aVertexPosition"), 3, GL_FLOAT, GL_FALSE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.coordOffset));
-            glEnableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexPosition"));
-            if (applyLighting) {
-                if (vertexGeomLayoutParams.normalOffset >= 0) {
-                    glVertexAttribPointer(glGetAttribLocation(shaderProgram, "aVertexNormal"), 3, GL_SHORT, GL_TRUE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.normalOffset));
-                    glEnableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexNormal"));
-                } else {
-                    glVertexAttrib3f(glGetAttribLocation(shaderProgram, "aVertexNormal"), 0, 0, 1);
-                }
-            }
-
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, compiledTileSurface.indicesVBO);
-
-            cglib::mat4x4<float> mvpMatrix = cglib::mat4x4<float>::convert(_cameraProjMatrix * cglib::translate4_matrix(_tileSurfaceBuilderOrigin));
-            glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "uMVPMatrix"), 1, GL_FALSE, mvpMatrix.data());
-
-            glUniform4fv(glGetUniformLocation(shaderProgram, "uColor"), 1, color.rgba().data());
-            glUniform1f(glGetUniformLocation(shaderProgram, "uOpacity"), opacity);
-
-            if (applyLighting) {
-                glUniform3fv(glGetUniformLocation(shaderProgram, "uLightDir"), 1, _lightDir.data());
-            }
-
-            glDrawElements(GL_TRIANGLES, tileSurface->getIndicesCount(), GL_UNSIGNED_SHORT, 0);
-
-            if (applyLighting) {
-                if (vertexGeomLayoutParams.normalOffset >= 0) {
-                    glDisableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexNormal"));
-                }
-            }
-            glDisableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexPosition"));
-
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-            glBindBuffer(GL_ARRAY_BUFFER, 0);
-        }
-    }
-
     void GLTileRenderer::renderTileMask(const TileId& tileId) {
         for (const std::shared_ptr<const TileSurface>& tileSurface : buildCompiledTileSurfaces(tileId)) {
             const TileSurface::VertexGeometryLayoutParameters& vertexGeomLayoutParams = tileSurface->getVertexGeometryLayoutParameters();
@@ -1942,26 +1875,6 @@ namespace carto { namespace vt {
         auto it = _tileSurfaceMap.find(tileId);
         if (it == _tileSurfaceMap.end()) {
             it = _tileSurfaceMap.emplace(tileId, _tileSurfaceBuilder.buildTileSurface(tileId)).first;
-        }
-        for (const std::shared_ptr<TileSurface>& tileSurface : it->second) {
-            CompiledSurface& compiledSurface = _compiledTileSurfaceMap[tileSurface];
-            if (compiledSurface.indicesVBO == 0) {
-                createCompiledSurface(compiledSurface);
-
-                glBindBuffer(GL_ARRAY_BUFFER, compiledSurface.vertexGeometryVBO);
-                glBufferData(GL_ARRAY_BUFFER, tileSurface->getVertexGeometry().size() * sizeof(unsigned char), tileSurface->getVertexGeometry().data(), GL_STATIC_DRAW);
-
-                glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, compiledSurface.indicesVBO);
-                glBufferData(GL_ELEMENT_ARRAY_BUFFER, tileSurface->getIndices().size() * sizeof(unsigned short), tileSurface->getIndices().data(), GL_STATIC_DRAW);
-            }
-        }
-        return it->second;
-    }
-
-    const std::vector<std::shared_ptr<TileSurface>>& GLTileRenderer::buildCompiledPoleSurfaces(int poleZ) {
-        auto it = _poleSurfaceMap.find(poleZ);
-        if (it == _poleSurfaceMap.end()) {
-            it = _poleSurfaceMap.emplace(poleZ, _tileSurfaceBuilder.buildPoleSurface(poleZ)).first;
         }
         for (const std::shared_ptr<TileSurface>& tileSurface : it->second) {
             CompiledSurface& compiledSurface = _compiledTileSurfaceMap[tileSurface];

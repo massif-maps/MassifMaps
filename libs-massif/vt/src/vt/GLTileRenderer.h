@@ -43,7 +43,6 @@ namespace carto { namespace vt {
         void setLightDir(const cglib::vec3<float>& lightDir);
         void setInteractionMode(bool enabled);
         void setSubTileBlending(bool enabled);
-        void setPoleColors(const Color& northPoleColor, const Color& southPoleColor);
         void setVisibleTiles(const std::map<TileId, std::shared_ptr<const Tile>>& tiles, bool blend);
         std::vector<std::shared_ptr<Label>> getVisibleLabels() const;
         
@@ -176,7 +175,6 @@ namespace carto { namespace vt {
 
         void blendScreenTexture(float opacity, GLuint texture);
         void blendTileTexture(const TileId& tileId, float opacity, GLuint texture);
-        void renderPole(int poleZ, const Color& color, float opacity);
         void renderTileMask(const TileId& tileId);
         void renderTileBackground(const TileId& tileId, const std::shared_ptr<TileBackground>& background, float tileSize, float opacity);
         void renderTileBitmap(const TileId& tileId, const TileId& targetTileId, float blend, float opacity, const std::shared_ptr<TileBitmap>& bitmap);
@@ -187,7 +185,6 @@ namespace carto { namespace vt {
         bool isEmptyBlendRequired(CompOp compOp) const;
 
         const std::vector<std::shared_ptr<TileSurface>>& buildCompiledTileSurfaces(const TileId& tileId);
-        const std::vector<std::shared_ptr<TileSurface>>& buildCompiledPoleSurfaces(int poleZ);
 
         void createFrameBuffer(FrameBuffer& frameBuffer, bool useColor, bool useDepth, bool useStencil);
         void deleteFrameBuffer(FrameBuffer& frameBuffer);
@@ -218,7 +215,6 @@ namespace carto { namespace vt {
         cglib::mat4x4<double> _cameraMatrix;
         cglib::mat4x4<double> _cameraProjMatrix;
         cglib::frustum3<double> _frustum;
-        std::array<Color, 2> _poleColors;
         ViewState _viewState;
         cglib::vec3<double> _tileSurfaceBuilderOrigin;
         std::set<TileId> _tileSurfaceBuilderOriginTileIds;
@@ -237,7 +233,6 @@ namespace carto { namespace vt {
         std::vector<std::shared_ptr<Label>> _labels;
         std::unordered_map<std::pair<int, long long>, std::shared_ptr<Label>, LabelHash> _labelMap;
         std::unordered_map<TileId, std::vector<std::shared_ptr<TileSurface>>> _tileSurfaceMap;
-        std::unordered_map<int, std::vector<std::shared_ptr<TileSurface>>> _poleSurfaceMap;
         std::map<std::weak_ptr<const Bitmap>, CompiledBitmap, std::owner_less<std::weak_ptr<const Bitmap>>> _compiledBitmapMap;
         std::map<std::weak_ptr<const TileBitmap>, CompiledBitmap, std::owner_less<std::weak_ptr<const TileBitmap>>> _compiledTileBitmapMap;
         std::map<std::weak_ptr<const TileGeometry>, CompiledGeometry, std::owner_less<std::weak_ptr<const TileGeometry>>> _compiledTileGeometryMap;

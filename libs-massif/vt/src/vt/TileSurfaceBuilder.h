@@ -29,15 +29,12 @@ namespace carto { namespace vt {
         void setVisibleTiles(const std::set<TileId>& tileIds);
 
         std::vector<std::shared_ptr<TileSurface>> buildTileSurface(const TileId& tileId) const;
-        std::vector<std::shared_ptr<TileSurface>> buildPoleSurface(int poleZ) const;
 
     private:
         using TileNeighbours = std::array<std::vector<TileId>, 4>; // left, right, up, down
         
         constexpr static int RESERVED_VERTICES = 8192;
         
-        constexpr static float POLE_BUFFERING = 2.0f / 256.0f;
-
         void packGeometry(const VertexArray<cglib::vec3<float>>& coords, const VertexArray<cglib::vec2<float>>& texCoords, const VertexArray<cglib::vec3<float>>& normals, const VertexArray<unsigned int>& indices, std::vector<std::shared_ptr<TileSurface>>& tileSurfaces) const;
 
         static std::vector<TileId> tesselateTile(const TileId& baseTileId, const std::vector<TileId>& tileIds, bool xCoord);
@@ -46,7 +43,6 @@ namespace carto { namespace vt {
         cglib::vec3<double> _origin = cglib::vec3<double>(0, 0, 0);
 
         mutable std::map<TileId, std::vector<std::shared_ptr<TileSurface>>> _tileSurfaceCache;
-        mutable std::map<int, std::vector<std::shared_ptr<TileSurface>>> _poleSurfaceCache;
 
         const std::shared_ptr<const TileTransformer> _transformer;
     };

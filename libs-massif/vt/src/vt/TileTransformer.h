@@ -138,7 +138,7 @@ namespace carto { namespace vt {
         static cglib::vec3<double> epsg3857ToSpherical(const cglib::vec2<double>& epsg3857Pos);
         static cglib::vec2<double> sphericalToEPSG3857(const cglib::vec3<double>& p);
 
-        static constexpr int ZOOM_0_GRID_SIZE = 96;
+        static constexpr int ZOOM_0_GRID_SIZE = 64;
         static constexpr float DEFAULT_DIVIDE_THRESHOLD = static_cast<float>(EARTH_CIRCUMFERENCE / ZOOM_0_GRID_SIZE);
 
         const double _scale;

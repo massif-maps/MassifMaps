@@ -161,11 +161,11 @@ namespace carto { namespace vt {
         constexpr static float HALO_RADIUS_SCALE = 2.5f; // the scaling factor for halo radius
         constexpr static float POLYGON3D_HEIGHT_SCALE = 10018754.17f; // scaling factor for zoom 0 heights
 
+        bool isTileVisible(const TileId& tileId) const;
+
         cglib::mat4x4<double> calculateTileMatrix(const TileId& tileId, float coordScale = 1.0f) const;
         cglib::mat3x3<double> calculateTileMatrix2D(const TileId& tileId, float coordScale = 1.0f) const;
         cglib::mat4x4<float> calculateTileMVPMatrix(const TileId& tileId, float coordScale = 1.0f) const;
-
-        bool testTileVisibility(const TileId& tileId, const cglib::frustum3<double>& frustum, const cglib::vec3<float>& viewDir) const;
 
         float calculateBlendNodeOpacity(const BlendNode& blendNode, float blend) const;
         
@@ -204,8 +204,6 @@ namespace carto { namespace vt {
         void deleteCompiledGeometry(CompiledGeometry& compiledGeometry);
         void createCompiledLabelBatch(CompiledLabelBatch& compiledLabelBatch);
         void deleteCompiledLabelBatch(CompiledLabelBatch& compiledLabelBatch);
-
-        void checkGLError();
 
         GLShaderManager::ShaderContext _defaultContext;
         GLShaderManager::ShaderContext _patternTransformLighting2DContext[2][2];

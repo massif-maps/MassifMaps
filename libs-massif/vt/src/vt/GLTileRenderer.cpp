@@ -59,6 +59,12 @@ namespace {
             glBlendEquation(it->second.blendEquation);
         }
     }
+
+    void checkGLError() {
+        for (GLenum error = glGetError(); error != GL_NONE; error = glGetError()) {
+            assert(error != GL_NONE);
+        }
+    }
 }
 
 namespace carto { namespace vt {
@@ -105,12 +111,10 @@ namespace carto { namespace vt {
         // Build visible tile list for labels. Some tiles may be outside the frustum, ignore labels of such tiles as label rendering is quite expensive.
         // Also build tile surfaces.
         cglib::frustum3<double> frustum;
-        cglib::vec3<float> viewDir;
         cglib::vec3<double> origin;
         {
             std::lock_guard<std::mutex> lock(*_mutex);
             frustum = _frustum;
-            viewDir = _viewState.orientation[2];
             origin = _viewState.origin;
         }
         std::set<TileId> tileIds;
@@ -118,7 +122,7 @@ namespace carto { namespace vt {
         for (const TilePair& tilePair : tiles) {
             tileIds.insert(tilePair.first);
             
-            if (tilePair.second && testTileVisibility(tilePair.first, frustum, viewDir)) {
+            if (tilePair.second && frustum.inside(_transformer->calculateTileBBox(tilePair.first))) {
                 // Keep only unique tiles and order them by tile zoom level.
                 // This will fix flickering when multiple tiles from different zoom levels redefine same label.
                 auto it = std::lower_bound(labelTiles.begin(), labelTiles.end(), tilePair.second, [](const std::shared_ptr<const Tile>& tile1, const std::shared_ptr<const Tile>& tile2) {
@@ -750,6 +754,11 @@ namespace carto { namespace vt {
         return results.size() > initialResults;
     }
     
+    bool GLTileRenderer::isTileVisible(const TileId& tileId) const {
+        cglib::bbox3<double> bbox = _transformer->calculateTileBBox(tileId);
+        return _frustum.inside(bbox);
+    }
+
     cglib::mat4x4<double> GLTileRenderer::calculateTileMatrix(const TileId& tileId, float coordScale) const {
         return _transformer->calculateTileMatrix(tileId, coordScale);
     }
@@ -769,11 +778,6 @@ namespace carto { namespace vt {
         return cglib::mat4x4<float>::convert(_cameraProjMatrix * calculateTileMatrix(tileId, coordScale));
     }
     
-    bool GLTileRenderer::testTileVisibility(const TileId& tileId, const cglib::frustum3<double>& frustum, const cglib::vec3<float>& viewDir) const {
-        cglib::bbox3<double> bbox = _transformer->calculateTileBBox(tileId);
-        return frustum.inside(bbox);
-    }
-
     float GLTileRenderer::calculateBlendNodeOpacity(const BlendNode& blendNode, float blend) const {
         float opacity = blend * blendNode.blend;
         for (const std::shared_ptr<BlendNode>& childBlendNode : blendNode.childNodes) {
@@ -783,7 +787,7 @@ namespace carto { namespace vt {
     }
 
     void GLTileRenderer::updateBlendNode(BlendNode& blendNode, float dBlend) const {
-        if (!testTileVisibility(blendNode.tileId, _frustum, _viewState.orientation[2])) {
+        if (!isTileVisible(blendNode.tileId)) {
             blendNode.blend = 1.0f;
             return;
         }
@@ -800,7 +804,7 @@ namespace carto { namespace vt {
     }
     
     bool GLTileRenderer::buildRenderNodes(const BlendNode& blendNode, float blend, std::multimap<int, RenderNode>& renderNodeMap) const {
-        if (!testTileVisibility(blendNode.tileId, _frustum, _viewState.orientation[2])) {
+        if (!isTileVisible(blendNode.tileId)) {
             return false;
         }
         
@@ -2100,12 +2104,6 @@ namespace carto { namespace vt {
         if (compiledLabelBatch.indicesVBO != 0) {
             glDeleteBuffers(1, &compiledLabelBatch.indicesVBO);
             compiledLabelBatch.indicesVBO = 0;
-        }
-    }
-
-    void GLTileRenderer::checkGLError() {
-        for (GLenum error = glGetError(); error != GL_NONE; error = glGetError()) {
-            assert(error != GL_NONE);
         }
     }
 } }

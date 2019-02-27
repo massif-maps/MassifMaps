@@ -257,7 +257,7 @@ namespace carto { namespace vt {
         if (tileId.y < 0) {
             bbox.add(cglib::vec3<double>(0, 0,  1) * _scale);
         }
-        else if (tileId.y >= (1 >> tileId.zoom)) {
+        else if (tileId.y >= (1 << tileId.zoom)) {
             bbox.add(cglib::vec3<double>(0, 0, -1) * _scale);
         }
 

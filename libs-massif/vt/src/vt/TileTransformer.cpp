@@ -83,7 +83,7 @@ namespace carto { namespace vt {
     }
 
     cglib::vec3<float> SphericalTileTransformer::SphericalVertexTransformer::calculatePoint(const cglib::vec2<float>& pos) const {
-        if (pos(0) > 0 && pos(0) < 1 && pos(1) > 0 && pos(1) < 1) {
+        if ((pos(0) > 0 && pos(0) < 1 && pos(1) > 0 && pos(1) < 1) || std::isinf(pos(1))) {
             cglib::vec3<double> p = tileToSpherical(pos);
             return cglib::vec3<float>::convert((p - _origin) * static_cast<double>(1 << _tileId.zoom));
         }
@@ -182,30 +182,10 @@ namespace carto { namespace vt {
     }
 
     cglib::vec3<double> SphericalTileTransformer::SphericalVertexTransformer::tileToSpherical(const cglib::vec2<float>& pos) const {
-        if (_tileId.y < 0) {
-            if (pos(1) <= 0) {
-                return cglib::vec3<double>(0, 0, 1);
-            }
-        }
-        else if (_tileId.y >= (1 << _tileId.zoom)) {
-            if (pos(1) >= 1) {
-                return cglib::vec3<double>(0, 0, -1);
-            }
-        }
         return epsg3857ToSpherical(tileToEPSG3857(pos));
     }
     
     cglib::vec2<float> SphericalTileTransformer::SphericalVertexTransformer::sphericalToTile(const cglib::vec3<double>& p) const {
-        if (_tileId.y < 0) {
-            if (p(2) == 1) {
-                return cglib::vec2<float>(0, 0);
-            }
-        }
-        else if (_tileId.y >= (1 << _tileId.zoom)) {
-            if (p(2) == -1) {
-                return cglib::vec2<float>(0, 1);
-            }
-        }
         return epsg3857ToTile(sphericalToEPSG3857(p));
     }
 
@@ -273,6 +253,14 @@ namespace carto { namespace vt {
             return bbox;
         }
         
+        // HACK: Add pole? We use extended y coordinate range for poles [0..inf] or [-inf..0]
+        if (tileId.y < 0) {
+            bbox.add(cglib::vec3<double>(0, 0,  1) * _scale);
+        }
+        else if (tileId.y >= (1 >> tileId.zoom)) {
+            bbox.add(cglib::vec3<double>(0, 0, -1) * _scale);
+        }
+
         // Add tile corners.
         double x0 = epsg3857Pos(0);
         double x1 = epsg3857Pos(0) + tileScale(tileId);
@@ -294,11 +282,6 @@ namespace carto { namespace vt {
             }
         }
         
-        // Add pole?
-        if (tileId.y < 0 || tileId.y > (1 << tileId.zoom)) {
-            bbox.add(cglib::vec3<double>(0, 0, tileId.y < 0 ? _scale : _scale));
-        }
-
         return bbox;
     }
 

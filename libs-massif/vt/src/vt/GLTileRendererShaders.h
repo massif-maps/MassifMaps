@@ -9,16 +9,12 @@
 
 namespace carto { namespace vt {
     static const std::string commonVsh = R"GLSL(
-        #ifdef LIGHTING
+        attribute vec3 aVertexPosition;
+        #ifdef LIGHTING_FSH
         attribute vec3 aVertexNormal;
         varying mediump vec3 vNormal;
-
-        void calculateNormal() {
-            vNormal = aVertexNormal;
-        }
-        #else
-        void calculateNormal() {
-        }
+        #elif defined(LIGHTING_VSH)
+        attribute vec3 aVertexNormal;
         #endif
     )GLSL";
 
@@ -26,26 +22,14 @@ namespace carto { namespace vt {
         #ifdef DERIVATIVES
         #extension GL_OES_standard_derivatives : enable
         #endif
+        #ifdef LIGHTING_FSH
+        varying mediump vec3 vNormal;
+        #endif
 
         precision mediump float;
-
-        #ifdef LIGHTING
-        uniform vec3 uLightDir;
-        varying mediump vec3 vNormal;
-        
-        lowp vec4 applyLighting(lowp vec4 color) {
-            float lighting = max(0.0, dot(normalize(vNormal), uLightDir)) * 0.5 + 0.5;
-            return vec4(color.xyz * lighting, color.w);
-        }
-        #else
-        lowp vec4 applyLighting(lowp vec4 color) {
-            return color;
-        }
-        #endif
     )GLSL";
 
     static const std::string backgroundVsh = R"GLSL(
-        attribute vec3 aVertexPosition;
         #ifdef PATTERN
         attribute vec2 aVertexUV;
         #endif
@@ -54,12 +38,20 @@ namespace carto { namespace vt {
         uniform vec2 uUVScale;
         varying mediump vec2 vUV;
         #endif
+        #ifdef LIGHTING_VSH
+        varying lowp vec4 vColor;
+        #endif
 
         void main(void) {
         #ifdef PATTERN
             vUV = aVertexUV * uUVScale;
         #endif
-            calculateNormal();
+        #ifdef LIGHTING_VSH
+            vColor = applyLighting(vec4(1.0, 1.0, 1.0, 1.0), aVertexNormal);
+        #endif
+        #ifdef LIGHTING_FSH
+            vNormal = aVertexNormal;
+        #endif
             gl_Position = uMVPMatrix * vec4(aVertexPosition, 1.0);
         }
     )GLSL";
@@ -73,27 +65,44 @@ namespace carto { namespace vt {
         #ifdef PATTERN
         varying mediump vec2 vUV;
         #endif
+        #ifdef LIGHTING_VSH
+        varying lowp vec4 vColor;
+        #endif
 
         void main(void) {
         #ifdef PATTERN
-            vec4 patternColor = texture2D(uPattern, vUV);
-            gl_FragColor = applyLighting((uColor * (1.0 - patternColor.a) + patternColor) * uOpacity);
+            lowp vec4 patternColor = texture2D(uPattern, vUV);
+            lowp vec4 color = uColor * (1.0 - patternColor.a) + patternColor;
         #else
-            gl_FragColor = applyLighting(uColor * uOpacity);
+            lowp vec4 color = uColor;
+        #endif
+        #ifdef LIGHTING_VSH
+            gl_FragColor = vColor * color * uOpacity;
+        #elif defined(LIGHTING_FSH)
+            gl_FragColor = applyLighting(color, normalize(vNormal)) * uOpacity;
+        #else
+            gl_FragColor = color * uOpacity;
         #endif
         }
     )GLSL";
 
     static const std::string bitmapVsh = R"GLSL(
-        attribute vec3 aVertexPosition;
         attribute vec2 aVertexUV;
         uniform mat4 uMVPMatrix;
         uniform mat3 uUVMatrix;
         varying mediump vec2 vUV;
+        #ifdef LIGHTING_VSH
+        varying lowp vec4 vColor;
+        #endif
 
         void main(void) {
             vUV = vec2(uUVMatrix * vec3(aVertexUV, 1.0));
-            calculateNormal();
+        #ifdef LIGHTING_VSH
+            vColor = applyLighting(vec4(1.0, 1.0, 1.0, 1.0), aVertexNormal);
+        #endif
+        #ifdef LIGHTING_FSH
+            vNormal = aVertexNormal;
+        #endif
             gl_Position = uMVPMatrix * vec4(aVertexPosition, 1.0);
         }
     )GLSL";
@@ -102,14 +111,23 @@ namespace carto { namespace vt {
         uniform sampler2D uBitmap;
         uniform lowp float uOpacity;
         varying mediump vec2 vUV;
+        #ifdef LIGHTING_VSH
+        varying lowp vec4 vColor;
+        #endif
 
         void main(void) {
-            gl_FragColor = applyLighting(texture2D(uBitmap, vUV) * uOpacity);
+            lowp vec4 color = texture2D(uBitmap, vUV);
+        #ifdef LIGHTING_VSH
+            gl_FragColor = vColor * color * uOpacity;
+        #elif defined(LIGHTING_FSH)
+            gl_FragColor = applyLighting(color, normalize(vNormal)) * uOpacity;
+        #else
+            gl_FragColor = color * uOpacity;
+        #endif
         }
     )GLSL";
 
     static const std::string blendVsh = R"GLSL(
-        attribute vec3 aVertexPosition;
         uniform mat4 uMVPMatrix;
 
         void main(void) {
@@ -123,13 +141,12 @@ namespace carto { namespace vt {
         uniform mediump vec2 uInvScreenSize;
 
         void main(void) {
-            vec4 textureColor = texture2D(uTexture, gl_FragCoord.xy * uInvScreenSize);
-            gl_FragColor = textureColor * uColor;
+            lowp vec4 color = texture2D(uTexture, gl_FragCoord.xy * uInvScreenSize);
+            gl_FragColor = color * uColor;
         }
     )GLSL";
 
     static const std::string labelVsh = R"GLSL(
-        attribute vec3 aVertexPosition;
         attribute vec2 aVertexUV;
         attribute vec4 aVertexColor;
         attribute vec4 aVertexAttribs;
@@ -146,10 +163,17 @@ namespace carto { namespace vt {
         void main(void) {
             int styleIndex = int(aVertexAttribs[0]);
             float size = uWidthTable[styleIndex];
-            vColor = uColorTable[styleIndex] * aVertexAttribs[2] * (1.0 / 127.0);
+            vec4 color = uColorTable[styleIndex] * aVertexAttribs[2] * (1.0 / 127.0);
             vUV = aVertexUV * uUVScale;
             vAttribs = vec4(aVertexAttribs[1], uStrokeWidthTable[styleIndex], uSDFScale / size, size / uSDFScale);
-            calculateNormal();
+        #ifdef LIGHTING_VSH
+            vColor = applyLighting(color, aVertexNormal);
+        #else
+            vColor = color;
+        #endif
+        #ifdef LIGHTING_FSH
+            vNormal = aVertexNormal;
+        #endif
             gl_Position = uMVPMatrix * vec4(aVertexPosition, 1.0);
         }
     )GLSL";
@@ -164,9 +188,9 @@ namespace carto { namespace vt {
         varying mediump vec4 vAttribs;
 
         void main(void) {
-            vec4 color = texture2D(uBitmap, vUV);
+            lowp vec4 color = texture2D(uBitmap, vUV);
             if (vAttribs[0] > 0.5) {
-                gl_FragColor = color * vColor.a;
+                color = color * vColor.a;
             } else {
                 if (vAttribs[0] < -0.5) {
         #ifdef DERIVATIVES
@@ -177,16 +201,20 @@ namespace carto { namespace vt {
                     float scale = vAttribs[3];
         #endif
                     float offset = 0.5 * (1.0 - size - vAttribs[1] * vAttribs[2]);
-                    gl_FragColor = applyLighting(clamp((color.r - offset) * scale, 0.0, 1.0) * vColor);
+                    color = clamp((color.r - offset) * scale, 0.0, 1.0) * vColor;
                 } else {
-                    gl_FragColor = applyLighting(vec4(0.0, 0.0, 0.0, 0.0));
+                    color = vec4(0.0, 0.0, 0.0, 0.0);
                 }
             }
+        #ifdef LIGHTING_FSH
+            gl_FragColor = applyLighting(color, normalize(vNormal));
+        #else
+            gl_FragColor = color;
+        #endif
         }
     )GLSL";
 
     static const std::string pointVsh = R"GLSL(
-        attribute vec3 aVertexPosition;
         attribute vec3 aVertexBinormal;
         #ifdef PATTERN
         attribute vec2 aVertexUV;
@@ -218,13 +246,20 @@ namespace carto { namespace vt {
             pos = vec3(uTransformMatrix * vec4(pos, 1.0));
         #endif
             vec3 delta = aVertexBinormal * (uBinormalScale * size);
-            vColor = uColorTable[styleIndex];
+            vec4 color = uColorTable[styleIndex];
         #ifdef PATTERN
             vUV = uUVScale * aVertexUV;
         #endif
             float offset = 0.5 - 0.5 * uSDFScale / size * (1.0 + uStrokeWidthTable[styleIndex]);
             vAttribs = vec4(aVertexAttribs[1], 0.0, offset, size / uSDFScale);
-            calculateNormal();
+        #ifdef LIGHTING_VSH
+            vColor = applyLighting(color, aVertexNormal);
+        #else
+            vColor = color;
+        #endif
+        #ifdef LIGHTING_FSH
+            vNormal = aVertexNormal;
+        #endif
             gl_Position = uMVPMatrix * vec4(pos + delta, 1.0);
         }
     )GLSL";
@@ -241,20 +276,24 @@ namespace carto { namespace vt {
 
         void main(void) {
         #ifdef PATTERN
-            vec4 color = texture2D(uPattern, vUV);
+            lowp vec4 color = texture2D(uPattern, vUV);
             if (vAttribs[0] > 0.5) {
-                gl_FragColor = applyLighting(color * vColor.a);
+                color = color * vColor.a;
             } else {
-                gl_FragColor = applyLighting(clamp((color.r - vAttribs[2]) * vAttribs[3], 0.0, 1.0) * vColor);
+                color = clamp((color.r - vAttribs[2]) * vAttribs[3], 0.0, 1.0) * vColor;
             }
         #else
-            gl_FragColor = applyLighting(vColor);
+            lowp vec4 color = vColor;
+        #endif
+        #ifdef LIGHTING_FSH
+            gl_FragColor = applyLighting(color, normalize(vNormal));
+        #else
+            gl_FragColor = color;
         #endif
         }
     )GLSL";
 
     static const std::string lineVsh = R"GLSL(
-        attribute vec3 aVertexPosition;
         attribute vec3 aVertexBinormal;
         #ifdef PATTERN
         attribute vec2 aVertexUV;
@@ -294,13 +333,20 @@ namespace carto { namespace vt {
         #ifdef TRANSFORM
             pos = vec3(uTransformMatrix * vec4(pos, 1.0));
         #endif
-            vColor = uColorTable[styleIndex];
+            vec4 color = uColorTable[styleIndex];
         #ifdef PATTERN
             vUV = uUVScale * aVertexUV;
         #endif
             vDist = vec2(aVertexAttribs[1], aVertexAttribs[2]) * (roundedWidth * gamma);
             vWidth = (width - 1.0) * gamma + 1.0;
-            calculateNormal();
+        #ifdef LIGHTING_VSH
+            vColor = applyLighting(color, aVertexNormal);
+        #else
+            vColor = color;
+        #endif
+        #ifdef LIGHTING_FSH
+            vNormal = aVertexNormal;
+        #endif
             gl_Position = uMVPMatrix * vec4(pos + delta, 1.0);
         }
     )GLSL";
@@ -325,15 +371,19 @@ namespace carto { namespace vt {
             float dist = vWidth - length(vDist);
             lowp float a = clamp(dist, 0.0, 1.0);
         #ifdef PATTERN
-            gl_FragColor = applyLighting(texture2D(uPattern, vUV) * vColor * a);
+            lowp vec4 color = texture2D(uPattern, vUV) * vColor * a;
         #else
-            gl_FragColor = applyLighting(vColor * a);
+            lowp vec4 color = vColor * a;
+        #endif
+        #ifdef LIGHTING_FSH
+            gl_FragColor = applyLighting(color, normalize(vNormal));
+        #else
+            gl_FragColor = color;
         #endif
         }
     )GLSL";
 
     static const std::string polygonVsh = R"GLSL(
-        attribute vec3 aVertexPosition;
         #ifdef PATTERN
         attribute vec2 aVertexUV;
         #endif
@@ -357,11 +407,18 @@ namespace carto { namespace vt {
         #ifdef TRANSFORM
             pos = vec3(uTransformMatrix * vec4(pos, 1.0));
         #endif
-            vColor = uColorTable[styleIndex];
+            vec4 color = uColorTable[styleIndex];
         #ifdef PATTERN
             vUV = uUVScale * aVertexUV;
         #endif
-            calculateNormal();
+        #ifdef LIGHTING_VSH
+            vColor = applyLighting(color, aVertexNormal);
+        #else
+            vColor = color;
+        #endif
+        #ifdef LIGHTING_FSH
+            vNormal = aVertexNormal;
+        #endif
             gl_Position = uMVPMatrix * vec4(pos, 1.0);
         }
     )GLSL";
@@ -377,15 +434,22 @@ namespace carto { namespace vt {
 
         void main(void) {
         #ifdef PATTERN
-            gl_FragColor = applyLighting(texture2D(uPattern, vUV) * vColor);
+            lowp vec4 color = texture2D(uPattern, vUV) * vColor;
         #else
-            gl_FragColor = applyLighting(vColor);
+            lowp vec4 color = vColor;
+        #endif
+        #ifdef LIGHTING_FSH
+            gl_FragColor = applyLighting(color, normalize(vNormal));
+        #else
+            gl_FragColor = color;
         #endif
         }
     )GLSL";
 
     static const std::string polygon3DVsh = R"GLSL(
-        attribute vec3 aVertexPosition;
+        #if !defined(LIGHTING_FSH) && !defined(LIGHTING_VSH)
+        attribute vec3 aVertexNormal;
+        #endif
         attribute vec3 aVertexBinormal;
         attribute vec2 aVertexUV;
         attribute float aVertexHeight;
@@ -398,7 +462,6 @@ namespace carto { namespace vt {
         uniform float uUVScale;
         uniform float uHeightScale;
         uniform float uAbsHeightScale;
-        uniform vec3 uLightDir;
         uniform vec4 uColorTable[16];
         #ifdef GL_FRAGMENT_PRECISION_HIGH
         varying highp vec2 vTilePos;
@@ -411,16 +474,25 @@ namespace carto { namespace vt {
 
         void main(void) {
             int styleIndex = int(aVertexAttribs[0]);
+            bool sideVertex = aVertexAttribs[1] != 0.0;
             float height = aVertexHeight * uHeightScale;
             vec3 pos = aVertexPosition;
         #ifdef TRANSFORM
             pos = vec3(uTransformMatrix * vec4(pos, 1.0));
         #endif
             pos = pos + aVertexNormal * height;
-            vNormal = normalize(aVertexAttribs[1] != 0.0 ? aVertexBinormal : aVertexNormal);
+            vec3 normal = normalize(sideVertex ? aVertexBinormal : aVertexNormal);
             vTilePos = (uTileMatrix * vec3(aVertexUV * uUVScale, 1.0)).xy;
-            vColor = uColorTable[styleIndex];
-            vHeight = max(0.0, (aVertexAttribs[1] != 0.0 ? aVertexHeight * uAbsHeightScale : 32.0));
+            vec4 color = uColorTable[styleIndex];
+        #ifdef LIGHTING_VSH
+            vColor = applyLighting(color, normal);
+        #else
+            vColor = color;
+        #endif
+        #ifdef LIGHTING_FSH
+            vNormal = normal;
+        #endif
+            vHeight = max(0.0, (sideVertex ? aVertexHeight * uAbsHeightScale : 32.0));
             gl_Position = uMVPMatrix * vec4(pos, 1.0);
         }
     )GLSL";
@@ -439,7 +511,12 @@ namespace carto { namespace vt {
             if (min(vTilePos.x, vTilePos.y) < -0.01 || max(vTilePos.x, vTilePos.y) > 1.01) {
                 discard;
             }
-            gl_FragColor = applyLighting(vec4(vColor.rgb * (1.0 - 0.75 / (1.0 + vHeight * vHeight)), vColor.a));
+            lowp vec4 color = vec4(vColor.rgb * (1.0 - 0.75 / (1.0 + vHeight * vHeight)), vColor.a);
+        #ifdef LIGHTING_FSH
+            gl_FragColor = applyLighting(color, normalize(vNormal));
+        #else
+            gl_FragColor = color;
+        #endif
         }
     )GLSL";
 } }

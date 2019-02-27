@@ -32,15 +32,24 @@
 #include <utility>
 #include <mutex>
 
+#include <boost/optional.hpp>
+
 #include <cglib/ray.h>
 
 namespace carto { namespace vt {
     class GLTileRenderer final {
     public:
-        explicit GLTileRenderer(std::shared_ptr<std::mutex> mutex, std::shared_ptr<GLExtensions> glExtensions, std::shared_ptr<const TileTransformer> transformer, float scale);
+        struct LightingShader {
+            bool perVertex;
+            std::string shader;
+            std::function<void(GLuint, const ViewState&)> setupFunc;
+
+            explicit LightingShader(bool perVertex, std::string shader, std::function<void(GLuint, const ViewState&)> setupFunc) : perVertex(perVertex), shader(std::move(shader)), setupFunc(std::move(setupFunc)) { }
+        };
+        
+        explicit GLTileRenderer(std::shared_ptr<std::mutex> mutex, std::shared_ptr<GLExtensions> glExtensions, std::shared_ptr<const TileTransformer> transformer, const boost::optional<LightingShader>& lightingShader2D, const boost::optional<LightingShader>& lightingShader3D, float scale);
 
         void setViewState(const cglib::mat4x4<double>& projectionMatrix, const cglib::mat4x4<double>& cameraMatrix, float zoom, float aspectRatio, float resolution);
-        void setLightDir(const cglib::vec3<float>& lightDir);
         void setInteractionMode(bool enabled);
         void setSubTileBlending(bool enabled);
         void setVisibleTiles(const std::map<TileId, std::shared_ptr<const Tile>>& tiles, bool blend);
@@ -201,8 +210,12 @@ namespace carto { namespace vt {
 
         void checkGLError();
 
-        GLShaderManager::ShaderContext _patternTransformLightingContext[2][2][2];
-        GLShaderManager::ShaderContext _derivativesLightingContext[2][2];
+        GLShaderManager::ShaderContext _defaultContext;
+        GLShaderManager::ShaderContext _patternTransformLighting2DContext[2][2];
+        GLShaderManager::ShaderContext _transformLighting3DContext[2];
+        GLShaderManager::ShaderContext _derivativesLighting2DContext[2];
+        boost::optional<LightingShader> _lightingShader2D;
+        boost::optional<LightingShader> _lightingShader3D;
         GLShaderManager _shaderManager;
         TileSurfaceBuilder _tileSurfaceBuilder;
 
@@ -210,7 +223,6 @@ namespace carto { namespace vt {
         FrameBuffer _overlayBuffer;
         CompiledQuad _screenQuad;
 
-        cglib::vec3<float> _lightDir;
         cglib::mat4x4<double> _projectionMatrix;
         cglib::mat4x4<double> _cameraMatrix;
         cglib::mat4x4<double> _cameraProjMatrix;

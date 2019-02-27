@@ -63,20 +63,21 @@ namespace carto { namespace vt {
         if (cacheIt != _tileSurfaceCache.end()) {
             return cacheIt->second;
         }
-        
-        // Build tile triangles to avoid T-vertices between neighbouring tiles. Then tesselate triangles.
+
+        // Tesselate tile along edges to avoid T-vertices between neighbouring tiles.
         TileNeighbours tileNeighbours;
         auto tileNeighboursIt = _tileSplitNeighbours.find(tileId);
         if (tileNeighboursIt != _tileSplitNeighbours.end()) {
             tileNeighbours = tileNeighboursIt->second;
         }
-        std::vector<TileId> vertexIds[4] = {
+        std::array<std::vector<TileId>, 4> vertexIds = { {
             tesselateTile(tileId, tileNeighbours[0], false),
             tesselateTile(TileId(tileId.zoom, tileId.x + 1, tileId.y), tileNeighbours[1], false),
             tesselateTile(tileId, tileNeighbours[2], true),
             tesselateTile(TileId(tileId.zoom, tileId.x, tileId.y + 1), tileNeighbours[3], true),
-        };
+        } };
 
+        // Build tile geometry
         VertexArray<cglib::vec2<float>> coords2D;
         VertexArray<cglib::vec3<float>> coords3D;
         VertexArray<cglib::vec2<float>> texCoords;
@@ -88,6 +89,29 @@ namespace carto { namespace vt {
         normals.reserve(RESERVED_VERTICES);
         indices.reserve(RESERVED_VERTICES);
 
+        if (tileId.y < 0) {
+            buildPoleGeometry(-1, vertexIds[3], coords2D, coords3D, texCoords, normals, indices);
+        }
+        else if (tileId.y >= (1 << tileId.zoom)) {
+            buildPoleGeometry(1, vertexIds[2], coords2D, coords3D, texCoords, normals, indices);
+        }
+        else {
+            buildTileGeometry(tileId, vertexIds, coords2D, coords3D, texCoords, normals, indices);
+        }
+
+        // Drop normals, if not needed
+        if (std::all_of(normals.begin(), normals.end(), [](const cglib::vec3<float>& normal) { return normal(2) == 1; })) {
+            normals.clear();
+        }
+
+        // Pack geometry and cache the result
+        std::vector<std::shared_ptr<TileSurface>> tileSurfaces;
+        packGeometry(coords3D, texCoords, normals, indices, tileSurfaces);
+        _tileSurfaceCache[tileId] = tileSurfaces;
+        return tileSurfaces;
+    }
+
+    void TileSurfaceBuilder::buildTileGeometry(const TileId& tileId, const std::array<std::vector<TileId>, 4>& vertexIds, VertexArray<cglib::vec2<float>>& coords2D, VertexArray<cglib::vec3<float>>& coords3D, VertexArray<cglib::vec2<float>>& texCoords, VertexArray<cglib::vec3<float>>& normals, VertexArray<unsigned int>& indices) const {
         auto appendTilePoint = [&, this](const TileId& vertexId) -> unsigned int {
             int deltaZoom = vertexId.zoom - tileId.zoom;
             float s = 1.0f / (1 << deltaZoom);
@@ -145,17 +169,56 @@ namespace carto { namespace vt {
             tesselateTriangle(i0, i1, i2, matrix, transformer);
             i2 = i1;
         }
+    }
 
-        // Drop normals, if not needed
-        if (std::all_of(normals.begin(), normals.end(), [](const cglib::vec3<float>& normal) { return normal(2) == 1; })) {
-            normals.clear();
+    void TileSurfaceBuilder::buildPoleGeometry(int poleZ, const std::vector<TileId>& vertexIds, VertexArray<cglib::vec2<float>>& coords2D, VertexArray<cglib::vec3<float>>& coords3D, VertexArray<cglib::vec2<float>>& texCoords, VertexArray<cglib::vec3<float>>& normals, VertexArray<unsigned int>& indices) const {
+        auto calculatePolePoint = [&, this](const TileId& vertexId) -> cglib::vec2<float> {
+            float s = 1.0f / (1 << vertexId.zoom);
+            float u = vertexId.x * s;
+            float v = 0.5f + 0.5f * static_cast<float>(poleZ);
+            return cglib::vec2<float>(u, v);
+        };
+
+        auto tesselateSegment = [&, this](const cglib::vec2<float>& p0, const cglib::vec2<float>& p1, const cglib::mat4x4<double>& matrix, const std::shared_ptr<const TileTransformer::VertexTransformer>& transformer) {
+            cglib::vec2<float> points[2] = { p0, p1 };
+            transformer->tesselateLineString(points, 2, coords2D);
+
+            unsigned int i0 = 0;
+            for (std::size_t i = coords3D.size(); i < coords2D.size(); i++) {
+                unsigned int i1 = static_cast<unsigned int>(coords3D.size());
+                cglib::vec3<double> pos = cglib::transform_point(cglib::vec3<double>::convert(transformer->calculatePoint(coords2D[i])), matrix);
+                coords3D.append(cglib::vec3<float>::convert(pos - _origin));
+                normals.append(transformer->calculateNormal(coords2D[i]));
+                texCoords.append(coords2D[i]);
+                if (i0 != 0) {
+                    indices.append(0, i0, i1);
+                }
+                i0 = i1;
+            }
+        };
+
+        std::shared_ptr<const TileTransformer::VertexTransformer> transformer = _transformer->createTileVertexTransformer(TileId(0, 0, 0));
+        cglib::mat4x4<double> matrix = _transformer->calculateTileMatrix(TileId(0, 0, 0), 1.0f);
+
+        // Tesselate poles. We reuse single transformer and rely on buffering.
+        cglib::vec2<float> polePos(0.0f, std::numeric_limits<float>::infinity() * poleZ);
+        cglib::vec3<double> poleOrigin = cglib::transform_point(cglib::vec3<double>::convert(transformer->calculatePoint(polePos)), matrix);
+        coords2D.append(cglib::vec2<float>(0, 0));
+        coords3D.append(cglib::vec3<float>::convert(poleOrigin - _origin));
+        normals.append(transformer->calculateNormal(polePos));
+        texCoords.append(cglib::vec2<float>(0, 0));
+        
+        cglib::vec2<float> p0 = calculatePolePoint(vertexIds[0]);
+        for (std::size_t i = 1; i < vertexIds.size(); i++) {
+            cglib::vec2<float> p1 = calculatePolePoint(vertexIds[i]);
+            if (poleZ < 0) {
+                tesselateSegment(p0, p1, matrix, transformer);
+            }
+            else {
+                tesselateSegment(p1, p0, matrix, transformer);
+            }
+            p0 = p1;
         }
-
-        // Pack geometry and cache the result
-        std::vector<std::shared_ptr<TileSurface>> tileSurfaces;
-        packGeometry(coords3D, texCoords, normals, indices, tileSurfaces);
-        _tileSurfaceCache[tileId] = tileSurfaces;
-        return tileSurfaces;
     }
 
     void TileSurfaceBuilder::packGeometry(const VertexArray<cglib::vec3<float>>& coords, const VertexArray<cglib::vec2<float>>& texCoords, const VertexArray<cglib::vec3<float>>& normals, const VertexArray<unsigned int>& indices, std::vector<std::shared_ptr<TileSurface>>& tileSurfaces) const {

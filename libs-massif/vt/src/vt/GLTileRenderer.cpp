@@ -8,6 +8,59 @@
 #include <cassert>
 #include <algorithm>
 
+namespace {
+    bool isEmptyBlendRequired(carto::vt::CompOp compOp) {
+        using carto::vt::CompOp;
+
+        switch (compOp) {
+        case CompOp::SRC:
+        case CompOp::SRC_OVER:
+        case CompOp::DST_OVER:
+        case CompOp::DST_ATOP:
+        case CompOp::PLUS:
+        case CompOp::MINUS:
+        case CompOp::LIGHTEN:
+            return false;
+        default:
+            return true;
+        }
+    }
+
+    void setGLBlendState(carto::vt::CompOp compOp) {
+        using carto::vt::CompOp;
+        
+        struct GLBlendState {
+            GLenum blendEquation;
+            GLenum blendFuncSrc;
+            GLenum blendFuncDst;
+        };
+        
+        static const std::map<CompOp, GLBlendState> compOpBlendStates = {
+            { CompOp::SRC,      { GL_FUNC_ADD, GL_ONE, GL_ZERO } },
+            { CompOp::SRC_OVER, { GL_FUNC_ADD, GL_ONE, GL_ONE_MINUS_SRC_ALPHA } },
+            { CompOp::SRC_IN,   { GL_FUNC_ADD, GL_DST_ALPHA, GL_ZERO } },
+            { CompOp::SRC_ATOP, { GL_FUNC_ADD, GL_DST_ALPHA, GL_ONE_MINUS_SRC_ALPHA } },
+            { CompOp::DST,      { GL_FUNC_ADD, GL_ZERO, GL_ONE } },
+            { CompOp::DST_OVER, { GL_FUNC_ADD, GL_ONE_MINUS_DST_ALPHA, GL_ONE } },
+            { CompOp::DST_IN,   { GL_FUNC_ADD, GL_ZERO, GL_SRC_ALPHA } },
+            { CompOp::DST_ATOP, { GL_FUNC_ADD, GL_ONE_MINUS_DST_ALPHA, GL_SRC_ALPHA } },
+            { CompOp::ZERO,     { GL_FUNC_ADD, GL_ZERO, GL_ZERO } },
+            { CompOp::PLUS,     { GL_FUNC_ADD, GL_ONE, GL_ONE } },
+            { CompOp::MINUS,    { GL_FUNC_REVERSE_SUBTRACT, GL_ONE, GL_ONE } },
+            { CompOp::MULTIPLY, { GL_FUNC_ADD, GL_DST_COLOR, GL_ONE_MINUS_SRC_ALPHA } },
+            { CompOp::SCREEN,   { GL_FUNC_ADD, GL_ONE, GL_ONE_MINUS_SRC_COLOR } },
+            { CompOp::DARKEN,   { GL_MIN_EXT,  GL_ONE, GL_ONE } },
+            { CompOp::LIGHTEN,  { GL_MAX_EXT,  GL_ONE, GL_ONE } }
+        };
+        
+        auto it = compOpBlendStates.find(compOp);
+        if (it != compOpBlendStates.end()) {
+            glBlendFunc(it->second.blendFuncSrc, it->second.blendFuncDst);
+            glBlendEquation(it->second.blendEquation);
+        }
+    }
+}
+
 namespace carto { namespace vt {
     GLTileRenderer::GLTileRenderer(std::shared_ptr<std::mutex> mutex, std::shared_ptr<GLExtensions> glExtensions, std::shared_ptr<const TileTransformer> transformer, const boost::optional<LightingShader>& lightingShader2D, const boost::optional<LightingShader>& lightingShader3D, float scale) :
         _lightingShader2D(lightingShader2D), _lightingShader3D(lightingShader3D), _tileSurfaceBuilder(transformer), _projectionMatrix(cglib::mat4x4<double>::identity()), _cameraMatrix(cglib::mat4x4<double>::identity()), _cameraProjMatrix(cglib::mat4x4<double>::identity()), _viewState(cglib::mat4x4<double>::identity(), cglib::mat4x4<double>::identity(), 0, 1, 1, scale), _mutex(std::move(mutex)), _glExtensions(std::move(glExtensions)), _transformer(std::move(transformer)), _scale(scale)
@@ -887,7 +940,27 @@ namespace carto { namespace vt {
 
     bool GLTileRenderer::renderBlendNodes2D(const std::vector<std::shared_ptr<BlendNode>>& blendNodes, int stencilBits) {
         int stencilNum = (1 << stencilBits) - 1; // forces initial stencil clear
-        TileId activeTileMaskId(-1, 0, 0); // invalid mask
+        boost::optional<GLenum> activeStencilMode;
+        boost::optional<int> activeStencilNum;
+        boost::optional<CompOp> activeCompOp;
+
+        auto setupStencil = [&](bool enable) {
+            GLenum stencilMode = enable ? GL_EQUAL : GL_ALWAYS;
+            if (!(stencilMode == activeStencilMode && activeStencilNum == stencilNum) && stencilBits > 0) {
+                glStencilFunc(stencilMode, stencilNum, 255);
+                activeStencilMode = stencilMode;
+                activeStencilNum = stencilNum;
+            }
+        };
+
+        auto setupBlendMode = [&, this](CompOp compOp) {
+            if (compOp != activeCompOp) {
+                setGLBlendState(compOp);
+                activeCompOp = compOp;
+            }
+        };
+
+        TileId activeTileMaskId(-1, -1, -1); // invalid mask
         bool update = false;
         for (const std::shared_ptr<BlendNode>& blendNode : blendNodes) {
             std::multimap<int, RenderNode> renderNodeMap;
@@ -895,21 +968,20 @@ namespace carto { namespace vt {
                 continue;
             }
             
-            std::unordered_map<int, std::size_t> layerBufferMap;
-            if (stencilBits > 0) {
-                glStencilFunc(GL_ALWAYS, stencilNum, 255);
-            }
             float backgroundOpacity = calculateBlendNodeOpacity(*blendNode, 1.0f);
-            renderTileBackground(blendNode->tileId, blendNode->tile->getBackground(), blendNode->tile->getTileSize(), backgroundOpacity);
-            update = backgroundOpacity < 1.0f || update;
-            if (stencilBits > 0) {
-                glStencilFunc(GL_EQUAL, stencilNum, 255);
+            if (backgroundOpacity > 0) {
+                setupStencil(false);
+                setupBlendMode(CompOp::SRC_OVER);
+                renderTileBackground(blendNode->tileId, blendNode->tile->getBackground(), blendNode->tile->getTileSize(), backgroundOpacity);
             }
+            update = backgroundOpacity < 1.0f || update;
             
+            std::unordered_map<int, std::size_t> layerBufferMap;
             for (auto it = renderNodeMap.begin(); it != renderNodeMap.end(); it++) {
                 const RenderNode& renderNode = it->second;
                 
-                float blendOpacity = 1.0f, geometryOpacity = 1.0f;
+                float blendOpacity = 1.0f;
+                float geometryOpacity = 1.0f;
                 float opacity = (renderNode.layer->getOpacityFunc())(_viewState);
                 if (renderNode.layer->getCompOp()) { // a 'useful' hack - we use real layer opacity only if comp-op is explicitly defined; otherwise we translate it into element opacity, which is in many cases close enough
                     blendOpacity = opacity;
@@ -952,11 +1024,8 @@ namespace carto { namespace vt {
                 for (const std::shared_ptr<TileBitmap>& bitmap : renderNode.layer->getBitmaps()) {
                     setupFrameBuffer();
                     
-                    if (stencilBits > 0) {
-                        glStencilFunc(GL_ALWAYS, stencilNum, 255);
-                    }
-
-                    setBlendState(CompOp::SRC_OVER);
+                    setupStencil(false);
+                    setupBlendMode(CompOp::SRC_OVER);
                     renderTileBitmap(renderNode.tileId, blendNode->tileId, renderNode.blend, geometryOpacity, bitmap);
                 }
                 
@@ -975,20 +1044,20 @@ namespace carto { namespace vt {
                             stencilNum = 1;
                         }
 
-                        glStencilFunc(GL_ALWAYS, stencilNum, 255);
                         glStencilOp(GL_REPLACE, GL_REPLACE, GL_REPLACE);
                         glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
 
+                        setupStencil(false);
                         renderTileMask(tileMaskId);
 
-                        glStencilFunc(GL_EQUAL, stencilNum, 255);
                         glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
                         glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 
                         activeTileMaskId = tileMaskId;
                     }
 
-                    setBlendState(geometry->getStyleParameters().compOp);
+                    setupStencil(true);
+                    setupBlendMode(geometry->getStyleParameters().compOp);
                     renderTileGeometry(renderNode.tileId, blendNode->tileId, renderNode.blend, geometryOpacity, renderNode.tile, geometry);
                 }
                 update = renderNode.initialBlend < 1.0f || update;
@@ -1002,11 +1071,8 @@ namespace carto { namespace vt {
 
                     glBindFramebuffer(GL_FRAMEBUFFER, currentFBO);
 
-                    if (stencilBits > 0) {
-                        glStencilFunc(GL_ALWAYS, stencilNum, 255);
-                    }
-
-                    setBlendState(renderNode.layer->getCompOp().get());
+                    setupStencil(false);
+                    setupBlendMode(renderNode.layer->getCompOp().get());
                     blendTileTexture(renderNode.tileId, blendOpacity, layerBuffer.colorTexture);
                 }
             }
@@ -1849,51 +1915,6 @@ namespace carto { namespace vt {
         _labelTexCoords.clear();
         _labelAttribs.clear();
         _labelIndices.clear();
-    }
-
-    void GLTileRenderer::setBlendState(CompOp compOp) {
-        struct GLBlendState {
-            GLenum blendEquation;
-            GLenum blendFuncSrc;
-            GLenum blendFuncDst;
-        };
-        static const std::map<CompOp, GLBlendState> compOpBlendStates = {
-            { CompOp::SRC,      { GL_FUNC_ADD, GL_ONE, GL_ZERO } },
-            { CompOp::SRC_OVER, { GL_FUNC_ADD, GL_ONE, GL_ONE_MINUS_SRC_ALPHA } },
-            { CompOp::SRC_IN,   { GL_FUNC_ADD, GL_DST_ALPHA, GL_ZERO } },
-            { CompOp::SRC_ATOP, { GL_FUNC_ADD, GL_DST_ALPHA, GL_ONE_MINUS_SRC_ALPHA } },
-            { CompOp::DST,      { GL_FUNC_ADD, GL_ZERO, GL_ONE } },
-            { CompOp::DST_OVER, { GL_FUNC_ADD, GL_ONE_MINUS_DST_ALPHA, GL_ONE } },
-            { CompOp::DST_IN,   { GL_FUNC_ADD, GL_ZERO, GL_SRC_ALPHA } },
-            { CompOp::DST_ATOP, { GL_FUNC_ADD, GL_ONE_MINUS_DST_ALPHA, GL_SRC_ALPHA } },
-            { CompOp::ZERO,     { GL_FUNC_ADD, GL_ZERO, GL_ZERO } },
-            { CompOp::PLUS,     { GL_FUNC_ADD, GL_ONE, GL_ONE } },
-            { CompOp::MINUS,    { GL_FUNC_REVERSE_SUBTRACT, GL_ONE, GL_ONE } },
-            { CompOp::MULTIPLY, { GL_FUNC_ADD, GL_DST_COLOR, GL_ONE_MINUS_SRC_ALPHA } },
-            { CompOp::SCREEN,   { GL_FUNC_ADD, GL_ONE, GL_ONE_MINUS_SRC_COLOR } },
-            { CompOp::DARKEN,   { GL_MIN_EXT,  GL_ONE, GL_ONE } },
-            { CompOp::LIGHTEN,  { GL_MAX_EXT,  GL_ONE, GL_ONE } }
-        };
-        auto it = compOpBlendStates.find(compOp);
-        if (it != compOpBlendStates.end()) {
-            glBlendFunc(it->second.blendFuncSrc, it->second.blendFuncDst);
-            glBlendEquation(it->second.blendEquation);
-        }
-    }
-
-    bool GLTileRenderer::isEmptyBlendRequired(CompOp compOp) const {
-        switch (compOp) {
-        case CompOp::SRC:
-        case CompOp::SRC_OVER:
-        case CompOp::DST_OVER:
-        case CompOp::DST_ATOP:
-        case CompOp::PLUS:
-        case CompOp::MINUS:
-        case CompOp::LIGHTEN:
-            return false;
-        default:
-            return true;
-        }
     }
 
     const std::vector<std::shared_ptr<TileSurface>>& GLTileRenderer::buildCompiledTileSurfaces(const TileId& tileId) {

@@ -4,15 +4,15 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_ROUTING_INSTRUCTION_H_
-#define _CARTO_ROUTING_INSTRUCTION_H_
+#ifndef _CARTO_OSRM_INSTRUCTION_H_
+#define _CARTO_OSRM_INSTRUCTION_H_
 
 #include "Base.h"
 
 #include <cstddef>
 #include <string>
 
-namespace carto { namespace routing {
+namespace carto { namespace osrm {
     class Instruction final {
     public:
         enum class Type : unsigned char {
@@ -47,29 +47,12 @@ namespace carto { namespace routing {
         Instruction() = default;
         explicit Instruction(Type type, TravelMode travelMode, std::string address, double distance, double time, std::size_t geometryIndex) : _type(type), _travelMode(travelMode), _address(std::move(address)), _distance(distance), _time(time), _geometryIndex(geometryIndex) { }
 
-        Type getType() const {
-            return _type;
-        }
-
-        TravelMode getTravelMode() const {
-            return _travelMode;
-        }
-
-        const std::string getAddress() const {
-            return _address;
-        }
-
-        double getDistance() const {
-            return _distance;
-        }
-
-        double getTime() const {
-            return _time;
-        }
-
-        std::size_t getGeometryIndex() const {
-            return _geometryIndex;
-        }
+        Type getType() const { return _type; }
+        TravelMode getTravelMode() const { return _travelMode; }
+        const std::string& getAddress() const { return _address; }
+        double getDistance() const { return _distance; }
+        double getTime() const { return _time; }
+        std::size_t getGeometryIndex() const { return _geometryIndex; }
 
     private:
         Type _type = Type::NO_TURN;

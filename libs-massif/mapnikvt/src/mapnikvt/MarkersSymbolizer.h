@@ -50,6 +50,8 @@ namespace carto { namespace mvt {
         float _strokeWidthStatic = 0.5f;
         float _spacing = 100.0f;
         bool _allowOverlap = false;
+        bool _clip = false;
+        bool _clipDefined = false;
         bool _ignorePlacement = false;
         std::string _compOp = "src-over";
         cglib::mat3x3<float> _transform = cglib::mat3x3<float>::identity();

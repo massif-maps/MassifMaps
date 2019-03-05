@@ -37,6 +37,8 @@ namespace carto { namespace mvt {
 
         vt::CompOp compOp = convertCompOp(_compOp);
 
+        bool clip = _clipDefined ? _clip : _allowOverlap;
+
         vt::TextFormatter formatter(font, _sizeStatic, getFormatterOptions(symbolizerContext));
 
         float fontScale = symbolizerContext.getSettings().getFontScale();
@@ -55,7 +57,7 @@ namespace carto { namespace mvt {
             std::size_t hash = std::hash<std::string>()(text);
             long long groupId = (_allowOverlap ? -1 : (minimumDistance > 0 ? (hash & 0x7fffffff) : 0));
             
-            if (_allowOverlap) {
+            if (clip) {
                 if (vertex) {
                     textInfos.emplace_back(localId, std::make_tuple(*vertex, text));
                 }
@@ -69,7 +71,7 @@ namespace carto { namespace mvt {
         };
 
         auto flushTexts = [&](const cglib::mat3x3<float>& transform) {
-            if (_allowOverlap) {
+            if (clip) {
                 vt::TextStyle style(compOp, fillFunc, sizeFunc, haloFillFunc, haloRadiusFunc, _orientationAngle, fontScale, cglib::vec2<float>(0, 0), std::shared_ptr<vt::BitmapImage>(), transform);
 
                 std::size_t textInfoIndex = 0;
@@ -149,6 +151,10 @@ namespace carto { namespace mvt {
         }
         else if (name == "allow-overlap") {
             bind(&_allowOverlap, parseExpression(value));
+        }
+        else if (name == "clip") {
+            bind(&_clip, parseExpression(value));
+            _clipDefined = true;
         }
         else if (name == "minimum-distance") {
             bind(&_minimumDistance, parseExpression(value));

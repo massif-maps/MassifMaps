@@ -572,6 +572,7 @@ namespace carto { namespace css {
         { "text-horizontal-alignment", "horizontal-alignment" },
         { "text-vertical-alignment", "vertical-alignment" },
         { "text-comp-op", "comp-op" },
+        { "text-clip", "clip" },
 
         { "shield-name", "" },
         { "shield-face-name", "" },
@@ -602,6 +603,7 @@ namespace carto { namespace css {
         { "shield-horizontal-alignment", "horizontal-alignment" },
         { "shield-vertical-alignment", "vertical-alignment" },
         { "shield-comp-op", "comp-op" },
+        { "shield-clip", "clip" },
 
         { "marker-file", "file" },
         { "marker-placement", "placement" },
@@ -619,6 +621,7 @@ namespace carto { namespace css {
         { "marker-ignore-placement", "ignore-placement" },
         { "marker-transform", "transform" },
         { "marker-comp-op", "comp-op" },
+        { "marker-clip", "clip" },
 
         { "building-fill", "fill" },
         { "building-fill-opacity", "fill-opacity" },

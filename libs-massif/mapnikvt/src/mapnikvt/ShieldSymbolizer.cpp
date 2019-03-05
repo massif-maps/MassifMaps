@@ -20,6 +20,8 @@ namespace carto { namespace mvt {
 
         vt::CompOp compOp = convertCompOp(_compOp);
 
+        bool clip = _clipDefined ? _clip : _allowOverlap;
+
         float fontScale = symbolizerContext.getSettings().getFontScale();
         float bitmapSize = static_cast<float>(std::max(backgroundBitmap->bitmap->width, backgroundBitmap->bitmap->height)) * fontScale;
         vt::LabelOrientation placement = convertTextPlacement(_placement);
@@ -46,7 +48,7 @@ namespace carto { namespace mvt {
             std::size_t hash = std::hash<std::string>()(text);
             long long groupId = (_allowOverlap ? -1 : 1); // use separate group from markers, markers use group 0
 
-            if (_allowOverlap) {
+            if (clip) {
                 if (vertex) {
                     shieldInfos.emplace_back(localId, std::make_tuple(*vertex, text));
                 }
@@ -71,7 +73,7 @@ namespace carto { namespace mvt {
                 formatter = &shieldFormatter;
             }
 
-            if (_allowOverlap) {
+            if (clip) {
                 vt::TextStyle style(compOp, fillFunc, sizeFunc, haloFillFunc, haloRadiusFunc, _orientationAngle, fontScale, backgroundOffset, backgroundBitmap, transform);
 
                 std::size_t textInfoIndex = 0;

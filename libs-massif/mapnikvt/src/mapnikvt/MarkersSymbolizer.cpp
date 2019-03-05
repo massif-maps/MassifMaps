@@ -17,6 +17,8 @@ namespace carto { namespace mvt {
 
         vt::CompOp compOp = convertCompOp(_compOp);
 
+        bool clip = _clipDefined ? _clip : _allowOverlap;
+
         float fontScale = symbolizerContext.getSettings().getFontScale();
         vt::LabelOrientation placement = convertLabelPlacement(_placement);
         vt::LabelOrientation orientation = placement;
@@ -117,7 +119,7 @@ namespace carto { namespace mvt {
         std::vector<std::pair<long long, vt::TileLayerBuilder::PointLabelInfo>> labelInfos;
 
         auto addPoint = [&](long long localId, long long globalId, const boost::variant<vt::TileLayerBuilder::Vertex, vt::TileLayerBuilder::Vertices>& position) {
-            if (_allowOverlap) {
+            if (clip) {
                 if (auto vertex = boost::get<vt::TileLayerBuilder::Vertex>(&position)) {
                     pointInfos.emplace_back(localId, *vertex);
                 }
@@ -138,7 +140,7 @@ namespace carto { namespace mvt {
                 optTransform = transform * cglib::scale3_matrix(cglib::vec3<float>(1.0f, heightScale / widthScale, 1.0f));
             }
 
-            if (_allowOverlap) {
+            if (clip) {
                 vt::PointStyle style(compOp, fillFunc, normalizedSizeFunc, bitmapImage, optTransform);
 
                 std::size_t pointInfoIndex = 0;
@@ -293,6 +295,10 @@ namespace carto { namespace mvt {
         }
         else if (name == "allow-overlap") {
             bind(&_allowOverlap, parseExpression(value));
+        }
+        else if (name == "clip") {
+            bind(&_clip, parseExpression(value));
+            _clipDefined = true;
         }
         else if (name == "ignore-placement") {
             bind(&_ignorePlacement, parseExpression(value));

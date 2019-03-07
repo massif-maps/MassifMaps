@@ -33,6 +33,9 @@ namespace carto { namespace sgre {
         double getTesselationDistance() const { return _tesselationDistance; }
         void setTesselationDistance(double tesselationDistance) { _tesselationDistance = tesselationDistance; }
 
+        double getZSensitivity() const { return _zSensitivity; }
+        void setZSensitivity(double zSensitivity) { _zSensitivity = zSensitivity; }
+
         Result find(const Query& query) const;
 
         static std::unique_ptr<RouteFinder> create(std::shared_ptr<const StaticGraph> graph, const picojson::value& configDef);
@@ -67,6 +70,7 @@ namespace carto { namespace sgre {
         
         bool _pathStraightening = true;
         double _tesselationDistance = std::numeric_limits<double>::infinity();
+        double _zSensitivity = 1.0;
 
         const RoutingAttributes _fastestAttributes;
         const std::shared_ptr<const StaticGraph> _graph;

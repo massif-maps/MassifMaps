@@ -38,13 +38,17 @@ namespace carto { namespace sgre {
             Graph::TriangleId triangleId;
             std::set<Graph::EdgeId> edgeIds;
         };
-        
-        double lngScale = std::max(std::cos((query.getPos(0)(1) + query.getPos(1)(1)) * 0.5 * boost::math::constants::pi<double>() / 180.0), 0.01);
 
+        auto calculateAvgLngScale = [](const Point& point1, const Point& point2) -> double {
+            return std::max(std::cos((point1(1) + point2(1)) * 0.5 * boost::math::constants::pi<double>() / 180.0), 0.01);
+        };
+        
         // Find nearest edges to the endpoints. Note that there could be multiple nearest edges for both endpoints (two-way edges)
         std::vector<EndPoint> endPoints[2];
         for (int i = 0; i < 2; i++) {
-            std::vector<std::pair<Graph::EdgeId, Point>> edgePoints = _graph->findNearestEdgePoint(query.getPos(i));
+            StaticGraph::SearchOptions options;
+            options.zSensitivity = _zSensitivity;
+            std::vector<std::pair<Graph::EdgeId, Point>> edgePoints = _graph->findNearestEdgePoint(query.getPos(i), options);
             if (edgePoints.empty()) {
                 return Result();
             }
@@ -59,6 +63,7 @@ namespace carto { namespace sgre {
 
                 bool found = false;
                 for (std::size_t j = 0; j < endPoints[i].size(); j++) {
+                    double lngScale = calculateAvgLngScale(endPoints[i][j].point, endPoint.point);
                     double dist = calculateDistance(endPoints[i][j].point, endPoint.point, lngScale);
                     if (dist < DIST_EPSILON && endPoints[i][j].triangleId == endPoint.triangleId) {
                         endPoints[i][j].edgeIds.insert(edgePoint.first);
@@ -75,6 +80,7 @@ namespace carto { namespace sgre {
         // Try all endpoint combinations and find the fastest one.
         Path bestPath;
         double bestTime = std::numeric_limits<double>::infinity();
+        double bestLngScale = 0;
         std::shared_ptr<DynamicGraph> bestGraph;
         for (std::size_t i0 = 0; i0 < endPoints[0].size(); i0++) {
             for (std::size_t i1 = 0; i1 < endPoints[1].size(); i1++) {
@@ -87,9 +93,11 @@ namespace carto { namespace sgre {
                 linkNodeToEdges(*graph, endPoints[1][i1].edgeIds, finalNodeId, 1);
                 linkNodesToCommonEdges(*graph, endPoints[0][i0].edgeIds, endPoints[1][i1].edgeIds, initialNodeId, finalNodeId);
 
+                double lngScale = calculateAvgLngScale(endPoints[0][i0].point, endPoints[1][i1].point);
                 if (auto path = findOptimalPath(*graph, initialNodeId, finalNodeId, _fastestAttributes, lngScale, _tesselationDistance, bestTime)) {
                     bestPath = *path;
                     bestGraph = graph;
+                    bestLngScale = lngScale;
                 }
             }
         }
@@ -99,20 +107,23 @@ namespace carto { namespace sgre {
 
         // Do optional path straightening. This is very important for polygon/hybrid graphs.
         if (_pathStraightening) {
-            straightenPath(*bestGraph, bestPath, lngScale);
+            straightenPath(*bestGraph, bestPath, bestLngScale);
         }
 
         // Build final result (remove duplicate nodes, create instructions)
-        return buildResult(*bestGraph, bestPath, lngScale);
+        return buildResult(*bestGraph, bestPath, bestLngScale);
     }
 
     std::unique_ptr<RouteFinder> RouteFinder::create(std::shared_ptr<const StaticGraph> graph, const picojson::value& configDef) {
         auto routeFinder = std::unique_ptr<RouteFinder>(new RouteFinder(std::move(graph)));
+        if (configDef.contains("pathstraightening")) {
+            routeFinder->setPathStraightening(configDef.get("pathstraightening").get<bool>());
+        }
         if (configDef.contains("tesselationdistance")) {
             routeFinder->setTesselationDistance(configDef.get("tesselationdistance").get<double>());
         }
-        if (configDef.contains("pathstraightening")) {
-            routeFinder->setPathStraightening(configDef.get("pathstraightening").get<bool>());
+        if (configDef.contains("zsensitivity")) {
+            routeFinder->setZSensitivity(configDef.get("zsensitivity").get<double>());
         }
         return routeFinder;
     }

@@ -81,6 +81,10 @@ namespace carto { namespace sgre {
 
     class StaticGraph final : public Graph {
     public:
+        struct SearchOptions {
+            double zSensitivity = 1.0;
+        };
+        
         StaticGraph() = default;
         explicit StaticGraph(std::vector<Node> nodes, std::vector<Edge> edges, std::vector<Feature> features);
 
@@ -92,7 +96,7 @@ namespace carto { namespace sgre {
         virtual const Edge& getEdge(EdgeId edgeId) const override { return _edges.at(edgeId); }
         virtual const Feature& getFeature(FeatureId featureId) const override { return _features.at(featureId); }
 
-        std::vector<std::pair<EdgeId, Point>> findNearestEdgePoint(const Point& pos) const;
+        std::vector<std::pair<EdgeId, Point>> findNearestEdgePoint(const Point& pos, const SearchOptions& options = SearchOptions()) const;
 
     private:
         struct RTreeNode {
@@ -101,13 +105,13 @@ namespace carto { namespace sgre {
             std::array<std::shared_ptr<RTreeNode>, 2> subNodes;
         };
         
-        boost::optional<Point> findNearestEdgePoint(const Edge& edge, const Point& pos, double lngScale, double latScale) const;
+        boost::optional<Point> findNearestEdgePoint(const Edge& edge, const Point& pos, const cglib::vec3<double>& scale) const;
 
         std::shared_ptr<RTreeNode> buildRTree(const cglib::bbox3<double>& bounds, std::vector<EdgeId> edgeIds) const;
 
         static void linkNodeEdgeIds(std::vector<Node>& nodes, const std::vector<Edge>& edges);
 
-        static double calculateDistance(const Point& pos0, const Point& pos1, double lngScale, double latScale);
+        static double calculateDistance(const Point& pos0, const Point& pos1, const cglib::vec3<double>& scale);
 
         std::vector<Node> _nodes;
         std::vector<Edge> _edges;

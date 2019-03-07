@@ -19,7 +19,7 @@ namespace {
     bool pointInsideTriangle(const std::array<cglib::vec3<double>, 3>& triangle, const cglib::vec3<double>& pos) {
         cglib::vec3<double> v0 = triangle[2] - triangle[0];
         cglib::vec3<double> v1 = triangle[1] - triangle[0];
-        cglib::vec3<double>	v2 = pos - triangle[0];
+        cglib::vec3<double> v2 = pos - triangle[0];
         if (cglib::dot_product(v2, cglib::vector_product(v0, v1)) != 0) {
             return false;
         }
@@ -156,7 +156,7 @@ namespace carto { namespace sgre {
         _rootNode = buildRTree(bounds, edgeIds);
     }
 
-    std::vector<std::pair<Graph::EdgeId, Point>> StaticGraph::findNearestEdgePoint(const Point& pos) const {
+    std::vector<std::pair<Graph::EdgeId, Point>> StaticGraph::findNearestEdgePoint(const Point& pos, const SearchOptions& options) const {
         struct RTreeNodeRecord {
             std::shared_ptr<const RTreeNode> node;
             double dist;
@@ -169,6 +169,7 @@ namespace carto { namespace sgre {
 
         double latScale = EARTH_RADIUS * boost::math::constants::pi<double>() / 180.0;
         double lngScale = latScale * std::max(std::cos(pos(1) * boost::math::constants::pi<double>() / 180.0), 0.01);
+        cglib::vec3<double> scale(lngScale, latScale, options.zSensitivity);
 
         double bestDist = std::numeric_limits<double>::infinity();
         std::vector<std::pair<Graph::EdgeId, Point>> bestResults;
@@ -176,7 +177,7 @@ namespace carto { namespace sgre {
         // Do the matching starting from root RTree node. Use priority queue for sorting and rejecting subnodes.
         std::priority_queue<RTreeNodeRecord> nodeQueue;
         Point nearestRootPos = _rootNode->bounds.nearest_point(pos);
-        double rootDist = calculateDistance(nearestRootPos, pos, lngScale, latScale);
+        double rootDist = calculateDistance(nearestRootPos, pos, scale);
         nodeQueue.push({ _rootNode, rootDist });
         while (!nodeQueue.empty()) {
             std::shared_ptr<const RTreeNode> node = nodeQueue.top().node;
@@ -191,7 +192,7 @@ namespace carto { namespace sgre {
             for (const std::shared_ptr<const RTreeNode>& subNode : node->subNodes) {
                 if (subNode) {
                     Point nearestPos = subNode->bounds.nearest_point(pos);
-                    double dist = calculateDistance(nearestPos, pos, lngScale, latScale);
+                    double dist = calculateDistance(nearestPos, pos, scale);
                     nodeQueue.push({ subNode, dist });
                 }
             }
@@ -200,8 +201,8 @@ namespace carto { namespace sgre {
             for (EdgeId edgeId : node->edgeIds) {
                 const Edge& edge = getEdge(edgeId);
 
-                if (auto closestPos = findNearestEdgePoint(edge, pos, lngScale, latScale)) {
-                    double dist = calculateDistance(*closestPos, pos, lngScale, latScale);
+                if (auto closestPos = findNearestEdgePoint(edge, pos, scale)) {
+                    double dist = calculateDistance(*closestPos, pos, scale);
                     if (dist <= bestDist + DIST_EPSILON) {
                         if (dist + DIST_EPSILON < bestDist) {
                             bestDist = dist;
@@ -216,7 +217,7 @@ namespace carto { namespace sgre {
         return bestResults;
     }
 
-    boost::optional<Point> StaticGraph::findNearestEdgePoint(const Edge& edge, const Point& pos, double lngScale, double latScale) const {
+    boost::optional<Point> StaticGraph::findNearestEdgePoint(const Edge& edge, const Point& pos, const cglib::vec3<double>& scale) const {
         const Node& node0 = getNode(edge.nodeIds[0]);
         const Node& node1 = getNode(edge.nodeIds[1]);
 
@@ -233,9 +234,11 @@ namespace carto { namespace sgre {
         }
 
         // Convert WGS84 coordinates to local orthonormal basis for simpler processing
-        Point posScaled(pos(0) * lngScale, pos(1) * latScale, pos(2));
-        Point points0Scaled[2] = { Point(node0.points[0](0) * lngScale, node0.points[0](1) * latScale, node0.points[0](2)), Point(node0.points[1](0) * lngScale, node0.points[1](1) * latScale, node0.points[1](2)) };
-        Point points1Scaled[2] = { Point(node1.points[0](0) * lngScale, node1.points[0](1) * latScale, node1.points[0](2)), Point(node1.points[1](0) * lngScale, node1.points[1](1) * latScale, node1.points[1](2)) };
+        Point posScaled = cglib::pointwise_product(pos, scale);
+        Point node0PointsScaled[2] = { cglib::pointwise_product(node0.points[0], scale), cglib::pointwise_product(node0.points[1], scale) };
+        Point node1PointsScaled[2] = { cglib::pointwise_product(node1.points[0], scale), cglib::pointwise_product(node1.points[1], scale) };
+
+        cglib::vec3<double> invScale(1.0 / scale(0), 1.0 / scale(1), (scale(2) != 0 ? 1.0 / scale(2) : std::numeric_limits<double>::max()));
 
         // Handle the edge based on its search criteria. Some cases are very tricky and the code depends on the graph builder.
         switch (edge.searchCriteria) {
@@ -244,7 +247,7 @@ namespace carto { namespace sgre {
         case SearchCriteria::VERTEX:
             if (node0.nodeFlags & NodeFlags::GEOMETRY_VERTEX) {
                 if (node1.nodeFlags & NodeFlags::GEOMETRY_VERTEX) {
-                    return (cglib::norm(posScaled - points0Scaled[i0]) < cglib::norm(posScaled - points1Scaled[i1]) ? node0.points[i0] : node1.points[i1]);
+                    return (cglib::norm(posScaled - node0PointsScaled[i0]) < cglib::norm(posScaled - node1PointsScaled[i1]) ? node0.points[i0] : node1.points[i1]);
                 }
                 return node0.points[i0];
             } else if (node1.nodeFlags & NodeFlags::GEOMETRY_VERTEX) {
@@ -254,7 +257,7 @@ namespace carto { namespace sgre {
         case SearchCriteria::FIRST_LAST_VERTEX:
             if (node0.nodeFlags & NodeFlags::ENDPOINT_VERTEX) {
                 if (node1.nodeFlags & NodeFlags::ENDPOINT_VERTEX) {
-                    return (cglib::norm(posScaled - points0Scaled[i0]) < cglib::norm(posScaled - points1Scaled[i1]) ? node0.points[i0] : node1.points[i1]);
+                    return (cglib::norm(posScaled - node0PointsScaled[i0]) < cglib::norm(posScaled - node1PointsScaled[i1]) ? node0.points[i0] : node1.points[i1]);
                 }
                 return node0.points[i0];
             } else if (node1.nodeFlags & NodeFlags::ENDPOINT_VERTEX) {
@@ -266,8 +269,8 @@ namespace carto { namespace sgre {
                 if (pointOnLine(std::array<cglib::vec3<double>, 2> {{ node0.points[1 - i0], node1.points[1 - i1] }}, pos)) {
                     return pos;
                 }
-                Point closestScaled = closestPointOnLine(std::array<cglib::vec3<double>, 2> {{ points0Scaled[1 - i0], points1Scaled[1 - i1] }}, posScaled);
-                return Point(closestScaled(0) / lngScale, closestScaled(1) / latScale, closestScaled(2));
+                Point closestScaled = closestPointOnLine(std::array<cglib::vec3<double>, 2> {{ node0PointsScaled[1 - i0], node1PointsScaled[1 - i1] }}, posScaled);
+                return cglib::pointwise_product(closestScaled, invScale);
             }
             return boost::optional<Point>();
         case SearchCriteria::SURFACE:
@@ -275,14 +278,14 @@ namespace carto { namespace sgre {
                 if (pointInsideTriangle(std::array<cglib::vec3<double>, 3> {{ node0.points[i0], node0.points[1 - i0], node1.points[1 - i1] }}, pos)) {
                     return pos;
                 }
-                Point closestScaled = closestPointOnTriangle(std::array<cglib::vec3<double>, 3> {{ points0Scaled[i0], points0Scaled[1 - i0], points1Scaled[1 - i1] }}, posScaled);
-                return Point(closestScaled(0) / lngScale, closestScaled(1) / latScale, closestScaled(2));
+                Point closestScaled = closestPointOnTriangle(std::array<cglib::vec3<double>, 3> {{ node0PointsScaled[i0], node0PointsScaled[1 - i0], node1PointsScaled[1 - i1] }}, posScaled);
+                return cglib::pointwise_product(closestScaled, invScale);
             } else {
                 if (pointOnLine(std::array<cglib::vec3<double>, 2> {{ node0.points[0], node1.points[0] }}, pos)) {
                     return pos;
                 }
-                Point closestScaled = closestPointOnLine(std::array<cglib::vec3<double>, 2> {{ points0Scaled[0], points1Scaled[0] }}, posScaled);
-                return Point(closestScaled(0) / lngScale, closestScaled(1) / latScale, closestScaled(2));
+                Point closestScaled = closestPointOnLine(std::array<cglib::vec3<double>, 2> {{ node0PointsScaled[0], node1PointsScaled[0] }}, posScaled);
+                return cglib::pointwise_product(closestScaled, invScale);
             }
         }
 
@@ -352,9 +355,9 @@ namespace carto { namespace sgre {
         }
     }
 
-    double StaticGraph::calculateDistance(const Point& pos0, const Point& pos1, double lngScale, double latScale) {
-        Point pos0Scaled(pos0(0) * lngScale, pos0(1) * latScale, pos0(2));
-        Point pos1Scaled(pos1(0) * lngScale, pos1(1) * latScale, pos1(2));
+    double StaticGraph::calculateDistance(const Point& pos0, const Point& pos1, const cglib::vec3<double>& scale) {
+        Point pos0Scaled = cglib::pointwise_product(pos0, scale);
+        Point pos1Scaled = cglib::pointwise_product(pos1, scale);
         return cglib::length(pos0Scaled - pos1Scaled);
     }
 

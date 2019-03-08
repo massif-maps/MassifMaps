@@ -14,17 +14,25 @@ namespace carto { namespace mbvtbuilder {
     MBVTTileBuilder::MBVTTileBuilder(int minZoom, int maxZoom) :
         _minZoom(minZoom), _maxZoom(maxZoom)
     {
-        createLayer("");
     }
 
-    void MBVTTileBuilder::createLayer(const std::string& layerId, float buffer) {
+    MBVTTileBuilder::LayerIndex MBVTTileBuilder::createLayer(const std::string& layerId, float buffer) {
         Layer layer;
         layer.layerId = layerId;
         layer.buffer = (buffer >= 0 ? buffer : DEFAULT_LAYER_BUFFER);
-        _layers.push_back(std::move(layer));
+        LayerIndex layerIndex = (_layers.empty() ? 0 : _layers.rbegin()->first) + 1;
+        _layers.emplace(layerIndex, std::move(layer));
+        return layerIndex;
     }
 
-    void MBVTTileBuilder::addMultiPoint(MultiPoint coords, picojson::value properties) {
+    void MBVTTileBuilder::deleteLayer(LayerIndex layerIndex) {
+        auto it = _layers.find(layerIndex);
+        if (it != _layers.end()) {
+            _layers.erase(it);
+        }
+    }
+
+    void MBVTTileBuilder::addMultiPoint(LayerIndex layerIndex, MultiPoint coords, picojson::value properties) {
         Bounds bounds = Bounds::make_union(coords.begin(), coords.end());
 
         Feature feature;
@@ -32,11 +40,11 @@ namespace carto { namespace mbvtbuilder {
         feature.geometry = std::move(coords);
         feature.properties = std::move(properties);
         
-        _layers.back().bounds.add(feature.bounds);
-        _layers.back().features.push_back(std::move(feature));
+        _layers[layerIndex].bounds.add(feature.bounds);
+        _layers[layerIndex].features.push_back(std::move(feature));
     }
 
-    void MBVTTileBuilder::addMultiLineString(MultiLineString coordsList, picojson::value properties) {
+    void MBVTTileBuilder::addMultiLineString(LayerIndex layerIndex, MultiLineString coordsList, picojson::value properties) {
         Bounds bounds = Bounds::smallest();
         for (const std::vector<Point>& coords : coordsList) {
             bounds.add(Bounds::make_union(coords.begin(), coords.end()));
@@ -47,11 +55,11 @@ namespace carto { namespace mbvtbuilder {
         feature.geometry = std::move(coordsList);
         feature.properties = std::move(properties);
         
-        _layers.back().bounds.add(feature.bounds);
-        _layers.back().features.push_back(std::move(feature));
+        _layers[layerIndex].bounds.add(feature.bounds);
+        _layers[layerIndex].features.push_back(std::move(feature));
     }
 
-    void MBVTTileBuilder::addMultiPolygon(MultiPolygon ringsList, picojson::value properties) {
+    void MBVTTileBuilder::addMultiPolygon(LayerIndex layerIndex, MultiPolygon ringsList, picojson::value properties) {
         Bounds bounds = Bounds::smallest();
         for (const std::vector<std::vector<Point>>& rings : ringsList) {
             for (const std::vector<Point>& ring : rings) {
@@ -64,22 +72,22 @@ namespace carto { namespace mbvtbuilder {
         feature.geometry = std::move(ringsList);
         feature.properties = std::move(properties);
         
-        _layers.back().bounds.add(feature.bounds);
-        _layers.back().features.push_back(std::move(feature));
+        _layers[layerIndex].bounds.add(feature.bounds);
+        _layers[layerIndex].features.push_back(std::move(feature));
     }
 
-    void MBVTTileBuilder::importGeoJSON(const picojson::value& geoJSON) {
+    void MBVTTileBuilder::importGeoJSON(LayerIndex layerIndex, const picojson::value& geoJSON) {
         std::string type = geoJSON.get("type").get<std::string>();
         if (type == "FeatureCollection") {
-            importGeoJSONFeatureCollection(geoJSON);
+            importGeoJSONFeatureCollection(layerIndex, geoJSON);
         } else if (type == "Feature") {
-            importGeoJSONFeature(geoJSON);
+            importGeoJSONFeature(layerIndex, geoJSON);
         } else {
             throw std::runtime_error("Unexpected element type");
         }
     }
 
-    void MBVTTileBuilder::importGeoJSONFeatureCollection(const picojson::value& featureCollectionDef) {
+    void MBVTTileBuilder::importGeoJSONFeatureCollection(LayerIndex layerIndex, const picojson::value& featureCollectionDef) {
         const picojson::array& featuresDef = featureCollectionDef.get("features").get<picojson::array>();
 
         for (const picojson::value& featureDef : featuresDef) {
@@ -88,11 +96,11 @@ namespace carto { namespace mbvtbuilder {
                 throw std::runtime_error("Unexpected element type");
             }
             
-            importGeoJSONFeature(featureDef);
+            importGeoJSONFeature(layerIndex, featureDef);
         }
     }
 
-    void MBVTTileBuilder::importGeoJSONFeature(const picojson::value& featureDef) {
+    void MBVTTileBuilder::importGeoJSONFeature(LayerIndex layerIndex, const picojson::value& featureDef) {
         const picojson::value& geometryDef = featureDef.get("geometry");
         const picojson::value& properties = featureDef.get("properties");
 
@@ -100,74 +108,95 @@ namespace carto { namespace mbvtbuilder {
         const picojson::value& coordsDef = geometryDef.get("coordinates");
 
         if (type == "Point") {
-            addMultiPoint({ parseCoordinates(coordsDef) }, properties);
+            addMultiPoint(layerIndex, { parseCoordinates(coordsDef) }, properties);
         }
         else if (type == "LineString") {
-            addMultiLineString({ parseCoordinatesList(coordsDef) }, properties);
+            addMultiLineString(layerIndex, { parseCoordinatesList(coordsDef) }, properties);
         }
         else if (type == "Polygon") {
-            addMultiPolygon({ parseCoordinatesRings(coordsDef) }, properties);
+            addMultiPolygon(layerIndex, { parseCoordinatesRings(coordsDef) }, properties);
         }
         else if (type == "MultiPoint") {
             std::vector<cglib::vec2<double>> coords;
             for (const picojson::value& subCoordsDef : coordsDef.get<picojson::array>()) {
                 coords.push_back(parseCoordinates(subCoordsDef));
             }
-            addMultiPoint(coords, properties);
+            addMultiPoint(layerIndex, coords, properties);
         }
         else if (type == "MultiLineString") {
             std::vector<std::vector<cglib::vec2<double>>> coordsList;
             for (const picojson::value& subCoordsDef : coordsDef.get<picojson::array>()) {
                 coordsList.push_back(parseCoordinatesList(subCoordsDef));
             }
-            addMultiLineString(coordsList, properties);
+            addMultiLineString(layerIndex, coordsList, properties);
         }
         else if (type == "MultiPolygon") {
             std::vector<std::vector<std::vector<cglib::vec2<double>>>> ringsList;
             for (const picojson::value& subCoordsDef : coordsDef.get<picojson::array>()) {
                 ringsList.push_back(parseCoordinatesRings(subCoordsDef));
             }
-            addMultiPolygon(ringsList, properties);
+            addMultiPolygon(layerIndex, ringsList, properties);
         }
         else {
             throw std::runtime_error("Invalid geometry type");
         }
     }
 
+    void MBVTTileBuilder::buildTile(int zoom, int tileX, int tileY, protobuf::encoded_message& encodedTile) const {
+        for (std::pair<const LayerIndex, Layer> layerPair : _layers) {
+            Layer& layer = layerPair.second;
+            double tolerance = 2.0 * PI * EARTH_RADIUS / (1 << zoom) * TILE_TOLERANCE;
+            simplifyLayer(layer, tolerance);
+            if (layer.features.empty()) {
+                continue;
+            }
+
+            double tileSize = (MAP_BOUNDS.max(0) - MAP_BOUNDS.min(0)) / (1 << zoom);
+            Point tileOrigin(tileX * tileSize + MAP_BOUNDS.min(0), tileY * tileSize + MAP_BOUNDS.min(1));
+            Bounds tileBounds(tileOrigin - cglib::vec2<double>(layer.buffer, layer.buffer) * tileSize, tileOrigin + cglib::vec2<double>(1 + layer.buffer, 1 + layer.buffer) * tileSize);
+
+            MBVTLayerEncoder layerEncoder(layer.layerId);
+            if (encodeLayer(layer, tileOrigin, tileSize, tileBounds, layerEncoder)) {
+                encodedTile.write_tag(vector_tile::Tile::kLayersFieldNumber);
+                encodedTile.write_message(layerEncoder.buildLayer());
+            }
+        }
+    }
+
     void MBVTTileBuilder::buildTiles(std::function<void(int, int, int, const protobuf::encoded_message&)> handler) const {
-        static constexpr Bounds mapBounds(Point(-PI * EARTH_RADIUS, -PI * EARTH_RADIUS), Point(PI * EARTH_RADIUS, PI * EARTH_RADIUS));
-        
-        std::vector<Layer> layers = _layers;
+        std::map<LayerIndex, Layer> layers = _layers;
         for (int zoom = _maxZoom; zoom >= _minZoom; zoom--) {
             Bounds bounds = Bounds::smallest(); 
-            for (Layer& layer : layers) {
+            for (std::pair<const LayerIndex, Layer>& layerPair : layers) {
+                Layer& layer = layerPair.second;
                 double tolerance = 2.0 * PI * EARTH_RADIUS / (1 << zoom) * TILE_TOLERANCE;
                 simplifyLayer(layer, tolerance);
 
                 cglib::vec2<double> layerBuffer(layer.buffer, layer.buffer);
                 for (const Feature& feature : layer.features) {
-                    bounds.add(feature.bounds.min - cglib::vec2<double>(layer.buffer, layer.buffer));
-                    bounds.add(feature.bounds.max + cglib::vec2<double>(layer.buffer, layer.buffer));
+                    bounds.add(feature.bounds.min - layerBuffer);
+                    bounds.add(feature.bounds.max + layerBuffer);
                 }
             }
 
-            double tileSize = (mapBounds.max(0) - mapBounds.min(0)) / (1 << zoom);
+            double tileSize = (MAP_BOUNDS.max(0) - MAP_BOUNDS.min(0)) / (1 << zoom);
             double tileCount = (1 << zoom);
 
-            double tileX0 = std::max(0.0, std::floor((bounds.min(0) - mapBounds.min(0)) / tileSize));
-            double tileY0 = std::max(0.0, std::floor((bounds.min(1) - mapBounds.min(1)) / tileSize));
-            double tileX1 = std::min(tileCount, std::floor((bounds.max(0) - mapBounds.min(0)) / tileSize) + 1);
-            double tileY1 = std::min(tileCount, std::floor((bounds.max(1) - mapBounds.min(1)) / tileSize) + 1);
+            double tileX0 = std::max(0.0, std::floor((MAP_BOUNDS.min(0) - MAP_BOUNDS.min(0)) / tileSize));
+            double tileY0 = std::max(0.0, std::floor((MAP_BOUNDS.min(1) - MAP_BOUNDS.min(1)) / tileSize));
+            double tileX1 = std::min(tileCount, std::floor((bounds.max(0) - MAP_BOUNDS.min(0)) / tileSize) + 1);
+            double tileY1 = std::min(tileCount, std::floor((bounds.max(1) - MAP_BOUNDS.min(1)) / tileSize) + 1);
 
             for (int tileY = static_cast<int>(tileY0); tileY < tileY1; tileY++) {
                 for (int tileX = static_cast<int>(tileX0); tileX < tileX1; tileX++) {
                     protobuf::encoded_message encodedTile;
-                    for (const Layer& layer : layers) {
+                    for (const std::pair<const LayerIndex, Layer>& layerPair : layers) {
+                        const Layer& layer = layerPair.second;
                         if (layer.features.empty()) {
                             continue;
                         }
 
-                        Point tileOrigin(tileX * tileSize + mapBounds.min(0), tileY * tileSize + mapBounds.min(1));
+                        Point tileOrigin(tileX * tileSize + MAP_BOUNDS.min(0), tileY * tileSize + MAP_BOUNDS.min(1));
                         Bounds tileBounds(tileOrigin - cglib::vec2<double>(layer.buffer, layer.buffer) * tileSize, tileOrigin + cglib::vec2<double>(1 + layer.buffer, 1 + layer.buffer) * tileSize);
 
                         MBVTLayerEncoder layerEncoder(layer.layerId);

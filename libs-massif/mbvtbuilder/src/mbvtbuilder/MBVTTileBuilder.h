@@ -24,6 +24,8 @@ namespace carto { namespace mbvtbuilder {
     
     class MBVTTileBuilder final {
     public:
+        using LayerIndex = int;
+
         using Point = cglib::vec2<double>;
         using MultiPoint = std::vector<Point>;
         using MultiLineString = std::vector<std::vector<Point>>;
@@ -31,16 +33,18 @@ namespace carto { namespace mbvtbuilder {
         
         explicit MBVTTileBuilder(int minZoom, int maxZoom);
 
-        void createLayer(const std::string& layerId, float buffer = -1);
+        LayerIndex createLayer(const std::string& layerId, float buffer = -1);
+        void deleteLayer(LayerIndex layerIndex);
 
-        void addMultiPoint(MultiPoint coords, picojson::value properties);
-        void addMultiLineString(MultiLineString coordsList, picojson::value properties);
-        void addMultiPolygon(MultiPolygon ringsList, picojson::value properties);
+        void addMultiPoint(LayerIndex layerIndex, MultiPoint coords, picojson::value properties);
+        void addMultiLineString(LayerIndex layerIndex, MultiLineString coordsList, picojson::value properties);
+        void addMultiPolygon(LayerIndex layerIndex, MultiPolygon ringsList, picojson::value properties);
 
-        void importGeoJSON(const picojson::value& geoJSON);
-        void importGeoJSONFeatureCollection(const picojson::value& featureCollectionDef);
-        void importGeoJSONFeature(const picojson::value& featureDef);
+        void importGeoJSON(LayerIndex layerIndex, const picojson::value& geoJSON);
+        void importGeoJSONFeatureCollection(LayerIndex layerIndex, const picojson::value& featureCollectionDef);
+        void importGeoJSONFeature(LayerIndex layerIndex, const picojson::value& featureDef);
 
+        void buildTile(int zoom, int tileX, int tileY, protobuf::encoded_message& encodedTile) const;
         void buildTiles(std::function<void(int, int, int, const protobuf::encoded_message&)> handler) const;
 
     private:
@@ -65,6 +69,7 @@ namespace carto { namespace mbvtbuilder {
         static constexpr double PI = boost::math::constants::pi<double>();
         static constexpr double EARTH_RADIUS = 6378137.0;
         static constexpr double TILE_TOLERANCE = 1.0 / 256.0;
+        static constexpr Bounds MAP_BOUNDS = Bounds(Point(-PI * EARTH_RADIUS, -PI * EARTH_RADIUS), Point(PI * EARTH_RADIUS, PI * EARTH_RADIUS));
 
         static void simplifyLayer(Layer& layer, double tolerance);
         static bool encodeLayer(const Layer& layer, const Point& tileOrigin, double tileSize, const Bounds& tileBounds, MBVTLayerEncoder& layerEncoder);
@@ -74,7 +79,7 @@ namespace carto { namespace mbvtbuilder {
         static cglib::vec2<double> parseCoordinates(const picojson::value& coordsDef);
         static Point wgs84ToWM(const cglib::vec2<double>& posWgs84);
 
-        std::vector<Layer> _layers;
+        std::map<LayerIndex, Layer> _layers;
 
         const int _minZoom;
         const int _maxZoom;

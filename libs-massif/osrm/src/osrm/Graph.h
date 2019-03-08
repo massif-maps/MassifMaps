@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_ROUTING_GRAPH_H_
-#define _CARTO_ROUTING_GRAPH_H_
+#ifndef _CARTO_OSRM_GRAPH_H_
+#define _CARTO_OSRM_GRAPH_H_
 
 #include "Base.h"
 
@@ -21,7 +21,7 @@
 #include <stdext/eiff_file.h>
 #include <stdext/bitstream.h>
 
-namespace carto { namespace routing {
+namespace carto { namespace osrm {
     class Graph final {
     public:
         struct BlockId {

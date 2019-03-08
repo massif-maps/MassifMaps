@@ -10,7 +10,7 @@
 
 #include <utf8.h>
 
-namespace carto { namespace routing {
+namespace carto { namespace osrm {
     Graph::Graph(const Settings& settings) :
         _packages(),
         _nodeBlockCache(settings.nodeBlockCacheSize),

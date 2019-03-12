@@ -95,17 +95,15 @@ namespace carto { namespace vt {
     }
 
     std::string GLShaderManager::createShader(const std::string& name, const std::map<std::string, std::string>& shaderMap, const std::set<std::string>& defs) {
+        std::string glslShader = "#version 100\n";
+        for (const std::string& def : defs) {
+            glslShader += "#define " + def + "\n";
+        }
         auto it = shaderMap.find(name);
         if (it == shaderMap.end()) {
             throw std::runtime_error("Missing shader " + name);
         }
-        const std::string& glslShader = it->second;
-
-        std::string glslDefs;
-        for (auto it2 = defs.begin(); it2 != defs.end(); it2++) {
-            glslDefs += "#define " + *it2 + "\n";
-        }
-
-        return glslDefs + glslShader;
+        glslShader += it->second;
+        return glslShader;
     }
 } }

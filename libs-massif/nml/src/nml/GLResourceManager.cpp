@@ -145,13 +145,13 @@ namespace carto { namespace nml {
         _bufferMap.clear();
     }
 
-    std::string GLResourceManager::createShader(const std::string& shader, const std::set<std::string>& defs) {
-        std::string glslDefs;
-        for (auto it2 = defs.begin(); it2 != defs.end(); it2++) {
-            glslDefs += "#define " + *it2 + "\n";
+    std::string GLResourceManager::createShader(const std::string& code, const std::set<std::string>& defs) {
+        std::string glslShader = "#version 100\n";
+        for (const std::string& def : defs) {
+            glslShader += "#define " + def + "\n";
         }
-
-        return glslDefs + shader;
+        glslShader += code;
+        return glslShader;
     }
 
 } }

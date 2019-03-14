@@ -2,7 +2,7 @@
 
 #include <numeric>
 
-#include "mbvtpackage/MBVTPackage.pb.h"
+#include "mapnikvt/mbvtpackage/MBVTPackage.pb.h"
 
 namespace carto { namespace mbvtbuilder {
     MBVTLayerEncoder::MBVTLayerEncoder(const std::string& layerId, int version, int extent) :

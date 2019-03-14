@@ -14,7 +14,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 endif(CMAKE_COMPILER_IS_GNUCXX)
 
 set(mapnikvt_SRC_DIR "${PROJECT_SOURCE_DIR}/src/mapnikvt")
-set(mapnikvt_LIBS_DIR "${PROJECT_SOURCE_DIR}/../libs")
+set(mapnikvt_LIBS_DIR "${PROJECT_SOURCE_DIR}/../libs-external")
 
 file(GLOB mapnikvt_SRC_FILES "${mapnikvt_SRC_DIR}/*.cpp" "${mapnikvt_SRC_DIR}/*.h" "${mapnikvt_SRC_DIR}/MBVTPackage/*.cc" "${mapnikvt_SRC_DIR}/MBVTPackage/*.h")
 

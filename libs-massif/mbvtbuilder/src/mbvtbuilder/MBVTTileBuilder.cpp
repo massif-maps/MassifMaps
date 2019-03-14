@@ -8,7 +8,7 @@
 #include <stdexcept>
 #include <cmath>
 
-#include "mbvtpackage/MBVTPackage.pb.h"
+#include "mapnikvt/mbvtpackage/MBVTPackage.pb.h"
 
 namespace carto { namespace mbvtbuilder {
     MBVTTileBuilder::MBVTTileBuilder(int minZoom, int maxZoom) :

@@ -25,6 +25,8 @@ namespace carto { namespace mvt {
         struct Settings {
             vt::Color backgroundColor = vt::Color(0x00000000);
             std::string backgroundImage;
+            vt::Color northPoleColor = vt::Color(0x00000000);
+            vt::Color southPoleColor = vt::Color(0x00000000);
             std::string fontDirectory = "fonts";
             float bufferSize = -1.0f;
         };

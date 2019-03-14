@@ -36,34 +36,35 @@ namespace carto { namespace vt {
             std::array<FloatFunction, MAX_PARAMETERS> widthFuncs;
             std::array<FloatFunction, MAX_PARAMETERS> strokeWidthFuncs;
             std::shared_ptr<const BitmapPattern> pattern;
-            boost::optional<cglib::mat3x3<float>> transform;
+            boost::optional<cglib::vec2<float>> translate;
             CompOp compOp;
-            PointOrientation pointOrientation;
 
-            StyleParameters() : parameterCount(0), colorFuncs(), widthFuncs(), strokeWidthFuncs(), pattern(), transform(), compOp(CompOp::SRC_OVER), pointOrientation(PointOrientation::POINT) { }
+            StyleParameters() : parameterCount(0), colorFuncs(), widthFuncs(), strokeWidthFuncs(), pattern(), translate(), compOp(CompOp::SRC_OVER) { }
         };
 
-        struct GeometryLayoutParameters {
+        struct VertexGeometryLayoutParameters {
             int vertexSize;
-            int vertexOffset;
+            int dimensions;
+            int coordOffset;
             int attribsOffset;
             int texCoordOffset;
+            int normalOffset;
             int binormalOffset;
             int heightOffset;
-            float vertexScale;
+            float coordScale;
             float texCoordScale;
             float binormalScale;
+            float heightScale;
 
-            GeometryLayoutParameters() : vertexSize(0), vertexOffset(-1), attribsOffset(-1), texCoordOffset(-1), binormalOffset(-1), heightOffset(-1), vertexScale(0), texCoordScale(0), binormalScale(0) { }
+            VertexGeometryLayoutParameters() : vertexSize(0), dimensions(2), coordOffset(-1), attribsOffset(-1), texCoordOffset(-1), normalOffset(-1), binormalOffset(-1), heightOffset(-1), coordScale(0), texCoordScale(0), binormalScale(0), heightScale(0) { }
         };
 
-        explicit TileGeometry(Type type, float tileSize, float geomScale, const StyleParameters& styleParameters, const GeometryLayoutParameters& geometryLayoutParameters, VertexArray<unsigned char> vertexGeometry, VertexArray<unsigned short> indices, std::vector<std::pair<unsigned int, long long>> ids) : _type(type), _tileSize(tileSize), _geomScale(geomScale), _styleParameters(styleParameters), _geometryLayoutParameters(geometryLayoutParameters), _indicesCount(0), _vertexGeometry(std::move(vertexGeometry)), _indices(std::move(indices)), _ids(std::move(ids)) { _indicesCount = static_cast<unsigned int>(_indices.size()); }
+        explicit TileGeometry(Type type, float geomScale, const StyleParameters& styleParameters, const VertexGeometryLayoutParameters& vertexGeometryLayoutParameters, VertexArray<unsigned char> vertexGeometry, VertexArray<unsigned short> indices, std::vector<std::pair<unsigned int, long long>> ids) : _type(type), _geomScale(geomScale), _styleParameters(styleParameters), _vertexGeometryLayoutParameters(vertexGeometryLayoutParameters), _indicesCount(static_cast<unsigned int>(indices.size())), _vertexGeometry(std::move(vertexGeometry)), _indices(std::move(indices)), _ids(std::move(ids)) { }
 
         Type getType() const { return _type; }
-        float getTileSize() const { return _tileSize; }
         float getGeometryScale() const { return _geomScale; }
         const StyleParameters& getStyleParameters() const { return _styleParameters; }
-        const GeometryLayoutParameters& getGeometryLayoutParameters() const { return _geometryLayoutParameters; }
+        const VertexGeometryLayoutParameters& getVertexGeometryLayoutParameters() const { return _vertexGeometryLayoutParameters; }
         unsigned int getIndicesCount() const { return _indicesCount; }
 
         const VertexArray<unsigned char>& getVertexGeometry() const { return _vertexGeometry; }
@@ -97,12 +98,11 @@ namespace carto { namespace vt {
         }
 
     private:
-        Type _type;
-        float _tileSize;
-        float _geomScale;
-        StyleParameters _styleParameters;
-        GeometryLayoutParameters _geometryLayoutParameters;
-        unsigned int _indicesCount;
+        const Type _type;
+        const float _geomScale;
+        const StyleParameters _styleParameters;
+        const VertexGeometryLayoutParameters _vertexGeometryLayoutParameters;
+        const unsigned int _indicesCount; // real count, even if indices are released
 
         VertexArray<unsigned char> _vertexGeometry;
         VertexArray<unsigned short> _indices;

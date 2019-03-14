@@ -181,12 +181,16 @@ namespace carto { namespace css {
         return mapnikSymbolizer;
     }
 
+    std::string CartoCSSMapnikTranslator::buildValueString(const Value& value, bool stringExpr) const {
+        if (stringExpr) {
+            return boost::lexical_cast<std::string>(buildValue(value));
+        }
+        return mvt::generateValueString(buildValue(value));
+    }
+
     std::string CartoCSSMapnikTranslator::buildExpressionString(const std::shared_ptr<const Expression>& expr, bool stringExpr) const {
         if (auto constExpr = std::dynamic_pointer_cast<const ConstExpression>(expr)) {
-            if (stringExpr) {
-                return boost::lexical_cast<std::string>(buildValue(constExpr->getValue()));
-            }
-            return mvt::generateValueString(buildValue(constExpr->getValue()));
+            return buildValueString(constExpr->getValue(), stringExpr);
         }
         else if (auto fieldVarExpr = std::dynamic_pointer_cast<const FieldOrVarExpression>(expr)) {
             if (!fieldVarExpr->isField()) {
@@ -288,19 +292,29 @@ namespace carto { namespace css {
             if (funcExpr->getArgs().size() < 2) {
                 throw TranslatorException("Unsupported interpolated expression type");
             }
-            bool colorMode = false;
+            
+            bool colorMode = false, scalarMode = false;
+            std::vector<std::pair<Value, Value>> keyFrames;
             for (std::size_t i = 1; i < funcExpr->getArgs().size(); i++) {
                 auto constExpr = std::dynamic_pointer_cast<const ConstExpression>(funcExpr->getArgs()[i]);
                 if (!constExpr) {
                     throw TranslatorException("Expecting constant interpolation list");
                 }
-                auto keyFrames = boost::get<std::vector<Value>>(&constExpr->getValue());
-                if (!keyFrames || keyFrames->size() != 2) {
+                auto keyFrame = boost::get<std::vector<Value>>(&constExpr->getValue());
+                if (!keyFrame || keyFrame->size() != 2) {
                     throw TranslatorException("Expecting interpolation elements of size 2");
                 }
-                if (boost::get<Color>(&keyFrames->at(1))) {
+                if (boost::get<Color>(&keyFrame->at(1))) {
                     colorMode = true;
                 }
+                else {
+                    scalarMode = true;
+                }
+                keyFrames.emplace_back(keyFrame->at(0), keyFrame->at(1));
+            }
+
+            if (colorMode == scalarMode) {
+                throw TranslatorException("Ambigous interpolation values");
             }
 
             if (colorMode) {
@@ -311,34 +325,49 @@ namespace carto { namespace css {
                     std::string subExprStr = funcExpr->getFunc();
                     subExprStr += "(";
                     subExprStr += buildExpressionString(funcExpr->getArgs()[0], false);
-                    for (std::size_t i = 1; i < funcExpr->getArgs().size(); i++) {
-                        auto constExpr = std::dynamic_pointer_cast<const ConstExpression>(funcExpr->getArgs()[i]);
-                        auto keyFrames = boost::get<std::vector<Value>>(&constExpr->getValue());
-                        subExprStr += "," + boost::lexical_cast<std::string>(buildValue(keyFrames->at(0)));
-                        subExprStr += "," + boost::lexical_cast<std::string>(boost::get<Color>(keyFrames->at(1)).rgba()[c] * (c < 3 ? 255.0f : 1.0f));
+                    std::set<float> keyFrameComponents;
+                    for (const std::pair<Value, Value>& keyFrame : keyFrames) {
+                        float component = boost::get<Color>(keyFrame.second).rgba()[c] * (c < 3 ? 255.0f : 1.0f);
+                        subExprStr += "," + boost::lexical_cast<std::string>(buildValue(keyFrame.first));
+                        subExprStr += "," + boost::lexical_cast<std::string>(component);
+                        keyFrameComponents.insert(component);
                     }
                     subExprStr += ")";
 
                     if (c > 0) {
                         exprStr += ",";
                     }
-                    exprStr += (stringExpr ? "{" : "") + subExprStr + (stringExpr ? "}" : "");
+
+                    // Do trivial optimization, if only single keyframe is specified
+                    if (keyFrameComponents.size() == 1) {
+                        exprStr += buildValueString(*keyFrameComponents.begin(), stringExpr);
+                    }
+                    else {
+                        exprStr += (stringExpr ? "{" : "") + subExprStr + (stringExpr ? "}" : "");
+                    }
                 }
                 exprStr += ")";
                 return exprStr;
             }
             else {
-                // Assume scalar interpolation
+                // Scalar interpolation
                 std::string exprStr = funcExpr->getFunc();
                 exprStr += "(";
                 exprStr += (stringExpr ? "{" : "") + buildExpressionString(funcExpr->getArgs()[0], false) + (stringExpr ? "}" : "");
-                for (std::size_t i = 1; i < funcExpr->getArgs().size(); i++) {
-                    auto constExpr = std::dynamic_pointer_cast<const ConstExpression>(funcExpr->getArgs()[i]);
-                    auto keyFrames = boost::get<std::vector<Value>>(&constExpr->getValue());
-                    exprStr += "," + boost::lexical_cast<std::string>(buildValue(keyFrames->at(0)));
-                    exprStr += "," + mvt::generateValueString(buildValue(keyFrames->at(1)));
+                std::set<Value> keyFrameValues;
+                for (const std::pair<Value, Value>& keyFrame : keyFrames) {
+                    Value value = keyFrame.second;
+                    exprStr += "," + boost::lexical_cast<std::string>(buildValue(keyFrame.first));
+                    exprStr += "," + mvt::generateValueString(buildValue(value));
+                    keyFrameValues.insert(value);
                 }
                 exprStr += ")";
+
+                // Do trivial optimization, if only single keyframe is specified
+                if (keyFrameValues.size() == 1) {
+                    return buildValueString(*keyFrameValues.begin(), stringExpr);
+                }
+
                 return exprStr;
             }
         }
@@ -349,7 +378,13 @@ namespace carto { namespace css {
                 if (i > 0) {
                     exprStr += ",";
                 }
-                exprStr += (stringExpr ? "{" : "") + buildExpressionString(funcExpr->getArgs()[i], false) + (stringExpr ? "}" : "");
+
+                if (auto constExpr = std::dynamic_pointer_cast<const ConstExpression>(funcExpr->getArgs()[i])) {
+                    exprStr += buildValueString(constExpr->getValue(), stringExpr);
+                }
+                else {
+                    exprStr += (stringExpr ? "{" : "") + buildExpressionString(funcExpr->getArgs()[i], false) + (stringExpr ? "}" : "");
+                }
             }
             exprStr += ")";
             return exprStr;
@@ -537,6 +572,7 @@ namespace carto { namespace css {
         { "text-horizontal-alignment", "horizontal-alignment" },
         { "text-vertical-alignment", "vertical-alignment" },
         { "text-comp-op", "comp-op" },
+        { "text-clip", "clip" },
 
         { "shield-name", "" },
         { "shield-face-name", "" },
@@ -567,6 +603,7 @@ namespace carto { namespace css {
         { "shield-horizontal-alignment", "horizontal-alignment" },
         { "shield-vertical-alignment", "vertical-alignment" },
         { "shield-comp-op", "comp-op" },
+        { "shield-clip", "clip" },
 
         { "marker-file", "file" },
         { "marker-placement", "placement" },
@@ -584,6 +621,7 @@ namespace carto { namespace css {
         { "marker-ignore-placement", "ignore-placement" },
         { "marker-transform", "transform" },
         { "marker-comp-op", "comp-op" },
+        { "marker-clip", "clip" },
 
         { "building-fill", "fill" },
         { "building-fill-opacity", "fill-opacity" },

@@ -56,7 +56,7 @@ namespace carto { namespace mvt {
         vt::FloatFunction normalizedSizeFunc = _functionBuilder.createFloatFunction(widthScale);
         vt::ColorFunction fillFunc = _functionBuilder.createColorFunction(vt::Color::fromColorOpacity(vt::Color(1, 1, 1, 1), fillOpacity));
 
-        vt::PointStyle style(compOp, vt::PointOrientation::POINT, fillFunc, normalizedSizeFunc, bitmapImage, cglib::scale3_matrix(cglib::vec3<float>(1.0f, heightScale / widthScale, 1.0f)));
+        vt::PointStyle style(compOp, fillFunc, normalizedSizeFunc, bitmapImage, cglib::scale3_matrix(cglib::vec3<float>(1.0f, heightScale / widthScale, 1.0f)));
 
         std::size_t featureIndex = 0;
         std::size_t geometryIndex = 0;

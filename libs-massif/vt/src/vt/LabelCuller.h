@@ -4,11 +4,11 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_VT_TILELABELCULLER_H_
-#define _CARTO_VT_TILELABELCULLER_H_
+#ifndef _CARTO_VT_LABELCULLER_H_
+#define _CARTO_VT_LABELCULLER_H_
 
 #include "ViewState.h"
-#include "TileLabel.h"
+#include "Label.h"
 
 #include <array>
 #include <vector>
@@ -22,12 +22,12 @@
 #include <cglib/bbox.h>
 
 namespace carto { namespace vt {
-    class TileLabelCuller final {
+    class LabelCuller final {
     public:
-        explicit TileLabelCuller(std::shared_ptr<std::mutex> mutex, float scale);
+        explicit LabelCuller(std::shared_ptr<std::mutex> mutex, std::shared_ptr<const TileTransformer> transformer, float scale);
 
         void setViewState(const cglib::mat4x4<double>& projectionMatrix, const cglib::mat4x4<double>& cameraMatrix, float zoom, float aspectRatio, float resolution);
-        void process(const std::vector<std::shared_ptr<TileLabel>>& labelList);
+        void process(const std::vector<std::shared_ptr<Label>>& labelList);
 
     private:
         constexpr static int GRID_RESOLUTION = 16;
@@ -35,25 +35,27 @@ namespace carto { namespace vt {
         struct Record {
             cglib::bbox2<float> bounds;
             std::array<cglib::vec2<float>, 4> envelope;
-            std::shared_ptr<TileLabel> label;
+            std::shared_ptr<Label> label;
 
             Record() = default;
-            explicit Record(const cglib::bbox2<float>& bounds, const std::array<cglib::vec2<float>, 4>& envelope, std::shared_ptr<TileLabel> label) : bounds(bounds), envelope(envelope), label(std::move(label)) { }
+            explicit Record(const cglib::bbox2<float>& bounds, const std::array<cglib::vec2<float>, 4>& envelope, std::shared_ptr<Label> label) : bounds(bounds), envelope(envelope), label(std::move(label)) { }
         };
 
         void clearGrid();
-        bool testOverlap(const std::shared_ptr<TileLabel>& label);
+        bool testOverlap(const std::shared_ptr<Label>& label);
 
         static int getGridIndex(float x);
         static cglib::mat4x4<double> calculateLocalViewMatrix(const cglib::mat4x4<double>& cameraMatrix);
 
+        cglib::mat4x4<double> _projectionMatrix;
         cglib::mat4x4<float> _mvpMatrix;
         ViewState _viewState;
         float _resolution = 0;
         std::vector<Record> _recordGrid[GRID_RESOLUTION][GRID_RESOLUTION];
 
-        const float _scale;
         const std::shared_ptr<std::mutex> _mutex;
+        const std::shared_ptr<const TileTransformer> _transformer;
+        const float _scale;
     };
 } }
 

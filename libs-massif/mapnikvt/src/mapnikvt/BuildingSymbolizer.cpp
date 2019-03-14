@@ -13,8 +13,6 @@ namespace carto { namespace mvt {
             return;
         }
 
-        float heightScale = calculateHeightScale(exprContext.getTileId());
-        
         vt::ColorFunction fillFunc = _functionBuilder.createColorOpacityFunction(_fillFunc, _fillOpacityFunc);
         
         vt::Polygon3DStyle style(fillFunc, _geometryTransform);
@@ -44,7 +42,7 @@ namespace carto { namespace mvt {
                 }
             }
             return false;
-        }, _minHeight * heightScale, _height * heightScale, style);
+        }, _minHeight, _height, style);
     }
 
     void BuildingSymbolizer::bindParameter(const std::string& name, const std::string& value) {
@@ -63,13 +61,5 @@ namespace carto { namespace mvt {
         else {
             GeometrySymbolizer::bindParameter(name, value);
         }
-    }
-
-    float BuildingSymbolizer::calculateHeightScale(const vt::TileId& tileId) {
-        // Apply latitude-based scale correction
-        float pi = std::atan(1.0f) * 4.0f;
-        float normMercatorY = 2 * ((tileId.y + 0.5f) / (1 << tileId.zoom) - 0.5f);
-        float lat = pi * 0.5f - 2.0f * std::atan(std::exp(normMercatorY * pi));
-        return HEIGHT_SCALE / std::cos(lat);
     }
 } }

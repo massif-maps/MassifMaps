@@ -37,6 +37,8 @@ namespace carto { namespace css {
 
         virtual std::shared_ptr<mvt::Symbolizer> buildSymbolizer(const std::string& symbolizerType, const std::list<CartoCSSCompiler::Property>& properties, const std::shared_ptr<mvt::Map>& map) const;
 
+        virtual std::string buildValueString(const Value& value, bool stringExpr) const;
+
         virtual std::string buildExpressionString(const std::shared_ptr<const Expression>& expr, bool stringExpr) const;
 
         virtual std::string buildFunctionExpressionString(const std::shared_ptr<const FunctionExpression>& funcExpr, bool topLevel) const;

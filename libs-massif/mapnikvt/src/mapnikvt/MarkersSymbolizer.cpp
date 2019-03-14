@@ -17,6 +17,8 @@ namespace carto { namespace mvt {
 
         vt::CompOp compOp = convertCompOp(_compOp);
 
+        bool clip = _clipDefined ? _clip : _allowOverlap;
+
         float fontScale = symbolizerContext.getSettings().getFontScale();
         vt::LabelOrientation placement = convertLabelPlacement(_placement);
         vt::LabelOrientation orientation = placement;
@@ -114,10 +116,10 @@ namespace carto { namespace mvt {
         vt::ColorFunction fillFunc = _functionBuilder.createColorFunction(vt::Color::fromColorOpacity(vt::Color(1, 1, 1, 1), fillOpacity));
 
         std::vector<std::pair<long long, vt::TileLayerBuilder::Vertex>> pointInfos;
-        std::vector<std::pair<long long, vt::TileLayerBuilder::BitmapLabelInfo>> labelInfos;
+        std::vector<std::pair<long long, vt::TileLayerBuilder::PointLabelInfo>> labelInfos;
 
         auto addPoint = [&](long long localId, long long globalId, const boost::variant<vt::TileLayerBuilder::Vertex, vt::TileLayerBuilder::Vertices>& position) {
-            if (_allowOverlap) {
+            if (clip) {
                 if (auto vertex = boost::get<vt::TileLayerBuilder::Vertex>(&position)) {
                     pointInfos.emplace_back(localId, *vertex);
                 }
@@ -128,13 +130,18 @@ namespace carto { namespace mvt {
                 }
             }
             else {
-                labelInfos.emplace_back(localId, vt::TileLayerBuilder::BitmapLabelInfo(getBitmapId(globalId, file), groupId, position, 0));
+                labelInfos.emplace_back(localId, vt::TileLayerBuilder::PointLabelInfo(getBitmapId(globalId, file), groupId, position, 0));
             }
         };
 
         auto flushPoints = [&](const cglib::mat3x3<float>& transform) {
-            if (_allowOverlap) {
-                vt::PointStyle style(compOp, convertLabelToPointOrientation(orientation), fillFunc, normalizedSizeFunc, bitmapImage, transform * cglib::scale3_matrix(cglib::vec3<float>(1.0f, heightScale / widthScale, 1.0f)));
+            boost::optional<cglib::mat3x3<float>> optTransform;
+            if (transform != cglib::mat3x3<float>::identity() || heightScale != widthScale) {
+                optTransform = transform * cglib::scale3_matrix(cglib::vec3<float>(1.0f, heightScale / widthScale, 1.0f));
+            }
+
+            if (clip) {
+                vt::PointStyle style(compOp, fillFunc, normalizedSizeFunc, bitmapImage, optTransform);
 
                 std::size_t pointInfoIndex = 0;
                 layerBuilder.addPoints([&](long long& id, vt::TileLayerBuilder::Vertex& vertex) {
@@ -150,10 +157,10 @@ namespace carto { namespace mvt {
                 pointInfos.clear();
             }
             else {
-                vt::BitmapLabelStyle style(orientation, fillFunc, normalizedSizeFunc, bitmapImage, transform * cglib::scale3_matrix(cglib::vec3<float>(1.0f, heightScale / widthScale, 1.0f)));
+                vt::PointLabelStyle style(orientation, fillFunc, normalizedSizeFunc, bitmapImage, optTransform);
 
                 std::size_t labelInfoIndex = 0;
-                layerBuilder.addBitmapLabels([&](long long& id, vt::TileLayerBuilder::BitmapLabelInfo& labelInfo) {
+                layerBuilder.addPointLabels([&](long long& id, vt::TileLayerBuilder::PointLabelInfo& labelInfo) {
                     if (labelInfoIndex >= labelInfos.size()) {
                         return false;
                     }
@@ -288,6 +295,10 @@ namespace carto { namespace mvt {
         }
         else if (name == "allow-overlap") {
             bind(&_allowOverlap, parseExpression(value));
+        }
+        else if (name == "clip") {
+            bind(&_clip, parseExpression(value));
+            _clipDefined = true;
         }
         else if (name == "ignore-placement") {
             bind(&_ignorePlacement, parseExpression(value));

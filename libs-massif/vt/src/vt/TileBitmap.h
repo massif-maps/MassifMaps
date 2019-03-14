@@ -34,9 +34,10 @@ namespace carto { namespace vt {
         }
 
     private:
-        Format _format;
-        int _width;
-        int _height;
+        const Format _format;
+        const int _width;
+        const int _height;
+        
         std::vector<std::uint8_t> _data;
     };
 } }

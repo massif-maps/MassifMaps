@@ -7,6 +7,7 @@
 #ifndef _CARTO_VT_VIEWSTATE_H_
 #define _CARTO_VT_VIEWSTATE_H_
 
+#include <cmath>
 #include <array>
 
 #include <cglib/vec.h>

@@ -225,6 +225,16 @@ namespace carto { namespace css {
             mapSettings.backgroundColor = vt::Color(backgroundColor.value());
         }
         getMapProperty(mapProperties, "background-image", mapSettings.backgroundImage);
+
+        Color northPoleColor;
+        if (getMapProperty(mapProperties, "north-pole-color", northPoleColor)) {
+            mapSettings.northPoleColor = vt::Color(northPoleColor.value());
+        }
+        Color southPoleColor;
+        if (getMapProperty(mapProperties, "south-pole-color", southPoleColor)) {
+            mapSettings.southPoleColor = vt::Color(southPoleColor.value());
+        }
+
         getMapProperty(mapProperties, "font-directory", mapSettings.fontDirectory);
         double bufferSize = 0;
         if (getMapProperty(mapProperties, "buffer-size", bufferSize)) {

@@ -27,6 +27,7 @@ namespace carto { namespace mbvtbuilder {
     public:
         using LayerIndex = int;
 
+        using Bounds = cglib::bbox2<double>;
         using Point = cglib::vec2<double>;
         using MultiPoint = std::vector<Point>;
         using MultiLineString = std::vector<std::vector<Point>>;
@@ -36,7 +37,10 @@ namespace carto { namespace mbvtbuilder {
 
         void setFastSimplifyMode(bool enabled);
 
+        std::vector<LayerIndex> getLayerIndices() const;
         LayerIndex createLayer(const std::string& layerId, float buffer = -1);
+        Bounds getLayerBounds(LayerIndex layerIndex) const;
+        void clearLayer(int layerIndex);
         void deleteLayer(LayerIndex layerIndex);
 
         void addMultiPoint(LayerIndex layerIndex, MultiPoint coords, picojson::value properties);
@@ -51,7 +55,6 @@ namespace carto { namespace mbvtbuilder {
         void buildTiles(std::function<void(int, int, int, const protobuf::encoded_message&)> handler) const;
 
     private:
-        using Bounds = cglib::bbox2<double>;
         using Geometry = boost::variant<MultiPoint, MultiLineString, MultiPolygon>;
 
         static constexpr float DEFAULT_LAYER_BUFFER = 4.0 / 256.0f;

@@ -22,6 +22,14 @@ namespace carto { namespace mbvtbuilder {
         invalidateCache();
     }
 
+    std::vector<MBVTTileBuilder::LayerIndex> MBVTTileBuilder::getLayerIndices() const {
+        std::vector<LayerIndex> layerIndices;
+        for (const std::pair<const LayerIndex, Layer> layerPair : _layers) {
+            layerIndices.push_back(layerPair.first);
+        }
+        return layerIndices;
+    }
+
     MBVTTileBuilder::LayerIndex MBVTTileBuilder::createLayer(const std::string& layerId, float buffer) {
         std::lock_guard<std::mutex> lock(_mutex);
         Layer layer;
@@ -33,13 +41,29 @@ namespace carto { namespace mbvtbuilder {
         return layerIndex;
     }
 
+    MBVTTileBuilder::Bounds MBVTTileBuilder::getLayerBounds(LayerIndex layerIndex) const {
+        std::lock_guard<std::mutex> lock(_mutex);
+        auto it = _layers.find(layerIndex);
+        if (it == _layers.end()) {
+            throw std::runtime_error("Invalid layer index");
+        }
+        return it->second.bounds;
+    }
+
+    void MBVTTileBuilder::clearLayer(LayerIndex layerIndex) {
+        std::lock_guard<std::mutex> lock(_mutex);
+        _layers[layerIndex] = Layer();
+        invalidateCache();
+    }
+
     void MBVTTileBuilder::deleteLayer(LayerIndex layerIndex) {
         std::lock_guard<std::mutex> lock(_mutex);
         auto it = _layers.find(layerIndex);
-        if (it != _layers.end()) {
-            _layers.erase(it);
-            invalidateCache();
+        if (it == _layers.end()) {
+            throw std::runtime_error("Invalid layer index");
         }
+        _layers.erase(it);
+        invalidateCache();
     }
 
     void MBVTTileBuilder::addMultiPoint(LayerIndex layerIndex, MultiPoint coords, picojson::value properties) {

@@ -63,6 +63,16 @@ static std::vector<std::vector<cglib::vec2<float>>> decodeGeometry(const vector_
     return verticesList;
 }
 
+static cglib::vec2<double> wgs84ToWM(const cglib::vec2<double>& posWgs84) {
+    static constexpr double EARTH_RADIUS = 6378137.0;
+    static constexpr double PI = boost::math::constants::pi<double>();
+    
+    double x = EARTH_RADIUS * posWgs84(0) * PI / 180.0;
+    double a = posWgs84(1) * PI / 180.0;
+    double y = 0.5 * EARTH_RADIUS * std::log((1.0 + std::sin(a)) / (1.0 - std::sin(a)));
+    return cglib::vec2<double>(x, y);
+}
+
 // Test clipper for different primitives
 BOOST_AUTO_TEST_CASE(clipper) {
     typedef cglib::vec2<double> Point;
@@ -223,7 +233,7 @@ BOOST_AUTO_TEST_CASE(tileBuilder) {
         tileBuilder.addMultiPoint(0, { Point(0, 0) }, picojson::value());
         std::vector<protobuf::encoded_message> encodedTiles;
         tileBuilder.buildTiles([&encodedTiles](int zoom, int tileX, int tileY, const protobuf::encoded_message& encodedTile) { encodedTiles.push_back(encodedTile); });
-        BOOST_CHECK(encodedTiles.size() == 4);
+        BOOST_CHECK(encodedTiles.size() == 1);
     }
 
     {
@@ -268,5 +278,23 @@ BOOST_AUTO_TEST_CASE(tileBuilder) {
         std::vector<protobuf::encoded_message> encodedTiles;
         tileBuilder.buildTiles([&encodedTiles](int zoom, int tileX, int tileY, const protobuf::encoded_message& encodedTile) { encodedTiles.push_back(encodedTile); });
         BOOST_CHECK(encodedTiles.size() == 2211);
+    }
+}
+
+// Test high-level tile builder functionality, simplifier part
+BOOST_AUTO_TEST_CASE(tileBuilderSimplifier) {
+    typedef cglib::vec2<double> Point;
+
+    {
+        MBVTTileBuilder tileBuilder(0, 18);
+        std::vector<Point> coords;
+        for (int i = 0; i < 10000; i++) {
+            double a = static_cast<double>(i) / 10000 * std::atan(1.0) * 8;
+            double r = 80;
+            coords.emplace_back(wgs84ToWM(cglib::vec2<double>(std::cos(a), std::sin(a)) * r));
+        }
+        tileBuilder.addMultiPolygon(0, { { coords } }, picojson::value());
+        protobuf::encoded_message encodedTile;
+        tileBuilder.buildTile(0, 0, 0, encodedTile);
     }
 }

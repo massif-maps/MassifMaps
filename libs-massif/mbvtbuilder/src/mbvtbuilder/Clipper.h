@@ -168,14 +168,14 @@ namespace carto { namespace mbvtbuilder {
     template <typename T>
     typename Clipper<T>::PointMask Clipper<T>::classifyPoint(const Point& p) const {
         PointMask mask = 0;
-        if (p(0) <= _bounds.min(0)) {
+        if (p(0) < _bounds.min(0)) {
             mask |= LEFT_OUT;
-        } else if (p(0) >= _bounds.max(0)) {
+        } else if (p(0) > _bounds.max(0)) {
             mask |= RIGHT_OUT;
         }
-        if (p(1) <= _bounds.min(1)) {
+        if (p(1) < _bounds.min(1)) {
             mask |= TOP_OUT;
-        } else if (p(1) >= _bounds.max(1)) {
+        } else if (p(1) > _bounds.max(1)) {
             mask |= BOTTOM_OUT;
         }
         return mask;

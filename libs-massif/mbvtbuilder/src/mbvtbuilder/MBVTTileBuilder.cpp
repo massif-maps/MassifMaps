@@ -16,19 +16,29 @@ namespace carto { namespace mbvtbuilder {
     {
     }
 
+    void MBVTTileBuilder::setFastSimplifyMode(bool enabled) {
+        std::lock_guard<std::mutex> lock(_mutex);
+        _fastSimplifyMode = enabled;
+        invalidateCache();
+    }
+
     MBVTTileBuilder::LayerIndex MBVTTileBuilder::createLayer(const std::string& layerId, float buffer) {
+        std::lock_guard<std::mutex> lock(_mutex);
         Layer layer;
         layer.layerId = layerId;
         layer.buffer = (buffer >= 0 ? buffer : DEFAULT_LAYER_BUFFER);
         LayerIndex layerIndex = (_layers.empty() ? 0 : _layers.rbegin()->first) + 1;
         _layers.emplace(layerIndex, std::move(layer));
+        invalidateCache();
         return layerIndex;
     }
 
     void MBVTTileBuilder::deleteLayer(LayerIndex layerIndex) {
+        std::lock_guard<std::mutex> lock(_mutex);
         auto it = _layers.find(layerIndex);
         if (it != _layers.end()) {
             _layers.erase(it);
+            invalidateCache();
         }
     }
 
@@ -40,8 +50,10 @@ namespace carto { namespace mbvtbuilder {
         feature.geometry = std::move(coords);
         feature.properties = std::move(properties);
         
+        std::lock_guard<std::mutex> lock(_mutex);
         _layers[layerIndex].bounds.add(feature.bounds);
         _layers[layerIndex].features.push_back(std::move(feature));
+        invalidateCache();
     }
 
     void MBVTTileBuilder::addMultiLineString(LayerIndex layerIndex, MultiLineString coordsList, picojson::value properties) {
@@ -55,8 +67,10 @@ namespace carto { namespace mbvtbuilder {
         feature.geometry = std::move(coordsList);
         feature.properties = std::move(properties);
         
+        std::lock_guard<std::mutex> lock(_mutex);
         _layers[layerIndex].bounds.add(feature.bounds);
         _layers[layerIndex].features.push_back(std::move(feature));
+        invalidateCache();
     }
 
     void MBVTTileBuilder::addMultiPolygon(LayerIndex layerIndex, MultiPolygon ringsList, picojson::value properties) {
@@ -72,8 +86,10 @@ namespace carto { namespace mbvtbuilder {
         feature.geometry = std::move(ringsList);
         feature.properties = std::move(properties);
         
+        std::lock_guard<std::mutex> lock(_mutex);
         _layers[layerIndex].bounds.add(feature.bounds);
         _layers[layerIndex].features.push_back(std::move(feature));
+        invalidateCache();
     }
 
     void MBVTTileBuilder::importGeoJSON(LayerIndex layerIndex, const picojson::value& geoJSON) {
@@ -143,10 +159,10 @@ namespace carto { namespace mbvtbuilder {
     }
 
     void MBVTTileBuilder::buildTile(int zoom, int tileX, int tileY, protobuf::encoded_message& encodedTile) const {
-        for (std::pair<const LayerIndex, Layer> layerPair : _layers) {
-            Layer& layer = layerPair.second;
-            double tolerance = 2.0 * PI * EARTH_RADIUS / (1 << zoom) * TILE_TOLERANCE;
-            simplifyLayer(layer, tolerance);
+        std::lock_guard<std::mutex> lock(_mutex);
+        const std::map<LayerIndex, Layer>& layers = simplifyAndCacheLayers(zoom);
+        for (const std::pair<const LayerIndex, Layer> layerPair : layers) {
+            const Layer& layer = layerPair.second;
             if (layer.features.empty()) {
                 continue;
             }
@@ -164,28 +180,24 @@ namespace carto { namespace mbvtbuilder {
     }
 
     void MBVTTileBuilder::buildTiles(std::function<void(int, int, int, const protobuf::encoded_message&)> handler) const {
-        std::map<LayerIndex, Layer> layers = _layers;
+        std::lock_guard<std::mutex> lock(_mutex);
         for (int zoom = _maxZoom; zoom >= _minZoom; zoom--) {
-            Bounds bounds = Bounds::smallest(); 
-            for (std::pair<const LayerIndex, Layer>& layerPair : layers) {
-                Layer& layer = layerPair.second;
-                double tolerance = 2.0 * PI * EARTH_RADIUS / (1 << zoom) * TILE_TOLERANCE;
-                simplifyLayer(layer, tolerance);
+            const std::map<LayerIndex, Layer>& layers = simplifyAndCacheLayers(zoom);
 
-                cglib::vec2<double> layerBuffer(layer.buffer, layer.buffer);
-                for (const Feature& feature : layer.features) {
-                    bounds.add(feature.bounds.min - layerBuffer);
-                    bounds.add(feature.bounds.max + layerBuffer);
-                }
+            Bounds layersBounds = Bounds::smallest(); 
+            for (const std::pair<const LayerIndex, Layer>& layerPair : layers) {
+                const Layer& layer = layerPair.second;
+                layersBounds.add(layer.bounds.min - cglib::vec2<double>(layer.buffer, layer.buffer));
+                layersBounds.add(layer.bounds.max + cglib::vec2<double>(layer.buffer, layer.buffer));
             }
 
             double tileSize = (MAP_BOUNDS.max(0) - MAP_BOUNDS.min(0)) / (1 << zoom);
             double tileCount = (1 << zoom);
 
-            double tileX0 = std::max(0.0, std::floor((MAP_BOUNDS.min(0) - MAP_BOUNDS.min(0)) / tileSize));
-            double tileY0 = std::max(0.0, std::floor((MAP_BOUNDS.min(1) - MAP_BOUNDS.min(1)) / tileSize));
-            double tileX1 = std::min(tileCount, std::floor((bounds.max(0) - MAP_BOUNDS.min(0)) / tileSize) + 1);
-            double tileY1 = std::min(tileCount, std::floor((bounds.max(1) - MAP_BOUNDS.min(1)) / tileSize) + 1);
+            double tileX0 = std::max(0.0, std::floor((layersBounds.min(0) - MAP_BOUNDS.min(0)) / tileSize));
+            double tileY0 = std::max(0.0, std::floor((layersBounds.min(1) - MAP_BOUNDS.min(1)) / tileSize));
+            double tileX1 = std::min(tileCount, std::floor((layersBounds.max(0) - MAP_BOUNDS.min(0)) / tileSize) + 1);
+            double tileY1 = std::min(tileCount, std::floor((layersBounds.max(1) - MAP_BOUNDS.min(1)) / tileSize) + 1);
 
             for (int tileY = static_cast<int>(tileY0); tileY < tileY1; tileY++) {
                 for (int tileX = static_cast<int>(tileX0); tileX < tileX1; tileX++) {
@@ -212,6 +224,25 @@ namespace carto { namespace mbvtbuilder {
                 }
             }
         }
+    }
+
+    const std::map<MBVTTileBuilder::LayerIndex, MBVTTileBuilder::Layer>& MBVTTileBuilder::simplifyAndCacheLayers(int zoom) const {
+        auto it = _cachedZoomLayers.lower_bound(zoom);
+        int nextZoom = (it != _cachedZoomLayers.end() ? it->first : _maxZoom + 1);
+        while (nextZoom > zoom) {
+            int currentZoom = (!_fastSimplifyMode ? zoom : nextZoom - 1);
+            _cachedZoomLayers[currentZoom] = (!_fastSimplifyMode || nextZoom > _maxZoom ? _layers : _cachedZoomLayers[nextZoom]);
+            for (std::pair<const LayerIndex, Layer>& layerPair : _cachedZoomLayers[currentZoom]) {
+                double tolerance = 2.0 * PI * EARTH_RADIUS / (1 << currentZoom) * TILE_TOLERANCE;
+                simplifyLayer(layerPair.second, tolerance);
+            }
+            nextZoom = currentZoom;
+        }
+        return _cachedZoomLayers[zoom];
+    }
+
+    void MBVTTileBuilder::invalidateCache() const {
+        _cachedZoomLayers.clear();
     }
 
     void MBVTTileBuilder::simplifyLayer(Layer& layer, double tolerance) {

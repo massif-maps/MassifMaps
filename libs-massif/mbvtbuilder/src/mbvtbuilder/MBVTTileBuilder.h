@@ -8,6 +8,7 @@
 #define _CARTO_MBVTBUILDER_MBVTTILEBUILDER_H_
 
 #include <vector>
+#include <mutex>
 
 #include <boost/variant.hpp>
 #include <boost/math/constants/constants.hpp>
@@ -32,6 +33,8 @@ namespace carto { namespace mbvtbuilder {
         using MultiPolygon = std::vector<std::vector<std::vector<Point>>>;
         
         explicit MBVTTileBuilder(int minZoom, int maxZoom);
+
+        void setFastSimplifyMode(bool enabled);
 
         LayerIndex createLayer(const std::string& layerId, float buffer = -1);
         void deleteLayer(LayerIndex layerIndex);
@@ -71,6 +74,9 @@ namespace carto { namespace mbvtbuilder {
         static constexpr double TILE_TOLERANCE = 1.0 / 256.0;
         static constexpr Bounds MAP_BOUNDS = Bounds(Point(-PI * EARTH_RADIUS, -PI * EARTH_RADIUS), Point(PI * EARTH_RADIUS, PI * EARTH_RADIUS));
 
+        const std::map<LayerIndex, Layer>& simplifyAndCacheLayers(int zoom) const;
+        void invalidateCache() const;
+
         static void simplifyLayer(Layer& layer, double tolerance);
         static bool encodeLayer(const Layer& layer, const Point& tileOrigin, double tileSize, const Bounds& tileBounds, MBVTLayerEncoder& layerEncoder);
 
@@ -79,10 +85,16 @@ namespace carto { namespace mbvtbuilder {
         static cglib::vec2<double> parseCoordinates(const picojson::value& coordsDef);
         static Point wgs84ToWM(const cglib::vec2<double>& posWgs84);
 
+        bool _fastSimplifyMode = false;
+
         std::map<LayerIndex, Layer> _layers;
 
         const int _minZoom;
         const int _maxZoom;
+
+        mutable std::map<int, std::map<LayerIndex, Layer>> _cachedZoomLayers;
+
+        mutable std::mutex _mutex;
     };
 } }
 

@@ -52,7 +52,8 @@ namespace carto { namespace mbvtbuilder {
 
     void MBVTTileBuilder::clearLayer(LayerIndex layerIndex) {
         std::lock_guard<std::mutex> lock(_mutex);
-        _layers[layerIndex] = Layer();
+        _layers[layerIndex].bounds = Bounds::smallest();
+        _layers[layerIndex].features.clear();
         invalidateCache();
     }
 
@@ -183,6 +184,8 @@ namespace carto { namespace mbvtbuilder {
     }
 
     void MBVTTileBuilder::buildTile(int zoom, int tileX, int tileY, protobuf::encoded_message& encodedTile) const {
+        static const Bounds mapBounds(Point(-PI * EARTH_RADIUS, -PI * EARTH_RADIUS), Point(PI * EARTH_RADIUS, PI * EARTH_RADIUS));
+
         std::lock_guard<std::mutex> lock(_mutex);
         const std::map<LayerIndex, Layer>& layers = simplifyAndCacheLayers(zoom);
         for (const std::pair<const LayerIndex, Layer> layerPair : layers) {
@@ -191,8 +194,8 @@ namespace carto { namespace mbvtbuilder {
                 continue;
             }
 
-            double tileSize = (MAP_BOUNDS.max(0) - MAP_BOUNDS.min(0)) / (1 << zoom);
-            Point tileOrigin(tileX * tileSize + MAP_BOUNDS.min(0), tileY * tileSize + MAP_BOUNDS.min(1));
+            double tileSize = (mapBounds.max(0) - mapBounds.min(0)) / (1 << zoom);
+            Point tileOrigin(tileX * tileSize + mapBounds.min(0), tileY * tileSize + mapBounds.min(1));
             Bounds tileBounds(tileOrigin - cglib::vec2<double>(layer.buffer, layer.buffer) * tileSize, tileOrigin + cglib::vec2<double>(1 + layer.buffer, 1 + layer.buffer) * tileSize);
 
             MBVTLayerEncoder layerEncoder(layer.layerId);
@@ -204,6 +207,8 @@ namespace carto { namespace mbvtbuilder {
     }
 
     void MBVTTileBuilder::buildTiles(std::function<void(int, int, int, const protobuf::encoded_message&)> handler) const {
+        static const Bounds mapBounds(Point(-PI * EARTH_RADIUS, -PI * EARTH_RADIUS), Point(PI * EARTH_RADIUS, PI * EARTH_RADIUS));
+
         std::lock_guard<std::mutex> lock(_mutex);
         for (int zoom = _maxZoom; zoom >= _minZoom; zoom--) {
             const std::map<LayerIndex, Layer>& layers = simplifyAndCacheLayers(zoom);
@@ -215,13 +220,13 @@ namespace carto { namespace mbvtbuilder {
                 layersBounds.add(layer.bounds.max + cglib::vec2<double>(layer.buffer, layer.buffer));
             }
 
-            double tileSize = (MAP_BOUNDS.max(0) - MAP_BOUNDS.min(0)) / (1 << zoom);
+            double tileSize = (mapBounds.max(0) - mapBounds.min(0)) / (1 << zoom);
             double tileCount = (1 << zoom);
 
-            double tileX0 = std::max(0.0, std::floor((layersBounds.min(0) - MAP_BOUNDS.min(0)) / tileSize));
-            double tileY0 = std::max(0.0, std::floor((layersBounds.min(1) - MAP_BOUNDS.min(1)) / tileSize));
-            double tileX1 = std::min(tileCount, std::floor((layersBounds.max(0) - MAP_BOUNDS.min(0)) / tileSize) + 1);
-            double tileY1 = std::min(tileCount, std::floor((layersBounds.max(1) - MAP_BOUNDS.min(1)) / tileSize) + 1);
+            double tileX0 = std::max(0.0, std::floor((layersBounds.min(0) - mapBounds.min(0)) / tileSize));
+            double tileY0 = std::max(0.0, std::floor((layersBounds.min(1) - mapBounds.min(1)) / tileSize));
+            double tileX1 = std::min(tileCount, std::floor((layersBounds.max(0) - mapBounds.min(0)) / tileSize) + 1);
+            double tileY1 = std::min(tileCount, std::floor((layersBounds.max(1) - mapBounds.min(1)) / tileSize) + 1);
 
             for (int tileY = static_cast<int>(tileY0); tileY < tileY1; tileY++) {
                 for (int tileX = static_cast<int>(tileX0); tileX < tileX1; tileX++) {
@@ -232,7 +237,7 @@ namespace carto { namespace mbvtbuilder {
                             continue;
                         }
 
-                        Point tileOrigin(tileX * tileSize + MAP_BOUNDS.min(0), tileY * tileSize + MAP_BOUNDS.min(1));
+                        Point tileOrigin(tileX * tileSize + mapBounds.min(0), tileY * tileSize + mapBounds.min(1));
                         Bounds tileBounds(tileOrigin - cglib::vec2<double>(layer.buffer, layer.buffer) * tileSize, tileOrigin + cglib::vec2<double>(1 + layer.buffer, 1 + layer.buffer) * tileSize);
 
                         MBVTLayerEncoder layerEncoder(layer.layerId);

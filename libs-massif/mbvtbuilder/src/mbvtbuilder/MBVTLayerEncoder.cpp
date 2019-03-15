@@ -1,5 +1,6 @@
 #include "MBVTLayerEncoder.h"
 
+#include <algorithm>
 #include <numeric>
 
 #include "mapnikvt/mbvtpackage/MBVTPackage.pb.h"
@@ -143,7 +144,20 @@ namespace carto { namespace mbvtbuilder {
         std::size_t vertexCount = std::accumulate(ringsList.begin(), ringsList.end(), std::size_t(0), [](std::size_t count, const std::vector<Point>& coords) { return count + coords.size(); });
         encodedCoords.reserve(vertexCount * 3 + ringsList.size());
         cglib::vec2<std::int32_t> prevIntCoords(0, 0);
-        for (const std::vector<Point>& coords : ringsList) {
+        for (std::size_t n = 0; n < ringsList.size(); n++) {
+            std::vector<Point> coords = ringsList[n];
+
+            double area = 0;
+            if (!coords.empty()) {
+                for (std::size_t i = 1; i < coords.size(); i++) {
+                    area += coords[i - 1](0) * coords[i](1) - coords[i](0) * coords[i - 1](1);
+                }
+                area += coords.back()(0) * coords.front()(1) - coords.front()(0) * coords.back()(1);
+            }
+            if ((n > 0) != (area < 0)) {
+                std::reverse(coords.begin(), coords.end());
+            }
+
             for (std::size_t i = 0; i < coords.size(); i++) {
                 cglib::vec2<std::int32_t> intCoords = cglib::vec2<std::int32_t>::convert(coords[i] * scale);
                 if (i > 1 && intCoords == prevIntCoords) {

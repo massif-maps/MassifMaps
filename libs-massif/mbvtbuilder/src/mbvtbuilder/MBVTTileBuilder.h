@@ -75,7 +75,6 @@ namespace carto { namespace mbvtbuilder {
         static constexpr double PI = boost::math::constants::pi<double>();
         static constexpr double EARTH_RADIUS = 6378137.0;
         static constexpr double TILE_TOLERANCE = 1.0 / 256.0;
-        static constexpr Bounds MAP_BOUNDS = Bounds(Point(-PI * EARTH_RADIUS, -PI * EARTH_RADIUS), Point(PI * EARTH_RADIUS, PI * EARTH_RADIUS));
 
         const std::map<LayerIndex, Layer>& simplifyAndCacheLayers(int zoom) const;
         void invalidateCache() const;

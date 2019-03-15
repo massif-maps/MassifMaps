@@ -429,6 +429,6 @@ namespace carto { namespace mbvtbuilder {
         double x = EARTH_RADIUS * posWgs84(0) * PI / 180.0;
         double a = posWgs84(1) * PI / 180.0;
         double y = 0.5 * EARTH_RADIUS * std::log((1.0 + std::sin(a)) / (1.0 - std::sin(a)));
-        return Point(x, y);
+        return Point(x, -y); // NOTE: we use EPSG3857 with flipped Y
     }
 } }

@@ -21,8 +21,8 @@
 namespace carto { namespace mvt {
     class MBVTFeatureDecoder::MBVTFeatureIterator : public carto::mvt::FeatureDecoder::FeatureIterator {
     public:
-        explicit MBVTFeatureIterator(const std::shared_ptr<const vector_tile::Tile>& tile, int layerIndex, const std::unordered_set<std::string>* fields, const cglib::mat3x3<float>& transform, const cglib::bbox2<float>& clipBox, float buffer, bool globalIdOverride, long long tileIdOffset, const std::shared_ptr<MBVTFeatureDecoder::FeatureDataCache>& featureDataCache) :
-            _tile(tile), _layer(&tile->layers(layerIndex)), _transform(transform), _clipBox(clipBox), _buffer(buffer), _globalIdOverride(globalIdOverride), _tileIdOffset(tileIdOffset), _featureDataCache(featureDataCache)
+        explicit MBVTFeatureIterator(const std::shared_ptr<const vector_tile::Tile>& tile, int layerIndex, const std::unordered_set<std::string>* fields, const cglib::mat3x3<float>& transform, const cglib::bbox2<float>& clipBox, bool globalIdOverride, long long tileIdOffset, const std::shared_ptr<MBVTFeatureDecoder::FeatureDataCache>& featureDataCache) :
+            _tile(tile), _layer(&tile->layers(layerIndex)), _transform(transform), _clipBox(clipBox), _globalIdOverride(globalIdOverride), _tileIdOffset(tileIdOffset), _featureDataCache(featureDataCache)
         {
             _layerIndexOffset = static_cast<long long>(layerIndex) << 32;
 
@@ -125,9 +125,6 @@ namespace carto { namespace mvt {
         virtual std::shared_ptr<const Geometry> getGeometry() const override {
             std::vector<std::vector<cglib::vec2<float>>> verticesList;
             decodeGeometry(_layer->features(_index), verticesList, 1.0f / _layer->extent());
-            if (_buffer > 0 && _layer->features(_index).type() == vector_tile::Tile::LINESTRING) {
-                bufferGeometry(verticesList, _buffer);
-            }
 
             cglib::bbox2<float> bbox = cglib::bbox2<float>::smallest();
             for (std::vector<cglib::vec2<float>>& vertices : verticesList) {
@@ -253,34 +250,6 @@ namespace carto { namespace mvt {
             }
         }
 
-        static void bufferGeometry(std::vector<std::vector<cglib::vec2<float>>>& verticesList, float buffer) {
-            for (std::vector<cglib::vec2<float>>& vertices : verticesList) {
-                if (vertices.size() < 2) {
-                    continue;
-                }
-
-                {
-                    cglib::vec2<float>& p0 = vertices[0];
-                    const cglib::vec2<float>& p1 = vertices[1];
-                    if (p0(0) <= 0 || p0(0) >= 1 || p0(1) <= 0 || p0(1) >= 1) {
-                        if (p1 != p0) {
-                            p0 = p0 + cglib::unit(p0 - p1) * buffer;
-                        }
-                    }
-                }
-
-                {
-                    const cglib::vec2<float>& p0 = vertices[vertices.size() - 2];
-                    cglib::vec2<float>& p1 = vertices[vertices.size() - 1];
-                    if (p1(0) <= 0 || p1(0) >= 1 || p1(1) <= 0 || p1(1) >= 1) {
-                        if (p1 != p0) {
-                            p1 = p1 + cglib::unit(p1 - p0) * buffer;
-                        }
-                    }
-                }
-            }
-        }
-
         static bool isRingCCW(const std::vector<cglib::vec2<float>>& vertices) {
             double area = 0;
             if (!vertices.empty()) {
@@ -300,7 +269,6 @@ namespace carto { namespace mvt {
         const vector_tile::Tile::Layer* _layer;
         const cglib::mat3x3<float> _transform;
         const cglib::bbox2<float> _clipBox;
-        const float _buffer;
         const bool _globalIdOverride;
         const long long _tileIdOffset;
         mutable std::shared_ptr<MBVTFeatureDecoder::FeatureDataCache> _featureDataCache;
@@ -311,7 +279,7 @@ namespace carto { namespace mvt {
     std::atomic<long long> MBVTFeatureDecoder::MBVTFeatureIterator::_idCounter = ATOMIC_VAR_INIT(1);
 
     MBVTFeatureDecoder::MBVTFeatureDecoder(const std::vector<unsigned char>& data, std::shared_ptr<Logger> logger) :
-        _transform(cglib::mat3x3<float>::identity()), _clipBox(cglib::vec2<float>(-0.1f, -0.1f), cglib::vec2<float>(1.1f, 1.1f)), _buffer(0), _globalIdOverride(false), _tileIdOffset(0), _tile(), _layerMap(), _logger(std::move(logger))
+        _transform(cglib::mat3x3<float>::identity()), _clipBox(cglib::vec2<float>(-0.1f, -0.1f), cglib::vec2<float>(1.1f, 1.1f)), _globalIdOverride(false), _tileIdOffset(0), _tile(), _layerMap(), _logger(std::move(logger))
     {
         std::vector<unsigned char> uncompressedData;
         if (miniz::inflate_gzip(data.data(), data.size(), uncompressedData)) {
@@ -342,10 +310,6 @@ namespace carto { namespace mvt {
         _clipBox = clipBox;
     }
 
-    void MBVTFeatureDecoder::setBuffer(float buffer) {
-        _buffer = buffer;
-    }
-
     void MBVTFeatureDecoder::setGlobalIdOverride(bool globalIdOverride, long long tileIdOffset) {
         _globalIdOverride = globalIdOverride;
         _tileIdOffset = tileIdOffset;
@@ -371,13 +335,13 @@ namespace carto { namespace mvt {
         if (!featureDataCache) {
             featureDataCache = std::make_shared<FeatureDataCache>();
         }
-        return std::make_shared<MBVTFeatureIterator>(_tile, layerIt->second, nullptr, _transform, _clipBox, _buffer, _globalIdOverride, _tileIdOffset, featureDataCache);
+        return std::make_shared<MBVTFeatureIterator>(_tile, layerIt->second, nullptr, _transform, _clipBox, _globalIdOverride, _tileIdOffset, featureDataCache);
     }
 
     bool MBVTFeatureDecoder::findFeature(long long localId, std::string& layerName, Feature& feature) const {
         for (int i = 0; i < _tile->layers_size(); i++) {
             auto featureDataCache = std::make_shared<FeatureDataCache>();
-            MBVTFeatureIterator it(_tile, i, nullptr, _transform, _clipBox, _buffer, _globalIdOverride, _tileIdOffset, featureDataCache);
+            MBVTFeatureIterator it(_tile, i, nullptr, _transform, _clipBox, _globalIdOverride, _tileIdOffset, featureDataCache);
             if (it.findByLocalId(localId)) {
                 layerName = _tile->layers(i).name();
                 feature = Feature(it.getGlobalId(), it.getGeometry(), it.getFeatureData());

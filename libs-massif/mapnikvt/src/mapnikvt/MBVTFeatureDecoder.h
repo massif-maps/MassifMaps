@@ -30,7 +30,6 @@ namespace carto { namespace mvt {
 
         void setTransform(const cglib::mat3x3<float>& transform);
         void setClipBox(const cglib::bbox2<float>& clipBox);
-        void setBuffer(float buffer);
         void setGlobalIdOverride(bool globalIdOverride, long long tileIdOffset = 0);
 
         std::vector<std::string> getLayerNames() const;
@@ -46,7 +45,6 @@ namespace carto { namespace mvt {
 
         cglib::mat3x3<float> _transform;
         cglib::bbox2<float> _clipBox;
-        float _buffer;
         bool _globalIdOverride;
         long long _tileIdOffset;
         std::shared_ptr<vector_tile::Tile> _tile;

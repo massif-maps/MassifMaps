@@ -5,7 +5,7 @@
 #include "MBVTLayerEncoder.h"
 #include "MBVTTileBuilder.h"
 
-#include "mbvtpackage/MBVTPackage.pb.h"
+#include "mapnikvt/mbvtpackage/MBVTPackage.pb.h"
 
 #include <picojson/picojson.h>
 
@@ -81,7 +81,7 @@ BOOST_AUTO_TEST_CASE(clipper) {
 
     {
         BOOST_CHECK(clipper.testPoint({ -0.9, 0.9 }));
-        BOOST_CHECK(!clipper.testPoint({ -1, 1 }));
+        BOOST_CHECK(clipper.testPoint({ -1, 1 }));
         BOOST_CHECK(!clipper.testPoint({ -1.1, 1 }));
     }
 
@@ -94,7 +94,7 @@ BOOST_AUTO_TEST_CASE(clipper) {
     }
 
     {
-        BOOST_CHECK((clipper.clipPolygonRing(std::vector<Point> { { -1, 0 }, { 1, 0 }, { 0, 1 } }) == std::vector<Point> { { 0, 1 },  { -1, 0 }, { 1, 0 } }));
+        BOOST_CHECK((clipper.clipPolygonRing(std::vector<Point> { { -1, 0 }, { 1, 0 }, { 0, 1 } }) == std::vector<Point> { { -1, 0 }, { 1, 0 }, { 0, 1 } }));
         BOOST_CHECK((clipper.clipPolygonRing(std::vector<Point> { { -1, -1 }, { -1, 1 }, { 1, 1 }, { 1, -1 } }) == std::vector<Point> { { -1, -1 }, { -1, 1 }, { 1, 1 }, { 1, -1 } }));
         BOOST_CHECK((clipper.clipPolygonRing(std::vector<Point> { { -2, -2 }, { -2, 2 }, { 2, 2 }, { 2, -2 } }) == std::vector<Point> { { -1, -1 }, { -1, 1 }, { 1, 1 }, { 1, -1 } }));
         BOOST_CHECK((clipper.clipPolygonRing(std::vector<Point> { { -2, 0 }, { 0, 2 }, { 2, 0 }, { 0, -2 } }) == std::vector<Point> { { -1, -1 }, { -1, 1 }, { 1, 1 }, { 1, -1 }, { 0, -1 } }));
@@ -241,7 +241,7 @@ BOOST_AUTO_TEST_CASE(tileBuilder) {
         tileBuilder.addMultiPoint(0, { Point(0, 0), Point(1, 1) }, picojson::value());
         std::vector<protobuf::encoded_message> encodedTiles;
         tileBuilder.buildTiles([&encodedTiles](int zoom, int tileX, int tileY, const protobuf::encoded_message& encodedTile) { encodedTiles.push_back(encodedTile); });
-        BOOST_CHECK(encodedTiles.size() == 4);
+        BOOST_CHECK(encodedTiles.size() == 1);
     }
 
     {

@@ -47,17 +47,18 @@ namespace carto { namespace vt {
             explicit LightingShader(bool perVertex, std::string shader, std::function<void(GLuint, const ViewState&)> setupFunc) : perVertex(perVertex), shader(std::move(shader)), setupFunc(std::move(setupFunc)) { }
         };
         
-        explicit GLTileRenderer(std::shared_ptr<std::mutex> mutex, std::shared_ptr<GLExtensions> glExtensions, std::shared_ptr<const TileTransformer> transformer, const boost::optional<LightingShader>& lightingShader2D, const boost::optional<LightingShader>& lightingShader3D, float scale);
+        explicit GLTileRenderer(std::shared_ptr<GLExtensions> glExtensions, std::shared_ptr<const TileTransformer> transformer, const boost::optional<LightingShader>& lightingShader2D, const boost::optional<LightingShader>& lightingShader3D, float scale);
 
         void setViewState(const cglib::mat4x4<double>& projectionMatrix, const cglib::mat4x4<double>& cameraMatrix, float zoom, float aspectRatio, float resolution);
         void setInteractionMode(bool enabled);
         void setSubTileBlending(bool enabled);
         void setVisibleTiles(const std::map<TileId, std::shared_ptr<const Tile>>& tiles, bool blend);
-        std::vector<std::shared_ptr<Label>> getVisibleLabels() const;
-        
+
         void initializeRenderer();
         void resetRenderer();
         void deinitializeRenderer();
+
+        void cullLabels();
 
         void startFrame(float dt);
         bool renderGeometry2D();
@@ -253,10 +254,11 @@ namespace carto { namespace vt {
         VertexArray<cglib::vec4<char>> _labelAttribs;
         VertexArray<unsigned short> _labelIndices;
 
-        const std::shared_ptr<std::mutex> _mutex;
         const std::shared_ptr<GLExtensions> _glExtensions;
         const std::shared_ptr<const TileTransformer> _transformer;
         const float _scale;
+
+        mutable std::mutex _mutex;
     };
 } }
 

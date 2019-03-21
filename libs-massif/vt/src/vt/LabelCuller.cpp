@@ -48,13 +48,13 @@ namespace {
 }
 
 namespace carto { namespace vt {
-    LabelCuller::LabelCuller(std::shared_ptr<std::mutex> mutex, std::shared_ptr<const TileTransformer> transformer, float scale) :
-        _projectionMatrix(cglib::mat4x4<double>::identity()), _mvpMatrix(cglib::mat4x4<float>::identity()), _viewState(cglib::mat4x4<double>::identity(), cglib::mat4x4<double>::identity(), 0, 1, 1, scale), _mutex(std::move(mutex)), _transformer(std::move(transformer)), _scale(scale)
+    LabelCuller::LabelCuller(std::shared_ptr<const TileTransformer> transformer, float scale) :
+        _projectionMatrix(cglib::mat4x4<double>::identity()), _mvpMatrix(cglib::mat4x4<float>::identity()), _viewState(cglib::mat4x4<double>::identity(), cglib::mat4x4<double>::identity(), 0, 1, 1, scale), _transformer(std::move(transformer)), _scale(scale), _mutex()
     {
     }
 
     void LabelCuller::setViewState(const cglib::mat4x4<double>& projectionMatrix, const cglib::mat4x4<double>& cameraMatrix, float zoom, float aspectRatio, float resolution) {
-        std::lock_guard<std::mutex> lock(*_mutex);
+        std::lock_guard<std::mutex> lock(_mutex);
 
         _projectionMatrix = projectionMatrix;
         _mvpMatrix = cglib::mat4x4<float>::convert(projectionMatrix * calculateLocalViewMatrix(cameraMatrix));
@@ -62,12 +62,14 @@ namespace carto { namespace vt {
         _resolution = resolution;
     }
 
-    void LabelCuller::process(const std::vector<std::shared_ptr<Label>>& labelList) {
+    void LabelCuller::process(const std::vector<std::shared_ptr<Label>>& labelList, std::mutex& labelMutex) {
+        std::lock_guard<std::mutex> lock(_mutex);
+
         // Start by collecting valid labels and updating label placements
         std::vector<std::shared_ptr<Label>> validLabelList;
         validLabelList.reserve(labelList.size());
         for (const std::shared_ptr<Label>& label : labelList) {
-            std::lock_guard<std::mutex> lock(*_mutex);
+            std::lock_guard<std::mutex> labelLock(labelMutex);
             
             // Analyze only active and valid labels
             if (!label->isActive()) {
@@ -85,7 +87,7 @@ namespace carto { namespace vt {
 
         // Sort active labels by priority/opacity
         {
-            std::lock_guard<std::mutex> lock(*_mutex);
+            std::lock_guard<std::mutex> labelLock(labelMutex);
             std::sort(validLabelList.begin(), validLabelList.end(), [](const std::shared_ptr<Label>& label1, const std::shared_ptr<Label>& label2) {
                 return std::pair<int, float>(-label1->getPriority(), label1->getOpacity()) > std::pair<int, float>(-label2->getPriority(), label2->getOpacity());
             });
@@ -95,7 +97,7 @@ namespace carto { namespace vt {
         clearGrid();
         std::unordered_map<long long, std::vector<std::shared_ptr<Label>>> groupMap;
         for (const std::shared_ptr<Label>& label : validLabelList) {
-            std::lock_guard<std::mutex> lock(*_mutex);
+            std::lock_guard<std::mutex> labelLock(labelMutex);
 
             // Label is always visible if its group is set to negative value. Otherwise test visibility against other labels
             bool visible = label->getGroupId() < 0 || testOverlap(label);

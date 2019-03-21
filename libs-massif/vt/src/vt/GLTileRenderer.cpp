@@ -4,6 +4,7 @@
 #include "TileGeometryIterator.h"
 #include "TileSurfaceBuilder.h"
 #include "BitmapManager.h"
+#include "LabelCuller.h"
 
 #include <cassert>
 #include <algorithm>
@@ -68,15 +69,15 @@ namespace {
 }
 
 namespace carto { namespace vt {
-    GLTileRenderer::GLTileRenderer(std::shared_ptr<std::mutex> mutex, std::shared_ptr<GLExtensions> glExtensions, std::shared_ptr<const TileTransformer> transformer, const boost::optional<LightingShader>& lightingShader2D, const boost::optional<LightingShader>& lightingShader3D, float scale) :
-        _lightingShader2D(lightingShader2D), _lightingShader3D(lightingShader3D), _tileSurfaceBuilder(transformer), _projectionMatrix(cglib::mat4x4<double>::identity()), _cameraMatrix(cglib::mat4x4<double>::identity()), _cameraProjMatrix(cglib::mat4x4<double>::identity()), _viewState(cglib::mat4x4<double>::identity(), cglib::mat4x4<double>::identity(), 0, 1, 1, scale), _mutex(std::move(mutex)), _glExtensions(std::move(glExtensions)), _transformer(std::move(transformer)), _scale(scale)
+    GLTileRenderer::GLTileRenderer(std::shared_ptr<GLExtensions> glExtensions, std::shared_ptr<const TileTransformer> transformer, const boost::optional<LightingShader>& lightingShader2D, const boost::optional<LightingShader>& lightingShader3D, float scale) :
+        _lightingShader2D(lightingShader2D), _lightingShader3D(lightingShader3D), _tileSurfaceBuilder(transformer), _projectionMatrix(cglib::mat4x4<double>::identity()), _cameraMatrix(cglib::mat4x4<double>::identity()), _cameraProjMatrix(cglib::mat4x4<double>::identity()), _viewState(cglib::mat4x4<double>::identity(), cglib::mat4x4<double>::identity(), 0, 1, 1, scale), _glExtensions(std::move(glExtensions)), _transformer(std::move(transformer)), _scale(scale), _mutex()
     {
         _blendNodes = std::make_shared<std::vector<std::shared_ptr<BlendNode>>>();
         _bitmapLabelMap[0] = _bitmapLabelMap[1] = std::make_shared<BitmapLabelMap>();
     }
 
     void GLTileRenderer::setViewState(const cglib::mat4x4<double>& projectionMatrix, const cglib::mat4x4<double>& cameraMatrix, float zoom, float aspectRatio, float resolution) {
-        std::lock_guard<std::mutex> lock(*_mutex);
+        std::lock_guard<std::mutex> lock(_mutex);
         
         _projectionMatrix = projectionMatrix;
         _cameraMatrix = cameraMatrix;
@@ -88,13 +89,13 @@ namespace carto { namespace vt {
     }
     
     void GLTileRenderer::setInteractionMode(bool enabled) {
-        std::lock_guard<std::mutex> lock(*_mutex);
+        std::lock_guard<std::mutex> lock(_mutex);
 
         _interactionMode = enabled;
     }
 
     void GLTileRenderer::setSubTileBlending(bool enabled) {
-        std::lock_guard<std::mutex> lock(*_mutex);
+        std::lock_guard<std::mutex> lock(_mutex);
 
         _subTileBlending = enabled;
     }
@@ -104,7 +105,7 @@ namespace carto { namespace vt {
 
         // Clear the 'visible' label list for now (used only for culling)
         {
-            std::lock_guard<std::mutex> lock(*_mutex);
+            std::lock_guard<std::mutex> lock(_mutex);
             _labels.clear();
         }
 
@@ -113,7 +114,7 @@ namespace carto { namespace vt {
         cglib::frustum3<double> frustum;
         cglib::vec3<double> origin;
         {
-            std::lock_guard<std::mutex> lock(*_mutex);
+            std::lock_guard<std::mutex> lock(_mutex);
             frustum = _frustum;
             origin = _viewState.origin;
         }
@@ -135,7 +136,7 @@ namespace carto { namespace vt {
         }
 
         // All other operations must be synchronized
-        std::lock_guard<std::mutex> lock(*_mutex);
+        std::lock_guard<std::mutex> lock(_mutex);
 
         // Update tile surface builder tile list (needed to avoid T-vertices in tesselation). Reset origin only if all tiles change.
         bool updateOrigin = true;
@@ -259,13 +260,7 @@ namespace carto { namespace vt {
         }
         _blendNodes = std::move(blendNodes);
     }
-    
-    std::vector<std::shared_ptr<Label>> GLTileRenderer::getVisibleLabels() const {
-        std::lock_guard<std::mutex> lock(*_mutex);
-        
-        return _labels;
-    }
-    
+
     void GLTileRenderer::initializeRenderer() {
         const std::map<std::string, std::pair<std::string, std::string>> shaderMap = {
             { "blend", { blendVsh, blendFsh } },
@@ -278,7 +273,7 @@ namespace carto { namespace vt {
             { "polygon3d", { polygon3DVsh, polygon3DFsh } }
         };
 
-        std::lock_guard<std::mutex> lock(*_mutex);
+        std::lock_guard<std::mutex> lock(_mutex);
 
         // Register shaders
         for (auto it = shaderMap.begin(); it != shaderMap.end(); it++) {
@@ -296,8 +291,7 @@ namespace carto { namespace vt {
                 if (_lightingShader2D) {
                     if (_lightingShader2D->perVertex) {
                         vsh += _lightingShader2D->shader;
-                    }
-                    else {
+                    } else {
                         fsh += _lightingShader2D->shader;
                     }
                 }
@@ -351,7 +345,7 @@ namespace carto { namespace vt {
     }
     
     void GLTileRenderer::resetRenderer() {
-        std::lock_guard<std::mutex> lock(*_mutex);
+        std::lock_guard<std::mutex> lock(_mutex);
         
         // Drop all caches with texture references/FBO/VBOs
         _compiledBitmapMap.clear();
@@ -367,7 +361,7 @@ namespace carto { namespace vt {
     }
         
     void GLTileRenderer::deinitializeRenderer() {
-        std::lock_guard<std::mutex> lock(*_mutex);
+        std::lock_guard<std::mutex> lock(_mutex);
         
         // Release compiled bitmaps (textures)
         for (auto it = _compiledBitmapMap.begin(); it != _compiledBitmapMap.end(); it++) {
@@ -424,8 +418,30 @@ namespace carto { namespace vt {
         _labelMap.clear();
     }
     
+    void GLTileRenderer::cullLabels() {
+        cglib::mat4x4<double> projectionMatrix;
+        cglib::mat4x4<double> cameraMatrix;
+        float zoom;
+        float aspect;
+        float resolution;
+        std::vector<std::shared_ptr<Label>> labels;
+        {
+            std::lock_guard<std::mutex> lock(_mutex);
+            projectionMatrix = _projectionMatrix;
+            cameraMatrix = _cameraMatrix;
+            zoom = _viewState.zoom;
+            aspect = _viewState.aspect;
+            resolution = _viewState.resolution;
+            labels = _labels;
+        }
+
+        LabelCuller culler(_transformer, _scale);
+        culler.setViewState(projectionMatrix, cameraMatrix, zoom, aspect, resolution);
+        culler.process(labels, _mutex);
+    }
+    
     void GLTileRenderer::startFrame(float dt) {
-        std::lock_guard<std::mutex> lock(*_mutex);
+        std::lock_guard<std::mutex> lock(_mutex);
         
         // Update geometry blending state
         _renderBlendNodes = _blendNodes;
@@ -463,7 +479,7 @@ namespace carto { namespace vt {
     }
     
     bool GLTileRenderer::renderGeometry2D() {
-        std::lock_guard<std::mutex> lock(*_mutex);
+        std::lock_guard<std::mutex> lock(_mutex);
         
         // Update GL state
         int stencilBits = 0;
@@ -498,7 +514,7 @@ namespace carto { namespace vt {
     }
     
     bool GLTileRenderer::renderGeometry3D() {
-        std::lock_guard<std::mutex> lock(*_mutex);
+        std::lock_guard<std::mutex> lock(_mutex);
         
         // Update GL state
         glDisable(GL_BLEND);
@@ -520,7 +536,7 @@ namespace carto { namespace vt {
     }
     
     bool GLTileRenderer::renderLabels(bool labels2D, bool labels3D) {
-        std::lock_guard<std::mutex> lock(*_mutex);
+        std::lock_guard<std::mutex> lock(_mutex);
         
         // Update GL state
         glEnable(GL_BLEND);
@@ -552,7 +568,7 @@ namespace carto { namespace vt {
     }
     
     void GLTileRenderer::endFrame() {
-        std::lock_guard<std::mutex> lock(*_mutex);
+        std::lock_guard<std::mutex> lock(_mutex);
         
         // Release unused textures
         for (auto it = _compiledBitmapMap.begin(); it != _compiledBitmapMap.end();) {
@@ -598,7 +614,7 @@ namespace carto { namespace vt {
     }
 
     bool GLTileRenderer::findGeometryIntersections(const cglib::ray3<double>& ray, std::vector<std::tuple<TileId, double, long long>>& results, float radius, bool geom2D, bool geom3D) const {
-        std::lock_guard<std::mutex> lock(*_mutex);
+        std::lock_guard<std::mutex> lock(_mutex);
 
         // Loop over all blending/rendering nodes
         std::size_t initialResultCount = results.size();
@@ -662,7 +678,7 @@ namespace carto { namespace vt {
     }
     
     bool GLTileRenderer::findLabelIntersections(const cglib::ray3<double>& ray, std::vector<std::tuple<TileId, double, long long>>& results, float radius, bool labels2D, bool labels3D) const {
-        std::lock_guard<std::mutex> lock(*_mutex);
+        std::lock_guard<std::mutex> lock(_mutex);
 
         // Test for label intersections. The ordering may be mixed compared to actual rendering order, but this is non-issue if the labels are non-overlapping.
         std::size_t initialResultCount = results.size();
@@ -689,7 +705,7 @@ namespace carto { namespace vt {
     }
 
     bool GLTileRenderer::findBitmapIntersections(const cglib::ray3<double>& ray, std::vector<std::tuple<TileId, double, TileBitmap, cglib::vec2<float>>>& results) const {
-        std::lock_guard<std::mutex> lock(*_mutex);
+        std::lock_guard<std::mutex> lock(_mutex);
 
         // First find the intersecting tile. NOTE: we ignore building height information
         std::size_t initialResults = results.size();
@@ -1620,8 +1636,7 @@ namespace carto { namespace vt {
             glUniform1f(glGetUniformLocation(shaderProgram, "uSDFScale"), SDF_SHARPNESS_SCALE / _halfResolution / BITMAP_SDF_SCALE);
             glUniform1fv(glGetUniformLocation(shaderProgram, "uWidthTable"), styleParams.parameterCount, widths.data());
             glUniform1fv(glGetUniformLocation(shaderProgram, "uStrokeWidthTable"), styleParams.parameterCount, strokeWidths.data());
-        }
-        else if (geometry->getType() == TileGeometry::Type::LINE) {
+        } else if (geometry->getType() == TileGeometry::Type::LINE) {
             constexpr float gamma = 0.5f;
 
             std::array<float, TileGeometry::StyleParameters::MAX_PARAMETERS> widths;
@@ -1650,8 +1665,7 @@ namespace carto { namespace vt {
             glUniform1fv(glGetUniformLocation(shaderProgram, "uWidthTable"), styleParams.parameterCount, widths.data());
             glUniform1f(glGetUniformLocation(shaderProgram, "uHalfResolution"), _halfResolution);
             glUniform1f(glGetUniformLocation(shaderProgram, "uGamma"), gamma);
-        }
-        else if (geometry->getType() == TileGeometry::Type::POLYGON3D) {
+        } else if (geometry->getType() == TileGeometry::Type::POLYGON3D) {
             float tileHeightScale = static_cast<float>(cglib::length(cglib::transform_vector(cglib::vec3<double>(0, 0, 1), calculateTileMatrix(tileId))));
             glUniform1f(glGetUniformLocation(shaderProgram, "uUVScale"), 1.0f / vertexGeomLayoutParams.texCoordScale);
             glUniform1f(glGetUniformLocation(shaderProgram, "uHeightScale"), blend / vertexGeomLayoutParams.heightScale * vertexGeomLayoutParams.coordScale);

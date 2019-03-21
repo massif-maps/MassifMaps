@@ -24,10 +24,10 @@
 namespace carto { namespace vt {
     class LabelCuller final {
     public:
-        explicit LabelCuller(std::shared_ptr<std::mutex> mutex, std::shared_ptr<const TileTransformer> transformer, float scale);
+        explicit LabelCuller(std::shared_ptr<const TileTransformer> transformer, float scale);
 
         void setViewState(const cglib::mat4x4<double>& projectionMatrix, const cglib::mat4x4<double>& cameraMatrix, float zoom, float aspectRatio, float resolution);
-        void process(const std::vector<std::shared_ptr<Label>>& labelList);
+        void process(const std::vector<std::shared_ptr<Label>>& labelList, std::mutex& labelMutex);
 
     private:
         constexpr static int GRID_RESOLUTION = 16;
@@ -53,9 +53,10 @@ namespace carto { namespace vt {
         float _resolution = 0;
         std::vector<Record> _recordGrid[GRID_RESOLUTION][GRID_RESOLUTION];
 
-        const std::shared_ptr<std::mutex> _mutex;
         const std::shared_ptr<const TileTransformer> _transformer;
         const float _scale;
+
+        mutable std::mutex _mutex;
     };
 } }
 

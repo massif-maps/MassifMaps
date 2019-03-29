@@ -1621,7 +1621,7 @@ namespace carto { namespace vt {
             }
             
             glUniform1f(glGetUniformLocation(shaderProgram, "uBinormalScale"), vertexGeomLayoutParams.coordScale / vertexGeomLayoutParams.binormalScale / std::pow(2.0f, _viewState.zoom - tileId.zoom));
-            glUniform1f(glGetUniformLocation(shaderProgram, "uSDFScale"), SDF_SHARPNESS_SCALE / _halfResolution / BITMAP_SDF_SCALE);
+            glUniform1f(glGetUniformLocation(shaderProgram, "uSDFScale"), GLYPH_RENDER_SIZE / _fullResolution / BITMAP_SDF_SCALE);
             glUniform1fv(glGetUniformLocation(shaderProgram, "uWidthTable"), styleParams.parameterCount, widths.data());
             glUniform1fv(glGetUniformLocation(shaderProgram, "uStrokeWidthTable"), styleParams.parameterCount, strokeWidths.data());
         } else if (geometry->getType() == TileGeometry::Type::LINE) {
@@ -1861,9 +1861,9 @@ namespace carto { namespace vt {
         cglib::mat4x4<float> mvpMatrix = cglib::mat4x4<float>::convert(_viewState.projectionMatrix * labelBatchParams.labelMatrix);
         glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "uMVPMatrix"), 1, GL_FALSE, mvpMatrix.data());
 
-        glUniform1f(glGetUniformLocation(shaderProgram, "uSDFScale"), SDF_SHARPNESS_SCALE / labelBatchParams.scale / _halfResolution / BITMAP_SDF_SCALE);
+        glUniform1f(glGetUniformLocation(shaderProgram, "uSDFScale"), GLYPH_RENDER_SIZE / labelBatchParams.scale / _fullResolution / BITMAP_SDF_SCALE);
         if (useDerivatives) {
-            glUniform1f(glGetUniformLocation(shaderProgram, "uDerivScale"), 8.0f * SDF_SHARPNESS_SCALE / labelBatchParams.scale / bitmap->width / BITMAP_SDF_SCALE);
+            glUniform1f(glGetUniformLocation(shaderProgram, "uDerivScale"), 4.0f * GLYPH_RENDER_SIZE / labelBatchParams.scale / bitmap->width / BITMAP_SDF_SCALE);
         }
         glUniform4fv(glGetUniformLocation(shaderProgram, "uColorTable"), labelBatchParams.parameterCount, labelBatchParams.colorTable[0].data());
         glUniform1fv(glGetUniformLocation(shaderProgram, "uWidthTable"), labelBatchParams.parameterCount, labelBatchParams.widthTable.data());

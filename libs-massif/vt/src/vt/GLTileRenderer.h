@@ -158,7 +158,6 @@ namespace carto { namespace vt {
             }
         };
 
-        constexpr static float SDF_SHARPNESS_SCALE = 14.0f;
         constexpr static float HALO_RADIUS_SCALE = 2.5f; // the scaling factor for halo radius
         constexpr static float POLYGON3D_HEIGHT_SCALE = 10018754.17f; // scaling factor for zoom 0 heights
 

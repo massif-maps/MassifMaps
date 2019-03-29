@@ -10,7 +10,6 @@
 #include "Address.h"
 #include "TaggedTokenList.h"
 #include "StringMatcher.h"
-#include "StringUtils.h"
 
 #include <string>
 #include <regex>
@@ -22,6 +21,7 @@
 #include <boost/optional.hpp>
 
 #include <stdext/lru_cache.h>
+#include <stdext/unistring.h>
 
 #include <cglib/vec.h>
 #include <cglib/bbox.h>
@@ -105,7 +105,7 @@ namespace carto { namespace geocoding {
             cglib::vec2<double> origin = cglib::vec2<double>(0, 0);
             cglib::bbox2<double> bounds = cglib::bbox2<double>(cglib::vec2<double>(-180, -90), cglib::vec2<double>(180, 90));
             double rankScale = 1.0;
-            std::unordered_map<unichar_t, unistring> translationTable;
+            std::unordered_map<unistring::unichar_t, unistring::unistring> translationTable;
         };
 
         struct Query {
@@ -136,9 +136,9 @@ namespace carto { namespace geocoding {
         
         static cglib::vec2<double> getOrigin(sqlite3pp::database& db);
         static cglib::bbox2<double> getBounds(sqlite3pp::database& db);
-        static std::unordered_map<unichar_t, unistring> getTranslationTable(sqlite3pp::database& db);
+        static std::unordered_map<unistring::unichar_t, unistring::unistring> getTranslationTable(sqlite3pp::database& db);
         static double getRankScale(sqlite3pp::database& db);
-        static unistring getTranslatedToken(const unistring& token, const std::unordered_map<unichar_t, unistring>& translationTable);
+        static unistring::unistring getTranslatedToken(const unistring::unistring& token, const std::unordered_map<unistring::unichar_t, unistring::unistring>& translationTable);
 
         static constexpr float MIN_LOCATION_RANK = 0.2f; // should be larger than MIN_RANK
         static constexpr float MIN_RANK_THRESHOLD = 0.1f;

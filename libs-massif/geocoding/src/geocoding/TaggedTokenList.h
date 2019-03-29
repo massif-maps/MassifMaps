@@ -75,7 +75,7 @@ namespace carto { namespace geocoding {
         }
 
         void assignTypeMask(const Span& span, std::uint32_t typeMask) {
-            for (std::size_t i = span.index; i < span.index + span.count; i++) {
+            for (int i = span.index; i < span.index + span.count; i++) {
                 _tokens.at(i).assignedTypeMask = _tokens.at(i).validTypeMask & typeMask;
                 _tokens.at(i).validTypeMask = 0;
             }

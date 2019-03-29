@@ -51,14 +51,14 @@ namespace carto { namespace vt {
         utf32Text.reserve(text.size());
         utf8::utf8to32(text.begin(), text.end(), std::back_inserter(utf32Text));
         if (utf32Text.empty()) {
-            return std::vector<TextFormatter::Line>();
+            return std::vector<Line>();
         }
         
         // Classify characters for BIDI algorithm
         std::vector<int> types(utf32Text.size());
         std::vector<int> levels(utf32Text.size());
         std::vector<int> reorderLevels(utf32Text.size());
-        bidi_classify(&utf32Text[0], &types[0], static_cast<int>(utf32Text.size()), 0);
+        bidi_classify(utf32Text.data(), types.data(), static_cast<int>(utf32Text.size()), 0);
         
         // Split original texts into lines, which are split into runs of the same script.
         // Also do line wrapping at this stage.

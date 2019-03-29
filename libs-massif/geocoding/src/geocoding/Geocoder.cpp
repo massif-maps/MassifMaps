@@ -93,7 +93,7 @@ namespace carto { namespace geocoding {
     std::vector<std::pair<Address, float>> Geocoder::findAddresses(const std::string& queryString, const Options& options) const {
         std::lock_guard<std::recursive_mutex> lock(_mutex);
 
-        std::string queryStringLC = toUtf8String(toLower(toUniString(queryString)));
+        std::string queryStringLC = unistring::to_utf8string(unistring::to_lower(unistring::to_unistring(queryString)));
         std::string safeQueryString = boost::replace_all_copy(boost::replace_all_copy(queryStringLC, "%", ""), "_", "");
         boost::trim(safeQueryString);
 
@@ -169,19 +169,19 @@ namespace carto { namespace geocoding {
             std::string tokenValue = tokenList.tokens(TokenList::Span(i, 1)).front();
 
             // Do token translation, actual tokens are normalized relative to real names using translation table
-            unistring translatedToken = getTranslatedToken(toUniString(tokenValue), query.database->translationTable);
+            unistring::unistring translatedToken = getTranslatedToken(unistring::to_unistring(tokenValue), query.database->translationTable);
 
             // Build token info list for the token
             if (!translatedToken.empty()) {
                 std::string sql = "SELECT id, token, typemask, namecount, idf FROM tokens WHERE ";
                 if (pass > 0 && translatedToken.size() >= 2) {
-                    sql += "token LIKE '" + escapeSQLValue(toUtf8String(translatedToken.substr(0, 2))) + "%' ORDER BY ABS(LENGTH(token) - " + boost::lexical_cast<std::string>(translatedToken.size()) + ") ASC, idf ASC LIMIT 10";
+                    sql += "token LIKE '" + escapeSQLValue(unistring::to_utf8string(translatedToken.substr(0, 2))) + "%' ORDER BY ABS(LENGTH(token) - " + boost::lexical_cast<std::string>(translatedToken.size()) + ") ASC, idf ASC LIMIT 10";
                 }
                 else if (!translatedToken.empty() && translatedToken.back() == '%') {
-                    sql += "token LIKE '" + escapeSQLValue(toUtf8String(translatedToken)) + "' ORDER BY LENGTH(token) ASC, idf ASC LIMIT 10";
+                    sql += "token LIKE '" + escapeSQLValue(unistring::to_utf8string(translatedToken)) + "' ORDER BY LENGTH(token) ASC, idf ASC LIMIT 10";
                 }
                 else {
-                    sql += "token='" + escapeSQLValue(toUtf8String(translatedToken)) + "'";
+                    sql += "token='" + escapeSQLValue(unistring::to_utf8string(translatedToken)) + "'";
                 }
 
                 std::string tokenKey = query.database->id + std::string(1, 0) + sql;
@@ -208,7 +208,7 @@ namespace carto { namespace geocoding {
                 float minIDF = std::numeric_limits<float>::infinity();
                 for (auto it = tokens.begin(); it != tokens.end(); ) {
                     std::vector<std::pair<std::string, float>> tokenIDFs = { { it->token, it->idf } };
-                    if (calculateNameRank(query, it->token, toUtf8String(translatedToken), tokenIDFs) >= MIN_MATCH_THRESHOLD) {
+                    if (calculateNameRank(query, it->token, unistring::to_utf8string(translatedToken), tokenIDFs) >= MIN_MATCH_THRESHOLD) {
                         minIDF = std::min(minIDF, it->idf);
                         validTypeMask |= it->typeMask;
                         it++;
@@ -767,8 +767,8 @@ namespace carto { namespace geocoding {
         float rank = 1.0f;
         std::string nameKey = query.database->id + std::string(1, 0) + name + std::string(1, 0) + queryName;
         if (!_nameMatchCache.read(nameKey, rank)) {
-            auto getTokenRank = [&tokenIDFs, &query](const unistring& token) {
-                std::string translatedToken = toUtf8String(getTranslatedToken(token, query.database->translationTable));
+            auto getTokenRank = [&tokenIDFs, &query](const unistring::unistring& token) {
+                std::string translatedToken = unistring::to_utf8string(getTranslatedToken(token, query.database->translationTable));
                 auto it = std::find_if(tokenIDFs.begin(), tokenIDFs.end(), [&translatedToken](const std::pair<std::string, float>& tokenIDF) {
                     return tokenIDF.first == translatedToken;
                 });
@@ -778,13 +778,13 @@ namespace carto { namespace geocoding {
                 return 1.0f;
             };
 
-            StringMatcher<unistring> matcher(getTokenRank);
+            StringMatcher<unistring::unistring> matcher(getTokenRank);
             matcher.setMaxDist(MAX_STRINGMATCH_DIST);
             matcher.setTranslationTable(query.database->translationTable, TRANSLATION_EXTRA_PENALTY);
             if (_autocomplete) {
                 matcher.setWildcardChar('%', AUTOCOMPLETE_EXTRA_CHAR_PENALTY);
             }
-            rank = matcher.calculateRating(toLower(toUniString(queryName)), toLower(toUniString(name)));
+            rank = matcher.calculateRating(unistring::to_lower(unistring::to_unistring(queryName)), unistring::to_lower(unistring::to_unistring(name)));
 
             _nameMatchCounter++;
             _nameMatchCache.put(nameKey, rank);
@@ -828,29 +828,29 @@ namespace carto { namespace geocoding {
         return 32767.0;
     }
 
-    std::unordered_map<unichar_t, unistring> Geocoder::getTranslationTable(sqlite3pp::database& db) {
+    std::unordered_map<unistring::unichar_t, unistring::unistring> Geocoder::getTranslationTable(sqlite3pp::database& db) {
         sqlite3pp::query query(db, "SELECT value FROM metadata WHERE name='translation_table'");
         for (auto qit = query.begin(); qit != query.end(); qit++) {
             std::string value = qit->get<const char*>(0);
 
             std::vector<std::string> translationVector;
             boost::split(translationVector, value, boost::is_any_of(","), boost::token_compress_off);
-            std::unordered_map<unichar_t, unistring> translationTable;
+            std::unordered_map<unistring::unichar_t, unistring::unistring> translationTable;
             for (const std::string& translation : translationVector) {
-                unistring uniTranslation = toUniString(translation);
+                unistring::unistring uniTranslation = unistring::to_unistring(translation);
                 if (uniTranslation.size() >= 2 && uniTranslation[1] == ':') {
                     translationTable[uniTranslation[0]] = uniTranslation.substr(2);
                 }
             }
             return translationTable;
         }
-        return std::unordered_map<unichar_t, unistring>();
+        return std::unordered_map<unistring::unichar_t, unistring::unistring>();
     }
 
-    unistring Geocoder::getTranslatedToken(const unistring& token, const std::unordered_map<unichar_t, unistring>& translationTable) {
-        unistring translatedToken;
+    unistring::unistring Geocoder::getTranslatedToken(const unistring::unistring& token, const std::unordered_map<unistring::unichar_t, unistring::unistring>& translationTable) {
+        unistring::unistring translatedToken;
         translatedToken.reserve(token.size());
-        for (unichar_t c : token) {
+        for (unistring::unichar_t c : token) {
             auto it = translationTable.find(c);
             if (it != translationTable.end()) {
                 translatedToken += it->second;

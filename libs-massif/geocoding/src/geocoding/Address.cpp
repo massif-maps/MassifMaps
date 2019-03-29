@@ -1,7 +1,6 @@
 #include "Address.h"
 #include "AddressInterpolator.h"
 #include "FeatureReader.h"
-#include "StringUtils.h"
 
 #include <sqlite3pp.h>
 

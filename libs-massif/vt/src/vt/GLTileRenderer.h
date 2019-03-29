@@ -49,22 +49,22 @@ namespace carto { namespace vt {
         
         explicit GLTileRenderer(std::shared_ptr<GLExtensions> glExtensions, std::shared_ptr<const TileTransformer> transformer, const boost::optional<LightingShader>& lightingShader2D, const boost::optional<LightingShader>& lightingShader3D, float scale);
 
-        void setViewState(const cglib::mat4x4<double>& projectionMatrix, const cglib::mat4x4<double>& cameraMatrix, float zoom, float aspectRatio, float resolution);
         void setInteractionMode(bool enabled);
         void setSubTileBlending(bool enabled);
+        void setViewState(const ViewState& viewState);
         void setVisibleTiles(const std::map<TileId, std::shared_ptr<const Tile>>& tiles, bool blend);
 
         void initializeRenderer();
         void resetRenderer();
         void deinitializeRenderer();
 
-        void cullLabels();
-
         void startFrame(float dt);
         bool renderGeometry2D();
         bool renderGeometry3D();
         bool renderLabels(bool labels2D, bool labels3D);
         void endFrame();
+
+        void cullLabels(const ViewState& viewState);
 
         bool findGeometryIntersections(const cglib::ray3<double>& ray, std::vector<std::tuple<TileId, double, long long>>& results, float radius, bool geom2D, bool geom3D) const;
         bool findLabelIntersections(const cglib::ray3<double>& ray, std::vector<std::tuple<TileId, double, long long>>& results, float radius, bool labels2D, bool labels3D) const;
@@ -219,17 +219,14 @@ namespace carto { namespace vt {
         FrameBuffer _overlayBuffer;
         CompiledQuad _screenQuad;
 
-        cglib::mat4x4<double> _projectionMatrix;
-        cglib::mat4x4<double> _cameraMatrix;
-        cglib::mat4x4<double> _cameraProjMatrix;
-        cglib::frustum3<double> _frustum;
         ViewState _viewState;
-        cglib::vec3<double> _tileSurfaceBuilderOrigin;
-        std::set<TileId> _tileSurfaceBuilderOriginTileIds;
-        float _zoom = 0;
+        cglib::mat4x4<double> _cameraProjMatrix;
+        float _fullResolution = 0;
         float _halfResolution = 0;
         int _screenWidth = 0;
         int _screenHeight = 0;
+        cglib::vec3<double> _tileSurfaceBuilderOrigin;
+        std::set<TileId> _tileSurfaceBuilderOriginTileIds;
 
         bool _subTileBlending = false;
         bool _interactionMode = false;

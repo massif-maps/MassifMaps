@@ -26,7 +26,7 @@ namespace carto { namespace vt {
     public:
         explicit LabelCuller(std::shared_ptr<const TileTransformer> transformer, float scale);
 
-        void setViewState(const cglib::mat4x4<double>& projectionMatrix, const cglib::mat4x4<double>& cameraMatrix, float zoom, float aspectRatio, float resolution);
+        void setViewState(const ViewState& viewState);
         void process(const std::vector<std::shared_ptr<Label>>& labelList, std::mutex& labelMutex);
 
     private:
@@ -45,12 +45,9 @@ namespace carto { namespace vt {
         bool testOverlap(const std::shared_ptr<Label>& label);
 
         static int getGridIndex(float x);
-        static cglib::mat4x4<double> calculateLocalViewMatrix(const cglib::mat4x4<double>& cameraMatrix);
 
-        cglib::mat4x4<double> _projectionMatrix;
-        cglib::mat4x4<float> _mvpMatrix;
+        cglib::mat4x4<float> _localCameraProjMatrix;
         ViewState _viewState;
-        float _resolution = 0;
         std::vector<Record> _recordGrid[GRID_RESOLUTION][GRID_RESOLUTION];
 
         const std::shared_ptr<const TileTransformer> _transformer;

@@ -70,24 +70,12 @@ namespace {
 
 namespace carto { namespace vt {
     GLTileRenderer::GLTileRenderer(std::shared_ptr<GLExtensions> glExtensions, std::shared_ptr<const TileTransformer> transformer, const boost::optional<LightingShader>& lightingShader2D, const boost::optional<LightingShader>& lightingShader3D, float scale) :
-        _lightingShader2D(lightingShader2D), _lightingShader3D(lightingShader3D), _tileSurfaceBuilder(transformer), _projectionMatrix(cglib::mat4x4<double>::identity()), _cameraMatrix(cglib::mat4x4<double>::identity()), _cameraProjMatrix(cglib::mat4x4<double>::identity()), _viewState(cglib::mat4x4<double>::identity(), cglib::mat4x4<double>::identity(), 0, 1, 1, scale), _glExtensions(std::move(glExtensions)), _transformer(std::move(transformer)), _scale(scale), _mutex()
+        _lightingShader2D(lightingShader2D), _lightingShader3D(lightingShader3D), _tileSurfaceBuilder(transformer), _cameraProjMatrix(cglib::mat4x4<double>::identity()), _glExtensions(std::move(glExtensions)), _transformer(std::move(transformer)), _scale(scale), _mutex()
     {
         _blendNodes = std::make_shared<std::vector<std::shared_ptr<BlendNode>>>();
         _bitmapLabelMap[0] = _bitmapLabelMap[1] = std::make_shared<BitmapLabelMap>();
     }
 
-    void GLTileRenderer::setViewState(const cglib::mat4x4<double>& projectionMatrix, const cglib::mat4x4<double>& cameraMatrix, float zoom, float aspectRatio, float resolution) {
-        std::lock_guard<std::mutex> lock(_mutex);
-        
-        _projectionMatrix = projectionMatrix;
-        _cameraMatrix = cameraMatrix;
-        _cameraProjMatrix = projectionMatrix * cameraMatrix;
-        _zoom = zoom;
-        _halfResolution = resolution * 0.5f;
-        _frustum = cglib::gl_projection_frustum(_cameraProjMatrix);
-        _viewState = ViewState(projectionMatrix, cameraMatrix, zoom, aspectRatio, resolution, _scale);
-    }
-    
     void GLTileRenderer::setInteractionMode(bool enabled) {
         std::lock_guard<std::mutex> lock(_mutex);
 
@@ -98,6 +86,16 @@ namespace carto { namespace vt {
         std::lock_guard<std::mutex> lock(_mutex);
 
         _subTileBlending = enabled;
+    }
+    
+    void GLTileRenderer::setViewState(const ViewState& viewState) {
+        std::lock_guard<std::mutex> lock(_mutex);
+        
+        _cameraProjMatrix = viewState.projectionMatrix * viewState.cameraMatrix;
+        _fullResolution = viewState.resolution;
+        _halfResolution = viewState.resolution * 0.5f;
+        _viewState = viewState;
+        _viewState.zoomScale *= _scale;
     }
     
     void GLTileRenderer::setVisibleTiles(const std::map<TileId, std::shared_ptr<const Tile>>& tiles, bool blend) {
@@ -115,7 +113,7 @@ namespace carto { namespace vt {
         cglib::vec3<double> origin;
         {
             std::lock_guard<std::mutex> lock(_mutex);
-            frustum = _frustum;
+            frustum = _viewState.frustum;
             origin = _viewState.origin;
         }
         std::set<TileId> tileIds;
@@ -418,28 +416,6 @@ namespace carto { namespace vt {
         _labelMap.clear();
     }
     
-    void GLTileRenderer::cullLabels() {
-        cglib::mat4x4<double> projectionMatrix;
-        cglib::mat4x4<double> cameraMatrix;
-        float zoom;
-        float aspect;
-        float resolution;
-        std::vector<std::shared_ptr<Label>> labels;
-        {
-            std::lock_guard<std::mutex> lock(_mutex);
-            projectionMatrix = _projectionMatrix;
-            cameraMatrix = _cameraMatrix;
-            zoom = _viewState.zoom;
-            aspect = _viewState.aspect;
-            resolution = _viewState.resolution;
-            labels = _labels;
-        }
-
-        LabelCuller culler(_transformer, _scale);
-        culler.setViewState(projectionMatrix, cameraMatrix, zoom, aspect, resolution);
-        culler.process(labels, _mutex);
-    }
-    
     void GLTileRenderer::startFrame(float dt) {
         std::lock_guard<std::mutex> lock(_mutex);
         
@@ -613,6 +589,18 @@ namespace carto { namespace vt {
         // Note: we do not release unused label batches. These are unlinkely very big and can be reused later
     }
 
+    void GLTileRenderer::cullLabels(const ViewState& viewState) {
+        std::vector<std::shared_ptr<Label>> labels;
+        {
+            std::lock_guard<std::mutex> lock(_mutex);
+            labels = _labels;
+        }
+
+        LabelCuller culler(_transformer, _scale);
+        culler.setViewState(viewState);
+        culler.process(labels, _mutex);
+    }
+    
     bool GLTileRenderer::findGeometryIntersections(const cglib::ray3<double>& ray, std::vector<std::tuple<TileId, double, long long>>& results, float radius, bool geom2D, bool geom3D) const {
         std::lock_guard<std::mutex> lock(_mutex);
 
@@ -772,7 +760,7 @@ namespace carto { namespace vt {
     
     bool GLTileRenderer::isTileVisible(const TileId& tileId) const {
         cglib::bbox3<double> bbox = _transformer->calculateTileBBox(tileId);
-        return _frustum.inside(bbox);
+        return _viewState.frustum.inside(bbox);
     }
 
     cglib::mat4x4<double> GLTileRenderer::calculateTileMatrix(const TileId& tileId, float coordScale) const {
@@ -945,7 +933,7 @@ namespace carto { namespace vt {
                 quad[i] = _viewState.origin + cglib::vec3<double>::convert(envelope[i]);
             }
         } else {
-            float zoomScale = std::pow(2.0f, label->getTileId().zoom - _zoom);
+            float zoomScale = std::pow(2.0f, label->getTileId().zoom - _viewState.zoom);
             cglib::vec2<float> translate = (*label->getStyle()->translate) * zoomScale;
             cglib::mat4x4<double> translateMatrix = cglib::mat4x4<double>::convert(_transformer->calculateTileTransform(label->getTileId(), translate, 1.0f));
             cglib::mat4x4<double> tileMatrix = _transformer->calculateTileMatrix(label->getTileId(), 1);
@@ -1220,13 +1208,13 @@ namespace carto { namespace vt {
                     styleIndex = labelBatchParams.parameterCount++;
                     labelBatchParams.scale = labelStyle->scale;
                     if (labelStyle->translate) {
-                        float zoomScale = std::pow(2.0f, label->getTileId().zoom - _zoom);
+                        float zoomScale = std::pow(2.0f, label->getTileId().zoom - _viewState.zoom);
                         cglib::vec2<float> translate = (*labelStyle->translate) * zoomScale;
                         cglib::mat4x4<double> translateMatrix = cglib::mat4x4<double>::convert(_transformer->calculateTileTransform(label->getTileId(), translate, 1.0f));
                         cglib::mat4x4<double> tileMatrix = _transformer->calculateTileMatrix(label->getTileId(), 1);
-                        labelBatchParams.labelMatrix = _cameraMatrix * tileMatrix * translateMatrix * cglib::inverse(tileMatrix) * cglib::translate4_matrix(_viewState.origin);
+                        labelBatchParams.labelMatrix = _viewState.cameraMatrix * tileMatrix * translateMatrix * cglib::inverse(tileMatrix) * cglib::translate4_matrix(_viewState.origin);
                     } else {
-                        labelBatchParams.labelMatrix = _cameraMatrix * cglib::translate4_matrix(_viewState.origin);
+                        labelBatchParams.labelMatrix = _viewState.cameraMatrix * cglib::translate4_matrix(_viewState.origin);
                     }
                     labelBatchParams.colorTable[styleIndex] = color;
                     labelBatchParams.widthTable[styleIndex] = size;
@@ -1601,7 +1589,7 @@ namespace carto { namespace vt {
         glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "uMVPMatrix"), 1, GL_FALSE, mvpMatrix.data());
         
         if (styleParams.translate) {
-            float zoomScale = std::pow(2.0f, tileId.zoom - _zoom);
+            float zoomScale = std::pow(2.0f, tileId.zoom - _viewState.zoom);
             cglib::vec2<float> translate = (*styleParams.translate) * zoomScale;
             cglib::mat4x4<float> transformMatrix = _transformer->calculateTileTransform(tileId, translate, 1.0f / vertexGeomLayoutParams.coordScale);
             glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "uTransformMatrix"), 1, GL_FALSE, transformMatrix.data());
@@ -1632,7 +1620,7 @@ namespace carto { namespace vt {
                 }
             }
             
-            glUniform1f(glGetUniformLocation(shaderProgram, "uBinormalScale"), vertexGeomLayoutParams.coordScale / vertexGeomLayoutParams.binormalScale / std::pow(2.0f, _zoom - tileId.zoom));
+            glUniform1f(glGetUniformLocation(shaderProgram, "uBinormalScale"), vertexGeomLayoutParams.coordScale / vertexGeomLayoutParams.binormalScale / std::pow(2.0f, _viewState.zoom - tileId.zoom));
             glUniform1f(glGetUniformLocation(shaderProgram, "uSDFScale"), SDF_SHARPNESS_SCALE / _halfResolution / BITMAP_SDF_SCALE);
             glUniform1fv(glGetUniformLocation(shaderProgram, "uWidthTable"), styleParams.parameterCount, widths.data());
             glUniform1fv(glGetUniformLocation(shaderProgram, "uStrokeWidthTable"), styleParams.parameterCount, strokeWidths.data());
@@ -1647,10 +1635,10 @@ namespace carto { namespace vt {
                 }
                 
                 float width = 0.5f * std::abs((styleParams.widthFuncs[i])(_viewState)) * geometry->getGeometryScale() / tile->getTileSize();
-                float pixelWidth = 2.0f * _halfResolution * width;
+                float pixelWidth = _fullResolution * width;
                 if (pixelWidth < 1.0f) {
                     colors[i] = colors[i] * pixelWidth; // should do gamma correction here, but simple implementation gives closer results to Mapnik
-                    width = (pixelWidth > 0.0f ? 1.0f / (2.0f * _halfResolution) : 0.0f); // normalize width to pixelWidth = 1
+                    width = (pixelWidth > 0.0f ? 1.0f / _fullResolution : 0.0f); // normalize width to pixelWidth = 1
                 }
                 widths[i] = width;
             }
@@ -1661,7 +1649,7 @@ namespace carto { namespace vt {
                 }
             }
 
-            glUniform1f(glGetUniformLocation(shaderProgram, "uBinormalScale"), vertexGeomLayoutParams.coordScale / (_halfResolution * vertexGeomLayoutParams.binormalScale * std::pow(2.0f, _zoom - tileId.zoom)));
+            glUniform1f(glGetUniformLocation(shaderProgram, "uBinormalScale"), vertexGeomLayoutParams.coordScale / (_halfResolution * vertexGeomLayoutParams.binormalScale * std::pow(2.0f, _viewState.zoom - tileId.zoom)));
             glUniform1fv(glGetUniformLocation(shaderProgram, "uWidthTable"), styleParams.parameterCount, widths.data());
             glUniform1f(glGetUniformLocation(shaderProgram, "uHalfResolution"), _halfResolution);
             glUniform1f(glGetUniformLocation(shaderProgram, "uGamma"), gamma);
@@ -1672,7 +1660,7 @@ namespace carto { namespace vt {
             glUniform1f(glGetUniformLocation(shaderProgram, "uAbsHeightScale"), blend / vertexGeomLayoutParams.heightScale * POLYGON3D_HEIGHT_SCALE * tileHeightScale);
             cglib::mat3x3<float> tileMatrix = cglib::mat3x3<float>::convert(cglib::inverse(calculateTileMatrix2D(targetTileId)) * calculateTileMatrix2D(tileId));
             if (styleParams.translate) {
-                float zoomScale = std::pow(2.0f, tileId.zoom - _zoom);
+                float zoomScale = std::pow(2.0f, tileId.zoom - _viewState.zoom);
                 cglib::vec2<float> translate = (*styleParams.translate) * zoomScale;
                 tileMatrix = tileMatrix * cglib::translate3_matrix(cglib::vec3<float>(translate(0), translate(1), 1));
             }
@@ -1708,7 +1696,7 @@ namespace carto { namespace vt {
         }
 
         if (styleParams.pattern) {
-            float zoomScale = std::pow(2.0f, std::floor(_zoom) - tileId.zoom);
+            float zoomScale = std::pow(2.0f, std::floor(_viewState.zoom) - tileId.zoom);
             float coordScale = 1.0f / (vertexGeomLayoutParams.texCoordScale * styleParams.pattern->widthScale);
             cglib::vec2<float> uvScale(coordScale, coordScale);
             if (geometry->getType() == TileGeometry::Type::LINE) {
@@ -1870,7 +1858,7 @@ namespace carto { namespace vt {
         glUseProgram(shaderProgram);
         checkGLError();
 
-        cglib::mat4x4<float> mvpMatrix = cglib::mat4x4<float>::convert(_projectionMatrix * labelBatchParams.labelMatrix);
+        cglib::mat4x4<float> mvpMatrix = cglib::mat4x4<float>::convert(_viewState.projectionMatrix * labelBatchParams.labelMatrix);
         glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "uMVPMatrix"), 1, GL_FALSE, mvpMatrix.data());
 
         glUniform1f(glGetUniformLocation(shaderProgram, "uSDFScale"), SDF_SHARPNESS_SCALE / labelBatchParams.scale / _halfResolution / BITMAP_SDF_SCALE);

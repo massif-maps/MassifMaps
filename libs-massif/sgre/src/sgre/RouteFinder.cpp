@@ -59,7 +59,7 @@ namespace carto { namespace sgre {
                 EndPoint endPoint;
                 endPoint.point = edgePoint.second;
                 endPoint.triangleId = edge.triangleId;
-                endPoint.edgeIds = std::set<Graph::EdgeId> {{ edgePoint.first }};
+                endPoint.edgeIds = std::set<Graph::EdgeId> { edgePoint.first };
 
                 bool found = false;
                 for (std::size_t j = 0; j < endPoints[i].size(); j++) {

@@ -30,10 +30,10 @@ namespace carto { namespace mbvtbuilder {
         return layerIndices;
     }
 
-    MBVTTileBuilder::LayerIndex MBVTTileBuilder::createLayer(const std::string& layerId, float buffer) {
+    MBVTTileBuilder::LayerIndex MBVTTileBuilder::createLayer(const std::string& name, float buffer) {
         std::lock_guard<std::mutex> lock(_mutex);
         Layer layer;
-        layer.layerId = layerId;
+        layer.name = name;
         layer.buffer = (buffer >= 0 ? buffer : DEFAULT_LAYER_BUFFER);
         LayerIndex layerIndex = (_layers.empty() ? 0 : _layers.rbegin()->first) + 1;
         _layers.emplace(layerIndex, std::move(layer));
@@ -70,12 +70,13 @@ namespace carto { namespace mbvtbuilder {
     void MBVTTileBuilder::addMultiPoint(LayerIndex layerIndex, MultiPoint coords, picojson::value properties) {
         Bounds bounds = Bounds::make_union(coords.begin(), coords.end());
 
+        std::lock_guard<std::mutex> lock(_mutex);
         Feature feature;
+        feature.id = ++_featureIdCounter;
         feature.bounds = bounds;
         feature.geometry = std::move(coords);
         feature.properties = std::move(properties);
         
-        std::lock_guard<std::mutex> lock(_mutex);
         _layers[layerIndex].bounds.add(feature.bounds);
         _layers[layerIndex].features.push_back(std::move(feature));
         invalidateCache();
@@ -87,12 +88,13 @@ namespace carto { namespace mbvtbuilder {
             bounds.add(Bounds::make_union(coords.begin(), coords.end()));
         }
 
+        std::lock_guard<std::mutex> lock(_mutex);
         Feature feature;
+        feature.id = ++_featureIdCounter;
         feature.bounds = bounds;
         feature.geometry = std::move(coordsList);
         feature.properties = std::move(properties);
         
-        std::lock_guard<std::mutex> lock(_mutex);
         _layers[layerIndex].bounds.add(feature.bounds);
         _layers[layerIndex].features.push_back(std::move(feature));
         invalidateCache();
@@ -106,12 +108,13 @@ namespace carto { namespace mbvtbuilder {
             }
         }
 
+        std::lock_guard<std::mutex> lock(_mutex);
         Feature feature;
+        feature.id = ++_featureIdCounter;
         feature.bounds = bounds;
         feature.geometry = std::move(ringsList);
         feature.properties = std::move(properties);
         
-        std::lock_guard<std::mutex> lock(_mutex);
         _layers[layerIndex].bounds.add(feature.bounds);
         _layers[layerIndex].features.push_back(std::move(feature));
         invalidateCache();
@@ -198,7 +201,7 @@ namespace carto { namespace mbvtbuilder {
             Point tileOrigin(tileX * tileSize + mapBounds.min(0), tileY * tileSize + mapBounds.min(1));
             Bounds tileBounds(tileOrigin - cglib::vec2<double>(layer.buffer, layer.buffer) * tileSize, tileOrigin + cglib::vec2<double>(1 + layer.buffer, 1 + layer.buffer) * tileSize);
 
-            MBVTLayerEncoder layerEncoder(layer.layerId);
+            MBVTLayerEncoder layerEncoder(layer.name);
             if (encodeLayer(layer, tileOrigin, tileSize, tileBounds, layerEncoder)) {
                 encodedTile.write_tag(vector_tile::Tile::kLayersFieldNumber);
                 encodedTile.write_message(layerEncoder.buildLayer());
@@ -240,7 +243,7 @@ namespace carto { namespace mbvtbuilder {
                         Point tileOrigin(tileX * tileSize + mapBounds.min(0), tileY * tileSize + mapBounds.min(1));
                         Bounds tileBounds(tileOrigin - cglib::vec2<double>(layer.buffer, layer.buffer) * tileSize, tileOrigin + cglib::vec2<double>(1 + layer.buffer, 1 + layer.buffer) * tileSize);
 
-                        MBVTLayerEncoder layerEncoder(layer.layerId);
+                        MBVTLayerEncoder layerEncoder(layer.name);
                         if (encodeLayer(layer, tileOrigin, tileSize, tileBounds, layerEncoder)) {
                             encodedTile.write_tag(vector_tile::Tile::kLayersFieldNumber);
                             encodedTile.write_message(layerEncoder.buildLayer());
@@ -312,7 +315,7 @@ namespace carto { namespace mbvtbuilder {
 
     bool MBVTTileBuilder::encodeLayer(const Layer& layer, const Point& tileOrigin, double tileSize, const Bounds& tileBounds, MBVTLayerEncoder& layerEncoder) {
         struct GeometryVisitor : boost::static_visitor<bool> {
-            explicit GeometryVisitor(const Point& tileOrigin, double tileSize, const Bounds& tileBounds, const picojson::value& properties, MBVTLayerEncoder& layerEncoder) : _tileOrigin(tileOrigin), _tileScale(1.0 / tileSize), _clipper(tileBounds), _properties(properties), _layerEncoder(layerEncoder) { }
+            explicit GeometryVisitor(const Point& tileOrigin, double tileSize, const Bounds& tileBounds, std::uint64_t id, const picojson::value& properties, MBVTLayerEncoder& layerEncoder) : _tileOrigin(tileOrigin), _tileScale(1.0 / tileSize), _clipper(tileBounds), _id(id), _properties(properties), _layerEncoder(layerEncoder) { }
 
             bool operator() (const MultiPoint& coords) {
                 std::vector<MBVTLayerEncoder::Point> tileCoords;
@@ -322,7 +325,7 @@ namespace carto { namespace mbvtbuilder {
                         tileCoords.push_back(MBVTLayerEncoder::Point::convert((pos - _tileOrigin) * _tileScale));
                     }
                 }
-                _layerEncoder.addMultiPoint(tileCoords, _properties);
+                _layerEncoder.addMultiPoint(_id, tileCoords, _properties);
                 return !tileCoords.empty();
             }
 
@@ -340,7 +343,7 @@ namespace carto { namespace mbvtbuilder {
                         tileCoordsList.push_back(std::move(tileCoords));
                     }
                 }
-                _layerEncoder.addMultiLineString(tileCoordsList, _properties);
+                _layerEncoder.addMultiLineString(_id, tileCoordsList, _properties);
                 return !tileCoordsList.empty();
             }
 
@@ -368,7 +371,7 @@ namespace carto { namespace mbvtbuilder {
                         tileCoordsList.push_back(std::move(tileCoords));
                     }
                 }
-                _layerEncoder.addMultiPolygon(tileCoordsList, _properties);
+                _layerEncoder.addMultiPolygon(_id, tileCoordsList, _properties);
                 return !tileCoordsList.empty();
             }
 
@@ -376,6 +379,7 @@ namespace carto { namespace mbvtbuilder {
             const Point _tileOrigin;
             const double _tileScale;
             const Clipper<double> _clipper;
+            const std::uint64_t _id;
             const picojson::value& _properties;
             MBVTLayerEncoder& _layerEncoder;
         };
@@ -386,7 +390,7 @@ namespace carto { namespace mbvtbuilder {
                 continue;
             }
 
-            GeometryVisitor visitor(tileOrigin, tileSize, tileBounds, feature.properties, layerEncoder);
+            GeometryVisitor visitor(tileOrigin, tileSize, tileBounds, feature.id, feature.properties, layerEncoder);
             if (boost::apply_visitor(visitor, feature.geometry)) {
                 featuresAdded = true;
             }

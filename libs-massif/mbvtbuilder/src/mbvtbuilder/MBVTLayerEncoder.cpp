@@ -6,26 +6,26 @@
 #include "mapnikvt/mbvtpackage/MBVTPackage.pb.h"
 
 namespace carto { namespace mbvtbuilder {
-    MBVTLayerEncoder::MBVTLayerEncoder(const std::string& layerId, int version, int extent) :
-        _layerId(layerId),
+    MBVTLayerEncoder::MBVTLayerEncoder(const std::string& name, int version, int extent) :
+        _name(name),
         _version(version > 0 ? version : DEFAULT_LAYER_VERSION),
         _extent(extent > 0 ? extent : DEFAULT_LAYER_EXTENT)
     {
     }
 
-    void MBVTLayerEncoder::addMultiPoint(const std::vector<Point>& coords, const picojson::value& properties) {
+    void MBVTLayerEncoder::addMultiPoint(std::uint64_t id, const std::vector<Point>& coords, const picojson::value& properties) {
         std::vector<std::uint32_t> geometry = encodePointCoordinates(coords, static_cast<float>(_extent));
-        importEncodedFeature(static_cast<int>(vector_tile::Tile_GeomType_POINT), geometry, properties);
+        importEncodedFeature(id, static_cast<int>(vector_tile::Tile_GeomType_POINT), geometry, properties);
     }
     
-    void MBVTLayerEncoder::addMultiLineString(const std::vector<std::vector<Point>>& coordsList, const picojson::value& properties) {
+    void MBVTLayerEncoder::addMultiLineString(std::uint64_t id, const std::vector<std::vector<Point>>& coordsList, const picojson::value& properties) {
         std::vector<std::uint32_t> geometry = encodeLineStringCoordinates(coordsList, static_cast<float>(_extent));
-        importEncodedFeature(static_cast<int>(vector_tile::Tile_GeomType_LINESTRING), geometry, properties);
+        importEncodedFeature(id, static_cast<int>(vector_tile::Tile_GeomType_LINESTRING), geometry, properties);
     }
     
-    void MBVTLayerEncoder::addMultiPolygon(const std::vector<std::vector<Point>>& ringsList, const picojson::value& properties) {
+    void MBVTLayerEncoder::addMultiPolygon(std::uint64_t id, const std::vector<std::vector<Point>>& ringsList, const picojson::value& properties) {
         std::vector<std::uint32_t> geometry = encodePolygonRingCoordinates(ringsList, static_cast<float>(_extent));
-        importEncodedFeature(static_cast<int>(vector_tile::Tile_GeomType_POLYGON), geometry, properties);
+        importEncodedFeature(id, static_cast<int>(vector_tile::Tile_GeomType_POLYGON), geometry, properties);
     }
     
     protobuf::encoded_message MBVTLayerEncoder::buildLayer() const {
@@ -38,7 +38,7 @@ namespace carto { namespace mbvtbuilder {
         encodedLayer.write_uint32(_extent);
 
         encodedLayer.write_tag(vector_tile::Tile_Layer::kNameFieldNumber);
-        encodedLayer.write_string(_layerId);
+        encodedLayer.write_string(_name);
 
         for (const std::string& key : _keys) {
             encodedLayer.write_tag(vector_tile::Tile_Layer::kKeysFieldNumber);
@@ -58,7 +58,7 @@ namespace carto { namespace mbvtbuilder {
         return encodedLayer;
     }
 
-    void MBVTLayerEncoder::importEncodedFeature(int type, const std::vector<std::uint32_t>& geometry, const picojson::value& properties) {
+    void MBVTLayerEncoder::importEncodedFeature(std::uint64_t id, int type, const std::vector<std::uint32_t>& geometry, const picojson::value& properties) {
         if (geometry.empty()) {
             return;
         }
@@ -71,7 +71,7 @@ namespace carto { namespace mbvtbuilder {
             }
         }
 
-        protobuf::encoded_message encodedFeature = encodeFeature(0, type, tags, geometry);
+        protobuf::encoded_message encodedFeature = encodeFeature(id, type, tags, geometry);
         _encodedFeatures.push_back(std::move(encodedFeature));
     }
 

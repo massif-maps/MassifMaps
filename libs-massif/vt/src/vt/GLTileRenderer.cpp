@@ -107,21 +107,13 @@ namespace carto { namespace vt {
             _labels.clear();
         }
 
-        // Build visible tile list for labels. Some tiles may be outside the frustum, ignore labels of such tiles as label rendering is quite expensive.
-        // Also build tile surfaces.
-        cglib::frustum3<double> frustum;
-        cglib::vec3<double> origin;
-        {
-            std::lock_guard<std::mutex> lock(_mutex);
-            frustum = _viewState.frustum;
-            origin = _viewState.origin;
-        }
+        // Build visible tile list for labels. Also build tile surfaces.
         std::set<TileId> tileIds;
         std::vector<std::shared_ptr<const Tile>> labelTiles;
         for (const TilePair& tilePair : tiles) {
             tileIds.insert(tilePair.first);
             
-            if (tilePair.second && frustum.inside(_transformer->calculateTileBBox(tilePair.first))) {
+            if (tilePair.second) {
                 // Keep only unique tiles and order them by tile zoom level.
                 // This will fix flickering when multiple tiles from different zoom levels redefine same label.
                 auto it = std::lower_bound(labelTiles.begin(), labelTiles.end(), tilePair.second, [](const std::shared_ptr<const Tile>& tile1, const std::shared_ptr<const Tile>& tile2) {
@@ -145,9 +137,13 @@ namespace carto { namespace vt {
             }
         }
         if (updateOrigin) {
-            _tileSurfaceBuilder.setOrigin(origin);
+            cglib::vec3<double> origin(0, 0, 0);
+            for (const TileId& tileId : tileIds) {
+                origin += _transformer->calculateTileBBox(tileId).center() * (1.0 / tileIds.size());
+            }
             _tileSurfaceBuilderOrigin = origin;
             _tileSurfaceBuilderOriginTileIds = tileIds;
+            _tileSurfaceBuilder.setOrigin(origin);
         }
         _tileSurfaceBuilder.setVisibleTiles(tileIds);
 

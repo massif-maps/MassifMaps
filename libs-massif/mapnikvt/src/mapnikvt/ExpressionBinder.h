@@ -123,7 +123,7 @@ namespace carto { namespace mvt {
                 const std::shared_ptr<const Expression> _expr;
                 const std::function<V(const Value&)> _convertFunc;
                 mutable float _cachedZoom = std::numeric_limits<float>::quiet_NaN();
-                mutable V _cachedValue;
+                mutable V _cachedValue = V();
                 mutable std::shared_ptr<std::mutex> _mutex;
             };
             

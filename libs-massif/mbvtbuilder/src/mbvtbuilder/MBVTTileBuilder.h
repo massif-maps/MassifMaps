@@ -7,6 +7,7 @@
 #ifndef _CARTO_MBVTBUILDER_MBVTTILEBUILDER_H_
 #define _CARTO_MBVTBUILDER_MBVTTILEBUILDER_H_
 
+#include <cstdint>
 #include <vector>
 #include <mutex>
 
@@ -38,7 +39,7 @@ namespace carto { namespace mbvtbuilder {
         void setFastSimplifyMode(bool enabled);
 
         std::vector<LayerIndex> getLayerIndices() const;
-        LayerIndex createLayer(const std::string& layerId, float buffer = -1);
+        LayerIndex createLayer(const std::string& name, float buffer = -1);
         Bounds getLayerBounds(LayerIndex layerIndex) const;
         void clearLayer(int layerIndex);
         void deleteLayer(LayerIndex layerIndex);
@@ -60,13 +61,14 @@ namespace carto { namespace mbvtbuilder {
         static constexpr float DEFAULT_LAYER_BUFFER = 4.0 / 256.0f;
 
         struct Feature {
+            std::uint64_t id = 0;
             Bounds bounds = Bounds::smallest(); // EPSG3856
             Geometry geometry; // EPSG3856
             picojson::value properties;
         };
 
         struct Layer {
-            std::string layerId;
+            std::string name;
             Bounds bounds = Bounds::smallest(); // EPSG3856
             std::vector<Feature> features;
             float buffer = 0;
@@ -89,6 +91,7 @@ namespace carto { namespace mbvtbuilder {
 
         bool _fastSimplifyMode = false;
 
+        std::uint64_t _featureIdCounter = 0;
         std::map<LayerIndex, Layer> _layers;
 
         const int _minZoom;

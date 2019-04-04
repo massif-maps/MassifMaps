@@ -49,17 +49,20 @@ namespace {
 
 namespace carto { namespace vt {
     LabelCuller::LabelCuller(std::shared_ptr<const TileTransformer> transformer, float scale) :
-        _projectionMatrix(cglib::mat4x4<double>::identity()), _mvpMatrix(cglib::mat4x4<float>::identity()), _viewState(cglib::mat4x4<double>::identity(), cglib::mat4x4<double>::identity(), 0, 1, 1, scale), _transformer(std::move(transformer)), _scale(scale), _mutex()
+        _localCameraProjMatrix(cglib::mat4x4<float>::identity()), _transformer(std::move(transformer)), _scale(scale), _mutex()
     {
     }
 
-    void LabelCuller::setViewState(const cglib::mat4x4<double>& projectionMatrix, const cglib::mat4x4<double>& cameraMatrix, float zoom, float aspectRatio, float resolution) {
+    void LabelCuller::setViewState(const ViewState& viewState) {
         std::lock_guard<std::mutex> lock(_mutex);
 
-        _projectionMatrix = projectionMatrix;
-        _mvpMatrix = cglib::mat4x4<float>::convert(projectionMatrix * calculateLocalViewMatrix(cameraMatrix));
-        _viewState = ViewState(projectionMatrix, cameraMatrix, zoom, aspectRatio, resolution, _scale);
-        _resolution = resolution;
+        cglib::mat4x4<double> localCameraMatrix = viewState.cameraMatrix;
+        for (int i = 0; i < 3; i++) {
+            localCameraMatrix(i, 3) = 0;
+        }
+        _localCameraProjMatrix = cglib::mat4x4<float>::convert(viewState.projectionMatrix * localCameraMatrix);
+        _viewState = viewState;
+        _viewState.zoomScale *= _scale;
     }
 
     void LabelCuller::process(const std::vector<std::shared_ptr<Label>>& labelList, std::mutex& labelMutex) {
@@ -111,7 +114,7 @@ namespace carto { namespace vt {
                     if (otherLabel->calculateCenter(otherCenter)) {
                         float minimumDistance = std::min(label->getMinimumGroupDistance(), otherLabel->getMinimumGroupDistance());
                         double centerDistance = cglib::length(center - otherCenter);
-                        if (centerDistance * _resolution / _scale < minimumDistance) {
+                        if (centerDistance * _viewState.resolution / _scale < minimumDistance) {
                             visible = false;
                             break;
                         }
@@ -143,7 +146,7 @@ namespace carto { namespace vt {
         cglib::bbox2<float> bounds = cglib::bbox2<float>::smallest();
         if (!label->getStyle()->translate) {
             for (int i = 0; i < 4; i++) {
-                cglib::vec2<float> p_proj(cglib::proj_o(cglib::transform_point(mapEnvelope[i], _mvpMatrix)));
+                cglib::vec2<float> p_proj(cglib::proj_o(cglib::transform_point(mapEnvelope[i], _localCameraProjMatrix)));
                 envelope[i] = p_proj;
                 bounds.add(p_proj);
             }
@@ -153,7 +156,7 @@ namespace carto { namespace vt {
             cglib::vec2<float> translate = (*label->getStyle()->translate) * zoomScale;
             cglib::mat4x4<double> translateMatrix = cglib::mat4x4<double>::convert(_transformer->calculateTileTransform(label->getTileId(), translate, 1.0f));
             cglib::mat4x4<double> tileMatrix = _transformer->calculateTileMatrix(label->getTileId(), 1);
-            cglib::mat4x4<float> mvpMatrix = cglib::mat4x4<float>::convert(_projectionMatrix * tileMatrix * translateMatrix * cglib::inverse(tileMatrix) * cglib::translate4_matrix(_viewState.origin));
+            cglib::mat4x4<float> mvpMatrix = cglib::mat4x4<float>::convert(_viewState.projectionMatrix * tileMatrix * translateMatrix * cglib::inverse(tileMatrix) * cglib::translate4_matrix(_viewState.origin));
             for (int i = 0; i < 4; i++) {
                 cglib::vec2<float> p_proj(cglib::proj_o(cglib::transform_point(mapEnvelope[i], mvpMatrix)));
                 envelope[i] = p_proj;
@@ -192,11 +195,5 @@ namespace carto { namespace vt {
             return GRID_RESOLUTION - 1;
         }
         return static_cast<int>(v * GRID_RESOLUTION);
-    }
-
-    cglib::mat4x4<double> LabelCuller::calculateLocalViewMatrix(const cglib::mat4x4<double>& cameraMatrix) {
-        cglib::mat4x4<double> mv = cameraMatrix;
-        mv(0, 3) = mv(1, 3) = mv(2, 3) = 0;
-        return mv;
     }
 } }

@@ -7,6 +7,7 @@
 #ifndef _CARTO_MBVTBUILDER_MBVTENCODER_H_
 #define _CARTO_MBVTBUILDER_MBVTENCODER_H_
 
+#include <cstdint>
 #include <string>
 #include <list>
 #include <vector>
@@ -23,11 +24,11 @@ namespace carto { namespace mbvtbuilder {
     public:
         using Point = cglib::vec2<float>;
 
-        explicit MBVTLayerEncoder(const std::string& layerId, int version = 0, int extent = 0);
+        explicit MBVTLayerEncoder(const std::string& name, int version = 0, int extent = 0);
 
-        void addMultiPoint(const std::vector<Point>& coords, const picojson::value& properties);
-        void addMultiLineString(const std::vector<std::vector<Point>>& coordsList, const picojson::value& properties);
-        void addMultiPolygon(const std::vector<std::vector<Point>>& ringsList, const picojson::value& properties);
+        void addMultiPoint(std::uint64_t id, const std::vector<Point>& coords, const picojson::value& properties);
+        void addMultiLineString(std::uint64_t id, const std::vector<std::vector<Point>>& coordsList, const picojson::value& properties);
+        void addMultiPolygon(std::uint64_t id, const std::vector<std::vector<Point>>& ringsList, const picojson::value& properties);
 
         protobuf::encoded_message buildLayer() const;
 
@@ -35,7 +36,7 @@ namespace carto { namespace mbvtbuilder {
         static constexpr int DEFAULT_LAYER_VERSION = 2;
         static constexpr int DEFAULT_LAYER_EXTENT = 4096;
 
-        void importEncodedFeature(int type, const std::vector<std::uint32_t>& geometry, const picojson::value& properties);
+        void importEncodedFeature(std::uint64_t id, int type, const std::vector<std::uint32_t>& geometry, const picojson::value& properties);
         void importProperty(const std::string& key, const picojson::value& value, std::vector<std::uint32_t>& tags);
 
         static std::vector<std::uint32_t> encodePointCoordinates(const std::vector<Point>& coords, float scale);
@@ -47,7 +48,7 @@ namespace carto { namespace mbvtbuilder {
         static protobuf::encoded_message encodeValue(const picojson::value& val);
         static protobuf::encoded_message encodeFeature(std::uint64_t id, int type, const std::vector<uint32_t>& tags, const std::vector<std::uint32_t>& geometry);
 
-        const std::string _layerId;
+        const std::string _name;
         const int _version;
         const int _extent;
 

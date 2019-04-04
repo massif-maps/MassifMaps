@@ -122,7 +122,7 @@ BOOST_AUTO_TEST_CASE(propertiesEncoding) {
 
     auto encodeAndDecodeValue = [&layers](const picojson::value& value) -> vector_tile::Tile_Value {
         MBVTLayerEncoder encoder("");
-        encoder.addMultiPoint({ cglib::vec2<float>(0, 0) }, picojson::value(picojson::object({ { "_key_", value } })));
+        encoder.addMultiPoint(0, { cglib::vec2<float>(0, 0) }, picojson::value(picojson::object({ { "_key_", value } })));
         auto encodedMsg = encoder.buildLayer();
         protobuf::message msg(encodedMsg.data().data(), encodedMsg.data().size());
         layers.emplace_back(msg);
@@ -132,7 +132,7 @@ BOOST_AUTO_TEST_CASE(propertiesEncoding) {
 
     auto encodeAndDecodeKeyValue = [&layers](const std::string& key, const picojson::value& value) -> std::pair<std::string, std::string> {
         MBVTLayerEncoder encoder("");
-        encoder.addMultiPoint({ cglib::vec2<float>(0, 0) }, picojson::value(picojson::object({ { key, value } })));
+        encoder.addMultiPoint(0, { cglib::vec2<float>(0, 0) }, picojson::value(picojson::object({ { key, value } })));
         auto encodedMsg = encoder.buildLayer();
         protobuf::message msg(encodedMsg.data().data(), encodedMsg.data().size());
         layers.emplace_back(msg);
@@ -160,7 +160,7 @@ BOOST_AUTO_TEST_CASE(pointEncoding) {
 
     auto encodeAndDecodeGeometry = [](const std::vector<Point>& geom) -> std::vector<Point> {
         MBVTLayerEncoder encoder("");
-        encoder.addMultiPoint(geom, picojson::value());
+        encoder.addMultiPoint(0, geom, picojson::value());
         auto encodedMsg = encoder.buildLayer();
         protobuf::message msg(encodedMsg.data().data(), encodedMsg.data().size());
         vector_tile::Tile_Layer layer(msg);
@@ -187,7 +187,7 @@ BOOST_AUTO_TEST_CASE(lineStringEncoding) {
 
     auto encodeAndDecodeGeometry = [](const std::vector<Point>& geom) -> std::vector<Point> {
         MBVTLayerEncoder encoder("");
-        encoder.addMultiLineString({ geom }, picojson::value());
+        encoder.addMultiLineString(0, { geom }, picojson::value());
         auto encodedMsg = encoder.buildLayer();
         protobuf::message msg(encodedMsg.data().data(), encodedMsg.data().size());
         vector_tile::Tile_Layer layer(msg);
@@ -209,7 +209,7 @@ BOOST_AUTO_TEST_CASE(polygonEncoding) {
 
     auto encodeAndDecodeGeometry = [](const std::vector<std::vector<Point>>& geom) -> std::vector<std::vector<Point>> {
         MBVTLayerEncoder encoder("");
-        encoder.addMultiPolygon(geom, picojson::value());
+        encoder.addMultiPolygon(0, geom, picojson::value());
         auto encodedMsg = encoder.buildLayer();
         protobuf::message msg(encodedMsg.data().data(), encodedMsg.data().size());
         vector_tile::Tile_Layer layer(msg);

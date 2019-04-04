@@ -17,14 +17,16 @@
 #include <cglib/vec.h>
 
 namespace carto { namespace vt {
+    constexpr static int GLYPH_RENDER_SIZE = 27;
+    
     class Font {
     public:
-        enum {
+        using CodePoint = unsigned int;
+
+        enum : CodePoint {
             SPACE_CODEPOINT = 0xffff0000,
             CR_CODEPOINT    = 0xffff0001
         };
-
-        using CodePoint = unsigned int;
 
         struct Metrics {
             float ascent;

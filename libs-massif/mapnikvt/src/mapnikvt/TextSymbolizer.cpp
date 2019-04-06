@@ -218,7 +218,7 @@ namespace carto { namespace mvt {
     }
 
     std::shared_ptr<vt::Font> TextSymbolizer::getFont(const SymbolizerContext& symbolizerContext) const {
-        std::shared_ptr<vt::Font> font;
+        std::shared_ptr<vt::Font> font = symbolizerContext.getSettings().getFallbackFont();
         if (!_faceName.empty()) {
             font = symbolizerContext.getFontManager()->getFont(_faceName, font);
         }

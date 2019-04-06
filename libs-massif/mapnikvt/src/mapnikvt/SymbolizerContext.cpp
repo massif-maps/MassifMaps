@@ -10,8 +10,8 @@
 #include "ShieldSymbolizer.h"
 
 namespace carto { namespace mvt {
-    SymbolizerContext::Settings::Settings(float tileSize, std::map<std::string, Value> nutiParameterValueMap) :
-        _tileSize(tileSize), _geometryScale(1.0f), _fontScale(1.0f), _zoomLevelBias(0.0f), _nutiParameterValueMap(std::move(nutiParameterValueMap))
+    SymbolizerContext::Settings::Settings(float tileSize, std::map<std::string, Value> nutiParameterValueMap, std::string fallbackFontName) :
+        _tileSize(tileSize), _geometryScale(1.0f), _fontScale(1.0f), _zoomLevelBias(0.0f), _nutiParameterValueMap(std::move(nutiParameterValueMap)), _fallbackFontName(std::move(fallbackFontName))
     {
         auto geometryScaleIt = _nutiParameterValueMap.find("_geometryscale");
         if (geometryScaleIt != _nutiParameterValueMap.end()) {

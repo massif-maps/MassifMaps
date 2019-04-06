@@ -286,18 +286,18 @@ namespace carto { namespace vt {
     public:
         explicit Impl(int maxGlyphMapWidth, int maxGlyphMapHeight) : _maxGlyphMapWidth(maxGlyphMapWidth), _maxGlyphMapHeight(maxGlyphMapHeight), _library(std::make_shared<FontManagerLibrary>()) { }
 
-        void loadFontData(const std::vector<unsigned char>& data) {
+        std::string loadFontData(const std::vector<unsigned char>& data) {
             std::lock_guard<std::mutex> lock(_mutex);
 
             if (data.empty()) {
-                return;
+                return std::string();
             }
 
             FontManagerLibrary library;
             FT_Face face;
             int error = FT_New_Memory_Face(library.getLibrary(), data.data(), data.size(), 0, &face);
             if (error != 0) {
-                return;
+                return std::string();
             }
             std::string fullName, family, subFamily;
             for (unsigned int i = 0; i < FT_Get_Sfnt_Name_Count(face); i++) {
@@ -326,18 +326,27 @@ namespace carto { namespace vt {
                     break;
                 }
             }
+
+            std::string registeredName = fullName;
             if (!fullName.empty()) {
                 _fontDataMap[fullName] = data;
             }
             if (!family.empty()) {
                 if (!subFamily.empty()) {
                     _fontDataMap[family + " " + subFamily] = data;
+                    if (registeredName.empty()) {
+                        registeredName = family + " " + subFamily;
+                    }
                 }
                 else {
                     _fontDataMap[family] = data;
+                    if (registeredName.empty()) {
+                        registeredName = family;
+                    }
                 }
             }
             FT_Done_Face(face);
+            return registeredName;
         }
 
         std::shared_ptr<Font> getFont(const std::string& name, const std::shared_ptr<Font>& baseFont) const {
@@ -421,8 +430,8 @@ namespace carto { namespace vt {
     FontManager::~FontManager() {
     }
 
-    void FontManager::loadFontData(const std::vector<unsigned char>& data) {
-        _impl->loadFontData(data);
+    std::string FontManager::loadFontData(const std::vector<unsigned char>& data) {
+        return _impl->loadFontData(data);
     }
 
     std::shared_ptr<Font> FontManager::getFont(const std::string& name, const std::shared_ptr<Font>& baseFont) const {

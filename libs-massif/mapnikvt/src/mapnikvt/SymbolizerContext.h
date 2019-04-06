@@ -19,7 +19,7 @@ namespace carto { namespace mvt {
     class SymbolizerContext final {
     public:
         struct Settings {
-            explicit Settings(float tileSize, std::map<std::string, Value> nutiParameterValueMap);
+            explicit Settings(float tileSize, std::map<std::string, Value> nutiParameterValueMap, std::string fallbackFontName);
 
             float getTileSize() const { return _tileSize; }
             float getGeometryScale() const { return _geometryScale; }
@@ -27,13 +27,16 @@ namespace carto { namespace mvt {
             float getZoomLevelBias() const { return _zoomLevelBias; }
 
             const std::map<std::string, Value>& getNutiParameterValueMap() const { return _nutiParameterValueMap; }
+            const std::string& getFallbackFontName() const { return _fallbackFontName; }
 
         private:
             float _tileSize;
             float _geometryScale;
             float _fontScale;
             float _zoomLevelBias;
+            
             std::map<std::string, Value> _nutiParameterValueMap;
+            std::string _fallbackFontName;
         };
 
         explicit SymbolizerContext(std::shared_ptr<vt::BitmapManager> bitmapManager, std::shared_ptr<vt::FontManager> fontManager, std::shared_ptr<vt::StrokeMap> strokeMap, std::shared_ptr<vt::GlyphMap> glyphMap, const Settings& settings) : _bitmapManager(std::move(bitmapManager)), _fontManager(std::move(fontManager)), _strokeMap(std::move(strokeMap)), _glyphMap(std::move(glyphMap)), _settings(settings) { }

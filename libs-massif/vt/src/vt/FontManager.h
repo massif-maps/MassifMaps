@@ -20,7 +20,7 @@ namespace carto { namespace vt {
         explicit FontManager(int maxGlyphMapWidth, int maxGlyphMapHeight);
         virtual ~FontManager();
 
-        void loadFontData(const std::vector<unsigned char>& data);
+        std::string loadFontData(const std::vector<unsigned char>& data);
         std::shared_ptr<Font> getFont(const std::string& name, const std::shared_ptr<Font>& baseFont) const;
 
     private:

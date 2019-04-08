@@ -10,6 +10,7 @@
 #include "FeatureDecoder.h"
 
 #include <memory>
+#include <mutex>
 #include <vector>
 #include <map>
 #include <unordered_set>
@@ -40,8 +41,6 @@ namespace carto { namespace mvt {
         bool findFeature(long long localId, std::string& layerName, Feature& feature) const;
 
     private:
-        using FeatureDataCache = std::map<std::vector<int>, std::shared_ptr<FeatureData>>;
-
         class MBVTFeatureIterator;
 
         cglib::mat3x3<float> _transform;
@@ -51,7 +50,9 @@ namespace carto { namespace mvt {
         long long _tileIdOffset;
         std::shared_ptr<vector_tile::Tile> _tile;
         std::map<std::string, int> _layerMap;
-        mutable std::map<std::string, std::shared_ptr<FeatureDataCache>> _layerFeatureDataCache;
+
+        mutable std::map<std::string, std::shared_ptr<FeatureDataCache<std::vector<int>>>> _layerFeatureDataCache;
+        mutable std::mutex _layerFeatureDataCacheMutex;
 
         const std::shared_ptr<Logger> _logger;
     };

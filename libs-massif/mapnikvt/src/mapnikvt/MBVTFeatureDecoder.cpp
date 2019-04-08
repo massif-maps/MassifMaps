@@ -21,7 +21,7 @@
 namespace carto { namespace mvt {
     class MBVTFeatureDecoder::MBVTFeatureIterator : public carto::mvt::FeatureDecoder::FeatureIterator {
     public:
-        explicit MBVTFeatureIterator(const std::shared_ptr<const vector_tile::Tile>& tile, int layerIndex, const std::unordered_set<std::string>* fields, const cglib::mat3x3<float>& transform, const cglib::bbox2<float>& clipBox, float buffer, bool globalIdOverride, long long tileIdOffset, const std::shared_ptr<MBVTFeatureDecoder::FeatureDataCache>& featureDataCache) :
+        explicit MBVTFeatureIterator(const std::shared_ptr<const vector_tile::Tile>& tile, int layerIndex, const std::unordered_set<std::string>* fields, const cglib::mat3x3<float>& transform, const cglib::bbox2<float>& clipBox, float buffer, bool globalIdOverride, long long tileIdOffset, const std::shared_ptr<MBVTFeatureDecoder::FeatureDataCache<std::vector<int>>>& featureDataCache) :
             _tile(tile), _layer(&tile->layers(layerIndex)), _transform(transform), _clipBox(clipBox), _buffer(buffer), _globalIdOverride(globalIdOverride), _tileIdOffset(tileIdOffset), _featureDataCache(featureDataCache)
         {
             _layerIndexOffset = static_cast<long long>(layerIndex) << 32;
@@ -103,9 +103,8 @@ namespace carto { namespace mvt {
                 }
             }
 
-            auto it = _featureDataCache->find(tags);
-            if (it != _featureDataCache->end()) {
-                return it->second;
+            if (std::shared_ptr<const FeatureData> featureData = _featureDataCache->get(tags)) {
+                return featureData;
             }
 
             FeatureData::GeometryType geomType = convertGeometryType(feature.type());
@@ -118,7 +117,7 @@ namespace carto { namespace mvt {
             }
 
             auto featureData = std::make_shared<FeatureData>(geomType, std::move(dataMap));
-            _featureDataCache->emplace(std::move(tags), featureData);
+            _featureDataCache->put(std::move(tags), featureData);
             return featureData;
         }
 
@@ -303,12 +302,9 @@ namespace carto { namespace mvt {
         const float _buffer;
         const bool _globalIdOverride;
         const long long _tileIdOffset;
-        mutable std::shared_ptr<MBVTFeatureDecoder::FeatureDataCache> _featureDataCache;
 
-        static std::atomic<long long> _idCounter;
+        mutable std::shared_ptr<MBVTFeatureDecoder::FeatureDataCache<std::vector<int>>> _featureDataCache;
     };
-
-    std::atomic<long long> MBVTFeatureDecoder::MBVTFeatureIterator::_idCounter = ATOMIC_VAR_INIT(1);
 
     MBVTFeatureDecoder::MBVTFeatureDecoder(const std::vector<unsigned char>& data, std::shared_ptr<Logger> logger) :
         _transform(cglib::mat3x3<float>::identity()), _clipBox(cglib::vec2<float>(-0.1f, -0.1f), cglib::vec2<float>(1.1f, 1.1f)), _buffer(0), _globalIdOverride(false), _tileIdOffset(0), _tile(), _layerMap(), _logger(std::move(logger))
@@ -364,19 +360,21 @@ namespace carto { namespace mvt {
         if (layerIt == _layerMap.end()) {
             return std::shared_ptr<FeatureIterator>();
         }
+
+        std::lock_guard<std::mutex> lock(_layerFeatureDataCacheMutex);
         if (_layerFeatureDataCache.find(name) == _layerFeatureDataCache.end()) { // flush the cache if previous layer was different
             _layerFeatureDataCache.clear();
         }
-        std::shared_ptr<FeatureDataCache>& featureDataCache = _layerFeatureDataCache[name];
+        std::shared_ptr<FeatureDataCache<std::vector<int>>>& featureDataCache = _layerFeatureDataCache[name];
         if (!featureDataCache) {
-            featureDataCache = std::make_shared<FeatureDataCache>();
+            featureDataCache = std::make_shared<FeatureDataCache<std::vector<int>>>();
         }
         return std::make_shared<MBVTFeatureIterator>(_tile, layerIt->second, nullptr, _transform, _clipBox, _buffer, _globalIdOverride, _tileIdOffset, featureDataCache);
     }
 
     bool MBVTFeatureDecoder::findFeature(long long localId, std::string& layerName, Feature& feature) const {
         for (int i = 0; i < _tile->layers_size(); i++) {
-            auto featureDataCache = std::make_shared<FeatureDataCache>();
+            auto featureDataCache = std::make_shared<FeatureDataCache<std::vector<int>>>();
             MBVTFeatureIterator it(_tile, i, nullptr, _transform, _clipBox, _buffer, _globalIdOverride, _tileIdOffset, featureDataCache);
             if (it.findByLocalId(localId)) {
                 layerName = _tile->layers(i).name();

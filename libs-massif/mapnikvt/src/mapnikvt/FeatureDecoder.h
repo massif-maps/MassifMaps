@@ -10,8 +10,8 @@
 #include "Feature.h"
 
 #include <memory>
-#include <string>
-#include <unordered_set>
+#include <mutex>
+#include <map>
 
 namespace carto { namespace mvt {
     class FeatureDecoder {
@@ -30,6 +30,31 @@ namespace carto { namespace mvt {
         };
 
         virtual ~FeatureDecoder() = default;
+
+    protected:
+        template <typename T>
+        class FeatureDataCache {
+        public:
+            FeatureDataCache() = default;
+
+            std::shared_ptr<const FeatureData> get(const T& key) const {
+                std::lock_guard<std::mutex> lock(_mutex);
+                auto it = _container.find(key);
+                if (it != _container.end()) {
+                    return it->second;
+                }
+                return std::shared_ptr<const FeatureData>();
+            }
+
+            void put(T key, std::shared_ptr<const FeatureData> data) {
+                std::lock_guard<std::mutex> lock(_mutex);
+                _container.emplace(std::move(key), std::move(data));
+            }
+
+        private:
+            std::map<T, const std::shared_ptr<const FeatureData>> _container;
+            mutable std::mutex _mutex;
+        };
     };
 } }
 

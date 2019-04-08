@@ -72,13 +72,13 @@ namespace carto { namespace mvt {
 
         virtual std::shared_ptr<const FeatureData> getFeatureData() const override {
             const TorqueFeatureDecoder::Element& element = _elements[_index0];
-            auto it = _featureDataCache.find(element.value);
-            if (it != _featureDataCache.end()) {
-                return it->second;
+
+            if (std::shared_ptr<const FeatureData> featureData = _featureDataCache.get(element.value)) {
+                return featureData;
             }
 
             auto featureData = std::make_shared<FeatureData>(FeatureData::GeometryType::POINT_GEOMETRY, std::vector<std::pair<std::string, Value>>{ { std::string("value"), Value(element.value) } });
-            _featureDataCache.emplace(element.value, featureData);
+            _featureDataCache.put(element.value, featureData);
             return featureData;
         }
 
@@ -102,7 +102,8 @@ namespace carto { namespace mvt {
         const int _resolution;
         const cglib::mat3x3<float> _transform;
         const cglib::bbox2<float> _clipBox;
-        mutable std::unordered_map<double, std::shared_ptr<FeatureData>> _featureDataCache;
+
+        mutable FeatureDataCache<double> _featureDataCache;
     };
 
     TorqueFeatureDecoder::TorqueFeatureDecoder(const std::vector<unsigned char>& data, int resolution, const std::shared_ptr<Logger>& logger) :

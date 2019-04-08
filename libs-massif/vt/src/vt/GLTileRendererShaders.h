@@ -181,7 +181,7 @@ namespace carto { namespace vt {
     static const std::string labelFsh = R"GLSL(
         uniform sampler2D uBitmap;
         #ifdef DERIVATIVES
-        uniform highp float uDerivScale;
+        uniform highp vec2 uDerivScale;
         #endif
         varying lowp vec4 vColor;
         varying mediump vec2 vUV;
@@ -194,7 +194,7 @@ namespace carto { namespace vt {
             } else {
                 if (vAttribs[0] < -0.5) {
         #ifdef DERIVATIVES
-                    float size = dot(vec2(uDerivScale, uDerivScale), fwidth(vUV));
+                    float size = dot(uDerivScale, fwidth(vUV));
                     float scale = 1.0 / size;
         #else
                     float size = vAttribs[2];

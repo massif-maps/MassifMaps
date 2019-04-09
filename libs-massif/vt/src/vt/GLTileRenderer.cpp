@@ -1158,6 +1158,7 @@ namespace carto { namespace vt {
         LabelBatchParameters labelBatchParams;
         std::shared_ptr<const TileLabel::Style> lastLabelStyle;
         int styleIndex = -1;
+        int haloStyleIndex = -1;
         for (const std::shared_ptr<Label>& label : labels) {
             if (!label->isValid()) {
                 continue;
@@ -1167,41 +1168,16 @@ namespace carto { namespace vt {
             }
             const std::shared_ptr<const TileLabel::Style>& labelStyle = label->getStyle();
 
-            labelBatchParams.labelCount++;
-            
             if (lastLabelStyle != labelStyle) {
-                if (labelStyle->translate || (lastLabelStyle && lastLabelStyle->translate) || labelBatchParams.scale != labelStyle->scale) {
-                    renderLabelBatch(labelBatchParams, bitmap);
-                    labelBatchParams.labelCount = 0;
-                    labelBatchParams.parameterCount = 0;
-
-                    styleIndex = -1;
-                }
-                
                 cglib::vec4<float> color = (labelStyle->colorFunc)(_viewState).rgba();
                 float size = (labelStyle->sizeFunc)(_viewState);
                 cglib::vec4<float> haloColor = (labelStyle->haloColorFunc)(_viewState).rgba();
                 float haloRadius = (labelStyle->haloRadiusFunc)(_viewState) * HALO_RADIUS_SCALE;
-                for (; styleIndex >= 0; styleIndex--) {
-                    if (haloRadius > 0) {
-                        if (styleIndex >= 1 && labelBatchParams.colorTable[styleIndex] == haloColor && labelBatchParams.widthTable[styleIndex] == size && labelBatchParams.strokeWidthTable[styleIndex] == haloRadius) {
-                            if (labelBatchParams.colorTable[styleIndex - 1] == color && labelBatchParams.widthTable[styleIndex - 1] == size && labelBatchParams.strokeWidthTable[styleIndex - 1] == 0) {
-                                break;
-                            }
-                        }
-                    } else {
-                        if (labelBatchParams.colorTable[styleIndex] == color && labelBatchParams.widthTable[styleIndex] == size && labelBatchParams.strokeWidthTable[styleIndex] == 0) {
-                            break;
-                        }
-                    }
-                }
-                if (styleIndex < 0) {
-                    if (labelBatchParams.parameterCount + 2 > LabelBatchParameters::MAX_PARAMETERS) {
-                        renderLabelBatch(labelBatchParams, bitmap);
-                        labelBatchParams.labelCount = 0;
-                        labelBatchParams.parameterCount = 0;
-                    }
-                    styleIndex = labelBatchParams.parameterCount++;
+
+                if (labelStyle->translate || (lastLabelStyle && lastLabelStyle->translate) || labelBatchParams.scale != labelStyle->scale || labelBatchParams.parameterCount + 2 > LabelBatchParameters::MAX_PARAMETERS) {
+                    renderLabelBatch(labelBatchParams, bitmap);
+                    labelBatchParams.labelCount = 0;
+                    labelBatchParams.parameterCount = 0;
                     labelBatchParams.scale = labelStyle->scale;
                     if (labelStyle->translate) {
                         float zoomScale = std::pow(2.0f, label->getTileId().zoom - _viewState.zoom);
@@ -1212,23 +1188,44 @@ namespace carto { namespace vt {
                     } else {
                         labelBatchParams.labelMatrix = _viewState.cameraMatrix * cglib::translate4_matrix(_viewState.origin);
                     }
+
+                    styleIndex = -1;
+                    haloStyleIndex = -1;
+                } else {
+                    for (styleIndex = labelBatchParams.parameterCount; --styleIndex >= 0; ) {
+                        if (labelBatchParams.colorTable[styleIndex] == color && labelBatchParams.widthTable[styleIndex] == size && labelBatchParams.strokeWidthTable[styleIndex] == 0) {
+                            break;
+                        }
+                    }
+                    for (haloStyleIndex = haloRadius > 0 ? labelBatchParams.parameterCount : 0; --haloStyleIndex >= 0; ) {
+                        if (labelBatchParams.colorTable[haloStyleIndex] == haloColor && labelBatchParams.widthTable[haloStyleIndex] == size && labelBatchParams.strokeWidthTable[haloStyleIndex] == haloRadius) {
+                            break;
+                        }
+                    }
+                }
+                
+                if (styleIndex < 0) {
+                    styleIndex = labelBatchParams.parameterCount++;
                     labelBatchParams.colorTable[styleIndex] = color;
                     labelBatchParams.widthTable[styleIndex] = size;
                     labelBatchParams.strokeWidthTable[styleIndex] = 0;
-                    if (haloRadius > 0) {
-                        styleIndex = labelBatchParams.parameterCount++;
-                        labelBatchParams.colorTable[styleIndex] = haloColor;
-                        labelBatchParams.widthTable[styleIndex] = size;
-                        labelBatchParams.strokeWidthTable[styleIndex] = haloRadius;
-                    }
                 }
+                if (haloRadius > 0 && haloStyleIndex < 0) {
+                    haloStyleIndex = labelBatchParams.parameterCount++;
+                    labelBatchParams.colorTable[haloStyleIndex] = haloColor;
+                    labelBatchParams.widthTable[haloStyleIndex] = size;
+                    labelBatchParams.strokeWidthTable[haloStyleIndex] = haloRadius;
+                }
+
                 lastLabelStyle = labelStyle;
             }
 
-            if (labelBatchParams.strokeWidthTable[styleIndex] > 0) {
+            if (haloStyleIndex < 0) {
+                label->calculateVertexData(labelBatchParams.widthTable[styleIndex], _viewState, styleIndex, _labelVertices, _labelNormals, _labelTexCoords, _labelAttribs, _labelIndices);
+            } else {
                 std::size_t vertexOffset = _labelVertices.size();
                 std::size_t indexOffset = _labelIndices.size();
-                label->calculateVertexData(labelBatchParams.widthTable[styleIndex], _viewState, styleIndex, _labelVertices, _labelNormals, _labelTexCoords, _labelAttribs, _labelIndices);
+                label->calculateVertexData(labelBatchParams.widthTable[styleIndex], _viewState, haloStyleIndex, _labelVertices, _labelNormals, _labelTexCoords, _labelAttribs, _labelIndices);
                 std::size_t vertexCount = _labelVertices.size() - vertexOffset;
                 std::size_t indexCount = _labelIndices.size() - indexOffset;
                 _labelVertices.copy(_labelVertices, vertexOffset, vertexCount);
@@ -1237,14 +1234,14 @@ namespace carto { namespace vt {
                 _labelAttribs.copy(_labelAttribs, vertexOffset, vertexCount);
                 _labelIndices.copy(_labelIndices, indexOffset, indexCount);
                 for (cglib::vec4<char>* it = _labelAttribs.end() - vertexCount; it != _labelAttribs.end(); it++) {
-                    *it = cglib::vec4<char>((*it)(0) - 1, std::min((char) 0, (*it)(1)), (*it)(2), (*it)(3));
+                    *it = cglib::vec4<char>(static_cast<char>(styleIndex), std::min((char) 0, (*it)(1)), (*it)(2), (*it)(3));
                 }
                 for (unsigned short* it = _labelIndices.end() - indexCount; it != _labelIndices.end(); it++) {
                     *it += static_cast<unsigned short>(vertexCount);
                 }
-            } else {
-                label->calculateVertexData(labelBatchParams.widthTable[styleIndex], _viewState, styleIndex, _labelVertices, _labelNormals, _labelTexCoords, _labelAttribs, _labelIndices);
             }
+
+            labelBatchParams.labelCount++;
 
             if (_labelVertices.size() >= 32768) { // flush the batch if largest vertex index is getting 'close' to 64k limit
                 renderLabelBatch(labelBatchParams, bitmap);

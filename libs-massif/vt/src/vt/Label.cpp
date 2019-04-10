@@ -186,7 +186,7 @@ namespace carto { namespace vt {
         return valid;
     }
 
-    bool Label::calculateVertexData(float size, const ViewState& viewState, int styleIndex, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<short>>& texCoords, VertexArray<cglib::vec4<char>>& attribs, VertexArray<unsigned short>& indices) const {
+    bool Label::calculateVertexData(float size, const ViewState& viewState, int styleIndex, int haloStyleIndex, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<short>>& texCoords, VertexArray<cglib::vec4<char>>& attribs, VertexArray<unsigned short>& indices) const {
         std::shared_ptr<const Placement> placement = getPlacement(viewState);
         float scale = size * viewState.zoomScale * _style->scale;
         if (!placement || scale <= 0) {
@@ -195,7 +195,6 @@ namespace carto { namespace vt {
 
         // Build vertex data cache
         bool valid = cglib::dot_product(viewState.orientation[2], _normal) > MIN_BILLBOARD_VIEW_NORMAL_DOTPRODUCT;
-        unsigned short offset = static_cast<unsigned short>(vertices.size());
         if (_style->orientation == LabelOrientation::LINE) {
             // Check if cached vertex data can be used
             if (scale != _cachedScale || placement != _cachedPlacement) {
@@ -234,17 +233,30 @@ namespace carto { namespace vt {
         }
 
         normals.fill(_normal, _cachedVertices.size());
-
         texCoords.copy(_cachedTexCoords, 0, _cachedTexCoords.size());
-
         attribs.copy(_cachedAttribs, 0, _cachedAttribs.size());
+        indices.copy(_cachedIndices, 0, _cachedIndices.size());
+
+        if (haloStyleIndex >= 0) {
+            for (cglib::vec4<char>* it = attribs.end() - _cachedAttribs.size(); it != attribs.end(); it++) {
+                *it = cglib::vec4<char>(static_cast<char>(haloStyleIndex), std::min((char)0, (*it)(1)), static_cast<char>(_opacity * 127.0f), 0);
+            }
+            for (unsigned short* it = indices.end() - _cachedIndices.size(); it != indices.end(); it++) {
+                *it += static_cast<unsigned int>(vertices.size() - _cachedVertices.size());
+            }
+
+            vertices.copy(vertices, vertices.size() - _cachedVertices.size(), _cachedVertices.size());
+            normals.fill(_normal, _cachedVertices.size());
+            texCoords.copy(_cachedTexCoords, 0, _cachedTexCoords.size());
+            attribs.copy(_cachedAttribs, 0, _cachedAttribs.size());
+            indices.copy(_cachedIndices, 0, _cachedIndices.size());
+        }
+
         for (cglib::vec4<char>* it = attribs.end() - _cachedAttribs.size(); it != attribs.end(); it++) {
             *it = cglib::vec4<char>(static_cast<int>(styleIndex), (*it)(1), static_cast<char>(_opacity * 127.0f), 0);
         }
-
-        indices.copy(_cachedIndices, 0, _cachedIndices.size());
         for (unsigned short* it = indices.end() - _cachedIndices.size(); it != indices.end(); it++) {
-            *it += offset;
+            *it += static_cast<unsigned int>(vertices.size() - _cachedVertices.size());
         }
 
         return valid;

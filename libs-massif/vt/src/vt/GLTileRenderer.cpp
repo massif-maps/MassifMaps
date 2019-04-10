@@ -1220,26 +1220,7 @@ namespace carto { namespace vt {
                 lastLabelStyle = labelStyle;
             }
 
-            if (haloStyleIndex < 0) {
-                label->calculateVertexData(labelBatchParams.widthTable[styleIndex], _viewState, styleIndex, _labelVertices, _labelNormals, _labelTexCoords, _labelAttribs, _labelIndices);
-            } else {
-                std::size_t vertexOffset = _labelVertices.size();
-                std::size_t indexOffset = _labelIndices.size();
-                label->calculateVertexData(labelBatchParams.widthTable[styleIndex], _viewState, haloStyleIndex, _labelVertices, _labelNormals, _labelTexCoords, _labelAttribs, _labelIndices);
-                std::size_t vertexCount = _labelVertices.size() - vertexOffset;
-                std::size_t indexCount = _labelIndices.size() - indexOffset;
-                _labelVertices.copy(_labelVertices, vertexOffset, vertexCount);
-                _labelNormals.copy(_labelNormals, vertexOffset, vertexCount);
-                _labelTexCoords.copy(_labelTexCoords, vertexOffset, vertexCount);
-                _labelAttribs.copy(_labelAttribs, vertexOffset, vertexCount);
-                _labelIndices.copy(_labelIndices, indexOffset, indexCount);
-                for (cglib::vec4<char>* it = _labelAttribs.end() - vertexCount; it != _labelAttribs.end(); it++) {
-                    *it = cglib::vec4<char>(static_cast<char>(styleIndex), std::min((char) 0, (*it)(1)), (*it)(2), (*it)(3));
-                }
-                for (unsigned short* it = _labelIndices.end() - indexCount; it != _labelIndices.end(); it++) {
-                    *it += static_cast<unsigned short>(vertexCount);
-                }
-            }
+            label->calculateVertexData(labelBatchParams.widthTable[styleIndex], _viewState, styleIndex, haloStyleIndex, _labelVertices, _labelNormals, _labelTexCoords, _labelAttribs, _labelIndices);
 
             labelBatchParams.labelCount++;
 

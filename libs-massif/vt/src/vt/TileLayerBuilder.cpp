@@ -581,7 +581,7 @@ namespace carto { namespace vt {
                 VertexArray<cglib::vec3<float>> remappedBinormals;
                 VertexArray<float> remappedHeights;
                 VertexArray<cglib::vec4<std::int8_t>> remappedAttribs;
-                VertexArray<std::uint32_t> remappedIndices;
+                VertexArray<std::size_t> remappedIndices;
                 VertexArray<long long> remappedIds;
                 for (std::size_t i = 0; i < count; i++) {
                     std::size_t index = indices[offset + i];

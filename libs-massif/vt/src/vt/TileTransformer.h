@@ -33,7 +33,7 @@ namespace carto { namespace vt {
             virtual float calculateHeight(const cglib::vec2<float>& pos, float height) const = 0;
 
             virtual void tesselateLineString(const cglib::vec2<float>* points, std::size_t count, VertexArray<cglib::vec2<float>>& tesselatedPoints) const = 0;
-            virtual void tesselateTriangles(const unsigned int* indices, std::size_t count, VertexArray<cglib::vec2<float>>& coords, VertexArray<cglib::vec2<float>>& texCoords, VertexArray<unsigned int>& tesselatedIndices) const = 0;
+            virtual void tesselateTriangles(const std::size_t* indices, std::size_t count, VertexArray<cglib::vec2<float>>& coords, VertexArray<cglib::vec2<float>>& texCoords, VertexArray<std::size_t>& tesselatedIndices) const = 0;
         };
 
         virtual ~TileTransformer() = default;
@@ -65,7 +65,7 @@ namespace carto { namespace vt {
             virtual float calculateHeight(const cglib::vec2<float>& pos, float height) const override;
 
             virtual void tesselateLineString(const cglib::vec2<float>* points, std::size_t count, VertexArray<cglib::vec2<float>>& tesselatedPoints) const override;
-            virtual void tesselateTriangles(const unsigned int* indices, std::size_t count, VertexArray<cglib::vec2<float>>& coords, VertexArray<cglib::vec2<float>>& texCoords, VertexArray<unsigned int>& tesselatedIndices) const override;
+            virtual void tesselateTriangles(const std::size_t* indices, std::size_t count, VertexArray<cglib::vec2<float>>& coords, VertexArray<cglib::vec2<float>>& texCoords, VertexArray<std::size_t>& tesselatedIndices) const override;
 
         private:
             const TileId _tileId;
@@ -100,7 +100,7 @@ namespace carto { namespace vt {
             virtual float calculateHeight(const cglib::vec2<float>& pos, float height) const override;
 
             virtual void tesselateLineString(const cglib::vec2<float>* points, std::size_t count, VertexArray<cglib::vec2<float>>& tesselatedPoints) const override;
-            virtual void tesselateTriangles(const unsigned int* indices, std::size_t count, VertexArray<cglib::vec2<float>>& coords, VertexArray<cglib::vec2<float>>& texCoords, VertexArray<unsigned int>& tesselatedIndices) const override;
+            virtual void tesselateTriangles(const std::size_t* indices, std::size_t count, VertexArray<cglib::vec2<float>>& coords, VertexArray<cglib::vec2<float>>& texCoords, VertexArray<std::size_t>& tesselatedIndices) const override;
 
         private:
             cglib::vec2<double> tileToEPSG3857(const cglib::vec2<float>& pos) const;
@@ -109,7 +109,7 @@ namespace carto { namespace vt {
             cglib::vec2<float> sphericalToTile(const cglib::vec3<double>& p) const;
 
             void tesselateSegment(const cglib::vec2<float>& pos0, const cglib::vec2<float>& pos1, float dist, VertexArray<cglib::vec2<float>>& points) const;
-            void tesselateTriangle(unsigned int i0, unsigned int i1, unsigned int i2, float dist01, float dist02, float dist12, VertexArray<cglib::vec2<float>>& coords, VertexArray<cglib::vec2<float>>& texCoords, VertexArray<unsigned int>& indices) const;
+            void tesselateTriangle(std::size_t i0, std::size_t i1, std::size_t i2, float dist01, float dist02, float dist12, VertexArray<cglib::vec2<float>>& coords, VertexArray<cglib::vec2<float>>& texCoords, VertexArray<std::size_t>& indices) const;
 
             const TileId _tileId;
             const float _scale;

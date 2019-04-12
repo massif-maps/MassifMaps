@@ -13,6 +13,7 @@
 #include "PoolAllocator.h"
 #include "VertexArray.h"
 
+#include <cstdint>
 #include <memory>
 #include <set>
 #include <map>
@@ -33,12 +34,12 @@ namespace carto { namespace vt {
     private:
         using TileNeighbours = std::array<std::vector<TileId>, 4>; // left, right, up, down
         
-        constexpr static int RESERVED_VERTICES = 8192;
+        constexpr static unsigned int RESERVED_VERTICES = 8192;
 
-        void buildTileGeometry(const TileId& tileId, const std::array<std::vector<TileId>, 4>& vertexIds, VertexArray<cglib::vec2<float>>& coords2D, VertexArray<cglib::vec3<float>>& coords3D, VertexArray<cglib::vec2<float>>& texCoords, VertexArray<cglib::vec3<float>>& normals, VertexArray<unsigned int>& indices) const;
-        void buildPoleGeometry(int poleZ, const std::vector<TileId>& vertexIds, VertexArray<cglib::vec2<float>>& coords2D, VertexArray<cglib::vec3<float>>& coords3D, VertexArray<cglib::vec2<float>>& texCoords, VertexArray<cglib::vec3<float>>& normals, VertexArray<unsigned int>& indices) const;
+        void buildTileGeometry(const TileId& tileId, const std::array<std::vector<TileId>, 4>& vertexIds, VertexArray<cglib::vec2<float>>& coords2D, VertexArray<cglib::vec3<float>>& coords3D, VertexArray<cglib::vec2<float>>& texCoords, VertexArray<cglib::vec3<float>>& normals, VertexArray<std::size_t>& indices) const;
+        void buildPoleGeometry(int poleZ, const std::vector<TileId>& vertexIds, VertexArray<cglib::vec2<float>>& coords2D, VertexArray<cglib::vec3<float>>& coords3D, VertexArray<cglib::vec2<float>>& texCoords, VertexArray<cglib::vec3<float>>& normals, VertexArray<std::size_t>& indices) const;
 
-        void packGeometry(const VertexArray<cglib::vec3<float>>& coords, const VertexArray<cglib::vec2<float>>& texCoords, const VertexArray<cglib::vec3<float>>& normals, const VertexArray<unsigned int>& indices, std::vector<std::shared_ptr<TileSurface>>& tileSurfaces) const;
+        void packGeometry(const VertexArray<cglib::vec3<float>>& coords, const VertexArray<cglib::vec2<float>>& texCoords, const VertexArray<cglib::vec3<float>>& normals, const VertexArray<std::size_t>& indices, std::vector<std::shared_ptr<TileSurface>>& tileSurfaces) const;
 
         static std::vector<TileId> tesselateTile(const TileId& baseTileId, const std::vector<TileId>& tileIds, bool xCoord);
 

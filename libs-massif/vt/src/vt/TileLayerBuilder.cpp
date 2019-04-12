@@ -97,7 +97,7 @@ namespace carto { namespace vt {
             if (glyph) {
                 pen = -cglib::vec2<float>(glyph->width, glyph->height) * 0.5f;
             }
-            tesselateGlyph(vertex, static_cast<char>(styleIndex), pen * style.image->scale, cglib::vec2<float>(glyph->width, glyph->height) * style.image->scale, glyph);
+            tesselateGlyph(vertex, static_cast<std::int8_t>(styleIndex), pen * style.image->scale, cglib::vec2<float>(glyph->width, glyph->height) * style.image->scale, glyph);
             _ids.fill(id, _indices.size() - i0);
         } while (generator(id, vertex));
     }
@@ -179,7 +179,7 @@ namespace carto { namespace vt {
                     }
                     else {
                         cglib::vec2<float> offset(glyph.offset(0), metrics.ascent + metrics.descent - glyph.size(1) - glyph.offset(1));
-                        tesselateGlyph(vertex, static_cast<char>(pass == 0 ? haloStyleIndex : styleIndex), pen + offset, glyph.size, &glyph.baseGlyph);
+                        tesselateGlyph(vertex, static_cast<std::int8_t>(pass == 0 ? haloStyleIndex : styleIndex), pen + offset, glyph.size, &glyph.baseGlyph);
                     }
 
                     pen += glyph.advance;
@@ -228,7 +228,7 @@ namespace carto { namespace vt {
         do {
             std::size_t i0 = _indices.size();
             _binormals.fill(cglib::vec2<float>(0, 0), _coords.size() - _binormals.size()); // needed if previously only polygons were used
-            tesselateLine(vertices, static_cast<char>(styleIndex), stroke, style);
+            tesselateLine(vertices, static_cast<std::int8_t>(styleIndex), stroke, style);
             _ids.fill(id, _indices.size() - i0);
         } while (generator(id, vertices));
     }
@@ -269,7 +269,7 @@ namespace carto { namespace vt {
 
         do {
             std::size_t i0 = _ids.size();
-            tesselatePolygon(verticesList, static_cast<char>(styleIndex), style);
+            tesselatePolygon(verticesList, static_cast<std::int8_t>(styleIndex), style);
             _ids.fill(id, _indices.size() - i0);
             if (type == TileGeometry::Type::LINE) {
                 _binormals.fill(cglib::vec2<float>(0, 0), _coords.size() - _binormals.size()); // use zero binormals if using 'lines'
@@ -306,7 +306,7 @@ namespace carto { namespace vt {
 
         do {
             std::size_t i0 = _ids.size();
-            tesselatePolygon3D(verticesList, minHeight, maxHeight, static_cast<char>(styleIndex), style);
+            tesselatePolygon3D(verticesList, minHeight, maxHeight, static_cast<std::int8_t>(styleIndex), style);
             _ids.fill(id, _indices.size() - i0);
         } while (generator(id, verticesList));
     }
@@ -542,9 +542,9 @@ namespace carto { namespace vt {
         }
 
         // Compress attributes
-        VertexArray<cglib::vec4<char>> attribs;
+        VertexArray<cglib::vec4<std::int8_t>> attribs;
         attribs.copy(_attribs, 0, _attribs.size());
-        if (std::all_of(attribs.begin(), attribs.end(), [](const cglib::vec4<char>& attrib) { return attrib == cglib::vec4<char>(0, 0, 0, 0); })) {
+        if (std::all_of(attribs.begin(), attribs.end(), [](const cglib::vec4<std::int8_t>& attrib) { return attrib == cglib::vec4<std::int8_t>(0, 0, 0, 0); })) {
             attribs.clear();
         }
 
@@ -564,7 +564,7 @@ namespace carto { namespace vt {
         packGeometry(_builderParameters.type, dimensions, calculateScale(coords), calculateScale(binormals), calculateScale(texCoords), calculateScale(heights), coords, texCoords, normals, binormals, heights, attribs, _indices, _ids, styleParameters, geometryList);
     }
 
-    void TileLayerBuilder::packGeometry(TileGeometry::Type type, int dimensions, float coordScale, float binormalScale, float texCoordScale, float heightScale, const VertexArray<cglib::vec3<float>>& coords, const VertexArray<cglib::vec2<float>>& texCoords, const VertexArray<cglib::vec3<float>>& normals, const VertexArray<cglib::vec3<float>>& binormals, const VertexArray<float>& heights, const VertexArray<cglib::vec4<char>>& attribs, const VertexArray<unsigned int>& indices, const VertexArray<long long>& ids, const TileGeometry::StyleParameters& styleParameters, std::vector<std::shared_ptr<TileGeometry>>& geometryList) const {
+    void TileLayerBuilder::packGeometry(TileGeometry::Type type, int dimensions, float coordScale, float binormalScale, float texCoordScale, float heightScale, const VertexArray<cglib::vec3<float>>& coords, const VertexArray<cglib::vec2<float>>& texCoords, const VertexArray<cglib::vec3<float>>& normals, const VertexArray<cglib::vec3<float>>& binormals, const VertexArray<float>& heights, const VertexArray<cglib::vec4<std::int8_t>>& attribs, const VertexArray<std::size_t>& indices, const VertexArray<long long>& ids, const TileGeometry::StyleParameters& styleParameters, std::vector<std::shared_ptr<TileGeometry>>& geometryList) const {
         if (indices.empty()) {
             return;
         }
@@ -574,20 +574,20 @@ namespace carto { namespace vt {
             for (std::size_t offset = 0; offset < indices.size(); ) {
                 std::size_t count = std::min(std::size_t(65535), indices.size() - offset);
 
-                std::vector<unsigned int> indexTable(indices.size(), 65536);
+                std::vector<std::size_t> indexTable(indices.size(), 65536);
                 VertexArray<cglib::vec3<float>> remappedCoords;
                 VertexArray<cglib::vec2<float>> remappedTexCoords;
                 VertexArray<cglib::vec3<float>> remappedNormals;
                 VertexArray<cglib::vec3<float>> remappedBinormals;
                 VertexArray<float> remappedHeights;
-                VertexArray<cglib::vec4<char>> remappedAttribs;
-                VertexArray<unsigned int> remappedIndices;
+                VertexArray<cglib::vec4<std::int8_t>> remappedAttribs;
+                VertexArray<std::uint32_t> remappedIndices;
                 VertexArray<long long> remappedIds;
                 for (std::size_t i = 0; i < count; i++) {
-                    unsigned int index = indices[offset + i];
-                    unsigned int remappedIndex = indexTable[index];
+                    std::size_t index = indices[offset + i];
+                    std::size_t remappedIndex = indexTable[index];
                     if (remappedIndex == 65536) {
-                        remappedIndex = static_cast<unsigned int>(remappedCoords.size());
+                        remappedIndex = remappedCoords.size();
                         indexTable[index] = remappedIndex;
 
                         remappedCoords.append(coords[index]);
@@ -623,34 +623,34 @@ namespace carto { namespace vt {
         TileGeometry::VertexGeometryLayoutParameters vertexGeomLayoutParams;
         vertexGeomLayoutParams.dimensions = dimensions;
         vertexGeomLayoutParams.coordOffset = vertexGeomLayoutParams.vertexSize;
-        vertexGeomLayoutParams.vertexSize += dimensions * sizeof(short);
+        vertexGeomLayoutParams.vertexSize += dimensions * sizeof(std::int16_t);
         vertexGeomLayoutParams.vertexSize = (vertexGeomLayoutParams.vertexSize + 3) & ~3;
 
         if (!attribs.empty()) {
             vertexGeomLayoutParams.attribsOffset = vertexGeomLayoutParams.vertexSize;
-            vertexGeomLayoutParams.vertexSize += 4 * sizeof(char);
+            vertexGeomLayoutParams.vertexSize += 4 * sizeof(std::int8_t);
         }
 
         if (!texCoords.empty()) {
             vertexGeomLayoutParams.texCoordOffset = vertexGeomLayoutParams.vertexSize;
-            vertexGeomLayoutParams.vertexSize += 2 * sizeof(short);
+            vertexGeomLayoutParams.vertexSize += 2 * sizeof(std::int16_t);
         }
 
         if (!normals.empty()) {
             vertexGeomLayoutParams.normalOffset = vertexGeomLayoutParams.vertexSize;
-            vertexGeomLayoutParams.vertexSize += dimensions * sizeof(short);
+            vertexGeomLayoutParams.vertexSize += dimensions * sizeof(std::int16_t);
             vertexGeomLayoutParams.vertexSize = (vertexGeomLayoutParams.vertexSize + 3) & ~3;
         }
 
         if (!binormals.empty()) {
             vertexGeomLayoutParams.binormalOffset = vertexGeomLayoutParams.vertexSize;
-            vertexGeomLayoutParams.vertexSize += dimensions * sizeof(short);
+            vertexGeomLayoutParams.vertexSize += dimensions * sizeof(std::int16_t);
             vertexGeomLayoutParams.vertexSize = (vertexGeomLayoutParams.vertexSize + 3) & ~3;
         }
 
         if (!heights.empty()) {
             vertexGeomLayoutParams.heightOffset = vertexGeomLayoutParams.vertexSize;
-            vertexGeomLayoutParams.vertexSize += sizeof(short);
+            vertexGeomLayoutParams.vertexSize += sizeof(std::int16_t);
             vertexGeomLayoutParams.vertexSize = (vertexGeomLayoutParams.vertexSize + 3) & ~3;
         }
 
@@ -660,20 +660,20 @@ namespace carto { namespace vt {
         vertexGeomLayoutParams.heightScale = heightScale;
 
         // Interleave, compress actual geometry data
-        VertexArray<unsigned char> compressedVertexGeometry;
+        VertexArray<std::uint8_t> compressedVertexGeometry;
         compressedVertexGeometry.fill(0, coords.size() * vertexGeomLayoutParams.vertexSize);
         for (std::size_t i = 0; i < coords.size(); i++) {
-            unsigned char* baseCompressedPtr = &compressedVertexGeometry[i * vertexGeomLayoutParams.vertexSize];
+            std::uint8_t* baseCompressedPtr = &compressedVertexGeometry[i * vertexGeomLayoutParams.vertexSize];
 
             const cglib::vec3<float>& coord = coords[i];
-            short* compressedCoordPtr = reinterpret_cast<short*>(baseCompressedPtr + vertexGeomLayoutParams.coordOffset);
+            std::int16_t* compressedCoordPtr = reinterpret_cast<std::int16_t*>(baseCompressedPtr + vertexGeomLayoutParams.coordOffset);
             for (int j = 0; j < dimensions; j++) {
-                compressedCoordPtr[j] = static_cast<short>(coord(j) * coordScale);
+                compressedCoordPtr[j] = static_cast<std::int16_t>(coord(j) * coordScale);
             }
 
             if (!attribs.empty()) {
-                const cglib::vec4<char>& attrib = attribs[i];
-                char* compressedAttribsPtr = reinterpret_cast<char*>(baseCompressedPtr + vertexGeomLayoutParams.attribsOffset);
+                const cglib::vec4<std::int8_t>& attrib = attribs[i];
+                std::int8_t* compressedAttribsPtr = reinterpret_cast<std::int8_t*>(baseCompressedPtr + vertexGeomLayoutParams.attribsOffset);
                 compressedAttribsPtr[0] = attrib(0);
                 compressedAttribsPtr[1] = attrib(1);
                 compressedAttribsPtr[2] = attrib(2);
@@ -682,52 +682,52 @@ namespace carto { namespace vt {
 
             if (!texCoords.empty()) {
                 const cglib::vec2<float>& texCoord = texCoords[i];
-                short* compressedTexCoordPtr = reinterpret_cast<short*>(baseCompressedPtr + vertexGeomLayoutParams.texCoordOffset);
-                compressedTexCoordPtr[0] = static_cast<short>(texCoord(0) * texCoordScale);
-                compressedTexCoordPtr[1] = static_cast<short>(texCoord(1) * texCoordScale);
+                std::int16_t* compressedTexCoordPtr = reinterpret_cast<std::int16_t*>(baseCompressedPtr + vertexGeomLayoutParams.texCoordOffset);
+                compressedTexCoordPtr[0] = static_cast<std::int16_t>(texCoord(0) * texCoordScale);
+                compressedTexCoordPtr[1] = static_cast<std::int16_t>(texCoord(1) * texCoordScale);
             }
 
             if (!normals.empty()) {
                 const cglib::vec3<float>& normal = normals[i];
-                short* compressedNormalPtr = reinterpret_cast<short*>(baseCompressedPtr + vertexGeomLayoutParams.normalOffset);
+                std::int16_t* compressedNormalPtr = reinterpret_cast<std::int16_t*>(baseCompressedPtr + vertexGeomLayoutParams.normalOffset);
                 for (int j = 0; j < dimensions; j++) {
-                    compressedNormalPtr[j] = static_cast<short>(normal(j) * 32767.0f); // assume strict range -1..1
+                    compressedNormalPtr[j] = static_cast<std::int16_t>(normal(j) * 32767.0f); // assume strict range -1..1
                 }
             }
 
             if (!binormals.empty()) {
                 const cglib::vec3<float>& binormal = binormals[i];
-                short* compressedBinormalPtr = reinterpret_cast<short*>(baseCompressedPtr + vertexGeomLayoutParams.binormalOffset);
+                std::int16_t* compressedBinormalPtr = reinterpret_cast<std::int16_t*>(baseCompressedPtr + vertexGeomLayoutParams.binormalOffset);
                 for (int j = 0; j < dimensions; j++) {
-                    compressedBinormalPtr[j] = static_cast<short>(binormal(j) * binormalScale);
+                    compressedBinormalPtr[j] = static_cast<std::int16_t>(binormal(j) * binormalScale);
                 }
             }
 
             if (!heights.empty()) {
                 float height = heights[i];
-                short* compressedHeightPtr = reinterpret_cast<short*>(baseCompressedPtr + vertexGeomLayoutParams.heightOffset);
-                compressedHeightPtr[0] = static_cast<short>(height * heightScale);
+                std::int16_t* compressedHeightPtr = reinterpret_cast<std::int16_t*>(baseCompressedPtr + vertexGeomLayoutParams.heightOffset);
+                compressedHeightPtr[0] = static_cast<std::int16_t>(height * heightScale);
             }
         }
 
         // Compress indices
-        VertexArray<unsigned short> compressedIndices;
+        VertexArray<std::uint16_t> compressedIndices;
         compressedIndices.reserve(indices.size());
         for (std::size_t i = 0; i < indices.size(); i++) {
-            compressedIndices.append(static_cast<unsigned short>(indices[i]));
+            compressedIndices.append(static_cast<std::uint16_t>(indices[i]));
         }
 
         // Compress ids
-        std::vector<std::pair<unsigned int, long long>> compressedIds;
+        std::vector<std::pair<std::size_t, long long>> compressedIds;
         if (!ids.empty()) {
             std::size_t offset = 0;
             for (std::size_t i = 1; i < ids.size(); i++) {
                 if (ids[i] != ids[offset]) {
-                    compressedIds.emplace_back(static_cast<unsigned int>(i - offset), ids[offset]);
+                    compressedIds.emplace_back(i - offset, ids[offset]);
                     offset = i;
                 }
             }
-            compressedIds.emplace_back(static_cast<unsigned int>(ids.size() - offset), ids[offset]);
+            compressedIds.emplace_back(ids.size() - offset, ids[offset]);
             compressedIds.shrink_to_fit();
         }
 
@@ -736,10 +736,10 @@ namespace carto { namespace vt {
         geometryList.push_back(std::move(geometry));
     }
 
-    bool TileLayerBuilder::tesselateGlyph(const cglib::vec2<float>& point, char styleIndex, const cglib::vec2<float>& pen, const cglib::vec2<float>& size, const GlyphMap::Glyph* glyph) {
+    bool TileLayerBuilder::tesselateGlyph(const cglib::vec2<float>& point, std::int8_t styleIndex, const cglib::vec2<float>& pen, const cglib::vec2<float>& size, const GlyphMap::Glyph* glyph) {
         float u0 = 0, v0 = 0, u1 = 0, v1 = 0;
         cglib::vec2<float> p0 = pen, p3 = pen + size;
-        cglib::vec4<char> attrib(styleIndex, 0, 0, 0);
+        cglib::vec4<std::int8_t> attrib(styleIndex, 0, 0, 0);
         if (glyph) {
             u0 = static_cast<float>(glyph->x); // NOTE: u,v coordinates will be normalized when the layer is built
             v0 = static_cast<float>(glyph->y);
@@ -749,7 +749,7 @@ namespace carto { namespace vt {
         }
 
         if (_clipBox.inside(point)) {
-            unsigned int i0 = static_cast<unsigned int>(_coords.size());
+            std::size_t i0 = _coords.size();
             _indices.append(i0 + 0, i0 + 2, i0 + 1);
             _indices.append(i0 + 0, i0 + 3, i0 + 2);
 
@@ -762,7 +762,7 @@ namespace carto { namespace vt {
         return true;
     }
 
-    bool TileLayerBuilder::tesselatePolygon(const std::vector<std::vector<cglib::vec2<float>>>& pointsList, char styleIndex, const PolygonStyle& style) {
+    bool TileLayerBuilder::tesselatePolygon(const std::vector<std::vector<cglib::vec2<float>>>& pointsList, std::int8_t styleIndex, const PolygonStyle& style) {
         if (!_tessPoolAllocator) {
             _tessPoolAllocator = std::unique_ptr<PoolAllocator>(new PoolAllocator);
         }
@@ -801,7 +801,7 @@ namespace carto { namespace vt {
             dv_dy = _tileSize / style.pattern->heightScale;
         }
 
-        unsigned int offset = static_cast<unsigned int>(_coords.size());
+        std::size_t offset = _coords.size();
         for (int i = 0; i < vertexCount; i++) {
             cglib::vec2<float> p(static_cast<float>(coords[i * 2 + 0]), static_cast<float>(coords[i * 2 + 1]));
             cglib::vec2<float> uv((p(0) + 0.5f) * du_dx, (p(1) + 0.5f) * dv_dy);
@@ -812,31 +812,28 @@ namespace carto { namespace vt {
 
         cglib::bbox2<float> clipBox(cglib::vec2<float>(0.0f, 0.0f), cglib::vec2<float>(1.0f, 1.0f));
         for (int i = 0; i < elementCount * 3; i += 3) {
-            unsigned int i0 = elements[i + 0];
-            unsigned int i1 = elements[i + 1];
-            unsigned int i2 = elements[i + 2];
+            int i0 = elements[i + 0];
+            int i1 = elements[i + 1];
+            int i2 = elements[i + 2];
             if (i0 == TESS_UNDEF || i1 == TESS_UNDEF || i2 == TESS_UNDEF) {
                 continue;
             }
-            i0 += offset;
-            i1 += offset;
-            i2 += offset;
 
-            cglib::bbox2<float> bounds(_coords[i0]);
-            bounds.add(_coords[i1]);
-            bounds.add(_coords[i2]);
+            cglib::bbox2<float> bounds(_coords[i0 + offset]);
+            bounds.add(_coords[i1 + offset]);
+            bounds.add(_coords[i2 + offset]);
             if (clipBox.inside(bounds)) {
-                std::array<unsigned int, 3> srcIndices = { { i0, i2, i1 } };
+                std::array<std::size_t, 3> srcIndices = { { i0 + offset, i2 + offset, i1 + offset } };
                 _transformer->tesselateTriangles(srcIndices.data(), srcIndices.size(), _coords, _texCoords, _indices);
             }
         }
 
-        _attribs.fill(cglib::vec4<char>(styleIndex, 0, 0, 0), _coords.size() - offset);
+        _attribs.fill(cglib::vec4<std::int8_t>(styleIndex, 0, 0, 0), _coords.size() - offset);
 
         return true;
     }
 
-    bool TileLayerBuilder::tesselatePolygon3D(const std::vector<std::vector<cglib::vec2<float>>>& pointsList, float minHeight, float maxHeight, char styleIndex, const Polygon3DStyle& style) {
+    bool TileLayerBuilder::tesselatePolygon3D(const std::vector<std::vector<cglib::vec2<float>>>& pointsList, float minHeight, float maxHeight, std::int8_t styleIndex, const Polygon3DStyle& style) {
         cglib::bbox2<float> clipBox(cglib::vec2<float>(0.0f, 0.0f), cglib::vec2<float>(1.0f, 1.0f));
         if (minHeight != maxHeight) {
             for (const std::vector<cglib::vec2<float>>& points : pointsList) {
@@ -848,20 +845,20 @@ namespace carto { namespace vt {
                         cglib::vec2<float> tangent(cglib::unit(points[i] - points[j]));
                         cglib::vec2<float> binormal = cglib::vec2<float>(tangent(1), -tangent(0));
 
-                        unsigned int i0 = static_cast<unsigned int>(_coords.size());
+                        std::size_t i0 = _coords.size();
                         _coords.append(points[i], points[j], points[j]);
                         _texCoords.append(points[i], points[j], points[j]);
                         _binormals.append(binormal, binormal, binormal);
                         _heights.append(minHeight, minHeight, maxHeight);
-                        _attribs.append(cglib::vec4<char>(styleIndex, 1, 0, 0), cglib::vec4<char>(styleIndex, 1, 0, 0), cglib::vec4<char>(styleIndex, 1, 1, 0));
+                        _attribs.append(cglib::vec4<std::int8_t>(styleIndex, 1, 0, 0), cglib::vec4<std::int8_t>(styleIndex, 1, 0, 0), cglib::vec4<std::int8_t>(styleIndex, 1, 1, 0));
                         _indices.append(i0 + 0, i0 + 1, i0 + 2);
 
-                        unsigned int i1 = static_cast<unsigned int>(_coords.size());
+                        std::size_t i1 = _coords.size();
                         _coords.append(points[j], points[i], points[i]);
                         _texCoords.append(points[j], points[i], points[i]);
                         _binormals.append(binormal, binormal, binormal);
                         _heights.append(maxHeight, maxHeight, minHeight);
-                        _attribs.append(cglib::vec4<char>(styleIndex, 1, 1, 0), cglib::vec4<char>(styleIndex, 1, 1, 0), cglib::vec4<char>(styleIndex, 1, 0, 0));
+                        _attribs.append(cglib::vec4<std::int8_t>(styleIndex, 1, 1, 0), cglib::vec4<std::int8_t>(styleIndex, 1, 1, 0), cglib::vec4<std::int8_t>(styleIndex, 1, 0, 0));
                         _indices.append(i1 + 0, i1 + 1, i1 + 2);
                     }
 
@@ -902,7 +899,7 @@ namespace carto { namespace vt {
         int vertexCount = tessGetVertexCount(tess.get());
         int elementCount = tessGetElementCount(tess.get());
 
-        unsigned int offset = static_cast<unsigned int>(_coords.size());
+        std::size_t offset = _coords.size();
         for (int i = 0; i < vertexCount; i++) {
             cglib::vec2<float> p(static_cast<float>(coords[i * 2 + 0]), static_cast<float>(coords[i * 2 + 1]));
 
@@ -911,33 +908,30 @@ namespace carto { namespace vt {
         }
 
         for (int i = 0; i < elementCount * 3; i += 3) {
-            unsigned int i0 = elements[i + 0];
-            unsigned int i1 = elements[i + 1];
-            unsigned int i2 = elements[i + 2];
+            int i0 = elements[i + 0];
+            int i1 = elements[i + 1];
+            int i2 = elements[i + 2];
             if (i0 == TESS_UNDEF || i1 == TESS_UNDEF || i2 == TESS_UNDEF) {
                 continue;
             }
-            i0 += offset;
-            i1 += offset;
-            i2 += offset;
 
-            cglib::bbox2<float> bounds(_coords[i0]);
-            bounds.add(_coords[i1]);
-            bounds.add(_coords[i2]);
+            cglib::bbox2<float> bounds(_coords[i0 + offset]);
+            bounds.add(_coords[i1 + offset]);
+            bounds.add(_coords[i2 + offset]);
             if (clipBox.inside(bounds)) {
-                std::array<unsigned int, 3> srcIndices = { { i0, i2, i1 } };
+                std::array<std::size_t, 3> srcIndices = { { i0 + offset, i2 + offset, i1 + offset } };
                 _transformer->tesselateTriangles(srcIndices.data(), srcIndices.size(), _coords, _texCoords, _indices);
             }
         }
 
         _binormals.fill(cglib::vec2<float>(0, 0), _coords.size() - offset);
         _heights.fill(maxHeight, _coords.size() - offset);
-        _attribs.fill(cglib::vec4<char>(styleIndex, 0, 1, 0), _coords.size() - offset);
+        _attribs.fill(cglib::vec4<std::int8_t>(styleIndex, 0, 1, 0), _coords.size() - offset);
 
         return true;
     }
 
-    bool TileLayerBuilder::tesselateLine(const std::vector<cglib::vec2<float>>& linePoints, char styleIndex, const StrokeMap::Stroke* stroke, const LineStyle& style) {
+    bool TileLayerBuilder::tesselateLine(const std::vector<cglib::vec2<float>>& linePoints, std::int8_t styleIndex, const StrokeMap::Stroke* stroke, const LineStyle& style) {
         if (linePoints.size() < 2) {
             return false;
         }
@@ -1005,14 +999,14 @@ namespace carto { namespace vt {
             binormal = cglib::vec2<float>(tangent(1), -tangent(0));
 
             if (endpoints) {
-                unsigned int i0 = static_cast<unsigned int>(_coords.size());
+                std::size_t i0 = _coords.size();
                 tesselateLineEndPoint(p0, u0, v0, v1, i0 + 2, i0, -tangent, binormal, styleIndex, style); // refer to the point that will be added after end point
             }
 
             _coords.append(p0, p0);
             _texCoords.append(cglib::vec2<float>(u0, v0), cglib::vec2<float>(u0, v1));
             _binormals.append(cycle ? -knotBinormal : -binormal, cycle ? knotBinormal : binormal);
-            _attribs.append(cglib::vec4<char>(styleIndex, 0, 1, 1), cglib::vec4<char>(styleIndex, 0, -1, 1));
+            _attribs.append(cglib::vec4<std::int8_t>(styleIndex, 0, 1, 1), cglib::vec4<std::int8_t>(styleIndex, 0, -1, 1));
         }
 
         while (++i < points.size()) {
@@ -1029,7 +1023,7 @@ namespace carto { namespace vt {
             tangent = cglib::unit(dp);
             binormal = cglib::vec2<float>(tangent(1), -tangent(0));
 
-            unsigned int i0 = static_cast<unsigned int>(_coords.size());
+            std::size_t i0 = _coords.size();
 
             cglib::bbox2<float> bounds(p0);
             bounds.add(_coords[i0 - 2]);
@@ -1043,12 +1037,12 @@ namespace carto { namespace vt {
                 _coords.append(p0, p0);
                 _texCoords.append(cglib::vec2<float>(u0, v0), cglib::vec2<float>(u0, v1));
                 _binormals.append(-prevBinormal, prevBinormal);
-                _attribs.append(cglib::vec4<char>(styleIndex, 0, 1, 1), cglib::vec4<char>(styleIndex, 0, -1, 1));
+                _attribs.append(cglib::vec4<std::int8_t>(styleIndex, 0, 1, 1), cglib::vec4<std::int8_t>(styleIndex, 0, -1, 1));
 
                 _coords.append(p0, p0);
                 _texCoords.append(cglib::vec2<float>(u0, v0), cglib::vec2<float>(u0, v1));
                 _binormals.append(-binormal, binormal);
-                _attribs.append(cglib::vec4<char>(styleIndex, 0, 1, 1), cglib::vec4<char>(styleIndex, 0, -1, 1));
+                _attribs.append(cglib::vec4<std::int8_t>(styleIndex, 0, 1, 1), cglib::vec4<std::int8_t>(styleIndex, 0, -1, 1));
             }
             else {
                 cglib::vec2<float> lerpedBinormal = cglib::unit(binormal + prevBinormal) * (1 / std::sqrt((1 + dot) / 2));
@@ -1056,7 +1050,7 @@ namespace carto { namespace vt {
                 _coords.append(p0, p0);
                 _texCoords.append(cglib::vec2<float>(u0, v0), cglib::vec2<float>(u0, v1));
                 _binormals.append(-lerpedBinormal, lerpedBinormal);
-                _attribs.append(cglib::vec4<char>(styleIndex, 0, 1, 1), cglib::vec4<char>(styleIndex, 0, -1, 1));
+                _attribs.append(cglib::vec4<std::int8_t>(styleIndex, 0, 1, 1), cglib::vec4<std::int8_t>(styleIndex, 0, -1, 1));
             }
         }
             
@@ -1064,7 +1058,7 @@ namespace carto { namespace vt {
             const cglib::vec2<float>& p0 = points[i - 1];
             float u0 = linePos * du_dl;
 
-            unsigned int i0 = static_cast<unsigned int>(_coords.size());
+            std::size_t i0 = _coords.size();
             
             cglib::bbox2<float> bounds(p0);
             bounds.add(_coords[i0 - 2]);
@@ -1076,22 +1070,22 @@ namespace carto { namespace vt {
             _coords.append(p0, p0);
             _texCoords.append(cglib::vec2<float>(u0, v0), cglib::vec2<float>(u0, v1));
             _binormals.append(cycle ? -knotBinormal : -binormal, cycle ? knotBinormal : binormal);
-            _attribs.append(cglib::vec4<char>(styleIndex, 0, 1, 1), cglib::vec4<char>(styleIndex, 0, -1, 1));
+            _attribs.append(cglib::vec4<std::int8_t>(styleIndex, 0, 1, 1), cglib::vec4<std::int8_t>(styleIndex, 0, -1, 1));
 
             if (endpoints) {
-                unsigned int i1 = static_cast<unsigned int>(_coords.size());
+                std::size_t i1 = _coords.size();
                 tesselateLineEndPoint(p0, u0, v0, v1, i1, i0, tangent, binormal, styleIndex, style);
             }
         }
         return true;
     }
 
-    bool TileLayerBuilder::tesselateLineEndPoint(const cglib::vec2<float>& p0, float u0, float v0, float v1, unsigned int i0, unsigned int i1, const cglib::vec2<float>& tangent, const cglib::vec2<float>& binormal, char styleIndex, const LineStyle& style) {
+    bool TileLayerBuilder::tesselateLineEndPoint(const cglib::vec2<float>& p0, float u0, float v0, float v1, std::size_t i0, std::size_t i1, const cglib::vec2<float>& tangent, const cglib::vec2<float>& binormal, std::int8_t styleIndex, const LineStyle& style) {
         if (_clipBox.inside(p0)) {
             _coords.append(p0, p0);
             _texCoords.append(cglib::vec2<float>(u0, v0), cglib::vec2<float>(u0, v1));
             _binormals.append(tangent - binormal, tangent + binormal);
-            _attribs.append(cglib::vec4<char>(styleIndex, 1, 1, 1), cglib::vec4<char>(styleIndex, 1, -1, 1));
+            _attribs.append(cglib::vec4<std::int8_t>(styleIndex, 1, 1, 1), cglib::vec4<std::int8_t>(styleIndex, 1, -1, 1));
 
             _indices.append(i0 + 1, i1 + 0, i0 + 0);
             _indices.append(i0 + 1, i1 + 1, i1 + 0);

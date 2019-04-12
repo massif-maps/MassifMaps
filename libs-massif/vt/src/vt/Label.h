@@ -16,6 +16,7 @@
 #include "VertexArray.h"
 #include "Styles.h"
 
+#include <cstdint>
 #include <memory>
 #include <array>
 #include <list>
@@ -60,10 +61,12 @@ namespace carto { namespace vt {
         bool calculateCenter(cglib::vec3<double>& pos) const;
         bool calculateEnvelope(const ViewState& viewState, std::array<cglib::vec3<float>, 4>& envelope) const { return calculateEnvelope((_style->sizeFunc)(viewState), viewState, envelope); }
         bool calculateEnvelope(float size, const ViewState& viewState, std::array<cglib::vec3<float>, 4>& envelope) const;
-        bool calculateVertexData(const ViewState& viewState, int styleIndex, int haloStyleIndex, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<short>>& texCoords, VertexArray<cglib::vec4<char>>& attribs, VertexArray<unsigned short>& indices) const { return calculateVertexData((_style->sizeFunc)(viewState), viewState, styleIndex, haloStyleIndex, vertices, normals, texCoords, attribs, indices); }
-        bool calculateVertexData(float size, const ViewState& viewState, int styleIndex, int haloStyleIndex, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<short>>& texCoords, VertexArray<cglib::vec4<char>>& attribs, VertexArray<unsigned short>& indices) const;
+        bool calculateVertexData(const ViewState& viewState, int styleIndex, int haloStyleIndex, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const { return calculateVertexData((_style->sizeFunc)(viewState), viewState, styleIndex, haloStyleIndex, vertices, normals, texCoords, attribs, indices); }
+        bool calculateVertexData(float size, const ViewState& viewState, int styleIndex, int haloStyleIndex, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const;
 
     private:
+        constexpr static unsigned int MAX_LABEL_VERTICES = 16384;
+
         constexpr static float EXTRA_PLACEMENT_PIXELS = 30.0f; // extra visible pixels required for placement
         constexpr static float MAX_SINGLE_SEGMENT_ANGLE = 1.0472f; // maximum angle between consecutive segments, in radians
         constexpr static float MAX_SUMMED_SEGMENT_ANGLE = 2.0944f; // maximum sum of segment angles, in radians
@@ -125,8 +128,8 @@ namespace carto { namespace vt {
         };
         
         void setupCoordinateSystem(const ViewState& viewState, const std::shared_ptr<const Placement>& placement, cglib::vec3<float>& origin, cglib::vec3<float>& xAxis, cglib::vec3<float>& yAxis) const;
-        void buildPointVertexData(VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec2<short>>& texCoords, VertexArray<cglib::vec4<char>>& attribs, VertexArray<unsigned short>& indices) const;
-        bool buildLineVertexData(const std::shared_ptr<const Placement>& placement, float scale, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec2<short>>& texCoords, VertexArray<cglib::vec4<char>>& attribs, VertexArray<unsigned short>& indices) const;
+        void buildPointVertexData(VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const;
+        bool buildLineVertexData(const std::shared_ptr<const Placement>& placement, float scale, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const;
 
         std::shared_ptr<const Placement> getPlacement(const ViewState& viewState) const;
         std::shared_ptr<const Placement> reversePlacement(const std::shared_ptr<const Placement>& placement) const;
@@ -160,9 +163,9 @@ namespace carto { namespace vt {
         mutable float _cachedScale = 0;
         mutable std::shared_ptr<const Placement> _cachedPlacement;
         mutable VertexArray<cglib::vec3<float>> _cachedVertices;
-        mutable VertexArray<cglib::vec2<short>> _cachedTexCoords;
-        mutable VertexArray<cglib::vec4<char>> _cachedAttribs;
-        mutable VertexArray<unsigned short> _cachedIndices;
+        mutable VertexArray<cglib::vec2<std::int16_t>> _cachedTexCoords;
+        mutable VertexArray<cglib::vec4<std::int8_t>> _cachedAttribs;
+        mutable VertexArray<std::uint16_t> _cachedIndices;
     };
 } }
 

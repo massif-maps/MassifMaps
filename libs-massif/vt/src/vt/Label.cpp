@@ -186,7 +186,7 @@ namespace carto { namespace vt {
         return valid;
     }
 
-    bool Label::calculateVertexData(float size, const ViewState& viewState, int styleIndex, int haloStyleIndex, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<short>>& texCoords, VertexArray<cglib::vec4<char>>& attribs, VertexArray<unsigned short>& indices) const {
+    bool Label::calculateVertexData(float size, const ViewState& viewState, int styleIndex, int haloStyleIndex, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const {
         std::shared_ptr<const Placement> placement = getPlacement(viewState);
         float scale = size * viewState.zoomScale * _style->scale;
         if (!placement || scale <= 0) {
@@ -206,6 +206,9 @@ namespace carto { namespace vt {
                 _cachedScale = scale;
                 _cachedPlacement = placement;
             }
+            if (_cachedVertices.size() > MAX_LABEL_VERTICES) {
+                return false;
+            }
 
             cglib::vec3<float> origin = cglib::vec3<float>::convert(placement->pos - viewState.origin);
             for (const cglib::vec3<float>& vertex : _cachedVertices) {
@@ -224,6 +227,9 @@ namespace carto { namespace vt {
                 buildPointVertexData(_cachedVertices, _cachedTexCoords, _cachedAttribs, _cachedIndices);
                 _cachedValid = true;
             }
+            if (_cachedVertices.size() > MAX_LABEL_VERTICES) {
+                return false;
+            }
 
             cglib::vec3<float> origin, xAxis, yAxis;
             setupCoordinateSystem(viewState, placement, origin, xAxis, yAxis);
@@ -238,11 +244,11 @@ namespace carto { namespace vt {
         indices.copy(_cachedIndices, 0, _cachedIndices.size());
 
         if (haloStyleIndex >= 0) {
-            for (cglib::vec4<char>* it = attribs.end() - _cachedAttribs.size(); it != attribs.end(); it++) {
-                *it = cglib::vec4<char>(static_cast<char>(haloStyleIndex), std::min((char)0, (*it)(1)), static_cast<char>(_opacity * 127.0f), 0);
+            for (cglib::vec4<std::int8_t>* it = attribs.end() - _cachedAttribs.size(); it != attribs.end(); it++) {
+                *it = cglib::vec4<std::int8_t>(static_cast<std::int8_t>(haloStyleIndex), std::min((std::int8_t)0, (*it)(1)), static_cast<std::int8_t>(_opacity * 127.0f), 0);
             }
-            for (unsigned short* it = indices.end() - _cachedIndices.size(); it != indices.end(); it++) {
-                *it += static_cast<unsigned int>(vertices.size() - _cachedVertices.size());
+            for (std::uint16_t* it = indices.end() - _cachedIndices.size(); it != indices.end(); it++) {
+                *it += static_cast<std::uint16_t>(vertices.size() - _cachedVertices.size());
             }
 
             vertices.copy(vertices, vertices.size() - _cachedVertices.size(), _cachedVertices.size());
@@ -252,17 +258,17 @@ namespace carto { namespace vt {
             indices.copy(_cachedIndices, 0, _cachedIndices.size());
         }
 
-        for (cglib::vec4<char>* it = attribs.end() - _cachedAttribs.size(); it != attribs.end(); it++) {
-            *it = cglib::vec4<char>(static_cast<int>(styleIndex), (*it)(1), static_cast<char>(_opacity * 127.0f), 0);
+        for (cglib::vec4<std::int8_t>* it = attribs.end() - _cachedAttribs.size(); it != attribs.end(); it++) {
+            *it = cglib::vec4<std::int8_t>(static_cast<int>(styleIndex), (*it)(1), static_cast<std::int8_t>(_opacity * 127.0f), 0);
         }
-        for (unsigned short* it = indices.end() - _cachedIndices.size(); it != indices.end(); it++) {
-            *it += static_cast<unsigned int>(vertices.size() - _cachedVertices.size());
+        for (std::uint16_t* it = indices.end() - _cachedIndices.size(); it != indices.end(); it++) {
+            *it += static_cast<std::uint16_t>(vertices.size() - _cachedVertices.size());
         }
 
         return valid;
     }
 
-    void Label::buildPointVertexData(VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec2<short>>& texCoords, VertexArray<cglib::vec4<char>>& attribs, VertexArray<unsigned short>& indices) const {
+    void Label::buildPointVertexData(VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const {
         cglib::vec2<float> pen(0, 0);
         for (const Font::Glyph& glyph : _glyphs) {
             // If carriage return, reposition pen and state to the initial position
@@ -270,15 +276,15 @@ namespace carto { namespace vt {
                 pen = cglib::vec2<float>(0, 0);
             }
             else if (glyph.codePoint != Font::SPACE_CODEPOINT) {
-                unsigned short i0 = static_cast<unsigned short>(vertices.size());
+                std::uint16_t i0 = static_cast<std::uint16_t>(vertices.size());
                 indices.append(i0 + 0, i0 + 1, i0 + 2);
                 indices.append(i0 + 0, i0 + 2, i0 + 3);
 
-                short u0 = static_cast<short>(glyph.baseGlyph.x), u1 = static_cast<short>(glyph.baseGlyph.x + glyph.baseGlyph.width);
-                short v0 = static_cast<short>(glyph.baseGlyph.y), v1 = static_cast<short>(glyph.baseGlyph.y + glyph.baseGlyph.height);
-                texCoords.append(cglib::vec2<short>(u0, v1), cglib::vec2<short>(u1, v1), cglib::vec2<short>(u1, v0), cglib::vec2<short>(u0, v0));
+                std::int16_t u0 = static_cast<std::int16_t>(glyph.baseGlyph.x), u1 = static_cast<std::int16_t>(glyph.baseGlyph.x + glyph.baseGlyph.width);
+                std::int16_t v0 = static_cast<std::int16_t>(glyph.baseGlyph.y), v1 = static_cast<std::int16_t>(glyph.baseGlyph.y + glyph.baseGlyph.height);
+                texCoords.append(cglib::vec2<std::int16_t>(u0, v1), cglib::vec2<std::int16_t>(u1, v1), cglib::vec2<std::int16_t>(u1, v0), cglib::vec2<std::int16_t>(u0, v0));
 
-                cglib::vec4<char> attrib(0, glyph.baseGlyph.sdfMode ? -1 : 1, 0, 0);
+                cglib::vec4<std::int8_t> attrib(0, glyph.baseGlyph.sdfMode ? -1 : 1, 0, 0);
                 attribs.append(attrib, attrib, attrib, attrib);
 
                 if (_style->transform) {
@@ -300,7 +306,7 @@ namespace carto { namespace vt {
         }
     }
 
-    bool Label::buildLineVertexData(const std::shared_ptr<const Placement>& placement, float scale, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec2<short>>& texCoords, VertexArray<cglib::vec4<char>>& attribs, VertexArray<unsigned short>& indices) const {
+    bool Label::buildLineVertexData(const std::shared_ptr<const Placement>& placement, float scale, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const {
         float invScale = 1.0f / scale;
         const std::vector<Placement::Edge>& edges = placement->edges;
         std::size_t edgeIndex = placement->index;
@@ -314,15 +320,15 @@ namespace carto { namespace vt {
                 pen = cglib::vec2<float>(cglib::dot_product(-edges[edgeIndex].pos0, edges[edgeIndex].xAxis) * invScale, 0);
             }
             else if (glyph.codePoint != Font::SPACE_CODEPOINT) {
-                unsigned short i0 = static_cast<unsigned short>(vertices.size());
+                std::uint16_t i0 = static_cast<std::uint16_t>(vertices.size());
                 indices.append(i0 + 0, i0 + 1, i0 + 2);
                 indices.append(i0 + 0, i0 + 2, i0 + 3);
 
-                short u0 = static_cast<short>(glyph.baseGlyph.x), u1 = static_cast<short>(glyph.baseGlyph.x + glyph.baseGlyph.width);
-                short v0 = static_cast<short>(glyph.baseGlyph.y), v1 = static_cast<short>(glyph.baseGlyph.y + glyph.baseGlyph.height);
-                texCoords.append(cglib::vec2<short>(u0, v1), cglib::vec2<short>(u1, v1), cglib::vec2<short>(u1, v0), cglib::vec2<short>(u0, v0));
+                std::int16_t u0 = static_cast<std::int16_t>(glyph.baseGlyph.x), u1 = static_cast<std::int16_t>(glyph.baseGlyph.x + glyph.baseGlyph.width);
+                std::int16_t v0 = static_cast<std::int16_t>(glyph.baseGlyph.y), v1 = static_cast<std::int16_t>(glyph.baseGlyph.y + glyph.baseGlyph.height);
+                texCoords.append(cglib::vec2<std::int16_t>(u0, v1), cglib::vec2<std::int16_t>(u1, v1), cglib::vec2<std::int16_t>(u1, v0), cglib::vec2<std::int16_t>(u0, v0));
 
-                cglib::vec4<char> attrib(0, glyph.baseGlyph.sdfMode ? -1 : 1, 0, 0);
+                cglib::vec4<std::int8_t> attrib(0, glyph.baseGlyph.sdfMode ? -1 : 1, 0, 0);
                 attribs.append(attrib, attrib, attrib, attrib);
 
                 const cglib::vec3<float>& origin = edges[edgeIndex].pos0;

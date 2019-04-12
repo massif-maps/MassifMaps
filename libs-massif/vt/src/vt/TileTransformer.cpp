@@ -34,7 +34,7 @@ namespace carto { namespace vt {
         }
     }
 
-    void DefaultTileTransformer::DefaultVertexTransformer::tesselateTriangles(const unsigned int* indices, std::size_t count, VertexArray<cglib::vec2<float>>& coords, VertexArray<cglib::vec2<float>>& texCoords, VertexArray<unsigned int>& tesselatedIndices) const {
+    void DefaultTileTransformer::DefaultVertexTransformer::tesselateTriangles(const std::size_t* indices, std::size_t count, VertexArray<cglib::vec2<float>>& coords, VertexArray<cglib::vec2<float>>& texCoords, VertexArray<std::size_t>& tesselatedIndices) const {
         for (std::size_t i = 0; i < count; i++) {
             tesselatedIndices.append(indices[i]);
         }
@@ -160,11 +160,11 @@ namespace carto { namespace vt {
         }
     }
 
-    void SphericalTileTransformer::SphericalVertexTransformer::tesselateTriangles(const unsigned int* indices, std::size_t count, VertexArray<cglib::vec2<float>>& coords, VertexArray<cglib::vec2<float>>& texCoords, VertexArray<unsigned int>& tesselatedIndices) const {
+    void SphericalTileTransformer::SphericalVertexTransformer::tesselateTriangles(const std::size_t* indices, std::size_t count, VertexArray<cglib::vec2<float>>& coords, VertexArray<cglib::vec2<float>>& texCoords, VertexArray<std::size_t>& tesselatedIndices) const {
         for (std::size_t i = 0; i + 2 < count; i += 3) {
-            unsigned int i0 = indices[i + 0];
-            unsigned int i1 = indices[i + 1];
-            unsigned int i2 = indices[i + 2];
+            std::size_t i0 = indices[i + 0];
+            std::size_t i1 = indices[i + 1];
+            std::size_t i2 = indices[i + 2];
             float dist01 = cglib::length(coords[i1] - coords[i0]) * static_cast<float>(_tileScale);
             float dist02 = cglib::length(coords[i2] - coords[i0]) * static_cast<float>(_tileScale);
             float dist12 = cglib::length(coords[i2] - coords[i1]) * static_cast<float>(_tileScale);
@@ -200,9 +200,9 @@ namespace carto { namespace vt {
         }
     }
 
-    void SphericalTileTransformer::SphericalVertexTransformer::tesselateTriangle(unsigned int i0, unsigned int i1, unsigned int i2, float dist01, float dist02, float dist12, VertexArray<cglib::vec2<float>>& coords, VertexArray<cglib::vec2<float>>& texCoords, VertexArray<unsigned int>& indices) const {
+    void SphericalTileTransformer::SphericalVertexTransformer::tesselateTriangle(std::size_t i0, std::size_t i1, std::size_t i2, float dist01, float dist02, float dist12, VertexArray<cglib::vec2<float>>& coords, VertexArray<cglib::vec2<float>>& texCoords, VertexArray<std::size_t>& indices) const {
         if (dist01 > _divideThreshold || dist02 > _divideThreshold || dist12 > _divideThreshold) {
-            unsigned int iM = static_cast<unsigned int>(coords.size());
+            std::size_t iM = coords.size();
             if (dist01 > dist02 && dist01 > dist12) {
                 coords.append((coords[i0] + coords[i1]) * 0.5f);
                 if (!texCoords.empty()) {

@@ -82,7 +82,7 @@ namespace carto { namespace vt {
         VertexArray<cglib::vec3<float>> coords3D;
         VertexArray<cglib::vec2<float>> texCoords;
         VertexArray<cglib::vec3<float>> normals;
-        VertexArray<unsigned int> indices;
+        VertexArray<std::size_t> indices;
         coords2D.reserve(RESERVED_VERTICES);
         coords3D.reserve(RESERVED_VERTICES);
         texCoords.reserve(RESERVED_VERTICES);
@@ -111,8 +111,8 @@ namespace carto { namespace vt {
         return tileSurfaces;
     }
 
-    void TileSurfaceBuilder::buildTileGeometry(const TileId& tileId, const std::array<std::vector<TileId>, 4>& vertexIds, VertexArray<cglib::vec2<float>>& coords2D, VertexArray<cglib::vec3<float>>& coords3D, VertexArray<cglib::vec2<float>>& texCoords, VertexArray<cglib::vec3<float>>& normals, VertexArray<unsigned int>& indices) const {
-        auto appendTilePoint = [&, this](const TileId& vertexId) -> unsigned int {
+    void TileSurfaceBuilder::buildTileGeometry(const TileId& tileId, const std::array<std::vector<TileId>, 4>& vertexIds, VertexArray<cglib::vec2<float>>& coords2D, VertexArray<cglib::vec3<float>>& coords3D, VertexArray<cglib::vec2<float>>& texCoords, VertexArray<cglib::vec3<float>>& normals, VertexArray<std::size_t>& indices) const {
+        auto appendTilePoint = [&, this](const TileId& vertexId) -> std::size_t {
             int deltaZoom = vertexId.zoom - tileId.zoom;
             float s = 1.0f / (1 << deltaZoom);
             float u = (vertexId.x - (tileId.x << deltaZoom)) * s;
@@ -126,11 +126,11 @@ namespace carto { namespace vt {
             texCoords.append(cglib::vec2<float>(u, v));
             coords3D.append(cglib::vec3<float>::convert(pos - _origin));
             normals.append(transformer->calculateNormal(cglib::vec2<float>(0, 0)));
-            return static_cast<unsigned int>(coords2D.size() - 1);
+            return coords2D.size() - 1;
         };
 
-        auto tesselateTriangle = [&, this](unsigned int i0, unsigned int i1, unsigned int i2, const cglib::mat4x4<double>& matrix, const std::shared_ptr<const TileTransformer::VertexTransformer>& transformer) {
-            std::array<unsigned int, 3> srcIndices = { { i0, i1, i2 } };
+        auto tesselateTriangle = [&, this](std::size_t i0, std::size_t i1, std::size_t i2, const cglib::mat4x4<double>& matrix, const std::shared_ptr<const TileTransformer::VertexTransformer>& transformer) {
+            std::array<std::size_t, 3> srcIndices = { { i0, i1, i2 } };
             transformer->tesselateTriangles(srcIndices.data(), 3, coords2D, texCoords, indices);
 
             for (std::size_t i = coords3D.size(); i < coords2D.size(); i++) {
@@ -144,15 +144,15 @@ namespace carto { namespace vt {
         std::shared_ptr<const TileTransformer::VertexTransformer> transformer = _transformer->createTileVertexTransformer(tileId);
 
         // Tesselate tiles by carefully calculating edge vertices and tesselating them
-        unsigned int i0 = appendTilePoint(vertexIds[0][0]);
-        unsigned int i2 = appendTilePoint(vertexIds[2][1]);
+        std::size_t i0 = appendTilePoint(vertexIds[0][0]);
+        std::size_t i2 = appendTilePoint(vertexIds[2][1]);
         for (std::size_t i = 0; ++i < vertexIds[0].size(); ) {
-            unsigned int i1 = appendTilePoint(vertexIds[0][i]);
+            std::size_t i1 = appendTilePoint(vertexIds[0][i]);
             tesselateTriangle(i0, i1, i2, matrix, transformer);
             i0 = i1;
         }
         for (std::size_t i = 1; ++i < vertexIds[2].size(); ) {
-            unsigned int i1 = appendTilePoint(vertexIds[2][i]);
+            std::size_t i1 = appendTilePoint(vertexIds[2][i]);
             tesselateTriangle(i0, i1, i2, matrix, transformer);
             i2 = i1;
         }
@@ -160,18 +160,18 @@ namespace carto { namespace vt {
         i0 = appendTilePoint(vertexIds[1][vertexIds[1].size() - 1]);
         i2 = appendTilePoint(vertexIds[3][vertexIds[3].size() - 2]);
         for (std::size_t i = vertexIds[1].size() - 1; i-- > 0; ) {
-            unsigned int i1 = appendTilePoint(vertexIds[1][i]);
+            std::size_t i1 = appendTilePoint(vertexIds[1][i]);
             tesselateTriangle(i0, i1, i2, matrix, transformer);
             i0 = i1;
         }
         for (std::size_t i = vertexIds[3].size() - 2; i-- > 0; ) {
-            unsigned int i1 = appendTilePoint(vertexIds[3][i]);
+            std::size_t i1 = appendTilePoint(vertexIds[3][i]);
             tesselateTriangle(i0, i1, i2, matrix, transformer);
             i2 = i1;
         }
     }
 
-    void TileSurfaceBuilder::buildPoleGeometry(int poleZ, const std::vector<TileId>& vertexIds, VertexArray<cglib::vec2<float>>& coords2D, VertexArray<cglib::vec3<float>>& coords3D, VertexArray<cglib::vec2<float>>& texCoords, VertexArray<cglib::vec3<float>>& normals, VertexArray<unsigned int>& indices) const {
+    void TileSurfaceBuilder::buildPoleGeometry(int poleZ, const std::vector<TileId>& vertexIds, VertexArray<cglib::vec2<float>>& coords2D, VertexArray<cglib::vec3<float>>& coords3D, VertexArray<cglib::vec2<float>>& texCoords, VertexArray<cglib::vec3<float>>& normals, VertexArray<std::size_t>& indices) const {
         auto calculatePolePoint = [&, this](const TileId& vertexId) -> cglib::vec2<float> {
             float s = 1.0f / (1 << vertexId.zoom);
             float u = vertexId.x * s;
@@ -183,9 +183,9 @@ namespace carto { namespace vt {
             cglib::vec2<float> points[2] = { p0, p1 };
             transformer->tesselateLineString(points, 2, coords2D);
 
-            unsigned int i0 = 0;
+            std::size_t i0 = 0;
             for (std::size_t i = coords3D.size(); i < coords2D.size(); i++) {
-                unsigned int i1 = static_cast<unsigned int>(coords3D.size());
+                std::size_t i1 = coords3D.size();
                 cglib::vec3<double> pos = cglib::transform_point(cglib::vec3<double>::convert(transformer->calculatePoint(coords2D[i])), matrix);
                 coords3D.append(cglib::vec3<float>::convert(pos - _origin));
                 normals.append(transformer->calculateNormal(coords2D[i]));
@@ -221,21 +221,21 @@ namespace carto { namespace vt {
         }
     }
 
-    void TileSurfaceBuilder::packGeometry(const VertexArray<cglib::vec3<float>>& coords, const VertexArray<cglib::vec2<float>>& texCoords, const VertexArray<cglib::vec3<float>>& normals, const VertexArray<unsigned int>& indices, std::vector<std::shared_ptr<TileSurface>>& tileSurfaces) const {
+    void TileSurfaceBuilder::packGeometry(const VertexArray<cglib::vec3<float>>& coords, const VertexArray<cglib::vec2<float>>& texCoords, const VertexArray<cglib::vec3<float>>& normals, const VertexArray<std::size_t>& indices, std::vector<std::shared_ptr<TileSurface>>& tileSurfaces) const {
         if (coords.size() > 65535) {
             for (std::size_t offset = 0; offset < indices.size(); ) {
                 std::size_t count = std::min(std::size_t(65535), indices.size() - offset);
 
-                std::vector<unsigned int> indexTable(indices.size(), 65536);
+                std::vector<std::size_t> indexTable(indices.size(), 65536);
                 VertexArray<cglib::vec3<float>> remappedCoords;
                 VertexArray<cglib::vec2<float>> remappedTexCoords;
                 VertexArray<cglib::vec3<float>> remappedNormals;
-                VertexArray<unsigned int> remappedIndices;
+                VertexArray<std::size_t> remappedIndices;
                 for (std::size_t i = 0; i < count; i++) {
-                    unsigned int index = indices[offset + i];
-                    unsigned int remappedIndex = indexTable[index];
+                    std::size_t index = indices[offset + i];
+                    std::size_t remappedIndex = indexTable[index];
                     if (remappedIndex == 65536) {
-                        remappedIndex = static_cast<unsigned int>(remappedCoords.size());
+                        remappedIndex = remappedCoords.size();
                         indexTable[index] = remappedIndex;
 
                         remappedCoords.append(coords[index]);
@@ -262,19 +262,19 @@ namespace carto { namespace vt {
         vertexGeomLayoutParams.vertexSize = (vertexGeomLayoutParams.vertexSize + 3) & ~3;
 
         vertexGeomLayoutParams.texCoordOffset = vertexGeomLayoutParams.vertexSize;
-        vertexGeomLayoutParams.vertexSize += 2 * sizeof(short);
+        vertexGeomLayoutParams.vertexSize += 2 * sizeof(std::int16_t);
 
         if (!normals.empty()) {
             vertexGeomLayoutParams.normalOffset = vertexGeomLayoutParams.vertexSize;
-            vertexGeomLayoutParams.vertexSize += 3 * sizeof(short);
+            vertexGeomLayoutParams.vertexSize += 3 * sizeof(std::int16_t);
             vertexGeomLayoutParams.vertexSize = (vertexGeomLayoutParams.vertexSize + 3) & ~3;
         }
 
         // Interleave, compress actual geometry data
-        VertexArray<unsigned char> compressedVertexGeometry;
+        VertexArray<std::uint8_t> compressedVertexGeometry;
         compressedVertexGeometry.fill(0, coords.size() * vertexGeomLayoutParams.vertexSize);
         for (std::size_t i = 0; i < coords.size(); i++) {
-            unsigned char* baseCompressedPtr = &compressedVertexGeometry[i * vertexGeomLayoutParams.vertexSize];
+            std::uint8_t* baseCompressedPtr = &compressedVertexGeometry[i * vertexGeomLayoutParams.vertexSize];
 
             const cglib::vec3<float>& coord = coords[i];
             float* compressedCoordPtr = reinterpret_cast<float*>(baseCompressedPtr + vertexGeomLayoutParams.coordOffset);
@@ -283,24 +283,24 @@ namespace carto { namespace vt {
             }
 
             const cglib::vec2<float>& texCoord = texCoords[i];
-            short* compressedTexCoordPtr = reinterpret_cast<short*>(baseCompressedPtr + vertexGeomLayoutParams.texCoordOffset);
-            compressedTexCoordPtr[0] = static_cast<short>(texCoord(0) * 32767.0f);
-            compressedTexCoordPtr[1] = static_cast<short>(texCoord(1) * 32767.0f);
+            std::int16_t* compressedTexCoordPtr = reinterpret_cast<std::int16_t*>(baseCompressedPtr + vertexGeomLayoutParams.texCoordOffset);
+            compressedTexCoordPtr[0] = static_cast<std::int16_t>(texCoord(0) * 32767.0f);
+            compressedTexCoordPtr[1] = static_cast<std::int16_t>(texCoord(1) * 32767.0f);
 
             if (!normals.empty()) {
                 const cglib::vec3<float>& normal = normals[i];
-                short* compressedNormalPtr = reinterpret_cast<short*>(baseCompressedPtr + vertexGeomLayoutParams.normalOffset);
+                std::int16_t* compressedNormalPtr = reinterpret_cast<std::int16_t*>(baseCompressedPtr + vertexGeomLayoutParams.normalOffset);
                 for (int j = 0; j < 3; j++) {
-                    compressedNormalPtr[j] = static_cast<short>(normal(j) * 32767.0f);
+                    compressedNormalPtr[j] = static_cast<std::int16_t>(normal(j) * 32767.0f);
                 }
             }
         }
 
         // Compress indices
-        VertexArray<unsigned short> compressedIndices;
+        VertexArray<std::uint16_t> compressedIndices;
         compressedIndices.reserve(indices.size());
         for (std::size_t i = 0; i < indices.size(); i++) {
-            compressedIndices.append(static_cast<unsigned short>(indices[i]));
+            compressedIndices.append(static_cast<std::uint16_t>(indices[i]));
         }
 
         auto tileSurface = std::make_shared<TileSurface>(vertexGeomLayoutParams, std::move(compressedVertexGeometry), std::move(compressedIndices));

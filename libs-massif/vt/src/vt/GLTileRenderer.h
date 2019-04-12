@@ -246,9 +246,9 @@ namespace carto { namespace vt {
 
         VertexArray<cglib::vec3<float>> _labelVertices;
         VertexArray<cglib::vec3<float>> _labelNormals;
-        VertexArray<cglib::vec2<short>> _labelTexCoords;
-        VertexArray<cglib::vec4<char>> _labelAttribs;
-        VertexArray<unsigned short> _labelIndices;
+        VertexArray<cglib::vec2<std::int16_t>> _labelTexCoords;
+        VertexArray<cglib::vec4<std::int8_t>> _labelAttribs;
+        VertexArray<std::uint16_t> _labelIndices;
 
         const std::shared_ptr<GLExtensions> _glExtensions;
         const std::shared_ptr<const TileTransformer> _transformer;

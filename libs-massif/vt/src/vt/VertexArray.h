@@ -103,7 +103,7 @@ namespace carto { namespace vt {
             if (_reserved < size) {
                 reserve_extra(size, empty() ? 1 : 2);
             }
-            std::copy(other._begin + offset, other._begin + offset + size, _end);
+            std::copy_n(other._begin + offset, size, _end);
             _end += size;
             _reserved -= size;
         }
@@ -112,7 +112,7 @@ namespace carto { namespace vt {
             if (_reserved < size) {
                 reserve_extra(size, empty() ? 1 : 2);
             }
-            std::fill(_end, _end + size, val);
+            std::fill_n(_end, size, val);
             _end += size;
             _reserved -= size;
         }

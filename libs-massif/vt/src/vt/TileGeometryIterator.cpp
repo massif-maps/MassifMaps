@@ -57,7 +57,7 @@ namespace carto { namespace vt {
     cglib::vec3<float> TileGeometryIterator::decodeVertex(std::size_t index) const {
         const TileGeometry::VertexGeometryLayoutParameters& vertexGeomLayoutParams = _geometry->getVertexGeometryLayoutParameters();
         std::size_t coordOffset = index * vertexGeomLayoutParams.vertexSize + vertexGeomLayoutParams.coordOffset;
-        const short* coordPtr = reinterpret_cast<const short*>(&_geometry->getVertexGeometry()[coordOffset]);
+        const std::int16_t* coordPtr = reinterpret_cast<const std::int16_t*>(&_geometry->getVertexGeometry()[coordOffset]);
         cglib::vec3<float> pos(0, 0, 0);
         for (int i = 0; i < vertexGeomLayoutParams.dimensions; i++) {
             pos(i) = coordPtr[i];
@@ -68,11 +68,11 @@ namespace carto { namespace vt {
     cglib::vec3<float> TileGeometryIterator::decodePointOffset(std::size_t index) const {
         const TileGeometry::VertexGeometryLayoutParameters& vertexGeomLayoutParams = _geometry->getVertexGeometryLayoutParameters();
         std::size_t binormalOffset = index * vertexGeomLayoutParams.vertexSize + vertexGeomLayoutParams.binormalOffset;
-        const short* binormalPtr = reinterpret_cast<const short*>(&_geometry->getVertexGeometry()[binormalOffset]);
+        const std::int16_t* binormalPtr = reinterpret_cast<const std::int16_t*>(&_geometry->getVertexGeometry()[binormalOffset]);
         int styleIndex = 0;
         if (vertexGeomLayoutParams.attribsOffset >= 0) {
             std::size_t attribOffset = index * vertexGeomLayoutParams.vertexSize + vertexGeomLayoutParams.attribsOffset;
-            const char* attribPtr = reinterpret_cast<const char*>(&_geometry->getVertexGeometry()[attribOffset]);
+            const std::int8_t* attribPtr = reinterpret_cast<const std::int8_t*>(&_geometry->getVertexGeometry()[attribOffset]);
             styleIndex = attribPtr[0];
         }
         float size = std::abs((_geometry->getStyleParameters().widthFuncs[styleIndex])(_viewState));
@@ -89,11 +89,11 @@ namespace carto { namespace vt {
     cglib::vec3<float> TileGeometryIterator::decodeLineOffset(std::size_t index) const {
         const TileGeometry::VertexGeometryLayoutParameters& vertexGeomLayoutParams = _geometry->getVertexGeometryLayoutParameters();
         std::size_t binormalOffset = index * vertexGeomLayoutParams.vertexSize + vertexGeomLayoutParams.binormalOffset;
-        const short* binormalPtr = reinterpret_cast<const short*>(&_geometry->getVertexGeometry()[binormalOffset]);
+        const std::int16_t* binormalPtr = reinterpret_cast<const std::int16_t*>(&_geometry->getVertexGeometry()[binormalOffset]);
         int styleIndex = 0;
         if (vertexGeomLayoutParams.attribsOffset >= 0) {
             std::size_t attribOffset = index * vertexGeomLayoutParams.vertexSize + vertexGeomLayoutParams.attribsOffset;
-            const char* attribPtr = reinterpret_cast<const char*>(&_geometry->getVertexGeometry()[attribOffset]);
+            const std::int8_t* attribPtr = reinterpret_cast<const std::int8_t*>(&_geometry->getVertexGeometry()[attribOffset]);
             styleIndex = attribPtr[0];
         }
         float width = 0.5f * std::abs((_geometry->getStyleParameters().widthFuncs[styleIndex])(_viewState));
@@ -110,7 +110,7 @@ namespace carto { namespace vt {
     cglib::vec3<float> TileGeometryIterator::decodePolygon3DOffset(std::size_t index) const {
         const TileGeometry::VertexGeometryLayoutParameters& vertexGeomLayoutParams = _geometry->getVertexGeometryLayoutParameters();
         std::size_t heightOffset = index * vertexGeomLayoutParams.vertexSize + vertexGeomLayoutParams.heightOffset;
-        const short* heightPtr = reinterpret_cast<const short*>(&_geometry->getVertexGeometry()[heightOffset]);
+        const std::int16_t* heightPtr = reinterpret_cast<const std::int16_t*>(&_geometry->getVertexGeometry()[heightOffset]);
         return cglib::vec3<float>(0, 0, *heightPtr * _heightScale) * (1.0f / vertexGeomLayoutParams.heightScale);
     }
 } }

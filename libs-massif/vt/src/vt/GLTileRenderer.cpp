@@ -901,7 +901,7 @@ namespace carto { namespace vt {
             std::array<cglib::vec3<double>, 3> triangle;
             for (int i = 0; i < 3; i++) {
                 std::size_t coordOffset = tileSurface->getIndices()[index + i] * vertexGeomLayoutParams.vertexSize + vertexGeomLayoutParams.coordOffset;
-                const short* coordPtr = reinterpret_cast<const short*>(&tileSurface->getVertexGeometry()[coordOffset]);
+                const std::int16_t* coordPtr = reinterpret_cast<const std::int16_t*>(&tileSurface->getVertexGeometry()[coordOffset]);
                 triangle[i] = cglib::transform_point(cglib::vec3<double>(coordPtr[0], coordPtr[1], coordPtr[2]), surfaceToTileTransform);
             }
                 
@@ -1655,10 +1655,10 @@ namespace carto { namespace vt {
             createCompiledGeometry(compiledGeometry);
 
             glBindBuffer(GL_ARRAY_BUFFER, compiledGeometry.vertexGeometryVBO);
-            glBufferData(GL_ARRAY_BUFFER, geometry->getVertexGeometry().size() * sizeof(unsigned char), geometry->getVertexGeometry().data(), GL_STATIC_DRAW);
+            glBufferData(GL_ARRAY_BUFFER, geometry->getVertexGeometry().size() * sizeof(std::uint8_t), geometry->getVertexGeometry().data(), GL_STATIC_DRAW);
 
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, compiledGeometry.indicesVBO);
-            glBufferData(GL_ELEMENT_ARRAY_BUFFER, geometry->getIndices().size() * sizeof(unsigned short), geometry->getIndices().data(), GL_STATIC_DRAW);
+            glBufferData(GL_ELEMENT_ARRAY_BUFFER, geometry->getIndices().size() * sizeof(std::uint16_t), geometry->getIndices().data(), GL_STATIC_DRAW);
 
             if (!_interactionMode) {
                 geometry->releaseVertexArrays(); // if interaction is enabled, we must keep the vertex arrays. Otherwise optimize for lower memory usage
@@ -1859,17 +1859,17 @@ namespace carto { namespace vt {
         }
         
         glBindBuffer(GL_ARRAY_BUFFER, compiledLabelBatch.texCoordsVBO);
-        glBufferData(GL_ARRAY_BUFFER, _labelTexCoords.size() * 2 * sizeof(short), _labelTexCoords.data(), GL_DYNAMIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, _labelTexCoords.size() * 2 * sizeof(std::int16_t), _labelTexCoords.data(), GL_DYNAMIC_DRAW);
         glVertexAttribPointer(glGetAttribLocation(shaderProgram, "aVertexUV"), 2, GL_SHORT, GL_FALSE, 0, 0);
         glEnableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexUV"));
 
         glBindBuffer(GL_ARRAY_BUFFER, compiledLabelBatch.attribsVBO);
-        glBufferData(GL_ARRAY_BUFFER, _labelAttribs.size() * 4 * sizeof(char), _labelAttribs.data(), GL_DYNAMIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, _labelAttribs.size() * 4 * sizeof(std::int8_t), _labelAttribs.data(), GL_DYNAMIC_DRAW);
         glVertexAttribPointer(glGetAttribLocation(shaderProgram, "aVertexAttribs"), 4, GL_BYTE, GL_FALSE, 0, 0);
         glEnableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexAttribs"));
 
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, compiledLabelBatch.indicesVBO);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, _labelIndices.size() * sizeof(unsigned short), _labelIndices.data(), GL_DYNAMIC_DRAW);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, _labelIndices.size() * sizeof(std::uint16_t), _labelIndices.data(), GL_DYNAMIC_DRAW);
 
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, compiledBitmap.texture);
@@ -1909,10 +1909,10 @@ namespace carto { namespace vt {
                 createCompiledSurface(compiledSurface);
 
                 glBindBuffer(GL_ARRAY_BUFFER, compiledSurface.vertexGeometryVBO);
-                glBufferData(GL_ARRAY_BUFFER, tileSurface->getVertexGeometry().size() * sizeof(unsigned char), tileSurface->getVertexGeometry().data(), GL_STATIC_DRAW);
+                glBufferData(GL_ARRAY_BUFFER, tileSurface->getVertexGeometry().size() * sizeof(std::uint8_t), tileSurface->getVertexGeometry().data(), GL_STATIC_DRAW);
 
                 glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, compiledSurface.indicesVBO);
-                glBufferData(GL_ELEMENT_ARRAY_BUFFER, tileSurface->getIndices().size() * sizeof(unsigned short), tileSurface->getIndices().data(), GL_STATIC_DRAW);
+                glBufferData(GL_ELEMENT_ARRAY_BUFFER, tileSurface->getIndices().size() * sizeof(std::uint16_t), tileSurface->getIndices().data(), GL_STATIC_DRAW);
             }
         }
         return it->second;

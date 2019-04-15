@@ -307,19 +307,112 @@ namespace carto { namespace vt {
     }
 
     bool Label::buildLineVertexData(const std::shared_ptr<const Placement>& placement, float scale, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const {
-        float invScale = 1.0f / scale;
         const std::vector<Placement::Edge>& edges = placement->edges;
         std::size_t edgeIndex = placement->index;
-        cglib::vec2<float> pen(cglib::dot_product(-edges[edgeIndex].pos0, edges[edgeIndex].xAxis) * invScale, 0);
+        cglib::vec2<float> pen(cglib::dot_product(-edges[edgeIndex].pos0, edges[edgeIndex].xAxis), 0);
 
         bool valid = true;
-        for (const Font::Glyph& glyph : _glyphs) {
+        for (std::size_t i = 0; i < _glyphs.size(); i++) {
+            const Font::Glyph & glyph = _glyphs[i];
+            
+            cglib::vec3<float> xAxis = edges[edgeIndex].xAxis;
+            cglib::vec3<float> yAxis = edges[edgeIndex].yAxis;
+            cglib::vec3<float> origin = edges[edgeIndex].pos0 + xAxis * pen(0) + yAxis * pen(1);
+
             // If carriage return, reposition pen and state to the initial position
             if (glyph.codePoint == Font::CR_CODEPOINT) {
                 edgeIndex = placement->index;
-                pen = cglib::vec2<float>(cglib::dot_product(-edges[edgeIndex].pos0, edges[edgeIndex].xAxis) * invScale, 0);
+                pen = cglib::vec2<float>(cglib::dot_product(-edges[edgeIndex].pos0, edges[edgeIndex].xAxis), 0);
             }
-            else if (glyph.codePoint != Font::SPACE_CODEPOINT) {
+
+            // Move pen
+            pen += glyph.advance * scale;
+
+            // Check if we the pen has gone 'over' line segment
+            cglib::vec3<float> xAxisBase = xAxis;
+            cglib::vec3<float> yAxisBase = yAxis;
+            cglib::vec3<float> originBase = origin;
+            while (true) {
+                if (glyph.advance(0) > 0) {
+                    float edgeLen = cglib::length(edges[edgeIndex].pos1 - edges[edgeIndex].pos0);
+                    float offset0 = cglib::dot_product(edges[edgeIndex].binormal1 * pen(1), edges[edgeIndex].xAxis);
+                    if (pen(0) < edgeLen + offset0) {
+                        break;
+                    }
+                    if (edgeIndex + 1 >= edges.size()) {
+                        valid = false;
+                        break;
+                    }
+                    edgeIndex++;
+                }
+                else if (glyph.advance(0) < 0) {
+                    float offset1 = cglib::dot_product(edges[edgeIndex].binormal0 * pen(1), edges[edgeIndex].xAxis);
+                    if (pen(0) >= offset1) {
+                        break;
+                    }
+                    if (edgeIndex == 0) {
+                        valid = false;
+                        break;
+                    }
+                    edgeIndex--;
+                }
+                else {
+                    break;
+                }
+
+                if (glyph.advance(0) > 0) {
+                    cglib::vec3<float> edgePos0 = edges[edgeIndex].pos0 + edges[edgeIndex].binormal0 * pen(1);
+                    cglib::vec3<float> edgePos1 = edges[edgeIndex].pos1 + edges[edgeIndex].binormal1 * pen(1);
+                    cglib::vec3<float> target = origin;
+
+                    // Do complex multi-iteration fitting
+                    for (unsigned int iter = 0; true; iter++) {
+                        cglib::vec3<float> dq = edgePos0 - origin;
+                        cglib::vec3<float> dp = edgePos1 - edgePos0;
+                        float a = cglib::dot_product(dp, dp);
+                        float b = cglib::dot_product(dp, dq);
+                        float c = cglib::dot_product(dq, dq) - (glyph.advance(0) * scale) * (glyph.advance(0) * scale);
+                        float d = b * b - a * c;
+                        if (d < 0) {
+                            d = 0;
+                            valid = false;
+                        }
+                        float t1 = (-b + std::sqrt(d)) / a;
+                        target = edgePos0 + dp * t1;
+                        xAxis = cglib::unit(target - origin);
+                        if (cglib::dot_product(xAxis, xAxisBase) < 0) {
+                            float t2 = (-b - std::sqrt(d)) / a;
+                            target = edgePos0 + dp * t2;
+                            xAxis = cglib::unit(target - origin);
+                        }
+                        yAxis = cglib::unit(cglib::vector_product(edges[edgeIndex].normal, xAxis));
+                        
+                        if (iter >= MAX_LINE_FITTING_ITERATIONS) {
+                            break;
+                        }
+
+                        float delta = 0;
+                        if (i > 0) {
+                            float sin = cglib::dot_product(xAxis, yAxisBase);
+                            delta = sin * (sin < 0 ? -_style->descent * 0.5f : _style->ascent * 0.5f) * scale;
+                        }
+                        origin = originBase + xAxis * delta;
+                    }
+
+                    float delta = 0;
+                    if (i + 1 < _glyphs.size()) {
+                        float sin = -cglib::dot_product(xAxis, edges[edgeIndex].yAxis);
+                        delta = sin * (sin < 0 ? -_style->descent * 0.5f : _style->ascent * 0.5f) * scale;
+                    }
+                    pen(0) = cglib::dot_product(edges[edgeIndex].xAxis, target - edges[edgeIndex].pos0) + delta;
+                }
+                else {
+                    float edgeLen = cglib::length(edges[edgeIndex].pos1 - edges[edgeIndex].pos0);
+                    pen(0) += edgeLen;
+                }
+            }
+
+            if (glyph.codePoint != Font::SPACE_CODEPOINT && glyph.codePoint != Font::CR_CODEPOINT) {
                 std::uint16_t i0 = static_cast<std::uint16_t>(vertices.size());
                 indices.append(i0 + 0, i0 + 1, i0 + 2);
                 indices.append(i0 + 0, i0 + 2, i0 + 3);
@@ -331,70 +424,9 @@ namespace carto { namespace vt {
                 cglib::vec4<std::int8_t> attrib(0, glyph.baseGlyph.sdfMode ? -1 : 1, 0, 0);
                 attribs.append(attrib, attrib, attrib, attrib);
 
-                const cglib::vec3<float>& origin = edges[edgeIndex].pos0;
-                const cglib::vec3<float>& xAxis = edges[edgeIndex].xAxis;
-                const cglib::vec3<float>& yAxis = edges[edgeIndex].yAxis;
-                if (_style->transform) {
-                    cglib::vec2<float> p0 = cglib::transform(pen + glyph.offset, _style->transform.get()) * scale;
-                    cglib::vec2<float> p1 = cglib::transform(pen + glyph.offset + cglib::vec2<float>(glyph.size(0), 0), _style->transform.get()) * scale;
-                    cglib::vec2<float> p2 = cglib::transform(pen + glyph.offset + glyph.size, _style->transform.get()) * scale;
-                    cglib::vec2<float> p3 = cglib::transform(pen + glyph.offset + cglib::vec2<float>(0, glyph.size(1)), _style->transform.get()) * scale;
-                    vertices.append(origin + xAxis * p0(0) + yAxis * p0(1), origin + xAxis * p1(0) + yAxis * p1(1), origin + xAxis * p2(0) + yAxis * p2(1), origin + xAxis * p3(0) + yAxis * p3(1));
-                }
-                else {
-                    cglib::vec2<float> p0 = (pen + glyph.offset) * scale;
-                    cglib::vec2<float> p3 = (pen + glyph.offset + glyph.size) * scale;
-                    vertices.append(origin + xAxis * p0(0) + yAxis * p0(1), origin + xAxis * p3(0) + yAxis * p0(1), origin + xAxis * p3(0) + yAxis * p3(1), origin + xAxis * p0(0) + yAxis * p3(1));
-                }
-            }
-
-            // Move pen
-            pen += glyph.advance;
-
-            // Check if we the pen has gone 'over' line segment
-            int edgeDir = 0;
-            if (glyph.codePoint != Font::SPACE_CODEPOINT && glyph.codePoint != Font::CR_CODEPOINT) {
-                edgeDir = glyph.advance(0) > 0 ? 1 : -1;
-            }
-
-            float segmentBeg = -cglib::dot_product(edges[edgeIndex].binormal0, edges[edgeIndex].xAxis) * pen(1);
-            float segmentEnd = edges[edgeIndex].length * invScale + cglib::dot_product(edges[edgeIndex].binormal1, edges[edgeIndex].xAxis) * pen(1);
-            if (edgeDir <= 0 && pen(0) < segmentBeg) {
-                do {
-                    if (edgeIndex == 0) {
-                        valid = false;
-                        break;
-                    }
-                    edgeIndex--;
-
-                    if (edgeDir < 0) {
-                        float cos = cglib::dot_product(edges[edgeIndex].xAxis, edges[edgeIndex + 1].xAxis);
-                        float sin = cglib::dot_product(edges[edgeIndex].xAxis, edges[edgeIndex + 1].yAxis);
-                        pen(0) = cos * cos * pen(0) - sin * sin * std::abs(sin > 0 ? _style->descent : _style->ascent * 0.5f);
-                    }
-
-                    segmentBeg = -cglib::dot_product(edges[edgeIndex].binormal0, edges[edgeIndex].xAxis) * pen(1);
-                    segmentEnd = edges[edgeIndex].length * invScale + cglib::dot_product(edges[edgeIndex].binormal1, edges[edgeIndex].xAxis) * pen(1);
-                    pen(0) += segmentEnd;
-                } while (pen(0) < segmentBeg);
-            }
-            else if (edgeDir >= 0 && pen(0) >= segmentEnd) {
-                do {
-                    if (edgeIndex + 1 >= edges.size()) {
-                        valid = false;
-                        break;
-                    }
-                    edgeIndex++;
-
-                    pen(0) -= segmentEnd;
-                    segmentEnd = edges[edgeIndex].length * invScale + cglib::dot_product(edges[edgeIndex].binormal1, edges[edgeIndex].xAxis) * pen(1);
-
-                    if (edgeDir > 0) {
-                        float cos = cglib::dot_product(edges[edgeIndex - 1].xAxis, edges[edgeIndex].xAxis);
-                        float sin = cglib::dot_product(edges[edgeIndex - 1].xAxis, edges[edgeIndex].yAxis);
-                        pen(0) = cos * cos * pen(0) + sin * sin * std::abs(sin > 0 ? _style->descent : _style->ascent * 0.5f);
-                    }
-                } while (pen(0) >= segmentEnd);
+                cglib::vec2<float> p0 = glyph.offset * scale;
+                cglib::vec2<float> p3 = (glyph.offset + glyph.size) * scale;
+                vertices.append(origin + xAxis * p0(0) + yAxis * p0(1), origin + xAxis * p3(0) + yAxis * p0(1), origin + xAxis * p3(0) + yAxis * p3(1), origin + xAxis * p0(0) + yAxis * p3(1));
             }
         }
 

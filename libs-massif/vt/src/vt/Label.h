@@ -66,10 +66,11 @@ namespace carto { namespace vt {
 
     private:
         constexpr static unsigned int MAX_LABEL_VERTICES = 16384;
+        constexpr static unsigned int MAX_LINE_FITTING_ITERATIONS = 1; // number of iterations for line glyph placement on corners
 
         constexpr static float EXTRA_PLACEMENT_PIXELS = 30.0f; // extra visible pixels required for placement
-        constexpr static float MAX_SINGLE_SEGMENT_ANGLE = 1.0472f; // maximum angle between consecutive segments, in radians
-        constexpr static float MAX_SUMMED_SEGMENT_ANGLE = 2.0944f; // maximum sum of segment angles, in radians
+        constexpr static float MAX_SINGLE_SEGMENT_ANGLE = 0.7f; // maximum angle between consecutive segments, in radians
+        constexpr static float MAX_SUMMED_SEGMENT_ANGLE = 2.0f; // maximum sum of segment angles, in radians
         constexpr static float MIN_BILLBOARD_VIEW_NORMAL_DOTPRODUCT = 0.49f; // the minimum allowed dot product between view vector and surface normal
 
         using Vertex = cglib::vec3<double>;
@@ -82,18 +83,18 @@ namespace carto { namespace vt {
                 cglib::vec3<float> pos1;
                 cglib::vec3<float> binormal0;
                 cglib::vec3<float> binormal1;
+                cglib::vec3<float> normal;
                 cglib::vec3<float> xAxis;
                 cglib::vec3<float> yAxis;
-                float length;
                 
-                explicit Edge(const cglib::vec3<double>& p0, const cglib::vec3<double>& p1, const cglib::vec3<double>& origin, const cglib::vec3<float>& normal) {
+                explicit Edge(const cglib::vec3<double>& p0, const cglib::vec3<double>& p1, const cglib::vec3<double>& origin, const cglib::vec3<float>& norm) {
                     pos0 = cglib::vec3<float>::convert(p0 - origin);
                     pos1 = cglib::vec3<float>::convert(p1 - origin);
-                    length = cglib::length(pos1 - pos0);
-                    xAxis = (pos1 - pos0) * (1.0f / length);
-                    yAxis = cglib::unit(cglib::vector_product(normal, xAxis));
+                    xAxis = cglib::unit(pos1 - pos0);
+                    yAxis = cglib::unit(cglib::vector_product(norm, xAxis));
                     binormal0 = yAxis;
                     binormal1 = yAxis;
+                    normal = norm;
                 }
 
                 void reverse() {

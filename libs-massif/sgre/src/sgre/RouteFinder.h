@@ -24,17 +24,19 @@
 namespace carto { namespace sgre {
     class RouteFinder final {
     public:
+        struct RouteOptions {
+            bool pathStraightening = true;
+            double tesselationDistance = std::numeric_limits<double>::infinity();
+            double zSensitivity = 1.0;
+            double minTurnAngle = 5.0;
+            double minUpDownAngle = 45.0;
+        };
+
         RouteFinder() = delete;
         explicit RouteFinder(std::shared_ptr<const StaticGraph> graph) : _fastestAttributes(findFastestEdgeAttributes(*graph)), _graph(std::move(graph)) { }
 
-        bool getPathStraightening() const { return _pathStraightening; }
-        void setPathStraightening(bool pathStraightening) { _pathStraightening = pathStraightening; }
-
-        double getTesselationDistance() const { return _tesselationDistance; }
-        void setTesselationDistance(double tesselationDistance) { _tesselationDistance = tesselationDistance; }
-
-        double getZSensitivity() const { return _zSensitivity; }
-        void setZSensitivity(double zSensitivity) { _zSensitivity = zSensitivity; }
+        const RouteOptions& getRouteOptions() const { return _routeOptions; }
+        void setRouteOptions(const RouteOptions& routeOptions) { _routeOptions = routeOptions; }
 
         Result find(const Query& query) const;
 
@@ -56,7 +58,7 @@ namespace carto { namespace sgre {
 
         static RoutingAttributes findFastestEdgeAttributes(const Graph& graph);
         
-        static Result buildResult(const Graph& graph, const Path& path, double lngScale);
+        static Result buildResult(const Graph& graph, const Path& path, double lngScale, double minTurnAngle, double minUpDownAngle);
         
         static void straightenPath(const Graph& graph, Path& path, double lngScale);
         
@@ -67,10 +69,8 @@ namespace carto { namespace sgre {
         static double calculateDistance(const Point& pos0, const Point& pos1, double lngScale);
         
         static std::pair<double, double> calculateDistance2D(const Point& pos0, const Point& pos1, double lngScale);
-        
-        bool _pathStraightening = true;
-        double _tesselationDistance = std::numeric_limits<double>::infinity();
-        double _zSensitivity = 1.0;
+
+        RouteOptions _routeOptions;
 
         const RoutingAttributes _fastestAttributes;
         const std::shared_ptr<const StaticGraph> _graph;

@@ -46,9 +46,9 @@ namespace carto { namespace sgre {
         // Find nearest edges to the endpoints. Note that there could be multiple nearest edges for both endpoints (two-way edges)
         std::vector<EndPoint> endPoints[2];
         for (int i = 0; i < 2; i++) {
-            StaticGraph::SearchOptions options;
-            options.zSensitivity = _zSensitivity;
-            std::vector<std::pair<Graph::EdgeId, Point>> edgePoints = _graph->findNearestEdgePoint(query.getPos(i), options);
+            StaticGraph::SearchOptions searchOptions;
+            searchOptions.zSensitivity = _routeOptions.zSensitivity;
+            std::vector<std::pair<Graph::EdgeId, Point>> edgePoints = _graph->findNearestEdgePoint(query.getPos(i), searchOptions);
             if (edgePoints.empty()) {
                 return Result();
             }
@@ -94,7 +94,7 @@ namespace carto { namespace sgre {
                 linkNodesToCommonEdges(*graph, endPoints[0][i0].edgeIds, endPoints[1][i1].edgeIds, initialNodeId, finalNodeId);
 
                 double lngScale = calculateAvgLngScale(endPoints[0][i0].point, endPoints[1][i1].point);
-                if (auto path = findOptimalPath(*graph, initialNodeId, finalNodeId, _fastestAttributes, lngScale, _tesselationDistance, bestTime)) {
+                if (auto path = findOptimalPath(*graph, initialNodeId, finalNodeId, _fastestAttributes, lngScale, _routeOptions.tesselationDistance, bestTime)) {
                     bestPath = *path;
                     bestGraph = graph;
                     bestLngScale = lngScale;
@@ -106,25 +106,34 @@ namespace carto { namespace sgre {
         }
 
         // Do optional path straightening. This is very important for polygon/hybrid graphs.
-        if (_pathStraightening) {
+        if (_routeOptions.pathStraightening) {
             straightenPath(*bestGraph, bestPath, bestLngScale);
         }
 
         // Build final result (remove duplicate nodes, create instructions)
-        return buildResult(*bestGraph, bestPath, bestLngScale);
+        return buildResult(*bestGraph, bestPath, bestLngScale, _routeOptions.minTurnAngle, _routeOptions.minUpDownAngle);
     }
 
     std::unique_ptr<RouteFinder> RouteFinder::create(std::shared_ptr<const StaticGraph> graph, const picojson::value& configDef) {
-        auto routeFinder = std::unique_ptr<RouteFinder>(new RouteFinder(std::move(graph)));
+        RouteOptions routeOptions;
         if (configDef.contains("pathstraightening")) {
-            routeFinder->setPathStraightening(configDef.get("pathstraightening").get<bool>());
+            routeOptions.pathStraightening = configDef.get("pathstraightening").get<bool>();
         }
         if (configDef.contains("tesselationdistance")) {
-            routeFinder->setTesselationDistance(configDef.get("tesselationdistance").get<double>());
+            routeOptions.tesselationDistance = configDef.get("tesselationdistance").get<double>();
         }
         if (configDef.contains("zsensitivity")) {
-            routeFinder->setZSensitivity(configDef.get("zsensitivity").get<double>());
+            routeOptions.zSensitivity = configDef.get("zsensitivity").get<double>();
         }
+        if (configDef.contains("min_turnangle")) {
+            routeOptions.minTurnAngle = configDef.get("min_turnangle").get<double>();
+        }
+        if (configDef.contains("min_updownangle")) {
+            routeOptions.minUpDownAngle = configDef.get("min_updownangle").get<double>();
+        }
+
+        auto routeFinder = std::unique_ptr<RouteFinder>(new RouteFinder(std::move(graph)));
+        routeFinder->setRouteOptions(routeOptions);
         return routeFinder;
     }
 
@@ -215,10 +224,9 @@ namespace carto { namespace sgre {
         return fastestAttributes;
     }
 
-    Result RouteFinder::buildResult(const Graph& graph, const Path& path, double lngScale) {
+    Result RouteFinder::buildResult(const Graph& graph, const Path& path, double lngScale, double minTurnAngle, double minUpDownAngle) {
         static constexpr double DIST_EPSILON = 1.0e-6;
-        static constexpr double MIN_TURN_ANGLE = 5.0 / 180.0 * boost::math::constants::pi<double>();
-
+        
         // Build both path geometry and instructions in one pass
         std::vector<Point> points;
         std::vector<Instruction> instructions;
@@ -245,19 +253,6 @@ namespace carto { namespace sgre {
             Instruction::Type type = Instruction::Type::HEAD_ON;
             double turnAngle = 0;
             if (points.size() > 2) {
-                // Drop the middle point from the 3 last consecutive points?
-                if (edge.featureId == lastFeatureId && edge.attributes.delay == 0) {
-                    double dist0 = calculateDistance(points[points.size() - 2], points[points.size() - 3], lngScale);
-                    double dist1 = calculateDistance(points[points.size() - 1], points[points.size() - 2], lngScale);
-                    double dist2 = calculateDistance(points[points.size() - 1], points[points.size() - 3], lngScale);
-                    if (dist0 + dist1 <= dist2 + DIST_EPSILON) {
-                        points[points.size() - 2] = points[points.size() - 1];
-                        points.pop_back();
-                        instructions.pop_back();
-                    }
-                }
-
-                // Calculate instruction type based on the turning angle
                 if (points.size() > 2) {
                     cglib::vec3<double> v0(0, 0, 0);
                     for (std::size_t j = points.size() - 2; j > 0; j--) {
@@ -277,12 +272,16 @@ namespace carto { namespace sgre {
                         }
                     }
 
+                    // Calculate instruction type based on the turning angle
                     cglib::vec3<double> cross = cglib::vector_product(v0, v1);
-                    if (cross(2) < -std::sin(MIN_TURN_ANGLE)) {
+                    double signedTurnAngle = std::asin(std::max(-1.0, std::min(1.0, cross(2)))) * 180.0 / boost::math::constants::pi<double>();
+                    if (signedTurnAngle < -minTurnAngle) {
                         type = Instruction::Type::TURN_RIGHT;
-                    } else if (cross(2) > std::sin(MIN_TURN_ANGLE)) {
+                    } else if (signedTurnAngle > minTurnAngle) {
                         type = Instruction::Type::TURN_LEFT;
                     } else {
+                        // Note: in theory we should check the graph node for 'alternatives'.
+                        // If there are 2 options: slight turn to left and slight turn to right, we should still use turn actions.
                         type = Instruction::Type::GO_STRAIGHT;
                     }
 
@@ -297,7 +296,8 @@ namespace carto { namespace sgre {
             const Point& pos0 = points[points.size() - 2];
             const Point& pos1 = points[points.size() - 1];
             std::pair<double, double> dist2D = calculateDistance2D(pos0, pos1, lngScale);
-            if (dist2D.second > dist2D.first) {
+            double minUpDownAngleTan = std::tan(minUpDownAngle / 180.0 * boost::math::constants::pi<double>());
+            if (dist2D.second > 0 && dist2D.second / minUpDownAngleTan > dist2D.first) {
                 if (pos1(2) > pos0(2)) {
                     type = Instruction::Type::GO_UP;
                 } else {
@@ -313,8 +313,26 @@ namespace carto { namespace sgre {
                 return Result();
             }
 
-            // Store the instruction
-            Instruction instruction(type, feature, dist, time, points.size() - 2);
+            // Store the instruction. But first check if we can merge this instruction with the last one based on type
+            std::size_t geometryIndex = points.size() - 2;
+            if (instructions.size() > 0 && edge.featureId == lastFeatureId && type == Instruction::Type::GO_STRAIGHT) {
+                type = instructions.back().getType();
+                dist += instructions.back().getDistance();
+                time += instructions.back().getTime();
+                geometryIndex = instructions.back().getGeometryIndex();
+                instructions.pop_back();
+
+                // Remove redundant points from straight lines
+                if (points.size() > 2) {
+                    double dist0 = calculateDistance(points[points.size() - 2], points[points.size() - 3], lngScale);
+                    double dist1 = calculateDistance(points[points.size() - 1], points[points.size() - 2], lngScale);
+                    double dist2 = calculateDistance(points[points.size() - 1], points[points.size() - 3], lngScale);
+                    if (dist0 + dist1 <= dist2 + DIST_EPSILON) {
+                        points.erase(points.begin() + points.size() - 2);
+                    }
+                }
+            }
+            Instruction instruction(type, feature, dist, time, geometryIndex);
             instructions.push_back(std::move(instruction));
 
             // Add the final instruction if we are at the end

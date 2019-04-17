@@ -94,7 +94,7 @@ namespace carto { namespace geocoding {
         std::vector<StringType> tokens(const Span& span) const {
             std::vector<StringType> tokens;
             tokens.reserve(span.count);
-            for (std::size_t i = span.index; i < span.index + span.count; i++) {
+            for (int i = span.index; i < span.index + span.count; i++) {
                 tokens.push_back(_tokens.at(i).value);
             }
             return tokens;
@@ -103,7 +103,7 @@ namespace carto { namespace geocoding {
         std::vector<TagType> tags(const Span& span) const {
             std::vector<TagType> tags;
             tags.reserve(span.count);
-            for (std::size_t i = span.index; i < span.index + span.count; i++) {
+            for (int i = span.index; i < span.index + span.count; i++) {
                 tags.push_back(_tokens.at(i).tag);
             }
             return tags;

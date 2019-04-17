@@ -10,6 +10,7 @@
 #include "Value.h"
 #include "mapnikvt/StringUtils.h"
 
+#include <stdexcept>
 #include <memory>
 #include <string>
 #include <array>

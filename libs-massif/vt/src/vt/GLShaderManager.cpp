@@ -1,5 +1,6 @@
 #include "GLShaderManager.h"
 
+#include <stdexcept>
 #include <vector>
 
 namespace carto { namespace vt {

@@ -18,6 +18,42 @@ static bool equal(const Point& point0, const Point& point1) {
     return cglib::length(point0 - point1) <= EPSILON;
 }
 
+static bool equal(const picojson::value& val1, const picojson::value& val2) {
+    double EPSILON = 1.0e-9;
+    
+    if (val1.is<picojson::object>() && val2.is<picojson::object>()) {
+        const picojson::object& obj1 = val1.get<picojson::object>();
+        const picojson::object& obj2 = val2.get<picojson::object>();
+        if (obj1.size() != obj2.size()) {
+            return false;
+        }
+        for (auto keyVal : obj1) {
+            if (!equal(val1.get(keyVal.first), val2.get(keyVal.first))) {
+                return false;
+            }
+        }
+        return true;
+    }
+    if (val1.is<picojson::array>() && val2.is<picojson::array>()) {
+        const picojson::array& arr1 = val1.get<picojson::array>();
+        const picojson::array& arr2 = val2.get<picojson::array>();
+        if (arr1.size() != arr2.size()) {
+            return false;
+        }
+        for (std::size_t i = 0; i < arr1.size(); i++) {
+            if (!equal(val1.get(i), val2.get(i))) {
+                return false;
+            }
+        }
+        return true;
+    }
+    if (val1.is<double>() && val2.is<double>()) {
+        double diff = val1.get<double>() - val2.get<double>();
+        return std::abs(diff) <= EPSILON;
+    }
+    return val1 == val2;
+}
+
 static picojson::value parseJSON(const std::string& json) {
     picojson::value value;
     std::string err = picojson::parse(value, json);
@@ -231,15 +267,18 @@ BOOST_AUTO_TEST_CASE(edgeLinking) {
         Query query(Point(0.0, 0.1, 0.0), Point(2.0, 0.1, 0.0));
 
         RouteFinder finder1(buildGraph("none"));
-        BOOST_CHECK(finder1.find(query).getStatus() == Result::Status::FAILED);
+        Result result1 = finder1.find(query);
+        BOOST_CHECK(result1.getStatus() == Result::Status::FAILED);
 
         RouteFinder finder2(buildGraph("all"));
-        BOOST_CHECK(equal(finder2.find(query).getGeometry().at(0), query.getPos(0)));
-        BOOST_CHECK(equal(finder2.find(query).getGeometry().at(3), query.getPos(1)));
+        Result result2 = finder2.find(query);
+        BOOST_CHECK(equal(result2.getGeometry().at(0), query.getPos(0)));
+        BOOST_CHECK(equal(result2.getGeometry().at(3), query.getPos(1)));
 
         RouteFinder finder3(buildGraph("endpoints"));
-        BOOST_CHECK(equal(finder3.find(query).getGeometry().at(0), query.getPos(0)));
-        BOOST_CHECK(equal(finder3.find(query).getGeometry().at(3), query.getPos(1)));
+        Result result3 = finder2.find(query);
+        BOOST_CHECK(equal(result3.getGeometry().at(0), query.getPos(0)));
+        BOOST_CHECK(equal(result3.getGeometry().at(3), query.getPos(1)));
     }
 
     // Check routing graph A-B-C with routing from A to B
@@ -247,14 +286,17 @@ BOOST_AUTO_TEST_CASE(edgeLinking) {
         Query query(Point(0.0, 0.1, 0.0), Point(1.0, 0.1, 0.0));
 
         RouteFinder finder1(buildGraph("none"));
-        BOOST_CHECK(finder1.find(query).getStatus() == Result::Status::FAILED);
+        Result result1 = finder1.find(query);
+        BOOST_CHECK(result1.getStatus() == Result::Status::FAILED);
 
         RouteFinder finder2(buildGraph("all"));
-        BOOST_CHECK(equal(finder2.find(query).getGeometry().at(0), query.getPos(0)));
-        BOOST_CHECK(equal(finder2.find(query).getGeometry().at(3), query.getPos(1)));
+        Result result2 = finder2.find(query);
+        BOOST_CHECK(equal(result2.getGeometry().at(0), query.getPos(0)));
+        BOOST_CHECK(equal(result2.getGeometry().at(3), query.getPos(1)));
 
         RouteFinder finder3(buildGraph("endpoints"));
-        BOOST_CHECK(finder3.find(query).getStatus() == Result::Status::FAILED);
+        Result result3 = finder3.find(query);
+        BOOST_CHECK(result3.getStatus() == Result::Status::FAILED);
     }
 }
 
@@ -349,7 +391,8 @@ BOOST_AUTO_TEST_CASE(routingInstructions) {
         Query query(Point(-1.0, 0.0, 0.0), Point(1.0, 0.0, 0.0));
 
         RouteFinder finder1(buildGraph(R"R([{ "filters":[{"type":0}], "speed":1.0 }])R"));
-        BOOST_CHECK(finder1.find(query).serialize() == parseJSON(R"R({"geometry":[[-1,0,0],[-0.5,0,0],[0.5,0,0],[1,0,0]],"instructions":[{"distance":55659.74539663679,"geomindex":0,"tag":{"type":0},"time":55659.74539663679,"type":1},{"distance":111319.49079327358,"geomindex":1,"tag":{"type":1},"time":80666.29795501483,"type":2},{"distance":55659.74539663679,"geomindex":2,"tag":{"type":2},"time":40333.148977507415,"type":2},{"distance":0,"geomindex":3,"tag":{"type":2},"time":0,"type":8}],"status":1})R"));
+        Result result1 = finder1.find(query);
+        BOOST_CHECK(equal(result1.serialize(), parseJSON(R"R({"geometry":[[-1,0,0],[-0.5,0,0],[0.5,0,0],[1,0,0]],"instructions":[{"distance":55659.74539663679,"geomindex":0,"tag":{"type":0},"time":55659.74539663679,"type":1},{"distance":111319.49079327358,"geomindex":1,"tag":{"type":1},"time":80666.29795501483,"type":2},{"distance":55659.74539663679,"geomindex":2,"tag":{"type":2},"time":40333.148977507415,"type":2},{"distance":0,"geomindex":3,"tag":{"type":2},"time":0,"type":8}],"status":1})R")));
     }
 
     // Check delay or 'wait' handling
@@ -357,7 +400,8 @@ BOOST_AUTO_TEST_CASE(routingInstructions) {
         Query query(Point(-1.0, 0.0, 0.0), Point(1.0, 0.0, 0.0));
 
         RouteFinder finder1(buildGraph(R"R([{ "filters":[{"type":0}], "speed":1.0 }, { "filters":[{"type":1}], "delay":2.0 }])R"));
-        BOOST_CHECK(finder1.find(query).serialize() == parseJSON(R"R({"geometry":[[-1,0,0],[-0.5,0,0],[0.5,0,0],[1,0,0]],"instructions":[{"distance":55659.74539663679,"geomindex":0,"tag":{"type":0},"time":55659.74539663679,"type":1},{"distance":0,"geomindex":1,"tag":{"type":1},"time":2,"type":7},{"distance":111319.49079327358,"geomindex":1,"tag":{"type":1},"time":80666.29795501483,"type":2},{"distance":55659.74539663679,"geomindex":2,"tag":{"type":2},"time":40333.148977507415,"type":2},{"distance":0,"geomindex":3,"tag":{"type":2},"time":0,"type":8}],"status":1})R"));
+        Result result1 = finder1.find(query);
+        BOOST_CHECK(equal(result1.serialize(), parseJSON(R"R({"geometry":[[-1,0,0],[-0.5,0,0],[0.5,0,0],[1,0,0]],"instructions":[{"distance":55659.74539663679,"geomindex":0,"tag":{"type":0},"time":55659.74539663679,"type":1},{"distance":0,"geomindex":1,"tag":{"type":1},"time":2,"type":7},{"distance":111319.49079327358,"geomindex":1,"tag":{"type":1},"time":80666.29795501483,"type":2},{"distance":55659.74539663679,"geomindex":2,"tag":{"type":2},"time":40333.148977507415,"type":2},{"distance":0,"geomindex":3,"tag":{"type":2},"time":0,"type":8}],"status":1})R")));
     }
 
     // Check 'go straight' handling
@@ -365,8 +409,8 @@ BOOST_AUTO_TEST_CASE(routingInstructions) {
         Query query(Point(-1.25, 0.0, 0.0), Point(1.25, 0.0, 0.0));
 
         RouteFinder finder1(buildGraph(R"R([{ "filters":[{"type":0}], "speed":1.0 }])R"));
-        std::string result = finder1.find(query).serialize().serialize();
-        BOOST_CHECK(finder1.find(query).serialize() == parseJSON(R"R({"geometry":[[-1.25,0,0],[-0.5,0,0],[0.5,0,0],[1.25,0,0]],"instructions":[{"distance":83489.618094955178,"geomindex":0,"tag":{"type":0},"time":83489.618094955178,"type":1},{"distance":111319.49079327358,"geomindex":1,"tag":{"type":1},"time":80666.29795501483,"type":2},{"distance":83489.618094955178,"geomindex":2,"tag":{"type":2},"time":60499.723466261115,"type":2},{"distance":0,"geomindex":3,"tag":{"type":2},"time":0,"type":8}],"status":1})R"));
+        Result result1 = finder1.find(query);
+        BOOST_CHECK(equal(result1.serialize(), parseJSON(R"R({"geometry":[[-1.25,0,0],[-0.5,0,0],[0.5,0,0],[1.25,0,0]],"instructions":[{"distance":83489.618094955178,"geomindex":0,"tag":{"type":0},"time":83489.618094955178,"type":1},{"distance":111319.49079327358,"geomindex":1,"tag":{"type":1},"time":80666.29795501483,"type":2},{"distance":83489.618094955178,"geomindex":2,"tag":{"type":2},"time":60499.723466261115,"type":2},{"distance":0,"geomindex":3,"tag":{"type":2},"time":0,"type":8}],"status":1})R")));
     }
 
     // Check 'turn left', 'turn right' handling
@@ -374,7 +418,8 @@ BOOST_AUTO_TEST_CASE(routingInstructions) {
         Query query(Point(-1.0, 0.25, 0.0), Point(1.0, -0.25, 0.0));
 
         RouteFinder finder1(buildGraph(R"R([{ "filters":[{"type":0}], "speed":1.0 }])R"));
-        BOOST_CHECK(finder1.find(query).serialize() == parseJSON(R"R({"geometry":[[-1,0.25,0],[-0.5,0,0],[0.5,0,0],[1,-0.25,0]],"instructions":[{"distance":62229.487158605429,"geomindex":0,"tag":{"type":0},"time":62229.487158605429,"type":1},{"distance":111319.49079327358,"geomindex":1,"tag":{"type":1},"time":80666.445538632484,"type":6},{"distance":62229.487158605429,"geomindex":2,"tag":{"type":2},"time":45093.979013784003,"type":5},{"distance":0,"geomindex":3,"tag":{"type":2},"time":0,"type":8}],"status":1})R"));
+        Result result1 = finder1.find(query);
+        BOOST_CHECK(equal(result1.serialize(), parseJSON(R"R({"geometry":[[-1,0.25,0],[-0.5,0,0],[0.5,0,0],[1,-0.25,0]],"instructions":[{"distance":62229.487158605429,"geomindex":0,"tag":{"type":0},"time":62229.487158605429,"type":1},{"distance":111319.49079327358,"geomindex":1,"tag":{"type":1},"time":80666.445538632484,"type":6},{"distance":62229.487158605429,"geomindex":2,"tag":{"type":2},"time":45093.979013784003,"type":5},{"distance":0,"geomindex":3,"tag":{"type":2},"time":0,"type":8}],"status":1})R")));
     }
 
     // Check 'zspeed' and vertical routing
@@ -383,14 +428,18 @@ BOOST_AUTO_TEST_CASE(routingInstructions) {
         Query revQuery(Point(-1.0, 0.25, 1.0), Point(1.0, -0.25, -1.0));
 
         RouteFinder finder1(buildZGraph(R"R([{ "filters":[{"type":0}], "zspeed":0.0 }])R"));
-        BOOST_CHECK(finder1.find(query).serialize() == parseJSON(R"R({"geometry":[[-0.49999999999999994,0.25000000000000006,-1],[0,0,-1],[0,0,1],[0.49999999999999994,-0.25000000000000006,1]],"instructions":[{"distance":62229.487158605429,"geomindex":0,"tag":{"type":2},"time":45093.831430166356,"type":1},{"distance":2,"geomindex":1,"tag":{"type":1},"time":4,"type":3},{"distance":62229.487158605429,"geomindex":2,"tag":{"type":0},"time":45093.831430173064,"type":2},{"distance":0,"geomindex":3,"tag":{"type":0},"time":0,"type":8}],"status":1})R"));
+        Result result1 = finder1.find(query);
+        BOOST_CHECK(equal(result1.serialize(), parseJSON(R"R({"geometry":[[-0.49999999999999994,0.25000000000000006,-1],[0,0,-1],[0,0,1],[0.49999999999999994,-0.25000000000000006,1]],"instructions":[{"distance":62229.487158605429,"geomindex":0,"tag":{"type":2},"time":45093.831430166356,"type":1},{"distance":2,"geomindex":1,"tag":{"type":1},"time":4,"type":3},{"distance":62229.487158605429,"geomindex":2,"tag":{"type":0},"time":45093.831430173064,"type":2},{"distance":0,"geomindex":3,"tag":{"type":0},"time":0,"type":8}],"status":1})R")));
 
         RouteFinder finder2(buildZGraph(R"R([{ "filters":[{"type":1}], "zspeed":0.0 }])R"));
-        BOOST_CHECK(finder2.find(query).serialize() == parseJSON(R"R({"status":0})R"));
+        Result result2 = finder2.find(query);
+        BOOST_CHECK(equal(result2.serialize(), parseJSON(R"R({"status":0})R")));
 
         RouteFinder finder3(buildZGraph(R"R([{ "filters":[{"type":1}], "zspeed":2.0, "backward_zspeed":3.0 }])R"));
-        BOOST_CHECK(finder3.find(query).serialize() == parseJSON(R"R({"geometry":[[-0.49999999999999994,0.25000000000000006,-1],[0,0,-1],[0,0,1],[0.49999999999999994,-0.25000000000000006,1]],"instructions":[{"distance":62229.487158605429,"geomindex":0,"tag":{"type":2},"time":45093.831430166356,"type":1},{"distance":2,"geomindex":1,"tag":{"type":1},"time":0.66666666666666663,"type":3},{"distance":62229.487158605429,"geomindex":2,"tag":{"type":0},"time":45093.831430173064,"type":2},{"distance":0,"geomindex":3,"tag":{"type":0},"time":0,"type":8}],"status":1})R"));
-        BOOST_CHECK(finder3.find(revQuery).serialize() == parseJSON(R"R({"geometry":[[-0.49999999999999994,0.25000000000000006,1],[0,0,1],[0,0,-1],[0.49999999999999994,-0.25000000000000006,-1]],"instructions":[{"distance":62229.487158605429,"geomindex":0,"tag":{"type":0},"time":45093.831430166356,"type":1},{"distance":2,"geomindex":1,"tag":{"type":1},"time":1,"type":4},{"distance":62229.487158605429,"geomindex":2,"tag":{"type":2},"time":45093.831430173064,"type":2},{"distance":0,"geomindex":3,"tag":{"type":2},"time":0,"type":8}],"status":1})R"));
+        Result result3 = finder3.find(query);
+        BOOST_CHECK(equal(result3.serialize(), parseJSON(R"R({"geometry":[[-0.49999999999999994,0.25000000000000006,-1],[0,0,-1],[0,0,1],[0.49999999999999994,-0.25000000000000006,1]],"instructions":[{"distance":62229.487158605429,"geomindex":0,"tag":{"type":2},"time":45093.831430166356,"type":1},{"distance":2,"geomindex":1,"tag":{"type":1},"time":0.66666666666666663,"type":3},{"distance":62229.487158605429,"geomindex":2,"tag":{"type":0},"time":45093.831430173064,"type":2},{"distance":0,"geomindex":3,"tag":{"type":0},"time":0,"type":8}],"status":1})R")));
+        Result result3Rev = finder3.find(revQuery);
+        BOOST_CHECK(equal(result3Rev.serialize(), parseJSON(R"R({"geometry":[[-0.49999999999999994,0.25000000000000006,1],[0,0,1],[0,0,-1],[0.49999999999999994,-0.25000000000000006,-1]],"instructions":[{"distance":62229.487158605429,"geomindex":0,"tag":{"type":0},"time":45093.831430166356,"type":1},{"distance":2,"geomindex":1,"tag":{"type":1},"time":1,"type":4},{"distance":62229.487158605429,"geomindex":2,"tag":{"type":2},"time":45093.831430173064,"type":2},{"distance":0,"geomindex":3,"tag":{"type":2},"time":0,"type":8}],"status":1})R")));
     }
 }
 
@@ -434,18 +483,103 @@ BOOST_AUTO_TEST_CASE(zSensitivity) {
         Query query2(Point(0.0, 0.1, 0.0), Point(1.0, 0.1, 0.0));
 
         RouteFinder finder1(buildZGraph(R"R([{ "filters":[{"type":0}], "speed":1.0 }])R"));
-        BOOST_CHECK(finder1.find(query1).serialize() == parseJSON(R"R({"geometry":[[0,0,0],[1,0,0]],"instructions":[{"distance":111319.49079327358,"geomindex":0,"tag":{"type":1},"time":80666.29795501483,"type":1},{"distance":0,"geomindex":1,"tag":{"type":1},"time":0,"type":8}],"status":1})R"));
-        BOOST_CHECK(finder1.find(query2).serialize() == parseJSON(R"R({"geometry":[[0,0.10000000000000001,1],[1,0.10000000000000001,1]],"instructions":[{"distance":111319.32124403633,"geomindex":0,"tag":{"type":2},"time":80666.175093248283,"type":1},{"distance":0,"geomindex":1,"tag":{"type":2},"time":0,"type":8}],"status":1})R"));
+        Result result1 = finder1.find(query1);
+        BOOST_CHECK(equal(result1.serialize(), parseJSON(R"R({"geometry":[[0,0,0],[1,0,0]],"instructions":[{"distance":111319.49079327358,"geomindex":0,"tag":{"type":1},"time":80666.29795501483,"type":1},{"distance":0,"geomindex":1,"tag":{"type":1},"time":0,"type":8}],"status":1})R")));
+        Result result2 = finder1.find(query2);
+        BOOST_CHECK(equal(result2.serialize(), parseJSON(R"R({"geometry":[[0,0.10000000000000001,1],[1,0.10000000000000001,1]],"instructions":[{"distance":111319.32124403633,"geomindex":0,"tag":{"type":2},"time":80666.175093248283,"type":1},{"distance":0,"geomindex":1,"tag":{"type":2},"time":0,"type":8}],"status":1})R")));
     }
 
-    // Set sensitivity to very high value
+    // Set zsensitivity to very high value
     {
         Query query1(Point(0.0, 0.0, 0.0), Point(1.0, 0.0, 0.0));
         Query query2(Point(0.0, 0.1, 0.0), Point(1.0, 0.1, 0.0));
 
         picojson::value configDef = parseJSON(R"R({ "zsensitivity": 1000000 })R");
         auto finder1 = RouteFinder::create(buildZGraph(R"R([{ "filters":[{"type":0}], "speed":1.0 }])R"), configDef);
-        BOOST_CHECK(finder1->find(query1).serialize() == parseJSON(R"R({"geometry":[[0,0,0],[1,0,0]],"instructions":[{"distance":111319.49079327358,"geomindex":0,"tag":{"type":1},"time":80666.29795501483,"type":1},{"distance":0,"geomindex":1,"tag":{"type":1},"time":0,"type":8}],"status":1})R"));
-        BOOST_CHECK(finder1->find(query2).serialize() == parseJSON(R"R({"geometry":[[0,0,0],[1,0,0]],"instructions":[{"distance":111319.49079327358,"geomindex":0,"tag":{"type":1},"time":80666.29795501483,"type":1},{"distance":0,"geomindex":1,"tag":{"type":1},"time":0,"type":8}],"status":1})R"));
+        Result result1 = finder1->find(query1);
+        BOOST_CHECK(equal(result1.serialize(), parseJSON(R"R({"geometry":[[0,0,0],[1,0,0]],"instructions":[{"distance":111319.49079327358,"geomindex":0,"tag":{"type":1},"time":80666.29795501483,"type":1},{"distance":0,"geomindex":1,"tag":{"type":1},"time":0,"type":8}],"status":1})R")));
+        Result result2 = finder1->find(query2);
+        BOOST_CHECK(equal(result2.serialize(), parseJSON(R"R({"geometry":[[0,0,0],[1,0,0]],"instructions":[{"distance":111319.49079327358,"geomindex":0,"tag":{"type":1},"time":80666.29795501483,"type":1},{"distance":0,"geomindex":1,"tag":{"type":1},"time":0,"type":8}],"status":1})R")));
+    }
+}
+
+// Test cases for min_turnangle parameter
+BOOST_AUTO_TEST_CASE(minTurnAngle) {
+    auto buildZGraph = [](const std::string& rules) -> std::shared_ptr<const StaticGraph> {
+        auto ring = createRing(1.0, 8);
+        auto ruleList = RuleList::parse(parseJSON(rules));
+        GraphBuilder graphBuilder = GraphBuilder(ruleList);
+        graphBuilder.addLineString({ ring }, parseJSON("{ \"type\": 1 }"));
+        return graphBuilder.build();
+    };
+
+    // Check default behaviour
+    {
+        Query query1(Point(-1.0, 0.0, 0.0), Point(1.0, 0.0, 0.0));
+
+        RouteFinder finder1(buildZGraph(R"R([{ "filters":[{"type":0}], "speed":1.0 }])R"));
+        Result result1 = finder1.find(query1);
+        BOOST_CHECK(equal(result1.serialize(), parseJSON(R"R({"geometry":[[-0.92387953251128696,6.5361039314267794e-17,0],[-0.92387953251128685,-0.38268343236508967,0],[-0.38268343236509034,-0.92387953251128652,0],[0.38268343236509,-0.92387953251128663,0],[0.92387953251128652,-0.38268343236509045,0]],"instructions":[{"distance":42600.124825903942,"geomindex":0,"tag":{"type":1},"time":30869.655777610096,"type":1},{"distance":85200.012102411041,"geomindex":1,"tag":{"type":1},"time":61739.389417088016,"type":6},{"distance":85199.774552352057,"geomindex":2,"tag":{"type":1},"time":61739.217281138503,"type":6},{"distance":85200.012102410969,"geomindex":3,"tag":{"type":1},"time":61739.389418862949,"type":6},{"distance":0,"geomindex":4,"tag":{"type":1},"time":0,"type":8}],"status":1})R")));
+    }
+
+    // Set min_turnangle to slightly below threshold value
+    {
+        Query query1(Point(-1.0, 0.0, 0.0), Point(1.0, 0.0, 0.0));
+
+        picojson::value configDef = parseJSON(R"R({ "min_turnangle": 44 })R");
+        auto finder1 = RouteFinder::create(buildZGraph(R"R([{ "filters":[{"type":0}], "speed":1.0 }])R"), configDef);
+        Result result1 = finder1->find(query1);
+        BOOST_CHECK(equal(result1.serialize(), parseJSON(R"R({"geometry":[[-0.92387953251128696,6.5361039314267794e-17,0],[-0.92387953251128685,-0.38268343236508967,0],[-0.38268343236509034,-0.92387953251128652,0],[0.38268343236509,-0.92387953251128663,0],[0.92387953251128652,-0.38268343236509045,0]],"instructions":[{"distance":42600.124825903942,"geomindex":0,"tag":{"type":1},"time":30869.655777610096,"type":1},{"distance":85200.012102411041,"geomindex":1,"tag":{"type":1},"time":61739.389417088016,"type":6},{"distance":85199.774552352057,"geomindex":2,"tag":{"type":1},"time":61739.217281138503,"type":6},{"distance":85200.012102410969,"geomindex":3,"tag":{"type":1},"time":61739.389418862949,"type":6},{"distance":0,"geomindex":4,"tag":{"type":1},"time":0,"type":8}],"status":1})R")));
+    }
+    // Set min_turnangle to slightly over threshold value
+    {
+        Query query1(Point(-1.0, 0.0, 0.0), Point(1.0, 0.0, 0.0));
+
+        picojson::value configDef = parseJSON(R"R({ "min_turnangle": 46 })R");
+        auto finder1 = RouteFinder::create(buildZGraph(R"R([{ "filters":[{"type":0}], "speed":1.0 }])R"), configDef);
+        Result result1 = finder1->find(query1);
+        BOOST_CHECK(equal(result1.serialize(), parseJSON(R"R({"geometry":[[-0.92387953251128696,6.5361039314267794e-17,0],[-0.92387953251128685,-0.38268343236508967,0],[-0.38268343236509034,-0.92387953251128652,0],[0.38268343236509,-0.92387953251128663,0],[0.92387953251128652,-0.38268343236509045,0]],"instructions":[{"distance":298199.92358307802,"geomindex":0,"tag":{"type":1},"time":216087.65189469955,"type":1},{"distance":0,"geomindex":4,"tag":{"type":1},"time":0,"type":8}],"status":1})R")));
+    }
+}
+
+// Test cases for min_updownangle parameter
+BOOST_AUTO_TEST_CASE(minUpDownAngle) {
+    static constexpr double dist = 111319;
+
+    auto buildZGraph = [&](const std::string& rules) -> std::shared_ptr<const StaticGraph> {
+        auto ruleList = RuleList::parse(parseJSON(rules));
+        GraphBuilder graphBuilder = GraphBuilder(ruleList);
+        graphBuilder.addLineString({ Point(0, 0, 0), Point(1, 0, dist) }, parseJSON("{ \"type\": 1 }"));
+        return graphBuilder.build();
+    };
+
+    // Check default behaviour
+    {
+        Query query1(Point(0.0, 0.0, 0.0), Point(1.0, 0.0, dist));
+
+        RouteFinder finder1(buildZGraph(R"R([{ "filters":[{"type":0}], "speed":1.0 }])R"));
+        Result result1 = finder1.find(query1);
+        BOOST_CHECK(equal(result1.serialize(), parseJSON(R"R({"geometry":[[0,0,0],[1,0,111319]],"instructions":[{"distance":157429.18659344499,"geomindex":0,"tag":{"type":1},"time":303304.29795501486,"type":1},{"distance":0,"geomindex":1,"tag":{"type":1},"time":0,"type":8}],"status":1})R")));
+    }
+
+    // Set min_updownangle to slightly below threshold value
+    {
+        Query query1(Point(0.0, 0.0, 0.0), Point(1.0, 0.0, dist));
+
+        picojson::value configDef = parseJSON(R"R({ "min_updownangle": 44 })R");
+        auto finder1 = RouteFinder::create(buildZGraph(R"R([{ "filters":[{"type":0}], "speed":1.0 }])R"), configDef);
+        Result result1 = finder1->find(query1);
+        std::string x = result1.serialize().serialize();
+        BOOST_CHECK(equal(result1.serialize(), parseJSON(R"R({"geometry":[[0,0,0],[1,0,111319]],"instructions":[{"distance":157429.18659344499,"geomindex":0,"tag":{"type":1},"time":303304.29795501486,"type":3},{"distance":0,"geomindex":1,"tag":{"type":1},"time":0,"type":8}],"status":1})R")));
+    }
+
+    // Set min_updownangle to slightly below threshold value
+    {
+        Query query1(Point(0.0, 0.0, 0.0), Point(1.0, 0.0, dist));
+
+        picojson::value configDef = parseJSON(R"R({ "min_updownangle": 46 })R");
+        auto finder1 = RouteFinder::create(buildZGraph(R"R([{ "filters":[{"type":0}], "speed":1.0 }])R"), configDef);
+        Result result1 = finder1->find(query1);
+        BOOST_CHECK(equal(result1.serialize(), parseJSON(R"R({"geometry":[[0,0,0],[1,0,111319]],"instructions":[{"distance":157429.18659344499,"geomindex":0,"tag":{"type":1},"time":303304.29795501486,"type":1},{"distance":0,"geomindex":1,"tag":{"type":1},"time":0,"type":8}],"status":1})R")));
     }
 }

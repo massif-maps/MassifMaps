@@ -125,8 +125,8 @@ namespace carto { namespace nml {
         GLint programId = 0;
         glGetIntegerv(GL_CURRENT_PROGRAM, &programId);
 
+        GLint positionLocation = glGetAttribLocation(programId, "aVertexPosition");
         if (!_positionBuffer.empty()) {
-            GLint positionLocation = glGetAttribLocation(programId, "aVertexPosition");
             glBindBuffer(GL_ARRAY_BUFFER, _glPositionVBOId);
             glEnableVertexAttribArray(positionLocation);
             glVertexAttribPointer(positionLocation, 3, GL_FLOAT, GL_FALSE, 0, 0);
@@ -176,6 +176,18 @@ namespace carto { namespace nml {
             int count = _vertexCounts[i];
             glDrawArrays(_glType, idx, count);
             idx += count;
+        }
+
+        // Cleanup state
+        glDisableVertexAttribArray(positionLocation);
+        if (normalLocation != -1) {
+            glDisableVertexAttribArray(normalLocation);
+        }
+        if (uvLocation != -1) {
+            glDisableVertexAttribArray(uvLocation);
+        }
+        if (colorLocation != -1) {
+            glDisableVertexAttribArray(colorLocation);
         }
     
         glBindBuffer(GL_ARRAY_BUFFER, 0);

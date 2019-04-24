@@ -1242,6 +1242,7 @@ namespace carto { namespace vt {
         }
 
         GLuint shaderProgram = _shaderManager.createProgram("blend", _defaultContext);
+        GLint positionLocation = glGetAttribLocation(shaderProgram, "aVertexPosition");
         glUseProgram(shaderProgram);
         checkGLError();
         
@@ -1249,8 +1250,8 @@ namespace carto { namespace vt {
             createCompiledQuad(_screenQuad);
         }
         glBindBuffer(GL_ARRAY_BUFFER, _screenQuad.vbo);
-        glVertexAttribPointer(glGetAttribLocation(shaderProgram, "aVertexPosition"), 2, GL_FLOAT, GL_FALSE, 0, 0);
-        glEnableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexPosition"));
+        glVertexAttribPointer(positionLocation, 2, GL_FLOAT, GL_FALSE, 0, 0);
+        glEnableVertexAttribArray(positionLocation);
         
         cglib::mat4x4<float> mvpMatrix = cglib::mat4x4<float>::identity();
         glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "uMVPMatrix"), 1, GL_FALSE, mvpMatrix.data());
@@ -1266,7 +1267,7 @@ namespace carto { namespace vt {
         
         glBindTexture(GL_TEXTURE_2D, 0);
         
-        glDisableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexPosition"));
+        glDisableVertexAttribArray(positionLocation);
 
         glBindBuffer(GL_ARRAY_BUFFER, 0);
     }
@@ -1281,12 +1282,13 @@ namespace carto { namespace vt {
             const CompiledSurface& compiledTileSurface = _compiledTileSurfaceMap[tileSurface];
 
             GLuint shaderProgram = _shaderManager.createProgram("blend", _defaultContext);
+            GLint positionLocation = glGetAttribLocation(shaderProgram, "aVertexPosition");
             glUseProgram(shaderProgram);
             checkGLError();
 
             glBindBuffer(GL_ARRAY_BUFFER, compiledTileSurface.vertexGeometryVBO);
-            glVertexAttribPointer(glGetAttribLocation(shaderProgram, "aVertexPosition"), 3, GL_FLOAT, GL_FALSE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.coordOffset));
-            glEnableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexPosition"));
+            glVertexAttribPointer(positionLocation, 3, GL_FLOAT, GL_FALSE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.coordOffset));
+            glEnableVertexAttribArray(positionLocation);
 
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, compiledTileSurface.indicesVBO);
 
@@ -1304,7 +1306,7 @@ namespace carto { namespace vt {
 
             glBindTexture(GL_TEXTURE_2D, 0);
 
-            glDisableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexPosition"));
+            glDisableVertexAttribArray(positionLocation);
 
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
             glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -1317,12 +1319,13 @@ namespace carto { namespace vt {
             const CompiledSurface& compiledTileSurface = _compiledTileSurfaceMap[tileSurface];
 
             GLuint shaderProgram = _shaderManager.createProgram("background", _defaultContext);
+            GLint positionLocation = glGetAttribLocation(shaderProgram, "aVertexPosition");
             glUseProgram(shaderProgram);
             checkGLError();
 
             glBindBuffer(GL_ARRAY_BUFFER, compiledTileSurface.vertexGeometryVBO);
-            glVertexAttribPointer(glGetAttribLocation(shaderProgram, "aVertexPosition"), 3, GL_FLOAT, GL_FALSE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.coordOffset));
-            glEnableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexPosition"));
+            glVertexAttribPointer(positionLocation, 3, GL_FLOAT, GL_FALSE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.coordOffset));
+            glEnableVertexAttribArray(positionLocation);
 
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, compiledTileSurface.indicesVBO);
 
@@ -1335,7 +1338,7 @@ namespace carto { namespace vt {
 
             glDrawElements(GL_TRIANGLES, tileSurface->getIndicesCount(), GL_UNSIGNED_SHORT, 0);
 
-            glDisableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexPosition"));
+            glDisableVertexAttribArray(positionLocation);
 
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
             glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -1355,22 +1358,25 @@ namespace carto { namespace vt {
             const CompiledSurface& compiledTileSurface = _compiledTileSurfaceMap[tileSurface];
 
             GLuint shaderProgram = _shaderManager.createProgram("background", _patternTransformLighting2DContext[background->getPattern() ? 1 : 0][0]);
+            GLint positionLocation = glGetAttribLocation(shaderProgram, "aVertexPosition");
+            GLint normalLocation = _lightingShader2D ? glGetAttribLocation(shaderProgram, "aVertexNormal") : -1;
+            GLint uvLocation = background->getPattern() ? glGetAttribLocation(shaderProgram, "aVertexUV") : -1;
             glUseProgram(shaderProgram);
             checkGLError();
 
             glBindBuffer(GL_ARRAY_BUFFER, compiledTileSurface.vertexGeometryVBO);
-            glVertexAttribPointer(glGetAttribLocation(shaderProgram, "aVertexPosition"), 3, GL_FLOAT, GL_FALSE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.coordOffset));
-            glEnableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexPosition"));
+            glVertexAttribPointer(positionLocation, 3, GL_FLOAT, GL_FALSE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.coordOffset));
+            glEnableVertexAttribArray(positionLocation);
             if (background->getPattern()) {
-                glVertexAttribPointer(glGetAttribLocation(shaderProgram, "aVertexUV"), 2, GL_SHORT, GL_TRUE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.texCoordOffset));
-                glEnableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexUV"));
+                glVertexAttribPointer(uvLocation, 2, GL_SHORT, GL_TRUE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.texCoordOffset));
+                glEnableVertexAttribArray(uvLocation);
             }
             if (_lightingShader2D) {
                 if (vertexGeomLayoutParams.normalOffset >= 0) {
-                    glVertexAttribPointer(glGetAttribLocation(shaderProgram, "aVertexNormal"), 3, GL_SHORT, GL_TRUE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.normalOffset));
-                    glEnableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexNormal"));
+                    glVertexAttribPointer(normalLocation, 3, GL_SHORT, GL_TRUE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.normalOffset));
+                    glEnableVertexAttribArray(normalLocation);
                 } else {
-                    glVertexAttrib3f(glGetAttribLocation(shaderProgram, "aVertexNormal"), 0, 0, 1);
+                    glVertexAttrib3f(normalLocation, 0, 0, 1);
                 }
                 _lightingShader2D->setupFunc(shaderProgram, _viewState);
             }
@@ -1415,15 +1421,15 @@ namespace carto { namespace vt {
 
             if (_lightingShader2D) {
                 if (vertexGeomLayoutParams.normalOffset >= 0) {
-                    glDisableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexNormal"));
+                    glDisableVertexAttribArray(normalLocation);
                 }
             }
             if (background->getPattern()) {
                 glBindTexture(GL_TEXTURE_2D, 0);
 
-                glDisableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexUV"));
+                glDisableVertexAttribArray(uvLocation);
             }
-            glDisableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexPosition"));
+            glDisableVertexAttribArray(positionLocation);
 
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
             glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -1440,20 +1446,23 @@ namespace carto { namespace vt {
             const CompiledSurface& compiledTileSurface = _compiledTileSurfaceMap[tileSurface];
 
             GLuint shaderProgram = _shaderManager.createProgram("bitmap", _patternTransformLighting2DContext[1][0]);
+            GLint positionLocation = glGetAttribLocation(shaderProgram, "aVertexPosition");
+            GLint normalLocation = _lightingShader2D ? glGetAttribLocation(shaderProgram, "aVertexNormal") : -1;
+            GLint uvLocation = glGetAttribLocation(shaderProgram, "aVertexUV");
             glUseProgram(shaderProgram);
             checkGLError();
 
             glBindBuffer(GL_ARRAY_BUFFER, compiledTileSurface.vertexGeometryVBO);
-            glVertexAttribPointer(glGetAttribLocation(shaderProgram, "aVertexPosition"), 3, GL_FLOAT, GL_FALSE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.coordOffset));
-            glEnableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexPosition"));
-            glVertexAttribPointer(glGetAttribLocation(shaderProgram, "aVertexUV"), 2, GL_SHORT, GL_TRUE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.texCoordOffset));
-            glEnableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexUV"));
+            glVertexAttribPointer(positionLocation, 3, GL_FLOAT, GL_FALSE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.coordOffset));
+            glEnableVertexAttribArray(positionLocation);
+            glVertexAttribPointer(uvLocation, 2, GL_SHORT, GL_TRUE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.texCoordOffset));
+            glEnableVertexAttribArray(uvLocation);
             if (_lightingShader2D) {
                 if (vertexGeomLayoutParams.normalOffset >= 0) {
-                    glVertexAttribPointer(glGetAttribLocation(shaderProgram, "aVertexNormal"), 3, GL_SHORT, GL_TRUE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.normalOffset));
-                    glEnableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexNormal"));
+                    glVertexAttribPointer(normalLocation, 3, GL_SHORT, GL_TRUE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.normalOffset));
+                    glEnableVertexAttribArray(normalLocation);
                 } else {
-                    glVertexAttrib3f(glGetAttribLocation(shaderProgram, "aVertexNormal"), 0, 0, 1);
+                    glVertexAttrib3f(normalLocation, 0, 0, 1);
                 }
                 _lightingShader2D->setupFunc(shaderProgram, _viewState);
             }
@@ -1520,11 +1529,11 @@ namespace carto { namespace vt {
 
             if (_lightingShader2D) {
                 if (vertexGeomLayoutParams.normalOffset >= 0) {
-                    glDisableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexNormal"));
+                    glDisableVertexAttribArray(normalLocation);
                 }
             }
-            glDisableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexUV"));
-            glDisableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexPosition"));
+            glDisableVertexAttribArray(uvLocation);
+            glDisableVertexAttribArray(positionLocation);
 
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
             glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -1556,6 +1565,12 @@ namespace carto { namespace vt {
             default:
                 return;
         }
+        GLint positionLocation = glGetAttribLocation(shaderProgram, "aVertexPosition");
+        GLint uvLocation = vertexGeomLayoutParams.texCoordOffset >= 0 ? glGetAttribLocation(shaderProgram, "aVertexUV") : -1;
+        GLint normalLocation = _lightingShader2D || geometry->getType() == TileGeometry::Type::POLYGON3D ? glGetAttribLocation(shaderProgram, "aVertexNormal") : -1;
+        GLint binormalLocation = vertexGeomLayoutParams.binormalOffset >= 0 ? glGetAttribLocation(shaderProgram, "aVertexBinormal") : -1;
+        GLint heightLocation = vertexGeomLayoutParams.heightOffset >= 0 ? glGetAttribLocation(shaderProgram, "aVertexHeight") : -1;
+        GLint attribsLocation = glGetAttribLocation(shaderProgram, "aVertexAttribs");
         glUseProgram(shaderProgram);
         checkGLError();
 
@@ -1713,38 +1728,38 @@ namespace carto { namespace vt {
         }
         if (compiledGeometry.geometryVAO == 0 || itGeom == _compiledTileGeometryMap.end()) {
             glBindBuffer(GL_ARRAY_BUFFER, compiledGeometry.vertexGeometryVBO);
-            glVertexAttribPointer(glGetAttribLocation(shaderProgram, "aVertexPosition"), vertexGeomLayoutParams.dimensions, GL_SHORT, GL_FALSE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.coordOffset));
-            glEnableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexPosition"));
+            glVertexAttribPointer(positionLocation, vertexGeomLayoutParams.dimensions, GL_SHORT, GL_FALSE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.coordOffset));
+            glEnableVertexAttribArray(positionLocation);
 
             if (vertexGeomLayoutParams.attribsOffset >= 0) {
-                glVertexAttribPointer(glGetAttribLocation(shaderProgram, "aVertexAttribs"), 4, GL_BYTE, GL_FALSE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.attribsOffset));
-                glEnableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexAttribs"));
+                glVertexAttribPointer(attribsLocation, 4, GL_BYTE, GL_FALSE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.attribsOffset));
+                glEnableVertexAttribArray(attribsLocation);
             } else {
-                glVertexAttrib4f(glGetAttribLocation(shaderProgram, "aVertexAttribs"), 0, 0, 0, 0);
+                glVertexAttrib4f(attribsLocation, 0, 0, 0, 0);
             }
             
             if (vertexGeomLayoutParams.texCoordOffset >= 0) {
-                glVertexAttribPointer(glGetAttribLocation(shaderProgram, "aVertexUV"), 2, GL_SHORT, GL_FALSE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.texCoordOffset));
-                glEnableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexUV"));
+                glVertexAttribPointer(uvLocation, 2, GL_SHORT, GL_FALSE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.texCoordOffset));
+                glEnableVertexAttribArray(uvLocation);
             }
             
             if (_lightingShader2D || geometry->getType() == TileGeometry::Type::POLYGON3D) {
                 if (vertexGeomLayoutParams.normalOffset >= 0) {
-                    glVertexAttribPointer(glGetAttribLocation(shaderProgram, "aVertexNormal"), vertexGeomLayoutParams.dimensions, GL_SHORT, GL_TRUE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.normalOffset));
-                    glEnableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexNormal"));
+                    glVertexAttribPointer(normalLocation, vertexGeomLayoutParams.dimensions, GL_SHORT, GL_TRUE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.normalOffset));
+                    glEnableVertexAttribArray(normalLocation);
                 } else {
-                    glVertexAttrib3f(glGetAttribLocation(shaderProgram, "aVertexNormal"), 0, 0, 1);
+                    glVertexAttrib3f(normalLocation, 0, 0, 1);
                 }
             }
 
             if (vertexGeomLayoutParams.binormalOffset >= 0) {
-                glVertexAttribPointer(glGetAttribLocation(shaderProgram, "aVertexBinormal"), vertexGeomLayoutParams.dimensions, GL_SHORT, GL_FALSE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.binormalOffset));
-                glEnableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexBinormal"));
+                glVertexAttribPointer(binormalLocation, vertexGeomLayoutParams.dimensions, GL_SHORT, GL_FALSE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.binormalOffset));
+                glEnableVertexAttribArray(binormalLocation);
             }
             
             if (vertexGeomLayoutParams.heightOffset >= 0) {
-                glVertexAttribPointer(glGetAttribLocation(shaderProgram, "aVertexHeight"), 1, GL_SHORT, GL_FALSE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.heightOffset));
-                glEnableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexHeight"));
+                glVertexAttribPointer(heightLocation, 1, GL_SHORT, GL_FALSE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.heightOffset));
+                glEnableVertexAttribArray(heightLocation);
             }
             
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, compiledGeometry.indicesVBO);
@@ -1762,28 +1777,28 @@ namespace carto { namespace vt {
             _glExtensions->glBindVertexArrayOES(0);
         } else {
             if (vertexGeomLayoutParams.heightOffset >= 0) {
-                glDisableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexHeight"));
+                glDisableVertexAttribArray(heightLocation);
             }
             
             if (vertexGeomLayoutParams.binormalOffset >= 0) {
-                glDisableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexBinormal"));
+                glDisableVertexAttribArray(binormalLocation);
             }
 
             if (_lightingShader2D || geometry->getType() == TileGeometry::Type::POLYGON3D) {
                 if (vertexGeomLayoutParams.normalOffset >= 0) {
-                    glDisableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexNormal"));
+                    glDisableVertexAttribArray(normalLocation);
                 }
             }
             
             if (vertexGeomLayoutParams.texCoordOffset >= 0) {
-                glDisableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexUV"));
+                glDisableVertexAttribArray(uvLocation);
             }
 
             if (vertexGeomLayoutParams.attribsOffset >= 0) {
-                glDisableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexAttribs"));
+                glDisableVertexAttribArray(attribsLocation);
             }
             
-            glDisableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexPosition"));
+            glDisableVertexAttribArray(positionLocation);
         }
         
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
@@ -1829,6 +1844,10 @@ namespace carto { namespace vt {
 
         bool useDerivatives = _glExtensions->GL_OES_standard_derivatives_supported();
         GLuint shaderProgram = _shaderManager.createProgram("label", _derivativesLighting2DContext[useDerivatives ? 1 : 0]);
+        GLint positionLocation = glGetAttribLocation(shaderProgram, "aVertexPosition");
+        GLint normalLocation = _lightingShader2D ? glGetAttribLocation(shaderProgram, "aVertexNormal") : -1;
+        GLint uvLocation = glGetAttribLocation(shaderProgram, "aVertexUV");
+        GLint attribsLocation = glGetAttribLocation(shaderProgram, "aVertexAttribs");
         glUseProgram(shaderProgram);
         checkGLError();
 
@@ -1846,27 +1865,27 @@ namespace carto { namespace vt {
         
         glBindBuffer(GL_ARRAY_BUFFER, compiledLabelBatch.verticesVBO);
         glBufferData(GL_ARRAY_BUFFER, _labelVertices.size() * 3 * sizeof(float), _labelVertices.data(), GL_DYNAMIC_DRAW);
-        glVertexAttribPointer(glGetAttribLocation(shaderProgram, "aVertexPosition"), 3, GL_FLOAT, GL_FALSE, 0, 0);
-        glEnableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexPosition"));
+        glVertexAttribPointer(positionLocation, 3, GL_FLOAT, GL_FALSE, 0, 0);
+        glEnableVertexAttribArray(positionLocation);
 
         if (_lightingShader2D) {
             glBindBuffer(GL_ARRAY_BUFFER, compiledLabelBatch.normalsVBO);
             glBufferData(GL_ARRAY_BUFFER, _labelNormals.size() * 3 * sizeof(float), _labelNormals.data(), GL_DYNAMIC_DRAW);
-            glVertexAttribPointer(glGetAttribLocation(shaderProgram, "aVertexNormal"), 3, GL_FLOAT, GL_FALSE, 0, 0);
-            glEnableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexNormal"));
+            glVertexAttribPointer(normalLocation, 3, GL_FLOAT, GL_FALSE, 0, 0);
+            glEnableVertexAttribArray(normalLocation);
 
             _lightingShader2D->setupFunc(shaderProgram, _viewState);
         }
         
         glBindBuffer(GL_ARRAY_BUFFER, compiledLabelBatch.texCoordsVBO);
         glBufferData(GL_ARRAY_BUFFER, _labelTexCoords.size() * 2 * sizeof(std::int16_t), _labelTexCoords.data(), GL_DYNAMIC_DRAW);
-        glVertexAttribPointer(glGetAttribLocation(shaderProgram, "aVertexUV"), 2, GL_SHORT, GL_FALSE, 0, 0);
-        glEnableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexUV"));
+        glVertexAttribPointer(uvLocation, 2, GL_SHORT, GL_FALSE, 0, 0);
+        glEnableVertexAttribArray(uvLocation);
 
         glBindBuffer(GL_ARRAY_BUFFER, compiledLabelBatch.attribsVBO);
         glBufferData(GL_ARRAY_BUFFER, _labelAttribs.size() * 4 * sizeof(std::int8_t), _labelAttribs.data(), GL_DYNAMIC_DRAW);
-        glVertexAttribPointer(glGetAttribLocation(shaderProgram, "aVertexAttribs"), 4, GL_BYTE, GL_FALSE, 0, 0);
-        glEnableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexAttribs"));
+        glVertexAttribPointer(attribsLocation, 4, GL_BYTE, GL_FALSE, 0, 0);
+        glEnableVertexAttribArray(attribsLocation);
 
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, compiledLabelBatch.indicesVBO);
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, _labelIndices.size() * sizeof(std::uint16_t), _labelIndices.data(), GL_DYNAMIC_DRAW);
@@ -1878,15 +1897,15 @@ namespace carto { namespace vt {
 
         glDrawElements(GL_TRIANGLES, static_cast<unsigned int>(_labelIndices.size()), GL_UNSIGNED_SHORT, 0);
 
-        glDisableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexAttribs"));
+        glDisableVertexAttribArray(attribsLocation);
         
-        glDisableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexUV"));
+        glDisableVertexAttribArray(uvLocation);
 
         if (_lightingShader2D) {
-            glDisableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexNormal"));
+            glDisableVertexAttribArray(normalLocation);
         }
         
-        glDisableVertexAttribArray(glGetAttribLocation(shaderProgram, "aVertexPosition"));
+        glDisableVertexAttribArray(positionLocation);
 
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
         glBindBuffer(GL_ARRAY_BUFFER, 0);

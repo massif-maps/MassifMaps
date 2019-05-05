@@ -43,12 +43,14 @@ namespace carto { namespace sgre {
         static std::unique_ptr<RouteFinder> create(std::shared_ptr<const StaticGraph> graph, const picojson::value& configDef);
 
     private:
-        struct PathNode {
-            Graph::Edge edge;
-            double targetNodeT;
+        struct RouteNode {
+            Graph::FeatureId featureId = Graph::FeatureId(-1);
+            RoutingAttributes attributes;
+            Graph::NodeId targetNodeId = Graph::NodeId(-1);
+            double targetNodeT = 0;
         };
         
-        using Path = std::vector<PathNode>;
+        using Route = std::vector<RouteNode>;
 
         static Graph::NodeId createNode(DynamicGraph& graph, const Point& point);
         
@@ -56,13 +58,15 @@ namespace carto { namespace sgre {
 
         static void linkNodesToCommonEdges(DynamicGraph& graph, const std::set<Graph::EdgeId>& edgeIds0, const std::set<Graph::EdgeId>& edgeIds1, Graph::NodeId nodeId0, Graph::NodeId nodeId1);
 
+        static bool isNodeVisible(const Graph& graph, Graph::NodeId nodeId0, double t0, Graph::NodeId nodeId1, double t1, double lngScale, std::set<Graph::NodeId> visitedNodeIds);
+
         static RoutingAttributes findFastestEdgeAttributes(const Graph& graph);
         
-        static Result buildResult(const Graph& graph, const Path& path, double lngScale, double minTurnAngle, double minUpDownAngle);
+        static Result buildResult(const Graph& graph, const Route& route, double lngScale, double minTurnAngle, double minUpDownAngle);
         
-        static void straightenPath(const Graph& graph, Path& path, double lngScale);
+        static Route straightenRoute(const Graph& graph, const Route& route, double lngScale);
         
-        static boost::optional<Path> findOptimalPath(const Graph& graph, Graph::NodeId initialNodeId, Graph::NodeId finalNodeId, const RoutingAttributes& fastestAttributes, double lngScale, double tesselationDistance, double& bestTime);
+        static boost::optional<Route> findFastestRoute(const Graph& graph, Graph::NodeId initialNodeId, Graph::NodeId finalNodeId, const RoutingAttributes& fastestAttributes, double lngScale, double tesselationDistance, double& bestTime);
         
         static double calculateTime(const RoutingAttributes& attrs, bool applyDelay, double turnAngle, const Point& pos0, const Point& pos1, double lngScale);
 

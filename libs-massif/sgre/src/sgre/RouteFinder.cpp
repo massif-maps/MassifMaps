@@ -56,41 +56,41 @@ namespace carto { namespace sgre {
             }
         }
         
-        // Try all endpoint combinations and find the fastest one.
-        Route bestRoute;
-        double bestTime = std::numeric_limits<double>::infinity();
-        double bestLngScale = 0;
-        std::shared_ptr<DynamicGraph> bestGraph;
+        // Link all endpoint combinations.
+        auto graph = std::make_shared<DynamicGraph>(_graph);
+        double lngScale = calculateAvgLngScale(endPoints[0][0].point, endPoints[1][0].point);
+        
+        std::vector<Graph::NodeId> initialNodeIds;
+        std::vector<Graph::NodeId> finalNodeIds;
+        for (std::size_t i0 = 0; i0 < endPoints[0].size(); i0++) {
+            Graph::NodeId initialNodeId = createNode(*graph, endPoints[0][i0].point);
+            linkNodeToEdges(*graph, endPoints[0][i0].edgeIds, initialNodeId, 0);
+            initialNodeIds.push_back(initialNodeId);
+        }
+        for (std::size_t i1 = 0; i1 < endPoints[1].size(); i1++) {
+            Graph::NodeId finalNodeId = createNode(*graph, endPoints[1][i1].point);
+            linkNodeToEdges(*graph, endPoints[1][i1].edgeIds, finalNodeId, 1);
+            finalNodeIds.push_back(finalNodeId);
+        }
         for (std::size_t i0 = 0; i0 < endPoints[0].size(); i0++) {
             for (std::size_t i1 = 0; i1 < endPoints[1].size(); i1++) {
-                auto graph = std::make_shared<DynamicGraph>(_graph);
-
-                Graph::NodeId initialNodeId = createNode(*graph, endPoints[0][i0].point);
-                Graph::NodeId finalNodeId = createNode(*graph, endPoints[1][i1].point);
-
-                linkNodeToEdges(*graph, endPoints[0][i0].edgeIds, initialNodeId, 0);
-                linkNodeToEdges(*graph, endPoints[1][i1].edgeIds, finalNodeId, 1);
-                linkNodesToCommonEdges(*graph, endPoints[0][i0].edgeIds, endPoints[1][i1].edgeIds, initialNodeId, finalNodeId);
-
-                double lngScale = calculateAvgLngScale(endPoints[0][i0].point, endPoints[1][i1].point);
-                if (auto route = findFastestRoute(*graph, initialNodeId, finalNodeId, _fastestAttributes, lngScale, _routeOptions.tesselationDistance, bestTime)) {
-                    bestRoute = *route;
-                    bestGraph = graph;
-                    bestLngScale = lngScale;
-                }
+                linkNodesToCommonEdges(*graph, endPoints[0][i0].edgeIds, endPoints[1][i1].edgeIds, initialNodeIds[i0], finalNodeIds[i1]);
             }
         }
-        if (!bestGraph) {
+
+        // Try to find the fastest route
+        boost::optional<Route> route = findFastestRoute(*graph, initialNodeIds, finalNodeIds, _fastestAttributes, lngScale, _routeOptions.tesselationDistance);
+        if (!route) {
             return Result();
         }
 
         // Do optional path straightening. This is very important for polygon/hybrid graphs.
         if (_routeOptions.pathStraightening) {
-            bestRoute = straightenRoute(*bestGraph, bestRoute, bestLngScale);
+            route = straightenRoute(*graph, *route, lngScale);
         }
 
         // Build final result (remove duplicate nodes, create instructions)
-        return buildResult(*bestGraph, bestRoute, bestLngScale, _routeOptions.minTurnAngle, _routeOptions.minUpDownAngle);
+        return buildResult(*graph, *route, lngScale, _routeOptions.minTurnAngle, _routeOptions.minUpDownAngle);
     }
 
     std::unique_ptr<RouteFinder> RouteFinder::create(std::shared_ptr<const StaticGraph> graph, const picojson::value& configDef) {
@@ -220,6 +220,7 @@ namespace carto { namespace sgre {
                     s = std::min(1.0, std::max(0.0, cglib::dot_product(targetNode.points[0] - pos0, posDelta) / cglib::norm(posDelta)));
                 }
             }
+
             double t = 0;
             if (cglib::norm(pointsDelta) != 0) {
                 t = std::min(1.0, std::max(0.0, cglib::dot_product(pos0 + posDelta * s - targetNode.points[0], pointsDelta) / cglib::norm(pointsDelta)));
@@ -377,20 +378,21 @@ namespace carto { namespace sgre {
     }
 
     RouteFinder::Route RouteFinder::straightenRoute(const Graph& graph, const Route& route, double lngScale) {
-        Route straightRoute;
+        Route optimizedRoute;
         if (!route.empty()) {
-            straightRoute.push_back(route.front());
+            optimizedRoute.push_back(route.front());
         }
         for (std::size_t i = 1; i < route.size(); ) {
-            const RouteNode& routeNode0 = straightRoute.back();
+            const RouteNode& routeNode0 = optimizedRoute.back();
 
+            // Find first node that is not 'visible' from current node
             std::size_t j = i + 1;
             for (; j < route.size(); j++) {
                 // Stop if feature id has changed
                 if (route[j - 1].featureId != route[j].featureId) {
                     break;
                 }
-
+                
                 const RouteNode& routeNode1 = route[j];
 
                 std::set<Graph::NodeId> visitedNodeIds;
@@ -398,14 +400,16 @@ namespace carto { namespace sgre {
                     break;
                 }
             }
-            straightRoute.push_back(route[j - 1]);
+
+            // Store previous node of the found node
+            optimizedRoute.push_back(route[j - 1]);
 
             i = j;
         }
-        return straightRoute;
+        return optimizedRoute;
     }
 
-    boost::optional<RouteFinder::Route> RouteFinder::findFastestRoute(const Graph& graph, Graph::NodeId initialNodeId, Graph::NodeId finalNodeId, const RoutingAttributes& fastestAttributes, double lngScale, double tesselationDistance, double& bestTime) {
+    boost::optional<RouteFinder::Route> RouteFinder::findFastestRoute(const Graph& graph, const std::vector<Graph::NodeId>& initialNodeIds, const std::vector<Graph::NodeId>& finalNodeIds, const RoutingAttributes& fastestAttributes, double lngScale, double tesselationDistance) {
         struct NodeKey {
             Graph::NodeId nodeId;
             double nodeT;
@@ -414,7 +418,7 @@ namespace carto { namespace sgre {
         };
 
         struct NodeRecord {
-            double time;
+            double time; // best estimated time to final some from some initial node. Estimated time must not exceed actual time.
             Graph::NodeId nodeId;
             double nodeT;
 
@@ -422,34 +426,41 @@ namespace carto { namespace sgre {
         };
 
         struct RouteEdge {
-            double time;
+            double time; // time spent up to this point
             Graph::EdgeId edgeId;
             double nodeT;
         };
         
-        const Graph::Node& initialNode = graph.getNode(initialNodeId);
-        const Graph::Node& finalNode = graph.getNode(finalNodeId);
-
-        // Initialize route map for initial node
+        // Initialize route map for initial nodes, use priority queue for storing fastest estimations.
         std::map<NodeKey, RouteEdge> bestRouteMap;
-        bestRouteMap[{ initialNodeId, 0.0 }] = { 0.0, Graph::EdgeId(-1), -1.0 };
-
-        // Use priority queue for storing fastest estimations. Start with fastest estimation from initial node to final node.
         std::priority_queue<NodeRecord> nodeQueue;
-        double bestTotalEstTime = calculateTime(fastestAttributes, false, 0.0, initialNode.points[0], finalNode.points[0], lngScale);
-        nodeQueue.push({ bestTotalEstTime, initialNodeId, 0.0 });
+        for (Graph::NodeId initialNodeId : initialNodeIds) {
+            const Graph::Node& initialNode = graph.getNode(initialNodeId);
+
+            bestRouteMap[{ initialNodeId, 0.0 }] = { 0.0, Graph::EdgeId(-1), -1.0 };
+
+            double bestTotalEstTime = std::numeric_limits<double>::infinity();
+            for (Graph::NodeId finalNodeId : finalNodeIds) {
+                const Graph::Node& finalNode = graph.getNode(finalNodeId);
+                double totalEstTime = calculateTime(fastestAttributes, false, 0.0, initialNode.points[0], finalNode.points[0], lngScale);
+                bestTotalEstTime = std::min(bestTotalEstTime, totalEstTime);
+            }
+            nodeQueue.push({ bestTotalEstTime, initialNodeId, 0.0 });
+        }
 
         // Process the node queue
+        Graph::NodeId finalNodeId = Graph::NodeId(-1);
         while (!nodeQueue.empty()) {
             NodeRecord rec = nodeQueue.top();
             nodeQueue.pop();
 
-            if (rec.time >= bestTime) {
-                break;
-            }
-
-            if (rec.nodeId == finalNodeId) {
-                break;
+            // Check if we have reached a final node
+            {
+                auto it = std::find(finalNodeIds.begin(), finalNodeIds.end(), rec.nodeId);
+                if (it != finalNodeIds.end()) {
+                    finalNodeId = *it;
+                    break;
+                }
             }
 
             Graph::NodeId nodeId = rec.nodeId;
@@ -482,21 +493,27 @@ namespace carto { namespace sgre {
                     }
                     bestRouteMap[{ targetNodeId, targetNodeT }] = { targetTime, edgeId, nodeT };
 
-                    // Calculate the fastest possible estimation from target node to the final node
-                    double bestTotalEstTime = targetTime + calculateTime(fastestAttributes, false, 0.0, targetNodePos, finalNode.points[0], lngScale);
+                    // Calculate the fastest possible estimation from target node to the closest final node
+                    double bestTotalEstTime = std::numeric_limits<double>::infinity();
+                    for (Graph::NodeId finalNodeId : finalNodeIds) {
+                        const Graph::Node& finalNode = graph.getNode(finalNodeId);
+                        double totalEstTime = targetTime + calculateTime(fastestAttributes, false, 0.0, targetNodePos, finalNode.points[0], lngScale);
+                        bestTotalEstTime = std::min(bestTotalEstTime, totalEstTime);
+                    }
                     nodeQueue.push({ bestTotalEstTime, targetNodeId, targetNodeT });
                 }
             }
         }
 
-        auto it = bestRouteMap.find({ finalNodeId, 0.0 });
-        if (it == bestRouteMap.end() || it->second.time >= bestTime) {
+        // Success?
+        if (finalNodeId == Graph::NodeId(-1)) {
             return boost::optional<Route>();
         }
-        bestTime = it->second.time;
 
         // Reconstruct the fastest route backwards.
         Route bestRoute;
+        auto it = bestRouteMap.find({ finalNodeId, 0.0 });
+        assert(it != bestRouteMap.end());
         while (it->second.edgeId != Graph::EdgeId(-1)) {
             const Graph::Edge& edge = graph.getEdge(it->second.edgeId);
             assert(edge.nodeIds[1] == it->first.nodeId);
@@ -510,7 +527,7 @@ namespace carto { namespace sgre {
             assert(it != bestRouteMap.end());
         }
         RouteNode initialRouteNode;
-        initialRouteNode.targetNodeId = initialNodeId;
+        initialRouteNode.targetNodeId = it->first.nodeId;
         bestRoute.push_back(initialRouteNode);
         std::reverse(bestRoute.begin(), bestRoute.end());
         return bestRoute;

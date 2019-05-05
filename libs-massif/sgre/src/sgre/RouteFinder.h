@@ -66,7 +66,7 @@ namespace carto { namespace sgre {
         
         static Route straightenRoute(const Graph& graph, const Route& route, double lngScale);
         
-        static boost::optional<Route> findFastestRoute(const Graph& graph, Graph::NodeId initialNodeId, Graph::NodeId finalNodeId, const RoutingAttributes& fastestAttributes, double lngScale, double tesselationDistance, double& bestTime);
+        static boost::optional<Route> findFastestRoute(const Graph& graph, const std::vector<Graph::NodeId>& initialNodeIds, const std::vector<Graph::NodeId>& finalNodeIds, const RoutingAttributes& fastestAttributes, double lngScale, double tesselationDistance);
         
         static double calculateTime(const RoutingAttributes& attrs, bool applyDelay, double turnAngle, const Point& pos0, const Point& pos1, double lngScale);
 

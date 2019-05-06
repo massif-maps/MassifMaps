@@ -405,18 +405,18 @@ namespace carto { namespace sgre {
 
     boost::optional<RouteFinder::Route> RouteFinder::findFastestRoute(const Graph& graph, const std::vector<Graph::NodeId>& initialNodeIds, const std::vector<Graph::NodeId>& finalNodeIds, const RoutingAttributes& fastestAttributes, double lngScale, double tesselationDistance) {
         struct NodeRecord {
-            double time = std::numeric_limits<double>::infinity(); // best estimated time to final some from some initial node. Estimated time must not exceed actual time.
-            Graph::NodeId nodeId = Graph::NodeId(-1);
-            std::size_t routeEdgeIndex = 0;
+            double time; // best estimated time to final some from some initial node. Estimated time must not exceed actual time.
+            Graph::NodeId nodeId;
+            std::size_t routeEdgeIndex; // outgoing route edge index
 
             bool operator < (const NodeRecord& rec) const { return rec.time < time; }
         };
 
         struct RouteEdge {
-            double time = std::numeric_limits<double>::infinity(); // time spent up to this point
-            Graph::EdgeId edgeId = Graph::EdgeId(-1);
-            std::size_t routeEdgeIndex = 0; // incoming route edge index
-            double targetNodeT = 0;
+            double time; // time spent up to this point
+            Graph::EdgeId edgeId;
+            std::size_t routeEdgeIndex; // incoming route edge index
+            double nodeT; // outgoing edge node T value
         };
 
         // Initialize route map and node queue
@@ -454,7 +454,7 @@ namespace carto { namespace sgre {
             Graph::NodeId nodeId = rec.nodeId;
             const Graph::Node& node = graph.getNode(nodeId);
             const RouteEdge& routeEdge = bestRouteMap[nodeId][rec.routeEdgeIndex];
-            Point nodePos = node.points[0] + (node.points[1] - node.points[0]) * routeEdge.targetNodeT;
+            Point nodePos = node.points[0] + (node.points[1] - node.points[0]) * routeEdge.nodeT;
             double time = routeEdge.time;
 
             // Process each edge from the current node
@@ -468,7 +468,7 @@ namespace carto { namespace sgre {
                 std::vector<RouteEdge>& targetRouteEdges = bestRouteMap[targetNodeId];
                 if (targetRouteEdges.empty()) {
                     std::size_t tesselationLevel = static_cast<std::size_t>(std::ceil(calculateDistance(targetNode.points[0], targetNode.points[1], lngScale) / tesselationDistance));
-                    targetRouteEdges.resize(tesselationLevel + 1);
+                    targetRouteEdges.resize(tesselationLevel + 1, { std::numeric_limits<double>::infinity(), Graph::EdgeId(-1), 0, 0.0 });
                 }
                 
                 // Tesselate all triangle edges based on tesselation distance
@@ -521,7 +521,7 @@ namespace carto { namespace sgre {
             routeNode.featureId = edge.featureId;
             routeNode.attributes = edge.attributes;
             routeNode.targetNodeId = edge.nodeIds[1];
-            routeNode.targetNodeT = routeEdge.targetNodeT;
+            routeNode.targetNodeT = routeEdge.nodeT;
             bestRoute.push_back(routeNode);
 
             lastNodeId = edge.nodeIds[0];

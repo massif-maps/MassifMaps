@@ -43,6 +43,8 @@ namespace carto { namespace sgre {
         static std::unique_ptr<RouteFinder> create(std::shared_ptr<const StaticGraph> graph, const picojson::value& configDef);
 
     private:
+        static constexpr double DIST_EPSILON = 1.0e-6;
+        
         struct RouteNode {
             Graph::FeatureId featureId = Graph::FeatureId(-1);
             RoutingAttributes attributes;

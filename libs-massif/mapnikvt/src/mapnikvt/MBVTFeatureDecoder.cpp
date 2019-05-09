@@ -16,7 +16,7 @@
 #include <algorithm>
 #include <limits>
 
-#include <stdext/miniz.h>
+#include <stdext/zlib.h>
 
 namespace carto { namespace mvt {
     class MBVTFeatureDecoder::MBVTFeatureIterator : public carto::mvt::FeatureDecoder::FeatureIterator {
@@ -278,7 +278,7 @@ namespace carto { namespace mvt {
         _transform(cglib::mat3x3<float>::identity()), _clipBox(cglib::vec2<float>(-0.1f, -0.1f), cglib::vec2<float>(1.1f, 1.1f)), _globalIdOverride(false), _tileIdOffset(0), _tile(), _layerMap(), _logger(std::move(logger))
     {
         std::vector<unsigned char> uncompressedData;
-        if (miniz::inflate_gzip(data.data(), data.size(), uncompressedData)) {
+        if (zlib::inflate_gzip(data.data(), data.size(), uncompressedData)) {
             protobuf::message tileMsg(uncompressedData.data(), uncompressedData.size());
             _tile = std::make_shared<vector_tile::Tile>(tileMsg);
         }

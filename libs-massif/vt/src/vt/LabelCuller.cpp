@@ -98,10 +98,12 @@ namespace carto { namespace vt {
                     return priority1 < priority2;
                 }
 
-                float size1 = label1->getStyle()->sizeFunc(_viewState);
-                float size2 = label2->getStyle()->sizeFunc(_viewState);
-                if (size1 != size2) {
-                    return size1 > size2;
+                if (label1->getStyle() != label2->getStyle()) {
+                    float size1 = label1->getStyle()->sizeFunc(_viewState);
+                    float size2 = label2->getStyle()->sizeFunc(_viewState);
+                    if (size1 != size2) {
+                        return size1 > size2;
+                    }
                 }
 
                 float opacity1 = label1->getOpacity();

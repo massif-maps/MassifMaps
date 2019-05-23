@@ -20,8 +20,7 @@ namespace {
 
             if (d < outMin) {
                 outMin = d;
-            }
-            else if (d > outMax) {
+            } else if (d > outMax) {
                 outMax = d;
             }
         }
@@ -91,7 +90,7 @@ namespace carto { namespace vt {
         // Sort active labels by priority/size/opacity
         {
             std::lock_guard<std::mutex> labelLock(labelMutex);
-            std::sort(validLabelList.begin(), validLabelList.end(), [&](const std::shared_ptr<Label>& label1, const std::shared_ptr<Label>& label2) {
+            std::stable_sort(validLabelList.begin(), validLabelList.end(), [&](const std::shared_ptr<Label>& label1, const std::shared_ptr<Label>& label2) {
                 int priority1 = label1->getPriority();
                 int priority2 = label2->getPriority();
                 if (priority1 != priority2) {
@@ -121,21 +120,23 @@ namespace carto { namespace vt {
             // Label is always visible if its group is set to negative value. Otherwise test visibility against other labels
             bool visible = label->getGroupId() < 0 || testOverlap(label);
             if (visible && label->getGroupId() > 0) {
-                cglib::vec3<double> center;
-                if (!label->calculateCenter(center)) {
-                    visible = false;
-                }
-                for (const std::shared_ptr<Label>& otherLabel : groupMap[label->getGroupId()]) {
-                    cglib::vec3<double> otherCenter;
-                    if (otherLabel->calculateCenter(otherCenter)) {
-                        float minimumDistance = std::min(label->getMinimumGroupDistance(), otherLabel->getMinimumGroupDistance());
-                        double centerDistance = cglib::length(center - otherCenter);
-                        if (centerDistance * _viewState.resolution / _scale < minimumDistance) {
-                            visible = false;
-                            break;
+                cglib::vec3<double> center(0, 0, 0);
+                if (label->calculateCenter(center)) {
+                    for (const std::shared_ptr<Label>& otherLabel : groupMap[label->getGroupId()]) {
+                        cglib::vec3<double> otherCenter(0, 0, 0);
+                        if (otherLabel->calculateCenter(otherCenter)) {
+                            float minimumDistance = std::min(label->getMinimumGroupDistance(), otherLabel->getMinimumGroupDistance());
+                            double centerDistance = cglib::length(center - otherCenter);
+                            if (centerDistance * _viewState.resolution / _scale < minimumDistance) {
+                                visible = false;
+                                break;
+                            }
                         }
                     }
+                } else {
+                    visible = false;
                 }
+
                 if (visible) {
                     groupMap[label->getGroupId()].push_back(label);
                 }
@@ -166,8 +167,7 @@ namespace carto { namespace vt {
                 envelope[i] = p_proj;
                 bounds.add(p_proj);
             }
-        }
-        else {
+        } else {
             float zoomScale = std::pow(2.0f, label->getTileId().zoom - _viewState.zoom);
             cglib::vec2<float> translate = (*label->getStyle()->translate) * zoomScale;
             cglib::mat4x4<double> translateMatrix = cglib::mat4x4<double>::convert(_transformer->calculateTileTransform(label->getTileId(), translate, 1.0f));

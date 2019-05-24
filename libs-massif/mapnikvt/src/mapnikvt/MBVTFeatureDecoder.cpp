@@ -46,7 +46,7 @@ namespace carto { namespace mvt {
             for (int i = 0; i < _layer->features_size(); i++) {
                 const vector_tile::Tile::Feature& feature = _layer->features(i);
                 if (feature.id() > _layer->features_size()) {
-                    _ignoreFeatureId = true;
+                    _ignoreFeatureId = false;
                     break;
                 }
             }
@@ -276,7 +276,7 @@ namespace carto { namespace mvt {
 
         int _index = 0;
         int _idKey = -1;
-        bool _ignoreFeatureId = false;
+        bool _ignoreFeatureId = true;
         long long _layerIndexOffset = 0;
         std::vector<int> _fieldKeys;
         std::shared_ptr<const vector_tile::Tile> _tile;

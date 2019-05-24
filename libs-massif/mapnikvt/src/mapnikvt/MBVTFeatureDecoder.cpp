@@ -26,8 +26,9 @@ namespace carto { namespace mvt {
         {
             _layerIndexOffset = static_cast<long long>(layerIndex) << 32;
 
+            // Detect if there are any keys we can use as a feature id...
             for (int i = 0; i < _layer->keys_size(); i++) {
-                if (_layer->keys(i) == "id" || _layer->keys(i) == "cartodb_id") {
+                if (_layer->keys(i) == "id" || _layer->keys(i) == "osm_id" || _layer->keys(i) == "cartodb_id") {
                     _idKey = i;
                 }
                 if (fields) {
@@ -38,6 +39,15 @@ namespace carto { namespace mvt {
                 }
                 else {
                     _fieldKeys.push_back(i);
+                }
+            }
+
+            // Also detect if the layer is using 'local' ids, which cause various issues when rendering.
+            for (int i = 1; i < _layer->features_size(); i++) {
+                const vector_tile::Tile::Feature& feature = _layer->features(i);
+                if (feature.id() != i + _layer->features(0).id()) {
+                    _ignoreFeatureId = true;
+                    break;
                 }
             }
         }
@@ -63,14 +73,18 @@ namespace carto { namespace mvt {
         }
 
         virtual long long getGlobalId() const override {
+            // If in id override mode, generate id automatically based on layer index, tile id and feature index
             if (_globalIdOverride) {
                 return _tileIdOffset + _layerIndexOffset + _index;
             }
 
+            // If feature has a valid id, use it
             const vector_tile::Tile::Feature& feature = _layer->features(_index);
-            if (feature.id() != 0) {
+            if (!_ignoreFeatureId && feature.id() != 0) {
                 return feature.id();
             }
+
+            // Find the id key from feature tags and use it
             for (int i = 0; i + 1 < feature.tags_size(); i += 2) {
                 if (feature.tags(i) == _idKey) {
                     int valueIdx = feature.tags(i + 1);
@@ -262,6 +276,7 @@ namespace carto { namespace mvt {
 
         int _index = 0;
         int _idKey = -1;
+        bool _ignoreFeatureId = false;
         long long _layerIndexOffset = 0;
         std::vector<int> _fieldKeys;
         std::shared_ptr<const vector_tile::Tile> _tile;

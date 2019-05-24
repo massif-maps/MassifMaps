@@ -43,9 +43,9 @@ namespace carto { namespace mvt {
             }
 
             // Also detect if the layer is using 'local' ids, which cause various issues when rendering.
-            for (int i = 1; i < _layer->features_size(); i++) {
+            for (int i = 0; i < _layer->features_size(); i++) {
                 const vector_tile::Tile::Feature& feature = _layer->features(i);
-                if (feature.id() != i + _layer->features(0).id()) {
+                if (feature.id() > _layer->features_size()) {
                     _ignoreFeatureId = true;
                     break;
                 }

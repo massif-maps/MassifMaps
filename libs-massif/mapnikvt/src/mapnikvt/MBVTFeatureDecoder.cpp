@@ -41,15 +41,6 @@ namespace carto { namespace mvt {
                     _fieldKeys.push_back(i);
                 }
             }
-
-            // Also detect if the layer is using 'local' ids, which cause various issues when rendering.
-            for (int i = 0; i < _layer->features_size(); i++) {
-                const vector_tile::Tile::Feature& feature = _layer->features(i);
-                if (feature.id() > _layer->features_size()) {
-                    _ignoreFeatureId = false;
-                    break;
-                }
-            }
         }
 
         bool findByLocalId(long long localId) {
@@ -80,30 +71,32 @@ namespace carto { namespace mvt {
 
             // If feature has a valid id, use it
             const vector_tile::Tile::Feature& feature = _layer->features(_index);
-            if (!_ignoreFeatureId && feature.id() != 0) {
+            if (feature.id() != 0) {
                 return feature.id();
             }
-
-            // Find the id key from feature tags and use it
-            for (int i = 0; i + 1 < feature.tags_size(); i += 2) {
-                if (feature.tags(i) == _idKey) {
-                    int valueIdx = feature.tags(i + 1);
-                    if (valueIdx >= 0 && valueIdx < _layer->values_size()) {
-                        const vector_tile::Tile::Value& value = _layer->values(valueIdx);
-                        if (value.has_int_value()) {
-                            return static_cast<long long>(value.int_value());
+            else if (_idKey != -1) {
+                // Find the id key from feature tags and use it
+                for (int i = 0; i + 1 < feature.tags_size(); i += 2) {
+                    if (feature.tags(i) == _idKey) {
+                        int valueIdx = feature.tags(i + 1);
+                        if (valueIdx >= 0 && valueIdx < _layer->values_size()) {
+                            const vector_tile::Tile::Value& value = _layer->values(valueIdx);
+                            if (value.has_int_value()) {
+                                return static_cast<long long>(value.int_value());
+                            }
+                            else if (value.has_sint_value()) {
+                                return static_cast<long long>(value.sint_value());
+                            }
+                            else if (value.has_uint_value()) {
+                                return static_cast<long long>(value.uint_value());
+                            }
                         }
-                        else if (value.has_sint_value()) {
-                            return static_cast<long long>(value.sint_value());
-                        }
-                        else if (value.has_uint_value()) {
-                            return static_cast<long long>(value.uint_value());
-                        }
-                        return 0;
                     }
                 }
             }
-            return 0;
+
+            // Return element index
+            return _index + 1;
         }
 
         virtual std::shared_ptr<const FeatureData> getFeatureData() const override {
@@ -276,7 +269,6 @@ namespace carto { namespace mvt {
 
         int _index = 0;
         int _idKey = -1;
-        bool _ignoreFeatureId = true;
         long long _layerIndexOffset = 0;
         std::vector<int> _fieldKeys;
         std::shared_ptr<const vector_tile::Tile> _tile;

@@ -23,18 +23,17 @@ namespace carto { namespace mvt {
     public:
         ExpressionBinder() = default;
 
-        ExpressionBinder& bind(V* field, const std::shared_ptr<const Expression>& expr) {
+        bool bind(V* field, const std::shared_ptr<const Expression>& expr) {
             return bind(field, expr, std::function<V(const Value&)>(ValueConverter<V>::convert));
         }
         
-        ExpressionBinder& bind(V* field, const std::shared_ptr<const Expression>& expr, std::function<V(const Value& val)> convertFunc) {
+        bool bind(V* field, const std::shared_ptr<const Expression>& expr, std::function<V(const Value& val)> convertFunc) {
             if (auto constExpr = std::dynamic_pointer_cast<const ConstExpression>(expr)) {
                 *field = convertFunc(constExpr->getConstant());
+                return true;
             }
-            else {
-                _bindings.emplace_back(field, expr, std::move(convertFunc));
-            }
-            return *this;
+            _bindings.emplace_back(field, expr, std::move(convertFunc));
+            return false;
         }
 
         void update(const FeatureExpressionContext& context) const {
@@ -63,18 +62,17 @@ namespace carto { namespace mvt {
 
         ExpressionFunctionBinder() = default;
 
-        ExpressionFunctionBinder& bind(Function* field, const std::shared_ptr<const Expression>& expr) {
+        bool bind(Function* field, const std::shared_ptr<const Expression>& expr) {
             return bind(field, expr, std::function<V(const Value&)>(ValueConverter<V>::convert));
         }
 
-        ExpressionFunctionBinder& bind(Function* field, const std::shared_ptr<const Expression>& expr, std::function<V(const Value&)> convertFunc) {
+        bool bind(Function* field, const std::shared_ptr<const Expression>& expr, std::function<V(const Value&)> convertFunc) {
             if (auto constExpr = std::dynamic_pointer_cast<const ConstExpression>(expr)) {
                 *field = Function(convertFunc(constExpr->getConstant()));
+                return true;
             }
-            else {
-                _bindings.emplace_back(field, expr, convertFunc);
-            }
-            return *this;
+            _bindings.emplace_back(field, expr, convertFunc);
+            return false;
         }
 
         void update(const FeatureExpressionContext& context) const {

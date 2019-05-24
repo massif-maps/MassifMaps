@@ -115,6 +115,10 @@ namespace carto { namespace mvt {
         if (name == "name") {
             _textExpression = std::make_shared<VariableExpression>(value);
         }
+        else if (name == "feature-id") {
+            bind(&_featureId, parseExpression(value));
+            _featureIdDefined = true;
+        }
         else if (name == "face-name") {
             bind(&_faceName, parseStringExpression(value));
         }
@@ -300,7 +304,7 @@ namespace carto { namespace mvt {
         FeatureExpressionContext textExprContext(exprContext);
         for (std::size_t index = 0; index < featureCollection.size(); index++) {
             long long localId = featureCollection.getLocalId(index);
-            long long globalId = featureCollection.getGlobalId(index);
+            long long globalId = _featureIdDefined ? _featureId : featureCollection.getGlobalId(index);
             const std::shared_ptr<const Geometry>& geometry = featureCollection.getGeometry(index);
 
             textExprContext.setFeatureData(featureCollection.getFeatureData(index));

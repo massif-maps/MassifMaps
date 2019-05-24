@@ -45,6 +45,8 @@ namespace carto { namespace mvt {
         const std::vector<std::shared_ptr<FontSet>> _fontSets;
         std::shared_ptr<const Expression> _textExpression;
         std::string _textTransform;
+        long long _featureId = 0;
+        bool _featureIdDefined = false;
         std::string _faceName;
         std::string _fontSetName;
         std::string _placement = "point";

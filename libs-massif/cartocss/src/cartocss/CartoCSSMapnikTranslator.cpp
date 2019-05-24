@@ -548,6 +548,7 @@ namespace carto { namespace css {
         { "point-comp-op", "comp-op" },
 
         { "text-name", "" },
+        { "text-feature-id", "feature-id" },
         { "text-face-name", "" },
         { "text-placement", "placement" },
         { "text-size", "size" },
@@ -575,6 +576,7 @@ namespace carto { namespace css {
         { "text-clip", "clip" },
 
         { "shield-name", "" },
+        { "shield-feature-id", "feature-id" },
         { "shield-face-name", "" },
         { "shield-file", "file" },
         { "shield-dx", "shield-dx" },
@@ -608,6 +610,7 @@ namespace carto { namespace css {
         { "marker-file", "file" },
         { "marker-placement", "placement" },
         { "marker-type", "marker-type" },
+        { "marker-feature-id", "feature-id" },
         { "marker-opacity", "opacity" },
         { "marker-fill", "fill" },
         { "marker-fill-opacity", "fill-opacity" },

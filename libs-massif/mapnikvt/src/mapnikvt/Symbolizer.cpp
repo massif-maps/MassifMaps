@@ -76,30 +76,16 @@ namespace carto { namespace mvt {
         _logger->write(Logger::Severity::WARNING, "Unsupported symbolizer parameter: " + name);
     }
 
-    long long Symbolizer::generateId() {
-        static std::atomic<int> counter = ATOMIC_VAR_INIT(0);
-        return 0x4000000LL | counter++;
-    }
-
     long long Symbolizer::getTextId(long long id, std::size_t hash) {
-        if (id == 0) {
-            id = generateId(); // if id is missing, generate new id
-        }
-        return (id * 3 + 0) | (static_cast<long long>(hash & 0x7fffffff) << 32);
+        return (id * 3 + 0) ^ (static_cast<long long>(hash & 0x7fffffff) << 32);
     }
 
     long long Symbolizer::getShieldId(long long id, std::size_t hash) {
-        if (id == 0) {
-            id = generateId(); // if id is missing, generate new id
-        }
-        return (id * 3 + 1) | (static_cast<long long>(hash & 0x7fffffff) << 32);
+        return (id * 3 + 1) ^ (static_cast<long long>(hash & 0x7fffffff) << 32);
     }
 
     long long Symbolizer::getBitmapId(long long id, const std::string& file) {
-        if (id == 0) {
-            id = generateId(); // if id is missing, generate new id
-        }
         std::size_t hash = std::hash<std::string>()(file);
-        return (id * 3 + 2) | (static_cast<long long>(hash & 0x7fffffff) << 32);
+        return (id * 3 + 2) ^ (static_cast<long long>(hash & 0x7fffffff) << 32);
     }
 } }

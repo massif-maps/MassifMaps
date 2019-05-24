@@ -214,7 +214,7 @@ namespace carto { namespace mvt {
 
         for (std::size_t index = 0; index < featureCollection.size(); index++) {
             long long localId = featureCollection.getLocalId(index);
-            long long globalId = featureCollection.getGlobalId(index);
+            long long globalId = _featureIdDefined ? _featureId : featureCollection.getGlobalId(index);
             const std::shared_ptr<const Geometry>& geometry = featureCollection.getGeometry(index);
 
             if (auto pointGeometry = std::dynamic_pointer_cast<const PointGeometry>(geometry)) {
@@ -263,6 +263,10 @@ namespace carto { namespace mvt {
         }
         else if (name == "marker-type") {
             bind(&_markerType, parseStringExpression(value));
+        }
+        else if (name == "feature-id") {
+            bind(&_featureId, parseExpression(value));
+            _featureIdDefined = true;
         }
         else if (name == "fill") {
             bind(&_fill, parseStringExpression(value), &MarkersSymbolizer::convertColor);

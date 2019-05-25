@@ -43,6 +43,19 @@ namespace carto { namespace mvt {
         }
     }
 
+    long long Symbolizer::convertId(const Value& val) const {
+        if (auto integer = boost::get<long long>(&val)) {
+            return *integer;
+        }
+        
+        std::string str = boost::lexical_cast<std::string>(val);
+        long long hash = 1125899906842597LL;
+        for (char c : str) {
+            hash = 31 * hash + static_cast<unsigned char>(c);
+        }
+        return std::abs(hash);
+    }
+
     vt::Color Symbolizer::convertColor(const Value& val) const {
         try {
             return parseColor(boost::lexical_cast<std::string>(val));
@@ -76,16 +89,12 @@ namespace carto { namespace mvt {
         _logger->write(Logger::Severity::WARNING, "Unsupported symbolizer parameter: " + name);
     }
 
-    long long Symbolizer::getTextId(long long id, std::size_t hash) {
-        return (id * 3 + 0) ^ (static_cast<long long>(hash & 0x7fffffff) << 32);
+    long long Symbolizer::generateId() {
+        static std::atomic<int> counter = ATOMIC_VAR_INIT(0);
+        return 0x4000000LL | counter++;
     }
 
-    long long Symbolizer::getShieldId(long long id, std::size_t hash) {
-        return (id * 3 + 1) ^ (static_cast<long long>(hash & 0x7fffffff) << 32);
-    }
-
-    long long Symbolizer::getBitmapId(long long id, const std::string& file) {
-        std::size_t hash = std::hash<std::string>()(file);
-        return (id * 3 + 2) ^ (static_cast<long long>(hash & 0x7fffffff) << 32);
+    long long Symbolizer::combineId(long long id, std::size_t hash) {
+        return std::abs(id ^ static_cast<long long>(hash));
     }
 } }

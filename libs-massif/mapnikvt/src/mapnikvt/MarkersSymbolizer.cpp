@@ -130,7 +130,7 @@ namespace carto { namespace mvt {
                 }
             }
             else {
-                labelInfos.emplace_back(localId, vt::TileLayerBuilder::PointLabelInfo(getBitmapId(globalId, file), groupId, position, 0));
+                labelInfos.emplace_back(localId, vt::TileLayerBuilder::PointLabelInfo(globalId * 3 + 0, groupId, position, 0));
             }
         };
 
@@ -194,7 +194,7 @@ namespace carto { namespace mvt {
                 while (linePos < lineLen) {
                     cglib::vec2<float> pos = v0 + (v1 - v0) * (linePos / lineLen);
                     if (std::min(pos(0), pos(1)) > 0.0f && std::max(pos(0), pos(1)) < 1.0f) {
-                        addPoint(localId, 0, pos);
+                        addPoint(localId, generateId(), pos);
 
                         cglib::vec2<float> dir = cglib::unit(v1 - v0);
                         cglib::mat3x3<float> dirTransform = cglib::mat3x3<float>::identity();
@@ -212,9 +212,10 @@ namespace carto { namespace mvt {
             }
         };
 
+        std::size_t hash = std::hash<std::string>()(file);
         for (std::size_t index = 0; index < featureCollection.size(); index++) {
             long long localId = featureCollection.getLocalId(index);
-            long long globalId = _featureIdDefined ? _featureId : featureCollection.getGlobalId(index);
+            long long globalId = _featureIdDefined ? _featureId : combineId(featureCollection.getGlobalId(index), hash);
             const std::shared_ptr<const Geometry>& geometry = featureCollection.getGeometry(index);
 
             if (auto pointGeometry = std::dynamic_pointer_cast<const PointGeometry>(geometry)) {
@@ -265,7 +266,7 @@ namespace carto { namespace mvt {
             bind(&_markerType, parseStringExpression(value));
         }
         else if (name == "feature-id") {
-            bind(&_featureId, parseExpression(value));
+            bind(&_featureId, parseExpression(value), &MarkersSymbolizer::convertId);
             _featureIdDefined = true;
         }
         else if (name == "fill") {

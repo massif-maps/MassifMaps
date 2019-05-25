@@ -41,15 +41,15 @@ namespace carto { namespace mvt {
         vt::CompOp convertCompOp(const std::string& compOp) const;
         vt::LabelOrientation convertLabelPlacement(const std::string& orientation) const;
 
+        long long convertId(const Value& val) const;
         vt::Color convertColor(const Value& val) const;
         cglib::mat3x3<float> convertTransform(const Value& val) const;
         boost::optional<cglib::mat3x3<float>> convertOptionalTransform(const Value& val) const;
 
         virtual void bindParameter(const std::string& name, const std::string& value);
 
-        static long long getTextId(long long id, std::size_t hash);
-        static long long getShieldId(long long id, std::size_t hash);
-        static long long getBitmapId(long long id, const std::string& file);
+        static long long generateId();
+        static long long combineId(long long globalId, std::size_t hash);
 
         template <typename V>
         void bind(V* field, const std::shared_ptr<const Expression>& expr) {

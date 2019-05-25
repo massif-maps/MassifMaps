@@ -45,7 +45,6 @@ namespace carto { namespace mvt {
         std::vector<std::pair<long long, vt::TileLayerBuilder::TextLabelInfo>> labelInfos;
 
         auto addShield = [&](long long localId, long long globalId, const std::string& text, const boost::optional<vt::TileLayerBuilder::Vertex>& vertex, const vt::TileLayerBuilder::Vertices& vertices) {
-            std::size_t hash = std::hash<std::string>()(text);
             long long groupId = (_allowOverlap ? -1 : 1); // use separate group from markers, markers use group 0
 
             if (clip) {
@@ -57,7 +56,7 @@ namespace carto { namespace mvt {
                 }
             }
             else {
-                labelInfos.emplace_back(localId, vt::TileLayerBuilder::TextLabelInfo(getShieldId(globalId, hash), groupId, text, vertex, vertices, minimumDistance));
+                labelInfos.emplace_back(localId, vt::TileLayerBuilder::TextLabelInfo(globalId * 3 + 2, groupId, text, vertex, vertices, minimumDistance));
             }
         };
 

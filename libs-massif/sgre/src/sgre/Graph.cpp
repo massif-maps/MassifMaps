@@ -156,7 +156,7 @@ namespace carto { namespace sgre {
         _rootNode = buildRTree(bounds, edgeIds);
     }
 
-    std::vector<std::pair<Graph::EdgeId, Point>> StaticGraph::findNearestEdgePoint(const Point& pos, const SearchOptions& options) const {
+    std::vector<std::pair<Graph::EdgeId, Point>> StaticGraph::findNearestEdgePoint(const Point& pos, const picojson::object& filter, const SearchOptions& options) const {
         struct RTreeNodeRecord {
             std::shared_ptr<const RTreeNode> node;
             double dist;
@@ -200,6 +200,27 @@ namespace carto { namespace sgre {
             // Do slow matching for edges store in this RTree node
             for (EdgeId edgeId : node->edgeIds) {
                 const Edge& edge = getEdge(edgeId);
+
+                // Apply filter?
+                if (!filter.empty()) {
+                    if (edge.featureId == FeatureId(-1)) {
+                        continue;
+                    }
+                    const Feature& feature = getFeature(edge.featureId);
+                    if (!feature.is<picojson::object>()) {
+                        continue;
+                    }
+
+                    auto it = filter.begin();
+                    for (; it != filter.end(); it++) {
+                        if (!feature.contains(it->first) || feature.get(it->first) != it->second) {
+                            break;
+                        }
+                    }
+                    if (it != filter.end()) {
+                        continue;
+                    }
+                }
 
                 if (auto closestPos = findNearestEdgePoint(edge, pos, scale)) {
                     double dist = calculateDistance(*closestPos, pos, scale);

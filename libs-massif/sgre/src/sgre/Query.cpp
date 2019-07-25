@@ -10,17 +10,21 @@ namespace carto { namespace sgre {
         picojson::object queryObj;
         queryObj["pos0"] = picojson::value(pos0Def);
         queryObj["pos1"] = picojson::value(pos1Def);
+        queryObj["filter0"] = picojson::value(_filters[0]);
+        queryObj["filter1"] = picojson::value(_filters[1]);
         return picojson::value(queryObj);
     }
 
     Query Query::parse(const picojson::value& queryDef) {
         const picojson::array& pos0Def = queryDef.get("pos0").get<picojson::array>();
         const picojson::array& pos1Def = queryDef.get("pos1").get<picojson::array>();
-        cglib::vec3<double> pos0, pos1;
+        Point pos0, pos1;
         for (std::size_t i = 0; i < 3; i++) {
             pos0(i) = pos0Def.at(i).get<double>();
             pos1(i) = pos1Def.at(i).get<double>();
         }
-        return Query(pos0, pos1);
+        Filter filter0 = queryDef.get("filter0").get<picojson::object>();
+        Filter filter1 = queryDef.get("filter1").get<picojson::object>();
+        return Query(pos0, pos1, filter0, filter1);
     }
 } }

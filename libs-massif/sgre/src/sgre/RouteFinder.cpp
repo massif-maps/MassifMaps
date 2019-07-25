@@ -25,7 +25,7 @@ namespace carto { namespace sgre {
         for (int i = 0; i < 2; i++) {
             StaticGraph::SearchOptions searchOptions;
             searchOptions.zSensitivity = _routeOptions.zSensitivity;
-            std::vector<std::pair<Graph::EdgeId, Point>> edgePoints = _graph->findNearestEdgePoint(query.getPos(i), searchOptions);
+            std::vector<std::pair<Graph::EdgeId, Point>> edgePoints = _graph->findNearestEdgePoint(query.getPos(i), query.getFilter(i), searchOptions);
             if (edgePoints.empty()) {
                 return Result();
             }

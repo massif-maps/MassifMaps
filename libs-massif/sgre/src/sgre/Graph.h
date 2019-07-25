@@ -96,7 +96,7 @@ namespace carto { namespace sgre {
         virtual const Edge& getEdge(EdgeId edgeId) const override { return _edges.at(edgeId); }
         virtual const Feature& getFeature(FeatureId featureId) const override { return _features.at(featureId); }
 
-        std::vector<std::pair<EdgeId, Point>> findNearestEdgePoint(const Point& pos, const SearchOptions& options) const;
+        std::vector<std::pair<EdgeId, Point>> findNearestEdgePoint(const Point& pos, const picojson::object& filter, const SearchOptions& options) const;
 
     private:
         struct RTreeNode {

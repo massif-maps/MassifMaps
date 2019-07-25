@@ -569,7 +569,6 @@ BOOST_AUTO_TEST_CASE(minUpDownAngle) {
         picojson::value configDef = parseJSON(R"R({ "min_updownangle": 44 })R");
         auto finder1 = RouteFinder::create(buildZGraph(R"R([{ "filters":[{"type":0}], "speed":1.0 }])R"), configDef);
         Result result1 = finder1->find(query1);
-        std::string x = result1.serialize().serialize();
         BOOST_CHECK(equal(result1.serialize(), parseJSON(R"R({"geometry":[[0,0,0],[1,0,111319]],"instructions":[{"distance":157429.18659344499,"geomindex":0,"tag":{"type":1},"time":303304.29795501486,"type":3},{"distance":0,"geomindex":1,"tag":{"type":1},"time":0,"type":8}],"status":1})R")));
     }
 
@@ -583,3 +582,33 @@ BOOST_AUTO_TEST_CASE(minUpDownAngle) {
         BOOST_CHECK(equal(result1.serialize(), parseJSON(R"R({"geometry":[[0,0,0],[1,0,111319]],"instructions":[{"distance":157429.18659344499,"geomindex":0,"tag":{"type":1},"time":303304.29795501486,"type":1},{"distance":0,"geomindex":1,"tag":{"type":1},"time":0,"type":8}],"status":1})R")));
     }
 }
+
+
+// Test cases for end point filters
+BOOST_AUTO_TEST_CASE(endPointFilters) {
+    auto buildGraph = [](const std::string& rules) -> std::shared_ptr<const StaticGraph> {
+        auto chain = createChain(1.0, 2);
+        auto ruleList = RuleList::parse(parseJSON(rules));
+        GraphBuilder graphBuilder = GraphBuilder(ruleList);
+        graphBuilder.addLineString({ shiftPoints(chain, { 0, 1, 0 }) }, parseJSON("{ \"type\": 1 }"));
+        graphBuilder.addLineString({ shiftPoints(chain, { 0, 0, 0 }) }, parseJSON("{ \"type\": 2 }"));
+        return graphBuilder.build();
+    };
+
+    // Check basic filters
+    {
+        Query query(Point(0.0, 0.0, 0.0), Point(1.0, 0.0, 0.0));
+        RouteFinder finder1(buildGraph(R"R([{ "filters":[{"type":0}], "speed":1.0 }])R"));
+        Result result1 = finder1.find(query);
+        std::string r1 = result1.serialize().serialize();
+        BOOST_CHECK(equal(result1.serialize(), parseJSON(R"R({"geometry":[[0,0,0],[1,0,0]],"instructions":[{"distance":111319.49079327358,"geomindex":0,"tag":{"type":2},"time":80666.29795501483,"type":1},{"distance":0,"geomindex":1,"tag":{"type":2},"time":0,"type":8}],"status":1})R")));
+
+        query.setFilter(0, parseJSON("{ \"type\": 1 }").get<picojson::object>());
+        query.setFilter(1, parseJSON("{ \"type\": 1 }").get<picojson::object>());
+
+        Result result2 = finder1.find(query);
+        std::string r2 = result2.serialize().serialize();
+        BOOST_CHECK(equal(result2.serialize(), parseJSON(R"R({"geometry":[[0,1,0],[1,1,0]],"instructions":[{"distance":111302.53629563769,"geomindex":0,"tag":{"type":1},"time":80654.012087120282,"type":1},{"distance":0,"geomindex":1,"tag":{"type":1},"time":0,"type":8}],"status":1})R")));
+    }
+}
+

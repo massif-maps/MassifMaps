@@ -34,6 +34,8 @@ namespace carto { namespace mvt {
 
         const Feature& getFeature(std::size_t index) const { return _features.at(index).second; }
         const std::shared_ptr<const Geometry>& getGeometry(std::size_t index) const { return _features.at(index).second.getGeometry(); }
+        std::shared_ptr<const LineGeometry> getLineGeometry(std::size_t index) const;
+        std::shared_ptr<const PolygonGeometry> getPolygonGeometry(std::size_t index) const;
         const std::shared_ptr<const FeatureData>& getFeatureData(std::size_t index) const { return _features.at(index).second.getFeatureData(); }
 
     private:

@@ -660,20 +660,28 @@ namespace carto { namespace vt {
                 if (t0 > t1) {
                     break;
                 }
+                
+                std::pair<std::size_t, double> t0t = t1;
+                std::pair<std::size_t, double> t1t = t0;
                 double prevDist = viewState.frustum.plane_distance(plane, vertices[t0.first]);
                 for (std::size_t i = t0.first; i <= t1.first; i++) {
                     double nextDist = viewState.frustum.plane_distance(plane, vertices[i + 1]);
-                    if (nextDist > 0 && prevDist < 0) {
-                        t0 = std::max(t0, std::pair<std::size_t, double>(i, 1 - nextDist / (nextDist - prevDist)));
+                    if (nextDist > 0) {
+                        if (prevDist < 0) {
+                            t0t = std::min(t0t, std::pair<std::size_t, double>(i, 1 - nextDist / (nextDist - prevDist)));
+                        }
+                        t1t = std::max(t1t, std::pair<std::size_t, double>(i + 1, 0));
                     }
-                    else if (nextDist < 0 && prevDist > 0) {
-                        t1 = std::min(t1, std::pair<std::size_t, double>(i, 1 - nextDist / (nextDist - prevDist)));
-                    }
-                    else if (nextDist < 0 && prevDist < 0) {
-                        t0 = std::max(t0, std::pair<std::size_t, double>(i + 1, 0));
+                    if (prevDist > 0) {
+                        if (nextDist < 0) {
+                            t1t = std::max(t1t, std::pair<std::size_t, double>(i, 1 - nextDist / (nextDist - prevDist)));
+                        }
+                        t0t = std::min(t0t, std::pair<std::size_t, double>(i, 0));
                     }
                     prevDist = nextDist;
                 }
+                t0 = std::max(t0, t0t);
+                t1 = std::min(t1, t1t);
             }
             if (t0 < t1) {
                 double len = 0;

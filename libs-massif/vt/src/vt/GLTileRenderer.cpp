@@ -914,9 +914,13 @@ namespace carto { namespace vt {
     }
 
     bool GLTileRenderer::findLabelIntersection(const std::shared_ptr<Label>& label, const cglib::ray3<double>& ray, float radius, double& result) const {
-        float size = label->getStyle()->sizeFunc(_viewState) + radius;
+        float size = label->getStyle()->sizeFunc(_viewState);
+        if (size <= 0) {
+            return false;
+        }
+
         std::array<cglib::vec3<float>, 4> envelope;
-        if (!label->calculateEnvelope(size, _viewState, envelope)) {
+        if (!label->calculateEnvelope(size, radius, _viewState, envelope)) {
             return false;
         }
         if (cglib::dot_product(label->getNormal(), cglib::vec3<float>::convert(ray.direction)) >= 0) {

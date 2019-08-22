@@ -114,7 +114,7 @@ namespace carto { namespace vt {
         return true;
     }
 
-    bool Label::calculateEnvelope(float size, const ViewState& viewState, std::array<cglib::vec3<float>, 4>& envelope) const {
+    bool Label::calculateEnvelope(float size, float buffer, const ViewState& viewState, std::array<cglib::vec3<float>, 4>& envelope) const {
         std::shared_ptr<const Placement> placement = getPlacement(viewState);
         float scale = size * viewState.zoomScale * _style->scale;
         if (!placement || scale <= 0) {
@@ -125,6 +125,7 @@ namespace carto { namespace vt {
             return false;
         }
 
+        float padding = buffer * viewState.zoomScale * _style->scale;
         cglib::vec3<float> origin, xAxis, yAxis;
         setupCoordinateSystem(viewState, placement, origin, xAxis, yAxis);
 
@@ -150,6 +151,8 @@ namespace carto { namespace vt {
                 minX = std::min(minX, x); maxX = std::max(maxX, x);
                 minY = std::min(minY, y); maxY = std::max(maxY, y);
             }
+            minX -= padding; maxX += padding;
+            minY -= padding; maxY += padding;
 
             cglib::vec3<float> zAxis = cglib::vector_product(xAxis, yAxis);
             cglib::vec3<float> zOrigin = zAxis * cglib::dot_product(origin, zAxis);
@@ -162,25 +165,24 @@ namespace carto { namespace vt {
             valid = valid && _cachedValid;
         }
         else {
-            xAxis *= scale;
-            yAxis *= scale;
-
             // Use bounding box for envelope
+            float minX = _glyphBBox.min(0) * scale - padding, maxX = _glyphBBox.max(0) * scale + padding;
+            float minY = _glyphBBox.min(1) * scale - padding, maxY = _glyphBBox.max(1) * scale + padding;
             if (_style->transform) {
-                cglib::vec2<float> p00 = cglib::transform(cglib::vec2<float>(_glyphBBox.min(0), _glyphBBox.min(1)), _style->transform.get());
-                cglib::vec2<float> p01 = cglib::transform(cglib::vec2<float>(_glyphBBox.min(0), _glyphBBox.max(1)), _style->transform.get());
-                cglib::vec2<float> p10 = cglib::transform(cglib::vec2<float>(_glyphBBox.max(0), _glyphBBox.min(1)), _style->transform.get());
-                cglib::vec2<float> p11 = cglib::transform(cglib::vec2<float>(_glyphBBox.max(0), _glyphBBox.max(1)), _style->transform.get());
+                cglib::vec2<float> p00 = cglib::transform(cglib::vec2<float>(minX, minY), _style->transform.get());
+                cglib::vec2<float> p01 = cglib::transform(cglib::vec2<float>(minX, maxY), _style->transform.get());
+                cglib::vec2<float> p10 = cglib::transform(cglib::vec2<float>(maxX, minY), _style->transform.get());
+                cglib::vec2<float> p11 = cglib::transform(cglib::vec2<float>(maxX, maxY), _style->transform.get());
                 envelope[0] = origin + xAxis * p00(0) + yAxis * p00(1);
                 envelope[1] = origin + xAxis * p10(0) + yAxis * p10(1);
                 envelope[2] = origin + xAxis * p11(0) + yAxis * p11(1);
                 envelope[3] = origin + xAxis * p01(0) + yAxis * p01(1);
             }
             else {
-                envelope[0] = origin + xAxis * _glyphBBox.min(0) + yAxis * _glyphBBox.min(1);
-                envelope[1] = origin + xAxis * _glyphBBox.max(0) + yAxis * _glyphBBox.min(1);
-                envelope[2] = origin + xAxis * _glyphBBox.max(0) + yAxis * _glyphBBox.max(1);
-                envelope[3] = origin + xAxis * _glyphBBox.min(0) + yAxis * _glyphBBox.max(1);
+                envelope[0] = origin + xAxis * minX + yAxis * minY;
+                envelope[1] = origin + xAxis * maxX + yAxis * minY;
+                envelope[2] = origin + xAxis * maxX + yAxis * maxY;
+                envelope[3] = origin + xAxis * minX + yAxis * maxY;
             }
         }
         return valid;

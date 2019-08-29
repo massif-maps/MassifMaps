@@ -32,13 +32,14 @@ namespace carto { namespace vt {
     public:
         explicit Label(const TileLabel& tileLabel, const cglib::mat4x4<double>& tileMatrix, const std::shared_ptr<const TileTransformer::VertexTransformer>& transformer);
 
-        const TileId& getTileId() const { return _tileId; }
-        long long getLocalId() const { return _localId; }
         long long getGlobalId() const { return _globalId; }
         long long getGroupId() const { return _groupId; }
         const cglib::vec3<float>& getNormal() const { return _normal; }
         const std::shared_ptr<const TileLabel::Style>& getStyle() const { return _style; }
         
+        TileId getTileId() const { return _placement ? _placement->tileId : _tileId; }
+        long long getLocalId() const { return _placement ? _placement->localId : _localId; }
+
         bool isValid() const { return (bool) _placement; }
 
         int getPriority() const { return _priority; }
@@ -73,24 +74,52 @@ namespace carto { namespace vt {
         constexpr static float MAX_SUMMED_SEGMENT_ANGLE = 2.0f; // maximum sum of segment angles, in radians
         constexpr static float MIN_BILLBOARD_VIEW_NORMAL_DOTPRODUCT = 0.49f; // the minimum allowed dot product between view vector and surface normal
 
-        using Vertex = cglib::vec3<double>;
-        using Vertices = std::vector<Vertex>;
-        using VerticesList = std::list<Vertices>;
+        struct TilePoint {
+            TileId tileId;
+            long long localId;
+            cglib::vec3<double> position;
+
+            explicit TilePoint(const TileId& tileId, long long localId, const cglib::vec3<double>& pos) : tileId(tileId), localId(localId), position(pos) { }
+
+            bool operator == (const TilePoint& other) const {
+                return tileId == other.tileId && localId == other.localId;
+            }
+
+            bool operator != (const TilePoint& other) const {
+                return !(*this == other);
+            }
+        };
+
+        struct TileLine {
+            TileId tileId;
+            long long localId;
+            std::vector<cglib::vec3<double>> vertices;
+
+            explicit TileLine(const TileId& tileId, long long localId, std::vector<cglib::vec3<double>> vertices) : tileId(tileId), localId(localId), vertices(std::move(vertices)) { }
+
+            bool operator == (const TileLine& other) const {
+                return tileId == other.tileId && localId == other.localId;
+            }
+
+            bool operator != (const TileLine& other) const {
+                return !(*this == other);
+            }
+        };
 
         struct Placement {
             struct Edge {
-                cglib::vec3<float> pos0;
-                cglib::vec3<float> pos1;
+                cglib::vec3<float> position0;
+                cglib::vec3<float> position1;
                 cglib::vec3<float> binormal0;
                 cglib::vec3<float> binormal1;
                 cglib::vec3<float> normal;
                 cglib::vec3<float> xAxis;
                 cglib::vec3<float> yAxis;
                 
-                explicit Edge(const cglib::vec3<double>& p0, const cglib::vec3<double>& p1, const cglib::vec3<double>& origin, const cglib::vec3<float>& norm) {
-                    pos0 = cglib::vec3<float>::convert(p0 - origin);
-                    pos1 = cglib::vec3<float>::convert(p1 - origin);
-                    xAxis = cglib::unit(pos1 - pos0);
+                explicit Edge(const cglib::vec3<double>& pos0, const cglib::vec3<double>& pos1, const cglib::vec3<double>& origin, const cglib::vec3<float>& norm) {
+                    position0 = cglib::vec3<float>::convert(pos0 - origin);
+                    position1 = cglib::vec3<float>::convert(pos1 - origin);
+                    xAxis = cglib::unit(position1 - position0);
                     yAxis = cglib::unit(cglib::vector_product(norm, xAxis));
                     binormal0 = yAxis;
                     binormal1 = yAxis;
@@ -98,7 +127,7 @@ namespace carto { namespace vt {
                 }
 
                 void reverse() {
-                    std::swap(pos0, pos1);
+                    std::swap(position0, position1);
                     std::swap(binormal0, binormal1);
                     binormal0 = -binormal0;
                     binormal1 = -binormal1;
@@ -107,11 +136,13 @@ namespace carto { namespace vt {
                 }
             };
             
+            TileId tileId;
+            long long localId;
             std::vector<Edge> edges;
             std::size_t index;
-            cglib::vec3<double> pos;
+            cglib::vec3<double> position;
             
-            explicit Placement(std::vector<Edge> baseEdges, std::size_t index, const cglib::vec3<double>& pos) : edges(std::move(baseEdges)), index(index), pos(pos) {
+            explicit Placement(const TileId& tileId, long long localId, std::vector<Edge> baseEdges, std::size_t index, const cglib::vec3<double>& pos) : tileId(tileId), localId(localId), edges(std::move(baseEdges)), index(index), position(pos) {
                 for (std::size_t i = 1; i < edges.size(); i++) {
                     cglib::vec3<float> binormal = edges[i - 1].yAxis + edges[i].yAxis;
                     if (cglib::norm(binormal) != 0) {
@@ -134,10 +165,10 @@ namespace carto { namespace vt {
 
         std::shared_ptr<const Placement> getPlacement(const ViewState& viewState) const;
         std::shared_ptr<const Placement> reversePlacement(const std::shared_ptr<const Placement>& placement) const;
-        std::shared_ptr<const Placement> findSnappedPointPlacement(const Vertex& position, const Vertices& vertices) const;
-        std::shared_ptr<const Placement> findSnappedLinePlacement(const Vertex& position, const VerticesList& verticesList) const;
-        std::shared_ptr<const Placement> findClippedPointPlacement(const ViewState& viewState, const Vertices& vertices) const;
-        std::shared_ptr<const Placement> findClippedLinePlacement(const ViewState& viewState, const VerticesList& verticesList) const;
+        std::shared_ptr<const Placement> findSnappedPointPlacement(const cglib::vec3<double>& position, const std::list<TilePoint>& tilePoints) const;
+        std::shared_ptr<const Placement> findSnappedLinePlacement(const cglib::vec3<double>& position, const std::list<TileLine>& tileLines) const;
+        std::shared_ptr<const Placement> findClippedPointPlacement(const ViewState& viewState, const std::list<TilePoint>& tilePoints) const;
+        std::shared_ptr<const Placement> findClippedLinePlacement(const ViewState& viewState, const std::list<TileLine>& tileLines) const;
 
         const TileId _tileId;
         const long long _localId;
@@ -150,8 +181,8 @@ namespace carto { namespace vt {
 
         cglib::bbox2<float> _glyphBBox;
         cglib::vec3<float> _normal;
-        Vertices _position;
-        VerticesList _verticesList;
+        std::list<TilePoint> _tilePoints;
+        std::list<TileLine> _tileLines;
 
         float _opacity = 0.0f;
         bool _visible = false;

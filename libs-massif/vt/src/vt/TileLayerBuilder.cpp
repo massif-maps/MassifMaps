@@ -96,8 +96,8 @@ namespace carto { namespace vt {
             const GlyphMap::Glyph* glyph = glyphMap->getGlyph(glyphId);
             if (glyph) {
                 pen = -cglib::vec2<float>(glyph->width, glyph->height) * 0.5f;
+                tesselateGlyph(vertex, static_cast<std::int8_t>(styleIndex), pen * style.image->scale, cglib::vec2<float>(glyph->width, glyph->height) * style.image->scale, glyph);
             }
-            tesselateGlyph(vertex, static_cast<std::int8_t>(styleIndex), pen * style.image->scale, cglib::vec2<float>(glyph->width, glyph->height) * style.image->scale, glyph);
             _ids.fill(id, _indices.size() - i0);
         } while (generator(id, vertex));
     }

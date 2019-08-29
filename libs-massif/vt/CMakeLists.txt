@@ -18,10 +18,13 @@ set(vt_LIBS_DIR "${PROJECT_SOURCE_DIR}/../libs-external")
 
 file(GLOB vt_SRC_FILES "${vt_SRC_DIR}/*.cpp" "${vt_SRC_DIR}/*.h")
 
+if(EXCLUDE_GL)
+list(FILTER vt_SRC_FILES EXCLUDE REGEX ".*(GLExtensions|GLShaderManager|GLTileRenderer).cpp$")
+endif(EXCLUDE_GL)
+
 if(SINGLE_LIBRARY)
 add_library(vt INTERFACE)
 set(vt_SRC_FILES ${vt_SRC_FILES} PARENT_SCOPE)
 else()
 add_library(vt OBJECT ${vt_SRC_FILES})
 endif()
-

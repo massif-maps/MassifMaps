@@ -329,7 +329,7 @@ namespace carto { namespace vt {
         boost::optional<cglib::mat2x2<float>> transform;
         boost::optional<cglib::vec2<float>> translate;
         if (style.transform) {
-            transform = cglib::mat2x2<float> {{ (*style.transform)(0, 0), (*style.transform)(0, 1)}, { (*style.transform)(1, 0), (*style.transform)(1, 1) }};
+            transform = cglib::mat2x2<float> {{ (*style.transform)(0, 0), -(*style.transform)(0, 1)}, { -(*style.transform)(1, 0), (*style.transform)(1, 1) }};
             translate = cglib::vec2<float>((*style.transform)(0, 2), (*style.transform)(1, 2)) * (1.0f / _tileSize);
         }
 

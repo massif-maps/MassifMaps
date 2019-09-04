@@ -28,8 +28,10 @@ namespace carto { namespace vt {
 
         if (auto pos = boost::get<cglib::vec2<float>>(&tileLabel.getPosition())) {
             cglib::vec3<double> position = cglib::transform_point(cglib::vec3<double>::convert(transformer->calculatePoint(*pos)), tileMatrix);
-            _tilePoints.emplace_back(_tileId, _localId, position);
-            _normal = transformer->calculateNormal(*pos);
+            cglib::vec3<float> normal = transformer->calculateNormal(*pos);
+            cglib::vec3<float> xAxis = transformer->calculateVector(*pos, cglib::vec2<float>(1, 0));
+            cglib::vec3<float> yAxis = transformer->calculateVector(*pos, cglib::vec2<float>(0, -1));
+            _tilePoints.emplace_back(_tileId, _localId, position, cglib::unit(normal), cglib::unit(xAxis), cglib::unit(yAxis));
         }
 
         if (!tileLabel.getVertices().empty()) {
@@ -38,11 +40,10 @@ namespace carto { namespace vt {
             cglib::vec3<float> normal(0, 0, 0);
             for (const cglib::vec2<float>& pos : tileLabel.getVertices()) {
                 cglib::vec3<double> position = cglib::transform_point(cglib::vec3<double>::convert(transformer->calculatePoint(pos)), tileMatrix);
-                vertices.push_back(position);
                 normal += transformer->calculateNormal(pos);
+                vertices.push_back(position);
             }
-            _tileLines.emplace_back(_tileId, _localId, std::move(vertices));
-            _normal = normal * (1.0f / tileLabel.getVertices().size());
+            _tileLines.emplace_back(_tileId, _localId, std::move(vertices), cglib::unit(normal));
         }
     }
 
@@ -136,7 +137,7 @@ namespace carto { namespace vt {
         cglib::vec3<float> origin, xAxis, yAxis;
         setupCoordinateSystem(viewState, placement, origin, xAxis, yAxis);
 
-        bool valid = cglib::dot_product(viewState.orientation[2], _normal) > MIN_BILLBOARD_VIEW_NORMAL_DOTPRODUCT;
+        bool valid = cglib::dot_product(viewState.orientation[2], placement->normal) > MIN_BILLBOARD_VIEW_NORMAL_DOTPRODUCT;
         if (_style->orientation == LabelOrientation::LINE) {
             // For line orientation, we have to calculate vertex data and then project vertices to the principal axes
             if (scale != _cachedScale || placement != _cachedPlacement) {
@@ -203,7 +204,7 @@ namespace carto { namespace vt {
         }
 
         // Build vertex data cache
-        bool valid = cglib::dot_product(viewState.orientation[2], _normal) > MIN_BILLBOARD_VIEW_NORMAL_DOTPRODUCT;
+        bool valid = cglib::dot_product(viewState.orientation[2], placement->normal) > MIN_BILLBOARD_VIEW_NORMAL_DOTPRODUCT;
         if (_style->orientation == LabelOrientation::LINE) {
             // Check if cached vertex data can be used
             if (scale != _cachedScale || placement != _cachedPlacement) {
@@ -247,7 +248,7 @@ namespace carto { namespace vt {
             }
         }
 
-        normals.fill(_normal, _cachedVertices.size());
+        normals.fill(placement->normal, _cachedVertices.size());
         texCoords.copy(_cachedTexCoords, 0, _cachedTexCoords.size());
         attribs.copy(_cachedAttribs, 0, _cachedAttribs.size());
         indices.copy(_cachedIndices, 0, _cachedIndices.size());
@@ -261,7 +262,7 @@ namespace carto { namespace vt {
             }
 
             vertices.copy(vertices, vertices.size() - _cachedVertices.size(), _cachedVertices.size());
-            normals.fill(_normal, _cachedVertices.size());
+            normals.fill(placement->normal, _cachedVertices.size());
             texCoords.copy(_cachedTexCoords, 0, _cachedTexCoords.size());
             attribs.copy(_cachedAttribs, 0, _cachedAttribs.size());
             indices.copy(_cachedIndices, 0, _cachedIndices.size());
@@ -394,7 +395,7 @@ namespace carto { namespace vt {
                             target = edgePos0 + dp * t2;
                             xAxis = cglib::unit(target - origin);
                         }
-                        yAxis = cglib::unit(cglib::vector_product(edges[edgeIndex].normal, xAxis));
+                        yAxis = cglib::unit(cglib::vector_product(placement->normal, xAxis));
                         
                         if (iter >= MAX_LINE_FITTING_ITERATIONS) {
                             break;
@@ -446,24 +447,20 @@ namespace carto { namespace vt {
         origin = cglib::vec3<float>::convert(placement->position - viewState.origin);
         switch (_style->orientation) {
         case LabelOrientation::BILLBOARD_2D:
-            xAxis = cglib::unit(cglib::vector_product(viewState.orientation[1], _normal));
-            yAxis = cglib::unit(cglib::vector_product(_normal, xAxis));
+            xAxis = cglib::unit(cglib::vector_product(viewState.orientation[1], placement->normal));
+            yAxis = cglib::unit(cglib::vector_product(placement->normal, xAxis));
             break;
         case LabelOrientation::BILLBOARD_3D:
             xAxis = viewState.orientation[0];
             yAxis = viewState.orientation[1];
             break;
-        case LabelOrientation::POINT:
-            xAxis = cglib::vec3<float>(1, 0, 0);
-            yAxis = cglib::vec3<float>(0, 1, 0);
-            break;
-        case LabelOrientation::POINT_FLIPPING:
-            xAxis = cglib::vec3<float>(viewState.orientation[0][0] < 0 ? -1 : 1, 0, 0);
-            yAxis = cglib::vec3<float>(0, xAxis(0), 0);
-            break;
-        default: // LabelOrientation::LINE
-            xAxis = placement->edges[placement->index].xAxis;
-            yAxis = placement->edges[placement->index].yAxis;
+        default: // LabelOrientation::POINT, LabelOrientation::POINT_FLIPPING, LabelOrientation::LINE
+            xAxis = placement->xAxis;
+            yAxis = placement->yAxis;
+            if (_style->orientation == LabelOrientation::POINT_FLIPPING && viewState.orientation[0][0] < 0) {
+                xAxis = -xAxis;
+                yAxis = -yAxis;
+            }
             break;
         }
     }
@@ -496,13 +493,11 @@ namespace carto { namespace vt {
 
     std::shared_ptr<const Label::Placement> Label::findSnappedPointPlacement(const cglib::vec3<double>& position, const std::list<TilePoint>& tilePoints) const {
         const TilePoint* bestTilePoint = nullptr;
-        cglib::vec3<double> bestPos = position;
         double bestDist = std::numeric_limits<double>::infinity();
         for (const TilePoint& tilePoint : tilePoints) {
             double dist = cglib::length(tilePoint.position - position);
             if (dist < bestDist) {
                 bestTilePoint = &tilePoint;
-                bestPos = tilePoint.position;
                 bestDist = dist;
             }
         }
@@ -510,10 +505,7 @@ namespace carto { namespace vt {
             return std::shared_ptr<const Placement>();
         }
 
-        if (_placement && _placement->position == bestPos && _placement->edges.empty()) {
-            return _placement;
-        }
-        return std::make_shared<const Placement>(bestTilePoint->tileId, bestTilePoint->localId, std::vector<Placement::Edge>(), 0, bestPos);
+        return std::make_shared<const Placement>(bestTilePoint->tileId, bestTilePoint->localId, bestTilePoint->position, bestTilePoint->normal, bestTilePoint->xAxis, bestTilePoint->yAxis);
     }
 
     std::shared_ptr<const Label::Placement> Label::findSnappedLinePlacement(const cglib::vec3<double>& position, const std::list<TileLine>& tileLines) const {
@@ -545,52 +537,7 @@ namespace carto { namespace vt {
             return std::shared_ptr<const Placement>();
         }
 
-        std::vector<Placement::Edge> edges;
-        for (std::size_t j = 1; j < bestTileLine->vertices.size(); j++) {
-            edges.emplace_back(bestTileLine->vertices[j - 1], bestTileLine->vertices[j], bestPos, _normal);
-        }
-
-        // Postprocess edges, keep only relatively straight parts, to avoid distorted texts
-        float summedAngle = 0;
-        for (std::size_t j0 = bestIndex, j1 = bestIndex + 1; true; ) {
-            bool r0 = false;
-            if (j0 > 0) {
-                cglib::vec3<float> edgeVec1 = edges[j0 - 1].position1 - edges[j0 - 1].position0;
-                cglib::vec3<float> edgeVec2 = edges[j0].position1 - edges[j0].position0;
-                float cos = cglib::dot_product(cglib::unit(edgeVec1), cglib::unit(edgeVec2));
-                float angle = std::acos(std::min(1.0f, std::max(-1.0f, cos)));
-                if (angle < MAX_SINGLE_SEGMENT_ANGLE && angle + summedAngle < MAX_SUMMED_SEGMENT_ANGLE) {
-                    summedAngle += angle;
-                    j0--;
-                    r0 = true;
-                }
-            }
-
-            bool r1 = false;
-            if (j1 < edges.size()) {
-                cglib::vec3<float> edgeVec1 = edges[j1 - 1].position1 - edges[j1 - 1].position0;
-                cglib::vec3<float> edgeVec2 = edges[j1].position1 - edges[j1].position0;
-                float cos = cglib::dot_product(cglib::unit(edgeVec1), cglib::unit(edgeVec2));
-                float angle = std::acos(std::min(1.0f, std::max(-1.0f, cos)));
-                if (angle < MAX_SINGLE_SEGMENT_ANGLE && angle + summedAngle < MAX_SUMMED_SEGMENT_ANGLE) {
-                    summedAngle += angle;
-                    j1++;
-                    r1 = true;
-                }
-            }
-
-            if (!r0 && !r1) {
-                edges = std::vector<Placement::Edge>(edges.begin() + j0, edges.begin() + j1);
-                bestIndex -= j0;
-                break;
-            }
-        }
-
-        // If the placement did not change, return original object. Otherwise create new.
-        if (_placement && _placement->index == bestIndex && _placement->position == bestPos && _placement->edges.size() == edges.size()) {
-            return _placement;
-        }
-        return std::make_shared<const Placement>(bestTileLine->tileId, bestTileLine->localId, std::move(edges), bestIndex, bestPos);
+        return std::make_shared<const Placement>(bestTileLine->tileId, bestTileLine->localId, bestTileLine->vertices, bestIndex, bestPos, bestTileLine->normal);
     }
 
     std::shared_ptr<const Label::Placement> Label::findClippedPointPlacement(const ViewState& viewState, const std::list<TilePoint>& tilePoints) const {
@@ -630,7 +577,7 @@ namespace carto { namespace vt {
                 }
             }
             if (inside) {
-                return std::make_shared<const Placement>(tilePoint.tileId, tilePoint.localId, std::vector<Placement::Edge>(), 0, tilePoint.position);
+                return std::make_shared<const Placement>(tilePoint.tileId, tilePoint.localId, tilePoint.position, tilePoint.normal, tilePoint.xAxis, tilePoint.yAxis);
             }
         }
         return std::shared_ptr<const Placement>();
@@ -703,12 +650,7 @@ namespace carto { namespace vt {
                         double diff = cglib::length(pos1 - pos0);
                         if (ofs < diff) {
                             cglib::vec3<double> pos = pos0 + (pos1 - pos0) * (ofs / diff); // this assumes central anchor point
-                            std::vector<Placement::Edge> edges;
-                            edges.reserve(tileLine.vertices.size());
-                            for (std::size_t j = 1; j < tileLine.vertices.size(); j++) {
-                                edges.emplace_back(tileLine.vertices[j - 1], tileLine.vertices[j], pos, _normal);
-                            }
-                            bestPlacement = std::make_shared<const Placement>(tileLine.tileId, tileLine.localId, std::move(edges), i, pos);
+                            bestPlacement = std::make_shared<const Placement>(tileLine.tileId, tileLine.localId, tileLine.vertices, i, pos, tileLine.normal);
                             bestLen = len;
                             break;
                         }

@@ -161,23 +161,10 @@ namespace carto { namespace vt {
 
         std::array<cglib::vec2<float>, 4> envelope;
         cglib::bbox2<float> bounds = cglib::bbox2<float>::smallest();
-        if (!label->getStyle()->translate) {
-            for (int i = 0; i < 4; i++) {
-                cglib::vec2<float> p_proj(cglib::proj_o(cglib::transform_point(mapEnvelope[i], _localCameraProjMatrix)));
-                envelope[i] = p_proj;
-                bounds.add(p_proj);
-            }
-        } else {
-            float zoomScale = std::pow(2.0f, label->getTileId().zoom - _viewState.zoom);
-            cglib::vec2<float> translate = (*label->getStyle()->translate) * zoomScale;
-            cglib::mat4x4<double> translateMatrix = cglib::mat4x4<double>::convert(_transformer->calculateTileTransform(label->getTileId(), translate, 1.0f));
-            cglib::mat4x4<double> tileMatrix = _transformer->calculateTileMatrix(label->getTileId(), 1);
-            cglib::mat4x4<float> mvpMatrix = cglib::mat4x4<float>::convert(_viewState.projectionMatrix * tileMatrix * translateMatrix * cglib::inverse(tileMatrix) * cglib::translate4_matrix(_viewState.origin));
-            for (int i = 0; i < 4; i++) {
-                cglib::vec2<float> p_proj(cglib::proj_o(cglib::transform_point(mapEnvelope[i], mvpMatrix)));
-                envelope[i] = p_proj;
-                bounds.add(p_proj);
-            }
+        for (int i = 0; i < 4; i++) {
+            cglib::vec2<float> p_proj(cglib::proj_o(cglib::transform_point(mapEnvelope[i], _localCameraProjMatrix)));
+            envelope[i] = p_proj;
+            bounds.add(p_proj);
         }
 
         int x0 = getGridIndex(bounds.min(0)), y0 = getGridIndex(bounds.min(1));

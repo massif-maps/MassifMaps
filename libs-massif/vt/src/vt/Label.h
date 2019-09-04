@@ -34,9 +34,9 @@ namespace carto { namespace vt {
 
         long long getGlobalId() const { return _globalId; }
         long long getGroupId() const { return _groupId; }
-        const cglib::vec3<float>& getNormal() const { return _normal; }
         const std::shared_ptr<const TileLabel::Style>& getStyle() const { return _style; }
         
+        cglib::vec3<float> getNormal() const { return _placement ? _placement->normal : cglib::vec3<float>(0, 0, 0); }
         TileId getTileId() const { return _placement ? _placement->tileId : _tileId; }
         long long getLocalId() const { return _placement ? _placement->localId : _localId; }
 
@@ -78,8 +78,11 @@ namespace carto { namespace vt {
             TileId tileId;
             long long localId;
             cglib::vec3<double> position;
+            cglib::vec3<float> normal;
+            cglib::vec3<float> xAxis;
+            cglib::vec3<float> yAxis;
 
-            explicit TilePoint(const TileId& tileId, long long localId, const cglib::vec3<double>& pos) : tileId(tileId), localId(localId), position(pos) { }
+            explicit TilePoint(const TileId& tileId, long long localId, const cglib::vec3<double>& pos, const cglib::vec3<float>& norm, const cglib::vec3<float>& xAxis, const cglib::vec3<float>& yAxis) : tileId(tileId), localId(localId), position(pos), normal(norm), xAxis(xAxis), yAxis(yAxis) { }
 
             bool operator == (const TilePoint& other) const {
                 return tileId == other.tileId && localId == other.localId;
@@ -94,8 +97,9 @@ namespace carto { namespace vt {
             TileId tileId;
             long long localId;
             std::vector<cglib::vec3<double>> vertices;
+            cglib::vec3<float> normal;
 
-            explicit TileLine(const TileId& tileId, long long localId, std::vector<cglib::vec3<double>> vertices) : tileId(tileId), localId(localId), vertices(std::move(vertices)) { }
+            explicit TileLine(const TileId& tileId, long long localId, std::vector<cglib::vec3<double>> vertices, const cglib::vec3<float>& norm) : tileId(tileId), localId(localId), vertices(std::move(vertices)), normal(norm) { }
 
             bool operator == (const TileLine& other) const {
                 return tileId == other.tileId && localId == other.localId;
@@ -112,28 +116,8 @@ namespace carto { namespace vt {
                 cglib::vec3<float> position1;
                 cglib::vec3<float> binormal0;
                 cglib::vec3<float> binormal1;
-                cglib::vec3<float> normal;
                 cglib::vec3<float> xAxis;
                 cglib::vec3<float> yAxis;
-                
-                explicit Edge(const cglib::vec3<double>& pos0, const cglib::vec3<double>& pos1, const cglib::vec3<double>& origin, const cglib::vec3<float>& norm) {
-                    position0 = cglib::vec3<float>::convert(pos0 - origin);
-                    position1 = cglib::vec3<float>::convert(pos1 - origin);
-                    xAxis = cglib::unit(position1 - position0);
-                    yAxis = cglib::unit(cglib::vector_product(norm, xAxis));
-                    binormal0 = yAxis;
-                    binormal1 = yAxis;
-                    normal = norm;
-                }
-
-                void reverse() {
-                    std::swap(position0, position1);
-                    std::swap(binormal0, binormal1);
-                    binormal0 = -binormal0;
-                    binormal1 = -binormal1;
-                    xAxis = -xAxis;
-                    yAxis = -yAxis;
-                }
             };
             
             TileId tileId;
@@ -141,21 +125,49 @@ namespace carto { namespace vt {
             std::vector<Edge> edges;
             std::size_t index;
             cglib::vec3<double> position;
-            
-            explicit Placement(const TileId& tileId, long long localId, std::vector<Edge> baseEdges, std::size_t index, const cglib::vec3<double>& pos) : tileId(tileId), localId(localId), edges(std::move(baseEdges)), index(index), position(pos) {
-                for (std::size_t i = 1; i < edges.size(); i++) {
-                    cglib::vec3<float> binormal = edges[i - 1].yAxis + edges[i].yAxis;
-                    if (cglib::norm(binormal) != 0) {
-                        binormal = cglib::unit(binormal);
-                        edges[i - 1].binormal1 = edges[i].binormal0 = binormal * (1.0f / cglib::dot_product(edges[i - 1].yAxis, binormal));
+            cglib::vec3<float> normal;
+            cglib::vec3<float> xAxis;
+            cglib::vec3<float> yAxis;
+
+            explicit Placement(const TileId& tileId, long long localId, const cglib::vec3<double>& pos, const cglib::vec3<float>& norm, const cglib::vec3<float>& xAxis, const cglib::vec3<float>& yAxis) : tileId(tileId), localId(localId), edges(), index(0), position(pos), normal(norm), xAxis(xAxis), yAxis(yAxis) { }
+
+            explicit Placement(const TileId& tileId, long long localId, const std::vector<cglib::vec3<double>>& vertices, std::size_t index, const cglib::vec3<double>& pos, const cglib::vec3<float>& norm) : tileId(tileId), localId(localId), edges(), index(index), position(pos), normal(norm), xAxis(0, 0, 0), yAxis(0, 0, 0) {
+                if (vertices.size() > 1) {
+                    edges.resize(vertices.size() - 1);
+                    for (std::size_t i = 0; i < edges.size(); i++) {
+                        Edge& edge = edges[i];
+                        edge.position0 = cglib::vec3<float>::convert(vertices[i] - pos);
+                        edge.position1 = cglib::vec3<float>::convert(vertices[i + 1] - pos);
+                        edge.xAxis = cglib::unit(edge.position1 - edge.position0);
+                        edge.yAxis = cglib::unit(cglib::vector_product(norm, edge.xAxis));
+                        edge.binormal0 = edge.yAxis;
+                        edge.binormal1 = edge.yAxis;
+                        if (i > 0) {
+                            cglib::vec3<float> binormal = edges[i - 1].yAxis + edges[i].yAxis;
+                            if (cglib::norm(binormal) != 0) {
+                                binormal = cglib::unit(binormal);
+                                edges[i - 1].binormal1 = edges[i].binormal0 = binormal * (1.0f / cglib::dot_product(edges[i - 1].yAxis, binormal));
+                            }
+                        }
                     }
+                    xAxis = edges[index].xAxis;
+                    yAxis = edges[index].yAxis;
                 }
             }
 
             void reverse() {
-                index = edges.size() - 1 - index;
-                std::reverse(edges.begin(), edges.end());
-                std::for_each(edges.begin(), edges.end(), [](Edge& edge) { edge.reverse(); });
+                if (!edges.empty()) {
+                    index = edges.size() - 1 - index;
+                    std::reverse(edges.begin(), edges.end());
+                    std::for_each(edges.begin(), edges.end(), [](Edge& edge) {
+                        std::swap(edge.position0, edge.position1);
+                        std::swap(edge.binormal0, edge.binormal1);
+                        edge.binormal0 = -edge.binormal0;
+                        edge.binormal1 = -edge.binormal1;
+                        edge.xAxis = -edge.xAxis;
+                        edge.yAxis = -edge.yAxis;
+                    });
+                }
             }
         };
         
@@ -180,7 +192,6 @@ namespace carto { namespace vt {
         const float _minimumGroupDistance;
 
         cglib::bbox2<float> _glyphBBox;
-        cglib::vec3<float> _normal;
         std::list<TilePoint> _tilePoints;
         std::list<TileLine> _tileLines;
 

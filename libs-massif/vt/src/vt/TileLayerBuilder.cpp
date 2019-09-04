@@ -329,8 +329,9 @@ namespace carto { namespace vt {
         boost::optional<cglib::mat2x2<float>> transform;
         boost::optional<cglib::vec2<float>> translate;
         if (style.transform) {
-            transform = cglib::mat2x2<float> {{ (*style.transform)(0, 0), -(*style.transform)(0, 1)}, { -(*style.transform)(1, 0), (*style.transform)(1, 1) }};
-            translate = cglib::vec2<float>((*style.transform)(0, 2), (*style.transform)(1, 2)) * (1.0f / _tileSize);
+            cglib::mat3x3<float> flippedTransform = (*style.transform) * cglib::scale3_matrix(cglib::vec3<float>(1, -1, 1));
+            transform = cglib::mat2x2<float> {{ flippedTransform(0, 0), flippedTransform(0, 1)}, { -flippedTransform(1, 0), -flippedTransform(1, 1) }};
+            translate = cglib::vec2<float>(flippedTransform(0, 2), flippedTransform(1, 2)) * (1.0f / _tileSize);
         }
 
         if (!_labelStyle || _labelStyle->orientation != style.orientation || _labelStyle->colorFunc != style.colorFunc || _labelStyle->sizeFunc != style.sizeFunc || _labelStyle->haloColorFunc != ColorFunction() || _labelStyle->haloRadiusFunc != FloatFunction() || _labelStyle->scale != scale || _labelStyle->ascent != 0.0f || _labelStyle->descent != 0.0f || _labelStyle->transform != transform || _labelStyle->translate != translate || _labelStyle->glyphMap != glyphMap) {

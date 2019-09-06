@@ -34,6 +34,7 @@ namespace carto { namespace vt {
             FloatFunction sizeFunc;
             ColorFunction haloColorFunc;
             FloatFunction haloRadiusFunc;
+            bool autoflip;
             float scale;
             float ascent;
             float descent;
@@ -41,7 +42,7 @@ namespace carto { namespace vt {
             boost::optional<cglib::vec2<float>> translate;
             std::shared_ptr<const GlyphMap> glyphMap;
 
-            explicit Style(LabelOrientation orientation, ColorFunction colorFunc, FloatFunction sizeFunc, ColorFunction haloColorFunc, FloatFunction haloRadiusFunc, float scale, float ascent, float descent, const boost::optional<cglib::mat2x2<float>>& transform, const boost::optional<cglib::vec2<float>>& translate, std::shared_ptr<const GlyphMap> glyphMap) : orientation(orientation), colorFunc(std::move(colorFunc)), sizeFunc(std::move(sizeFunc)), haloColorFunc(std::move(haloColorFunc)), haloRadiusFunc(std::move(haloRadiusFunc)), scale(scale), ascent(ascent), descent(descent), transform(transform), translate(translate), glyphMap(std::move(glyphMap)) { }
+            explicit Style(LabelOrientation orientation, ColorFunction colorFunc, FloatFunction sizeFunc, ColorFunction haloColorFunc, FloatFunction haloRadiusFunc, bool autoflip, float scale, float ascent, float descent, const boost::optional<cglib::mat2x2<float>>& transform, const boost::optional<cglib::vec2<float>>& translate, std::shared_ptr<const GlyphMap> glyphMap) : orientation(orientation), colorFunc(std::move(colorFunc)), sizeFunc(std::move(sizeFunc)), haloColorFunc(std::move(haloColorFunc)), haloRadiusFunc(std::move(haloRadiusFunc)), autoflip(autoflip), scale(scale), ascent(ascent), descent(descent), transform(transform), translate(translate), glyphMap(std::move(glyphMap)) { }
         };
         
         explicit TileLabel(const TileId& tileId, long long localId, long long globalId, long long groupId, std::vector<Font::Glyph> glyphs, boost::optional<cglib::vec2<float>> position, std::vector<cglib::vec2<float>> vertices, std::shared_ptr<const Style> style) : _tileId(tileId), _localId(localId), _globalId(globalId), _groupId(groupId), _glyphs(std::move(glyphs)), _position(std::move(position)), _vertices(std::move(vertices)), _style(std::move(style)) { }

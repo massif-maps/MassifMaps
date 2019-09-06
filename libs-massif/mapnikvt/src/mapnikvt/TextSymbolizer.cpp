@@ -88,7 +88,7 @@ namespace carto { namespace mvt {
                 textInfos.clear();
             }
             else {
-                vt::TextLabelStyle style(placement, fillFunc, sizeFunc, haloFillFunc, haloRadiusFunc, _orientationAngle, fontScale, cglib::vec2<float>(0, 0), std::shared_ptr<vt::BitmapImage>());
+                vt::TextLabelStyle style(placement, fillFunc, sizeFunc, haloFillFunc, haloRadiusFunc, true, _orientationAngle, fontScale, cglib::vec2<float>(0, 0), std::shared_ptr<vt::BitmapImage>());
 
                 std::size_t labelInfoIndex = 0;
                 layerBuilder.addTextLabels([&](long long& id, vt::TileLayerBuilder::TextLabelInfo& labelInfo) {
@@ -290,10 +290,7 @@ namespace carto { namespace mvt {
         vt::LabelOrientation placement = convertLabelPlacement(orientation);
         if (placement != vt::LabelOrientation::LINE) {
             if (_orientationDefined) { // if orientation is explictly defined, use POINT placement
-                return vt::LabelOrientation::POINT_FLIPPING;
-            }
-            if (placement == vt::LabelOrientation::POINT) { // texts should flip if viewed from upside down
-                return vt::LabelOrientation::POINT_FLIPPING;
+                return vt::LabelOrientation::POINT;
             }
         }
         return placement;

@@ -63,22 +63,21 @@ namespace carto { namespace vt {
     
     void Label::snapPlacement(const Label& label) {
         _placement = label._placement;
+        _cachedFlippedPlacement = label._cachedFlippedPlacement;
         if (!_placement) {
             return;
         }
 
+        _cachedFlippedPlacement.reset();
         if (!_tilePoints.empty()) {
-            _placement = _flippedPlacement = findSnappedPointPlacement(_placement->position, _tilePoints);
+            _placement = findSnappedPointPlacement(_placement->position, _tilePoints);
             if (_placement && !_tileLines.empty()) {
                 _placement = findSnappedLinePlacement(_placement->position, _tileLines);
-                _flippedPlacement = reversePlacement(_placement);
             }
             return;
         }
-
         if (!_tileLines.empty()) {
             _placement = findSnappedLinePlacement(_placement->position, _tileLines);
-            _flippedPlacement = reversePlacement(_placement);
         }
     }
 
@@ -95,18 +94,16 @@ namespace carto { namespace vt {
             }
         }
 
+        _cachedFlippedPlacement.reset();
         if (!_tilePoints.empty()) {
-            _placement = _flippedPlacement = findClippedPointPlacement(viewState, _tilePoints);
+            _placement = findClippedPointPlacement(viewState, _tilePoints);
             if (_placement && !_tileLines.empty()) {
                 _placement = findSnappedLinePlacement(_placement->position, _tileLines);
-                _flippedPlacement = reversePlacement(_placement);
             }
             return true;
         }
-
         if (!_tileLines.empty()) {
             _placement = findClippedLinePlacement(viewState, _tileLines);
-            _flippedPlacement = reversePlacement(_placement);
             return true;
         }
 
@@ -454,41 +451,28 @@ namespace carto { namespace vt {
             xAxis = viewState.orientation[0];
             yAxis = viewState.orientation[1];
             break;
-        default: // LabelOrientation::POINT, LabelOrientation::POINT_FLIPPING, LabelOrientation::LINE
+        default: // LabelOrientation::POINT, LabelOrientation::LINE
             xAxis = placement->xAxis;
             yAxis = placement->yAxis;
-            if (_style->orientation == LabelOrientation::POINT_FLIPPING && viewState.orientation[0][0] < 0) {
-                xAxis = -xAxis;
-                yAxis = -yAxis;
-            }
             break;
         }
     }
 
     std::shared_ptr<const Label::Placement> Label::getPlacement(const ViewState& viewState) const {
-        if (_style->orientation != LabelOrientation::LINE) {
-            return _placement;
-        }
-        if (!_placement || _placement->edges.empty()) {
+        if (!_placement) {
             return std::shared_ptr<const Placement>();
         }
-        if (cglib::dot_product(_placement->edges[_placement->index].xAxis, viewState.orientation[0]) > 0) {
+
+        if (!_style->autoflip || cglib::dot_product(_placement->xAxis, viewState.orientation[0]) > 0) {
             return _placement;
         }
-        if (!_flippedPlacement || _flippedPlacement->edges.empty()) {
-            return std::shared_ptr<const Placement>();
-        }
-        return _flippedPlacement;
-    }
 
-    std::shared_ptr<const Label::Placement> Label::reversePlacement(const std::shared_ptr<const Placement>& placement) const {
-        if (!placement) {
-            return placement;
+        if (!_cachedFlippedPlacement) {
+            Placement flippedPlacement(*_placement);
+            flippedPlacement.reverse();
+            _cachedFlippedPlacement = std::make_shared<Placement>(std::move(flippedPlacement));
         }
-
-        auto reversePlacement = std::make_shared<Placement>(*placement);
-        reversePlacement->reverse();
-        return reversePlacement;
+        return _cachedFlippedPlacement;
     }
 
     std::shared_ptr<const Label::Placement> Label::findSnappedPointPlacement(const cglib::vec3<double>& position, const std::list<TilePoint>& tilePoints) const {

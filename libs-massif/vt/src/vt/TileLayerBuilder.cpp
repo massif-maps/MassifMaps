@@ -334,8 +334,8 @@ namespace carto { namespace vt {
             translate = cglib::vec2<float>(flippedTransform(0, 2), flippedTransform(1, 2)) * (1.0f / _tileSize);
         }
 
-        if (!_labelStyle || _labelStyle->orientation != style.orientation || _labelStyle->colorFunc != style.colorFunc || _labelStyle->sizeFunc != style.sizeFunc || _labelStyle->haloColorFunc != ColorFunction() || _labelStyle->haloRadiusFunc != FloatFunction() || _labelStyle->scale != scale || _labelStyle->ascent != 0.0f || _labelStyle->descent != 0.0f || _labelStyle->transform != transform || _labelStyle->translate != translate || _labelStyle->glyphMap != glyphMap) {
-            _labelStyle = std::make_shared<TileLabel::Style>(style.orientation, style.colorFunc, style.sizeFunc, ColorFunction(), FloatFunction(), scale, 0.0f, 0.0f, transform, translate, glyphMap);
+        if (!_labelStyle || _labelStyle->orientation != style.orientation || _labelStyle->colorFunc != style.colorFunc || _labelStyle->sizeFunc != style.sizeFunc || _labelStyle->haloColorFunc != ColorFunction() || _labelStyle->haloRadiusFunc != FloatFunction() || _labelStyle->autoflip != style.autoflip || _labelStyle->scale != scale || _labelStyle->ascent != 0.0f || _labelStyle->descent != 0.0f || _labelStyle->transform != transform || _labelStyle->translate != translate || _labelStyle->glyphMap != glyphMap) {
+            _labelStyle = std::make_shared<TileLabel::Style>(style.orientation, style.colorFunc, style.sizeFunc, ColorFunction(), FloatFunction(), style.autoflip, scale, 0.0f, 0.0f, transform, translate, glyphMap);
         }
         
         while (true) {
@@ -378,8 +378,8 @@ namespace carto { namespace vt {
 
         const std::shared_ptr<Font>& font = formatter.getFont();
         Font::Metrics metrics = formatter.getFont()->getMetrics(1.0f);
-        if (!_labelStyle || _labelStyle->orientation != style.orientation || _labelStyle->colorFunc != style.colorFunc || _labelStyle->sizeFunc != style.sizeFunc || _labelStyle->haloColorFunc != style.haloColorFunc || _labelStyle->haloRadiusFunc != style.haloRadiusFunc || _labelStyle->scale != scale || _labelStyle->ascent != metrics.ascent || _labelStyle->descent != metrics.descent || _labelStyle->transform != transform || _labelStyle->translate != translate || _labelStyle->glyphMap != font->getGlyphMap()) {
-            _labelStyle = std::make_shared<TileLabel::Style>(style.orientation, style.colorFunc, style.sizeFunc, style.haloColorFunc, style.haloRadiusFunc, scale, metrics.ascent, metrics.descent, transform, translate, font->getGlyphMap());
+        if (!_labelStyle || _labelStyle->orientation != style.orientation || _labelStyle->colorFunc != style.colorFunc || _labelStyle->sizeFunc != style.sizeFunc || _labelStyle->haloColorFunc != style.haloColorFunc || _labelStyle->haloRadiusFunc != style.haloRadiusFunc || _labelStyle->autoflip != style.autoflip || _labelStyle->scale != scale || _labelStyle->ascent != metrics.ascent || _labelStyle->descent != metrics.descent || _labelStyle->transform != transform || _labelStyle->translate != translate || _labelStyle->glyphMap != font->getGlyphMap()) {
+            _labelStyle = std::make_shared<TileLabel::Style>(style.orientation, style.colorFunc, style.sizeFunc, style.haloColorFunc, style.haloRadiusFunc, style.autoflip, scale, metrics.ascent, metrics.descent, transform, translate, font->getGlyphMap());
         }
 
         while (true) {

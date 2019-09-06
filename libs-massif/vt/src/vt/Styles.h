@@ -33,7 +33,7 @@ namespace carto { namespace vt {
     };
     
     enum class LabelOrientation {
-        BILLBOARD_2D, BILLBOARD_3D, POINT, POINT_FLIPPING, LINE
+        BILLBOARD_2D, BILLBOARD_3D, POINT, LINE
     };
 
     enum class LineJoinMode {
@@ -100,10 +100,11 @@ namespace carto { namespace vt {
         LabelOrientation orientation;
         ColorFunction colorFunc;
         FloatFunction sizeFunc;
+        bool autoflip;
         std::shared_ptr<const BitmapImage> image;
         boost::optional<cglib::mat3x3<float>> transform;
 
-        explicit PointLabelStyle(LabelOrientation orientation, ColorFunction colorFunc, FloatFunction sizeFunc, std::shared_ptr<const BitmapImage> image, const boost::optional<cglib::mat3x3<float>>& transform) : orientation(orientation), colorFunc(std::move(colorFunc)), sizeFunc(std::move(sizeFunc)), image(std::move(image)), transform(transform){ }
+        explicit PointLabelStyle(LabelOrientation orientation, ColorFunction colorFunc, FloatFunction sizeFunc, bool autoflip, std::shared_ptr<const BitmapImage> image, const boost::optional<cglib::mat3x3<float>>& transform) : orientation(orientation), colorFunc(std::move(colorFunc)), sizeFunc(std::move(sizeFunc)), autoflip(autoflip), image(std::move(image)), transform(transform) { }
     };
 
     struct TextLabelStyle final {
@@ -112,12 +113,13 @@ namespace carto { namespace vt {
         FloatFunction sizeFunc;
         ColorFunction haloColorFunc;
         FloatFunction haloRadiusFunc;
+        bool autoflip;
         float angle;
         float backgroundScale;
         cglib::vec2<float> backgroundOffset;
         std::shared_ptr<const BitmapImage> backgroundImage;
 
-        explicit TextLabelStyle(LabelOrientation orientation, ColorFunction colorFunc, FloatFunction sizeFunc, ColorFunction haloColorFunc, FloatFunction haloRadiusFunc, float angle, float backgroundScale, const cglib::vec2<float>& backgroundOffset, std::shared_ptr<const BitmapImage> backgroundImage) : orientation(orientation), colorFunc(std::move(colorFunc)), sizeFunc(std::move(sizeFunc)), haloColorFunc(std::move(haloColorFunc)), haloRadiusFunc(std::move(haloRadiusFunc)), angle(angle), backgroundScale(backgroundScale), backgroundOffset(backgroundOffset), backgroundImage(std::move(backgroundImage)) { }
+        explicit TextLabelStyle(LabelOrientation orientation, ColorFunction colorFunc, FloatFunction sizeFunc, ColorFunction haloColorFunc, FloatFunction haloRadiusFunc, bool autoflip, float angle, float backgroundScale, const cglib::vec2<float>& backgroundOffset, std::shared_ptr<const BitmapImage> backgroundImage) : orientation(orientation), colorFunc(std::move(colorFunc)), sizeFunc(std::move(sizeFunc)), haloColorFunc(std::move(haloColorFunc)), haloRadiusFunc(std::move(haloRadiusFunc)), autoflip(autoflip), angle(angle), backgroundScale(backgroundScale), backgroundOffset(backgroundOffset), backgroundImage(std::move(backgroundImage)) { }
     };
 } }
 

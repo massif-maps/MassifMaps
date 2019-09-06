@@ -157,7 +157,7 @@ namespace carto { namespace mvt {
                 pointInfos.clear();
             }
             else {
-                vt::PointLabelStyle style(orientation, fillFunc, normalizedSizeFunc, bitmapImage, optTransform);
+                vt::PointLabelStyle style(orientation, fillFunc, normalizedSizeFunc, false, bitmapImage, optTransform);
 
                 std::size_t labelInfoIndex = 0;
                 layerBuilder.addPointLabels([&](long long& id, vt::TileLayerBuilder::PointLabelInfo& labelInfo) {

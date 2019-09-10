@@ -362,6 +362,7 @@ namespace carto { namespace vt {
                         break;
                     }
                     edgeIndex--;
+                    pen(0) -= offset1;
                 }
                 else {
                     break;
@@ -388,9 +389,7 @@ namespace carto { namespace vt {
                         target = edgePos0 + dp * t1;
                         xAxis = cglib::unit(target - origin);
                         if (cglib::dot_product(xAxis, xAxisBase) < 0) {
-                            float t2 = (-b - std::sqrt(d)) / a;
-                            target = edgePos0 + dp * t2;
-                            xAxis = cglib::unit(target - origin);
+                            valid = false;
                         }
                         yAxis = cglib::unit(cglib::vector_product(placement->normal, xAxis));
                         
@@ -414,7 +413,7 @@ namespace carto { namespace vt {
                     pen(0) = cglib::dot_product(edges[edgeIndex].xAxis, target - edges[edgeIndex].position0) + delta;
                 }
                 else {
-                    float edgeLen = cglib::length(edges[edgeIndex].position1 - edges[edgeIndex].position0);
+                    float edgeLen = cglib::length(edges[edgeIndex].position1 + edges[edgeIndex].binormal1 * pen(1) - (edges[edgeIndex].position0 + edges[edgeIndex].binormal0 * pen(1)));
                     pen(0) += edgeLen;
                 }
             }

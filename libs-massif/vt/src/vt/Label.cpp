@@ -320,8 +320,8 @@ namespace carto { namespace vt {
 
         bool valid = true;
         for (std::size_t i = 0; i < _glyphs.size(); i++) {
-            const Font::Glyph & glyph = _glyphs[i];
-            
+            const Font::Glyph& glyph = _glyphs[i];
+
             cglib::vec3<float> xAxis = edges[edgeIndex].xAxis;
             cglib::vec3<float> yAxis = edges[edgeIndex].yAxis;
             cglib::vec3<float> origin = edges[edgeIndex].position0 + xAxis * pen(0) + yAxis * pen(1);
@@ -336,30 +336,14 @@ namespace carto { namespace vt {
             pen += glyph.advance * scale;
 
             // Check if we the pen has gone 'over' line segment
-            if (glyph.advance(0) < 0) {
-                while (true) {
-                    float offset1 = cglib::dot_product(edges[edgeIndex].binormal0 * pen(1), edges[edgeIndex].xAxis);
-                    if (pen(0) >= offset1) {
-                        break;
-                    }
-                    if (edgeIndex == 0) {
-                        valid = false;
-                        break;
-                    }
-                    edgeIndex--;
-                    
-                    cglib::vec3<float> edgePos0 = edges[edgeIndex].position0 + edges[edgeIndex].binormal0 * pen(1);
-                    cglib::vec3<float> edgePos1 = edges[edgeIndex].position1 + edges[edgeIndex].binormal1 * pen(1);
-                    pen(0) += cglib::length(edgePos1 - edgePos0) - offset1;
-                }
-            } else if (glyph.advance(0) > 0) {
+            if (glyph.advance(0) > 0) {
                 cglib::vec3<float> xAxisBase = xAxis;
                 cglib::vec3<float> yAxisBase = yAxis;
                 cglib::vec3<float> originBase = origin;
                 while (true) {
                     float edgeLen = cglib::length(edges[edgeIndex].position1 - edges[edgeIndex].position0);
-                    float offset0 = cglib::dot_product(edges[edgeIndex].binormal1 * pen(1), edges[edgeIndex].xAxis);
-                    if (pen(0) < edgeLen + offset0) {
+                    float offset1 = cglib::dot_product(edges[edgeIndex].binormal1 * pen(1), edges[edgeIndex].xAxis);
+                    if (pen(0) < edgeLen + offset1) {
                         break;
                     }
                     if (edgeIndex + 1 >= edges.size()) {
@@ -388,7 +372,7 @@ namespace carto { namespace vt {
                         target = edgePos0 + dp * t1;
                         xAxis = cglib::unit(target - origin);
                         yAxis = cglib::unit(cglib::vector_product(placement->normal, xAxis));
-                        
+
                         if (iter >= MAX_LINE_FITTING_ITERATIONS) {
                             break;
                         }
@@ -414,6 +398,7 @@ namespace carto { namespace vt {
                 }
             }
 
+            // Render glyph
             if (glyph.codePoint != Font::SPACE_CODEPOINT && glyph.codePoint != Font::CR_CODEPOINT) {
                 std::uint16_t i0 = static_cast<std::uint16_t>(vertices.size());
                 indices.append(i0 + 0, i0 + 1, i0 + 2);
@@ -429,6 +414,24 @@ namespace carto { namespace vt {
                 cglib::vec2<float> p0 = glyph.offset * scale;
                 cglib::vec2<float> p3 = (glyph.offset + glyph.size) * scale;
                 vertices.append(origin + xAxis * p0(0) + yAxis * p0(1), origin + xAxis * p3(0) + yAxis * p0(1), origin + xAxis * p3(0) + yAxis * p3(1), origin + xAxis * p0(0) + yAxis * p3(1));
+            }
+
+            // Handle backwards moving
+            if (glyph.advance(0) < 0) {
+                while (true) {
+                    float offset0 = cglib::dot_product(edges[edgeIndex].binormal0 * pen(1), edges[edgeIndex].xAxis);
+                    if (pen(0) >= offset0) {
+                        break;
+                    }
+                    if (edgeIndex == 0) {
+                        valid = false;
+                        break;
+                    }
+                    edgeIndex--;
+
+                    float offset1 = cglib::dot_product(edges[edgeIndex].binormal1 * pen(1), edges[edgeIndex].xAxis);
+                    pen(0) += cglib::length(edges[edgeIndex].position1 - edges[edgeIndex].position0) + offset1 - offset0;
+                }
             }
         }
 

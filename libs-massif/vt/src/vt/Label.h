@@ -70,8 +70,8 @@ namespace carto { namespace vt {
         constexpr static unsigned int MAX_LINE_FITTING_ITERATIONS = 1; // number of iterations for line glyph placement on corners
 
         constexpr static float EXTRA_PLACEMENT_PIXELS = 30.0f; // extra visible pixels required for placement
-        constexpr static float MAX_SINGLE_SEGMENT_ANGLE = 0.7f; // maximum angle between consecutive segments, in radians
         constexpr static float MAX_SUMMED_SEGMENT_ANGLE = 2.0f; // maximum sum of segment angles, in radians
+        constexpr static float MIN_SINGLE_SEGMENT_DOTPRODUCT = 0.5f; // maximum angle between consecutive segments, in radians
         constexpr static float MIN_BILLBOARD_VIEW_NORMAL_DOTPRODUCT = 0.49f; // the minimum allowed dot product between view vector and surface normal
 
         struct TilePoint {

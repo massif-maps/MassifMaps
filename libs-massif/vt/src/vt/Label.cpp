@@ -336,11 +336,27 @@ namespace carto { namespace vt {
             pen += glyph.advance * scale;
 
             // Check if we the pen has gone 'over' line segment
-            cglib::vec3<float> xAxisBase = xAxis;
-            cglib::vec3<float> yAxisBase = yAxis;
-            cglib::vec3<float> originBase = origin;
-            while (true) {
-                if (glyph.advance(0) > 0) {
+            if (glyph.advance(0) < 0) {
+                while (true) {
+                    float offset1 = cglib::dot_product(edges[edgeIndex].binormal0 * pen(1), edges[edgeIndex].xAxis);
+                    if (pen(0) >= offset1) {
+                        break;
+                    }
+                    if (edgeIndex == 0) {
+                        valid = false;
+                        break;
+                    }
+                    edgeIndex--;
+                    
+                    cglib::vec3<float> edgePos0 = edges[edgeIndex].position0 + edges[edgeIndex].binormal0 * pen(1);
+                    cglib::vec3<float> edgePos1 = edges[edgeIndex].position1 + edges[edgeIndex].binormal1 * pen(1);
+                    pen(0) += cglib::length(edgePos1 - edgePos0) - offset1;
+                }
+            } else if (glyph.advance(0) > 0) {
+                cglib::vec3<float> xAxisBase = xAxis;
+                cglib::vec3<float> yAxisBase = yAxis;
+                cglib::vec3<float> originBase = origin;
+                while (true) {
                     float edgeLen = cglib::length(edges[edgeIndex].position1 - edges[edgeIndex].position0);
                     float offset0 = cglib::dot_product(edges[edgeIndex].binormal1 * pen(1), edges[edgeIndex].xAxis);
                     if (pen(0) < edgeLen + offset0) {
@@ -351,24 +367,7 @@ namespace carto { namespace vt {
                         break;
                     }
                     edgeIndex++;
-                }
-                else if (glyph.advance(0) < 0) {
-                    float offset1 = cglib::dot_product(edges[edgeIndex].binormal0 * pen(1), edges[edgeIndex].xAxis);
-                    if (pen(0) >= offset1) {
-                        break;
-                    }
-                    if (edgeIndex == 0) {
-                        valid = false;
-                        break;
-                    }
-                    edgeIndex--;
-                    pen(0) -= offset1;
-                }
-                else {
-                    break;
-                }
 
-                if (glyph.advance(0) > 0) {
                     cglib::vec3<float> edgePos0 = edges[edgeIndex].position0 + edges[edgeIndex].binormal0 * pen(1);
                     cglib::vec3<float> edgePos1 = edges[edgeIndex].position1 + edges[edgeIndex].binormal1 * pen(1);
                     cglib::vec3<float> target = origin;
@@ -388,9 +387,6 @@ namespace carto { namespace vt {
                         float t1 = (-b + std::sqrt(d)) / a;
                         target = edgePos0 + dp * t1;
                         xAxis = cglib::unit(target - origin);
-                        if (cglib::dot_product(xAxis, xAxisBase) < 0) {
-                            valid = false;
-                        }
                         yAxis = cglib::unit(cglib::vector_product(placement->normal, xAxis));
                         
                         if (iter >= MAX_LINE_FITTING_ITERATIONS) {
@@ -412,9 +408,9 @@ namespace carto { namespace vt {
                     }
                     pen(0) = cglib::dot_product(edges[edgeIndex].xAxis, target - edges[edgeIndex].position0) + delta;
                 }
-                else {
-                    float edgeLen = cglib::length(edges[edgeIndex].position1 + edges[edgeIndex].binormal1 * pen(1) - (edges[edgeIndex].position0 + edges[edgeIndex].binormal0 * pen(1)));
-                    pen(0) += edgeLen;
+
+                if (cglib::dot_product(xAxis, placement->xAxis) < MIN_SINGLE_SEGMENT_DOTPRODUCT) {
+                    valid = false;
                 }
             }
 
@@ -654,7 +650,7 @@ namespace carto { namespace vt {
                     float cos = static_cast<float>(cglib::dot_product(edgeVec, lastEdgeVec));
                     float angle = std::acos(std::min(1.0f, std::max(-1.0f, cos)));
                     summedAngle += angle;
-                    if (angle > MAX_SINGLE_SEGMENT_ANGLE || summedAngle > MAX_SUMMED_SEGMENT_ANGLE) {
+                    if (cos < MIN_SINGLE_SEGMENT_DOTPRODUCT || summedAngle > MAX_SUMMED_SEGMENT_ANGLE) {
                         updateBestPlacement(tileLine, i0, i);
                         i0 = i - 1;
                         summedAngle = 0;

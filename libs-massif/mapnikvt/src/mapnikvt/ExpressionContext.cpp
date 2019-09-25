@@ -1,6 +1,6 @@
 #include "ExpressionContext.h"
 #include "Expression.h"
-#include "FeatureData.h"
+#include "Feature.h"
 #include "ScaleUtils.h"
 #include "ValueConverter.h"
 

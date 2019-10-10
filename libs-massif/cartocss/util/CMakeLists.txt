@@ -16,11 +16,27 @@ endif()
 add_definitions("${SDK_CPP_DEFINES} -DHAVE_OT -DHAVE_UCDN -DHB_NO_MT -DFT2_BUILD_LIBRARY -DUSE_STD_REGEX -DBOOST_ALL_NO_LIB -DCRYPTOPP_DISABLE_ASM -DCRYPTOPP_DISABLE_SSE2 -DNDEBUG")
 
 if(WIN32)
-  add_definitions("-DNOMINMAX -D_SCL_SECURE_NO_WARNINGS -D_CRT_SECURE_NO_WARNINGS -DSQLITE_OS_WINRT -DSQLITE_OMIT_WAL -DGL_GLEXT_PROTOTYPES")
-  set(CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS} /wd4244")
+add_definitions("-DNOMINMAX -D_SCL_SECURE_NO_WARNINGS -D_CRT_SECURE_NO_WARNINGS -DSQLITE_OS_WINRT -DSQLITE_OMIT_WAL -DGL_GLEXT_PROTOTYPES")
+set(CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS} /wd4244")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4244 /EHs /GR /bigobj")
 else()
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+endif()
+
+# Fix behavior of CMAKE_CXX_STANDARD when targeting macOS.
+if (POLICY CMP0025)
+  cmake_policy(SET CMP0025 NEW)
+endif ()
+
+include(CheckCXXCompilerFlag)
+CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
+CHECK_CXX_COMPILER_FLAG("-std=c++0x" COMPILER_SUPPORTS_CXX0X)
+if(COMPILER_SUPPORTS_CXX11)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+elseif(COMPILER_SUPPORTS_CXX0X)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
+else()
+        message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support. Please use a different C++ compiler.")
 endif()
 
 set(BASE_DIR "${PROJECT_SOURCE_DIR}/../..")
@@ -48,8 +64,8 @@ include_directories(
 
 if(WIN32)
   include_directories(
-      "${Imagination_SDK_ROOT}/Builds/Include"
-  )
+    "${Imagination_SDK_ROOT}/Builds/Include"
+)
 endif()
 
 add_subdirectory("${BASE_DIR}/vt" vt)
@@ -67,10 +83,3 @@ add_subdirectory("${LIBS_DIR}/zlib" zlib)
 
 add_executable(css2xml css2xml.cpp)
 target_link_libraries(css2xml cartocss mapnikvt vt pugixml libtess2 miniz zlib freetype harfbuzz bidi msdfgen)
-if(WIN32)
-  if(CMAKE_SIZEOF_VOID_P EQUAL 4)
-    target_link_libraries(css2xml "${Imagination_SDK_ROOT}/Builds/Windows/x86_32/Lib/libEGL.lib" "${Imagination_SDK_ROOT}/Builds/Windows/x86_32/Lib/libGLESv2.lib")
-  else()
-    target_link_libraries(css2xml "${Imagination_SDK_ROOT}/Builds/Windows/x86_64/Lib/libEGL.lib" "${Imagination_SDK_ROOT}/Builds/Windows/x86_64/Lib/libGLESv2.lib")
-  endif()
-endif()

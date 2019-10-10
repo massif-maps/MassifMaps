@@ -12,9 +12,25 @@ set(CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS} /wd4244")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4244 /EHs /GR")
 endif(WIN32)
 
+# Fix behavior of CMAKE_CXX_STANDARD when targeting macOS.
+if (POLICY CMP0025)
+  cmake_policy(SET CMP0025 NEW)
+endif ()
+
+include(CheckCXXCompilerFlag)
+CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
+CHECK_CXX_COMPILER_FLAG("-std=c++0x" COMPILER_SUPPORTS_CXX0X)
+if(COMPILER_SUPPORTS_CXX11)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+elseif(COMPILER_SUPPORTS_CXX0X)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
+else()
+        message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support. Please use a different C++ compiler.")
+endif()
+
 set(BASE_DIR "${PROJECT_SOURCE_DIR}/../..")
-set(LIBS_DIR "${PROJECT_SOURCE_DIR}/../../libs-external")
-set(Imagination_SDK_ROOT "C:/Imagination/PowerVR_Graphics/PowerVR_SDK/SDK_2016_R2")
+set(LIBS_DIR "${PROJECT_SOURCE_DIR}/../../../libs-external")
+#set(Imagination_SDK_ROOT "C:/Imagination/PowerVR_Graphics/PowerVR_SDK/SDK_2016_R2")
 
 include_directories(
     "${BASE_DIR}/cartocss/src"
@@ -51,4 +67,4 @@ add_subdirectory("${LIBS_DIR}/tess2" tess2)
 add_subdirectory("${LIBS_DIR}/zlib" zlib)
 
 add_executable(css2xml css2xml.cpp)
-target_link_libraries(css2xml cartocss mapnikvt vt pugixml libtess2 miniz zlib freetype harfbuzz bidi msdfgen "${Imagination_SDK_ROOT}/Builds/Windows/x86_32/Lib/libEGL.lib" "${Imagination_SDK_ROOT}/Builds/Windows/x86_32/Lib/libGLESv2.lib")
+target_link_libraries(css2xml cartocss mapnikvt vt pugixml libtess2 miniz zlib freetype harfbuzz bidi msdfgen)

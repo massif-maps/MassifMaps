@@ -17,26 +17,19 @@ namespace carto { namespace mvt {
     public:
         FeatureCollection() = default;
 
-        void clear() {
-            _features.clear();
-        }
-        
-        void append(long long localId, const Feature& feature) {
-            _features.emplace_back(localId, feature);
-        }
-
-        std::size_t size() const {
-            return _features.size();
-        }
+        void clear();
+        void append(long long localId, const Feature& feature);
+        std::size_t size() const;
 
         long long getLocalId(std::size_t index) const { return _features.at(index).first; }
         long long getGlobalId(std::size_t index) const { return _features.at(index).second.getId(); }
 
         const Feature& getFeature(std::size_t index) const { return _features.at(index).second; }
-        const std::shared_ptr<const Geometry>& getGeometry(std::size_t index) const { return _features.at(index).second.getGeometry(); }
+        const std::shared_ptr<const FeatureData>& getFeatureData(std::size_t index) const { return _features.at(index).second.getFeatureData(); }
+
+        std::shared_ptr<const Geometry> getGeometry(std::size_t index) const { return _features.at(index).second.getGeometry(); }
         std::shared_ptr<const LineGeometry> getLineGeometry(std::size_t index) const;
         std::shared_ptr<const PolygonGeometry> getPolygonGeometry(std::size_t index) const;
-        const std::shared_ptr<const FeatureData>& getFeatureData(std::size_t index) const { return _features.at(index).second.getFeatureData(); }
 
     private:
         std::vector<std::pair<long long, Feature>> _features;

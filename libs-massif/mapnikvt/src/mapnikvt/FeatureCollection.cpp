@@ -17,6 +17,18 @@ namespace {
 }
 
 namespace carto { namespace mvt {
+    void FeatureCollection::clear() {
+        _features.clear();
+    }
+        
+    void FeatureCollection::append(long long localId, const Feature& feature) {
+        _features.emplace_back(localId, feature);
+    }
+
+    std::size_t FeatureCollection::size() const {
+        return _features.size();
+    }
+
     std::shared_ptr<const LineGeometry> FeatureCollection::getLineGeometry(std::size_t index) const {
         const std::shared_ptr<const Geometry>& geometry = _features.at(index).second.getGeometry();
         if (auto lineGeometry = std::dynamic_pointer_cast<const LineGeometry>(geometry)) {

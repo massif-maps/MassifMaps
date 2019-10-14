@@ -29,12 +29,7 @@ namespace carto { namespace css {
             styleSheet = CartoCSSParser::parse(cartoCSS);
         }
         catch (const CartoCSSParser::ParserError& ex) {
-            std::string msg = std::string("Error while parsing CartoCSS");
-            if (ex.position().first != 0) {
-                msg += ", error at line " + boost::lexical_cast<std::string>(ex.position().second) + ", column " + boost::lexical_cast<std::string>(ex.position().first);
-            }
-            msg += std::string(": ") + ex.what();
-            throw LoaderException(msg);
+            throw LoaderException(std::string("Error while parsing CartoCSS: ") + ex.what());
         }
         catch (const std::exception& ex) {
             throw LoaderException(std::string("Exception while parsing CartoCSS: ") + ex.what());

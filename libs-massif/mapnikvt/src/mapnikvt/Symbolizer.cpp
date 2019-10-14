@@ -28,7 +28,7 @@ namespace carto { namespace mvt {
             return parseCompOp(compOp);
         }
         catch (const ParserException& ex) {
-            _logger->write(Logger::Severity::ERROR, ex.what() + std::string(": ") + ex.string());
+            _logger->write(Logger::Severity::ERROR, ex.what());
             return vt::CompOp::SRC_OVER;
         }
     }
@@ -38,7 +38,7 @@ namespace carto { namespace mvt {
             return parseLabelOrientation(orientation);
         }
         catch (const ParserException& ex) {
-            _logger->write(Logger::Severity::ERROR, ex.what() + std::string(": ") + ex.string());
+            _logger->write(Logger::Severity::ERROR, ex.what());
             return vt::LabelOrientation::LINE;
         }
     }
@@ -61,7 +61,7 @@ namespace carto { namespace mvt {
             return parseColor(boost::lexical_cast<std::string>(val));
         }
         catch (const ParserException& ex) {
-            _logger->write(Logger::Severity::ERROR, ex.what() + std::string(": ") + ex.string());
+            _logger->write(Logger::Severity::ERROR, ex.what());
             return vt::Color();
         }
     }
@@ -76,7 +76,7 @@ namespace carto { namespace mvt {
             return matrix;
         }
         catch (const ParserException& ex) {
-            _logger->write(Logger::Severity::ERROR, ex.what() + std::string(": ") + ex.string());
+            _logger->write(Logger::Severity::ERROR, ex.what());
             return cglib::mat3x3<float>::identity();
         }
     }

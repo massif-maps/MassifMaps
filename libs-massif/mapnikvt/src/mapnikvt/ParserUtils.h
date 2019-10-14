@@ -22,7 +22,7 @@ namespace carto { namespace mvt {
     class ParserException : public std::runtime_error {
     public:
         explicit ParserException(const std::string& msg) : runtime_error(msg) { }
-        explicit ParserException(const std::string& msg, const std::string& source) : runtime_error(msg), _source(source) { }
+        explicit ParserException(const std::string& msg, const std::string& source) : runtime_error(msg + ": " + source ), _source(source) { }
 
         const std::string& string() const { return _source; }
 

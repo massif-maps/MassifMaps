@@ -378,7 +378,7 @@ namespace carto { namespace vt {
                         }
 
                         float delta = 0;
-                        if (i > 0) {
+                        if (i > 0 && _glyphs[i - 1].codePoint != Font::CR_CODEPOINT) {
                             float sin = cglib::dot_product(xAxis, yAxisBase);
                             delta = sin * (sin < 0 ? -_style->descent * 0.5f : _style->ascent * 0.5f) * scale;
                         }
@@ -386,7 +386,7 @@ namespace carto { namespace vt {
                     }
 
                     float delta = 0;
-                    if (i + 1 < _glyphs.size()) {
+                    if (i + 1 < _glyphs.size() && _glyphs[i + 1].codePoint != Font::CR_CODEPOINT) {
                         float sin = -cglib::dot_product(xAxis, edges[edgeIndex].yAxis);
                         delta = sin * (sin < 0 ? -_style->descent * 0.5f : _style->ascent * 0.5f) * scale;
                     }

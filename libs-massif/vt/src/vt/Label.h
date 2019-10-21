@@ -159,14 +159,14 @@ namespace carto { namespace vt {
                 if (!edges.empty()) {
                     index = edges.size() - 1 - index;
                     std::reverse(edges.begin(), edges.end());
-                    std::for_each(edges.begin(), edges.end(), [](Edge& edge) {
+                    for (Edge& edge : edges) {
                         std::swap(edge.position0, edge.position1);
                         std::swap(edge.binormal0, edge.binormal1);
                         edge.binormal0 = -edge.binormal0;
                         edge.binormal1 = -edge.binormal1;
                         edge.xAxis = -edge.xAxis;
                         edge.yAxis = -edge.yAxis;
-                    });
+                    }
                 }
                 xAxis = -xAxis;
                 yAxis = -yAxis;

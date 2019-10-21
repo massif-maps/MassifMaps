@@ -21,7 +21,7 @@
 namespace carto { namespace css {
     class CartoCSSMapLoader {
     public:
-        struct LoaderException : std::runtime_error {
+        class LoaderException : public std::runtime_error {
         public:
             explicit LoaderException(const std::string& msg) : runtime_error(msg) { }
         };

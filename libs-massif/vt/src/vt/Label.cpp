@@ -393,7 +393,7 @@ namespace carto { namespace vt {
                     pen(0) = cglib::dot_product(edges[edgeIndex].xAxis, target - edges[edgeIndex].position0) + delta;
                 }
 
-                if (cglib::dot_product(xAxis, placement->xAxis) < MIN_SINGLE_SEGMENT_DOTPRODUCT) {
+                if (cglib::dot_product(xAxis, placement->xAxis) < MIN_LINE_SEGMENT_DOTPRODUCT) {
                     valid = false;
                 }
             }
@@ -653,7 +653,7 @@ namespace carto { namespace vt {
                     float cos = static_cast<float>(cglib::dot_product(edgeVec, lastEdgeVec));
                     float angle = std::acos(std::min(1.0f, std::max(-1.0f, cos)));
                     summedAngle += angle;
-                    if (cos < MIN_SINGLE_SEGMENT_DOTPRODUCT || summedAngle > MAX_SUMMED_SEGMENT_ANGLE) {
+                    if (angle > SINGLE_ANGLE_SPLIT_THRESHOLD || summedAngle > SUMMED_ANGLE_SPLIT_THRESHOLD) {
                         updateBestPlacement(tileLine, i0, i);
                         i0 = i - 1;
                         summedAngle = 0;

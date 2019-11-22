@@ -26,7 +26,7 @@ namespace carto { namespace vt {
         using Triangle = std::array<cglib::vec3<float>, 3>;
         
         TileGeometryIterator() = delete;
-        explicit TileGeometryIterator(const TileId& tileId, const std::shared_ptr<const Tile>& tile, const std::shared_ptr<const TileGeometry>& geometry, const std::shared_ptr<const TileTransformer>& transformer, const ViewState& viewState, float delta, float scale, float heightScale);
+        explicit TileGeometryIterator(const TileId& tileId, const std::shared_ptr<const Tile>& tile, const std::shared_ptr<const TileGeometry>& geometry, const std::shared_ptr<const TileTransformer>& transformer, const ViewState& viewState, float buffer, float scale, float heightScale);
 
         operator bool() const { return _index + 2 < _geometry->getIndices().size(); }
         long long id() const { return getId(_index); }
@@ -43,7 +43,7 @@ namespace carto { namespace vt {
         cglib::vec3<float> decodePolygon3DOffset(std::size_t index) const;
 
         ViewState _viewState;
-        float _delta;
+        float _buffer;
         float _scale;
         float _heightScale;
         std::size_t _index = 0;

@@ -1,8 +1,8 @@
 #include "TileGeometryIterator.h"
 
 namespace carto { namespace vt {
-    TileGeometryIterator::TileGeometryIterator(const TileId& tileId, const std::shared_ptr<const Tile>& tile, const std::shared_ptr<const TileGeometry>& geometry, const std::shared_ptr<const TileTransformer>& transformer, const ViewState& viewState, float delta, float scale, float heightScale) :
-        _viewState(viewState), _delta(delta), _scale(scale), _heightScale(heightScale), _geometry(geometry), _transformMatrix(cglib::mat4x4<float>::identity())
+    TileGeometryIterator::TileGeometryIterator(const TileId& tileId, const std::shared_ptr<const Tile>& tile, const std::shared_ptr<const TileGeometry>& geometry, const std::shared_ptr<const TileTransformer>& transformer, const ViewState& viewState, float buffer, float scale, float heightScale) :
+        _viewState(viewState), _buffer(buffer), _scale(scale), _heightScale(heightScale), _geometry(geometry), _transformMatrix(cglib::mat4x4<float>::identity())
     {
         const TileGeometry::StyleParameters& styleParams = _geometry->getStyleParameters();
         const TileGeometry::VertexGeometryLayoutParameters& vertexGeomLayoutParams = _geometry->getVertexGeometryLayoutParameters();
@@ -76,14 +76,14 @@ namespace carto { namespace vt {
             styleIndex = attribPtr[0];
         }
         float size = std::abs((_geometry->getStyleParameters().widthFuncs[styleIndex])(_viewState));
-        if (size > 0) {
-            size += _delta;
-        }
         cglib::vec3<float> binormal(0, 0, 0);
         for (int i = 0; i < vertexGeomLayoutParams.dimensions; i++) {
-            binormal(i) = binormalPtr[i] * (size * _scale);
+            binormal(i) = binormalPtr[i] * (size / vertexGeomLayoutParams.binormalScale);
         }
-        return binormal * (1.0f / vertexGeomLayoutParams.binormalScale);
+        if (_buffer != 0 && cglib::norm(binormal) > 0) {
+            binormal = binormal * (1.0f + _buffer / cglib::length(binormal) * std::sqrt(2.0f)); // enlarge buffer artifically as binormal is usually a diagonal offset
+        }
+        return binormal * _scale;
     }
 
     cglib::vec3<float> TileGeometryIterator::decodeLineOffset(std::size_t index) const {
@@ -97,14 +97,14 @@ namespace carto { namespace vt {
             styleIndex = attribPtr[0];
         }
         float width = 0.5f * std::abs((_geometry->getStyleParameters().widthFuncs[styleIndex])(_viewState));
-        if (width > 0) {
-            width += _delta;
-        }
         cglib::vec3<float> binormal(0, 0, 0);
         for (int i = 0; i < vertexGeomLayoutParams.dimensions; i++) {
-            binormal(i) = binormalPtr[i] * (width * _scale);
+            binormal(i) = binormalPtr[i] * (width / vertexGeomLayoutParams.binormalScale);
         }
-        return binormal * (1.0f / vertexGeomLayoutParams.binormalScale);
+        if (_buffer != 0 && cglib::norm(binormal) > 0) {
+            binormal = binormal * (1.0f + _buffer / cglib::length(binormal) / 2.0f); // artifically decrease buffering
+        }
+        return binormal * _scale;
     }
 
     cglib::vec3<float> TileGeometryIterator::decodePolygon3DOffset(std::size_t index) const {

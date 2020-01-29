@@ -7,13 +7,8 @@
 #ifndef _CARTO_NML_GLBASE_H_
 #define _CARTO_NML_GLBASE_H_
 
-#ifdef __APPLE__
-#include <OpenGLES/ES2/gl.h>
-#include <OpenGLES/ES2/glext.h>
-#else
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
-#endif
 
 #include <cglib/vec.h>
 #include <cglib/mat.h>

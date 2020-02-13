@@ -112,7 +112,7 @@ namespace carto { namespace geocoding {
 
                 Query query;
                 query.database = database;
-                if (autocomplete && pass > 0) {
+                if (autocomplete) {
                     query.tokenList = TokenList::build(safeQueryString + (boost::trim_right_copy(queryString) != queryString ? " " : "%"));
                 }
                 else {
@@ -516,9 +516,10 @@ namespace carto { namespace geocoding {
             };
 
             for (const EntityRow& entityRow : entityRows) {
-                unsigned int elementIndex = 0;
+                EncodingStream houseNumberStream(entityRow.houseNumbers.data(), entityRow.houseNumbers.size());
+                AddressInterpolator interpolator(houseNumberStream);
 
-                std::function<float(std::size_t, std::uint32_t)> findBestMatch;
+                std::function<std::pair<float, unsigned int>(std::size_t, std::uint32_t)> findBestMatch;
                 findBestMatch = [&](std::size_t index, std::uint32_t mask) {
                     if (index >= query.filtersList.size()) {
                         float rank = 1.0f;
@@ -527,10 +528,10 @@ namespace carto { namespace geocoding {
                                 rank *= EXTRA_FIELD_PENALTY;
                             }
                         }
-                        return rank;
+                        return std::make_pair(rank, static_cast<unsigned int>(0));
                     }
 
-                    float bestRank = 0.0f;
+                    std::pair<float, unsigned int> bestRankIndex(0.0f, 0);
                     for (const NameRank& nameRank : *query.filtersList[index]) {
                         if (mask & (1 << static_cast<int>(nameRank.name->type))) {
                             continue;
@@ -538,9 +539,6 @@ namespace carto { namespace geocoding {
 
                         int houseIndex = -1;
                         if (nameRank.name->type == FieldType::HOUSENUMBER) {
-                            EncodingStream houseNumberStream(entityRow.houseNumbers.data(), entityRow.houseNumbers.size());
-                            AddressInterpolator interpolator(houseNumberStream);
-
                             houseIndex = interpolator.findAddress(nameRank.name->id); // if not found, interpolator returns -1
                             if (houseIndex == -1) {
                                 continue;
@@ -554,29 +552,36 @@ namespace carto { namespace geocoding {
                                 continue;
                             }
                         }
-                        float rank = findBestMatch(index + 1, mask | (1 << static_cast<int>(nameRank.name->type))) * nameRank.rank;
-                        if (rank > bestRank) {
-                            bestRank = rank;
+                        
+                        std::pair<float, unsigned int> rankIndex = findBestMatch(index + 1, mask | (1 << static_cast<int>(nameRank.name->type)));
+                        rankIndex.first *= nameRank.rank;
+                        if (rankIndex > bestRankIndex) {
+                            bestRankIndex = rankIndex;
                             if (houseIndex != -1) {
-                                elementIndex = houseIndex + 1;
+                                bestRankIndex.second = houseIndex + 1;
                             }
                         }
                     }
-                    if (bestRank < UNMATCHED_FIELD_PENALTY) {
-                        bestRank = std::max(bestRank, findBestMatch(index + 1, mask) * UNMATCHED_FIELD_PENALTY);
+                    if (bestRankIndex.first < UNMATCHED_FIELD_PENALTY) {
+                        std::pair<float, unsigned int> rankIndex = findBestMatch(index + 1, mask);
+                        rankIndex.first *= UNMATCHED_FIELD_PENALTY;
+                        if (rankIndex > bestRankIndex) {
+                            bestRankIndex = rankIndex;
+                        }
                     }
-                    return bestRank;
+                    return bestRankIndex;
                 };
+
+                std::pair<float, unsigned int> bestRankIndex = findBestMatch(0, 0);
+
+                unsigned int elementIndex = bestRankIndex.second;
 
                 auto getFeatures = [&]() -> std::vector<Feature> {
                     EncodingStream featureStream(entityRow.features.data(), entityRow.features.size());
                     FeatureReader featureReader(featureStream, mercatorConverter);
 
                     std::vector<Feature> features;
-                    if (elementIndex) {
-                        EncodingStream houseNumberStream(entityRow.houseNumbers.data(), entityRow.houseNumbers.size());
-                        AddressInterpolator interpolator(houseNumberStream);
-
+                    if (elementIndex > 0) {
                         features = interpolator.enumerateAddresses(featureReader).at(elementIndex - 1).second;
                     }
                     else {
@@ -584,9 +589,6 @@ namespace carto { namespace geocoding {
                     }
                     return features;
                 };
-
-                // Do field match ranking
-                float matchRank = findBestMatch(0, 0);
 
                 // Check that geometry is inside bounds
                 if (options.bounds) {
@@ -613,7 +615,7 @@ namespace carto { namespace geocoding {
                 result.unmatchedTokens = query.tokenList.unmatchedTokens();
 
                 // Set penalty for unmatched fields
-                result.matchRank = matchRank;
+                result.matchRank = bestRankIndex.first;
                 result.matchRank *= std::pow(UNMATCHED_FIELD_PENALTY, query.tokenList.unmatchedTokens());
 
                 // Set entity ranking

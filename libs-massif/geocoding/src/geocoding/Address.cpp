@@ -98,12 +98,7 @@ namespace carto { namespace geocoding {
     }
 
     bool Address::merge(const Address& address) {
-        if (address.type == type && address.country == country && address.region == region && address.county == county && address.locality == locality && address.neighbourhood == neighbourhood && address.street == street && address.name == name && address.houseNumber.empty() == houseNumber.empty()) {
-            // Merge house numbers
-            if (!houseNumber.empty() && ("," + houseNumber + ",").find(address.houseNumber) == std::string::npos) {
-                houseNumber += "," + address.houseNumber;
-            }
-
+        if (address.type == type && address.country == country && address.region == region && address.county == county && address.locality == locality && address.neighbourhood == neighbourhood && address.street == street && address.name == name && address.houseNumber == houseNumber) {
             // Merge features and categories
             features.insert(features.end(), address.features.begin(), address.features.end());
             categories.insert(address.categories.begin(), address.categories.end());

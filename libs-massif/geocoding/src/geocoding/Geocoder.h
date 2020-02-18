@@ -146,16 +146,18 @@ namespace carto { namespace geocoding {
         static constexpr float MIN_RANK_SETTLE_THRESHOLD = 0.9f;
         static constexpr float MIN_MATCH_THRESHOLD = 0.55f;
         static constexpr float MIN_HOUSENUMBER_MATCH_THRESHOLD = 0.8f;
-        static constexpr float MAX_MATCH_RATIO = 0.9f;
+        static constexpr float MAX_MATCH_RATIO = 0.8f;
         static constexpr float EXTRA_FIELD_PENALTY = 0.9f;
         static constexpr float UNMATCHED_FIELD_PENALTY = 0.25f;
         static constexpr float POI_POPULATION_PENALTY = 0.99f;
         static constexpr float TRANSLATION_EXTRA_PENALTY = 0.3f;
         static constexpr float AUTOCOMPLETE_EXTRA_CHAR_PENALTY = 0.1f;
         static constexpr unsigned int MAX_STRINGMATCH_DIST = 2;
-        static constexpr std::size_t MIN_AUTOCOMPLETE_SIZE = 3;
-        static constexpr std::size_t MAX_MATCH_COUNT = 10000;
-        static constexpr std::size_t MAX_NAME_MATCH_COUNTER = 1000;
+        static constexpr unsigned int MIN_AUTOCOMPLETE_SIZE = 3;
+        static constexpr unsigned int MAX_MATCH_COUNT = 10000;
+        static constexpr unsigned int MAX_NAME_MATCH_COUNTER = 1000;
+        static constexpr unsigned int TOKEN_QUERY_LIMIT = 10;
+        static constexpr unsigned int ENTITY_QUERY_LIMIT = 1000;
 
         static constexpr std::size_t ADDRESS_CACHE_SIZE = 1024;
         static constexpr std::size_t ENTITY_CACHE_SIZE = 128;

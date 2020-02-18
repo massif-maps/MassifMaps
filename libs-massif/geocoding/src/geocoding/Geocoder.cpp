@@ -175,10 +175,10 @@ namespace carto { namespace geocoding {
             if (!translatedToken.empty()) {
                 std::string sql = "SELECT id, token, typemask, namecount, idf FROM tokens WHERE ";
                 if (pass > 0 && translatedToken.size() >= 2) {
-                    sql += "token LIKE '" + escapeSQLValue(unistring::to_utf8string(translatedToken.substr(0, 2))) + "%' ORDER BY ABS(LENGTH(token) - " + boost::lexical_cast<std::string>(translatedToken.size()) + ") ASC, idf ASC LIMIT 10";
+                    sql += "token LIKE '" + escapeSQLValue(unistring::to_utf8string(translatedToken.substr(0, 2))) + "%' ORDER BY ABS(LENGTH(token) - " + boost::lexical_cast<std::string>(translatedToken.size()) + ") ASC, idf ASC LIMIT " + boost::lexical_cast<std::string>(TOKEN_QUERY_LIMIT);
                 }
                 else if (!translatedToken.empty() && translatedToken.back() == '%') {
-                    sql += "token LIKE '" + escapeSQLValue(unistring::to_utf8string(translatedToken)) + "' ORDER BY LENGTH(token) ASC, idf ASC LIMIT 10";
+                    sql += "token LIKE '" + escapeSQLValue(unistring::to_utf8string(translatedToken)) + "' ORDER BY LENGTH(token) ASC, idf ASC LIMIT " + boost::lexical_cast<std::string>(TOKEN_QUERY_LIMIT);
                 }
                 else {
                     sql += "token='" + escapeSQLValue(unistring::to_utf8string(translatedToken)) + "'";
@@ -335,7 +335,7 @@ namespace carto { namespace geocoding {
             for (std::size_t i = 0; i < sqlFilters.size(); i++) {
                 sql += (i > 0 ? " AND " : "") + std::string("(") + sqlFilters[i] + ")";
             }
-            sql += ") nt CROSS JOIN names n WHERE n.id=nt.name_id AND n.lang IS nt.lang AND COALESCE(n.lang, '') IN ('" + escapeSQLValue(_language) + "', '') ORDER BY LENGTH(n.name) ASC LIMIT 1000";
+            sql += ") nt CROSS JOIN names n WHERE n.id=nt.name_id AND n.lang IS nt.lang AND COALESCE(n.lang, '') IN ('" + escapeSQLValue(_language) + "', '') ORDER BY LENGTH(n.name) ASC LIMIT " + boost::lexical_cast<std::string>(ENTITY_QUERY_LIMIT);
 
             std::vector<std::shared_ptr<Name>> names;
             std::string namesKey = query.database->id + std::string(1, 0) + sql;
@@ -519,19 +519,18 @@ namespace carto { namespace geocoding {
                 EncodingStream houseNumberStream(entityRow.houseNumbers.data(), entityRow.houseNumbers.size());
                 AddressInterpolator interpolator(houseNumberStream);
 
-                std::function<std::pair<float, unsigned int>(std::size_t, std::uint32_t)> findBestMatch;
-                findBestMatch = [&](std::size_t index, std::uint32_t mask) {
+                std::function<void(std::size_t, std::uint32_t, float, unsigned int, std::map<unsigned int, float>&)> findBestMatches;
+                findBestMatches = [&](std::size_t index, std::uint32_t mask, float rank, unsigned int elementIndex, std::map<unsigned int, float>& bestMatches) {
                     if (index >= query.filtersList.size()) {
-                        float rank = 1.0f;
                         for (const EntityName& entityName : entityRow.entityNames) {
                             if (!(mask & (1 << static_cast<int>(entityName.type)))) {
                                 rank *= EXTRA_FIELD_PENALTY;
                             }
                         }
-                        return std::make_pair(rank, static_cast<unsigned int>(0));
+                        bestMatches[elementIndex] = std::max(rank, bestMatches[elementIndex]);
+                        return;
                     }
 
-                    std::pair<float, unsigned int> bestRankIndex(0.0f, 0);
                     for (const NameRank& nameRank : *query.filtersList[index]) {
                         if (mask & (1 << static_cast<int>(nameRank.name->type))) {
                             continue;
@@ -543,6 +542,7 @@ namespace carto { namespace geocoding {
                             if (houseIndex == -1) {
                                 continue;
                             }
+                            findBestMatches(index + 1, mask | (1 << static_cast<int>(nameRank.name->type)), rank * nameRank.rank, houseIndex + 1, bestMatches);
                         }
                         else {
                             auto it = std::find_if(entityRow.entityNames.begin(), entityRow.entityNames.end(), [&nameRank](const EntityName& entityName) {
@@ -551,123 +551,114 @@ namespace carto { namespace geocoding {
                             if (it == entityRow.entityNames.end()) {
                                 continue;
                             }
-                        }
-                        
-                        std::pair<float, unsigned int> rankIndex = findBestMatch(index + 1, mask | (1 << static_cast<int>(nameRank.name->type)));
-                        rankIndex.first *= nameRank.rank;
-                        if (rankIndex > bestRankIndex) {
-                            bestRankIndex = rankIndex;
-                            if (houseIndex != -1) {
-                                bestRankIndex.second = houseIndex + 1;
-                            }
+                            findBestMatches(index + 1, mask | (1 << static_cast<int>(nameRank.name->type)), rank * nameRank.rank, elementIndex, bestMatches);
                         }
                     }
-                    if (bestRankIndex.first < UNMATCHED_FIELD_PENALTY) {
-                        std::pair<float, unsigned int> rankIndex = findBestMatch(index + 1, mask);
-                        rankIndex.first *= UNMATCHED_FIELD_PENALTY;
-                        if (rankIndex > bestRankIndex) {
-                            bestRankIndex = rankIndex;
-                        }
-                    }
-                    return bestRankIndex;
+                    
+                    findBestMatches(index + 1, mask, rank * UNMATCHED_FIELD_PENALTY, elementIndex, bestMatches);
                 };
 
-                std::pair<float, unsigned int> bestRankIndex = findBestMatch(0, 0);
 
-                unsigned int elementIndex = bestRankIndex.second;
+                std::map<unsigned int, float> bestMatches;
+                findBestMatches(0, 0, 1.0f, 0, bestMatches);
 
-                auto getFeatures = [&]() -> std::vector<Feature> {
-                    EncodingStream featureStream(entityRow.features.data(), entityRow.features.size());
-                    FeatureReader featureReader(featureStream, mercatorConverter);
+                for (auto it = bestMatches.begin(); it != bestMatches.end(); it++) {
+                    unsigned int elementIndex = it->first;
+                    float rank = it->second;
 
-                    std::vector<Feature> features;
-                    if (elementIndex > 0) {
-                        features = interpolator.enumerateAddresses(featureReader).at(elementIndex - 1).second;
-                    }
-                    else {
-                        features = featureReader.readFeatureCollection();
-                    }
-                    return features;
-                };
+                    auto getFeatures = [&]() -> std::vector<Feature> {
+                        EncodingStream featureStream(entityRow.features.data(), entityRow.features.size());
+                        FeatureReader featureReader(featureStream, mercatorConverter);
 
-                // Check that geometry is inside bounds
-                if (options.bounds) {
-                    bool inside = false;
-                    for (const Feature& feature : getFeatures()) {
-                        if (std::shared_ptr<Geometry> geometry = feature.getGeometry()) {
-                            cglib::bbox2<double> mercatorBounds = geometry->getBounds();
-                            cglib::bbox2<double> bounds(webMercatorToWgs84(mercatorBounds.min), webMercatorToWgs84(mercatorBounds.max));
-                            if (options.bounds->inside(bounds)) {
-                                inside = true;
-                                break;
+                        std::vector<Feature> features;
+                        if (elementIndex > 0) {
+                            features = interpolator.enumerateAddresses(featureReader).at(elementIndex - 1).second;
+                        }
+                        else {
+                            features = featureReader.readFeatureCollection();
+                        }
+                        return features;
+                    };
+
+                    // Check that geometry is inside bounds
+                    if (options.bounds) {
+                        bool inside = false;
+                        for (const Feature& feature : getFeatures()) {
+                            if (std::shared_ptr<Geometry> geometry = feature.getGeometry()) {
+                                cglib::bbox2<double> mercatorBounds = geometry->getBounds();
+                                cglib::bbox2<double> bounds(webMercatorToWgs84(mercatorBounds.min), webMercatorToWgs84(mercatorBounds.max));
+                                if (options.bounds->inside(bounds)) {
+                                    inside = true;
+                                    break;
+                                }
                             }
                         }
+                        if (!inside) {
+                            continue;
+                        }
                     }
-                    if (!inside) {
+
+                    // Create result
+                    Result result;
+                    result.database = query.database;
+                    result.encodedId = (static_cast<std::uint64_t>(elementIndex) << 32) | entityRow.id;
+                    result.unmatchedTokens = query.tokenList.unmatchedTokens();
+
+                    // Set penalty for unmatched fields
+                    result.matchRank = rank;
+                    result.matchRank *= std::pow(UNMATCHED_FIELD_PENALTY, query.tokenList.unmatchedTokens());
+
+                    // Set entity ranking
+                    result.entityRank *= entityRow.rank;
+
+                    // Do location based ranking
+                    if (options.location) {
+                        float minDist = std::numeric_limits<float>::infinity();
+                        for (const Feature& feature : getFeatures()) {
+                            if (std::shared_ptr<Geometry> geometry = feature.getGeometry()) {
+                                cglib::vec2<double> mercatorMeters = webMercatorMeters(*options.location);
+                                cglib::vec2<double> mercatorLocation = wgs84ToWebMercator(*options.location);
+                                cglib::vec2<double> point = geometry->calculateNearestPoint(mercatorLocation);
+                                cglib::vec2<double> diff = point - mercatorLocation;
+                                float dist = static_cast<float>(cglib::length(cglib::vec2<double>(diff(0) * mercatorMeters(0), diff(1) * mercatorMeters(1))));
+                                minDist = std::min(minDist, dist);
+                            }
+                        }
+
+                        float distRank = std::exp(-0.5f * std::pow(minDist / options.locationSigma, 2.0f));
+                        result.locationRank *= MIN_LOCATION_RANK + (1.0f - MIN_LOCATION_RANK) * distRank;
+                    }
+
+                    // Early out test
+                    if (result.totalRank() < MIN_RANK_THRESHOLD) {
                         continue;
                     }
-                }
 
-                // Create result
-                Result result;
-                result.database = query.database;
-                result.encodedId = (static_cast<std::uint64_t>(elementIndex) << 32) | entityRow.id;
-                result.unmatchedTokens = query.tokenList.unmatchedTokens();
-
-                // Set penalty for unmatched fields
-                result.matchRank = bestRankIndex.first;
-                result.matchRank *= std::pow(UNMATCHED_FIELD_PENALTY, query.tokenList.unmatchedTokens());
-
-                // Set entity ranking
-                result.entityRank *= entityRow.rank;
-
-                // Do location based ranking
-                if (options.location) {
-                    float minDist = std::numeric_limits<float>::infinity();
-                    for (const Feature& feature : getFeatures()) {
-                        if (std::shared_ptr<Geometry> geometry = feature.getGeometry()) {
-                            cglib::vec2<double> mercatorMeters = webMercatorMeters(*options.location);
-                            cglib::vec2<double> mercatorLocation = wgs84ToWebMercator(*options.location);
-                            cglib::vec2<double> point = geometry->calculateNearestPoint(mercatorLocation);
-                            cglib::vec2<double> diff = point - mercatorLocation;
-                            float dist = static_cast<float>(cglib::length(cglib::vec2<double>(diff(0) * mercatorMeters(0), diff(1) * mercatorMeters(1))));
-                            minDist = std::min(minDist, dist);
+                    // Check if the same result is already stored
+                    auto resultIt = std::find_if(results.begin(), results.end(), [&result](const Result& result2) {
+                        return result.encodedId == result2.encodedId;
+                        });
+                    if (resultIt != results.end()) {
+                        if (resultIt->totalRank() >= result.totalRank()) {
+                            continue; // if we have stored the row with better ranking, ignore current
                         }
+                        results.erase(resultIt); // erase the old match, as the new match is better
                     }
 
-                    float distRank = std::exp(-0.5f * std::pow(minDist / options.locationSigma, 2.0f));
-                    result.locationRank *= MIN_LOCATION_RANK + (1.0f - MIN_LOCATION_RANK) * distRank;
-                }
+                    // Find position for the result
+                    resultIt = std::upper_bound(results.begin(), results.end(), result, [](const Result& result1, const Result& result2) {
+                        return result1.totalRank() > result2.totalRank();
+                        });
+                    if (!(resultIt == results.end() && results.size() == _maxResults)) {
+                        results.insert(resultIt, result);
 
-                // Early out test
-                if (result.totalRank() < MIN_RANK_THRESHOLD) {
-                    continue;
-                }
-
-                // Check if the same result is already stored
-                auto resultIt = std::find_if(results.begin(), results.end(), [&result](const Result& result2) {
-                    return result.encodedId == result2.encodedId;
-                });
-                if (resultIt != results.end()) {
-                    if (resultIt->totalRank() >= result.totalRank()) {
-                        continue; // if we have stored the row with better ranking, ignore current
-                    }
-                    results.erase(resultIt); // erase the old match, as the new match is better
-                }
-
-                // Find position for the result
-                resultIt = std::upper_bound(results.begin(), results.end(), result, [](const Result& result1, const Result& result2) {
-                    return result1.totalRank() > result2.totalRank();
-                });
-                if (!(resultIt == results.end() && results.size() == _maxResults)) {
-                    results.insert(resultIt, result);
-
-                    // Drop results that have too low rankings
-                    while (!results.empty()) {
-                        if (results.front().totalRank() * MAX_RANK_RATIO <= results.back().totalRank() && results.back().totalRank() >= MIN_RANK_THRESHOLD) {
-                            break;
+                        // Drop results that have too low rankings
+                        while (!results.empty()) {
+                            if (results.front().totalRank() * MAX_RANK_RATIO <= results.back().totalRank() && results.back().totalRank() >= MIN_RANK_THRESHOLD) {
+                                break;
+                            }
+                            results.pop_back();
                         }
-                        results.pop_back();
                     }
                 }
             }

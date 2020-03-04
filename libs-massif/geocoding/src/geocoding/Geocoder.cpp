@@ -472,7 +472,7 @@ namespace carto { namespace geocoding {
                     values += (values.empty() ? "" : ",") + boost::lexical_cast<std::string>(type);
                 }
             }
-            sql += "(e.id=" + sqlTables.front() + ".entity_id) AND e.type in (" + values + ") AND e.housenumbers " + (pass > 0 ? "IS NOT NULL" : "IS NULL") + " ORDER BY e.type ASC, e.rank DESC LIMIT 1000";
+            sql += "(e.id=" + sqlTables.front() + ".entity_id) AND e.type in (" + values + ") AND e.housenumbers " + (pass > 0 ? "IS NOT NULL" : "IS NULL") + " ORDER BY e.type ASC, e.rank DESC LIMIT " + boost::lexical_cast<std::string>(ENTITY_QUERY_LIMIT);
 
             std::string entityKey = database.id + std::string(1, 0) + sql;
             std::vector<EntityRow> entityRows;

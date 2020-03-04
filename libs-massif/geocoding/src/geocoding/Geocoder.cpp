@@ -536,22 +536,19 @@ namespace carto { namespace geocoding {
                             continue;
                         }
 
-                        int houseIndex = -1;
                         if (nameRank.name->type == FieldType::HOUSENUMBER) {
-                            houseIndex = interpolator.findAddress(nameRank.name->id); // if not found, interpolator returns -1
-                            if (houseIndex == -1) {
-                                continue;
+                            int houseIndex = interpolator.findAddress(nameRank.name->id); // if not found, interpolator returns -1
+                            if (houseIndex != -1) {
+                                findBestMatches(index + 1, mask | (1 << static_cast<int>(nameRank.name->type)), rank * nameRank.rank, houseIndex + 1, bestMatches);
                             }
-                            findBestMatches(index + 1, mask | (1 << static_cast<int>(nameRank.name->type)), rank * nameRank.rank, houseIndex + 1, bestMatches);
                         }
                         else {
                             auto it = std::find_if(entityRow.entityNames.begin(), entityRow.entityNames.end(), [&nameRank](const EntityName& entityName) {
                                 return entityName.id == nameRank.name->id;
                             });
-                            if (it == entityRow.entityNames.end()) {
-                                continue;
+                            if (it != entityRow.entityNames.end()) {
+                                findBestMatches(index + 1, mask | (1 << static_cast<int>(nameRank.name->type)), rank * nameRank.rank, elementIndex, bestMatches);
                             }
-                            findBestMatches(index + 1, mask | (1 << static_cast<int>(nameRank.name->type)), rank * nameRank.rank, elementIndex, bestMatches);
                         }
                     }
                     
@@ -572,7 +569,7 @@ namespace carto { namespace geocoding {
 
                         std::vector<Feature> features;
                         if (elementIndex > 0) {
-                            features = interpolator.enumerateAddresses(featureReader).at(elementIndex - 1).second;
+                            features = interpolator.readAddressesAndFeatures(featureReader).at(elementIndex - 1).second;
                         }
                         else {
                             features = featureReader.readFeatureCollection();
@@ -732,11 +729,15 @@ namespace carto { namespace geocoding {
         // Now simplify the query filters according to new valid type masks by removing impossible records.
         // We will also remove housenumbers, as these are not included in entitynames table.
         filtersList.reserve(query.filtersList.size());
+        bool nameType = false;
         for (std::size_t i = 0; i < query.filtersList.size(); i++) {
+            if (validMasks[i] & (1 << static_cast<int>(FieldType::NAME))) {
+                nameType = true;
+            }
             if (validMasks[i] & (1 << static_cast<int>(FieldType::HOUSENUMBER))) {
                 continue;
             }
-            
+
             auto nameRanks = std::make_shared<std::vector<NameRank>>();
             nameRanks->reserve(query.filtersList[i]->size());
             for (const NameRank& nameRank : *query.filtersList[i]) {
@@ -750,7 +751,7 @@ namespace carto { namespace geocoding {
             filtersList.push_back(std::move(nameRanks));
         }
 
-        if (pass > 0 && query.filtersList.size() == filtersList.size()) {
+        if (pass > 0 && !nameType && query.filtersList.size() == filtersList.size()) {
             return false; // means we have no house number candidates, can skip pass 2
         }
         return !filtersList.empty();

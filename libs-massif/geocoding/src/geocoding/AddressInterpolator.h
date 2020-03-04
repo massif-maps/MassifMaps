@@ -19,7 +19,8 @@ namespace carto { namespace geocoding {
         explicit AddressInterpolator(EncodingStream& houseNumberStream);
 
         int findAddress(std::uint64_t id) const;
-        std::vector<std::pair<std::uint64_t, std::vector<Feature>>> enumerateAddresses(FeatureReader& featureReader) const;
+        std::vector<std::uint64_t> getAddresses() const;
+        std::vector<std::pair<std::uint64_t, std::vector<Feature>>> readAddressesAndFeatures(FeatureReader& featureReader) const;
 
     private:
         std::vector<std::uint64_t> _houseNumbers;

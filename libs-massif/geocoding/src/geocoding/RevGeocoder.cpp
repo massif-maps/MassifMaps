@@ -140,11 +140,11 @@ namespace carto { namespace geocoding {
                 EncodingStream houseNumberStream(qit->get<const void*>(2), qit->column_bytes(2));
                 AddressInterpolator interpolator(houseNumberStream);
 
-                std::vector<std::pair<std::uint64_t, std::vector<Feature>>> results = interpolator.enumerateAddresses(featureReader);
-                for (std::size_t i = 0; i < results.size(); i++) {
-                    std::uint64_t encodedId = (results[i].first ? static_cast<std::uint64_t>(i + 1) << 32 : 0) | entityId;
+                std::vector<std::pair<std::uint64_t, std::vector<Feature>>> idFeatures = interpolator.readAddressesAndFeatures(featureReader);
+                for (std::size_t i = 0; i < idFeatures.size(); i++) {
+                    std::uint64_t encodedId = (idFeatures[i].first ? static_cast<std::uint64_t>(i + 1) << 32 : 0) | entityId;
                     std::vector<std::shared_ptr<Geometry>> geometries;
-                    for (const Feature& feature : results[i].second) {
+                    for (const Feature& feature : idFeatures[i].second) {
                         if (feature.getGeometry()) {
                             geometries.push_back(feature.getGeometry());
                         }

@@ -61,6 +61,14 @@ namespace carto { namespace css {
     private:
         struct ValueBuilder;
 
+        static const std::vector<std::pair<UnaryExpression::Op, std::string>> _unaryOpTable;
+        static const std::vector<std::pair<BinaryExpression::Op, std::string>> _binaryOpTable;
+        static const std::vector<std::pair<OpPredicate::Op, std::shared_ptr<mvt::ComparisonPredicate::Operator>>> _predicateOpTable;
+
+        static const std::unordered_map<std::string, int> _stringFuncs;
+        static const std::unordered_map<std::string, int> _mathFuncs;
+        static const std::unordered_set<std::string> _interpolationFuncs;
+
         static const std::vector<std::string> _symbolizerList;
         static const std::unordered_set<std::string> _symbolizerNonStringProperties;
         static const std::unordered_map<std::string, std::string> _symbolizerPropertyMap;

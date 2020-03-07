@@ -85,13 +85,28 @@ namespace carto { namespace mvt {
         return val;
     }
 
+    std::vector<std::shared_ptr<Transform> > parseTransformList(const std::string& str) {
+        std::string::const_iterator it = str.begin();
+        std::string::const_iterator end = str.end();
+        transparserimpl::encoding::space_type space;
+        std::vector<std::shared_ptr<Transform>> transforms;
+        bool result = boost::spirit::qi::phrase_parse(it, end, TransformParser<std::string::const_iterator>() % ',', space, transforms);
+        if (!result) {
+            throw ParserException("Transform parsing failed", str);
+        }
+        if (it != str.end()) {
+            throw ParserException("Could not parse to the end of transform, error at position " + boost::lexical_cast<std::string>(it - str.begin()), str);
+        }
+        return transforms;
+    }
+
     std::shared_ptr<Expression> parseExpression(const std::string& str) {
         constexpr static int MAX_CACHE_SIZE = 1024;
 
-        static std::mutex exprCacheMutex;
+        static std::recursive_mutex exprCacheMutex;
         static std::unordered_map<std::string, std::shared_ptr<Expression>> exprCache;
 
-        std::lock_guard<std::mutex> lock(exprCacheMutex);
+        std::lock_guard<std::recursive_mutex> lock(exprCacheMutex);
         auto exprIt = exprCache.find(str);
         if (exprIt != exprCache.end()) {
             return exprIt->second;
@@ -119,10 +134,10 @@ namespace carto { namespace mvt {
     std::shared_ptr<Expression> parseStringExpression(const std::string& str) {
         constexpr static int MAX_CACHE_SIZE = 1024;
 
-        static std::mutex exprCacheMutex;
+        static std::recursive_mutex exprCacheMutex;
         static std::unordered_map<std::string, std::shared_ptr<Expression>> exprCache;
 
-        std::lock_guard<std::mutex> lock(exprCacheMutex);
+        std::lock_guard<std::recursive_mutex> lock(exprCacheMutex);
         auto exprIt = exprCache.find(str);
         if (exprIt != exprCache.end()) {
             return exprIt->second;
@@ -145,20 +160,5 @@ namespace carto { namespace mvt {
         }
         exprCache[str] = expr;
         return expr;
-    }
-
-    std::vector<std::shared_ptr<Transform> > parseTransformList(const std::string& str) {
-        std::string::const_iterator it = str.begin();
-        std::string::const_iterator end = str.end();
-        transparserimpl::encoding::space_type space;
-        std::vector<std::shared_ptr<Transform>> transforms;
-        bool result = boost::spirit::qi::phrase_parse(it, end, TransformParser<std::string::const_iterator>() % ',', space, transforms);
-        if (!result) {
-            throw ParserException("Transform parsing failed", str);
-        }
-        if (it != str.end()) {
-            throw ParserException("Could not parse to the end of transform, error at position " + boost::lexical_cast<std::string>(it - str.begin()), str);
-        }
-        return transforms;
     }
 } }

@@ -161,6 +161,11 @@ namespace carto { namespace mvt {
             }
 
             static std::shared_ptr<Expression> makeConstExpression(Value val) {
+                if (StringExpression) {
+                    if (auto stringVal = boost::get<std::string>(&val)) {
+                        return parseStringExpression(*stringVal);
+                    }
+                }
                 return std::make_shared<ConstExpression>(std::move(val));
             }
 

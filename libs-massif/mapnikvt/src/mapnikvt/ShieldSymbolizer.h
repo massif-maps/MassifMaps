@@ -12,7 +12,7 @@
 namespace carto { namespace mvt {
     class ShieldSymbolizer : public TextSymbolizer {
     public:
-        explicit ShieldSymbolizer(std::vector<std::shared_ptr<FontSet>> fontSets, std::shared_ptr<Logger> logger) : TextSymbolizer(std::move(fontSets), std::move(logger)) { }
+        explicit ShieldSymbolizer(const std::string& text, std::vector<std::shared_ptr<FontSet>> fontSets, std::shared_ptr<Logger> logger) : TextSymbolizer(text, std::move(fontSets), std::move(logger)) { }
 
         virtual void build(const FeatureCollection& featureCollection, const FeatureExpressionContext& exprContext, const SymbolizerContext& symbolizerContext, vt::TileLayerBuilder& layerBuilder) override;
 

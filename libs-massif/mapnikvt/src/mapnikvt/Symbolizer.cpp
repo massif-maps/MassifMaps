@@ -23,6 +23,44 @@ namespace carto { namespace mvt {
         return _parameterExprs;
     }
 
+    std::shared_ptr<Expression> Symbolizer::parseExpression(const std::string& str) const {
+        static std::mutex exprCacheMutex;
+        static std::unordered_map<std::string, std::shared_ptr<Expression>> exprCache;
+
+        constexpr static int MAX_CACHE_SIZE = 1024;
+
+        std::lock_guard<std::mutex> lock(exprCacheMutex);
+        auto exprIt = exprCache.find(str);
+        if (exprIt != exprCache.end()) {
+            return exprIt->second;
+        }
+        std::shared_ptr<Expression> expr = mvt::parseExpression(str, false);
+        if (exprCache.size() >= MAX_CACHE_SIZE) {
+            exprCache.erase(exprCache.begin());
+        }
+        exprCache.emplace(str, expr);
+        return expr;
+    }
+
+    std::shared_ptr<Expression> Symbolizer::parseStringExpression(const std::string& str) const {
+        static std::mutex exprCacheMutex;
+        static std::unordered_map<std::string, std::shared_ptr<Expression>> exprCache;
+
+        constexpr static int MAX_CACHE_SIZE = 1024;
+
+        std::lock_guard<std::mutex> lock(exprCacheMutex);
+        auto exprIt = exprCache.find(str);
+        if (exprIt != exprCache.end()) {
+            return exprIt->second;
+        }
+        std::shared_ptr<Expression> expr = mvt::parseExpression(str, true);
+        if (exprCache.size() >= MAX_CACHE_SIZE) {
+            exprCache.erase(exprCache.begin());
+        }
+        exprCache.emplace(str, expr);
+        return expr;
+    }
+
     vt::CompOp Symbolizer::convertCompOp(const std::string& compOp) const {
         try {
             return parseCompOp(compOp);

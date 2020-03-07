@@ -12,14 +12,6 @@
 #include <boost/algorithm/string.hpp>
 
 namespace carto { namespace mvt {
-    void TextSymbolizer::setTextExpression(std::shared_ptr<const Expression> textExpression) {
-        _textExpression = std::move(textExpression);
-    }
-
-    const std::shared_ptr<const Expression>& TextSymbolizer::getTextExpression() const {
-        return _textExpression;
-    }
-    
     void TextSymbolizer::build(const FeatureCollection& featureCollection, const FeatureExpressionContext& exprContext, const SymbolizerContext& symbolizerContext, vt::TileLayerBuilder& layerBuilder) {
         std::lock_guard<std::mutex> lock(_mutex);
 

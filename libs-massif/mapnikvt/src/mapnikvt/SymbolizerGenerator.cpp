@@ -14,7 +14,7 @@
 namespace carto { namespace mvt {
     void SymbolizerGenerator::generateSymbolizer(const Symbolizer& symbolizer, pugi::xml_node& symbolizerNode) const {
         std::string type;
-        std::shared_ptr<const Expression> expr;
+        std::string text;
         if (dynamic_cast<const PointSymbolizer*>(&symbolizer)) {
             type = "PointSymbolizer";
         }
@@ -43,15 +43,15 @@ namespace carto { namespace mvt {
             else {
                 type = "TextSymbolizer";
             }
-            expr = textSymbolizer->getTextExpression();
+            text = textSymbolizer->getText();
         }
 
         symbolizerNode.set_name(type.c_str());
         for (auto it = symbolizer.getParameterMap().begin(); it != symbolizer.getParameterMap().end(); it++) {
             symbolizerNode.append_attribute(it->first.c_str()).set_value(it->second.c_str());
         }
-        if (expr) {
-            symbolizerNode.append_child(pugi::node_pcdata).set_value(generateExpressionString(expr).c_str());
+        if (!text.empty()) {
+            symbolizerNode.append_child(pugi::node_pcdata).set_value(text.c_str());
         }
     }
 } }

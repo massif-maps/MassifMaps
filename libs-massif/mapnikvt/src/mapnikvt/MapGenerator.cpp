@@ -114,7 +114,7 @@ namespace carto { namespace mvt {
                             filterNode = ruleNode.append_child("AlsoFilter");
                             break;
                         }
-                        filterNode.append_child(pugi::node_pcdata).set_value(generateExpressionString(std::make_shared<PredicateExpression>(pred)).c_str());
+                        filterNode.append_child(pugi::node_pcdata).set_value(generateExpressionString(std::make_shared<PredicateExpression>(pred), false).c_str());
                     }
                 }
 

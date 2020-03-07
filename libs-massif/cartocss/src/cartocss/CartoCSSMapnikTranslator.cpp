@@ -96,20 +96,16 @@ namespace carto { namespace css {
             mapnikSymbolizer = std::make_shared<mvt::MarkersSymbolizer>(_logger);
         }
         else if (symbolizerType == "text" || symbolizerType == "shield") {
-            std::shared_ptr<mvt::Expression> textExpr;
-            std::vector<std::pair<std::string, std::string>> symbolizerParameterValues;
+            std::string text;
+            std::pair<std::string, std::string> fontSetFaceName;
             for (const CartoCSSCompiler::Property& prop : properties) {
                 if (prop.field == symbolizerType + "-name") {
                     try {
                         if (auto constExpr = std::dynamic_pointer_cast<const ConstExpression>(prop.expression)) {
-                            std::string value = boost::lexical_cast<std::string>(constExpr->getValue());
-                            if (value.empty()) {
-                                return std::shared_ptr<mvt::Symbolizer>();
-                            }
-                            textExpr = mvt::parseStringExpression(value);
+                            text = boost::lexical_cast<std::string>(constExpr->getValue());
                         }
                         else {
-                            textExpr = mvt::parseExpression(buildExpressionString(prop.expression, false));
+                            text = buildExpressionString(prop.expression, true);
                         }
                     }
                     catch (const std::runtime_error& ex) {
@@ -130,10 +126,10 @@ namespace carto { namespace css {
                                 auto fontSet = std::make_shared<mvt::FontSet>(fontSetName, faceNames);
                                 map->addFontSet(fontSet);
                             }
-                            symbolizerParameterValues.emplace_back("fontset-name", boost::lexical_cast<std::string>(value));
+                            fontSetFaceName = std::pair<std::string, std::string>("fontset-name", boost::lexical_cast<std::string>(value));
                         }
                         else {
-                            symbolizerParameterValues.emplace_back("face-name", boost::lexical_cast<std::string>(value));
+                            fontSetFaceName = std::pair<std::string, std::string>("face-name", boost::lexical_cast<std::string>(value));
                         }
                     }
                     else {
@@ -141,16 +137,15 @@ namespace carto { namespace css {
                     }
                 }
             }
-            if (textExpr) {
+            if (!text.empty()) {
                 if (symbolizerType == "text") {
-                    mapnikSymbolizer = std::make_shared<mvt::TextSymbolizer>(map->getFontSets(), _logger);
+                    mapnikSymbolizer = std::make_shared<mvt::TextSymbolizer>(text, map->getFontSets(), _logger);
                 }
-                else {
-                    mapnikSymbolizer = std::make_shared<mvt::ShieldSymbolizer>(map->getFontSets(), _logger);
+                else if (symbolizerType == "shield") {
+                    mapnikSymbolizer = std::make_shared<mvt::ShieldSymbolizer>(text, map->getFontSets(), _logger);
                 }
-                std::static_pointer_cast<mvt::TextSymbolizer>(mapnikSymbolizer)->setTextExpression(textExpr);
-                for (const std::pair<std::string, std::string>& symbolizerParameterValue : symbolizerParameterValues) {
-                    mapnikSymbolizer->setParameter(symbolizerParameterValue.first, symbolizerParameterValue.second);
+                if (mapnikSymbolizer && !fontSetFaceName.first.empty()) {
+                    mapnikSymbolizer->setParameter(fontSetFaceName.first, fontSetFaceName.second);
                 }
             }
             else {

@@ -16,14 +16,18 @@ namespace carto { namespace mvt {
         }
 
         float bitmapScaleX = 1, bitmapScaleY = 1;
-        std::shared_ptr<const vt::BitmapImage> bitmapImage;
         float fillOpacity = _fillOpacity;
+        std::shared_ptr<const vt::BitmapImage> bitmapImage;
         if (!_file.empty()) {
             bitmapImage = symbolizerContext.getBitmapManager()->loadBitmapImage(_file, false, 1.0f);
             if (!bitmapImage) {
                 _logger->write(Logger::Severity::ERROR, "Failed to load marker bitmap " + _file);
                 return;
             }
+            if (!bitmapImage->bitmap) {
+                return;
+            }
+
             width = bitmapImage->bitmap->width;
             height = bitmapImage->bitmap->height;
         }

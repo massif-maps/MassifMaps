@@ -24,6 +24,9 @@ namespace carto { namespace mvt {
                 _logger->write(Logger::Severity::ERROR, "Failed to load point bitmap " + _file);
                 return;
             }
+            if (!bitmapImage->bitmap) {
+                return;
+            }
         }
         else {
             file = "__default_point.bmp";

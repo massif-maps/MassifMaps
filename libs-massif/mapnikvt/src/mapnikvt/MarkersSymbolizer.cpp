@@ -42,6 +42,9 @@ namespace carto { namespace mvt {
                 _logger->write(Logger::Severity::ERROR, "Failed to load marker bitmap " + file);
                 return;
             }
+            if (!bitmapImage->bitmap) {
+                return;
+            }
             
             if (_widthDefined && _widthStatic > 0) {
                 if (_heightDefined && _heightStatic > 0) {

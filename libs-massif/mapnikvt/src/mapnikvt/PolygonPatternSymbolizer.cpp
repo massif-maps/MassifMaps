@@ -10,9 +10,12 @@ namespace carto { namespace mvt {
             return;
         }
         
-        std::shared_ptr<const vt::BitmapPattern> pattern = symbolizerContext.getBitmapManager()->loadBitmapPattern(_file, PATTERN_SCALE, PATTERN_SCALE);
-        if (!pattern) {
+        std::shared_ptr<const vt::BitmapPattern> bitmapPattern = symbolizerContext.getBitmapManager()->loadBitmapPattern(_file, PATTERN_SCALE, PATTERN_SCALE);
+        if (!bitmapPattern) {
             _logger->write(Logger::Severity::ERROR, "Failed to load polygon pattern bitmap " + _file);
+            return;
+        }
+        if (!bitmapPattern->bitmap) {
             return;
         }
 
@@ -20,7 +23,7 @@ namespace carto { namespace mvt {
 
         vt::ColorFunction fillFunc = _functionBuilder.createColorOpacityFunction(_fillFunc, _opacityFunc);
 
-        vt::PolygonStyle style(compOp, fillFunc, pattern, _geometryTransform);
+        vt::PolygonStyle style(compOp, fillFunc, bitmapPattern, _geometryTransform);
 
         std::size_t featureIndex = 0;
         std::size_t geometryIndex = 0;

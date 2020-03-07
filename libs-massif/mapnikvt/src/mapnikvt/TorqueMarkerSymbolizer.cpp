@@ -20,11 +20,11 @@ namespace carto { namespace mvt {
         std::shared_ptr<const vt::BitmapImage> bitmapImage;
         if (!_file.empty()) {
             bitmapImage = symbolizerContext.getBitmapManager()->loadBitmapImage(_file, false, 1.0f);
-            if (!bitmapImage) {
+            if (!bitmapImage || !bitmapImage->bitmap) {
                 _logger->write(Logger::Severity::ERROR, "Failed to load marker bitmap " + _file);
                 return;
             }
-            if (!bitmapImage->bitmap) {
+            if (bitmapImage->bitmap->width < 1 || bitmapImage->bitmap->height < 1) {
                 return;
             }
 

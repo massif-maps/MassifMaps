@@ -13,11 +13,8 @@ namespace carto { namespace mvt {
         }
 
         std::shared_ptr<const vt::BitmapImage> backgroundBitmapImage = symbolizerContext.getBitmapManager()->loadBitmapImage(_file, false, IMAGE_UPSAMPLING_SCALE);
-        if (!backgroundBitmapImage) {
+        if (!backgroundBitmapImage || !backgroundBitmapImage->bitmap) {
             _logger->write(Logger::Severity::ERROR, "Failed to load shield bitmap " + _file);
-            return;
-        }
-        if (!backgroundBitmapImage->bitmap) {
             return;
         }
 

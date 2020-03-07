@@ -11,11 +11,8 @@ namespace carto { namespace mvt {
         }
         
         std::shared_ptr<const vt::BitmapPattern> bitmapPattern = symbolizerContext.getBitmapManager()->loadBitmapPattern(_file, PATTERN_SCALE, PATTERN_SCALE);
-        if (!bitmapPattern) {
+        if (!bitmapPattern || !bitmapPattern->bitmap) {
             _logger->write(Logger::Severity::ERROR, "Failed to load line pattern bitmap " + _file);
-            return;
-        }
-        if (!bitmapPattern->bitmap) {
             return;
         }
         

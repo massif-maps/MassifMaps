@@ -113,6 +113,13 @@ namespace carto { namespace geocoding {
         return false;
     }
 
+    bool Address::equal(const Address& address, bool compareHouseNumbers) const {
+        if (address.country == country && address.region == region && address.county == county && address.locality == locality && address.neighbourhood == neighbourhood && address.street == street && address.name == name) {
+            return compareHouseNumbers ? address.houseNumber == houseNumber : true;
+        }
+        return false;
+    }
+
     std::string Address::toString() const {
         std::string str;
         if (!name.empty()) {

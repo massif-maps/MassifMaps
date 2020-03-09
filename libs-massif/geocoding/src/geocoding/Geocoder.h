@@ -130,7 +130,7 @@ namespace carto { namespace geocoding {
         void matchNames(const Query& query, const std::vector<std::vector<Token>>& tokensList, const std::string& matchName, std::shared_ptr<std::vector<NameRank>>& nameRanks) const;
         void matchEntities(const Query& query, const Options& options, std::vector<Result>& results) const;
 
-        bool optimizeQueryFilters(const Query& query, int pass, std::vector<std::shared_ptr<std::vector<NameRank>>>& filtersList) const;
+        bool optimizeQueryFilters(const Query& query, std::vector<std::shared_ptr<std::vector<NameRank>>>& filtersList) const;
 
         float calculateNameRank(const Query& query, const std::string& name, const std::string& queryName, const std::vector<std::pair<std::string, float>>& tokenIDFs) const;
         

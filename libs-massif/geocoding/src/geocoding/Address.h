@@ -45,6 +45,8 @@ namespace carto { namespace geocoding {
 
         bool loadFromDB(sqlite3pp::database& db, std::uint64_t encodedId, const std::string& language, const PointConverter& converter);
 
+        bool equal(const Address& address, bool compareHouseNumbers) const;
+
         bool merge(const Address& address);
 
         std::string toString() const;

@@ -69,7 +69,7 @@ namespace carto { namespace mvt {
 
                 stringExpression =
                     ( (string                                        [_val = phx::bind(&makeStringExpression, _1)])
-                    | ('[' > stringExpression  > ']')                [_val = phx::bind(&makeVariableExpression, _1)]
+                    | ('[' > stringExpression > ']')                 [_val = phx::bind(&makeVariableExpression, _1)]
                     | ('{' > qi::skip(encoding::space_type())[expression > '}']) [_val = _1]
                     )
                     > -(stringExpression                             [_val = phx::bind(&makeBinaryExpression<ConcatenateOperator>, _val, _1)])

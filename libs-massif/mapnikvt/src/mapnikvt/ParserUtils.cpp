@@ -75,7 +75,13 @@ namespace carto { namespace mvt {
         std::string::const_iterator end = str.end();
         valparserimpl::encoding::space_type space;
         Value val;
-        bool result = boost::spirit::qi::phrase_parse(it, end, ValueParser<std::string::const_iterator>(), space, val);
+        bool result = false;
+        try {
+            result = boost::spirit::qi::phrase_parse(it, end, ValueParser<std::string::const_iterator>(), space, val);
+        }
+        catch (const boost::spirit::qi::expectation_failure<std::string::const_iterator>& ex) {
+            throw ParserException("Expectation error, error at position " + boost::lexical_cast<std::string>(ex.first - str.begin()), str);
+        }
         if (!result) {
             throw ParserException("Value parsing failed", str);
         }
@@ -90,7 +96,13 @@ namespace carto { namespace mvt {
         std::string::const_iterator end = str.end();
         transparserimpl::encoding::space_type space;
         std::vector<std::shared_ptr<Transform>> transforms;
-        bool result = boost::spirit::qi::phrase_parse(it, end, TransformParser<std::string::const_iterator>() % ',', space, transforms);
+        bool result = false;
+        try {
+            result = boost::spirit::qi::phrase_parse(it, end, TransformParser<std::string::const_iterator>() % ',', space, transforms);
+        }
+        catch (const boost::spirit::qi::expectation_failure<std::string::const_iterator>& ex) {
+            throw ParserException("Expectation error, error at position " + boost::lexical_cast<std::string>(ex.first - str.begin()), str);
+        }
         if (!result) {
             throw ParserException("Transform parsing failed", str);
         }
@@ -106,11 +118,16 @@ namespace carto { namespace mvt {
         exprparserimpl::encoding::space_type space;
         std::shared_ptr<Expression> expr;
         bool result = false;
-        if (stringExpr) {
-            result = boost::spirit::qi::phrase_parse(it, end, StringExpressionParser<std::string::const_iterator>(), space, expr);
+        try {
+            if (stringExpr) {
+                result = boost::spirit::qi::phrase_parse(it, end, StringExpressionParser<std::string::const_iterator>(), space, expr);
+            }
+            else {
+                result = boost::spirit::qi::phrase_parse(it, end, ExpressionParser<std::string::const_iterator>(), space, expr);
+            }
         }
-        else {
-            result = boost::spirit::qi::phrase_parse(it, end, ExpressionParser<std::string::const_iterator>(), space, expr);
+        catch (const boost::spirit::qi::expectation_failure<std::string::const_iterator>& ex) {
+            throw ParserException("Expectation error, error at position " + boost::lexical_cast<std::string>(ex.first - str.begin()), str);
         }
         if (!result) {
             throw ParserException("Expression parsing failed", str);

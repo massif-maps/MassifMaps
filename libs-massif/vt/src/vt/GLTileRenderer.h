@@ -37,6 +37,8 @@
 #include <cglib/ray.h>
 
 namespace carto { namespace vt {
+    class LabelCuller;
+
     class GLTileRenderer final {
     public:
         struct LightingShader {
@@ -64,7 +66,7 @@ namespace carto { namespace vt {
         bool renderLabels(bool labels2D, bool labels3D);
         void endFrame();
 
-        void cullLabels(const ViewState& viewState);
+        void cullLabels(LabelCuller& culler);
 
         bool findGeometryIntersections(const cglib::ray3<double>& ray, std::vector<std::tuple<TileId, double, long long>>& results, float radius, bool geom2D, bool geom3D) const;
         bool findLabelIntersections(const cglib::ray3<double>& ray, std::vector<std::tuple<TileId, double, long long>>& results, float radius, bool labels2D, bool labels3D) const;

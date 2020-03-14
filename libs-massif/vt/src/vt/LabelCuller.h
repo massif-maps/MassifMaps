@@ -24,21 +24,21 @@
 namespace carto { namespace vt {
     class LabelCuller final {
     public:
-        explicit LabelCuller(std::shared_ptr<const TileTransformer> transformer, float scale);
+        explicit LabelCuller(float scale);
 
         void setViewState(const ViewState& viewState);
-        void process(const std::vector<std::shared_ptr<Label>>& labelList, std::mutex& labelMutex);
+        void reset();
+        bool process(const std::vector<std::shared_ptr<Label>>& labelList, std::mutex& labelMutex);
 
     private:
         constexpr static int GRID_RESOLUTION = 16;
 
-        struct Record {
+        struct CullRecord {
             cglib::bbox2<float> bounds;
             std::array<cglib::vec2<float>, 4> envelope;
-            std::shared_ptr<Label> label;
 
-            Record() = default;
-            explicit Record(const cglib::bbox2<float>& bounds, const std::array<cglib::vec2<float>, 4>& envelope, std::shared_ptr<Label> label) : bounds(bounds), envelope(envelope), label(std::move(label)) { }
+            CullRecord() = default;
+            explicit CullRecord(const cglib::bbox2<float>& bounds, const std::array<cglib::vec2<float>, 4>& envelope) : bounds(bounds), envelope(envelope) { }
         };
 
         void clearGrid();
@@ -48,9 +48,8 @@ namespace carto { namespace vt {
 
         cglib::mat4x4<float> _localCameraProjMatrix;
         ViewState _viewState;
-        std::vector<Record> _recordGrid[GRID_RESOLUTION][GRID_RESOLUTION];
+        std::vector<CullRecord> _recordGrid[GRID_RESOLUTION][GRID_RESOLUTION];
 
-        const std::shared_ptr<const TileTransformer> _transformer;
         const float _scale;
 
         mutable std::mutex _mutex;

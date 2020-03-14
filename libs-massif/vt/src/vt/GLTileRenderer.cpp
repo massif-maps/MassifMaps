@@ -585,15 +585,13 @@ namespace carto { namespace vt {
         // Note: we do not release unused label batches. These are unlinkely very big and can be reused later
     }
 
-    void GLTileRenderer::cullLabels(const ViewState& viewState) {
+    void GLTileRenderer::cullLabels(LabelCuller& culler) {
         std::vector<std::shared_ptr<Label>> labels;
         {
             std::lock_guard<std::mutex> lock(_mutex);
             labels = _labels;
         }
 
-        LabelCuller culler(_transformer, _scale);
-        culler.setViewState(viewState);
         culler.process(labels, _mutex);
     }
     

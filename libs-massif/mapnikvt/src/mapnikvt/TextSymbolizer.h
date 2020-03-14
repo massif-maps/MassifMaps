@@ -17,7 +17,7 @@
 namespace carto { namespace mvt {
     class TextSymbolizer : public Symbolizer {
     public:
-        explicit TextSymbolizer(std::vector<std::shared_ptr<FontSet>> fontSets, std::shared_ptr<Logger> logger) : Symbolizer(std::move(logger)), _fontSets(std::move(fontSets)) {
+        explicit TextSymbolizer(const std::string& text, std::vector<std::shared_ptr<FontSet>> fontSets, std::shared_ptr<Logger> logger) : Symbolizer(std::move(logger)), _text(text), _textExpression(parseStringExpression(text)), _fontSets(std::move(fontSets)) {
             bind(&_sizeFunc, std::make_shared<ConstExpression>(Value(_sizeStatic)));
             bind(&_fillFunc, std::make_shared<ConstExpression>(Value(std::string("#000000"))), &TextSymbolizer::convertColor);
             bind(&_opacityFunc, std::make_shared<ConstExpression>(Value(1.0f)));
@@ -26,9 +26,8 @@ namespace carto { namespace mvt {
             bind(&_haloRadiusFunc, std::make_shared<ConstExpression>(Value(0.0f)));
         }
 
-        void setTextExpression(std::shared_ptr<const Expression> textExpression);
-        const std::shared_ptr<const Expression>& getTextExpression() const;
-        
+        const std::string& getText() const { return _text; }
+
         virtual void build(const FeatureCollection& featureCollection, const FeatureExpressionContext& exprContext, const SymbolizerContext& symbolizerContext, vt::TileLayerBuilder& layerBuilder) override;
 
     protected:
@@ -42,8 +41,9 @@ namespace carto { namespace mvt {
 
         void buildFeatureCollection(const FeatureCollection& featureCollection, const FeatureExpressionContext& exprContext, const SymbolizerContext& symbolizerContext, const vt::TextFormatter& formatter, vt::LabelOrientation placement, float bitmapSize, const std::function<void(long long localId, long long globalId, const std::string& text, const boost::optional<vt::TileLayerBuilder::Vertex>& vertex, const vt::TileLayerBuilder::Vertices& vertices)>& addText);
 
-        const std::vector<std::shared_ptr<FontSet>> _fontSets;
+        std::string _text;
         std::shared_ptr<const Expression> _textExpression;
+        const std::vector<std::shared_ptr<FontSet>> _fontSets;
         std::string _textTransform;
         long long _featureId = 0;
         bool _featureIdDefined = false;

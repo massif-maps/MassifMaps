@@ -20,8 +20,11 @@ namespace carto { namespace mvt {
         std::shared_ptr<const vt::BitmapImage> bitmapImage;
         if (!file.empty()) {
             bitmapImage = symbolizerContext.getBitmapManager()->loadBitmapImage(file, false, 1.0f);
-            if (!bitmapImage) {
+            if (!bitmapImage || !bitmapImage->bitmap) {
                 _logger->write(Logger::Severity::ERROR, "Failed to load point bitmap " + _file);
+                return;
+            }
+            if (bitmapImage->bitmap->width < 1 || bitmapImage->bitmap->height < 1) {
                 return;
             }
         }

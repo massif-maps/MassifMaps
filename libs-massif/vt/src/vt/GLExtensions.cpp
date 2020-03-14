@@ -1,8 +1,6 @@
 #include "GLExtensions.h"
 
-#ifndef __APPLE__
 #include <EGL/egl.h>
-#endif
 
 namespace carto { namespace vt {
     GLExtensions::GLExtensions() {
@@ -18,9 +16,6 @@ namespace carto { namespace vt {
 #else
         _GL_OES_vertex_array_object_supported = paddedExtensions.find(" GL_OES_vertex_array_object ") != std::string::npos;
 #endif
-#endif
-
-#ifndef __APPLE__
         if (_GL_OES_vertex_array_object_supported) {
             _glBindVertexArrayOES = reinterpret_cast<PFNGLBINDVERTEXARRAYOESPROC>(eglGetProcAddress("glBindVertexArrayOES"));
             _glDeleteVertexArraysOES = reinterpret_cast<PFNGLDELETEVERTEXARRAYSOESPROC>(eglGetProcAddress("glDeleteVertexArraysOES"));
@@ -32,11 +27,9 @@ namespace carto { namespace vt {
 
 #ifdef GL_EXT_discard_framebuffer
         _GL_EXT_discard_framebuffer_supported = paddedExtensions.find(" GL_EXT_discard_framebuffer ") != std::string::npos;
-#ifndef __APPLE__
         if (_GL_EXT_discard_framebuffer_supported) {
             _glDiscardFramebufferEXT = reinterpret_cast<PFNGLDISCARDFRAMEBUFFEREXTPROC>(eglGetProcAddress("glDiscardFramebufferEXT"));
         }
-#endif
 #endif
 
 #ifdef GL_EXT_texture_filter_anisotropic
@@ -53,40 +46,30 @@ namespace carto { namespace vt {
     }
 
     void GLExtensions::glBindVertexArrayOES(GLuint array) {
-#ifdef __APPLE__
-        ::glBindVertexArrayOES(array);
-#else
+#ifdef GL_OES_vertex_array_object
         _glBindVertexArrayOES(array);
 #endif
     }
     void GLExtensions::glDeleteVertexArraysOES(GLsizei n, const GLuint* arrays) {
-#ifdef __APPLE__
-        ::glDeleteVertexArraysOES(n, arrays);
-#else
+#ifdef GL_OES_vertex_array_object
         _glDeleteVertexArraysOES(n, arrays);
 #endif
     }
 
     void GLExtensions::glGenVertexArraysOES(GLsizei n, GLuint* arrays) {
-#ifdef __APPLE__
-        ::glGenVertexArraysOES(n, arrays);
-#else
+#ifdef GL_OES_vertex_array_object
         _glGenVertexArraysOES(n, arrays);
 #endif
     }
 
     GLboolean GLExtensions::glIsVertexArrayOES(GLuint array) {
-#ifdef __APPLE__
-        return ::glIsVertexArrayOES(array);
-#else
+#ifdef GL_OES_vertex_array_object
         return _glIsVertexArrayOES(array);
 #endif
     }
 
     void GLExtensions::glDiscardFramebufferEXT(GLenum target, GLsizei numAttachments, const GLenum* attachments) {
-#ifdef __APPLE__
-        return ::glDiscardFramebufferEXT(target, numAttachments, attachments);
-#else
+#ifdef GL_EXT_discard_framebuffer
         return _glDiscardFramebufferEXT(target, numAttachments, attachments);
 #endif
     }

@@ -12,7 +12,11 @@ namespace carto { namespace geocoding {
         return (it == _houseNumbers.end() ? -1 : static_cast<int>(it - _houseNumbers.begin()));
     }
     
-    std::vector<std::pair<std::uint64_t, std::vector<Feature>>> AddressInterpolator::enumerateAddresses(FeatureReader& featureReader) const {
+    std::vector<std::uint64_t> AddressInterpolator::getAddresses() const {
+        return _houseNumbers;
+    }
+
+    std::vector<std::pair<std::uint64_t, std::vector<Feature>>> AddressInterpolator::readAddressesAndFeatures(FeatureReader& featureReader) const {
         std::vector<std::pair<std::uint64_t, std::vector<Feature>>> addresses;
         addresses.reserve(_houseNumbers.size());
         for (std::uint64_t id : _houseNumbers) {

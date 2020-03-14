@@ -12,11 +12,11 @@ namespace carto { namespace mvt {
     }
 
     std::shared_ptr<vt::TileBackground> MBVTTileReader::createTileBackground(const vt::TileId& tileId) const {
-        std::shared_ptr<const vt::BitmapPattern> backgroundPattern;
+        std::shared_ptr<const vt::BitmapPattern> backgroundBitmapPattern;
         if (!_map->getSettings().backgroundImage.empty()) {
-            backgroundPattern = _symbolizerContext.getBitmapManager()->loadBitmapPattern(_map->getSettings().backgroundImage, 1.0f, 1.0f);
+            backgroundBitmapPattern = _symbolizerContext.getBitmapManager()->loadBitmapPattern(_map->getSettings().backgroundImage, 1.0f, 1.0f);
         }
-        return std::make_shared<vt::TileBackground>(_map->getSettings().backgroundColor, backgroundPattern);
+        return std::make_shared<vt::TileBackground>(_map->getSettings().backgroundColor, backgroundBitmapPattern);
     }
     
     std::shared_ptr<FeatureDecoder::FeatureIterator> MBVTTileReader::createFeatureIterator(const std::shared_ptr<const Layer>& layer) const {

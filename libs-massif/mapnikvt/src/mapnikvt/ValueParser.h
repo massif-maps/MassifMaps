@@ -33,8 +33,8 @@ namespace carto { namespace mvt {
                 using qi::_1;
 
                 unesc_char.add("\\a", '\a')("\\b", '\b')("\\f", '\f')("\\n", '\n')
-                                ("\\r", '\r')("\\t", '\t')("\\v", '\v')("\\\\", '\\')
-                                ("\\\'", '\'')("\\\"", '\"');
+                              ("\\r", '\r')("\\t", '\t')("\\v", '\v')("\\\\", '\\')
+                              ("\\\'", '\'')("\\\"", '\"');
 
                 null_kw = repo::distinct(qi::char_("a-zA-Z0-9_"))[qi::no_case["null"]];
                 point_kw = repo::distinct(qi::char_("a-zA-Z0-9_"))[qi::no_case["point"]];

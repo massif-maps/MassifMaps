@@ -585,15 +585,13 @@ namespace carto { namespace vt {
         // Note: we do not release unused label batches. These are unlinkely very big and can be reused later
     }
 
-    void GLTileRenderer::cullLabels(const ViewState& viewState) {
+    void GLTileRenderer::cullLabels(LabelCuller& culler) {
         std::vector<std::shared_ptr<Label>> labels;
         {
             std::lock_guard<std::mutex> lock(_mutex);
             labels = _labels;
         }
 
-        LabelCuller culler(_transformer, _scale);
-        culler.setViewState(viewState);
         culler.process(labels, _mutex);
     }
     
@@ -1396,13 +1394,15 @@ namespace carto { namespace vt {
                 if (it == _compiledBitmapMap.end()) {
                     createCompiledBitmap(compiledBitmap);
 
-                    std::shared_ptr<const Bitmap> patternBitmap = BitmapManager::scaleToPOT(pattern->bitmap);
+                    std::shared_ptr<const Bitmap> scaledPatternBitmap = BitmapManager::scaleToPOT(pattern->bitmap);
                     glBindTexture(GL_TEXTURE_2D, compiledBitmap.texture);
                     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
                     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
                     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
                     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-                    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, patternBitmap->width, patternBitmap->height, 0, GL_RGBA, GL_UNSIGNED_BYTE, patternBitmap->data.data());
+                    if (scaledPatternBitmap) {
+                        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, scaledPatternBitmap->width, scaledPatternBitmap->height, 0, GL_RGBA, GL_UNSIGNED_BYTE, scaledPatternBitmap->data.data());
+                    }
                     glGenerateMipmap(GL_TEXTURE_2D);
 
                     _compiledBitmapMap[pattern->bitmap] = compiledBitmap;
@@ -1414,8 +1414,10 @@ namespace carto { namespace vt {
                 glBindTexture(GL_TEXTURE_2D, compiledBitmap.texture);
                 glUniform1i(glGetUniformLocation(shaderProgram, "uPattern"), 0);
 
-                cglib::vec2<float> uvScale(tileSize / background->getPattern()->bitmap->width, tileSize / background->getPattern()->bitmap->height);
-                glUniform2f(glGetUniformLocation(shaderProgram, "uUVScale"), uvScale(0), uvScale(1));
+                if (pattern->bitmap) {
+                    cglib::vec2<float> uvScale(tileSize / pattern->bitmap->width, tileSize / pattern->bitmap->height);
+                    glUniform2f(glGetUniformLocation(shaderProgram, "uUVScale"), uvScale(0), uvScale(1));
+                }
             }
 
             glUniform4fv(glGetUniformLocation(shaderProgram, "uColor"), 1, background->getColor().rgba().data());

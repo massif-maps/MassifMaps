@@ -47,8 +47,8 @@ namespace {
 }
 
 namespace carto { namespace vt {
-    LabelCuller::LabelCuller(std::shared_ptr<const TileTransformer> transformer, float scale) :
-        _localCameraProjMatrix(cglib::mat4x4<float>::identity()), _transformer(std::move(transformer)), _scale(scale), _mutex()
+    LabelCuller::LabelCuller(float scale) :
+        _localCameraProjMatrix(cglib::mat4x4<float>::identity()), _scale(scale), _mutex()
     {
     }
 
@@ -64,11 +64,24 @@ namespace carto { namespace vt {
         _viewState.zoomScale *= _scale;
     }
 
-    void LabelCuller::process(const std::vector<std::shared_ptr<Label>>& labelList, std::mutex& labelMutex) {
+    void LabelCuller::reset() {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        clearGrid();
+    }
+
+    bool LabelCuller::process(const std::vector<std::shared_ptr<Label>>& labelList, std::mutex& labelMutex) {
+        struct LabelInfo {
+            int priority;
+            float size;
+            float opacity;
+            std::shared_ptr<Label> label;
+        };
+
         std::lock_guard<std::mutex> lock(_mutex);
 
         // Start by collecting valid labels and updating label placements
-        std::vector<std::shared_ptr<Label>> validLabelList;
+        std::vector<LabelInfo> validLabelList;
         validLabelList.reserve(labelList.size());
         for (const std::shared_ptr<Label>& label : labelList) {
             std::lock_guard<std::mutex> labelLock(labelMutex);
@@ -83,39 +96,29 @@ namespace carto { namespace vt {
             }
                 
             if (label->isValid()) {
-                validLabelList.push_back(label);
+                validLabelList.push_back({ label->getPriority(), label->getStyle()->sizeFunc(_viewState), label->getOpacity(), label });
             }
         }
 
         // Sort active labels by priority/size/opacity
-        {
-            std::lock_guard<std::mutex> labelLock(labelMutex);
-            std::stable_sort(validLabelList.begin(), validLabelList.end(), [&](const std::shared_ptr<Label>& label1, const std::shared_ptr<Label>& label2) {
-                int priority1 = label1->getPriority();
-                int priority2 = label2->getPriority();
-                if (priority1 != priority2) {
-                    return priority1 < priority2;
-                }
-
-                if (label1->getStyle() != label2->getStyle()) {
-                    float size1 = label1->getStyle()->sizeFunc(_viewState);
-                    float size2 = label2->getStyle()->sizeFunc(_viewState);
-                    if (size1 != size2) {
-                        return size1 > size2;
-                    }
-                }
-
-                float opacity1 = label1->getOpacity();
-                float opacity2 = label2->getOpacity();
-                return opacity1 > opacity2;
-            });
-        }
+        std::stable_sort(validLabelList.begin(), validLabelList.end(), [&](const LabelInfo& labelInfo1, const LabelInfo& labelInfo2) {
+            if (labelInfo1.priority != labelInfo2.priority) {
+                return labelInfo1.priority < labelInfo2.priority;
+            }
+            if (labelInfo1.size != labelInfo2.size) {
+                return labelInfo1.size > labelInfo2.size;
+            }
+            return labelInfo1.opacity > labelInfo2.opacity;
+        });
 
         // Update label visibility flag based on overlap analysis
-        clearGrid();
         std::unordered_map<long long, std::vector<std::shared_ptr<Label>>> groupMap;
-        for (const std::shared_ptr<Label>& label : validLabelList) {
+        groupMap.reserve(validLabelList.size());
+        bool changed = false;
+        for (const LabelInfo& labelInfo : validLabelList) {
             std::lock_guard<std::mutex> labelLock(labelMutex);
+
+            const std::shared_ptr<Label>& label = labelInfo.label;
 
             // Label is always visible if its group is set to negative value. Otherwise test visibility against other labels
             bool visible = label->getGroupId() < 0 || testOverlap(label);
@@ -141,8 +144,12 @@ namespace carto { namespace vt {
                     groupMap[label->getGroupId()].push_back(label);
                 }
             }
-            label->setVisible(visible);
+            if (visible != label->isVisible()) {
+                label->setVisible(visible);
+                changed = true;
+            }
         }
+        return changed;
     }
 
     void LabelCuller::clearGrid() {
@@ -171,7 +178,7 @@ namespace carto { namespace vt {
         int x1 = getGridIndex(bounds.max(0)), y1 = getGridIndex(bounds.max(1));
         for (int y = y0; y <= y1; y++) {
             for (int x = x0; x <= x1; x++) {
-                for (const Record& record : _recordGrid[y][x]) {
+                for (const CullRecord& record : _recordGrid[y][x]) {
                     if (record.bounds.inside(bounds)) {
                         if (!findSeparatingAxis(record.envelope, envelope) && !findSeparatingAxis(envelope, record.envelope)) {
                             return false;
@@ -183,7 +190,7 @@ namespace carto { namespace vt {
 
         for (int y = y0; y <= y1; y++) {
             for (int x = x0; x <= x1; x++) {
-                _recordGrid[y][x].emplace_back(bounds, envelope, label);
+                _recordGrid[y][x].emplace_back(bounds, envelope);
             }
         }
         return true;

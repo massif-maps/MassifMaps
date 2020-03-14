@@ -12,8 +12,8 @@ namespace carto { namespace mvt {
             return;
         }
 
-        std::shared_ptr<const vt::BitmapImage> backgroundBitmap = symbolizerContext.getBitmapManager()->loadBitmapImage(_file, false, IMAGE_UPSAMPLING_SCALE);
-        if (!backgroundBitmap) {
+        std::shared_ptr<const vt::BitmapImage> backgroundBitmapImage = symbolizerContext.getBitmapManager()->loadBitmapImage(_file, false, IMAGE_UPSAMPLING_SCALE);
+        if (!backgroundBitmapImage || !backgroundBitmapImage->bitmap) {
             _logger->write(Logger::Severity::ERROR, "Failed to load shield bitmap " + _file);
             return;
         }
@@ -23,7 +23,7 @@ namespace carto { namespace mvt {
         bool clip = _clipDefined ? _clip : _allowOverlap;
 
         float fontScale = symbolizerContext.getSettings().getFontScale();
-        float bitmapSize = static_cast<float>(std::max(backgroundBitmap->bitmap->width, backgroundBitmap->bitmap->height)) * fontScale;
+        float bitmapSize = static_cast<float>(std::max(backgroundBitmapImage->bitmap->width, backgroundBitmapImage->bitmap->height)) * fontScale;
         vt::LabelOrientation placement = convertTextPlacement(_placement);
         vt::LabelOrientation orientation = placement;
         if (orientation == vt::LabelOrientation::LINE) {
@@ -64,16 +64,16 @@ namespace carto { namespace mvt {
             cglib::vec2<float> backgroundOffset;
             const vt::TextFormatter* formatter;
             if (_unlockImage) {
-                backgroundOffset = cglib::vec2<float>(-backgroundBitmap->bitmap->width * fontScale * 0.5f + shieldFormatterOptions.offset(0), -backgroundBitmap->bitmap->height * fontScale * 0.5f + shieldFormatterOptions.offset(1));
+                backgroundOffset = cglib::vec2<float>(-backgroundBitmapImage->bitmap->width * fontScale * 0.5f + shieldFormatterOptions.offset(0), -backgroundBitmapImage->bitmap->height * fontScale * 0.5f + shieldFormatterOptions.offset(1));
                 formatter = &textFormatter;
             }
             else {
-                backgroundOffset = cglib::vec2<float>(-backgroundBitmap->bitmap->width * fontScale * 0.5f, -backgroundBitmap->bitmap->height * fontScale * 0.5f);
+                backgroundOffset = cglib::vec2<float>(-backgroundBitmapImage->bitmap->width * fontScale * 0.5f, -backgroundBitmapImage->bitmap->height * fontScale * 0.5f);
                 formatter = &shieldFormatter;
             }
 
             if (clip) {
-                vt::TextStyle style(compOp, fillFunc, sizeFunc, haloFillFunc, haloRadiusFunc, _orientationAngle, fontScale, backgroundOffset, backgroundBitmap, transform);
+                vt::TextStyle style(compOp, fillFunc, sizeFunc, haloFillFunc, haloRadiusFunc, _orientationAngle, fontScale, backgroundOffset, backgroundBitmapImage, transform);
 
                 std::size_t textInfoIndex = 0;
                 layerBuilder.addTexts([&](long long& id, vt::TileLayerBuilder::Vertex& vertex, std::string& text) {
@@ -90,7 +90,7 @@ namespace carto { namespace mvt {
                 shieldInfos.clear();
             }
             else {
-                vt::TextLabelStyle style(placement, fillFunc, sizeFunc, haloFillFunc, haloRadiusFunc, true, _orientationAngle, fontScale, backgroundOffset, backgroundBitmap);
+                vt::TextLabelStyle style(placement, fillFunc, sizeFunc, haloFillFunc, haloRadiusFunc, true, _orientationAngle, fontScale, backgroundOffset, backgroundBitmapImage);
 
                 std::size_t labelInfoIndex = 0;
                 layerBuilder.addTextLabels([&](long long& id, vt::TileLayerBuilder::TextLabelInfo& labelInfo) {

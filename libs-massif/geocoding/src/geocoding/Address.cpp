@@ -15,30 +15,36 @@ namespace carto { namespace geocoding {
             type = static_cast<EntityType>(qit->get<int>(0));
 
             // Feature reader
-            EncodingStream featureStream(qit->get<const void*>(1), qit->column_bytes(1));
+            EncodingStream featureStream(qit->get<const void*>(1), qit->get<const void*>(1) ? qit->column_bytes(1) : 0);
+            EncodingStream houseNumberStream(qit->get<const void*>(2), qit->get<const void*>(2) ? qit->column_bytes(2) : 0);
             FeatureReader featureReader(featureStream, converter);
+            AddressInterpolator interpolator(houseNumberStream);
 
             // Decode house number
             if (elementIndex) {
-                if (qit->get<const void*>(2)) {
-                    EncodingStream houseNumberStream(qit->get<const void*>(2), qit->column_bytes(2));
-                    AddressInterpolator interpolator(houseNumberStream);
-                    
-                    std::pair<std::uint64_t, std::vector<Feature>> result = interpolator.enumerateAddresses(featureReader).at(elementIndex - 1);
-                    sqlite3pp::query query1(db, "SELECT n.name FROM names n WHERE n.id=:id AND (n.lang IS NULL or n.lang=:lang) ORDER BY n.lang ASC");
-                    query1.bind(":id", result.first);
-                    query1.bind(":lang", language.c_str());
-                    for (auto qit1 = query1.begin(); qit1 != query1.end(); qit1++) {
-                        houseNumber = qit1->get<const char*>(0);
-                    }
-                    features = result.second;
+                std::pair<std::uint64_t, std::vector<Feature>> idFeatures = interpolator.readAddressesAndFeatures(featureReader).at(elementIndex - 1);
+                sqlite3pp::query query1(db, "SELECT n.name FROM names n WHERE n.id=:id AND (n.lang IS NULL or n.lang=:lang) ORDER BY n.lang ASC");
+                query1.bind(":id", idFeatures.first);
+                query1.bind(":lang", language.c_str());
+                for (auto qit1 = query1.begin(); qit1 != query1.end(); qit1++) {
+                    houseNumber = qit1->get<const char*>(0);
                 }
-                else {
-                    return false;
-                }
+                features = idFeatures.second;
             }
             else {
                 houseNumber.clear();
+                std::vector<std::uint64_t> ids = interpolator.getAddresses();
+                for (std::uint64_t id : ids) {
+                    sqlite3pp::query query1(db, "SELECT n.name FROM names n WHERE n.id=:id AND (n.lang IS NULL or n.lang=:lang) ORDER BY n.lang ASC");
+                    query1.bind(":id", id);
+                    query1.bind(":lang", language.c_str());
+                    for (auto qit1 = query1.begin(); qit1 != query1.end(); qit1++) {
+                        if (!houseNumber.empty()) {
+                            houseNumber.append(",");
+                        }
+                        houseNumber.append(qit1->get<const char*>(0));
+                    }
+                }
                 features.clear();
                 while (!featureStream.eof()) {
                     std::vector<Feature> featureCollection = featureReader.readFeatureCollection();
@@ -98,16 +104,18 @@ namespace carto { namespace geocoding {
     }
 
     bool Address::merge(const Address& address) {
-        if (address.type == type && address.country == country && address.region == region && address.county == county && address.locality == locality && address.neighbourhood == neighbourhood && address.street == street && address.name == name && address.houseNumber.empty() == houseNumber.empty()) {
-            // Merge house numbers
-            if (!houseNumber.empty() && ("," + houseNumber + ",").find(address.houseNumber) == std::string::npos) {
-                houseNumber += "," + address.houseNumber;
-            }
-
+        if (address.type == type && address.country == country && address.region == region && address.county == county && address.locality == locality && address.neighbourhood == neighbourhood && address.street == street && address.name == name && address.houseNumber == houseNumber) {
             // Merge features and categories
             features.insert(features.end(), address.features.begin(), address.features.end());
             categories.insert(address.categories.begin(), address.categories.end());
             return true;
+        }
+        return false;
+    }
+
+    bool Address::equal(const Address& address, bool compareHouseNumbers) const {
+        if (address.country == country && address.region == region && address.county == county && address.locality == locality && address.neighbourhood == neighbourhood && address.street == street && address.name == name) {
+            return compareHouseNumbers ? address.houseNumber == houseNumber : true;
         }
         return false;
     }

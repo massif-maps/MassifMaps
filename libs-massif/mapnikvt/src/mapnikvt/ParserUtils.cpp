@@ -75,7 +75,13 @@ namespace carto { namespace mvt {
         std::string::const_iterator end = str.end();
         valparserimpl::encoding::space_type space;
         Value val;
-        bool result = boost::spirit::qi::phrase_parse(it, end, ValueParser<std::string::const_iterator>(), space, val);
+        bool result = false;
+        try {
+            result = boost::spirit::qi::phrase_parse(it, end, ValueParser<std::string::const_iterator>(), space, val);
+        }
+        catch (const boost::spirit::qi::expectation_failure<std::string::const_iterator>& ex) {
+            throw ParserException("Expectation error, error at position " + boost::lexical_cast<std::string>(ex.first - str.begin()), str);
+        }
         if (!result) {
             throw ParserException("Value parsing failed", str);
         }
@@ -85,74 +91,18 @@ namespace carto { namespace mvt {
         return val;
     }
 
-    std::shared_ptr<Expression> parseExpression(const std::string& str) {
-        constexpr static int MAX_CACHE_SIZE = 1024;
-
-        static std::mutex exprCacheMutex;
-        static std::unordered_map<std::string, std::shared_ptr<Expression>> exprCache;
-
-        std::lock_guard<std::mutex> lock(exprCacheMutex);
-        auto exprIt = exprCache.find(str);
-        if (exprIt != exprCache.end()) {
-            return exprIt->second;
-        }
-        
-        std::string::const_iterator it = str.begin();
-        std::string::const_iterator end = str.end();
-        exprparserimpl::encoding::space_type space;
-        std::shared_ptr<Expression> expr;
-        bool result = boost::spirit::qi::phrase_parse(it, end, ExpressionParser<std::string::const_iterator>(), space, expr);
-        if (!result) {
-            throw ParserException("Expression parsing failed", str);
-        }
-        if (it != str.end()) {
-            throw ParserException("Could not parse to the end of expression, error at position " + boost::lexical_cast<std::string>(it - str.begin()), str);
-        }
-
-        if (exprCache.size() >= MAX_CACHE_SIZE) {
-            exprCache.erase(exprCache.begin());
-        }
-        exprCache[str] = expr;
-        return expr;
-    }
-
-    std::shared_ptr<Expression> parseStringExpression(const std::string& str) {
-        constexpr static int MAX_CACHE_SIZE = 1024;
-
-        static std::mutex exprCacheMutex;
-        static std::unordered_map<std::string, std::shared_ptr<Expression>> exprCache;
-
-        std::lock_guard<std::mutex> lock(exprCacheMutex);
-        auto exprIt = exprCache.find(str);
-        if (exprIt != exprCache.end()) {
-            return exprIt->second;
-        }
-
-        std::string::const_iterator it = str.begin();
-        std::string::const_iterator end = str.end();
-        exprparserimpl::encoding::space_type space;
-        std::shared_ptr<Expression> expr;
-        bool result = boost::spirit::qi::phrase_parse(it, end, StringExpressionParser<std::string::const_iterator>(), space, expr);
-        if (!result) {
-            throw ParserException("String expression parsing failed", str);
-        }
-        if (it != str.end()) {
-            throw ParserException("Could not parse to the end of string expression, error at position " + boost::lexical_cast<std::string>(it - str.begin()), str);
-        }
-
-        if (exprCache.size() >= MAX_CACHE_SIZE) {
-            exprCache.erase(exprCache.begin());
-        }
-        exprCache[str] = expr;
-        return expr;
-    }
-
     std::vector<std::shared_ptr<Transform> > parseTransformList(const std::string& str) {
         std::string::const_iterator it = str.begin();
         std::string::const_iterator end = str.end();
         transparserimpl::encoding::space_type space;
         std::vector<std::shared_ptr<Transform>> transforms;
-        bool result = boost::spirit::qi::phrase_parse(it, end, TransformParser<std::string::const_iterator>() % ',', space, transforms);
+        bool result = false;
+        try {
+            result = boost::spirit::qi::phrase_parse(it, end, TransformParser<std::string::const_iterator>() % ',', space, transforms);
+        }
+        catch (const boost::spirit::qi::expectation_failure<std::string::const_iterator>& ex) {
+            throw ParserException("Expectation error, error at position " + boost::lexical_cast<std::string>(ex.first - str.begin()), str);
+        }
         if (!result) {
             throw ParserException("Transform parsing failed", str);
         }
@@ -160,5 +110,31 @@ namespace carto { namespace mvt {
             throw ParserException("Could not parse to the end of transform, error at position " + boost::lexical_cast<std::string>(it - str.begin()), str);
         }
         return transforms;
+    }
+
+    std::shared_ptr<Expression> parseExpression(const std::string& str, bool stringExpr) {
+        std::string::const_iterator it = str.begin();
+        std::string::const_iterator end = str.end();
+        exprparserimpl::encoding::space_type space;
+        std::shared_ptr<Expression> expr;
+        bool result = false;
+        try {
+            if (stringExpr) {
+                result = boost::spirit::qi::phrase_parse(it, end, StringExpressionParser<std::string::const_iterator>(), space, expr);
+            }
+            else {
+                result = boost::spirit::qi::phrase_parse(it, end, ExpressionParser<std::string::const_iterator>(), space, expr);
+            }
+        }
+        catch (const boost::spirit::qi::expectation_failure<std::string::const_iterator>& ex) {
+            throw ParserException("Expectation error, error at position " + boost::lexical_cast<std::string>(ex.first - str.begin()), str);
+        }
+        if (!result) {
+            throw ParserException("Expression parsing failed", str);
+        }
+        if (it != str.end()) {
+            throw ParserException("Could not parse to the end of expression, error at position " + boost::lexical_cast<std::string>(it - str.begin()), str);
+        }
+        return expr;
     }
 } }

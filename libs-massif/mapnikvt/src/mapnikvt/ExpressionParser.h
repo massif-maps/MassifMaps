@@ -13,6 +13,7 @@
 #include "Predicate.h"
 #include "PredicateOperator.h"
 #include "ValueParser.h"
+#include "ParserUtils.h"
 
 #include <memory>
 #include <functional>
@@ -68,7 +69,7 @@ namespace carto { namespace mvt {
 
                 stringExpression =
                     ( (string                                        [_val = phx::bind(&makeStringExpression, _1)])
-                    | ('[' > stringExpression  > ']')                [_val = phx::bind(&makeVariableExpression, _1)]
+                    | ('[' > stringExpression > ']')                 [_val = phx::bind(&makeVariableExpression, _1)]
                     | ('{' > qi::skip(encoding::space_type())[expression > '}']) [_val = _1]
                     )
                     > -(stringExpression                             [_val = phx::bind(&makeBinaryExpression<ConcatenateOperator>, _val, _1)])
@@ -161,6 +162,11 @@ namespace carto { namespace mvt {
             }
 
             static std::shared_ptr<Expression> makeConstExpression(Value val) {
+                if (StringExpression) {
+                    if (auto stringVal = boost::get<std::string>(&val)) {
+                        return parseExpression(*stringVal, true);
+                    }
+                }
                 return std::make_shared<ConstExpression>(std::move(val));
             }
 

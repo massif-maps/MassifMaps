@@ -38,8 +38,11 @@ namespace carto { namespace mvt {
         float fillOpacity = _fillOpacity;
         if (!file.empty()) {
             bitmapImage = symbolizerContext.getBitmapManager()->loadBitmapImage(file, false, IMAGE_UPSAMPLING_SCALE);
-            if (!bitmapImage) {
+            if (!bitmapImage || !bitmapImage->bitmap) {
                 _logger->write(Logger::Severity::ERROR, "Failed to load marker bitmap " + file);
+                return;
+            }
+            if (bitmapImage->bitmap->width < 1 || bitmapImage->bitmap->height < 1) {
                 return;
             }
             

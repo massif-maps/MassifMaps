@@ -34,28 +34,6 @@ namespace carto { namespace mvt {
         return boost::trim_copy(str);
     }
 
-    std::string generateExpressionString(const std::shared_ptr<const Expression>& expr) {
-        std::string str;
-        std::back_insert_iterator<std::string> it(str);
-        exprgenimpl::encoding::space_type space;
-        bool result = boost::spirit::karma::generate_delimited(it, ExpressionGenerator<std::back_insert_iterator<std::string>>(), space, expr);
-        if (!result) {
-            throw GeneratorException("Could not generate expression string");
-        }
-        return boost::trim_copy(str);
-    }
-
-    std::string generateStringExpressionString(const std::shared_ptr<const Expression>& expr) {
-        std::string str;
-        std::back_insert_iterator<std::string> it(str);
-        exprgenimpl::encoding::space_type space;
-        bool result = boost::spirit::karma::generate_delimited(it, StringExpressionGenerator<std::back_insert_iterator<std::string>>(), space, expr);
-        if (!result) {
-            throw GeneratorException("Could not generate string expression string");
-        }
-        return boost::trim_copy(str);
-    }
-
     std::string generateTransformListString(const std::vector<std::shared_ptr<const Transform>>& transforms) {
         std::string str;
         std::back_insert_iterator<std::string> it(str);
@@ -63,6 +41,23 @@ namespace carto { namespace mvt {
         bool result = boost::spirit::karma::generate_delimited(it, TransformGenerator<std::back_insert_iterator<std::string>>() % ',', space, transforms);
         if (!result) {
             throw GeneratorException("Could not generate transform string");
+        }
+        return boost::trim_copy(str);
+    }
+
+    std::string generateExpressionString(const std::shared_ptr<const Expression>& expr, bool stringExpr) {
+        std::string str;
+        std::back_insert_iterator<std::string> it(str);
+        exprgenimpl::encoding::space_type space;
+        bool result = false;
+        if (stringExpr) {
+            result = boost::spirit::karma::generate_delimited(it, StringExpressionGenerator<std::back_insert_iterator<std::string>>(), space, expr);
+        }
+        else {
+            result = boost::spirit::karma::generate_delimited(it, ExpressionGenerator<std::back_insert_iterator<std::string>>(), space, expr);
+        }
+        if (!result) {
+            throw GeneratorException("Could not generate expression string");
         }
         return boost::trim_copy(str);
     }

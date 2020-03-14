@@ -113,6 +113,7 @@ namespace carto { namespace mvt {
             }
 
             std::vector<std::shared_ptr<const Rule>> rules;
+            std::map<std::string, std::shared_ptr<const Filter>> filterCache;
             pugi::xpath_node_set ruleNodes = pugi::xpath_query("Rule").evaluate_node_set(styleNode);
             for (pugi::xpath_node_set::const_iterator ruleIt = ruleNodes.begin(); ruleIt != ruleNodes.end(); ++ruleIt) {
                 pugi::xml_node ruleNode = (*ruleIt).node();
@@ -134,14 +135,19 @@ namespace carto { namespace mvt {
                     else if (nodeName == "Filter") {
                         std::string exprStr = node.text().as_string();
                         if (!exprStr.empty()) {
-                            std::shared_ptr<Expression> expr = parseExpression(exprStr);
-                            std::shared_ptr<const Predicate> pred;
-                            if (auto predExpr = std::dynamic_pointer_cast<PredicateExpression>(expr)) {
-                                pred = predExpr->getPredicate();
-                            } else {
-                                pred = std::make_shared<ExpressionPredicate>(expr);
+                            auto filterIt = filterCache.find(exprStr);
+                            if (filterIt == filterCache.end()) {
+                                std::shared_ptr<Expression> expr = parseExpression(exprStr, false);
+                                std::shared_ptr<const Predicate> pred;
+                                if (auto predExpr = std::dynamic_pointer_cast<PredicateExpression>(expr)) {
+                                    pred = predExpr->getPredicate();
+                                }
+                                else {
+                                    pred = std::make_shared<ExpressionPredicate>(expr);
+                                }
+                                filterIt = filterCache.emplace(exprStr, std::make_shared<Filter>(Filter::Type::FILTER, pred)).first;
                             }
-                            filter = std::make_shared<Filter>(Filter::Type::FILTER, pred);
+                            filter = filterIt->second;
                         }
                     }
                     else if (nodeName == "ElseFilter") {

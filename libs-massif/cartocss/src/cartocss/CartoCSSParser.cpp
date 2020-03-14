@@ -38,10 +38,9 @@ namespace carto { namespace css {
                 using qi::_3;
                 using qi::_pass;
                 
-                unesc_char.add
-                    ("\\a", '\a')("\\b", '\b')("\\f", '\f')("\\n", '\n')
-                    ("\\r", '\r')("\\t", '\t')("\\v", '\v')("\\\\", '\\')
-                    ("\\\'", '\'')("\\\"", '\"');
+                unesc_char.add("\\a", '\a')("\\b", '\b')("\\f", '\f')("\\n", '\n')
+                              ("\\r", '\r')("\\t", '\t')("\\v", '\v')("\\\\", '\\')
+                              ("\\\'", '\'')("\\\"", '\"');
                 
                 nonascii_  = qi::char_("\xA0-\xFF");
                 nmstart_   = qi::char_("_a-zA-Z-") | nonascii_;
@@ -301,7 +300,13 @@ namespace carto { namespace css {
         cssparserimpl::Grammar<std::string::const_iterator> grammar;
         cssparserimpl::Skipper<std::string::const_iterator> skipper;
         StyleSheet styleSheet;
-        bool result = boost::spirit::qi::phrase_parse(it, end, grammar, skipper, styleSheet);
+        bool result = false;
+        try {
+            result = boost::spirit::qi::phrase_parse(it, end, grammar, skipper, styleSheet);
+        }
+        catch (const boost::spirit::qi::expectation_failure<std::string::const_iterator>& ex) {
+            throw ParserError("Expectation error", resolvePosition(cartoCSS, ex.first - cartoCSS.begin()));
+        }
         if (!result) {
             if (grammar.errorPos() != std::string::npos) {
                 throw ParserError("Syntax error", resolvePosition(cartoCSS, grammar.errorPos()));

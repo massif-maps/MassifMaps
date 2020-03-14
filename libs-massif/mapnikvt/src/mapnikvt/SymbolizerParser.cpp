@@ -74,31 +74,17 @@ namespace carto { namespace mvt {
             symbolizer = std::make_shared<MarkersSymbolizer>(_logger);
         }
         else if (type == "ShieldSymbolizer" || type == "TextSymbolizer") {
-            std::shared_ptr<Expression> textExpr;
+            std::string text;
             if (!node.text().empty()) {
-                std::string text = node.text().as_string();
-                if (!text.empty()) {
-                    try {
-                        textExpr = parseExpression(text);
-                    }
-                    catch (const std::runtime_error& ex) {
-                        _logger->write(mvt::Logger::Severity::ERROR, ex.what());
-                        return std::shared_ptr<Symbolizer>();
-                    }
-                }
-            }
-            if (!textExpr) {
-                _logger->write(Logger::Severity::WARNING, "Missing text expression: " + type);
-                return std::shared_ptr<Symbolizer>();
+                text = node.text().as_string();
             }
 
             if (type == "ShieldSymbolizer") {
-                symbolizer = std::make_shared<ShieldSymbolizer>(map->getFontSets(), _logger);
+                symbolizer = std::make_shared<ShieldSymbolizer>(text, map->getFontSets(), _logger);
             }
-            else {
-                symbolizer = std::make_shared<TextSymbolizer>(map->getFontSets(), _logger);
+            else if (type == "TextSymbolizer") {
+                symbolizer = std::make_shared<TextSymbolizer>(text, map->getFontSets(), _logger);
             }
-            std::static_pointer_cast<TextSymbolizer>(symbolizer)->setTextExpression(textExpr);
         }
         else {
             _logger->write(Logger::Severity::WARNING, "Unsupported symbolizer type: " + type);

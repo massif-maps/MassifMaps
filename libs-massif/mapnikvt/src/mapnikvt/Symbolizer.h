@@ -38,6 +38,9 @@ namespace carto { namespace mvt {
     protected:
         explicit Symbolizer(std::shared_ptr<Logger> logger) : _logger(std::move(logger)) { }
 
+        std::shared_ptr<Expression> parseExpression(const std::string& str) const;
+        std::shared_ptr<Expression> parseStringExpression(const std::string& str) const;
+
         vt::CompOp convertCompOp(const std::string& compOp) const;
         vt::LabelOrientation convertLabelPlacement(const std::string& orientation) const;
 

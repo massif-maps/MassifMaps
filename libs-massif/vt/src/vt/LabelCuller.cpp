@@ -70,7 +70,7 @@ namespace carto { namespace vt {
         clearGrid();
     }
 
-    void LabelCuller::process(const std::vector<std::shared_ptr<Label>>& labelList, std::mutex& labelMutex) {
+    bool LabelCuller::process(const std::vector<std::shared_ptr<Label>>& labelList, std::mutex& labelMutex) {
         struct LabelInfo {
             int priority;
             float size;

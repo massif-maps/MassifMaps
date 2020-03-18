@@ -22,13 +22,11 @@
 
 namespace carto { namespace mvt {
     namespace valgenimpl {
-        namespace phx = boost::phoenix;
-        namespace karma = boost::spirit::karma;
-        namespace encoding = boost::spirit::iso8859_1;
-
         template <typename OutputIterator>
-        struct Grammar : karma::grammar<OutputIterator, Value()> {
+        struct Grammar : boost::spirit::karma::grammar<OutputIterator, Value()> {
             Grammar() : Grammar::base_type(value) {
+                using namespace boost;
+                using namespace boost::spirit;
                 using karma::_pass;
                 using karma::_val;
                 using karma::_1;
@@ -37,21 +35,20 @@ namespace carto { namespace mvt {
                             ('\r', "\\r")('\t', "\\t")('\v', "\\v")('\\', "\\\\")
                             ('\'', "\\\'")('"', "\\\"");
 
-                string %=
-                    '\'' << *(esc_char | karma::print | "\\x" << karma::hex) << '\'';
+                string %= '\'' << *(esc_char | karma::print | "\\x" << karma::hex) << '\'';
 
                 value =
-                      karma::lit("null")        [_pass = phx::bind(&isNullValue, _val)]
-                    | karma::bool_                [_pass = phx::bind(&getBoolValue, _val, _1)]
-                    | karma::long_long            [_pass = phx::bind(&getLongValue, _val, _1)]
-                    | karma::double_            [_pass = phx::bind(&getDoubleValue, _val, _1)]
-                    | string                    [_pass = phx::bind(&getStringValue, _val, _1)]
+                      karma::lit("null")        [_pass = phoenix::bind(&isNullValue, _val)]
+                    | karma::bool_              [_pass = phoenix::bind(&getBoolValue, _val, _1)]
+                    | karma::long_long          [_pass = phoenix::bind(&getLongValue, _val, _1)]
+                    | karma::double_            [_pass = phoenix::bind(&getDoubleValue, _val, _1)]
+                    | string                    [_pass = phoenix::bind(&getStringValue, _val, _1)]
                     ;
             }
 
-            karma::symbols<char, const char*> esc_char;
-            karma::rule<OutputIterator, std::string()> string;
-            karma::rule<OutputIterator, Value()> value;
+            boost::spirit::karma::symbols<char, const char*> esc_char;
+            boost::spirit::karma::rule<OutputIterator, std::string()> string;
+            boost::spirit::karma::rule<OutputIterator, Value()> value;
 
         private:
             static bool isNullValue(const Value& val) {
@@ -95,7 +92,7 @@ namespace carto { namespace mvt {
         };
     }
 
-    template <typename Iterator> using ValueGenerator = valgenimpl::Grammar<Iterator>;
+    template <typename Iterator> using ValueGeneratorGrammar = valgenimpl::Grammar<Iterator>;
 } }
 
 #endif

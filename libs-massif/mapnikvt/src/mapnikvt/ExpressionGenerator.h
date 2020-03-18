@@ -26,13 +26,13 @@
 
 namespace carto { namespace mvt {
     namespace exprgenimpl {
-        namespace phx = boost::phoenix;
-        namespace karma = boost::spirit::karma;
-        namespace encoding = boost::spirit::iso8859_1;
+        using Delimiter = boost::spirit::karma::iso8859_1::space_type;
 
         template <typename OutputIterator, bool StringExpression>
-        struct Grammar : karma::grammar<OutputIterator, std::shared_ptr<const Expression>()> {
+        struct Grammar : boost::spirit::karma::grammar<OutputIterator, std::shared_ptr<const Expression>()> {
             Grammar() : Grammar::base_type(StringExpression ? stringExpression : genericExpression) {
+                using namespace boost;
+                using namespace boost::spirit;
                 using karma::_pass;
                 using karma::_val;
                 using karma::_1;
@@ -44,89 +44,89 @@ namespace carto { namespace mvt {
                     ;
 
                 stringExpression =
-                      string                            [_pass = phx::bind(&getString, _val, _1)]
-                    | (stringExpression << stringExpression) [_pass = phx::bind(&getBinaryExpression<ConcatenateOperator>, _val, _1, _2)]
-                    | ('[' << stringExpression << ']' ) [_pass = phx::bind(&getVariableExpression, _val, _1)]
-                    | ('{' << karma::delimit(encoding::space_type())[expression << '}']) [_1 = _val]
+                      string                            [_pass = phoenix::bind(&getString, _val, _1)]
+                    | (stringExpression << stringExpression) [_pass = phoenix::bind(&getBinaryExpression<ConcatenateOperator>, _val, _1, _2)]
+                    | ('[' << stringExpression << ']' ) [_pass = phoenix::bind(&getVariableExpression, _val, _1)]
+                    | ('{' << karma::delimit(Delimiter())[expression << '}']) [_1 = _val]
                     ;
 
                 genericExpression =
-                    karma::delimit(encoding::space_type())[expression] [_1 = _val]
+                    karma::delimit(Delimiter())[expression] [_1 = _val]
                     ;
 
                 expression =
-                      (term0 << '?' << expression << ':' << expression) [_pass = phx::bind(&getTertiaryExpression<ConditionalOperator>, _val, _1, _2, _3)]
+                      (term0 << '?' << expression << ':' << expression) [_pass = phoenix::bind(&getTertiaryExpression<ConditionalOperator>, _val, _1, _2, _3)]
                     | term0                                [_1 = _val]
                     ;
 
                 term0 =
-                      (term0 << "and" << term1)            [_pass = phx::bind(&getAndPredicate, _val, _1, _2)]
-                    | (term0 << "or"  << term1)            [_pass = phx::bind(&getOrPredicate,  _val, _1, _2)]
+                      (term0 << "and" << term1)            [_pass = phoenix::bind(&getAndPredicate, _val, _1, _2)]
+                    | (term0 << "or"  << term1)            [_pass = phoenix::bind(&getOrPredicate,  _val, _1, _2)]
                     | term1                                [_1 = _val]
                     ;
 
                 term1 =
-                      (term1 << "<>" << term2)             [_pass = phx::bind(&getComparisonPredicate<NEQOperator>, _val, _1, _2)]
-                    | (term1 << "<=" << term2)             [_pass = phx::bind(&getComparisonPredicate<LTEOperator>, _val, _1, _2)]
-                    | (term1 << ">=" << term2)             [_pass = phx::bind(&getComparisonPredicate<GTEOperator>, _val, _1, _2)]
-                    | (term1 << "!=" << term2)             [_pass = phx::bind(&getComparisonPredicate<NEQOperator>, _val, _1, _2)]
-                    | (term1 << '<'  << term2)             [_pass = phx::bind(&getComparisonPredicate<LTOperator>,  _val, _1, _2)]
-                    | (term1 << '>'  << term2)             [_pass = phx::bind(&getComparisonPredicate<GTOperator>,  _val, _1, _2)]
-                    | (term1 << '='  << term2)             [_pass = phx::bind(&getComparisonPredicate<EQOperator>,  _val, _1, _2)]
+                      (term1 << "<>" << term2)             [_pass = phoenix::bind(&getComparisonPredicate<NEQOperator>, _val, _1, _2)]
+                    | (term1 << "<=" << term2)             [_pass = phoenix::bind(&getComparisonPredicate<LTEOperator>, _val, _1, _2)]
+                    | (term1 << ">=" << term2)             [_pass = phoenix::bind(&getComparisonPredicate<GTEOperator>, _val, _1, _2)]
+                    | (term1 << "!=" << term2)             [_pass = phoenix::bind(&getComparisonPredicate<NEQOperator>, _val, _1, _2)]
+                    | (term1 << '<'  << term2)             [_pass = phoenix::bind(&getComparisonPredicate<LTOperator>,  _val, _1, _2)]
+                    | (term1 << '>'  << term2)             [_pass = phoenix::bind(&getComparisonPredicate<GTOperator>,  _val, _1, _2)]
+                    | (term1 << '='  << term2)             [_pass = phoenix::bind(&getComparisonPredicate<EQOperator>,  _val, _1, _2)]
                     | term2                                [_1 = _val]
                     ;
 
                 term2 =
-                      (term2 << '+' << term3)              [_pass = phx::bind(&getBinaryExpression<AddOperator>, _val, _1, _2)]
-                    | (term2 << '-' << term3)              [_pass = phx::bind(&getBinaryExpression<SubOperator>, _val, _1, _2)]
+                      (term2 << '+' << term3)              [_pass = phoenix::bind(&getBinaryExpression<AddOperator>, _val, _1, _2)]
+                    | (term2 << '-' << term3)              [_pass = phoenix::bind(&getBinaryExpression<SubOperator>, _val, _1, _2)]
                     | term3                                [_1 = _val]
                     ;
 
                 term3 =
-                      (term3 << '*' << unary)              [_pass = phx::bind(&getBinaryExpression<MulOperator>, _val, _1, _2)]
-                    | (term3 << '/' << unary)              [_pass = phx::bind(&getBinaryExpression<DivOperator>, _val, _1, _2)]
-                    | (term3 << '%' << unary)              [_pass = phx::bind(&getBinaryExpression<ModOperator>, _val, _1, _2)]
+                      (term3 << '*' << unary)              [_pass = phoenix::bind(&getBinaryExpression<MulOperator>, _val, _1, _2)]
+                    | (term3 << '/' << unary)              [_pass = phoenix::bind(&getBinaryExpression<DivOperator>, _val, _1, _2)]
+                    | (term3 << '%' << unary)              [_pass = phoenix::bind(&getBinaryExpression<ModOperator>, _val, _1, _2)]
                     | unary                                [_1 = _val]
                     ;
 
                 unary =
-                      ('-' << unary)                       [_pass = phx::bind(&getUnaryExpression<NegOperator>, _val, _1)]
-                    | ('!' << unary)                       [_pass = phx::bind(&getNotPredicate, _val, _1)]
+                      ('-' << unary)                       [_pass = phoenix::bind(&getUnaryExpression<NegOperator>, _val, _1)]
+                    | ('!' << unary)                       [_pass = phoenix::bind(&getNotPredicate, _val, _1)]
                     | postfix                              [_1 = _val]
                     ;
 
                 postfix =
-                      (postfix << '.' << karma::lit("length"))                              [_pass = phx::bind(&getUnaryExpression<LengthOperator>, _val, _1)]
-                    | (postfix << '.' << karma::lit("uppercase"))                           [_pass = phx::bind(&getUnaryExpression<UpperCaseOperator>, _val, _1)]
-                    | (postfix << '.' << karma::lit("lowercase"))                           [_pass = phx::bind(&getUnaryExpression<LowerCaseOperator>, _val, _1)]
-                    | (postfix << '.' << karma::lit("capitalize"))                          [_pass = phx::bind(&getUnaryExpression<CapitalizeOperator>, _val, _1)]
-                    | (postfix << '.' << karma::lit("concat")  << '(' << expression << ')') [_pass = phx::bind(&getBinaryExpression<ConcatenateOperator>, _val, _1, _2)]
-                    | (postfix << '.' << karma::lit("match")   << '(' << expression << ')') [_pass = phx::bind(&getComparisonPredicate<MatchOperator>, _val, _1, _2)]
-                    | (postfix << '.' << karma::lit("replace") << '(' << expression << ',' << expression << ')') [_pass = phx::bind(&getTertiaryExpression<ReplaceOperator>, _val, _1, _2, _3)]
+                      (postfix << '.' << karma::lit("length"))                              [_pass = phoenix::bind(&getUnaryExpression<LengthOperator>, _val, _1)]
+                    | (postfix << '.' << karma::lit("uppercase"))                           [_pass = phoenix::bind(&getUnaryExpression<UpperCaseOperator>, _val, _1)]
+                    | (postfix << '.' << karma::lit("lowercase"))                           [_pass = phoenix::bind(&getUnaryExpression<LowerCaseOperator>, _val, _1)]
+                    | (postfix << '.' << karma::lit("capitalize"))                          [_pass = phoenix::bind(&getUnaryExpression<CapitalizeOperator>, _val, _1)]
+                    | (postfix << '.' << karma::lit("concat")  << '(' << expression << ')') [_pass = phoenix::bind(&getBinaryExpression<ConcatenateOperator>, _val, _1, _2)]
+                    | (postfix << '.' << karma::lit("match")   << '(' << expression << ')') [_pass = phoenix::bind(&getComparisonPredicate<MatchOperator>, _val, _1, _2)]
+                    | (postfix << '.' << karma::lit("replace") << '(' << expression << ',' << expression << ')') [_pass = phoenix::bind(&getTertiaryExpression<ReplaceOperator>, _val, _1, _2, _3)]
                     | factor                                                                [_1 = _val]
                     ;
 
                 factor =
-                      constant                          [_pass = phx::bind(&getConstant, _val, _1)]
-                    | (karma::lit("pow" )   << '(' << expression << ',' << expression << ')') [_pass = phx::bind(&getBinaryExpression<PowOperator>, _val, _1, _2)]
-                    | (karma::lit("step")   << '(' << expression << ',' << (constant % ',') << ')') [_pass = phx::bind(&getInterpolateExpression, InterpolateExpression::Method::STEP, _val, _1, _2)]
-                    | (karma::lit("linear") << '(' << expression << ',' << (constant % ',') << ')') [_pass = phx::bind(&getInterpolateExpression, InterpolateExpression::Method::LINEAR, _val, _1, _2)]
-                    | (karma::lit("cubic")  << '(' << expression << ',' << (constant % ',') << ')') [_pass = phx::bind(&getInterpolateExpression, InterpolateExpression::Method::CUBIC, _val, _1, _2)]
-                    | predicate                         [_pass = phx::bind(&getExpressionPredicate, _val, _1)]
-                    | (karma::no_delimit['[' << stringExpression] << ']') [_pass = phx::bind(&getVariableExpression, _val, _1)]
+                      constant                          [_pass = phoenix::bind(&getConstant, _val, _1)]
+                    | (karma::lit("pow" )   << '(' << expression << ',' << expression << ')') [_pass = phoenix::bind(&getBinaryExpression<PowOperator>, _val, _1, _2)]
+                    | (karma::lit("step")   << '(' << expression << ',' << (constant % ',') << ')') [_pass = phoenix::bind(&getInterpolateExpression, InterpolateExpression::Method::STEP, _val, _1, _2)]
+                    | (karma::lit("linear") << '(' << expression << ',' << (constant % ',') << ')') [_pass = phoenix::bind(&getInterpolateExpression, InterpolateExpression::Method::LINEAR, _val, _1, _2)]
+                    | (karma::lit("cubic")  << '(' << expression << ',' << (constant % ',') << ')') [_pass = phoenix::bind(&getInterpolateExpression, InterpolateExpression::Method::CUBIC, _val, _1, _2)]
+                    | predicate                         [_pass = phoenix::bind(&getExpressionPredicate, _val, _1)]
+                    | (karma::no_delimit['[' << stringExpression] << ']') [_pass = phoenix::bind(&getVariableExpression, _val, _1)]
                     | ('(' << expression << ')')        [_1 = _val]
                     ;
 
                 predicate =
-                      expression                        [_pass = phx::bind(&getPredicateExpression, _val, _1)]
+                      expression                        [_pass = phoenix::bind(&getPredicateExpression, _val, _1)]
                     ;
             }
 
-            ValueGenerator<OutputIterator> constant;
-            karma::rule<OutputIterator, std::string()> string;
-            karma::rule<OutputIterator, std::shared_ptr<const Expression>()> stringExpression, genericExpression;
-            karma::rule<OutputIterator, std::shared_ptr<const Expression>(), encoding::space_type> expression, term0, term1, term2, term3, unary, postfix, factor;
-            karma::rule<OutputIterator, std::shared_ptr<const Predicate>(), encoding::space_type> predicate;
+            ValueGeneratorGrammar<OutputIterator> constant;
+            boost::spirit::karma::rule<OutputIterator, std::string()> string;
+            boost::spirit::karma::rule<OutputIterator, std::shared_ptr<const Expression>()> stringExpression, genericExpression;
+            boost::spirit::karma::rule<OutputIterator, std::shared_ptr<const Expression>(), Delimiter> expression, term0, term1, term2, term3, unary, postfix, factor;
+            boost::spirit::karma::rule<OutputIterator, std::shared_ptr<const Predicate>(), Delimiter> predicate;
 
         private:
             static std::shared_ptr<const Expression> makePredicateExpression(const std::shared_ptr<const Predicate>& pred) {
@@ -274,8 +274,8 @@ namespace carto { namespace mvt {
         };
     }
 
-    template <typename Iterator> using ExpressionGenerator = exprgenimpl::Grammar<Iterator, false>;
-    template <typename Iterator> using StringExpressionGenerator = exprgenimpl::Grammar<Iterator, true>;
+    template <typename Iterator> using ExpressionGeneratorGrammar = exprgenimpl::Grammar<Iterator, false>;
+    template <typename Iterator> using StringExpressionGeneratorGrammar = exprgenimpl::Grammar<Iterator, true>;
 } }
 
 #endif

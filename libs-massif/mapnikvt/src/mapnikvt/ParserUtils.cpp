@@ -13,21 +13,6 @@
 #include <boost/lexical_cast.hpp>
 
 namespace carto { namespace mvt {
-    vt::Color parseColor(const std::string& str) {
-        std::string::const_iterator it = str.begin();
-        std::string::const_iterator end = str.end();
-        colorparserimpl::encoding::space_type space;
-        unsigned int color = 0;
-        bool result = boost::spirit::qi::phrase_parse(it, end, ColorParser<std::string::const_iterator>(), space, color);
-        if (!result) {
-            throw ParserException("Color parsing failed", str);
-        }
-        if (it != str.end()) {
-            throw ParserException("Could not parse to the end of color, error at position " + boost::lexical_cast<std::string>(it - str.begin()), str);
-        }
-        return vt::Color(color);
-    }
-
     vt::CompOp parseCompOp(const std::string& str) {
         static const std::unordered_map<std::string, vt::CompOp> compOpTable = {
             { "src",      vt::CompOp::SRC },
@@ -70,14 +55,34 @@ namespace carto { namespace mvt {
         return it->second;
     }
 
+    vt::Color parseColor(const std::string& str) {
+        std::string::const_iterator it = str.begin();
+        std::string::const_iterator end = str.end();
+        unsigned int color = 0;
+        bool result = false;
+        try {
+            colorparserimpl::Skipper skipper;
+            result = boost::spirit::qi::phrase_parse(it, end, ColorParserGrammar<std::string::const_iterator>(), skipper, color);
+        }
+        catch (const boost::spirit::qi::expectation_failure<std::string::const_iterator>& ex) {
+            throw ParserException("Expectation error, error at position " + boost::lexical_cast<std::string>(ex.first - str.begin()), str);
+        }
+        if (!result) {
+            throw ParserException("Color parsing failed", str);
+        }
+        if (it != str.end()) {
+            throw ParserException("Could not parse to the end of color, error at position " + boost::lexical_cast<std::string>(it - str.begin()), str);
+        }
+        return vt::Color(color);
+    }
+
     Value parseValue(const std::string& str) {
         std::string::const_iterator it = str.begin();
         std::string::const_iterator end = str.end();
-        valparserimpl::encoding::space_type space;
         Value val;
         bool result = false;
         try {
-            result = boost::spirit::qi::phrase_parse(it, end, ValueParser<std::string::const_iterator>(), space, val);
+            result = boost::spirit::qi::parse(it, end, ValueParserGrammar<std::string::const_iterator>(), val);
         }
         catch (const boost::spirit::qi::expectation_failure<std::string::const_iterator>& ex) {
             throw ParserException("Expectation error, error at position " + boost::lexical_cast<std::string>(ex.first - str.begin()), str);
@@ -94,11 +99,11 @@ namespace carto { namespace mvt {
     std::vector<std::shared_ptr<Transform> > parseTransformList(const std::string& str) {
         std::string::const_iterator it = str.begin();
         std::string::const_iterator end = str.end();
-        transparserimpl::encoding::space_type space;
         std::vector<std::shared_ptr<Transform>> transforms;
         bool result = false;
         try {
-            result = boost::spirit::qi::phrase_parse(it, end, TransformParser<std::string::const_iterator>() % ',', space, transforms);
+            transparserimpl::Skipper skipper;
+            result = boost::spirit::qi::phrase_parse(it, end, TransformParserGrammar<std::string::const_iterator>() % ',', skipper, transforms);
         }
         catch (const boost::spirit::qi::expectation_failure<std::string::const_iterator>& ex) {
             throw ParserException("Expectation error, error at position " + boost::lexical_cast<std::string>(ex.first - str.begin()), str);
@@ -115,15 +120,14 @@ namespace carto { namespace mvt {
     std::shared_ptr<Expression> parseExpression(const std::string& str, bool stringExpr) {
         std::string::const_iterator it = str.begin();
         std::string::const_iterator end = str.end();
-        exprparserimpl::encoding::space_type space;
         std::shared_ptr<Expression> expr;
         bool result = false;
         try {
             if (stringExpr) {
-                result = boost::spirit::qi::phrase_parse(it, end, StringExpressionParser<std::string::const_iterator>(), space, expr);
+                result = boost::spirit::qi::parse(it, end, StringExpressionParserGrammar<std::string::const_iterator>(), expr);
             }
             else {
-                result = boost::spirit::qi::phrase_parse(it, end, ExpressionParser<std::string::const_iterator>(), space, expr);
+                result = boost::spirit::qi::parse(it, end, ExpressionParserGrammar<std::string::const_iterator>(), expr);
             }
         }
         catch (const boost::spirit::qi::expectation_failure<std::string::const_iterator>& ex) {

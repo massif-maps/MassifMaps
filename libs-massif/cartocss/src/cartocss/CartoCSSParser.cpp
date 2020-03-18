@@ -17,21 +17,22 @@
 
 namespace carto { namespace css {
     namespace cssparserimpl {
-        namespace phx = boost::phoenix;
-        namespace qi = boost::spirit::qi;
-        namespace encoding = boost::spirit::iso8859_1;
-        
         template <typename Iterator>
-        struct Skipper : public qi::grammar<Iterator> {
-            Skipper() : Skipper::base_type(skip_, "PL/0") {
-                skip_ = qi::iso8859_1::space | ("/*" >> *(qi::char_ - "*/") >> "*/") | ("//" >> *(qi::char_ - qi::char_("\n\r")));
+        struct Skipper : boost::spirit::qi::grammar<Iterator> {
+            Skipper() : Skipper::base_type(skip, "PL/0") {
+                using namespace boost::spirit;
+                
+                skip = qi::iso8859_1::space | ("/*" >> *(qi::char_ - "*/") >> "*/") | ("//" >> *(qi::char_ - qi::char_("\n\r")));
             }
-            qi::rule<Iterator> skip_;
+
+            boost::spirit::qi::rule<Iterator> skip;
         };
         
         template <typename Iterator>
-        struct Grammar : qi::grammar<Iterator, StyleSheet(), Skipper<Iterator>> {
+        struct Grammar : boost::spirit::qi::grammar<Iterator, StyleSheet(), Skipper<Iterator>> {
             Grammar() : Grammar::base_type(stylesheet) {
+                using namespace boost;
+                using namespace boost::spirit;
                 using qi::_val;
                 using qi::_1;
                 using qi::_2;
@@ -63,26 +64,26 @@ namespace carto { namespace css {
                     ;
 
                 color =
-                      qi::lit('#') > (*qi::char_("0-9A-Fa-f"))      [_pass = phx::bind(&getHEXColor, _val, _1)]
-                    | (*qi::char_("a-z"))                           [_pass = phx::bind(&getCSSColor, _val, _1)]
+                      qi::lit('#') > (*qi::char_("0-9A-Fa-f"))      [_pass = phoenix::bind(&getHEXColor, _val, _1)]
+                    | (*qi::char_("a-z"))                           [_pass = phoenix::bind(&getCSSColor, _val, _1)]
                     ;
 
                 number =
-                      (qi::real_parser<double, qi::real_policies<double>>() >> *qi::space >> '%') [_val = phx::construct<Value>(_1 / 100.0)]
-                    | (qi::real_parser<double, qi::real_policies<double>>() >> *qi::space >> "px") [_val = phx::construct<Value>(_1)]
-                    | qi::real_parser<double, qi::strict_real_policies<double>>() [_val = phx::construct<Value>(_1)]
-                    | qi::long_long                                 [_val = phx::construct<Value>(_1)]
+                      (qi::real_parser<double, qi::real_policies<double>>() >> *qi::space >> '%') [_val = phoenix::construct<Value>(_1 / 100.0)]
+                    | (qi::real_parser<double, qi::real_policies<double>>() >> *qi::space >> "px") [_val = phoenix::construct<Value>(_1)]
+                    | qi::real_parser<double, qi::strict_real_policies<double>>() [_val = phoenix::construct<Value>(_1)]
+                    | qi::long_long                                 [_val = phoenix::construct<Value>(_1)]
                     ;
 
                 constant =
-                      qi::lit("null")                               [_val = phx::construct<Value>()]
-                    | qi::lit("false")                              [_val = phx::construct<Value>(false)]
-                    | qi::lit("true")                               [_val = phx::construct<Value>(true)]
+                      qi::lit("null")                               [_val = phoenix::construct<Value>()]
+                    | qi::lit("false")                              [_val = phoenix::construct<Value>(false)]
+                    | qi::lit("true")                               [_val = phoenix::construct<Value>(true)]
                     | number                                        [_val = _1]
-                    | uri                                           [_val = phx::construct<Value>(_1)]
-                    | color                                         [_val = phx::construct<Value>(_1)]
-                    | string                                        [_val = phx::construct<Value>(_1)]
-                    | literal                                       [_val = phx::construct<Value>(_1)]
+                    | uri                                           [_val = phoenix::construct<Value>(_1)]
+                    | color                                         [_val = phoenix::construct<Value>(_1)]
+                    | string                                        [_val = phoenix::construct<Value>(_1)]
+                    | literal                                       [_val = phoenix::construct<Value>(_1)]
                     ;
                 
                 propid = qi::lexeme[(qi::char_("/_a-zA-Z-") | nonascii_) > *(qi::char_("/_a-zA-Z0-9-") | nonascii_)];
@@ -90,64 +91,64 @@ namespace carto { namespace css {
                 fieldid = qi::lexeme[+(qi::char_("_a-zA-Z0-9-") | nonascii_)];
                 unescapedfieldid = qi::lexeme[+(qi::print - qi::char_("[]{}")) > -(qi::char_("[") > unescapedfieldid > qi::char_("]")) > -(qi::char_("{") > unescapedfieldid > qi::char_("}"))];
                 varid = qi::lexeme[+(qi::char_("_a-zA-Z0-9-") | nonascii_)];
-                funcid = (nmstart_ > *nmchar_) [_pass = phx::bind(&makeFunctionIdentifier, _val, _1, _2)];
+                funcid = (nmstart_ > *nmchar_) [_pass = phoenix::bind(&makeFunctionIdentifier, _val, _1, _2)];
 
                 expressionlist =
-                      (expression >> (',' > (expression % ',')))    [_val = phx::bind(&makeListExpression, _1, _2)]
+                      (expression >> (',' > (expression % ',')))    [_val = phoenix::bind(&makeListExpression, _1, _2)]
                     | expression                                    [_val = _1]
                     ;
 
                 expression =
                     term0                                           [_val = _1]
-                    >> -((qi::lit("?") > expression > ':' > expression) [_val = phx::bind(&makeConditionalExpression, _val, _1, _2)]
+                    >> -((qi::lit("?") > expression > ':' > expression) [_val = phoenix::bind(&makeConditionalExpression, _val, _1, _2)]
                         )
                     ;
 
                 term0 =
                     term1                                           [_val = _1]
-                    >> *( (qi::lit("&&") > term1)                   [_val = phx::bind(&makeBinaryExpression, BinaryExpression::Op::AND, _val, _1)]
-                        | (qi::lit("||") > term1)                   [_val = phx::bind(&makeBinaryExpression, BinaryExpression::Op::OR,  _val, _1)]
+                    >> *( (qi::lit("&&") > term1)                   [_val = phoenix::bind(&makeBinaryExpression, BinaryExpression::Op::AND, _val, _1)]
+                        | (qi::lit("||") > term1)                   [_val = phoenix::bind(&makeBinaryExpression, BinaryExpression::Op::OR,  _val, _1)]
                         )
                     ;
 
                 term1 =
                     term2                                           [_val = _1]
-                    >> *( (qi::lit("=~") > term2)                   [_val = phx::bind(&makeBinaryExpression, BinaryExpression::Op::MATCH, _val, _1)]
-                        | (qi::lit("=")  > term2)                   [_val = phx::bind(&makeBinaryExpression, BinaryExpression::Op::EQ,  _val, _1)]
-                        | (qi::lit("!=") > term2)                   [_val = phx::bind(&makeBinaryExpression, BinaryExpression::Op::NEQ, _val, _1)]
-                        | (qi::lit("<=") > term2)                   [_val = phx::bind(&makeBinaryExpression, BinaryExpression::Op::LTE, _val, _1)]
-                        | (qi::lit("<")  > term2)                   [_val = phx::bind(&makeBinaryExpression, BinaryExpression::Op::LT,  _val, _1)]
-                        | (qi::lit(">=") > term2)                   [_val = phx::bind(&makeBinaryExpression, BinaryExpression::Op::GTE, _val, _1)]
-                        | (qi::lit(">")  > term2)                   [_val = phx::bind(&makeBinaryExpression, BinaryExpression::Op::GT,  _val, _1)]
+                    >> *( (qi::lit("=~") > term2)                   [_val = phoenix::bind(&makeBinaryExpression, BinaryExpression::Op::MATCH, _val, _1)]
+                        | (qi::lit("=")  > term2)                   [_val = phoenix::bind(&makeBinaryExpression, BinaryExpression::Op::EQ,  _val, _1)]
+                        | (qi::lit("!=") > term2)                   [_val = phoenix::bind(&makeBinaryExpression, BinaryExpression::Op::NEQ, _val, _1)]
+                        | (qi::lit("<=") > term2)                   [_val = phoenix::bind(&makeBinaryExpression, BinaryExpression::Op::LTE, _val, _1)]
+                        | (qi::lit("<")  > term2)                   [_val = phoenix::bind(&makeBinaryExpression, BinaryExpression::Op::LT,  _val, _1)]
+                        | (qi::lit(">=") > term2)                   [_val = phoenix::bind(&makeBinaryExpression, BinaryExpression::Op::GTE, _val, _1)]
+                        | (qi::lit(">")  > term2)                   [_val = phoenix::bind(&makeBinaryExpression, BinaryExpression::Op::GT,  _val, _1)]
                         )
                     ;
 
                 term2 =
                     term3                                           [_val = _1]
-                    >> *( (qi::lit("+") > term3)                    [_val = phx::bind(&makeBinaryExpression, BinaryExpression::Op::ADD, _val, _1)]
-                        | (qi::lit("-") > term3)                    [_val = phx::bind(&makeBinaryExpression, BinaryExpression::Op::SUB, _val, _1)]
+                    >> *( (qi::lit("+") > term3)                    [_val = phoenix::bind(&makeBinaryExpression, BinaryExpression::Op::ADD, _val, _1)]
+                        | (qi::lit("-") > term3)                    [_val = phoenix::bind(&makeBinaryExpression, BinaryExpression::Op::SUB, _val, _1)]
                         )
                     ;
                 
                 term3 =
                     unary                                           [_val = _1]
-                    >> *( (qi::lit("*") > unary)                    [_val = phx::bind(&makeBinaryExpression, BinaryExpression::Op::MUL, _val, _1)]
-                        | (qi::lit("/") > unary)                    [_val = phx::bind(&makeBinaryExpression, BinaryExpression::Op::DIV, _val, _1)]
+                    >> *( (qi::lit("*") > unary)                    [_val = phoenix::bind(&makeBinaryExpression, BinaryExpression::Op::MUL, _val, _1)]
+                        | (qi::lit("/") > unary)                    [_val = phoenix::bind(&makeBinaryExpression, BinaryExpression::Op::DIV, _val, _1)]
                         )
                     ;
                 
                 unary =
                       factor                                        [_val = _1]
-                    | (qi::lit("-") > unary)                        [_val = phx::bind(&makeUnaryExpression, UnaryExpression::Op::NEG, _1)]
-                    | (qi::lit("!") > unary)                        [_val = phx::bind(&makeUnaryExpression, UnaryExpression::Op::NOT, _1)]
+                    | (qi::lit("-") > unary)                        [_val = phoenix::bind(&makeUnaryExpression, UnaryExpression::Op::NEG, _1)]
+                    | (qi::lit("!") > unary)                        [_val = phoenix::bind(&makeUnaryExpression, UnaryExpression::Op::NOT, _1)]
                     ;
 
                 factor =
-                      ('@' > varid)                                 [_val = phx::bind(&makeFieldVarExpression, false, _1)]
-                    | ('[' > unescapedfieldid > ']')                [_val = phx::bind(&makeFieldVarExpression, true, _1)]
-                    | (funcid >> ('(' > (expression % ',') > ')'))  [_val = phx::bind(&makeFunctionExpression, _1, _2)]
+                      ('@' > varid)                                 [_val = phoenix::bind(&makeFieldVarExpression, false, _1)]
+                    | ('[' > unescapedfieldid > ']')                [_val = phoenix::bind(&makeFieldVarExpression, true, _1)]
+                    | (funcid >> ('(' > (expression % ',') > ')'))  [_val = phoenix::bind(&makeFunctionExpression, _1, _2)]
                     | ('(' > expressionlist > ')')                  [_val = _1]
-                    | constant                                      [_val = phx::bind(&makeConstExpression, _1)]
+                    | constant                                      [_val = phoenix::bind(&makeConstExpression, _1)]
                     ;
                 
                 op =
@@ -161,52 +162,52 @@ namespace carto { namespace css {
                    ;
 
                 predicate =
-                      qi::lit("Map")                                [_val = phx::bind(&makeMapPredicate)]
-                    | (qi::lit('#') > blockid)                      [_val = phx::bind(&makeLayerPredicate, _1)]
-                    | (qi::lit('.') > blockid)                      [_val = phx::bind(&makeClassPredicate, _1)]
-                    | (qi::lit("::") > blockid)                     [_val = phx::bind(&makeAttachmentPredicate, _1)]
-                    | ((qi::lit('[') >> '@') > varid > op > constant > ']') [_val = phx::bind(&makeOpPredicate, _2, false, _1, _3)]
-                    | (qi::lit('[') > (fieldid | string) > op > constant > ']') [_val = phx::bind(&makeOpPredicate, _2, true, _1, _3)]
+                      qi::lit("Map")                                [_val = phoenix::bind(&makeMapPredicate)]
+                    | (qi::lit('#') > blockid)                      [_val = phoenix::bind(&makeLayerPredicate, _1)]
+                    | (qi::lit('.') > blockid)                      [_val = phoenix::bind(&makeClassPredicate, _1)]
+                    | (qi::lit("::") > blockid)                     [_val = phoenix::bind(&makeAttachmentPredicate, _1)]
+                    | ((qi::lit('[') >> '@') > varid > op > constant > ']') [_val = phoenix::bind(&makeOpPredicate, _2, false, _1, _3)]
+                    | (qi::lit('[') > (fieldid | string) > op > constant > ']') [_val = phoenix::bind(&makeOpPredicate, _2, true, _1, _3)]
                     ;
                 
-                selector = (*predicate)                             [_val = phx::construct<Selector>(_1)];
+                selector = (*predicate)                             [_val = phoenix::construct<Selector>(_1)];
                 
-                propdeclaration = (propid >> (':' > expressionlist)) [_val = phx::bind(&makePropertyDeclaration, phx::ref(_declarationOrder), _1, _2)];
+                propdeclaration = (propid >> (':' > expressionlist)) [_val = phoenix::bind(&makePropertyDeclaration, phoenix::ref(_declarationOrder), _1, _2)];
                 
-                blockelement = (propdeclaration | ruleset)          [_val = phx::construct<Block::Element>(_1)];
-                block = (*(blockelement > -qi::lit(';')))           [_val = phx::construct<Block>(_1)];
+                blockelement = (propdeclaration | ruleset)          [_val = phoenix::construct<Block::Element>(_1)];
+                block = (*(blockelement > -qi::lit(';')))           [_val = phoenix::construct<Block>(_1)];
                 
-                ruleset = ((selector % ',') >> ('{' > block > '}')) [_val = phx::construct<RuleSet>(_1, _2)];
+                ruleset = ((selector % ',') >> ('{' > block > '}')) [_val = phoenix::construct<RuleSet>(_1, _2)];
                 
-                vardeclaration = ('@' > varid > ':' > expressionlist) [_val = phx::construct<VariableDeclaration>(_1, _2)];
+                vardeclaration = ('@' > varid > ':' > expressionlist) [_val = phoenix::construct<VariableDeclaration>(_1, _2)];
 
-                stylesheetelement = (vardeclaration | ruleset)      [_val = phx::construct<StyleSheet::Element>(_1)];
-                stylesheet = (*(stylesheetelement > -qi::lit(';'))) [_val = phx::construct<StyleSheet>(_1)];
+                stylesheetelement = (vardeclaration | ruleset)      [_val = phoenix::construct<StyleSheet::Element>(_1)];
+                stylesheet = (*(stylesheetelement > -qi::lit(';'))) [_val = phoenix::construct<StyleSheet>(_1)];
             
-                qi::on_error<qi::fail>(stylesheet, phx::ref(_errorPos) = qi::_3 - qi::_1);
+                qi::on_error<qi::fail>(stylesheet, phoenix::ref(_errorPos) = qi::_3 - qi::_1);
             }
 
             std::string::size_type errorPos() const { return _errorPos; }
             
-            qi::int_parser<char, 16, 2, 2> octet_;
-            qi::symbols<char const, char const> unesc_char;
-            qi::rule<Iterator, char()> nonascii_, nmstart_, nmchar_, unescaped_;
-            qi::rule<Iterator, std::string()> hex_;
-            qi::rule<Iterator, std::string()> string, literal, uri;
-            qi::rule<Iterator, Color()> color;
-            qi::rule<Iterator, Value()> number, constant;
-            qi::rule<Iterator, std::string()> propid, blockid, fieldid, unescapedfieldid, varid, funcid;
-            qi::rule<Iterator, std::shared_ptr<const Expression>(), Skipper<Iterator> > expressionlist, expression, term0, term1, term2, term3, unary, factor;
-            qi::rule<Iterator, OpPredicate::Op()> op;
-            qi::rule<Iterator, std::shared_ptr<const Predicate>(), Skipper<Iterator> > predicate;
-            qi::rule<Iterator, Selector(), Skipper<Iterator> > selector;
-            qi::rule<Iterator, PropertyDeclaration(), Skipper<Iterator> > propdeclaration;
-            qi::rule<Iterator, Block::Element(), Skipper<Iterator> > blockelement;
-            qi::rule<Iterator, Block(), Skipper<Iterator> > block;
-            qi::rule<Iterator, RuleSet(), Skipper<Iterator> > ruleset;
-            qi::rule<Iterator, VariableDeclaration(), Skipper<Iterator> > vardeclaration;
-            qi::rule<Iterator, StyleSheet::Element(), Skipper<Iterator> > stylesheetelement;
-            qi::rule<Iterator, StyleSheet(), Skipper<Iterator> > stylesheet;
+            boost::spirit::qi::int_parser<char, 16, 2, 2> octet_;
+            boost::spirit::qi::symbols<char const, char const> unesc_char;
+            boost::spirit::qi::rule<Iterator, char()> nonascii_, nmstart_, nmchar_, unescaped_;
+            boost::spirit::qi::rule<Iterator, std::string()> hex_;
+            boost::spirit::qi::rule<Iterator, std::string()> string, literal, uri;
+            boost::spirit::qi::rule<Iterator, Color()> color;
+            boost::spirit::qi::rule<Iterator, Value()> number, constant;
+            boost::spirit::qi::rule<Iterator, std::string()> propid, blockid, fieldid, unescapedfieldid, varid, funcid;
+            boost::spirit::qi::rule<Iterator, std::shared_ptr<const Expression>(), Skipper<Iterator> > expressionlist, expression, term0, term1, term2, term3, unary, factor;
+            boost::spirit::qi::rule<Iterator, OpPredicate::Op()> op;
+            boost::spirit::qi::rule<Iterator, std::shared_ptr<const Predicate>(), Skipper<Iterator> > predicate;
+            boost::spirit::qi::rule<Iterator, Selector(), Skipper<Iterator> > selector;
+            boost::spirit::qi::rule<Iterator, PropertyDeclaration(), Skipper<Iterator> > propdeclaration;
+            boost::spirit::qi::rule<Iterator, Block::Element(), Skipper<Iterator> > blockelement;
+            boost::spirit::qi::rule<Iterator, Block(), Skipper<Iterator> > block;
+            boost::spirit::qi::rule<Iterator, RuleSet(), Skipper<Iterator> > ruleset;
+            boost::spirit::qi::rule<Iterator, VariableDeclaration(), Skipper<Iterator> > vardeclaration;
+            boost::spirit::qi::rule<Iterator, StyleSheet::Element(), Skipper<Iterator> > stylesheetelement;
+            boost::spirit::qi::rule<Iterator, StyleSheet(), Skipper<Iterator> > stylesheet;
 
         private:
             static bool getHEXColor(Color& color, const std::vector<char>& code) {

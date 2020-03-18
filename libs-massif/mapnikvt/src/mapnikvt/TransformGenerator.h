@@ -21,13 +21,13 @@
 
 namespace carto { namespace mvt {
     namespace transgenimpl {
-        namespace phx = boost::phoenix;
-        namespace karma = boost::spirit::karma;
-        namespace encoding = boost::spirit::iso8859_1;
+        using Delimiter = boost::spirit::iso8859_1::space_type;
 
         template <typename OutputIterator>
-        struct Grammar : karma::grammar<OutputIterator, std::shared_ptr<const Transform>(), encoding::space_type> {
+        struct Grammar : boost::spirit::karma::grammar<OutputIterator, std::shared_ptr<const Transform>(), Delimiter> {
             Grammar() : Grammar::base_type(transform) {
+                using namespace boost;
+                using namespace boost::spirit;
                 using karma::_pass;
                 using karma::_val;
                 using karma::_1;
@@ -49,32 +49,32 @@ namespace carto { namespace mvt {
                     ;
 
                 matrix =
-                    (karma::lit("matrix") << '(' << number << ',' << number << ',' << number << ',' << number << ',' << number << ',' << number << ')')[_pass = phx::bind(&getMatrixTransform, _val, _1, _2, _3, _4, _5, _6)]
+                    (karma::lit("matrix") << '(' << number << ',' << number << ',' << number << ',' << number << ',' << number << ',' << number << ')')[_pass = phoenix::bind(&getMatrixTransform, _val, _1, _2, _3, _4, _5, _6)]
                     ;
 
                 translate =
-                    (karma::lit("translate") << '(' << number << ',' << number << ')')[_pass = phx::bind(&getTranslateTransform, _val, _1, _2)]
+                    (karma::lit("translate") << '(' << number << ',' << number << ')')[_pass = phoenix::bind(&getTranslateTransform, _val, _1, _2)]
                     ;
 
                 rotate =
-                    (karma::lit("rotate") << '(' << number << ',' << number << ',' << number << ')')[_pass = phx::bind(&getRotateTransform, _val, _1, _2, _3)]
+                    (karma::lit("rotate") << '(' << number << ',' << number << ',' << number << ')')[_pass = phoenix::bind(&getRotateTransform, _val, _1, _2, _3)]
                     ;
 
                 scale =
-                    (karma::lit("scale") << '(' << number << ',' << number << ')')[_pass = phx::bind(&getScaleTransform, _val, _1, _2)]
+                    (karma::lit("scale") << '(' << number << ',' << number << ')')[_pass = phoenix::bind(&getScaleTransform, _val, _1, _2)]
                     ;
 
                 skewx =
-                    (karma::lit("skewx") << '(' << number << ')')[_pass = phx::bind(&getSkewTransform<SkewXTransform>, _val, _1)]
+                    (karma::lit("skewx") << '(' << number << ')')[_pass = phoenix::bind(&getSkewTransform<SkewXTransform>, _val, _1)]
                     ;
 
                 skewy =
-                    (karma::lit("skewy") << '(' << number << ')')[_pass = phx::bind(&getSkewTransform<SkewYTransform>, _val, _1)]
+                    (karma::lit("skewy") << '(' << number << ')')[_pass = phoenix::bind(&getSkewTransform<SkewYTransform>, _val, _1)]
                     ;
             }
 
-            karma::rule<OutputIterator, float()> number;
-            karma::rule<OutputIterator, std::shared_ptr<const Transform>(), encoding::space_type> transform, matrix, translate, rotate, scale, skewx, skewy;
+            boost::spirit::karma::rule<OutputIterator, float()> number;
+            boost::spirit::karma::rule<OutputIterator, std::shared_ptr<const Transform>(), Delimiter> transform, matrix, translate, rotate, scale, skewx, skewy;
 
         private:
             static bool getMatrixTransform(const std::shared_ptr<const Transform>& transform, float& a, float& b, float& c, float& d, float& e, float& f) {
@@ -130,7 +130,7 @@ namespace carto { namespace mvt {
         };
     }
 
-    template <typename Iterator> using TransformGenerator = transgenimpl::Grammar<Iterator>;
+    template <typename Iterator> using TransformGeneratorGrammar = transgenimpl::Grammar<Iterator>;
 } }
 
 #endif

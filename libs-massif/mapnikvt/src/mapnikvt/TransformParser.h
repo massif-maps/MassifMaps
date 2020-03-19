@@ -22,14 +22,13 @@
 
 namespace carto { namespace mvt {
     namespace transparserimpl {
-        namespace phx = boost::phoenix;
-        namespace qi = boost::spirit::qi;
-        namespace repo = boost::spirit::repository::qi;
-        namespace encoding = boost::spirit::iso8859_1;
+        using Skipper = boost::spirit::iso8859_1::space_type;
 
         template <typename Iterator>
-        struct Grammar : qi::grammar<Iterator, std::shared_ptr<Transform>(), encoding::space_type> {
+        struct Grammar : boost::spirit::qi::grammar<Iterator, std::shared_ptr<Transform>(), Skipper> {
             Grammar() : Grammar::base_type(transform) {
+                using namespace boost;
+                using namespace boost::spirit;
                 using qi::_val;
                 using qi::_1;
                 using qi::_2;
@@ -38,12 +37,12 @@ namespace carto { namespace mvt {
                 using qi::_5;
                 using qi::_6;
 
-                matrix_kw = repo::distinct(qi::char_("a-zA-Z0-9_"))[qi::no_case["matrix"]];
-                translate_kw = repo::distinct(qi::char_("a-zA-Z0-9_"))[qi::no_case["translate"]];
-                rotate_kw = repo::distinct(qi::char_("a-zA-Z0-9_"))[qi::no_case["rotate"]];
-                scale_kw = repo::distinct(qi::char_("a-zA-Z0-9_"))[qi::no_case["scale"]];
-                skewx_kw = repo::distinct(qi::char_("a-zA-Z0-9_"))[qi::no_case["skewx"]];
-                skewy_kw = repo::distinct(qi::char_("a-zA-Z0-9_"))[qi::no_case["skewy"]];
+                matrix_kw = repository::qi::distinct(qi::char_("a-zA-Z0-9_"))[qi::no_case["matrix"]];
+                translate_kw = repository::qi::distinct(qi::char_("a-zA-Z0-9_"))[qi::no_case["translate"]];
+                rotate_kw = repository::qi::distinct(qi::char_("a-zA-Z0-9_"))[qi::no_case["rotate"]];
+                scale_kw = repository::qi::distinct(qi::char_("a-zA-Z0-9_"))[qi::no_case["scale"]];
+                skewx_kw = repository::qi::distinct(qi::char_("a-zA-Z0-9_"))[qi::no_case["skewx"]];
+                skewy_kw = repository::qi::distinct(qi::char_("a-zA-Z0-9_"))[qi::no_case["skewy"]];
 
                 number %= qi::float_;
 
@@ -57,35 +56,35 @@ namespace carto { namespace mvt {
                     ;
 
                 matrix =
-                    (matrix_kw >> ('(' > number >> ',' > number > ',' > number > ',' > number > ',' > number > ',' > number > ')')) [_val = phx::bind(&makeMatrixTransform, _1, _2, _3, _4, _5, _6)]
+                    (matrix_kw >> ('(' > number >> ',' > number > ',' > number > ',' > number > ',' > number > ',' > number > ')')) [_val = phoenix::bind(&makeMatrixTransform, _1, _2, _3, _4, _5, _6)]
                     ;
 
                 translate =
-                    (translate_kw >> ('(' > number > ',' > number > ')')) [_val = phx::bind(&makeTranslateTransform, _1, _2)]
+                    (translate_kw >> ('(' > number > ',' > number > ')')) [_val = phoenix::bind(&makeTranslateTransform, _1, _2)]
                     ;
 
                 rotate =
-                      (rotate_kw >> '(' >> number >> ')') [_val = phx::bind(&makeRotateTransform, 0, 0, _1)]
-                    | (rotate_kw >> ('(' > number > ',' > number > ',' > number > ')')) [_val = phx::bind(&makeRotateTransform, _2, _3, _1)]
+                      (rotate_kw >> '(' >> number >> ')') [_val = phoenix::bind(&makeRotateTransform, 0, 0, _1)]
+                    | (rotate_kw >> ('(' > number > ',' > number > ',' > number > ')')) [_val = phoenix::bind(&makeRotateTransform, _2, _3, _1)]
                     ;
 
                 scale =
-                      (scale_kw >> '(' >> number >> ')') [_val = phx::bind(&makeScaleTransform, _1, _1)]
-                    | (scale_kw >> ('(' > number > ',' > number > ')')) [_val = phx::bind(&makeScaleTransform, _1, _2)]
+                      (scale_kw >> '(' >> number >> ')') [_val = phoenix::bind(&makeScaleTransform, _1, _1)]
+                    | (scale_kw >> ('(' > number > ',' > number > ')')) [_val = phoenix::bind(&makeScaleTransform, _1, _2)]
                     ;
 
                 skewx =
-                    (skewx_kw >> ('(' > number > ')')) [_val = phx::bind(&makeSkewTransform<SkewXTransform>, _1)]
+                    (skewx_kw >> ('(' > number > ')')) [_val = phoenix::bind(&makeSkewTransform<SkewXTransform>, _1)]
                     ;
 
                 skewy =
-                    (skewy_kw >> ('(' > number > ')')) [_val = phx::bind(&makeSkewTransform<SkewYTransform>, _1)]
+                    (skewy_kw >> ('(' > number > ')')) [_val = phoenix::bind(&makeSkewTransform<SkewYTransform>, _1)]
                     ;
             }
 
-            qi::rule<Iterator, qi::unused_type()> matrix_kw, translate_kw, rotate_kw, scale_kw, skewx_kw, skewy_kw;
-            qi::rule<Iterator, float()> number;
-            qi::rule<Iterator, std::shared_ptr<Transform>(), encoding::space_type> transform, matrix, translate, rotate, scale, skewx, skewy;
+            boost::spirit::qi::rule<Iterator, boost::spirit::qi::unused_type()> matrix_kw, translate_kw, rotate_kw, scale_kw, skewx_kw, skewy_kw;
+            boost::spirit::qi::rule<Iterator, float()> number;
+            boost::spirit::qi::rule<Iterator, std::shared_ptr<Transform>(), Skipper> transform, matrix, translate, rotate, scale, skewx, skewy;
 
         private:
             static std::shared_ptr<Transform> makeMatrixTransform(float a, float b, float c, float d, float e, float f) {
@@ -118,7 +117,7 @@ namespace carto { namespace mvt {
         };
     }
 
-    template <typename Iterator> using TransformParser = transparserimpl::Grammar<Iterator>;
+    template <typename Iterator> using TransformParserGrammar = transparserimpl::Grammar<Iterator>;
 } }
 
 #endif

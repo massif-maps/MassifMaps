@@ -22,14 +22,13 @@
 
 namespace carto { namespace mvt {
     namespace colorparserimpl {
-        namespace phx = boost::phoenix;
-        namespace qi = boost::spirit::qi;
-        namespace repo = boost::spirit::repository::qi;
-        namespace encoding = boost::spirit::iso8859_1;
+        using Skipper = boost::spirit::iso8859_1::space_type;
 
         template <typename Iterator>
-        struct Grammar : qi::grammar<Iterator, unsigned int(), encoding::space_type> {
+        struct Grammar : boost::spirit::qi::grammar<Iterator, unsigned int(), Skipper> {
             Grammar() : Grammar::base_type(color) {
+                using namespace boost;
+                using namespace boost::spirit;
                 using qi::_val;
                 using qi::_pass;
                 using qi::_1;
@@ -37,22 +36,22 @@ namespace carto { namespace mvt {
                 using qi::_3;
                 using qi::_4;
 
-                rgb_kw = repo::distinct(qi::char_("a-zA-Z0-9_"))[qi::no_case["rgb"]];
-                rgba_kw = repo::distinct(qi::char_("a-zA-Z0-9_"))[qi::no_case["rgba"]];
+                rgb_kw = repository::qi::distinct(qi::char_("a-zA-Z0-9_"))[qi::no_case["rgb"]];
+                rgba_kw = repository::qi::distinct(qi::char_("a-zA-Z0-9_"))[qi::no_case["rgba"]];
 
                 number %= qi::float_;
 
                 color =
-                      (rgb_kw  >> '(' > number > ',' > number > ',' > number > ')') [_val = phx::bind(&makeRGBColor, _1, _2, _3)]
-                    | (rgba_kw >> '(' > number > ',' > number > ',' > number > ',' > number > ')') [_val = phx::bind(&makeRGBAColor, _1, _2, _3, _4)]
-                    | qi::lit('#') > (*qi::char_("0-9A-Fa-f"))  [_pass = phx::bind(&getHEXColor, _val, _1)]
-                    | (*qi::char_("a-z"))                       [_pass = phx::bind(&getCSSColor, _val, _1)]
+                      (rgb_kw  >> '(' > number > ',' > number > ',' > number > ')') [_val = phoenix::bind(&makeRGBColor, _1, _2, _3)]
+                    | (rgba_kw >> '(' > number > ',' > number > ',' > number > ',' > number > ')') [_val = phoenix::bind(&makeRGBAColor, _1, _2, _3, _4)]
+                    | qi::lit('#') > (*qi::char_("0-9A-Fa-f"))  [_pass = phoenix::bind(&getHEXColor, _val, _1)]
+                    | (*qi::char_("a-z"))                       [_pass = phoenix::bind(&getCSSColor, _val, _1)]
                     ;
             }
 
-            qi::rule<Iterator, qi::unused_type()> rgb_kw, rgba_kw;
-            qi::rule<Iterator, float()> number;
-            qi::rule<Iterator, unsigned int(), encoding::space_type> color;
+            boost::spirit::qi::rule<Iterator, boost::spirit::qi::unused_type()> rgb_kw, rgba_kw;
+            boost::spirit::qi::rule<Iterator, float()> number;
+            boost::spirit::qi::rule<Iterator, unsigned int(), Skipper> color;
 
         private:
             static unsigned int makeRGBColor(float r, float g, float b) {
@@ -94,7 +93,7 @@ namespace carto { namespace mvt {
         };
     }
 
-    template <typename Iterator> using ColorParser = colorparserimpl::Grammar<Iterator>;
+    template <typename Iterator> using ColorParserGrammar = colorparserimpl::Grammar<Iterator>;
 } }
 
 #endif

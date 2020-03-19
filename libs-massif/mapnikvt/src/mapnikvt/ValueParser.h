@@ -21,14 +21,11 @@
 
 namespace carto { namespace mvt {
     namespace valparserimpl {
-        namespace phx = boost::phoenix;
-        namespace qi = boost::spirit::qi;
-        namespace repo = boost::spirit::repository::qi;
-        namespace encoding = boost::spirit::iso8859_1;
-
         template <typename Iterator>
-        struct Grammar : qi::grammar<Iterator, Value()> {
+        struct Grammar : boost::spirit::qi::grammar<Iterator, Value()> {
             Grammar() : Grammar::base_type(value) {
+                using namespace boost;
+                using namespace boost::spirit;
                 using qi::_val;
                 using qi::_1;
 
@@ -36,36 +33,36 @@ namespace carto { namespace mvt {
                               ("\\r", '\r')("\\t", '\t')("\\v", '\v')("\\\\", '\\')
                               ("\\\'", '\'')("\\\"", '\"');
 
-                null_kw = repo::distinct(qi::char_("a-zA-Z0-9_"))[qi::no_case["null"]];
-                point_kw = repo::distinct(qi::char_("a-zA-Z0-9_"))[qi::no_case["point"]];
-                linestring_kw = repo::distinct(qi::char_("a-zA-Z0-9_"))[qi::no_case["linestring"]];
-                polygon_kw = repo::distinct(qi::char_("a-zA-Z0-9_"))[qi::no_case["polygon"]];
+                null_kw = repository::qi::distinct(qi::char_("a-zA-Z0-9_"))[qi::no_case["null"]];
+                point_kw = repository::qi::distinct(qi::char_("a-zA-Z0-9_"))[qi::no_case["point"]];
+                linestring_kw = repository::qi::distinct(qi::char_("a-zA-Z0-9_"))[qi::no_case["linestring"]];
+                polygon_kw = repository::qi::distinct(qi::char_("a-zA-Z0-9_"))[qi::no_case["polygon"]];
 
                 string =
                       '\'' >> *(unesc_char | "\\x" >> octet_ | (qi::char_ - '\'')) >> '\''
                     | '\"' >> *(unesc_char | "\\x" >> octet_ | (qi::char_ - '\"')) >> '\"';
 
                 value =
-                      null_kw                [_val = phx::construct<Value>()]
-                    | point_kw               [_val = phx::construct<Value>(1LL)]
-                    | linestring_kw          [_val = phx::construct<Value>(2LL)]
-                    | polygon_kw             [_val = phx::construct<Value>(3LL)]
-                    | qi::bool_              [_val = phx::construct<Value>(_1)]
-                    | qi::real_parser<double, qi::strict_real_policies<double>>() [_val = phx::construct<Value>(_1)]
-                    | qi::long_long          [_val = phx::construct<Value>(_1)]
-                    | string                 [_val = phx::construct<Value>(_1)]
+                      null_kw                [_val = phoenix::construct<Value>()]
+                    | point_kw               [_val = phoenix::construct<Value>(1LL)]
+                    | linestring_kw          [_val = phoenix::construct<Value>(2LL)]
+                    | polygon_kw             [_val = phoenix::construct<Value>(3LL)]
+                    | qi::bool_              [_val = phoenix::construct<Value>(_1)]
+                    | qi::real_parser<double, qi::strict_real_policies<double>>() [_val = phoenix::construct<Value>(_1)]
+                    | qi::long_long          [_val = phoenix::construct<Value>(_1)]
+                    | string                 [_val = phoenix::construct<Value>(_1)]
                     ;
             }
 
-            qi::int_parser<char, 16, 2, 2> octet_;
-            qi::symbols<char const, char const> unesc_char;
-            qi::rule<Iterator, qi::unused_type()> null_kw, point_kw, linestring_kw, polygon_kw;
-            qi::rule<Iterator, std::string()> string;
-            qi::rule<Iterator, Value()> value;
+            boost::spirit::qi::int_parser<char, 16, 2, 2> octet_;
+            boost::spirit::qi::symbols<char const, char const> unesc_char;
+            boost::spirit::qi::rule<Iterator, boost::spirit::qi::unused_type()> null_kw, point_kw, linestring_kw, polygon_kw;
+            boost::spirit::qi::rule<Iterator, std::string()> string;
+            boost::spirit::qi::rule<Iterator, Value()> value;
         };
     }
 
-    template <typename Iterator> using ValueParser = valparserimpl::Grammar<Iterator>;
+    template <typename Iterator> using ValueParserGrammar = valparserimpl::Grammar<Iterator>;
 } }
 
 #endif

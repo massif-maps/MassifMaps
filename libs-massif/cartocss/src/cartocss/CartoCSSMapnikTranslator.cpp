@@ -149,7 +149,7 @@ namespace carto { namespace css {
                 }
             }
             else {
-                _logger->write(mvt::Logger::Severity::ERROR, "Unsupported text expression type in " + symbolizerType + " symbolizer");
+                // No need to warn, it is legal to have no 'text'
                 return std::shared_ptr<mvt::Symbolizer>();
             }
         }

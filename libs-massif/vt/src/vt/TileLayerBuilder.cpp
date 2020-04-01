@@ -211,7 +211,7 @@ namespace carto { namespace vt {
         _builderParameters.transform = style.transform;
         _builderParameters.compOp = style.compOp;
         StrokeMap::StrokeId strokeId = (style.strokePattern ? strokeMap->loadBitmapPattern(style.strokePattern) : 0);
-        const StrokeMap::Stroke* stroke = strokeMap->getStroke(strokeId);
+        const StrokeMap::Stroke* stroke = (strokeId != 0 ? strokeMap->getStroke(strokeId) : nullptr);
         int styleIndex = _builderParameters.parameterCount;
         while (--styleIndex >= 0) {
             if (_builderParameters.colorFuncs[styleIndex] == style.colorFunc && _builderParameters.widthFuncs[styleIndex] == style.widthFunc && _builderParameters.lineStrokeIds[styleIndex] == strokeId) {
@@ -938,10 +938,12 @@ namespace carto { namespace vt {
         }
 
         float v0 = 0, v1 = 0, du_dl = 0;
+        float minMiterDot = MIN_MITER_DOT;
         if (stroke) {
             v1 = stroke->y0 + 0.5f;
             v0 = stroke->y1 - 0.5f;
             du_dl = _tileSize / stroke->scale;
+            minMiterDot = 1.0f; // make line segments separate to avoid texture coordinate stretching
         }
 
         VertexArray<cglib::vec2<float>> points;
@@ -1034,7 +1036,7 @@ namespace carto { namespace vt {
             }
 
             float dot = cglib::dot_product(binormal, prevBinormal);
-            if (dot < MIN_MITER_DOT) {
+            if (dot < minMiterDot) {
                 _coords.append(p0, p0);
                 _texCoords.append(cglib::vec2<float>(u0, v0), cglib::vec2<float>(u0, v1));
                 _binormals.append(-prevBinormal, prevBinormal);

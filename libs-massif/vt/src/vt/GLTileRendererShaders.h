@@ -312,15 +312,18 @@ namespace carto { namespace vt {
         uniform vec4 uColorTable[16];
         uniform float uWidthTable[16];
         varying lowp vec4 vColor;
-        #ifdef PATTERN
-        varying mediump vec2 vUV;
-        #endif
         #ifdef GL_FRAGMENT_PRECISION_HIGH
         varying highp vec2 vDist;
         varying highp float vWidth;
+        #ifdef PATTERN
+        varying highp vec2 vUV;
+        #endif
         #else
         varying mediump vec2 vDist;
         varying mediump float vWidth;
+        #ifdef PATTERN
+        varying mediump vec2 vUV;
+        #endif
         #endif
 
         void main(void) {
@@ -356,15 +359,18 @@ namespace carto { namespace vt {
         uniform sampler2D uPattern;
         #endif
         varying lowp vec4 vColor;
-        #ifdef PATTERN
-        varying mediump vec2 vUV;
-        #endif
         #ifdef GL_FRAGMENT_PRECISION_HIGH
         varying highp vec2 vDist;
         varying highp float vWidth;
+        #ifdef PATTERN
+        varying highp vec2 vUV;
+        #endif
         #else
         varying mediump vec2 vDist;
         varying mediump float vWidth;
+        #ifdef PATTERN
+        varying mediump vec2 vUV;
+        #endif
         #endif
 
         void main(void) {

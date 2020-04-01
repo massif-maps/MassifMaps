@@ -3,6 +3,7 @@
 #include "vt/BitmapCanvas.h"
 
 #include <cmath>
+#include <algorithm>
 
 #include <boost/algorithm/string.hpp>
 
@@ -145,23 +146,12 @@ namespace carto { namespace mvt {
     }
 
     std::shared_ptr<vt::BitmapPattern> LineSymbolizer::createDashBitmapPattern(const std::vector<float>& strokeDashArray) {
-        float size = 0;
-        int superSample = MIN_SUPERSAMPLING_FACTOR;
-        for (float dash : strokeDashArray) {
-            size += dash;
-            int factor = 1;
-            while (factor * superSample < MAX_SUPERSAMPLING_FACTOR) { // increase resolution when fractional dashes are used
-                float dashFract = dash * superSample * factor;
-                dashFract -= std::floor(dashFract);
-                if (dashFract < 0.1f || dashFract > 0.9f) {
-                    break;
-                }
-                factor++;
-            }
-            superSample *= factor;
-        }
+        float size = std::accumulate(strokeDashArray.begin(), strokeDashArray.end(), 0.0f);
+        float minDashSize = std::accumulate(strokeDashArray.begin(), strokeDashArray.end(), 1.0f, [](float a, float b) { return b > 0 ? std::min(a, b) : a; });
+        float supersamplingFactor = DASH_SUPERSAMPLING_FACTOR / minDashSize;
+
         int pow2Size = 1;
-        while (pow2Size < size * superSample && pow2Size < 2048) {
+        while (pow2Size < size * supersamplingFactor && pow2Size < 2048) {
             pow2Size *= 2;
         }
 
@@ -176,6 +166,6 @@ namespace carto { namespace mvt {
             }
             pos += dash;
         }
-        return std::make_shared<vt::BitmapPattern>(0.75f * size / pow2Size, 1.0f, canvas.buildBitmapImage()->bitmap);
+        return std::make_shared<vt::BitmapPattern>(DASH_PATTERN_SCALE * size / pow2Size, 1.0f, canvas.buildBitmapImage()->bitmap);
     }
 } }

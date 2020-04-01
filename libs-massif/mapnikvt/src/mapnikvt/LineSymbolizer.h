@@ -21,8 +21,8 @@ namespace carto { namespace mvt {
         virtual void build(const FeatureCollection& featureCollection, const FeatureExpressionContext& exprContext, const SymbolizerContext& symbolizerContext, vt::TileLayerBuilder& layerBuilder) override;
 
     protected:
-        constexpr static int MIN_SUPERSAMPLING_FACTOR = 2;
-        constexpr static int MAX_SUPERSAMPLING_FACTOR = 16;
+        constexpr static int DASH_SUPERSAMPLING_FACTOR = 2;
+        constexpr static float DASH_PATTERN_SCALE = 0.75f;
 
         virtual void bindParameter(const std::string& name, const std::string& value) override;
 

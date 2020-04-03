@@ -78,8 +78,16 @@ namespace carto { namespace vt {
                 while (cchLine > 0) {
                     int cchRun = bidi_run(&utf32Text[ich], &reorderLevels[ich], cchLine, nullptr);
                     cchLine -= cchRun;
-                    
-                    std::vector<Font::Glyph> glyphs = _font->shapeGlyphs(&utf32Text[ich], cchRun, 1.0f, false);
+
+                    int cchStrippedRun = cchRun;
+                    while (cchStrippedRun > 0) {
+                        if (utf32Text[ich + cchStrippedRun - 1] != '\n') {
+                            break;
+                        }
+                        cchStrippedRun--;
+                    }
+
+                    std::vector<Font::Glyph> glyphs = _font->shapeGlyphs(&utf32Text[ich], cchStrippedRun, 1.0f, false);
                     for (std::size_t i = 0; i < glyphs.size(); i++) {
                         Font::Glyph& glyph = glyphs[i];
                         if (glyph.advance(0) > 0 && glyph.advance(1) == 0) {

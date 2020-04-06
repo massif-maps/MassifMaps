@@ -297,7 +297,7 @@ namespace carto { namespace mvt {
             float textSize = bitmapSize < 0 ? (placement == vt::LabelOrientation::LINE ? calculateTextSize(formatter.getFont(), text, formatter).size()(0) : 0) : bitmapSize;
 
             long long localId = featureCollection.getLocalId(index);
-            long long globalId = _featureIdDefined ? _featureId : combineId(featureCollection.getGlobalId(index), hash);
+            long long globalId = _featureIdDefined ? (_featureId ? _featureId : generateId()) : combineId(featureCollection.getGlobalId(index), hash);
             const std::shared_ptr<const Geometry>& geometry = featureCollection.getGeometry(index);
 
             auto addLineTexts = [&](const std::vector<cglib::vec2<float>>& vertices) {

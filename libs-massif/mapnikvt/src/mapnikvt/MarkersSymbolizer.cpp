@@ -218,7 +218,7 @@ namespace carto { namespace mvt {
         std::size_t hash = std::hash<std::string>()(file);
         for (std::size_t index = 0; index < featureCollection.size(); index++) {
             long long localId = featureCollection.getLocalId(index);
-            long long globalId = _featureIdDefined ? _featureId : combineId(featureCollection.getGlobalId(index), hash);
+            long long globalId = _featureIdDefined ? (_featureId ? _featureId : generateId()) : combineId(featureCollection.getGlobalId(index), hash);
             const std::shared_ptr<const Geometry>& geometry = featureCollection.getGeometry(index);
 
             if (auto pointGeometry = std::dynamic_pointer_cast<const PointGeometry>(geometry)) {

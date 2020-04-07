@@ -168,7 +168,12 @@ namespace carto { namespace css {
                 _logger->write(mvt::Logger::Severity::WARNING, "Unsupported symbolizer property: " + propertyId);
                 continue;
             }
-            setSymbolizerParameter(mapnikSymbolizer, it->second, prop.expression, isStringExpression(propertyId));
+            try {
+                setSymbolizerParameter(mapnikSymbolizer, it->second, prop.expression, isStringExpression(propertyId));
+            }
+            catch (const std::runtime_error& ex) {
+                _logger->write(mvt::Logger::Severity::ERROR, "Error while setting " + propertyId + " parameter: " + ex.what());
+            }
         }
 
         return mapnikSymbolizer;
@@ -434,19 +439,14 @@ namespace carto { namespace css {
 
     void CartoCSSMapnikTranslator::setSymbolizerParameter(const std::shared_ptr<mvt::Symbolizer>& symbolizer, const std::string& name, const std::shared_ptr<const Expression>& expr, bool stringExpr) const {
         if (!name.empty()) {
-            try {
-                std::string exprStr;
-                if (auto constExpr = std::dynamic_pointer_cast<const ConstExpression>(expr)) {
-                    exprStr = boost::lexical_cast<std::string>(buildValue(constExpr->getValue()));
-                }
-                else {
-                    exprStr = buildExpressionString(expr, stringExpr);
-                }
-                symbolizer->setParameter(name, exprStr);
+            std::string exprStr;
+            if (auto constExpr = std::dynamic_pointer_cast<const ConstExpression>(expr)) {
+                exprStr = boost::lexical_cast<std::string>(buildValue(constExpr->getValue()));
             }
-            catch (const std::runtime_error& ex) {
-                _logger->write(mvt::Logger::Severity::ERROR, "Error while setting " + name + " parameter: " + ex.what());
+            else {
+                exprStr = buildExpressionString(expr, stringExpr);
             }
+            symbolizer->setParameter(name, exprStr);
         }
     }
 

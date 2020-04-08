@@ -1671,26 +1671,6 @@ namespace carto { namespace vt {
 
         glUniform4fv(glGetUniformLocation(shaderProgram, "uColorTable"), styleParams.parameterCount, colors[0].data());
         
-        CompiledGeometry compiledGeometry;
-        auto itGeom = _compiledTileGeometryMap.find(geometry);
-        if (itGeom == _compiledTileGeometryMap.end()) {
-            createCompiledGeometry(compiledGeometry);
-
-            glBindBuffer(GL_ARRAY_BUFFER, compiledGeometry.vertexGeometryVBO);
-            glBufferData(GL_ARRAY_BUFFER, geometry->getVertexGeometry().size() * sizeof(std::uint8_t), geometry->getVertexGeometry().data(), GL_STATIC_DRAW);
-
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, compiledGeometry.indicesVBO);
-            glBufferData(GL_ELEMENT_ARRAY_BUFFER, geometry->getIndices().size() * sizeof(std::uint16_t), geometry->getIndices().data(), GL_STATIC_DRAW);
-
-            if (!_interactionMode) {
-                geometry->releaseVertexArrays(); // if interaction is enabled, we must keep the vertex arrays. Otherwise optimize for lower memory usage
-            }
-
-            _compiledTileGeometryMap[geometry] = compiledGeometry;
-        } else {
-            compiledGeometry = itGeom->second;
-        }
-
         if (styleParams.pattern) {
             float zoomScale = std::pow(2.0f, std::floor(_viewState.zoom) - tileId.zoom);
             float coordScale = 1.0f / (vertexGeomLayoutParams.texCoordScale * styleParams.pattern->widthScale);
@@ -1730,19 +1710,39 @@ namespace carto { namespace vt {
             glUniform1i(glGetUniformLocation(shaderProgram, "uPattern"), 0);
         }
 
+        CompiledGeometry compiledGeometry;
+        auto itGeom = _compiledTileGeometryMap.find(geometry);
+        if (itGeom == _compiledTileGeometryMap.end()) {
+            createCompiledGeometry(compiledGeometry);
+
+            glBindBuffer(GL_ARRAY_BUFFER, compiledGeometry.vertexGeometryVBO);
+            glBufferData(GL_ARRAY_BUFFER, geometry->getVertexGeometry().size() * sizeof(std::uint8_t), geometry->getVertexGeometry().data(), GL_STATIC_DRAW);
+
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, compiledGeometry.indicesVBO);
+            glBufferData(GL_ELEMENT_ARRAY_BUFFER, geometry->getIndices().size() * sizeof(std::uint16_t), geometry->getIndices().data(), GL_STATIC_DRAW);
+
+            if (!_interactionMode) {
+                geometry->releaseVertexArrays(); // if interaction is enabled, we must keep the vertex arrays. Otherwise optimize for lower memory usage
+            }
+
+            _compiledTileGeometryMap[geometry] = compiledGeometry;
+        } else {
+            compiledGeometry = itGeom->second;
+        }
+
         if (compiledGeometry.geometryVAO != 0) {
             _glExtensions->glBindVertexArrayOES(compiledGeometry.geometryVAO);
         }
         if (compiledGeometry.geometryVAO == 0 || itGeom == _compiledTileGeometryMap.end()) {
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, compiledGeometry.indicesVBO);
             glBindBuffer(GL_ARRAY_BUFFER, compiledGeometry.vertexGeometryVBO);
+
             glVertexAttribPointer(positionLocation, vertexGeomLayoutParams.dimensions, GL_SHORT, GL_FALSE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.coordOffset));
             glEnableVertexAttribArray(positionLocation);
 
             if (vertexGeomLayoutParams.attribsOffset >= 0) {
                 glVertexAttribPointer(attribsLocation, 4, GL_BYTE, GL_FALSE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.attribsOffset));
                 glEnableVertexAttribArray(attribsLocation);
-            } else {
-                glVertexAttrib4f(attribsLocation, 0, 0, 0, 0);
             }
             
             if (vertexGeomLayoutParams.texCoordOffset >= 0) {
@@ -1754,8 +1754,6 @@ namespace carto { namespace vt {
                 if (vertexGeomLayoutParams.normalOffset >= 0) {
                     glVertexAttribPointer(normalLocation, vertexGeomLayoutParams.dimensions, GL_SHORT, GL_TRUE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.normalOffset));
                     glEnableVertexAttribArray(normalLocation);
-                } else {
-                    glVertexAttrib3f(normalLocation, 0, 0, 1);
                 }
             }
 
@@ -1768,8 +1766,16 @@ namespace carto { namespace vt {
                 glVertexAttribPointer(heightLocation, 1, GL_SHORT, GL_FALSE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.heightOffset));
                 glEnableVertexAttribArray(heightLocation);
             }
-            
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, compiledGeometry.indicesVBO);
+        }
+
+        if (!(vertexGeomLayoutParams.attribsOffset >= 0)) {
+            glVertexAttrib4f(attribsLocation, 0, 0, 0, 0);
+        }
+
+        if (_lightingShader2D || geometry->getType() == TileGeometry::Type::POLYGON3D) {
+            if (!(vertexGeomLayoutParams.normalOffset >= 0)) {
+                glVertexAttrib3f(normalLocation, 0, 0, 1);
+            }
         }
 
         if (geometry->getType() != TileGeometry::Type::POLYGON3D && _lightingShader2D) {
@@ -1777,7 +1783,7 @@ namespace carto { namespace vt {
         } else if (geometry->getType() == TileGeometry::Type::POLYGON3D && _lightingShader3D) {
             _lightingShader3D->setupFunc(shaderProgram, _viewState);
         }
-        
+
         glDrawElements(GL_TRIANGLES, geometry->getIndicesCount(), GL_UNSIGNED_SHORT, 0);
 
         if (compiledGeometry.geometryVAO != 0) {
@@ -1807,9 +1813,15 @@ namespace carto { namespace vt {
             
             glDisableVertexAttribArray(positionLocation);
         }
+
+        if (compiledGeometry.geometryVAO == 0 || itGeom == _compiledTileGeometryMap.end()) {
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+            glBindBuffer(GL_ARRAY_BUFFER, 0);
+        }
         
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        if (styleParams.pattern) {
+            glBindTexture(GL_TEXTURE_2D, 0);
+        }
     }
 
     void GLTileRenderer::renderLabelBatch(const LabelBatchParameters& labelBatchParams, const std::shared_ptr<const Bitmap>& bitmap) {
@@ -1903,6 +1915,8 @@ namespace carto { namespace vt {
         glUniform2f(glGetUniformLocation(shaderProgram, "uUVScale"), 1.0f / bitmap->width, 1.0f / bitmap->height);
 
         glDrawElements(GL_TRIANGLES, static_cast<unsigned int>(_labelIndices.size()), GL_UNSIGNED_SHORT, 0);
+
+        glBindTexture(GL_TEXTURE_2D, 0);
 
         glDisableVertexAttribArray(attribsLocation);
         

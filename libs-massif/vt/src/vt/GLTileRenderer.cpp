@@ -899,7 +899,7 @@ namespace carto { namespace vt {
             std::array<cglib::vec3<double>, 3> triangle;
             for (int i = 0; i < 3; i++) {
                 std::size_t coordOffset = tileSurface->getIndices()[index + i] * vertexGeomLayoutParams.vertexSize + vertexGeomLayoutParams.coordOffset;
-                const std::int16_t* coordPtr = reinterpret_cast<const std::int16_t*>(&tileSurface->getVertexGeometry()[coordOffset]);
+                const float* coordPtr = reinterpret_cast<const float*>(&tileSurface->getVertexGeometry()[coordOffset]);
                 triangle[i] = cglib::transform_point(cglib::vec3<double>(coordPtr[0], coordPtr[1], coordPtr[2]), surfaceToTileTransform);
             }
                 

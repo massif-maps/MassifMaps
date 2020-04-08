@@ -344,6 +344,7 @@ namespace carto { namespace vt {
         // Drop all caches with texture references/FBO/VBOs
         _compiledBitmapMap.clear();
         _compiledTileBitmapMap.clear();
+        _compiledTileSurfaceMap.clear();
         _compiledTileGeometryMap.clear();
         _compiledLabelBatches.clear();
         _layerBuffers.clear();

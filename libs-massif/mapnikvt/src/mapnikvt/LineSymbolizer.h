@@ -13,8 +13,9 @@ namespace carto { namespace mvt {
     class LineSymbolizer : public GeometrySymbolizer {
     public:
         explicit LineSymbolizer(std::shared_ptr<Logger> logger) : GeometrySymbolizer(std::move(logger)) {
+            _strokeWidthExpression = std::make_shared<ConstExpression>(Value(1.0f));
             bind(&_strokeFunc, std::make_shared<ConstExpression>(Value(std::string("#000000"))), &LineSymbolizer::convertColor);
-            bind(&_strokeWidthFunc, std::make_shared<ConstExpression>(Value(1.0f)));
+            bind(&_strokeWidthFunc, _strokeWidthExpression);
             bind(&_strokeOpacityFunc, std::make_shared<ConstExpression>(Value(1.0f)));
         }
 
@@ -29,7 +30,7 @@ namespace carto { namespace mvt {
         vt::LineCapMode convertLineCapMode(const std::string& lineCap) const;
         vt::LineJoinMode convertLineJoinMode(const std::string& lineJoin) const;
 
-        static std::shared_ptr<vt::BitmapPattern> createDashBitmapPattern(const std::vector<float>& strokeDashArray);
+        static std::shared_ptr<vt::BitmapPattern> createDashBitmapPattern(const std::vector<float>& strokeDashArray, int height, vt::LineCapMode lineCap);
 
         vt::ColorFunction _strokeFunc; // vt::Color(0xff000000)
         vt::FloatFunction _strokeWidthFunc; // 1.0f
@@ -37,6 +38,7 @@ namespace carto { namespace mvt {
         std::string _strokeLinejoin = "miter";
         std::string _strokeLinecap = "butt";
         std::string _strokeDashArray;
+        std::shared_ptr<Expression> _strokeWidthExpression;
     };
 } }
 

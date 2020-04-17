@@ -1823,7 +1823,7 @@ namespace carto { namespace vt {
     }
 
     const GLTileRenderer::ShaderProgram& GLTileRenderer::buildShaderProgram(const std::string& id, const std::string& vsh, const std::string& fsh, bool pattern, bool translate, bool lighting2D, bool lighting3D, bool derivs) {
-        std::string shaderProgramId = id + (pattern ? "_1" : "_0") + (translate ? "_1" : "_0") + (lighting2D ? " _1" : "_0") + (lighting3D ? "_1" : "_0") + (derivs ? "_1" : "_0");
+        std::string shaderProgramId = id + (pattern ? "_p" : "") + (translate ? "_t" : "") + (lighting2D ? "_l2d" : "") + (lighting3D ? "_l3d" : "") + (derivs ? "_d" : "");
 
         auto it = _shaderProgramMap.find(shaderProgramId);
         if (it == _shaderProgramMap.end()) {

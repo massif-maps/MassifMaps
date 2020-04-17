@@ -1313,27 +1313,7 @@ namespace carto { namespace vt {
             glUniformMatrix4fv(shaderProgram.uniforms[U_MVPMATRIX], 1, GL_FALSE, mvpMatrix.data());
 
             if (auto pattern = background->getPattern()) {
-                CompiledBitmap compiledBitmap;
-                auto it = _compiledBitmapMap.find(pattern->bitmap);
-                if (it == _compiledBitmapMap.end()) {
-                    createCompiledBitmap(compiledBitmap);
-
-                    std::shared_ptr<const Bitmap> scaledPatternBitmap = BitmapManager::scaleToPOT(pattern->bitmap);
-                    glBindTexture(GL_TEXTURE_2D, compiledBitmap.texture);
-                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-                    if (scaledPatternBitmap) {
-                        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, scaledPatternBitmap->width, scaledPatternBitmap->height, 0, GL_RGBA, GL_UNSIGNED_BYTE, scaledPatternBitmap->data.data());
-                    }
-                    glGenerateMipmap(GL_TEXTURE_2D);
-
-                    _compiledBitmapMap[pattern->bitmap] = compiledBitmap;
-                } else {
-                    compiledBitmap = it->second;
-                }
-
+                const CompiledBitmap& compiledBitmap = buildCompiledBitmap(pattern->bitmap, true);
                 glActiveTexture(GL_TEXTURE0);
                 glBindTexture(GL_TEXTURE_2D, compiledBitmap.texture);
                 glUniform1i(shaderProgram.uniforms[U_PATTERN], 0);
@@ -1400,44 +1380,7 @@ namespace carto { namespace vt {
             cglib::mat4x4<float> mvpMatrix = cglib::mat4x4<float>::convert(_cameraProjMatrix * cglib::translate4_matrix(_tileSurfaceBuilderOrigin));
             glUniformMatrix4fv(shaderProgram.uniforms[U_MVPMATRIX], 1, GL_FALSE, mvpMatrix.data());
 
-            CompiledBitmap compiledTileBitmap;
-            auto it = _compiledTileBitmapMap.find(bitmap);
-            if (it == _compiledTileBitmapMap.end()) {
-                createCompiledBitmap(compiledTileBitmap);
-
-                // Use a different strategy if the bitmap is not of POT dimensions, simply do not create the mipmaps
-                bool genMipmaps = (bitmap->getWidth() & (bitmap->getWidth() - 1)) == 0 && (bitmap->getHeight() & (bitmap->getHeight() - 1)) == 0;
-                glBindTexture(GL_TEXTURE_2D, compiledTileBitmap.texture);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, genMipmaps ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-                GLenum format = GL_NONE;
-                switch (bitmap->getFormat()) {
-                case TileBitmap::Format::GRAYSCALE:
-                    format = GL_LUMINANCE;
-                    break;
-                case TileBitmap::Format::RGB:
-                    format = GL_RGB;
-                    break;
-                case TileBitmap::Format::RGBA:
-                    format = GL_RGBA;
-                    break;
-                }
-                glTexImage2D(GL_TEXTURE_2D, 0, format, bitmap->getWidth(), bitmap->getHeight(), 0, format, GL_UNSIGNED_BYTE, bitmap->getData().empty() ? NULL : bitmap->getData().data());
-                if (genMipmaps) {
-                    glGenerateMipmap(GL_TEXTURE_2D);
-                }
-
-                if (!_interactionMode) {
-                    bitmap->releaseBitmap(); // if interaction is enabled, keep the original bitmap
-                }
-
-                _compiledTileBitmapMap[bitmap] = compiledTileBitmap;
-            } else {
-                compiledTileBitmap = it->second;
-            }
-
+            const CompiledBitmap& compiledTileBitmap = buildCompiledTileBitmap(bitmap);
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, compiledTileBitmap.texture);
             glUniform1i(shaderProgram.uniforms[U_PATTERN], 0);
@@ -1599,58 +1542,17 @@ namespace carto { namespace vt {
             }
             glUniform2f(shaderProgram.uniforms[U_UVSCALE], uvScale(0), uvScale(1));
 
-            CompiledBitmap compiledBitmap;
-            auto itBitmap = _compiledBitmapMap.find(styleParams.pattern->bitmap);
-            if (itBitmap == _compiledBitmapMap.end()) {
-                createCompiledBitmap(compiledBitmap);
-
-                // Skip mipmap generation for line patterns as it simply smears the pattern
-                bool genMipmaps = geometry->getType() != TileGeometry::Type::LINE;
-                std::shared_ptr<const Bitmap> patternBitmap = BitmapManager::scaleToPOT(styleParams.pattern->bitmap);
-                glBindTexture(GL_TEXTURE_2D, compiledBitmap.texture);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, genMipmaps ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, patternBitmap->width, patternBitmap->height, 0, GL_RGBA, GL_UNSIGNED_BYTE, patternBitmap->data.data());
-                if (genMipmaps) {
-                    glGenerateMipmap(GL_TEXTURE_2D);
-                }
-
-                _compiledBitmapMap[styleParams.pattern->bitmap] = compiledBitmap;
-            } else {
-                compiledBitmap = itBitmap->second;
-            }
-
+            const CompiledBitmap& compiledBitmap = buildCompiledBitmap(styleParams.pattern->bitmap, geometry->getType() != TileGeometry::Type::LINE);
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, compiledBitmap.texture);
             glUniform1i(shaderProgram.uniforms[U_PATTERN], 0);
         }
 
-        CompiledGeometry compiledGeometry;
-        auto itGeom = _compiledTileGeometryMap.find(geometry);
-        if (itGeom == _compiledTileGeometryMap.end()) {
-            createCompiledGeometry(compiledGeometry);
-
-            glBindBuffer(GL_ARRAY_BUFFER, compiledGeometry.vertexGeometryVBO);
-            glBufferData(GL_ARRAY_BUFFER, geometry->getVertexGeometry().size() * sizeof(std::uint8_t), geometry->getVertexGeometry().data(), GL_STATIC_DRAW);
-
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, compiledGeometry.indicesVBO);
-            glBufferData(GL_ELEMENT_ARRAY_BUFFER, geometry->getIndices().size() * sizeof(std::uint16_t), geometry->getIndices().data(), GL_STATIC_DRAW);
-
-            if (!_interactionMode) {
-                geometry->releaseVertexArrays(); // if interaction is enabled, we must keep the vertex arrays. Otherwise optimize for lower memory usage
-            }
-
-            _compiledTileGeometryMap[geometry] = compiledGeometry;
-        } else {
-            compiledGeometry = itGeom->second;
-        }
-
+        const CompiledGeometry& compiledGeometry = buildCompiledTileGeometry(geometry);
         if (compiledGeometry.geometryVAO != 0) {
             _glExtensions->glBindVertexArrayOES(compiledGeometry.geometryVAO);
         }
-        if (compiledGeometry.geometryVAO == 0 || itGeom == _compiledTileGeometryMap.end()) {
+        if (compiledGeometry.geometryVAO == 0 || !compiledGeometry.geometryVAOInitialized) {
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, compiledGeometry.indicesVBO);
             glBindBuffer(GL_ARRAY_BUFFER, compiledGeometry.vertexGeometryVBO);
 
@@ -1731,9 +1633,11 @@ namespace carto { namespace vt {
             glDisableVertexAttribArray(shaderProgram.attribs[A_VERTEXPOSITION]);
         }
 
-        if (compiledGeometry.geometryVAO == 0 || itGeom == _compiledTileGeometryMap.end()) {
+        if (compiledGeometry.geometryVAO == 0 || !compiledGeometry.geometryVAOInitialized) {
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
             glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+            compiledGeometry.geometryVAOInitialized = compiledGeometry.geometryVAO != 0;
         }
         
         if (styleParams.pattern) {
@@ -1758,30 +1662,9 @@ namespace carto { namespace vt {
         }
         _labelBatchCounter++;
 
-        CompiledBitmap compiledBitmap;
-        auto itBitmap = _compiledBitmapMap.find(bitmap);
-        if (itBitmap == _compiledBitmapMap.end()) {
-            createCompiledBitmap(compiledBitmap);
-
-            // Turn off mipmap creation as most labels are SDF texts
-            bool genMipMaps = false;
-            glBindTexture(GL_TEXTURE_2D, compiledBitmap.texture);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, genMipMaps ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, bitmap->width, bitmap->height, 0, GL_RGBA, GL_UNSIGNED_BYTE, bitmap->data.data());
-            if (genMipMaps) {
-                glGenerateMipmap(GL_TEXTURE_2D);
-            }
-
-            _compiledBitmapMap[bitmap] = compiledBitmap;
-        } else {
-            compiledBitmap = itBitmap->second;
-        }
-
         bool useDerivatives = _glExtensions->GL_OES_standard_derivatives_supported();
 
+        const CompiledBitmap& compiledBitmap = buildCompiledBitmap(bitmap, false);
         const ShaderProgram& shaderProgram = buildShaderProgram("labels", labelVsh, labelFsh, false, false, true, false, useDerivatives);
         glUseProgram(shaderProgram.program);
 
@@ -1853,6 +1736,90 @@ namespace carto { namespace vt {
         _labelIndices.clear();
 
         checkGLError();
+    }
+
+    const GLTileRenderer::CompiledBitmap& GLTileRenderer::buildCompiledBitmap(const std::shared_ptr<const Bitmap>& bitmap, bool genMipmaps) {
+        auto it = _compiledBitmapMap.find(bitmap);
+        if (it == _compiledBitmapMap.end()) {
+            CompiledBitmap compiledBitmap;
+            createCompiledBitmap(compiledBitmap);
+
+            std::shared_ptr<const Bitmap> scaledBitmap = (genMipmaps ? BitmapManager::scaleToPOT(bitmap) : bitmap);
+            glBindTexture(GL_TEXTURE_2D, compiledBitmap.texture);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, genMipmaps ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+            if (scaledBitmap) {
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, scaledBitmap->width, scaledBitmap->height, 0, GL_RGBA, GL_UNSIGNED_BYTE, scaledBitmap->data.data());
+            }
+            if (genMipmaps) {
+                glGenerateMipmap(GL_TEXTURE_2D);
+            }
+
+            it = _compiledBitmapMap.emplace(bitmap, compiledBitmap).first;
+        }
+        return it->second;
+    }
+
+    const GLTileRenderer::CompiledBitmap & GLTileRenderer::buildCompiledTileBitmap(const std::shared_ptr<TileBitmap>& tileBitmap) {
+        auto it = _compiledTileBitmapMap.find(tileBitmap);
+        if (it == _compiledTileBitmapMap.end()) {
+            CompiledBitmap compiledTileBitmap;
+            createCompiledBitmap(compiledTileBitmap);
+
+            // Use a different strategy if the bitmap is not of POT dimensions, simply do not create the mipmaps
+            bool genMipmaps = (tileBitmap->getWidth() & (tileBitmap->getWidth() - 1)) == 0 && (tileBitmap->getHeight() & (tileBitmap->getHeight() - 1)) == 0;
+            glBindTexture(GL_TEXTURE_2D, compiledTileBitmap.texture);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, genMipmaps ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+            GLenum format = GL_NONE;
+            switch (tileBitmap->getFormat()) {
+            case TileBitmap::Format::GRAYSCALE:
+                format = GL_LUMINANCE;
+                break;
+            case TileBitmap::Format::RGB:
+                format = GL_RGB;
+                break;
+            case TileBitmap::Format::RGBA:
+                format = GL_RGBA;
+                break;
+            }
+            glTexImage2D(GL_TEXTURE_2D, 0, format, tileBitmap->getWidth(), tileBitmap->getHeight(), 0, format, GL_UNSIGNED_BYTE, tileBitmap->getData().empty() ? NULL : tileBitmap->getData().data());
+            if (genMipmaps) {
+                glGenerateMipmap(GL_TEXTURE_2D);
+            }
+
+            if (!_interactionMode) {
+                tileBitmap->releaseBitmap(); // if interaction is enabled, keep the original bitmap
+            }
+
+            it = _compiledTileBitmapMap.emplace(tileBitmap, compiledTileBitmap).first;
+        }
+        return it->second;
+    }
+
+    const GLTileRenderer::CompiledGeometry& GLTileRenderer::buildCompiledTileGeometry(const std::shared_ptr<TileGeometry>& tileGeometry) {
+        auto it = _compiledTileGeometryMap.find(tileGeometry);
+        if (it == _compiledTileGeometryMap.end()) {
+            CompiledGeometry compiledGeometry;
+            createCompiledGeometry(compiledGeometry);
+
+            glBindBuffer(GL_ARRAY_BUFFER, compiledGeometry.vertexGeometryVBO);
+            glBufferData(GL_ARRAY_BUFFER, tileGeometry->getVertexGeometry().size() * sizeof(std::uint8_t), tileGeometry->getVertexGeometry().data(), GL_STATIC_DRAW);
+
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, compiledGeometry.indicesVBO);
+            glBufferData(GL_ELEMENT_ARRAY_BUFFER, tileGeometry->getIndices().size() * sizeof(std::uint16_t), tileGeometry->getIndices().data(), GL_STATIC_DRAW);
+
+            if (!_interactionMode) {
+                tileGeometry->releaseVertexArrays(); // if interaction is enabled, we must keep the vertex arrays. Otherwise optimize for lower memory usage
+            }
+
+            it = _compiledTileGeometryMap.emplace(tileGeometry, compiledGeometry).first;
+        }
+        return it->second;
     }
 
     const GLTileRenderer::ShaderProgram& GLTileRenderer::buildShaderProgram(const std::string& id, const std::string& vsh, const std::string& fsh, bool pattern, bool translate, bool lighting2D, bool lighting3D, bool derivs) {

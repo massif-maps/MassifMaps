@@ -20,7 +20,6 @@
 #include "TileSurface.h"
 #include "TileSurfaceBuilder.h"
 #include "GLExtensions.h"
-#include "GLShaderManager.h"
 
 #include <memory>
 #include <tuple>
@@ -101,6 +100,14 @@ namespace carto { namespace vt {
             GLuint fbo;
 
             FrameBuffer() : colorTexture(0), depthStencilRBs(), depthStencilAttachments(), fbo(0) { }
+        };
+
+        struct ShaderProgram {
+            GLuint program;
+            std::vector<GLuint> uniforms;
+            std::vector<GLuint> attribs;
+
+            ShaderProgram() : program(0), uniforms(), attribs() { }
         };
 
         struct CompiledBitmap {
@@ -192,8 +199,12 @@ namespace carto { namespace vt {
         void renderTileGeometry(const TileId& tileId, const TileId& targetTileId, float blend, float opacity, const std::shared_ptr<const Tile>& tile, const std::shared_ptr<TileGeometry>& geometry);
         void renderLabelBatch(const LabelBatchParameters& labelBatchParams, const std::shared_ptr<const Bitmap>& bitmap);
 
+        const ShaderProgram& buildShaderProgram(const std::string& id, const std::string& vsh, const std::string& fsh, bool pattern, bool translate, bool lighting2D, bool lighting3D, bool derivs);
+
         const std::vector<std::shared_ptr<TileSurface>>& buildCompiledTileSurfaces(const TileId& tileId);
 
+        void createShaderProgram(ShaderProgram& shaderProgram, const std::string& vsh, const std::string& fsh, const std::set<std::string>& defs, const std::map<std::string, int>& uniformMap, const std::map<std::string, int>& attribMap);
+        void deleteShaderProgram(ShaderProgram& shaderProgram);
         void createFrameBuffer(FrameBuffer& frameBuffer, bool useColor, bool useDepth, bool useStencil);
         void deleteFrameBuffer(FrameBuffer& frameBuffer);
         void createCompiledBitmap(CompiledBitmap& compiledBitmap);
@@ -207,13 +218,8 @@ namespace carto { namespace vt {
         void createCompiledLabelBatch(CompiledLabelBatch& compiledLabelBatch);
         void deleteCompiledLabelBatch(CompiledLabelBatch& compiledLabelBatch);
 
-        GLShaderManager::ShaderContext _defaultContext;
-        GLShaderManager::ShaderContext _patternTransformLighting2DContext[2][2];
-        GLShaderManager::ShaderContext _transformLighting3DContext[2];
-        GLShaderManager::ShaderContext _derivativesLighting2DContext[2];
         boost::optional<LightingShader> _lightingShader2D;
         boost::optional<LightingShader> _lightingShader3D;
-        GLShaderManager _shaderManager;
         TileSurfaceBuilder _tileSurfaceBuilder;
 
         std::vector<FrameBuffer> _layerBuffers;
@@ -239,6 +245,7 @@ namespace carto { namespace vt {
         std::vector<std::shared_ptr<Label>> _labels;
         std::unordered_map<std::pair<int, long long>, std::shared_ptr<Label>, LabelHash> _labelMap;
         std::unordered_map<TileId, std::vector<std::shared_ptr<TileSurface>>> _tileSurfaceMap;
+        std::map<std::string, ShaderProgram> _shaderProgramMap;
         std::map<std::weak_ptr<const Bitmap>, CompiledBitmap, std::owner_less<std::weak_ptr<const Bitmap>>> _compiledBitmapMap;
         std::map<std::weak_ptr<const TileBitmap>, CompiledBitmap, std::owner_less<std::weak_ptr<const TileBitmap>>> _compiledTileBitmapMap;
         std::map<std::weak_ptr<const TileGeometry>, CompiledGeometry, std::owner_less<std::weak_ptr<const TileGeometry>>> _compiledTileGeometryMap;

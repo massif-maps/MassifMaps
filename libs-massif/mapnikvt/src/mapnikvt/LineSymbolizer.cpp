@@ -23,7 +23,11 @@ namespace carto { namespace mvt {
         
         std::shared_ptr<const vt::BitmapPattern> strokePattern;
         if (!_strokeDashArray.empty()) {
-            std::string file = "__line_dasharray_" + _strokeDashArray;
+            int height = 1;
+            if (lineCap != vt::LineCapMode::NONE) {
+                height = static_cast<int>(ValueConverter<double>::convert(_strokeWidthExpression->evaluate(exprContext)));
+            }
+            std::string file = "__line_dasharray_" + boost::lexical_cast<std::string>(height) + "_" + _strokeLinecap + "_" + _strokeDashArray;
             strokePattern = symbolizerContext.getBitmapManager()->getBitmapPattern(file);
             if (!strokePattern) {
                 std::vector<std::string> dashList;
@@ -40,7 +44,7 @@ namespace carto { namespace mvt {
                 if (strokeDashArray.empty()) {
                     strokeDashArray.push_back(1);
                 }
-                strokePattern = createDashBitmapPattern(strokeDashArray);
+                strokePattern = createDashBitmapPattern(strokeDashArray, height, lineCap);
                 symbolizerContext.getBitmapManager()->storeBitmapPattern(file, strokePattern);
             }
         }
@@ -98,7 +102,8 @@ namespace carto { namespace mvt {
             bind(&_strokeFunc, parseStringExpression(value), &LineSymbolizer::convertColor);
         }
         else if (name == "stroke-width") {
-            bind(&_strokeWidthFunc, parseExpression(value));
+            _strokeWidthExpression = parseExpression(value);
+            bind(&_strokeWidthFunc, _strokeWidthExpression);
         }
         else if (name == "stroke-opacity") {
             bind(&_strokeOpacityFunc, parseExpression(value));
@@ -145,27 +150,48 @@ namespace carto { namespace mvt {
         return vt::LineJoinMode::MITER;
     }
 
-    std::shared_ptr<vt::BitmapPattern> LineSymbolizer::createDashBitmapPattern(const std::vector<float>& strokeDashArray) {
+    std::shared_ptr<vt::BitmapPattern> LineSymbolizer::createDashBitmapPattern(const std::vector<float>& strokeDashArray, int height, vt::LineCapMode lineCap) {
         float size = std::accumulate(strokeDashArray.begin(), strokeDashArray.end(), 0.0f);
-        float minDashSize = std::accumulate(strokeDashArray.begin(), strokeDashArray.end(), 1.0f, [](float a, float b) { return b > 0 ? std::min(a, b) : a; });
-        float supersamplingFactor = DASH_SUPERSAMPLING_FACTOR / minDashSize;
-
+        float superSamplingFactor = DASH_SUPERSAMPLING_FACTOR / std::accumulate(strokeDashArray.begin(), strokeDashArray.end(), 1.0f, [](float a, float b) { return b > 0 ? std::min(a, b) : a; });
+        
         int pow2Size = 1;
-        while (pow2Size < size * supersamplingFactor && pow2Size < 2048) {
+        while (pow2Size < size * superSamplingFactor && pow2Size < 2048) {
             pow2Size *= 2;
         }
+        float sizeScale = pow2Size / size;
 
-        vt::BitmapCanvas canvas(pow2Size, 1, false);
-        float pos = 0;
-        for (std::size_t n = 0; n < strokeDashArray.size(); n++) {
-            float dash = strokeDashArray[n];
-            if (n % 2 == 0) {
-                float x0 = pos * pow2Size / size;
-                float x1 = (pos + dash) * pow2Size / size;
-                canvas.drawRectangle(x0, 0, x1, 1);
-            }
-            pos += dash;
+        int pow2Height = 1;
+        while (pow2Height < height * superSamplingFactor && pow2Height < 2048) {
+            pow2Height *= 2;
         }
-        return std::make_shared<vt::BitmapPattern>(DASH_PATTERN_SCALE * size / pow2Size, 1.0f, canvas.buildBitmapImage()->bitmap);
+        float heightScale = pow2Height / height;
+
+        vt::BitmapCanvas canvas(pow2Size, pow2Height, false);
+        float radius = pow2Height * 0.5f * sizeScale / heightScale;
+        float x0 = strokeDashArray.back() * 0.5f * sizeScale;
+        float x1 = x0;
+        float y0 = 0;
+        float y1 = pow2Height;
+        for (std::size_t n = 0; n < strokeDashArray.size(); n++) {
+            x1 += strokeDashArray[n] * sizeScale;
+            if (n % 2 == 0) {
+                switch (lineCap) {
+                case vt::LineCapMode::ROUND:
+                    canvas.drawEllipse(x0, (y0 + y1) * 0.5f, radius, pow2Height * 0.5f);
+                    canvas.drawEllipse(x1, (y0 + y1) * 0.5f, radius, pow2Height * 0.5f);
+                    canvas.drawRectangle(x0, y0, x1, y1);
+                    break;
+                case vt::LineCapMode::SQUARE:
+                    canvas.drawRectangle(x0 - radius, y0, x1 + radius, y1);
+                    break;
+                default:
+                    canvas.drawRectangle(x0, y0, x1, y1);
+                    break;
+                }
+            }
+            x0 = x1;
+        }
+        
+        return std::make_shared<vt::BitmapPattern>(DASH_PATTERN_SCALE / sizeScale, 1.0f / heightScale, canvas.buildBitmapImage()->bitmap);
     }
 } }

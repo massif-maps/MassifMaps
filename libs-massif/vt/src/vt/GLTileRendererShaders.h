@@ -8,6 +8,74 @@
 #define _CARTO_VT_GLTILERENDERERSHADERS_H_
 
 namespace carto { namespace vt {
+    enum {
+        A_VERTEXPOSITION,
+        A_VERTEXUV,
+        A_VERTEXNORMAL,
+        A_VERTEXBINORMAL,
+        A_VERTEXHEIGHT,
+        A_VERTEXCOLOR,
+        A_VERTEXATTRIBS
+    };
+
+    enum {
+        U_MVPMATRIX,
+        U_TRANSFORMMATRIX,
+        U_TILEMATRIX,
+        U_UVMATRIX,
+        U_BINORMALSCALE,
+        U_UVSCALE,
+        U_HEIGHTSCALE,
+        U_ABSHEIGHTSCALE,
+        U_COLORTABLE,
+        U_WIDTHTABLE,
+        U_STROKEWIDTHTABLE,
+        U_COLOR,
+        U_OPACITY,
+        U_PATTERN,
+        U_BITMAP,
+        U_TEXTURE,
+        U_SDFSCALE,
+        U_HALFRESOLUTION,
+        U_INVSCREENSIZE,
+        U_DERIVSCALE,
+        U_GAMMA
+    };
+
+    static const std::map<std::string, int> attribMap = {
+        { "aVertexPosition", A_VERTEXPOSITION },
+        { "aVertexUV",       A_VERTEXUV },
+        { "aVertexNormal",   A_VERTEXNORMAL },
+        { "aVertexBinormal", A_VERTEXBINORMAL },
+        { "aVertexHeight",   A_VERTEXHEIGHT },
+        { "aVertexColor",    A_VERTEXCOLOR },
+        { "aVertexAttribs",  A_VERTEXATTRIBS }
+    };
+
+    static const std::map<std::string, int> uniformMap = {
+        { "uMVPMatrix",        U_MVPMATRIX },
+        { "uTransformMatrix",  U_TRANSFORMMATRIX },
+        { "uTileMatrix",       U_TILEMATRIX },
+        { "uUVMatrix",         U_UVMATRIX },
+        { "uBinormalScale",    U_BINORMALSCALE },
+        { "uUVScale",          U_UVSCALE },
+        { "uHeightScale",      U_HEIGHTSCALE },
+        { "uAbsHeightScale",   U_ABSHEIGHTSCALE },
+        { "uColorTable",       U_COLORTABLE },
+        { "uWidthTable",       U_WIDTHTABLE },
+        { "uStrokeWidthTable", U_STROKEWIDTHTABLE },
+        { "uPattern",          U_PATTERN },
+        { "uBitmap",           U_BITMAP },
+        { "uTexture",          U_TEXTURE },
+        { "uColor",            U_COLOR },
+        { "uOpacity",          U_OPACITY },
+        { "uSDFScale",         U_SDFSCALE },
+        { "uHalfResolution",   U_HALFRESOLUTION },
+        { "uInvScreenSize",    U_INVSCREENSIZE },
+        { "uDerivScale",       U_DERIVSCALE },
+        { "uGamma",            U_GAMMA }
+    };
+
     static const std::string commonVsh = R"GLSL(
         attribute vec3 aVertexPosition;
         #ifdef LIGHTING_FSH

@@ -62,9 +62,15 @@ namespace {
     }
 
     void checkGLError() {
+#ifndef NDEBUG
+        std::string errorCodes;
         for (GLenum error = glGetError(); error != GL_NONE; error = glGetError()) {
-            assert(error != GL_NONE);
+            errorCodes += (errorCodes.empty() ? "" : ",");
         }
+        if (!errorCodes.empty()) {
+            throw std::runtime_error("Rendering failed: error codes" + errorCodes);
+        }
+#endif
     }
 }
 
@@ -256,107 +262,32 @@ namespace carto { namespace vt {
     }
 
     void GLTileRenderer::initializeRenderer() {
-        const std::map<std::string, std::pair<std::string, std::string>> shaderMap = {
-            { "blend", { blendVsh, blendFsh } },
-            { "background", { backgroundVsh, backgroundFsh } },
-            { "bitmap", { bitmapVsh, bitmapFsh } },
-            { "label", { labelVsh, labelFsh } },
-            { "point", { pointVsh, pointFsh } },
-            { "line", { lineVsh, lineFsh } },
-            { "polygon", { polygonVsh, polygonFsh } },
-            { "polygon3d", { polygon3DVsh, polygon3DFsh } }
-        };
-
-        std::lock_guard<std::mutex> lock(_mutex);
-
-        // Register shaders
-        for (auto it = shaderMap.begin(); it != shaderMap.end(); it++) {
-            std::string vsh = commonVsh;
-            std::string fsh = commonFsh;
-            if (it->first == "polygon3d") {
-                if (_lightingShader3D) {
-                    if (_lightingShader3D->perVertex) {
-                        vsh += _lightingShader3D->shader;
-                    } else {
-                        fsh += _lightingShader3D->shader;
-                    }
-                }
-            } else if (it->first != "blend") {
-                if (_lightingShader2D) {
-                    if (_lightingShader2D->perVertex) {
-                        vsh += _lightingShader2D->shader;
-                    } else {
-                        fsh += _lightingShader2D->shader;
-                    }
-                }
-            }
-            vsh += it->second.first;
-            fsh += it->second.second;
-            
-            _shaderManager.registerShaders(it->first, vsh, fsh);
-        }
-        
-        // Create shader contexts
-        _defaultContext = std::make_shared<std::set<std::string>>();
-
-        for (int i = 0; i < 2; i++) {
-            for (int j = 0; j < 2; j++) {
-                auto defs = std::make_shared<std::set<std::string>>();
-                if (i != 0) {
-                    defs->insert("PATTERN");
-                }
-                if (j != 0) {
-                    defs->insert("TRANSFORM");
-                }
-                if (_lightingShader2D) {
-                    defs->insert(_lightingShader2D->perVertex ? "LIGHTING_VSH" : "LIGHTING_FSH");
-                }
-                _patternTransformLighting2DContext[i][j] = defs;
-            }
-        }
-
-        for (int i = 0; i < 2; i++) {
-            auto defs = std::make_shared<std::set<std::string>>();
-            if (i != 0) {
-                defs->insert("TRANSFORM");
-            }
-            if (_lightingShader3D) {
-                defs->insert(_lightingShader3D->perVertex ? "LIGHTING_VSH" : "LIGHTING_FSH");
-            }
-            _transformLighting3DContext[i] = defs;
-        }
-
-        for (int i = 0; i < 2; i++) {
-            auto defs = std::make_shared<std::set<std::string>>();
-            if (i != 0) {
-                defs->insert("DERIVATIVES");
-            }
-            if (_lightingShader2D) {
-                defs->insert(_lightingShader2D->perVertex ? "LIGHTING_VSH" : "LIGHTING_FSH");
-            }
-            _derivativesLighting2DContext[i] = defs;
-        }
     }
     
     void GLTileRenderer::resetRenderer() {
         std::lock_guard<std::mutex> lock(_mutex);
         
-        // Drop all caches with texture references/FBO/VBOs
+        // Drop all caches with shader/texture/FBO/VBO references
+        _shaderProgramMap.clear();
         _compiledBitmapMap.clear();
         _compiledTileBitmapMap.clear();
+        _compiledTileSurfaceMap.clear();
         _compiledTileGeometryMap.clear();
         _compiledLabelBatches.clear();
         _layerBuffers.clear();
         _overlayBuffer = FrameBuffer();
         _screenQuad = CompiledQuad();
-
-        // Reset shader programs
-        _shaderManager.resetPrograms();
     }
         
     void GLTileRenderer::deinitializeRenderer() {
         std::lock_guard<std::mutex> lock(_mutex);
         
+        // Release shaders
+        for (auto it = _shaderProgramMap.begin(); it != _shaderProgramMap.end(); it++) {
+            deleteShaderProgram(it->second);
+        }
+        _shaderProgramMap.clear();
+
         // Release compiled bitmaps (textures)
         for (auto it = _compiledBitmapMap.begin(); it != _compiledBitmapMap.end(); it++) {
             deleteCompiledBitmap(it->second);
@@ -392,15 +323,12 @@ namespace carto { namespace vt {
             deleteFrameBuffer(*it);
         }
         _layerBuffers.clear();
-        
+
         // Release screen and overlay FBOs
         deleteFrameBuffer(_overlayBuffer);
 
         // Release tile and screen VBOs
         deleteCompiledQuad(_screenQuad);
-
-        // Release shader programs
-        _shaderManager.deletePrograms();
         
         _blendNodes.reset();
         _renderBlendNodes.reset();
@@ -899,7 +827,7 @@ namespace carto { namespace vt {
             std::array<cglib::vec3<double>, 3> triangle;
             for (int i = 0; i < 3; i++) {
                 std::size_t coordOffset = tileSurface->getIndices()[index + i] * vertexGeomLayoutParams.vertexSize + vertexGeomLayoutParams.coordOffset;
-                const std::int16_t* coordPtr = reinterpret_cast<const std::int16_t*>(&tileSurface->getVertexGeometry()[coordOffset]);
+                const float* coordPtr = reinterpret_cast<const float*>(&tileSurface->getVertexGeometry()[coordOffset]);
                 triangle[i] = cglib::transform_point(cglib::vec3<double>(coordPtr[0], coordPtr[1], coordPtr[2]), surfaceToTileTransform);
             }
                 
@@ -1243,35 +1171,35 @@ namespace carto { namespace vt {
             return;
         }
 
-        GLuint shaderProgram = _shaderManager.createProgram("blend", _defaultContext);
-        GLint positionLocation = glGetAttribLocation(shaderProgram, "aVertexPosition");
-        glUseProgram(shaderProgram);
-        checkGLError();
+        const ShaderProgram& shaderProgram = buildShaderProgram("blendscreen", blendVsh, blendFsh, false, false, false, false, false);
+        glUseProgram(shaderProgram.program);
         
         if (_screenQuad.vbo == 0) {
             createCompiledQuad(_screenQuad);
         }
         glBindBuffer(GL_ARRAY_BUFFER, _screenQuad.vbo);
-        glVertexAttribPointer(positionLocation, 2, GL_FLOAT, GL_FALSE, 0, 0);
-        glEnableVertexAttribArray(positionLocation);
+        glVertexAttribPointer(shaderProgram.attribs[A_VERTEXPOSITION], 2, GL_FLOAT, GL_FALSE, 0, 0);
+        glEnableVertexAttribArray(shaderProgram.attribs[A_VERTEXPOSITION]);
         
         cglib::mat4x4<float> mvpMatrix = cglib::mat4x4<float>::identity();
-        glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "uMVPMatrix"), 1, GL_FALSE, mvpMatrix.data());
+        glUniformMatrix4fv(shaderProgram.uniforms[U_MVPMATRIX], 1, GL_FALSE, mvpMatrix.data());
         
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, texture);
-        glUniform1i(glGetUniformLocation(shaderProgram, "uTexture"), 0);
+        glUniform1i(shaderProgram.uniforms[U_TEXTURE], 0);
         Color color(opacity, opacity, opacity, opacity);
-        glUniform4fv(glGetUniformLocation(shaderProgram, "uColor"), 1, color.rgba().data());
-        glUniform2f(glGetUniformLocation(shaderProgram, "uInvScreenSize"), 1.0f / _screenWidth, 1.0f / _screenHeight);
+        glUniform4fv(shaderProgram.uniforms[U_COLOR], 1, color.rgba().data());
+        glUniform2f(shaderProgram.uniforms[U_INVSCREENSIZE], 1.0f / _screenWidth, 1.0f / _screenHeight);
         
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
         
         glBindTexture(GL_TEXTURE_2D, 0);
         
-        glDisableVertexAttribArray(positionLocation);
+        glDisableVertexAttribArray(shaderProgram.attribs[A_VERTEXPOSITION]);
 
         glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+        checkGLError();
     }
 
     void GLTileRenderer::blendTileTexture(const TileId& tileId, float opacity, GLuint texture) {
@@ -1283,35 +1211,35 @@ namespace carto { namespace vt {
             const TileSurface::VertexGeometryLayoutParameters& vertexGeomLayoutParams = tileSurface->getVertexGeometryLayoutParameters();
             const CompiledSurface& compiledTileSurface = _compiledTileSurfaceMap[tileSurface];
 
-            GLuint shaderProgram = _shaderManager.createProgram("blend", _defaultContext);
-            GLint positionLocation = glGetAttribLocation(shaderProgram, "aVertexPosition");
-            glUseProgram(shaderProgram);
-            checkGLError();
+            const ShaderProgram& shaderProgram = buildShaderProgram("blendtile", blendVsh, blendFsh, false, false, false, false, false);
+            glUseProgram(shaderProgram.program);
 
             glBindBuffer(GL_ARRAY_BUFFER, compiledTileSurface.vertexGeometryVBO);
-            glVertexAttribPointer(positionLocation, 3, GL_FLOAT, GL_FALSE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.coordOffset));
-            glEnableVertexAttribArray(positionLocation);
+            glVertexAttribPointer(shaderProgram.attribs[A_VERTEXPOSITION], 3, GL_FLOAT, GL_FALSE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.coordOffset));
+            glEnableVertexAttribArray(shaderProgram.attribs[A_VERTEXPOSITION]);
 
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, compiledTileSurface.indicesVBO);
 
             cglib::mat4x4<float> mvpMatrix = cglib::mat4x4<float>::convert(_cameraProjMatrix * cglib::translate4_matrix(_tileSurfaceBuilderOrigin));
-            glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "uMVPMatrix"), 1, GL_FALSE, mvpMatrix.data());
+            glUniformMatrix4fv(shaderProgram.uniforms[U_MVPMATRIX], 1, GL_FALSE, mvpMatrix.data());
 
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, texture);
-            glUniform1i(glGetUniformLocation(shaderProgram, "uTexture"), 0);
+            glUniform1i(shaderProgram.uniforms[U_TEXTURE], 0);
             Color color(opacity, opacity, opacity, opacity);
-            glUniform4fv(glGetUniformLocation(shaderProgram, "uColor"), 1, color.rgba().data());
-            glUniform2f(glGetUniformLocation(shaderProgram, "uInvScreenSize"), 1.0f / _screenWidth, 1.0f / _screenHeight);
+            glUniform4fv(shaderProgram.uniforms[U_COLOR], 1, color.rgba().data());
+            glUniform2f(shaderProgram.uniforms[U_INVSCREENSIZE], 1.0f / _screenWidth, 1.0f / _screenHeight);
 
             glDrawElements(GL_TRIANGLES, tileSurface->getIndicesCount(), GL_UNSIGNED_SHORT, 0);
 
             glBindTexture(GL_TEXTURE_2D, 0);
 
-            glDisableVertexAttribArray(positionLocation);
+            glDisableVertexAttribArray(shaderProgram.attribs[A_VERTEXPOSITION]);
 
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
             glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+            checkGLError();
         }
     }
     
@@ -1320,30 +1248,30 @@ namespace carto { namespace vt {
             const TileSurface::VertexGeometryLayoutParameters& vertexGeomLayoutParams = tileSurface->getVertexGeometryLayoutParameters();
             const CompiledSurface& compiledTileSurface = _compiledTileSurfaceMap[tileSurface];
 
-            GLuint shaderProgram = _shaderManager.createProgram("background", _defaultContext);
-            GLint positionLocation = glGetAttribLocation(shaderProgram, "aVertexPosition");
-            glUseProgram(shaderProgram);
-            checkGLError();
+            const ShaderProgram& shaderProgram = buildShaderProgram("tilemask", backgroundVsh, backgroundFsh, false, false, false, false, false);
+            glUseProgram(shaderProgram.program);
 
             glBindBuffer(GL_ARRAY_BUFFER, compiledTileSurface.vertexGeometryVBO);
-            glVertexAttribPointer(positionLocation, 3, GL_FLOAT, GL_FALSE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.coordOffset));
-            glEnableVertexAttribArray(positionLocation);
+            glVertexAttribPointer(shaderProgram.attribs[A_VERTEXPOSITION], 3, GL_FLOAT, GL_FALSE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.coordOffset));
+            glEnableVertexAttribArray(shaderProgram.attribs[A_VERTEXPOSITION]);
 
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, compiledTileSurface.indicesVBO);
 
             cglib::mat4x4<float> mvpMatrix = cglib::mat4x4<float>::convert(_cameraProjMatrix * cglib::translate4_matrix(_tileSurfaceBuilderOrigin));
-            glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "uMVPMatrix"), 1, GL_FALSE, mvpMatrix.data());
+            glUniformMatrix4fv(shaderProgram.uniforms[U_MVPMATRIX], 1, GL_FALSE, mvpMatrix.data());
 
             Color color(0, 0, 0, 0);
-            glUniform4fv(glGetUniformLocation(shaderProgram, "uColor"), 1, color.rgba().data());
-            glUniform1f(glGetUniformLocation(shaderProgram, "uOpacity"), 0);
+            glUniform4fv(shaderProgram.uniforms[U_COLOR], 1, color.rgba().data());
+            glUniform1f(shaderProgram.uniforms[U_OPACITY], 0);
 
             glDrawElements(GL_TRIANGLES, tileSurface->getIndicesCount(), GL_UNSIGNED_SHORT, 0);
 
-            glDisableVertexAttribArray(positionLocation);
+            glDisableVertexAttribArray(shaderProgram.attribs[A_VERTEXPOSITION]);
 
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
             glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+            checkGLError();
         }
     }
     
@@ -1359,86 +1287,64 @@ namespace carto { namespace vt {
             const TileSurface::VertexGeometryLayoutParameters& vertexGeomLayoutParams = tileSurface->getVertexGeometryLayoutParameters();
             const CompiledSurface& compiledTileSurface = _compiledTileSurfaceMap[tileSurface];
 
-            GLuint shaderProgram = _shaderManager.createProgram("background", _patternTransformLighting2DContext[background->getPattern() ? 1 : 0][0]);
-            GLint positionLocation = glGetAttribLocation(shaderProgram, "aVertexPosition");
-            GLint normalLocation = _lightingShader2D ? glGetAttribLocation(shaderProgram, "aVertexNormal") : -1;
-            GLint uvLocation = background->getPattern() ? glGetAttribLocation(shaderProgram, "aVertexUV") : -1;
-            glUseProgram(shaderProgram);
-            checkGLError();
+            const ShaderProgram& shaderProgram = buildShaderProgram("tilebackground", backgroundVsh, backgroundFsh, background->getPattern() ? true : false, false, true, false, false);
+            glUseProgram(shaderProgram.program);
 
             glBindBuffer(GL_ARRAY_BUFFER, compiledTileSurface.vertexGeometryVBO);
-            glVertexAttribPointer(positionLocation, 3, GL_FLOAT, GL_FALSE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.coordOffset));
-            glEnableVertexAttribArray(positionLocation);
+            glVertexAttribPointer(shaderProgram.attribs[A_VERTEXPOSITION], 3, GL_FLOAT, GL_FALSE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.coordOffset));
+            glEnableVertexAttribArray(shaderProgram.attribs[A_VERTEXPOSITION]);
             if (background->getPattern()) {
-                glVertexAttribPointer(uvLocation, 2, GL_SHORT, GL_TRUE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.texCoordOffset));
-                glEnableVertexAttribArray(uvLocation);
+                glVertexAttribPointer(shaderProgram.attribs[A_VERTEXUV], 2, GL_SHORT, GL_TRUE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.texCoordOffset));
+                glEnableVertexAttribArray(shaderProgram.attribs[A_VERTEXUV]);
             }
             if (_lightingShader2D) {
                 if (vertexGeomLayoutParams.normalOffset >= 0) {
-                    glVertexAttribPointer(normalLocation, 3, GL_SHORT, GL_TRUE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.normalOffset));
-                    glEnableVertexAttribArray(normalLocation);
+                    glVertexAttribPointer(shaderProgram.attribs[A_VERTEXNORMAL], 3, GL_SHORT, GL_TRUE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.normalOffset));
+                    glEnableVertexAttribArray(shaderProgram.attribs[A_VERTEXNORMAL]);
                 } else {
-                    glVertexAttrib3f(normalLocation, 0, 0, 1);
+                    glVertexAttrib3f(shaderProgram.attribs[A_VERTEXNORMAL], 0, 0, 1);
                 }
-                _lightingShader2D->setupFunc(shaderProgram, _viewState);
+                _lightingShader2D->setupFunc(shaderProgram.program, _viewState);
             }
 
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, compiledTileSurface.indicesVBO);
 
             cglib::mat4x4<float> mvpMatrix = cglib::mat4x4<float>::convert(_cameraProjMatrix * cglib::translate4_matrix(_tileSurfaceBuilderOrigin));
-            glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "uMVPMatrix"), 1, GL_FALSE, mvpMatrix.data());
+            glUniformMatrix4fv(shaderProgram.uniforms[U_MVPMATRIX], 1, GL_FALSE, mvpMatrix.data());
 
             if (auto pattern = background->getPattern()) {
-                CompiledBitmap compiledBitmap;
-                auto it = _compiledBitmapMap.find(pattern->bitmap);
-                if (it == _compiledBitmapMap.end()) {
-                    createCompiledBitmap(compiledBitmap);
-
-                    std::shared_ptr<const Bitmap> scaledPatternBitmap = BitmapManager::scaleToPOT(pattern->bitmap);
-                    glBindTexture(GL_TEXTURE_2D, compiledBitmap.texture);
-                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-                    if (scaledPatternBitmap) {
-                        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, scaledPatternBitmap->width, scaledPatternBitmap->height, 0, GL_RGBA, GL_UNSIGNED_BYTE, scaledPatternBitmap->data.data());
-                    }
-                    glGenerateMipmap(GL_TEXTURE_2D);
-
-                    _compiledBitmapMap[pattern->bitmap] = compiledBitmap;
-                } else {
-                    compiledBitmap = it->second;
-                }
-
+                const CompiledBitmap& compiledBitmap = buildCompiledBitmap(pattern->bitmap, true);
                 glActiveTexture(GL_TEXTURE0);
                 glBindTexture(GL_TEXTURE_2D, compiledBitmap.texture);
-                glUniform1i(glGetUniformLocation(shaderProgram, "uPattern"), 0);
+                glUniform1i(shaderProgram.uniforms[U_PATTERN], 0);
 
                 if (pattern->bitmap) {
                     cglib::vec2<float> uvScale(tileSize / pattern->bitmap->width, tileSize / pattern->bitmap->height);
-                    glUniform2f(glGetUniformLocation(shaderProgram, "uUVScale"), uvScale(0), uvScale(1));
+                    glUniform2f(shaderProgram.uniforms[U_UVSCALE], uvScale(0), uvScale(1));
                 }
             }
 
-            glUniform4fv(glGetUniformLocation(shaderProgram, "uColor"), 1, background->getColor().rgba().data());
-            glUniform1f(glGetUniformLocation(shaderProgram, "uOpacity"), opacity);
+            glUniform4fv(shaderProgram.uniforms[U_COLOR], 1, background->getColor().rgba().data());
+            glUniform1f(shaderProgram.uniforms[U_OPACITY], opacity);
 
             glDrawElements(GL_TRIANGLES, tileSurface->getIndicesCount(), GL_UNSIGNED_SHORT, 0);
 
             if (_lightingShader2D) {
                 if (vertexGeomLayoutParams.normalOffset >= 0) {
-                    glDisableVertexAttribArray(normalLocation);
+                    glDisableVertexAttribArray(shaderProgram.attribs[A_VERTEXNORMAL]);
                 }
             }
             if (background->getPattern()) {
                 glBindTexture(GL_TEXTURE_2D, 0);
 
-                glDisableVertexAttribArray(uvLocation);
+                glDisableVertexAttribArray(shaderProgram.attribs[A_VERTEXUV]);
             }
-            glDisableVertexAttribArray(positionLocation);
+            glDisableVertexAttribArray(shaderProgram.attribs[A_VERTEXPOSITION]);
 
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
             glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+            checkGLError();
         }
     }
 
@@ -1451,83 +1357,42 @@ namespace carto { namespace vt {
             const TileSurface::VertexGeometryLayoutParameters& vertexGeomLayoutParams = tileSurface->getVertexGeometryLayoutParameters();
             const CompiledSurface& compiledTileSurface = _compiledTileSurfaceMap[tileSurface];
 
-            GLuint shaderProgram = _shaderManager.createProgram("bitmap", _patternTransformLighting2DContext[1][0]);
-            GLint positionLocation = glGetAttribLocation(shaderProgram, "aVertexPosition");
-            GLint normalLocation = _lightingShader2D ? glGetAttribLocation(shaderProgram, "aVertexNormal") : -1;
-            GLint uvLocation = glGetAttribLocation(shaderProgram, "aVertexUV");
-            glUseProgram(shaderProgram);
-            checkGLError();
+            const ShaderProgram& shaderProgram = buildShaderProgram("tilebitmap", bitmapVsh, bitmapFsh, true, false, true, false, false);
+            glUseProgram(shaderProgram.program);
 
             glBindBuffer(GL_ARRAY_BUFFER, compiledTileSurface.vertexGeometryVBO);
-            glVertexAttribPointer(positionLocation, 3, GL_FLOAT, GL_FALSE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.coordOffset));
-            glEnableVertexAttribArray(positionLocation);
-            glVertexAttribPointer(uvLocation, 2, GL_SHORT, GL_TRUE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.texCoordOffset));
-            glEnableVertexAttribArray(uvLocation);
+            glVertexAttribPointer(shaderProgram.attribs[A_VERTEXPOSITION], 3, GL_FLOAT, GL_FALSE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.coordOffset));
+            glEnableVertexAttribArray(shaderProgram.attribs[A_VERTEXPOSITION]);
+            glVertexAttribPointer(shaderProgram.attribs[A_VERTEXUV], 2, GL_SHORT, GL_TRUE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.texCoordOffset));
+            glEnableVertexAttribArray(shaderProgram.attribs[A_VERTEXUV]);
             if (_lightingShader2D) {
                 if (vertexGeomLayoutParams.normalOffset >= 0) {
-                    glVertexAttribPointer(normalLocation, 3, GL_SHORT, GL_TRUE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.normalOffset));
-                    glEnableVertexAttribArray(normalLocation);
+                    glVertexAttribPointer(shaderProgram.attribs[A_VERTEXNORMAL], 3, GL_SHORT, GL_TRUE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.normalOffset));
+                    glEnableVertexAttribArray(shaderProgram.attribs[A_VERTEXNORMAL]);
                 } else {
-                    glVertexAttrib3f(normalLocation, 0, 0, 1);
+                    glVertexAttrib3f(shaderProgram.attribs[A_VERTEXNORMAL], 0, 0, 1);
                 }
-                _lightingShader2D->setupFunc(shaderProgram, _viewState);
+                _lightingShader2D->setupFunc(shaderProgram.program, _viewState);
             }
 
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, compiledTileSurface.indicesVBO);
 
             cglib::mat4x4<float> mvpMatrix = cglib::mat4x4<float>::convert(_cameraProjMatrix * cglib::translate4_matrix(_tileSurfaceBuilderOrigin));
-            glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "uMVPMatrix"), 1, GL_FALSE, mvpMatrix.data());
+            glUniformMatrix4fv(shaderProgram.uniforms[U_MVPMATRIX], 1, GL_FALSE, mvpMatrix.data());
 
-            CompiledBitmap compiledTileBitmap;
-            auto it = _compiledTileBitmapMap.find(bitmap);
-            if (it == _compiledTileBitmapMap.end()) {
-                createCompiledBitmap(compiledTileBitmap);
-
-                // Use a different strategy if the bitmap is not of POT dimensions, simply do not create the mipmaps
-                bool genMipmaps = (bitmap->getWidth() & (bitmap->getWidth() - 1)) == 0 && (bitmap->getHeight() & (bitmap->getHeight() - 1)) == 0;
-                glBindTexture(GL_TEXTURE_2D, compiledTileBitmap.texture);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, genMipmaps ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-                GLenum format = GL_NONE;
-                switch (bitmap->getFormat()) {
-                case TileBitmap::Format::GRAYSCALE:
-                    format = GL_LUMINANCE;
-                    break;
-                case TileBitmap::Format::RGB:
-                    format = GL_RGB;
-                    break;
-                case TileBitmap::Format::RGBA:
-                    format = GL_RGBA;
-                    break;
-                }
-                glTexImage2D(GL_TEXTURE_2D, 0, format, bitmap->getWidth(), bitmap->getHeight(), 0, format, GL_UNSIGNED_BYTE, bitmap->getData().empty() ? NULL : bitmap->getData().data());
-                if (genMipmaps) {
-                    glGenerateMipmap(GL_TEXTURE_2D);
-                }
-
-                if (!_interactionMode) {
-                    bitmap->releaseBitmap(); // if interaction is enabled, keep the original bitmap
-                }
-
-                _compiledTileBitmapMap[bitmap] = compiledTileBitmap;
-            } else {
-                compiledTileBitmap = it->second;
-            }
-
+            const CompiledBitmap& compiledTileBitmap = buildCompiledTileBitmap(bitmap);
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, compiledTileBitmap.texture);
-            glUniform1i(glGetUniformLocation(shaderProgram, "uPattern"), 0);
+            glUniform1i(shaderProgram.uniforms[U_PATTERN], 0);
 
             cglib::mat3x3<float> uvMatrix = cglib::mat3x3<float>::identity();
             if (targetTileId.zoom > tileId.zoom) {
                 uvMatrix = cglib::mat3x3<float>::convert(cglib::inverse(calculateTileMatrix2D(tileId)) * calculateTileMatrix2D(targetTileId));
             }
             uvMatrix = cglib::mat3x3<float> { { 1.0, 0.0, 0.0 }, { 0.0, -1.0, 1.0 }, { 0.0, 0.0, 1.0 } } * uvMatrix;
-            glUniformMatrix3fv(glGetUniformLocation(shaderProgram, "uUVMatrix"), 1, GL_FALSE, uvMatrix.data());
+            glUniformMatrix3fv(shaderProgram.uniforms[U_UVMATRIX], 1, GL_FALSE, uvMatrix.data());
 
-            glUniform1f(glGetUniformLocation(shaderProgram, "uOpacity"), blend * opacity);
+            glUniform1f(shaderProgram.uniforms[U_OPACITY], blend * opacity);
 
             glDrawElements(GL_TRIANGLES, tileSurface->getIndicesCount(), GL_UNSIGNED_SHORT, 0);
 
@@ -1535,14 +1400,16 @@ namespace carto { namespace vt {
 
             if (_lightingShader2D) {
                 if (vertexGeomLayoutParams.normalOffset >= 0) {
-                    glDisableVertexAttribArray(normalLocation);
+                    glDisableVertexAttribArray(shaderProgram.attribs[A_VERTEXNORMAL]);
                 }
             }
-            glDisableVertexAttribArray(uvLocation);
-            glDisableVertexAttribArray(positionLocation);
+            glDisableVertexAttribArray(shaderProgram.attribs[A_VERTEXUV]);
+            glDisableVertexAttribArray(shaderProgram.attribs[A_VERTEXPOSITION]);
 
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
             glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+            checkGLError();
         }
     }
 
@@ -1554,40 +1421,34 @@ namespace carto { namespace vt {
             return;
         }
         
-        GLuint shaderProgram = 0;
+        const ShaderProgram* shaderProgramPtr = nullptr;
         switch (geometry->getType()) {
-            case TileGeometry::Type::POINT:
-                shaderProgram = _shaderManager.createProgram("point", _patternTransformLighting2DContext[styleParams.pattern ? 1 : 0][styleParams.translate ? 1 : 0]);
-                break;
-            case TileGeometry::Type::LINE:
-                shaderProgram = _shaderManager.createProgram("line", _patternTransformLighting2DContext[styleParams.pattern ? 1 : 0][styleParams.translate ? 1 : 0]);
-                break;
-            case TileGeometry::Type::POLYGON:
-                shaderProgram = _shaderManager.createProgram("polygon", _patternTransformLighting2DContext[styleParams.pattern ? 1 : 0][styleParams.translate ? 1 : 0]);
-                break;
-            case TileGeometry::Type::POLYGON3D:
-                shaderProgram = _shaderManager.createProgram("polygon3d", _transformLighting3DContext[styleParams.translate ? 1 : 0]);
-                break;
-            default:
-                return;
+        case TileGeometry::Type::POINT:
+            shaderProgramPtr = &buildShaderProgram("point", pointVsh, pointFsh, styleParams.pattern ? true : false, styleParams.translate ? true : false, true, false, false);
+            break;
+        case TileGeometry::Type::LINE:
+            shaderProgramPtr = &buildShaderProgram("line", lineVsh, lineFsh, styleParams.pattern ? true : false, styleParams.translate ? true : false, true, false, false);
+            break;
+        case TileGeometry::Type::POLYGON:
+            shaderProgramPtr = &buildShaderProgram("polygon", polygonVsh, polygonFsh, styleParams.pattern ? true : false, styleParams.translate ? true : false, true, false, false);
+            break;
+        case TileGeometry::Type::POLYGON3D:
+            shaderProgramPtr = &buildShaderProgram("polygon3d", polygon3DVsh, polygon3DFsh, styleParams.pattern ? true : false, styleParams.translate ? true : false, false, true, false);
+            break;
+        default:
+            return;
         }
-        GLint positionLocation = glGetAttribLocation(shaderProgram, "aVertexPosition");
-        GLint uvLocation = vertexGeomLayoutParams.texCoordOffset >= 0 ? glGetAttribLocation(shaderProgram, "aVertexUV") : -1;
-        GLint normalLocation = _lightingShader2D || geometry->getType() == TileGeometry::Type::POLYGON3D ? glGetAttribLocation(shaderProgram, "aVertexNormal") : -1;
-        GLint binormalLocation = vertexGeomLayoutParams.binormalOffset >= 0 ? glGetAttribLocation(shaderProgram, "aVertexBinormal") : -1;
-        GLint heightLocation = vertexGeomLayoutParams.heightOffset >= 0 ? glGetAttribLocation(shaderProgram, "aVertexHeight") : -1;
-        GLint attribsLocation = glGetAttribLocation(shaderProgram, "aVertexAttribs");
-        glUseProgram(shaderProgram);
-        checkGLError();
+        const ShaderProgram& shaderProgram = *shaderProgramPtr;
+        glUseProgram(shaderProgram.program);
 
         cglib::mat4x4<float> mvpMatrix = calculateTileMVPMatrix(tileId, 1.0f / vertexGeomLayoutParams.coordScale);
-        glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "uMVPMatrix"), 1, GL_FALSE, mvpMatrix.data());
+        glUniformMatrix4fv(shaderProgram.uniforms[U_MVPMATRIX], 1, GL_FALSE, mvpMatrix.data());
         
         if (styleParams.translate) {
             float zoomScale = std::pow(2.0f, tileId.zoom - _viewState.zoom);
             cglib::vec2<float> translate = (*styleParams.translate) * zoomScale;
             cglib::mat4x4<float> transformMatrix = _transformer->calculateTileTransform(tileId, translate, 1.0f / vertexGeomLayoutParams.coordScale);
-            glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "uTransformMatrix"), 1, GL_FALSE, transformMatrix.data());
+            glUniformMatrix4fv(shaderProgram.uniforms[U_TRANSFORMMATRIX], 1, GL_FALSE, transformMatrix.data());
         }
 
         std::array<cglib::vec4<float>, TileGeometry::StyleParameters::MAX_PARAMETERS> colors;
@@ -1615,10 +1476,10 @@ namespace carto { namespace vt {
                 }
             }
             
-            glUniform1f(glGetUniformLocation(shaderProgram, "uBinormalScale"), vertexGeomLayoutParams.coordScale / vertexGeomLayoutParams.binormalScale / std::pow(2.0f, _viewState.zoom - tileId.zoom));
-            glUniform1f(glGetUniformLocation(shaderProgram, "uSDFScale"), GLYPH_RENDER_SIZE / _fullResolution / BITMAP_SDF_SCALE);
-            glUniform1fv(glGetUniformLocation(shaderProgram, "uWidthTable"), styleParams.parameterCount, widths.data());
-            glUniform1fv(glGetUniformLocation(shaderProgram, "uStrokeWidthTable"), styleParams.parameterCount, strokeWidths.data());
+            glUniform1f(shaderProgram.uniforms[U_BINORMALSCALE], vertexGeomLayoutParams.coordScale / vertexGeomLayoutParams.binormalScale / std::pow(2.0f, _viewState.zoom - tileId.zoom));
+            glUniform1f(shaderProgram.uniforms[U_SDFSCALE], GLYPH_RENDER_SIZE / _fullResolution / BITMAP_SDF_SCALE);
+            glUniform1fv(shaderProgram.uniforms[U_WIDTHTABLE], styleParams.parameterCount, widths.data());
+            glUniform1fv(shaderProgram.uniforms[U_STROKEWIDTHTABLE], styleParams.parameterCount, strokeWidths.data());
         } else if (geometry->getType() == TileGeometry::Type::LINE) {
             constexpr float gamma = 0.5f;
 
@@ -1644,22 +1505,22 @@ namespace carto { namespace vt {
                 }
             }
 
-            glUniform1f(glGetUniformLocation(shaderProgram, "uBinormalScale"), vertexGeomLayoutParams.coordScale / (_halfResolution * vertexGeomLayoutParams.binormalScale * std::pow(2.0f, _viewState.zoom - tileId.zoom)));
-            glUniform1fv(glGetUniformLocation(shaderProgram, "uWidthTable"), styleParams.parameterCount, widths.data());
-            glUniform1f(glGetUniformLocation(shaderProgram, "uHalfResolution"), _halfResolution);
-            glUniform1f(glGetUniformLocation(shaderProgram, "uGamma"), gamma);
+            glUniform1f(shaderProgram.uniforms[U_BINORMALSCALE], vertexGeomLayoutParams.coordScale / (_halfResolution * vertexGeomLayoutParams.binormalScale * std::pow(2.0f, _viewState.zoom - tileId.zoom)));
+            glUniform1fv(shaderProgram.uniforms[U_WIDTHTABLE], styleParams.parameterCount, widths.data());
+            glUniform1f(shaderProgram.uniforms[U_HALFRESOLUTION], _halfResolution);
+            glUniform1f(shaderProgram.uniforms[U_GAMMA], gamma);
         } else if (geometry->getType() == TileGeometry::Type::POLYGON3D) {
             float tileHeightScale = static_cast<float>(cglib::length(cglib::transform_vector(cglib::vec3<double>(0, 0, 1), calculateTileMatrix(tileId))));
-            glUniform1f(glGetUniformLocation(shaderProgram, "uUVScale"), 1.0f / vertexGeomLayoutParams.texCoordScale);
-            glUniform1f(glGetUniformLocation(shaderProgram, "uHeightScale"), blend / vertexGeomLayoutParams.heightScale * vertexGeomLayoutParams.coordScale);
-            glUniform1f(glGetUniformLocation(shaderProgram, "uAbsHeightScale"), blend / vertexGeomLayoutParams.heightScale * POLYGON3D_HEIGHT_SCALE * tileHeightScale);
+            glUniform1f(shaderProgram.uniforms[U_UVSCALE], 1.0f / vertexGeomLayoutParams.texCoordScale);
+            glUniform1f(shaderProgram.uniforms[U_HEIGHTSCALE], blend / vertexGeomLayoutParams.heightScale * vertexGeomLayoutParams.coordScale);
+            glUniform1f(shaderProgram.uniforms[U_ABSHEIGHTSCALE], blend / vertexGeomLayoutParams.heightScale * POLYGON3D_HEIGHT_SCALE * tileHeightScale);
             cglib::mat3x3<float> tileMatrix = cglib::mat3x3<float>::convert(cglib::inverse(calculateTileMatrix2D(targetTileId)) * calculateTileMatrix2D(tileId));
             if (styleParams.translate) {
                 float zoomScale = std::pow(2.0f, tileId.zoom - _viewState.zoom);
                 cglib::vec2<float> translate = (*styleParams.translate) * zoomScale;
                 tileMatrix = tileMatrix * cglib::translate3_matrix(cglib::vec3<float>(translate(0), translate(1), 1));
             }
-            glUniformMatrix3fv(glGetUniformLocation(shaderProgram, "uTileMatrix"), 1, GL_FALSE, tileMatrix.data());
+            glUniformMatrix3fv(shaderProgram.uniforms[U_TILEMATRIX], 1, GL_FALSE, tileMatrix.data());
         }
 
         if (std::all_of(colors.begin(), colors.begin() + styleParams.parameterCount, [](const cglib::vec4<float>& color) {
@@ -1668,28 +1529,8 @@ namespace carto { namespace vt {
             return;
         }
 
-        glUniform4fv(glGetUniformLocation(shaderProgram, "uColorTable"), styleParams.parameterCount, colors[0].data());
+        glUniform4fv(shaderProgram.uniforms[U_COLORTABLE], styleParams.parameterCount, colors[0].data());
         
-        CompiledGeometry compiledGeometry;
-        auto itGeom = _compiledTileGeometryMap.find(geometry);
-        if (itGeom == _compiledTileGeometryMap.end()) {
-            createCompiledGeometry(compiledGeometry);
-
-            glBindBuffer(GL_ARRAY_BUFFER, compiledGeometry.vertexGeometryVBO);
-            glBufferData(GL_ARRAY_BUFFER, geometry->getVertexGeometry().size() * sizeof(std::uint8_t), geometry->getVertexGeometry().data(), GL_STATIC_DRAW);
-
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, compiledGeometry.indicesVBO);
-            glBufferData(GL_ELEMENT_ARRAY_BUFFER, geometry->getIndices().size() * sizeof(std::uint16_t), geometry->getIndices().data(), GL_STATIC_DRAW);
-
-            if (!_interactionMode) {
-                geometry->releaseVertexArrays(); // if interaction is enabled, we must keep the vertex arrays. Otherwise optimize for lower memory usage
-            }
-
-            _compiledTileGeometryMap[geometry] = compiledGeometry;
-        } else {
-            compiledGeometry = itGeom->second;
-        }
-
         if (styleParams.pattern) {
             float zoomScale = std::pow(2.0f, std::floor(_viewState.zoom) - tileId.zoom);
             float coordScale = 1.0f / (vertexGeomLayoutParams.texCoordScale * styleParams.pattern->widthScale);
@@ -1699,116 +1540,111 @@ namespace carto { namespace vt {
             } else if (geometry->getType() == TileGeometry::Type::POLYGON) {
                 uvScale *= zoomScale;
             }
-            glUniform2f(glGetUniformLocation(shaderProgram, "uUVScale"), uvScale(0), uvScale(1));
+            glUniform2f(shaderProgram.uniforms[U_UVSCALE], uvScale(0), uvScale(1));
 
-            CompiledBitmap compiledBitmap;
-            auto itBitmap = _compiledBitmapMap.find(styleParams.pattern->bitmap);
-            if (itBitmap == _compiledBitmapMap.end()) {
-                createCompiledBitmap(compiledBitmap);
-
-                // Skip mipmap generation for line patterns as it simply smears the pattern
-                bool genMipmaps = geometry->getType() != TileGeometry::Type::LINE;
-                std::shared_ptr<const Bitmap> patternBitmap = BitmapManager::scaleToPOT(styleParams.pattern->bitmap);
-                glBindTexture(GL_TEXTURE_2D, compiledBitmap.texture);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, genMipmaps ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, patternBitmap->width, patternBitmap->height, 0, GL_RGBA, GL_UNSIGNED_BYTE, patternBitmap->data.data());
-                if (genMipmaps) {
-                    glGenerateMipmap(GL_TEXTURE_2D);
-                }
-
-                _compiledBitmapMap[styleParams.pattern->bitmap] = compiledBitmap;
-            } else {
-                compiledBitmap = itBitmap->second;
-            }
-
+            const CompiledBitmap& compiledBitmap = buildCompiledBitmap(styleParams.pattern->bitmap, geometry->getType() != TileGeometry::Type::LINE);
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, compiledBitmap.texture);
-            glUniform1i(glGetUniformLocation(shaderProgram, "uPattern"), 0);
+            glUniform1i(shaderProgram.uniforms[U_PATTERN], 0);
         }
 
+        const CompiledGeometry& compiledGeometry = buildCompiledTileGeometry(geometry);
         if (compiledGeometry.geometryVAO != 0) {
             _glExtensions->glBindVertexArrayOES(compiledGeometry.geometryVAO);
         }
-        if (compiledGeometry.geometryVAO == 0 || itGeom == _compiledTileGeometryMap.end()) {
+        if (compiledGeometry.geometryVAO == 0 || !compiledGeometry.geometryVAOInitialized) {
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, compiledGeometry.indicesVBO);
             glBindBuffer(GL_ARRAY_BUFFER, compiledGeometry.vertexGeometryVBO);
-            glVertexAttribPointer(positionLocation, vertexGeomLayoutParams.dimensions, GL_SHORT, GL_FALSE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.coordOffset));
-            glEnableVertexAttribArray(positionLocation);
+
+            glVertexAttribPointer(shaderProgram.attribs[A_VERTEXPOSITION], vertexGeomLayoutParams.dimensions, GL_SHORT, GL_FALSE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.coordOffset));
+            glEnableVertexAttribArray(shaderProgram.attribs[A_VERTEXPOSITION]);
 
             if (vertexGeomLayoutParams.attribsOffset >= 0) {
-                glVertexAttribPointer(attribsLocation, 4, GL_BYTE, GL_FALSE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.attribsOffset));
-                glEnableVertexAttribArray(attribsLocation);
-            } else {
-                glVertexAttrib4f(attribsLocation, 0, 0, 0, 0);
+                glVertexAttribPointer(shaderProgram.attribs[A_VERTEXATTRIBS], 4, GL_BYTE, GL_FALSE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.attribsOffset));
+                glEnableVertexAttribArray(shaderProgram.attribs[A_VERTEXATTRIBS]);
             }
             
             if (vertexGeomLayoutParams.texCoordOffset >= 0) {
-                glVertexAttribPointer(uvLocation, 2, GL_SHORT, GL_FALSE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.texCoordOffset));
-                glEnableVertexAttribArray(uvLocation);
+                glVertexAttribPointer(shaderProgram.attribs[A_VERTEXUV], 2, GL_SHORT, GL_FALSE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.texCoordOffset));
+                glEnableVertexAttribArray(shaderProgram.attribs[A_VERTEXUV]);
             }
             
             if (_lightingShader2D || geometry->getType() == TileGeometry::Type::POLYGON3D) {
                 if (vertexGeomLayoutParams.normalOffset >= 0) {
-                    glVertexAttribPointer(normalLocation, vertexGeomLayoutParams.dimensions, GL_SHORT, GL_TRUE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.normalOffset));
-                    glEnableVertexAttribArray(normalLocation);
-                } else {
-                    glVertexAttrib3f(normalLocation, 0, 0, 1);
+                    glVertexAttribPointer(shaderProgram.attribs[A_VERTEXNORMAL], vertexGeomLayoutParams.dimensions, GL_SHORT, GL_TRUE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.normalOffset));
+                    glEnableVertexAttribArray(shaderProgram.attribs[A_VERTEXNORMAL]);
                 }
             }
 
             if (vertexGeomLayoutParams.binormalOffset >= 0) {
-                glVertexAttribPointer(binormalLocation, vertexGeomLayoutParams.dimensions, GL_SHORT, GL_FALSE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.binormalOffset));
-                glEnableVertexAttribArray(binormalLocation);
+                glVertexAttribPointer(shaderProgram.attribs[A_VERTEXBINORMAL], vertexGeomLayoutParams.dimensions, GL_SHORT, GL_FALSE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.binormalOffset));
+                glEnableVertexAttribArray(shaderProgram.attribs[A_VERTEXBINORMAL]);
             }
             
             if (vertexGeomLayoutParams.heightOffset >= 0) {
-                glVertexAttribPointer(heightLocation, 1, GL_SHORT, GL_FALSE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.heightOffset));
-                glEnableVertexAttribArray(heightLocation);
+                glVertexAttribPointer(shaderProgram.attribs[A_VERTEXHEIGHT], 1, GL_SHORT, GL_FALSE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.heightOffset));
+                glEnableVertexAttribArray(shaderProgram.attribs[A_VERTEXHEIGHT]);
             }
-            
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, compiledGeometry.indicesVBO);
+        }
+
+        if (!(vertexGeomLayoutParams.attribsOffset >= 0)) {
+            glVertexAttrib4f(shaderProgram.attribs[A_VERTEXATTRIBS], 0, 0, 0, 0);
+        }
+
+        if (_lightingShader2D || geometry->getType() == TileGeometry::Type::POLYGON3D) {
+            if (!(vertexGeomLayoutParams.normalOffset >= 0)) {
+                glVertexAttrib3f(shaderProgram.attribs[A_VERTEXNORMAL], 0, 0, 1);
+            }
         }
 
         if (geometry->getType() != TileGeometry::Type::POLYGON3D && _lightingShader2D) {
-            _lightingShader2D->setupFunc(shaderProgram, _viewState);
+            _lightingShader2D->setupFunc(shaderProgram.program, _viewState);
         } else if (geometry->getType() == TileGeometry::Type::POLYGON3D && _lightingShader3D) {
-            _lightingShader3D->setupFunc(shaderProgram, _viewState);
+            _lightingShader3D->setupFunc(shaderProgram.program, _viewState);
         }
-        
+
         glDrawElements(GL_TRIANGLES, geometry->getIndicesCount(), GL_UNSIGNED_SHORT, 0);
 
         if (compiledGeometry.geometryVAO != 0) {
             _glExtensions->glBindVertexArrayOES(0);
         } else {
             if (vertexGeomLayoutParams.heightOffset >= 0) {
-                glDisableVertexAttribArray(heightLocation);
+                glDisableVertexAttribArray(shaderProgram.attribs[A_VERTEXHEIGHT]);
             }
             
             if (vertexGeomLayoutParams.binormalOffset >= 0) {
-                glDisableVertexAttribArray(binormalLocation);
+                glDisableVertexAttribArray(shaderProgram.attribs[A_VERTEXBINORMAL]);
             }
 
             if (_lightingShader2D || geometry->getType() == TileGeometry::Type::POLYGON3D) {
                 if (vertexGeomLayoutParams.normalOffset >= 0) {
-                    glDisableVertexAttribArray(normalLocation);
+                    glDisableVertexAttribArray(shaderProgram.attribs[A_VERTEXNORMAL]);
                 }
             }
             
             if (vertexGeomLayoutParams.texCoordOffset >= 0) {
-                glDisableVertexAttribArray(uvLocation);
+                glDisableVertexAttribArray(shaderProgram.attribs[A_VERTEXUV]);
             }
 
             if (vertexGeomLayoutParams.attribsOffset >= 0) {
-                glDisableVertexAttribArray(attribsLocation);
+                glDisableVertexAttribArray(shaderProgram.attribs[A_VERTEXATTRIBS]);
             }
             
-            glDisableVertexAttribArray(positionLocation);
+            glDisableVertexAttribArray(shaderProgram.attribs[A_VERTEXPOSITION]);
+        }
+
+        if (compiledGeometry.geometryVAO == 0 || !compiledGeometry.geometryVAOInitialized) {
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+            glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+            compiledGeometry.geometryVAOInitialized = compiledGeometry.geometryVAO != 0;
         }
         
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        if (styleParams.pattern) {
+            glBindTexture(GL_TEXTURE_2D, 0);
+        }
+
+        checkGLError();
     }
 
     void GLTileRenderer::renderLabelBatch(const LabelBatchParameters& labelBatchParams, const std::shared_ptr<const Bitmap>& bitmap) {
@@ -1826,92 +1662,69 @@ namespace carto { namespace vt {
         }
         _labelBatchCounter++;
 
-        CompiledBitmap compiledBitmap;
-        auto itBitmap = _compiledBitmapMap.find(bitmap);
-        if (itBitmap == _compiledBitmapMap.end()) {
-            createCompiledBitmap(compiledBitmap);
-
-            // Turn off mipmap creation as most labels are SDF texts
-            bool genMipMaps = false;
-            glBindTexture(GL_TEXTURE_2D, compiledBitmap.texture);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, genMipMaps ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, bitmap->width, bitmap->height, 0, GL_RGBA, GL_UNSIGNED_BYTE, bitmap->data.data());
-            if (genMipMaps) {
-                glGenerateMipmap(GL_TEXTURE_2D);
-            }
-
-            _compiledBitmapMap[bitmap] = compiledBitmap;
-        } else {
-            compiledBitmap = itBitmap->second;
-        }
-
         bool useDerivatives = _glExtensions->GL_OES_standard_derivatives_supported();
-        GLuint shaderProgram = _shaderManager.createProgram("label", _derivativesLighting2DContext[useDerivatives ? 1 : 0]);
-        GLint positionLocation = glGetAttribLocation(shaderProgram, "aVertexPosition");
-        GLint normalLocation = _lightingShader2D ? glGetAttribLocation(shaderProgram, "aVertexNormal") : -1;
-        GLint uvLocation = glGetAttribLocation(shaderProgram, "aVertexUV");
-        GLint attribsLocation = glGetAttribLocation(shaderProgram, "aVertexAttribs");
-        glUseProgram(shaderProgram);
-        checkGLError();
+
+        const CompiledBitmap& compiledBitmap = buildCompiledBitmap(bitmap, false);
+        const ShaderProgram& shaderProgram = buildShaderProgram("labels", labelVsh, labelFsh, false, false, true, false, useDerivatives);
+        glUseProgram(shaderProgram.program);
 
         cglib::mat4x4<float> mvpMatrix = cglib::mat4x4<float>::convert(_viewState.projectionMatrix * labelBatchParams.labelMatrix);
-        glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "uMVPMatrix"), 1, GL_FALSE, mvpMatrix.data());
+        glUniformMatrix4fv(shaderProgram.uniforms[U_MVPMATRIX], 1, GL_FALSE, mvpMatrix.data());
 
-        glUniform1f(glGetUniformLocation(shaderProgram, "uSDFScale"), GLYPH_RENDER_SIZE / labelBatchParams.scale / _fullResolution / BITMAP_SDF_SCALE);
+        glUniform1f(shaderProgram.uniforms[U_SDFSCALE], GLYPH_RENDER_SIZE / labelBatchParams.scale / _fullResolution / BITMAP_SDF_SCALE);
         if (useDerivatives) {
             float scale = 1.0f / labelBatchParams.scale / _fullResolution / BITMAP_SDF_SCALE;
-            glUniform2f(glGetUniformLocation(shaderProgram, "uDerivScale"), bitmap->width * scale, bitmap->height * scale);
+            glUniform2f(shaderProgram.uniforms[U_DERIVSCALE], bitmap->width * scale, bitmap->height * scale);
         }
-        glUniform4fv(glGetUniformLocation(shaderProgram, "uColorTable"), labelBatchParams.parameterCount, labelBatchParams.colorTable[0].data());
-        glUniform1fv(glGetUniformLocation(shaderProgram, "uWidthTable"), labelBatchParams.parameterCount, labelBatchParams.widthTable.data());
-        glUniform1fv(glGetUniformLocation(shaderProgram, "uStrokeWidthTable"), labelBatchParams.parameterCount, labelBatchParams.strokeWidthTable.data());
+        glUniform4fv(shaderProgram.uniforms[U_COLORTABLE], labelBatchParams.parameterCount, labelBatchParams.colorTable[0].data());
+        glUniform1fv(shaderProgram.uniforms[U_WIDTHTABLE], labelBatchParams.parameterCount, labelBatchParams.widthTable.data());
+        glUniform1fv(shaderProgram.uniforms[U_STROKEWIDTHTABLE], labelBatchParams.parameterCount, labelBatchParams.strokeWidthTable.data());
         
         glBindBuffer(GL_ARRAY_BUFFER, compiledLabelBatch.verticesVBO);
         glBufferData(GL_ARRAY_BUFFER, _labelVertices.size() * 3 * sizeof(float), _labelVertices.data(), GL_DYNAMIC_DRAW);
-        glVertexAttribPointer(positionLocation, 3, GL_FLOAT, GL_FALSE, 0, 0);
-        glEnableVertexAttribArray(positionLocation);
+        glVertexAttribPointer(shaderProgram.attribs[A_VERTEXPOSITION], 3, GL_FLOAT, GL_FALSE, 0, 0);
+        glEnableVertexAttribArray(shaderProgram.attribs[A_VERTEXPOSITION]);
 
         if (_lightingShader2D) {
             glBindBuffer(GL_ARRAY_BUFFER, compiledLabelBatch.normalsVBO);
             glBufferData(GL_ARRAY_BUFFER, _labelNormals.size() * 3 * sizeof(float), _labelNormals.data(), GL_DYNAMIC_DRAW);
-            glVertexAttribPointer(normalLocation, 3, GL_FLOAT, GL_FALSE, 0, 0);
-            glEnableVertexAttribArray(normalLocation);
+            glVertexAttribPointer(shaderProgram.attribs[A_VERTEXNORMAL], 3, GL_FLOAT, GL_FALSE, 0, 0);
+            glEnableVertexAttribArray(shaderProgram.attribs[A_VERTEXNORMAL]);
 
-            _lightingShader2D->setupFunc(shaderProgram, _viewState);
+            _lightingShader2D->setupFunc(shaderProgram.program, _viewState);
         }
         
         glBindBuffer(GL_ARRAY_BUFFER, compiledLabelBatch.texCoordsVBO);
         glBufferData(GL_ARRAY_BUFFER, _labelTexCoords.size() * 2 * sizeof(std::int16_t), _labelTexCoords.data(), GL_DYNAMIC_DRAW);
-        glVertexAttribPointer(uvLocation, 2, GL_SHORT, GL_FALSE, 0, 0);
-        glEnableVertexAttribArray(uvLocation);
+        glVertexAttribPointer(shaderProgram.attribs[A_VERTEXUV], 2, GL_SHORT, GL_FALSE, 0, 0);
+        glEnableVertexAttribArray(shaderProgram.attribs[A_VERTEXUV]);
 
         glBindBuffer(GL_ARRAY_BUFFER, compiledLabelBatch.attribsVBO);
         glBufferData(GL_ARRAY_BUFFER, _labelAttribs.size() * 4 * sizeof(std::int8_t), _labelAttribs.data(), GL_DYNAMIC_DRAW);
-        glVertexAttribPointer(attribsLocation, 4, GL_BYTE, GL_FALSE, 0, 0);
-        glEnableVertexAttribArray(attribsLocation);
+        glVertexAttribPointer(shaderProgram.attribs[A_VERTEXATTRIBS], 4, GL_BYTE, GL_FALSE, 0, 0);
+        glEnableVertexAttribArray(shaderProgram.attribs[A_VERTEXATTRIBS]);
 
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, compiledLabelBatch.indicesVBO);
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, _labelIndices.size() * sizeof(std::uint16_t), _labelIndices.data(), GL_DYNAMIC_DRAW);
 
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, compiledBitmap.texture);
-        glUniform1i(glGetUniformLocation(shaderProgram, "uBitmap"), 0);
-        glUniform2f(glGetUniformLocation(shaderProgram, "uUVScale"), 1.0f / bitmap->width, 1.0f / bitmap->height);
+        glUniform1i(shaderProgram.uniforms[U_BITMAP], 0);
+        glUniform2f(shaderProgram.uniforms[U_UVSCALE], 1.0f / bitmap->width, 1.0f / bitmap->height);
 
         glDrawElements(GL_TRIANGLES, static_cast<unsigned int>(_labelIndices.size()), GL_UNSIGNED_SHORT, 0);
 
-        glDisableVertexAttribArray(attribsLocation);
+        glBindTexture(GL_TEXTURE_2D, 0);
+
+        glDisableVertexAttribArray(shaderProgram.attribs[A_VERTEXATTRIBS]);
         
-        glDisableVertexAttribArray(uvLocation);
+        glDisableVertexAttribArray(shaderProgram.attribs[A_VERTEXUV]);
 
         if (_lightingShader2D) {
-            glDisableVertexAttribArray(normalLocation);
+            glDisableVertexAttribArray(shaderProgram.attribs[A_VERTEXNORMAL]);
         }
         
-        glDisableVertexAttribArray(positionLocation);
+        glDisableVertexAttribArray(shaderProgram.attribs[A_VERTEXPOSITION]);
 
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -1921,6 +1734,137 @@ namespace carto { namespace vt {
         _labelTexCoords.clear();
         _labelAttribs.clear();
         _labelIndices.clear();
+
+        checkGLError();
+    }
+
+    const GLTileRenderer::CompiledBitmap& GLTileRenderer::buildCompiledBitmap(const std::shared_ptr<const Bitmap>& bitmap, bool genMipmaps) {
+        auto it = _compiledBitmapMap.find(bitmap);
+        if (it == _compiledBitmapMap.end()) {
+            CompiledBitmap compiledBitmap;
+            createCompiledBitmap(compiledBitmap);
+
+            std::shared_ptr<const Bitmap> scaledBitmap = (genMipmaps ? BitmapManager::scaleToPOT(bitmap) : bitmap);
+            glBindTexture(GL_TEXTURE_2D, compiledBitmap.texture);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, genMipmaps ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+            if (scaledBitmap) {
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, scaledBitmap->width, scaledBitmap->height, 0, GL_RGBA, GL_UNSIGNED_BYTE, scaledBitmap->data.data());
+            }
+            if (genMipmaps) {
+                glGenerateMipmap(GL_TEXTURE_2D);
+            }
+
+            it = _compiledBitmapMap.emplace(bitmap, compiledBitmap).first;
+        }
+        return it->second;
+    }
+
+    const GLTileRenderer::CompiledBitmap & GLTileRenderer::buildCompiledTileBitmap(const std::shared_ptr<TileBitmap>& tileBitmap) {
+        auto it = _compiledTileBitmapMap.find(tileBitmap);
+        if (it == _compiledTileBitmapMap.end()) {
+            CompiledBitmap compiledTileBitmap;
+            createCompiledBitmap(compiledTileBitmap);
+
+            // Use a different strategy if the bitmap is not of POT dimensions, simply do not create the mipmaps
+            bool genMipmaps = (tileBitmap->getWidth() & (tileBitmap->getWidth() - 1)) == 0 && (tileBitmap->getHeight() & (tileBitmap->getHeight() - 1)) == 0;
+            glBindTexture(GL_TEXTURE_2D, compiledTileBitmap.texture);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, genMipmaps ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+            GLenum format = GL_NONE;
+            switch (tileBitmap->getFormat()) {
+            case TileBitmap::Format::GRAYSCALE:
+                format = GL_LUMINANCE;
+                break;
+            case TileBitmap::Format::RGB:
+                format = GL_RGB;
+                break;
+            case TileBitmap::Format::RGBA:
+                format = GL_RGBA;
+                break;
+            }
+            glTexImage2D(GL_TEXTURE_2D, 0, format, tileBitmap->getWidth(), tileBitmap->getHeight(), 0, format, GL_UNSIGNED_BYTE, tileBitmap->getData().empty() ? NULL : tileBitmap->getData().data());
+            if (genMipmaps) {
+                glGenerateMipmap(GL_TEXTURE_2D);
+            }
+
+            if (!_interactionMode) {
+                tileBitmap->releaseBitmap(); // if interaction is enabled, keep the original bitmap
+            }
+
+            it = _compiledTileBitmapMap.emplace(tileBitmap, compiledTileBitmap).first;
+        }
+        return it->second;
+    }
+
+    const GLTileRenderer::CompiledGeometry& GLTileRenderer::buildCompiledTileGeometry(const std::shared_ptr<TileGeometry>& tileGeometry) {
+        auto it = _compiledTileGeometryMap.find(tileGeometry);
+        if (it == _compiledTileGeometryMap.end()) {
+            CompiledGeometry compiledGeometry;
+            createCompiledGeometry(compiledGeometry);
+
+            glBindBuffer(GL_ARRAY_BUFFER, compiledGeometry.vertexGeometryVBO);
+            glBufferData(GL_ARRAY_BUFFER, tileGeometry->getVertexGeometry().size() * sizeof(std::uint8_t), tileGeometry->getVertexGeometry().data(), GL_STATIC_DRAW);
+
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, compiledGeometry.indicesVBO);
+            glBufferData(GL_ELEMENT_ARRAY_BUFFER, tileGeometry->getIndices().size() * sizeof(std::uint16_t), tileGeometry->getIndices().data(), GL_STATIC_DRAW);
+
+            if (!_interactionMode) {
+                tileGeometry->releaseVertexArrays(); // if interaction is enabled, we must keep the vertex arrays. Otherwise optimize for lower memory usage
+            }
+
+            it = _compiledTileGeometryMap.emplace(tileGeometry, compiledGeometry).first;
+        }
+        return it->second;
+    }
+
+    const GLTileRenderer::ShaderProgram& GLTileRenderer::buildShaderProgram(const std::string& id, const std::string& vsh, const std::string& fsh, bool pattern, bool translate, bool lighting2D, bool lighting3D, bool derivs) {
+        std::string shaderProgramId = id + (pattern ? "_p" : "") + (translate ? "_t" : "") + (lighting2D ? "_l2d" : "") + (lighting3D ? "_l3d" : "") + (derivs ? "_d" : "");
+
+        auto it = _shaderProgramMap.find(shaderProgramId);
+        if (it == _shaderProgramMap.end()) {
+            std::set<std::string> defs;
+            if (pattern) {
+                defs.insert("PATTERN");
+            }
+            if (translate) {
+                defs.insert("TRANSFORM");
+            }
+            if (derivs) {
+                defs.insert("DERIVATIVES");
+            }
+
+            std::string lightingVsh;
+            std::string lightingFsh;
+            if (lighting2D && _lightingShader2D) {
+                defs.insert(_lightingShader2D->perVertex ? "LIGHTING_VSH" : "LIGHTING_FSH");
+                if (_lightingShader2D->perVertex) {
+                    lightingVsh = _lightingShader2D->shader;
+                }
+                else {
+                    lightingFsh = _lightingShader2D->shader;
+                }
+            }
+            else if (lighting3D && _lightingShader3D) {
+                defs.insert(_lightingShader3D->perVertex ? "LIGHTING_VSH" : "LIGHTING_FSH");
+                if (_lightingShader3D->perVertex) {
+                    lightingVsh = _lightingShader3D->shader;
+                }
+                else {
+                    lightingFsh = _lightingShader3D->shader;
+                }
+            }
+
+            ShaderProgram shaderProgram;
+            createShaderProgram(shaderProgram, commonVsh + lightingVsh + vsh, commonFsh + lightingFsh + fsh, defs, uniformMap, attribMap);
+            
+            it = _shaderProgramMap.emplace(shaderProgramId, shaderProgram).first;
+        }
+        return it->second;
     }
 
     const std::vector<std::shared_ptr<TileSurface>>& GLTileRenderer::buildCompiledTileSurfaces(const TileId& tileId) {
@@ -1941,6 +1885,87 @@ namespace carto { namespace vt {
             }
         }
         return it->second;
+    }
+
+    void GLTileRenderer::createShaderProgram(ShaderProgram& shaderProgram, const std::string& vsh, const std::string& fsh, const std::set<std::string>& defs, const std::map<std::string, int>& uniformMap, const std::map<std::string, int>& attribMap) {
+        auto compileShader = [&defs](GLenum type, const std::string& sh) -> GLuint {
+            std::string shaderSourceStr = "#version 100\n";
+            for (const std::string& def : defs) {
+                shaderSourceStr += "#define " + def + "\n";
+            }
+            shaderSourceStr += sh;
+
+            GLuint shader = glCreateShader(type);
+            const char* shaderSource = shaderSourceStr.c_str();
+            glShaderSource(shader, 1, const_cast<const char**>(&shaderSource), NULL);
+            glCompileShader(shader);
+            GLint isShaderCompiled = 0;
+            glGetShaderiv(shader, GL_COMPILE_STATUS, &isShaderCompiled);
+            if (!isShaderCompiled) {
+                GLint infoLogLength = 0;
+                glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &infoLogLength);
+                std::vector<char> infoLog(infoLogLength + 1);
+                GLsizei charactersWritten = 0;
+                glGetShaderInfoLog(shader, infoLogLength, &charactersWritten, infoLog.data());
+                std::string msg(infoLog.begin(), infoLog.begin() + charactersWritten);
+                throw std::runtime_error("Shader compiling failed: " + msg);
+            }
+            return shader;
+        };
+
+        GLuint vertexShader = 0;
+        GLuint fragmentShader = 0;
+        try {
+            vertexShader = compileShader(GL_VERTEX_SHADER, vsh);
+            fragmentShader = compileShader(GL_FRAGMENT_SHADER, fsh);
+
+            shaderProgram.program = glCreateProgram();
+            glAttachShader(shaderProgram.program, fragmentShader);
+            glAttachShader(shaderProgram.program, vertexShader);
+            glLinkProgram(shaderProgram.program);
+            GLint isLinked = 0;
+            glGetProgramiv(shaderProgram.program, GL_LINK_STATUS, &isLinked);
+            if (!isLinked) {
+                GLint infoLogLength = 0;
+                glGetProgramiv(shaderProgram.program, GL_INFO_LOG_LENGTH, &infoLogLength);
+                std::vector<char> infoLog(infoLogLength + 1);
+                GLsizei charactersWritten = 0;
+                glGetProgramInfoLog(shaderProgram.program, infoLogLength, &charactersWritten, infoLog.data());
+                std::string msg(infoLog.begin(), infoLog.begin() + charactersWritten);
+                throw std::runtime_error("Shader program linking failed: " + msg);
+            }
+        }
+        catch (const std::exception& e) {
+            deleteShaderProgram(shaderProgram);
+            if (vertexShader != 0) {
+                glDeleteShader(vertexShader);
+            }
+            if (fragmentShader != 0) {
+                glDeleteShader(fragmentShader);
+            }
+            throw;
+        }
+        glDeleteShader(vertexShader);
+        glDeleteShader(fragmentShader);
+
+        shaderProgram.uniforms.resize(std::accumulate(uniformMap.begin(), uniformMap.end(), 0, [](int prev, const std::pair<std::string, int>& item) { return std::max(prev, 1 + item.second); }));
+        for (auto it = uniformMap.begin(); it != uniformMap.end(); it++) {
+            shaderProgram.uniforms[it->second] = glGetUniformLocation(shaderProgram.program, it->first.c_str());;
+        }
+
+        shaderProgram.attribs.resize(std::accumulate(attribMap.begin(), attribMap.end(), 0, [](int prev, const std::pair<std::string, int>& item) { return std::max(prev, 1 + item.second); }));
+        for (auto it = attribMap.begin(); it != attribMap.end(); it++) {
+            shaderProgram.attribs[it->second] = glGetAttribLocation(shaderProgram.program, it->first.c_str());;
+        }
+    }
+
+    void GLTileRenderer::deleteShaderProgram(ShaderProgram& shaderProgram) {
+        if (shaderProgram.program != 0) {
+            glDeleteProgram(shaderProgram.program);
+            shaderProgram.program = 0;
+            shaderProgram.uniforms.clear();
+            shaderProgram.attribs.clear();
+        }
     }
 
     void GLTileRenderer::createFrameBuffer(FrameBuffer& frameBuffer, bool useColor, bool useDepth, bool useStencil) {
@@ -1993,8 +2018,9 @@ namespace carto { namespace vt {
             glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, frameBuffer.colorTexture, 0);
         }
 
-        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-            checkGLError();
+        GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+        if (status != GL_FRAMEBUFFER_COMPLETE) {
+            throw std::runtime_error("FrameBuffer not complete: status code " + std::to_string(status));
         }
     }
 

@@ -938,12 +938,10 @@ namespace carto { namespace vt {
         }
 
         float v0 = 0, v1 = 0, du_dl = 0;
-        float minMiterDot = MIN_MITER_DOT;
         if (stroke) {
             v1 = stroke->y0 + 0.5f;
             v0 = stroke->y1 - 0.5f;
             du_dl = _tileSize / stroke->scale;
-            minMiterDot = 1.0f; // make line segments separate to avoid texture coordinate stretching
         }
 
         VertexArray<cglib::vec2<float>> points;
@@ -952,6 +950,8 @@ namespace carto { namespace vt {
 
         bool cycle = points[0] == points[points.size() - 1];
         bool endpoints = !cycle && style.capMode != LineCapMode::NONE;
+        float minMiterDot = stroke ? 1.0f : MIN_MITER_DOT;
+        float linePos = 0;
 
         std::size_t i = 1;
         for (; i < points.size(); i++) {
@@ -981,7 +981,7 @@ namespace carto { namespace vt {
             cglib::vec2<float> binormal = cglib::vec2<float>(tangent(1), -tangent(0));
 
             float dot = cglib::dot_product(binormal, prevBinormal);
-            if (dot < MIN_MITER_DOT) {
+            if (dot < minMiterDot) {
                 cycle = endpoints = false;
             }
             else {
@@ -990,11 +990,10 @@ namespace carto { namespace vt {
         }
 
         cglib::vec2<float> binormal(0, 0), tangent(0, 0);
-        float linePos = 0;
         {
             const cglib::vec2<float>& p0 = points[i - 1];
             const cglib::vec2<float>& p1 = points[i];
-            float u0 = 0;
+            float u0 = linePos * du_dl;
             cglib::vec2<float> dp(p1 - p0);
             linePos += cglib::length(dp);
 

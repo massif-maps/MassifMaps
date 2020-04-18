@@ -7,6 +7,7 @@
 #include "SymbolizerContext.h"
 
 #include <atomic>
+#include <functional>
 #include <unordered_map>
 
 namespace carto { namespace mvt {
@@ -81,19 +82,6 @@ namespace carto { namespace mvt {
         }
     }
 
-    long long Symbolizer::convertId(const Value& val) const {
-        if (auto integer = boost::get<long long>(&val)) {
-            return *integer;
-        }
-        
-        std::string str = boost::lexical_cast<std::string>(val);
-        long long hash = 1125899906842597LL;
-        for (char c : str) {
-            hash = 31 * hash + static_cast<unsigned char>(c);
-        }
-        return std::abs(hash);
-    }
-
     vt::Color Symbolizer::convertColor(const Value& val) const {
         try {
             return parseColor(boost::lexical_cast<std::string>(val));
@@ -125,6 +113,19 @@ namespace carto { namespace mvt {
 
     void Symbolizer::bindParameter(const std::string& name, const std::string& value) {
         _logger->write(Logger::Severity::WARNING, "Unsupported symbolizer parameter: " + name);
+    }
+
+    long long Symbolizer::convertId(const Value& val) {
+        struct NumericIdValue : public boost::static_visitor<long long> {
+            long long operator() (boost::blank) const { return 0; }
+            long long operator() (bool val) const { return (val ? 1 : 0); }
+            long long operator() (long long val) const { return val; }
+            long long operator() (double val) const { return (val != 0 ? std::hash<double>()(val) : 0); }
+            long long operator() (const std::string& str) const { return (str.empty() ? 0 : std::hash<std::string>()(str)); }
+        };
+
+        long long id = boost::apply_visitor(NumericIdValue(), val);
+        return id & 0x3FFFFFFLL;
     }
 
     long long Symbolizer::generateId() {

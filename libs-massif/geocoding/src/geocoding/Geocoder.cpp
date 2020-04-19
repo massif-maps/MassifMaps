@@ -162,7 +162,7 @@ namespace carto { namespace geocoding {
                 }
             }
             if (keep) {
-                addresses.emplace_back(address, result.totalRank());
+                addresses.emplace_back(address, calculateResultRank(result, options));
             }
         }
         return addresses;
@@ -632,7 +632,8 @@ namespace carto { namespace geocoding {
                 }
 
                 // Early out test
-                if (result.totalRank() < MIN_RANK_THRESHOLD) {
+                float resultRank = calculateResultRank(result, options);
+                if (resultRank < MIN_RANK_THRESHOLD) {
                     continue;
                 }
 
@@ -641,22 +642,24 @@ namespace carto { namespace geocoding {
                     return result.encodedId == result2.encodedId;
                     });
                 if (resultIt != results.end()) {
-                    if (resultIt->totalRank() >= result.totalRank()) {
+                    if (calculateResultRank(*resultIt, options) >= resultRank) {
                         continue; // if we have stored the row with better ranking, ignore current
                     }
                     results.erase(resultIt); // erase the old match, as the new match is better
                 }
 
                 // Find position for the result
-                resultIt = std::upper_bound(results.begin(), results.end(), result, [](const Result& result1, const Result& result2) {
-                    return result1.totalRank() > result2.totalRank();
+                resultIt = std::upper_bound(results.begin(), results.end(), result, [this, &options](const Result& result1, const Result& result2) {
+                    return calculateResultRank(result1, options) > calculateResultRank(result2, options);
                     });
                 if (!(resultIt == results.end() && results.size() == _maxResults)) {
                     results.insert(resultIt, result);
 
                     // Drop results that have too low rankings
                     while (!results.empty()) {
-                        if (results.front().totalRank() * MAX_RANK_RATIO <= results.back().totalRank() && results.back().totalRank() >= MIN_RANK_THRESHOLD) {
+                        float frontResultRank = calculateResultRank(results.front(), options);
+                        float backResultRank = calculateResultRank(results.back(), options);
+                        if (frontResultRank * MAX_RANK_RATIO <= backResultRank && backResultRank >= MIN_RANK_THRESHOLD) {
                             break;
                         }
                         results.pop_back();
@@ -784,6 +787,14 @@ namespace carto { namespace geocoding {
             _nameMatchCache.put(nameKey, rank);
         }
         return rank;
+    }
+
+    float Geocoder::calculateResultRank(const Result& result, const Options& options) const {
+        float resultRank = 1.0f;
+        resultRank *= (result.matchRank * options.matchRankWeight) + (1.0f - options.matchRankWeight);
+        resultRank *= (result.entityRank * options.entityRankWeight) + (1.0f - options.entityRankWeight);
+        resultRank *= (result.locationRank * options.locationRankWeight) + (1.0f - options.locationRankWeight);
+        return resultRank;
     }
 
     cglib::vec2<double> Geocoder::getOrigin(sqlite3pp::database& db) {

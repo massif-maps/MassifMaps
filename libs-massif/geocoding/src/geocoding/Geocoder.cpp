@@ -7,7 +7,6 @@
 #include <algorithm>
 #include <numeric>
 
-#include <boost/lexical_cast.hpp>
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/algorithm/string/join.hpp>
 #include <boost/algorithm/string/trim.hpp>
@@ -28,7 +27,7 @@ namespace carto { namespace geocoding {
     bool Geocoder::import(const std::shared_ptr<sqlite3pp::database>& db) {
         std::lock_guard<std::recursive_mutex> lock(_mutex);
         auto database = std::make_shared<Database>();
-        database->id = "db" + boost::lexical_cast<std::string>(_databases.size());
+        database->id = "db" + std::to_string(_databases.size());
         database->db = db;
         database->origin = getOrigin(*db);
         database->bounds = getBounds(*db);
@@ -144,7 +143,7 @@ namespace carto { namespace geocoding {
             }
 
             Address address;
-            std::string addrKey = result.database->id + std::string(1, 0) + boost::lexical_cast<std::string>(result.encodedId);
+            std::string addrKey = result.database->id + std::string(1, 0) + std::to_string(result.encodedId);
             if (!_addressCache.read(addrKey, address)) {
                 address.loadFromDB(*result.database->db, result.encodedId, _language, [&result](const cglib::vec2<double>& pos) {
                     return result.database->origin + pos;
@@ -180,10 +179,10 @@ namespace carto { namespace geocoding {
             if (!translatedToken.empty()) {
                 std::string sql = "SELECT id, token, typemask, namecount, idf FROM tokens WHERE ";
                 if (pass > 0 && translatedToken.size() >= 2) {
-                    sql += "token LIKE '" + escapeSQLValue(unistring::to_utf8string(translatedToken.substr(0, 2))) + "%' ORDER BY ABS(LENGTH(token) - " + boost::lexical_cast<std::string>(translatedToken.size()) + ") ASC, idf ASC LIMIT " + boost::lexical_cast<std::string>(TOKEN_QUERY_LIMIT);
+                    sql += "token LIKE '" + escapeSQLValue(unistring::to_utf8string(translatedToken.substr(0, 2))) + "%' ORDER BY ABS(LENGTH(token) - " + std::to_string(translatedToken.size()) + ") ASC, idf ASC LIMIT " + std::to_string(TOKEN_QUERY_LIMIT);
                 }
                 else if (!translatedToken.empty() && translatedToken.back() == '%') {
-                    sql += "token LIKE '" + escapeSQLValue(unistring::to_utf8string(translatedToken)) + "' ORDER BY LENGTH(token) ASC, idf ASC LIMIT " + boost::lexical_cast<std::string>(TOKEN_QUERY_LIMIT);
+                    sql += "token LIKE '" + escapeSQLValue(unistring::to_utf8string(translatedToken)) + "' ORDER BY LENGTH(token) ASC, idf ASC LIMIT " + std::to_string(TOKEN_QUERY_LIMIT);
                 }
                 else {
                     sql += "token='" + escapeSQLValue(unistring::to_utf8string(translatedToken)) + "'";
@@ -285,7 +284,7 @@ namespace carto { namespace geocoding {
         for (const std::vector<Token>& tokens : tokensList) {
             nameKey += std::string(1, 0);
             for (const Token& token : tokens) {
-                nameKey += boost::lexical_cast<std::string>(token.id) + ";";
+                nameKey += std::to_string(token.id) + ";";
             }
         }
         if (!_nameRankCache.read(nameKey, nameRanks)) {
@@ -324,9 +323,9 @@ namespace carto { namespace geocoding {
             for (const std::vector<Token>& tokens : sortedTokensList) {
                 std::string values;
                 for (const Token& token : tokens) {
-                    values += (values.empty() ? "" : ",") + boost::lexical_cast<std::string>(token.id);
+                    values += (values.empty() ? "" : ",") + std::to_string(token.id);
                 }
-                std::string tableName = "nt" + boost::lexical_cast<std::string>(sqlFilters.size());
+                std::string tableName = "nt" + std::to_string(sqlFilters.size());
                 sqlTables.push_back(tableName);
                 std::string sqlFilter = tableName + ".token_id IN (" + values + ") AND " + tableName + ".lang IS " + sqlTables.front() + ".lang";
                 sqlFilters.push_back(sqlFilters.empty() ? sqlFilter : tableName + ".name_id=" + sqlTables.front() + ".name_id AND " + sqlFilter);
@@ -340,7 +339,7 @@ namespace carto { namespace geocoding {
             for (std::size_t i = 0; i < sqlFilters.size(); i++) {
                 sql += (i > 0 ? " AND " : "") + std::string("(") + sqlFilters[i] + ")";
             }
-            sql += ") nt CROSS JOIN names n WHERE n.id=nt.name_id AND n.lang IS nt.lang AND COALESCE(n.lang, '') IN ('" + escapeSQLValue(_language) + "', '') ORDER BY LENGTH(n.name) ASC LIMIT " + boost::lexical_cast<std::string>(ENTITY_QUERY_LIMIT);
+            sql += ") nt CROSS JOIN names n WHERE n.id=nt.name_id AND n.lang IS nt.lang AND COALESCE(n.lang, '') IN ('" + escapeSQLValue(_language) + "', '') ORDER BY LENGTH(n.name) ASC LIMIT " + std::to_string(ENTITY_QUERY_LIMIT);
 
             std::vector<std::shared_ptr<Name>> names;
             std::string namesKey = query.database->id + std::string(1, 0) + sql;
@@ -435,9 +434,9 @@ namespace carto { namespace geocoding {
         for (const std::shared_ptr<std::vector<NameRank>>& nameRanks : sortedFiltersList) {
             std::string values;
             for (const NameRank& nameRank : *nameRanks) {
-                values += (values.empty() ? "" : ",") + boost::lexical_cast<std::string>(nameRank.name->id);
+                values += (values.empty() ? "" : ",") + std::to_string(nameRank.name->id);
             }
-            std::string tableName = "en" + boost::lexical_cast<std::string>(sqlFilters.size());
+            std::string tableName = "en" + std::to_string(sqlFilters.size());
             sqlTables.push_back(tableName);
             std::string sqlFilter = tableName + ".name_id IN (" + values + ")";
             std::uint32_t mask = std::accumulate(nameRanks->begin(), nameRanks->end(), std::uint32_t(0), [](std::uint32_t mask, const NameRank& nameRank) { return mask | 1 << static_cast<int>(nameRank.name->type); });
@@ -472,10 +471,10 @@ namespace carto { namespace geocoding {
                 }
             }
             if ((typeMask & (1 << type)) != 0) {
-                values += (values.empty() ? "" : ",") + boost::lexical_cast<std::string>(type);
+                values += (values.empty() ? "" : ",") + std::to_string(type);
             }
         }
-        sql += "(e.id=" + sqlTables.front() + ".entity_id) AND e.type in (" + values + ") ORDER BY e.type ASC, e.rank DESC LIMIT " + boost::lexical_cast<std::string>(ENTITY_QUERY_LIMIT);
+        sql += "(e.id=" + sqlTables.front() + ".entity_id) AND e.type in (" + values + ") ORDER BY e.type ASC, e.rank DESC LIMIT " + std::to_string(ENTITY_QUERY_LIMIT);
 
         std::string entityKey = database.id + std::string(1, 0) + sql;
         std::vector<EntityRow> entityRows;
@@ -794,7 +793,7 @@ namespace carto { namespace geocoding {
 
             std::vector<std::string> origin;
             boost::split(origin, value, boost::is_any_of(","), boost::token_compress_off);
-            return cglib::vec2<double>(boost::lexical_cast<double>(origin.at(0)), boost::lexical_cast<double>(origin.at(1)));
+            return cglib::vec2<double>(std::stod(origin.at(0)), std::stod(origin.at(1)));
         }
         return cglib::vec2<double>(0, 0);
     }
@@ -807,8 +806,8 @@ namespace carto { namespace geocoding {
             std::vector<std::string> origin;
             boost::split(origin, value, boost::is_any_of(","), boost::token_compress_off);
             return cglib::bbox2<double>(
-                cglib::vec2<double>(boost::lexical_cast<double>(origin.at(0)), boost::lexical_cast<double>(origin.at(1))),
-                cglib::vec2<double>(boost::lexical_cast<double>(origin.at(2)), boost::lexical_cast<double>(origin.at(3)))
+                cglib::vec2<double>(std::stod(origin.at(0)), std::stod(origin.at(1))),
+                cglib::vec2<double>(std::stod(origin.at(2)), std::stod(origin.at(3)))
             );
         }
         return cglib::bbox2<double>(cglib::vec2<double>(-180, -90), cglib::vec2<double>(180, 90));
@@ -818,7 +817,7 @@ namespace carto { namespace geocoding {
         sqlite3pp::query query(db, "SELECT value FROM metadata WHERE name='rank_scale'");
         for (auto qit = query.begin(); qit != query.end(); qit++) {
             std::string value = qit->get<const char*>(0);
-            return boost::lexical_cast<double>(value);
+            return std::stod(value);
         }
         return 32767.0;
     }

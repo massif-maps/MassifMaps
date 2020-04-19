@@ -83,7 +83,7 @@ namespace carto { namespace geocoding {
                 float rank = 1.0f - static_cast<float>(result.second) / radius;
                 if (rank > 0) {
                     Address address;
-                    std::string addrKey = database.id + "_" std::to_string(result.first);
+                    std::string addrKey = database.id + std::string(1, 0) + std::to_string(result.first);
                     if (!_addressCache.read(addrKey, address)) {
                         address.loadFromDB(*database.db, result.first, _language, [&database](const cglib::vec2<double>& pos) {
                             return database.origin + pos;
@@ -121,7 +121,7 @@ namespace carto { namespace geocoding {
         }
 
         std::vector<QuadIndex::GeometryInfo> geomInfos;
-        std::string queryKey = database.id + "_" + sql;
+        std::string queryKey = database.id + std::string(1, 0) + sql;
         if (_queryCache.read(queryKey, geomInfos)) {
             return geomInfos;
         }
@@ -174,7 +174,7 @@ namespace carto { namespace geocoding {
 
             std::vector<std::string> origin;
             boost::split(origin, value, boost::is_any_of(","), boost::token_compress_off);
-            return cglib::vec2<double>(std::stod(origin.at(0)), std::stod<double>(origin.at(1)));
+            return cglib::vec2<double>(std::stod(origin.at(0)), std::stod(origin.at(1)));
         }
         return cglib::vec2<double>(0, 0);
     }

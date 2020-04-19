@@ -41,9 +41,6 @@ namespace carto { namespace mvt {
                         _logger->write(Logger::Severity::ERROR, "Illegal dash value: " + dash + ", ex: " +  ex.what() );
                     }
                 }
-                if (strokeDashArray.empty()) {
-                    strokeDashArray.push_back(1);
-                }
                 strokePattern = createDashBitmapPattern(strokeDashArray, height, lineCap);
                 symbolizerContext.getBitmapManager()->storeBitmapPattern(file, strokePattern);
             }
@@ -152,6 +149,9 @@ namespace carto { namespace mvt {
 
     std::shared_ptr<vt::BitmapPattern> LineSymbolizer::createDashBitmapPattern(const std::vector<float>& strokeDashArray, int height, vt::LineCapMode lineCap) {
         float size = std::accumulate(strokeDashArray.begin(), strokeDashArray.end(), 0.0f);
+        if (size <= 0 || height <= 0) {
+            return std::shared_ptr<vt::BitmapPattern>();
+        }
         float superSamplingFactor = DASH_SUPERSAMPLING_FACTOR / std::accumulate(strokeDashArray.begin(), strokeDashArray.end(), 1.0f, [](float a, float b) { return b > 0 ? std::min(a, b) : a; });
         
         int pow2Size = 1;

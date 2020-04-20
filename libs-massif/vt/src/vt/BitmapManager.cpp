@@ -1,5 +1,7 @@
 #include "BitmapManager.h"
 
+#include <algorithm>
+
 namespace carto { namespace vt {
     BitmapManager::BitmapManager(std::shared_ptr<BitmapLoader> loader) : _bitmapLoader(std::move(loader)) {
     }

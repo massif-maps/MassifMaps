@@ -278,10 +278,6 @@ namespace carto { namespace vt {
     }
 
     void TileLayerBuilder::addPolygons3D(const std::function<bool(long long& id, VerticesList& verticesList)>& generator, float minHeight, float maxHeight, const Polygon3DStyle& style) {
-        if (minHeight > maxHeight) {
-            return;
-        }
-
         long long id = 0;
         VerticesList verticesList;
         if (!generator(id, verticesList)) {

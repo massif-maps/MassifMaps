@@ -1935,7 +1935,7 @@ namespace carto { namespace vt {
                 throw std::runtime_error("Shader program linking failed: " + msg);
             }
         }
-        catch (const std::exception& e) {
+        catch (const std::exception&) {
             deleteShaderProgram(shaderProgram);
             if (vertexShader != 0) {
                 glDeleteShader(vertexShader);

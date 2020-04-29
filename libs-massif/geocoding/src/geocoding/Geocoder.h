@@ -36,6 +36,9 @@ namespace carto { namespace geocoding {
         struct Options {
             boost::optional<cglib::bbox2<double>> bounds; // default is no bounds
             boost::optional<cglib::vec2<double>> location; // default is no location bias
+            float matchRankWeight = 1.0f; // relative strength of match rank between 0..1
+            float entityRankWeight = 1.0f; // relative strength of entity rank between 0..1
+            float locationRankWeight = 1.0f; // relative strength of location rank between 0..1
             float locationSigma = 100000; // standard deviation, default is 100km
         };
 
@@ -121,8 +124,6 @@ namespace carto { namespace geocoding {
             float matchRank = 1.0f;
             float entityRank = 1.0f;
             float locationRank = 1.0f;
-
-            float totalRank() const { return matchRank * entityRank * locationRank; }
         };
 
         void matchTokens(Query& query, int pass, TokenList& tokenList) const;
@@ -133,6 +134,8 @@ namespace carto { namespace geocoding {
         bool optimizeQueryFilters(const Query& query, std::vector<std::shared_ptr<std::vector<NameRank>>>& filtersList) const;
 
         float calculateNameRank(const Query& query, const std::string& name, const std::string& queryName, const std::vector<std::pair<std::string, float>>& tokenIDFs) const;
+
+        float calculateResultRank(const Result& result, const Options& options) const;
         
         static cglib::vec2<double> getOrigin(sqlite3pp::database& db);
         static cglib::bbox2<double> getBounds(sqlite3pp::database& db);

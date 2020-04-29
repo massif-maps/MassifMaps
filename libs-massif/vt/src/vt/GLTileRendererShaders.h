@@ -539,34 +539,37 @@ namespace carto { namespace vt {
         uniform vec4 uColorTable[16];
         #ifdef GL_FRAGMENT_PRECISION_HIGH
         varying highp vec2 vTilePos;
-        varying highp float vHeight;
         #else
         varying mediump vec2 vTilePos;
-        varying mediump float vHeight;
         #endif
         varying lowp vec4 vColor;
+        #ifdef LIGHTING_FSH
+        varying mediump float vHeight;
+        varying lowp float vSideVertex;
+        #endif
 
         void main(void) {
             int styleIndex = int(aVertexAttribs[0]);
-            bool sideVertex = aVertexAttribs[1] != 0.0;
-            float height = aVertexHeight * uHeightScale;
+            float sideVertex = aVertexAttribs[1];
+            float height = aVertexHeight * uAbsHeightScale;
             vec3 pos = aVertexPosition;
         #ifdef TRANSFORM
             pos = vec3(uTransformMatrix * vec4(pos, 1.0));
         #endif
-            pos = pos + aVertexNormal * height;
-            vec3 normal = normalize(sideVertex ? aVertexBinormal : aVertexNormal);
-            vTilePos = (uTileMatrix * vec3(aVertexUV * uUVScale, 1.0)).xy;
+            pos = pos + aVertexNormal * (aVertexHeight * uHeightScale);
+            vec3 normal = normalize(sideVertex > 0.0 ? aVertexBinormal : aVertexNormal);
             vec4 color = uColorTable[styleIndex];
+            vTilePos = (uTileMatrix * vec3(aVertexUV * uUVScale, 1.0)).xy;
         #ifdef LIGHTING_VSH
-            vColor = applyLighting(color, normal);
+            vColor = applyLighting(color, normal, height, sideVertex > 0.0);
         #else
             vColor = color;
         #endif
         #ifdef LIGHTING_FSH
             vNormal = normal;
+            vHeight = height;
+            vSideVertex = sideVertex;
         #endif
-            vHeight = max(0.0, (sideVertex ? aVertexHeight * uAbsHeightScale : 32.0));
             gl_Position = uMVPMatrix * vec4(pos, 1.0);
         }
     )GLSL";
@@ -574,22 +577,23 @@ namespace carto { namespace vt {
     static const std::string polygon3DFsh = R"GLSL(
         #ifdef GL_FRAGMENT_PRECISION_HIGH
         varying highp vec2 vTilePos;
-        varying highp float vHeight;
         #else
         varying mediump vec2 vTilePos;
-        varying mediump float vHeight;
         #endif
         varying lowp vec4 vColor;
+        #ifdef LIGHTING_FSH
+        varying highp float vHeight;
+        varying lowp float vSideVertex;
+        #endif
 
         void main(void) {
             if (min(vTilePos.x, vTilePos.y) < -0.01 || max(vTilePos.x, vTilePos.y) > 1.01) {
                 discard;
             }
-            lowp vec4 color = vec4(vColor.rgb * (1.0 - 0.75 / (1.0 + vHeight * vHeight)), vColor.a);
         #ifdef LIGHTING_FSH
-            gl_FragColor = applyLighting(color, normalize(vNormal));
+            gl_FragColor = applyLighting(vColor, normalize(vNormal), vHeight, vSideVertex > 0.0);
         #else
-            gl_FragColor = color;
+            gl_FragColor = vColor;
         #endif
         }
     )GLSL";

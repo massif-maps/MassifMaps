@@ -78,8 +78,6 @@ namespace carto { namespace vt {
     GLTileRenderer::GLTileRenderer(std::shared_ptr<GLExtensions> glExtensions, std::shared_ptr<const TileTransformer> transformer, const boost::optional<LightingShader>& lightingShader2D, const boost::optional<LightingShader>& lightingShader3D, float scale) :
         _lightingShader2D(lightingShader2D), _lightingShader3D(lightingShader3D), _tileSurfaceBuilder(transformer), _cameraProjMatrix(cglib::mat4x4<double>::identity()), _glExtensions(std::move(glExtensions)), _transformer(std::move(transformer)), _scale(scale), _mutex()
     {
-        _blendNodes = std::make_shared<std::vector<std::shared_ptr<BlendNode>>>();
-        _bitmapLabelMap[0] = _bitmapLabelMap[1] = std::make_shared<BitmapLabelMap>();
     }
 
     void GLTileRenderer::setInteractionMode(bool enabled) {
@@ -262,6 +260,8 @@ namespace carto { namespace vt {
     }
 
     void GLTileRenderer::initializeRenderer() {
+        _blendNodes = std::make_shared<std::vector<std::shared_ptr<BlendNode>>>();
+        _bitmapLabelMap[0] = _bitmapLabelMap[1] = std::make_shared<BitmapLabelMap>();
     }
     
     void GLTileRenderer::resetRenderer() {
@@ -1935,7 +1935,7 @@ namespace carto { namespace vt {
                 throw std::runtime_error("Shader program linking failed: " + msg);
             }
         }
-        catch (const std::exception& e) {
+        catch (const std::exception&) {
             deleteShaderProgram(shaderProgram);
             if (vertexShader != 0) {
                 glDeleteShader(vertexShader);

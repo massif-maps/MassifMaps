@@ -5,7 +5,6 @@
 
 #include <functional>
 
-#include <boost/lexical_cast.hpp>
 #include <boost/algorithm/string/split.hpp>
 #include <boost/algorithm/string/classification.hpp>
 
@@ -15,7 +14,7 @@ namespace carto { namespace geocoding {
     bool RevGeocoder::import(const std::shared_ptr<sqlite3pp::database>& db) {
         std::lock_guard<std::recursive_mutex> lock(_mutex);
         Database database;
-        database.id = "db" + boost::lexical_cast<std::string>(_databases.size());
+        database.id = "db" + std::to_string(_databases.size());
         database.db = db;
         database.bounds = getBounds(*db);
         database.origin = getOrigin(*db);
@@ -84,7 +83,7 @@ namespace carto { namespace geocoding {
                 float rank = 1.0f - static_cast<float>(result.second) / radius;
                 if (rank > 0) {
                     Address address;
-                    std::string addrKey = database.id + "_" + boost::lexical_cast<std::string>(result.first);
+                    std::string addrKey = database.id + std::string(1, 0) + std::to_string(result.first);
                     if (!_addressCache.read(addrKey, address)) {
                         address.loadFromDB(*database.db, result.first, _language, [&database](const cglib::vec2<double>& pos) {
                             return database.origin + pos;
@@ -110,19 +109,19 @@ namespace carto { namespace geocoding {
     std::vector<QuadIndex::GeometryInfo> RevGeocoder::findGeometryInfo(const Database& database, const std::vector<std::uint64_t>& quadIndices, const PointConverter& converter) const {
         std::string sql = "SELECT id, features, housenumbers FROM entities WHERE quadindex in (";
         for (std::size_t i = 0; i < quadIndices.size(); i++) {
-            sql += (i > 0 ? "," : "") + boost::lexical_cast<std::string>(quadIndices[i]);
+            sql += (i > 0 ? "," : "") + std::to_string(quadIndices[i]);
         }
         sql += ")";
         if (!_enabledFilters.empty()) {
             std::string values;
             for (const Address::EntityType type : _enabledFilters) {
-                values += (values.empty() ? "" : ",") + boost::lexical_cast<std::string>(static_cast<int>(type));
+                values += (values.empty() ? "" : ",") + std::to_string(static_cast<int>(type));
             }
             sql += " AND (type IN (" + values + "))";
         }
 
         std::vector<QuadIndex::GeometryInfo> geomInfos;
-        std::string queryKey = database.id + "_" + sql;
+        std::string queryKey = database.id + std::string(1, 0) + sql;
         if (_queryCache.read(queryKey, geomInfos)) {
             return geomInfos;
         }
@@ -175,7 +174,7 @@ namespace carto { namespace geocoding {
 
             std::vector<std::string> origin;
             boost::split(origin, value, boost::is_any_of(","), boost::token_compress_off);
-            return cglib::vec2<double>(boost::lexical_cast<double>(origin.at(0)), boost::lexical_cast<double>(origin.at(1)));
+            return cglib::vec2<double>(std::stod(origin.at(0)), std::stod(origin.at(1)));
         }
         return cglib::vec2<double>(0, 0);
     }
@@ -187,8 +186,8 @@ namespace carto { namespace geocoding {
 
             std::vector<std::string> bounds;
             boost::split(bounds, value, boost::is_any_of(","), boost::token_compress_off);
-            cglib::vec2<double> min(boost::lexical_cast<double>(bounds.at(0)), boost::lexical_cast<double>(bounds.at(1)));
-            cglib::vec2<double> max(boost::lexical_cast<double>(bounds.at(2)), boost::lexical_cast<double>(bounds.at(3)));
+            cglib::vec2<double> min(std::stod(bounds.at(0)), std::stod(bounds.at(1)));
+            cglib::vec2<double> max(std::stod(bounds.at(2)), std::stod(bounds.at(3)));
             return cglib::bbox2<double>(min, max);
         }
         return boost::optional<cglib::bbox2<double>>();

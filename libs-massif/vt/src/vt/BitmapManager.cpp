@@ -1,6 +1,6 @@
 #include "BitmapManager.h"
 
-#include <boost/lexical_cast.hpp>
+#include <algorithm>
 
 namespace carto { namespace vt {
     BitmapManager::BitmapManager(std::shared_ptr<BitmapLoader> loader) : _bitmapLoader(std::move(loader)) {
@@ -56,7 +56,7 @@ namespace carto { namespace vt {
         // Check if we have this pattern cached already
         std::string patternId = fileName;
         if (widthScale != 1.0f || heightScale != 1.0f) {
-            patternId += "#" + boost::lexical_cast<std::string>(widthScale) + "," + boost::lexical_cast<std::string>(heightScale);
+            patternId += "#" + std::to_string(widthScale) + "," + std::to_string(heightScale);
         }
         auto it = _bitmapPatternMap.find(patternId);
         if (it != _bitmapPatternMap.end()) {

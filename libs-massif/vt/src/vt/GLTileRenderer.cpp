@@ -75,9 +75,27 @@ namespace {
 }
 
 namespace carto { namespace vt {
-    GLTileRenderer::GLTileRenderer(std::shared_ptr<GLExtensions> glExtensions, std::shared_ptr<const TileTransformer> transformer, const boost::optional<LightingShader>& lightingShader2D, const boost::optional<LightingShader>& lightingShader3D, float scale) :
-        _lightingShader2D(lightingShader2D), _lightingShader3D(lightingShader3D), _tileSurfaceBuilder(transformer), _cameraProjMatrix(cglib::mat4x4<double>::identity()), _glExtensions(std::move(glExtensions)), _transformer(std::move(transformer)), _scale(scale), _mutex()
+    GLTileRenderer::GLTileRenderer(std::shared_ptr<GLExtensions> glExtensions, std::shared_ptr<const TileTransformer> transformer, float scale) :
+        _tileSurfaceBuilder(transformer), _cameraProjMatrix(cglib::mat4x4<double>::identity()), _glExtensions(std::move(glExtensions)), _transformer(std::move(transformer)), _scale(scale), _mutex()
     {
+    }
+
+    void GLTileRenderer::setLightingShader2D(const boost::optional<LightingShader>& lightingShader2D) {
+        std::lock_guard<std::mutex> lock(_mutex);
+        
+        _lightingShader2D = lightingShader2D;
+    }
+
+    void GLTileRenderer::setLightingShader3D(const boost::optional<LightingShader>& lightingShader3D) {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        _lightingShader3D = lightingShader3D;
+    }
+
+    void GLTileRenderer::setLightingShaderNormalMap(const boost::optional<LightingShader>& lightingShaderNormalMap) {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        _lightingShaderNormalMap = lightingShaderNormalMap;
     }
 
     void GLTileRenderer::setInteractionMode(bool enabled) {
@@ -1181,7 +1199,7 @@ namespace carto { namespace vt {
             return;
         }
 
-        const ShaderProgram& shaderProgram = buildShaderProgram("blendscreen", blendVsh, blendFsh, false, false, false, false, false);
+        const ShaderProgram& shaderProgram = buildShaderProgram("blendscreen", blendVsh, blendFsh, LightingType::NONE, false, false, false);
         glUseProgram(shaderProgram.program);
         
         if (_screenQuad.vbo == 0) {
@@ -1221,7 +1239,7 @@ namespace carto { namespace vt {
             const TileSurface::VertexGeometryLayoutParameters& vertexGeomLayoutParams = tileSurface->getVertexGeometryLayoutParameters();
             const CompiledSurface& compiledTileSurface = _compiledTileSurfaceMap[tileSurface];
 
-            const ShaderProgram& shaderProgram = buildShaderProgram("blendtile", blendVsh, blendFsh, false, false, false, false, false);
+            const ShaderProgram& shaderProgram = buildShaderProgram("blendtile", blendVsh, blendFsh, LightingType::NONE, false, false, false);
             glUseProgram(shaderProgram.program);
 
             glBindBuffer(GL_ARRAY_BUFFER, compiledTileSurface.vertexGeometryVBO);
@@ -1258,7 +1276,7 @@ namespace carto { namespace vt {
             const TileSurface::VertexGeometryLayoutParameters& vertexGeomLayoutParams = tileSurface->getVertexGeometryLayoutParameters();
             const CompiledSurface& compiledTileSurface = _compiledTileSurfaceMap[tileSurface];
 
-            const ShaderProgram& shaderProgram = buildShaderProgram("tilemask", backgroundVsh, backgroundFsh, false, false, false, false, false);
+            const ShaderProgram& shaderProgram = buildShaderProgram("tilemask", backgroundVsh, backgroundFsh, LightingType::NONE, false, false, false);
             glUseProgram(shaderProgram.program);
 
             glBindBuffer(GL_ARRAY_BUFFER, compiledTileSurface.vertexGeometryVBO);
@@ -1297,7 +1315,7 @@ namespace carto { namespace vt {
             const TileSurface::VertexGeometryLayoutParameters& vertexGeomLayoutParams = tileSurface->getVertexGeometryLayoutParameters();
             const CompiledSurface& compiledTileSurface = _compiledTileSurfaceMap[tileSurface];
 
-            const ShaderProgram& shaderProgram = buildShaderProgram("tilebackground", backgroundVsh, backgroundFsh, background->getPattern() ? true : false, false, true, false, false);
+            const ShaderProgram& shaderProgram = buildShaderProgram("tilebackground", backgroundVsh, backgroundFsh, LightingType::GEOMETRY2D, background->getPattern() ? true : false, false, false);
             glUseProgram(shaderProgram.program);
 
             glBindBuffer(GL_ARRAY_BUFFER, compiledTileSurface.vertexGeometryVBO);
@@ -1367,7 +1385,21 @@ namespace carto { namespace vt {
             const TileSurface::VertexGeometryLayoutParameters& vertexGeomLayoutParams = tileSurface->getVertexGeometryLayoutParameters();
             const CompiledSurface& compiledTileSurface = _compiledTileSurfaceMap[tileSurface];
 
-            const ShaderProgram& shaderProgram = buildShaderProgram("tilebitmap", bitmapVsh, bitmapFsh, true, false, true, false, false);
+            const ShaderProgram* shaderProgramPtr = nullptr;
+            switch (bitmap->getType()) {
+            case TileBitmap::Type::COLORMAP:
+                shaderProgramPtr = &buildShaderProgram("tilecolormap", colormapVsh, colormapFsh, LightingType::GEOMETRY2D, true, false, false);
+                break;
+            case TileBitmap::Type::NORMALMAP:
+                if (!_lightingShaderNormalMap) {
+                    return;
+                }
+                shaderProgramPtr = &buildShaderProgram("tilenormalmap", normalmapVsh, normalmapFsh, LightingType::NORMALMAP, true, false, false);
+                break;
+            default:
+                return;
+            }
+            const ShaderProgram& shaderProgram = *shaderProgramPtr;
             glUseProgram(shaderProgram.program);
 
             glBindBuffer(GL_ARRAY_BUFFER, compiledTileSurface.vertexGeometryVBO);
@@ -1375,7 +1407,7 @@ namespace carto { namespace vt {
             glEnableVertexAttribArray(shaderProgram.attribs[A_VERTEXPOSITION]);
             glVertexAttribPointer(shaderProgram.attribs[A_VERTEXUV], 2, GL_SHORT, GL_TRUE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.texCoordOffset));
             glEnableVertexAttribArray(shaderProgram.attribs[A_VERTEXUV]);
-            if (_lightingShader2D) {
+            if (bitmap->getType() == TileBitmap::Type::COLORMAP && _lightingShader2D) {
                 if (vertexGeomLayoutParams.normalOffset >= 0) {
                     glVertexAttribPointer(shaderProgram.attribs[A_VERTEXNORMAL], 3, GL_SHORT, GL_TRUE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.normalOffset));
                     glEnableVertexAttribArray(shaderProgram.attribs[A_VERTEXNORMAL]);
@@ -1383,6 +1415,20 @@ namespace carto { namespace vt {
                     glVertexAttrib3f(shaderProgram.attribs[A_VERTEXNORMAL], 0, 0, 1);
                 }
                 _lightingShader2D->setupFunc(shaderProgram.program, _viewState);
+            } else if(bitmap->getType() == TileBitmap::Type::NORMALMAP && _lightingShaderNormalMap) {
+                if (vertexGeomLayoutParams.normalOffset >= 0) {
+                    glVertexAttribPointer(shaderProgram.attribs[A_VERTEXNORMAL], 3, GL_SHORT, GL_TRUE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.normalOffset));
+                    glEnableVertexAttribArray(shaderProgram.attribs[A_VERTEXNORMAL]);
+                } else {
+                    glVertexAttrib3f(shaderProgram.attribs[A_VERTEXNORMAL], 0, 0, 1);
+                }
+                if (vertexGeomLayoutParams.binormalOffset >= 0) {
+                    glVertexAttribPointer(shaderProgram.attribs[A_VERTEXBINORMAL], 3, GL_SHORT, GL_TRUE, vertexGeomLayoutParams.vertexSize, reinterpret_cast<const GLvoid*>(vertexGeomLayoutParams.binormalOffset));
+                    glEnableVertexAttribArray(shaderProgram.attribs[A_VERTEXBINORMAL]);
+                } else {
+                    glVertexAttrib3f(shaderProgram.attribs[A_VERTEXBINORMAL], 0, 1, 0);
+                }
+                _lightingShaderNormalMap->setupFunc(shaderProgram.program, _viewState);
             }
 
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, compiledTileSurface.indicesVBO);
@@ -1408,9 +1454,16 @@ namespace carto { namespace vt {
 
             glBindTexture(GL_TEXTURE_2D, 0);
 
-            if (_lightingShader2D) {
+            if (bitmap->getType() == TileBitmap::Type::COLORMAP && _lightingShader2D) {
                 if (vertexGeomLayoutParams.normalOffset >= 0) {
                     glDisableVertexAttribArray(shaderProgram.attribs[A_VERTEXNORMAL]);
+                }
+            } else if (bitmap->getType() == TileBitmap::Type::NORMALMAP && _lightingShaderNormalMap) {
+                if (vertexGeomLayoutParams.normalOffset >= 0) {
+                    glDisableVertexAttribArray(shaderProgram.attribs[A_VERTEXNORMAL]);
+                }
+                if (vertexGeomLayoutParams.binormalOffset >= 0) {
+                    glDisableVertexAttribArray(shaderProgram.attribs[A_VERTEXBINORMAL]);
                 }
             }
             glDisableVertexAttribArray(shaderProgram.attribs[A_VERTEXUV]);
@@ -1434,16 +1487,16 @@ namespace carto { namespace vt {
         const ShaderProgram* shaderProgramPtr = nullptr;
         switch (geometry->getType()) {
         case TileGeometry::Type::POINT:
-            shaderProgramPtr = &buildShaderProgram("point", pointVsh, pointFsh, styleParams.pattern ? true : false, styleParams.translate ? true : false, true, false, false);
+            shaderProgramPtr = &buildShaderProgram("point", pointVsh, pointFsh, LightingType::GEOMETRY2D, styleParams.pattern ? true : false, styleParams.translate ? true : false, false);
             break;
         case TileGeometry::Type::LINE:
-            shaderProgramPtr = &buildShaderProgram("line", lineVsh, lineFsh, styleParams.pattern ? true : false, styleParams.translate ? true : false, true, false, false);
+            shaderProgramPtr = &buildShaderProgram("line", lineVsh, lineFsh, LightingType::GEOMETRY2D, styleParams.pattern ? true : false, styleParams.translate ? true : false, false);
             break;
         case TileGeometry::Type::POLYGON:
-            shaderProgramPtr = &buildShaderProgram("polygon", polygonVsh, polygonFsh, styleParams.pattern ? true : false, styleParams.translate ? true : false, true, false, false);
+            shaderProgramPtr = &buildShaderProgram("polygon", polygonVsh, polygonFsh, LightingType::GEOMETRY2D, styleParams.pattern ? true : false, styleParams.translate ? true : false, false);
             break;
         case TileGeometry::Type::POLYGON3D:
-            shaderProgramPtr = &buildShaderProgram("polygon3d", polygon3DVsh, polygon3DFsh, styleParams.pattern ? true : false, styleParams.translate ? true : false, false, true, false);
+            shaderProgramPtr = &buildShaderProgram("polygon3d", polygon3DVsh, polygon3DFsh, LightingType::GEOMETRY3D, styleParams.pattern ? true : false, styleParams.translate ? true : false, false);
             break;
         default:
             return;
@@ -1675,7 +1728,7 @@ namespace carto { namespace vt {
         bool useDerivatives = _glExtensions->GL_OES_standard_derivatives_supported();
 
         const CompiledBitmap& compiledBitmap = buildCompiledBitmap(bitmap, false);
-        const ShaderProgram& shaderProgram = buildShaderProgram("labels", labelVsh, labelFsh, false, false, true, false, useDerivatives);
+        const ShaderProgram& shaderProgram = buildShaderProgram("labels", labelVsh, labelFsh, LightingType::GEOMETRY2D, false, false, useDerivatives);
         glUseProgram(shaderProgram.program);
 
         cglib::mat4x4<float> mvpMatrix = cglib::mat4x4<float>::convert(_viewState.projectionMatrix * labelBatchParams.labelMatrix);
@@ -1832,8 +1885,11 @@ namespace carto { namespace vt {
         return it->second;
     }
 
-    const GLTileRenderer::ShaderProgram& GLTileRenderer::buildShaderProgram(const std::string& id, const std::string& vsh, const std::string& fsh, bool pattern, bool translate, bool lighting2D, bool lighting3D, bool derivs) {
-        std::string shaderProgramId = id + (pattern ? "_p" : "") + (translate ? "_t" : "") + (lighting2D ? "_l2d" : "") + (lighting3D ? "_l3d" : "") + (derivs ? "_d" : "");
+    const GLTileRenderer::ShaderProgram& GLTileRenderer::buildShaderProgram(const std::string& id, const std::string& vsh, const std::string& fsh, LightingType lighting, bool pattern, bool translate, bool derivs) {
+        std::string shaderProgramId = id + (pattern ? "_p" : "") + (translate ? "_t" : "") + (derivs ? "_d" : "");
+        if (lighting != LightingType::NONE) {
+            shaderProgramId += "_l" + std::to_string(static_cast<int>(lighting));
+        }
 
         auto it = _shaderProgramMap.find(shaderProgramId);
         if (it == _shaderProgramMap.end()) {
@@ -1850,22 +1906,28 @@ namespace carto { namespace vt {
 
             std::string lightingVsh;
             std::string lightingFsh;
-            if (lighting2D && _lightingShader2D) {
+            if (lighting == LightingType::GEOMETRY2D && _lightingShader2D) {
                 defs.insert(_lightingShader2D->perVertex ? "LIGHTING_VSH" : "LIGHTING_FSH");
                 if (_lightingShader2D->perVertex) {
                     lightingVsh = _lightingShader2D->shader;
-                }
-                else {
+                } else {
                     lightingFsh = _lightingShader2D->shader;
                 }
             }
-            else if (lighting3D && _lightingShader3D) {
+            else if (lighting == LightingType::GEOMETRY3D && _lightingShader3D) {
                 defs.insert(_lightingShader3D->perVertex ? "LIGHTING_VSH" : "LIGHTING_FSH");
                 if (_lightingShader3D->perVertex) {
                     lightingVsh = _lightingShader3D->shader;
-                }
-                else {
+                } else {
                     lightingFsh = _lightingShader3D->shader;
+                }
+            }
+            else if (lighting == LightingType::NORMALMAP && _lightingShaderNormalMap) {
+                defs.insert(_lightingShaderNormalMap->perVertex ? "LIGHTING_VSH" : "LIGHTING_FSH");
+                if (_lightingShaderNormalMap->perVertex) {
+                    lightingVsh = _lightingShaderNormalMap->shader;
+                } else {
+                    lightingFsh = _lightingShaderNormalMap->shader;
                 }
             }
 

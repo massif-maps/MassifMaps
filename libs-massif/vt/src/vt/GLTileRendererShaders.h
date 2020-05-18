@@ -154,7 +154,7 @@ namespace carto { namespace vt {
         }
     )GLSL";
 
-    static const std::string bitmapVsh = R"GLSL(
+    static const std::string colormapVsh = R"GLSL(
         attribute vec2 aVertexUV;
         uniform mat4 uMVPMatrix;
         uniform mat3 uUVMatrix;
@@ -175,7 +175,7 @@ namespace carto { namespace vt {
         }
     )GLSL";
 
-    static const std::string bitmapFsh = R"GLSL(
+    static const std::string colormapFsh = R"GLSL(
         uniform sampler2D uBitmap;
         uniform lowp float uOpacity;
         varying mediump vec2 vUV;
@@ -189,6 +189,50 @@ namespace carto { namespace vt {
             gl_FragColor = vColor * color * uOpacity;
         #elif defined(LIGHTING_FSH)
             gl_FragColor = applyLighting(color, normalize(vNormal)) * uOpacity;
+        #else
+            gl_FragColor = color * uOpacity;
+        #endif
+        }
+    )GLSL";
+
+    static const std::string normalmapVsh = R"GLSL(
+        attribute vec2 aVertexUV;
+        attribute vec3 aVertexBinormal;
+        uniform mat4 uMVPMatrix;
+        uniform mat3 uUVMatrix;
+        varying mediump vec2 vUV;
+        #ifdef LIGHTING_FSH
+        varying mediump vec3 vBinormal;
+        #endif
+
+        void main(void) {
+            vUV = vec2(uUVMatrix * vec3(aVertexUV, 1.0));
+        #ifdef LIGHTING_FSH
+            vNormal = aVertexNormal;
+            vBinormal = aVertexBinormal;
+        #endif
+            gl_Position = uMVPMatrix * vec4(aVertexPosition, 1.0);
+        }
+    )GLSL";
+
+    static const std::string normalmapFsh = R"GLSL(
+        uniform sampler2D uBitmap;
+        uniform lowp float uOpacity;
+        varying mediump vec2 vUV;
+        #ifdef LIGHTING_FSH
+        varying mediump vec3 vBinormal;
+        #endif
+
+        void main(void) {
+            lowp vec4 packedNormalAlpha = texture2D(uBitmap, vUV);
+            lowp vec4 color = vec4(packedNormalAlpha.a);
+        #if defined(LIGHTING_FSH)
+            mediump vec3 tspaceNormal = packedNormalAlpha.xyz * 2.0 - vec3(1.0, 1.0, 1.0);
+            mediump vec3 normal = normalize(vNormal);
+            mediump vec3 tangent = normalize(cross(vBinormal, vNormal));
+            mediump vec3 binormal = cross(normal, tangent);
+            mediump vec3 wspaceNormal = mat3(tangent, binormal, normal) * tspaceNormal;
+            gl_FragColor = applyLighting(color, wspaceNormal) * uOpacity;
         #else
             gl_FragColor = color * uOpacity;
         #endif

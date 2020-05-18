@@ -13,12 +13,17 @@
 namespace carto { namespace vt {
     class TileBitmap final {
     public:
+        enum Type {
+            COLORMAP, NORMALMAP
+        };
+        
         enum class Format {
             GRAYSCALE, RGB, RGBA
         };
 
-        explicit TileBitmap(Format format, int width, int height, std::vector<std::uint8_t> data) : _format(format), _width(width), _height(height), _data(std::move(data)) { }
+        explicit TileBitmap(Type type, Format format, int width, int height, std::vector<std::uint8_t> data) : _type(type), _format(format), _width(width), _height(height), _data(std::move(data)) { }
 
+        Type getType() const { return _type; }
         Format getFormat() const { return _format; }
         int getWidth() const { return _width; }
         int getHeight() const { return _height; }
@@ -34,6 +39,7 @@ namespace carto { namespace vt {
         }
 
     private:
+        const Type _type;
         const Format _format;
         const int _width;
         const int _height;

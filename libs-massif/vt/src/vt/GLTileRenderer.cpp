@@ -395,12 +395,16 @@ namespace carto { namespace vt {
         glEnable(GL_CULL_FACE);
         glCullFace(GL_BACK);
 
-        // 2D geometry pass
         if (stencilBits > 0) {
             glEnable(GL_STENCIL_TEST);
             glStencilMask(255);
         }
-        bool update = renderBlendNodes2D(*_renderBlendNodes, stencilBits);
+
+        // 2D geometry pass
+        bool update = false;
+        if (_renderBlendNodes) {
+            update = renderBlendNodes2D(*_renderBlendNodes, stencilBits);
+        }
         
         // Restore GL state
         glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
@@ -426,7 +430,10 @@ namespace carto { namespace vt {
         glCullFace(GL_BACK);
 
         // 3D polygon pass
-        bool update = renderBlendNodes3D(*_renderBlendNodes);
+        bool update = false;
+        if (_renderBlendNodes) {
+            update = renderBlendNodes3D(*_renderBlendNodes);
+        }
         
         // Restore GL state
         glEnable(GL_BLEND);
@@ -452,6 +459,9 @@ namespace carto { namespace vt {
         // Label pass
         bool update = false;
         for (int pass = 0; pass < 2; pass++) {
+            if (!_renderBitmapLabelMap[pass]) {
+                continue;
+            }
             if ((pass == 0 && labels2D) || (pass == 1 && labels3D)) {
                 for (const std::pair<std::shared_ptr<const Bitmap>, std::vector<std::shared_ptr<Label>>>& bitmapLabels : *_renderBitmapLabelMap[pass]) {
                     update = renderLabels(bitmapLabels.second, bitmapLabels.first) || update;

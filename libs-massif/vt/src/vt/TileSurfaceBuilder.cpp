@@ -134,7 +134,7 @@ namespace carto { namespace vt {
             texCoords.append(cglib::vec2<float>(u, v));
             coords3D.append(cglib::vec3<float>::convert(pos - _origin));
             normals.append(transformer->calculateNormal(cglib::vec2<float>(0, 0)));
-            binormals.append(cglib::vec3<float>::convert(binormal));
+            binormals.append(cglib::unit(cglib::vec3<float>::convert(binormal)));
             return coords2D.size() - 1;
         };
 
@@ -148,7 +148,7 @@ namespace carto { namespace vt {
                 
                 coords3D.append(cglib::vec3<float>::convert(pos - _origin));
                 normals.append(transformer->calculateNormal(coords2D[i]));
-                binormals.append(cglib::vec3<float>::convert(binormal));
+                binormals.append(cglib::unit(cglib::vec3<float>::convert(binormal)));
             }
         };
 
@@ -203,7 +203,7 @@ namespace carto { namespace vt {
 
                 coords3D.append(cglib::vec3<float>::convert(pos - _origin));
                 normals.append(transformer->calculateNormal(coords2D[i]));
-                binormals.append(cglib::vec3<float>::convert(binormal));
+                binormals.append(cglib::unit(cglib::vec3<float>::convert(binormal)));
                 texCoords.append(coords2D[i]);
                 if (i0 != 0) {
                     indices.append(0, i0, i1);
@@ -223,7 +223,7 @@ namespace carto { namespace vt {
         coords2D.append(cglib::vec2<float>(0, 0));
         coords3D.append(cglib::vec3<float>::convert(poleOrigin - _origin));
         normals.append(transformer->calculateNormal(polePos));
-        binormals.append(cglib::vec3<float>::convert(poleBinormal));
+        binormals.append(cglib::unit(cglib::vec3<float>::convert(poleBinormal)));
         texCoords.append(cglib::vec2<float>(0, 0));
         
         cglib::vec2<float> p0 = calculatePolePoint(vertexIds[0]);

@@ -49,7 +49,7 @@ namespace carto { namespace vt {
         if (width >= 2 && height >= 2) {
             float heights[3][3];
             for (int y = 0; y < height; y++) {
-                double y1 = boost::math::constants::pi<double>() * ((tileId.y + (y + 0.5) / height) / (1 << tileId.zoom) - 0.5);
+                double y1 = boost::math::constants::pi<double>() * ((tileId.y + (height - y - 0.5) / height) / (1 << tileId.zoom) - 0.5);
                 double rz = std::tanh(y1);
                 double ss = std::sqrt(std::max(0.0, 1.0 - rz * rz));
 
@@ -64,11 +64,11 @@ namespace carto { namespace vt {
                         heights[dy][2] = getInterpolatedHeight(x + 1, y + dy - 1);
                     }
 
-                    float dx = -((heights[0][2] + 2 * heights[1][2] + heights[2][2]) - (heights[0][0] + 2 * heights[1][0] + heights[2][0])) * 0.125f;
-                    float dy = -((heights[2][0] + 2 * heights[2][1] + heights[2][2]) - (heights[0][0] + 2 * heights[0][1] + heights[0][2])) * 0.125f;
+                    float dx = ((heights[0][2] + 2 * heights[1][2] + heights[2][2]) - (heights[0][0] + 2 * heights[1][0] + heights[2][0])) * 0.125f;
+                    float dy = ((heights[2][0] + 2 * heights[2][1] + heights[2][2]) - (heights[0][0] + 2 * heights[0][1] + heights[0][2])) * 0.125f;
                     float dz = 1.0f / ss;
 
-                    data[(height - 1 - y) * width + x] = packNormal(dx, dy, dz);
+                    data[y * width + x] = packNormal(dx, dy, dz);
                 }
             }
         }

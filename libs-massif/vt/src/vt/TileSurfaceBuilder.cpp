@@ -128,13 +128,12 @@ namespace carto { namespace vt {
             cglib::mat4x4<double> matrix = _transformer->calculateTileMatrix(vertexId, 1.0f);
             std::shared_ptr<const TileTransformer::VertexTransformer> transformer = _transformer->createTileVertexTransformer(vertexId);
             cglib::vec3<double> pos = cglib::transform_point(cglib::vec3<double>::convert(transformer->calculatePoint(cglib::vec2<float>(0, 0))), matrix);
-            cglib::vec3<double> binormal = cglib::transform_vector(cglib::vec3<double>::convert(transformer->calculateVector(cglib::vec2<float>(0, 0), cglib::vec2<float>(0, 1))), matrix);
 
             coords2D.append(cglib::vec2<float>(u, v));
             texCoords.append(cglib::vec2<float>(u, v));
             coords3D.append(cglib::vec3<float>::convert(pos - _origin));
             normals.append(transformer->calculateNormal(cglib::vec2<float>(0, 0)));
-            binormals.append(cglib::unit(cglib::vec3<float>::convert(binormal)));
+            binormals.append(cglib::unit(transformer->calculateVector(cglib::vec2<float>(0, 0), cglib::vec2<float>(0, 1))));
             return coords2D.size() - 1;
         };
 
@@ -144,11 +143,10 @@ namespace carto { namespace vt {
 
             for (std::size_t i = coords3D.size(); i < coords2D.size(); i++) {
                 cglib::vec3<double> pos = cglib::transform_point(cglib::vec3<double>::convert(transformer->calculatePoint(coords2D[i])), matrix);
-                cglib::vec3<double> binormal = cglib::transform_vector(cglib::vec3<double>::convert(transformer->calculateVector(coords2D[i], cglib::vec2<float>(0, 1))), matrix);
                 
                 coords3D.append(cglib::vec3<float>::convert(pos - _origin));
                 normals.append(transformer->calculateNormal(coords2D[i]));
-                binormals.append(cglib::unit(cglib::vec3<float>::convert(binormal)));
+                binormals.append(cglib::unit(transformer->calculateVector(coords2D[i], cglib::vec2<float>(0, 1))));
             }
         };
 
@@ -199,11 +197,10 @@ namespace carto { namespace vt {
             for (std::size_t i = coords3D.size(); i < coords2D.size(); i++) {
                 std::size_t i1 = coords3D.size();
                 cglib::vec3<double> pos = cglib::transform_point(cglib::vec3<double>::convert(transformer->calculatePoint(coords2D[i])), matrix);
-                cglib::vec3<double> binormal = cglib::transform_vector(cglib::vec3<double>::convert(transformer->calculateVector(coords2D[i], cglib::vec2<float>(0, 1))), matrix);
 
                 coords3D.append(cglib::vec3<float>::convert(pos - _origin));
                 normals.append(transformer->calculateNormal(coords2D[i]));
-                binormals.append(cglib::unit(cglib::vec3<float>::convert(binormal)));
+                binormals.append(cglib::unit(transformer->calculateVector(coords2D[i], cglib::vec2<float>(0, 1))));
                 texCoords.append(coords2D[i]);
                 if (i0 != 0) {
                     indices.append(0, i0, i1);
@@ -218,12 +215,11 @@ namespace carto { namespace vt {
         // Tesselate poles. We reuse single transformer and rely on buffering.
         cglib::vec2<float> polePos(0.0f, std::numeric_limits<float>::infinity() * poleZ);
         cglib::vec3<double> poleOrigin = cglib::transform_point(cglib::vec3<double>::convert(transformer->calculatePoint(polePos)), matrix);
-        cglib::vec3<double> poleBinormal = cglib::transform_vector(cglib::vec3<double>::convert(transformer->calculateVector(polePos, cglib::vec2<float>(0, 1))), matrix);
         
         coords2D.append(cglib::vec2<float>(0, 0));
         coords3D.append(cglib::vec3<float>::convert(poleOrigin - _origin));
         normals.append(transformer->calculateNormal(polePos));
-        binormals.append(cglib::unit(cglib::vec3<float>::convert(poleBinormal)));
+        binormals.append(cglib::unit(transformer->calculateVector(polePos, cglib::vec2<float>(0, 1))));
         texCoords.append(cglib::vec2<float>(0, 0));
         
         cglib::vec2<float> p0 = calculatePolePoint(vertexIds[0]);

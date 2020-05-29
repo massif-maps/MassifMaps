@@ -145,6 +145,11 @@ namespace carto { namespace vt {
     )GLSL";
 
     static const std::string commonVsh = R"GLSL(
+        #ifdef GL_FRAGMENT_PRECISION_HIGH
+        #define highp_opt highp
+        #else
+        #define highp_opt mediump
+        #endif
         attribute vec3 aVertexPosition;
         #if defined(LIGHTING_FSH)
         attribute vec3 aVertexNormal;
@@ -157,6 +162,11 @@ namespace carto { namespace vt {
     static const std::string commonFsh = R"GLSL(
         #ifdef DERIVATIVES
         #extension GL_OES_standard_derivatives : enable
+        #endif
+        #ifdef GL_FRAGMENT_PRECISION_HIGH
+        #define highp_opt highp
+        #else
+        #define highp_opt mediump
         #endif
         #ifdef LIGHTING_FSH
         varying mediump vec3 vNormal;
@@ -375,7 +385,7 @@ namespace carto { namespace vt {
     static const std::string labelFsh = R"GLSL(
         uniform sampler2D uBitmap;
         #ifdef DERIVATIVES
-        uniform highp vec2 uDerivScale;
+        uniform highp_opt vec2 uDerivScale;
         #endif
         varying lowp vec4 vColor;
         varying mediump vec2 vUV;
@@ -506,18 +516,10 @@ namespace carto { namespace vt {
         uniform vec4 uColorTable[16];
         uniform float uWidthTable[16];
         varying lowp vec4 vColor;
-        #ifdef GL_FRAGMENT_PRECISION_HIGH
-        varying highp vec2 vDist;
-        varying highp float vWidth;
+        varying highp_opt vec2 vDist;
+        varying highp_opt float vWidth;
         #ifdef PATTERN
-        varying highp vec2 vUV;
-        #endif
-        #else
-        varying mediump vec2 vDist;
-        varying mediump float vWidth;
-        #ifdef PATTERN
-        varying mediump vec2 vUV;
-        #endif
+        varying highp_opt vec2 vUV;
         #endif
 
         void main(void) {
@@ -553,18 +555,10 @@ namespace carto { namespace vt {
         uniform sampler2D uPattern;
         #endif
         varying lowp vec4 vColor;
-        #ifdef GL_FRAGMENT_PRECISION_HIGH
-        varying highp vec2 vDist;
-        varying highp float vWidth;
+        varying highp_opt vec2 vDist;
+        varying highp_opt float vWidth;
         #ifdef PATTERN
-        varying highp vec2 vUV;
-        #endif
-        #else
-        varying mediump vec2 vDist;
-        varying mediump float vWidth;
-        #ifdef PATTERN
-        varying mediump vec2 vUV;
-        #endif
+        varying highp_opt vec2 vUV;
         #endif
 
         void main(void) {
@@ -663,14 +657,10 @@ namespace carto { namespace vt {
         uniform float uHeightScale;
         uniform float uAbsHeightScale;
         uniform vec4 uColorTable[16];
-        #ifdef GL_FRAGMENT_PRECISION_HIGH
-        varying highp vec2 vTilePos;
-        #else
-        varying mediump vec2 vTilePos;
-        #endif
+        varying highp_opt vec2 vTilePos;
         varying lowp vec4 vColor;
         #ifdef LIGHTING_FSH
-        varying mediump float vHeight;
+        varying highp_opt float vHeight;
         varying lowp float vSideVertex;
         #endif
 
@@ -701,14 +691,10 @@ namespace carto { namespace vt {
     )GLSL";
 
     static const std::string polygon3DFsh = R"GLSL(
-        #ifdef GL_FRAGMENT_PRECISION_HIGH
-        varying highp vec2 vTilePos;
-        #else
-        varying mediump vec2 vTilePos;
-        #endif
+        varying highp_opt vec2 vTilePos;
         varying lowp vec4 vColor;
         #ifdef LIGHTING_FSH
-        varying highp float vHeight;
+        varying highp_opt float vHeight;
         varying lowp float vSideVertex;
         #endif
 

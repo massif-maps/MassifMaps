@@ -76,9 +76,77 @@ namespace carto { namespace vt {
         { "uGamma",            U_GAMMA }
     };
 
+    static const std::string textureFiltersFsh = R"GLSL(
+        float w0(float a) {
+            return (1.0 / 6.0) * (a * (a * (-a + 3.0) - 3.0) + 1.0);
+        }
+
+        float w1(float a) {
+            return (1.0 / 6.0) * (a * a * (3.0 * a - 6.0) + 4.0);
+        }
+
+        float w2(float a) {
+            return (1.0 / 6.0) * (a * (a * (-3.0 * a + 3.0) + 3.0) + 1.0);
+        }
+
+        float w3(float a) {
+            return (1.0 / 6.0) * (a * a * a);
+        }
+
+        float g0(float a) {
+            return w0(a) + w1(a);
+        }
+
+        float g1(float a) {
+            return w2(a) + w3(a);
+        }
+
+        float h0(float a) {
+            return -1.0 + w1(a) / (w0(a) + w1(a));
+        }
+
+        float h1(float a) {
+            return 1.0 + w3(a) / (w2(a) + w3(a));
+        }
+
+        vec4 texture2D_nearest(sampler2D tex, vec2 uv, vec4 res) {
+            uv = uv * res.xy + 0.5;
+            vec2 iuv = floor(uv);
+            vec2 p0 = (vec2(iuv.x, iuv.y) - 0.5) * res.zw;
+            return texture2D(tex, p0);
+        }
+
+        vec4 texture2D_bilinear(sampler2D tex, vec2 uv, vec4 res) {
+            return texture2D(tex, uv);
+        }
+
+        vec4 texture2D_bicubic(sampler2D tex, vec2 uv, vec4 res) {
+            uv = uv * res.xy + 0.5;
+            vec2 iuv = floor(uv);
+            vec2 fuv = fract(uv);
+
+            float g0x = g0(fuv.x);
+            float g1x = g1(fuv.x);
+            float h0x = h0(fuv.x);
+            float h1x = h1(fuv.x);
+            float h0y = h0(fuv.y);
+            float h1y = h1(fuv.y);
+            float g0y = g0(fuv.y);
+            float g1y = g1(fuv.y);
+
+            vec2 p0 = (vec2(iuv.x + h0x, iuv.y + h0y) - 0.5) * res.zw;
+            vec2 p1 = (vec2(iuv.x + h1x, iuv.y + h0y) - 0.5) * res.zw;
+            vec2 p2 = (vec2(iuv.x + h0x, iuv.y + h1y) - 0.5) * res.zw;
+            vec2 p3 = (vec2(iuv.x + h1x, iuv.y + h1y) - 0.5) * res.zw;
+
+            return g0y * (g0x * texture2D(tex, p0) + g1x * texture2D(tex, p1)) +
+                   g1y * (g0x * texture2D(tex, p2) + g1x * texture2D(tex, p3));
+        }
+    )GLSL";
+
     static const std::string commonVsh = R"GLSL(
         attribute vec3 aVertexPosition;
-        #ifdef LIGHTING_FSH
+        #if defined(LIGHTING_FSH)
         attribute vec3 aVertexNormal;
         varying mediump vec3 vNormal;
         #elif defined(LIGHTING_VSH)
@@ -144,7 +212,7 @@ namespace carto { namespace vt {
         #else
             lowp vec4 color = uColor;
         #endif
-        #ifdef LIGHTING_VSH
+        #if defined(LIGHTING_VSH)
             gl_FragColor = vColor * color * uOpacity;
         #elif defined(LIGHTING_FSH)
             gl_FragColor = applyLighting(color, normalize(vNormal)) * uOpacity;
@@ -177,6 +245,7 @@ namespace carto { namespace vt {
 
     static const std::string colormapFsh = R"GLSL(
         uniform sampler2D uBitmap;
+        uniform mediump vec4 uUVScale;
         uniform lowp float uOpacity;
         varying mediump vec2 vUV;
         #ifdef LIGHTING_VSH
@@ -184,8 +253,14 @@ namespace carto { namespace vt {
         #endif
 
         void main(void) {
-            lowp vec4 color = texture2D(uBitmap, vUV);
-        #ifdef LIGHTING_VSH
+        #if defined(FILTER_NEAREST)
+            lowp vec4 color = texture2D_nearest(uBitmap, vUV, uUVScale);
+        #elif defined(FILTER_BICUBIC)
+            lowp vec4 color = texture2D_bicubic(uBitmap, vUV, uUVScale);
+        #else
+            lowp vec4 color = texture2D_bilinear(uBitmap, vUV, uUVScale);
+        #endif
+        #if defined(LIGHTING_VSH)
             gl_FragColor = vColor * color * uOpacity;
         #elif defined(LIGHTING_FSH)
             gl_FragColor = applyLighting(color, normalize(vNormal)) * uOpacity;
@@ -217,6 +292,7 @@ namespace carto { namespace vt {
 
     static const std::string normalmapFsh = R"GLSL(
         uniform sampler2D uBitmap;
+        uniform mediump vec4 uUVScale;
         uniform lowp float uOpacity;
         varying mediump vec2 vUV;
         #ifdef LIGHTING_FSH
@@ -224,7 +300,13 @@ namespace carto { namespace vt {
         #endif
 
         void main(void) {
-            lowp vec4 packedNormalAlpha = texture2D(uBitmap, vUV);
+        #if defined(FILTER_NEAREST)
+            lowp vec4 packedNormalAlpha = texture2D_nearest(uBitmap, vUV, uUVScale);
+        #elif defined(FILTER_BICUBIC)
+            lowp vec4 packedNormalAlpha = texture2D_bicubic(uBitmap, vUV, uUVScale);
+        #else
+            lowp vec4 packedNormalAlpha = texture2D_bilinear(uBitmap, vUV, uUVScale);
+        #endif
             lowp vec4 color = vec4(packedNormalAlpha.a);
         #if defined(LIGHTING_FSH)
             mediump vec3 tspaceNormal = packedNormalAlpha.xyz * 2.0 - vec3(1.0, 1.0, 1.0);

@@ -36,6 +36,10 @@ namespace carto { namespace vt {
         BILLBOARD_2D, BILLBOARD_3D, POINT, LINE
     };
 
+    enum class RasterFilterMode {
+        NONE, NEAREST, BILINEAR, BICUBIC
+    };
+
     enum class LineJoinMode {
         NONE, BEVEL, MITER, ROUND
     };

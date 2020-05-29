@@ -36,8 +36,6 @@ namespace carto { namespace vt {
         U_BITMAP,
         U_TEXTURE,
         U_SDFSCALE,
-        U_HALFRESOLUTION,
-        U_INVSCREENSIZE,
         U_DERIVSCALE,
         U_GAMMA
     };
@@ -70,8 +68,6 @@ namespace carto { namespace vt {
         { "uColor",            U_COLOR },
         { "uOpacity",          U_OPACITY },
         { "uSDFScale",         U_SDFSCALE },
-        { "uHalfResolution",   U_HALFRESOLUTION },
-        { "uInvScreenSize",    U_INVSCREENSIZE },
         { "uDerivScale",       U_DERIVSCALE },
         { "uGamma",            U_GAMMA }
     };
@@ -342,10 +338,10 @@ namespace carto { namespace vt {
     static const std::string blendFsh = R"GLSL(
         uniform sampler2D uTexture;
         uniform lowp vec4 uColor;
-        uniform mediump vec2 uInvScreenSize;
+        uniform mediump vec2 uUVScale;
 
         void main(void) {
-            lowp vec4 color = texture2D(uTexture, gl_FragCoord.xy * uInvScreenSize);
+            lowp vec4 color = texture2D(uTexture, gl_FragCoord.xy * uUVScale);
             gl_FragColor = color * uColor;
         }
     )GLSL";
@@ -507,7 +503,6 @@ namespace carto { namespace vt {
         uniform vec2 uUVScale;
         #endif
         uniform float uBinormalScale;
-        uniform float uHalfResolution;
         uniform float uGamma;
         #ifdef TRANSFORM
         uniform mat4 uTransformMatrix;
@@ -524,7 +519,7 @@ namespace carto { namespace vt {
 
         void main(void) {
             int styleIndex = int(aVertexAttribs[0]);
-            float width = uWidthTable[styleIndex] * uHalfResolution;
+            float width = uWidthTable[styleIndex];
             float roundedWidth = width + float(width > 0.0);
             float gamma = uGamma * aVertexAttribs[3];
             vec3 pos = aVertexPosition;

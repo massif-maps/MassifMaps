@@ -1223,7 +1223,7 @@ namespace carto { namespace vt {
         glUniform1i(shaderProgram.uniforms[U_TEXTURE], 0);
         Color color(opacity, opacity, opacity, opacity);
         glUniform4fv(shaderProgram.uniforms[U_COLOR], 1, color.rgba().data());
-        glUniform2f(shaderProgram.uniforms[U_INVSCREENSIZE], 1.0f / _screenWidth, 1.0f / _screenHeight);
+        glUniform2f(shaderProgram.uniforms[U_UVSCALE], 1.0f / _screenWidth, 1.0f / _screenHeight);
         
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
         
@@ -1262,7 +1262,7 @@ namespace carto { namespace vt {
             glUniform1i(shaderProgram.uniforms[U_TEXTURE], 0);
             Color color(opacity, opacity, opacity, opacity);
             glUniform4fv(shaderProgram.uniforms[U_COLOR], 1, color.rgba().data());
-            glUniform2f(shaderProgram.uniforms[U_INVSCREENSIZE], 1.0f / _screenWidth, 1.0f / _screenHeight);
+            glUniform2f(shaderProgram.uniforms[U_UVSCALE], 1.0f / _screenWidth, 1.0f / _screenHeight);
 
             glDrawElements(GL_TRIANGLES, tileSurface->getIndicesCount(), GL_UNSIGNED_SHORT, 0);
 
@@ -1353,8 +1353,7 @@ namespace carto { namespace vt {
                 glUniform1i(shaderProgram.uniforms[U_PATTERN], 0);
 
                 if (pattern->bitmap) {
-                    cglib::vec2<float> uvScale(tileSize / pattern->bitmap->width, tileSize / pattern->bitmap->height);
-                    glUniform2f(shaderProgram.uniforms[U_UVSCALE], uvScale(0), uvScale(1));
+                    glUniform2f(shaderProgram.uniforms[U_UVSCALE], tileSize / pattern->bitmap->width, tileSize / pattern->bitmap->height);
                 }
             }
 
@@ -1563,13 +1562,12 @@ namespace carto { namespace vt {
                     continue;
                 }
                 
-                float width = 0.5f * std::abs((styleParams.widthFuncs[i])(_viewState)) * geometry->getGeometryScale() / tile->getTileSize();
-                float pixelWidth = _fullResolution * width;
-                if (pixelWidth < 1.0f) {
-                    colors[i] = colors[i] * pixelWidth; // should do gamma correction here, but simple implementation gives closer results to Mapnik
-                    width = (pixelWidth > 0.0f ? 1.0f / _fullResolution : 0.0f); // normalize width to pixelWidth = 1
+                float width = 0.5f * _fullResolution * std::abs((styleParams.widthFuncs[i])(_viewState)) * geometry->getGeometryScale() / tile->getTileSize();
+                if (width < 1) {
+                    colors[i] = colors[i] * width; // should do gamma correction here, but simple implementation gives closer results to Mapnik
+                    width = (width > 0 ? 1.0f : 0.0f); // normalize width
                 }
-                widths[i] = width;
+                widths[i] = width * 0.5f;
             }
 
             if (std::all_of(widths.begin(), widths.begin() + styleParams.parameterCount, [](float width) { return width == 0; })) {
@@ -1580,7 +1578,6 @@ namespace carto { namespace vt {
 
             glUniform1f(shaderProgram.uniforms[U_BINORMALSCALE], vertexGeomLayoutParams.coordScale / (_halfResolution * vertexGeomLayoutParams.binormalScale * std::pow(2.0f, _viewState.zoom - tileId.zoom)));
             glUniform1fv(shaderProgram.uniforms[U_WIDTHTABLE], styleParams.parameterCount, widths.data());
-            glUniform1f(shaderProgram.uniforms[U_HALFRESOLUTION], _halfResolution);
             glUniform1f(shaderProgram.uniforms[U_GAMMA], gamma);
         } else if (geometry->getType() == TileGeometry::Type::POLYGON3D) {
             float tileHeightScale = static_cast<float>(cglib::length(cglib::transform_vector(cglib::vec3<double>(0, 0, 1), calculateTileMatrix(tileId))));

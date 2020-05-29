@@ -146,13 +146,6 @@ namespace carto { namespace vt {
         #else
         #define highp_opt mediump
         #endif
-        attribute vec3 aVertexPosition;
-        #if defined(LIGHTING_FSH)
-        attribute vec3 aVertexNormal;
-        varying mediump vec3 vNormal;
-        #elif defined(LIGHTING_VSH)
-        attribute vec3 aVertexNormal;
-        #endif
     )GLSL";
 
     static const std::string commonFsh = R"GLSL(
@@ -164,21 +157,23 @@ namespace carto { namespace vt {
         #else
         #define highp_opt mediump
         #endif
-        #ifdef LIGHTING_FSH
-        varying mediump vec3 vNormal;
-        #endif
 
         precision mediump float;
     )GLSL";
 
     static const std::string backgroundVsh = R"GLSL(
-        #ifdef PATTERN
-        attribute vec2 aVertexUV;
+        attribute vec3 aVertexPosition;
+        #if defined(LIGHTING_FSH) || defined(LIGHTING_VSH)
+        attribute vec3 aVertexNormal;
         #endif
         uniform mat4 uMVPMatrix;
         #ifdef PATTERN
+        attribute vec2 aVertexUV;
         uniform vec2 uUVScale;
         varying highp_opt vec2 vUV;
+        #endif
+        #ifdef LIGHTING_FSH
+        varying mediump vec3 vNormal;
         #endif
         #ifdef LIGHTING_VSH
         varying lowp vec4 vColor;
@@ -199,13 +194,14 @@ namespace carto { namespace vt {
     )GLSL";
 
     static const std::string backgroundFsh = R"GLSL(
-        #ifdef PATTERN
-        uniform sampler2D uPattern;
-        #endif
         uniform lowp vec4 uColor;
         uniform lowp float uOpacity;
         #ifdef PATTERN
+        uniform sampler2D uPattern;
         varying highp_opt vec2 vUV;
+        #endif
+        #ifdef LIGHTING_FSH
+        varying mediump vec3 vNormal;
         #endif
         #ifdef LIGHTING_VSH
         varying lowp vec4 vColor;
@@ -229,10 +225,17 @@ namespace carto { namespace vt {
     )GLSL";
 
     static const std::string colormapVsh = R"GLSL(
+        attribute vec3 aVertexPosition;
+        #if defined(LIGHTING_FSH) || defined(LIGHTING_VSH)
+        attribute vec3 aVertexNormal;
+        #endif
         attribute vec2 aVertexUV;
         uniform mat4 uMVPMatrix;
         uniform mat3 uUVMatrix;
         varying highp_opt vec2 vUV;
+        #ifdef LIGHTING_FSH
+        varying mediump vec3 vNormal;
+        #endif
         #ifdef LIGHTING_VSH
         varying lowp vec4 vColor;
         #endif
@@ -254,6 +257,9 @@ namespace carto { namespace vt {
         uniform highp_opt vec4 uUVScale;
         uniform lowp float uOpacity;
         varying highp_opt vec2 vUV;
+        #ifdef LIGHTING_FSH
+        varying mediump vec3 vNormal;
+        #endif
         #ifdef LIGHTING_VSH
         varying lowp vec4 vColor;
         #endif
@@ -277,14 +283,17 @@ namespace carto { namespace vt {
     )GLSL";
 
     static const std::string normalmapVsh = R"GLSL(
+        attribute vec3 aVertexPosition;
         attribute vec2 aVertexUV;
+        #ifdef LIGHTING_FSH
+        attribute vec3 aVertexNormal;
         attribute vec3 aVertexBinormal;
+        varying mediump vec3 vNormal;
+        varying mediump vec3 vBinormal;
+        #endif
         uniform mat4 uMVPMatrix;
         uniform mat3 uUVMatrix;
         varying highp_opt vec2 vUV;
-        #ifdef LIGHTING_FSH
-        varying mediump vec3 vBinormal;
-        #endif
 
         void main(void) {
             vUV = vec2(uUVMatrix * vec3(aVertexUV, 1.0));
@@ -302,6 +311,7 @@ namespace carto { namespace vt {
         uniform lowp float uOpacity;
         varying highp_opt vec2 vUV;
         #ifdef LIGHTING_FSH
+        varying mediump vec3 vNormal;
         varying mediump vec3 vBinormal;
         #endif
 
@@ -328,6 +338,7 @@ namespace carto { namespace vt {
     )GLSL";
 
     static const std::string blendVsh = R"GLSL(
+        attribute vec3 aVertexPosition;
         uniform mat4 uMVPMatrix;
 
         void main(void) {
@@ -347,6 +358,10 @@ namespace carto { namespace vt {
     )GLSL";
 
     static const std::string labelVsh = R"GLSL(
+        attribute vec3 aVertexPosition;
+        #if defined(LIGHTING_FSH) || defined(LIGHTING_VSH)
+        attribute vec3 aVertexNormal;
+        #endif
         attribute vec2 aVertexUV;
         attribute vec4 aVertexColor;
         attribute vec4 aVertexAttribs;
@@ -359,6 +374,9 @@ namespace carto { namespace vt {
         varying lowp vec4 vColor;
         varying highp_opt vec2 vUV;
         varying mediump vec4 vAttribs;
+        #ifdef LIGHTING_FSH
+        varying mediump vec3 vNormal;
+        #endif
 
         void main(void) {
             int styleIndex = int(aVertexAttribs[0]);
@@ -386,6 +404,9 @@ namespace carto { namespace vt {
         varying lowp vec4 vColor;
         varying highp_opt vec2 vUV;
         varying mediump vec4 vAttribs;
+        #ifdef LIGHTING_FSH
+        varying mediump vec3 vNormal;
+        #endif
 
         void main(void) {
             lowp vec4 color = texture2D(uBitmap, vUV);
@@ -415,14 +436,15 @@ namespace carto { namespace vt {
     )GLSL";
 
     static const std::string pointVsh = R"GLSL(
+        attribute vec3 aVertexPosition;
+        #if defined(LIGHTING_FSH) || defined(LIGHTING_VSH)
+        attribute vec3 aVertexNormal;
+        #endif
         attribute vec3 aVertexBinormal;
         #ifdef PATTERN
         attribute vec2 aVertexUV;
         #endif
         attribute vec4 aVertexAttribs;
-        #ifdef PATTERN
-        uniform vec2 uUVScale;
-        #endif
         uniform float uBinormalScale;
         uniform float uSDFScale;
         #ifdef TRANSFORM
@@ -432,11 +454,15 @@ namespace carto { namespace vt {
         uniform vec4 uColorTable[16];
         uniform float uWidthTable[16];
         uniform float uStrokeWidthTable[16];
-        varying lowp vec4 vColor;
         #ifdef PATTERN
+        uniform vec2 uUVScale;
         varying highp_opt vec2 vUV;
         #endif
+        varying lowp vec4 vColor;
         varying mediump vec4 vAttribs;
+        #ifdef LIGHTING_FSH
+        varying mediump vec3 vNormal;
+        #endif
 
         void main(void) {
             int styleIndex = int(aVertexAttribs[0]);
@@ -467,12 +493,13 @@ namespace carto { namespace vt {
     static const std::string pointFsh = R"GLSL(
         #ifdef PATTERN
         uniform sampler2D uPattern;
-        #endif
-        varying lowp vec4 vColor;
-        #ifdef PATTERN
         varying highp_opt vec2 vUV;
         #endif
+        varying lowp vec4 vColor;
         varying mediump vec4 vAttribs;
+        #ifdef LIGHTING_FSH
+        varying mediump vec3 vNormal;
+        #endif
 
         void main(void) {
         #ifdef PATTERN
@@ -494,12 +521,14 @@ namespace carto { namespace vt {
     )GLSL";
 
     static const std::string lineVsh = R"GLSL(
-        attribute vec3 aVertexBinormal;
-        #ifdef PATTERN
-        attribute vec2 aVertexUV;
+        attribute vec3 aVertexPosition;
+        #if defined(LIGHTING_FSH) || defined(LIGHTING_VSH)
+        attribute vec3 aVertexNormal;
         #endif
+        attribute vec3 aVertexBinormal;
         attribute vec4 aVertexAttribs;
         #ifdef PATTERN
+        attribute vec2 aVertexUV;
         uniform vec2 uUVScale;
         #endif
         uniform float uBinormalScale;
@@ -510,11 +539,14 @@ namespace carto { namespace vt {
         uniform mat4 uMVPMatrix;
         uniform vec4 uColorTable[16];
         uniform float uWidthTable[16];
+        #ifdef PATTERN
+        varying highp_opt vec2 vUV;
+        #endif
         varying lowp vec4 vColor;
         varying highp_opt vec2 vDist;
         varying highp_opt float vWidth;
-        #ifdef PATTERN
-        varying highp_opt vec2 vUV;
+        #ifdef LIGHTING_FSH
+        varying mediump vec3 vNormal;
         #endif
 
         void main(void) {
@@ -548,12 +580,13 @@ namespace carto { namespace vt {
     static const std::string lineFsh = R"GLSL(
         #ifdef PATTERN
         uniform sampler2D uPattern;
+        varying highp_opt vec2 vUV;
         #endif
         varying lowp vec4 vColor;
         varying highp_opt vec2 vDist;
         varying highp_opt float vWidth;
-        #ifdef PATTERN
-        varying highp_opt vec2 vUV;
+        #ifdef LIGHTING_FSH
+        varying mediump vec3 vNormal;
         #endif
 
         void main(void) {
@@ -573,11 +606,13 @@ namespace carto { namespace vt {
     )GLSL";
 
     static const std::string polygonVsh = R"GLSL(
-        #ifdef PATTERN
-        attribute vec2 aVertexUV;
+        attribute vec3 aVertexPosition;
+        #if defined(LIGHTING_FSH) || defined(LIGHTING_VSH)
+        attribute vec3 aVertexNormal;
         #endif
         attribute vec4 aVertexAttribs;
         #ifdef PATTERN
+        attribute vec2 aVertexUV;
         uniform vec2 uUVScale;
         #endif
         #ifdef TRANSFORM
@@ -585,9 +620,12 @@ namespace carto { namespace vt {
         #endif
         uniform mat4 uMVPMatrix;
         uniform vec4 uColorTable[16];
-        varying lowp vec4 vColor;
         #ifdef PATTERN
         varying highp_opt vec2 vUV;
+        #endif
+        varying lowp vec4 vColor;
+        #ifdef LIGHTING_FSH
+        varying mediump vec3 vNormal;
         #endif
 
         void main(void) {
@@ -615,10 +653,11 @@ namespace carto { namespace vt {
     static const std::string polygonFsh = R"GLSL(
         #ifdef PATTERN
         uniform sampler2D uPattern;
+        varying highp_opt vec2 vUV;
         #endif
         varying lowp vec4 vColor;
-        #ifdef PATTERN
-        varying highp_opt vec2 vUV;
+        #ifdef LIGHTING_FSH
+        varying mediump vec3 vNormal;
         #endif
 
         void main(void) {
@@ -636,9 +675,8 @@ namespace carto { namespace vt {
     )GLSL";
 
     static const std::string polygon3DVsh = R"GLSL(
-        #if !defined(LIGHTING_FSH) && !defined(LIGHTING_VSH)
+        attribute vec3 aVertexPosition;
         attribute vec3 aVertexNormal;
-        #endif
         attribute vec3 aVertexBinormal;
         attribute vec2 aVertexUV;
         attribute float aVertexHeight;
@@ -657,6 +695,7 @@ namespace carto { namespace vt {
         #ifdef LIGHTING_FSH
         varying highp_opt float vHeight;
         varying lowp float vSideVertex;
+        varying mediump vec3 vNormal;
         #endif
 
         void main(void) {
@@ -691,6 +730,7 @@ namespace carto { namespace vt {
         #ifdef LIGHTING_FSH
         varying highp_opt float vHeight;
         varying lowp float vSideVertex;
+        varying mediump vec3 vNormal;
         #endif
 
         void main(void) {

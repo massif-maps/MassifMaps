@@ -329,7 +329,8 @@ namespace carto { namespace vt {
             mediump vec3 tangent = normalize(cross(vBinormal, vNormal));
             mediump vec3 binormal = cross(normal, tangent);
             mediump vec3 wspaceNormal = mat3(tangent, binormal, normal) * tspaceNormal;
-            gl_FragColor = applyLighting(color, wspaceNormal) * uOpacity;
+            mediump float intensity = 1.0 - max(0.0, dot(normal, wspaceNormal));
+            gl_FragColor = applyLighting(color, wspaceNormal, intensity) * uOpacity;
         #else
             gl_FragColor = color * uOpacity;
         #endif

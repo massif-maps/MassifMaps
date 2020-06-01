@@ -15,7 +15,12 @@ namespace carto { namespace css {
                 _logger->write(mvt::Logger::Severity::ERROR, "Unsupported Torque symbolizer property: " + propertyId);
                 continue;
             }
-            setSymbolizerParameter(mapnikSymbolizer, it->second, prop.expression, isStringExpression(propertyId));
+            try {
+                setSymbolizerParameter(mapnikSymbolizer, it->second, prop.expression, isStringExpression(propertyId));
+            }
+            catch (const std::runtime_error& ex) {
+                _logger->write(mvt::Logger::Severity::ERROR, "Error while setting " + propertyId + " parameter: " + ex.what());
+            }
         }
 
         return mapnikSymbolizer;

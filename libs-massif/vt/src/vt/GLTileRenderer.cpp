@@ -2003,6 +2003,7 @@ namespace carto { namespace vt {
                 GLsizei charactersWritten = 0;
                 glGetShaderInfoLog(shader, infoLogLength, &charactersWritten, infoLog.data());
                 std::string msg(infoLog.begin(), infoLog.begin() + charactersWritten);
+                glDeleteShader(shader);
                 throw std::runtime_error("Shader compiling failed: " + msg);
             }
             return shader;
@@ -2010,28 +2011,31 @@ namespace carto { namespace vt {
 
         GLuint vertexShader = 0;
         GLuint fragmentShader = 0;
+        GLuint program = 0;
         try {
             vertexShader = compileShader(GL_VERTEX_SHADER, vsh);
             fragmentShader = compileShader(GL_FRAGMENT_SHADER, fsh);
 
-            shaderProgram.program = glCreateProgram();
-            glAttachShader(shaderProgram.program, fragmentShader);
-            glAttachShader(shaderProgram.program, vertexShader);
-            glLinkProgram(shaderProgram.program);
+            program = glCreateProgram();
+            glAttachShader(program, fragmentShader);
+            glAttachShader(program, vertexShader);
+            glLinkProgram(program);
             GLint isLinked = 0;
-            glGetProgramiv(shaderProgram.program, GL_LINK_STATUS, &isLinked);
+            glGetProgramiv(program, GL_LINK_STATUS, &isLinked);
             if (!isLinked) {
                 GLint infoLogLength = 0;
-                glGetProgramiv(shaderProgram.program, GL_INFO_LOG_LENGTH, &infoLogLength);
+                glGetProgramiv(program, GL_INFO_LOG_LENGTH, &infoLogLength);
                 std::vector<char> infoLog(infoLogLength + 1);
                 GLsizei charactersWritten = 0;
-                glGetProgramInfoLog(shaderProgram.program, infoLogLength, &charactersWritten, infoLog.data());
+                glGetProgramInfoLog(program, infoLogLength, &charactersWritten, infoLog.data());
                 std::string msg(infoLog.begin(), infoLog.begin() + charactersWritten);
                 throw std::runtime_error("Shader program linking failed: " + msg);
             }
         }
         catch (const std::exception&) {
-            deleteShaderProgram(shaderProgram);
+            if (program != 0) {
+                glDeleteProgram(program);
+            }
             if (vertexShader != 0) {
                 glDeleteShader(vertexShader);
             }
@@ -2043,14 +2047,16 @@ namespace carto { namespace vt {
         glDeleteShader(vertexShader);
         glDeleteShader(fragmentShader);
 
+        shaderProgram.program = program;
+
         shaderProgram.uniforms.resize(std::accumulate(uniformMap.begin(), uniformMap.end(), 0, [](int prev, const std::pair<std::string, int>& item) { return std::max(prev, 1 + item.second); }));
         for (auto it = uniformMap.begin(); it != uniformMap.end(); it++) {
-            shaderProgram.uniforms[it->second] = glGetUniformLocation(shaderProgram.program, it->first.c_str());;
+            shaderProgram.uniforms[it->second] = glGetUniformLocation(program, it->first.c_str());;
         }
 
         shaderProgram.attribs.resize(std::accumulate(attribMap.begin(), attribMap.end(), 0, [](int prev, const std::pair<std::string, int>& item) { return std::max(prev, 1 + item.second); }));
         for (auto it = attribMap.begin(); it != attribMap.end(); it++) {
-            shaderProgram.attribs[it->second] = glGetAttribLocation(shaderProgram.program, it->first.c_str());;
+            shaderProgram.attribs[it->second] = glGetAttribLocation(program, it->first.c_str());;
         }
     }
 

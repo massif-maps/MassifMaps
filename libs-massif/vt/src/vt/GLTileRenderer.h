@@ -11,6 +11,7 @@
 #include "Color.h"
 #include "ViewState.h"
 #include "Label.h"
+#include "Styles.h"
 #include "Tile.h"
 #include "TileId.h"
 #include "TileTransformer.h"
@@ -48,10 +49,15 @@ namespace carto { namespace vt {
             explicit LightingShader(bool perVertex, std::string shader, std::function<void(GLuint, const ViewState&)> setupFunc) : perVertex(perVertex), shader(std::move(shader)), setupFunc(std::move(setupFunc)) { }
         };
         
-        explicit GLTileRenderer(std::shared_ptr<GLExtensions> glExtensions, std::shared_ptr<const TileTransformer> transformer, const boost::optional<LightingShader>& lightingShader2D, const boost::optional<LightingShader>& lightingShader3D, float scale);
+        explicit GLTileRenderer(std::shared_ptr<GLExtensions> glExtensions, std::shared_ptr<const TileTransformer> transformer, float scale);
 
+        void setLightingShader2D(const boost::optional<LightingShader>& lightingShader2D);
+        void setLightingShader3D(const boost::optional<LightingShader>& lightingShader3D);
+        void setLightingShaderNormalMap(const boost::optional<LightingShader>& lightingShaderNormalMap);
+        
         void setInteractionMode(bool enabled);
         void setSubTileBlending(bool enabled);
+        void setRasterFilterMode(RasterFilterMode filterMode);
         void setViewState(const ViewState& viewState);
         void setVisibleTiles(const std::map<TileId, std::shared_ptr<const Tile>>& tiles, bool blend);
 
@@ -73,6 +79,13 @@ namespace carto { namespace vt {
 
     private:
         using BitmapLabelMap = std::unordered_map<std::shared_ptr<const Bitmap>, std::vector<std::shared_ptr<Label>>>;
+
+        enum LightingMode {
+            NONE,
+            GEOMETRY2D,
+            GEOMETRY3D,
+            NORMALMAP
+        };
 
         struct BlendNode {
             TileId tileId;
@@ -203,7 +216,7 @@ namespace carto { namespace vt {
         const CompiledBitmap& buildCompiledBitmap(const std::shared_ptr<const Bitmap>& bitmap, bool genMipmaps);
         const CompiledBitmap& buildCompiledTileBitmap(const std::shared_ptr<TileBitmap>& tileBitmap);
         const CompiledGeometry& buildCompiledTileGeometry(const std::shared_ptr<TileGeometry>& tileGeometry);
-        const ShaderProgram& buildShaderProgram(const std::string& id, const std::string& vsh, const std::string& fsh, bool pattern, bool translate, bool lighting2D, bool lighting3D, bool derivs);
+        const ShaderProgram& buildShaderProgram(const std::string& id, const std::string& vsh, const std::string& fsh, LightingMode lightingMode, RasterFilterMode filterMode, bool pattern, bool translate, bool derivs);
         const std::vector<std::shared_ptr<TileSurface>>& buildCompiledTileSurfaces(const TileId& tileId);
 
         void createShaderProgram(ShaderProgram& shaderProgram, const std::string& vsh, const std::string& fsh, const std::set<std::string>& defs, const std::map<std::string, int>& uniformMap, const std::map<std::string, int>& attribMap);
@@ -223,6 +236,7 @@ namespace carto { namespace vt {
 
         boost::optional<LightingShader> _lightingShader2D;
         boost::optional<LightingShader> _lightingShader3D;
+        boost::optional<LightingShader> _lightingShaderNormalMap;
         TileSurfaceBuilder _tileSurfaceBuilder;
 
         std::vector<FrameBuffer> _layerBuffers;
@@ -240,6 +254,7 @@ namespace carto { namespace vt {
 
         bool _subTileBlending = false;
         bool _interactionMode = false;
+        RasterFilterMode _rasterFilterMode = RasterFilterMode::BILINEAR;
 
         std::shared_ptr<std::vector<std::shared_ptr<BlendNode>>> _blendNodes;
         std::shared_ptr<std::vector<std::shared_ptr<BlendNode>>> _renderBlendNodes;

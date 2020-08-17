@@ -461,7 +461,16 @@ namespace carto { namespace vt {
             return std::shared_ptr<const Placement>();
         }
 
-        if (!_style->autoflip || cglib::dot_product(_placement->xAxis, viewState.orientation[0]) > 0) {
+        if (!_style->autoflip) {
+            return _placement;
+        }
+
+        cglib::vec3<float> xAxis = _placement->xAxis;
+        if (_style->transform) {
+            cglib::vec2<float> p10 = cglib::transform(cglib::vec2<float>(1, 0), _style->transform.get());
+            xAxis = _placement->xAxis * p10(0) + _placement->yAxis * p10(1);
+        }
+        if (cglib::dot_product(xAxis, viewState.orientation[0]) > 0) {
             return _placement;
         }
 

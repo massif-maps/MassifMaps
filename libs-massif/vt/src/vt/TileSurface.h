@@ -23,8 +23,9 @@ namespace carto { namespace vt {
             int coordOffset;
             int texCoordOffset;
             int normalOffset;
+            int binormalOffset;
 
-            VertexGeometryLayoutParameters() : vertexSize(0), coordOffset(-1), texCoordOffset(-1), normalOffset(-1) { }
+            VertexGeometryLayoutParameters() : vertexSize(0), coordOffset(-1), texCoordOffset(-1), normalOffset(-1), binormalOffset(-1) { }
         };
 
         explicit TileSurface(const VertexGeometryLayoutParameters& vertexGeometryLayoutParameters, VertexArray<std::uint8_t> vertexGeometry, VertexArray<std::uint16_t> indices) : _vertexGeometryLayoutParameters(vertexGeometryLayoutParameters), _indicesCount(static_cast<unsigned int>(indices.size())), _vertexGeometry(std::move(vertexGeometry)), _indices(std::move(indices)) { }

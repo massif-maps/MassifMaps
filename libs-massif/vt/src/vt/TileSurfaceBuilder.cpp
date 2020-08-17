@@ -82,21 +82,23 @@ namespace carto { namespace vt {
         VertexArray<cglib::vec3<float>> coords3D;
         VertexArray<cglib::vec2<float>> texCoords;
         VertexArray<cglib::vec3<float>> normals;
+        VertexArray<cglib::vec3<float>> binormals;
         VertexArray<std::size_t> indices;
         coords2D.reserve(RESERVED_VERTICES);
         coords3D.reserve(RESERVED_VERTICES);
         texCoords.reserve(RESERVED_VERTICES);
         normals.reserve(RESERVED_VERTICES);
+        binormals.reserve(RESERVED_VERTICES);
         indices.reserve(RESERVED_VERTICES);
 
         if (tileId.y < 0) {
-            buildPoleGeometry(-1, vertexIds[3], coords2D, coords3D, texCoords, normals, indices);
+            buildPoleGeometry(-1, vertexIds[3], coords2D, coords3D, texCoords, normals, binormals, indices);
         }
         else if (tileId.y >= (1 << tileId.zoom)) {
-            buildPoleGeometry(1, vertexIds[2], coords2D, coords3D, texCoords, normals, indices);
+            buildPoleGeometry(1, vertexIds[2], coords2D, coords3D, texCoords, normals, binormals, indices);
         }
         else {
-            buildTileGeometry(tileId, vertexIds, coords2D, coords3D, texCoords, normals, indices);
+            buildTileGeometry(tileId, vertexIds, coords2D, coords3D, texCoords, normals, binormals, indices);
         }
 
         // Drop normals, if not needed
@@ -104,14 +106,19 @@ namespace carto { namespace vt {
             normals.clear();
         }
 
+        // Drop binormals, if not needed
+        if (std::all_of(binormals.begin(), binormals.end(), [](const cglib::vec3<float>& binormal) { return binormal(1) == 1; })) {
+            binormals.clear();
+        }
+
         // Pack geometry and cache the result
         std::vector<std::shared_ptr<TileSurface>> tileSurfaces;
-        packGeometry(coords3D, texCoords, normals, indices, tileSurfaces);
+        packGeometry(coords3D, texCoords, normals, binormals, indices, tileSurfaces);
         _tileSurfaceCache[tileId] = tileSurfaces;
         return tileSurfaces;
     }
 
-    void TileSurfaceBuilder::buildTileGeometry(const TileId& tileId, const std::array<std::vector<TileId>, 4>& vertexIds, VertexArray<cglib::vec2<float>>& coords2D, VertexArray<cglib::vec3<float>>& coords3D, VertexArray<cglib::vec2<float>>& texCoords, VertexArray<cglib::vec3<float>>& normals, VertexArray<std::size_t>& indices) const {
+    void TileSurfaceBuilder::buildTileGeometry(const TileId& tileId, const std::array<std::vector<TileId>, 4>& vertexIds, VertexArray<cglib::vec2<float>>& coords2D, VertexArray<cglib::vec3<float>>& coords3D, VertexArray<cglib::vec2<float>>& texCoords, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec3<float>>& binormals, VertexArray<std::size_t>& indices) const {
         auto appendTilePoint = [&, this](const TileId& vertexId) -> std::size_t {
             int deltaZoom = vertexId.zoom - tileId.zoom;
             float s = 1.0f / (1 << deltaZoom);
@@ -126,6 +133,7 @@ namespace carto { namespace vt {
             texCoords.append(cglib::vec2<float>(u, v));
             coords3D.append(cglib::vec3<float>::convert(pos - _origin));
             normals.append(transformer->calculateNormal(cglib::vec2<float>(0, 0)));
+            binormals.append(cglib::unit(transformer->calculateVector(cglib::vec2<float>(0, 0), cglib::vec2<float>(0, 1))));
             return coords2D.size() - 1;
         };
 
@@ -135,8 +143,10 @@ namespace carto { namespace vt {
 
             for (std::size_t i = coords3D.size(); i < coords2D.size(); i++) {
                 cglib::vec3<double> pos = cglib::transform_point(cglib::vec3<double>::convert(transformer->calculatePoint(coords2D[i])), matrix);
+                
                 coords3D.append(cglib::vec3<float>::convert(pos - _origin));
                 normals.append(transformer->calculateNormal(coords2D[i]));
+                binormals.append(cglib::unit(transformer->calculateVector(coords2D[i], cglib::vec2<float>(0, 1))));
             }
         };
 
@@ -171,7 +181,7 @@ namespace carto { namespace vt {
         }
     }
 
-    void TileSurfaceBuilder::buildPoleGeometry(int poleZ, const std::vector<TileId>& vertexIds, VertexArray<cglib::vec2<float>>& coords2D, VertexArray<cglib::vec3<float>>& coords3D, VertexArray<cglib::vec2<float>>& texCoords, VertexArray<cglib::vec3<float>>& normals, VertexArray<std::size_t>& indices) const {
+    void TileSurfaceBuilder::buildPoleGeometry(int poleZ, const std::vector<TileId>& vertexIds, VertexArray<cglib::vec2<float>>& coords2D, VertexArray<cglib::vec3<float>>& coords3D, VertexArray<cglib::vec2<float>>& texCoords, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec3<float>>& binormals, VertexArray<std::size_t>& indices) const {
         auto calculatePolePoint = [&, this](const TileId& vertexId) -> cglib::vec2<float> {
             float s = 1.0f / (1 << vertexId.zoom);
             float u = vertexId.x * s;
@@ -187,8 +197,10 @@ namespace carto { namespace vt {
             for (std::size_t i = coords3D.size(); i < coords2D.size(); i++) {
                 std::size_t i1 = coords3D.size();
                 cglib::vec3<double> pos = cglib::transform_point(cglib::vec3<double>::convert(transformer->calculatePoint(coords2D[i])), matrix);
+
                 coords3D.append(cglib::vec3<float>::convert(pos - _origin));
                 normals.append(transformer->calculateNormal(coords2D[i]));
+                binormals.append(cglib::unit(transformer->calculateVector(coords2D[i], cglib::vec2<float>(0, 1))));
                 texCoords.append(coords2D[i]);
                 if (i0 != 0) {
                     indices.append(0, i0, i1);
@@ -203,9 +215,11 @@ namespace carto { namespace vt {
         // Tesselate poles. We reuse single transformer and rely on buffering.
         cglib::vec2<float> polePos(0.0f, std::numeric_limits<float>::infinity() * poleZ);
         cglib::vec3<double> poleOrigin = cglib::transform_point(cglib::vec3<double>::convert(transformer->calculatePoint(polePos)), matrix);
+        
         coords2D.append(cglib::vec2<float>(0, 0));
         coords3D.append(cglib::vec3<float>::convert(poleOrigin - _origin));
         normals.append(transformer->calculateNormal(polePos));
+        binormals.append(cglib::unit(transformer->calculateVector(polePos, cglib::vec2<float>(0, 1))));
         texCoords.append(cglib::vec2<float>(0, 0));
         
         cglib::vec2<float> p0 = calculatePolePoint(vertexIds[0]);
@@ -221,7 +235,7 @@ namespace carto { namespace vt {
         }
     }
 
-    void TileSurfaceBuilder::packGeometry(const VertexArray<cglib::vec3<float>>& coords, const VertexArray<cglib::vec2<float>>& texCoords, const VertexArray<cglib::vec3<float>>& normals, const VertexArray<std::size_t>& indices, std::vector<std::shared_ptr<TileSurface>>& tileSurfaces) const {
+    void TileSurfaceBuilder::packGeometry(const VertexArray<cglib::vec3<float>>& coords, const VertexArray<cglib::vec2<float>>& texCoords, const VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec3<float>>& binormals, const VertexArray<std::size_t>& indices, std::vector<std::shared_ptr<TileSurface>>& tileSurfaces) const {
         if (coords.size() > 65535) {
             for (std::size_t offset = 0; offset < indices.size(); ) {
                 std::size_t count = std::min(std::size_t(65535), indices.size() - offset);
@@ -230,6 +244,7 @@ namespace carto { namespace vt {
                 VertexArray<cglib::vec3<float>> remappedCoords;
                 VertexArray<cglib::vec2<float>> remappedTexCoords;
                 VertexArray<cglib::vec3<float>> remappedNormals;
+                VertexArray<cglib::vec3<float>> remappedBinormals;
                 VertexArray<std::size_t> remappedIndices;
                 for (std::size_t i = 0; i < count; i++) {
                     std::size_t index = indices[offset + i];
@@ -243,12 +258,15 @@ namespace carto { namespace vt {
                         if (!normals.empty()) {
                             remappedNormals.append(normals[index]);
                         }
+                        if (!binormals.empty()) {
+                            remappedBinormals.append(binormals[index]);
+                        }
                     }
 
                     remappedIndices.append(remappedIndex);
                 }
 
-                packGeometry(remappedCoords, remappedTexCoords, remappedNormals, remappedIndices, tileSurfaces);
+                packGeometry(remappedCoords, remappedTexCoords, remappedNormals, remappedBinormals, remappedIndices, tileSurfaces);
 
                 offset += count;
             }
@@ -266,6 +284,12 @@ namespace carto { namespace vt {
 
         if (!normals.empty()) {
             vertexGeomLayoutParams.normalOffset = vertexGeomLayoutParams.vertexSize;
+            vertexGeomLayoutParams.vertexSize += 3 * sizeof(std::int16_t);
+            vertexGeomLayoutParams.vertexSize = (vertexGeomLayoutParams.vertexSize + 3) & ~3;
+        }
+
+        if (!binormals.empty()) {
+            vertexGeomLayoutParams.binormalOffset = vertexGeomLayoutParams.vertexSize;
             vertexGeomLayoutParams.vertexSize += 3 * sizeof(std::int16_t);
             vertexGeomLayoutParams.vertexSize = (vertexGeomLayoutParams.vertexSize + 3) & ~3;
         }
@@ -292,6 +316,14 @@ namespace carto { namespace vt {
                 std::int16_t* compressedNormalPtr = reinterpret_cast<std::int16_t*>(baseCompressedPtr + vertexGeomLayoutParams.normalOffset);
                 for (int j = 0; j < 3; j++) {
                     compressedNormalPtr[j] = static_cast<std::int16_t>(normal(j) * 32767.0f);
+                }
+            }
+
+            if (!binormals.empty()) {
+                const cglib::vec3<float>& binormal = binormals[i];
+                std::int16_t* compressedBinormalPtr = reinterpret_cast<std::int16_t*>(baseCompressedPtr + vertexGeomLayoutParams.binormalOffset);
+                for (int j = 0; j < 3; j++) {
+                    compressedBinormalPtr[j] = static_cast<std::int16_t>(binormal(j) * 32767.0f);
                 }
             }
         }

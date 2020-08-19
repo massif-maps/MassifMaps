@@ -71,13 +71,18 @@ namespace carto { namespace vt {
                 int cchLine = bidi_line(baseLevel, &utf32Text[ich], &types[ich], &levels[ich], &reorderLevels[ich], cchPara, 1, nullptr);
                 cchPara -= cchLine;
 
+                std::size_t lineIndex = lines.size();
                 lines.emplace_back(Line());
+                int lineMask = 0; // 1 for left-to-right, 2 for right-to-left and 3 for bidirectional lines
                 float lineWidth = 0.0f;
+
                 std::vector<Font::Glyph> word;
                 float wordWidth = 0.0f;
                 while (cchLine > 0) {
-                    int cchRun = bidi_run(&utf32Text[ich], &reorderLevels[ich], cchLine, nullptr);
+                    int rtlRun = 0;
+                    int cchRun = bidi_run(&utf32Text[ich], &reorderLevels[ich], cchLine, &rtlRun);
                     cchLine -= cchRun;
+                    lineMask |= (rtlRun ? 2 : 1);
 
                     int cchStrippedRun = cchRun;
                     while (cchStrippedRun > 0) {
@@ -101,38 +106,50 @@ namespace carto { namespace vt {
                         wordWidth += glyph.advance(0) * _fontSize;
 
                         if (glyph.codePoint == Font::SPACE_CODEPOINT && i + 1 < glyphs.size() && _options.wrapWidth > 0) {
-                            if (lineWidth + wordWidth >= _options.wrapWidth) {
-                                if (_options.wrapBefore && !lines.back().glyphs.empty()) {
-                                    lines.emplace_back(Line());
-                                    lines.back().glyphs.insert(lines.back().glyphs.end(), word.begin(), word.end());
+                            if (lineMask != 3 && lineWidth + wordWidth >= _options.wrapWidth) {
+                                if (_options.wrapBefore && !lines[lineIndex].glyphs.empty()) {
+                                    if (lineMask == 2) {
+                                        lines.insert(lines.begin() + lineIndex, Line());
+                                    } else {
+                                        lineIndex = lines.size();
+                                        lines.emplace_back(Line());
+                                    }
+                                    lines[lineIndex].glyphs.insert(lines[lineIndex].glyphs.end(), word.begin(), word.end());
                                     lineWidth = wordWidth;
                                 }
                                 else {
-                                    lines.back().glyphs.insert(lines.back().glyphs.end(), word.begin(), word.end());
-                                    lines.emplace_back(Line());
+                                    lines[lineIndex].glyphs.insert(lines[lineIndex].glyphs.end(), word.begin(), word.end());
+                                    if (lineMask == 2) {
+                                        lines.insert(lines.begin() + lineIndex, Line());
+                                    } else {
+                                        lineIndex = lines.size();
+                                        lines.emplace_back(Line());
+                                    }
                                     lineWidth = 0;
                                 }
-                                
-                                word.clear();
-                                wordWidth = 0;
-                                continue;
                             }
-                            
-                            lines.back().glyphs.insert(lines.back().glyphs.end(), word.begin(), word.end());
-                            lineWidth += wordWidth;
+                            else {
+                                lines[lineIndex].glyphs.insert(lines[lineIndex].glyphs.end(), word.begin(), word.end());
+                                lineWidth += wordWidth;
+                            }
                             
                             word.clear();
                             wordWidth = 0;
                         }
                     }
-                    
+
                     ich += cchRun;
                 }
 
-                if (_options.wrapWidth > 0 && _options.wrapBefore && lineWidth + wordWidth >= _options.wrapWidth && !lines.back().glyphs.empty()) {
-                    lines.emplace_back(Line());
+                if (lineMask != 3 && _options.wrapWidth > 0 && _options.wrapBefore && lineWidth + wordWidth >= _options.wrapWidth && !lines[lineIndex].glyphs.empty()) {
+                    if (lineMask == 2) {
+                        lines.insert(lines.begin() + lineIndex, Line());
+                    } else {
+                        lineIndex = lines.size();
+                        lines.emplace_back(Line());
+                    }
                 }
-                lines.back().glyphs.insert(lines.back().glyphs.end(), word.begin(), word.end());
+                lines[lineIndex].glyphs.insert(lines[lineIndex].glyphs.end(), word.begin(), word.end());
             }
         }
 

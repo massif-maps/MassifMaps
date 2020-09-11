@@ -49,6 +49,7 @@ namespace carto { namespace css {
             std::string attachment;
             int order = 0;
             float opacity = 1.0f;
+            std::string imageFilters;
             std::string compOp;
             std::vector<std::shared_ptr<const mvt::Rule>> rules;
         };

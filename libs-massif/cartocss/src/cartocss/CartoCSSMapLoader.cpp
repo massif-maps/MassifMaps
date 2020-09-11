@@ -203,7 +203,7 @@ namespace carto { namespace css {
             std::vector<std::string> styleNames;
             for (const AttachmentStyle& attachmentStyle : attachmentStyles) {
                 std::string styleName = layerName + attachmentStyle.attachment;
-                auto style = std::make_shared<mvt::Style>(styleName, attachmentStyle.opacity, attachmentStyle.compOp, mvt::Style::FilterMode::FIRST, attachmentStyle.rules);
+                auto style = std::make_shared<mvt::Style>(styleName, attachmentStyle.opacity, attachmentStyle.imageFilters, attachmentStyle.compOp, mvt::Style::FilterMode::FIRST, attachmentStyle.rules);
                 style->optimizeRules();
                 map->addStyle(style);
                 styleNames.push_back(styleName);
@@ -252,7 +252,7 @@ namespace carto { namespace css {
                     attachmentStyle.rules.push_back(rule);
                 }
 
-                // Copy opacity and comp-op properties. These are style-level properties, not symbolizer peroperties.
+                // Copy opacity, image-filters and comp-op properties. These are style-level properties, not symbolizer peroperties.
                 // Note that we ignore filters, this is CartoCSS design issue and represents how CartoCSS is translated to Mapnik.
                 auto opacityIt = propertySet.properties.find("opacity");
                 if (opacityIt != propertySet.properties.end()) {
@@ -264,6 +264,23 @@ namespace carto { namespace css {
                     }
                 }
                 
+                auto imageFiltersIt = propertySet.properties.find("image-filters");
+                if (imageFiltersIt != propertySet.properties.end()) {
+                    if (auto funcExpr = std::dynamic_pointer_cast<const FunctionExpression>(imageFiltersIt->second.expression)) {
+                        attachmentStyle.imageFilters = funcExpr->getFunc() + "(";
+                        for (std::size_t i = 0; i < funcExpr->getArgs().size(); i++) {
+                            attachmentStyle.imageFilters += (i > 0 ? "," : "");
+                            if (auto constExpr = std::dynamic_pointer_cast<const ConstExpression>(funcExpr->getArgs()[i])) {
+                                attachmentStyle.imageFilters += mvt::ValueConverter<std::string>::convert(translator.buildValue(constExpr->getValue()));
+                            }
+                        }
+                        attachmentStyle.imageFilters += ")";
+                    }
+                    else {
+                        _logger->write(mvt::Logger::Severity::WARNING, "ImageFilters must be function expression");
+                    }
+                }
+
                 auto compOpIt = propertySet.properties.find("comp-op");
                 if (compOpIt != propertySet.properties.end()) {
                     if (auto constExpr = std::dynamic_pointer_cast<const ConstExpression>(compOpIt->second.expression)) {

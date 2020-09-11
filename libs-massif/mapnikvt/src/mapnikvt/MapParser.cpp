@@ -98,7 +98,8 @@ namespace carto { namespace mvt {
         for (pugi::xpath_node_set::const_iterator styleIt = styleNodes.begin(); styleIt != styleNodes.end(); ++styleIt) {
             pugi::xml_node styleNode = (*styleIt).node();
             std::string styleName = styleNode.attribute("name").as_string();
-            float styleOpacity = styleNode.attribute("opacity").as_float(1.0f);
+            float opacity = styleNode.attribute("opacity").as_float(1.0f);
+            std::string imageFilters = styleNode.attribute("image-filters").as_string("");
             std::string compOp = styleNode.attribute("comp-op").as_string("");
 
             Style::FilterMode filterMode = Style::FilterMode::ALL;
@@ -180,7 +181,7 @@ namespace carto { namespace mvt {
                 rules.push_back(rule);
             }
 
-            auto style = std::make_shared<Style>(styleName, styleOpacity, compOp, filterMode, rules);
+            auto style = std::make_shared<Style>(styleName, opacity, imageFilters, compOp, filterMode, rules);
             map->addStyle(style);
         }
 

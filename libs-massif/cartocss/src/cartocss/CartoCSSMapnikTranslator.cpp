@@ -54,7 +54,7 @@ namespace carto { namespace css {
         });
         for (auto it = properties.begin(); it != properties.end(); it++) {
             std::string symbolizerId = getPropertySymbolizerId(it->first);
-            if (symbolizerId.empty()) { // layer-level property? (comp-op, opacity)
+            if (symbolizerId.empty()) { // layer-level property? (comp-op, opacity, image-filters)
                 continue;
             }
             auto it2 = std::find_if(propertyLists.begin(), propertyLists.end(), [&](const std::pair<std::string, std::list<CartoCSSCompiler::Property>>& propertyListElement) { return propertyListElement.first == symbolizerId; });

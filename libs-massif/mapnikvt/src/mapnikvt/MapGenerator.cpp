@@ -78,6 +78,9 @@ namespace carto { namespace mvt {
             if (style.getOpacity() != 1.0f) {
                 styleNode.append_attribute("opacity").set_value(style.getOpacity());
             }
+            if (!style.getImageFilters().empty()) {
+                styleNode.append_attribute("image-filters").set_value(style.getImageFilters().c_str());
+            }
             if (!style.getCompOp().empty()) {
                 styleNode.append_attribute("comp-op").set_value(style.getCompOp().c_str());
             }

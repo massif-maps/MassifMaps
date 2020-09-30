@@ -23,27 +23,34 @@
 namespace carto { namespace vt {
     class TileGeometryIterator final {
     public:
-        using Triangle = std::array<cglib::vec3<float>, 3>;
-        
+        using TriangleCoords = std::array<cglib::vec3<float>, 3>;
+        using TriangleUVs = std::array<cglib::vec2<float>, 3>;
+
         TileGeometryIterator() = delete;
-        explicit TileGeometryIterator(const TileId& tileId, const std::shared_ptr<const Tile>& tile, const std::shared_ptr<const TileGeometry>& geometry, const std::shared_ptr<const TileTransformer>& transformer, const ViewState& viewState, float buffer, float scale, float heightScale);
+        explicit TileGeometryIterator(const TileId& tileId, const std::shared_ptr<const Tile>& tile, const std::shared_ptr<const TileGeometry>& geometry, const std::shared_ptr<const TileTransformer>& transformer, const ViewState& viewState, float pointBuffer, float lineBuffer, float scale, float heightScale);
 
         operator bool() const { return _index + 2 < _geometry->getIndices().size(); }
         long long id() const { return getId(_index); }
-        Triangle triangle() const { return getTriangle(_index); }
+        cglib::vec4<std::int8_t> attribs() const { return getAttribs(_index); }
+        TriangleCoords triangleCoords() const { return getTriangleCoords(_index); }
+        TriangleUVs triangleUVs() const { return getTriangleUVs(_index); }
         TileGeometryIterator& operator++ () { _index += 3; return *this; }
 
     private:
         long long getId(std::size_t index) const;
-        Triangle getTriangle(std::size_t index) const;
+        cglib::vec4<std::int8_t> getAttribs(std::size_t index) const;
+        TriangleCoords getTriangleCoords(std::size_t index) const;
+        TriangleUVs getTriangleUVs(std::size_t index) const;
 
-        cglib::vec3<float> decodeVertex(std::size_t index) const;
+        cglib::vec3<float> decodeVertexPos(std::size_t index) const;
+        cglib::vec2<float> decodeVertexUV(std::size_t index) const;
         cglib::vec3<float> decodePointOffset(std::size_t index) const;
         cglib::vec3<float> decodeLineOffset(std::size_t index) const;
         cglib::vec3<float> decodePolygon3DOffset(std::size_t index) const;
 
         ViewState _viewState;
-        float _buffer;
+        float _pointBuffer;
+        float _lineBuffer;
         float _scale;
         float _heightScale;
         std::size_t _index = 0;

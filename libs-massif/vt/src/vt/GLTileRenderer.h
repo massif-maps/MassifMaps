@@ -48,6 +48,27 @@ namespace carto { namespace vt {
 
             explicit LightingShader(bool perVertex, std::string shader, std::function<void(GLuint, const ViewState&)> setupFunc) : perVertex(perVertex), shader(std::move(shader)), setupFunc(std::move(setupFunc)) { }
         };
+
+        struct GeometryIntersectionInfo {
+            TileId tileId;
+            int layerIndex;
+            long long featureId;
+            std::size_t rayIndex;
+            double rayT;
+
+            explicit GeometryIntersectionInfo(const TileId& tileId, int layerIndex, long long featureId, std::size_t rayIndex, double rayT) : tileId(tileId), layerIndex(layerIndex), featureId(featureId), rayIndex(rayIndex), rayT(rayT) { }
+        };
+
+        struct BitmapIntersectionInfo {
+            TileId tileId;
+            int layerIndex;
+            std::shared_ptr<const TileBitmap> bitmap;
+            cglib::vec2<float> uv;
+            std::size_t rayIndex;
+            double rayT;
+
+            explicit BitmapIntersectionInfo(const TileId& tileId, int layerIndex, std::shared_ptr<const TileBitmap> bitmap, const cglib::vec2<float>& uv, std::size_t rayIndex, double rayT) : tileId(tileId), layerIndex(layerIndex), bitmap(bitmap), uv(uv), rayIndex(rayIndex), rayT(rayT) { }
+        };
         
         explicit GLTileRenderer(std::shared_ptr<GLExtensions> glExtensions, std::shared_ptr<const TileTransformer> transformer, float scale);
 
@@ -73,9 +94,9 @@ namespace carto { namespace vt {
 
         void cullLabels(LabelCuller& culler);
 
-        bool findGeometryIntersections(const cglib::ray3<double>& ray, std::vector<std::tuple<TileId, double, long long>>& results, float radius, bool geom2D, bool geom3D) const;
-        bool findLabelIntersections(const cglib::ray3<double>& ray, std::vector<std::tuple<TileId, double, long long>>& results, float radius, bool labels2D, bool labels3D) const;
-        bool findBitmapIntersections(const cglib::ray3<double>& ray, std::vector<std::tuple<TileId, double, TileBitmap, cglib::vec2<float>>>& results) const;
+        bool findGeometryIntersections(const std::vector<cglib::ray3<double>>& rays, std::vector<GeometryIntersectionInfo>& results, bool geom2D, bool geom3D) const;
+        bool findLabelIntersections(const std::vector<cglib::ray3<double>>& rays, std::vector<GeometryIntersectionInfo>& results, bool labels2D, bool labels3D) const;
+        bool findBitmapIntersections(const std::vector<cglib::ray3<double>>& rays, std::vector<BitmapIntersectionInfo>& results) const;
 
     private:
         using BitmapLabelMap = std::unordered_map<std::shared_ptr<const Bitmap>, std::vector<std::shared_ptr<Label>>>;
@@ -183,6 +204,7 @@ namespace carto { namespace vt {
 
         constexpr static float HALO_RADIUS_SCALE = 2.5f; // the scaling factor for halo radius
         constexpr static float POLYGON3D_HEIGHT_SCALE = 10018754.17f; // scaling factor for zoom 0 heights
+        constexpr static float ALPHA_HIT_THRESHOLD = 0.05f; // accept ray-geometry hits only if alpha above this threshold
 
         bool isTileVisible(const TileId& tileId) const;
 
@@ -197,9 +219,9 @@ namespace carto { namespace vt {
         void addRenderNode(RenderNode renderNode, std::multimap<int, RenderNode>& renderNodeMap) const;
         void updateLabels(const std::vector<std::shared_ptr<Label>>& labels, float dOpacity) const;
 
-        void findTileGeometryIntersections(const TileId& tileId, const std::shared_ptr<const Tile>& tile, const std::shared_ptr<const TileGeometry>& geometry, const cglib::ray3<double>& ray, float radius, float heightScale, std::vector<std::pair<double, long long>>& results) const;
-        void findTileSurfaceIntersections(const TileId& tileId, const std::shared_ptr<const Tile>& tile, const std::shared_ptr<const TileSurface>& tileSurface, const cglib::ray3<double>& ray, std::vector<std::pair<double, cglib::vec2<float>>>& results) const;
-        bool findLabelIntersection(const std::shared_ptr<Label>& label, const cglib::ray3<double>& ray, float radius, double& result) const;
+        void findTileGeometryIntersections(const TileId& tileId, const std::shared_ptr<const Tile>& tile, const std::shared_ptr<const TileGeometry>& geometry, const std::vector<cglib::ray3<double>>& rays, float heightScale, std::vector<GeometryIntersectionInfo>& results) const;
+        void findLabelIntersections(const std::shared_ptr<Label>& label, const std::vector<cglib::ray3<double>>& rays, std::vector<GeometryIntersectionInfo>& results) const;
+        void findTileBitmapIntersections(const TileId& tileId, const std::shared_ptr<const Tile>& tile, const std::shared_ptr<const TileBitmap>& bitmap, const std::shared_ptr<const TileSurface>& tileSurface, const std::vector<cglib::ray3<double>>& rays, std::vector<BitmapIntersectionInfo>& results) const;
 
         bool renderBlendNodes2D(const std::vector<std::shared_ptr<BlendNode>>& blendNodes, int stencilBits);
         bool renderBlendNodes3D(const std::vector<std::shared_ptr<BlendNode>>& blendNodes);

@@ -557,7 +557,7 @@ namespace carto { namespace vt {
         culler.process(labels, _mutex);
     }
     
-    bool GLTileRenderer::findGeometryIntersections(const std::vector<cglib::ray3<double>>& rays, std::vector<GeometryIntersectionInfo>& results, bool geom2D, bool geom3D) const {
+    bool GLTileRenderer::findGeometryIntersections(const std::vector<cglib::ray3<double>>& rays, float pointBuffer, float lineBuffer, bool geom2D, bool geom3D, std::vector<GeometryIntersectionInfo>& results) const {
         std::lock_guard<std::mutex> lock(_mutex);
 
         // Loop over all blending/rendering nodes
@@ -593,7 +593,7 @@ namespace carto { namespace vt {
                     }
 
                     std::vector<GeometryIntersectionInfo> resultsTile;
-                    findTileGeometryIntersections(renderNode.tileId, blendNode->tile, geometry, rayTiles, blendNode->blend, resultsTile);
+                    findTileGeometryIntersections(renderNode.tileId, blendNode->tile, geometry, rayTiles, pointBuffer, lineBuffer, blendNode->blend, resultsTile);
 
                     for (const GeometryIntersectionInfo& resultTile : resultsTile) {
                         const cglib::ray3<double>& ray = rays[resultTile.rayIndex];
@@ -626,7 +626,7 @@ namespace carto { namespace vt {
         return results.size() > initialResultCount;
     }
     
-    bool GLTileRenderer::findLabelIntersections(const std::vector<cglib::ray3<double>>& rays, std::vector<GeometryIntersectionInfo>& results, bool labels2D, bool labels3D) const {
+    bool GLTileRenderer::findLabelIntersections(const std::vector<cglib::ray3<double>>& rays, float buffer, bool labels2D, bool labels3D, std::vector<GeometryIntersectionInfo>& results) const {
         std::lock_guard<std::mutex> lock(_mutex);
 
         // Test for label intersections. The ordering may be mixed compared to actual rendering order, but this is non-issue if the labels are non-overlapping.
@@ -643,7 +643,7 @@ namespace carto { namespace vt {
                     }
 
                     std::vector<GeometryIntersectionInfo> resultsLocal;
-                    findLabelIntersections(label, rays, resultsLocal);
+                    findLabelIntersections(label, rays, buffer, resultsLocal);
                     
                     for (const GeometryIntersectionInfo& result : resultsLocal) {
                         if (cglib::dot_product(label->getNormal(), cglib::vec3<float>::convert(rays[result.rayIndex].direction)) >= 0) {
@@ -866,9 +866,9 @@ namespace carto { namespace vt {
         }
     }
     
-    void GLTileRenderer::findTileGeometryIntersections(const TileId& tileId, const std::shared_ptr<const Tile>& tile, const std::shared_ptr<const TileGeometry>& geometry, const std::vector<cglib::ray3<double>>& rays, float heightScale, std::vector<GeometryIntersectionInfo>& results) const {
+    void GLTileRenderer::findTileGeometryIntersections(const TileId& tileId, const std::shared_ptr<const Tile>& tile, const std::shared_ptr<const TileGeometry>& geometry, const std::vector<cglib::ray3<double>>& rays, float pointBuffer, float lineBuffer, float heightScale, std::vector<GeometryIntersectionInfo>& results) const {
         float scale = geometry->getGeometryScale() / tile->getTileSize() / std::pow(2.0f, _viewState.zoom - tileId.zoom);
-        for (TileGeometryIterator it(tileId, tile, geometry, _transformer, _viewState, 0.0f, 0.5f, scale, heightScale); it; ++it) {
+        for (TileGeometryIterator it(tileId, tile, geometry, _transformer, _viewState, pointBuffer, lineBuffer, scale, heightScale); it; ++it) {
             long long featureId = it.id();
             TileGeometryIterator::TriangleCoords coords = it.triangleCoords();
 
@@ -889,14 +889,14 @@ namespace carto { namespace vt {
         }
     }
 
-    void GLTileRenderer::findLabelIntersections(const std::shared_ptr<Label>& label, const std::vector<cglib::ray3<double>>& rays, std::vector<GeometryIntersectionInfo>& results) const {
+    void GLTileRenderer::findLabelIntersections(const std::shared_ptr<Label>& label, const std::vector<cglib::ray3<double>>& rays, float buffer, std::vector<GeometryIntersectionInfo>& results) const {
         float size = label->getStyle()->sizeFunc(_viewState);
         if (size <= 0) {
             return;
         }
 
         std::array<cglib::vec3<float>, 4> envelope;
-        if (!label->calculateEnvelope(size, _viewState, envelope)) {
+        if (!label->calculateEnvelope(size, buffer, _viewState, envelope)) {
             return;
         }
 

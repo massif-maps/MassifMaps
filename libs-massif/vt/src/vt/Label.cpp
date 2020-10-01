@@ -119,7 +119,7 @@ namespace carto { namespace vt {
         return true;
     }
 
-    bool Label::calculateEnvelope(float size, const ViewState& viewState, std::array<cglib::vec3<float>, 4>& envelope) const {
+    bool Label::calculateEnvelope(float size, float buffer, const ViewState& viewState, std::array<cglib::vec3<float>, 4>& envelope) const {
         std::shared_ptr<const Placement> placement = getPlacement(viewState);
         float scale = size * viewState.zoomScale * _style->scale;
         if (!placement || scale <= 0) {
@@ -130,6 +130,7 @@ namespace carto { namespace vt {
             return false;
         }
 
+        float padding = buffer * viewState.zoomScale * _style->scale;
         cglib::vec3<float> origin, xAxis, yAxis;
         setupCoordinateSystem(viewState, placement, origin, xAxis, yAxis);
 
@@ -155,6 +156,8 @@ namespace carto { namespace vt {
                 minX = std::min(minX, x); maxX = std::max(maxX, x);
                 minY = std::min(minY, y); maxY = std::max(maxY, y);
             }
+            minX -= padding; maxX += padding;
+            minY -= padding; maxY += padding;
 
             cglib::vec3<float> zAxis = cglib::vector_product(xAxis, yAxis);
             cglib::vec3<float> zOrigin = zAxis * cglib::dot_product(origin, zAxis);
@@ -168,8 +171,8 @@ namespace carto { namespace vt {
         }
         else {
             // Use bounding box for envelope
-            float minX = _glyphBBox.min(0) * scale, maxX = _glyphBBox.max(0) * scale;
-            float minY = _glyphBBox.min(1) * scale, maxY = _glyphBBox.max(1) * scale;
+            float minX = _glyphBBox.min(0) * scale - padding, maxX = _glyphBBox.max(0) * scale + padding;
+            float minY = _glyphBBox.min(1) * scale - padding, maxY = _glyphBBox.max(1) * scale + padding;
             if (_style->transform) {
                 cglib::vec2<float> p00 = cglib::transform(cglib::vec2<float>(minX, minY), _style->transform.get());
                 cglib::vec2<float> p01 = cglib::transform(cglib::vec2<float>(minX, maxY), _style->transform.get());

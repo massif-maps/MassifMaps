@@ -10,6 +10,43 @@
 #include <algorithm>
 
 namespace {
+    bool testIntersectionOpacity(const std::shared_ptr<const carto::vt::BitmapPattern>& pattern, const cglib::vec2<float>& uvp, const cglib::vec2<float>& uv0, const cglib::vec2<float>& uv1) {
+        static float ALPHA_HIT_THRESHOLD = 0.05f;
+
+        if (!pattern) {
+            return false;
+        }
+
+        int xp = static_cast<int>(uvp(0) * pattern->bitmap->width);
+        int yp = static_cast<int>(uvp(1) * pattern->bitmap->height);
+        int x0 = static_cast<int>(uv0(0) * pattern->bitmap->width);
+        int y0 = static_cast<int>(uv0(1) * pattern->bitmap->height);
+        int x1 = static_cast<int>(uv1(0) * pattern->bitmap->width);
+        int y1 = static_cast<int>(uv1(1) * pattern->bitmap->height);
+        
+        // Test that the hit point is surrounded by solid pixels in each direction
+        int mask = 0;
+        for (int x = x0, y = yp; x <= x1; x++) {
+            if (x >= 0 && x < pattern->bitmap->width && y >= 0 && y < pattern->bitmap->height) {
+                float alpha = carto::vt::Color(pattern->bitmap->data[y * pattern->bitmap->width + x])[3];
+                if (alpha > ALPHA_HIT_THRESHOLD) {
+                    mask |= (x >= xp ? 1 : 0);
+                    mask |= (x <= xp ? 2 : 0);
+                }
+            }
+        }
+        for (int x = xp, y = y0; y <= y1; y++) {
+            if (x >= 0 && x < pattern->bitmap->width && y >= 0 && y < pattern->bitmap->height) {
+                float alpha = carto::vt::Color(pattern->bitmap->data[y * pattern->bitmap->width + x])[3];
+                if (alpha > ALPHA_HIT_THRESHOLD) {
+                    mask |= (y >= yp ? 4 : 0);
+                    mask |= (y <= yp ? 8 : 0);
+                }
+            }
+        }
+        return mask == 15;
+    }
+    
     bool isEmptyBlendRequired(carto::vt::CompOp compOp) {
         using carto::vt::CompOp;
 
@@ -876,6 +913,17 @@ namespace carto { namespace vt {
                 double t = 0;
                 cglib::vec2<double> uv(0.0f, 0.0f);
                 if (cglib::intersect_triangle(cglib::vec3<double>::convert(coords[0]), cglib::vec3<double>::convert(coords[1]), cglib::vec3<double>::convert(coords[2]), rays[i], &t, &uv)) {
+                    if (geometry->getType() == TileGeometry::Type::POINT && it.attribs()[1] == 1) {
+                        TileGeometryIterator::TriangleUVs triUVs = it.triangleUVs();
+                        cglib::vec2<float> interpolatedUV = triUVs[0] + (triUVs[1] - triUVs[0]) * static_cast<float>(uv(0)) + (triUVs[2] - triUVs[0]) * static_cast<float>(uv(1));
+                        float u0 = std::min(triUVs[0](0), std::min(triUVs[1](0), triUVs[2](0)));
+                        float u1 = std::max(triUVs[0](0), std::max(triUVs[1](0), triUVs[2](0)));
+                        float v0 = std::min(triUVs[0](1), std::min(triUVs[1](1), triUVs[2](1)));
+                        float v1 = std::max(triUVs[0](1), std::max(triUVs[1](1), triUVs[2](1)));
+                        if (!testIntersectionOpacity(geometry->getStyleParameters().pattern, interpolatedUV, cglib::vec2<float>(u0, v0), cglib::vec2<float>(u1, v1))) {
+                            continue;
+                        }
+                    }
                     if (!results.empty()) {
                         const GeometryIntersectionInfo& result = results.back();
                         if (result.tileId == tileId && result.featureId == featureId) {

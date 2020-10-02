@@ -130,7 +130,7 @@ namespace carto { namespace vt {
             return false;
         }
 
-        float padding = buffer * viewState.zoomScale * _style->scale;
+        float padding = buffer * viewState.zoomScale * _style->scale / std::sqrt(2.0f);
         cglib::vec3<float> origin, xAxis, yAxis;
         setupCoordinateSystem(viewState, placement, origin, xAxis, yAxis);
 

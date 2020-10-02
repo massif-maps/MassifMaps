@@ -204,7 +204,6 @@ namespace carto { namespace vt {
 
         constexpr static float HALO_RADIUS_SCALE = 2.5f; // the scaling factor for halo radius
         constexpr static float POLYGON3D_HEIGHT_SCALE = 10018754.17f; // scaling factor for zoom 0 heights
-        constexpr static float ALPHA_HIT_THRESHOLD = 0.05f; // accept ray-geometry hits only if alpha above this threshold
 
         bool isTileVisible(const TileId& tileId) const;
 

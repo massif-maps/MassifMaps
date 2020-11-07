@@ -684,7 +684,7 @@ namespace carto { namespace vt {
                     
                     for (const GeometryIntersectionInfo& result : resultsLocal) {
                         if (cglib::dot_product(label->getNormal(), cglib::vec3<float>::convert(rays[result.rayIndex].direction)) >= 0) {
-                            return false;
+                            continue;
                         }
 
                         int layerIndex = -1;

@@ -22,31 +22,30 @@
 namespace carto { namespace sgre {
     class Rule final {
     public:
-        using Filter = std::map<std::string, picojson::value>;
-
         Rule() = default;
 
         const boost::optional<std::vector<std::string>>& getProfiles() const { return _profiles; }
-        const boost::optional<std::vector<Filter>>& getFilters() const { return _filters; }
+        const boost::optional<std::vector<FeatureFilter>>& getFilters() const { return _filters; }
         const boost::optional<Graph::LinkMode>& getLinkMode() const { return _linkMode; }
         const boost::optional<Graph::SearchCriteria>& getSearchCriteria() const { return _searchCriteria; }
 
-        void apply(RoutingAttributes& attribs, bool forward) const;
+        void apply(Graph::Attributes& attribs, bool forward) const;
 
         static Rule parse(const picojson::value& ruleDef);
 
     private:
-        static std::array<boost::optional<float>, 2> readDirectionalFloatParameter(const picojson::value& ruleDef, const std::string& param);
+        static FloatParameter readFloatParameter(const picojson::value& ruleDef, const std::string& paramName);
+        static std::array<FloatParameter, 2> readDirectionalFloatParameters(const picojson::value& ruleDef, const std::string& paramName);
 
         boost::optional<std::vector<std::string>> _profiles;
-        boost::optional<std::vector<Filter>> _filters;
+        boost::optional<std::vector<FeatureFilter>> _filters;
         boost::optional<Graph::LinkMode> _linkMode;
         boost::optional<Graph::SearchCriteria> _searchCriteria;
 
-        std::array<boost::optional<float>, 2> _speed;
-        std::array<boost::optional<float>, 2> _zSpeed;
-        std::array<boost::optional<float>, 2> _turnSpeed;
-        std::array<boost::optional<float>, 2> _delay;
+        std::array<FloatParameter, 2> _speed;
+        std::array<FloatParameter, 2> _zSpeed;
+        std::array<FloatParameter, 2> _turnSpeed;
+        std::array<FloatParameter, 2> _delay;
     };
 
     class RuleList final {
@@ -58,7 +57,7 @@ namespace carto { namespace sgre {
         
         void filter(const std::string& profile);
 
-        void apply(RoutingAttributes& attribs, bool forward) const;
+        void apply(Graph::Attributes& attribs, bool forward) const;
 
         static RuleList parse(const picojson::value& ruleListDef);
 

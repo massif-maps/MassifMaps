@@ -607,8 +607,50 @@ BOOST_AUTO_TEST_CASE(endPointFilters) {
         query.setFilter(1, parseJSON("{ \"type\": 1 }").get<picojson::object>());
 
         Result result2 = finder1.find(query);
-        std::string r2 = result2.serialize().serialize();
         BOOST_CHECK(equal(result2.serialize(), parseJSON(R"R({"geometry":[[0,1,0],[1,1,0]],"instructions":[{"distance":111302.53629563769,"geomindex":0,"tag":{"type":1},"time":80654.012087120282,"type":1},{"distance":0,"geomindex":1,"tag":{"type":1},"time":0,"type":8}],"status":1})R")));
     }
 }
 
+// Test cases for parametrized rules
+BOOST_AUTO_TEST_CASE(parametrizedRules) {
+    auto buildGraph = [](const std::string& rules) -> std::shared_ptr<const StaticGraph> {
+        auto chain = createChain(1.0, 2);
+        auto ruleList = RuleList::parse(parseJSON(rules));
+        GraphBuilder graphBuilder = GraphBuilder(ruleList);
+        graphBuilder.addLineString({ shiftPoints(chain, { 0, 1, 0 }) }, parseJSON("{ \"type\": 0 }"));
+        return graphBuilder.build();
+    };
+
+    // Basic setters/getters for parameters
+    {
+        RouteFinder finder(buildGraph(R"R([{ "filters":[{"type":0}], "speed":"$speed", "delay": "$delay" }])R"));
+        BOOST_CHECK(std::isnan(finder.getParameter("$speed")));
+        BOOST_CHECK(std::isnan(finder.getParameter("$delay")));
+
+        finder.setParameter("$speed", 1.0f);
+        finder.setParameter("$speed", 2.0f);
+        finder.setParameter("$delay", 1.5f);
+        BOOST_CHECK(finder.getParameter("$speed") == 2.0f);
+        BOOST_CHECK(finder.getParameter("$delay") == 1.5f);
+    }
+
+    // Setting parameter values, using default values
+    {
+        RouteFinder finder(buildGraph(R"R([{ "filters":[{"type":0}], "speed":"$speed", "delay": "$delay" }])R"));
+        Query query(Point(0.0, 0.0, 0.0), Point(1.0, 0.0, 0.0));
+        Result result1 = finder.find(query);
+        BOOST_CHECK(equal(result1.serialize(), parseJSON(R"R({"geometry":[[0,1,0],[1,1,0]],"instructions":[{"distance":111302.53629563769,"geomindex":0,"tag":{"type":0},"time":80654.012087120282,"type":1},{"distance":0,"geomindex":1,"tag":{"type":0},"time":0,"type":8}],"status":1})R")));
+
+        finder.setParameter("$speed", 2.0f);
+        Result result2 = finder.find(query);
+        BOOST_CHECK(equal(result2.serialize(), parseJSON(R"R({"geometry":[[0,1,0],[1,1,0]],"instructions":[{"distance":111302.53629563769,"geomindex":0,"tag":{"type":0},"time":55651.268147818846,"type":1},{"distance":0,"geomindex":1,"tag":{"type":0},"time":0,"type":8}],"status":1})R")));
+
+        finder.setParameter("$delay", 1.0f);
+        Result result3 = finder.find(query);
+        BOOST_CHECK(equal(result3.serialize(), parseJSON(R"R({"geometry":[[0,1,0],[1,1,0]],"instructions":[{"distance":0,"geomindex":0,"tag":{"type":0},"time":1,"type":7},{"distance":111302.53629563769,"geomindex":0,"tag":{"type":0},"time":55651.268147818846,"type":1},{"distance":0,"geomindex":1,"tag":{"type":0},"time":0,"type":8}],"status":1})R")));
+
+        finder.setParameter("$delay", std::numeric_limits<float>::infinity());
+        Result result4 = finder.find(query);
+        BOOST_CHECK(equal(result4.serialize(), parseJSON(R"R({"status":0})R")));
+    }
+}

@@ -7,17 +7,44 @@
 #ifndef _CARTO_SGRE_BASE_H_
 #define _CARTO_SGRE_BASE_H_
 
+#include <string>
+#include <map>
+#include <functional>
+
+#include <boost/variant.hpp>
+
 #include <cglib/vec.h>
+
+#include <picojson/picojson.h>
 
 namespace carto { namespace sgre {
     using Point = cglib::vec3<double>;
 
-    struct RoutingAttributes {
-        float speed = 1.38f;
-        float zSpeed = 0.5f;
-        float turnSpeed = 180.0f;
-        float delay = 0.0f;
+    using FeatureFilter = picojson::object;
+
+    using FloatParameter = boost::variant<boost::blank, float, std::string>;
+
+    struct FloatParameterEvaluator : boost::static_visitor<float> {
+        FloatParameterEvaluator() = delete;
+        explicit FloatParameterEvaluator(const std::map<std::string, float>& paramValues, float defaultValue) : _paramValues(paramValues), _defaultValue(defaultValue) { }
+
+        float operator() (boost::blank) const { return _defaultValue; }
+        float operator() (float value) const { return value; }
+        float operator() (const std::string& paramName) const { auto it = _paramValues.find(paramName); return (it != _paramValues.end() ? it->second : _defaultValue); }
+
+    private:
+        std::map<std::string, float> _paramValues;
+        float _defaultValue;
     };
 } }
+
+namespace std {
+    template <>
+    struct hash<picojson::value> {
+        size_t operator() (const picojson::value& val) const {
+            return hash<string>()(val.serialize());
+        }
+    };
+}
 
 #endif

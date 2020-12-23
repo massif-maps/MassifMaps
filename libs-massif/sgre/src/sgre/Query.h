@@ -16,15 +16,13 @@
 namespace carto { namespace sgre {
     class Query final {
     public:
-        using Filter = picojson::object;
-
         Query() = delete;
-        explicit Query(const Point& pos0, const Point& pos1, const Filter& filter0 = Filter(), const Filter& filter1 = Filter()) : _points {{ pos0, pos1 }}, _filters {{ filter0, filter1 }} { }
+        explicit Query(const Point& pos0, const Point& pos1, const FeatureFilter& filter0 = FeatureFilter(), const FeatureFilter& filter1 = FeatureFilter()) : _points {{ pos0, pos1 }}, _filters {{ filter0, filter1 }} { }
 
         Point getPos(int index) const { return _points.at(index); }
         void setPos(int index, const Point& pos) { _points.at(index) = pos; }
-        Filter getFilter(int index) const { return _filters.at(index); }
-        void setFilter(int index, const Filter& filter) { _filters.at(index) = filter; }
+        FeatureFilter getFilter(int index) const { return _filters.at(index); }
+        void setFilter(int index, const FeatureFilter& filter) { _filters.at(index) = filter; }
 
         picojson::value serialize() const;
 
@@ -32,7 +30,7 @@ namespace carto { namespace sgre {
 
     private:
         std::array<Point, 2> _points;
-        std::array<Filter, 2> _filters;
+        std::array<FeatureFilter, 2> _filters;
     };
 } }
 

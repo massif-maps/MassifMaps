@@ -16,6 +16,7 @@
 #include <string>
 #include <vector>
 #include <set>
+#include <limits>
 
 #include <boost/optional.hpp>
 
@@ -33,10 +34,16 @@ namespace carto { namespace sgre {
         };
 
         RouteFinder() = delete;
-        explicit RouteFinder(std::shared_ptr<const StaticGraph> graph) : _fastestAttributes(findFastestEdgeAttributes(*graph)), _graph(std::move(graph)) { }
+        explicit RouteFinder(std::shared_ptr<const StaticGraph> graph) : _graph(std::move(graph)) { }
 
         const RouteOptions& getRouteOptions() const { return _routeOptions; }
         void setRouteOptions(const RouteOptions& routeOptions) { _routeOptions = routeOptions; }
+
+        std::map<std::string, float> getParameters() const { return _paramValues; }
+        void setParameters(const std::map<std::string, float>& paramValues) { _paramValues = paramValues; }
+
+        float getParameter(const std::string& paramName) const { auto it = _paramValues.find(paramName); return (it != _paramValues.end() ? it->second : std::numeric_limits<float>::quiet_NaN()); }
+        void setParameter(const std::string& paramName, float value) { _paramValues[paramName] = value; }
 
         Result find(const Query& query) const;
 
@@ -45,12 +52,26 @@ namespace carto { namespace sgre {
     private:
         static constexpr double DIST_EPSILON = 1.0e-6;
         
+        static constexpr float DEFAULT_SPEED = 1.38f;      // default speed in m/s
+        static constexpr float DEFAULT_ZSPEED = 0.5f;      // default speed in m/s
+        static constexpr float DEFAULT_TURNSPEED = 180.0f; // default speed in deg/s
+        static constexpr float DEFAULT_DELAY = 0.0f;       // default delay in seconds
+
+        struct EvaluatedAttributes {
+            float speed = 0;
+            float zSpeed = 0;
+            float turnSpeed = 0;
+            float delay = 0;
+        };
+
         struct RouteNode {
             Graph::FeatureId featureId = Graph::FeatureId(-1);
-            RoutingAttributes attributes;
+            Graph::AttributesId attributesId = Graph::AttributesId(-1);
             Graph::NodeId targetNodeId = Graph::NodeId(-1);
             double targetNodeT = 0;
         };
+
+        using EvaluatedAttributesTable = std::vector<EvaluatedAttributes>;
         
         using Route = std::vector<RouteNode>;
 
@@ -62,15 +83,13 @@ namespace carto { namespace sgre {
 
         static bool isNodeVisible(const Graph& graph, Graph::NodeId nodeId0, double t0, Graph::NodeId nodeId1, double t1, double lngScale, std::set<Graph::NodeId> visitedNodeIds);
 
-        static RoutingAttributes findFastestEdgeAttributes(const Graph& graph);
-        
-        static Result buildResult(const Graph& graph, const Route& route, double lngScale, double minTurnAngle, double minUpDownAngle);
+        static Result buildResult(const Graph& graph, const EvaluatedAttributesTable& attributesTable, const Route& route, double lngScale, double minTurnAngle, double minUpDownAngle);
         
         static Route straightenRoute(const Graph& graph, const Route& route, double lngScale);
         
-        static boost::optional<Route> findFastestRoute(const Graph& graph, const std::vector<Graph::NodeId>& initialNodeIds, const std::vector<Graph::NodeId>& finalNodeIds, const RoutingAttributes& fastestAttributes, double lngScale, double tesselationDistance);
+        static boost::optional<Route> findFastestRoute(const Graph& graph, const EvaluatedAttributesTable& attributesTable, const std::vector<Graph::NodeId>& initialNodeIds, const std::vector<Graph::NodeId>& finalNodeIds, double lngScale, double tesselationDistance);
         
-        static double calculateTime(const RoutingAttributes& attrs, bool applyDelay, double turnAngle, const Point& pos0, const Point& pos1, double lngScale);
+        static double calculateTime(const EvaluatedAttributes& attribs, bool applyDelay, double turnAngle, const Point& pos0, const Point& pos1, double lngScale);
 
         static double calculateDistance(const Point& pos0, const Point& pos1, double lngScale);
         
@@ -78,7 +97,8 @@ namespace carto { namespace sgre {
 
         RouteOptions _routeOptions;
 
-        const RoutingAttributes _fastestAttributes;
+        std::map<std::string, float> _paramValues;
+
         const std::shared_ptr<const StaticGraph> _graph;
     };
 } }

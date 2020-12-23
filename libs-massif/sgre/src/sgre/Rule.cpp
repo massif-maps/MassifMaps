@@ -1,19 +1,19 @@
 #include "Rule.h"
 
 namespace carto { namespace sgre {
-    void Rule::apply(RoutingAttributes& attribs, bool forward) const {
+    void Rule::apply(Graph::Attributes& attribs, bool forward) const {
         int ruleIndex = forward ? 0 : 1;
-        if (auto speed = _speed[ruleIndex]) {
-            attribs.speed = *speed;
+        if (_speed[ruleIndex].which() != 0) {
+            attribs.speed = _speed[ruleIndex];
         }
-        if (auto zSpeed = _zSpeed[ruleIndex]) {
-            attribs.zSpeed = *zSpeed;
+        if (_zSpeed[ruleIndex].which() != 0) {
+            attribs.zSpeed = _zSpeed[ruleIndex];
         }
-        if (auto turnSpeed = _turnSpeed[ruleIndex]) {
-            attribs.turnSpeed = *turnSpeed;
+        if (_turnSpeed[ruleIndex].which() != 0) {
+            attribs.turnSpeed = _turnSpeed[ruleIndex];
         }
-        if (auto delay = _delay[ruleIndex]) {
-            attribs.delay = *delay;
+        if (_delay[ruleIndex].which() != 0) {
+            attribs.delay = _delay[ruleIndex];
         }
     }
 
@@ -29,7 +29,7 @@ namespace carto { namespace sgre {
         }
 
         if (ruleDef.contains("filters")) {
-            std::vector<Filter> filters;
+            std::vector<FeatureFilter> filters;
             const picojson::array& filtersDef = ruleDef.get("filters").get<picojson::array>();
             for (const picojson::value& filterDef : filtersDef) {
                 filters.push_back(filterDef.get<picojson::object>());
@@ -67,28 +67,37 @@ namespace carto { namespace sgre {
             }
         }
         
-        rule._speed = readDirectionalFloatParameter(ruleDef, "speed");
-        rule._zSpeed = readDirectionalFloatParameter(ruleDef, "zspeed");
-        rule._turnSpeed = readDirectionalFloatParameter(ruleDef, "turnspeed");
-        rule._delay = readDirectionalFloatParameter(ruleDef, "delay");
+        rule._speed = readDirectionalFloatParameters(ruleDef, "speed");
+        rule._zSpeed = readDirectionalFloatParameters(ruleDef, "zspeed");
+        rule._turnSpeed = readDirectionalFloatParameters(ruleDef, "turnspeed");
+        rule._delay = readDirectionalFloatParameters(ruleDef, "delay");
         return rule;
     }
 
-    std::array<boost::optional<float>, 2> Rule::readDirectionalFloatParameter(const picojson::value& ruleDef, const std::string& param) {
-        std::array<boost::optional<float>, 2> values;
-        if (ruleDef.contains(param)) {
-            values[0] = static_cast<float>(ruleDef.get(param).get<double>());
-            if (*values[0] < 0) {
-                throw std::invalid_argument("Negative value for rule parameter");
+    FloatParameter Rule::readFloatParameter(const picojson::value& ruleDef, const std::string& paramName) {
+        if (ruleDef.contains(paramName)) {
+            const picojson::value& paramDef = ruleDef.get(paramName);
+            if (paramDef.is<double>() || paramDef.is<std::int64_t>()) {
+                float value = paramDef.is<double>() ? static_cast<float>(paramDef.get<double>()) : static_cast<float>(paramDef.get<std::int64_t>());
+                if (value < 0) {
+                    throw std::invalid_argument("Negative value for rule parameter");
+                }
+                return FloatParameter(value);
+            } else if (paramDef.is<std::string>()) {
+                std::string paramName = paramDef.get<std::string>();
+                if (paramName.substr(0, 1) != "$") {
+                    throw std::invalid_argument("Parameter names should start with '$' sign");
+                }
+                return FloatParameter(paramName);
+            } else {
+                throw std::invalid_argument("Invalid type for rule parameter");
             }
         }
-        if (ruleDef.contains("backward_" + param)) {
-            values[1] = static_cast<float>(ruleDef.get("backward_" + param).get<double>());
-            if (*values[1] < 0) {
-                throw std::invalid_argument("Negative value for backward rule parameter");
-            }
-        }
-        return values;
+        return FloatParameter();
+    }
+
+    std::array<FloatParameter, 2> Rule::readDirectionalFloatParameters(const picojson::value& ruleDef, const std::string& paramName) {
+        return std::array<FloatParameter, 2> {{ readFloatParameter(ruleDef, paramName), readFloatParameter(ruleDef, "backward_" + paramName) }};
     }
 
     void RuleList::filter(const std::string& profile) {
@@ -105,7 +114,7 @@ namespace carto { namespace sgre {
         std::swap(rules, _rules);
     }
 
-    void RuleList::apply(RoutingAttributes& attribs, bool forward) const {
+    void RuleList::apply(Graph::Attributes& attribs, bool forward) const {
         for (const Rule& rule : _rules) {
             rule.apply(attribs, forward);
         }

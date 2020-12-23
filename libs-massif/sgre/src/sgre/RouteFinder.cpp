@@ -1,6 +1,7 @@
 #include "RouteFinder.h"
 
 #include <cassert>
+#include <cmath>
 #include <algorithm>
 #include <queue>
 #include <set>
@@ -76,8 +77,21 @@ namespace carto { namespace sgre {
             }
         }
 
+        // Create evaluated attributes table
+        std::vector<EvaluatedAttributes> attributesTable(graph->getAttributesIdRangeEnd());
+        for (Graph::AttributesId attribsId = 0; attribsId < graph->getAttributesIdRangeEnd(); attribsId++) {
+            const Graph::Attributes& baseAttribs = graph->getAttributes(attribsId);
+
+            EvaluatedAttributes attribs;
+            attribs.speed = boost::apply_visitor(FloatParameterEvaluator(_paramValues, DEFAULT_SPEED), baseAttribs.speed);
+            attribs.zSpeed = boost::apply_visitor(FloatParameterEvaluator(_paramValues, DEFAULT_ZSPEED), baseAttribs.zSpeed);
+            attribs.turnSpeed = boost::apply_visitor(FloatParameterEvaluator(_paramValues, DEFAULT_TURNSPEED), baseAttribs.turnSpeed);
+            attribs.delay = boost::apply_visitor(FloatParameterEvaluator(_paramValues, DEFAULT_DELAY), baseAttribs.delay);
+            attributesTable[attribsId] = attribs;
+        }
+
         // Try to find the fastest route
-        boost::optional<Route> route = findFastestRoute(*graph, initialNodeIds, finalNodeIds, _fastestAttributes, lngScale, _routeOptions.tesselationDistance);
+        boost::optional<Route> route = findFastestRoute(*graph, attributesTable, initialNodeIds, finalNodeIds, lngScale, _routeOptions.tesselationDistance);
         if (!route) {
             return Result();
         }
@@ -88,7 +102,7 @@ namespace carto { namespace sgre {
         }
 
         // Build final result (remove duplicate nodes, create instructions)
-        return buildResult(*graph, *route, lngScale, _routeOptions.minTurnAngle, _routeOptions.minUpDownAngle);
+        return buildResult(*graph, attributesTable, *route, lngScale, _routeOptions.minTurnAngle, _routeOptions.minUpDownAngle);
     }
 
     std::unique_ptr<RouteFinder> RouteFinder::create(std::shared_ptr<const StaticGraph> graph, const picojson::value& configDef) {
@@ -233,23 +247,7 @@ namespace carto { namespace sgre {
         return false;
     }
 
-    RoutingAttributes RouteFinder::findFastestEdgeAttributes(const Graph& graph) {
-        // Find the fastest routing attributes of all edges. This is needed for the A* path finding algorithm.
-        RoutingAttributes fastestAttributes;
-        fastestAttributes.speed = 0;
-        fastestAttributes.zSpeed = 0;
-        fastestAttributes.turnSpeed = 0;
-        fastestAttributes.delay = 0;
-        for (Graph::EdgeId edgeId = 0; edgeId < graph.getEdgeIdRangeEnd(); edgeId++) {
-            const Graph::Edge& edge = graph.getEdge(edgeId);
-            fastestAttributes.speed = std::max(fastestAttributes.speed, edge.attributes.speed);
-            fastestAttributes.zSpeed = std::max(fastestAttributes.zSpeed, edge.attributes.zSpeed);
-            fastestAttributes.turnSpeed = std::max(fastestAttributes.turnSpeed, edge.attributes.turnSpeed);
-        }
-        return fastestAttributes;
-    }
-
-    Result RouteFinder::buildResult(const Graph& graph, const Route& route, double lngScale, double minTurnAngle, double minUpDownAngle) {
+    Result RouteFinder::buildResult(const Graph& graph, const EvaluatedAttributesTable& attributesTable, const Route& route, double lngScale, double minTurnAngle, double minUpDownAngle) {
         // Build both route geometry and instructions in one pass
         std::vector<Point> points;
         std::vector<Instruction> instructions;
@@ -264,12 +262,13 @@ namespace carto { namespace sgre {
                 continue;
             }
 
-            // Read node feature
-            const Graph::Feature& feature = graph.getFeature(routeNode.featureId);
+            // Read node feature and attributes
+            const Graph::FeatureProperties& properties = graph.getFeatureProperties(routeNode.featureId);
+            const EvaluatedAttributes& attribs = attributesTable[routeNode.attributesId];
 
             // Add optional waiting instruction.
-            if (routeNode.attributes.delay > 0) {
-                Instruction waitInstruction(Instruction::Type::WAIT, feature, 0, routeNode.attributes.delay, points.size() - 2);
+            if (attribs.delay > 0) {
+                Instruction waitInstruction(Instruction::Type::WAIT, properties, 0, attribs.delay, points.size() - 2);
                 instructions.push_back(std::move(waitInstruction));
             }
 
@@ -332,7 +331,7 @@ namespace carto { namespace sgre {
 
             // Calculate distance and time. We will add turning time here and do not apply delay (as its included in the previous 'wait' instruction)
             double dist = calculateDistance(pos0, pos1, lngScale);
-            double time = calculateTime(routeNode.attributes, false, turnAngle, pos0, pos1, lngScale);
+            double time = calculateTime(attribs, false, turnAngle, pos0, pos1, lngScale);
             if (!std::isfinite(time)) {
                 return Result();
             }
@@ -356,12 +355,12 @@ namespace carto { namespace sgre {
                     }
                 }
             }
-            Instruction instruction(type, feature, dist, time, geometryIndex);
+            Instruction instruction(type, properties, dist, time, geometryIndex);
             instructions.push_back(std::move(instruction));
 
             // Add the final instruction if we are at the end
             if (i + 1 == route.size()) {
-                Instruction finalInstruction(Instruction::Type::REACHED_YOUR_DESTINATION, feature, 0, 0, points.size() - 1);
+                Instruction finalInstruction(Instruction::Type::REACHED_YOUR_DESTINATION, properties, 0, 0, points.size() - 1);
                 instructions.push_back(std::move(finalInstruction));
             }
 
@@ -403,7 +402,7 @@ namespace carto { namespace sgre {
         return optimizedRoute;
     }
 
-    boost::optional<RouteFinder::Route> RouteFinder::findFastestRoute(const Graph& graph, const std::vector<Graph::NodeId>& initialNodeIds, const std::vector<Graph::NodeId>& finalNodeIds, const RoutingAttributes& fastestAttributes, double lngScale, double tesselationDistance) {
+    boost::optional<RouteFinder::Route> RouteFinder::findFastestRoute(const Graph& graph, const EvaluatedAttributesTable& attributesTable, const std::vector<Graph::NodeId>& initialNodeIds, const std::vector<Graph::NodeId>& finalNodeIds, double lngScale, double tesselationDistance) {
         struct NodeRecord {
             double time; // best estimated time to final some from some initial node. Estimated time must not exceed actual time.
             Graph::NodeId nodeId;
@@ -418,6 +417,18 @@ namespace carto { namespace sgre {
             std::size_t routeEdgeIndex; // incoming route edge index
             double nodeT; // outgoing edge node T value
         };
+
+        // Find fastest attributes for A*
+        EvaluatedAttributes fastestAttributes;
+        fastestAttributes.speed = 0;
+        fastestAttributes.zSpeed = 0;
+        fastestAttributes.turnSpeed = 0;
+        fastestAttributes.delay = 0;
+        for (const EvaluatedAttributes& attribs : attributesTable) {
+            fastestAttributes.speed = std::max(fastestAttributes.speed, attribs.speed);
+            fastestAttributes.zSpeed = std::max(fastestAttributes.zSpeed, attribs.zSpeed);
+            fastestAttributes.turnSpeed = std::max(fastestAttributes.turnSpeed, attribs.turnSpeed);
+        }
 
         // Initialize route map and node queue
         std::unordered_map<Graph::NodeId, std::vector<RouteEdge>> bestRouteMap;
@@ -481,7 +492,7 @@ namespace carto { namespace sgre {
                     // Check if we found a better route to target node compared to existing route
                     double targetNodeT = static_cast<double>(i) / std::max(targetRouteEdges.size() - 1, std::size_t(1));
                     Point targetNodePos = targetNode.points[0] + (targetNode.points[1] - targetNode.points[0]) * targetNodeT;
-                    double targetTime = time + calculateTime(edge.attributes, true, 0.0, nodePos, targetNodePos, lngScale);
+                    double targetTime = time + calculateTime(attributesTable[edge.attributesId], true, 0.0, nodePos, targetNodePos, lngScale);
                     if (targetRouteEdges[i].time <= targetTime || !std::isfinite(targetTime)) {
                         continue;
                     }
@@ -519,33 +530,33 @@ namespace carto { namespace sgre {
             const Graph::Edge& edge = graph.getEdge(routeEdge.edgeId);
             RouteNode routeNode;
             routeNode.featureId = edge.featureId;
-            routeNode.attributes = edge.attributes;
+            routeNode.attributesId = edge.attributesId;
             routeNode.targetNodeId = edge.nodeIds[1];
             routeNode.targetNodeT = routeEdge.nodeT;
-            bestRoute.push_back(routeNode);
+            bestRoute.emplace_back(routeNode);
 
             lastNodeId = edge.nodeIds[0];
             lastRouteEdgeIndex = routeEdge.routeEdgeIndex;
         }
         RouteNode initialRouteNode;
         initialRouteNode.targetNodeId = lastNodeId;
-        bestRoute.push_back(initialRouteNode);
+        bestRoute.emplace_back(initialRouteNode);
         
         // Done, reverse the generated route
         std::reverse(bestRoute.begin(), bestRoute.end());
         return bestRoute;
     }
 
-    double RouteFinder::calculateTime(const RoutingAttributes& attrs, bool applyDelay, double turnAngle, const Point& pos0, const Point& pos1, double lngScale) {
+    double RouteFinder::calculateTime(const EvaluatedAttributes& attribs, bool applyDelay, double turnAngle, const Point& pos0, const Point& pos1, double lngScale) {
         std::pair<double, double> dist2D = calculateDistance2D(pos0, pos1, lngScale);
 
         double time = 0;
         if (applyDelay) {
-            time += attrs.delay;
+            time += attribs.delay;
         }
-        time += (turnAngle != 0 ? std::abs(turnAngle) / attrs.turnSpeed : 0);
-        time += (dist2D.first > 0 ? dist2D.first / attrs.speed : 0);
-        time += (dist2D.second > 0 ? dist2D.second / attrs.zSpeed : 0);
+        time += (turnAngle != 0 ? std::abs(turnAngle) / attribs.turnSpeed : 0);
+        time += (dist2D.first > 0 ? dist2D.first / attribs.speed : 0);
+        time += (dist2D.second > 0 ? dist2D.second / attribs.zSpeed : 0);
         return time;
     }
     

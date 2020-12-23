@@ -26,12 +26,12 @@ namespace {
 }
 
 namespace carto { namespace sgre {
-    void GraphBuilder::addLineString(const std::vector<Point>& coordsList, const picojson::value& properties) {
+    void GraphBuilder::addLineString(const std::vector<Point>& coordsList, const Graph::FeatureProperties& properties) {
         Graph::FeatureId featureId = addFeature(properties);
         addLineString(featureId, coordsList, properties);
     }
 
-    void GraphBuilder::addPolygon(const std::vector<std::vector<Point>>& rings, const picojson::value& properties) {
+    void GraphBuilder::addPolygon(const std::vector<std::vector<Point>>& rings, const Graph::FeatureProperties& properties) {
         Graph::FeatureId featureId = addFeature(properties);
         addPolygon(featureId, rings, properties);
     }
@@ -67,7 +67,7 @@ namespace carto { namespace sgre {
         importGeoJSONGeometry(geometryDef, properties);
     }
 
-    void GraphBuilder::importGeoJSONGeometry(const picojson::value& geometryDef, const picojson::value& properties) {
+    void GraphBuilder::importGeoJSONGeometry(const picojson::value& geometryDef, const Graph::FeatureProperties& properties) {
         std::string type = geometryDef.get("type").get<std::string>();
         const picojson::value& coordsDef = geometryDef.get("coordinates");
         
@@ -121,9 +121,9 @@ namespace carto { namespace sgre {
                     edge.edgeFlags = Graph::EdgeFlags(0);
                     edge.featureId = triangle.featureId;
                     edge.triangleId = static_cast<Graph::TriangleId>(i);
+                    edge.attributesId = triangle.attributesId;
                     edge.nodeIds = std::array<Graph::NodeId, 2> {{ nodeId, lineVertex.nodeId }};
                     edge.searchCriteria = triangle.searchCriteria;
-                    edge.attributes = triangle.attributes;
                     edges.push_back(edge);
 
                     std::swap(edge.nodeIds[0], edge.nodeIds[1]);
@@ -132,19 +132,21 @@ namespace carto { namespace sgre {
             }
         }
 
-        return std::make_shared<StaticGraph>(std::move(nodes), std::move(edges), _features);
+        return std::make_shared<StaticGraph>(std::move(nodes), std::move(edges), _featureProperties, _attributes);
     }
 
-    void GraphBuilder::addLineString(Graph::FeatureId featureId, const std::vector<Point>& coordsList, const picojson::value& properties) {
+    void GraphBuilder::addLineString(Graph::FeatureId featureId, const std::vector<Point>& coordsList, const Graph::FeatureProperties& properties) {
         Graph::LinkMode linkMode = Graph::LinkMode::ALL;
         Graph::SearchCriteria searchCriteria = Graph::SearchCriteria::EDGE;
-        RoutingAttributes attribs;
+        Graph::Attributes attribs;
         matchRules(properties, linkMode, searchCriteria, attribs, true);
+        Graph::AttributesId attribsId = addAttributes(attribs);
 
         Graph::LinkMode linkModeBackwards = linkMode;
         Graph::SearchCriteria searchCriteriaBackwards = searchCriteria;
-        RoutingAttributes attribsBackward = attribs;
-        matchRules(properties, linkModeBackwards, searchCriteriaBackwards, attribsBackward, false);
+        Graph::Attributes attribsBackwards = attribs;
+        matchRules(properties, linkModeBackwards, searchCriteriaBackwards, attribsBackwards, false);
+        Graph::AttributesId attribsIdBackwards = addAttributes(attribsBackwards);
 
         // Create node for each vertex
         std::vector<Graph::NodeId> nodeIds;
@@ -172,34 +174,35 @@ namespace carto { namespace sgre {
 
             std::pair<double, double> dist2D = calculateDistance2D(node0.points[0], node1.points[0]);
 
-            if (!(dist2D.first != 0 && attribs.speed == 0) && !(dist2D.second != 0 && attribs.zSpeed == 0)) {
+            if (!(dist2D.first != 0 && attribs.speed == FloatParameter(0.0f)) && !(dist2D.second != 0 && attribs.zSpeed == FloatParameter(0.0f))) {
                 Graph::Edge edge;
                 edge.edgeFlags = Graph::EdgeFlags(Graph::EdgeFlags::GEOMETRY_EDGE);
                 edge.featureId = featureId;
+                edge.attributesId = attribsId;
                 edge.nodeIds = std::array<Graph::NodeId, 2> {{ nodeIds[i - 1], nodeIds[i] }};
                 edge.searchCriteria = searchCriteria;
-                edge.attributes = attribs;
                 addEdge(edge);
             }
 
-            if (!(dist2D.first != 0 && attribsBackward.speed == 0) && !(dist2D.second != 0 && attribsBackward.zSpeed == 0)) {
+            if (!(dist2D.first != 0 && attribsBackwards.speed == FloatParameter(0.0f)) && !(dist2D.second != 0 && attribsBackwards.zSpeed == FloatParameter(0.0f))) {
                 Graph::Edge edge;
                 edge.edgeFlags = Graph::EdgeFlags(Graph::EdgeFlags::GEOMETRY_EDGE);
                 edge.featureId = featureId;
+                edge.attributesId = attribsIdBackwards;
                 edge.nodeIds = std::array<Graph::NodeId, 2> {{ nodeIds[i], nodeIds[i - 1] }};
                 edge.searchCriteria = searchCriteriaBackwards; // Note: always equal to searchCriteria
-                edge.attributes = attribsBackward;
                 addEdge(edge);
             }
         }
     }
 
-    void GraphBuilder::addPolygon(Graph::FeatureId featureId, const std::vector<std::vector<Point>>& rings, const picojson::value& properties) {
+    void GraphBuilder::addPolygon(Graph::FeatureId featureId, const std::vector<std::vector<Point>>& rings, const Graph::FeatureProperties& properties) {
         Graph::LinkMode linkMode = Graph::LinkMode::ALL;
         Graph::SearchCriteria searchCriteria = Graph::SearchCriteria::SURFACE;
-        RoutingAttributes attribs;
+        Graph::Attributes attribs;
         matchRules(properties, linkMode, searchCriteria, attribs);
-        attribs.delay = 0; // reset the delay manually
+        attribs.delay = FloatParameter(0.0f); // reset the delay manually
+        Graph::AttributesId attribsId = addAttributes(attribs);
 
         TESSalloc ma;
         memset(&ma, 0, sizeof(ma));
@@ -274,8 +277,8 @@ namespace carto { namespace sgre {
                 triangleId = static_cast<Graph::TriangleId>(_triangles.size());
                 Triangle triangle;
                 triangle.featureId = featureId;
+                triangle.attributesId = attribsId;
                 triangle.searchCriteria = searchCriteria;
-                triangle.attributes = attribs;
                 triangle.points = std::array<Point, 3> {{ points[0], points[1], points[2] }};
                 triangle.nodeIds = nodeIds;
                 _triangles.push_back(triangle);
@@ -289,14 +292,14 @@ namespace carto { namespace sgre {
 
                     std::pair<double, double> dist2D = calculateDistance2D((node0.points[0] + node0.points[1]) * 0.5, (node1.points[0] + node1.points[1]) * 0.5);
 
-                    if (!(dist2D.first != 0 && attribs.speed == 0) && !(dist2D.second != 0 && attribs.zSpeed == 0)) {
+                    if (!(dist2D.first != 0 && attribs.speed == FloatParameter(0.0f)) && !(dist2D.second != 0 && attribs.zSpeed == FloatParameter(0.0f))) {
                         Graph::Edge edge;
                         edge.edgeFlags = Graph::EdgeFlags(getNode(nodeIds[nodeIds.size() - i0 - i1]).nodeFlags & Graph::NodeFlags::GEOMETRY_VERTEX ? Graph::EdgeFlags::GEOMETRY_EDGE : 0); // use the 'geometry vertex' flag from the third (opposite edge)
                         edge.featureId = featureId;
                         edge.triangleId = triangleId;
+                        edge.attributesId = attribsId;
                         edge.nodeIds = std::array<Graph::NodeId, 2> {{ nodeIds[i0], nodeIds[i1] }};
                         edge.searchCriteria = searchCriteria;
-                        edge.attributes = attribs;
                         addEdge(edge);
 
                         std::swap(edge.nodeIds[0], edge.nodeIds[1]);
@@ -313,10 +316,6 @@ namespace carto { namespace sgre {
 
     const Graph::Edge& GraphBuilder::getEdge(Graph::EdgeId edgeId) const {
         return _edges.at(edgeId);
-    }
-
-    const Graph::Feature& GraphBuilder::getFeature(Graph::FeatureId featureId) const {
-        return _features.at(featureId);
     }
 
     Graph::NodeId GraphBuilder::addNode(const Graph::Node& node) {
@@ -341,23 +340,34 @@ namespace carto { namespace sgre {
         return edgeId;
     }
 
-    Graph::FeatureId GraphBuilder::addFeature(const Graph::Feature& feature) {
-        std::string key = feature.serialize();
-        auto it = _propertiesFeatureIdMap.find(key);
-        if (it != _propertiesFeatureIdMap.end()) {
+    Graph::FeatureId GraphBuilder::addFeature(const Graph::FeatureProperties& properties) {
+        const picojson::value& key = properties;
+        auto it = _featurePropertiesIdMap.find(key);
+        if (it != _featurePropertiesIdMap.end()) {
             return it->second;
         }
-        Graph::FeatureId featureId = static_cast<Graph::EdgeId>(_features.size());
-        _features.push_back(feature);
-        _propertiesFeatureIdMap[key] = featureId;
+        Graph::FeatureId featureId = static_cast<Graph::EdgeId>(_featureProperties.size());
+        _featureProperties.push_back(properties);
+        _featurePropertiesIdMap[key] = featureId;
         return featureId;
     }
 
-    void GraphBuilder::matchRules(const picojson::value& properties, Graph::LinkMode& linkMode, Graph::SearchCriteria& searchCriteria, RoutingAttributes& attribs, bool forward) const {
+    Graph::AttributesId GraphBuilder::addAttributes(const Graph::Attributes& attribs) {
+        for (std::size_t i = _attributes.size(); i-- > 0; ) {
+            if (_attributes[i] == attribs) {
+                return static_cast<Graph::AttributesId>(i);
+            }
+        }
+        Graph::AttributesId attribsId = static_cast<Graph::AttributesId>(_attributes.size());
+        _attributes.push_back(attribs);
+        return attribsId;
+    }
+
+    void GraphBuilder::matchRules(const Graph::FeatureProperties& properties, Graph::LinkMode& linkMode, Graph::SearchCriteria& searchCriteria, Graph::Attributes& attribs, bool forward) const {
         for (const Rule& rule : _ruleList.getRules()) {
             if (auto filters = rule.getFilters()) {
                 bool match = false;
-                for (const Rule::Filter& filter : *filters) {
+                for (const FeatureFilter& filter : *filters) {
                     auto it = filter.begin();
                     for (; it != filter.end(); it++) {
                         if (!properties.contains(it->first) || properties.get(it->first) != it->second) {

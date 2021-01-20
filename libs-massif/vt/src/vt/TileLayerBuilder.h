@@ -78,6 +78,7 @@ namespace carto { namespace vt {
         constexpr static unsigned int RESERVED_VERTICES = 4096;
 
         constexpr static float MIN_MITER_DOT = -0.8f; // minimum allowed dot product result between segment direction vectors, if less, then miter-join is not used
+        constexpr static float STROKE_MIN_MITER_DOT = 0.2f; // minimum allowed dot product result between segment direction vectors for stroked lines, if less, then miter-join is not used
 
         struct BuilderParameters {
             TileGeometry::Type type;

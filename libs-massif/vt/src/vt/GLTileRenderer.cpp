@@ -1652,21 +1652,20 @@ namespace carto { namespace vt {
             glUniform1fv(shaderProgram.uniforms[U_WIDTHTABLE], styleParams.parameterCount, widths.data());
             glUniform1fv(shaderProgram.uniforms[U_STROKEWIDTHTABLE], styleParams.parameterCount, strokeWidths.data());
         } else if (geometry->getType() == TileGeometry::Type::LINE) {
-            constexpr float gamma = 0.5f;
-
             std::array<float, TileGeometry::StyleParameters::MAX_PARAMETERS> widths;
             for (int i = 0; i < styleParams.parameterCount; i++) {
+                // Check for 0-width function. This is used only for polygons.
                 if (styleParams.widthFuncs[i] == FloatFunction(0)) {
-                    widths[i] = 0;
-                    continue;
+                    widths[i] = -1;
                 }
-                
-                float width = 0.5f * _fullResolution * std::abs((styleParams.widthFuncs[i])(_viewState)) * geometry->getGeometryScale() / tile->getTileSize();
-                if (width < 1) {
-                    colors[i] = colors[i] * width; // should do gamma correction here, but simple implementation gives closer results to Mapnik
-                    width = (width > 0 ? 1.0f : 0.0f); // normalize width
+                else {
+                    float width = 0.5f * _fullResolution * std::abs((styleParams.widthFuncs[i])(_viewState)) * geometry->getGeometryScale() / tile->getTileSize();
+                    if (width < 1) {
+                        colors[i] = colors[i] * width; // should do gamma correction here, but simple implementation gives closer results to Mapnik
+                        width = (width > 0 ? 1.0f : 0.0f); // normalize width
+                    }
+                    widths[i] = width * 0.5f;
                 }
-                widths[i] = width * 0.5f;
             }
 
             if (std::all_of(widths.begin(), widths.begin() + styleParams.parameterCount, [](float width) { return width == 0; })) {
@@ -1677,7 +1676,15 @@ namespace carto { namespace vt {
 
             glUniform1f(shaderProgram.uniforms[U_BINORMALSCALE], vertexGeomLayoutParams.coordScale / (_halfResolution * vertexGeomLayoutParams.binormalScale * std::pow(2.0f, _viewState.zoom - tileId.zoom)));
             glUniform1fv(shaderProgram.uniforms[U_WIDTHTABLE], styleParams.parameterCount, widths.data());
-            glUniform1f(shaderProgram.uniforms[U_GAMMA], gamma);
+
+            if (styleParams.pattern) {
+                std::array<float, TileGeometry::StyleParameters::MAX_PARAMETERS> strokeScales;
+                for (int i = 0; i < styleParams.parameterCount; i++) {
+                    float strokeScale = STROKE_UV_SCALE / styleParams.pattern->bitmap->width / styleParams.strokeScales[i] / 127.0f / (_fullResolution / tile->getTileSize());
+                    strokeScales[i] = strokeScale * std::pow(2.0f, std::floor(_viewState.zoom) - _viewState.zoom);
+                }
+                glUniform1fv(shaderProgram.uniforms[U_STROKESCALETABLE], styleParams.parameterCount, strokeScales.data());
+            }
         } else if (geometry->getType() == TileGeometry::Type::POLYGON3D) {
             float tileHeightScale = static_cast<float>(cglib::length(cglib::transform_vector(cglib::vec3<double>(0, 0, 1), calculateTileMatrix(tileId))));
             glUniform1f(shaderProgram.uniforms[U_UVSCALE], 1.0f / vertexGeomLayoutParams.texCoordScale);

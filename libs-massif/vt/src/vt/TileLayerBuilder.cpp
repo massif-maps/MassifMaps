@@ -448,6 +448,11 @@ namespace carto { namespace vt {
             styleParameters.colorFuncs[i] = _builderParameters.colorFuncs[i];
             styleParameters.widthFuncs[i] = _builderParameters.widthFuncs[i];
             styleParameters.strokeWidthFuncs[i] = _builderParameters.strokeWidthFuncs[i];
+            const StrokeMap::Stroke* stroke = nullptr;
+            if (_builderParameters.strokeMap && _builderParameters.lineStrokeIds[i] != 0) {
+                stroke = _builderParameters.strokeMap->getStroke(_builderParameters.lineStrokeIds[i]);
+            }
+            styleParameters.strokeScales[i] = (stroke ? stroke->scale : 0);
         }
         if (_builderParameters.transform) {
             cglib::vec2<float> translate((*_builderParameters.transform)(0, 2), (*_builderParameters.transform)(1, 2));
@@ -944,7 +949,7 @@ namespace carto { namespace vt {
 
         bool cycle = points[0] == points[points.size() - 1];
         bool endpoints = !cycle && style.capMode != LineCapMode::NONE;
-        float minMiterDot = stroke ? 1.0f : MIN_MITER_DOT;
+        float minMiterDot = stroke ? STROKE_MIN_MITER_DOT : MIN_MITER_DOT;
         float linePos = 0;
 
         std::size_t i = 1;
@@ -1002,7 +1007,7 @@ namespace carto { namespace vt {
             _coords.append(p0, p0);
             _texCoords.append(cglib::vec2<float>(u0, v0), cglib::vec2<float>(u0, v1));
             _binormals.append(cycle ? -knotBinormal : -binormal, cycle ? knotBinormal : binormal);
-            _attribs.append(cglib::vec4<std::int8_t>(styleIndex, 0, 1, 1), cglib::vec4<std::int8_t>(styleIndex, 0, -1, 1));
+            _attribs.append(cglib::vec4<std::int8_t>(styleIndex, 0, 1, 0), cglib::vec4<std::int8_t>(styleIndex, 0, -1, 0));
         }
 
         while (++i < points.size()) {
@@ -1016,6 +1021,7 @@ namespace carto { namespace vt {
             linePos += cglib::length(dp);
 
             cglib::vec2<float> prevBinormal = binormal;
+            cglib::vec2<float> prevTangent = tangent;
             tangent = cglib::unit(dp);
             binormal = cglib::vec2<float>(tangent(1), -tangent(0));
 
@@ -1033,20 +1039,35 @@ namespace carto { namespace vt {
                 _coords.append(p0, p0);
                 _texCoords.append(cglib::vec2<float>(u0, v0), cglib::vec2<float>(u0, v1));
                 _binormals.append(-prevBinormal, prevBinormal);
-                _attribs.append(cglib::vec4<std::int8_t>(styleIndex, 0, 1, 1), cglib::vec4<std::int8_t>(styleIndex, 0, -1, 1));
+                _attribs.append(cglib::vec4<std::int8_t>(styleIndex, 0, 1, 0), cglib::vec4<std::int8_t>(styleIndex, 0, -1, 0));
 
                 _coords.append(p0, p0);
                 _texCoords.append(cglib::vec2<float>(u0, v0), cglib::vec2<float>(u0, v1));
                 _binormals.append(-binormal, binormal);
-                _attribs.append(cglib::vec4<std::int8_t>(styleIndex, 0, 1, 1), cglib::vec4<std::int8_t>(styleIndex, 0, -1, 1));
+                _attribs.append(cglib::vec4<std::int8_t>(styleIndex, 0, 1, 0), cglib::vec4<std::int8_t>(styleIndex, 0, -1, 0));
             }
-            else {
-                cglib::vec2<float> lerpedBinormal = cglib::unit(binormal + prevBinormal) * (1 / std::sqrt((1 + dot) / 2));
+            else if (stroke) {
+                cglib::vec2<float> lerpedBinormal = cglib::unit(binormal + prevBinormal);
+                std::int8_t sin = static_cast<std::int8_t>(127.0f * cglib::dot_product(prevTangent, lerpedBinormal));
+                cglib::vec2<float> lerpedScaledBinormal = lerpedBinormal * (1 / std::sqrt((1 + dot) / 2));
 
                 _coords.append(p0, p0);
                 _texCoords.append(cglib::vec2<float>(u0, v0), cglib::vec2<float>(u0, v1));
-                _binormals.append(-lerpedBinormal, lerpedBinormal);
-                _attribs.append(cglib::vec4<std::int8_t>(styleIndex, 0, 1, 1), cglib::vec4<std::int8_t>(styleIndex, 0, -1, 1));
+                _binormals.append(-lerpedScaledBinormal, lerpedScaledBinormal);
+                _attribs.append(cglib::vec4<std::int8_t>(styleIndex, 0, 1, -sin), cglib::vec4<std::int8_t>(styleIndex, 0, -1, sin));
+
+                _coords.append(p0, p0);
+                _texCoords.append(cglib::vec2<float>(u0, v0), cglib::vec2<float>(u0, v1));
+                _binormals.append(-lerpedScaledBinormal, lerpedScaledBinormal);
+                _attribs.append(cglib::vec4<std::int8_t>(styleIndex, 0, 1, sin), cglib::vec4<std::int8_t>(styleIndex, 0, -1, -sin));
+            }
+            else {
+                cglib::vec2<float> lerpedScaledBinormal = cglib::unit(binormal + prevBinormal) * (1 / std::sqrt((1 + dot) / 2));
+
+                _coords.append(p0, p0);
+                _texCoords.append(cglib::vec2<float>(u0, v0), cglib::vec2<float>(u0, v1));
+                _binormals.append(-lerpedScaledBinormal, lerpedScaledBinormal);
+                _attribs.append(cglib::vec4<std::int8_t>(styleIndex, 0, 1, 0), cglib::vec4<std::int8_t>(styleIndex, 0, -1, 0));
             }
         }
             
@@ -1066,7 +1087,7 @@ namespace carto { namespace vt {
             _coords.append(p0, p0);
             _texCoords.append(cglib::vec2<float>(u0, v0), cglib::vec2<float>(u0, v1));
             _binormals.append(cycle ? -knotBinormal : -binormal, cycle ? knotBinormal : binormal);
-            _attribs.append(cglib::vec4<std::int8_t>(styleIndex, 0, 1, 1), cglib::vec4<std::int8_t>(styleIndex, 0, -1, 1));
+            _attribs.append(cglib::vec4<std::int8_t>(styleIndex, 0, 1, 0), cglib::vec4<std::int8_t>(styleIndex, 0, -1, 0));
 
             if (endpoints) {
                 std::size_t i1 = _coords.size();
@@ -1081,7 +1102,7 @@ namespace carto { namespace vt {
             _coords.append(p0, p0);
             _texCoords.append(cglib::vec2<float>(u0, v0), cglib::vec2<float>(u0, v1));
             _binormals.append(tangent - binormal, tangent + binormal);
-            _attribs.append(cglib::vec4<std::int8_t>(styleIndex, 1, 1, 1), cglib::vec4<std::int8_t>(styleIndex, 1, -1, 1));
+            _attribs.append(cglib::vec4<std::int8_t>(styleIndex, 1, 1, 0), cglib::vec4<std::int8_t>(styleIndex, 1, -1, 0));
 
             _indices.append(i0 + 1, i1 + 0, i0 + 0);
             _indices.append(i0 + 1, i1 + 1, i1 + 0);

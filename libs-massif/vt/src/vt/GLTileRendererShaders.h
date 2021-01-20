@@ -30,14 +30,14 @@ namespace carto { namespace vt {
         U_COLORTABLE,
         U_WIDTHTABLE,
         U_STROKEWIDTHTABLE,
+        U_STROKESCALETABLE,
         U_COLOR,
         U_OPACITY,
         U_PATTERN,
         U_BITMAP,
         U_TEXTURE,
         U_SDFSCALE,
-        U_DERIVSCALE,
-        U_GAMMA
+        U_DERIVSCALE
     };
 
     static const std::map<std::string, int> attribMap = {
@@ -62,14 +62,14 @@ namespace carto { namespace vt {
         { "uColorTable",       U_COLORTABLE },
         { "uWidthTable",       U_WIDTHTABLE },
         { "uStrokeWidthTable", U_STROKEWIDTHTABLE },
+        { "uStrokeScaleTable", U_STROKESCALETABLE },
         { "uPattern",          U_PATTERN },
         { "uBitmap",           U_BITMAP },
         { "uTexture",          U_TEXTURE },
         { "uColor",            U_COLOR },
         { "uOpacity",          U_OPACITY },
         { "uSDFScale",         U_SDFSCALE },
-        { "uDerivScale",       U_DERIVSCALE },
-        { "uGamma",            U_GAMMA }
+        { "uDerivScale",       U_DERIVSCALE }
     };
 
     static const std::string textureFiltersFsh = R"GLSL(
@@ -531,9 +531,9 @@ namespace carto { namespace vt {
         #ifdef PATTERN
         attribute vec2 aVertexUV;
         uniform vec2 uUVScale;
+        uniform float uStrokeScaleTable[16];
         #endif
         uniform float uBinormalScale;
-        uniform float uGamma;
         #ifdef TRANSFORM
         uniform mat4 uTransformMatrix;
         #endif
@@ -553,8 +553,8 @@ namespace carto { namespace vt {
         void main(void) {
             int styleIndex = int(aVertexAttribs[0]);
             float width = uWidthTable[styleIndex];
-            float roundedWidth = width + float(width > 0.0);
-            float gamma = uGamma * aVertexAttribs[3];
+            float roundedWidth = width > 0.0 ? width + 1.0 : 0.0;
+            float gamma = 0.5;
             vec3 pos = aVertexPosition;
             vec3 delta = aVertexBinormal * (uBinormalScale * roundedWidth);
         #ifdef TRANSFORM
@@ -562,10 +562,10 @@ namespace carto { namespace vt {
         #endif
             vec4 color = uColorTable[styleIndex];
         #ifdef PATTERN
-            vUV = uUVScale * aVertexUV;
+            vUV = uUVScale * aVertexUV + vec2(aVertexAttribs[3] * roundedWidth * uStrokeScaleTable[styleIndex], 0.0);
         #endif
-            vDist = vec2(aVertexAttribs[1], aVertexAttribs[2]) * (roundedWidth * gamma);
-            vWidth = (width - 1.0) * gamma + 1.0;
+            vDist = vec2(aVertexAttribs[1], aVertexAttribs[2]) * (roundedWidth * gamma); // will be 0,0 for polygons
+            vWidth = width > 0.0 ? (width - 1.0) * gamma + 1.0 : 1.0; // will be 1 for polygons
         #ifdef LIGHTING_VSH
             vColor = applyLighting(color, aVertexNormal);
         #else

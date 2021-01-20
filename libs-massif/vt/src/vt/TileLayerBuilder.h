@@ -39,10 +39,11 @@ namespace carto { namespace vt {
             long long id = 0;
             long long groupId = 0;
             boost::variant<Vertex, Vertices> position;
+            float priority = 0;
             float minimumGroupDistance = 0;
 
             PointLabelInfo() = default;
-            explicit PointLabelInfo(long long id, long long groupId, boost::variant<Vertex, Vertices> position, float minimumGroupDistance) : id(id), groupId(groupId), position(std::move(position)), minimumGroupDistance(minimumGroupDistance) { }
+            explicit PointLabelInfo(long long id, long long groupId, boost::variant<Vertex, Vertices> position, float priority, float minimumGroupDistance) : id(id), groupId(groupId), position(std::move(position)), priority(priority), minimumGroupDistance(minimumGroupDistance) { }
         };
 
         struct TextLabelInfo {
@@ -51,10 +52,11 @@ namespace carto { namespace vt {
             std::string text;
             boost::optional<Vertex> position;
             Vertices vertices;
+            float priority = 0;
             float minimumGroupDistance = 0;
 
             TextLabelInfo() = default;
-            explicit TextLabelInfo(long long id, long long groupId, std::string text, boost::optional<Vertex> position, Vertices vertices, float minimumGroupDistance) : id(id), groupId(groupId), text(std::move(text)), position(std::move(position)), vertices(std::move(vertices)), minimumGroupDistance(minimumGroupDistance) { }
+            explicit TextLabelInfo(long long id, long long groupId, std::string text, boost::optional<Vertex> position, Vertices vertices, float priority, float minimumGroupDistance) : id(id), groupId(groupId), text(std::move(text)), position(std::move(position)), vertices(std::move(vertices)), priority(priority), minimumGroupDistance(minimumGroupDistance) { }
         };
 
         explicit TileLayerBuilder(const TileId& tileId, int layerIdx, std::shared_ptr<const TileTransformer::VertexTransformer> transformer, float tileSize, float geomScale);

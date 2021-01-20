@@ -57,7 +57,7 @@ namespace carto { namespace mvt {
                 }
             }
             else {
-                labelInfos.emplace_back(localId, vt::TileLayerBuilder::TextLabelInfo(globalId * 3 + 1, groupId, text, vertex, vertices, minimumDistance));
+                labelInfos.emplace_back(localId, vt::TileLayerBuilder::TextLabelInfo(globalId * 3 + 1, groupId, text, vertex, vertices, _placementPriority, minimumDistance));
             }
         };
 
@@ -150,6 +150,9 @@ namespace carto { namespace mvt {
         else if (name == "clip") {
             bind(&_clip, parseExpression(value));
             _clipDefined = true;
+        }
+        else if (name == "placement-priority") {
+            bind(&_placementPriority, parseExpression(value));
         }
         else if (name == "minimum-distance") {
             bind(&_minimumDistance, parseExpression(value));

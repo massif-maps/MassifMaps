@@ -56,7 +56,7 @@ namespace carto { namespace mvt {
                 }
             }
             else {
-                labelInfos.emplace_back(localId, vt::TileLayerBuilder::TextLabelInfo(globalId * 3 + 2, groupId, text, vertex, vertices, minimumDistance));
+                labelInfos.emplace_back(localId, vt::TileLayerBuilder::TextLabelInfo(globalId * 3 + 2, groupId, text, vertex, vertices, _placementPriority, minimumDistance));
             }
         };
 

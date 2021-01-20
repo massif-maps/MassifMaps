@@ -352,9 +352,8 @@ namespace carto { namespace vt {
                 labelVertices.assign(tesselatedVertices.begin(), tesselatedVertices.end());
             }
 
-            auto pointLabel = std::make_shared<TileLabel>(_tileId, id, labelInfo.id, labelInfo.groupId, bitmapGlyphs, std::move(labelPosition), std::move(labelVertices), _labelStyle);
-            pointLabel->setMinimumGroupDistance(_tileSize * labelInfo.minimumGroupDistance);
-            pointLabel->setPriority(_layerIdx);
+            TileLabel::PlacementInfo placementInfo(labelInfo.priority, _tileSize * labelInfo.minimumGroupDistance);
+            auto pointLabel = std::make_shared<TileLabel>(_tileId, _layerIdx, id, labelInfo.id, labelInfo.groupId, bitmapGlyphs, std::move(labelPosition), std::move(labelVertices), _labelStyle, placementInfo);
             _labelList.push_back(std::move(pointLabel));
         }
     }
@@ -406,9 +405,8 @@ namespace carto { namespace vt {
                     labelVertices.assign(tesselatedVertices.begin(), tesselatedVertices.end());
                 }
 
-                auto textLabel = std::make_shared<TileLabel>(_tileId, id, labelInfo.id, labelInfo.groupId, std::move(glyphs), std::move(labelPosition), std::move(labelVertices), _labelStyle);
-                textLabel->setMinimumGroupDistance(_tileSize * labelInfo.minimumGroupDistance);
-                textLabel->setPriority(_layerIdx);
+                TileLabel::PlacementInfo placementInfo(labelInfo.priority, _tileSize * labelInfo.minimumGroupDistance);
+                auto textLabel = std::make_shared<TileLabel>(_tileId, _layerIdx, id, labelInfo.id, labelInfo.groupId, std::move(glyphs), std::move(labelPosition), std::move(labelVertices), _labelStyle, placementInfo);
                 _labelList.push_back(std::move(textLabel));
             }
         }

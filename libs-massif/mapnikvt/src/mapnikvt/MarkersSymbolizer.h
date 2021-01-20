@@ -51,6 +51,7 @@ namespace carto { namespace mvt {
         vt::FloatFunction _strokeWidthFunc; // 0.5f
         float _strokeWidthStatic = 0.5f;
         float _spacing = 100.0f;
+        float _placementPriority = 0.0f;
         bool _allowOverlap = false;
         bool _clip = false;
         bool _clipDefined = false;

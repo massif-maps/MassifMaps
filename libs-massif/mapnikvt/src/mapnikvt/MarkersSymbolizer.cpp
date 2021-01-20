@@ -133,7 +133,7 @@ namespace carto { namespace mvt {
                 }
             }
             else {
-                labelInfos.emplace_back(localId, vt::TileLayerBuilder::PointLabelInfo(globalId * 3 + 0, groupId, position, 0));
+                labelInfos.emplace_back(localId, vt::TileLayerBuilder::PointLabelInfo(globalId * 3 + 0, groupId, position, _placementPriority, 0));
             }
         };
 
@@ -300,6 +300,9 @@ namespace carto { namespace mvt {
         }
         else if (name == "spacing") {
             bind(&_spacing, parseExpression(value));
+        }
+        else if (name == "placement-priority") {
+            bind(&_placementPriority, parseExpression(value));
         }
         else if (name == "allow-overlap") {
             bind(&_allowOverlap, parseExpression(value));

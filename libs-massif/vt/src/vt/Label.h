@@ -34,17 +34,18 @@ namespace carto { namespace vt {
 
         long long getGlobalId() const { return _globalId; }
         long long getGroupId() const { return _groupId; }
-        const std::shared_ptr<const TileLabel::Style>& getStyle() const { return _style; }
         
-        cglib::vec3<float> getNormal() const { return _placement ? _placement->normal : cglib::vec3<float>(0, 0, 0); }
         TileId getTileId() const { return _placement ? _placement->tileId : _tileId; }
         long long getLocalId() const { return _placement ? _placement->localId : _localId; }
+        int getLayerIndex() const { return _layerIndex; }
+
+        const std::shared_ptr<const TileLabel::Style>& getStyle() const { return _style; }
+
+        cglib::vec3<float> getNormal() const { return _placement ? _placement->normal : cglib::vec3<float>(0, 0, 0); }
+        float getPriority() const { return _priority; }
+        float getMinimumGroupDistance() const { return _minimumGroupDistance; }
 
         bool isValid() const { return (bool) _placement; }
-
-        int getPriority() const { return _priority; }
-
-        float getMinimumGroupDistance() const { return _minimumGroupDistance; }
 
         float getOpacity() const { return _opacity; }
         void setOpacity(float opacity) { _opacity = opacity; }
@@ -185,12 +186,13 @@ namespace carto { namespace vt {
         std::shared_ptr<const Placement> findClippedLinePlacement(const ViewState& viewState, const std::list<TileLine>& tileLines) const;
 
         const TileId _tileId;
+        const int _layerIndex;
         const long long _localId;
         const long long _globalId;
         const long long _groupId;
         const std::vector<Font::Glyph> _glyphs;
         const std::shared_ptr<const TileLabel::Style> _style;
-        const int _priority;
+        const float _priority;
         const float _minimumGroupDistance;
 
         cglib::bbox2<float> _glyphBBox;

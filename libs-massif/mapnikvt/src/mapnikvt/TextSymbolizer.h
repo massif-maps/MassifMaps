@@ -62,6 +62,7 @@ namespace carto { namespace mvt {
         bool _orientationDefined = false;
         float _dx = 0.0f;
         float _dy = 0.0f;
+        float _placementPriority = 0.0f;
         float _minimumDistance = 0.0f;
         bool _allowOverlap = false;
         bool _clip = false;

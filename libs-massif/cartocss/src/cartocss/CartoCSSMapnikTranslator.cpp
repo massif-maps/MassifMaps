@@ -559,6 +559,7 @@ namespace carto { namespace css {
         { "point-opacity", "opacity" },
         { "point-allow-overlap", "allow-overlap" },
         { "point-ignore-placement", "ignore-placement" },
+        { "point-placement-priority", "placement-priority" },
         { "point-transform", "transform" },
         { "point-comp-op", "comp-op" },
 
@@ -587,6 +588,7 @@ namespace carto { namespace css {
         { "text-line-spacing", "line-spacing" },
         { "text-horizontal-alignment", "horizontal-alignment" },
         { "text-vertical-alignment", "vertical-alignment" },
+        { "text-placement-priority", "placement-priority" },
         { "text-comp-op", "comp-op" },
         { "text-clip", "clip" },
 
@@ -619,6 +621,7 @@ namespace carto { namespace css {
         { "shield-line-spacing", "line-spacing" },
         { "shield-horizontal-alignment", "horizontal-alignment" },
         { "shield-vertical-alignment", "vertical-alignment" },
+        { "shield-placement-priority", "placement-priority" },
         { "shield-comp-op", "comp-op" },
         { "shield-clip", "clip" },
 
@@ -637,6 +640,7 @@ namespace carto { namespace css {
         { "marker-spacing", "spacing" },
         { "marker-allow-overlap", "allow-overlap" },
         { "marker-ignore-placement", "ignore-placement" },
+        { "marker-placement-priority", "placement-priority" },
         { "marker-transform", "transform" },
         { "marker-comp-op", "comp-op" },
         { "marker-clip", "clip" },

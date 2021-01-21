@@ -35,7 +35,19 @@ namespace carto { namespace mvt {
         if (exprIt != exprCache.end()) {
             return exprIt->second;
         }
-        std::shared_ptr<Expression> expr = mvt::parseExpression(str, false);
+        std::shared_ptr<Expression> expr;
+        try {
+            expr = mvt::parseExpression(str, false);
+        }
+        catch (const ParserException& ex) {
+            try {
+                expr = mvt::parseExpression(str, true);
+            }
+            catch (const ParserException&) {
+                throw ex;
+            }
+            _logger->write(Logger::Severity::WARNING, "Internal issue: property marked as non-string property, but parsed as string property: " + str);
+        }
         if (exprCache.size() >= MAX_CACHE_SIZE) {
             exprCache.erase(exprCache.begin());
         }

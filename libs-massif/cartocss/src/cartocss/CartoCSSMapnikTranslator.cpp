@@ -524,6 +524,7 @@ namespace carto { namespace css {
         "distance",
         "spacing",
         "orientation",
+        "priority",
         "dx",
         "dy"
     };

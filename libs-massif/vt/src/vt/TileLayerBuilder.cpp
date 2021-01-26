@@ -11,10 +11,15 @@
 #include <tesselator.h>
 
 namespace {
-    static float calculateScale(const carto::vt::VertexArray<float>& values) {
+    static float calculateScale(const carto::vt::VertexArray<float>& values, const carto::vt::VertexArray<std::size_t>& indices) {
         float maxValue = 0.0f;
-        for (float value : values) {
-            maxValue = std::max(maxValue, std::abs(value));
+        if (!values.empty()) {
+            for (std::size_t index : indices) {
+                float value = values[index];
+                for (float value : values) {
+                    maxValue = std::max(maxValue, std::abs(value));
+                }
+            }
         }
         if (maxValue == 0.0f) {
             return 1.0f;
@@ -23,11 +28,14 @@ namespace {
     }
 
     template <typename T>
-    static float calculateScale(const carto::vt::VertexArray<T>& values) {
+    static float calculateScale(const carto::vt::VertexArray<T>& values, const carto::vt::VertexArray<std::size_t>& indices) {
         float maxValue = 0.0f;
-        for (const T& value : values) {
-            for (auto it = value.cbegin(); it != value.cend(); it++) {
-                maxValue = std::max(maxValue, std::abs(static_cast<float>(*it)));
+        if (!values.empty()) {
+            for (std::size_t index : indices) {
+                const T& value = values[index];
+                for (auto it = value.cbegin(); it != value.cend(); it++) {
+                    maxValue = std::max(maxValue, std::abs(static_cast<float>(*it)));
+                }
             }
         }
         if (maxValue == 0.0f) {
@@ -561,7 +569,11 @@ namespace carto { namespace vt {
         }
 
         // Pack geometry
-        packGeometry(_builderParameters.type, dimensions, calculateScale(coords), calculateScale(binormals), calculateScale(texCoords), calculateScale(heights), coords, texCoords, normals, binormals, heights, attribs, _indices, _ids, styleParameters, geometryList);
+        float coordScale = calculateScale(coords, _indices);
+        float binormalScale = calculateScale(binormals, _indices);
+        float texCoordScale = calculateScale(texCoords, _indices);
+        float heightScale = calculateScale(heights, _indices);
+        packGeometry(_builderParameters.type, dimensions, coordScale, binormalScale, texCoordScale, heightScale, coords, texCoords, normals, binormals, heights, attribs, _indices, _ids, styleParameters, geometryList);
     }
 
     void TileLayerBuilder::packGeometry(TileGeometry::Type type, int dimensions, float coordScale, float binormalScale, float texCoordScale, float heightScale, const VertexArray<cglib::vec3<float>>& coords, const VertexArray<cglib::vec2<float>>& texCoords, const VertexArray<cglib::vec3<float>>& normals, const VertexArray<cglib::vec3<float>>& binormals, const VertexArray<float>& heights, const VertexArray<cglib::vec4<std::int8_t>>& attribs, const VertexArray<std::size_t>& indices, const VertexArray<long long>& ids, const TileGeometry::StyleParameters& styleParameters, std::vector<std::shared_ptr<TileGeometry>>& geometryList) const {

@@ -1680,7 +1680,7 @@ namespace carto { namespace vt {
             if (styleParams.pattern) {
                 std::array<float, TileGeometry::StyleParameters::MAX_PARAMETERS> strokeScales;
                 for (int i = 0; i < styleParams.parameterCount; i++) {
-                    float strokeScale = STROKE_UV_SCALE / styleParams.pattern->bitmap->width / styleParams.strokeScales[i] / 127.0f / (_fullResolution / tile->getTileSize());
+                    float strokeScale = (styleParams.strokeScales[i] > 0 ? STROKE_UV_SCALE / styleParams.pattern->bitmap->width / styleParams.strokeScales[i] / 127.0f / (_fullResolution / tile->getTileSize()) : 0.0f);
                     strokeScales[i] = strokeScale * std::pow(2.0f, std::floor(_viewState.zoom) - _viewState.zoom);
                 }
                 glUniform1fv(shaderProgram.uniforms[U_STROKESCALETABLE], styleParams.parameterCount, strokeScales.data());

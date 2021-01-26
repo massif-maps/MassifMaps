@@ -568,12 +568,64 @@ namespace carto { namespace vt {
             dimensions = 3;
         }
 
-        // Pack geometry
+        // Split/repack geometry
         float coordScale = calculateScale(coords, _indices);
         float binormalScale = calculateScale(binormals, _indices);
         float texCoordScale = calculateScale(texCoords, _indices);
         float heightScale = calculateScale(heights, _indices);
-        packGeometry(_builderParameters.type, dimensions, coordScale, binormalScale, texCoordScale, heightScale, coords, texCoords, normals, binormals, heights, attribs, _indices, _ids, styleParameters, geometryList);
+        for (std::size_t offset = 0; offset < _indices.size(); ) {
+            std::size_t count = std::min(std::size_t(65535), _indices.size() - offset);
+
+            std::vector<std::size_t> indexTable(coords.size(), 65536);
+            VertexArray<cglib::vec3<float>> remappedCoords;
+            remappedCoords.reserve(coords.size());
+            VertexArray<cglib::vec4<std::int8_t>> remappedAttribs;
+            remappedAttribs.reserve(attribs.size());
+            VertexArray<cglib::vec2<float>> remappedTexCoords;
+            remappedTexCoords.reserve(texCoords.size());
+            VertexArray<cglib::vec3<float>> remappedNormals;
+            remappedNormals.reserve(normals.size());
+            VertexArray<cglib::vec3<float>> remappedBinormals;
+            remappedBinormals.reserve(binormals.size());
+            VertexArray<float> remappedHeights;
+            remappedHeights.reserve(heights.size());
+            VertexArray<std::size_t> remappedIndices;
+            remappedIndices.reserve(count);
+            VertexArray<long long> remappedIds;
+            remappedIds.reserve(count);
+            for (std::size_t i = 0; i < count; i++) {
+                std::size_t index = _indices[offset + i];
+                std::size_t remappedIndex = indexTable[index];
+                if (remappedIndex == 65536) {
+                    remappedIndex = remappedCoords.size();
+                    indexTable[index] = remappedIndex;
+
+                    remappedCoords.append(coords[index]);
+                    if (!attribs.empty()) {
+                        remappedAttribs.append(attribs[index]);
+                    }
+                    if (!texCoords.empty()) {
+                        remappedTexCoords.append(texCoords[index]);
+                    }
+                    if (!normals.empty()) {
+                        remappedNormals.append(normals[index]);
+                    }
+                    if (!binormals.empty()) {
+                        remappedBinormals.append(binormals[index]);
+                    }
+                    if (!heights.empty()) {
+                        remappedHeights.append(heights[index]);
+                    }
+                }
+
+                remappedIndices.append(remappedIndex);
+                remappedIds.append(_ids[offset + i]);
+            }
+
+            packGeometry(_builderParameters.type, dimensions, coordScale, binormalScale, texCoordScale, heightScale, remappedCoords, remappedTexCoords, remappedNormals, remappedBinormals, remappedHeights, remappedAttribs, remappedIndices, remappedIds, styleParameters, geometryList);
+
+            offset += count;
+        }
     }
 
     void TileLayerBuilder::packGeometry(TileGeometry::Type type, int dimensions, float coordScale, float binormalScale, float texCoordScale, float heightScale, const VertexArray<cglib::vec3<float>>& coords, const VertexArray<cglib::vec2<float>>& texCoords, const VertexArray<cglib::vec3<float>>& normals, const VertexArray<cglib::vec3<float>>& binormals, const VertexArray<float>& heights, const VertexArray<cglib::vec4<std::int8_t>>& attribs, const VertexArray<std::size_t>& indices, const VertexArray<long long>& ids, const TileGeometry::StyleParameters& styleParameters, std::vector<std::shared_ptr<TileGeometry>>& geometryList) const {
@@ -581,56 +633,6 @@ namespace carto { namespace vt {
             return;
         }
         
-        // Check if we have to split indices into multiple sets (if we can not use 16-bit indices)
-        if (coords.size() > 65535) {
-            for (std::size_t offset = 0; offset < indices.size(); ) {
-                std::size_t count = std::min(std::size_t(65535), indices.size() - offset);
-
-                std::vector<std::size_t> indexTable(indices.size(), 65536);
-                VertexArray<cglib::vec3<float>> remappedCoords;
-                VertexArray<cglib::vec2<float>> remappedTexCoords;
-                VertexArray<cglib::vec3<float>> remappedNormals;
-                VertexArray<cglib::vec3<float>> remappedBinormals;
-                VertexArray<float> remappedHeights;
-                VertexArray<cglib::vec4<std::int8_t>> remappedAttribs;
-                VertexArray<std::size_t> remappedIndices;
-                VertexArray<long long> remappedIds;
-                for (std::size_t i = 0; i < count; i++) {
-                    std::size_t index = indices[offset + i];
-                    std::size_t remappedIndex = indexTable[index];
-                    if (remappedIndex == 65536) {
-                        remappedIndex = remappedCoords.size();
-                        indexTable[index] = remappedIndex;
-
-                        remappedCoords.append(coords[index]);
-                        if (!attribs.empty()) {
-                            remappedAttribs.append(attribs[index]);
-                        }
-                        if (!texCoords.empty()) {
-                            remappedTexCoords.append(texCoords[index]);
-                        }
-                        if (!normals.empty()) {
-                            remappedNormals.append(normals[index]);
-                        }
-                        if (!binormals.empty()) {
-                            remappedBinormals.append(binormals[index]);
-                        }
-                        if (!heights.empty()) {
-                            remappedHeights.append(heights[index]);
-                        }
-                    }
-                    
-                    remappedIndices.append(remappedIndex);
-                    remappedIds.append(ids[offset + i]);
-                }
-
-                packGeometry(type, dimensions, coordScale, binormalScale, texCoordScale, heightScale, remappedCoords, remappedTexCoords, remappedNormals, remappedBinormals, remappedHeights, remappedAttribs, remappedIndices, remappedIds, styleParameters, geometryList);
-
-                offset += count;
-            }
-            return;
-        }
-
         // Build geometry layout info
         TileGeometry::VertexGeometryLayoutParameters vertexGeomLayoutParams;
         vertexGeomLayoutParams.dimensions = dimensions;

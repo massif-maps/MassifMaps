@@ -82,17 +82,15 @@ namespace carto { namespace mbvtbuilder {
                 const Point& p1 = coordsList[i];
                 Point q0 = oldMask ? clipSegment(p0, p1, oldMask, 0) : p0;
                 Point q1 = newMask ? clipSegment(p0, p1, newMask, 1) : p1;
-                if (cglib::norm(q1 - p0) > cglib::norm(q0 - p0)) {
-                    if (oldMask) {
-                        clippedCoordsList.push_back(q0);
+                if (oldMask && q0 != q1) {
+                    clippedCoordsList.push_back(q0);
+                }
+                clippedCoordsList.push_back(q1);
+                if (newMask) {
+                    if (clippedCoordsList.size() >= 2) {
+                        clippedSegments.push_back(std::move(clippedCoordsList));
                     }
-                    clippedCoordsList.push_back(q1);
-                    if (newMask) {
-                        if (clippedCoordsList.size() >= 2) {
-                            clippedSegments.push_back(std::move(clippedCoordsList));
-                        }
-                        clippedCoordsList.clear();
-                    }
+                    clippedCoordsList.clear();
                 }
             }
 
@@ -143,7 +141,7 @@ namespace carto { namespace mbvtbuilder {
                 const Point& p1 = coordsList[i];
                 Point q0 = oldMask ? clipSegment(p0, p1, oldMask, 0) : p0;
                 Point q1 = newMask ? clipSegment(p0, p1, newMask, 1) : p1;
-                if (cglib::norm(q1 - p0) > cglib::norm(q0 - p0)) {
+                if (q0 != q1) {
                     pushClippedCoordinate(clippedCoordsList, q0, oldMask);
                     pushClippedCoordinate(clippedCoordsList, q1, newMask);
                 } else {

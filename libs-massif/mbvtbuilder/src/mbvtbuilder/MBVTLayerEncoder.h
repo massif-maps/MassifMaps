@@ -33,8 +33,8 @@ namespace carto { namespace mbvtbuilder {
         protobuf::encoded_message buildLayer() const;
 
     private:
-        static constexpr int DEFAULT_LAYER_VERSION = 2;
-        static constexpr int DEFAULT_LAYER_EXTENT = 4096;
+        inline static constexpr int DEFAULT_LAYER_VERSION = 2;
+        inline static constexpr int DEFAULT_LAYER_EXTENT = 4096;
 
         void importEncodedFeature(std::uint64_t id, int type, const std::vector<std::uint32_t>& geometry, const picojson::value& properties);
         void importProperty(const std::string& key, const picojson::value& value, std::vector<std::uint32_t>& tags);

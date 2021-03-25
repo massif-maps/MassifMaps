@@ -8,10 +8,10 @@
 #define _CARTO_MBVTBUILDER_MBVTTILEBUILDER_H_
 
 #include <cstdint>
+#include <variant>
 #include <vector>
 #include <mutex>
 
-#include <boost/variant.hpp>
 #include <boost/math/constants/constants.hpp>
 
 #include <cglib/vec.h>
@@ -56,9 +56,9 @@ namespace carto { namespace mbvtbuilder {
         void buildTiles(std::function<void(int, int, int, const protobuf::encoded_message&)> handler) const;
 
     private:
-        using Geometry = boost::variant<MultiPoint, MultiLineString, MultiPolygon>;
+        using Geometry = std::variant<MultiPoint, MultiLineString, MultiPolygon>;
 
-        static constexpr float DEFAULT_LAYER_BUFFER = 4.0 / 256.0f;
+        inline static constexpr float DEFAULT_LAYER_BUFFER = 4.0 / 256.0f;
 
         struct Feature {
             std::uint64_t id = 0;
@@ -74,9 +74,9 @@ namespace carto { namespace mbvtbuilder {
             float buffer = 0;
         };
 
-        static constexpr double PI = boost::math::constants::pi<double>();
-        static constexpr double EARTH_RADIUS = 6378137.0;
-        static constexpr double TILE_TOLERANCE = 1.0 / 256.0;
+        inline static constexpr double PI = boost::math::constants::pi<double>();
+        inline static constexpr double EARTH_RADIUS = 6378137.0;
+        inline static constexpr double TILE_TOLERANCE = 1.0 / 256.0;
 
         const std::map<LayerIndex, Layer>& simplifyAndCacheLayers(int zoom) const;
         void invalidateCache() const;

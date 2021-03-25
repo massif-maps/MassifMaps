@@ -278,7 +278,7 @@ namespace carto { namespace mbvtbuilder {
     }
 
     void MBVTTileBuilder::simplifyLayer(Layer& layer, double tolerance) {
-        struct GeometryVisitor : boost::static_visitor<> {
+        struct GeometryVisitor {
             explicit GeometryVisitor(double tolerance) : _simplifier(tolerance) { }
 
             void operator() (MultiPoint& coords) {
@@ -309,12 +309,12 @@ namespace carto { namespace mbvtbuilder {
 
         for (Feature& feature : layer.features) {
             GeometryVisitor visitor(tolerance);
-            boost::apply_visitor(visitor, feature.geometry);
+            std::visit(visitor, feature.geometry);
         }
     }
 
     bool MBVTTileBuilder::encodeLayer(const Layer& layer, const Point& tileOrigin, double tileSize, const Bounds& tileBounds, MBVTLayerEncoder& layerEncoder) {
-        struct GeometryVisitor : boost::static_visitor<bool> {
+        struct GeometryVisitor {
             explicit GeometryVisitor(const Point& tileOrigin, double tileSize, const Bounds& tileBounds, std::uint64_t id, const picojson::value& properties, MBVTLayerEncoder& layerEncoder) : _tileOrigin(tileOrigin), _tileScale(1.0 / tileSize), _clipper(tileBounds), _id(id), _properties(properties), _layerEncoder(layerEncoder) { }
 
             bool operator() (const MultiPoint& coords) {
@@ -391,7 +391,7 @@ namespace carto { namespace mbvtbuilder {
             }
 
             GeometryVisitor visitor(tileOrigin, tileSize, tileBounds, feature.id, feature.properties, layerEncoder);
-            if (boost::apply_visitor(visitor, feature.geometry)) {
+            if (std::visit(visitor, feature.geometry)) {
                 featuresAdded = true;
             }
         }

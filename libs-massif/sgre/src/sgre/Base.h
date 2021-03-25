@@ -8,10 +8,9 @@
 #define _CARTO_SGRE_BASE_H_
 
 #include <string>
+#include <variant>
 #include <map>
 #include <functional>
-
-#include <boost/variant.hpp>
 
 #include <cglib/vec.h>
 
@@ -22,13 +21,13 @@ namespace carto { namespace sgre {
 
     using FeatureFilter = picojson::object;
 
-    using FloatParameter = boost::variant<boost::blank, float, std::string>;
+    using FloatParameter = std::variant<std::monostate, float, std::string>;
 
-    struct FloatParameterEvaluator : boost::static_visitor<float> {
+    struct FloatParameterEvaluator {
         FloatParameterEvaluator() = delete;
         explicit FloatParameterEvaluator(const std::map<std::string, float>& paramValues, float defaultValue) : _paramValues(paramValues), _defaultValue(defaultValue) { }
 
-        float operator() (boost::blank) const { return _defaultValue; }
+        float operator() (std::monostate) const { return _defaultValue; }
         float operator() (float value) const { return value; }
         float operator() (const std::string& paramName) const { auto it = _paramValues.find(paramName); return (it != _paramValues.end() ? it->second : _defaultValue); }
 

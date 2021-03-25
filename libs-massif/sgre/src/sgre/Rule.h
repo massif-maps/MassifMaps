@@ -11,11 +11,10 @@
 #include "Graph.h"
 
 #include <string>
+#include <optional>
 #include <array>
 #include <vector>
 #include <map>
-
-#include <boost/optional.hpp>
 
 #include <picojson/picojson.h>
 
@@ -24,10 +23,10 @@ namespace carto { namespace sgre {
     public:
         Rule() = default;
 
-        const boost::optional<std::vector<std::string>>& getProfiles() const { return _profiles; }
-        const boost::optional<std::vector<FeatureFilter>>& getFilters() const { return _filters; }
-        const boost::optional<Graph::LinkMode>& getLinkMode() const { return _linkMode; }
-        const boost::optional<Graph::SearchCriteria>& getSearchCriteria() const { return _searchCriteria; }
+        const std::optional<std::vector<std::string>>& getProfiles() const { return _profiles; }
+        const std::optional<std::vector<FeatureFilter>>& getFilters() const { return _filters; }
+        const std::optional<Graph::LinkMode>& getLinkMode() const { return _linkMode; }
+        const std::optional<Graph::SearchCriteria>& getSearchCriteria() const { return _searchCriteria; }
 
         void apply(Graph::Attributes& attribs, bool forward) const;
 
@@ -37,10 +36,10 @@ namespace carto { namespace sgre {
         static FloatParameter readFloatParameter(const picojson::value& ruleDef, const std::string& paramName);
         static std::array<FloatParameter, 2> readDirectionalFloatParameters(const picojson::value& ruleDef, const std::string& paramName);
 
-        boost::optional<std::vector<std::string>> _profiles;
-        boost::optional<std::vector<FeatureFilter>> _filters;
-        boost::optional<Graph::LinkMode> _linkMode;
-        boost::optional<Graph::SearchCriteria> _searchCriteria;
+        std::optional<std::vector<std::string>> _profiles;
+        std::optional<std::vector<FeatureFilter>> _filters;
+        std::optional<Graph::LinkMode> _linkMode;
+        std::optional<Graph::SearchCriteria> _searchCriteria;
 
         std::array<FloatParameter, 2> _speed;
         std::array<FloatParameter, 2> _zSpeed;

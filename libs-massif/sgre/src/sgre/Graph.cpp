@@ -238,7 +238,7 @@ namespace carto { namespace sgre {
         return bestResults;
     }
 
-    boost::optional<Point> StaticGraph::findNearestEdgePoint(const Edge& edge, const Point& pos, const cglib::vec3<double>& scale) const {
+    std::optional<Point> StaticGraph::findNearestEdgePoint(const Edge& edge, const Point& pos, const cglib::vec3<double>& scale) const {
         const Node& node0 = getNode(edge.nodeIds[0]);
         const Node& node1 = getNode(edge.nodeIds[1]);
 
@@ -264,7 +264,7 @@ namespace carto { namespace sgre {
         // Handle the edge based on its search criteria. Some cases are very tricky and the code depends on the graph builder.
         switch (edge.searchCriteria) {
         case SearchCriteria::NONE:
-            return boost::optional<Point>();
+            return std::optional<Point>();
         case SearchCriteria::VERTEX:
             if (node0.nodeFlags & NodeFlags::GEOMETRY_VERTEX) {
                 if (node1.nodeFlags & NodeFlags::GEOMETRY_VERTEX) {
@@ -274,7 +274,7 @@ namespace carto { namespace sgre {
             } else if (node1.nodeFlags & NodeFlags::GEOMETRY_VERTEX) {
                 return node1.points[i1];
             }
-            return boost::optional<Point>();
+            return std::optional<Point>();
         case SearchCriteria::FIRST_LAST_VERTEX:
             if (node0.nodeFlags & NodeFlags::ENDPOINT_VERTEX) {
                 if (node1.nodeFlags & NodeFlags::ENDPOINT_VERTEX) {
@@ -284,7 +284,7 @@ namespace carto { namespace sgre {
             } else if (node1.nodeFlags & NodeFlags::ENDPOINT_VERTEX) {
                 return node1.points[i1];
             }
-            return boost::optional<Point>();
+            return std::optional<Point>();
         case SearchCriteria::EDGE:
             if (edge.edgeFlags & EdgeFlags::GEOMETRY_EDGE) {
                 if (pointOnLine(std::array<cglib::vec3<double>, 2> {{ node0.points[1 - i0], node1.points[1 - i1] }}, pos)) {
@@ -293,7 +293,7 @@ namespace carto { namespace sgre {
                 Point closestScaled = closestPointOnLine(std::array<cglib::vec3<double>, 2> {{ node0PointsScaled[1 - i0], node1PointsScaled[1 - i1] }}, posScaled);
                 return cglib::pointwise_product(closestScaled, invScale);
             }
-            return boost::optional<Point>();
+            return std::optional<Point>();
         case SearchCriteria::SURFACE:
             if (node0.points[i0] == node1.points[i1]) {
                 if (pointInsideTriangle(std::array<cglib::vec3<double>, 3> {{ node0.points[i0], node0.points[1 - i0], node1.points[1 - i1] }}, pos)) {
@@ -310,7 +310,7 @@ namespace carto { namespace sgre {
             }
         }
 
-        return boost::optional<Point>();
+        return std::optional<Point>();
     }
 
     std::shared_ptr<StaticGraph::RTreeNode> StaticGraph::buildRTree(const cglib::bbox3<double>& bounds, std::vector<EdgeId> edgeIds) const {

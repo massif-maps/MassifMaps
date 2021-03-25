@@ -10,11 +10,10 @@
 #include "Base.h"
 
 #include <memory>
+#include <optional>
 #include <array>
 #include <vector>
 #include <unordered_map>
-
-#include <boost/optional.hpp>
 
 #include <cglib/bbox.h>
 
@@ -120,7 +119,7 @@ namespace carto { namespace sgre {
             std::array<std::shared_ptr<RTreeNode>, 2> subNodes;
         };
         
-        boost::optional<Point> findNearestEdgePoint(const Edge& edge, const Point& pos, const cglib::vec3<double>& scale) const;
+        std::optional<Point> findNearestEdgePoint(const Edge& edge, const Point& pos, const cglib::vec3<double>& scale) const;
 
         std::shared_ptr<RTreeNode> buildRTree(const cglib::bbox3<double>& bounds, std::vector<EdgeId> edgeIds) const;
 

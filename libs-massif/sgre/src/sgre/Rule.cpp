@@ -3,16 +3,16 @@
 namespace carto { namespace sgre {
     void Rule::apply(Graph::Attributes& attribs, bool forward) const {
         int ruleIndex = forward ? 0 : 1;
-        if (_speed[ruleIndex].which() != 0) {
+        if (_speed[ruleIndex].index() != 0) {
             attribs.speed = _speed[ruleIndex];
         }
-        if (_zSpeed[ruleIndex].which() != 0) {
+        if (_zSpeed[ruleIndex].index() != 0) {
             attribs.zSpeed = _zSpeed[ruleIndex];
         }
-        if (_turnSpeed[ruleIndex].which() != 0) {
+        if (_turnSpeed[ruleIndex].index() != 0) {
             attribs.turnSpeed = _turnSpeed[ruleIndex];
         }
-        if (_delay[ruleIndex].which() != 0) {
+        if (_delay[ruleIndex].index() != 0) {
             attribs.delay = _delay[ruleIndex];
         }
     }

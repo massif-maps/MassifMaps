@@ -83,15 +83,15 @@ namespace carto { namespace sgre {
             const Graph::Attributes& baseAttribs = graph->getAttributes(attribsId);
 
             EvaluatedAttributes attribs;
-            attribs.speed = boost::apply_visitor(FloatParameterEvaluator(_paramValues, DEFAULT_SPEED), baseAttribs.speed);
-            attribs.zSpeed = boost::apply_visitor(FloatParameterEvaluator(_paramValues, DEFAULT_ZSPEED), baseAttribs.zSpeed);
-            attribs.turnSpeed = boost::apply_visitor(FloatParameterEvaluator(_paramValues, DEFAULT_TURNSPEED), baseAttribs.turnSpeed);
-            attribs.delay = boost::apply_visitor(FloatParameterEvaluator(_paramValues, DEFAULT_DELAY), baseAttribs.delay);
+            attribs.speed = std::visit(FloatParameterEvaluator(_paramValues, DEFAULT_SPEED), baseAttribs.speed);
+            attribs.zSpeed = std::visit(FloatParameterEvaluator(_paramValues, DEFAULT_ZSPEED), baseAttribs.zSpeed);
+            attribs.turnSpeed = std::visit(FloatParameterEvaluator(_paramValues, DEFAULT_TURNSPEED), baseAttribs.turnSpeed);
+            attribs.delay = std::visit(FloatParameterEvaluator(_paramValues, DEFAULT_DELAY), baseAttribs.delay);
             attributesTable[attribsId] = attribs;
         }
 
         // Try to find the fastest route
-        boost::optional<Route> route = findFastestRoute(*graph, attributesTable, initialNodeIds, finalNodeIds, lngScale, _routeOptions.tesselationDistance);
+        std::optional<Route> route = findFastestRoute(*graph, attributesTable, initialNodeIds, finalNodeIds, lngScale, _routeOptions.tesselationDistance);
         if (!route) {
             return Result();
         }
@@ -402,7 +402,7 @@ namespace carto { namespace sgre {
         return optimizedRoute;
     }
 
-    boost::optional<RouteFinder::Route> RouteFinder::findFastestRoute(const Graph& graph, const EvaluatedAttributesTable& attributesTable, const std::vector<Graph::NodeId>& initialNodeIds, const std::vector<Graph::NodeId>& finalNodeIds, double lngScale, double tesselationDistance) {
+    std::optional<RouteFinder::Route> RouteFinder::findFastestRoute(const Graph& graph, const EvaluatedAttributesTable& attributesTable, const std::vector<Graph::NodeId>& initialNodeIds, const std::vector<Graph::NodeId>& finalNodeIds, double lngScale, double tesselationDistance) {
         struct NodeRecord {
             double time; // best estimated time to final some from some initial node. Estimated time must not exceed actual time.
             Graph::NodeId nodeId;
@@ -514,7 +514,7 @@ namespace carto { namespace sgre {
 
         // Success?
         if (finalNodeId == Graph::NodeId(-1)) {
-            return boost::optional<Route>();
+            return std::optional<Route>();
         }
 
         // Reconstruct the fastest route backwards.

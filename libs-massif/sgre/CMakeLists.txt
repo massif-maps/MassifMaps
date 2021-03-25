@@ -1,17 +1,14 @@
 cmake_minimum_required(VERSION 3.1)
 project(sgre)
 
-if(WIN32)
+if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
 add_definitions("-D_SCL_SECURE_NO_WARNINGS -D_CRT_SECURE_NO_WARNINGS")
-endif(WIN32)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++17")
+endif()
 
-if(APPLE)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11") 
-endif(APPLE)
-
-if(CMAKE_COMPILER_IS_GNUCXX)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11") 
-endif(CMAKE_COMPILER_IS_GNUCXX)
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
+endif()
 
 set(sgre_SRC_DIR "${PROJECT_SOURCE_DIR}/src/sgre")
 set(sgre_LIBS_DIR "${PROJECT_SOURCE_DIR}/../libs-external")

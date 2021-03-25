@@ -7,241 +7,106 @@
 #ifndef _CARTO_MAPNIKVT_EXPRESSION_H_
 #define _CARTO_MAPNIKVT_EXPRESSION_H_
 
-#include "Value.h"
+#include "ExpressionPredicateBase.h"
 #include "ValueConverter.h"
-#include "ExpressionContext.h"
 
 #include <memory>
+#include <variant>
 #include <functional>
 #include <vector>
 
 #include <cglib/fcurve.h>
 
 namespace carto { namespace mvt {
-    class Predicate;
-    
-    class Expression : public std::enable_shared_from_this<Expression> {
+    class ExpressionContext;
+
+    class VariableExpression final {
     public:
-        virtual ~Expression() = default;
+        explicit VariableExpression(std::string variableName) : _variableExpr(Value(std::move(variableName))) { }
+        explicit VariableExpression(Expression variableExpr) : _variableExpr(std::move(variableExpr)) { }
 
-        virtual Value evaluate(const ExpressionContext& context) const = 0;
+        const Expression& getVariableExpression() const { return _variableExpr; }
 
-        virtual bool equals(const std::shared_ptr<const Expression>& expr) const = 0;
-
-        virtual std::shared_ptr<const Expression> map(std::function<std::shared_ptr<const Expression>(const std::shared_ptr<const Expression>&)> fn) const = 0;
-
-        virtual void fold(std::function<void(const std::shared_ptr<const Expression>&)> fn) const = 0;
-    };
-
-    class ConstExpression : public Expression {
-    public:
-        explicit ConstExpression(Value constant) : _constant(std::move(constant)) { }
-
-        const Value& getConstant() const { return _constant; }
-
-        virtual Value evaluate(const ExpressionContext& context) const override {
-            return _constant;
-        }
-
-        virtual bool equals(const std::shared_ptr<const Expression>& expr) const override {
-            if (auto constExpr = std::dynamic_pointer_cast<const ConstExpression>(expr)) {
-                return constExpr->_constant == _constant;
-            }
-            return false;
-        }
-        
-        virtual std::shared_ptr<const Expression> map(std::function<std::shared_ptr<const Expression>(const std::shared_ptr<const Expression>&)> fn) const override {
-            return fn(shared_from_this());
-        }
-
-        virtual void fold(std::function<void(const std::shared_ptr<const Expression>&)> fn) const override {
-            fn(shared_from_this());
-        }
+        std::string getVariableName(const ExpressionContext&) const;
 
     private:
-        const Value _constant;
+        const Expression _variableExpr;
     };
 
-    class VariableExpression : public Expression {
+    class UnaryExpression final {
     public:
-        explicit VariableExpression(std::string variableName) : _variableExpr(std::make_shared<ConstExpression>(Value(std::move(variableName)))) { }
-        explicit VariableExpression(std::shared_ptr<const Expression> variableExpr) : _variableExpr(std::move(variableExpr)) { }
-
-        const std::shared_ptr<const Expression>& getVariableExpression() const { return _variableExpr; }
-        std::string getVariableName(const ExpressionContext& context) const { return ValueConverter<std::string>::convert(_variableExpr->evaluate(context)); }
-
-        virtual Value evaluate(const ExpressionContext& context) const override {
-            return context.getVariable(getVariableName(context));
-        }
-
-        virtual bool equals(const std::shared_ptr<const Expression>& expr) const override {
-            if (auto varExpr = std::dynamic_pointer_cast<const VariableExpression>(expr)) {
-                return varExpr->_variableExpr->equals(_variableExpr);
-            }
-            return false;
-        }
-
-        virtual std::shared_ptr<const Expression> map(std::function<std::shared_ptr<const Expression>(const std::shared_ptr<const Expression>&)> fn) const override {
-            return fn(shared_from_this());
-        }
-
-        virtual void fold(std::function<void(const std::shared_ptr<const Expression>&)> fn) const override {
-            fn(shared_from_this());
-            _variableExpr->fold(fn);
-        }
-    
-    private:
-        const std::shared_ptr<const Expression> _variableExpr;
-    };
-
-    class PredicateExpression : public Expression {
-    public:
-        explicit PredicateExpression(std::shared_ptr<const Predicate> pred) : _pred(std::move(pred)) { }
-
-        const std::shared_ptr<const Predicate>& getPredicate() const { return _pred; }
-
-        virtual Value evaluate(const ExpressionContext& context) const override;
-
-        virtual bool equals(const std::shared_ptr<const Expression>& expr) const override;
-
-        virtual std::shared_ptr<const Expression> map(std::function<std::shared_ptr<const Expression>(const std::shared_ptr<const Expression>&)> fn) const override;
-
-        virtual void fold(std::function<void(const std::shared_ptr<const Expression>&)> fn) const override;
-
-    private:
-        const std::shared_ptr<const Predicate> _pred;
-    };
-
-    class UnaryExpression : public Expression {
-    public:
-        struct Operator {
-            virtual ~Operator() = default;
-
-            virtual Value apply(const Value& val) const = 0;
+        enum class Op {
+            NEG,
+            EXP,
+            LOG,
+            LENGTH,
+            LOWER,
+            UPPER,
+            CAPITALIZE
         };
 
-        explicit UnaryExpression(std::shared_ptr<const Operator> op, std::shared_ptr<const Expression> expr) : _op(std::move(op)), _expr(std::move(expr)) { }
+        explicit UnaryExpression(Op op, Expression expr) : _op(op), _expr(std::move(expr)) { }
 
-        const std::shared_ptr<const Operator>& getOperator() const { return _op; }
-        const std::shared_ptr<const Expression>& getExpression() const { return _expr; }
+        Op getOp() const { return _op; }
+        const Expression& getExpression() const { return _expr; }
 
-        virtual Value evaluate(const ExpressionContext& context) const override {
-            return _op->apply(_expr->evaluate(context));
-        }
+        static Value applyOp(Op op, const Value& val);
 
-        virtual bool equals(const std::shared_ptr<const Expression>& expr) const override {
-            if (auto unaryExpr = std::dynamic_pointer_cast<const UnaryExpression>(expr)) {
-                return unaryExpr->_op == _op && unaryExpr->_expr->equals(_expr);
-            }
-            return false;
-        }
-
-        virtual std::shared_ptr<const Expression> map(std::function<std::shared_ptr<const Expression>(const std::shared_ptr<const Expression>&)> fn) const override {
-            std::shared_ptr<const Expression> expr = fn(_expr);
-            return fn(std::make_shared<UnaryExpression>(_op, expr));
-        }
-
-        virtual void fold(std::function<void(const std::shared_ptr<const Expression>&)> fn) const override {
-            fn(shared_from_this());
-            _expr->fold(fn);
-        }
-    
     private:
-        const std::shared_ptr<const Operator> _op;
-        const std::shared_ptr<const Expression> _expr;
+        const Op _op;
+        const Expression _expr;
     };
 
-    class BinaryExpression : public Expression {
+    class BinaryExpression final {
     public:
-        struct Operator {
-            virtual ~Operator() = default;
-
-            virtual Value apply(const Value& val1, const Value& val2) const = 0;
+        enum class Op {
+            ADD,
+            SUB,
+            MUL,
+            DIV,
+            MOD,
+            POW,
+            CONCAT
         };
 
-        explicit BinaryExpression(std::shared_ptr<const Operator> op, std::shared_ptr<const Expression> expr1, std::shared_ptr<const Expression> expr2) : _op(std::move(op)), _expr1(std::move(expr1)), _expr2(std::move(expr2)) { }
+        explicit BinaryExpression(Op op, Expression expr1, Expression expr2) : _op(op), _expr1(std::move(expr1)), _expr2(std::move(expr2)) { }
 
-        const std::shared_ptr<const Operator>& getOperator() const { return _op; }
-        const std::shared_ptr<const Expression>& getExpression1() const { return _expr1; }
-        const std::shared_ptr<const Expression>& getExpression2() const { return _expr2; }
+        Op getOp() const { return _op; }
+        const Expression& getExpression1() const { return _expr1; }
+        const Expression& getExpression2() const { return _expr2; }
 
-        virtual Value evaluate(const ExpressionContext& context) const override {
-            return _op->apply(_expr1->evaluate(context), _expr2->evaluate(context));
-        }
-
-        virtual bool equals(const std::shared_ptr<const Expression>& expr) const override {
-            if (auto binaryExpr = std::dynamic_pointer_cast<const BinaryExpression>(expr)) {
-                return binaryExpr->_op == _op && binaryExpr->_expr1->equals(_expr1) && binaryExpr->_expr2->equals(_expr2);
-            }
-            return false;
-        }
-
-        virtual std::shared_ptr<const Expression> map(std::function<std::shared_ptr<const Expression>(const std::shared_ptr<const Expression>&)> fn) const override {
-            std::shared_ptr<const Expression> expr1 = fn(_expr1);
-            std::shared_ptr<const Expression> expr2 = fn(_expr2);
-            return fn(std::make_shared<BinaryExpression>(_op, expr1, expr2));
-        }
-
-        virtual void fold(std::function<void(const std::shared_ptr<const Expression>&)> fn) const override {
-            fn(shared_from_this());
-            _expr1->fold(fn);
-            _expr2->fold(fn);
-        }
+        static Value applyOp(Op op, const Value& val1, const Value& val2);
 
     protected:
-        const std::shared_ptr<const Operator> _op;
-        const std::shared_ptr<const Expression> _expr1;
-        const std::shared_ptr<const Expression> _expr2;
+        const Op _op;
+        const Expression _expr1;
+        const Expression _expr2;
     };
 
-    class TertiaryExpression : public Expression {
+    class TertiaryExpression final {
     public:
-        struct Operator {
-            virtual ~Operator() = default;
-
-            virtual Value apply(const Value& val1, const Value& val2, const Value& val3) const = 0;
+        enum class Op {
+            REPLACE,
+            CONDITIONAL
         };
 
-        explicit TertiaryExpression(std::shared_ptr<const Operator> op, std::shared_ptr<const Expression> expr1, std::shared_ptr<const Expression> expr2, std::shared_ptr<const Expression> expr3) : _op(std::move(op)), _expr1(std::move(expr1)), _expr2(std::move(expr2)), _expr3(std::move(expr3)) { }
+        explicit TertiaryExpression(Op op, Expression expr1, Expression expr2, Expression expr3) : _op(op), _expr1(std::move(expr1)), _expr2(std::move(expr2)), _expr3(std::move(expr3)) { }
 
-        const std::shared_ptr<const Operator>& getOperator() const { return _op; }
-        const std::shared_ptr<const Expression>& getExpression1() const { return _expr1; }
-        const std::shared_ptr<const Expression>& getExpression2() const { return _expr2; }
-        const std::shared_ptr<const Expression>& getExpression3() const { return _expr3; }
+        Op getOp() const { return _op; }
+        const Expression& getExpression1() const { return _expr1; }
+        const Expression& getExpression2() const { return _expr2; }
+        const Expression& getExpression3() const { return _expr3; }
 
-        virtual Value evaluate(const ExpressionContext& context) const override {
-            return _op->apply(_expr1->evaluate(context), _expr2->evaluate(context), _expr3->evaluate(context));
-        }
+        static Value applyOp(Op op, const Value& val1, const Value& val2, const Value& val3);
 
-        virtual bool equals(const std::shared_ptr<const Expression>& expr) const override {
-            if (auto tertiaryExpr = std::dynamic_pointer_cast<const TertiaryExpression>(expr)) {
-                return tertiaryExpr->_op == _op && tertiaryExpr->_expr1->equals(_expr1) && tertiaryExpr->_expr2->equals(_expr2) && tertiaryExpr->_expr3->equals(_expr3);
-            }
-            return false;
-        }
-
-        virtual std::shared_ptr<const Expression> map(std::function<std::shared_ptr<const Expression>(const std::shared_ptr<const Expression>&)> fn) const override {
-            std::shared_ptr<const Expression> expr1 = fn(_expr1);
-            std::shared_ptr<const Expression> expr2 = fn(_expr2);
-            std::shared_ptr<const Expression> expr3 = fn(_expr3);
-            return fn(std::make_shared<TertiaryExpression>(_op, expr1, expr2, expr3));
-        }
-
-        virtual void fold(std::function<void(const std::shared_ptr<const Expression>&)> fn) const override {
-            fn(shared_from_this());
-            _expr1->fold(fn);
-            _expr2->fold(fn);
-            _expr3->fold(fn);
-        }
-    
     private:
-        const std::shared_ptr<const Operator> _op;
-        const std::shared_ptr<const Expression> _expr1;
-        const std::shared_ptr<const Expression> _expr2;
-        const std::shared_ptr<const Expression> _expr3;
+        const Op _op;
+        const Expression _expr1;
+        const Expression _expr2;
+        const Expression _expr3;
     };
 
-    class InterpolateExpression : public Expression {
+    class InterpolateExpression final {
     public:
         enum class Method {
             STEP,
@@ -249,25 +114,21 @@ namespace carto { namespace mvt {
             CUBIC
         };
         
-        explicit InterpolateExpression(Method method, std::shared_ptr<const Expression> timeExpr, std::vector<Value> keyFrames);
+        explicit InterpolateExpression(Method method, Expression timeExpr, const std::vector<Value>& keyFrames) : _method(method), _timeExpr(std::move(timeExpr)), _keyFrames(keyFrames), _fcurve(buildFCurve(method, keyFrames)) { }
 
         Method getMethod() const { return _method; }
-        const std::shared_ptr<const Expression>& getTimeExpression() const { return _timeExpr; }
+        const Expression& getTimeExpression() const { return _timeExpr; }
         const std::vector<Value>& getKeyFrames() const { return _keyFrames; }
 
-        virtual Value evaluate(const ExpressionContext& context) const override;
-
-        virtual bool equals(const std::shared_ptr<const Expression>& expr) const override;
-
-        virtual std::shared_ptr<const Expression> map(std::function<std::shared_ptr<const Expression>(const std::shared_ptr<const Expression>&)> fn) const override;
-
-        virtual void fold(std::function<void(const std::shared_ptr<const Expression>&)> fn) const override;
+        float evaluate(float t) const;
 
     private:
+        static cglib::fcurve2<float> buildFCurve(Method method, const std::vector<Value>& keyFrames);
+
         const Method _method;
-        const std::shared_ptr<const Expression> _timeExpr;
+        const Expression _timeExpr;
         const std::vector<Value> _keyFrames;
-        cglib::fcurve2<float> _fcurve;
+        const cglib::fcurve2<float> _fcurve;
     };
 } }
 

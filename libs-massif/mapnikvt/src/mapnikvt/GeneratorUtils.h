@@ -25,8 +25,8 @@ namespace carto { namespace mvt {
 
     std::string generateColorString(vt::Color color);
     std::string generateValueString(const Value& val);
-    std::string generateTransformListString(const std::vector<std::shared_ptr<const Transform>>& transforms);
-    std::string generateExpressionString(const std::shared_ptr<const Expression>& expr, bool stringExpr);
+    std::string generateTransformListString(const std::vector<Transform>& transforms);
+    std::string generateExpressionString(const Expression& expr, bool stringExpr);
 } }
 
 #endif

@@ -16,11 +16,9 @@ namespace carto { namespace mvt {
             return;
         }
 
-        vt::CompOp compOp = convertCompOp(_compOp);
-
         vt::ColorFunction fillFunc = _functionBuilder.createColorOpacityFunction(_fillFunc, _opacityFunc);
 
-        vt::PolygonStyle style(compOp, fillFunc, bitmapPattern, _geometryTransform);
+        vt::PolygonStyle style(getCompOp(), fillFunc, bitmapPattern, getGeometryTransform());
 
         std::size_t featureIndex = 0;
         std::size_t geometryIndex = 0;

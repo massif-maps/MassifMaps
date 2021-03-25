@@ -26,11 +26,12 @@ namespace carto { namespace vt {
             pen += glyph.advance;
         }
 
-        if (auto pos = boost::get<cglib::vec2<float>>(&tileLabel.getPosition())) {
-            cglib::vec3<double> position = cglib::transform_point(cglib::vec3<double>::convert(transformer->calculatePoint(*pos)), tileMatrix);
-            cglib::vec3<float> normal = transformer->calculateNormal(*pos);
-            cglib::vec3<float> xAxis = transformer->calculateVector(*pos, cglib::vec2<float>(1, 0));
-            cglib::vec3<float> yAxis = transformer->calculateVector(*pos, cglib::vec2<float>(0, -1));
+        if (tileLabel.getPosition()) {
+            const cglib::vec2<float> pos = *tileLabel.getPosition();
+            cglib::vec3<double> position = cglib::transform_point(cglib::vec3<double>::convert(transformer->calculatePoint(pos)), tileMatrix);
+            cglib::vec3<float> normal = transformer->calculateNormal(pos);
+            cglib::vec3<float> xAxis = transformer->calculateVector(pos, cglib::vec2<float>(1, 0));
+            cglib::vec3<float> yAxis = transformer->calculateVector(pos, cglib::vec2<float>(0, -1));
             _tilePoints.emplace_back(_tileId, _localId, position, cglib::unit(normal), cglib::unit(xAxis), cglib::unit(yAxis));
         }
 
@@ -174,10 +175,11 @@ namespace carto { namespace vt {
             float minX = _glyphBBox.min(0) * scale - padding, maxX = _glyphBBox.max(0) * scale + padding;
             float minY = _glyphBBox.min(1) * scale - padding, maxY = _glyphBBox.max(1) * scale + padding;
             if (_style->transform) {
-                cglib::vec2<float> p00 = cglib::transform(cglib::vec2<float>(minX, minY), _style->transform.get());
-                cglib::vec2<float> p01 = cglib::transform(cglib::vec2<float>(minX, maxY), _style->transform.get());
-                cglib::vec2<float> p10 = cglib::transform(cglib::vec2<float>(maxX, minY), _style->transform.get());
-                cglib::vec2<float> p11 = cglib::transform(cglib::vec2<float>(maxX, maxY), _style->transform.get());
+                cglib::mat2x2<float> transform = _style->transform->matrix2();
+                cglib::vec2<float> p00 = cglib::transform(cglib::vec2<float>(minX, minY), transform);
+                cglib::vec2<float> p01 = cglib::transform(cglib::vec2<float>(minX, maxY), transform);
+                cglib::vec2<float> p10 = cglib::transform(cglib::vec2<float>(maxX, minY), transform);
+                cglib::vec2<float> p11 = cglib::transform(cglib::vec2<float>(maxX, maxY), transform);
                 envelope[0] = origin + xAxis * p00(0) + yAxis * p00(1);
                 envelope[1] = origin + xAxis * p10(0) + yAxis * p10(1);
                 envelope[2] = origin + xAxis * p11(0) + yAxis * p11(1);
@@ -295,10 +297,11 @@ namespace carto { namespace vt {
                 attribs.append(attrib, attrib, attrib, attrib);
 
                 if (_style->transform) {
-                    cglib::vec2<float> p0 = cglib::transform(pen + glyph.offset, _style->transform.get());
-                    cglib::vec2<float> p1 = cglib::transform(pen + glyph.offset + cglib::vec2<float>(glyph.size(0), 0), _style->transform.get());
-                    cglib::vec2<float> p2 = cglib::transform(pen + glyph.offset + glyph.size, _style->transform.get());
-                    cglib::vec2<float> p3 = cglib::transform(pen + glyph.offset + cglib::vec2<float>(0, glyph.size(1)), _style->transform.get());
+                    cglib::mat2x2<float> transform = _style->transform->matrix2();
+                    cglib::vec2<float> p0 = cglib::transform(pen + glyph.offset, transform);
+                    cglib::vec2<float> p1 = cglib::transform(pen + glyph.offset + cglib::vec2<float>(glyph.size(0), 0), transform);
+                    cglib::vec2<float> p2 = cglib::transform(pen + glyph.offset + glyph.size, transform);
+                    cglib::vec2<float> p3 = cglib::transform(pen + glyph.offset + cglib::vec2<float>(0, glyph.size(1)), transform);
                     vertices.append(cglib::vec3<float>(p0(0), p0(1), 0), cglib::vec3<float>(p1(0), p1(1), 0), cglib::vec3<float>(p2(0), p2(1), 0), cglib::vec3<float>(p3(0), p3(1), 0));
                 }
                 else {
@@ -467,7 +470,8 @@ namespace carto { namespace vt {
 
         cglib::vec3<float> xAxis = _placement->xAxis;
         if (_style->transform) {
-            cglib::vec2<float> p10 = cglib::transform(cglib::vec2<float>(1, 0), _style->transform.get());
+            cglib::mat2x2<float> transform = _style->transform->matrix2();
+            cglib::vec2<float> p10 = cglib::transform(cglib::vec2<float>(1, 0), transform);
             xAxis = _placement->xAxis * p10(0) + _placement->yAxis * p10(1);
         }
         if (cglib::dot_product(xAxis, viewState.orientation[0]) > 0) {
@@ -534,11 +538,12 @@ namespace carto { namespace vt {
     std::shared_ptr<const Label::Placement> Label::findClippedPointPlacement(const ViewState& viewState, const std::list<TilePoint>& tilePoints) const {
         cglib::bbox2<float> bbox = _glyphBBox;
         if (_style->transform) {
+            cglib::mat2x2<float> transform = _style->transform->matrix2();
             std::array<cglib::vec2<float>, 4> envelope;
-            envelope[0] = cglib::transform(cglib::vec2<float>(bbox.min(0), bbox.min(1)), _style->transform.get());
-            envelope[1] = cglib::transform(cglib::vec2<float>(bbox.min(0), bbox.max(1)), _style->transform.get());
-            envelope[2] = cglib::transform(cglib::vec2<float>(bbox.max(0), bbox.min(1)), _style->transform.get());
-            envelope[3] = cglib::transform(cglib::vec2<float>(bbox.max(0), bbox.max(1)), _style->transform.get());
+            envelope[0] = cglib::transform(cglib::vec2<float>(bbox.min(0), bbox.min(1)), transform);
+            envelope[1] = cglib::transform(cglib::vec2<float>(bbox.min(0), bbox.max(1)), transform);
+            envelope[2] = cglib::transform(cglib::vec2<float>(bbox.max(0), bbox.min(1)), transform);
+            envelope[3] = cglib::transform(cglib::vec2<float>(bbox.max(0), bbox.max(1)), transform);
             bbox = cglib::bbox2<float>::make_union(envelope.begin(), envelope.end());
         }
         

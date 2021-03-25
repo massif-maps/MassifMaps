@@ -15,6 +15,7 @@
 #include <vector>
 #include <unordered_set>
 #include <map>
+#include <utility>
 
 namespace carto { namespace mvt {
     class FeatureData final {

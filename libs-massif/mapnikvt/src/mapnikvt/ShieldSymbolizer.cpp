@@ -18,8 +18,6 @@ namespace carto { namespace mvt {
             return;
         }
 
-        vt::CompOp compOp = convertCompOp(_compOp);
-
         bool clip = _clipDefined ? _clip : _allowOverlap;
 
         float fontScale = symbolizerContext.getSettings().getFontScale();
@@ -37,14 +35,14 @@ namespace carto { namespace mvt {
         vt::TextFormatter shieldFormatter(font, _sizeStatic, shieldFormatterOptions);
 
         vt::ColorFunction fillFunc = _functionBuilder.createColorOpacityFunction(_fillFunc, _opacityFunc);
-        vt::FloatFunction sizeFunc = _functionBuilder.createChainedFloatFunction("multiply" + boost::lexical_cast<std::string>(fontScale), [fontScale](float size) { return size * fontScale; }, _sizeFunc);
+        vt::FloatFunction sizeFunc = _functionBuilder.createChainedFloatFunction("multiply" + std::to_string(fontScale), [fontScale](float size) { return size * fontScale; }, _sizeFunc);
         vt::ColorFunction haloFillFunc = _functionBuilder.createColorOpacityFunction(_haloFillFunc, _haloOpacityFunc);
-        vt::FloatFunction haloRadiusFunc = _functionBuilder.createChainedFloatFunction("multiply" + boost::lexical_cast<std::string>(fontScale), [fontScale](float size) { return size * fontScale; }, _haloRadiusFunc);
+        vt::FloatFunction haloRadiusFunc = _functionBuilder.createChainedFloatFunction("multiply" + std::to_string(fontScale), [fontScale](float size) { return size * fontScale; }, _haloRadiusFunc);
 
         std::vector<std::pair<long long, std::tuple<vt::TileLayerBuilder::Vertex, std::string>>> shieldInfos;
         std::vector<std::pair<long long, vt::TileLayerBuilder::TextLabelInfo>> labelInfos;
 
-        auto addShield = [&](long long localId, long long globalId, const std::string& text, const boost::optional<vt::TileLayerBuilder::Vertex>& vertex, const vt::TileLayerBuilder::Vertices& vertices) {
+        auto addShield = [&](long long localId, long long globalId, const std::string& text, const std::optional<vt::TileLayerBuilder::Vertex>& vertex, const vt::TileLayerBuilder::Vertices& vertices) {
             long long groupId = (_allowOverlap ? -1 : 1); // use separate group from markers, markers use group 0
 
             if (clip) {
@@ -60,7 +58,7 @@ namespace carto { namespace mvt {
             }
         };
 
-        auto flushShields = [&](const cglib::mat3x3<float>& transform) {
+        auto flushShields = [&]() {
             cglib::vec2<float> backgroundOffset;
             const vt::TextFormatter* formatter;
             if (_unlockImage) {
@@ -73,7 +71,7 @@ namespace carto { namespace mvt {
             }
 
             if (clip) {
-                vt::TextStyle style(compOp, fillFunc, sizeFunc, haloFillFunc, haloRadiusFunc, _orientationAngle, fontScale, backgroundOffset, backgroundBitmapImage, transform);
+                vt::TextStyle style(getCompOp(), fillFunc, sizeFunc, haloFillFunc, haloRadiusFunc, _orientationAngle, fontScale, backgroundOffset, backgroundBitmapImage);
 
                 std::size_t textInfoIndex = 0;
                 layerBuilder.addTexts([&](long long& id, vt::TileLayerBuilder::Vertex& vertex, std::string& text) {
@@ -109,7 +107,7 @@ namespace carto { namespace mvt {
 
         buildFeatureCollection(featureCollection, exprContext, symbolizerContext, shieldFormatter, placement, bitmapSize, addShield);
 
-        flushShields(cglib::mat3x3<float>::identity());
+        flushShields();
     }
 
     void ShieldSymbolizer::bindParameter(const std::string& name, const std::string& value) {

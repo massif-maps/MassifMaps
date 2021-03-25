@@ -5,7 +5,6 @@
 #include "ExpressionContext.h"
 #include "SymbolizerContext.h"
 
-
 namespace carto { namespace mvt {
     void MBVTTileReader::setLayerNameOverride(const std::string& name) {
         _layerNameOverride = name;

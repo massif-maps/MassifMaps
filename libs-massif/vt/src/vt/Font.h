@@ -17,7 +17,7 @@
 #include <cglib/vec.h>
 
 namespace carto { namespace vt {
-    constexpr static int GLYPH_RENDER_SIZE = 27;
+    inline static constexpr int GLYPH_RENDER_SIZE = 27;
     
     class Font {
     public:

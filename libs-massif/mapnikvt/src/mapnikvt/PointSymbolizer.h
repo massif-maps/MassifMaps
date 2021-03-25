@@ -13,13 +13,13 @@ namespace carto { namespace mvt {
     class PointSymbolizer : public GeometrySymbolizer {
     public:
         explicit PointSymbolizer(std::shared_ptr<Logger> logger) : GeometrySymbolizer(std::move(logger)) {
-            bind(&_opacityFunc, std::make_shared<ConstExpression>(Value(1.0f)));
+            bind(&_opacityFunc, Value(1.0f));
         }
 
         virtual void build(const FeatureCollection& featureCollection, const FeatureExpressionContext& exprContext, const SymbolizerContext& symbolizerContext, vt::TileLayerBuilder& layerBuilder) override;
 
     protected:
-        constexpr static int RECTANGLE_SIZE = 4;
+        inline static constexpr int RECTANGLE_SIZE = 4;
 
         virtual void bindParameter(const std::string& name, const std::string& value) override;
 
@@ -29,7 +29,7 @@ namespace carto { namespace mvt {
         vt::FloatFunction _opacityFunc; // 1.0f
         bool _allowOverlap = false;
         bool _ignorePlacement = false;
-        cglib::mat3x3<float> _transform = cglib::mat3x3<float>::identity();
+        vt::Transform _transform;
     };
 } }
 

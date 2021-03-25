@@ -19,11 +19,10 @@
 
 #include <cstdint>
 #include <memory>
+#include <variant>
 #include <vector>
 #include <list>
 #include <functional>
-
-#include <boost/variant.hpp>
 
 #include <cglib/vec.h>
 #include <cglib/bbox.h>
@@ -38,25 +37,25 @@ namespace carto { namespace vt {
         struct PointLabelInfo {
             long long id = 0;
             long long groupId = 0;
-            boost::variant<Vertex, Vertices> position;
+            std::variant<Vertex, Vertices> position;
             float priority = 0;
             float minimumGroupDistance = 0;
 
             PointLabelInfo() = default;
-            explicit PointLabelInfo(long long id, long long groupId, boost::variant<Vertex, Vertices> position, float priority, float minimumGroupDistance) : id(id), groupId(groupId), position(std::move(position)), priority(priority), minimumGroupDistance(minimumGroupDistance) { }
+            explicit PointLabelInfo(long long id, long long groupId, std::variant<Vertex, Vertices> position, float priority, float minimumGroupDistance) : id(id), groupId(groupId), position(std::move(position)), priority(priority), minimumGroupDistance(minimumGroupDistance) { }
         };
 
         struct TextLabelInfo {
             long long id = 0;
             long long groupId = 0;
             std::string text;
-            boost::optional<Vertex> position;
+            std::optional<Vertex> position;
             Vertices vertices;
             float priority = 0;
             float minimumGroupDistance = 0;
 
             TextLabelInfo() = default;
-            explicit TextLabelInfo(long long id, long long groupId, std::string text, boost::optional<Vertex> position, Vertices vertices, float priority, float minimumGroupDistance) : id(id), groupId(groupId), text(std::move(text)), position(std::move(position)), vertices(std::move(vertices)), priority(priority), minimumGroupDistance(minimumGroupDistance) { }
+            explicit TextLabelInfo(long long id, long long groupId, std::string text, std::optional<Vertex> position, Vertices vertices, float priority, float minimumGroupDistance) : id(id), groupId(groupId), text(std::move(text)), position(std::move(position)), vertices(std::move(vertices)), priority(priority), minimumGroupDistance(minimumGroupDistance) { }
         };
 
         explicit TileLayerBuilder(const TileId& tileId, int layerIdx, std::shared_ptr<const TileTransformer::VertexTransformer> transformer, float tileSize, float geomScale);
@@ -72,13 +71,13 @@ namespace carto { namespace vt {
         void addPointLabels(const std::function<bool(long long& id, PointLabelInfo& labelInfo)>& generator, const PointLabelStyle& style, const std::shared_ptr<GlyphMap>& glyphMap);
         void addTextLabels(const std::function<bool(long long& id, TextLabelInfo& labelInfo)>& generator, const TextLabelStyle& style, const TextFormatter& formatter);
 
-        std::shared_ptr<TileLayer> buildTileLayer(boost::optional<CompOp> compOp, FloatFunction opacityFunc) const;
+        std::shared_ptr<TileLayer> buildTileLayer(std::optional<CompOp> compOp, FloatFunction opacityFunc) const;
 
     private:
-        constexpr static unsigned int RESERVED_VERTICES = 4096;
+        inline static constexpr unsigned int RESERVED_VERTICES = 4096;
 
-        constexpr static float MIN_MITER_DOT = -0.8f; // minimum allowed dot product result between segment direction vectors, if less, then miter-join is not used
-        constexpr static float STROKE_MIN_MITER_DOT = 0.2f; // minimum allowed dot product result between segment direction vectors for stroked lines, if less, then miter-join is not used
+        inline static constexpr float MIN_MITER_DOT = -0.8f; // minimum allowed dot product result between segment direction vectors, if less, then miter-join is not used
+        inline static constexpr float STROKE_MIN_MITER_DOT = 0.2f; // minimum allowed dot product result between segment direction vectors for stroked lines, if less, then miter-join is not used
 
         struct BuilderParameters {
             TileGeometry::Type type;
@@ -90,7 +89,7 @@ namespace carto { namespace vt {
             std::shared_ptr<const StrokeMap> strokeMap;
             std::shared_ptr<const GlyphMap> glyphMap;
             std::shared_ptr<const BitmapPattern> pattern;
-            boost::optional<cglib::mat3x3<float>> transform;
+            std::optional<Transform> transform;
             CompOp compOp;
 
             BuilderParameters() : type(TileGeometry::Type::NONE), parameterCount(0), colorFuncs(), widthFuncs(), strokeWidthFuncs(), lineStrokeIds(), strokeMap(), glyphMap(), pattern(), transform(), compOp(CompOp::SRC_OVER) { }

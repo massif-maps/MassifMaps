@@ -7,12 +7,11 @@
 #ifndef _CARTO_MAPNIKVT_VALUE_H_
 #define _CARTO_MAPNIKVT_VALUE_H_
 
+#include <variant>
 #include <string>
 
-#include <boost/variant.hpp>
-
 namespace carto { namespace mvt {
-    using Value = boost::variant<boost::blank, bool, long long, double, std::string>;
+    using Value = std::variant<std::monostate, bool, long long, double, std::string>;
 } }
 
 #endif

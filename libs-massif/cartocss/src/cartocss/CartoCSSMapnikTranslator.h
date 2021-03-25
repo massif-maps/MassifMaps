@@ -9,6 +9,7 @@
 
 #include "Expression.h"
 #include "Predicate.h"
+#include "PropertySets.h"
 #include "CartoCSSCompiler.h"
 #include "mapnikvt/Map.h"
 #include "mapnikvt/Rule.h"
@@ -19,6 +20,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <optional>
 #include <unordered_set>
 #include <unordered_map>
 
@@ -33,37 +35,35 @@ namespace carto { namespace css {
         explicit CartoCSSMapnikTranslator(std::shared_ptr<mvt::Logger> logger) : _logger(std::move(logger)) { }
         virtual ~CartoCSSMapnikTranslator() = default;
 
-        virtual std::shared_ptr<mvt::Rule> buildRule(const CartoCSSCompiler::PropertySet& propertySet, const std::shared_ptr<mvt::Map>& map, int minZoom, int maxZoom) const;
+        virtual std::shared_ptr<mvt::Rule> buildRule(const PropertySet& propertySet, const std::shared_ptr<mvt::Map>& map, int minZoom, int maxZoom) const;
 
-        virtual std::shared_ptr<mvt::Symbolizer> buildSymbolizer(const std::string& symbolizerType, const std::list<CartoCSSCompiler::Property>& properties, const std::shared_ptr<mvt::Map>& map) const;
+        virtual std::shared_ptr<mvt::Symbolizer> buildSymbolizer(const std::string& symbolizerType, const std::list<Property>& properties, const std::shared_ptr<mvt::Map>& map) const;
 
-        virtual std::string buildValueString(const Value& value, bool stringExpr) const;
+        static std::string buildValueString(const Value& value, bool stringExpr);
 
-        virtual std::string buildExpressionString(const std::shared_ptr<const Expression>& expr, bool stringExpr) const;
+        static std::string buildExpressionString(const Expression& expr, bool stringExpr);
 
-        virtual std::string buildFunctionExpressionString(const std::shared_ptr<const FunctionExpression>& funcExpr, bool topLevel) const;
+        static std::string buildFunctionExpressionString(const FunctionExpression& funcExpr, bool topLevel);
 
-        virtual std::shared_ptr<mvt::Predicate> buildPredicate(const std::shared_ptr<const Predicate>& pred) const;
+        static std::optional<mvt::Predicate> buildPredicate(const Predicate& pred);
 
-        virtual std::shared_ptr<mvt::ComparisonPredicate::Operator> buildOperator(OpPredicate::Op op) const;
+        static mvt::ComparisonPredicate::Op buildComparisonOp(OpPredicate::Op op);
 
-        virtual mvt::Value buildValue(const Value& val) const;
+        static mvt::Value buildValue(const Value& val);
 
     protected:
         virtual bool isStringExpression(const std::string& propertyName) const;
 
         virtual std::string getPropertySymbolizerId(const std::string& propertyName) const;
 
-        virtual void setSymbolizerParameter(const std::shared_ptr<mvt::Symbolizer>& symbolizer, const std::string& name, const std::shared_ptr<const Expression>& expr, bool stringExpr) const;
+        virtual void setSymbolizerParameter(const std::shared_ptr<mvt::Symbolizer>& symbolizer, const std::string& name, const Expression& expr, bool stringExpr) const;
 
         const std::shared_ptr<mvt::Logger> _logger;
 
     private:
-        struct ValueBuilder;
-
         static const std::vector<std::pair<UnaryExpression::Op, std::string>> _unaryOpTable;
         static const std::vector<std::pair<BinaryExpression::Op, std::string>> _binaryOpTable;
-        static const std::vector<std::pair<OpPredicate::Op, std::shared_ptr<mvt::ComparisonPredicate::Operator>>> _predicateOpTable;
+        static const std::vector<std::pair<OpPredicate::Op, mvt::ComparisonPredicate::Op>> _predicateOpTable;
 
         static const std::unordered_map<std::string, int> _stringFuncs;
         static const std::unordered_map<std::string, int> _mathFuncs;

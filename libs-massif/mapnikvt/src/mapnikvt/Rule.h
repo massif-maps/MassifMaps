@@ -10,10 +10,10 @@
 #include <memory>
 #include <string>
 #include <vector>
-#include <unordered_set>
+
+#include "Expression.h"
 
 namespace carto { namespace mvt {
-    class Expression;
     class Filter;
     class Symbolizer;
     
@@ -27,7 +27,7 @@ namespace carto { namespace mvt {
         const std::shared_ptr<const Filter>& getFilter() const { return _filter; }
         const std::vector<std::shared_ptr<Symbolizer>>& getSymbolizers() const { return _symbolizers; }
 
-        std::unordered_set<std::shared_ptr<const Expression>> getReferencedFields() const;
+        void gatherReferencedFields(std::vector<Expression>& fields) const;
 
     private:
         const std::string _name;

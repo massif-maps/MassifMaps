@@ -14,7 +14,6 @@
 #include <memory>
 
 namespace carto { namespace mvt {
-    class Expression;
     class FeatureData;
 
     class ExpressionContext {

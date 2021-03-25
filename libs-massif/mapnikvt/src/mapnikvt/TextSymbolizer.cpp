@@ -2,14 +2,12 @@
 #include "ParserUtils.h"
 #include "FontSet.h"
 #include "Expression.h"
-#include "ExpressionOperator.h"
+#include "StringUtils.h"
 #include "vt/FontManager.h"
 
 #include <memory>
 #include <vector>
 #include <limits>
-
-#include <boost/algorithm/string.hpp>
 
 namespace carto { namespace mvt {
     void TextSymbolizer::build(const FeatureCollection& featureCollection, const FeatureExpressionContext& exprContext, const SymbolizerContext& symbolizerContext, vt::TileLayerBuilder& layerBuilder) {
@@ -27,8 +25,6 @@ namespace carto { namespace mvt {
             return;
         }
 
-        vt::CompOp compOp = convertCompOp(_compOp);
-
         bool clip = _clipDefined ? _clip : _allowOverlap;
 
         vt::TextFormatter formatter(font, _sizeStatic, getFormatterOptions(symbolizerContext));
@@ -38,14 +34,14 @@ namespace carto { namespace mvt {
         float minimumDistance = _minimumDistance * std::pow(2.0f, -exprContext.getAdjustedZoom());
 
         vt::ColorFunction fillFunc = _functionBuilder.createColorOpacityFunction(_fillFunc, _opacityFunc);
-        vt::FloatFunction sizeFunc = _functionBuilder.createChainedFloatFunction("multiply" + boost::lexical_cast<std::string>(fontScale), [fontScale](float size) { return size * fontScale; }, _sizeFunc);
+        vt::FloatFunction sizeFunc = _functionBuilder.createChainedFloatFunction("multiply" + std::to_string(fontScale), [fontScale](float size) { return size * fontScale; }, _sizeFunc);
         vt::ColorFunction haloFillFunc = _functionBuilder.createColorOpacityFunction(_haloFillFunc, _haloOpacityFunc);
-        vt::FloatFunction haloRadiusFunc = _functionBuilder.createChainedFloatFunction("multiply" + boost::lexical_cast<std::string>(fontScale), [fontScale](float size) { return size * fontScale; }, _haloRadiusFunc);
+        vt::FloatFunction haloRadiusFunc = _functionBuilder.createChainedFloatFunction("multiply" + std::to_string(fontScale), [fontScale](float size) { return size * fontScale; }, _haloRadiusFunc);
 
         std::vector<std::pair<long long, std::tuple<vt::TileLayerBuilder::Vertex, std::string>>> textInfos;
         std::vector<std::pair<long long, vt::TileLayerBuilder::TextLabelInfo>> labelInfos;
 
-        auto addText = [&](long long localId, long long globalId, const std::string& text, const boost::optional<vt::TileLayerBuilder::Vertex>& vertex, const vt::TileLayerBuilder::Vertices& vertices) {
+        auto addText = [&](long long localId, long long globalId, const std::string& text, const std::optional<vt::TileLayerBuilder::Vertex>& vertex, const vt::TileLayerBuilder::Vertices& vertices) {
             long long groupId = (_allowOverlap ? -1 : (minimumDistance > 0 ? (std::hash<std::string>()(text) & 0x7fffffff) : 0));
             
             if (clip) {
@@ -61,9 +57,9 @@ namespace carto { namespace mvt {
             }
         };
 
-        auto flushTexts = [&](const cglib::mat3x3<float>& transform) {
+        auto flushTexts = [&]() {
             if (clip) {
-                vt::TextStyle style(compOp, fillFunc, sizeFunc, haloFillFunc, haloRadiusFunc, _orientationAngle, fontScale, cglib::vec2<float>(0, 0), std::shared_ptr<vt::BitmapImage>(), transform);
+                vt::TextStyle style(getCompOp(), fillFunc, sizeFunc, haloFillFunc, haloRadiusFunc, _orientationAngle, fontScale, cglib::vec2<float>(0, 0), std::shared_ptr<vt::BitmapImage>());
 
                 std::size_t textInfoIndex = 0;
                 layerBuilder.addTexts([&](long long& id, vt::TileLayerBuilder::Vertex& vertex, std::string& text) {
@@ -99,7 +95,7 @@ namespace carto { namespace mvt {
 
         buildFeatureCollection(featureCollection, exprContext, symbolizerContext, formatter, placement, -1, addText);
 
-        flushTexts(cglib::mat3x3<float>::identity());
+        flushTexts();
     }
 
     void TextSymbolizer::bindParameter(const std::string& name, const std::string& value) {
@@ -190,9 +186,6 @@ namespace carto { namespace mvt {
         }
         else if (name == "vertical-alignment") {
             bind(&_verticalAlignment, parseStringExpression(value));
-        }
-        else if (name == "comp-op") {
-            bind(&_compOp, parseStringExpression(value));
         }
         else {
             Symbolizer::bindParameter(name, value);
@@ -291,11 +284,12 @@ namespace carto { namespace mvt {
         return placement;
     }
 
-    void TextSymbolizer::buildFeatureCollection(const FeatureCollection& featureCollection, const FeatureExpressionContext& exprContext, const SymbolizerContext& symbolizerContext, const vt::TextFormatter& formatter, vt::LabelOrientation placement, float bitmapSize, const std::function<void(long long localId, long long globalId, const std::string& text, const boost::optional<vt::TileLayerBuilder::Vertex>& vertex, const vt::TileLayerBuilder::Vertices& vertices)>& addText) {
+    void TextSymbolizer::buildFeatureCollection(const FeatureCollection& featureCollection, const FeatureExpressionContext& exprContext, const SymbolizerContext& symbolizerContext, const vt::TextFormatter& formatter, vt::LabelOrientation placement, float bitmapSize, const std::function<void(long long localId, long long globalId, const std::string& text, const std::optional<vt::TileLayerBuilder::Vertex>& vertex, const vt::TileLayerBuilder::Vertices& vertices)>& addText) {
         FeatureExpressionContext textExprContext(exprContext);
         for (std::size_t index = 0; index < featureCollection.size(); index++) {
             textExprContext.setFeatureData(featureCollection.getFeatureData(index));
-            std::string text = getTransformedText(ValueConverter<std::string>::convert(_textExpression->evaluate(textExprContext)));
+            Value textVal = std::visit(ExpressionEvaluator(textExprContext), _textExpression);
+            std::string text = getTransformedText(ValueConverter<std::string>::convert(textVal));
             std::size_t hash = std::hash<std::string>()(text);
             float textSize = bitmapSize < 0 ? (placement == vt::LabelOrientation::LINE ? calculateTextSize(formatter.getFont(), text, formatter).size()(0) : 0) : bitmapSize;
 
@@ -305,7 +299,7 @@ namespace carto { namespace mvt {
 
             auto addLineTexts = [&](const std::vector<cglib::vec2<float>>& vertices) {
                 if (_spacing <= 0) {
-                    addText(localId, globalId, text, boost::optional<vt::TileLayerBuilder::Vertex>(), vertices);
+                    addText(localId, globalId, text, std::optional<vt::TileLayerBuilder::Vertex>(), vertices);
                     return;
                 }
 
@@ -344,7 +338,7 @@ namespace carto { namespace mvt {
                 }
                 else {
                     for (const auto& vertices : lineGeometry->getVerticesList()) {
-                        addText(localId, globalId, text, boost::optional<vt::TileLayerBuilder::Vertex>(), vertices);
+                        addText(localId, globalId, text, std::optional<vt::TileLayerBuilder::Vertex>(), vertices);
                     }
                 }
             }

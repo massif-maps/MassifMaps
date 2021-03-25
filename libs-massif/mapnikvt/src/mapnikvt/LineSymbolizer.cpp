@@ -19,15 +19,14 @@ namespace carto { namespace mvt {
         
         vt::LineJoinMode lineJoin = convertLineJoinMode(_strokeLinejoin);
         vt::LineCapMode lineCap = convertLineCapMode(_strokeLinecap);
-        vt::CompOp compOp = convertCompOp(_compOp);
         
         std::shared_ptr<const vt::BitmapPattern> strokePattern;
         if (!_strokeDashArray.empty()) {
             int height = 1;
             if (lineCap != vt::LineCapMode::NONE) {
-                height = static_cast<int>(ValueConverter<double>::convert(_strokeWidthExpression->evaluate(exprContext)));
+                height = static_cast<int>(ValueConverter<double>::convert(std::visit(ExpressionEvaluator(exprContext), _strokeWidthExpression)));
             }
-            std::string file = "__line_dasharray_" + boost::lexical_cast<std::string>(height) + "_" + _strokeLinecap + "_" + _strokeDashArray;
+            std::string file = "__line_dasharray_" + std::to_string(height) + "_" + _strokeLinecap + "_" + _strokeDashArray;
             strokePattern = symbolizerContext.getBitmapManager()->getBitmapPattern(file);
             if (!strokePattern) {
                 std::vector<std::string> dashList;
@@ -35,7 +34,7 @@ namespace carto { namespace mvt {
                 std::vector<float> strokeDashArray;
                 for (const std::string& dash : dashList) {
                     try {
-                        strokeDashArray.push_back(boost::lexical_cast<float>(boost::trim_copy(dash)));
+                        strokeDashArray.push_back(std::stof(boost::trim_copy(dash)));
                     }
                     catch (const boost::bad_lexical_cast&) {
                         _logger->write(Logger::Severity::ERROR, "Illegal dash value");
@@ -48,7 +47,7 @@ namespace carto { namespace mvt {
 
         vt::ColorFunction strokeFunc = _functionBuilder.createColorOpacityFunction(_strokeFunc, _strokeOpacityFunc);
         
-        vt::LineStyle style(compOp, lineJoin, lineCap, strokeFunc, _strokeWidthFunc, strokePattern, _geometryTransform);
+        vt::LineStyle style(getCompOp(), lineJoin, lineCap, strokeFunc, _strokeWidthFunc, strokePattern, getGeometryTransform());
 
         std::size_t featureIndex = 0;
         std::size_t geometryIndex = 0;

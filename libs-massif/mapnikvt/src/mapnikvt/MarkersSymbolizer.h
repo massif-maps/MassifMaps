@@ -13,18 +13,18 @@ namespace carto { namespace mvt {
     class MarkersSymbolizer : public Symbolizer {
     public:
         explicit MarkersSymbolizer(std::shared_ptr<Logger> logger) : Symbolizer(std::move(logger)) {
-            bind(&_strokeWidthFunc, std::make_shared<ConstExpression>(Value(_strokeWidthStatic)));
+            bind(&_strokeWidthFunc, Value(_strokeWidthStatic));
         }
 
         virtual void build(const FeatureCollection& featureCollection, const FeatureExpressionContext& exprContext, const SymbolizerContext& symbolizerContext, vt::TileLayerBuilder& layerBuilder) override;
 
     protected:
-        constexpr static int DEFAULT_CIRCLE_SIZE = 10;
-        constexpr static int DEFAULT_ARROW_WIDTH = 28;
-        constexpr static int DEFAULT_ARROW_HEIGHT = 14;
-        constexpr static int SUPERSAMPLING_FACTOR = 4;
-        constexpr static int MAX_BITMAP_SIZE = 64;
-        constexpr static float IMAGE_UPSAMPLING_SCALE = 2.5f;
+        inline static constexpr int DEFAULT_CIRCLE_SIZE = 10;
+        inline static constexpr int DEFAULT_ARROW_WIDTH = 28;
+        inline static constexpr int DEFAULT_ARROW_HEIGHT = 14;
+        inline static constexpr int SUPERSAMPLING_FACTOR = 4;
+        inline static constexpr int MAX_BITMAP_SIZE = 64;
+        inline static constexpr float IMAGE_UPSAMPLING_SCALE = 2.5f;
 
         virtual void bindParameter(const std::string& name, const std::string& value) override;
 
@@ -56,9 +56,8 @@ namespace carto { namespace mvt {
         bool _clip = false;
         bool _clipDefined = false;
         bool _ignorePlacement = false;
-        std::string _compOp = "src-over";
-        cglib::mat3x3<float> _transform = cglib::mat3x3<float>::identity();
-        std::shared_ptr<Expression> _transformExpression;
+        vt::Transform _transform;
+        std::optional<Expression> _transformExpression;
     };
 } }
 

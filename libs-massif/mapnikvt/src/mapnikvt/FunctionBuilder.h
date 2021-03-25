@@ -79,7 +79,7 @@ namespace carto { namespace mvt {
             }
         };
 
-        constexpr static std::size_t MAX_CACHE_SIZE = 256;
+        inline static constexpr std::size_t MAX_CACHE_SIZE = 256;
 
         mutable std::unordered_map<std::pair<std::string, vt::FloatFunction>, vt::FloatFunction, StringFloatFunctionPairHash> _chainedFloatFunctionCache;
         mutable std::unordered_map<std::pair<vt::ColorFunction, vt::FloatFunction>, vt::ColorFunction, ColorFunctionFloatFunctionPairHash> _colorOpacityFunctionCache;

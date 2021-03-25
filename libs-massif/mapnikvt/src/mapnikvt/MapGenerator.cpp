@@ -14,15 +14,9 @@
 #include "ScaleUtils.h"
 #include "Logger.h"
 
-namespace carto { namespace mvt {
-    struct MapGenerator::TypeExtractor : boost::static_visitor<std::string> {
-        std::string operator() (bool) const { return "bool"; }
-        std::string operator() (double) const { return "float"; }
-        std::string operator() (long long) const { return "int"; }
-        std::string operator() (const std::string&) const { return "string"; }
-        template <typename T> std::string operator() (T) const { return ""; }
-    };
+#include <boost/lexical_cast.hpp>
 
+namespace carto { namespace mvt {
     std::shared_ptr<pugi::xml_document> MapGenerator::generateMap(const Map& map) const {
         auto doc = std::make_shared<pugi::xml_document>();
         pugi::xml_node mapNode = doc->append_child("Map");
@@ -104,7 +98,7 @@ namespace carto { namespace mvt {
                 ruleNode.append_child("MaxScaleDenominator").append_child(pugi::node_pcdata).set_value(boost::lexical_cast<std::string>(zoom2ScaleDenominator(rule.getMinZoom() - 1)).c_str());
                 
                 if (std::shared_ptr<const Filter> filter = rule.getFilter()) {
-                    if (std::shared_ptr<const Predicate> pred = filter->getPredicate()) {
+                    if (filter->getPredicate()) {
                         pugi::xml_node filterNode;
                         switch (filter->getType()) {
                         case Filter::Type::FILTER:
@@ -117,7 +111,7 @@ namespace carto { namespace mvt {
                             filterNode = ruleNode.append_child("AlsoFilter");
                             break;
                         }
-                        filterNode.append_child(pugi::node_pcdata).set_value(generateExpressionString(std::make_shared<PredicateExpression>(pred), false).c_str());
+                        filterNode.append_child(pugi::node_pcdata).set_value(generateExpressionString(*filter->getPredicate(), false).c_str());
                     }
                 }
 
@@ -144,7 +138,15 @@ namespace carto { namespace mvt {
     }
 
     std::string MapGenerator::generateTypeString(const Value& value) const {
-        std::string typeString = boost::apply_visitor(TypeExtractor(), value);
+        struct TypeExtractor {
+            std::string operator() (std::monostate) const { return ""; }
+            std::string operator() (bool) const { return "bool"; }
+            std::string operator() (double) const { return "float"; }
+            std::string operator() (long long) const { return "int"; }
+            std::string operator() (const std::string&) const { return "string"; }
+        };
+
+        std::string typeString = std::visit(TypeExtractor(), value);
         if (typeString.empty()) {
             _logger->write(Logger::Severity::WARNING, "Unsupported value type");
         }

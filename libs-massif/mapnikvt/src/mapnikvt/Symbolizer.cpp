@@ -3,6 +3,7 @@
 #include "Expression.h"
 #include "ExpressionBinder.h"
 #include "Transform.h"
+#include "TransformUtils.h"
 #include "ParserUtils.h"
 #include "SymbolizerContext.h"
 
@@ -20,22 +21,21 @@ namespace carto { namespace mvt {
         return _parameterMap;
     }
 
-    const std::vector<std::shared_ptr<const Expression>>& Symbolizer::getParameterExpressions() const {
+    const std::vector<Expression>& Symbolizer::getParameterExpressions() const {
         return _parameterExprs;
     }
 
-    std::shared_ptr<Expression> Symbolizer::parseExpression(const std::string& str) const {
+    Expression Symbolizer::parseExpression(const std::string& str) const {
         static std::mutex exprCacheMutex;
-        static std::unordered_map<std::string, std::shared_ptr<Expression>> exprCache;
-
-        constexpr static int MAX_CACHE_SIZE = 1024;
+        static std::unordered_map<std::string, Expression> exprCache;
+        static constexpr int MAX_CACHE_SIZE = 1024;
 
         std::lock_guard<std::mutex> lock(exprCacheMutex);
         auto exprIt = exprCache.find(str);
         if (exprIt != exprCache.end()) {
             return exprIt->second;
         }
-        std::shared_ptr<Expression> expr;
+        Expression expr;
         try {
             expr = mvt::parseExpression(str, false);
         }
@@ -55,10 +55,9 @@ namespace carto { namespace mvt {
         return expr;
     }
 
-    std::shared_ptr<Expression> Symbolizer::parseStringExpression(const std::string& str) const {
+    Expression Symbolizer::parseStringExpression(const std::string& str) const {
         static std::mutex exprCacheMutex;
-        static std::unordered_map<std::string, std::shared_ptr<Expression>> exprCache;
-
+        static std::unordered_map<std::string, Expression> exprCache;
         constexpr static int MAX_CACHE_SIZE = 1024;
 
         std::lock_guard<std::mutex> lock(exprCacheMutex);
@@ -66,7 +65,7 @@ namespace carto { namespace mvt {
         if (exprIt != exprCache.end()) {
             return exprIt->second;
         }
-        std::shared_ptr<Expression> expr = mvt::parseExpression(str, true);
+        Expression expr = mvt::parseExpression(str, true);
         if (exprCache.size() >= MAX_CACHE_SIZE) {
             exprCache.erase(exprCache.begin());
         }
@@ -96,7 +95,7 @@ namespace carto { namespace mvt {
 
     vt::Color Symbolizer::convertColor(const Value& val) const {
         try {
-            return parseColor(boost::lexical_cast<std::string>(val));
+            return parseColor(ValueConverter<std::string>::convert(val));
         }
         catch (const ParserException& ex) {
             _logger->write(Logger::Severity::ERROR, ex.what());
@@ -104,39 +103,44 @@ namespace carto { namespace mvt {
         }
     }
 
-    cglib::mat3x3<float> Symbolizer::convertTransform(const Value& val) const {
+    vt::Transform Symbolizer::convertTransform(const Value& val) const {
         try {
-            std::vector<std::shared_ptr<Transform>> transforms = parseTransformList(boost::lexical_cast<std::string>(val));
+            std::vector<Transform> transforms = parseTransformList(ValueConverter<std::string>::convert(val));
             cglib::mat3x3<float> matrix = cglib::mat3x3<float>::identity();
-            for (const std::shared_ptr<Transform>& transform : transforms) {
-                matrix = matrix * transform->getMatrix();
+            for (const Transform& transform : transforms) {
+                matrix = matrix * std::visit(TransformEvaluator(), transform);
             }
-            return matrix;
+            return vt::Transform::fromMatrix3(matrix);
         }
         catch (const ParserException& ex) {
             _logger->write(Logger::Severity::ERROR, ex.what());
-            return cglib::mat3x3<float>::identity();
+            return vt::Transform();
         }
     }
 
-    boost::optional<cglib::mat3x3<float>> Symbolizer::convertOptionalTransform(const Value& val) const {
-        return convertTransform(val);
+    vt::CompOp Symbolizer::getCompOp() const {
+        return convertCompOp(_compOp);
     }
 
     void Symbolizer::bindParameter(const std::string& name, const std::string& value) {
-        _logger->write(Logger::Severity::WARNING, "Unsupported symbolizer parameter: " + name);
+        if (name == "comp-op") {
+            bind(&_compOp, parseStringExpression(value));
+        }
+        else {
+            _logger->write(Logger::Severity::WARNING, "Unsupported symbolizer parameter: " + name);
+        }
     }
 
     long long Symbolizer::convertId(const Value& val) {
-        struct NumericIdValue : public boost::static_visitor<long long> {
-            long long operator() (boost::blank) const { return 0; }
+        struct NumericIdHasher {
+            long long operator() (std::monostate) const { return 0; }
             long long operator() (bool val) const { return (val ? 1 : 0); }
             long long operator() (long long val) const { return val; }
             long long operator() (double val) const { return (val != 0 ? std::hash<double>()(val) : 0); }
             long long operator() (const std::string& str) const { return (str.empty() ? 0 : std::hash<std::string>()(str)); }
         };
 
-        long long id = boost::apply_visitor(NumericIdValue(), val);
+        long long id = std::visit(NumericIdHasher(), val);
         return id & 0x3FFFFFFLL;
     }
 

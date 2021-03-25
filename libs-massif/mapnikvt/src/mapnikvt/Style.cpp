@@ -2,6 +2,7 @@
 #include "Expression.h"
 #include "Filter.h"
 #include "Predicate.h"
+#include "PredicateUtils.h"
 #include "Rule.h"
 #include "Symbolizer.h"
 
@@ -21,8 +22,8 @@ namespace carto { namespace mvt {
         return it->second;
     }
 
-    const std::unordered_set<std::shared_ptr<const Expression>>& Style::getReferencedFields(int zoom) const {
-        static const std::unordered_set<std::shared_ptr<const Expression>> emptyFieldExprs;
+    const std::vector<Expression>& Style::getReferencedFields(int zoom) const {
+        static const std::vector<Expression> emptyFieldExprs;
         auto it = _zoomFieldExprsMap.find(zoom);
         if (it == _zoomFieldExprsMap.end()) {
             return emptyFieldExprs;
@@ -47,9 +48,9 @@ namespace carto { namespace mvt {
             if (rule1->getMinZoom() > rule2->getMinZoom()) {
                 std::swap(rule1, rule2);
             }
-            std::shared_ptr<const Predicate> pred1 = rule1->getFilter()->getPredicate();
-            std::shared_ptr<const Predicate> pred2 = rule2->getFilter()->getPredicate();
-            bool samePred = (pred1 == pred2) || (pred1 && pred2 && pred1->equals(pred2));
+            std::optional<Predicate> pred1 = rule1->getFilter()->getPredicate();
+            std::optional<Predicate> pred2 = rule2->getFilter()->getPredicate();
+            bool samePred = (pred1 == pred2) || (pred1 && pred2 && std::visit(PredicateDeepEqualsChecker(), *pred1, *pred2));
             if (rule1->getMaxZoom() == rule2->getMinZoom() && rule1->getFilter()->getType() == rule2->getFilter()->getType() && samePred && rule1->getSymbolizers().size() == rule2->getSymbolizers().size()) {
                 if (std::equal(rule1->getSymbolizers().begin(), rule1->getSymbolizers().end(), rule2->getSymbolizers().begin(), [](const std::shared_ptr<Symbolizer>& symbolizer1, const std::shared_ptr<Symbolizer>& symbolizer2) {
                     return typeid(symbolizer1.get()) == typeid(symbolizer2.get()) && symbolizer1->getParameterMap() == symbolizer2->getParameterMap();
@@ -90,53 +91,54 @@ namespace carto { namespace mvt {
     }
 
     void Style::rebuildZoomRuleMap() {
+        std::vector<Expression> fields;
+        for (const std::shared_ptr<const Rule>& rule : _rules) {
+            rule->gatherReferencedFields(fields);
+        }
+
         _zoomRuleMap.clear();
         _zoomFieldExprsMap.clear();
-        for (auto it = _rules.begin(); it != _rules.end(); it++) {
-            const std::shared_ptr<const Rule>& rule = *it;
-            std::unordered_set<std::shared_ptr<const Expression>> fieldExprs = rule->getReferencedFields();
+        for (const std::shared_ptr<const Rule>& rule : _rules) {
             for (int zoom = rule->getMinZoom(); zoom < rule->getMaxZoom(); zoom++) {
                 _zoomRuleMap[zoom].push_back(rule);
-                _zoomFieldExprsMap[zoom].insert(fieldExprs.begin(), fieldExprs.end());
+                _zoomFieldExprsMap[zoom] = fields;
             }
         }
     }
 
-    std::shared_ptr<const Predicate> Style::buildOptimizedOrPredicate(const std::shared_ptr<const Predicate>& pred1, const std::shared_ptr<const Predicate>& pred2) {
+    std::optional<Predicate> Style::buildOptimizedOrPredicate(const std::optional<Predicate>& pred1, const std::optional<Predicate>& pred2) {
         // X or true = true
         if (!pred1 || !pred2) {
-            return std::shared_ptr<Predicate>();
+            return std::optional<Predicate>();
         }
 
         // X or X = X
-        if (pred1->equals(pred2)) {
+        if (pred1 == pred2 || std::visit(PredicateDeepEqualsChecker(), *pred1, *pred2)) {
             return pred1;
         }
 
         // X or (X & Y) = X
-        std::shared_ptr<const Predicate> preds[] = { pred1, pred2 };
+        std::array<const Predicate*, 2> preds = {{ &*pred1, &*pred2 }};
         for (int i1 = 0; i1 < 2; i1++) {
-            if (auto andPred2 = std::dynamic_pointer_cast<const AndPredicate>(preds[i1 ^ 1])) {
-                std::shared_ptr<const Predicate> subPreds2[] = { andPred2->getPredicate1(), andPred2->getPredicate2() };
+            if (auto andPred2 = std::get_if<std::shared_ptr<AndPredicate>>(&*preds[i1 ^ 1])) {
+                std::array<const Predicate*, 2> subPreds2 = {{ &(*andPred2)->getPredicate1(), &(*andPred2)->getPredicate2() }};
                 for (int i2 = 0; i2 < 2; i2++) {
-                    if (preds[i1]->equals(subPreds2[i2])) {
-                        return preds[i1];
+                    if (std::visit(PredicateDeepEqualsChecker(), *preds[i1], *subPreds2[i2])) {
+                        return *preds[i1];
                     }
                 }
             }
         }
 
         // (X & Y) or (X & Z) = X & (Y or Z)
-        if (auto andPred1 = std::dynamic_pointer_cast<const AndPredicate>(pred1)) {
-            std::shared_ptr<const Predicate> subPreds1[] = { andPred1->getPredicate1(), andPred1->getPredicate2() };
-            if (auto andPred2 = std::dynamic_pointer_cast<const AndPredicate>(pred2)) {
-                std::shared_ptr<const Predicate> subPreds2[] = { andPred2->getPredicate1(), andPred2->getPredicate2() };
+        if (auto andPred1 = std::get_if<std::shared_ptr<AndPredicate>>(&*pred1)) {
+            std::array<const Predicate*, 2> subPreds1 = {{ &(*andPred1)->getPredicate1(), &(*andPred1)->getPredicate2() }};
+            if (auto andPred2 = std::get_if<std::shared_ptr<AndPredicate>>(&*pred2)) {
+                std::array<const Predicate*, 2> subPreds2 = {{ &(*andPred2)->getPredicate1(), &(*andPred2)->getPredicate2() }};
                 for (int i1 = 0; i1 < 2; i1++) {
                     for (int i2 = 0; i2 < 2; i2++) {
-                        if (subPreds1[i1]->equals(subPreds2[i2])) {
-                            auto subPred1 = subPreds1[i1];
-                            auto subPred2 = std::make_shared<OrPredicate>(subPreds1[i1 ^ 1], subPreds2[i2 ^ 1]);
-                            return std::make_shared<AndPredicate>(subPred1, subPred2);
+                        if (std::visit(PredicateDeepEqualsChecker(), *subPreds1[i1], *subPreds2[i2])) {
+                            return std::make_shared<AndPredicate>(*subPreds1[i1], std::make_shared<OrPredicate>(*subPreds1[i1 ^ 1], *subPreds2[i2 ^ 1]));
                         }
                     }
                 }
@@ -144,6 +146,6 @@ namespace carto { namespace mvt {
         }
 
         // Just combine
-        return std::make_shared<OrPredicate>(pred1, pred2);
+        return std::make_shared<OrPredicate>(*pred1, *pred2);
     }
 } }

@@ -17,8 +17,8 @@ namespace carto { namespace mvt {
         virtual void build(const FeatureCollection& featureCollection, const FeatureExpressionContext& exprContext, const SymbolizerContext& symbolizerContext, vt::TileLayerBuilder& layerBuilder) override;
 
     protected:
-        constexpr static int DEFAULT_MARKER_SIZE = 10;
-        constexpr static int SUPERSAMPLING_FACTOR = 4;
+        inline static constexpr int DEFAULT_MARKER_SIZE = 10;
+        inline static constexpr int SUPERSAMPLING_FACTOR = 4;
 
         virtual void bindParameter(const std::string& name, const std::string& value) override;
 
@@ -33,7 +33,6 @@ namespace carto { namespace mvt {
         vt::Color _stroke = vt::Color(0xff000000);
         float _strokeOpacity = 1.0f;
         float _strokeWidth = 0.0f;
-        std::string _compOp = "src-over";
     };
 } }
 

@@ -219,8 +219,8 @@ namespace carto { namespace vt {
         }
 
     private:
-        constexpr static int RENDER_PADDING = 3;
-        constexpr static int RENDER_SIZE = GLYPH_RENDER_SIZE - RENDER_PADDING;
+        inline static constexpr int RENDER_PADDING = 3;
+        inline static constexpr int RENDER_SIZE = GLYPH_RENDER_SIZE - RENDER_PADDING;
 
         GlyphMap::GlyphId addFreeTypeGlyph(FT_Face face, CodePoint codePoint) const {
             FT_Error error = FT_Load_Glyph(face, codePoint, FT_LOAD_NO_BITMAP | FT_LOAD_NO_HINTING);

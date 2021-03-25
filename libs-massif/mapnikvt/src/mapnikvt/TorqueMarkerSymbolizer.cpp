@@ -8,8 +8,6 @@ namespace carto { namespace mvt {
 
         updateBindings(exprContext);
 
-        vt::CompOp compOp = convertCompOp(_compOp);
-
         float width = DEFAULT_MARKER_SIZE, height = DEFAULT_MARKER_SIZE;
         if (_width > 0) {
             width = height = _width;
@@ -35,7 +33,7 @@ namespace carto { namespace mvt {
             vt::Color fill = vt::Color::fromColorOpacity(_fill, _fillOpacity);
             vt::Color stroke = vt::Color::fromColorOpacity(_stroke, _strokeOpacity);
             if (_markerType == "rectangle") {
-                std::string file = "__torque_marker_rectangle_" + boost::lexical_cast<std::string>(width) + "_" + boost::lexical_cast<std::string>(height) + "_" + boost::lexical_cast<std::string>(fill.value()) + "_" + boost::lexical_cast<std::string>(_strokeWidth) + "_" + boost::lexical_cast<std::string>(stroke.value()) + ".bmp";
+                std::string file = "__torque_marker_rectangle_" + std::to_string(width) + "_" + std::to_string(height) + "_" + std::to_string(fill.value()) + "_" + std::to_string(_strokeWidth) + "_" + std::to_string(stroke.value()) + ".bmp";
                 bitmapImage = symbolizerContext.getBitmapManager()->getBitmapImage(file);
                 if (!bitmapImage) {
                     bitmapImage = makeRectangleBitmap(width * SUPERSAMPLING_FACTOR, height * SUPERSAMPLING_FACTOR, fill, _strokeWidth * SUPERSAMPLING_FACTOR, stroke);
@@ -43,7 +41,7 @@ namespace carto { namespace mvt {
                 }
             }
             else {
-                std::string file = "__torque_marker_ellipse_" + boost::lexical_cast<std::string>(width) + "_" + boost::lexical_cast<std::string>(height) + "_" + boost::lexical_cast<std::string>(fill.value()) + "_" + boost::lexical_cast<std::string>(_strokeWidth) + "_" + boost::lexical_cast<std::string>(stroke.value()) + ".bmp";
+                std::string file = "__torque_marker_ellipse_" + std::to_string(width) + "_" + std::to_string(height) + "_" + std::to_string(fill.value()) + "_" + std::to_string(_strokeWidth) + "_" + std::to_string(stroke.value()) + ".bmp";
                 bitmapImage = symbolizerContext.getBitmapManager()->getBitmapImage(file);
                 if (!bitmapImage) {
                     bitmapImage = makeEllipseBitmap(width * SUPERSAMPLING_FACTOR, height * SUPERSAMPLING_FACTOR, fill, _strokeWidth * SUPERSAMPLING_FACTOR, stroke);
@@ -60,7 +58,11 @@ namespace carto { namespace mvt {
         vt::FloatFunction normalizedSizeFunc = _functionBuilder.createFloatFunction(widthScale);
         vt::ColorFunction fillFunc = _functionBuilder.createColorFunction(vt::Color::fromColorOpacity(vt::Color(1, 1, 1, 1), fillOpacity));
 
-        vt::PointStyle style(compOp, fillFunc, normalizedSizeFunc, bitmapImage, cglib::scale3_matrix(cglib::vec3<float>(1.0f, heightScale / widthScale, 1.0f)));
+        std::optional<vt::Transform> optTransform;
+        if (heightScale != widthScale) {
+            optTransform = vt::Transform::fromMatrix2(cglib::scale2_matrix(cglib::vec2<float>(1.0f, heightScale / widthScale)));
+        }
+        vt::PointStyle style(getCompOp(), fillFunc, normalizedSizeFunc, bitmapImage, optTransform);
 
         std::size_t featureIndex = 0;
         std::size_t geometryIndex = 0;
@@ -113,9 +115,6 @@ namespace carto { namespace mvt {
         }
         else if (name == "stroke-width") {
             bind(&_strokeWidth, parseExpression(value));
-        }
-        else if (name == "comp-op") {
-            bind(&_compOp, parseStringExpression(value));
         }
         else if (name == "opacity") { // binds to 2 parameters
             bind(&_fillOpacity, parseExpression(value));

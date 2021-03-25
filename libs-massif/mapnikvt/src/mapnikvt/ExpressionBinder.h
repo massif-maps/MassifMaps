@@ -9,12 +9,14 @@
 
 #include "Expression.h"
 #include "ExpressionContext.h"
+#include "ExpressionUtils.h"
 #include "ValueConverter.h"
 #include "vt/Color.h"
 #include "vt/Styles.h"
 
 #include <memory>
 #include <mutex>
+#include <list>
 #include <functional>
 
 namespace carto { namespace mvt {
@@ -23,13 +25,13 @@ namespace carto { namespace mvt {
     public:
         ExpressionBinder() = default;
 
-        bool bind(V* field, const std::shared_ptr<const Expression>& expr) {
+        bool bind(V* field, const Expression& expr) {
             return bind(field, expr, std::function<V(const Value&)>(ValueConverter<V>::convert));
         }
-        
-        bool bind(V* field, const std::shared_ptr<const Expression>& expr, std::function<V(const Value& val)> convertFunc) {
-            if (auto constExpr = std::dynamic_pointer_cast<const ConstExpression>(expr)) {
-                *field = convertFunc(constExpr->getConstant());
+
+        bool bind(V* field, const Expression& expr, std::function<V(const Value& val)> convertFunc) {
+            if (auto val = std::get_if<Value>(&expr)) {
+                *field = convertFunc(*val);
                 return true;
             }
             _bindings.emplace_back(field, expr, std::move(convertFunc));
@@ -38,7 +40,7 @@ namespace carto { namespace mvt {
 
         void update(const FeatureExpressionContext& context) const {
             for (const Binding& binding : _bindings) {
-                Value val = binding.expr->evaluate(context);
+                Value val = std::visit(ExpressionEvaluator(context), binding.expr);
                 *binding.field = binding.convertFunc(val);
             }
         }
@@ -46,10 +48,10 @@ namespace carto { namespace mvt {
     private:
         struct Binding {
             V* field;
-            std::shared_ptr<const Expression> expr;
+            Expression expr;
             std::function<V(const Value&)> convertFunc;
 
-            explicit Binding(V* field, std::shared_ptr<const Expression> expr, std::function<V(const Value&)> convertFunc) : field(field), expr(std::move(expr)), convertFunc(std::move(convertFunc)) { }
+            explicit Binding(V* field, Expression expr, std::function<V(const Value&)> convertFunc) : field(field), expr(std::move(expr)), convertFunc(std::move(convertFunc)) { }
         };
 
         std::vector<Binding> _bindings;
@@ -62,13 +64,13 @@ namespace carto { namespace mvt {
 
         ExpressionFunctionBinder() = default;
 
-        bool bind(Function* field, const std::shared_ptr<const Expression>& expr) {
+        bool bind(Function* field, const Expression& expr) {
             return bind(field, expr, std::function<V(const Value&)>(ValueConverter<V>::convert));
         }
 
-        bool bind(Function* field, const std::shared_ptr<const Expression>& expr, std::function<V(const Value&)> convertFunc) {
-            if (auto constExpr = std::dynamic_pointer_cast<const ConstExpression>(expr)) {
-                *field = Function(convertFunc(constExpr->getConstant()));
+        bool bind(Function* field, const Expression& expr, std::function<V(const Value&)> convertFunc) {
+            if (auto val = std::get_if<Value>(&expr)) {
+                *field = Function(convertFunc(*val));
                 return true;
             }
             _bindings.emplace_back(field, expr, convertFunc);
@@ -77,7 +79,7 @@ namespace carto { namespace mvt {
 
         void update(const FeatureExpressionContext& context) const {
             for (const Binding& binding : _bindings) {
-                std::shared_ptr<const Expression> expr = simplifyExpression(binding.expr, context);
+                Expression expr = simplifyExpression(binding.expr, context);
                 *binding.field = buildFunction(expr, binding.convertFunc);
             }
         }
@@ -85,26 +87,26 @@ namespace carto { namespace mvt {
     private:
         struct Binding {
             Function* field;
-            std::shared_ptr<const Expression> expr;
+            Expression expr;
             std::function<V(const Value&)> convertFunc;
 
-            explicit Binding(Function* field, std::shared_ptr<const Expression> expr, std::function<V(const Value&)> convertFunc) : field(field), expr(std::move(expr)), convertFunc(std::move(convertFunc)) { }
+            explicit Binding(Function* field, Expression expr, std::function<V(const Value&)> convertFunc) : field(field), expr(std::move(expr)), convertFunc(std::move(convertFunc)) { }
         };
 
-        Function buildFunction(const std::shared_ptr<const Expression>& expr, const std::function<V(const Value&)>& convertFunc) const {
-            if (auto constExpr = std::dynamic_pointer_cast<const ConstExpression>(expr)) {
-                return Function(convertFunc(constExpr->getConstant()));
+        Function buildFunction(const Expression& expr, const std::function<V(const Value&)>& convertFunc) const {
+            if (auto val = std::get_if<Value>(&expr)) {
+                return Function(convertFunc(*val));
             }
 
             for (auto it = _functionCache.begin(); it != _functionCache.end(); it++) {
-                if (it->first->equals(expr)) {
+                if (std::visit(ExpressionDeepEqualsChecker(), expr, it->first)) {
                     return it->second;
                 }
             }
 
             struct ViewStateFunction {
                 ViewStateFunction() = delete;
-                explicit ViewStateFunction(const std::shared_ptr<const Expression>& expr, const std::function<V(const Value&)>& convertFunc) : _expr(expr), _convertFunc(convertFunc), _mutex(std::make_shared<std::mutex>()) { }
+                explicit ViewStateFunction(const Expression& expr, const std::function<V(const Value&)>& convertFunc) : _expr(expr), _convertFunc(convertFunc), _mutex(std::make_shared<std::mutex>()) { }
 
                 V operator() (const vt::ViewState& viewState) const {
                     std::lock_guard<std::mutex> lock(*_mutex);
@@ -112,13 +114,13 @@ namespace carto { namespace mvt {
                         ViewExpressionContext context;
                         context.setZoom(viewState.zoom);
                         _cachedZoom = viewState.zoom;
-                        _cachedValue = _convertFunc(_expr->evaluate(context));
+                        _cachedValue = _convertFunc(std::visit(ExpressionEvaluator(context), _expr));
                     }
                     return _cachedValue;
                 }
 
             private:
-                const std::shared_ptr<const Expression> _expr;
+                const Expression _expr;
                 const std::function<V(const Value&)> _convertFunc;
                 mutable float _cachedZoom = std::numeric_limits<float>::quiet_NaN();
                 mutable V _cachedValue = V();
@@ -130,33 +132,34 @@ namespace carto { namespace mvt {
             if (_functionCache.size() >= MAX_CACHE_SIZE) {
                 _functionCache.erase(_functionCache.begin()); // erase any element to keep the cache compact
             }
-            _functionCache[expr] = func;
+            _functionCache.push_back(std::make_pair(expr, func));
             return func;
         }
 
-        static std::shared_ptr<const Expression> simplifyExpression(const std::shared_ptr<const Expression>& expr, const FeatureExpressionContext& context) {
-            return expr->map([&context](const std::shared_ptr<const Expression>& expr) -> std::shared_ptr<const Expression> {
+        static Expression simplifyExpression(const Expression& expr, const FeatureExpressionContext& context) {
+            auto simplify = [&context](const Expression& expr) -> Expression {
                 bool containsViewVariables = false;
-                expr->fold([&containsViewVariables, &context](const std::shared_ptr<const Expression>& expr) {
-                    if (auto varExpr = std::dynamic_pointer_cast<const VariableExpression>(expr)) {
-                        std::string name = varExpr->getVariableName(context);
+                auto checkViewVariables = [&containsViewVariables, &context](const Expression& expr) {
+                    if (auto varExpr = std::get_if<std::shared_ptr<VariableExpression>>(&expr)) {
+                        std::string name = (*varExpr)->getVariableName(context);
                         if (ViewExpressionContext::isViewVariable(name)) {
                             containsViewVariables = true;
                         }
                     }
-                });
+                };
+                std::visit(ExpressionDeepVisitor(checkViewVariables), expr);
                 if (containsViewVariables) {
                     return expr;
                 }
-                Value val = expr->evaluate(context);
-                return std::make_shared<ConstExpression>(val);
-            });
+                return std::visit(ExpressionEvaluator(context), expr);
+            };
+            return std::visit(ExpressionMapper(simplify), expr);
         }
 
-        constexpr static std::size_t MAX_CACHE_SIZE = 32; // 32 is a good fit if function depends on 'discrete zoom'
+        inline static constexpr std::size_t MAX_CACHE_SIZE = 32; // 32 is a good fit if function depends on 'discrete zoom'
 
         std::vector<Binding> _bindings;
-        mutable std::map<std::shared_ptr<const Expression>, Function> _functionCache;
+        mutable std::list<std::pair<Expression, Function>> _functionCache;
     };
 } }
 

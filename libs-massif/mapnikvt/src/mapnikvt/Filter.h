@@ -7,11 +7,12 @@
 #ifndef _CARTO_MAPNIKVT_FILTER_H_
 #define _CARTO_MAPNIKVT_FILTER_H_
 
+#include "Predicate.h"
+
 #include <memory>
+#include <optional>
 
 namespace carto { namespace mvt {
-    class Predicate;
-
     class Filter final {
     public:
         enum class Type {
@@ -20,14 +21,14 @@ namespace carto { namespace mvt {
             ALSOFILTER
         };
 
-        explicit Filter(Type type, std::shared_ptr<const Predicate> pred) : _type(type), _pred(std::move(pred)) { }
+        explicit Filter(Type type, std::optional<Predicate> pred) : _type(type), _pred(std::move(pred)) { }
 
         Type getType() const { return _type; }
-        const std::shared_ptr<const Predicate>& getPredicate() const { return _pred; }
+        const std::optional<Predicate>& getPredicate() const { return _pred; }
 
     private:
         const Type _type;
-        const std::shared_ptr<const Predicate> _pred;
+        const std::optional<Predicate> _pred;
     };
 } }
 

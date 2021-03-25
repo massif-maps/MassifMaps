@@ -14,6 +14,8 @@
 #include "ScaleUtils.h"
 #include "Logger.h"
 
+#include <boost/lexical_cast.hpp>
+
 namespace carto { namespace mvt {
     std::shared_ptr<Map> MapParser::parseMap(const pugi::xml_document& doc) const {
         pugi::xpath_node_set mapNodes = pugi::xpath_query("Map").evaluate_node_set(doc);
@@ -138,24 +140,18 @@ namespace carto { namespace mvt {
                         if (!exprStr.empty()) {
                             auto filterIt = filterCache.find(exprStr);
                             if (filterIt == filterCache.end()) {
-                                std::shared_ptr<Expression> expr = parseExpression(exprStr, false);
-                                std::shared_ptr<const Predicate> pred;
-                                if (auto predExpr = std::dynamic_pointer_cast<PredicateExpression>(expr)) {
-                                    pred = predExpr->getPredicate();
-                                }
-                                else {
-                                    pred = std::make_shared<ExpressionPredicate>(expr);
-                                }
+                                Expression expr = parseExpression(exprStr, false);
+                                Predicate pred = std::holds_alternative<Predicate>(expr) ? std::get<Predicate>(expr) : std::make_shared<ExpressionPredicate>(expr);
                                 filterIt = filterCache.emplace(exprStr, std::make_shared<Filter>(Filter::Type::FILTER, pred)).first;
                             }
                             filter = filterIt->second;
                         }
                     }
                     else if (nodeName == "ElseFilter") {
-                        filter = std::make_shared<Filter>(Filter::Type::ELSEFILTER, std::shared_ptr<Predicate>());
+                        filter = std::make_shared<Filter>(Filter::Type::ELSEFILTER, std::optional<Predicate>());
                     }
                     else if (nodeName == "AlsoFilter") {
-                        filter = std::make_shared<Filter>(Filter::Type::ALSOFILTER, std::shared_ptr<Predicate>());
+                        filter = std::make_shared<Filter>(Filter::Type::ALSOFILTER, std::optional<Predicate>());
                     }
                     else {
                         std::shared_ptr<Symbolizer> symbolizer = _symbolizerParser->parseSymbolizer(node, map);

@@ -9,7 +9,7 @@
 
 #include "Symbolizer.h"
 
-#include <boost/optional.hpp>
+#include <optional>
 
 namespace carto { namespace mvt {
     class GeometrySymbolizer : public Symbolizer {
@@ -17,9 +17,11 @@ namespace carto { namespace mvt {
         explicit GeometrySymbolizer(std::shared_ptr<Logger> logger) : Symbolizer(std::move(logger)) { }
             
         virtual void bindParameter(const std::string& name, const std::string& value) override;
+
+        std::optional<vt::Transform> getGeometryTransform() const;
             
-        boost::optional<cglib::mat3x3<float>> _geometryTransform;
-        std::string _compOp = "src-over";
+    private:
+        vt::Transform _geometryTransform;
     };
 } }
 

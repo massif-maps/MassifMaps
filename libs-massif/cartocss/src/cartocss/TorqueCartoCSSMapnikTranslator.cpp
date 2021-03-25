@@ -2,23 +2,23 @@
 #include "mapnikvt/TorqueMarkerSymbolizer.h"
 
 namespace carto { namespace css {
-    std::shared_ptr<mvt::Symbolizer> TorqueCartoCSSMapnikTranslator::buildSymbolizer(const std::string& symbolizerType, const std::list<CartoCSSCompiler::Property>& properties, const std::shared_ptr<mvt::Map>& map) const {
+    std::shared_ptr<mvt::Symbolizer> TorqueCartoCSSMapnikTranslator::buildSymbolizer(const std::string& symbolizerType, const std::list<Property>& properties, const std::shared_ptr<mvt::Map>& map) const {
         if (symbolizerType != "marker") {
             _logger->write(mvt::Logger::Severity::ERROR, "Unsupported Torque symbolizer type: " + symbolizerType);
             return std::shared_ptr<mvt::Symbolizer>();
         }
         auto mapnikSymbolizer = std::make_shared<mvt::TorqueMarkerSymbolizer>(_logger);
-        for (const CartoCSSCompiler::Property& prop : properties) {
-            std::string propertyId = prop.field.substr(prop.field.rfind('/') + 1);
+        for (const Property& prop : properties) {
+            std::string propertyId = prop.getField().substr(prop.getField().rfind('/') + 1);
             auto it = _symbolizerPropertyMap.find(propertyId);
             if (it == _symbolizerPropertyMap.end()) {
                 _logger->write(mvt::Logger::Severity::ERROR, "Unsupported Torque symbolizer property: " + propertyId);
                 continue;
             }
             try {
-                setSymbolizerParameter(mapnikSymbolizer, it->second, prop.expression, isStringExpression(propertyId));
+                setSymbolizerParameter(mapnikSymbolizer, it->second, prop.getExpression(), isStringExpression(propertyId));
             }
-            catch (const std::runtime_error& ex) {
+            catch (const std::exception& ex) {
                 _logger->write(mvt::Logger::Severity::ERROR, "Error while setting " + propertyId + " parameter: " + ex.what());
             }
         }

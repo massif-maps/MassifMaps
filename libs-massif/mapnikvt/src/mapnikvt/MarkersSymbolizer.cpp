@@ -2,9 +2,6 @@
 #include "ParserUtils.h"
 #include "vt/BitmapCanvas.h"
 
-#include <boost/optional.hpp>
-#include <boost/lexical_cast.hpp>
-
 namespace carto { namespace mvt {
     void MarkersSymbolizer::build(const FeatureCollection& featureCollection, const FeatureExpressionContext& exprContext, const SymbolizerContext& symbolizerContext, vt::TileLayerBuilder& layerBuilder) {
         std::lock_guard<std::mutex> lock(_mutex);
@@ -15,15 +12,14 @@ namespace carto { namespace mvt {
             return;
         }
 
-        vt::CompOp compOp = convertCompOp(_compOp);
-
         bool clip = _clipDefined ? _clip : _allowOverlap;
 
         float fontScale = symbolizerContext.getSettings().getFontScale();
         vt::LabelOrientation placement = convertLabelPlacement(_placement);
         vt::LabelOrientation orientation = placement;
         if (_transformExpression) { // if rotation transform is explicitly defined, use point orientation
-            if (containsRotationTransform(_transformExpression->evaluate(exprContext))) {
+            Value transformVal = std::visit(ExpressionEvaluator(exprContext), *_transformExpression);
+            if (containsRotationTransform(transformVal)) {
                 orientation = vt::LabelOrientation::POINT;
             }
         }
@@ -91,7 +87,7 @@ namespace carto { namespace mvt {
             bitmapHeight = std::min(bitmapHeight, static_cast<float>(MAX_BITMAP_SIZE));
             
             if (ellipse) {
-                file = "__default_marker_ellipse_" + boost::lexical_cast<std::string>(bitmapWidth) + "_" + boost::lexical_cast<std::string>(bitmapHeight) + "_" + boost::lexical_cast<std::string>(fill.value()) + "_" + boost::lexical_cast<std::string>(_strokeWidthStatic) + "_" + boost::lexical_cast<std::string>(stroke.value()) + ".bmp";
+                file = "__default_marker_ellipse_" + std::to_string(bitmapWidth) + "_" + std::to_string(bitmapHeight) + "_" + std::to_string(fill.value()) + "_" + std::to_string(_strokeWidthStatic) + "_" + std::to_string(stroke.value()) + ".bmp";
                 bitmapImage = symbolizerContext.getBitmapManager()->getBitmapImage(file);
                 if (!bitmapImage) {
                     bitmapImage = makeEllipseBitmap(bitmapWidth * SUPERSAMPLING_FACTOR, bitmapHeight * SUPERSAMPLING_FACTOR, fill, std::abs(_strokeWidthStatic) * SUPERSAMPLING_FACTOR, stroke);
@@ -99,7 +95,7 @@ namespace carto { namespace mvt {
                 }
             }
             else {
-                file = "__default_marker_arrow_" + boost::lexical_cast<std::string>(bitmapWidth) + "_" + boost::lexical_cast<std::string>(bitmapHeight) + "_" + boost::lexical_cast<std::string>(fill.value()) + "_" + boost::lexical_cast<std::string>(_strokeWidthStatic) + "_" + boost::lexical_cast<std::string>(stroke.value()) + ".bmp";
+                file = "__default_marker_arrow_" + std::to_string(bitmapWidth) + "_" + std::to_string(bitmapHeight) + "_" + std::to_string(fill.value()) + "_" + std::to_string(_strokeWidthStatic) + "_" + std::to_string(stroke.value()) + ".bmp";
                 bitmapImage = symbolizerContext.getBitmapManager()->getBitmapImage(file);
                 if (!bitmapImage) {
                     bitmapImage = makeArrowBitmap(bitmapWidth * SUPERSAMPLING_FACTOR, bitmapHeight * SUPERSAMPLING_FACTOR, fill, std::abs(_strokeWidthStatic) * SUPERSAMPLING_FACTOR, stroke);
@@ -115,18 +111,18 @@ namespace carto { namespace mvt {
 
         float widthScale = bitmapScaleX / bitmapImage->scale / bitmapImage->bitmap->width;
         float heightScale = bitmapScaleY / bitmapImage->scale / bitmapImage->bitmap->height;
-        vt::FloatFunction normalizedSizeFunc = _functionBuilder.createChainedFloatFunction("multiply" + boost::lexical_cast<std::string>(widthScale), [widthScale](float size) { return size * widthScale; }, sizeFunc);
+        vt::FloatFunction normalizedSizeFunc = _functionBuilder.createChainedFloatFunction("multiply" + std::to_string(widthScale), [widthScale](float size) { return size * widthScale; }, sizeFunc);
         vt::ColorFunction fillFunc = _functionBuilder.createColorFunction(vt::Color::fromColorOpacity(vt::Color(1, 1, 1, 1), fillOpacity));
 
         std::vector<std::pair<long long, vt::TileLayerBuilder::Vertex>> pointInfos;
         std::vector<std::pair<long long, vt::TileLayerBuilder::PointLabelInfo>> labelInfos;
 
-        auto addPoint = [&](long long localId, long long globalId, const boost::variant<vt::TileLayerBuilder::Vertex, vt::TileLayerBuilder::Vertices>& position) {
+        auto addPoint = [&](long long localId, long long globalId, const std::variant<vt::TileLayerBuilder::Vertex, vt::TileLayerBuilder::Vertices>& position) {
             if (clip) {
-                if (auto vertex = boost::get<vt::TileLayerBuilder::Vertex>(&position)) {
+                if (auto vertex = std::get_if<vt::TileLayerBuilder::Vertex>(&position)) {
                     pointInfos.emplace_back(localId, *vertex);
                 }
-                else if (auto vertices = boost::get<vt::TileLayerBuilder::Vertices>(&position)) {
+                else if (auto vertices = std::get_if<vt::TileLayerBuilder::Vertices>(&position)) {
                     if (!vertices->empty()) {
                         pointInfos.emplace_back(localId, vertices->front());
                     }
@@ -137,14 +133,14 @@ namespace carto { namespace mvt {
             }
         };
 
-        auto flushPoints = [&](const cglib::mat3x3<float>& transform) {
-            boost::optional<cglib::mat3x3<float>> optTransform;
-            if (transform != cglib::mat3x3<float>::identity() || heightScale != widthScale) {
-                optTransform = transform * cglib::scale3_matrix(cglib::vec3<float>(1.0f, heightScale / widthScale, 1.0f));
+        auto flushPoints = [&](const vt::Transform& transform) {
+            std::optional<vt::Transform> optTransform;
+            if (transform != vt::Transform() || heightScale != widthScale) {
+                optTransform = transform * vt::Transform::fromMatrix2(cglib::scale2_matrix(cglib::vec2<float>(1.0f, heightScale / widthScale)));
             }
 
             if (clip) {
-                vt::PointStyle style(compOp, fillFunc, normalizedSizeFunc, bitmapImage, optTransform);
+                vt::PointStyle style(getCompOp(), fillFunc, normalizedSizeFunc, bitmapImage, optTransform);
 
                 std::size_t pointInfoIndex = 0;
                 layerBuilder.addPoints([&](long long& id, vt::TileLayerBuilder::Vertex& vertex) {
@@ -200,12 +196,8 @@ namespace carto { namespace mvt {
                         addPoint(localId, generateId(), pos);
 
                         cglib::vec2<float> dir = cglib::unit(v1 - v0);
-                        cglib::mat3x3<float> dirTransform = cglib::mat3x3<float>::identity();
-                        dirTransform(0, 0) = dir(0);
-                        dirTransform(0, 1) = -dir(1);
-                        dirTransform(1, 0) = dir(1);
-                        dirTransform(1, 1) = dir(0);
-                        flushPoints(dirTransform * _transform); // NOTE: we should flush to be sure that the point will not get buffered
+                        cglib::mat2x2<float> dirTransform {{ dir(0), -dir(1) }, { dir(1), dir(0) }};
+                        flushPoints(vt::Transform::fromMatrix2(dirTransform) * _transform); // NOTE: we should flush to be sure that the point will not get buffered
                     }
 
                     linePos += _spacing + bitmapSize;
@@ -316,10 +308,7 @@ namespace carto { namespace mvt {
         }
         else if (name == "transform") {
             _transformExpression = parseStringExpression(value);
-            bind(&_transform, _transformExpression, &MarkersSymbolizer::convertTransform);
-        }
-        else if (name == "comp-op") {
-            bind(&_compOp, parseStringExpression(value));
+            bind(&_transform, *_transformExpression, &MarkersSymbolizer::convertTransform);
         }
         else if (name == "opacity") { // binds to 2 parameters
             bind(&_fillOpacity, parseExpression(value));
@@ -332,9 +321,9 @@ namespace carto { namespace mvt {
     
     bool MarkersSymbolizer::containsRotationTransform(const Value& val) {
         try {
-            std::vector<std::shared_ptr<Transform>> transforms = parseTransformList(boost::lexical_cast<std::string>(val));
-            for (const std::shared_ptr<Transform>& transform : transforms) {
-                if (std::dynamic_pointer_cast<RotateTransform>(transform)) {
+            std::vector<Transform> transforms = parseTransformList(ValueConverter<std::string>::convert(val));
+            for (const Transform& transform : transforms) {
+                if (std::get_if<RotateTransform>(&transform)) {
                     return true;
                 }
             }

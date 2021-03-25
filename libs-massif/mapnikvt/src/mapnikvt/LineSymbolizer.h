@@ -13,17 +13,17 @@ namespace carto { namespace mvt {
     class LineSymbolizer : public GeometrySymbolizer {
     public:
         explicit LineSymbolizer(std::shared_ptr<Logger> logger) : GeometrySymbolizer(std::move(logger)) {
-            _strokeWidthExpression = std::make_shared<ConstExpression>(Value(1.0f));
-            bind(&_strokeFunc, std::make_shared<ConstExpression>(Value(std::string("#000000"))), &LineSymbolizer::convertColor);
+            _strokeWidthExpression = Value(1.0f);
             bind(&_strokeWidthFunc, _strokeWidthExpression);
-            bind(&_strokeOpacityFunc, std::make_shared<ConstExpression>(Value(1.0f)));
+            bind(&_strokeFunc, Value(std::string("#000000")), &LineSymbolizer::convertColor);
+            bind(&_strokeOpacityFunc, Value(1.0f));
         }
 
         virtual void build(const FeatureCollection& featureCollection, const FeatureExpressionContext& exprContext, const SymbolizerContext& symbolizerContext, vt::TileLayerBuilder& layerBuilder) override;
 
     protected:
-        constexpr static int DASH_SUPERSAMPLING_FACTOR = 2;
-        constexpr static float DASH_PATTERN_SCALE = 0.75f;
+        inline static constexpr int DASH_SUPERSAMPLING_FACTOR = 2;
+        inline static constexpr float DASH_PATTERN_SCALE = 0.75f;
 
         virtual void bindParameter(const std::string& name, const std::string& value) override;
 
@@ -32,13 +32,13 @@ namespace carto { namespace mvt {
 
         static std::shared_ptr<vt::BitmapPattern> createDashBitmapPattern(const std::vector<float>& strokeDashArray, int height, vt::LineCapMode lineCap);
 
-        vt::ColorFunction _strokeFunc; // vt::Color(0xff000000)
+        Expression _strokeWidthExpression;
         vt::FloatFunction _strokeWidthFunc; // 1.0f
+        vt::ColorFunction _strokeFunc; // vt::Color(0xff000000)
         vt::FloatFunction _strokeOpacityFunc; // 1.0f
         std::string _strokeLinejoin = "miter";
         std::string _strokeLinecap = "butt";
         std::string _strokeDashArray;
-        std::shared_ptr<Expression> _strokeWidthExpression;
     };
 } }
 

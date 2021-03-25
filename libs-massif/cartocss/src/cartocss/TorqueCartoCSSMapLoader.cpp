@@ -23,15 +23,16 @@ namespace carto { namespace css {
         std::function<void(const RuleSet& ruleSet)> storeRuleSetInfo;
         storeRuleSetInfo = [&](const RuleSet& ruleSet) {
             for (const Selector& selector : ruleSet.getSelectors()) {
-                for (const std::shared_ptr<const Predicate>& pred : selector.getPredicates()) {
-                    if (auto layerPred = std::dynamic_pointer_cast<const LayerPredicate>(pred)) {
-                        layerNames.insert(layerPred->getLayerName());
+                for (const Predicate& pred : selector.getPredicates()) {
+                    if (auto layerPred = std::get_if<LayerPredicate>(&pred)) {
+                        std::string layerName = layerPred->getLayerName();
+                        layerNames.insert(layerName);
                     }
-                    else if (auto opPred = std::dynamic_pointer_cast<const OpPredicate>(pred)) {
-                        if (opPred->isField() && opPred->getFieldOrVar() == "frame-offset") {
+                    else if (auto opPred = std::get_if<OpPredicate>(&pred)) {
+                        if (opPred->getFieldOrVar().isField() && opPred->getFieldOrVar().getName() == "frame-offset") {
                             if (opPred->getOp() == OpPredicate::Op::EQ) {
-                                if (auto integer = boost::get<long long>(opPred->getRefValue())) {
-                                    frameOffsets.insert(static_cast<int>(integer));
+                                if (auto longVal = std::get_if<long long>(&opPred->getRefValue())) {
+                                    frameOffsets.insert(static_cast<int>(*longVal));
                                 }
                                 else {
                                     _logger->write(mvt::Logger::Severity::ERROR, "Torque 'frame-offset' value must be integer");
@@ -46,14 +47,14 @@ namespace carto { namespace css {
             }
 
             for (const Block::Element& element : ruleSet.getBlock().getElements()) {
-                if (auto subRuleSet = boost::get<RuleSet>(&element)) {
+                if (auto subRuleSet = std::get_if<RuleSet>(&element)) {
                     storeRuleSetInfo(*subRuleSet);
                 }
             }
         };
 
         for (const StyleSheet::Element& element : styleSheet.getElements()) {
-            if (auto ruleSet = boost::get<RuleSet>(&element)) {
+            if (auto ruleSet = std::get_if<RuleSet>(&element)) {
                 storeRuleSetInfo(*ruleSet);
             }
         }
@@ -77,39 +78,31 @@ namespace carto { namespace css {
         auto map = std::make_shared<mvt::TorqueMap>(mapSettings, torqueSettings);
 
         // Layers
-        CartoCSSCompiler compiler;
-        TorqueCartoCSSMapnikTranslator translator(_logger);
         for (const std::string& layerName : layerNames) {
             for (auto frameOffsetIt = frameOffsets.rbegin(); frameOffsetIt != frameOffsets.rend(); frameOffsetIt++) {
                 int frameOffset = *frameOffsetIt;
                 std::map<std::string, AttachmentStyle> attachmentStyleMap;
-                int minZoom = 0;
-                std::list<CartoCSSCompiler::LayerAttachment> prevLayerAttachments;
-                for (int zoom = 0; zoom < MAX_ZOOM; zoom++) {
-                    try {
-                        ExpressionContext context;
-                        std::map<std::string, Value> predefinedFieldMap;
-                        context.predefinedFieldMap = &predefinedFieldMap;
-                        (*context.predefinedFieldMap)["zoom"] = Value(static_cast<long long>(zoom));
-                        (*context.predefinedFieldMap)["frame-offset"] = Value(static_cast<long long>(frameOffset));
-                        compiler.setContext(context);
-                        compiler.setIgnoreLayerPredicates(_ignoreLayerPredicates);
+                try {
+                    std::map<std::pair<int, int>, std::list<AttachmentPropertySets>> layerZoomAttachments;
 
-                        std::list<CartoCSSCompiler::LayerAttachment> layerAttachments;
-                        compiler.compileLayer(layerName, styleSheet, layerAttachments);
+                    ExpressionContext context;
+                    std::map<std::string, Value> predefinedFieldMap;
+                    context.predefinedFieldMap = &predefinedFieldMap;
+                    (*context.predefinedFieldMap)["frame-offset"] = Value(static_cast<long long>(frameOffset));
 
-                        if (zoom > 0 && layerAttachments != prevLayerAttachments) {
-                            buildAttachmentStyleMap(translator, map, minZoom, zoom, prevLayerAttachments, attachmentStyleMap);
-                            minZoom = zoom;
-                        }
-                        prevLayerAttachments = std::move(layerAttachments);
-                    }
-                    catch (const std::exception& ex) {
-                        throw LoaderException(std::string("Error while building zoom ") + boost::lexical_cast<std::string>(zoom) + " properties: " + ex.what());
+                    CartoCSSCompiler compiler;
+                    compiler.setContext(context);
+                    compiler.setIgnoreLayerPredicates(_ignoreLayerPredicates);
+                    compiler.compileLayer(styleSheet, layerName, 0, MAX_ZOOM + 1, layerZoomAttachments);
+
+                    TorqueCartoCSSMapnikTranslator translator(_logger);
+                    for (auto it = layerZoomAttachments.begin(); it != layerZoomAttachments.end(); it++) {
+                        buildAttachmentStyleMap(translator, map, it->first.first, it->first.second, it->second, attachmentStyleMap);
                     }
                 }
-                buildAttachmentStyleMap(translator, map, minZoom, MAX_ZOOM, prevLayerAttachments, attachmentStyleMap);
-
+                catch (const std::exception& ex) {
+                    throw LoaderException(std::string("Error while building layer ") + layerName + " properties: " + ex.what());
+                }
                 if (attachmentStyleMap.empty()) {
                     continue;
                 }
@@ -118,7 +111,7 @@ namespace carto { namespace css {
                 std::vector<std::string> styleNames;
                 for (const AttachmentStyle& attachmentStyle : attachmentStyles) {
                     // Build style, but ignore layer level opacity
-                    std::string styleName = layerName + attachmentStyle.attachment + "#" + boost::lexical_cast<std::string>(frameOffset);
+                    std::string styleName = layerName + attachmentStyle.attachment + "#" + std::to_string(frameOffset);
                     auto style = std::make_shared<mvt::Style>(styleName, 1.0f, attachmentStyle.imageFilters, attachmentStyle.compOp, mvt::Style::FilterMode::FIRST, attachmentStyle.rules);
                     map->addStyle(style);
                     styleNames.push_back(styleName);

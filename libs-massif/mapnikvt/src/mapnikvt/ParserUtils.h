@@ -36,8 +36,8 @@ namespace carto { namespace mvt {
     vt::LabelOrientation parseLabelOrientation(const std::string& str);
     vt::Color parseColor(const std::string& str);
     Value parseValue(const std::string& str);
-    std::vector<std::shared_ptr<Transform>> parseTransformList(const std::string& str);
-    std::shared_ptr<Expression> parseExpression(const std::string& str, bool stringExpr);
+    std::vector<Transform> parseTransformList(const std::string& str);
+    Expression parseExpression(const std::string& str, bool stringExpr);
 } }
 
 #endif

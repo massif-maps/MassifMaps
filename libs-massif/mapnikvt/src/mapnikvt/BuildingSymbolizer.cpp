@@ -15,7 +15,7 @@ namespace carto { namespace mvt {
 
         vt::ColorFunction fillFunc = _functionBuilder.createColorOpacityFunction(_fillFunc, _fillOpacityFunc);
         
-        vt::Polygon3DStyle style(fillFunc, _geometryTransform);
+        vt::Polygon3DStyle style(fillFunc, getGeometryTransform());
 
         std::size_t featureIndex = 0;
         std::size_t geometryIndex = 0;

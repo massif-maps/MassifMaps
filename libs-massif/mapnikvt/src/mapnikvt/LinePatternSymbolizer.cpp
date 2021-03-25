@@ -16,12 +16,10 @@ namespace carto { namespace mvt {
             return;
         }
         
-        vt::CompOp compOp = convertCompOp(_compOp);
-
         vt::FloatFunction widthFunc = _functionBuilder.createFloatFunction(bitmapPattern->bitmap->height);
         vt::ColorFunction fillFunc = _functionBuilder.createColorOpacityFunction(_fillFunc, _opacityFunc);
 
-        vt::LineStyle style(compOp, vt::LineJoinMode::MITER, vt::LineCapMode::NONE, fillFunc, widthFunc, bitmapPattern, _geometryTransform);
+        vt::LineStyle style(getCompOp(), vt::LineJoinMode::MITER, vt::LineCapMode::NONE, fillFunc, widthFunc, bitmapPattern, getGeometryTransform());
 
         std::size_t featureIndex = 0;
         std::size_t geometryIndex = 0;

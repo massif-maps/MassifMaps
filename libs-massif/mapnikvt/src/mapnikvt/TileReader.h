@@ -21,7 +21,6 @@ namespace carto { namespace mvt {
     class Map;
     class Filter;
     class Rule;
-    class Expression;
     class FeatureExpressionContext;
     class Symbolizer;
     class SymbolizerContext;

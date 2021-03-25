@@ -12,8 +12,6 @@ namespace carto { namespace mvt {
             return;
         }
         
-        vt::CompOp compOp = convertCompOp(_compOp);
-        
         float fontScale = symbolizerContext.getSettings().getFontScale();
 
         std::string file = _file;
@@ -40,7 +38,11 @@ namespace carto { namespace mvt {
         vt::FloatFunction sizeFunc = _functionBuilder.createFloatFunction(fontScale * bitmapImage->scale);
         vt::ColorFunction fillFunc = _functionBuilder.createColorOpacityFunction(_functionBuilder.createColorFunction(vt::Color(1, 1, 1, 1)), _opacityFunc);
 
-        vt::PointStyle pointStyle(compOp, fillFunc, sizeFunc, bitmapImage, _transform);
+        std::optional<vt::Transform> optTransform;
+        if (_transform != vt::Transform()) {
+            optTransform = _transform;
+        }
+        vt::PointStyle pointStyle(getCompOp(), fillFunc, sizeFunc, bitmapImage, optTransform);
 
         std::vector<std::pair<long long, vt::TileLayerBuilder::Vertex>> pointInfos;
         for (std::size_t index = 0; index < featureCollection.size(); index++) {

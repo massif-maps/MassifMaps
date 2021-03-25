@@ -7,9 +7,13 @@
 #ifndef _CARTO_MAPNIKVT_STYLE_H_
 #define _CARTO_MAPNIKVT_STYLE_H_
 
+#include "Expression.h"
+#include "Predicate.h"
+
 #include <memory>
 #include <algorithm>
 #include <cmath>
+#include <optional>
 #include <string>
 #include <vector>
 #include <unordered_map>
@@ -17,8 +21,6 @@
 #include <utility>
 
 namespace carto { namespace mvt {
-    class Expression;
-    class Predicate;
     class Rule;
     
     class Style final {
@@ -39,14 +41,14 @@ namespace carto { namespace mvt {
 
         const std::vector<std::shared_ptr<const Rule>>& getZoomRules(int zoom) const;
 
-        const std::unordered_set<std::shared_ptr<const Expression>>& getReferencedFields(int zoom) const;
+        const std::vector<Expression>& getReferencedFields(int zoom) const;
 
         void optimizeRules();
 
     private:
         void rebuildZoomRuleMap();
 
-        static std::shared_ptr<const Predicate> buildOptimizedOrPredicate(const std::shared_ptr<const Predicate>& pred1, const std::shared_ptr<const Predicate>& pred2);
+        static std::optional<Predicate> buildOptimizedOrPredicate(const std::optional<Predicate>& pred1, const std::optional<Predicate>& pred2);
 
         const std::string _name;
         const float _opacity;
@@ -55,7 +57,7 @@ namespace carto { namespace mvt {
         const FilterMode _filterMode;
         std::vector<std::shared_ptr<const Rule>> _rules;
         std::unordered_map<int, std::vector<std::shared_ptr<const Rule>>> _zoomRuleMap;
-        std::unordered_map<int, std::unordered_set<std::shared_ptr<const Expression>>> _zoomFieldExprsMap;
+        std::unordered_map<int, std::vector<Expression>> _zoomFieldExprsMap;
     };
 } }
 

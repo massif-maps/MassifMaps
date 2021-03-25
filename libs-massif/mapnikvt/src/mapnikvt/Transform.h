@@ -7,106 +7,81 @@
 #ifndef _CARTO_MAPNIKVT_TRANSFORM_H_
 #define _CARTO_MAPNIKVT_TRANSFORM_H_
 
-#include <cmath>
-
-#include <boost/math/constants/constants.hpp>
+#include <variant>
 
 #include <cglib/vec.h>
 #include <cglib/mat.h>
 
 namespace carto { namespace mvt {
-    class Transform {
-    public:
-        virtual ~Transform() = default;
+    class MatrixTransform;
+    class TranslateTransform;
+    class RotateTransform;
+    class ScaleTransform;
+    class SkewXTransform;
+    class SkewYTransform;
 
-        virtual cglib::mat3x3<float> getMatrix() const = 0;
-    };
+    using Transform = std::variant<MatrixTransform, TranslateTransform, RotateTransform, ScaleTransform, SkewXTransform, SkewYTransform>;
 
-    class MatrixTransform : public Transform {
+    class MatrixTransform final {
     public:
+        MatrixTransform() : _matrix(cglib::mat3x3<float>::identity()) { }
         explicit MatrixTransform(const cglib::mat3x3<float>& matrix) : _matrix(matrix) { }
 
-        virtual cglib::mat3x3<float> getMatrix() const override {
-            return _matrix;
-        }
+        const cglib::mat3x3<float>& getMatrix() const { return _matrix; }
 
-    protected:
+    private:
         cglib::mat3x3<float> _matrix;
     };
 
-    class TranslateTransform : public Transform {
+    class TranslateTransform final {
     public:
         explicit TranslateTransform(const cglib::vec2<float>& pos) : _pos(pos) { }
 
         const cglib::vec2<float>& getPos() const { return _pos; }
 
-        virtual cglib::mat3x3<float> getMatrix() const override {
-            return cglib::translate3_matrix(cglib::expand(_pos, 1.0f));
-        }
-
-    protected:
+    private:
         cglib::vec2<float> _pos;
     };
 
-    class RotateTransform : public Transform {
+    class RotateTransform final {
     public:
         explicit RotateTransform(const cglib::vec2<float>& pos, float angle) : _pos(pos), _angle(angle) { }
 
         const cglib::vec2<float>& getPos() const { return _pos; }
         float getAngle() const { return _angle; }
 
-        virtual cglib::mat3x3<float> getMatrix() const override {
-            return cglib::translate3_matrix(cglib::expand(_pos, 1.0f)) * cglib::rotate3_matrix(cglib::vec3<float>(0, 0, 1), _angle * boost::math::constants::pi<float>() / 180.0f) * cglib::translate3_matrix(cglib::expand(-_pos, 1.0f));
-        }
-
-    protected:
+    private:
         cglib::vec2<float> _pos;
         float _angle;
     };
 
-    class ScaleTransform : public Transform {
+    class ScaleTransform final {
     public:
         explicit ScaleTransform(const cglib::vec2<float>& scale) : _scale(scale) { }
 
         const cglib::vec2<float>& getScale() const { return _scale; }
 
-        virtual cglib::mat3x3<float> getMatrix() const override {
-            return cglib::scale3_matrix(cglib::expand(_scale, 1.0f));
-        }
-
-    protected:
+    private:
         cglib::vec2<float> _scale;
     };
 
-    class SkewXTransform : public Transform {
+    class SkewXTransform final {
     public:
         explicit SkewXTransform(float angle) : _angle(angle) { }
 
         float getAngle() const { return _angle; }
 
-        virtual cglib::mat3x3<float> getMatrix() const override {
-            cglib::mat3x3<float> m = cglib::mat3x3<float>::identity();
-            m(0, 1) = std::tan(_angle * boost::math::constants::pi<float>() / 180.0f);
-            return m;
-        }
-
-    protected:
+    private:
         float _angle;
     };
 
-    class SkewYTransform : public Transform {
+    class SkewYTransform final {
     public:
         explicit SkewYTransform(float angle) : _angle(angle) { }
 
         float getAngle() const { return _angle; }
 
-        virtual cglib::mat3x3<float> getMatrix() const override {
-            cglib::mat3x3<float> m = cglib::mat3x3<float>::identity();
-            m(1, 0) = std::tan(_angle * boost::math::constants::pi<float>() / 180.0f);
-            return m;
-        }
-
-    protected:
+    private:
         float _angle;
     };
 } }

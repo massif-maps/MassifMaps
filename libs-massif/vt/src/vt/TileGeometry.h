@@ -14,10 +14,9 @@
 #include "Styles.h"
 
 #include <memory>
+#include <optional>
 #include <array>
 #include <vector>
-
-#include <boost/optional.hpp>
 
 #include <cglib/mat.h>
 
@@ -29,7 +28,7 @@ namespace carto { namespace vt {
         };
 
         struct StyleParameters {
-            constexpr static int MAX_PARAMETERS = 16;
+            inline static constexpr int MAX_PARAMETERS = 16;
 
             int parameterCount;
             std::array<ColorFunction, MAX_PARAMETERS> colorFuncs;
@@ -37,7 +36,7 @@ namespace carto { namespace vt {
             std::array<FloatFunction, MAX_PARAMETERS> strokeWidthFuncs;
             std::array<float, MAX_PARAMETERS> strokeScales;
             std::shared_ptr<const BitmapPattern> pattern;
-            boost::optional<cglib::vec2<float>> translate;
+            std::optional<cglib::vec2<float>> translate;
             CompOp compOp;
 
             StyleParameters() : parameterCount(0), colorFuncs(), widthFuncs(), strokeWidthFuncs(), strokeScales(), pattern(), translate(), compOp(CompOp::SRC_OVER) { }

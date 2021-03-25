@@ -18,8 +18,6 @@
 
 #include <cglib/mat.h>
 
-#include <boost/optional.hpp>
-
 namespace carto { namespace vt {
     class TileGeometryIterator final {
     public:

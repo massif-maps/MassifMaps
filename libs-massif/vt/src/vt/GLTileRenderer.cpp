@@ -117,19 +117,19 @@ namespace carto { namespace vt {
     {
     }
 
-    void GLTileRenderer::setLightingShader2D(const boost::optional<LightingShader>& lightingShader2D) {
+    void GLTileRenderer::setLightingShader2D(const std::optional<LightingShader>& lightingShader2D) {
         std::lock_guard<std::mutex> lock(_mutex);
         
         _lightingShader2D = lightingShader2D;
     }
 
-    void GLTileRenderer::setLightingShader3D(const boost::optional<LightingShader>& lightingShader3D) {
+    void GLTileRenderer::setLightingShader3D(const std::optional<LightingShader>& lightingShader3D) {
         std::lock_guard<std::mutex> lock(_mutex);
 
         _lightingShader3D = lightingShader3D;
     }
 
-    void GLTileRenderer::setLightingShaderNormalMap(const boost::optional<LightingShader>& lightingShaderNormalMap) {
+    void GLTileRenderer::setLightingShaderNormalMap(const std::optional<LightingShader>& lightingShaderNormalMap) {
         std::lock_guard<std::mutex> lock(_mutex);
 
         _lightingShaderNormalMap = lightingShaderNormalMap;
@@ -952,13 +952,13 @@ namespace carto { namespace vt {
         }
 
         std::array<cglib::vec3<double>, 4> quad;
-        if (!label->getStyle()->translate) {
+        if (!label->getStyle()->transform) {
             for (int i = 0; i < 4; i++) {
                 quad[i] = _viewState.origin + cglib::vec3<double>::convert(envelope[i]);
             }
         } else {
             float zoomScale = std::pow(2.0f, label->getTileId().zoom - _viewState.zoom);
-            cglib::vec2<float> translate = (*label->getStyle()->translate) * zoomScale;
+            cglib::vec2<float> translate = label->getStyle()->transform->translate() * zoomScale;
             cglib::mat4x4<double> translateMatrix = cglib::mat4x4<double>::convert(_transformer->calculateTileTransform(label->getTileId(), translate, 1.0f));
             cglib::mat4x4<double> tileMatrix = _transformer->calculateTileMatrix(label->getTileId(), 1);
             cglib::mat4x4<double> labelMatrix = tileMatrix * translateMatrix * cglib::inverse(tileMatrix) * cglib::translate4_matrix(_viewState.origin);
@@ -1007,9 +1007,9 @@ namespace carto { namespace vt {
 
     bool GLTileRenderer::renderBlendNodes2D(const std::vector<std::shared_ptr<BlendNode>>& blendNodes, int stencilBits) {
         int stencilNum = (1 << stencilBits) - 1; // forces initial stencil clear
-        boost::optional<GLenum> activeStencilMode;
-        boost::optional<int> activeStencilNum;
-        boost::optional<CompOp> activeCompOp;
+        std::optional<GLenum> activeStencilMode;
+        std::optional<int> activeStencilNum;
+        std::optional<CompOp> activeCompOp;
 
         auto setupStencil = [&](bool enable) {
             GLenum stencilMode = enable ? GL_EQUAL : GL_ALWAYS;
@@ -1083,7 +1083,7 @@ namespace carto { namespace vt {
                 };
 
                 if (renderNode.layer->getCompOp()) {
-                    if (isEmptyBlendRequired(renderNode.layer->getCompOp().get())) {
+                    if (isEmptyBlendRequired(*renderNode.layer->getCompOp())) {
                         setupFrameBuffer();
                     }
                 }
@@ -1139,7 +1139,7 @@ namespace carto { namespace vt {
                     glBindFramebuffer(GL_FRAMEBUFFER, currentFBO);
 
                     setupStencil(false);
-                    setupBlendMode(renderNode.layer->getCompOp().get());
+                    setupBlendMode(*renderNode.layer->getCompOp());
                     blendTileTexture(renderNode.tileId, blendOpacity, layerBuffer.colorTexture);
                 }
             }
@@ -1237,14 +1237,14 @@ namespace carto { namespace vt {
                 cglib::vec4<float> haloColor = (labelStyle->haloColorFunc)(_viewState).rgba();
                 float haloRadius = (labelStyle->haloRadiusFunc)(_viewState) * HALO_RADIUS_SCALE;
 
-                if (labelStyle->translate || (lastLabelStyle && lastLabelStyle->translate) || labelBatchParams.scale != labelStyle->scale || labelBatchParams.parameterCount + 2 > LabelBatchParameters::MAX_PARAMETERS) {
+                if (labelStyle->transform || (lastLabelStyle && lastLabelStyle->transform) || labelBatchParams.scale != labelStyle->scale || labelBatchParams.parameterCount + 2 > LabelBatchParameters::MAX_PARAMETERS) {
                     renderLabelBatch(labelBatchParams, bitmap);
                     labelBatchParams.labelCount = 0;
                     labelBatchParams.parameterCount = 0;
                     labelBatchParams.scale = labelStyle->scale;
-                    if (labelStyle->translate) {
+                    if (labelStyle->transform) {
                         float zoomScale = std::pow(2.0f, label->getTileId().zoom - _viewState.zoom);
-                        cglib::vec2<float> translate = (*labelStyle->translate) * zoomScale;
+                        cglib::vec2<float> translate = labelStyle->transform->translate() * zoomScale;
                         cglib::mat4x4<double> translateMatrix = cglib::mat4x4<double>::convert(_transformer->calculateTileTransform(label->getTileId(), translate, 1.0f));
                         cglib::mat4x4<double> tileMatrix = _transformer->calculateTileMatrix(label->getTileId(), 1);
                         labelBatchParams.labelMatrix = _viewState.cameraMatrix * tileMatrix * translateMatrix * cglib::inverse(tileMatrix) * cglib::translate4_matrix(_viewState.origin);

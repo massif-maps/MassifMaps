@@ -7,8 +7,6 @@
 #include <map>
 #include <memory>
 
-#include <boost/lexical_cast.hpp>
-
 namespace carto { namespace mvt {
     FeatureExpressionContext::FeatureExpressionContext() {
         _scaleDenom = zoom2ScaleDenominator(static_cast<float>(_adjustedZoom));

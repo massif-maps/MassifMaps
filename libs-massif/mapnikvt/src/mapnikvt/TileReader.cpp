@@ -2,6 +2,7 @@
 #include "ParserUtils.h"
 #include "Symbolizer.h"
 #include "Predicate.h"
+#include "PredicateUtils.h"
 #include "Expression.h"
 #include "ExpressionContext.h"
 #include "Rule.h"
@@ -10,7 +11,7 @@
 
 namespace carto { namespace mvt {
     TileReader::TileReader(std::shared_ptr<const Map> map, std::shared_ptr<const vt::TileTransformer> transformer, const SymbolizerContext& symbolizerContext) :
-        _map(std::move(map)), _transformer(transformer), _symbolizerContext(symbolizerContext), _trueFilter(std::make_shared<Filter>(Filter::Type::FILTER, std::make_shared<ConstPredicate>(true)))
+        _map(std::move(map)), _transformer(transformer), _symbolizerContext(symbolizerContext), _trueFilter(std::make_shared<Filter>(Filter::Type::FILTER, Predicate(true)))
     {
     }
 
@@ -32,7 +33,7 @@ namespace carto { namespace mvt {
                     continue;
                 }
                 
-                boost::optional<vt::CompOp> compOp;
+                std::optional<vt::CompOp> compOp;
                 try {
                     if (!style->getCompOp().empty()) {
                         compOp = parseCompOp(style->getCompOp());
@@ -60,11 +61,11 @@ namespace carto { namespace mvt {
     }
 
     void TileReader::processLayer(const std::shared_ptr<const Layer>& layer, const std::shared_ptr<const Style>& style, FeatureExpressionContext& exprContext, vt::TileLayerBuilder& layerBuilder) const {
-        std::unordered_set<std::shared_ptr<const Expression>> styleFieldExprs = style->getReferencedFields(exprContext.getAdjustedZoom());
         std::unordered_set<std::string> styleFields;
-        std::for_each(styleFieldExprs.begin(), styleFieldExprs.end(), [&](const std::shared_ptr<const Expression>& expr) {
-            styleFields.insert(ValueConverter<std::string>::convert(expr->evaluate(exprContext)));
-        });
+        for (const Expression& expr : style->getReferencedFields(exprContext.getAdjustedZoom())) {
+            Value val = std::visit(ExpressionEvaluator(exprContext), expr);
+            styleFields.insert(ValueConverter<std::string>::convert(val));
+        }
 
         std::shared_ptr<Symbolizer> currentSymbolizer;
         FeatureCollection currentFeatureCollection;
@@ -125,6 +126,7 @@ namespace carto { namespace mvt {
     }
 
     std::vector<std::shared_ptr<Symbolizer>> TileReader::findFeatureSymbolizers(const std::shared_ptr<const Style>& style, FeatureExpressionContext& exprContext) const {
+        PredicateEvaluator evaluator(exprContext);
         bool anyMatch = false;
         std::vector<std::shared_ptr<Symbolizer>> symbolizers;
         for (const std::shared_ptr<const Rule>& rule : style->getZoomRules(exprContext.getAdjustedZoom())) {
@@ -142,13 +144,13 @@ namespace carto { namespace mvt {
                     if (anyMatch) {
                         match = false;
                     }
-                    else if (const std::shared_ptr<const Predicate>& pred = filter->getPredicate()) {
-                        match = pred->evaluate(exprContext);
+                    else if (filter->getPredicate()) {
+                        match = std::visit(evaluator, *filter->getPredicate());
                     }
                     break;
                 case Style::FilterMode::ALL:
-                    if (const std::shared_ptr<const Predicate>& pred = filter->getPredicate()) {
-                        match = pred->evaluate(exprContext);
+                    if (filter->getPredicate()) {
+                        match = std::visit(evaluator, *filter->getPredicate());
                     }
                     break;
                 }

@@ -52,39 +52,36 @@ namespace carto { namespace mvt {
 
         private:
             static bool isNullValue(const Value& val) {
-                if (boost::get<boost::blank>(&val)) {
-                    return true;
-                }
-                return false;
+                return std::holds_alternative<std::monostate>(val);
             }
 
             static bool getBoolValue(const Value& val, bool& result) {
-                if (auto b = boost::get<bool>(&val)) {
-                    result = *b;
+                if (auto boolVal = std::get_if<bool>(&val)) {
+                    result = *boolVal;
                     return true;
                 }
                 return false;
             }
 
             static bool getLongValue(const Value& val, long long& result) {
-                if (auto i = boost::get<long long>(&val)) {
-                    result = *i;
+                if (auto longVal = std::get_if<long long>(&val)) {
+                    result = *longVal;
                     return true;
                 }
                 return false;
             }
 
             static bool getDoubleValue(const Value& val, double& result) {
-                if (auto f = boost::get<double>(&val)) {
-                    result = *f;
+                if (auto doubleVal = std::get_if<double>(&val)) {
+                    result = *doubleVal;
                     return true;
                 }
                 return false;
             }
 
             static bool getStringValue(const Value& val, std::string& result) {
-                if (auto s = boost::get<std::string>(&val)) {
-                    result = *s;
+                if (auto strVal = std::get_if<std::string>(&val)) {
+                    result = *strVal;
                     return true;
                 }
                 return false;

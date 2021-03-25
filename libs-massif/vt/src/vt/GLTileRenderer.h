@@ -24,6 +24,7 @@
 
 #include <memory>
 #include <tuple>
+#include <optional>
 #include <array>
 #include <vector>
 #include <map>
@@ -31,8 +32,6 @@
 #include <unordered_map>
 #include <utility>
 #include <mutex>
-
-#include <boost/optional.hpp>
 
 #include <cglib/ray.h>
 
@@ -72,9 +71,9 @@ namespace carto { namespace vt {
         
         explicit GLTileRenderer(std::shared_ptr<GLExtensions> glExtensions, std::shared_ptr<const TileTransformer> transformer, float scale);
 
-        void setLightingShader2D(const boost::optional<LightingShader>& lightingShader2D);
-        void setLightingShader3D(const boost::optional<LightingShader>& lightingShader3D);
-        void setLightingShaderNormalMap(const boost::optional<LightingShader>& lightingShaderNormalMap);
+        void setLightingShader2D(const std::optional<LightingShader>& lightingShader2D);
+        void setLightingShader3D(const std::optional<LightingShader>& lightingShader3D);
+        void setLightingShaderNormalMap(const std::optional<LightingShader>& lightingShaderNormalMap);
         
         void setInteractionMode(bool enabled);
         void setSubTileBlending(bool enabled);
@@ -183,7 +182,7 @@ namespace carto { namespace vt {
         };
 
         struct LabelBatchParameters {
-            constexpr static int MAX_PARAMETERS = 16;
+            inline static constexpr int MAX_PARAMETERS = 16;
 
             int labelCount;
             int parameterCount;
@@ -202,9 +201,9 @@ namespace carto { namespace vt {
             }
         };
 
-        constexpr static float HALO_RADIUS_SCALE = 2.5f; // the scaling factor for halo radius
-        constexpr static float STROKE_UV_SCALE = 2.857f; // stroked line UV scale factor
-        constexpr static float POLYGON3D_HEIGHT_SCALE = 10018754.17f; // scaling factor for zoom 0 heights
+        inline static constexpr float HALO_RADIUS_SCALE = 2.5f; // the scaling factor for halo radius
+        inline static constexpr float STROKE_UV_SCALE = 2.857f; // stroked line UV scale factor
+        inline static constexpr float POLYGON3D_HEIGHT_SCALE = 10018754.17f; // scaling factor for zoom 0 heights
 
         bool isTileVisible(const TileId& tileId) const;
 
@@ -256,9 +255,9 @@ namespace carto { namespace vt {
         void createCompiledLabelBatch(CompiledLabelBatch& compiledLabelBatch);
         void deleteCompiledLabelBatch(CompiledLabelBatch& compiledLabelBatch);
 
-        boost::optional<LightingShader> _lightingShader2D;
-        boost::optional<LightingShader> _lightingShader3D;
-        boost::optional<LightingShader> _lightingShaderNormalMap;
+        std::optional<LightingShader> _lightingShader2D;
+        std::optional<LightingShader> _lightingShader3D;
+        std::optional<LightingShader> _lightingShaderNormalMap;
         TileSurfaceBuilder _tileSurfaceBuilder;
 
         std::vector<FrameBuffer> _layerBuffers;

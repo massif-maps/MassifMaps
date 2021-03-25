@@ -3,11 +3,6 @@
 #include "Predicate.h"
 #include "mapnikvt/CSSColorParser.h"
 
-#include <regex>
-
-#include <boost/lexical_cast.hpp>
-#include <boost/algorithm/string.hpp>
-
 #include <boost/spirit/include/qi.hpp>
 #include <boost/spirit/repository/include/qi_distinct.hpp>
 #include <boost/spirit/include/phoenix.hpp>
@@ -144,11 +139,11 @@ namespace carto { namespace css {
                     ;
 
                 factor =
-                      ('@' > varid)                                 [_val = phoenix::bind(&makeFieldVarExpression, false, _1)]
-                    | ('[' > unescapedfieldid > ']')                [_val = phoenix::bind(&makeFieldVarExpression, true, _1)]
+                      ('@' > varid)                                 [_val = phoenix::construct<FieldOrVar>(false, _1)]
+                    | ('[' > unescapedfieldid > ']')                [_val = phoenix::construct<FieldOrVar>(true, _1)]
                     | (funcid >> ('(' > (expression % ',') > ')'))  [_val = phoenix::bind(&makeFunctionExpression, _1, _2)]
                     | ('(' > expressionlist > ')')                  [_val = _1]
-                    | constant                                      [_val = phoenix::bind(&makeConstExpression, _1)]
+                    | constant                                      [_val = _1]
                     ;
                 
                 op =
@@ -162,10 +157,10 @@ namespace carto { namespace css {
                    ;
 
                 predicate =
-                      qi::lit("Map")                                [_val = phoenix::bind(&makeMapPredicate)]
-                    | (qi::lit('#') > blockid)                      [_val = phoenix::bind(&makeLayerPredicate, _1)]
-                    | (qi::lit('.') > blockid)                      [_val = phoenix::bind(&makeClassPredicate, _1)]
-                    | (qi::lit("::") > blockid)                     [_val = phoenix::bind(&makeAttachmentPredicate, _1)]
+                      qi::lit("Map")                                [_val = phoenix::construct<MapPredicate>()]
+                    | (qi::lit('#') > blockid)                      [_val = phoenix::construct<LayerPredicate>(_1)]
+                    | (qi::lit('.') > blockid)                      [_val = phoenix::construct<ClassPredicate>(_1)]
+                    | (qi::lit("::") > blockid)                     [_val = phoenix::construct<AttachmentPredicate>(_1)]
                     | ((qi::lit('[') >> '@') > varid > op > constant > ']') [_val = phoenix::bind(&makeOpPredicate, _2, false, _1, _3)]
                     | (qi::lit('[') > (fieldid | string) > op > constant > ']') [_val = phoenix::bind(&makeOpPredicate, _2, true, _1, _3)]
                     ;
@@ -174,14 +169,20 @@ namespace carto { namespace css {
                 
                 propdeclaration = (propid >> (':' > expressionlist)) [_val = phoenix::bind(&makePropertyDeclaration, phoenix::ref(_declarationOrder), _1, _2)];
                 
-                blockelement = (propdeclaration | ruleset)          [_val = phoenix::construct<Block::Element>(_1)];
+                blockelement =
+                      propdeclaration                               [_val = phoenix::construct<Block::Element>(_1)]
+                    | ruleset                                       [_val = phoenix::construct<Block::Element>(_1)]
+                    ;
                 block = (*(blockelement > -qi::lit(';')))           [_val = phoenix::construct<Block>(_1)];
                 
                 ruleset = ((selector % ',') >> ('{' > block > '}')) [_val = phoenix::construct<RuleSet>(_1, _2)];
                 
                 vardeclaration = ('@' > varid > ':' > expressionlist) [_val = phoenix::construct<VariableDeclaration>(_1, _2)];
 
-                stylesheetelement = (vardeclaration | ruleset)      [_val = phoenix::construct<StyleSheet::Element>(_1)];
+                stylesheetelement =
+                      vardeclaration                                [_val = phoenix::construct<StyleSheet::Element>(_1)] 
+                    | ruleset                                       [_val = phoenix::construct<StyleSheet::Element>(_1)]
+                    ;
                 stylesheet = (*(stylesheetelement > -qi::lit(';'))) [_val = phoenix::construct<StyleSheet>(_1)];
             
                 qi::on_error<qi::fail>(stylesheet, phoenix::ref(_errorPos) = qi::_3 - qi::_1);
@@ -197,9 +198,9 @@ namespace carto { namespace css {
             boost::spirit::qi::rule<Iterator, Color()> color;
             boost::spirit::qi::rule<Iterator, Value()> number, constant;
             boost::spirit::qi::rule<Iterator, std::string()> propid, blockid, fieldid, unescapedfieldid, varid, funcid;
-            boost::spirit::qi::rule<Iterator, std::shared_ptr<const Expression>(), Skipper<Iterator> > expressionlist, expression, term0, term1, term2, term3, unary, factor;
+            boost::spirit::qi::rule<Iterator, Expression(), Skipper<Iterator> > expressionlist, expression, term0, term1, term2, term3, unary, factor;
             boost::spirit::qi::rule<Iterator, OpPredicate::Op()> op;
-            boost::spirit::qi::rule<Iterator, std::shared_ptr<const Predicate>(), Skipper<Iterator> > predicate;
+            boost::spirit::qi::rule<Iterator, Predicate(), Skipper<Iterator> > predicate;
             boost::spirit::qi::rule<Iterator, Selector(), Skipper<Iterator> > selector;
             boost::spirit::qi::rule<Iterator, PropertyDeclaration(), Skipper<Iterator> > propdeclaration;
             boost::spirit::qi::rule<Iterator, Block::Element(), Skipper<Iterator> > blockelement;
@@ -233,60 +234,34 @@ namespace carto { namespace css {
                 return ident != "url"; // 'url' is a special-built in type specifier, so do not accept it as a function
             }
             
-            static std::shared_ptr<const Expression> makeConstExpression(Value value) {
-                return std::make_shared<ConstExpression>(value);
-            }
-
-            static std::shared_ptr<const Expression> makeFieldVarExpression(bool field, const std::string& var) {
-                return std::make_shared<FieldOrVarExpression>(field, var);
-            }
-            
-            static std::shared_ptr<const Expression> makeListExpression(const std::shared_ptr<const Expression>& initialExpr, const std::vector<std::shared_ptr<const Expression>>& restExprs) {
-                std::vector<std::shared_ptr<const Expression>> exprs;
+            static Expression makeListExpression(const Expression& initialExpr, const std::vector<Expression>& restExprs) {
+                std::vector<Expression> exprs;
                 exprs.push_back(initialExpr);
                 exprs.insert(exprs.end(), restExprs.begin(), restExprs.end());
                 return std::make_shared<ListExpression>(exprs);
             }
 
-            static std::shared_ptr<const Expression> makeFunctionExpression(const std::string& func, const std::vector<std::shared_ptr<const Expression>>& exprs) {
-                std::vector<std::shared_ptr<const Expression>> args;
-                args.insert(args.end(), exprs.begin(), exprs.end());
-                return std::make_shared<FunctionExpression>(func, args);
+            static Expression makeFunctionExpression(const std::string& func, const std::vector<Expression>& exprs) {
+                return std::make_shared<FunctionExpression>(func, exprs);
             }
                    
-            static std::shared_ptr<const Expression> makeUnaryExpression(UnaryExpression::Op op, const std::shared_ptr<const Expression>& expr) {
+            static Expression makeUnaryExpression(UnaryExpression::Op op, const Expression& expr) {
                 return std::make_shared<UnaryExpression>(op, expr);
             }
 
-            static std::shared_ptr<const Expression> makeBinaryExpression(BinaryExpression::Op op, const std::shared_ptr<const Expression>& expr1, const std::shared_ptr<const Expression>& expr2) {
+            static Expression makeBinaryExpression(BinaryExpression::Op op, const Expression& expr1, const Expression& expr2) {
                 return std::make_shared<BinaryExpression>(op, expr1, expr2);
             }
             
-            static std::shared_ptr<const Expression> makeConditionalExpression(const std::shared_ptr<const Expression>& cond, const std::shared_ptr<const Expression>& expr1, const std::shared_ptr<const Expression>& expr2) {
+            static Expression makeConditionalExpression(const Expression& cond, const Expression& expr1, const Expression& expr2) {
                 return std::make_shared<ConditionalExpression>(cond, expr1, expr2);
             }
 
-            static std::shared_ptr<const Predicate> makeMapPredicate() {
-                return std::make_shared<MapPredicate>();
-            }
-            
-            static std::shared_ptr<const Predicate> makeClassPredicate(const std::string& cls) {
-                return std::make_shared<ClassPredicate>(cls);
+            static Predicate makeOpPredicate(OpPredicate::Op op, bool field, const std::string& name, const Value& refValue) {
+                return OpPredicate(op, FieldOrVar(field, name), refValue);
             }
 
-            static std::shared_ptr<const Predicate> makeLayerPredicate(const std::string& layer) {
-                return std::make_shared<LayerPredicate>(layer);
-            }
-            
-            static std::shared_ptr<const Predicate> makeAttachmentPredicate(const std::string& attachment) {
-                return std::make_shared<AttachmentPredicate>(attachment);
-            }
-
-            static std::shared_ptr<const Predicate> makeOpPredicate(OpPredicate::Op op, bool field, const std::string& fieldOrVar, const Value& value) {
-                return std::make_shared<OpPredicate>(op, field, fieldOrVar, value);
-            }
-
-            static PropertyDeclaration makePropertyDeclaration(int& order, const std::string& field, const std::shared_ptr<const Expression>& expr) {
+            static PropertyDeclaration makePropertyDeclaration(int& order, const std::string& field, const Expression& expr) {
                 return PropertyDeclaration(field, expr, order++);
             }
 

@@ -24,7 +24,7 @@ namespace carto { namespace mvt {
         using Delimiter = boost::spirit::iso8859_1::space_type;
 
         template <typename OutputIterator>
-        struct Grammar : boost::spirit::karma::grammar<OutputIterator, std::shared_ptr<const Transform>(), Delimiter> {
+        struct Grammar : boost::spirit::karma::grammar<OutputIterator, Transform(), Delimiter> {
             Grammar() : Grammar::base_type(transform) {
                 using namespace boost;
                 using namespace boost::spirit;
@@ -65,20 +65,20 @@ namespace carto { namespace mvt {
                     ;
 
                 skewx =
-                    (karma::lit("skewx") << '(' << number << ')')[_pass = phoenix::bind(&getSkewTransform<SkewXTransform>, _val, _1)]
+                    (karma::lit("skewx") << '(' << number << ')')[_pass = phoenix::bind(&getSkewXTransform, _val, _1)]
                     ;
 
                 skewy =
-                    (karma::lit("skewy") << '(' << number << ')')[_pass = phoenix::bind(&getSkewTransform<SkewYTransform>, _val, _1)]
+                    (karma::lit("skewy") << '(' << number << ')')[_pass = phoenix::bind(&getSkewYTransform, _val, _1)]
                     ;
             }
 
             boost::spirit::karma::rule<OutputIterator, float()> number;
-            boost::spirit::karma::rule<OutputIterator, std::shared_ptr<const Transform>(), Delimiter> transform, matrix, translate, rotate, scale, skewx, skewy;
+            boost::spirit::karma::rule<OutputIterator, Transform(), Delimiter> transform, matrix, translate, rotate, scale, skewx, skewy;
 
         private:
-            static bool getMatrixTransform(const std::shared_ptr<const Transform>& transform, float& a, float& b, float& c, float& d, float& e, float& f) {
-                if (auto matrixTransform = std::dynamic_pointer_cast<const MatrixTransform>(transform)) {
+            static bool getMatrixTransform(const Transform& transform, float& a, float& b, float& c, float& d, float& e, float& f) {
+                if (auto matrixTransform = std::get_if<MatrixTransform>(&transform)) {
                     cglib::mat3x3<float> m = matrixTransform->getMatrix();
                     a = m(0, 0);
                     b = m(1, 0);
@@ -91,8 +91,8 @@ namespace carto { namespace mvt {
                 return false;
             }
 
-            static bool getTranslateTransform(const std::shared_ptr<const Transform>& transform, float& x, float& y) {
-                if (auto translateTransform = std::dynamic_pointer_cast<const TranslateTransform>(transform)) {
+            static bool getTranslateTransform(const Transform& transform, float& x, float& y) {
+                if (auto translateTransform = std::get_if<TranslateTransform>(&transform)) {
                     x = translateTransform->getPos()(0);
                     y = translateTransform->getPos()(1);
                     return true;
@@ -100,8 +100,8 @@ namespace carto { namespace mvt {
                 return false;
             }
 
-            static bool getRotateTransform(const std::shared_ptr<const Transform>& transform, float& x, float& y, float& angle) {
-                if (auto rotateTransform = std::dynamic_pointer_cast<const RotateTransform>(transform)) {
+            static bool getRotateTransform(const Transform& transform, float& x, float& y, float& angle) {
+                if (auto rotateTransform = std::get_if<RotateTransform>(&transform)) {
                     x = rotateTransform->getPos()(0);
                     y = rotateTransform->getPos()(1);
                     angle = rotateTransform->getAngle();
@@ -110,8 +110,8 @@ namespace carto { namespace mvt {
                 return false;
             }
 
-            static bool getScaleTransform(const std::shared_ptr<const Transform>& transform, float& sx, float& sy) {
-                if (auto scaleTransform = std::dynamic_pointer_cast<const ScaleTransform>(transform)) {
+            static bool getScaleTransform(const Transform& transform, float& sx, float& sy) {
+                if (auto scaleTransform = std::get_if<ScaleTransform>(&transform)) {
                     sx = scaleTransform->getScale()(0);
                     sy = scaleTransform->getScale()(1);
                     return true;
@@ -119,9 +119,16 @@ namespace carto { namespace mvt {
                 return false;
             }
 
-            template <typename SkewTransform>
-            static bool getSkewTransform(const std::shared_ptr<const Transform>& transform, float& angle) {
-                if (auto skewTransform = std::dynamic_pointer_cast<const SkewTransform>(transform)) {
+            static bool getSkewXTransform(const Transform& transform, float& angle) {
+                if (auto skewTransform = std::get_if<SkewXTransform>(&transform)) {
+                    angle = skewTransform->getAngle();
+                    return true;
+                }
+                return false;
+            }
+
+            static bool getSkewYTransform(const Transform& transform, float& angle) {
+                if (auto skewTransform = std::get_if<SkewYTransform>(&transform)) {
                     angle = skewTransform->getAngle();
                     return true;
                 }

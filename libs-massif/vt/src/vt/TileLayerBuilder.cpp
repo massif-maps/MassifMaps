@@ -122,10 +122,10 @@ namespace carto { namespace vt {
             return;
         }
 
-        boost::optional<cglib::mat3x3<float>> transform;
+        std::optional<Transform> transform;
         if (style.angle != 0) {
             float angle = -style.angle * boost::math::constants::pi<float>() / 180.0f;
-            transform = cglib::rotate3_matrix(angle);
+            transform = Transform::fromMatrix2(cglib::rotate2_matrix(angle));
         }
 
         const std::shared_ptr<Font>& font = formatter.getFont();
@@ -330,16 +330,16 @@ namespace carto { namespace vt {
         };
 
         float scale = 1.0f / _tileSize;
-        boost::optional<cglib::mat2x2<float>> transform;
-        boost::optional<cglib::vec2<float>> translate;
+        std::optional<Transform> transform;
         if (style.transform) {
-            cglib::mat3x3<float> flippedTransform = (*style.transform) * cglib::scale3_matrix(cglib::vec3<float>(1, -1, 1));
-            transform = cglib::mat2x2<float> {{ flippedTransform(0, 0), flippedTransform(0, 1)}, { -flippedTransform(1, 0), -flippedTransform(1, 1) }};
-            translate = cglib::vec2<float>(flippedTransform(0, 2), flippedTransform(1, 2)) * (1.0f / _tileSize);
+            cglib::mat3x3<float> flippedTransform = style.transform->matrix3() * cglib::scale3_matrix(cglib::vec3<float>(1, -1, 1));
+            cglib::mat2x2<float> matrix {{ flippedTransform(0, 0), flippedTransform(0, 1)}, { -flippedTransform(1, 0), -flippedTransform(1, 1) }};
+            cglib::vec2<float> translate(flippedTransform(0, 2) / _tileSize, flippedTransform(1, 2) / _tileSize);
+            transform = Transform::fromMatrix2Translate(matrix, translate);
         }
 
-        if (!_labelStyle || _labelStyle->orientation != style.orientation || _labelStyle->colorFunc != style.colorFunc || _labelStyle->sizeFunc != style.sizeFunc || _labelStyle->haloColorFunc != ColorFunction() || _labelStyle->haloRadiusFunc != FloatFunction() || _labelStyle->autoflip != style.autoflip || _labelStyle->scale != scale || _labelStyle->ascent != 0.0f || _labelStyle->descent != 0.0f || _labelStyle->transform != transform || _labelStyle->translate != translate || _labelStyle->glyphMap != glyphMap) {
-            _labelStyle = std::make_shared<TileLabel::Style>(style.orientation, style.colorFunc, style.sizeFunc, ColorFunction(), FloatFunction(), style.autoflip, scale, 0.0f, 0.0f, transform, translate, glyphMap);
+        if (!_labelStyle || _labelStyle->orientation != style.orientation || _labelStyle->colorFunc != style.colorFunc || _labelStyle->sizeFunc != style.sizeFunc || _labelStyle->haloColorFunc != ColorFunction() || _labelStyle->haloRadiusFunc != FloatFunction() || _labelStyle->autoflip != style.autoflip || _labelStyle->scale != scale || _labelStyle->ascent != 0.0f || _labelStyle->descent != 0.0f || _labelStyle->transform != transform || _labelStyle->glyphMap != glyphMap) {
+            _labelStyle = std::make_shared<TileLabel::Style>(style.orientation, style.colorFunc, style.sizeFunc, ColorFunction(), FloatFunction(), style.autoflip, scale, 0.0f, 0.0f, transform, glyphMap);
         }
         
         while (true) {
@@ -349,12 +349,12 @@ namespace carto { namespace vt {
                 break;
             }
 
-            boost::optional<cglib::vec2<float>> labelPosition;
+            std::optional<cglib::vec2<float>> labelPosition;
             std::vector<cglib::vec2<float>> labelVertices;
-            if (auto pos = boost::get<Vertex>(&labelInfo.position)) {
+            if (auto pos = std::get_if<Vertex>(&labelInfo.position)) {
                 labelPosition = *pos;
             }
-            else if (auto vertices = boost::get<Vertices>(&labelInfo.position)) {
+            else if (auto vertices = std::get_if<Vertices>(&labelInfo.position)) {
                 VertexArray<cglib::vec2<float>> tesselatedVertices;
                 _transformer->tesselateLineString(vertices->data(), vertices->size(), tesselatedVertices);
                 labelVertices.assign(tesselatedVertices.begin(), tesselatedVertices.end());
@@ -372,17 +372,16 @@ namespace carto { namespace vt {
         }
         
         float scale = 1.0f / _tileSize;
-        boost::optional<cglib::mat2x2<float>> transform;
-        boost::optional<cglib::vec2<float>> translate;
+        std::optional<Transform> transform;
         if (style.angle != 0) {
             float angle = style.angle * boost::math::constants::pi<float>() / 180.0f;
-            transform = cglib::rotate2_matrix(angle);
+            transform = Transform::fromMatrix2(cglib::rotate2_matrix(angle));
         }
 
         const std::shared_ptr<Font>& font = formatter.getFont();
         Font::Metrics metrics = formatter.getFont()->getMetrics(1.0f);
-        if (!_labelStyle || _labelStyle->orientation != style.orientation || _labelStyle->colorFunc != style.colorFunc || _labelStyle->sizeFunc != style.sizeFunc || _labelStyle->haloColorFunc != style.haloColorFunc || _labelStyle->haloRadiusFunc != style.haloRadiusFunc || _labelStyle->autoflip != style.autoflip || _labelStyle->scale != scale || _labelStyle->ascent != metrics.ascent || _labelStyle->descent != metrics.descent || _labelStyle->transform != transform || _labelStyle->translate != translate || _labelStyle->glyphMap != font->getGlyphMap()) {
-            _labelStyle = std::make_shared<TileLabel::Style>(style.orientation, style.colorFunc, style.sizeFunc, style.haloColorFunc, style.haloRadiusFunc, style.autoflip, scale, metrics.ascent, metrics.descent, transform, translate, font->getGlyphMap());
+        if (!_labelStyle || _labelStyle->orientation != style.orientation || _labelStyle->colorFunc != style.colorFunc || _labelStyle->sizeFunc != style.sizeFunc || _labelStyle->haloColorFunc != style.haloColorFunc || _labelStyle->haloRadiusFunc != style.haloRadiusFunc || _labelStyle->autoflip != style.autoflip || _labelStyle->scale != scale || _labelStyle->ascent != metrics.ascent || _labelStyle->descent != metrics.descent || _labelStyle->transform != transform || _labelStyle->glyphMap != font->getGlyphMap()) {
+            _labelStyle = std::make_shared<TileLabel::Style>(style.orientation, style.colorFunc, style.sizeFunc, style.haloColorFunc, style.haloRadiusFunc, style.autoflip, scale, metrics.ascent, metrics.descent, transform, font->getGlyphMap());
         }
 
         while (true) {
@@ -402,9 +401,9 @@ namespace carto { namespace vt {
                     }
                 }
 
-                boost::optional<cglib::vec2<float>> labelPosition;
-                if (auto pos = boost::get<Vertex>(&labelInfo.position)) {
-                    labelPosition = *pos;
+                std::optional<cglib::vec2<float>> labelPosition;
+                if (labelInfo.position) {
+                    labelPosition = *labelInfo.position;
                 }
                 std::vector<cglib::vec2<float>> labelVertices;
                 if (!labelInfo.vertices.empty()) {
@@ -420,7 +419,7 @@ namespace carto { namespace vt {
         }
     }
 
-    std::shared_ptr<TileLayer> TileLayerBuilder::buildTileLayer(boost::optional<CompOp> compOp, FloatFunction opacityFunc) const {
+    std::shared_ptr<TileLayer> TileLayerBuilder::buildTileLayer(std::optional<CompOp> compOp, FloatFunction opacityFunc) const {
         std::vector<std::shared_ptr<TileGeometry>> geometryList = _geometryList;
         packGeometry(geometryList);
 
@@ -463,7 +462,7 @@ namespace carto { namespace vt {
             styleParameters.strokeScales[i] = (stroke ? stroke->scale : 0);
         }
         if (_builderParameters.transform) {
-            cglib::vec2<float> translate((*_builderParameters.transform)(0, 2), (*_builderParameters.transform)(1, 2));
+            cglib::vec2<float> translate = _builderParameters.transform->translate();
             if (translate != cglib::vec2<float>(0, 0)) {
                 styleParameters.translate = translate * (1.0f / _tileSize);
             }
@@ -500,7 +499,7 @@ namespace carto { namespace vt {
             }
         }
         else {
-            cglib::mat2x2<float> transform = cglib::mat2x2<float> {{ (*_builderParameters.transform)(0, 0), (*_builderParameters.transform)(0, 1) }, { (*_builderParameters.transform)(1, 0), (*_builderParameters.transform)(1, 1) }};
+            cglib::mat2x2<float> transform = _builderParameters.transform->matrix2();
             cglib::mat2x2<float> invTransTransform = cglib::transpose(cglib::inverse(transform));
             for (std::size_t i = 0; i < _coords.size(); i++) {
                 cglib::vec2<float> pos;
@@ -535,7 +534,7 @@ namespace carto { namespace vt {
                 transform = cglib::mat2x2<float> {{ 1.0f / styleParameters.pattern->bitmap->width, 0 }, { 0, 1.0f / styleParameters.pattern->bitmap->height }};
             }
             else if (_builderParameters.type == TileGeometry::Type::POLYGON3D && _builderParameters.transform) {
-                transform = cglib::mat2x2<float> {{ (*_builderParameters.transform)(0, 0), (*_builderParameters.transform)(0, 1) }, { (*_builderParameters.transform)(1, 0), (*_builderParameters.transform)(1, 1) }};
+                transform = _builderParameters.transform->matrix2();
             }
             for (std::size_t i = 0; i < _texCoords.size(); i++) {
                 texCoords.append(cglib::transform(_texCoords[i], transform));

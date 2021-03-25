@@ -3,25 +3,29 @@
 #include "Filter.h"
 #include "Expression.h"
 #include "Predicate.h"
+#include "PredicateUtils.h"
+#include "ExpressionUtils.h"
 
 namespace carto { namespace mvt {
-    std::unordered_set<std::shared_ptr<const Expression>> Rule::getReferencedFields() const {
-        std::unordered_set<std::shared_ptr<const Expression>> fieldExprs;
-        auto gatherFields = [&](const std::shared_ptr<const Expression>& expr) {
-            if (auto varExpr = std::dynamic_pointer_cast<const VariableExpression>(expr)) {
-                fieldExprs.insert(varExpr->getVariableExpression());
+    void Rule::gatherReferencedFields(std::vector<Expression>& fields) const {
+        auto gatherFields = [&fields](const Expression& expr) {
+            if (auto varExpr = std::get_if<std::shared_ptr<VariableExpression>>(&expr)) {
+                if (std::find_if(fields.begin(), fields.end(), [&](const Expression& expr) {
+                    return std::visit(ExpressionDeepEqualsChecker(), expr, (*varExpr)->getVariableExpression());
+                }) == fields.end()) {
+                    fields.push_back((*varExpr)->getVariableExpression());
+                }
             }
         };
         if (_filter) {
-            if (auto pred = _filter->getPredicate()) {
-                pred->fold(gatherFields);
+            if (_filter->getPredicate()) {
+                std::visit(PredicateDeepVisitor(gatherFields), *_filter->getPredicate());
             }
         }
         std::for_each(_symbolizers.begin(), _symbolizers.end(), [&](const std::shared_ptr<Symbolizer>& symbolizer) {
-            for (const std::shared_ptr<const Expression>& expr : symbolizer->getParameterExpressions()) {
-                expr->fold(gatherFields);
+            for (const Expression& expr : symbolizer->getParameterExpressions()) {
+                std::visit(ExpressionDeepVisitor(gatherFields), expr);
             }
         });
-        return fieldExprs;
     }
 } }

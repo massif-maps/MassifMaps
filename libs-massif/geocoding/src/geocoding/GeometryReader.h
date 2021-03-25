@@ -126,7 +126,7 @@ namespace carto { namespace geocoding {
             return rings;
         }
 
-        static constexpr double PRECISION = 1.0e6;
+        inline static constexpr double PRECISION = 1.0e6;
 
         EncodingStream& _stream;
         PointConverter _pointConverter;

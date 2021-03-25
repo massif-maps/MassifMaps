@@ -179,7 +179,7 @@ namespace carto { namespace geocoding {
         return cglib::vec2<double>(0, 0);
     }
 
-    boost::optional<cglib::bbox2<double>> RevGeocoder::getBounds(sqlite3pp::database& db) {
+    std::optional<cglib::bbox2<double>> RevGeocoder::getBounds(sqlite3pp::database& db) {
         sqlite3pp::query query(db, "SELECT value FROM metadata WHERE name='bounds'");
         for (auto qit = query.begin(); qit != query.end(); qit++) {
             std::string value = qit->get<const char*>(0);
@@ -190,6 +190,6 @@ namespace carto { namespace geocoding {
             cglib::vec2<double> max(std::stod(bounds.at(2)), std::stod(bounds.at(3)));
             return cglib::bbox2<double>(min, max);
         }
-        return boost::optional<cglib::bbox2<double>>();
+        return std::optional<cglib::bbox2<double>>();
     }
 } }

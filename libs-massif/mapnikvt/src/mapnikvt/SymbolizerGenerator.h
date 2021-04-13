@@ -7,6 +7,8 @@
 #ifndef _CARTO_MAPNIKVT_SYMBOLIZERGENERATOR_H_
 #define _CARTO_MAPNIKVT_SYMBOLIZERGENERATOR_H_
 
+#include "SymbolizerParameter.h"
+
 #include <memory>
 #include <string>
 
@@ -15,7 +17,6 @@
 namespace carto { namespace mvt {
     class Logger;
     class Symbolizer;
-    class SymbolizerParameter;
     
     class SymbolizerGenerator {
     public:

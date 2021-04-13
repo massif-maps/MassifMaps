@@ -12,19 +12,22 @@
 namespace carto { namespace mvt {
     class ShieldSymbolizer : public TextSymbolizer {
     public:
-        explicit ShieldSymbolizer(const std::string& text, std::vector<std::shared_ptr<FontSet>> fontSets, std::shared_ptr<Logger> logger) : TextSymbolizer(text, std::move(fontSets), std::move(logger)) { }
+        explicit ShieldSymbolizer(const Expression& text, std::vector<std::shared_ptr<FontSet>> fontSets, std::shared_ptr<Logger> logger) : TextSymbolizer(text, std::move(fontSets), std::move(logger)) {
+            bindParameter("file", &_file);
+            bindParameter("shield-dx", &_shieldDx);
+            bindParameter("shield-dy", &_shieldDy);
+            bindParameter("unlock-image", &_unlockImage);
+        }
 
-        virtual void build(const FeatureCollection& featureCollection, const FeatureExpressionContext& exprContext, const SymbolizerContext& symbolizerContext, vt::TileLayerBuilder& layerBuilder) override;
+        virtual void build(const FeatureCollection& featureCollection, const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext, vt::TileLayerBuilder& layerBuilder) const override;
 
     protected:
         inline static constexpr float IMAGE_UPSAMPLING_SCALE = 2.5f;
-        
-        virtual void bindParameter(const std::string& name, const std::string& value) override;
 
-        std::string _file;
-        bool _unlockImage = false;
-        float _shieldDx = 0.0f;
-        float _shieldDy = 0.0f;
+        StringParameter _file;
+        BoolParameter _unlockImage = BoolParameter(false);
+        FloatParameter _shieldDx = FloatParameter(0.0f);
+        FloatParameter _shieldDy = FloatParameter(0.0f);
     };
 } }
 

@@ -26,6 +26,8 @@ namespace carto { namespace mvt {
 
     protected:
         std::shared_ptr<Symbolizer> createSymbolizer(const pugi::xml_node& node, const std::shared_ptr<Map>& map) const;
+        
+        void setSymbolizerParameter(Symbolizer& symbolizer, const std::string& paramName, const std::string& paramValue) const;
             
         const std::shared_ptr<Logger> _logger;
     };

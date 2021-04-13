@@ -5,34 +5,48 @@
 
 namespace carto { namespace mvt {
     bool PredicateEvaluator::operator() (const std::shared_ptr<ExpressionPredicate>& exprPred) const {
-       Value val = std::visit(ExpressionEvaluator(_context), exprPred->getExpression());
+       Value val = std::visit(ExpressionEvaluator(_context, _viewState), exprPred->getExpression());
        return ValueConverter<bool>::convert(val);
     }
 
     bool PredicateEvaluator::operator() (const std::shared_ptr<ComparisonPredicate>& compPred) const {
-        Value val1 = std::visit(ExpressionEvaluator(_context), compPred->getExpression1());
-        Value val2 = std::visit(ExpressionEvaluator(_context), compPred->getExpression2());
+        Value val1 = std::visit(ExpressionEvaluator(_context, _viewState), compPred->getExpression1());
+        Value val2 = std::visit(ExpressionEvaluator(_context, _viewState), compPred->getExpression2());
         return ComparisonPredicate::applyOp(compPred->getOp(), val1, val2);
     }
 
-    Predicate PredicateMapper::operator() (const std::shared_ptr<ExpressionPredicate>& exprPred) const {
-        Expression expr = std::visit(ExpressionMapper(_fn), exprPred->getExpression());
-        return std::make_shared<ExpressionPredicate>(std::move(expr));
+    boost::tribool PredicatePreEvaluator::operator() (const std::shared_ptr<ComparisonPredicate>& compPred) const {
+        auto extractValue = [this](const Expression& expr, Value& result) -> bool {
+            if (auto val = std::get_if<Value>(&expr)) {
+                result = *val;
+                return true;
+            }
+            if (auto varExpr = std::get_if<std::shared_ptr<VariableExpression>>(&expr)) {
+                if (auto var = std::get_if<Value>(&(*varExpr)->getVariableExpression())) {
+                    std::string name = ValueConverter<std::string>::convert(*var);
+                    if (ExpressionContext::isNutiVariable(name) || ExpressionContext::isZoomVariable(name)) {
+                        result = _context.getVariable(name);
+                        return true;
+                    }
+                }
+            }
+            return false;
+        };
+
+        Value val1, val2;
+        if (!extractValue(compPred->getExpression1(), val1) || !extractValue(compPred->getExpression2(), val2)) {
+            return boost::indeterminate;
+        }
+        return ComparisonPredicate::applyOp(compPred->getOp(), val1, val2);
     }
 
-    Predicate PredicateMapper::operator() (const std::shared_ptr<ComparisonPredicate>& compPred) const {
-        Expression expr1 = std::visit(ExpressionMapper(_fn), compPred->getExpression1());
-        Expression expr2 = std::visit(ExpressionMapper(_fn), compPred->getExpression2());
-        return std::make_shared<ComparisonPredicate>(compPred->getOp(), std::move(expr1), std::move(expr2));
+    void PredicateVariableVisitor::operator() (const std::shared_ptr<ExpressionPredicate>& exprPred) const {
+        std::visit(ExpressionVariableVisitor(_visitor), exprPred->getExpression());
     }
 
-    void PredicateDeepVisitor::operator() (const std::shared_ptr<ExpressionPredicate>& exprPred) const {
-        std::visit(ExpressionDeepVisitor(_fn), exprPred->getExpression());
-    }
-
-    void PredicateDeepVisitor::operator() (const std::shared_ptr<ComparisonPredicate>& compPred) const {
-        std::visit(ExpressionDeepVisitor(_fn), compPred->getExpression1());
-        std::visit(ExpressionDeepVisitor(_fn), compPred->getExpression2());
+    void PredicateVariableVisitor::operator() (const std::shared_ptr<ComparisonPredicate>& compPred) const {
+        std::visit(ExpressionVariableVisitor(_visitor), compPred->getExpression1());
+        std::visit(ExpressionVariableVisitor(_visitor), compPred->getExpression2());
     }
 
     bool PredicateDeepEqualsChecker::operator() (const std::shared_ptr<ExpressionPredicate>& exprPred1, const std::shared_ptr<ExpressionPredicate>& exprPred2) const {

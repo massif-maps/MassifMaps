@@ -13,6 +13,8 @@
 #include "vt/TileLayerBuilder.h"
 
 #include <memory>
+#include <string>
+#include <set>
 
 #include <cglib/vec.h>
 #include <cglib/mat.h>
@@ -21,7 +23,7 @@ namespace carto { namespace mvt {
     class Map;
     class Filter;
     class Rule;
-    class FeatureExpressionContext;
+    class ExpressionContext;
     class Symbolizer;
     class SymbolizerContext;
     class Layer;
@@ -36,13 +38,14 @@ namespace carto { namespace mvt {
     protected:
         explicit TileReader(std::shared_ptr<const Map> map, std::shared_ptr<const vt::TileTransformer> transformer, const SymbolizerContext& symbolizerContext);
 
-        void processLayer(const std::shared_ptr<const Layer>& layer, const std::shared_ptr<const Style>& style, FeatureExpressionContext& exprContext, vt::TileLayerBuilder& layerBuilder) const;
+        void processLayer(const std::shared_ptr<const Layer>& layer, const std::shared_ptr<const Style>& style, ExpressionContext& exprContext, vt::TileLayerBuilder& layerBuilder) const;
 
-        std::vector<std::shared_ptr<Symbolizer>> findFeatureSymbolizers(const std::shared_ptr<const Style>& style, FeatureExpressionContext& exprContext) const;
+        std::vector<std::shared_ptr<const Rule>> preFilterStyleRules(const std::shared_ptr<const Style>& style, ExpressionContext& exprContext) const;
+        std::vector<std::shared_ptr<const Symbolizer>> findFeatureSymbolizers(const std::shared_ptr<const Style>& style, const std::vector<std::shared_ptr<const Rule>>& rules, ExpressionContext& exprContext) const;
 
         virtual std::shared_ptr<vt::TileBackground> createTileBackground(const vt::TileId& tileId) const = 0;
 
-        virtual std::shared_ptr<FeatureDecoder::FeatureIterator> createFeatureIterator(const std::shared_ptr<const Layer>& layer) const = 0;
+        virtual std::shared_ptr<FeatureDecoder::FeatureIterator> createFeatureIterator(const std::shared_ptr<const Layer>& layer, const std::set<std::string>* fields) const = 0;
 
         const std::shared_ptr<const Map> _map;
         const std::shared_ptr<const vt::TileTransformer> _transformer;

@@ -14,14 +14,11 @@
 namespace carto { namespace mvt {
     class GeometrySymbolizer : public Symbolizer {
     protected:
-        explicit GeometrySymbolizer(std::shared_ptr<Logger> logger) : Symbolizer(std::move(logger)) { }
+        explicit GeometrySymbolizer(std::shared_ptr<Logger> logger) : Symbolizer(std::move(logger)) {
+            bindParameter("geometry-transform", &_geometryTransform);
+        }
             
-        virtual void bindParameter(const std::string& name, const std::string& value) override;
-
-        std::optional<vt::Transform> getGeometryTransform() const;
-            
-    private:
-        vt::Transform _geometryTransform;
+        TransformParameter _geometryTransform;
     };
 } }
 

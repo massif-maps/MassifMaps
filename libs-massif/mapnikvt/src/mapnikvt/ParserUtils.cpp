@@ -12,6 +12,34 @@
 #include <boost/algorithm/string.hpp>
 
 namespace carto { namespace mvt {
+    vt::LineCapMode parseLineCapMode(const std::string& str) {
+        static const std::unordered_map<std::string, vt::LineCapMode> lineCapModeTable = {
+            { "round",  vt::LineCapMode::ROUND  },
+            { "square", vt::LineCapMode::SQUARE },
+            { "butt",   vt::LineCapMode::NONE   }
+        };
+
+        auto it = lineCapModeTable.find(str);
+        if (it == lineCapModeTable.end()) {
+            throw ParserException("LineCapMode parsing failed", str);
+        }
+        return it->second;
+    }
+
+    vt::LineJoinMode parseLineJoinMode(const std::string& str) {
+        static const std::unordered_map<std::string, vt::LineJoinMode> lineJoinModeTable = {
+            { "round", vt::LineJoinMode::ROUND },
+            { "bevel", vt::LineJoinMode::BEVEL },
+            { "miter", vt::LineJoinMode::MITER }
+        };
+
+        auto it = lineJoinModeTable.find(str);
+        if (it == lineJoinModeTable.end()) {
+            throw ParserException("LineJoinMode parsing failed", str);
+        }
+        return it->second;
+    }
+
     vt::CompOp parseCompOp(const std::string& str) {
         static const std::unordered_map<std::string, vt::CompOp> compOpTable = {
             { "src",      vt::CompOp::SRC },

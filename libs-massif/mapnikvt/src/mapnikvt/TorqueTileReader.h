@@ -20,7 +20,7 @@ namespace carto { namespace mvt {
     protected:
         virtual std::shared_ptr<vt::TileBackground> createTileBackground(const vt::TileId& tileId) const override;
         
-        virtual std::shared_ptr<FeatureDecoder::FeatureIterator> createFeatureIterator(const std::shared_ptr<const Layer>& layer) const override;
+        virtual std::shared_ptr<FeatureDecoder::FeatureIterator> createFeatureIterator(const std::shared_ptr<const Layer>& layer, const std::set<std::string>* fields) const override;
 
     private:
         const int _frame;

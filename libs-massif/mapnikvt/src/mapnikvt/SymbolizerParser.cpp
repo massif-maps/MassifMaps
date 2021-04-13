@@ -26,23 +26,13 @@ namespace carto { namespace mvt {
             pugi::xml_node parameterNode = (*parameterIt).node();
             std::string parameterName = boost::replace_all_copy(std::string(parameterNode.attribute("name").as_string()), "_", "-");
             std::string parameterValue = parameterNode.text().as_string();
-            try {
-                symbolizer->setParameter(parameterName, parameterValue);
-            }
-            catch (const std::runtime_error& ex) {
-                _logger->write(mvt::Logger::Severity::ERROR, ex.what());
-            }
+            setSymbolizerParameter(*symbolizer, parameterName, parameterValue);
         }
         for (pugi::xml_attribute_iterator attrIt = node.attributes().begin(); attrIt != node.attributes().end(); ++attrIt) {
             pugi::xml_attribute attr = *attrIt;
             std::string parameterName = boost::replace_all_copy(std::string(attr.name()), "_", "-");
             std::string parameterValue = attr.as_string();
-            try {
-                symbolizer->setParameter(parameterName, parameterValue);
-            }
-            catch (const std::runtime_error& ex) {
-                _logger->write(mvt::Logger::Severity::ERROR, ex.what());
-            }
+            setSymbolizerParameter(*symbolizer, parameterName, parameterValue);
         }
 
         return symbolizer;
@@ -74,11 +64,10 @@ namespace carto { namespace mvt {
             symbolizer = std::make_shared<MarkersSymbolizer>(_logger);
         }
         else if (type == "ShieldSymbolizer" || type == "TextSymbolizer") {
-            std::string text;
+            Expression text = Value(std::string());
             if (!node.text().empty()) {
-                text = node.text().as_string();
+                text = parseExpression(node.text().as_string(), true);
             }
-
             if (type == "ShieldSymbolizer") {
                 symbolizer = std::make_shared<ShieldSymbolizer>(text, map->getFontSets(), _logger);
             }
@@ -90,5 +79,17 @@ namespace carto { namespace mvt {
             _logger->write(Logger::Severity::WARNING, "Unsupported symbolizer type: " + type);
         }
         return symbolizer;
+    }
+
+    void SymbolizerParser::setSymbolizerParameter(Symbolizer& symbolizer, const std::string& paramName, const std::string& paramValue) const {
+        try {
+            if (auto param = symbolizer.getParameter(paramName)) {
+                bool stringParam = !dynamic_cast<ValueParameter*>(param) && !dynamic_cast<BoolParameter*>(param) && !dynamic_cast<FloatParameter*>(param) && !dynamic_cast<FloatFunctionParameter*>(param);
+                param->setExpression(parseExpression(paramValue, stringParam));
+            }
+        }
+        catch (const std::runtime_error& ex) {
+            _logger->write(mvt::Logger::Severity::ERROR, ex.what());
+        }
     }
 } }

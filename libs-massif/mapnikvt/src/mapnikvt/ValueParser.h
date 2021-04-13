@@ -33,24 +33,25 @@ namespace carto { namespace mvt {
                               ("\\r", '\r')("\\t", '\t')("\\v", '\v')("\\\\", '\\')
                               ("\\\'", '\'')("\\\"", '\"');
 
-                null_kw = repository::qi::distinct(qi::char_("a-zA-Z0-9_"))[qi::no_case["null"]];
-                point_kw = repository::qi::distinct(qi::char_("a-zA-Z0-9_"))[qi::no_case["point"]];
+                null_kw       = repository::qi::distinct(qi::char_("a-zA-Z0-9_"))[qi::no_case["null"]];
+                point_kw      = repository::qi::distinct(qi::char_("a-zA-Z0-9_"))[qi::no_case["point"]];
                 linestring_kw = repository::qi::distinct(qi::char_("a-zA-Z0-9_"))[qi::no_case["linestring"]];
-                polygon_kw = repository::qi::distinct(qi::char_("a-zA-Z0-9_"))[qi::no_case["polygon"]];
+                polygon_kw    = repository::qi::distinct(qi::char_("a-zA-Z0-9_"))[qi::no_case["polygon"]];
 
                 string =
                       '\'' >> *(unesc_char | "\\x" >> octet_ | (qi::char_ - '\'')) >> '\''
-                    | '\"' >> *(unesc_char | "\\x" >> octet_ | (qi::char_ - '\"')) >> '\"';
+                    | '\"' >> *(unesc_char | "\\x" >> octet_ | (qi::char_ - '\"')) >> '\"'
+                    ;
 
                 value =
                       null_kw                [_val = phoenix::construct<Value>()]
-                    | point_kw               [_val = phoenix::construct<Value>(1LL)]
-                    | linestring_kw          [_val = phoenix::construct<Value>(2LL)]
-                    | polygon_kw             [_val = phoenix::construct<Value>(3LL)]
                     | qi::bool_              [_val = phoenix::construct<Value>(_1)]
                     | qi::real_parser<double, qi::strict_real_policies<double>>() [_val = phoenix::construct<Value>(_1)]
                     | qi::long_long          [_val = phoenix::construct<Value>(_1)]
                     | string                 [_val = phoenix::construct<Value>(_1)]
+                    | point_kw               [_val = phoenix::construct<Value>(1LL)]
+                    | linestring_kw          [_val = phoenix::construct<Value>(2LL)]
+                    | polygon_kw             [_val = phoenix::construct<Value>(3LL)]
                     ;
             }
 

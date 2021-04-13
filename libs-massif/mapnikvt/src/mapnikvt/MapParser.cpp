@@ -124,7 +124,7 @@ namespace carto { namespace mvt {
                 float minScaleDenominator = 0;
                 float maxScaleDenominator = std::numeric_limits<float>::infinity();
                 std::shared_ptr<const Filter> filter;
-                std::vector<std::shared_ptr<Symbolizer>> symbolizers;
+                std::vector<std::shared_ptr<const Symbolizer>> symbolizers;
 
                 for (pugi::xml_node_iterator nodeIt = ruleNode.children().begin(); nodeIt != ruleNode.children().end(); ++nodeIt) {
                     pugi::xml_node node = *nodeIt;

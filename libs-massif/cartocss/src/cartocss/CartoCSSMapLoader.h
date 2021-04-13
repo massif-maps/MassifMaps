@@ -36,6 +36,7 @@ namespace carto { namespace css {
         explicit CartoCSSMapLoader(std::shared_ptr<AssetLoader> assetLoader, std::shared_ptr<mvt::Logger> logger) : _assetLoader(std::move(assetLoader)), _logger(std::move(logger)) { }
         virtual ~CartoCSSMapLoader() = default;
 
+        bool isIgnoreLayerPredicates() const { return _ignoreLayerPredicates; }
         void setIgnoreLayerPredicates(bool ignore) { _ignoreLayerPredicates = ignore; }
 
         std::shared_ptr<mvt::Map> loadMap(const std::string& cartoCSS) const;

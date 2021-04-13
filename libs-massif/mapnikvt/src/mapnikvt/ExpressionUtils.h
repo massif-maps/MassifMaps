@@ -14,12 +14,17 @@
 
 namespace carto { namespace mvt {
     struct ExpressionEvaluator {
-        explicit ExpressionEvaluator(const ExpressionContext& context) : _context(context) { }
+        explicit ExpressionEvaluator(const ExpressionContext& context, const vt::ViewState* viewState) : _context(context), _viewState(viewState) { }
 
         Value operator() (const Value& val) const { return val; }
         Value operator() (const Predicate& pred) const;
         Value operator() (const std::shared_ptr<VariableExpression>& varExpr) const {
-            return _context.getVariable(varExpr->getVariableName(_context));
+            Value var = std::visit(*this, varExpr->getVariableExpression());
+            std::string name = ValueConverter<std::string>::convert(var);
+            if (_viewState) {
+                return _context.getViewStateVariable(*_viewState, name);
+            }
+            return _context.getVariable(name);
         }
         Value operator() (const std::shared_ptr<UnaryExpression>& unaryExpr) const {
             Value val = std::visit(*this, unaryExpr->getExpression());
@@ -38,77 +43,41 @@ namespace carto { namespace mvt {
         }
         Value operator() (const std::shared_ptr<InterpolateExpression>& interpExpr) const {
             Value timeVal = std::visit(*this, interpExpr->getTimeExpression());
-            return static_cast<double>(interpExpr->evaluate(ValueConverter<float>::convert(timeVal)));
+            return interpExpr->evaluate(ValueConverter<float>::convert(timeVal));
         }
 
     private:
         const ExpressionContext& _context;
+        const vt::ViewState* _viewState;
     };
 
-    struct ExpressionMapper {
-        explicit ExpressionMapper(const std::function<Expression(const Expression&)>& fn) : _fn(fn) { }
+    struct ExpressionVariableVisitor {
+        explicit ExpressionVariableVisitor(std::function<void(const std::shared_ptr<VariableExpression>&)> visitor) : _visitor(std::move(visitor)) { }
 
-        Expression operator() (const Value& val) const { return _fn(val); }
-        Expression operator() (const Predicate& pred) const;
-        Expression operator() (const std::shared_ptr<VariableExpression>& varExpr) const {
-            Expression expr = std::visit(*this, varExpr->getVariableExpression());
-            return _fn(std::make_shared<VariableExpression>(std::move(expr)));
-        }
-        Expression operator() (const std::shared_ptr<UnaryExpression>& unaryExpr) const {
-            Expression expr = std::visit(*this, unaryExpr->getExpression());
-            return _fn(std::make_shared<UnaryExpression>(unaryExpr->getOp(), std::move(expr)));
-        }
-        Expression operator() (const std::shared_ptr<BinaryExpression>& binaryExpr) const {
-            Expression expr1 = std::visit(*this, binaryExpr->getExpression1());
-            Expression expr2 = std::visit(*this, binaryExpr->getExpression2());
-            return _fn(std::make_shared<BinaryExpression>(binaryExpr->getOp(), std::move(expr1), std::move(expr2)));
-        }
-        Expression operator() (const std::shared_ptr<TertiaryExpression>& tertiaryExpr) const {
-            Expression expr1 = std::visit(*this, tertiaryExpr->getExpression1());
-            Expression expr2 = std::visit(*this, tertiaryExpr->getExpression2());
-            Expression expr3 = std::visit(*this, tertiaryExpr->getExpression3());
-            return _fn(std::make_shared<TertiaryExpression>(tertiaryExpr->getOp(), std::move(expr1), std::move(expr2), std::move(expr3)));
-        }
-        Expression operator() (const std::shared_ptr<InterpolateExpression>& interpExpr) const {
-            Expression timeExpr = std::visit(*this, interpExpr->getTimeExpression());
-            return _fn(std::make_shared<InterpolateExpression>(interpExpr->getMethod(), std::move(timeExpr), interpExpr->getKeyFrames()));
-        }
-
-    private:
-        std::function<Expression(const Expression&)> _fn;
-    };
-
-    struct ExpressionDeepVisitor {
-        explicit ExpressionDeepVisitor(const std::function<void(const Expression&)>& fn) : _fn(fn) { }
-
-        void operator() (const Value& val) const { _fn(val); }
+        void operator() (const Value& val) const { }
         void operator() (const Predicate& pred) const;
         void operator() (const std::shared_ptr<VariableExpression>& varExpr) const {
-            _fn(varExpr);
+            _visitor(varExpr);
             std::visit(*this, varExpr->getVariableExpression());
         }
         void operator() (const std::shared_ptr<UnaryExpression>& unaryExpr) const {
-            _fn(unaryExpr);
             std::visit(*this, unaryExpr->getExpression());
         }
         void operator() (const std::shared_ptr<BinaryExpression>& binaryExpr) const {
-            _fn(binaryExpr);
             std::visit(*this, binaryExpr->getExpression1());
             std::visit(*this, binaryExpr->getExpression2());
         }
         void operator() (const std::shared_ptr<TertiaryExpression>& tertiaryExpr) const {
-            _fn(tertiaryExpr);
             std::visit(*this, tertiaryExpr->getExpression1());
             std::visit(*this, tertiaryExpr->getExpression2());
             std::visit(*this, tertiaryExpr->getExpression3());
         }
         void operator() (const std::shared_ptr<InterpolateExpression>& interpExpr) const {
-            _fn(interpExpr);
             std::visit(*this, interpExpr->getTimeExpression());
         }
 
     private:
-        std::function<void(const Expression&)> _fn;
+        std::function<void(const std::shared_ptr<VariableExpression>&)> _visitor;
     };
 
     struct ExpressionDeepEqualsChecker {

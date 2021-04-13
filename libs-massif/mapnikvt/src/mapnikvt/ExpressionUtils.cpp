@@ -3,16 +3,11 @@
 
 namespace carto { namespace mvt {
     Value ExpressionEvaluator::operator() (const Predicate& pred) const {
-        return std::visit(PredicateEvaluator(_context), pred);
+        return std::visit(PredicateEvaluator(_context, _viewState), pred);
     }
 
-    Expression ExpressionMapper::operator() (const Predicate& pred) const {
-        return _fn(std::visit(PredicateMapper(_fn), pred));
-    }
-
-    void ExpressionDeepVisitor::operator() (const Predicate& pred) const {
-        _fn(pred);
-        std::visit(PredicateDeepVisitor(_fn), pred);
+    void ExpressionVariableVisitor::operator() (const Predicate& pred) const {
+        std::visit(PredicateVariableVisitor(_visitor), pred);
     }
 
     bool ExpressionDeepEqualsChecker::operator() (const Predicate& pred1, const Predicate& pred2) const {

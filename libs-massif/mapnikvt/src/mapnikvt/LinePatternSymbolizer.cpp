@@ -1,25 +1,26 @@
 #include "LinePatternSymbolizer.h"
 
 namespace carto { namespace mvt {
-    void LinePatternSymbolizer::build(const FeatureCollection& featureCollection, const FeatureExpressionContext& exprContext, const SymbolizerContext& symbolizerContext, vt::TileLayerBuilder& layerBuilder) {
-        std::lock_guard<std::mutex> lock(_mutex);
-
-        updateBindings(exprContext);
-
-        if (_opacityFunc == vt::FloatFunction(0) || _fillFunc == vt::ColorFunction(vt::Color())) {
+    void LinePatternSymbolizer::build(const FeatureCollection& featureCollection, const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext, vt::TileLayerBuilder& layerBuilder) const {
+        vt::FloatFunction opacityFunc = _opacity.getFunction(exprContext);
+        vt::ColorFunction colorFunc = _fill.getFunction(exprContext);
+        if (opacityFunc == vt::FloatFunction(0) || colorFunc == vt::ColorFunction(vt::Color())) {
             return;
         }
         
-        std::shared_ptr<const vt::BitmapPattern> bitmapPattern = symbolizerContext.getBitmapManager()->loadBitmapPattern(_file, PATTERN_SCALE, PATTERN_SCALE);
+        std::string file = _file.getValue(exprContext);
+        std::shared_ptr<const vt::BitmapPattern> bitmapPattern = symbolizerContext.getBitmapManager()->loadBitmapPattern(file, PATTERN_SCALE, PATTERN_SCALE);
         if (!bitmapPattern || !bitmapPattern->bitmap) {
-            _logger->write(Logger::Severity::ERROR, "Failed to load line pattern bitmap " + _file);
+            _logger->write(Logger::Severity::ERROR, "Failed to load line pattern bitmap " + file);
             return;
         }
         
-        vt::FloatFunction widthFunc = _functionBuilder.createFloatFunction(bitmapPattern->bitmap->height);
-        vt::ColorFunction fillFunc = _functionBuilder.createColorOpacityFunction(_fillFunc, _opacityFunc);
+        vt::CompOp compOp = _compOp.getValue(exprContext);
+        std::optional<vt::Transform> geometryTransform = _geometryTransform.getValue(exprContext);
+        vt::FloatFunction widthFunc = _widthFuncBuilder.createFloatFunction(bitmapPattern->bitmap->height);
+        vt::ColorFunction fillFunc = _fillFuncBuilder.createColorOpacityFunction(colorFunc, opacityFunc);
 
-        vt::LineStyle style(getCompOp(), vt::LineJoinMode::MITER, vt::LineCapMode::NONE, fillFunc, widthFunc, bitmapPattern, getGeometryTransform());
+        vt::LineStyle style(compOp, vt::LineJoinMode::MITER, vt::LineCapMode::NONE, fillFunc, widthFunc, bitmapPattern, geometryTransform);
 
         std::size_t featureIndex = 0;
         std::size_t geometryIndex = 0;
@@ -63,20 +64,5 @@ namespace carto { namespace mvt {
             }
             return false;
         }, style, symbolizerContext.getStrokeMap());
-    }
-
-    void LinePatternSymbolizer::bindParameter(const std::string& name, const std::string& value) {
-        if (name == "file") {
-            bind(&_file, parseStringExpression(value));
-        }
-        else if (name == "fill") {
-            bind(&_fillFunc, parseStringExpression(value), &LinePatternSymbolizer::convertColor);
-        }
-        else if (name == "opacity") {
-            bind(&_opacityFunc, parseExpression(value));
-        }
-        else {
-            GeometrySymbolizer::bindParameter(name, value);
-        }
     }
 } }

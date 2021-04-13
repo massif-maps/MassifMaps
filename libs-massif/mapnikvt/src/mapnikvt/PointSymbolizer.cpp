@@ -3,23 +3,19 @@
 #include "vt/BitmapCanvas.h"
 
 namespace carto { namespace mvt {
-    void PointSymbolizer::build(const FeatureCollection& featureCollection, const FeatureExpressionContext& exprContext, const SymbolizerContext& symbolizerContext, vt::TileLayerBuilder& layerBuilder) {
-        std::lock_guard<std::mutex> lock(_mutex);
-
-        updateBindings(exprContext);
-
-        if (_opacityFunc == vt::FloatFunction(0)) {
+    void PointSymbolizer::build(const FeatureCollection& featureCollection, const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext, vt::TileLayerBuilder& layerBuilder) const {
+        vt::FloatFunction opacityFunc = _opacity.getFunction(exprContext);
+        if (opacityFunc == vt::FloatFunction(0)) {
             return;
         }
         
         float fontScale = symbolizerContext.getSettings().getFontScale();
-
-        std::string file = _file;
+        std::string file = _file.getValue(exprContext);
         std::shared_ptr<const vt::BitmapImage> bitmapImage;
         if (!file.empty()) {
             bitmapImage = symbolizerContext.getBitmapManager()->loadBitmapImage(file, false, 1.0f);
             if (!bitmapImage || !bitmapImage->bitmap) {
-                _logger->write(Logger::Severity::ERROR, "Failed to load point bitmap " + _file);
+                _logger->write(Logger::Severity::ERROR, "Failed to load point bitmap " + file);
                 return;
             }
             if (bitmapImage->bitmap->width < 1 || bitmapImage->bitmap->height < 1) {
@@ -35,14 +31,12 @@ namespace carto { namespace mvt {
             }
         }
 
-        vt::FloatFunction sizeFunc = _functionBuilder.createFloatFunction(fontScale * bitmapImage->scale);
-        vt::ColorFunction fillFunc = _functionBuilder.createColorOpacityFunction(_functionBuilder.createColorFunction(vt::Color(1, 1, 1, 1)), _opacityFunc);
+        vt::FloatFunction sizeFunc = _sizeFuncBuilder.createFloatFunction(fontScale * bitmapImage->scale);
+        vt::ColorFunction fillFunc = _fillFuncBuilder.createColorOpacityFunction(_fillFuncBuilder.createColorFunction(vt::Color(1, 1, 1, 1)), opacityFunc);
 
-        std::optional<vt::Transform> optTransform;
-        if (_transform != vt::Transform()) {
-            optTransform = _transform;
-        }
-        vt::PointStyle pointStyle(getCompOp(), fillFunc, sizeFunc, bitmapImage, optTransform);
+        vt::CompOp compOp = _compOp.getValue(exprContext);
+        std::optional<vt::Transform> transform = _transform.getValue(exprContext);
+        vt::PointStyle pointStyle(compOp, fillFunc, sizeFunc, bitmapImage, transform);
 
         std::vector<std::pair<long long, vt::TileLayerBuilder::Vertex>> pointInfos;
         for (std::size_t index = 0; index < featureCollection.size(); index++) {
@@ -77,27 +71,6 @@ namespace carto { namespace mvt {
             pointInfoIndex++;
             return true;
         }, pointStyle, symbolizerContext.getGlyphMap());
-    }
-
-    void PointSymbolizer::bindParameter(const std::string& name, const std::string& value) {
-        if (name == "file") {
-            bind(&_file, parseStringExpression(value));
-        }
-        else if (name == "opacity") {
-            bind(&_opacityFunc, parseExpression(value));
-        }
-        else if (name == "allow-overlap") {
-            bind(&_allowOverlap, parseExpression(value));
-        }
-        else if (name == "ignore-placement") {
-            bind(&_ignorePlacement, parseExpression(value));
-        }
-        else if (name == "transform") {
-            bind(&_transform, parseStringExpression(value), &PointSymbolizer::convertTransform);
-        }
-        else {
-            GeometrySymbolizer::bindParameter(name, value);
-        }
     }
 
     std::shared_ptr<vt::BitmapImage> PointSymbolizer::makeRectangleBitmap(float size) {

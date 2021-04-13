@@ -1,49 +1,59 @@
 #include "ShieldSymbolizer.h"
 
+#include <vector>
+#include <tuple>
+
 namespace carto { namespace mvt {
-    void ShieldSymbolizer::build(const FeatureCollection& featureCollection, const FeatureExpressionContext& exprContext, const SymbolizerContext& symbolizerContext, vt::TileLayerBuilder& layerBuilder) {
-        std::lock_guard<std::mutex> lock(_mutex);
-
-        updateBindings(exprContext);
-
-        std::shared_ptr<vt::Font> font = getFont(symbolizerContext);
+    void ShieldSymbolizer::build(const FeatureCollection& featureCollection, const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext, vt::TileLayerBuilder& layerBuilder) const {
+        std::shared_ptr<const vt::Font> font = getFont(symbolizerContext, exprContext);
         if (!font) {
-            _logger->write(Logger::Severity::ERROR, "Failed to load shield font " + (!_faceName.empty() ? _faceName : _fontSetName));
+            std::string faceName = _faceName.getValue(exprContext);
+            std::string fontSetName = _fontSetName.getValue(exprContext);
+            _logger->write(Logger::Severity::ERROR, "Failed to load shield font " + (!faceName.empty() ? faceName : fontSetName));
             return;
         }
 
-        std::shared_ptr<const vt::BitmapImage> backgroundBitmapImage = symbolizerContext.getBitmapManager()->loadBitmapImage(_file, false, IMAGE_UPSAMPLING_SCALE);
+        std::string file = _file.getValue(exprContext);
+        std::shared_ptr<const vt::BitmapImage> backgroundBitmapImage = symbolizerContext.getBitmapManager()->loadBitmapImage(file, false, IMAGE_UPSAMPLING_SCALE);
         if (!backgroundBitmapImage || !backgroundBitmapImage->bitmap) {
-            _logger->write(Logger::Severity::ERROR, "Failed to load shield bitmap " + _file);
+            _logger->write(Logger::Severity::ERROR, "Failed to load shield bitmap " + file);
             return;
         }
 
-        bool clip = _clipDefined ? _clip : _allowOverlap;
+        bool allowOverlap = _allowOverlap.getValue(exprContext);
+        bool clip = _clip.isDefined() ? _clip.getValue(exprContext) : allowOverlap;
+        float shieldDx = _shieldDx.getValue(exprContext);
+        float shieldDy = _shieldDy.getValue(exprContext);
 
         float fontScale = symbolizerContext.getSettings().getFontScale();
         float bitmapSize = static_cast<float>(std::max(backgroundBitmapImage->bitmap->width, backgroundBitmapImage->bitmap->height)) * fontScale;
-        vt::LabelOrientation placement = convertTextPlacement(_placement);
+        vt::LabelOrientation placement = getPlacement(exprContext);
         vt::LabelOrientation orientation = placement;
         if (orientation == vt::LabelOrientation::LINE) {
             orientation = vt::LabelOrientation::BILLBOARD_2D; // shields should be billboards, even when placed on a line
         }
-        float minimumDistance = (_minimumDistance + bitmapSize) * std::pow(2.0f, -exprContext.getAdjustedZoom()) / symbolizerContext.getSettings().getTileSize() * 2;
+        float minimumDistance = (_minimumDistance.getValue(exprContext) + bitmapSize) * std::pow(2.0f, -exprContext.getAdjustedZoom()) / symbolizerContext.getSettings().getTileSize() * 2;
+        float placementPriority = _placementPriority.getValue(exprContext);
+        float orientationAngle = _orientationAngle.getValue(exprContext);
+        float sizeStatic = _size.getStaticValue(exprContext);
+        bool unlockImage = _unlockImage.getValue(exprContext);
 
-        vt::TextFormatter textFormatter(font, _sizeStatic, getFormatterOptions(symbolizerContext));
+        vt::TextFormatter textFormatter(font, sizeStatic, getFormatterOptions(symbolizerContext, exprContext));
         vt::TextFormatter::Options shieldFormatterOptions = textFormatter.getOptions();
-        shieldFormatterOptions.offset = cglib::vec2<float>(_shieldDx * fontScale, -_shieldDy * fontScale);
-        vt::TextFormatter shieldFormatter(font, _sizeStatic, shieldFormatterOptions);
+        shieldFormatterOptions.offset = cglib::vec2<float>(shieldDx * fontScale, -shieldDy * fontScale);
+        vt::TextFormatter shieldFormatter(font, sizeStatic, shieldFormatterOptions);
+        vt::CompOp compOp = _compOp.getValue(exprContext);
 
-        vt::ColorFunction fillFunc = _functionBuilder.createColorOpacityFunction(_fillFunc, _opacityFunc);
-        vt::FloatFunction sizeFunc = _functionBuilder.createChainedFloatFunction("multiply" + std::to_string(fontScale), [fontScale](float size) { return size * fontScale; }, _sizeFunc);
-        vt::ColorFunction haloFillFunc = _functionBuilder.createColorOpacityFunction(_haloFillFunc, _haloOpacityFunc);
-        vt::FloatFunction haloRadiusFunc = _functionBuilder.createChainedFloatFunction("multiply" + std::to_string(fontScale), [fontScale](float size) { return size * fontScale; }, _haloRadiusFunc);
+        vt::ColorFunction fillFunc = _fillFuncBuilder.createColorOpacityFunction(_fill.getFunction(exprContext), _opacity.getFunction(exprContext));
+        vt::FloatFunction sizeFunc = _sizeFuncBuilder.createScaledFloatFunction(_size.getFunction(exprContext), fontScale);
+        vt::ColorFunction haloFillFunc = _haloFillFuncBuilder.createColorOpacityFunction(_haloFill.getFunction(exprContext), _haloOpacity.getFunction(exprContext));
+        vt::FloatFunction haloRadiusFunc = _haloRadiusFuncBuilder.createScaledFloatFunction(_haloRadius.getFunction(exprContext), fontScale);
 
         std::vector<std::pair<long long, std::tuple<vt::TileLayerBuilder::Vertex, std::string>>> shieldInfos;
         std::vector<std::pair<long long, vt::TileLayerBuilder::TextLabelInfo>> labelInfos;
 
         auto addShield = [&](long long localId, long long globalId, const std::string& text, const std::optional<vt::TileLayerBuilder::Vertex>& vertex, const vt::TileLayerBuilder::Vertices& vertices) {
-            long long groupId = (_allowOverlap ? -1 : 1); // use separate group from markers, markers use group 0
+            long long groupId = (allowOverlap ? -1 : 1); // use separate group from markers, markers use group 0
 
             if (clip) {
                 if (vertex) {
@@ -54,14 +64,14 @@ namespace carto { namespace mvt {
                 }
             }
             else {
-                labelInfos.emplace_back(localId, vt::TileLayerBuilder::TextLabelInfo(globalId * 3 + 2, groupId, text, vertex, vertices, _placementPriority, minimumDistance));
+                labelInfos.emplace_back(localId, vt::TileLayerBuilder::TextLabelInfo(globalId * 3 + 2, groupId, text, vertex, vertices, placementPriority, minimumDistance));
             }
         };
 
         auto flushShields = [&]() {
             cglib::vec2<float> backgroundOffset;
             const vt::TextFormatter* formatter;
-            if (_unlockImage) {
+            if (unlockImage) {
                 backgroundOffset = cglib::vec2<float>(-backgroundBitmapImage->bitmap->width * fontScale * 0.5f + shieldFormatterOptions.offset(0), -backgroundBitmapImage->bitmap->height * fontScale * 0.5f + shieldFormatterOptions.offset(1));
                 formatter = &textFormatter;
             }
@@ -71,7 +81,7 @@ namespace carto { namespace mvt {
             }
 
             if (clip) {
-                vt::TextStyle style(getCompOp(), fillFunc, sizeFunc, haloFillFunc, haloRadiusFunc, _orientationAngle, fontScale, backgroundOffset, backgroundBitmapImage);
+                vt::TextStyle style(compOp, fillFunc, sizeFunc, haloFillFunc, haloRadiusFunc, orientationAngle, fontScale, backgroundOffset, backgroundBitmapImage);
 
                 std::size_t textInfoIndex = 0;
                 layerBuilder.addTexts([&](long long& id, vt::TileLayerBuilder::Vertex& vertex, std::string& text) {
@@ -88,7 +98,7 @@ namespace carto { namespace mvt {
                 shieldInfos.clear();
             }
             else {
-                vt::TextLabelStyle style(placement, fillFunc, sizeFunc, haloFillFunc, haloRadiusFunc, true, _orientationAngle, fontScale, backgroundOffset, backgroundBitmapImage);
+                vt::TextLabelStyle style(placement, fillFunc, sizeFunc, haloFillFunc, haloRadiusFunc, true, orientationAngle, fontScale, backgroundOffset, backgroundBitmapImage);
 
                 std::size_t labelInfoIndex = 0;
                 layerBuilder.addTextLabels([&](long long& id, vt::TileLayerBuilder::TextLabelInfo& labelInfo) {
@@ -108,23 +118,5 @@ namespace carto { namespace mvt {
         buildFeatureCollection(featureCollection, exprContext, symbolizerContext, shieldFormatter, placement, bitmapSize, addShield);
 
         flushShields();
-    }
-
-    void ShieldSymbolizer::bindParameter(const std::string& name, const std::string& value) {
-        if (name == "file") {
-            bind(&_file, parseStringExpression(value));
-        }
-        else if (name == "shield-dx") {
-            bind(&_shieldDx, parseExpression(value));
-        }
-        else if (name == "shield-dy") {
-            bind(&_shieldDy, parseExpression(value));
-        }
-        else if (name == "unlock-image") {
-            bind(&_unlockImage, parseExpression(value));
-        }
-        else {
-            TextSymbolizer::bindParameter(name, value);
-        }
     }
 } }

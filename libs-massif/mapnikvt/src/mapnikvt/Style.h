@@ -16,8 +16,8 @@
 #include <optional>
 #include <string>
 #include <vector>
+#include <set>
 #include <unordered_map>
-#include <unordered_set>
 #include <utility>
 
 namespace carto { namespace mvt {
@@ -41,8 +41,6 @@ namespace carto { namespace mvt {
 
         const std::vector<std::shared_ptr<const Rule>>& getZoomRules(int zoom) const;
 
-        const std::vector<Expression>& getReferencedFields(int zoom) const;
-
         void optimizeRules();
 
     private:
@@ -57,7 +55,6 @@ namespace carto { namespace mvt {
         const FilterMode _filterMode;
         std::vector<std::shared_ptr<const Rule>> _rules;
         std::unordered_map<int, std::vector<std::shared_ptr<const Rule>>> _zoomRuleMap;
-        std::unordered_map<int, std::vector<Expression>> _zoomFieldExprsMap;
     };
 } }
 

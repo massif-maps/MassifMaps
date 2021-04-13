@@ -8,22 +8,23 @@
 #define _CARTO_MAPNIKVT_POLYGONSYMBOLIZER_H_
 
 #include "GeometrySymbolizer.h"
+#include "FunctionBuilder.h"
 
 namespace carto { namespace mvt {
     class PolygonSymbolizer : public GeometrySymbolizer {
     public:
         explicit PolygonSymbolizer(std::shared_ptr<Logger> logger) : GeometrySymbolizer(std::move(logger)) {
-            bind(&_fillFunc, Value(std::string("#808080")), &PolygonSymbolizer::convertColor);
-            bind(&_fillOpacityFunc, Value(1.0f));
+            bindParameter("fill", &_fill);
+            bindParameter("fill-opacity", &_fillOpacity);
         }
 
-        virtual void build(const FeatureCollection& featureCollection, const FeatureExpressionContext& exprContext, const SymbolizerContext& symbolizerContext, vt::TileLayerBuilder& layerBuilder) override;
+        virtual void build(const FeatureCollection& featureCollection, const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext, vt::TileLayerBuilder& layerBuilder) const override;
 
     protected:
-        virtual void bindParameter(const std::string& name, const std::string& value) override;
+        ColorFunctionParameter _fill = ColorFunctionParameter("#808080");
+        FloatFunctionParameter _fillOpacity = FloatFunctionParameter(1.0f);
 
-        vt::ColorFunction _fillFunc; // vt::Color(0xff808080)
-        vt::FloatFunction _fillOpacityFunc; // 1.0f
+        ColorFunctionBuilder _fillFuncBuilder;
     };
 } }
 

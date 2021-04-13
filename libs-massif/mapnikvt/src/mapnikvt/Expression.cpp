@@ -2,6 +2,8 @@
 #include "ExpressionUtils.h"
 #include "StringUtils.h"
 #include "ValueConverter.h"
+#include "ParserUtils.h"
+#include "GeneratorUtils.h"
 
 #include <algorithm>
 
@@ -69,13 +71,17 @@ namespace {
         Value operator() (double val1, double val2) const { return Value(std::pow(val1, val2)); }
         template <typename S, typename T> Value operator() (S val1, T val2) const { return Value(val1); }
     };
+
+    struct CondEvaluator {
+        bool operator() (std::monostate) const { return false; }
+        bool operator() (bool val) const { return val; }
+        bool operator() (long long val) const { return val != 0; }
+        bool operator() (double val) const { return val != 0; }
+        bool operator() (const std::string& str) const { return !str.empty(); }
+    };
 }
 
 namespace carto { namespace mvt {
-    std::string VariableExpression::getVariableName(const ExpressionContext& context) const {
-        return ValueConverter<std::string>::convert(std::visit(ExpressionEvaluator(context), _variableExpr)); 
-    }
-
     Value UnaryExpression::applyOp(Op op, const Value& val) {
         switch (op) {
         case Op::NEG:
@@ -121,16 +127,30 @@ namespace carto { namespace mvt {
         case Op::REPLACE:
             return Value(regexReplace(ValueConverter<std::string>::convert(val1), ValueConverter<std::string>::convert(val2), ValueConverter<std::string>::convert(val3)));
         case Op::CONDITIONAL:
-            return ValueConverter<bool>::convert(val1) ? val2 : val3;
+            return std::visit(CondEvaluator(), val1) ? val2 : val3;
         }
         throw std::invalid_argument("Illegal operator");
     }
 
-    float InterpolateExpression::evaluate(float t) const {
-         return _fcurve.evaluate(t)(1);
+    Value InterpolateExpression::evaluate(float t) const {
+        struct Evaluator {
+            explicit Evaluator(float t) : _time(t) { }
+            Value operator() (const cglib::fcurve2<float>& fcurve) const {
+                return Value(fcurve.evaluate(_time)(1));
+            }
+            Value operator() (const cglib::fcurve5<float>& fcurve) const {
+                cglib::vec<float, 5> result = fcurve.evaluate(_time);
+                return Value(static_cast<long long>(vt::Color(result(1), result(2), result(3), result(4)).value()));
+            }
+
+        private:
+            float _time;
+        };
+        
+        return std::visit(Evaluator(t), _fcurve);
     }
 
-    cglib::fcurve2<float> InterpolateExpression::buildFCurve(Method method, const std::vector<Value>& keyFrames) {
+    std::variant<cglib::fcurve2<float>, cglib::fcurve5<float>> InterpolateExpression::buildFCurve(Method method, const std::vector<Value>& keyFrames) {
         cglib::fcurve_type type = cglib::fcurve_type::linear;
         switch (method) {
         case Method::STEP:
@@ -144,11 +164,25 @@ namespace carto { namespace mvt {
             break;
         }
 
-        std::vector<cglib::vec2<float>> keyFramesList;
+        std::vector<cglib::vec2<float>> floatKeyFramesList;
+        std::vector<cglib::vec<float, 5>> colorKeyFramesList;
         for (std::size_t i = 0; i + 1 < keyFrames.size(); i += 2) {
-            keyFramesList.emplace_back(ValueConverter<float>::convert(keyFrames[i + 0]), ValueConverter<float>::convert(keyFrames[i + 1]));
+            float key = ValueConverter<float>::convert(keyFrames[i + 0]);
+            const Value& val = keyFrames[i + 1];
+            if (auto str = std::get_if<std::string>(&val)) {
+                vt::Color color = parseColor(*str);
+                colorKeyFramesList.emplace_back(cglib::vec<float, 5> {{ key, color[0], color[1], color[2], color[3] }});
+            }
+            else {
+                floatKeyFramesList.emplace_back(key, ValueConverter<float>::convert(val));
+            }
         }
-
-        return cglib::fcurve2<float>::create(type, keyFramesList.begin(), keyFramesList.end());
+        if (!colorKeyFramesList.empty()) {
+            if (!floatKeyFramesList.empty()) {
+                throw std::invalid_argument("Mismatched types in interpolation lists");
+            }
+            return cglib::fcurve5<float>::create(type, colorKeyFramesList.begin(), colorKeyFramesList.end());
+        }
+        return cglib::fcurve2<float>::create(type, floatKeyFramesList.begin(), floatKeyFramesList.end());
     }
 } }

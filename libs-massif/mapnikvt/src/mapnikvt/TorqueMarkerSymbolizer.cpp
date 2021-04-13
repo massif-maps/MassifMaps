@@ -3,23 +3,22 @@
 #include "vt/BitmapCanvas.h"
 
 namespace carto { namespace mvt {
-    void TorqueMarkerSymbolizer::build(const FeatureCollection& featureCollection, const FeatureExpressionContext& exprContext, const SymbolizerContext& symbolizerContext, vt::TileLayerBuilder& layerBuilder) {
-        std::lock_guard<std::mutex> lock(_mutex);
-
-        updateBindings(exprContext);
-
-        float width = DEFAULT_MARKER_SIZE, height = DEFAULT_MARKER_SIZE;
-        if (_width > 0) {
-            width = height = _width;
+    void TorqueMarkerSymbolizer::build(const FeatureCollection& featureCollection, const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext, vt::TileLayerBuilder& layerBuilder) const {
+        float width = _width.getValue(exprContext);
+        if (width <= 0) {
+            width = DEFAULT_MARKER_SIZE;
         }
+        float height = width;
+        float fillOpacity = _fillOpacity.isDefined() ? _fillOpacity.getValue(exprContext) : _opacity.getValue(exprContext);
+        float strokeOpacity = _strokeOpacity.isDefined() ? _strokeOpacity.getValue(exprContext) : _opacity.getValue(exprContext);
 
         float bitmapScaleX = 1, bitmapScaleY = 1;
-        float fillOpacity = _fillOpacity;
         std::shared_ptr<const vt::BitmapImage> bitmapImage;
-        if (!_file.empty()) {
-            bitmapImage = symbolizerContext.getBitmapManager()->loadBitmapImage(_file, false, 1.0f);
+        std::string file = _file.getValue(exprContext);
+        if (!file.empty()) {
+            bitmapImage = symbolizerContext.getBitmapManager()->loadBitmapImage(file, false, 1.0f);
             if (!bitmapImage || !bitmapImage->bitmap) {
-                _logger->write(Logger::Severity::ERROR, "Failed to load marker bitmap " + _file);
+                _logger->write(Logger::Severity::ERROR, "Failed to load marker bitmap " + file);
                 return;
             }
             if (bitmapImage->bitmap->width < 1 || bitmapImage->bitmap->height < 1) {
@@ -30,21 +29,23 @@ namespace carto { namespace mvt {
             height = bitmapImage->bitmap->height;
         }
         else {
-            vt::Color fill = vt::Color::fromColorOpacity(_fill, _fillOpacity);
-            vt::Color stroke = vt::Color::fromColorOpacity(_stroke, _strokeOpacity);
-            if (_markerType == "rectangle") {
-                std::string file = "__torque_marker_rectangle_" + std::to_string(width) + "_" + std::to_string(height) + "_" + std::to_string(fill.value()) + "_" + std::to_string(_strokeWidth) + "_" + std::to_string(stroke.value()) + ".bmp";
+            vt::Color fill = vt::Color::fromColorOpacity(_fill.getValue(exprContext), fillOpacity);
+            vt::Color stroke = vt::Color::fromColorOpacity(_stroke.getValue(exprContext), strokeOpacity);
+            float strokeWidth = _strokeWidth.getValue(exprContext);
+            std::string markerType = _markerType.getValue(exprContext);
+            if (markerType == "rectangle") {
+                std::string file = "__torque_marker_rectangle_" + std::to_string(width) + "_" + std::to_string(height) + "_" + std::to_string(fill.value()) + "_" + std::to_string(strokeWidth) + "_" + std::to_string(stroke.value()) + ".bmp";
                 bitmapImage = symbolizerContext.getBitmapManager()->getBitmapImage(file);
                 if (!bitmapImage) {
-                    bitmapImage = makeRectangleBitmap(width * SUPERSAMPLING_FACTOR, height * SUPERSAMPLING_FACTOR, fill, _strokeWidth * SUPERSAMPLING_FACTOR, stroke);
+                    bitmapImage = makeRectangleBitmap(width * SUPERSAMPLING_FACTOR, height * SUPERSAMPLING_FACTOR, fill, strokeWidth * SUPERSAMPLING_FACTOR, stroke);
                     symbolizerContext.getBitmapManager()->storeBitmapImage(file, bitmapImage);
                 }
             }
             else {
-                std::string file = "__torque_marker_ellipse_" + std::to_string(width) + "_" + std::to_string(height) + "_" + std::to_string(fill.value()) + "_" + std::to_string(_strokeWidth) + "_" + std::to_string(stroke.value()) + ".bmp";
+                std::string file = "__torque_marker_ellipse_" + std::to_string(width) + "_" + std::to_string(height) + "_" + std::to_string(fill.value()) + "_" + std::to_string(strokeWidth) + "_" + std::to_string(stroke.value()) + ".bmp";
                 bitmapImage = symbolizerContext.getBitmapManager()->getBitmapImage(file);
                 if (!bitmapImage) {
-                    bitmapImage = makeEllipseBitmap(width * SUPERSAMPLING_FACTOR, height * SUPERSAMPLING_FACTOR, fill, _strokeWidth * SUPERSAMPLING_FACTOR, stroke);
+                    bitmapImage = makeEllipseBitmap(width * SUPERSAMPLING_FACTOR, height * SUPERSAMPLING_FACTOR, fill, strokeWidth * SUPERSAMPLING_FACTOR, stroke);
                     symbolizerContext.getBitmapManager()->storeBitmapImage(file, bitmapImage);
                 }
             }
@@ -55,14 +56,15 @@ namespace carto { namespace mvt {
 
         float widthScale = bitmapScaleX * bitmapImage->scale;
         float heightScale = bitmapScaleY * bitmapImage->scale;
-        vt::FloatFunction normalizedSizeFunc = _functionBuilder.createFloatFunction(widthScale);
-        vt::ColorFunction fillFunc = _functionBuilder.createColorFunction(vt::Color::fromColorOpacity(vt::Color(1, 1, 1, 1), fillOpacity));
+        vt::FloatFunction normalizedSizeFunc = _sizeFuncBuilder.createFloatFunction(widthScale);
+        vt::ColorFunction fillFunc = _fillFuncBuilder.createColorFunction(vt::Color::fromColorOpacity(vt::Color(1, 1, 1, 1), fillOpacity));
 
-        std::optional<vt::Transform> optTransform;
+        std::optional<vt::Transform> transform;
         if (heightScale != widthScale) {
-            optTransform = vt::Transform::fromMatrix2(cglib::scale2_matrix(cglib::vec2<float>(1.0f, heightScale / widthScale)));
+            transform = vt::Transform::fromMatrix2(cglib::scale2_matrix(cglib::vec2<float>(1.0f, heightScale / widthScale)));
         }
-        vt::PointStyle style(getCompOp(), fillFunc, normalizedSizeFunc, bitmapImage, optTransform);
+        vt::CompOp compOp = _compOp.getValue(exprContext);
+        vt::PointStyle style(compOp, fillFunc, normalizedSizeFunc, bitmapImage, transform);
 
         std::size_t featureIndex = 0;
         std::size_t geometryIndex = 0;
@@ -89,40 +91,6 @@ namespace carto { namespace mvt {
             }
             return false;
         }, style, symbolizerContext.getGlyphMap());
-    }
-
-    void TorqueMarkerSymbolizer::bindParameter(const std::string& name, const std::string& value) {
-        if (name == "file") {
-            bind(&_file, parseStringExpression(value));
-        }
-        else if (name == "marker-type") {
-            bind(&_markerType, parseStringExpression(value));
-        }
-        else if (name == "fill") {
-            bind(&_fill, parseStringExpression(value), &TorqueMarkerSymbolizer::convertColor);
-        }
-        else if (name == "fill-opacity") {
-            bind(&_fillOpacity, parseExpression(value));
-        }
-        else if (name == "width") {
-            bind(&_width, parseExpression(value));
-        }
-        else if (name == "stroke") {
-            bind(&_stroke, parseStringExpression(value), &TorqueMarkerSymbolizer::convertColor);
-        }
-        else if (name == "stroke-opacity") {
-            bind(&_strokeOpacity, parseExpression(value));
-        }
-        else if (name == "stroke-width") {
-            bind(&_strokeWidth, parseExpression(value));
-        }
-        else if (name == "opacity") { // binds to 2 parameters
-            bind(&_fillOpacity, parseExpression(value));
-            bind(&_strokeOpacity, parseExpression(value));
-        }
-        else {
-            Symbolizer::bindParameter(name, value);
-        }
     }
 
     std::shared_ptr<vt::BitmapImage> TorqueMarkerSymbolizer::makeEllipseBitmap(float width, float height, const vt::Color& color, float strokeWidth, const vt::Color& strokeColor) {

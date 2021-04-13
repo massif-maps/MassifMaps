@@ -32,6 +32,7 @@ namespace carto { namespace css {
                 using qi::_1;
                 using qi::_2;
                 using qi::_3;
+                using qi::_4;
                 using qi::_pass;
                 
                 unesc_char.add("\\a", '\a')("\\b", '\b')("\\f", '\f')("\\n", '\n')
@@ -39,8 +40,6 @@ namespace carto { namespace css {
                               ("\\\'", '\'')("\\\"", '\"');
                 
                 nonascii_  = qi::char_("\xA0-\xFF");
-                nmstart_   = qi::char_("_a-zA-Z-") | nonascii_;
-                nmchar_    = qi::char_("_a-zA-Z0-9-") | nonascii_;
                 unescaped_ = qi::char_("_a-zA-Z0-9-#().,%");
                 hex_       = *qi::char_("0-9a-fA-F");
 
@@ -59,8 +58,10 @@ namespace carto { namespace css {
                     ;
 
                 color =
-                      qi::lit('#') > (*qi::char_("0-9A-Fa-f"))      [_pass = phoenix::bind(&getHEXColor, _val, _1)]
-                    | (*qi::char_("a-z"))                           [_pass = phoenix::bind(&getCSSColor, _val, _1)]
+                      (qi::lit("rgb")  >> '(' >> number > ',' > number > ',' > number > ')') [_val = phoenix::bind(&makeRGBAColor, _1, _2, _3, Value(1.0))]
+                    | (qi::lit("rgba") >> '(' >> number > ',' > number > ',' > number > ',' > number > ')') [_val = phoenix::bind(&makeRGBAColor, _1, _2, _3, _4)]
+                    | qi::no_skip[qi::lit('#') > (*qi::char_("0-9A-Fa-f"))]      [_pass = phoenix::bind(&getHEXColor, _val, _1)]
+                    | qi::no_skip[(*qi::char_("a-z"))]                           [_pass = phoenix::bind(&getCSSColor, _val, _1)]
                     ;
 
                 number =
@@ -81,12 +82,12 @@ namespace carto { namespace css {
                     | literal                                       [_val = phoenix::construct<Value>(_1)]
                     ;
                 
-                propid = qi::lexeme[(qi::char_("/_a-zA-Z-") | nonascii_) > *(qi::char_("/_a-zA-Z0-9-") | nonascii_)];
                 blockid = qi::lexeme[+(qi::char_("_a-zA-Z0-9-") | nonascii_)];
+                propid  = qi::lexeme[(qi::char_("/_a-zA-Z-") | nonascii_) > *(qi::char_("/_a-zA-Z0-9-") | nonascii_)];
+                funcid  = qi::lexeme[(qi::char_("_a-zA-Z")   | nonascii_) > *(qi::char_("_a-zA-Z0-9")   | nonascii_)];
+                varid   = qi::lexeme[+(qi::char_("_a-zA-Z0-9-") | nonascii_)];
                 fieldid = qi::lexeme[+(qi::char_("_a-zA-Z0-9-") | nonascii_)];
                 unescapedfieldid = qi::lexeme[+(qi::print - qi::char_("[]{}")) > -(qi::char_("[") > unescapedfieldid > qi::char_("]")) > -(qi::char_("{") > unescapedfieldid > qi::char_("}"))];
-                varid = qi::lexeme[+(qi::char_("_a-zA-Z0-9-") | nonascii_)];
-                funcid = (nmstart_ > *nmchar_) [_pass = phoenix::bind(&makeFunctionIdentifier, _val, _1, _2)];
 
                 expressionlist =
                       (expression >> (',' > (expression % ',')))    [_val = phoenix::bind(&makeListExpression, _1, _2)]
@@ -141,7 +142,7 @@ namespace carto { namespace css {
                 factor =
                       ('@' > varid)                                 [_val = phoenix::construct<FieldOrVar>(false, _1)]
                     | ('[' > unescapedfieldid > ']')                [_val = phoenix::construct<FieldOrVar>(true, _1)]
-                    | (funcid >> ('(' > (expression % ',') > ')'))  [_val = phoenix::bind(&makeFunctionExpression, _1, _2)]
+                    | (funcid [_pass = phoenix::bind(&checkFunction, _1)] >> ('(' > (expression % ',') > ')')) [_val = phoenix::bind(&makeFunctionExpression, _1, _2)]
                     | ('(' > expressionlist > ')')                  [_val = _1]
                     | constant                                      [_val = _1]
                     ;
@@ -192,12 +193,13 @@ namespace carto { namespace css {
             
             boost::spirit::qi::int_parser<char, 16, 2, 2> octet_;
             boost::spirit::qi::symbols<char const, char const> unesc_char;
-            boost::spirit::qi::rule<Iterator, char()> nonascii_, nmstart_, nmchar_, unescaped_;
+            boost::spirit::qi::rule<Iterator, char()> nonascii_, unescaped_;
             boost::spirit::qi::rule<Iterator, std::string()> hex_;
-            boost::spirit::qi::rule<Iterator, std::string()> string, literal, uri;
-            boost::spirit::qi::rule<Iterator, Color()> color;
-            boost::spirit::qi::rule<Iterator, Value()> number, constant;
-            boost::spirit::qi::rule<Iterator, std::string()> propid, blockid, fieldid, unescapedfieldid, varid, funcid;
+            boost::spirit::qi::rule<Iterator, std::string()> string, literal;
+            boost::spirit::qi::rule<Iterator, std::string(), Skipper<Iterator> > uri;
+            boost::spirit::qi::rule<Iterator, Color(), Skipper<Iterator> > color;
+            boost::spirit::qi::rule<Iterator, Value(), Skipper<Iterator> > number, constant;
+            boost::spirit::qi::rule<Iterator, std::string()> blockid, propid, funcid, varid, fieldid, unescapedfieldid;
             boost::spirit::qi::rule<Iterator, Expression(), Skipper<Iterator> > expressionlist, expression, term0, term1, term2, term3, unary, factor;
             boost::spirit::qi::rule<Iterator, OpPredicate::Op()> op;
             boost::spirit::qi::rule<Iterator, Predicate(), Skipper<Iterator> > predicate;
@@ -229,16 +231,22 @@ namespace carto { namespace css {
                 return true;
             }
 
-            static bool makeFunctionIdentifier(std::string& ident, char head, const std::vector<char>& tail) {
-                ident = std::string(1, head) + std::string(tail.begin(), tail.end());
-                return ident != "url"; // 'url' is a special-built in type specifier, so do not accept it as a function
+            static Color makeRGBAColor(const Value& r, const Value& g, const Value& b, const Value& a) {
+                auto getFloat = [](const Value& val) {
+                    return std::holds_alternative<long long>(val) ? static_cast<float>(std::get<long long>(val)) : static_cast<float>(std::get<double>(val));
+                };
+                return Color::fromRGBA(getFloat(r) / 255.0f, getFloat(g) / 255.0f, getFloat(b) / 255.0f, getFloat(a));
             }
-            
+
             static Expression makeListExpression(const Expression& initialExpr, const std::vector<Expression>& restExprs) {
                 std::vector<Expression> exprs;
                 exprs.push_back(initialExpr);
                 exprs.insert(exprs.end(), restExprs.begin(), restExprs.end());
                 return std::make_shared<ListExpression>(exprs);
+            }
+
+            static bool checkFunction(const std::string& func) {
+                return func != "url" && func != "rgb" && func != "rgba"; // ignore special-built in constructors
             }
 
             static Expression makeFunctionExpression(const std::string& func, const std::vector<Expression>& exprs) {

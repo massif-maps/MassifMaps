@@ -8,29 +8,32 @@
 #include <boost/algorithm/string.hpp>
 
 namespace carto { namespace mvt {
-    void LineSymbolizer::build(const FeatureCollection& featureCollection, const FeatureExpressionContext& exprContext, const SymbolizerContext& symbolizerContext, vt::TileLayerBuilder& layerBuilder) {
-        std::lock_guard<std::mutex> lock(_mutex);
-
-        updateBindings(exprContext);
-
-        if (_strokeWidthFunc == vt::FloatFunction(0) || _strokeOpacityFunc == vt::FloatFunction(0) || _strokeFunc == vt::ColorFunction(vt::Color())) {
+    void LineSymbolizer::build(const FeatureCollection& featureCollection, const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext, vt::TileLayerBuilder& layerBuilder) const {
+        vt::FloatFunction strokeWidthFunc = _strokeWidth.getFunction(exprContext);
+        vt::FloatFunction strokeOpacityFunc = _strokeOpacity.getFunction(exprContext);
+        vt::ColorFunction strokeColorFunc = _stroke.getFunction(exprContext);
+        if (strokeWidthFunc == vt::FloatFunction(0) || strokeOpacityFunc == vt::FloatFunction(0) || strokeColorFunc == vt::ColorFunction(vt::Color())) {
             return;
         }
         
-        vt::LineJoinMode lineJoin = convertLineJoinMode(_strokeLinejoin);
-        vt::LineCapMode lineCap = convertLineCapMode(_strokeLinecap);
-        
+        vt::CompOp compOp = _compOp.getValue(exprContext);
+        vt::LineJoinMode strokeLinejoin = _strokeLinejoin.getValue(exprContext);
+        vt::LineCapMode strokeLinecap = _strokeLinecap.getValue(exprContext);
+        vt::ColorFunction strokeFunc = _strokeFuncBuilder.createColorOpacityFunction(strokeColorFunc, strokeOpacityFunc);
+        std::optional<vt::Transform> geometryTransform = _geometryTransform.getValue(exprContext);
+
         std::shared_ptr<const vt::BitmapPattern> strokePattern;
-        if (!_strokeDashArray.empty()) {
+        std::string strokeDashArray = _strokeDashArray.getValue(exprContext);
+        if (!strokeDashArray.empty()) {
             int height = 1;
-            if (lineCap != vt::LineCapMode::NONE) {
-                height = static_cast<int>(ValueConverter<double>::convert(std::visit(ExpressionEvaluator(exprContext), _strokeWidthExpression)));
+            if (strokeLinecap != vt::LineCapMode::NONE) {
+                height = _strokeWidth.getStaticValue(exprContext);
             }
-            std::string file = "__line_dasharray_" + std::to_string(height) + "_" + _strokeLinecap + "_" + _strokeDashArray;
+            std::string file = "__line_dasharray_" + std::to_string(height) + "_" + std::to_string(static_cast<int>(strokeLinecap)) + "_" + strokeDashArray;
             strokePattern = symbolizerContext.getBitmapManager()->getBitmapPattern(file);
             if (!strokePattern) {
                 std::vector<std::string> dashList;
-                boost::split(dashList, _strokeDashArray, boost::is_any_of(","));
+                boost::split(dashList, strokeDashArray, boost::is_any_of(","));
                 std::vector<float> strokeDashArray;
                 for (const std::string& dash : dashList) {
                     try {
@@ -40,14 +43,12 @@ namespace carto { namespace mvt {
                         _logger->write(Logger::Severity::ERROR, "Illegal dash value");
                     }
                 }
-                strokePattern = createDashBitmapPattern(strokeDashArray, height, lineCap);
+                strokePattern = createDashBitmapPattern(strokeDashArray, height, strokeLinecap);
                 symbolizerContext.getBitmapManager()->storeBitmapPattern(file, strokePattern);
             }
         }
 
-        vt::ColorFunction strokeFunc = _functionBuilder.createColorOpacityFunction(_strokeFunc, _strokeOpacityFunc);
-        
-        vt::LineStyle style(getCompOp(), lineJoin, lineCap, strokeFunc, _strokeWidthFunc, strokePattern, getGeometryTransform());
+        vt::LineStyle style(compOp, strokeLinejoin, strokeLinecap, strokeFunc, strokeWidthFunc, strokePattern, geometryTransform);
 
         std::size_t featureIndex = 0;
         std::size_t geometryIndex = 0;
@@ -91,59 +92,6 @@ namespace carto { namespace mvt {
             }
             return false;
         }, style, symbolizerContext.getStrokeMap());
-    }
-
-    void LineSymbolizer::bindParameter(const std::string& name, const std::string& value) {
-        if (name == "stroke") {
-            bind(&_strokeFunc, parseStringExpression(value), &LineSymbolizer::convertColor);
-        }
-        else if (name == "stroke-width") {
-            _strokeWidthExpression = parseExpression(value);
-            bind(&_strokeWidthFunc, _strokeWidthExpression);
-        }
-        else if (name == "stroke-opacity") {
-            bind(&_strokeOpacityFunc, parseExpression(value));
-        }
-        else if (name == "stroke-linejoin") {
-            bind(&_strokeLinejoin, parseStringExpression(value));
-        }
-        else if (name == "stroke-linecap") {
-            bind(&_strokeLinecap, parseStringExpression(value));
-        }
-        else if (name == "stroke-dasharray") {
-            bind(&_strokeDashArray, parseStringExpression(value));
-        }
-        else {
-            GeometrySymbolizer::bindParameter(name, value);
-        }
-    }
-
-    vt::LineCapMode LineSymbolizer::convertLineCapMode(const std::string& lineCap) const {
-        if (lineCap == "round") {
-            return vt::LineCapMode::ROUND;
-        }
-        else if (lineCap == "square") {
-            return vt::LineCapMode::SQUARE;
-        }
-        else if (lineCap == "butt") {
-            return vt::LineCapMode::NONE;
-        }
-        _logger->write(Logger::Severity::ERROR, std::string("Unsupported line cap mode: ") + lineCap);
-        return vt::LineCapMode::NONE;
-    }
-
-    vt::LineJoinMode LineSymbolizer::convertLineJoinMode(const std::string& lineJoin) const {
-        if (_strokeLinejoin == "round") {
-            return vt::LineJoinMode::ROUND;
-        }
-        else if (_strokeLinejoin == "bevel") {
-            return vt::LineJoinMode::BEVEL;
-        }
-        else if (_strokeLinejoin == "miter") {
-            return vt::LineJoinMode::MITER;
-        }
-        _logger->write(Logger::Severity::ERROR, std::string("Unsupported line join mode: ") + lineJoin);
-        return vt::LineJoinMode::MITER;
     }
 
     std::shared_ptr<vt::BitmapPattern> LineSymbolizer::createDashBitmapPattern(const std::vector<float>& strokeDashArray, int height, vt::LineCapMode lineCap) {

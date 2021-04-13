@@ -22,15 +22,6 @@ namespace carto { namespace mvt {
         return it->second;
     }
 
-    const std::vector<Expression>& Style::getReferencedFields(int zoom) const {
-        static const std::vector<Expression> emptyFieldExprs;
-        auto it = _zoomFieldExprsMap.find(zoom);
-        if (it == _zoomFieldExprsMap.end()) {
-            return emptyFieldExprs;
-        }
-        return it->second;
-    }
-
     void Style::optimizeRules() {
         if (_filterMode != FilterMode::FIRST) {
             return;
@@ -51,38 +42,30 @@ namespace carto { namespace mvt {
             std::optional<Predicate> pred1 = rule1->getFilter()->getPredicate();
             std::optional<Predicate> pred2 = rule2->getFilter()->getPredicate();
             bool samePred = (pred1 == pred2) || (pred1 && pred2 && std::visit(PredicateDeepEqualsChecker(), *pred1, *pred2));
-            if (rule1->getMaxZoom() == rule2->getMinZoom() && rule1->getFilter()->getType() == rule2->getFilter()->getType() && samePred && rule1->getSymbolizers().size() == rule2->getSymbolizers().size()) {
-                if (std::equal(rule1->getSymbolizers().begin(), rule1->getSymbolizers().end(), rule2->getSymbolizers().begin(), [](const std::shared_ptr<Symbolizer>& symbolizer1, const std::shared_ptr<Symbolizer>& symbolizer2) {
-                    return typeid(symbolizer1.get()) == typeid(symbolizer2.get()) && symbolizer1->getParameterMap() == symbolizer2->getParameterMap();
-                })) {
-                    auto combinedRule = std::make_shared<Rule>("combined", rule1->getMinZoom(), rule2->getMaxZoom(), rule1->getFilter(), rule1->getSymbolizers());
-                    it = _rules.erase(it);
-                    *it = combinedRule;
-                    updated = true;
-                    continue;
-                }
+            if (rule1->getMaxZoom() == rule2->getMinZoom() && rule1->getFilter()->getType() == rule2->getFilter()->getType() && samePred && rule1->getSymbolizers() == rule2->getSymbolizers()) {
+                auto combinedRule = std::make_shared<Rule>("combined", rule1->getMinZoom(), rule2->getMaxZoom(), rule1->getFilter(), rule1->getSymbolizers());
+                it = _rules.erase(it);
+                *it = combinedRule;
+                updated = true;
+            } else {
+                it++;
             }
-            it++;
         }
 
         // Try to merge consecutive rules R1 and R2 with different filter expressions but with everything else equal
         for (auto it = _rules.begin(); it + 1 != _rules.end(); ) {
             std::shared_ptr<const Rule> rule1 = *(it + 0);
             std::shared_ptr<const Rule> rule2 = *(it + 1);
-            if (rule1->getMinZoom() == rule2->getMinZoom() && rule1->getMaxZoom() == rule2->getMaxZoom() && rule1->getFilter()->getType() == Filter::Type::FILTER && rule2->getFilter()->getType() == Filter::Type::FILTER && rule1->getSymbolizers().size() == rule2->getSymbolizers().size()) {
-                if (std::equal(rule1->getSymbolizers().begin(), rule1->getSymbolizers().end(), rule2->getSymbolizers().begin(), [](const std::shared_ptr<Symbolizer>& symbolizer1, const std::shared_ptr<Symbolizer>& symbolizer2) {
-                    return typeid(symbolizer1.get()) == typeid(symbolizer2.get()) && symbolizer1->getParameterMap() == symbolizer2->getParameterMap();
-                })) {
-                    auto combinedPred = buildOptimizedOrPredicate(rule1->getFilter()->getPredicate(), rule2->getFilter()->getPredicate());
-                    auto combinedFilter = std::make_shared<Filter>(Filter::Type::FILTER, combinedPred);
-                    auto combinedRule = std::make_shared<Rule>("combined", rule1->getMinZoom(), rule1->getMaxZoom(), combinedFilter, rule1->getSymbolizers());
-                    it = _rules.erase(it);
-                    *it = combinedRule;
-                    updated = true;
-                    continue;
-                }
+            if (rule1->getMinZoom() == rule2->getMinZoom() && rule1->getMaxZoom() == rule2->getMaxZoom() && rule1->getFilter()->getType() == Filter::Type::FILTER && rule2->getFilter()->getType() == Filter::Type::FILTER && rule1->getSymbolizers() == rule2->getSymbolizers()) {
+                auto combinedPred = buildOptimizedOrPredicate(rule1->getFilter()->getPredicate(), rule2->getFilter()->getPredicate());
+                auto combinedFilter = std::make_shared<Filter>(Filter::Type::FILTER, combinedPred);
+                auto combinedRule = std::make_shared<Rule>("combined", rule1->getMinZoom(), rule1->getMaxZoom(), combinedFilter, rule1->getSymbolizers());
+                it = _rules.erase(it);
+                *it = combinedRule;
+                updated = true;
+            } else {
+                it++;
             }
-            it++;
         }
 
         if (updated) {
@@ -91,17 +74,10 @@ namespace carto { namespace mvt {
     }
 
     void Style::rebuildZoomRuleMap() {
-        std::vector<Expression> fields;
-        for (const std::shared_ptr<const Rule>& rule : _rules) {
-            rule->gatherReferencedFields(fields);
-        }
-
         _zoomRuleMap.clear();
-        _zoomFieldExprsMap.clear();
         for (const std::shared_ptr<const Rule>& rule : _rules) {
             for (int zoom = rule->getMinZoom(); zoom < rule->getMaxZoom(); zoom++) {
                 _zoomRuleMap[zoom].push_back(rule);
-                _zoomFieldExprsMap[zoom] = fields;
             }
         }
     }

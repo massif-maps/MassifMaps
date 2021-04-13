@@ -15,6 +15,7 @@
 namespace carto { namespace mvt {
     class Logger;
     class Symbolizer;
+    class SymbolizerParameter;
     
     class SymbolizerGenerator {
     public:
@@ -24,6 +25,8 @@ namespace carto { namespace mvt {
         virtual void generateSymbolizer(const Symbolizer& symbolizer, pugi::xml_node& symbolizerNode) const;
 
     protected:
+        std::string getSymbolizerParameter(const Symbolizer& symbolizer, const SymbolizerParameter& param) const;
+
         const std::shared_ptr<Logger> _logger;
     };
 } }

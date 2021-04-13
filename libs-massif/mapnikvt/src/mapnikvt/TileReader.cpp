@@ -16,10 +16,9 @@ namespace carto { namespace mvt {
     }
 
     std::shared_ptr<vt::Tile> TileReader::readTile(const vt::TileId& tileId) const {
-        FeatureExpressionContext exprContext;
-        exprContext.setTileId(tileId);
+        ExpressionContext exprContext;
         exprContext.setAdjustedZoom(tileId.zoom + static_cast<int>(_symbolizerContext.getSettings().getZoomLevelBias()));
-        exprContext.setNutiParameterValueMap(_symbolizerContext.getSettings().getNutiParameterValueMap());
+        exprContext.setNutiParameterValueMap(std::make_shared<std::map<std::string, Value>>(_symbolizerContext.getSettings().getNutiParameterValueMap()));
 
         std::shared_ptr<vt::TileBackground> tileBackground = createTileBackground(tileId);
 
@@ -60,47 +59,52 @@ namespace carto { namespace mvt {
         return std::make_shared<vt::Tile>(tileId, _symbolizerContext.getSettings().getTileSize(), tileBackground, tileLayers);
     }
 
-    void TileReader::processLayer(const std::shared_ptr<const Layer>& layer, const std::shared_ptr<const Style>& style, FeatureExpressionContext& exprContext, vt::TileLayerBuilder& layerBuilder) const {
-        std::unordered_set<std::string> styleFields;
-        for (const Expression& expr : style->getReferencedFields(exprContext.getAdjustedZoom())) {
-            Value val = std::visit(ExpressionEvaluator(exprContext), expr);
-            styleFields.insert(ValueConverter<std::string>::convert(val));
+    void TileReader::processLayer(const std::shared_ptr<const Layer>& layer, const std::shared_ptr<const Style>& style, ExpressionContext& exprContext, vt::TileLayerBuilder& layerBuilder) const {
+        // Read and prefilter rules from the style
+        std::vector<std::shared_ptr<const Rule>> rules = preFilterStyleRules(style, exprContext);
+        if (rules.empty()) {
+            return;
         }
 
-        std::shared_ptr<Symbolizer> currentSymbolizer;
-        FeatureCollection currentFeatureCollection;
-        std::unordered_map<std::shared_ptr<const FeatureData>, std::vector<std::shared_ptr<Symbolizer>>> featureDataSymbolizersMap;
+        // Build sets of referenced fields from the rules
+        std::set<std::string> filterFields, symbolizerFields;
+        for (const std::shared_ptr<const Rule>& rule : rules) {
+            filterFields.insert(rule->getReferencedFilterFields().begin(), rule->getReferencedFilterFields().end());
+            symbolizerFields.insert(rule->getReferencedSymbolizerFields().begin(), rule->getReferencedSymbolizerFields().end());
+        }
+        std::set<std::string> styleFields = filterFields;
+        styleFields.insert(symbolizerFields.begin(), symbolizerFields.end());
 
-        if (auto featureIt = createFeatureIterator(layer)) {
+        // Check if all the fields are known. If not, then can not use explicit field sets.
+        const std::set<std::string>* filterFieldsPtr = filterFields.count(std::string()) == 0 ? &filterFields : nullptr;
+        const std::set<std::string>* symbolizerFieldsPtr = symbolizerFields.count(std::string()) == 0 ? &symbolizerFields : nullptr;
+        const std::set<std::string>* styleFieldsPtr = styleFields.count(std::string()) == 0 ? &styleFields : nullptr;
+
+        std::shared_ptr<const Symbolizer> currentSymbolizer;
+        FeatureCollection currentFeatureCollection;
+        std::unordered_map<std::shared_ptr<const FeatureData>, std::vector<std::shared_ptr<const Symbolizer>>> featureDataSymbolizersMap;
+
+        // Create feature iterator based on the required fields
+        if (auto featureIt = createFeatureIterator(layer, styleFieldsPtr)) {
             for (; featureIt->valid(); featureIt->advance()) {
-                std::shared_ptr<const FeatureData> featureData = featureIt->getFeatureData();
+                std::shared_ptr<const FeatureData> filterFeatureData = featureIt->getFeatureData(filterFieldsPtr);
 
                 // Cache symbolizer evaluation for each feature data object
-                auto symbolizersIt = featureDataSymbolizersMap.find(featureData);
+                auto symbolizersIt = featureDataSymbolizersMap.find(filterFeatureData);
                 if (symbolizersIt == featureDataSymbolizersMap.end()) {
-                    exprContext.setFeatureData(featureData);
-                    std::vector<std::shared_ptr<Symbolizer>> symbolizers = findFeatureSymbolizers(style, exprContext);
-                    symbolizersIt = featureDataSymbolizersMap.emplace(featureData, std::move(symbolizers)).first;
+                    exprContext.setFeatureData(filterFeatureData);
+                    std::vector<std::shared_ptr<const Symbolizer>> symbolizers = findFeatureSymbolizers(style, rules, exprContext);
+                    symbolizersIt = featureDataSymbolizersMap.emplace(filterFeatureData, std::move(symbolizers)).first;
                 }
 
                 // Process symbolizers, try to batch as many calls together as possible
-                for (const std::shared_ptr<Symbolizer>& symbolizer : symbolizersIt->second) {
+                for (const std::shared_ptr<const Symbolizer>& symbolizer : symbolizersIt->second) {
                     if (std::shared_ptr<const Geometry> geometry = featureIt->getGeometry()) {
+                        std::shared_ptr<const FeatureData> symbolizerFeatureData = featureIt->getFeatureData(symbolizerFieldsPtr);
+
                         bool batch = false;
-                        if (currentSymbolizer == symbolizer) {
-                            batch = true;
-                            if (!symbolizer->getParameterExpressions().empty()) {
-                                for (const std::string& field : styleFields) {
-                                    Value val1, val2;
-                                    if (featureData->getVariable(field, val1) == currentFeatureCollection.getFeatureData(0)->getVariable(field, val2)) {
-                                        if (val1 == val2) {
-                                            continue;
-                                        }
-                                    }
-                                    batch = false;
-                                    break;
-                                }
-                            }
+                        if (currentSymbolizer == symbolizer && currentFeatureCollection.size() > 0) {
+                            batch = symbolizerFeatureData == currentFeatureCollection.getFeatureData(0);
                         }
 
                         if (!batch) {
@@ -112,7 +116,7 @@ namespace carto { namespace mvt {
                             currentSymbolizer = symbolizer;
                         }
 
-                        currentFeatureCollection.append(featureIt->getLocalId(), Feature(featureIt->getGlobalId(), geometry, featureData));
+                        currentFeatureCollection.append(featureIt->getLocalId(), Feature(featureIt->getGlobalId(), geometry, symbolizerFeatureData));
                     }
                 }
             }
@@ -125,11 +129,27 @@ namespace carto { namespace mvt {
         }
     }
 
-    std::vector<std::shared_ptr<Symbolizer>> TileReader::findFeatureSymbolizers(const std::shared_ptr<const Style>& style, FeatureExpressionContext& exprContext) const {
-        PredicateEvaluator evaluator(exprContext);
-        bool anyMatch = false;
-        std::vector<std::shared_ptr<Symbolizer>> symbolizers;
+    std::vector<std::shared_ptr<const Rule>> TileReader::preFilterStyleRules(const std::shared_ptr<const Style>& style, ExpressionContext& exprContext) const {
+        std::vector<std::shared_ptr<const Rule>> rules;
         for (const std::shared_ptr<const Rule>& rule : style->getZoomRules(exprContext.getAdjustedZoom())) {
+            if (std::shared_ptr<const Filter> filter = rule->getFilter()) {
+                // Test if the filter is potentially satisfiable. If not, can skip this rule
+                if (filter->getType() == Filter::Type::FILTER && filter->getPredicate()) {
+                    if (!std::visit(PredicatePreEvaluator(exprContext), *filter->getPredicate())) {
+                        continue;
+                    }
+                }
+            }
+            rules.push_back(rule);
+        }
+        return rules;
+    }
+
+    std::vector<std::shared_ptr<const Symbolizer>> TileReader::findFeatureSymbolizers(const std::shared_ptr<const Style>& style, const std::vector<std::shared_ptr<const Rule>>& rules, ExpressionContext& exprContext) const {
+        PredicateEvaluator predEvaluator(exprContext, nullptr);
+        bool anyMatch = false;
+        std::vector<std::shared_ptr<const Symbolizer>> symbolizers;
+        for (const std::shared_ptr<const Rule>& rule : rules) {
             std::shared_ptr<const Filter> filter = rule->getFilter();
             if (!filter) {
                 filter = _trueFilter;
@@ -145,12 +165,12 @@ namespace carto { namespace mvt {
                         match = false;
                     }
                     else if (filter->getPredicate()) {
-                        match = std::visit(evaluator, *filter->getPredicate());
+                        match = std::visit(predEvaluator, *filter->getPredicate());
                     }
                     break;
                 case Style::FilterMode::ALL:
                     if (filter->getPredicate()) {
-                        match = std::visit(evaluator, *filter->getPredicate());
+                        match = std::visit(predEvaluator, *filter->getPredicate());
                     }
                     break;
                 }

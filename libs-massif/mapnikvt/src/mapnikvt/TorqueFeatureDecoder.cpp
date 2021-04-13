@@ -68,7 +68,7 @@ namespace carto { namespace mvt {
             return 0;
         }
 
-        virtual std::shared_ptr<const FeatureData> getFeatureData() const override {
+        virtual std::shared_ptr<const FeatureData> getFeatureData(const std::set<std::string>* fields) const override {
             const TorqueFeatureDecoder::Element& element = _elements[_index0];
 
             if (std::shared_ptr<const FeatureData> featureData = _featureDataCache.get(element.value)) {
@@ -178,7 +178,6 @@ namespace carto { namespace mvt {
         if (it == _timeValueMap.end()) {
             return std::shared_ptr<FeatureIterator>();
         }
-
         return std::make_shared<TorqueFeatureIterator>(it->second, _resolution, _transform, _clipBox);
     }
 } }

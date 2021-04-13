@@ -2,18 +2,18 @@
 #include "ParserUtils.h"
 
 namespace carto { namespace mvt {
-    void PolygonSymbolizer::build(const FeatureCollection& featureCollection, const FeatureExpressionContext& exprContext, const SymbolizerContext& symbolizerContext, vt::TileLayerBuilder& layerBuilder) {
-        std::lock_guard<std::mutex> lock(_mutex);
-
-        updateBindings(exprContext);
-
-        if (_fillOpacityFunc == vt::FloatFunction(0) || _fillFunc == vt::ColorFunction(vt::Color())) {
+    void PolygonSymbolizer::build(const FeatureCollection& featureCollection, const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext, vt::TileLayerBuilder& layerBuilder) const {
+        vt::ColorFunction fillColorFunc = _fill.getFunction(exprContext);
+        vt::FloatFunction fillOpacityFunc = _fillOpacity.getFunction(exprContext);
+        if (fillOpacityFunc == vt::FloatFunction(0) || fillColorFunc == vt::ColorFunction(vt::Color())) {
             return;
         }
-        
-        vt::ColorFunction fillFunc = _functionBuilder.createColorOpacityFunction(_fillFunc, _fillOpacityFunc);
 
-        vt::PolygonStyle style(getCompOp(), fillFunc, std::shared_ptr<vt::BitmapPattern>(), getGeometryTransform());
+        vt::CompOp compOp = _compOp.getValue(exprContext);
+        vt::ColorFunction fillFunc = _fillFuncBuilder.createColorOpacityFunction(fillColorFunc, fillOpacityFunc);
+        std::optional<vt::Transform> geometryTransform = _geometryTransform.getValue(exprContext);
+
+        vt::PolygonStyle style(compOp, fillFunc, std::shared_ptr<vt::BitmapPattern>(), geometryTransform);
 
         std::size_t featureIndex = 0;
         std::size_t geometryIndex = 0;
@@ -41,17 +41,5 @@ namespace carto { namespace mvt {
             }
             return false;
         }, style);
-    }
-
-    void PolygonSymbolizer::bindParameter(const std::string& name, const std::string& value) {
-        if (name == "fill") {
-            bind(&_fillFunc, parseStringExpression(value), &PolygonSymbolizer::convertColor);
-        }
-        else if (name == "fill-opacity") {
-            bind(&_fillOpacityFunc, parseExpression(value));
-        }
-        else {
-            GeometrySymbolizer::bindParameter(name, value);
-        }
     }
 } }

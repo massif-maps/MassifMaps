@@ -32,6 +32,8 @@ namespace carto { namespace mvt {
         std::string _source;
     };
 
+    vt::LineCapMode parseLineCapMode(const std::string& str);
+    vt::LineJoinMode parseLineJoinMode(const std::string& str);
     vt::CompOp parseCompOp(const std::string& str);
     vt::LabelOrientation parseLabelOrientation(const std::string& str);
     vt::Color parseColor(const std::string& str);

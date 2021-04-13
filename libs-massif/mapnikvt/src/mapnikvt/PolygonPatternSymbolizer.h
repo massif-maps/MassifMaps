@@ -8,25 +8,27 @@
 #define _CARTO_MAPNIKVT_POLYGONPATTERNSYMBOLIZER_H_
 
 #include "GeometrySymbolizer.h"
+#include "FunctionBuilder.h"
 
 namespace carto { namespace mvt {
     class PolygonPatternSymbolizer : public GeometrySymbolizer {
     public:
         explicit PolygonPatternSymbolizer(std::shared_ptr<Logger> logger) : GeometrySymbolizer(std::move(logger)) {
-            bind(&_fillFunc, Value(std::string("#ffffff")), &PolygonPatternSymbolizer::convertColor);
-            bind(&_opacityFunc, Value(1.0f));
+            bindParameter("file", &_file);
+            bindParameter("fill", &_fill);
+            bindParameter("opacity", &_opacity);
         }
 
-        virtual void build(const FeatureCollection& featureCollection, const FeatureExpressionContext& exprContext, const SymbolizerContext& symbolizerContext, vt::TileLayerBuilder& layerBuilder) override;
+        virtual void build(const FeatureCollection& featureCollection, const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext, vt::TileLayerBuilder& layerBuilder) const override;
 
     protected:
         inline static constexpr float PATTERN_SCALE = 0.75f;
 
-        virtual void bindParameter(const std::string& name, const std::string& value) override;
+        StringParameter _file;
+        ColorFunctionParameter _fill = ColorFunctionParameter("#ffffff");
+        FloatFunctionParameter _opacity = FloatFunctionParameter(1.0f);
 
-        std::string _file;
-        vt::ColorFunction _fillFunc; // vt::Color(0xffffffff)
-        vt::FloatFunction _opacityFunc; // 1.0f
+        ColorFunctionBuilder _fillFuncBuilder;
     };
 } }
 

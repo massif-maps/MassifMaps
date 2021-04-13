@@ -10,6 +10,7 @@
 #include "Symbolizer.h"
 #include "FontSet.h"
 #include "Expression.h"
+#include "FunctionBuilder.h"
 
 #include <vector>
 #include <optional>
@@ -18,62 +19,85 @@
 namespace carto { namespace mvt {
     class TextSymbolizer : public Symbolizer {
     public:
-        explicit TextSymbolizer(const std::string& text, std::vector<std::shared_ptr<FontSet>> fontSets, std::shared_ptr<Logger> logger) : Symbolizer(std::move(logger)), _text(text), _textExpression(parseStringExpression(text)), _fontSets(std::move(fontSets)) {
-            bind(&_sizeFunc, Value(_sizeStatic));
-            bind(&_fillFunc, Value(std::string("#000000")), &TextSymbolizer::convertColor);
-            bind(&_opacityFunc, Value(1.0f));
-            bind(&_haloFillFunc, Value(std::string("#ffffff")), &TextSymbolizer::convertColor);
-            bind(&_haloOpacityFunc, Value(1.0f));
-            bind(&_haloRadiusFunc, Value(0.0f));
+        explicit TextSymbolizer(const Expression& text, std::vector<std::shared_ptr<FontSet>> fontSets, std::shared_ptr<Logger> logger) : Symbolizer(std::move(logger)), _fontSets(std::move(fontSets)) {
+            _text.setExpression(text);
+            bindParameter("name", &_text);
+            bindParameter("feature-id", &_featureId);
+            bindParameter("text-transform", &_textTransform);
+            bindParameter("face-name", &_faceName);
+            bindParameter("fontset-name", &_fontSetName);
+            bindParameter("placement", &_placement);
+            bindParameter("size", &_size);
+            bindParameter("spacing", &_spacing);
+            bindParameter("fill", &_fill);
+            bindParameter("opacity", &_opacity);
+            bindParameter("halo-fill", &_haloFill);
+            bindParameter("halo-opacity", &_haloOpacity);
+            bindParameter("halo-radius", &_haloRadius);
+            bindParameter("orientation", &_orientationAngle);
+            bindParameter("dx", &_dx);
+            bindParameter("dy", &_dy);
+            bindParameter("placement-priority", &_placementPriority);
+            bindParameter("minimum-distance", &_minimumDistance);
+            bindParameter("allow-overlap", &_allowOverlap);
+            bindParameter("clip", &_clip);
+            bindParameter("wrap-width", &_wrapWidth);
+            bindParameter("wrap-before", &_wrapBefore);
+            bindParameter("character-spacing", &_characterSpacing);
+            bindParameter("line-spacing", &_lineSpacing);
+            bindParameter("horizontal-alignment", &_horizontalAlignment);
+            bindParameter("vertical-alignment", &_verticalAlignment);
+            bindParameter("avoid-edges", nullptr);
+            bindParameter("halo-rasterizer", nullptr);
         }
 
-        const std::string& getText() const { return _text; }
+        const Expression& getText() const { return _text.getExpression(); }
 
-        virtual void build(const FeatureCollection& featureCollection, const FeatureExpressionContext& exprContext, const SymbolizerContext& symbolizerContext, vt::TileLayerBuilder& layerBuilder) override;
+        virtual void build(const FeatureCollection& featureCollection, const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext, vt::TileLayerBuilder& layerBuilder) const override;
 
     protected:
-        virtual void bindParameter(const std::string& name, const std::string& value) override;
+        static cglib::bbox2<float> calculateTextSize(const std::shared_ptr<const vt::Font>& font, const std::string& text, const vt::TextFormatter& formatter);
 
-        std::string getTransformedText(const std::string& text) const;
-        std::shared_ptr<vt::Font> getFont(const SymbolizerContext& symbolizerContext) const;
-        cglib::bbox2<float> calculateTextSize(const std::shared_ptr<vt::Font>& font, const std::string& text, const vt::TextFormatter& formatter) const;
-        vt::TextFormatter::Options getFormatterOptions(const SymbolizerContext& symbolizerContext) const;
-        vt::LabelOrientation convertTextPlacement(const std::string& orientation) const;
+        vt::LabelOrientation getPlacement(const ExpressionContext& exprContext) const;
+        std::string getTransformedText(const ExpressionContext& exprContext) const;
+        std::shared_ptr<const vt::Font> getFont(const SymbolizerContext& symbolizerContext, const ExpressionContext& exprContext) const;
+        vt::TextFormatter::Options getFormatterOptions(const SymbolizerContext& symbolizerContext, const ExpressionContext& exprContext) const;
 
-        void buildFeatureCollection(const FeatureCollection& featureCollection, const FeatureExpressionContext& exprContext, const SymbolizerContext& symbolizerContext, const vt::TextFormatter& formatter, vt::LabelOrientation placement, float bitmapSize, const std::function<void(long long localId, long long globalId, const std::string& text, const std::optional<vt::TileLayerBuilder::Vertex>& vertex, const vt::TileLayerBuilder::Vertices& vertices)>& addText);
+        void buildFeatureCollection(const FeatureCollection& featureCollection, const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext, const vt::TextFormatter& formatter, vt::LabelOrientation placement, float bitmapSize, const std::function<void(long long localId, long long globalId, const std::string& text, const std::optional<vt::TileLayerBuilder::Vertex>& vertex, const vt::TileLayerBuilder::Vertices& vertices)>& addText) const;
 
-        std::string _text;
-        Expression _textExpression;
         const std::vector<std::shared_ptr<FontSet>> _fontSets;
-        std::string _textTransform;
-        long long _featureId = 0;
-        bool _featureIdDefined = false;
-        std::string _faceName;
-        std::string _fontSetName;
-        std::string _placement = "point";
-        vt::FloatFunction _sizeFunc; // 10.0f
-        float _sizeStatic = 10.0f;
-        float _spacing = 0.0f;
-        vt::ColorFunction _fillFunc; // vt::Color(0xff000000)
-        vt::FloatFunction _opacityFunc; // 1.0f
-        vt::ColorFunction _haloFillFunc; // vt::Color(0xffffffff)
-        vt::FloatFunction _haloOpacityFunc; // 1.0f
-        vt::FloatFunction _haloRadiusFunc; // 0.0f
-        float _orientationAngle = 0.0f;
-        bool _orientationDefined = false;
-        float _dx = 0.0f;
-        float _dy = 0.0f;
-        float _placementPriority = 0.0f;
-        float _minimumDistance = 0.0f;
-        bool _allowOverlap = false;
-        bool _clip = false;
-        bool _clipDefined = false;
-        float _wrapWidth = 0.0f;
-        bool _wrapBefore = false;
-        float _characterSpacing = 0.0f;
-        float _lineSpacing = 0.0f;
-        std::string _horizontalAlignment = "auto";
-        std::string _verticalAlignment = "auto";
+
+        StringParameter _text;
+        ValueParameter _featureId;
+        StringParameter _textTransform;
+        StringParameter _faceName;
+        StringParameter _fontSetName;
+        LabelOrientationParameter _placement = LabelOrientationParameter("point");
+        FloatFunctionParameter _size = FloatFunctionParameter(10.0f);
+        FloatParameter _spacing = FloatParameter(0.0f);
+        ColorFunctionParameter _fill = ColorFunctionParameter("#000000");
+        FloatFunctionParameter _opacity = FloatFunctionParameter(1.0f);
+        ColorFunctionParameter _haloFill = ColorFunctionParameter("#ffffff");
+        FloatFunctionParameter _haloOpacity = FloatFunctionParameter(1.0f);
+        FloatFunctionParameter _haloRadius = FloatFunctionParameter(0.0f);
+        FloatParameter _orientationAngle = FloatParameter(0.0f);
+        FloatParameter _dx = FloatParameter(0.0f);
+        FloatParameter _dy = FloatParameter(0.0f);
+        FloatParameter _placementPriority = FloatParameter(0.0f);
+        FloatParameter _minimumDistance = FloatParameter(0.0f);
+        BoolParameter _allowOverlap = BoolParameter(false);
+        BoolParameter _clip = BoolParameter(false);
+        FloatParameter _wrapWidth = FloatParameter(0.0f);
+        BoolParameter _wrapBefore = BoolParameter(false);
+        FloatParameter _characterSpacing = FloatParameter(0.0f);
+        FloatParameter _lineSpacing = FloatParameter(0.0f);
+        StringParameter _horizontalAlignment = StringParameter("auto");
+        StringParameter _verticalAlignment = StringParameter("auto");
+
+        ColorFunctionBuilder _fillFuncBuilder;
+        FloatFunctionBuilder _sizeFuncBuilder;
+        ColorFunctionBuilder _haloFillFuncBuilder;
+        FloatFunctionBuilder _haloRadiusFuncBuilder;
     };
 } }
 

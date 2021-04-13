@@ -8,24 +8,28 @@
 #define _CARTO_MAPNIKVT_BUILDINGSYMBOLIZER_H_
 
 #include "GeometrySymbolizer.h"
+#include "FunctionBuilder.h"
 
 namespace carto { namespace mvt {
     class BuildingSymbolizer : public GeometrySymbolizer {
     public:
         explicit BuildingSymbolizer(std::shared_ptr<Logger> logger) : GeometrySymbolizer(std::move(logger)) {
-            bind(&_fillFunc, Value(std::string("#808080")), &BuildingSymbolizer::convertColor);
-            bind(&_fillOpacityFunc, Value(1.0f));
+            unbindParameter("comp-op"); // not supported for now
+            bindParameter("fill", &_fill);
+            bindParameter("fill-opacity", &_fillOpacity);
+            bindParameter("height", &_height);
+            bindParameter("min-height", &_minHeight);
         }
 
-        virtual void build(const FeatureCollection& featureCollection, const FeatureExpressionContext& exprContext, const SymbolizerContext& symbolizerContext, vt::TileLayerBuilder& layerBuilder) override;
+        virtual void build(const FeatureCollection& featureCollection, const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext, vt::TileLayerBuilder& layerBuilder) const override;
 
     protected:
-        virtual void bindParameter(const std::string& name, const std::string& value) override;
+        ColorFunctionParameter _fill = ColorFunctionParameter("#808080");
+        FloatFunctionParameter _fillOpacity = FloatFunctionParameter(1.0f);
+        FloatParameter _height = FloatParameter(0.0f);
+        FloatParameter _minHeight = FloatParameter(0.0f);
 
-        vt::ColorFunction _fillFunc; // vt::Color(0xff808080)
-        vt::FloatFunction _fillOpacityFunc; // 1.0f
-        float _height = 0.0f;
-        float _minHeight = 0.0f;
+        ColorFunctionBuilder _fillFuncBuilder;
     };
 } }
 

@@ -98,7 +98,7 @@ namespace carto { namespace vt {
 
     class FontManagerFont : public Font {
     public:
-        explicit FontManagerFont(const std::shared_ptr<FontManagerLibrary>& library, const std::shared_ptr<GlyphMap>& glyphMap, const std::vector<unsigned char>* data, const std::shared_ptr<Font>& baseFont) : _library(library), _baseFont(baseFont), _glyphMap(glyphMap), _face(nullptr), _font(nullptr) {
+        explicit FontManagerFont(const std::shared_ptr<FontManagerLibrary>& library, const std::shared_ptr<GlyphMap>& glyphMap, const std::vector<unsigned char>* data, const std::shared_ptr<const Font>& baseFont) : _library(library), _baseFont(baseFont), _glyphMap(glyphMap), _face(nullptr), _font(nullptr) {
             std::lock_guard<std::recursive_mutex> lock(_library->getMutex());
 
             // Load FreeType font
@@ -274,7 +274,7 @@ namespace carto { namespace vt {
         }
 
         const std::shared_ptr<FontManagerLibrary> _library;
-        const std::shared_ptr<Font> _baseFont;
+        const std::shared_ptr<const Font> _baseFont;
         std::shared_ptr<GlyphMap> _glyphMap;
         mutable std::unordered_map<CodePoint, GlyphMap::GlyphId> _codePointGlyphMap;
         FT_Face _face;
@@ -349,7 +349,7 @@ namespace carto { namespace vt {
             return registeredName;
         }
 
-        std::shared_ptr<Font> getFont(const std::string& name, const std::shared_ptr<Font>& baseFont) const {
+        std::shared_ptr<const Font> getFont(const std::string& name, const std::shared_ptr<const Font>& baseFont) const {
             std::lock_guard<std::mutex> lock(_mutex);
 
             // Try to use already cached font
@@ -419,7 +419,7 @@ namespace carto { namespace vt {
         const int _maxGlyphMapHeight;
         std::map<std::string, std::vector<unsigned char>> _fontDataMap;
         std::shared_ptr<FontManagerLibrary> _library;
-        mutable std::map<std::pair<std::string, std::shared_ptr<Font>>, std::shared_ptr<FontManagerFont>> _fontMap;
+        mutable std::map<std::pair<std::string, std::shared_ptr<const Font>>, std::shared_ptr<FontManagerFont>> _fontMap;
         mutable std::map<std::string, std::shared_ptr<GlyphMap>> _glyphMapMap;
         mutable std::mutex _mutex;
     };
@@ -434,7 +434,7 @@ namespace carto { namespace vt {
         return _impl->loadFontData(data);
     }
 
-    std::shared_ptr<Font> FontManager::getFont(const std::string& name, const std::shared_ptr<Font>& baseFont) const {
+    std::shared_ptr<const Font> FontManager::getFont(const std::string& name, const std::shared_ptr<const Font>& baseFont) const {
         return _impl->getFont(name, baseFont);
     }
 } }

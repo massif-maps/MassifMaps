@@ -5,44 +5,47 @@
 #include "StringUtils.h"
 #include "vt/FontManager.h"
 
-#include <memory>
 #include <vector>
-#include <limits>
+#include <tuple>
 
 namespace carto { namespace mvt {
-    void TextSymbolizer::build(const FeatureCollection& featureCollection, const FeatureExpressionContext& exprContext, const SymbolizerContext& symbolizerContext, vt::TileLayerBuilder& layerBuilder) {
-        std::lock_guard<std::mutex> lock(_mutex);
-
-        updateBindings(exprContext);
-
-        if (_sizeFunc == vt::FloatFunction(0)) {
+    void TextSymbolizer::build(const FeatureCollection& featureCollection, const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext, vt::TileLayerBuilder& layerBuilder) const {
+        vt::FloatFunction baseSizeFunc = _size.getFunction(exprContext);
+        if (baseSizeFunc == vt::FloatFunction(0)) {
             return;
         }
         
-        std::shared_ptr<vt::Font> font = getFont(symbolizerContext);
+        std::shared_ptr<const vt::Font> font = getFont(symbolizerContext, exprContext);
         if (!font) {
-            _logger->write(Logger::Severity::ERROR, "Failed to load text font " + (!_faceName.empty() ? _faceName : _fontSetName));
+            std::string faceName = _faceName.getValue(exprContext);
+            std::string fontSetName = _fontSetName.getValue(exprContext);
+            _logger->write(Logger::Severity::ERROR, "Failed to load text font " + (!faceName.empty() ? faceName : fontSetName));
             return;
         }
 
-        bool clip = _clipDefined ? _clip : _allowOverlap;
-
-        vt::TextFormatter formatter(font, _sizeStatic, getFormatterOptions(symbolizerContext));
+        bool allowOverlap = _allowOverlap.getValue(exprContext);
+        bool clip = _clip.isDefined() ? _clip.getValue(exprContext) : allowOverlap;
 
         float fontScale = symbolizerContext.getSettings().getFontScale();
-        vt::LabelOrientation placement = convertTextPlacement(_placement);
-        float minimumDistance = _minimumDistance * std::pow(2.0f, -exprContext.getAdjustedZoom());
+        float minimumDistance = _minimumDistance.getValue(exprContext) * std::pow(2.0f, -exprContext.getAdjustedZoom());
+        float placementPriority = _placementPriority.getValue(exprContext);
+        float orientationAngle = _orientationAngle.getValue(exprContext);
+        float sizeStatic = _size.getStaticValue(exprContext);
 
-        vt::ColorFunction fillFunc = _functionBuilder.createColorOpacityFunction(_fillFunc, _opacityFunc);
-        vt::FloatFunction sizeFunc = _functionBuilder.createChainedFloatFunction("multiply" + std::to_string(fontScale), [fontScale](float size) { return size * fontScale; }, _sizeFunc);
-        vt::ColorFunction haloFillFunc = _functionBuilder.createColorOpacityFunction(_haloFillFunc, _haloOpacityFunc);
-        vt::FloatFunction haloRadiusFunc = _functionBuilder.createChainedFloatFunction("multiply" + std::to_string(fontScale), [fontScale](float size) { return size * fontScale; }, _haloRadiusFunc);
+        vt::TextFormatter formatter(font, sizeStatic, getFormatterOptions(symbolizerContext, exprContext));
+        vt::CompOp compOp = _compOp.getValue(exprContext);
+        vt::LabelOrientation placement = getPlacement(exprContext);
+
+        vt::ColorFunction fillFunc = _fillFuncBuilder.createColorOpacityFunction(_fill.getFunction(exprContext), _opacity.getFunction(exprContext));
+        vt::FloatFunction sizeFunc = _sizeFuncBuilder.createScaledFloatFunction(_size.getFunction(exprContext), fontScale);
+        vt::ColorFunction haloFillFunc = _haloFillFuncBuilder.createColorOpacityFunction(_haloFill.getFunction(exprContext), _haloOpacity.getFunction(exprContext));
+        vt::FloatFunction haloRadiusFunc = _haloRadiusFuncBuilder.createScaledFloatFunction(_haloRadius.getFunction(exprContext), fontScale);
 
         std::vector<std::pair<long long, std::tuple<vt::TileLayerBuilder::Vertex, std::string>>> textInfos;
         std::vector<std::pair<long long, vt::TileLayerBuilder::TextLabelInfo>> labelInfos;
 
         auto addText = [&](long long localId, long long globalId, const std::string& text, const std::optional<vt::TileLayerBuilder::Vertex>& vertex, const vt::TileLayerBuilder::Vertices& vertices) {
-            long long groupId = (_allowOverlap ? -1 : (minimumDistance > 0 ? (std::hash<std::string>()(text) & 0x7fffffff) : 0));
+            long long groupId = (allowOverlap ? -1 : (minimumDistance > 0 ? (std::hash<std::string>()(text) & 0x7fffffff) : 0));
             
             if (clip) {
                 if (vertex) {
@@ -53,13 +56,13 @@ namespace carto { namespace mvt {
                 }
             }
             else {
-                labelInfos.emplace_back(localId, vt::TileLayerBuilder::TextLabelInfo(globalId * 3 + 1, groupId, text, vertex, vertices, _placementPriority, minimumDistance));
+                labelInfos.emplace_back(localId, vt::TileLayerBuilder::TextLabelInfo(globalId * 3 + 1, groupId, text, vertex, vertices, placementPriority, minimumDistance));
             }
         };
 
         auto flushTexts = [&]() {
             if (clip) {
-                vt::TextStyle style(getCompOp(), fillFunc, sizeFunc, haloFillFunc, haloRadiusFunc, _orientationAngle, fontScale, cglib::vec2<float>(0, 0), std::shared_ptr<vt::BitmapImage>());
+                vt::TextStyle style(compOp, fillFunc, sizeFunc, haloFillFunc, haloRadiusFunc, orientationAngle, fontScale, cglib::vec2<float>(0, 0), std::shared_ptr<vt::BitmapImage>());
 
                 std::size_t textInfoIndex = 0;
                 layerBuilder.addTexts([&](long long& id, vt::TileLayerBuilder::Vertex& vertex, std::string& text) {
@@ -76,7 +79,7 @@ namespace carto { namespace mvt {
                 textInfos.clear();
             }
             else {
-                vt::TextLabelStyle style(placement, fillFunc, sizeFunc, haloFillFunc, haloRadiusFunc, true, _orientationAngle, fontScale, cglib::vec2<float>(0, 0), std::shared_ptr<vt::BitmapImage>());
+                vt::TextLabelStyle style(placement, fillFunc, sizeFunc, haloFillFunc, haloRadiusFunc, true, orientationAngle, fontScale, cglib::vec2<float>(0, 0), std::shared_ptr<vt::BitmapImage>());
 
                 std::size_t labelInfoIndex = 0;
                 layerBuilder.addTextLabels([&](long long& id, vt::TileLayerBuilder::TextLabelInfo& labelInfo) {
@@ -98,140 +101,7 @@ namespace carto { namespace mvt {
         flushTexts();
     }
 
-    void TextSymbolizer::bindParameter(const std::string& name, const std::string& value) {
-        if (name == "name") {
-            _textExpression = std::make_shared<VariableExpression>(value);
-        }
-        else if (name == "feature-id") {
-            bind(&_featureId, parseExpression(value), &TextSymbolizer::convertId);
-            _featureIdDefined = true;
-        }
-        else if (name == "face-name") {
-            bind(&_faceName, parseStringExpression(value));
-        }
-        else if (name == "fontset-name") {
-            bind(&_fontSetName, parseStringExpression(value));
-        }
-        else if (name == "placement") {
-            bind(&_placement, parseStringExpression(value));
-        }
-        else if (name == "size") {
-            bind(&_sizeFunc, parseExpression(value));
-            bind(&_sizeStatic, parseExpression(value));
-        }
-        else if (name == "spacing") {
-            bind(&_spacing, parseExpression(value));
-        }
-        else if (name == "fill") {
-            bind(&_fillFunc, parseStringExpression(value), &TextSymbolizer::convertColor);
-        }
-        else if (name == "opacity") {
-            bind(&_opacityFunc, parseExpression(value));
-        }
-        else if (name == "halo-fill") {
-            bind(&_haloFillFunc, parseStringExpression(value), &TextSymbolizer::convertColor);
-        }
-        else if (name == "halo-opacity") {
-            bind(&_haloOpacityFunc, parseExpression(value));
-        }
-        else if (name == "halo-radius") {
-            bind(&_haloRadiusFunc, parseExpression(value));
-        }
-        else if (name == "halo-rasterizer") {
-            // just ignore this
-        }
-        else if (name == "allow-overlap") {
-            bind(&_allowOverlap, parseExpression(value));
-        }
-        else if (name == "clip") {
-            bind(&_clip, parseExpression(value));
-            _clipDefined = true;
-        }
-        else if (name == "placement-priority") {
-            bind(&_placementPriority, parseExpression(value));
-        }
-        else if (name == "minimum-distance") {
-            bind(&_minimumDistance, parseExpression(value));
-        }
-        else if (name == "text-transform") {
-            bind(&_textTransform, parseStringExpression(value));
-        }
-        else if (name == "orientation") {
-            bind(&_orientationAngle, parseExpression(value));
-            _orientationDefined = true;
-        }
-        else if (name == "dx") {
-            bind(&_dx, parseExpression(value));
-        }
-        else if (name == "dy") {
-            bind(&_dy, parseExpression(value));
-        }
-        else if (name == "avoid-edges") {
-            // can ignore this, we are not clipping texts at tile boundaries
-        }
-        else if (name == "wrap-width") {
-            bind(&_wrapWidth, parseExpression(value));
-        }
-        else if (name == "wrap-before") {
-            bind(&_wrapBefore, parseExpression(value));
-        }
-        else if (name == "character-spacing") {
-            bind(&_characterSpacing, parseExpression(value));
-        }
-        else if (name == "line-spacing") {
-            bind(&_lineSpacing, parseExpression(value));
-        }
-        else if (name == "horizontal-alignment") {
-            bind(&_horizontalAlignment, parseStringExpression(value));
-        }
-        else if (name == "vertical-alignment") {
-            bind(&_verticalAlignment, parseStringExpression(value));
-        }
-        else {
-            Symbolizer::bindParameter(name, value);
-        }
-    }
-
-    std::string TextSymbolizer::getTransformedText(const std::string& text) const {
-        if (_textTransform.empty()) {
-            return text;
-        }
-        else if (_textTransform == "uppercase") {
-            return toUpper(text);
-        }
-        else if (_textTransform == "lowercase") {
-            return toLower(text);
-        }
-        else if (_textTransform == "capitalize") {
-            return capitalize(text);
-        }
-        return text;
-    }
-
-    std::shared_ptr<vt::Font> TextSymbolizer::getFont(const SymbolizerContext& symbolizerContext) const {
-        std::shared_ptr<vt::Font> font = symbolizerContext.getSettings().getFallbackFont();
-        if (!_faceName.empty()) {
-            font = symbolizerContext.getFontManager()->getFont(_faceName, font);
-        }
-        else if (!_fontSetName.empty()) {
-            for (const std::shared_ptr<FontSet>& fontSet : _fontSets) {
-                if (fontSet->getName() == _fontSetName) {
-                    const std::vector<std::string>& faceNames = fontSet->getFaceNames();
-                    for (auto it = faceNames.rbegin(); it != faceNames.rend(); it++) {
-                        const std::string& faceName = *it;
-                        std::shared_ptr<vt::Font> mainFont = symbolizerContext.getFontManager()->getFont(faceName, font);
-                        if (mainFont) {
-                            font = mainFont;
-                        }
-                    }
-                    break;
-                }
-            }
-        }
-        return font;
-    }
-
-    cglib::bbox2<float> TextSymbolizer::calculateTextSize(const std::shared_ptr<vt::Font>& font, const std::string& text, const vt::TextFormatter& formatter) const {
+    cglib::bbox2<float> TextSymbolizer::calculateTextSize(const std::shared_ptr<const vt::Font>& font, const std::string& text, const vt::TextFormatter& formatter) {
         std::vector<vt::Font::Glyph> glyphs = formatter.format(text, formatter.getFontSize());
         cglib::bbox2<float> bbox = cglib::bbox2<float>::smallest();
         cglib::vec2<float> pen = cglib::vec2<float>(0, 0);
@@ -249,56 +119,113 @@ namespace carto { namespace mvt {
         return bbox;
     }
 
-    vt::TextFormatter::Options TextSymbolizer::getFormatterOptions(const SymbolizerContext& symbolizerContext) const {
-        float fontScale = symbolizerContext.getSettings().getFontScale();
-        cglib::vec2<float> offset(_dx * fontScale, -_dy * fontScale);
-        cglib::vec2<float> alignment(_dx < 0 ? 1.0f : (_dx > 0 ? -1.0f : 0.0f), _dy < 0 ? 1.0f : (_dy > 0 ? -1.0f : 0.0f));
-        if (_horizontalAlignment == "left") {
-            alignment(0) = -1.0f;
-        }
-        else if (_horizontalAlignment == "middle") {
-            alignment(0) = 0.0f;
-        }
-        else if (_horizontalAlignment == "right") {
-            alignment(0) = 1.0f;
-        }
-        if (_verticalAlignment == "top") {
-            alignment(1) = -1.0f;
-        }
-        else if (_verticalAlignment == "middle") {
-            alignment(1) = 0.0f;
-        }
-        else if (_verticalAlignment == "bottom") {
-            alignment(1) = 1.0f;
-        }
-        return vt::TextFormatter::Options(alignment, offset, _wrapBefore, _wrapWidth * fontScale, _characterSpacing, _lineSpacing);
-    }
-
-    vt::LabelOrientation TextSymbolizer::convertTextPlacement(const std::string& orientation) const {
-        vt::LabelOrientation placement = convertLabelPlacement(orientation);
+    vt::LabelOrientation TextSymbolizer::getPlacement(const ExpressionContext& exprContext) const {
+        vt::LabelOrientation placement = _placement.getValue(exprContext);
         if (placement != vt::LabelOrientation::LINE) {
-            if (_orientationDefined) { // if orientation is explictly defined, use POINT placement
-                return vt::LabelOrientation::POINT;
+            if (_orientationAngle.isDefined()) { // if orientation is explictly defined, use POINT placement
+                placement = vt::LabelOrientation::POINT;
             }
         }
         return placement;
     }
 
-    void TextSymbolizer::buildFeatureCollection(const FeatureCollection& featureCollection, const FeatureExpressionContext& exprContext, const SymbolizerContext& symbolizerContext, const vt::TextFormatter& formatter, vt::LabelOrientation placement, float bitmapSize, const std::function<void(long long localId, long long globalId, const std::string& text, const std::optional<vt::TileLayerBuilder::Vertex>& vertex, const vt::TileLayerBuilder::Vertices& vertices)>& addText) {
-        FeatureExpressionContext textExprContext(exprContext);
+    std::string TextSymbolizer::getTransformedText(const ExpressionContext& exprContext) const {
+        std::string text = _text.getValue(exprContext);
+        std::string textTransform = _textTransform.getValue(exprContext);
+        if (textTransform.empty()) {
+            return text;
+        }
+        else if (textTransform == "uppercase") {
+            return toUpper(text);
+        }
+        else if (textTransform == "lowercase") {
+            return toLower(text);
+        }
+        else if (textTransform == "capitalize") {
+            return capitalize(text);
+        }
+        return text;
+    }
+
+    std::shared_ptr<const vt::Font> TextSymbolizer::getFont(const SymbolizerContext& symbolizerContext, const ExpressionContext& exprContext) const {
+        std::shared_ptr<const vt::Font> font = symbolizerContext.getSettings().getFallbackFont();
+        std::string faceName = _faceName.getValue(exprContext);
+        std::string fontSetName = _fontSetName.getValue(exprContext);
+        if (!faceName.empty()) {
+            font = symbolizerContext.getFontManager()->getFont(faceName, font);
+        }
+        else if (!fontSetName.empty()) {
+            for (const std::shared_ptr<FontSet>& fontSet : _fontSets) {
+                if (fontSet->getName() == fontSetName) {
+                    const std::vector<std::string>& faceNames = fontSet->getFaceNames();
+                    for (auto it = faceNames.rbegin(); it != faceNames.rend(); it++) {
+                        const std::string& faceName = *it;
+                        std::shared_ptr<const vt::Font> mainFont = symbolizerContext.getFontManager()->getFont(faceName, font);
+                        if (mainFont) {
+                            font = mainFont;
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+        return font;
+    }
+
+    vt::TextFormatter::Options TextSymbolizer::getFormatterOptions(const SymbolizerContext& symbolizerContext, const ExpressionContext& exprContext) const {
+        float fontScale = symbolizerContext.getSettings().getFontScale();
+        float dx = _dx.getValue(exprContext);
+        float dy = _dy.getValue(exprContext);
+        float characterSpacing = _characterSpacing.getValue(exprContext);
+        float lineSpacing = _lineSpacing.getValue(exprContext);
+        float wrapWidth = _wrapWidth.getValue(exprContext);
+        bool wrapBefore = _wrapBefore.getValue(exprContext);
+        std::string horizontalAlignment = _horizontalAlignment.getValue(exprContext);
+        std::string verticalAlignment = _verticalAlignment.getValue(exprContext);
+
+        cglib::vec2<float> offset(dx * fontScale, -dy * fontScale);
+        cglib::vec2<float> alignment(dx < 0 ? 1.0f : (dx > 0 ? -1.0f : 0.0f), dy < 0 ? 1.0f : (dy > 0 ? -1.0f : 0.0f));
+        if (horizontalAlignment == "left") {
+            alignment(0) = -1.0f;
+        }
+        else if (horizontalAlignment == "middle") {
+            alignment(0) = 0.0f;
+        }
+        else if (horizontalAlignment == "right") {
+            alignment(0) = 1.0f;
+        }
+        if (verticalAlignment == "top") {
+            alignment(1) = -1.0f;
+        }
+        else if (verticalAlignment == "middle") {
+            alignment(1) = 0.0f;
+        }
+        else if (verticalAlignment == "bottom") {
+            alignment(1) = 1.0f;
+        }
+        return vt::TextFormatter::Options(alignment, offset, wrapBefore, wrapWidth * fontScale, characterSpacing, lineSpacing);
+    }
+
+    void TextSymbolizer::buildFeatureCollection(const FeatureCollection& featureCollection, const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext, const vt::TextFormatter& formatter, vt::LabelOrientation placement, float bitmapSize, const std::function<void(long long localId, long long globalId, const std::string& text, const std::optional<vt::TileLayerBuilder::Vertex>& vertex, const vt::TileLayerBuilder::Vertices& vertices)>& addText) const {
         for (std::size_t index = 0; index < featureCollection.size(); index++) {
-            textExprContext.setFeatureData(featureCollection.getFeatureData(index));
-            Value textVal = std::visit(ExpressionEvaluator(textExprContext), _textExpression);
-            std::string text = getTransformedText(ValueConverter<std::string>::convert(textVal));
+            std::string text = getTransformedText(exprContext);
             std::size_t hash = std::hash<std::string>()(text);
-            float textSize = bitmapSize < 0 ? (placement == vt::LabelOrientation::LINE ? calculateTextSize(formatter.getFont(), text, formatter).size()(0) : 0) : bitmapSize;
 
             long long localId = featureCollection.getLocalId(index);
-            long long globalId = _featureIdDefined ? (_featureId ? _featureId : generateId()) : combineId(featureCollection.getGlobalId(index), hash);
+            long long globalId = combineId(featureCollection.getGlobalId(index), hash);
+            if (_featureId.isDefined()) {
+                globalId = convertId(_featureId.getValue(exprContext));
+                if (!globalId) {
+                    globalId = generateId();
+                }
+            }
+
             const std::shared_ptr<const Geometry>& geometry = featureCollection.getGeometry(index);
+            float textSize = bitmapSize < 0 ? (placement == vt::LabelOrientation::LINE ? calculateTextSize(formatter.getFont(), text, formatter).size()(0) : 0) : bitmapSize;
+            float spacing = _spacing.getValue(exprContext);
 
             auto addLineTexts = [&](const std::vector<cglib::vec2<float>>& vertices) {
-                if (_spacing <= 0) {
+                if (spacing <= 0) {
                     addText(localId, globalId, text, std::optional<vt::TileLayerBuilder::Vertex>(), vertices);
                     return;
                 }
@@ -310,7 +237,7 @@ namespace carto { namespace mvt {
 
                     float lineLen = cglib::length(v1 - v0) * symbolizerContext.getSettings().getTileSize();
                     if (i == 1) {
-                        linePos = std::min(lineLen, _spacing) * 0.5f;
+                        linePos = std::min(lineLen, spacing) * 0.5f;
                     }
                     while (linePos < lineLen) {
                         cglib::vec2<float> pos = v0 + (v1 - v0) * (linePos / lineLen);
@@ -318,7 +245,7 @@ namespace carto { namespace mvt {
                             addText(localId, generateId(), text, pos, vertices);
                         }
 
-                        linePos += _spacing + textSize;
+                        linePos += spacing + textSize;
                     }
 
                     linePos -= lineLen;

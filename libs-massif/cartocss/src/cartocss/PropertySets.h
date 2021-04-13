@@ -35,10 +35,6 @@ namespace carto { namespace css {
         const RuleSpecificity& getSpecificity() const { return _specificity; }
         int getRuleOrder() const { return std::get<3>(_specificity); }
 
-        void simplifyExpression(const ExpressionContext& context) {
-            _expression = std::visit(ExpressionEvaluator(context), _expression);
-        }
-
         bool operator == (const Property& other) const {
             return _field == other._field && std::visit(ExpressionDeepEqualsChecker(), _expression, other._expression) && _specificity == other._specificity;
         }
@@ -56,28 +52,28 @@ namespace carto { namespace css {
     class PropertySet final {
     public:
         PropertySet() = default;
-        explicit PropertySet(std::vector<std::shared_ptr<Predicate>> filters, std::vector<Property> properties) : _filters(std::move(filters)), _properties(std::move(properties)) { }
+        explicit PropertySet(std::vector<std::shared_ptr<const Predicate>> filters, std::vector<std::shared_ptr<const Property>> properties) : _filters(std::move(filters)), _properties(std::move(properties)) { }
 
-        const std::vector<std::shared_ptr<Predicate>>& getFilters() const { return _filters; }
-        const std::vector<Property>& getProperties() const { return _properties; }
+        const std::vector<std::shared_ptr<const Predicate>>& getFilters() const { return _filters; }
+        const std::vector<std::shared_ptr<const Property>>& getProperties() const { return _properties; }
 
-        const Property* findProperty(const std::string& field) const {
-            auto it = std::find_if(_properties.begin(), _properties.end(), [&field](const Property& prop) { return prop.getField() == field; });
-            return it != _properties.end() ? &*it : nullptr;
+        std::shared_ptr<const Property> findProperty(const std::string& field) const {
+            auto it = std::find_if(_properties.begin(), _properties.end(), [&field](const std::shared_ptr<const Property>& prop) { return prop->getField() == field; });
+            return it != _properties.end() ? *it : std::shared_ptr<const Property>();
         }
 
-        void insertProperty(const Property& prop) {
-            auto it = std::lower_bound(_properties.begin(), _properties.end(), prop, [](const Property& prop1, const Property& prop2) { return prop1.getField() < prop2.getField(); });
-            if (it != _properties.end() && it->getField() == prop.getField()) {
+        void insertProperty(const std::shared_ptr<const Property>& prop) {
+            auto it = std::lower_bound(_properties.begin(), _properties.end(), prop, [](const std::shared_ptr<const Property>& prop1, const std::shared_ptr<const Property>& prop2) { return prop1->getField() < prop2->getField(); });
+            if (it != _properties.end() && (*it)->getField() == prop->getField()) {
                 *it = prop;
             } else {
                 _properties.insert(it, prop);
             }
         }
 
-        bool mergeFilters(const std::vector<std::shared_ptr<Predicate>>& filters) {
-            for (const std::shared_ptr<Predicate>& filter : filters) {
-                for (const std::shared_ptr<Predicate>& existingFilter : _filters) {
+        bool mergeFilters(const std::vector<std::shared_ptr<const Predicate>>& filters) {
+            for (const std::shared_ptr<const Predicate>& filter : filters) {
+                for (const std::shared_ptr<const Predicate>& existingFilter : _filters) {
                     boost::tribool intersects = std::visit(PredicateIntersectsChecker(), *filter, *existingFilter);
                     if (!intersects) {
                         return false;
@@ -85,7 +81,7 @@ namespace carto { namespace css {
                 }
 
                 bool insert = true;
-                for (std::shared_ptr<Predicate>& existingFilter : _filters) {
+                for (std::shared_ptr<const Predicate>& existingFilter : _filters) {
                     boost::tribool contains = std::visit(PredicateContainsChecker(), *filter, *existingFilter);
                     if (contains) {
                         insert = false;
@@ -106,11 +102,11 @@ namespace carto { namespace css {
         }
 
         bool covers(const PropertySet& propertySet) const {
-            return std::all_of(_filters.begin(), _filters.end(), [&](const std::shared_ptr<Predicate>& filter) {
+            return std::all_of(_filters.begin(), _filters.end(), [&](const std::shared_ptr<const Predicate>& filter) {
                 if (std::find(propertySet.getFilters().begin(), propertySet.getFilters().end(), filter) != propertySet.getFilters().end()) {
                     return true;
                 }
-                return std::any_of(propertySet.getFilters().begin(), propertySet.getFilters().end(), [&filter](const std::shared_ptr<Predicate>& propFilter) {
+                return std::any_of(propertySet.getFilters().begin(), propertySet.getFilters().end(), [&filter](const std::shared_ptr<const Predicate>& propFilter) {
                     boost::tribool contains = std::visit(PredicateContainsChecker(), *filter, *propFilter);
                     return contains;
                 });
@@ -118,7 +114,12 @@ namespace carto { namespace css {
         }
 
         bool operator == (const PropertySet& other) const {
-            return _filters == other._filters && _properties == other._properties;
+            if (_filters == other._filters && _properties.size() == other._properties.size()) {
+                return std::equal(_properties.begin(), _properties.end(), other._properties.begin(), [](const std::shared_ptr<const Property>& prop1, const std::shared_ptr<const Property>& prop2) {
+                    return prop1 == prop2 || *prop1 == *prop2;
+                });
+            }
+            return false;
         }
 
         bool operator != (const PropertySet& other) const {
@@ -126,8 +127,8 @@ namespace carto { namespace css {
         }
 
     private:
-        std::vector<std::shared_ptr<Predicate>> _filters;
-        std::vector<Property> _properties;
+        std::vector<std::shared_ptr<const Predicate>> _filters;
+        std::vector<std::shared_ptr<const Property>> _properties;
     };
 
     class AttachmentPropertySets final {
@@ -141,8 +142,8 @@ namespace carto { namespace css {
         int calculateOrder() const {
             int order = std::numeric_limits<int>::max();
             for (const PropertySet& propertySet : _propertySets) {
-                for (const Property& prop : propertySet.getProperties()) {
-                    order = std::min(order, prop.getRuleOrder());
+                for (const std::shared_ptr<const Property>& prop : propertySet.getProperties()) {
+                    order = std::min(order, prop->getRuleOrder());
                 }
             }
             return order;

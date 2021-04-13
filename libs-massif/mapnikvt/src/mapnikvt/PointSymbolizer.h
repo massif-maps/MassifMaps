@@ -8,28 +8,35 @@
 #define _CARTO_MAPNIKVT_POINTSYMBOLIZER_H_
 
 #include "GeometrySymbolizer.h"
+#include "FunctionBuilder.h"
 
 namespace carto { namespace mvt {
     class PointSymbolizer : public GeometrySymbolizer {
     public:
         explicit PointSymbolizer(std::shared_ptr<Logger> logger) : GeometrySymbolizer(std::move(logger)) {
-            bind(&_opacityFunc, Value(1.0f));
+            unbindParameter("geometry-transform"); // not supported for now
+            bindParameter("file", &_file);
+            bindParameter("opacity", &_opacity);
+            bindParameter("allow-overlap", &_allowOverlap);
+            bindParameter("ignore-placement", &_ignorePlacement);
+            bindParameter("transform", &_transform);
         }
 
-        virtual void build(const FeatureCollection& featureCollection, const FeatureExpressionContext& exprContext, const SymbolizerContext& symbolizerContext, vt::TileLayerBuilder& layerBuilder) override;
+        virtual void build(const FeatureCollection& featureCollection, const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext, vt::TileLayerBuilder& layerBuilder) const override;
 
     protected:
         inline static constexpr int RECTANGLE_SIZE = 4;
 
-        virtual void bindParameter(const std::string& name, const std::string& value) override;
-
         static std::shared_ptr<vt::BitmapImage> makeRectangleBitmap(float size);
 
-        std::string _file;
-        vt::FloatFunction _opacityFunc; // 1.0f
-        bool _allowOverlap = false;
-        bool _ignorePlacement = false;
-        vt::Transform _transform;
+        StringParameter _file;
+        FloatFunctionParameter _opacity = FloatFunctionParameter(1.0f);
+        BoolParameter _allowOverlap = BoolParameter(false);
+        BoolParameter _ignorePlacement = BoolParameter(false);
+        TransformParameter _transform;
+
+        FloatFunctionBuilder _sizeFuncBuilder;
+        ColorFunctionBuilder _fillFuncBuilder;
     };
 } }
 

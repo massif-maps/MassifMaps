@@ -4,18 +4,19 @@
 #include <cmath>
 
 namespace carto { namespace mvt {
-    void BuildingSymbolizer::build(const FeatureCollection& featureCollection, const FeatureExpressionContext& exprContext, const SymbolizerContext& symbolizerContext, vt::TileLayerBuilder& layerBuilder) {
-        std::lock_guard<std::mutex> lock(_mutex);
-
-        updateBindings(exprContext);
-
-        if (_fillOpacityFunc == vt::FloatFunction(0) || _fillFunc == vt::ColorFunction(vt::Color())) {
+    void BuildingSymbolizer::build(const FeatureCollection& featureCollection, const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext, vt::TileLayerBuilder& layerBuilder) const {
+        vt::FloatFunction fillOpacityFunc = _fillOpacity.getFunction(exprContext);
+        vt::ColorFunction fillColorFunc = _fill.getFunction(exprContext);
+        if (fillOpacityFunc == vt::FloatFunction(0) || fillColorFunc == vt::ColorFunction(vt::Color())) {
             return;
         }
 
-        vt::ColorFunction fillFunc = _functionBuilder.createColorOpacityFunction(_fillFunc, _fillOpacityFunc);
-        
-        vt::Polygon3DStyle style(fillFunc, getGeometryTransform());
+        vt::ColorFunction fillFunc = _fillFuncBuilder.createColorOpacityFunction(fillColorFunc, fillOpacityFunc);
+        std::optional<vt::Transform> geometryTransform = _geometryTransform.getValue(exprContext);
+        float height = _height.getValue(exprContext);
+        float minHeight = _minHeight.getValue(exprContext);
+
+        vt::Polygon3DStyle style(fillFunc, geometryTransform);
 
         std::size_t featureIndex = 0;
         std::size_t geometryIndex = 0;
@@ -42,24 +43,6 @@ namespace carto { namespace mvt {
                 }
             }
             return false;
-        }, _minHeight, _height, style);
-    }
-
-    void BuildingSymbolizer::bindParameter(const std::string& name, const std::string& value) {
-        if (name == "fill") {
-            bind(&_fillFunc, parseStringExpression(value), &BuildingSymbolizer::convertColor);
-        }
-        else if (name == "fill-opacity") {
-            bind(&_fillOpacityFunc, parseExpression(value));
-        }
-        else if (name == "height") {
-            bind(&_height, parseExpression(value));
-        }
-        else if (name == "min-height") {
-            bind(&_minHeight, parseExpression(value));
-        }
-        else {
-            GeometrySymbolizer::bindParameter(name, value);
-        }
+        }, minHeight, height, style);
     }
 } }

@@ -14,10 +14,10 @@ namespace carto { namespace css {
     public:
         explicit TorqueCartoCSSMapnikTranslator(std::shared_ptr<mvt::Logger> logger) : CartoCSSMapnikTranslator(std::move(logger)) { }
 
-        virtual std::shared_ptr<mvt::Symbolizer> buildSymbolizer(const std::string& symbolizerType, const std::list<Property>& properties, const std::shared_ptr<mvt::Map>& map) const override;
-
     protected:
         virtual std::string getPropertySymbolizerId(const std::string& propertyName) const override;
+
+        virtual std::shared_ptr<const mvt::Symbolizer> createSymbolizer(const std::string& symbolizerType, const std::vector<std::shared_ptr<const Property>>& properties, const std::shared_ptr<mvt::Map>& map) const override;
 
     private:
         static const std::unordered_map<std::string, std::string> _symbolizerPropertyMap;

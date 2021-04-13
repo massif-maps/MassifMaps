@@ -10,6 +10,7 @@
 #include "ExpressionPredicateBase.h"
 #include "ValueConverter.h"
 
+#include <array>
 #include <memory>
 #include <variant>
 #include <functional>
@@ -18,16 +19,12 @@
 #include <cglib/fcurve.h>
 
 namespace carto { namespace mvt {
-    class ExpressionContext;
-
     class VariableExpression final {
     public:
         explicit VariableExpression(std::string variableName) : _variableExpr(Value(std::move(variableName))) { }
         explicit VariableExpression(Expression variableExpr) : _variableExpr(std::move(variableExpr)) { }
 
         const Expression& getVariableExpression() const { return _variableExpr; }
-
-        std::string getVariableName(const ExpressionContext&) const;
 
     private:
         const Expression _variableExpr;
@@ -114,21 +111,21 @@ namespace carto { namespace mvt {
             CUBIC
         };
         
-        explicit InterpolateExpression(Method method, Expression timeExpr, const std::vector<Value>& keyFrames) : _method(method), _timeExpr(std::move(timeExpr)), _keyFrames(keyFrames), _fcurve(buildFCurve(method, keyFrames)) { }
+        explicit InterpolateExpression(Method method, Expression timeExpr, std::vector<Value> keyFrames) : _method(method), _timeExpr(std::move(timeExpr)), _keyFrames(std::move(keyFrames)), _fcurve(buildFCurve(method, _keyFrames)) { }
 
         Method getMethod() const { return _method; }
         const Expression& getTimeExpression() const { return _timeExpr; }
         const std::vector<Value>& getKeyFrames() const { return _keyFrames; }
 
-        float evaluate(float t) const;
+        Value evaluate(float t) const;
 
     private:
-        static cglib::fcurve2<float> buildFCurve(Method method, const std::vector<Value>& keyFrames);
+        static std::variant<cglib::fcurve2<float>, cglib::fcurve5<float>> buildFCurve(Method method, const std::vector<Value>& keyFrames);
 
         const Method _method;
         const Expression _timeExpr;
         const std::vector<Value> _keyFrames;
-        const cglib::fcurve2<float> _fcurve;
+        const std::variant<cglib::fcurve2<float>, cglib::fcurve5<float>> _fcurve;
     };
 } }
 

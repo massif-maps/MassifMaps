@@ -8,15 +8,33 @@
 #define _CARTO_MAPNIKVT_MARKERSSYMBOLIZER_H_
 
 #include "Symbolizer.h"
+#include "FunctionBuilder.h"
 
 namespace carto { namespace mvt {
     class MarkersSymbolizer : public Symbolizer {
     public:
         explicit MarkersSymbolizer(std::shared_ptr<Logger> logger) : Symbolizer(std::move(logger)) {
-            bind(&_strokeWidthFunc, Value(_strokeWidthStatic));
+            bindParameter("file", &_file);
+            bindParameter("feature-id", &_featureId);
+            bindParameter("placement", &_placement);
+            bindParameter("marker-type", &_markerType);
+            bindParameter("opacity", &_opacity);
+            bindParameter("fill", &_fill);
+            bindParameter("fill-opacity", &_fillOpacity);
+            bindParameter("width", &_width);
+            bindParameter("height", &_height);
+            bindParameter("stroke", &_stroke);
+            bindParameter("stroke-opacity", &_strokeOpacity);
+            bindParameter("stroke-width", &_strokeWidth);
+            bindParameter("spacing", &_spacing);
+            bindParameter("placement-priority", &_placementPriority);
+            bindParameter("allow-overlap", &_allowOverlap);
+            bindParameter("clip", &_clip);
+            bindParameter("ignore-placement", &_ignorePlacement);
+            bindParameter("transform", &_transform);
         }
 
-        virtual void build(const FeatureCollection& featureCollection, const FeatureExpressionContext& exprContext, const SymbolizerContext& symbolizerContext, vt::TileLayerBuilder& layerBuilder) override;
+        virtual void build(const FeatureCollection& featureCollection, const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext, vt::TileLayerBuilder& layerBuilder) const override;
 
     protected:
         inline static constexpr int DEFAULT_CIRCLE_SIZE = 10;
@@ -26,38 +44,30 @@ namespace carto { namespace mvt {
         inline static constexpr int MAX_BITMAP_SIZE = 64;
         inline static constexpr float IMAGE_UPSAMPLING_SCALE = 2.5f;
 
-        virtual void bindParameter(const std::string& name, const std::string& value) override;
-
-        static bool containsRotationTransform(const Value& val);
-
         static std::shared_ptr<vt::BitmapImage> makeEllipseBitmap(float width, float height, const vt::Color& color, float strokeWidth, const vt::Color& strokeColor);
         static std::shared_ptr<vt::BitmapImage> makeArrowBitmap(float width, float height, const vt::Color& color, float strokeWidth, const vt::Color& strokeColor);
 
-        std::string _file;
-        std::string _placement = "point";
-        std::string _markerType;
-        long long _featureId = 0;
-        bool _featureIdDefined = false;
-        vt::Color _fill = vt::Color(0xff0000ff);
-        float _fillOpacity = 1.0f;
-        vt::FloatFunction _widthFunc; // undefined
-        float _widthStatic = 0;
-        bool _widthDefined = false;
-        vt::FloatFunction _heightFunc; // undefined
-        float _heightStatic = 0;
-        bool _heightDefined = false;
-        vt::Color _stroke = vt::Color(0xff000000);
-        float _strokeOpacity = 1.0f;
-        vt::FloatFunction _strokeWidthFunc; // 0.5f
-        float _strokeWidthStatic = 0.5f;
-        float _spacing = 100.0f;
-        float _placementPriority = 0.0f;
-        bool _allowOverlap = false;
-        bool _clip = false;
-        bool _clipDefined = false;
-        bool _ignorePlacement = false;
-        vt::Transform _transform;
-        std::optional<Expression> _transformExpression;
+        StringParameter _file;
+        ValueParameter _featureId;
+        LabelOrientationParameter _placement = LabelOrientationParameter("point");
+        StringParameter _markerType;
+        FloatParameter _opacity = FloatParameter(1.0f);
+        ColorParameter _fill = ColorParameter("#0000ff");
+        FloatParameter _fillOpacity = FloatParameter(1.0f);
+        FloatFunctionParameter _width = FloatFunctionParameter(0.0f);
+        FloatFunctionParameter _height = FloatFunctionParameter(0.0f);
+        ColorParameter _stroke = ColorParameter("#000000");
+        FloatParameter _strokeOpacity = FloatParameter(1.0f);
+        FloatFunctionParameter _strokeWidth = FloatFunctionParameter(0.5f);
+        FloatParameter _spacing = FloatParameter(100.0f);
+        FloatParameter _placementPriority = FloatParameter(0.0f);
+        BoolParameter _allowOverlap = BoolParameter(false);
+        BoolParameter _clip = BoolParameter(false);
+        BoolParameter _ignorePlacement = BoolParameter(false);
+        TransformParameter _transform;
+
+        FloatFunctionBuilder _sizeFuncBuilder;
+        ColorFunctionBuilder _fillFuncBuilder;
     };
 } }
 

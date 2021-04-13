@@ -14,7 +14,6 @@
 namespace carto { namespace mvt {
     void SymbolizerGenerator::generateSymbolizer(const Symbolizer& symbolizer, pugi::xml_node& symbolizerNode) const {
         std::string type;
-        std::string text;
         if (dynamic_cast<const PointSymbolizer*>(&symbolizer)) {
             type = "PointSymbolizer";
         }
@@ -43,15 +42,29 @@ namespace carto { namespace mvt {
             else {
                 type = "TextSymbolizer";
             }
-            text = textSymbolizer->getText();
         }
 
         symbolizerNode.set_name(type.c_str());
-        for (auto it = symbolizer.getParameterMap().begin(); it != symbolizer.getParameterMap().end(); it++) {
-            symbolizerNode.append_attribute(it->first.c_str()).set_value(it->second.c_str());
+        for (const std::string& paramName : symbolizer.getParameterNames()) {
+            if (paramName == "name" && dynamic_cast<const TextSymbolizer*>(&symbolizer)) {
+                continue; // already included as 'content'
+            }
+            if (auto param = symbolizer.getParameter(paramName)) {
+                if (param->isDefined()) {
+                    std::string paramValue = getSymbolizerParameter(symbolizer, *param);
+                    symbolizerNode.append_attribute(paramName.c_str()).set_value(paramValue.c_str());
+                }
+            }
         }
-        if (!text.empty()) {
+
+        if (auto textSymbolizer = dynamic_cast<const TextSymbolizer*>(&symbolizer)) {
+            std::string text = generateExpressionString(textSymbolizer->getText(), true);
             symbolizerNode.append_child(pugi::node_pcdata).set_value(text.c_str());
         }
+    }
+
+    std::string SymbolizerGenerator::getSymbolizerParameter(const Symbolizer& symbolizer, const SymbolizerParameter& param) const {
+        bool stringParam = !dynamic_cast<const ValueParameter*>(&param) && !dynamic_cast<const BoolParameter*>(&param) && !dynamic_cast<const FloatParameter*>(&param) && !dynamic_cast<const FloatFunctionParameter*>(&param);
+        return generateExpressionString(param.getExpression(), stringParam);
     }
 } }

@@ -30,9 +30,9 @@ namespace carto { namespace vt {
             explicit Options(const cglib::vec2<float>& alignment, const cglib::vec2<float>& offset, bool wrapBefore, float wrapWidth, float characterSpacing, float lineSpacing) : alignment(alignment), offset(offset), wrapBefore(wrapBefore), wrapWidth(wrapWidth), characterSpacing(characterSpacing), lineSpacing(lineSpacing) { }
         };
 
-        explicit TextFormatter(std::shared_ptr<Font> font, float fontSize, const Options& options);
+        explicit TextFormatter(std::shared_ptr<const Font> font, float fontSize, const Options& options);
 
-        const std::shared_ptr<Font>& getFont() const { return _font; }
+        const std::shared_ptr<const Font>& getFont() const { return _font; }
         float getFontSize() const { return _fontSize; }
         const Options& getOptions() const { return _options; }
 
@@ -48,7 +48,7 @@ namespace carto { namespace vt {
 
         std::vector<Line> splitLines(const std::string& text) const;
 
-        const std::shared_ptr<Font> _font;
+        const std::shared_ptr<const Font> _font;
         const Font::Metrics _metrics;
         const float _fontSize;
         const Options _options;

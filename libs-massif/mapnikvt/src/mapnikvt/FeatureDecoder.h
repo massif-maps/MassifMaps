@@ -11,7 +11,9 @@
 
 #include <memory>
 #include <mutex>
+#include <string>
 #include <map>
+#include <set>
 
 namespace carto { namespace mvt {
     class FeatureDecoder {
@@ -26,7 +28,7 @@ namespace carto { namespace mvt {
             virtual long long getLocalId() const = 0;
             virtual long long getGlobalId() const = 0;
             virtual std::shared_ptr<const Geometry> getGeometry() const = 0;
-            virtual std::shared_ptr<const FeatureData> getFeatureData() const = 0;
+            virtual std::shared_ptr<const FeatureData> getFeatureData(const std::set<std::string>* fields) const = 0;
         };
 
         virtual ~FeatureDecoder() = default;

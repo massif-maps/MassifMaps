@@ -8,31 +8,44 @@
 #define _CARTO_MAPNIKVT_TORQUEMARKERSYMBOLIZER_H_
 
 #include "Symbolizer.h"
+#include "FunctionBuilder.h"
 
 namespace carto { namespace mvt {
     class TorqueMarkerSymbolizer : public Symbolizer {
     public:
-        explicit TorqueMarkerSymbolizer(std::shared_ptr<Logger> logger) : Symbolizer(std::move(logger)) { }
+        explicit TorqueMarkerSymbolizer(std::shared_ptr<Logger> logger) : Symbolizer(std::move(logger)) {
+            bindParameter("file", &_file);
+            bindParameter("marker-type", &_markerType);
+            bindParameter("opacity", &_opacity);
+            bindParameter("fill", &_fill);
+            bindParameter("fill-opacity", &_fillOpacity);
+            bindParameter("width", &_width);
+            bindParameter("stroke", &_stroke);
+            bindParameter("stroke-opacity", &_strokeOpacity);
+            bindParameter("stroke-width", &_strokeWidth);
+        }
 
-        virtual void build(const FeatureCollection& featureCollection, const FeatureExpressionContext& exprContext, const SymbolizerContext& symbolizerContext, vt::TileLayerBuilder& layerBuilder) override;
+        virtual void build(const FeatureCollection& featureCollection, const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext, vt::TileLayerBuilder& layerBuilder) const override;
 
     protected:
         inline static constexpr int DEFAULT_MARKER_SIZE = 10;
         inline static constexpr int SUPERSAMPLING_FACTOR = 4;
 
-        virtual void bindParameter(const std::string& name, const std::string& value) override;
-
         static std::shared_ptr<vt::BitmapImage> makeEllipseBitmap(float width, float height, const vt::Color& color, float strokeWidth, const vt::Color& strokeColor);
         static std::shared_ptr<vt::BitmapImage> makeRectangleBitmap(float width, float height, const vt::Color& color, float strokeWidth, const vt::Color& strokeColor);
 
-        std::string _file;
-        std::string _markerType;
-        vt::Color _fill = vt::Color(0xff0000ff);
-        float _fillOpacity = 1.0f;
-        float _width = 10.0f;
-        vt::Color _stroke = vt::Color(0xff000000);
-        float _strokeOpacity = 1.0f;
-        float _strokeWidth = 0.0f;
+        StringParameter _file;
+        StringParameter _markerType;
+        FloatParameter _opacity = FloatParameter(1.0f);
+        ColorParameter _fill = ColorParameter("#0000ff");
+        FloatParameter _fillOpacity = FloatParameter(1.0f);
+        FloatParameter _width = FloatParameter(10.0f);
+        ColorParameter _stroke = ColorParameter("#000000");
+        FloatParameter _strokeOpacity = FloatParameter(1.0f);
+        FloatParameter _strokeWidth = FloatParameter(0.0f);
+
+        FloatFunctionBuilder _sizeFuncBuilder;
+        ColorFunctionBuilder _fillFuncBuilder;
     };
 } }
 

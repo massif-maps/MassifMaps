@@ -237,7 +237,7 @@ namespace carto { namespace css {
             AttachmentStyle& attachmentStyle = attachmentStyleMap[layerAttachment.getAttachment()];
             attachmentStyle.order = std::min(attachmentStyle.order, layerAttachmentOrder);
             for (const PropertySet& propertySet : layerAttachment.getPropertySets()) {
-                std::shared_ptr<mvt::Rule> rule = translator.buildRule(propertySet, map, minZoom, maxZoom);
+                std::shared_ptr<const mvt::Rule> rule = translator.buildRule(propertySet, map, minZoom, maxZoom);
                 if (rule) {
                     attachmentStyle.rules.push_back(rule);
                 }

@@ -1,62 +1,61 @@
 #include "ExpressionContext.h"
 #include "Expression.h"
 #include "Feature.h"
-#include "ScaleUtils.h"
 #include "ValueConverter.h"
 
-#include <map>
-#include <memory>
-
 namespace carto { namespace mvt {
-    FeatureExpressionContext::FeatureExpressionContext() {
-        _scaleDenom = zoom2ScaleDenominator(static_cast<float>(_adjustedZoom));
-    }
-    
-    void FeatureExpressionContext::setAdjustedZoom(int zoom) {
+    void ExpressionContext::setAdjustedZoom(int zoom) {
         _adjustedZoom = zoom;
         _scaleDenom = zoom2ScaleDenominator(static_cast<float>(_adjustedZoom));
     }
 
-    Value FeatureExpressionContext::getVariable(const std::string& name) const {
+    void ExpressionContext::setScaleDenominator(float scaleDenom) {
+        _scaleDenom = scaleDenom;
+        _adjustedZoom = static_cast<int>(scaleDenominator2Zoom(_scaleDenom));
+    }
+
+    Value ExpressionContext::getVariable(const std::string& name) const {
+        if (isViewStateVariable(name)) {
+            if (name == "view::zoom") {
+                return Value(static_cast<double>(_adjustedZoom + 0.5)); // use 'average' zoom; this is only needed for expressions that are not evaluated at view-time
+            }
+            return Value();
+        }
+        else if (isMapnikVariable(name)) {
+            if (name == "mapnik::geometry_type") {
+                return Value(static_cast<long long>(_featureData->getGeometryType()));
+            }
+            return Value();
+        }
+        else if (isNutiVariable(name)) {
+            if (_nutiParameterValueMap) {
+                auto it = _nutiParameterValueMap->find(name.substr(6));
+                if (it != _nutiParameterValueMap->end()) {
+                    return it->second;
+                }
+            }
+            return Value();
+        }
+        else if (isZoomVariable(name)) {
+            return Value(static_cast<long long>(_adjustedZoom));
+        }
+
         if (_featureData) {
             Value value;
             if (_featureData->getVariable(name, value)) {
                 return value;
             }
-            if (name.compare("mapnik::geometry_type") == 0) {
-                return Value(static_cast<long long>(_featureData->getGeometryType()));
-            }
-        }
-        if (name == "zoom") {
-            return Value(static_cast<long long>(_adjustedZoom));
-        }
-        if (name == "view::zoom") {
-            return Value(static_cast<double>(_adjustedZoom + 0.5)); // use 'average' zoom; this is only needed for expressions that are not evaluated at view-time
-        }
-        if (name.compare(0, 6, "nuti::") == 0) {
-            auto it = _nutiParameterValueMap.find(name.substr(6));
-            if (it != _nutiParameterValueMap.end()) {
-                return it->second;
-            }
         }
         return Value();
     }
 
-    ViewExpressionContext::ViewExpressionContext() {
-    }
-
-    void ViewExpressionContext::setZoom(float zoom) {
-        _zoom = zoom;
-    }
-
-    Value ViewExpressionContext::getVariable(const std::string& name) const {
-        if (name == "view::zoom") {
-            return Value(_zoom);
+    Value ExpressionContext::getViewStateVariable(const vt::ViewState& viewState, const std::string& name) const {
+        if (isViewStateVariable(name)) {
+            if (name == "view::zoom") {
+                return viewState.zoom;
+            }
+            return Value();
         }
-        return Value();
-    }
-
-    bool ViewExpressionContext::isViewVariable(const std::string& name) {
-        return name.compare(0, 6, "view::") == 0;
+        return getVariable(name);
     }
 } }

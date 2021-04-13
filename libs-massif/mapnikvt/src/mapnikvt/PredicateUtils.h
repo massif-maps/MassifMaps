@@ -10,11 +10,14 @@
 #include "Predicate.h"
 #include "ExpressionContext.h"
 
+#include <map>
 #include <functional>
+
+#include <boost/logic/tribool.hpp>
 
 namespace carto { namespace mvt {
     struct PredicateEvaluator {
-        explicit PredicateEvaluator(const ExpressionContext& context) : _context(context) { }
+        explicit PredicateEvaluator(const ExpressionContext& context, const vt::ViewState* viewState) : _context(context), _viewState(viewState) { }
 
         bool operator() (bool val) const { return val; }
         bool operator() (const std::shared_ptr<ExpressionPredicate>& exprPred) const;
@@ -31,30 +34,31 @@ namespace carto { namespace mvt {
 
     private:
         const ExpressionContext& _context;
+        const vt::ViewState* _viewState;
     };
 
-    struct PredicateMapper {
-        explicit PredicateMapper(const std::function<Expression(const Expression&)>& fn) : _fn(fn) { }
+    struct PredicatePreEvaluator {
+        explicit PredicatePreEvaluator(const ExpressionContext& context) : _context(context) { }
 
-        Predicate operator() (bool val) const { return val; }
-        Predicate operator() (const std::shared_ptr<ExpressionPredicate>& exprPred) const;
-        Predicate operator() (const std::shared_ptr<ComparisonPredicate>& compPred) const;
-        Predicate operator() (const std::shared_ptr<NotPredicate>& notPred) const {
-            return std::make_shared<NotPredicate>(std::visit(*this, notPred->getPredicate()));
+        boost::tribool operator() (bool val) const { return val; }
+        boost::tribool operator() (const std::shared_ptr<ExpressionPredicate>& exprPred) const { return boost::indeterminate; }
+        boost::tribool operator() (const std::shared_ptr<ComparisonPredicate>& compPred) const;
+        boost::tribool operator() (const std::shared_ptr<NotPredicate>& notPred) const {
+            return !std::visit(*this, notPred->getPredicate());
         }
-        Predicate operator() (const std::shared_ptr<OrPredicate>& orPred) const {
-            return std::make_shared<OrPredicate>(std::visit(*this, orPred->getPredicate1()), std::visit(*this, orPred->getPredicate2()));
+        boost::tribool operator() (const std::shared_ptr<OrPredicate>& orPred) const {
+            return std::visit(*this, orPred->getPredicate1()) || std::visit(*this, orPred->getPredicate2());
         }
-        Predicate operator() (const std::shared_ptr<AndPredicate>& andPred) const {
-            return std::make_shared<AndPredicate>(std::visit(*this, andPred->getPredicate1()), std::visit(*this, andPred->getPredicate2()));
+        boost::tribool operator() (const std::shared_ptr<AndPredicate>& andPred) const {
+            return std::visit(*this, andPred->getPredicate1()) && std::visit(*this, andPred->getPredicate2());
         }
 
     private:
-        std::function<Expression(const Expression&)> _fn;
+        const ExpressionContext& _context;
     };
 
-    struct PredicateDeepVisitor {
-        explicit PredicateDeepVisitor(const std::function<void(const Expression&)>& fn) : _fn(fn) { }
+    struct PredicateVariableVisitor {
+        explicit PredicateVariableVisitor(std::function<void(const std::shared_ptr<VariableExpression>&)> visitor) : _visitor(std::move(visitor)) { }
 
         void operator() (bool val) const { }
         void operator() (const std::shared_ptr<ExpressionPredicate>& exprPred) const;
@@ -72,7 +76,7 @@ namespace carto { namespace mvt {
         }
 
     private:
-        std::function<void(const Expression&)> _fn;
+        std::function<void(const std::shared_ptr<VariableExpression>&)> _visitor;
     };
 
     struct PredicateDeepEqualsChecker {

@@ -16,9 +16,7 @@ namespace {
         if (!values.empty()) {
             for (std::size_t index : indices) {
                 float value = values[index];
-                for (float value : values) {
-                    maxValue = std::max(maxValue, std::abs(value));
-                }
+                maxValue = std::max(maxValue, std::abs(value));
             }
         }
         if (maxValue == 0.0f) {

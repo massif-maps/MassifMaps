@@ -246,7 +246,6 @@ namespace carto { namespace sgre {
         tessTesselate(tess.get(), TESS_WINDING_ODD, TESS_POLYGONS, 3, 3, 0);
         const TESSreal* coords = tessGetVertices(tess.get());
         const int* elements = tessGetElements(tess.get());
-        int vertexCount = tessGetVertexCount(tess.get());
         int elementCount = tessGetElementCount(tess.get());
 
         // Build nodes and edges for triangles

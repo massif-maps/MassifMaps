@@ -55,7 +55,7 @@ namespace carto { namespace vt {
     public:
         class DefaultVertexTransformer final : public VertexTransformer {
         public:
-            explicit DefaultVertexTransformer(const TileId& tileId, float scale);
+            explicit DefaultVertexTransformer(const TileId& tileId);
             virtual ~DefaultVertexTransformer() = default;
 
             virtual cglib::vec3<float> calculatePoint(const cglib::vec2<float>& pos) const override;
@@ -69,7 +69,6 @@ namespace carto { namespace vt {
 
         private:
             const TileId _tileId;
-            const float _scale;
         };
         
         explicit DefaultTileTransformer(float scale) : _scale(scale) { }
@@ -90,7 +89,7 @@ namespace carto { namespace vt {
     public:
         class SphericalVertexTransformer final : public VertexTransformer {
         public:
-            explicit SphericalVertexTransformer(const TileId& tileId, float scale, const cglib::vec3<double>& origin, float divideThreshold);
+            explicit SphericalVertexTransformer(const TileId& tileId, const cglib::vec3<double>& origin, float divideThreshold);
             virtual ~SphericalVertexTransformer() = default;
 
             virtual cglib::vec3<float> calculatePoint(const cglib::vec2<float>& pos) const override;
@@ -112,7 +111,6 @@ namespace carto { namespace vt {
             void tesselateTriangle(std::size_t i0, std::size_t i1, std::size_t i2, float dist01, float dist02, float dist12, VertexArray<cglib::vec2<float>>& coords, VertexArray<cglib::vec2<float>>& texCoords, VertexArray<std::size_t>& indices) const;
 
             const TileId _tileId;
-            const float _scale;
             const cglib::vec3<double> _origin;
             const float _divideThreshold;
             const cglib::vec2<double> _tileOffset;

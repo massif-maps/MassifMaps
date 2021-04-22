@@ -1,23 +1,21 @@
-cmake_minimum_required(VERSION 3.1)
 project(osrm)
 
-if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
-add_definitions("-D_SCL_SECURE_NO_WARNINGS -D_CRT_SECURE_NO_WARNINGS")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++17")
-endif()
-
-if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
-endif()
-
 set(osrm_SRC_DIR "${PROJECT_SOURCE_DIR}/src/osrm")
-set(osrm_LIBS_DIR "${PROJECT_SOURCE_DIR}/../libs-external")
+set(osrm_LIBS_DIR "${PROJECT_SOURCE_DIR}/../../libs-external")
 
 file(GLOB osrm_SRC_FILES "${osrm_SRC_DIR}/*.cpp" "${osrm_SRC_DIR}/*.h")
 
+set(osrm_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/src" PARENT_SCOPE)
+
 if(SINGLE_LIBRARY)
-add_library(osrm INTERFACE)
-set(osrm_SRC_FILES ${osrm_SRC_FILES} PARENT_SCOPE)
+  set(osrm_SRC_FILES ${osrm_SRC_FILES} PARENT_SCOPE)
+  add_library(osrm INTERFACE)
 else()
-add_library(osrm OBJECT ${osrm_SRC_FILES})
+  include_directories(
+    "${PROJECT_SOURCE_DIR}/src"
+    "${osrm_LIBS_DIR}/utf8/source"
+    "${osrm_LIBS_DIR}/cglib"
+    "${osrm_LIBS_DIR}/stdext"
+  )
+  add_library(osrm OBJECT ${osrm_SRC_FILES})
 endif()

@@ -116,7 +116,7 @@ namespace carto { namespace sgre {
         struct RTreeNode {
             cglib::bbox3<double> bounds = cglib::bbox3<double>::smallest();
             std::vector<EdgeId> edgeIds;
-            std::array<std::shared_ptr<RTreeNode>, 2> subNodes;
+            std::array<std::shared_ptr<const RTreeNode>, 2> subNodes;
         };
         
         std::optional<Point> findNearestEdgePoint(const Edge& edge, const Point& pos, const cglib::vec3<double>& scale) const;

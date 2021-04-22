@@ -204,6 +204,7 @@ namespace carto { namespace vt {
         inline static constexpr float HALO_RADIUS_SCALE = 2.5f; // the scaling factor for halo radius
         inline static constexpr float STROKE_UV_SCALE = 2.857f; // stroked line UV scale factor
         inline static constexpr float POLYGON3D_HEIGHT_SCALE = 10018754.17f; // scaling factor for zoom 0 heights
+        inline static constexpr float ALPHA_HIT_THRESHOLD = 0.05f; // threshold value for 'transparent' pixel alphas
 
         bool isTileVisible(const TileId& tileId) const;
 
@@ -211,7 +212,10 @@ namespace carto { namespace vt {
         cglib::mat3x3<double> calculateTileMatrix2D(const TileId& tileId, float coordScale = 1.0f) const;
         cglib::mat4x4<float> calculateTileMVPMatrix(const TileId& tileId, float coordScale = 1.0f) const;
 
+        bool isEmptyBlendRequired(CompOp compOp) const;
+        void setGLBlendState(CompOp compOp);
         float calculateBlendNodeOpacity(const BlendNode& blendNode, float blend) const;
+        bool testIntersectionOpacity(const std::shared_ptr<const BitmapPattern>& pattern, const cglib::vec2<float>& uvp, const cglib::vec2<float>& uv0, const cglib::vec2<float>& uv1) const;
         
         void updateBlendNode(BlendNode& blendNode, float dBlend) const;
         bool buildRenderNodes(const BlendNode& blendNode, float blend, std::multimap<int, RenderNode>& renderNodeMap) const;

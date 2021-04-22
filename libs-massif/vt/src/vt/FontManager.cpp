@@ -9,21 +9,15 @@
 #include <map>
 #include <unordered_map>
 
-#undef FT2_BUILD_LIBRARY
-#include <ft2build.h>
-#include FT_FREETYPE_H
-#include FT_SFNT_NAMES_H
-#include FT_TRUETYPE_IDS_H
-#include FT_STROKER_H
+#include <freetype/freetype.h>
+#include <freetype/ftsnames.h>
+#include <freetype/ttnameid.h>
+#include <freetype/ftstroke.h>
 
 #include <hb.h>
 #include <hb-ft.h>
 
 #include <msdfgen.h>
-
-extern "C" {
-    hb_unicode_funcs_t* hb_ucdn_get_unicode_funcs(void);
-}
 
 namespace {
     struct FtContext {
@@ -103,7 +97,7 @@ namespace carto { namespace vt {
 
             // Load FreeType font
             if (data) {
-                int error = FT_New_Memory_Face(_library->getLibrary(), data->data(), data->size(), 0, &_face);
+                int error = FT_New_Memory_Face(_library->getLibrary(), data->data(), static_cast<FT_Long>(data->size()), 0, &_face);
                 if (error == 0) {
                     error = FT_Set_Char_Size(_face, 0, static_cast<int>(RENDER_SIZE * 64.0f), 0, 0);
                 }
@@ -120,7 +114,7 @@ namespace carto { namespace vt {
             // Initialize HarfBuzz buffer for glyph shaping
             _buffer = hb_buffer_create();
             if (_buffer) {
-                hb_buffer_set_unicode_funcs(_buffer, hb_ucdn_get_unicode_funcs());
+                hb_buffer_set_unicode_funcs(_buffer, hb_unicode_funcs_get_default());
             }
         }
 
@@ -295,7 +289,7 @@ namespace carto { namespace vt {
 
             FontManagerLibrary library;
             FT_Face face;
-            int error = FT_New_Memory_Face(library.getLibrary(), data.data(), data.size(), 0, &face);
+            int error = FT_New_Memory_Face(library.getLibrary(), data.data(), static_cast<FT_Long>(data.size()), 0, &face);
             if (error != 0) {
                 return std::string();
             }

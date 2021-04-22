@@ -1,23 +1,23 @@
-cmake_minimum_required(VERSION 3.1)
 project(geocoding)
 
-if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
-add_definitions("-D_SCL_SECURE_NO_WARNINGS -D_CRT_SECURE_NO_WARNINGS")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++17")
-endif()
-
-if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
-endif()
-
 set(geocoding_SRC_DIR "${PROJECT_SOURCE_DIR}/src/geocoding")
-set(geocoding_LIBS_DIR "${PROJECT_SOURCE_DIR}/../libs-external")
+set(geocoding_LIBS_DIR "${PROJECT_SOURCE_DIR}/../../libs-external")
 
 file(GLOB geocoding_SRC_FILES "${geocoding_SRC_DIR}/*.cpp" "${geocoding_SRC_DIR}/*.h")
 
+set(geocoding_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/src" PARENT_SCOPE)
+
 if(SINGLE_LIBRARY)
-add_library(geocoding INTERFACE)
-set(geocoding_SRC_FILES ${geocoding_SRC_FILES} PARENT_SCOPE)
+  set(geocoding_SRC_FILES ${geocoding_SRC_FILES} PARENT_SCOPE)
+  add_library(geocoding INTERFACE)
 else()
-add_library(geocoding OBJECT ${geocoding_SRC_FILES})
+  include_directories(
+    "${PROJECT_SOURCE_DIR}/src"
+    "${geocoding_LIBS_DIR}/sqlite"
+    "${geocoding_LIBS_DIR}/sqlite3pp"
+    "${geocoding_LIBS_DIR}/utf8/source"
+    "${geocoding_LIBS_DIR}/cglib"
+    "${geocoding_LIBS_DIR}/stdext"
+  )
+  add_library(geocoding OBJECT ${geocoding_SRC_FILES})
 endif()

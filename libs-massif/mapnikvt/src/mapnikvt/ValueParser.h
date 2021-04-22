@@ -39,8 +39,8 @@ namespace carto { namespace mvt {
                 polygon_kw    = repository::qi::distinct(qi::char_("a-zA-Z0-9_"))[qi::no_case["polygon"]];
 
                 string =
-                      '\'' >> *(unesc_char | "\\x" >> octet_ | (qi::char_ - '\'')) >> '\''
-                    | '\"' >> *(unesc_char | "\\x" >> octet_ | (qi::char_ - '\"')) >> '\"'
+                      ('\'' >> *(unesc_char | "\\x" >> octet_ | (qi::char_ - '\''))) > '\''
+                    | ('\"' >> *(unesc_char | "\\x" >> octet_ | (qi::char_ - '\"'))) > '\"'
                     ;
 
                 value =

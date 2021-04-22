@@ -439,7 +439,6 @@ namespace carto { namespace geocoding {
             std::string tableName = "en" + std::to_string(sqlFilters.size());
             sqlTables.push_back(tableName);
             std::string sqlFilter = tableName + ".name_id IN (" + values + ")";
-            std::uint32_t mask = std::accumulate(nameRanks->begin(), nameRanks->end(), std::uint32_t(0), [](std::uint32_t mask, const NameRank& nameRank) { return mask | 1 << static_cast<int>(nameRank.name->type); });
             sqlFilters.push_back(sqlFilters.empty() ? sqlFilter : tableName + ".entity_id=" + sqlTables.front() + ".entity_id AND " + sqlFilter);
         }
 

@@ -1,8 +1,8 @@
 #include "TileTransformer.h"
 
 namespace carto { namespace vt {
-    DefaultTileTransformer::DefaultVertexTransformer::DefaultVertexTransformer(const TileId& tileId, float scale) :
-        _tileId(tileId), _scale(scale)
+    DefaultTileTransformer::DefaultVertexTransformer::DefaultVertexTransformer(const TileId& tileId) :
+        _tileId(tileId)
     {
     }
 
@@ -74,11 +74,11 @@ namespace carto { namespace vt {
     }
 
     std::shared_ptr<const TileTransformer::VertexTransformer> DefaultTileTransformer::createTileVertexTransformer(const TileId& tileId) const {
-        return std::make_shared<DefaultVertexTransformer>(tileId, _scale);
+        return std::make_shared<DefaultVertexTransformer>(tileId);
     }
 
-    SphericalTileTransformer::SphericalVertexTransformer::SphericalVertexTransformer(const TileId& tileId, float scale, const cglib::vec3<double>& origin, float divideThreshold) :
-        _tileId(tileId), _scale(scale), _origin(origin * (1.0 / _scale)), _divideThreshold(divideThreshold), _tileOffset(tileOffset(tileId)), _tileScale(tileScale(tileId))
+    SphericalTileTransformer::SphericalVertexTransformer::SphericalVertexTransformer(const TileId& tileId, const cglib::vec3<double>& origin, float divideThreshold) :
+        _tileId(tileId), _origin(origin), _divideThreshold(divideThreshold), _tileOffset(tileOffset(tileId)), _tileScale(tileScale(tileId))
     {
     }
 
@@ -306,7 +306,7 @@ namespace carto { namespace vt {
         }
 
         // Find tile-specific rotation axis. This provides consistent look with planar case for higher zoom levels (> 3)
-        SphericalVertexTransformer transformer(tileId, static_cast<float>(_scale), calculateTileOrigin(tileId), _divideThreshold);
+        SphericalVertexTransformer transformer(tileId, calculateTileOrigin(tileId) * (1.0 / _scale), _divideThreshold);
         cglib::vec3<float> zAxis = transformer.calculateNormal(cglib::vec2<float>(0.5f, 0.5f));
         cglib::vec3<float> xAxis = transformer.calculateVector(cglib::vec2<float>(0.5f, 0.5f), cglib::vec2<float>(1.0f, 0.0f));
         cglib::vec3<float> yAxis = transformer.calculateVector(cglib::vec2<float>(0.5f, 0.5f), cglib::vec2<float>(0.0f, 1.0f));
@@ -317,7 +317,7 @@ namespace carto { namespace vt {
     }
 
     std::shared_ptr<const TileTransformer::VertexTransformer> SphericalTileTransformer::createTileVertexTransformer(const TileId& tileId) const {
-        return std::make_shared<SphericalVertexTransformer>(tileId, static_cast<float>(_scale), calculateTileOrigin(tileId), _divideThreshold);
+        return std::make_shared<SphericalVertexTransformer>(tileId, calculateTileOrigin(tileId) * (1.0 / _scale), _divideThreshold);
     }
 
     cglib::vec2<double> SphericalTileTransformer::tileOffset(const TileId& tileId) {

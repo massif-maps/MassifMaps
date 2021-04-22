@@ -11,7 +11,7 @@
 namespace carto { namespace mvt {
     std::set<std::string> Symbolizer::getParameterNames() const {
         std::set<std::string> paramNames;
-        for (const std::pair<std::string, SymbolizerParameter*>& param : _parameterMap) {
+        for (std::pair<std::string, SymbolizerParameter*> param : _parameterMap) {
             paramNames.insert(param.first);
         }
         return paramNames;

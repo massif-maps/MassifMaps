@@ -1,27 +1,31 @@
-cmake_minimum_required(VERSION 3.1)
 project(vt)
 
-if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
-add_definitions("-D_SCL_SECURE_NO_WARNINGS -D_CRT_SECURE_NO_WARNINGS")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++17")
-endif()
-
-if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
-endif()
-
 set(vt_SRC_DIR "${PROJECT_SOURCE_DIR}/src/vt")
-set(vt_LIBS_DIR "${PROJECT_SOURCE_DIR}/../libs-external")
+set(vt_LIBS_DIR "${PROJECT_SOURCE_DIR}/../../libs-external")
 
 file(GLOB vt_SRC_FILES "${vt_SRC_DIR}/*.cpp" "${vt_SRC_DIR}/*.h")
 
 if(EXCLUDE_GL)
-list(FILTER vt_SRC_FILES EXCLUDE REGEX ".*(GLExtensions|GLShaderManager|GLTileRenderer).cpp$")
+  list(FILTER vt_SRC_FILES EXCLUDE REGEX ".*(GLExtensions|GLShaderManager|GLTileRenderer).cpp$")
 endif(EXCLUDE_GL)
 
+set(vt_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/src" PARENT_SCOPE)
+
 if(SINGLE_LIBRARY)
-add_library(vt INTERFACE)
-set(vt_SRC_FILES ${vt_SRC_FILES} PARENT_SCOPE)
+  set(vt_SRC_FILES ${vt_SRC_FILES} PARENT_SCOPE)
+  add_library(vt INTERFACE)
 else()
-add_library(vt OBJECT ${vt_SRC_FILES})
+  include_directories(
+    "${PROJECT_SOURCE_DIR}/src"
+    "${vt_LIBS_DIR}/pbf"
+    "${vt_LIBS_DIR}/utf8/source"
+    "${vt_LIBS_DIR}/tess2/include"
+    "${vt_LIBS_DIR}/freetype/freetype/include"
+    "${vt_LIBS_DIR}/harfbuzz/harfbuzz/src"
+    "${vt_LIBS_DIR}/bidi"
+    "${vt_LIBS_DIR}/msdfgen"
+    "${vt_LIBS_DIR}/cglib"
+    "${vt_LIBS_DIR}/stdext"
+  )
+  add_library(vt OBJECT ${vt_SRC_FILES})
 endif()

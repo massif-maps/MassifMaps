@@ -44,8 +44,8 @@ namespace carto { namespace css {
                 hex_       = *qi::char_("0-9a-fA-F");
 
                 string =
-                      '\'' >> *(unesc_char | "\\x" >> octet_ | (qi::char_ - '\'')) >> '\''
-                    | '\"' >> *(unesc_char | "\\x" >> octet_ | (qi::char_ - '\"')) >> '\"'
+                      ('\'' >> *(unesc_char | "\\x" >> octet_ | (qi::char_ - '\''))) > '\''
+                    | ('\"' >> *(unesc_char | "\\x" >> octet_ | (qi::char_ - '\"'))) > '\"'
                     ;
                 
                 literal =
@@ -53,15 +53,15 @@ namespace carto { namespace css {
                     ;
 
                 uri =
-                      qi::lit("url") >> '(' >> string > ')'
-                    | qi::lit("url") >> '(' >> *(unesc_char | "\\x" >> octet_ | (qi::print - ')')) > ')'
+                      (qi::lit("url") >> '(' >> string) > ')'
+                    | (qi::lit("url") >> '(' >> *(unesc_char | "\\x" >> octet_ | (qi::print - ')'))) > ')'
                     ;
 
                 color =
                       (qi::lit("rgb")  >> '(' >> number > ',' > number > ',' > number > ')') [_val = phoenix::bind(&makeRGBAColor, _1, _2, _3, Value(1.0))]
                     | (qi::lit("rgba") >> '(' >> number > ',' > number > ',' > number > ',' > number > ')') [_val = phoenix::bind(&makeRGBAColor, _1, _2, _3, _4)]
-                    | qi::no_skip[qi::lit('#') > (*qi::char_("0-9A-Fa-f"))]      [_pass = phoenix::bind(&getHEXColor, _val, _1)]
-                    | qi::no_skip[(*qi::char_("a-z"))]                           [_pass = phoenix::bind(&getCSSColor, _val, _1)]
+                    | qi::no_skip[qi::lit('#') > (*qi::char_("0-9A-Fa-f"))]    [_pass = phoenix::bind(&getHEXColor, _val, _1)]
+                    | qi::no_skip[*qi::char_("a-z")]                           [_pass = phoenix::bind(&getCSSColor, _val, _1)]
                     ;
 
                 number =
@@ -148,14 +148,14 @@ namespace carto { namespace css {
                     ;
                 
                 op =
-                     qi::lit("=~")                                  [_val = OpPredicate::Op::MATCH]
-                   | qi::lit("=")                                   [_val = OpPredicate::Op::EQ]
-                   | qi::lit("!=")                                  [_val = OpPredicate::Op::NEQ]
-                   | qi::lit("<=")                                  [_val = OpPredicate::Op::LTE]
-                   | qi::lit("<")                                   [_val = OpPredicate::Op::LT]
-                   | qi::lit(">=")                                  [_val = OpPredicate::Op::GTE]
-                   | qi::lit(">")                                   [_val = OpPredicate::Op::GT]
-                   ;
+                      qi::lit("=~")                                  [_val = OpPredicate::Op::MATCH]
+                    | qi::lit("=")                                   [_val = OpPredicate::Op::EQ]
+                    | qi::lit("!=")                                  [_val = OpPredicate::Op::NEQ]
+                    | qi::lit("<=")                                  [_val = OpPredicate::Op::LTE]
+                    | qi::lit("<")                                   [_val = OpPredicate::Op::LT]
+                    | qi::lit(">=")                                  [_val = OpPredicate::Op::GTE]
+                    | qi::lit(">")                                   [_val = OpPredicate::Op::GT]
+                    ;
 
                 predicate =
                       qi::lit("Map")                                [_val = phoenix::construct<MapPredicate>()]

@@ -340,7 +340,6 @@ namespace carto { namespace vt {
 
             // Check if we the pen has gone 'over' line segment
             if (glyph.advance(0) > 0) {
-                cglib::vec3<float> xAxisBase = xAxis;
                 cglib::vec3<float> yAxisBase = yAxis;
                 cglib::vec3<float> originBase = origin;
                 while (true) {

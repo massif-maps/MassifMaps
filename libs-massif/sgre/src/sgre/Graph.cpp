@@ -384,9 +384,9 @@ namespace carto { namespace sgre {
 
     Graph::NodeId DynamicGraph::getNodeIdRangeEnd() const {
         NodeId nodeIdRangeEnd = _staticGraph->getNodeIdRangeEnd();
-        for (const std::pair<NodeId, Node>& nodePair : _nodes) {
-            if (nodePair.first >= nodeIdRangeEnd) {
-                nodeIdRangeEnd = nodePair.first + 1;
+        for (auto it = _nodes.begin(); it != _nodes.end(); it++) {
+            if (it->first >= nodeIdRangeEnd) {
+                nodeIdRangeEnd = it->first + 1;
             }
         }
         return nodeIdRangeEnd;

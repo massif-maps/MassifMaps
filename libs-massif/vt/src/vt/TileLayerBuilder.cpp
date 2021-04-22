@@ -16,9 +16,7 @@ namespace {
         if (!values.empty()) {
             for (std::size_t index : indices) {
                 float value = values[index];
-                for (float value : values) {
-                    maxValue = std::max(maxValue, std::abs(value));
-                }
+                maxValue = std::max(maxValue, std::abs(value));
             }
         }
         if (maxValue == 0.0f) {
@@ -167,7 +165,6 @@ namespace carto { namespace vt {
 
         do {
             std::size_t i0 = _indices.size();
-            std::size_t i1 = _binormals.size();
             std::vector<Font::Glyph> glyphs = formatter.format(text, 1.0f);
             Font::Metrics metrics = font->getMetrics(1.0f);
             if (style.backgroundImage) {

@@ -331,7 +331,7 @@ namespace carto { namespace vt {
             mediump vec3 wspaceNormal = mat3(tangent, binormal, normal) * tspaceNormal;
             mediump float dot = dot(normal, wspaceNormal);
             mediump float intensity = sqrt(max(0.0, 1.0 - dot * dot));
-            gl_FragColor = applyLighting(color, wspaceNormal, intensity) * uOpacity;
+            gl_FragColor = applyLighting(color, wspaceNormal, normal, intensity) * uOpacity;
         #else
             gl_FragColor = color * uOpacity;
         #endif

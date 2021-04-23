@@ -72,7 +72,8 @@ namespace carto { namespace vt {
 
     bool LabelCuller::process(const std::vector<std::shared_ptr<Label>>& labelList, std::mutex& labelMutex) {
         struct LabelInfo {
-            int priority;
+            float priority;
+            int layerIndex;
             float size;
             float opacity;
             std::shared_ptr<Label> label;
@@ -96,14 +97,17 @@ namespace carto { namespace vt {
             }
                 
             if (label->isValid()) {
-                validLabelList.push_back({ label->getPriority(), label->getStyle()->sizeFunc(_viewState), label->getOpacity(), label });
+                validLabelList.push_back({ label->getPriority(), label->getLayerIndex(), label->getStyle()->sizeFunc(_viewState), label->getOpacity(), label });
             }
         }
 
         // Sort active labels by priority/size/opacity
         std::stable_sort(validLabelList.begin(), validLabelList.end(), [&](const LabelInfo& labelInfo1, const LabelInfo& labelInfo2) {
             if (labelInfo1.priority != labelInfo2.priority) {
-                return labelInfo1.priority < labelInfo2.priority;
+                return labelInfo1.priority > labelInfo2.priority;
+            }
+            if (labelInfo1.layerIndex != labelInfo2.layerIndex) {
+                return labelInfo1.layerIndex < labelInfo2.layerIndex;
             }
             if (labelInfo1.size != labelInfo2.size) {
                 return labelInfo1.size > labelInfo2.size;

@@ -9,7 +9,6 @@
 #include <utility>
 
 #include <boost/algorithm/string.hpp>
-#include <boost/lexical_cast.hpp>
 
 namespace carto { namespace mvt {
     std::string generateColorString(vt::Color color) {
@@ -33,7 +32,7 @@ namespace carto { namespace mvt {
         return boost::trim_copy(str);
     }
 
-    std::string generateTransformListString(const std::vector<std::shared_ptr<const Transform>>& transforms) {
+    std::string generateTransformListString(const std::vector<Transform>& transforms) {
         std::string str;
         std::back_insert_iterator<std::string> it(str);
         transgenimpl::Delimiter delimiter;
@@ -44,7 +43,7 @@ namespace carto { namespace mvt {
         return boost::trim_copy(str);
     }
 
-    std::string generateExpressionString(const std::shared_ptr<const Expression>& expr, bool stringExpr) {
+    std::string generateExpressionString(const Expression& expr, bool stringExpr) {
         std::string str;
         std::back_insert_iterator<std::string> it(str);
         bool result = false;

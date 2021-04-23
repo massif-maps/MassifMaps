@@ -66,7 +66,7 @@ namespace carto { namespace mbvtbuilder {
         std::vector<std::uint32_t> tags;
         if (properties.is<picojson::object>()) {
             tags.reserve(properties.get<picojson::object>().size() * 2);
-            for (const std::pair<std::string, picojson::value>& keyValuePair : properties.get<picojson::object>()) {
+            for (std::pair<std::string, picojson::value> keyValuePair : properties.get<picojson::object>()) {
                 importProperty(keyValuePair.first, keyValuePair.second, tags);
             }
         }
@@ -84,7 +84,7 @@ namespace carto { namespace mbvtbuilder {
             return;
         } else if (value.is<picojson::object>()) {
             const picojson::object& valueObj = value.get<picojson::object>();
-            for (const std::pair<std::string, picojson::value>& keyValuePair : valueObj) {
+            for (std::pair<std::string, picojson::value> keyValuePair : valueObj) {
                 importProperty(key + "." + keyValuePair.first, keyValuePair.second, tags);
             }
             return;

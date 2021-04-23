@@ -10,14 +10,14 @@
 #include "TileId.h"
 #include "VertexArray.h"
 
-#include <cglib/vec.h>
-#include <cglib/mat.h>
-#include <cglib/bbox.h>
-
 #include <cmath>
 #include <memory>
 
 #include <boost/math/constants/constants.hpp>
+
+#include <cglib/vec.h>
+#include <cglib/mat.h>
+#include <cglib/bbox.h>
 
 namespace carto { namespace vt {
     class TileTransformer {
@@ -46,16 +46,16 @@ namespace carto { namespace vt {
         virtual std::shared_ptr<const VertexTransformer> createTileVertexTransformer(const TileId& tileId) const = 0;
 
     protected:
-        static constexpr double PI = boost::math::constants::pi<double>();
-        static constexpr double EARTH_RADIUS = 6378137.0;
-        static constexpr double EARTH_CIRCUMFERENCE = 2.0 * PI * EARTH_RADIUS;
+        inline static constexpr double PI = boost::math::constants::pi<double>();
+        inline static constexpr double EARTH_RADIUS = 6378137.0;
+        inline static constexpr double EARTH_CIRCUMFERENCE = 2.0 * PI * EARTH_RADIUS;
     };
 
     class DefaultTileTransformer final : public TileTransformer {
     public:
         class DefaultVertexTransformer final : public VertexTransformer {
         public:
-            explicit DefaultVertexTransformer(const TileId& tileId, float scale);
+            explicit DefaultVertexTransformer(const TileId& tileId);
             virtual ~DefaultVertexTransformer() = default;
 
             virtual cglib::vec3<float> calculatePoint(const cglib::vec2<float>& pos) const override;
@@ -69,7 +69,6 @@ namespace carto { namespace vt {
 
         private:
             const TileId _tileId;
-            const float _scale;
         };
         
         explicit DefaultTileTransformer(float scale) : _scale(scale) { }
@@ -90,7 +89,7 @@ namespace carto { namespace vt {
     public:
         class SphericalVertexTransformer final : public VertexTransformer {
         public:
-            explicit SphericalVertexTransformer(const TileId& tileId, float scale, const cglib::vec3<double>& origin, float divideThreshold);
+            explicit SphericalVertexTransformer(const TileId& tileId, const cglib::vec3<double>& origin, float divideThreshold);
             virtual ~SphericalVertexTransformer() = default;
 
             virtual cglib::vec3<float> calculatePoint(const cglib::vec2<float>& pos) const override;
@@ -112,7 +111,6 @@ namespace carto { namespace vt {
             void tesselateTriangle(std::size_t i0, std::size_t i1, std::size_t i2, float dist01, float dist02, float dist12, VertexArray<cglib::vec2<float>>& coords, VertexArray<cglib::vec2<float>>& texCoords, VertexArray<std::size_t>& indices) const;
 
             const TileId _tileId;
-            const float _scale;
             const cglib::vec3<double> _origin;
             const float _divideThreshold;
             const cglib::vec2<double> _tileOffset;
@@ -138,8 +136,8 @@ namespace carto { namespace vt {
         static cglib::vec3<double> epsg3857ToSpherical(const cglib::vec2<double>& epsg3857Pos);
         static cglib::vec2<double> sphericalToEPSG3857(const cglib::vec3<double>& p);
 
-        static constexpr int ZOOM_0_GRID_SIZE = 64;
-        static constexpr float DEFAULT_DIVIDE_THRESHOLD = static_cast<float>(EARTH_CIRCUMFERENCE / ZOOM_0_GRID_SIZE);
+        inline static constexpr int ZOOM_0_GRID_SIZE = 64;
+        inline static constexpr float DEFAULT_DIVIDE_THRESHOLD = static_cast<float>(EARTH_CIRCUMFERENCE / ZOOM_0_GRID_SIZE);
 
         const double _scale;
 

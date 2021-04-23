@@ -23,8 +23,8 @@ namespace carto { namespace sgre {
             pos0(i) = pos0Def.at(i).get<double>();
             pos1(i) = pos1Def.at(i).get<double>();
         }
-        Filter filter0 = queryDef.get("filter0").get<picojson::object>();
-        Filter filter1 = queryDef.get("filter1").get<picojson::object>();
+        FeatureFilter filter0 = queryDef.get("filter0").get<picojson::object>();
+        FeatureFilter filter1 = queryDef.get("filter1").get<picojson::object>();
         return Query(pos0, pos1, filter0, filter1);
     }
 } }

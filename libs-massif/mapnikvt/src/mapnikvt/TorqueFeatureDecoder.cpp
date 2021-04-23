@@ -1,8 +1,6 @@
 #include "TorqueFeatureDecoder.h"
 #include "Logger.h"
 
-#include <boost/lexical_cast.hpp>
-
 #include <rapidjson/rapidjson.h>
 #include <rapidjson/document.h>
 
@@ -70,7 +68,7 @@ namespace carto { namespace mvt {
             return 0;
         }
 
-        virtual std::shared_ptr<const FeatureData> getFeatureData() const override {
+        virtual std::shared_ptr<const FeatureData> getFeatureData(const std::set<std::string>* fields) const override {
             const TorqueFeatureDecoder::Element& element = _elements[_index0];
 
             if (std::shared_ptr<const FeatureData> featureData = _featureDataCache.get(element.value)) {
@@ -112,7 +110,7 @@ namespace carto { namespace mvt {
         rapidjson::Document torqueDoc;
         std::string torqueJson(reinterpret_cast<const char*>(data.data()), reinterpret_cast<const char*>(data.data() + data.size()));
         if (torqueDoc.Parse<rapidjson::kParseDefaultFlags>(torqueJson.c_str()).HasParseError()) {
-            std::string msg = "Error while parsing Torque JSON, error at position " + boost::lexical_cast<std::string>(torqueDoc.GetErrorOffset() + 1);
+            std::string msg = "Error while parsing Torque JSON, error at position " + std::to_string(torqueDoc.GetErrorOffset() + 1);
             _logger->write(Logger::Severity::ERROR, msg);
             return;
         }
@@ -180,7 +178,6 @@ namespace carto { namespace mvt {
         if (it == _timeValueMap.end()) {
             return std::shared_ptr<FeatureIterator>();
         }
-
         return std::make_shared<TorqueFeatureIterator>(it->second, _resolution, _transform, _clipBox);
     }
 } }

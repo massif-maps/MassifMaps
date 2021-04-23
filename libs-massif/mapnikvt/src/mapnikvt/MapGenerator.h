@@ -31,9 +31,6 @@ namespace carto { namespace mvt {
 
         const std::shared_ptr<SymbolizerGenerator> _symbolizerGenerator;
         const std::shared_ptr<Logger> _logger;
-
-    private:
-        struct TypeExtractor;
     };
 } }
 

@@ -32,12 +32,14 @@ namespace carto { namespace mvt {
         std::string _source;
     };
 
+    vt::LineCapMode parseLineCapMode(const std::string& str);
+    vt::LineJoinMode parseLineJoinMode(const std::string& str);
     vt::CompOp parseCompOp(const std::string& str);
     vt::LabelOrientation parseLabelOrientation(const std::string& str);
     vt::Color parseColor(const std::string& str);
     Value parseValue(const std::string& str);
-    std::vector<std::shared_ptr<Transform>> parseTransformList(const std::string& str);
-    std::shared_ptr<Expression> parseExpression(const std::string& str, bool stringExpr);
+    std::vector<Transform> parseTransformList(const std::string& str);
+    Expression parseExpression(const std::string& str, bool stringExpr);
 } }
 
 #endif

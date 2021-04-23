@@ -12,11 +12,10 @@
 #include <cstdint>
 #include <memory>
 #include <map>
-
-#include <boost/variant.hpp>
+#include <variant>
 
 namespace carto { namespace geocoding {
-    using Value = boost::variant<boost::blank, bool, long long, double, std::string>;
+    using Value = std::variant<std::monostate, bool, long long, double, std::string>;
 
     class Feature final {
     public:

@@ -7,6 +7,8 @@
 #ifndef _CARTO_MAPNIKVT_SYMBOLIZERGENERATOR_H_
 #define _CARTO_MAPNIKVT_SYMBOLIZERGENERATOR_H_
 
+#include "SymbolizerParameter.h"
+
 #include <memory>
 #include <string>
 
@@ -24,6 +26,8 @@ namespace carto { namespace mvt {
         virtual void generateSymbolizer(const Symbolizer& symbolizer, pugi::xml_node& symbolizerNode) const;
 
     protected:
+        std::string getSymbolizerParameter(const Symbolizer& symbolizer, const SymbolizerParameter& param) const;
+
         const std::shared_ptr<Logger> _logger;
     };
 } }

@@ -11,10 +11,13 @@
 #include <tesselator.h>
 
 namespace {
-    static float calculateScale(const carto::vt::VertexArray<float>& values) {
+    static float calculateScale(const carto::vt::VertexArray<float>& values, const carto::vt::VertexArray<std::size_t>& indices) {
         float maxValue = 0.0f;
-        for (float value : values) {
-            maxValue = std::max(maxValue, std::abs(value));
+        if (!values.empty()) {
+            for (std::size_t index : indices) {
+                float value = values[index];
+                maxValue = std::max(maxValue, std::abs(value));
+            }
         }
         if (maxValue == 0.0f) {
             return 1.0f;
@@ -23,11 +26,14 @@ namespace {
     }
 
     template <typename T>
-    static float calculateScale(const carto::vt::VertexArray<T>& values) {
+    static float calculateScale(const carto::vt::VertexArray<T>& values, const carto::vt::VertexArray<std::size_t>& indices) {
         float maxValue = 0.0f;
-        for (const T& value : values) {
-            for (auto it = value.cbegin(); it != value.cend(); it++) {
-                maxValue = std::max(maxValue, std::abs(static_cast<float>(*it)));
+        if (!values.empty()) {
+            for (std::size_t index : indices) {
+                const T& value = values[index];
+                for (auto it = value.cbegin(); it != value.cend(); it++) {
+                    maxValue = std::max(maxValue, std::abs(static_cast<float>(*it)));
+                }
             }
         }
         if (maxValue == 0.0f) {
@@ -114,13 +120,13 @@ namespace carto { namespace vt {
             return;
         }
 
-        boost::optional<cglib::mat3x3<float>> transform;
+        std::optional<Transform> transform;
         if (style.angle != 0) {
             float angle = -style.angle * boost::math::constants::pi<float>() / 180.0f;
-            transform = cglib::rotate3_matrix(angle);
+            transform = Transform::fromMatrix2(cglib::rotate2_matrix(angle));
         }
 
-        const std::shared_ptr<Font>& font = formatter.getFont();
+        const std::shared_ptr<const Font>& font = formatter.getFont();
 
         if (_builderParameters.type != TileGeometry::Type::POINT || _builderParameters.glyphMap != font->getGlyphMap() || _builderParameters.transform != transform || _builderParameters.compOp != style.compOp || _builderParameters.parameterCount + 2 > TileGeometry::StyleParameters::MAX_PARAMETERS) {
             appendGeometry();
@@ -159,7 +165,6 @@ namespace carto { namespace vt {
 
         do {
             std::size_t i0 = _indices.size();
-            std::size_t i1 = _binormals.size();
             std::vector<Font::Glyph> glyphs = formatter.format(text, 1.0f);
             Font::Metrics metrics = font->getMetrics(1.0f);
             if (style.backgroundImage) {
@@ -322,16 +327,16 @@ namespace carto { namespace vt {
         };
 
         float scale = 1.0f / _tileSize;
-        boost::optional<cglib::mat2x2<float>> transform;
-        boost::optional<cglib::vec2<float>> translate;
+        std::optional<Transform> transform;
         if (style.transform) {
-            cglib::mat3x3<float> flippedTransform = (*style.transform) * cglib::scale3_matrix(cglib::vec3<float>(1, -1, 1));
-            transform = cglib::mat2x2<float> {{ flippedTransform(0, 0), flippedTransform(0, 1)}, { -flippedTransform(1, 0), -flippedTransform(1, 1) }};
-            translate = cglib::vec2<float>(flippedTransform(0, 2), flippedTransform(1, 2)) * (1.0f / _tileSize);
+            cglib::mat3x3<float> flippedTransform = style.transform->matrix3() * cglib::scale3_matrix(cglib::vec3<float>(1, -1, 1));
+            cglib::mat2x2<float> matrix {{ flippedTransform(0, 0), flippedTransform(0, 1)}, { -flippedTransform(1, 0), -flippedTransform(1, 1) }};
+            cglib::vec2<float> translate(flippedTransform(0, 2) / _tileSize, flippedTransform(1, 2) / _tileSize);
+            transform = Transform::fromMatrix2Translate(matrix, translate);
         }
 
-        if (!_labelStyle || _labelStyle->orientation != style.orientation || _labelStyle->colorFunc != style.colorFunc || _labelStyle->sizeFunc != style.sizeFunc || _labelStyle->haloColorFunc != ColorFunction() || _labelStyle->haloRadiusFunc != FloatFunction() || _labelStyle->autoflip != style.autoflip || _labelStyle->scale != scale || _labelStyle->ascent != 0.0f || _labelStyle->descent != 0.0f || _labelStyle->transform != transform || _labelStyle->translate != translate || _labelStyle->glyphMap != glyphMap) {
-            _labelStyle = std::make_shared<TileLabel::Style>(style.orientation, style.colorFunc, style.sizeFunc, ColorFunction(), FloatFunction(), style.autoflip, scale, 0.0f, 0.0f, transform, translate, glyphMap);
+        if (!_labelStyle || _labelStyle->orientation != style.orientation || _labelStyle->colorFunc != style.colorFunc || _labelStyle->sizeFunc != style.sizeFunc || _labelStyle->haloColorFunc != ColorFunction() || _labelStyle->haloRadiusFunc != FloatFunction() || _labelStyle->autoflip != style.autoflip || _labelStyle->scale != scale || _labelStyle->ascent != 0.0f || _labelStyle->descent != 0.0f || _labelStyle->transform != transform || _labelStyle->glyphMap != glyphMap) {
+            _labelStyle = std::make_shared<TileLabel::Style>(style.orientation, style.colorFunc, style.sizeFunc, ColorFunction(), FloatFunction(), style.autoflip, scale, 0.0f, 0.0f, transform, glyphMap);
         }
         
         while (true) {
@@ -341,20 +346,19 @@ namespace carto { namespace vt {
                 break;
             }
 
-            boost::optional<cglib::vec2<float>> labelPosition;
+            std::optional<cglib::vec2<float>> labelPosition;
             std::vector<cglib::vec2<float>> labelVertices;
-            if (auto pos = boost::get<Vertex>(&labelInfo.position)) {
+            if (auto pos = std::get_if<Vertex>(&labelInfo.position)) {
                 labelPosition = *pos;
             }
-            else if (auto vertices = boost::get<Vertices>(&labelInfo.position)) {
+            else if (auto vertices = std::get_if<Vertices>(&labelInfo.position)) {
                 VertexArray<cglib::vec2<float>> tesselatedVertices;
                 _transformer->tesselateLineString(vertices->data(), vertices->size(), tesselatedVertices);
                 labelVertices.assign(tesselatedVertices.begin(), tesselatedVertices.end());
             }
 
-            auto pointLabel = std::make_shared<TileLabel>(_tileId, id, labelInfo.id, labelInfo.groupId, bitmapGlyphs, std::move(labelPosition), std::move(labelVertices), _labelStyle);
-            pointLabel->setMinimumGroupDistance(_tileSize * labelInfo.minimumGroupDistance);
-            pointLabel->setPriority(_layerIdx);
+            TileLabel::PlacementInfo placementInfo(labelInfo.priority, _tileSize * labelInfo.minimumGroupDistance);
+            auto pointLabel = std::make_shared<TileLabel>(_tileId, _layerIdx, id, labelInfo.id, labelInfo.groupId, bitmapGlyphs, std::move(labelPosition), std::move(labelVertices), _labelStyle, placementInfo);
             _labelList.push_back(std::move(pointLabel));
         }
     }
@@ -365,17 +369,16 @@ namespace carto { namespace vt {
         }
         
         float scale = 1.0f / _tileSize;
-        boost::optional<cglib::mat2x2<float>> transform;
-        boost::optional<cglib::vec2<float>> translate;
+        std::optional<Transform> transform;
         if (style.angle != 0) {
             float angle = style.angle * boost::math::constants::pi<float>() / 180.0f;
-            transform = cglib::rotate2_matrix(angle);
+            transform = Transform::fromMatrix2(cglib::rotate2_matrix(angle));
         }
 
-        const std::shared_ptr<Font>& font = formatter.getFont();
+        const std::shared_ptr<const Font>& font = formatter.getFont();
         Font::Metrics metrics = formatter.getFont()->getMetrics(1.0f);
-        if (!_labelStyle || _labelStyle->orientation != style.orientation || _labelStyle->colorFunc != style.colorFunc || _labelStyle->sizeFunc != style.sizeFunc || _labelStyle->haloColorFunc != style.haloColorFunc || _labelStyle->haloRadiusFunc != style.haloRadiusFunc || _labelStyle->autoflip != style.autoflip || _labelStyle->scale != scale || _labelStyle->ascent != metrics.ascent || _labelStyle->descent != metrics.descent || _labelStyle->transform != transform || _labelStyle->translate != translate || _labelStyle->glyphMap != font->getGlyphMap()) {
-            _labelStyle = std::make_shared<TileLabel::Style>(style.orientation, style.colorFunc, style.sizeFunc, style.haloColorFunc, style.haloRadiusFunc, style.autoflip, scale, metrics.ascent, metrics.descent, transform, translate, font->getGlyphMap());
+        if (!_labelStyle || _labelStyle->orientation != style.orientation || _labelStyle->colorFunc != style.colorFunc || _labelStyle->sizeFunc != style.sizeFunc || _labelStyle->haloColorFunc != style.haloColorFunc || _labelStyle->haloRadiusFunc != style.haloRadiusFunc || _labelStyle->autoflip != style.autoflip || _labelStyle->scale != scale || _labelStyle->ascent != metrics.ascent || _labelStyle->descent != metrics.descent || _labelStyle->transform != transform || _labelStyle->glyphMap != font->getGlyphMap()) {
+            _labelStyle = std::make_shared<TileLabel::Style>(style.orientation, style.colorFunc, style.sizeFunc, style.haloColorFunc, style.haloRadiusFunc, style.autoflip, scale, metrics.ascent, metrics.descent, transform, font->getGlyphMap());
         }
 
         while (true) {
@@ -395,9 +398,9 @@ namespace carto { namespace vt {
                     }
                 }
 
-                boost::optional<cglib::vec2<float>> labelPosition;
-                if (auto pos = boost::get<Vertex>(&labelInfo.position)) {
-                    labelPosition = *pos;
+                std::optional<cglib::vec2<float>> labelPosition;
+                if (labelInfo.position) {
+                    labelPosition = *labelInfo.position;
                 }
                 std::vector<cglib::vec2<float>> labelVertices;
                 if (!labelInfo.vertices.empty()) {
@@ -406,15 +409,14 @@ namespace carto { namespace vt {
                     labelVertices.assign(tesselatedVertices.begin(), tesselatedVertices.end());
                 }
 
-                auto textLabel = std::make_shared<TileLabel>(_tileId, id, labelInfo.id, labelInfo.groupId, std::move(glyphs), std::move(labelPosition), std::move(labelVertices), _labelStyle);
-                textLabel->setMinimumGroupDistance(_tileSize * labelInfo.minimumGroupDistance);
-                textLabel->setPriority(_layerIdx);
+                TileLabel::PlacementInfo placementInfo(labelInfo.priority, _tileSize * labelInfo.minimumGroupDistance);
+                auto textLabel = std::make_shared<TileLabel>(_tileId, _layerIdx, id, labelInfo.id, labelInfo.groupId, std::move(glyphs), std::move(labelPosition), std::move(labelVertices), _labelStyle, placementInfo);
                 _labelList.push_back(std::move(textLabel));
             }
         }
     }
 
-    std::shared_ptr<TileLayer> TileLayerBuilder::buildTileLayer(boost::optional<CompOp> compOp, FloatFunction opacityFunc) const {
+    std::shared_ptr<TileLayer> TileLayerBuilder::buildTileLayer(std::optional<CompOp> compOp, FloatFunction opacityFunc) const {
         std::vector<std::shared_ptr<TileGeometry>> geometryList = _geometryList;
         packGeometry(geometryList);
 
@@ -450,9 +452,14 @@ namespace carto { namespace vt {
             styleParameters.colorFuncs[i] = _builderParameters.colorFuncs[i];
             styleParameters.widthFuncs[i] = _builderParameters.widthFuncs[i];
             styleParameters.strokeWidthFuncs[i] = _builderParameters.strokeWidthFuncs[i];
+            const StrokeMap::Stroke* stroke = nullptr;
+            if (_builderParameters.strokeMap && _builderParameters.lineStrokeIds[i] != 0) {
+                stroke = _builderParameters.strokeMap->getStroke(_builderParameters.lineStrokeIds[i]);
+            }
+            styleParameters.strokeScales[i] = (stroke ? stroke->scale : 0);
         }
         if (_builderParameters.transform) {
-            cglib::vec2<float> translate((*_builderParameters.transform)(0, 2), (*_builderParameters.transform)(1, 2));
+            cglib::vec2<float> translate = _builderParameters.transform->translate();
             if (translate != cglib::vec2<float>(0, 0)) {
                 styleParameters.translate = translate * (1.0f / _tileSize);
             }
@@ -489,7 +496,7 @@ namespace carto { namespace vt {
             }
         }
         else {
-            cglib::mat2x2<float> transform = cglib::mat2x2<float> {{ (*_builderParameters.transform)(0, 0), (*_builderParameters.transform)(0, 1) }, { (*_builderParameters.transform)(1, 0), (*_builderParameters.transform)(1, 1) }};
+            cglib::mat2x2<float> transform = _builderParameters.transform->matrix2();
             cglib::mat2x2<float> invTransTransform = cglib::transpose(cglib::inverse(transform));
             for (std::size_t i = 0; i < _coords.size(); i++) {
                 cglib::vec2<float> pos;
@@ -524,7 +531,7 @@ namespace carto { namespace vt {
                 transform = cglib::mat2x2<float> {{ 1.0f / styleParameters.pattern->bitmap->width, 0 }, { 0, 1.0f / styleParameters.pattern->bitmap->height }};
             }
             else if (_builderParameters.type == TileGeometry::Type::POLYGON3D && _builderParameters.transform) {
-                transform = cglib::mat2x2<float> {{ (*_builderParameters.transform)(0, 0), (*_builderParameters.transform)(0, 1) }, { (*_builderParameters.transform)(1, 0), (*_builderParameters.transform)(1, 1) }};
+                transform = _builderParameters.transform->matrix2();
             }
             for (std::size_t i = 0; i < _texCoords.size(); i++) {
                 texCoords.append(cglib::transform(_texCoords[i], transform));
@@ -557,8 +564,64 @@ namespace carto { namespace vt {
             dimensions = 3;
         }
 
-        // Pack geometry
-        packGeometry(_builderParameters.type, dimensions, calculateScale(coords), calculateScale(binormals), calculateScale(texCoords), calculateScale(heights), coords, texCoords, normals, binormals, heights, attribs, _indices, _ids, styleParameters, geometryList);
+        // Split/repack geometry
+        float coordScale = calculateScale(coords, _indices);
+        float binormalScale = calculateScale(binormals, _indices);
+        float texCoordScale = calculateScale(texCoords, _indices);
+        float heightScale = calculateScale(heights, _indices);
+        for (std::size_t offset = 0; offset < _indices.size(); ) {
+            std::size_t count = std::min(std::size_t(65535), _indices.size() - offset);
+
+            std::vector<std::size_t> indexTable(coords.size(), 65536);
+            VertexArray<cglib::vec3<float>> remappedCoords;
+            remappedCoords.reserve(coords.size());
+            VertexArray<cglib::vec4<std::int8_t>> remappedAttribs;
+            remappedAttribs.reserve(attribs.size());
+            VertexArray<cglib::vec2<float>> remappedTexCoords;
+            remappedTexCoords.reserve(texCoords.size());
+            VertexArray<cglib::vec3<float>> remappedNormals;
+            remappedNormals.reserve(normals.size());
+            VertexArray<cglib::vec3<float>> remappedBinormals;
+            remappedBinormals.reserve(binormals.size());
+            VertexArray<float> remappedHeights;
+            remappedHeights.reserve(heights.size());
+            VertexArray<std::size_t> remappedIndices;
+            remappedIndices.reserve(count);
+            VertexArray<long long> remappedIds;
+            remappedIds.reserve(count);
+            for (std::size_t i = 0; i < count; i++) {
+                std::size_t index = _indices[offset + i];
+                std::size_t remappedIndex = indexTable[index];
+                if (remappedIndex == 65536) {
+                    remappedIndex = remappedCoords.size();
+                    indexTable[index] = remappedIndex;
+
+                    remappedCoords.append(coords[index]);
+                    if (!attribs.empty()) {
+                        remappedAttribs.append(attribs[index]);
+                    }
+                    if (!texCoords.empty()) {
+                        remappedTexCoords.append(texCoords[index]);
+                    }
+                    if (!normals.empty()) {
+                        remappedNormals.append(normals[index]);
+                    }
+                    if (!binormals.empty()) {
+                        remappedBinormals.append(binormals[index]);
+                    }
+                    if (!heights.empty()) {
+                        remappedHeights.append(heights[index]);
+                    }
+                }
+
+                remappedIndices.append(remappedIndex);
+                remappedIds.append(_ids[offset + i]);
+            }
+
+            packGeometry(_builderParameters.type, dimensions, coordScale, binormalScale, texCoordScale, heightScale, remappedCoords, remappedTexCoords, remappedNormals, remappedBinormals, remappedHeights, remappedAttribs, remappedIndices, remappedIds, styleParameters, geometryList);
+
+            offset += count;
+        }
     }
 
     void TileLayerBuilder::packGeometry(TileGeometry::Type type, int dimensions, float coordScale, float binormalScale, float texCoordScale, float heightScale, const VertexArray<cglib::vec3<float>>& coords, const VertexArray<cglib::vec2<float>>& texCoords, const VertexArray<cglib::vec3<float>>& normals, const VertexArray<cglib::vec3<float>>& binormals, const VertexArray<float>& heights, const VertexArray<cglib::vec4<std::int8_t>>& attribs, const VertexArray<std::size_t>& indices, const VertexArray<long long>& ids, const TileGeometry::StyleParameters& styleParameters, std::vector<std::shared_ptr<TileGeometry>>& geometryList) const {
@@ -566,56 +629,6 @@ namespace carto { namespace vt {
             return;
         }
         
-        // Check if we have to split indices into multiple sets (if we can not use 16-bit indices)
-        if (coords.size() > 65535) {
-            for (std::size_t offset = 0; offset < indices.size(); ) {
-                std::size_t count = std::min(std::size_t(65535), indices.size() - offset);
-
-                std::vector<std::size_t> indexTable(indices.size(), 65536);
-                VertexArray<cglib::vec3<float>> remappedCoords;
-                VertexArray<cglib::vec2<float>> remappedTexCoords;
-                VertexArray<cglib::vec3<float>> remappedNormals;
-                VertexArray<cglib::vec3<float>> remappedBinormals;
-                VertexArray<float> remappedHeights;
-                VertexArray<cglib::vec4<std::int8_t>> remappedAttribs;
-                VertexArray<std::size_t> remappedIndices;
-                VertexArray<long long> remappedIds;
-                for (std::size_t i = 0; i < count; i++) {
-                    std::size_t index = indices[offset + i];
-                    std::size_t remappedIndex = indexTable[index];
-                    if (remappedIndex == 65536) {
-                        remappedIndex = remappedCoords.size();
-                        indexTable[index] = remappedIndex;
-
-                        remappedCoords.append(coords[index]);
-                        if (!attribs.empty()) {
-                            remappedAttribs.append(attribs[index]);
-                        }
-                        if (!texCoords.empty()) {
-                            remappedTexCoords.append(texCoords[index]);
-                        }
-                        if (!normals.empty()) {
-                            remappedNormals.append(normals[index]);
-                        }
-                        if (!binormals.empty()) {
-                            remappedBinormals.append(binormals[index]);
-                        }
-                        if (!heights.empty()) {
-                            remappedHeights.append(heights[index]);
-                        }
-                    }
-                    
-                    remappedIndices.append(remappedIndex);
-                    remappedIds.append(ids[offset + i]);
-                }
-
-                packGeometry(type, dimensions, coordScale, binormalScale, texCoordScale, heightScale, remappedCoords, remappedTexCoords, remappedNormals, remappedBinormals, remappedHeights, remappedAttribs, remappedIndices, remappedIds, styleParameters, geometryList);
-
-                offset += count;
-            }
-            return;
-        }
-
         // Build geometry layout info
         TileGeometry::VertexGeometryLayoutParameters vertexGeomLayoutParams;
         vertexGeomLayoutParams.dimensions = dimensions;
@@ -946,7 +959,7 @@ namespace carto { namespace vt {
 
         bool cycle = points[0] == points[points.size() - 1];
         bool endpoints = !cycle && style.capMode != LineCapMode::NONE;
-        float minMiterDot = stroke ? 1.0f : MIN_MITER_DOT;
+        float minMiterDot = stroke ? STROKE_MIN_MITER_DOT : MIN_MITER_DOT;
         float linePos = 0;
 
         std::size_t i = 1;
@@ -1004,7 +1017,7 @@ namespace carto { namespace vt {
             _coords.append(p0, p0);
             _texCoords.append(cglib::vec2<float>(u0, v0), cglib::vec2<float>(u0, v1));
             _binormals.append(cycle ? -knotBinormal : -binormal, cycle ? knotBinormal : binormal);
-            _attribs.append(cglib::vec4<std::int8_t>(styleIndex, 0, 1, 1), cglib::vec4<std::int8_t>(styleIndex, 0, -1, 1));
+            _attribs.append(cglib::vec4<std::int8_t>(styleIndex, 0, 1, 0), cglib::vec4<std::int8_t>(styleIndex, 0, -1, 0));
         }
 
         while (++i < points.size()) {
@@ -1018,6 +1031,7 @@ namespace carto { namespace vt {
             linePos += cglib::length(dp);
 
             cglib::vec2<float> prevBinormal = binormal;
+            cglib::vec2<float> prevTangent = tangent;
             tangent = cglib::unit(dp);
             binormal = cglib::vec2<float>(tangent(1), -tangent(0));
 
@@ -1035,20 +1049,35 @@ namespace carto { namespace vt {
                 _coords.append(p0, p0);
                 _texCoords.append(cglib::vec2<float>(u0, v0), cglib::vec2<float>(u0, v1));
                 _binormals.append(-prevBinormal, prevBinormal);
-                _attribs.append(cglib::vec4<std::int8_t>(styleIndex, 0, 1, 1), cglib::vec4<std::int8_t>(styleIndex, 0, -1, 1));
+                _attribs.append(cglib::vec4<std::int8_t>(styleIndex, 0, 1, 0), cglib::vec4<std::int8_t>(styleIndex, 0, -1, 0));
 
                 _coords.append(p0, p0);
                 _texCoords.append(cglib::vec2<float>(u0, v0), cglib::vec2<float>(u0, v1));
                 _binormals.append(-binormal, binormal);
-                _attribs.append(cglib::vec4<std::int8_t>(styleIndex, 0, 1, 1), cglib::vec4<std::int8_t>(styleIndex, 0, -1, 1));
+                _attribs.append(cglib::vec4<std::int8_t>(styleIndex, 0, 1, 0), cglib::vec4<std::int8_t>(styleIndex, 0, -1, 0));
             }
-            else {
-                cglib::vec2<float> lerpedBinormal = cglib::unit(binormal + prevBinormal) * (1 / std::sqrt((1 + dot) / 2));
+            else if (stroke) {
+                cglib::vec2<float> lerpedBinormal = cglib::unit(binormal + prevBinormal);
+                std::int8_t sin = static_cast<std::int8_t>(127.0f * cglib::dot_product(prevTangent, lerpedBinormal));
+                cglib::vec2<float> lerpedScaledBinormal = lerpedBinormal * (1 / std::sqrt((1 + dot) / 2));
 
                 _coords.append(p0, p0);
                 _texCoords.append(cglib::vec2<float>(u0, v0), cglib::vec2<float>(u0, v1));
-                _binormals.append(-lerpedBinormal, lerpedBinormal);
-                _attribs.append(cglib::vec4<std::int8_t>(styleIndex, 0, 1, 1), cglib::vec4<std::int8_t>(styleIndex, 0, -1, 1));
+                _binormals.append(-lerpedScaledBinormal, lerpedScaledBinormal);
+                _attribs.append(cglib::vec4<std::int8_t>(styleIndex, 0, 1, -sin), cglib::vec4<std::int8_t>(styleIndex, 0, -1, sin));
+
+                _coords.append(p0, p0);
+                _texCoords.append(cglib::vec2<float>(u0, v0), cglib::vec2<float>(u0, v1));
+                _binormals.append(-lerpedScaledBinormal, lerpedScaledBinormal);
+                _attribs.append(cglib::vec4<std::int8_t>(styleIndex, 0, 1, sin), cglib::vec4<std::int8_t>(styleIndex, 0, -1, -sin));
+            }
+            else {
+                cglib::vec2<float> lerpedScaledBinormal = cglib::unit(binormal + prevBinormal) * (1 / std::sqrt((1 + dot) / 2));
+
+                _coords.append(p0, p0);
+                _texCoords.append(cglib::vec2<float>(u0, v0), cglib::vec2<float>(u0, v1));
+                _binormals.append(-lerpedScaledBinormal, lerpedScaledBinormal);
+                _attribs.append(cglib::vec4<std::int8_t>(styleIndex, 0, 1, 0), cglib::vec4<std::int8_t>(styleIndex, 0, -1, 0));
             }
         }
             
@@ -1068,7 +1097,7 @@ namespace carto { namespace vt {
             _coords.append(p0, p0);
             _texCoords.append(cglib::vec2<float>(u0, v0), cglib::vec2<float>(u0, v1));
             _binormals.append(cycle ? -knotBinormal : -binormal, cycle ? knotBinormal : binormal);
-            _attribs.append(cglib::vec4<std::int8_t>(styleIndex, 0, 1, 1), cglib::vec4<std::int8_t>(styleIndex, 0, -1, 1));
+            _attribs.append(cglib::vec4<std::int8_t>(styleIndex, 0, 1, 0), cglib::vec4<std::int8_t>(styleIndex, 0, -1, 0));
 
             if (endpoints) {
                 std::size_t i1 = _coords.size();
@@ -1083,7 +1112,7 @@ namespace carto { namespace vt {
             _coords.append(p0, p0);
             _texCoords.append(cglib::vec2<float>(u0, v0), cglib::vec2<float>(u0, v1));
             _binormals.append(tangent - binormal, tangent + binormal);
-            _attribs.append(cglib::vec4<std::int8_t>(styleIndex, 1, 1, 1), cglib::vec4<std::int8_t>(styleIndex, 1, -1, 1));
+            _attribs.append(cglib::vec4<std::int8_t>(styleIndex, 1, 1, 0), cglib::vec4<std::int8_t>(styleIndex, 1, -1, 0));
 
             _indices.append(i0 + 1, i1 + 0, i0 + 0);
             _indices.append(i0 + 1, i1 + 1, i1 + 0);

@@ -10,24 +10,10 @@
 #include "Color.h"
 
 #include <string>
-#include <vector>
-#include <ostream>
-
-#include <boost/lexical_cast.hpp>
-#include <boost/variant.hpp>
+#include <variant>
 
 namespace carto { namespace css {
-    using Value = boost::make_recursive_variant<boost::blank, bool, long long, double, Color, std::string, std::vector<boost::recursive_variant_>>::type;
-
-    inline std::ostream& operator << (std::ostream& os, const std::vector<Value>& values) {
-        for (std::size_t i = 0; i < values.size(); i++) {
-            if (i > 0) {
-                os << ",";
-            }
-            os << values[i];
-        }
-        return os;
-    }
+    using Value = std::variant<std::monostate, bool, long long, double, Color, std::string>;
 } }
 
 #endif

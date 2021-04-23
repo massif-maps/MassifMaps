@@ -24,8 +24,8 @@ namespace carto { namespace mbvtbuilder {
 
     std::vector<MBVTTileBuilder::LayerIndex> MBVTTileBuilder::getLayerIndices() const {
         std::vector<LayerIndex> layerIndices;
-        for (const std::pair<const LayerIndex, Layer> layerPair : _layers) {
-            layerIndices.push_back(layerPair.first);
+        for (auto it = _layers.begin(); it != _layers.end(); it++) {
+            layerIndices.push_back(it->first);
         }
         return layerIndices;
     }
@@ -191,8 +191,8 @@ namespace carto { namespace mbvtbuilder {
 
         std::lock_guard<std::mutex> lock(_mutex);
         const std::map<LayerIndex, Layer>& layers = simplifyAndCacheLayers(zoom);
-        for (const std::pair<const LayerIndex, Layer> layerPair : layers) {
-            const Layer& layer = layerPair.second;
+        for (auto it = layers.begin(); it != layers.end(); it++) {
+            const Layer& layer = it->second;
             if (layer.features.empty()) {
                 continue;
             }
@@ -217,8 +217,8 @@ namespace carto { namespace mbvtbuilder {
             const std::map<LayerIndex, Layer>& layers = simplifyAndCacheLayers(zoom);
 
             Bounds layersBounds = Bounds::smallest(); 
-            for (const std::pair<const LayerIndex, Layer>& layerPair : layers) {
-                const Layer& layer = layerPair.second;
+            for (auto it = layers.begin(); it != layers.end(); it++) {
+                const Layer& layer = it->second;
                 layersBounds.add(layer.bounds.min - cglib::vec2<double>(layer.buffer, layer.buffer));
                 layersBounds.add(layer.bounds.max + cglib::vec2<double>(layer.buffer, layer.buffer));
             }
@@ -234,8 +234,8 @@ namespace carto { namespace mbvtbuilder {
             for (int tileY = static_cast<int>(tileY0); tileY < tileY1; tileY++) {
                 for (int tileX = static_cast<int>(tileX0); tileX < tileX1; tileX++) {
                     protobuf::encoded_message encodedTile;
-                    for (const std::pair<const LayerIndex, Layer>& layerPair : layers) {
-                        const Layer& layer = layerPair.second;
+                    for (auto it = layers.begin(); it != layers.end(); it++) {
+                        const Layer& layer = it->second;
                         if (layer.features.empty()) {
                             continue;
                         }
@@ -264,9 +264,11 @@ namespace carto { namespace mbvtbuilder {
         while (nextZoom > zoom) {
             int currentZoom = (!_fastSimplifyMode ? zoom : nextZoom - 1);
             _cachedZoomLayers[currentZoom] = (!_fastSimplifyMode || nextZoom > _maxZoom ? _layers : _cachedZoomLayers[nextZoom]);
-            for (std::pair<const LayerIndex, Layer>& layerPair : _cachedZoomLayers[currentZoom]) {
+            std::map<LayerIndex, Layer>& layers = _cachedZoomLayers[currentZoom];
+            for (auto it = layers.begin(); it != layers.end(); it++) {
+                Layer& layer = it->second;
                 double tolerance = 2.0 * PI * EARTH_RADIUS / (1 << currentZoom) * TILE_TOLERANCE;
-                simplifyLayer(layerPair.second, tolerance);
+                simplifyLayer(layer, tolerance);
             }
             nextZoom = currentZoom;
         }
@@ -278,7 +280,7 @@ namespace carto { namespace mbvtbuilder {
     }
 
     void MBVTTileBuilder::simplifyLayer(Layer& layer, double tolerance) {
-        struct GeometryVisitor : boost::static_visitor<> {
+        struct GeometryVisitor {
             explicit GeometryVisitor(double tolerance) : _simplifier(tolerance) { }
 
             void operator() (MultiPoint& coords) {
@@ -309,12 +311,12 @@ namespace carto { namespace mbvtbuilder {
 
         for (Feature& feature : layer.features) {
             GeometryVisitor visitor(tolerance);
-            boost::apply_visitor(visitor, feature.geometry);
+            std::visit(visitor, feature.geometry);
         }
     }
 
     bool MBVTTileBuilder::encodeLayer(const Layer& layer, const Point& tileOrigin, double tileSize, const Bounds& tileBounds, MBVTLayerEncoder& layerEncoder) {
-        struct GeometryVisitor : boost::static_visitor<bool> {
+        struct GeometryVisitor {
             explicit GeometryVisitor(const Point& tileOrigin, double tileSize, const Bounds& tileBounds, std::uint64_t id, const picojson::value& properties, MBVTLayerEncoder& layerEncoder) : _tileOrigin(tileOrigin), _tileScale(1.0 / tileSize), _clipper(tileBounds), _id(id), _properties(properties), _layerEncoder(layerEncoder) { }
 
             bool operator() (const MultiPoint& coords) {
@@ -391,7 +393,7 @@ namespace carto { namespace mbvtbuilder {
             }
 
             GeometryVisitor visitor(tileOrigin, tileSize, tileBounds, feature.id, feature.properties, layerEncoder);
-            if (boost::apply_visitor(visitor, feature.geometry)) {
+            if (std::visit(visitor, feature.geometry)) {
                 featuresAdded = true;
             }
         }

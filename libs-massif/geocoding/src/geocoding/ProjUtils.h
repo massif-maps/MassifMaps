@@ -11,11 +11,11 @@
 
 namespace carto { namespace geocoding {
     namespace consts {
-        static constexpr double PI = 3.1415926535897932;
-        static constexpr double DEG_TO_RAD = 0.017453292519943295;
-        static constexpr double RAD_TO_DEG = 57.295779513082323;
-        static constexpr double EARTH_RADIUS = 6378137;
-        static constexpr double METERS_PER_LAT_DEGREE = 110567;
+        inline static constexpr double PI = 3.1415926535897932;
+        inline static constexpr double DEG_TO_RAD = 0.017453292519943295;
+        inline static constexpr double RAD_TO_DEG = 57.295779513082323;
+        inline static constexpr double EARTH_RADIUS = 6378137;
+        inline static constexpr double METERS_PER_LAT_DEGREE = 110567;
     }
 
     cglib::vec2<double> webMercatorToWgs84(const cglib::vec2<double>& mercatorPoint);

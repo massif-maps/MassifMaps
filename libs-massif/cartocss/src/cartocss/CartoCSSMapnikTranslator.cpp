@@ -4,9 +4,7 @@
 #include "CartoCSSParser.h"
 #include "CartoCSSCompiler.h"
 #include "mapnikvt/Expression.h"
-#include "mapnikvt/ExpressionOperator.h"
 #include "mapnikvt/Predicate.h"
-#include "mapnikvt/PredicateOperator.h"
 #include "mapnikvt/Filter.h"
 #include "mapnikvt/Rule.h"
 #include "mapnikvt/Style.h"
@@ -23,59 +21,327 @@
 #include "mapnikvt/GeneratorUtils.h"
 
 namespace carto { namespace css {
-    struct CartoCSSMapnikTranslator::ValueBuilder : boost::static_visitor<mvt::Value> {
-        mvt::Value operator() (boost::blank) const { return mvt::Value(); }
-        mvt::Value operator() (bool val) const { return mvt::Value(val); }
-        mvt::Value operator() (long long val) const { return mvt::Value(val); }
-        mvt::Value operator() (double val) const { return mvt::Value(val); }
-        mvt::Value operator() (const Color& val) const { std::stringstream ss; ss << val; return mvt::Value(ss.str()); }
-        mvt::Value operator() (const std::string& val) const { return mvt::Value(val); }
-        mvt::Value operator() (const std::vector<Value>& val) const { return mvt::Value(boost::lexical_cast<std::string>(val)); }
-    };
+    std::shared_ptr<const mvt::Rule> CartoCSSMapnikTranslator::buildRule(const PropertySet& propertySet, const std::shared_ptr<mvt::Map>& map, int minZoom, int maxZoom) const {
+        std::vector<std::shared_ptr<const Property>> properties = propertySet.getProperties();
+        std::sort(properties.begin(), properties.end(), [](const std::shared_ptr<const Property>& prop1, const std::shared_ptr<const Property>& prop2) {
+            return prop1->getRuleOrder() < prop2->getRuleOrder();
+        });
 
-    std::shared_ptr<mvt::Rule> CartoCSSMapnikTranslator::buildRule(const CartoCSSCompiler::PropertySet& propertySet, const std::shared_ptr<mvt::Map>& map, int minZoom, int maxZoom) const {
-        std::shared_ptr<mvt::Predicate> mapnikFilterPred;
-        for (const std::shared_ptr<const Predicate>& pred : propertySet.filters) {
-            std::shared_ptr<mvt::Predicate> mapnikPred = buildPredicate(pred);
+        std::list<std::pair<std::string, std::vector<std::shared_ptr<const Property>>>> propertyLists;
+        for (auto it = properties.begin(); it != properties.end(); it++) {
+            std::string symbolizerId = getPropertySymbolizerId((*it)->getField());
+            if (symbolizerId.empty()) { // layer-level property? (comp-op, opacity, image-filters)
+                continue;
+            }
+            auto it2 = std::find_if(propertyLists.begin(), propertyLists.end(), [&](const std::pair<std::string, std::vector<std::shared_ptr<const Property>>>& propertyListElement) { return propertyListElement.first == symbolizerId; });
+            if (it2 == propertyLists.end()) {
+                it2 = propertyLists.insert(it2, { symbolizerId, std::vector<std::shared_ptr<const Property>>() });
+            }
+            it2->second.push_back(*it);
+        }
+
+        std::vector<std::shared_ptr<const mvt::Symbolizer>> mapnikSymbolizers;
+        for (const std::pair<std::string, std::vector<std::shared_ptr<const Property>>>& propertyListElement : propertyLists) {
+            std::string symbolizerId = propertyListElement.first;
+            std::string symbolizerType = symbolizerId.substr(symbolizerId.rfind('/') + 1);
+            std::shared_ptr<const mvt::Symbolizer> mapnikSymbolizer = buildSymbolizer(symbolizerType, propertyListElement.second, map);
+            if (mapnikSymbolizer) {
+                mapnikSymbolizers.push_back(mapnikSymbolizer);
+            }
+        }
+
+        std::shared_ptr<const mvt::Filter> mapnikFilter = buildFilter(propertySet.getFilters());
+
+        return std::make_shared<mvt::Rule>("auto", minZoom, maxZoom, std::move(mapnikFilter), std::move(mapnikSymbolizers));
+    }
+
+    std::shared_ptr<const mvt::Filter> CartoCSSMapnikTranslator::buildFilter(const std::vector<std::shared_ptr<const Predicate>>& filters) const {
+        FilterKey key;
+        key.filters = filters;
+
+        std::lock_guard<std::mutex> lock(_cacheMutex);
+        auto it = _filterCache.find(key);
+        if (it != _filterCache.end()) {
+            return it->second;
+        }
+        std::optional<mvt::Predicate> mapnikFilterPred;
+        for (const std::shared_ptr<const Predicate>& pred : filters) {
+            std::optional<mvt::Predicate> mapnikPred = buildPredicate(*pred);
             if (mapnikPred) {
                 if (mapnikFilterPred) {
-                    mapnikFilterPred = std::make_shared<mvt::AndPredicate>(mapnikFilterPred, mapnikPred);
+                    mapnikFilterPred = std::make_shared<mvt::AndPredicate>(*mapnikFilterPred, *mapnikPred);
                 }
                 else {
                     mapnikFilterPred = mapnikPred;
                 }
             }
         }
-        auto mapnikFilter = std::make_shared<mvt::Filter>(mvt::Filter::Type::FILTER, mapnikFilterPred);
-        std::list<std::pair<std::string, std::list<CartoCSSCompiler::Property>>> propertyLists;
-        std::vector<std::pair<std::string, CartoCSSCompiler::Property>> properties(propertySet.properties.begin(), propertySet.properties.end());
-        std::sort(properties.begin(), properties.end(), [](const std::pair<std::string, CartoCSSCompiler::Property>& prop1, const std::pair<std::string, CartoCSSCompiler::Property>& prop2) {
-            return std::get<3>(prop1.second.specificity) < std::get<3>(prop2.second.specificity);
-        });
-        for (auto it = properties.begin(); it != properties.end(); it++) {
-            std::string symbolizerId = getPropertySymbolizerId(it->first);
-            if (symbolizerId.empty()) { // layer-level property? (comp-op, opacity)
-                continue;
-            }
-            auto it2 = std::find_if(propertyLists.begin(), propertyLists.end(), [&](const std::pair<std::string, std::list<CartoCSSCompiler::Property>>& propertyListElement) { return propertyListElement.first == symbolizerId; });
-            if (it2 == propertyLists.end()) {
-                it2 = propertyLists.insert(it2, { symbolizerId, std::list<CartoCSSCompiler::Property>() });
-            }
-            it2->second.push_back(it->second);
-        }
-        std::vector<std::shared_ptr<mvt::Symbolizer>> mapnikSymbolizers;
-        for (const std::pair<std::string, std::list<CartoCSSCompiler::Property>>& propertyListElement : propertyLists) {
-            std::string symbolizerId = propertyListElement.first;
-            std::string symbolizerType = symbolizerId.substr(symbolizerId.rfind('/') + 1);
-            std::shared_ptr<mvt::Symbolizer> mapnikSymbolizer = buildSymbolizer(symbolizerType, propertyListElement.second, map);
-            if (mapnikSymbolizer) {
-                mapnikSymbolizers.push_back(mapnikSymbolizer);
-            }
-        }
-        return std::make_shared<mvt::Rule>("auto", minZoom, maxZoom, mapnikFilter, mapnikSymbolizers);
+        std::shared_ptr<const mvt::Filter> filter = std::make_shared<mvt::Filter>(mvt::Filter::Type::FILTER, mapnikFilterPred);
+        _filterCache[key] = filter;
+        return filter;
     }
 
-    std::shared_ptr<mvt::Symbolizer> CartoCSSMapnikTranslator::buildSymbolizer(const std::string& symbolizerType, const std::list<CartoCSSCompiler::Property>& properties, const std::shared_ptr<mvt::Map>& map) const {
+    std::shared_ptr<const mvt::Symbolizer> CartoCSSMapnikTranslator::buildSymbolizer(const std::string& symbolizerType, const std::vector<std::shared_ptr<const Property>>& properties, const std::shared_ptr<mvt::Map>& map) const {
+        SymbolizerKey key;
+        key.symbolizerType = symbolizerType;
+        key.map = map;
+        key.properties.assign(properties.begin(), properties.end());
+        std::sort(key.properties.begin(), key.properties.end(), [](const std::shared_ptr<const Property>& prop1, const std::shared_ptr<const Property>& prop2) {
+            return prop1->getField() < prop2->getField();
+        });
+
+        std::lock_guard<std::mutex> lock(_cacheMutex);
+        auto it = _symbolizerCache.find(key);
+        if (it != _symbolizerCache.end()) {
+            return it->second;
+        }
+        std::shared_ptr<const mvt::Symbolizer> symbolizer = createSymbolizer(symbolizerType, properties, map);
+        _symbolizerCache[key] = symbolizer;
+        return symbolizer;
+    }
+
+    mvt::Expression CartoCSSMapnikTranslator::buildExpression(const Expression& expr) {
+        struct ExpressionBuilder {
+            mvt::Expression operator() (const Value& val) const { return buildValue(val); }
+            mvt::Expression operator() (const FieldOrVar& fieldOrVar) const {
+                if (!fieldOrVar.isField()) {
+                    throw TranslatorException("FieldOrVar: expecting field, not variable (@" + fieldOrVar.getName() + ")");
+                }
+                return mvt::parseExpression("[" + fieldOrVar.getName() + "]", true);
+            }
+
+            mvt::Expression operator() (const std::shared_ptr<ListExpression>& listExpr) const {
+                std::string str;
+                for (const Expression& subExpr : listExpr->getExpressions()) {
+                    if (auto val = std::get_if<Value>(&subExpr)) {
+                        str += (str.empty() ? "" : ",") + mvt::ValueConverter<std::string>::convert(buildValue(*val));
+                    }
+                    else {
+                        throw TranslatorException("List expressions may only contain constant values");
+                    }
+                }
+                return mvt::Value(std::move(str));
+            }
+
+            mvt::Expression operator() (const std::shared_ptr<UnaryExpression>& unaryExpr) const {
+                mvt::Expression subExpr = std::visit(*this, unaryExpr->getExpression());
+
+                if (unaryExpr->getOp() == UnaryExpression::Op::NOT) {
+                    return std::make_shared<mvt::NotPredicate>(std::make_shared<mvt::ExpressionPredicate>(std::move(subExpr)));
+                }
+                
+                auto it = std::find_if(_unaryOpTable.begin(), _unaryOpTable.end(), [unaryExpr](const std::pair<UnaryExpression::Op, mvt::UnaryExpression::Op>& item) { return item.first == unaryExpr->getOp(); });
+                if (it != _unaryOpTable.end()) {
+                    return std::make_shared<mvt::UnaryExpression>(it->second, std::move(subExpr));
+                }
+                throw TranslatorException("Unsupported unary operator type");
+            }
+
+            mvt::Expression operator() (const std::shared_ptr<BinaryExpression>& binaryExpr) const {
+                mvt::Expression subExpr1 = std::visit(*this, binaryExpr->getExpression1());
+                mvt::Expression subExpr2 = std::visit(*this, binaryExpr->getExpression2());
+
+                if (binaryExpr->getOp() == BinaryExpression::Op::AND) {
+                    return std::make_shared<mvt::AndPredicate>(std::make_shared<mvt::ExpressionPredicate>(std::move(subExpr1)), std::make_shared<mvt::ExpressionPredicate>(std::move(subExpr2)));
+                }
+                else if (binaryExpr->getOp() == BinaryExpression::Op::OR) {
+                    return std::make_shared<mvt::OrPredicate>(std::make_shared<mvt::ExpressionPredicate>(std::move(subExpr1)), std::make_shared<mvt::ExpressionPredicate>(std::move(subExpr2)));
+                }
+
+                auto it1 = std::find_if(_comparisonOpTable.begin(), _comparisonOpTable.end(), [binaryExpr](const std::pair<BinaryExpression::Op, mvt::ComparisonPredicate::Op>& item) { return item.first == binaryExpr->getOp(); });
+                if (it1 != _comparisonOpTable.end()) {
+                    return std::make_shared<mvt::ComparisonPredicate>(it1->second, std::move(subExpr1), std::move(subExpr2));
+                }
+
+                auto it2 = std::find_if(_binaryOpTable.begin(), _binaryOpTable.end(), [binaryExpr](const std::pair<BinaryExpression::Op, mvt::BinaryExpression::Op>& item) { return item.first == binaryExpr->getOp(); });
+                if (it2 != _binaryOpTable.end()) {
+                    return std::make_shared<mvt::BinaryExpression>(it2->second, std::move(subExpr1), std::move(subExpr2));
+                }
+                throw TranslatorException("Unsupported binary operator type");
+            }
+
+            mvt::Expression operator() (const std::shared_ptr<ConditionalExpression>& condExpr) const {
+                mvt::Expression cond = std::visit(*this, condExpr->getCondition());
+                mvt::Expression subExpr1 = std::visit(*this, condExpr->getExpression1());
+                mvt::Expression subExpr2 = std::visit(*this, condExpr->getExpression2());
+                return std::make_shared<mvt::TertiaryExpression>(mvt::TertiaryExpression::Op::CONDITIONAL, std::move(cond), std::move(subExpr1), std::move(subExpr2));
+            }
+
+            mvt::Expression operator() (const std::shared_ptr<FunctionExpression>& funcExpr) const {
+                return buildFunctionExpression(*funcExpr);
+            }
+        };
+
+        return std::visit(ExpressionBuilder(), expr);
+    }
+
+    mvt::Expression CartoCSSMapnikTranslator::buildFunctionExpression(const FunctionExpression& funcExpr) {
+        if (_basicFuncs.find(funcExpr.getFunc()) != _basicFuncs.end()) {
+            // Basic functions. Fixed arity.
+            struct FunctionBuilder {
+                explicit FunctionBuilder(const std::vector<mvt::Expression>& exprs) : _exprs(exprs) { }
+                
+                mvt::Expression operator() (const mvt::UnaryExpression::Op op) const {
+                    if (_exprs.size() != 1) {
+                        throw TranslatorException("Wrong number of arguments for unary function");
+                    }
+                    return std::make_shared<mvt::UnaryExpression>(op, _exprs[0]);
+                }
+
+                mvt::Expression operator() (const mvt::BinaryExpression::Op op) const {
+                    if (_exprs.size() != 2) {
+                        throw TranslatorException("Wrong number of arguments for binary function");
+                    }
+                    return std::make_shared<mvt::BinaryExpression>(op, _exprs[0], _exprs[1]);
+                }
+
+                mvt::Expression operator() (const mvt::TertiaryExpression::Op op) const {
+                    if (_exprs.size() != 3) {
+                        throw TranslatorException("Wrong number of arguments for tertiary function");
+                    }
+                    return std::make_shared<mvt::TertiaryExpression>(op, _exprs[0], _exprs[1], _exprs[2]);
+                }
+
+            private:
+                const std::vector<mvt::Expression>& _exprs;
+            };
+
+            std::vector<mvt::Expression> subExprs;
+            subExprs.reserve(funcExpr.getArgs().size());
+            for (const Expression& arg : funcExpr.getArgs()) {
+                subExprs.push_back(buildExpression(arg));
+            }
+            auto it = _basicFuncs.find(funcExpr.getFunc());
+            return std::visit(FunctionBuilder(subExprs), it->second);
+        }
+        else if (_interpolationFuncs.find(funcExpr.getFunc()) != _interpolationFuncs.end()) {
+            // Interpolation function. Variable arity, special case.
+            if (funcExpr.getArgs().size() < 2) {
+                throw TranslatorException("Expecting at least two arguments for interpolation function");
+            }
+
+            std::vector<mvt::Value> keyFrames;
+            keyFrames.reserve((funcExpr.getArgs().size() - 1) * 2);
+            for (std::size_t i = 1; i < funcExpr.getArgs().size(); i++) {
+                auto listExpr = std::get_if<std::shared_ptr<ListExpression>>(&funcExpr.getArgs()[i]);
+                if (!listExpr) {
+                    throw TranslatorException("Expecting interpolation list");
+                }
+                if ((*listExpr)->getExpressions().size() != 2) {
+                    throw TranslatorException("Expecting interpolation elements of size 2");
+                }
+                auto keyVal = std::get_if<Value>(&(*listExpr)->getExpressions()[0]);
+                if (!keyVal) {
+                    throw TranslatorException("Expecting constant key");
+                }
+                auto valueVal = std::get_if<Value>(&(*listExpr)->getExpressions()[1]);
+                if (!valueVal) {
+                    throw TranslatorException("Expecting constant value");
+                }
+                keyFrames.push_back(buildValue(*keyVal));
+                keyFrames.push_back(buildValue(*valueVal));
+            }
+
+            mvt::Expression timeExpr = buildExpression(funcExpr.getArgs()[0]);
+            auto it = _interpolationFuncs.find(funcExpr.getFunc());
+            return std::make_shared<mvt::InterpolateExpression>(it->second, std::move(timeExpr), std::move(keyFrames));
+        }
+        else {
+            // Assume pseudo-function (like 'translate(1,2)')
+            std::string exprStr = funcExpr.getFunc();
+            exprStr += "(";
+            for (std::size_t i = 0; i < funcExpr.getArgs().size(); i++) {
+                if (i > 0) {
+                    exprStr += ",";
+                }
+
+                if (auto val = std::get_if<Value>(&funcExpr.getArgs()[i])) {
+                    exprStr += mvt::generateValueString(buildValue(*val));
+                }
+                else {
+                    throw TranslatorException("Expecting constant arguments for function " + funcExpr.getFunc());
+                }
+            }
+            exprStr += ")";
+            return mvt::Value(exprStr);
+        }
+    }
+
+    std::optional<mvt::Predicate> CartoCSSMapnikTranslator::buildPredicate(const Predicate& pred) {
+        struct PredicateBuilder {
+            std::optional<mvt::Predicate> operator() (const MapPredicate& mapPred) const { return std::optional<mvt::Predicate>(); }
+            std::optional<mvt::Predicate> operator() (const LayerPredicate& layerPred) const { return std::optional<mvt::Predicate>(); }
+            std::optional<mvt::Predicate> operator() (const AttachmentPredicate& attachmentPred) const { return std::optional<mvt::Predicate>(); }
+
+            std::optional<mvt::Predicate> operator() (const ClassPredicate& classPred) const {
+                mvt::Value val = buildValue(classPred.getClass());
+                return std::make_shared<mvt::ComparisonPredicate>(buildComparisonOp(OpPredicate::Op::EQ), std::make_shared<mvt::VariableExpression>(std::string("class")), val);
+            }
+
+            std::optional<mvt::Predicate> operator() (const OpPredicate& opPred) const {
+                if (!opPred.getFieldOrVar().isField()) {
+                    throw TranslatorException("OpPredicate: expecting field, not variable (@" + opPred.getFieldOrVar().getName() + ")");
+                }
+                std::string var = opPred.getFieldOrVar().getName();
+                mvt::Value val = buildValue(opPred.getRefValue());
+                return std::make_shared<mvt::ComparisonPredicate>(buildComparisonOp(opPred.getOp()), std::make_shared<mvt::VariableExpression>(var), val);
+            }
+        };
+
+        return std::visit(PredicateBuilder(), pred);
+    }
+
+    mvt::ComparisonPredicate::Op CartoCSSMapnikTranslator::buildComparisonOp(OpPredicate::Op op) {
+        auto it = std::find_if(_predicateOpTable.begin(), _predicateOpTable.end(), [op](const std::pair<OpPredicate::Op, mvt::ComparisonPredicate::Op>& item) { return item.first == op; });
+        if (it == _predicateOpTable.end()) {
+            throw TranslatorException("Unsupported predicate operator");
+        }
+        return it->second;
+    }
+
+    mvt::Value CartoCSSMapnikTranslator::buildValue(const Value& val) {
+        struct ValueBuilder {
+            mvt::Value operator() (std::monostate) const { return mvt::Value(); }
+            mvt::Value operator() (bool val) const { return mvt::Value(val); }
+            mvt::Value operator() (long long val) const { return mvt::Value(val); }
+            mvt::Value operator() (double val) const { return mvt::Value(val); }
+            mvt::Value operator() (const Color& val) const { std::stringstream ss; ss << val; return mvt::Value(ss.str()); }
+            mvt::Value operator() (const std::string& val) const { return mvt::Value(val); }
+        };
+
+        return std::visit(ValueBuilder(), val);
+    }
+
+    std::string CartoCSSMapnikTranslator::getPropertySymbolizerId(const std::string& propertyName) const {
+        std::string::size_type symbolizerTypePos = propertyName.rfind('/') + 1;
+        for (const std::string& symbolizerType : _symbolizerList) {
+            if (propertyName.substr(symbolizerTypePos, symbolizerType.size()) == symbolizerType) {
+                return propertyName.substr(0, symbolizerTypePos + symbolizerType.size());
+            }
+        }
+        return std::string();
+    }
+
+    std::shared_ptr<const mvt::Symbolizer> CartoCSSMapnikTranslator::createSymbolizer(const std::string& symbolizerType, const std::vector<std::shared_ptr<const Property>>& properties, const std::shared_ptr<mvt::Map>& map) const {
+        struct TextExpressionBuilder {
+            mvt::Expression operator() (const Value& val) const {
+                std::string str = mvt::ValueConverter<std::string>::convert(buildValue(val));
+                return str.empty() ? mvt::Expression(mvt::Value(std::string())) : mvt::parseExpression(str, true);
+            }
+            mvt::Expression operator() (const FieldOrVar& fieldOrVar) const { return buildExpression(Expression(fieldOrVar)); }
+            mvt::Expression operator() (const std::shared_ptr<ListExpression>& listExpr) const { return buildExpression(Expression(listExpr)); }
+            mvt::Expression operator() (const std::shared_ptr<UnaryExpression>& unaryExpr) const { return buildExpression(Expression(unaryExpr)); }
+            mvt::Expression operator() (const std::shared_ptr<BinaryExpression>& binaryExpr) const { return buildExpression(Expression(binaryExpr)); }
+            mvt::Expression operator() (const std::shared_ptr<ConditionalExpression>& condExpr) const {
+                mvt::Expression cond = buildExpression(condExpr->getCondition());
+                mvt::Expression subExpr1 = std::visit(*this, condExpr->getExpression1());
+                mvt::Expression subExpr2 = std::visit(*this, condExpr->getExpression2());
+                return std::make_shared<mvt::TertiaryExpression>(mvt::TertiaryExpression::Op::CONDITIONAL, std::move(cond), std::move(subExpr1), std::move(subExpr2));
+            }
+            
+            mvt::Expression operator() (const std::shared_ptr<FunctionExpression>& funcExpr) const { return buildExpression(Expression(funcExpr)); }
+        };
+        
         std::shared_ptr<mvt::Symbolizer> mapnikSymbolizer;
         if (symbolizerType == "point") {
             mapnikSymbolizer = std::make_shared<mvt::PointSymbolizer>(_logger);
@@ -96,56 +362,57 @@ namespace carto { namespace css {
             mapnikSymbolizer = std::make_shared<mvt::MarkersSymbolizer>(_logger);
         }
         else if (symbolizerType == "text" || symbolizerType == "shield") {
-            std::string text;
+            mvt::Expression textExpr = mvt::Value(std::string());
             std::pair<std::string, std::string> fontSetFaceName;
-            for (const CartoCSSCompiler::Property& prop : properties) {
-                if (prop.field == symbolizerType + "-name") {
-                    try {
-                        if (auto constExpr = std::dynamic_pointer_cast<const ConstExpression>(prop.expression)) {
-                            text = boost::lexical_cast<std::string>(constExpr->getValue());
-                        }
-                        else {
-                            text = buildExpressionString(prop.expression, true);
-                        }
-                    }
-                    catch (const std::runtime_error& ex) {
-                        _logger->write(mvt::Logger::Severity::ERROR, "Error while parsing text expression in " + symbolizerType + " symbolizer: " + ex.what());
-                        return std::shared_ptr<mvt::Symbolizer>();
-                    }
+            for (const std::shared_ptr<const Property>& prop : properties) {
+                if (prop->getField() == symbolizerType + "-name") {
+                    textExpr = std::visit(TextExpressionBuilder(), prop->getExpression());
                 }
-                else if (prop.field == symbolizerType + "-face-name") {
-                    if (auto constExpr = std::dynamic_pointer_cast<const ConstExpression>(prop.expression)) {
-                        Value value = constExpr->getValue();
-                        if (auto faceNameValues = boost::get<std::vector<Value>>(&value)) {
-                            std::string fontSetName = boost::lexical_cast<std::string>(value);
-                            if (!map->getFontSet(fontSetName)) {
-                                std::vector<std::string> faceNames;
-                                for (const Value& faceName : *faceNameValues) {
-                                    faceNames.push_back(boost::lexical_cast<std::string>(faceName));
-                                }
-                                auto fontSet = std::make_shared<mvt::FontSet>(fontSetName, faceNames);
-                                map->addFontSet(fontSet);
+                else if (prop->getField() == symbolizerType + "-face-name") {
+                    if (auto val = std::get_if<Value>(&prop->getExpression())) {
+                        std::string faceName = std::get<std::string>(*val);
+                        fontSetFaceName = std::pair<std::string, std::string>("face-name", faceName);
+                    }
+                    else if (auto listExpr = std::get_if<std::shared_ptr<ListExpression>>(&prop->getExpression())) {
+                        std::string fontSetName;
+                        std::vector<std::string> faceNames;
+                        for (const Expression& faceNameExpr : (*listExpr)->getExpressions()) {
+                            if (auto val = std::get_if<Value>(&faceNameExpr)) {
+                                std::string faceName = std::get<std::string>(*val);
+                                fontSetName += (fontSetName.empty() ? "" : ",") + faceName;
+                                faceNames.push_back(faceName);
                             }
-                            fontSetFaceName = std::pair<std::string, std::string>("fontset-name", boost::lexical_cast<std::string>(value));
+                            else {
+                                _logger->write(mvt::Logger::Severity::WARNING, "Expecting constant value for face name property");
+                            }
                         }
-                        else {
-                            fontSetFaceName = std::pair<std::string, std::string>("face-name", boost::lexical_cast<std::string>(value));
+                        if (!map->getFontSet(fontSetName)) {
+                            auto fontSet = std::make_shared<mvt::FontSet>(fontSetName, faceNames);
+                            map->addFontSet(fontSet);
                         }
+                        fontSetFaceName = std::pair<std::string, std::string>("fontset-name", fontSetName);
                     }
                     else {
-                        _logger->write(mvt::Logger::Severity::WARNING, "Expecting constant value for face name property");
+                        _logger->write(mvt::Logger::Severity::WARNING, "Expecting constant value or list for face name property");
                     }
                 }
             }
-            if (!text.empty()) {
+            if (textExpr != mvt::Expression(mvt::Value(std::string()))) {
                 if (symbolizerType == "text") {
-                    mapnikSymbolizer = std::make_shared<mvt::TextSymbolizer>(text, map->getFontSets(), _logger);
+                    mapnikSymbolizer = std::make_shared<mvt::TextSymbolizer>(textExpr, map->getFontSets(), _logger);
                 }
                 else if (symbolizerType == "shield") {
-                    mapnikSymbolizer = std::make_shared<mvt::ShieldSymbolizer>(text, map->getFontSets(), _logger);
+                    mapnikSymbolizer = std::make_shared<mvt::ShieldSymbolizer>(textExpr, map->getFontSets(), _logger);
                 }
                 if (mapnikSymbolizer && !fontSetFaceName.first.empty()) {
-                    mapnikSymbolizer->setParameter(fontSetFaceName.first, fontSetFaceName.second);
+                    try {
+                        if (auto param = mapnikSymbolizer->getParameter(fontSetFaceName.first)) {
+                            param->setExpression(mvt::Value(fontSetFaceName.second));
+                        }
+                    }
+                    catch (const std::exception& ex) {
+                        _logger->write(mvt::Logger::Severity::ERROR, "Error while setting " + fontSetFaceName.first + " parameter: " + ex.what());
+                    }
                 }
             }
             else {
@@ -161,17 +428,25 @@ namespace carto { namespace css {
             return std::shared_ptr<mvt::Symbolizer>();
         }
 
-        for (const CartoCSSCompiler::Property& prop : properties) {
-            std::string propertyId = prop.field.substr(prop.field.rfind('/') + 1);
+        for (const std::shared_ptr<const Property>& prop : properties) {
+            std::string propertyId = prop->getField().substr(prop->getField().rfind('/') + 1);
             auto it = _symbolizerPropertyMap.find(propertyId);
             if (it == _symbolizerPropertyMap.end()) {
                 _logger->write(mvt::Logger::Severity::WARNING, "Unsupported symbolizer property: " + propertyId);
                 continue;
             }
-            try {
-                setSymbolizerParameter(mapnikSymbolizer, it->second, prop.expression, isStringExpression(propertyId));
+            if (it->second.empty()) {
+                // Pseudo-parameter, already handled
+                continue;
             }
-            catch (const std::runtime_error& ex) {
+
+            try {
+                mvt::Expression mapnikExpression = buildExpression(prop->getExpression());
+                if (auto param = mapnikSymbolizer->getParameter(it->second)) {
+                    param->setExpression(mapnikExpression);
+                }
+            }
+            catch (const std::exception& ex) {
                 _logger->write(mvt::Logger::Severity::ERROR, "Error while setting " + propertyId + " parameter: " + ex.what());
             }
         }
@@ -179,328 +454,53 @@ namespace carto { namespace css {
         return mapnikSymbolizer;
     }
 
-    std::string CartoCSSMapnikTranslator::buildValueString(const Value& value, bool stringExpr) const {
-        if (stringExpr) {
-            return boost::lexical_cast<std::string>(buildValue(value));
-        }
-        return mvt::generateValueString(buildValue(value));
-    }
-
-    std::string CartoCSSMapnikTranslator::buildExpressionString(const std::shared_ptr<const Expression>& expr, bool stringExpr) const {
-        if (auto constExpr = std::dynamic_pointer_cast<const ConstExpression>(expr)) {
-            return buildValueString(constExpr->getValue(), stringExpr);
-        }
-        else if (auto fieldVarExpr = std::dynamic_pointer_cast<const FieldOrVarExpression>(expr)) {
-            if (!fieldVarExpr->isField()) {
-                throw TranslatorException("FieldOrVarExpression: expecting field, not variable (@" + fieldVarExpr->getFieldOrVar() + ")");
-            }
-            return "[" + fieldVarExpr->getFieldOrVar() + "]";
-        }
-        else if (auto listExpr = std::dynamic_pointer_cast<const ListExpression>(expr)) {
-            std::string exprStr;
-            for (const std::shared_ptr<const Expression>& subExpr : listExpr->getExpressions()) {
-                if (!exprStr.empty()) {
-                    exprStr += ",";
-                }
-                exprStr += (stringExpr ? "{" : "") + buildExpressionString(subExpr, false) + (stringExpr ? "}" : "");
-            }
-            return exprStr;
-        }
-        else if (auto unaryExpr = std::dynamic_pointer_cast<const UnaryExpression>(expr)) {
-            std::string subExprStr = buildExpressionString(unaryExpr->getExpression(), false);
-            auto it = std::find_if(_unaryOpTable.begin(), _unaryOpTable.end(), [unaryExpr](const std::pair<UnaryExpression::Op, std::string>& item) { return item.first == unaryExpr->getOp(); });
-            if (it == _unaryOpTable.end()) {
-                throw TranslatorException("Unsupported unary operator type");
-            }
-            std::string exprStr = it->second + "(" + subExprStr + ")";
-            return (stringExpr ? "{" : "") + exprStr + (stringExpr ? "}" : "");
-        }
-        else if (auto binaryExpr = std::dynamic_pointer_cast<const BinaryExpression>(expr)) {
-            std::string subExpr1Str = buildExpressionString(binaryExpr->getExpression1(), false);
-            std::string subExpr2Str = buildExpressionString(binaryExpr->getExpression2(), false);
-            auto it = std::find_if(_binaryOpTable.begin(), _binaryOpTable.end(), [binaryExpr](const std::pair<BinaryExpression::Op, std::string>& item) { return item.first == binaryExpr->getOp(); });
-            if (it == _binaryOpTable.end()) {
-                throw TranslatorException("Unsupported binary operator type");
-            }
-            std::string exprStr = "(" + subExpr1Str + ")" + it->second + "(" + subExpr2Str + ")";
-            return (stringExpr ? "{" : "") + exprStr + (stringExpr ? "}" : "");
-        }
-        else if (auto condExpr = std::dynamic_pointer_cast<const ConditionalExpression>(expr)) {
-            std::string condStr = buildExpressionString(condExpr->getCondition(), false);
-            std::string subExpr1Str = buildExpressionString(condExpr->getExpression1(), false);
-            std::string subExpr2Str = buildExpressionString(condExpr->getExpression2(), false);
-            std::string exprStr = "(" + condStr + ")" + " ? " + "(" + subExpr1Str + ")" + " : " + "(" + subExpr2Str + ")";
-            return (stringExpr ? "{" : "") + exprStr + (stringExpr ? "}" : "");
-        }
-        else if (auto funcExpr = std::dynamic_pointer_cast<const FunctionExpression>(expr)) {
-            return buildFunctionExpressionString(funcExpr, stringExpr);
-        }
-        throw TranslatorException("Unsupported expression type");
-    }
-
-    std::string CartoCSSMapnikTranslator::buildFunctionExpressionString(const std::shared_ptr<const FunctionExpression>& funcExpr, bool stringExpr) const {
-        if (_stringFuncs.find(funcExpr->getFunc()) != _stringFuncs.end()) {
-            // Convert to built-in function with 'dot' notation like [name].length
-            int arity = _stringFuncs.find(funcExpr->getFunc())->second;
-            if (funcExpr->getArgs().size() != arity) {
-                throw TranslatorException("Wrong number of arguments for string function");
-            }
-
-            std::string exprStr = "(" + buildExpressionString(funcExpr->getArgs()[0], false) + ")" + "." + funcExpr->getFunc();
-            if (funcExpr->getArgs().size() > 1) {
-                exprStr += "(";
-                for (std::size_t i = 1; i < funcExpr->getArgs().size(); i++) {
-                    if (i > 1) {
-                        exprStr += ",";
-                    }
-
-                    exprStr += buildExpressionString(funcExpr->getArgs()[i], false);
-                }
-                exprStr += ")";
-            }
-            return  (stringExpr ? "{" : "") + exprStr + (stringExpr ? "}" : "");
-        }
-        else if (_mathFuncs.find(funcExpr->getFunc()) != _mathFuncs.end()) {
-            // Convert to normal built-in function like pow([zoom], 2)
-            int arity = _mathFuncs.find(funcExpr->getFunc())->second;
-            if (funcExpr->getArgs().size() != arity) {
-                throw TranslatorException("Wrong number of arguments for math function");
-            }
-
-            std::string exprStr = funcExpr->getFunc();
-            exprStr += "(";
-            for (std::size_t i = 0; i < funcExpr->getArgs().size(); i++) {
-                if (i > 0) {
-                    exprStr += ",";
-                }
-
-                exprStr += buildExpressionString(funcExpr->getArgs()[i], false);
-            }
-            exprStr += ")";
-            return  (stringExpr ? "{" : "") + exprStr + (stringExpr ? "}" : "");
-        }
-        else if (_interpolationFuncs.find(funcExpr->getFunc()) != _interpolationFuncs.end()) {
-            // Interpolation function. Variable arity, special case.
-            if (funcExpr->getArgs().size() < 2) {
-                throw TranslatorException("Expecting at least two arguments for interpolation function");
-            }
-            
-            bool colorMode = false, scalarMode = false;
-            std::vector<std::pair<Value, Value>> keyFrames;
-            for (std::size_t i = 1; i < funcExpr->getArgs().size(); i++) {
-                auto constExpr = std::dynamic_pointer_cast<const ConstExpression>(funcExpr->getArgs()[i]);
-                if (!constExpr) {
-                    throw TranslatorException("Expecting constant interpolation list");
-                }
-                auto keyFrame = boost::get<std::vector<Value>>(&constExpr->getValue());
-                if (!keyFrame || keyFrame->size() != 2) {
-                    throw TranslatorException("Expecting interpolation elements of size 2");
-                }
-                if (boost::get<Color>(&keyFrame->at(1))) {
-                    colorMode = true;
-                }
-                else {
-                    scalarMode = true;
-                }
-                keyFrames.emplace_back(keyFrame->at(0), keyFrame->at(1));
-            }
-
-            if (colorMode == scalarMode) {
-                throw TranslatorException("Ambigous interpolation values");
-            }
-
-            if (colorMode) {
-                // Color interpolation. Split color values into 4 components and create separate interpolators for each
-                std::string exprStr = "rgba";
-                exprStr += "(";
-                for (std::size_t c = 0; c < 4; c++) {
-                    std::string subExprStr = funcExpr->getFunc();
-                    subExprStr += "(";
-                    subExprStr += buildExpressionString(funcExpr->getArgs()[0], false);
-                    std::set<float> keyFrameComponents;
-                    for (const std::pair<Value, Value>& keyFrame : keyFrames) {
-                        float component = boost::get<Color>(keyFrame.second).rgba()[c] * (c < 3 ? 255.0f : 1.0f);
-                        subExprStr += "," + boost::lexical_cast<std::string>(buildValue(keyFrame.first));
-                        subExprStr += "," + boost::lexical_cast<std::string>(component);
-                        keyFrameComponents.insert(component);
-                    }
-                    subExprStr += ")";
-
-                    if (c > 0) {
-                        exprStr += ",";
-                    }
-
-                    // Do trivial optimization, if only single keyframe is specified
-                    if (keyFrameComponents.size() == 1) {
-                        exprStr += buildValueString(*keyFrameComponents.begin(), stringExpr);
-                    }
-                    else {
-                        exprStr += (stringExpr ? "{" : "") + subExprStr + (stringExpr ? "}" : "");
-                    }
-                }
-                exprStr += ")";
-                return exprStr;
-            }
-            else {
-                // Scalar interpolation
-                std::string exprStr = funcExpr->getFunc();
-                exprStr += "(";
-                exprStr += (stringExpr ? "{" : "") + buildExpressionString(funcExpr->getArgs()[0], false) + (stringExpr ? "}" : "");
-                std::set<Value> keyFrameValues;
-                for (const std::pair<Value, Value>& keyFrame : keyFrames) {
-                    Value value = keyFrame.second;
-                    exprStr += "," + boost::lexical_cast<std::string>(buildValue(keyFrame.first));
-                    exprStr += "," + mvt::generateValueString(buildValue(value));
-                    keyFrameValues.insert(value);
-                }
-                exprStr += ")";
-
-                // Do trivial optimization, if only single keyframe is specified
-                if (keyFrameValues.size() == 1) {
-                    return buildValueString(*keyFrameValues.begin(), stringExpr);
-                }
-
-                return exprStr;
-            }
-        }
-        else {
-            // Assume pseudo-function (like 'translate(1,2)')
-            std::string exprStr = funcExpr->getFunc();
-            exprStr += "(";
-            for (std::size_t i = 0; i < funcExpr->getArgs().size(); i++) {
-                if (i > 0) {
-                    exprStr += ",";
-                }
-
-                if (auto constExpr = std::dynamic_pointer_cast<const ConstExpression>(funcExpr->getArgs()[i])) {
-                    exprStr += buildValueString(constExpr->getValue(), stringExpr);
-                }
-                else {
-                    exprStr += (stringExpr ? "{" : "") + buildExpressionString(funcExpr->getArgs()[i], false) + (stringExpr ? "}" : "");
-                }
-            }
-            exprStr += ")";
-            return exprStr;
-        }
-    }
-
-    std::shared_ptr<mvt::Predicate> CartoCSSMapnikTranslator::buildPredicate(const std::shared_ptr<const Predicate>& pred) const {
-        if (std::dynamic_pointer_cast<const MapPredicate>(pred)) {
-            return std::shared_ptr<mvt::Predicate>();
-        }
-        else if (std::dynamic_pointer_cast<const LayerPredicate>(pred)) {
-            return std::shared_ptr<mvt::Predicate>();
-        }
-        else if (auto clsPred = std::dynamic_pointer_cast<const ClassPredicate>(pred)) {
-            if (std::shared_ptr<mvt::ComparisonPredicate::Operator> op = buildOperator(OpPredicate::Op::EQ)) {
-                mvt::Value val = buildValue(clsPred->getClass());
-                return std::make_shared<mvt::ComparisonPredicate>(op, std::make_shared<mvt::VariableExpression>("class"), std::make_shared<mvt::ConstExpression>(val));
-            }
-        }
-        else if (auto opPred = std::dynamic_pointer_cast<const OpPredicate>(pred)) {
-            if (!opPred->isField()) {
-                throw TranslatorException("OpPredicate: expecting field, not variable (@" + opPred->getFieldOrVar() + ")");
-            }
-            if (std::shared_ptr<mvt::ComparisonPredicate::Operator> op = buildOperator(opPred->getOp())) {
-                std::string var = opPred->getFieldOrVar();
-                mvt::Value val = buildValue(opPred->getRefValue());
-                return std::make_shared<mvt::ComparisonPredicate>(op, std::make_shared<mvt::VariableExpression>(var), std::make_shared<mvt::ConstExpression>(val));
-            }
-        }
-        throw TranslatorException("Unsupported predicate type");
-    }
-
-    std::shared_ptr<mvt::ComparisonPredicate::Operator> CartoCSSMapnikTranslator::buildOperator(OpPredicate::Op op) const {
-        auto it = std::find_if(_predicateOpTable.begin(), _predicateOpTable.end(), [op](const std::pair<OpPredicate::Op, std::shared_ptr<mvt::ComparisonPredicate::Operator>>& item) { return item.first == op; });
-        if (it == _predicateOpTable.end()) {
-            throw TranslatorException("Unsupported predicate operator");
-        }
-        return it->second;
-    }
-
-    mvt::Value CartoCSSMapnikTranslator::buildValue(const Value& val) const {
-        return boost::apply_visitor(ValueBuilder(), val);
-    }
-
-    bool CartoCSSMapnikTranslator::isStringExpression(const std::string& propertyName) const {
-        std::string propertyType = propertyName.substr(propertyName.rfind('-') + 1);
-        return _symbolizerNonStringProperties.find(propertyType) == _symbolizerNonStringProperties.end();
-    }
-
-    std::string CartoCSSMapnikTranslator::getPropertySymbolizerId(const std::string& propertyName) const {
-        std::string::size_type symbolizerTypePos = propertyName.rfind('/') + 1;
-        for (const std::string& symbolizerType : _symbolizerList) {
-            if (propertyName.substr(symbolizerTypePos, symbolizerType.size()) == symbolizerType) {
-                return propertyName.substr(0, symbolizerTypePos + symbolizerType.size());
-            }
-        }
-        return std::string();
-    }
-
-    void CartoCSSMapnikTranslator::setSymbolizerParameter(const std::shared_ptr<mvt::Symbolizer>& symbolizer, const std::string& name, const std::shared_ptr<const Expression>& expr, bool stringExpr) const {
-        if (!name.empty()) {
-            std::string exprStr;
-            if (auto constExpr = std::dynamic_pointer_cast<const ConstExpression>(expr)) {
-                exprStr = boost::lexical_cast<std::string>(buildValue(constExpr->getValue()));
-            }
-            else {
-                exprStr = buildExpressionString(expr, stringExpr);
-            }
-            symbolizer->setParameter(name, exprStr);
-        }
-    }
-
-    const std::vector<std::pair<UnaryExpression::Op, std::string>> CartoCSSMapnikTranslator::_unaryOpTable = {
-        { UnaryExpression::Op::NEG, "-" },
-        { UnaryExpression::Op::NOT, "!" }
+    const std::vector<std::pair<UnaryExpression::Op, mvt::UnaryExpression::Op>> CartoCSSMapnikTranslator::_unaryOpTable = {
+        { UnaryExpression::Op::NEG, mvt::UnaryExpression::Op::NEG }
     };
 
-    const std::vector<std::pair<BinaryExpression::Op, std::string>> CartoCSSMapnikTranslator::_binaryOpTable = {
-        { BinaryExpression::Op::AND, "&&" },
-        { BinaryExpression::Op::OR,  "||" },
-        { BinaryExpression::Op::EQ,  "="  },
-        { BinaryExpression::Op::NEQ, "!=" },
-        { BinaryExpression::Op::LT,  "<"  },
-        { BinaryExpression::Op::LTE, "<=" },
-        { BinaryExpression::Op::GT,  ">"  },
-        { BinaryExpression::Op::GTE, ">=" },
-        { BinaryExpression::Op::ADD, "+"  },
-        { BinaryExpression::Op::SUB, "-"  },
-        { BinaryExpression::Op::MUL, "*"  },
-        { BinaryExpression::Op::DIV, "/"  },
-        { BinaryExpression::Op::MATCH, ".match" }
+    const std::vector<std::pair<BinaryExpression::Op, mvt::BinaryExpression::Op>> CartoCSSMapnikTranslator::_binaryOpTable = {
+        { BinaryExpression::Op::ADD, mvt::BinaryExpression::Op::ADD },
+        { BinaryExpression::Op::SUB, mvt::BinaryExpression::Op::SUB },
+        { BinaryExpression::Op::MUL, mvt::BinaryExpression::Op::MUL },
+        { BinaryExpression::Op::DIV, mvt::BinaryExpression::Op::DIV }
     };
 
-    const std::vector<std::pair<OpPredicate::Op, std::shared_ptr<mvt::ComparisonPredicate::Operator>>> CartoCSSMapnikTranslator::_predicateOpTable = {
-        { OpPredicate::Op::EQ,  std::make_shared<mvt::EQOperator>()  },
-        { OpPredicate::Op::NEQ, std::make_shared<mvt::NEQOperator>() },
-        { OpPredicate::Op::LT,  std::make_shared<mvt::LTOperator>()  },
-        { OpPredicate::Op::LTE, std::make_shared<mvt::LTEOperator>() },
-        { OpPredicate::Op::GT,  std::make_shared<mvt::GTOperator>()  },
-        { OpPredicate::Op::GTE, std::make_shared<mvt::GTEOperator>() },
-        { OpPredicate::Op::MATCH, std::make_shared<mvt::MatchOperator>() }
+    const std::vector<std::pair<BinaryExpression::Op, mvt::ComparisonPredicate::Op>> CartoCSSMapnikTranslator::_comparisonOpTable = {
+        { BinaryExpression::Op::EQ,  mvt::ComparisonPredicate::Op::EQ  },
+        { BinaryExpression::Op::NEQ, mvt::ComparisonPredicate::Op::NEQ },
+        { BinaryExpression::Op::LT,  mvt::ComparisonPredicate::Op::LT  },
+        { BinaryExpression::Op::LTE, mvt::ComparisonPredicate::Op::LTE },
+        { BinaryExpression::Op::GT,  mvt::ComparisonPredicate::Op::GT  },
+        { BinaryExpression::Op::GTE, mvt::ComparisonPredicate::Op::GTE },
+        { BinaryExpression::Op::MATCH, mvt::ComparisonPredicate::Op::MATCH }
     };
 
-    const std::unordered_map<std::string, int> CartoCSSMapnikTranslator::_stringFuncs = {
-        { "uppercase",  1 },
-        { "lowercase",  1 },
-        { "captialize", 1 },
-        { "length",     1 },
-        { "concat",     2 },
-        { "match",      2 },
-        { "replace",    3 }
+    const std::vector<std::pair<OpPredicate::Op, mvt::ComparisonPredicate::Op>> CartoCSSMapnikTranslator::_predicateOpTable = {
+        { OpPredicate::Op::EQ,  mvt::ComparisonPredicate::Op::EQ  },
+        { OpPredicate::Op::NEQ, mvt::ComparisonPredicate::Op::NEQ },
+        { OpPredicate::Op::LT,  mvt::ComparisonPredicate::Op::LT  },
+        { OpPredicate::Op::LTE, mvt::ComparisonPredicate::Op::LTE },
+        { OpPredicate::Op::GT,  mvt::ComparisonPredicate::Op::GT  },
+        { OpPredicate::Op::GTE, mvt::ComparisonPredicate::Op::GTE },
+        { OpPredicate::Op::MATCH, mvt::ComparisonPredicate::Op::MATCH }
+    };
+
+    const std::unordered_map<std::string, std::variant<mvt::UnaryExpression::Op, mvt::BinaryExpression::Op, mvt::TertiaryExpression::Op>> CartoCSSMapnikTranslator::_basicFuncs = {
+        { "exp",        mvt::UnaryExpression::Op::EXP },
+        { "log",        mvt::UnaryExpression::Op::LOG },
+        { "uppercase",  mvt::UnaryExpression::Op::UPPER },
+        { "lowercase",  mvt::UnaryExpression::Op::LOWER },
+        { "captialize", mvt::UnaryExpression::Op::CAPITALIZE },
+        { "length",     mvt::UnaryExpression::Op::LENGTH },
+        { "pow",        mvt::BinaryExpression::Op::POW },
+        { "concat",     mvt::BinaryExpression::Op::CONCAT },
+        { "replace",    mvt::TertiaryExpression::Op::REPLACE }
     };
     
-    const std::unordered_map<std::string, int> CartoCSSMapnikTranslator::_mathFuncs = {
-        { "exp", 1 },
-        { "log", 1 },
-        { "pow", 2 }
-    };
-    
-    const std::unordered_set<std::string>  CartoCSSMapnikTranslator::_interpolationFuncs = {
-        "step",
-        "linear",
-        "cubic"
+    const std::unordered_map<std::string, mvt::InterpolateExpression::Method> CartoCSSMapnikTranslator::_interpolationFuncs = {
+        { "step",   mvt::InterpolateExpression::Method::STEP },
+        { "linear", mvt::InterpolateExpression::Method::LINEAR },
+        { "cubic",  mvt::InterpolateExpression::Method::CUBIC }
     };
 
     const std::vector<std::string> CartoCSSMapnikTranslator::_symbolizerList = {
@@ -513,19 +513,6 @@ namespace carto { namespace css {
         "marker",
         "shield",
         "building"
-    };
-
-    const std::unordered_set<std::string> CartoCSSMapnikTranslator::_symbolizerNonStringProperties = {
-        "width",
-        "height",
-        "size",
-        "opacity",
-        "radius",
-        "distance",
-        "spacing",
-        "orientation",
-        "dx",
-        "dy"
     };
 
     const std::unordered_map<std::string, std::string> CartoCSSMapnikTranslator::_symbolizerPropertyMap = {
@@ -559,6 +546,7 @@ namespace carto { namespace css {
         { "point-opacity", "opacity" },
         { "point-allow-overlap", "allow-overlap" },
         { "point-ignore-placement", "ignore-placement" },
+        { "point-placement-priority", "placement-priority" },
         { "point-transform", "transform" },
         { "point-comp-op", "comp-op" },
 
@@ -587,6 +575,7 @@ namespace carto { namespace css {
         { "text-line-spacing", "line-spacing" },
         { "text-horizontal-alignment", "horizontal-alignment" },
         { "text-vertical-alignment", "vertical-alignment" },
+        { "text-placement-priority", "placement-priority" },
         { "text-comp-op", "comp-op" },
         { "text-clip", "clip" },
 
@@ -619,6 +608,7 @@ namespace carto { namespace css {
         { "shield-line-spacing", "line-spacing" },
         { "shield-horizontal-alignment", "horizontal-alignment" },
         { "shield-vertical-alignment", "vertical-alignment" },
+        { "shield-placement-priority", "placement-priority" },
         { "shield-comp-op", "comp-op" },
         { "shield-clip", "clip" },
 
@@ -637,6 +627,7 @@ namespace carto { namespace css {
         { "marker-spacing", "spacing" },
         { "marker-allow-overlap", "allow-overlap" },
         { "marker-ignore-placement", "ignore-placement" },
+        { "marker-placement-priority", "placement-priority" },
         { "marker-transform", "transform" },
         { "marker-comp-op", "comp-op" },
         { "marker-clip", "clip" },

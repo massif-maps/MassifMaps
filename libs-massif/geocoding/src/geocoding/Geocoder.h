@@ -12,13 +12,12 @@
 #include "StringMatcher.h"
 
 #include <string>
+#include <optional>
 #include <regex>
 #include <vector>
 #include <unordered_map>
 #include <memory>
 #include <mutex>
-
-#include <boost/optional.hpp>
 
 #include <stdext/lru_cache.h>
 #include <stdext/unistring.h>
@@ -34,8 +33,8 @@ namespace carto { namespace geocoding {
     class Geocoder final {
     public:
         struct Options {
-            boost::optional<cglib::bbox2<double>> bounds; // default is no bounds
-            boost::optional<cglib::vec2<double>> location; // default is no location bias
+            std::optional<cglib::bbox2<double>> bounds; // default is no bounds
+            std::optional<cglib::vec2<double>> location; // default is no location bias
             float matchRankWeight = 1.0f; // relative strength of match rank between 0..1
             float entityRankWeight = 1.0f; // relative strength of entity rank between 0..1
             float locationRankWeight = 1.0f; // relative strength of location rank between 0..1
@@ -143,31 +142,31 @@ namespace carto { namespace geocoding {
         static double getRankScale(sqlite3pp::database& db);
         static unistring::unistring getTranslatedToken(const unistring::unistring& token, const std::unordered_map<unistring::unichar_t, unistring::unistring>& translationTable);
 
-        static constexpr float MIN_LOCATION_RANK = 0.2f; // should be larger than MIN_RANK
-        static constexpr float MIN_RANK_THRESHOLD = 0.1f;
-        static constexpr float MAX_RANK_RATIO = 0.5f;
-        static constexpr float MIN_RANK_SETTLE_THRESHOLD = 0.9f;
-        static constexpr float MIN_MATCH_THRESHOLD = 0.55f;
-        static constexpr float MIN_HOUSENUMBER_MATCH_THRESHOLD = 0.8f;
-        static constexpr float MAX_MATCH_RATIO = 0.8f;
-        static constexpr float EXTRA_FIELD_PENALTY = 0.9f;
-        static constexpr float UNMATCHED_FIELD_PENALTY = 0.25f;
-        static constexpr float POI_POPULATION_PENALTY = 0.99f;
-        static constexpr float TRANSLATION_EXTRA_PENALTY = 0.3f;
-        static constexpr float AUTOCOMPLETE_EXTRA_CHAR_PENALTY = 0.1f;
-        static constexpr unsigned int MAX_STRINGMATCH_DIST = 2;
-        static constexpr unsigned int MIN_AUTOCOMPLETE_SIZE = 3;
-        static constexpr unsigned int MAX_MATCH_COUNT = 10000;
-        static constexpr unsigned int MAX_NAME_MATCH_COUNTER = 1000;
-        static constexpr unsigned int TOKEN_QUERY_LIMIT = 10;
-        static constexpr unsigned int ENTITY_QUERY_LIMIT = 1000;
+        inline static constexpr float MIN_LOCATION_RANK = 0.2f; // should be larger than MIN_RANK
+        inline static constexpr float MIN_RANK_THRESHOLD = 0.1f;
+        inline static constexpr float MAX_RANK_RATIO = 0.5f;
+        inline static constexpr float MIN_RANK_SETTLE_THRESHOLD = 0.9f;
+        inline static constexpr float MIN_MATCH_THRESHOLD = 0.55f;
+        inline static constexpr float MIN_HOUSENUMBER_MATCH_THRESHOLD = 0.8f;
+        inline static constexpr float MAX_MATCH_RATIO = 0.8f;
+        inline static constexpr float EXTRA_FIELD_PENALTY = 0.9f;
+        inline static constexpr float UNMATCHED_FIELD_PENALTY = 0.25f;
+        inline static constexpr float POI_POPULATION_PENALTY = 0.99f;
+        inline static constexpr float TRANSLATION_EXTRA_PENALTY = 0.3f;
+        inline static constexpr float AUTOCOMPLETE_EXTRA_CHAR_PENALTY = 0.1f;
+        inline static constexpr unsigned int MAX_STRINGMATCH_DIST = 2;
+        inline static constexpr unsigned int MIN_AUTOCOMPLETE_SIZE = 3;
+        inline static constexpr unsigned int MAX_MATCH_COUNT = 10000;
+        inline static constexpr unsigned int MAX_NAME_MATCH_COUNTER = 1000;
+        inline static constexpr unsigned int TOKEN_QUERY_LIMIT = 10;
+        inline static constexpr unsigned int ENTITY_QUERY_LIMIT = 1000;
 
-        static constexpr std::size_t ADDRESS_CACHE_SIZE = 1024;
-        static constexpr std::size_t ENTITY_CACHE_SIZE = 128;
-        static constexpr std::size_t NAME_CACHE_SIZE = 128;
-        static constexpr std::size_t TOKEN_CACHE_SIZE = 128;
-        static constexpr std::size_t NAME_RANK_CACHE_SIZE = 128;
-        static constexpr std::size_t NAME_MATCH_CACHE_SIZE = 4096;
+        inline static constexpr std::size_t ADDRESS_CACHE_SIZE = 1024;
+        inline static constexpr std::size_t ENTITY_CACHE_SIZE = 128;
+        inline static constexpr std::size_t NAME_CACHE_SIZE = 128;
+        inline static constexpr std::size_t TOKEN_CACHE_SIZE = 128;
+        inline static constexpr std::size_t NAME_RANK_CACHE_SIZE = 128;
+        inline static constexpr std::size_t NAME_MATCH_CACHE_SIZE = 4096;
         
         std::string _language; // use local language by default
         unsigned int _maxResults = 10; // maximum number of results returned

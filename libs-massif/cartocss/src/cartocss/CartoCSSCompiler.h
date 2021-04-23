@@ -10,6 +10,7 @@
 #include "Expression.h"
 #include "Predicate.h"
 #include "StyleSheet.h"
+#include "PropertySets.h"
 
 #include <tuple>
 #include <string>
@@ -21,61 +22,21 @@
 namespace carto { namespace css {
     class CartoCSSCompiler final {
     public:
-        using RuleSpecificity = std::tuple<int, int, int, int>;
-
-        struct Property {
-            std::string field;
-            std::shared_ptr<const Expression> expression;
-            RuleSpecificity specificity;
-
-            bool operator == (const Property& other) const {
-                return field == other.field && expression->equals(*other.expression) && specificity == other.specificity;
-            }
-
-            bool operator != (const Property& other) const {
-                return !(*this == other);
-            }
-        };
-
-        struct PropertySet {
-            std::vector<std::shared_ptr<const Predicate>> filters;
-            std::map<std::string, Property> properties;
-
-            bool operator == (const PropertySet& other) const {
-                return filters == other.filters && properties == other.properties;
-            }
-
-            bool operator != (const PropertySet& other) const {
-                return !(*this == other);
-            }
-        };
-
-        struct LayerAttachment {
-            std::string attachment;
-            int order = 0;
-            std::list<PropertySet> propertySets;
-
-            bool operator == (const LayerAttachment& other) const {
-                return attachment == other.attachment && order == other.order && propertySets == other.propertySets;
-            }
-
-            bool operator != (const LayerAttachment& other) const {
-                return !(*this == other);
-            }
-        };
-
         CartoCSSCompiler() = default;
 
+        const ExpressionContext& getContext() const { return _context; }
         void setContext(const ExpressionContext& context) { _context = context; }
+
+        bool isIgnoreLayerPredicates() const { return _ignoreLayerPredicates; }
         void setIgnoreLayerPredicates(bool ignoreLayerPredicates) { _ignoreLayerPredicates = ignoreLayerPredicates; }
 
         void compileMap(const StyleSheet& styleSheet, std::map<std::string, Value>& mapProperties) const;
-        void compileLayer(const std::string& layerName, const StyleSheet& styleSheet, std::list<LayerAttachment>& layerAttachments) const;
+        void compileLayer(const StyleSheet& styleSheet, const std::string& layerName, int minZoom, int maxZoom, std::map<std::pair<int, int>, std::list<AttachmentPropertySets>>& layerZoomAttachments) const;
         
     private:
         struct FilteredProperty {
-            Property property;
-            std::vector<std::shared_ptr<const Predicate>> filters;
+            std::size_t property;
+            std::vector<std::size_t> filters;
 
             bool operator == (const FilteredProperty& other) const {
                 return property == other.property && filters == other.filters;
@@ -88,7 +49,7 @@ namespace carto { namespace css {
 
         struct FilteredPropertyList {
             std::string attachment;
-            std::list<FilteredProperty> properties;
+            std::vector<FilteredProperty> properties;
 
             bool operator == (const FilteredPropertyList& other) const {
                 return attachment == other.attachment && properties == other.properties;
@@ -99,19 +60,39 @@ namespace carto { namespace css {
             }
         };
 
-        void buildPropertyLists(const StyleSheet& styleSheet, PredicateContext& context, std::list<FilteredPropertyList>& propertyLists) const;
-        void buildPropertyList(const RuleSet& ruleSet, const PredicateContext& context, const std::string& attachment, const std::vector<std::shared_ptr<const Predicate>>& filters, std::list<FilteredPropertyList>& propertyLists) const;
-        void buildLayerAttachment(const FilteredPropertyList& propertyList, std::list<LayerAttachment>& layerAttachments) const;
+        struct FilteredPropertyListState {
+            std::vector<std::shared_ptr<const Predicate>> predicates;
+            std::vector<std::shared_ptr<const Property>> properties;
+
+            std::size_t insertPredicate(const Predicate& pred) {
+                auto it = std::find_if(predicates.begin(), predicates.end(), [&pred](const std::shared_ptr<const Predicate>& otherPred) {
+                    return pred == *otherPred;
+                });
+                if (it == predicates.end()) {
+                    it = predicates.insert(it, std::make_shared<Predicate>(pred));
+                }
+                return it - predicates.begin();
+            }
+
+            std::size_t insertProperty(const Property& prop) {
+                auto it = std::find_if(properties.begin(), properties.end(), [&prop](const std::shared_ptr<const Property>& otherProp) {
+                    return prop == *otherProp;
+                });
+                if (it == properties.end()) {
+                    it = properties.insert(it, std::make_shared<Property>(prop));
+                }
+                return it - properties.begin();
+            }
+        };
+
+        void buildPropertyLists(const StyleSheet& styleSheet, PredicateContext& context, FilteredPropertyListState& state, std::list<FilteredPropertyList>& propertyLists) const;
+        void buildPropertyList(const RuleSet& ruleSet, const PredicateContext& context, const std::string& existingAttachment, const std::vector<std::size_t>& existingFilters, FilteredPropertyListState& state, std::list<FilteredPropertyList>& propertyLists) const;
+        void buildLayerAttachment(const FilteredPropertyList& propertyList, const FilteredPropertyListState& state, std::list<AttachmentPropertySets>& layerAttachments) const;
         
-        static bool optimizePropertySetFilters(PropertySet& propertySet);
-        static bool isRedundantPropertySet(std::list<PropertySet>::iterator begin, std::list<PropertySet>::iterator end, const PropertySet& propertySet);
-        
-        static RuleSpecificity calculateRuleSpecificity(const std::vector<std::shared_ptr<const Predicate>>& predicates, int order);
+        static Property::RuleSpecificity calculateRuleSpecificity(const std::vector<size_t>& filters, const FilteredPropertyListState& state, int order);
 
         ExpressionContext _context;
         bool _ignoreLayerPredicates = false;
-
-        mutable std::pair<std::list<FilteredPropertyList>, std::list<LayerAttachment>> _cachedLayerAttachments;
     };
 } }
 

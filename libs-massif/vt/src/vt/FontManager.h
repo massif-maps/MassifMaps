@@ -21,7 +21,7 @@ namespace carto { namespace vt {
         virtual ~FontManager();
 
         std::string loadFontData(const std::vector<unsigned char>& data);
-        std::shared_ptr<Font> getFont(const std::string& name, const std::shared_ptr<Font>& baseFont) const;
+        std::shared_ptr<const Font> getFont(const std::string& name, const std::shared_ptr<const Font>& baseFont) const;
 
     private:
         class Impl;

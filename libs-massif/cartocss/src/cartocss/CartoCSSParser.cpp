@@ -3,11 +3,6 @@
 #include "Predicate.h"
 #include "mapnikvt/CSSColorParser.h"
 
-#include <regex>
-
-#include <boost/lexical_cast.hpp>
-#include <boost/algorithm/string.hpp>
-
 #include <boost/spirit/include/qi.hpp>
 #include <boost/spirit/repository/include/qi_distinct.hpp>
 #include <boost/spirit/include/phoenix.hpp>
@@ -37,6 +32,7 @@ namespace carto { namespace css {
                 using qi::_1;
                 using qi::_2;
                 using qi::_3;
+                using qi::_4;
                 using qi::_pass;
                 
                 unesc_char.add("\\a", '\a')("\\b", '\b')("\\f", '\f')("\\n", '\n')
@@ -44,14 +40,12 @@ namespace carto { namespace css {
                               ("\\\'", '\'')("\\\"", '\"');
                 
                 nonascii_  = qi::char_("\xA0-\xFF");
-                nmstart_   = qi::char_("_a-zA-Z-") | nonascii_;
-                nmchar_    = qi::char_("_a-zA-Z0-9-") | nonascii_;
                 unescaped_ = qi::char_("_a-zA-Z0-9-#().,%");
                 hex_       = *qi::char_("0-9a-fA-F");
 
                 string =
-                      '\'' >> *(unesc_char | "\\x" >> octet_ | (qi::char_ - '\'')) >> '\''
-                    | '\"' >> *(unesc_char | "\\x" >> octet_ | (qi::char_ - '\"')) >> '\"'
+                      ('\'' >> *(unesc_char | "\\x" >> octet_ | (qi::char_ - '\''))) > '\''
+                    | ('\"' >> *(unesc_char | "\\x" >> octet_ | (qi::char_ - '\"'))) > '\"'
                     ;
                 
                 literal =
@@ -59,13 +53,15 @@ namespace carto { namespace css {
                     ;
 
                 uri =
-                      qi::lit("url") >> '(' >> string > ')'
-                    | qi::lit("url") >> '(' >> *(unesc_char | "\\x" >> octet_ | (qi::print - ')')) > ')'
+                      (qi::lit("url") >> '(' >> string) > ')'
+                    | (qi::lit("url") >> '(' >> *(unesc_char | "\\x" >> octet_ | (qi::print - ')'))) > ')'
                     ;
 
                 color =
-                      qi::lit('#') > (*qi::char_("0-9A-Fa-f"))      [_pass = phoenix::bind(&getHEXColor, _val, _1)]
-                    | (*qi::char_("a-z"))                           [_pass = phoenix::bind(&getCSSColor, _val, _1)]
+                      (qi::lit("rgb")  >> '(' >> number > ',' > number > ',' > number > ')') [_val = phoenix::bind(&makeRGBAColor, _1, _2, _3, Value(1.0))]
+                    | (qi::lit("rgba") >> '(' >> number > ',' > number > ',' > number > ',' > number > ')') [_val = phoenix::bind(&makeRGBAColor, _1, _2, _3, _4)]
+                    | qi::no_skip[qi::lit('#') > (*qi::char_("0-9A-Fa-f"))]    [_pass = phoenix::bind(&getHEXColor, _val, _1)]
+                    | qi::no_skip[*qi::char_("a-z")]                           [_pass = phoenix::bind(&getCSSColor, _val, _1)]
                     ;
 
                 number =
@@ -86,12 +82,12 @@ namespace carto { namespace css {
                     | literal                                       [_val = phoenix::construct<Value>(_1)]
                     ;
                 
-                propid = qi::lexeme[(qi::char_("/_a-zA-Z-") | nonascii_) > *(qi::char_("/_a-zA-Z0-9-") | nonascii_)];
                 blockid = qi::lexeme[+(qi::char_("_a-zA-Z0-9-") | nonascii_)];
+                propid  = qi::lexeme[(qi::char_("/_a-zA-Z-") | nonascii_) > *(qi::char_("/_a-zA-Z0-9-") | nonascii_)];
+                funcid  = qi::lexeme[(qi::char_("_a-zA-Z")   | nonascii_) > *(qi::char_("_a-zA-Z0-9")   | nonascii_)];
+                varid   = qi::lexeme[+(qi::char_("_a-zA-Z0-9-") | nonascii_)];
                 fieldid = qi::lexeme[+(qi::char_("_a-zA-Z0-9-") | nonascii_)];
                 unescapedfieldid = qi::lexeme[+(qi::print - qi::char_("[]{}")) > -(qi::char_("[") > unescapedfieldid > qi::char_("]")) > -(qi::char_("{") > unescapedfieldid > qi::char_("}"))];
-                varid = qi::lexeme[+(qi::char_("_a-zA-Z0-9-") | nonascii_)];
-                funcid = (nmstart_ > *nmchar_) [_pass = phoenix::bind(&makeFunctionIdentifier, _val, _1, _2)];
 
                 expressionlist =
                       (expression >> (',' > (expression % ',')))    [_val = phoenix::bind(&makeListExpression, _1, _2)]
@@ -144,28 +140,28 @@ namespace carto { namespace css {
                     ;
 
                 factor =
-                      ('@' > varid)                                 [_val = phoenix::bind(&makeFieldVarExpression, false, _1)]
-                    | ('[' > unescapedfieldid > ']')                [_val = phoenix::bind(&makeFieldVarExpression, true, _1)]
-                    | (funcid >> ('(' > (expression % ',') > ')'))  [_val = phoenix::bind(&makeFunctionExpression, _1, _2)]
+                      ('@' > varid)                                 [_val = phoenix::construct<FieldOrVar>(false, _1)]
+                    | ('[' > unescapedfieldid > ']')                [_val = phoenix::construct<FieldOrVar>(true, _1)]
+                    | (funcid [_pass = phoenix::bind(&checkFunction, _1)] >> ('(' > (expression % ',') > ')')) [_val = phoenix::bind(&makeFunctionExpression, _1, _2)]
                     | ('(' > expressionlist > ')')                  [_val = _1]
-                    | constant                                      [_val = phoenix::bind(&makeConstExpression, _1)]
+                    | constant                                      [_val = _1]
                     ;
                 
                 op =
-                     qi::lit("=~")                                  [_val = OpPredicate::Op::MATCH]
-                   | qi::lit("=")                                   [_val = OpPredicate::Op::EQ]
-                   | qi::lit("!=")                                  [_val = OpPredicate::Op::NEQ]
-                   | qi::lit("<=")                                  [_val = OpPredicate::Op::LTE]
-                   | qi::lit("<")                                   [_val = OpPredicate::Op::LT]
-                   | qi::lit(">=")                                  [_val = OpPredicate::Op::GTE]
-                   | qi::lit(">")                                   [_val = OpPredicate::Op::GT]
-                   ;
+                      qi::lit("=~")                                  [_val = OpPredicate::Op::MATCH]
+                    | qi::lit("=")                                   [_val = OpPredicate::Op::EQ]
+                    | qi::lit("!=")                                  [_val = OpPredicate::Op::NEQ]
+                    | qi::lit("<=")                                  [_val = OpPredicate::Op::LTE]
+                    | qi::lit("<")                                   [_val = OpPredicate::Op::LT]
+                    | qi::lit(">=")                                  [_val = OpPredicate::Op::GTE]
+                    | qi::lit(">")                                   [_val = OpPredicate::Op::GT]
+                    ;
 
                 predicate =
-                      qi::lit("Map")                                [_val = phoenix::bind(&makeMapPredicate)]
-                    | (qi::lit('#') > blockid)                      [_val = phoenix::bind(&makeLayerPredicate, _1)]
-                    | (qi::lit('.') > blockid)                      [_val = phoenix::bind(&makeClassPredicate, _1)]
-                    | (qi::lit("::") > blockid)                     [_val = phoenix::bind(&makeAttachmentPredicate, _1)]
+                      qi::lit("Map")                                [_val = phoenix::construct<MapPredicate>()]
+                    | (qi::lit('#') > blockid)                      [_val = phoenix::construct<LayerPredicate>(_1)]
+                    | (qi::lit('.') > blockid)                      [_val = phoenix::construct<ClassPredicate>(_1)]
+                    | (qi::lit("::") > blockid)                     [_val = phoenix::construct<AttachmentPredicate>(_1)]
                     | ((qi::lit('[') >> '@') > varid > op > constant > ']') [_val = phoenix::bind(&makeOpPredicate, _2, false, _1, _3)]
                     | (qi::lit('[') > (fieldid | string) > op > constant > ']') [_val = phoenix::bind(&makeOpPredicate, _2, true, _1, _3)]
                     ;
@@ -174,14 +170,20 @@ namespace carto { namespace css {
                 
                 propdeclaration = (propid >> (':' > expressionlist)) [_val = phoenix::bind(&makePropertyDeclaration, phoenix::ref(_declarationOrder), _1, _2)];
                 
-                blockelement = (propdeclaration | ruleset)          [_val = phoenix::construct<Block::Element>(_1)];
+                blockelement =
+                      propdeclaration                               [_val = phoenix::construct<Block::Element>(_1)]
+                    | ruleset                                       [_val = phoenix::construct<Block::Element>(_1)]
+                    ;
                 block = (*(blockelement > -qi::lit(';')))           [_val = phoenix::construct<Block>(_1)];
                 
                 ruleset = ((selector % ',') >> ('{' > block > '}')) [_val = phoenix::construct<RuleSet>(_1, _2)];
                 
                 vardeclaration = ('@' > varid > ':' > expressionlist) [_val = phoenix::construct<VariableDeclaration>(_1, _2)];
 
-                stylesheetelement = (vardeclaration | ruleset)      [_val = phoenix::construct<StyleSheet::Element>(_1)];
+                stylesheetelement =
+                      vardeclaration                                [_val = phoenix::construct<StyleSheet::Element>(_1)] 
+                    | ruleset                                       [_val = phoenix::construct<StyleSheet::Element>(_1)]
+                    ;
                 stylesheet = (*(stylesheetelement > -qi::lit(';'))) [_val = phoenix::construct<StyleSheet>(_1)];
             
                 qi::on_error<qi::fail>(stylesheet, phoenix::ref(_errorPos) = qi::_3 - qi::_1);
@@ -191,15 +193,16 @@ namespace carto { namespace css {
             
             boost::spirit::qi::int_parser<char, 16, 2, 2> octet_;
             boost::spirit::qi::symbols<char const, char const> unesc_char;
-            boost::spirit::qi::rule<Iterator, char()> nonascii_, nmstart_, nmchar_, unescaped_;
+            boost::spirit::qi::rule<Iterator, char()> nonascii_, unescaped_;
             boost::spirit::qi::rule<Iterator, std::string()> hex_;
-            boost::spirit::qi::rule<Iterator, std::string()> string, literal, uri;
-            boost::spirit::qi::rule<Iterator, Color()> color;
-            boost::spirit::qi::rule<Iterator, Value()> number, constant;
-            boost::spirit::qi::rule<Iterator, std::string()> propid, blockid, fieldid, unescapedfieldid, varid, funcid;
-            boost::spirit::qi::rule<Iterator, std::shared_ptr<const Expression>(), Skipper<Iterator> > expressionlist, expression, term0, term1, term2, term3, unary, factor;
+            boost::spirit::qi::rule<Iterator, std::string()> string, literal;
+            boost::spirit::qi::rule<Iterator, std::string(), Skipper<Iterator> > uri;
+            boost::spirit::qi::rule<Iterator, Color(), Skipper<Iterator> > color;
+            boost::spirit::qi::rule<Iterator, Value(), Skipper<Iterator> > number, constant;
+            boost::spirit::qi::rule<Iterator, std::string()> blockid, propid, funcid, varid, fieldid, unescapedfieldid;
+            boost::spirit::qi::rule<Iterator, Expression(), Skipper<Iterator> > expressionlist, expression, term0, term1, term2, term3, unary, factor;
             boost::spirit::qi::rule<Iterator, OpPredicate::Op()> op;
-            boost::spirit::qi::rule<Iterator, std::shared_ptr<const Predicate>(), Skipper<Iterator> > predicate;
+            boost::spirit::qi::rule<Iterator, Predicate(), Skipper<Iterator> > predicate;
             boost::spirit::qi::rule<Iterator, Selector(), Skipper<Iterator> > selector;
             boost::spirit::qi::rule<Iterator, PropertyDeclaration(), Skipper<Iterator> > propdeclaration;
             boost::spirit::qi::rule<Iterator, Block::Element(), Skipper<Iterator> > blockelement;
@@ -228,65 +231,45 @@ namespace carto { namespace css {
                 return true;
             }
 
-            static bool makeFunctionIdentifier(std::string& ident, char head, const std::vector<char>& tail) {
-                ident = std::string(1, head) + std::string(tail.begin(), tail.end());
-                return ident != "url"; // 'url' is a special-built in type specifier, so do not accept it as a function
-            }
-            
-            static std::shared_ptr<const Expression> makeConstExpression(Value value) {
-                return std::make_shared<ConstExpression>(value);
+            static Color makeRGBAColor(const Value& r, const Value& g, const Value& b, const Value& a) {
+                auto getFloat = [](const Value& val) {
+                    return std::holds_alternative<long long>(val) ? static_cast<float>(std::get<long long>(val)) : static_cast<float>(std::get<double>(val));
+                };
+                return Color::fromRGBA(getFloat(r) / 255.0f, getFloat(g) / 255.0f, getFloat(b) / 255.0f, getFloat(a));
             }
 
-            static std::shared_ptr<const Expression> makeFieldVarExpression(bool field, const std::string& var) {
-                return std::make_shared<FieldOrVarExpression>(field, var);
-            }
-            
-            static std::shared_ptr<const Expression> makeListExpression(const std::shared_ptr<const Expression>& initialExpr, const std::vector<std::shared_ptr<const Expression>>& restExprs) {
-                std::vector<std::shared_ptr<const Expression>> exprs;
+            static Expression makeListExpression(const Expression& initialExpr, const std::vector<Expression>& restExprs) {
+                std::vector<Expression> exprs;
                 exprs.push_back(initialExpr);
                 exprs.insert(exprs.end(), restExprs.begin(), restExprs.end());
                 return std::make_shared<ListExpression>(exprs);
             }
 
-            static std::shared_ptr<const Expression> makeFunctionExpression(const std::string& func, const std::vector<std::shared_ptr<const Expression>>& exprs) {
-                std::vector<std::shared_ptr<const Expression>> args;
-                args.insert(args.end(), exprs.begin(), exprs.end());
-                return std::make_shared<FunctionExpression>(func, args);
+            static bool checkFunction(const std::string& func) {
+                return func != "url" && func != "rgb" && func != "rgba"; // ignore special-built in constructors
+            }
+
+            static Expression makeFunctionExpression(const std::string& func, const std::vector<Expression>& exprs) {
+                return std::make_shared<FunctionExpression>(func, exprs);
             }
                    
-            static std::shared_ptr<const Expression> makeUnaryExpression(UnaryExpression::Op op, const std::shared_ptr<const Expression>& expr) {
+            static Expression makeUnaryExpression(UnaryExpression::Op op, const Expression& expr) {
                 return std::make_shared<UnaryExpression>(op, expr);
             }
 
-            static std::shared_ptr<const Expression> makeBinaryExpression(BinaryExpression::Op op, const std::shared_ptr<const Expression>& expr1, const std::shared_ptr<const Expression>& expr2) {
+            static Expression makeBinaryExpression(BinaryExpression::Op op, const Expression& expr1, const Expression& expr2) {
                 return std::make_shared<BinaryExpression>(op, expr1, expr2);
             }
             
-            static std::shared_ptr<const Expression> makeConditionalExpression(const std::shared_ptr<const Expression>& cond, const std::shared_ptr<const Expression>& expr1, const std::shared_ptr<const Expression>& expr2) {
+            static Expression makeConditionalExpression(const Expression& cond, const Expression& expr1, const Expression& expr2) {
                 return std::make_shared<ConditionalExpression>(cond, expr1, expr2);
             }
 
-            static std::shared_ptr<const Predicate> makeMapPredicate() {
-                return std::make_shared<MapPredicate>();
-            }
-            
-            static std::shared_ptr<const Predicate> makeClassPredicate(const std::string& cls) {
-                return std::make_shared<ClassPredicate>(cls);
+            static Predicate makeOpPredicate(OpPredicate::Op op, bool field, const std::string& name, const Value& refValue) {
+                return OpPredicate(op, FieldOrVar(field, name), refValue);
             }
 
-            static std::shared_ptr<const Predicate> makeLayerPredicate(const std::string& layer) {
-                return std::make_shared<LayerPredicate>(layer);
-            }
-            
-            static std::shared_ptr<const Predicate> makeAttachmentPredicate(const std::string& attachment) {
-                return std::make_shared<AttachmentPredicate>(attachment);
-            }
-
-            static std::shared_ptr<const Predicate> makeOpPredicate(OpPredicate::Op op, bool field, const std::string& fieldOrVar, const Value& value) {
-                return std::make_shared<OpPredicate>(op, field, fieldOrVar, value);
-            }
-
-            static PropertyDeclaration makePropertyDeclaration(int& order, const std::string& field, const std::shared_ptr<const Expression>& expr) {
+            static PropertyDeclaration makePropertyDeclaration(int& order, const std::string& field, const Expression& expr) {
                 return PropertyDeclaration(field, expr, order++);
             }
 

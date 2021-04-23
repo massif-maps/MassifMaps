@@ -447,6 +447,24 @@ inline Tile_Layer::Tile_Layer() {
 
 inline Tile_Layer::Tile_Layer(const protobuf::message& srcMsg) {
   std::fill(_has_bits_, _has_bits_ + sizeof(_has_bits_) / sizeof(std::uint32_t), 0);
+  std::size_t feature_count = 0;
+  std::size_t key_count = 0;
+  std::size_t value_count = 0;
+  for (protobuf::message msg(srcMsg); msg.next(); ) {
+    if (msg.tag == kFeaturesFieldNumber) {
+      feature_count++;
+    }
+    else if (msg.tag == kKeysFieldNumber) {
+      key_count++;
+    }
+    else if (msg.tag == kValuesFieldNumber) {
+      value_count++;
+    }
+    msg.skip();
+  }
+  features_.reserve(feature_count);
+  keys_.reserve(key_count);
+  values_.reserve(value_count);
   for (protobuf::message msg(srcMsg); msg.next(); ) {
     if (msg.tag == kVersionFieldNumber) {
       version_ = msg.read_uint32();
@@ -558,6 +576,14 @@ inline Tile::Tile() {
 
 inline Tile::Tile(const protobuf::message& srcMsg) {
   std::fill(_has_bits_, _has_bits_ + sizeof(_has_bits_) / sizeof(std::uint32_t), 0);
+  std::size_t layer_count = 0;
+  for (protobuf::message msg(srcMsg); msg.next(); ) {
+    if (msg.tag == kLayersFieldNumber) {
+      layer_count++;
+    }
+    msg.skip();
+  }
+  layers_.reserve(layer_count);
   for (protobuf::message msg(srcMsg); msg.next(); ) {
     if (msg.tag == kLayersFieldNumber) {
       layers_.emplace_back(msg.read_message());

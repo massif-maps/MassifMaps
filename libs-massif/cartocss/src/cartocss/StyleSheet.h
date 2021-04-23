@@ -13,37 +13,36 @@
 
 #include <memory>
 #include <string>
+#include <variant>
 #include <vector>
 #include <map>
 #include <utility>
 #include <functional>
 
-#include <boost/variant.hpp>
-
 namespace carto { namespace css {
     class Selector final {
     public:
         Selector() = default;
-        explicit Selector(std::vector<std::shared_ptr<const Predicate>> predicates) : _predicates(std::move(predicates)) { }
+        explicit Selector(std::vector<Predicate> predicates) : _predicates(std::move(predicates)) { }
 
-        const std::vector<std::shared_ptr<const Predicate>>& getPredicates() const { return _predicates; }
+        const std::vector<Predicate>& getPredicates() const { return _predicates; }
 
     private:
-        std::vector<std::shared_ptr<const Predicate>> _predicates; // all must match
+        std::vector<Predicate> _predicates; // all must match
     };
 
     class PropertyDeclaration final {
     public:
         PropertyDeclaration() = default;
-        explicit PropertyDeclaration(std::string field, std::shared_ptr<const Expression> expr, int order) : _field(std::move(field)), _expr(std::move(expr)), _order(order) { }
+        explicit PropertyDeclaration(std::string field, Expression expr, int order) : _field(std::move(field)), _expr(std::move(expr)), _order(order) { }
 
         const std::string& getField() const { return _field; }
-        const std::shared_ptr<const Expression>& getExpression() const { return _expr; }
+        const Expression& getExpression() const { return _expr; }
         int getOrder() const { return _order; }
 
     private:
         std::string _field;
-        std::shared_ptr<const Expression> _expr;
+        Expression _expr;
         int _order = 0;
     };
 
@@ -51,7 +50,7 @@ namespace carto { namespace css {
 
     class Block final {
     public:
-        using Element = boost::variant<PropertyDeclaration, RuleSet>;
+        using Element = std::variant<PropertyDeclaration, RuleSet>;
 
         Block() = default;
         explicit Block(std::vector<Element> elements) : _elements(std::move(elements)) { }
@@ -78,19 +77,19 @@ namespace carto { namespace css {
     class VariableDeclaration final {
     public:
         VariableDeclaration() = default;
-        explicit VariableDeclaration(std::string var, std::shared_ptr<const Expression> expr) : _var(std::move(var)), _expr(std::move(expr)) { }
+        explicit VariableDeclaration(std::string var, Expression expr) : _var(std::move(var)), _expr(std::move(expr)) { }
 
         const std::string& getVariable() const { return _var; }
-        const std::shared_ptr<const Expression>& getExpression() const { return _expr; }
+        const Expression& getExpression() const { return _expr; }
 
     private:
         std::string _var;
-        std::shared_ptr<const Expression> _expr;
+        Expression _expr;
     };
 
     class StyleSheet final {
     public:
-        using Element = boost::variant<VariableDeclaration, RuleSet>;
+        using Element = std::variant<VariableDeclaration, RuleSet>;
 
         StyleSheet() = default;
         explicit StyleSheet(std::vector<Element> elements) : _elements(std::move(elements)) { }

@@ -25,7 +25,7 @@ namespace carto { namespace osrm {
         Result find(const Query& query) const;
 
     private:
-        constexpr static double EARTH_RADIUS = 6372797.560856;
+        inline static constexpr double EARTH_RADIUS = 6372797.560856;
 
         struct SearchNode {
             Graph::NodeId nodeId;

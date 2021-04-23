@@ -10,9 +10,36 @@
 #include <mutex>
 
 #include <boost/algorithm/string.hpp>
-#include <boost/lexical_cast.hpp>
 
 namespace carto { namespace mvt {
+    vt::LineCapMode parseLineCapMode(const std::string& str) {
+        static const std::unordered_map<std::string, vt::LineCapMode> lineCapModeTable = {
+            { "round",  vt::LineCapMode::ROUND  },
+            { "square", vt::LineCapMode::SQUARE },
+            { "butt",   vt::LineCapMode::NONE   }
+        };
+
+        auto it = lineCapModeTable.find(str);
+        if (it == lineCapModeTable.end()) {
+            throw ParserException("LineCapMode parsing failed", str);
+        }
+        return it->second;
+    }
+
+    vt::LineJoinMode parseLineJoinMode(const std::string& str) {
+        static const std::unordered_map<std::string, vt::LineJoinMode> lineJoinModeTable = {
+            { "round", vt::LineJoinMode::ROUND },
+            { "bevel", vt::LineJoinMode::BEVEL },
+            { "miter", vt::LineJoinMode::MITER }
+        };
+
+        auto it = lineJoinModeTable.find(str);
+        if (it == lineJoinModeTable.end()) {
+            throw ParserException("LineJoinMode parsing failed", str);
+        }
+        return it->second;
+    }
+
     vt::CompOp parseCompOp(const std::string& str) {
         static const std::unordered_map<std::string, vt::CompOp> compOpTable = {
             { "src",      vt::CompOp::SRC },
@@ -65,13 +92,13 @@ namespace carto { namespace mvt {
             result = boost::spirit::qi::phrase_parse(it, end, ColorParserGrammar<std::string::const_iterator>(), skipper, color);
         }
         catch (const boost::spirit::qi::expectation_failure<std::string::const_iterator>& ex) {
-            throw ParserException("Expectation error, error at position " + boost::lexical_cast<std::string>(ex.first - str.begin()), str);
+            throw ParserException("Expectation error, error at position " + std::to_string(ex.first - str.begin()), str);
         }
         if (!result) {
             throw ParserException("Color parsing failed", str);
         }
         if (it != str.end()) {
-            throw ParserException("Could not parse to the end of color, error at position " + boost::lexical_cast<std::string>(it - str.begin()), str);
+            throw ParserException("Could not parse to the end of color, error at position " + std::to_string(it - str.begin()), str);
         }
         return vt::Color(color);
     }
@@ -85,42 +112,42 @@ namespace carto { namespace mvt {
             result = boost::spirit::qi::parse(it, end, ValueParserGrammar<std::string::const_iterator>(), val);
         }
         catch (const boost::spirit::qi::expectation_failure<std::string::const_iterator>& ex) {
-            throw ParserException("Expectation error, error at position " + boost::lexical_cast<std::string>(ex.first - str.begin()), str);
+            throw ParserException("Expectation error, error at position " + std::to_string(ex.first - str.begin()), str);
         }
         if (!result) {
             throw ParserException("Value parsing failed", str);
         }
         if (it != str.end()) {
-            throw ParserException("Could not parse to the end of value, error at position " + boost::lexical_cast<std::string>(it - str.begin()), str);
+            throw ParserException("Could not parse to the end of value, error at position " + std::to_string(it - str.begin()), str);
         }
         return val;
     }
 
-    std::vector<std::shared_ptr<Transform> > parseTransformList(const std::string& str) {
+    std::vector<Transform> parseTransformList(const std::string& str) {
         std::string::const_iterator it = str.begin();
         std::string::const_iterator end = str.end();
-        std::vector<std::shared_ptr<Transform>> transforms;
+        std::vector<Transform> transforms;
         bool result = false;
         try {
             transparserimpl::Skipper skipper;
             result = boost::spirit::qi::phrase_parse(it, end, TransformParserGrammar<std::string::const_iterator>() % ',', skipper, transforms);
         }
         catch (const boost::spirit::qi::expectation_failure<std::string::const_iterator>& ex) {
-            throw ParserException("Expectation error, error at position " + boost::lexical_cast<std::string>(ex.first - str.begin()), str);
+            throw ParserException("Expectation error, error at position " + std::to_string(ex.first - str.begin()), str);
         }
         if (!result) {
             throw ParserException("Transform parsing failed", str);
         }
         if (it != str.end()) {
-            throw ParserException("Could not parse to the end of transform, error at position " + boost::lexical_cast<std::string>(it - str.begin()), str);
+            throw ParserException("Could not parse to the end of transform, error at position " + std::to_string(it - str.begin()), str);
         }
         return transforms;
     }
 
-    std::shared_ptr<Expression> parseExpression(const std::string& str, bool stringExpr) {
+    Expression parseExpression(const std::string& str, bool stringExpr) {
         std::string::const_iterator it = str.begin();
         std::string::const_iterator end = str.end();
-        std::shared_ptr<Expression> expr;
+        Expression expr;
         bool result = false;
         try {
             if (stringExpr) {
@@ -131,13 +158,13 @@ namespace carto { namespace mvt {
             }
         }
         catch (const boost::spirit::qi::expectation_failure<std::string::const_iterator>& ex) {
-            throw ParserException("Expectation error, error at position " + boost::lexical_cast<std::string>(ex.first - str.begin()), str);
+            throw ParserException("Expectation error, error at position " + std::to_string(ex.first - str.begin()), str);
         }
         if (!result) {
             throw ParserException("Expression parsing failed", str);
         }
         if (it != str.end()) {
-            throw ParserException("Could not parse to the end of expression, error at position " + boost::lexical_cast<std::string>(it - str.begin()), str);
+            throw ParserException("Could not parse to the end of expression, error at position " + std::to_string(it - str.begin()), str);
         }
         return expr;
     }

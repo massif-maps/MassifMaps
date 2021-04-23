@@ -182,14 +182,14 @@ namespace carto { namespace vt {
     }
 
     void TileSurfaceBuilder::buildPoleGeometry(int poleZ, const std::vector<TileId>& vertexIds, VertexArray<cglib::vec2<float>>& coords2D, VertexArray<cglib::vec3<float>>& coords3D, VertexArray<cglib::vec2<float>>& texCoords, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec3<float>>& binormals, VertexArray<std::size_t>& indices) const {
-        auto calculatePolePoint = [&, this](const TileId& vertexId) -> cglib::vec2<float> {
+        auto calculatePolePoint = [&](const TileId& vertexId) -> cglib::vec2<float> {
             float s = 1.0f / (1 << vertexId.zoom);
             float u = vertexId.x * s;
             float v = 0.5f + 0.5f * static_cast<float>(poleZ);
             return cglib::vec2<float>(u, v);
         };
 
-        auto tesselateSegment = [&, this](const cglib::vec2<float>& p0, const cglib::vec2<float>& p1, const cglib::mat4x4<double>& matrix, const std::shared_ptr<const TileTransformer::VertexTransformer>& transformer) {
+        auto tesselateSegment = [&](const cglib::vec2<float>& p0, const cglib::vec2<float>& p1, const cglib::mat4x4<double>& matrix, const std::shared_ptr<const TileTransformer::VertexTransformer>& transformer) {
             cglib::vec2<float> points[2] = { p0, p1 };
             transformer->tesselateLineString(points, 2, coords2D);
 

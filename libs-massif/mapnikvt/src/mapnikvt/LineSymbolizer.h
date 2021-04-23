@@ -8,37 +8,36 @@
 #define _CARTO_MAPNIKVT_LINESYMBOLIZER_H_
 
 #include "GeometrySymbolizer.h"
+#include "FunctionBuilder.h"
 
 namespace carto { namespace mvt {
     class LineSymbolizer : public GeometrySymbolizer {
     public:
         explicit LineSymbolizer(std::shared_ptr<Logger> logger) : GeometrySymbolizer(std::move(logger)) {
-            _strokeWidthExpression = std::make_shared<ConstExpression>(Value(1.0f));
-            bind(&_strokeFunc, std::make_shared<ConstExpression>(Value(std::string("#000000"))), &LineSymbolizer::convertColor);
-            bind(&_strokeWidthFunc, _strokeWidthExpression);
-            bind(&_strokeOpacityFunc, std::make_shared<ConstExpression>(Value(1.0f)));
+            bindParameter("stroke", &_stroke);
+            bindParameter("stroke-width", &_strokeWidth);
+            bindParameter("stroke-opacity", &_strokeOpacity);
+            bindParameter("stroke-linejoin", &_strokeLinejoin);
+            bindParameter("stroke-linecap", &_strokeLinecap);
+            bindParameter("stroke-dasharray", &_strokeDashArray);
         }
 
-        virtual void build(const FeatureCollection& featureCollection, const FeatureExpressionContext& exprContext, const SymbolizerContext& symbolizerContext, vt::TileLayerBuilder& layerBuilder) override;
+        virtual void build(const FeatureCollection& featureCollection, const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext, vt::TileLayerBuilder& layerBuilder) const override;
 
     protected:
-        constexpr static int DASH_SUPERSAMPLING_FACTOR = 2;
-        constexpr static float DASH_PATTERN_SCALE = 0.75f;
-
-        virtual void bindParameter(const std::string& name, const std::string& value) override;
-
-        vt::LineCapMode convertLineCapMode(const std::string& lineCap) const;
-        vt::LineJoinMode convertLineJoinMode(const std::string& lineJoin) const;
+        inline static constexpr int DASH_SUPERSAMPLING_FACTOR = 2;
+        inline static constexpr float DASH_PATTERN_SCALE = 0.75f;
 
         static std::shared_ptr<vt::BitmapPattern> createDashBitmapPattern(const std::vector<float>& strokeDashArray, int height, vt::LineCapMode lineCap);
 
-        vt::ColorFunction _strokeFunc; // vt::Color(0xff000000)
-        vt::FloatFunction _strokeWidthFunc; // 1.0f
-        vt::FloatFunction _strokeOpacityFunc; // 1.0f
-        std::string _strokeLinejoin = "miter";
-        std::string _strokeLinecap = "butt";
-        std::string _strokeDashArray;
-        std::shared_ptr<Expression> _strokeWidthExpression;
+        ColorFunctionParameter _stroke = ColorFunctionParameter("#000000");
+        FloatFunctionParameter _strokeWidth = FloatFunctionParameter(1.0f);
+        FloatFunctionParameter _strokeOpacity = FloatFunctionParameter(1.0f);
+        LineJoinModeParameter _strokeLinejoin = LineJoinModeParameter("miter");
+        LineCapModeParameter _strokeLinecap = LineCapModeParameter("butt");
+        StringParameter _strokeDashArray = StringParameter("");
+
+        ColorFunctionBuilder _strokeFuncBuilder;
     };
 } }
 

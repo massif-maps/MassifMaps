@@ -1,196 +1,262 @@
 #include "CartoCSSCompiler.h"
+#include "ExpressionUtils.h"
+#include "PredicateUtils.h"
 
 #include <set>
 
 namespace carto { namespace css {
     void CartoCSSCompiler::compileMap(const StyleSheet& styleSheet, std::map<std::string, Value>& mapProperties) const {
         // Build flat property lists
-        std::map<std::string, std::shared_ptr<const Expression>> variableMap;
+        std::map<std::string, Expression> variableMap;
         PredicateContext context;
         context.expressionContext = _context;
         context.expressionContext.variableMap = &variableMap;
+
+        FilteredPropertyListState state;
         std::list<FilteredPropertyList> propertyLists;
-        buildPropertyLists(styleSheet, context, propertyLists);
+        buildPropertyLists(styleSheet, context, state, propertyLists);
 
         // Gather map properties from property lists
         for (const FilteredPropertyList& propertyList : propertyLists) {
             if (propertyList.attachment.empty()) {
-                for (const FilteredProperty& prop : propertyList.properties) {
-                    if (prop.filters.empty()) {
-                        boost::variant<Value, std::shared_ptr<const Expression>> propResult = prop.property.expression->evaluate(context.expressionContext);
-                        if (auto val = boost::get<Value>(&propResult)) {
-                            mapProperties[prop.property.field] = *val;
+                PredicateEvaluator predEvaluator(context);
+
+                for (const FilteredProperty& filteredProp : propertyList.properties) {
+                    bool unreachableProp = false;
+                    for (std::size_t filter : filteredProp.filters) {
+                        boost::tribool result = std::visit(predEvaluator, *state.predicates[filter]);
+                        if (!result || boost::indeterminate(result)) {
+                            unreachableProp = true;
+                            break;
                         }
+                    }
+                    if (unreachableProp) {
+                        continue;
+                    }
+
+                    std::shared_ptr<const Property> prop = state.properties[filteredProp.property];
+                    if (auto val = std::get_if<Value>(&prop->getExpression())) {
+                        mapProperties[prop->getField()] = *val;
                     }
                 }
             }
         }
     }
     
-    void CartoCSSCompiler::compileLayer(const std::string& layerName, const StyleSheet& styleSheet, std::list<LayerAttachment>& layerAttachments) const {
+    void CartoCSSCompiler::compileLayer(const StyleSheet& styleSheet, const std::string& layerName, int minZoom, int maxZoom, std::map<std::pair<int, int>, std::list<AttachmentPropertySets>>& layerZoomAttachments) const {
         // Build flat property lists
-        std::map<std::string, std::shared_ptr<const Expression>> variableMap;
+        std::map<std::string, Expression> variableMap;
         PredicateContext context;
         context.layerName = layerName;
         context.expressionContext = _context;
         context.expressionContext.variableMap = &variableMap;
+
+        FilteredPropertyListState state;
         std::list<FilteredPropertyList> propertyLists;
-        buildPropertyLists(styleSheet, context, propertyLists);
+        buildPropertyLists(styleSheet, context, state, propertyLists);
 
-        // Sort and evaluate property list
+        // Sort the properties by decreasing specificity
         for (FilteredPropertyList& propertyList : propertyLists) {
-            // Sort the properties by decreasing specificity
-            propertyList.properties.sort([&](const FilteredProperty& prop1, const FilteredProperty& prop2) {
-                return prop1.property.specificity > prop2.property.specificity;
+            std::stable_sort(propertyList.properties.begin(), propertyList.properties.end(), [&state](const FilteredProperty& filteredProp1, const FilteredProperty& filteredProp2) {
+                return state.properties[filteredProp1.property]->getSpecificity() > state.properties[filteredProp2.property]->getSpecificity();
             });
-
-            // Build property set list
-            for (FilteredProperty& prop : propertyList.properties) {
-                // Try to evaluate property expression, store the result as expression (even when constant)
-                boost::variant<Value, std::shared_ptr<const Expression>> propResult = prop.property.expression->evaluate(context.expressionContext);
-                if (auto val = boost::get<Value>(&propResult)) {
-                    prop.property.expression = std::make_shared<ConstExpression>(*val);
-                }
-                else if (auto expr = boost::get<std::shared_ptr<const Expression>>(propResult)) {
-                    prop.property.expression = expr;
-                }
-            }
         }
 
-        // Check if we can reuse existing result
-        if (propertyLists != _cachedLayerAttachments.first) {
-            std::list<LayerAttachment> layerAttachmentList;
+        // Build layer attachments for each zoom level
+        int prevZoom = minZoom, zoom = minZoom;
+        std::list<FilteredPropertyList> prevOptimizedPropertyLists;
+        std::list<AttachmentPropertySets> prevLayerAttachments;
+        for (; zoom < maxZoom; zoom++) {
+            std::map<std::string, Value> predefinedFieldMap;
+            context.expressionContext.predefinedFieldMap = &predefinedFieldMap;
+            (*context.expressionContext.predefinedFieldMap)["zoom"] = Value(static_cast<long long>(zoom));
+            PredicateEvaluator predEvaluator(context);
+
+            // Evaluate and optimize property lists
+            std::list<FilteredPropertyList> optimizedPropertyLists;
             for (const FilteredPropertyList& propertyList : propertyLists) {
-                buildLayerAttachment(propertyList, layerAttachmentList);
-            }
-            _cachedLayerAttachments = { std::move(propertyLists), std::move(layerAttachmentList) };
-        }
+                FilteredPropertyList& optimizedPropertyList = optimizedPropertyLists.emplace_back();
+                optimizedPropertyList.attachment = propertyList.attachment;
+                optimizedPropertyList.properties.reserve(propertyList.properties.size());
+                for (const FilteredProperty& filteredProp : propertyList.properties) {
+                    // Check if this property is reachable and remove always true conditions
+                    std::vector<std::size_t> optimizedFilters;
+                    optimizedFilters.reserve(filteredProp.filters.size());
+                    bool unreachableProp = false;
+                    for (std::size_t filter : filteredProp.filters) {
+                        boost::tribool result = std::visit(predEvaluator, *state.predicates[filter]);
+                        if (!result) {
+                            unreachableProp = true;
+                            break;
+                        }
+                        if (boost::indeterminate(result)) { // keep only indeterminate filters, ignore always true filters
+                            optimizedFilters.push_back(filter);
+                        }
+                    }
+                    if (unreachableProp) {
+                        continue;
+                    }
 
-        // Store result from the cache
-        layerAttachments.insert(layerAttachments.end(), _cachedLayerAttachments.second.begin(), _cachedLayerAttachments.second.end());
+                    // Store property with optimized filter list
+                    FilteredProperty& optimizedProp = optimizedPropertyList.properties.emplace_back();
+                    optimizedProp.property = filteredProp.property;
+                    optimizedProp.filters = std::move(optimizedFilters);
+                }
+            }
+
+            // Check if the property lists changed compared to the previous zoom level
+            if (optimizedPropertyLists != prevOptimizedPropertyLists) {
+                // Build attachments
+                std::list<AttachmentPropertySets> layerAttachments;
+                for (const FilteredPropertyList& optimizedPropertyList : optimizedPropertyLists) {
+                    buildLayerAttachment(optimizedPropertyList, state, layerAttachments);
+                }
+
+                // Check if attachments changed compared to the previous attachments
+                if (layerAttachments != prevLayerAttachments) {
+                    if (zoom > prevZoom) {
+                        layerZoomAttachments[std::make_pair(prevZoom, zoom)] = std::move(prevLayerAttachments);
+                    }
+                    prevLayerAttachments = std::move(layerAttachments);
+                    prevZoom = zoom;
+                }
+
+                prevOptimizedPropertyLists = std::move(optimizedPropertyLists);
+            }
+        }
+        if (zoom > prevZoom) {
+            layerZoomAttachments[std::make_pair(prevZoom, zoom)] = std::move(prevLayerAttachments);
+        }
     }
 
-    void CartoCSSCompiler::buildPropertyLists(const StyleSheet& styleSheet, PredicateContext& context, std::list<FilteredPropertyList>& propertyLists) const {
+    void CartoCSSCompiler::buildPropertyLists(const StyleSheet& styleSheet, PredicateContext& context, FilteredPropertyListState& state, std::list<FilteredPropertyList>& propertyLists) const {
         for (const StyleSheet::Element& element : styleSheet.getElements()) {
-            if (auto decl = boost::get<VariableDeclaration>(&element)) {
+            if (auto decl = std::get_if<VariableDeclaration>(&element)) {
                 if (context.expressionContext.variableMap->find(decl->getVariable()) == context.expressionContext.variableMap->end()) {
                     (*context.expressionContext.variableMap)[decl->getVariable()] = decl->getExpression();
                 }
             }
-            else if (auto ruleSet = boost::get<RuleSet>(&element)) {
-                buildPropertyList(*ruleSet, context, "", std::vector<std::shared_ptr<const Predicate>>(), propertyLists);
+            else if (auto ruleSet = std::get_if<RuleSet>(&element)) {
+                buildPropertyList(*ruleSet, context, std::string(), std::vector<std::size_t>(), state, propertyLists);
+            }
+        }
+
+        ExpressionEvaluator exprEvaluator(context.expressionContext);
+        for (FilteredPropertyList& propertyList : propertyLists) {
+            for (FilteredProperty& filteredProp : propertyList.properties) {
+                std::shared_ptr<const Property> prop = state.properties[filteredProp.property];
+                Expression evaluatedExpr = std::visit(exprEvaluator, prop->getExpression());
+                if (evaluatedExpr != prop->getExpression()) {
+                    filteredProp.property = state.insertProperty(Property(prop->getField(), std::move(evaluatedExpr), prop->getSpecificity()));
+                }
             }
         }
     }
     
-    void CartoCSSCompiler::buildPropertyList(const RuleSet& ruleSet, const PredicateContext& context, const std::string& attachment, const std::vector<std::shared_ptr<const Predicate>>& filters, std::list<FilteredPropertyList>& propertyLists) const {
+    void CartoCSSCompiler::buildPropertyList(const RuleSet& ruleSet, const PredicateContext& context, const std::string& existingAttachment, const std::vector<std::size_t>& existingFilters, FilteredPropertyListState& state, std::list<FilteredPropertyList>& propertyLists) const {
         // List of selectors to use
-        std::vector<Selector> selectors = ruleSet.getSelectors();
-        if (selectors.empty() && !context.layerName.empty()) {
-            selectors.push_back(Selector()); // special case, empty selector list means 'all'
+        const std::vector<Selector>* selectors = &ruleSet.getSelectors();
+        if (selectors->empty() && !context.layerName.empty()) {
+            static const std::vector<Selector> emptySelectorSet { Selector() };
+            selectors = &emptySelectorSet;
         }
-        
+        PredicateEvaluator predEvaluator(context);
+
         // Process all selectors
-        for (const Selector& selector : selectors) {
-            // Build filters for given selector
-            std::vector<std::shared_ptr<const Predicate>> selectorFilters(filters);
-            for (const std::shared_ptr<const Predicate>& pred : selector.getPredicates()) {
-                if (std::dynamic_pointer_cast<const LayerPredicate>(pred)) {
+        for (const Selector& selector : *selectors) {
+            // Build filters for given selector. Check if the filter list is 'reachable'.
+            std::vector<std::size_t> filters = existingFilters;
+            std::string attachment = existingAttachment;
+            bool unreachableProp = false;
+            for (const Predicate& pred : selector.getPredicates()) {
+                if (auto attachmentPred = std::get_if<AttachmentPredicate>(&pred)) {
+                    attachment += "::" + attachmentPred->getAttachment();
+                    continue;
+                }
+                if (auto layerPred = std::get_if<LayerPredicate>(&pred)) {
                     if (_ignoreLayerPredicates) {
                         continue;
                     }
                 }
-                selectorFilters.push_back(pred);
-            }
-            
-            // Check if the filter list is 'reachable'. Also, remove always true conditions from the filter
-            bool unreachable = false;
-            std::string selectorAttachment = attachment;
-            std::vector<std::shared_ptr<const Predicate>> optimizedSelectorFilters;
-            for (auto it = selectorFilters.begin(); it != selectorFilters.end(); ) {
-                boost::tribool pred = (*it)->evaluate(context);
-                if (!pred) {
-                    unreachable = true;
+
+                boost::tribool result = std::visit(predEvaluator, pred);
+                if (!result) {
+                    unreachableProp = true;
                     break;
                 }
-                if (auto attachmentPred = std::dynamic_pointer_cast<const AttachmentPredicate>(*it)) {
-                    selectorAttachment += "::" + attachmentPred->getAttachment();
-                    it = selectorFilters.erase(it);
-                    continue;
-                }
-                if (boost::indeterminate(pred)) { // ignore always true filters
-                    optimizedSelectorFilters.push_back(*it);
-                }
-                it++;
+                filters.push_back(state.insertPredicate(pred));
             }
-            if (unreachable) {
+            if (unreachableProp) {
                 continue;
             }
             
             // Process block elements
-            std::set<std::string> blockFields;
+            std::set<std::string> existingBlockFields;
             for (const Block::Element& element : ruleSet.getBlock().getElements()) {
-                if (auto decl = boost::get<PropertyDeclaration>(&element)) {
-                    if (blockFields.find(decl->getField()) != blockFields.end()) {
+                if (auto decl = std::get_if<PropertyDeclaration>(&element)) {
+                    if (existingBlockFields.find(decl->getField()) != existingBlockFields.end()) {
                         continue;
                     }
-                    blockFields.insert(decl->getField());
+                    existingBlockFields.insert(decl->getField());
                     
                     // Find property set list for current attachment
-                    auto propertyListsIt = std::find_if(propertyLists.begin(), propertyLists.end(), [&](const FilteredPropertyList& propertyList) {
-                        return propertyList.attachment == selectorAttachment;
+                    auto propertyListsIt = std::find_if(propertyLists.begin(), propertyLists.end(), [&attachment](const FilteredPropertyList& propertyList) {
+                        return propertyList.attachment == attachment;
                     });
                     if (propertyListsIt == propertyLists.end()) {
                         FilteredPropertyList propertyList;
-                        propertyList.attachment = selectorAttachment;
+                        propertyList.attachment = attachment;
                         propertyListsIt = propertyLists.insert(propertyListsIt, propertyList);
                     }
-                    std::list<FilteredProperty>& properties = (*propertyListsIt).properties;
                     
                     // Add property
-                    FilteredProperty prop;
-                    prop.property.field = decl->getField();
-                    prop.property.expression = decl->getExpression();
-                    prop.property.specificity = calculateRuleSpecificity(selectorFilters, decl->getOrder());
-                    prop.filters = optimizedSelectorFilters;
-                    properties.push_back(prop);
+                    Property::RuleSpecificity specificity = calculateRuleSpecificity(filters, state, decl->getOrder());
+                    FilteredProperty& filteredProp = propertyListsIt->properties.emplace_back();
+                    filteredProp.property = state.insertProperty(Property(decl->getField(), decl->getExpression(), specificity));
+                    filteredProp.filters = filters;
                 }
-                else if (auto subRuleSet = boost::get<RuleSet>(&element)) {
+                else if (auto subRuleSet = std::get_if<RuleSet>(&element)) {
                     // Recurse with subrule
-                    buildPropertyList(*subRuleSet, context, selectorAttachment, selectorFilters, propertyLists);
+                    buildPropertyList(*subRuleSet, context, attachment, filters, state, propertyLists);
                 }
             }
         }
     }
 
-    void CartoCSSCompiler::buildLayerAttachment(const FilteredPropertyList& propertyList, std::list<LayerAttachment>& layerAttachments) const {
+    void CartoCSSCompiler::buildLayerAttachment(const FilteredPropertyList& propertyList, const FilteredPropertyListState& state, std::list<AttachmentPropertySets>& layerAttachments) const {
         std::list<PropertySet> propertySets;
-        for (const FilteredProperty& prop : propertyList.properties) {
+        for (const FilteredProperty& filteredProp : propertyList.properties) {
+            std::shared_ptr<const Property> prop = state.properties[filteredProp.property];
+            std::vector<std::shared_ptr<const Predicate>> propFilters;
+            propFilters.reserve(filteredProp.filters.size());
+            for (std::size_t filter : filteredProp.filters) {
+                propFilters.push_back(state.predicates[filter]);
+            }
+
             for (auto propertySetIt = propertySets.begin(); propertySetIt != propertySets.end(); propertySetIt++) {
                 // Check if this attribute is already set for given property set
-                auto attributeIt = propertySetIt->properties.find(prop.property.field);
-                if (attributeIt != propertySetIt->properties.end()) {
-                    if (attributeIt->second.specificity >= prop.property.specificity) {
-                        continue;
-                    }
-                    if (attributeIt->second.expression->equals(*prop.property.expression)) {
+                if (auto existingProp = propertySetIt->findProperty(prop->getField())) {
+                    if (existingProp->getSpecificity() >= prop->getSpecificity()) {
                         continue;
                     }
                 }
 
                 // Build new property set by setting the attribute and combining filters
                 PropertySet propertySet(*propertySetIt);
-                propertySet.properties[prop.property.field] = prop.property;
-                propertySet.filters.insert(propertySet.filters.end(), prop.filters.begin(), prop.filters.end());
-                if (!optimizePropertySetFilters(propertySet)) {
+                if (!propertySet.mergeFilters(propFilters)) {
+                    continue;
+                }
+                propertySet.insertProperty(prop);
+
+                // Check if the property set is redundant (existing filters already cover it)
+                if (std::any_of(propertySets.begin(), propertySetIt, [&propertySet](const PropertySet& existingPropertySet) {
+                    return existingPropertySet.covers(propertySet);
+                })) {
                     continue;
                 }
 
                 // If filters did not change, replace existing filter otherwise we must insert the new filter and keep old one
-                if (isRedundantPropertySet(propertySets.begin(), propertySetIt, propertySet)) {
-                    continue;
-                }
-                if (propertySet.filters == propertySetIt->filters) {
+                if (propertySet.getFilters() == propertySetIt->getFilters()) {
                     *propertySetIt = std::move(propertySet);
                 }
                 else {
@@ -198,88 +264,45 @@ namespace carto { namespace css {
                 }
             }
 
-            // Add the property set
+            // Build new property set
             PropertySet propertySet;
-            propertySet.properties[prop.property.field] = prop.property;
-            propertySet.filters = prop.filters;
-            if (!optimizePropertySetFilters(propertySet)) {
+            if (!propertySet.mergeFilters(propFilters)) {
+                continue;
+            }
+            propertySet.insertProperty(prop);
+
+            // Check if the property set is redundant (existing filters already cover it)
+            if (std::any_of(propertySets.begin(), propertySets.end(), [&propertySet](const PropertySet& existingPropertySet) {
+                return existingPropertySet.covers(propertySet);
+            })) {
                 continue;
             }
 
-            if (isRedundantPropertySet(propertySets.begin(), propertySets.end(), propertySet)) {
-                continue;
-            }
+            // Add the built property set to the list
             propertySets.push_back(std::move(propertySet));
         }
 
         // Add layer attachment
-        LayerAttachment layerAttachment;
-        layerAttachment.attachment = propertyList.attachment;
-        layerAttachment.order = std::numeric_limits<int>::max();
-        for (const PropertySet& propertySet : propertySets) {
-            for (const std::pair<std::string, Property>& namedProp : propertySet.properties) {
-                layerAttachment.order = std::min(layerAttachment.order, std::get<3>(namedProp.second.specificity));
-            }
-        }
-        layerAttachment.propertySets = std::move(propertySets);
-        layerAttachments.push_back(std::move(layerAttachment));
+        layerAttachments.push_back(AttachmentPropertySets(propertyList.attachment, std::move(propertySets)));
     }
 
-    bool CartoCSSCompiler::optimizePropertySetFilters(PropertySet& propertySet) {
-        for (auto filterIt1 = propertySet.filters.begin(); filterIt1 != propertySet.filters.end(); filterIt1++) {
-            for (auto filterIt2 = filterIt1; ++filterIt2 != propertySet.filters.end(); ) {
-                // Check if it is possible to satisfy both filters. If not, can skip this rule
-                if (*filterIt1 != *filterIt2 && !(*filterIt2)->intersects(*filterIt1)) {
-                    return false;
-                }
-            }
-            for (auto filterIt2 = filterIt1; ++filterIt2 != propertySet.filters.end(); ) {
-                // Check if the filter is subsumed by any other filter
-                if (*filterIt1 == *filterIt2 || (*filterIt2)->contains(*filterIt1)) {
-                    filterIt2 = propertySet.filters.erase(filterIt2);
-                    filterIt2--;
-                }
-            }
-        }
-        return true;
-    }
-    
-    bool CartoCSSCompiler::isRedundantPropertySet(std::list<PropertySet>::iterator begin, std::list<PropertySet>::iterator end, const PropertySet& propertySet) {
-        for (auto it = end; it != begin; ) {
-            --it;
+    Property::RuleSpecificity CartoCSSCompiler::calculateRuleSpecificity(const std::vector<std::size_t>& filters, const FilteredPropertyListState& state, int order) {
+        struct PredicateCounter {
+            void operator() (const MapPredicate&) { }
+            void operator() (const LayerPredicate&) { layers++; }
+            void operator() (const ClassPredicate&) { classes++; }
+            void operator() (const AttachmentPredicate&) { }
+            void operator() (const OpPredicate&) { filters++; }
 
-            if (std::all_of(it->filters.begin(), it->filters.end(), [&](const std::shared_ptr<const Predicate>& filter) {
-                if (std::find(propertySet.filters.begin(), propertySet.filters.end(), filter) != propertySet.filters.end()) {
-                    return true;
-                }
-                return std::any_of(propertySet.filters.begin(), propertySet.filters.end(), [&](const std::shared_ptr<const Predicate>& propFilter) {
-                    return filter->contains(propFilter);
-                });
-            })) {
-                return true;
-            }
+            int layers = 0;
+            int classes = 0;
+            int filters = 0;
+        };
+
+        PredicateCounter counter;
+        for (std::size_t filter : filters) {
+            std::visit(counter, *state.predicates[filter]);
         }
-        return false;
-    }
-    
-    CartoCSSCompiler::RuleSpecificity CartoCSSCompiler::calculateRuleSpecificity(const std::vector<std::shared_ptr<const Predicate>>& predicates, int order) {
-        int layers = 0;
-        int classes = 0;
-        int filters = 0;
-        for (const std::shared_ptr<const Predicate>& pred : predicates) {
-            if (std::dynamic_pointer_cast<const LayerPredicate>(pred)) {
-                layers++;
-            }
-            else if (std::dynamic_pointer_cast<const ClassPredicate>(pred)) {
-                classes++;
-            }
-            else if (std::dynamic_pointer_cast<const AttachmentPredicate>(pred)) {
-                // ignore
-            }
-            else {
-                filters++;
-            }
-        }
-        return std::make_tuple(layers, classes, filters, order);
+        return std::make_tuple(counter.layers, counter.classes, counter.filters, order);
     }
 } }

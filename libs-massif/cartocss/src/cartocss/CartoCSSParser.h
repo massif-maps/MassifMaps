@@ -19,15 +19,13 @@
 #include <utility>
 #include <stdexcept>
 
-#include <boost/lexical_cast.hpp>
-
 namespace carto { namespace css {
     class CartoCSSParser final {
     public:
         class ParserError : public std::runtime_error {
         public:
             explicit ParserError(const std::string& msg) : runtime_error(msg), _message(msg), _position(0, 0) { }
-            explicit ParserError(const std::string& msg, std::pair<int, int> pos) : runtime_error(msg + ", error at line " + boost::lexical_cast<std::string>(pos.second) + ", column " + boost::lexical_cast<std::string>(pos.first)), _message(msg), _position(pos) { }
+            explicit ParserError(const std::string& msg, std::pair<int, int> pos) : runtime_error(msg + ", error at line " + std::to_string(pos.second) + ", column " + std::to_string(pos.first)), _message(msg), _position(pos) { }
 
             const std::string& message() const { return _message; }
             std::pair<int, int> position() const { return _position; }

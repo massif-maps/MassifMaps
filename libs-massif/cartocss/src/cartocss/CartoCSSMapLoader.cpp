@@ -1,6 +1,7 @@
 #include "CartoCSSMapLoader.h"
 #include "CartoCSSParser.h"
 #include "CartoCSSMapnikTranslator.h"
+#include "mapnikvt/ValueConverter.h"
 
 #include <picojson/picojson.h>
 
@@ -40,24 +41,25 @@ namespace carto { namespace css {
         std::function<void(const RuleSet& ruleSet)> storeRuleSetInfo;
         storeRuleSetInfo = [&](const RuleSet& ruleSet) {
             for (const Selector& selector : ruleSet.getSelectors()) {
-                for (const std::shared_ptr<const Predicate>& pred : selector.getPredicates()) {
-                    if (auto layerPred = std::dynamic_pointer_cast<const LayerPredicate>(pred)) {
-                        if (std::find(layerNames.begin(), layerNames.end(), layerPred->getLayerName()) == layerNames.end()) {
-                            layerNames.push_back(layerPred->getLayerName());
+                for (const Predicate& pred : selector.getPredicates()) {
+                    if (auto layerPred = std::get_if<LayerPredicate>(&pred)) {
+                        std::string layerName = layerPred->getLayerName();
+                        if (std::find(layerNames.begin(), layerNames.end(), layerName) == layerNames.end()) {
+                            layerNames.push_back(layerName);
                         }
                     }
                 }
             }
 
             for (const Block::Element& element : ruleSet.getBlock().getElements()) {
-                if (auto subRuleSet = boost::get<RuleSet>(&element)) {
+                if (auto subRuleSet = std::get_if<RuleSet>(&element)) {
                     storeRuleSetInfo(*subRuleSet);
                 }
             }
         };
 
         for (const StyleSheet::Element& element : styleSheet.getElements()) {
-            if (auto ruleSet = boost::get<RuleSet>(&element)) {
+            if (auto ruleSet = std::get_if<RuleSet>(&element)) {
                 storeRuleSetInfo(*ruleSet);
             }
         }
@@ -109,7 +111,7 @@ namespace carto { namespace css {
             catch (const CartoCSSParser::ParserError& ex) {
                 std::string msg = std::string("Error while parsing file ") + mssFileName;
                 if (ex.position().first != 0) {
-                    msg += ", error at line " + boost::lexical_cast<std::string>(ex.position().second) + ", column " + boost::lexical_cast<std::string>(ex.position().first);
+                    msg += ", error at line " + std::to_string(ex.position().second) + ", column " + std::to_string(ex.position().first);
                 }
                 msg += std::string(": ") + ex.what();
                 throw LoaderException(msg);
@@ -164,37 +166,24 @@ namespace carto { namespace css {
         // Set parameters
         map->setNutiParameters(nutiParameters);
 
-        // Layers
-        CartoCSSCompiler compiler;
-        CartoCSSMapnikTranslator translator(_logger);
+        // Compile and build layers
         for (const std::string& layerName : layerNames) {
             std::map<std::string, AttachmentStyle> attachmentStyleMap;
-            int minZoom = 0;
-            std::list<CartoCSSCompiler::LayerAttachment> prevLayerAttachments;
-            for (int zoom = 0; zoom < MAX_ZOOM + 1; zoom++) {
-                try {
-                    ExpressionContext context;
-                    std::map<std::string, Value> predefinedFieldMap;
-                    context.predefinedFieldMap = &predefinedFieldMap;
-                    (*context.predefinedFieldMap)["zoom"] = Value(static_cast<long long>(zoom));
-                    compiler.setContext(context);
-                    compiler.setIgnoreLayerPredicates(_ignoreLayerPredicates);
+            try {
+                std::map<std::pair<int, int>, std::list<AttachmentPropertySets>> layerZoomAttachments;
 
-                    std::list<CartoCSSCompiler::LayerAttachment> layerAttachments;
-                    compiler.compileLayer(layerName, styleSheet, layerAttachments);
+                CartoCSSCompiler compiler;
+                compiler.setIgnoreLayerPredicates(_ignoreLayerPredicates);
+                compiler.compileLayer(styleSheet, layerName, 0, MAX_ZOOM + 1, layerZoomAttachments);
 
-                    if (zoom > 0 && layerAttachments != prevLayerAttachments) {
-                        buildAttachmentStyleMap(translator, map, minZoom, zoom, prevLayerAttachments, attachmentStyleMap);
-                        minZoom = zoom;
-                    }
-                    prevLayerAttachments = std::move(layerAttachments);
-                }
-                catch (const std::exception& ex) {
-                    throw LoaderException(std::string("Error while building zoom ") + boost::lexical_cast<std::string>(zoom) + " properties: " + ex.what());
+                CartoCSSMapnikTranslator translator(_logger);
+                for (auto it = layerZoomAttachments.begin(); it != layerZoomAttachments.end(); it++) {
+                    buildAttachmentStyleMap(translator, map, it->first.first, it->first.second, it->second, attachmentStyleMap);
                 }
             }
-            buildAttachmentStyleMap(translator, map, minZoom, MAX_ZOOM + 1, prevLayerAttachments, attachmentStyleMap);
-
+            catch (const std::exception& ex) {
+                throw LoaderException(std::string("Error while building properties for layer ") + layerName + ": " + ex.what());
+            }
             if (attachmentStyleMap.empty()) {
                 continue;
             }
@@ -203,7 +192,7 @@ namespace carto { namespace css {
             std::vector<std::string> styleNames;
             for (const AttachmentStyle& attachmentStyle : attachmentStyles) {
                 std::string styleName = layerName + attachmentStyle.attachment;
-                auto style = std::make_shared<mvt::Style>(styleName, attachmentStyle.opacity, attachmentStyle.compOp, mvt::Style::FilterMode::FIRST, attachmentStyle.rules);
+                auto style = std::make_shared<mvt::Style>(styleName, attachmentStyle.opacity, attachmentStyle.imageFilters, attachmentStyle.compOp, mvt::Style::FilterMode::FIRST, attachmentStyle.rules);
                 style->optimizeRules();
                 map->addStyle(style);
                 styleNames.push_back(styleName);
@@ -237,37 +226,52 @@ namespace carto { namespace css {
         }
     }
 
-    void CartoCSSMapLoader::buildAttachmentStyleMap(const CartoCSSMapnikTranslator& translator, const std::shared_ptr<mvt::Map>& map, int minZoom, int maxZoom, const std::list<CartoCSSCompiler::LayerAttachment>& layerAttachments, std::map<std::string, AttachmentStyle>& attachmentStyleMap) const {
-        for (const CartoCSSCompiler::LayerAttachment& layerAttachment : layerAttachments) {
-            if (attachmentStyleMap.find(layerAttachment.attachment) == attachmentStyleMap.end()) {
-                attachmentStyleMap[layerAttachment.attachment].attachment = layerAttachment.attachment;
-                attachmentStyleMap[layerAttachment.attachment].order = layerAttachment.order;
+    void CartoCSSMapLoader::buildAttachmentStyleMap(const CartoCSSMapnikTranslator& translator, const std::shared_ptr<mvt::Map>& map, int minZoom, int maxZoom, const std::list<AttachmentPropertySets>& layerAttachments, std::map<std::string, AttachmentStyle>& attachmentStyleMap) const {
+        for (const AttachmentPropertySets& layerAttachment : layerAttachments) {
+            int layerAttachmentOrder = layerAttachment.calculateOrder();
+            if (attachmentStyleMap.find(layerAttachment.getAttachment()) == attachmentStyleMap.end()) {
+                attachmentStyleMap[layerAttachment.getAttachment()].attachment = layerAttachment.getAttachment();
+                attachmentStyleMap[layerAttachment.getAttachment()].order = layerAttachmentOrder;
             }
             
-            AttachmentStyle& attachmentStyle = attachmentStyleMap[layerAttachment.attachment];
-            attachmentStyle.order = std::min(attachmentStyle.order, layerAttachment.order);
-            for (const CartoCSSCompiler::PropertySet& propertySet : layerAttachment.propertySets) {
-                std::shared_ptr<mvt::Rule> rule = translator.buildRule(propertySet, map, minZoom, maxZoom);
+            AttachmentStyle& attachmentStyle = attachmentStyleMap[layerAttachment.getAttachment()];
+            attachmentStyle.order = std::min(attachmentStyle.order, layerAttachmentOrder);
+            for (const PropertySet& propertySet : layerAttachment.getPropertySets()) {
+                std::shared_ptr<const mvt::Rule> rule = translator.buildRule(propertySet, map, minZoom, maxZoom);
                 if (rule) {
                     attachmentStyle.rules.push_back(rule);
                 }
 
-                // Copy opacity and comp-op properties. These are style-level properties, not symbolizer peroperties.
+                // Copy opacity, image-filters and comp-op properties. These are style-level properties, not symbolizer peroperties.
                 // Note that we ignore filters, this is CartoCSS design issue and represents how CartoCSS is translated to Mapnik.
-                auto opacityIt = propertySet.properties.find("opacity");
-                if (opacityIt != propertySet.properties.end()) {
-                    if (auto constExpr = std::dynamic_pointer_cast<const ConstExpression>(opacityIt->second.expression)) {
-                        attachmentStyle.opacity = mvt::ValueConverter<float>::convert(translator.buildValue(constExpr->getValue()));
+                if (auto opacityProp = propertySet.findProperty("opacity")) {
+                    if (auto val = std::get_if<Value>(&opacityProp->getExpression())) {
+                        attachmentStyle.opacity = mvt::ValueConverter<float>::convert(translator.buildValue(*val));
                     }
                     else {
                         _logger->write(mvt::Logger::Severity::WARNING, "Opacity must be constant expression");
                     }
                 }
                 
-                auto compOpIt = propertySet.properties.find("comp-op");
-                if (compOpIt != propertySet.properties.end()) {
-                    if (auto constExpr = std::dynamic_pointer_cast<const ConstExpression>(compOpIt->second.expression)) {
-                        attachmentStyle.compOp = mvt::ValueConverter<std::string>::convert(translator.buildValue(constExpr->getValue()));
+                if (auto imageFiltersProp = propertySet.findProperty("image-filters")) {
+                    if (auto funcExpr = std::get_if<std::shared_ptr<FunctionExpression>>(&imageFiltersProp->getExpression())) {
+                        attachmentStyle.imageFilters = (*funcExpr)->getFunc() + "(";
+                        for (std::size_t i = 0; i < (*funcExpr)->getArgs().size(); i++) {
+                            attachmentStyle.imageFilters += (i > 0 ? "," : "");
+                            if (auto val = std::get_if<Value>(&(*funcExpr)->getArgs()[i])) {
+                                attachmentStyle.imageFilters += mvt::ValueConverter<std::string>::convert(translator.buildValue(*val));
+                            }
+                        }
+                        attachmentStyle.imageFilters += ")";
+                    }
+                    else {
+                        _logger->write(mvt::Logger::Severity::WARNING, "ImageFilters must be function expression");
+                    }
+                }
+
+                if (auto compOpProp = propertySet.findProperty("comp-op")) {
+                    if (auto val = std::get_if<Value>(&compOpProp->getExpression())) {
+                        attachmentStyle.compOp = mvt::ValueConverter<std::string>::convert(translator.buildValue(*val));
                     }
                     else {
                         _logger->write(mvt::Logger::Severity::WARNING, "CompOp must be constant expression");

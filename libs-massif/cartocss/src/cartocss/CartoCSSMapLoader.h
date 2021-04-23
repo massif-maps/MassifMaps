@@ -36,6 +36,7 @@ namespace carto { namespace css {
         explicit CartoCSSMapLoader(std::shared_ptr<AssetLoader> assetLoader, std::shared_ptr<mvt::Logger> logger) : _assetLoader(std::move(assetLoader)), _logger(std::move(logger)) { }
         virtual ~CartoCSSMapLoader() = default;
 
+        bool isIgnoreLayerPredicates() const { return _ignoreLayerPredicates; }
         void setIgnoreLayerPredicates(bool ignore) { _ignoreLayerPredicates = ignore; }
 
         std::shared_ptr<mvt::Map> loadMap(const std::string& cartoCSS) const;
@@ -43,12 +44,13 @@ namespace carto { namespace css {
         std::shared_ptr<mvt::Map> loadMapProject(const std::string& fileName) const;
 
     protected:
-        constexpr static int MAX_ZOOM = 24;
+        inline static constexpr int MAX_ZOOM = 24;
 
         struct AttachmentStyle {
             std::string attachment;
             int order = 0;
             float opacity = 1.0f;
+            std::string imageFilters;
             std::string compOp;
             std::vector<std::shared_ptr<const mvt::Rule>> rules;
         };
@@ -57,7 +59,7 @@ namespace carto { namespace css {
         static bool getMapProperty(const std::map<std::string, Value>& mapProperties, const std::string& name, T& value) {
             auto valueIt = mapProperties.find(name);
             if (valueIt != mapProperties.end()) {
-                if (auto valuePtr = boost::get<T>(&valueIt->second)) {
+                if (auto valuePtr = std::get_if<T>(&valueIt->second)) {
                     value = *valuePtr;
                     return true;
                 }
@@ -67,7 +69,7 @@ namespace carto { namespace css {
 
         std::shared_ptr<mvt::Map> buildMap(const StyleSheet& styleSheet, const std::vector<std::string>& layerNames, const std::vector<mvt::NutiParameter>& nutiParameters) const;
         void loadMapSettings(const std::map<std::string, Value>& mapProperties, mvt::Map::Settings& mapSettings) const;
-        void buildAttachmentStyleMap(const CartoCSSMapnikTranslator& translator, const std::shared_ptr<mvt::Map>& map, int minZoom, int maxZoom, const std::list<CartoCSSCompiler::LayerAttachment>& layerAttachments, std::map<std::string, AttachmentStyle>& attachmentStyleMap) const;
+        void buildAttachmentStyleMap(const CartoCSSMapnikTranslator& translator, const std::shared_ptr<mvt::Map>& map, int minZoom, int maxZoom, const std::list<AttachmentPropertySets>& layerAttachments, std::map<std::string, AttachmentStyle>& attachmentStyleMap) const;
         std::vector<AttachmentStyle> getSortedAttachmentStyles(const std::map<std::string, AttachmentStyle>& attachmentStyleMap) const;
 
         const std::shared_ptr<AssetLoader> _assetLoader;

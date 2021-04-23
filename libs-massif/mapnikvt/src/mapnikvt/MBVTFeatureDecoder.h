@@ -13,7 +13,7 @@
 #include <mutex>
 #include <vector>
 #include <map>
-#include <unordered_set>
+#include <set>
 
 #include <cglib/bbox.h>
 #include <cglib/mat.h>
@@ -35,7 +35,7 @@ namespace carto { namespace mvt {
 
         std::vector<std::string> getLayerNames() const;
 
-        std::shared_ptr<FeatureIterator> createLayerFeatureIterator(const std::string& name) const;
+        std::shared_ptr<FeatureIterator> createLayerFeatureIterator(const std::string& name, const std::set<std::string>* fields) const;
 
         bool findFeature(long long localId, std::string& layerName, Feature& feature) const;
 
@@ -49,7 +49,7 @@ namespace carto { namespace mvt {
         std::shared_ptr<vector_tile::Tile> _tile;
         std::map<std::string, int> _layerMap;
 
-        mutable std::map<std::string, std::shared_ptr<FeatureDataCache<std::vector<int>>>> _layerFeatureDataCache;
+        mutable std::pair<std::string, std::shared_ptr<FeatureDataCache<std::vector<int>>>> _layerFeatureDataCache;
         mutable std::mutex _layerFeatureDataCacheMutex;
 
         const std::shared_ptr<Logger> _logger;

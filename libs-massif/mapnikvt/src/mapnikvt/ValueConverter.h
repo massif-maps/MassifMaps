@@ -15,12 +15,12 @@ namespace carto { namespace mvt {
     template <typename V>
     struct ValueConverter {
         static V convert(const Value& val) {
-            return boost::apply_visitor(Converter(), val);
+            return std::visit(Converter(), val);
         }
 
     private:
-        struct Converter : boost::static_visitor<V> {
-            V operator() (boost::blank) const { return V(); }
+        struct Converter {
+            V operator() (std::monostate) const { return V(); }
             V operator() (const std::string& val) const {
                 if (val.empty()) {
                     return V();
@@ -37,23 +37,37 @@ namespace carto { namespace mvt {
     };
 
     template <>
-    struct ValueConverter<boost::blank> {
-        static boost::blank convert(const Value& val) {
-            return boost::blank();
+    struct ValueConverter<std::monostate> {
+        static std::monostate convert(const Value& val) {
+            return std::monostate();
         }
     };
 
     template <>
     struct ValueConverter<bool> {
         static bool convert(const Value& val) {
-            return boost::apply_visitor(Converter(), val);
+            return std::visit(Converter(), val);
         }
 
     private:
-        struct Converter : boost::static_visitor<bool> {
-            bool operator() (boost::blank) const { return false; }
+        struct Converter {
+            bool operator() (std::monostate) const { return false; }
             bool operator() (bool val) const { return val; }
-            bool operator() (const std::string& val) const { return !val.empty(); }
+            bool operator() (const std::string& val) const {
+                if (val.empty()) {
+                    return false;
+                } else if (val == "true") {
+                    return true;
+                } else if (val == "false") {
+                    return false;
+                }
+                try {
+                    return boost::lexical_cast<bool>(val);
+                }
+                catch (const boost::bad_lexical_cast&) {
+                    return false;
+                }
+            }
             template <typename T> bool operator() (T val) const { return val != 0; }
         };
     };
@@ -61,12 +75,12 @@ namespace carto { namespace mvt {
     template <>
     struct ValueConverter<std::string> {
         static std::string convert(const Value& val) {
-            return boost::apply_visitor(Converter(), val);
+            return std::visit(Converter(), val);
         }
 
     private:
-        struct Converter : boost::static_visitor<std::string> {
-            std::string operator() (boost::blank) const { return std::string(); }
+        struct Converter {
+            std::string operator() (std::monostate) const { return std::string(); }
             std::string operator() (const std::string& val) const { return val; }
             template <typename T> std::string operator() (T val) const {
                 try {

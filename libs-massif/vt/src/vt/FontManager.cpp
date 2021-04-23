@@ -9,21 +9,15 @@
 #include <map>
 #include <unordered_map>
 
-#undef FT2_BUILD_LIBRARY
-#include <ft2build.h>
-#include FT_FREETYPE_H
-#include FT_SFNT_NAMES_H
-#include FT_TRUETYPE_IDS_H
-#include FT_STROKER_H
+#include <freetype/freetype.h>
+#include <freetype/ftsnames.h>
+#include <freetype/ttnameid.h>
+#include <freetype/ftstroke.h>
 
 #include <hb.h>
 #include <hb-ft.h>
 
 #include <msdfgen.h>
-
-extern "C" {
-    hb_unicode_funcs_t* hb_ucdn_get_unicode_funcs(void);
-}
 
 namespace {
     struct FtContext {
@@ -98,12 +92,12 @@ namespace carto { namespace vt {
 
     class FontManagerFont : public Font {
     public:
-        explicit FontManagerFont(const std::shared_ptr<FontManagerLibrary>& library, const std::shared_ptr<GlyphMap>& glyphMap, const std::vector<unsigned char>* data, const std::shared_ptr<Font>& baseFont) : _library(library), _baseFont(baseFont), _glyphMap(glyphMap), _face(nullptr), _font(nullptr) {
+        explicit FontManagerFont(const std::shared_ptr<FontManagerLibrary>& library, const std::shared_ptr<GlyphMap>& glyphMap, const std::vector<unsigned char>* data, const std::shared_ptr<const Font>& baseFont) : _library(library), _baseFont(baseFont), _glyphMap(glyphMap), _face(nullptr), _font(nullptr) {
             std::lock_guard<std::recursive_mutex> lock(_library->getMutex());
 
             // Load FreeType font
             if (data) {
-                int error = FT_New_Memory_Face(_library->getLibrary(), data->data(), data->size(), 0, &_face);
+                int error = FT_New_Memory_Face(_library->getLibrary(), data->data(), static_cast<FT_Long>(data->size()), 0, &_face);
                 if (error == 0) {
                     error = FT_Set_Char_Size(_face, 0, static_cast<int>(RENDER_SIZE * 64.0f), 0, 0);
                 }
@@ -120,7 +114,7 @@ namespace carto { namespace vt {
             // Initialize HarfBuzz buffer for glyph shaping
             _buffer = hb_buffer_create();
             if (_buffer) {
-                hb_buffer_set_unicode_funcs(_buffer, hb_ucdn_get_unicode_funcs());
+                hb_buffer_set_unicode_funcs(_buffer, hb_unicode_funcs_get_default());
             }
         }
 
@@ -219,8 +213,8 @@ namespace carto { namespace vt {
         }
 
     private:
-        constexpr static int RENDER_PADDING = 3;
-        constexpr static int RENDER_SIZE = GLYPH_RENDER_SIZE - RENDER_PADDING;
+        inline static constexpr int RENDER_PADDING = 3;
+        inline static constexpr int RENDER_SIZE = GLYPH_RENDER_SIZE - RENDER_PADDING;
 
         GlyphMap::GlyphId addFreeTypeGlyph(FT_Face face, CodePoint codePoint) const {
             FT_Error error = FT_Load_Glyph(face, codePoint, FT_LOAD_NO_BITMAP | FT_LOAD_NO_HINTING);
@@ -274,7 +268,7 @@ namespace carto { namespace vt {
         }
 
         const std::shared_ptr<FontManagerLibrary> _library;
-        const std::shared_ptr<Font> _baseFont;
+        const std::shared_ptr<const Font> _baseFont;
         std::shared_ptr<GlyphMap> _glyphMap;
         mutable std::unordered_map<CodePoint, GlyphMap::GlyphId> _codePointGlyphMap;
         FT_Face _face;
@@ -295,7 +289,7 @@ namespace carto { namespace vt {
 
             FontManagerLibrary library;
             FT_Face face;
-            int error = FT_New_Memory_Face(library.getLibrary(), data.data(), data.size(), 0, &face);
+            int error = FT_New_Memory_Face(library.getLibrary(), data.data(), static_cast<FT_Long>(data.size()), 0, &face);
             if (error != 0) {
                 return std::string();
             }
@@ -349,7 +343,7 @@ namespace carto { namespace vt {
             return registeredName;
         }
 
-        std::shared_ptr<Font> getFont(const std::string& name, const std::shared_ptr<Font>& baseFont) const {
+        std::shared_ptr<const Font> getFont(const std::string& name, const std::shared_ptr<const Font>& baseFont) const {
             std::lock_guard<std::mutex> lock(_mutex);
 
             // Try to use already cached font
@@ -419,7 +413,7 @@ namespace carto { namespace vt {
         const int _maxGlyphMapHeight;
         std::map<std::string, std::vector<unsigned char>> _fontDataMap;
         std::shared_ptr<FontManagerLibrary> _library;
-        mutable std::map<std::pair<std::string, std::shared_ptr<Font>>, std::shared_ptr<FontManagerFont>> _fontMap;
+        mutable std::map<std::pair<std::string, std::shared_ptr<const Font>>, std::shared_ptr<FontManagerFont>> _fontMap;
         mutable std::map<std::string, std::shared_ptr<GlyphMap>> _glyphMapMap;
         mutable std::mutex _mutex;
     };
@@ -434,7 +428,7 @@ namespace carto { namespace vt {
         return _impl->loadFontData(data);
     }
 
-    std::shared_ptr<Font> FontManager::getFont(const std::string& name, const std::shared_ptr<Font>& baseFont) const {
+    std::shared_ptr<const Font> FontManager::getFont(const std::string& name, const std::shared_ptr<const Font>& baseFont) const {
         return _impl->getFont(name, baseFont);
     }
 } }

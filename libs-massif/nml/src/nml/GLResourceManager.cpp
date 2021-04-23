@@ -101,7 +101,7 @@ namespace carto { namespace nml {
         for (auto it = _textureMap.begin(); it != _textureMap.end(); ) {
             if (it->first.expired()) {
                 const std::vector<GLuint>& texIds = it->second;
-                glDeleteTextures(texIds.size(), texIds.data());
+                glDeleteTextures(static_cast<GLsizei>(texIds.size()), texIds.data());
                 it = _textureMap.erase(it);
             } else {
                 it++;
@@ -111,7 +111,7 @@ namespace carto { namespace nml {
         for (auto it = _bufferMap.begin(); it != _bufferMap.end(); ) {
             if (it->first.expired()) {
                 const std::vector<GLuint>& bufIds = it->second;
-                glDeleteBuffers(bufIds.size(), bufIds.data());
+                glDeleteBuffers(static_cast<GLsizei>(bufIds.size()), bufIds.data());
                 it = _bufferMap.erase(it);
             } else {
                 it++;
@@ -128,13 +128,13 @@ namespace carto { namespace nml {
 
         for (auto it = _textureMap.begin(); it != _textureMap.end(); it++) {
             const std::vector<GLuint>& texIds = it->second;
-            glDeleteTextures(texIds.size(), texIds.data());
+            glDeleteTextures(static_cast<GLsizei>(texIds.size()), texIds.data());
         }
         _textureMap.clear();
 
         for (auto it = _bufferMap.begin(); it != _bufferMap.end(); it++) {
             const std::vector<GLuint>& bufIds = it->second;
-            glDeleteBuffers(bufIds.size(), bufIds.data());
+            glDeleteBuffers(static_cast<GLsizei>(bufIds.size()), bufIds.data());
         }
         _bufferMap.clear();
     }

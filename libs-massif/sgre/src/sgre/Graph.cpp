@@ -134,8 +134,8 @@ namespace {
 }
 
 namespace carto { namespace sgre {
-    StaticGraph::StaticGraph(std::vector<Node> nodes, std::vector<Edge> edges, std::vector<Feature> features) :
-        _nodes(std::move(nodes)), _edges(std::move(edges)), _features(std::move(features))
+    StaticGraph::StaticGraph(std::vector<Node> nodes, std::vector<Edge> edges, std::vector<FeatureProperties> properties, std::vector<Attributes> attributes) :
+        _nodes(std::move(nodes)), _edges(std::move(edges)), _featureProperties(std::move(properties)), _attributes(std::move(attributes))
     {
         // Add edge ids to nodes
         linkNodeEdgeIds(_nodes, _edges);
@@ -156,7 +156,7 @@ namespace carto { namespace sgre {
         _rootNode = buildRTree(bounds, edgeIds);
     }
 
-    std::vector<std::pair<Graph::EdgeId, Point>> StaticGraph::findNearestEdgePoint(const Point& pos, const picojson::object& filter, const SearchOptions& options) const {
+    std::vector<std::pair<Graph::EdgeId, Point>> StaticGraph::findNearestEdgePoint(const Point& pos, const FeatureFilter& filter, const SearchOptions& options) const {
         struct RTreeNodeRecord {
             std::shared_ptr<const RTreeNode> node;
             double dist;
@@ -206,14 +206,14 @@ namespace carto { namespace sgre {
                     if (edge.featureId == FeatureId(-1)) {
                         continue;
                     }
-                    const Feature& feature = getFeature(edge.featureId);
-                    if (!feature.is<picojson::object>()) {
+                    const FeatureProperties& properties = getFeatureProperties(edge.featureId);
+                    if (!properties.is<picojson::object>()) {
                         continue;
                     }
 
                     auto it = filter.begin();
                     for (; it != filter.end(); it++) {
-                        if (!feature.contains(it->first) || feature.get(it->first) != it->second) {
+                        if (!properties.contains(it->first) || properties.get(it->first) != it->second) {
                             break;
                         }
                     }
@@ -238,7 +238,7 @@ namespace carto { namespace sgre {
         return bestResults;
     }
 
-    boost::optional<Point> StaticGraph::findNearestEdgePoint(const Edge& edge, const Point& pos, const cglib::vec3<double>& scale) const {
+    std::optional<Point> StaticGraph::findNearestEdgePoint(const Edge& edge, const Point& pos, const cglib::vec3<double>& scale) const {
         const Node& node0 = getNode(edge.nodeIds[0]);
         const Node& node1 = getNode(edge.nodeIds[1]);
 
@@ -264,7 +264,7 @@ namespace carto { namespace sgre {
         // Handle the edge based on its search criteria. Some cases are very tricky and the code depends on the graph builder.
         switch (edge.searchCriteria) {
         case SearchCriteria::NONE:
-            return boost::optional<Point>();
+            return std::optional<Point>();
         case SearchCriteria::VERTEX:
             if (node0.nodeFlags & NodeFlags::GEOMETRY_VERTEX) {
                 if (node1.nodeFlags & NodeFlags::GEOMETRY_VERTEX) {
@@ -274,7 +274,7 @@ namespace carto { namespace sgre {
             } else if (node1.nodeFlags & NodeFlags::GEOMETRY_VERTEX) {
                 return node1.points[i1];
             }
-            return boost::optional<Point>();
+            return std::optional<Point>();
         case SearchCriteria::FIRST_LAST_VERTEX:
             if (node0.nodeFlags & NodeFlags::ENDPOINT_VERTEX) {
                 if (node1.nodeFlags & NodeFlags::ENDPOINT_VERTEX) {
@@ -284,7 +284,7 @@ namespace carto { namespace sgre {
             } else if (node1.nodeFlags & NodeFlags::ENDPOINT_VERTEX) {
                 return node1.points[i1];
             }
-            return boost::optional<Point>();
+            return std::optional<Point>();
         case SearchCriteria::EDGE:
             if (edge.edgeFlags & EdgeFlags::GEOMETRY_EDGE) {
                 if (pointOnLine(std::array<cglib::vec3<double>, 2> {{ node0.points[1 - i0], node1.points[1 - i1] }}, pos)) {
@@ -293,7 +293,7 @@ namespace carto { namespace sgre {
                 Point closestScaled = closestPointOnLine(std::array<cglib::vec3<double>, 2> {{ node0PointsScaled[1 - i0], node1PointsScaled[1 - i1] }}, posScaled);
                 return cglib::pointwise_product(closestScaled, invScale);
             }
-            return boost::optional<Point>();
+            return std::optional<Point>();
         case SearchCriteria::SURFACE:
             if (node0.points[i0] == node1.points[i1]) {
                 if (pointInsideTriangle(std::array<cglib::vec3<double>, 3> {{ node0.points[i0], node0.points[1 - i0], node1.points[1 - i1] }}, pos)) {
@@ -310,7 +310,7 @@ namespace carto { namespace sgre {
             }
         }
 
-        return boost::optional<Point>();
+        return std::optional<Point>();
     }
 
     std::shared_ptr<StaticGraph::RTreeNode> StaticGraph::buildRTree(const cglib::bbox3<double>& bounds, std::vector<EdgeId> edgeIds) const {
@@ -384,9 +384,9 @@ namespace carto { namespace sgre {
 
     Graph::NodeId DynamicGraph::getNodeIdRangeEnd() const {
         NodeId nodeIdRangeEnd = _staticGraph->getNodeIdRangeEnd();
-        for (const std::pair<NodeId, Node>& nodePair : _nodes) {
-            if (nodePair.first >= nodeIdRangeEnd) {
-                nodeIdRangeEnd = nodePair.first + 1;
+        for (auto it = _nodes.begin(); it != _nodes.end(); it++) {
+            if (it->first >= nodeIdRangeEnd) {
+                nodeIdRangeEnd = it->first + 1;
             }
         }
         return nodeIdRangeEnd;
@@ -407,17 +407,25 @@ namespace carto { namespace sgre {
         return _edges.at(edgeId - _staticGraph->getEdgeIdRangeEnd());
     }
     
-    const Graph::Feature& DynamicGraph::getFeature(FeatureId featureId) const {
+    const Graph::FeatureProperties& DynamicGraph::getFeatureProperties(FeatureId featureId) const {
         if (featureId < _staticGraph->getFeatureIdRangeEnd()) {
-            return _staticGraph->getFeature(featureId);
+            return _staticGraph->getFeatureProperties(featureId);
         }
-        return _features.at(featureId - _staticGraph->getFeatureIdRangeEnd());
+        return _featureProperties.at(featureId - _staticGraph->getFeatureIdRangeEnd());
+    }
+
+    const Graph::Attributes& DynamicGraph::getAttributes(AttributesId attribsId) const {
+        if (attribsId < _staticGraph->getAttributesIdRangeEnd()) {
+            return _staticGraph->getAttributes(attribsId);
+        }
+        return _attributes.at(attribsId - _staticGraph->getAttributesIdRangeEnd());
     }
 
     void DynamicGraph::reset() {
         _nodes.clear();
         _edges.clear();
-        _features.clear();
+        _featureProperties.clear();
+        _attributes.clear();
     }
 
     Graph::NodeId DynamicGraph::addNode(Node node) {
@@ -435,9 +443,15 @@ namespace carto { namespace sgre {
         return edgeId;
     }
     
-    Graph::FeatureId DynamicGraph::addFeature(Feature feature) {
+    Graph::FeatureId DynamicGraph::addFeature(FeatureProperties properties) {
         FeatureId featureId = getFeatureIdRangeEnd();
-        _features.push_back(std::move(feature));
+        _featureProperties.push_back(std::move(properties));
         return featureId;
+    }
+
+    Graph::AttributesId DynamicGraph::addAttributes(Attributes attribs) {
+        AttributesId attribsId = getAttributesIdRangeEnd();
+        _attributes.push_back(std::move(attribs));
+        return attribsId;
     }
 } }

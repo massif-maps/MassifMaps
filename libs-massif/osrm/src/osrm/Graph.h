@@ -184,9 +184,9 @@ namespace carto { namespace osrm {
         std::vector<NearestNode> findNearestNode(const WGSPos& pos) const;
 
     private:
-        constexpr static int VERSION = 0;
+        inline static constexpr int VERSION = 0;
 
-        constexpr static double COORDINATE_SCALE = 1.0e-6;
+        inline static constexpr double COORDINATE_SCALE = 1.0e-6;
 
         struct Package {
             int packageId = -1;

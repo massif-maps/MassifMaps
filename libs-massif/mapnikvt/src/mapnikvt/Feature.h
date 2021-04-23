@@ -15,12 +15,16 @@
 #include <vector>
 #include <unordered_set>
 #include <map>
+#include <utility>
 
 namespace carto { namespace mvt {
     class FeatureData final {
     public:
         enum class GeometryType {
-            NULL_GEOMETRY = 0, POINT_GEOMETRY = 1, LINE_GEOMETRY = 2, POLYGON_GEOMETRY = 3
+            NULL_GEOMETRY    = 0,
+            POINT_GEOMETRY   = 1,
+            LINE_GEOMETRY    = 2,
+            POLYGON_GEOMETRY = 3
         };
 
         FeatureData() = delete;

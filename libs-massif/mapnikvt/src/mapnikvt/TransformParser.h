@@ -25,7 +25,7 @@ namespace carto { namespace mvt {
         using Skipper = boost::spirit::iso8859_1::space_type;
 
         template <typename Iterator>
-        struct Grammar : boost::spirit::qi::grammar<Iterator, std::shared_ptr<Transform>(), Skipper> {
+        struct Grammar : boost::spirit::qi::grammar<Iterator, Transform(), Skipper> {
             Grammar() : Grammar::base_type(transform) {
                 using namespace boost;
                 using namespace boost::spirit;
@@ -74,20 +74,20 @@ namespace carto { namespace mvt {
                     ;
 
                 skewx =
-                    (skewx_kw >> ('(' > number > ')')) [_val = phoenix::bind(&makeSkewTransform<SkewXTransform>, _1)]
+                    (skewx_kw >> ('(' > number > ')')) [_val = phoenix::bind(&makeSkewXTransform, _1)]
                     ;
 
                 skewy =
-                    (skewy_kw >> ('(' > number > ')')) [_val = phoenix::bind(&makeSkewTransform<SkewYTransform>, _1)]
+                    (skewy_kw >> ('(' > number > ')')) [_val = phoenix::bind(&makeSkewYTransform, _1)]
                     ;
             }
 
             boost::spirit::qi::rule<Iterator, boost::spirit::qi::unused_type()> matrix_kw, translate_kw, rotate_kw, scale_kw, skewx_kw, skewy_kw;
             boost::spirit::qi::rule<Iterator, float()> number;
-            boost::spirit::qi::rule<Iterator, std::shared_ptr<Transform>(), Skipper> transform, matrix, translate, rotate, scale, skewx, skewy;
+            boost::spirit::qi::rule<Iterator, Transform(), Skipper> transform, matrix, translate, rotate, scale, skewx, skewy;
 
         private:
-            static std::shared_ptr<Transform> makeMatrixTransform(float a, float b, float c, float d, float e, float f) {
+            static Transform makeMatrixTransform(float a, float b, float c, float d, float e, float f) {
                 cglib::mat3x3<float> m = cglib::mat3x3<float>::identity();
                 m(0, 0) = a;
                 m(1, 0) = b;
@@ -95,24 +95,27 @@ namespace carto { namespace mvt {
                 m(1, 1) = d;
                 m(0, 2) = e;
                 m(1, 2) = f;
-                return std::make_shared<MatrixTransform>(m);
+                return MatrixTransform(m);
             }
             
-            static std::shared_ptr<Transform> makeTranslateTransform(float x, float y) {
-                return std::make_shared<TranslateTransform>(cglib::vec2<float>(x, y));
+            static Transform makeTranslateTransform(float x, float y) {
+                return TranslateTransform(cglib::vec2<float>(x, y));
             }
 
-            static std::shared_ptr<Transform> makeRotateTransform(float x, float y, float angle) {
-                return std::make_shared<RotateTransform>(cglib::vec2<float>(x, y), angle);
+            static Transform makeRotateTransform(float x, float y, float angle) {
+                return RotateTransform(cglib::vec2<float>(x, y), angle);
             }
 
-            static std::shared_ptr<Transform> makeScaleTransform(float sx, float sy) {
-                return std::make_shared<ScaleTransform>(cglib::vec2<float>(sx, sy));
+            static Transform makeScaleTransform(float sx, float sy) {
+                return ScaleTransform(cglib::vec2<float>(sx, sy));
             }
 
-            template <typename SkewTransform>
-            static std::shared_ptr<Transform> makeSkewTransform(float angle) {
-                return std::make_shared<SkewTransform>(angle);
+            static Transform makeSkewXTransform(float angle) {
+                return SkewXTransform(angle);
+            }
+
+            static Transform makeSkewYTransform(float angle) {
+                return SkewYTransform(angle);
             }
         };
     }

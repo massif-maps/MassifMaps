@@ -226,7 +226,7 @@ namespace carto { namespace vt {
         void findLabelIntersections(const std::shared_ptr<Label>& label, const std::vector<cglib::ray3<double>>& rays, float buffer, std::vector<GeometryIntersectionInfo>& results) const;
         void findTileBitmapIntersections(const TileId& tileId, const std::shared_ptr<const Tile>& tile, const std::shared_ptr<const TileBitmap>& bitmap, const std::shared_ptr<const TileSurface>& tileSurface, const std::vector<cglib::ray3<double>>& rays, std::vector<BitmapIntersectionInfo>& results) const;
 
-        bool renderBlendNodes2D(const std::vector<std::shared_ptr<BlendNode>>& blendNodes, int stencilBits);
+        bool renderBlendNodes2D(const std::vector<std::shared_ptr<BlendNode>>& blendNodes, GLint stencilBits);
         bool renderBlendNodes3D(const std::vector<std::shared_ptr<BlendNode>>& blendNodes);
         bool renderLabels(const std::vector<std::shared_ptr<Label>>& labels, const std::shared_ptr<const Bitmap>& bitmap);
 

@@ -12,52 +12,12 @@
 #include <freetype/freetype.h>
 #include <freetype/ftsnames.h>
 #include <freetype/ttnameid.h>
+#include <freetype/ftrender.h>
 #include <freetype/ftstroke.h>
+#include <freetype/ftmodapi.h>
 
 #include <hb.h>
 #include <hb-ft.h>
-
-#include <msdfgen.h>
-
-namespace {
-    struct FtContext {
-        msdfgen::Point2 position;
-        msdfgen::Shape* shape;
-        msdfgen::Contour* contour;
-    };
-
-    inline msdfgen::Point2 ftPoint2(const FT_Vector& vector) {
-        return msdfgen::Point2(vector.x / 64.0, vector.y / 64.0);
-    }
-
-    int ftMoveTo(const FT_Vector* to, void* user) {
-        FtContext* context = reinterpret_cast<FtContext*>(user);
-        context->contour = &context->shape->addContour();
-        context->position = ftPoint2(*to);
-        return 0;
-    }
-
-    int ftLineTo(const FT_Vector* to, void* user) {
-        FtContext* context = reinterpret_cast<FtContext*>(user);
-        context->contour->addEdge(new msdfgen::LinearSegment(context->position, ftPoint2(*to)));
-        context->position = ftPoint2(*to);
-        return 0;
-    }
-
-    int ftConicTo(const FT_Vector* control, const FT_Vector* to, void* user) {
-        FtContext* context = reinterpret_cast<FtContext*>(user);
-        context->contour->addEdge(new msdfgen::QuadraticSegment(context->position, ftPoint2(*control), ftPoint2(*to)));
-        context->position = ftPoint2(*to);
-        return 0;
-    }
-
-    int ftCubicTo(const FT_Vector* control1, const FT_Vector* control2, const FT_Vector* to, void* user) {
-        FtContext* context = reinterpret_cast<FtContext*>(user);
-        context->contour->addEdge(new msdfgen::CubicSegment(context->position, ftPoint2(*control1), ftPoint2(*control2), ftPoint2(*to)));
-        context->position = ftPoint2(*to);
-        return 0;
-    }
-}
 
 namespace carto { namespace vt {
     class FontManagerLibrary {
@@ -66,6 +26,9 @@ namespace carto { namespace vt {
             std::lock_guard<std::recursive_mutex> lock(_mutex);
 
             FT_Init_FreeType(&_library);
+
+            FT_Int spread = std::min(RENDER_SPREAD, static_cast<int>(BITMAP_SDF_SCALE));
+            FT_Property_Set(_library, "sdf", "spread", &spread);
         }
 
         ~FontManagerLibrary() {
@@ -84,6 +47,8 @@ namespace carto { namespace vt {
         }
 
     private:
+        inline static constexpr int RENDER_SPREAD = 3; // NOTE: keep it equal or smaller than BITMAP_SDF_SCALE
+
         FT_Library _library;
         static std::recursive_mutex _mutex; // use global lock as harfbuzz is not thread-safe on every platform
     };
@@ -221,49 +186,25 @@ namespace carto { namespace vt {
             if (error != 0) {
                 return 0;
             }
-            
-            msdfgen::Shape shape;
-            shape.contours.clear();
-            shape.inverseYAxis = false;
-
-            FtContext context = {};
-            context.shape = &shape;
-            context.contour = 0;
-            
-            FT_Outline_Funcs ftFunctions;
-            ftFunctions.move_to = &ftMoveTo;
-            ftFunctions.line_to = &ftLineTo;
-            ftFunctions.conic_to = &ftConicTo;
-            ftFunctions.cubic_to = &ftCubicTo;
-            ftFunctions.shift = 0;
-            ftFunctions.delta = 0;
-            error = FT_Outline_Decompose(&face->glyph->outline, &ftFunctions, &context);
+            error = FT_Render_Glyph(face->glyph, FT_RENDER_MODE_SDF);
             if (error != 0) {
                 return 0;
             }
 
-            if (face->glyph->metrics.width == 0) {
-                std::shared_ptr<Bitmap> glyphBitmap = std::make_shared<Bitmap>(0, 0, std::vector<std::uint32_t>());
-                return _glyphMap->loadBitmapGlyph(glyphBitmap, true, cglib::vec2<float>(0, 0));
-            }
-
-            bool revert = FT_Outline_Get_Orientation(&face->glyph->outline) == FT_ORIENTATION_POSTSCRIPT;
-            float width = std::ceil(face->glyph->metrics.width / 64.0f);
-            float height = std::ceil(face->glyph->metrics.height / 64.0f);
+            int width  = face->glyph->bitmap.width;
+            int height = face->glyph->bitmap.rows;
             float xOffset = std::ceil(-face->glyph->metrics.horiBearingX / 64.0f);
             float yOffset = std::ceil((face->glyph->metrics.height - face->glyph->metrics.horiBearingY) / 64.0f);
-            msdfgen::Bitmap<float> sdf(static_cast<int>(width) + 2 * RENDER_PADDING, static_cast<int>(height) + 2 * RENDER_PADDING);
-            msdfgen::generateSDF_legacy(sdf, shape, 1, msdfgen::Vector2(1, 1), msdfgen::Vector2(RENDER_PADDING + xOffset, RENDER_PADDING + yOffset), revert ? -(RENDER_PADDING + 1.0) : RENDER_PADDING + 1.0);
+            float distScale = 128.0f / BITMAP_SDF_SCALE / 1024.0f;
+            const FT_Short* distBuffer = reinterpret_cast<const FT_Short*>(face->glyph->bitmap.buffer);
 
-            std::vector<std::uint32_t> glyphBitmapData(sdf.width() * sdf.height());
-            for (int y = 0; y < sdf.height(); y++) {
-                for (int x = 0; x < sdf.width(); x++) {
-                    float dist = sdf(x, sdf.height() - 1 - y) - 0.5f;
-                    std::uint32_t val = static_cast<std::uint8_t>(std::max(0.0f, std::min(255.0f, (revert ? -dist : dist) * (128.0f / BITMAP_SDF_SCALE) + 127.5f)));
-                    glyphBitmapData[x + y * sdf.width()] = (val << 24) | (val << 16) | (val << 8) | val;
-                }
+            std::vector<std::uint32_t> glyphBitmapData(width * height);
+            for (std::size_t i = 0; i < glyphBitmapData.size(); i++) {
+                float dist = distBuffer[i] * distScale;
+                std::uint32_t val = static_cast<std::uint8_t>(std::max(0.0f, std::min(255.0f, dist + 127.5f)));
+                glyphBitmapData[i] = (val << 24) | (val << 16) | (val << 8) | val;
             }
-            std::shared_ptr<Bitmap> glyphBitmap = std::make_shared<Bitmap>(sdf.width(), sdf.height(), std::move(glyphBitmapData));
+            std::shared_ptr<Bitmap> glyphBitmap = std::make_shared<Bitmap>(width, height, std::move(glyphBitmapData));
             return _glyphMap->loadBitmapGlyph(glyphBitmap, true, cglib::vec2<float>(-xOffset, -RENDER_PADDING - yOffset));
         }
 

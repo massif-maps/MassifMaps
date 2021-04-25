@@ -367,7 +367,7 @@ namespace carto { namespace vt {
         std::lock_guard<std::mutex> lock(_mutex);
         
         // Update GL state
-        int stencilBits = 0;
+        GLint stencilBits = 0;
         glGetIntegerv(GL_STENCIL_BITS, &stencilBits);
 
         glEnable(GL_BLEND);
@@ -1008,10 +1008,10 @@ namespace carto { namespace vt {
         }
     }
 
-    bool GLTileRenderer::renderBlendNodes2D(const std::vector<std::shared_ptr<BlendNode>>& blendNodes, int stencilBits) {
-        int stencilNum = (1 << stencilBits) - 1; // forces initial stencil clear
+    bool GLTileRenderer::renderBlendNodes2D(const std::vector<std::shared_ptr<BlendNode>>& blendNodes, GLint stencilBits) {
+        GLint stencilNum = (1 << stencilBits) - 1; // forces initial stencil clear
         std::optional<GLenum> activeStencilMode;
-        std::optional<int> activeStencilNum;
+        std::optional<GLint> activeStencilNum;
         std::optional<CompOp> activeCompOp;
 
         auto setupStencil = [&](bool enable) {

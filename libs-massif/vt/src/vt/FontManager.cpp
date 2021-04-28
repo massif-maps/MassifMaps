@@ -349,7 +349,7 @@ namespace carto { namespace vt {
             return std::string(reinterpret_cast<const char*>(sfntName.string), sfntName.string_len);
         }
 
-        const std::string _glyphPreloadTable = " 0123456789abcdefghijklmnopqrstuvxyzwABCDEFGHIJKLMNOPQRSTUVXYZ-,.";
+        const std::string _glyphPreloadTable = ""; // list of glyphs to preload when initializing
         const int _maxGlyphMapWidth;
         const int _maxGlyphMapHeight;
         std::map<std::string, std::vector<unsigned char>> _fontDataMap;

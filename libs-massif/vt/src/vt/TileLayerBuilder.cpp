@@ -774,7 +774,7 @@ namespace carto { namespace vt {
 
     bool TileLayerBuilder::tesselatePolygon(const std::vector<std::vector<cglib::vec2<float>>>& pointsList, std::int8_t styleIndex, const PolygonStyle& style) {
         if (!_tessPoolAllocator) {
-            _tessPoolAllocator = std::unique_ptr<PoolAllocator>(new PoolAllocator);
+            _tessPoolAllocator = std::make_unique<PoolAllocator>();
         }
         _tessPoolAllocator->reset(); // reuse last allocated block from the start
 
@@ -878,7 +878,7 @@ namespace carto { namespace vt {
         }
 
         if (!_tessPoolAllocator) {
-            _tessPoolAllocator = std::unique_ptr<PoolAllocator>(new PoolAllocator);
+            _tessPoolAllocator = std::make_unique<PoolAllocator>();
         }
         _tessPoolAllocator->reset(); // reuse last allocated block from the start
 

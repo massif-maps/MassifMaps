@@ -123,7 +123,7 @@ namespace carto { namespace sgre {
             routeOptions.minUpDownAngle = configDef.get("min_updownangle").get<double>();
         }
 
-        auto routeFinder = std::unique_ptr<RouteFinder>(new RouteFinder(std::move(graph)));
+        auto routeFinder = std::make_unique<RouteFinder>(std::move(graph));
         routeFinder->setRouteOptions(routeOptions);
         return routeFinder;
     }

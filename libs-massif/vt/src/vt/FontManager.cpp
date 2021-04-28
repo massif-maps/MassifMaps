@@ -359,7 +359,7 @@ namespace carto { namespace vt {
         mutable std::mutex _mutex;
     };
 
-    FontManager::FontManager(int maxGlyphMapWidth, int maxGlyphMapHeight) : _impl(std::unique_ptr<Impl>(new Impl(maxGlyphMapWidth, maxGlyphMapHeight))) {
+    FontManager::FontManager(int maxGlyphMapWidth, int maxGlyphMapHeight) : _impl(std::make_unique<Impl>(maxGlyphMapWidth, maxGlyphMapHeight)) {
     }
 
     FontManager::~FontManager() {

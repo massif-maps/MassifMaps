@@ -362,6 +362,7 @@ namespace carto { namespace css {
             mapnikSymbolizer = std::make_shared<mvt::MarkersSymbolizer>(_logger);
         }
         else if (symbolizerType == "text" || symbolizerType == "shield") {
+            // Extact text expression and font name or font set name
             mvt::Expression textExpr = mvt::Value(std::string());
             std::pair<std::string, std::string> fontSetFaceName;
             for (const std::shared_ptr<const Property>& prop : properties) {
@@ -397,6 +398,8 @@ namespace carto { namespace css {
                     }
                 }
             }
+
+            // Check if the text expression is not empty.
             if (textExpr != mvt::Expression(mvt::Value(std::string()))) {
                 if (symbolizerType == "text") {
                     mapnikSymbolizer = std::make_shared<mvt::TextSymbolizer>(textExpr, map->getFontSets(), _logger);
@@ -441,7 +444,15 @@ namespace carto { namespace css {
             }
 
             try {
+                // Translate the property expression to Mapnik expression. In case of string constants, do additional expression parsing.
                 mvt::Expression mapnikExpression = buildExpression(prop->getExpression());
+                if (auto mapnikValue = std::get_if<mvt::Value>(&mapnikExpression)) {
+                    if (auto strVal = std::get_if<std::string>(mapnikValue)) {
+                        mapnikExpression = mvt::parseExpression(*strVal, true);
+                    }
+                }
+
+                // Set the symbolizer parameter
                 if (auto param = mapnikSymbolizer->getParameter(it->second)) {
                     param->setExpression(mapnikExpression);
                 }

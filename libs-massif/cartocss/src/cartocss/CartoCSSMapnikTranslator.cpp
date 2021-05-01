@@ -241,18 +241,18 @@ namespace carto { namespace css {
             for (std::size_t i = 1; i < funcExpr.getArgs().size(); i++) {
                 auto listExpr = std::get_if<std::shared_ptr<ListExpression>>(&funcExpr.getArgs()[i]);
                 if (!listExpr) {
-                    throw TranslatorException("Expecting interpolation list");
+                    throw TranslatorException("Expecting element list for interpolation function");
                 }
                 if ((*listExpr)->getExpressions().size() != 2) {
-                    throw TranslatorException("Expecting interpolation elements of size 2");
+                    throw TranslatorException("Expecting elements of size 2 for interpolation function");
                 }
                 auto keyVal = std::get_if<Value>(&(*listExpr)->getExpressions()[0]);
                 if (!keyVal) {
-                    throw TranslatorException("Expecting constant key");
+                    throw TranslatorException("Expecting constant scalar keys for interpolation function");
                 }
                 auto valueVal = std::get_if<Value>(&(*listExpr)->getExpressions()[1]);
                 if (!valueVal) {
-                    throw TranslatorException("Expecting constant value");
+                    throw TranslatorException("Expecting constant scalar values for interpolation function");
                 }
                 keyFrames.push_back(buildValue(*keyVal));
                 keyFrames.push_back(buildValue(*valueVal));

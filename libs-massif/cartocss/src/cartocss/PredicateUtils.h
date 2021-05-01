@@ -124,7 +124,7 @@ namespace carto { namespace css {
                     return OpPredicate::applyOp(opPred1.getOp(), val2, val1);
                 }
                 if (opPred1.getOp() == OpPredicate::Op::MATCH) {
-                    return boost::indeterminate;
+                    return val1 == val2 ? boost::tribool(true) : boost::indeterminate;
                 }
                 return false;
             }
@@ -163,7 +163,7 @@ namespace carto { namespace css {
                     return OpPredicate::applyOp(opPred1.getOp(), val2, val1);
                 }
                 if (opPred1.getOp() == OpPredicate::Op::MATCH) {
-                    return boost::indeterminate;
+                    return val1 == val2 ? boost::tribool(true) : boost::indeterminate;
                 }
                 return true;
             }

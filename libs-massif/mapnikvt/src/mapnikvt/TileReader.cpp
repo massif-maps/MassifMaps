@@ -121,7 +121,7 @@ namespace carto { namespace mvt {
                 }
             }
 
-            // Flush the remaining batched features
+            // Process the remaining batched features
             if (currentSymbolizer && currentFeatureCollection.size() > 0) {
                 exprContext.setFeatureData(currentFeatureCollection.getFeatureData(0));
                 currentSymbolizer->build(currentFeatureCollection, exprContext, _symbolizerContext, layerBuilder);

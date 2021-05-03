@@ -268,7 +268,7 @@ namespace carto { namespace vt {
         }
 
         for (cglib::vec4<std::int8_t>* it = attribs.end() - _cachedAttribs.size(); it != attribs.end(); it++) {
-            *it = cglib::vec4<std::int8_t>(static_cast<int>(styleIndex), (*it)(1), static_cast<std::int8_t>(_opacity * 127.0f), 0);
+            *it = cglib::vec4<std::int8_t>(static_cast<std::int8_t>(styleIndex), (*it)(1), static_cast<std::int8_t>(_opacity * 127.0f), 0);
         }
         for (std::uint16_t* it = indices.end() - _cachedIndices.size(); it != indices.end(); it++) {
             *it += static_cast<std::uint16_t>(vertices.size() - _cachedVertices.size());

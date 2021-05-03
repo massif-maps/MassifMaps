@@ -1891,7 +1891,7 @@ namespace carto { namespace vt {
         glUniform1i(shaderProgram.uniforms[U_BITMAP], 0);
         glUniform2f(shaderProgram.uniforms[U_UVSCALE], 1.0f / bitmap->width, 1.0f / bitmap->height);
 
-        glDrawElements(GL_TRIANGLES, static_cast<unsigned int>(_labelIndices.size()), GL_UNSIGNED_SHORT, 0);
+        glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(_labelIndices.size()), GL_UNSIGNED_SHORT, 0);
 
         glBindTexture(GL_TEXTURE_2D, 0);
 

@@ -131,7 +131,7 @@ namespace carto { namespace mvt {
 
     std::string TextSymbolizer::getTransformedText(const ExpressionContext& exprContext) const {
         std::string text = _text.getValue(exprContext);
-        std::string textTransform = _textTransform.getValue(exprContext);
+        std::string textTransform = toLower(_textTransform.getValue(exprContext));
         if (textTransform.empty()) {
             return text;
         }

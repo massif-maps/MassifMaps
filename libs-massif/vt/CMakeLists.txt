@@ -9,12 +9,19 @@ if(EXCLUDE_GL)
   list(FILTER vt_SRC_FILES EXCLUDE REGEX ".*(GLExtensions|GLShaderManager|GLTileRenderer).cpp$")
 endif(EXCLUDE_GL)
 
+set(vt_FLAGS "")
+if(ANDROID OR IOS)
+  set(vt_FLAGS ${vt_FLAGS} "-fno-math-errno" "-fno-trapping-math")
+endif()
+
 set(vt_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/src" PARENT_SCOPE)
 
 if(SINGLE_LIBRARY)
   set(vt_SRC_FILES ${vt_SRC_FILES} PARENT_SCOPE)
+  set(vt_FLAGS ${vt_FLAGS} PARENT_SCOPE)
   add_library(vt INTERFACE)
 else()
+  add_compile_options(${vt_FLAGS})
   include_directories(
     "${PROJECT_SOURCE_DIR}/src"
     "${vt_LIBS_DIR}/pbf"

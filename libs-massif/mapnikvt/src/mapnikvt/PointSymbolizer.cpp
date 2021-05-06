@@ -77,7 +77,7 @@ namespace carto { namespace mvt {
         int canvasSize = static_cast<int>(std::ceil(size));
         vt::BitmapCanvas canvas(canvasSize, canvasSize, false);
         canvas.setColor(vt::Color(0, 0, 0, 1));
-        canvas.drawRectangle(0, 0, size, size);
+        canvas.drawRectangle(cglib::vec2<float>(0, 0), cglib::vec2<float>(size, size));
         return canvas.buildBitmapImage();
     }
 } }

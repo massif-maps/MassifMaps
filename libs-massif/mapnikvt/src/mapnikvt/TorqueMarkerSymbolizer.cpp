@@ -100,10 +100,10 @@ namespace carto { namespace mvt {
         float x0 = canvasWidth * 0.5f, y0 = canvasHeight * 0.5f;
         if (strokeWidth > 0) {
             canvas.setColor(strokeColor);
-            canvas.drawEllipse(x0, y0, (width + strokeWidth * 0.5f) * 0.5f, (height + strokeWidth * 0.5f) * 0.5f);
+            canvas.drawEllipse(cglib::vec2<float>(x0, y0), (width + strokeWidth * 0.5f) * 0.5f, (height + strokeWidth * 0.5f) * 0.5f);
         }
         canvas.setColor(color);
-        canvas.drawEllipse(x0, y0, (width - strokeWidth * 0.5f) * 0.5f, (height - strokeWidth * 0.5f) * 0.5f);
+        canvas.drawEllipse(cglib::vec2<float>(x0, y0), (width - strokeWidth * 0.5f) * 0.5f, (height - strokeWidth * 0.5f) * 0.5f);
         return canvas.buildBitmapImage();
     }
 
@@ -113,10 +113,10 @@ namespace carto { namespace mvt {
         vt::BitmapCanvas canvas(canvasWidth, canvasHeight, false);
         if (strokeWidth > 0) {
             canvas.setColor(strokeColor);
-            canvas.drawRectangle(0, 0, width + strokeWidth * 0.5f, height + strokeWidth * 0.5f);
+            canvas.drawRectangle(cglib::vec2<float>(0, 0), cglib::vec2<float>(width + strokeWidth * 0.5f, height + strokeWidth * 0.5f));
         }
         canvas.setColor(color);
-        canvas.drawRectangle(strokeWidth, strokeWidth, width - strokeWidth * 0.5f, height - strokeWidth * 0.5f);
+        canvas.drawRectangle(cglib::vec2<float>(strokeWidth, strokeWidth), cglib::vec2<float>(width - strokeWidth * 0.5f, height - strokeWidth * 0.5f));
         return canvas.buildBitmapImage();
     }
 } }

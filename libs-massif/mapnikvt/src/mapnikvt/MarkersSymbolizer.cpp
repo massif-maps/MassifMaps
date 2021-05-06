@@ -269,10 +269,10 @@ namespace carto { namespace mvt {
         float x0 = canvasWidth * 0.5f, y0 = canvasHeight * 0.5f;
         if (strokeWidth > 0) {
             canvas.setColor(strokeColor);
-            canvas.drawEllipse(x0, y0, (width + strokeWidth) * 0.5f, (height + strokeWidth) * 0.5f);
+            canvas.drawEllipse(cglib::vec2<float>(x0, y0), (width + strokeWidth) * 0.5f, (height + strokeWidth) * 0.5f);
         }
         canvas.setColor(color);
-        canvas.drawEllipse(x0, y0, (width - strokeWidth) * 0.5f, (height - strokeWidth) * 0.5f);
+        canvas.drawEllipse(cglib::vec2<float>(x0, y0), (width - strokeWidth) * 0.5f, (height - strokeWidth) * 0.5f);
         return canvas.buildBitmapImage();
     }
 
@@ -283,12 +283,12 @@ namespace carto { namespace mvt {
         vt::BitmapCanvas canvas(canvasWidth, canvasHeight, false);
         if (strokeWidth > 0) {
             canvas.setColor(strokeColor);
-            canvas.drawRectangle(x0, y1 - strokeWidth, x1 - strokeWidth, y2 + strokeWidth);
-            canvas.drawTriangle(x1 - strokeWidth, 0, x1 - strokeWidth, canvasHeight, canvasWidth, canvasHeight * 0.5f);
+            canvas.drawRectangle(cglib::vec2<float>(x0, y1 - strokeWidth), cglib::vec2<float>(x1 - strokeWidth, y2 + strokeWidth));
+            canvas.drawTriangle(cglib::vec2<float>(x1 - strokeWidth, 0), cglib::vec2<float>(x1 - strokeWidth, canvasHeight), cglib::vec2<float>(canvasWidth, canvasHeight * 0.5f));
         }
         canvas.setColor(color);
-        canvas.drawRectangle(x0 + strokeWidth, y1 + strokeWidth * 0.5f, x1, y2 - strokeWidth * 0.5f);
-        canvas.drawTriangle(x1, strokeWidth * 2 * std::sqrt(2.0f), x1, canvasHeight - strokeWidth * 2 * std::sqrt(2.0f), canvasWidth - strokeWidth * 2, canvasHeight * 0.5f);
+        canvas.drawRectangle(cglib::vec2<float>(x0 + strokeWidth, y1 + strokeWidth * 0.5f), cglib::vec2<float>(x1, y2 - strokeWidth * 0.5f));
+        canvas.drawTriangle(cglib::vec2<float>(x1, strokeWidth * 2 * std::sqrt(2.0f)), cglib::vec2<float>(x1, canvasHeight - strokeWidth * 2 * std::sqrt(2.0f)), cglib::vec2<float>(canvasWidth - strokeWidth * 2, canvasHeight * 0.5f));
         return canvas.buildBitmapImage();
     }
 } }

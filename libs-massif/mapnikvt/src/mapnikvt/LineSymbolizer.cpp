@@ -124,15 +124,15 @@ namespace carto { namespace mvt {
             if (n % 2 == 0) {
                 switch (lineCap) {
                 case vt::LineCapMode::ROUND:
-                    canvas.drawEllipse(x0, (y0 + y1) * 0.5f, radius, pow2Height * 0.5f);
-                    canvas.drawEllipse(x1, (y0 + y1) * 0.5f, radius, pow2Height * 0.5f);
-                    canvas.drawRectangle(x0, y0, x1, y1);
+                    canvas.drawEllipse(cglib::vec2<float>(x0, (y0 + y1) * 0.5f), radius, pow2Height * 0.5f);
+                    canvas.drawEllipse(cglib::vec2<float>(x1, (y0 + y1) * 0.5f), radius, pow2Height * 0.5f);
+                    canvas.drawRectangle(cglib::vec2<float>(x0, y0), cglib::vec2<float>(x1, y1));
                     break;
                 case vt::LineCapMode::SQUARE:
-                    canvas.drawRectangle(x0 - radius, y0, x1 + radius, y1);
+                    canvas.drawRectangle(cglib::vec2<float>(x0 - radius, y0), cglib::vec2<float>(x1 + radius, y1));
                     break;
                 default:
-                    canvas.drawRectangle(x0, y0, x1, y1);
+                    canvas.drawRectangle(cglib::vec2<float>(x0, y0), cglib::vec2<float>(x1, y1));
                     break;
                 }
             }

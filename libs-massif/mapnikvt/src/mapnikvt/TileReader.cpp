@@ -1,13 +1,13 @@
 #include "TileReader.h"
-#include "ParserUtils.h"
-#include "Symbolizer.h"
 #include "Predicate.h"
 #include "PredicateUtils.h"
 #include "Expression.h"
 #include "ExpressionContext.h"
 #include "Rule.h"
 #include "Filter.h"
+#include "Symbolizer.h"
 #include "Map.h"
+#include "ParserUtils.h"
 
 namespace carto { namespace mvt {
     TileReader::TileReader(std::shared_ptr<const Map> map, std::shared_ptr<const vt::TileTransformer> transformer, const SymbolizerContext& symbolizerContext) :

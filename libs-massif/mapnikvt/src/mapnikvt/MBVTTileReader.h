@@ -8,11 +8,10 @@
 #define _CARTO_MAPNIKVT_MBVTTILEREADER_H_
 
 #include "TileReader.h"
+#include "MBVTFeatureDecoder.h"
 #include "Map.h"
 
 namespace carto { namespace mvt {
-    class MBVTFeatureDecoder;
-    
     class MBVTTileReader : public TileReader {
     public:
         explicit MBVTTileReader(std::shared_ptr<Map> map, std::shared_ptr<const vt::TileTransformer> transformer, const SymbolizerContext& symbolizerContext, const MBVTFeatureDecoder& featureDecoder) : TileReader(std::move(map), std::move(transformer), symbolizerContext), _featureDecoder(featureDecoder) { }

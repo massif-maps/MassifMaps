@@ -47,7 +47,7 @@ namespace carto { namespace vt {
         }
 
         void* allocate(std::size_t size) {
-            size = (size + 7) & ~7; // keep 8-byte alignment
+            size = (size + 7) & ~static_cast<std::size_t>(7); // keep 8-byte alignment
             if (_first->allocated + size > _first->size) {
                 if (!reallocate(size)) {
                     return NULL;

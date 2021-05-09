@@ -15,9 +15,7 @@
 #include <memory>
 #include <string>
 #include <set>
-
-#include <cglib/vec.h>
-#include <cglib/mat.h>
+#include <vector>
 
 namespace carto { namespace mvt {
     class Map;

@@ -1,9 +1,5 @@
 #include "MBVTTileReader.h"
-#include "MBVTFeatureDecoder.h"
-#include "ValueConverter.h"
-#include "Expression.h"
-#include "ExpressionContext.h"
-#include "SymbolizerContext.h"
+#include "Layer.h"
 
 namespace carto { namespace mvt {
     void MBVTTileReader::setLayerNameOverride(const std::string& name) {

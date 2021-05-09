@@ -8,11 +8,10 @@
 #define _CARTO_MAPNIKVT_TORQUETILEREADER_H_
 
 #include "TileReader.h"
+#include "TorqueFeatureDecoder"
 #include "TorqueMap.h"
 
 namespace carto { namespace mvt {
-    class TorqueFeatureDecoder;
-    
     class TorqueTileReader : public TileReader {
     public:
         explicit TorqueTileReader(std::shared_ptr<TorqueMap> map, int frame, bool loop, std::shared_ptr<const vt::TileTransformer> transformer, const SymbolizerContext& symbolizerContext, const TorqueFeatureDecoder& featureDecoder) : TileReader(std::move(map), std::move(transformer), symbolizerContext), _frame(frame), _loop(loop), _featureDecoder(featureDecoder) { }

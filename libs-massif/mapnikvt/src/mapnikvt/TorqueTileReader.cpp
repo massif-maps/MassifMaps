@@ -1,6 +1,5 @@
 #include "TorqueTileReader.h"
 #include "TorqueLayer.h"
-#include "TorqueFeatureDecoder.h"
 
 namespace carto { namespace mvt {
     std::shared_ptr<vt::TileBackground> TorqueTileReader::createTileBackground(const vt::TileId& tileId) const {

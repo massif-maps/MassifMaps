@@ -8,7 +8,7 @@
 #define _CARTO_MAPNIKVT_TORQUETILEREADER_H_
 
 #include "TileReader.h"
-#include "TorqueFeatureDecoder"
+#include "TorqueFeatureDecoder.h"
 #include "TorqueMap.h"
 
 namespace carto { namespace mvt {

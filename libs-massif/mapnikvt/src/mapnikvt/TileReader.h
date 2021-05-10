@@ -8,6 +8,8 @@
 #define _CARTO_MAPNIKVT_TILEREADER_H_
 
 #include "FeatureDecoder.h"
+#include "ExpressionContext.h"
+#include "SymbolizerContext.h"
 #include "vt/Tile.h"
 #include "vt/TileTransformer.h"
 #include "vt/TileLayerBuilder.h"
@@ -18,15 +20,13 @@
 #include <vector>
 
 namespace carto { namespace mvt {
-    class Map;
     class Filter;
     class Rule;
-    class ExpressionContext;
     class Symbolizer;
-    class SymbolizerContext;
-    class Layer;
     class Style;
-    
+    class Layer;
+    class Map;
+
     class TileReader {
     public:
         virtual ~TileReader() = default;

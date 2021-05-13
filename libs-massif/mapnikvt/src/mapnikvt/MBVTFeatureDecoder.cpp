@@ -21,12 +21,13 @@
 namespace carto { namespace mvt {
     class MBVTFeatureDecoder::MBVTFeatureIterator : public carto::mvt::FeatureDecoder::FeatureIterator {
     public:
-        explicit MBVTFeatureIterator(const std::shared_ptr<const vector_tile::Tile>& tile, int layerIndex, const std::set<std::string>* fields, const cglib::mat3x3<float>& transform, const cglib::bbox2<float>& clipBox, bool globalIdOverride, long long tileIdOffset, const std::shared_ptr<MBVTFeatureDecoder::FeatureDataCache<std::vector<int>>>& featureDataCache) :
-            _tile(tile), _layer(&tile->layers(layerIndex)), _transform(transform), _clipBox(clipBox), _globalIdOverride(globalIdOverride), _tileIdOffset(tileIdOffset), _featureDataCache(featureDataCache)
+        explicit MBVTFeatureIterator(const std::shared_ptr<const vector_tile::Tile>& tile, int layerIndex, const std::set<std::string>* fields, const cglib::mat3x3<float>& transform, const cglib::bbox2<float>& clipBox, bool globalIdOverride, long long tileIdOffset, const std::shared_ptr<MBVTFeatureDecoder::GeometryCache>& geometryCache, const std::shared_ptr<MBVTFeatureDecoder::FeatureDataCache<std::vector<int>>>& featureDataCache) :
+            _tile(tile), _layer(&tile->layers(layerIndex)), _transform(transform), _clipBox(clipBox), _globalIdOverride(globalIdOverride), _tileIdOffset(tileIdOffset), _geometryCache(geometryCache), _featureDataCache(featureDataCache)
         {
             _layerIndexOffset = static_cast<long long>(layerIndex) << 32;
 
             // Detect if there are any keys we can use as a feature id...
+            _keyFieldMap.resize(_layer->keys_size(), -1);
             for (int i = 0; i < _layer->keys_size(); i++) {
                 if (_layer->keys(i) == "id" || _layer->keys(i) == "osm_id" || _layer->keys(i) == "cartodb_id") {
                     _idKey = i;
@@ -34,10 +35,12 @@ namespace carto { namespace mvt {
                 if (fields) {
                     auto it = fields->find(_layer->keys(i));
                     if (it != fields->end()) {
+                        _keyFieldMap[i] = static_cast<int>(_fieldKeys.size());
                         _fieldKeys.push_back(i);
                     }
                 }
                 else {
+                    _keyFieldMap[i] = static_cast<int>(_fieldKeys.size());
                     _fieldKeys.push_back(i);
                 }
             }
@@ -101,16 +104,22 @@ namespace carto { namespace mvt {
 
         virtual std::shared_ptr<const FeatureData> getFeatureData(const std::set<std::string>* fields) const override {
             const vector_tile::Tile::Feature& feature = _layer->features(_index);
+            if (_fieldKeys.empty() || (fields && fields->empty())) {
+                return emptyFeatureData(feature.type());
+            }
+
             std::vector<int> tags(_fieldKeys.size() + 1, -1);
             tags.back() = static_cast<int>(feature.type());
             for (int k = 0; k + 1 < feature.tags_size(); k += 2) {
-                auto it = std::find(_fieldKeys.begin(), _fieldKeys.end(), feature.tags(k));
-                if (it != _fieldKeys.end()) {
-                    std::size_t i = it - _fieldKeys.begin();
-                    if (fields && fields->find(_layer->keys(*it)) == fields->end()) {
-                        continue;
+                int keyIdx = feature.tags(k);
+                if (keyIdx >= 0 && keyIdx < _layer->keys_size()) {
+                    if (_keyFieldMap[keyIdx] >= 0) {
+                        const std::string& key = _layer->keys(feature.tags(k));
+                        if (fields && fields->find(key) == fields->end()) {
+                            continue;
+                        }
+                        tags[_keyFieldMap[keyIdx]] = feature.tags(k + 1);
                     }
-                    tags[i] = feature.tags(k + 1);
                 }
             }
 
@@ -122,12 +131,13 @@ namespace carto { namespace mvt {
             std::vector<std::pair<std::string, Value>> dataMap;
             dataMap.reserve(tags.size());
             for (std::size_t i = 0; i < _fieldKeys.size(); i++) {
-                if (tags[i] >= 0 && tags[i] < _layer->values_size()) {
+                int valueIdx = tags[i];
+                if (valueIdx >= 0 && valueIdx < _layer->values_size()) {
                     const std::string& key = _layer->keys(_fieldKeys[i]);
                     if (fields && fields->find(key) == fields->end()) {
                         continue;
                     }
-                    dataMap.emplace_back(key, convertValue(_layer->values(tags[i])));
+                    dataMap.emplace_back(key, convertValue(_layer->values(valueIdx)));
                 }
             }
 
@@ -137,6 +147,10 @@ namespace carto { namespace mvt {
         }
 
         virtual std::shared_ptr<const Geometry> getGeometry() const override {
+            if (auto geometry = _geometryCache->get(_index)) {
+                return geometry;
+            }
+            
             std::vector<std::vector<cglib::vec2<float>>> verticesList;
             decodeGeometry(_layer->features(_index), verticesList, 1.0f / _layer->extent());
 
@@ -152,34 +166,63 @@ namespace carto { namespace mvt {
             }
 
             switch (_layer->features(_index).type()) {
-            case vector_tile::Tile::POINT:
-                if (!verticesList.empty()) {
-                    return std::make_shared<PointGeometry>(std::move(verticesList.front()));
-                }
-                return std::shared_ptr<Geometry>();
-            case vector_tile::Tile::LINESTRING:
-                return std::make_shared<LineGeometry>(std::move(verticesList));
-            case vector_tile::Tile::POLYGON: {
-                PolygonGeometry::PolygonList polygons;
-                if (_layer->has_version() && _layer->version() > 1) {
-                    auto it = std::find_if(verticesList.begin(), verticesList.end(), isRingCCW); // find first outer ring
-                    while (it != verticesList.end()) {
-                        auto it0 = it++;
-                        it = std::find_if(it, verticesList.end(), isRingCCW); // find next outer ring
-                        polygons.emplace_back(it0, it);
+            case vector_tile::Tile::POINT: {
+                    if (!verticesList.empty()) {
+                        auto geometry = std::make_shared<PointGeometry>(std::move(verticesList.front()));
+                        _geometryCache->put(_index, geometry);
+                        return geometry;
                     }
+                    return std::shared_ptr<Geometry>();
                 }
-                else {
-                    polygons.push_back(std::move(verticesList));
+            case vector_tile::Tile::LINESTRING: {
+                    auto geometry = std::make_shared<LineGeometry>(std::move(verticesList));
+                    _geometryCache->put(_index, geometry);
+                    return geometry;
                 }
-                return std::make_shared<PolygonGeometry>(std::move(polygons));
-            }
+            case vector_tile::Tile::POLYGON: {
+                    PolygonGeometry::PolygonList polygons;
+                    if (_layer->has_version() && _layer->version() > 1) {
+                        auto it = std::find_if(verticesList.begin(), verticesList.end(), isRingCCW); // find first outer ring
+                        while (it != verticesList.end()) {
+                            auto it0 = it++;
+                            it = std::find_if(it, verticesList.end(), isRingCCW); // find next outer ring
+                            polygons.emplace_back(it0, it);
+                        }
+                    }
+                    else {
+                        polygons.push_back(std::move(verticesList));
+                    }
+                    auto geometry = std::make_shared<PolygonGeometry>(std::move(polygons));
+                    _geometryCache->put(_index, geometry);
+                    return geometry;
+                }
             default:
                 return std::shared_ptr<Geometry>();
             }
         }
 
     private:
+        static const std::shared_ptr<const FeatureData>& emptyFeatureData(vector_tile::Tile::GeomType geomType) {
+            switch (geomType) {
+            case vector_tile::Tile::POINT: {
+                    static const auto pointFeatureData = std::make_shared<const FeatureData>(FeatureData::GeometryType::POINT_GEOMETRY, std::vector<std::pair<std::string, Value>>());
+                    return pointFeatureData;
+                }
+            case vector_tile::Tile::LINESTRING: {
+                    static const auto lineFeatureData = std::make_shared<const FeatureData>(FeatureData::GeometryType::LINE_GEOMETRY, std::vector<std::pair<std::string, Value>>());
+                    return lineFeatureData;
+                }
+            case vector_tile::Tile::POLYGON: {
+                    static const auto polygonFeatureData = std::make_shared<const FeatureData>(FeatureData::GeometryType::POLYGON_GEOMETRY, std::vector<std::pair<std::string, Value>>());
+                    return polygonFeatureData;
+                }
+            default: {
+                    static const auto nullFeatureData = std::make_shared<const FeatureData>(FeatureData::GeometryType::NULL_GEOMETRY, std::vector<std::pair<std::string, Value>>());
+                    return nullFeatureData;
+                }
+            }
+        }
+
         static FeatureData::GeometryType convertGeometryType(vector_tile::Tile::GeomType geomType) {
             switch (geomType) {
             case vector_tile::Tile::POINT:
@@ -279,6 +322,7 @@ namespace carto { namespace mvt {
         int _idKey = -1;
         long long _layerIndexOffset = 0;
         std::vector<int> _fieldKeys;
+        std::vector<int> _keyFieldMap;
         std::shared_ptr<const vector_tile::Tile> _tile;
         const vector_tile::Tile::Layer* _layer;
         const cglib::mat3x3<float> _transform;
@@ -286,6 +330,7 @@ namespace carto { namespace mvt {
         const bool _globalIdOverride;
         const long long _tileIdOffset;
 
+        mutable std::shared_ptr<MBVTFeatureDecoder::GeometryCache> _geometryCache;
         mutable std::shared_ptr<MBVTFeatureDecoder::FeatureDataCache<std::vector<int>>> _featureDataCache;
     };
 
@@ -314,11 +359,19 @@ namespace carto { namespace mvt {
     }
 
     void MBVTFeatureDecoder::setTransform(const cglib::mat3x3<float>& transform) {
-        _transform = transform;
+        if (transform != _transform) {
+            _transform = transform;
+            _layerGeometryCache.first.clear();
+            _layerGeometryCache.second.reset();
+        }
     }
 
     void MBVTFeatureDecoder::setClipBox(const cglib::bbox2<float>& clipBox) {
-        _clipBox = clipBox;
+        if (clipBox != _clipBox) {
+            _clipBox = clipBox;
+            _layerGeometryCache.first.clear();
+            _layerGeometryCache.second.reset();
+        }
     }
 
     void MBVTFeatureDecoder::setGlobalIdOverride(bool globalIdOverride, long long tileIdOffset) {
@@ -339,9 +392,20 @@ namespace carto { namespace mvt {
         if (layerIt == _layerMap.end()) {
             return std::shared_ptr<FeatureIterator>();
         }
+        int layerIndex = layerIt->second;
 
-        std::lock_guard<std::mutex> lock(_layerFeatureDataCacheMutex);
+        std::lock_guard<std::mutex> lock(_layerCacheMutex);
         std::string key = name;
+        if (_layerGeometryCache.first != key) {
+            _layerGeometryCache.first = key;
+            _layerGeometryCache.second.reset();
+        }
+        std::shared_ptr<GeometryCache>& geometryCache = _layerGeometryCache.second;
+        if (!geometryCache) {
+            geometryCache = std::make_shared<GeometryCache>();
+            geometryCache->reserve(_tile->layers(layerIndex).features_size());
+        }
+
         if (fields) {
             for (const std::string& field : *fields) {
                 key.append(1, 0).append(field);
@@ -354,14 +418,16 @@ namespace carto { namespace mvt {
         std::shared_ptr<FeatureDataCache<std::vector<int>>>& featureDataCache = _layerFeatureDataCache.second;
         if (!featureDataCache) {
             featureDataCache = std::make_shared<FeatureDataCache<std::vector<int>>>();
+            featureDataCache->reserve(_tile->layers(layerIndex).features_size());
         }
-        return std::make_shared<MBVTFeatureIterator>(_tile, layerIt->second, fields, _transform, _clipBox, _globalIdOverride, _tileIdOffset, featureDataCache);
+        return std::make_shared<MBVTFeatureIterator>(_tile, layerIndex, fields, _transform, _clipBox, _globalIdOverride, _tileIdOffset, geometryCache, featureDataCache);
     }
 
     bool MBVTFeatureDecoder::findFeature(long long localId, std::string& layerName, Feature& feature) const {
         for (int i = 0; i < _tile->layers_size(); i++) {
+            auto geometryCache = std::make_shared<GeometryCache>();
             auto featureDataCache = std::make_shared<FeatureDataCache<std::vector<int>>>();
-            MBVTFeatureIterator it(_tile, i, nullptr, _transform, _clipBox, _globalIdOverride, _tileIdOffset, featureDataCache);
+            MBVTFeatureIterator it(_tile, i, nullptr, _transform, _clipBox, _globalIdOverride, _tileIdOffset, geometryCache, featureDataCache);
             if (it.findByLocalId(localId)) {
                 layerName = _tile->layers(i).name();
                 feature = Feature(it.getGlobalId(), it.getGeometry(), it.getFeatureData(nullptr));

@@ -34,7 +34,7 @@ namespace {
 
 namespace carto { namespace vt {
     GLTileRenderer::GLTileRenderer(std::shared_ptr<GLExtensions> glExtensions, std::shared_ptr<const TileTransformer> transformer, float scale) :
-        _tileSurfaceBuilder(transformer), _cameraProjMatrix(cglib::mat4x4<double>::identity()), _glExtensions(std::move(glExtensions)), _transformer(std::move(transformer)), _scale(scale), _mutex()
+        _tileSurfaceBuilder(transformer), _glExtensions(std::move(glExtensions)), _transformer(std::move(transformer)), _scale(scale)
     {
     }
 
@@ -137,76 +137,98 @@ namespace carto { namespace vt {
         _tileSurfaceMap.clear();
 
         // Create label list, merge geometries
-        std::unordered_map<std::pair<int, long long>, std::shared_ptr<Label>, LabelHash> newLabelMap;
+        std::map<int, GlobalIdLabelMap> newLayerLabelMap;
         for (const std::shared_ptr<const Tile>& tile : labelTiles) {
             cglib::mat4x4<double> tileMatrix = _transformer->calculateTileMatrix(tile->getTileId(), 1.0f);
             std::shared_ptr<const TileTransformer::VertexTransformer> transformer = _transformer->createTileVertexTransformer(tile->getTileId());
             for (const std::shared_ptr<TileLayer>& layer : tile->getLayers()) {
+                GlobalIdLabelMap& newLabelMap = newLayerLabelMap[layer->getLayerIndex()];
+                if (newLabelMap.empty()) {
+                    newLabelMap.reserve(_layerLabelMap[layer->getLayerIndex()].size() + 64);
+                }
                 for (const std::shared_ptr<TileLabel>& tileLabel : layer->getLabels()) {
-                    std::pair<int, long long> labelId(layer->getLayerIndex(), tileLabel->getGlobalId());
-                    auto label = std::make_shared<Label>(*tileLabel, tileMatrix, transformer);
-                    auto newLabelIt = newLabelMap.find(labelId);
-                    if (newLabelIt != newLabelMap.end()) {
-                        newLabelIt->second->mergeGeometries(*label);
-                        continue;
+                    auto newLabel = std::make_shared<Label>(*tileLabel, tileMatrix, transformer);
+                    std::shared_ptr<Label>& label = newLabelMap[tileLabel->getGlobalId()];
+                    if (label) {
+                        label->mergeGeometries(*newLabel);
+                    } else {
+                        label = newLabel;
                     }
-                    newLabelMap[labelId] = label;
                 }
             }
         }
 
         // Release old labels
-        for (auto labelIt = _labelMap.begin(); labelIt != _labelMap.end();) {
-            if (labelIt->second->getOpacity() <= 0) {
-                labelIt = _labelMap.erase(labelIt);
-            } else {
-                labelIt->second->setActive(false);
-                labelIt++;
+        for (auto oldLayerLabelIt = _layerLabelMap.begin(); oldLayerLabelIt != _layerLabelMap.end(); oldLayerLabelIt++) {
+            GlobalIdLabelMap& oldLabelMap = oldLayerLabelIt->second;
+            for (auto oldLabelIt = oldLabelMap.begin(); oldLabelIt != oldLabelMap.end(); ) {
+                const std::shared_ptr<Label>& oldLabel = oldLabelIt->second;
+                if (oldLabel->getOpacity() <= 0) {
+                    oldLabelIt = oldLabelMap.erase(oldLabelIt);
+                } else {
+                    oldLabel->setActive(false);
+                    oldLabelIt++;
+                }
             }
         }
         
         // Copy existing label placements
-        for (auto newLabelIt = newLabelMap.begin(); newLabelIt != newLabelMap.end(); newLabelIt++) {
-            auto oldLabelIt = _labelMap.find(newLabelIt->first);
-            if (oldLabelIt != _labelMap.end()) {
-                newLabelIt->second->setVisible(oldLabelIt->second->isVisible());
-                newLabelIt->second->setOpacity(oldLabelIt->second->getOpacity());
-                newLabelIt->second->snapPlacement(*oldLabelIt->second);
-            } else {
-                newLabelIt->second->setVisible(false);
-                newLabelIt->second->setOpacity(0);
+        for (auto newLayerLabelIt = newLayerLabelMap.begin(); newLayerLabelIt != newLayerLabelMap.end(); newLayerLabelIt++) {
+            const GlobalIdLabelMap& newLabelMap = newLayerLabelIt->second;
+            GlobalIdLabelMap& labelMap = _layerLabelMap[newLayerLabelIt->first];
+            for (auto newLabelIt = newLabelMap.begin(); newLabelIt != newLabelMap.end(); newLabelIt++) {
+                const std::shared_ptr<Label>& newLabel = newLabelIt->second;
+                std::shared_ptr<Label>& label = labelMap[newLabelIt->first];
+                if (label) {
+                    newLabel->setVisible(label->isVisible());
+                    newLabel->setOpacity(label->getOpacity());
+                    newLabel->snapPlacement(*label);
+                } else {
+                    newLabel->setVisible(false);
+                    newLabel->setOpacity(0);
+                }
+                newLabel->setActive(true);
+                label = newLabel;
             }
-            newLabelIt->second->setActive(true);
-            _labelMap[newLabelIt->first] = newLabelIt->second;
         }
-        
-        // Build final label list, group labels by font bitmaps
-        std::vector<std::shared_ptr<Label>> labels;
-        labels.reserve(_labelMap.size());
-        std::array<std::shared_ptr<BitmapLabelMap>, 2> bitmapLabelMap;
-        bitmapLabelMap[0] = std::make_shared<BitmapLabelMap>();
-        bitmapLabelMap[1] = std::make_shared<BitmapLabelMap>();
-        for (auto labelIt = _labelMap.begin(); labelIt != _labelMap.end(); labelIt++) {
-            const std::shared_ptr<Label>& label = labelIt->second;
-            int pass = (label->getStyle()->orientation == LabelOrientation::BILLBOARD_3D ? 1 : 0);
-            (*bitmapLabelMap[pass])[label->getStyle()->glyphMap->getBitmapPattern()->bitmap].push_back(label);
-            labels.push_back(label);
-        }
-        _labels = std::move(labels);
-        _bitmapLabelMap = std::move(bitmapLabelMap);
 
-        // Sort labels by priority. This is a hack implementation and is needed only for labels that 'are allowed' to overlap each other.
-        // The current implementation only does proper ordering within single bitmap atlas, but usually this is enough
+        // Build final label list, group labels by font bitmaps. Sort the groups to have stable render order.
+        std::vector<std::shared_ptr<Label>> labels;
+        labels.reserve(_labels.size() + 64);
+        std::array<std::shared_ptr<BitmapLabelMap>, 2> bitmapLabelMap;
         for (int pass = 0; pass < 2; pass++) {
-            for (auto it = _bitmapLabelMap[pass]->begin(); it != _bitmapLabelMap[pass]->end(); it++) {
+            bitmapLabelMap[pass] = std::make_shared<BitmapLabelMap>();
+        }
+        for (auto layerLabelIt = _layerLabelMap.begin(); layerLabelIt != _layerLabelMap.end(); layerLabelIt++) {
+            const GlobalIdLabelMap& labelMap = layerLabelIt->second;
+            for (auto labelIt = labelMap.begin(); labelIt != labelMap.end(); labelIt++) {
+                const std::shared_ptr<Label>& label = labelIt->second;
+                const std::shared_ptr<const Bitmap>& bitmap = label->getStyle()->glyphMap->getBitmapPattern()->bitmap;
+                int pass = (label->getStyle()->orientation == LabelOrientation::BILLBOARD_3D ? 1 : 0);
+                
+                std::vector<std::shared_ptr<Label>>& bitmapLabels = (*bitmapLabelMap[pass])[bitmap];
+                if (bitmapLabels.empty()) {
+                    bitmapLabels.reserve(_bitmapLabelMap[pass] ? (*_bitmapLabelMap[pass])[bitmap].size() + 64 : 64);
+                }
+                bitmapLabels.push_back(label);
+                labels.push_back(label);
+            }
+        }
+        for (int pass = 0; pass < 2; pass++) {
+            for (auto it = bitmapLabelMap[pass]->begin(); it != bitmapLabelMap[pass]->end(); it++) {
                 std::stable_sort(it->second.begin(), it->second.end(), [](const std::shared_ptr<Label>& label1, const std::shared_ptr<Label>& label2) {
                     if (label1->getPriority() != label2->getPriority()) {
                         return label1->getPriority() > label2->getPriority();
                     }
-                    return label1->getLayerIndex() < label2->getLayerIndex();
+                    if (label1->getLayerIndex() != label2->getLayerIndex()) {
+                        return label1->getLayerIndex() < label2->getLayerIndex();
+                    }
+                    return label1->getGlobalId() > label2->getGlobalId();
                 });
             }
         }
+        _labels = std::move(labels);
+        _bitmapLabelMap = std::move(bitmapLabelMap);
         
         // Build blend nodes for tiles
         auto blendNodes = std::make_shared<std::vector<std::shared_ptr<BlendNode>>>();
@@ -246,7 +268,9 @@ namespace carto { namespace vt {
 
     void GLTileRenderer::initializeRenderer() {
         _blendNodes = std::make_shared<std::vector<std::shared_ptr<BlendNode>>>();
-        _bitmapLabelMap[0] = _bitmapLabelMap[1] = std::make_shared<BitmapLabelMap>();
+        for (int pass = 0; pass < 2; pass++) {
+            _bitmapLabelMap[pass] = std::make_shared<BitmapLabelMap>();
+        }
     }
     
     void GLTileRenderer::resetRenderer() {
@@ -317,12 +341,12 @@ namespace carto { namespace vt {
         
         _blendNodes.reset();
         _renderBlendNodes.reset();
-        _bitmapLabelMap[0].reset();
-        _bitmapLabelMap[1].reset();
-        _renderBitmapLabelMap[0].reset();
-        _renderBitmapLabelMap[1].reset();
+        for (int pass = 0; pass < 2; pass++) {
+            _bitmapLabelMap[pass].reset();
+            _renderBitmapLabelMap[pass].reset();
+        }
         _labels.clear();
-        _labelMap.clear();
+        _layerLabelMap.clear();
     }
     
     void GLTileRenderer::startFrame(float dt) {
@@ -337,6 +361,10 @@ namespace carto { namespace vt {
         // Update labels
         _renderBitmapLabelMap = _bitmapLabelMap;
         for (int pass = 0; pass < 2; pass++) {
+            if (!_renderBitmapLabelMap[pass]) {
+                continue;
+            }
+
             for (std::pair<std::shared_ptr<const Bitmap>, std::vector<std::shared_ptr<Label>>> bitmapLabels : *_renderBitmapLabelMap[pass]) {
                 updateLabels(bitmapLabels.second, dt);
             }
@@ -447,6 +475,7 @@ namespace carto { namespace vt {
             if (!_renderBitmapLabelMap[pass]) {
                 continue;
             }
+
             if ((pass == 0 && labels2D) || (pass == 1 && labels3D)) {
                 for (std::pair<std::shared_ptr<const Bitmap>, std::vector<std::shared_ptr<Label>>> bitmapLabels : *_renderBitmapLabelMap[pass]) {
                     update = renderLabels(bitmapLabels.second, bitmapLabels.first) || update;
@@ -596,7 +625,10 @@ namespace carto { namespace vt {
             if ((pass == 0 && !labels2D) || (pass == 1 && !labels3D)) {
                 continue;
             }
-            
+            if (!_renderBitmapLabelMap[pass]) {
+                continue;
+            }
+
             for (std::pair<std::shared_ptr<const Bitmap>, std::vector<std::shared_ptr<Label>>> bitmapLabels : *_renderBitmapLabelMap[pass]) {
                 for (const std::shared_ptr<Label>& label : bitmapLabels.second) {
                     if (!label->isValid() || !label->isVisible() || !label->isActive() || label->getOpacity() <= 0) {
@@ -611,14 +643,7 @@ namespace carto { namespace vt {
                             continue;
                         }
 
-                        int layerIndex = -1;
-                        for (auto it = _labelMap.begin(); it != _labelMap.end(); it++) {
-                            if (it->second == label) {
-                                layerIndex = it->first.first;
-                                break;
-                            }
-                        }
-                        results.emplace_back(result.tileId, layerIndex, result.featureId, result.rayIndex, result.rayT);
+                        results.emplace_back(result.tileId, label->getLayerIndex(), result.featureId, result.rayIndex, result.rayT);
                     }
                 }
             }

@@ -28,8 +28,8 @@
 #include <array>
 #include <vector>
 #include <map>
-#include <set>
 #include <unordered_map>
+#include <set>
 #include <utility>
 #include <mutex>
 
@@ -98,6 +98,7 @@ namespace carto { namespace vt {
         bool findBitmapIntersections(const std::vector<cglib::ray3<double>>& rays, std::vector<BitmapIntersectionInfo>& results) const;
 
     private:
+        using GlobalIdLabelMap = std::unordered_map<long long, std::shared_ptr<Label>>;
         using BitmapLabelMap = std::unordered_map<std::shared_ptr<const Bitmap>, std::vector<std::shared_ptr<Label>>>;
 
         enum LightingMode {
@@ -195,12 +196,6 @@ namespace carto { namespace vt {
             LabelBatchParameters() : labelCount(0), parameterCount(0), scale(0), labelMatrix(cglib::mat4x4<double>::identity()), colorTable(), widthTable(), strokeWidthTable() { }
         };
 
-        struct LabelHash {
-            std::size_t operator()(const std::pair<int, long long>& labelId) const {
-                return labelId.first ^ static_cast<std::size_t>(labelId.second & 0xffffffff) ^ static_cast<std::size_t>(labelId.second >> 32);
-            }
-        };
-
         inline static constexpr float HALO_RADIUS_SCALE = 2.5f; // the scaling factor for halo radius
         inline static constexpr float STROKE_UV_SCALE = 2.857f; // stroked line UV scale factor
         inline static constexpr float POLYGON3D_HEIGHT_SCALE = 10018754.17f; // scaling factor for zoom 0 heights
@@ -269,12 +264,12 @@ namespace carto { namespace vt {
         CompiledQuad _screenQuad;
 
         ViewState _viewState;
-        cglib::mat4x4<double> _cameraProjMatrix;
+        cglib::mat4x4<double> _cameraProjMatrix = cglib::mat4x4<double>::identity();
         float _fullResolution = 0;
         float _halfResolution = 0;
         int _screenWidth = 0;
         int _screenHeight = 0;
-        cglib::vec3<double> _tileSurfaceBuilderOrigin;
+        cglib::vec3<double> _tileSurfaceBuilderOrigin = cglib::vec3<double>(0, 0, 0);
         std::set<TileId> _tileSurfaceBuilderOriginTileIds;
 
         bool _subTileBlending = false;
@@ -286,8 +281,8 @@ namespace carto { namespace vt {
         std::array<std::shared_ptr<BitmapLabelMap>, 2> _bitmapLabelMap; // for 'ground' labels and for 'billboard' labels
         std::array<std::shared_ptr<BitmapLabelMap>, 2> _renderBitmapLabelMap;  // for 'ground' labels and for 'billboard' labels
         std::vector<std::shared_ptr<Label>> _labels;
-        std::unordered_map<std::pair<int, long long>, std::shared_ptr<Label>, LabelHash> _labelMap;
-        std::unordered_map<TileId, std::vector<std::shared_ptr<TileSurface>>> _tileSurfaceMap;
+        std::map<int, GlobalIdLabelMap> _layerLabelMap;
+        std::map<TileId, std::vector<std::shared_ptr<TileSurface>>> _tileSurfaceMap;
         std::map<std::string, ShaderProgram> _shaderProgramMap;
         std::map<std::weak_ptr<const Bitmap>, CompiledBitmap, std::owner_less<std::weak_ptr<const Bitmap>>> _compiledBitmapMap;
         std::map<std::weak_ptr<const TileBitmap>, CompiledBitmap, std::owner_less<std::weak_ptr<const TileBitmap>>> _compiledTileBitmapMap;

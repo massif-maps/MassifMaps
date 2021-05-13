@@ -22,7 +22,7 @@ namespace carto { namespace mvt {
             bindParameter("stroke-dasharray", &_strokeDashArray);
         }
 
-        virtual void build(const FeatureCollection& featureCollection, const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext, vt::TileLayerBuilder& layerBuilder) const override;
+        virtual FeatureProcessor createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const override;
 
     protected:
         inline static constexpr int DASH_SUPERSAMPLING_FACTOR = 2;

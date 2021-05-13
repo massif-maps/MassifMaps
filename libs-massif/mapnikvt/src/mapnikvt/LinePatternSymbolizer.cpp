@@ -1,20 +1,20 @@
 #include "LinePatternSymbolizer.h"
 
 namespace carto { namespace mvt {
-    void LinePatternSymbolizer::build(const FeatureCollection& featureCollection, const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext, vt::TileLayerBuilder& layerBuilder) const {
+    LinePatternSymbolizer::FeatureProcessor LinePatternSymbolizer::createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const {
         vt::FloatFunction opacityFunc = _opacity.getFunction(exprContext);
         vt::ColorFunction colorFunc = _fill.getFunction(exprContext);
         if (opacityFunc == vt::FloatFunction(0) || colorFunc == vt::ColorFunction(vt::Color())) {
-            return;
+            return FeatureProcessor();
         }
-        
+
         std::string file = _file.getValue(exprContext);
         std::shared_ptr<const vt::BitmapPattern> bitmapPattern = symbolizerContext.getBitmapManager()->loadBitmapPattern(file, PATTERN_SCALE, PATTERN_SCALE);
         if (!bitmapPattern || !bitmapPattern->bitmap) {
             _logger->write(Logger::Severity::ERROR, "Failed to load line pattern bitmap " + file);
-            return;
+            return FeatureProcessor();
         }
-        
+
         vt::CompOp compOp = _compOp.getValue(exprContext);
         std::optional<vt::Transform> geometryTransform = _geometryTransform.getValue(exprContext);
         vt::FloatFunction widthFunc = _widthFuncBuilder.createFloatFunction(bitmapPattern->bitmap->height);
@@ -22,47 +22,30 @@ namespace carto { namespace mvt {
 
         vt::LineStyle style(compOp, vt::LineJoinMode::MITER, vt::LineCapMode::NONE, fillFunc, widthFunc, bitmapPattern, geometryTransform);
 
-        std::size_t featureIndex = 0;
-        std::size_t geometryIndex = 0;
-        std::size_t polygonIndex = 0;
-        std::shared_ptr<const LineGeometry> lineGeometry;
-        std::shared_ptr<const PolygonGeometry> polygonGeometry;
-        layerBuilder.addLines([&](long long& id, vt::TileLayerBuilder::Vertices& vertices) {
-            while (true) {
-                if (lineGeometry) {
-                    if (geometryIndex < lineGeometry->getVerticesList().size()) {
-                        id = featureCollection.getLocalId(featureIndex);
-                        vertices = lineGeometry->getVerticesList()[geometryIndex++];
-                        return true;
-                    }
-                    featureIndex++;
-                    geometryIndex = 0;
-                }
-                if (polygonGeometry) {
-                    while (geometryIndex < polygonGeometry->getPolygonList().size()) {
-                        if (polygonIndex < polygonGeometry->getPolygonList()[geometryIndex].size()) {
-                            id = featureCollection.getLocalId(featureIndex);
-                            vertices = polygonGeometry->getPolygonList()[geometryIndex][polygonIndex++];
-                            return true;
-                        }
-                        geometryIndex++;
-                        polygonIndex = 0;
-                    }
-                    featureIndex++;
-                    geometryIndex = 0;
-                }
+        std::shared_ptr<vt::StrokeMap> strokeMap = symbolizerContext.getStrokeMap();
 
-                if (featureIndex >= featureCollection.size()) {
-                    break;
-                }
-                lineGeometry = std::dynamic_pointer_cast<const LineGeometry>(featureCollection.getGeometry(featureIndex));
-                polygonGeometry = std::dynamic_pointer_cast<const PolygonGeometry>(featureCollection.getGeometry(featureIndex));
-                if (!lineGeometry && !polygonGeometry) {
-                    _logger->write(Logger::Severity::WARNING, "Unsupported geometry for LinePatternSymbolizer");
-                    featureIndex++;
+        return [style, strokeMap, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
+            bool suppressWarning = false;
+            if (auto lineProcessor = layerBuilder.createLineProcessor(style, strokeMap)) {
+                for (std::size_t featureIndex = 0; featureIndex < featureCollection.size(); featureIndex++) {
+                    if (auto lineGeometry = std::dynamic_pointer_cast<const LineGeometry>(featureCollection.getGeometry(featureIndex))) {
+                        for (const auto& vertices : lineGeometry->getVerticesList()) {
+                            lineProcessor(featureCollection.getLocalId(featureIndex), vertices);
+                        }
+                    }
+                    else if (auto polygonGeometry = std::dynamic_pointer_cast<const PolygonGeometry>(featureCollection.getGeometry(featureIndex))) {
+                        for (const auto& verticesList : polygonGeometry->getPolygonList()) {
+                            for (const auto& vertices : verticesList) {
+                                lineProcessor(featureCollection.getLocalId(featureIndex), vertices);
+                            }
+                        }
+                    }
+                    else if (!suppressWarning) {
+                        _logger->write(Logger::Severity::WARNING, "Unsupported geometry for LinePatternSymbolizer");
+                        suppressWarning = true;
+                    }
                 }
             }
-            return false;
-        }, style, symbolizerContext.getStrokeMap());
+        };
     }
 } }

@@ -18,7 +18,7 @@ namespace carto { namespace mvt {
             bindParameter("fill-opacity", &_fillOpacity);
         }
 
-        virtual void build(const FeatureCollection& featureCollection, const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext, vt::TileLayerBuilder& layerBuilder) const override;
+        virtual FeatureProcessor createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const override;
 
     protected:
         ColorFunctionParameter _fill = ColorFunctionParameter("#808080");

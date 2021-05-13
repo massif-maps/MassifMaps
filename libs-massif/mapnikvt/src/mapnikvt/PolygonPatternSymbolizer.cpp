@@ -1,18 +1,18 @@
 #include "PolygonPatternSymbolizer.h"
 
 namespace carto { namespace mvt {
-    void PolygonPatternSymbolizer::build(const FeatureCollection& featureCollection, const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext, vt::TileLayerBuilder& layerBuilder) const {
+    PolygonPatternSymbolizer::FeatureProcessor PolygonPatternSymbolizer::createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const {
         vt::FloatFunction opacityFunc = _opacity.getFunction(exprContext);
         vt::ColorFunction colorFunc = _fill.getFunction(exprContext);
         if (opacityFunc == vt::FloatFunction(0) || colorFunc == vt::ColorFunction(vt::Color())) {
-            return;
+            return FeatureProcessor();
         }
 
         std::string file = _file.getValue(exprContext);
         std::shared_ptr<const vt::BitmapPattern> bitmapPattern = symbolizerContext.getBitmapManager()->loadBitmapPattern(file, PATTERN_SCALE, PATTERN_SCALE);
         if (!bitmapPattern || !bitmapPattern->bitmap) {
             _logger->write(Logger::Severity::ERROR, "Failed to load polygon pattern bitmap " + file);
-            return;
+            return FeatureProcessor();
         }
 
         vt::CompOp compOp = _compOp.getValue(exprContext);
@@ -21,31 +21,21 @@ namespace carto { namespace mvt {
 
         vt::PolygonStyle style(compOp, fillFunc, bitmapPattern, geometryTransform);
 
-        std::size_t featureIndex = 0;
-        std::size_t geometryIndex = 0;
-        std::shared_ptr<const PolygonGeometry> polygonGeometry;
-        layerBuilder.addPolygons([&](long long& id, vt::TileLayerBuilder::VerticesList& verticesList) {
-            while (true) {
-                if (polygonGeometry) {
-                    if (geometryIndex < polygonGeometry->getPolygonList().size()) {
-                        id = featureCollection.getLocalId(featureIndex);
-                        verticesList = polygonGeometry->getPolygonList()[geometryIndex++];
-                        return true;
+        return [style, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
+            bool suppressWarning = false;
+            if (auto polygonProcessor = layerBuilder.createPolygonProcessor(style)) {
+                for (std::size_t featureIndex = 0; featureIndex < featureCollection.size(); featureIndex++) {
+                    if (auto polygonGeometry = featureCollection.getPolygonGeometry(featureIndex)) {
+                        for (const auto& verticesList : polygonGeometry->getPolygonList()) {
+                            polygonProcessor(featureCollection.getLocalId(featureIndex), verticesList);
+                        }
                     }
-                    featureIndex++;
-                    geometryIndex = 0;
-                }
-
-                if (featureIndex >= featureCollection.size()) {
-                    break;
-                }
-                polygonGeometry = featureCollection.getPolygonGeometry(featureIndex);
-                if (!polygonGeometry) {
-                    _logger->write(Logger::Severity::WARNING, "Unsupported geometry for PolygonPatternSymbolizer");
-                    featureIndex++;
+                    else if (!suppressWarning) {
+                        _logger->write(Logger::Severity::WARNING, "Unsupported geometry for PolygonPatternSymbolizer");
+                        suppressWarning = true;
+                    }
                 }
             }
-            return false;
-        }, style);
+        };
     }
 } }

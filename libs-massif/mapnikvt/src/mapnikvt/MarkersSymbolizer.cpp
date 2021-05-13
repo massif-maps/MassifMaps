@@ -4,9 +4,9 @@
 #include "vt/BitmapCanvas.h"
 
 namespace carto { namespace mvt {
-    void MarkersSymbolizer::build(const FeatureCollection& featureCollection, const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext, vt::TileLayerBuilder& layerBuilder) const {
+    MarkersSymbolizer::FeatureProcessor MarkersSymbolizer::createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const {
         if ((_width.isDefined() && _width.getFunction(exprContext) == vt::FloatFunction(0)) || (_height.isDefined() && _height.getFunction(exprContext) == vt::FloatFunction(0))) {
-            return;
+            return FeatureProcessor();
         }
 
         bool allowOverlap = _allowOverlap.getValue(exprContext);
@@ -42,12 +42,12 @@ namespace carto { namespace mvt {
             bitmapImage = symbolizerContext.getBitmapManager()->loadBitmapImage(file, false, IMAGE_UPSAMPLING_SCALE);
             if (!bitmapImage || !bitmapImage->bitmap) {
                 _logger->write(Logger::Severity::ERROR, "Failed to load marker bitmap " + file);
-                return;
+                return FeatureProcessor();
             }
             if (bitmapImage->bitmap->width < 1 || bitmapImage->bitmap->height < 1) {
-                return;
+                return FeatureProcessor();
             }
-            
+
             if (_width.isDefined() && widthStatic > 0) {
                 if (_height.isDefined() && heightStatic > 0) {
                     bitmapScaleY *= heightStatic / widthStatic;
@@ -92,7 +92,7 @@ namespace carto { namespace mvt {
             bitmapScaleY *= (strokeWidthStatic + bitmapHeight) / bitmapHeight;
             bitmapWidth = std::min(bitmapWidth, static_cast<float>(MAX_BITMAP_SIZE));
             bitmapHeight = std::min(bitmapHeight, static_cast<float>(MAX_BITMAP_SIZE));
-            
+
             if (ellipse) {
                 file = "__default_marker_ellipse_" + std::to_string(bitmapWidth) + "_" + std::to_string(bitmapHeight) + "_" + std::to_string(fill.value()) + "_" + std::to_string(strokeWidthStatic) + "_" + std::to_string(stroke.value()) + ".bmp";
                 bitmapImage = symbolizerContext.getBitmapManager()->getBitmapImage(file);
@@ -113,6 +113,7 @@ namespace carto { namespace mvt {
             fillOpacity = 1.0f;
         }
 
+        float tileSize = symbolizerContext.getSettings().getTileSize();
         float bitmapSize = static_cast<float>(std::max(widthStatic * fontScale, heightStatic * fontScale));
         long long groupId = (allowOverlap ? -1 : 0);
 
@@ -121,145 +122,179 @@ namespace carto { namespace mvt {
         vt::FloatFunction normalizedSizeFunc = _sizeFuncBuilder.createScaledFloatFunction(sizeFunc, widthScale);
         vt::ColorFunction fillFunc = _fillFuncBuilder.createColorFunction(vt::Color::fromColorOpacity(vt::Color(1, 1, 1, 1), fillOpacity));
 
-        std::vector<std::pair<long long, vt::TileLayerBuilder::Vertex>> pointInfos;
-        std::vector<std::pair<long long, vt::TileLayerBuilder::PointLabelInfo>> labelInfos;
-
-        auto addPoint = [&](long long localId, long long globalId, const std::variant<vt::TileLayerBuilder::Vertex, vt::TileLayerBuilder::Vertices>& position) {
-            if (clip) {
-                if (auto vertex = std::get_if<vt::TileLayerBuilder::Vertex>(&position)) {
-                    pointInfos.emplace_back(localId, *vertex);
-                }
-                else if (auto vertices = std::get_if<vt::TileLayerBuilder::Vertices>(&position)) {
-                    if (!vertices->empty()) {
-                        pointInfos.emplace_back(localId, vertices->front());
-                    }
-                }
-            }
-            else {
-                labelInfos.emplace_back(localId, vt::TileLayerBuilder::PointLabelInfo(globalId * 3 + 0, groupId, position, placementPriority, 0));
-            }
-        };
-
-        auto flushPoints = [&](std::optional<vt::Transform> transform) {
-            if (heightScale != widthScale) {
-                transform = (transform ? *transform : vt::Transform()) * vt::Transform::fromMatrix2(cglib::scale2_matrix(cglib::vec2<float>(1.0f, heightScale / widthScale)));
-            }
-
-            if (clip) {
-                vt::PointStyle style(compOp, fillFunc, normalizedSizeFunc, bitmapImage, transform);
-
-                std::size_t pointInfoIndex = 0;
-                layerBuilder.addPoints([&](long long& id, vt::TileLayerBuilder::Vertex& vertex) {
-                    if (pointInfoIndex >= pointInfos.size()) {
-                        return false;
-                    }
-                    id = pointInfos[pointInfoIndex].first;
-                    vertex = pointInfos[pointInfoIndex].second;
-                    pointInfoIndex++;
-                    return true;
-                }, style, symbolizerContext.getGlyphMap());
-                
-                pointInfos.clear();
-            }
-            else {
-                vt::PointLabelStyle style(orientation, fillFunc, normalizedSizeFunc, false, bitmapImage, transform);
-
-                std::size_t labelInfoIndex = 0;
-                layerBuilder.addPointLabels([&](long long& id, vt::TileLayerBuilder::PointLabelInfo& labelInfo) {
-                    if (labelInfoIndex >= labelInfos.size()) {
-                        return false;
-                    }
-                    id = labelInfos[labelInfoIndex].first;
-                    labelInfo = std::move(labelInfos[labelInfoIndex].second);
-                    labelInfoIndex++;
-                    return true;
-                }, style, symbolizerContext.getGlyphMap());
-                
-                labelInfos.clear();
-            }
-        };
-
-        auto addLinePoints = [&](long long localId, long long globalId, const std::vector<cglib::vec2<float>>& vertices) {
-            if (spacing <= 0) {
-                addPoint(localId, globalId, vertices);
-                return;
-            }
-
-            flushPoints(transform); // NOTE: we need to flush previous points at this point as we will recalculate transform, which is part of the style
-
-            float linePos = 0;
-            for (std::size_t i = 1; i < vertices.size(); i++) {
-                const cglib::vec2<float>& v0 = vertices[i - 1];
-                const cglib::vec2<float>& v1 = vertices[i];
-
-                float lineLen = cglib::length(v1 - v0) * symbolizerContext.getSettings().getTileSize();
-                if (i == 1) {
-                    linePos = std::min(lineLen, spacing) * 0.5f;
-                }
-                while (linePos < lineLen) {
-                    cglib::vec2<float> pos = v0 + (v1 - v0) * (linePos / lineLen);
-                    if (std::min(pos(0), pos(1)) > 0.0f && std::max(pos(0), pos(1)) < 1.0f) {
-                        addPoint(localId, generateId(), pos);
-
-                        cglib::vec2<float> dir = cglib::unit(v1 - v0);
-                        cglib::mat2x2<float> dirTransform {{ dir(0), -dir(1) }, { dir(1), dir(0) }};
-                        flushPoints(vt::Transform::fromMatrix2(dirTransform) * (transform ? *transform : vt::Transform())); // NOTE: we should flush to be sure that the point will not get buffered
-                    }
-
-                    linePos += spacing + bitmapSize;
-                }
-
-                linePos -= lineLen;
-            }
-        };
-
-        std::size_t hash = std::hash<std::string>()(file);
-        for (std::size_t index = 0; index < featureCollection.size(); index++) {
-            long long localId = featureCollection.getLocalId(index);
-            long long globalId = combineId(featureCollection.getGlobalId(index), hash);
-            if (_featureId.isDefined()) {
-                globalId = convertId(_featureId.getValue(exprContext));
-                if (!globalId) {
-                    globalId = generateId();
-                }
-            }
-
-            const std::shared_ptr<const Geometry>& geometry = featureCollection.getGeometry(index);
-            if (auto pointGeometry = std::dynamic_pointer_cast<const PointGeometry>(geometry)) {
-                for (const auto& vertex : pointGeometry->getVertices()) {
-                    addPoint(localId, globalId, vertex);
-                }
-            }
-            else if (auto lineGeometry = std::dynamic_pointer_cast<const LineGeometry>(geometry)) {
-                if (placement == vt::LabelOrientation::LINE) {
-                    for (const auto& vertices : lineGeometry->getVerticesList()) {
-                        addLinePoints(localId, globalId, vertices);
-                    }
-                }
-                else {
-                    for (const auto& vertex : lineGeometry->getMidPoints()) {
-                        addPoint(localId, globalId, vertex);
-                    }
-                }
-            }
-            else if (auto polygonGeometry = std::dynamic_pointer_cast<const PolygonGeometry>(geometry)) {
-                if (placement == vt::LabelOrientation::LINE) {
-                    for (const auto& vertices : polygonGeometry->getClosedOuterRings(true)) {
-                        addLinePoints(localId, globalId, vertices);
-                    }                  
-                }
-                else {
-                    for (const auto& vertex : polygonGeometry->getSurfacePoints()) {
-                        addPoint(localId, globalId, vertex);
-                    }
-                }
-            }
-            else {
-                _logger->write(Logger::Severity::WARNING, "Unsupported geometry for MarkersSymbolizer");
-            }
+        if (heightScale != widthScale) {
+            transform = (transform ? *transform : vt::Transform()) * vt::Transform::fromMatrix2(cglib::scale2_matrix(cglib::vec2<float>(1.0f, heightScale / widthScale)));
         }
 
-        flushPoints(transform);
+        std::shared_ptr<vt::GlyphMap> glyphMap = symbolizerContext.getGlyphMap();
+
+        std::size_t hash = std::hash<std::string>()(file);
+
+        std::optional<long long> globalIdOverride;
+        if (_featureId.isDefined()) {
+            globalIdOverride = convertId(_featureId.getValue(exprContext));
+        }
+
+        if (clip) {
+            return [compOp, fillFunc, normalizedSizeFunc, bitmapImage, transform, placement, spacing, bitmapSize, tileSize, glyphMap, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
+                vt::PointStyle style(compOp, fillFunc, normalizedSizeFunc, bitmapImage, transform);
+                vt::TileLayerBuilder::PointProcessor pointProcessor;
+                for (std::size_t featureIndex = 0; featureIndex < featureCollection.size(); featureIndex++) {
+                    if (!pointProcessor) {
+                        pointProcessor = layerBuilder.createPointProcessor(style, glyphMap);
+                        if (!pointProcessor) {
+                            return;
+                        }
+                    }
+                    
+                    if (auto pointGeometry = std::dynamic_pointer_cast<const PointGeometry>(featureCollection.getGeometry(featureIndex))) {
+                        for (const auto& vertex : pointGeometry->getVertices()) {
+                            pointProcessor(featureCollection.getLocalId(featureIndex), vertex);
+                        }
+                    }
+                    else if (placement != vt::LabelOrientation::LINE) {
+                        vt::TileLayerBuilder::Vertices vertices;
+                        if (auto lineGeometry = std::dynamic_pointer_cast<const LineGeometry>(featureCollection.getGeometry(featureIndex))) {
+                            vertices = lineGeometry->getMidPoints();
+                        }
+                        else if (auto polygonGeometry = std::dynamic_pointer_cast<const PolygonGeometry>(featureCollection.getGeometry(featureIndex))) {
+                            vertices = polygonGeometry->getSurfacePoints();
+                        }
+                        
+                        for (const auto& vertex : vertices) {
+                            pointProcessor(featureCollection.getLocalId(featureIndex), vertex);
+                        }
+                    }
+                    else {
+                        vt::TileLayerBuilder::VerticesList verticesList;
+                        if (auto lineGeometry = std::dynamic_pointer_cast<const LineGeometry>(featureCollection.getGeometry(featureIndex))) {
+                            verticesList = lineGeometry->getVerticesList();
+                        }
+                        else if (auto polygonGeometry = std::dynamic_pointer_cast<const PolygonGeometry>(featureCollection.getGeometry(featureIndex))) {
+                            verticesList = polygonGeometry->getClosedOuterRings(true);
+                        }
+                        
+                        for (const auto& vertices : verticesList) {
+                            for (const auto& transformedPoints : generateTransformedPoints(vertices, spacing, bitmapSize, tileSize)) {
+                                vt::PointStyle transformedStyle(compOp, fillFunc, normalizedSizeFunc, bitmapImage, transformedPoints.first * (transform ? *transform : vt::Transform()));
+                                if (pointProcessor = layerBuilder.createPointProcessor(transformedStyle, glyphMap)) {
+                                    for (const auto& vertex : transformedPoints.second) {
+                                        pointProcessor(featureCollection.getLocalId(featureIndex), vertex);
+                                    }
+                                    pointProcessor = vt::TileLayerBuilder::PointProcessor();
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+        }
+
+        return [compOp, fillFunc, normalizedSizeFunc, bitmapImage, transform, orientation, placement, placementPriority, spacing, bitmapSize, tileSize, glyphMap, groupId, globalIdOverride, hash, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
+            vt::PointLabelStyle style(orientation, fillFunc, normalizedSizeFunc, false, bitmapImage, transform);
+            vt::TileLayerBuilder::PointLabelProcessor pointProcessor;
+            for (std::size_t featureIndex = 0; featureIndex < featureCollection.size(); featureIndex++) {
+                if (!pointProcessor) {
+                    pointProcessor = layerBuilder.createPointLabelProcessor(style, glyphMap);
+                    if (!pointProcessor) {
+                        return;
+                    }
+                }
+
+                long long localId = featureCollection.getLocalId(featureIndex);
+                long long globalId = combineId(featureCollection.getGlobalId(featureIndex), hash);
+                if (globalIdOverride) {
+                    globalId = *globalIdOverride;
+                    if (!globalId) {
+                        globalId = generateId();
+                    }
+                }
+                globalId = globalId * 3 + 0;
+
+                if (auto pointGeometry = std::dynamic_pointer_cast<const PointGeometry>(featureCollection.getGeometry(featureIndex))) {
+                    for (const auto& vertex : pointGeometry->getVertices()) {
+                        pointProcessor(localId, globalId, groupId, vertex, placementPriority, 0);
+                    }
+                }
+                else if (placement != vt::LabelOrientation::LINE) {
+                    if (auto lineGeometry = std::dynamic_pointer_cast<const LineGeometry>(featureCollection.getGeometry(featureIndex))) {
+                        for (const auto& vertices : lineGeometry->getVerticesList()) {
+                            pointProcessor(localId, globalId, groupId, vertices, placementPriority, 0);
+                        }
+                    }
+                    else if (auto polygonGeometry = std::dynamic_pointer_cast<const PolygonGeometry>(featureCollection.getGeometry(featureIndex))) {
+                        for (const auto& vertex : polygonGeometry->getSurfacePoints()) {
+                            pointProcessor(localId, globalId, groupId, vertex, placementPriority, 0);
+                        }
+                    }
+                }
+                else {
+                    vt::TileLayerBuilder::VerticesList verticesList;
+                    if (auto lineGeometry = std::dynamic_pointer_cast<const LineGeometry>(featureCollection.getGeometry(featureIndex))) {
+                        verticesList = lineGeometry->getVerticesList();
+                    }
+                    else if (auto polygonGeometry = std::dynamic_pointer_cast<const PolygonGeometry>(featureCollection.getGeometry(featureIndex))) {
+                        verticesList = polygonGeometry->getClosedOuterRings(true);
+                    }
+
+                    for (const auto& vertices : verticesList) {
+                        if (spacing <= 0) {
+                            pointProcessor(localId, globalId, groupId, vertices, placementPriority, 0);
+                            continue;
+                        }
+                        
+                        for (const auto& transformedPoints : generateTransformedPoints(vertices, spacing, bitmapSize, tileSize)) {
+                            vt::PointLabelStyle transformedStyle(orientation, fillFunc, normalizedSizeFunc, false, bitmapImage, transformedPoints.first * (transform ? *transform : vt::Transform()));
+                            if (pointProcessor = layerBuilder.createPointLabelProcessor(transformedStyle, glyphMap)) {
+                                for (const auto& vertex : transformedPoints.second) {
+                                    pointProcessor(localId, generateId(), groupId, vertex, placementPriority, 0);
+                                }
+                                pointProcessor = vt::TileLayerBuilder::PointLabelProcessor();
+                            }
+                        }
+                    }
+                }
+            }
+        };
+    }
+
+    std::vector<std::pair<vt::Transform, vt::TileLayerBuilder::Vertices>> MarkersSymbolizer::generateTransformedPoints(const vt::TileLayerBuilder::Vertices& vertices, float spacing, float bitmapSize, float tileSize) {
+        std::vector<std::pair<vt::Transform, vt::TileLayerBuilder::Vertices>> transformedPointList;
+
+        float linePos = 0;
+        for (std::size_t i = 1; i < vertices.size(); i++) {
+            const cglib::vec2<float>& v0 = vertices[i - 1];
+            const cglib::vec2<float>& v1 = vertices[i];
+
+            float lineLen = cglib::length(v1 - v0) * tileSize;
+            if (spacing <= 0) {
+                linePos = lineLen * 0.5f;
+            }
+            else if (i == 1) {
+                linePos = std::min(lineLen, spacing) * 0.5f;
+            }
+
+            vt::TileLayerBuilder::Vertices points;
+            while (linePos < lineLen) {
+                cglib::vec2<float> pos = v0 + (v1 - v0) * (linePos / lineLen);
+                if (std::min(pos(0), pos(1)) > 0.0f && std::max(pos(0), pos(1)) < 1.0f) {
+                    points.push_back(pos);
+                }
+
+                if (spacing <= 0) {
+                    break;
+                }
+                linePos += spacing + bitmapSize;
+            }
+            if (!points.empty()) {
+                cglib::vec2<float> dir = cglib::unit(v1 - v0);
+                vt::Transform transform = vt::Transform::fromMatrix2(cglib::mat2x2<float> { { dir(0), -dir(1) }, { dir(1), dir(0) } });
+                transformedPointList.emplace_back(transform, std::move(points));
+            }
+
+            linePos -= lineLen;
+        }
+        return transformedPointList;
     }
     
     std::shared_ptr<vt::BitmapImage> MarkersSymbolizer::makeEllipseBitmap(float width, float height, const vt::Color& color, float strokeWidth, const vt::Color& strokeColor) {

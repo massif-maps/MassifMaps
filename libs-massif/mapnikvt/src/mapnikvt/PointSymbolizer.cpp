@@ -3,12 +3,12 @@
 #include "vt/BitmapCanvas.h"
 
 namespace carto { namespace mvt {
-    void PointSymbolizer::build(const FeatureCollection& featureCollection, const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext, vt::TileLayerBuilder& layerBuilder) const {
+    PointSymbolizer::FeatureProcessor PointSymbolizer::createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const {
         vt::FloatFunction opacityFunc = _opacity.getFunction(exprContext);
         if (opacityFunc == vt::FloatFunction(0)) {
-            return;
+            return FeatureProcessor();
         }
-        
+
         float fontScale = symbolizerContext.getSettings().getFontScale();
         std::string file = _file.getValue(exprContext);
         std::shared_ptr<const vt::BitmapImage> bitmapImage;
@@ -16,10 +16,10 @@ namespace carto { namespace mvt {
             bitmapImage = symbolizerContext.getBitmapManager()->loadBitmapImage(file, false, 1.0f);
             if (!bitmapImage || !bitmapImage->bitmap) {
                 _logger->write(Logger::Severity::ERROR, "Failed to load point bitmap " + file);
-                return;
+                return FeatureProcessor();
             }
             if (bitmapImage->bitmap->width < 1 || bitmapImage->bitmap->height < 1) {
-                return;
+                return FeatureProcessor();
             }
         }
         else {
@@ -36,41 +36,32 @@ namespace carto { namespace mvt {
 
         vt::CompOp compOp = _compOp.getValue(exprContext);
         std::optional<vt::Transform> transform = _transform.getValue(exprContext);
-        vt::PointStyle pointStyle(compOp, fillFunc, sizeFunc, bitmapImage, transform);
+        
+        vt::PointStyle style(compOp, fillFunc, sizeFunc, bitmapImage, transform);
 
-        std::vector<std::pair<long long, vt::TileLayerBuilder::Vertex>> pointInfos;
-        for (std::size_t index = 0; index < featureCollection.size(); index++) {
-            long long localId = featureCollection.getLocalId(index);
-            if (auto pointGeometry = std::dynamic_pointer_cast<const PointGeometry>(featureCollection.getGeometry(index))) {
-                for (const auto& vertex : pointGeometry->getVertices()) {
-                    pointInfos.emplace_back(localId, vertex);
-                }
-            }
-            else if (auto lineGeometry = std::dynamic_pointer_cast<const LineGeometry>(featureCollection.getGeometry(index))) {
-                for (const auto& vertex : lineGeometry->getMidPoints()) {
-                    pointInfos.emplace_back(localId, vertex);
-                }
-            }
-            else if (auto polygonGeometry = std::dynamic_pointer_cast<const PolygonGeometry>(featureCollection.getGeometry(index))) {
-                for (const auto& vertex : polygonGeometry->getSurfacePoints()) {
-                    pointInfos.emplace_back(localId, vertex);
-                }
-            }
-            else {
-                _logger->write(Logger::Severity::WARNING, "Unsupported geometry for PointSymbolizer");
-            }
-        }
+        std::shared_ptr<vt::GlyphMap> glyphMap = symbolizerContext.getGlyphMap();
 
-        std::size_t pointInfoIndex = 0;
-        layerBuilder.addPoints([&](long long& id, vt::TileLayerBuilder::Vertex& vertex) {
-            if (pointInfoIndex >= pointInfos.size()) {
-                return false;
+        return [style, glyphMap, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
+            if (auto pointProcessor = layerBuilder.createPointProcessor(style, glyphMap)) {
+                for (std::size_t featureIndex = 0; featureIndex < featureCollection.size(); featureIndex++) {
+                    if (auto pointGeometry = std::dynamic_pointer_cast<const PointGeometry>(featureCollection.getGeometry(featureIndex))) {
+                        for (const vt::TileLayerBuilder::Vertex& vertex : pointGeometry->getVertices()) {
+                            pointProcessor(featureCollection.getLocalId(featureIndex), vertex);
+                        }
+                    }
+                    else if (auto lineGeometry = std::dynamic_pointer_cast<const LineGeometry>(featureCollection.getGeometry(featureIndex))) {
+                        for (const vt::TileLayerBuilder::Vertex& vertex : lineGeometry->getMidPoints()) {
+                            pointProcessor(featureCollection.getLocalId(featureIndex), vertex);
+                        }
+                    }
+                    else if (auto polygonGeometry = std::dynamic_pointer_cast<const PolygonGeometry>(featureCollection.getGeometry(featureIndex))) {
+                        for (const vt::TileLayerBuilder::Vertex& vertex : polygonGeometry->getSurfacePoints()) {
+                            pointProcessor(featureCollection.getLocalId(featureIndex), vertex);
+                        }
+                    }
+                };
             }
-            id = pointInfos[pointInfoIndex].first;
-            vertex = pointInfos[pointInfoIndex].second;
-            pointInfoIndex++;
-            return true;
-        }, pointStyle, symbolizerContext.getGlyphMap());
+        };
     }
 
     std::shared_ptr<vt::BitmapImage> PointSymbolizer::makeRectangleBitmap(float size) {

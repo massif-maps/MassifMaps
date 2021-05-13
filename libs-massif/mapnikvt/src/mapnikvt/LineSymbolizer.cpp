@@ -8,14 +8,14 @@
 #include <boost/algorithm/string.hpp>
 
 namespace carto { namespace mvt {
-    void LineSymbolizer::build(const FeatureCollection& featureCollection, const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext, vt::TileLayerBuilder& layerBuilder) const {
+    LineSymbolizer::FeatureProcessor LineSymbolizer::createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const {
         vt::FloatFunction strokeWidthFunc = _strokeWidth.getFunction(exprContext);
         vt::FloatFunction strokeOpacityFunc = _strokeOpacity.getFunction(exprContext);
         vt::ColorFunction strokeColorFunc = _stroke.getFunction(exprContext);
         if (strokeWidthFunc == vt::FloatFunction(0) || strokeOpacityFunc == vt::FloatFunction(0) || strokeColorFunc == vt::ColorFunction(vt::Color())) {
-            return;
+            return FeatureProcessor();
         }
-        
+
         vt::CompOp compOp = _compOp.getValue(exprContext);
         vt::LineJoinMode strokeLinejoin = _strokeLinejoin.getValue(exprContext);
         vt::LineCapMode strokeLinecap = _strokeLinecap.getValue(exprContext);
@@ -49,49 +49,32 @@ namespace carto { namespace mvt {
         }
 
         vt::LineStyle style(compOp, strokeLinejoin, strokeLinecap, strokeFunc, strokeWidthFunc, strokePattern, geometryTransform);
+        
+        std::shared_ptr<vt::StrokeMap> strokeMap = symbolizerContext.getStrokeMap();
 
-        std::size_t featureIndex = 0;
-        std::size_t geometryIndex = 0;
-        std::size_t polygonIndex = 0;
-        std::shared_ptr<const LineGeometry> lineGeometry;
-        std::shared_ptr<const PolygonGeometry> polygonGeometry;
-        layerBuilder.addLines([&](long long& id, vt::TileLayerBuilder::Vertices& vertices) {
-            while (true) {
-                if (lineGeometry) {
-                    if (geometryIndex < lineGeometry->getVerticesList().size()) {
-                        id = featureCollection.getLocalId(featureIndex);
-                        vertices = lineGeometry->getVerticesList()[geometryIndex++];
-                        return true;
-                    }
-                    featureIndex++;
-                    geometryIndex = 0;
-                }
-                if (polygonGeometry) {
-                    while (geometryIndex < polygonGeometry->getPolygonList().size()) {
-                        if (polygonIndex < polygonGeometry->getPolygonList()[geometryIndex].size()) {
-                            id = featureCollection.getLocalId(featureIndex);
-                            vertices = polygonGeometry->getPolygonList()[geometryIndex][polygonIndex++];
-                            return true;
+        return [style, strokeMap, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
+            bool suppressWarning = false;
+            if (auto lineProcessor = layerBuilder.createLineProcessor(style, strokeMap)) {
+                for (std::size_t featureIndex = 0; featureIndex < featureCollection.size(); featureIndex++) {
+                    if (auto lineGeometry = std::dynamic_pointer_cast<const LineGeometry>(featureCollection.getGeometry(featureIndex))) {
+                        for (const auto& vertices : lineGeometry->getVerticesList()) {
+                            lineProcessor(featureCollection.getLocalId(featureIndex), vertices);
                         }
-                        geometryIndex++;
-                        polygonIndex = 0;
                     }
-                    featureIndex++;
-                    geometryIndex = 0;
-                }
-
-                if (featureIndex >= featureCollection.size()) {
-                    break;
-                }
-                lineGeometry = std::dynamic_pointer_cast<const LineGeometry>(featureCollection.getGeometry(featureIndex));
-                polygonGeometry = std::dynamic_pointer_cast<const PolygonGeometry>(featureCollection.getGeometry(featureIndex));
-                if (!lineGeometry && !polygonGeometry) {
-                    _logger->write(Logger::Severity::WARNING, "Unsupported geometry for LineSymbolizer");
-                    featureIndex++;
+                    else if (auto polygonGeometry = std::dynamic_pointer_cast<const PolygonGeometry>(featureCollection.getGeometry(featureIndex))) {
+                        for (const auto& verticesList : polygonGeometry->getPolygonList()) {
+                            for (const auto& vertices : verticesList) {
+                                lineProcessor(featureCollection.getLocalId(featureIndex), vertices);
+                            }
+                        }
+                    }
+                    else if (!suppressWarning) {
+                        _logger->write(Logger::Severity::WARNING, "Unsupported geometry for LineSymbolizer");
+                        suppressWarning = true;
+                    }
                 }
             }
-            return false;
-        }, style, symbolizerContext.getStrokeMap());
+        };
     }
 
     std::shared_ptr<vt::BitmapPattern> LineSymbolizer::createDashBitmapPattern(const std::vector<float>& strokeDashArray, int height, vt::LineCapMode lineCap) {

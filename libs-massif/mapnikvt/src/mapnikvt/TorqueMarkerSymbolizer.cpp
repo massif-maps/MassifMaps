@@ -3,7 +3,7 @@
 #include "vt/BitmapCanvas.h"
 
 namespace carto { namespace mvt {
-    void TorqueMarkerSymbolizer::build(const FeatureCollection& featureCollection, const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext, vt::TileLayerBuilder& layerBuilder) const {
+    TorqueMarkerSymbolizer::FeatureProcessor TorqueMarkerSymbolizer::createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const {
         float width = _width.getValue(exprContext);
         if (width <= 0) {
             width = DEFAULT_MARKER_SIZE;
@@ -19,10 +19,10 @@ namespace carto { namespace mvt {
             bitmapImage = symbolizerContext.getBitmapManager()->loadBitmapImage(file, false, 1.0f);
             if (!bitmapImage || !bitmapImage->bitmap) {
                 _logger->write(Logger::Severity::ERROR, "Failed to load marker bitmap " + file);
-                return;
+                return FeatureProcessor();
             }
             if (bitmapImage->bitmap->width < 1 || bitmapImage->bitmap->height < 1) {
-                return;
+                return FeatureProcessor();
             }
 
             width = bitmapImage->bitmap->width;
@@ -64,33 +64,27 @@ namespace carto { namespace mvt {
             transform = vt::Transform::fromMatrix2(cglib::scale2_matrix(cglib::vec2<float>(1.0f, heightScale / widthScale)));
         }
         vt::CompOp compOp = _compOp.getValue(exprContext);
+        
         vt::PointStyle style(compOp, fillFunc, normalizedSizeFunc, bitmapImage, transform);
 
-        std::size_t featureIndex = 0;
-        std::size_t geometryIndex = 0;
-        std::shared_ptr<const PointGeometry> pointGeometry;
-        layerBuilder.addPoints([&](long long& id, vt::TileLayerBuilder::Vertex& vertex) {
-            while (true) {
-                if (pointGeometry) {
-                    if (geometryIndex < pointGeometry->getVertices().size()) {
-                        id = featureCollection.getLocalId(featureIndex);
-                        vertex = pointGeometry->getVertices()[geometryIndex++];
-                        return true;
-                    }
-                    featureIndex++;
-                    geometryIndex = 0;
-                }
+        std::shared_ptr<vt::GlyphMap> glyphMap = symbolizerContext.getGlyphMap();
 
-                if (featureIndex >= featureCollection.size()) {
-                    break;
-                }
-                pointGeometry = std::dynamic_pointer_cast<const PointGeometry>(featureCollection.getGeometry(featureIndex));
-                if (!pointGeometry) {
-                    _logger->write(Logger::Severity::WARNING, "Unsupported geometry for TorqueMarkerSymbolizer");
+        return [style, glyphMap, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
+            bool suppressWarning = false;
+            if (auto pointProcessor = layerBuilder.createPointProcessor(style, glyphMap)) {
+                for (std::size_t featureIndex = 0; featureIndex < featureCollection.size(); featureIndex++) {
+                    if (auto pointGeometry = std::dynamic_pointer_cast<const PointGeometry>(featureCollection.getGeometry(featureIndex))) {
+                        for (const vt::TileLayerBuilder::Vertex& vertex : pointGeometry->getVertices()) {
+                            pointProcessor(featureCollection.getLocalId(featureIndex), vertex);
+                        }
+                    }
+                    else if (!suppressWarning) {
+                        _logger->write(Logger::Severity::WARNING, "Unsupported geometry for TorqueMarkerSymbolizer");
+                        suppressWarning = true;
+                    }
                 }
             }
-            return false;
-        }, style, symbolizerContext.getGlyphMap());
+        };
     }
 
     std::shared_ptr<vt::BitmapImage> TorqueMarkerSymbolizer::makeEllipseBitmap(float width, float height, const vt::Color& color, float strokeWidth, const vt::Color& strokeColor) {

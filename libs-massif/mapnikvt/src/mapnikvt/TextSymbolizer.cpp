@@ -8,24 +8,27 @@
 #include <vector>
 #include <tuple>
 
+#include <boost/math/constants/constants.hpp>
+
 namespace carto { namespace mvt {
-    void TextSymbolizer::build(const FeatureCollection& featureCollection, const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext, vt::TileLayerBuilder& layerBuilder) const {
+    TextSymbolizer::FeatureProcessor TextSymbolizer::createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const {
         vt::FloatFunction baseSizeFunc = _size.getFunction(exprContext);
         if (baseSizeFunc == vt::FloatFunction(0)) {
-            return;
+            return FeatureProcessor();
         }
-        
+
         std::shared_ptr<const vt::Font> font = getFont(symbolizerContext, exprContext);
         if (!font) {
             std::string faceName = _faceName.getValue(exprContext);
             std::string fontSetName = _fontSetName.getValue(exprContext);
             _logger->write(Logger::Severity::ERROR, "Failed to load text font " + (!faceName.empty() ? faceName : fontSetName));
-            return;
+            return FeatureProcessor();
         }
 
         bool allowOverlap = _allowOverlap.getValue(exprContext);
         bool clip = _clip.isDefined() ? _clip.getValue(exprContext) : allowOverlap;
 
+        float tileSize = symbolizerContext.getSettings().getTileSize();
         float fontScale = symbolizerContext.getSettings().getFontScale();
         float minimumDistance = _minimumDistance.getValue(exprContext) * std::pow(2.0f, -exprContext.getAdjustedZoom());
         float placementPriority = _placementPriority.getValue(exprContext);
@@ -35,70 +38,188 @@ namespace carto { namespace mvt {
         vt::TextFormatter formatter(font, sizeStatic, getFormatterOptions(symbolizerContext, exprContext));
         vt::CompOp compOp = _compOp.getValue(exprContext);
         vt::LabelOrientation placement = getPlacement(exprContext);
+        if (placement == vt::LabelOrientation::LINE) {
+            orientationAngle = 0; // not supported when using line placements
+        }
 
         vt::ColorFunction fillFunc = _fillFuncBuilder.createColorOpacityFunction(_fill.getFunction(exprContext), _opacity.getFunction(exprContext));
         vt::FloatFunction sizeFunc = _sizeFuncBuilder.createScaledFloatFunction(_size.getFunction(exprContext), fontScale);
         vt::ColorFunction haloFillFunc = _haloFillFuncBuilder.createColorOpacityFunction(_haloFill.getFunction(exprContext), _haloOpacity.getFunction(exprContext));
         vt::FloatFunction haloRadiusFunc = _haloRadiusFuncBuilder.createScaledFloatFunction(_haloRadius.getFunction(exprContext), fontScale);
 
-        std::vector<std::pair<long long, std::tuple<vt::TileLayerBuilder::Vertex, std::string>>> textInfos;
-        std::vector<std::pair<long long, vt::TileLayerBuilder::TextLabelInfo>> labelInfos;
+        std::string text = getTransformedText(exprContext);
+        std::size_t hash = std::hash<std::string>()(text);
 
-        auto addText = [&](long long localId, long long globalId, const std::string& text, const std::optional<vt::TileLayerBuilder::Vertex>& vertex, const vt::TileLayerBuilder::Vertices& vertices) {
-            long long groupId = (allowOverlap ? -1 : (minimumDistance > 0 ? (std::hash<std::string>()(text) & 0x7fffffff) : 0));
-            
-            if (clip) {
-                if (vertex) {
-                    textInfos.emplace_back(localId, std::make_tuple(*vertex, text));
+        std::optional<long long> globalIdOverride;
+        if (_featureId.isDefined()) {
+            globalIdOverride = convertId(_featureId.getValue(exprContext));
+        }
+        int globalIdOffset = 1;
+
+        float bitmapSize = -1;
+        float textSize = bitmapSize < 0 ? (placement == vt::LabelOrientation::LINE ? calculateTextSize(formatter.getFont(), text, formatter).size()(0) : 0) : bitmapSize;
+        float spacing = _spacing.getValue(exprContext);
+        long long groupId = (allowOverlap ? -1 : (minimumDistance > 0 ? (std::hash<std::string>()(text) & 0x7fffffff) : 0));
+        
+        cglib::vec2<float> backgroundOffset(0, 0);
+        std::shared_ptr<vt::BitmapImage> backgroundImage;
+
+        if (clip) {
+            return [compOp, fillFunc, haloFillFunc, sizeFunc, haloRadiusFunc, fontScale, placement, text, orientationAngle, formatter, backgroundOffset, backgroundImage, spacing, textSize, tileSize, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
+                vt::TextStyle style(compOp, fillFunc, sizeFunc, haloFillFunc, haloRadiusFunc, orientationAngle, fontScale, backgroundOffset, backgroundImage);
+                vt::TileLayerBuilder::TextProcessor textProcessor;
+                for (std::size_t featureIndex = 0; featureIndex < featureCollection.size(); featureIndex++) {
+                    if (!textProcessor) {
+                        textProcessor = layerBuilder.createTextProcessor(style, formatter);
+                        if (!textProcessor) {
+                            return;
+                        }
+                    }
+
+                    if (auto pointGeometry = std::dynamic_pointer_cast<const PointGeometry>(featureCollection.getGeometry(featureIndex))) {
+                        for (const auto& vertex : pointGeometry->getVertices()) {
+                            textProcessor(featureCollection.getLocalId(featureIndex), vertex, text);
+                        }
+                    }
+                    else if (placement != vt::LabelOrientation::LINE) {
+                        vt::TileLayerBuilder::Vertices vertices;
+                        if (auto lineGeometry = std::dynamic_pointer_cast<const LineGeometry>(featureCollection.getGeometry(featureIndex))) {
+                            vertices = lineGeometry->getMidPoints();
+                        }
+                        else if (auto polygonGeometry = std::dynamic_pointer_cast<const PolygonGeometry>(featureCollection.getGeometry(featureIndex))) {
+                            vertices = polygonGeometry->getSurfacePoints();
+                        }
+
+                        for (const auto& vertex : vertices) {
+                            textProcessor(featureCollection.getLocalId(featureIndex), vertex, text);
+                        }
+                    }
+                    else {
+                        vt::TileLayerBuilder::VerticesList verticesList;
+                        if (auto lineGeometry = std::dynamic_pointer_cast<const LineGeometry>(featureCollection.getGeometry(featureIndex))) {
+                            verticesList = lineGeometry->getVerticesList();
+                        }
+                        else if (auto polygonGeometry = std::dynamic_pointer_cast<const PolygonGeometry>(featureCollection.getGeometry(featureIndex))) {
+                            verticesList = polygonGeometry->getClosedOuterRings(true);
+                        }
+
+                        for (const auto& vertices : verticesList) {
+                            for (const auto& transformedPoints : generateLinePoints(vertices, spacing, textSize, tileSize)) {
+                                vt::TextStyle transformedStyle(compOp, fillFunc, sizeFunc, haloFillFunc, haloRadiusFunc, transformedPoints.first + orientationAngle, fontScale, backgroundOffset, backgroundImage);
+                                if (textProcessor = layerBuilder.createTextProcessor(transformedStyle, formatter)) {
+                                    for (const auto& vertex : transformedPoints.second) {
+                                        textProcessor(featureCollection.getLocalId(featureIndex), vertex, text);
+                                    }
+                                    textProcessor = vt::TileLayerBuilder::TextProcessor();
+                                }
+                            }
+                        }
+                    }
                 }
-                else if (!vertices.empty()) {
-                    textInfos.emplace_back(localId, std::make_tuple(vertices.front(), text));
+            };
+        }
+
+        return [compOp, fillFunc, haloFillFunc, sizeFunc, haloRadiusFunc, fontScale, placement, text, hash, orientationAngle, formatter, backgroundOffset, backgroundImage, spacing, textSize, tileSize, globalIdOverride, globalIdOffset, groupId, placementPriority, minimumDistance, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
+            vt::TextLabelStyle style(placement, fillFunc, sizeFunc, haloFillFunc, haloRadiusFunc, true, orientationAngle, fontScale, backgroundOffset, backgroundImage);
+            vt::TileLayerBuilder::TextLabelProcessor textProcessor;
+            for (std::size_t featureIndex = 0; featureIndex < featureCollection.size(); featureIndex++) {
+                if (!textProcessor) {
+                    textProcessor = layerBuilder.createTextLabelProcessor(style, formatter);
+                    if (!textProcessor) {
+                        return;
+                    }
                 }
-            }
-            else {
-                labelInfos.emplace_back(localId, vt::TileLayerBuilder::TextLabelInfo(globalId * 3 + 1, groupId, text, vertex, vertices, placementPriority, minimumDistance));
+
+                long long localId = featureCollection.getLocalId(featureIndex);
+                long long globalId = combineId(featureCollection.getGlobalId(featureIndex), hash);
+                if (globalIdOverride) {
+                    globalId = *globalIdOverride;
+                    if (!globalId) {
+                        globalId = generateId();
+                    }
+                }
+                globalId = globalId * 3 + globalIdOffset;
+
+                if (auto pointGeometry = std::dynamic_pointer_cast<const PointGeometry>(featureCollection.getGeometry(featureIndex))) {
+                    for (const auto& vertex : pointGeometry->getVertices()) {
+                        textProcessor(localId, globalId, groupId, vertex, vt::TileLayerBuilder::Vertices(), text, placementPriority, minimumDistance);
+                    }
+                }
+                else if (placement != vt::LabelOrientation::LINE) {
+                    if (auto lineGeometry = std::dynamic_pointer_cast<const LineGeometry>(featureCollection.getGeometry(featureIndex))) {
+                        for (const auto& vertices : lineGeometry->getVerticesList()) {
+                            textProcessor(localId, globalId, groupId, std::optional<vt::TileLayerBuilder::Vertex>(), vertices, text, placementPriority, minimumDistance);
+                        }
+                    }
+                    else if (auto polygonGeometry = std::dynamic_pointer_cast<const PolygonGeometry>(featureCollection.getGeometry(featureIndex))) {
+                        for (const auto& vertex : polygonGeometry->getSurfacePoints()) {
+                            textProcessor(localId, globalId, groupId, vertex, vt::TileLayerBuilder::Vertices(), text, placementPriority, minimumDistance);
+                        }
+                    }
+                }
+                else {
+                    vt::TileLayerBuilder::VerticesList verticesList;
+                    if (auto lineGeometry = std::dynamic_pointer_cast<const LineGeometry>(featureCollection.getGeometry(featureIndex))) {
+                        verticesList = lineGeometry->getVerticesList();
+                    }
+                    else if (auto polygonGeometry = std::dynamic_pointer_cast<const PolygonGeometry>(featureCollection.getGeometry(featureIndex))) {
+                        verticesList = polygonGeometry->getClosedOuterRings(true);
+                    }
+
+                    for (const auto& vertices : verticesList) {
+                        if (spacing <= 0) {
+                            textProcessor(localId, globalId, groupId, std::optional<vt::TileLayerBuilder::Vertex>(), vertices, text, placementPriority, minimumDistance);
+                            continue;
+                        }
+
+                        for (const auto& transformedPoints : generateLinePoints(vertices, spacing, textSize, tileSize)) {
+                            for (const auto& vertex : transformedPoints.second) {
+                                textProcessor(localId, generateId(), groupId, vertex, vertices, text, placementPriority, minimumDistance);
+                            }
+                        }
+                    }
+                }
             }
         };
+    }
 
-        auto flushTexts = [&]() {
-            if (clip) {
-                vt::TextStyle style(compOp, fillFunc, sizeFunc, haloFillFunc, haloRadiusFunc, orientationAngle, fontScale, cglib::vec2<float>(0, 0), std::shared_ptr<vt::BitmapImage>());
+    std::vector<std::pair<float, vt::TileLayerBuilder::Vertices>> TextSymbolizer::generateLinePoints(const vt::TileLayerBuilder::Vertices& vertices, float spacing, float textSize, float tileSize) {
+        std::vector<std::pair<float, vt::TileLayerBuilder::Vertices>> transformedPointList;
 
-                std::size_t textInfoIndex = 0;
-                layerBuilder.addTexts([&](long long& id, vt::TileLayerBuilder::Vertex& vertex, std::string& text) {
-                    if (textInfoIndex >= textInfos.size()) {
-                        return false;
-                    }
-                    id = textInfos[textInfoIndex].first;
-                    vertex = std::get<0>(textInfos[textInfoIndex].second);
-                    text = std::get<1>(textInfos[textInfoIndex].second);
-                    textInfoIndex++;
-                    return true;
-                }, style, formatter);
+        float linePos = 0;
+        for (std::size_t i = 1; i < vertices.size(); i++) {
+            const cglib::vec2<float>& v0 = vertices[i - 1];
+            const cglib::vec2<float>& v1 = vertices[i];
 
-                textInfos.clear();
+            float lineLen = cglib::length(v1 - v0) * tileSize;
+            if (spacing <= 0) {
+                linePos = lineLen * 0.5f;
             }
-            else {
-                vt::TextLabelStyle style(placement, fillFunc, sizeFunc, haloFillFunc, haloRadiusFunc, true, orientationAngle, fontScale, cglib::vec2<float>(0, 0), std::shared_ptr<vt::BitmapImage>());
-
-                std::size_t labelInfoIndex = 0;
-                layerBuilder.addTextLabels([&](long long& id, vt::TileLayerBuilder::TextLabelInfo& labelInfo) {
-                    if (labelInfoIndex >= labelInfos.size()) {
-                        return false;
-                    }
-                    id = labelInfos[labelInfoIndex].first;
-                    labelInfo = labelInfos[labelInfoIndex].second;
-                    labelInfoIndex++;
-                    return true;
-                }, style, formatter);
-
-                labelInfos.clear();
+            else if (i == 1) {
+                linePos = std::min(lineLen, spacing) * 0.5f;
             }
-        };
 
-        buildFeatureCollection(featureCollection, exprContext, symbolizerContext, formatter, placement, -1, addText);
+            vt::TileLayerBuilder::Vertices points;
+            while (linePos < lineLen) {
+                cglib::vec2<float> pos = v0 + (v1 - v0) * (linePos / lineLen);
+                if (std::min(pos(0), pos(1)) > 0.0f && std::max(pos(0), pos(1)) < 1.0f) {
+                    points.push_back(pos);
+                }
 
-        flushTexts();
+                if (spacing <= 0) {
+                    break;
+                }
+                linePos += spacing + textSize;
+            }
+            if (!points.empty()) {
+                cglib::vec2<float> dir = cglib::unit(v1 - v0);
+                float angle = std::atan2(-dir(1), dir(0));
+                transformedPointList.emplace_back(angle * 180.0f / boost::math::constants::pi<float>(), std::move(points));
+            }
+
+            linePos -= lineLen;
+        }
+        return transformedPointList;
     }
 
     cglib::bbox2<float> TextSymbolizer::calculateTextSize(const std::shared_ptr<const vt::Font>& font, const std::string& text, const vt::TextFormatter& formatter) {
@@ -180,8 +301,8 @@ namespace carto { namespace mvt {
         float lineSpacing = _lineSpacing.getValue(exprContext);
         float wrapWidth = _wrapWidth.getValue(exprContext);
         bool wrapBefore = _wrapBefore.getValue(exprContext);
-        std::string horizontalAlignment = _horizontalAlignment.getValue(exprContext);
-        std::string verticalAlignment = _verticalAlignment.getValue(exprContext);
+        std::string horizontalAlignment = toLower(_horizontalAlignment.getValue(exprContext));
+        std::string verticalAlignment = toLower(_verticalAlignment.getValue(exprContext));
 
         cglib::vec2<float> offset(dx * fontScale, -dy * fontScale);
         cglib::vec2<float> alignment(dx < 0 ? 1.0f : (dx > 0 ? -1.0f : 0.0f), dy < 0 ? 1.0f : (dy > 0 ? -1.0f : 0.0f));
@@ -204,86 +325,5 @@ namespace carto { namespace mvt {
             alignment(1) = 1.0f;
         }
         return vt::TextFormatter::Options(alignment, offset, wrapBefore, wrapWidth * fontScale, characterSpacing, lineSpacing);
-    }
-
-    void TextSymbolizer::buildFeatureCollection(const FeatureCollection& featureCollection, const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext, const vt::TextFormatter& formatter, vt::LabelOrientation placement, float bitmapSize, const std::function<void(long long localId, long long globalId, const std::string& text, const std::optional<vt::TileLayerBuilder::Vertex>& vertex, const vt::TileLayerBuilder::Vertices& vertices)>& addText) const {
-        for (std::size_t index = 0; index < featureCollection.size(); index++) {
-            std::string text = getTransformedText(exprContext);
-            std::size_t hash = std::hash<std::string>()(text);
-
-            long long localId = featureCollection.getLocalId(index);
-            long long globalId = combineId(featureCollection.getGlobalId(index), hash);
-            if (_featureId.isDefined()) {
-                globalId = convertId(_featureId.getValue(exprContext));
-                if (!globalId) {
-                    globalId = generateId();
-                }
-            }
-
-            const std::shared_ptr<const Geometry>& geometry = featureCollection.getGeometry(index);
-            float textSize = bitmapSize < 0 ? (placement == vt::LabelOrientation::LINE ? calculateTextSize(formatter.getFont(), text, formatter).size()(0) : 0) : bitmapSize;
-            float spacing = _spacing.getValue(exprContext);
-
-            auto addLineTexts = [&](const std::vector<cglib::vec2<float>>& vertices) {
-                if (spacing <= 0) {
-                    addText(localId, globalId, text, std::optional<vt::TileLayerBuilder::Vertex>(), vertices);
-                    return;
-                }
-
-                float linePos = 0;
-                for (std::size_t i = 1; i < vertices.size(); i++) {
-                    const cglib::vec2<float>& v0 = vertices[i - 1];
-                    const cglib::vec2<float>& v1 = vertices[i];
-
-                    float lineLen = cglib::length(v1 - v0) * symbolizerContext.getSettings().getTileSize();
-                    if (i == 1) {
-                        linePos = std::min(lineLen, spacing) * 0.5f;
-                    }
-                    while (linePos < lineLen) {
-                        cglib::vec2<float> pos = v0 + (v1 - v0) * (linePos / lineLen);
-                        if (std::min(pos(0), pos(1)) > 0.0f && std::max(pos(0), pos(1)) < 1.0f) {
-                            addText(localId, generateId(), text, pos, vertices);
-                        }
-
-                        linePos += spacing + textSize;
-                    }
-
-                    linePos -= lineLen;
-                }
-            };
-
-            if (auto pointGeometry = std::dynamic_pointer_cast<const PointGeometry>(geometry)) {
-                for (const auto& vertex : pointGeometry->getVertices()) {
-                    addText(localId, globalId, text, vertex, vt::TileLayerBuilder::Vertices());
-                }
-            }
-            else if (auto lineGeometry = std::dynamic_pointer_cast<const LineGeometry>(geometry)) {
-                if (placement == vt::LabelOrientation::LINE) {
-                    for (const auto& vertices : lineGeometry->getVerticesList()) {
-                        addLineTexts(vertices);
-                    }
-                }
-                else {
-                    for (const auto& vertices : lineGeometry->getVerticesList()) {
-                        addText(localId, globalId, text, std::optional<vt::TileLayerBuilder::Vertex>(), vertices);
-                    }
-                }
-            }
-            else if (auto polygonGeometry = std::dynamic_pointer_cast<const PolygonGeometry>(geometry)) {
-                if (placement == vt::LabelOrientation::LINE) {
-                    for (const auto& vertices : polygonGeometry->getClosedOuterRings(true)) {
-                        addLineTexts(vertices);
-                    }
-                }
-                else {
-                    for (const auto& vertex : polygonGeometry->getSurfacePoints()) {
-                        addText(localId, globalId, text, vertex, vt::TileLayerBuilder::Vertices());
-                    }
-                }
-            }
-            else {
-                _logger->write(Logger::Severity::WARNING, "Unsupported geometry for TextSymbolizer/ShieldSymbolizer");
-            }
-        }
     }
 } }

@@ -25,7 +25,7 @@ namespace carto { namespace mvt {
             bindParameter("stroke-width", &_strokeWidth);
         }
 
-        virtual void build(const FeatureCollection& featureCollection, const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext, vt::TileLayerBuilder& layerBuilder) const override;
+        virtual FeatureProcessor createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const override;
 
     protected:
         inline static constexpr int DEFAULT_MARKER_SIZE = 10;

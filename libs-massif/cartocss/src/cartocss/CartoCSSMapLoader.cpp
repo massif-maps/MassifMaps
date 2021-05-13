@@ -1,6 +1,7 @@
 #include "CartoCSSMapLoader.h"
 #include "CartoCSSParser.h"
 #include "CartoCSSMapnikTranslator.h"
+#include "mapnikvt/ParserUtils.h"
 #include "mapnikvt/ValueConverter.h"
 
 #include <picojson/picojson.h>
@@ -189,18 +190,26 @@ namespace carto { namespace css {
             }
             std::vector<AttachmentStyle> attachmentStyles = getSortedAttachmentStyles(attachmentStyleMap);
 
+            // Create style for each attachment
             std::vector<std::string> styleNames;
             for (const AttachmentStyle& attachmentStyle : attachmentStyles) {
                 std::string styleName = layerName + attachmentStyle.attachment;
-                auto style = std::make_shared<mvt::Style>(styleName, attachmentStyle.opacity, attachmentStyle.imageFilters, attachmentStyle.compOp, mvt::Style::FilterMode::FIRST, attachmentStyle.rules);
-                style->optimizeRules();
+                std::shared_ptr<mvt::Style> style = buildStyle(attachmentStyle, styleName);
                 map->addStyle(style);
                 styleNames.push_back(styleName);
             }
+
+            // Finally build the layer
             auto layer = std::make_shared<mvt::Layer>(layerName, styleNames);
             map->addLayer(layer);
         }
         return map;
+    }
+
+    std::shared_ptr<mvt::Style> CartoCSSMapLoader::buildStyle(const AttachmentStyle& attachmentStyle, const std::string& styleName) const {
+        auto style = std::make_shared<mvt::Style>(styleName, attachmentStyle.opacity, attachmentStyle.imageFilters, attachmentStyle.compOp, mvt::Style::FilterMode::FIRST, attachmentStyle.rules);
+        style->optimizeRules();
+        return style;
     }
 
     void CartoCSSMapLoader::loadMapSettings(const std::map<std::string, Value>& mapProperties, mvt::Map::Settings& mapSettings) const {
@@ -271,7 +280,15 @@ namespace carto { namespace css {
 
                 if (auto compOpProp = propertySet.findProperty("comp-op")) {
                     if (auto val = std::get_if<Value>(&compOpProp->getExpression())) {
-                        attachmentStyle.compOp = mvt::ValueConverter<std::string>::convert(translator.buildValue(*val));
+                        std::string compOp = mvt::ValueConverter<std::string>::convert(translator.buildValue(*val));
+                        if (!compOp.empty()) {
+                            try {
+                                attachmentStyle.compOp = mvt::parseCompOp(compOp);
+                            }
+                            catch (const mvt::ParserException& ex) {
+                                _logger->write(mvt::Logger::Severity::WARNING, std::string("Failed to parse layer CompOp: ") + ex.what());
+                            }
+                        }
                     }
                     else {
                         _logger->write(mvt::Logger::Severity::WARNING, "CompOp must be constant expression");

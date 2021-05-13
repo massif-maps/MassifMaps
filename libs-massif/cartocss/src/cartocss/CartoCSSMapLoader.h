@@ -11,9 +11,11 @@
 #include "CartoCSSMapnikTranslator.h"
 #include "Value.h"
 #include "mapnikvt/Map.h"
+#include "mapnikvt/Style.h"
 #include "mapnikvt/Logger.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 #include <map>
@@ -51,7 +53,7 @@ namespace carto { namespace css {
             int order = 0;
             float opacity = 1.0f;
             std::string imageFilters;
-            std::string compOp;
+            std::optional<vt::CompOp> compOp;
             std::vector<std::shared_ptr<const mvt::Rule>> rules;
         };
         
@@ -68,8 +70,13 @@ namespace carto { namespace css {
         }
 
         std::shared_ptr<mvt::Map> buildMap(const StyleSheet& styleSheet, const std::vector<std::string>& layerNames, const std::vector<mvt::NutiParameter>& nutiParameters) const;
+
+        std::shared_ptr<mvt::Style> buildStyle(const AttachmentStyle& attachmentStyle, const std::string& styleName) const;
+
         void loadMapSettings(const std::map<std::string, Value>& mapProperties, mvt::Map::Settings& mapSettings) const;
+
         void buildAttachmentStyleMap(const CartoCSSMapnikTranslator& translator, const std::shared_ptr<mvt::Map>& map, int minZoom, int maxZoom, const std::list<AttachmentPropertySets>& layerAttachments, std::map<std::string, AttachmentStyle>& attachmentStyleMap) const;
+
         std::vector<AttachmentStyle> getSortedAttachmentStyles(const std::map<std::string, AttachmentStyle>& attachmentStyleMap) const;
 
         const std::shared_ptr<AssetLoader> _assetLoader;

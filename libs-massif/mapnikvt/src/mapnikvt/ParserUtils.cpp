@@ -2,6 +2,7 @@
 #include "ValueParser.h"
 #include "ExpressionParser.h"
 #include "TransformParser.h"
+#include "ParseTables.h"
 #include "ColorParser.h"
 #include "StringUtils.h"
 
@@ -14,70 +15,32 @@
 
 namespace carto { namespace mvt {
     vt::LineCapMode parseLineCapMode(const std::string& str) {
-        static const std::unordered_map<std::string, vt::LineCapMode> lineCapModeTable = {
-            { "round",  vt::LineCapMode::ROUND  },
-            { "square", vt::LineCapMode::SQUARE },
-            { "butt",   vt::LineCapMode::NONE   }
-        };
-
-        auto it = lineCapModeTable.find(toLower(str));
-        if (it == lineCapModeTable.end()) {
+        auto it = getLineCapModeTable().find(toLower(str));
+        if (it == getLineCapModeTable().end()) {
             throw ParserException("LineCapMode parsing failed", str);
         }
         return it->second;
     }
 
     vt::LineJoinMode parseLineJoinMode(const std::string& str) {
-        static const std::unordered_map<std::string, vt::LineJoinMode> lineJoinModeTable = {
-            { "round", vt::LineJoinMode::ROUND },
-            { "bevel", vt::LineJoinMode::BEVEL },
-            { "miter", vt::LineJoinMode::MITER }
-        };
-
-        auto it = lineJoinModeTable.find(toLower(str));
-        if (it == lineJoinModeTable.end()) {
+        auto it = getLineJoinModeTable().find(toLower(str));
+        if (it == getLineJoinModeTable().end()) {
             throw ParserException("LineJoinMode parsing failed", str);
         }
         return it->second;
     }
 
     vt::CompOp parseCompOp(const std::string& str) {
-        static const std::unordered_map<std::string, vt::CompOp> compOpTable = {
-            { "src",      vt::CompOp::SRC },
-            { "src-over", vt::CompOp::SRC_OVER },
-            { "src-in",   vt::CompOp::SRC_IN },
-            { "src-atop", vt::CompOp::SRC_ATOP },
-            { "dst",      vt::CompOp::DST },
-            { "dst-over", vt::CompOp::DST_OVER },
-            { "dst-in",   vt::CompOp::DST_IN },
-            { "dst-atop", vt::CompOp::DST_ATOP },
-            { "clear",    vt::CompOp::ZERO },
-            { "zero",     vt::CompOp::ZERO },
-            { "plus",     vt::CompOp::PLUS },
-            { "minus",    vt::CompOp::MINUS },
-            { "multiply", vt::CompOp::MULTIPLY },
-            { "screen",   vt::CompOp::SCREEN },
-            { "darken",   vt::CompOp::DARKEN },
-            { "lighten",  vt::CompOp::LIGHTEN }
-        };
-
-        auto it = compOpTable.find(toLower(str));
-        if (it == compOpTable.end()) {
+        auto it = getCompOpTable().find(toLower(str));
+        if (it == getCompOpTable().end()) {
             throw ParserException("CompOp parsing failed", str);
         }
         return it->second;
     }
 
     vt::LabelOrientation parseLabelOrientation(const std::string& str) {
-        static const std::unordered_map<std::string, vt::LabelOrientation> labelOrientationTable = {
-            { "point",         vt::LabelOrientation::BILLBOARD_2D },
-            { "nutibillboard", vt::LabelOrientation::BILLBOARD_3D },
-            { "nutipoint",     vt::LabelOrientation::POINT },
-            { "line",          vt::LabelOrientation::LINE }
-        };
-
-        auto it = labelOrientationTable.find(toLower(str));
-        if (it == labelOrientationTable.end()) {
+        auto it = getLabelOrientationTable().find(toLower(str));
+        if (it == getLabelOrientationTable().end()) {
             throw ParserException("LabelOrientation parsing failed", str);
         }
         return it->second;

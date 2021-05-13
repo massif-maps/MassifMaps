@@ -8,8 +8,6 @@
 
 #include <boost/math/constants/constants.hpp>
 
-#include <tesselator.h>
-
 namespace {
     static float calculateScale(const carto::vt::VertexArray<float>& values, const carto::vt::VertexArray<std::size_t>& indices) {
         float maxValue = 0.0f;
@@ -45,7 +43,7 @@ namespace {
 
 namespace carto { namespace vt {
     TileLayerBuilder::TileLayerBuilder(const TileId& tileId, int layerIdx, std::shared_ptr<const TileTransformer::VertexTransformer> transformer, float tileSize, float geomScale) :
-        _tileId(tileId), _layerIdx(layerIdx), _tileSize(tileSize), _geomScale(geomScale), _transformer(std::move(transformer)), _clipBox(cglib::vec2<float>(-0.1f, -0.1f), cglib::vec2<float>(1.1f, 1.1f))
+        _tileId(tileId), _layerIdx(layerIdx), _tileSize(tileSize), _geomScale(geomScale), _transformer(std::move(transformer)), _clipBox(cglib::vec2<float>(-0.125f, -0.125f), cglib::vec2<float>(1.125f, 1.125f)), _polygonClipBox(cglib::vec2<float>(-0.001953125f, -0.001953125), cglib::vec2<float>(1.001953125f, 1.001953125f))
     {
         _coords.reserve(RESERVED_VERTICES);
         _texCoords.reserve(RESERVED_VERTICES);
@@ -64,15 +62,9 @@ namespace carto { namespace vt {
         _bitmapList.push_back(bitmap);
     }
 
-    void TileLayerBuilder::addPoints(const std::function<bool(long long& id, Vertex& vertex)>& generator, const PointStyle& style, const std::shared_ptr<GlyphMap>& glyphMap) {
+    TileLayerBuilder::PointProcessor TileLayerBuilder::createPointProcessor(const PointStyle& style, const std::shared_ptr<GlyphMap>& glyphMap) {
         if (style.sizeFunc == FloatFunction(0) || !style.image) {
-            return;
-        }
-        
-        long long id = 0;
-        Vertex vertex(0, 0);
-        if (!generator(id, vertex)) {
-            return;
+            return PointProcessor();
         }
 
         if (_builderParameters.type != TileGeometry::Type::POINT || _builderParameters.glyphMap != glyphMap || _builderParameters.transform != style.transform || _builderParameters.compOp != style.compOp || _builderParameters.parameterCount >= TileGeometry::StyleParameters::MAX_PARAMETERS) {
@@ -95,8 +87,8 @@ namespace carto { namespace vt {
             _builderParameters.widthFuncs[styleIndex] = style.sizeFunc;
             _builderParameters.strokeWidthFuncs[styleIndex] = FloatFunction(0);
         }
-        
-        do {
+
+        return [style, styleIndex, glyphMap, glyphId, this](long long id, const Vertex& vertex) {
             std::size_t i0 = _indices.size();
             cglib::vec2<float> pen(0, 0);
             const GlyphMap::Glyph* glyph = glyphMap->getGlyph(glyphId);
@@ -105,19 +97,12 @@ namespace carto { namespace vt {
                 tesselateGlyph(vertex, static_cast<std::int8_t>(styleIndex), pen * style.image->scale, cglib::vec2<float>(glyph->width, glyph->height) * style.image->scale, glyph);
             }
             _ids.fill(id, _indices.size() - i0);
-        } while (generator(id, vertex));
+        };
     }
 
-    void TileLayerBuilder::addTexts(const std::function<bool(long long& id, Vertex& vertex, std::string& text)>& generator, const TextStyle& style, const TextFormatter& formatter) {
+    TileLayerBuilder::TextProcessor TileLayerBuilder::createTextProcessor(const TextStyle& style, const TextFormatter& formatter) {
         if (style.sizeFunc == FloatFunction(0) && !style.backgroundImage) {
-            return;
-        }
-        
-        long long id = 0;
-        Vertex vertex(0, 0);
-        std::string text;
-        if (!generator(id, vertex, text)) {
-            return;
+            return TextProcessor();
         }
 
         std::optional<Transform> transform;
@@ -163,7 +148,7 @@ namespace carto { namespace vt {
             }
         }
 
-        do {
+        return [style, styleIndex, haloStyleIndex, font, formatter, this](long long id, const Vertex& vertex, const std::string& text) {
             std::size_t i0 = _indices.size();
             std::vector<Font::Glyph> glyphs = formatter.format(text, 1.0f);
             Font::Metrics metrics = font->getMetrics(1.0f);
@@ -191,18 +176,12 @@ namespace carto { namespace vt {
                 }
             }
             _ids.fill(id, _indices.size() - i0);
-        } while (generator(id, vertex, text));
+        };
     }
 
-    void TileLayerBuilder::addLines(const std::function<bool(long long& id, Vertices& vertices)>& generator, const LineStyle& style, const std::shared_ptr<StrokeMap>& strokeMap) {
+    TileLayerBuilder::LineProcessor TileLayerBuilder::createLineProcessor(const LineStyle& style, const std::shared_ptr<StrokeMap>& strokeMap) {
         if (style.widthFunc == FloatFunction(0)) {
-            return;
-        }
-        
-        long long id = 0;
-        Vertices vertices;
-        if (!generator(id, vertices)) {
-            return;
+            return LineProcessor();
         }
 
         if ((_builderParameters.strokeMap && _builderParameters.strokeMap != strokeMap) || _builderParameters.transform != style.transform || _builderParameters.compOp != style.compOp || _builderParameters.parameterCount >= TileGeometry::StyleParameters::MAX_PARAMETERS) {
@@ -229,22 +208,16 @@ namespace carto { namespace vt {
             _builderParameters.widthFuncs[styleIndex] = style.widthFunc;
             _builderParameters.lineStrokeIds[styleIndex] = strokeId;
         }
-        
-        do {
+
+        return [style, styleIndex, stroke, this](long long id, const Vertices& vertices) {
             std::size_t i0 = _indices.size();
             _binormals.fill(cglib::vec2<float>(0, 0), _coords.size() - _binormals.size()); // needed if previously only polygons were used
             tesselateLine(vertices, static_cast<std::int8_t>(styleIndex), stroke, style);
             _ids.fill(id, _indices.size() - i0);
-        } while (generator(id, vertices));
+        };
     }
 
-    void TileLayerBuilder::addPolygons(const std::function<bool(long long& id, VerticesList& verticesList)>& generator, const PolygonStyle& style) {
-        long long id = 0;
-        VerticesList verticesList;
-        if (!generator(id, verticesList)) {
-            return;
-        }
-
+    TileLayerBuilder::PolygonProcessor TileLayerBuilder::createPolygonProcessor(const PolygonStyle& style) {
         TileGeometry::Type type = TileGeometry::Type::POLYGON;
         if (_builderParameters.pattern != style.pattern || _builderParameters.transform != style.transform || _builderParameters.compOp != style.compOp || _builderParameters.parameterCount >= TileGeometry::StyleParameters::MAX_PARAMETERS) {
             appendGeometry();
@@ -272,23 +245,17 @@ namespace carto { namespace vt {
             _builderParameters.lineStrokeIds[styleIndex] = 0; // fill stroke information when we need to use line shader with polygons
         }
 
-        do {
+        return [type, style, styleIndex, this](long long id, const VerticesList& verticesList) {
             std::size_t i0 = _ids.size();
             tesselatePolygon(verticesList, static_cast<std::int8_t>(styleIndex), style);
             _ids.fill(id, _indices.size() - i0);
             if (type == TileGeometry::Type::LINE) {
                 _binormals.fill(cglib::vec2<float>(0, 0), _coords.size() - _binormals.size()); // use zero binormals if using 'lines'
             }
-        } while (generator(id, verticesList));
+        };
     }
 
-    void TileLayerBuilder::addPolygons3D(const std::function<bool(long long& id, VerticesList& verticesList)>& generator, float minHeight, float maxHeight, const Polygon3DStyle& style) {
-        long long id = 0;
-        VerticesList verticesList;
-        if (!generator(id, verticesList)) {
-            return;
-        }
-
+    TileLayerBuilder::Polygon3DProcessor TileLayerBuilder::createPolygon3DProcessor(const Polygon3DStyle& style) {
         if (_builderParameters.type != TileGeometry::Type::POLYGON3D || _builderParameters.transform != style.transform || _builderParameters.parameterCount >= TileGeometry::StyleParameters::MAX_PARAMETERS) {
             appendGeometry();
         }
@@ -305,21 +272,21 @@ namespace carto { namespace vt {
             _builderParameters.colorFuncs[styleIndex] = style.colorFunc;
         }
 
-        do {
+        return [style, styleIndex, this](long long id, const VerticesList& verticesList, float minHeight, float maxHeight) {
             std::size_t i0 = _ids.size();
             tesselatePolygon3D(verticesList, minHeight, maxHeight, static_cast<std::int8_t>(styleIndex), style);
             _ids.fill(id, _indices.size() - i0);
-        } while (generator(id, verticesList));
+        };
     }
 
-    void TileLayerBuilder::addPointLabels(const std::function<bool(long long& id, PointLabelInfo& labelInfo)>& generator, const PointLabelStyle& style, const std::shared_ptr<GlyphMap>& glyphMap) {
+    TileLayerBuilder::PointLabelProcessor TileLayerBuilder::createPointLabelProcessor(const PointLabelStyle& style, const std::shared_ptr<GlyphMap>& glyphMap) {
         if (style.sizeFunc == FloatFunction(0) || !style.image) {
-            return;
+            return PointLabelProcessor();
         }
 
         const GlyphMap::Glyph* baseGlyph = glyphMap->getGlyph(glyphMap->loadBitmapGlyph(style.image->bitmap, style.image->sdfMode));
         if (!baseGlyph) {
-            return;
+            return PointLabelProcessor();
         }
         std::vector<Font::Glyph> bitmapGlyphs = {
             Font::Glyph(Font::CR_CODEPOINT, GlyphMap::Glyph(false, 0, 0, 0, 0, cglib::vec2<float>(0, 0)), cglib::vec2<float>(0, 0), cglib::vec2<float>(0, 0), -cglib::vec2<float>(style.image->bitmap->width, style.image->bitmap->height) * (style.image->scale * 0.5f)),
@@ -330,7 +297,7 @@ namespace carto { namespace vt {
         std::optional<Transform> transform;
         if (style.transform) {
             cglib::mat3x3<float> flippedTransform = style.transform->matrix3() * cglib::scale3_matrix(cglib::vec3<float>(1, -1, 1));
-            cglib::mat2x2<float> matrix {{ flippedTransform(0, 0), flippedTransform(0, 1)}, { -flippedTransform(1, 0), -flippedTransform(1, 1) }};
+            cglib::mat2x2<float> matrix{ { flippedTransform(0, 0), flippedTransform(0, 1)}, { -flippedTransform(1, 0), -flippedTransform(1, 1) } };
             cglib::vec2<float> translate(flippedTransform(0, 2) / _tileSize, flippedTransform(1, 2) / _tileSize);
             transform = Transform::fromMatrix2Translate(matrix, translate);
         }
@@ -338,39 +305,33 @@ namespace carto { namespace vt {
         if (!_labelStyle || _labelStyle->orientation != style.orientation || _labelStyle->colorFunc != style.colorFunc || _labelStyle->sizeFunc != style.sizeFunc || _labelStyle->haloColorFunc != ColorFunction() || _labelStyle->haloRadiusFunc != FloatFunction() || _labelStyle->autoflip != style.autoflip || _labelStyle->scale != scale || _labelStyle->ascent != 0.0f || _labelStyle->descent != 0.0f || _labelStyle->transform != transform || _labelStyle->glyphMap != glyphMap) {
             _labelStyle = std::make_shared<TileLabel::Style>(style.orientation, style.colorFunc, style.sizeFunc, ColorFunction(), FloatFunction(), style.autoflip, scale, 0.0f, 0.0f, transform, glyphMap);
         }
-        
-        while (true) {
-            long long id = 0;
-            PointLabelInfo labelInfo;
-            if (!generator(id, labelInfo)) {
-                break;
-            }
 
+        return [bitmapGlyphs, this](long long localId, long long globalId, long long groupId, const std::variant<Vertex, Vertices>& position, float priority, float minimumGroupDistance) {
             std::optional<cglib::vec2<float>> labelPosition;
             std::vector<cglib::vec2<float>> labelVertices;
-            if (auto pos = std::get_if<Vertex>(&labelInfo.position)) {
+            if (auto pos = std::get_if<Vertex>(&position)) {
                 labelPosition = *pos;
             }
-            else if (auto vertices = std::get_if<Vertices>(&labelInfo.position)) {
+            else if (auto vertices = std::get_if<Vertices>(&position)) {
                 VertexArray<cglib::vec2<float>> tesselatedVertices;
                 _transformer->tesselateLineString(vertices->data(), vertices->size(), tesselatedVertices);
                 labelVertices.assign(tesselatedVertices.begin(), tesselatedVertices.end());
             }
 
-            TileLabel::PlacementInfo placementInfo(labelInfo.priority, _tileSize * labelInfo.minimumGroupDistance);
-            auto pointLabel = std::make_shared<TileLabel>(_tileId, _layerIdx, id, labelInfo.id, labelInfo.groupId, bitmapGlyphs, std::move(labelPosition), std::move(labelVertices), _labelStyle, placementInfo);
+            TileLabel::PlacementInfo placementInfo(priority, _tileSize * minimumGroupDistance);
+            auto pointLabel = std::make_shared<TileLabel>(_tileId, _layerIdx, localId, globalId, groupId, bitmapGlyphs, std::move(labelPosition), std::move(labelVertices), _labelStyle, placementInfo);
             _labelList.push_back(std::move(pointLabel));
-        }
+        };
     }
 
-    void TileLayerBuilder::addTextLabels(const std::function<bool(long long& id, TextLabelInfo& labelInfo)>& generator, const TextLabelStyle& style, const TextFormatter& formatter) {
+    TileLayerBuilder::TextLabelProcessor TileLayerBuilder::createTextLabelProcessor(const TextLabelStyle& style, const TextFormatter& formatter) {
         if (style.sizeFunc == FloatFunction(0) && !style.backgroundImage) {
-            return;
+            return TextLabelProcessor();
         }
-        
+
         float scale = 1.0f / _tileSize;
         std::optional<Transform> transform;
-        if (style.angle != 0) {
+        if (style.orientation != LabelOrientation::LINE && style.angle != 0) {
             float angle = style.angle * boost::math::constants::pi<float>() / 180.0f;
             transform = Transform::fromMatrix2(cglib::rotate2_matrix(angle));
         }
@@ -381,15 +342,9 @@ namespace carto { namespace vt {
             _labelStyle = std::make_shared<TileLabel::Style>(style.orientation, style.colorFunc, style.sizeFunc, style.haloColorFunc, style.haloRadiusFunc, style.autoflip, scale, metrics.ascent, metrics.descent, transform, font->getGlyphMap());
         }
 
-        while (true) {
-            long long id = 0;
-            TextLabelInfo labelInfo;
-            if (!generator(id, labelInfo)) {
-                break;
-            }
-
-            if (!labelInfo.text.empty() || style.backgroundImage) {
-                std::vector<Font::Glyph> glyphs = formatter.format(labelInfo.text, 1.0f);
+        return [style, font, formatter, this](long long localId, long long globalId, long long groupId, const std::optional<Vertex>& position, const Vertices& vertices, const std::string& text, float priority, float minimumGroupDistance) {
+            if (!text.empty() || style.backgroundImage) {
+                std::vector<Font::Glyph> glyphs = formatter.format(text, 1.0f);
                 if (style.backgroundImage) {
                     const GlyphMap::Glyph* baseGlyph = font->getGlyphMap()->getGlyph(font->getGlyphMap()->loadBitmapGlyph(style.backgroundImage->bitmap, style.backgroundImage->sdfMode));
                     if (baseGlyph) {
@@ -399,21 +354,21 @@ namespace carto { namespace vt {
                 }
 
                 std::optional<cglib::vec2<float>> labelPosition;
-                if (labelInfo.position) {
-                    labelPosition = *labelInfo.position;
+                if (position) {
+                    labelPosition = *position;
                 }
                 std::vector<cglib::vec2<float>> labelVertices;
-                if (!labelInfo.vertices.empty()) {
+                if (!vertices.empty()) {
                     VertexArray<cglib::vec2<float>> tesselatedVertices;
-                    _transformer->tesselateLineString(labelInfo.vertices.data(), labelInfo.vertices.size(), tesselatedVertices);
+                    _transformer->tesselateLineString(vertices.data(), vertices.size(), tesselatedVertices);
                     labelVertices.assign(tesselatedVertices.begin(), tesselatedVertices.end());
                 }
 
-                TileLabel::PlacementInfo placementInfo(labelInfo.priority, _tileSize * labelInfo.minimumGroupDistance);
-                auto textLabel = std::make_shared<TileLabel>(_tileId, _layerIdx, id, labelInfo.id, labelInfo.groupId, std::move(glyphs), std::move(labelPosition), std::move(labelVertices), _labelStyle, placementInfo);
+                TileLabel::PlacementInfo placementInfo(priority, _tileSize * minimumGroupDistance);
+                auto textLabel = std::make_shared<TileLabel>(_tileId, _layerIdx, localId, globalId, groupId, std::move(glyphs), std::move(labelPosition), std::move(labelVertices), _labelStyle, placementInfo);
                 _labelList.push_back(std::move(textLabel));
             }
-        }
+        };
     }
 
     std::shared_ptr<TileLayer> TileLayerBuilder::buildTileLayer(std::optional<CompOp> compOp, FloatFunction opacityFunc) const {
@@ -773,37 +728,10 @@ namespace carto { namespace vt {
     }
 
     bool TileLayerBuilder::tesselatePolygon(const std::vector<std::vector<cglib::vec2<float>>>& pointsList, std::int8_t styleIndex, const PolygonStyle& style) {
-        if (!_tessPoolAllocator) {
-            _tessPoolAllocator = std::make_unique<PoolAllocator>();
-        }
-        _tessPoolAllocator->reset(); // reuse last allocated block from the start
-
-        TESSalloc ma;
-        memset(&ma, 0, sizeof(ma));
-        ma.memalloc = [](void* userData, unsigned int size) { return reinterpret_cast<PoolAllocator*>(userData)->allocate(size); };
-        ma.memfree = [](void* userData, void* ptr) {};
-        ma.userData = _tessPoolAllocator.get();
-        ma.extraVertices = 256; // realloc not provided, allow 256 extra vertices.
-
-        TESStesselator* tessPtr = tessNewTess(&ma);
-        if (!tessPtr) {
+        _tesselator.clear();
+        if (!_tesselator.tesselate(pointsList)) {
             return false;
         }
-        std::shared_ptr<TESStesselator> tess(tessPtr, tessDeleteTess);
-        
-        for (const std::vector<cglib::vec2<float>>& points : pointsList) {
-            TESSreal* coords = reinterpret_cast<TESSreal*>(_tessPoolAllocator->allocate(points.size() * 2 * sizeof(TESSreal)));
-            for (std::size_t i = 0; i < points.size(); i++) {
-                coords[i * 2 + 0] = static_cast<TESSreal>(points[i](0));
-                coords[i * 2 + 1] = static_cast<TESSreal>(points[i](1));
-            }
-            tessAddContour(tess.get(), 2, coords, 2 * sizeof(TESSreal), static_cast<int>(points.size()));
-        }
-        tessTesselate(tess.get(), TESS_WINDING_ODD, TESS_POLYGONS, 3, 2, 0);
-        const TESSreal* coords = tessGetVertices(tess.get());
-        const int* elements = tessGetElements(tess.get());
-        int vertexCount = tessGetVertexCount(tess.get());
-        int elementCount = tessGetElementCount(tess.get());
 
         float du_dx = 0.0f, dv_dy = 0.0f;
         if (style.pattern) {
@@ -812,27 +740,23 @@ namespace carto { namespace vt {
         }
 
         std::size_t offset = _coords.size();
-        for (int i = 0; i < vertexCount; i++) {
-            cglib::vec2<float> p(static_cast<float>(coords[i * 2 + 0]), static_cast<float>(coords[i * 2 + 1]));
+        for (std::size_t i = 0; i < _tesselator.getVertices().size(); i++) {
+            cglib::vec2<float> p = _tesselator.getVertices()[i];
             cglib::vec2<float> uv((p(0) + 0.5f) * du_dx, (p(1) + 0.5f) * dv_dy);
 
             _coords.append(p);
             _texCoords.append(uv);
         }
 
-        cglib::bbox2<float> clipBox(cglib::vec2<float>(0.0f, 0.0f), cglib::vec2<float>(1.0f, 1.0f));
-        for (int i = 0; i < elementCount * 3; i += 3) {
-            int i0 = elements[i + 0];
-            int i1 = elements[i + 1];
-            int i2 = elements[i + 2];
-            if (i0 == TESS_UNDEF || i1 == TESS_UNDEF || i2 == TESS_UNDEF) {
-                continue;
-            }
+        for (std::size_t i = 0; i < _tesselator.getElements().size(); i += 3) {
+            int i0 = _tesselator.getElements()[i + 0];
+            int i1 = _tesselator.getElements()[i + 1];
+            int i2 = _tesselator.getElements()[i + 2];
 
             cglib::bbox2<float> bounds(_coords[i0 + offset]);
             bounds.add(_coords[i1 + offset]);
             bounds.add(_coords[i2 + offset]);
-            if (clipBox.inside(bounds)) {
+            if (_polygonClipBox.inside(bounds)) {
                 std::array<std::size_t, 3> srcIndices = { { i0 + offset, i2 + offset, i1 + offset } };
                 _transformer->tesselateTriangles(srcIndices.data(), srcIndices.size(), _coords, _texCoords, _indices);
             }
@@ -844,14 +768,18 @@ namespace carto { namespace vt {
     }
 
     bool TileLayerBuilder::tesselatePolygon3D(const std::vector<std::vector<cglib::vec2<float>>>& pointsList, float minHeight, float maxHeight, std::int8_t styleIndex, const Polygon3DStyle& style) {
-        cglib::bbox2<float> clipBox(cglib::vec2<float>(0.0f, 0.0f), cglib::vec2<float>(1.0f, 1.0f));
+        _tesselator.clear();
+        if (!_tesselator.tesselate(pointsList)) {
+            return false;
+        }
+
         if (minHeight != maxHeight) {
             for (const std::vector<cglib::vec2<float>>& points : pointsList) {
                 std::size_t j = points.size() - 1;
                 for (std::size_t i = 0; i < points.size(); i++) {
                     cglib::bbox2<float> bounds(points[i]);
                     bounds.add(points[j]);
-                    if (clipBox.inside(bounds)) {
+                    if (_polygonClipBox.inside(bounds)) {
                         cglib::vec2<float> tangent(cglib::unit(points[i] - points[j]));
                         cglib::vec2<float> binormal = cglib::vec2<float>(tangent(1), -tangent(0));
 
@@ -877,58 +805,23 @@ namespace carto { namespace vt {
             }
         }
 
-        if (!_tessPoolAllocator) {
-            _tessPoolAllocator = std::make_unique<PoolAllocator>();
-        }
-        _tessPoolAllocator->reset(); // reuse last allocated block from the start
-
-        TESSalloc ma;
-        memset(&ma, 0, sizeof(ma));
-        ma.memalloc = [](void* userData, unsigned int size) { return reinterpret_cast<PoolAllocator*>(userData)->allocate(size); };
-        ma.memfree = [](void* userData, void* ptr) {};
-        ma.userData = _tessPoolAllocator.get();
-        ma.extraVertices = 256; // realloc not provided, allow 256 extra vertices.
-
-        TESStesselator* tessPtr = tessNewTess(&ma);
-        if (!tessPtr) {
-            return false;
-        }
-        std::shared_ptr<TESStesselator> tess(tessPtr, tessDeleteTess);
-        
-        for (const std::vector<cglib::vec2<float>>& points : pointsList) {
-            TESSreal* coords = reinterpret_cast<TESSreal*>(_tessPoolAllocator->allocate(points.size() * 2 * sizeof(TESSreal)));
-            for (std::size_t i = 0; i < points.size(); i++) {
-                coords[i * 2 + 0] = static_cast<TESSreal>(points[i](0));
-                coords[i * 2 + 1] = static_cast<TESSreal>(points[i](1));
-            }
-            tessAddContour(tess.get(), 2, coords, 2 * sizeof(TESSreal), static_cast<int>(points.size()));
-        }
-        tessTesselate(tess.get(), TESS_WINDING_ODD, TESS_POLYGONS, 3, 2, 0);
-        const TESSreal* coords = tessGetVertices(tess.get());
-        const int* elements = tessGetElements(tess.get());
-        int vertexCount = tessGetVertexCount(tess.get());
-        int elementCount = tessGetElementCount(tess.get());
-
         std::size_t offset = _coords.size();
-        for (int i = 0; i < vertexCount; i++) {
-            cglib::vec2<float> p(static_cast<float>(coords[i * 2 + 0]), static_cast<float>(coords[i * 2 + 1]));
+        for (std::size_t i = 0; i < _tesselator.getVertices().size(); i++) {
+            cglib::vec2<float> p = _tesselator.getVertices()[i];
 
             _coords.append(p);
             _texCoords.append(p);
         }
 
-        for (int i = 0; i < elementCount * 3; i += 3) {
-            int i0 = elements[i + 0];
-            int i1 = elements[i + 1];
-            int i2 = elements[i + 2];
-            if (i0 == TESS_UNDEF || i1 == TESS_UNDEF || i2 == TESS_UNDEF) {
-                continue;
-            }
+        for (std::size_t i = 0; i < _tesselator.getElements().size(); i += 3) {
+            int i0 = _tesselator.getElements()[i + 0];
+            int i1 = _tesselator.getElements()[i + 1];
+            int i2 = _tesselator.getElements()[i + 2];
 
             cglib::bbox2<float> bounds(_coords[i0 + offset]);
             bounds.add(_coords[i1 + offset]);
             bounds.add(_coords[i2 + offset]);
-            if (clipBox.inside(bounds)) {
+            if (_polygonClipBox.inside(bounds)) {
                 std::array<std::size_t, 3> srcIndices = { { i0 + offset, i2 + offset, i1 + offset } };
                 _transformer->tesselateTriangles(srcIndices.data(), srcIndices.size(), _coords, _texCoords, _indices);
             }

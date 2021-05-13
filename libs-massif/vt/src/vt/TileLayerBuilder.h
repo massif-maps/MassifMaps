@@ -14,7 +14,7 @@
 #include "TileLayer.h"
 #include "TileTransformer.h"
 #include "Styles.h"
-#include "PoolAllocator.h"
+#include "PolygonTesselator.h"
 #include "VertexArray.h"
 
 #include <cstdint>
@@ -34,42 +34,27 @@ namespace carto { namespace vt {
         using Vertices = std::vector<Vertex>;
         using VerticesList = std::vector<Vertices>;
 
-        struct PointLabelInfo {
-            long long id = 0;
-            long long groupId = 0;
-            std::variant<Vertex, Vertices> position;
-            float priority = 0;
-            float minimumGroupDistance = 0;
-
-            PointLabelInfo() = default;
-            explicit PointLabelInfo(long long id, long long groupId, std::variant<Vertex, Vertices> position, float priority, float minimumGroupDistance) : id(id), groupId(groupId), position(std::move(position)), priority(priority), minimumGroupDistance(minimumGroupDistance) { }
-        };
-
-        struct TextLabelInfo {
-            long long id = 0;
-            long long groupId = 0;
-            std::string text;
-            std::optional<Vertex> position;
-            Vertices vertices;
-            float priority = 0;
-            float minimumGroupDistance = 0;
-
-            TextLabelInfo() = default;
-            explicit TextLabelInfo(long long id, long long groupId, std::string text, std::optional<Vertex> position, Vertices vertices, float priority, float minimumGroupDistance) : id(id), groupId(groupId), text(std::move(text)), position(std::move(position)), vertices(std::move(vertices)), priority(priority), minimumGroupDistance(minimumGroupDistance) { }
-        };
+        using PointProcessor = std::function<void(long long id, const Vertex& vertex)>;
+        using TextProcessor = std::function<void(long long id, const Vertex& vertex, const std::string& text)>;
+        using LineProcessor = std::function<void(long long id, const Vertices& vertices)>;
+        using PolygonProcessor = std::function<void(long long id, const VerticesList& verticesList)>;
+        using Polygon3DProcessor = std::function<void(long long id, const VerticesList& verticesList, float minHeight, float maxHeight)>;
+        using PointLabelProcessor = std::function<void(long long localId, long long globalId, long long groupId, const std::variant<Vertex, Vertices>& position, float priority, float minimumGroupDistance)>;
+        using TextLabelProcessor = std::function<void(long long localId, long long globalId, long long groupId, const std::optional<Vertex>& position, const Vertices& vertices, const std::string& text, float priority, float minimumGroupDistance)>;
 
         explicit TileLayerBuilder(const TileId& tileId, int layerIdx, std::shared_ptr<const TileTransformer::VertexTransformer> transformer, float tileSize, float geomScale);
 
         void setClipBox(const cglib::bbox2<float>& clipBox);
 
         void addBitmap(const std::shared_ptr<TileBitmap>& bitmap);
-        void addPoints(const std::function<bool(long long& id, Vertex& vertex)>& generator, const PointStyle& style, const std::shared_ptr<GlyphMap>& glyphMap);
-        void addTexts(const std::function<bool(long long& id, Vertex& vertex, std::string& text)>& generator, const TextStyle& style, const TextFormatter& formatter);
-        void addLines(const std::function<bool(long long& id, Vertices& vertices)>& generator, const LineStyle& style, const std::shared_ptr<StrokeMap>& strokeMap);
-        void addPolygons(const std::function<bool(long long& id, VerticesList& verticesList)>& generator, const PolygonStyle& style);
-        void addPolygons3D(const std::function<bool(long long& id, VerticesList& verticesList)>& generator, float minHeight, float maxHeight, const Polygon3DStyle& style);
-        void addPointLabels(const std::function<bool(long long& id, PointLabelInfo& labelInfo)>& generator, const PointLabelStyle& style, const std::shared_ptr<GlyphMap>& glyphMap);
-        void addTextLabels(const std::function<bool(long long& id, TextLabelInfo& labelInfo)>& generator, const TextLabelStyle& style, const TextFormatter& formatter);
+
+        PointProcessor createPointProcessor(const PointStyle& style, const std::shared_ptr<GlyphMap>& glyphMap);
+        TextProcessor createTextProcessor(const TextStyle& style, const TextFormatter& formatter);
+        LineProcessor createLineProcessor(const LineStyle& style, const std::shared_ptr<StrokeMap>& strokeMap);
+        PolygonProcessor createPolygonProcessor(const PolygonStyle& style);
+        Polygon3DProcessor createPolygon3DProcessor(const Polygon3DStyle& style);
+        PointLabelProcessor createPointLabelProcessor(const PointLabelStyle& style, const std::shared_ptr<GlyphMap>& glyphMap);
+        TextLabelProcessor createTextLabelProcessor(const TextLabelStyle& style, const TextFormatter& formatter);
 
         std::shared_ptr<TileLayer> buildTileLayer(std::optional<CompOp> compOp, FloatFunction opacityFunc) const;
 
@@ -111,9 +96,11 @@ namespace carto { namespace vt {
         const float _geomScale;
         const std::shared_ptr<const TileTransformer::VertexTransformer> _transformer;
         cglib::bbox2<float> _clipBox;
-        
+        cglib::bbox2<float> _polygonClipBox;
+
         BuilderParameters _builderParameters;
         std::shared_ptr<const TileLabel::Style> _labelStyle;
+        PolygonTesselator _tesselator;
 
         VertexArray<cglib::vec2<float>> _coords;
         VertexArray<cglib::vec2<float>> _texCoords;
@@ -126,8 +113,6 @@ namespace carto { namespace vt {
         std::vector<std::shared_ptr<TileBitmap>> _bitmapList;
         std::vector<std::shared_ptr<TileGeometry>> _geometryList;
         std::vector<std::shared_ptr<TileLabel>> _labelList;
-
-        std::unique_ptr<PoolAllocator> _tessPoolAllocator;
     };
 } }
 

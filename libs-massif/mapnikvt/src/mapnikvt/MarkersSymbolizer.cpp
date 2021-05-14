@@ -177,7 +177,8 @@ namespace carto { namespace mvt {
                         for (const auto& vertices : verticesList) {
                             for (const auto& transformedPoints : generateTransformedPoints(vertices, spacing, bitmapSize, tileSize)) {
                                 vt::PointStyle transformedStyle(compOp, fillFunc, normalizedSizeFunc, bitmapImage, transformedPoints.first * (transform ? *transform : vt::Transform()));
-                                if (pointProcessor = layerBuilder.createPointProcessor(transformedStyle, glyphMap)) {
+                                pointProcessor = layerBuilder.createPointProcessor(transformedStyle, glyphMap);
+                                if (pointProcessor) {
                                     for (const auto& vertex : transformedPoints.second) {
                                         pointProcessor(featureCollection.getLocalId(featureIndex), vertex);
                                     }

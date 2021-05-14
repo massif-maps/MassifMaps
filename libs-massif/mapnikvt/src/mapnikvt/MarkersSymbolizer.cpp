@@ -245,7 +245,8 @@ namespace carto { namespace mvt {
                         
                         for (const auto& transformedPoints : generateTransformedPoints(vertices, spacing, bitmapSize, tileSize)) {
                             vt::PointLabelStyle transformedStyle(orientation, fillFunc, normalizedSizeFunc, false, bitmapImage, transformedPoints.first * (transform ? *transform : vt::Transform()));
-                            if (pointProcessor = layerBuilder.createPointLabelProcessor(transformedStyle, glyphMap)) {
+                            pointProcessor = layerBuilder.createPointLabelProcessor(transformedStyle, glyphMap);
+                            if (pointProcessor) {
                                 for (const auto& vertex : transformedPoints.second) {
                                     pointProcessor(localId, generateId(), groupId, vertex, placementPriority, 0);
                                 }

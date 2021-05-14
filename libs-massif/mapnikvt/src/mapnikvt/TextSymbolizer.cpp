@@ -106,7 +106,8 @@ namespace carto { namespace mvt {
                         for (const auto& vertices : verticesList) {
                             for (const auto& transformedPoints : generateLinePoints(vertices, spacing, textSize, tileSize)) {
                                 vt::TextStyle transformedStyle(compOp, fillFunc, sizeFunc, haloFillFunc, haloRadiusFunc, transformedPoints.first + orientationAngle, fontScale, backgroundOffset, backgroundImage);
-                                if (textProcessor = layerBuilder.createTextProcessor(transformedStyle, formatter)) {
+                                textProcessor = layerBuilder.createTextProcessor(transformedStyle, formatter);
+                                if (textProcessor) {
                                     for (const auto& vertex : transformedPoints.second) {
                                         textProcessor(featureCollection.getLocalId(featureIndex), vertex, text);
                                     }

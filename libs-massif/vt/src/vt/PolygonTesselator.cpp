@@ -187,7 +187,7 @@ namespace carto { namespace vt {
     }
 
     bool PolygonTesselator::isRingSimpleAndConvex(const Vertices& ring, std::size_t& ringSize) {
-        static const float EPSILON = 1.0e-5;
+        static const float EPSILON = 1.0e-5f;
         
         if (!ring.empty() && ring.front() == ring.back()) {
             --ringSize;

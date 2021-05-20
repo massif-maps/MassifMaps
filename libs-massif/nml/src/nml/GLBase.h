@@ -17,7 +17,6 @@
 #include <cglib/ray.h>
 
 namespace carto { namespace nml {
-
     struct RayIntersection final {
         unsigned int vertexId;
         cglib::vec3<double> pos;
@@ -30,13 +29,13 @@ namespace carto { namespace nml {
         cglib::mat4x4<float> projMatrix;
         cglib::mat4x4<float> mvMatrix;
         cglib::mat4x4<float> invTransMVMatrix;
+        cglib::vec4<float> modelColor;
         cglib::vec4<float> ambientLightColor;
         cglib::vec4<float> mainLightColor;
         cglib::vec3<float> mainLightDir;
 
-        explicit RenderState(const cglib::mat4x4<float>& projMatrix, const cglib::mat4x4<float>& mvMatrix, const cglib::vec4<float>& ambientLightColor, const cglib::vec4<float>& mainLightColor, const cglib::vec3<float>& mainLightDir) : projMatrix(projMatrix), mvMatrix(mvMatrix), invTransMVMatrix(cglib::transpose(cglib::inverse(mvMatrix))), ambientLightColor(ambientLightColor), mainLightColor(mainLightColor), mainLightDir(mainLightDir) { }
+        explicit RenderState(const cglib::mat4x4<float>& projMatrix, const cglib::mat4x4<float>& mvMatrix, const cglib::vec4<float>& modelColor, const cglib::vec4<float>& ambientLightColor, const cglib::vec4<float>& mainLightColor, const cglib::vec3<float>& mainLightDir) : projMatrix(projMatrix), mvMatrix(mvMatrix), invTransMVMatrix(cglib::transpose(cglib::inverse(mvMatrix))), modelColor(modelColor), ambientLightColor(ambientLightColor), mainLightColor(mainLightColor), mainLightDir(mainLightDir) { }
     };
-   
 } }
 
 #endif

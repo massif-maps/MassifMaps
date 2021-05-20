@@ -4,7 +4,6 @@
 #include "Package.h"
 
 namespace {
-
     static const std::string constantVsh = R"GLSL(
         attribute vec3 aVertexPosition;
         attribute vec2 aVertexUV;
@@ -20,6 +19,7 @@ namespace {
 
     static const std::string constantFsh = R"GLSL(
         precision mediump float;
+        uniform vec4 uModelColor;
         varying vec2 vUV;
 
         #ifdef EMISSION_TEXTURE
@@ -35,7 +35,7 @@ namespace {
             vec4 emission = uEmissionColor;
         #endif
 
-            vec4 color = emission;
+            vec4 color = emission * uModelColor;
             if (color.a == 0.0) {
                 discard;
             }
@@ -47,14 +47,15 @@ namespace {
         attribute vec3 aVertexPosition;
         attribute vec2 aVertexUV;
         attribute vec4 aVertexColor;
+        uniform vec4 uModelColor;
         uniform mat4 uProjMatrix;
         uniform mat4 uMVMatrix;
         varying vec2 vUV;
         varying lowp vec4 vColor;
-    
+
         void main(void) {
             vUV = aVertexUV;
-            vColor = aVertexColor;
+            vColor = aVertexColor * uModelColor;
             gl_Position = uProjMatrix * (uMVMatrix * vec4(aVertexPosition, 1.0));
         }
     )GLSL";
@@ -63,20 +64,20 @@ namespace {
         precision mediump float;
         varying vec2 vUV;
         varying lowp vec4 vColor;
-    
+
         #ifdef DIFFUSE_TEXTURE
         uniform sampler2D uDiffuseTex;
         #else
         uniform vec4 uDiffuseColor;
         #endif
-    
+
         void main(void) {
         #ifdef DIFFUSE_TEXTURE
             vec4 diffuse = texture2D(uDiffuseTex, vUV);
         #else
             vec4 diffuse = uDiffuseColor;
         #endif
-        
+
             vec4 color = diffuse * vColor;
             if (color.a == 0.0) {
                 discard;
@@ -115,6 +116,7 @@ namespace {
         varying vec3 vNormal;
         varying vec3 vPos;
 
+        uniform vec4 uModelColor;
         uniform vec4 uAmbientLightColor;
         uniform vec3 uMainLightDir;
         uniform vec4 uMainLightColor;
@@ -171,7 +173,7 @@ namespace {
         #else
             vec4 diffuse = uDiffuseColor;
         #endif
-            
+
             vec3 n = normalize(vNormal);
             float n_dot_l = max(dot(n, uMainLightDir), 0.0);
 
@@ -206,18 +208,18 @@ namespace {
         #endif
             vec4 opacity = vec4(1.0, 1.0, 1.0, 1.0) - transparent;
             float alpha = max(opacity.r, max(opacity.g, opacity.b));
-            
-            if (alpha == 0.0) {
+
+            color = vec4((color * opacity).rgb * alpha, alpha) * uModelColor;
+
+            if (color.a == 0.0) {
                 discard;
             }
-            gl_FragColor = vec4((color * opacity).rgb * alpha, alpha);
+            gl_FragColor = color;
         }
     )GLSL";
-
 }
 
 namespace carto { namespace nml {
-
     GLMaterial::GLColorOrTexture::GLColorOrTexture() :
         textureId(),
         texture(),
@@ -338,6 +340,7 @@ namespace carto { namespace nml {
         
         glUseProgram(_glProgramId);
         
+        glUniform4fv(glGetUniformLocation(_glProgramId, "uModelColor"), 1, renderState.modelColor.data());
         glUniformMatrix4fv(glGetUniformLocation(_glProgramId, "uProjMatrix"), 1, GL_FALSE, renderState.projMatrix.data());
         glUniformMatrix4fv(glGetUniformLocation(_glProgramId, "uMVMatrix"), 1, GL_FALSE, mvMatrix.data());
 
@@ -399,5 +402,4 @@ namespace carto { namespace nml {
             }
         }
     }
-    
 } }

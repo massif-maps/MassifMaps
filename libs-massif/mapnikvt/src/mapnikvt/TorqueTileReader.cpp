@@ -19,6 +19,6 @@ namespace carto { namespace mvt {
             }
         }
 
-        return _featureDecoder.createFrameFeatureIterator(frame);
+        return _featureDecoder.createFrameFeatureIterator(frame, frameOffset);
     }
 } }

@@ -27,7 +27,7 @@ namespace carto { namespace mvt {
         void setTransform(const cglib::mat3x3<float>& transform);
         void setClipBox(const cglib::bbox2<float>& clipBox);
 
-        std::shared_ptr<FeatureIterator> createFrameFeatureIterator(int frame) const;
+        std::shared_ptr<FeatureIterator> createFrameFeatureIterator(int frame, int frameOffset) const;
 
     private:
         class TorqueFeatureIterator;

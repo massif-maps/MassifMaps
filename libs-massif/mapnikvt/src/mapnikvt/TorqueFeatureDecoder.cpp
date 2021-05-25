@@ -39,7 +39,7 @@ namespace {
 namespace carto { namespace mvt {
     class TorqueFeatureDecoder::TorqueFeatureIterator : public carto::mvt::FeatureDecoder::FeatureIterator {
     public:
-        explicit TorqueFeatureIterator(const std::vector<TorqueFeatureDecoder::Element>& elements, int resolution, const cglib::mat3x3<float>& transform, const cglib::bbox2<float>& clipBox) : _elements(elements), _resolution(resolution), _transform(transform), _clipBox(clipBox) {
+        explicit TorqueFeatureIterator(const std::vector<TorqueFeatureDecoder::Element>& elements, int frameOffset, int resolution, const cglib::mat3x3<float>& transform, const cglib::bbox2<float>& clipBox) : _elements(elements), _frameOffset(frameOffset), _resolution(resolution), _transform(transform), _clipBox(clipBox) {
             while (++_index1 < _elements.size()) {
                 if (_elements[_index0].value != _elements[_index1].value) {
                     break;
@@ -75,7 +75,10 @@ namespace carto { namespace mvt {
                 return featureData;
             }
 
-            auto featureData = std::make_shared<FeatureData>(FeatureData::GeometryType::POINT_GEOMETRY, std::vector<std::pair<std::string, Value>>{ { std::string("value"), Value(element.value) } });
+            auto featureData = std::make_shared<FeatureData>(FeatureData::GeometryType::POINT_GEOMETRY, std::vector<std::pair<std::string, Value>> {
+                { std::string("value"), Value(element.value) },
+                { std::string("frame-offset"), Value(_frameOffset) } 
+            });
             _featureDataCache.put(element.value, featureData);
             return featureData;
         }
@@ -97,6 +100,7 @@ namespace carto { namespace mvt {
         std::size_t _index0 = 0;
         std::size_t _index1 = 0;
         const std::vector<TorqueFeatureDecoder::Element>& _elements;
+        const int _frameOffset;
         const int _resolution;
         const cglib::mat3x3<float> _transform;
         const cglib::bbox2<float> _clipBox;
@@ -173,11 +177,11 @@ namespace carto { namespace mvt {
         _clipBox = clipBox;
     }
 
-    std::shared_ptr<FeatureDecoder::FeatureIterator> TorqueFeatureDecoder::createFrameFeatureIterator(int frame) const {
+    std::shared_ptr<FeatureDecoder::FeatureIterator> TorqueFeatureDecoder::createFrameFeatureIterator(int frame, int frameOffset) const {
         auto it = _timeValueMap.find(frame);
         if (it == _timeValueMap.end()) {
             return std::shared_ptr<FeatureIterator>();
         }
-        return std::make_shared<TorqueFeatureIterator>(it->second, _resolution, _transform, _clipBox);
+        return std::make_shared<TorqueFeatureIterator>(it->second, frameOffset, _resolution, _transform, _clipBox);
     }
 } }

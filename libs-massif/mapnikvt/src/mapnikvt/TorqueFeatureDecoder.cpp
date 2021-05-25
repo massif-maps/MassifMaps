@@ -77,7 +77,7 @@ namespace carto { namespace mvt {
 
             auto featureData = std::make_shared<FeatureData>(FeatureData::GeometryType::POINT_GEOMETRY, std::vector<std::pair<std::string, Value>> {
                 { std::string("value"), Value(element.value) },
-                { std::string("frame-offset"), Value(_frameOffset) } 
+                { std::string("frame-offset"), Value(static_cast<long long>(_frameOffset)) } 
             });
             _featureDataCache.put(element.value, featureData);
             return featureData;

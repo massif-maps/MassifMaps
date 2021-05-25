@@ -26,6 +26,7 @@ namespace carto { namespace css {
     }
 
     std::shared_ptr<mvt::Map> CartoCSSMapLoader::loadMap(const std::string& cartoCSS) const {
+        // Parse the given CSS into stylesheet and process errors
         StyleSheet styleSheet;
         try {
             styleSheet = CartoCSSParser::parse(cartoCSS);
@@ -37,34 +38,20 @@ namespace carto { namespace css {
             throw LoaderException(std::string("Exception while parsing CartoCSS: ") + ex.what());
         }
 
-        // Find layer names
+        // Find layer names, keep the order of the names intact based on 'referencing' order
         std::vector<std::string> layerNames;
-        std::function<void(const RuleSet& ruleSet)> storeRuleSetInfo;
-        storeRuleSetInfo = [&](const RuleSet& ruleSet) {
-            for (const Selector& selector : ruleSet.getSelectors()) {
-                for (const Predicate& pred : selector.getPredicates()) {
-                    if (auto layerPred = std::get_if<LayerPredicate>(&pred)) {
-                        std::string layerName = layerPred->getLayerName();
-                        if (std::find(layerNames.begin(), layerNames.end(), layerName) == layerNames.end()) {
-                            layerNames.push_back(layerName);
-                        }
+        for (const Selector& selector : styleSheet.findRuleSetSelectors()) {
+            for (const Predicate& pred : selector.getPredicates()) {
+                if (auto layerPred = std::get_if<LayerPredicate>(&pred)) {
+                    std::string layerName = layerPred->getLayerName();
+                    if (std::find(layerNames.begin(), layerNames.end(), layerName) == layerNames.end()) {
+                        layerNames.push_back(layerName);
                     }
                 }
             }
-
-            for (const Block::Element& element : ruleSet.getBlock().getElements()) {
-                if (auto subRuleSet = std::get_if<RuleSet>(&element)) {
-                    storeRuleSetInfo(*subRuleSet);
-                }
-            }
-        };
-
-        for (const StyleSheet::Element& element : styleSheet.getElements()) {
-            if (auto ruleSet = std::get_if<RuleSet>(&element)) {
-                storeRuleSetInfo(*ruleSet);
-            }
         }
 
+        // Build Map
         return buildMap(styleSheet, layerNames, std::vector<mvt::NutiParameter>());
     }
 

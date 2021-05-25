@@ -3,6 +3,9 @@
 #include "TorqueCartoCSSMapnikTranslator.h"
 #include "mapnikvt/TorqueLayer.h"
 
+#include <set>
+#include <optional>
+
 namespace carto { namespace css {
     std::shared_ptr<mvt::TorqueMap> TorqueCartoCSSMapLoader::loadMap(const std::string& cartoCSS) const {
         StyleSheet styleSheet;
@@ -16,50 +19,7 @@ namespace carto { namespace css {
             throw LoaderException(std::string("Exception while parsing Torque CartoCSS: ") + ex.what());
         }
 
-        // Find layer names and frame offsets
-        std::set<std::string> layerNames;
-        std::set<int> frameOffsets;
-        frameOffsets.insert(0);
-        std::function<void(const RuleSet& ruleSet)> storeRuleSetInfo;
-        storeRuleSetInfo = [&](const RuleSet& ruleSet) {
-            for (const Selector& selector : ruleSet.getSelectors()) {
-                for (const Predicate& pred : selector.getPredicates()) {
-                    if (auto layerPred = std::get_if<LayerPredicate>(&pred)) {
-                        std::string layerName = layerPred->getLayerName();
-                        layerNames.insert(layerName);
-                    }
-                    else if (auto opPred = std::get_if<OpPredicate>(&pred)) {
-                        if (opPred->getFieldOrVar().isField() && opPred->getFieldOrVar().getName() == "frame-offset") {
-                            if (opPred->getOp() == OpPredicate::Op::EQ) {
-                                if (auto longVal = std::get_if<long long>(&opPred->getRefValue())) {
-                                    frameOffsets.insert(static_cast<int>(*longVal));
-                                }
-                                else {
-                                    _logger->write(mvt::Logger::Severity::ERROR, "Torque 'frame-offset' value must be integer");
-                                }
-                            }
-                            else {
-                                _logger->write(mvt::Logger::Severity::ERROR, "Torque 'frame-offset' can be only used with equal operator");
-                            }
-                        }
-                    }
-                }
-            }
-
-            for (const Block::Element& element : ruleSet.getBlock().getElements()) {
-                if (auto subRuleSet = std::get_if<RuleSet>(&element)) {
-                    storeRuleSetInfo(*subRuleSet);
-                }
-            }
-        };
-
-        for (const StyleSheet::Element& element : styleSheet.getElements()) {
-            if (auto ruleSet = std::get_if<RuleSet>(&element)) {
-                storeRuleSetInfo(*ruleSet);
-            }
-        }
-
-        // Map/torque properties
+        // Build map/torque properties
         mvt::TorqueMap::Settings mapSettings;
         mvt::TorqueMap::TorqueSettings torqueSettings;
         {
@@ -77,7 +37,36 @@ namespace carto { namespace css {
         }
         auto map = std::make_shared<mvt::TorqueMap>(mapSettings, torqueSettings);
 
-        // Layers
+        // Find layer names and frame offsets
+        std::set<std::string> layerNames;
+        std::set<int> frameOffsets = { 0 };
+        for (const Selector& selector : styleSheet.findRuleSetSelectors()) {
+            std::optional<std::set<int>> selectorFrameOffsets;
+            for (const Predicate& pred : selector.getPredicates()) {
+                if (auto layerPred = std::get_if<LayerPredicate>(&pred)) {
+                    layerNames.insert(layerPred->getLayerName());
+                }
+                else if (auto opPred = std::get_if<OpPredicate>(&pred)) {
+                    if (opPred->getFieldOrVar().isField() && opPred->getFieldOrVar().getName() == "frame-offset") {
+                        std::set<int> validFrameOffsets;
+                        for (int frame = 0; frame < torqueSettings.frameCount; frame++) {
+                            if (selectorFrameOffsets && (*selectorFrameOffsets).count(frame) == 0) {
+                                continue;
+                            }
+                            if (OpPredicate::applyOp(opPred->getOp(), Value(static_cast<long long>(frame)), opPred->getRefValue())) {
+                                validFrameOffsets.insert(frame);
+                            }
+                        }
+                        selectorFrameOffsets = std::move(validFrameOffsets);
+                    }
+                }
+            }
+            if (selectorFrameOffsets) {
+                frameOffsets.insert((*selectorFrameOffsets).begin(), (*selectorFrameOffsets).end());
+            }
+        }
+
+        // Build layers
         for (const std::string& layerName : layerNames) {
             for (auto frameOffsetIt = frameOffsets.rbegin(); frameOffsetIt != frameOffsets.rend(); frameOffsetIt++) {
                 int frameOffset = *frameOffsetIt;

@@ -16,12 +16,12 @@ namespace carto { namespace mvt {
     class TorqueMap : public Map {
     public:
         struct TorqueSettings {
-            vt::Color clearColor = vt::Color(0x00000000);
+            int resolution = 2;
             int frameCount = 128;
-            int animationDuration = 30;
+            float animationDuration = 30.0f;
+            vt::Color clearColor = vt::Color(0x00000000);
             std::string timeAttribute = "time";
             std::string aggregationFunction = "count(cartodb_id)";
-            int resolution = 2;
             std::string dataAggregation = "linear";
         };
 

@@ -113,21 +113,26 @@ namespace carto { namespace css {
     }
 
     void TorqueCartoCSSMapLoader::loadTorqueSettings(const std::map<std::string, Value>& mapProperties, mvt::TorqueMap::TorqueSettings& torqueSettings) const {
-        Color clearColor;
-        if (getMapProperty(mapProperties, "-torque-clear-color", clearColor)) {
-            torqueSettings.clearColor = vt::Color(clearColor.value());
+        long long resolution = 1;
+        if (getMapProperty(mapProperties, "-torque-resolution", resolution)) {
+            torqueSettings.resolution = static_cast<int>(resolution);
         }
         long long frameCount = 0;
         if (getMapProperty(mapProperties, "-torque-frame-count", frameCount)) {
             torqueSettings.frameCount = static_cast<int>(frameCount);
         }
-        long long animationDuration = 0;
-        if (getMapProperty(mapProperties, "-torque-animation-duration", animationDuration)) {
-            torqueSettings.animationDuration = static_cast<int>(animationDuration);
+        long long animationDurationLong = 0;
+        if (getMapProperty(mapProperties, "-torque-animation-duration", animationDurationLong)) {
+            torqueSettings.animationDuration = static_cast<float>(animationDurationLong);
+        } else {
+            double animationDurationDouble = 0;
+            if (getMapProperty(mapProperties, "-torque-animation-duration", animationDurationDouble)) {
+                torqueSettings.animationDuration = static_cast<float>(animationDurationDouble);
+            }
         }
-        long long resolution = 1;
-        if (getMapProperty(mapProperties, "-torque-resolution", resolution)) {
-            torqueSettings.resolution = static_cast<int>(resolution);
+        Color clearColor;
+        if (getMapProperty(mapProperties, "-torque-clear-color", clearColor)) {
+            torqueSettings.clearColor = vt::Color(clearColor.value());
         }
         getMapProperty(mapProperties, "-torque-time-attribute", torqueSettings.timeAttribute);
         getMapProperty(mapProperties, "-torque-aggregation-function", torqueSettings.aggregationFunction);

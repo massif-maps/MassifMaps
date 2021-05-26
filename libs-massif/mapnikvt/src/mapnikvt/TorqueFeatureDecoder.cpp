@@ -108,8 +108,8 @@ namespace carto { namespace mvt {
         mutable FeatureDataCache<double> _featureDataCache;
     };
 
-    TorqueFeatureDecoder::TorqueFeatureDecoder(const std::vector<unsigned char>& data, int tileSize, const std::string& dataAggregation, const std::shared_ptr<Logger>& logger) :
-        _tileSize(tileSize), _dataAggregation(dataAggregation), _transform(cglib::mat3x3<float>::identity()), _clipBox(cglib::vec2<float>(-0.1f, -0.1f), cglib::vec2<float>(1.1f, 1.1f)), _logger(logger)
+    TorqueFeatureDecoder::TorqueFeatureDecoder(const std::vector<unsigned char>& data, int tileSize, int frameCount, const std::string& dataAggregation, const std::shared_ptr<Logger>& logger) :
+        _tileSize(tileSize), _frameCount(frameCount), _dataAggregation(dataAggregation), _transform(cglib::mat3x3<float>::identity()), _clipBox(cglib::vec2<float>(-0.1f, -0.1f), cglib::vec2<float>(1.1f, 1.1f)), _logger(logger)
     {
         rapidjson::Document torqueDoc;
         std::string torqueJson(reinterpret_cast<const char*>(data.data()), reinterpret_cast<const char*>(data.data() + data.size()));
@@ -174,18 +174,11 @@ namespace carto { namespace mvt {
         }
 
         if (_dataAggregation == "cumulative") {
-            int maxTime = -1;
-            for (auto it = timeValueMap.begin(); it != timeValueMap.end(); it++) {
-                maxTime = std::max(maxTime, it->first);
-            }
             std::vector<double> cumulativeValues(_tileSize * _tileSize, 0.0);
-            for (int time = 0; time <= maxTime; time++) {
-                auto it = timeValueMap.find(time);
-                if (it != timeValueMap.end()) {
-                    for (const Element& element : it->second) {
-                        std::size_t index = static_cast<std::size_t>(element.y * _tileSize + element.x);
-                        cumulativeValues[index] += element.value;
-                    }
+            for (int time = 0; time < frameCount; time++) {
+                for (const Element& element : timeValueMap[time]) {
+                    std::size_t index = static_cast<std::size_t>(element.y * _tileSize + element.x);
+                    cumulativeValues[index] += element.value;
                 }
                 for (std::size_t index = 0; index < cumulativeValues.size(); index++) {
                     double value = cumulativeValues[index];

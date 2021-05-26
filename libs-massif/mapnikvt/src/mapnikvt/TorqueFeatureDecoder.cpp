@@ -188,9 +188,12 @@ namespace carto { namespace mvt {
                     }
                 }
                 for (std::size_t index = 0; index < cumulativeValues.size(); index++) {
-                    int x = static_cast<int>(index % _tileSize);
-                    int y = static_cast<int>(index / _tileSize);
-                    _timeValueMap[time].emplace_back(x, y, cumulativeValues[index]);
+                    double value = cumulativeValues[index];
+                    if (value > 0) {
+                        int x = static_cast<int>(index % _tileSize);
+                        int y = static_cast<int>(index / _tileSize);
+                        _timeValueMap[time].emplace_back(x, y, value);
+                    }
                 }
             }
         }

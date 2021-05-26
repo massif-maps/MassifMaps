@@ -39,7 +39,7 @@ namespace {
 namespace carto { namespace mvt {
     class TorqueFeatureDecoder::TorqueFeatureIterator : public carto::mvt::FeatureDecoder::FeatureIterator {
     public:
-        explicit TorqueFeatureIterator(const std::vector<TorqueFeatureDecoder::Element>& elements, int frameOffset, int resolution, const cglib::mat3x3<float>& transform, const cglib::bbox2<float>& clipBox) : _elements(elements), _frameOffset(frameOffset), _resolution(resolution), _transform(transform), _clipBox(clipBox) {
+        explicit TorqueFeatureIterator(const std::vector<TorqueFeatureDecoder::Element>& elements, int frameOffset, int tileSize, const cglib::mat3x3<float>& transform, const cglib::bbox2<float>& clipBox) : _elements(elements), _frameOffset(frameOffset), _tileSize(tileSize), _transform(transform), _clipBox(clipBox) {
             while (++_index1 < _elements.size()) {
                 if (_elements[_index0].value != _elements[_index1].value) {
                     break;
@@ -84,7 +84,7 @@ namespace carto { namespace mvt {
         }
 
         virtual std::shared_ptr<const Geometry> getGeometry() const override {
-            float scale = 1.0f / _resolution;
+            float scale = 1.0f / _tileSize;
             std::vector<cglib::vec2<float>> vertices;
             for (std::size_t i = _index0; i < _index1; i++) {
                 const TorqueFeatureDecoder::Element& element = _elements[i];
@@ -101,15 +101,15 @@ namespace carto { namespace mvt {
         std::size_t _index1 = 0;
         const std::vector<TorqueFeatureDecoder::Element>& _elements;
         const int _frameOffset;
-        const int _resolution;
+        const int _tileSize;
         const cglib::mat3x3<float> _transform;
         const cglib::bbox2<float> _clipBox;
 
         mutable FeatureDataCache<double> _featureDataCache;
     };
 
-    TorqueFeatureDecoder::TorqueFeatureDecoder(const std::vector<unsigned char>& data, int resolution, const std::shared_ptr<Logger>& logger) :
-        _resolution(resolution), _transform(cglib::mat3x3<float>::identity()), _clipBox(cglib::vec2<float>(-0.1f, -0.1f), cglib::vec2<float>(1.1f, 1.1f)), _logger(logger)
+    TorqueFeatureDecoder::TorqueFeatureDecoder(const std::vector<unsigned char>& data, int tileSize, const std::string& dataAggregation, const std::shared_ptr<Logger>& logger) :
+        _tileSize(tileSize), _dataAggregation(dataAggregation), _transform(cglib::mat3x3<float>::identity()), _clipBox(cglib::vec2<float>(-0.1f, -0.1f), cglib::vec2<float>(1.1f, 1.1f)), _logger(logger)
     {
         rapidjson::Document torqueDoc;
         std::string torqueJson(reinterpret_cast<const char*>(data.data()), reinterpret_cast<const char*>(data.data() + data.size()));
@@ -152,20 +152,53 @@ namespace carto { namespace mvt {
             return;
         }
 
+        std::unordered_map<int, std::vector<Element>> timeValueMap;
         for (rapidjson::Value::ConstValueIterator jit = rows->Begin(); jit != rows->End(); jit++) {
             const rapidjson::Value& rowValue = *jit;
             int x = readRapidJSONInt(rowValue[xField.c_str()]);
             int y = readRapidJSONInt(rowValue[yField.c_str()]);
             unsigned int valueCount = rowValue[valueField.c_str()].Size();
             unsigned int timeCount = rowValue[timeField.c_str()].Size();
+            if (x < 0 || x >= _tileSize || y < 0 || y >= _tileSize) {
+                _logger->write(Logger::Severity::ERROR, "Coordinates out of range");
+                continue;
+            }
             if (valueCount != timeCount) {
                 _logger->write(Logger::Severity::ERROR, "Value/time array mismatch");
             }
             for (unsigned int i = 0; i < valueCount; i++) {
                 int time = (i < timeCount ? readRapidJSONInt(rowValue[timeField.c_str()][i]) : -1);
                 double value = readRapidJSONDouble(rowValue[valueField.c_str()][i]);
-                _timeValueMap[time].emplace_back(x, y, value);
+                timeValueMap[time].emplace_back(x, y, value);
             }
+        }
+
+        if (_dataAggregation == "cumulative") {
+            int maxTime = -1;
+            for (auto it = timeValueMap.begin(); it != timeValueMap.end(); it++) {
+                maxTime = std::max(maxTime, it->first);
+            }
+            std::vector<double> cumulativeValues(_tileSize * _tileSize, 0.0);
+            for (int time = 0; time <= maxTime; time++) {
+                auto it = timeValueMap.find(time);
+                if (it != timeValueMap.end()) {
+                    for (const Element& element : it->second) {
+                        std::size_t index = static_cast<std::size_t>(element.y * _tileSize + element.x);
+                        cumulativeValues[index] += element.value;
+                    }
+                }
+                for (std::size_t index = 0; index < cumulativeValues.size(); index++) {
+                    int x = static_cast<int>(index % _tileSize);
+                    int y = static_cast<int>(index / _tileSize);
+                    _timeValueMap[time].emplace_back(x, y, cumulativeValues[index]);
+                }
+            }
+        }
+        else {
+            if (_dataAggregation != "linear") {
+                _logger->write(Logger::Severity::ERROR, "Unknown data aggregation mode '" + dataAggregation + "', assuming 'linear'");
+            }
+            _timeValueMap = std::move(timeValueMap);
         }
     }
 
@@ -182,6 +215,6 @@ namespace carto { namespace mvt {
         if (it == _timeValueMap.end()) {
             return std::shared_ptr<FeatureIterator>();
         }
-        return std::make_shared<TorqueFeatureIterator>(it->second, frameOffset, _resolution, _transform, _clipBox);
+        return std::make_shared<TorqueFeatureIterator>(it->second, frameOffset, _tileSize, _transform, _clipBox);
     }
 } }

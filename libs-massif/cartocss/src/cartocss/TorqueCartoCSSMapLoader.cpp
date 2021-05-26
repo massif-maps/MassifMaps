@@ -113,13 +113,18 @@ namespace carto { namespace css {
     }
 
     void TorqueCartoCSSMapLoader::loadTorqueSettings(const std::map<std::string, Value>& mapProperties, mvt::TorqueMap::TorqueSettings& torqueSettings) const {
-        long long resolution = 1;
-        if (getMapProperty(mapProperties, "-torque-resolution", resolution)) {
-            torqueSettings.resolution = static_cast<int>(resolution);
-        }
         long long frameCount = 0;
         if (getMapProperty(mapProperties, "-torque-frame-count", frameCount)) {
             torqueSettings.frameCount = static_cast<int>(frameCount);
+        }
+        long long resolutionLong = 1;
+        if (getMapProperty(mapProperties, "-torque-resolution", resolutionLong)) {
+            torqueSettings.resolution = static_cast<float>(resolutionLong);
+        } else {
+            double resolutionDouble = 1;
+            if (getMapProperty(mapProperties, "-torque-resolution", resolutionDouble)) {
+                torqueSettings.resolution = static_cast<float>(resolutionDouble);
+            }
         }
         long long animationDurationLong = 0;
         if (getMapProperty(mapProperties, "-torque-animation-duration", animationDurationLong)) {

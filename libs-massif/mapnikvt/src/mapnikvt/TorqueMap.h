@@ -16,8 +16,8 @@ namespace carto { namespace mvt {
     class TorqueMap : public Map {
     public:
         struct TorqueSettings {
-            int resolution = 2;
             int frameCount = 128;
+            float resolution = 2.0f;
             float animationDuration = 30.0f;
             vt::Color clearColor = vt::Color(0x00000000);
             std::string timeAttribute = "time";

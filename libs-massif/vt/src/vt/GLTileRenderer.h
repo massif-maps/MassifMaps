@@ -119,12 +119,13 @@ namespace carto { namespace vt {
 
         struct RenderNode {
             TileId tileId;
+            TileId targetTileId;
             std::shared_ptr<const Tile> tile;
             std::shared_ptr<const TileLayer> layer;
             float initialBlend;
             float blend;
 
-            explicit RenderNode(const TileId& tileId, std::shared_ptr<const Tile> tile, std::shared_ptr<const TileLayer> layer, float blend) : tileId(tileId), tile(std::move(tile)), layer(std::move(layer)), initialBlend(blend), blend(blend) { }
+            explicit RenderNode(const TileId& tileId, const TileId& targetTileId, std::shared_ptr<const Tile> tile, std::shared_ptr<const TileLayer> layer, float blend) : tileId(tileId), targetTileId(targetTileId), tile(std::move(tile)), layer(std::move(layer)), initialBlend(blend), blend(blend) { }
         };
 
         struct FrameBuffer {

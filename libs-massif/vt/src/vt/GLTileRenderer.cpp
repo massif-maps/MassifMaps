@@ -576,7 +576,7 @@ namespace carto { namespace vt {
             for (auto it = renderNodeMap.begin(); it != renderNodeMap.end(); it++) {
                 const RenderNode& renderNode = it->second;
 
-                cglib::bbox3<double> tileBBox = _transformer->calculateTileBBox(renderNode.tileId.zoom > blendNode->tileId.zoom ? renderNode.tileId : blendNode->tileId);
+                cglib::bbox3<double> tileBBox = _transformer->calculateTileBBox(renderNode.tileId.zoom > renderNode.targetTileId.zoom ? renderNode.tileId : renderNode.targetTileId);
                 cglib::mat4x4<double> tileMatrix = calculateTileMatrix(renderNode.tileId);
                 cglib::mat4x4<double> invTileMatrix = cglib::inverse(tileMatrix);
                 std::shared_ptr<const TileTransformer::VertexTransformer> tileTransformer = _transformer->createTileVertexTransformer(renderNode.tileId);
@@ -598,7 +598,7 @@ namespace carto { namespace vt {
                     }
 
                     std::vector<GeometryIntersectionInfo> resultsTile;
-                    findTileGeometryIntersections(renderNode.tileId, blendNode->tile, geometry, rayTiles, pointBuffer, lineBuffer, blendNode->blend, resultsTile);
+                    findTileGeometryIntersections(renderNode.tileId, renderNode.tile, geometry, rayTiles, pointBuffer, lineBuffer, renderNode.blend, resultsTile);
 
                     for (const GeometryIntersectionInfo& resultTile : resultsTile) {
                         const cglib::ray3<double>& ray = rays[resultTile.rayIndex];
@@ -608,8 +608,8 @@ namespace carto { namespace vt {
 
                         // Check that the hit position is inside the tile and normal is facing toward the ray
                         cglib::vec2<float> clipPos = tilePos;
-                        if (blendNode->tileId.zoom > renderNode.tileId.zoom) {
-                            cglib::mat3x3<double> clipTransform = cglib::inverse(calculateTileMatrix2D(blendNode->tileId)) * calculateTileMatrix2D(renderNode.tileId);
+                        if (renderNode.targetTileId.zoom > renderNode.tileId.zoom) {
+                            cglib::mat3x3<double> clipTransform = cglib::inverse(calculateTileMatrix2D(renderNode.targetTileId)) * calculateTileMatrix2D(renderNode.tileId);
                             clipPos = cglib::transform_point(tilePos, cglib::mat3x3<float>::convert(clipTransform));
                         }
                         if (clipPos(0) < 0 || clipPos(1) < 0 || clipPos(0) > 1 || clipPos(1) > 1) {
@@ -681,7 +681,7 @@ namespace carto { namespace vt {
             for (auto it = renderNodeMap.begin(); it != renderNodeMap.end(); it++) {
                 const RenderNode& renderNode = it->second;
                 
-                cglib::bbox3<double> tileBBox = _transformer->calculateTileBBox(renderNode.tileId.zoom > blendNode->tileId.zoom ? renderNode.tileId : blendNode->tileId);
+                cglib::bbox3<double> tileBBox = _transformer->calculateTileBBox(renderNode.tileId.zoom > renderNode.targetTileId.zoom ? renderNode.tileId : renderNode.targetTileId);
                 cglib::mat4x4<double> tileMatrix = calculateTileMatrix(renderNode.tileId);
                 cglib::mat4x4<double> invTileMatrix = cglib::inverse(tileMatrix);
                 std::shared_ptr<const TileTransformer::VertexTransformer> tileTransformer = _transformer->createTileVertexTransformer(renderNode.tileId);
@@ -704,7 +704,7 @@ namespace carto { namespace vt {
 
                     std::vector<BitmapIntersectionInfo> resultsTile;
                     for (const std::shared_ptr<TileSurface>& tileSurface : it->second) {
-                        findTileBitmapIntersections(renderNode.tileId, blendNode->tile, bitmap, tileSurface, rayTiles, resultsTile);
+                        findTileBitmapIntersections(renderNode.tileId, renderNode.tile, bitmap, tileSurface, rayTiles, resultsTile);
                     }
 
                     for (const BitmapIntersectionInfo& resultTile : resultsTile) {
@@ -715,8 +715,8 @@ namespace carto { namespace vt {
 
                         // Check that the hit position is inside the tile and normal is facing toward the ray
                         cglib::vec2<float> clipPos = tilePos;
-                        if (blendNode->tileId.zoom > renderNode.tileId.zoom) {
-                            cglib::mat3x3<double> clipTransform = cglib::inverse(calculateTileMatrix2D(blendNode->tileId)) * calculateTileMatrix2D(renderNode.tileId);
+                        if (renderNode.targetTileId.zoom > renderNode.tileId.zoom) {
+                            cglib::mat3x3<double> clipTransform = cglib::inverse(calculateTileMatrix2D(renderNode.targetTileId)) * calculateTileMatrix2D(renderNode.tileId);
                             clipPos = cglib::transform_point(clipPos, cglib::mat3x3<float>::convert(clipTransform));
                         }
                         if (clipPos(0) < 0 || clipPos(1) < 0 || clipPos(0) > 1 || clipPos(1) > 1) {
@@ -889,7 +889,7 @@ namespace carto { namespace vt {
             // Add render nodes for each layer
             for (const std::shared_ptr<TileLayer>& layer : blendNode.tile->getLayers()) {
                 // Special case for raster layers - ignore global blend factor
-                RenderNode renderNode(tileId, blendNode.tile, layer, (layer->getGeometries().empty() ? blendNode.blend : blend * blendNode.blend));
+                RenderNode renderNode(tileId, blendNode.tileId, blendNode.tile, layer, (layer->getGeometries().empty() ? blendNode.blend : blend * blendNode.blend));
                 addRenderNode(renderNode, renderNodeMap);
             }
             exists = true;
@@ -1141,7 +1141,7 @@ namespace carto { namespace vt {
                     
                     setupStencil(false);
                     setupBlendMode(CompOp::SRC_OVER);
-                    renderTileBitmap(renderNode.tileId, blendNode->tileId, renderNode.blend, geometryOpacity, bitmap);
+                    renderTileBitmap(renderNode.tileId, renderNode.targetTileId, renderNode.blend, geometryOpacity, bitmap);
                 }
                 
                 for (const std::shared_ptr<TileGeometry>& geometry : renderNode.layer->getGeometries()) {
@@ -1151,7 +1151,7 @@ namespace carto { namespace vt {
 
                     setupFrameBuffer();
 
-                    TileId tileMaskId = renderNode.tileId.zoom > blendNode->tileId.zoom ? renderNode.tileId : blendNode->tileId;
+                    TileId tileMaskId = renderNode.tileId.zoom > renderNode.targetTileId.zoom ? renderNode.tileId : renderNode.targetTileId;
                     if (activeTileMaskId != tileMaskId && stencilBits > 0) {
                         if (++stencilNum == (1 << stencilBits)) { // do initial clear, or clear after each N (usually 256) updates
                             glClearStencil(0);
@@ -1173,7 +1173,7 @@ namespace carto { namespace vt {
 
                     setupStencil(true);
                     setupBlendMode(geometry->getStyleParameters().compOp);
-                    renderTileGeometry(renderNode.tileId, blendNode->tileId, renderNode.blend, geometryOpacity, renderNode.tile, geometry);
+                    renderTileGeometry(renderNode.tileId, renderNode.targetTileId, renderNode.blend, geometryOpacity, renderNode.tile, geometry);
                 }
                 update = renderNode.initialBlend < 1.0f || update;
 
@@ -1234,7 +1234,7 @@ namespace carto { namespace vt {
                         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
                     }
                     
-                    renderTileGeometry(renderNode.tileId, blendNode->tileId, renderNode.blend, opacity, renderNode.tile, geometry);
+                    renderTileGeometry(renderNode.tileId, renderNode.targetTileId, renderNode.blend, opacity, renderNode.tile, geometry);
                 }
                 update = renderNode.initialBlend < 1.0f || update;
             }

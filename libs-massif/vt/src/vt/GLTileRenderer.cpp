@@ -393,11 +393,26 @@ namespace carto { namespace vt {
     
     bool GLTileRenderer::renderGeometry2D() {
         std::lock_guard<std::mutex> lock(_mutex);
-        
-        // Update GL state
-        GLint stencilBits = 0;
-        glGetIntegerv(GL_STENCIL_BITS, &stencilBits);
 
+        // Extract current stencil state
+        GLint stencilBits = 0;
+        GLint currentFBO = 0;
+        glGetIntegerv(GL_FRAMEBUFFER_BINDING, &currentFBO);
+        if (currentFBO != 0) {
+            GLint stencilRB = 0;
+            glGetFramebufferAttachmentParameteriv(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME, &stencilRB);
+            if (stencilRB != 0) {
+                GLint currentRB = 0;
+                glGetIntegerv(GL_RENDERBUFFER_BINDING, &currentRB);
+                glBindRenderbuffer(GL_RENDERBUFFER, stencilRB);
+                glGetRenderbufferParameteriv(GL_RENDERBUFFER, GL_RENDERBUFFER_STENCIL_SIZE, &stencilBits);
+                glBindRenderbuffer(GL_RENDERBUFFER, currentRB);
+            }
+        } else {
+            glGetIntegerv(GL_STENCIL_BITS, &stencilBits);
+        }
+
+        // Update GL state
         glEnable(GL_BLEND);
         glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
         glBlendEquation(GL_FUNC_ADD);
@@ -1055,14 +1070,8 @@ namespace carto { namespace vt {
             }
         };
 
-        TileId activeTileMaskId(-1, -1, -1); // invalid mask
         bool update = false;
         for (const std::shared_ptr<BlendNode>& blendNode : blendNodes) {
-            std::multimap<int, RenderNode> renderNodeMap;
-            if (!buildRenderNodes(*blendNode, 1.0f, renderNodeMap)) {
-                continue;
-            }
-            
             float backgroundOpacity = calculateBlendNodeOpacity(*blendNode, 1.0f);
             if (backgroundOpacity > 0) {
                 setupStencil(false);
@@ -1070,6 +1079,14 @@ namespace carto { namespace vt {
                 renderTileBackground(blendNode->tileId, blendNode->tile->getBackground(), blendNode->tile->getTileSize(), backgroundOpacity);
             }
             update = backgroundOpacity < 1.0f || update;
+        }    
+
+        TileId activeTileMaskId(-1, -1, -1); // invalid mask
+        for (const std::shared_ptr<BlendNode>& blendNode : blendNodes) {
+            std::multimap<int, RenderNode> renderNodeMap;
+            if (!buildRenderNodes(*blendNode, 1.0f, renderNodeMap)) {
+                continue;
+            }
             
             std::unordered_map<int, std::size_t> layerBufferMap;
             for (auto it = renderNodeMap.begin(); it != renderNodeMap.end(); it++) {

@@ -1118,10 +1118,13 @@ namespace carto { namespace vt {
                                 createFrameBuffer(_layerBuffers.back(), true, false, stencilBits > 0);
                             }
                             it = layerBufferMap.emplace(renderNode.layer->getLayerIndex(), bufferIndex).first;
+                            glBindFramebuffer(GL_FRAMEBUFFER, _layerBuffers[it->second].fbo);
+                            glClearColor(0, 0, 0, 0);
+                            glClearStencil(0);
+                            glClear(GL_COLOR_BUFFER_BIT | (stencilBits > 0 ? GL_STENCIL_BUFFER_BIT : 0));
+                        } else {
+                            glBindFramebuffer(GL_FRAMEBUFFER, _layerBuffers[it->second].fbo);
                         }
-                        glBindFramebuffer(GL_FRAMEBUFFER, _layerBuffers[it->second].fbo);
-                        glClearColor(0, 0, 0, 0);
-                        glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
                         activeTileMaskId = TileId(-1, -1, -1); // force stencil mask update
                     }

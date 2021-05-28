@@ -230,21 +230,21 @@ namespace carto { namespace vt {
         _labels = std::move(labels);
         _bitmapLabelMap = std::move(bitmapLabelMap);
         
-        // Build blend nodes for tiles
-        auto blendNodes = std::make_shared<std::vector<std::shared_ptr<BlendNode>>>();
-        blendNodes->reserve(tiles.size());
+        // Build render tiles
+        auto renderTiles = std::make_shared<std::vector<std::shared_ptr<RenderTile>>>();
+        renderTiles->reserve(tiles.size());
         for (TilePair tilePair : tiles) {
-            auto blendNode = std::make_shared<BlendNode>(tilePair.first, tilePair.second, blend ? 0.0f : 1.0f);
-            for (std::shared_ptr<BlendNode>& oldBlendNode : *_blendNodes) {
-                if (blendNode->tileId == oldBlendNode->tileId && blendNode->tile == oldBlendNode->tile) {
-                    blendNode = oldBlendNode;
+            auto renderTile = std::make_shared<RenderTile>(tilePair.first, tilePair.second, blend ? 0.0f : 1.0f);
+            for (std::shared_ptr<RenderTile>& oldRenderTile : *_renderTiles) {
+                if (renderTile->targetTileId == oldRenderTile->targetTileId && renderTile->tile == oldRenderTile->tile) {
+                    renderTile = oldRenderTile;
                     break;
                 }
-                if (blend && blendNode->tileId.intersects(oldBlendNode->tileId)) {
+                if (blend && renderTile->targetTileId.intersects(oldRenderTile->targetTileId)) {
                     bool subTileBlending = _subTileBlending;
 
                     // Disable subtile blending if alpha channel is used on the tile
-                    for (const std::shared_ptr<TileLayer>& layer : blendNode->tile->getLayers()) {
+                    for (const std::shared_ptr<TileLayer>& layer : renderTile->tile->getLayers()) {
                         for (const std::shared_ptr<TileBitmap>& bitmap : layer->getBitmaps()) {
                             if (bitmap->getFormat() == TileBitmap::Format::RGBA) {
                                 subTileBlending = false;
@@ -253,21 +253,21 @@ namespace carto { namespace vt {
                     }
 
                     if (subTileBlending) {
-                        blendNode->childNodes.push_back(oldBlendNode);
-                        oldBlendNode->blend = calculateBlendNodeOpacity(*oldBlendNode, 1.0f); // this is an optimization, to reduce extensive blending subtrees
-                        oldBlendNode->childNodes.clear();
+                        renderTile->childTiles.push_back(oldRenderTile);
+                        oldRenderTile->blend = calculateRenderTileOpacity(*oldRenderTile, 1.0f); // this is an optimization, to reduce extensive blending subtrees
+                        oldRenderTile->childTiles.clear();
                     } else {
-                        blendNode->blend = std::max(blendNode->blend, oldBlendNode->blend);
+                        renderTile->blend = std::max(renderTile->blend, oldRenderTile->blend);
                     }
                 }
             }
-            blendNodes->push_back(std::move(blendNode));
+            renderTiles->push_back(std::move(renderTile));
         }
-        _blendNodes = std::move(blendNodes);
+        _renderTiles = std::move(renderTiles);
     }
 
     void GLTileRenderer::initializeRenderer() {
-        _blendNodes = std::make_shared<std::vector<std::shared_ptr<BlendNode>>>();
+        _renderTiles = std::make_shared<std::vector<std::shared_ptr<RenderTile>>>();
         for (int pass = 0; pass < 2; pass++) {
             _bitmapLabelMap[pass] = std::make_shared<BitmapLabelMap>();
         }
@@ -283,8 +283,8 @@ namespace carto { namespace vt {
         _compiledTileSurfaceMap.clear();
         _compiledTileGeometryMap.clear();
         _compiledLabelBatches.clear();
-        _layerBuffers.clear();
-        _overlayBuffer = FrameBuffer();
+        _overlayBuffer2D = FrameBuffer();
+        _overlayBuffer3D = FrameBuffer();
         _screenQuad = CompiledQuad();
     }
         
@@ -327,45 +327,38 @@ namespace carto { namespace vt {
         }
         _compiledLabelBatches.clear();
         
-        // Release FBOs
-        for (auto it = _layerBuffers.begin(); it != _layerBuffers.end(); it++) {
-            deleteFrameBuffer(*it);
-        }
-        _layerBuffers.clear();
-
         // Release screen and overlay FBOs
-        deleteFrameBuffer(_overlayBuffer);
+        deleteFrameBuffer(_overlayBuffer2D);
+        deleteFrameBuffer(_overlayBuffer3D);
 
         // Release tile and screen VBOs
         deleteCompiledQuad(_screenQuad);
         
-        _blendNodes.reset();
-        _renderBlendNodes.reset();
+        _renderTiles.reset();
+        _visibleRenderTiles.reset();
         for (int pass = 0; pass < 2; pass++) {
             _bitmapLabelMap[pass].reset();
-            _renderBitmapLabelMap[pass].reset();
+            _visibleBitmapLabelMap[pass].reset();
         }
         _labels.clear();
         _layerLabelMap.clear();
     }
     
     void GLTileRenderer::startFrame(float dt) {
+        using BitmapLabelsPair = std::pair<std::shared_ptr<const Bitmap>, std::vector<std::shared_ptr<Label>>>;
+
         std::lock_guard<std::mutex> lock(_mutex);
-        
+
         // Update geometry blending state
-        _renderBlendNodes = _blendNodes;
-        for (std::shared_ptr<BlendNode>& blendNode : *_renderBlendNodes) {
-            updateBlendNode(*blendNode, dt);
+        _visibleRenderTiles = _renderTiles;
+        for (std::shared_ptr<RenderTile>& renderTile : *_visibleRenderTiles) {
+            updateRenderTile(*renderTile, dt);
         }
         
         // Update labels
-        _renderBitmapLabelMap = _bitmapLabelMap;
+        _visibleBitmapLabelMap = _bitmapLabelMap;
         for (int pass = 0; pass < 2; pass++) {
-            if (!_renderBitmapLabelMap[pass]) {
-                continue;
-            }
-
-            for (std::pair<std::shared_ptr<const Bitmap>, std::vector<std::shared_ptr<Label>>> bitmapLabels : *_renderBitmapLabelMap[pass]) {
+            for (BitmapLabelsPair bitmapLabels : *_visibleBitmapLabelMap[pass]) {
                 updateLabels(bitmapLabels.second, dt);
             }
         }
@@ -377,14 +370,9 @@ namespace carto { namespace vt {
             _screenWidth = viewport[2];
             _screenHeight = viewport[3];
 
-            // Release layer FBOs
-            for (auto it = _layerBuffers.begin(); it != _layerBuffers.end(); it++) {
-                deleteFrameBuffer(*it);
-            }
-            _layerBuffers.clear();
-
             // Release screen/overlay FBOs
-            deleteFrameBuffer(_overlayBuffer);
+            deleteFrameBuffer(_overlayBuffer2D);
+            deleteFrameBuffer(_overlayBuffer3D);
         }
 
         // Reset label batch counter
@@ -393,6 +381,10 @@ namespace carto { namespace vt {
     
     bool GLTileRenderer::renderGeometry2D() {
         std::lock_guard<std::mutex> lock(_mutex);
+
+        if (!_visibleRenderTiles) {
+            return false;
+        }
 
         // Extract current stencil state
         GLint stencilBits = 0;
@@ -423,16 +415,8 @@ namespace carto { namespace vt {
         glEnable(GL_CULL_FACE);
         glCullFace(GL_BACK);
 
-        if (stencilBits > 0) {
-            glEnable(GL_STENCIL_TEST);
-            glStencilMask(255);
-        }
-
         // 2D geometry pass
-        bool update = false;
-        if (_renderBlendNodes) {
-            update = renderBlendNodes2D(*_renderBlendNodes, stencilBits);
-        }
+        bool update = renderGeometry2D(*_visibleRenderTiles, stencilBits);
         
         // Restore GL state
         glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
@@ -447,6 +431,10 @@ namespace carto { namespace vt {
     
     bool GLTileRenderer::renderGeometry3D() {
         std::lock_guard<std::mutex> lock(_mutex);
+
+        if (!_visibleRenderTiles) {
+            return false;
+        }
         
         // Update GL state
         glDisable(GL_BLEND);
@@ -458,12 +446,11 @@ namespace carto { namespace vt {
         glCullFace(GL_BACK);
 
         // 3D polygon pass
-        bool update = false;
-        if (_renderBlendNodes) {
-            update = renderBlendNodes3D(*_renderBlendNodes);
-        }
+        bool update = renderGeometry3D(*_visibleRenderTiles);
         
         // Restore GL state
+        glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+        glBlendEquation(GL_FUNC_ADD);
         glEnable(GL_BLEND);
         glStencilMask(255);
         
@@ -471,7 +458,13 @@ namespace carto { namespace vt {
     }
     
     bool GLTileRenderer::renderLabels(bool labels2D, bool labels3D) {
+        using BitmapLabelsPair = std::pair<std::shared_ptr<const Bitmap>, std::vector<std::shared_ptr<Label>>>;
+
         std::lock_guard<std::mutex> lock(_mutex);
+
+        if (!_visibleBitmapLabelMap[0] || !_visibleBitmapLabelMap[1]) {
+            return false;
+        }
         
         // Update GL state
         glEnable(GL_BLEND);
@@ -487,12 +480,8 @@ namespace carto { namespace vt {
         // Label pass
         bool update = false;
         for (int pass = 0; pass < 2; pass++) {
-            if (!_renderBitmapLabelMap[pass]) {
-                continue;
-            }
-
             if ((pass == 0 && labels2D) || (pass == 1 && labels3D)) {
-                for (std::pair<std::shared_ptr<const Bitmap>, std::vector<std::shared_ptr<Label>>> bitmapLabels : *_renderBitmapLabelMap[pass]) {
+                for (BitmapLabelsPair bitmapLabels : *_visibleBitmapLabelMap[pass]) {
                     update = renderLabels(bitmapLabels.second, bitmapLabels.first) || update;
                 }
             }
@@ -562,31 +551,115 @@ namespace carto { namespace vt {
         culler.process(labels, _mutex);
     }
     
-    bool GLTileRenderer::findGeometryIntersections(const std::vector<cglib::ray3<double>>& rays, float pointBuffer, float lineBuffer, bool geom2D, bool geom3D, std::vector<GeometryIntersectionInfo>& results) const {
+    bool GLTileRenderer::findBitmapIntersections(const std::vector<cglib::ray3<double>>& rays, std::vector<BitmapIntersectionInfo>& results) const {
         std::lock_guard<std::mutex> lock(_mutex);
 
-        // Loop over all blending/rendering nodes
-        std::size_t initialResultCount = results.size();
-        for (const std::shared_ptr<BlendNode>& blendNode : *_blendNodes) {
-            std::multimap<int, RenderNode> renderNodeMap;
-            if (!buildRenderNodes(*blendNode, 1.0f, renderNodeMap)) {
+        // Build render layer map for each layer
+        std::map<int, std::vector<RenderTileLayer>> renderLayerMap;
+        for (const std::shared_ptr<RenderTile>& renderTile : *_renderTiles) {
+            std::multimap<int, RenderTileLayer> renderLayers;
+            if (!buildRenderTileLayers(renderTile->targetTileId, *renderTile, 1.0f, renderLayers)) {
                 continue;
             }
 
-            for (auto it = renderNodeMap.begin(); it != renderNodeMap.end(); it++) {
-                const RenderNode& renderNode = it->second;
+            for (auto it = renderLayers.begin(); it != renderLayers.end(); it++) {
+                renderLayerMap[it->first].push_back(it->second);
+            }
+        }
 
-                cglib::bbox3<double> tileBBox = _transformer->calculateTileBBox(renderNode.tileId.zoom > blendNode->tileId.zoom ? renderNode.tileId : blendNode->tileId);
-                cglib::mat4x4<double> tileMatrix = calculateTileMatrix(renderNode.tileId);
+        // First find the intersecting tile. NOTE: we ignore building height information
+        std::size_t initialResults = results.size();
+        for (auto it = renderLayerMap.begin(); it != renderLayerMap.end(); it++) {
+            for (const RenderTileLayer& renderLayer : it->second) {
+                cglib::bbox3<double> tileBBox = _transformer->calculateTileBBox(renderLayer.tileId.zoom > renderLayer.targetTileId.zoom ? renderLayer.tileId : renderLayer.targetTileId);
+                cglib::mat4x4<double> tileMatrix = calculateTileMatrix(renderLayer.tileId);
                 cglib::mat4x4<double> invTileMatrix = cglib::inverse(tileMatrix);
-                std::shared_ptr<const TileTransformer::VertexTransformer> tileTransformer = _transformer->createTileVertexTransformer(renderNode.tileId);
+                std::shared_ptr<const TileTransformer::VertexTransformer> tileTransformer = _transformer->createTileVertexTransformer(renderLayer.tileId);
+
+                // Do intersection with the tile bbox first
+                if (!std::any_of(rays.begin(), rays.end(), [&](const cglib::ray3<double>& ray) { return cglib::intersect_bbox(tileBBox, ray); })) {
+                    continue;
+                }
+                
+                // Store all bitmaps
+                std::vector<cglib::ray3<double>> rayTiles;
+                for (const cglib::ray3<double>& ray : rays) {
+                    rayTiles.push_back(cglib::transform_ray(ray, invTileMatrix));
+                }
+                for (const std::shared_ptr<TileBitmap>& bitmap : renderLayer.layer->getBitmaps()) {
+                    auto it = _tileSurfaceMap.find(renderLayer.tileId);
+                    if (it == _tileSurfaceMap.end()) {
+                        continue;
+                    }
+
+                    std::vector<BitmapIntersectionInfo> resultsTile;
+                    for (const std::shared_ptr<TileSurface>& tileSurface : it->second) {
+                        findTileBitmapIntersections(renderLayer.tileId, renderLayer.tile, bitmap, tileSurface, rayTiles, resultsTile);
+                    }
+
+                    for (const BitmapIntersectionInfo& resultTile : resultsTile) {
+                        const cglib::ray3<double>& ray = rays[resultTile.rayIndex];
+
+                        cglib::vec3<float> posTile = cglib::vec3<float>::convert(rayTiles[resultTile.rayIndex](resultTile.rayT));
+                        cglib::vec2<float> tilePos = resultTile.uv;
+
+                        // Check that the hit position is inside the tile and normal is facing toward the ray
+                        cglib::vec2<float> clipPos = tilePos;
+                        if (renderLayer.targetTileId.zoom > renderLayer.tileId.zoom) {
+                            cglib::mat3x3<double> clipTransform = cglib::inverse(calculateTileMatrix2D(renderLayer.targetTileId)) * calculateTileMatrix2D(renderLayer.tileId);
+                            clipPos = cglib::transform_point(clipPos, cglib::mat3x3<float>::convert(clipTransform));
+                        }
+                        if (clipPos(0) < 0 || clipPos(1) < 0 || clipPos(0) > 1 || clipPos(1) > 1) {
+                            continue;
+                        }
+
+                        cglib::vec3<float> normal = tileTransformer->calculateNormal(tilePos);
+                        if (cglib::dot_product(normal, cglib::vec3<float>::convert(ray.direction)) >= 0) {
+                            continue;
+                        }
+
+                        cglib::vec3<double> pos = cglib::transform_point(cglib::vec3<double>::convert(posTile), tileMatrix);
+                        double rayT = cglib::dot_product(pos - ray.origin, ray.direction) / cglib::dot_product(ray.direction, ray.direction);
+                        results.emplace_back(resultTile.tileId, renderLayer.layer->getLayerIndex(), resultTile.bitmap, resultTile.uv, resultTile.rayIndex, rayT);
+                    }
+                }
+            }
+        }
+
+        return results.size() > initialResults;
+    }
+    
+    bool GLTileRenderer::findGeometryIntersections(const std::vector<cglib::ray3<double>>& rays, float pointBuffer, float lineBuffer, bool geom2D, bool geom3D, std::vector<GeometryIntersectionInfo>& results) const {
+        std::lock_guard<std::mutex> lock(_mutex);
+        
+        // Build render layer map for each layer
+        std::map<int, std::vector<RenderTileLayer>> renderLayerMap;
+        for (const std::shared_ptr<RenderTile>& renderTile : *_renderTiles) {
+            std::multimap<int, RenderTileLayer> renderLayers;
+            if (!buildRenderTileLayers(renderTile->targetTileId, *renderTile, 1.0f, renderLayers)) {
+                continue;
+            }
+
+            for (auto it = renderLayers.begin(); it != renderLayers.end(); it++) {
+                renderLayerMap[it->first].push_back(it->second);
+            }
+        }
+
+        // Do intersection tests in layer order
+        std::size_t initialResultCount = results.size();
+        for (auto it = renderLayerMap.begin(); it != renderLayerMap.end(); it++) {
+            for (const RenderTileLayer& renderLayer : it->second) {
+                cglib::bbox3<double> tileBBox = _transformer->calculateTileBBox(renderLayer.tileId.zoom > renderLayer.targetTileId.zoom ? renderLayer.tileId : renderLayer.targetTileId);
+                cglib::mat4x4<double> tileMatrix = calculateTileMatrix(renderLayer.tileId);
+                cglib::mat4x4<double> invTileMatrix = cglib::inverse(tileMatrix);
+                std::shared_ptr<const TileTransformer::VertexTransformer> tileTransformer = _transformer->createTileVertexTransformer(renderLayer.tileId);
 
                 // Test all geometry batches for intersections
                 std::vector<cglib::ray3<double>> rayTiles;
                 for (const cglib::ray3<double>& ray : rays) {
                     rayTiles.push_back(cglib::transform_ray(ray, invTileMatrix));
                 }
-                for (const std::shared_ptr<TileGeometry>& geometry : renderNode.layer->getGeometries()) {
+                for (const std::shared_ptr<TileGeometry>& geometry : renderLayer.layer->getGeometries()) {
                     if (geometry->getType() == TileGeometry::Type::POLYGON3D) {
                         if (!geom3D) {
                             continue;
@@ -598,7 +671,7 @@ namespace carto { namespace vt {
                     }
 
                     std::vector<GeometryIntersectionInfo> resultsTile;
-                    findTileGeometryIntersections(renderNode.tileId, blendNode->tile, geometry, rayTiles, pointBuffer, lineBuffer, blendNode->blend, resultsTile);
+                    findTileGeometryIntersections(renderLayer.tileId, renderLayer.tile, geometry, rayTiles, pointBuffer, lineBuffer, renderLayer.blend, resultsTile);
 
                     for (const GeometryIntersectionInfo& resultTile : resultsTile) {
                         const cglib::ray3<double>& ray = rays[resultTile.rayIndex];
@@ -608,8 +681,8 @@ namespace carto { namespace vt {
 
                         // Check that the hit position is inside the tile and normal is facing toward the ray
                         cglib::vec2<float> clipPos = tilePos;
-                        if (blendNode->tileId.zoom > renderNode.tileId.zoom) {
-                            cglib::mat3x3<double> clipTransform = cglib::inverse(calculateTileMatrix2D(blendNode->tileId)) * calculateTileMatrix2D(renderNode.tileId);
+                        if (renderLayer.targetTileId.zoom > renderLayer.tileId.zoom) {
+                            cglib::mat3x3<double> clipTransform = cglib::inverse(calculateTileMatrix2D(renderLayer.targetTileId)) * calculateTileMatrix2D(renderLayer.tileId);
                             clipPos = cglib::transform_point(tilePos, cglib::mat3x3<float>::convert(clipTransform));
                         }
                         if (clipPos(0) < 0 || clipPos(1) < 0 || clipPos(0) > 1 || clipPos(1) > 1) {
@@ -622,7 +695,7 @@ namespace carto { namespace vt {
 
                         cglib::vec3<double> pos = cglib::transform_point(cglib::vec3<double>::convert(posTile), tileMatrix);
                         double rayT = cglib::dot_product(pos - ray.origin, ray.direction) / cglib::dot_product(ray.direction, ray.direction);
-                        results.emplace_back(resultTile.tileId, renderNode.layer->getLayerIndex(), resultTile.featureId, resultTile.rayIndex, rayT);
+                        results.emplace_back(resultTile.tileId, renderLayer.layer->getLayerIndex(), resultTile.featureId, resultTile.rayIndex, rayT);
                     }
                 }
             }
@@ -632,6 +705,8 @@ namespace carto { namespace vt {
     }
     
     bool GLTileRenderer::findLabelIntersections(const std::vector<cglib::ray3<double>>& rays, float buffer, bool labels2D, bool labels3D, std::vector<GeometryIntersectionInfo>& results) const {
+        using BitmapLabelsPair = std::pair<std::shared_ptr<const Bitmap>, std::vector<std::shared_ptr<Label>>>;
+
         std::lock_guard<std::mutex> lock(_mutex);
 
         // Test for label intersections. The ordering may be mixed compared to actual rendering order, but this is non-issue if the labels are non-overlapping.
@@ -640,11 +715,8 @@ namespace carto { namespace vt {
             if ((pass == 0 && !labels2D) || (pass == 1 && !labels3D)) {
                 continue;
             }
-            if (!_renderBitmapLabelMap[pass]) {
-                continue;
-            }
 
-            for (std::pair<std::shared_ptr<const Bitmap>, std::vector<std::shared_ptr<Label>>> bitmapLabels : *_renderBitmapLabelMap[pass]) {
+            for (BitmapLabelsPair bitmapLabels : *_bitmapLabelMap[pass]) {
                 for (const std::shared_ptr<Label>& label : bitmapLabels.second) {
                     if (!label->isValid() || !label->isVisible() || !label->isActive() || label->getOpacity() <= 0) {
                         continue;
@@ -667,81 +739,24 @@ namespace carto { namespace vt {
         return results.size() > initialResultCount;
     }
 
-    bool GLTileRenderer::findBitmapIntersections(const std::vector<cglib::ray3<double>>& rays, std::vector<BitmapIntersectionInfo>& results) const {
-        std::lock_guard<std::mutex> lock(_mutex);
-
-        // First find the intersecting tile. NOTE: we ignore building height information
-        std::size_t initialResults = results.size();
-        for (const std::shared_ptr<BlendNode>& blendNode : *_blendNodes) {
-            std::multimap<int, RenderNode> renderNodeMap;
-            if (!buildRenderNodes(*blendNode, 1.0f, renderNodeMap)) {
-                continue;
-            }
-
-            for (auto it = renderNodeMap.begin(); it != renderNodeMap.end(); it++) {
-                const RenderNode& renderNode = it->second;
-                
-                cglib::bbox3<double> tileBBox = _transformer->calculateTileBBox(renderNode.tileId.zoom > blendNode->tileId.zoom ? renderNode.tileId : blendNode->tileId);
-                cglib::mat4x4<double> tileMatrix = calculateTileMatrix(renderNode.tileId);
-                cglib::mat4x4<double> invTileMatrix = cglib::inverse(tileMatrix);
-                std::shared_ptr<const TileTransformer::VertexTransformer> tileTransformer = _transformer->createTileVertexTransformer(renderNode.tileId);
-
-                // Do intersection with the tile bbox first
-                if (!std::any_of(rays.begin(), rays.end(), [&](const cglib::ray3<double>& ray) { return cglib::intersect_bbox(tileBBox, ray); })) {
-                    continue;
-                }
-                
-                // Store all bitmaps
-                std::vector<cglib::ray3<double>> rayTiles;
-                for (const cglib::ray3<double>& ray : rays) {
-                    rayTiles.push_back(cglib::transform_ray(ray, invTileMatrix));
-                }
-                for (const std::shared_ptr<TileBitmap>& bitmap : renderNode.layer->getBitmaps()) {
-                    auto it = _tileSurfaceMap.find(renderNode.tileId);
-                    if (it == _tileSurfaceMap.end()) {
-                        continue;
-                    }
-
-                    std::vector<BitmapIntersectionInfo> resultsTile;
-                    for (const std::shared_ptr<TileSurface>& tileSurface : it->second) {
-                        findTileBitmapIntersections(renderNode.tileId, blendNode->tile, bitmap, tileSurface, rayTiles, resultsTile);
-                    }
-
-                    for (const BitmapIntersectionInfo& resultTile : resultsTile) {
-                        const cglib::ray3<double>& ray = rays[resultTile.rayIndex];
-
-                        cglib::vec3<float> posTile = cglib::vec3<float>::convert(rayTiles[resultTile.rayIndex](resultTile.rayT));
-                        cglib::vec2<float> tilePos = resultTile.uv;
-
-                        // Check that the hit position is inside the tile and normal is facing toward the ray
-                        cglib::vec2<float> clipPos = tilePos;
-                        if (blendNode->tileId.zoom > renderNode.tileId.zoom) {
-                            cglib::mat3x3<double> clipTransform = cglib::inverse(calculateTileMatrix2D(blendNode->tileId)) * calculateTileMatrix2D(renderNode.tileId);
-                            clipPos = cglib::transform_point(clipPos, cglib::mat3x3<float>::convert(clipTransform));
-                        }
-                        if (clipPos(0) < 0 || clipPos(1) < 0 || clipPos(0) > 1 || clipPos(1) > 1) {
-                            continue;
-                        }
-
-                        cglib::vec3<float> normal = tileTransformer->calculateNormal(tilePos);
-                        if (cglib::dot_product(normal, cglib::vec3<float>::convert(ray.direction)) >= 0) {
-                            continue;
-                        }
-
-                        cglib::vec3<double> pos = cglib::transform_point(cglib::vec3<double>::convert(posTile), tileMatrix);
-                        double rayT = cglib::dot_product(pos - ray.origin, ray.direction) / cglib::dot_product(ray.direction, ray.direction);
-                        results.emplace_back(resultTile.tileId, renderNode.layer->getLayerIndex(), resultTile.bitmap, resultTile.uv, resultTile.rayIndex, rayT);
-                    }
-                }
-            }
-        }
-
-        return results.size() > initialResults;
-    }
-    
     bool GLTileRenderer::isTileVisible(const TileId& tileId) const {
         cglib::bbox3<double> bbox = _transformer->calculateTileBBox(tileId);
         return _viewState.frustum.inside(bbox);
+    }
+
+    bool GLTileRenderer::isEmptyBlendRequired(CompOp compOp) const {
+        switch (compOp) {
+        case CompOp::SRC:
+        case CompOp::SRC_OVER:
+        case CompOp::DST_OVER:
+        case CompOp::DST_ATOP:
+        case CompOp::PLUS:
+        case CompOp::MINUS:
+        case CompOp::LIGHTEN:
+            return false;
+        default:
+            return true;
+        }
     }
 
     cglib::mat4x4<double> GLTileRenderer::calculateTileMatrix(const TileId& tileId, float coordScale) const {
@@ -763,57 +778,10 @@ namespace carto { namespace vt {
         return cglib::mat4x4<float>::convert(_cameraProjMatrix * calculateTileMatrix(tileId, coordScale));
     }
     
-    bool GLTileRenderer::isEmptyBlendRequired(CompOp compOp) const {
-        switch (compOp) {
-        case CompOp::SRC:
-        case CompOp::SRC_OVER:
-        case CompOp::DST_OVER:
-        case CompOp::DST_ATOP:
-        case CompOp::PLUS:
-        case CompOp::MINUS:
-        case CompOp::LIGHTEN:
-            return false;
-        default:
-            return true;
-        }
-    }
-
-    void GLTileRenderer::setGLBlendState(CompOp compOp) {
-        struct GLBlendState {
-            GLenum blendEquation;
-            GLenum blendFuncSrc;
-            GLenum blendFuncDst;
-        };
-        
-        static const std::map<CompOp, GLBlendState> compOpBlendStates = {
-            { CompOp::SRC,      { GL_FUNC_ADD, GL_ONE, GL_ZERO } },
-            { CompOp::SRC_OVER, { GL_FUNC_ADD, GL_ONE, GL_ONE_MINUS_SRC_ALPHA } },
-            { CompOp::SRC_IN,   { GL_FUNC_ADD, GL_DST_ALPHA, GL_ZERO } },
-            { CompOp::SRC_ATOP, { GL_FUNC_ADD, GL_DST_ALPHA, GL_ONE_MINUS_SRC_ALPHA } },
-            { CompOp::DST,      { GL_FUNC_ADD, GL_ZERO, GL_ONE } },
-            { CompOp::DST_OVER, { GL_FUNC_ADD, GL_ONE_MINUS_DST_ALPHA, GL_ONE } },
-            { CompOp::DST_IN,   { GL_FUNC_ADD, GL_ZERO, GL_SRC_ALPHA } },
-            { CompOp::DST_ATOP, { GL_FUNC_ADD, GL_ONE_MINUS_DST_ALPHA, GL_SRC_ALPHA } },
-            { CompOp::ZERO,     { GL_FUNC_ADD, GL_ZERO, GL_ZERO } },
-            { CompOp::PLUS,     { GL_FUNC_ADD, GL_ONE, GL_ONE } },
-            { CompOp::MINUS,    { GL_FUNC_REVERSE_SUBTRACT, GL_ONE, GL_ONE } },
-            { CompOp::MULTIPLY, { GL_FUNC_ADD, GL_DST_COLOR, GL_ONE_MINUS_SRC_ALPHA } },
-            { CompOp::SCREEN,   { GL_FUNC_ADD, GL_ONE, GL_ONE_MINUS_SRC_COLOR } },
-            { CompOp::DARKEN,   { GL_MIN_EXT,  GL_ONE, GL_ONE } },
-            { CompOp::LIGHTEN,  { GL_MAX_EXT,  GL_ONE, GL_ONE } }
-        };
-        
-        auto it = compOpBlendStates.find(compOp);
-        if (it != compOpBlendStates.end()) {
-            glBlendFunc(it->second.blendFuncSrc, it->second.blendFuncDst);
-            glBlendEquation(it->second.blendEquation);
-        }
-    }
-
-    float GLTileRenderer::calculateBlendNodeOpacity(const BlendNode& blendNode, float blend) const {
-        float opacity = blend * blendNode.blend;
-        for (const std::shared_ptr<BlendNode>& childBlendNode : blendNode.childNodes) {
-            opacity += calculateBlendNodeOpacity(*childBlendNode, blend * (1 - blendNode.blend));
+    float GLTileRenderer::calculateRenderTileOpacity(const RenderTile& renderTile, float blend) const {
+        float opacity = blend * renderTile.blend;
+        for (const std::shared_ptr<RenderTile>& childRenderTile : renderTile.childTiles) {
+            opacity += calculateRenderTileOpacity(*childRenderTile, blend * (1 - renderTile.blend));
         }
         return std::min(opacity, 1.0f);
     }
@@ -853,88 +821,89 @@ namespace carto { namespace vt {
         return mask == 15;
     }
     
-    void GLTileRenderer::updateBlendNode(BlendNode& blendNode, float dBlend) const {
-        if (!isTileVisible(blendNode.tileId)) {
-            blendNode.blend = 1.0f;
+    void GLTileRenderer::updateRenderTile(RenderTile& renderTile, float dBlend) const {
+        if (!isTileVisible(renderTile.targetTileId)) {
+            renderTile.blend = 1.0f;
             return;
         }
         
-        blendNode.blend += dBlend;
-        if (blendNode.blend >= 1.0f) {
-            blendNode.blend = 1.0f;
-            blendNode.childNodes.clear();
+        renderTile.blend += dBlend;
+        if (renderTile.blend >= 1.0f) {
+            renderTile.blend = 1.0f;
+            renderTile.childTiles.clear();
         }
         
-        for (std::shared_ptr<BlendNode>& childBlendNode : blendNode.childNodes) {
-            updateBlendNode(*childBlendNode, dBlend);
+        for (std::shared_ptr<RenderTile>& childRenderTile : renderTile.childTiles) {
+            updateRenderTile(*childRenderTile, dBlend);
         }
     }
     
-    bool GLTileRenderer::buildRenderNodes(const BlendNode& blendNode, float blend, std::multimap<int, RenderNode>& renderNodeMap) const {
-        if (!isTileVisible(blendNode.tileId)) {
+    bool GLTileRenderer::buildRenderTileLayers(const TileId& targetTileId, const RenderTile& renderTile, float blend, std::multimap<int, RenderTileLayer>& renderLayers) const {
+        if (!isTileVisible(targetTileId)) {
             return false;
         }
         
-        bool exists = false;
-        if (blendNode.tile) {
-            // Use original source tile id for render node, but apply tile shift from target tile
-            TileId rootTileId = blendNode.tileId;
+        bool visible = false;
+        if (renderTile.tile) {
+            TileId rootTileId = targetTileId;
             while (rootTileId.zoom > 0) {
                 rootTileId = rootTileId.getParent();
             }
-            TileId tileId = blendNode.tile->getTileId();
+            TileId tileId = renderTile.tile->getTileId();
             tileId.x += rootTileId.x * (1 << tileId.zoom);
             tileId.y += rootTileId.y * (1 << tileId.zoom);
             
-            // Add render nodes for each layer
-            for (const std::shared_ptr<TileLayer>& layer : blendNode.tile->getLayers()) {
-                // Special case for raster layers - ignore global blend factor
-                RenderNode renderNode(tileId, blendNode.tile, layer, (layer->getGeometries().empty() ? blendNode.blend : blend * blendNode.blend));
-                addRenderNode(renderNode, renderNodeMap);
+            if (isTileVisible(tileId)) {
+                for (const std::shared_ptr<TileLayer>& layer : renderTile.tile->getLayers()) {
+                    bool ignoreBlend = layer->getGeometries().empty() || layer->getCompOp(); // ignore blend for bitmap layers and layers with explicit comp-op
+                    RenderTileLayer renderLayer(tileId, targetTileId, renderTile.tile, layer, (ignoreBlend ? renderTile.blend : blend * renderTile.blend));
+                    addRenderTileLayer(renderLayer, renderLayers);
+                    visible = true;
+                }
             }
-            exists = true;
         }
         
-        for (const std::shared_ptr<BlendNode>& childBlendNode : blendNode.childNodes) {
-            if (buildRenderNodes(*childBlendNode, blend * (1 - blendNode.blend), renderNodeMap)) {
-                exists = true;
+        for (const std::shared_ptr<RenderTile>& childRenderTile : renderTile.childTiles) {
+            TileId childTargetTileId = childRenderTile->targetTileId.zoom > targetTileId.zoom ? childRenderTile->targetTileId : targetTileId;
+            if (buildRenderTileLayers(childTargetTileId, *childRenderTile, blend * (1 - renderTile.blend), renderLayers)) {
+                visible = true;
             }
         }
-        return exists;
+        return visible;
     }
     
-    void GLTileRenderer::addRenderNode(RenderNode renderNode, std::multimap<int, RenderNode>& renderNodeMap) const {
-        const std::shared_ptr<const TileLayer>& layer = renderNode.layer;
-        auto range = renderNodeMap.equal_range(layer->getLayerIndex());
+    void GLTileRenderer::addRenderTileLayer(RenderTileLayer renderLayer, std::multimap<int, RenderTileLayer>& renderLayers) const {
+        const std::shared_ptr<const TileLayer>& layer = renderLayer.layer;
+        auto range = renderLayers.equal_range(layer->getLayerIndex());
         for (auto it = range.first; it != range.second; ) {
-            RenderNode& baseRenderNode = (it++)->second;
-            if (!renderNode.tileId.intersects(baseRenderNode.tileId)) {
+            RenderTileLayer& baseRenderLayer = (it++)->second;
+            if (!renderLayer.tileId.intersects(baseRenderLayer.tileId)) {
                 continue;
             }
 
             // Check if the layer should be combined with base layer
             bool combine = false;
-            if (!layer->getGeometries().empty() && !baseRenderNode.layer->getGeometries().empty()) {
+            if (!layer->getGeometries().empty() && !baseRenderLayer.layer->getGeometries().empty()) {
                 TileGeometry::Type type = layer->getGeometries().front()->getType();
-                TileGeometry::Type baseType = baseRenderNode.layer->getGeometries().front()->getType();
+                TileGeometry::Type baseType = baseRenderLayer.layer->getGeometries().front()->getType();
                 combine = (type == baseType);
             }
             
             // Combine layers, if possible
             if (combine) {
-                if (baseRenderNode.tileId.zoom > renderNode.tileId.zoom) {
-                    renderNode.blend = std::max(renderNode.blend, std::min(renderNode.initialBlend + baseRenderNode.blend, 1.0f));
-                    it = renderNodeMap.erase(--it);
+                if (baseRenderLayer.tileId.zoom > renderLayer.tileId.zoom) {
+                    renderLayer.blend = std::max(renderLayer.blend, std::min(renderLayer.initialBlend + baseRenderLayer.blend, 1.0f));
+                    it = renderLayers.erase(--it);
                 } else {
-                    baseRenderNode.blend = std::max(baseRenderNode.blend, std::min(baseRenderNode.initialBlend + renderNode.blend, 1.0f));
+                    baseRenderLayer.blend = std::max(baseRenderLayer.blend, std::min(baseRenderLayer.initialBlend + renderLayer.blend, 1.0f));
                     return;
                 }
             }
         }
         
-        // New/non-intersecting layer. Add it to render node map.
-        auto it = renderNodeMap.lower_bound(layer->getLayerIndex());
-        renderNodeMap.insert(it, { layer->getLayerIndex(), renderNode });
+        // New/non-intersecting layer. Add it to render layer map.
+        auto it = renderLayers.lower_bound(layer->getLayerIndex());
+        renderLayers.insert(it, { layer->getLayerIndex(), renderLayer });
     }
     
     void GLTileRenderer::updateLabels(const std::vector<std::shared_ptr<Label>>& labels, float dOpacity) const {
@@ -1048,147 +1017,161 @@ namespace carto { namespace vt {
         }
     }
 
-    bool GLTileRenderer::renderBlendNodes2D(const std::vector<std::shared_ptr<BlendNode>>& blendNodes, GLint stencilBits) {
-        GLint stencilNum = (1 << stencilBits) - 1; // forces initial stencil clear
-        std::optional<GLenum> activeStencilMode;
-        std::optional<GLint> activeStencilNum;
-        std::optional<CompOp> activeCompOp;
-
-        auto setupStencil = [&](bool enable) {
-            GLenum stencilMode = enable ? GL_EQUAL : GL_ALWAYS;
-            if (!(stencilMode == activeStencilMode && activeStencilNum == stencilNum) && stencilBits > 0) {
-                glStencilFunc(stencilMode, stencilNum, 255);
-                activeStencilMode = stencilMode;
-                activeStencilNum = stencilNum;
-            }
-        };
-
-        auto setupBlendMode = [&, this](CompOp compOp) {
-            if (compOp != activeCompOp) {
-                setGLBlendState(compOp);
-                activeCompOp = compOp;
-            }
-        };
-
+    bool GLTileRenderer::renderGeometry2D(const std::vector<std::shared_ptr<RenderTile>>& renderTiles, GLint stencilBits) {
         bool update = false;
-        for (const std::shared_ptr<BlendNode>& blendNode : blendNodes) {
-            float backgroundOpacity = calculateBlendNodeOpacity(*blendNode, 1.0f);
-            if (backgroundOpacity > 0) {
-                setupStencil(false);
-                setupBlendMode(CompOp::SRC_OVER);
-                renderTileBackground(blendNode->tileId, blendNode->tile->getBackground(), blendNode->tile->getTileSize(), backgroundOpacity);
-            }
-            update = backgroundOpacity < 1.0f || update;
-        }    
 
-        TileId activeTileMaskId(-1, -1, -1); // invalid mask
-        for (const std::shared_ptr<BlendNode>& blendNode : blendNodes) {
-            std::multimap<int, RenderNode> renderNodeMap;
-            if (!buildRenderNodes(*blendNode, 1.0f, renderNodeMap)) {
+        // Extract layer tiles for each layers
+        std::map<int, std::vector<RenderTileLayer>> renderLayerMap;
+        for (const std::shared_ptr<RenderTile>& renderTile : renderTiles) {
+            std::multimap<int, RenderTileLayer> renderLayers;
+            if (!buildRenderTileLayers(renderTile->targetTileId, *renderTile, 1.0f, renderLayers)) {
                 continue;
             }
-            
-            std::unordered_map<int, std::size_t> layerBufferMap;
-            for (auto it = renderNodeMap.begin(); it != renderNodeMap.end(); it++) {
-                const RenderNode& renderNode = it->second;
-                
-                float blendOpacity = 1.0f;
-                float geometryOpacity = 1.0f;
-                float opacity = (renderNode.layer->getOpacityFunc())(_viewState);
-                if (renderNode.layer->getCompOp()) { // a 'useful' hack - we use real layer opacity only if comp-op is explicitly defined; otherwise we translate it into element opacity, which is in many cases close enough
-                    blendOpacity = opacity;
-                } else {
-                    geometryOpacity = opacity;
+
+            for (auto it = renderLayers.begin(); it != renderLayers.end(); it++) {
+                const std::shared_ptr<const TileLayer>& layer = it->second.layer;
+
+                bool contains2DGeometry = !layer->getBitmaps().empty();
+                for (const std::shared_ptr<TileGeometry>& geometry : layer->getGeometries()) {
+                    contains2DGeometry = (geometry->getType() != TileGeometry::Type::POLYGON3D) || contains2DGeometry;
+                }
+                if (contains2DGeometry || (layer->getCompOp() && isEmptyBlendRequired(*layer->getCompOp()))) {
+                    renderLayerMap[it->first].push_back(it->second);
+                }
+            }
+        }
+
+        // Render tile backgrounds, allocate stencil values for each target tile
+        std::optional<CompOp> currentCompOp;
+        for (const std::shared_ptr<RenderTile>& renderTile : renderTiles) {
+            float backgroundOpacity = calculateRenderTileOpacity(*renderTile, 1.0f);
+            if (backgroundOpacity > 0) {
+                CompOp backgroundCompOp = CompOp::SRC_OVER;
+                if (currentCompOp != backgroundCompOp) {
+                    setCompOp(backgroundCompOp);
+                    currentCompOp = backgroundCompOp;
+                }
+                renderTileBackground(renderTile->targetTileId, renderTile->tile->getBackground(), renderTile->tile->getTileSize(), backgroundOpacity);
+            }
+
+            update = backgroundOpacity < 1.0f || update;
+        }
+
+        // Allocate stencil value for each target tile
+        std::map<TileId, GLint> tileStencilMap;
+        if (stencilBits > 0) {
+            for (const std::shared_ptr<RenderTile>& renderTile : renderTiles) {
+                tileStencilMap[renderTile->targetTileId] = static_cast<int>(tileStencilMap.size() + 1);
+            }
+            glEnable(GL_STENCIL_TEST);
+        }
+        
+        // Render tile layers in correct order
+        bool resetStencil = true;
+        for (auto it = renderLayerMap.begin(); it != renderLayerMap.end(); it++) {
+            const std::vector<RenderTileLayer>& renderLayers = it->second;
+            if (renderLayers.empty()) {
+                continue;
+            }
+            const std::shared_ptr<const TileLayer>& layer = renderLayers.front().layer;
+
+            // Layer settings
+            float layerOpacity = (layer->getOpacityFunc())(_viewState);
+            float geometryOpacity = 1.0f;
+            if (!layer->getCompOp()) { // a 'useful' hack - we use real layer opacity only if comp-op is explicitly defined; otherwise we translate it into element opacity, which is in many cases close enough
+                std::swap(layerOpacity, geometryOpacity);
+            }
+            CompOp layerCompOp = (layer->getCompOp() ? *layer->getCompOp() : CompOp::SRC_OVER);
+
+            // If compositing is enabled for this layer, prepare overlay rendering buffer.
+            GLint currentFBO = 0;
+            if (layer->getCompOp()) {
+                glGetIntegerv(GL_FRAMEBUFFER_BINDING, &currentFBO);
+
+                if (_overlayBuffer2D.fbo == 0) {
+                    createFrameBuffer(_overlayBuffer2D, true, false, stencilBits > 0);
                 }
 
-                GLint currentFBO = 0;
-                bool blendGeometry = false;
+                glBindFramebuffer(GL_FRAMEBUFFER, _overlayBuffer2D.fbo);
+                glClearColor(0, 0, 0, 0);
+                glClear(GL_COLOR_BUFFER_BIT);
 
-                auto setupFrameBuffer = [&]() {
-                    if (renderNode.layer->getCompOp() && !blendGeometry) {
-                        blendGeometry = true;
+                resetStencil = true;
+            }
 
-                        glGetIntegerv(GL_FRAMEBUFFER_BINDING, &currentFBO);
+            // If needed, initialize the stencil buffer with target tile masks
+            if (resetStencil && stencilBits > 0) {
+                resetStencil = false;
 
-                        auto it = layerBufferMap.find(renderNode.layer->getLayerIndex());
-                        if (it == layerBufferMap.end()) {
-                            std::size_t bufferIndex = layerBufferMap.size();
-                            if (bufferIndex >= _layerBuffers.size()) {
-                                _layerBuffers.emplace_back();
-                                createFrameBuffer(_layerBuffers.back(), true, false, stencilBits > 0);
-                            }
-                            it = layerBufferMap.emplace(renderNode.layer->getLayerIndex(), bufferIndex).first;
-                            glBindFramebuffer(GL_FRAMEBUFFER, _layerBuffers[it->second].fbo);
-                            glClearColor(0, 0, 0, 0);
-                            glClearStencil(0);
-                            glClear(GL_COLOR_BUFFER_BIT | (stencilBits > 0 ? GL_STENCIL_BUFFER_BIT : 0));
-                        } else {
-                            glBindFramebuffer(GL_FRAMEBUFFER, _layerBuffers[it->second].fbo);
+                glStencilMask(255);
+                glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+                glClearStencil(0);
+                glClear(GL_STENCIL_BUFFER_BIT);
+                glStencilOp(GL_REPLACE, GL_REPLACE, GL_REPLACE);
+                for (const std::shared_ptr<RenderTile>& renderTile : renderTiles) {
+                    glStencilFunc(GL_ALWAYS, tileStencilMap[renderTile->targetTileId], 255);
+                    renderTileMask(renderTile->targetTileId);
+                }
+                glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+                glStencilMask(0);
+                glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+            }
+
+            // Render tile layers for this layer
+            for (const RenderTileLayer& renderLayer : renderLayers) {
+                if (stencilBits > 0) {
+                    int stencilValue = 0;
+                    for (TileId targetTileId = renderLayer.targetTileId; targetTileId.zoom >= 0; targetTileId = targetTileId.getParent()) {
+                        auto stencilIt = tileStencilMap.find(targetTileId);
+                        if (stencilIt != tileStencilMap.end()) {
+                            stencilValue = stencilIt->second;
+                            break;
                         }
-
-                        activeTileMaskId = TileId(-1, -1, -1); // force stencil mask update
                     }
-                };
-
-                if (renderNode.layer->getCompOp()) {
-                    if (isEmptyBlendRequired(*renderNode.layer->getCompOp())) {
-                        setupFrameBuffer();
-                    }
+                    glStencilFunc(GL_EQUAL, stencilValue, 255);
                 }
 
-                for (const std::shared_ptr<TileBitmap>& bitmap : renderNode.layer->getBitmaps()) {
-                    setupFrameBuffer();
-                    
-                    setupStencil(false);
-                    setupBlendMode(CompOp::SRC_OVER);
-                    renderTileBitmap(renderNode.tileId, blendNode->tileId, renderNode.blend, geometryOpacity, bitmap);
+                for (const std::shared_ptr<TileBitmap>& bitmap : renderLayer.layer->getBitmaps()) {
+                    CompOp bitmapCompOp = CompOp::SRC_OVER;
+                    if (currentCompOp != bitmapCompOp) {
+                        setCompOp(bitmapCompOp);
+                        currentCompOp = bitmapCompOp;
+                    }
+                    renderTileBitmap(renderLayer.tileId, renderLayer.targetTileId, renderLayer.blend, geometryOpacity, bitmap);
+                }
+
+                for (const std::shared_ptr<TileGeometry>& geometry : renderLayer.layer->getGeometries()) {
+                    if (geometry->getType() != TileGeometry::Type::POLYGON3D) {
+                        CompOp geometryCompOp = geometry->getStyleParameters().compOp;
+                        if (currentCompOp != geometryCompOp) {
+                            setCompOp(geometryCompOp);
+                            currentCompOp = geometryCompOp;
+                        }
+                        renderTileGeometry(renderLayer.tileId, renderLayer.targetTileId, renderLayer.blend, geometryOpacity, renderLayer.tile, geometry);
+                    }
                 }
                 
-                for (const std::shared_ptr<TileGeometry>& geometry : renderNode.layer->getGeometries()) {
-                    if (geometry->getType() == TileGeometry::Type::POLYGON3D) {
-                        continue;
-                    }
+                update = renderLayer.initialBlend < 1.0f || update;
+            }
 
-                    setupFrameBuffer();
-
-                    TileId tileMaskId = renderNode.tileId.zoom > blendNode->tileId.zoom ? renderNode.tileId : blendNode->tileId;
-                    if (activeTileMaskId != tileMaskId && stencilBits > 0) {
-                        if (++stencilNum == (1 << stencilBits)) { // do initial clear, or clear after each N (usually 256) updates
-                            glClearStencil(0);
-                            glClear(GL_STENCIL_BUFFER_BIT);
-                            stencilNum = 1;
-                        }
-
-                        glStencilOp(GL_REPLACE, GL_REPLACE, GL_REPLACE);
-                        glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-
-                        setupStencil(false);
-                        renderTileMask(tileMaskId);
-
-                        glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
-                        glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-
-                        activeTileMaskId = tileMaskId;
-                    }
-
-                    setupStencil(true);
-                    setupBlendMode(geometry->getStyleParameters().compOp);
-                    renderTileGeometry(renderNode.tileId, blendNode->tileId, renderNode.blend, geometryOpacity, renderNode.tile, geometry);
+            // If compositing was enabled for this layer, blend the rendered layer with framebuffer
+            if (layer->getCompOp()) {
+                if (_glExtensions->GL_OES_packed_depth_stencil_supported() && !_overlayBuffer2D.depthStencilAttachments.empty()) {
+                    _glExtensions->glDiscardFramebufferEXT(GL_FRAMEBUFFER, static_cast<GLsizei>(_overlayBuffer2D.depthStencilAttachments.size()), _overlayBuffer2D.depthStencilAttachments.data());
                 }
-                update = renderNode.initialBlend < 1.0f || update;
 
-                if (blendGeometry) {
-                    const FrameBuffer& layerBuffer = _layerBuffers[layerBufferMap[renderNode.layer->getLayerIndex()]];
+                glBindFramebuffer(GL_FRAMEBUFFER, currentFBO);
 
-                    if (_glExtensions->GL_OES_packed_depth_stencil_supported() && !layerBuffer.depthStencilAttachments.empty()) {
-                        _glExtensions->glDiscardFramebufferEXT(GL_FRAMEBUFFER, static_cast<GLsizei>(layerBuffer.depthStencilAttachments.size()), layerBuffer.depthStencilAttachments.data());
-                    }
-
-                    glBindFramebuffer(GL_FRAMEBUFFER, currentFBO);
-
-                    setupStencil(false);
-                    setupBlendMode(*renderNode.layer->getCompOp());
-                    blendTileTexture(renderNode.tileId, blendOpacity, layerBuffer.colorTexture);
+                if (stencilBits > 0) {
+                    glDisable(GL_STENCIL_TEST);
+                }
+                if (currentCompOp != layerCompOp) {
+                    setCompOp(layerCompOp);
+                    currentCompOp = layerCompOp;
+                }
+                blendScreenTexture(layerOpacity, _overlayBuffer2D.colorTexture);
+                if (stencilBits > 0) {
+                    glEnable(GL_STENCIL_TEST);
                 }
             }
         }
@@ -1196,70 +1179,91 @@ namespace carto { namespace vt {
         return update;
     }
     
-    bool GLTileRenderer::renderBlendNodes3D(const std::vector<std::shared_ptr<BlendNode>>& blendNodes) {
+    bool GLTileRenderer::renderGeometry3D(const std::vector<std::shared_ptr<RenderTile>>& renderTiles) {
         bool update = false;
-        GLint currentFBO = 0;
-        bool blendGeometry = false;
-        for (const std::shared_ptr<BlendNode>& blendNode : blendNodes) {
-            std::multimap<int, RenderNode> renderNodeMap;
-            if (!buildRenderNodes(*blendNode, 1.0f, renderNodeMap)) {
+        
+        // Extract layer tiles for each layers
+        std::map<int, std::vector<RenderTileLayer>> renderLayerMap;
+        for (const std::shared_ptr<RenderTile>& renderTile : renderTiles) {
+            std::multimap<int, RenderTileLayer> renderLayers;
+            if (!buildRenderTileLayers(renderTile->targetTileId, *renderTile, 1.0f, renderLayers)) {
                 continue;
             }
-            
-            for (auto it = renderNodeMap.begin(); it != renderNodeMap.end(); it++) {
-                const RenderNode& renderNode = it->second;
 
-                float opacity = 1.0f;
-                if (renderNode.layer->getCompOp()) {
-                    opacity = (renderNode.layer->getOpacityFunc())(_viewState);
+            for (auto it = renderLayers.begin(); it != renderLayers.end(); it++) {
+                const std::shared_ptr<const TileLayer>& layer = it->second.layer;
+
+                bool contains3DGeometry = false;
+                for (const std::shared_ptr<TileGeometry>& geometry : layer->getGeometries()) {
+                    contains3DGeometry = (geometry->getType() == TileGeometry::Type::POLYGON3D) || contains3DGeometry;
+                }
+                if (contains3DGeometry || (layer->getCompOp() && isEmptyBlendRequired(*layer->getCompOp()))) {
+                    renderLayerMap[it->first].push_back(it->second);
+                }
+            }
+        }
+
+        // Render tile layers in correct order
+        for (auto it = renderLayerMap.begin(); it != renderLayerMap.end(); it++) {
+            const std::vector<RenderTileLayer>& renderLayers = it->second;
+            if (renderLayers.empty()) {
+                continue;
+            }
+            const std::shared_ptr<const TileLayer>& layer = renderLayers.front().layer;
+
+            // Layer settings
+            float layerOpacity = (layer->getOpacityFunc())(_viewState);
+            float geometryOpacity = 1.0f;
+            if (!layer->getCompOp()) { // use the hack to conform with normal '2D' layers
+                std::swap(layerOpacity, geometryOpacity);
+            }
+            CompOp layerCompOp = (layer->getCompOp() ? *layer->getCompOp() : CompOp::SRC_OVER);
+
+            // Always use separate rendering overlay with Z buffer. Prepare the overlay buffer.
+            GLint currentFBO = 0;
+            if (true) {
+                glGetIntegerv(GL_FRAMEBUFFER_BINDING, &currentFBO);
+
+                if (_overlayBuffer3D.fbo == 0) {
+                    createFrameBuffer(_overlayBuffer3D, true, true, false);
                 }
 
-                for (const std::shared_ptr<TileGeometry>& geometry : renderNode.layer->getGeometries()) {
-                    if (geometry->getType() != TileGeometry::Type::POLYGON3D) {
-                        continue;
-                    }
-                    
-                    // Bind screen FBO lazily, only when needed
-                    if (!blendGeometry) {
-                        blendGeometry = true;
-                        
-                        glGetIntegerv(GL_FRAMEBUFFER_BINDING, &currentFBO);
+                glBindFramebuffer(GL_FRAMEBUFFER, _overlayBuffer3D.fbo);
+                glClearColor(0, 0, 0, 0);
+                glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            }
 
-                        if (_overlayBuffer.fbo == 0) {
-                            createFrameBuffer(_overlayBuffer, true, true, false);
-                        }
-
-                        glBindFramebuffer(GL_FRAMEBUFFER, _overlayBuffer.fbo);
-                        glClearColor(0, 0, 0, 0);
-                        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            // Render tile layers for this layer
+            for (const RenderTileLayer& renderLayer : renderLayers) {
+                for (const std::shared_ptr<TileGeometry>& geometry : renderLayer.layer->getGeometries()) {
+                    if (geometry->getType() == TileGeometry::Type::POLYGON3D) {
+                        // NOTE: geometry comp op is not supported for 3D polygons. Blending is disabled, setGLBlendState not needed
+                        renderTileGeometry(renderLayer.tileId, renderLayer.targetTileId, renderLayer.blend, geometryOpacity, renderLayer.tile, geometry);
                     }
-                    
-                    renderTileGeometry(renderNode.tileId, blendNode->tileId, renderNode.blend, opacity, renderNode.tile, geometry);
                 }
-                update = renderNode.initialBlend < 1.0f || update;
+                
+                update = renderLayer.initialBlend < 1.0f || update;
+            }
+
+            // Blend the rendered layer with framebuffer
+            if (true) {
+                if (_glExtensions->GL_OES_packed_depth_stencil_supported() && !_overlayBuffer3D.depthStencilAttachments.empty()) {
+                    _glExtensions->glDiscardFramebufferEXT(GL_FRAMEBUFFER, static_cast<GLsizei>(_overlayBuffer3D.depthStencilAttachments.size()), _overlayBuffer3D.depthStencilAttachments.data());
+                }
+
+                glBindFramebuffer(GL_FRAMEBUFFER, currentFBO);
+
+                glEnable(GL_BLEND);
+                glDisable(GL_DEPTH_TEST);
+                glDepthMask(GL_FALSE);
+                setCompOp(layerCompOp);
+                blendScreenTexture(layerOpacity, _overlayBuffer3D.colorTexture);
+                glDepthMask(GL_TRUE);
+                glEnable(GL_DEPTH_TEST);
+                glDisable(GL_BLEND);
             }
         }
         
-        // If any 3D geometry, blend rendered screen FBO
-        if (blendGeometry) {
-            if (_glExtensions->GL_OES_packed_depth_stencil_supported() && !_overlayBuffer.depthStencilAttachments.empty()) {
-                _glExtensions->glDiscardFramebufferEXT(GL_FRAMEBUFFER, static_cast<GLsizei>(_overlayBuffer.depthStencilAttachments.size()), _overlayBuffer.depthStencilAttachments.data());
-            }
-
-            glBindFramebuffer(GL_FRAMEBUFFER, currentFBO);
-
-            glDisable(GL_DEPTH_TEST);
-            glDepthMask(GL_FALSE);
-            glEnable(GL_BLEND);
-            glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-            glBlendEquation(GL_FUNC_ADD);
-
-            blendScreenTexture(1.0f, _overlayBuffer.colorTexture);
-
-            glEnable(GL_DEPTH_TEST);
-            glDepthMask(GL_TRUE);
-        }
-
         return update;
     }
     
@@ -1347,6 +1351,38 @@ namespace carto { namespace vt {
         return update;
     }
     
+    void GLTileRenderer::setCompOp(CompOp compOp) {
+        struct GLBlendState {
+            GLenum blendEquation;
+            GLenum blendFuncSrc;
+            GLenum blendFuncDst;
+        };
+
+        static const std::map<CompOp, GLBlendState> compOpBlendStates = {
+            { CompOp::SRC,      { GL_FUNC_ADD, GL_ONE, GL_ZERO } },
+            { CompOp::SRC_OVER, { GL_FUNC_ADD, GL_ONE, GL_ONE_MINUS_SRC_ALPHA } },
+            { CompOp::SRC_IN,   { GL_FUNC_ADD, GL_DST_ALPHA, GL_ZERO } },
+            { CompOp::SRC_ATOP, { GL_FUNC_ADD, GL_DST_ALPHA, GL_ONE_MINUS_SRC_ALPHA } },
+            { CompOp::DST,      { GL_FUNC_ADD, GL_ZERO, GL_ONE } },
+            { CompOp::DST_OVER, { GL_FUNC_ADD, GL_ONE_MINUS_DST_ALPHA, GL_ONE } },
+            { CompOp::DST_IN,   { GL_FUNC_ADD, GL_ZERO, GL_SRC_ALPHA } },
+            { CompOp::DST_ATOP, { GL_FUNC_ADD, GL_ONE_MINUS_DST_ALPHA, GL_SRC_ALPHA } },
+            { CompOp::ZERO,     { GL_FUNC_ADD, GL_ZERO, GL_ZERO } },
+            { CompOp::PLUS,     { GL_FUNC_ADD, GL_ONE, GL_ONE } },
+            { CompOp::MINUS,    { GL_FUNC_REVERSE_SUBTRACT, GL_ONE, GL_ONE } },
+            { CompOp::MULTIPLY, { GL_FUNC_ADD, GL_DST_COLOR, GL_ONE_MINUS_SRC_ALPHA } },
+            { CompOp::SCREEN,   { GL_FUNC_ADD, GL_ONE, GL_ONE_MINUS_SRC_COLOR } },
+            { CompOp::DARKEN,   { GL_MIN_EXT,  GL_ONE, GL_ONE } },
+            { CompOp::LIGHTEN,  { GL_MAX_EXT,  GL_ONE, GL_ONE } }
+        };
+
+        auto it = compOpBlendStates.find(compOp);
+        if (it != compOpBlendStates.end()) {
+            glBlendFunc(it->second.blendFuncSrc, it->second.blendFuncDst);
+            glBlendEquation(it->second.blendEquation);
+        }
+    }
+
     void GLTileRenderer::blendScreenTexture(float opacity, GLuint texture) {
         if (opacity <= 0) {
             return;
@@ -1383,47 +1419,6 @@ namespace carto { namespace vt {
         checkGLError();
     }
 
-    void GLTileRenderer::blendTileTexture(const TileId& tileId, float opacity, GLuint texture) {
-        if (opacity <= 0) {
-            return;
-        }
-        
-        for (const std::shared_ptr<TileSurface>& tileSurface : buildCompiledTileSurfaces(tileId)) {
-            const TileSurface::VertexGeometryLayoutParameters& vertexGeomLayoutParams = tileSurface->getVertexGeometryLayoutParameters();
-            const CompiledSurface& compiledTileSurface = _compiledTileSurfaceMap[tileSurface];
-
-            const ShaderProgram& shaderProgram = buildShaderProgram("blendtile", blendVsh, blendFsh, LightingMode::NONE, RasterFilterMode::NONE, false, false, false);
-            glUseProgram(shaderProgram.program);
-
-            glBindBuffer(GL_ARRAY_BUFFER, compiledTileSurface.vertexGeometryVBO);
-            glVertexAttribPointer(shaderProgram.attribs[A_VERTEXPOSITION], 3, GL_FLOAT, GL_FALSE, vertexGeomLayoutParams.vertexSize, bufferGLOffset(vertexGeomLayoutParams.coordOffset));
-            glEnableVertexAttribArray(shaderProgram.attribs[A_VERTEXPOSITION]);
-
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, compiledTileSurface.indicesVBO);
-
-            cglib::mat4x4<float> mvpMatrix = cglib::mat4x4<float>::convert(_cameraProjMatrix * cglib::translate4_matrix(_tileSurfaceBuilderOrigin));
-            glUniformMatrix4fv(shaderProgram.uniforms[U_MVPMATRIX], 1, GL_FALSE, mvpMatrix.data());
-
-            glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, texture);
-            glUniform1i(shaderProgram.uniforms[U_TEXTURE], 0);
-            Color color(opacity, opacity, opacity, opacity);
-            glUniform4fv(shaderProgram.uniforms[U_COLOR], 1, color.rgba().data());
-            glUniform2f(shaderProgram.uniforms[U_UVSCALE], 1.0f / _screenWidth, 1.0f / _screenHeight);
-
-            glDrawElements(GL_TRIANGLES, tileSurface->getIndicesCount(), GL_UNSIGNED_SHORT, 0);
-
-            glBindTexture(GL_TEXTURE_2D, 0);
-
-            glDisableVertexAttribArray(shaderProgram.attribs[A_VERTEXPOSITION]);
-
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-            glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-            checkGLError();
-        }
-    }
-    
     void GLTileRenderer::renderTileMask(const TileId& tileId) {
         for (const std::shared_ptr<TileSurface>& tileSurface : buildCompiledTileSurfaces(tileId)) {
             const TileSurface::VertexGeometryLayoutParameters& vertexGeomLayoutParams = tileSurface->getVertexGeometryLayoutParameters();

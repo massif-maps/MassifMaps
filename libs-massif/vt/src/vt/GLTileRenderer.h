@@ -93,9 +93,9 @@ namespace carto { namespace vt {
 
         void cullLabels(LabelCuller& culler);
 
+        bool findBitmapIntersections(const std::vector<cglib::ray3<double>>& rays, std::vector<BitmapIntersectionInfo>& results) const;
         bool findGeometryIntersections(const std::vector<cglib::ray3<double>>& rays, float pointBuffer, float lineBuffer, bool geom2D, bool geom3D, std::vector<GeometryIntersectionInfo>& results) const;
         bool findLabelIntersections(const std::vector<cglib::ray3<double>>& rays, float buffer, bool labels2D, bool labels3D, std::vector<GeometryIntersectionInfo>& results) const;
-        bool findBitmapIntersections(const std::vector<cglib::ray3<double>>& rays, std::vector<BitmapIntersectionInfo>& results) const;
 
     private:
         using GlobalIdLabelMap = std::unordered_map<long long, std::shared_ptr<Label>>;
@@ -108,23 +108,24 @@ namespace carto { namespace vt {
             NORMALMAP
         };
 
-        struct BlendNode {
-            TileId tileId;
+        struct RenderTile {
+            TileId targetTileId;
             std::shared_ptr<const Tile> tile;
             float blend;
-            std::vector<std::shared_ptr<BlendNode>> childNodes;
+            std::vector<std::shared_ptr<RenderTile>> childTiles;
 
-            explicit BlendNode(const TileId& tileId, std::shared_ptr<const Tile> tile, float blend) : tileId(tileId), tile(std::move(tile)), blend(blend), childNodes() { }
+            explicit RenderTile(const TileId& targetTileId, std::shared_ptr<const Tile> tile, float blend) : targetTileId(targetTileId), tile(std::move(tile)), blend(blend), childTiles() { }
         };
 
-        struct RenderNode {
+        struct RenderTileLayer {
             TileId tileId;
+            TileId targetTileId;
             std::shared_ptr<const Tile> tile;
             std::shared_ptr<const TileLayer> layer;
             float initialBlend;
             float blend;
 
-            explicit RenderNode(const TileId& tileId, std::shared_ptr<const Tile> tile, std::shared_ptr<const TileLayer> layer, float blend) : tileId(tileId), tile(std::move(tile)), layer(std::move(layer)), initialBlend(blend), blend(blend) { }
+            explicit RenderTileLayer(const TileId& tileId, const TileId& targetTileId, std::shared_ptr<const Tile> tile, std::shared_ptr<const TileLayer> layer, float blend) : tileId(tileId), targetTileId(targetTileId), tile(std::move(tile)), layer(std::move(layer)), initialBlend(blend), blend(blend) { }
         };
 
         struct FrameBuffer {
@@ -202,31 +203,30 @@ namespace carto { namespace vt {
         inline static constexpr float ALPHA_HIT_THRESHOLD = 0.05f; // threshold value for 'transparent' pixel alphas
 
         bool isTileVisible(const TileId& tileId) const;
+        bool isEmptyBlendRequired(CompOp compOp) const;
 
         cglib::mat4x4<double> calculateTileMatrix(const TileId& tileId, float coordScale = 1.0f) const;
         cglib::mat3x3<double> calculateTileMatrix2D(const TileId& tileId, float coordScale = 1.0f) const;
         cglib::mat4x4<float> calculateTileMVPMatrix(const TileId& tileId, float coordScale = 1.0f) const;
 
-        bool isEmptyBlendRequired(CompOp compOp) const;
-        void setGLBlendState(CompOp compOp);
-        float calculateBlendNodeOpacity(const BlendNode& blendNode, float blend) const;
+        float calculateRenderTileOpacity(const RenderTile& renderTile, float blend) const;
         bool testIntersectionOpacity(const std::shared_ptr<const BitmapPattern>& pattern, const cglib::vec2<float>& uvp, const cglib::vec2<float>& uv0, const cglib::vec2<float>& uv1) const;
         
-        void updateBlendNode(BlendNode& blendNode, float dBlend) const;
-        bool buildRenderNodes(const BlendNode& blendNode, float blend, std::multimap<int, RenderNode>& renderNodeMap) const;
-        void addRenderNode(RenderNode renderNode, std::multimap<int, RenderNode>& renderNodeMap) const;
+        void updateRenderTile(RenderTile& renderTile, float dBlend) const;
+        bool buildRenderTileLayers(const TileId& targetTileId, const RenderTile& renderTile, float blend, std::multimap<int, RenderTileLayer>& renderLayers) const;
+        void addRenderTileLayer(RenderTileLayer renderLayer, std::multimap<int, RenderTileLayer>& renderLayers) const;
         void updateLabels(const std::vector<std::shared_ptr<Label>>& labels, float dOpacity) const;
 
         void findTileGeometryIntersections(const TileId& tileId, const std::shared_ptr<const Tile>& tile, const std::shared_ptr<const TileGeometry>& geometry, const std::vector<cglib::ray3<double>>& rays, float pointBuffer, float lineBuffer, float heightScale, std::vector<GeometryIntersectionInfo>& results) const;
         void findLabelIntersections(const std::shared_ptr<Label>& label, const std::vector<cglib::ray3<double>>& rays, float buffer, std::vector<GeometryIntersectionInfo>& results) const;
         void findTileBitmapIntersections(const TileId& tileId, const std::shared_ptr<const Tile>& tile, const std::shared_ptr<const TileBitmap>& bitmap, const std::shared_ptr<const TileSurface>& tileSurface, const std::vector<cglib::ray3<double>>& rays, std::vector<BitmapIntersectionInfo>& results) const;
 
-        bool renderBlendNodes2D(const std::vector<std::shared_ptr<BlendNode>>& blendNodes, GLint stencilBits);
-        bool renderBlendNodes3D(const std::vector<std::shared_ptr<BlendNode>>& blendNodes);
+        bool renderGeometry2D(const std::vector<std::shared_ptr<RenderTile>>& renderTiles, GLint stencilBits);
+        bool renderGeometry3D(const std::vector<std::shared_ptr<RenderTile>>& renderTiles);
         bool renderLabels(const std::vector<std::shared_ptr<Label>>& labels, const std::shared_ptr<const Bitmap>& bitmap);
 
+        void setCompOp(CompOp compOp);
         void blendScreenTexture(float opacity, GLuint texture);
-        void blendTileTexture(const TileId& tileId, float opacity, GLuint texture);
         void renderTileMask(const TileId& tileId);
         void renderTileBackground(const TileId& tileId, const std::shared_ptr<TileBackground>& background, float tileSize, float opacity);
         void renderTileBitmap(const TileId& tileId, const TileId& targetTileId, float blend, float opacity, const std::shared_ptr<TileBitmap>& bitmap);
@@ -259,8 +259,8 @@ namespace carto { namespace vt {
         std::optional<LightingShader> _lightingShaderNormalMap;
         TileSurfaceBuilder _tileSurfaceBuilder;
 
-        std::vector<FrameBuffer> _layerBuffers;
-        FrameBuffer _overlayBuffer;
+        FrameBuffer _overlayBuffer2D;
+        FrameBuffer _overlayBuffer3D;
         CompiledQuad _screenQuad;
 
         ViewState _viewState;
@@ -276,10 +276,10 @@ namespace carto { namespace vt {
         bool _interactionMode = false;
         RasterFilterMode _rasterFilterMode = RasterFilterMode::BILINEAR;
 
-        std::shared_ptr<std::vector<std::shared_ptr<BlendNode>>> _blendNodes;
-        std::shared_ptr<std::vector<std::shared_ptr<BlendNode>>> _renderBlendNodes;
+        std::shared_ptr<std::vector<std::shared_ptr<RenderTile>>> _renderTiles;
+        std::shared_ptr<std::vector<std::shared_ptr<RenderTile>>> _visibleRenderTiles;
         std::array<std::shared_ptr<BitmapLabelMap>, 2> _bitmapLabelMap; // for 'ground' labels and for 'billboard' labels
-        std::array<std::shared_ptr<BitmapLabelMap>, 2> _renderBitmapLabelMap;  // for 'ground' labels and for 'billboard' labels
+        std::array<std::shared_ptr<BitmapLabelMap>, 2> _visibleBitmapLabelMap;  // for 'ground' labels and for 'billboard' labels
         std::vector<std::shared_ptr<Label>> _labels;
         std::map<int, GlobalIdLabelMap> _layerLabelMap;
         std::map<TileId, std::vector<std::shared_ptr<TileSurface>>> _tileSurfaceMap;

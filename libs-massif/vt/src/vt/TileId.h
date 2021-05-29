@@ -26,16 +26,18 @@ namespace carto { namespace vt {
             return TileId(zoom + 1, x * 2 + dx, y * 2 + dy);
         }
 
-        bool intersects(const TileId& other) const {
-            const TileId* tile1 = this;
-            const TileId* tile2 = &other;
-            if (tile2->zoom < tile1->zoom) {
-                std::swap(tile1, tile2);
+        bool covers(const TileId& other) const {
+            if (zoom > other.zoom) {
+                return false;
             }
-            int deltaZoom = tile2->zoom - tile1->zoom;
-            int minX = tile1->x << deltaZoom, maxX = (tile1->x + 1) << deltaZoom;
-            int minY = tile1->y << deltaZoom, maxY = (tile1->y + 1) << deltaZoom;
-            return minX <= tile2->x && maxX > tile2->x && minY <= tile2->y && maxY > tile2->y;
+            int dz = other.zoom - zoom;
+            int minX = x << dz, maxX = (x + 1) << dz;
+            int minY = y << dz, maxY = (y + 1) << dz;
+            return minX <= other.x && maxX > other.x && minY <= other.y && maxY > other.y;
+        }
+
+        bool intersects(const TileId& other) const {
+            return covers(other) || other.covers(*this);
         }
     };
 

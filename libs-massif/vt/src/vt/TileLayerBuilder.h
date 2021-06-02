@@ -8,6 +8,7 @@
 #define _CARTO_VT_TILELAYERBUILDER_H_
 
 #include "TileId.h"
+#include "TileBackground.h"
 #include "TileBitmap.h"
 #include "TileGeometry.h"
 #include "TileLabel.h"
@@ -46,6 +47,7 @@ namespace carto { namespace vt {
 
         void setClipBox(const cglib::bbox2<float>& clipBox);
 
+        void addBackground(const std::shared_ptr<TileBackground>& background);
         void addBitmap(const std::shared_ptr<TileBitmap>& bitmap);
 
         PointProcessor createPointProcessor(const PointStyle& style, const std::shared_ptr<GlyphMap>& glyphMap);
@@ -110,6 +112,7 @@ namespace carto { namespace vt {
         VertexArray<std::size_t> _indices;
         VertexArray<long long> _ids;
 
+        std::vector<std::shared_ptr<TileBackground>> _backgroundList;
         std::vector<std::shared_ptr<TileBitmap>> _bitmapList;
         std::vector<std::shared_ptr<TileGeometry>> _geometryList;
         std::vector<std::shared_ptr<TileLabel>> _labelList;

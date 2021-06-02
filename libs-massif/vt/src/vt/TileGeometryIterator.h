@@ -25,7 +25,7 @@ namespace carto { namespace vt {
         using TriangleUVs = std::array<cglib::vec2<float>, 3>;
 
         TileGeometryIterator() = delete;
-        explicit TileGeometryIterator(const TileId& tileId, const std::shared_ptr<const Tile>& tile, const std::shared_ptr<const TileGeometry>& geometry, const std::shared_ptr<const TileTransformer>& transformer, const ViewState& viewState, float pointBuffer, float lineBuffer, float scale, float heightScale);
+        explicit TileGeometryIterator(const TileId& tileId, const std::shared_ptr<const TileGeometry>& geometry, const std::shared_ptr<const TileTransformer>& transformer, const ViewState& viewState, float pointBuffer, float lineBuffer, float scale, float heightScale);
 
         operator bool() const { return _index + 2 < _geometry->getIndices().size(); }
         long long id() const { return getId(_index); }

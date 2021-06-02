@@ -19,9 +19,15 @@ namespace carto { namespace mvt {
         exprContext.setAdjustedZoom(tileId.zoom + static_cast<int>(_symbolizerContext.getSettings().getZoomLevelBias()));
         exprContext.setNutiParameterValueMap(std::make_shared<std::map<std::string, Value>>(_symbolizerContext.getSettings().getNutiParameterValueMap()));
 
-        std::shared_ptr<vt::TileBackground> tileBackground = createTileBackground(tileId);
-
         std::vector<std::shared_ptr<vt::TileLayer>> tileLayers;
+
+        if (std::shared_ptr<vt::TileBackground> tileBackground = createTileBackground(tileId)) {
+            vt::TileLayerBuilder tileLayerBuilder(tileId, -1, _transformer->createTileVertexTransformer(tileId), _symbolizerContext.getSettings().getTileSize(), _symbolizerContext.getSettings().getGeometryScale());
+            tileLayerBuilder.addBackground(tileBackground);
+            std::shared_ptr<vt::TileLayer> tileLayer = tileLayerBuilder.buildTileLayer(std::optional<vt::CompOp>(), vt::FloatFunction(1.0f));
+            tileLayers.push_back(std::move(tileLayer));
+        }
+
         int layerIdx = 0;
         for (const std::shared_ptr<Layer>& layer : _map->getLayers()) {
             int styleIdx = 0;
@@ -38,14 +44,14 @@ namespace carto { namespace mvt {
                 vt::FloatFunction opacityFunc(style->getOpacity());
                 std::optional<vt::CompOp> compOp = style->getCompOp();
                 std::shared_ptr<vt::TileLayer> tileLayer = tileLayerBuilder.buildTileLayer(compOp, opacityFunc);
-                if (!(tileLayer->getBitmaps().empty() && tileLayer->getLabels().empty() && tileLayer->getGeometries().empty() && !compOp)) {
-                    tileLayers.push_back(tileLayer);
+                if (!(tileLayer->getBackgrounds().empty() && tileLayer->getBitmaps().empty() && tileLayer->getLabels().empty() && tileLayer->getGeometries().empty() && !compOp)) {
+                    tileLayers.push_back(std::move(tileLayer));
                 }
                 styleIdx++;
             }
             layerIdx++;
         }
-        return std::make_shared<vt::Tile>(tileId, _symbolizerContext.getSettings().getTileSize(), tileBackground, tileLayers);
+        return std::make_shared<vt::Tile>(tileId, _symbolizerContext.getSettings().getTileSize(), std::move(tileLayers));
     }
 
     void TileReader::processLayer(const std::shared_ptr<const Layer>& layer, const std::shared_ptr<const Style>& style, ExpressionContext& exprContext, vt::TileLayerBuilder& layerBuilder) const {

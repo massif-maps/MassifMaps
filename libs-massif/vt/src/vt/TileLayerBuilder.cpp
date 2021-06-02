@@ -58,6 +58,10 @@ namespace carto { namespace vt {
         _clipBox = clipBox;
     }
 
+    void TileLayerBuilder::addBackground(const std::shared_ptr<TileBackground>& background) {
+        _backgroundList.push_back(background);
+    }
+
     void TileLayerBuilder::addBitmap(const std::shared_ptr<TileBitmap>& bitmap) {
         _bitmapList.push_back(bitmap);
     }
@@ -375,7 +379,7 @@ namespace carto { namespace vt {
         std::vector<std::shared_ptr<TileGeometry>> geometryList = _geometryList;
         packGeometry(geometryList);
 
-        return std::make_shared<TileLayer>(_layerIdx, std::move(compOp), std::move(opacityFunc), _bitmapList, std::move(geometryList), _labelList);
+        return std::make_shared<TileLayer>(_layerIdx, std::move(compOp), std::move(opacityFunc), _backgroundList, _bitmapList, std::move(geometryList), _labelList);
     }
 
     void TileLayerBuilder::appendGeometry() {

@@ -26,6 +26,10 @@ namespace carto { namespace vt {
             return TileId(zoom + 1, x * 2 + dx, y * 2 + dy);
         }
 
+        TileId getTeleported(int dx, int dy) const {
+            return TileId(zoom, x + dx * (1 << zoom), y + dy * (1 << zoom));
+        }
+
         bool covers(const TileId& other) const {
             if (zoom > other.zoom) {
                 return false;

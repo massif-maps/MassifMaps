@@ -153,12 +153,21 @@ namespace carto { namespace vt {
 
     cglib::vec3<float> TileGeometryIterator::decodePolygon3DOffset(std::size_t index) const {
         const TileGeometry::VertexGeometryLayoutParameters& vertexGeomLayoutParams = _geometry->getVertexGeometryLayoutParameters();
+        cglib::vec3<float> normal(0, 0, 1);
+        if (vertexGeomLayoutParams.normalOffset >= 0) {
+            std::size_t normalOffset = index * vertexGeomLayoutParams.vertexSize + vertexGeomLayoutParams.normalOffset;
+            const std::int16_t* normalPtr = reinterpret_cast<const std::int16_t*>(&_geometry->getVertexGeometry()[normalOffset]);
+            normal = cglib::vec3<float>(0, 0, 0);
+            for (int i = 0; i < vertexGeomLayoutParams.dimensions; i++) {
+                normal(i) = normalPtr[i] * (1.0f / 32767.0f);
+            }
+        }
         float height = 0;
         if (vertexGeomLayoutParams.heightOffset >= 0) {
             std::size_t heightOffset = index * vertexGeomLayoutParams.vertexSize + vertexGeomLayoutParams.heightOffset;
             const std::int16_t* heightPtr = reinterpret_cast<const std::int16_t*>(&_geometry->getVertexGeometry()[heightOffset]);
             height = *heightPtr * (1.0f / vertexGeomLayoutParams.heightScale);
         }
-        return cglib::vec3<float>(0, 0, height * _heightScale);
+        return normal * (height * _heightScale);
     }
 } }

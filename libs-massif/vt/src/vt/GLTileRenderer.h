@@ -207,6 +207,8 @@ namespace carto { namespace vt {
 
         bool testIntersectionOpacity(const std::shared_ptr<const BitmapPattern>& pattern, const cglib::vec2<float>& uvp, const cglib::vec2<float>& uv0, const cglib::vec2<float>& uv1) const;
 
+        void buildTileSurfaces(const std::set<TileId>& tileIds);
+
         void buildRenderTiles(const std::map<TileId, std::shared_ptr<const Tile>>& tiles);
         void initializeRenderTile(TileId targetTileId, RenderTile& renderTile, const std::shared_ptr<const Tile>& tile, const std::vector<RenderTile>& existingRenderTiles) const;
         void mergeExistingRenderTile(TileId targetTileId, const RenderTile& existingRenderTile, std::vector<RenderTile>& renderTiles, int depth) const;

@@ -108,32 +108,8 @@ namespace carto { namespace vt {
         // All other operations must be synchronized
         std::lock_guard<std::mutex> lock(_mutex);
 
-        // Update tile surface builder tile list (needed to avoid T-vertices in tesselation). Reset origin only if all tiles change.
-        bool updateOrigin = true;
-        for (const TileId& oldTileId : _tileSurfaceBuilderOriginTileIds) {
-            if (tileIds.find(oldTileId) != tileIds.end()) {
-                updateOrigin = false;
-                break;
-            }
-        }
-        if (updateOrigin) {
-            cglib::vec3<double> origin(0, 0, 0);
-            for (const TileId& tileId : tileIds) {
-                origin += _transformer->calculateTileBBox(tileId).center() * (1.0 / tileIds.size());
-            }
-            _tileSurfaceBuilderOrigin = origin;
-            _tileSurfaceBuilderOriginTileIds = tileIds;
-            _tileSurfaceBuilder.setOrigin(origin);
-        }
-        _tileSurfaceBuilder.setVisibleTiles(tileIds);
-
-        // Reset surface caches. Note that this does not mean that the surfaces are not cached.
-        _tileSurfaceMap.clear();
-
-        // Build label maps
+        buildTileSurfaces(tileIds);
         buildLabelMaps(labelTiles);
-        
-        // Build render tiles
         buildRenderTiles(tiles);
     }
 
@@ -685,6 +661,30 @@ namespace carto { namespace vt {
         return mask == 15;
     }
 
+    void GLTileRenderer::buildTileSurfaces(const std::set<TileId>& tileIds) {
+        // Update tile surface builder tile list (needed to avoid T-vertices in tesselation). Reset origin only if all tiles change.
+        bool updateOrigin = true;
+        for (const TileId& oldTileId : _tileSurfaceBuilderOriginTileIds) {
+            if (tileIds.find(oldTileId) != tileIds.end()) {
+                updateOrigin = false;
+                break;
+            }
+        }
+        if (updateOrigin) {
+            cglib::vec3<double> origin(0, 0, 0);
+            for (const TileId& tileId : tileIds) {
+                origin += _transformer->calculateTileBBox(tileId).center() * (1.0 / tileIds.size());
+            }
+            _tileSurfaceBuilderOrigin = origin;
+            _tileSurfaceBuilderOriginTileIds = tileIds;
+            _tileSurfaceBuilder.setOrigin(origin);
+        }
+        _tileSurfaceBuilder.setVisibleTiles(tileIds);
+
+        // Reset surface caches. Note that this does not mean that the surfaces are not cached.
+        _tileSurfaceMap.clear();
+    }
+
     void GLTileRenderer::buildRenderTiles(const std::map<TileId, std::shared_ptr<const Tile>>& tiles) {
         std::vector<RenderTile> renderTiles;
         renderTiles.reserve(tiles.size() + _renderTiles->size());
@@ -708,6 +708,7 @@ namespace carto { namespace vt {
     }
 
     void GLTileRenderer::initializeRenderTile(TileId targetTileId, RenderTile& renderTile, const std::shared_ptr<const Tile>& tile, const std::vector<RenderTile>& existingRenderTiles) const {
+        // Apply 'root shift' to source tile id. Adjust target tile id, if needed.
         TileId rootTileId = targetTileId;
         while (rootTileId.zoom > 0) {
             rootTileId = rootTileId.getParent();
@@ -717,6 +718,7 @@ namespace carto { namespace vt {
             targetTileId = sourceTileId;
         }
 
+        // Initialize new tile
         renderTile.targetTileId = targetTileId;
         renderTile.tile = tile;
         renderTile.visible = false;
@@ -731,6 +733,7 @@ namespace carto { namespace vt {
             renderTile.renderLayers.insert({ layer->getLayerIndex(), std::move(renderLayer) });
         }
 
+        // Check if this tile intersects with any existing tile. Then reuse the state from the existing tile.
         std::multimap<int, RenderTileLayer> existingRenderLayers;
         for (const RenderTile& existingRenderTile : existingRenderTiles) {
             if (!renderTile.targetTileId.intersects(existingRenderTile.targetTileId)) {
@@ -768,6 +771,7 @@ namespace carto { namespace vt {
             return;
         }
 
+        // Check if the existing tile is already covered by some tile in the new list.
         for (const RenderTile& renderTile : renderTiles) {
             if (renderTile.targetTileId.covers(targetTileId)) {
                 return;
@@ -780,12 +784,13 @@ namespace carto { namespace vt {
             }
         }
 
+        // No, the tile does is missing. Add it in non-active state.
         RenderTile renderTile = existingRenderTile;
         renderTile.targetTileId = targetTileId;
         for (auto it = renderTile.renderLayers.begin(); it != renderTile.renderLayers.end(); it++) {
             RenderTileLayer& renderLayer = it->second;
             renderLayer.targetTileId = (targetTileId.zoom > renderLayer.targetTileId.zoom ? targetTileId : renderLayer.targetTileId);
-            renderLayer.active = !renderLayer.layer->getBitmaps().empty();
+            renderLayer.active = false;
         }
         renderTiles.push_back(renderTile);
     }
@@ -793,15 +798,19 @@ namespace carto { namespace vt {
     bool GLTileRenderer::updateRenderTile(RenderTile& renderTile, float dBlend) const {
         renderTile.visible = isTileVisible(renderTile.targetTileId);
 
+        // Update each layer blend state depending whether the layer is active or not
         bool refresh = false;
         for (auto it = renderTile.renderLayers.end(); it != renderTile.renderLayers.begin(); ) {
             it--;
             RenderTileLayer& renderLayer = it->second;
 
+            // If layer is not visible, make it visible/hidden in one step. Otherwise use actual delta blend value.
             float delta = renderTile.visible ? dBlend : 1.0f;
             if (renderLayer.active) {
                 renderLayer.blend = std::min(1.0f, renderLayer.blend + delta);
                 refresh = (renderLayer.blend < 1.0f) || refresh;
+
+                // Try to remove old layers when a new layer has reached full visibility and covers old layer.
                 if (renderLayer.blend >= 1.0f) {
                     while (it != renderTile.renderLayers.begin()) {
                         auto it2 = it;
@@ -816,6 +825,8 @@ namespace carto { namespace vt {
             else {
                 renderLayer.blend = std::max(0.0f, renderLayer.blend - delta);
                 refresh = (renderLayer.blend > 0.0f) || refresh;
+
+                // In case of non-active layers, simply remove the layer when it has become invisible.
                 if (renderLayer.blend <= 0.0f) {
                     it = renderTile.renderLayers.erase(it);
                 }

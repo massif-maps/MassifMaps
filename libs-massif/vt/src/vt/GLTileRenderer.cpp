@@ -900,7 +900,7 @@ namespace carto { namespace vt {
 
                 std::vector<std::shared_ptr<Label>>& bitmapLabels = (*bitmapLabelMap[pass])[bitmap];
                 if (bitmapLabels.empty()) {
-                    bitmapLabels.reserve(_bitmapLabelMap[pass] ? (*_bitmapLabelMap[pass])[bitmap].size() + 64 : 64);
+                    bitmapLabels.reserve((*_bitmapLabelMap[pass])[bitmap].size() + 64);
                 }
                 bitmapLabels.push_back(label);
                 labels.push_back(label);

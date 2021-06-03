@@ -86,8 +86,7 @@ namespace carto { namespace vt {
         void deinitializeRenderer();
 
         bool startFrame(float dt);
-        void renderGeometry2D();
-        void renderGeometry3D();
+        void renderGeometry(bool geom2D, bool geom3D);
         void renderLabels(bool labels2D, bool labels3D);
         bool endFrame();
 

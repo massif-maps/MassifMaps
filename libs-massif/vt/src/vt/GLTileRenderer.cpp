@@ -249,78 +249,74 @@ namespace carto { namespace vt {
         return refresh;
     }
     
-    void GLTileRenderer::renderGeometry2D() {
+    void GLTileRenderer::renderGeometry(bool geom2D, bool geom3D) {
         std::lock_guard<std::mutex> lock(_mutex);
 
         if (!_visibleRenderTiles) {
             return;
         }
 
-        // Extract current stencil state
-        GLint stencilBits = 0;
-        GLint currentFBO = 0;
-        glGetIntegerv(GL_FRAMEBUFFER_BINDING, &currentFBO);
-        if (currentFBO != 0) {
-            GLint stencilRB = 0;
-            glGetFramebufferAttachmentParameteriv(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME, &stencilRB);
-            if (stencilRB != 0) {
-                GLint currentRB = 0;
-                glGetIntegerv(GL_RENDERBUFFER_BINDING, &currentRB);
-                glBindRenderbuffer(GL_RENDERBUFFER, stencilRB);
-                glGetRenderbufferParameteriv(GL_RENDERBUFFER, GL_RENDERBUFFER_STENCIL_SIZE, &stencilBits);
-                glBindRenderbuffer(GL_RENDERBUFFER, currentRB);
+        if (geom2D) {
+            // Extract current stencil state
+            GLint stencilBits = 0;
+            GLint currentFBO = 0;
+            glGetIntegerv(GL_FRAMEBUFFER_BINDING, &currentFBO);
+            if (currentFBO != 0) {
+                GLint stencilRB = 0;
+                glGetFramebufferAttachmentParameteriv(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME, &stencilRB);
+                if (stencilRB != 0) {
+                    GLint currentRB = 0;
+                    glGetIntegerv(GL_RENDERBUFFER_BINDING, &currentRB);
+                    glBindRenderbuffer(GL_RENDERBUFFER, stencilRB);
+                    glGetRenderbufferParameteriv(GL_RENDERBUFFER, GL_RENDERBUFFER_STENCIL_SIZE, &stencilBits);
+                    glBindRenderbuffer(GL_RENDERBUFFER, currentRB);
+                }
+            } else {
+                glGetIntegerv(GL_STENCIL_BITS, &stencilBits);
             }
-        } else {
-            glGetIntegerv(GL_STENCIL_BITS, &stencilBits);
+
+            // Update GL state
+            glEnable(GL_BLEND);
+            glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+            glBlendEquation(GL_FUNC_ADD);
+            glDisable(GL_DEPTH_TEST);
+            glDepthMask(GL_FALSE);
+            glDisable(GL_STENCIL_TEST);
+            glStencilMask(0);
+            glEnable(GL_CULL_FACE);
+            glCullFace(GL_BACK);
+
+            // 2D geometry pass
+            renderGeometry2D(*_visibleRenderTiles, stencilBits);
+
+            // Restore GL state
+            glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+            glBlendEquation(GL_FUNC_ADD);
+            glEnable(GL_DEPTH_TEST);
+            glDepthMask(GL_TRUE);
+            glDisable(GL_STENCIL_TEST);
+            glStencilMask(255);
         }
 
-        // Update GL state
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-        glBlendEquation(GL_FUNC_ADD);
-        glDisable(GL_DEPTH_TEST);
-        glDepthMask(GL_FALSE);
-        glDisable(GL_STENCIL_TEST);
-        glStencilMask(0);
-        glEnable(GL_CULL_FACE);
-        glCullFace(GL_BACK);
+        if (geom3D) {
+            // Update GL state
+            glDisable(GL_BLEND);
+            glEnable(GL_DEPTH_TEST);
+            glDepthMask(GL_TRUE);
+            glDisable(GL_STENCIL_TEST);
+            glStencilMask(0);
+            glEnable(GL_CULL_FACE);
+            glCullFace(GL_BACK);
 
-        // 2D geometry pass
-        renderGeometry2D(*_visibleRenderTiles, stencilBits);
-        
-        // Restore GL state
-        glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-        glBlendEquation(GL_FUNC_ADD);
-        glEnable(GL_DEPTH_TEST);
-        glDepthMask(GL_TRUE);
-        glDisable(GL_STENCIL_TEST);
-        glStencilMask(255);
-    }
-    
-    void GLTileRenderer::renderGeometry3D() {
-        std::lock_guard<std::mutex> lock(_mutex);
+            // 3D polygon pass
+            renderGeometry3D(*_visibleRenderTiles);
 
-        if (!_visibleRenderTiles) {
-            return;
+            // Restore GL state
+            glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+            glBlendEquation(GL_FUNC_ADD);
+            glEnable(GL_BLEND);
+            glStencilMask(255);
         }
-        
-        // Update GL state
-        glDisable(GL_BLEND);
-        glEnable(GL_DEPTH_TEST);
-        glDepthMask(GL_TRUE);
-        glDisable(GL_STENCIL_TEST);
-        glStencilMask(0);
-        glEnable(GL_CULL_FACE);
-        glCullFace(GL_BACK);
-
-        // 3D polygon pass
-        renderGeometry3D(*_visibleRenderTiles);
-        
-        // Restore GL state
-        glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-        glBlendEquation(GL_FUNC_ADD);
-        glEnable(GL_BLEND);
-        glStencilMask(255);
     }
     
     void GLTileRenderer::renderLabels(bool labels2D, bool labels3D) {

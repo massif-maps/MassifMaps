@@ -487,6 +487,7 @@ namespace carto { namespace vt {
         
         // Build render layer map for each layer
         std::size_t initialResultCount = results.size();
+        std::vector<GeometryIntersectionInfo> results3D;
         for (const RenderTile& renderTile : *_renderTiles) {
             for (auto it = renderTile.renderLayers.begin(); it != renderTile.renderLayers.end(); it++) {
                 const RenderTileLayer& renderLayer = it->second;
@@ -517,12 +518,6 @@ namespace carto { namespace vt {
 
                     std::vector<GeometryIntersectionInfo> resultsTile;
                     findTileGeometryIntersections(renderLayer.sourceTileId, geometry, rayTiles, renderLayer.tileSize, pointBuffer, lineBuffer, renderLayer.blend, resultsTile);
-                    
-                    if (geometry->getType() == TileGeometry::Type::POLYGON3D) {
-                        std::stable_sort(resultsTile.begin(), resultsTile.end(), [](const GeometryIntersectionInfo& result1, const GeometryIntersectionInfo& result2) {
-                            return result1.rayT > result2.rayT;
-                        });
-                    }
 
                     for (const GeometryIntersectionInfo& resultTile : resultsTile) {
                         const cglib::ray3<double>& ray = rays[resultTile.rayIndex];
@@ -543,11 +538,22 @@ namespace carto { namespace vt {
 
                         cglib::vec3<double> pos = cglib::transform_point(cglib::vec3<double>::convert(posTile), tileMatrix);
                         double rayT = cglib::dot_product(pos - ray.origin, ray.direction) / cglib::dot_product(ray.direction, ray.direction);
-                        results.emplace_back(resultTile.tileId, renderLayer.layer->getLayerIndex(), resultTile.featureId, resultTile.rayIndex, rayT);
+                        GeometryIntersectionInfo intersectionInfo(resultTile.tileId, renderLayer.layer->getLayerIndex(), resultTile.featureId, resultTile.rayIndex, rayT);
+                        if (geometry->getType() != TileGeometry::Type::POLYGON3D) {
+                            results.push_back(std::move(intersectionInfo));
+                        } else {
+                            results3D.push_back(std::move(intersectionInfo));
+                        }
                     }
                 }
             }
         }
+
+        // Sort the 3D results by distance, then append to normal results
+        std::stable_sort(results3D.begin(), results3D.end(), [](const GeometryIntersectionInfo& result1, const GeometryIntersectionInfo& result2) {
+            return result1.rayT > result2.rayT;
+        });
+        results.insert(results.end(), results3D.begin(), results3D.end());
 
         return results.size() > initialResultCount;
     }

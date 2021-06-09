@@ -451,16 +451,28 @@ inline Tile_Layer::Tile_Layer(const protobuf::message& srcMsg) {
   std::size_t key_count = 0;
   std::size_t value_count = 0;
   for (protobuf::message msg(srcMsg); msg.next(); ) {
+    if (msg.tag == kVersionFieldNumber) {
+      msg.read_uint32();
+    }
+    else if (msg.tag == kNameFieldNumber) {
+      msg.read_string();
+    }
     if (msg.tag == kFeaturesFieldNumber) {
+      msg.read_message();
       feature_count++;
     }
     else if (msg.tag == kKeysFieldNumber) {
+      msg.read_string();
       key_count++;
     }
     else if (msg.tag == kValuesFieldNumber) {
+      msg.read_message();
       value_count++;
     }
-    msg.skip();
+    else if (msg.tag == kExtentFieldNumber) {
+      msg.read_uint32();
+    }
+    else msg.skip();
   }
   features_.reserve(feature_count);
   keys_.reserve(key_count);
@@ -579,9 +591,10 @@ inline Tile::Tile(const protobuf::message& srcMsg) {
   std::size_t layer_count = 0;
   for (protobuf::message msg(srcMsg); msg.next(); ) {
     if (msg.tag == kLayersFieldNumber) {
+      msg.read_message();
       layer_count++;
     }
-    msg.skip();
+    else msg.skip();
   }
   layers_.reserve(layer_count);
   for (protobuf::message msg(srcMsg); msg.next(); ) {

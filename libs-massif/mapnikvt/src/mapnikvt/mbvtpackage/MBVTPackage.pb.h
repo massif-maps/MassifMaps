@@ -457,7 +457,7 @@ inline Tile_Layer::Tile_Layer(const protobuf::message& srcMsg) {
     else if (msg.tag == kNameFieldNumber) {
       msg.read_string();
     }
-    if (msg.tag == kFeaturesFieldNumber) {
+    else if (msg.tag == kFeaturesFieldNumber) {
       msg.read_message();
       feature_count++;
     }

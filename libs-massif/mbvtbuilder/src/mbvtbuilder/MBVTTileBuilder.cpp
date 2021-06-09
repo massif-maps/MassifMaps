@@ -203,7 +203,7 @@ namespace carto { namespace mbvtbuilder {
 
             MBVTLayerEncoder layerEncoder(layer.name);
             if (encodeLayer(layer, tileOrigin, tileSize, tileBounds, layerEncoder)) {
-                encodedTile.write_tag(vector_tile::Tile::kLayersFieldNumber);
+                encodedTile.write_tag(vector_tile::Tile::kLayersFieldNumber, protobuf::encoded_message::length_type);
                 encodedTile.write_message(layerEncoder.buildLayer());
             }
         }
@@ -245,7 +245,7 @@ namespace carto { namespace mbvtbuilder {
 
                         MBVTLayerEncoder layerEncoder(layer.name);
                         if (encodeLayer(layer, tileOrigin, tileSize, tileBounds, layerEncoder)) {
-                            encodedTile.write_tag(vector_tile::Tile::kLayersFieldNumber);
+                            encodedTile.write_tag(vector_tile::Tile::kLayersFieldNumber, protobuf::encoded_message::length_type);
                             encodedTile.write_message(layerEncoder.buildLayer());
                         }
                     }

@@ -43,9 +43,9 @@ namespace carto { namespace css {
 
         std::shared_ptr<const mvt::Symbolizer> buildSymbolizer(const std::string& symbolizerType, const std::vector<std::shared_ptr<const Property>>& properties, const std::shared_ptr<mvt::Map>& map) const;
 
-        static mvt::Expression buildFunctionExpression(const FunctionExpression& funcExpr);
-
         static mvt::Expression buildExpression(const Expression& expr);
+
+        static mvt::Expression buildFunctionExpression(const FunctionExpression& funcExpr);
 
         static std::optional<mvt::Predicate> buildPredicate(const Predicate& pred);
 

@@ -24,13 +24,15 @@
 namespace carto { namespace mvt {
     class Symbolizer {
     public:
+        using FeatureProcessor = std::function<void(const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder)>;
+
         virtual ~Symbolizer() = default;
 
         std::set<std::string> getParameterNames() const;
         SymbolizerParameter* getParameter(const std::string& paramName);
         const SymbolizerParameter* getParameter(const std::string& paramName) const;
 
-        virtual void build(const FeatureCollection& featureCollection, const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext, vt::TileLayerBuilder& layerBuilder) const = 0;
+        virtual FeatureProcessor createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const = 0;
 
     protected:
         explicit Symbolizer(std::shared_ptr<Logger> logger) : _logger(std::move(logger)) {

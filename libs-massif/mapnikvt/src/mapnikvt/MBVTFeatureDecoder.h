@@ -49,8 +49,9 @@ namespace carto { namespace mvt {
         std::shared_ptr<vector_tile::Tile> _tile;
         std::map<std::string, int> _layerMap;
 
+        mutable std::pair<std::string, std::shared_ptr<GeometryCache>> _layerGeometryCache;
         mutable std::pair<std::string, std::shared_ptr<FeatureDataCache<std::vector<int>>>> _layerFeatureDataCache;
-        mutable std::mutex _layerFeatureDataCacheMutex;
+        mutable std::mutex _layerCacheMutex;
 
         const std::shared_ptr<Logger> _logger;
     };

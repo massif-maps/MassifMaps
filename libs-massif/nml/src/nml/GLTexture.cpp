@@ -42,7 +42,6 @@
 #include <unordered_set>
 
 namespace carto { namespace nml {
-
     GLTexture::GLTexture(std::shared_ptr<Texture> texture) :
         _texture(texture),
         _glTextureId(0)
@@ -307,5 +306,4 @@ namespace carto { namespace nml {
 
     std::mutex GLTexture::_mutex;
     std::unordered_set<std::string> GLTexture::_extensions;
-
 } }

@@ -10,7 +10,6 @@
 #include "TileId.h"
 #include "TileTransformer.h"
 #include "TileSurface.h"
-#include "PoolAllocator.h"
 #include "VertexArray.h"
 
 #include <cstdint>

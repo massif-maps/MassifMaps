@@ -11,6 +11,7 @@
 #include "Expression.h"
 #include "Transform.h"
 #include "vt/Color.h"
+#include "vt/Styles.h"
 
 #include <memory>
 #include <stdexcept>
@@ -23,6 +24,10 @@ namespace carto { namespace mvt {
         explicit GeneratorException(const std::string& msg) : runtime_error(msg) { }
     };
 
+    std::string generateLineCapModeString(vt::LineCapMode lineCapMode);
+    std::string generateLineJoinModeString(vt::LineJoinMode lineJoinMode);
+    std::string generateCompOpString(vt::CompOp compOp);
+    std::string generateLabelOrientationString(vt::LabelOrientation labelOrientation);
     std::string generateColorString(vt::Color color);
     std::string generateValueString(const Value& val);
     std::string generateTransformListString(const std::vector<Transform>& transforms);

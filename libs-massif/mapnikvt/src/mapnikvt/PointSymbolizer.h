@@ -22,7 +22,7 @@ namespace carto { namespace mvt {
             bindParameter("transform", &_transform);
         }
 
-        virtual void build(const FeatureCollection& featureCollection, const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext, vt::TileLayerBuilder& layerBuilder) const override;
+        virtual FeatureProcessor createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const override;
 
     protected:
         inline static constexpr int RECTANGLE_SIZE = 4;

@@ -4,7 +4,6 @@
 #include "Package.h"
 
 namespace carto { namespace nml {
-
     GLMesh::GLMesh(const Mesh& mesh) :
         _submeshList()
     {
@@ -42,5 +41,4 @@ namespace carto { namespace nml {
         }
         return size;
     }
-    
 } }

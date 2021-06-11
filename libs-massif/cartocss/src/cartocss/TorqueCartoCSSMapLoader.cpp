@@ -3,6 +3,9 @@
 #include "TorqueCartoCSSMapnikTranslator.h"
 #include "mapnikvt/TorqueLayer.h"
 
+#include <set>
+#include <optional>
+
 namespace carto { namespace css {
     std::shared_ptr<mvt::TorqueMap> TorqueCartoCSSMapLoader::loadMap(const std::string& cartoCSS) const {
         StyleSheet styleSheet;
@@ -16,50 +19,7 @@ namespace carto { namespace css {
             throw LoaderException(std::string("Exception while parsing Torque CartoCSS: ") + ex.what());
         }
 
-        // Find layer names and frame offsets
-        std::set<std::string> layerNames;
-        std::set<int> frameOffsets;
-        frameOffsets.insert(0);
-        std::function<void(const RuleSet& ruleSet)> storeRuleSetInfo;
-        storeRuleSetInfo = [&](const RuleSet& ruleSet) {
-            for (const Selector& selector : ruleSet.getSelectors()) {
-                for (const Predicate& pred : selector.getPredicates()) {
-                    if (auto layerPred = std::get_if<LayerPredicate>(&pred)) {
-                        std::string layerName = layerPred->getLayerName();
-                        layerNames.insert(layerName);
-                    }
-                    else if (auto opPred = std::get_if<OpPredicate>(&pred)) {
-                        if (opPred->getFieldOrVar().isField() && opPred->getFieldOrVar().getName() == "frame-offset") {
-                            if (opPred->getOp() == OpPredicate::Op::EQ) {
-                                if (auto longVal = std::get_if<long long>(&opPred->getRefValue())) {
-                                    frameOffsets.insert(static_cast<int>(*longVal));
-                                }
-                                else {
-                                    _logger->write(mvt::Logger::Severity::ERROR, "Torque 'frame-offset' value must be integer");
-                                }
-                            }
-                            else {
-                                _logger->write(mvt::Logger::Severity::ERROR, "Torque 'frame-offset' can be only used with equal operator");
-                            }
-                        }
-                    }
-                }
-            }
-
-            for (const Block::Element& element : ruleSet.getBlock().getElements()) {
-                if (auto subRuleSet = std::get_if<RuleSet>(&element)) {
-                    storeRuleSetInfo(*subRuleSet);
-                }
-            }
-        };
-
-        for (const StyleSheet::Element& element : styleSheet.getElements()) {
-            if (auto ruleSet = std::get_if<RuleSet>(&element)) {
-                storeRuleSetInfo(*ruleSet);
-            }
-        }
-
-        // Map/torque properties
+        // Build map/torque properties
         mvt::TorqueMap::Settings mapSettings;
         mvt::TorqueMap::TorqueSettings torqueSettings;
         {
@@ -77,7 +37,36 @@ namespace carto { namespace css {
         }
         auto map = std::make_shared<mvt::TorqueMap>(mapSettings, torqueSettings);
 
-        // Layers
+        // Find layer names and frame offsets
+        std::set<std::string> layerNames;
+        std::set<int> frameOffsets = { 0 };
+        for (const Selector& selector : styleSheet.findRuleSetSelectors()) {
+            std::optional<std::set<int>> selectorFrameOffsets;
+            for (const Predicate& pred : selector.getPredicates()) {
+                if (auto layerPred = std::get_if<LayerPredicate>(&pred)) {
+                    layerNames.insert(layerPred->getLayerName());
+                }
+                else if (auto opPred = std::get_if<OpPredicate>(&pred)) {
+                    if (opPred->getFieldOrVar().isField() && opPred->getFieldOrVar().getName() == "frame-offset") {
+                        std::set<int> validFrameOffsets;
+                        for (int frame = 0; frame < torqueSettings.frameCount; frame++) {
+                            if (selectorFrameOffsets && (*selectorFrameOffsets).count(frame) == 0) {
+                                continue;
+                            }
+                            if (OpPredicate::applyOp(opPred->getOp(), Value(static_cast<long long>(frame)), opPred->getRefValue())) {
+                                validFrameOffsets.insert(frame);
+                            }
+                        }
+                        selectorFrameOffsets = std::move(validFrameOffsets);
+                    }
+                }
+            }
+            if (selectorFrameOffsets) {
+                frameOffsets.insert((*selectorFrameOffsets).begin(), (*selectorFrameOffsets).end());
+            }
+        }
+
+        // Build layers
         for (const std::string& layerName : layerNames) {
             for (auto frameOffsetIt = frameOffsets.rbegin(); frameOffsetIt != frameOffsets.rend(); frameOffsetIt++) {
                 int frameOffset = *frameOffsetIt;
@@ -124,21 +113,31 @@ namespace carto { namespace css {
     }
 
     void TorqueCartoCSSMapLoader::loadTorqueSettings(const std::map<std::string, Value>& mapProperties, mvt::TorqueMap::TorqueSettings& torqueSettings) const {
-        Color clearColor;
-        if (getMapProperty(mapProperties, "-torque-clear-color", clearColor)) {
-            torqueSettings.clearColor = vt::Color(clearColor.value());
-        }
         long long frameCount = 0;
         if (getMapProperty(mapProperties, "-torque-frame-count", frameCount)) {
             torqueSettings.frameCount = static_cast<int>(frameCount);
         }
-        long long animationDuration = 0;
-        if (getMapProperty(mapProperties, "-torque-animation-duration", animationDuration)) {
-            torqueSettings.animationDuration = static_cast<int>(animationDuration);
+        long long resolutionLong = 1;
+        if (getMapProperty(mapProperties, "-torque-resolution", resolutionLong)) {
+            torqueSettings.resolution = static_cast<float>(resolutionLong);
+        } else {
+            double resolutionDouble = 1;
+            if (getMapProperty(mapProperties, "-torque-resolution", resolutionDouble)) {
+                torqueSettings.resolution = static_cast<float>(resolutionDouble);
+            }
         }
-        long long resolution = 1;
-        if (getMapProperty(mapProperties, "-torque-resolution", resolution)) {
-            torqueSettings.resolution = static_cast<int>(resolution);
+        long long animationDurationLong = 0;
+        if (getMapProperty(mapProperties, "-torque-animation-duration", animationDurationLong)) {
+            torqueSettings.animationDuration = static_cast<float>(animationDurationLong);
+        } else {
+            double animationDurationDouble = 0;
+            if (getMapProperty(mapProperties, "-torque-animation-duration", animationDurationDouble)) {
+                torqueSettings.animationDuration = static_cast<float>(animationDurationDouble);
+            }
+        }
+        Color clearColor;
+        if (getMapProperty(mapProperties, "-torque-clear-color", clearColor)) {
+            torqueSettings.clearColor = vt::Color(clearColor.value());
         }
         getMapProperty(mapProperties, "-torque-time-attribute", torqueSettings.timeAttribute);
         getMapProperty(mapProperties, "-torque-aggregation-function", torqueSettings.aggregationFunction);

@@ -112,7 +112,10 @@ namespace carto { namespace vt {
             if (labelInfo1.size != labelInfo2.size) {
                 return labelInfo1.size > labelInfo2.size;
             }
-            return labelInfo1.opacity > labelInfo2.opacity;
+            if (labelInfo1.opacity != labelInfo2.opacity) {
+                return labelInfo1.opacity > labelInfo2.opacity;
+            }
+            return labelInfo1.label->getGlobalId() > labelInfo2.label->getGlobalId();
         });
 
         // Update label visibility flag based on overlap analysis

@@ -102,12 +102,28 @@ namespace carto { namespace css {
 
     mvt::Expression CartoCSSMapnikTranslator::buildExpression(const Expression& expr) {
         struct ExpressionBuilder {
-            mvt::Expression operator() (const Value& val) const { return buildValue(val); }
+            mvt::Expression operator() (const Value& val) const {
+                if (auto strVal = std::get_if<std::string>(&val)) {
+                    try {
+                        return mvt::parseExpression(*strVal, true);
+                    }
+                    catch (const std::exception& ex) {
+                        throw TranslatorException("Failed to parse string expression: " + std::string(ex.what()));
+                    }
+                }
+                return buildValue(val);
+            }
+            
             mvt::Expression operator() (const FieldOrVar& fieldOrVar) const {
                 if (!fieldOrVar.isField()) {
-                    throw TranslatorException("FieldOrVar: expecting field, not variable (@" + fieldOrVar.getName() + ")");
+                    throw TranslatorException("Expecting field, not variable (@" + fieldOrVar.getName() + ")");
                 }
-                return mvt::parseExpression("[" + fieldOrVar.getName() + "]", true);
+                try {
+                    return std::make_shared<mvt::VariableExpression>(mvt::parseExpression(fieldOrVar.getName(), true));
+                }
+                catch (const std::exception& ex) {
+                    throw TranslatorException("Failed to parse variable expression: " + std::string(ex.what()));
+                }
             }
 
             mvt::Expression operator() (const std::shared_ptr<ListExpression>& listExpr) const {
@@ -225,18 +241,18 @@ namespace carto { namespace css {
             for (std::size_t i = 1; i < funcExpr.getArgs().size(); i++) {
                 auto listExpr = std::get_if<std::shared_ptr<ListExpression>>(&funcExpr.getArgs()[i]);
                 if (!listExpr) {
-                    throw TranslatorException("Expecting interpolation list");
+                    throw TranslatorException("Expecting element list for interpolation function");
                 }
                 if ((*listExpr)->getExpressions().size() != 2) {
-                    throw TranslatorException("Expecting interpolation elements of size 2");
+                    throw TranslatorException("Expecting elements of size 2 for interpolation function");
                 }
                 auto keyVal = std::get_if<Value>(&(*listExpr)->getExpressions()[0]);
                 if (!keyVal) {
-                    throw TranslatorException("Expecting constant key");
+                    throw TranslatorException("Expecting constant scalar keys for interpolation function");
                 }
                 auto valueVal = std::get_if<Value>(&(*listExpr)->getExpressions()[1]);
                 if (!valueVal) {
-                    throw TranslatorException("Expecting constant value");
+                    throw TranslatorException("Expecting constant scalar values for interpolation function");
                 }
                 keyFrames.push_back(buildValue(*keyVal));
                 keyFrames.push_back(buildValue(*valueVal));
@@ -323,25 +339,6 @@ namespace carto { namespace css {
     }
 
     std::shared_ptr<const mvt::Symbolizer> CartoCSSMapnikTranslator::createSymbolizer(const std::string& symbolizerType, const std::vector<std::shared_ptr<const Property>>& properties, const std::shared_ptr<mvt::Map>& map) const {
-        struct TextExpressionBuilder {
-            mvt::Expression operator() (const Value& val) const {
-                std::string str = mvt::ValueConverter<std::string>::convert(buildValue(val));
-                return str.empty() ? mvt::Expression(mvt::Value(std::string())) : mvt::parseExpression(str, true);
-            }
-            mvt::Expression operator() (const FieldOrVar& fieldOrVar) const { return buildExpression(Expression(fieldOrVar)); }
-            mvt::Expression operator() (const std::shared_ptr<ListExpression>& listExpr) const { return buildExpression(Expression(listExpr)); }
-            mvt::Expression operator() (const std::shared_ptr<UnaryExpression>& unaryExpr) const { return buildExpression(Expression(unaryExpr)); }
-            mvt::Expression operator() (const std::shared_ptr<BinaryExpression>& binaryExpr) const { return buildExpression(Expression(binaryExpr)); }
-            mvt::Expression operator() (const std::shared_ptr<ConditionalExpression>& condExpr) const {
-                mvt::Expression cond = buildExpression(condExpr->getCondition());
-                mvt::Expression subExpr1 = std::visit(*this, condExpr->getExpression1());
-                mvt::Expression subExpr2 = std::visit(*this, condExpr->getExpression2());
-                return std::make_shared<mvt::TertiaryExpression>(mvt::TertiaryExpression::Op::CONDITIONAL, std::move(cond), std::move(subExpr1), std::move(subExpr2));
-            }
-            
-            mvt::Expression operator() (const std::shared_ptr<FunctionExpression>& funcExpr) const { return buildExpression(Expression(funcExpr)); }
-        };
-        
         std::shared_ptr<mvt::Symbolizer> mapnikSymbolizer;
         if (symbolizerType == "point") {
             mapnikSymbolizer = std::make_shared<mvt::PointSymbolizer>(_logger);
@@ -362,11 +359,12 @@ namespace carto { namespace css {
             mapnikSymbolizer = std::make_shared<mvt::MarkersSymbolizer>(_logger);
         }
         else if (symbolizerType == "text" || symbolizerType == "shield") {
+            // Extact text expression and font name or font set name
             mvt::Expression textExpr = mvt::Value(std::string());
             std::pair<std::string, std::string> fontSetFaceName;
             for (const std::shared_ptr<const Property>& prop : properties) {
                 if (prop->getField() == symbolizerType + "-name") {
-                    textExpr = std::visit(TextExpressionBuilder(), prop->getExpression());
+                    textExpr = buildExpression(prop->getExpression());
                 }
                 else if (prop->getField() == symbolizerType + "-face-name") {
                     if (auto val = std::get_if<Value>(&prop->getExpression())) {
@@ -397,6 +395,8 @@ namespace carto { namespace css {
                     }
                 }
             }
+
+            // Check if the text expression is not empty.
             if (textExpr != mvt::Expression(mvt::Value(std::string()))) {
                 if (symbolizerType == "text") {
                     mapnikSymbolizer = std::make_shared<mvt::TextSymbolizer>(textExpr, map->getFontSets(), _logger);

@@ -8,7 +8,7 @@ namespace carto { namespace vt {
         int height = 1;
         std::vector<std::uint32_t> data(width * 1, 0xffffffffU);
 
-        _strokeMap[0] = std::unique_ptr<Stroke>(new Stroke(65536.0f, 0, height));
+        _strokeMap[0] = std::make_unique<Stroke>(65536.0f, 0, height);
         _bitmapPattern = std::make_shared<BitmapPattern>(1.0f, 1.0f, std::make_shared<Bitmap>(width, 1, std::move(data)));
         _height = height;
     }
@@ -69,7 +69,7 @@ namespace carto { namespace vt {
         std::copy(scaledBitmap->data.begin(), scaledBitmap->data.end(), data.begin() + _width * _height);
 
         StrokeId strokeId = static_cast<StrokeId>(_strokeMap.size());
-        _strokeMap[strokeId] = std::unique_ptr<Stroke>(new Stroke(bitmapPattern->widthScale, _height, height));
+        _strokeMap[strokeId] = std::make_unique<Stroke>(bitmapPattern->widthScale, _height, height);
         _bitmapStrokeMap[bitmapPattern] = strokeId;
         _bitmapPattern = std::make_shared<BitmapPattern>(1.0f, 1.0f, std::make_shared<Bitmap>(_width, pow2Height, std::move(data)));
         _height = height;

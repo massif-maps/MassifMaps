@@ -15,6 +15,7 @@
 #include <string>
 #include <variant>
 #include <vector>
+#include <deque>
 #include <map>
 #include <utility>
 #include <functional>
@@ -95,6 +96,29 @@ namespace carto { namespace css {
         explicit StyleSheet(std::vector<Element> elements) : _elements(std::move(elements)) { }
 
         const std::vector<Element>& getElements() const { return _elements; }
+
+        std::vector<Selector> findRuleSetSelectors() const {
+            std::deque<const RuleSet*> ruleSets;
+            for (const Element& element : _elements) {
+                if (auto ruleSet = std::get_if<RuleSet>(&element)) {
+                    ruleSets.push_back(ruleSet);
+                }
+            }
+            std::vector<Selector> selectors;
+            while (!ruleSets.empty()) {
+                const RuleSet* ruleSet = ruleSets.front();
+                ruleSets.pop_front();
+                selectors.insert(selectors.end(), ruleSet->getSelectors().begin(), ruleSet->getSelectors().end());
+                std::vector<const RuleSet*> subRuleSets;
+                for (const Block::Element& element : ruleSet->getBlock().getElements()) {
+                    if (auto subRuleSet = std::get_if<RuleSet>(&element)) {
+                        subRuleSets.push_back(subRuleSet);
+                    }
+                }
+                ruleSets.insert(ruleSets.begin(), subRuleSets.begin(), subRuleSets.end());
+            }
+            return selectors;
+        }
 
     private:
         std::vector<Element> _elements;

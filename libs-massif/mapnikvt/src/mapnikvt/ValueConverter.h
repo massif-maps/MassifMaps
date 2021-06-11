@@ -8,6 +8,7 @@
 #define _CARTO_MAPNIKVT_VALUECONVERTER_H_
 
 #include "Value.h"
+#include "StringUtils.h"
 
 #include <boost/lexical_cast.hpp>
 
@@ -56,9 +57,9 @@ namespace carto { namespace mvt {
             bool operator() (const std::string& val) const {
                 if (val.empty()) {
                     return false;
-                } else if (val == "true") {
+                } else if (toLower(val) == "true") {
                     return true;
-                } else if (val == "false") {
+                } else if (toLower(val) == "false") {
                     return false;
                 }
                 try {

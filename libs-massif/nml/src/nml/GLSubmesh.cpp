@@ -6,7 +6,6 @@
 #include <cassert>
 
 namespace carto { namespace nml {
-
     GLSubmesh::GLSubmesh(const Submesh& submesh) :
         _glType(-1),
         _vertexCounts(),
@@ -43,7 +42,7 @@ namespace carto { namespace nml {
         _vertexIdBuffer.clear();
         for (int i = 0; i < submesh.vertex_ids_size(); i++) {
             int count = static_cast<int>(submesh.vertex_ids(i) >> 32);
-            unsigned int id = static_cast<unsigned int>(submesh.vertex_ids(i) & (unsigned int) -1);
+            unsigned int id = static_cast<unsigned int>(submesh.vertex_ids(i) & 0xffffffffU);
             _vertexIdBuffer.insert(_vertexIdBuffer.end(), count, id);
         }
     }
@@ -343,5 +342,4 @@ namespace carto { namespace nml {
     
         buf.assign(reinterpret_cast<const unsigned char*>(str.data()), reinterpret_cast<const unsigned char *>(str.data()) + str.size() / sizeof(unsigned char));
     }
-    
 } }

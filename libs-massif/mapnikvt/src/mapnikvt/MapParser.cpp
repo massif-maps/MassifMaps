@@ -26,23 +26,23 @@ namespace carto { namespace mvt {
 
         // Basic attributes
         Map::Settings mapSettings;
-        if (pugi::xml_attribute fontDirectory = mapNode.attribute("font-directory")) {
-            mapSettings.fontDirectory = fontDirectory.as_string();
+        if (pugi::xml_attribute fontDirectoryAttr = mapNode.attribute("font-directory")) {
+            mapSettings.fontDirectory = fontDirectoryAttr.as_string();
         }
-        if (pugi::xml_attribute bgColor = mapNode.attribute("bgcolor")) {
-            mapSettings.backgroundColor = parseColor(bgColor.as_string());
+        if (pugi::xml_attribute bgColorAttr = mapNode.attribute("bgcolor")) {
+            mapSettings.backgroundColor = parseColor(bgColorAttr.as_string());
         }
-        if (pugi::xml_attribute backgroundColor = mapNode.attribute("background-color")) {
-            mapSettings.backgroundColor = parseColor(backgroundColor.as_string());
+        if (pugi::xml_attribute backgroundColorAttr = mapNode.attribute("background-color")) {
+            mapSettings.backgroundColor = parseColor(backgroundColorAttr.as_string());
         }
-        if (pugi::xml_attribute backgroundImage = mapNode.attribute("background-image")) {
-            mapSettings.backgroundImage = backgroundImage.as_string();
+        if (pugi::xml_attribute backgroundImageAttr = mapNode.attribute("background-image")) {
+            mapSettings.backgroundImage = backgroundImageAttr.as_string();
         }
-        if (pugi::xml_attribute northPoleColor = mapNode.attribute("north-pole-color")) {
-            mapSettings.northPoleColor = parseColor(northPoleColor.as_string());
+        if (pugi::xml_attribute northPoleColorAttr = mapNode.attribute("north-pole-color")) {
+            mapSettings.northPoleColor = parseColor(northPoleColorAttr.as_string());
         }
-        if (pugi::xml_attribute southPoleColor = mapNode.attribute("south-pole-color")) {
-            mapSettings.southPoleColor = parseColor(southPoleColor.as_string());
+        if (pugi::xml_attribute southPoleColorAttr = mapNode.attribute("south-pole-color")) {
+            mapSettings.southPoleColor = parseColor(southPoleColorAttr.as_string());
         }
 
         // Build map
@@ -101,8 +101,14 @@ namespace carto { namespace mvt {
             pugi::xml_node styleNode = (*styleIt).node();
             std::string styleName = styleNode.attribute("name").as_string();
             float opacity = styleNode.attribute("opacity").as_float(1.0f);
-            std::string imageFilters = styleNode.attribute("image-filters").as_string("");
-            std::string compOp = styleNode.attribute("comp-op").as_string("");
+            std::string imageFilters;
+            if (pugi::xml_attribute imageFiltersAttr = styleNode.attribute("image-filters")) {
+                imageFilters = imageFiltersAttr.as_string();
+            }
+            std::optional<vt::CompOp> compOp;
+            if (pugi::xml_attribute compOpAttr = styleNode.attribute("comp-op")) {
+                compOp = parseCompOp(compOpAttr.as_string());
+            }
 
             Style::FilterMode filterMode = Style::FilterMode::ALL;
             if (styleNode.attribute("filter-mode")) {
@@ -173,11 +179,12 @@ namespace carto { namespace mvt {
                         maxZoom = std::max(maxZoom, zoom);
                     }
                 }
-                auto rule = std::make_shared<Rule>(ruleName, minZoom, maxZoom + 1, filter, symbolizers);
+
+                auto rule = std::make_shared<Rule>(ruleName, minZoom, maxZoom + 1, filter, std::move(symbolizers));
                 rules.push_back(rule);
             }
 
-            auto style = std::make_shared<Style>(styleName, opacity, imageFilters, compOp, filterMode, rules);
+            auto style = std::make_shared<Style>(styleName, opacity, imageFilters, compOp, filterMode, std::move(rules));
             map->addStyle(style);
         }
 
@@ -186,8 +193,8 @@ namespace carto { namespace mvt {
         for (pugi::xpath_node_set::const_iterator layerIt = layerNodes.begin(); layerIt != layerNodes.end(); ++layerIt) {
             pugi::xml_node layerNode = (*layerIt).node();
             std::string layerName = layerNode.attribute("name").as_string();
-            if (layerNode.attribute("group-by")) {
-                std::string groupByString = layerNode.attribute("group-by").as_string();
+            if (pugi::xml_attribute groupByAttr = layerNode.attribute("group-by")) {
+                std::string groupByString = groupByAttr.as_string();
                 _logger->write(Logger::Severity::WARNING, "Unsupported layer group-by mode: " + groupByString);
             }
 
@@ -199,7 +206,7 @@ namespace carto { namespace mvt {
                 styleNames.push_back(styleName);
             }
 
-            auto layer = std::make_shared<Layer>(layerName, styleNames);
+            auto layer = std::make_shared<Layer>(layerName, std::move(styleNames));
             map->addLayer(layer);
         }
 

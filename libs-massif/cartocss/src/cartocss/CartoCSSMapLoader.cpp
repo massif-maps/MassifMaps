@@ -1,6 +1,7 @@
 #include "CartoCSSMapLoader.h"
 #include "CartoCSSParser.h"
 #include "CartoCSSMapnikTranslator.h"
+#include "mapnikvt/ParserUtils.h"
 #include "mapnikvt/ValueConverter.h"
 
 #include <picojson/picojson.h>
@@ -25,6 +26,7 @@ namespace carto { namespace css {
     }
 
     std::shared_ptr<mvt::Map> CartoCSSMapLoader::loadMap(const std::string& cartoCSS) const {
+        // Parse the given CSS into stylesheet and process errors
         StyleSheet styleSheet;
         try {
             styleSheet = CartoCSSParser::parse(cartoCSS);
@@ -36,34 +38,20 @@ namespace carto { namespace css {
             throw LoaderException(std::string("Exception while parsing CartoCSS: ") + ex.what());
         }
 
-        // Find layer names
+        // Find layer names, keep the order of the names intact based on 'referencing' order
         std::vector<std::string> layerNames;
-        std::function<void(const RuleSet& ruleSet)> storeRuleSetInfo;
-        storeRuleSetInfo = [&](const RuleSet& ruleSet) {
-            for (const Selector& selector : ruleSet.getSelectors()) {
-                for (const Predicate& pred : selector.getPredicates()) {
-                    if (auto layerPred = std::get_if<LayerPredicate>(&pred)) {
-                        std::string layerName = layerPred->getLayerName();
-                        if (std::find(layerNames.begin(), layerNames.end(), layerName) == layerNames.end()) {
-                            layerNames.push_back(layerName);
-                        }
+        for (const Selector& selector : styleSheet.findRuleSetSelectors()) {
+            for (const Predicate& pred : selector.getPredicates()) {
+                if (auto layerPred = std::get_if<LayerPredicate>(&pred)) {
+                    std::string layerName = layerPred->getLayerName();
+                    if (std::find(layerNames.begin(), layerNames.end(), layerName) == layerNames.end()) {
+                        layerNames.push_back(layerName);
                     }
                 }
             }
-
-            for (const Block::Element& element : ruleSet.getBlock().getElements()) {
-                if (auto subRuleSet = std::get_if<RuleSet>(&element)) {
-                    storeRuleSetInfo(*subRuleSet);
-                }
-            }
-        };
-
-        for (const StyleSheet::Element& element : styleSheet.getElements()) {
-            if (auto ruleSet = std::get_if<RuleSet>(&element)) {
-                storeRuleSetInfo(*ruleSet);
-            }
         }
 
+        // Build Map
         return buildMap(styleSheet, layerNames, std::vector<mvt::NutiParameter>());
     }
 
@@ -189,18 +177,26 @@ namespace carto { namespace css {
             }
             std::vector<AttachmentStyle> attachmentStyles = getSortedAttachmentStyles(attachmentStyleMap);
 
+            // Create style for each attachment
             std::vector<std::string> styleNames;
             for (const AttachmentStyle& attachmentStyle : attachmentStyles) {
                 std::string styleName = layerName + attachmentStyle.attachment;
-                auto style = std::make_shared<mvt::Style>(styleName, attachmentStyle.opacity, attachmentStyle.imageFilters, attachmentStyle.compOp, mvt::Style::FilterMode::FIRST, attachmentStyle.rules);
-                style->optimizeRules();
+                std::shared_ptr<mvt::Style> style = buildStyle(attachmentStyle, styleName);
                 map->addStyle(style);
                 styleNames.push_back(styleName);
             }
+
+            // Finally build the layer
             auto layer = std::make_shared<mvt::Layer>(layerName, styleNames);
             map->addLayer(layer);
         }
         return map;
+    }
+
+    std::shared_ptr<mvt::Style> CartoCSSMapLoader::buildStyle(const AttachmentStyle& attachmentStyle, const std::string& styleName) const {
+        auto style = std::make_shared<mvt::Style>(styleName, attachmentStyle.opacity, attachmentStyle.imageFilters, attachmentStyle.compOp, mvt::Style::FilterMode::FIRST, attachmentStyle.rules);
+        style->optimizeRules();
+        return style;
     }
 
     void CartoCSSMapLoader::loadMapSettings(const std::map<std::string, Value>& mapProperties, mvt::Map::Settings& mapSettings) const {
@@ -271,7 +267,15 @@ namespace carto { namespace css {
 
                 if (auto compOpProp = propertySet.findProperty("comp-op")) {
                     if (auto val = std::get_if<Value>(&compOpProp->getExpression())) {
-                        attachmentStyle.compOp = mvt::ValueConverter<std::string>::convert(translator.buildValue(*val));
+                        std::string compOp = mvt::ValueConverter<std::string>::convert(translator.buildValue(*val));
+                        if (!compOp.empty()) {
+                            try {
+                                attachmentStyle.compOp = mvt::parseCompOp(compOp);
+                            }
+                            catch (const mvt::ParserException& ex) {
+                                _logger->write(mvt::Logger::Severity::WARNING, std::string("Failed to parse layer CompOp: ") + ex.what());
+                            }
+                        }
                     }
                     else {
                         _logger->write(mvt::Logger::Severity::WARNING, "CompOp must be constant expression");

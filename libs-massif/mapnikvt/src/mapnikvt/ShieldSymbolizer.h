@@ -19,7 +19,7 @@ namespace carto { namespace mvt {
             bindParameter("unlock-image", &_unlockImage);
         }
 
-        virtual void build(const FeatureCollection& featureCollection, const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext, vt::TileLayerBuilder& layerBuilder) const override;
+        virtual FeatureProcessor createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const override;
 
     protected:
         inline static constexpr float IMAGE_UPSAMPLING_SCALE = 2.5f;

@@ -268,7 +268,7 @@ namespace carto { namespace vt {
         }
 
         for (cglib::vec4<std::int8_t>* it = attribs.end() - _cachedAttribs.size(); it != attribs.end(); it++) {
-            *it = cglib::vec4<std::int8_t>(static_cast<int>(styleIndex), (*it)(1), static_cast<std::int8_t>(_opacity * 127.0f), 0);
+            *it = cglib::vec4<std::int8_t>(static_cast<std::int8_t>(styleIndex), (*it)(1), static_cast<std::int8_t>(_opacity * 127.0f), 0);
         }
         for (std::uint16_t* it = indices.end() - _cachedIndices.size(); it != indices.end(); it++) {
             *it += static_cast<std::uint16_t>(vertices.size() - _cachedVertices.size());
@@ -318,6 +318,9 @@ namespace carto { namespace vt {
 
     bool Label::buildLineVertexData(const std::shared_ptr<const Placement>& placement, float scale, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const {
         const std::vector<Placement::Edge>& edges = placement->edges;
+        if (edges.empty()) {
+            return false;
+        }
         std::size_t edgeIndex = placement->index;
         cglib::vec2<float> pen(cglib::dot_product(-edges[edgeIndex].position0, edges[edgeIndex].xAxis), 0);
 

@@ -261,7 +261,7 @@ namespace carto { namespace geocoding {
             
             std::size_t resultCount = results.size();
             if (!nameRanks->empty()) {
-                std::uint32_t nameTypeMask = std::accumulate(nameRanks->begin(), nameRanks->end(), std::uint32_t(0), [](std::uint32_t mask, const NameRank& nameRank) { return mask | (1 << static_cast<int>(nameRank.name->type)); });
+                std::uint32_t nameTypeMask = std::accumulate(nameRanks->begin(), nameRanks->end(), std::uint32_t(0), [](std::uint32_t mask, const NameRank& nameRank) { return mask | (1U << static_cast<int>(nameRank.name->type)); });
                 Query subQuery = query;
                 subQuery.tokenList.assignTypeMask(span, nameTypeMask);
                 subQuery.filtersList.push_back(std::move(nameRanks));
@@ -414,9 +414,9 @@ namespace carto { namespace geocoding {
         });
 
         // Find which fields are potentially present in the query
-        std::uint32_t typeMask = 1 << static_cast<int>(FieldType::HOUSENUMBER);
+        std::uint32_t typeMask = 1U << static_cast<int>(FieldType::HOUSENUMBER);
         for (const std::shared_ptr<std::vector<NameRank>>& nameRanks : filtersList) {
-            std::uint32_t mask = std::accumulate(nameRanks->begin(), nameRanks->end(), std::uint32_t(0), [](std::uint32_t mask, const NameRank& nameRank) { return mask | 1 << static_cast<int>(nameRank.name->type); });
+            std::uint32_t mask = std::accumulate(nameRanks->begin(), nameRanks->end(), std::uint32_t(0), [](std::uint32_t mask, const NameRank& nameRank) { return mask | 1U << static_cast<int>(nameRank.name->type); });
             typeMask |= mask;
         }
 
@@ -424,7 +424,7 @@ namespace carto { namespace geocoding {
         const std::vector<NameRank>& nameRanks1 = *sortedFiltersList.front();
         std::uint64_t count1 = std::accumulate(nameRanks1.begin(), nameRanks1.end(), std::uint64_t(0), [](std::uint64_t sum, const NameRank& nameRank) { return sum + nameRank.name->count; });
         if (count1 > MAX_MATCH_COUNT) {
-            typeMask &= ~(1 << static_cast<int>(FieldType::NAME)) & ~(1 << static_cast<int>(FieldType::HOUSENUMBER)) & ~(1 << static_cast<int>(FieldType::STREET));
+            typeMask &= ~(1U << static_cast<int>(FieldType::NAME)) & ~(1U << static_cast<int>(FieldType::HOUSENUMBER)) & ~(1U << static_cast<int>(FieldType::STREET));
         }
 
         // Build SQL filters
@@ -469,7 +469,7 @@ namespace carto { namespace geocoding {
                     continue;
                 }
             }
-            if ((typeMask & (1 << type)) != 0) {
+            if ((typeMask & (1U << type)) != 0) {
                 values += (values.empty() ? "" : ",") + std::to_string(type);
             }
         }
@@ -524,7 +524,7 @@ namespace carto { namespace geocoding {
             findBestMatches = [&](std::size_t index, std::uint32_t mask, float rank, unsigned int elementIndex, std::map<unsigned int, float>& bestMatches) {
                 if (index >= query.filtersList.size()) {
                     for (const EntityName& entityName : entityRow.entityNames) {
-                        if (!(mask & (1 << static_cast<int>(entityName.type)))) {
+                        if (!(mask & (1U << static_cast<int>(entityName.type)))) {
                             rank *= EXTRA_FIELD_PENALTY;
                         }
                     }
@@ -536,14 +536,14 @@ namespace carto { namespace geocoding {
                 }
 
                 for (const NameRank& nameRank : *query.filtersList[index]) {
-                    if (mask & (1 << static_cast<int>(nameRank.name->type))) {
+                    if (mask & (1U << static_cast<int>(nameRank.name->type))) {
                         continue;
                     }
 
                     if (nameRank.name->type == FieldType::HOUSENUMBER) {
                         int houseIndex = interpolator.findAddress(nameRank.name->id); // if not found, interpolator returns -1
                         if (houseIndex != -1) {
-                            findBestMatches(index + 1, mask | (1 << static_cast<int>(nameRank.name->type)), rank * nameRank.rank, houseIndex + 1, bestMatches);
+                            findBestMatches(index + 1, mask | (1U << static_cast<int>(nameRank.name->type)), rank * nameRank.rank, houseIndex + 1, bestMatches);
                         }
                     }
                     else {
@@ -551,7 +551,7 @@ namespace carto { namespace geocoding {
                             return entityName.id == nameRank.name->id;
                         });
                         if (it != entityRow.entityNames.end()) {
-                            findBestMatches(index + 1, mask | (1 << static_cast<int>(nameRank.name->type)), rank * nameRank.rank, elementIndex, bestMatches);
+                            findBestMatches(index + 1, mask | (1U << static_cast<int>(nameRank.name->type)), rank * nameRank.rank, elementIndex, bestMatches);
                         }
                     }
                 }
@@ -691,7 +691,7 @@ namespace carto { namespace geocoding {
         std::vector<std::uint32_t> validMasks;
         validMasks.reserve(query.filtersList.size());
         for (const std::shared_ptr<std::vector<NameRank>>& nameRanks : query.filtersList) {
-            std::uint32_t validMask = std::accumulate(nameRanks->begin(), nameRanks->end(), std::uint32_t(0), [](std::uint32_t mask, const NameRank& nameRank) { return mask | 1 << static_cast<int>(nameRank.name->type); });
+            std::uint32_t validMask = std::accumulate(nameRanks->begin(), nameRanks->end(), std::uint32_t(0), [](std::uint32_t mask, const NameRank& nameRank) { return mask | 1U << static_cast<int>(nameRank.name->type); });
             validMasks.push_back(validMask);
         }
 
@@ -716,13 +716,13 @@ namespace carto { namespace geocoding {
 
                 bool streetType = false;
                 for (std::size_t j = 0; j < query.filtersList.size(); j++) {
-                    if (i != j && (validMasks[j] & (1 << static_cast<int>(FieldType::STREET))) != 0) {
+                    if (i != j && (validMasks[j] & (1U << static_cast<int>(FieldType::STREET))) != 0) {
                         streetType = true;
                         break;
                     }
                 }
                 if (!streetType) {
-                    validMask &= ~(1 << static_cast<int>(FieldType::HOUSENUMBER));
+                    validMask &= ~(1U << static_cast<int>(FieldType::HOUSENUMBER));
                 }
 
                 if (validMask != validMasks[i]) {
@@ -737,17 +737,17 @@ namespace carto { namespace geocoding {
         filtersList.reserve(query.filtersList.size());
         bool nameType = false;
         for (std::size_t i = 0; i < query.filtersList.size(); i++) {
-            if (validMasks[i] & (1 << static_cast<int>(FieldType::NAME))) {
+            if (validMasks[i] & (1U << static_cast<int>(FieldType::NAME))) {
                 nameType = true;
             }
-            if (validMasks[i] & (1 << static_cast<int>(FieldType::HOUSENUMBER))) {
+            if (validMasks[i] & (1U << static_cast<int>(FieldType::HOUSENUMBER))) {
                 continue;
             }
 
             auto nameRanks = std::make_shared<std::vector<NameRank>>();
             nameRanks->reserve(query.filtersList[i]->size());
             for (const NameRank& nameRank : *query.filtersList[i]) {
-                if (validMasks[i] & (1 << static_cast<int>(nameRank.name->type))) {
+                if (validMasks[i] & (1U << static_cast<int>(nameRank.name->type))) {
                     nameRanks->push_back(nameRank);
                 }
             }

@@ -34,7 +34,7 @@ namespace carto { namespace mvt {
             bindParameter("transform", &_transform);
         }
 
-        virtual void build(const FeatureCollection& featureCollection, const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext, vt::TileLayerBuilder& layerBuilder) const override;
+        virtual FeatureProcessor createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const override;
 
     protected:
         inline static constexpr int DEFAULT_CIRCLE_SIZE = 10;
@@ -43,6 +43,8 @@ namespace carto { namespace mvt {
         inline static constexpr int SUPERSAMPLING_FACTOR = 4;
         inline static constexpr int MAX_BITMAP_SIZE = 64;
         inline static constexpr float IMAGE_UPSAMPLING_SCALE = 2.5f;
+
+        static std::vector<std::pair<vt::Transform, vt::TileLayerBuilder::Vertices>> generateTransformedPoints(const vt::TileLayerBuilder::Vertices& vertices, float spacing, float bitmapSize, float tileSize);
 
         static std::shared_ptr<vt::BitmapImage> makeEllipseBitmap(float width, float height, const vt::Color& color, float strokeWidth, const vt::Color& strokeColor);
         static std::shared_ptr<vt::BitmapImage> makeArrowBitmap(float width, float height, const vt::Color& color, float strokeWidth, const vt::Color& strokeColor);

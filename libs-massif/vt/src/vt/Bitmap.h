@@ -12,7 +12,7 @@
 #include <memory>
 
 namespace carto { namespace vt {
-    inline static constexpr float BITMAP_SDF_SCALE = 16.0f;
+    inline static constexpr float BITMAP_SDF_SCALE = 8.0f;
 
     struct Bitmap final {
         const int width;

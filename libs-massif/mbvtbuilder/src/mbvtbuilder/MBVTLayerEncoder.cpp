@@ -31,27 +31,27 @@ namespace carto { namespace mbvtbuilder {
     protobuf::encoded_message MBVTLayerEncoder::buildLayer() const {
         protobuf::encoded_message encodedLayer;
 
-        encodedLayer.write_tag(vector_tile::Tile_Layer::kVersionFieldNumber);
+        encodedLayer.write_tag(vector_tile::Tile_Layer::kVersionFieldNumber, protobuf::encoded_message::varint_type);
         encodedLayer.write_uint32(_version);
 
-        encodedLayer.write_tag(vector_tile::Tile_Layer::kExtentFieldNumber);
+        encodedLayer.write_tag(vector_tile::Tile_Layer::kExtentFieldNumber, protobuf::encoded_message::varint_type);
         encodedLayer.write_uint32(_extent);
 
-        encodedLayer.write_tag(vector_tile::Tile_Layer::kNameFieldNumber);
+        encodedLayer.write_tag(vector_tile::Tile_Layer::kNameFieldNumber, protobuf::encoded_message::length_type);
         encodedLayer.write_string(_name);
 
         for (const std::string& key : _keys) {
-            encodedLayer.write_tag(vector_tile::Tile_Layer::kKeysFieldNumber);
+            encodedLayer.write_tag(vector_tile::Tile_Layer::kKeysFieldNumber, protobuf::encoded_message::length_type);
             encodedLayer.write_string(key);
         }
 
         for (const picojson::value& value : _values) {
-            encodedLayer.write_tag(vector_tile::Tile_Layer::kValuesFieldNumber);
+            encodedLayer.write_tag(vector_tile::Tile_Layer::kValuesFieldNumber, protobuf::encoded_message::length_type);
             encodedLayer.write_message(encodeValue(value));
         }
 
         for (const protobuf::encoded_message& encodedFeature : _encodedFeatures) {
-            encodedLayer.write_tag(vector_tile::Tile_Layer::kFeaturesFieldNumber);
+            encodedLayer.write_tag(vector_tile::Tile_Layer::kFeaturesFieldNumber, protobuf::encoded_message::length_type);
             encodedLayer.write_message(encodedFeature);
         }
 
@@ -177,10 +177,10 @@ namespace carto { namespace mbvtbuilder {
         if (val.is<std::int64_t>()) {
             std::int64_t intVal = val.get<std::int64_t>();
             if (intVal >= 0) {
-                encodedValue.write_tag(vector_tile::Tile_Value::kUintValueFieldNumber);
+                encodedValue.write_tag(vector_tile::Tile_Value::kUintValueFieldNumber, protobuf::encoded_message::varint_type);
                 encodedValue.write_uint64(intVal);
             } else {
-                encodedValue.write_tag(vector_tile::Tile_Value::kSintValueFieldNumber);
+                encodedValue.write_tag(vector_tile::Tile_Value::kSintValueFieldNumber, protobuf::encoded_message::varint_type);
                 encodedValue.write_sint64(intVal);
             }
         }
@@ -188,19 +188,19 @@ namespace carto { namespace mbvtbuilder {
             double doubleVal = val.get<double>();
             float floatVal = static_cast<float>(doubleVal);
             if (floatVal == doubleVal) {
-                encodedValue.write_tag(vector_tile::Tile_Value::kFloatValueFieldNumber);
+                encodedValue.write_tag(vector_tile::Tile_Value::kFloatValueFieldNumber, protobuf::encoded_message::fixed32_type);
                 encodedValue.write_float(floatVal);
             } else {
-                encodedValue.write_tag(vector_tile::Tile_Value::kDoubleValueFieldNumber);
+                encodedValue.write_tag(vector_tile::Tile_Value::kDoubleValueFieldNumber, protobuf::encoded_message::fixed64_type);
                 encodedValue.write_double(doubleVal);
             }
         }
         else if (val.is<bool>()) {
-            encodedValue.write_tag(vector_tile::Tile_Value::kBoolValueFieldNumber);
+            encodedValue.write_tag(vector_tile::Tile_Value::kBoolValueFieldNumber, protobuf::encoded_message::varint_type);
             encodedValue.write_bool(val.get<bool>());
         }
         else if (val.is<std::string>()) {
-            encodedValue.write_tag(vector_tile::Tile_Value::kStringValueFieldNumber);
+            encodedValue.write_tag(vector_tile::Tile_Value::kStringValueFieldNumber, protobuf::encoded_message::length_type);
             encodedValue.write_string(val.get<std::string>());
         }
         else {
@@ -212,11 +212,11 @@ namespace carto { namespace mbvtbuilder {
     protobuf::encoded_message MBVTLayerEncoder::encodeFeature(std::uint64_t id, int type, const std::vector<uint32_t>& tags, const std::vector<std::uint32_t>& geometry) {
         protobuf::encoded_message encodedFeature;
         
-        encodedFeature.write_tag(vector_tile::Tile_Feature::kTypeFieldNumber);
+        encodedFeature.write_tag(vector_tile::Tile_Feature::kTypeFieldNumber, protobuf::encoded_message::varint_type);
         encodedFeature.write_uint32(type);
         
         if (id) {
-            encodedFeature.write_tag(vector_tile::Tile_Feature::kIdFieldNumber);
+            encodedFeature.write_tag(vector_tile::Tile_Feature::kIdFieldNumber, protobuf::encoded_message::varint_type);
             encodedFeature.write_uint64(id);
         }
         
@@ -225,7 +225,7 @@ namespace carto { namespace mbvtbuilder {
             encodedTags.write_uint32(tag);
         }
         if (!encodedTags.empty()) {
-            encodedFeature.write_tag(vector_tile::Tile_Feature::kTagsFieldNumber);
+            encodedFeature.write_tag(vector_tile::Tile_Feature::kTagsFieldNumber, protobuf::encoded_message::length_type);
             encodedFeature.write_message(encodedTags);
         }
 
@@ -233,7 +233,7 @@ namespace carto { namespace mbvtbuilder {
         for (std::uint32_t geom : geometry) {
             encodedGeometry.write_uint32(geom);
         }
-        encodedFeature.write_tag(vector_tile::Tile_Feature::kGeometryFieldNumber);
+        encodedFeature.write_tag(vector_tile::Tile_Feature::kGeometryFieldNumber, protobuf::encoded_message::length_type);
         encodedFeature.write_message(encodedGeometry);
 
         return encodedFeature;

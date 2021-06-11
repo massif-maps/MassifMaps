@@ -2,7 +2,9 @@
 #include "ValueParser.h"
 #include "ExpressionParser.h"
 #include "TransformParser.h"
+#include "ParseTables.h"
 #include "ColorParser.h"
+#include "StringUtils.h"
 
 #include <sstream>
 #include <utility>
@@ -13,70 +15,32 @@
 
 namespace carto { namespace mvt {
     vt::LineCapMode parseLineCapMode(const std::string& str) {
-        static const std::unordered_map<std::string, vt::LineCapMode> lineCapModeTable = {
-            { "round",  vt::LineCapMode::ROUND  },
-            { "square", vt::LineCapMode::SQUARE },
-            { "butt",   vt::LineCapMode::NONE   }
-        };
-
-        auto it = lineCapModeTable.find(str);
-        if (it == lineCapModeTable.end()) {
+        auto it = getLineCapModeTable().find(toLower(str));
+        if (it == getLineCapModeTable().end()) {
             throw ParserException("LineCapMode parsing failed", str);
         }
         return it->second;
     }
 
     vt::LineJoinMode parseLineJoinMode(const std::string& str) {
-        static const std::unordered_map<std::string, vt::LineJoinMode> lineJoinModeTable = {
-            { "round", vt::LineJoinMode::ROUND },
-            { "bevel", vt::LineJoinMode::BEVEL },
-            { "miter", vt::LineJoinMode::MITER }
-        };
-
-        auto it = lineJoinModeTable.find(str);
-        if (it == lineJoinModeTable.end()) {
+        auto it = getLineJoinModeTable().find(toLower(str));
+        if (it == getLineJoinModeTable().end()) {
             throw ParserException("LineJoinMode parsing failed", str);
         }
         return it->second;
     }
 
     vt::CompOp parseCompOp(const std::string& str) {
-        static const std::unordered_map<std::string, vt::CompOp> compOpTable = {
-            { "src",      vt::CompOp::SRC },
-            { "src-over", vt::CompOp::SRC_OVER },
-            { "src-in",   vt::CompOp::SRC_IN },
-            { "src-atop", vt::CompOp::SRC_ATOP },
-            { "dst",      vt::CompOp::DST },
-            { "dst-over", vt::CompOp::DST_OVER },
-            { "dst-in",   vt::CompOp::DST_IN },
-            { "dst-atop", vt::CompOp::DST_ATOP },
-            { "clear",    vt::CompOp::ZERO },
-            { "zero",     vt::CompOp::ZERO },
-            { "plus",     vt::CompOp::PLUS },
-            { "minus",    vt::CompOp::MINUS },
-            { "multiply", vt::CompOp::MULTIPLY },
-            { "screen",   vt::CompOp::SCREEN },
-            { "darken",   vt::CompOp::DARKEN },
-            { "lighten",  vt::CompOp::LIGHTEN }
-        };
-
-        auto it = compOpTable.find(str);
-        if (it == compOpTable.end()) {
+        auto it = getCompOpTable().find(toLower(str));
+        if (it == getCompOpTable().end()) {
             throw ParserException("CompOp parsing failed", str);
         }
         return it->second;
     }
 
     vt::LabelOrientation parseLabelOrientation(const std::string& str) {
-        static const std::unordered_map<std::string, vt::LabelOrientation> labelOrientationTable = {
-            { "point",         vt::LabelOrientation::BILLBOARD_2D },
-            { "nutibillboard", vt::LabelOrientation::BILLBOARD_3D },
-            { "nutipoint",     vt::LabelOrientation::POINT },
-            { "line",          vt::LabelOrientation::LINE }
-        };
-
-        auto it = labelOrientationTable.find(str);
-        if (it == labelOrientationTable.end()) {
+        auto it = getLabelOrientationTable().find(toLower(str));
+        if (it == getLabelOrientationTable().end()) {
             throw ParserException("LabelOrientation parsing failed", str);
         }
         return it->second;
@@ -88,8 +52,9 @@ namespace carto { namespace mvt {
         unsigned int color = 0;
         bool result = false;
         try {
-            colorparserimpl::Skipper skipper;
-            result = boost::spirit::qi::phrase_parse(it, end, ColorParserGrammar<std::string::const_iterator>(), skipper, color);
+            static const ColorParserGrammar<std::string::const_iterator> parser;
+            static const colorparserimpl::Skipper skipper;
+            result = boost::spirit::qi::phrase_parse(it, end, parser, skipper, color);
         }
         catch (const boost::spirit::qi::expectation_failure<std::string::const_iterator>& ex) {
             throw ParserException("Expectation error, error at position " + std::to_string(ex.first - str.begin()), str);
@@ -109,7 +74,8 @@ namespace carto { namespace mvt {
         Value val;
         bool result = false;
         try {
-            result = boost::spirit::qi::parse(it, end, ValueParserGrammar<std::string::const_iterator>(), val);
+            static const ValueParserGrammar<std::string::const_iterator> parser;
+            result = boost::spirit::qi::parse(it, end, parser, val);
         }
         catch (const boost::spirit::qi::expectation_failure<std::string::const_iterator>& ex) {
             throw ParserException("Expectation error, error at position " + std::to_string(ex.first - str.begin()), str);
@@ -129,8 +95,9 @@ namespace carto { namespace mvt {
         std::vector<Transform> transforms;
         bool result = false;
         try {
-            transparserimpl::Skipper skipper;
-            result = boost::spirit::qi::phrase_parse(it, end, TransformParserGrammar<std::string::const_iterator>() % ',', skipper, transforms);
+            static const TransformParserGrammar<std::string::const_iterator> parser;
+            static const transparserimpl::Skipper skipper;
+            result = boost::spirit::qi::phrase_parse(it, end, parser % ',', skipper, transforms);
         }
         catch (const boost::spirit::qi::expectation_failure<std::string::const_iterator>& ex) {
             throw ParserException("Expectation error, error at position " + std::to_string(ex.first - str.begin()), str);
@@ -151,10 +118,15 @@ namespace carto { namespace mvt {
         bool result = false;
         try {
             if (stringExpr) {
-                result = boost::spirit::qi::parse(it, end, StringExpressionParserGrammar<std::string::const_iterator>(), expr);
+                if (str.empty()) {
+                    return Value(std::string());
+                }
+                static const StringExpressionParserGrammar<std::string::const_iterator> parser;
+                result = boost::spirit::qi::parse(it, end, parser, expr);
             }
             else {
-                result = boost::spirit::qi::parse(it, end, ExpressionParserGrammar<std::string::const_iterator>(), expr);
+                static const ExpressionParserGrammar<std::string::const_iterator> parser;
+                result = boost::spirit::qi::parse(it, end, parser, expr);
             }
         }
         catch (const boost::spirit::qi::expectation_failure<std::string::const_iterator>& ex) {

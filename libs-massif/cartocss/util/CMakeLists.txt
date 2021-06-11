@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.1)
 project(css2xml)
+set (CMAKE_CXX_STANDARD 17)
 
 # Fix behavior of CMAKE_CXX_STANDARD when targeting macOS.
 if(POLICY CMP0025)

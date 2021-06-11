@@ -62,6 +62,18 @@ namespace carto { namespace vt {
         _interactionMode = enabled;
     }
 
+    void GLTileRenderer::setLayerBlendingSpeed(float speed) {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        _layerBlendingSpeed = speed;
+    }
+
+    void GLTileRenderer::setLabelBlendingSpeed(float speed) {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        _labelBlendingSpeed = speed;
+    }
+
     void GLTileRenderer::setRasterFilterMode(RasterFilterMode filterMode) {
         std::lock_guard<std::mutex> lock(_mutex);
 
@@ -229,16 +241,18 @@ namespace carto { namespace vt {
 
         // Update geometry blending state
         _visibleRenderTiles = _renderTiles;
+        float dBlend = (_layerBlendingSpeed > 0.0f ? dt * _layerBlendingSpeed : 1.0f);
         for (RenderTile& renderTile : *_visibleRenderTiles) {
-            refresh = updateRenderTile(renderTile, dt) || refresh;
+            refresh = updateRenderTile(renderTile, dBlend) || refresh;
         }
         
         // Update labels
         _visibleBitmapLabelMap = _bitmapLabelMap;
+        float dOpacity = (_labelBlendingSpeed > 0.0f ? dt * _labelBlendingSpeed : 1.0f);
         for (int pass = 0; pass < 2; pass++) {
             for (BitmapLabelsPair bitmapLabels : *_visibleBitmapLabelMap[pass]) {
                 for (const std::shared_ptr<Label>& label : bitmapLabels.second) {
-                    refresh = updateLabel(label, dt) || refresh;
+                    refresh = updateLabel(label, dOpacity) || refresh;
                 }
             }
         }
@@ -731,7 +745,7 @@ namespace carto { namespace vt {
             renderLayer.layer = layer;
             renderLayer.tileSize = tile->getTileSize();
             renderLayer.active = true;
-            renderLayer.blend = (!layer->getBitmaps().empty() && layer->getBitmaps().front()->getFormat() == TileBitmap::Format::RGBA ? 1.0f : 0.0f);
+            renderLayer.blend = 0.0f;
             renderTile.renderLayers.insert({ layer->getLayerIndex(), std::move(renderLayer) });
         }
 
@@ -1335,7 +1349,7 @@ namespace carto { namespace vt {
                             break;
                         }
                     }
-                    for (haloStyleIndex = haloRadius > 0 ? labelBatchParams.parameterCount : 0; --haloStyleIndex >= 0; ) {
+                    for (haloStyleIndex = haloRadius > 0.0f ? labelBatchParams.parameterCount : 0; --haloStyleIndex >= 0; ) {
                         if (labelBatchParams.colorTable[haloStyleIndex] == haloColor && labelBatchParams.widthTable[haloStyleIndex] == size && labelBatchParams.strokeWidthTable[haloStyleIndex] == haloRadius) {
                             break;
                         }
@@ -1612,7 +1626,7 @@ namespace carto { namespace vt {
             glUniform4f(shaderProgram.uniforms[U_UVSCALE], bitmap->getWidth(), bitmap->getHeight(), 1.0f / bitmap->getWidth(), 1.0f / bitmap->getHeight());
 
             cglib::mat3x3<float> uvMatrix = cglib::mat3x3<float>::convert(cglib::inverse(calculateTileMatrix2D(sourceTileId)) * calculateTileMatrix2D(targetTileId));
-            uvMatrix = cglib::mat3x3<float> { { 1.0, 0.0, 0.0 }, { 0.0, -1.0, 1.0 }, { 0.0, 0.0, 1.0 } } * uvMatrix;
+            uvMatrix = cglib::mat3x3<float> { { 1.0f, 0.0f, 0.0f }, { 0.0f, -1.0f, 1.0f }, { 0.0f, 0.0f, 1.0f } } * uvMatrix;
             glUniformMatrix3fv(shaderProgram.uniforms[U_UVMATRIX], 1, GL_FALSE, uvMatrix.data());
 
             glUniform1f(shaderProgram.uniforms[U_OPACITY], blend * opacity);
@@ -1721,7 +1735,7 @@ namespace carto { namespace vt {
                     float width = 0.5f * _fullResolution * std::abs((styleParams.widthFuncs[i])(_viewState)) * geometry->getGeometryScale() / tileSize;
                     if (width < 1.0f) {
                         colors[i] = colors[i] * width; // should do gamma correction here, but simple implementation gives closer results to Mapnik
-                        width = (width > 0 ? 1.0f : 0.0f); // normalize width
+                        width = (width > 0.0f ? 1.0f : 0.0f); // normalize width
                     }
                     widths[i] = width * 0.5f;
                 }
@@ -1739,7 +1753,7 @@ namespace carto { namespace vt {
             if (styleParams.pattern) {
                 std::array<float, TileGeometry::StyleParameters::MAX_PARAMETERS> strokeScales;
                 for (int i = 0; i < styleParams.parameterCount; i++) {
-                    float strokeScale = (styleParams.strokeScales[i] > 0 ? STROKE_UV_SCALE / styleParams.pattern->bitmap->width / styleParams.strokeScales[i] / 127.0f / (_fullResolution / tileSize) : 0.0f);
+                    float strokeScale = (styleParams.strokeScales[i] > 0.0f ? STROKE_UV_SCALE / styleParams.pattern->bitmap->width / styleParams.strokeScales[i] / 127.0f / (_fullResolution / tileSize) : 0.0f);
                     strokeScales[i] = strokeScale * std::pow(2.0f, std::floor(_viewState.zoom) - _viewState.zoom);
                 }
                 glUniform1fv(shaderProgram.uniforms[U_STROKESCALETABLE], styleParams.parameterCount, strokeScales.data());

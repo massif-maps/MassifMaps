@@ -76,6 +76,8 @@ namespace carto { namespace vt {
         void setLightingShaderNormalMap(const std::optional<LightingShader>& lightingShaderNormalMap);
         
         void setInteractionMode(bool enabled);
+        void setLayerBlendingSpeed(float speed);
+        void setLabelBlendingSpeed(float speed);
         void setRasterFilterMode(RasterFilterMode filterMode);
         void setViewState(const ViewState& viewState);
         void setVisibleTiles(const std::map<TileId, std::shared_ptr<const Tile>>& tiles);
@@ -272,6 +274,8 @@ namespace carto { namespace vt {
         std::set<TileId> _tileSurfaceBuilderOriginTileIds;
 
         bool _interactionMode = false;
+        float _layerBlendingSpeed = 1.0f;
+        float _labelBlendingSpeed = 1.0f;
         RasterFilterMode _rasterFilterMode = RasterFilterMode::BILINEAR;
 
         std::shared_ptr<std::vector<RenderTile>> _renderTiles;

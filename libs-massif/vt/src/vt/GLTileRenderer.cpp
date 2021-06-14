@@ -1325,6 +1325,7 @@ namespace carto { namespace vt {
                 float size = (labelStyle->sizeFunc)(_viewState);
                 cglib::vec4<float> haloColor = (labelStyle->haloColorFunc)(_viewState).rgba();
                 float haloRadius = (labelStyle->haloRadiusFunc)(_viewState) * HALO_RADIUS_SCALE;
+                haloRadius = std::min(haloRadius, static_cast<float>(GLYPH_RENDER_SPREAD));
 
                 if (labelStyle->transform || (lastLabelStyle && lastLabelStyle->transform) || labelBatchParams.scale != labelStyle->scale || labelBatchParams.parameterCount + 2 > LabelBatchParameters::MAX_PARAMETERS) {
                     renderLabelBatch(labelBatchParams, bitmap);

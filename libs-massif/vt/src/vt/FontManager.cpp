@@ -176,8 +176,7 @@ namespace carto { namespace vt {
         }
 
     private:
-        inline static constexpr int RENDER_PADDING = GLYPH_RENDER_SPREAD;
-        inline static constexpr int RENDER_SIZE = GLYPH_RENDER_SIZE - RENDER_PADDING;
+        inline static constexpr int RENDER_SIZE = GLYPH_RENDER_SIZE - GLYPH_RENDER_SPREAD;
 
         GlyphMap::GlyphId addFreeTypeGlyph(FT_Face face, CodePoint codePoint) const {
             FT_Error error = FT_Load_Glyph(face, codePoint, FT_LOAD_NO_BITMAP | FT_LOAD_NO_HINTING);
@@ -203,7 +202,7 @@ namespace carto { namespace vt {
                 glyphBitmapData[i] = (val << 24) | (val << 16) | (val << 8) | val;
             }
             std::shared_ptr<Bitmap> glyphBitmap = std::make_shared<Bitmap>(width, height, std::move(glyphBitmapData));
-            return _glyphMap->loadBitmapGlyph(glyphBitmap, true, cglib::vec2<float>(-xOffset, -RENDER_PADDING - yOffset));
+            return _glyphMap->loadBitmapGlyph(glyphBitmap, true, cglib::vec2<float>(-xOffset, -GLYPH_RENDER_SPREAD - yOffset));
         }
 
         const std::shared_ptr<FontManagerLibrary> _library;

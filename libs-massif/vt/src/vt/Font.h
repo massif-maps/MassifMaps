@@ -18,7 +18,7 @@
 
 namespace carto { namespace vt {
     inline static constexpr int GLYPH_RENDER_SIZE = 27;
-    inline static constexpr int GLYPH_RENDER_SPREAD = 3; // NOTE: keep it equal or smaller than BITMAP_SDF_SCALE
+    inline static constexpr int GLYPH_RENDER_SPREAD = 4; // NOTE: keep it equal or smaller than BITMAP_SDF_SCALE
 
     class Font {
     public:

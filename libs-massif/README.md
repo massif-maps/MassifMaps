@@ -15,10 +15,10 @@ An extended CartoCSS parser and translator to MapnikVT.
 A mid level vector tile rendering library that uses Mapnik-like XML style definition language. Includes decoders for MapBox vector tiles and Torque tiles.
 
 #####  VT
-A low level vector tile rendering library using OpenGL ES 2.
+A low level vector tile rendering library using OpenGLES 2.
 
 ##### NML
-Library for loading and rendering 3D models converted from Collada DAE files. Uses OpenGL ES 2 for rendering.
+Library for loading and rendering 3D models converted from Collada DAE files. Uses OpenGLES 2 for rendering.
 
 ##### OSRM
 A mobile-friendly routing library that uses routing graphs converted from OSRM data and provides optimized routing using Contraction Hierarchies.
@@ -31,3 +31,7 @@ A mobile-friendly geocoding (and reverse geocoding) library that uses special sq
 
 ##### MBVTBuilder
 A basic library for building MapBox vector tiles from GeoJSON features.
+
+
+## License
+These libraries are licensed under the BSD 3-clause "New" or "Revised" License - see the [LICENSE file](LICENSE) for details.

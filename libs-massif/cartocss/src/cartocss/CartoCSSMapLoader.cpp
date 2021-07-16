@@ -121,9 +121,7 @@ namespace carto { namespace css {
                 const picojson::value& paramValue = pit->second;
                 std::map<std::string, mvt::Value> enumMap;
                 mvt::Value defaultValue;
-                if (paramValue.is<std::string>()) {
-                    defaultValue = paramValue.get<std::string>();
-                } else {
+                if (paramValue.is<picojson::object>()) {
                     defaultValue = convertJSONValue(paramValue.get("default"));
                     if (paramValue.contains("values")) {
                         const picojson::value::object& valuesObj = paramValue.get("values").get<picojson::value::object>();
@@ -131,8 +129,16 @@ namespace carto { namespace css {
                             enumMap[vit->first] = convertJSONValue(vit->second);
                         }
                     }
+                } else if (paramValue.is<picojson::array>()) {
+                    const picojson::value::array& valuesArr = paramValue.get<picojson::value::array>();
+                    for (auto vit = valuesArr.rbegin(); vit != valuesArr.rend(); vit++) {
+                        mvt::Value enumValue = convertJSONValue(*vit);
+                        enumMap[mvt::ValueConverter<std::string>::convert(enumValue)] = enumValue;
+                        defaultValue = enumValue;
+                    }
+                } else {
+                    defaultValue = convertJSONValue(paramValue);
                 }
-                
                 nutiParameters.emplace_back(paramName, defaultValue, enumMap);
             }
         }

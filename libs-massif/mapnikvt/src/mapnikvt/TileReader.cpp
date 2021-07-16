@@ -9,8 +9,8 @@
 #include "Map.h"
 
 namespace carto { namespace mvt {
-    TileReader::TileReader(std::shared_ptr<const Map> map, std::shared_ptr<const vt::TileTransformer> transformer, const SymbolizerContext& symbolizerContext) :
-        _map(std::move(map)), _transformer(transformer), _symbolizerContext(symbolizerContext), _trueFilter(std::make_shared<Filter>(Filter::Type::FILTER, Predicate(true)))
+    TileReader::TileReader(std::shared_ptr<const Map> map, std::shared_ptr<const vt::TileTransformer> transformer, const SymbolizerContext& symbolizerContext, std::shared_ptr<Logger> logger) :
+        _map(std::move(map)), _transformer(transformer), _symbolizerContext(symbolizerContext), _logger(std::move(logger)), _trueFilter(std::make_shared<Filter>(Filter::Type::FILTER, Predicate(true)))
     {
     }
 
@@ -110,7 +110,12 @@ namespace carto { namespace mvt {
                     auto processorIt = featureDataProcessorMap.find(symbolizerFeatureData);
                     if (processorIt == featureDataProcessorMap.end()) {
                         exprContext.setFeatureData(symbolizerFeatureData);
-                        Symbolizer::FeatureProcessor featureProcessor = symbolizer->createFeatureProcessor(exprContext, _symbolizerContext);
+                        Symbolizer::FeatureProcessor featureProcessor;
+                        try {
+                            featureProcessor = symbolizer->createFeatureProcessor(exprContext, _symbolizerContext);
+                        } catch (const std::exception& ex) {
+                            _logger->write(Logger::Severity::ERROR, "Failed to create feature processor: " + std::string(ex.what()));
+                        }
                         processorIt = featureDataProcessorMap.emplace(symbolizerFeatureData, featureProcessor ? std::make_shared<Symbolizer::FeatureProcessor>(std::move(featureProcessor)) : std::shared_ptr<Symbolizer::FeatureProcessor>()).first;
                     }
                     const std::shared_ptr<Symbolizer::FeatureProcessor>& featureProcessor = processorIt->second;
@@ -119,7 +124,11 @@ namespace carto { namespace mvt {
                     bool batch = (featureProcessor == batchFeatureProcessor && (batchFeatureCollection.size() == 0 || batchFeatureCollection.getFeatureData(0) == symbolizerFeatureData));
                     if (!batch) {
                         if (batchFeatureProcessor) {
-                            (*batchFeatureProcessor)(batchFeatureCollection, layerBuilder);
+                            try {
+                                (*batchFeatureProcessor)(batchFeatureCollection, layerBuilder);
+                            } catch (const std::exception& ex) {
+                                _logger->write(Logger::Severity::ERROR, "Failed to process feature batch: " + std::string(ex.what()));
+                            }
                         }
                         batchFeatureCollection.clear();
                         batchFeatureProcessor = featureProcessor;
@@ -133,7 +142,11 @@ namespace carto { namespace mvt {
 
             // Process the remaining batched features
             if (batchFeatureProcessor) {
-                (*batchFeatureProcessor)(batchFeatureCollection, layerBuilder);
+                try {
+                    (*batchFeatureProcessor)(batchFeatureCollection, layerBuilder);
+                } catch (const std::exception& ex) {
+                    _logger->write(Logger::Severity::ERROR, "Failed to process feature batch: " + std::string(ex.what()));
+                }
             }
         }
     }

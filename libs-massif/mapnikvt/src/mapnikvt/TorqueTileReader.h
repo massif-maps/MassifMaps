@@ -14,7 +14,7 @@
 namespace carto { namespace mvt {
     class TorqueTileReader : public TileReader {
     public:
-        explicit TorqueTileReader(std::shared_ptr<TorqueMap> map, int frame, bool loop, std::shared_ptr<const vt::TileTransformer> transformer, const SymbolizerContext& symbolizerContext, const TorqueFeatureDecoder& featureDecoder) : TileReader(std::move(map), std::move(transformer), symbolizerContext), _frame(frame), _loop(loop), _featureDecoder(featureDecoder) { }
+        explicit TorqueTileReader(std::shared_ptr<TorqueMap> map, int frame, bool loop, std::shared_ptr<const vt::TileTransformer> transformer, const SymbolizerContext& symbolizerContext, const TorqueFeatureDecoder& featureDecoder, std::shared_ptr<Logger> logger) : TileReader(std::move(map), std::move(transformer), symbolizerContext, std::move(logger)), _frame(frame), _loop(loop), _featureDecoder(featureDecoder) { }
 
     protected:
         virtual std::shared_ptr<vt::TileBackground> createTileBackground(const vt::TileId& tileId) const override;

@@ -103,14 +103,6 @@ namespace carto { namespace css {
     mvt::Expression CartoCSSMapnikTranslator::buildExpression(const Expression& expr) {
         struct ExpressionBuilder {
             mvt::Expression operator() (const Value& val) const {
-                if (auto strVal = std::get_if<std::string>(&val)) {
-                    try {
-                        return mvt::parseExpression(*strVal, true);
-                    }
-                    catch (const std::exception& ex) {
-                        throw TranslatorException("Failed to parse string expression: " + std::string(ex.what()));
-                    }
-                }
                 return buildValue(val);
             }
             
@@ -123,6 +115,15 @@ namespace carto { namespace css {
                 }
                 catch (const std::exception& ex) {
                     throw TranslatorException("Failed to parse variable expression: " + std::string(ex.what()));
+                }
+            }
+
+            mvt::Expression operator() (const std::shared_ptr<StringExpression>& strExpr) const {
+                try {
+                    return mvt::parseExpression(strExpr->getString(), true);
+                }
+                catch (const std::exception& ex) {
+                    throw TranslatorException("Failed to parse string expression: " + std::string(ex.what()));
                 }
             }
 

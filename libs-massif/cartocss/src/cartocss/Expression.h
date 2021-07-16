@@ -16,13 +16,27 @@
 #include <vector>
 
 namespace carto { namespace css {
+    class StringExpression;
     class ListExpression;
     class UnaryExpression;
     class BinaryExpression;
     class ConditionalExpression;
     class FunctionExpression;
 
-    using Expression = std::variant<Value, FieldOrVar, std::shared_ptr<ListExpression>, std::shared_ptr<UnaryExpression>, std::shared_ptr<BinaryExpression>, std::shared_ptr<ConditionalExpression>, std::shared_ptr<FunctionExpression>>;
+    using Expression = std::variant<Value, FieldOrVar, std::shared_ptr<StringExpression>, std::shared_ptr<ListExpression>, std::shared_ptr<UnaryExpression>, std::shared_ptr<BinaryExpression>, std::shared_ptr<ConditionalExpression>, std::shared_ptr<FunctionExpression>>;
+
+    class StringExpression final {
+    public:
+        explicit StringExpression(std::string str) : _string(std::move(str)) { }
+
+        const std::string& getString() const { return _string; }
+
+        bool operator == (const StringExpression& other) const { return _string == other._string; }
+        bool operator != (const StringExpression& other) const { return !(*this == other); }
+
+    private:
+        std::string _string;
+    };
 
     class ListExpression final {
     public:

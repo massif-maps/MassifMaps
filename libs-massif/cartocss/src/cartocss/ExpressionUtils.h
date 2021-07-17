@@ -62,6 +62,11 @@ namespace carto { namespace css {
             return fieldOrVar;
         }
 
+        Expression operator() (const std::shared_ptr<StringExpression>& strExpr) const {
+            // Note: In theory we should should recurse here into parsed expression, there are border cases when this may be needed
+            return strExpr;
+        }
+
         Expression operator() (const std::shared_ptr<ListExpression>& listExpr) const {
             std::vector<Expression> exprs;
             exprs.reserve(listExpr->getExpressions().size());
@@ -134,6 +139,10 @@ namespace carto { namespace css {
     struct ExpressionDeepEqualsChecker {
         bool operator() (const Value& val1, const Value& val2) const { return val1 == val2; }
         bool operator() (const FieldOrVar& fieldOrVar1, const FieldOrVar& fieldOrVar2) const { return fieldOrVar1 == fieldOrVar2; }
+
+        bool operator() (const std::shared_ptr<StringExpression>& strExpr1, const std::shared_ptr<StringExpression>& strExpr2) const {
+            return strExpr1->getString() == strExpr2->getString();
+        }
 
         bool operator() (const std::shared_ptr<ListExpression>& listExpr1, const std::shared_ptr<ListExpression>& listExpr2) const {
             if (listExpr1->getExpressions().size() != listExpr2->getExpressions().size()) {

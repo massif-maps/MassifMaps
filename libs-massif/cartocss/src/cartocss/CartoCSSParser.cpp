@@ -2,6 +2,8 @@
 #include "Expression.h"
 #include "Predicate.h"
 #include "mapnikvt/CSSColorParser.h"
+#include "mapnikvt/ParserUtils.h"
+#include "mapnikvt/ValueConverter.h"
 
 #include <boost/spirit/include/qi.hpp>
 #include <boost/spirit/repository/include/qi_distinct.hpp>
@@ -144,7 +146,7 @@ namespace carto { namespace css {
                     | ('[' > unescapedfieldid > ']')                [_val = phoenix::construct<FieldOrVar>(true, _1)]
                     | (funcid [_pass = phoenix::bind(&checkFunction, _1)] >> ('(' > (expression % ',') > ')')) [_val = phoenix::bind(&makeFunctionExpression, _1, _2)]
                     | ('(' > expressionlist > ')')                  [_val = _1]
-                    | constant                                      [_val = _1]
+                    | constant                                      [_val = phoenix::bind(&makeStringExpressionOrConstant, _1, _pass)]
                     ;
                 
                 op =
@@ -186,7 +188,7 @@ namespace carto { namespace css {
                     ;
                 stylesheet = (*(stylesheetelement > -qi::lit(';'))) [_val = phoenix::construct<StyleSheet>(_1)];
             
-                qi::on_error<qi::fail>(stylesheet, phoenix::ref(_errorPos) = qi::_3 - qi::_1);
+                qi::on_error<qi::fail>(stylesheet, phoenix::ref(_errorPos) = _3 - _1);
             }
 
             std::string::size_type errorPos() const { return _errorPos; }
@@ -236,6 +238,22 @@ namespace carto { namespace css {
                     return std::holds_alternative<long long>(val) ? static_cast<float>(std::get<long long>(val)) : static_cast<float>(std::get<double>(val));
                 };
                 return Color::fromRGBA(getFloat(r) / 255.0f, getFloat(g) / 255.0f, getFloat(b) / 255.0f, getFloat(a));
+            }
+
+            static Expression makeStringExpressionOrConstant(const Value& val, bool& pass) {
+                if (auto strVal = std::get_if<std::string>(&val)) {
+                    try {
+                        mvt::Expression mvtExpr = mvt::parseExpression(*strVal, true);
+                        if (auto mvtVal = std::get_if<mvt::Value>(&mvtExpr)) {
+                            return Value(mvt::ValueConverter<std::string>::convert(*mvtVal));
+                        }
+                        return std::make_shared<StringExpression>(*strVal);
+                    }
+                    catch (const std::exception& ex) {
+                        pass = false;
+                    }
+                }
+                return val;
             }
 
             static Expression makeListExpression(const Expression& initialExpr, const std::vector<Expression>& restExprs) {

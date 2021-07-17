@@ -10,6 +10,7 @@
 #include "FeatureDecoder.h"
 #include "ExpressionContext.h"
 #include "SymbolizerContext.h"
+#include "Logger.h"
 #include "vt/Tile.h"
 #include "vt/TileTransformer.h"
 #include "vt/TileLayerBuilder.h"
@@ -34,7 +35,7 @@ namespace carto { namespace mvt {
         virtual std::shared_ptr<vt::Tile> readTile(const vt::TileId& tileId) const;
 
     protected:
-        explicit TileReader(std::shared_ptr<const Map> map, std::shared_ptr<const vt::TileTransformer> transformer, const SymbolizerContext& symbolizerContext);
+        explicit TileReader(std::shared_ptr<const Map> map, std::shared_ptr<const vt::TileTransformer> transformer, const SymbolizerContext& symbolizerContext, std::shared_ptr<Logger> logger);
 
         void processLayer(const std::shared_ptr<const Layer>& layer, const std::shared_ptr<const Style>& style, ExpressionContext& exprContext, vt::TileLayerBuilder& layerBuilder) const;
 
@@ -48,6 +49,7 @@ namespace carto { namespace mvt {
         const std::shared_ptr<const Map> _map;
         const std::shared_ptr<const vt::TileTransformer> _transformer;
         const SymbolizerContext& _symbolizerContext;
+        const std::shared_ptr<Logger> _logger;
         const std::shared_ptr<const Filter> _trueFilter;
     };
 } }

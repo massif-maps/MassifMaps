@@ -195,7 +195,7 @@ namespace carto { namespace vt {
             float distScale = 4.0f / BITMAP_SDF_SCALE;
             const unsigned char* distBuffer = face->glyph->bitmap.buffer;
             if (!distBuffer) {
-                return 0;
+                width = height = 0;
             }
 
             std::vector<std::uint32_t> glyphBitmapData(width * height);

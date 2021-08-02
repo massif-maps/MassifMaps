@@ -25,8 +25,8 @@ namespace carto { namespace vt {
         using CodePoint = unsigned int;
 
         enum : CodePoint {
-            SPACE_CODEPOINT = 0xffff0000,
-            CR_CODEPOINT    = 0xffff0001
+            SPACE_CODEPOINT = 0xffff0000U,
+            CR_CODEPOINT    = 0xffff0001U
         };
 
         struct Metrics {

@@ -52,14 +52,14 @@ namespace carto { namespace css {
         }
 
         constexpr float alpha() const {
-            return (*this)[3];
+            return _components[3];
         }
 
         constexpr std::array<float, 4> hsla() const {
-            float r = (*this)[0];
-            float g = (*this)[1];
-            float b = (*this)[2];
-            float a = (*this)[3];
+            float r = _components[0];
+            float g = _components[1];
+            float b = _components[2];
+            float a = _components[3];
 
             float max = std::max(r, std::max(g, b));
             float min = std::min(r, std::min(g, b));
@@ -83,7 +83,7 @@ namespace carto { namespace css {
             return std::array<float, 4>{{ h * 360.0f, s, l, a }};
         }
 
-        static constexpr Color fromValue(unsigned int val) {
+        static constexpr Color fromValue(unsigned int value) {
             return Color(
                 ((value >> 16) & 255) * (1.0f / 255.0f),
                 ((value >> 8)  & 255) * (1.0f / 255.0f),
@@ -197,7 +197,7 @@ namespace carto { namespace css {
     }
 
     constexpr bool operator == (const Color& color1, const Color& color2) {
-        return color1.rgba() == color2.rgba();
+        return color1[0] == color2[0] && color1[1] == color2[1] && color1[2] == color2[2] && color1[3] == color2[3];
     }
     
     constexpr bool operator != (const Color& color1, const Color& color2) {
@@ -205,7 +205,12 @@ namespace carto { namespace css {
     }
 
     constexpr bool operator < (const Color& color1, const Color& color2) {
-        return color1.rgba() < color2.rgba();
+        for (std::size_t i = 0; i < 4; i++) {
+            if (color1[i] != color2[i]) {
+                return color1[i] < color2[i];
+            }
+        }
+        return false;
     }
 
     constexpr bool operator > (const Color& color1, const Color& color2) {

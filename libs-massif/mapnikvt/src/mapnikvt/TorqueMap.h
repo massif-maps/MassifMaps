@@ -19,7 +19,7 @@ namespace carto { namespace mvt {
             int frameCount = 128;
             float resolution = 2.0f;
             float animationDuration = 30.0f;
-            vt::Color clearColor = vt::Color(0x00000000);
+            vt::Color clearColor;
             std::string timeAttribute = "time";
             std::string aggregationFunction = "count(cartodb_id)";
             std::string dataAggregation = "linear";

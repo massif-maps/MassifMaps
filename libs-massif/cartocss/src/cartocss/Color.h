@@ -7,6 +7,7 @@
 #ifndef _CARTO_CARTOCSS_COLOR_H_
 #define _CARTO_CARTOCSS_COLOR_H_
 
+#include <cstdint>
 #include <array>
 #include <algorithm>
 #include <functional>
@@ -14,41 +15,47 @@
 #include <cmath>
 
 namespace carto { namespace css {
-    struct Color final : private std::array<float, 4> {
-        Color() : array() { }
+    class Color final {
+    public:
+        constexpr Color() : _components {{ 0, 0, 0, 0 }} { }
 
-        using array::begin;
-        using array::end;
-        using array::size;
-        using array::operator [];
+        constexpr explicit Color(float r, float g, float b, float a) : _components {{ r, g, b, a }} { }
+        
+        constexpr float& operator [] (std::size_t i) {
+            return _components[i];
+        }
+        
+        constexpr float operator [] (std::size_t i) const {
+            return _components[i];
+        }
 
-        unsigned int value() const {
-            std::array<unsigned char, 4> components = rgba8();
+        constexpr unsigned int value() const {
+            std::array<std::uint8_t, 4> components = rgba8();
             unsigned int val = components[3];
-            for (std::size_t i = 0; i < 3; i++) {
-                val = (val << 8) | components[i];
-            }
+            val = (val << 8) | components[0];
+            val = (val << 8) | components[1];
+            val = (val << 8) | components[2];
             return val;
         }
 
-        std::array<unsigned char, 4> rgba8() const {
-            std::array<unsigned char, 4> components8;
+        constexpr std::array<float, 4> rgba() const {
+            return _components;
+        }
+
+        constexpr std::array<std::uint8_t, 4> rgba8() const {
+            std::array<std::uint8_t, 4> components8 {};
             for (std::size_t i = 0; i < 4; i++) {
                 float c = std::max(0.0f, std::min(1.0f, rgba()[i]));
-                components8[i] = static_cast<unsigned char>(c * 255.0f + 0.5f);
+                components8[i] = static_cast<std::uint8_t>(c * 255.0f + 0.5f);
             }
             return components8;
         }
 
-        std::array<float, 4> rgba() const {
-            return *this;
-        }
-
-        float alpha() const {
+        constexpr float alpha() const {
             return (*this)[3];
         }
 
-        std::array<float, 4> hsla() const {
+        constexpr std::array<float, 4> hsla() const {
             float r = (*this)[0];
             float g = (*this)[1];
             float b = (*this)[2];
@@ -76,21 +83,20 @@ namespace carto { namespace css {
             return std::array<float, 4>{{ h * 360.0f, s, l, a }};
         }
 
-        static Color fromValue(unsigned int val) {
-            std::array<unsigned char, 4> components;
-            for (std::size_t i = 0; i < 3; i++) {
-                components[2 - i] = static_cast<unsigned char>(val & 255);
-                val >>= 8;
-            }
-            components[3] = static_cast<unsigned char>(val & 255);
-            return fromRGBA8(components[0], components[1], components[2], components[3]);
+        static constexpr Color fromValue(unsigned int val) {
+            return Color(
+                ((value >> 16) & 255) * (1.0f / 255.0f),
+                ((value >> 8)  & 255) * (1.0f / 255.0f),
+                ((value >> 0)  & 255) * (1.0f / 255.0f),
+                ((value >> 24) & 255) * (1.0f / 255.0f)
+            );
         }
 
-        static Color fromRGBA8(unsigned char r, unsigned char g, unsigned char b, unsigned char a) {
+        static constexpr Color fromRGBA8(std::uint8_t r, std::uint8_t g, std::uint8_t b, std::uint8_t a) {
             return Color(static_cast<float>(r) / 255.0f, static_cast<float>(g) / 255.0f, static_cast<float>(b) / 255.0f, static_cast<float>(a) / 255.0f);
         }
 
-        static Color fromRGBA(float r, float g, float b, float a) {
+        static constexpr Color fromRGBA(float r, float g, float b, float a) {
             return Color(r, g, b, a);
         }
 
@@ -140,13 +146,6 @@ namespace carto { namespace css {
         }
 
     private:
-        explicit Color(float r, float g, float b, float a) : array() {
-            (*this)[0] = r;
-            (*this)[1] = g;
-            (*this)[2] = b;
-            (*this)[3] = a;
-        }
-        
         static float hue(float h, float s, float l) {
             float m2 = (l <= 0.5f ? l * (s + 1.0f) : l + s - l * s);
             float m1 = l * 2.0f - m2;
@@ -165,97 +164,64 @@ namespace carto { namespace css {
                 return m1;
             }
         }
+
+        std::array<float, 4> _components; // rgba
     };
 
-    inline Color operator + (const Color& color1, const Color& color2) {
-        Color color;
-        for (std::size_t i = 0; i < 3; i++) {
-            color[i] = color1[i] + color2[i];
-        }
-        color[3] = 1.0f;
-        return color;
+    constexpr Color operator + (const Color& color1, const Color& color2) {
+        return Color(color1[0] + color2[0], color1[1] + color2[1], color1[2] + color2[2], 1.0f);
     }
 
-    inline Color operator - (const Color& color1, const Color& color2) {
-        Color color;
-        for (std::size_t i = 0; i < 3; i++) {
-            color[i] = color1[i] - color2[i];
-        }
-        color[3] = 1.0f;
-        return color;
+    constexpr Color operator - (const Color& color1, const Color& color2) {
+        return Color(color1[0] - color2[0], color1[1] - color2[1], color1[2] - color2[2], 1.0f);
     }
 
-    inline Color operator * (const Color& color1, const Color& color2) {
-        Color color;
-        for (std::size_t i = 0; i < 3; i++) {
-            color[i] = color1[i] * color2[i];
-        }
-        color[3] = 1.0f;
-        return color;
+    constexpr Color operator * (const Color& color1, const Color& color2) {
+        return Color(color1[0] * color2[0], color1[1] * color2[1], color1[2] * color2[2], 1.0f);
     }
 
-    inline Color operator * (const Color& color1, float c2) {
-        Color color;
-        for (std::size_t i = 0; i < 3; i++) {
-            color[i] = color1[i] * c2;
-        }
-        color[3] = 1.0f;
-        return color;
+    constexpr Color operator * (const Color& color1, float c2) {
+        return Color(color1[0] * c2, color1[1] * c2, color1[2] * c2, 1.0f);
     }
 
-    inline Color operator * (float c1, const Color& color2) {
-        Color color;
-        for (std::size_t i = 0; i < 3; i++) {
-            color[i] = c1 * color2[i];
-        }
-        color[3] = 1.0f;
-        return color;
+    constexpr Color operator * (float c1, const Color& color2) {
+        return Color(c1 * color2[0], c1 * color2[1], c1 * color2[2], 1.0f);
     }
 
-    inline Color operator / (const Color& color1, const Color& color2) {
-        Color color;
-        for (std::size_t i = 0; i < 3; i++) {
-            color[i] = color1[i] / color2[i];
-        }
-        color[3] = 1.0f;
-        return color;
+    constexpr Color operator / (const Color& color1, const Color& color2) {
+        return Color(color1[0] / color2[0], color1[1] / color2[1], color1[2] / color2[2], 1.0f);
     }
 
-    inline Color operator / (const Color& color1, float c2) {
-        Color color;
-        for (std::size_t i = 0; i < 3; i++) {
-            color[i] = color1[i] / c2;
-        }
-        color[3] = 1.0f;
-        return color;
+    constexpr Color operator / (const Color& color1, float c2) {
+        return Color(color1[0] / c2, color1[1] / c2, color1[2] / c2, 1.0f);
     }
 
-    inline bool operator == (const Color& color1, const Color& color2) {
-        return std::equal(color1.begin(), color1.end(), color2.begin());
+    constexpr bool operator == (const Color& color1, const Color& color2) {
+        return color1.rgba() == color2.rgba();
     }
     
-    inline bool operator != (const Color& color1, const Color& color2) {
+    constexpr bool operator != (const Color& color1, const Color& color2) {
         return !(color1 == color2);
     }
 
-    inline bool operator < (const Color& color1, const Color& color2) {
-        return std::lexicographical_compare(color1.begin(), color1.end(), color2.begin(), color2.end());
+    constexpr bool operator < (const Color& color1, const Color& color2) {
+        return color1.rgba() < color2.rgba();
     }
 
-    inline bool operator > (const Color& color1, const Color& color2) {
+    constexpr bool operator > (const Color& color1, const Color& color2) {
         return color2 < color1;
     }
 
-    inline bool operator <= (const Color& color1, const Color& color2) {
+    constexpr bool operator <= (const Color& color1, const Color& color2) {
         return !(color2 < color1);
     }
 
-    inline bool operator >= (const Color& color1, const Color& color2) {
+    constexpr bool operator >= (const Color& color1, const Color& color2) {
         return !(color1 < color2);
     }
 
     inline std::ostream& operator << (std::ostream& os, const Color& color) {
-        if (color.rgba8()[3] == 255) {
+        if (color.alpha() == 1.0f) {
             os << "rgb(";
             os << static_cast<int>(color.rgba8()[0]) << ",";
             os << static_cast<int>(color.rgba8()[1]) << ",";

@@ -658,7 +658,7 @@ namespace carto { namespace vt {
         int mask = 0;
         for (int x = x0, y = yp; x <= x1; x++) {
             if (x >= 0 && x < pattern->bitmap->width && y >= 0 && y < pattern->bitmap->height) {
-                float alpha = Color(pattern->bitmap->data[y * pattern->bitmap->width + x])[3];
+                float alpha = Color::fromValue(pattern->bitmap->data[y * pattern->bitmap->width + x])[3];
                 if (alpha > ALPHA_HIT_THRESHOLD) {
                     mask |= (x >= xp ? 1 : 0);
                     mask |= (x <= xp ? 2 : 0);
@@ -667,7 +667,7 @@ namespace carto { namespace vt {
         }
         for (int x = xp, y = y0; y <= y1; y++) {
             if (x >= 0 && x < pattern->bitmap->width && y >= 0 && y < pattern->bitmap->height) {
-                float alpha = Color(pattern->bitmap->data[y * pattern->bitmap->width + x])[3];
+                float alpha = Color::fromValue(pattern->bitmap->data[y * pattern->bitmap->width + x])[3];
                 if (alpha > ALPHA_HIT_THRESHOLD) {
                     mask |= (y >= yp ? 4 : 0);
                     mask |= (y <= yp ? 8 : 0);
@@ -1321,9 +1321,9 @@ namespace carto { namespace vt {
             const std::shared_ptr<const TileLabel::Style>& labelStyle = label->getStyle();
 
             if (lastLabelStyle != labelStyle) {
-                cglib::vec4<float> color = (labelStyle->colorFunc)(_viewState).rgba();
+                cglib::vec4<float> color = cglib::vec4<float>((labelStyle->colorFunc)(_viewState).rgba());
                 float size = (labelStyle->sizeFunc)(_viewState);
-                cglib::vec4<float> haloColor = (labelStyle->haloColorFunc)(_viewState).rgba();
+                cglib::vec4<float> haloColor = cglib::vec4<float>((labelStyle->haloColorFunc)(_viewState).rgba());
                 float haloRadius = (labelStyle->haloRadiusFunc)(_viewState) * HALO_RADIUS_SCALE;
                 haloRadius = std::min(haloRadius, static_cast<float>(GLYPH_RENDER_SPREAD));
 
@@ -1699,7 +1699,7 @@ namespace carto { namespace vt {
         std::array<cglib::vec4<float>, TileGeometry::StyleParameters::MAX_PARAMETERS> colors;
         for (int i = 0; i < styleParams.parameterCount; i++) {
             Color color = Color::fromColorOpacity((styleParams.colorFuncs[i])(_viewState) * blend, opacity);
-            colors[i] = color.rgba();
+            colors[i] = cglib::vec4<float>(color.rgba());
         }
         
         if (geometry->getType() == TileGeometry::Type::POINT) {

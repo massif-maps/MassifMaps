@@ -57,7 +57,7 @@ namespace carto { namespace mvt {
 
         static vt::Color convertColor(const Value& val) {
             if (auto longVal = std::get_if<long long>(&val)) {
-                return vt::Color(static_cast<unsigned int>(*longVal));
+                return vt::Color::fromValue(static_cast<unsigned int>(*longVal));
             }
             return parseColor(ValueConverter<std::string>::convert(val));
         }

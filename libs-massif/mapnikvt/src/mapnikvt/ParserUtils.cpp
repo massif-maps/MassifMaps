@@ -49,12 +49,12 @@ namespace carto { namespace mvt {
     vt::Color parseColor(const std::string& str) {
         std::string::const_iterator it = str.begin();
         std::string::const_iterator end = str.end();
-        unsigned int color = 0;
+        unsigned int value = 0;
         bool result = false;
         try {
             static const ColorParserGrammar<std::string::const_iterator> parser;
             static const colorparserimpl::Skipper skipper;
-            result = boost::spirit::qi::phrase_parse(it, end, parser, skipper, color);
+            result = boost::spirit::qi::phrase_parse(it, end, parser, skipper, value);
         }
         catch (const boost::spirit::qi::expectation_failure<std::string::const_iterator>& ex) {
             throw ParserException("Expectation error, error at position " + std::to_string(ex.first - str.begin()), str);
@@ -65,7 +65,7 @@ namespace carto { namespace mvt {
         if (it != str.end()) {
             throw ParserException("Could not parse to the end of color, error at position " + std::to_string(it - str.begin()), str);
         }
-        return vt::Color(color);
+        return vt::Color::fromValue(value);
     }
 
     Value parseValue(const std::string& str) {

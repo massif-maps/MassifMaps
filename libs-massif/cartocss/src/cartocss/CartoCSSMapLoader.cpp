@@ -214,17 +214,17 @@ namespace carto { namespace css {
     void CartoCSSMapLoader::loadMapSettings(const std::map<std::string, Value>& mapProperties, mvt::Map::Settings& mapSettings) const {
         Color backgroundColor;
         if (getMapProperty(mapProperties, "background-color", backgroundColor)) {
-            mapSettings.backgroundColor = vt::Color(backgroundColor.value());
+            mapSettings.backgroundColor = vt::Color(backgroundColor.rgba());
         }
         getMapProperty(mapProperties, "background-image", mapSettings.backgroundImage);
 
         Color northPoleColor;
         if (getMapProperty(mapProperties, "north-pole-color", northPoleColor)) {
-            mapSettings.northPoleColor = vt::Color(northPoleColor.value());
+            mapSettings.northPoleColor = vt::Color(northPoleColor.rgba());
         }
         Color southPoleColor;
         if (getMapProperty(mapProperties, "south-pole-color", southPoleColor)) {
-            mapSettings.southPoleColor = vt::Color(southPoleColor.value());
+            mapSettings.southPoleColor = vt::Color(southPoleColor.rgba());
         }
 
         getMapProperty(mapProperties, "font-directory", mapSettings.fontDirectory);

@@ -49,12 +49,12 @@ namespace carto { namespace sgre {
         static std::unique_ptr<RouteFinder> create(std::shared_ptr<const StaticGraph> graph, const picojson::value& configDef);
 
     private:
-        inline static constexpr double DIST_EPSILON = 1.0e-6;
+        static constexpr double DIST_EPSILON = 1.0e-6;
         
-        inline static constexpr float DEFAULT_SPEED = 1.38f;      // default speed in m/s
-        inline static constexpr float DEFAULT_ZSPEED = 0.5f;      // default speed in m/s
-        inline static constexpr float DEFAULT_TURNSPEED = 180.0f; // default speed in deg/s
-        inline static constexpr float DEFAULT_DELAY = 0.0f;       // default delay in seconds
+        static constexpr float DEFAULT_SPEED = 1.38f;      // default speed in m/s
+        static constexpr float DEFAULT_ZSPEED = 0.5f;      // default speed in m/s
+        static constexpr float DEFAULT_TURNSPEED = 180.0f; // default speed in deg/s
+        static constexpr float DEFAULT_DELAY = 0.0f;       // default delay in seconds
 
         struct EvaluatedAttributes {
             float speed = 0;

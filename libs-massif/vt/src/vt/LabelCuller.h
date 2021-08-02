@@ -31,7 +31,7 @@ namespace carto { namespace vt {
         bool process(const std::vector<std::shared_ptr<Label>>& labelList, std::mutex& labelMutex);
 
     private:
-        inline static constexpr int GRID_RESOLUTION = 16;
+        static constexpr int GRID_RESOLUTION = 16;
 
         struct CullRecord {
             cglib::bbox2<float> bounds;

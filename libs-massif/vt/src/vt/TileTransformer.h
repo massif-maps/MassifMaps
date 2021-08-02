@@ -46,9 +46,9 @@ namespace carto { namespace vt {
         virtual std::shared_ptr<const VertexTransformer> createTileVertexTransformer(const TileId& tileId) const = 0;
 
     protected:
-        inline static constexpr double PI = boost::math::constants::pi<double>();
-        inline static constexpr double EARTH_RADIUS = 6378137.0;
-        inline static constexpr double EARTH_CIRCUMFERENCE = 2.0 * PI * EARTH_RADIUS;
+        static constexpr double PI = boost::math::constants::pi<double>();
+        static constexpr double EARTH_RADIUS = 6378137.0;
+        static constexpr double EARTH_CIRCUMFERENCE = 2.0 * PI * EARTH_RADIUS;
     };
 
     class DefaultTileTransformer final : public TileTransformer {
@@ -136,8 +136,8 @@ namespace carto { namespace vt {
         static cglib::vec3<double> epsg3857ToSpherical(const cglib::vec2<double>& epsg3857Pos);
         static cglib::vec2<double> sphericalToEPSG3857(const cglib::vec3<double>& p);
 
-        inline static constexpr int ZOOM_0_GRID_SIZE = 64;
-        inline static constexpr float DEFAULT_DIVIDE_THRESHOLD = static_cast<float>(EARTH_CIRCUMFERENCE / ZOOM_0_GRID_SIZE);
+        static constexpr int ZOOM_0_GRID_SIZE = 64;
+        static constexpr float DEFAULT_DIVIDE_THRESHOLD = static_cast<float>(EARTH_CIRCUMFERENCE / ZOOM_0_GRID_SIZE);
 
         const double _scale;
 

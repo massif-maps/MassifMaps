@@ -58,7 +58,7 @@ namespace carto { namespace vt {
         PoolAllocator& operator = (const PoolAllocator&) = delete;
 
     private:
-        inline static constexpr int DEFAULT_BLOCK_SIZE = 65536;
+        static constexpr int DEFAULT_BLOCK_SIZE = 65536;
 
         struct Block {
             void* const buffer;

@@ -181,7 +181,7 @@ namespace carto { namespace vt {
         };
 
         struct LabelBatchParameters {
-            inline static constexpr int MAX_PARAMETERS = 16;
+            static constexpr int MAX_PARAMETERS = 16;
 
             int labelCount;
             int parameterCount;
@@ -194,10 +194,10 @@ namespace carto { namespace vt {
             LabelBatchParameters() : labelCount(0), parameterCount(0), scale(0), labelMatrix(cglib::mat4x4<double>::identity()), colorTable(), widthTable(), strokeWidthTable() { }
         };
 
-        inline static constexpr float HALO_RADIUS_SCALE = 2.5f; // the scaling factor for halo radius
-        inline static constexpr float STROKE_UV_SCALE = 2.857f; // stroked line UV scale factor
-        inline static constexpr float POLYGON3D_HEIGHT_SCALE = 10018754.17f; // scaling factor for zoom 0 heights
-        inline static constexpr float ALPHA_HIT_THRESHOLD = 0.05f; // threshold value for 'transparent' pixel alphas
+        static constexpr float HALO_RADIUS_SCALE = 2.5f; // the scaling factor for halo radius
+        static constexpr float STROKE_UV_SCALE = 2.857f; // stroked line UV scale factor
+        static constexpr float POLYGON3D_HEIGHT_SCALE = 10018754.17f; // scaling factor for zoom 0 heights
+        static constexpr float ALPHA_HIT_THRESHOLD = 0.05f; // threshold value for 'transparent' pixel alphas
 
         bool isTileVisible(const TileId& tileId) const;
         bool isEmptyBlendRequired(CompOp compOp) const;

@@ -58,8 +58,6 @@ namespace carto { namespace mbvtbuilder {
     private:
         using Geometry = std::variant<MultiPoint, MultiLineString, MultiPolygon>;
 
-        inline static constexpr float DEFAULT_LAYER_BUFFER = 4.0 / 256.0f;
-
         struct Feature {
             std::uint64_t id = 0;
             Bounds bounds = Bounds::smallest(); // EPSG3856
@@ -74,9 +72,11 @@ namespace carto { namespace mbvtbuilder {
             float buffer = 0;
         };
 
-        inline static constexpr double PI = boost::math::constants::pi<double>();
-        inline static constexpr double EARTH_RADIUS = 6378137.0;
-        inline static constexpr double TILE_TOLERANCE = 1.0 / 256.0;
+        static constexpr float DEFAULT_LAYER_BUFFER = 4.0 / 256.0f;
+
+        static constexpr double PI = boost::math::constants::pi<double>();
+        static constexpr double EARTH_RADIUS = 6378137.0;
+        static constexpr double TILE_TOLERANCE = 1.0 / 256.0;
 
         const std::map<LayerIndex, Layer>& simplifyAndCacheLayers(int zoom) const;
         void invalidateCache() const;

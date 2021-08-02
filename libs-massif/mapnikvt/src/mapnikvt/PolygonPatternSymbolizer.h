@@ -22,7 +22,7 @@ namespace carto { namespace mvt {
         virtual FeatureProcessor createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const override;
 
     protected:
-        inline static constexpr float PATTERN_SCALE = 0.75f;
+        static constexpr float PATTERN_SCALE = 0.75f;
 
         StringParameter _file;
         ColorFunctionParameter _fill = ColorFunctionParameter("#ffffff");

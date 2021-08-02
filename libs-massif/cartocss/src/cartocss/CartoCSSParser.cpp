@@ -249,7 +249,7 @@ namespace carto { namespace css {
                         }
                         return std::make_shared<StringExpression>(*strVal);
                     }
-                    catch (const std::exception& ex) {
+                    catch (const std::exception&) {
                         pass = false;
                     }
                 }

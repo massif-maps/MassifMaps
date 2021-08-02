@@ -37,12 +37,12 @@ namespace carto { namespace mvt {
         virtual FeatureProcessor createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const override;
 
     protected:
-        inline static constexpr int DEFAULT_CIRCLE_SIZE = 10;
-        inline static constexpr int DEFAULT_ARROW_WIDTH = 28;
-        inline static constexpr int DEFAULT_ARROW_HEIGHT = 14;
-        inline static constexpr int SUPERSAMPLING_FACTOR = 4;
-        inline static constexpr int MAX_BITMAP_SIZE = 64;
-        inline static constexpr float IMAGE_UPSAMPLING_SCALE = 2.5f;
+        static constexpr int DEFAULT_CIRCLE_SIZE = 10;
+        static constexpr int DEFAULT_ARROW_WIDTH = 28;
+        static constexpr int DEFAULT_ARROW_HEIGHT = 14;
+        static constexpr int SUPERSAMPLING_FACTOR = 4;
+        static constexpr int MAX_BITMAP_SIZE = 64;
+        static constexpr float IMAGE_UPSAMPLING_SCALE = 2.5f;
 
         static std::vector<std::pair<vt::Transform, vt::TileLayerBuilder::Vertices>> generateTransformedPoints(const vt::TileLayerBuilder::Vertices& vertices, float spacing, float bitmapSize, float tileSize);
 

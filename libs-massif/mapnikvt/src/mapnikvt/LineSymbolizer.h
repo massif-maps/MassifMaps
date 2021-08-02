@@ -25,8 +25,8 @@ namespace carto { namespace mvt {
         virtual FeatureProcessor createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const override;
 
     protected:
-        inline static constexpr int DASH_SUPERSAMPLING_FACTOR = 2;
-        inline static constexpr float DASH_PATTERN_SCALE = 0.75f;
+        static constexpr int DASH_SUPERSAMPLING_FACTOR = 2;
+        static constexpr float DASH_PATTERN_SCALE = 0.75f;
 
         static std::shared_ptr<vt::BitmapPattern> createDashBitmapPattern(const std::vector<float>& strokeDashArray, int height, vt::LineCapMode lineCap);
 

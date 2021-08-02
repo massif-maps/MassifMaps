@@ -176,7 +176,7 @@ namespace carto { namespace vt {
         }
 
     private:
-        inline static constexpr int RENDER_SIZE = GLYPH_RENDER_SIZE - GLYPH_RENDER_SPREAD;
+        static constexpr int RENDER_SIZE = GLYPH_RENDER_SIZE - GLYPH_RENDER_SPREAD;
 
         GlyphMap::GlyphId addFreeTypeGlyph(FT_Face face, CodePoint codePoint) const {
             FT_Error error = FT_Load_Glyph(face, codePoint, FT_LOAD_NO_BITMAP | FT_LOAD_NO_HINTING);
@@ -192,14 +192,17 @@ namespace carto { namespace vt {
             int height = face->glyph->bitmap.rows;
             float xOffset = std::ceil(-face->glyph->metrics.horiBearingX / 64.0f);
             float yOffset = std::ceil((face->glyph->metrics.height - face->glyph->metrics.horiBearingY) / 64.0f);
-            float distScale = 128.0f / BITMAP_SDF_SCALE / 1024.0f;
-            const FT_Short* distBuffer = reinterpret_cast<const FT_Short*>(face->glyph->bitmap.buffer);
+            float distScale = 4.0f / BITMAP_SDF_SCALE;
+            const unsigned char* distBuffer = face->glyph->bitmap.buffer;
+            if (!distBuffer) {
+                return 0;
+            }
 
             std::vector<std::uint32_t> glyphBitmapData(width * height);
             for (std::size_t i = 0; i < glyphBitmapData.size(); i++) {
-                float dist = distBuffer[i] * distScale;
-                std::uint32_t val = static_cast<std::uint8_t>(std::max(0.0f, std::min(255.0f, dist + 127.5f)));
-                glyphBitmapData[i] = (val << 24) | (val << 16) | (val << 8) | val;
+                float dist = (distBuffer[i] - 128.0f) * distScale;
+                std::uint32_t val = static_cast<std::uint32_t>(std::max(0.0f, std::min(255.0f, dist + 128.0f)));
+                glyphBitmapData[i] = val * ((1U << 24) | (1U << 16) | (1U << 8) | 1U);
             }
             std::shared_ptr<Bitmap> glyphBitmap = std::make_shared<Bitmap>(width, height, std::move(glyphBitmapData));
             return _glyphMap->loadBitmapGlyph(glyphBitmap, true, cglib::vec2<float>(-xOffset, -GLYPH_RENDER_SPREAD - yOffset));

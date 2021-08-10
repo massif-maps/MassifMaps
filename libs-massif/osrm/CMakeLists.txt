@@ -6,7 +6,7 @@ set(osrm_LIBS_DIR "${PROJECT_SOURCE_DIR}/../../libs-external")
 file(GLOB osrm_SRC_FILES "${osrm_SRC_DIR}/*.cpp" "${osrm_SRC_DIR}/*.h")
 
 set(osrm_FLAGS "")
-if(ANDROID OR IOS)
+if(ANDROID OR APPLE)
   set(osrm_FLAGS ${osrm_FLAGS} "-fno-math-errno" "-fno-trapping-math")
 endif()
 

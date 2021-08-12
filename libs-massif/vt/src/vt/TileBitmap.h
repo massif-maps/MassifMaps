@@ -13,7 +13,7 @@
 namespace carto { namespace vt {
     class TileBitmap final {
     public:
-        enum Type {
+        enum class Type {
             COLORMAP, NORMALMAP
         };
         

@@ -22,7 +22,7 @@ namespace carto { namespace mvt {
         virtual FeatureProcessor createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const override;
 
     protected:
-        inline static constexpr float IMAGE_UPSAMPLING_SCALE = 2.5f;
+        static constexpr float IMAGE_UPSAMPLING_SCALE = 2.5f;
 
         StringParameter _file;
         BoolParameter _unlockImage = BoolParameter(false);

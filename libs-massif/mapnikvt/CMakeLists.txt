@@ -4,7 +4,7 @@ set(mapnikvt_SRC_DIR "${PROJECT_SOURCE_DIR}/src/mapnikvt")
 set(mapnikvt_LIBS_DIR "${PROJECT_SOURCE_DIR}/../../libs-external")
 
 set(mapnikvt_FLAGS "")
-if(ANDROID OR IOS)
+if(ANDROID OR APPLE)
   set(mapnikvt_FLAGS ${mapnikvt_FLAGS} "-fno-math-errno" "-fno-trapping-math")
 endif()
 

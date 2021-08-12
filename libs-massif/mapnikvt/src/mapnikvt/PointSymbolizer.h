@@ -25,7 +25,7 @@ namespace carto { namespace mvt {
         virtual FeatureProcessor createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const override;
 
     protected:
-        inline static constexpr int RECTANGLE_SIZE = 4;
+        static constexpr int RECTANGLE_SIZE = 4;
 
         static std::shared_ptr<vt::BitmapImage> makeRectangleBitmap(float size);
 

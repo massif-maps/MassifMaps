@@ -46,7 +46,7 @@ namespace carto { namespace css {
         std::shared_ptr<mvt::Map> loadMapProject(const std::string& fileName) const;
 
     protected:
-        inline static constexpr int MAX_ZOOM = 24;
+        static constexpr int MAX_ZOOM = 24;
 
         struct AttachmentStyle {
             std::string attachment;

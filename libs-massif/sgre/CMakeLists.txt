@@ -4,7 +4,7 @@ set(sgre_SRC_DIR "${PROJECT_SOURCE_DIR}/src/sgre")
 set(sgre_LIBS_DIR "${PROJECT_SOURCE_DIR}/../../libs-external")
 
 set(sgre_FLAGS "")
-if(ANDROID OR IOS)
+if(ANDROID OR APPLE)
   set(sgre_FLAGS ${sgre_FLAGS} "-fno-math-errno" "-fno-trapping-math")
 endif()
 

@@ -61,10 +61,10 @@ namespace carto { namespace vt {
         std::shared_ptr<TileLayer> buildTileLayer(std::optional<CompOp> compOp, FloatFunction opacityFunc) const;
 
     private:
-        inline static constexpr unsigned int RESERVED_VERTICES = 4096;
+        static constexpr unsigned int RESERVED_VERTICES = 4096;
 
-        inline static constexpr float MIN_MITER_DOT = -0.8f; // minimum allowed dot product result between segment direction vectors, if less, then miter-join is not used
-        inline static constexpr float STROKE_MIN_MITER_DOT = 0.2f; // minimum allowed dot product result between segment direction vectors for stroked lines, if less, then miter-join is not used
+        static constexpr float MIN_MITER_DOT = -0.8f; // minimum allowed dot product result between segment direction vectors, if less, then miter-join is not used
+        static constexpr float STROKE_MIN_MITER_DOT = 0.2f; // minimum allowed dot product result between segment direction vectors for stroked lines, if less, then miter-join is not used
 
         struct BuilderParameters {
             TileGeometry::Type type;

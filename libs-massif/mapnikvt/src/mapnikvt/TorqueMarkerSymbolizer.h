@@ -28,8 +28,8 @@ namespace carto { namespace mvt {
         virtual FeatureProcessor createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const override;
 
     protected:
-        inline static constexpr int DEFAULT_MARKER_SIZE = 10;
-        inline static constexpr int SUPERSAMPLING_FACTOR = 4;
+        static constexpr int DEFAULT_MARKER_SIZE = 10;
+        static constexpr int SUPERSAMPLING_FACTOR = 4;
 
         static std::shared_ptr<vt::BitmapImage> makeEllipseBitmap(float width, float height, const vt::Color& color, float strokeWidth, const vt::Color& strokeColor);
         static std::shared_ptr<vt::BitmapImage> makeRectangleBitmap(float width, float height, const vt::Color& color, float strokeWidth, const vt::Color& strokeColor);

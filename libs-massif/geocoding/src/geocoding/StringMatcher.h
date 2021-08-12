@@ -225,7 +225,7 @@ namespace carto { namespace geocoding {
             return words;
         }
 
-        inline static constexpr float Q_RATING_WEIGHT = 0.75f;
+        static constexpr float Q_RATING_WEIGHT = 0.75f;
 
         int _maxDist = std::numeric_limits<int>::max();
         CharType _wildcardChar = 0;

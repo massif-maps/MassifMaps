@@ -30,8 +30,8 @@ namespace carto { namespace vt {
     private:
         class PoolAllocator;
 
-        inline static constexpr std::size_t MAX_TOTAL_VERTICES = 64 * 1024 * 1024;
-        inline static constexpr std::size_t MAX_CONVEX_VERTICES = 6;
+        static constexpr std::size_t MAX_TOTAL_VERTICES = 64 * 1024 * 1024;
+        static constexpr std::size_t MAX_CONVEX_VERTICES = 6;
 
         static bool isRingSimpleAndConvex(const Vertices& ring, std::size_t& ringSize);
 

@@ -56,8 +56,8 @@ namespace carto { namespace geocoding {
         static cglib::vec2<double> getOrigin(sqlite3pp::database& db);
         static std::optional<cglib::bbox2<double>> getBounds(sqlite3pp::database& db);
 
-        inline static constexpr std::size_t ADDRESS_CACHE_SIZE = 1024;
-        inline static constexpr std::size_t QUERY_CACHE_SIZE = 64;
+        static constexpr std::size_t ADDRESS_CACHE_SIZE = 1024;
+        static constexpr std::size_t QUERY_CACHE_SIZE = 64;
         
         std::string _language; // use local language by default
         unsigned int _maxResults = 10; // maximum number of results returned

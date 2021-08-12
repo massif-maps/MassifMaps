@@ -146,6 +146,9 @@ namespace carto { namespace mbvtbuilder {
 
     void MBVTTileBuilder::importGeoJSONFeature(LayerIndex layerIndex, const picojson::value& featureDef) {
         const picojson::value& geometryDef = featureDef.get("geometry");
+        if (geometryDef.is<picojson::null>()) {
+            return;
+        }
         const picojson::value& properties = featureDef.get("properties");
 
         std::string type = geometryDef.get("type").get<std::string>();

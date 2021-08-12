@@ -137,7 +137,7 @@ namespace carto { namespace css {
         }
         Color clearColor;
         if (getMapProperty(mapProperties, "-torque-clear-color", clearColor)) {
-            torqueSettings.clearColor = vt::Color(clearColor.value());
+            torqueSettings.clearColor = vt::Color(clearColor.rgba());
         }
         getMapProperty(mapProperties, "-torque-time-attribute", torqueSettings.timeAttribute);
         getMapProperty(mapProperties, "-torque-aggregation-function", torqueSettings.aggregationFunction);

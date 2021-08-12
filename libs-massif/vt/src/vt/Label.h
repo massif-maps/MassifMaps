@@ -64,14 +64,14 @@ namespace carto { namespace vt {
         bool calculateVertexData(float size, const ViewState& viewState, int styleIndex, int haloStyleIndex, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const;
 
     private:
-        inline static constexpr unsigned int MAX_LABEL_VERTICES = 16384;
-        inline static constexpr unsigned int MAX_LINE_FITTING_ITERATIONS = 1; // number of iterations for line glyph placement on corners
+        static constexpr unsigned int MAX_LABEL_VERTICES = 16384;
+        static constexpr unsigned int MAX_LINE_FITTING_ITERATIONS = 1; // number of iterations for line glyph placement on corners
 
-        inline static constexpr float EXTRA_PLACEMENT_PIXELS = 30.0f; // extra visible pixels required for placement
-        inline static constexpr float SUMMED_ANGLE_SPLIT_THRESHOLD = 2.09f; // maximum sum of segment angles, in radians
-        inline static constexpr float SINGLE_ANGLE_SPLIT_THRESHOLD = 1.57f; // maximum single segment angle, in radians
-        inline static constexpr float MIN_LINE_SEGMENT_DOTPRODUCT = 0.5f; // the minimum allowed dot product between consecutive segments
-        inline static constexpr float MIN_BILLBOARD_VIEW_NORMAL_DOTPRODUCT = 0.49f; // the minimum allowed dot product between view vector and surface normal
+        static constexpr float EXTRA_PLACEMENT_PIXELS = 30.0f; // extra visible pixels required for placement
+        static constexpr float SUMMED_ANGLE_SPLIT_THRESHOLD = 2.09f; // maximum sum of segment angles, in radians
+        static constexpr float SINGLE_ANGLE_SPLIT_THRESHOLD = 1.57f; // maximum single segment angle, in radians
+        static constexpr float MIN_LINE_SEGMENT_DOTPRODUCT = 0.5f; // the minimum allowed dot product between consecutive segments
+        static constexpr float MIN_BILLBOARD_VIEW_NORMAL_DOTPRODUCT = 0.49f; // the minimum allowed dot product between view vector and surface normal
 
         struct TilePoint {
             TileId tileId;

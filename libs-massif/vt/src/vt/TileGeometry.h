@@ -28,7 +28,7 @@ namespace carto { namespace vt {
         };
 
         struct StyleParameters {
-            inline static constexpr int MAX_PARAMETERS = 16;
+            static constexpr int MAX_PARAMETERS = 16;
 
             int parameterCount;
             std::array<ColorFunction, MAX_PARAMETERS> colorFuncs;

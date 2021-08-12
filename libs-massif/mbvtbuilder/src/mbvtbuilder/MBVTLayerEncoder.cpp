@@ -69,6 +69,8 @@ namespace carto { namespace mbvtbuilder {
             for (std::pair<std::string, picojson::value> keyValuePair : properties.get<picojson::object>()) {
                 importProperty(keyValuePair.first, keyValuePair.second, tags);
             }
+        } else {
+            importProperty("value", properties, tags);
         }
 
         protobuf::encoded_message encodedFeature = encodeFeature(id, type, tags, geometry);
@@ -87,6 +89,8 @@ namespace carto { namespace mbvtbuilder {
             for (std::pair<std::string, picojson::value> keyValuePair : valueObj) {
                 importProperty(key + "." + keyValuePair.first, keyValuePair.second, tags);
             }
+            return;
+        } else if (value.is<picojson::null>()) {
             return;
         }
 

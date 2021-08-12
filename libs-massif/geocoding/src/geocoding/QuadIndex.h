@@ -80,8 +80,8 @@ namespace carto { namespace geocoding {
             return zoom + (((static_cast<std::uint64_t>(yt) << zoom) + static_cast<std::uint64_t>(xt)) << LEVEL_BITS);
         }
 
-        inline static constexpr int MAX_LEVEL = 18;
-        inline static constexpr int LEVEL_BITS = 5;
+        static constexpr int MAX_LEVEL = 18;
+        static constexpr int LEVEL_BITS = 5;
 
         const GeometryInfoFinder _geometryInfoFinder;
     };

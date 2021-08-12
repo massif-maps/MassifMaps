@@ -10,7 +10,7 @@ if(EXCLUDE_GL)
 endif(EXCLUDE_GL)
 
 set(vt_FLAGS "")
-if(ANDROID OR IOS)
+if(ANDROID OR APPLE)
   set(vt_FLAGS ${vt_FLAGS} "-fno-math-errno" "-fno-trapping-math")
 endif()
 

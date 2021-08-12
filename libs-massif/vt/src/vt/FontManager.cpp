@@ -184,7 +184,7 @@ namespace carto { namespace vt {
                 return 0;
             }
             error = FT_Render_Glyph(face->glyph, FT_RENDER_MODE_SDF);
-            if (error != 0) {
+            if (error != 0 && error != FT_Err_Cannot_Render_Glyph) {
                 return 0;
             }
 

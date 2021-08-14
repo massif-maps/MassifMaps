@@ -86,7 +86,7 @@ namespace carto { namespace css {
 
                     TorqueCartoCSSMapnikTranslator translator(_logger);
                     for (auto it = layerZoomAttachments.begin(); it != layerZoomAttachments.end(); it++) {
-                        buildAttachmentStyleMap(translator, map, it->first.first, it->first.second, it->second, attachmentStyleMap);
+                        updateAttachmentStyleMap(translator, map, it->first.first, it->first.second, it->second, attachmentStyleMap);
                     }
                 }
                 catch (const std::exception& ex) {

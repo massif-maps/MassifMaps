@@ -231,7 +231,7 @@ namespace carto { namespace css {
 
                 CartoCSSMapnikTranslator translator(_logger);
                 for (auto it = layerZoomAttachments.begin(); it != layerZoomAttachments.end(); it++) {
-                    buildAttachmentStyleMap(translator, map, it->first.first, it->first.second, it->second, attachmentStyleMap);
+                    updateAttachmentStyleMap(translator, map, it->first.first, it->first.second, it->second, attachmentStyleMap);
                 }
             }
             catch (const std::exception& ex) {
@@ -264,7 +264,7 @@ namespace carto { namespace css {
         return style;
     }
 
-    void CartoCSSMapLoader::buildAttachmentStyleMap(const CartoCSSMapnikTranslator& translator, const std::shared_ptr<mvt::Map>& map, int minZoom, int maxZoom, const std::list<AttachmentPropertySets>& layerAttachments, std::map<std::string, AttachmentStyle>& attachmentStyleMap) const {
+    void CartoCSSMapLoader::updateAttachmentStyleMap(const CartoCSSMapnikTranslator& translator, const std::shared_ptr<mvt::Map>& map, int minZoom, int maxZoom, const std::list<AttachmentPropertySets>& layerAttachments, std::map<std::string, AttachmentStyle>& attachmentStyleMap) const {
         for (const AttachmentPropertySets& layerAttachment : layerAttachments) {
             int layerAttachmentOrder = layerAttachment.calculateOrder();
             if (attachmentStyleMap.find(layerAttachment.getAttachment()) == attachmentStyleMap.end()) {

@@ -56,17 +56,7 @@ namespace carto { namespace css {
     }
 
     std::shared_ptr<mvt::Map> CartoCSSMapLoader::loadMapProject(const std::string& fileName) const {
-        std::shared_ptr<const std::vector<unsigned char>> mapData = _assetLoader->load(fileName);
-        if (!mapData) {
-            throw LoaderException(std::string("Could not load map description file ") + fileName);
-        }
-        
-        std::string mapJson(reinterpret_cast<const char*>(mapData->data()), reinterpret_cast<const char*>(mapData->data() + mapData->size()));
-        picojson::value mapDoc;
-        std::string err = picojson::parse(mapDoc, mapJson);
-        if (!err.empty()) {
-            throw LoaderException(std::string("Error while parsing map description: ") + err);
-        }
+        picojson::value mapDoc = loadMapDocument(fileName, std::set<std::string>());
 
         std::vector<std::string> mssFileNames;
         if (mapDoc.contains("styles")) {
@@ -146,6 +136,69 @@ namespace carto { namespace css {
         return buildMap(styleSheet, layerNames, nutiParameters);
     }
 
+    picojson::value CartoCSSMapLoader::loadMapDocument(const std::string& fileName, std::set<std::string> loadedFileNames) const {
+        picojson::value mapDoc;
+
+        if (loadedFileNames.find(fileName) != loadedFileNames.end()) {
+            throw LoaderException(std::string("Cyclical reference to map description file ") + fileName);
+        }
+        loadedFileNames.insert(fileName);
+
+        std::shared_ptr<const std::vector<unsigned char>> mapData = _assetLoader->load(fileName);
+        if (!mapData) {
+            throw LoaderException(std::string("Could not load map description file ") + fileName);
+        }
+
+        std::string mapJson(reinterpret_cast<const char*>(mapData->data()), reinterpret_cast<const char*>(mapData->data() + mapData->size()));
+        std::string err = picojson::parse(mapDoc, mapJson);
+        if (!err.empty()) {
+            throw LoaderException(std::string("Error while parsing map description: ") + err);
+        }
+
+        // Load base project data, if defined
+        if (mapDoc.contains("extends")) {
+            const std::string& extendsFileName = mapDoc.get("extends").get<std::string>();
+            picojson::value extendsMapDoc = loadMapDocument(extendsFileName, loadedFileNames);
+
+            picojson::value::object& mapDocObj = mapDoc.get<picojson::value::object>();
+            const picojson::value::object& extendsMapDocObj = extendsMapDoc.get<picojson::value::object>();
+            for (auto it = extendsMapDocObj.begin(); it != extendsMapDocObj.end(); it++) {
+                if (mapDocObj.find(it->first) == mapDocObj.end()) {
+                    mapDocObj[it->first] = it->second;
+                }
+            }
+        }
+
+        return mapDoc;
+    }
+
+    mvt::Map::Settings CartoCSSMapLoader::loadMapSettings(const std::map<std::string, Value>& mapProperties) const {
+        mvt::Map::Settings mapSettings;
+        
+        Color backgroundColor;
+        if (getMapProperty(mapProperties, "background-color", backgroundColor)) {
+            mapSettings.backgroundColor = vt::Color(backgroundColor.rgba());
+        }
+        getMapProperty(mapProperties, "background-image", mapSettings.backgroundImage);
+
+        Color northPoleColor;
+        if (getMapProperty(mapProperties, "north-pole-color", northPoleColor)) {
+            mapSettings.northPoleColor = vt::Color(northPoleColor.rgba());
+        }
+        Color southPoleColor;
+        if (getMapProperty(mapProperties, "south-pole-color", southPoleColor)) {
+            mapSettings.southPoleColor = vt::Color(southPoleColor.rgba());
+        }
+
+        getMapProperty(mapProperties, "font-directory", mapSettings.fontDirectory);
+        double bufferSize = 0;
+        if (getMapProperty(mapProperties, "buffer-size", bufferSize)) {
+            mapSettings.bufferSize = static_cast<float>(bufferSize);
+        }
+
+        return mapSettings;
+    }
+
     std::shared_ptr<mvt::Map> CartoCSSMapLoader::buildMap(const StyleSheet& styleSheet, const std::vector<std::string>& layerNames, const std::vector<mvt::NutiParameter>& nutiParameters) const {
         // Map properties
         mvt::Map::Settings mapSettings;
@@ -155,7 +208,7 @@ namespace carto { namespace css {
                 std::map<std::string, Value> mapProperties;
                 compiler.compileMap(styleSheet, mapProperties);
 
-                loadMapSettings(mapProperties, mapSettings);
+                mapSettings = loadMapSettings(mapProperties);
             }
             catch (const std::exception& ex) {
                 throw LoaderException(std::string("Error while building/loading map properties: ") + ex.what());
@@ -209,29 +262,6 @@ namespace carto { namespace css {
         auto style = std::make_shared<mvt::Style>(styleName, attachmentStyle.opacity, attachmentStyle.imageFilters, attachmentStyle.compOp, mvt::Style::FilterMode::FIRST, attachmentStyle.rules);
         style->optimizeRules();
         return style;
-    }
-
-    void CartoCSSMapLoader::loadMapSettings(const std::map<std::string, Value>& mapProperties, mvt::Map::Settings& mapSettings) const {
-        Color backgroundColor;
-        if (getMapProperty(mapProperties, "background-color", backgroundColor)) {
-            mapSettings.backgroundColor = vt::Color(backgroundColor.rgba());
-        }
-        getMapProperty(mapProperties, "background-image", mapSettings.backgroundImage);
-
-        Color northPoleColor;
-        if (getMapProperty(mapProperties, "north-pole-color", northPoleColor)) {
-            mapSettings.northPoleColor = vt::Color(northPoleColor.rgba());
-        }
-        Color southPoleColor;
-        if (getMapProperty(mapProperties, "south-pole-color", southPoleColor)) {
-            mapSettings.southPoleColor = vt::Color(southPoleColor.rgba());
-        }
-
-        getMapProperty(mapProperties, "font-directory", mapSettings.fontDirectory);
-        double bufferSize = 0;
-        if (getMapProperty(mapProperties, "buffer-size", bufferSize)) {
-            mapSettings.bufferSize = static_cast<float>(bufferSize);
-        }
     }
 
     void CartoCSSMapLoader::buildAttachmentStyleMap(const CartoCSSMapnikTranslator& translator, const std::shared_ptr<mvt::Map>& map, int minZoom, int maxZoom, const std::list<AttachmentPropertySets>& layerAttachments, std::map<std::string, AttachmentStyle>& attachmentStyleMap) const {

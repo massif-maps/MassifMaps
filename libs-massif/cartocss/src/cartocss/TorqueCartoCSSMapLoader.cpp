@@ -28,8 +28,8 @@ namespace carto { namespace css {
                 std::map<std::string, Value> mapProperties;
                 compiler.compileMap(styleSheet, mapProperties);
 
-                loadMapSettings(mapProperties, mapSettings);
-                loadTorqueSettings(mapProperties, torqueSettings);
+                mapSettings = loadMapSettings(mapProperties);
+                torqueSettings = loadTorqueSettings(mapProperties);
             }
             catch (const std::exception& ex) {
                 throw LoaderException(std::string("Error while building/loading map properties: ") + ex.what());
@@ -112,7 +112,9 @@ namespace carto { namespace css {
         return map;
     }
 
-    void TorqueCartoCSSMapLoader::loadTorqueSettings(const std::map<std::string, Value>& mapProperties, mvt::TorqueMap::TorqueSettings& torqueSettings) const {
+    mvt::TorqueMap::TorqueSettings TorqueCartoCSSMapLoader::loadTorqueSettings(const std::map<std::string, Value>& mapProperties) const {
+        mvt::TorqueMap::TorqueSettings torqueSettings;
+
         long long frameCount = 0;
         if (getMapProperty(mapProperties, "-torque-frame-count", frameCount)) {
             torqueSettings.frameCount = static_cast<int>(frameCount);
@@ -142,5 +144,7 @@ namespace carto { namespace css {
         getMapProperty(mapProperties, "-torque-time-attribute", torqueSettings.timeAttribute);
         getMapProperty(mapProperties, "-torque-aggregation-function", torqueSettings.aggregationFunction);
         getMapProperty(mapProperties, "-torque-data-aggregation", torqueSettings.dataAggregation);
+
+        return torqueSettings;
     }
 } }

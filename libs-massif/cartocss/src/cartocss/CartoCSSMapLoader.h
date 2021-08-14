@@ -18,7 +18,10 @@
 #include <optional>
 #include <string>
 #include <vector>
+#include <set>
 #include <map>
+
+#include <picojson/picojson.h>
 
 namespace carto { namespace css {
     class CartoCSSMapLoader {
@@ -69,11 +72,13 @@ namespace carto { namespace css {
             return false;
         }
 
+        picojson::value loadMapDocument(const std::string& fileName, std::set<std::string> loadedFileNames) const;
+
+        mvt::Map::Settings loadMapSettings(const std::map<std::string, Value>& mapProperties) const;
+
         std::shared_ptr<mvt::Map> buildMap(const StyleSheet& styleSheet, const std::vector<std::string>& layerNames, const std::vector<mvt::NutiParameter>& nutiParameters) const;
 
         std::shared_ptr<mvt::Style> buildStyle(const AttachmentStyle& attachmentStyle, const std::string& styleName) const;
-
-        void loadMapSettings(const std::map<std::string, Value>& mapProperties, mvt::Map::Settings& mapSettings) const;
 
         void buildAttachmentStyleMap(const CartoCSSMapnikTranslator& translator, const std::shared_ptr<mvt::Map>& map, int minZoom, int maxZoom, const std::list<AttachmentPropertySets>& layerAttachments, std::map<std::string, AttachmentStyle>& attachmentStyleMap) const;
 

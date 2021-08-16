@@ -60,7 +60,7 @@ namespace carto { namespace css {
 
         std::vector<std::string> mssFileNames;
         if (mapDoc.contains("styles")) {
-            const picojson::value::array& stylesArr = mapDoc.get("styles").get<picojson::value::array>();
+            const picojson::array& stylesArr = mapDoc.get("styles").get<picojson::array>();
             for (auto jit = stylesArr.begin(); jit != stylesArr.end(); jit++) {
                 mssFileNames.push_back(jit->get<std::string>());
             }
@@ -68,7 +68,7 @@ namespace carto { namespace css {
 
         std::vector<std::string> layerNames;
         if (mapDoc.contains("layers")) {
-            const picojson::value::array& layersArr = mapDoc.get("layers").get<picojson::value::array>();
+            const picojson::array& layersArr = mapDoc.get("layers").get<picojson::array>();
             for (auto jit = layersArr.begin(); jit != layersArr.end(); jit++) {
                 layerNames.insert(layerNames.begin(), jit->get<std::string>());
             }
@@ -105,7 +105,7 @@ namespace carto { namespace css {
         // Nutiparameters
         std::vector<mvt::NutiParameter> nutiParameters;
         if (mapDoc.contains("nutiparameters")) {
-            const picojson::value::object& nutiparamsObj = mapDoc.get("nutiparameters").get<picojson::value::object>();
+            const picojson::object& nutiparamsObj = mapDoc.get("nutiparameters").get<picojson::object>();
             for (auto pit = nutiparamsObj.begin(); pit != nutiparamsObj.end(); pit++) {
                 std::string paramName = pit->first;
                 const picojson::value& paramValue = pit->second;
@@ -114,13 +114,13 @@ namespace carto { namespace css {
                 if (paramValue.is<picojson::object>()) {
                     defaultValue = convertJSONValue(paramValue.get("default"));
                     if (paramValue.contains("values")) {
-                        const picojson::value::object& valuesObj = paramValue.get("values").get<picojson::value::object>();
+                        const picojson::object& valuesObj = paramValue.get("values").get<picojson::object>();
                         for (auto vit = valuesObj.begin(); vit != valuesObj.end(); vit++) {
                             enumMap[vit->first] = convertJSONValue(vit->second);
                         }
                     }
                 } else if (paramValue.is<picojson::array>()) {
-                    const picojson::value::array& valuesArr = paramValue.get<picojson::value::array>();
+                    const picojson::array& valuesArr = paramValue.get<picojson::array>();
                     for (auto vit = valuesArr.rbegin(); vit != valuesArr.rend(); vit++) {
                         mvt::Value enumValue = convertJSONValue(*vit);
                         enumMap[mvt::ValueConverter<std::string>::convert(enumValue)] = enumValue;
@@ -160,12 +160,10 @@ namespace carto { namespace css {
             const std::string& extendsFileName = mapDoc.get("extends").get<std::string>();
             picojson::value extendsMapDoc = loadMapDocument(extendsFileName, loadedFileNames);
 
-            picojson::value::object& mapDocObj = mapDoc.get<picojson::value::object>();
-            const picojson::value::object& extendsMapDocObj = extendsMapDoc.get<picojson::value::object>();
+            mapDoc.swap(extendsMapDoc);
+            const picojson::object& extendsMapDocObj = extendsMapDoc.get<picojson::object>();
             for (auto it = extendsMapDocObj.begin(); it != extendsMapDocObj.end(); it++) {
-                if (mapDocObj.find(it->first) == mapDocObj.end()) {
-                    mapDocObj[it->first] = it->second;
-                }
+                mapDoc.set(it->first, it->second);
             }
         }
 

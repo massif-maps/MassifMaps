@@ -15,7 +15,7 @@ namespace carto { namespace mvt {
         if (strokeWidthFunc == vt::FloatFunction(0) || strokeOpacityFunc == vt::FloatFunction(0) || strokeColorFunc == vt::ColorFunction(vt::Color())) {
             return FeatureProcessor();
         }
-        vt::FloatFunction lineOffsetFunc = _lineOffset.getFunction(exprContext);
+        vt::FloatFunction offsetFunc = _offset.getFunction(exprContext);
 
         vt::CompOp compOp = _compOp.getValue(exprContext);
         vt::LineJoinMode strokeLinejoin = _strokeLinejoin.getValue(exprContext);
@@ -49,7 +49,7 @@ namespace carto { namespace mvt {
             }
         }
 
-        vt::LineStyle style(compOp, strokeLinejoin, strokeLinecap, strokeFunc, strokeWidthFunc, lineOffsetFunc, strokePattern, geometryTransform);
+        vt::LineStyle style(compOp, strokeLinejoin, strokeLinecap, strokeFunc, strokeWidthFunc, offsetFunc, strokePattern, geometryTransform);
         
         std::shared_ptr<vt::StrokeMap> strokeMap = symbolizerContext.getStrokeMap();
 

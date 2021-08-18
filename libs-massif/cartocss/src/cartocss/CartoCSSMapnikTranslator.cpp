@@ -523,14 +523,14 @@ namespace carto { namespace css {
         { "line-dasharray", "stroke-dasharray" },
         { "line-join", "stroke-linejoin" },
         { "line-cap", "stroke-linecap" },
-        { "line-offset", "line-offset" },
+        { "line-offset", "offset" },
         { "line-geometry-transform", "geometry-transform" },
         { "line-comp-op", "comp-op" },
 
         { "line-pattern-file", "file" },
         { "line-pattern-fill", "fill" },
         { "line-pattern-opacity", "opacity" },
-        { "line-pattern-offset", "line-offset" },
+        { "line-pattern-offset", "offset" },
         { "line-pattern-geometry-transform", "geometry-transform" },
         { "line-pattern-comp-op", "comp-op" },
 

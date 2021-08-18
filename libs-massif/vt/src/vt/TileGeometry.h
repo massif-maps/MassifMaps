@@ -32,14 +32,14 @@ namespace carto { namespace vt {
 
             int parameterCount;
             std::array<ColorFunction, MAX_PARAMETERS> colorFuncs;
-            std::array<FloatFunction, MAX_PARAMETERS> widthFuncs;
-            std::array<FloatFunction, MAX_PARAMETERS> strokeWidthFuncs;
-            std::array<float, MAX_PARAMETERS> strokeScales;
+            std::array<FloatFunction, MAX_PARAMETERS> widthFuncs; // for lines, points
+            std::array<FloatFunction, MAX_PARAMETERS> offsetFuncs; // for lines, points (stroke width in case of points)
+            std::array<float, MAX_PARAMETERS> strokeScales; // for patterned lines
             std::shared_ptr<const BitmapPattern> pattern;
             std::optional<cglib::vec2<float>> translate;
             CompOp compOp;
 
-            StyleParameters() : parameterCount(0), colorFuncs(), widthFuncs(), strokeWidthFuncs(), strokeScales(), pattern(), translate(), compOp(CompOp::SRC_OVER) { }
+            StyleParameters() : parameterCount(0), colorFuncs(), widthFuncs(), offsetFuncs(), strokeScales(), pattern(), translate(), compOp(CompOp::SRC_OVER) { }
         };
 
         struct VertexGeometryLayoutParameters {

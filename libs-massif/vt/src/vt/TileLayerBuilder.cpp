@@ -81,7 +81,7 @@ namespace carto { namespace vt {
         GlyphMap::GlyphId glyphId = glyphMap->loadBitmapGlyph(style.image->bitmap, style.image->sdfMode);
         int styleIndex = _builderParameters.parameterCount;
         while (--styleIndex >= 0) {
-            if (_builderParameters.colorFuncs[styleIndex] == style.colorFunc && _builderParameters.widthFuncs[styleIndex] == style.sizeFunc && _builderParameters.strokeWidthFuncs[styleIndex] == FloatFunction(0)) {
+            if (_builderParameters.colorFuncs[styleIndex] == style.colorFunc && _builderParameters.widthFuncs[styleIndex] == style.sizeFunc && _builderParameters.offsetFuncs[styleIndex] == FloatFunction(0)) {
                 break;
             }
         }
@@ -89,7 +89,7 @@ namespace carto { namespace vt {
             styleIndex = _builderParameters.parameterCount++;
             _builderParameters.colorFuncs[styleIndex] = style.colorFunc;
             _builderParameters.widthFuncs[styleIndex] = style.sizeFunc;
-            _builderParameters.strokeWidthFuncs[styleIndex] = FloatFunction(0);
+            _builderParameters.offsetFuncs[styleIndex] = FloatFunction(0);
         }
 
         return [style, styleIndex, glyphMap, glyphId, this](long long id, const Vertex& vertex) {
@@ -126,7 +126,7 @@ namespace carto { namespace vt {
         _builderParameters.compOp = style.compOp;
         int styleIndex = _builderParameters.parameterCount;
         while (--styleIndex >= 0) {
-            if (_builderParameters.colorFuncs[styleIndex] == style.colorFunc && _builderParameters.widthFuncs[styleIndex] == style.sizeFunc && _builderParameters.strokeWidthFuncs[styleIndex] == FloatFunction(0)) {
+            if (_builderParameters.colorFuncs[styleIndex] == style.colorFunc && _builderParameters.widthFuncs[styleIndex] == style.sizeFunc && _builderParameters.offsetFuncs[styleIndex] == FloatFunction(0)) {
                 break;
             }
         }
@@ -134,13 +134,13 @@ namespace carto { namespace vt {
             styleIndex = _builderParameters.parameterCount++;
             _builderParameters.colorFuncs[styleIndex] = style.colorFunc;
             _builderParameters.widthFuncs[styleIndex] = style.sizeFunc;
-            _builderParameters.strokeWidthFuncs[styleIndex] = FloatFunction(0);
+            _builderParameters.offsetFuncs[styleIndex] = FloatFunction(0);
         }
 
         int haloStyleIndex = -1;
         if (style.haloRadiusFunc != FloatFunction(0)) {
             for (haloStyleIndex = _builderParameters.parameterCount; --haloStyleIndex >= 0; ) {
-                if (_builderParameters.colorFuncs[haloStyleIndex] == style.haloColorFunc && _builderParameters.widthFuncs[haloStyleIndex] == style.sizeFunc && _builderParameters.strokeWidthFuncs[haloStyleIndex] == style.haloRadiusFunc) {
+                if (_builderParameters.colorFuncs[haloStyleIndex] == style.haloColorFunc && _builderParameters.widthFuncs[haloStyleIndex] == style.sizeFunc && _builderParameters.offsetFuncs[haloStyleIndex] == style.haloRadiusFunc) {
                     break;
                 }
             }
@@ -148,7 +148,7 @@ namespace carto { namespace vt {
                 haloStyleIndex = _builderParameters.parameterCount++;
                 _builderParameters.colorFuncs[haloStyleIndex] = style.haloColorFunc;
                 _builderParameters.widthFuncs[haloStyleIndex] = style.sizeFunc;
-                _builderParameters.strokeWidthFuncs[haloStyleIndex] = style.haloRadiusFunc;
+                _builderParameters.offsetFuncs[haloStyleIndex] = style.haloRadiusFunc;
             }
         }
 
@@ -202,7 +202,7 @@ namespace carto { namespace vt {
         const StrokeMap::Stroke* stroke = (strokeId != 0 ? strokeMap->getStroke(strokeId) : nullptr);
         int styleIndex = _builderParameters.parameterCount;
         while (--styleIndex >= 0) {
-            if (_builderParameters.colorFuncs[styleIndex] == style.colorFunc && _builderParameters.widthFuncs[styleIndex] == style.widthFunc && _builderParameters.lineStrokeIds[styleIndex] == strokeId) {
+            if (_builderParameters.colorFuncs[styleIndex] == style.colorFunc && _builderParameters.widthFuncs[styleIndex] == style.widthFunc && _builderParameters.offsetFuncs[styleIndex] == style.offsetFunc && _builderParameters.lineStrokeIds[styleIndex] == strokeId) {
                 break;
             }
         }
@@ -210,6 +210,7 @@ namespace carto { namespace vt {
             styleIndex = _builderParameters.parameterCount++;
             _builderParameters.colorFuncs[styleIndex] = style.colorFunc;
             _builderParameters.widthFuncs[styleIndex] = style.widthFunc;
+            _builderParameters.offsetFuncs[styleIndex] = style.offsetFunc;
             _builderParameters.lineStrokeIds[styleIndex] = strokeId;
         }
 
@@ -238,7 +239,7 @@ namespace carto { namespace vt {
         _builderParameters.compOp = style.compOp;
         int styleIndex = _builderParameters.parameterCount;
         while (--styleIndex >= 0) {
-            if (_builderParameters.colorFuncs[styleIndex] == style.colorFunc && _builderParameters.widthFuncs[styleIndex] == FloatFunction(0) && _builderParameters.lineStrokeIds[styleIndex] == 0) {
+            if (_builderParameters.colorFuncs[styleIndex] == style.colorFunc && _builderParameters.widthFuncs[styleIndex] == FloatFunction(0) && _builderParameters.offsetFuncs[styleIndex] == FloatFunction(0) && _builderParameters.lineStrokeIds[styleIndex] == 0) {
                 break;
             }
         }
@@ -246,6 +247,7 @@ namespace carto { namespace vt {
             styleIndex = _builderParameters.parameterCount++;
             _builderParameters.colorFuncs[styleIndex] = style.colorFunc;
             _builderParameters.widthFuncs[styleIndex] = FloatFunction(0); // fill width information when we need to use line shader with polygons
+            _builderParameters.offsetFuncs[styleIndex] = FloatFunction(0); // fill offset information when we need to use line shader with polygons
             _builderParameters.lineStrokeIds[styleIndex] = 0; // fill stroke information when we need to use line shader with polygons
         }
 
@@ -410,7 +412,7 @@ namespace carto { namespace vt {
         for (int i = 0; i < styleParameters.parameterCount; i++) {
             styleParameters.colorFuncs[i] = _builderParameters.colorFuncs[i];
             styleParameters.widthFuncs[i] = _builderParameters.widthFuncs[i];
-            styleParameters.strokeWidthFuncs[i] = _builderParameters.strokeWidthFuncs[i];
+            styleParameters.offsetFuncs[i] = _builderParameters.offsetFuncs[i];
             const StrokeMap::Stroke* stroke = nullptr;
             if (_builderParameters.strokeMap && _builderParameters.lineStrokeIds[i] != 0) {
                 stroke = _builderParameters.strokeMap->getStroke(_builderParameters.lineStrokeIds[i]);

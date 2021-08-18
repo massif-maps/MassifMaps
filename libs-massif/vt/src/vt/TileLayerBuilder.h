@@ -71,7 +71,7 @@ namespace carto { namespace vt {
             int parameterCount;
             std::array<ColorFunction, TileGeometry::StyleParameters::MAX_PARAMETERS> colorFuncs;
             std::array<FloatFunction, TileGeometry::StyleParameters::MAX_PARAMETERS> widthFuncs;
-            std::array<FloatFunction, TileGeometry::StyleParameters::MAX_PARAMETERS> strokeWidthFuncs;
+            std::array<FloatFunction, TileGeometry::StyleParameters::MAX_PARAMETERS> offsetFuncs;
             std::array<StrokeMap::StrokeId, TileGeometry::StyleParameters::MAX_PARAMETERS> lineStrokeIds;
             std::shared_ptr<const StrokeMap> strokeMap;
             std::shared_ptr<const GlyphMap> glyphMap;
@@ -79,7 +79,7 @@ namespace carto { namespace vt {
             std::optional<Transform> transform;
             CompOp compOp;
 
-            BuilderParameters() : type(TileGeometry::Type::NONE), parameterCount(0), colorFuncs(), widthFuncs(), strokeWidthFuncs(), lineStrokeIds(), strokeMap(), glyphMap(), pattern(), transform(), compOp(CompOp::SRC_OVER) { }
+            BuilderParameters() : type(TileGeometry::Type::NONE), parameterCount(0), colorFuncs(), widthFuncs(), offsetFuncs(), lineStrokeIds(), strokeMap(), glyphMap(), pattern(), transform(), compOp(CompOp::SRC_OVER) { }
         };
 
         void appendGeometry();

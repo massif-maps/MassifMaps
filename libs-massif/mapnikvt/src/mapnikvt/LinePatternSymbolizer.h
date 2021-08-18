@@ -17,6 +17,7 @@ namespace carto { namespace mvt {
             bindParameter("file", &_file);
             bindParameter("fill", &_fill);
             bindParameter("opacity", &_opacity);
+            bindParameter("line-offset", &_lineOffset);
         }
 
         virtual FeatureProcessor createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const override;
@@ -27,6 +28,7 @@ namespace carto { namespace mvt {
         StringParameter _file;
         ColorFunctionParameter _fill = ColorFunctionParameter("#ffffff");
         FloatFunctionParameter _opacity = FloatFunctionParameter(1.0f);
+        FloatFunctionParameter _lineOffset = FloatFunctionParameter(0.0f);
 
         FloatFunctionBuilder _widthFuncBuilder;
         ColorFunctionBuilder _fillFuncBuilder;

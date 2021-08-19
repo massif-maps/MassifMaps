@@ -302,6 +302,7 @@ namespace carto { namespace mvt {
         float lineSpacing = _lineSpacing.getValue(exprContext);
         float wrapWidth = _wrapWidth.getValue(exprContext);
         bool wrapBefore = _wrapBefore.getValue(exprContext);
+        std::string wrapCharacter = _wrapCharacter.getValue(exprContext);
         std::string horizontalAlignment = toLower(_horizontalAlignment.getValue(exprContext));
         std::string verticalAlignment = toLower(_verticalAlignment.getValue(exprContext));
 
@@ -325,6 +326,6 @@ namespace carto { namespace mvt {
         else if (verticalAlignment == "bottom") {
             alignment(1) = 1.0f;
         }
-        return vt::TextFormatter::Options(alignment, offset, wrapBefore, wrapWidth * fontScale, characterSpacing, lineSpacing);
+        return vt::TextFormatter::Options(alignment, offset, wrapCharacter, wrapBefore, wrapWidth * fontScale, characterSpacing, lineSpacing);
     }
 } }

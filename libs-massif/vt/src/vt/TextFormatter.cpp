@@ -33,7 +33,7 @@ namespace carto { namespace vt {
         for (const Line& line : lines) {
             float xoff = -textBBox.max(0) * (_options.alignment(0) + 1.0f) * 0.5f + (textBBox.size()(0) - line.bbox.size()(0)) * 0.5f;
             float yoff = (textBBox.min(1) - _metrics.descent) * (-_options.alignment(1) + 1.0f) * 0.5f + (line.bbox.min(1) - textBBox.min(1));
-            glyphs.emplace_back(Font::Glyph(Font::CR_CODEPOINT, GlyphMap::Glyph(false, 0, 0, 0, 0, cglib::vec2<float>(0, 0)), cglib::vec2<float>(0, 0), cglib::vec2<float>(0, 0), cglib::vec2<float>(xoff, yoff) + _options.offset * (1.0f / _fontSize)));
+            glyphs.emplace_back(Font::Glyph(0, Font::CR_CODEPOINT, GlyphMap::Glyph(false, 0, 0, 0, 0, cglib::vec2<float>(0, 0)), cglib::vec2<float>(0, 0), cglib::vec2<float>(0, 0), cglib::vec2<float>(xoff, yoff) + _options.offset * (1.0f / _fontSize)));
             glyphs.insert(glyphs.end(), line.glyphs.begin(), line.glyphs.end());
         }
         if (fontSize != 1) {
@@ -105,7 +105,13 @@ namespace carto { namespace vt {
                         word.push_back(glyph);
                         wordWidth += glyph.advance(0) * _fontSize;
 
-                        if (glyph.codePoint == Font::SPACE_CODEPOINT && i + 1 < glyphs.size() && _options.wrapWidth > 0) {
+                        bool isWrapChar = (glyph.codePoint == Font::SPACE_CODEPOINT);
+                        for (auto wrapCharIt = _options.wrapChars.begin(); wrapCharIt != _options.wrapChars.end(); ) {
+                            std::uint32_t utf32WrapChar = utf8::next(wrapCharIt, _options.wrapChars.end());
+                            isWrapChar = isWrapChar || glyph.utf32Char == utf32WrapChar;
+                        }
+
+                        if (isWrapChar && i + 1 < glyphs.size() && _options.wrapWidth > 0) {
                             if (lineMask != 3 && lineWidth + wordWidth >= _options.wrapWidth) {
                                 if (_options.wrapBefore && !lines[lineIndex].glyphs.empty()) {
                                     if (lineMask == 2) {
@@ -157,7 +163,7 @@ namespace carto { namespace vt {
         cglib::vec2<float> pen(0, 0);
         for (Line& line : lines) {
             pen(0) = 0;
-            for (Font::Glyph glyph : line.glyphs) {
+            for (const Font::Glyph& glyph : line.glyphs) {
                 line.bbox.add(pen + cglib::vec2<float>(glyph.offset(0), -_metrics.ascent));
                 line.bbox.add(pen + cglib::vec2<float>(glyph.offset(0) + glyph.size(0), -_metrics.descent));
 

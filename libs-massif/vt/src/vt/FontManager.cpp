@@ -157,9 +157,11 @@ namespace carto { namespace vt {
                         it = _codePointGlyphMap.insert({ remappedCodePoint, glyphId }).first;
                     }
                     if (const GlyphMap::Glyph* baseGlyph = _glyphMap->getGlyph(it->second)) {
+                        std::size_t cluster = info[i].cluster;
+                        std::uint32_t utf32Char = (cluster < len ? utf32Text[cluster] : 0);
                         float glyphScale = size / RENDER_SIZE;
                         cglib::vec2<float> glyphSize(static_cast<float>(baseGlyph->width), static_cast<float>(baseGlyph->height));
-                        Glyph glyph(info[i].codepoint, *baseGlyph, glyphSize * glyphScale, baseGlyph->origin * glyphScale, cglib::vec2<float>(0, 0));
+                        Glyph glyph(utf32Char, info[i].codepoint, *baseGlyph, glyphSize * glyphScale, baseGlyph->origin * glyphScale, cglib::vec2<float>(0, 0));
                         glyphs.push_back(glyph);
                         if (i < posCount) {
                             glyphs.back().offset += cglib::vec2<float>(pos[i].x_offset / 64.0f, pos[i].y_offset / 64.0f) * glyphScale;

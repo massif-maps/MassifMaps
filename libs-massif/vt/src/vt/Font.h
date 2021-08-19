@@ -25,6 +25,7 @@ namespace carto { namespace vt {
         using CodePoint = unsigned int;
 
         enum : CodePoint {
+            NULL_CODEPOINT  = 0x00000000U,
             SPACE_CODEPOINT = 0xffff0000U,
             CR_CODEPOINT    = 0xffff0001U
         };
@@ -38,13 +39,14 @@ namespace carto { namespace vt {
         };
 
         struct Glyph {
+            std::uint32_t utf32Char;
             CodePoint codePoint;
             GlyphMap::Glyph baseGlyph;
             cglib::vec2<float> size;
             cglib::vec2<float> offset;
             cglib::vec2<float> advance;
 
-            explicit Glyph(CodePoint codePoint, const GlyphMap::Glyph& baseGlyph, const cglib::vec2<float>& size, const cglib::vec2<float>& offset, const cglib::vec2<float>& advance) : codePoint(codePoint), baseGlyph(baseGlyph), size(size), offset(offset), advance(advance) { }
+            explicit Glyph(std::uint32_t utf32Char, CodePoint codePoint, const GlyphMap::Glyph& baseGlyph, const cglib::vec2<float>& size, const cglib::vec2<float>& offset, const cglib::vec2<float>& advance) : utf32Char(utf32Char), codePoint(codePoint), baseGlyph(baseGlyph), size(size), offset(offset), advance(advance) { }
         };
 
         virtual ~Font() = default;

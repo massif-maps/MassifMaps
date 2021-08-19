@@ -28,7 +28,7 @@ namespace carto { namespace mvt {
         float tileSize = symbolizerContext.getSettings().getTileSize();
         float fontScale = symbolizerContext.getSettings().getFontScale();
         float bitmapSize = static_cast<float>(std::max(backgroundImage->bitmap->width, backgroundImage->bitmap->height)) * fontScale;
-        float minimumDistance = (_minimumDistance.getValue(exprContext) + bitmapSize) * std::pow(2.0f, -exprContext.getAdjustedZoom()) / symbolizerContext.getSettings().getTileSize() * 2;
+        float minimumDistance = _minimumDistance.getValue(exprContext);
         float placementPriority = _placementPriority.getValue(exprContext);
         float orientationAngle = _orientationAngle.getValue(exprContext);
         float sizeStatic = _size.getStaticValue(exprContext);
@@ -58,8 +58,11 @@ namespace carto { namespace mvt {
 
         float textSize = bitmapSize < 0 ? (placement == vt::LabelOrientation::LINE ? calculateTextSize(textFormatter.getFont(), text, textFormatter).size()(0) : 0) : bitmapSize;
         float spacing = _spacing.getValue(exprContext);
-        long long groupId = (allowOverlap ? -1 : 1); // use separate group from markers, markers use group 0
-        
+        long long groupId = (allowOverlap ? -1 : 0);
+        if (!allowOverlap && minimumDistance > 0) {
+            groupId = 1;
+        }
+
         cglib::vec2<float> backgroundOffset(0, 0);
         vt::TextFormatter formatter = (unlockImage ? textFormatter : shieldFormatter);
         if (unlockImage) {

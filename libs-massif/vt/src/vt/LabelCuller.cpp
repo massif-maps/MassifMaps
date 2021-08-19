@@ -130,21 +130,19 @@ namespace carto { namespace vt {
             // Label is always visible if its group is set to negative value. Otherwise test visibility against other labels
             bool visible = label->getGroupId() < 0 || testOverlap(label);
             if (visible && label->getGroupId() > 0) {
-                cglib::vec3<double> center(0, 0, 0);
-                if (label->calculateCenter(center)) {
-                    for (const std::shared_ptr<Label>& otherLabel : groupMap[label->getGroupId()]) {
-                        cglib::vec3<double> otherCenter(0, 0, 0);
-                        if (otherLabel->calculateCenter(otherCenter)) {
-                            float minimumDistance = std::min(label->getMinimumGroupDistance(), otherLabel->getMinimumGroupDistance());
-                            double centerDistance = cglib::length(center - otherCenter);
-                            if (centerDistance * _viewState.resolution / _scale < minimumDistance) {
-                                visible = false;
-                                break;
-                            }
+                for (const std::shared_ptr<Label>& otherLabel : groupMap[label->getGroupId()]) {
+                    float minimumDistance = std::min(label->getMinimumGroupDistance(), otherLabel->getMinimumGroupDistance());
+
+                    // Do the test between labels by enlarging the envelope of the label by minimum allowed distance and then by comparing bounds of envelopes.
+                    std::array<cglib::vec2<float>, 4> envelope1, envelope2;
+                    if (calculateScreenEnvelope(label, minimumDistance * 0.5f, envelope1) && calculateScreenEnvelope(otherLabel, minimumDistance * 0.5f, envelope2)) {
+                        cglib::bbox2<float> bounds1 = cglib::bbox2<float>::make_union(envelope1.begin(), envelope1.end());
+                        cglib::bbox2<float> bounds2 = cglib::bbox2<float>::make_union(envelope2.begin(), envelope2.end());
+                        if (bounds1.inside(bounds2)) {
+                            visible = false;
+                            break;
                         }
                     }
-                } else {
-                    visible = false;
                 }
 
                 if (visible) {
@@ -167,20 +165,24 @@ namespace carto { namespace vt {
         }
     }
 
+    int LabelCuller::getGridIndex(float x) const {
+        float v = x * 0.5f + 0.5f;
+        if (v < 0) {
+            return 0;
+        }
+        if (v >= 1) {
+            return GRID_RESOLUTION - 1;
+        }
+        return static_cast<int>(v * GRID_RESOLUTION);
+    }
+
     bool LabelCuller::testOverlap(const std::shared_ptr<Label>& label) {
-        std::array<cglib::vec3<float>, 4> mapEnvelope;
-        if (!label->calculateEnvelope(_viewState, mapEnvelope)) {
+        std::array<cglib::vec2<float>, 4> envelope;
+        if (!calculateScreenEnvelope(label, 0, envelope)) {
             return false;
         }
-
-        std::array<cglib::vec2<float>, 4> envelope;
-        cglib::bbox2<float> bounds = cglib::bbox2<float>::smallest();
-        for (int i = 0; i < 4; i++) {
-            cglib::vec2<float> p_proj(cglib::proj_o(cglib::transform_point(mapEnvelope[i], _localCameraProjMatrix)));
-            envelope[i] = p_proj;
-            bounds.add(p_proj);
-        }
-
+        
+        cglib::bbox2<float> bounds = cglib::bbox2<float>::make_union(envelope.begin(), envelope.end());
         int x0 = getGridIndex(bounds.min(0)), y0 = getGridIndex(bounds.min(1));
         int x1 = getGridIndex(bounds.max(0)), y1 = getGridIndex(bounds.max(1));
         for (int y = y0; y <= y1; y++) {
@@ -203,14 +205,16 @@ namespace carto { namespace vt {
         return true;
     }
 
-    int LabelCuller::getGridIndex(float x) {
-        float v = x * 0.5f + 0.5f;
-        if (v < 0) {
-            return 0;
+    bool LabelCuller::calculateScreenEnvelope(const std::shared_ptr<Label>& label, float buffer, std::array<cglib::vec2<float>, 4>& envelope) const {
+        std::array<cglib::vec3<float>, 4> mapEnvelope;
+        if (!label->calculateEnvelope((label->getStyle()->sizeFunc)(_viewState), buffer, _viewState, mapEnvelope)) {
+            return false;
         }
-        if (v >= 1) {
-            return GRID_RESOLUTION - 1;
+        
+        for (int i = 0; i < 4; i++) {
+            cglib::vec2<float> p_proj(cglib::proj_o(cglib::transform_point(mapEnvelope[i], _localCameraProjMatrix)));
+            envelope[i] = p_proj;
         }
-        return static_cast<int>(v * GRID_RESOLUTION);
+        return true;
     }
 } }

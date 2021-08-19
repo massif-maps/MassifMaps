@@ -324,7 +324,7 @@ namespace carto { namespace vt {
                 labelVertices.assign(tesselatedVertices.begin(), tesselatedVertices.end());
             }
 
-            TileLabel::PlacementInfo placementInfo(priority, _tileSize * minimumGroupDistance);
+            TileLabel::PlacementInfo placementInfo(priority, minimumGroupDistance);
             auto pointLabel = std::make_shared<TileLabel>(_tileId, _layerIdx, localId, globalId, groupId, bitmapGlyphs, std::move(labelPosition), std::move(labelVertices), _labelStyle, placementInfo);
             _labelList.push_back(std::move(pointLabel));
         };
@@ -370,7 +370,7 @@ namespace carto { namespace vt {
                     labelVertices.assign(tesselatedVertices.begin(), tesselatedVertices.end());
                 }
 
-                TileLabel::PlacementInfo placementInfo(priority, _tileSize * minimumGroupDistance);
+                TileLabel::PlacementInfo placementInfo(priority, minimumGroupDistance);
                 auto textLabel = std::make_shared<TileLabel>(_tileId, _layerIdx, localId, globalId, groupId, std::move(glyphs), std::move(labelPosition), std::move(labelVertices), _labelStyle, placementInfo);
                 _labelList.push_back(std::move(textLabel));
             }

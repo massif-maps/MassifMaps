@@ -8,7 +8,7 @@
 #define _CARTO_VT_GLTILERENDERERSHADERS_H_
 
 namespace carto { namespace vt {
-    enum {
+    enum : int {
         A_VERTEXPOSITION,
         A_VERTEXUV,
         A_VERTEXNORMAL,
@@ -18,7 +18,7 @@ namespace carto { namespace vt {
         A_VERTEXATTRIBS
     };
 
-    enum {
+    enum : int {
         U_MVPMATRIX,
         U_TRANSFORMMATRIX,
         U_TILEMATRIX,
@@ -29,6 +29,7 @@ namespace carto { namespace vt {
         U_ABSHEIGHTSCALE,
         U_COLORTABLE,
         U_WIDTHTABLE,
+        U_OFFSETTABLE,
         U_STROKEWIDTHTABLE,
         U_STROKESCALETABLE,
         U_COLOR,
@@ -38,6 +39,13 @@ namespace carto { namespace vt {
         U_TEXTURE,
         U_SDFSCALE,
         U_DERIVSCALE
+    };
+
+    enum : unsigned int {
+        TRANSFORM_FLAG   = 1,
+        OFFSET_FLAG      = 2,
+        PATTERN_FLAG     = 4,
+        DERIVATIVES_FLAG = 8
     };
 
     static const std::map<std::string, int> attribMap = {
@@ -61,6 +69,7 @@ namespace carto { namespace vt {
         { "uAbsHeightScale",   U_ABSHEIGHTSCALE },
         { "uColorTable",       U_COLORTABLE },
         { "uWidthTable",       U_WIDTHTABLE },
+        { "uOffsetTable",      U_OFFSETTABLE },
         { "uStrokeWidthTable", U_STROKEWIDTHTABLE },
         { "uStrokeScaleTable", U_STROKESCALETABLE },
         { "uPattern",          U_PATTERN },
@@ -70,6 +79,13 @@ namespace carto { namespace vt {
         { "uOpacity",          U_OPACITY },
         { "uSDFScale",         U_SDFSCALE },
         { "uDerivScale",       U_DERIVSCALE }
+    };
+
+    static const std::map<unsigned int, std::string> flagDefineMap = {
+        { TRANSFORM_FLAG,   "TRANSFORM" },
+        { OFFSET_FLAG,      "OFFSET" },
+        { PATTERN_FLAG,     "PATTERN" },
+        { DERIVATIVES_FLAG, "DERIVATIVES" }
     };
 
     static const std::string textureFiltersFsh = R"GLSL(
@@ -454,7 +470,9 @@ namespace carto { namespace vt {
         uniform mat4 uMVPMatrix;
         uniform vec4 uColorTable[16];
         uniform float uWidthTable[16];
+        #ifdef OFFSET
         uniform float uStrokeWidthTable[16];
+        #endif
         #ifdef PATTERN
         uniform vec2 uUVScale;
         varying highp_opt vec2 vUV;
@@ -477,7 +495,11 @@ namespace carto { namespace vt {
         #ifdef PATTERN
             vUV = uUVScale * aVertexUV;
         #endif
+        #ifdef OFFSET
             float offset = 0.5 - 0.5 * uSDFScale / size * (1.0 + uStrokeWidthTable[styleIndex]);
+        #else
+            float offset = 0.5 - 0.5 * uSDFScale / size;
+        #endif
             vAttribs = vec4(aVertexAttribs[1], 0.0, offset, size / uSDFScale);
         #ifdef LIGHTING_VSH
             vColor = applyLighting(color, aVertexNormal);
@@ -540,6 +562,9 @@ namespace carto { namespace vt {
         uniform mat4 uMVPMatrix;
         uniform vec4 uColorTable[16];
         uniform float uWidthTable[16];
+        #ifdef OFFSET
+        uniform float uOffsetTable[16];
+        #endif
         #ifdef PATTERN
         varying highp_opt vec2 vUV;
         #endif
@@ -557,6 +582,10 @@ namespace carto { namespace vt {
             float gamma = 0.5;
             vec3 pos = aVertexPosition;
             vec3 delta = aVertexBinormal * (uBinormalScale * roundedWidth);
+        #ifdef OFFSET
+            float offset = uOffsetTable[styleIndex];
+            delta = delta - aVertexBinormal * (uBinormalScale * offset * aVertexAttribs[2]);
+        #endif
         #ifdef TRANSFORM
             pos = vec3(uTransformMatrix * vec4(pos, 1.0));
         #endif

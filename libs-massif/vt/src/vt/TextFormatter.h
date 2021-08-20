@@ -22,12 +22,13 @@ namespace carto { namespace vt {
         struct Options {
             cglib::vec2<float> alignment;
             cglib::vec2<float> offset;
+            std::string wrapChars;
             bool wrapBefore;
             float wrapWidth;
             float characterSpacing;
             float lineSpacing;
 
-            explicit Options(const cglib::vec2<float>& alignment, const cglib::vec2<float>& offset, bool wrapBefore, float wrapWidth, float characterSpacing, float lineSpacing) : alignment(alignment), offset(offset), wrapBefore(wrapBefore), wrapWidth(wrapWidth), characterSpacing(characterSpacing), lineSpacing(lineSpacing) { }
+            explicit Options(const cglib::vec2<float>& alignment, const cglib::vec2<float>& offset, std::string wrapChars, bool wrapBefore, float wrapWidth, float characterSpacing, float lineSpacing) : alignment(alignment), offset(offset), wrapChars(std::move(wrapChars)), wrapBefore(wrapBefore), wrapWidth(wrapWidth), characterSpacing(characterSpacing), lineSpacing(lineSpacing) { }
         };
 
         explicit TextFormatter(std::shared_ptr<const Font> font, float fontSize, const Options& options);

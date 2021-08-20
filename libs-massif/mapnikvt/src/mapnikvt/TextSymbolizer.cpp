@@ -30,7 +30,7 @@ namespace carto { namespace mvt {
 
         float tileSize = symbolizerContext.getSettings().getTileSize();
         float fontScale = symbolizerContext.getSettings().getFontScale();
-        float minimumDistance = _minimumDistance.getValue(exprContext) * std::pow(2.0f, -exprContext.getAdjustedZoom());
+        float minimumDistance = _minimumDistance.getValue(exprContext);
         float placementPriority = _placementPriority.getValue(exprContext);
         float orientationAngle = _orientationAngle.getValue(exprContext);
         float sizeStatic = _size.getStaticValue(exprContext);
@@ -59,7 +59,10 @@ namespace carto { namespace mvt {
         float bitmapSize = -1;
         float textSize = bitmapSize < 0 ? (placement == vt::LabelOrientation::LINE ? calculateTextSize(formatter.getFont(), text, formatter).size()(0) : 0) : bitmapSize;
         float spacing = _spacing.getValue(exprContext);
-        long long groupId = (allowOverlap ? -1 : (minimumDistance > 0 ? (std::hash<std::string>()(text) & 0x7fffffff) : 0));
+        long long groupId = (allowOverlap ? -1 : 0);
+        if (!allowOverlap && minimumDistance > 0) {
+            groupId = (placement == vt::LabelOrientation::LINE ? (std::hash<std::string>()(text) & 0x7fffffff) : 1);
+        }
         
         cglib::vec2<float> backgroundOffset(0, 0);
         std::shared_ptr<vt::BitmapImage> backgroundImage;
@@ -302,6 +305,7 @@ namespace carto { namespace mvt {
         float lineSpacing = _lineSpacing.getValue(exprContext);
         float wrapWidth = _wrapWidth.getValue(exprContext);
         bool wrapBefore = _wrapBefore.getValue(exprContext);
+        std::string wrapCharacter = _wrapCharacter.getValue(exprContext);
         std::string horizontalAlignment = toLower(_horizontalAlignment.getValue(exprContext));
         std::string verticalAlignment = toLower(_verticalAlignment.getValue(exprContext));
 
@@ -325,6 +329,6 @@ namespace carto { namespace mvt {
         else if (verticalAlignment == "bottom") {
             alignment(1) = 1.0f;
         }
-        return vt::TextFormatter::Options(alignment, offset, wrapBefore, wrapWidth * fontScale, characterSpacing, lineSpacing);
+        return vt::TextFormatter::Options(alignment, offset, wrapCharacter, wrapBefore, wrapWidth * fontScale, characterSpacing, lineSpacing);
     }
 } }

@@ -20,6 +20,7 @@ namespace carto { namespace mvt {
             bindParameter("stroke-linejoin", &_strokeLinejoin);
             bindParameter("stroke-linecap", &_strokeLinecap);
             bindParameter("stroke-dasharray", &_strokeDashArray);
+            bindParameter("offset", &_offset);
         }
 
         virtual FeatureProcessor createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const override;
@@ -36,6 +37,7 @@ namespace carto { namespace mvt {
         LineJoinModeParameter _strokeLinejoin = LineJoinModeParameter("miter");
         LineCapModeParameter _strokeLinecap = LineCapModeParameter("butt");
         StringParameter _strokeDashArray = StringParameter("");
+        FloatFunctionParameter _offset = FloatFunctionParameter(0.0f);
 
         ColorFunctionBuilder _strokeFuncBuilder;
     };

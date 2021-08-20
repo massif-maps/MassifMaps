@@ -1422,7 +1422,7 @@ namespace carto { namespace vt {
             return;
         }
 
-        const ShaderProgram& shaderProgram = buildShaderProgram("blendscreen", blendVsh, blendFsh, LightingMode::NONE, RasterFilterMode::NONE, false, false, false);
+        const ShaderProgram& shaderProgram = buildShaderProgram("blendscreen", blendVsh, blendFsh, LightingMode::NONE, RasterFilterMode::NONE, 0);
         glUseProgram(shaderProgram.program);
         
         if (_screenQuad.vbo == 0) {
@@ -1458,7 +1458,7 @@ namespace carto { namespace vt {
             const TileSurface::VertexGeometryLayoutParameters& vertexGeomLayoutParams = tileSurface->getVertexGeometryLayoutParameters();
             const CompiledSurface& compiledTileSurface = _compiledTileSurfaceMap[tileSurface];
 
-            const ShaderProgram& shaderProgram = buildShaderProgram("tilemask", backgroundVsh, backgroundFsh, LightingMode::NONE, RasterFilterMode::NONE, false, false, false);
+            const ShaderProgram& shaderProgram = buildShaderProgram("tilemask", backgroundVsh, backgroundFsh, LightingMode::NONE, RasterFilterMode::NONE, 0);
             glUseProgram(shaderProgram.program);
 
             glBindBuffer(GL_ARRAY_BUFFER, compiledTileSurface.vertexGeometryVBO);
@@ -1497,7 +1497,7 @@ namespace carto { namespace vt {
             const TileSurface::VertexGeometryLayoutParameters& vertexGeomLayoutParams = tileSurface->getVertexGeometryLayoutParameters();
             const CompiledSurface& compiledTileSurface = _compiledTileSurfaceMap[tileSurface];
 
-            const ShaderProgram& shaderProgram = buildShaderProgram("tilebackground", backgroundVsh, backgroundFsh, LightingMode::GEOMETRY2D, RasterFilterMode::NONE, background->getPattern() ? true : false, false, false);
+            const ShaderProgram& shaderProgram = buildShaderProgram("tilebackground", backgroundVsh, backgroundFsh, LightingMode::GEOMETRY2D, RasterFilterMode::NONE, background->getPattern() ? PATTERN_FLAG : 0);
             glUseProgram(shaderProgram.program);
 
             glBindBuffer(GL_ARRAY_BUFFER, compiledTileSurface.vertexGeometryVBO);
@@ -1575,10 +1575,10 @@ namespace carto { namespace vt {
             const ShaderProgram* shaderProgramPtr = nullptr;
             switch (bitmap->getType()) {
             case TileBitmap::Type::COLORMAP:
-                shaderProgramPtr = &buildShaderProgram("tilecolormap", colormapVsh, colormapFsh, LightingMode::GEOMETRY2D, _rasterFilterMode, true, false, false);
+                shaderProgramPtr = &buildShaderProgram("tilecolormap", colormapVsh, colormapFsh, LightingMode::GEOMETRY2D, _rasterFilterMode, PATTERN_FLAG);
                 break;
             case TileBitmap::Type::NORMALMAP:
-                shaderProgramPtr = &buildShaderProgram("tilenormalmap", normalmapVsh, normalmapFsh, LightingMode::NORMALMAP, _rasterFilterMode, true, false, false);
+                shaderProgramPtr = &buildShaderProgram("tilenormalmap", normalmapVsh, normalmapFsh, LightingMode::NORMALMAP, _rasterFilterMode, PATTERN_FLAG);
                 break;
             default:
                 return;
@@ -1665,20 +1665,22 @@ namespace carto { namespace vt {
         if (blend * opacity <= 0) {
             return;
         }
-        
+
+        bool styleOffsetting = std::count(styleParams.offsetFuncs.begin(), styleParams.offsetFuncs.begin() + styleParams.parameterCount, FloatFunction(0)) != styleParams.parameterCount;
+
         const ShaderProgram* shaderProgramPtr = nullptr;
         switch (geometry->getType()) {
         case TileGeometry::Type::POINT:
-            shaderProgramPtr = &buildShaderProgram("point", pointVsh, pointFsh, LightingMode::GEOMETRY2D, RasterFilterMode::NONE, styleParams.pattern ? true : false, styleParams.translate ? true : false, false);
+            shaderProgramPtr = &buildShaderProgram("point", pointVsh, pointFsh, LightingMode::GEOMETRY2D, RasterFilterMode::NONE, (styleParams.pattern ? PATTERN_FLAG : 0) | (styleParams.translate ? TRANSFORM_FLAG : 0) | (styleOffsetting ? OFFSET_FLAG : 0));
             break;
         case TileGeometry::Type::LINE:
-            shaderProgramPtr = &buildShaderProgram("line", lineVsh, lineFsh, LightingMode::GEOMETRY2D, RasterFilterMode::NONE, styleParams.pattern ? true : false, styleParams.translate ? true : false, false);
+            shaderProgramPtr = &buildShaderProgram("line", lineVsh, lineFsh, LightingMode::GEOMETRY2D, RasterFilterMode::NONE, (styleParams.pattern ? PATTERN_FLAG : 0) | (styleParams.translate ? TRANSFORM_FLAG : 0) | (styleOffsetting ? OFFSET_FLAG : 0));
             break;
         case TileGeometry::Type::POLYGON:
-            shaderProgramPtr = &buildShaderProgram("polygon", polygonVsh, polygonFsh, LightingMode::GEOMETRY2D, RasterFilterMode::NONE, styleParams.pattern ? true : false, styleParams.translate ? true : false, false);
+            shaderProgramPtr = &buildShaderProgram("polygon", polygonVsh, polygonFsh, LightingMode::GEOMETRY2D, RasterFilterMode::NONE, (styleParams.pattern ? PATTERN_FLAG : 0) | (styleParams.translate ? TRANSFORM_FLAG : 0));
             break;
         case TileGeometry::Type::POLYGON3D:
-            shaderProgramPtr = &buildShaderProgram("polygon3d", polygon3DVsh, polygon3DFsh, LightingMode::GEOMETRY3D, RasterFilterMode::NONE, styleParams.pattern ? true : false, styleParams.translate ? true : false, false);
+            shaderProgramPtr = &buildShaderProgram("polygon3d", polygon3DVsh, polygon3DFsh, LightingMode::GEOMETRY3D, RasterFilterMode::NONE, (styleParams.pattern ? PATTERN_FLAG : 0) | (styleParams.translate ? TRANSFORM_FLAG : 0));
             break;
         default:
             return;
@@ -1711,7 +1713,7 @@ namespace carto { namespace vt {
                 }
                 widths[i] = width;
 
-                float strokeWidth = (styleParams.strokeWidthFuncs[i])(_viewState) * HALO_RADIUS_SCALE;
+                float strokeWidth = (styleParams.offsetFuncs[i])(_viewState) * HALO_RADIUS_SCALE;
                 strokeWidths[i] = strokeWidth;
             }
 
@@ -1724,10 +1726,15 @@ namespace carto { namespace vt {
             glUniform1f(shaderProgram.uniforms[U_BINORMALSCALE], vertexGeomLayoutParams.coordScale / vertexGeomLayoutParams.binormalScale / std::pow(2.0f, _viewState.zoom - sourceTileId.zoom));
             glUniform1f(shaderProgram.uniforms[U_SDFSCALE], GLYPH_RENDER_SIZE / _fullResolution / BITMAP_SDF_SCALE);
             glUniform1fv(shaderProgram.uniforms[U_WIDTHTABLE], styleParams.parameterCount, widths.data());
-            glUniform1fv(shaderProgram.uniforms[U_STROKEWIDTHTABLE], styleParams.parameterCount, strokeWidths.data());
+            if (styleOffsetting) {
+                glUniform1fv(shaderProgram.uniforms[U_STROKEWIDTHTABLE], styleParams.parameterCount, strokeWidths.data());
+            }
         } else if (geometry->getType() == TileGeometry::Type::LINE) {
-            std::array<float, TileGeometry::StyleParameters::MAX_PARAMETERS> widths;
+            std::array<float, TileGeometry::StyleParameters::MAX_PARAMETERS> widths, offsets;
             for (int i = 0; i < styleParams.parameterCount; i++) {
+                float offset = 0.5f * _fullResolution * (styleParams.offsetFuncs[i])(_viewState) * geometry->getGeometryScale() / tileSize;
+                offsets[i] = offset;
+
                 // Check for 0-width function. This is used only for polygons.
                 if (styleParams.widthFuncs[i] == FloatFunction(0)) {
                     widths[i] = -1;
@@ -1750,6 +1757,9 @@ namespace carto { namespace vt {
 
             glUniform1f(shaderProgram.uniforms[U_BINORMALSCALE], vertexGeomLayoutParams.coordScale / (_halfResolution * vertexGeomLayoutParams.binormalScale * std::pow(2.0f, _viewState.zoom - sourceTileId.zoom)));
             glUniform1fv(shaderProgram.uniforms[U_WIDTHTABLE], styleParams.parameterCount, widths.data());
+            if (styleOffsetting) {
+                glUniform1fv(shaderProgram.uniforms[U_OFFSETTABLE], styleParams.parameterCount, offsets.data());
+            }
 
             if (styleParams.pattern) {
                 std::array<float, TileGeometry::StyleParameters::MAX_PARAMETERS> strokeScales;
@@ -1915,7 +1925,7 @@ namespace carto { namespace vt {
         bool useDerivatives = _glExtensions->GL_OES_standard_derivatives_supported();
 
         const CompiledBitmap& compiledBitmap = buildCompiledBitmap(bitmap, false);
-        const ShaderProgram& shaderProgram = buildShaderProgram("labels", labelVsh, labelFsh, LightingMode::GEOMETRY2D, RasterFilterMode::NONE, false, false, useDerivatives);
+        const ShaderProgram& shaderProgram = buildShaderProgram("labels", labelVsh, labelFsh, LightingMode::GEOMETRY2D, RasterFilterMode::NONE, useDerivatives ? DERIVATIVES_FLAG : 0);
         glUseProgram(shaderProgram.program);
 
         cglib::mat4x4<float> mvpMatrix = cglib::mat4x4<float>::convert(_viewState.projectionMatrix * labelBatchParams.labelMatrix);
@@ -2072,8 +2082,8 @@ namespace carto { namespace vt {
         return it->second;
     }
 
-    const GLTileRenderer::ShaderProgram& GLTileRenderer::buildShaderProgram(const std::string& id, const std::string& vsh, const std::string& fsh, LightingMode lightingMode, RasterFilterMode filterMode, bool pattern, bool translate, bool derivs) {
-        std::string shaderProgramId = id + (pattern ? "_p" : "") + (translate ? "_t" : "") + (derivs ? "_d" : "");
+    const GLTileRenderer::ShaderProgram& GLTileRenderer::buildShaderProgram(const std::string& id, const std::string& vsh, const std::string& fsh, LightingMode lightingMode, RasterFilterMode filterMode, unsigned int flags) {
+        std::string shaderProgramId = id + (flags ? std::to_string(flags) : std::string());
         if (lightingMode != LightingMode::NONE) {
             shaderProgramId += "_l" + std::to_string(static_cast<int>(lightingMode));
         }
@@ -2084,14 +2094,10 @@ namespace carto { namespace vt {
         auto it = _shaderProgramMap.find(shaderProgramId);
         if (it == _shaderProgramMap.end()) {
             std::set<std::string> defs;
-            if (pattern) {
-                defs.insert("PATTERN");
-            }
-            if (translate) {
-                defs.insert("TRANSFORM");
-            }
-            if (derivs) {
-                defs.insert("DERIVATIVES");
+            for (const std::pair<unsigned int, std::string>& flagDefine : flagDefineMap) {
+                if (flags & flagDefine.first) {
+                    defs.insert(flagDefine.second);
+                }
             }
 
             std::string lightingVsh;

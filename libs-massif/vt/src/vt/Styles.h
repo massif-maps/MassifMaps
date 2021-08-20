@@ -79,10 +79,11 @@ namespace carto { namespace vt {
         LineCapMode capMode;
         ColorFunction colorFunc;
         FloatFunction widthFunc;
+        FloatFunction offsetFunc;
         std::shared_ptr<const BitmapPattern> strokePattern;
         std::optional<Transform> transform;
 
-        explicit LineStyle(CompOp compOp, LineJoinMode joinMode, LineCapMode capMode, ColorFunction colorFunc, FloatFunction widthFunc, std::shared_ptr<const BitmapPattern> strokePattern, const std::optional<Transform>& transform) : compOp(compOp), joinMode(joinMode), capMode(capMode), colorFunc(std::move(colorFunc)), widthFunc(std::move(widthFunc)), strokePattern(std::move(strokePattern)), transform(transform) { }
+        explicit LineStyle(CompOp compOp, LineJoinMode joinMode, LineCapMode capMode, ColorFunction colorFunc, FloatFunction widthFunc, FloatFunction offsetFunc, std::shared_ptr<const BitmapPattern> strokePattern, const std::optional<Transform>& transform) : compOp(compOp), joinMode(joinMode), capMode(capMode), colorFunc(std::move(colorFunc)), widthFunc(std::move(widthFunc)), offsetFunc(std::move(offsetFunc)), strokePattern(std::move(strokePattern)), transform(transform) { }
     };
 
     struct PolygonStyle final {

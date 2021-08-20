@@ -121,9 +121,9 @@ namespace carto { namespace vt {
             for (int i = 0; i < vertexGeomLayoutParams.dimensions; i++) {
                 binormal(i) = binormalPtr[i] * (size / vertexGeomLayoutParams.binormalScale);
             }
-        }
-        if (_pointBuffer != 0 && cglib::norm(binormal) > 0) {
-            binormal = binormal * (1.0f + _pointBuffer / cglib::length(binormal));
+            if (_pointBuffer != 0 && cglib::norm(binormal) > 0) {
+                binormal = binormal * (1.0f + _pointBuffer / cglib::length(binormal));
+            }
         }
         return binormal * _scale;
     }
@@ -131,10 +131,12 @@ namespace carto { namespace vt {
     cglib::vec3<float> TileGeometryIterator::decodeLineOffset(std::size_t index) const {
         const TileGeometry::VertexGeometryLayoutParameters& vertexGeomLayoutParams = _geometry->getVertexGeometryLayoutParameters();
         int styleIndex = 0;
+        int side = 0;
         if (vertexGeomLayoutParams.attribsOffset >= 0) {
             std::size_t attribOffset = index * vertexGeomLayoutParams.vertexSize + vertexGeomLayoutParams.attribsOffset;
             const std::int8_t* attribPtr = reinterpret_cast<const std::int8_t*>(&_geometry->getVertexGeometry()[attribOffset]);
             styleIndex = attribPtr[0];
+            side = attribPtr[2];
         }
         cglib::vec3<float> binormal(0, 0, 0);
         if (vertexGeomLayoutParams.binormalOffset >= 0) {
@@ -144,9 +146,15 @@ namespace carto { namespace vt {
             for (int i = 0; i < vertexGeomLayoutParams.dimensions; i++) {
                 binormal(i) = binormalPtr[i] * (width / vertexGeomLayoutParams.binormalScale);
             }
-        }
-        if (_lineBuffer != 0 && cglib::norm(binormal) > 0) {
-            binormal = binormal * (1.0f + _lineBuffer / cglib::length(binormal));
+            if (_lineBuffer != 0 && cglib::norm(binormal) > 0) {
+                binormal = binormal * (1.0f + _lineBuffer / cglib::length(binormal));
+            }
+            float offset = (_geometry->getStyleParameters().offsetFuncs[styleIndex])(_viewState);
+            if (offset != 0) {
+                for (int i = 0; i < vertexGeomLayoutParams.dimensions; i++) {
+                    binormal(i) -= binormalPtr[i] * (offset * side / vertexGeomLayoutParams.binormalScale);
+                }
+            }
         }
         return binormal * _scale;
     }

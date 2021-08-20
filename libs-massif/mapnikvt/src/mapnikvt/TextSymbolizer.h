@@ -41,6 +41,7 @@ namespace carto { namespace mvt {
             bindParameter("minimum-distance", &_minimumDistance);
             bindParameter("allow-overlap", &_allowOverlap);
             bindParameter("clip", &_clip);
+            bindParameter("wrap-character", &_wrapCharacter),
             bindParameter("wrap-width", &_wrapWidth);
             bindParameter("wrap-before", &_wrapBefore);
             bindParameter("character-spacing", &_characterSpacing);
@@ -87,6 +88,7 @@ namespace carto { namespace mvt {
         FloatParameter _minimumDistance = FloatParameter(0.0f);
         BoolParameter _allowOverlap = BoolParameter(false);
         BoolParameter _clip = BoolParameter(false);
+        StringParameter _wrapCharacter = StringParameter("");
         FloatParameter _wrapWidth = FloatParameter(0.0f);
         BoolParameter _wrapBefore = BoolParameter(false);
         FloatParameter _characterSpacing = FloatParameter(0.0f);

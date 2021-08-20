@@ -42,9 +42,9 @@ namespace carto { namespace vt {
         };
 
         void clearGrid();
+        int getGridIndex(float x) const;
         bool testOverlap(const std::shared_ptr<Label>& label);
-
-        static int getGridIndex(float x);
+        bool calculateScreenEnvelope(const std::shared_ptr<Label>& label, float buffer, std::array<cglib::vec2<float>, 4>& envelope) const;
 
         cglib::mat4x4<float> _localCameraProjMatrix;
         ViewState _viewState;

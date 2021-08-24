@@ -75,6 +75,7 @@ namespace carto { namespace vt {
 
     bool LabelCuller::process(const std::vector<std::shared_ptr<Label>>& labelList, std::mutex& labelMutex) {
         struct LabelInfo {
+            bool valid;
             float priority;
             int layerIndex;
             float size;
@@ -102,11 +103,9 @@ namespace carto { namespace vt {
 
             if (label->isValid()) {
                 CullRecord cullRecord;
-                if (!calculateScreenEnvelope(label, cullRecord.envelope)) {
-                    continue;
-                }
+                bool valid = calculateScreenEnvelope(label, cullRecord.envelope);
                 cullRecord.bounds = cglib::bbox2<float>::make_union(cullRecord.envelope.begin(), cullRecord.envelope.end());
-                validLabelList.push_back({ label->getPriority(), label->getLayerIndex(), label->getStyle()->sizeFunc(_viewState), label->getOpacity(), label, cullRecord });
+                validLabelList.push_back({ valid, label->getPriority(), label->getLayerIndex(), label->getStyle()->sizeFunc(_viewState), label->getOpacity(), label, cullRecord });
             }
         }
 
@@ -135,11 +134,12 @@ namespace carto { namespace vt {
             std::lock_guard<std::mutex> labelLock(labelMutex);
 
             const std::shared_ptr<Label>& label = labelInfo.label;
+            long long groupId = label->getGroupId();
 
             // Label is always visible if its group is set to negative value. Otherwise test visibility against other labels
-            bool visible = label->getGroupId() < 0 || testGridOverlap(labelInfo.cullRecord);
-            if (visible && label->getGroupId() > 0) {
-                for (const LabelInfo* otherLabelInfo : groupMap[label->getGroupId()]) {
+            bool visible = groupId >= 0 ? labelInfo.valid && testGridOverlap(labelInfo.cullRecord) : labelInfo.valid;
+            if (visible && groupId > 0) {
+                for (const LabelInfo* otherLabelInfo : groupMap[groupId]) {
                     const std::shared_ptr<Label>& otherLabel = otherLabelInfo->label;
 
                     float minimumDistance = 2.0f * std::min(label->getMinimumGroupDistance(), otherLabel->getMinimumGroupDistance()) / _viewState.resolution;
@@ -148,14 +148,15 @@ namespace carto { namespace vt {
                         break;
                     }
                 }
-
-                if (visible) {
-                    groupMap[label->getGroupId()].push_back(&labelInfo);
-                }
             }
 
             if (visible) {
-                addGridRecord(labelInfo.cullRecord);
+                if (groupId >= 0) {
+                    addGridRecord(labelInfo.cullRecord);
+                }
+                if (groupId > 0) {
+                    groupMap[groupId].push_back(&labelInfo);
+                }
             }
             if (visible != label->isVisible()) {
                 label->setVisible(visible);
@@ -166,8 +167,8 @@ namespace carto { namespace vt {
     }
 
     cglib::vec2<int> LabelCuller::getGridIndex(const cglib::vec2<float>& pos) const {
-        int x = std::max(0, std::min(GRID_RESOLUTION_X - 1, static_cast<int>(pos(0) * 0.5f + 0.5f)));
-        int y = std::max(0, std::min(GRID_RESOLUTION_Y - 1, static_cast<int>(pos(1) * 0.5f + 0.5f)));
+        int x = std::max(0, std::min(GRID_RESOLUTION_X - 1, static_cast<int>(GRID_RESOLUTION_X * (pos(0) * 0.5f + 0.5f))));
+        int y = std::max(0, std::min(GRID_RESOLUTION_Y - 1, static_cast<int>(GRID_RESOLUTION_Y * (pos(1) * 0.5f + 0.5f))));
         return cglib::vec2<int>(x, y);
     }
 

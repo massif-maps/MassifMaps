@@ -61,7 +61,7 @@ namespace carto { namespace mvt {
         float spacing = _spacing.getValue(exprContext);
         long long groupId = (allowOverlap ? -1 : 0);
         if (!allowOverlap && minimumDistance > 0) {
-            groupId = (placement == vt::LabelOrientation::LINE ? (std::hash<std::string>()(text) & 0x7fffffff) : 1);
+            groupId = (placement == vt::LabelOrientation::LINE ? (std::hash<std::string>()(text) & 0x7fffffffU) : 1);
         }
         
         cglib::vec2<float> backgroundOffset(0, 0);

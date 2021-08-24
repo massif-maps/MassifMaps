@@ -188,7 +188,6 @@ namespace carto { namespace vt {
                 _recordGrid[y][x].push_back(cullRecord);
             }
         }
-        return true;
     }
 
     bool LabelCuller::testGridOverlap(const CullRecord& cullRecord) const {

@@ -128,6 +128,7 @@ namespace carto { namespace mvt {
 
         std::shared_ptr<vt::GlyphMap> glyphMap = symbolizerContext.getGlyphMap();
 
+        vt::TileId tileId = exprContext.getTileId();
         std::size_t hash = std::hash<std::string>()(file);
 
         std::optional<long long> globalIdOverride;
@@ -191,7 +192,7 @@ namespace carto { namespace mvt {
             };
         }
 
-        return [compOp, fillFunc, normalizedSizeFunc, bitmapImage, transform, orientation, placement, placementPriority, spacing, bitmapSize, tileSize, glyphMap, groupId, globalIdOverride, hash, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
+        return [compOp, fillFunc, normalizedSizeFunc, bitmapImage, transform, orientation, placement, placementPriority, spacing, bitmapSize, tileId, tileSize, glyphMap, groupId, globalIdOverride, hash, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
             vt::PointLabelStyle style(orientation, fillFunc, normalizedSizeFunc, false, bitmapImage, transform);
             vt::TileLayerBuilder::PointLabelProcessor pointProcessor;
             for (std::size_t featureIndex = 0; featureIndex < featureCollection.size(); featureIndex++) {
@@ -248,8 +249,11 @@ namespace carto { namespace mvt {
                             vt::PointLabelStyle transformedStyle(orientation, fillFunc, normalizedSizeFunc, false, bitmapImage, transformedPoints.first * (transform ? *transform : vt::Transform()));
                             pointProcessor = layerBuilder.createPointLabelProcessor(transformedStyle, glyphMap);
                             if (pointProcessor) {
+                                int counter = 0;
                                 for (const auto& vertex : transformedPoints.second) {
-                                    pointProcessor(localId, generateId(), groupId, vertex, placementPriority, 0);
+                                    long long generatedId = combineId(globalId, std::hash<vt::TileId>()(tileId) * 63 + counter);
+                                    pointProcessor(localId, generatedId, groupId, vertex, placementPriority, 0);
+                                    counter++;
                                 }
                                 pointProcessor = vt::TileLayerBuilder::PointLabelProcessor();
                             }

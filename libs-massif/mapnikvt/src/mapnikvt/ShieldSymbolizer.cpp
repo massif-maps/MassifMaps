@@ -47,6 +47,7 @@ namespace carto { namespace mvt {
         vt::ColorFunction haloFillFunc = _haloFillFuncBuilder.createColorOpacityFunction(_haloFill.getFunction(exprContext), _haloOpacity.getFunction(exprContext));
         vt::FloatFunction haloRadiusFunc = _haloRadiusFuncBuilder.createScaledFloatFunction(_haloRadius.getFunction(exprContext), fontScale);
 
+        vt::TileId tileId = exprContext.getTileId();
         std::string text = getTransformedText(exprContext);
         std::size_t hash = std::hash<std::string>()(text);
 
@@ -54,7 +55,6 @@ namespace carto { namespace mvt {
         if (_featureId.isDefined()) {
             globalIdOverride = convertId(_featureId.getValue(exprContext));
         }
-        int globalIdOffset = 2;
 
         float textSize = bitmapSize < 0 ? (placement == vt::LabelOrientation::LINE ? calculateTextSize(textFormatter.getFont(), text, textFormatter).size()(0) : 0) : bitmapSize;
         float spacing = _spacing.getValue(exprContext);
@@ -123,7 +123,7 @@ namespace carto { namespace mvt {
             };
         }
 
-        return [compOp, fillFunc, haloFillFunc, sizeFunc, haloRadiusFunc, fontScale, placement, orientation, text, hash, orientationAngle, formatter, backgroundOffset, backgroundImage, spacing, textSize, tileSize, globalIdOverride, globalIdOffset, groupId, placementPriority, minimumDistance, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
+        return [compOp, fillFunc, haloFillFunc, sizeFunc, haloRadiusFunc, fontScale, placement, orientation, text, hash, orientationAngle, formatter, backgroundOffset, backgroundImage, spacing, textSize, tileId, tileSize, globalIdOverride, groupId, placementPriority, minimumDistance, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
             vt::TextLabelStyle style(orientation, fillFunc, sizeFunc, haloFillFunc, haloRadiusFunc, true, orientationAngle, fontScale, backgroundOffset, backgroundImage);
             vt::TileLayerBuilder::TextLabelProcessor textProcessor;
             for (std::size_t featureIndex = 0; featureIndex < featureCollection.size(); featureIndex++) {
@@ -142,7 +142,7 @@ namespace carto { namespace mvt {
                         globalId = generateId();
                     }
                 }
-                globalId = globalId * 3 + globalIdOffset;
+                globalId = globalId * 3 + 2;
 
                 if (auto pointGeometry = std::dynamic_pointer_cast<const PointGeometry>(featureCollection.getGeometry(featureIndex))) {
                     for (const auto& vertex : pointGeometry->getVertices()) {
@@ -177,8 +177,11 @@ namespace carto { namespace mvt {
                         }
 
                         for (const auto& transformedPoints : generateLinePoints(vertices, spacing, textSize, tileSize)) {
+                            int counter = 0;
                             for (const auto& vertex : transformedPoints.second) {
-                                textProcessor(localId, generateId(), groupId, vertex, vertices, text, placementPriority, minimumDistance);
+                                long long generatedId = combineId(globalId, std::hash<vt::TileId>()(tileId) * 63 + counter);
+                                textProcessor(localId, generatedId, groupId, vertex, vertices, text, placementPriority, minimumDistance);
+                                counter++;
                             }
                         }
                     }

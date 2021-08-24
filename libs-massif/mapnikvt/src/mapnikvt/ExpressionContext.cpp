@@ -4,6 +4,10 @@
 #include "ValueConverter.h"
 
 namespace carto { namespace mvt {
+    void ExpressionContext::setTileId(const vt::TileId& tileId) {
+        _tileId = tileId;
+    }
+    
     void ExpressionContext::setAdjustedZoom(int zoom) {
         _adjustedZoom = zoom;
         _scaleDenom = zoom2ScaleDenominator(static_cast<float>(_adjustedZoom));

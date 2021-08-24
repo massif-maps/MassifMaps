@@ -31,7 +31,9 @@ namespace carto { namespace vt {
         bool process(const std::vector<std::shared_ptr<Label>>& labelList, std::mutex& labelMutex);
 
     private:
-        static constexpr int GRID_RESOLUTION = 16;
+        static constexpr int GRID_RESOLUTION_X = 16;
+        static constexpr int GRID_RESOLUTION_Y = 32;
+        static constexpr float EXTRA_LABEL_BUFFER = 1.0f; // extra buffer for the label
 
         struct CullRecord {
             cglib::bbox2<float> bounds;
@@ -41,14 +43,15 @@ namespace carto { namespace vt {
             explicit CullRecord(const cglib::bbox2<float>& bounds, const std::array<cglib::vec2<float>, 4>& envelope) : bounds(bounds), envelope(envelope) { }
         };
 
+        cglib::vec2<int> getGridIndex(const cglib::vec2<float>& pos) const;
         void clearGrid();
-        int getGridIndex(float x) const;
-        bool testOverlap(const std::shared_ptr<Label>& label);
-        bool calculateScreenEnvelope(const std::shared_ptr<Label>& label, float buffer, std::array<cglib::vec2<float>, 4>& envelope) const;
+        void addGridRecord(const CullRecord& cullRecord);
+        bool testGridOverlap(const CullRecord& cullRecord) const;
+        bool calculateScreenEnvelope(const std::shared_ptr<Label>& label, std::array<cglib::vec2<float>, 4>& envelope) const;
 
         cglib::mat4x4<float> _localCameraProjMatrix;
         ViewState _viewState;
-        std::vector<CullRecord> _recordGrid[GRID_RESOLUTION][GRID_RESOLUTION];
+        std::vector<CullRecord> _recordGrid[GRID_RESOLUTION_Y][GRID_RESOLUTION_X];
 
         const float _scale;
 

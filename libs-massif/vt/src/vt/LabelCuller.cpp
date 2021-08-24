@@ -26,24 +26,42 @@ namespace {
         }
     }
 
+    template <std::size_t N>
+    static bool testBufferExtent(const std::array<cglib::vec2<float>, N>& vertList, const cglib::vec2<float>& v0, const cglib::vec2<float>& v1, float buffer) {
+        if (buffer > 0) {
+            cglib::vec2<float> edge = cglib::unit(v1 - v0);
+            for (std::size_t i = 0; i < N; ++i) {
+                float t = cglib::dot_product(edge, vertList[i] - v0);
+                cglib::vec2<float> p = v0 + edge * std::max(0.0f, std::min(1.0f, t));
+                float d2 = cglib::norm(vertList[i] - p);
+                if (d2 < buffer * buffer) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
     template <std::size_t N1, std::size_t N2>
     static bool findSeparatingAxis(const std::array<cglib::vec2<float>, N1>& vertList1, const std::array<cglib::vec2<float>, N2>& vertList2, float buffer) {
-        std::size_t prev = N1 - 1;
-        for (std::size_t cur = 0; cur < N1; ++cur) {
-            cglib::vec2<float> edge = vertList1[cur] - vertList1[prev];
+        std::size_t i0 = N1 - 1;
+        for (std::size_t i1 = 0; i1 < N1; ++i1) {
+            cglib::vec2<float> edge = vertList1[i1] - vertList1[i0];
             if (edge == cglib::vec2<float>::zero()) {
                 continue;
             }
-            cglib::vec2<float> v = cglib::unit(cglib::vec2<float>(edge(1), -edge(0)));
+            cglib::vec2<float> proj(edge(1), -edge(0));
 
             float min1, max1, min2, max2;
-            gatherPolygonProjectionExtents(vertList1, v, min1, max1);
-            gatherPolygonProjectionExtents(vertList2, v, min2, max2);
-            if (max1 + buffer < min2 || max2 + buffer < min1) {
-                return true;
+            gatherPolygonProjectionExtents(vertList1, proj, min1, max1);
+            gatherPolygonProjectionExtents(vertList2, proj, min2, max2);
+            if (max1 < min2 || min1 > max2) {
+                if (testBufferExtent(vertList2, vertList1[i0], vertList1[i1], buffer)) {
+                    return true;
+                }
             }
 
-            prev = cur;
+            i0 = i1;
         }
         return false;
     }

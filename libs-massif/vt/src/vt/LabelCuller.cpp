@@ -65,6 +65,11 @@ namespace {
         }
         return false;
     }
+
+    template <std::size_t N1, std::size_t N2>
+    static bool testPolygonOverlap(const std::array<cglib::vec2<float>, N1>& vertList1, const std::array<cglib::vec2<float>, N2>& vertList2, float buffer) {
+        return !findSeparatingAxis(vertList1, vertList2, buffer) && !findSeparatingAxis(vertList2, vertList1, buffer);
+    }
 }
 
 namespace carto { namespace vt {
@@ -160,8 +165,8 @@ namespace carto { namespace vt {
                 for (const LabelInfo* otherLabelInfo : groupMap[groupId]) {
                     const std::shared_ptr<Label>& otherLabel = otherLabelInfo->label;
 
-                    float minimumDistance = 2.0f * std::min(label->getMinimumGroupDistance(), otherLabel->getMinimumGroupDistance()) / _viewState.resolution;
-                    if (!findSeparatingAxis(labelInfo.cullRecord.envelope, otherLabelInfo->cullRecord.envelope, minimumDistance) && !findSeparatingAxis(otherLabelInfo->cullRecord.envelope, labelInfo.cullRecord.envelope, minimumDistance)) {
+                    float minimumDistance = std::min(label->getMinimumGroupDistance(), otherLabel->getMinimumGroupDistance());
+                    if (testPolygonOverlap(labelInfo.cullRecord.envelope, otherLabelInfo->cullRecord.envelope, minimumDistance)) {
                         visible = false;
                         break;
                     }
@@ -185,8 +190,8 @@ namespace carto { namespace vt {
     }
 
     cglib::vec2<int> LabelCuller::getGridIndex(const cglib::vec2<float>& pos) const {
-        int x = std::max(0, std::min(GRID_RESOLUTION_X - 1, static_cast<int>(GRID_RESOLUTION_X * (pos(0) * 0.5f + 0.5f))));
-        int y = std::max(0, std::min(GRID_RESOLUTION_Y - 1, static_cast<int>(GRID_RESOLUTION_Y * (pos(1) * 0.5f + 0.5f))));
+        int x = std::max(0, std::min(GRID_RESOLUTION_X - 1, static_cast<int>(GRID_RESOLUTION_X * pos(0) / _viewState.resolution / _viewState.aspect)));
+        int y = std::max(0, std::min(GRID_RESOLUTION_Y - 1, static_cast<int>(GRID_RESOLUTION_Y * pos(1) / _viewState.resolution)));
         return cglib::vec2<int>(x, y);
     }
 
@@ -215,7 +220,7 @@ namespace carto { namespace vt {
             for (int x = minPos(0); x <= maxPos(0); x++) {
                 for (const CullRecord& otherCullRecord : _recordGrid[y][x]) {
                     if (otherCullRecord.bounds.inside(cullRecord.bounds)) {
-                        if (!findSeparatingAxis(otherCullRecord.envelope, cullRecord.envelope, 0) && !findSeparatingAxis(cullRecord.envelope, otherCullRecord.envelope, 0)) {
+                        if (testPolygonOverlap(otherCullRecord.envelope, cullRecord.envelope, 0)) {
                             return false;
                         }
                     }
@@ -226,14 +231,14 @@ namespace carto { namespace vt {
     }
 
     bool LabelCuller::calculateScreenEnvelope(const std::shared_ptr<Label>& label, std::array<cglib::vec2<float>, 4>& envelope) const {
-        std::array<cglib::vec3<float>, 4> mapEnvelope;
-        if (!label->calculateEnvelope((label->getStyle()->sizeFunc)(_viewState), EXTRA_LABEL_BUFFER, _viewState, mapEnvelope)) {
+        std::array<cglib::vec3<float>, 4> worldEnvelope;
+        if (!label->calculateEnvelope((label->getStyle()->sizeFunc)(_viewState), EXTRA_LABEL_BUFFER, _viewState, worldEnvelope)) {
             return false;
         }
         
-        for (int i = 0; i < 4; i++) {
-            cglib::vec2<float> p_proj(cglib::proj_o(cglib::transform_point(mapEnvelope[i], _localCameraProjMatrix)));
-            envelope[i] = p_proj;
+        for (std::size_t i = 0; i < 4; i++) {
+            cglib::vec2<float> p = cglib::proj_o(cglib::transform_point(worldEnvelope[i], _localCameraProjMatrix));
+            envelope[i] = cglib::vec2<float>((p(0) * 0.5f + 0.5f) * _viewState.resolution * _viewState.aspect, (p(1) * 0.5f + 0.5f) * _viewState.resolution);
         }
         return true;
     }

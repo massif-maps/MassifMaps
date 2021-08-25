@@ -22,6 +22,9 @@ namespace carto { namespace mvt {
     public:
         ExpressionContext() = default;
 
+        void setTileId(const vt::TileId& tileId);
+        vt::TileId getTileId() const { return _tileId; }
+
         void setAdjustedZoom(int zoom);
         int getAdjustedZoom() const { return _adjustedZoom; }
 
@@ -43,6 +46,7 @@ namespace carto { namespace mvt {
         static bool isZoomVariable(const std::string& name) { return name == "zoom"; }
 
     private:
+        vt::TileId _tileId = vt::TileId(0, 0, 0);
         int _adjustedZoom = 0;
         float _scaleDenom = zoom2ScaleDenominator(0);
         std::shared_ptr<const FeatureData> _featureData;

@@ -16,6 +16,7 @@ namespace carto { namespace mvt {
 
     std::shared_ptr<vt::Tile> TileReader::readTile(const vt::TileId& tileId) const {
         ExpressionContext exprContext;
+        exprContext.setTileId(tileId);
         exprContext.setAdjustedZoom(tileId.zoom + static_cast<int>(_symbolizerContext.getSettings().getZoomLevelBias()));
         exprContext.setNutiParameterValueMap(std::make_shared<std::map<std::string, Value>>(_symbolizerContext.getSettings().getNutiParameterValueMap()));
 

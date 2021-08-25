@@ -145,17 +145,48 @@ namespace carto { namespace css {
             return Value(getString(vals[0]));
         }
         else if (func == "rgb" && vals.size() == 3) {
-            std::array<float, 3> components;
-            std::transform(vals.begin(), vals.end(), components.begin(), [](const Value& val) { return getFloat(val) / 255.0f; });
-            Color color = Color::fromRGBA(components[0], components[1], components[2], 1.0f);
+            Color color = Color::fromRGBA(getFloat(vals[0]) / 255.0f, getFloat(vals[1]) / 255.0f, getFloat(vals[2]) / 255.0f, 1.0f);
             return Value(color);
         }
         else if (func == "rgba" && vals.size() == 4) {
-            std::array<float, 4> components;
-            std::transform(vals.begin(), vals.begin() + 3, components.begin(), [](const Value& val) { return getFloat(val) / 255.0f; });
-            components[3] = getFloat(vals[3]);
-            Color color = Color::fromRGBA(components[0], components[1], components[2], components[3]);
+            Color color = Color::fromRGBA(getFloat(vals[0]) / 255.0f, getFloat(vals[1]) / 255.0f, getFloat(vals[2]) / 255.0f, getFloat(vals[3]));
             return Value(color);
+        }
+        else if (func == "hsl" && vals.size() == 3) {
+            Color color = Color::fromHSLA(getFloat(vals[0]), getFloat(vals[1]), getFloat(vals[2]), 1.0f);
+            return Value(color);
+        }
+        else if (func == "hsla" && vals.size() == 4) {
+            Color color = Color::fromHSLA(getFloat(vals[0]), getFloat(vals[1]), getFloat(vals[2]), getFloat(vals[3]));
+            return Value(color);
+        }
+        else if (func == "red" && vals.size() == 1) {
+            float value = getColor(vals[0]).rgba()[0] * 255.0f;
+            return Value(value);
+        }
+        else if (func == "green" && vals.size() == 1) {
+            float value = getColor(vals[0]).rgba()[1] * 255.0f;
+            return Value(value);
+        }
+        else if (func == "blue" && vals.size() == 1) {
+            float value = getColor(vals[0]).rgba()[2] * 255.0f;
+            return Value(value);
+        }
+        else if (func == "alpha" && vals.size() == 1) {
+            float value = getColor(vals[0]).alpha();
+            return Value(value);
+        }
+        else if (func == "hue" && vals.size() == 1) {
+            float value = getColor(vals[0]).hsla()[0];
+            return Value(value);
+        }
+        else if (func == "saturation" && vals.size() == 1) {
+            float value = getColor(vals[0]).hsla()[1];
+            return Value(value);
+        }
+        else if (func == "lightness" && vals.size() == 1) {
+            float value = getColor(vals[0]).hsla()[2];
+            return Value(value);
         }
         else if (func == "mix" && vals.size() == 3) {
             Color color = Color::mix(getColor(vals[0]), getColor(vals[1]), getFloat(vals[2]));

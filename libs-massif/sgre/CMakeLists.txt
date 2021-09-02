@@ -5,7 +5,7 @@ set(sgre_LIBS_DIR "${PROJECT_SOURCE_DIR}/../../libs-external")
 
 set(sgre_FLAGS "")
 if(ANDROID OR APPLE)
-  set(sgre_FLAGS ${sgre_FLAGS} "-fno-math-errno" "-fno-trapping-math")
+  set(sgre_FLAGS ${sgre_FLAGS} "-fno-math-errno")
 endif()
 
 file(GLOB sgre_SRC_FILES "${sgre_SRC_DIR}/*.cpp" "${sgre_SRC_DIR}/*.h")

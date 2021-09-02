@@ -11,7 +11,7 @@ endif(EXCLUDE_GL)
 
 set(vt_FLAGS "")
 if(ANDROID OR APPLE)
-  set(vt_FLAGS ${vt_FLAGS} "-fno-math-errno" "-fno-trapping-math")
+  set(vt_FLAGS ${vt_FLAGS} "-fno-math-errno")
 endif()
 
 set(vt_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/src" PARENT_SCOPE)

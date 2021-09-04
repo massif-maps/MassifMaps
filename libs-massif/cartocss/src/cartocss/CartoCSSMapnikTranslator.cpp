@@ -129,9 +129,10 @@ namespace carto { namespace css {
 
             mvt::Expression operator() (const std::shared_ptr<ListExpression>& listExpr) const {
                 std::string str;
-                for (const Expression& subExpr : listExpr->getExpressions()) {
-                    if (auto val = std::get_if<Value>(&subExpr)) {
-                        str += (str.empty() ? "" : ",") + mvt::ValueConverter<std::string>::convert(buildValue(*val));
+                for (const Expression& listSubExpr : listExpr->getExpressions()) {
+                    mvt::Expression subExpr = std::visit(*this, listSubExpr);
+                    if (auto val = std::get_if<mvt::Value>(&subExpr)) {
+                        str += (str.empty() ? "" : ",") + mvt::ValueConverter<std::string>::convert(*val);
                     }
                     else {
                         throw TranslatorException("List expressions may only contain constant values");
@@ -274,8 +275,9 @@ namespace carto { namespace css {
                     exprStr += ",";
                 }
 
-                if (auto val = std::get_if<Value>(&funcExpr.getArgs()[i])) {
-                    exprStr += mvt::generateValueString(buildValue(*val));
+                mvt::Expression argExpr = buildExpression(funcExpr.getArgs()[i]);
+                if (auto val = std::get_if<mvt::Value>(&argExpr)) {
+                    exprStr += mvt::generateValueString(*val);
                 }
                 else {
                     throw TranslatorException("Expecting constant arguments for function " + funcExpr.getFunc());
@@ -370,16 +372,13 @@ namespace carto { namespace css {
                     textExpr = buildExpression(prop->getExpression());
                 }
                 else if (prop->getField() == symbolizerType + "-face-name") {
-                    if (auto val = std::get_if<Value>(&prop->getExpression())) {
-                        std::string faceName = std::get<std::string>(*val);
-                        fontSetFaceName = std::pair<std::string, std::string>("face-name", faceName);
-                    }
-                    else if (auto listExpr = std::get_if<std::shared_ptr<ListExpression>>(&prop->getExpression())) {
+                    if (auto listExpr = std::get_if<std::shared_ptr<ListExpression>>(&prop->getExpression())) {
                         std::string fontSetName;
                         std::vector<std::string> faceNames;
-                        for (const Expression& faceNameExpr : (*listExpr)->getExpressions()) {
-                            if (auto val = std::get_if<Value>(&faceNameExpr)) {
-                                std::string faceName = std::get<std::string>(*val);
+                        for (const Expression& listSubExpr : (*listExpr)->getExpressions()) {
+                            mvt::Expression faceNameExpr = buildExpression(listSubExpr);
+                            if (auto val = std::get_if<mvt::Value>(&faceNameExpr)) {
+                                std::string faceName = mvt::ValueConverter<std::string>::convert(*val);
                                 fontSetName += (fontSetName.empty() ? "" : ",") + faceName;
                                 faceNames.push_back(faceName);
                             }
@@ -394,7 +393,14 @@ namespace carto { namespace css {
                         fontSetFaceName = std::pair<std::string, std::string>("fontset-name", fontSetName);
                     }
                     else {
-                        _logger->write(mvt::Logger::Severity::WARNING, "Expecting constant value or list for face name property");
+                        mvt::Expression faceNameExpr = buildExpression(&prop->getExpression());
+                        if (auto val = std::get_if<mvt::Value>(&faceNameExpr)) {
+                            std::string faceName = mvt::ValueConverter<std::string>::convert(*val);
+                            fontSetFaceName = std::pair<std::string, std::string>("face-name", faceName);
+                        }
+                        else {
+                            _logger->write(mvt::Logger::Severity::WARNING, "Expecting constant value or list for face name property");
+                        }
                     }
                 }
             }

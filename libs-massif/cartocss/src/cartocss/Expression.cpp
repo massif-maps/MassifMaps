@@ -161,15 +161,15 @@ namespace carto { namespace css {
             return Value(color);
         }
         else if (func == "red" && vals.size() == 1) {
-            float value = getColor(vals[0]).rgba()[0] * 255.0f;
+            float value = getColor(vals[0])[0] * 255.0f;
             return Value(value);
         }
         else if (func == "green" && vals.size() == 1) {
-            float value = getColor(vals[0]).rgba()[1] * 255.0f;
+            float value = getColor(vals[0])[1] * 255.0f;
             return Value(value);
         }
         else if (func == "blue" && vals.size() == 1) {
-            float value = getColor(vals[0]).rgba()[2] * 255.0f;
+            float value = getColor(vals[0])[2] * 255.0f;
             return Value(value);
         }
         else if (func == "alpha" && vals.size() == 1) {

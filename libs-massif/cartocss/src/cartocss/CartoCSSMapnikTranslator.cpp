@@ -393,7 +393,7 @@ namespace carto { namespace css {
                         fontSetFaceName = std::pair<std::string, std::string>("fontset-name", fontSetName);
                     }
                     else {
-                        mvt::Expression faceNameExpr = buildExpression(&prop->getExpression());
+                        mvt::Expression faceNameExpr = buildExpression(prop->getExpression());
                         if (auto val = std::get_if<mvt::Value>(&faceNameExpr)) {
                             std::string faceName = mvt::ValueConverter<std::string>::convert(*val);
                             fontSetFaceName = std::pair<std::string, std::string>("face-name", faceName);

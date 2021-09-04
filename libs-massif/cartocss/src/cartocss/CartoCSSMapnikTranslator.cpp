@@ -108,7 +108,7 @@ namespace carto { namespace css {
             
             mvt::Expression operator() (const FieldOrVar& fieldOrVar) const {
                 if (!fieldOrVar.isField()) {
-                    throw TranslatorException("Expecting field, not variable (@" + fieldOrVar.getName() + ")");
+                    throw TranslatorException("Undefined variable in expression (@" + fieldOrVar.getName() + ")");
                 }
                 try {
                     return std::make_shared<mvt::VariableExpression>(mvt::parseExpression(fieldOrVar.getName(), true));
@@ -247,16 +247,18 @@ namespace carto { namespace css {
                 if ((*listExpr)->getExpressions().size() != 2) {
                     throw TranslatorException("Expecting elements of size 2 for interpolation function");
                 }
-                auto keyVal = std::get_if<Value>(&(*listExpr)->getExpressions()[0]);
+                auto keyExpr = buildExpression((*listExpr)->getExpressions()[0]);
+                auto keyVal = std::get_if<mvt::Value>(&keyExpr);
                 if (!keyVal) {
                     throw TranslatorException("Expecting constant scalar keys for interpolation function");
                 }
-                auto valueVal = std::get_if<Value>(&(*listExpr)->getExpressions()[1]);
+                auto valueExpr = buildExpression((*listExpr)->getExpressions()[1]);
+                auto valueVal = std::get_if<mvt::Value>(&valueExpr);
                 if (!valueVal) {
                     throw TranslatorException("Expecting constant scalar values for interpolation function");
                 }
-                keyFrames.push_back(buildValue(*keyVal));
-                keyFrames.push_back(buildValue(*valueVal));
+                keyFrames.push_back(*keyVal);
+                keyFrames.push_back(*valueVal);
             }
 
             mvt::Expression timeExpr = buildExpression(funcExpr.getArgs()[0]);

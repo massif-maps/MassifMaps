@@ -660,6 +660,11 @@ namespace carto { namespace vt {
         
         // Split vertices list into relatively straight segments
         for (const TileLine& tileLine : tileLines) {
+            cglib::bbox3<double> bbox = cglib::bbox3<double>::make_union(tileLine.vertices.begin(), tileLine.vertices.end());
+            if (!viewState.frustum.inside(bbox)) {
+                continue;
+            }
+
             std::size_t i0 = 0;
             float summedAngle = 0;
             cglib::vec3<double> lastEdgeVec(0, 0, 0);

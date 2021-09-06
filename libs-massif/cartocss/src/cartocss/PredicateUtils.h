@@ -63,12 +63,6 @@ namespace carto { namespace css {
                         }
                     }
                 }
-                if (_context.expressionContext.predefinedVariableMap) {
-                    auto it = _context.expressionContext.predefinedVariableMap->find(opPred.getFieldOrVar().getName());
-                    if (it != _context.expressionContext.predefinedVariableMap->end()) {
-                        fieldOrVarValue = it->second;
-                    }
-                }
             }
             else {
                 if (_context.expressionContext.fieldMap) {
@@ -91,7 +85,20 @@ namespace carto { namespace css {
             return boost::indeterminate;
         }
 
+        boost::tribool operator() (const WhenPredicate& whenPred) const {
+            Expression expr = std::visit(ExpressionEvaluator(_context.expressionContext), whenPred.getExpression());
+            if (auto val = std::get_if<Value>(&expr)) {
+                return std::visit(BoolValueEvaluator(), *val);
+            }
+            return boost::indeterminate;
+        }
+
     private:
+        struct BoolValueEvaluator {
+            template <typename T>
+            bool operator() (const T& val) const { return val != T(); }
+        };
+
         const PredicateContext& _context;
     };
 
@@ -130,7 +137,14 @@ namespace carto { namespace css {
             }
             return boost::indeterminate;
         }
-        
+
+        boost::tribool operator() (const WhenPredicate& whenPred1, const WhenPredicate& whenPred2) const {
+            if (std::visit(ExpressionDeepEqualsChecker(), whenPred1.getExpression(), whenPred2.getExpression())) {
+                return true;
+            }
+            return boost::indeterminate;
+        }
+
         template <typename S, typename T> boost::tribool operator() (const S& pred1, const T& pred2) const { return boost::indeterminate; }
     };
 
@@ -165,6 +179,13 @@ namespace carto { namespace css {
                 if (opPred1.getOp() == OpPredicate::Op::MATCH) {
                     return val1 == val2 ? boost::tribool(true) : boost::indeterminate;
                 }
+                return true;
+            }
+            return boost::indeterminate;
+        }
+
+        boost::tribool operator() (const WhenPredicate& whenPred1, const WhenPredicate& whenPred2) const {
+            if (std::visit(ExpressionDeepEqualsChecker(), whenPred1.getExpression(), whenPred2.getExpression())) {
                 return true;
             }
             return boost::indeterminate;

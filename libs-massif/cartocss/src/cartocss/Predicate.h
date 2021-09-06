@@ -9,6 +9,7 @@
 
 #include "Value.h"
 #include "FieldOrVar.h"
+#include "Expression.h"
 
 #include <variant>
 
@@ -20,8 +21,9 @@ namespace carto { namespace css {
     class ClassPredicate;
     class AttachmentPredicate;
     class OpPredicate;
+    class WhenPredicate;
 
-    using Predicate = std::variant<MapPredicate, LayerPredicate, ClassPredicate, AttachmentPredicate, OpPredicate>;
+    using Predicate = std::variant<MapPredicate, LayerPredicate, ClassPredicate, AttachmentPredicate, OpPredicate, WhenPredicate>;
 
     class MapPredicate final {
     public:
@@ -97,6 +99,19 @@ namespace carto { namespace css {
         Op _op;
         FieldOrVar _fieldOrVar;
         Value _refValue;
+    };
+
+    class WhenPredicate final {
+    public:
+        explicit WhenPredicate(Expression expr) : _expr(std::move(expr)) { }
+
+        const Expression& getExpression() const { return _expr; }
+
+        bool operator == (const WhenPredicate& other) const { return _expr == other._expr; }
+        bool operator != (const WhenPredicate& other) const { return !(*this == other); }
+
+    private:
+        Expression _expr;
     };
 } }
 

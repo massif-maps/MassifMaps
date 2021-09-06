@@ -5,7 +5,7 @@ set(mapnikvt_LIBS_DIR "${PROJECT_SOURCE_DIR}/../../libs-external")
 
 set(mapnikvt_FLAGS "")
 if(ANDROID OR APPLE)
-  set(mapnikvt_FLAGS ${mapnikvt_FLAGS} "-fno-math-errno" "-fno-trapping-math")
+  set(mapnikvt_FLAGS ${mapnikvt_FLAGS} "-fno-math-errno")
 endif()
 
 file(GLOB mapnikvt_SRC_FILES "${mapnikvt_SRC_DIR}/*.cpp" "${mapnikvt_SRC_DIR}/*.h" "${mapnikvt_SRC_DIR}/MBVTPackage/*.cc" "${mapnikvt_SRC_DIR}/MBVTPackage/*.h")

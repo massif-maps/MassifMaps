@@ -293,6 +293,7 @@ namespace carto { namespace css {
             void operator() (const ClassPredicate&) { classes++; }
             void operator() (const AttachmentPredicate&) { }
             void operator() (const OpPredicate&) { filters++; }
+            void operator() (const WhenPredicate&) { filters++; }
 
             int layers = 0;
             int classes = 0;

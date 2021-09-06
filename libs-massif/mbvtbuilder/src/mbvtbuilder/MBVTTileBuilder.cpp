@@ -22,6 +22,12 @@ namespace carto { namespace mbvtbuilder {
         invalidateCache();
     }
 
+    void MBVTTileBuilder::setSimplifyTolerance(float tolerance) {
+        std::lock_guard<std::mutex> lock(_mutex);
+        _simplifyTolerance = tolerance;
+        invalidateCache();
+    }
+
     std::vector<MBVTTileBuilder::LayerIndex> MBVTTileBuilder::getLayerIndices() const {
         std::vector<LayerIndex> layerIndices;
         for (auto it = _layers.begin(); it != _layers.end(); it++) {
@@ -72,7 +78,7 @@ namespace carto { namespace mbvtbuilder {
 
         std::lock_guard<std::mutex> lock(_mutex);
         Feature feature;
-        feature.id = ++_featureIdCounter;
+        feature.id = extractFeatureId(layerIndex, properties);
         feature.bounds = bounds;
         feature.geometry = std::move(coords);
         feature.properties = std::move(properties);
@@ -90,7 +96,7 @@ namespace carto { namespace mbvtbuilder {
 
         std::lock_guard<std::mutex> lock(_mutex);
         Feature feature;
-        feature.id = ++_featureIdCounter;
+        feature.id = extractFeatureId(layerIndex, properties);
         feature.bounds = bounds;
         feature.geometry = std::move(coordsList);
         feature.properties = std::move(properties);
@@ -110,7 +116,7 @@ namespace carto { namespace mbvtbuilder {
 
         std::lock_guard<std::mutex> lock(_mutex);
         Feature feature;
-        feature.id = ++_featureIdCounter;
+        feature.id = extractFeatureId(layerIndex, properties);
         feature.bounds = bounds;
         feature.geometry = std::move(ringsList);
         feature.properties = std::move(properties);
@@ -261,6 +267,22 @@ namespace carto { namespace mbvtbuilder {
         }
     }
 
+    std::uint64_t MBVTTileBuilder::extractFeatureId(LayerIndex layerIndex, const picojson::value& properties) {
+        if (properties.contains("id")) {
+            const picojson::value& id = properties.get("id");
+            if (id.is<std::int64_t>()) {
+                return id.get<std::int64_t>();
+            }
+            if (id.is<std::string>()) {
+                return std::hash<std::string>()(id.get<std::string>());
+            }
+        }
+
+        auto it = _layers.find(layerIndex);
+        std::size_t size = (it != _layers.end() ? it->second.features.size() : 0);
+        return static_cast<std::uint64_t>(((layerIndex + 1ULL) << 32) + size);
+    }
+
     const std::map<MBVTTileBuilder::LayerIndex, MBVTTileBuilder::Layer>& MBVTTileBuilder::simplifyAndCacheLayers(int zoom) const {
         auto it = _cachedZoomLayers.lower_bound(zoom);
         int nextZoom = (it != _cachedZoomLayers.end() ? it->first : _maxZoom + 1);
@@ -270,7 +292,7 @@ namespace carto { namespace mbvtbuilder {
             std::map<LayerIndex, Layer>& layers = _cachedZoomLayers[currentZoom];
             for (auto it = layers.begin(); it != layers.end(); it++) {
                 Layer& layer = it->second;
-                double tolerance = 2.0 * PI * EARTH_RADIUS / (1 << currentZoom) * TILE_TOLERANCE;
+                double tolerance = 2.0 * PI * EARTH_RADIUS / (1 << currentZoom) * _simplifyTolerance / TILE_PIXELS;
                 simplifyLayer(layer, tolerance);
             }
             nextZoom = currentZoom;

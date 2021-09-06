@@ -18,9 +18,7 @@
 
 namespace carto { namespace css {
     struct ExpressionContext {
-        std::map<std::string, Value>* predefinedVariableMap = nullptr;
         std::map<std::string, Expression>* variableMap = nullptr;
-
         std::map<std::string, Value>* predefinedFieldMap = nullptr;
         std::map<std::string, Value>* fieldMap = nullptr;
     };
@@ -32,12 +30,6 @@ namespace carto { namespace css {
 
         Expression operator() (const FieldOrVar& fieldOrVar) const {
             if (!fieldOrVar.isField()) {
-                if (_context.predefinedVariableMap) {
-                    auto it = _context.predefinedVariableMap->find(fieldOrVar.getName());
-                    if (it != _context.predefinedVariableMap->end()) {
-                        return it->second;
-                    }
-                }
                 if (_context.variableMap) {
                     auto it = _context.variableMap->find(fieldOrVar.getName());
                     if (it != _context.variableMap->end()) {

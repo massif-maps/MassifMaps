@@ -37,6 +37,7 @@ namespace carto { namespace mbvtbuilder {
         explicit MBVTTileBuilder(int minZoom, int maxZoom);
 
         void setFastSimplifyMode(bool enabled);
+        void setSimplifyTolerance(float tolerance);
 
         std::vector<LayerIndex> getLayerIndices() const;
         LayerIndex createLayer(const std::string& name, float buffer = -1);
@@ -76,7 +77,9 @@ namespace carto { namespace mbvtbuilder {
 
         static constexpr double PI = boost::math::constants::pi<double>();
         static constexpr double EARTH_RADIUS = 6378137.0;
-        static constexpr double TILE_TOLERANCE = 1.0 / 256.0;
+        static constexpr int TILE_PIXELS = 256;
+
+        std::uint64_t extractFeatureId(LayerIndex layerIndex, const picojson::value& properties);
 
         const std::map<LayerIndex, Layer>& simplifyAndCacheLayers(int zoom) const;
         void invalidateCache() const;
@@ -90,8 +93,8 @@ namespace carto { namespace mbvtbuilder {
         static Point wgs84ToWM(const cglib::vec2<double>& posWgs84);
 
         bool _fastSimplifyMode = false;
+        float _simplifyTolerance = 1.0f;
 
-        std::uint64_t _featureIdCounter = 0;
         std::map<LayerIndex, Layer> _layers;
 
         const int _minZoom;

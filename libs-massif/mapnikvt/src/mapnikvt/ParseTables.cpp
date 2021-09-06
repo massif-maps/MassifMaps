@@ -12,6 +12,7 @@ namespace carto { namespace mvt {
 
     const ParseTable<vt::LineJoinMode>& getLineJoinModeTable() {
         static const std::unordered_map<std::string, vt::LineJoinMode> lineJoinModeTable = {
+            { "none",  vt::LineJoinMode::NONE  },
             { "round", vt::LineJoinMode::ROUND },
             { "bevel", vt::LineJoinMode::BEVEL },
             { "miter", vt::LineJoinMode::MITER }

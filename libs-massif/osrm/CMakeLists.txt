@@ -7,7 +7,7 @@ file(GLOB osrm_SRC_FILES "${osrm_SRC_DIR}/*.cpp" "${osrm_SRC_DIR}/*.h")
 
 set(osrm_FLAGS "")
 if(ANDROID OR APPLE)
-  set(osrm_FLAGS ${osrm_FLAGS} "-fno-math-errno" "-fno-trapping-math")
+  set(osrm_FLAGS ${osrm_FLAGS} "-fno-math-errno")
 endif()
 
 set(osrm_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/src" PARENT_SCOPE)

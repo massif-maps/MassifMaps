@@ -166,7 +166,7 @@ namespace carto { namespace css {
                     | (qi::lit("::") > blockid)                     [_val = phoenix::construct<AttachmentPredicate>(_1)]
                     | ((qi::lit('[') >> '@') > varid > op > constant > ']') [_val = phoenix::bind(&makeOpPredicate, _2, false, _1, _3)]
                     | (qi::lit('[') > (fieldid | string) > op > constant > ']') [_val = phoenix::bind(&makeOpPredicate, _2, true, _1, _3)]
-                    | (qi::lit("when") >> '(' > expression > ')')   [_val = phoenix::bind(&makeWhenPredicate, _1)]
+                    | ((qi::lit("when") >> '(') > expression > ')') [_val = phoenix::bind(&makeWhenPredicate, _1)]
                     ;
                 
                 selector = (*predicate)                             [_val = phoenix::construct<Selector>(_1)];

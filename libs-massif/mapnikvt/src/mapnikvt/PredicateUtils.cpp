@@ -3,10 +3,16 @@
 #include "ExpressionUtils.h"
 #include "ValueConverter.h"
 
+namespace {
+    struct CondEvaluator {
+        template <typename T> bool operator() (T val) const { return val != T(); }
+    };
+}
+
 namespace carto { namespace mvt {
     bool PredicateEvaluator::operator() (const std::shared_ptr<ExpressionPredicate>& exprPred) const {
-       Value val = std::visit(ExpressionEvaluator(_context, _viewState), exprPred->getExpression());
-       return ValueConverter<bool>::convert(val);
+        Value val = std::visit(ExpressionEvaluator(_context, _viewState), exprPred->getExpression());
+        return std::visit(CondEvaluator(), val);
     }
 
     bool PredicateEvaluator::operator() (const std::shared_ptr<ComparisonPredicate>& compPred) const {

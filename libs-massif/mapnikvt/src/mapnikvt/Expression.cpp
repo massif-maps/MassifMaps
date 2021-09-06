@@ -73,11 +73,7 @@ namespace {
     };
 
     struct CondEvaluator {
-        bool operator() (std::monostate) const { return false; }
-        bool operator() (bool val) const { return val; }
-        bool operator() (long long val) const { return val != 0; }
-        bool operator() (double val) const { return val != 0; }
-        bool operator() (const std::string& str) const { return !str.empty(); }
+        template <typename T> bool operator() (T val) const { return val != T(); }
     };
 }
 

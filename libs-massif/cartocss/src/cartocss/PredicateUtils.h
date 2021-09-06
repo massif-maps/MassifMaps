@@ -88,13 +88,13 @@ namespace carto { namespace css {
         boost::tribool operator() (const WhenPredicate& whenPred) const {
             Expression expr = std::visit(ExpressionEvaluator(_context.expressionContext), whenPred.getExpression());
             if (auto val = std::get_if<Value>(&expr)) {
-                return std::visit(BoolValueEvaluator(), *val);
+                return std::visit(CondEvaluator(), *val);
             }
             return boost::indeterminate;
         }
 
     private:
-        struct BoolValueEvaluator {
+        struct CondEvaluator {
             template <typename T>
             bool operator() (const T& val) const { return val != T(); }
         };

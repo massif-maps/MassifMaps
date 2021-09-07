@@ -39,8 +39,8 @@ namespace carto { namespace mvt {
                 polygon_kw    = repository::qi::distinct(qi::char_("a-zA-Z0-9_"))[qi::no_case["polygon"]];
 
                 string =
-                      ('\'' >> *(unesc_char | "\\x" >> octet_ | (qi::char_ - '\''))) > '\''
-                    | ('\"' >> *(unesc_char | "\\x" >> octet_ | (qi::char_ - '\"'))) > '\"'
+                      ('\'' >> *(unesc_char | "\\x" >> octet | (qi::char_ - '\''))) > '\''
+                    | ('\"' >> *(unesc_char | "\\x" >> octet | (qi::char_ - '\"'))) > '\"'
                     ;
 
                 value =
@@ -55,7 +55,7 @@ namespace carto { namespace mvt {
                     ;
             }
 
-            boost::spirit::qi::int_parser<char, 16, 2, 2> octet_;
+            boost::spirit::qi::uint_parser<unsigned char, 16, 2, 2> octet;
             boost::spirit::qi::symbols<char const, char const> unesc_char;
             boost::spirit::qi::rule<Iterator, boost::spirit::qi::unused_type()> null_kw, point_kw, linestring_kw, polygon_kw;
             boost::spirit::qi::rule<Iterator, std::string()> string;

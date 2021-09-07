@@ -35,7 +35,7 @@ namespace carto { namespace mvt {
                             ('\r', "\\r")('\t', "\\t")('\v', "\\v")('\\', "\\\\")
                             ('\'', "\\\'")('"', "\\\"");
 
-                string %= '\'' << *(esc_char | karma::print | "\\x" << karma::hex) << '\'';
+                string %= '\'' << *(esc_char | karma::print | ("\\x0" << octet) [_pass = _1 >= 0x00 && _1 <= 0x0f] | "\\x" << octet) << '\'';
 
                 value =
                       karma::lit("null")        [_pass = phoenix::bind(&isNullValue, _val)]
@@ -46,6 +46,7 @@ namespace carto { namespace mvt {
                     ;
             }
 
+            boost::spirit::karma::uint_generator<unsigned char, 16> octet;
             boost::spirit::karma::symbols<char, const char*> esc_char;
             boost::spirit::karma::rule<OutputIterator, std::string()> string;
             boost::spirit::karma::rule<OutputIterator, Value()> value;

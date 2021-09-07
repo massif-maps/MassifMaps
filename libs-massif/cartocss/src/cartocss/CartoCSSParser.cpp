@@ -150,13 +150,13 @@ namespace carto { namespace css {
                     ;
                 
                 op =
-                      qi::lit("=~")                                  [_val = OpPredicate::Op::MATCH]
-                    | qi::lit("=")                                   [_val = OpPredicate::Op::EQ]
-                    | qi::lit("!=")                                  [_val = OpPredicate::Op::NEQ]
-                    | qi::lit("<=")                                  [_val = OpPredicate::Op::LTE]
-                    | qi::lit("<")                                   [_val = OpPredicate::Op::LT]
-                    | qi::lit(">=")                                  [_val = OpPredicate::Op::GTE]
-                    | qi::lit(">")                                   [_val = OpPredicate::Op::GT]
+                      qi::lit("=~")                                 [_val = OpPredicate::Op::MATCH]
+                    | qi::lit("=")                                  [_val = OpPredicate::Op::EQ]
+                    | qi::lit("!=")                                 [_val = OpPredicate::Op::NEQ]
+                    | qi::lit("<=")                                 [_val = OpPredicate::Op::LTE]
+                    | qi::lit("<")                                  [_val = OpPredicate::Op::LT]
+                    | qi::lit(">=")                                 [_val = OpPredicate::Op::GTE]
+                    | qi::lit(">")                                  [_val = OpPredicate::Op::GT]
                     ;
 
                 predicate =

@@ -37,6 +37,10 @@ namespace carto { namespace mvt {
                 using qi::_1;
                 using qi::_2;
 
+                unesc_char.add("\\a", '\a')("\\b", '\b')("\\f", '\f')("\\n", '\n')
+                              ("\\r", '\r')("\\t", '\t')("\\v", '\v')("\\\\", '\\')
+                              ("\\\'", '\'')("\\\"", '\"')("\\[", '[')("\\]", ']')("\\{", '{')("\\}", '}');
+
                 le_kw  = repository::qi::distinct(qi::char_("a-zA-Z0-9_"))[qi::no_case["le"]];
                 ge_kw  = repository::qi::distinct(qi::char_("a-zA-Z0-9_"))[qi::no_case["ge"]];
                 lt_kw  = repository::qi::distinct(qi::char_("a-zA-Z0-9_"))[qi::no_case["lt"]];
@@ -62,7 +66,7 @@ namespace carto { namespace mvt {
 
                 constant = qi::lexeme[valueParser];
 
-                string %= qi::lexeme[+(qi::char_ - qi::char_("[]{}"))];
+                string %= qi::lexeme[+(unesc_char | "\\x" >> octet | (qi::char_ - qi::char_("[]{}")))];
 
                 stringExpression =
                     ( (string                                        [_val = phoenix::construct<Value>(_1)])
@@ -149,6 +153,8 @@ namespace carto { namespace mvt {
 
             ValueParserGrammar<Iterator> valueParser;
 
+            boost::spirit::qi::uint_parser<unsigned char, 16, 2, 2> octet;
+            boost::spirit::qi::symbols<char const, char const> unesc_char;
             boost::spirit::qi::rule<Iterator, Value()> constant;
             boost::spirit::qi::rule<Iterator, std::string()> string;
             boost::spirit::qi::rule<Iterator, boost::spirit::qi::unused_type()> not_kw, and_kw, or_kw, neq_kw, eq_kw, le_kw, ge_kw, lt_kw, gt_kw, exp_kw, log_kw, pow_kw, length_kw, uppercase_kw, lowercase_kw, capitalize_kw, concat_kw, match_kw, replace_kw, step_kw, linear_kw, cubic_kw;

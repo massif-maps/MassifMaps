@@ -37,15 +37,17 @@ namespace carto { namespace mvt {
                 using karma::_2;
                 using karma::_3;
 
-                string %=
-                    karma::string
-                    ;
+                esc_char.add('\a', "\\a")('\b', "\\b")('\f', "\\f")('\n', "\\n")
+                            ('\r', "\\r")('\t', "\\t")('\v', "\\v")('\\', "\\\\")
+                            ('\'', "\\\'")('"', "\\\"")('[', "\\[")(']', "\\]")('{', "\\{")('}', "\\}");
+
+                string %= *(esc_char | karma::print | ("\\x0" << octet) [_pass = _1 >= 0x00 && _1 <= 0x0f] | "\\x" << octet);
 
                 stringExpression =
-                      string                            [_pass = phoenix::bind(&getString, _val, _1)]
+                      string                               [_pass = phoenix::bind(&getString, _val, _1)]
                     | (stringExpression << stringExpression) [_pass = phoenix::bind(&getBinaryExpression, BinaryExpression::Op::CONCAT, _val, _1, _2)]
-                    | ('[' << stringExpression << ']' ) [_pass = phoenix::bind(&getVariableExpression, _val, _1)]
-                    | ('{' << karma::delimit(Delimiter())[expression << '}']) [_1 = _val]
+                    | ('[' << stringExpression << ']' )    [_pass = phoenix::bind(&getVariableExpression, _val, _1)]
+                    | ('{' << karma::delimit(Delimiter())  [expression << '}']) [_1 = _val]
                     ;
 
                 genericExpression =
@@ -121,6 +123,8 @@ namespace carto { namespace mvt {
             }
 
             ValueGeneratorGrammar<OutputIterator> constant;
+            boost::spirit::karma::uint_generator<unsigned char, 16> octet;
+            boost::spirit::karma::symbols<char, const char*> esc_char;
             boost::spirit::karma::rule<OutputIterator, std::string()> string;
             boost::spirit::karma::rule<OutputIterator, Expression()> stringExpression, genericExpression;
             boost::spirit::karma::rule<OutputIterator, Expression(), Delimiter> expression, term0, term1, term2, term3, unary, postfix, factor;

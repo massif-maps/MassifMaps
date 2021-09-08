@@ -5,6 +5,11 @@
 
 namespace carto { namespace mvt {
     MarkersSymbolizer::FeatureProcessor MarkersSymbolizer::createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const {
+        vt::FloatFunction opacityFunc = _opacity.getFunction(exprContext);
+        vt::ColorFunction colorFunc = _color.getFunction(exprContext);
+        if (opacityFunc == vt::FloatFunction(0) || colorFunc == vt::ColorFunction(vt::Color())) {
+            return FeatureProcessor();
+        }
         if ((_width.isDefined() && _width.getFunction(exprContext) == vt::FloatFunction(0)) || (_height.isDefined() && _height.getFunction(exprContext) == vt::FloatFunction(0))) {
             return FeatureProcessor();
         }
@@ -15,8 +20,6 @@ namespace carto { namespace mvt {
         float fontScale = symbolizerContext.getSettings().getFontScale();
         float spacing = _spacing.getValue(exprContext);
         float placementPriority = _placementPriority.getValue(exprContext);
-        float fillOpacity = _fillOpacity.isDefined() ? _fillOpacity.getValue(exprContext) : _opacity.getValue(exprContext);
-        float strokeOpacity = _strokeOpacity.isDefined() ? _strokeOpacity.getValue(exprContext) : _opacity.getValue(exprContext);
         float widthStatic = _width.getStaticValue(exprContext);
         float heightStatic = _height.getStaticValue(exprContext);
         float strokeWidthStatic = _strokeWidth.getStaticValue(exprContext);
@@ -67,8 +70,8 @@ namespace carto { namespace mvt {
             }
         }
         else {
-            vt::Color fill = vt::Color::fromColorOpacity(_fill.getValue(exprContext), fillOpacity);
-            vt::Color stroke = vt::Color::fromColorOpacity(_stroke.getValue(exprContext), strokeOpacity);
+            vt::Color fill = vt::Color::fromColorOpacity(_fill.getValue(exprContext), _fillOpacity.getValue(exprContext));
+            vt::Color stroke = vt::Color::fromColorOpacity(_stroke.getValue(exprContext), _strokeOpacity.getValue(exprContext));
             std::string markerType = toLower(_markerType.getValue(exprContext));
             bool ellipse = markerType == "ellipse" || (markerType.empty() && placement != vt::LabelOrientation::LINE);
             float bitmapWidth = (ellipse ? DEFAULT_CIRCLE_SIZE : DEFAULT_ARROW_WIDTH), bitmapHeight = (ellipse ? DEFAULT_CIRCLE_SIZE : DEFAULT_ARROW_HEIGHT);
@@ -109,8 +112,6 @@ namespace carto { namespace mvt {
                     symbolizerContext.getBitmapManager()->storeBitmapImage(file, bitmapImage);
                 }
             }
-
-            fillOpacity = 1.0f;
         }
 
         float tileSize = symbolizerContext.getSettings().getTileSize();
@@ -120,7 +121,7 @@ namespace carto { namespace mvt {
         float widthScale = bitmapScaleX / bitmapImage->scale / bitmapImage->bitmap->width;
         float heightScale = bitmapScaleY / bitmapImage->scale / bitmapImage->bitmap->height;
         vt::FloatFunction normalizedSizeFunc = _sizeFuncBuilder.createScaledFloatFunction(sizeFunc, widthScale);
-        vt::ColorFunction fillFunc = _fillFuncBuilder.createColorFunction(vt::Color::fromColorOpacity(vt::Color(1, 1, 1, 1), fillOpacity));
+        vt::ColorFunction fillFunc = _fillFuncBuilder.createColorOpacityFunction(colorFunc, opacityFunc);
 
         if (heightScale != widthScale) {
             transform = (transform ? *transform : vt::Transform()) * vt::Transform::fromMatrix2(cglib::scale2_matrix(cglib::vec2<float>(1.0f, heightScale / widthScale)));

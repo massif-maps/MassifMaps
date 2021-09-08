@@ -634,6 +634,7 @@ namespace carto { namespace css {
         { "marker-placement", "placement" },
         { "marker-type", "marker-type" },
         { "marker-feature-id", "feature-id" },
+        { "marker-color", "color" },
         { "marker-opacity", "opacity" },
         { "marker-fill", "fill" },
         { "marker-fill-opacity", "fill-opacity" },

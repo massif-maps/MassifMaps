@@ -428,7 +428,7 @@ namespace carto { namespace vt {
         void main(void) {
             lowp vec4 color = texture2D(uBitmap, vUV);
             if (vAttribs[0] > 0.5) {
-                color = color * vColor.a;
+                color = color * vColor;
             } else {
                 if (vAttribs[0] < -0.5) {
         #ifdef DERIVATIVES
@@ -528,7 +528,7 @@ namespace carto { namespace vt {
         #ifdef PATTERN
             lowp vec4 color = texture2D(uPattern, vUV);
             if (vAttribs[0] > 0.5) {
-                color = color * vColor.a;
+                color = color * vColor;
             } else {
                 color = clamp((color.r - vAttribs[2]) * vAttribs[3], 0.0, 1.0) * vColor;
             }

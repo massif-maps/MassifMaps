@@ -18,6 +18,7 @@ namespace carto { namespace mvt {
             bindParameter("feature-id", &_featureId);
             bindParameter("placement", &_placement);
             bindParameter("marker-type", &_markerType);
+            bindParameter("color", &_color);
             bindParameter("opacity", &_opacity);
             bindParameter("fill", &_fill);
             bindParameter("fill-opacity", &_fillOpacity);
@@ -53,7 +54,8 @@ namespace carto { namespace mvt {
         ValueParameter _featureId;
         LabelOrientationParameter _placement = LabelOrientationParameter("point");
         StringParameter _markerType;
-        FloatParameter _opacity = FloatParameter(1.0f);
+        ColorFunctionParameter _color = ColorFunctionParameter("#ffffff");
+        FloatFunctionParameter _opacity = FloatFunctionParameter(1.0f);
         ColorParameter _fill = ColorParameter("#0000ff");
         FloatParameter _fillOpacity = FloatParameter(1.0f);
         FloatFunctionParameter _width = FloatFunctionParameter(0.0f);

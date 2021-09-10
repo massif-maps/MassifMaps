@@ -64,7 +64,7 @@ namespace carto { namespace mvt {
                     ;
 
                 rotate =
-                      (rotate_kw >> '(' >> number >> ')') [_val = phoenix::bind(&makeRotateTransform, 0, 0, _1)]
+                      (rotate_kw >> '(' >> number >> ')') [_val = phoenix::bind(&makeRotateTransform, 0.0f, 0.0f, _1)]
                     | (rotate_kw >> ('(' > number > ',' > number > ',' > number > ')')) [_val = phoenix::bind(&makeRotateTransform, _2, _3, _1)]
                     ;
 

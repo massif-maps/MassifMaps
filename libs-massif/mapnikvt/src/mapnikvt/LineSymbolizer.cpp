@@ -26,7 +26,7 @@ namespace carto { namespace mvt {
         std::shared_ptr<const vt::BitmapPattern> strokePattern;
         std::string strokeDashArray = _strokeDashArray.getValue(exprContext);
         if (!strokeDashArray.empty()) {
-            int height = 1;
+            float height = 1.0f;
             if (strokeLinecap != vt::LineCapMode::NONE) {
                 height = _strokeWidth.getStaticValue(exprContext);
             }
@@ -78,7 +78,7 @@ namespace carto { namespace mvt {
         };
     }
 
-    std::shared_ptr<vt::BitmapPattern> LineSymbolizer::createDashBitmapPattern(const std::vector<float>& strokeDashArray, int height, vt::LineCapMode lineCap) {
+    std::shared_ptr<vt::BitmapPattern> LineSymbolizer::createDashBitmapPattern(const std::vector<float>& strokeDashArray, float height, vt::LineCapMode lineCap) {
         float size = std::accumulate(strokeDashArray.begin(), strokeDashArray.end(), 0.0f);
         if (size <= 0 || height <= 0) {
             return std::shared_ptr<vt::BitmapPattern>();

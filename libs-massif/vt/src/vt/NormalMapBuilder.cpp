@@ -66,7 +66,7 @@ namespace carto { namespace vt {
 
                     float dx = (heights[0][2] + 2 * heights[1][2] + heights[2][2]) - (heights[0][0] + 2 * heights[1][0] + heights[2][0]);
                     float dy = (heights[2][0] + 2 * heights[2][1] + heights[2][2]) - (heights[0][0] + 2 * heights[0][1] + heights[0][2]);
-                    float dz = 8.0f * ss;
+                    float dz = 8.0f * static_cast<float>(ss);
 
                     data[y * width + x] = packNormal(dx, dy, dz);
                 }

@@ -47,7 +47,7 @@ namespace carto { namespace mbvtbuilder {
 
         void addMultiPoint(LayerIndex layerIndex, MultiPoint coords, picojson::value properties);
         void addMultiLineString(LayerIndex layerIndex, MultiLineString coordsList, picojson::value properties);
-        void addMultiPolygon(LayerIndex layerIndex, MultiPolygon ringsList, picojson::value properties, bool fixWindingOrder);
+        void addMultiPolygon(LayerIndex layerIndex, MultiPolygon ringsList, picojson::value properties);
 
         void importGeoJSON(LayerIndex layerIndex, const picojson::value& geoJSON);
         void importGeoJSONFeatureCollection(LayerIndex layerIndex, const picojson::value& featureCollectionDef);
@@ -87,7 +87,6 @@ namespace carto { namespace mbvtbuilder {
         static void simplifyLayer(Layer& layer, double tolerance);
         static bool encodeLayer(const Layer& layer, const Point& tileOrigin, double tileSize, const Bounds& tileBounds, MBVTLayerEncoder& layerEncoder);
 
-        static void fixPolygonWindingOrder(std::vector<std::vector<Point>>& rings);
         static std::vector<std::vector<cglib::vec2<double>>> parseCoordinatesRings(const picojson::value& coordsDef);
         static std::vector<cglib::vec2<double>> parseCoordinatesList(const picojson::value& coordsDef);
         static cglib::vec2<double> parseCoordinates(const picojson::value& coordsDef);

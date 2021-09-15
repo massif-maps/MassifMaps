@@ -10,20 +10,6 @@
 
 #include "mapnikvt/mbvtpackage/MBVTPackage.pb.h"
 
-namespace {
-    template <typename T>
-    bool isRingCCW(const std::vector<cglib::vec2<T>>& vertices) {
-        T area = 0;
-        if (!vertices.empty()) {
-            for (std::size_t i = 1; i < vertices.size(); i++) {
-                area += vertices[i - 1](0) * vertices[i](1) - vertices[i](0) * vertices[i - 1](1);
-            }
-            area += vertices.back()(0) * vertices.front()(1) - vertices.front()(0) * vertices.back()(1);
-        }
-        return area > 0;
-    }
-}
-
 namespace carto { namespace mbvtbuilder {
     MBVTTileBuilder::MBVTTileBuilder(int minZoom, int maxZoom) :
         _minZoom(minZoom), _maxZoom(maxZoom)
@@ -120,13 +106,7 @@ namespace carto { namespace mbvtbuilder {
         invalidateCache();
     }
 
-    void MBVTTileBuilder::addMultiPolygon(LayerIndex layerIndex, MultiPolygon ringsList, picojson::value properties, bool fixWindingOrder) {
-        if (fixWindingOrder) {
-            for (std::size_t i = 0; i < ringsList.size(); i++) {
-                fixPolygonWindingOrder(ringsList[i]);
-            }
-        }
-
+    void MBVTTileBuilder::addMultiPolygon(LayerIndex layerIndex, MultiPolygon ringsList, picojson::value properties) {
         Bounds bounds = Bounds::smallest();
         for (const std::vector<std::vector<Point>>& rings : ringsList) {
             for (const std::vector<Point>& ring : rings) {
@@ -187,7 +167,7 @@ namespace carto { namespace mbvtbuilder {
             addMultiLineString(layerIndex, { parseCoordinatesList(coordsDef) }, properties);
         }
         else if (type == "Polygon") {
-            addMultiPolygon(layerIndex, { parseCoordinatesRings(coordsDef) }, properties, false);
+            addMultiPolygon(layerIndex, { parseCoordinatesRings(coordsDef) }, properties);
         }
         else if (type == "MultiPoint") {
             std::vector<cglib::vec2<double>> coords;
@@ -208,7 +188,7 @@ namespace carto { namespace mbvtbuilder {
             for (const picojson::value& subCoordsDef : coordsDef.get<picojson::array>()) {
                 ringsList.push_back(parseCoordinatesRings(subCoordsDef));
             }
-            addMultiPolygon(layerIndex, std::move(ringsList), properties, false);
+            addMultiPolygon(layerIndex, std::move(ringsList), properties);
         }
         else {
             throw std::runtime_error("Invalid geometry type");
@@ -444,15 +424,6 @@ namespace carto { namespace mbvtbuilder {
         }
 
         return featuresAdded;
-    }
-
-    void MBVTTileBuilder::fixPolygonWindingOrder(std::vector<std::vector<Point>>& rings) {
-        for (std::size_t i = 0; i < rings.size(); i++) {
-            bool ringCCW = (i == 0);
-            if (isRingCCW(rings[i]) != ringCCW) {
-                std::reverse(rings[i].begin(), rings[i].end());
-            }
-        }
     }
 
     std::vector<std::vector<MBVTTileBuilder::Point>> MBVTTileBuilder::parseCoordinatesRings(const picojson::value& coordsDef) {

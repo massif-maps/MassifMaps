@@ -168,14 +168,14 @@ namespace carto { namespace mvt {
             switch (_layer->features(_index).type()) {
             case vector_tile::Tile::POINT: {
                     if (!verticesList.empty()) {
-                        auto geometry = std::make_shared<PointGeometry>(std::move(verticesList.front()));
+                        auto geometry = std::make_shared<Geometry>(PointGeometry(std::move(verticesList.front())));
                         _geometryCache->put(_index, geometry);
                         return geometry;
                     }
                     return std::shared_ptr<Geometry>();
                 }
             case vector_tile::Tile::LINESTRING: {
-                    auto geometry = std::make_shared<LineGeometry>(std::move(verticesList));
+                    auto geometry = std::make_shared<Geometry>(LineGeometry(std::move(verticesList)));
                     _geometryCache->put(_index, geometry);
                     return geometry;
                 }
@@ -192,7 +192,7 @@ namespace carto { namespace mvt {
                     else {
                         polygons.push_back(std::move(verticesList));
                     }
-                    auto geometry = std::make_shared<PolygonGeometry>(std::move(polygons));
+                    auto geometry = std::make_shared<Geometry>(PolygonGeometry(std::move(polygons)));
                     _geometryCache->put(_index, geometry);
                     return geometry;
                 }

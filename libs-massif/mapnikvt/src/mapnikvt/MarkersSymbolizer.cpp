@@ -149,17 +149,17 @@ namespace carto { namespace mvt {
                         }
                     }
                     
-                    if (auto pointGeometry = std::dynamic_pointer_cast<const PointGeometry>(featureCollection.getGeometry(featureIndex))) {
+                    if (auto pointGeometry = std::get_if<PointGeometry>(featureCollection.getGeometry(featureIndex).get())) {
                         for (const auto& vertex : pointGeometry->getVertices()) {
                             pointProcessor(featureCollection.getLocalId(featureIndex), vertex);
                         }
                     }
                     else if (placement != vt::LabelOrientation::LINE) {
                         vt::TileLayerBuilder::Vertices vertices;
-                        if (auto lineGeometry = std::dynamic_pointer_cast<const LineGeometry>(featureCollection.getGeometry(featureIndex))) {
+                        if (auto lineGeometry = std::get_if<LineGeometry>(featureCollection.getGeometry(featureIndex).get())) {
                             vertices = lineGeometry->getMidPoints();
                         }
-                        else if (auto polygonGeometry = std::dynamic_pointer_cast<const PolygonGeometry>(featureCollection.getGeometry(featureIndex))) {
+                        else if (auto polygonGeometry = std::get_if<PolygonGeometry>(featureCollection.getGeometry(featureIndex).get())) {
                             vertices = polygonGeometry->getSurfacePoints();
                         }
                         
@@ -169,10 +169,10 @@ namespace carto { namespace mvt {
                     }
                     else {
                         vt::TileLayerBuilder::VerticesList verticesList;
-                        if (auto lineGeometry = std::dynamic_pointer_cast<const LineGeometry>(featureCollection.getGeometry(featureIndex))) {
+                        if (auto lineGeometry = std::get_if<LineGeometry>(featureCollection.getGeometry(featureIndex).get())) {
                             verticesList = lineGeometry->getVerticesList();
                         }
-                        else if (auto polygonGeometry = std::dynamic_pointer_cast<const PolygonGeometry>(featureCollection.getGeometry(featureIndex))) {
+                        else if (auto polygonGeometry = std::get_if<PolygonGeometry>(featureCollection.getGeometry(featureIndex).get())) {
                             verticesList = polygonGeometry->getClosedOuterRings(true);
                         }
                         
@@ -214,18 +214,18 @@ namespace carto { namespace mvt {
                 }
                 globalId = globalId * 3 + 0;
 
-                if (auto pointGeometry = std::dynamic_pointer_cast<const PointGeometry>(featureCollection.getGeometry(featureIndex))) {
+                if (auto pointGeometry = std::get_if<PointGeometry>(featureCollection.getGeometry(featureIndex).get())) {
                     for (const auto& vertex : pointGeometry->getVertices()) {
                         pointProcessor(localId, globalId, groupId, vertex, placementPriority, 0);
                     }
                 }
                 else if (placement != vt::LabelOrientation::LINE) {
-                    if (auto lineGeometry = std::dynamic_pointer_cast<const LineGeometry>(featureCollection.getGeometry(featureIndex))) {
+                    if (auto lineGeometry = std::get_if<LineGeometry>(featureCollection.getGeometry(featureIndex).get())) {
                         for (const auto& vertices : lineGeometry->getVerticesList()) {
                             pointProcessor(localId, globalId, groupId, vertices, placementPriority, 0);
                         }
                     }
-                    else if (auto polygonGeometry = std::dynamic_pointer_cast<const PolygonGeometry>(featureCollection.getGeometry(featureIndex))) {
+                    else if (auto polygonGeometry = std::get_if<PolygonGeometry>(featureCollection.getGeometry(featureIndex).get())) {
                         for (const auto& vertex : polygonGeometry->getSurfacePoints()) {
                             pointProcessor(localId, globalId, groupId, vertex, placementPriority, 0);
                         }
@@ -233,10 +233,10 @@ namespace carto { namespace mvt {
                 }
                 else {
                     vt::TileLayerBuilder::VerticesList verticesList;
-                    if (auto lineGeometry = std::dynamic_pointer_cast<const LineGeometry>(featureCollection.getGeometry(featureIndex))) {
+                    if (auto lineGeometry = std::get_if<LineGeometry>(featureCollection.getGeometry(featureIndex).get())) {
                         verticesList = lineGeometry->getVerticesList();
                     }
-                    else if (auto polygonGeometry = std::dynamic_pointer_cast<const PolygonGeometry>(featureCollection.getGeometry(featureIndex))) {
+                    else if (auto polygonGeometry = std::get_if<PolygonGeometry>(featureCollection.getGeometry(featureIndex).get())) {
                         verticesList = polygonGeometry->getClosedOuterRings(true);
                     }
 

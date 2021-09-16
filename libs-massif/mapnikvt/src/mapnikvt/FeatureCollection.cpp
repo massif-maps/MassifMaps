@@ -30,11 +30,11 @@ namespace carto { namespace mvt {
     }
 
     std::shared_ptr<const LineGeometry> FeatureCollection::getLineGeometry(std::size_t index) const {
-        const std::shared_ptr<const Geometry>& geometry = _features.at(index).second.getGeometry();
-        if (auto lineGeometry = std::dynamic_pointer_cast<const LineGeometry>(geometry)) {
-            return lineGeometry;
+        std::shared_ptr<const Geometry> geometry = _features.at(index).second.getGeometry();
+        if (auto lineGeometry = std::get_if<LineGeometry>(geometry.get())) {
+            return std::shared_ptr<const LineGeometry>(geometry, lineGeometry);
         }
-        if (auto polygonGeometry = std::dynamic_pointer_cast<const PolygonGeometry>(geometry)) {
+        if (auto polygonGeometry = std::get_if<PolygonGeometry>(geometry.get())) {
             LineGeometry::VerticesList verticesList;
             for (const PolygonGeometry::VerticesList& polygon : polygonGeometry->getPolygonList()) {
                 for (PolygonGeometry::Vertices vertices : polygon) {
@@ -54,11 +54,11 @@ namespace carto { namespace mvt {
     }
     
     std::shared_ptr<const PolygonGeometry> FeatureCollection::getPolygonGeometry(std::size_t index) const {
-        const std::shared_ptr<const Geometry>& geometry = _features.at(index).second.getGeometry();
-        if (auto polygonGeometry = std::dynamic_pointer_cast<const PolygonGeometry>(geometry)) {
-            return polygonGeometry;
+        std::shared_ptr<const Geometry> geometry = _features.at(index).second.getGeometry();
+        if (auto polygonGeometry = std::get_if<PolygonGeometry>(geometry.get())) {
+            return std::shared_ptr<const PolygonGeometry>(geometry, polygonGeometry);
         }
-        if (auto lineGeometry = std::dynamic_pointer_cast<const LineGeometry>(geometry)) {
+        if (auto lineGeometry = std::get_if<LineGeometry>(geometry.get())) {
             PolygonGeometry::PolygonList polygonList;
             for (LineGeometry::Vertices vertices : lineGeometry->getVerticesList()) {
                 if (vertices.empty() || vertices.front() != vertices.back()) {

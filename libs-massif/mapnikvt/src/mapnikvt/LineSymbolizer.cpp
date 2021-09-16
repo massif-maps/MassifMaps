@@ -57,12 +57,12 @@ namespace carto { namespace mvt {
             bool suppressWarning = false;
             if (auto lineProcessor = layerBuilder.createLineProcessor(style, strokeMap)) {
                 for (std::size_t featureIndex = 0; featureIndex < featureCollection.size(); featureIndex++) {
-                    if (auto lineGeometry = std::dynamic_pointer_cast<const LineGeometry>(featureCollection.getGeometry(featureIndex))) {
+                    if (auto lineGeometry = std::get_if<LineGeometry>(featureCollection.getGeometry(featureIndex).get())) {
                         for (const auto& vertices : lineGeometry->getVerticesList()) {
                             lineProcessor(featureCollection.getLocalId(featureIndex), vertices);
                         }
                     }
-                    else if (auto polygonGeometry = std::dynamic_pointer_cast<const PolygonGeometry>(featureCollection.getGeometry(featureIndex))) {
+                    else if (auto polygonGeometry = std::get_if<PolygonGeometry>(featureCollection.getGeometry(featureIndex).get())) {
                         for (const auto& verticesList : polygonGeometry->getPolygonList()) {
                             for (const auto& vertices : verticesList) {
                                 lineProcessor(featureCollection.getLocalId(featureIndex), vertices);

@@ -44,17 +44,17 @@ namespace carto { namespace mvt {
         return [style, glyphMap, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
             if (auto pointProcessor = layerBuilder.createPointProcessor(style, glyphMap)) {
                 for (std::size_t featureIndex = 0; featureIndex < featureCollection.size(); featureIndex++) {
-                    if (auto pointGeometry = std::dynamic_pointer_cast<const PointGeometry>(featureCollection.getGeometry(featureIndex))) {
+                    if (auto pointGeometry = std::get_if<PointGeometry>(featureCollection.getGeometry(featureIndex).get())) {
                         for (const vt::TileLayerBuilder::Vertex& vertex : pointGeometry->getVertices()) {
                             pointProcessor(featureCollection.getLocalId(featureIndex), vertex);
                         }
                     }
-                    else if (auto lineGeometry = std::dynamic_pointer_cast<const LineGeometry>(featureCollection.getGeometry(featureIndex))) {
+                    else if (auto lineGeometry = std::get_if<LineGeometry>(featureCollection.getGeometry(featureIndex).get())) {
                         for (const vt::TileLayerBuilder::Vertex& vertex : lineGeometry->getMidPoints()) {
                             pointProcessor(featureCollection.getLocalId(featureIndex), vertex);
                         }
                     }
-                    else if (auto polygonGeometry = std::dynamic_pointer_cast<const PolygonGeometry>(featureCollection.getGeometry(featureIndex))) {
+                    else if (auto polygonGeometry = std::get_if<PolygonGeometry>(featureCollection.getGeometry(featureIndex).get())) {
                         for (const vt::TileLayerBuilder::Vertex& vertex : polygonGeometry->getSurfacePoints()) {
                             pointProcessor(featureCollection.getLocalId(featureIndex), vertex);
                         }

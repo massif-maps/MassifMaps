@@ -86,6 +86,7 @@ namespace carto { namespace mvt {
         virtual std::shared_ptr<const Geometry> getGeometry() const override {
             float scale = 1.0f / _tileSize;
             std::vector<cglib::vec2<float>> vertices;
+            vertices.reserve(_index1 - _index0);
             for (std::size_t i = _index0; i < _index1; i++) {
                 const TorqueFeatureDecoder::Element& element = _elements[i];
                 cglib::vec2<float> p = cglib::transform_point(cglib::vec2<float>(element.x * scale, 1.0f - element.y * scale), _transform);
@@ -93,7 +94,7 @@ namespace carto { namespace mvt {
                     vertices.push_back(p);
                 }
             }
-            return std::make_shared<PointGeometry>(std::move(vertices));
+            return std::make_shared<Geometry>(PointGeometry(std::move(vertices)));
         }
 
     private:

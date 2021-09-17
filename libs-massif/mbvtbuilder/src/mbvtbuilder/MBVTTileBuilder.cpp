@@ -295,7 +295,7 @@ namespace carto { namespace mbvtbuilder {
             std::map<LayerIndex, Layer>& layers = _cachedZoomLayers[currentZoom];
             for (auto it = layers.begin(); it != layers.end(); it++) {
                 Layer& layer = it->second;
-                double tolerance = 2.0 * PI * EARTH_RADIUS / (1 << currentZoom) * _simplifyTolerance / TILE_PIXELS;
+                double tolerance = 2.0 * PI * EARTH_RADIUS / (1 << currentZoom) * _simplifyTolerance / (TILE_PIXELS * TILE_SUBPIXEL_TOLERANCE_DIVIDER);
                 simplifyLayer(layer, tolerance);
             }
             nextZoom = currentZoom;

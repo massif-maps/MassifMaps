@@ -74,6 +74,7 @@ namespace carto { namespace mbvtbuilder {
     }
 
     void MBVTTileBuilder::addMultiPoint(LayerIndex layerIndex, MultiPoint coords, picojson::value properties) {
+        std::transform(coords.begin(), coords.end(), coords.begin(), wgs84ToWM);
         Bounds bounds = Bounds::make_union(coords.begin(), coords.end());
 
         std::lock_guard<std::mutex> lock(_mutex);
@@ -90,7 +91,8 @@ namespace carto { namespace mbvtbuilder {
 
     void MBVTTileBuilder::addMultiLineString(LayerIndex layerIndex, MultiLineString coordsList, picojson::value properties) {
         Bounds bounds = Bounds::smallest();
-        for (const std::vector<Point>& coords : coordsList) {
+        for (std::vector<Point>& coords : coordsList) {
+            std::transform(coords.begin(), coords.end(), coords.begin(), wgs84ToWM);
             bounds.add(Bounds::make_union(coords.begin(), coords.end()));
         }
 
@@ -108,9 +110,10 @@ namespace carto { namespace mbvtbuilder {
 
     void MBVTTileBuilder::addMultiPolygon(LayerIndex layerIndex, MultiPolygon ringsList, picojson::value properties) {
         Bounds bounds = Bounds::smallest();
-        for (const std::vector<std::vector<Point>>& rings : ringsList) {
-            for (const std::vector<Point>& ring : rings) {
-                bounds.add(Bounds::make_union(ring.begin(), ring.end()));
+        for (std::vector<std::vector<Point>>& rings : ringsList) {
+            for (std::vector<Point>& coords : rings) {
+                std::transform(coords.begin(), coords.end(), coords.begin(), wgs84ToWM);
+                bounds.add(Bounds::make_union(coords.begin(), coords.end()));
             }
         }
 
@@ -174,21 +177,21 @@ namespace carto { namespace mbvtbuilder {
             for (const picojson::value& subCoordsDef : coordsDef.get<picojson::array>()) {
                 coords.push_back(parseCoordinates(subCoordsDef));
             }
-            addMultiPoint(layerIndex, coords, properties);
+            addMultiPoint(layerIndex, std::move(coords), properties);
         }
         else if (type == "MultiLineString") {
             std::vector<std::vector<cglib::vec2<double>>> coordsList;
             for (const picojson::value& subCoordsDef : coordsDef.get<picojson::array>()) {
                 coordsList.push_back(parseCoordinatesList(subCoordsDef));
             }
-            addMultiLineString(layerIndex, coordsList, properties);
+            addMultiLineString(layerIndex, std::move(coordsList), properties);
         }
         else if (type == "MultiPolygon") {
             std::vector<std::vector<std::vector<cglib::vec2<double>>>> ringsList;
             for (const picojson::value& subCoordsDef : coordsDef.get<picojson::array>()) {
                 ringsList.push_back(parseCoordinatesRings(subCoordsDef));
             }
-            addMultiPolygon(layerIndex, ringsList, properties);
+            addMultiPolygon(layerIndex, std::move(ringsList), properties);
         }
         else {
             throw std::runtime_error("Invalid geometry type");
@@ -292,7 +295,7 @@ namespace carto { namespace mbvtbuilder {
             std::map<LayerIndex, Layer>& layers = _cachedZoomLayers[currentZoom];
             for (auto it = layers.begin(); it != layers.end(); it++) {
                 Layer& layer = it->second;
-                double tolerance = 2.0 * PI * EARTH_RADIUS / (1 << currentZoom) * _simplifyTolerance / TILE_PIXELS;
+                double tolerance = 2.0 * PI * EARTH_RADIUS / (1 << currentZoom) * _simplifyTolerance / (TILE_PIXELS * TILE_SUBPIXEL_TOLERANCE_DIVIDER);
                 simplifyLayer(layer, tolerance);
             }
             nextZoom = currentZoom;
@@ -452,8 +455,7 @@ namespace carto { namespace mbvtbuilder {
 
     MBVTTileBuilder::Point MBVTTileBuilder::parseCoordinates(const picojson::value& coordsDef) {
         const picojson::array& coordsArray = coordsDef.get<picojson::array>();
-        cglib::vec2<double> posWgs84(coordsArray.at(0).get<double>(), coordsArray.at(1).get<double>());
-        return wgs84ToWM(posWgs84);
+        return cglib::vec2<double>(coordsArray.at(0).get<double>(), coordsArray.at(1).get<double>());
     }
 
     MBVTTileBuilder::Point MBVTTileBuilder::wgs84ToWM(const cglib::vec2<double>& posWgs84) {

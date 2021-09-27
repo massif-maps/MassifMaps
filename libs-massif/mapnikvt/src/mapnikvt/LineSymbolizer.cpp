@@ -26,7 +26,7 @@ namespace carto { namespace mvt {
         std::shared_ptr<const vt::BitmapPattern> strokePattern;
         std::string strokeDashArray = _strokeDashArray.getValue(exprContext);
         if (!strokeDashArray.empty()) {
-            int height = 1;
+            float height = 1.0f;
             if (strokeLinecap != vt::LineCapMode::NONE) {
                 height = _strokeWidth.getStaticValue(exprContext);
             }
@@ -57,12 +57,12 @@ namespace carto { namespace mvt {
             bool suppressWarning = false;
             if (auto lineProcessor = layerBuilder.createLineProcessor(style, strokeMap)) {
                 for (std::size_t featureIndex = 0; featureIndex < featureCollection.size(); featureIndex++) {
-                    if (auto lineGeometry = std::dynamic_pointer_cast<const LineGeometry>(featureCollection.getGeometry(featureIndex))) {
+                    if (auto lineGeometry = std::get_if<LineGeometry>(featureCollection.getGeometry(featureIndex).get())) {
                         for (const auto& vertices : lineGeometry->getVerticesList()) {
                             lineProcessor(featureCollection.getLocalId(featureIndex), vertices);
                         }
                     }
-                    else if (auto polygonGeometry = std::dynamic_pointer_cast<const PolygonGeometry>(featureCollection.getGeometry(featureIndex))) {
+                    else if (auto polygonGeometry = std::get_if<PolygonGeometry>(featureCollection.getGeometry(featureIndex).get())) {
                         for (const auto& verticesList : polygonGeometry->getPolygonList()) {
                             for (const auto& vertices : verticesList) {
                                 lineProcessor(featureCollection.getLocalId(featureIndex), vertices);
@@ -78,7 +78,7 @@ namespace carto { namespace mvt {
         };
     }
 
-    std::shared_ptr<vt::BitmapPattern> LineSymbolizer::createDashBitmapPattern(const std::vector<float>& strokeDashArray, int height, vt::LineCapMode lineCap) {
+    std::shared_ptr<vt::BitmapPattern> LineSymbolizer::createDashBitmapPattern(const std::vector<float>& strokeDashArray, float height, vt::LineCapMode lineCap) {
         float size = std::accumulate(strokeDashArray.begin(), strokeDashArray.end(), 0.0f);
         if (size <= 0 || height <= 0) {
             return std::shared_ptr<vt::BitmapPattern>();

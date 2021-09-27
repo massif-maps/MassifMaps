@@ -77,6 +77,7 @@ namespace carto { namespace mbvtbuilder {
 
         static constexpr double PI = boost::math::constants::pi<double>();
         static constexpr double EARTH_RADIUS = 6378137.0;
+        static constexpr float TILE_SUBPIXEL_TOLERANCE_DIVIDER = 4.0f;
         static constexpr int TILE_PIXELS = 256;
 
         std::uint64_t extractFeatureId(LayerIndex layerIndex, const picojson::value& properties);

@@ -29,7 +29,7 @@ namespace carto { namespace mvt {
         static constexpr int DASH_SUPERSAMPLING_FACTOR = 2;
         static constexpr float DASH_PATTERN_SCALE = 0.75f;
 
-        static std::shared_ptr<vt::BitmapPattern> createDashBitmapPattern(const std::vector<float>& strokeDashArray, int height, vt::LineCapMode lineCap);
+        static std::shared_ptr<vt::BitmapPattern> createDashBitmapPattern(const std::vector<float>& strokeDashArray, float height, vt::LineCapMode lineCap);
 
         ColorFunctionParameter _stroke = ColorFunctionParameter("#000000");
         FloatFunctionParameter _strokeWidth = FloatFunctionParameter(1.0f);

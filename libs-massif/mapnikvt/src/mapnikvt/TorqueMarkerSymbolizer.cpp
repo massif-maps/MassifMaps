@@ -34,7 +34,7 @@ namespace carto { namespace mvt {
             float strokeWidth = _strokeWidth.getValue(exprContext);
             std::string markerType = _markerType.getValue(exprContext);
             if (markerType == "rectangle") {
-                std::string file = "__torque_marker_rectangle_" + std::to_string(width) + "_" + std::to_string(height) + "_" + std::to_string(fill.value()) + "_" + std::to_string(strokeWidth) + "_" + std::to_string(stroke.value()) + ".bmp";
+                file = "__torque_marker_rectangle_" + std::to_string(width) + "_" + std::to_string(height) + "_" + std::to_string(fill.value()) + "_" + std::to_string(strokeWidth) + "_" + std::to_string(stroke.value()) + ".bmp";
                 bitmapImage = symbolizerContext.getBitmapManager()->getBitmapImage(file);
                 if (!bitmapImage) {
                     bitmapImage = makeRectangleBitmap(width * SUPERSAMPLING_FACTOR, height * SUPERSAMPLING_FACTOR, fill, strokeWidth * SUPERSAMPLING_FACTOR, stroke);
@@ -42,7 +42,7 @@ namespace carto { namespace mvt {
                 }
             }
             else {
-                std::string file = "__torque_marker_ellipse_" + std::to_string(width) + "_" + std::to_string(height) + "_" + std::to_string(fill.value()) + "_" + std::to_string(strokeWidth) + "_" + std::to_string(stroke.value()) + ".bmp";
+                file = "__torque_marker_ellipse_" + std::to_string(width) + "_" + std::to_string(height) + "_" + std::to_string(fill.value()) + "_" + std::to_string(strokeWidth) + "_" + std::to_string(stroke.value()) + ".bmp";
                 bitmapImage = symbolizerContext.getBitmapManager()->getBitmapImage(file);
                 if (!bitmapImage) {
                     bitmapImage = makeEllipseBitmap(width * SUPERSAMPLING_FACTOR, height * SUPERSAMPLING_FACTOR, fill, strokeWidth * SUPERSAMPLING_FACTOR, stroke);
@@ -73,7 +73,7 @@ namespace carto { namespace mvt {
             bool suppressWarning = false;
             if (auto pointProcessor = layerBuilder.createPointProcessor(style, glyphMap)) {
                 for (std::size_t featureIndex = 0; featureIndex < featureCollection.size(); featureIndex++) {
-                    if (auto pointGeometry = std::dynamic_pointer_cast<const PointGeometry>(featureCollection.getGeometry(featureIndex))) {
+                    if (auto pointGeometry = std::get_if<PointGeometry>(featureCollection.getGeometry(featureIndex).get())) {
                         for (const vt::TileLayerBuilder::Vertex& vertex : pointGeometry->getVertices()) {
                             pointProcessor(featureCollection.getLocalId(featureIndex), vertex);
                         }

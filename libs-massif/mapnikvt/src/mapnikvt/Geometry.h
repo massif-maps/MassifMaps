@@ -10,16 +10,12 @@
 #include <memory>
 #include <list>
 #include <vector>
+#include <variant>
 
 #include <cglib/vec.h>
 
 namespace carto { namespace mvt {
-    class Geometry {
-    public:
-        virtual ~Geometry() = default;
-    };
-
-    class PointGeometry : public Geometry {
+    class PointGeometry final {
     public:
         using Vertices = std::vector<cglib::vec2<float>>;
 
@@ -31,7 +27,7 @@ namespace carto { namespace mvt {
         Vertices _vertices;
     };
 
-    class LineGeometry : public Geometry {
+    class LineGeometry final {
     public:
         using Vertices = std::vector<cglib::vec2<float>>;
         using VerticesList = std::vector<Vertices>;
@@ -46,7 +42,7 @@ namespace carto { namespace mvt {
         VerticesList _verticesList;
     };
 
-    class PolygonGeometry : public Geometry {
+    class PolygonGeometry final {
     public:
         using Vertices = std::vector<cglib::vec2<float>>;
         using VerticesList = std::vector<Vertices>;
@@ -64,6 +60,8 @@ namespace carto { namespace mvt {
     private:
         PolygonList _polygonList;
     };
+
+    using Geometry = std::variant<PointGeometry, LineGeometry, PolygonGeometry>;
 } }
 
 #endif

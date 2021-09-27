@@ -194,7 +194,7 @@ namespace carto { namespace css {
     }
 
     mvt::Expression CartoCSSMapnikTranslator::buildFunctionExpression(const FunctionExpression& funcExpr) {
-        if (_basicFuncs.find(funcExpr.getFunc()) != _basicFuncs.end()) {
+        if (auto funcIt = _basicFuncs.find(funcExpr.getFunc()); funcIt != _basicFuncs.end()) {
             // Basic functions. Fixed arity.
             struct FunctionBuilder {
                 explicit FunctionBuilder(const std::vector<mvt::Expression>& exprs) : _exprs(exprs) { }
@@ -229,18 +229,20 @@ namespace carto { namespace css {
             for (const Expression& expr : funcExpr.getArgs()) {
                 mapnikExprs.push_back(buildExpression(expr));
             }
-            auto it = _basicFuncs.find(funcExpr.getFunc());
-            return std::visit(FunctionBuilder(mapnikExprs), it->second);
+            return std::visit(FunctionBuilder(mapnikExprs), funcIt->second);
         }
-        else if (_interpolationFuncs.find(funcExpr.getFunc()) != _interpolationFuncs.end()) {
+        else if (auto funcIt = _interpolationFuncs.find(funcExpr.getFunc()); funcIt != _interpolationFuncs.end()) {
             // Interpolation function. Variable arity, special case.
-            if (funcExpr.getArgs().size() < 2) {
+            std::size_t argCount = funcExpr.getArgs().size();
+            if (argCount < 2) {
                 throw TranslatorException("Expecting at least two arguments for interpolation function");
             }
 
-            std::vector<mvt::Value> keyFrames;
-            keyFrames.reserve((funcExpr.getArgs().size() - 1) * 2);
-            for (std::size_t i = 1; i < funcExpr.getArgs().size(); i++) {
+            mvt::Expression mapnikTimeExpr = buildExpression(funcExpr.getArgs()[0]);
+
+            std::vector<mvt::Value> mapnikKeyFrames;
+            mapnikKeyFrames.reserve((argCount - 1) * 2);
+            for (std::size_t i = 1; i < argCount; i++) {
                 auto listExpr = std::get_if<std::shared_ptr<ListExpression>>(&funcExpr.getArgs()[i]);
                 if (!listExpr) {
                     throw TranslatorException("Expecting element list for interpolation function");
@@ -258,33 +260,28 @@ namespace carto { namespace css {
                 if (!valueVal) {
                     throw TranslatorException("Expecting constant scalar values for interpolation function");
                 }
-                keyFrames.push_back(*keyVal);
-                keyFrames.push_back(*valueVal);
+                mapnikKeyFrames.push_back(*keyVal);
+                mapnikKeyFrames.push_back(*valueVal);
             }
-
-            mvt::Expression mapnikTimeExpr = buildExpression(funcExpr.getArgs()[0]);
-            auto it = _interpolationFuncs.find(funcExpr.getFunc());
-            return std::make_shared<mvt::InterpolateExpression>(it->second, std::move(mapnikTimeExpr), std::move(keyFrames));
+            return std::make_shared<mvt::InterpolateExpression>(funcIt->second, std::move(mapnikTimeExpr), std::move(mapnikKeyFrames));
         }
         else {
             // Assume pseudo-function (like 'translate(1,2)')
             std::string exprStr = funcExpr.getFunc();
             exprStr += "(";
-            for (std::size_t i = 0; i < funcExpr.getArgs().size(); i++) {
-                if (i > 0) {
-                    exprStr += ",";
-                }
-
-                mvt::Expression mapnikExpr = buildExpression(funcExpr.getArgs()[i]);
+            const char* argSeparator = "";
+            for (const Expression& expr : funcExpr.getArgs()) {
+                mvt::Expression mapnikExpr = buildExpression(expr);
                 if (auto val = std::get_if<mvt::Value>(&mapnikExpr)) {
-                    exprStr += mvt::generateValueString(*val);
+                    exprStr += argSeparator + mvt::generateValueString(*val);
                 }
                 else {
                     throw TranslatorException("Expecting constant arguments for function " + funcExpr.getFunc());
                 }
+                argSeparator = ",";
             }
             exprStr += ")";
-            return mvt::Value(exprStr);
+            return mvt::Value(std::move(exprStr));
         }
     }
 

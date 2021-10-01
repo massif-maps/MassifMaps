@@ -36,7 +36,7 @@ namespace carto { namespace css {
         int getRuleOrder() const { return std::get<3>(_specificity); }
 
         bool operator == (const Property& other) const {
-            return _field == other._field && std::visit(ExpressionDeepEqualsChecker(), _expression, other._expression) && _specificity == other._specificity;
+            return _field == other._field && _specificity == other._specificity && std::visit(ExpressionDeepEqualsChecker(), _expression, other._expression);
         }
 
         bool operator != (const Property& other) const {
@@ -62,64 +62,8 @@ namespace carto { namespace css {
             return it != _properties.end() ? *it : std::shared_ptr<const Property>();
         }
 
-        void insertProperty(const std::shared_ptr<const Property>& prop) {
-            auto it = std::lower_bound(_properties.begin(), _properties.end(), prop, [](const std::shared_ptr<const Property>& prop1, const std::shared_ptr<const Property>& prop2) { return prop1->getField() < prop2->getField(); });
-            if (it != _properties.end() && (*it)->getField() == prop->getField()) {
-                *it = prop;
-            } else {
-                _properties.insert(it, prop);
-            }
-        }
-
-        bool mergeFilters(const std::vector<std::shared_ptr<const Predicate>>& filters) {
-            for (const std::shared_ptr<const Predicate>& filter : filters) {
-                for (const std::shared_ptr<const Predicate>& existingFilter : _filters) {
-                    boost::tribool intersects = std::visit(PredicateIntersectsChecker(), *filter, *existingFilter);
-                    if (!intersects) {
-                        return false;
-                    }
-                }
-
-                bool insert = true;
-                for (std::shared_ptr<const Predicate>& existingFilter : _filters) {
-                    boost::tribool contains = std::visit(PredicateContainsChecker(), *filter, *existingFilter);
-                    if (contains) {
-                        insert = false;
-                        break;
-                    }
-                    boost::tribool containsExisting = std::visit(PredicateContainsChecker(), *existingFilter, *filter);
-                    if (containsExisting) {
-                        existingFilter = filter;
-                        insert = false;
-                        break;
-                    }
-                }
-                if (insert) {
-                    _filters.push_back(filter);
-                }
-            }
-            return true;
-        }
-
-        bool covers(const PropertySet& propertySet) const {
-            return std::all_of(_filters.begin(), _filters.end(), [&](const std::shared_ptr<const Predicate>& filter) {
-                if (std::find(propertySet.getFilters().begin(), propertySet.getFilters().end(), filter) != propertySet.getFilters().end()) {
-                    return true;
-                }
-                return std::any_of(propertySet.getFilters().begin(), propertySet.getFilters().end(), [&filter](const std::shared_ptr<const Predicate>& propFilter) {
-                    boost::tribool contains = std::visit(PredicateContainsChecker(), *filter, *propFilter);
-                    return contains;
-                });
-            });
-        }
-
         bool operator == (const PropertySet& other) const {
-            if (_filters == other._filters && _properties.size() == other._properties.size()) {
-                return std::equal(_properties.begin(), _properties.end(), other._properties.begin(), [](const std::shared_ptr<const Property>& prop1, const std::shared_ptr<const Property>& prop2) {
-                    return prop1 == prop2 || *prop1 == *prop2;
-                });
-            }
-            return false;
+            return _filters == other._filters && _properties == other._properties;
         }
 
         bool operator != (const PropertySet& other) const {

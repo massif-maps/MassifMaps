@@ -9,6 +9,7 @@
 
 #include "Expression.h"
 #include "Predicate.h"
+#include "PredicateUtils.h"
 #include "StyleSheet.h"
 #include "PropertySets.h"
 
@@ -60,36 +61,125 @@ namespace carto { namespace css {
             }
         };
 
-        struct FilteredPropertyListState {
-            std::vector<std::shared_ptr<const Predicate>> predicates;
-            std::vector<std::shared_ptr<const Property>> properties;
+        struct FilteredPropertySet {
+            std::vector<std::size_t> filters;
+            std::vector<std::size_t> properties;
 
-            std::size_t insertPredicate(const Predicate& pred) {
-                auto it = std::find_if(predicates.begin(), predicates.end(), [&pred](const std::shared_ptr<const Predicate>& otherPred) {
-                    return pred == *otherPred;
-                });
-                if (it == predicates.end()) {
-                    it = predicates.insert(it, std::make_shared<Predicate>(pred));
-                }
-                return it - predicates.begin();
+            bool operator == (const FilteredPropertySet& other) const {
+                return filters == other.filters && properties == other.properties;
             }
 
-            std::size_t insertProperty(const Property& prop) {
-                auto it = std::find_if(properties.begin(), properties.end(), [&prop](const std::shared_ptr<const Property>& otherProp) {
-                    return prop == *otherProp;
-                });
-                if (it == properties.end()) {
-                    it = properties.insert(it, std::make_shared<Property>(prop));
-                }
-                return it - properties.begin();
+            bool operator != (const FilteredPropertySet& other) const {
+                return !(*this == other);
             }
         };
 
-        void buildPropertyLists(const StyleSheet& styleSheet, PredicateContext& context, FilteredPropertyListState& state, std::list<FilteredPropertyList>& propertyLists) const;
-        void buildPropertyList(const RuleSet& ruleSet, const PredicateContext& context, const std::string& existingAttachment, const std::vector<std::size_t>& existingFilters, FilteredPropertyListState& state, std::list<FilteredPropertyList>& propertyLists) const;
-        void buildLayerAttachment(const FilteredPropertyList& propertyList, const FilteredPropertyListState& state, std::list<AttachmentPropertySets>& layerAttachments) const;
+        struct FilteredPropertyState {
+            FilteredPropertyState() = default;
+
+            std::shared_ptr<const Predicate> getPredicate(std::size_t predicate) const {
+                return _predicates.at(predicate);
+            }
+
+            std::size_t insertPredicate(const Predicate& pred) {
+                auto it = std::find_if(_predicates.begin(), _predicates.end(), [&pred](const std::shared_ptr<const Predicate>& otherPred) {
+                    return pred == *otherPred;
+                });
+                if (it == _predicates.end()) {
+                    it = _predicates.insert(it, std::make_shared<Predicate>(pred));
+                    std::size_t i = it - _predicates.begin();
+                    _predicateContains.emplace_back();
+                    _predicateIntersects.emplace_back();
+                    for (std::size_t j = 0; j < _predicates.size() - 1; j++) {
+                        _predicateContains[i].push_back(std::visit(PredicateContainsChecker(), *_predicates[i], *_predicates[j]));
+                        _predicateContains[j].push_back(std::visit(PredicateContainsChecker(), *_predicates[j], *_predicates[i]));
+                        _predicateIntersects[i].push_back(std::visit(PredicateIntersectsChecker(), *_predicates[i], *_predicates[j]));
+                        _predicateIntersects[j].push_back(std::visit(PredicateIntersectsChecker(), *_predicates[j], *_predicates[i]));
+                    }
+                    _predicateContains[i].push_back(true);
+                    _predicateIntersects[i].push_back(true);
+                }
+                return it - _predicates.begin();
+            }
+
+            std::shared_ptr<const Property> getProperty(std::size_t property) const {
+                return _properties.at(property);
+            }
+
+            std::size_t insertProperty(const Property& prop) {
+                auto it = std::find_if(_properties.begin(), _properties.end(), [&prop](const std::shared_ptr<const Property>& otherProp) {
+                    return prop == *otherProp;
+                });
+                if (it == _properties.end()) {
+                    it = _properties.insert(it, std::make_shared<Property>(prop));
+                }
+                return it - _properties.begin();
+            }
+
+            std::shared_ptr<const Property> findPropertySetProperty(const FilteredPropertySet& propertySet, const std::string& field) const {
+                auto it = std::find_if(propertySet.properties.begin(), propertySet.properties.end(), [&field, this](std::size_t existingProperty) {
+                    return _properties[existingProperty]->getField() == field;
+                });
+                return it != propertySet.properties.end() ? _properties[*it] : std::shared_ptr<const Property>();
+            }
+
+            bool mergePropertySetProperty(FilteredPropertySet& existingPropertySet, const FilteredProperty& property) const {
+                for (std::size_t filter : property.filters) {
+                    for (std::size_t existingFilter : existingPropertySet.filters) {
+                        if (!_predicateIntersects[filter][existingFilter]) {
+                            return false;
+                        }
+                    }
+
+                    bool insert = true;
+                    for (std::size_t& existingFilter : existingPropertySet.filters) {
+                        if (_predicateContains[filter][existingFilter]) {
+                            insert = false;
+                            break;
+                        }
+                        if (_predicateContains[existingFilter][filter]) {
+                            existingFilter = filter;
+                            insert = false;
+                            break;
+                        }
+                    }
+                    if (insert) {
+                        existingPropertySet.filters.push_back(filter);
+                    }
+                }
+
+                auto it = std::find_if(existingPropertySet.properties.begin(), existingPropertySet.properties.end(), [&property, this](std::size_t existingProperty) {
+                    return _properties[existingProperty]->getField() == _properties[property.property]->getField();
+                });
+                if (it != existingPropertySet.properties.end()) {
+                    *it = property.property;
+                } else {
+                    existingPropertySet.properties.insert(it, property.property);
+                }
+                return true;
+            }
+
+            bool testPropertySetFilterCover(const FilteredPropertySet& existingPropertySet, const FilteredPropertySet& propertySet) const {
+                return std::all_of(existingPropertySet.filters.begin(), existingPropertySet.filters.end(), [&, this](std::size_t existingFilter) {
+                    return std::any_of(propertySet.filters.begin(), propertySet.filters.end(), [existingFilter, this](std::size_t filter) {
+                        return _predicateContains[existingFilter][filter];
+                    });
+                });
+            }
+
+        private:
+            std::vector<std::shared_ptr<const Predicate>> _predicates;
+            std::vector<std::shared_ptr<const Property>> _properties;
+
+            std::vector<std::vector<boost::tribool>> _predicateContains;
+            std::vector<std::vector<boost::tribool>> _predicateIntersects;
+        };
+
+        void buildPropertyLists(const StyleSheet& styleSheet, PredicateContext& context, FilteredPropertyState& state, std::list<FilteredPropertyList>& propertyLists) const;
+        void buildPropertyList(const RuleSet& ruleSet, const PredicateContext& context, const std::string& existingAttachment, const std::vector<std::size_t>& existingFilters, FilteredPropertyState& state, std::list<FilteredPropertyList>& propertyLists) const;
+        void buildLayerAttachment(const FilteredPropertyList& propertyList, const FilteredPropertyState& state, std::list<AttachmentPropertySets>& layerAttachments) const;
         
-        static Property::RuleSpecificity calculateRuleSpecificity(const std::vector<size_t>& filters, const FilteredPropertyListState& state, int order);
+        static Property::RuleSpecificity calculateRuleSpecificity(const std::vector<size_t>& filters, const FilteredPropertyState& state, int order);
 
         ExpressionContext _context;
         bool _ignoreLayerPredicates = false;

@@ -302,10 +302,11 @@ namespace carto { namespace css {
     }
     
     StyleSheet CartoCSSParser::parse(const std::string& cartoCSS) {
+        static const cssparserimpl::Grammar<std::string::const_iterator> grammar;
+        static const cssparserimpl::Skipper<std::string::const_iterator> skipper;
+
         std::string::const_iterator it = cartoCSS.begin();
         std::string::const_iterator end = cartoCSS.end();
-        cssparserimpl::Grammar<std::string::const_iterator> grammar;
-        cssparserimpl::Skipper<std::string::const_iterator> skipper;
         StyleSheet styleSheet;
         bool result = false;
         try {

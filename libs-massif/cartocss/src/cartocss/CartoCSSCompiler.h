@@ -36,7 +36,7 @@ namespace carto { namespace css {
         
     private:
         struct FilteredProperty {
-            std::size_t property;
+            std::size_t property = 0;
             std::vector<std::size_t> filters;
 
             bool operator == (const FilteredProperty& other) const {

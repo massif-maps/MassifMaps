@@ -6,15 +6,18 @@
 #include "Rule.h"
 #include "Symbolizer.h"
 
+#include <cmath>
 #include <algorithm>
+#include <utility>
 
 namespace carto { namespace mvt {
     Style::Style(std::string name, float opacity, std::string imageFilters, std::optional<vt::CompOp> compOp, FilterMode filterMode, std::vector<std::shared_ptr<const Rule>> rules) : _name(std::move(name)), _opacity(opacity), _imageFilters(std::move(imageFilters)), _compOp(std::move(compOp)), _filterMode(filterMode), _rules(std::move(rules)) {
-        rebuildZoomRuleMap();
     }
 
     const std::vector<std::shared_ptr<const Rule>>& Style::getZoomRules(int zoom) const {
         static const std::vector<std::shared_ptr<const Rule>> emptyRules;
+
+        calculateZoomRuleMap();
         auto it = _zoomRuleMap.find(zoom);
         if (it == _zoomRuleMap.end()) {
             return emptyRules;
@@ -69,17 +72,25 @@ namespace carto { namespace mvt {
         }
 
         if (updated) {
-            rebuildZoomRuleMap();
+            _zoomRuleMapCalculated = false;
         }
     }
 
-    void Style::rebuildZoomRuleMap() {
+    void Style::calculateZoomRuleMap() const {
+        std::lock_guard<std::mutex> lock(_zoomRuleMapMutex);
+
+        if (_zoomRuleMapCalculated) {
+            return;
+        }
+
         _zoomRuleMap.clear();
         for (const std::shared_ptr<const Rule>& rule : _rules) {
             for (int zoom = rule->getMinZoom(); zoom < rule->getMaxZoom(); zoom++) {
                 _zoomRuleMap[zoom].push_back(rule);
             }
         }
+
+        _zoomRuleMapCalculated = true;
     }
 
     std::optional<Predicate> Style::buildOptimizedOrPredicate(const std::optional<Predicate>& pred1, const std::optional<Predicate>& pred2) {

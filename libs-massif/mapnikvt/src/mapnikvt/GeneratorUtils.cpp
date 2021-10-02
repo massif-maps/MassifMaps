@@ -55,8 +55,7 @@ namespace carto { namespace mvt {
     std::string generateColorString(vt::Color color) {
         std::string str;
         std::back_insert_iterator<std::string> it(str);
-        colorgenimpl::Delimiter delimiter;
-        bool result = boost::spirit::karma::generate_delimited(it, ColorGeneratorGrammar<std::back_insert_iterator<std::string>>(), delimiter, color.value());
+        bool result = boost::spirit::karma::generate(it, ColorGeneratorGrammar<std::back_insert_iterator<std::string>>(), color.value());
         if (!result) {
             throw GeneratorException("Could not generate color string");
         }
@@ -76,8 +75,7 @@ namespace carto { namespace mvt {
     std::string generateTransformListString(const std::vector<Transform>& transforms) {
         std::string str;
         std::back_insert_iterator<std::string> it(str);
-        transgenimpl::Delimiter delimiter;
-        bool result = boost::spirit::karma::generate_delimited(it, TransformGeneratorGrammar<std::back_insert_iterator<std::string>>() % ',', delimiter, transforms);
+        bool result = boost::spirit::karma::generate(it, TransformGeneratorGrammar<std::back_insert_iterator<std::string>>() % ',', transforms);
         if (!result) {
             throw GeneratorException("Could not generate transform string");
         }

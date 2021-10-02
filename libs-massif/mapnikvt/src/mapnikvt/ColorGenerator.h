@@ -19,10 +19,8 @@
 
 namespace carto { namespace mvt {
     namespace colorgenimpl {
-        using Delimiter = boost::spirit::iso8859_1::space_type;
-
         template <typename OutputIterator>
-        struct Grammar : boost::spirit::karma::grammar<OutputIterator, unsigned int(), Delimiter> {
+        struct Grammar : boost::spirit::karma::grammar<OutputIterator, unsigned int()> {
             Grammar() : Grammar::base_type(color) {
                 using namespace boost;
                 using namespace boost::spirit;
@@ -40,13 +38,13 @@ namespace carto { namespace mvt {
 
                 color =
                       karma::lit("transparent")         [_pass = phoenix::bind(&isTransparent, _val)]
-                    | karma::no_delimit[(karma::lit("rgb") << '(' << number << ',' << number << ',' << number << ')') [_pass = phoenix::bind(&getRGBColor, _val, _1, _2, _3)]]
-                    | karma::no_delimit[(karma::lit("rgba") << '(' << number << ',' << number << ',' << number << ',' << number << ')') [phoenix::bind(&getRGBAColor, _val, _1, _2, _3, _4)]]
+                    | (karma::lit("rgb") << '(' << number << ',' << number << ',' << number << ')') [_pass = phoenix::bind(&getRGBColor, _val, _1, _2, _3)]
+                    | (karma::lit("rgba") << '(' << number << ',' << number << ',' << number << ',' << number << ')') [phoenix::bind(&getRGBAColor, _val, _1, _2, _3, _4)]
                     ;
             }
                 
             boost::spirit::karma::rule<OutputIterator, float()> number;
-            boost::spirit::karma::rule<OutputIterator, unsigned int(), Delimiter> color;
+            boost::spirit::karma::rule<OutputIterator, unsigned int()> color;
 
         private:
             static bool getInteger(float val, int& intVal) {

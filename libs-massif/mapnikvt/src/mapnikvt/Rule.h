@@ -8,6 +8,7 @@
 #define _CARTO_MAPNIKVT_RULE_H_
 
 #include <memory>
+#include <mutex>
 #include <string>
 #include <vector>
 #include <set>
@@ -28,19 +29,22 @@ namespace carto { namespace mvt {
         const std::shared_ptr<const Filter>& getFilter() const { return _filter; }
         const std::vector<std::shared_ptr<const Symbolizer>>& getSymbolizers() const { return _symbolizers; }
 
-        const std::set<std::string>& getReferencedFilterFields() const { return _referencedFilterFields; }
-        const std::set<std::string>& getReferencedSymbolizerFields() const { return _referencedSymbolizerFields; }
+        const std::set<std::string>& getReferencedFilterFields() const { calculateReferencedFields(); return _referencedFilterFields; }
+        const std::set<std::string>& getReferencedSymbolizerFields() const { calculateReferencedFields(); return _referencedSymbolizerFields; }
 
     private:
-        void rebuildReferencedFields();
+        void calculateReferencedFields() const;
 
         const std::string _name;
         const int _minZoom;
         const int _maxZoom;
         const std::shared_ptr<const Filter> _filter;
         const std::vector<std::shared_ptr<const Symbolizer>> _symbolizers;
-        std::set<std::string> _referencedFilterFields;
-        std::set<std::string> _referencedSymbolizerFields;
+
+        mutable std::mutex _referencedFieldsMutex;
+        mutable bool _referencedFieldsCalculated = false;
+        mutable std::set<std::string> _referencedFilterFields;
+        mutable std::set<std::string> _referencedSymbolizerFields;
     };
 } }
 

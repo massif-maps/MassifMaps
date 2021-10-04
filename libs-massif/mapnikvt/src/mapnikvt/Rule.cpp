@@ -10,10 +10,9 @@
 
 namespace carto { namespace mvt {
     Rule::Rule(std::string name, int minZoom, int maxZoom, std::shared_ptr<const Filter> filter, std::vector<std::shared_ptr<const Symbolizer>> symbolizers) : _name(std::move(name)), _minZoom(minZoom), _maxZoom(maxZoom), _filter(std::move(filter)), _symbolizers(std::move(symbolizers)) {
-        rebuildReferencedFields();
     }
 
-    void Rule::rebuildReferencedFields() {
+    void Rule::calculateReferencedFields() const {
         struct FieldExtractor {
             explicit FieldExtractor(std::set<std::string>& fields) : _fields(fields) { }
 
@@ -32,7 +31,12 @@ namespace carto { namespace mvt {
         private:
             std::set<std::string>& _fields;
         };
-        
+
+        std::lock_guard<std::mutex> lock(_referencedFieldsMutex);
+        if (_referencedFieldsCalculated) {
+            return;
+        }
+
         _referencedFilterFields.clear();
         if (_filter) {
             if (_filter->getPredicate()) {
@@ -48,5 +52,7 @@ namespace carto { namespace mvt {
                 }
             }
         }
+
+        _referencedFieldsCalculated = true;
     }
 } }

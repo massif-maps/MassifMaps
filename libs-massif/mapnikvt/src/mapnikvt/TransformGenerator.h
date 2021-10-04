@@ -21,10 +21,8 @@
 
 namespace carto { namespace mvt {
     namespace transgenimpl {
-        using Delimiter = boost::spirit::iso8859_1::space_type;
-
         template <typename OutputIterator>
-        struct Grammar : boost::spirit::karma::grammar<OutputIterator, Transform(), Delimiter> {
+        struct Grammar : boost::spirit::karma::grammar<OutputIterator, Transform()> {
             Grammar() : Grammar::base_type(transform) {
                 using namespace boost;
                 using namespace boost::spirit;
@@ -74,7 +72,7 @@ namespace carto { namespace mvt {
             }
 
             boost::spirit::karma::rule<OutputIterator, float()> number;
-            boost::spirit::karma::rule<OutputIterator, Transform(), Delimiter> transform, matrix, translate, rotate, scale, skewx, skewy;
+            boost::spirit::karma::rule<OutputIterator, Transform()> transform, matrix, translate, rotate, scale, skewx, skewy;
 
         private:
             static bool getMatrixTransform(const Transform& transform, float& a, float& b, float& c, float& d, float& e, float& f) {

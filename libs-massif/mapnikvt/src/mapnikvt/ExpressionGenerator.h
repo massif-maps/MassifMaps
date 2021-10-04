@@ -24,8 +24,6 @@
 
 namespace carto { namespace mvt {
     namespace exprgenimpl {
-        using Delimiter = boost::spirit::karma::iso8859_1::space_type;
-
         template <typename OutputIterator, bool StringExpression>
         struct Grammar : boost::spirit::karma::grammar<OutputIterator, Expression()> {
             Grammar() : Grammar::base_type(StringExpression ? stringExpression : genericExpression) {
@@ -47,21 +45,21 @@ namespace carto { namespace mvt {
                       string                               [_pass = phoenix::bind(&getString, _val, _1)]
                     | (stringExpression << stringExpression) [_pass = phoenix::bind(&getBinaryExpression, BinaryExpression::Op::CONCAT, _val, _1, _2)]
                     | ('[' << stringExpression << ']' )    [_pass = phoenix::bind(&getVariableExpression, _val, _1)]
-                    | ('{' << karma::delimit(Delimiter())  [expression << '}']) [_1 = _val]
+                    | ('{' << expression << '}')           [_1 = _val]
                     ;
 
                 genericExpression =
-                    karma::delimit(Delimiter())[expression] [_1 = _val]
+                    expression                             [_1 = _val]
                     ;
 
                 expression =
-                      (term0 << '?' << expression << ':' << expression) [_pass = phoenix::bind(&getTertiaryExpression, TertiaryExpression::Op::CONDITIONAL, _val, _1, _2, _3)]
+                      ('(' << term0 << " ? " << expression << " : " << expression << ')') [_pass = phoenix::bind(&getTertiaryExpression, TertiaryExpression::Op::CONDITIONAL, _val, _1, _2, _3)]
                     | term0                                [_1 = _val]
                     ;
 
                 term0 =
-                      (term0 << "and" << term1)            [_pass = phoenix::bind(&getAndPredicate, _val, _1, _2)]
-                    | (term0 << "or"  << term1)            [_pass = phoenix::bind(&getOrPredicate,  _val, _1, _2)]
+                      (term0 << " and " << term1)          [_pass = phoenix::bind(&getAndPredicate, _val, _1, _2)]
+                    | (term0 << " or "  << term1)          [_pass = phoenix::bind(&getOrPredicate,  _val, _1, _2)]
                     | term1                                [_1 = _val]
                     ;
 
@@ -113,7 +111,7 @@ namespace carto { namespace mvt {
                     | (karma::lit("linear") << '(' << expression << ',' << (constant % ',') << ')') [_pass = phoenix::bind(&getInterpolateExpression, InterpolateExpression::Method::LINEAR, _val, _1, _2)]
                     | (karma::lit("cubic")  << '(' << expression << ',' << (constant % ',') << ')') [_pass = phoenix::bind(&getInterpolateExpression, InterpolateExpression::Method::CUBIC, _val, _1, _2)]
                     | predicate                         [_pass = phoenix::bind(&getExpressionPredicate, _val, _1)]
-                    | (karma::no_delimit['[' << stringExpression] << ']') [_pass = phoenix::bind(&getVariableExpression, _val, _1)]
+                    | ('[' << stringExpression << ']')  [_pass = phoenix::bind(&getVariableExpression, _val, _1)]
                     | ('(' << expression << ')')        [_1 = _val]
                     ;
 
@@ -127,8 +125,8 @@ namespace carto { namespace mvt {
             boost::spirit::karma::symbols<char, const char*> esc_char;
             boost::spirit::karma::rule<OutputIterator, std::string()> string;
             boost::spirit::karma::rule<OutputIterator, Expression()> stringExpression, genericExpression;
-            boost::spirit::karma::rule<OutputIterator, Expression(), Delimiter> expression, term0, term1, term2, term3, unary, postfix, factor;
-            boost::spirit::karma::rule<OutputIterator, Predicate(), Delimiter> predicate;
+            boost::spirit::karma::rule<OutputIterator, Expression()> expression, term0, term1, term2, term3, unary, postfix, factor;
+            boost::spirit::karma::rule<OutputIterator, Predicate()> predicate;
 
         private:
             static bool getString(const Expression& expr, std::string& str) {

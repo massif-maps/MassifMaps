@@ -127,7 +127,7 @@ namespace carto { namespace css {
 
     class FunctionExpression final {
     public:
-        explicit FunctionExpression(std::string func, const std::vector<Expression>& args) : _func(std::move(func)), _args(std::move(args)) { }
+        explicit FunctionExpression(std::string func, std::vector<Expression> args) : _func(std::move(func)), _args(std::move(args)) { }
 
         const std::string& getFunc() const { return _func; }
         const std::vector<Expression>& getArgs() const { return _args; }

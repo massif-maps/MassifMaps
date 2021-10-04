@@ -12,14 +12,11 @@
 #include "vt/Styles.h"
 
 #include <memory>
-#include <algorithm>
-#include <cmath>
+#include <mutex>
 #include <optional>
 #include <string>
 #include <vector>
-#include <set>
 #include <unordered_map>
-#include <utility>
 
 namespace carto { namespace mvt {
     class Rule;
@@ -38,14 +35,14 @@ namespace carto { namespace mvt {
         const std::string& getImageFilters() const { return _imageFilters; }
         const std::optional<vt::CompOp>& getCompOp() const { return _compOp; }
         FilterMode getFilterMode() const { return _filterMode; }
-        const std::vector<std::shared_ptr<const Rule>>& getRules() const { return _rules; }
 
+        const std::vector<std::shared_ptr<const Rule>>& getRules() const { return _rules; }
         const std::vector<std::shared_ptr<const Rule>>& getZoomRules(int zoom) const;
 
         void optimizeRules();
 
     private:
-        void rebuildZoomRuleMap();
+        void calculateZoomRuleMap() const;
 
         static std::optional<Predicate> buildOptimizedOrPredicate(const std::optional<Predicate>& pred1, const std::optional<Predicate>& pred2);
 
@@ -55,7 +52,10 @@ namespace carto { namespace mvt {
         const std::optional<vt::CompOp> _compOp;
         const FilterMode _filterMode;
         std::vector<std::shared_ptr<const Rule>> _rules;
-        std::unordered_map<int, std::vector<std::shared_ptr<const Rule>>> _zoomRuleMap;
+
+        mutable std::mutex _zoomRuleMapMutex;
+        mutable bool _zoomRuleMapCalculated = false;
+        mutable std::unordered_map<int, std::vector<std::shared_ptr<const Rule>>> _zoomRuleMap;
     };
 } }
 

@@ -14,6 +14,8 @@
 #include "ScaleUtils.h"
 #include "Logger.h"
 
+#include <sstream>
+
 #include <boost/lexical_cast.hpp>
 
 namespace carto { namespace mvt {
@@ -123,6 +125,7 @@ namespace carto { namespace mvt {
 
             std::vector<std::shared_ptr<const Rule>> rules;
             std::map<std::string, std::shared_ptr<const Filter>> filterCache;
+            std::map<std::string, std::shared_ptr<const Symbolizer>> symbolizerCache;
             pugi::xpath_node_set ruleNodes = pugi::xpath_query("Rule").evaluate_node_set(styleNode);
             for (pugi::xpath_node_set::const_iterator ruleIt = ruleNodes.begin(); ruleIt != ruleNodes.end(); ++ruleIt) {
                 pugi::xml_node ruleNode = (*ruleIt).node();
@@ -160,11 +163,18 @@ namespace carto { namespace mvt {
                         filter = std::make_shared<Filter>(Filter::Type::ALSOFILTER, std::optional<Predicate>());
                     }
                     else {
-                        std::shared_ptr<Symbolizer> symbolizer = _symbolizerParser->parseSymbolizer(node, map);
-                        if (!symbolizer) {
-                            continue;
+                        std::ostringstream os;
+                        node.print(os, "", pugi::format_raw, pugi::encoding_utf8);
+                        std::string symbolizerStr = os.str();
+                        auto symbolizerIt = symbolizerCache.find(symbolizerStr);
+                        if (symbolizerIt == symbolizerCache.end()) {
+                            std::shared_ptr<Symbolizer> symbolizer = _symbolizerParser->parseSymbolizer(node, map);
+                            if (!symbolizer) {
+                                continue;
+                            }
+                            symbolizerIt = symbolizerCache.emplace(symbolizerStr, symbolizer).first;
                         }
-                        symbolizers.push_back(symbolizer);
+                        symbolizers.push_back(symbolizerIt->second);
                     }
                 }
 

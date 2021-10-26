@@ -271,7 +271,7 @@ namespace carto { namespace mbvtbuilder {
     }
 
     std::uint64_t MBVTTileBuilder::extractFeatureId(LayerIndex layerIndex, const picojson::value& properties) {
-        if (properties.contains("id")) {
+        if (properties.is<picojson::object>() && properties.contains("id")) {
             const picojson::value& id = properties.get("id");
             if (id.is<std::int64_t>()) {
                 return id.get<std::int64_t>();

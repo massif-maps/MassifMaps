@@ -33,45 +33,47 @@ namespace carto { namespace mvt {
             return;
         }
 
-        bool updated = false;
+        std::list<std::shared_ptr<const Rule>> rules(_rules.begin(), _rules.end());
         
-        // Try to merge consecutive rules R1 and R2 with R1.maxZoom=R2.minZoom assuming everything else is equal
-        for (auto it = _rules.begin(); it + 1 != _rules.end(); ) {
-            std::shared_ptr<const Rule> rule1 = *(it + 0);
-            std::shared_ptr<const Rule> rule2 = *(it + 1);
-            if (rule1->getMinZoom() > rule2->getMinZoom()) {
-                std::swap(rule1, rule2);
-            }
-            std::optional<Predicate> pred1 = rule1->getFilter()->getPredicate();
-            std::optional<Predicate> pred2 = rule2->getFilter()->getPredicate();
-            bool samePred = (pred1 == pred2) || (pred1 && pred2 && std::visit(PredicateDeepEqualsChecker(), *pred1, *pred2));
-            if (rule1->getMaxZoom() == rule2->getMinZoom() && rule1->getFilter()->getType() == rule2->getFilter()->getType() && samePred && rule1->getSymbolizers() == rule2->getSymbolizers()) {
-                auto combinedRule = std::make_shared<Rule>("combined", rule1->getMinZoom(), rule2->getMaxZoom(), rule1->getFilter(), rule1->getSymbolizers());
-                it = _rules.erase(it);
-                *it = combinedRule;
-                updated = true;
-            } else {
-                it++;
+        // Try to merge rules R1 and R2 with R1.maxZoom=R2.minZoom assuming everything else is equal with the constraint of not doing rule reordering
+        for (auto it1 = rules.begin(); it1 != rules.end(); it1++) {
+            for (auto it2 = it1; ++it2 != rules.end(); ) {
+                std::shared_ptr<const Rule> rule1 = *it1;
+                std::shared_ptr<const Rule> rule2 = *it2;
+                if (rule1->getMaxZoom() == rule2->getMinZoom() || rule1->getMinZoom() == rule2->getMaxZoom()) {
+                    std::optional<Predicate> pred1 = rule1->getFilter()->getPredicate();
+                    std::optional<Predicate> pred2 = rule2->getFilter()->getPredicate();
+                    if (rule1->getFilter()->getType() == rule2->getFilter()->getType() && rule1->getSymbolizers() == rule2->getSymbolizers() && ((pred1 == pred2) || (pred1 && pred2 && std::visit(PredicateDeepEqualsChecker(), *pred1, *pred2)))) {
+                        auto combinedRule = std::make_shared<Rule>("combined", std::min(rule1->getMinZoom(), rule2->getMinZoom()), std::max(rule1->getMaxZoom(), rule2->getMaxZoom()), rule1->getFilter(), rule1->getSymbolizers());
+                        *it1 = combinedRule;
+                        it2 = std::prev(rules.erase(it2));
+                    }
+                    else {
+                        break;
+                    }
+                }
+                else if (rule1->getMinZoom() > rule2->getMinZoom() || rule1->getMaxZoom() < rule2->getMaxZoom()) {
+                    break;
+                }
             }
         }
 
         // Try to merge consecutive rules R1 and R2 with different filter expressions but with everything else equal
-        for (auto it = _rules.begin(); it + 1 != _rules.end(); ) {
-            std::shared_ptr<const Rule> rule1 = *(it + 0);
-            std::shared_ptr<const Rule> rule2 = *(it + 1);
+        for (auto it2 = rules.begin(); ++it2 != rules.end(); ) {
+            auto it1 = std::prev(it2);
+            std::shared_ptr<const Rule> rule1 = *it1;
+            std::shared_ptr<const Rule> rule2 = *it2;
             if (rule1->getMinZoom() == rule2->getMinZoom() && rule1->getMaxZoom() == rule2->getMaxZoom() && rule1->getFilter()->getType() == Filter::Type::FILTER && rule2->getFilter()->getType() == Filter::Type::FILTER && rule1->getSymbolizers() == rule2->getSymbolizers()) {
                 auto combinedPred = buildOptimizedOrPredicate(rule1->getFilter()->getPredicate(), rule2->getFilter()->getPredicate());
                 auto combinedFilter = std::make_shared<Filter>(Filter::Type::FILTER, combinedPred);
                 auto combinedRule = std::make_shared<Rule>("combined", rule1->getMinZoom(), rule1->getMaxZoom(), combinedFilter, rule1->getSymbolizers());
-                it = _rules.erase(it);
-                *it = combinedRule;
-                updated = true;
-            } else {
-                it++;
+                *it1 = combinedRule;
+                it2 = std::prev(rules.erase(it2));
             }
         }
 
-        if (updated) {
+        if (rules.size() != _rules.size()) {
+            _rules.assign(rules.begin(), rules.end());
             _zoomRuleMapCalculated = false;
         }
     }

@@ -7,7 +7,6 @@
 #ifndef _CARTO_VT_TILELABEL_H_
 #define _CARTO_VT_TILELABEL_H_
 
-#include "TileId.h"
 #include "Color.h"
 #include "Transform.h"
 #include "Bitmap.h"
@@ -50,10 +49,8 @@ namespace carto { namespace vt {
             explicit PlacementInfo(int priority, float minimumGroupDistance) : priority(priority), minimumGroupDistance(minimumGroupDistance) { }
         };
         
-        explicit TileLabel(const TileId& tileId, int layerIndex, long long localId, long long globalId, long long groupId, std::vector<Font::Glyph> glyphs, std::optional<cglib::vec2<float>> position, std::vector<cglib::vec2<float>> vertices, std::shared_ptr<const Style> style, const PlacementInfo& placementInfo) : _tileId(tileId), _layerIndex(layerIndex), _localId(localId), _globalId(globalId), _groupId(groupId), _glyphs(std::move(glyphs)), _position(std::move(position)), _vertices(std::move(vertices)), _style(std::move(style)), _placementInfo(placementInfo) { }
+        explicit TileLabel(long long localId, long long globalId, long long groupId, std::vector<Font::Glyph> glyphs, std::optional<cglib::vec2<float>> position, std::vector<cglib::vec2<float>> vertices, std::shared_ptr<const Style> style, const PlacementInfo& placementInfo) : _localId(localId), _globalId(globalId), _groupId(groupId), _glyphs(std::move(glyphs)), _position(std::move(position)), _vertices(std::move(vertices)), _style(std::move(style)), _placementInfo(placementInfo) { }
 
-        const TileId& getTileId() const { return _tileId; }
-        int getLayerIndex() const { return _layerIndex; }
         long long getLocalId() const { return _localId; }
         long long getGlobalId() const { return _globalId; }
         long long getGroupId() const { return _groupId; }
@@ -68,8 +65,6 @@ namespace carto { namespace vt {
         }
 
     private:
-        const TileId _tileId;
-        const int _layerIndex;
         const long long _localId;
         const long long _globalId;
         const long long _groupId;

@@ -31,6 +31,7 @@
 #include <unordered_map>
 #include <set>
 #include <utility>
+#include <regex>
 #include <mutex>
 
 #include <cglib/ray.h>
@@ -79,6 +80,8 @@ namespace carto { namespace vt {
         void setLayerBlendingSpeed(float speed);
         void setLabelBlendingSpeed(float speed);
         void setRasterFilterMode(RasterFilterMode filterMode);
+        void setRendererLayerFilter(const std::optional<std::regex>& filter);
+        void setClickHandlerLayerFilter(const std::optional<std::regex>& filter);
         void setViewState(const ViewState& viewState);
         void setVisibleTiles(const std::map<TileId, std::shared_ptr<const Tile>>& tiles);
         void teleportVisibleTiles(int dx, int dy);
@@ -102,7 +105,7 @@ namespace carto { namespace vt {
         using GlobalIdLabelMap = std::unordered_map<long long, std::shared_ptr<Label>>;
         using BitmapLabelMap = std::unordered_map<std::shared_ptr<const Bitmap>, std::vector<std::shared_ptr<Label>>>;
 
-        enum LightingMode {
+        enum class LightingMode {
             NONE,
             GEOMETRY2D,
             GEOMETRY3D,
@@ -206,6 +209,7 @@ namespace carto { namespace vt {
         cglib::mat3x3<double> calculateTileMatrix2D(const TileId& tileId, float coordScale = 1.0f) const;
         cglib::mat4x4<float> calculateTileMVPMatrix(const TileId& tileId, float coordScale = 1.0f) const;
 
+        bool testLayerFilter(const std::string& layerName, const std::optional<std::regex>& filter) const;
         bool testIntersectionOpacity(const std::shared_ptr<const BitmapPattern>& pattern, const cglib::vec2<float>& uvp, const cglib::vec2<float>& uv0, const cglib::vec2<float>& uv1) const;
 
         void buildTileSurfaces(const std::set<TileId>& tileIds);
@@ -277,6 +281,8 @@ namespace carto { namespace vt {
         float _layerBlendingSpeed = 1.0f;
         float _labelBlendingSpeed = 1.0f;
         RasterFilterMode _rasterFilterMode = RasterFilterMode::BILINEAR;
+        std::optional<std::regex> _rendererLayerFilter;
+        std::optional<std::regex> _clickHandlerLayerFilter;
 
         std::shared_ptr<std::vector<RenderTile>> _renderTiles;
         std::shared_ptr<std::vector<RenderTile>> _visibleRenderTiles;

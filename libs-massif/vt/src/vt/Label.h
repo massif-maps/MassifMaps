@@ -7,6 +7,7 @@
 #ifndef _CARTO_VT_LABEL_H_
 #define _CARTO_VT_LABEL_H_
 
+#include "TileId.h"
 #include "TileLabel.h"
 #include "TileTransformer.h"
 #include "Color.h"
@@ -27,13 +28,13 @@
 namespace carto { namespace vt {
     class Label final {
     public:
-        explicit Label(const TileLabel& tileLabel, const cglib::mat4x4<double>& tileMatrix, const std::shared_ptr<const TileTransformer::VertexTransformer>& transformer);
+        explicit Label(const TileLabel& tileLabel, const TileId& tileId, int layerIdx, const cglib::mat4x4<double>& tileMatrix, const std::shared_ptr<const TileTransformer::VertexTransformer>& transformer);
 
         long long getGlobalId() const { return _globalId; }
+        long long getLocalId() const { return _placement ? _placement->localId : _localId; }
         long long getGroupId() const { return _groupId; }
         
         TileId getTileId() const { return _placement ? _placement->tileId : _tileId; }
-        long long getLocalId() const { return _placement ? _placement->localId : _localId; }
         int getLayerIndex() const { return _layerIndex; }
 
         const std::shared_ptr<const TileLabel::Style>& getStyle() const { return _style; }

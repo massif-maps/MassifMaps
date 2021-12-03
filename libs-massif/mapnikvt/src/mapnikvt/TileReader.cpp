@@ -23,9 +23,9 @@ namespace carto { namespace mvt {
         std::vector<std::shared_ptr<vt::TileLayer>> tileLayers;
 
         if (std::shared_ptr<vt::TileBackground> tileBackground = createTileBackground(tileId)) {
-            vt::TileLayerBuilder tileLayerBuilder(tileId, -1, _transformer->createTileVertexTransformer(tileId), _symbolizerContext.getSettings().getTileSize(), _symbolizerContext.getSettings().getGeometryScale());
+            vt::TileLayerBuilder tileLayerBuilder(_transformer->createTileVertexTransformer(tileId), _symbolizerContext.getSettings().getTileSize(), _symbolizerContext.getSettings().getGeometryScale());
             tileLayerBuilder.addBackground(tileBackground);
-            std::shared_ptr<vt::TileLayer> tileLayer = tileLayerBuilder.buildTileLayer(std::optional<vt::CompOp>(), vt::FloatFunction(1.0f));
+            std::shared_ptr<vt::TileLayer> tileLayer = tileLayerBuilder.buildTileLayer(std::string(), -1, std::optional<vt::CompOp>(), vt::FloatFunction(1.0f));
             tileLayers.push_back(std::move(tileLayer));
         }
 
@@ -38,13 +38,13 @@ namespace carto { namespace mvt {
                     continue;
                 }
                 
-                int internalIdx = layerIdx * 65536 + static_cast<int>(layer->getStyleNames().size()) * 256 + styleIdx;
-                vt::TileLayerBuilder tileLayerBuilder(tileId, internalIdx, _transformer->createTileVertexTransformer(tileId), _symbolizerContext.getSettings().getTileSize(), _symbolizerContext.getSettings().getGeometryScale());
+                vt::TileLayerBuilder tileLayerBuilder(_transformer->createTileVertexTransformer(tileId), _symbolizerContext.getSettings().getTileSize(), _symbolizerContext.getSettings().getGeometryScale());
                 processLayer(layer, style, exprContext, tileLayerBuilder);
 
+                int styleLayerIdx = layerIdx * 65536 + static_cast<int>(layer->getStyleNames().size()) * 256 + styleIdx;
                 vt::FloatFunction opacityFunc(style->getOpacity());
                 std::optional<vt::CompOp> compOp = style->getCompOp();
-                std::shared_ptr<vt::TileLayer> tileLayer = tileLayerBuilder.buildTileLayer(compOp, opacityFunc);
+                std::shared_ptr<vt::TileLayer> tileLayer = tileLayerBuilder.buildTileLayer(styleName, styleLayerIdx, compOp, opacityFunc);
                 if (!(tileLayer->getBackgrounds().empty() && tileLayer->getBitmaps().empty() && tileLayer->getLabels().empty() && tileLayer->getGeometries().empty() && !compOp)) {
                     tileLayers.push_back(std::move(tileLayer));
                 }

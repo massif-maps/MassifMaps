@@ -7,7 +7,6 @@
 #ifndef _CARTO_VT_TILELAYERBUILDER_H_
 #define _CARTO_VT_TILELAYERBUILDER_H_
 
-#include "TileId.h"
 #include "TileBackground.h"
 #include "TileBitmap.h"
 #include "TileGeometry.h"
@@ -43,7 +42,7 @@ namespace carto { namespace vt {
         using PointLabelProcessor = std::function<void(long long localId, long long globalId, long long groupId, const std::variant<Vertex, Vertices>& position, float priority, float minimumGroupDistance)>;
         using TextLabelProcessor = std::function<void(long long localId, long long globalId, long long groupId, const std::optional<Vertex>& position, const Vertices& vertices, const std::string& text, float priority, float minimumGroupDistance)>;
 
-        explicit TileLayerBuilder(const TileId& tileId, int layerIdx, std::shared_ptr<const TileTransformer::VertexTransformer> transformer, float tileSize, float geomScale);
+        explicit TileLayerBuilder(std::shared_ptr<const TileTransformer::VertexTransformer> transformer, float tileSize, float geomScale);
 
         void setClipBox(const cglib::bbox2<float>& clipBox);
 
@@ -58,7 +57,7 @@ namespace carto { namespace vt {
         PointLabelProcessor createPointLabelProcessor(const PointLabelStyle& style, const std::shared_ptr<GlyphMap>& glyphMap);
         TextLabelProcessor createTextLabelProcessor(const TextLabelStyle& style, const TextFormatter& formatter);
 
-        std::shared_ptr<TileLayer> buildTileLayer(std::optional<CompOp> compOp, FloatFunction opacityFunc) const;
+        std::shared_ptr<TileLayer> buildTileLayer(std::string layerName, int layerIdx, std::optional<CompOp> compOp, FloatFunction opacityFunc) const;
 
     private:
         static constexpr unsigned int RESERVED_VERTICES = 4096;
@@ -93,11 +92,9 @@ namespace carto { namespace vt {
         bool tesselateLine(const std::vector<cglib::vec2<float>>& points, std::int8_t styleIndex, const StrokeMap::Stroke* stroke, const LineStyle& style);
         bool tesselateLineEndPoint(const cglib::vec2<float>& p0, float u0, float v0, float v1, std::size_t i0, std::size_t i1, const cglib::vec2<float>& tangent, const cglib::vec2<float>& binormal, std::int8_t styleIndex, const LineStyle& style);
 
-        const TileId _tileId;
-        const int _layerIdx;
+        const std::shared_ptr<const TileTransformer::VertexTransformer> _transformer;
         const float _tileSize;
         const float _geomScale;
-        const std::shared_ptr<const TileTransformer::VertexTransformer> _transformer;
         cglib::bbox2<float> _clipBox;
         cglib::bbox2<float> _polygonClipBox;
 

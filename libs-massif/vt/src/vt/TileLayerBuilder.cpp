@@ -42,8 +42,8 @@ namespace {
 }
 
 namespace carto { namespace vt {
-    TileLayerBuilder::TileLayerBuilder(const TileId& tileId, int layerIdx, std::shared_ptr<const TileTransformer::VertexTransformer> transformer, float tileSize, float geomScale) :
-        _tileId(tileId), _layerIdx(layerIdx), _tileSize(tileSize), _geomScale(geomScale), _transformer(std::move(transformer)), _clipBox(cglib::vec2<float>(-0.125f, -0.125f), cglib::vec2<float>(1.125f, 1.125f)), _polygonClipBox(cglib::vec2<float>(-0.001953125f, -0.001953125), cglib::vec2<float>(1.001953125f, 1.001953125f))
+    TileLayerBuilder::TileLayerBuilder(std::shared_ptr<const TileTransformer::VertexTransformer> transformer, float tileSize, float geomScale) :
+        _transformer(std::move(transformer)), _tileSize(tileSize), _geomScale(geomScale), _clipBox(cglib::vec2<float>(-0.125f, -0.125f), cglib::vec2<float>(1.125f, 1.125f)), _polygonClipBox(cglib::vec2<float>(-0.001953125f, -0.001953125), cglib::vec2<float>(1.001953125f, 1.001953125f))
     {
         _coords.reserve(RESERVED_VERTICES);
         _texCoords.reserve(RESERVED_VERTICES);
@@ -325,7 +325,7 @@ namespace carto { namespace vt {
             }
 
             TileLabel::PlacementInfo placementInfo(priority, minimumGroupDistance);
-            auto pointLabel = std::make_shared<TileLabel>(_tileId, _layerIdx, localId, globalId, groupId, bitmapGlyphs, std::move(labelPosition), std::move(labelVertices), _labelStyle, placementInfo);
+            auto pointLabel = std::make_shared<TileLabel>(localId, globalId, groupId, bitmapGlyphs, std::move(labelPosition), std::move(labelVertices), _labelStyle, placementInfo);
             _labelList.push_back(std::move(pointLabel));
         };
     }
@@ -371,17 +371,17 @@ namespace carto { namespace vt {
                 }
 
                 TileLabel::PlacementInfo placementInfo(priority, minimumGroupDistance);
-                auto textLabel = std::make_shared<TileLabel>(_tileId, _layerIdx, localId, globalId, groupId, std::move(glyphs), std::move(labelPosition), std::move(labelVertices), _labelStyle, placementInfo);
+                auto textLabel = std::make_shared<TileLabel>(localId, globalId, groupId, std::move(glyphs), std::move(labelPosition), std::move(labelVertices), _labelStyle, placementInfo);
                 _labelList.push_back(std::move(textLabel));
             }
         };
     }
 
-    std::shared_ptr<TileLayer> TileLayerBuilder::buildTileLayer(std::optional<CompOp> compOp, FloatFunction opacityFunc) const {
+    std::shared_ptr<TileLayer> TileLayerBuilder::buildTileLayer(std::string layerName, int layerIdx, std::optional<CompOp> compOp, FloatFunction opacityFunc) const {
         std::vector<std::shared_ptr<TileGeometry>> geometryList = _geometryList;
         packGeometry(geometryList);
 
-        return std::make_shared<TileLayer>(_layerIdx, std::move(compOp), std::move(opacityFunc), _backgroundList, _bitmapList, std::move(geometryList), _labelList);
+        return std::make_shared<TileLayer>(std::move(layerName), layerIdx, std::move(compOp), std::move(opacityFunc), _backgroundList, _bitmapList, std::move(geometryList), _labelList);
     }
 
     void TileLayerBuilder::appendGeometry() {

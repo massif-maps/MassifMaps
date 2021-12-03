@@ -79,7 +79,19 @@ namespace carto { namespace vt {
 
         _rasterFilterMode = filterMode;
     }
+
+    void GLTileRenderer::setRendererLayerFilter(const std::optional<std::regex>& filter) {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        _rendererLayerFilter = filter;
+    }
     
+    void GLTileRenderer::setClickHandlerLayerFilter(const std::optional<std::regex>& filter) {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        _clickHandlerLayerFilter = filter;
+    }
+
     void GLTileRenderer::setViewState(const ViewState& viewState) {
         std::lock_guard<std::mutex> lock(_mutex);
         
@@ -436,6 +448,9 @@ namespace carto { namespace vt {
                 if (!renderLayer.active) {
                     continue;
                 }
+                if (!testLayerFilter(renderLayer.layer->getLayerName(), _clickHandlerLayerFilter)) {
+                    continue;
+                }
 
                 cglib::bbox3<double> tileBBox = _transformer->calculateTileBBox(renderLayer.targetTileId);
                 cglib::mat4x4<double> tileMatrix = calculateTileMatrix(renderLayer.sourceTileId);
@@ -502,6 +517,9 @@ namespace carto { namespace vt {
             for (auto it = renderTile.renderLayers.begin(); it != renderTile.renderLayers.end(); it++) {
                 const RenderTileLayer& renderLayer = it->second;
                 if (!renderLayer.active) {
+                    continue;
+                }
+                if (!testLayerFilter(renderLayer.layer->getLayerName(), _clickHandlerLayerFilter)) {
                     continue;
                 }
 
@@ -573,6 +591,17 @@ namespace carto { namespace vt {
 
         std::lock_guard<std::mutex> lock(_mutex);
 
+        // Build set of valid layer indices
+        std::set<int> clickHandlerLayerIdxs;
+        for (const RenderTile& renderTile : *_renderTiles) {
+            for (auto it = renderTile.renderLayers.begin(); it != renderTile.renderLayers.end(); it++) {
+                const RenderTileLayer& renderLayer = it->second;
+                if (testLayerFilter(renderLayer.layer->getLayerName(), _clickHandlerLayerFilter)) {
+                    clickHandlerLayerIdxs.insert(renderLayer.layer->getLayerIndex());
+                }
+            }
+        }
+
         // Test for label intersections. The ordering may be mixed compared to actual rendering order, but this is non-issue if the labels are non-overlapping.
         std::size_t initialResultCount = results.size();
         for (int pass = 0; pass < 2; pass++) {
@@ -583,6 +612,9 @@ namespace carto { namespace vt {
             for (BitmapLabelsPair bitmapLabels : *_bitmapLabelMap[pass]) {
                 for (const std::shared_ptr<Label>& label : bitmapLabels.second) {
                     if (!label->isValid() || !label->isVisible() || !label->isActive() || label->getOpacity() <= 0) {
+                        continue;
+                    }
+                    if (clickHandlerLayerIdxs.count(label->getLayerIndex()) == 0) {
                         continue;
                     }
 
@@ -640,6 +672,13 @@ namespace carto { namespace vt {
 
     cglib::mat4x4<float> GLTileRenderer::calculateTileMVPMatrix(const TileId& tileId, float coordScale) const {
         return cglib::mat4x4<float>::convert(_cameraProjMatrix * calculateTileMatrix(tileId, coordScale));
+    }
+
+    bool GLTileRenderer::testLayerFilter(const std::string& layerName, const std::optional<std::regex>& filter) const {
+        if (!filter) {
+            return true;
+        }
+        return std::regex_match(layerName, *filter);
     }
 
     bool GLTileRenderer::testIntersectionOpacity(const std::shared_ptr<const BitmapPattern>& pattern, const cglib::vec2<float>& uvp, const cglib::vec2<float>& uv0, const cglib::vec2<float>& uv1) const {
@@ -739,6 +778,10 @@ namespace carto { namespace vt {
         renderTile.tile = tile;
         renderTile.visible = false;
         for (const std::shared_ptr<TileLayer>& layer : tile->getLayers()) {
+            if (!testLayerFilter(layer->getLayerName(), _rendererLayerFilter)) {
+                continue;
+            }
+
             RenderTileLayer renderLayer;
             renderLayer.targetTileId = targetTileId;
             renderLayer.sourceTileId = sourceTileId;
@@ -800,7 +843,7 @@ namespace carto { namespace vt {
             }
         }
 
-        // No, the tile does is missing. Add it in non-active state.
+        // No, the tile is missing. Add it in non-active state.
         RenderTile renderTile = existingRenderTile;
         renderTile.targetTileId = targetTileId;
         for (auto it = renderTile.renderLayers.begin(); it != renderTile.renderLayers.end(); it++) {
@@ -858,12 +901,16 @@ namespace carto { namespace vt {
             cglib::mat4x4<double> tileMatrix = _transformer->calculateTileMatrix(tile->getTileId(), 1.0f);
             std::shared_ptr<const TileTransformer::VertexTransformer> transformer = _transformer->createTileVertexTransformer(tile->getTileId());
             for (const std::shared_ptr<TileLayer>& layer : tile->getLayers()) {
+                if (!testLayerFilter(layer->getLayerName(), _rendererLayerFilter)) {
+                    continue;
+                }
+                
                 GlobalIdLabelMap& newLabelMap = newLayerLabelMap[layer->getLayerIndex()];
                 if (newLabelMap.empty()) {
                     newLabelMap.reserve(_layerLabelMap[layer->getLayerIndex()].size() + 64);
                 }
                 for (const std::shared_ptr<TileLabel>& tileLabel : layer->getLabels()) {
-                    auto newLabel = std::make_shared<Label>(*tileLabel, tileMatrix, transformer);
+                    auto newLabel = std::make_shared<Label>(*tileLabel, tile->getTileId(), layer->getLayerIndex(), tileMatrix, transformer);
                     std::shared_ptr<Label>& label = newLabelMap[tileLabel->getGlobalId()];
                     if (label) {
                         label->mergeGeometries(*newLabel);

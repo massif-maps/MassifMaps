@@ -220,6 +220,24 @@ namespace carto { namespace mvt {
         }
     };
 
+    struct MarkerTypeParameter : GenericValueParameter<std::string> {
+        MarkerTypeParameter() = delete;
+        explicit MarkerTypeParameter(const std::string& defaultValue) { initialize(defaultValue); }
+
+    protected:
+        virtual std::string buildValue(const ExpressionContext& context) const override {
+            Value val = std::visit(ExpressionEvaluator(context, nullptr), _expr);
+            std::string markerType = toLower(ValueConverter<std::string>::convert(val));
+            if (markerType.empty() || markerType == "auto") {
+                return std::string();
+            }
+            if (markerType == "ellipse" || markerType == "arrow" || markerType == "rectangle") {
+                return markerType;
+            }
+            throw ParserException("Invalid marker type", markerType);
+        }
+    };
+
     struct TextTransformParameter : GenericValueParameter<std::function<std::string(const std::string&)>> {
         TextTransformParameter() = delete;
         explicit TextTransformParameter(const std::string& defaultValue) { initialize(defaultValue); }

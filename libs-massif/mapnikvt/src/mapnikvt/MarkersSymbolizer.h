@@ -53,7 +53,7 @@ namespace carto { namespace mvt {
         StringParameter _file;
         ValueParameter _featureId;
         LabelOrientationParameter _placement = LabelOrientationParameter("point");
-        StringParameter _markerType;
+        MarkerTypeParameter _markerType = MarkerTypeParameter("auto");
         ColorFunctionParameter _color = ColorFunctionParameter("#ffffff");
         FloatFunctionParameter _opacity = FloatFunctionParameter(1.0f);
         ColorParameter _fill = ColorParameter("#0000ff");

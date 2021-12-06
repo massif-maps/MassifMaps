@@ -1,6 +1,5 @@
 #include "MarkersSymbolizer.h"
 #include "ParserUtils.h"
-#include "StringUtils.h"
 #include "vt/BitmapCanvas.h"
 
 namespace carto { namespace mvt {
@@ -72,7 +71,7 @@ namespace carto { namespace mvt {
         else {
             vt::Color fill = vt::Color::fromColorOpacity(_fill.getValue(exprContext), _fillOpacity.getValue(exprContext));
             vt::Color stroke = vt::Color::fromColorOpacity(_stroke.getValue(exprContext), _strokeOpacity.getValue(exprContext));
-            std::string markerType = toLower(_markerType.getValue(exprContext));
+            std::string markerType = _markerType.getValue(exprContext);
             bool ellipse = markerType == "ellipse" || (markerType.empty() && placement != vt::LabelOrientation::LINE);
             float bitmapWidth = (ellipse ? DEFAULT_CIRCLE_SIZE : DEFAULT_ARROW_WIDTH), bitmapHeight = (ellipse ? DEFAULT_CIRCLE_SIZE : DEFAULT_ARROW_HEIGHT);
             if (_width.isDefined()) { // NOTE: special case, if accept all values

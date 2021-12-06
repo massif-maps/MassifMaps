@@ -35,7 +35,7 @@ namespace carto { namespace mvt {
         static std::shared_ptr<vt::BitmapImage> makeRectangleBitmap(float width, float height, const vt::Color& color, float strokeWidth, const vt::Color& strokeColor);
 
         StringParameter _file;
-        StringParameter _markerType;
+        MarkerTypeParameter _markerType = MarkerTypeParameter("auto");
         FloatParameter _opacity = FloatParameter(1.0f);
         ColorParameter _fill = ColorParameter("#0000ff");
         FloatParameter _fillOpacity = FloatParameter(1.0f);

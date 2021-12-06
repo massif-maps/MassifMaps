@@ -11,6 +11,7 @@
 #include "ExpressionContext.h"
 #include "ExpressionUtils.h"
 #include "ParserUtils.h"
+#include "StringUtils.h"
 #include "TransformUtils.h"
 #include "vt/Color.h"
 #include "vt/Transform.h"
@@ -216,6 +217,81 @@ namespace carto { namespace mvt {
         virtual vt::LabelOrientation buildValue(const ExpressionContext& context) const override {
             Value val = std::visit(ExpressionEvaluator(context, nullptr), _expr);
             return parseLabelOrientation(ValueConverter<std::string>::convert(val));
+        }
+    };
+
+    struct TextTransformParameter : GenericValueParameter<std::function<std::string(const std::string&)>> {
+        TextTransformParameter() = delete;
+        explicit TextTransformParameter(const std::string& defaultValue) { initialize(defaultValue); }
+
+    protected:
+        virtual std::function<std::string(const std::string&)> buildValue(const ExpressionContext& context) const override {
+            Value val = std::visit(ExpressionEvaluator(context, nullptr), _expr);
+            std::string textTransform = toLower(ValueConverter<std::string>::convert(val));
+            if (textTransform.empty() || textTransform == "none") {
+                return [](const std::string& text) { return text; };
+            }
+            if (textTransform == "uppercase") {
+                return [](const std::string& text) { return toUpper(text); };
+            }
+            if (textTransform == "lowercase") {
+                return [](const std::string& text) { return toLower(text); };
+            }
+            if (textTransform == "capitalize") {
+                return [](const std::string& text) { return capitalize(text); };
+            }
+            if (textTransform == "reverse") {
+                return [](const std::string& text) { return stringReverse(text); };
+            }
+            throw ParserException("Invalid text transform", textTransform);
+        }
+    };
+
+    struct HorizontalAlignmentParameter : GenericValueParameter<std::optional<float>> {
+        HorizontalAlignmentParameter() = delete;
+        explicit HorizontalAlignmentParameter(const std::string& defaultValue) { initialize(defaultValue); }
+
+    protected:
+        virtual std::optional<float> buildValue(const ExpressionContext& context) const override {
+            Value val = std::visit(ExpressionEvaluator(context, nullptr), _expr);
+            std::string horizontalAlignment = toLower(ValueConverter<std::string>::convert(val));
+            if (horizontalAlignment.empty() || horizontalAlignment == "auto") {
+                return std::optional<float>();
+            }
+            if (horizontalAlignment == "left") {
+                return -1.0f;
+            }
+            if (horizontalAlignment == "middle") {
+                return 0.0f;
+            }
+            if (horizontalAlignment == "right") {
+                return 1.0f;
+            }
+            throw ParserException("Invalid horizontal alignment", horizontalAlignment);
+        }
+    };
+
+    struct VerticalAlignmentParameter : GenericValueParameter<std::optional<float>> {
+        VerticalAlignmentParameter() = delete;
+        explicit VerticalAlignmentParameter(const std::string& defaultValue) { initialize(defaultValue); }
+
+    protected:
+        virtual std::optional<float> buildValue(const ExpressionContext& context) const override {
+            Value val = std::visit(ExpressionEvaluator(context, nullptr), _expr);
+            std::string verticalAlignment = toLower(ValueConverter<std::string>::convert(val));
+            if (verticalAlignment.empty() || verticalAlignment == "auto") {
+                return std::optional<float>();
+            }
+            if (verticalAlignment == "top") {
+                return -1.0f;
+            }
+            if (verticalAlignment == "middle") {
+                return 0.0f;
+            }
+            if (verticalAlignment == "bottom") {
+                return 1.0f;
+            }
+            throw ParserException("Invalid vertical alignment", verticalAlignment);
         }
     };
 

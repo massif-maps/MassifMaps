@@ -259,20 +259,7 @@ namespace carto { namespace mvt {
 
     std::string TextSymbolizer::getTransformedText(const ExpressionContext& exprContext) const {
         std::string text = _text.getValue(exprContext);
-        std::string textTransform = toLower(_textTransform.getValue(exprContext));
-        if (textTransform.empty()) {
-            return text;
-        }
-        else if (textTransform == "uppercase") {
-            return toUpper(text);
-        }
-        else if (textTransform == "lowercase") {
-            return toLower(text);
-        }
-        else if (textTransform == "capitalize") {
-            return capitalize(text);
-        }
-        return text;
+        return _textTransform.getValue(exprContext)(text);
     }
 
     std::shared_ptr<const vt::Font> TextSymbolizer::getFont(const SymbolizerContext& symbolizerContext, const ExpressionContext& exprContext) const {
@@ -301,37 +288,19 @@ namespace carto { namespace mvt {
     }
 
     vt::TextFormatter::Options TextSymbolizer::getFormatterOptions(const SymbolizerContext& symbolizerContext, const ExpressionContext& exprContext) const {
-        float fontScale = symbolizerContext.getSettings().getFontScale();
         float dx = _dx.getValue(exprContext);
         float dy = _dy.getValue(exprContext);
+        float horizontalAlignment = _horizontalAlignment.getValue(exprContext).value_or(dx < 0 ? 1.0f : (dx > 0 ? -1.0f : 0.0f));
+        float verticalAlignment = _verticalAlignment.getValue(exprContext).value_or(dy < 0 ? 1.0f : (dy > 0 ? -1.0f : 0.0f));
+        float fontScale = symbolizerContext.getSettings().getFontScale();
         float characterSpacing = _characterSpacing.getValue(exprContext);
         float lineSpacing = _lineSpacing.getValue(exprContext);
         float wrapWidth = _wrapWidth.getValue(exprContext);
         bool wrapBefore = _wrapBefore.getValue(exprContext);
         std::string wrapCharacter = _wrapCharacter.getValue(exprContext);
-        std::string horizontalAlignment = toLower(_horizontalAlignment.getValue(exprContext));
-        std::string verticalAlignment = toLower(_verticalAlignment.getValue(exprContext));
 
         cglib::vec2<float> offset(dx * fontScale, -dy * fontScale);
-        cglib::vec2<float> alignment(dx < 0 ? 1.0f : (dx > 0 ? -1.0f : 0.0f), dy < 0 ? 1.0f : (dy > 0 ? -1.0f : 0.0f));
-        if (horizontalAlignment == "left") {
-            alignment(0) = -1.0f;
-        }
-        else if (horizontalAlignment == "middle") {
-            alignment(0) = 0.0f;
-        }
-        else if (horizontalAlignment == "right") {
-            alignment(0) = 1.0f;
-        }
-        if (verticalAlignment == "top") {
-            alignment(1) = -1.0f;
-        }
-        else if (verticalAlignment == "middle") {
-            alignment(1) = 0.0f;
-        }
-        else if (verticalAlignment == "bottom") {
-            alignment(1) = 1.0f;
-        }
+        cglib::vec2<float> alignment(horizontalAlignment, verticalAlignment);
         return vt::TextFormatter::Options(alignment, offset, wrapCharacter, wrapBefore, wrapWidth * fontScale, characterSpacing, lineSpacing);
     }
 } }

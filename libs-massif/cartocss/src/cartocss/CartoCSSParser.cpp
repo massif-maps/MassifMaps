@@ -75,6 +75,7 @@ namespace carto { namespace css {
 
                 constant =
                       qi::lit("null")                               [_val = phoenix::construct<Value>()]
+                    | qi::lit("none")                               [_val = phoenix::construct<Value>()]
                     | qi::lit("false")                              [_val = phoenix::construct<Value>(false)]
                     | qi::lit("true")                               [_val = phoenix::construct<Value>(true)]
                     | number                                        [_val = _1]

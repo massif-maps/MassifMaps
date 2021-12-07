@@ -70,7 +70,7 @@ namespace carto { namespace mvt {
 
         StringParameter _text;
         ValueParameter _featureId;
-        StringParameter _textTransform;
+        TextTransformParameter _textTransform = TextTransformParameter("none");
         StringParameter _faceName;
         StringParameter _fontSetName;
         LabelOrientationParameter _placement = LabelOrientationParameter("point");
@@ -93,8 +93,8 @@ namespace carto { namespace mvt {
         BoolParameter _wrapBefore = BoolParameter(false);
         FloatParameter _characterSpacing = FloatParameter(0.0f);
         FloatParameter _lineSpacing = FloatParameter(0.0f);
-        StringParameter _horizontalAlignment = StringParameter("auto");
-        StringParameter _verticalAlignment = StringParameter("auto");
+        HorizontalAlignmentParameter _horizontalAlignment = HorizontalAlignmentParameter("auto");
+        VerticalAlignmentParameter _verticalAlignment = VerticalAlignmentParameter("auto");
 
         ColorFunctionBuilder _fillFuncBuilder;
         FloatFunctionBuilder _sizeFuncBuilder;

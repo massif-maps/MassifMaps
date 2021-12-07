@@ -8,10 +8,15 @@ namespace carto { namespace mvt {
             return FeatureProcessor();
         }
 
+        std::shared_ptr<const vt::BitmapPattern> bitmapPattern;
         std::string file = _file.getValue(exprContext);
-        std::shared_ptr<const vt::BitmapPattern> bitmapPattern = symbolizerContext.getBitmapManager()->loadBitmapPattern(file, PATTERN_SCALE, PATTERN_SCALE);
-        if (!bitmapPattern || !bitmapPattern->bitmap) {
-            _logger->write(Logger::Severity::ERROR, "Failed to load polygon pattern bitmap " + file);
+        if (!file.empty()) {
+            bitmapPattern = symbolizerContext.getBitmapManager()->loadBitmapPattern(file, PATTERN_SCALE, PATTERN_SCALE);
+            if (!bitmapPattern || !bitmapPattern->bitmap) {
+                _logger->write(Logger::Severity::ERROR, "Failed to load polygon pattern bitmap " + file);
+                return FeatureProcessor();
+            }
+        } else {
             return FeatureProcessor();
         }
 

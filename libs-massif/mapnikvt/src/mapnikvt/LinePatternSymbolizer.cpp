@@ -9,10 +9,15 @@ namespace carto { namespace mvt {
         }
         vt::FloatFunction offsetFunc = _offset.getFunction(exprContext);
 
+        std::shared_ptr<const vt::BitmapPattern> bitmapPattern;
         std::string file = _file.getValue(exprContext);
-        std::shared_ptr<const vt::BitmapPattern> bitmapPattern = symbolizerContext.getBitmapManager()->loadBitmapPattern(file, PATTERN_SCALE, PATTERN_SCALE);
-        if (!bitmapPattern || !bitmapPattern->bitmap) {
-            _logger->write(Logger::Severity::ERROR, "Failed to load line pattern bitmap " + file);
+        if (!file.empty()) {
+            bitmapPattern = symbolizerContext.getBitmapManager()->loadBitmapPattern(file, PATTERN_SCALE, PATTERN_SCALE);
+            if (!bitmapPattern || !bitmapPattern->bitmap) {
+                _logger->write(Logger::Severity::ERROR, "Failed to load line pattern bitmap " + file);
+                return FeatureProcessor();
+            }
+        } else {
             return FeatureProcessor();
         }
 

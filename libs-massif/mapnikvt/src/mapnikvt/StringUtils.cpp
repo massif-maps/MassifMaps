@@ -28,6 +28,12 @@ namespace carto { namespace mvt {
         return unistring::to_utf8string(unistring::capitalize(unistr));
     }
 
+    std::string stringReverse(const std::string& str) {
+        unistring::unistring unistr = unistring::to_unistring(str);
+        std::reverse(unistr.begin(), unistr.end());
+        return unistring::to_utf8string(unistr);
+    }
+
     bool regexMatch(const std::string& str, const std::string& re) {
         unistring::unistring unistr = unistring::to_unistring(str);
         unistring::unistring unire = unistring::to_unistring(re);

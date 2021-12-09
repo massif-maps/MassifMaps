@@ -52,7 +52,7 @@ namespace carto { namespace css {
         }
 
         // Build Map
-        return buildMap(styleSheet, layerNames, std::vector<mvt::NutiParameter>());
+        return buildMap(styleSheet, layerNames, std::vector<mvt::Parameter>(), std::vector<mvt::NutiParameter>());
     }
 
     std::shared_ptr<mvt::Map> CartoCSSMapLoader::loadMapProject(const std::string& fileName) const {
@@ -102,12 +102,23 @@ namespace carto { namespace css {
             styleSheet = StyleSheet(elements);
         }
 
+        // Parameters
+        std::vector<mvt::Parameter> parameters;
+        if (mapDoc.contains("parameters")) {
+            const picojson::object& paramsObj = mapDoc.get("parameters").get<picojson::object>();
+            for (auto pit = paramsObj.begin(); pit != paramsObj.end(); pit++) {
+                const std::string& paramName = pit->first;
+                const picojson::value& paramValue = pit->second;
+                parameters.emplace_back(paramName, paramValue.to_str());
+            }
+        }
+
         // Nutiparameters
         std::vector<mvt::NutiParameter> nutiParameters;
         if (mapDoc.contains("nutiparameters")) {
             const picojson::object& nutiparamsObj = mapDoc.get("nutiparameters").get<picojson::object>();
             for (auto pit = nutiparamsObj.begin(); pit != nutiparamsObj.end(); pit++) {
-                std::string paramName = pit->first;
+                const std::string& paramName = pit->first;
                 const picojson::value& paramValue = pit->second;
                 std::map<std::string, mvt::Value> enumMap;
                 mvt::Value defaultValue;
@@ -133,7 +144,7 @@ namespace carto { namespace css {
             }
         }
 
-        return buildMap(styleSheet, layerNames, nutiParameters);
+        return buildMap(styleSheet, layerNames, parameters, nutiParameters);
     }
 
     picojson::value CartoCSSMapLoader::loadMapDocument(const std::string& fileName, std::set<std::string> loadedFileNames) const {
@@ -197,7 +208,7 @@ namespace carto { namespace css {
         return mapSettings;
     }
 
-    std::shared_ptr<mvt::Map> CartoCSSMapLoader::buildMap(const StyleSheet& styleSheet, const std::vector<std::string>& layerNames, const std::vector<mvt::NutiParameter>& nutiParameters) const {
+    std::shared_ptr<mvt::Map> CartoCSSMapLoader::buildMap(const StyleSheet& styleSheet, const std::vector<std::string>& layerNames, const std::vector<mvt::Parameter>& parameters, const std::vector<mvt::NutiParameter>& nutiParameters) const {
         // Map properties
         mvt::Map::Settings mapSettings;
         {
@@ -215,6 +226,7 @@ namespace carto { namespace css {
         auto map = std::make_shared<mvt::Map>(mapSettings);
         
         // Set parameters
+        map->setParameters(parameters);
         map->setNutiParameters(nutiParameters);
 
         // Compile and build layers

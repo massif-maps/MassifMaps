@@ -10,12 +10,8 @@
 #include <memory>
 #include <functional>
 
+#include <boost/phoenix.hpp>
 #include <boost/spirit/include/karma.hpp>
-#include <boost/spirit/include/karma_alternative.hpp>
-#include <boost/spirit/include/phoenix_core.hpp>
-#include <boost/spirit/include/phoenix_bind.hpp>
-#include <boost/spirit/include/phoenix_operator.hpp>
-#include <boost/spirit/include/phoenix_function.hpp>
 
 namespace carto { namespace mvt {
     namespace colorgenimpl {

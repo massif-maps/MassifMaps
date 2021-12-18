@@ -64,7 +64,7 @@ namespace carto { namespace vt {
             p2 += decodePolygon3DOffset(i2);
         }
 
-        return std::array<cglib::vec3<float>, 3> {{ p0, p1, p2 }};
+        return std::array<cglib::vec3<float>, 3>{ { p0, p1, p2 } };
     }
 
     TileGeometryIterator::TriangleUVs TileGeometryIterator::getTriangleUVs(std::size_t index) const {
@@ -76,7 +76,7 @@ namespace carto { namespace vt {
         cglib::vec2<float> uv1 = decodeVertexUV(i1);
         cglib::vec2<float> uv2 = decodeVertexUV(i2);
 
-        return std::array<cglib::vec2<float>, 3> {{ uv0, uv1, uv2 }};
+        return std::array<cglib::vec2<float>, 3>{ { uv0, uv1, uv2 } };
     }
 
     cglib::vec3<float> TileGeometryIterator::decodeVertexPos(std::size_t index) const {

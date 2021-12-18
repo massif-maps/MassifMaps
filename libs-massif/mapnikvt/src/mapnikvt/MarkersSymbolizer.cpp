@@ -294,7 +294,7 @@ namespace carto { namespace mvt {
             }
             if (!points.empty()) {
                 cglib::vec2<float> dir = cglib::unit(v1 - v0);
-                vt::Transform transform = vt::Transform::fromMatrix2(cglib::mat2x2<float> { { dir(0), -dir(1) }, { dir(1), dir(0) } });
+                vt::Transform transform = vt::Transform::fromMatrix2(cglib::mat2x2<float>{ { dir(0), -dir(1) }, { dir(1), dir(0) } });
                 transformedPointList.emplace_back(transform, std::move(points));
             }
 

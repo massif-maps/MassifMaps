@@ -71,12 +71,21 @@ namespace carto { namespace vt {
             return PointProcessor();
         }
 
-        if (_builderParameters.type != TileGeometry::Type::POINT || _builderParameters.glyphMap != glyphMap || _builderParameters.transform != style.transform || _builderParameters.compOp != style.compOp || _builderParameters.parameterCount >= TileGeometry::StyleParameters::MAX_PARAMETERS) {
+        cglib::vec2<float> translate(0, 0);
+        std::optional<cglib::mat2x2<float>> transform;
+        if (style.transform) {
+            translate = style.transform->translate();
+            if (auto matrix2 = style.transform->matrix2(); matrix2 != cglib::mat2x2<float>::identity()) {
+                transform = matrix2;
+            }
+        }
+
+        if (_builderParameters.type != TileGeometry::Type::POINT || _builderParameters.glyphMap != glyphMap || _builderParameters.translate != translate || _builderParameters.compOp != style.compOp || _builderParameters.parameterCount >= TileGeometry::StyleParameters::MAX_PARAMETERS) {
             appendGeometry();
         }
         _builderParameters.type = TileGeometry::Type::POINT;
         _builderParameters.glyphMap = glyphMap;
-        _builderParameters.transform = style.transform;
+        _builderParameters.translate = translate;
         _builderParameters.compOp = style.compOp;
         GlyphMap::GlyphId glyphId = glyphMap->loadBitmapGlyph(style.image->bitmap, style.image->sdfMode);
         int styleIndex = _builderParameters.parameterCount;
@@ -92,15 +101,20 @@ namespace carto { namespace vt {
             _builderParameters.offsetFuncs[styleIndex] = FloatFunction(0);
         }
 
-        return [style, styleIndex, glyphMap, glyphId, this](long long id, const Vertex& vertex) {
-            std::size_t i0 = _indices.size();
+        return [style, transform, styleIndex, glyphMap, glyphId, this](long long id, const Vertex& vertex) {
+            std::size_t i0 = _coords.size();
             cglib::vec2<float> pen(0, 0);
             const GlyphMap::Glyph* glyph = glyphMap->getGlyph(glyphId);
             if (glyph) {
                 pen = -cglib::vec2<float>(glyph->width, glyph->height) * 0.5f;
                 tesselateGlyph(vertex, static_cast<std::int8_t>(styleIndex), pen * style.image->scale, cglib::vec2<float>(glyph->width, glyph->height) * style.image->scale, glyph);
             }
-            _ids.fill(id, _indices.size() - i0);
+            _ids.fill(id, _indices.size() - _ids.size());
+            if (transform) {
+                for (std::size_t i = i0; i < _binormals.size(); i++) {
+                    _binormals[i] = cglib::transform(_binormals[i], *transform);
+                }
+            }
         };
     }
 
@@ -109,20 +123,21 @@ namespace carto { namespace vt {
             return TextProcessor();
         }
 
-        std::optional<Transform> transform;
+        cglib::vec2<float> translate(0, 0);
+        std::optional<cglib::mat2x2<float>> transform;
         if (style.angle != 0) {
             float angle = -style.angle * boost::math::constants::pi<float>() / 180.0f;
-            transform = Transform::fromMatrix2(cglib::rotate2_matrix(angle));
+            transform = cglib::rotate2_matrix(angle);
         }
 
         const std::shared_ptr<const Font>& font = formatter.getFont();
 
-        if (_builderParameters.type != TileGeometry::Type::POINT || _builderParameters.glyphMap != font->getGlyphMap() || _builderParameters.transform != transform || _builderParameters.compOp != style.compOp || _builderParameters.parameterCount + 2 > TileGeometry::StyleParameters::MAX_PARAMETERS) {
+        if (_builderParameters.type != TileGeometry::Type::POINT || _builderParameters.glyphMap != font->getGlyphMap() || _builderParameters.translate != translate || _builderParameters.compOp != style.compOp || _builderParameters.parameterCount + 2 > TileGeometry::StyleParameters::MAX_PARAMETERS) {
             appendGeometry();
         }
         _builderParameters.type = TileGeometry::Type::POINT;
         _builderParameters.glyphMap = font->getGlyphMap();
-        _builderParameters.transform = transform;
+        _builderParameters.translate = translate;
         _builderParameters.compOp = style.compOp;
         int styleIndex = _builderParameters.parameterCount;
         while (--styleIndex >= 0) {
@@ -152,8 +167,8 @@ namespace carto { namespace vt {
             }
         }
 
-        return [style, styleIndex, haloStyleIndex, font, formatter, this](long long id, const Vertex& vertex, const std::string& text) {
-            std::size_t i0 = _indices.size();
+        return [style, transform, styleIndex, haloStyleIndex, font, formatter, this](long long id, const Vertex& vertex, const std::string& text) {
+            std::size_t i0 = _coords.size();
             std::vector<Font::Glyph> glyphs = formatter.format(text, 1.0f);
             Font::Metrics metrics = font->getMetrics(1.0f);
             if (style.backgroundImage) {
@@ -179,7 +194,12 @@ namespace carto { namespace vt {
                     pen += glyph.advance;
                 }
             }
-            _ids.fill(id, _indices.size() - i0);
+            _ids.fill(id, _indices.size() - _ids.size());
+            if (transform) {
+                for (std::size_t i = i0; i < _binormals.size(); i++) {
+                    _binormals[i] = cglib::transform(_binormals[i], *transform);
+                }
+            }
         };
     }
 
@@ -188,15 +208,26 @@ namespace carto { namespace vt {
             return LineProcessor();
         }
 
-        if ((_builderParameters.strokeMap && _builderParameters.strokeMap != strokeMap) || _builderParameters.transform != style.transform || _builderParameters.compOp != style.compOp || _builderParameters.parameterCount >= TileGeometry::StyleParameters::MAX_PARAMETERS) {
+        cglib::vec2<float> translate(0, 0);
+        std::optional<cglib::mat2x2<float>> transform;
+        std::optional<cglib::mat2x2<float>> invTransTransform;
+        if (style.transform) {
+            translate = style.transform->translate();
+            if (auto matrix2 = style.transform->matrix2(); matrix2 != cglib::mat2x2<float>::identity()) {
+                transform = matrix2;
+                invTransTransform = cglib::transpose(cglib::inverse(matrix2));
+            }
+        }
+
+        if ((_builderParameters.strokeMap && _builderParameters.strokeMap != strokeMap) || _builderParameters.translate != translate || _builderParameters.compOp != style.compOp || _builderParameters.parameterCount >= TileGeometry::StyleParameters::MAX_PARAMETERS) {
             appendGeometry();
         }
-        else if (!(_builderParameters.type == TileGeometry::Type::LINE || (_builderParameters.type == TileGeometry::Type::POLYGON && !_builderParameters.pattern && !_builderParameters.transform))) { // we can use also line drawing shader but ONLY if pattern/transform is not used for polygons (pattern can be used for lines)
+        else if (!(_builderParameters.type == TileGeometry::Type::LINE || (_builderParameters.type == TileGeometry::Type::POLYGON && !_builderParameters.pattern))) { // we can use also line drawing shader but ONLY if pattern is not used for polygons (pattern can be used for lines)
             appendGeometry();
         }
         _builderParameters.type = TileGeometry::Type::LINE;
         _builderParameters.strokeMap = strokeMap;
-        _builderParameters.transform = style.transform;
+        _builderParameters.translate = translate;
         _builderParameters.compOp = style.compOp;
         StrokeMap::StrokeId strokeId = (style.strokePattern ? strokeMap->loadBitmapPattern(style.strokePattern) : 0);
         const StrokeMap::Stroke* stroke = (strokeId != 0 ? strokeMap->getStroke(strokeId) : nullptr);
@@ -214,20 +245,38 @@ namespace carto { namespace vt {
             _builderParameters.lineStrokeIds[styleIndex] = strokeId;
         }
 
-        return [style, styleIndex, stroke, this](long long id, const Vertices& vertices) {
-            std::size_t i0 = _indices.size();
+        return [style, transform, invTransTransform, styleIndex, stroke, this](long long id, const Vertices& vertices) {
+            std::size_t i0 = _coords.size();
             _binormals.fill(cglib::vec2<float>(0, 0), _coords.size() - _binormals.size()); // needed if previously only polygons were used
             tesselateLine(vertices, static_cast<std::int8_t>(styleIndex), stroke, style);
-            _ids.fill(id, _indices.size() - i0);
+            _ids.fill(id, _indices.size() - _ids.size());
+            if (transform) {
+                for (std::size_t i = i0; i < _coords.size(); i++) {
+                    _coords[i] = cglib::transform(_coords[i], *transform);
+                }
+                for (std::size_t i = i0; i < _binormals.size(); i++) {
+                    _binormals[i] = cglib::unit(cglib::transform(_binormals[i], *invTransTransform)) * cglib::length(_binormals[i]);
+                }
+            }
         };
     }
 
     TileLayerBuilder::PolygonProcessor TileLayerBuilder::createPolygonProcessor(const PolygonStyle& style) {
+        cglib::vec2<float> translate(0, 0);
+        std::optional<cglib::mat2x2<float>> transform;
+        if (style.transform) {
+            translate = style.transform->translate();
+            if (auto matrix2 = style.transform->matrix2(); matrix2 != cglib::mat2x2<float>::identity()) {
+                transform = matrix2;
+            }
+        }
+
         TileGeometry::Type type = TileGeometry::Type::POLYGON;
-        if (_builderParameters.pattern != style.pattern || _builderParameters.transform != style.transform || _builderParameters.compOp != style.compOp || _builderParameters.parameterCount >= TileGeometry::StyleParameters::MAX_PARAMETERS) {
+
+        if (_builderParameters.pattern != style.pattern || _builderParameters.translate != translate || _builderParameters.compOp != style.compOp || _builderParameters.parameterCount >= TileGeometry::StyleParameters::MAX_PARAMETERS) {
             appendGeometry();
         }
-        else if (!(_builderParameters.type == TileGeometry::Type::POLYGON || (_builderParameters.type == TileGeometry::Type::LINE && !style.pattern && !style.transform))) { // we can use also line drawing shader but ONLY if pattern/transform is not used for polygons (pattern can be used for lines)
+        else if (!(_builderParameters.type == TileGeometry::Type::POLYGON || (_builderParameters.type == TileGeometry::Type::LINE && !style.pattern))) { // we can use also line drawing shader but ONLY if pattern is not used for polygons (pattern can be used for lines)
             appendGeometry();
         }
         else {
@@ -235,7 +284,7 @@ namespace carto { namespace vt {
         }
         _builderParameters.type = type;
         _builderParameters.pattern = style.pattern;
-        _builderParameters.transform = style.transform;
+        _builderParameters.translate = translate;
         _builderParameters.compOp = style.compOp;
         int styleIndex = _builderParameters.parameterCount;
         while (--styleIndex >= 0) {
@@ -251,22 +300,38 @@ namespace carto { namespace vt {
             _builderParameters.lineStrokeIds[styleIndex] = 0; // fill stroke information when we need to use line shader with polygons
         }
 
-        return [type, style, styleIndex, this](long long id, const VerticesList& verticesList) {
-            std::size_t i0 = _ids.size();
+        return [type, style, transform, styleIndex, this](long long id, const VerticesList& verticesList) {
+            std::size_t i0 = _coords.size();
             tesselatePolygon(verticesList, static_cast<std::int8_t>(styleIndex), style);
-            _ids.fill(id, _indices.size() - i0);
+            _ids.fill(id, _indices.size() - _ids.size());
             if (type == TileGeometry::Type::LINE) {
                 _binormals.fill(cglib::vec2<float>(0, 0), _coords.size() - _binormals.size()); // use zero binormals if using 'lines'
+            }
+            if (transform) {
+                for (std::size_t i = i0; i < _coords.size(); i++) {
+                    _coords[i] = cglib::transform(_coords[i], *transform);
+                }
             }
         };
     }
 
     TileLayerBuilder::Polygon3DProcessor TileLayerBuilder::createPolygon3DProcessor(const Polygon3DStyle& style) {
-        if (_builderParameters.type != TileGeometry::Type::POLYGON3D || _builderParameters.transform != style.transform || _builderParameters.parameterCount >= TileGeometry::StyleParameters::MAX_PARAMETERS) {
+        cglib::vec2<float> translate(0, 0);
+        std::optional<cglib::mat2x2<float>> transform;
+        std::optional<cglib::mat2x2<float>> invTransTransform;
+        if (style.transform) {
+            translate = style.transform->translate();
+            if (auto matrix2 = style.transform->matrix2(); matrix2 != cglib::mat2x2<float>::identity()) {
+                transform = matrix2;
+                invTransTransform = cglib::transpose(cglib::inverse(matrix2));
+            }
+        }
+
+        if (_builderParameters.type != TileGeometry::Type::POLYGON3D || _builderParameters.translate != translate || _builderParameters.parameterCount >= TileGeometry::StyleParameters::MAX_PARAMETERS) {
             appendGeometry();
         }
         _builderParameters.type = TileGeometry::Type::POLYGON3D;
-        _builderParameters.transform = style.transform;
+        _builderParameters.translate = translate;
         int styleIndex = _builderParameters.parameterCount;
         while (--styleIndex >= 0) {
             if (_builderParameters.colorFuncs[styleIndex] == style.colorFunc) {
@@ -278,10 +343,21 @@ namespace carto { namespace vt {
             _builderParameters.colorFuncs[styleIndex] = style.colorFunc;
         }
 
-        return [style, styleIndex, this](long long id, const VerticesList& verticesList, float minHeight, float maxHeight) {
-            std::size_t i0 = _ids.size();
+        return [style, transform, invTransTransform, styleIndex, this](long long id, const VerticesList& verticesList, float minHeight, float maxHeight) {
+            std::size_t i0 = _coords.size();
             tesselatePolygon3D(verticesList, minHeight, maxHeight, static_cast<std::int8_t>(styleIndex), style);
-            _ids.fill(id, _indices.size() - i0);
+            _ids.fill(id, _indices.size() - _ids.size());
+            if (transform) {
+                for (std::size_t i = i0; i < _coords.size(); i++) {
+                    _coords[i] = cglib::transform(_coords[i], *transform);
+                }
+                for (std::size_t i = i0; i < _binormals.size(); i++) {
+                    _binormals[i] = cglib::unit(cglib::transform(_binormals[i], *invTransTransform)) * cglib::length(_binormals[i]);
+                }
+                for (std::size_t i = i0; i < _texCoords.size(); i++) {
+                    _texCoords[i] = cglib::transform(_texCoords[i], *transform);
+                }
+            }
         };
     }
 
@@ -303,7 +379,7 @@ namespace carto { namespace vt {
         std::optional<Transform> transform;
         if (style.transform) {
             cglib::mat3x3<float> flippedTransform = style.transform->matrix3() * cglib::scale3_matrix(cglib::vec3<float>(1, -1, 1));
-            cglib::mat2x2<float> matrix{ { flippedTransform(0, 0), flippedTransform(0, 1)}, { -flippedTransform(1, 0), -flippedTransform(1, 1) } };
+            cglib::mat2x2<float> matrix = { { flippedTransform(0, 0), flippedTransform(0, 1) }, { -flippedTransform(1, 0), -flippedTransform(1, 1) } };
             cglib::vec2<float> translate(flippedTransform(0, 2) / _tileSize, flippedTransform(1, 2) / _tileSize);
             transform = Transform::fromMatrix2Translate(matrix, translate);
         }
@@ -419,11 +495,8 @@ namespace carto { namespace vt {
             }
             styleParameters.strokeScales[i] = (stroke ? stroke->scale : 0);
         }
-        if (_builderParameters.transform) {
-            cglib::vec2<float> translate = _builderParameters.transform->translate();
-            if (translate != cglib::vec2<float>(0, 0)) {
-                styleParameters.translate = translate * (1.0f / _tileSize);
-            }
+        if (_builderParameters.translate != cglib::vec2<float>(0, 0)) {
+            styleParameters.translate = _builderParameters.translate * (1.0f / _tileSize);
         }
         styleParameters.compOp = _builderParameters.compOp;
 
@@ -447,36 +520,11 @@ namespace carto { namespace vt {
         coords.reserve(_coords.size());
         normals.reserve(_coords.size());
         binormals.reserve(_binormals.size());
-        if (!_builderParameters.transform) {
-            for (std::size_t i = 0; i < _coords.size(); i++) {
-                coords.append(_transformer->calculatePoint(_coords[i]));
-                normals.append(_transformer->calculateNormal(_coords[i]));
-                if (!_binormals.empty()) {
-                    binormals.append(_transformer->calculateVector(_coords[i], _binormals[i]));
-                }
-            }
-        }
-        else {
-            cglib::mat2x2<float> transform = _builderParameters.transform->matrix2();
-            cglib::mat2x2<float> invTransTransform = cglib::transpose(cglib::inverse(transform));
-            for (std::size_t i = 0; i < _coords.size(); i++) {
-                cglib::vec2<float> pos;
-                if (_builderParameters.type == TileGeometry::Type::POINT) {
-                    pos = _coords[i];
-                } else {
-                    pos = cglib::transform(_coords[i], transform);
-                }
-                coords.append(_transformer->calculatePoint(pos));
-                normals.append(_transformer->calculateNormal(pos));
-                if (!_binormals.empty()) {
-                    cglib::vec2<float> binormal;
-                    if (_builderParameters.type == TileGeometry::Type::POINT) {
-                        binormal = cglib::transform(_binormals[i], transform);
-                    } else {
-                        binormal = cglib::unit(cglib::transform(_binormals[i], invTransTransform)) * cglib::length(_binormals[i]);
-                    }
-                    binormals.append(_transformer->calculateVector(pos, binormal));
-                }
+        for (std::size_t i = 0; i < _coords.size(); i++) {
+            coords.append(_transformer->calculatePoint(_coords[i]));
+            normals.append(_transformer->calculateNormal(_coords[i]));
+            if (!_binormals.empty()) {
+                binormals.append(_transformer->calculateVector(_coords[i], _binormals[i]));
             }
         }
         if (std::all_of(normals.begin(), normals.end(), [](const cglib::vec3<float>& normal) { return normal(2) == 1; })) {
@@ -485,18 +533,15 @@ namespace carto { namespace vt {
 
         // Transform texture coordinates. Note that texture coordinates are also used as local tile coordinates for 3D polygons.
         VertexArray<cglib::vec2<float>> texCoords;
-        if (styleParameters.pattern || _builderParameters.type == TileGeometry::Type::POLYGON3D) {
+        if (styleParameters.pattern) {
             texCoords.reserve(_texCoords.size());
-            cglib::mat2x2<float> transform = cglib::mat2x2<float>::identity();
-            if (styleParameters.pattern) {
-                transform = cglib::mat2x2<float> {{ 1.0f / styleParameters.pattern->bitmap->width, 0 }, { 0, 1.0f / styleParameters.pattern->bitmap->height }};
-            }
-            else if (_builderParameters.type == TileGeometry::Type::POLYGON3D && _builderParameters.transform) {
-                transform = _builderParameters.transform->matrix2();
-            }
             for (std::size_t i = 0; i < _texCoords.size(); i++) {
-                texCoords.append(cglib::transform(_texCoords[i], transform));
+                texCoords.append(cglib::pointwise_product(_texCoords[i], cglib::vec2<float>(1.0f / styleParameters.pattern->bitmap->width, 1.0f / styleParameters.pattern->bitmap->height)));
             }
+        }
+        else if (_builderParameters.type == TileGeometry::Type::POLYGON3D) {
+            texCoords.reserve(_texCoords.size());
+            texCoords.copy(_texCoords, 0, _texCoords.size());
         }
 
         // Transform heights

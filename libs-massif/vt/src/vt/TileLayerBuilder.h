@@ -76,10 +76,10 @@ namespace carto { namespace vt {
             std::shared_ptr<const StrokeMap> strokeMap;
             std::shared_ptr<const GlyphMap> glyphMap;
             std::shared_ptr<const BitmapPattern> pattern;
-            std::optional<Transform> transform;
+            cglib::vec2<float> translate;
             CompOp compOp;
 
-            BuilderParameters() : type(TileGeometry::Type::NONE), parameterCount(0), colorFuncs(), widthFuncs(), offsetFuncs(), lineStrokeIds(), strokeMap(), glyphMap(), pattern(), transform(), compOp(CompOp::SRC_OVER) { }
+            BuilderParameters() : type(TileGeometry::Type::NONE), parameterCount(0), colorFuncs(), widthFuncs(), offsetFuncs(), lineStrokeIds(), strokeMap(), glyphMap(), pattern(), translate(0, 0), compOp(CompOp::SRC_OVER) { }
         };
 
         void appendGeometry();

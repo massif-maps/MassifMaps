@@ -20,6 +20,8 @@
 #include "mapnikvt/BuildingSymbolizer.h"
 #include "mapnikvt/GeneratorUtils.h"
 
+#include <algorithm>
+
 namespace carto { namespace css {
     std::shared_ptr<const mvt::Rule> CartoCSSMapnikTranslator::buildRule(const PropertySet& propertySet, const std::shared_ptr<mvt::Map>& map, int minZoom, int maxZoom) const {
         std::vector<std::shared_ptr<const Property>> properties = propertySet.getProperties();
@@ -194,7 +196,7 @@ namespace carto { namespace css {
     }
 
     mvt::Expression CartoCSSMapnikTranslator::buildFunctionExpression(const FunctionExpression& funcExpr) {
-        if (auto funcIt = _basicFuncs.find(funcExpr.getFunc()); funcIt != _basicFuncs.end()) {
+        if (auto funcIt = _basicFuncMap.find(funcExpr.getFunc()); funcIt != _basicFuncMap.end()) {
             // Basic functions. Fixed arity.
             struct FunctionBuilder {
                 explicit FunctionBuilder(const std::vector<mvt::Expression>& exprs) : _exprs(exprs) { }
@@ -231,7 +233,7 @@ namespace carto { namespace css {
             }
             return std::visit(FunctionBuilder(mapnikExprs), funcIt->second);
         }
-        else if (auto funcIt = _interpolationFuncs.find(funcExpr.getFunc()); funcIt != _interpolationFuncs.end()) {
+        else if (auto funcIt = _interpolationFuncMap.find(funcExpr.getFunc()); funcIt != _interpolationFuncMap.end()) {
             // Interpolation function. Variable arity, special case.
             std::size_t argCount = funcExpr.getArgs().size();
             if (argCount < 2) {
@@ -265,23 +267,48 @@ namespace carto { namespace css {
             }
             return std::make_shared<mvt::InterpolateExpression>(funcIt->second, std::move(mapnikTimeExpr), std::move(mapnikKeyFrames));
         }
-        else {
-            // Assume pseudo-function (like 'translate(1,2)')
-            std::string exprStr = funcExpr.getFunc();
-            exprStr += "(";
-            const char* argSeparator = "";
+        else if (auto funcIt = _transformFuncs.find(funcExpr.getFunc()); funcIt != _transformFuncs.end()) {
+            // Transform function. Variable arity, special case.
+            std::vector<mvt::Expression> mapnikExprs;
+            mapnikExprs.reserve(funcExpr.getArgs().size());
             for (const Expression& expr : funcExpr.getArgs()) {
-                mvt::Expression mapnikExpr = buildExpression(expr);
-                if (auto val = std::get_if<mvt::Value>(&mapnikExpr)) {
-                    exprStr += argSeparator + mvt::generateValueString(*val);
-                }
-                else {
-                    throw TranslatorException("Expecting constant arguments for function " + funcExpr.getFunc());
-                }
-                argSeparator = ",";
+                mapnikExprs.push_back(buildExpression(expr));
             }
-            exprStr += ")";
-            return mvt::Value(std::move(exprStr));
+
+            std::string func = funcExpr.getFunc();
+            std::size_t argCount = funcExpr.getArgs().size();
+            if (func == "matrix" && argCount == 6) {
+                std::array<mvt::Expression, 6> values;
+                std::copy(mapnikExprs.begin(), mapnikExprs.end(), values.begin());
+                return std::make_shared<mvt::TransformExpression>(mvt::MatrixTransform(values));
+            }
+            else if (func == "translate" && argCount == 2) {
+                return std::make_shared<mvt::TransformExpression>(mvt::TranslateTransform(std::move(mapnikExprs[0]), std::move(mapnikExprs[1])));
+            }
+            else if (func == "rotate" && argCount == 1) {
+                return std::make_shared<mvt::TransformExpression>(mvt::RotateTransform(mvt::Value(0.0), mvt::Value(0.0), std::move(mapnikExprs[0])));
+            }
+            else if (func == "rotate" && argCount == 3) {
+                return std::make_shared<mvt::TransformExpression>(mvt::RotateTransform(std::move(mapnikExprs[1]), std::move(mapnikExprs[2]), std::move(mapnikExprs[0])));
+            }
+            else if (func == "scale" && argCount == 1) {
+                return std::make_shared<mvt::TransformExpression>(mvt::ScaleTransform(std::move(mapnikExprs[0]), std::move(mapnikExprs[0])));
+            }
+            else if (func == "scale" && argCount == 2) {
+                return std::make_shared<mvt::TransformExpression>(mvt::ScaleTransform(std::move(mapnikExprs[0]), std::move(mapnikExprs[1])));
+            }
+            else if (func == "skewx" && argCount == 1) {
+                return std::make_shared<mvt::TransformExpression>(mvt::SkewXTransform(std::move(mapnikExprs[0])));
+            }
+            else if (func == "skewy" && argCount == 1) {
+                return std::make_shared<mvt::TransformExpression>(mvt::SkewYTransform(std::move(mapnikExprs[0])));
+            }
+            else {
+                throw TranslatorException("Unexpected number of arguments for " + func + " transform function");
+            }
+        }
+        else {
+            throw TranslatorException("Unsupported function " + funcExpr.getFunc());
         }
     }
 
@@ -496,7 +523,7 @@ namespace carto { namespace css {
         { OpPredicate::Op::MATCH, mvt::ComparisonPredicate::Op::MATCH }
     };
 
-    const std::unordered_map<std::string, std::variant<mvt::UnaryExpression::Op, mvt::BinaryExpression::Op, mvt::TertiaryExpression::Op>> CartoCSSMapnikTranslator::_basicFuncs = {
+    const std::unordered_map<std::string, std::variant<mvt::UnaryExpression::Op, mvt::BinaryExpression::Op, mvt::TertiaryExpression::Op>> CartoCSSMapnikTranslator::_basicFuncMap = {
         { "exp",        mvt::UnaryExpression::Op::EXP },
         { "log",        mvt::UnaryExpression::Op::LOG },
         { "uppercase",  mvt::UnaryExpression::Op::UPPER },
@@ -507,11 +534,20 @@ namespace carto { namespace css {
         { "concat",     mvt::BinaryExpression::Op::CONCAT },
         { "replace",    mvt::TertiaryExpression::Op::REPLACE }
     };
-    
-    const std::unordered_map<std::string, mvt::InterpolateExpression::Method> CartoCSSMapnikTranslator::_interpolationFuncs = {
+
+    const std::unordered_map<std::string, mvt::InterpolateExpression::Method> CartoCSSMapnikTranslator::_interpolationFuncMap = {
         { "step",   mvt::InterpolateExpression::Method::STEP },
         { "linear", mvt::InterpolateExpression::Method::LINEAR },
         { "cubic",  mvt::InterpolateExpression::Method::CUBIC }
+    };
+
+    const std::unordered_set<std::string> CartoCSSMapnikTranslator::_transformFuncs = {
+        "matrix",
+        "translate",
+        "rotate",
+        "scale",
+        "skewx",
+        "skewy"
     };
 
     const std::vector<std::string> CartoCSSMapnikTranslator::_symbolizerList = {

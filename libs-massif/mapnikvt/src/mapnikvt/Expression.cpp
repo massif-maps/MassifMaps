@@ -1,5 +1,6 @@
 #include "Expression.h"
 #include "ExpressionUtils.h"
+#include "TransformUtils.h"
 #include "StringUtils.h"
 #include "ValueConverter.h"
 #include "ParserUtils.h"
@@ -167,7 +168,7 @@ namespace carto { namespace mvt {
             const Value& val = keyFrames[i + 1];
             if (auto str = std::get_if<std::string>(&val)) {
                 vt::Color color = parseColor(*str);
-                colorKeyFramesList.emplace_back(cglib::vec<float, 5> {{ key, color[0], color[1], color[2], color[3] }});
+                colorKeyFramesList.emplace_back(cglib::vec<float, 5>{ { key, color[0], color[1], color[2], color[3] } });
             }
             else {
                 floatKeyFramesList.emplace_back(key, ValueConverter<float>::convert(val));
@@ -180,5 +181,9 @@ namespace carto { namespace mvt {
             return cglib::fcurve5<float>::create(type, colorKeyFramesList.begin(), colorKeyFramesList.end());
         }
         return cglib::fcurve2<float>::create(type, floatKeyFramesList.begin(), floatKeyFramesList.end());
+    }
+
+    std::vector<Expression> TransformExpression::getSubExpressions() const {
+        return std::visit(TransformSubExpressionBuilder(), _transform);
     }
 } }

@@ -9,6 +9,7 @@
 
 #include "ExpressionPredicateBase.h"
 #include "ValueConverter.h"
+#include "Transform.h"
 
 #include <array>
 #include <memory>
@@ -126,6 +127,20 @@ namespace carto { namespace mvt {
         const Expression _timeExpr;
         const std::vector<Value> _keyFrames;
         const std::variant<cglib::fcurve2<float>, cglib::fcurve5<float>> _fcurve;
+    };
+
+    class TransformExpression final {
+    public:
+        using Transform = std::variant<MatrixTransform, TranslateTransform, RotateTransform, ScaleTransform, SkewXTransform, SkewYTransform>;
+
+        explicit TransformExpression(Transform transform) : _transform(std::move(transform)) { }
+
+        const Transform& getTransform() const { return _transform; }
+
+        std::vector<Expression> getSubExpressions() const;
+
+    private:
+        const Transform _transform;
     };
 } }
 

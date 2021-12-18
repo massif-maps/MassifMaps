@@ -24,6 +24,7 @@
 #include <string>
 #include <vector>
 #include <optional>
+#include <unordered_set>
 #include <unordered_map>
 
 namespace carto { namespace css {
@@ -66,8 +67,9 @@ namespace carto { namespace css {
         static const std::vector<std::pair<BinaryExpression::Op, mvt::ComparisonPredicate::Op>> _comparisonOpTable;
         static const std::vector<std::pair<OpPredicate::Op, mvt::ComparisonPredicate::Op>> _predicateOpTable;
 
-        static const std::unordered_map<std::string, std::variant<mvt::UnaryExpression::Op, mvt::BinaryExpression::Op, mvt::TertiaryExpression::Op>> _basicFuncs;
-        static const std::unordered_map<std::string, mvt::InterpolateExpression::Method> _interpolationFuncs;
+        static const std::unordered_map<std::string, std::variant<mvt::UnaryExpression::Op, mvt::BinaryExpression::Op, mvt::TertiaryExpression::Op>> _basicFuncMap;
+        static const std::unordered_map<std::string, mvt::InterpolateExpression::Method> _interpolationFuncMap;
+        static const std::unordered_set<std::string> _transformFuncs;
 
         static const std::vector<std::string> _symbolizerList;
         static const std::unordered_map<std::string, std::string> _symbolizerPropertyMap;

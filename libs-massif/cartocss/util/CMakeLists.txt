@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.1)
-project(css2xml)
+project(cssutils)
 
 # Fix behavior of CMAKE_CXX_STANDARD when targeting macOS.
 if(POLICY CMP0025)
@@ -9,11 +9,7 @@ endif()
 option(EXCLUDE_GL "Exclude GL rendering code" ON)
 option(SINGLE_LIBRARY "Compile as single library" OFF)
 
-if(WIN32 AND NOT DEFINED Imagination_SDK_ROOT)
-  set(Imagination_SDK_ROOT "C:/Imagination/PowerVR_Graphics/PowerVR_SDK/SDK_2016_R2")
-endif()
-
-add_definitions("${SDK_CPP_DEFINES} -DBOOST_ALL_NO_LIB")
+find_package(Boost)
 
 if(WIN32)
   add_definitions("-DNOMINMAX -D_SCL_SECURE_NO_WARNINGS -D_CRT_SECURE_NO_WARNINGS -DGL_GLEXT_PROTOTYPES")
@@ -24,13 +20,18 @@ else()
 endif()
 
 set(BASE_DIR "${PROJECT_SOURCE_DIR}/../..")
-set(LIBS_DIR "${PROJECT_SOURCE_DIR}/../../../libs-external")
+if(EXISTS "${PROJECT_SOURCE_DIR}/../../../mobile-external-libs")
+  set(LIBS_DIR "${PROJECT_SOURCE_DIR}/../../../mobile-external-libs")
+elseif(EXISTS "${PROJECT_SOURCE_DIR}/../../../libs-external")
+  set(LIBS_DIR "${PROJECT_SOURCE_DIR}/../../../libs-external")
+else()
+  message(SEND_ERROR "mobile-external-libs dependency is missing")
+endif()
 
 include_directories(
   "${BASE_DIR}/cartocss/src"
   "${BASE_DIR}/mapnikvt/src"
   "${BASE_DIR}/vt/src"
-  "${LIBS_DIR}/boost"
   "${LIBS_DIR}/cglib"
   "${LIBS_DIR}/stdext"
   "${LIBS_DIR}/picojson"
@@ -38,20 +39,18 @@ include_directories(
   "${LIBS_DIR}/zlib/config"
   "${LIBS_DIR}/zlib/zlib"
   "${LIBS_DIR}/bidi"
-  "${LIBS_DIR}/msdfgen"
   "${LIBS_DIR}/tess2/include"
-  "${LIBS_DIR}/freetype/include"
-  "${LIBS_DIR}/harfbuzz/src"
+  "${LIBS_DIR}/freetype/freetype/include"
+  "${LIBS_DIR}/harfbuzz/harfbuzz/src"
   "${LIBS_DIR}/pugixml/pugixml/src"
   "${LIBS_DIR}/rapidjson/include"
   "${LIBS_DIR}/utf8/source"
+  "${Boost_INCLUDE_DIRS}"
 )
 
-if(WIN32)
-  include_directories(
-    "${Imagination_SDK_ROOT}/Builds/Include"
-  )
-endif()
+link_directories(
+  "${Boost_LIBRARY_DIRS}"
+)
 
 add_subdirectory("${BASE_DIR}/vt" vt)
 add_subdirectory("${BASE_DIR}/mapnikvt" mapnikvt)
@@ -59,19 +58,13 @@ add_subdirectory("${BASE_DIR}/cartocss" cartocss)
 add_subdirectory("${LIBS_DIR}/bidi" bidi)
 add_subdirectory("${LIBS_DIR}/freetype" freetype)
 add_subdirectory("${LIBS_DIR}/harfbuzz" harfbuzz)
-add_subdirectory("${LIBS_DIR}/msdfgen" msdfgen)
 add_subdirectory("${LIBS_DIR}/brotli" brotli)
 add_subdirectory("${LIBS_DIR}/miniz" miniz)
 add_subdirectory("${LIBS_DIR}/pugixml" pugixml)
 add_subdirectory("${LIBS_DIR}/tess2" tess2)
-add_subdirectory("${LIBS_DIR}/zlib/zlib" zlib)
+add_subdirectory("${LIBS_DIR}/zlib" zlib)
 
 add_executable(css2xml css2xml.cpp)
-target_link_libraries(css2xml cartocss mapnikvt vt pugixml tess2 brotli miniz zlib freetype harfbuzz bidi msdfgen)
-if(WIN32)
-  if(CMAKE_SIZEOF_VOID_P EQUAL 4)
-    target_link_libraries(css2xml "${Imagination_SDK_ROOT}/Builds/Windows/x86_32/Lib/libEGL.lib" "${Imagination_SDK_ROOT}/Builds/Windows/x86_32/Lib/libGLESv2.lib")
-  else()
-    target_link_libraries(css2xml "${Imagination_SDK_ROOT}/Builds/Windows/x86_64/Lib/libEGL.lib" "${Imagination_SDK_ROOT}/Builds/Windows/x86_64/Lib/libGLESv2.lib")
-  endif()
-endif()
+add_executable(mvt2xml mvt2xml.cpp)
+target_link_libraries(css2xml cartocss mapnikvt vt pugixml tess2 brotli miniz zlib freetype harfbuzz bidi)
+target_link_libraries(mvt2xml cartocss mapnikvt vt pugixml tess2 brotli miniz zlib freetype harfbuzz bidi)

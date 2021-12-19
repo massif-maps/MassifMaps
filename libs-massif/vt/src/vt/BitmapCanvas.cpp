@@ -11,7 +11,7 @@ namespace {
 }
 
 namespace carto { namespace vt {
-    BitmapCanvas::BitmapCanvas(int width, int height, bool sdfMode) : _width(width), _height(height), _sdfMode(sdfMode), _data(width * height) {
+    BitmapCanvas::BitmapCanvas(int width, int height) : _width(width), _height(height), _sdfMode(false), _data(width * height) {
     }
 
     void BitmapCanvas::setOpacity(float opacity) {
@@ -101,7 +101,7 @@ namespace carto { namespace vt {
     }
 
     std::shared_ptr<BitmapImage> BitmapCanvas::buildBitmapImage() const {
-        return std::make_shared<BitmapImage>(_sdfMode, 1.0f, std::make_shared<Bitmap>(_width, _height, _data));
+        return std::make_shared<BitmapImage>(1.0f, std::make_shared<Bitmap>(_width, _height, _data));
     }
 
     void BitmapCanvas::drawColorPixel(int x, int y, float alpha) {

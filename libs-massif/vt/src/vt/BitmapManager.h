@@ -28,7 +28,7 @@ namespace carto { namespace vt {
         virtual ~BitmapManager() = default;
 
         std::shared_ptr<const BitmapImage> getBitmapImage(const std::string& fileName) const;
-        std::shared_ptr<const BitmapImage> loadBitmapImage(const std::string& fileName, bool sdfMode, float resolution);
+        std::shared_ptr<const BitmapImage> loadBitmapImage(const std::string& fileName, float resolution);
         void storeBitmapImage(const std::string& fileName, const std::shared_ptr<const BitmapImage>& bitmapImage);
 
         std::shared_ptr<const BitmapPattern> getBitmapPattern(const std::string& fileName) const;

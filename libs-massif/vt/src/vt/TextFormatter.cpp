@@ -33,7 +33,7 @@ namespace carto { namespace vt {
         for (const Line& line : lines) {
             float xoff = -textBBox.max(0) * (_options.alignment(0) + 1.0f) * 0.5f + (textBBox.size()(0) - line.bbox.size()(0)) * 0.5f;
             float yoff = (textBBox.min(1) - _metrics.descent) * (-_options.alignment(1) + 1.0f) * 0.5f + (line.bbox.min(1) - textBBox.min(1));
-            glyphs.emplace_back(Font::Glyph(0, Font::CR_CODEPOINT, GlyphMap::Glyph(false, 0, 0, 0, 0, cglib::vec2<float>(0, 0)), cglib::vec2<float>(0, 0), cglib::vec2<float>(0, 0), cglib::vec2<float>(xoff, yoff) + _options.offset * (1.0f / _fontSize)));
+            glyphs.emplace_back(Font::Glyph(0, Font::CR_CODEPOINT, GlyphMap::Glyph(GlyphMap::GlyphMode::BACKGROUND, 0, 0, 0, 0, cglib::vec2<float>(0, 0)), cglib::vec2<float>(0, 0), cglib::vec2<float>(0, 0), cglib::vec2<float>(xoff, yoff) + _options.offset * (1.0f / _fontSize)));
             glyphs.insert(glyphs.end(), line.glyphs.begin(), line.glyphs.end());
         }
         if (fontSize != 1) {

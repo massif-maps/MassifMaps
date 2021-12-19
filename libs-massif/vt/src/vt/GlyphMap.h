@@ -20,23 +20,29 @@ namespace carto { namespace vt {
     class GlyphMap final {
     public:
         using GlyphId = unsigned int;
-        
+
+        enum class GlyphMode {
+            SDF        = 0,
+            BITMAP     = 1,
+            BACKGROUND = 2
+        };
+
         struct Glyph {
-            bool sdfMode;
+            GlyphMode mode;
             int x;
             int y;
             int width;
             int height;
             cglib::vec2<float> origin;
 
-            explicit Glyph(bool sdfMode, int x, int y, int width, int height, const cglib::vec2<float>& origin) : sdfMode(sdfMode), x(x), y(y), width(width), height(height), origin(origin) { }
+            explicit Glyph(GlyphMode mode, int x, int y, int width, int height, const cglib::vec2<float>& origin) : mode(mode), x(x), y(y), width(width), height(height), origin(origin) { }
         };
 
         explicit GlyphMap(int maxWidth, int maxHeight);
 
         const Glyph* getGlyph(GlyphId code) const;
-        GlyphId loadBitmapGlyph(const std::shared_ptr<const Bitmap>& bitmap, bool sdfMode);
-        GlyphId loadBitmapGlyph(const std::shared_ptr<const Bitmap>& bitmap, bool sdfMode, const cglib::vec2<float>& origin);
+        GlyphId loadBitmapGlyph(const std::shared_ptr<const Bitmap>& bitmap, GlyphMode mode);
+        GlyphId loadBitmapGlyph(const std::shared_ptr<const Bitmap>& bitmap, GlyphMode mode, const cglib::vec2<float>& origin);
         std::shared_ptr<const BitmapPattern> getBitmapPattern() const;
 
     private:

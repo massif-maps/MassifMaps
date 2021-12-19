@@ -87,7 +87,7 @@ namespace carto { namespace vt {
         _builderParameters.glyphMap = glyphMap;
         _builderParameters.translate = translate;
         _builderParameters.compOp = style.compOp;
-        GlyphMap::GlyphId glyphId = glyphMap->loadBitmapGlyph(style.image->bitmap, style.image->sdfMode);
+        GlyphMap::GlyphId glyphId = glyphMap->loadBitmapGlyph(style.image->bitmap, GlyphMap::GlyphMode::BITMAP);
         int styleIndex = _builderParameters.parameterCount;
         while (--styleIndex >= 0) {
             if (_builderParameters.colorFuncs[styleIndex] == style.colorFunc && _builderParameters.widthFuncs[styleIndex] == style.sizeFunc && _builderParameters.offsetFuncs[styleIndex] == FloatFunction(0)) {
@@ -172,7 +172,7 @@ namespace carto { namespace vt {
             std::vector<Font::Glyph> glyphs = formatter.format(text, 1.0f);
             Font::Metrics metrics = font->getMetrics(1.0f);
             if (style.backgroundImage) {
-                const GlyphMap::Glyph* baseGlyph = font->getGlyphMap()->getGlyph(font->getGlyphMap()->loadBitmapGlyph(style.backgroundImage->bitmap, style.backgroundImage->sdfMode));
+                const GlyphMap::Glyph* baseGlyph = font->getGlyphMap()->getGlyph(font->getGlyphMap()->loadBitmapGlyph(style.backgroundImage->bitmap, GlyphMap::GlyphMode::BACKGROUND));
                 if (baseGlyph) {
                     float scale = style.backgroundImage->scale / formatter.getFontSize();
                     Font::Glyph glyph(0, Font::NULL_CODEPOINT, *baseGlyph, cglib::vec2<float>(baseGlyph->width, baseGlyph->height) * (style.backgroundScale * scale), style.backgroundOffset * scale, cglib::vec2<float>(0, 0));
@@ -366,12 +366,12 @@ namespace carto { namespace vt {
             return PointLabelProcessor();
         }
 
-        const GlyphMap::Glyph* baseGlyph = glyphMap->getGlyph(glyphMap->loadBitmapGlyph(style.image->bitmap, style.image->sdfMode));
+        const GlyphMap::Glyph* baseGlyph = glyphMap->getGlyph(glyphMap->loadBitmapGlyph(style.image->bitmap, GlyphMap::GlyphMode::BITMAP));
         if (!baseGlyph) {
             return PointLabelProcessor();
         }
         std::vector<Font::Glyph> bitmapGlyphs = {
-            Font::Glyph(0, Font::CR_CODEPOINT, GlyphMap::Glyph(false, 0, 0, 0, 0, cglib::vec2<float>(0, 0)), cglib::vec2<float>(0, 0), cglib::vec2<float>(0, 0), -cglib::vec2<float>(style.image->bitmap->width, style.image->bitmap->height) * (style.image->scale * 0.5f)),
+            Font::Glyph(0, Font::CR_CODEPOINT, GlyphMap::Glyph(GlyphMap::GlyphMode::BACKGROUND, 0, 0, 0, 0, cglib::vec2<float>(0, 0)), cglib::vec2<float>(0, 0), cglib::vec2<float>(0, 0), -cglib::vec2<float>(style.image->bitmap->width, style.image->bitmap->height) * (style.image->scale * 0.5f)),
             Font::Glyph(0, Font::NULL_CODEPOINT, *baseGlyph, cglib::vec2<float>(baseGlyph->width, baseGlyph->height) * style.image->scale, cglib::vec2<float>(0, 0), cglib::vec2<float>(0, 0))
         };
 
@@ -428,7 +428,7 @@ namespace carto { namespace vt {
             if (!text.empty() || style.backgroundImage) {
                 std::vector<Font::Glyph> glyphs = formatter.format(text, 1.0f);
                 if (style.backgroundImage) {
-                    const GlyphMap::Glyph* baseGlyph = font->getGlyphMap()->getGlyph(font->getGlyphMap()->loadBitmapGlyph(style.backgroundImage->bitmap, style.backgroundImage->sdfMode));
+                    const GlyphMap::Glyph* baseGlyph = font->getGlyphMap()->getGlyph(font->getGlyphMap()->loadBitmapGlyph(style.backgroundImage->bitmap, GlyphMap::GlyphMode::BACKGROUND));
                     if (baseGlyph) {
                         float scale = style.backgroundImage->scale / formatter.getFontSize();
                         glyphs.insert(glyphs.begin(), Font::Glyph(0, Font::NULL_CODEPOINT, *baseGlyph, cglib::vec2<float>(baseGlyph->width, baseGlyph->height) * (style.backgroundScale * scale), style.backgroundOffset * scale, cglib::vec2<float>(baseGlyph->width, 0) * scale));
@@ -761,7 +761,7 @@ namespace carto { namespace vt {
             v0 = static_cast<float>(glyph->y);
             u1 = static_cast<float>(glyph->x + glyph->width);
             v1 = static_cast<float>(glyph->y + glyph->height);
-            attrib(1) = (glyph->sdfMode ? -1 : 1);
+            attrib(1) = static_cast<std::int8_t>(glyph->mode);
         }
 
         if (_clipBox.inside(point)) {

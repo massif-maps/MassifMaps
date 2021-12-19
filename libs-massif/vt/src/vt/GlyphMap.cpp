@@ -9,7 +9,7 @@
 
 namespace carto { namespace vt {
     GlyphMap::GlyphMap(int maxWidth, int maxHeight) : _maxWidth(maxWidth), _maxHeight(maxHeight) {
-        _glyphMap[0] = std::make_unique<Glyph>(false, 0, 0, 0, 0, cglib::vec2<float>(0, 0));
+        _glyphMap[0] = std::make_unique<Glyph>(GlyphMode::BACKGROUND, 0, 0, 0, 0, cglib::vec2<float>(0, 0));
     }
 
     const GlyphMap::Glyph* GlyphMap::getGlyph(GlyphId glyphId) const {
@@ -22,16 +22,16 @@ namespace carto { namespace vt {
         return it->second.get();
     }
 
-    GlyphMap::GlyphId GlyphMap::loadBitmapGlyph(const std::shared_ptr<const Bitmap>& bitmap, bool sdfMode) {
+    GlyphMap::GlyphId GlyphMap::loadBitmapGlyph(const std::shared_ptr<const Bitmap>& bitmap, GlyphMode mode) {
         if (!bitmap) {
             return 0;
         }
 
         cglib::vec2<float> origin(bitmap->width * 0.5f, bitmap->height * 0.5f);
-        return loadBitmapGlyph(bitmap, sdfMode, origin);
+        return loadBitmapGlyph(bitmap, mode, origin);
     }
     
-    GlyphMap::GlyphId GlyphMap::loadBitmapGlyph(const std::shared_ptr<const Bitmap>& bitmap, bool sdfMode, const cglib::vec2<float>& origin) {
+    GlyphMap::GlyphId GlyphMap::loadBitmapGlyph(const std::shared_ptr<const Bitmap>& bitmap, GlyphMode mode, const cglib::vec2<float>& origin) {
         std::lock_guard<std::mutex> lock(_mutex);
 
         if (!bitmap) {
@@ -66,7 +66,7 @@ namespace carto { namespace vt {
         }
 
         GlyphId glyphId = static_cast<GlyphId>(_glyphMap.size());
-        _glyphMap[glyphId] = std::make_unique<Glyph>(sdfMode, _buildState.x0 + 1, _buildState.y0 + 1, bitmap->width, bitmap->height, origin);
+        _glyphMap[glyphId] = std::make_unique<Glyph>(mode, _buildState.x0 + 1, _buildState.y0 + 1, bitmap->width, bitmap->height, origin);
         _bitmapGlyphMap[bitmap] = glyphId;
 
         _buildState.x0 += bitmap->width + 2;

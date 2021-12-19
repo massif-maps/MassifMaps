@@ -41,7 +41,7 @@ namespace carto { namespace mvt {
         std::shared_ptr<const vt::BitmapImage> bitmapImage;
         std::string file = _file.getValue(exprContext);
         if (!file.empty()) {
-            bitmapImage = symbolizerContext.getBitmapManager()->loadBitmapImage(file, false, IMAGE_UPSAMPLING_SCALE);
+            bitmapImage = symbolizerContext.getBitmapManager()->loadBitmapImage(file, IMAGE_UPSAMPLING_SCALE);
             if (!bitmapImage || !bitmapImage->bitmap) {
                 _logger->write(Logger::Severity::ERROR, "Failed to load marker bitmap " + file);
                 return FeatureProcessor();
@@ -306,7 +306,7 @@ namespace carto { namespace mvt {
     std::shared_ptr<vt::BitmapImage> MarkersSymbolizer::makeEllipseBitmap(float width, float height, const vt::Color& color, float strokeWidth, const vt::Color& strokeColor) {
         int canvasWidth = static_cast<int>(std::ceil(width + strokeWidth));
         int canvasHeight = static_cast<int>(std::ceil(height + strokeWidth));
-        vt::BitmapCanvas canvas(canvasWidth, canvasHeight, false);
+        vt::BitmapCanvas canvas(canvasWidth, canvasHeight);
         float x0 = canvasWidth * 0.5f, y0 = canvasHeight * 0.5f;
         if (strokeWidth > 0) {
             canvas.setColor(strokeColor);
@@ -321,7 +321,7 @@ namespace carto { namespace mvt {
         int canvasWidth = static_cast<int>(std::ceil(width + strokeWidth));
         int canvasHeight = static_cast<int>(std::ceil(height + strokeWidth));
         float x0 = 0, x1 = std::ceil(canvasWidth - canvasHeight * 0.5f), y1 = canvasHeight * 1.0f / 3.0f, y2 = canvasHeight * 2.0f / 3.0f;
-        vt::BitmapCanvas canvas(canvasWidth, canvasHeight, false);
+        vt::BitmapCanvas canvas(canvasWidth, canvasHeight);
         if (strokeWidth > 0) {
             canvas.setColor(strokeColor);
             canvas.drawRectangle(cglib::vec2<float>(x0, y1 - strokeWidth), cglib::vec2<float>(x1 - strokeWidth, y2 + strokeWidth));

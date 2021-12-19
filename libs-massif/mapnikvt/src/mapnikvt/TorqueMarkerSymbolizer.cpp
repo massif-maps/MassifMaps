@@ -16,7 +16,7 @@ namespace carto { namespace mvt {
         std::shared_ptr<const vt::BitmapImage> bitmapImage;
         std::string file = _file.getValue(exprContext);
         if (!file.empty()) {
-            bitmapImage = symbolizerContext.getBitmapManager()->loadBitmapImage(file, false, 1.0f);
+            bitmapImage = symbolizerContext.getBitmapManager()->loadBitmapImage(file, 1.0f);
             if (!bitmapImage || !bitmapImage->bitmap) {
                 _logger->write(Logger::Severity::ERROR, "Failed to load marker bitmap " + file);
                 return FeatureProcessor();
@@ -90,7 +90,7 @@ namespace carto { namespace mvt {
     std::shared_ptr<vt::BitmapImage> TorqueMarkerSymbolizer::makeEllipseBitmap(float width, float height, const vt::Color& color, float strokeWidth, const vt::Color& strokeColor) {
         int canvasWidth = static_cast<int>(std::ceil(width + strokeWidth));
         int canvasHeight = static_cast<int>(std::ceil(height + strokeWidth));
-        vt::BitmapCanvas canvas(canvasWidth, canvasHeight, false);
+        vt::BitmapCanvas canvas(canvasWidth, canvasHeight);
         float x0 = canvasWidth * 0.5f, y0 = canvasHeight * 0.5f;
         if (strokeWidth > 0) {
             canvas.setColor(strokeColor);
@@ -104,7 +104,7 @@ namespace carto { namespace mvt {
     std::shared_ptr<vt::BitmapImage> TorqueMarkerSymbolizer::makeRectangleBitmap(float width, float height, const vt::Color& color, float strokeWidth, const vt::Color& strokeColor) {
         int canvasWidth = static_cast<int>(std::ceil(width + strokeWidth));
         int canvasHeight = static_cast<int>(std::ceil(height + strokeWidth));
-        vt::BitmapCanvas canvas(canvasWidth, canvasHeight, false);
+        vt::BitmapCanvas canvas(canvasWidth, canvasHeight);
         if (strokeWidth > 0) {
             canvas.setColor(strokeColor);
             canvas.drawRectangle(cglib::vec2<float>(0, 0), cglib::vec2<float>(width + strokeWidth * 0.5f, height + strokeWidth * 0.5f));

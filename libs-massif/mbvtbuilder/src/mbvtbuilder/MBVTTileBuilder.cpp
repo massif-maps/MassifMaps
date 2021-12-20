@@ -16,16 +16,36 @@ namespace carto { namespace mbvtbuilder {
     {
     }
 
+    bool MBVTTileBuilder::isFastSimplifyMode() const {
+        std::lock_guard<std::mutex> lock(_mutex);
+        return _fastSimplifyMode;
+    }
+
     void MBVTTileBuilder::setFastSimplifyMode(bool enabled) {
         std::lock_guard<std::mutex> lock(_mutex);
         _fastSimplifyMode = enabled;
         invalidateCache();
     }
 
+    float MBVTTileBuilder::getSimplifyTolerance() const {
+        std::lock_guard<std::mutex> lock(_mutex);
+        return _simplifyTolerance;
+    }
+
     void MBVTTileBuilder::setSimplifyTolerance(float tolerance) {
         std::lock_guard<std::mutex> lock(_mutex);
         _simplifyTolerance = tolerance;
         invalidateCache();
+    }
+
+    float MBVTTileBuilder::getDefaultLayerBuffer() const {
+        std::lock_guard<std::mutex> lock(_mutex);
+        return _defaultLayerBuffer;
+    }
+
+    void MBVTTileBuilder::setDefaultLayerBuffer(float buffer) {
+        std::lock_guard<std::mutex> lock(_mutex);
+        _defaultLayerBuffer = buffer;
     }
 
     std::vector<MBVTTileBuilder::LayerIndex> MBVTTileBuilder::getLayerIndices() const {
@@ -36,11 +56,11 @@ namespace carto { namespace mbvtbuilder {
         return layerIndices;
     }
 
-    MBVTTileBuilder::LayerIndex MBVTTileBuilder::createLayer(const std::string& name, float buffer) {
+    MBVTTileBuilder::LayerIndex MBVTTileBuilder::createLayer(const std::string& name) {
         std::lock_guard<std::mutex> lock(_mutex);
         Layer layer;
         layer.name = name;
-        layer.buffer = (buffer >= 0 ? buffer : DEFAULT_LAYER_BUFFER);
+        layer.buffer = _defaultLayerBuffer / TILE_PIXELS;
         LayerIndex layerIndex = (_layers.empty() ? 0 : _layers.rbegin()->first) + 1;
         _layers.emplace(layerIndex, std::move(layer));
         invalidateCache();

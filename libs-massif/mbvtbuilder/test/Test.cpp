@@ -1,9 +1,9 @@
 #define BOOST_TEST_MODULE GEOJSONVT
 
-#include "Clipper.h"
-#include "Simplifier.h"
-#include "MBVTLayerEncoder.h"
-#include "MBVTTileBuilder.h"
+#include "mbvtbuilder/Clipper.h"
+#include "mbvtbuilder/Simplifier.h"
+#include "mbvtbuilder/MBVTLayerEncoder.h"
+#include "mbvtbuilder/MBVTTileBuilder.h"
 
 #include "mapnikvt/mbvtpackage/MBVTPackage.pb.h"
 
@@ -90,6 +90,7 @@ BOOST_AUTO_TEST_CASE(clipper) {
         BOOST_CHECK((clipper.clipLineString(std::vector<Point> { { -2, 0 }, { 2, 0 } }) == std::vector<std::vector<Point>> { { { -1, 0 }, { 1, 0 } } }));
         BOOST_CHECK((clipper.clipLineString(std::vector<Point> { { -2, -2 }, { 2, 2 } }) == std::vector<std::vector<Point>> { { { -1, -1 }, { 1, 1 } } }));;
         BOOST_CHECK((clipper.clipLineString(std::vector<Point> { { -4, 0 }, { 0, 2 } }) == std::vector<std::vector<Point>> { }));
+        BOOST_CHECK((clipper.clipLineString(std::vector<Point> { { -2, 0 }, { 0, 2 } }) == std::vector<std::vector<Point>> { }));
         BOOST_CHECK((clipper.clipLineString(std::vector<Point> { { -4, 0 }, { 0, 0 }, { 4, 0.5 }, { 0, 0.5 } }) == std::vector<std::vector<Point>> { { { -1, 0 }, { 0, 0 }, { 1, 0.125 } }, { { 1, 0.5 }, { 0, 0.5 } } }));
     }
 
@@ -97,7 +98,8 @@ BOOST_AUTO_TEST_CASE(clipper) {
         BOOST_CHECK((clipper.clipPolygonRing(std::vector<Point> { { -1, 0 }, { 1, 0 }, { 0, 1 } }) == std::vector<Point> { { -1, 0 }, { 1, 0 }, { 0, 1 } }));
         BOOST_CHECK((clipper.clipPolygonRing(std::vector<Point> { { -1, -1 }, { -1, 1 }, { 1, 1 }, { 1, -1 } }) == std::vector<Point> { { -1, -1 }, { -1, 1 }, { 1, 1 }, { 1, -1 } }));
         BOOST_CHECK((clipper.clipPolygonRing(std::vector<Point> { { -2, -2 }, { -2, 2 }, { 2, 2 }, { 2, -2 } }) == std::vector<Point> { { -1, -1 }, { -1, 1 }, { 1, 1 }, { 1, -1 } }));
-        BOOST_CHECK((clipper.clipPolygonRing(std::vector<Point> { { -2, 0 }, { 0, 2 }, { 2, 0 }, { 0, -2 } }) == std::vector<Point> { { -1, -1 }, { -1, 1 }, { 1, 1 }, { 1, -1 }, { 0, -1 } }));
+        BOOST_CHECK((clipper.clipPolygonRing(std::vector<Point> { { -2, 0 }, { 0, 2 }, { 2, 0 }, { 0, -2 } }) == std::vector<Point> { { -1, 1 }, { 1, 1 }, { 1, -1 }, { -1, -1 } }));
+        BOOST_CHECK((clipper.clipPolygonRing(std::vector<Point> { { -4, 0 }, { 0, 2 }, { 4, 0 }, { 0, -2 } }) == std::vector<Point> { { -1, 0 }, { -1, 1 }, { 1, 1 }, { 1, -1 }, { -1, -1 } }));
     }
 }
 
@@ -238,7 +240,7 @@ BOOST_AUTO_TEST_CASE(tileBuilder) {
 
     {
         MBVTTileBuilder tileBuilder(18, 18);
-        tileBuilder.addMultiPoint(0, { Point(0, 0), Point(1, 1) }, picojson::value());
+        tileBuilder.addMultiPoint(0, { Point(0.000001, 0.000001), Point(0.000002, 0.000002) }, picojson::value());
         std::vector<protobuf::encoded_message> encodedTiles;
         tileBuilder.buildTiles([&encodedTiles](int zoom, int tileX, int tileY, const protobuf::encoded_message& encodedTile) { encodedTiles.push_back(encodedTile); });
         BOOST_CHECK(encodedTiles.size() == 1);
@@ -246,8 +248,9 @@ BOOST_AUTO_TEST_CASE(tileBuilder) {
 
     {
         MBVTTileBuilder tileBuilder(18, 18);
-        auto layerIndex = tileBuilder.createLayer("", 0.0000001f);
-        tileBuilder.addMultiPoint(layerIndex, { Point(0.5, 0.5), Point(100000, 1) }, picojson::value());
+        tileBuilder.setDefaultLayerBuffer(0.0000001f * 256.0f);
+        auto layerIndex = tileBuilder.createLayer("");
+        tileBuilder.addMultiPoint(layerIndex, { Point(0.5, 0.5), Point(1, 1) }, picojson::value());
         std::vector<protobuf::encoded_message> encodedTiles;
         tileBuilder.buildTiles([&encodedTiles](int zoom, int tileX, int tileY, const protobuf::encoded_message& encodedTile) { encodedTiles.push_back(encodedTile); });
         BOOST_CHECK(encodedTiles.size() == 2);
@@ -255,29 +258,32 @@ BOOST_AUTO_TEST_CASE(tileBuilder) {
 
     {
         MBVTTileBuilder tileBuilder(18, 18);
-        auto layerIndex = tileBuilder.createLayer("", 0.0000001f);
-        tileBuilder.addMultiLineString(layerIndex, { { Point(0.5, 0.5), Point(100000, 1) } }, picojson::value());
+        tileBuilder.setDefaultLayerBuffer(0.0000001f * 256.0f);
+        auto layerIndex = tileBuilder.createLayer("");
+        tileBuilder.addMultiLineString(layerIndex, { { Point(0.5, 0.5), Point(1, 1) } }, picojson::value());
         std::vector<protobuf::encoded_message> encodedTiles;
         tileBuilder.buildTiles([&encodedTiles](int zoom, int tileX, int tileY, const protobuf::encoded_message& encodedTile) { encodedTiles.push_back(encodedTile); });
-        BOOST_CHECK(encodedTiles.size() == 655);
+        BOOST_CHECK(encodedTiles.size() == 729);
     }
 
     {
         MBVTTileBuilder tileBuilder(18, 18);
-        auto layerIndex = tileBuilder.createLayer("", 0.0000001f);
-        tileBuilder.addMultiLineString(layerIndex, { { Point(0.5, 0.5), Point(10000, 10000) } }, picojson::value());
+        tileBuilder.setDefaultLayerBuffer(0.0000001f * 256.0f);
+        auto layerIndex = tileBuilder.createLayer("");
+        tileBuilder.addMultiLineString(layerIndex, { { Point(0.5, 0.5), Point(0.75, 1) } }, picojson::value());
         std::vector<protobuf::encoded_message> encodedTiles;
         tileBuilder.buildTiles([&encodedTiles](int zoom, int tileX, int tileY, const protobuf::encoded_message& encodedTile) { encodedTiles.push_back(encodedTile); });
-        BOOST_CHECK(encodedTiles.size() == 196);
+        BOOST_CHECK(encodedTiles.size() == 547);
     }
 
     {
         MBVTTileBuilder tileBuilder(18, 18);
-        auto layerIndex = tileBuilder.createLayer("", 0.0000001f);
-        tileBuilder.addMultiPolygon(layerIndex, { { { Point(0.5, 0.5), Point(0.5, 10000), Point(10000, 5000) } } }, picojson::value());
+        tileBuilder.setDefaultLayerBuffer(0.0000001f * 256.0f);
+        auto layerIndex = tileBuilder.createLayer("");
+        tileBuilder.addMultiPolygon(layerIndex, { { { Point(0.5, 0.5), Point(0.5, 1), Point(1, 0.5) } } }, picojson::value());
         std::vector<protobuf::encoded_message> encodedTiles;
         tileBuilder.buildTiles([&encodedTiles](int zoom, int tileX, int tileY, const protobuf::encoded_message& encodedTile) { encodedTiles.push_back(encodedTile); });
-        BOOST_CHECK(encodedTiles.size() == 2211);
+        BOOST_CHECK(encodedTiles.size() == 66795);
     }
 }
 

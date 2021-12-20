@@ -41,8 +41,6 @@ namespace carto { namespace mbvtbuilder {
         Point clipPoint(Point p, PointMask mask) const;
         Point clipSegment(const Point& p0, const Point& p1, PointMask mask, T dir) const;
 
-        static void pushClippedCoordinate(std::vector<Point>& clippedCoordsList, const Point& p, PointMask mask);
-
         Bounds _bounds;
     };
 
@@ -77,25 +75,23 @@ namespace carto { namespace mbvtbuilder {
             }
             PointMask mask1 = classifyPoint(p1);
 
-            if (mask0 == mask1) {
-                if (!mask1) {
-                    clippedCoordsList.push_back(p1);
-                }
+            if (!(mask0 | mask1)) {
+                clippedCoordsList.push_back(p1);
             }
-            else {
-                if (!(mask0 & mask1)) {
-                    Point q0 = mask0 ? clipSegment(p0, p1, mask0, 0) : p0;
-                    Point q1 = mask1 ? clipSegment(p0, p1, mask1, 1) : p1;
-                    if (mask0 && q0 != q1) {
+            else if (!(mask0 & mask1)) {
+                Point q0 = mask0 ? clipSegment(p0, p1, mask0, 0) : p0;
+                Point q1 = mask1 ? clipSegment(p0, p1, mask1, 1) : p1;
+                if (cglib::dot_product(q0 - p0, p1 - p0) < cglib::dot_product(q1 - p0, p1 - p0)) {
+                    if (mask0) {
                         clippedCoordsList.push_back(q0);
                     }
                     clippedCoordsList.push_back(q1);
-                    if (mask1) {
-                        if (clippedCoordsList.size() >= 2) {
-                            clippedSegments.push_back(std::move(clippedCoordsList));
-                        }
-                        clippedCoordsList.clear();
+                }
+                if (mask1) {
+                    if (clippedCoordsList.size() >= 2) {
+                        clippedSegments.push_back(std::move(clippedCoordsList));
                     }
+                    clippedCoordsList.clear();
                 }
             }
 
@@ -119,32 +115,56 @@ namespace carto { namespace mbvtbuilder {
         std::vector<Point> clippedCoordsList;
         clippedCoordsList.reserve(coordsList.size());
 
-        Point p0 = coordsList.back();
+        auto pushClippedCoordinate = [&clippedCoordsList](const Point& p, PointMask mask) {
+            if (mask && clippedCoordsList.size() >= 2) {
+                const Point& p0 = clippedCoordsList[clippedCoordsList.size() - 2];
+                const Point& p1 = clippedCoordsList[clippedCoordsList.size() - 1];
+                if ((mask & (LEFT_OUT | RIGHT_OUT)) && p0(0) == p(0) && p1(0) == p(0)) {
+                    clippedCoordsList.pop_back();
+                }
+                else if ((mask & (TOP_OUT | BOTTOM_OUT)) && p0(1) == p(1) && p1(1) == p(1)) {
+                    clippedCoordsList.pop_back();
+                }
+            }
+            if (clippedCoordsList.empty() || clippedCoordsList.back() != p) {
+                clippedCoordsList.push_back(p);
+            }
+        };
+
+        Point p0 = coordsList.front();
         PointMask mask0 = classifyPoint(p0);
-        for (std::size_t i = 0; i < coordsList.size(); i++) {
-            Point p1 = coordsList[i];
+        for (std::size_t i = 1; i <= coordsList.size(); i++) {
+            Point p1 = coordsList[i < coordsList.size() ? i : 0];
             if (p1 == p0) {
                 continue;
             }
             PointMask mask1 = classifyPoint(p1);
 
-            if (!mask0 && !mask1) {
-                if (clippedCoordsList.empty() || clippedCoordsList.back() != p0) {
-                    clippedCoordsList.push_back(p0);
-                }
-                clippedCoordsList.push_back(p1);
+            if (!(mask0 | mask1)) {
+                pushClippedCoordinate(p0, mask0);
+                pushClippedCoordinate(p1, mask1);
             }
             else if (mask0 & mask1) {
                 Point q0 = clipPoint(p0, mask0);
                 Point q1 = clipPoint(p1, mask1);
-                pushClippedCoordinate(clippedCoordsList, q0, mask0);
-                pushClippedCoordinate(clippedCoordsList, q1, mask1);
+                pushClippedCoordinate(q0, mask0);
+                pushClippedCoordinate(q1, mask1);
             }
             else {
                 Point q0 = mask0 ? clipSegment(p0, p1, mask0, 0) : p0;
                 Point q1 = mask1 ? clipSegment(p0, p1, mask1, 1) : p1;
-                pushClippedCoordinate(clippedCoordsList, q0, mask0);
-                pushClippedCoordinate(clippedCoordsList, q1, mask1);
+                if (cglib::dot_product(q0 - p0, p1 - p0) <= cglib::dot_product(q1 - p0, p1 - p0)) {
+                    pushClippedCoordinate(q0, mask0);
+                    pushClippedCoordinate(q1, mask1);
+                }
+                else {
+                    PointMask mask0x = mask0 | classifyPoint(q0);
+                    PointMask mask1x = mask1 | classifyPoint(q1);
+                    pushClippedCoordinate(clipPoint(p0, mask0), mask0);
+                    pushClippedCoordinate(clipPoint(q0, mask0x), mask0x);
+                    pushClippedCoordinate(clipPoint(q1, mask1x), mask1x);
+                    pushClippedCoordinate(clipPoint(p1, mask1), mask1);
+                }
             }
 
             p0 = p1;
@@ -221,23 +241,6 @@ namespace carto { namespace mbvtbuilder {
             }
         }
         return clipPoint(p0 * (1 - t) + p1 * t, clipMask);
-    }
-
-    template <typename T>
-    void Clipper<T>::pushClippedCoordinate(std::vector<Point>& clippedCoordsList, const Point& p, PointMask mask) {
-        if (mask && clippedCoordsList.size() >= 2) {
-            const Point& p0 = clippedCoordsList[clippedCoordsList.size() - 2];
-            const Point& p1 = clippedCoordsList[clippedCoordsList.size() - 1];
-            if ((mask & (LEFT_OUT | RIGHT_OUT)) && p0(0) == p(0) && p1(0) == p(0)) {
-                clippedCoordsList.pop_back();
-            }
-            else if ((mask & (TOP_OUT | BOTTOM_OUT)) && p0(1) == p(1) && p1(1) == p(1)) {
-                clippedCoordsList.pop_back();
-            }
-        }
-        if (clippedCoordsList.empty() || clippedCoordsList.back() != p) {
-            clippedCoordsList.push_back(p);
-        }
     }
 } }
 

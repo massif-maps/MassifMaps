@@ -415,7 +415,7 @@ namespace carto { namespace mbvtbuilder {
                             signedArea += (prevPos(0) - _tileOrigin(0)) * (pos(1) - _tileOrigin(1)) - (prevPos(1) - _tileOrigin(1)) * (pos(0) - _tileOrigin(0));
                             prevPos = pos;
                         }
-                        if ((signedArea < 0) != (i == 0)) {
+                        if ((signedArea < 0) != (i > 0)) {
                             std::reverse(tileCoords.begin(), tileCoords.end());
                         }
                         tileCoordsList.push_back(std::move(tileCoords));

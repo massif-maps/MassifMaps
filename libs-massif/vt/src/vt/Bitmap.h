@@ -23,11 +23,10 @@ namespace carto { namespace vt {
     };
 
     struct BitmapImage final {
-        const bool sdfMode;
         const float scale;
         const std::shared_ptr<const Bitmap> bitmap;
 
-        explicit BitmapImage(bool sdfMode, float scale, std::shared_ptr<const Bitmap> bitmap) : sdfMode(sdfMode), scale(scale), bitmap(std::move(bitmap)) { }
+        explicit BitmapImage(float scale, std::shared_ptr<const Bitmap> bitmap) : scale(scale), bitmap(std::move(bitmap)) { }
     };
 
     struct BitmapPattern final {

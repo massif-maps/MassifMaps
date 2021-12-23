@@ -1,7 +1,6 @@
 #include "GeneratorUtils.h"
 #include "ValueGenerator.h"
 #include "ExpressionGenerator.h"
-#include "TransformGenerator.h"
 #include "ParseTables.h"
 #include "ColorGenerator.h"
 
@@ -68,16 +67,6 @@ namespace carto { namespace mvt {
         bool result = boost::spirit::karma::generate(it, ValueGeneratorGrammar<std::back_insert_iterator<std::string>>(), val);
         if (!result) {
             throw GeneratorException("Could not generate value string");
-        }
-        return boost::trim_copy(str);
-    }
-
-    std::string generateTransformListString(const std::vector<Transform>& transforms) {
-        std::string str;
-        std::back_insert_iterator<std::string> it(str);
-        bool result = boost::spirit::karma::generate(it, TransformGeneratorGrammar<std::back_insert_iterator<std::string>>() % ',', transforms);
-        if (!result) {
-            throw GeneratorException("Could not generate transform string");
         }
         return boost::trim_copy(str);
     }

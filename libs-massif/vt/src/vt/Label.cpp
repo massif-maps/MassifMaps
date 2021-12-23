@@ -249,29 +249,32 @@ namespace carto { namespace vt {
 
         normals.fill(placement->normal, _cachedVertices.size());
         texCoords.copy(_cachedTexCoords, 0, _cachedTexCoords.size());
-        attribs.copy(_cachedAttribs, 0, _cachedAttribs.size());
-        indices.copy(_cachedIndices, 0, _cachedIndices.size());
 
         if (haloStyleIndex >= 0) {
-            for (cglib::vec4<std::int8_t>* it = attribs.end() - _cachedAttribs.size(); it != attribs.end(); it++) {
-                *it = cglib::vec4<std::int8_t>(static_cast<std::int8_t>(haloStyleIndex), std::min((std::int8_t)0, (*it)(1)), static_cast<std::int8_t>(_opacity * 127.0f), 0);
+            for (const cglib::vec4<std::int8_t>& attrib : _cachedAttribs) {
+                attribs.append(cglib::vec4<std::int8_t>(static_cast<std::int8_t>(haloStyleIndex), attrib(1), static_cast<std::int8_t>(_opacity * 127.0f), 0));
             }
-            for (std::uint16_t* it = indices.end() - _cachedIndices.size(); it != indices.end(); it++) {
-                *it += static_cast<std::uint16_t>(vertices.size() - _cachedVertices.size());
+            
+            std::uint16_t offset = static_cast<std::uint16_t>(vertices.size() - _cachedVertices.size());
+            for (std::uint16_t idx : _cachedIndices) {
+                indices.append(idx + offset);
             }
 
             vertices.copy(vertices, vertices.size() - _cachedVertices.size(), _cachedVertices.size());
+
             normals.fill(placement->normal, _cachedVertices.size());
             texCoords.copy(_cachedTexCoords, 0, _cachedTexCoords.size());
-            attribs.copy(_cachedAttribs, 0, _cachedAttribs.size());
-            indices.copy(_cachedIndices, 0, _cachedIndices.size());
         }
 
-        for (cglib::vec4<std::int8_t>* it = attribs.end() - _cachedAttribs.size(); it != attribs.end(); it++) {
-            *it = cglib::vec4<std::int8_t>(static_cast<std::int8_t>(styleIndex), (*it)(1), static_cast<std::int8_t>(_opacity * 127.0f), 0);
+        for (const cglib::vec4<std::int8_t>& attrib : _cachedAttribs) {
+            attribs.append(cglib::vec4<std::int8_t>(static_cast<std::int8_t>(styleIndex), attrib(1), static_cast<std::int8_t>(_opacity * 127.0f), 0));
         }
-        for (std::uint16_t* it = indices.end() - _cachedIndices.size(); it != indices.end(); it++) {
-            *it += static_cast<std::uint16_t>(vertices.size() - _cachedVertices.size());
+        
+        std::uint16_t offset = static_cast<std::uint16_t>(vertices.size() - _cachedVertices.size());
+        for (std::uint16_t idx : _cachedIndices) {
+            if (!(haloStyleIndex >= 0 && _cachedAttribs[idx](1) != 0)) { // do not add non-SDF glyphs if halo is enabled in the second pass
+                indices.append(idx + offset);
+            }
         }
 
         return valid;
@@ -293,7 +296,7 @@ namespace carto { namespace vt {
                 std::int16_t v0 = static_cast<std::int16_t>(glyph.baseGlyph.y), v1 = static_cast<std::int16_t>(glyph.baseGlyph.y + glyph.baseGlyph.height);
                 texCoords.append(cglib::vec2<std::int16_t>(u0, v1), cglib::vec2<std::int16_t>(u1, v1), cglib::vec2<std::int16_t>(u1, v0), cglib::vec2<std::int16_t>(u0, v0));
 
-                cglib::vec4<std::int8_t> attrib(0, glyph.baseGlyph.sdfMode ? -1 : 1, 0, 0);
+                cglib::vec4<std::int8_t> attrib(0, static_cast<std::int8_t>(glyph.baseGlyph.mode), 0, 0);
                 attribs.append(attrib, attrib, attrib, attrib);
 
                 if (_style->transform) {
@@ -413,7 +416,7 @@ namespace carto { namespace vt {
                 std::int16_t v0 = static_cast<std::int16_t>(glyph.baseGlyph.y), v1 = static_cast<std::int16_t>(glyph.baseGlyph.y + glyph.baseGlyph.height);
                 texCoords.append(cglib::vec2<std::int16_t>(u0, v1), cglib::vec2<std::int16_t>(u1, v1), cglib::vec2<std::int16_t>(u1, v0), cglib::vec2<std::int16_t>(u0, v0));
 
-                cglib::vec4<std::int8_t> attrib(0, glyph.baseGlyph.sdfMode ? -1 : 1, 0, 0);
+                cglib::vec4<std::int8_t> attrib(0, static_cast<std::int8_t>(glyph.baseGlyph.mode), 0, 0);
                 attribs.append(attrib, attrib, attrib, attrib);
 
                 cglib::vec2<float> p0 = glyph.offset * scale;

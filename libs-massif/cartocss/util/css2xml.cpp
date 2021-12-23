@@ -4,7 +4,7 @@
 #include <mapnikvt/SymbolizerGenerator.h>
 #include <mapnikvt/SymbolizerContext.h>
 
-#include "cartocss/CartoCSSMapLoader.h"
+#include <cartocss/CartoCSSMapLoader.h>
 
 #include <cstdio>
 #include <memory>
@@ -14,12 +14,15 @@
 
 #include <pugixml.hpp>
 
-#include <picojson/picojson.h>
-
 class Logger : public carto::mvt::Logger {
 public:
-    virtual void write(Severity severity, const std::string& msg) {
-        std::cerr << msg << std::endl;
+    virtual void write(Severity severity, const std::string& msg) override {
+        if (severity == Severity::WARNING) {
+            std::cerr << "Warning: " << msg << std::endl;
+        }
+        else if (severity != Severity::INFO) {
+            std::cerr << "Error: " << msg << std::endl;
+        }
     }
 };
 

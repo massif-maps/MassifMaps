@@ -9,8 +9,6 @@
 
 #include "ExpressionPredicateBase.h"
 
-#include <memory>
-
 namespace carto { namespace mvt {
     class ExpressionPredicate final {
     public:

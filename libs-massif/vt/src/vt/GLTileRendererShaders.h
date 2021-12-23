@@ -398,13 +398,14 @@ namespace carto { namespace vt {
         void main(void) {
             int styleIndex = int(aVertexAttribs[0]);
             float size = uWidthTable[styleIndex];
-            vec4 color = uColorTable[styleIndex] * aVertexAttribs[2] * (1.0 / 127.0);
+            float opacity = aVertexAttribs[2] * (1.0 / 127.0);
+            vec4 color = aVertexAttribs[1] > 1.0 ? vec4(1.0, 1.0, 1.0, 1.0) : uColorTable[styleIndex];
             vUV = aVertexUV * uUVScale;
             vAttribs = vec4(aVertexAttribs[1], uStrokeWidthTable[styleIndex], uSDFScale / size, size / uSDFScale);
         #ifdef LIGHTING_VSH
-            vColor = applyLighting(color, aVertexNormal);
+            vColor = applyLighting(color, aVertexNormal) * opacity;
         #else
-            vColor = color;
+            vColor = color * opacity;
         #endif
         #ifdef LIGHTING_FSH
             vNormal = aVertexNormal;
@@ -427,22 +428,18 @@ namespace carto { namespace vt {
 
         void main(void) {
             lowp vec4 color = texture2D(uBitmap, vUV);
-            if (vAttribs[0] > 0.5) {
+            if (vAttribs[0] > 0.0) {
                 color = color * vColor;
             } else {
-                if (vAttribs[0] < -0.5) {
         #ifdef DERIVATIVES
-                    float size = dot(uDerivScale, fwidth(vUV));
-                    float scale = 1.0 / size;
+                float size = dot(uDerivScale, fwidth(vUV));
+                float scale = 1.0 / size;
         #else
-                    float size = vAttribs[2];
-                    float scale = vAttribs[3];
+                float size = vAttribs[2];
+                float scale = vAttribs[3];
         #endif
-                    float offset = 0.5 * (1.0 - size - vAttribs[1] * vAttribs[2]);
-                    color = clamp((color.r - offset) * scale, 0.0, 1.0) * vColor;
-                } else {
-                    color = vec4(0.0, 0.0, 0.0, 0.0);
-                }
+                float offset = 0.5 * (1.0 - size - vAttribs[1] * vAttribs[2]);
+                color = clamp((color.r - offset) * scale, 0.0, 1.0) * vColor;
             }
         #ifdef LIGHTING_FSH
             gl_FragColor = applyLighting(color, normalize(vNormal));
@@ -491,7 +488,7 @@ namespace carto { namespace vt {
             pos = vec3(uTransformMatrix * vec4(pos, 1.0));
         #endif
             vec3 delta = aVertexBinormal * (uBinormalScale * size);
-            vec4 color = uColorTable[styleIndex];
+            vec4 color = aVertexAttribs[1] > 1.0 ? vec4(1.0, 1.0, 1.0, 1.0) : uColorTable[styleIndex];
         #ifdef PATTERN
             vUV = uUVScale * aVertexUV;
         #endif
@@ -527,7 +524,7 @@ namespace carto { namespace vt {
         void main(void) {
         #ifdef PATTERN
             lowp vec4 color = texture2D(uPattern, vUV);
-            if (vAttribs[0] > 0.5) {
+            if (vAttribs[0] > 0.0) {
                 color = color * vColor;
             } else {
                 color = clamp((color.r - vAttribs[2]) * vAttribs[3], 0.0, 1.0) * vColor;

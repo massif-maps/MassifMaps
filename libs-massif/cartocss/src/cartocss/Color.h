@@ -17,9 +17,9 @@
 namespace carto { namespace css {
     class Color final {
     public:
-        constexpr Color() : _components {{ 0, 0, 0, 0 }} { }
+        constexpr Color() : _components{ { 0, 0, 0, 0 } } { }
 
-        constexpr explicit Color(float r, float g, float b, float a) : _components {{ r, g, b, a }} { }
+        constexpr explicit Color(float r, float g, float b, float a) : _components{ { r, g, b, a } } { }
         
         constexpr float& operator [] (std::size_t i) {
             return _components[i];
@@ -80,7 +80,7 @@ namespace carto { namespace css {
                 }
                 h /= 6.0f;
             }
-            return std::array<float, 4>{{ h * 360.0f, s, l, a }};
+            return std::array<float, 4>{ { h * 360.0f, s, l, a } };
         }
 
         static constexpr Color fromValue(unsigned int value) {

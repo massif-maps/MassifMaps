@@ -17,7 +17,7 @@ namespace carto { namespace vt {
         return std::shared_ptr<BitmapImage>();
     }
 
-    std::shared_ptr<const BitmapImage> BitmapManager::loadBitmapImage(const std::string& fileName, bool sdfMode, float resolution) {
+    std::shared_ptr<const BitmapImage> BitmapManager::loadBitmapImage(const std::string& fileName, float resolution) {
         std::lock_guard<std::mutex> lock(_mutex);
 
         auto it = _bitmapImageMap.find(fileName);
@@ -27,7 +27,7 @@ namespace carto { namespace vt {
 
         std::shared_ptr<BitmapImage> bitmapImage;
         if (std::shared_ptr<const Bitmap> bitmap = _bitmapLoader->load(fileName, resolution)) {
-            bitmapImage = std::make_shared<BitmapImage>(sdfMode, 1.0f / resolution, bitmap);
+            bitmapImage = std::make_shared<BitmapImage>(1.0f / resolution, bitmap);
         }
         _bitmapImageMap[fileName] = bitmapImage;
         return bitmapImage;

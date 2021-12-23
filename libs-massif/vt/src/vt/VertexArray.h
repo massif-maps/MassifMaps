@@ -16,7 +16,7 @@ namespace carto { namespace vt {
     public:
         VertexArray() : _begin(nullptr), _end(nullptr), _reserved(0) { }
 
-        VertexArray(VertexArray<T>&& other) : _begin(nullptr), _end(nullptr), _reserved(0) {
+        VertexArray(VertexArray<T>&& other) noexcept : _begin(nullptr), _end(nullptr), _reserved(0) {
             std::swap(_begin, other._begin);
             std::swap(_end, other._end);
             std::swap(_reserved, other._reserved);
@@ -135,7 +135,7 @@ namespace carto { namespace vt {
             return _begin[n];
         }
 
-        VertexArray<T>& operator = (VertexArray<T>&& other) {
+        VertexArray<T>& operator = (VertexArray<T>&& other) noexcept {
             std::swap(_begin, other._begin);
             std::swap(_end, other._end);
             std::swap(_reserved, other._reserved);

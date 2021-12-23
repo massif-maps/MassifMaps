@@ -107,10 +107,10 @@ namespace carto { namespace mvt {
         }
 
         // X or (X & Y) = X
-        std::array<const Predicate*, 2> preds = {{ &*pred1, &*pred2 }};
+        std::array<const Predicate*, 2> preds = { &*pred1, &*pred2 };
         for (int i1 = 0; i1 < 2; i1++) {
             if (auto andPred2 = std::get_if<std::shared_ptr<AndPredicate>>(&*preds[i1 ^ 1])) {
-                std::array<const Predicate*, 2> subPreds2 = {{ &(*andPred2)->getPredicate1(), &(*andPred2)->getPredicate2() }};
+                std::array<const Predicate*, 2> subPreds2 = { &(*andPred2)->getPredicate1(), &(*andPred2)->getPredicate2() };
                 for (int i2 = 0; i2 < 2; i2++) {
                     if (std::visit(PredicateDeepEqualsChecker(), *preds[i1], *subPreds2[i2])) {
                         return *preds[i1];
@@ -121,9 +121,9 @@ namespace carto { namespace mvt {
 
         // (X & Y) or (X & Z) = X & (Y or Z)
         if (auto andPred1 = std::get_if<std::shared_ptr<AndPredicate>>(&*pred1)) {
-            std::array<const Predicate*, 2> subPreds1 = {{ &(*andPred1)->getPredicate1(), &(*andPred1)->getPredicate2() }};
+            std::array<const Predicate*, 2> subPreds1 = { &(*andPred1)->getPredicate1(), &(*andPred1)->getPredicate2() };
             if (auto andPred2 = std::get_if<std::shared_ptr<AndPredicate>>(&*pred2)) {
-                std::array<const Predicate*, 2> subPreds2 = {{ &(*andPred2)->getPredicate1(), &(*andPred2)->getPredicate2() }};
+                std::array<const Predicate*, 2> subPreds2 = { &(*andPred2)->getPredicate1(), &(*andPred2)->getPredicate2() };
                 for (int i1 = 0; i1 < 2; i1++) {
                     for (int i2 = 0; i2 < 2; i2++) {
                         if (std::visit(PredicateDeepEqualsChecker(), *subPreds1[i1], *subPreds2[i2])) {

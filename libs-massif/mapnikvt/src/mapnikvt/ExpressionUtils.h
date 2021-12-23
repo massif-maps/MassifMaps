@@ -45,6 +45,9 @@ namespace carto { namespace mvt {
             Value timeVal = std::visit(*this, interpExpr->getTimeExpression());
             return interpExpr->evaluate(ValueConverter<float>::convert(timeVal));
         }
+        Value operator() (const std::shared_ptr<TransformExpression>& transExpr) const {
+            return Value();
+        }
 
     private:
         const ExpressionContext& _context;
@@ -75,6 +78,11 @@ namespace carto { namespace mvt {
         void operator() (const std::shared_ptr<InterpolateExpression>& interpExpr) const {
             std::visit(*this, interpExpr->getTimeExpression());
         }
+        void operator() (const std::shared_ptr<TransformExpression>& transExpr) const {
+            for (const Expression& subExpr : transExpr->getSubExpressions()) {
+                std::visit(*this, subExpr);
+            }
+        }
 
     private:
         std::function<void(const std::shared_ptr<VariableExpression>&)> _visitor;
@@ -97,6 +105,19 @@ namespace carto { namespace mvt {
         }
         bool operator() (const std::shared_ptr<InterpolateExpression>& interpExpr1, const std::shared_ptr<InterpolateExpression>& interpExpr2) const {
             return interpExpr1->getMethod() == interpExpr2->getMethod() && interpExpr1->getKeyFrames() == interpExpr2->getKeyFrames() && std::visit(*this, interpExpr1->getTimeExpression(), interpExpr2->getTimeExpression());
+        }
+        bool operator() (const std::shared_ptr<TransformExpression>& transExpr1, const std::shared_ptr<TransformExpression>& transExpr2) const {
+            std::vector<Expression> subExprs1 = transExpr1->getSubExpressions();
+            std::vector<Expression> subExprs2 = transExpr2->getSubExpressions();
+            if (subExprs1.size() != subExprs2.size()) {
+                return false;
+            }
+            for (std::size_t i = 0; i < subExprs1.size(); i++) {
+                if (!std::visit(*this, subExprs1[i], subExprs2[i])) {
+                    return false;
+                }
+            }
+            return true;
         }
         template <typename S, typename T> bool operator() (const S&, const T&) const { return false; }
     };

@@ -20,7 +20,7 @@
 namespace carto { namespace vt {
     class BitmapCanvas final {
     public:
-        explicit BitmapCanvas(int width, int height, bool sdfMode);
+        explicit BitmapCanvas(int width, int height);
 
         void setOpacity(float opacity);
         void setColor(const Color& color);

@@ -97,7 +97,7 @@ namespace carto { namespace mvt {
         }
         float heightScale = pow2Height / height;
 
-        vt::BitmapCanvas canvas(pow2Size, pow2Height, false);
+        vt::BitmapCanvas canvas(pow2Size, pow2Height);
         float radius = pow2Height * 0.5f * sizeScale / heightScale;
         float x0 = strokeDashArray.back() * 0.5f * sizeScale;
         float x1 = x0;

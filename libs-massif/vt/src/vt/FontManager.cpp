@@ -207,7 +207,7 @@ namespace carto { namespace vt {
                 glyphBitmapData[i] = val * ((1U << 24) | (1U << 16) | (1U << 8) | 1U);
             }
             std::shared_ptr<Bitmap> glyphBitmap = std::make_shared<Bitmap>(width, height, std::move(glyphBitmapData));
-            return _glyphMap->loadBitmapGlyph(glyphBitmap, true, cglib::vec2<float>(-xOffset, -GLYPH_RENDER_SPREAD - yOffset));
+            return _glyphMap->loadBitmapGlyph(glyphBitmap, GlyphMap::GlyphMode::SDF, cglib::vec2<float>(-xOffset, -GLYPH_RENDER_SPREAD - yOffset));
         }
 
         const std::shared_ptr<FontManagerLibrary> _library;

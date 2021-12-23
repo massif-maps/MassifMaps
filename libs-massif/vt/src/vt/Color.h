@@ -15,11 +15,11 @@
 namespace carto { namespace vt {
     class Color final {
     public:
-        constexpr Color() : _components {{ 0, 0, 0, 0 }} { }
+        constexpr Color() : _components{ { 0, 0, 0, 0 } } { }
 
         constexpr explicit Color(const std::array<float, 4>& rgba) : _components(rgba) { }
         
-        constexpr explicit Color(float r, float g, float b, float a) : _components {{ r, g, b, a }} { }
+        constexpr explicit Color(float r, float g, float b, float a) : _components{ { r, g, b, a } } { }
 
         constexpr float& operator [] (std::size_t i) {
             return _components[i];

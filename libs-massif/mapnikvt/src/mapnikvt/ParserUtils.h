@@ -9,7 +9,6 @@
 
 #include "Value.h"
 #include "Expression.h"
-#include "Transform.h"
 #include "vt/Color.h"
 #include "vt/Styles.h"
 
@@ -38,7 +37,6 @@ namespace carto { namespace mvt {
     vt::LabelOrientation parseLabelOrientation(const std::string& str);
     vt::Color parseColor(const std::string& str);
     Value parseValue(const std::string& str);
-    std::vector<Transform> parseTransformList(const std::string& str);
     Expression parseExpression(const std::string& str, bool stringExpr);
 } }
 

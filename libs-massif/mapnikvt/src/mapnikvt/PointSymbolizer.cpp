@@ -13,7 +13,7 @@ namespace carto { namespace mvt {
         std::string file = _file.getValue(exprContext);
         std::shared_ptr<const vt::BitmapImage> bitmapImage;
         if (!file.empty()) {
-            bitmapImage = symbolizerContext.getBitmapManager()->loadBitmapImage(file, false, 1.0f);
+            bitmapImage = symbolizerContext.getBitmapManager()->loadBitmapImage(file, 1.0f);
             if (!bitmapImage || !bitmapImage->bitmap) {
                 _logger->write(Logger::Severity::ERROR, "Failed to load point bitmap " + file);
                 return FeatureProcessor();
@@ -66,7 +66,7 @@ namespace carto { namespace mvt {
 
     std::shared_ptr<vt::BitmapImage> PointSymbolizer::makeRectangleBitmap(float size) {
         int canvasSize = static_cast<int>(std::ceil(size));
-        vt::BitmapCanvas canvas(canvasSize, canvasSize, false);
+        vt::BitmapCanvas canvas(canvasSize, canvasSize);
         canvas.setColor(vt::Color(0, 0, 0, 1));
         canvas.drawRectangle(cglib::vec2<float>(0, 0), cglib::vec2<float>(size, size));
         return canvas.buildBitmapImage();

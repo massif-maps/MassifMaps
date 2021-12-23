@@ -36,11 +36,17 @@ namespace carto { namespace mbvtbuilder {
         
         explicit MBVTTileBuilder(int minZoom, int maxZoom);
 
+        bool isFastSimplifyMode() const;
         void setFastSimplifyMode(bool enabled);
+
+        float getSimplifyTolerance() const;
         void setSimplifyTolerance(float tolerance);
 
+        float getDefaultLayerBuffer() const;
+        void setDefaultLayerBuffer(float buffer);
+
         std::vector<LayerIndex> getLayerIndices() const;
-        LayerIndex createLayer(const std::string& name, float buffer = -1);
+        LayerIndex createLayer(const std::string& name);
         Bounds getLayerBounds(LayerIndex layerIndex) const;
         void clearLayer(int layerIndex);
         void deleteLayer(LayerIndex layerIndex);
@@ -73,8 +79,6 @@ namespace carto { namespace mbvtbuilder {
             float buffer = 0;
         };
 
-        static constexpr float DEFAULT_LAYER_BUFFER = 4.0 / 256.0f;
-
         static constexpr double PI = boost::math::constants::pi<double>();
         static constexpr double EARTH_RADIUS = 6378137.0;
         static constexpr float TILE_SUBPIXEL_TOLERANCE_DIVIDER = 4.0f;
@@ -95,6 +99,7 @@ namespace carto { namespace mbvtbuilder {
 
         bool _fastSimplifyMode = false;
         float _simplifyTolerance = 1.0f;
+        float _defaultLayerBuffer = 4.0f;
 
         std::map<LayerIndex, Layer> _layers;
 

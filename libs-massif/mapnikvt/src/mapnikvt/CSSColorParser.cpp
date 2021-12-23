@@ -179,7 +179,7 @@ namespace carto { namespace mvt {
             else if (code.size() != 6 && code.size() != 8) {
                 return false;
             }
-            std::array<unsigned int, 4> components{ { 0, 0, 0, 255 } };
+            std::array<unsigned int, 4> components = { 0, 0, 0, 255 };
             for (std::size_t i = 0; i < code.size() / 2; i++) {
                 std::istringstream ss(code.substr(i * 2, 2));
                 ss >> std::hex >> components[i];

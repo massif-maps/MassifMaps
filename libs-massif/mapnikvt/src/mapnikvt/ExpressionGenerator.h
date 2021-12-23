@@ -10,6 +10,7 @@
 #include "Value.h"
 #include "Expression.h"
 #include "Predicate.h"
+#include "Transform.h"
 #include "ValueGenerator.h"
 
 #include <memory>
@@ -30,6 +31,9 @@ namespace carto { namespace mvt {
                 using karma::_1;
                 using karma::_2;
                 using karma::_3;
+                using karma::_4;
+                using karma::_5;
+                using karma::_6;
 
                 esc_char.add('\a', "\\a")('\b', "\\b")('\f', "\\f")('\n', "\\n")
                             ('\r', "\\r")('\t', "\\t")('\v', "\\v")('\\', "\\\\")
@@ -106,6 +110,12 @@ namespace carto { namespace mvt {
                     | (karma::lit("step")   << '(' << expression << ',' << (constant % ',') << ')') [_pass = phoenix::bind(&getInterpolateExpression, InterpolateExpression::Method::STEP, _val, _1, _2)]
                     | (karma::lit("linear") << '(' << expression << ',' << (constant % ',') << ')') [_pass = phoenix::bind(&getInterpolateExpression, InterpolateExpression::Method::LINEAR, _val, _1, _2)]
                     | (karma::lit("cubic")  << '(' << expression << ',' << (constant % ',') << ')') [_pass = phoenix::bind(&getInterpolateExpression, InterpolateExpression::Method::CUBIC, _val, _1, _2)]
+                    | (karma::lit("matrix") << '(' << expression << ',' << expression << ',' << expression << ',' << expression << ',' << expression << ',' << expression << ')') [_pass = phoenix::bind(&getMatrixTransformExpression, _val, _1, _2, _3, _4, _5, _6)]
+                    | (karma::lit("translate") << '(' << expression << ',' << expression << ')') [_pass = phoenix::bind(&getTranslateTransformExpression, _val, _1, _2)]
+                    | (karma::lit("rotate") << '(' << expression << ',' << expression << ',' << expression << ')') [_pass = phoenix::bind(&getRotateTransformExpression, _val, _1, _2, _3)]
+                    | (karma::lit("scale")  << '(' << expression << ',' << expression << ')') [_pass = phoenix::bind(&getScaleTransformExpression, _val, _1, _2)]
+                    | (karma::lit("skewx")  << '(' << expression << ')') [_pass = phoenix::bind(&getSkewXTransformExpression, _val, _1)]
+                    | (karma::lit("skewy")  << '(' << expression << ')') [_pass = phoenix::bind(&getSkewYTransformExpression, _val, _1)]
                     | predicate                         [_pass = phoenix::bind(&getExpressionPredicate, _val, _1)]
                     | ('[' << stringExpression << ']')  [_pass = phoenix::bind(&getVariableExpression, _val, _1)]
                     | ('(' << expression << ')')        [_1 = _val]
@@ -212,7 +222,7 @@ namespace carto { namespace mvt {
                 return false;
             }
 
-            static bool getUnaryExpression(UnaryExpression::Op op, const Expression& expr,Expression& expr1) {
+            static bool getUnaryExpression(UnaryExpression::Op op, const Expression& expr, Expression& expr1) {
                 if (auto unaryExpr = std::get_if<std::shared_ptr<UnaryExpression>>(&expr)) {
                     if ((*unaryExpr)->getOp() == op) {
                         expr1 = (*unaryExpr)->getExpression();
@@ -250,6 +260,76 @@ namespace carto { namespace mvt {
                     if ((*interpolateExpr)->getMethod() == method) {
                         timeExpr = (*interpolateExpr)->getTimeExpression();
                         keyFrames = (*interpolateExpr)->getKeyFrames();
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            static bool getMatrixTransformExpression(const Expression& expr, Expression& a, Expression& b, Expression& c, Expression& d, Expression& e, Expression& f) {
+                if (auto transExpr = std::get_if<std::shared_ptr<TransformExpression>>(&expr)) {
+                    if (auto matrixTransform = std::get_if<MatrixTransform>(&(*transExpr)->getTransform())) {
+                        const std::array<Expression, 6>& values = matrixTransform->getValues();
+                        a = values[0];
+                        b = values[1];
+                        c = values[2];
+                        d = values[3];
+                        e = values[4];
+                        f = values[5];
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            static bool getTranslateTransformExpression(const Expression& expr, Expression& dx, Expression& dy) {
+                if (auto transExpr = std::get_if<std::shared_ptr<TransformExpression>>(&expr)) {
+                    if (auto translateTransform = std::get_if<TranslateTransform>(&(*transExpr)->getTransform())) {
+                        dx = translateTransform->getDeltaX();
+                        dy = translateTransform->getDeltaY();
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            static bool getRotateTransformExpression(const Expression& expr, Expression& x, Expression& y, Expression& angle) {
+                if (auto transExpr = std::get_if<std::shared_ptr<TransformExpression>>(&expr)) {
+                    if (auto rotateTransform = std::get_if<RotateTransform>(&(*transExpr)->getTransform())) {
+                        x = rotateTransform->getOriginX();
+                        y = rotateTransform->getOriginY();
+                        angle = rotateTransform->getAngle();
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            static bool getScaleTransformExpression(const Expression& expr, Expression& sx, Expression& sy) {
+                if (auto transExpr = std::get_if<std::shared_ptr<TransformExpression>>(&expr)) {
+                    if (auto scaleTransform = std::get_if<ScaleTransform>(&(*transExpr)->getTransform())) {
+                        sx = scaleTransform->getScaleX();
+                        sy = scaleTransform->getScaleY();
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            static bool getSkewXTransformExpression(const Expression& expr, Expression& angle) {
+                if (auto transExpr = std::get_if<std::shared_ptr<TransformExpression>>(&expr)) {
+                    if (auto skewTransform = std::get_if<SkewXTransform>(&(*transExpr)->getTransform())) {
+                        angle = skewTransform->getAngle();
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            static bool getSkewYTransformExpression(const Expression& expr, Expression& angle) {
+                if (auto transExpr = std::get_if<std::shared_ptr<TransformExpression>>(&expr)) {
+                    if (auto skewTransform = std::get_if<SkewYTransform>(&(*transExpr)->getTransform())) {
+                        angle = skewTransform->getAngle();
                         return true;
                     }
                 }

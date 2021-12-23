@@ -7,82 +7,77 @@
 #ifndef _CARTO_MAPNIKVT_TRANSFORM_H_
 #define _CARTO_MAPNIKVT_TRANSFORM_H_
 
-#include <variant>
+#include "ExpressionPredicateBase.h"
 
-#include <cglib/vec.h>
-#include <cglib/mat.h>
+#include <array>
 
 namespace carto { namespace mvt {
-    class MatrixTransform;
-    class TranslateTransform;
-    class RotateTransform;
-    class ScaleTransform;
-    class SkewXTransform;
-    class SkewYTransform;
-
-    using Transform = std::variant<MatrixTransform, TranslateTransform, RotateTransform, ScaleTransform, SkewXTransform, SkewYTransform>;
-
     class MatrixTransform final {
     public:
-        MatrixTransform() : _matrix(cglib::mat3x3<float>::identity()) { }
-        explicit MatrixTransform(const cglib::mat3x3<float>& matrix) : _matrix(matrix) { }
+        explicit MatrixTransform(const std::array<Expression, 6>& values) : _values(values) { }
 
-        const cglib::mat3x3<float>& getMatrix() const { return _matrix; }
+        const std::array<Expression, 6>& getValues() const { return _values; }
 
     private:
-        cglib::mat3x3<float> _matrix;
+        std::array<Expression, 6> _values;
     };
 
     class TranslateTransform final {
     public:
-        explicit TranslateTransform(const cglib::vec2<float>& pos) : _pos(pos) { }
+        explicit TranslateTransform(Expression dx, Expression dy) : _deltaX(std::move(dx)), _deltaY(std::move(dy)) { }
 
-        const cglib::vec2<float>& getPos() const { return _pos; }
+        const Expression& getDeltaX() const { return _deltaX; }
+        const Expression& getDeltaY() const { return _deltaY; }
 
     private:
-        cglib::vec2<float> _pos;
+        Expression _deltaX;
+        Expression _deltaY;
     };
 
     class RotateTransform final {
     public:
-        explicit RotateTransform(const cglib::vec2<float>& pos, float angle) : _pos(pos), _angle(angle) { }
+        explicit RotateTransform(Expression x, Expression y, Expression angle) : _originX(std::move(x)), _originY(std::move(y)), _angle(std::move(angle)) { }
 
-        const cglib::vec2<float>& getPos() const { return _pos; }
-        float getAngle() const { return _angle; }
+        const Expression& getOriginX() const { return _originX; }
+        const Expression& getOriginY() const { return _originY; }
+        const Expression& getAngle() const { return _angle; }
 
     private:
-        cglib::vec2<float> _pos;
-        float _angle;
+        Expression _originX;
+        Expression _originY;
+        Expression _angle;
     };
 
     class ScaleTransform final {
     public:
-        explicit ScaleTransform(const cglib::vec2<float>& scale) : _scale(scale) { }
+        explicit ScaleTransform(Expression sx, Expression sy) : _scaleX(std::move(sx)), _scaleY(std::move(sy)) { }
 
-        const cglib::vec2<float>& getScale() const { return _scale; }
+        const Expression& getScaleX() const { return _scaleX; }
+        const Expression& getScaleY() const { return _scaleY; }
 
     private:
-        cglib::vec2<float> _scale;
+        Expression _scaleX;
+        Expression _scaleY;
     };
 
     class SkewXTransform final {
     public:
-        explicit SkewXTransform(float angle) : _angle(angle) { }
+        explicit SkewXTransform(Expression angle) : _angle(std::move(angle)) { }
 
-        float getAngle() const { return _angle; }
+        const Expression& getAngle() const { return _angle; }
 
     private:
-        float _angle;
+        Expression _angle;
     };
 
     class SkewYTransform final {
     public:
-        explicit SkewYTransform(float angle) : _angle(angle) { }
+        explicit SkewYTransform(Expression angle) : _angle(std::move(angle)) { }
 
-        float getAngle() const { return _angle; }
+        const Expression& getAngle() const { return _angle; }
 
     private:
-        float _angle;
+        Expression _angle;
     };
 } }
 

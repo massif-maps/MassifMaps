@@ -158,21 +158,15 @@ namespace carto { namespace mvt {
     };
 
     struct TransformParameter : GenericValueParameter<std::optional<vt::Transform>> {
-        TransformParameter() { initialize(std::string()); }
+        TransformParameter() { initialize(std::monostate()); }
 
     protected:
         virtual std::optional<vt::Transform> buildValue(const ExpressionContext& context) const override {
-            Value val = std::visit(ExpressionEvaluator(context, nullptr), _expr);
-            if (val == Value(std::string())) {
-                return std::optional<vt::Transform>();
+            if (auto transExpr = std::get_if<std::shared_ptr<TransformExpression>>(&_expr)) {
+                cglib::mat3x3<float> matrix = std::visit(TransformEvaluator(context), (*transExpr)->getTransform());
+                return vt::Transform::fromMatrix3(matrix);
             }
-            std::vector<Transform> transforms = parseTransformList(ValueConverter<std::string>::convert(val));
-            cglib::mat3x3<float> matrix = cglib::mat3x3<float>::identity();
-            for (const Transform& transform : transforms) {
-                matrix = matrix * std::visit(TransformEvaluator(), transform);
-            }
-            vt::Transform transform = vt::Transform::fromMatrix3(matrix);
-            return transform == vt::Transform() ? std::optional<vt::Transform>() : transform;
+            return std::optional<vt::Transform>();
         }
     };
 

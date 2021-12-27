@@ -23,7 +23,7 @@ namespace carto { namespace mbvtbuilder {
 
         explicit Clipper(const Bounds& bounds) : _bounds(bounds) { }
 
-        bool testPoint(const Point& coords) const;
+        bool clipPoint(const Point& coords) const;
         std::vector<std::vector<Point>> clipLineString(const std::vector<Point>& coordsList) const;
         std::vector<Point> clipPolygonRing(const std::vector<Point>& coordsList) const;
 
@@ -45,7 +45,7 @@ namespace carto { namespace mbvtbuilder {
     };
 
     template <typename T>
-    bool Clipper<T>::testPoint(const Point& coords) const {
+    bool Clipper<T>::clipPoint(const Point& coords) const {
         if (classifyPoint(coords)) {
             return false;
         }
@@ -76,9 +76,6 @@ namespace carto { namespace mbvtbuilder {
         }
         for (std::size_t i = 1; i < coordsList.size(); i++) {
             Point p1 = coordsList[i];
-            if (p1 == p0) {
-                continue;
-            }
             PointMask mask1 = classifyPoint(p1);
 
             if (!(mask0 | mask1)) {
@@ -150,9 +147,6 @@ namespace carto { namespace mbvtbuilder {
             }
             for (std::size_t i = 1; i <= baseCoordsList.size(); i++) {
                 Point p1 = baseCoordsList[i < baseCoordsList.size() ? i : 0];
-                if (p1 == p0) {
-                    continue;
-                }
                 PointMask mask1 = classifyPoint(p1) & edgemask;
 
                 if (!(mask0 | mask1)) {

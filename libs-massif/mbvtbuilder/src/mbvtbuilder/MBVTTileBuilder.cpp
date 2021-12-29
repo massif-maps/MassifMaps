@@ -371,7 +371,7 @@ namespace carto { namespace mbvtbuilder {
                 std::vector<MBVTLayerEncoder::Point> tileCoords;
                 tileCoords.reserve(coords.size());
                 for (const Point& pos : coords) {
-                    if (_clipper.testPoint(pos)) {
+                    if (_clipper.clipPoint(pos)) {
                         tileCoords.push_back(MBVTLayerEncoder::Point::convert((pos - _tileOrigin) * _tileScale));
                     }
                 }

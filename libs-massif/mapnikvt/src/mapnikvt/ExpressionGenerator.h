@@ -112,7 +112,7 @@ namespace carto { namespace mvt {
                     | (karma::lit("cubic")  << '(' << expression << ',' << (constant % ',') << ')') [_pass = phoenix::bind(&getInterpolateExpression, InterpolateExpression::Method::CUBIC, _val, _1, _2)]
                     | (karma::lit("matrix") << '(' << expression << ',' << expression << ',' << expression << ',' << expression << ',' << expression << ',' << expression << ')') [_pass = phoenix::bind(&getMatrixTransformExpression, _val, _1, _2, _3, _4, _5, _6)]
                     | (karma::lit("translate") << '(' << expression << ',' << expression << ')') [_pass = phoenix::bind(&getTranslateTransformExpression, _val, _1, _2)]
-                    | (karma::lit("rotate") << '(' << expression << ',' << expression << ',' << expression << ')') [_pass = phoenix::bind(&getRotateTransformExpression, _val, _1, _2, _3)]
+                    | (karma::lit("rotate") << '(' << expression << ',' << expression << ',' << expression << ')') [_pass = phoenix::bind(&getRotateTransformExpression, _val, _2, _3, _1)]
                     | (karma::lit("scale")  << '(' << expression << ',' << expression << ')') [_pass = phoenix::bind(&getScaleTransformExpression, _val, _1, _2)]
                     | (karma::lit("skewx")  << '(' << expression << ')') [_pass = phoenix::bind(&getSkewXTransformExpression, _val, _1)]
                     | (karma::lit("skewy")  << '(' << expression << ')') [_pass = phoenix::bind(&getSkewYTransformExpression, _val, _1)]

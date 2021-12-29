@@ -80,9 +80,10 @@ BOOST_AUTO_TEST_CASE(clipper) {
     Clipper<double> clipper(cglib::bbox2<double>({ -1.0,-1.0 }, { 1.0, 1.0 }));
 
     {
-        BOOST_CHECK(clipper.testPoint({ -0.9, 0.9 }));
-        BOOST_CHECK(clipper.testPoint({ -1, 1 }));
-        BOOST_CHECK(!clipper.testPoint({ -1.1, 1 }));
+        BOOST_CHECK(clipper.clipPoint({ -0.9, 0.9 }));
+        BOOST_CHECK(!clipper.clipPoint({ -1, 1 }));
+        BOOST_CHECK(clipper.clipPoint({ -1, 0 }));
+        BOOST_CHECK(!clipper.clipPoint({ -1.1, 1 }));
     }
 
     {
@@ -98,7 +99,7 @@ BOOST_AUTO_TEST_CASE(clipper) {
         BOOST_CHECK((clipper.clipPolygonRing(std::vector<Point> { { -1, 0 }, { 1, 0 }, { 0, 1 } }) == std::vector<Point> { { -1, 0 }, { 1, 0 }, { 0, 1 } }));
         BOOST_CHECK((clipper.clipPolygonRing(std::vector<Point> { { -1, -1 }, { -1, 1 }, { 1, 1 }, { 1, -1 } }) == std::vector<Point> { { -1, -1 }, { -1, 1 }, { 1, 1 }, { 1, -1 } }));
         BOOST_CHECK((clipper.clipPolygonRing(std::vector<Point> { { -2, -2 }, { -2, 2 }, { 2, 2 }, { 2, -2 } }) == std::vector<Point> { { 1, 1 }, { 1, -1 }, { -1, -1 }, { -1, 1 } }));
-        BOOST_CHECK((clipper.clipPolygonRing(std::vector<Point> { { -2, 0 }, { 0, 2 }, { 2, 0 }, { 0, -2 } }) == std::vector<Point> { { -1, 1 }, { 1, 1 }, { 1, -1 }, { -1, -1 } }));
+        BOOST_CHECK((clipper.clipPolygonRing(std::vector<Point> { { -2, 0 }, { 0, 2 }, { 2, 0 }, { 0, -2 } }) == std::vector<Point> { { 1, 1 }, { 1, -1 }, { -1, -1 }, { -1, 1 } }));
         BOOST_CHECK((clipper.clipPolygonRing(std::vector<Point> { { -4, 0 }, { 0, 2 }, { 4, 0 }, { 0, -2 } }) == std::vector<Point> { { 1, 1 }, { 1, -1 }, { -1, -1 }, { -1, 1 } }));
     }
 }

@@ -36,7 +36,7 @@ namespace {
     }
 }
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     class TorqueFeatureDecoder::TorqueFeatureIterator : public carto::mvt::FeatureDecoder::FeatureIterator {
     public:
         explicit TorqueFeatureIterator(const std::vector<TorqueFeatureDecoder::Element>& elements, int frameOffset, int tileSize, const cglib::mat3x3<float>& transform, const cglib::bbox2<float>& clipBox) : _elements(elements), _frameOffset(frameOffset), _tileSize(tileSize), _transform(transform), _clipBox(clipBox) {
@@ -214,4 +214,4 @@ namespace carto { namespace mvt {
         }
         return std::make_shared<TorqueFeatureIterator>(it->second, frameOffset, _tileSize, _transform, _clipBox);
     }
-} }
+}

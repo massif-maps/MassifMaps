@@ -10,7 +10,7 @@
 
 #include <boost/math/constants/constants.hpp>
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     TextSymbolizer::FeatureProcessor TextSymbolizer::createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const {
         vt::FloatFunction baseSizeFunc = _size.getFunction(exprContext);
         if (baseSizeFunc == vt::FloatFunction(0)) {
@@ -303,4 +303,4 @@ namespace carto { namespace mvt {
         cglib::vec2<float> alignment(horizontalAlignment, verticalAlignment);
         return vt::TextFormatter::Options(alignment, offset, wrapCharacter, wrapBefore, wrapWidth * fontScale, characterSpacing, lineSpacing);
     }
-} }
+}

@@ -3,7 +3,7 @@
 #include <vector>
 #include <tuple>
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     ShieldSymbolizer::FeatureProcessor ShieldSymbolizer::createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const {
         std::shared_ptr<const vt::Font> font = getFont(symbolizerContext, exprContext);
         if (!font) {
@@ -189,4 +189,4 @@ namespace carto { namespace mvt {
             }
         };
     }
-} }
+}

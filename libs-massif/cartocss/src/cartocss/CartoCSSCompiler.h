@@ -20,7 +20,7 @@
 #include <map>
 #include <utility>
 
-namespace carto { namespace css {
+namespace carto::css {
     class CartoCSSCompiler final {
     public:
         CartoCSSCompiler() = default;
@@ -184,6 +184,6 @@ namespace carto { namespace css {
         ExpressionContext _context;
         bool _ignoreLayerPredicates = false;
     };
-} }
+}
 
 #endif

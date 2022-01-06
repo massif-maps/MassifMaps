@@ -7,7 +7,7 @@
 
 #include <tesselator.h>
 
-namespace carto { namespace vt {
+namespace carto::vt {
     class PolygonTesselator::PoolAllocator {
     public:
         PoolAllocator() : _first(nullptr) {
@@ -230,4 +230,4 @@ namespace carto { namespace vt {
         }
         return angleAbsSum <= 2 * boost::math::constants::pi<float>() + EPSILON && angleAbsSum >= 2 * boost::math::constants::pi<float>() - EPSILON;
     }
-} }
+}

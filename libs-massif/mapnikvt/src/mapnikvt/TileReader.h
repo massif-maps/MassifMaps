@@ -20,7 +20,7 @@
 #include <set>
 #include <vector>
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     class Filter;
     class Rule;
     class Symbolizer;
@@ -52,6 +52,6 @@ namespace carto { namespace mvt {
         const std::shared_ptr<Logger> _logger;
         const std::shared_ptr<const Filter> _trueFilter;
     };
-} }
+}
 
 #endif

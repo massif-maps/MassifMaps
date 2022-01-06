@@ -2,7 +2,7 @@
 
 #include <algorithm>
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     std::unordered_set<std::string> FeatureData::getVariableNames() const {
          std::unordered_set<std::string> names;
          std::transform(_variables.begin(), _variables.end(), std::inserter(names, names.begin()), [](const std::pair<std::string, Value>& var) {
@@ -19,4 +19,4 @@ namespace carto { namespace mvt {
         value = it->second;
         return true;
     }
-} }
+}

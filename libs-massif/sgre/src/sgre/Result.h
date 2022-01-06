@@ -15,7 +15,7 @@
 
 #include <picojson/picojson.h>
 
-namespace carto { namespace sgre {
+namespace carto::sgre {
     class Result final {
     public:
         enum class Status {
@@ -51,6 +51,6 @@ namespace carto { namespace sgre {
         std::vector<Instruction> _instructions;
         std::vector<Point> _geometry;
     };
-} }
+}
 
 #endif

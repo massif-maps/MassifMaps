@@ -6,7 +6,7 @@
 
 #include <boost/math/constants/constants.hpp>
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     cglib::mat3x3<float> TransformEvaluator::operator() (const MatrixTransform& matTransform) const {
         std::array<float, 6> values;
         for (std::size_t i = 0; i < 6; i++) {
@@ -90,4 +90,4 @@ namespace carto { namespace mvt {
     std::vector<Expression> TransformSubExpressionBuilder::operator() (const SkewYTransform& skewTransform) const {
         return std::vector<Expression>{ skewTransform.getAngle() };
     }
-} }
+}

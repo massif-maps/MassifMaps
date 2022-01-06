@@ -10,7 +10,7 @@
 #include <utility>
 #include <functional>
 
-namespace carto { namespace vt {
+namespace carto::vt {
     struct TileId final {
         int zoom;
         int x;
@@ -62,7 +62,7 @@ namespace carto { namespace vt {
         }
         return tile1.y < tile2.y;
     }
-} }
+}
 
 namespace std {
     template <>

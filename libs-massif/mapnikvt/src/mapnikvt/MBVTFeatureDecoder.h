@@ -22,7 +22,7 @@ namespace vector_tile {
     class Tile;
 }
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     class Logger;
     
     class MBVTFeatureDecoder : public FeatureDecoder {
@@ -55,6 +55,6 @@ namespace carto { namespace mvt {
 
         const std::shared_ptr<Logger> _logger;
     };
-} }
+}
 
 #endif

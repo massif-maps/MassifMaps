@@ -14,7 +14,7 @@
 #include <vector>
 #include <numeric>
 
-namespace carto { namespace vt {
+namespace carto::vt {
     class Tile final {
     public:
         explicit Tile(const TileId& tileId, float tileSize, std::vector<std::shared_ptr<TileLayer>> layers) : _tileId(tileId), _tileSize(tileSize), _layers(std::move(layers)) { }
@@ -37,6 +37,6 @@ namespace carto { namespace vt {
         const float _tileSize;
         const std::vector<std::shared_ptr<TileLayer>> _layers;
     };
-} }
+}
 
 #endif

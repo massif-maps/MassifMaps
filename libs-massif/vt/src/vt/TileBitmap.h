@@ -10,7 +10,7 @@
 #include <cstdint>
 #include <vector>
 
-namespace carto { namespace vt {
+namespace carto::vt {
     class TileBitmap final {
     public:
         enum class Type {
@@ -46,6 +46,6 @@ namespace carto { namespace vt {
         
         std::vector<std::uint8_t> _data;
     };
-} }
+}
 
 #endif

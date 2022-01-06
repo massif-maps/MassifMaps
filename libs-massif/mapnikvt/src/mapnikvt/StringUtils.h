@@ -9,7 +9,7 @@
 
 #include <string>
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     std::size_t stringLength(const std::string& str);
     std::string toUpper(const std::string& str);
     std::string toLower(const std::string& str);
@@ -17,6 +17,6 @@ namespace carto { namespace mvt {
     std::string stringReverse(const std::string& str);
     bool regexMatch(const std::string& str, const std::string& re);
     std::string regexReplace(const std::string& str, const std::string& re, const std::string& replacement);
-} }
+}
 
 #endif

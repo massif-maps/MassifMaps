@@ -8,7 +8,7 @@
 
 #include <algorithm>
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     Rule::Rule(std::string name, int minZoom, int maxZoom, std::shared_ptr<const Filter> filter, std::vector<std::shared_ptr<const Symbolizer>> symbolizers) : _name(std::move(name)), _minZoom(minZoom), _maxZoom(maxZoom), _filter(std::move(filter)), _symbolizers(std::move(symbolizers)) {
     }
 
@@ -52,4 +52,4 @@ namespace carto { namespace mvt {
 
         _referencedFieldsCalculated = true;
     }
-} }
+}

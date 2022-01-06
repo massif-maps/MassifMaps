@@ -9,7 +9,7 @@
 
 #include <cglib/vec.h>
 
-namespace carto { namespace geocoding {
+namespace carto::geocoding {
     namespace consts {
         inline constexpr double PI = 3.1415926535897932;
         inline constexpr double DEG_TO_RAD = 0.017453292519943295;
@@ -23,6 +23,6 @@ namespace carto { namespace geocoding {
 
     cglib::vec2<double> wgs84Meters(const cglib::vec2<double>& wgsPoint);
     cglib::vec2<double> webMercatorMeters(const cglib::vec2<double>& wgsPoint);
-} }
+}
 
 #endif

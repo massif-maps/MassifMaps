@@ -7,7 +7,7 @@
 
 #include <stdext/unistring.h>
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     std::size_t stringLength(const std::string& str) {
         unistring::unistring unistr = unistring::to_unistring(str);
         return unistr.size();
@@ -47,4 +47,4 @@ namespace carto { namespace mvt {
         unistring::unistring uniresult = unistring::to_unistring(std::regex_replace(unistring::to_wstring(unistr), std::wregex(unistring::to_wstring(unire)), unistring::to_wstring(unireplacement)));
         return unistring::to_utf8string(uniresult);
     }
-} }
+}

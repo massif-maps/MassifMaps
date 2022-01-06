@@ -2,7 +2,7 @@
 
 #include <algorithm>
 
-namespace carto { namespace vt {
+namespace carto::vt {
     BitmapManager::BitmapManager(std::shared_ptr<BitmapLoader> loader) : _bitmapLoader(std::move(loader)) {
     }
 
@@ -131,4 +131,4 @@ namespace carto { namespace vt {
         while (height < bitmap->height) { height *= 2; }
         return BitmapManager::scale(bitmap, width, height);
     }
-} }
+}

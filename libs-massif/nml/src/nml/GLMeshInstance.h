@@ -15,7 +15,7 @@
 #include <memory>
 #include <string>
 
-namespace carto { namespace nml {
+namespace carto::nml {
     class MeshInstance;
     class GLMaterial;
     class GLMesh;
@@ -45,6 +45,6 @@ namespace carto { namespace nml {
         cglib::mat4x4<float> _transformMatrix;
         cglib::mat4x4<float> _invTransTransformMatrix;
     };
-} }
+}
 
 #endif

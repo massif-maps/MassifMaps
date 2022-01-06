@@ -14,7 +14,7 @@
 #include <set>
 #include <string>
 
-namespace carto { namespace nml {
+namespace carto::nml {
     class Material;
     class ColorOrTexture;
     class GLTexture;
@@ -54,6 +54,6 @@ namespace carto { namespace nml {
         float _shininess;
         GLuint _glProgramId;
     };
-} }
+}
 
 #endif

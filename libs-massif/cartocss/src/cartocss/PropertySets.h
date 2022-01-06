@@ -22,7 +22,7 @@
 #include <functional>
 #include <algorithm>
 
-namespace carto { namespace css {
+namespace carto::css {
     class Property final {
     public:
         using RuleSpecificity = std::tuple<int, int, int, int>; // layers, filters, classes, order
@@ -105,6 +105,6 @@ namespace carto { namespace css {
         std::string _attachment;
         std::list<PropertySet> _propertySets;
     };
-} }
+}
 
 #endif

@@ -9,7 +9,7 @@
 
 #include "ExpressionPredicateBase.h"
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     class ExpressionPredicate final {
     public:
         explicit ExpressionPredicate(Expression expr) : _expr(std::move(expr)) { }
@@ -79,6 +79,6 @@ namespace carto { namespace mvt {
         const Predicate _pred1;
         const Predicate _pred2;
     };
-} }
+}
 
 #endif

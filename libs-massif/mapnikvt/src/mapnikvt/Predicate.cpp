@@ -17,7 +17,7 @@ namespace {
     };
 }
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     bool ComparisonPredicate::applyOp(Op op, const Value& val1, const Value& val2) {
         switch (op) {
         case Op::EQ:
@@ -41,4 +41,4 @@ namespace carto { namespace mvt {
         }
         throw std::invalid_argument("Illegal operator");
     }
-} }
+}

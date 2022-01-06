@@ -219,7 +219,7 @@ namespace {
     )GLSL";
 }
 
-namespace carto { namespace nml {
+namespace carto::nml {
     GLMaterial::GLColorOrTexture::GLColorOrTexture() :
         textureId(),
         texture(),
@@ -402,4 +402,4 @@ namespace carto { namespace nml {
             }
         }
     }
-} }
+}

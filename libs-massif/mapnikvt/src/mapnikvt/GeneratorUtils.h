@@ -17,7 +17,7 @@
 #include <string>
 #include <vector>
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     class GeneratorException : public std::runtime_error {
     public:
         explicit GeneratorException(const std::string& msg) : runtime_error(msg) { }
@@ -30,6 +30,6 @@ namespace carto { namespace mvt {
     std::string generateColorString(vt::Color color);
     std::string generateValueString(const Value& val);
     std::string generateExpressionString(const Expression& expr, bool stringExpr);
-} }
+}
 
 #endif

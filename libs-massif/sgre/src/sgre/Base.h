@@ -16,7 +16,7 @@
 
 #include <picojson/picojson.h>
 
-namespace carto { namespace sgre {
+namespace carto::sgre {
     using Point = cglib::vec3<double>;
 
     using FeatureFilter = picojson::object;
@@ -35,7 +35,7 @@ namespace carto { namespace sgre {
         std::map<std::string, float> _paramValues;
         float _defaultValue;
     };
-} }
+}
 
 namespace std {
     template <>

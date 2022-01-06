@@ -15,7 +15,7 @@
 #include <map>
 #include <memory>
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     class FeatureData;
 
     class ExpressionContext {
@@ -52,6 +52,6 @@ namespace carto { namespace mvt {
         std::shared_ptr<const FeatureData> _featureData;
         std::shared_ptr<const std::map<std::string, Value>> _nutiParameterValueMap;
     };
-} }
+}
 
 #endif

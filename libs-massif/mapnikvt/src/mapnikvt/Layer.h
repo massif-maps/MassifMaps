@@ -11,7 +11,7 @@
 #include <vector>
 #include <map>
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     class Layer {
     public:
         explicit Layer(std::string name, std::vector<std::string> styleNames) : _name(std::move(name)), _styleNames(std::move(styleNames)) { }
@@ -24,6 +24,6 @@ namespace carto { namespace mvt {
         const std::string _name;
         const std::vector<std::string> _styleNames;
     };
-} }
+}
 
 #endif

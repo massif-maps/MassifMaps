@@ -11,7 +11,7 @@
 #include "MBVTFeatureDecoder.h"
 #include "Map.h"
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     class MBVTTileReader : public TileReader {
     public:
         explicit MBVTTileReader(std::shared_ptr<const Map> map, std::shared_ptr<const vt::TileTransformer> transformer, const SymbolizerContext& symbolizerContext, const MBVTFeatureDecoder& featureDecoder, std::shared_ptr<Logger> logger) : TileReader(std::move(map), std::move(transformer), symbolizerContext, std::move(logger)), _featureDecoder(featureDecoder) { }
@@ -26,6 +26,6 @@ namespace carto { namespace mvt {
         const MBVTFeatureDecoder& _featureDecoder;
         std::string _layerNameOverride;
     };
-} }
+}
 
 #endif

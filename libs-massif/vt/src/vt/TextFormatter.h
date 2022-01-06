@@ -16,7 +16,7 @@
 #include <cglib/vec.h>
 #include <cglib/bbox.h>
 
-namespace carto { namespace vt {
+namespace carto::vt {
     class TextFormatter final {
     public:
         struct Options {
@@ -54,6 +54,6 @@ namespace carto { namespace vt {
         const float _fontSize;
         const Options _options;
     };
-} }
+}
 
 #endif

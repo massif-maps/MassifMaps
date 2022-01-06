@@ -16,7 +16,7 @@
 #include <memory>
 #include <mutex>
 
-namespace carto { namespace nml {
+namespace carto::nml {
     class Model;
     class MeshOp;
     class GLMesh;
@@ -52,6 +52,6 @@ namespace carto { namespace nml {
         std::vector<std::shared_ptr<GLMeshInstance>> _meshInstanceList;
         mutable std::mutex _mutex;
     };
-} }
+}
 
 #endif

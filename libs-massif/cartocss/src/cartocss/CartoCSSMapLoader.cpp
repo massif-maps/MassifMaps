@@ -6,7 +6,7 @@
 
 #include <picojson/picojson.h>
 
-namespace carto { namespace css {
+namespace carto::css {
     namespace {
         mvt::Value convertJSONValue(const picojson::value& value) {
             if (value.is<std::string>()) {
@@ -347,4 +347,4 @@ namespace carto { namespace css {
         }
         return attachmentStyles;
     }
-} }
+}

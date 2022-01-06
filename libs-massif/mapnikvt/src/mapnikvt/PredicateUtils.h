@@ -15,7 +15,7 @@
 
 #include <boost/logic/tribool.hpp>
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     struct PredicateEvaluator {
         explicit PredicateEvaluator(const ExpressionContext& context, const vt::ViewState* viewState) : _context(context), _viewState(viewState) { }
 
@@ -94,6 +94,6 @@ namespace carto { namespace mvt {
         }
         template <typename S, typename T> bool operator() (const S& pred1, const T& pred2) const { return false; }
     };
-} }
+}
 
 #endif

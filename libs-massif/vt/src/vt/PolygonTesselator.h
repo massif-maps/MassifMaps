@@ -12,7 +12,7 @@
 
 #include <cglib/vec.h>
 
-namespace carto { namespace vt {
+namespace carto::vt {
     class PolygonTesselator final {
     public:
         using Vertex = cglib::vec2<float>;
@@ -40,6 +40,6 @@ namespace carto { namespace vt {
 
         std::shared_ptr<PoolAllocator> _poolAllocator;
     };
-} }
+}
 
 #endif

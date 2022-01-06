@@ -11,7 +11,7 @@
 
 #include "vt/Styles.h"
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     class FloatFunctionBuilder final {
     public:
         vt::FloatFunction createFloatFunction(float value) const {
@@ -73,6 +73,6 @@ namespace carto { namespace mvt {
         mutable std::pair<std::pair<vt::ColorFunction, vt::FloatFunction>, vt::ColorFunction> _cachedColorOpacityFunction;
         mutable std::mutex _mutex;
     };
-} }
+}
 
 #endif

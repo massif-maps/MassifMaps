@@ -16,7 +16,7 @@
 
 #include <cglib/vec.h>
 
-namespace carto { namespace vt {
+namespace carto::vt {
     inline constexpr int GLYPH_RENDER_SIZE = 27;
     inline constexpr int GLYPH_RENDER_SPREAD = 4; // NOTE: keep it equal or smaller than BITMAP_SDF_SCALE
 
@@ -55,6 +55,6 @@ namespace carto { namespace vt {
         virtual std::vector<Glyph> shapeGlyphs(const std::uint32_t* utf32Text, std::size_t len, float size, bool rtl) const = 0;
         virtual std::shared_ptr<GlyphMap> getGlyphMap() const = 0;
     };
-} }
+}
 
 #endif

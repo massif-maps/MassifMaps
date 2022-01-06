@@ -4,7 +4,7 @@
 
 #include <set>
 
-namespace carto { namespace css {
+namespace carto::css {
     void CartoCSSCompiler::compileMap(const StyleSheet& styleSheet, std::map<std::string, Value>& mapProperties) const {
         // Build flat property lists
         std::map<std::string, Expression> variableMap;
@@ -318,4 +318,4 @@ namespace carto { namespace css {
         }
         return std::make_tuple(counter.layers, counter.classes, counter.filters, order);
     }
-} }
+}

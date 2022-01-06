@@ -19,7 +19,7 @@
 #include <boost/phoenix.hpp>
 #include <boost/spirit/include/karma.hpp>
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     namespace exprgenimpl {
         template <typename OutputIterator, bool StringExpression>
         struct Grammar : boost::spirit::karma::grammar<OutputIterator, Expression()> {
@@ -340,6 +340,6 @@ namespace carto { namespace mvt {
 
     template <typename Iterator> using ExpressionGeneratorGrammar = exprgenimpl::Grammar<Iterator, false>;
     template <typename Iterator> using StringExpressionGeneratorGrammar = exprgenimpl::Grammar<Iterator, true>;
-} }
+}
 
 #endif

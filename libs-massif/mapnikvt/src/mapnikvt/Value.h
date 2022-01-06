@@ -10,8 +10,8 @@
 #include <variant>
 #include <string>
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     using Value = std::variant<std::monostate, bool, long long, double, std::string>;
-} }
+}
 
 #endif

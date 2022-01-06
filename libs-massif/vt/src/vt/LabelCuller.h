@@ -21,7 +21,7 @@
 #include <cglib/mat.h>
 #include <cglib/bbox.h>
 
-namespace carto { namespace vt {
+namespace carto::vt {
     class LabelCuller final {
     public:
         explicit LabelCuller(float scale);
@@ -57,6 +57,6 @@ namespace carto { namespace vt {
 
         mutable std::mutex _mutex;
     };
-} }
+}
 
 #endif

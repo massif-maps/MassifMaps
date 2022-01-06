@@ -25,7 +25,7 @@ namespace {
     }
 }
 
-namespace carto { namespace sgre {
+namespace carto::sgre {
     void GraphBuilder::addLineString(const std::vector<Point>& coordsList, const Graph::FeatureProperties& properties) {
         Graph::FeatureId featureId = addFeature(properties);
         addLineString(featureId, coordsList, properties);
@@ -431,4 +431,4 @@ namespace carto { namespace sgre {
         double distZ = std::abs(posDelta(2));
         return std::make_pair(distXY, distZ);
     }
-} }
+}

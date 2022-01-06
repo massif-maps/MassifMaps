@@ -12,7 +12,7 @@
 #include <cglib/vec.h>
 #include <cglib/mat.h>
 
-namespace carto { namespace vt {
+namespace carto::vt {
     class Transform final {
     public:
         Transform() : _matrix { 1, 0, 0, 1 }, _translate { 0, 0 } { }
@@ -70,7 +70,7 @@ namespace carto { namespace vt {
     inline bool operator != (const Transform& transform1, const Transform& transform2) {
         return !(transform1 == transform2);
     }
-} }
+}
 
 namespace std {
     template <>

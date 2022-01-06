@@ -19,7 +19,7 @@
 
 #include <protobuf/encodedpbf.hpp>
 
-namespace carto { namespace mbvtbuilder {
+namespace carto::mbvtbuilder {
     class MBVTLayerEncoder final {
     public:
         using Point = cglib::vec2<float>;
@@ -60,6 +60,6 @@ namespace carto { namespace mbvtbuilder {
 
         std::list<protobuf::encoded_message> _encodedFeatures;
     };
-} }
+}
 
 #endif

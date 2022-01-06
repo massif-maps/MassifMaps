@@ -12,7 +12,7 @@
 #include <memory>
 #include <optional>
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     class Filter final {
     public:
         enum class Type {
@@ -30,6 +30,6 @@ namespace carto { namespace mvt {
         const Type _type;
         const std::optional<Predicate> _pred;
     };
-} }
+}
 
 #endif

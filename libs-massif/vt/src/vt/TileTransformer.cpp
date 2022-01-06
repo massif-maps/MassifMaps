@@ -1,6 +1,6 @@
 #include "TileTransformer.h"
 
-namespace carto { namespace vt {
+namespace carto::vt {
     DefaultTileTransformer::DefaultVertexTransformer::DefaultVertexTransformer(const TileId& tileId) :
         _tileId(tileId)
     {
@@ -347,4 +347,4 @@ namespace carto { namespace vt {
         double y1 = std::atanh(std::max(-1.0, std::min(1.0, p(2) / cglib::length(p))));
         return cglib::vec2<double>(x1 * EARTH_RADIUS, y1 * EARTH_RADIUS);
     }
-} }
+}

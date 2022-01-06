@@ -12,7 +12,7 @@
 #include <memory>
 #include <vector>
 
-namespace carto { namespace nml {
+namespace carto::nml {
     class Mesh;
     class MeshOp;
     class GLSubmesh;
@@ -32,6 +32,6 @@ namespace carto { namespace nml {
     private:
         std::vector<std::shared_ptr<GLSubmesh>> _submeshList;
     };
-} }
+}
 
 #endif

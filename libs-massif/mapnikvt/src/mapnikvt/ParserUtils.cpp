@@ -12,7 +12,7 @@
 
 #include <boost/algorithm/string.hpp>
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     vt::LineCapMode parseLineCapMode(const std::string& str) {
         auto it = getLineCapModeTable().find(toLower(str));
         if (it == getLineCapModeTable().end()) {
@@ -117,4 +117,4 @@ namespace carto { namespace mvt {
         }
         return expr;
     }
-} }
+}

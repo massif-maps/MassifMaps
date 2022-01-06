@@ -17,7 +17,7 @@
 #include <cglib/bbox.h>
 #include <cglib/mat.h>
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     class Logger;
     
     class TorqueFeatureDecoder : public FeatureDecoder {
@@ -49,6 +49,6 @@ namespace carto { namespace mvt {
         cglib::bbox2<float> _clipBox;
         const std::shared_ptr<Logger> _logger;
     };
-} }
+}
 
 #endif

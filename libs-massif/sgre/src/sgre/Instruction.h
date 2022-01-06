@@ -14,7 +14,7 @@
 
 #include <picojson/picojson.h>
 
-namespace carto { namespace sgre {
+namespace carto::sgre {
     class Instruction final {
     public:
         enum class Type {
@@ -48,6 +48,6 @@ namespace carto { namespace sgre {
         double _time = 0.0;
         std::size_t _geometryIndex = 0;
     };
-} }
+}
 
 #endif

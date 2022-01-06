@@ -17,7 +17,7 @@
 #include <unordered_map>
 #include <set>
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     class FeatureDecoder {
     public:
         class FeatureIterator {
@@ -93,6 +93,6 @@ namespace carto { namespace mvt {
             mutable std::mutex _mutex;
         };
     };
-} }
+}
 
 #endif

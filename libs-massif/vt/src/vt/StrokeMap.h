@@ -13,7 +13,7 @@
 #include <mutex>
 #include <unordered_map>
 
-namespace carto { namespace vt {
+namespace carto::vt {
     class StrokeMap final {
     public:
         using StrokeId = unsigned int;
@@ -42,6 +42,6 @@ namespace carto { namespace vt {
         std::shared_ptr<BitmapPattern> _bitmapPattern;
         mutable std::mutex _mutex;
     };
-} }
+}
 
 #endif

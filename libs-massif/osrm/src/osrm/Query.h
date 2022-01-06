@@ -11,7 +11,7 @@
 
 #include <array>
 
-namespace carto { namespace osrm {
+namespace carto::osrm {
     class Query final {
     public:
         Query() = delete;
@@ -22,6 +22,6 @@ namespace carto { namespace osrm {
     private:
         std::array<WGSPos, 2> _points;
     };
-} }
+}
 
 #endif

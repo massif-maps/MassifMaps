@@ -1,7 +1,7 @@
 #include "TorqueCartoCSSMapnikTranslator.h"
 #include "mapnikvt/TorqueMarkerSymbolizer.h"
 
-namespace carto { namespace css {
+namespace carto::css {
     std::string TorqueCartoCSSMapnikTranslator::getPropertySymbolizerId(const std::string& propertyName) const {
         // Torque uses very simplified CartoCSS with no attachments, etc
         return "marker";
@@ -45,4 +45,4 @@ namespace carto { namespace css {
         { "marker-line-width", "stroke-width" },
         { "comp-op", "comp-op" } // NOTE: comp-op in Torque is not a layer property, like in normal CartoCSS
     };
-} }
+}

@@ -17,7 +17,7 @@
 #include <boost/spirit/include/qi.hpp>
 #include <boost/spirit/repository/include/qi_distinct.hpp>
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     namespace colorparserimpl {
         using Skipper = boost::spirit::iso8859_1::space_type;
 
@@ -91,6 +91,6 @@ namespace carto { namespace mvt {
     }
 
     template <typename Iterator> using ColorParserGrammar = colorparserimpl::Grammar<Iterator>;
-} }
+}
 
 #endif

@@ -10,7 +10,7 @@
 #include <string>
 #include <vector>
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     class FontSet final {
     public:
         explicit FontSet(std::string name, std::vector<std::string> faceNames) : _name(std::move(name)), _faceNames(std::move(faceNames)) { }
@@ -22,6 +22,6 @@ namespace carto { namespace mvt {
         const std::string _name;
         const std::vector<std::string> _faceNames;
     };
-} }
+}
 
 #endif

@@ -18,7 +18,7 @@
 
 #include <stdext/zlib.h>
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     class MBVTFeatureDecoder::MBVTFeatureIterator : public carto::mvt::FeatureDecoder::FeatureIterator {
     public:
         explicit MBVTFeatureIterator(const std::shared_ptr<const vector_tile::Tile>& tile, int layerIndex, const std::set<std::string>* fields, const cglib::mat3x3<float>& transform, const cglib::bbox2<float>& clipBox, bool globalIdOverride, long long tileIdOffset, const std::shared_ptr<MBVTFeatureDecoder::GeometryCache>& geometryCache, const std::shared_ptr<MBVTFeatureDecoder::FeatureDataCache<std::vector<int>>>& featureDataCache) :
@@ -442,4 +442,4 @@ namespace carto { namespace mvt {
         }
         return false;
     }
-} }
+}

@@ -16,7 +16,7 @@ namespace {
     }
 }
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     void FeatureCollection::clear() {
         _features.clear();
     }
@@ -73,4 +73,4 @@ namespace carto { namespace mvt {
         }
         return std::shared_ptr<const PolygonGeometry>();
     }
-} }
+}

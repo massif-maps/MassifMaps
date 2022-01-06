@@ -9,7 +9,7 @@
 
 #include "TextSymbolizer.h"
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     class ShieldSymbolizer : public TextSymbolizer {
     public:
         explicit ShieldSymbolizer(const Expression& text, std::vector<std::shared_ptr<FontSet>> fontSets, std::shared_ptr<Logger> logger) : TextSymbolizer(text, std::move(fontSets), std::move(logger)) {
@@ -29,6 +29,6 @@ namespace carto { namespace mvt {
         FloatParameter _shieldDx = FloatParameter(0.0f);
         FloatParameter _shieldDy = FloatParameter(0.0f);
     };
-} }
+}
 
 #endif

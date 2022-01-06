@@ -9,7 +9,7 @@
 
 #include "CartoCSSMapnikTranslator.h"
 
-namespace carto { namespace css {
+namespace carto::css {
     class TorqueCartoCSSMapnikTranslator : public CartoCSSMapnikTranslator {
     public:
         explicit TorqueCartoCSSMapnikTranslator(std::shared_ptr<mvt::Logger> logger) : CartoCSSMapnikTranslator(std::move(logger)) { }
@@ -22,6 +22,6 @@ namespace carto { namespace css {
     private:
         static const std::unordered_map<std::string, std::string> _symbolizerPropertyMap;
     };
-} }
+}
 
 #endif

@@ -14,7 +14,7 @@
 
 #include <boost/algorithm/string.hpp>
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     std::shared_ptr<Symbolizer> SymbolizerParser::parseSymbolizer(const pugi::xml_node& node, const std::shared_ptr<Map>& map) const {
         std::shared_ptr<Symbolizer> symbolizer = createSymbolizer(node, map);
         if (!symbolizer) {
@@ -92,4 +92,4 @@ namespace carto { namespace mvt {
             _logger->write(mvt::Logger::Severity::ERROR, ex.what());
         }
     }
-} }
+}

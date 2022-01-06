@@ -20,7 +20,7 @@ namespace sqlite3pp {
     class database;
 }
 
-namespace carto { namespace geocoding {
+namespace carto::geocoding {
     struct Address final {
         enum class EntityType {
             NONE, COUNTRY, REGION, COUNTY, LOCALITY, NEIGHBOURHOOD, STREET, RESERVED1, POI, ADDRESS
@@ -51,6 +51,6 @@ namespace carto { namespace geocoding {
 
         std::string toString() const;
     };
-} }
+}
 
 #endif

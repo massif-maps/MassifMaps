@@ -17,7 +17,7 @@
 #include <vector>
 #include <stack>
 
-namespace carto { namespace osrm {
+namespace carto::osrm {
     class RouteFinder final {
     public:
         explicit RouteFinder(std::shared_ptr<Graph> graph) : _graph(std::move(graph)) { }
@@ -55,6 +55,6 @@ namespace carto { namespace osrm {
 
         const std::shared_ptr<Graph> _graph;
     };
-} }
+}
 
 #endif

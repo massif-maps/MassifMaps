@@ -18,7 +18,7 @@
 
 #include <picojson/picojson.h>
 
-namespace carto { namespace sgre {
+namespace carto::sgre {
     class Rule final {
     public:
         Rule() = default;
@@ -63,6 +63,6 @@ namespace carto { namespace sgre {
     private:
         std::vector<Rule> _rules;
     };
-} }
+}
 
 #endif

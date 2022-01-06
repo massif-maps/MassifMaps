@@ -5,7 +5,7 @@
 
 #include "mapnikvt/mbvtpackage/MBVTPackage.pb.h"
 
-namespace carto { namespace mbvtbuilder {
+namespace carto::mbvtbuilder {
     MBVTLayerEncoder::MBVTLayerEncoder(const std::string& name, int version, int extent) :
         _name(name),
         _version(version > 0 ? version : DEFAULT_LAYER_VERSION),
@@ -236,4 +236,4 @@ namespace carto { namespace mbvtbuilder {
         encodedCoords.push_back((dx << 1) ^ (dx >> 31));
         encodedCoords.push_back((dy << 1) ^ (dy >> 31));
     }
-} }
+}

@@ -9,7 +9,7 @@
 
 #include <string>
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     class Logger {
     public:
         enum class Severity {
@@ -20,6 +20,6 @@ namespace carto { namespace mvt {
 
         virtual void write(Severity severity, const std::string& msg) = 0;
     };
-} }
+}
 
 #endif

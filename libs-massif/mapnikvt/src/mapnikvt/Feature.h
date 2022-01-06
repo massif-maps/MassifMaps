@@ -17,7 +17,7 @@
 #include <map>
 #include <utility>
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     class FeatureData final {
     public:
         enum class GeometryType {
@@ -58,6 +58,6 @@ namespace carto { namespace mvt {
         std::shared_ptr<const Geometry> _geometry;
         std::shared_ptr<const FeatureData> _featureData;
     };
-} }
+}
 
 #endif

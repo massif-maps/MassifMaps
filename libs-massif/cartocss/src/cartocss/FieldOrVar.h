@@ -9,7 +9,7 @@
 
 #include <string>
 
-namespace carto { namespace css {
+namespace carto::css {
     class FieldOrVar final {
     public:
         explicit FieldOrVar(bool field, std::string name) : _field(field), _name(std::move(name)) { }
@@ -25,6 +25,6 @@ namespace carto { namespace css {
         bool _field;
         std::string _name;
     };
-} }
+}
 
 #endif

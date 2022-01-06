@@ -15,7 +15,7 @@
 #include <cglib/vec.h>
 #include <cglib/bbox.h>
 
-namespace carto { namespace geocoding {
+namespace carto::geocoding {
     class Geometry {
     public:
         using Point = cglib::vec2<double>;
@@ -195,6 +195,6 @@ namespace carto { namespace geocoding {
         const std::vector<std::shared_ptr<Geometry>> _geometries;
         Bounds _bounds;
     };
-} }
+}
 
 #endif

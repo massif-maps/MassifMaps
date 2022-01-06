@@ -14,7 +14,7 @@
 
 #include <cglib/vec.h>
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     class PointGeometry final {
     public:
         using Vertices = std::vector<cglib::vec2<float>>;
@@ -62,6 +62,6 @@ namespace carto { namespace mvt {
     };
 
     using Geometry = std::variant<PointGeometry, LineGeometry, PolygonGeometry>;
-} }
+}
 
 #endif

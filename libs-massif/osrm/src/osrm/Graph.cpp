@@ -10,7 +10,7 @@
 
 #include <utf8.h>
 
-namespace carto { namespace osrm {
+namespace carto::osrm {
     Graph::Graph(const Settings& settings) :
         _packages(),
         _nodeBlockCache(settings.nodeBlockCacheSize),
@@ -640,4 +640,4 @@ namespace carto { namespace osrm {
     Graph::Point Graph::toPoint(const WGSPos& pos) {
         return Point(static_cast<int>(pos(0) / COORDINATE_SCALE), static_cast<int>(pos(1) / COORDINATE_SCALE));
     }
-} }
+}

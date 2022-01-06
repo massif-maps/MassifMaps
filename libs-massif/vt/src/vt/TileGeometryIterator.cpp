@@ -1,6 +1,6 @@
 #include "TileGeometryIterator.h"
 
-namespace carto { namespace vt {
+namespace carto::vt {
     TileGeometryIterator::TileGeometryIterator(const TileId& tileId, const std::shared_ptr<const TileGeometry>& geometry, const std::shared_ptr<const TileTransformer>& transformer, const ViewState& viewState, float pointBuffer, float lineBuffer, float scale, float heightScale) :
         _viewState(viewState), _pointBuffer(pointBuffer), _lineBuffer(lineBuffer), _scale(scale), _heightScale(heightScale), _geometry(geometry), _transformMatrix(cglib::mat4x4<float>::identity())
     {
@@ -178,4 +178,4 @@ namespace carto { namespace vt {
         }
         return normal * (height * _heightScale);
     }
-} }
+}

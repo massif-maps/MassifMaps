@@ -2,7 +2,7 @@
 
 #include <cmath>
 
-namespace carto { namespace geocoding {
+namespace carto::geocoding {
     cglib::vec2<double> webMercatorToWgs84(const cglib::vec2<double>& mercatorPoint) {
         double x = mercatorPoint(0);
         double y = mercatorPoint(1);
@@ -32,4 +32,4 @@ namespace carto { namespace geocoding {
         double meters = std::cos(wgsPoint(1) * consts::DEG_TO_RAD);
         return cglib::vec2<double>(meters, meters);
     }
-} }
+}

@@ -1,6 +1,6 @@
 #include "Map.h"
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     void Map::setNutiParameters(const std::vector<NutiParameter>& nutiParameters) {
         _nutiParameterMap.clear();
         for (const NutiParameter& nutiParam : nutiParameters) {
@@ -71,4 +71,4 @@ namespace carto { namespace mvt {
         }
         return it->second;
     }
-} }
+}

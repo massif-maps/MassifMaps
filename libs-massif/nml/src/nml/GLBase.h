@@ -16,7 +16,7 @@
 #include <cglib/frustum3.h>
 #include <cglib/ray.h>
 
-namespace carto { namespace nml {
+namespace carto::nml {
     struct RayIntersection final {
         unsigned int vertexId;
         cglib::vec3<double> pos;
@@ -36,6 +36,6 @@ namespace carto { namespace nml {
 
         explicit RenderState(const cglib::mat4x4<float>& projMatrix, const cglib::mat4x4<float>& mvMatrix, const cglib::vec4<float>& modelColor, const cglib::vec4<float>& ambientLightColor, const cglib::vec4<float>& mainLightColor, const cglib::vec3<float>& mainLightDir) : projMatrix(projMatrix), mvMatrix(mvMatrix), invTransMVMatrix(cglib::transpose(cglib::inverse(mvMatrix))), modelColor(modelColor), ambientLightColor(ambientLightColor), mainLightColor(mainLightColor), mainLightDir(mainLightDir) { }
     };
-} }
+}
 
 #endif

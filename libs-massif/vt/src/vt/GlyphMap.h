@@ -16,7 +16,7 @@
 
 #include <cglib/vec.h>
 
-namespace carto { namespace vt {
+namespace carto::vt {
     class GlyphMap final {
     public:
         using GlyphId = unsigned int;
@@ -64,6 +64,6 @@ namespace carto { namespace vt {
         BuildState _buildState;
         mutable std::mutex _mutex;
     };
-} }
+}
 
 #endif

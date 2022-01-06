@@ -25,7 +25,7 @@
 #include <limits>
 #include <algorithm>
 
-namespace carto { namespace vt {
+namespace carto::vt {
     class Label final {
     public:
         explicit Label(const TileLabel& tileLabel, const TileId& tileId, int layerIdx, const cglib::mat4x4<double>& tileMatrix, const std::shared_ptr<const TileTransformer::VertexTransformer>& transformer);
@@ -212,6 +212,6 @@ namespace carto { namespace vt {
         mutable VertexArray<cglib::vec4<std::int8_t>> _cachedAttribs;
         mutable VertexArray<std::uint16_t> _cachedIndices;
     };
-} }
+}
 
 #endif

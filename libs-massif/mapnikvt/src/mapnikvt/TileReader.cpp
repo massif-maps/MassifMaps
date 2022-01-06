@@ -8,7 +8,7 @@
 #include "Symbolizer.h"
 #include "Map.h"
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     TileReader::TileReader(std::shared_ptr<const Map> map, std::shared_ptr<const vt::TileTransformer> transformer, const SymbolizerContext& symbolizerContext, std::shared_ptr<Logger> logger) :
         _map(std::move(map)), _transformer(transformer), _symbolizerContext(symbolizerContext), _logger(std::move(logger)), _trueFilter(std::make_shared<Filter>(Filter::Type::FILTER, Predicate(true)))
     {
@@ -234,4 +234,4 @@ namespace carto { namespace mvt {
         }
         return symbolizers;
     }
-} }
+}

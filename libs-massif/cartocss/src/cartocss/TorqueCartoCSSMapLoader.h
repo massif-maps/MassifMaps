@@ -15,7 +15,7 @@
 #include "mapnikvt/TorqueMap.h"
 #include "mapnikvt/Logger.h"
 
-namespace carto { namespace css {
+namespace carto::css {
     class TorqueCartoCSSMapLoader : protected CartoCSSMapLoader {
     public:
         explicit TorqueCartoCSSMapLoader(std::shared_ptr<AssetLoader> assetLoader, std::shared_ptr<mvt::Logger> logger) : CartoCSSMapLoader(std::move(assetLoader), std::move(logger)) { }
@@ -28,6 +28,6 @@ namespace carto { namespace css {
     protected:
         mvt::TorqueMap::TorqueSettings loadTorqueSettings(const std::map<std::string, Value>& mapProperties) const;
     };
-} }
+}
 
 #endif

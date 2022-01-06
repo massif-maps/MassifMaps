@@ -10,7 +10,7 @@
 
 #include "mapnikvt/mbvtpackage/MBVTPackage.pb.h"
 
-namespace carto { namespace mbvtbuilder {
+namespace carto::mbvtbuilder {
     MBVTTileBuilder::MBVTTileBuilder(int minZoom, int maxZoom) :
         _minZoom(minZoom), _maxZoom(maxZoom)
     {
@@ -484,4 +484,4 @@ namespace carto { namespace mbvtbuilder {
         double y = 0.5 * EARTH_RADIUS * std::log((1.0 + std::sin(a)) / (1.0 - std::sin(a)));
         return Point(x, -y); // NOTE: we use EPSG3857 with flipped Y
     }
-} }
+}

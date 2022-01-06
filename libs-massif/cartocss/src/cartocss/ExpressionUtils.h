@@ -16,7 +16,7 @@
 #include <utility>
 #include <functional>
 
-namespace carto { namespace css {
+namespace carto::css {
     struct ExpressionContext {
         std::map<std::string, Expression>* variableMap = nullptr;
         std::map<std::string, Value>* predefinedFieldMap = nullptr;
@@ -168,6 +168,6 @@ namespace carto { namespace css {
 
         template <typename S, typename T> bool operator() (const S& expr1, const T& expr2) const { return false; }
     };
-} }
+}
 
 #endif

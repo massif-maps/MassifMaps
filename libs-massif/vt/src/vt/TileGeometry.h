@@ -20,7 +20,7 @@
 
 #include <cglib/mat.h>
 
-namespace carto { namespace vt {
+namespace carto::vt {
     class TileGeometry final {
     public:
         enum class Type {
@@ -108,6 +108,6 @@ namespace carto { namespace vt {
         VertexArray<std::uint16_t> _indices;
         std::vector<std::pair<std::size_t, long long>> _ids; // vertex count, feature id
     };
-} }
+}
 
 #endif

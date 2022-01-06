@@ -18,7 +18,7 @@
 
 #include <cglib/mat.h>
 
-namespace carto { namespace vt {
+namespace carto::vt {
     class TileGeometryIterator final {
     public:
         using TriangleCoords = std::array<cglib::vec3<float>, 3>;
@@ -55,6 +55,6 @@ namespace carto { namespace vt {
         std::shared_ptr<const TileGeometry> _geometry;
         cglib::mat4x4<float> _transformMatrix;
     };
-} }
+}
 
 #endif

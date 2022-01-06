@@ -21,7 +21,7 @@
 
 #include <picojson/picojson.h>
 
-namespace carto { namespace sgre {
+namespace carto::sgre {
     class RouteFinder final {
     public:
         struct RouteOptions {
@@ -100,6 +100,6 @@ namespace carto { namespace sgre {
 
         const std::shared_ptr<const StaticGraph> _graph;
     };
-} }
+}
 
 #endif

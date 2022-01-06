@@ -1,6 +1,6 @@
 #include "ParseTables.h"
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     const ParseTable<vt::LineCapMode>& getLineCapModeTable() {
         static const std::unordered_map<std::string, vt::LineCapMode> lineCapModeTable = {
             { "round",  vt::LineCapMode::ROUND  },
@@ -51,4 +51,4 @@ namespace carto { namespace mvt {
         };
         return labelOrientationTable;
     }
-} }
+}

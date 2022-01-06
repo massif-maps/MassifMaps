@@ -10,7 +10,7 @@
 #include "Transform.h"
 #include "ExpressionContext.h"
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     struct TransformEvaluator {
         explicit TransformEvaluator(const ExpressionContext& context) : _context(context) { }
         
@@ -33,6 +33,6 @@ namespace carto { namespace mvt {
         std::vector<Expression> operator() (const SkewXTransform& skewTransform) const;
         std::vector<Expression> operator() (const SkewYTransform& skewTransform) const;
     };
-} }
+}
 
 #endif

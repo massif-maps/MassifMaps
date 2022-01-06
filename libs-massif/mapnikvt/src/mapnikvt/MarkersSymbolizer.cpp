@@ -2,7 +2,7 @@
 #include "ParserUtils.h"
 #include "vt/BitmapCanvas.h"
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     MarkersSymbolizer::FeatureProcessor MarkersSymbolizer::createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const {
         vt::FloatFunction opacityFunc = _opacity.getFunction(exprContext);
         vt::ColorFunction colorFunc = _color.getFunction(exprContext);
@@ -332,4 +332,4 @@ namespace carto { namespace mvt {
         canvas.drawTriangle(cglib::vec2<float>(x1, strokeWidth * 2 * std::sqrt(2.0f)), cglib::vec2<float>(x1, canvasHeight - strokeWidth * 2 * std::sqrt(2.0f)), cglib::vec2<float>(canvasWidth - strokeWidth * 2, canvasHeight * 0.5f));
         return canvas.buildBitmapImage();
     }
-} }
+}

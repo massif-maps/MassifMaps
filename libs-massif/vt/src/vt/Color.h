@@ -12,7 +12,7 @@
 #include <algorithm>
 #include <functional>
 
-namespace carto { namespace vt {
+namespace carto::vt {
     class Color final {
     public:
         constexpr Color() : _components{ { 0, 0, 0, 0 } } { }
@@ -101,6 +101,6 @@ namespace carto { namespace vt {
     constexpr bool operator != (const Color& color1, const Color& color2) {
         return !(color1 == color2);
     }
-} }
+}
 
 #endif

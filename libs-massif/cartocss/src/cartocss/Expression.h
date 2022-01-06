@@ -15,7 +15,7 @@
 #include <variant>
 #include <vector>
 
-namespace carto { namespace css {
+namespace carto::css {
     class StringExpression;
     class ListExpression;
     class UnaryExpression;
@@ -145,6 +145,6 @@ namespace carto { namespace css {
         std::string _func;
         std::vector<Expression> _args;
     };
-} }
+}
 
 #endif

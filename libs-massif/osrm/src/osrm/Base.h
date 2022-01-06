@@ -10,9 +10,9 @@
 #include <cglib/vec.h>
 #include <cglib/bbox.h>
 
-namespace carto { namespace osrm {
+namespace carto::osrm {
     using WGSPos = cglib::vec2<double>;
     using WGSBounds = cglib::bbox2<double>;
-} }
+}
 
 #endif

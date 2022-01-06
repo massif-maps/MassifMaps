@@ -18,7 +18,7 @@
 #include <vector>
 #include <unordered_map>
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     class Rule;
     
     class Style final {
@@ -57,6 +57,6 @@ namespace carto { namespace mvt {
         mutable bool _zoomRuleMapCalculated = false;
         mutable std::unordered_map<int, std::vector<std::shared_ptr<const Rule>>> _zoomRuleMap;
     };
-} }
+}
 
 #endif

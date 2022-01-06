@@ -12,7 +12,7 @@
 
 #include <cglib/vec.h>
 
-namespace carto { namespace geocoding {
+namespace carto::geocoding {
     class EncodingStream final {
     public:
         explicit EncodingStream(const void* data, std::size_t size) : _data(reinterpret_cast<const unsigned char*>(data)), _size(size) { }
@@ -82,6 +82,6 @@ namespace carto { namespace geocoding {
         std::size_t _offset = 0;
         std::size_t _size = 0;
     };
-} }
+}
 
 #endif

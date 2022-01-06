@@ -19,7 +19,7 @@ namespace {
     };
 }
 
-namespace carto { namespace css {
+namespace carto::css {
     boost::tribool OpPredicate::applyOp(Op op, const Value& val1, const Value& val2) {
         switch (op) {
         case Op::EQ:
@@ -45,4 +45,4 @@ namespace carto { namespace css {
         }
         throw std::invalid_argument("Unsupported predicate");
     }
-} }
+}

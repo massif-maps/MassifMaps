@@ -9,7 +9,7 @@
 #include <boost/spirit/include/qi.hpp>
 #include <boost/spirit/repository/include/qi_distinct.hpp>
 
-namespace carto { namespace css {
+namespace carto::css {
     namespace cssparserimpl {
         template <typename Iterator>
         struct Skipper : boost::spirit::qi::grammar<Iterator> {
@@ -337,4 +337,4 @@ namespace carto { namespace css {
         }
         return colLine;
     }
-} }
+}

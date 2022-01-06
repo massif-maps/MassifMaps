@@ -1,6 +1,6 @@
 #include "Instruction.h"
 
-namespace carto { namespace sgre {
+namespace carto::sgre {
     picojson::value Instruction::serialize() const {
         picojson::object instructionObj;
         instructionObj["type"] = picojson::value(static_cast<std::int64_t>(_type));
@@ -19,4 +19,4 @@ namespace carto { namespace sgre {
         std::size_t geometryIndex = static_cast<std::size_t>(instructionDef.get("geomindex").get<std::int64_t>());
         return Instruction(type, tag, distance, time, geometryIndex);
     }
-} }
+}

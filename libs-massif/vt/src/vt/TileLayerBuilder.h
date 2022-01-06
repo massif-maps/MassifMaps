@@ -27,7 +27,7 @@
 #include <cglib/vec.h>
 #include <cglib/bbox.h>
 
-namespace carto { namespace vt {
+namespace carto::vt {
     class TileLayerBuilder final {
     public:
         using Vertex = cglib::vec2<float>;
@@ -115,6 +115,6 @@ namespace carto { namespace vt {
         std::vector<std::shared_ptr<TileGeometry>> _geometryList;
         std::vector<std::shared_ptr<TileLabel>> _labelList;
     };
-} }
+}
 
 #endif

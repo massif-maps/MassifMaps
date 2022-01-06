@@ -29,7 +29,7 @@ namespace sqlite3pp {
     class database;
 }
 
-namespace carto { namespace geocoding {
+namespace carto::geocoding {
     class Geocoder final {
     public:
         struct Options {
@@ -190,6 +190,6 @@ namespace carto { namespace geocoding {
         mutable std::vector<std::shared_ptr<Database>> _databases;
         mutable std::recursive_mutex _mutex;
     };
-} }
+}
 
 #endif

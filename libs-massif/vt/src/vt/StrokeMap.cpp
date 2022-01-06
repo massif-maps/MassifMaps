@@ -1,7 +1,7 @@
 #include "StrokeMap.h"
 #include "BitmapManager.h"
 
-namespace carto { namespace vt {
+namespace carto::vt {
     StrokeMap::StrokeMap(int width, int maxHeight) :
         _width(width), _maxHeight(maxHeight), _height(0), _strokeMap(), _bitmapStrokeMap(), _bitmapPattern(), _mutex()
     {
@@ -80,4 +80,4 @@ namespace carto { namespace vt {
         std::lock_guard<std::mutex> lock(_mutex);
         return _bitmapPattern;
     }
-} }
+}

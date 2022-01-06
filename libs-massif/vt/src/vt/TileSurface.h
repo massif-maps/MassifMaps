@@ -15,7 +15,7 @@
 
 #include <memory>
 
-namespace carto { namespace vt {
+namespace carto::vt {
     class TileSurface final {
     public:
         struct VertexGeometryLayoutParameters {
@@ -54,6 +54,6 @@ namespace carto { namespace vt {
         VertexArray<std::uint8_t> _vertexGeometry;
         VertexArray<std::uint16_t> _indices;
     };
-} }
+}
 
 #endif

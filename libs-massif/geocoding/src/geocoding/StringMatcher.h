@@ -17,7 +17,7 @@
 #include <boost/algorithm/string/split.hpp>
 #include <boost/algorithm/string/classification.hpp>
 
-namespace carto { namespace geocoding {
+namespace carto::geocoding {
     template <typename StringType>
     class StringMatcher final {
     public:
@@ -234,6 +234,6 @@ namespace carto { namespace geocoding {
         float _translationCost = 0.0f;
         const std::function<float(const StringType&)> _idf;
     };
-} }
+}
 
 #endif

@@ -133,7 +133,7 @@ namespace {
     }
 }
 
-namespace carto { namespace sgre {
+namespace carto::sgre {
     StaticGraph::StaticGraph(std::vector<Node> nodes, std::vector<Edge> edges, std::vector<FeatureProperties> properties, std::vector<Attributes> attributes) :
         _nodes(std::move(nodes)), _edges(std::move(edges)), _featureProperties(std::move(properties)), _attributes(std::move(attributes))
     {
@@ -454,4 +454,4 @@ namespace carto { namespace sgre {
         _attributes.push_back(std::move(attribs));
         return attribsId;
     }
-} }
+}

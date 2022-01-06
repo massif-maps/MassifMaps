@@ -3,7 +3,7 @@
 #include "Feature.h"
 #include "ValueConverter.h"
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     void ExpressionContext::setTileId(const vt::TileId& tileId) {
         _tileId = tileId;
     }
@@ -65,4 +65,4 @@ namespace carto { namespace mvt {
         }
         return getVariable(name);
     }
-} }
+}

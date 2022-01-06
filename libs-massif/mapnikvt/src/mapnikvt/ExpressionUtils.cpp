@@ -1,7 +1,7 @@
 #include "ExpressionUtils.h"
 #include "PredicateUtils.h"
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     Value ExpressionEvaluator::operator() (const Predicate& pred) const {
         return std::visit(PredicateEvaluator(_context, _viewState), pred);
     }
@@ -13,4 +13,4 @@ namespace carto { namespace mvt {
     bool ExpressionDeepEqualsChecker::operator() (const Predicate& pred1, const Predicate& pred2) const {
         return std::visit(PredicateDeepEqualsChecker(), pred1, pred2);
     }
-} }
+}

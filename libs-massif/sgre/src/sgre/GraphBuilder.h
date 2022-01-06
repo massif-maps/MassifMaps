@@ -19,7 +19,7 @@
 
 #include <picojson/picojson.h>
 
-namespace carto { namespace sgre {
+namespace carto::sgre {
     class GraphBuilder final {
     public:
         GraphBuilder() = delete;
@@ -82,6 +82,6 @@ namespace carto { namespace sgre {
         std::unordered_map<std::array<double, 6>, Graph::NodeId, boost::hash<std::array<double, 6>>> _coordsNodeIdMap;
         std::unordered_map<picojson::value, Graph::FeatureId> _featurePropertiesIdMap;
     };
-} }
+}
 
 #endif

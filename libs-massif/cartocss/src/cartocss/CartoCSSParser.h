@@ -19,7 +19,7 @@
 #include <utility>
 #include <stdexcept>
 
-namespace carto { namespace css {
+namespace carto::css {
     class CartoCSSParser final {
     public:
         class ParserError : public std::runtime_error {
@@ -40,6 +40,6 @@ namespace carto { namespace css {
     private:
         static std::pair<int, int> resolvePosition(const std::string& str, std::string::size_type pos);
     };
-} }
+}
 
 #endif

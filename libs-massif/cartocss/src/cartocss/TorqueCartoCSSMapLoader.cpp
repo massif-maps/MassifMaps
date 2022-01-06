@@ -6,7 +6,7 @@
 #include <set>
 #include <optional>
 
-namespace carto { namespace css {
+namespace carto::css {
     std::shared_ptr<mvt::TorqueMap> TorqueCartoCSSMapLoader::loadMap(const std::string& cartoCSS) const {
         StyleSheet styleSheet;
         try {
@@ -147,4 +147,4 @@ namespace carto { namespace css {
 
         return torqueSettings;
     }
-} }
+}

@@ -27,7 +27,7 @@
 #include <unordered_set>
 #include <unordered_map>
 
-namespace carto { namespace css {
+namespace carto::css {
     class CartoCSSMapnikTranslator {
     public:
         class TranslatorException : public std::runtime_error {
@@ -147,6 +147,6 @@ namespace carto { namespace css {
         mutable std::unordered_map<SymbolizerKey, std::shared_ptr<const mvt::Symbolizer>, SymbolizerKeyHasher> _symbolizerCache;
         mutable std::mutex _cacheMutex;
     };
-} }
+}
 
 #endif

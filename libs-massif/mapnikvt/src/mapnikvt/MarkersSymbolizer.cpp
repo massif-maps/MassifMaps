@@ -74,7 +74,7 @@ namespace carto { namespace mvt {
             std::string markerType = _markerType.getValue(exprContext);
             bool ellipse = markerType == "ellipse" || (markerType.empty() && placement != vt::LabelOrientation::LINE);
             float bitmapWidth = (ellipse ? DEFAULT_CIRCLE_SIZE : DEFAULT_ARROW_WIDTH), bitmapHeight = (ellipse ? DEFAULT_CIRCLE_SIZE : DEFAULT_ARROW_HEIGHT);
-            if (_width.isDefined()) { // NOTE: special case, if accept all values
+            if (_width.isDefined()) { // NOTE: special case, accept all values
                 bitmapHeight = (_height.isDefined() ? heightStatic : widthStatic * bitmapHeight / bitmapWidth);
                 bitmapWidth = widthStatic;
                 bitmapScaleY *= bitmapHeight / bitmapWidth;

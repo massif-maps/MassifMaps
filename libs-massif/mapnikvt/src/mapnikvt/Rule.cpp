@@ -18,10 +18,7 @@ namespace carto { namespace mvt {
 
             void operator() (const std::shared_ptr<VariableExpression>& varExpr) {
                 if (auto val = std::get_if<Value>(&varExpr->getVariableExpression())) {
-                    std::string name = ValueConverter<std::string>::convert(*val);
-                    if (!(ExpressionContext::isViewStateVariable(name) || ExpressionContext::isNutiVariable(name) || ExpressionContext::isMapnikVariable(name) || ExpressionContext::isZoomVariable(name))) {
-                        _fields.insert(name);
-                    }
+                    _fields.insert(ValueConverter<std::string>::convert(*val));
                 }
                 else {
                     _fields.insert(std::string()); // generic expression, insert special marker that any fields can be used

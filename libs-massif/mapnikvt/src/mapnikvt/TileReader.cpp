@@ -64,11 +64,31 @@ namespace carto { namespace mvt {
 
         // Build sets of referenced fields from the rules
         std::set<std::string> filterFields, symbolizerFields;
+        bool explicitFilterFeatureId = false, explicitSymbolizerFeatureId = false;
+
+        auto gatherFields = [](const std::string& field, std::set<std::string>& fields, bool& explicitFeatureId) -> bool {
+            if (ExpressionContext::isMapnikVariable(field)) {
+                explicitFeatureId = explicitFeatureId || field == "mapnik::feature_id";
+                return false;
+            }
+            else if (ExpressionContext::isViewStateVariable(field) || ExpressionContext::isNutiVariable(field) || ExpressionContext::isZoomVariable(field)) {
+                return false;
+            }
+            fields.insert(field);
+            return true;
+        };
+
         for (const std::shared_ptr<const Rule>& rule : rules) {
-            filterFields.insert(rule->getReferencedFilterFields().begin(), rule->getReferencedFilterFields().end());
-            symbolizerFields.insert(rule->getReferencedSymbolizerFields().begin(), rule->getReferencedSymbolizerFields().end());
+            for (const std::string& field : rule->getReferencedFilterFields()) {
+                gatherFields(field, filterFields, explicitFilterFeatureId);
+            }
+            
+            for (const std::string& field : rule->getReferencedSymbolizerFields()) {
+                gatherFields(field, symbolizerFields, explicitSymbolizerFeatureId);
+            }
         }
-        std::set<std::string> styleFields = filterFields;
+
+        std::set<std::string> styleFields(filterFields);
         styleFields.insert(symbolizerFields.begin(), symbolizerFields.end());
 
         // Check if all the fields are known. If not, then can not use explicit field sets.
@@ -85,7 +105,7 @@ namespace carto { namespace mvt {
         if (auto featureIt = createFeatureIterator(layer, styleFieldsPtr)) {
             for (; featureIt->valid(); featureIt->advance()) {
                 // Find symbolizers for the feature data. Cache rule evaluation for each feature data object.
-                std::shared_ptr<const FeatureData> filterFeatureData = featureIt->getFeatureData(filterFieldsPtr);
+                std::shared_ptr<const FeatureData> filterFeatureData = featureIt->getFeatureData(explicitFilterFeatureId, filterFieldsPtr);
                 auto symbolizersIt = featureDataSymbolizerMap.find(filterFeatureData);
                 if (symbolizersIt == featureDataSymbolizerMap.end()) {
                     exprContext.setFeatureData(filterFeatureData);
@@ -103,7 +123,7 @@ namespace carto { namespace mvt {
                 }
 
                 // Process symbolizers
-                std::shared_ptr<const FeatureData> symbolizerFeatureData = featureIt->getFeatureData(symbolizerFieldsPtr);
+                std::shared_ptr<const FeatureData> symbolizerFeatureData = featureIt->getFeatureData(explicitSymbolizerFeatureId, symbolizerFieldsPtr);
                 for (const std::shared_ptr<const Symbolizer>& symbolizer : symbolizersIt->second) {
                     std::unordered_map<std::shared_ptr<const FeatureData>, std::shared_ptr<Symbolizer::FeatureProcessor>>& featureDataProcessorMap = symbolizerFeatureDataProcessorMap[symbolizer];
 

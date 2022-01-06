@@ -27,17 +27,20 @@ namespace carto { namespace mvt {
             POLYGON_GEOMETRY = 3
         };
 
-        FeatureData() = delete;
-        explicit FeatureData(GeometryType geomType, std::vector<std::pair<std::string, Value>> vars) : _geometryType(geomType), _variables(std::move(vars)) { }
+        FeatureData() = default;
+        explicit FeatureData(long long id, GeometryType geomType, std::vector<std::pair<std::string, Value>> vars) : _id(id), _geometryType(geomType), _variables(std::move(vars)) { }
 
+        long long getId() const { return _id; }
         GeometryType getGeometryType() const { return _geometryType; }
+        const std::vector<std::pair<std::string, Value>>& getVariables() const { return _variables; }
 
         std::unordered_set<std::string> getVariableNames() const;
 
         bool getVariable(const std::string& name, Value& value) const;
 
     private:
-        GeometryType _geometryType;
+        long long _id = 0;
+        GeometryType _geometryType = GeometryType::NULL_GEOMETRY;
         std::vector<std::pair<std::string, Value>> _variables;
     };
 

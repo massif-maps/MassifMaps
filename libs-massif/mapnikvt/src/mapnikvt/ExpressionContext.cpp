@@ -29,6 +29,9 @@ namespace carto { namespace mvt {
             if (name == "mapnik::geometry_type") {
                 return Value(static_cast<long long>(_featureData->getGeometryType()));
             }
+            if (name == "mapnik::feature_id") {
+                return Value(_featureData->getId());
+            }
             return Value();
         }
         else if (isNutiVariable(name)) {

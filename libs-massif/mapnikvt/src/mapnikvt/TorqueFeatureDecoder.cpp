@@ -68,14 +68,14 @@ namespace carto { namespace mvt {
             return 0;
         }
 
-        virtual std::shared_ptr<const FeatureData> getFeatureData(const std::set<std::string>* fields) const override {
+        virtual std::shared_ptr<const FeatureData> getFeatureData(bool explicitFeatureId, const std::set<std::string>* fields) const override {
             const TorqueFeatureDecoder::Element& element = _elements[_index0];
 
             if (std::shared_ptr<const FeatureData> featureData = _featureDataCache.get(element.value)) {
                 return featureData;
             }
 
-            auto featureData = std::make_shared<FeatureData>(FeatureData::GeometryType::POINT_GEOMETRY, std::vector<std::pair<std::string, Value>> {
+            auto featureData = std::make_shared<FeatureData>(0, FeatureData::GeometryType::POINT_GEOMETRY, std::vector<std::pair<std::string, Value>> {
                 { std::string("value"), Value(element.value) },
                 { std::string("frame-offset"), Value(static_cast<long long>(_frameOffset)) } 
             });

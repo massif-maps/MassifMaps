@@ -102,10 +102,12 @@ namespace carto { namespace mvt {
             return _index + 1;
         }
 
-        virtual std::shared_ptr<const FeatureData> getFeatureData(const std::set<std::string>* fields) const override {
+        virtual std::shared_ptr<const FeatureData> getFeatureData(bool explicitFeatureId, const std::set<std::string>* fields) const override {
             const vector_tile::Tile::Feature& feature = _layer->features(_index);
             if (_fieldKeys.empty() || (fields && fields->empty())) {
-                return emptyFeatureData(feature.type());
+                if (!explicitFeatureId) {
+                    return emptyFeatureData(feature.type());
+                }
             }
 
             std::vector<int> tags(_fieldKeys.size() + 1, -1);
@@ -123,8 +125,10 @@ namespace carto { namespace mvt {
                 }
             }
 
-            if (std::shared_ptr<const FeatureData> featureData = _featureDataCache->get(tags)) {
-                return featureData;
+            if (!explicitFeatureId) {
+                if (std::shared_ptr<const FeatureData> featureData = _featureDataCache->get(tags)) {
+                    return featureData;
+                }
             }
 
             FeatureData::GeometryType geomType = convertGeometryType(feature.type());
@@ -141,8 +145,10 @@ namespace carto { namespace mvt {
                 }
             }
 
-            auto featureData = std::make_shared<FeatureData>(geomType, std::move(dataMap));
-            _featureDataCache->put(std::move(tags), featureData);
+            auto featureData = std::make_shared<FeatureData>(explicitFeatureId ? getGlobalId() : 0, geomType, std::move(dataMap));
+            if (!explicitFeatureId) {
+                _featureDataCache->put(std::move(tags), featureData);
+            }
             return featureData;
         }
 
@@ -205,19 +211,19 @@ namespace carto { namespace mvt {
         static const std::shared_ptr<const FeatureData>& emptyFeatureData(vector_tile::Tile::GeomType geomType) {
             switch (geomType) {
             case vector_tile::Tile::POINT: {
-                    static const auto pointFeatureData = std::make_shared<const FeatureData>(FeatureData::GeometryType::POINT_GEOMETRY, std::vector<std::pair<std::string, Value>>());
+                    static const auto pointFeatureData = std::make_shared<const FeatureData>(0, FeatureData::GeometryType::POINT_GEOMETRY, std::vector<std::pair<std::string, Value>>());
                     return pointFeatureData;
                 }
             case vector_tile::Tile::LINESTRING: {
-                    static const auto lineFeatureData = std::make_shared<const FeatureData>(FeatureData::GeometryType::LINE_GEOMETRY, std::vector<std::pair<std::string, Value>>());
+                    static const auto lineFeatureData = std::make_shared<const FeatureData>(0, FeatureData::GeometryType::LINE_GEOMETRY, std::vector<std::pair<std::string, Value>>());
                     return lineFeatureData;
                 }
             case vector_tile::Tile::POLYGON: {
-                    static const auto polygonFeatureData = std::make_shared<const FeatureData>(FeatureData::GeometryType::POLYGON_GEOMETRY, std::vector<std::pair<std::string, Value>>());
+                    static const auto polygonFeatureData = std::make_shared<const FeatureData>(0, FeatureData::GeometryType::POLYGON_GEOMETRY, std::vector<std::pair<std::string, Value>>());
                     return polygonFeatureData;
                 }
             default: {
-                    static const auto nullFeatureData = std::make_shared<const FeatureData>(FeatureData::GeometryType::NULL_GEOMETRY, std::vector<std::pair<std::string, Value>>());
+                    static const auto nullFeatureData = std::make_shared<const FeatureData>(0, FeatureData::GeometryType::NULL_GEOMETRY, std::vector<std::pair<std::string, Value>>());
                     return nullFeatureData;
                 }
             }
@@ -430,7 +436,7 @@ namespace carto { namespace mvt {
             MBVTFeatureIterator it(_tile, i, nullptr, _transform, _clipBox, _globalIdOverride, _tileIdOffset, geometryCache, featureDataCache);
             if (it.findByLocalId(localId)) {
                 layerName = _tile->layers(i).name();
-                feature = Feature(it.getGlobalId(), it.getGeometry(), it.getFeatureData(nullptr));
+                feature = Feature(it.getGlobalId(), it.getGeometry(), it.getFeatureData(true, nullptr));
                 return true;
             }
         }

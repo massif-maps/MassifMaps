@@ -12,7 +12,7 @@
 
 #include <functional>
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     struct ExpressionEvaluator {
         explicit ExpressionEvaluator(const ExpressionContext& context, const vt::ViewState* viewState) : _context(context), _viewState(viewState) { }
 
@@ -121,6 +121,6 @@ namespace carto { namespace mvt {
         }
         template <typename S, typename T> bool operator() (const S&, const T&) const { return false; }
     };
-} }
+}
 
 #endif

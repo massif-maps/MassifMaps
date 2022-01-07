@@ -10,7 +10,7 @@
 
 #include <sqlite3pp.h>
 
-namespace carto { namespace geocoding {
+namespace carto::geocoding {
     bool RevGeocoder::import(const std::shared_ptr<sqlite3pp::database>& db) {
         std::lock_guard<std::recursive_mutex> lock(_mutex);
         Database database;
@@ -192,4 +192,4 @@ namespace carto { namespace geocoding {
         }
         return std::optional<cglib::bbox2<double>>();
     }
-} }
+}

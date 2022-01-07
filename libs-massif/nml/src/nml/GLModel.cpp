@@ -5,7 +5,7 @@
 #include "GLResourceManager.h"
 #include "Package.h"
 
-namespace carto { namespace nml {
+namespace carto::nml {
     GLModel::GLModel(const Model& model) :
         _meshMap(),
         _textureMap(),
@@ -139,4 +139,4 @@ namespace carto { namespace nml {
         }
         return size;
     }
-} }
+}

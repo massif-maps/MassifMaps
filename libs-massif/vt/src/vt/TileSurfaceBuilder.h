@@ -20,7 +20,7 @@
 
 #include <cglib/vec.h>
 
-namespace carto { namespace vt {
+namespace carto::vt {
     class TileSurfaceBuilder final {
     public:
         explicit TileSurfaceBuilder(std::shared_ptr<const TileTransformer> transformer);
@@ -49,6 +49,6 @@ namespace carto { namespace vt {
 
         const std::shared_ptr<const TileTransformer> _transformer;
     };
-} }
+}
 
 #endif

@@ -16,7 +16,7 @@
 #include <utility>
 #include <functional>
 
-namespace carto { namespace css {
+namespace carto::css {
     struct PredicateContext {
         std::string layerName;
         ExpressionContext expressionContext;
@@ -193,6 +193,6 @@ namespace carto { namespace css {
 
         template <typename S, typename T> boost::tribool operator() (const S& pred1, const T& pred2) const { return boost::indeterminate; }
     };
-} }
+}
 
 #endif

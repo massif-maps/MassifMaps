@@ -13,7 +13,7 @@
 #include <boost/phoenix.hpp>
 #include <boost/spirit/include/karma.hpp>
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     namespace colorgenimpl {
         template <typename OutputIterator>
         struct Grammar : boost::spirit::karma::grammar<OutputIterator, unsigned int()> {
@@ -73,6 +73,6 @@ namespace carto { namespace mvt {
     }
 
     template <typename Iterator> using ColorGeneratorGrammar = colorgenimpl::Grammar<Iterator>;
-} }
+}
 
 #endif

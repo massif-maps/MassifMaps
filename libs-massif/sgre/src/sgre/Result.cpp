@@ -1,6 +1,6 @@
 #include "Result.h"
 
-namespace carto { namespace sgre {
+namespace carto::sgre {
     picojson::value Result::serialize() const {
         picojson::object resultObj;
         resultObj["status"] = picojson::value(static_cast<std::int64_t>(_status));
@@ -44,4 +44,4 @@ namespace carto { namespace sgre {
         }
         return Result(std::move(instructions), std::move(geometry));
     }
-} }
+}

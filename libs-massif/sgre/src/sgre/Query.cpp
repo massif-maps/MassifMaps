@@ -1,6 +1,6 @@
 #include "Query.h"
 
-namespace carto { namespace sgre {
+namespace carto::sgre {
     picojson::value Query::serialize() const {
         picojson::array pos0Def, pos1Def;
         for (std::size_t i = 0; i < 3; i++) {
@@ -27,4 +27,4 @@ namespace carto { namespace sgre {
         FeatureFilter filter1 = queryDef.get("filter1").get<picojson::object>();
         return Query(pos0, pos1, filter0, filter1);
     }
-} }
+}

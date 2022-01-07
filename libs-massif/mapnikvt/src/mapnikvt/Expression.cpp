@@ -78,7 +78,7 @@ namespace {
     };
 }
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     Value UnaryExpression::applyOp(Op op, const Value& val) {
         switch (op) {
         case Op::NEG:
@@ -186,4 +186,4 @@ namespace carto { namespace mvt {
     std::vector<Expression> TransformExpression::getSubExpressions() const {
         return std::visit(TransformSubExpressionBuilder(), _transform);
     }
-} }
+}

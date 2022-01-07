@@ -8,7 +8,7 @@
 
 #include <atomic>
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     std::set<std::string> Symbolizer::getParameterNames() const {
         std::set<std::string> paramNames;
         for (std::pair<std::string, SymbolizerParameter*> param : _parameterMap) {
@@ -65,4 +65,4 @@ namespace carto { namespace mvt {
     long long Symbolizer::combineId(long long id, std::size_t hash) {
         return std::abs(id ^ static_cast<long long>(hash));
     }
-} }
+}

@@ -10,7 +10,7 @@
 #include "GeometrySymbolizer.h"
 #include "FunctionBuilder.h"
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     class LinePatternSymbolizer : public GeometrySymbolizer {
     public:
         explicit LinePatternSymbolizer(std::shared_ptr<Logger> logger) : GeometrySymbolizer(std::move(logger)) {
@@ -33,6 +33,6 @@ namespace carto { namespace mvt {
         FloatFunctionBuilder _widthFuncBuilder;
         ColorFunctionBuilder _fillFuncBuilder;
     };
-} }
+}
 
 #endif

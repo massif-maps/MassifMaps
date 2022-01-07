@@ -9,7 +9,7 @@ namespace {
     };
 }
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     bool PredicateEvaluator::operator() (const std::shared_ptr<ExpressionPredicate>& exprPred) const {
         Value val = std::visit(ExpressionEvaluator(_context, _viewState), exprPred->getExpression());
         return std::visit(CondEvaluator(), val);
@@ -62,4 +62,4 @@ namespace carto { namespace mvt {
     bool PredicateDeepEqualsChecker::operator() (const std::shared_ptr<ComparisonPredicate>& compPred1, const std::shared_ptr<ComparisonPredicate>& compPred2) const {
         return compPred1->getOp() == compPred2->getOp() && std::visit(ExpressionDeepEqualsChecker(), compPred1->getExpression1(), compPred2->getExpression1()) && std::visit(ExpressionDeepEqualsChecker(), compPred1->getExpression2(), compPred2->getExpression2());
     }
-} }
+}

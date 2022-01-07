@@ -16,7 +16,7 @@
 
 #include <boost/lexical_cast.hpp>
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     std::shared_ptr<pugi::xml_document> MapGenerator::generateMap(const Map& map) const {
         auto doc = std::make_shared<pugi::xml_document>();
         pugi::xml_node mapNode = doc->append_child("Map");
@@ -153,4 +153,4 @@ namespace carto { namespace mvt {
         }
         return typeString;
     }
-} }
+}

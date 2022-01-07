@@ -15,7 +15,7 @@
 #include <set>
 #include <vector>
 
-namespace carto { namespace nml {
+namespace carto::nml {
     class GLTexture;
     class GLSubmesh;
 
@@ -40,6 +40,6 @@ namespace carto { namespace nml {
         std::map<std::weak_ptr<GLTexture>, std::vector<GLuint>, std::owner_less<std::weak_ptr<GLTexture>>> _textureMap;
         std::map<std::weak_ptr<GLSubmesh>, std::vector<GLuint>, std::owner_less<std::weak_ptr<GLSubmesh>>> _bufferMap;
     };
-} }
+}
 
 #endif

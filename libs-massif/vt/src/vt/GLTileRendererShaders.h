@@ -7,7 +7,7 @@
 #ifndef _CARTO_VT_GLTILERENDERERSHADERS_H_
 #define _CARTO_VT_GLTILERENDERERSHADERS_H_
 
-namespace carto { namespace vt {
+namespace carto::vt {
     enum : int {
         A_VERTEXPOSITION,
         A_VERTEXUV,
@@ -771,6 +771,6 @@ namespace carto { namespace vt {
         #endif
         }
     )GLSL";
-} }
+}
 
 #endif

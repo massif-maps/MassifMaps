@@ -9,7 +9,7 @@
 
 #include <boost/math/constants/constants.hpp>
 
-namespace carto { namespace sgre {
+namespace carto::sgre {
     Result RouteFinder::find(const Query& query) const {
         struct EndPoint {
             Point point = Point();
@@ -573,4 +573,4 @@ namespace carto { namespace sgre {
         double distZ = std::abs(posDelta(2));
         return std::make_pair(distXY * EARTH_RADIUS * boost::math::constants::pi<double>() / 180.0, distZ);
     }
-} }
+}

@@ -21,7 +21,7 @@
 #include <memory>
 #include <set>
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     class Symbolizer {
     public:
         using FeatureProcessor = std::function<void(const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder)>;
@@ -53,6 +53,6 @@ namespace carto { namespace mvt {
     private:
         std::map<std::string, SymbolizerParameter*> _parameterMap;
     };
-} }
+}
 
 #endif

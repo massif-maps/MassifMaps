@@ -25,7 +25,7 @@ namespace sqlite3pp {
     class database;
 }
 
-namespace carto { namespace geocoding {
+namespace carto::geocoding {
     class RevGeocoder final {
     public:
         RevGeocoder() : _addressCache(ADDRESS_CACHE_SIZE), _queryCache(QUERY_CACHE_SIZE) { }
@@ -71,6 +71,6 @@ namespace carto { namespace geocoding {
         std::vector<Database> _databases;
         mutable std::recursive_mutex _mutex;
     };
-} }
+}
 
 #endif

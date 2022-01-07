@@ -19,7 +19,7 @@
 
 #include <cglib/fcurve.h>
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     class VariableExpression final {
     public:
         explicit VariableExpression(std::string variableName) : _variableExpr(Value(std::move(variableName))) { }
@@ -142,6 +142,6 @@ namespace carto { namespace mvt {
     private:
         const Transform _transform;
     };
-} }
+}
 
 #endif

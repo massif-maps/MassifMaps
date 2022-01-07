@@ -22,7 +22,7 @@
 #include <boost/spirit/include/qi.hpp>
 #include <boost/spirit/repository/include/qi_distinct.hpp>
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     namespace exprparserimpl {
         using Skipper = boost::spirit::qi::iso8859_1::space_type;
 
@@ -293,6 +293,6 @@ namespace carto { namespace mvt {
 
     template <typename Iterator> using ExpressionParserGrammar = exprparserimpl::Grammar<Iterator, false>;
     template <typename Iterator> using StringExpressionParserGrammar = exprparserimpl::Grammar<Iterator, true>;
-} }
+}
 
 #endif

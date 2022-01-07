@@ -20,7 +20,7 @@ namespace {
     }
 }
 
-namespace carto { namespace geocoding {
+namespace carto::geocoding {
     void Geocoder::prepare(sqlite3pp::database& db) {
     }
     
@@ -865,4 +865,4 @@ namespace carto { namespace geocoding {
         }
         return translatedToken;
     }
-} }
+}

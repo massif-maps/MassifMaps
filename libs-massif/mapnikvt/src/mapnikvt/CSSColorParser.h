@@ -9,8 +9,8 @@
 
 #include <string>
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     bool parseCSSColor(std::string name, unsigned int& value);
-} }
+}
 
 #endif

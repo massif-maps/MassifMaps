@@ -22,7 +22,7 @@
 
 #include <algorithm>
 
-namespace carto { namespace css {
+namespace carto::css {
     std::shared_ptr<const mvt::Rule> CartoCSSMapnikTranslator::buildRule(const PropertySet& propertySet, const std::shared_ptr<mvt::Map>& map, int minZoom, int maxZoom) const {
         std::vector<std::shared_ptr<const Property>> properties = propertySet.getProperties();
         std::sort(properties.begin(), properties.end(), [](const std::shared_ptr<const Property>& prop1, const std::shared_ptr<const Property>& prop2) {
@@ -691,4 +691,4 @@ namespace carto { namespace css {
         { "building-geometry-transform", "geometry-transform" }
         // NOTE: comp-op not supported for building symbolizer
     };
-} }
+}

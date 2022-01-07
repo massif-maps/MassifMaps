@@ -17,7 +17,7 @@
 #include <string>
 #include <vector>
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     class ParserException : public std::runtime_error {
     public:
         explicit ParserException(const std::string& msg) : runtime_error(msg), _message(msg), _source() { }
@@ -38,6 +38,6 @@ namespace carto { namespace mvt {
     vt::Color parseColor(const std::string& str);
     Value parseValue(const std::string& str);
     Expression parseExpression(const std::string& str, bool stringExpr);
-} }
+}
 
 #endif

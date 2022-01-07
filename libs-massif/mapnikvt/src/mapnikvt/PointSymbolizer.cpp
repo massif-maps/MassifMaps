@@ -2,7 +2,7 @@
 #include "ParserUtils.h"
 #include "vt/BitmapCanvas.h"
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     PointSymbolizer::FeatureProcessor PointSymbolizer::createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const {
         vt::FloatFunction opacityFunc = _opacity.getFunction(exprContext);
         if (opacityFunc == vt::FloatFunction(0)) {
@@ -71,4 +71,4 @@ namespace carto { namespace mvt {
         canvas.drawRectangle(cglib::vec2<float>(0, 0), cglib::vec2<float>(size, size));
         return canvas.buildBitmapImage();
     }
-} }
+}

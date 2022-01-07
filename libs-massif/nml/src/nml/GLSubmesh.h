@@ -13,7 +13,7 @@
 #include <string>
 #include <vector>
 
-namespace carto { namespace nml {
+namespace carto::nml {
     class Submesh;
     class SubmeshOpList;
     class GLMesh;
@@ -57,6 +57,6 @@ namespace carto { namespace nml {
         GLuint _glUVVBOId;
         GLuint _glColorVBOId;
     };
-} }
+}
 
 #endif

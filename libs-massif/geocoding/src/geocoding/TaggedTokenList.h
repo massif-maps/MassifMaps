@@ -14,7 +14,7 @@
 #include <utility>
 #include <algorithm>
 
-namespace carto { namespace geocoding {
+namespace carto::geocoding {
     template <typename StringType, typename TokenType, typename TagType>
     class TaggedTokenList final {
     public:
@@ -216,6 +216,6 @@ namespace carto { namespace geocoding {
 
         std::vector<Token> _tokens;
     };
-} }
+}
 
 #endif

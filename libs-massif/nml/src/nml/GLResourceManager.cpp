@@ -4,7 +4,7 @@
 
 #include <vector>
 
-namespace carto { namespace nml {
+namespace carto::nml {
     GLuint GLResourceManager::createProgram(const std::string& vertexShader, const std::string& fragmentShader, const std::set<std::string>& defs) {
         std::pair<std::pair<std::string, std::string>, std::set<std::string>> program{ { vertexShader, fragmentShader }, defs };
         auto it = _programMap.find(program);
@@ -152,4 +152,4 @@ namespace carto { namespace nml {
         glslShader += code;
         return glslShader;
     }
-} }
+}

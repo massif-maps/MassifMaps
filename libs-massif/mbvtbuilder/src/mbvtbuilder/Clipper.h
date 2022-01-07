@@ -14,7 +14,7 @@
 #include <cglib/vec.h>
 #include <cglib/bbox.h>
 
-namespace carto { namespace mbvtbuilder {
+namespace carto::mbvtbuilder {
     template <typename T>
     class Clipper final {
     public:
@@ -240,6 +240,6 @@ namespace carto { namespace mbvtbuilder {
         }
         return clipPoint(p0 * (1 - t) + p1 * t, clipMask);
     }
-} }
+}
 
 #endif

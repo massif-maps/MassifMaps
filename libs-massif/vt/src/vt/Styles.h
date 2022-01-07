@@ -22,7 +22,7 @@
 #include <cglib/vec.h>
 #include <cglib/mat.h>
 
-namespace carto { namespace vt {
+namespace carto::vt {
     using FloatFunction = UnaryFunction<float, ViewState>;
     using ColorFunction = UnaryFunction<Color, ViewState>;
 
@@ -127,6 +127,6 @@ namespace carto { namespace vt {
 
         explicit TextLabelStyle(LabelOrientation orientation, ColorFunction colorFunc, FloatFunction sizeFunc, ColorFunction haloColorFunc, FloatFunction haloRadiusFunc, bool autoflip, float angle, float backgroundScale, const cglib::vec2<float>& backgroundOffset, std::shared_ptr<const BitmapImage> backgroundImage) : orientation(orientation), colorFunc(std::move(colorFunc)), sizeFunc(std::move(sizeFunc)), haloColorFunc(std::move(haloColorFunc)), haloRadiusFunc(std::move(haloRadiusFunc)), autoflip(autoflip), angle(angle), backgroundScale(backgroundScale), backgroundOffset(backgroundOffset), backgroundImage(std::move(backgroundImage)) { }
     };
-} }
+}
 
 #endif

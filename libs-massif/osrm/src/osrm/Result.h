@@ -13,7 +13,7 @@
 #include <vector>
 #include <numeric>
 
-namespace carto { namespace osrm {
+namespace carto::osrm {
     class Result final {
     public:
         enum class Status {
@@ -45,6 +45,6 @@ namespace carto { namespace osrm {
         std::vector<Instruction> _instructions;
         std::vector<WGSPos> _geometry;
     };
-} }
+}
 
 #endif

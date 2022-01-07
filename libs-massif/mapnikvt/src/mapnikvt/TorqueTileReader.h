@@ -11,7 +11,7 @@
 #include "TorqueFeatureDecoder.h"
 #include "TorqueMap.h"
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     class TorqueTileReader : public TileReader {
     public:
         explicit TorqueTileReader(std::shared_ptr<const TorqueMap> map, int frame, bool loop, std::shared_ptr<const vt::TileTransformer> transformer, const SymbolizerContext& symbolizerContext, const TorqueFeatureDecoder& featureDecoder, std::shared_ptr<Logger> logger) : TileReader(std::move(map), std::move(transformer), symbolizerContext, std::move(logger)), _frame(frame), _loop(loop), _featureDecoder(featureDecoder) { }
@@ -26,6 +26,6 @@ namespace carto { namespace mvt {
         const bool _loop;
         const TorqueFeatureDecoder& _featureDecoder;
     };
-} }
+}
 
 #endif

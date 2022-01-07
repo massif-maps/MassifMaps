@@ -17,7 +17,7 @@
 #include <vector>
 #include <functional>
 
-namespace carto { namespace geocoding {
+namespace carto::geocoding {
     class QuadIndex {
     public:
         using Result = std::pair<std::uint64_t, double>;
@@ -85,6 +85,6 @@ namespace carto { namespace geocoding {
 
         const GeometryInfoFinder _geometryInfoFinder;
     };
-} }
+}
 
 #endif

@@ -13,7 +13,7 @@
 #include <cstdint>
 #include <vector>
 
-namespace carto { namespace geocoding {
+namespace carto::geocoding {
     class AddressInterpolator final {
     public:
         explicit AddressInterpolator(EncodingStream& houseNumberStream);
@@ -25,6 +25,6 @@ namespace carto { namespace geocoding {
     private:
         std::vector<std::uint64_t> _houseNumbers;
     };
-} }
+}
 
 #endif

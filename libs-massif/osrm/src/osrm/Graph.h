@@ -21,7 +21,7 @@
 #include <stdext/eiff_file.h>
 #include <stdext/bitstream.h>
 
-namespace carto { namespace osrm {
+namespace carto::osrm {
     class Graph final {
     public:
         struct BlockId {
@@ -259,6 +259,6 @@ namespace carto { namespace osrm {
         mutable cache::lru_cache<BlockId, std::shared_ptr<RTreeNodeBlock>, BlockId::Hash> _rtreeNodeBlockCache;
         mutable std::recursive_mutex _mutex;
     };
-} }
+}
 
 #endif

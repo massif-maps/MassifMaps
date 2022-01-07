@@ -10,7 +10,7 @@
 #include <utility>
 #include <algorithm>
 
-namespace carto { namespace vt {
+namespace carto::vt {
     template <typename T>
     class VertexArray final {
     public:
@@ -162,6 +162,6 @@ namespace carto { namespace vt {
         T* _end;
         std::size_t _reserved; // number of elements reserved after _end
     };
-} }
+}
 
 #endif

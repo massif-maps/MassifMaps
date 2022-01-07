@@ -9,7 +9,7 @@
 
 #include <tesselator.h>
 
-namespace carto { namespace vt {
+namespace carto::vt {
     TileSurfaceBuilder::TileSurfaceBuilder(std::shared_ptr<const TileTransformer> transformer) :
         _transformer(std::move(transformer))
     {
@@ -382,4 +382,4 @@ namespace carto { namespace vt {
         }
         return vertexIds;
     }
-} }
+}

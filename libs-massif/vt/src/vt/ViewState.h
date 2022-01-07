@@ -15,7 +15,7 @@
 #include <cglib/bbox.h>
 #include <cglib/frustum3.h>
 
-namespace carto { namespace vt {
+namespace carto::vt {
     struct ViewState final {
         float zoom = 0;
         float aspect = 1;
@@ -38,6 +38,6 @@ namespace carto { namespace vt {
             }
         }
     };
-} }
+}
 
 #endif

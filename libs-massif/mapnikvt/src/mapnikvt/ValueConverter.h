@@ -12,7 +12,7 @@
 
 #include <boost/lexical_cast.hpp>
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     template <typename V>
     struct ValueConverter {
         static V convert(const Value& val) {
@@ -93,6 +93,6 @@ namespace carto { namespace mvt {
             }
         };
     };
-} }
+}
 
 #endif

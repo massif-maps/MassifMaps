@@ -9,7 +9,7 @@
 
 #include "Layer.h"
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     class TorqueLayer : public Layer {
     public:
         explicit TorqueLayer(std::string name, int frameOffset, std::vector<std::string> styleNames) : Layer(std::move(name), std::move(styleNames)), _frameOffset(frameOffset) { }
@@ -19,6 +19,6 @@ namespace carto { namespace mvt {
     private:
         const int _frameOffset;
     };
-} }
+}
 
 #endif

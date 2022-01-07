@@ -12,7 +12,7 @@
 #include <cstddef>
 #include <string>
 
-namespace carto { namespace osrm {
+namespace carto::osrm {
     class Instruction final {
     public:
         enum class Type : unsigned char {
@@ -62,6 +62,6 @@ namespace carto { namespace osrm {
         double _time = 0.0;
         std::size_t _geometryIndex = 0;
     };
-} }
+}
 
 #endif

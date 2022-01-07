@@ -14,7 +14,7 @@
 #include <string>
 #include <vector>
 
-namespace carto { namespace vt {
+namespace carto::vt {
     class FontManager {
     public:
         explicit FontManager(int maxGlyphMapWidth, int maxGlyphMapHeight);
@@ -28,6 +28,6 @@ namespace carto { namespace vt {
 
         std::unique_ptr<Impl> _impl;
     };
-} }
+}
 
 #endif

@@ -1,6 +1,6 @@
 #include "AddressInterpolator.h"
 
-namespace carto { namespace geocoding {
+namespace carto::geocoding {
     AddressInterpolator::AddressInterpolator(EncodingStream& houseNumberStream) {
         while (!houseNumberStream.eof()) {
             _houseNumbers.push_back(houseNumberStream.readNumber<std::uint64_t>());
@@ -24,4 +24,4 @@ namespace carto { namespace geocoding {
         }
         return addresses;
     }
-} }
+}

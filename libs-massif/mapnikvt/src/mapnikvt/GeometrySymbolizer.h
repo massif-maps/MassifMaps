@@ -11,7 +11,7 @@
 
 #include <optional>
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     class GeometrySymbolizer : public Symbolizer {
     protected:
         explicit GeometrySymbolizer(std::shared_ptr<Logger> logger) : Symbolizer(std::move(logger)) {
@@ -20,6 +20,6 @@ namespace carto { namespace mvt {
             
         TransformParameter _geometryTransform;
     };
-} }
+}
 
 #endif

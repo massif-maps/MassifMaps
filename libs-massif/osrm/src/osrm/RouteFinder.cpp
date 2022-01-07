@@ -2,7 +2,7 @@
 
 #include <boost/math/constants/constants.hpp>
 
-namespace carto { namespace osrm {
+namespace carto::osrm {
     Result RouteFinder::find(const Query& query) const {
         std::array<std::vector<Graph::NearestNode>, 2> nearestNodes;
         std::array<std::priority_queue<SearchNode>, 2> heaps;
@@ -331,4 +331,4 @@ namespace carto { namespace osrm {
         double cHarv = 2.0 * std::atan2(std::sqrt(aHarv), std::sqrt(1.0 - aHarv));
         return EARTH_RADIUS * cHarv;
     }
-} }
+}

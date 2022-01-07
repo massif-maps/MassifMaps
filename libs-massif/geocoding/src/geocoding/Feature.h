@@ -14,7 +14,7 @@
 #include <map>
 #include <variant>
 
-namespace carto { namespace geocoding {
+namespace carto::geocoding {
     using Value = std::variant<std::monostate, bool, long long, double, std::string>;
 
     class Feature final {
@@ -30,6 +30,6 @@ namespace carto { namespace geocoding {
         std::shared_ptr<Geometry> _geometry;
         std::map<std::string, Value> _properties;
     };
-} }
+}
 
 #endif

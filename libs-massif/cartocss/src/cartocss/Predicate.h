@@ -15,7 +15,7 @@
 
 #include <boost/logic/tribool.hpp>
 
-namespace carto { namespace css {
+namespace carto::css {
     class MapPredicate;
     class LayerPredicate;
     class ClassPredicate;
@@ -113,6 +113,6 @@ namespace carto { namespace css {
     private:
         Expression _expr;
     };
-} }
+}
 
 #endif

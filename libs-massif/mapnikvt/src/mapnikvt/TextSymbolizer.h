@@ -16,7 +16,7 @@
 #include <optional>
 #include <functional>
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     class TextSymbolizer : public Symbolizer {
     public:
         explicit TextSymbolizer(const Expression& text, std::vector<std::shared_ptr<FontSet>> fontSets, std::shared_ptr<Logger> logger) : Symbolizer(std::move(logger)), _fontSets(std::move(fontSets)) {
@@ -101,6 +101,6 @@ namespace carto { namespace mvt {
         ColorFunctionBuilder _haloFillFuncBuilder;
         FloatFunctionBuilder _haloRadiusFuncBuilder;
     };
-} }
+}
 
 #endif

@@ -7,7 +7,7 @@
 
 #include <boost/algorithm/string.hpp>
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     LineSymbolizer::FeatureProcessor LineSymbolizer::createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const {
         vt::FloatFunction strokeWidthFunc = _strokeWidth.getFunction(exprContext);
         vt::FloatFunction strokeOpacityFunc = _strokeOpacity.getFunction(exprContext);
@@ -125,4 +125,4 @@ namespace carto { namespace mvt {
         
         return std::make_shared<vt::BitmapPattern>(DASH_PATTERN_SCALE / sizeScale, 1.0f / heightScale, canvas.buildBitmapImage()->bitmap);
     }
-} }
+}

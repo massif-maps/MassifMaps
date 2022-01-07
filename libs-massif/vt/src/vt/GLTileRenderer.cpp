@@ -32,7 +32,7 @@ namespace {
     }
 }
 
-namespace carto { namespace vt {
+namespace carto::vt {
     GLTileRenderer::GLTileRenderer(std::shared_ptr<GLExtensions> glExtensions, std::shared_ptr<const TileTransformer> transformer, float scale) :
         _tileSurfaceBuilder(transformer), _glExtensions(std::move(glExtensions)), _transformer(std::move(transformer)), _scale(scale)
     {
@@ -1026,7 +1026,7 @@ namespace carto { namespace vt {
                 double t = 0;
                 cglib::vec2<double> uv(0.0f, 0.0f);
                 if (cglib::intersect_triangle(cglib::vec3<double>::convert(coords[0]), cglib::vec3<double>::convert(coords[1]), cglib::vec3<double>::convert(coords[2]), rays[i], &t, &uv)) {
-                    if (geometry->getType() == TileGeometry::Type::POINT && it.attribs()[1] == 1) {
+                    if (geometry->getType() == TileGeometry::Type::POINT && it.attribs()[1] != 0) {
                         TileGeometryIterator::TriangleUVs triUVs = it.triangleUVs();
                         cglib::vec2<float> interpolatedUV = triUVs[0] + (triUVs[1] - triUVs[0]) * static_cast<float>(uv(0)) + (triUVs[2] - triUVs[0]) * static_cast<float>(uv(1));
                         float u0 = std::min(triUVs[0](0), std::min(triUVs[1](0), triUVs[2](0)));
@@ -2468,4 +2468,4 @@ namespace carto { namespace vt {
             compiledLabelBatch.indicesVBO = 0;
         }
     }
-} }
+}

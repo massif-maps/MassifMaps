@@ -23,7 +23,7 @@
 #include <set>
 #include <functional>
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     struct SymbolizerParameter {
         virtual ~SymbolizerParameter() = default;
 
@@ -404,6 +404,6 @@ namespace carto { namespace mvt {
             }
         }
     };
-} }
+}
 
 #endif

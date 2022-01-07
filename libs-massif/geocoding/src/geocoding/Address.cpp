@@ -4,7 +4,7 @@
 
 #include <sqlite3pp.h>
 
-namespace carto { namespace geocoding {
+namespace carto::geocoding {
     bool Address::loadFromDB(sqlite3pp::database& db, std::uint64_t encodedId, const std::string& language, const PointConverter& converter) {
         unsigned int entityId = static_cast<unsigned int>(encodedId & 0xffffffffU);
         unsigned int elementIndex = static_cast<unsigned int>(encodedId >> 32);
@@ -151,4 +151,4 @@ namespace carto { namespace geocoding {
         }
         return str;
     }
-} }
+}

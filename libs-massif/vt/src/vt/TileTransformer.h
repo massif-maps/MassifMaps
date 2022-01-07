@@ -19,7 +19,7 @@
 #include <cglib/mat.h>
 #include <cglib/bbox.h>
 
-namespace carto { namespace vt {
+namespace carto::vt {
     class TileTransformer {
     public:
         class VertexTransformer {
@@ -143,6 +143,6 @@ namespace carto { namespace vt {
 
         float _divideThreshold = DEFAULT_DIVIDE_THRESHOLD;
     };
-} }
+}
 
 #endif

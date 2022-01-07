@@ -10,7 +10,7 @@
 #include "Symbolizer.h"
 #include "FunctionBuilder.h"
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     class TorqueMarkerSymbolizer : public Symbolizer {
     public:
         explicit TorqueMarkerSymbolizer(std::shared_ptr<Logger> logger) : Symbolizer(std::move(logger)) {
@@ -47,6 +47,6 @@ namespace carto { namespace mvt {
         FloatFunctionBuilder _sizeFuncBuilder;
         ColorFunctionBuilder _fillFuncBuilder;
     };
-} }
+}
 
 #endif

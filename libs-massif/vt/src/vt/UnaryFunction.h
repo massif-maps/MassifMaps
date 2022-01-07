@@ -10,7 +10,7 @@
 #include <memory>
 #include <functional>
 
-namespace carto { namespace vt {
+namespace carto::vt {
     template <typename Result, typename Argument>
     class UnaryFunction final {
     public:
@@ -44,7 +44,7 @@ namespace carto { namespace vt {
     bool operator != (const UnaryFunction<Result, Argument>& func1, const UnaryFunction<Result, Argument>& func2) {
         return !(func1 == func2);
     }
-} }
+}
 
 namespace std {
     template <typename Result, typename Argument>

@@ -15,7 +15,7 @@
 
 #include "Expression.h"
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     class Filter;
     class Symbolizer;
     
@@ -46,6 +46,6 @@ namespace carto { namespace mvt {
         mutable std::set<std::string> _referencedFilterFields;
         mutable std::set<std::string> _referencedSymbolizerFields;
     };
-} }
+}
 
 #endif

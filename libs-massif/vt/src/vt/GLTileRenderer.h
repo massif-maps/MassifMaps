@@ -36,7 +36,7 @@
 
 #include <cglib/ray.h>
 
-namespace carto { namespace vt {
+namespace carto::vt {
     class LabelCuller;
 
     class GLTileRenderer final {
@@ -311,6 +311,6 @@ namespace carto { namespace vt {
 
         mutable std::mutex _mutex;
     };
-} }
+}
 
 #endif

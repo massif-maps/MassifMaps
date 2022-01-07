@@ -1,4 +1,4 @@
-# Internal dependencies for Carto Mobile SDK
+# Internal dependencies for CARTO Mobile SDK
 
 This repository contains various libraries that are used by CARTO Mobile SDK.
 These libraries have no dependencies with the rest of the SDK, so they

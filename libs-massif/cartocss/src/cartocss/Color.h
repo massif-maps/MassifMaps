@@ -14,7 +14,7 @@
 #include <ostream>
 #include <cmath>
 
-namespace carto { namespace css {
+namespace carto::css {
     class Color final {
     public:
         constexpr Color() : _components{ { 0, 0, 0, 0 } } { }
@@ -243,6 +243,6 @@ namespace carto { namespace css {
         }
         return os;
     }
-} }
+}
 
 #endif

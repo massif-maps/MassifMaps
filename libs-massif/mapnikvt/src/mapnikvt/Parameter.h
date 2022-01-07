@@ -10,7 +10,7 @@
 #include <memory>
 #include <string>
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     class Parameter final {
     public:
         explicit Parameter(std::string name, std::string value) : _name(std::move(name)), _value(std::move(value)) { }
@@ -22,6 +22,6 @@ namespace carto { namespace mvt {
         std::string _name;
         std::string _value;
     };
-} }
+}
 
 #endif

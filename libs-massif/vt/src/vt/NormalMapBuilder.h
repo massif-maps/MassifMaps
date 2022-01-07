@@ -14,7 +14,7 @@
 #include <array>
 #include <cstdint>
 
-namespace carto { namespace vt {
+namespace carto::vt {
     class NormalMapBuilder final {
     public:
         explicit NormalMapBuilder(const std::array<float, 4>& rgbaHeightScale, std::uint8_t alpha);
@@ -29,6 +29,6 @@ namespace carto { namespace vt {
         const std::array<float, 4> _rgbaHeightScale;
         const std::uint8_t _alpha;
     };
-} }
+}
 
 #endif

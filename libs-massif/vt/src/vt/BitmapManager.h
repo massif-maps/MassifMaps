@@ -14,7 +14,7 @@
 #include <map>
 #include <mutex>
 
-namespace carto { namespace vt {
+namespace carto::vt {
     class BitmapManager {
     public:
         class BitmapLoader {
@@ -45,6 +45,6 @@ namespace carto { namespace vt {
 
         mutable std::mutex _mutex;
     };
-} }
+}
 
 #endif

@@ -12,7 +12,7 @@
 #include <memory>
 #include <string>
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     class TorqueMap : public Map {
     public:
         struct TorqueSettings {
@@ -32,6 +32,6 @@ namespace carto { namespace mvt {
     private:
         TorqueSettings _torqueSettings;
     };
-} }
+}
 
 #endif

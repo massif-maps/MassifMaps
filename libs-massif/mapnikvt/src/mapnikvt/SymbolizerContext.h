@@ -15,7 +15,7 @@
 
 #include <memory>
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     class SymbolizerContext final {
     public:
         struct Settings {
@@ -54,6 +54,6 @@ namespace carto { namespace mvt {
         const std::shared_ptr<vt::GlyphMap> _glyphMap;
         const Settings _settings;
     };
-} }
+}
 
 #endif

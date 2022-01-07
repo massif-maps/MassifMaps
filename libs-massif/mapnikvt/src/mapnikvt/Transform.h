@@ -11,7 +11,7 @@
 
 #include <array>
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     class MatrixTransform final {
     public:
         explicit MatrixTransform(const std::array<Expression, 6>& values) : _values(values) { }
@@ -79,6 +79,6 @@ namespace carto { namespace mvt {
     private:
         Expression _angle;
     };
-} }
+}
 
 #endif

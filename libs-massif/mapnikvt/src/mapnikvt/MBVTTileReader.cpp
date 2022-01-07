@@ -1,7 +1,7 @@
 #include "MBVTTileReader.h"
 #include "Layer.h"
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     void MBVTTileReader::setLayerNameOverride(const std::string& name) {
         _layerNameOverride = name;
     }
@@ -18,4 +18,4 @@ namespace carto { namespace mvt {
         std::string layerName = _layerNameOverride.empty() ? layer->getName() : _layerNameOverride;
         return _featureDecoder.createLayerFeatureIterator(layerName, fields);
     }
-} }
+}

@@ -41,7 +41,7 @@ namespace {
     }
 }
 
-namespace carto { namespace vt {
+namespace carto::vt {
     TileLayerBuilder::TileLayerBuilder(std::shared_ptr<const TileTransformer::VertexTransformer> transformer, float tileSize, float geomScale) :
         _transformer(std::move(transformer)), _tileSize(tileSize), _geomScale(geomScale), _clipBox(cglib::vec2<float>(-0.125f, -0.125f), cglib::vec2<float>(1.125f, 1.125f)), _polygonClipBox(cglib::vec2<float>(-0.001953125f, -0.001953125), cglib::vec2<float>(1.001953125f, 1.001953125f))
     {
@@ -1096,4 +1096,4 @@ namespace carto { namespace vt {
         }
         return true;
     }
-} }
+}

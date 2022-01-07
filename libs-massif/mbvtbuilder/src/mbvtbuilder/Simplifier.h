@@ -12,7 +12,7 @@
 
 #include <cglib/vec.h>
 
-namespace carto { namespace mbvtbuilder {
+namespace carto::mbvtbuilder {
     template <typename T>
     class Simplifier final {
     public:
@@ -106,6 +106,6 @@ namespace carto { namespace mbvtbuilder {
         Point pp = p0 + v0 * s;
         return cglib::length(p - pp);
     }
-} }
+}
 
 #endif

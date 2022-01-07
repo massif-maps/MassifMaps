@@ -12,7 +12,7 @@
 
 #include <memory>
 
-namespace carto { namespace vt {
+namespace carto::vt {
     class TileBackground final {
     public:
         explicit TileBackground(const Color& color, std::shared_ptr<const BitmapPattern> pattern) : _color(color), _pattern(std::move(pattern)) { }
@@ -28,6 +28,6 @@ namespace carto { namespace vt {
         const Color _color;
         const std::shared_ptr<const BitmapPattern> _pattern;
     };
-} }
+}
 
 #endif

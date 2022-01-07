@@ -23,7 +23,7 @@
 
 #include <picojson/picojson.h>
 
-namespace carto { namespace css {
+namespace carto::css {
     class CartoCSSMapLoader {
     public:
         class LoaderException : public std::runtime_error {
@@ -89,6 +89,6 @@ namespace carto { namespace css {
 
         bool _ignoreLayerPredicates = false;
     };
-} }
+}
 
 #endif

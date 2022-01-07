@@ -17,7 +17,7 @@
 #include <unordered_map>
 #include <set>
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     class FeatureDecoder {
     public:
         class FeatureIterator {
@@ -30,7 +30,7 @@ namespace carto { namespace mvt {
             virtual long long getLocalId() const = 0;
             virtual long long getGlobalId() const = 0;
             virtual std::shared_ptr<const Geometry> getGeometry() const = 0;
-            virtual std::shared_ptr<const FeatureData> getFeatureData(const std::set<std::string>* fields) const = 0;
+            virtual std::shared_ptr<const FeatureData> getFeatureData(bool explicitFeatureId, const std::set<std::string>* fields) const = 0;
         };
 
         virtual ~FeatureDecoder() = default;
@@ -93,6 +93,6 @@ namespace carto { namespace mvt {
             mutable std::mutex _mutex;
         };
     };
-} }
+}
 
 #endif

@@ -12,7 +12,7 @@
 
 #include <pugixml.hpp>
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     class Map;
     class Logger;
     class Symbolizer;
@@ -31,6 +31,6 @@ namespace carto { namespace mvt {
             
         const std::shared_ptr<Logger> _logger;
     };
-} }
+}
 
 #endif

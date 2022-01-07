@@ -15,7 +15,7 @@
 #include <string>
 #include <unordered_set>
 
-namespace carto { namespace nml {
+namespace carto::nml {
     class Texture;
     class Sampler;
     class GLResourceManager;
@@ -51,6 +51,6 @@ namespace carto { namespace nml {
         static std::mutex _mutex;
         static std::unordered_set<std::string> _extensions;
     };
-} }
+}
 
 #endif

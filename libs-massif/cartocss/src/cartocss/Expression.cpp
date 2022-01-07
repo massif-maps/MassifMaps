@@ -97,7 +97,7 @@ namespace {
     };
 }
 
-namespace carto { namespace css {
+namespace carto::css {
     Value UnaryExpression::applyOp(Op op, const Value& val) {
         switch (op) {
         case Op::NOT:
@@ -242,4 +242,4 @@ namespace carto { namespace css {
         }
         throw std::invalid_argument("Wrong type, expecting string");
     }
-} }
+}

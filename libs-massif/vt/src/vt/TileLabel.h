@@ -23,7 +23,7 @@
 #include <limits>
 #include <algorithm>
 
-namespace carto { namespace vt {
+namespace carto::vt {
     class TileLabel final {
     public:
         struct Style {
@@ -74,6 +74,6 @@ namespace carto { namespace vt {
         const std::shared_ptr<const Style> _style;
         const PlacementInfo _placementInfo;
     };
-} }
+}
 
 #endif

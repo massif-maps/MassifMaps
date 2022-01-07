@@ -13,7 +13,7 @@
 
 #include <picojson/picojson.h>
 
-namespace carto { namespace sgre {
+namespace carto::sgre {
     class Query final {
     public:
         Query() = delete;
@@ -32,6 +32,6 @@ namespace carto { namespace sgre {
         std::array<Point, 2> _points;
         std::array<FeatureFilter, 2> _filters;
     };
-} }
+}
 
 #endif

@@ -72,7 +72,7 @@ namespace {
     }
 }
 
-namespace carto { namespace vt {
+namespace carto::vt {
     LabelCuller::LabelCuller(float scale) :
         _localCameraProjMatrix(cglib::mat4x4<float>::identity()), _scale(scale), _mutex()
     {
@@ -242,4 +242,4 @@ namespace carto { namespace vt {
         }
         return true;
     }
-} }
+}

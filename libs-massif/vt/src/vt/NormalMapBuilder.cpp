@@ -7,7 +7,7 @@
 
 #include <boost/math/constants/constants.hpp>
 
-namespace carto { namespace vt {
+namespace carto::vt {
     NormalMapBuilder::NormalMapBuilder(const std::array<float, 4>& rgbaHeightScale, std::uint8_t alpha) : _rgbaHeightScale(rgbaHeightScale), _alpha(alpha) {
     }
 
@@ -100,4 +100,4 @@ namespace carto { namespace vt {
         packedNormal.u8[3] = _alpha;
         return packedNormal.u32;
     }
-} }
+}

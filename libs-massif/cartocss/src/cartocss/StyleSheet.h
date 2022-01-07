@@ -20,7 +20,7 @@
 #include <utility>
 #include <functional>
 
-namespace carto { namespace css {
+namespace carto::css {
     class Selector final {
     public:
         Selector() = default;
@@ -123,6 +123,6 @@ namespace carto { namespace css {
     private:
         std::vector<Element> _elements;
     };
-} }
+}
 
 #endif

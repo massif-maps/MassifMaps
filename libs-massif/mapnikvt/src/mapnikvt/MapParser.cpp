@@ -18,7 +18,7 @@
 
 #include <boost/lexical_cast.hpp>
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     std::shared_ptr<Map> MapParser::parseMap(const pugi::xml_document& doc) const {
         pugi::xpath_node_set mapNodes = pugi::xpath_query("Map").evaluate_node_set(doc);
         if (mapNodes.size() != 1) {
@@ -252,4 +252,4 @@ namespace carto { namespace mvt {
         }
         return Value();
     }
-} }
+}

@@ -5,7 +5,7 @@
 
 #include <cassert>
 
-namespace carto { namespace nml {
+namespace carto::nml {
     GLSubmesh::GLSubmesh(const Submesh& submesh) :
         _glType(-1),
         _vertexCounts(),
@@ -342,4 +342,4 @@ namespace carto { namespace nml {
     
         buf.assign(reinterpret_cast<const unsigned char*>(str.data()), reinterpret_cast<const unsigned char *>(str.data()) + str.size() / sizeof(unsigned char));
     }
-} }
+}

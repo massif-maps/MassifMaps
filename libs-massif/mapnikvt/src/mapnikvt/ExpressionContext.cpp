@@ -3,7 +3,7 @@
 #include "Feature.h"
 #include "ValueConverter.h"
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     void ExpressionContext::setTileId(const vt::TileId& tileId) {
         _tileId = tileId;
     }
@@ -28,6 +28,9 @@ namespace carto { namespace mvt {
         else if (isMapnikVariable(name)) {
             if (name == "mapnik::geometry_type") {
                 return Value(static_cast<long long>(_featureData->getGeometryType()));
+            }
+            if (name == "mapnik::feature_id") {
+                return Value(_featureData->getId());
             }
             return Value();
         }
@@ -62,4 +65,4 @@ namespace carto { namespace mvt {
         }
         return getVariable(name);
     }
-} }
+}

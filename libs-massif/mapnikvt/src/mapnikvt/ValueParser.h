@@ -16,7 +16,7 @@
 #include <boost/spirit/include/qi.hpp>
 #include <boost/spirit/repository/include/qi_distinct.hpp>
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     namespace valparserimpl {
         template <typename Iterator>
         struct Grammar : boost::spirit::qi::grammar<Iterator, Value()> {
@@ -61,6 +61,6 @@ namespace carto { namespace mvt {
     }
 
     template <typename Iterator> using ValueParserGrammar = valparserimpl::Grammar<Iterator>;
-} }
+}
 
 #endif

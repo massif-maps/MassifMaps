@@ -1,6 +1,6 @@
 #include "Geometry.h"
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     LineGeometry::Vertices LineGeometry::getMidPoints() const {
         Vertices midPoints;
         midPoints.reserve(getVerticesList().size());
@@ -145,4 +145,4 @@ namespace carto { namespace mvt {
         return surfacePoints;
     }
 
-} }
+}

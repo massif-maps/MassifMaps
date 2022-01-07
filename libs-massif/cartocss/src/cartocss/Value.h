@@ -12,8 +12,8 @@
 #include <string>
 #include <variant>
 
-namespace carto { namespace css {
+namespace carto::css {
     using Value = std::variant<std::monostate, bool, long long, double, Color, std::string>;
-} }
+}
 
 #endif

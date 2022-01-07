@@ -3,7 +3,7 @@
 #include "GLResourceManager.h"
 #include "Package.h"
 
-namespace carto { namespace nml {
+namespace carto::nml {
     GLMesh::GLMesh(const Mesh& mesh) :
         _submeshList()
     {
@@ -41,4 +41,4 @@ namespace carto { namespace nml {
         }
         return size;
     }
-} }
+}

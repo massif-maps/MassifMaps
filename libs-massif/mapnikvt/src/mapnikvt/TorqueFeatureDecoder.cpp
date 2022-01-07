@@ -36,7 +36,7 @@ namespace {
     }
 }
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     class TorqueFeatureDecoder::TorqueFeatureIterator : public carto::mvt::FeatureDecoder::FeatureIterator {
     public:
         explicit TorqueFeatureIterator(const std::vector<TorqueFeatureDecoder::Element>& elements, int frameOffset, int tileSize, const cglib::mat3x3<float>& transform, const cglib::bbox2<float>& clipBox) : _elements(elements), _frameOffset(frameOffset), _tileSize(tileSize), _transform(transform), _clipBox(clipBox) {
@@ -68,14 +68,14 @@ namespace carto { namespace mvt {
             return 0;
         }
 
-        virtual std::shared_ptr<const FeatureData> getFeatureData(const std::set<std::string>* fields) const override {
+        virtual std::shared_ptr<const FeatureData> getFeatureData(bool explicitFeatureId, const std::set<std::string>* fields) const override {
             const TorqueFeatureDecoder::Element& element = _elements[_index0];
 
             if (std::shared_ptr<const FeatureData> featureData = _featureDataCache.get(element.value)) {
                 return featureData;
             }
 
-            auto featureData = std::make_shared<FeatureData>(FeatureData::GeometryType::POINT_GEOMETRY, std::vector<std::pair<std::string, Value>> {
+            auto featureData = std::make_shared<FeatureData>(0, FeatureData::GeometryType::POINT_GEOMETRY, std::vector<std::pair<std::string, Value>> {
                 { std::string("value"), Value(element.value) },
                 { std::string("frame-offset"), Value(static_cast<long long>(_frameOffset)) } 
             });
@@ -214,4 +214,4 @@ namespace carto { namespace mvt {
         }
         return std::make_shared<TorqueFeatureIterator>(it->second, frameOffset, _tileSize, _transform, _clipBox);
     }
-} }
+}

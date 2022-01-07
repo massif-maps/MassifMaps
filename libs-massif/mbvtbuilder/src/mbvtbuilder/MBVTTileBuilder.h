@@ -21,7 +21,7 @@
 
 #include <protobuf/encodedpbf.hpp>
 
-namespace carto { namespace mbvtbuilder {
+namespace carto::mbvtbuilder {
     class MBVTLayerEncoder;
     
     class MBVTTileBuilder final {
@@ -110,6 +110,6 @@ namespace carto { namespace mbvtbuilder {
 
         mutable std::mutex _mutex;
     };
-} }
+}
 
 #endif

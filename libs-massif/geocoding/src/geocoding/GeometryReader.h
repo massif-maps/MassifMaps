@@ -13,7 +13,7 @@
 #include <memory>
 #include <functional>
 
-namespace carto { namespace geocoding {
+namespace carto::geocoding {
     using PointConverter = std::function<cglib::vec2<double>(const cglib::vec2<double>&)>;
 
     class GeometryReader final {
@@ -131,6 +131,6 @@ namespace carto { namespace geocoding {
         EncodingStream& _stream;
         PointConverter _pointConverter;
     };
-} }
+}
 
 #endif

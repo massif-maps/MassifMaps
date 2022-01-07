@@ -10,7 +10,7 @@ namespace {
     }
 }
 
-namespace carto { namespace vt {
+namespace carto::vt {
     BitmapCanvas::BitmapCanvas(int width, int height) : _width(width), _height(height), _sdfMode(false), _data(width * height) {
     }
 
@@ -130,4 +130,4 @@ namespace carto { namespace vt {
             frameColor[c] = std::max(frameColor[c], val);
         }
     }
-}}
+}

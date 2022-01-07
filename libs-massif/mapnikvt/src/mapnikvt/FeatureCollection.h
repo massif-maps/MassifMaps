@@ -12,7 +12,7 @@
 #include <vector>
 #include <utility>
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     class FeatureCollection final {
     public:
         FeatureCollection() = default;
@@ -34,6 +34,6 @@ namespace carto { namespace mvt {
     private:
         std::vector<std::pair<long long, Feature>> _features;
     };
-} }
+}
 
 #endif

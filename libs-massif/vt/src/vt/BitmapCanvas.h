@@ -17,7 +17,7 @@
 #include <cglib/vec.h>
 #include <cglib/mat.h>
 
-namespace carto { namespace vt {
+namespace carto::vt {
     class BitmapCanvas final {
     public:
         explicit BitmapCanvas(int width, int height);
@@ -45,6 +45,6 @@ namespace carto { namespace vt {
         cglib::mat3x3<float> _inverseTransform = cglib::mat3x3<float>::identity();
         std::vector<std::uint32_t> _data;
     };
-} }
+}
 
 #endif

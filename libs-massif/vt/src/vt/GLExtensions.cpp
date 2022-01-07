@@ -2,7 +2,7 @@
 
 #include <EGL/egl.h>
 
-namespace carto { namespace vt {
+namespace carto::vt {
     GLExtensions::GLExtensions() {
         std::string paddedExtensions;
         const char* extensions = reinterpret_cast<const char*>(glGetString(GL_EXTENSIONS));
@@ -73,4 +73,4 @@ namespace carto { namespace vt {
         return _glDiscardFramebufferEXT(target, numAttachments, attachments);
 #endif
     }
-} }
+}

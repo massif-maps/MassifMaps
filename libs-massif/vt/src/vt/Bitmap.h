@@ -11,7 +11,7 @@
 #include <vector>
 #include <memory>
 
-namespace carto { namespace vt {
+namespace carto::vt {
     inline constexpr float BITMAP_SDF_SCALE = 8.0f;
 
     struct Bitmap final {
@@ -36,6 +36,6 @@ namespace carto { namespace vt {
 
         explicit BitmapPattern(float widthScale, float heightScale, std::shared_ptr<const Bitmap> bitmap) : widthScale(widthScale), heightScale(heightScale), bitmap(std::move(bitmap)) { }
     };
-} }
+}
 
 #endif

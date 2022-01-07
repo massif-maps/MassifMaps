@@ -15,7 +15,7 @@
 #include <boost/phoenix.hpp>
 #include <boost/spirit/include/karma.hpp>
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     namespace valgenimpl {
         template <typename OutputIterator>
         struct Grammar : boost::spirit::karma::grammar<OutputIterator, Value()> {
@@ -86,6 +86,6 @@ namespace carto { namespace mvt {
     }
 
     template <typename Iterator> using ValueGeneratorGrammar = valgenimpl::Grammar<Iterator>;
-} }
+}
 
 #endif

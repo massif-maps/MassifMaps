@@ -19,7 +19,7 @@
 #include <vector>
 #include <map>
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     class Map {
     public:
         struct Settings {
@@ -68,6 +68,6 @@ namespace carto { namespace mvt {
         std::vector<std::shared_ptr<Layer>> _layers;
         std::map<std::string, std::shared_ptr<Layer>> _layerMap;
     };
-} }
+}
 
 #endif

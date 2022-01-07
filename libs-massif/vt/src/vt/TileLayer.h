@@ -18,7 +18,7 @@
 #include <vector>
 #include <numeric>
 
-namespace carto { namespace vt {
+namespace carto::vt {
     class TileLayer final {
     public:
         explicit TileLayer(std::string layerName, int layerIdx, std::optional<CompOp> compOp, FloatFunction opacityFunc, std::vector<std::shared_ptr<TileBackground>> backgrounds, std::vector<std::shared_ptr<TileBitmap>> bitmaps, std::vector<std::shared_ptr<TileGeometry>> geometries, std::vector<std::shared_ptr<TileLabel>> labels) : _layerName(std::move(layerName)), _layerIdx(layerIdx), _compOp(std::move(compOp)), _opacityFunc(std::move(opacityFunc)), _backgrounds(std::move(backgrounds)), _bitmaps(std::move(bitmaps)), _geometries(std::move(geometries)), _labels(std::move(labels)) { }
@@ -57,6 +57,6 @@ namespace carto { namespace vt {
         const std::vector<std::shared_ptr<TileGeometry>> _geometries;
         const std::vector<std::shared_ptr<TileLabel>> _labels;
     };
-} }
+}
 
 #endif

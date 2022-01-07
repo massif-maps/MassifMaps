@@ -19,7 +19,7 @@
 #include <hb.h>
 #include <hb-ft.h>
 
-namespace carto { namespace vt {
+namespace carto::vt {
     class FontManagerLibrary {
     public:
         FontManagerLibrary() : _library(nullptr) {
@@ -374,4 +374,4 @@ namespace carto { namespace vt {
     std::shared_ptr<const Font> FontManager::getFont(const std::string& name, const std::shared_ptr<const Font>& baseFont) const {
         return _impl->getFont(name, baseFont);
     }
-} }
+}

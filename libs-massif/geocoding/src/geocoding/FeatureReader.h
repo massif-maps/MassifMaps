@@ -15,7 +15,7 @@
 #include <string>
 #include <vector>
 
-namespace carto { namespace geocoding {
+namespace carto::geocoding {
     class FeatureReader final {
     public:
         explicit FeatureReader(EncodingStream& stream, const PointConverter& converter) : _stream(stream), _geometryReader(stream, converter) { }
@@ -78,6 +78,6 @@ namespace carto { namespace geocoding {
         EncodingStream& _stream;
         GeometryReader _geometryReader;
     };
-} }
+}
 
 #endif

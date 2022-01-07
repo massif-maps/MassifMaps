@@ -2,7 +2,7 @@
 #include "ParserUtils.h"
 #include "vt/BitmapCanvas.h"
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     TorqueMarkerSymbolizer::FeatureProcessor TorqueMarkerSymbolizer::createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const {
         float width = _width.getValue(exprContext);
         if (width <= 0) {
@@ -113,4 +113,4 @@ namespace carto { namespace mvt {
         canvas.drawRectangle(cglib::vec2<float>(strokeWidth, strokeWidth), cglib::vec2<float>(width - strokeWidth * 0.5f, height - strokeWidth * 0.5f));
         return canvas.buildBitmapImage();
     }
-} }
+}

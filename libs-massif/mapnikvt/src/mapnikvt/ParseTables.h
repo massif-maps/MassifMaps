@@ -12,7 +12,7 @@
 #include <string>
 #include <unordered_map>
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     template <typename T>
     using ParseTable = std::unordered_map<std::string, T>;
 
@@ -20,6 +20,6 @@ namespace carto { namespace mvt {
     const ParseTable<vt::LineJoinMode>& getLineJoinModeTable();
     const ParseTable<vt::CompOp>& getCompOpTable();
     const ParseTable<vt::LabelOrientation>& getLabelOrientationTable();
-} }
+}
 
 #endif

@@ -11,7 +11,7 @@
 #include "GeneratorUtils.h"
 #include "Logger.h"
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     void SymbolizerGenerator::generateSymbolizer(const Symbolizer& symbolizer, pugi::xml_node& symbolizerNode) const {
         std::string type;
         if (dynamic_cast<const PointSymbolizer*>(&symbolizer)) {
@@ -67,4 +67,4 @@ namespace carto { namespace mvt {
         bool stringParam = !dynamic_cast<const ValueParameter*>(&param) && !dynamic_cast<const BoolParameter*>(&param) && !dynamic_cast<const FloatParameter*>(&param) && !dynamic_cast<const FloatFunctionParameter*>(&param);
         return generateExpressionString(param.getExpression(), stringParam);
     }
-} }
+}

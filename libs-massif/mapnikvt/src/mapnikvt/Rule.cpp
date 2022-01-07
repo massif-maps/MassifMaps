@@ -8,7 +8,7 @@
 
 #include <algorithm>
 
-namespace carto { namespace mvt {
+namespace carto::mvt {
     Rule::Rule(std::string name, int minZoom, int maxZoom, std::shared_ptr<const Filter> filter, std::vector<std::shared_ptr<const Symbolizer>> symbolizers) : _name(std::move(name)), _minZoom(minZoom), _maxZoom(maxZoom), _filter(std::move(filter)), _symbolizers(std::move(symbolizers)) {
     }
 
@@ -18,10 +18,7 @@ namespace carto { namespace mvt {
 
             void operator() (const std::shared_ptr<VariableExpression>& varExpr) {
                 if (auto val = std::get_if<Value>(&varExpr->getVariableExpression())) {
-                    std::string name = ValueConverter<std::string>::convert(*val);
-                    if (!(ExpressionContext::isViewStateVariable(name) || ExpressionContext::isNutiVariable(name) || ExpressionContext::isMapnikVariable(name) || ExpressionContext::isZoomVariable(name))) {
-                        _fields.insert(name);
-                    }
+                    _fields.insert(ValueConverter<std::string>::convert(*val));
                 }
                 else {
                     _fields.insert(std::string()); // generic expression, insert special marker that any fields can be used
@@ -55,4 +52,4 @@ namespace carto { namespace mvt {
 
         _referencedFieldsCalculated = true;
     }
-} }
+}

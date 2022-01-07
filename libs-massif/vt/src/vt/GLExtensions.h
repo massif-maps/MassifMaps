@@ -12,7 +12,7 @@
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
 
-namespace carto { namespace vt {
+namespace carto::vt {
     class GLExtensions final {
     public:
         GLExtensions();
@@ -50,6 +50,6 @@ namespace carto { namespace vt {
         PFNGLDISCARDFRAMEBUFFEREXTPROC _glDiscardFramebufferEXT = nullptr;
 #endif
     };
-} }
+}
 
 #endif

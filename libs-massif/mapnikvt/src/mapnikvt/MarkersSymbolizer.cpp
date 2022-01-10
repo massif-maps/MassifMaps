@@ -131,9 +131,9 @@ namespace carto::mvt {
         vt::TileId tileId = exprContext.getTileId();
         std::size_t hash = std::hash<std::string>()(file);
 
-        std::optional<long long> globalIdOverride;
+        std::optional<long long> labelIdOverride;
         if (_featureId.isDefined()) {
-            globalIdOverride = convertId(_featureId.getValue(exprContext));
+            labelIdOverride = convertId(_featureId.getValue(exprContext));
         }
 
         if (clip) {
@@ -192,7 +192,7 @@ namespace carto::mvt {
             };
         }
 
-        return [compOp, fillFunc, normalizedSizeFunc, bitmapImage, transform, orientation, placement, placementPriority, spacing, bitmapSize, tileId, tileSize, glyphMap, groupId, globalIdOverride, hash, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
+        return [compOp, fillFunc, normalizedSizeFunc, bitmapImage, transform, orientation, placement, placementPriority, spacing, bitmapSize, tileId, tileSize, glyphMap, groupId, labelIdOverride, hash, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
             vt::PointLabelStyle style(orientation, fillFunc, normalizedSizeFunc, false, bitmapImage, transform);
             vt::TileLayerBuilder::PointLabelProcessor pointProcessor;
             for (std::size_t featureIndex = 0; featureIndex < featureCollection.size(); featureIndex++) {
@@ -204,29 +204,28 @@ namespace carto::mvt {
                 }
 
                 long long localId = featureCollection.getLocalId(featureIndex);
-                long long globalId = combineId(featureCollection.getGlobalId(featureIndex), hash);
-                if (globalIdOverride) {
-                    globalId = *globalIdOverride;
-                    if (!globalId) {
-                        globalId = generateId();
+                long long labelId = combineId(featureCollection.getFeatureId(featureIndex), hash);
+                if (labelIdOverride) {
+                    labelId = *labelIdOverride;
+                    if (!labelId) {
+                        labelId = generateId();
                     }
                 }
-                globalId = globalId * 3 + 0;
 
                 if (auto pointGeometry = std::get_if<PointGeometry>(featureCollection.getGeometry(featureIndex).get())) {
                     for (const auto& vertex : pointGeometry->getVertices()) {
-                        pointProcessor(localId, globalId, groupId, vertex, placementPriority, 0);
+                        pointProcessor(localId, labelId, groupId, vertex, placementPriority, 0);
                     }
                 }
                 else if (placement != vt::LabelOrientation::LINE) {
                     if (auto lineGeometry = std::get_if<LineGeometry>(featureCollection.getGeometry(featureIndex).get())) {
                         for (const auto& vertices : lineGeometry->getVerticesList()) {
-                            pointProcessor(localId, globalId, groupId, vertices, placementPriority, 0);
+                            pointProcessor(localId, labelId, groupId, vertices, placementPriority, 0);
                         }
                     }
                     else if (auto polygonGeometry = std::get_if<PolygonGeometry>(featureCollection.getGeometry(featureIndex).get())) {
                         for (const auto& vertex : polygonGeometry->getSurfacePoints()) {
-                            pointProcessor(localId, globalId, groupId, vertex, placementPriority, 0);
+                            pointProcessor(localId, labelId, groupId, vertex, placementPriority, 0);
                         }
                     }
                 }
@@ -241,7 +240,7 @@ namespace carto::mvt {
 
                     for (const auto& vertices : verticesList) {
                         if (spacing <= 0) {
-                            pointProcessor(localId, globalId, groupId, vertices, placementPriority, 0);
+                            pointProcessor(localId, labelId, groupId, vertices, placementPriority, 0);
                             continue;
                         }
                         
@@ -251,8 +250,8 @@ namespace carto::mvt {
                             if (pointProcessor) {
                                 int counter = 0;
                                 for (const auto& vertex : transformedPoints.second) {
-                                    long long generatedId = combineId(globalId, std::hash<vt::TileId>()(tileId) * 63 + counter);
-                                    pointProcessor(localId, generatedId, groupId, vertex, placementPriority, 0);
+                                    long long generatedLabelId = combineId(labelId, std::hash<vt::TileId>()(tileId) * 63 + counter);
+                                    pointProcessor(localId, generatedLabelId, groupId, vertex, placementPriority, 0);
                                     counter++;
                                 }
                                 pointProcessor = vt::TileLayerBuilder::PointLabelProcessor();

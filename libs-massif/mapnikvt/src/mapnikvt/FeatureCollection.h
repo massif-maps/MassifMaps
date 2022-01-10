@@ -22,7 +22,7 @@ namespace carto::mvt {
         std::size_t size() const;
 
         long long getLocalId(std::size_t index) const { return _features.at(index).first; }
-        long long getGlobalId(std::size_t index) const { return _features.at(index).second.getId(); }
+        long long getFeatureId(std::size_t index) const { return _features.at(index).second.getId(); }
 
         const Feature& getFeature(std::size_t index) const { return _features.at(index).second; }
         const std::shared_ptr<const FeatureData>& getFeatureData(std::size_t index) const { return _features.at(index).second.getFeatureData(); }

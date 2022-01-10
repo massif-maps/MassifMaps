@@ -45,9 +45,10 @@ namespace carto::mvt {
         const int _tileSize;
         const int _frameCount;
         const std::string _dataAggregation;
-        cglib::mat3x3<float> _transform;
-        cglib::bbox2<float> _clipBox;
         const std::shared_ptr<Logger> _logger;
+
+        cglib::mat3x3<float> _transform = cglib::mat3x3<float>::identity();
+        cglib::bbox2<float> _clipBox = cglib::bbox2<float>(cglib::vec2<float>(-0.125f, -0.125f), cglib::vec2<float>(1.125f, 1.125f));
     };
 }
 

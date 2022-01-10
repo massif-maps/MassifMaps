@@ -21,8 +21,8 @@
 namespace carto::mvt {
     class MBVTFeatureDecoder::MBVTFeatureIterator : public carto::mvt::FeatureDecoder::FeatureIterator {
     public:
-        explicit MBVTFeatureIterator(const std::shared_ptr<const vector_tile::Tile>& tile, int layerIndex, const std::set<std::string>* fields, const cglib::mat3x3<float>& transform, const cglib::bbox2<float>& clipBox, bool globalIdOverride, long long tileIdOffset, const std::shared_ptr<MBVTFeatureDecoder::GeometryCache>& geometryCache, const std::shared_ptr<MBVTFeatureDecoder::FeatureDataCache<std::vector<int>>>& featureDataCache) :
-            _tile(tile), _layer(&tile->layers(layerIndex)), _transform(transform), _clipBox(clipBox), _globalIdOverride(globalIdOverride), _tileIdOffset(tileIdOffset), _geometryCache(geometryCache), _featureDataCache(featureDataCache)
+        explicit MBVTFeatureIterator(const std::shared_ptr<const vector_tile::Tile>& tile, int layerIndex, const std::set<std::string>* fields, const cglib::mat3x3<float>& transform, const cglib::bbox2<float>& clipBox, bool featureIdOverride, long long tileIdOffset, const std::shared_ptr<MBVTFeatureDecoder::GeometryCache>& geometryCache, const std::shared_ptr<MBVTFeatureDecoder::FeatureDataCache<std::vector<int>>>& featureDataCache) :
+            _tile(tile), _layer(&tile->layers(layerIndex)), _transform(transform), _clipBox(clipBox), _featureIdOverride(featureIdOverride), _tileIdOffset(tileIdOffset), _geometryCache(geometryCache), _featureDataCache(featureDataCache)
         {
             _layerIndexOffset = static_cast<long long>(layerIndex) << 32;
 
@@ -66,10 +66,10 @@ namespace carto::mvt {
             return _layerIndexOffset + _index;
         }
 
-        virtual long long getGlobalId() const override {
-            // If in id override mode, generate id automatically based on layer index, tile id and feature index
-            if (_globalIdOverride) {
-                return _tileIdOffset + _layerIndexOffset + _index;
+        virtual long long getFeatureId() const override {
+            // If in id override mode, generate id automatically based on feature index
+            if (_featureIdOverride) {
+                return _tileIdOffset + _index;
             }
 
             // If feature has a valid id, use it
@@ -99,7 +99,7 @@ namespace carto::mvt {
             }
 
             // Return element index
-            return _index + 1;
+            return 0;
         }
 
         virtual std::shared_ptr<const FeatureData> getFeatureData(bool explicitFeatureId, const std::set<std::string>* fields) const override {
@@ -145,7 +145,7 @@ namespace carto::mvt {
                 }
             }
 
-            auto featureData = std::make_shared<FeatureData>(explicitFeatureId ? getGlobalId() : 0, geomType, std::move(dataMap));
+            auto featureData = std::make_shared<FeatureData>(explicitFeatureId ? getFeatureId() : 0, geomType, std::move(dataMap));
             if (!explicitFeatureId) {
                 _featureDataCache->put(std::move(tags), featureData);
             }
@@ -333,7 +333,7 @@ namespace carto::mvt {
         const vector_tile::Tile::Layer* _layer;
         const cglib::mat3x3<float> _transform;
         const cglib::bbox2<float> _clipBox;
-        const bool _globalIdOverride;
+        const bool _featureIdOverride;
         const long long _tileIdOffset;
 
         mutable std::shared_ptr<MBVTFeatureDecoder::GeometryCache> _geometryCache;
@@ -341,7 +341,7 @@ namespace carto::mvt {
     };
 
     MBVTFeatureDecoder::MBVTFeatureDecoder(const std::vector<unsigned char>& data, std::shared_ptr<Logger> logger) :
-        _transform(cglib::mat3x3<float>::identity()), _clipBox(cglib::vec2<float>(-0.125f, -0.125f), cglib::vec2<float>(1.125f, 1.125f)), _globalIdOverride(false), _tileIdOffset(0), _tile(), _layerMap(), _logger(std::move(logger))
+        _logger(std::move(logger))
     {
         std::vector<unsigned char> uncompressedData;
         if (zlib::inflate_gzip(data.data(), data.size(), uncompressedData)) {
@@ -380,8 +380,8 @@ namespace carto::mvt {
         }
     }
 
-    void MBVTFeatureDecoder::setGlobalIdOverride(bool globalIdOverride, long long tileIdOffset) {
-        _globalIdOverride = globalIdOverride;
+    void MBVTFeatureDecoder::setFeatureIdOverride(bool featureIdOverride, long long tileIdOffset) {
+        _featureIdOverride = featureIdOverride;
         _tileIdOffset = tileIdOffset;
     }
 
@@ -426,17 +426,17 @@ namespace carto::mvt {
             featureDataCache = std::make_shared<FeatureDataCache<std::vector<int>>>();
             featureDataCache->reserve(_tile->layers(layerIndex).features_size());
         }
-        return std::make_shared<MBVTFeatureIterator>(_tile, layerIndex, fields, _transform, _clipBox, _globalIdOverride, _tileIdOffset, geometryCache, featureDataCache);
+        return std::make_shared<MBVTFeatureIterator>(_tile, layerIndex, fields, _transform, _clipBox, _featureIdOverride, _tileIdOffset, geometryCache, featureDataCache);
     }
 
     bool MBVTFeatureDecoder::findFeature(long long localId, std::string& layerName, Feature& feature) const {
         for (int i = 0; i < _tile->layers_size(); i++) {
             auto geometryCache = std::make_shared<GeometryCache>();
             auto featureDataCache = std::make_shared<FeatureDataCache<std::vector<int>>>();
-            MBVTFeatureIterator it(_tile, i, nullptr, _transform, _clipBox, _globalIdOverride, _tileIdOffset, geometryCache, featureDataCache);
+            MBVTFeatureIterator it(_tile, i, nullptr, _transform, _clipBox, _featureIdOverride, _tileIdOffset, geometryCache, featureDataCache);
             if (it.findByLocalId(localId)) {
                 layerName = _tile->layers(i).name();
-                feature = Feature(it.getGlobalId(), it.getGeometry(), it.getFeatureData(true, nullptr));
+                feature = Feature(it.getFeatureId(), it.getGeometry(), it.getFeatureData(true, nullptr));
                 return true;
             }
         }

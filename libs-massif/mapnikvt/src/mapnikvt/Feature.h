@@ -13,7 +13,6 @@
 #include <memory>
 #include <list>
 #include <vector>
-#include <unordered_set>
 #include <map>
 #include <utility>
 
@@ -33,8 +32,6 @@ namespace carto::mvt {
         long long getId() const { return _id; }
         GeometryType getGeometryType() const { return _geometryType; }
         const std::vector<std::pair<std::string, Value>>& getVariables() const { return _variables; }
-
-        std::unordered_set<std::string> getVariableNames() const;
 
         bool getVariable(const std::string& name, Value& value) const;
 

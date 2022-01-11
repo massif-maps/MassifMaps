@@ -910,13 +910,12 @@ namespace carto::vt {
                     newLabelMap.reserve(_layerLabelMap[layer->getLayerIndex()].size() + 64);
                 }
                 for (const std::shared_ptr<TileLabel>& tileLabel : layer->getLabels()) {
-                    auto newLabel = std::make_shared<Label>(*tileLabel, tile->getTileId(), layer->getLayerIndex(), tileMatrix, transformer);
                     std::shared_ptr<Label>& label = newLabelMap[tileLabel->getGlobalId()];
                     if (label) {
-                        label->mergeGeometries(*newLabel);
+                        label->mergeGeometries(Label(*tileLabel, tile->getTileId(), layer->getLayerIndex(), tileMatrix, transformer));
                     }
                     else {
-                        label = newLabel;
+                        label = std::make_shared<Label>(*tileLabel, tile->getTileId(), layer->getLayerIndex(), tileMatrix, transformer);
                     }
                 }
             }

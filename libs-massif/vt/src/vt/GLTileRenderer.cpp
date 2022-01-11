@@ -912,7 +912,8 @@ namespace carto::vt {
                 for (const std::shared_ptr<TileLabel>& tileLabel : layer->getLabels()) {
                     std::shared_ptr<Label>& label = newLabelMap[tileLabel->getGlobalId()];
                     if (label) {
-                        label->mergeGeometries(Label(*tileLabel, tile->getTileId(), layer->getLayerIndex(), tileMatrix, transformer));
+                        Label newLabel(*tileLabel, tile->getTileId(), layer->getLayerIndex(), tileMatrix, transformer);
+                        label->mergeGeometries(newLabel);
                     }
                     else {
                         label = std::make_shared<Label>(*tileLabel, tile->getTileId(), layer->getLayerIndex(), tileMatrix, transformer);

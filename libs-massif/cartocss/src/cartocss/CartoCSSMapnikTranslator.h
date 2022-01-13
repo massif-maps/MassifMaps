@@ -22,9 +22,9 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <typeindex>
 #include <vector>
 #include <optional>
-#include <unordered_set>
 #include <unordered_map>
 
 namespace carto::css {
@@ -69,7 +69,7 @@ namespace carto::css {
 
         static const std::unordered_map<std::string, std::variant<mvt::UnaryExpression::Op, mvt::BinaryExpression::Op, mvt::TertiaryExpression::Op>> _basicFuncMap;
         static const std::unordered_map<std::string, mvt::InterpolateExpression::Method> _interpolationFuncMap;
-        static const std::unordered_set<std::string> _transformFuncs;
+        static const std::unordered_map<std::string, std::type_index> _transformFuncMap;
 
         static const std::vector<std::string> _symbolizerList;
         static const std::unordered_map<std::string, std::string> _symbolizerPropertyMap;

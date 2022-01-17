@@ -90,6 +90,8 @@ namespace carto::mvt {
                 unary =
                       ('-' << unary)                       [_pass = phoenix::bind(&getUnaryExpression, UnaryExpression::Op::NEG, _val, _1)]
                     | ('!' << unary)                       [_pass = phoenix::bind(&getNotPredicate, _val, _1)]
+                    | (karma::lit("exp") << '(' << expression << ')') [_pass = phoenix::bind(&getUnaryExpression, UnaryExpression::Op::EXP, _val, _1)]
+                    | (karma::lit("log") << '(' << expression << ')') [_pass = phoenix::bind(&getUnaryExpression, UnaryExpression::Op::LOG, _val, _1)]
                     | postfix                              [_1 = _val]
                     ;
 

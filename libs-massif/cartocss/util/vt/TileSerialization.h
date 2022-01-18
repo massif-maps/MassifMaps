@@ -126,7 +126,7 @@ namespace boost::serialization {
 
     template <class Archive>
     void serialize(Archive& ar, carto::vt::GlyphMap::Glyph& glyph, const unsigned int version) {
-        ar & make_nvp("sdf_mode", glyph.mode);
+        ar & make_nvp("mode", glyph.mode);
         ar & make_nvp("x", glyph.x);
         ar & make_nvp("y", glyph.y);
         ar & make_nvp("width", glyph.width);

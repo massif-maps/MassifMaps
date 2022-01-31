@@ -44,11 +44,11 @@ namespace carto::mvt {
 
         static long long convertId(const Value& val);
         static long long generateId();
-        static long long combineId(long long globalId, std::size_t hash);
+        static long long combineId(long long id, std::size_t hash);
+
+        const std::shared_ptr<Logger> _logger;
 
         CompOpParameter _compOp = CompOpParameter("src-over");
-
-        std::shared_ptr<Logger> _logger;
 
     private:
         std::map<std::string, SymbolizerParameter*> _parameterMap;

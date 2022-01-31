@@ -23,9 +23,9 @@ namespace carto::mvt {
         std::vector<std::shared_ptr<vt::TileLayer>> tileLayers;
 
         if (std::shared_ptr<vt::TileBackground> tileBackground = createTileBackground(tileId)) {
-            vt::TileLayerBuilder tileLayerBuilder(_transformer->createTileVertexTransformer(tileId), _symbolizerContext.getSettings().getTileSize(), _symbolizerContext.getSettings().getGeometryScale());
+            vt::TileLayerBuilder tileLayerBuilder(std::string(), -1, _transformer->createTileVertexTransformer(tileId), _symbolizerContext.getSettings().getTileSize(), _symbolizerContext.getSettings().getGeometryScale());
             tileLayerBuilder.addBackground(tileBackground);
-            std::shared_ptr<vt::TileLayer> tileLayer = tileLayerBuilder.buildTileLayer(std::string(), -1, std::optional<vt::CompOp>(), vt::FloatFunction(1.0f));
+            std::shared_ptr<vt::TileLayer> tileLayer = tileLayerBuilder.buildTileLayer();
             tileLayers.push_back(std::move(tileLayer));
         }
 
@@ -33,19 +33,20 @@ namespace carto::mvt {
         for (const std::shared_ptr<Layer>& layer : _map->getLayers()) {
             int styleIdx = 0;
             for (const std::string& styleName : layer->getStyleNames()) {
+                int styleLayerIdx = layerIdx * 65536 + static_cast<int>(layer->getStyleNames().size()) * 256 + styleIdx;
+
                 const std::shared_ptr<Style>& style = _map->getStyle(styleName);
                 if (!style) {
                     continue;
                 }
                 
-                vt::TileLayerBuilder tileLayerBuilder(_transformer->createTileVertexTransformer(tileId), _symbolizerContext.getSettings().getTileSize(), _symbolizerContext.getSettings().getGeometryScale());
+                vt::TileLayerBuilder tileLayerBuilder(styleName, styleLayerIdx, _transformer->createTileVertexTransformer(tileId), _symbolizerContext.getSettings().getTileSize(), _symbolizerContext.getSettings().getGeometryScale());
+                tileLayerBuilder.setOpacityFunc(vt::FloatFunction(style->getOpacity()));
+                tileLayerBuilder.setCompOp(style->getCompOp());
                 processLayer(layer, style, exprContext, tileLayerBuilder);
 
-                int styleLayerIdx = layerIdx * 65536 + static_cast<int>(layer->getStyleNames().size()) * 256 + styleIdx;
-                vt::FloatFunction opacityFunc(style->getOpacity());
-                std::optional<vt::CompOp> compOp = style->getCompOp();
-                std::shared_ptr<vt::TileLayer> tileLayer = tileLayerBuilder.buildTileLayer(styleName, styleLayerIdx, compOp, opacityFunc);
-                if (!(tileLayer->getBackgrounds().empty() && tileLayer->getBitmaps().empty() && tileLayer->getLabels().empty() && tileLayer->getGeometries().empty() && !compOp)) {
+                std::shared_ptr<vt::TileLayer> tileLayer = tileLayerBuilder.buildTileLayer();
+                if (!(tileLayer->getBackgrounds().empty() && tileLayer->getBitmaps().empty() && tileLayer->getLabels().empty() && tileLayer->getGeometries().empty() && !tileLayer->getCompOp())) {
                     tileLayers.push_back(std::move(tileLayer));
                 }
                 styleIdx++;
@@ -156,7 +157,7 @@ namespace carto::mvt {
                     }
 
                     if (batchFeatureProcessor) {
-                        batchFeatureCollection.append(featureIt->getLocalId(), Feature(featureIt->getGlobalId(), geometry, symbolizerFeatureData));
+                        batchFeatureCollection.append(featureIt->getLocalId(), Feature(featureIt->getFeatureId(), geometry, symbolizerFeatureData));
                     }
                 }
             }

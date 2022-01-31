@@ -31,7 +31,7 @@ namespace carto::mvt {
 
         void setTransform(const cglib::mat3x3<float>& transform);
         void setClipBox(const cglib::bbox2<float>& clipBox);
-        void setGlobalIdOverride(bool globalIdOverride, long long tileIdOffset = 0);
+        void setFeatureIdOverride(bool featureIdOverride, long long tileIdOffset = 0);
 
         std::vector<std::string> getLayerNames() const;
 
@@ -42,18 +42,18 @@ namespace carto::mvt {
     private:
         class MBVTFeatureIterator;
 
-        cglib::mat3x3<float> _transform;
-        cglib::bbox2<float> _clipBox;
-        bool _globalIdOverride;
-        long long _tileIdOffset;
+        const std::shared_ptr<Logger> _logger;
+
+        cglib::mat3x3<float> _transform = cglib::mat3x3<float>::identity();
+        cglib::bbox2<float> _clipBox = cglib::bbox2<float>(cglib::vec2<float>(-0.125f, -0.125f), cglib::vec2<float>(1.125f, 1.125f));
+        bool _featureIdOverride = false;
+        long long _tileIdOffset = 0;
         std::shared_ptr<vector_tile::Tile> _tile;
         std::map<std::string, int> _layerMap;
 
         mutable std::pair<std::string, std::shared_ptr<GeometryCache>> _layerGeometryCache;
         mutable std::pair<std::string, std::shared_ptr<FeatureDataCache<std::vector<int>>>> _layerFeatureDataCache;
         mutable std::mutex _layerCacheMutex;
-
-        const std::shared_ptr<Logger> _logger;
     };
 }
 

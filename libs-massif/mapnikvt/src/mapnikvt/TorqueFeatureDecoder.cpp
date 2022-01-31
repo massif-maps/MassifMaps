@@ -64,7 +64,7 @@ namespace carto::mvt {
             return _index0;
         }
 
-        virtual long long getGlobalId() const override {
+        virtual long long getFeatureId() const override {
             return 0;
         }
 
@@ -110,7 +110,7 @@ namespace carto::mvt {
     };
 
     TorqueFeatureDecoder::TorqueFeatureDecoder(const std::vector<unsigned char>& data, int tileSize, int frameCount, const std::string& dataAggregation, const std::shared_ptr<Logger>& logger) :
-        _tileSize(tileSize), _frameCount(frameCount), _dataAggregation(dataAggregation), _transform(cglib::mat3x3<float>::identity()), _clipBox(cglib::vec2<float>(-0.1f, -0.1f), cglib::vec2<float>(1.1f, 1.1f)), _logger(logger)
+        _tileSize(tileSize), _frameCount(frameCount), _dataAggregation(dataAggregation), _logger(logger)
     {
         rapidjson::Document torqueDoc;
         std::string torqueJson(reinterpret_cast<const char*>(data.data()), reinterpret_cast<const char*>(data.data() + data.size()));

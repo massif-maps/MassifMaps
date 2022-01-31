@@ -21,6 +21,7 @@
 #include "mapnikvt/GeneratorUtils.h"
 
 #include <algorithm>
+#include <typeinfo>
 
 namespace carto::css {
     std::shared_ptr<const mvt::Rule> CartoCSSMapnikTranslator::buildRule(const PropertySet& propertySet, const std::shared_ptr<mvt::Map>& map, int minZoom, int maxZoom) const {
@@ -267,7 +268,7 @@ namespace carto::css {
             }
             return std::make_shared<mvt::InterpolateExpression>(funcIt->second, std::move(mapnikTimeExpr), std::move(mapnikKeyFrames));
         }
-        else if (auto funcIt = _transformFuncs.find(funcExpr.getFunc()); funcIt != _transformFuncs.end()) {
+        else if (auto funcIt = _transformFuncMap.find(funcExpr.getFunc()); funcIt != _transformFuncMap.end()) {
             // Transform function. Variable arity, special case.
             std::vector<mvt::Expression> mapnikExprs;
             mapnikExprs.reserve(funcExpr.getArgs().size());
@@ -275,36 +276,36 @@ namespace carto::css {
                 mapnikExprs.push_back(buildExpression(expr));
             }
 
-            std::string func = funcExpr.getFunc();
+            std::type_index func = funcIt->second;
             std::size_t argCount = funcExpr.getArgs().size();
-            if (func == "matrix" && argCount == 6) {
+            if (func == std::type_index(typeid(mvt::MatrixTransform)) && argCount == 6) {
                 std::array<mvt::Expression, 6> values;
                 std::copy(mapnikExprs.begin(), mapnikExprs.end(), values.begin());
                 return std::make_shared<mvt::TransformExpression>(mvt::MatrixTransform(values));
             }
-            else if (func == "translate" && argCount == 2) {
+            else if (func == std::type_index(typeid(mvt::TranslateTransform)) && argCount == 2) {
                 return std::make_shared<mvt::TransformExpression>(mvt::TranslateTransform(std::move(mapnikExprs[0]), std::move(mapnikExprs[1])));
             }
-            else if (func == "rotate" && argCount == 1) {
+            else if (func == std::type_index(typeid(mvt::RotateTransform)) && argCount == 1) {
                 return std::make_shared<mvt::TransformExpression>(mvt::RotateTransform(mvt::Value(0.0), mvt::Value(0.0), std::move(mapnikExprs[0])));
             }
-            else if (func == "rotate" && argCount == 3) {
+            else if (func == std::type_index(typeid(mvt::RotateTransform)) && argCount == 3) {
                 return std::make_shared<mvt::TransformExpression>(mvt::RotateTransform(std::move(mapnikExprs[1]), std::move(mapnikExprs[2]), std::move(mapnikExprs[0])));
             }
-            else if (func == "scale" && argCount == 1) {
+            else if (func == std::type_index(typeid(mvt::ScaleTransform)) && argCount == 1) {
                 return std::make_shared<mvt::TransformExpression>(mvt::ScaleTransform(std::move(mapnikExprs[0]), std::move(mapnikExprs[0])));
             }
-            else if (func == "scale" && argCount == 2) {
+            else if (func == std::type_index(typeid(mvt::ScaleTransform)) && argCount == 2) {
                 return std::make_shared<mvt::TransformExpression>(mvt::ScaleTransform(std::move(mapnikExprs[0]), std::move(mapnikExprs[1])));
             }
-            else if (func == "skewx" && argCount == 1) {
+            else if (func == std::type_index(typeid(mvt::SkewXTransform)) && argCount == 1) {
                 return std::make_shared<mvt::TransformExpression>(mvt::SkewXTransform(std::move(mapnikExprs[0])));
             }
-            else if (func == "skewy" && argCount == 1) {
+            else if (func == std::type_index(typeid(mvt::SkewYTransform)) && argCount == 1) {
                 return std::make_shared<mvt::TransformExpression>(mvt::SkewYTransform(std::move(mapnikExprs[0])));
             }
             else {
-                throw TranslatorException("Unexpected number of arguments for " + func + " transform function");
+                throw TranslatorException("Unexpected number of arguments for " + funcExpr.getFunc() + " transform function");
             }
         }
         else {
@@ -541,13 +542,13 @@ namespace carto::css {
         { "cubic",  mvt::InterpolateExpression::Method::CUBIC }
     };
 
-    const std::unordered_set<std::string> CartoCSSMapnikTranslator::_transformFuncs = {
-        "matrix",
-        "translate",
-        "rotate",
-        "scale",
-        "skewx",
-        "skewy"
+    const std::unordered_map<std::string, std::type_index> CartoCSSMapnikTranslator::_transformFuncMap = {
+        { "matrix",    std::type_index(typeid(mvt::MatrixTransform)) },
+        { "translate", std::type_index(typeid(mvt::TranslateTransform)) },
+        { "rotate",    std::type_index(typeid(mvt::RotateTransform)) },
+        { "scale",     std::type_index(typeid(mvt::ScaleTransform)) },
+        { "skewx",     std::type_index(typeid(mvt::SkewXTransform)) },
+        { "skewy",     std::type_index(typeid(mvt::SkewYTransform)) }
     };
 
     const std::vector<std::string> CartoCSSMapnikTranslator::_symbolizerList = {

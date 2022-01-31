@@ -51,9 +51,9 @@ namespace carto::mvt {
         std::string text = getTransformedText(exprContext);
         std::size_t hash = std::hash<std::string>()(text);
 
-        std::optional<long long> globalIdOverride;
+        std::optional<long long> labelIdOverride;
         if (_featureId.isDefined()) {
-            globalIdOverride = convertId(_featureId.getValue(exprContext));
+            labelIdOverride = convertId(_featureId.getValue(exprContext));
         }
 
         float textSize = bitmapSize < 0 ? (placement == vt::LabelOrientation::LINE ? calculateTextSize(textFormatter.getFont(), text, textFormatter).size()(0) : 0) : bitmapSize;
@@ -123,7 +123,7 @@ namespace carto::mvt {
             };
         }
 
-        return [compOp, fillFunc, haloFillFunc, sizeFunc, haloRadiusFunc, fontScale, placement, orientation, text, hash, orientationAngle, formatter, backgroundOffset, backgroundImage, spacing, textSize, tileId, tileSize, globalIdOverride, groupId, placementPriority, minimumDistance, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
+        return [compOp, fillFunc, haloFillFunc, sizeFunc, haloRadiusFunc, fontScale, placement, orientation, text, hash, orientationAngle, formatter, backgroundOffset, backgroundImage, spacing, textSize, tileId, tileSize, labelIdOverride, groupId, placementPriority, minimumDistance, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
             vt::TextLabelStyle style(orientation, fillFunc, sizeFunc, haloFillFunc, haloRadiusFunc, true, orientationAngle, fontScale, backgroundOffset, backgroundImage);
             vt::TileLayerBuilder::TextLabelProcessor textProcessor;
             for (std::size_t featureIndex = 0; featureIndex < featureCollection.size(); featureIndex++) {
@@ -135,29 +135,28 @@ namespace carto::mvt {
                 }
 
                 long long localId = featureCollection.getLocalId(featureIndex);
-                long long globalId = combineId(featureCollection.getGlobalId(featureIndex), hash);
-                if (globalIdOverride) {
-                    globalId = *globalIdOverride;
-                    if (!globalId) {
-                        globalId = generateId();
+                long long labelId = combineId(featureCollection.getFeatureId(featureIndex), hash);
+                if (labelIdOverride) {
+                    labelId = *labelIdOverride;
+                    if (!labelId) {
+                        labelId = generateId();
                     }
                 }
-                globalId = globalId * 3 + 2;
 
                 if (auto pointGeometry = std::get_if<PointGeometry>(featureCollection.getGeometry(featureIndex).get())) {
                     for (const auto& vertex : pointGeometry->getVertices()) {
-                        textProcessor(localId, globalId, groupId, vertex, vt::TileLayerBuilder::Vertices(), text, placementPriority, minimumDistance);
+                        textProcessor(localId, labelId, groupId, vertex, vt::TileLayerBuilder::Vertices(), text, placementPriority, minimumDistance);
                     }
                 }
                 else if (placement != vt::LabelOrientation::LINE) {
                     if (auto lineGeometry = std::get_if<LineGeometry>(featureCollection.getGeometry(featureIndex).get())) {
                         for (const auto& vertices : lineGeometry->getVerticesList()) {
-                            textProcessor(localId, globalId, groupId, std::optional<vt::TileLayerBuilder::Vertex>(), vertices, text, placementPriority, minimumDistance);
+                            textProcessor(localId, labelId, groupId, std::optional<vt::TileLayerBuilder::Vertex>(), vertices, text, placementPriority, minimumDistance);
                         }
                     }
                     else if (auto polygonGeometry = std::get_if<PolygonGeometry>(featureCollection.getGeometry(featureIndex).get())) {
                         for (const auto& vertex : polygonGeometry->getSurfacePoints()) {
-                            textProcessor(localId, globalId, groupId, vertex, vt::TileLayerBuilder::Vertices(), text, placementPriority, minimumDistance);
+                            textProcessor(localId, labelId, groupId, vertex, vt::TileLayerBuilder::Vertices(), text, placementPriority, minimumDistance);
                         }
                     }
                 }
@@ -172,15 +171,15 @@ namespace carto::mvt {
 
                     for (const auto& vertices : verticesList) {
                         if (spacing <= 0) {
-                            textProcessor(localId, globalId, groupId, std::optional<vt::TileLayerBuilder::Vertex>(), vertices, text, placementPriority, minimumDistance);
+                            textProcessor(localId, labelId, groupId, std::optional<vt::TileLayerBuilder::Vertex>(), vertices, text, placementPriority, minimumDistance);
                             continue;
                         }
 
                         for (const auto& transformedPoints : generateLinePoints(vertices, spacing, textSize, tileSize)) {
                             int counter = 0;
                             for (const auto& vertex : transformedPoints.second) {
-                                long long generatedId = combineId(globalId, std::hash<vt::TileId>()(tileId) * 63 + counter);
-                                textProcessor(localId, generatedId, groupId, vertex, vertices, text, placementPriority, minimumDistance);
+                                long long generatedLabelId = combineId(labelId, std::hash<vt::TileId>()(tileId) * 63 + counter);
+                                textProcessor(localId, generatedLabelId, groupId, vertex, vertices, text, placementPriority, minimumDistance);
                                 counter++;
                             }
                         }

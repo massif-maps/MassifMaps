@@ -39,12 +39,15 @@ namespace carto::vt {
         using LineProcessor = std::function<void(long long id, const Vertices& vertices)>;
         using PolygonProcessor = std::function<void(long long id, const VerticesList& verticesList)>;
         using Polygon3DProcessor = std::function<void(long long id, const VerticesList& verticesList, float minHeight, float maxHeight)>;
-        using PointLabelProcessor = std::function<void(long long localId, long long globalId, long long groupId, const std::variant<Vertex, Vertices>& position, float priority, float minimumGroupDistance)>;
-        using TextLabelProcessor = std::function<void(long long localId, long long globalId, long long groupId, const std::optional<Vertex>& position, const Vertices& vertices, const std::string& text, float priority, float minimumGroupDistance)>;
+        using PointLabelProcessor = std::function<void(long long id, long long labelId, long long groupId, const std::variant<Vertex, Vertices>& position, float priority, float minimumGroupDistance)>;
+        using TextLabelProcessor = std::function<void(long long id, long long labelId, long long groupId, const std::optional<Vertex>& position, const Vertices& vertices, const std::string& text, float priority, float minimumGroupDistance)>;
 
-        explicit TileLayerBuilder(std::shared_ptr<const TileTransformer::VertexTransformer> transformer, float tileSize, float geomScale);
+        explicit TileLayerBuilder(std::string layerName, int layerIdx, std::shared_ptr<const TileTransformer::VertexTransformer> transformer, float tileSize, float geomScale);
 
+        void setCompOp(std::optional<CompOp> compOp);
+        void setOpacityFunc(FloatFunction opacityFunc);
         void setClipBox(const cglib::bbox2<float>& clipBox);
+        void setPolygonClipBox(const cglib::bbox2<float>& clipBox);
 
         void addBackground(const std::shared_ptr<TileBackground>& background);
         void addBitmap(const std::shared_ptr<TileBitmap>& bitmap);
@@ -57,7 +60,7 @@ namespace carto::vt {
         PointLabelProcessor createPointLabelProcessor(const PointLabelStyle& style, const std::shared_ptr<GlyphMap>& glyphMap);
         TextLabelProcessor createTextLabelProcessor(const TextLabelStyle& style, const TextFormatter& formatter);
 
-        std::shared_ptr<TileLayer> buildTileLayer(std::string layerName, int layerIdx, std::optional<CompOp> compOp, FloatFunction opacityFunc) const;
+        std::shared_ptr<TileLayer> buildTileLayer() const;
 
     private:
         static constexpr unsigned int RESERVED_VERTICES = 4096;
@@ -92,11 +95,16 @@ namespace carto::vt {
         bool tesselateLine(const std::vector<cglib::vec2<float>>& points, std::int8_t styleIndex, const StrokeMap::Stroke* stroke, const LineStyle& style);
         bool tesselateLineEndPoint(const cglib::vec2<float>& p0, float u0, float v0, float v1, std::size_t i0, std::size_t i1, const cglib::vec2<float>& tangent, const cglib::vec2<float>& binormal, std::int8_t styleIndex, const LineStyle& style);
 
+        const std::string _layerName;
+        const int _layerIdx;
         const std::shared_ptr<const TileTransformer::VertexTransformer> _transformer;
         const float _tileSize;
         const float _geomScale;
-        cglib::bbox2<float> _clipBox;
-        cglib::bbox2<float> _polygonClipBox;
+
+        std::optional<CompOp> _compOp;
+        FloatFunction _opacityFunc = FloatFunction(1.0f);
+        cglib::bbox2<float> _clipBox = cglib::bbox2<float>(cglib::vec2<float>(-0.125f, -0.125f), cglib::vec2<float>(1.125f, 1.125f));
+        cglib::bbox2<float> _polygonClipBox = cglib::bbox2<float>(cglib::vec2<float>(-0.001953125f, -0.001953125), cglib::vec2<float>(1.001953125f, 1.001953125f));
 
         BuilderParameters _builderParameters;
         std::shared_ptr<const TileLabel::Style> _labelStyle;

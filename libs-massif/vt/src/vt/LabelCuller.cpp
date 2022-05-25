@@ -134,11 +134,11 @@ namespace carto::vt {
 
         // Sort active labels by priority/size/opacity
         std::stable_sort(validLabelList.begin(), validLabelList.end(), [&](const LabelInfo& labelInfo1, const LabelInfo& labelInfo2) {
-            if (labelInfo1.layerIndex != labelInfo2.layerIndex) {
-                return labelInfo1.layerIndex < labelInfo2.layerIndex;
-            }
             if (labelInfo1.priority != labelInfo2.priority) {
                 return labelInfo1.priority > labelInfo2.priority;
+            }
+            if (labelInfo1.layerIndex != labelInfo2.layerIndex) {
+                return labelInfo1.layerIndex < labelInfo2.layerIndex;
             }
             if (labelInfo1.size != labelInfo2.size) {
                 return labelInfo1.size > labelInfo2.size;

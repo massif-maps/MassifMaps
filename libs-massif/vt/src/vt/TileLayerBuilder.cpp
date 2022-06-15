@@ -925,6 +925,7 @@ namespace carto::vt {
         case LineJoinMode::BEVEL:
         case LineJoinMode::ROUND:
             minSplitDot = stroke ? MIN_STROKE_DOT : MIN_BEVEL_DOT;
+            minMiterDot = minSplitDot;
             break;
         case LineJoinMode::MITER:
             minSplitDot = stroke ? MIN_STROKE_DOT : MIN_BEVEL_DOT;

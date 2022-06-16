@@ -20,6 +20,7 @@ namespace carto::mvt {
             bindParameter("stroke-linejoin", &_strokeLinejoin);
             bindParameter("stroke-linecap", &_strokeLinecap);
             bindParameter("stroke-dasharray", &_strokeDashArray);
+            bindParameter("stroke-miterlimit", &_strokeMiterLimit);
             bindParameter("offset", &_offset);
         }
 
@@ -28,6 +29,8 @@ namespace carto::mvt {
     protected:
         static constexpr int DASH_SUPERSAMPLING_FACTOR = 2;
         static constexpr float DASH_PATTERN_SCALE = 0.75f;
+        static constexpr float DASH_MITER_DOT_LIMIT = 0.2f;
+        static constexpr float SPLIT_DOT_LIMIT = -0.95f;
 
         static std::shared_ptr<vt::BitmapPattern> createDashBitmapPattern(const std::vector<float>& strokeDashArray, float height, vt::LineCapMode lineCap);
 
@@ -37,6 +40,7 @@ namespace carto::mvt {
         LineJoinModeParameter _strokeLinejoin = LineJoinModeParameter("miter");
         LineCapModeParameter _strokeLinecap = LineCapModeParameter("butt");
         StringParameter _strokeDashArray = StringParameter("");
+        FloatFunctionParameter _strokeMiterLimit = FloatFunctionParameter(4.0f);
         FloatFunctionParameter _offset = FloatFunctionParameter(0.0f);
 
         ColorFunctionBuilder _strokeFuncBuilder;

@@ -24,6 +24,7 @@ namespace carto::mvt {
         
     protected:
         static constexpr float PATTERN_SCALE = 0.75f;
+        static constexpr float PATTERN_DOT_LIMIT = 0.2f;
 
         StringParameter _file;
         ColorFunctionParameter _fill = ColorFunctionParameter("#ffffff");

@@ -49,7 +49,23 @@ namespace carto::mvt {
             }
         }
 
-        vt::LineStyle style(compOp, strokeLinejoin, strokeLinecap, strokeFunc, strokeWidthFunc, offsetFunc, strokePattern, geometryTransform);
+        float splitDotLimit = SPLIT_DOT_LIMIT;
+        float miterDotLimit = splitDotLimit;
+        if (offsetFunc == vt::FloatFunction(0)) {
+            if (strokeLinejoin == vt::LineJoinMode::BEVEL) {
+                miterDotLimit = 1.0f;
+            } else {
+                float strokeMiterLimit = std::max(_strokeMiterLimit.getStaticValue(exprContext), 1.0f / 16.0f);
+                float strokeWidth = std::max(_strokeWidth.getStaticValue(exprContext), 1.0f);
+                float maxMiterAngle = std::acos(-1.0f) - 2.0f * std::asin(std::min(strokeWidth / strokeMiterLimit, 1.0f));
+                miterDotLimit = std::cos(maxMiterAngle);
+            }
+            if (strokePattern) {
+                splitDotLimit = miterDotLimit = DASH_MITER_DOT_LIMIT;
+            }
+        }
+
+        vt::LineStyle style(compOp, strokeLinejoin, strokeLinecap, strokeFunc, strokeWidthFunc, offsetFunc, splitDotLimit, miterDotLimit, strokePattern, geometryTransform);
         
         std::shared_ptr<vt::StrokeMap> strokeMap = symbolizerContext.getStrokeMap();
 

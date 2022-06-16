@@ -570,6 +570,7 @@ namespace carto::css {
         { "line-dasharray", "stroke-dasharray" },
         { "line-join", "stroke-linejoin" },
         { "line-cap", "stroke-linecap" },
+        { "line-miterlimit", "stroke-miterlimit" },
         { "line-offset", "offset" },
         { "line-geometry-transform", "geometry-transform" },
         { "line-comp-op", "comp-op" },

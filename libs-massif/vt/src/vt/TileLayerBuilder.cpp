@@ -2,6 +2,7 @@
 #include "TextFormatter.h"
 #include "Color.h"
 
+#include <cmath>
 #include <utility>
 #include <algorithm>
 #include <iterator>
@@ -42,8 +43,8 @@ namespace {
 }
 
 namespace carto::vt {
-    TileLayerBuilder::TileLayerBuilder(std::string layerName, int layerIdx, std::shared_ptr<const TileTransformer::VertexTransformer> transformer, float tileSize, float geomScale) :
-        _layerName(std::move(layerName)), _layerIdx(layerIdx), _transformer(std::move(transformer)), _tileSize(tileSize), _geomScale(geomScale)
+    TileLayerBuilder::TileLayerBuilder(std::string layerName, int layerIdx, const TileId& tileId, const std::shared_ptr<const TileTransformer>& transformer, float tileSize, float geomScale) :
+        _layerName(std::move(layerName)), _layerIdx(layerIdx), _tileId(tileId), _transformer(transformer->createTileVertexTransformer(tileId)), _tileSize(tileSize), _geomScale(geomScale)
     {
         _coords.reserve(RESERVED_VERTICES);
         _texCoords.reserve(RESERVED_VERTICES);
@@ -798,8 +799,11 @@ namespace carto::vt {
             return false;
         }
 
+        float u0 = 0.0f, v0 = 0.0f;
         float du_dx = 0.0f, dv_dy = 0.0f;
         if (style.pattern) {
+            u0 = static_cast<float>(std::fmod((_tileId.x + 0.5) * _tileSize, style.pattern->bitmap->width))  / style.pattern->widthScale;
+            v0 = static_cast<float>(std::fmod((_tileId.y + 0.5) * _tileSize, style.pattern->bitmap->height)) / style.pattern->heightScale;
             du_dx = _tileSize / style.pattern->widthScale;
             dv_dy = _tileSize / style.pattern->heightScale;
         }
@@ -807,7 +811,7 @@ namespace carto::vt {
         std::size_t offset = _coords.size();
         for (std::size_t i = 0; i < _tesselator.getVertices().size(); i++) {
             cglib::vec2<float> p = _tesselator.getVertices()[i];
-            cglib::vec2<float> uv((p(0) + 0.5f) * du_dx, (p(1) + 0.5f) * dv_dy);
+            cglib::vec2<float> uv(u0 + p(0) * du_dx, v0 + p(1) * dv_dy);
 
             _coords.append(p);
             _texCoords.append(uv);

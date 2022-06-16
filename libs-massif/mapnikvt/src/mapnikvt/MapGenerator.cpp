@@ -23,10 +23,10 @@ namespace carto::mvt {
 
         Map::Settings mapSettings = map.getSettings();
         mapNode.append_attribute("font-directory").set_value(mapSettings.fontDirectory.c_str());
-        mapNode.append_attribute("background-color").set_value(generateColorString(mapSettings.backgroundColor).c_str());
         mapNode.append_attribute("background-image").set_value(mapSettings.backgroundImage.c_str());
-        mapNode.append_attribute("north-pole-color").set_value(generateColorString(mapSettings.northPoleColor).c_str());
-        mapNode.append_attribute("south-pole-color").set_value(generateColorString(mapSettings.southPoleColor).c_str());
+        mapNode.append_attribute("background-color").set_value(generateExpressionString(mapSettings.backgroundColor.getExpression(), true).c_str());
+        mapNode.append_attribute("north-pole-color").set_value(generateExpressionString(mapSettings.northPoleColor.getExpression(), true).c_str());
+        mapNode.append_attribute("south-pole-color").set_value(generateExpressionString(mapSettings.southPoleColor.getExpression(), true).c_str());
 
         // Parameters
         pugi::xml_node paramsNode = mapNode.append_child("Parameters");

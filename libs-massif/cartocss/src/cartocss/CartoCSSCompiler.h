@@ -31,7 +31,7 @@ namespace carto::css {
         bool isIgnoreLayerPredicates() const { return _ignoreLayerPredicates; }
         void setIgnoreLayerPredicates(bool ignoreLayerPredicates) { _ignoreLayerPredicates = ignoreLayerPredicates; }
 
-        void compileMap(const StyleSheet& styleSheet, std::map<std::string, Value>& mapProperties) const;
+        void compileMap(const StyleSheet& styleSheet, std::map<std::string, Expression>& mapProperties) const;
         void compileLayer(const StyleSheet& styleSheet, const std::string& layerName, int minZoom, int maxZoom, std::map<std::pair<int, int>, std::list<AttachmentPropertySets>>& layerZoomAttachments) const;
         
     private:

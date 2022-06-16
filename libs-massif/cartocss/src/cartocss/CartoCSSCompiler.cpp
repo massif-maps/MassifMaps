@@ -5,7 +5,7 @@
 #include <set>
 
 namespace carto::css {
-    void CartoCSSCompiler::compileMap(const StyleSheet& styleSheet, std::map<std::string, Value>& mapProperties) const {
+    void CartoCSSCompiler::compileMap(const StyleSheet& styleSheet, std::map<std::string, Expression>& mapProperties) const {
         // Build flat property lists
         std::map<std::string, Expression> variableMap;
         PredicateContext context;
@@ -35,9 +35,7 @@ namespace carto::css {
                     }
 
                     std::shared_ptr<const Property> prop = state.getProperty(property.property);
-                    if (auto val = std::get_if<Value>(&prop->getExpression())) {
-                        mapProperties[prop->getField()] = *val;
-                    }
+                    mapProperties[prop->getField()] = prop->getExpression();
                 }
             }
         }

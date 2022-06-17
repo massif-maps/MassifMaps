@@ -14,14 +14,14 @@ namespace carto::mvt {
     class LineSymbolizer : public GeometrySymbolizer {
     public:
         explicit LineSymbolizer(std::shared_ptr<Logger> logger) : GeometrySymbolizer(std::move(logger)) {
-            bindParameter("stroke", &_stroke);
-            bindParameter("stroke-width", &_strokeWidth);
-            bindParameter("stroke-opacity", &_strokeOpacity);
-            bindParameter("stroke-linejoin", &_strokeLinejoin);
-            bindParameter("stroke-linecap", &_strokeLinecap);
-            bindParameter("stroke-dasharray", &_strokeDashArray);
-            bindParameter("stroke-miterlimit", &_strokeMiterLimit);
-            bindParameter("offset", &_offset);
+            bindProperty("stroke", &_stroke);
+            bindProperty("stroke-width", &_strokeWidth);
+            bindProperty("stroke-opacity", &_strokeOpacity);
+            bindProperty("stroke-linejoin", &_strokeLinejoin);
+            bindProperty("stroke-linecap", &_strokeLinecap);
+            bindProperty("stroke-dasharray", &_strokeDashArray);
+            bindProperty("stroke-miterlimit", &_strokeMiterLimit);
+            bindProperty("offset", &_offset);
         }
 
         virtual FeatureProcessor createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const override;
@@ -34,14 +34,14 @@ namespace carto::mvt {
 
         static std::shared_ptr<vt::BitmapPattern> createDashBitmapPattern(const std::vector<float>& strokeDashArray, float height, vt::LineCapMode lineCap);
 
-        ColorFunctionParameter _stroke = ColorFunctionParameter("#000000");
-        FloatFunctionParameter _strokeWidth = FloatFunctionParameter(1.0f);
-        FloatFunctionParameter _strokeOpacity = FloatFunctionParameter(1.0f);
-        LineJoinModeParameter _strokeLinejoin = LineJoinModeParameter("miter");
-        LineCapModeParameter _strokeLinecap = LineCapModeParameter("butt");
-        StringParameter _strokeDashArray = StringParameter("");
-        FloatFunctionParameter _strokeMiterLimit = FloatFunctionParameter(4.0f);
-        FloatFunctionParameter _offset = FloatFunctionParameter(0.0f);
+        ColorFunctionProperty _stroke = ColorFunctionProperty("#000000");
+        FloatFunctionProperty _strokeWidth = FloatFunctionProperty(1.0f);
+        FloatFunctionProperty _strokeOpacity = FloatFunctionProperty(1.0f);
+        LineJoinModeProperty _strokeLinejoin = LineJoinModeProperty("miter");
+        LineCapModeProperty _strokeLinecap = LineCapModeProperty("butt");
+        StringProperty _strokeDashArray = StringProperty("");
+        FloatFunctionProperty _strokeMiterLimit = FloatFunctionProperty(4.0f);
+        FloatFunctionProperty _offset = FloatFunctionProperty(0.0f);
 
         ColorFunctionBuilder _strokeFuncBuilder;
     };

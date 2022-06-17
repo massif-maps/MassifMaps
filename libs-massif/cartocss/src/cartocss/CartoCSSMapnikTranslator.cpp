@@ -445,12 +445,12 @@ namespace carto::css {
                 }
                 if (mapnikSymbolizer && !fontSetFaceName.first.empty()) {
                     try {
-                        if (auto param = mapnikSymbolizer->getParameter(fontSetFaceName.first)) {
-                            param->setExpression(mvt::Value(fontSetFaceName.second));
+                        if (auto mapnikProp = mapnikSymbolizer->getProperty(fontSetFaceName.first)) {
+                            mapnikProp->setExpression(mvt::Value(fontSetFaceName.second));
                         }
                     }
                     catch (const std::exception& ex) {
-                        _logger->write(mvt::Logger::Severity::ERROR, "Error while setting " + fontSetFaceName.first + " parameter: " + ex.what());
+                        _logger->write(mvt::Logger::Severity::ERROR, "Error while setting " + fontSetFaceName.first + " property: " + ex.what());
                     }
                 }
             }
@@ -475,18 +475,18 @@ namespace carto::css {
                 continue;
             }
             if (it->second.empty()) {
-                // Pseudo-parameter, already handled
+                // Pseudo-property, already handled
                 continue;
             }
 
             try {
                 mvt::Expression mapnikExpr = buildExpression(prop->getExpression());
-                if (auto param = mapnikSymbolizer->getParameter(it->second)) {
-                    param->setExpression(mapnikExpr);
+                if (auto mapnikProp = mapnikSymbolizer->getProperty(it->second)) {
+                    mapnikProp->setExpression(mapnikExpr);
                 }
             }
             catch (const std::exception& ex) {
-                _logger->write(mvt::Logger::Severity::ERROR, "Error while setting " + propertyId + " parameter: " + ex.what());
+                _logger->write(mvt::Logger::Severity::ERROR, "Error while setting " + propertyId + " property: " + ex.what());
             }
         }
 

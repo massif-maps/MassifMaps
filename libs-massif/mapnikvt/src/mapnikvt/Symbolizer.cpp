@@ -9,38 +9,38 @@
 #include <atomic>
 
 namespace carto::mvt {
-    std::set<std::string> Symbolizer::getParameterNames() const {
-        std::set<std::string> paramNames;
-        for (std::pair<std::string, SymbolizerParameter*> param : _parameterMap) {
-            paramNames.insert(param.first);
+    std::set<std::string> Symbolizer::getPropertyNames() const {
+        std::set<std::string> names;
+        for (std::pair<std::string, Property*> prop : _propertyMap) {
+            names.insert(prop.first);
         }
-        return paramNames;
+        return names;
     }
 
-    SymbolizerParameter* Symbolizer::getParameter(const std::string& paramName) {
-        auto it = _parameterMap.find(paramName);
-        if (it == _parameterMap.end()) {
-            throw std::invalid_argument("Illegal parameter");
-        }
-        return it->second;
-    }
-
-    const SymbolizerParameter* Symbolizer::getParameter(const std::string& paramName) const {
-        auto it = _parameterMap.find(paramName);
-        if (it == _parameterMap.end()) {
-            throw std::invalid_argument("Illegal parameter");
+    Property* Symbolizer::getProperty(const std::string& name) {
+        auto it = _propertyMap.find(name);
+        if (it == _propertyMap.end()) {
+            throw std::invalid_argument("Illegal property");
         }
         return it->second;
     }
 
-    void Symbolizer::bindParameter(const std::string& paramName, SymbolizerParameter* param) {
-        _parameterMap[paramName] = param;
+    const Property* Symbolizer::getProperty(const std::string& name) const {
+        auto it = _propertyMap.find(name);
+        if (it == _propertyMap.end()) {
+            throw std::invalid_argument("Illegal property");
+        }
+        return it->second;
     }
 
-    void Symbolizer::unbindParameter(const std::string& paramName) {
-        auto it = _parameterMap.find(paramName);
-        if (it != _parameterMap.end()) {
-            _parameterMap.erase(it);
+    void Symbolizer::bindProperty(const std::string& name, Property* prop) {
+        _propertyMap[name] = prop;
+    }
+
+    void Symbolizer::unbindProperty(const std::string& name) {
+        auto it = _propertyMap.find(name);
+        if (it != _propertyMap.end()) {
+            _propertyMap.erase(it);
         }
     }
 

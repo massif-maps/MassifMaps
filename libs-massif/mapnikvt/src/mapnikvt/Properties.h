@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_MAPNIKVT_SYMBOLIZERPARAMETER_H_
-#define _CARTO_MAPNIKVT_SYMBOLIZERPARAMETER_H_
+#ifndef _CARTO_MAPNIKVT_PROPERTIES_H_
+#define _CARTO_MAPNIKVT_PROPERTIES_H_
 
 #include "Expression.h"
 #include "ExpressionContext.h"
@@ -24,8 +24,8 @@
 #include <functional>
 
 namespace carto::mvt {
-    struct SymbolizerParameter {
-        virtual ~SymbolizerParameter() = default;
+    struct Property {
+        virtual ~Property() = default;
 
         virtual bool isDefined() const = 0;
         virtual const Expression& getExpression() const = 0;
@@ -65,7 +65,7 @@ namespace carto::mvt {
     };
 
     template <typename T>
-    struct GenericValueParameter : SymbolizerParameter {
+    struct GenericValueProperty : Property {
         virtual bool isDefined() const override { return _defined; }
 
         virtual const Expression& getExpression() const override { return _expr; }
@@ -88,8 +88,8 @@ namespace carto::mvt {
         }
 
     protected:
-        GenericValueParameter() = default;
-        explicit GenericValueParameter(const T& defaultValue) : _value(defaultValue), _expr(Value(defaultValue)) { }
+        GenericValueProperty() = default;
+        explicit GenericValueProperty(const T& defaultValue) : _value(defaultValue), _expr(Value(defaultValue)) { }
 
         template <typename S>
         void initialize(const S& defaultValue) { _expr = Value(defaultValue); _value = buildValue(ExpressionContext()); }
@@ -103,9 +103,9 @@ namespace carto::mvt {
         Expression _expr;
     };
 
-    struct ValueParameter : GenericValueParameter<Value> {
-        ValueParameter() : ValueParameter(Value()) { }
-        explicit ValueParameter(const Value& defaultValue) : GenericValueParameter(defaultValue) { }
+    struct ValueProperty : GenericValueProperty<Value> {
+        ValueProperty() : ValueProperty(Value()) { }
+        explicit ValueProperty(const Value& defaultValue) : GenericValueProperty(defaultValue) { }
 
     protected:
         virtual Value buildValue(const ExpressionContext& context) const override {
@@ -113,9 +113,9 @@ namespace carto::mvt {
         }
     };
 
-    struct BoolParameter : GenericValueParameter<bool> {
-        BoolParameter() = delete;
-        explicit BoolParameter(bool defaultValue) : GenericValueParameter(defaultValue) { }
+    struct BoolProperty : GenericValueProperty<bool> {
+        BoolProperty() = delete;
+        explicit BoolProperty(bool defaultValue) : GenericValueProperty(defaultValue) { }
 
     protected:
         virtual bool buildValue(const ExpressionContext& context) const override {
@@ -124,9 +124,9 @@ namespace carto::mvt {
         }
     };
 
-    struct FloatParameter : GenericValueParameter<float> {
-        FloatParameter() = delete;
-        explicit FloatParameter(float defaultValue) : GenericValueParameter(defaultValue) { }
+    struct FloatProperty : GenericValueProperty<float> {
+        FloatProperty() = delete;
+        explicit FloatProperty(float defaultValue) : GenericValueProperty(defaultValue) { }
 
     protected:
         virtual float buildValue(const ExpressionContext& context) const override {
@@ -135,9 +135,9 @@ namespace carto::mvt {
         }
     };
 
-    struct ColorParameter : GenericValueParameter<vt::Color> {
-        ColorParameter() = delete;
-        explicit ColorParameter(const std::string& defaultValue) { initialize(defaultValue); }
+    struct ColorProperty : GenericValueProperty<vt::Color> {
+        ColorProperty() = delete;
+        explicit ColorProperty(const std::string& defaultValue) { initialize(defaultValue); }
 
     protected:
         virtual vt::Color buildValue(const ExpressionContext& context) const override {
@@ -146,9 +146,9 @@ namespace carto::mvt {
         }
     };
 
-    struct StringParameter : GenericValueParameter<std::string> {
-        StringParameter() { initialize(std::string()); }
-        explicit StringParameter(const std::string& defaultValue) : GenericValueParameter(defaultValue) { }
+    struct StringProperty : GenericValueProperty<std::string> {
+        StringProperty() { initialize(std::string()); }
+        explicit StringProperty(const std::string& defaultValue) : GenericValueProperty(defaultValue) { }
 
     protected:
         virtual std::string buildValue(const ExpressionContext& context) const override {
@@ -157,8 +157,8 @@ namespace carto::mvt {
         }
     };
 
-    struct TransformParameter : GenericValueParameter<std::optional<vt::Transform>> {
-        TransformParameter() { initialize(std::monostate()); }
+    struct TransformProperty : GenericValueProperty<std::optional<vt::Transform>> {
+        TransformProperty() { initialize(std::monostate()); }
 
     protected:
         virtual std::optional<vt::Transform> buildValue(const ExpressionContext& context) const override {
@@ -170,9 +170,9 @@ namespace carto::mvt {
         }
     };
 
-    struct CompOpParameter : GenericValueParameter<vt::CompOp> {
-        CompOpParameter() = delete;
-        explicit CompOpParameter(const std::string& defaultValue) { initialize(defaultValue); }
+    struct CompOpProperty : GenericValueProperty<vt::CompOp> {
+        CompOpProperty() = delete;
+        explicit CompOpProperty(const std::string& defaultValue) { initialize(defaultValue); }
 
     protected:
         virtual vt::CompOp buildValue(const ExpressionContext& context) const override {
@@ -181,9 +181,9 @@ namespace carto::mvt {
         }
     };
 
-    struct LineCapModeParameter : GenericValueParameter<vt::LineCapMode> {
-        LineCapModeParameter() = delete;
-        explicit LineCapModeParameter(const std::string& defaultValue) { initialize(defaultValue); }
+    struct LineCapModeProperty : GenericValueProperty<vt::LineCapMode> {
+        LineCapModeProperty() = delete;
+        explicit LineCapModeProperty(const std::string& defaultValue) { initialize(defaultValue); }
 
     protected:
         virtual vt::LineCapMode buildValue(const ExpressionContext& context) const override {
@@ -192,9 +192,9 @@ namespace carto::mvt {
         }
     };
 
-    struct LineJoinModeParameter : GenericValueParameter<vt::LineJoinMode> {
-        LineJoinModeParameter() = delete;
-        explicit LineJoinModeParameter(const std::string& defaultValue) { initialize(defaultValue); }
+    struct LineJoinModeProperty : GenericValueProperty<vt::LineJoinMode> {
+        LineJoinModeProperty() = delete;
+        explicit LineJoinModeProperty(const std::string& defaultValue) { initialize(defaultValue); }
 
     protected:
         virtual vt::LineJoinMode buildValue(const ExpressionContext& context) const override {
@@ -203,9 +203,9 @@ namespace carto::mvt {
         }
     };
 
-    struct LabelOrientationParameter : GenericValueParameter<vt::LabelOrientation> {
-        LabelOrientationParameter() = delete;
-        explicit LabelOrientationParameter(const std::string& defaultValue) { initialize(defaultValue); }
+    struct LabelOrientationProperty : GenericValueProperty<vt::LabelOrientation> {
+        LabelOrientationProperty() = delete;
+        explicit LabelOrientationProperty(const std::string& defaultValue) { initialize(defaultValue); }
 
     protected:
         virtual vt::LabelOrientation buildValue(const ExpressionContext& context) const override {
@@ -214,9 +214,9 @@ namespace carto::mvt {
         }
     };
 
-    struct MarkerTypeParameter : GenericValueParameter<std::string> {
-        MarkerTypeParameter() = delete;
-        explicit MarkerTypeParameter(const std::string& defaultValue) { initialize(defaultValue); }
+    struct MarkerTypeProperty : GenericValueProperty<std::string> {
+        MarkerTypeProperty() = delete;
+        explicit MarkerTypeProperty(const std::string& defaultValue) { initialize(defaultValue); }
 
     protected:
         virtual std::string buildValue(const ExpressionContext& context) const override {
@@ -232,9 +232,9 @@ namespace carto::mvt {
         }
     };
 
-    struct TextTransformParameter : GenericValueParameter<std::function<std::string(const std::string&)>> {
-        TextTransformParameter() = delete;
-        explicit TextTransformParameter(const std::string& defaultValue) { initialize(defaultValue); }
+    struct TextTransformProperty : GenericValueProperty<std::function<std::string(const std::string&)>> {
+        TextTransformProperty() = delete;
+        explicit TextTransformProperty(const std::string& defaultValue) { initialize(defaultValue); }
 
     protected:
         virtual std::function<std::string(const std::string&)> buildValue(const ExpressionContext& context) const override {
@@ -259,9 +259,9 @@ namespace carto::mvt {
         }
     };
 
-    struct HorizontalAlignmentParameter : GenericValueParameter<std::optional<float>> {
-        HorizontalAlignmentParameter() = delete;
-        explicit HorizontalAlignmentParameter(const std::string& defaultValue) { initialize(defaultValue); }
+    struct HorizontalAlignmentProperty : GenericValueProperty<std::optional<float>> {
+        HorizontalAlignmentProperty() = delete;
+        explicit HorizontalAlignmentProperty(const std::string& defaultValue) { initialize(defaultValue); }
 
     protected:
         virtual std::optional<float> buildValue(const ExpressionContext& context) const override {
@@ -283,9 +283,9 @@ namespace carto::mvt {
         }
     };
 
-    struct VerticalAlignmentParameter : GenericValueParameter<std::optional<float>> {
-        VerticalAlignmentParameter() = delete;
-        explicit VerticalAlignmentParameter(const std::string& defaultValue) { initialize(defaultValue); }
+    struct VerticalAlignmentProperty : GenericValueProperty<std::optional<float>> {
+        VerticalAlignmentProperty() = delete;
+        explicit VerticalAlignmentProperty(const std::string& defaultValue) { initialize(defaultValue); }
 
     protected:
         virtual std::optional<float> buildValue(const ExpressionContext& context) const override {
@@ -308,7 +308,7 @@ namespace carto::mvt {
     };
 
     template <typename V, typename T>
-    struct GenericFunctionParameter : SymbolizerParameter {
+    struct GenericFunctionProperty : Property {
         virtual bool isDefined() const override { return _defined; }
 
         virtual const Expression& getExpression() const override { return _expr; }
@@ -340,8 +340,8 @@ namespace carto::mvt {
         }
 
     protected:
-        GenericFunctionParameter() = default;
-        template <typename S> explicit GenericFunctionParameter(const S& defaultValue) : _func(defaultValue), _expr(Value(defaultValue)) { }
+        GenericFunctionProperty() = default;
+        template <typename S> explicit GenericFunctionProperty(const S& defaultValue) : _func(defaultValue), _expr(Value(defaultValue)) { }
         
         template <typename S>
         void initialize(const S& defaultValue) { _expr = Value(defaultValue); _func = buildFunction(ExpressionContext()); }
@@ -355,9 +355,9 @@ namespace carto::mvt {
         Expression _expr;
     };
 
-    struct FloatFunctionParameter : GenericFunctionParameter<float, vt::FloatFunction> {
-        FloatFunctionParameter() = delete;
-        explicit FloatFunctionParameter(float defaultValue) : GenericFunctionParameter(defaultValue) { }
+    struct FloatFunctionProperty : GenericFunctionProperty<float, vt::FloatFunction> {
+        FloatFunctionProperty() = delete;
+        explicit FloatFunctionProperty(float defaultValue) : GenericFunctionProperty(defaultValue) { }
 
     protected:
         virtual vt::FloatFunction buildFunction(const ExpressionContext& context) const override {
@@ -380,9 +380,9 @@ namespace carto::mvt {
         }
     };
 
-    struct ColorFunctionParameter : GenericFunctionParameter<vt::Color, vt::ColorFunction> {
-        ColorFunctionParameter() = delete;
-        explicit ColorFunctionParameter(const std::string& defaultValue) { initialize(defaultValue); }
+    struct ColorFunctionProperty : GenericFunctionProperty<vt::Color, vt::ColorFunction> {
+        ColorFunctionProperty() = delete;
+        explicit ColorFunctionProperty(const std::string& defaultValue) { initialize(defaultValue); }
 
     protected:
         virtual vt::ColorFunction buildFunction(const ExpressionContext& context) const override {

@@ -43,9 +43,9 @@ namespace carto::mvt {
 
         _referencedSymbolizerFields.clear();
         for (const std::shared_ptr<const Symbolizer>& symbolizer : _symbolizers) {
-            for (const std::string& paramName : symbolizer->getParameterNames()) {
-                if (auto param = symbolizer->getParameter(paramName)) {
-                    std::visit(ExpressionVariableVisitor(FieldExtractor(_referencedSymbolizerFields)), param->getExpression());
+            for (const std::string& name : symbolizer->getPropertyNames()) {
+                if (auto prop = symbolizer->getProperty(name)) {
+                    std::visit(ExpressionVariableVisitor(FieldExtractor(_referencedSymbolizerFields)), prop->getExpression());
                 }
             }
         }

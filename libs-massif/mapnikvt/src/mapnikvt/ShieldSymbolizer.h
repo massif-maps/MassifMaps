@@ -13,10 +13,10 @@ namespace carto::mvt {
     class ShieldSymbolizer : public TextSymbolizer {
     public:
         explicit ShieldSymbolizer(const Expression& text, std::vector<std::shared_ptr<FontSet>> fontSets, std::shared_ptr<Logger> logger) : TextSymbolizer(text, std::move(fontSets), std::move(logger)) {
-            bindParameter("file", &_file);
-            bindParameter("shield-dx", &_shieldDx);
-            bindParameter("shield-dy", &_shieldDy);
-            bindParameter("unlock-image", &_unlockImage);
+            bindProperty("file", &_file);
+            bindProperty("shield-dx", &_shieldDx);
+            bindProperty("shield-dy", &_shieldDy);
+            bindProperty("unlock-image", &_unlockImage);
         }
 
         virtual FeatureProcessor createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const override;
@@ -24,10 +24,10 @@ namespace carto::mvt {
     protected:
         static constexpr float IMAGE_UPSAMPLING_SCALE = 2.5f;
 
-        StringParameter _file;
-        BoolParameter _unlockImage = BoolParameter(false);
-        FloatParameter _shieldDx = FloatParameter(0.0f);
-        FloatParameter _shieldDy = FloatParameter(0.0f);
+        StringProperty _file;
+        BoolProperty _unlockImage = BoolProperty(false);
+        FloatProperty _shieldDx = FloatProperty(0.0f);
+        FloatProperty _shieldDy = FloatProperty(0.0f);
     };
 }
 

@@ -21,35 +21,35 @@ namespace carto::mvt {
     public:
         explicit TextSymbolizer(const Expression& text, std::vector<std::shared_ptr<FontSet>> fontSets, std::shared_ptr<Logger> logger) : Symbolizer(std::move(logger)), _fontSets(std::move(fontSets)) {
             _text.setExpression(text);
-            bindParameter("name", &_text);
-            bindParameter("feature-id", &_featureId);
-            bindParameter("text-transform", &_textTransform);
-            bindParameter("face-name", &_faceName);
-            bindParameter("fontset-name", &_fontSetName);
-            bindParameter("placement", &_placement);
-            bindParameter("size", &_size);
-            bindParameter("spacing", &_spacing);
-            bindParameter("fill", &_fill);
-            bindParameter("opacity", &_opacity);
-            bindParameter("halo-fill", &_haloFill);
-            bindParameter("halo-opacity", &_haloOpacity);
-            bindParameter("halo-radius", &_haloRadius);
-            bindParameter("orientation", &_orientationAngle);
-            bindParameter("dx", &_dx);
-            bindParameter("dy", &_dy);
-            bindParameter("placement-priority", &_placementPriority);
-            bindParameter("minimum-distance", &_minimumDistance);
-            bindParameter("allow-overlap", &_allowOverlap);
-            bindParameter("clip", &_clip);
-            bindParameter("wrap-character", &_wrapCharacter),
-            bindParameter("wrap-width", &_wrapWidth);
-            bindParameter("wrap-before", &_wrapBefore);
-            bindParameter("character-spacing", &_characterSpacing);
-            bindParameter("line-spacing", &_lineSpacing);
-            bindParameter("horizontal-alignment", &_horizontalAlignment);
-            bindParameter("vertical-alignment", &_verticalAlignment);
-            bindParameter("avoid-edges", nullptr);
-            bindParameter("halo-rasterizer", nullptr);
+            bindProperty("name", &_text);
+            bindProperty("feature-id", &_featureId);
+            bindProperty("text-transform", &_textTransform);
+            bindProperty("face-name", &_faceName);
+            bindProperty("fontset-name", &_fontSetName);
+            bindProperty("placement", &_placement);
+            bindProperty("size", &_size);
+            bindProperty("spacing", &_spacing);
+            bindProperty("fill", &_fill);
+            bindProperty("opacity", &_opacity);
+            bindProperty("halo-fill", &_haloFill);
+            bindProperty("halo-opacity", &_haloOpacity);
+            bindProperty("halo-radius", &_haloRadius);
+            bindProperty("orientation", &_orientationAngle);
+            bindProperty("dx", &_dx);
+            bindProperty("dy", &_dy);
+            bindProperty("placement-priority", &_placementPriority);
+            bindProperty("minimum-distance", &_minimumDistance);
+            bindProperty("allow-overlap", &_allowOverlap);
+            bindProperty("clip", &_clip);
+            bindProperty("wrap-character", &_wrapCharacter),
+            bindProperty("wrap-width", &_wrapWidth);
+            bindProperty("wrap-before", &_wrapBefore);
+            bindProperty("character-spacing", &_characterSpacing);
+            bindProperty("line-spacing", &_lineSpacing);
+            bindProperty("horizontal-alignment", &_horizontalAlignment);
+            bindProperty("vertical-alignment", &_verticalAlignment);
+            bindProperty("avoid-edges", nullptr);
+            bindProperty("halo-rasterizer", nullptr);
         }
 
         const Expression& getText() const { return _text.getExpression(); }
@@ -68,33 +68,33 @@ namespace carto::mvt {
 
         const std::vector<std::shared_ptr<FontSet>> _fontSets;
 
-        StringParameter _text;
-        ValueParameter _featureId;
-        TextTransformParameter _textTransform = TextTransformParameter("none");
-        StringParameter _faceName;
-        StringParameter _fontSetName;
-        LabelOrientationParameter _placement = LabelOrientationParameter("point");
-        FloatFunctionParameter _size = FloatFunctionParameter(10.0f);
-        FloatParameter _spacing = FloatParameter(0.0f);
-        ColorFunctionParameter _fill = ColorFunctionParameter("#000000");
-        FloatFunctionParameter _opacity = FloatFunctionParameter(1.0f);
-        ColorFunctionParameter _haloFill = ColorFunctionParameter("#ffffff");
-        FloatFunctionParameter _haloOpacity = FloatFunctionParameter(1.0f);
-        FloatFunctionParameter _haloRadius = FloatFunctionParameter(0.0f);
-        FloatParameter _orientationAngle = FloatParameter(0.0f);
-        FloatParameter _dx = FloatParameter(0.0f);
-        FloatParameter _dy = FloatParameter(0.0f);
-        FloatParameter _placementPriority = FloatParameter(0.0f);
-        FloatParameter _minimumDistance = FloatParameter(0.0f);
-        BoolParameter _allowOverlap = BoolParameter(false);
-        BoolParameter _clip = BoolParameter(false);
-        StringParameter _wrapCharacter = StringParameter("");
-        FloatParameter _wrapWidth = FloatParameter(0.0f);
-        BoolParameter _wrapBefore = BoolParameter(false);
-        FloatParameter _characterSpacing = FloatParameter(0.0f);
-        FloatParameter _lineSpacing = FloatParameter(0.0f);
-        HorizontalAlignmentParameter _horizontalAlignment = HorizontalAlignmentParameter("auto");
-        VerticalAlignmentParameter _verticalAlignment = VerticalAlignmentParameter("auto");
+        StringProperty _text;
+        ValueProperty _featureId;
+        TextTransformProperty _textTransform = TextTransformProperty("none");
+        StringProperty _faceName;
+        StringProperty _fontSetName;
+        LabelOrientationProperty _placement = LabelOrientationProperty("point");
+        FloatFunctionProperty _size = FloatFunctionProperty(10.0f);
+        FloatProperty _spacing = FloatProperty(0.0f);
+        ColorFunctionProperty _fill = ColorFunctionProperty("#000000");
+        FloatFunctionProperty _opacity = FloatFunctionProperty(1.0f);
+        ColorFunctionProperty _haloFill = ColorFunctionProperty("#ffffff");
+        FloatFunctionProperty _haloOpacity = FloatFunctionProperty(1.0f);
+        FloatFunctionProperty _haloRadius = FloatFunctionProperty(0.0f);
+        FloatProperty _orientationAngle = FloatProperty(0.0f);
+        FloatProperty _dx = FloatProperty(0.0f);
+        FloatProperty _dy = FloatProperty(0.0f);
+        FloatProperty _placementPriority = FloatProperty(0.0f);
+        FloatProperty _minimumDistance = FloatProperty(0.0f);
+        BoolProperty _allowOverlap = BoolProperty(false);
+        BoolProperty _clip = BoolProperty(false);
+        StringProperty _wrapCharacter = StringProperty("");
+        FloatProperty _wrapWidth = FloatProperty(0.0f);
+        BoolProperty _wrapBefore = BoolProperty(false);
+        FloatProperty _characterSpacing = FloatProperty(0.0f);
+        FloatProperty _lineSpacing = FloatProperty(0.0f);
+        HorizontalAlignmentProperty _horizontalAlignment = HorizontalAlignmentProperty("auto");
+        VerticalAlignmentProperty _verticalAlignment = VerticalAlignmentProperty("auto");
 
         ColorFunctionBuilder _fillFuncBuilder;
         FloatFunctionBuilder _sizeFuncBuilder;

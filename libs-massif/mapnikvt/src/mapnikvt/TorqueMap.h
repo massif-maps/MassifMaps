@@ -19,7 +19,7 @@ namespace carto::mvt {
             int frameCount = 128;
             float resolution = 2.0f;
             float animationDuration = 30.0f;
-            ColorFunctionParameter clearColor = ColorFunctionParameter("transparent");
+            ColorFunctionProperty clearColor = ColorFunctionProperty("transparent");
             std::string timeAttribute = "time";
             std::string aggregationFunction = "count(cartodb_id)";
             std::string dataAggregation = "linear";

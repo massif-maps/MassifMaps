@@ -14,20 +14,20 @@ namespace carto::mvt {
     class BuildingSymbolizer : public GeometrySymbolizer {
     public:
         explicit BuildingSymbolizer(std::shared_ptr<Logger> logger) : GeometrySymbolizer(std::move(logger)) {
-            unbindParameter("comp-op"); // not supported for now
-            bindParameter("fill", &_fill);
-            bindParameter("fill-opacity", &_fillOpacity);
-            bindParameter("height", &_height);
-            bindParameter("min-height", &_minHeight);
+            unbindProperty("comp-op"); // not supported for now
+            bindProperty("fill", &_fill);
+            bindProperty("fill-opacity", &_fillOpacity);
+            bindProperty("height", &_height);
+            bindProperty("min-height", &_minHeight);
         }
 
         virtual FeatureProcessor createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const override;
 
     protected:
-        ColorFunctionParameter _fill = ColorFunctionParameter("#808080");
-        FloatFunctionParameter _fillOpacity = FloatFunctionParameter(1.0f);
-        FloatParameter _height = FloatParameter(0.0f);
-        FloatParameter _minHeight = FloatParameter(0.0f);
+        ColorFunctionProperty _fill = ColorFunctionProperty("#808080");
+        FloatFunctionProperty _fillOpacity = FloatFunctionProperty(1.0f);
+        FloatProperty _height = FloatProperty(0.0f);
+        FloatProperty _minHeight = FloatProperty(0.0f);
 
         ColorFunctionBuilder _fillFuncBuilder;
     };

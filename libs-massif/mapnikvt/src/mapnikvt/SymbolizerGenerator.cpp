@@ -45,14 +45,14 @@ namespace carto::mvt {
         }
 
         symbolizerNode.set_name(type.c_str());
-        for (const std::string& paramName : symbolizer.getParameterNames()) {
-            if (paramName == "name" && dynamic_cast<const TextSymbolizer*>(&symbolizer)) {
+        for (const std::string& name : symbolizer.getPropertyNames()) {
+            if (name == "name" && dynamic_cast<const TextSymbolizer*>(&symbolizer)) {
                 continue; // already included as 'content'
             }
-            if (auto param = symbolizer.getParameter(paramName)) {
-                if (param->isDefined()) {
-                    std::string paramValue = getSymbolizerParameter(symbolizer, *param);
-                    symbolizerNode.append_attribute(paramName.c_str()).set_value(paramValue.c_str());
+            if (auto prop = symbolizer.getProperty(name)) {
+                if (prop->isDefined()) {
+                    std::string value = getSymbolizerProperty(symbolizer, *prop);
+                    symbolizerNode.append_attribute(name.c_str()).set_value(value.c_str());
                 }
             }
         }
@@ -63,8 +63,8 @@ namespace carto::mvt {
         }
     }
 
-    std::string SymbolizerGenerator::getSymbolizerParameter(const Symbolizer& symbolizer, const SymbolizerParameter& param) const {
-        bool stringParam = !dynamic_cast<const ValueParameter*>(&param) && !dynamic_cast<const BoolParameter*>(&param) && !dynamic_cast<const FloatParameter*>(&param) && !dynamic_cast<const FloatFunctionParameter*>(&param);
-        return generateExpressionString(param.getExpression(), stringParam);
+    std::string SymbolizerGenerator::getSymbolizerProperty(const Symbolizer& symbolizer, const Property& prop) const {
+        bool stringExpr = !dynamic_cast<const ValueProperty*>(&prop) && !dynamic_cast<const BoolProperty*>(&prop) && !dynamic_cast<const FloatProperty*>(&prop) && !dynamic_cast<const FloatFunctionProperty*>(&prop);
+        return generateExpressionString(prop.getExpression(), stringExpr);
     }
 }

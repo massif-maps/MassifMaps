@@ -12,7 +12,7 @@
 #include "Style.h"
 #include "Parameter.h"
 #include "NutiParameter.h"
-#include "SymbolizerParameter.h"
+#include "Properties.h"
 
 #include <memory>
 #include <string>
@@ -24,9 +24,9 @@ namespace carto::mvt {
     public:
         struct Settings {
             std::string backgroundImage;
-            ColorFunctionParameter backgroundColor = ColorFunctionParameter("transparent");
-            ColorFunctionParameter northPoleColor = ColorFunctionParameter("transparent");
-            ColorFunctionParameter southPoleColor = ColorFunctionParameter("transparent");
+            ColorFunctionProperty backgroundColor = ColorFunctionProperty("transparent");
+            ColorFunctionProperty northPoleColor = ColorFunctionProperty("transparent");
+            ColorFunctionProperty southPoleColor = ColorFunctionProperty("transparent");
             std::string fontDirectory = "fonts";
             float bufferSize = -1.0f;
         };

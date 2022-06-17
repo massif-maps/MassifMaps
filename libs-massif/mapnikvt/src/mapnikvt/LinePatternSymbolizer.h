@@ -14,10 +14,10 @@ namespace carto::mvt {
     class LinePatternSymbolizer : public GeometrySymbolizer {
     public:
         explicit LinePatternSymbolizer(std::shared_ptr<Logger> logger) : GeometrySymbolizer(std::move(logger)) {
-            bindParameter("file", &_file);
-            bindParameter("fill", &_fill);
-            bindParameter("opacity", &_opacity);
-            bindParameter("offset", &_offset);
+            bindProperty("file", &_file);
+            bindProperty("fill", &_fill);
+            bindProperty("opacity", &_opacity);
+            bindProperty("offset", &_offset);
         }
 
         virtual FeatureProcessor createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const override;
@@ -26,10 +26,10 @@ namespace carto::mvt {
         static constexpr float PATTERN_SCALE = 0.75f;
         static constexpr float PATTERN_DOT_LIMIT = 0.2f;
 
-        StringParameter _file;
-        ColorFunctionParameter _fill = ColorFunctionParameter("#ffffff");
-        FloatFunctionParameter _opacity = FloatFunctionParameter(1.0f);
-        FloatFunctionParameter _offset = FloatFunctionParameter(0.0f);
+        StringProperty _file;
+        ColorFunctionProperty _fill = ColorFunctionProperty("#ffffff");
+        FloatFunctionProperty _opacity = FloatFunctionProperty(1.0f);
+        FloatFunctionProperty _offset = FloatFunctionProperty(0.0f);
 
         FloatFunctionBuilder _widthFuncBuilder;
         ColorFunctionBuilder _fillFuncBuilder;

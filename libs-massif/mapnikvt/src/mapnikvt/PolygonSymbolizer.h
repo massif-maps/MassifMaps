@@ -14,15 +14,15 @@ namespace carto::mvt {
     class PolygonSymbolizer : public GeometrySymbolizer {
     public:
         explicit PolygonSymbolizer(std::shared_ptr<Logger> logger) : GeometrySymbolizer(std::move(logger)) {
-            bindParameter("fill", &_fill);
-            bindParameter("fill-opacity", &_fillOpacity);
+            bindProperty("fill", &_fill);
+            bindProperty("fill-opacity", &_fillOpacity);
         }
 
         virtual FeatureProcessor createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const override;
 
     protected:
-        ColorFunctionParameter _fill = ColorFunctionParameter("#808080");
-        FloatFunctionParameter _fillOpacity = FloatFunctionParameter(1.0f);
+        ColorFunctionProperty _fill = ColorFunctionProperty("#808080");
+        FloatFunctionProperty _fillOpacity = FloatFunctionProperty(1.0f);
 
         ColorFunctionBuilder _fillFuncBuilder;
     };

@@ -25,7 +25,7 @@ namespace carto::css {
         {
             try {
                 CartoCSSCompiler compiler;
-                std::map<std::string, Value> mapProperties;
+                std::map<std::string, Expression> mapProperties;
                 compiler.compileMap(styleSheet, mapProperties);
 
                 mapSettings = loadMapSettings(mapProperties);
@@ -112,7 +112,7 @@ namespace carto::css {
         return map;
     }
 
-    mvt::TorqueMap::TorqueSettings TorqueCartoCSSMapLoader::loadTorqueSettings(const std::map<std::string, Value>& mapProperties) const {
+    mvt::TorqueMap::TorqueSettings TorqueCartoCSSMapLoader::loadTorqueSettings(const std::map<std::string, Expression>& mapProperties) const {
         mvt::TorqueMap::TorqueSettings torqueSettings;
 
         long long frameCount = 0;
@@ -137,9 +137,9 @@ namespace carto::css {
                 torqueSettings.animationDuration = static_cast<float>(animationDurationDouble);
             }
         }
-        Color clearColor;
+        Expression clearColor;
         if (getMapProperty(mapProperties, "-torque-clear-color", clearColor)) {
-            torqueSettings.clearColor = vt::Color(clearColor.rgba());
+            torqueSettings.clearColor.setExpression(CartoCSSMapnikTranslator::buildExpression(clearColor));
         }
         getMapProperty(mapProperties, "-torque-time-attribute", torqueSettings.timeAttribute);
         getMapProperty(mapProperties, "-torque-aggregation-function", torqueSettings.aggregationFunction);

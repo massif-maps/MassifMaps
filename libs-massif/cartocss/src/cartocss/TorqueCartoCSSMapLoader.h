@@ -26,7 +26,7 @@ namespace carto::css {
         std::shared_ptr<mvt::TorqueMap> loadMap(const std::string& cartoCSS) const;
 
     protected:
-        mvt::TorqueMap::TorqueSettings loadTorqueSettings(const std::map<std::string, Value>& mapProperties) const;
+        mvt::TorqueMap::TorqueSettings loadTorqueSettings(const std::map<std::string, Expression>& mapProperties) const;
     };
 }
 

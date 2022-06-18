@@ -22,12 +22,12 @@ namespace carto::css {
             }
             try {
                 mvt::Expression mapnikExpression = buildExpression(prop->getExpression());
-                if (auto param = mapnikSymbolizer->getParameter(it->second)) {
-                    param->setExpression(mapnikExpression);
+                if (auto mapnikProp = mapnikSymbolizer->getProperty(it->second)) {
+                    mapnikProp->setExpression(mapnikExpression);
                 }
             }
             catch (const std::exception& ex) {
-                _logger->write(mvt::Logger::Severity::ERROR, "Error while setting " + propertyId + " parameter: " + ex.what());
+                _logger->write(mvt::Logger::Severity::ERROR, "Error while setting " + propertyId + " property: " + ex.what());
             }
         }
         return mapnikSymbolizer;

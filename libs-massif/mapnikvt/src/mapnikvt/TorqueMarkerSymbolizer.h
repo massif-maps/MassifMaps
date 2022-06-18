@@ -14,15 +14,15 @@ namespace carto::mvt {
     class TorqueMarkerSymbolizer : public Symbolizer {
     public:
         explicit TorqueMarkerSymbolizer(std::shared_ptr<Logger> logger) : Symbolizer(std::move(logger)) {
-            bindParameter("file", &_file);
-            bindParameter("marker-type", &_markerType);
-            bindParameter("opacity", &_opacity);
-            bindParameter("fill", &_fill);
-            bindParameter("fill-opacity", &_fillOpacity);
-            bindParameter("width", &_width);
-            bindParameter("stroke", &_stroke);
-            bindParameter("stroke-opacity", &_strokeOpacity);
-            bindParameter("stroke-width", &_strokeWidth);
+            bindProperty("file", &_file);
+            bindProperty("marker-type", &_markerType);
+            bindProperty("opacity", &_opacity);
+            bindProperty("fill", &_fill);
+            bindProperty("fill-opacity", &_fillOpacity);
+            bindProperty("width", &_width);
+            bindProperty("stroke", &_stroke);
+            bindProperty("stroke-opacity", &_strokeOpacity);
+            bindProperty("stroke-width", &_strokeWidth);
         }
 
         virtual FeatureProcessor createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const override;
@@ -34,15 +34,15 @@ namespace carto::mvt {
         static std::shared_ptr<vt::BitmapImage> makeEllipseBitmap(float width, float height, const vt::Color& color, float strokeWidth, const vt::Color& strokeColor);
         static std::shared_ptr<vt::BitmapImage> makeRectangleBitmap(float width, float height, const vt::Color& color, float strokeWidth, const vt::Color& strokeColor);
 
-        StringParameter _file;
-        MarkerTypeParameter _markerType = MarkerTypeParameter("auto");
-        FloatParameter _opacity = FloatParameter(1.0f);
-        ColorParameter _fill = ColorParameter("#0000ff");
-        FloatParameter _fillOpacity = FloatParameter(1.0f);
-        FloatParameter _width = FloatParameter(10.0f);
-        ColorParameter _stroke = ColorParameter("#000000");
-        FloatParameter _strokeOpacity = FloatParameter(1.0f);
-        FloatParameter _strokeWidth = FloatParameter(0.0f);
+        StringProperty _file;
+        MarkerTypeProperty _markerType = MarkerTypeProperty("auto");
+        FloatProperty _opacity = FloatProperty(1.0f);
+        ColorProperty _fill = ColorProperty("#0000ff");
+        FloatProperty _fillOpacity = FloatProperty(1.0f);
+        FloatProperty _width = FloatProperty(10.0f);
+        ColorProperty _stroke = ColorProperty("#000000");
+        FloatProperty _strokeOpacity = FloatProperty(1.0f);
+        FloatProperty _strokeWidth = FloatProperty(0.0f);
 
         FloatFunctionBuilder _sizeFuncBuilder;
         ColorFunctionBuilder _fillFuncBuilder;

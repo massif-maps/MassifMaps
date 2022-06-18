@@ -26,7 +26,7 @@ namespace carto::mvt {
         vt::FloatFunction widthFunc = _widthFuncBuilder.createFloatFunction(bitmapPattern->bitmap->height);
         vt::ColorFunction fillFunc = _fillFuncBuilder.createColorOpacityFunction(colorFunc, opacityFunc);
 
-        vt::LineStyle style(compOp, vt::LineJoinMode::MITER, vt::LineCapMode::NONE, fillFunc, widthFunc, offsetFunc, bitmapPattern, geometryTransform);
+        vt::LineStyle style(compOp, vt::LineJoinMode::MITER, vt::LineCapMode::NONE, fillFunc, widthFunc, offsetFunc, PATTERN_DOT_LIMIT, PATTERN_DOT_LIMIT, bitmapPattern, geometryTransform);
 
         std::shared_ptr<vt::StrokeMap> strokeMap = symbolizerContext.getStrokeMap();
 

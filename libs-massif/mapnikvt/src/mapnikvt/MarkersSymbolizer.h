@@ -14,25 +14,25 @@ namespace carto::mvt {
     class MarkersSymbolizer : public Symbolizer {
     public:
         explicit MarkersSymbolizer(std::shared_ptr<Logger> logger) : Symbolizer(std::move(logger)) {
-            bindParameter("file", &_file);
-            bindParameter("feature-id", &_featureId);
-            bindParameter("placement", &_placement);
-            bindParameter("marker-type", &_markerType);
-            bindParameter("color", &_color);
-            bindParameter("opacity", &_opacity);
-            bindParameter("fill", &_fill);
-            bindParameter("fill-opacity", &_fillOpacity);
-            bindParameter("width", &_width);
-            bindParameter("height", &_height);
-            bindParameter("stroke", &_stroke);
-            bindParameter("stroke-opacity", &_strokeOpacity);
-            bindParameter("stroke-width", &_strokeWidth);
-            bindParameter("spacing", &_spacing);
-            bindParameter("placement-priority", &_placementPriority);
-            bindParameter("allow-overlap", &_allowOverlap);
-            bindParameter("clip", &_clip);
-            bindParameter("ignore-placement", &_ignorePlacement);
-            bindParameter("transform", &_transform);
+            bindProperty("file", &_file);
+            bindProperty("feature-id", &_featureId);
+            bindProperty("placement", &_placement);
+            bindProperty("marker-type", &_markerType);
+            bindProperty("color", &_color);
+            bindProperty("opacity", &_opacity);
+            bindProperty("fill", &_fill);
+            bindProperty("fill-opacity", &_fillOpacity);
+            bindProperty("width", &_width);
+            bindProperty("height", &_height);
+            bindProperty("stroke", &_stroke);
+            bindProperty("stroke-opacity", &_strokeOpacity);
+            bindProperty("stroke-width", &_strokeWidth);
+            bindProperty("spacing", &_spacing);
+            bindProperty("placement-priority", &_placementPriority);
+            bindProperty("allow-overlap", &_allowOverlap);
+            bindProperty("clip", &_clip);
+            bindProperty("ignore-placement", &_ignorePlacement);
+            bindProperty("transform", &_transform);
         }
 
         virtual FeatureProcessor createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const override;
@@ -50,25 +50,25 @@ namespace carto::mvt {
         static std::shared_ptr<vt::BitmapImage> makeEllipseBitmap(float width, float height, const vt::Color& color, float strokeWidth, const vt::Color& strokeColor);
         static std::shared_ptr<vt::BitmapImage> makeArrowBitmap(float width, float height, const vt::Color& color, float strokeWidth, const vt::Color& strokeColor);
 
-        StringParameter _file;
-        ValueParameter _featureId;
-        LabelOrientationParameter _placement = LabelOrientationParameter("point");
-        MarkerTypeParameter _markerType = MarkerTypeParameter("auto");
-        ColorFunctionParameter _color = ColorFunctionParameter("#ffffff");
-        FloatFunctionParameter _opacity = FloatFunctionParameter(1.0f);
-        ColorParameter _fill = ColorParameter("#0000ff");
-        FloatParameter _fillOpacity = FloatParameter(1.0f);
-        FloatFunctionParameter _width = FloatFunctionParameter(0.0f);
-        FloatFunctionParameter _height = FloatFunctionParameter(0.0f);
-        ColorParameter _stroke = ColorParameter("#000000");
-        FloatParameter _strokeOpacity = FloatParameter(1.0f);
-        FloatFunctionParameter _strokeWidth = FloatFunctionParameter(0.5f);
-        FloatParameter _spacing = FloatParameter(100.0f);
-        FloatParameter _placementPriority = FloatParameter(0.0f);
-        BoolParameter _allowOverlap = BoolParameter(false);
-        BoolParameter _clip = BoolParameter(false);
-        BoolParameter _ignorePlacement = BoolParameter(false);
-        TransformParameter _transform;
+        StringProperty _file;
+        ValueProperty _featureId;
+        LabelOrientationProperty _placement = LabelOrientationProperty("point");
+        MarkerTypeProperty _markerType = MarkerTypeProperty("auto");
+        ColorFunctionProperty _color = ColorFunctionProperty("#ffffff");
+        FloatFunctionProperty _opacity = FloatFunctionProperty(1.0f);
+        ColorProperty _fill = ColorProperty("#0000ff");
+        FloatProperty _fillOpacity = FloatProperty(1.0f);
+        FloatFunctionProperty _width = FloatFunctionProperty(0.0f);
+        FloatFunctionProperty _height = FloatFunctionProperty(0.0f);
+        ColorProperty _stroke = ColorProperty("#000000");
+        FloatProperty _strokeOpacity = FloatProperty(1.0f);
+        FloatFunctionProperty _strokeWidth = FloatFunctionProperty(0.5f);
+        FloatProperty _spacing = FloatProperty(100.0f);
+        FloatProperty _placementPriority = FloatProperty(0.0f);
+        BoolProperty _allowOverlap = BoolProperty(false);
+        BoolProperty _clip = BoolProperty(false);
+        BoolProperty _ignorePlacement = BoolProperty(false);
+        TransformProperty _transform;
 
         FloatFunctionBuilder _sizeFuncBuilder;
         ColorFunctionBuilder _fillFuncBuilder;

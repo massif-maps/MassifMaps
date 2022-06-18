@@ -14,9 +14,9 @@ namespace carto::mvt {
     class PolygonPatternSymbolizer : public GeometrySymbolizer {
     public:
         explicit PolygonPatternSymbolizer(std::shared_ptr<Logger> logger) : GeometrySymbolizer(std::move(logger)) {
-            bindParameter("file", &_file);
-            bindParameter("fill", &_fill);
-            bindParameter("opacity", &_opacity);
+            bindProperty("file", &_file);
+            bindProperty("fill", &_fill);
+            bindProperty("opacity", &_opacity);
         }
 
         virtual FeatureProcessor createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const override;
@@ -24,9 +24,9 @@ namespace carto::mvt {
     protected:
         static constexpr float PATTERN_SCALE = 0.75f;
 
-        StringParameter _file;
-        ColorFunctionParameter _fill = ColorFunctionParameter("#ffffff");
-        FloatFunctionParameter _opacity = FloatFunctionParameter(1.0f);
+        StringProperty _file;
+        ColorFunctionProperty _fill = ColorFunctionProperty("#ffffff");
+        FloatFunctionProperty _opacity = FloatFunctionProperty(1.0f);
 
         ColorFunctionBuilder _fillFuncBuilder;
     };

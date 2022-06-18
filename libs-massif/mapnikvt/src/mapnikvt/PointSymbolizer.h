@@ -14,12 +14,12 @@ namespace carto::mvt {
     class PointSymbolizer : public GeometrySymbolizer {
     public:
         explicit PointSymbolizer(std::shared_ptr<Logger> logger) : GeometrySymbolizer(std::move(logger)) {
-            unbindParameter("geometry-transform"); // not supported for now
-            bindParameter("file", &_file);
-            bindParameter("opacity", &_opacity);
-            bindParameter("allow-overlap", &_allowOverlap);
-            bindParameter("ignore-placement", &_ignorePlacement);
-            bindParameter("transform", &_transform);
+            unbindProperty("geometry-transform"); // not supported for now
+            bindProperty("file", &_file);
+            bindProperty("opacity", &_opacity);
+            bindProperty("allow-overlap", &_allowOverlap);
+            bindProperty("ignore-placement", &_ignorePlacement);
+            bindProperty("transform", &_transform);
         }
 
         virtual FeatureProcessor createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const override;
@@ -29,11 +29,11 @@ namespace carto::mvt {
 
         static std::shared_ptr<vt::BitmapImage> makeRectangleBitmap(float size);
 
-        StringParameter _file;
-        FloatFunctionParameter _opacity = FloatFunctionParameter(1.0f);
-        BoolParameter _allowOverlap = BoolParameter(false);
-        BoolParameter _ignorePlacement = BoolParameter(false);
-        TransformParameter _transform;
+        StringProperty _file;
+        FloatFunctionProperty _opacity = FloatFunctionProperty(1.0f);
+        BoolProperty _allowOverlap = BoolProperty(false);
+        BoolProperty _ignorePlacement = BoolProperty(false);
+        TransformProperty _transform;
 
         FloatFunctionBuilder _sizeFuncBuilder;
         ColorFunctionBuilder _fillFuncBuilder;

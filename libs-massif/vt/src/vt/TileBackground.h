@@ -8,16 +8,16 @@
 #define _CARTO_VT_TILEBACKGROUND_H_
 
 #include "Bitmap.h"
-#include "Color.h"
+#include "Styles.h"
 
 #include <memory>
 
 namespace carto::vt {
     class TileBackground final {
     public:
-        explicit TileBackground(const Color& color, std::shared_ptr<const BitmapPattern> pattern) : _color(color), _pattern(std::move(pattern)) { }
+        explicit TileBackground(ColorFunction colorFunc, std::shared_ptr<const BitmapPattern> pattern) : _colorFunc(std::move(colorFunc)), _pattern(std::move(pattern)) { }
 
-        const Color& getColor() const { return _color; }
+        const ColorFunction& getColorFunc() const { return _colorFunc; }
         const std::shared_ptr<const BitmapPattern>& getPattern() const { return _pattern; }
 
         std::size_t getResidentSize() const {
@@ -25,7 +25,7 @@ namespace carto::vt {
         }
 
     private:
-        const Color _color;
+        const ColorFunction _colorFunc;
         const std::shared_ptr<const BitmapPattern> _pattern;
     };
 }

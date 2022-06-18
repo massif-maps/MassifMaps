@@ -15,10 +15,10 @@ namespace carto::mvt {
     class GeometrySymbolizer : public Symbolizer {
     protected:
         explicit GeometrySymbolizer(std::shared_ptr<Logger> logger) : Symbolizer(std::move(logger)) {
-            bindParameter("geometry-transform", &_geometryTransform);
+            bindProperty("geometry-transform", &_geometryTransform);
         }
             
-        TransformParameter _geometryTransform;
+        TransformProperty _geometryTransform;
     };
 }
 

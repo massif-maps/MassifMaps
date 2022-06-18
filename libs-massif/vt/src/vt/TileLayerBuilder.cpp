@@ -923,58 +923,31 @@ namespace carto::vt {
         bool endpoints = !cycle && style.capMode != LineCapMode::NONE;
         float linePos = 0;
 
-        float minSplitDot = 1.0f;
-        float minMiterDot = 1.0f;
-        switch (style.joinMode) {
-        case LineJoinMode::BEVEL:
-        case LineJoinMode::ROUND:
-            minSplitDot = stroke ? MIN_STROKE_DOT : MIN_BEVEL_DOT;
-            minMiterDot = minSplitDot;
-            break;
-        case LineJoinMode::MITER:
-            minSplitDot = stroke ? MIN_STROKE_DOT : MIN_BEVEL_DOT;
-            minMiterDot = stroke ? MIN_STROKE_DOT : MIN_MITER_DOT;
-            break;
-        default:
-            break;
-        }
-
         std::size_t i = 1;
-        for (; i < points.size(); i++) {
-            if (points[i] != points[i - 1]) {
+        std::size_t j = 0;
+        if (cycle) {
+            i = 0;
+            j = points.size() - 2; // last point is same as first
+            while (j > 0) {
+                if (points[i] != points[j]) {
+                    break;
+                }
+                j--;
+            }
+        }
+        while (i < points.size()) {
+            if (points[i] != points[j]) {
                 break;
             }
+            i++;
         }
         if (i >= points.size()) {
             return false;
         }
 
-        cglib::vec2<float> knotBinormal(0, 0);
-        if (cycle) {
-            std::size_t j = points.size() - 1;
-            for (; j > i; j--) {
-                if (points[j] != points[j - 1]) {
-                    break;
-                }
-            }
-
-            cglib::vec2<float> prevTangent(cglib::unit(points[j] - points[j - 1]));
-            cglib::vec2<float> prevBinormal = cglib::vec2<float>(prevTangent(1), -prevTangent(0));
-            cglib::vec2<float> tangent(cglib::unit(points[i] - points[i - 1]));
-            cglib::vec2<float> binormal = cglib::vec2<float>(tangent(1), -tangent(0));
-
-            float dot = cglib::dot_product(binormal, prevBinormal);
-            if (dot < minSplitDot) {
-                cycle = endpoints = false;
-            }
-            else {
-                knotBinormal = cglib::unit(binormal + prevBinormal) * (1 / std::sqrt((1 + dot) / 2));
-            }
-        }
-
         cglib::vec2<float> binormal(0, 0), tangent(0, 0);
         {
-            const cglib::vec2<float>& p0 = points[i - 1];
+            const cglib::vec2<float>& p0 = points[j];
             const cglib::vec2<float>& p1 = points[i];
             float u0 = linePos * du_dl;
             cglib::vec2<float> dp(p1 - p0);
@@ -990,7 +963,7 @@ namespace carto::vt {
 
             _coords.append(p0, p0);
             _texCoords.append(cglib::vec2<float>(u0, v0), cglib::vec2<float>(u0, v1));
-            _binormals.append(cycle ? -knotBinormal : -binormal, cycle ? knotBinormal : binormal);
+            _binormals.append(-binormal, binormal);
             _attribs.append(cglib::vec4<std::int8_t>(styleIndex, 0, 1, 0), cglib::vec4<std::int8_t>(styleIndex, 0, -1, 0));
         }
 
@@ -1019,7 +992,7 @@ namespace carto::vt {
             }
 
             float dot = cglib::dot_product(binormal, prevBinormal);
-            if (dot < minSplitDot) {
+            if (dot < style.splitDotLimit) {
                 // Split line segments
                 _coords.append(p0, p0);
                 _texCoords.append(cglib::vec2<float>(u0, v0), cglib::vec2<float>(u0, v1));
@@ -1031,7 +1004,7 @@ namespace carto::vt {
                 _binormals.append(-binormal, binormal);
                 _attribs.append(cglib::vec4<std::int8_t>(styleIndex, 0, 1, 0), cglib::vec4<std::int8_t>(styleIndex, 0, -1, 0));
             }
-            else if (dot < minMiterDot) {
+            else if (dot < style.miterDotLimit) {
                 // Use bevel line join
                 cglib::vec2<float> lerpedBinormal = cglib::unit(binormal + prevBinormal);
                 std::int8_t sin = static_cast<std::int8_t>(127.0f * cglib::dot_product(prevTangent, lerpedBinormal));
@@ -1090,7 +1063,7 @@ namespace carto::vt {
 
             _coords.append(p0, p0);
             _texCoords.append(cglib::vec2<float>(u0, v0), cglib::vec2<float>(u0, v1));
-            _binormals.append(cycle ? -knotBinormal : -binormal, cycle ? knotBinormal : binormal);
+            _binormals.append(-binormal, binormal);
             _attribs.append(cglib::vec4<std::int8_t>(styleIndex, 0, 1, 0), cglib::vec4<std::int8_t>(styleIndex, 0, -1, 0));
 
             if (endpoints) {

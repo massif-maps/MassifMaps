@@ -181,22 +181,22 @@ namespace carto::css {
         return mapDoc;
     }
 
-    mvt::Map::Settings CartoCSSMapLoader::loadMapSettings(const std::map<std::string, Value>& mapProperties) const {
+    mvt::Map::Settings CartoCSSMapLoader::loadMapSettings(const std::map<std::string, Expression>& mapProperties) const {
         mvt::Map::Settings mapSettings;
         
-        Color backgroundColor;
+        Expression backgroundColor;
         if (getMapProperty(mapProperties, "background-color", backgroundColor)) {
-            mapSettings.backgroundColor = vt::Color(backgroundColor.rgba());
+            mapSettings.backgroundColor.setExpression(CartoCSSMapnikTranslator::buildExpression(backgroundColor));
         }
         getMapProperty(mapProperties, "background-image", mapSettings.backgroundImage);
 
-        Color northPoleColor;
+        Expression northPoleColor;
         if (getMapProperty(mapProperties, "north-pole-color", northPoleColor)) {
-            mapSettings.northPoleColor = vt::Color(northPoleColor.rgba());
+            mapSettings.northPoleColor.setExpression(CartoCSSMapnikTranslator::buildExpression(northPoleColor));
         }
-        Color southPoleColor;
+        Expression southPoleColor;
         if (getMapProperty(mapProperties, "south-pole-color", southPoleColor)) {
-            mapSettings.southPoleColor = vt::Color(southPoleColor.rgba());
+            mapSettings.southPoleColor.setExpression(CartoCSSMapnikTranslator::buildExpression(southPoleColor));
         }
 
         getMapProperty(mapProperties, "font-directory", mapSettings.fontDirectory);
@@ -214,7 +214,7 @@ namespace carto::css {
         {
             try {
                 CartoCSSCompiler compiler;
-                std::map<std::string, Value> mapProperties;
+                std::map<std::string, Expression> mapProperties;
                 compiler.compileMap(styleSheet, mapProperties);
 
                 mapSettings = loadMapSettings(mapProperties);

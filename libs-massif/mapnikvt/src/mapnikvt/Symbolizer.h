@@ -10,9 +10,8 @@
 #include "FeatureCollection.h"
 #include "Expression.h"
 #include "ExpressionContext.h"
-#include "ParserUtils.h"
+#include "Properties.h"
 #include "SymbolizerContext.h"
-#include "SymbolizerParameter.h"
 #include "Logger.h"
 #include "vt/Color.h"
 #include "vt/Transform.h"
@@ -28,19 +27,19 @@ namespace carto::mvt {
 
         virtual ~Symbolizer() = default;
 
-        std::set<std::string> getParameterNames() const;
-        SymbolizerParameter* getParameter(const std::string& paramName);
-        const SymbolizerParameter* getParameter(const std::string& paramName) const;
+        std::set<std::string> getPropertyNames() const;
+        Property* getProperty(const std::string& name);
+        const Property* getProperty(const std::string& name) const;
 
         virtual FeatureProcessor createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const = 0;
 
     protected:
         explicit Symbolizer(std::shared_ptr<Logger> logger) : _logger(std::move(logger)) {
-            bindParameter("comp-op", &_compOp);
+            bindProperty("comp-op", &_compOp);
         }
 
-        void bindParameter(const std::string& paramName, SymbolizerParameter* param);
-        void unbindParameter(const std::string& paramName);
+        void bindProperty(const std::string& name, Property* prop);
+        void unbindProperty(const std::string& name);
 
         static long long convertId(const Value& val);
         static long long generateId();
@@ -48,10 +47,10 @@ namespace carto::mvt {
 
         const std::shared_ptr<Logger> _logger;
 
-        CompOpParameter _compOp = CompOpParameter("src-over");
+        CompOpProperty _compOp = CompOpProperty("src-over");
 
     private:
-        std::map<std::string, SymbolizerParameter*> _parameterMap;
+        std::map<std::string, Property*> _propertyMap;
     };
 }
 

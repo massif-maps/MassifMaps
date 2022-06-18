@@ -1536,7 +1536,8 @@ namespace carto::vt {
         if (blend * opacity <= 0) {
             return;
         }
-        if (!background->getPattern() && !background->getColor().value()) {
+        Color backgroundColor = background->getColorFunc()(_viewState);
+        if (!background->getPattern() && !backgroundColor.value()) {
             return;
         }
 
@@ -1580,7 +1581,7 @@ namespace carto::vt {
                 }
             }
 
-            glUniform4fv(shaderProgram.uniforms[U_COLOR], 1, background->getColor().rgba().data());
+            glUniform4fv(shaderProgram.uniforms[U_COLOR], 1, backgroundColor.rgba().data());
             glUniform1f(shaderProgram.uniforms[U_OPACITY], blend * opacity);
 
             glDrawElements(GL_TRIANGLES, tileSurface->getIndicesCount(), GL_UNSIGNED_SHORT, 0);

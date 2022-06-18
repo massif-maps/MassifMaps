@@ -31,20 +31,20 @@ namespace carto::mvt {
         if (pugi::xml_attribute fontDirectoryAttr = mapNode.attribute("font-directory")) {
             mapSettings.fontDirectory = fontDirectoryAttr.as_string();
         }
-        if (pugi::xml_attribute bgColorAttr = mapNode.attribute("bgcolor")) {
-            mapSettings.backgroundColor = parseColor(bgColorAttr.as_string());
-        }
-        if (pugi::xml_attribute backgroundColorAttr = mapNode.attribute("background-color")) {
-            mapSettings.backgroundColor = parseColor(backgroundColorAttr.as_string());
-        }
         if (pugi::xml_attribute backgroundImageAttr = mapNode.attribute("background-image")) {
             mapSettings.backgroundImage = backgroundImageAttr.as_string();
         }
+        if (pugi::xml_attribute bgColorAttr = mapNode.attribute("bgcolor")) {
+            mapSettings.backgroundColor.setExpression(parseExpression(bgColorAttr.as_string(), true));
+        }
+        if (pugi::xml_attribute backgroundColorAttr = mapNode.attribute("background-color")) {
+            mapSettings.backgroundColor.setExpression(parseExpression(backgroundColorAttr.as_string(), true));
+        }
         if (pugi::xml_attribute northPoleColorAttr = mapNode.attribute("north-pole-color")) {
-            mapSettings.northPoleColor = parseColor(northPoleColorAttr.as_string());
+            mapSettings.northPoleColor.setExpression(parseExpression(northPoleColorAttr.as_string(), true));
         }
         if (pugi::xml_attribute southPoleColorAttr = mapNode.attribute("south-pole-color")) {
-            mapSettings.southPoleColor = parseColor(southPoleColorAttr.as_string());
+            mapSettings.southPoleColor.setExpression(parseExpression(southPoleColorAttr.as_string(), true));
         }
 
         // Build map

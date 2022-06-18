@@ -61,20 +61,31 @@ namespace carto::css {
         };
         
         template <typename T>
-        static bool getMapProperty(const std::map<std::string, Value>& mapProperties, const std::string& name, T& value) {
-            auto valueIt = mapProperties.find(name);
-            if (valueIt != mapProperties.end()) {
-                if (auto valuePtr = std::get_if<T>(&valueIt->second)) {
-                    value = *valuePtr;
-                    return true;
+        static bool getMapProperty(const std::map<std::string, Expression>& mapProperties, const std::string& name, T& value) {
+            auto it = mapProperties.find(name);
+            if (it != mapProperties.end()) {
+                if (auto exprValuePtr = std::get_if<Value>(&it->second)) {
+                    if (auto valuePtr = std::get_if<T>(exprValuePtr)) {
+                        value = *valuePtr;
+                        return true;
+                    }
                 }
+            }
+            return false;
+        }
+
+        static bool getMapProperty(const std::map<std::string, Expression>& mapProperties, const std::string& name, Expression& expr) {
+            auto it = mapProperties.find(name);
+            if (it != mapProperties.end()) {
+                expr = it->second;
+                return true;
             }
             return false;
         }
 
         picojson::value loadMapDocument(const std::string& fileName, std::set<std::string> loadedFileNames) const;
 
-        mvt::Map::Settings loadMapSettings(const std::map<std::string, Value>& mapProperties) const;
+        mvt::Map::Settings loadMapSettings(const std::map<std::string, Expression>& mapProperties) const;
 
         std::shared_ptr<mvt::Map> buildMap(const StyleSheet& styleSheet, const std::vector<std::string>& layerNames, const std::vector<mvt::Parameter>& parameters, const std::vector<mvt::NutiParameter>& nutiParameters) const;
 

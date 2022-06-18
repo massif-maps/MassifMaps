@@ -22,7 +22,7 @@ namespace carto::mvt {
 
         std::vector<std::shared_ptr<vt::TileLayer>> tileLayers;
 
-        if (std::shared_ptr<vt::TileBackground> tileBackground = createTileBackground(tileId)) {
+        if (std::shared_ptr<vt::TileBackground> tileBackground = createTileBackground(tileId, exprContext)) {
             vt::TileLayerBuilder tileLayerBuilder(std::string(), -1, tileId, _transformer, _symbolizerContext.getSettings().getTileSize(), _symbolizerContext.getSettings().getGeometryScale());
             tileLayerBuilder.addBackground(tileBackground);
             std::shared_ptr<vt::TileLayer> tileLayer = tileLayerBuilder.buildTileLayer();

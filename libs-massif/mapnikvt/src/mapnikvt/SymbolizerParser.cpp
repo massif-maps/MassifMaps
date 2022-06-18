@@ -26,13 +26,13 @@ namespace carto::mvt {
             pugi::xml_node parameterNode = (*parameterIt).node();
             std::string parameterName = boost::replace_all_copy(std::string(parameterNode.attribute("name").as_string()), "_", "-");
             std::string parameterValue = parameterNode.text().as_string();
-            setSymbolizerParameter(*symbolizer, parameterName, parameterValue);
+            setSymbolizerProperty(*symbolizer, parameterName, parameterValue);
         }
         for (pugi::xml_attribute_iterator attrIt = node.attributes().begin(); attrIt != node.attributes().end(); ++attrIt) {
             pugi::xml_attribute attr = *attrIt;
             std::string parameterName = boost::replace_all_copy(std::string(attr.name()), "_", "-");
             std::string parameterValue = attr.as_string();
-            setSymbolizerParameter(*symbolizer, parameterName, parameterValue);
+            setSymbolizerProperty(*symbolizer, parameterName, parameterValue);
         }
 
         return symbolizer;
@@ -81,11 +81,11 @@ namespace carto::mvt {
         return symbolizer;
     }
 
-    void SymbolizerParser::setSymbolizerParameter(Symbolizer& symbolizer, const std::string& paramName, const std::string& paramValue) const {
+    void SymbolizerParser::setSymbolizerProperty(Symbolizer& symbolizer, const std::string& name, const std::string& value) const {
         try {
-            if (auto param = symbolizer.getParameter(paramName)) {
-                bool stringParam = !dynamic_cast<ValueParameter*>(param) && !dynamic_cast<BoolParameter*>(param) && !dynamic_cast<FloatParameter*>(param) && !dynamic_cast<FloatFunctionParameter*>(param);
-                param->setExpression(parseExpression(paramValue, stringParam));
+            if (auto prop = symbolizer.getProperty(name)) {
+                bool stringExpr = !dynamic_cast<ValueProperty*>(prop) && !dynamic_cast<BoolProperty*>(prop) && !dynamic_cast<FloatProperty*>(prop) && !dynamic_cast<FloatFunctionProperty*>(prop);
+                prop->setExpression(parseExpression(value, stringExpr));
             }
         }
         catch (const std::runtime_error& ex) {

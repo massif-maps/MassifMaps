@@ -42,7 +42,7 @@ namespace carto::vt {
         using PointLabelProcessor = std::function<void(long long id, long long labelId, long long groupId, const std::variant<Vertex, Vertices>& position, float priority, float minimumGroupDistance)>;
         using TextLabelProcessor = std::function<void(long long id, long long labelId, long long groupId, const std::optional<Vertex>& position, const Vertices& vertices, const std::string& text, float priority, float minimumGroupDistance)>;
 
-        explicit TileLayerBuilder(std::string layerName, int layerIdx, std::shared_ptr<const TileTransformer::VertexTransformer> transformer, float tileSize, float geomScale);
+        explicit TileLayerBuilder(std::string layerName, int layerIdx, const TileId& tileId, const std::shared_ptr<const TileTransformer>& transformer, float tileSize, float geomScale);
 
         void setCompOp(std::optional<CompOp> compOp);
         void setOpacityFunc(FloatFunction opacityFunc);
@@ -97,6 +97,7 @@ namespace carto::vt {
 
         const std::string _layerName;
         const int _layerIdx;
+        const TileId _tileId;
         const std::shared_ptr<const TileTransformer::VertexTransformer> _transformer;
         const float _tileSize;
         const float _geomScale;

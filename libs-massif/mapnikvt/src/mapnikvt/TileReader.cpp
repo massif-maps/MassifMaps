@@ -23,7 +23,7 @@ namespace carto::mvt {
         std::vector<std::shared_ptr<vt::TileLayer>> tileLayers;
 
         if (std::shared_ptr<vt::TileBackground> tileBackground = createTileBackground(tileId)) {
-            vt::TileLayerBuilder tileLayerBuilder(std::string(), -1, _transformer->createTileVertexTransformer(tileId), _symbolizerContext.getSettings().getTileSize(), _symbolizerContext.getSettings().getGeometryScale());
+            vt::TileLayerBuilder tileLayerBuilder(std::string(), -1, tileId, _transformer, _symbolizerContext.getSettings().getTileSize(), _symbolizerContext.getSettings().getGeometryScale());
             tileLayerBuilder.addBackground(tileBackground);
             std::shared_ptr<vt::TileLayer> tileLayer = tileLayerBuilder.buildTileLayer();
             tileLayers.push_back(std::move(tileLayer));
@@ -40,7 +40,7 @@ namespace carto::mvt {
                     continue;
                 }
                 
-                vt::TileLayerBuilder tileLayerBuilder(styleName, styleLayerIdx, _transformer->createTileVertexTransformer(tileId), _symbolizerContext.getSettings().getTileSize(), _symbolizerContext.getSettings().getGeometryScale());
+                vt::TileLayerBuilder tileLayerBuilder(styleName, styleLayerIdx, tileId, _transformer, _symbolizerContext.getSettings().getTileSize(), _symbolizerContext.getSettings().getGeometryScale());
                 tileLayerBuilder.setOpacityFunc(vt::FloatFunction(style->getOpacity()));
                 tileLayerBuilder.setCompOp(style->getCompOp());
                 processLayer(layer, style, exprContext, tileLayerBuilder);

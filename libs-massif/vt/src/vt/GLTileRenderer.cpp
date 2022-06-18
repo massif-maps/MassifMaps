@@ -983,11 +983,11 @@ namespace carto::vt {
         for (int pass = 0; pass < 2; pass++) {
             for (auto it = bitmapLabelMap[pass]->begin(); it != bitmapLabelMap[pass]->end(); it++) {
                 std::stable_sort(it->second.begin(), it->second.end(), [](const std::shared_ptr<Label>& label1, const std::shared_ptr<Label>& label2) {
-                    if (label1->getLayerIndex() != label2->getLayerIndex()) {
-                        return label1->getLayerIndex() < label2->getLayerIndex();
-                    }
                     if (label1->getPriority() != label2->getPriority()) {
                         return label1->getPriority() > label2->getPriority();
+                    }
+                    if (label1->getLayerIndex() != label2->getLayerIndex()) {
+                        return label1->getLayerIndex() < label2->getLayerIndex();
                     }
                     return label1->getGlobalId() > label2->getGlobalId();
                 });

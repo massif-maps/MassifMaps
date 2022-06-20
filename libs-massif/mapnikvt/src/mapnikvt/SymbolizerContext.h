@@ -19,14 +19,14 @@ namespace carto::mvt {
     class SymbolizerContext final {
     public:
         struct Settings {
-            explicit Settings(float tileSize, std::map<std::string, Value> nutiParameterValueMap, std::shared_ptr<const vt::Font> fallbackFont);
+            explicit Settings(float tileSize, std::shared_ptr<const std::map<std::string, Value>> nutiParameterValueMap, std::shared_ptr<const vt::Font> fallbackFont);
 
             float getTileSize() const { return _tileSize; }
             float getGeometryScale() const { return _geometryScale; }
             float getFontScale() const { return _fontScale; }
             float getZoomLevelBias() const { return _zoomLevelBias; }
 
-            const std::map<std::string, Value>& getNutiParameterValueMap() const { return _nutiParameterValueMap; }
+            const std::shared_ptr<const std::map<std::string, Value>>& getNutiParameterValueMap() const { return _nutiParameterValueMap; }
             const std::shared_ptr<const vt::Font>& getFallbackFont() const { return _fallbackFont; }
 
         private:
@@ -35,7 +35,7 @@ namespace carto::mvt {
             float _fontScale;
             float _zoomLevelBias;
             
-            std::map<std::string, Value> _nutiParameterValueMap;
+            std::shared_ptr<const std::map<std::string, Value>> _nutiParameterValueMap;
             std::shared_ptr<const vt::Font> _fallbackFont;
         };
 

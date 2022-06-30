@@ -14,6 +14,8 @@
 #include <array>
 #include <cstdint>
 
+#include <cglib/vec.h>
+
 namespace carto::vt {
     class NormalMapBuilder final {
     public:
@@ -21,10 +23,11 @@ namespace carto::vt {
         virtual ~NormalMapBuilder() = default;
 
         std::shared_ptr<const Bitmap> buildNormalMapFromHeightMap(const carto::vt::TileId& tileId, const std::shared_ptr<const Bitmap>& bitmap) const;
+        std::shared_ptr<const Bitmap> buildNormalMapFromHeightMap(const carto::vt::TileId& subTileId, const carto::vt::TileId& tileId, const std::shared_ptr<const Bitmap>& bitmap) const;
 
     protected:
         float unpackHeight(std::uint32_t color) const;
-        std::uint32_t packNormal(float dx, float dy, float dz) const;
+        std::uint32_t packNormal(cglib::vec3<float> normal) const;
 
         const std::array<float, 4> _rgbaHeightScale;
         const std::uint8_t _alpha;

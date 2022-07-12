@@ -58,9 +58,9 @@ namespace carto::mvt {
             const FontSet& fontSet = **it;
             pugi::xml_node fontSetNode = mapNode.append_child("FontSet");
             fontSetNode.append_attribute("name").set_value(fontSet.getName().c_str());
-            for (const std::string& faceName : fontSet.getFaceNames()) {
+            for (const StringProperty& faceName : fontSet.getFaceNames()) {
                 pugi::xml_node fontNode = fontSetNode.append_child("Font");
-                fontNode.append_attribute("face-name").set_value(faceName.c_str());
+                fontNode.append_attribute("face-name").set_value(generateExpressionString(faceName.getExpression(), true).c_str());
             }
         }
 

@@ -4,6 +4,7 @@
 #include "CartoCSSParser.h"
 #include "CartoCSSCompiler.h"
 #include "mapnikvt/Expression.h"
+#include "mapnikvt/ExpressionUtils.h"
 #include "mapnikvt/Predicate.h"
 #include "mapnikvt/Filter.h"
 #include "mapnikvt/Rule.h"
@@ -396,41 +397,39 @@ namespace carto::css {
         else if (symbolizerType == "text" || symbolizerType == "shield") {
             // Extact text expression and font name or font set name
             mvt::Expression mapnikTextExpr = mvt::Value(std::string());
-            std::pair<std::string, std::string> fontSetFaceName;
+            std::pair<std::string, mvt::Expression> fontSetFaceName;
             for (const std::shared_ptr<const Property>& prop : properties) {
                 if (prop->getField() == symbolizerType + "-name") {
                     mapnikTextExpr = buildExpression(prop->getExpression());
                 }
                 else if (prop->getField() == symbolizerType + "-face-name") {
                     if (auto listExpr = std::get_if<std::shared_ptr<ListExpression>>(&prop->getExpression())) {
-                        std::string fontSetName;
-                        std::vector<std::string> faceNames;
+                        std::vector<mvt::StringProperty> faceNames;
                         for (const Expression& listSubExpr : (*listExpr)->getExpressions()) {
-                            mvt::Expression mapnikExpr = buildExpression(listSubExpr);
-                            if (auto val = std::get_if<mvt::Value>(&mapnikExpr)) {
-                                std::string faceName = mvt::ValueConverter<std::string>::convert(*val);
-                                fontSetName += (fontSetName.empty() ? "" : ",") + faceName;
-                                faceNames.push_back(faceName);
-                            }
-                            else {
-                                _logger->write(mvt::Logger::Severity::WARNING, "Expecting constant value for face name property");
+                            mvt::StringProperty faceName;
+                            faceName.setExpression(buildExpression(listSubExpr));
+                            faceNames.push_back(faceName);
+                        }
+                        std::string fontSetName;
+                        for (const std::shared_ptr<const mvt::FontSet>& fontSet : map->getFontSets()) {
+                            const std::vector<mvt::StringProperty>& fontSetFaceNames = fontSet->getFaceNames();
+                            if (std::equal(fontSetFaceNames.begin(), fontSetFaceNames.end(), faceNames.begin(), faceNames.end(), [](const mvt::StringProperty& faceName1, const mvt::StringProperty& faceName2) {
+                                return std::visit(mvt::ExpressionDeepEqualsChecker(), faceName1.getExpression(), faceName2.getExpression());
+                            })) {
+                                fontSetName = fontSet->getName();
+                                break;
                             }
                         }
-                        if (!map->getFontSet(fontSetName)) {
+                        if (fontSetName.empty()) {
+                            fontSetName = "_fontset" + std::to_string(map->getFontSets().size());
                             auto fontSet = std::make_shared<mvt::FontSet>(fontSetName, faceNames);
                             map->addFontSet(fontSet);
                         }
-                        fontSetFaceName = std::pair<std::string, std::string>("fontset-name", fontSetName);
+                        fontSetFaceName = std::pair<std::string, mvt::Expression>("fontset-name", mvt::Value(fontSetName));
                     }
                     else {
                         mvt::Expression mapnikExpr = buildExpression(prop->getExpression());
-                        if (auto val = std::get_if<mvt::Value>(&mapnikExpr)) {
-                            std::string faceName = mvt::ValueConverter<std::string>::convert(*val);
-                            fontSetFaceName = std::pair<std::string, std::string>("face-name", faceName);
-                        }
-                        else {
-                            _logger->write(mvt::Logger::Severity::WARNING, "Expecting constant value or list for face name property");
-                        }
+                        fontSetFaceName = std::pair<std::string, mvt::Expression>("face-name", mapnikExpr);
                     }
                 }
             }
@@ -446,7 +445,7 @@ namespace carto::css {
                 if (mapnikSymbolizer && !fontSetFaceName.first.empty()) {
                     try {
                         if (auto mapnikProp = mapnikSymbolizer->getProperty(fontSetFaceName.first)) {
-                            mapnikProp->setExpression(mvt::Value(fontSetFaceName.second));
+                            mapnikProp->setExpression(fontSetFaceName.second);
                         }
                     }
                     catch (const std::exception& ex) {

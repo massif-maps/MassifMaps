@@ -271,9 +271,9 @@ namespace carto::mvt {
         else if (!fontSetName.empty()) {
             for (const std::shared_ptr<FontSet>& fontSet : _fontSets) {
                 if (fontSet->getName() == fontSetName) {
-                    const std::vector<std::string>& faceNames = fontSet->getFaceNames();
+                    const std::vector<StringProperty>& faceNames = fontSet->getFaceNames();
                     for (auto it = faceNames.rbegin(); it != faceNames.rend(); it++) {
-                        const std::string& faceName = *it;
+                        std::string faceName = it->getValue(exprContext);
                         std::shared_ptr<const vt::Font> mainFont = symbolizerContext.getFontManager()->getFont(faceName, font);
                         if (mainFont) {
                             font = mainFont;

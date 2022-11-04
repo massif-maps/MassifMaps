@@ -97,7 +97,7 @@ namespace carto::vt {
                             for (int dx = 0; dx < 2; dx++) {
                                 wx = 1.0f - wx;
                                 if (sx + dx < subWidth && sy + dy < subHeight) {
-                                    normal += cglib::unit(buffer[(sy + dy) * subWidth + sx + dx]) * wx * wy;
+                                    normal += buffer[(sy + dy) * subWidth + sx + dx] * wx * wy;
                                 }
                             }
                         }

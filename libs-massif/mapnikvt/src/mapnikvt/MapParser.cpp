@@ -86,12 +86,14 @@ namespace carto::mvt {
             pugi::xml_node fontSetNode = (*fontSetIt).node();
             pugi::xml_attribute fontSetName = fontSetNode.attribute("name");
 
-            std::vector<std::string> faceNames;
+            std::vector<StringProperty> faceNames;
             pugi::xpath_node_set fontNodes = pugi::xpath_query("Font").evaluate_node_set(fontSetNode);
             for (pugi::xpath_node_set::const_iterator fontIt = fontNodes.begin(); fontIt != fontNodes.end(); ++fontIt) {
                 pugi::xml_node fontNode = (*fontIt).node();
-                pugi::xml_attribute faceName = fontNode.attribute("face-name");
-                faceNames.push_back(faceName.as_string());
+                pugi::xml_attribute faceNameAttr = fontNode.attribute("face-name");
+                StringProperty faceName;
+                faceName.setExpression(parseExpression(faceNameAttr.as_string(), true));
+                faceNames.push_back(faceName);
             }
             auto fontSet = std::make_shared<FontSet>(fontSetName.as_string(), faceNames);
             map->addFontSet(fontSet);

@@ -65,10 +65,7 @@ namespace carto::mbvtbuilder {
 
         std::vector<std::uint32_t> tags;
         if (properties.is<picojson::object>()) {
-            tags.reserve(properties.get<picojson::object>().size() * 2);
-            for (std::pair<std::string, picojson::value> keyValuePair : properties.get<picojson::object>()) {
-                importProperty(keyValuePair.first, keyValuePair.second, tags);
-            }
+            importProperty("$$properties$$", properties, tags);
         } else {
             importProperty("value", properties, tags);
         }
@@ -78,19 +75,7 @@ namespace carto::mbvtbuilder {
     }
 
     void MBVTLayerEncoder::importProperty(const std::string& key, const picojson::value& value, std::vector<std::uint32_t>& tags) {
-        if (value.is<picojson::array>()) {
-            const picojson::array& valueArr = value.get<picojson::array>();
-            for (std::size_t i = 0; i < valueArr.size(); i++) {
-                importProperty(key + "[" + picojson::value(static_cast<std::int64_t>(i)).serialize() + "]", valueArr[i], tags);
-            }
-            return;
-        } else if (value.is<picojson::object>()) {
-            const picojson::object& valueObj = value.get<picojson::object>();
-            for (std::pair<std::string, picojson::value> keyValuePair : valueObj) {
-                importProperty(key + "." + keyValuePair.first, keyValuePair.second, tags);
-            }
-            return;
-        } else if (value.is<picojson::null>()) {
+        if (value.is<picojson::null>()) {
             return;
         }
 
@@ -194,8 +179,9 @@ namespace carto::mbvtbuilder {
             encodedValue.write_tag(vector_tile::Tile_Value::kStringValueFieldNumber, protobuf::encoded_message::length_type);
             encodedValue.write_string(val.get<std::string>());
         }
-        else {
-            // Null
+        else if (!val.is<picojson::null>()){
+            encodedValue.write_tag(vector_tile::Tile_Value::kStringValueFieldNumber, protobuf::encoded_message::length_type);
+            encodedValue.write_string(val.serialize());
         }
         return encodedValue;
     }

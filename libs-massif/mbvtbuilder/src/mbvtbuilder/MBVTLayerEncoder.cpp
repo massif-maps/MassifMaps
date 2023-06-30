@@ -65,18 +65,37 @@ namespace carto::mbvtbuilder {
 
         std::vector<std::uint32_t> tags;
         if (properties.is<picojson::object>()) {
-            importProperty("$$properties$$", properties, tags);
+            tags.reserve((properties.get<picojson::object>().size() + 1) * 2);
+            importProperty("$$properties$$", properties, tags, true);
+            for (std::pair<std::string, picojson::value> keyValuePair : properties.get<picojson::object>()) {
+                importProperty(keyValuePair.first, keyValuePair.second, tags, false);
+            }
         } else {
-            importProperty("value", properties, tags);
+            importProperty("value", properties, tags, false);
         }
 
         protobuf::encoded_message encodedFeature = encodeFeature(id, type, tags, geometry);
         _encodedFeatures.push_back(std::move(encodedFeature));
     }
 
-    void MBVTLayerEncoder::importProperty(const std::string& key, const picojson::value& value, std::vector<std::uint32_t>& tags) {
+    void MBVTLayerEncoder::importProperty(const std::string& key, const picojson::value& value, std::vector<std::uint32_t>& tags, const bool encodeObjects) {
         if (value.is<picojson::null>()) {
             return;
+        }
+        if (!encodeObjects) {
+            if (value.is<picojson::array>()) {
+                const picojson::array& valueArr = value.get<picojson::array>();
+                for (std::size_t i = 0; i < valueArr.size(); i++) {
+                    importProperty(key + "[" + picojson::value(static_cast<std::int64_t>(i)).serialize() + "]", valueArr[i], tags, encodeObjects);
+                }
+                return;
+            } else if (value.is<picojson::object>()) {
+                const picojson::object& valueObj = value.get<picojson::object>();
+                for (std::pair<std::string, picojson::value> keyValuePair : valueObj) {
+                    importProperty(key + "." + keyValuePair.first, keyValuePair.second, tags, encodeObjects);
+                }
+                return;
+            }
         }
 
         auto it1 = _keyIndexMap.find(key);

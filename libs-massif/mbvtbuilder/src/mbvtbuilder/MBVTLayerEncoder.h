@@ -37,7 +37,7 @@ namespace carto::mbvtbuilder {
         static constexpr int DEFAULT_LAYER_EXTENT = 4096;
 
         void importEncodedFeature(std::uint64_t id, int type, const std::vector<std::uint32_t>& geometry, const picojson::value& properties);
-        void importProperty(const std::string& key, const picojson::value& value, std::vector<std::uint32_t>& tags);
+        void importProperty(const std::string& key, const picojson::value& value, std::vector<std::uint32_t>& tags, const bool encodeObjects);
 
         static std::vector<std::uint32_t> encodePointCoordinates(const std::vector<Point>& coords, float scale);
         static std::vector<std::uint32_t> encodeLineStringCoordinates(const std::vector<std::vector<Point>>& coordsList, float scale);

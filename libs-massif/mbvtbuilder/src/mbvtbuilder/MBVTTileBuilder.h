@@ -51,13 +51,15 @@ namespace carto::mbvtbuilder {
         void clearLayer(int layerIndex);
         void deleteLayer(LayerIndex layerIndex);
 
-        void addMultiPoint(LayerIndex layerIndex, MultiPoint coords, picojson::value properties);
-        void addMultiLineString(LayerIndex layerIndex, MultiLineString coordsList, picojson::value properties);
-        void addMultiPolygon(LayerIndex layerIndex, MultiPolygon ringsList, picojson::value properties);
+        void addMultiPoint(LayerIndex layerIndex, MultiPoint coords, picojson::value id, picojson::value properties, const bool updateOnly);
+        void addMultiLineString(LayerIndex layerIndex, MultiLineString coordsList, picojson::value id, picojson::value properties, const bool updateOnly);
+        void addMultiPolygon(LayerIndex layerIndex, MultiPolygon ringsList, picojson::value id, picojson::value properties, const bool updateOnly);
+
+        void removeGeoJSONFeature(LayerIndex layerIndex, const std::uint64_t id);
 
         void importGeoJSON(LayerIndex layerIndex, const picojson::value& geoJSON);
         void importGeoJSONFeatureCollection(LayerIndex layerIndex, const picojson::value& featureCollectionDef);
-        void importGeoJSONFeature(LayerIndex layerIndex, const picojson::value& featureDef);
+        void importGeoJSONFeature(LayerIndex layerIndex, const picojson::value& featureDef, const bool updateOnly);
 
         void buildTile(int zoom, int tileX, int tileY, protobuf::encoded_message& encodedTile) const;
         void buildTiles(std::function<void(int, int, int, const protobuf::encoded_message&)> handler) const;
@@ -84,7 +86,7 @@ namespace carto::mbvtbuilder {
         static constexpr float TILE_SUBPIXEL_TOLERANCE_DIVIDER = 4.0f;
         static constexpr int TILE_PIXELS = 256;
 
-        std::uint64_t extractFeatureId(LayerIndex layerIndex, const picojson::value& properties);
+        std::uint64_t extractFeatureId(LayerIndex layerIndex, picojson::value id, const picojson::value& properties);
 
         const std::map<LayerIndex, Layer>& simplifyAndCacheLayers(int zoom) const;
         void invalidateCache() const;

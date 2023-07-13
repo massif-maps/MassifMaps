@@ -97,15 +97,7 @@ namespace carto::vt {
     }
 
     bool LabelCuller::process(const std::vector<std::shared_ptr<Label>>& labelList, std::mutex& labelMutex) {
-        struct LabelInfo {
-            bool valid;
-            float priority;
-            int layerIndex;
-            float size;
-            float opacity;
-            std::shared_ptr<Label> label;
-            CullRecord cullRecord;
-        };
+
 
         std::lock_guard<std::mutex> lock(_mutex);
 
@@ -157,14 +149,15 @@ namespace carto::vt {
             std::lock_guard<std::mutex> labelLock(labelMutex);
 
             const std::shared_ptr<Label>& label = labelInfo.label;
+
             long long groupId = label->getGroupId();
 
             // Label is always visible if its group is set to negative value. Otherwise test visibility against other labels
-            bool visible = groupId >= 0 ? labelInfo.valid && testGridOverlap(labelInfo.cullRecord) : labelInfo.valid;
+            bool visible = groupId >= 0 ? labelInfo.valid && testGridOverlap(labelInfo) : labelInfo.valid;
+
             if (visible && groupId > 0) {
                 for (const LabelInfo* otherLabelInfo : groupMap[groupId]) {
                     const std::shared_ptr<Label>& otherLabel = otherLabelInfo->label;
-
                     float minimumDistance = std::min(label->getMinimumGroupDistance(), otherLabel->getMinimumGroupDistance());
                     if (testPolygonOverlap(labelInfo.cullRecord.envelope, otherLabelInfo->cullRecord.envelope, minimumDistance)) {
                         visible = false;
@@ -175,7 +168,7 @@ namespace carto::vt {
 
             if (visible) {
                 if (groupId >= 0) {
-                    addGridRecord(labelInfo.cullRecord);
+                    addGridRecord(labelInfo);
                 }
                 if (groupId > 0) {
                     groupMap[groupId].push_back(&labelInfo);
@@ -203,31 +196,35 @@ namespace carto::vt {
         }
     }
 
-    void LabelCuller::addGridRecord(const CullRecord& cullRecord) {
-        cglib::vec2<int> minPos = getGridIndex(cullRecord.bounds.min);
-        cglib::vec2<int> maxPos = getGridIndex(cullRecord.bounds.max);
+    void LabelCuller::addGridRecord(const LabelInfo& labelInfo) {
+        cglib::vec2<int> minPos = getGridIndex(labelInfo.cullRecord.bounds.min);
+        cglib::vec2<int> maxPos = getGridIndex(labelInfo.cullRecord.bounds.max);
         for (int y = minPos(1); y <= maxPos(1); y++) {
             for (int x = minPos(0); x <= maxPos(0); x++) {
-                _recordGrid[y][x].push_back(cullRecord);
+                _recordGrid[y][x].push_back(labelInfo);
             }
         }
     }
 
-    bool LabelCuller::testGridOverlap(const CullRecord& cullRecord) const {
-        cglib::vec2<int> minPos = getGridIndex(cullRecord.bounds.min);
-        cglib::vec2<int> maxPos = getGridIndex(cullRecord.bounds.max);
+    bool LabelCuller::testGridOverlap(const LabelInfo& labelInfo) const {
+        cglib::vec2<int> minPos = getGridIndex(labelInfo.cullRecord.bounds.min);
+        cglib::vec2<int> maxPos = getGridIndex(labelInfo.cullRecord.bounds.max);
+        bool hasFoundTheSame = false;
         for (int y = minPos(1); y <= maxPos(1); y++) {
             for (int x = minPos(0); x <= maxPos(0); x++) {
-                for (const CullRecord& otherCullRecord : _recordGrid[y][x]) {
-                    if (otherCullRecord.bounds.inside(cullRecord.bounds)) {
-                        if (testPolygonOverlap(otherCullRecord.envelope, cullRecord.envelope, 0)) {
+                for (const LabelInfo& otherLabelInfo : _recordGrid[y][x]) {
+                    if (otherLabelInfo.cullRecord.bounds.inside(labelInfo.cullRecord.bounds)) {
+                        if ((!labelInfo.label->allowOverlapSameFeatureId() || !otherLabelInfo.label->allowOverlapSameFeatureId() ||  labelInfo.label->getLocalId() != otherLabelInfo.label->getLocalId()) && testPolygonOverlap(otherLabelInfo.cullRecord.envelope, labelInfo.cullRecord.envelope, 0)) {
                             return false;
                         }
+                    }
+                    if (labelInfo.label->getLocalId() == otherLabelInfo.label->getLocalId()) {
+                        hasFoundTheSame = true;
                     }
                 }
             }
         }
-        return true;
+        return (!labelInfo.label->sameFeatureIdDependent() || hasFoundTheSame);
     }
 
     bool LabelCuller::calculateScreenEnvelope(const std::shared_ptr<Label>& label, std::array<cglib::vec2<float>, 4>& envelope) const {

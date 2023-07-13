@@ -413,7 +413,7 @@ namespace carto::vt {
                 labelVertices.assign(tesselatedVertices.begin(), tesselatedVertices.end());
             }
 
-            TileLabel::PlacementInfo placementInfo(priority, minimumGroupDistance);
+            TileLabel::PlacementInfo placementInfo(priority, minimumGroupDistance, false, false);
             long long globalId = (labelId ^ (static_cast<long long>(_layerIdx) << 32)) * 3 + 0;
             auto pointLabel = std::make_shared<TileLabel>(id, globalId, groupId, bitmapGlyphs, std::move(labelPosition), std::move(labelVertices), _labelStyle, placementInfo);
             _labelList.push_back(std::move(pointLabel));
@@ -438,7 +438,7 @@ namespace carto::vt {
             _labelStyle = std::make_shared<TileLabel::Style>(style.orientation, style.colorFunc, style.sizeFunc, style.haloColorFunc, style.haloRadiusFunc, style.autoflip, scale, metrics.ascent, metrics.descent, transform, font->getGlyphMap());
         }
 
-        return [style, font, formatter, this](long long id, long long labelId, long long groupId, const std::optional<Vertex>& position, const Vertices& vertices, const std::string& text, float priority, float minimumGroupDistance) {
+        return [style, font, formatter, this](long long id, long long labelId, long long groupId, const std::optional<Vertex>& position, const Vertices& vertices, const std::string& text, float priority, float minimumGroupDistance, bool allowOverlapSameFeatureId, bool sameFeatureIdDependent) {
             if (!text.empty() || style.backgroundImage) {
                 std::vector<Font::Glyph> glyphs = formatter.format(text, 1.0f);
                 if (style.backgroundImage) {
@@ -460,7 +460,7 @@ namespace carto::vt {
                     labelVertices.assign(tesselatedVertices.begin(), tesselatedVertices.end());
                 }
 
-                TileLabel::PlacementInfo placementInfo(priority, minimumGroupDistance);
+                TileLabel::PlacementInfo placementInfo(priority, minimumGroupDistance, allowOverlapSameFeatureId, sameFeatureIdDependent);
                 long long globalId = (labelId ^ (static_cast<long long>(_layerIdx) << 32)) * 3 + (style.backgroundImage ? 2 : 1);
                 auto textLabel = std::make_shared<TileLabel>(id, globalId, groupId, std::move(glyphs), std::move(labelPosition), std::move(labelVertices), _labelStyle, placementInfo);
                 _labelList.push_back(std::move(textLabel));

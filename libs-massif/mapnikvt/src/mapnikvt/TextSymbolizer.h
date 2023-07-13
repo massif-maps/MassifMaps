@@ -40,6 +40,8 @@ namespace carto::mvt {
             bindProperty("placement-priority", &_placementPriority);
             bindProperty("minimum-distance", &_minimumDistance);
             bindProperty("allow-overlap", &_allowOverlap);
+            bindProperty("allow-overlap-same-feature-id", &_allowOverlapSameFeatureId);
+            bindProperty("same-feature-id-dependent", &_sameFeatureIdDependent);
             bindProperty("clip", &_clip);
             bindProperty("wrap-character", &_wrapCharacter),
             bindProperty("wrap-width", &_wrapWidth);
@@ -88,6 +90,8 @@ namespace carto::mvt {
         FloatProperty _minimumDistance = FloatProperty(0.0f);
         BoolProperty _allowOverlap = BoolProperty(false);
         BoolProperty _clip = BoolProperty(false);
+        BoolProperty _allowOverlapSameFeatureId = BoolProperty(false);
+        BoolProperty _sameFeatureIdDependent = BoolProperty(false);
         StringProperty _wrapCharacter = StringProperty("");
         FloatProperty _wrapWidth = FloatProperty(0.0f);
         BoolProperty _wrapBefore = BoolProperty(false);

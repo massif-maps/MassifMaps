@@ -42,6 +42,8 @@ namespace carto::vt {
         cglib::vec3<float> getNormal() const { return _placement ? _placement->normal : cglib::vec3<float>(0, 0, 0); }
         float getPriority() const { return _priority; }
         float getMinimumGroupDistance() const { return _minimumGroupDistance; }
+        bool allowOverlapSameFeatureId() const { return _allowOverlapSameFeatureId; }
+        bool sameFeatureIdDependent() const { return _sameFeatureIdDependent; }
 
         bool isValid() const { return (bool) _placement; }
 
@@ -192,6 +194,8 @@ namespace carto::vt {
         const std::shared_ptr<const TileLabel::Style> _style;
         const float _priority;
         const float _minimumGroupDistance;
+        const bool _allowOverlapSameFeatureId;
+        const bool _sameFeatureIdDependent;
 
         cglib::bbox2<float> _glyphBBox;
         std::list<TilePoint> _tilePoints;

@@ -24,6 +24,7 @@ namespace carto::vt {
 
         std::shared_ptr<const Bitmap> buildNormalMapFromHeightMap(const carto::vt::TileId& tileId, const std::shared_ptr<const Bitmap>& bitmap) const;
         std::shared_ptr<const Bitmap> buildNormalMapFromHeightMap(const carto::vt::TileId& subTileId, const carto::vt::TileId& tileId, const std::shared_ptr<const Bitmap>& bitmap) const;
+        std::shared_ptr<const Bitmap> buildNormalMapFromHeightMap2(const carto::vt::TileId& subTileId, const carto::vt::TileId& tileId, const std::shared_ptr<const Bitmap>& bitmap) const;
 
     protected:
         float unpackHeight(std::uint32_t color) const;

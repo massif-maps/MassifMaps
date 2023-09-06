@@ -1336,7 +1336,8 @@ namespace carto::vt {
             // Blend the rendered layer with framebuffer
             if (true) {
                 if (_glExtensions->GL_OES_packed_depth_stencil_supported() && !_overlayBuffer3D.depthStencilAttachments.empty()) {
-                    _glExtensions->glDiscardFramebufferEXT(GL_FRAMEBUFFER, static_cast<GLsizei>(_overlayBuffer3D.depthStencilAttachments.size()), _overlayBuffer3D.depthStencilAttachments.data());
+                    // TODO: for now it crashes. See why
+//                    _glExtensions->glDiscardFramebufferEXT(GL_FRAMEBUFFER, static_cast<GLsizei>(_overlayBuffer3D.depthStencilAttachments.size()), _overlayBuffer3D.depthStencilAttachments.data());
                 }
 
                 glBindFramebuffer(GL_FRAMEBUFFER, currentFBO);

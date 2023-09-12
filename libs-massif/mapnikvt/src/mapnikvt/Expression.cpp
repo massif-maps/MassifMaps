@@ -79,6 +79,28 @@ namespace {
 }
 
 namespace carto::mvt {
+
+    std::string string_repeat(std::string str, const std::size_t n)
+    {
+        if (n == 0) {
+            str.clear();
+            str.shrink_to_fit();
+            return str;
+        } else if (n == 1 || str.empty()) {
+            return str;
+        }
+        const auto period = str.size();
+        if (period == 1) {
+            str.append(n - 1, str.front());
+            return str;
+        }
+        str.reserve(period * n);
+        std::size_t m {2};
+        for (; m < n; m *= 2) str += str;
+        str.append(str.c_str(), (n - (m / 2)) * period);
+        return str;
+    }
+
     Value UnaryExpression::applyOp(Op op, const Value& val) {
         switch (op) {
         case Op::NEG:
@@ -115,6 +137,8 @@ namespace carto::mvt {
             return std::visit(PowOperator(), val1, val2);
         case Op::CONCAT:
             return Value(ValueConverter<std::string>::convert(val1) + ValueConverter<std::string>::convert(val2));
+        case Op::NTIME:
+            return Value(string_repeat(std::move(ValueConverter<std::string>::convert(val1)), ValueConverter<int>::convert(val2)));
         }
         throw std::invalid_argument("Illegal operator");
     }

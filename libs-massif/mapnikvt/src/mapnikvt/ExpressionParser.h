@@ -61,6 +61,7 @@ namespace carto::mvt {
                 lowercase_kw = repository::qi::distinct(qi::char_("a-zA-Z0-9_"))[qi::no_case["lowercase"]];
                 capitalize_kw = repository::qi::distinct(qi::char_("a-zA-Z0-9_"))[qi::no_case["capitalize"]];
                 concat_kw = repository::qi::distinct(qi::char_("a-zA-Z0-9_"))[qi::no_case["concat"]];
+                ntime_kw = repository::qi::distinct(qi::char_("a-zA-Z0-9_"))[qi::no_case["ntime"]];
                 match_kw = repository::qi::distinct(qi::char_("a-zA-Z0-9_"))[qi::no_case["match"]];
                 replace_kw = repository::qi::distinct(qi::char_("a-zA-Z0-9_"))[qi::no_case["replace"]];
 
@@ -143,6 +144,7 @@ namespace carto::mvt {
                                 | lowercase_kw                       [_val = phoenix::bind(&makeUnaryExpression, UnaryExpression::Op::LOWER, _val)]
                                 | capitalize_kw                      [_val = phoenix::bind(&makeUnaryExpression, UnaryExpression::Op::CAPITALIZE, _val)]
                                 | (concat_kw  >> ('(' > expression > ')')) [_val = phoenix::bind(&makeBinaryExpression, BinaryExpression::Op::CONCAT, _val, _1)]
+                                | (ntime_kw  >> ('(' > expression > ')')) [_val = phoenix::bind(&makeBinaryExpression, BinaryExpression::Op::NTIME, _val, _1)]
                                 | (match_kw   >> ('(' > expression > ')')) [_val = phoenix::bind(&makeComparisonPredicate, ComparisonPredicate::Op::MATCH, _val, _1)]
                                 | (replace_kw >> ('(' > expression > ',' > expression > ')')) [_val = phoenix::bind(&makeTertiaryExpression, TertiaryExpression::Op::REPLACE, _val, _1, _2)]
                                 )
@@ -177,7 +179,7 @@ namespace carto::mvt {
             boost::spirit::qi::rule<Iterator, Value()> constant;
             boost::spirit::qi::rule<Iterator, std::string()> string;
             boost::spirit::qi::rule<Iterator, boost::spirit::qi::unused_type()> le_kw, ge_kw, lt_kw, gt_kw, eq_kw, neq_kw, or_kw, and_kw, not_kw;
-            boost::spirit::qi::rule<Iterator, boost::spirit::qi::unused_type()> exp_kw, log_kw, pow_kw, length_kw, uppercase_kw, lowercase_kw, capitalize_kw, concat_kw, match_kw, replace_kw;
+            boost::spirit::qi::rule<Iterator, boost::spirit::qi::unused_type()> exp_kw, log_kw, pow_kw, length_kw, uppercase_kw, lowercase_kw, capitalize_kw, concat_kw, ntime_kw, match_kw, replace_kw;
             boost::spirit::qi::rule<Iterator, boost::spirit::qi::unused_type()> step_kw, linear_kw, cubic_kw;
             boost::spirit::qi::rule<Iterator, boost::spirit::qi::unused_type()> matrix_kw, translate_kw, rotate_kw, scale_kw, skewx_kw, skewy_kw;
             boost::spirit::qi::rule<Iterator, Expression()> stringExpression, genericExpression;

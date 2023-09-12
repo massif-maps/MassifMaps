@@ -27,6 +27,8 @@ namespace carto::mvt {
         vt::CompOp compOp = _compOp.getValue(exprContext);
         vt::LabelOrientation placement = _placement.getValue(exprContext);
         vt::LabelOrientation orientation = placement;
+        bool allowOverlapSameFeatureId = _allowOverlapSameFeatureId.getValue(exprContext);
+        bool sameFeatureIdDependent = _sameFeatureIdDependent.getValue(exprContext);
         if (transform) { // if rotation transform is explicitly defined, use point orientation
             if ((*transform).matrix2()(0, 1) != 0 || (*transform).matrix2()(1, 0) != 0) {
                 orientation = vt::LabelOrientation::POINT;
@@ -192,7 +194,7 @@ namespace carto::mvt {
             };
         }
 
-        return [compOp, fillFunc, normalizedSizeFunc, bitmapImage, transform, orientation, placement, placementPriority, spacing, bitmapSize, tileId, tileSize, glyphMap, groupId, labelIdOverride, hash, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
+        return [compOp, fillFunc, normalizedSizeFunc, bitmapImage, transform, orientation, placement, placementPriority, spacing, bitmapSize, tileId, tileSize, glyphMap, groupId, labelIdOverride, allowOverlapSameFeatureId, sameFeatureIdDependent, hash, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
             vt::PointLabelStyle style(orientation, fillFunc, normalizedSizeFunc, false, bitmapImage, transform);
             vt::TileLayerBuilder::PointLabelProcessor pointProcessor;
             for (std::size_t featureIndex = 0; featureIndex < featureCollection.size(); featureIndex++) {
@@ -214,18 +216,18 @@ namespace carto::mvt {
 
                 if (auto pointGeometry = std::get_if<PointGeometry>(featureCollection.getGeometry(featureIndex).get())) {
                     for (const auto& vertex : pointGeometry->getVertices()) {
-                        pointProcessor(localId, labelId, groupId, vertex, placementPriority, 0);
+                        pointProcessor(localId, labelId, groupId, vertex, placementPriority, 0, allowOverlapSameFeatureId, sameFeatureIdDependent);
                     }
                 }
                 else if (placement != vt::LabelOrientation::LINE) {
                     if (auto lineGeometry = std::get_if<LineGeometry>(featureCollection.getGeometry(featureIndex).get())) {
                         for (const auto& vertices : lineGeometry->getVerticesList()) {
-                            pointProcessor(localId, labelId, groupId, vertices, placementPriority, 0);
+                            pointProcessor(localId, labelId, groupId, vertices, placementPriority, 0, allowOverlapSameFeatureId, sameFeatureIdDependent);
                         }
                     }
                     else if (auto polygonGeometry = std::get_if<PolygonGeometry>(featureCollection.getGeometry(featureIndex).get())) {
                         for (const auto& vertex : polygonGeometry->getSurfacePoints()) {
-                            pointProcessor(localId, labelId, groupId, vertex, placementPriority, 0);
+                            pointProcessor(localId, labelId, groupId, vertex, placementPriority, 0, allowOverlapSameFeatureId, sameFeatureIdDependent);
                         }
                     }
                 }
@@ -240,7 +242,7 @@ namespace carto::mvt {
 
                     for (const auto& vertices : verticesList) {
                         if (spacing <= 0) {
-                            pointProcessor(localId, labelId, groupId, vertices, placementPriority, 0);
+                            pointProcessor(localId, labelId, groupId, vertices, placementPriority, 0, allowOverlapSameFeatureId, sameFeatureIdDependent);
                             continue;
                         }
                         
@@ -251,7 +253,7 @@ namespace carto::mvt {
                                 int counter = 0;
                                 for (const auto& vertex : transformedPoints.second) {
                                     long long generatedLabelId = combineId(labelId, std::hash<vt::TileId>()(tileId) * 63 + counter);
-                                    pointProcessor(localId, generatedLabelId, groupId, vertex, placementPriority, 0);
+                                    pointProcessor(localId, generatedLabelId, groupId, vertex, placementPriority, 0, allowOverlapSameFeatureId, sameFeatureIdDependent);
                                     counter++;
                                 }
                                 pointProcessor = vt::TileLayerBuilder::PointLabelProcessor();

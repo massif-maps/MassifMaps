@@ -25,10 +25,11 @@ namespace carto::mvt {
     class TertiaryExpression;
     class InterpolateExpression;
     class TransformExpression;
+    class FunctionExpression;
 
     using Predicate = std::variant<bool, std::shared_ptr<ExpressionPredicate>, std::shared_ptr<ComparisonPredicate>, std::shared_ptr<NotPredicate>, std::shared_ptr<OrPredicate>, std::shared_ptr<AndPredicate>>;
 
-    using Expression = std::variant<Value, Predicate, std::shared_ptr<VariableExpression>, std::shared_ptr<UnaryExpression>, std::shared_ptr<BinaryExpression>, std::shared_ptr<TertiaryExpression>, std::shared_ptr<InterpolateExpression>, std::shared_ptr<TransformExpression>>;
+    using Expression = std::variant<Value, Predicate, std::shared_ptr<VariableExpression>, std::shared_ptr<UnaryExpression>, std::shared_ptr<BinaryExpression>, std::shared_ptr<TertiaryExpression>, std::shared_ptr<InterpolateExpression>, std::shared_ptr<TransformExpression>, std::shared_ptr<FunctionExpression>>;
 }
 
 #endif

@@ -48,6 +48,14 @@ namespace carto::mvt {
         Value operator() (const std::shared_ptr<TransformExpression>& transExpr) const {
             return Value();
         }
+        Value operator() (const std::shared_ptr<FunctionExpression>& funcExpr) const {
+            const std::vector<Expression>& expressions = funcExpr->getExpressions();
+            std::vector<Value> values;
+             for (const Expression exp : expressions) {
+                values.push_back(std::visit(*this, exp));
+            }
+            return FunctionExpression::applyFunc(funcExpr->getFunc(), values);
+        }
 
     private:
         const ExpressionContext& _context;
@@ -83,6 +91,11 @@ namespace carto::mvt {
                 std::visit(*this, subExpr);
             }
         }
+        void operator() (const std::shared_ptr<FunctionExpression>& funcExpr) const {
+            for (const Expression& subExpr : funcExpr->getExpressions()) {
+                std::visit(*this, subExpr);
+            }
+        }
 
     private:
         std::function<void(const std::shared_ptr<VariableExpression>&)> _visitor;
@@ -109,6 +122,22 @@ namespace carto::mvt {
         bool operator() (const std::shared_ptr<TransformExpression>& transExpr1, const std::shared_ptr<TransformExpression>& transExpr2) const {
             std::vector<Expression> subExprs1 = transExpr1->getSubExpressions();
             std::vector<Expression> subExprs2 = transExpr2->getSubExpressions();
+            if (subExprs1.size() != subExprs2.size()) {
+                return false;
+            }
+            for (std::size_t i = 0; i < subExprs1.size(); i++) {
+                if (!std::visit(*this, subExprs1[i], subExprs2[i])) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        bool operator() (const std::shared_ptr<FunctionExpression>& transExpr1, const std::shared_ptr<FunctionExpression>& transExpr2) const {
+            if (transExpr1->getFunc() != transExpr1->getFunc()) {
+                return false;
+            }
+            std::vector<Expression> subExprs1 = transExpr1->getExpressions();
+            std::vector<Expression> subExprs2 = transExpr2->getExpressions();
             if (subExprs1.size() != subExprs2.size()) {
                 return false;
             }

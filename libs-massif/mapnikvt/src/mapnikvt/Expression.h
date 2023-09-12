@@ -10,6 +10,7 @@
 #include "ExpressionPredicateBase.h"
 #include "ValueConverter.h"
 #include "Transform.h"
+#include "vt/Color.h"
 
 #include <array>
 #include <memory>
@@ -141,6 +142,25 @@ namespace carto::mvt {
 
     private:
         const Transform _transform;
+    };
+
+    class FunctionExpression final {
+    public:
+        explicit FunctionExpression(std::string func, std::vector<Expression> args) : _func(std::move(func)), _args(std::move(args)) { }
+
+        const std::string& getFunc() const { return _func; }
+        const std::vector<Expression>& getExpressions() const { return _args; }
+
+        bool operator == (const FunctionExpression& other) const { return _func == other._func && _args == other._args; }
+        bool operator != (const FunctionExpression& other) const { return !(*this == other); }
+
+        static Value applyFunc(const std::string& func, const std::vector<Value>& vals);
+
+    private:static vt::Color getColor(const Value& value);
+        static float getFloat(const Value& value);
+        static std::string getString(const Value& value);
+        std::string _func;
+        std::vector<Expression> _args;
     };
 }
 

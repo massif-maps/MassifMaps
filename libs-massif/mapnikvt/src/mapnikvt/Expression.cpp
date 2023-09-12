@@ -186,4 +186,101 @@ namespace carto::mvt {
     std::vector<Expression> TransformExpression::getSubExpressions() const {
         return std::visit(TransformSubExpressionBuilder(), _transform);
     }
+
+
+    vt::Color FunctionExpression::getColor(const Value& value) {
+        return vt::Color::fromValue(ValueConverter<unsigned int>::convert(value));
+    }
+
+    float FunctionExpression::getFloat(const Value& value) {
+        return ValueConverter<float>::convert(value);
+
+    }
+    Value FunctionExpression::applyFunc(const std::string& func, const std::vector<Value>& vals) {
+        if (func == "url" && vals.size() == 1) {
+            return Value(ValueConverter<std::string>::convert(vals[0]));
+        }
+        else if (func == "color" && vals.size() == 1) {
+            unsigned int value = 0;
+            vt::Color color = parseColor(ValueConverter<std::string>::convert(vals[0]));
+            return Value(color.value());
+        }
+        else if (func == "rgb" && vals.size() == 3) {
+            vt::Color color = vt::Color::fromRGBA(getFloat(vals[0]) / 255.0f, getFloat(vals[1]) / 255.0f, getFloat(vals[2]) / 255.0f, 1.0f);
+            return Value(color.value());
+        }
+        else if (func == "rgba" && vals.size() == 4) {
+            vt::Color color = vt::Color::fromRGBA(getFloat(vals[0]) / 255.0f, getFloat(vals[1]) / 255.0f, getFloat(vals[2]) / 255.0f, getFloat(vals[3]));
+            return Value(color.value());
+        }
+        else if (func == "hsl" && vals.size() == 3) {
+            vt::Color color = vt::Color::fromHSLA(getFloat(vals[0]), getFloat(vals[1]), getFloat(vals[2]), 1.0f);
+            return Value(color.value());
+        }
+        else if (func == "hsla" && vals.size() == 4) {
+            vt::Color color = vt::Color::fromHSLA(getFloat(vals[0]), getFloat(vals[1]), getFloat(vals[2]), getFloat(vals[3]));
+            return Value(color.value());
+        }
+        else if (func == "red" && vals.size() == 1) {
+            float value = getColor(vals[0]).rgba()[0] * 255.0f;
+            return Value(value);
+        }
+        else if (func == "green" && vals.size() == 1) {
+            float value = getColor(vals[0]).rgba()[1] * 255.0f;
+            return Value(value);
+        }
+        else if (func == "blue" && vals.size() == 1) {
+            float value = getColor(vals[0]).rgba()[2] * 255.0f;
+            return Value(value);
+        }
+        else if (func == "alpha" && vals.size() == 1) {
+            float value = getColor(vals[0]).alpha();
+            return Value(value);
+        }
+        else if (func == "hue" && vals.size() == 1) {
+            float value = getColor(vals[0]).hsla()[0];
+            return Value(value);
+        }
+        else if (func == "saturation" && vals.size() == 1) {
+            float value = getColor(vals[0]).hsla()[1];
+            return Value(value);
+        }
+        else if (func == "lightness" && vals.size() == 1) {
+            vt::Color color = getColor(vals[0]);
+            return Value(color.hsla()[2]);
+        }
+        else if (func == "brightness" && vals.size() == 1) {
+            vt::Color color = getColor(vals[0]);
+            return Value(color.brightness()* 255.0f);
+        }
+        else if (func == "mix" && vals.size() == 3) {
+            vt::Color color = vt::Color::mix(getColor(vals[0]), getColor(vals[1]), getFloat(vals[2]));
+            return Value(color.value());
+        }
+        else if (func == "lighten" && vals.size() == 2) {
+            vt::Color color = vt::Color::lighten(getColor(vals[0]), getFloat(vals[1]));
+            return Value(color.value());
+        }
+        else if (func == "darken" && vals.size() == 2) {
+            vt::Color color = vt::Color::lighten(getColor(vals[0]), -getFloat(vals[1]));
+            return Value(color.value());
+        }
+        else if (func == "saturate" && vals.size() == 2) {
+            vt::Color color = vt::Color::saturate(getColor(vals[0]), getFloat(vals[1]));
+            return Value(color.value());
+        }
+        else if (func == "desaturate" && vals.size() == 2) {
+            vt::Color color = vt::Color::saturate(getColor(vals[0]), -getFloat(vals[1]));
+            return Value(color.value());
+        }
+        else if (func == "fadein" && vals.size() == 2) {
+            vt::Color color = vt::Color::fade(getColor(vals[0]), getFloat(vals[1]));
+            return Value(color.value());
+        }
+        else if (func == "fadeout" && vals.size() == 2) {
+            vt::Color color = vt::Color::fade(getColor(vals[0]), -getFloat(vals[1]));
+            return Value(color.value());
+        }
+        return Value();
+    }
 }

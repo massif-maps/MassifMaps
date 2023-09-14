@@ -440,7 +440,10 @@ namespace carto::vt {
 
         return [style, font, formatter, this](long long id, long long labelId, long long groupId, const std::optional<Vertex>& position, const Vertices& vertices, const std::string& text, float priority, float minimumGroupDistance, bool allowOverlapSameFeatureId, bool sameFeatureIdDependent) {
             if (!text.empty() || style.backgroundImage) {
-                std::vector<Font::Glyph> glyphs = formatter.format(text, 1.0f);
+                std::vector<Font::Glyph> glyphs;
+                if (!text.empty()) {
+                    glyphs = formatter.format(text, 1.0f);
+                }
                 if (style.backgroundImage) {
                     const GlyphMap::Glyph* baseGlyph = font->getGlyphMap()->getGlyph(font->getGlyphMap()->loadBitmapGlyph(style.backgroundImage->bitmap, GlyphMap::GlyphMode::BACKGROUND));
                     if (baseGlyph) {

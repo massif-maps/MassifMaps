@@ -82,7 +82,7 @@ namespace carto::mvt {
 
     std::string string_repeat(std::string str, const std::size_t n)
     {
-        if (n == 0) {
+        if (n <= 0) {
             str.clear();
             str.shrink_to_fit();
             return str;
@@ -139,6 +139,10 @@ namespace carto::mvt {
             return Value(ValueConverter<std::string>::convert(val1) + ValueConverter<std::string>::convert(val2));
         case Op::NTIME:
             return Value(string_repeat(std::move(ValueConverter<std::string>::convert(val1)), ValueConverter<int>::convert(val2)));
+        case Op::MIN:
+            return Value(std::min(ValueConverter<float>::convert(val1), ValueConverter<float>::convert(val2)));
+        case Op::MAX:
+            return Value(std::max(ValueConverter<float>::convert(val1), ValueConverter<float>::convert(val2)));
         }
         throw std::invalid_argument("Illegal operator");
     }

@@ -17,6 +17,7 @@
 #include <memory>
 #include <functional>
 #include <typeinfo>
+#include <iostream>
 
 #include <boost/phoenix.hpp>
 #include <boost/spirit/include/qi.hpp>
@@ -42,6 +43,7 @@ namespace carto::mvt {
                 unesc_char.add("\\a", '\a')("\\b", '\b')("\\f", '\f')("\\n", '\n')
                               ("\\r", '\r')("\\t", '\t')("\\v", '\v')("\\\\", '\\')
                               ("\\\'", '\'')("\\\"", '\"')("\\[", '[')("\\]", ']')("\\{", '{')("\\}", '}');
+                nonascii_  = qi::char_("\xA0-\xFF");
 
                 le_kw  = repository::qi::distinct(qi::char_("a-zA-Z0-9_"))[qi::no_case["le"]];
                 ge_kw  = repository::qi::distinct(qi::char_("a-zA-Z0-9_"))[qi::no_case["ge"]];
@@ -62,6 +64,8 @@ namespace carto::mvt {
                 capitalize_kw = repository::qi::distinct(qi::char_("a-zA-Z0-9_"))[qi::no_case["capitalize"]];
                 concat_kw = repository::qi::distinct(qi::char_("a-zA-Z0-9_"))[qi::no_case["concat"]];
                 ntime_kw = repository::qi::distinct(qi::char_("a-zA-Z0-9_"))[qi::no_case["ntime"]];
+                min_kw = repository::qi::distinct(qi::char_("a-zA-Z0-9_"))[qi::no_case["min"]];
+                max_kw = repository::qi::distinct(qi::char_("a-zA-Z0-9_"))[qi::no_case["max"]];
                 match_kw = repository::qi::distinct(qi::char_("a-zA-Z0-9_"))[qi::no_case["match"]];
                 replace_kw = repository::qi::distinct(qi::char_("a-zA-Z0-9_"))[qi::no_case["replace"]];
 
@@ -79,6 +83,7 @@ namespace carto::mvt {
                 constant = qi::lexeme[valueParser];
 
                 string %= qi::lexeme[+(unesc_char | "\\x" >> octet | (qi::char_ - qi::char_("[]{}")))];
+                funcid  = qi::lexeme[(qi::char_("_a-zA-Z")   | nonascii_) > *(qi::char_("_a-zA-Z0-9")   | nonascii_)];
 
                 stringExpression =
                     ( (string                                        [_val = phoenix::construct<Value>(_1)])
@@ -145,6 +150,8 @@ namespace carto::mvt {
                                 | capitalize_kw                      [_val = phoenix::bind(&makeUnaryExpression, UnaryExpression::Op::CAPITALIZE, _val)]
                                 | (concat_kw  >> ('(' > expression > ')')) [_val = phoenix::bind(&makeBinaryExpression, BinaryExpression::Op::CONCAT, _val, _1)]
                                 | (ntime_kw  >> ('(' > expression > ')')) [_val = phoenix::bind(&makeBinaryExpression, BinaryExpression::Op::NTIME, _val, _1)]
+                                | (min_kw  >> ('(' > expression > ')')) [_val = phoenix::bind(&makeBinaryExpression, BinaryExpression::Op::MIN, _val, _1)]
+                                | (max_kw  >> ('(' > expression > ')')) [_val = phoenix::bind(&makeBinaryExpression, BinaryExpression::Op::MAX, _val, _1)]
                                 | (match_kw   >> ('(' > expression > ')')) [_val = phoenix::bind(&makeComparisonPredicate, ComparisonPredicate::Op::MATCH, _val, _1)]
                                 | (replace_kw >> ('(' > expression > ',' > expression > ')')) [_val = phoenix::bind(&makeTertiaryExpression, TertiaryExpression::Op::REPLACE, _val, _1, _2)]
                                 )
@@ -167,6 +174,7 @@ namespace carto::mvt {
                     | (scale_kw     >> '(' > expression > ',' > expression > ')') [_val = phoenix::bind(&makeScaleTransformExpression, _1, _2)]
                     | (skewx_kw     >> '(' > expression > ')')          [_val = phoenix::bind(&makeSkewXTransformExpression, _1)]
                     | (skewy_kw     >> '(' > expression > ')')          [_val = phoenix::bind(&makeSkewYTransformExpression, _1)]
+                    | (funcid [_pass = phoenix::bind(&checkFunction, _1)] >> ('(' > (expression % ',') > ')')) [_val = phoenix::bind(&makeFunctionExpression, _1, _2)]
                     | ('[' > qi::no_skip[stringExpression] > ']')       [_val = phoenix::bind(&makeVariableExpression, _1)]
                     | ('(' > expression > ')')                          [_val = _1]
                     ;
@@ -178,8 +186,10 @@ namespace carto::mvt {
             boost::spirit::qi::symbols<char const, char const> unesc_char;
             boost::spirit::qi::rule<Iterator, Value()> constant;
             boost::spirit::qi::rule<Iterator, std::string()> string;
+            boost::spirit::qi::rule<Iterator, char()> nonascii_;
+            boost::spirit::qi::rule<Iterator, std::string()> funcid;
             boost::spirit::qi::rule<Iterator, boost::spirit::qi::unused_type()> le_kw, ge_kw, lt_kw, gt_kw, eq_kw, neq_kw, or_kw, and_kw, not_kw;
-            boost::spirit::qi::rule<Iterator, boost::spirit::qi::unused_type()> exp_kw, log_kw, pow_kw, length_kw, uppercase_kw, lowercase_kw, capitalize_kw, concat_kw, ntime_kw, match_kw, replace_kw;
+            boost::spirit::qi::rule<Iterator, boost::spirit::qi::unused_type()> exp_kw, log_kw, pow_kw, length_kw, uppercase_kw, lowercase_kw, capitalize_kw, concat_kw, ntime_kw, min_kw, max_kw, match_kw, replace_kw;
             boost::spirit::qi::rule<Iterator, boost::spirit::qi::unused_type()> step_kw, linear_kw, cubic_kw;
             boost::spirit::qi::rule<Iterator, boost::spirit::qi::unused_type()> matrix_kw, translate_kw, rotate_kw, scale_kw, skewx_kw, skewy_kw;
             boost::spirit::qi::rule<Iterator, Expression()> stringExpression, genericExpression;
@@ -264,6 +274,13 @@ namespace carto::mvt {
 
             static Expression makeInterpolateExpression(InterpolateExpression::Method method, const Expression& timeExpr, const std::vector<Value>& keyFrames) {
                 return std::make_shared<InterpolateExpression>(method, timeExpr, keyFrames);
+            }
+
+            static bool checkFunction(const std::string& func) {
+                return func != "url" && func != "rgb" && func != "rgba"; // ignore special-built in constructors
+            }
+            static Expression makeFunctionExpression(const std::string& func, const std::vector<Expression>& exprs) {
+                return std::make_shared<FunctionExpression>(func, exprs);
             }
 
             static Expression makeMatrixTransformExpression(const Expression& a, const Expression& b, const Expression& c, const Expression& d, const Expression& e, const Expression& f) {

@@ -66,7 +66,9 @@ namespace carto::mvt {
             MOD,
             POW,
             CONCAT,
-            NTIME
+            NTIME,
+            MIN,
+            MAX
         };
 
         explicit BinaryExpression(Op op, Expression expr1, Expression expr2) : _op(op), _expr1(std::move(expr1)), _expr2(std::move(expr2)) { }

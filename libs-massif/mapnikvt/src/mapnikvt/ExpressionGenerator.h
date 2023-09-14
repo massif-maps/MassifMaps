@@ -39,8 +39,6 @@ namespace carto::mvt {
                             ('\r', "\\r")('\t', "\\t")('\v', "\\v")('\\', "\\\\")
                             ('\'', "\\\'")('"', "\\\"")('[', "\\[")(']', "\\]")('{', "\\{")('}', "\\}");
 
-                string %= *(esc_char | karma::print | ("\\x0" << octet) [_pass = _1 >= 0x00 && _1 <= 0x0f] | "\\x" << octet);
-
                 stringExpression =
                       string                               [_pass = phoenix::bind(&getString, _val, _1)]
                     | (stringExpression << stringExpression) [_pass = phoenix::bind(&getBinaryExpression, BinaryExpression::Op::CONCAT, _val, _1, _2)]
@@ -102,6 +100,8 @@ namespace carto::mvt {
                     | (postfix << '.' << karma::lit("capitalize"))                          [_pass = phoenix::bind(&getUnaryExpression, UnaryExpression::Op::CAPITALIZE, _val, _1)]
                     | (postfix << '.' << karma::lit("concat")  << '(' << expression << ')') [_pass = phoenix::bind(&getBinaryExpression, BinaryExpression::Op::CONCAT, _val, _1, _2)]
                     | (postfix << '.' << karma::lit("ntime")  << '(' << expression << ')') [_pass = phoenix::bind(&getBinaryExpression, BinaryExpression::Op::NTIME, _val, _1, _2)]
+                    | (postfix << '.' << karma::lit("min")  << '(' << expression << ')') [_pass = phoenix::bind(&getBinaryExpression, BinaryExpression::Op::MIN, _val, _1, _2)]
+                    | (postfix << '.' << karma::lit("max")  << '(' << expression << ')') [_pass = phoenix::bind(&getBinaryExpression, BinaryExpression::Op::MAX, _val, _1, _2)]
                     | (postfix << '.' << karma::lit("match")   << '(' << expression << ')') [_pass = phoenix::bind(&getComparisonPredicate, ComparisonPredicate::Op::MATCH, _val, _1, _2)]
                     | (postfix << '.' << karma::lit("replace") << '(' << expression << ',' << expression << ')') [_pass = phoenix::bind(&getTertiaryExpression, TertiaryExpression::Op::REPLACE, _val, _1, _2, _3)]
                     | factor                                                                [_1 = _val]
@@ -119,6 +119,8 @@ namespace carto::mvt {
                     | (karma::lit("scale")  << '(' << expression << ',' << expression << ')') [_pass = phoenix::bind(&getScaleTransformExpression, _val, _1, _2)]
                     | (karma::lit("skewx")  << '(' << expression << ')') [_pass = phoenix::bind(&getSkewXTransformExpression, _val, _1)]
                     | (karma::lit("skewy")  << '(' << expression << ')') [_pass = phoenix::bind(&getSkewYTransformExpression, _val, _1)]
+                    | (karma::string << '(' <<  (expression % ',') << ')') [_pass = phoenix::bind(&getFunctionExpression, _val, _1, _2)]
+                    // | (karma::lit("skewx") >> ('(' > (expression % ',') > ')')) [_val = phoenix::bind(&getFunctionExpression, _val, _1, _2)]
                     | predicate                         [_pass = phoenix::bind(&getExpressionPredicate, _val, _1)]
                     | ('[' << stringExpression << ']')  [_pass = phoenix::bind(&getVariableExpression, _val, _1)]
                     | ('(' << expression << ')')        [_1 = _val]
@@ -133,6 +135,7 @@ namespace carto::mvt {
             boost::spirit::karma::uint_generator<unsigned char, 16> octet;
             boost::spirit::karma::symbols<char, const char*> esc_char;
             boost::spirit::karma::rule<OutputIterator, std::string()> string;
+
             boost::spirit::karma::rule<OutputIterator, Expression()> stringExpression, genericExpression;
             boost::spirit::karma::rule<OutputIterator, Expression()> expression, term0, term1, term2, term3, unary, postfix, factor;
             boost::spirit::karma::rule<OutputIterator, Predicate()> predicate;
@@ -265,6 +268,17 @@ namespace carto::mvt {
                         keyFrames = (*interpolateExpr)->getKeyFrames();
                         return true;
                     }
+                }
+                return false;
+            }
+            static bool checkFunction(const std::string& func) {
+                return func != "url" && func != "rgb" && func != "rgba"; // ignore special-built in constructors
+            }
+            static bool getFunctionExpression(const Expression& expr, std::string& expr1, std::vector<Expression>& args) {
+                if (auto funcExpr = std::get_if<std::shared_ptr<FunctionExpression>>(&expr)) {
+                    expr1 = (*funcExpr)->getFunc();
+                    args = (*funcExpr)->getExpressions();
+                    return true;
                 }
                 return false;
             }

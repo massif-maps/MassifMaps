@@ -453,6 +453,7 @@ namespace carto::vt {
             xAxis = cglib::unit(cglib::vector_product(viewState.orientation[1], placement->normal));
             yAxis = cglib::unit(cglib::vector_product(placement->normal, xAxis));
             break;
+        case LabelOrientation::LINE_BILLBOARD_3D:
         case LabelOrientation::BILLBOARD_3D:
             xAxis = viewState.orientation[0];
             yAxis = viewState.orientation[1];

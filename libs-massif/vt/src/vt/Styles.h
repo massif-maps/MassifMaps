@@ -34,7 +34,7 @@ namespace carto::vt {
     };
     
     enum class LabelOrientation {
-        BILLBOARD_2D, BILLBOARD_3D, POINT, LINE
+        BILLBOARD_2D, BILLBOARD_3D, LINE_BILLBOARD_3D, POINT, LINE
     };
 
     enum class RasterFilterMode {

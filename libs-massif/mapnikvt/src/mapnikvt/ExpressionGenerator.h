@@ -100,8 +100,6 @@ namespace carto::mvt {
                     | (postfix << '.' << karma::lit("capitalize"))                          [_pass = phoenix::bind(&getUnaryExpression, UnaryExpression::Op::CAPITALIZE, _val, _1)]
                     | (postfix << '.' << karma::lit("concat")  << '(' << expression << ')') [_pass = phoenix::bind(&getBinaryExpression, BinaryExpression::Op::CONCAT, _val, _1, _2)]
                     | (postfix << '.' << karma::lit("ntime")  << '(' << expression << ')') [_pass = phoenix::bind(&getBinaryExpression, BinaryExpression::Op::NTIME, _val, _1, _2)]
-                    | (postfix << '.' << karma::lit("min")  << '(' << expression << ')') [_pass = phoenix::bind(&getBinaryExpression, BinaryExpression::Op::MIN, _val, _1, _2)]
-                    | (postfix << '.' << karma::lit("max")  << '(' << expression << ')') [_pass = phoenix::bind(&getBinaryExpression, BinaryExpression::Op::MAX, _val, _1, _2)]
                     | (postfix << '.' << karma::lit("match")   << '(' << expression << ')') [_pass = phoenix::bind(&getComparisonPredicate, ComparisonPredicate::Op::MATCH, _val, _1, _2)]
                     | (postfix << '.' << karma::lit("replace") << '(' << expression << ',' << expression << ')') [_pass = phoenix::bind(&getTertiaryExpression, TertiaryExpression::Op::REPLACE, _val, _1, _2, _3)]
                     | factor                                                                [_1 = _val]
@@ -109,7 +107,9 @@ namespace carto::mvt {
 
                 factor =
                       constant                          [_pass = phoenix::bind(&getConstant, _val, _1)]
-                    | (karma::lit("pow" )   << '(' << expression << ',' << expression << ')')       [_pass = phoenix::bind(&getBinaryExpression, BinaryExpression::Op::POW, _val, _1, _2)]
+                    | (karma::lit("pow" )   << '(' << expression << ',' << expression << ')') [_pass = phoenix::bind(&getBinaryExpression, BinaryExpression::Op::POW, _val, _1, _2)]
+                    | (karma::lit("min")    << '(' << expression << ',' << expression << ')') [_pass = phoenix::bind(&getBinaryExpression, BinaryExpression::Op::MIN, _val, _1, _2)]
+                    | (karma::lit("max")    << '(' << expression << ',' << expression << ')') [_pass = phoenix::bind(&getBinaryExpression, BinaryExpression::Op::MAX, _val, _1, _2)]
                     | (karma::lit("step")   << '(' << expression << ',' << (constant % ',') << ')') [_pass = phoenix::bind(&getInterpolateExpression, InterpolateExpression::Method::STEP, _val, _1, _2)]
                     | (karma::lit("linear") << '(' << expression << ',' << (constant % ',') << ')') [_pass = phoenix::bind(&getInterpolateExpression, InterpolateExpression::Method::LINEAR, _val, _1, _2)]
                     | (karma::lit("cubic")  << '(' << expression << ',' << (constant % ',') << ')') [_pass = phoenix::bind(&getInterpolateExpression, InterpolateExpression::Method::CUBIC, _val, _1, _2)]

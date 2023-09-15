@@ -150,8 +150,6 @@ namespace carto::mvt {
                                 | capitalize_kw                      [_val = phoenix::bind(&makeUnaryExpression, UnaryExpression::Op::CAPITALIZE, _val)]
                                 | (concat_kw  >> ('(' > expression > ')')) [_val = phoenix::bind(&makeBinaryExpression, BinaryExpression::Op::CONCAT, _val, _1)]
                                 | (ntime_kw  >> ('(' > expression > ')')) [_val = phoenix::bind(&makeBinaryExpression, BinaryExpression::Op::NTIME, _val, _1)]
-                                | (min_kw  >> ('(' > expression > ')')) [_val = phoenix::bind(&makeBinaryExpression, BinaryExpression::Op::MIN, _val, _1)]
-                                | (max_kw  >> ('(' > expression > ')')) [_val = phoenix::bind(&makeBinaryExpression, BinaryExpression::Op::MAX, _val, _1)]
                                 | (match_kw   >> ('(' > expression > ')')) [_val = phoenix::bind(&makeComparisonPredicate, ComparisonPredicate::Op::MATCH, _val, _1)]
                                 | (replace_kw >> ('(' > expression > ',' > expression > ')')) [_val = phoenix::bind(&makeTertiaryExpression, TertiaryExpression::Op::REPLACE, _val, _1, _2)]
                                 )
@@ -163,6 +161,8 @@ namespace carto::mvt {
                     | (exp_kw       >> '(' > expression > ')')          [_val = phoenix::bind(&makeUnaryExpression, UnaryExpression::Op::EXP, _1)]
                     | (log_kw       >> '(' > expression > ')')          [_val = phoenix::bind(&makeUnaryExpression, UnaryExpression::Op::LOG, _1)]
                     | (pow_kw       >> '(' > expression > ',' > expression > ')') [_val = phoenix::bind(&makeBinaryExpression, BinaryExpression::Op::POW, _1, _2)]
+                    | (min_kw  >> ('(' > expression > ',' > expression > ')')) [_val = phoenix::bind(&makeBinaryExpression, BinaryExpression::Op::MIN, _1, _2)]
+                    | (max_kw  >> ('(' > expression > ',' > expression > ')')) [_val = phoenix::bind(&makeBinaryExpression, BinaryExpression::Op::MAX, _1, _2)]
                     | (step_kw      >> '(' > expression > ',' > (constant % ',') > ')') [_val = phoenix::bind(&makeInterpolateExpression, InterpolateExpression::Method::STEP, _1, _2)]
                     | (linear_kw    >> '(' > expression > ',' > (constant % ',') > ')') [_val = phoenix::bind(&makeInterpolateExpression, InterpolateExpression::Method::LINEAR, _1, _2)]
                     | (cubic_kw     >> '(' > expression > ',' > (constant % ',') > ')') [_val = phoenix::bind(&makeInterpolateExpression, InterpolateExpression::Method::CUBIC, _1, _2)]

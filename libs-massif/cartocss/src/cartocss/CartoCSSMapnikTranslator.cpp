@@ -532,6 +532,9 @@ namespace carto::css {
         { "length",     mvt::UnaryExpression::Op::LENGTH },
         { "pow",        mvt::BinaryExpression::Op::POW },
         { "concat",     mvt::BinaryExpression::Op::CONCAT },
+        { "min",     mvt::BinaryExpression::Op::MIN },
+        { "max",     mvt::BinaryExpression::Op::MAX },
+        { "ntime",     mvt::BinaryExpression::Op::NTIME },
         { "replace",    mvt::TertiaryExpression::Op::REPLACE }
     };
 

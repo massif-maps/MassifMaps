@@ -54,6 +54,14 @@ namespace carto::css {
         constexpr float alpha() const {
             return _components[3];
         }
+        
+        constexpr float brightness() const {
+            float r = _components[0];
+            float g = _components[1];
+            float b = _components[2];
+            float a = _components[3];
+            return r * 0.299 + g * 0.587 + b * 0.114 + (1 - a);
+        }
 
         constexpr std::array<float, 4> hsla() const {
             float r = _components[0];

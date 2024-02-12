@@ -309,7 +309,15 @@ namespace carto::css {
                 throw TranslatorException("Unexpected number of arguments for " + funcExpr.getFunc() + " transform function");
             }
         }
-        else {
+        else if (std::find(_functionsTable.begin(), _functionsTable.end(), funcExpr.getFunc()) != _functionsTable.end()){
+            std::vector<mvt::Expression> mapnikExprs;
+            mapnikExprs.reserve(funcExpr.getArgs().size());
+            for (const Expression& expr : funcExpr.getArgs()) {
+                mapnikExprs.push_back(buildExpression(expr));
+            }
+
+            return std::make_shared<mvt::FunctionExpression>(funcExpr.getFunc(), mapnikExprs);
+        } else {
             throw TranslatorException("Unsupported function " + funcExpr.getFunc());
         }
     }
@@ -532,9 +540,9 @@ namespace carto::css {
         { "length",     mvt::UnaryExpression::Op::LENGTH },
         { "pow",        mvt::BinaryExpression::Op::POW },
         { "concat",     mvt::BinaryExpression::Op::CONCAT },
+        { "ntime",     mvt::BinaryExpression::Op::NTIME },
         { "min",     mvt::BinaryExpression::Op::MIN },
         { "max",     mvt::BinaryExpression::Op::MAX },
-        { "ntime",     mvt::BinaryExpression::Op::NTIME },
         { "replace",    mvt::TertiaryExpression::Op::REPLACE }
     };
 
@@ -551,6 +559,28 @@ namespace carto::css {
         { "scale",     std::type_index(typeid(mvt::ScaleTransform)) },
         { "skewx",     std::type_index(typeid(mvt::SkewXTransform)) },
         { "skewy",     std::type_index(typeid(mvt::SkewYTransform)) }
+    };
+    const std::vector<std::string> CartoCSSMapnikTranslator::_functionsTable = {
+        "url",
+        "color",
+        "rgb",
+        "rgba",
+        "hsl",
+        "hsla",
+        "red",
+        "green",
+        "blue",
+        "hue",
+        "saturation",
+        "lightness",
+        "brightness",
+        "mix",
+        "lighten",
+        "darken",
+        "saturate",
+        "desaturate",
+        "fadein",
+        "fadeout"
     };
 
     const std::vector<std::string> CartoCSSMapnikTranslator::_symbolizerList = {
@@ -685,6 +715,8 @@ namespace carto::css {
         { "marker-line-width", "stroke-width" },
         { "marker-spacing", "spacing" },
         { "marker-allow-overlap", "allow-overlap" },
+        { "marker-allow-overlap-same-feature-id", "allow-overlap-same-feature-id" },
+        { "marker-same-feature-id-dependent", "same-feature-id-dependent" },
         { "marker-ignore-placement", "ignore-placement" },
         { "marker-placement-priority", "placement-priority" },
         { "marker-transform", "transform" },

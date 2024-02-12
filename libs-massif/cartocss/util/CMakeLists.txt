@@ -10,7 +10,7 @@ endif()
 option(EXCLUDE_GL "Exclude GL rendering code" ON)
 option(SINGLE_LIBRARY "Compile as single library" OFF)
 
-find_package(Boost)
+# find_package(Boost)
 
 if(WIN32)
   add_definitions("-DNOMINMAX -D_SCL_SECURE_NO_WARNINGS -D_CRT_SECURE_NO_WARNINGS -DGL_GLEXT_PROTOTYPES")
@@ -53,6 +53,7 @@ include_directories(
   "${LIBS_DIR}/stdext"
   "${LIBS_DIR}/picojson"
   "${LIBS_DIR}/pbf"
+  "${LIBS_DIR}/boost"
   "${LIBS_DIR}/zlib/config"
   "${LIBS_DIR}/zlib/zlib"
   "${LIBS_DIR}/bidi"
@@ -62,12 +63,12 @@ include_directories(
   "${LIBS_DIR}/pugixml/pugixml/src"
   "${LIBS_DIR}/rapidjson/include"
   "${LIBS_DIR}/utf8/source"
-  "${Boost_INCLUDE_DIRS}"
+  # "${Boost_INCLUDE_DIRS}"
 )
 
-link_directories(
-  "${Boost_LIBRARY_DIRS}"
-)
+# link_directories(
+#   "${Boost_LIBRARY_DIRS}"
+# )
 
 add_subdirectory("${BASE_DIR}/vt" vt)
 add_subdirectory("${BASE_DIR}/mapnikvt" mapnikvt)

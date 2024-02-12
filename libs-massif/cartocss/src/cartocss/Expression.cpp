@@ -1,5 +1,6 @@
 #include "Expression.h"
 #include "mapnikvt/StringUtils.h"
+#include "mapnikvt/CSSColorParser.h"
 
 #include <stdexcept>
 #include <utility>
@@ -144,6 +145,13 @@ namespace carto::css {
         if (func == "url" && vals.size() == 1) {
             return Value(getString(vals[0]));
         }
+        else if (func == "color" && vals.size() == 1) {
+            unsigned int value = 0;
+            if (!mvt::parseCSSColor(getString(vals[0]), value)) {
+                return Value();
+            }
+            return Value(Color::fromValue(value));
+        }
         else if (func == "rgb" && vals.size() == 3) {
             Color color = Color::fromRGBA(getFloat(vals[0]) / 255.0f, getFloat(vals[1]) / 255.0f, getFloat(vals[2]) / 255.0f, 1.0f);
             return Value(color);
@@ -187,6 +195,9 @@ namespace carto::css {
         else if (func == "lightness" && vals.size() == 1) {
             float value = getColor(vals[0]).hsla()[2];
             return Value(value);
+        }
+        else if (func == "brightness" && vals.size() == 1) {
+            return Value(getColor(vals[0]).brightness()* 255.0f);
         }
         else if (func == "mix" && vals.size() == 3) {
             Color color = Color::mix(getColor(vals[0]), getColor(vals[1]), getFloat(vals[2]));

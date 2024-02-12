@@ -715,6 +715,8 @@ namespace carto::css {
         { "marker-line-width", "stroke-width" },
         { "marker-spacing", "spacing" },
         { "marker-allow-overlap", "allow-overlap" },
+        { "marker-allow-overlap-same-feature-id", "allow-overlap-same-feature-id" },
+        { "marker-same-feature-id-dependent", "same-feature-id-dependent" },
         { "marker-ignore-placement", "ignore-placement" },
         { "marker-placement-priority", "placement-priority" },
         { "marker-transform", "transform" },

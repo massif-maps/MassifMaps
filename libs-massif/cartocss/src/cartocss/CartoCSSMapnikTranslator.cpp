@@ -528,7 +528,7 @@ namespace carto::css {
         { "log",        mvt::UnaryExpression::Op::LOG },
         { "uppercase",  mvt::UnaryExpression::Op::UPPER },
         { "lowercase",  mvt::UnaryExpression::Op::LOWER },
-        { "captialize", mvt::UnaryExpression::Op::CAPITALIZE },
+        { "capitalize", mvt::UnaryExpression::Op::CAPITALIZE },
         { "length",     mvt::UnaryExpression::Op::LENGTH },
         { "pow",        mvt::BinaryExpression::Op::POW },
         { "concat",     mvt::BinaryExpression::Op::CONCAT },

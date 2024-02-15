@@ -11,6 +11,8 @@ option(EXCLUDE_GL "Exclude GL rendering code" ON)
 option(SINGLE_LIBRARY "Compile as single library" OFF)
 
 # find_package(Boost)
+# prevent boost from using deprecated unary_function
+add_definitions("-DBOOST_NO_CXX98_FUNCTION_BASE")
 
 if(WIN32)
   add_definitions("-DNOMINMAX -D_SCL_SECURE_NO_WARNINGS -D_CRT_SECURE_NO_WARNINGS -DGL_GLEXT_PROTOTYPES")

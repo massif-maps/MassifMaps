@@ -30,6 +30,7 @@ namespace carto::mvt {
         std::set<std::string> getPropertyNames() const;
         Property* getProperty(const std::string& name);
         const Property* getProperty(const std::string& name) const;
+        const bool hasProperties() const;
 
         virtual FeatureProcessor createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const = 0;
 

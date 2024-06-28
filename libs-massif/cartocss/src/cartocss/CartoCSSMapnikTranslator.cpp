@@ -506,6 +506,9 @@ namespace carto::css {
                 _logger->write(mvt::Logger::Severity::ERROR, "Error while setting " + propertyId + " property: " + ex.what());
             }
         }
+        if (!mapnikSymbolizer->hasProperties()) {
+            return std::shared_ptr<mvt::Symbolizer>();
+        }
 
         return mapnikSymbolizer;
     }

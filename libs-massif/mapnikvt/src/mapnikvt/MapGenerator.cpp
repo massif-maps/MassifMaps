@@ -120,6 +120,9 @@ namespace carto::mvt {
                     const Symbolizer& symbolizer = **it3;
                     pugi::xml_node symbolizerNode = ruleNode.append_child();
                     _symbolizerGenerator->generateSymbolizer(symbolizer, symbolizerNode);
+                    if(symbolizerNode.attributes().empty()) {
+                        ruleNode.remove_child(symbolizerNode);
+                    }
                 }
             }
         }

@@ -24,6 +24,9 @@ namespace carto::mvt {
         }
         return it->second;
     }
+    const bool Symbolizer::hasProperties() const {
+        return _propertyMap.size() > 0;
+    }
 
     const Property* Symbolizer::getProperty(const std::string& name) const {
         auto it = _propertyMap.find(name);

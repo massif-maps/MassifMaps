@@ -276,7 +276,6 @@ namespace carto::css {
                 CartoCSSCompiler compiler;
                 compiler.setIgnoreLayerPredicates(_ignoreLayerPredicates);
                 compiler.compileLayer(styleSheet, layerName, 0, MAX_ZOOM + 1, layerZoomAttachments, constantFieldMap);
-
                 CartoCSSMapnikTranslator translator(_logger);
                 for (auto it = layerZoomAttachments.begin(); it != layerZoomAttachments.end(); it++) {
                     updateAttachmentStyleMap(translator, map, it->first.first, it->first.second, it->second, attachmentStyleMap);
@@ -324,7 +323,7 @@ namespace carto::css {
             attachmentStyle.order = std::min(attachmentStyle.order, layerAttachmentOrder);
             for (const PropertySet& propertySet : layerAttachment.getPropertySets()) {
                 std::shared_ptr<const mvt::Rule> rule = translator.buildRule(propertySet, map, minZoom, maxZoom);
-                if (rule) {
+                if (rule && rule.get()->getSymbolizers().size() > 0) {
                     attachmentStyle.rules.push_back(rule);
                 }
 

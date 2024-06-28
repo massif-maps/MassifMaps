@@ -23,6 +23,7 @@
 
 #include <algorithm>
 #include <typeinfo>
+#include <iostream>
 
 namespace carto::css {
     std::shared_ptr<const mvt::Rule> CartoCSSMapnikTranslator::buildRule(const PropertySet& propertySet, const std::shared_ptr<mvt::Map>& map, int minZoom, int maxZoom) const {
@@ -100,7 +101,9 @@ namespace carto::css {
             return it->second;
         }
         std::shared_ptr<const mvt::Symbolizer> symbolizer = createSymbolizer(symbolizerType, properties, map);
-        _symbolizerCache[key] = symbolizer;
+        if (symbolizer) {
+            _symbolizerCache[key] = symbolizer;
+        }
         return symbolizer;
     }
 
@@ -400,7 +403,7 @@ namespace carto::css {
     std::shared_ptr<const mvt::Symbolizer> CartoCSSMapnikTranslator::createSymbolizer(const std::string& symbolizerType, const std::vector<std::shared_ptr<const Property>>& properties, const std::shared_ptr<mvt::Map>& map) const {
         std::shared_ptr<mvt::Symbolizer> mapnikSymbolizer;
         if (properties.size() == 0) {
-            return std::shared_ptr<mvt::Symbolizer>();
+            return nullptr;
         }
         if (symbolizerType == "point") {
             mapnikSymbolizer = std::make_shared<mvt::PointSymbolizer>(_logger);
@@ -481,7 +484,7 @@ namespace carto::css {
             }
             else {
                 // No need to warn, it is legal to have no 'text'
-                return std::shared_ptr<mvt::Symbolizer>();
+                return nullptr;
             }
         }
         else if (symbolizerType == "building") {
@@ -489,7 +492,7 @@ namespace carto::css {
         }
         else {
             _logger->write(mvt::Logger::Severity::ERROR, "Unsupported symbolizer type: " + symbolizerType);
-            return std::shared_ptr<mvt::Symbolizer>();
+            return nullptr;
         }
 
         for (const std::shared_ptr<const Property>& prop : properties) {
@@ -515,7 +518,7 @@ namespace carto::css {
             }
         }
         if (!mapnikSymbolizer->hasProperties()) {
-            return std::shared_ptr<mvt::Symbolizer>();
+            return nullptr;
         }
 
         return mapnikSymbolizer;

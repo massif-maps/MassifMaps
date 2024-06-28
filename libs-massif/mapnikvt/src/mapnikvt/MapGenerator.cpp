@@ -89,7 +89,7 @@ namespace carto::mvt {
                 _logger->write(Logger::Severity::WARNING, "Unsupported filter mode");
                 break;
             }
-
+            bool styleNodeHasRules = false;
             for (auto it2 = style.getRules().begin(); it2 != style.getRules().end(); it2++) {
                 const Rule& rule = **it2;
                 pugi::xml_node ruleNode = styleNode.append_child("Rule");
@@ -115,21 +115,34 @@ namespace carto::mvt {
                         filterNode.append_child(pugi::node_pcdata).set_value(generateExpressionString(*filter->getPredicate(), false).c_str());
                     }
                 }
-
+                bool hasSymbolizers = false;
                 for (auto it3 = rule.getSymbolizers().begin(); it3 != rule.getSymbolizers().end(); it3++) {
                     const Symbolizer& symbolizer = **it3;
                     pugi::xml_node symbolizerNode = ruleNode.append_child();
                     _symbolizerGenerator->generateSymbolizer(symbolizer, symbolizerNode);
                     if(symbolizerNode.attributes().empty()) {
                         ruleNode.remove_child(symbolizerNode);
+                    } else {
+                        hasSymbolizers = true;
                     }
                 }
+                if (!hasSymbolizers) {
+                    styleNode.remove_child(ruleNode);
+                } else {
+                    styleNodeHasRules = true;
+                }
+            }
+            if (!styleNodeHasRules) {
+                mapNode.remove_child(styleNode);
             }
         }
 
         // Layers
         for (auto it = map.getLayers().begin(); it != map.getLayers().end(); it++) {
             const Layer& layer = **it;
+            if (layer.getStyleNames().empty()) {
+                continue;
+            }
             pugi::xml_node layerNode = mapNode.append_child("Layer");
             layerNode.append_attribute("name").set_value(layer.getName().c_str());
 

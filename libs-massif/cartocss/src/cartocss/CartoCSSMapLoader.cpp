@@ -23,6 +23,21 @@ namespace carto::css {
             }
             return mvt::Value();
         }
+        Value convertJSONNonMVTValue(const picojson::value& value) {
+            if (value.is<std::string>()) {
+                return Value(std::string(value.get<std::string>()));
+            }
+            if (value.is<bool>()) {
+                return Value(value.get<bool>());
+            }
+            if (value.is<std::int64_t>()) {
+                return Value(static_cast<long long>(value.get<std::int64_t>()));
+            }
+            if (value.is<double>()) {
+                return Value(value.get<double>());
+            }
+            return Value();
+        }
     }
 
     std::shared_ptr<mvt::Map> CartoCSSMapLoader::loadMap(const std::string& cartoCSS) const {
@@ -52,7 +67,8 @@ namespace carto::css {
         }
 
         // Build Map
-        return buildMap(styleSheet, layerNames, std::vector<mvt::Parameter>(), std::vector<mvt::NutiParameter>());
+        std::map<std::string, Value> constantFieldMap;
+        return buildMap(styleSheet, layerNames, std::vector<mvt::Parameter>(), std::vector<mvt::NutiParameter>(), constantFieldMap);
     }
 
     std::shared_ptr<mvt::Map> CartoCSSMapLoader::loadMapProject(const std::string& fileName) const {
@@ -143,8 +159,19 @@ namespace carto::css {
                 nutiParameters.emplace_back(paramName, defaultValue, enumMap);
             }
         }
+        // Constant parameters (for macros)
+        std::map<std::string, Value> constantFieldMap;
+        if (mapDoc.contains("constants")) {
+            const picojson::object& nutiparamsObj = mapDoc.get("constants").get<picojson::object>();
+            for (auto pit = nutiparamsObj.begin(); pit != nutiparamsObj.end(); pit++) {
+                const std::string& paramName = pit->first;
+                const picojson::value& paramValue = pit->second;
+                std::map<std::string, mvt::Value> enumMap;
+                constantFieldMap[paramName] = convertJSONNonMVTValue(paramValue);
+            }
+        }
 
-        return buildMap(styleSheet, layerNames, parameters, nutiParameters);
+        return buildMap(styleSheet, layerNames, parameters, nutiParameters, constantFieldMap);
     }
 
     picojson::value CartoCSSMapLoader::loadMapDocument(const std::string& fileName, std::set<std::string> loadedFileNames) const {
@@ -173,8 +200,19 @@ namespace carto::css {
 
             mapDoc.swap(extendsMapDoc);
             const picojson::object& extendsMapDocObj = extendsMapDoc.get<picojson::object>();
+            std::vector<std::string> mergeCases = {"nutiparameters", "constants"};
             for (auto it = extendsMapDocObj.begin(); it != extendsMapDocObj.end(); it++) {
-                mapDoc.set(it->first, it->second);
+                if(std::find(mergeCases.begin(), mergeCases.end(), it->first) != mergeCases.end()) {
+                    // we extend
+                    picojson::value& subObj = mapDoc.get(it->first);
+                    const picojson::object& subOverrideObj = it->second.get<picojson::object>();
+                    for (auto it2 = subOverrideObj.begin(); it2 != subOverrideObj.end(); it2++) {
+                        subObj.set(it2->first, it2->second);
+                    }
+                } else {
+                    // we override
+                    mapDoc.set(it->first, it->second);
+                }
             }
         }
 
@@ -208,14 +246,14 @@ namespace carto::css {
         return mapSettings;
     }
 
-    std::shared_ptr<mvt::Map> CartoCSSMapLoader::buildMap(const StyleSheet& styleSheet, const std::vector<std::string>& layerNames, const std::vector<mvt::Parameter>& parameters, const std::vector<mvt::NutiParameter>& nutiParameters) const {
+    std::shared_ptr<mvt::Map> CartoCSSMapLoader::buildMap(const StyleSheet& styleSheet, const std::vector<std::string>& layerNames, const std::vector<mvt::Parameter>& parameters, const std::vector<mvt::NutiParameter>& nutiParameters, std::map<std::string, Value>& constantFieldMap) const {
         // Map properties
         mvt::Map::Settings mapSettings;
         {
             try {
                 CartoCSSCompiler compiler;
                 std::map<std::string, Expression> mapProperties;
-                compiler.compileMap(styleSheet, mapProperties);
+                compiler.compileMap(styleSheet, mapProperties, constantFieldMap);
 
                 mapSettings = loadMapSettings(mapProperties);
             }
@@ -237,7 +275,7 @@ namespace carto::css {
 
                 CartoCSSCompiler compiler;
                 compiler.setIgnoreLayerPredicates(_ignoreLayerPredicates);
-                compiler.compileLayer(styleSheet, layerName, 0, MAX_ZOOM + 1, layerZoomAttachments);
+                compiler.compileLayer(styleSheet, layerName, 0, MAX_ZOOM + 1, layerZoomAttachments, constantFieldMap);
 
                 CartoCSSMapnikTranslator translator(_logger);
                 for (auto it = layerZoomAttachments.begin(); it != layerZoomAttachments.end(); it++) {

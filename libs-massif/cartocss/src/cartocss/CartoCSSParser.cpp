@@ -162,6 +162,7 @@ namespace carto::css {
                     | (qi::lit('#') > blockid)                      [_val = phoenix::construct<LayerPredicate>(_1)]
                     | (qi::lit('.') > blockid)                      [_val = phoenix::construct<ClassPredicate>(_1)]
                     | (qi::lit("::") > blockid)                     [_val = phoenix::construct<AttachmentPredicate>(_1)]
+                    | ((qi::lit('[') >> '#') > varid > op > constant > ']') [_val = phoenix::bind(&makeConstOpPredicate, _2, false, _1, _3)]
                     | ((qi::lit('[') >> '@') > varid > op > constant > ']') [_val = phoenix::bind(&makeOpPredicate, _2, false, _1, _3)]
                     | (qi::lit('[') > (fieldid | string) > op > constant > ']') [_val = phoenix::bind(&makeOpPredicate, _2, true, _1, _3)]
                     | ((qi::lit("when") >> '(') > expression > ')') [_val = phoenix::bind(&makeWhenPredicate, _1)]
@@ -284,6 +285,9 @@ namespace carto::css {
 
             static Predicate makeOpPredicate(OpPredicate::Op op, bool field, const std::string& name, const Value& refValue) {
                 return OpPredicate(op, FieldOrVar(field, name), refValue);
+            }
+            static Predicate makeConstOpPredicate(OpPredicate::Op op, bool field, const std::string& name, const Value& refValue) {
+                return ConstOpPredicate(op, name, refValue);
             }
 
             static Predicate makeWhenPredicate(const Expression& expr) {

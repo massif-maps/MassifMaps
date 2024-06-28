@@ -342,6 +342,13 @@ namespace carto::css {
                 return std::make_shared<mvt::ComparisonPredicate>(buildComparisonOp(opPred.getOp()), std::make_shared<mvt::VariableExpression>(std::move(var)), std::move(val));
             }
 
+
+            std::optional<mvt::Predicate> operator() (const ConstOpPredicate& opPred) const {
+                std::string var = opPred.getName();
+                mvt::Value val = buildValue(opPred.getRefValue());
+                return std::make_shared<mvt::ComparisonPredicate>(buildComparisonOp(opPred.getOp()), std::make_shared<mvt::VariableExpression>(std::move(var)), std::move(val));
+            }
+
             std::optional<mvt::Predicate> operator() (const WhenPredicate& whenPred) const {
                 mvt::Expression mapnikExpr = buildExpression(whenPred.getExpression());
                 return std::make_shared<mvt::ExpressionPredicate>(std::move(mapnikExpr));
@@ -384,6 +391,9 @@ namespace carto::css {
 
     std::shared_ptr<const mvt::Symbolizer> CartoCSSMapnikTranslator::createSymbolizer(const std::string& symbolizerType, const std::vector<std::shared_ptr<const Property>>& properties, const std::shared_ptr<mvt::Map>& map) const {
         std::shared_ptr<mvt::Symbolizer> mapnikSymbolizer;
+        if (properties.size() == 0) {
+            return std::shared_ptr<mvt::Symbolizer>();
+        }
         if (symbolizerType == "point") {
             mapnikSymbolizer = std::make_shared<mvt::PointSymbolizer>(_logger);
         }

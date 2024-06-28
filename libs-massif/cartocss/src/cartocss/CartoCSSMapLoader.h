@@ -87,7 +87,7 @@ namespace carto::css {
 
         mvt::Map::Settings loadMapSettings(const std::map<std::string, Expression>& mapProperties) const;
 
-        std::shared_ptr<mvt::Map> buildMap(const StyleSheet& styleSheet, const std::vector<std::string>& layerNames, const std::vector<mvt::Parameter>& parameters, const std::vector<mvt::NutiParameter>& nutiParameters) const;
+        std::shared_ptr<mvt::Map> buildMap(const StyleSheet& styleSheet, const std::vector<std::string>& layerNames, const std::vector<mvt::Parameter>& parameters, const std::vector<mvt::NutiParameter>& nutiParameters, std::map<std::string, Value>& constantFieldMap) const;
 
         std::shared_ptr<mvt::Style> buildStyle(const AttachmentStyle& attachmentStyle, const std::string& styleName) const;
 

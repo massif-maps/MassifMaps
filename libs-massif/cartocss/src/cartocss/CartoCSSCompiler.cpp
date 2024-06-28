@@ -5,12 +5,13 @@
 #include <set>
 
 namespace carto::css {
-    void CartoCSSCompiler::compileMap(const StyleSheet& styleSheet, std::map<std::string, Expression>& mapProperties) const {
+    void CartoCSSCompiler::compileMap(const StyleSheet& styleSheet, std::map<std::string, Expression>& mapProperties, std::map<std::string, Value>& constantFieldMap) const {
         // Build flat property lists
         std::map<std::string, Expression> variableMap;
         PredicateContext context;
         context.expressionContext = _context;
         context.expressionContext.variableMap = &variableMap;
+        context.expressionContext.constantFieldMap = &constantFieldMap;
 
         FilteredPropertyState state;
         std::list<FilteredPropertyList> propertyLists;
@@ -41,13 +42,14 @@ namespace carto::css {
         }
     }
     
-    void CartoCSSCompiler::compileLayer(const StyleSheet& styleSheet, const std::string& layerName, int minZoom, int maxZoom, std::map<std::pair<int, int>, std::list<AttachmentPropertySets>>& layerZoomAttachments) const {
+    void CartoCSSCompiler::compileLayer(const StyleSheet& styleSheet, const std::string& layerName, int minZoom, int maxZoom, std::map<std::pair<int, int>, std::list<AttachmentPropertySets>>& layerZoomAttachments, std::map<std::string, Value>& constantFieldMap) const {
         // Build flat property lists
         std::map<std::string, Expression> variableMap;
         PredicateContext context;
         context.layerName = layerName;
         context.expressionContext = _context;
         context.expressionContext.variableMap = &variableMap;
+        context.expressionContext.constantFieldMap = &constantFieldMap;
 
         FilteredPropertyState state;
         std::list<FilteredPropertyList> propertyLists;
@@ -67,6 +69,7 @@ namespace carto::css {
         for (; zoom < maxZoom; zoom++) {
             std::map<std::string, Value> predefinedFieldMap;
             context.expressionContext.predefinedFieldMap = &predefinedFieldMap;
+            context.expressionContext.constantFieldMap = &constantFieldMap;
             (*context.expressionContext.predefinedFieldMap)["zoom"] = Value(static_cast<long long>(zoom));
             PredicateEvaluator predEvaluator(context);
 
@@ -181,6 +184,8 @@ namespace carto::css {
                 if (!result) {
                     unreachableProp = true;
                     break;
+                } else if (std::get_if<ConstOpPredicate>(&pred)) {
+                    continue;
                 }
                 filters.push_back(state.insertPredicate(pred));
             }
@@ -303,6 +308,7 @@ namespace carto::css {
             void operator() (const ClassPredicate&) { classes++; }
             void operator() (const AttachmentPredicate&) { }
             void operator() (const OpPredicate&) { filters++; }
+            void operator() (const ConstOpPredicate&) { }
             void operator() (const WhenPredicate&) { filters++; }
 
             int layers = 0;

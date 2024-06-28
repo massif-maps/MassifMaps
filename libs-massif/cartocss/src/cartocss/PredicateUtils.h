@@ -84,6 +84,54 @@ namespace carto::css {
             }
             return boost::indeterminate;
         }
+        boost::tribool operator() (const ConstOpPredicate& opPred) const {
+            std::optional<Value> fieldOrVarValue;
+            if (_context.expressionContext.constantFieldMap) {
+                auto it = _context.expressionContext.constantFieldMap->find(opPred.getName());
+                if (it != _context.expressionContext.constantFieldMap->end()) {
+                    fieldOrVarValue = it->second;
+                }
+            }
+
+            if (fieldOrVarValue) {
+                switch (opPred.getOp()) {
+                    case OpPredicate::Op::EQ:
+                        if (fieldOrVarValue == opPred.getRefValue()) {
+                            return true;
+                        }
+                        break;
+                    case OpPredicate::Op::NEQ:
+                        if (fieldOrVarValue != opPred.getRefValue()) {
+                            return true;
+                        }
+                        break;
+                    case OpPredicate::Op::LT:
+                        if (fieldOrVarValue < opPred.getRefValue()) {
+                            return true;
+                        }
+                        break;
+                    case OpPredicate::Op::LTE:
+                        if (fieldOrVarValue <= opPred.getRefValue()) {
+                            return true;
+                        }
+                        break;
+                    case OpPredicate::Op::GT:
+                        if (fieldOrVarValue > opPred.getRefValue()) {
+                            return true;
+                        }
+                        break;
+                    case OpPredicate::Op::GTE:
+                        if (fieldOrVarValue >= opPred.getRefValue()) {
+                            return true;
+                        }
+                        break;
+                    case OpPredicate::Op::MATCH:
+                        return boost::indeterminate;
+                    }
+                return OpPredicate::applyOp(opPred.getOp(), *fieldOrVarValue, opPred.getRefValue());
+            }
+            return boost::indeterminate;
+        }
 
         boost::tribool operator() (const WhenPredicate& whenPred) const {
             Expression expr = std::visit(ExpressionEvaluator(_context.expressionContext), whenPred.getExpression());

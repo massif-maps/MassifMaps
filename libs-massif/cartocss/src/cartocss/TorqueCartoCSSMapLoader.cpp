@@ -22,11 +22,12 @@ namespace carto::css {
         // Build map/torque properties
         mvt::TorqueMap::Settings mapSettings;
         mvt::TorqueMap::TorqueSettings torqueSettings;
+        std::map<std::string, Value> constantFieldMap;
         {
             try {
                 CartoCSSCompiler compiler;
                 std::map<std::string, Expression> mapProperties;
-                compiler.compileMap(styleSheet, mapProperties);
+                compiler.compileMap(styleSheet, mapProperties, constantFieldMap);
 
                 mapSettings = loadMapSettings(mapProperties);
                 torqueSettings = loadTorqueSettings(mapProperties);
@@ -82,7 +83,7 @@ namespace carto::css {
                     CartoCSSCompiler compiler;
                     compiler.setContext(context);
                     compiler.setIgnoreLayerPredicates(_ignoreLayerPredicates);
-                    compiler.compileLayer(styleSheet, layerName, 0, MAX_ZOOM + 1, layerZoomAttachments);
+                    compiler.compileLayer(styleSheet, layerName, 0, MAX_ZOOM + 1, layerZoomAttachments, constantFieldMap);
 
                     TorqueCartoCSSMapnikTranslator translator(_logger);
                     for (auto it = layerZoomAttachments.begin(); it != layerZoomAttachments.end(); it++) {

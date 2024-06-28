@@ -20,6 +20,7 @@ namespace carto::css {
     struct ExpressionContext {
         std::map<std::string, Expression>* variableMap = nullptr;
         std::map<std::string, Value>* predefinedFieldMap = nullptr;
+        std::map<std::string, Value>* constantFieldMap = nullptr;
         std::map<std::string, Value>* fieldMap = nullptr;
     };
 

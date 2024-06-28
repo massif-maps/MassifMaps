@@ -21,9 +21,10 @@ namespace carto::css {
     class ClassPredicate;
     class AttachmentPredicate;
     class OpPredicate;
+    class ConstOpPredicate;
     class WhenPredicate;
 
-    using Predicate = std::variant<MapPredicate, LayerPredicate, ClassPredicate, AttachmentPredicate, OpPredicate, WhenPredicate>;
+    using Predicate = std::variant<MapPredicate, LayerPredicate, ClassPredicate, AttachmentPredicate, OpPredicate, ConstOpPredicate, WhenPredicate>;
 
     class MapPredicate final {
     public:
@@ -84,20 +85,46 @@ namespace carto::css {
             MATCH
         };
 
-        explicit OpPredicate(Op op, const FieldOrVar& fieldOrVar, Value refValue) : _op(op), _fieldOrVar(fieldOrVar), _refValue(std::move(refValue)) { }
+        explicit OpPredicate(Op op, const FieldOrVar &fieldOrVar, Value refValue) : _op(op), _fieldOrVar(fieldOrVar), _refValue(std::move(refValue)) {}
 
         Op getOp() const { return _op; }
-        const FieldOrVar& getFieldOrVar() const { return _fieldOrVar; }
-        const Value& getRefValue() const { return _refValue; }
 
-        bool operator == (const OpPredicate& other) const { return _op == other._op && _fieldOrVar == other._fieldOrVar && _refValue == other._refValue; }
-        bool operator != (const OpPredicate& other) const { return !(*this == other); }
+        const FieldOrVar &getFieldOrVar() const { return _fieldOrVar; }
 
-        static boost::tribool applyOp(Op op, const Value& val1, const Value& val2);
+        const Value &getRefValue() const { return _refValue; }
+
+        bool operator==(const OpPredicate &other) const {
+            return _op == other._op && _fieldOrVar == other._fieldOrVar &&
+                   _refValue == other._refValue;
+        }
+
+        bool operator!=(const OpPredicate &other) const { return !(*this == other); }
+
+        static boost::tribool applyOp(Op op, const Value &val1, const Value &val2);
 
     private:
         Op _op;
         FieldOrVar _fieldOrVar;
+        Value _refValue;
+    };
+
+    class ConstOpPredicate final {
+    public:
+
+        explicit ConstOpPredicate(OpPredicate::Op op, const std::string name, Value refValue) : _op(op), _name(name), _refValue(std::move(refValue)) { }
+
+        OpPredicate::Op getOp() const { return _op; }
+        const std::string& getName() const { return _name; }
+        const Value& getRefValue() const { return _refValue; }
+
+        bool operator == (const ConstOpPredicate& other) const { return _op == other._op && _name == other._name && _refValue == other._refValue; }
+        bool operator != (const ConstOpPredicate& other) const { return !(*this == other); }
+
+        static boost::tribool applyOp(OpPredicate::Op op, const Value& val1, const Value& val2);
+
+    private:
+        OpPredicate::Op _op;
+        std::string _name;
         Value _refValue;
     };
 

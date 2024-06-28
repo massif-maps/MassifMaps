@@ -125,7 +125,7 @@ namespace carto::css {
             }
 
             if (_context.expressionContext.constantFieldMap) {
-                auto it = _context.expressionContext.constantFieldMap->find(constFieldName.substr(1, constFieldName.size()));
+                auto it = _context.expressionContext.constantFieldMap->find(constFieldName);
                 if (it != _context.expressionContext.constantFieldMap->end()) {
                     fieldOrVarValue2 = it->second;
                 }

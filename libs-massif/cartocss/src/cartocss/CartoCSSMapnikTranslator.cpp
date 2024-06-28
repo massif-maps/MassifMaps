@@ -112,7 +112,7 @@ namespace carto::css {
             
             mvt::Expression operator() (const FieldOrVar& fieldOrVar) const {
                 if (!fieldOrVar.isField()) {
-                    throw TranslatorException("Undefined variable in expression (@" + fieldOrVar.getName() + ")");
+                    throw TranslatorException("Undefined variable or constant in expression (@" + fieldOrVar.getName() + " or #" + fieldOrVar.getName() +")");
                 }
                 try {
                     return std::make_shared<mvt::VariableExpression>(mvt::parseExpression(fieldOrVar.getName(), true));
@@ -342,11 +342,19 @@ namespace carto::css {
                 return std::make_shared<mvt::ComparisonPredicate>(buildComparisonOp(opPred.getOp()), std::make_shared<mvt::VariableExpression>(std::move(var)), std::move(val));
             }
 
-
             std::optional<mvt::Predicate> operator() (const ConstOpPredicate& opPred) const {
                 std::string var = opPred.getName();
                 mvt::Value val = buildValue(opPred.getRefValue());
                 return std::make_shared<mvt::ComparisonPredicate>(buildComparisonOp(opPred.getOp()), std::make_shared<mvt::VariableExpression>(std::move(var)), std::move(val));
+            }
+
+            std::optional<mvt::Predicate> operator() (const OpConstPredicate& opPred) const {
+                if (!opPred.getFieldOrVar().isField()) {
+                    throw TranslatorException("Undefined variable in predicate (@" + opPred.getFieldOrVar().getName() + ")");
+                }
+                std::string var = opPred.getFieldOrVar().getName();
+                std::string varConst = opPred.getName();
+                return std::make_shared<mvt::ComparisonPredicate>(buildComparisonOp(opPred.getOp()), std::make_shared<mvt::VariableExpression>(std::move(var)), std::move(varConst));
             }
 
             std::optional<mvt::Predicate> operator() (const WhenPredicate& whenPred) const {

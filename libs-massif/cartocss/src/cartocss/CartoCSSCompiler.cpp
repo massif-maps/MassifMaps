@@ -307,8 +307,9 @@ namespace carto::css {
             void operator() (const LayerPredicate&) { layers++; }
             void operator() (const ClassPredicate&) { classes++; }
             void operator() (const AttachmentPredicate&) { }
-            void operator() (const OpPredicate&) { filters++; }
             void operator() (const ConstOpPredicate&) { }
+            void operator() (const OpPredicate&) { filters++; }
+            void operator() (const OpConstPredicate&) { filters++; }
             void operator() (const WhenPredicate&) { filters++; }
 
             int layers = 0;

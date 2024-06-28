@@ -54,8 +54,15 @@ namespace carto::css {
         boost::tribool operator() (const OpPredicate& opPred) const {
             std::optional<Value> fieldOrVarValue;
             if (opPred.getFieldOrVar().isVar()) {
+                std::string varName = opPred.getFieldOrVar().getName();
+                if (_context.expressionContext.constantFieldMap) {
+                    auto it = _context.expressionContext.constantFieldMap->find(varName);
+                    if (it != _context.expressionContext.constantFieldMap->end()) {
+                        fieldOrVarValue = it->second;
+                    }
+                }
                 if (_context.expressionContext.variableMap) {
-                    auto it = _context.expressionContext.variableMap->find(opPred.getFieldOrVar().getName());
+                    auto it = _context.expressionContext.variableMap->find(varName);
                     if (it != _context.expressionContext.variableMap->end()) {
                         Expression result = std::visit(ExpressionEvaluator(_context.expressionContext), it->second);
                         if (auto val = std::get_if<Value>(&result)) {
@@ -65,14 +72,15 @@ namespace carto::css {
                 }
             }
             else {
+                std::string key = opPred.getFieldOrVar().getName();
                 if (_context.expressionContext.fieldMap) {
-                    auto it = _context.expressionContext.fieldMap->find(opPred.getFieldOrVar().getName());
+                    auto it = _context.expressionContext.fieldMap->find(key);
                     if (it != _context.expressionContext.fieldMap->end()) {
                         fieldOrVarValue = it->second;
                     }
                 }
                 if (_context.expressionContext.predefinedFieldMap) {
-                    auto it = _context.expressionContext.predefinedFieldMap->find(opPred.getFieldOrVar().getName());
+                    auto it = _context.expressionContext.predefinedFieldMap->find(key);
                     if (it != _context.expressionContext.predefinedFieldMap->end()) {
                         fieldOrVarValue = it->second;
                     }
@@ -84,6 +92,53 @@ namespace carto::css {
             }
             return boost::indeterminate;
         }
+
+        boost::tribool operator() (const OpConstPredicate& opPred) const {
+            std::optional<Value> fieldOrVarValue;
+            std::optional<Value> fieldOrVarValue2;
+            std::string fieldName = opPred.getFieldOrVar().getName();
+            std::string constFieldName = opPred.getName();
+            if (opPred.getFieldOrVar().isVar()) {
+                if (_context.expressionContext.variableMap) {
+                    auto it = _context.expressionContext.variableMap->find(fieldName);
+                    if (it != _context.expressionContext.variableMap->end()) {
+                        Expression result = std::visit(ExpressionEvaluator(_context.expressionContext), it->second);
+                        if (auto val = std::get_if<Value>(&result)) {
+                            fieldOrVarValue = *val;
+                        }
+                    }
+                }
+            }
+            else {
+                if (_context.expressionContext.fieldMap) {
+                    auto it = _context.expressionContext.fieldMap->find(fieldName);
+                    if (it != _context.expressionContext.fieldMap->end()) {
+                        fieldOrVarValue = it->second;
+                    }
+                }
+                if (_context.expressionContext.predefinedFieldMap) {
+                    auto it = _context.expressionContext.predefinedFieldMap->find(fieldName);
+                    if (it != _context.expressionContext.predefinedFieldMap->end()) {
+                        fieldOrVarValue = it->second;
+                    }
+                }
+            }
+
+            if (_context.expressionContext.constantFieldMap) {
+                auto it = _context.expressionContext.constantFieldMap->find(constFieldName.substr(1, constFieldName.size()));
+                if (it != _context.expressionContext.constantFieldMap->end()) {
+                    fieldOrVarValue2 = it->second;
+                }
+            }
+            if (fieldOrVarValue && !fieldOrVarValue2) {
+                return false;
+            }
+            if (fieldOrVarValue && fieldOrVarValue2) {
+                return OpPredicate::applyOp(opPred.getOp(), *fieldOrVarValue2, *fieldOrVarValue);
+            }
+            return boost::indeterminate;
+        }
+
         boost::tribool operator() (const ConstOpPredicate& opPred) const {
             std::optional<Value> fieldOrVarValue;
             if (_context.expressionContext.constantFieldMap) {

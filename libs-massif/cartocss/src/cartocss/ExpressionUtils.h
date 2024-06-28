@@ -31,8 +31,15 @@ namespace carto::css {
 
         Expression operator() (const FieldOrVar& fieldOrVar) const {
             if (!fieldOrVar.isField()) {
+                const std::string varName = fieldOrVar.getName();
+                if (_context.constantFieldMap) {
+                    auto it = _context.constantFieldMap->find(varName);
+                    if (it != _context.constantFieldMap->end()) {
+                        return it->second;
+                    }
+                }
                 if (_context.variableMap) {
-                    auto it = _context.variableMap->find(fieldOrVar.getName());
+                    auto it = _context.variableMap->find(varName);
                     if (it != _context.variableMap->end()) {
                         return std::visit(*this, it->second);
                     }

@@ -134,7 +134,7 @@ namespace carto::css {
                 return false;
             }
             if (fieldOrVarValue && fieldOrVarValue2) {
-                return OpPredicate::applyOp(opPred.getOp(), *fieldOrVarValue2, *fieldOrVarValue);
+                return OpPredicate::applyOp(opPred.getOp(), *fieldOrVarValue, *fieldOrVarValue2);
             }
             return boost::indeterminate;
         }

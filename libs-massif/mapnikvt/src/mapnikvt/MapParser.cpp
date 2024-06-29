@@ -17,6 +17,7 @@
 #include <sstream>
 
 #include <boost/lexical_cast.hpp>
+#include <boost/cast.hpp>
 
 namespace carto::mvt {
     std::shared_ptr<Map> MapParser::parseMap(const pugi::xml_document& doc) const {

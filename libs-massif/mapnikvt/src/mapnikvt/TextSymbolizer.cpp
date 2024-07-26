@@ -83,8 +83,13 @@ namespace carto::mvt {
                     }
 
                     if (auto pointGeometry = std::get_if<PointGeometry>(featureCollection.getGeometry(featureIndex).get())) {
-                        for (const auto& vertex : pointGeometry->getVertices()) {
-                            textProcessor(featureCollection.getLocalId(featureIndex), vertex, text);
+                        long long localId = featureCollection.getLocalId(featureIndex);
+                        auto verticesList = pointGeometry->getVerticesList();
+                        for (const auto& vertices : verticesList) {
+                            int index = &vertices - &verticesList[0];
+                            for (const auto &vertex: vertices) {
+                                textProcessor(10 * localId + index, vertex, text);
+                            }
                         }
                     }
                     else if (placement == vt::LabelOrientation::LINE_BILLBOARD_3D) {
@@ -156,16 +161,26 @@ namespace carto::mvt {
 
                 long long localId = featureCollection.getLocalId(featureIndex);
                 long long labelId = combineId(featureCollection.getFeatureId(featureIndex), hash);
+                bool labelIdOverriden = false;
                 if (labelIdOverride) {
                     labelId = *labelIdOverride;
                     if (!labelId) {
                         labelId = generateId();
+                    } else {
+                        labelIdOverriden = true;
                     }
                 }
 
                 if (auto pointGeometry = std::get_if<PointGeometry>(featureCollection.getGeometry(featureIndex).get())) {
-                    for (const auto& vertex : pointGeometry->getVertices()) {
-                        textProcessor(localId, labelId, groupId, vertex, vt::TileLayerBuilder::Vertices(), text, placementPriority, minimumDistance, allowOverlapSameFeatureId, sameFeatureIdDependent);
+                    auto verticesList = pointGeometry->getVerticesList();
+                    for (const auto& vertices : verticesList) {
+                        int index = &vertices - &verticesList[0];
+                        for (const auto &vertex: vertices) {
+                            textProcessor(10 * localId + index, labelIdOverriden ? labelId : 10 * labelId + index, groupId, vertex,
+                                          vt::TileLayerBuilder::Vertices(), text, placementPriority,
+                                          minimumDistance, allowOverlapSameFeatureId,
+                                          sameFeatureIdDependent);
+                        }
                     }
                 }
                 else if (placement == vt::LabelOrientation::LINE_BILLBOARD_3D) {

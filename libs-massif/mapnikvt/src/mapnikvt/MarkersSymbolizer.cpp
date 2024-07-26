@@ -151,8 +151,13 @@ namespace carto::mvt {
                     }
                     
                     if (auto pointGeometry = std::get_if<PointGeometry>(featureCollection.getGeometry(featureIndex).get())) {
-                        for (const auto& vertex : pointGeometry->getVertices()) {
-                            pointProcessor(featureCollection.getLocalId(featureIndex), vertex);
+                        long long localId = featureCollection.getLocalId(featureIndex);
+                        auto verticesList = pointGeometry->getVerticesList();
+                        for (const auto& vertices : verticesList) {
+                            int index = &vertices - &verticesList[0];
+                            for (const auto &vertex: vertices) {
+                                pointProcessor(10 * localId + index, vertex);
+                            }
                         }
                     }
                     else if (placement != vt::LabelOrientation::LINE) {
@@ -207,16 +212,23 @@ namespace carto::mvt {
 
                 long long localId = featureCollection.getLocalId(featureIndex);
                 long long labelId = combineId(featureCollection.getFeatureId(featureIndex), hash);
+                bool labelIdOverriden = false;
                 if (labelIdOverride) {
                     labelId = *labelIdOverride;
                     if (!labelId) {
                         labelId = generateId();
+                    } else {
+                        labelIdOverriden = true;
                     }
                 }
 
                 if (auto pointGeometry = std::get_if<PointGeometry>(featureCollection.getGeometry(featureIndex).get())) {
-                    for (const auto& vertex : pointGeometry->getVertices()) {
-                        pointProcessor(localId, labelId, groupId, vertex, placementPriority, 0, allowOverlapSameFeatureId, sameFeatureIdDependent);
+                    auto verticesList = pointGeometry->getVerticesList();
+                    for (const auto& vertices : verticesList) {
+                        int index = &vertices - &verticesList[0];
+                        for (const auto &vertex: vertices) {
+                            pointProcessor(10 * localId + index, labelIdOverriden ? labelId : 10 * labelId + index, groupId, vertex, placementPriority, 0, allowOverlapSameFeatureId, sameFeatureIdDependent);
+                        }
                     }
                 }
                 else if (placement != vt::LabelOrientation::LINE) {

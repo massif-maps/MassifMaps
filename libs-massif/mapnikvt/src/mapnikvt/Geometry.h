@@ -18,13 +18,15 @@ namespace carto::mvt {
     class PointGeometry final {
     public:
         using Vertices = std::vector<cglib::vec2<float>>;
+        using VerticesList = std::vector<Vertices>;
 
-        explicit PointGeometry(Vertices vertices) : _vertices(std::move(vertices)) { }
+        explicit PointGeometry(VerticesList verticesList) : _verticesList(std::move(verticesList)) { }
 
-        const Vertices& getVertices() const { return _vertices; }
+        const VerticesList& getVerticesList() const { return _verticesList; }
+        const Vertices& getVertices() const { return _verticesList.front(); }
 
     private:
-        Vertices _vertices;
+        VerticesList _verticesList;
     };
 
     class LineGeometry final {

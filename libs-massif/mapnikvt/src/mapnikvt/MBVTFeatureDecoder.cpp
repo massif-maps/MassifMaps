@@ -174,7 +174,7 @@ namespace carto::mvt {
             switch (_layer->features(_index).type()) {
             case vector_tile::Tile::POINT: {
                     if (!verticesList.empty()) {
-                        auto geometry = std::make_shared<Geometry>(PointGeometry(std::move(verticesList.front())));
+                        auto geometry = std::make_shared<Geometry>(PointGeometry(std::move(verticesList)));
                         _geometryCache->put(_index, geometry);
                         return geometry;
                     }

@@ -94,7 +94,7 @@ namespace carto::mvt {
                     vertices.push_back(p);
                 }
             }
-            return std::make_shared<Geometry>(PointGeometry(std::move(vertices)));
+            return std::make_shared<Geometry>(PointGeometry(std::move(std::vector<std::vector<cglib::vec2<float>>>{vertices})));
         }
 
     private:

@@ -61,7 +61,6 @@ namespace carto::vt {
         const std::vector<cglib::vec2<float>>& getVertices() const { return _vertices; }
         const std::shared_ptr<const Style>& getStyle() const { return _style; }
         const PlacementInfo& getPlacementInfo() const { return _placementInfo; }
-        const std::string getText() const { return _text; }
 
         std::size_t getResidentSize() const {
             return 16 + sizeof(TileLabel);

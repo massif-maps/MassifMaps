@@ -159,7 +159,7 @@ namespace carto::vt {
                 for (const LabelInfo* otherLabelInfo : groupMap[groupId]) {
                     const std::shared_ptr<Label>& otherLabel = otherLabelInfo->label;
                     float minimumDistance = std::min(label->getMinimumGroupDistance(), otherLabel->getMinimumGroupDistance());
-                    if (testPolygonOverlap(labelInfo.cullRecord.envelope, otherLabelInfo->cullRecord.envelope, minimumDistance)) {
+                    if ((!labelInfo.label->allowOverlapSameFeatureId() || !otherLabel->allowOverlapSameFeatureId() ||  labelInfo.label->getLocalId() != otherLabel->getLocalId()) && testPolygonOverlap(labelInfo.cullRecord.envelope, otherLabelInfo->cullRecord.envelope, minimumDistance)) {
                         visible = false;
                         break;
                     }

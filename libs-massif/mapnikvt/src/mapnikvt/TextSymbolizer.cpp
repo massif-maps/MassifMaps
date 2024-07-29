@@ -88,7 +88,7 @@ namespace carto::mvt {
                         for (const auto& vertices : verticesList) {
                             int index = &vertices - &verticesList[0];
                             for (const auto &vertex: vertices) {
-                                textProcessor(10 * localId + index, vertex, text);
+                                textProcessor(localId, vertex, text);
                             }
                         }
                     }
@@ -173,14 +173,15 @@ namespace carto::mvt {
 
                 if (auto pointGeometry = std::get_if<PointGeometry>(featureCollection.getGeometry(featureIndex).get())) {
                     auto verticesList = pointGeometry->getVerticesList();
+                    int index = 0;
                     for (const auto& vertices : verticesList) {
-                        int index = &vertices - &verticesList[0];
                         for (const auto &vertex: vertices) {
-                            textProcessor(10 * localId + index, labelIdOverriden ? labelId : 10 * labelId + index, groupId, vertex,
+                            textProcessor(localId, 10 * labelId + index, groupId, vertex,
                                           vt::TileLayerBuilder::Vertices(), text, placementPriority,
                                           minimumDistance, allowOverlapSameFeatureId,
-                                          sameFeatureIdDependent);
+                                          sameFeatureIdDependent, index);
                         }
+                        index++;
                     }
                 }
                 else if (placement == vt::LabelOrientation::LINE_BILLBOARD_3D) {
@@ -194,7 +195,7 @@ namespace carto::mvt {
 
                     for (const auto& vertices : verticesList) {
                         if (spacing <= 0) {
-                            textProcessor(localId, labelId, groupId, std::optional<vt::TileLayerBuilder::Vertex>(), vertices, text, placementPriority, minimumDistance, allowOverlapSameFeatureId, sameFeatureIdDependent);
+                            textProcessor(localId, labelId, groupId, std::optional<vt::TileLayerBuilder::Vertex>(), vertices, text, placementPriority, minimumDistance, allowOverlapSameFeatureId, sameFeatureIdDependent, 0);
                             continue;
                         }
                         auto transformedPointsList = generateLinePoints(vertices, spacing, textSize, tileSize);
@@ -202,7 +203,7 @@ namespace carto::mvt {
                             int counter = 0;
                             for (const auto& vertex : transformedPoints.second) {
                                 long long generatedLabelId = combineId(labelId, std::hash<vt::TileId>()(tileId) * 63 + counter);
-                                textProcessor(localId, generatedLabelId, groupId, vertex, vt::TileLayerBuilder::Vertices(), text, placementPriority, minimumDistance, allowOverlapSameFeatureId, sameFeatureIdDependent);
+                                textProcessor(localId, generatedLabelId, groupId, vertex, vt::TileLayerBuilder::Vertices(), text, placementPriority, minimumDistance, allowOverlapSameFeatureId, sameFeatureIdDependent, 0);
                                 counter++;
                             }
                         }
@@ -211,12 +212,12 @@ namespace carto::mvt {
                 else if (placement != vt::LabelOrientation::LINE) {
                     if (auto lineGeometry = std::get_if<LineGeometry>(featureCollection.getGeometry(featureIndex).get())) {
                         for (const auto& vertices : lineGeometry->getVerticesList()) {
-                            textProcessor(localId, labelId, groupId, std::optional<vt::TileLayerBuilder::Vertex>(), vertices, text, placementPriority, minimumDistance, allowOverlapSameFeatureId, sameFeatureIdDependent);
+                            textProcessor(localId, labelId, groupId, std::optional<vt::TileLayerBuilder::Vertex>(), vertices, text, placementPriority, minimumDistance, allowOverlapSameFeatureId, sameFeatureIdDependent, 0);
                         }
                     }
                     else if (auto polygonGeometry = std::get_if<PolygonGeometry>(featureCollection.getGeometry(featureIndex).get())) {
                         for (const auto& vertex : polygonGeometry->getSurfacePoints()) {
-                            textProcessor(localId, labelId, groupId, vertex, vt::TileLayerBuilder::Vertices(), text, placementPriority, minimumDistance, allowOverlapSameFeatureId, sameFeatureIdDependent);
+                            textProcessor(localId, labelId, groupId, vertex, vt::TileLayerBuilder::Vertices(), text, placementPriority, minimumDistance, allowOverlapSameFeatureId, sameFeatureIdDependent, 0);
                         }
                     }
                 }
@@ -231,7 +232,7 @@ namespace carto::mvt {
 
                     for (const auto& vertices : verticesList) {
                         if (spacing <= 0) {
-                            textProcessor(localId, labelId, groupId, std::optional<vt::TileLayerBuilder::Vertex>(), vertices, text, placementPriority, minimumDistance, allowOverlapSameFeatureId, sameFeatureIdDependent);
+                            textProcessor(localId, labelId, groupId, std::optional<vt::TileLayerBuilder::Vertex>(), vertices, text, placementPriority, minimumDistance, allowOverlapSameFeatureId, sameFeatureIdDependent, 0);
                             continue;
                         }
 
@@ -239,7 +240,7 @@ namespace carto::mvt {
                             int counter = 0;
                             for (const auto& vertex : transformedPoints.second) {
                                 long long generatedLabelId = combineId(labelId, std::hash<vt::TileId>()(tileId) * 63 + counter);
-                                textProcessor(localId, generatedLabelId, groupId, vertex, vertices, text, placementPriority, minimumDistance, allowOverlapSameFeatureId, sameFeatureIdDependent);
+                                textProcessor(localId, generatedLabelId, groupId, vertex, vertices, text, placementPriority, minimumDistance, allowOverlapSameFeatureId, sameFeatureIdDependent, 0);
                                 counter++;
                             }
                         }

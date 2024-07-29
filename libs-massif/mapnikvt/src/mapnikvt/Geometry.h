@@ -23,7 +23,13 @@ namespace carto::mvt {
         explicit PointGeometry(VerticesList verticesList) : _verticesList(std::move(verticesList)) { }
 
         const VerticesList& getVerticesList() const { return _verticesList; }
-        const Vertices& getVertices() const { return _verticesList.front(); }
+        const Vertices getVertices() const {
+            Vertices flattened;
+            for (auto const &v: _verticesList) {
+                flattened.insert(flattened.end(), v.begin(), v.end());
+            }
+            return flattened;
+        }
 
     private:
         VerticesList _verticesList;

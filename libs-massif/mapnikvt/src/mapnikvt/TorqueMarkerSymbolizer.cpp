@@ -74,8 +74,11 @@ namespace carto::mvt {
             if (auto pointProcessor = layerBuilder.createPointProcessor(style, glyphMap)) {
                 for (std::size_t featureIndex = 0; featureIndex < featureCollection.size(); featureIndex++) {
                     if (auto pointGeometry = std::get_if<PointGeometry>(featureCollection.getGeometry(featureIndex).get())) {
-                        for (const vt::TileLayerBuilder::Vertex& vertex : pointGeometry->getVertices()) {
-                            pointProcessor(featureCollection.getLocalId(featureIndex), vertex);
+                        auto verticesList = pointGeometry->getVerticesList();
+                        for (const auto& vertices : verticesList) {
+                            for (const auto &vertex: vertices) {
+                                pointProcessor(featureCollection.getLocalId(featureIndex), vertex);
+                            }
                         }
                     }
                     else if (!suppressWarning) {

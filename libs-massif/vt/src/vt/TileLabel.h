@@ -50,17 +50,19 @@ namespace carto::vt {
             explicit PlacementInfo(int priority, float minimumGroupDistance,bool allowOverlapSameFeatureId, bool sameFeatureIdDependent) : priority(priority), minimumGroupDistance(minimumGroupDistance), allowOverlapSameFeatureId(allowOverlapSameFeatureId), sameFeatureIdDependent(sameFeatureIdDependent) { }
         };
         
-        explicit TileLabel(long long localId, long long globalId, long long groupId, std::vector<Font::Glyph> glyphs, std::optional<cglib::vec2<float>> position, std::vector<cglib::vec2<float>> vertices, std::shared_ptr<const Style> style, const PlacementInfo& placementInfo) : _localId(localId), _globalId(globalId), _groupId(groupId), _glyphs(std::move(glyphs)), _position(std::move(position)), _vertices(std::move(vertices)), _style(std::move(style)), _placementInfo(placementInfo) { }
+        explicit TileLabel(long long localId, long long globalId, long long groupId, std::vector<Font::Glyph> glyphs, std::optional<cglib::vec2<float>> position, std::vector<cglib::vec2<float>> vertices, std::shared_ptr<const Style> style, const PlacementInfo& placementInfo, int geoPointIndex) : _localId(localId), _globalId(globalId), _groupId(groupId), _glyphs(std::move(glyphs)), _position(std::move(position)), _vertices(std::move(vertices)), _style(std::move(style)), _placementInfo(placementInfo), _geoPointIndex(geoPointIndex) { }
 
         long long getLocalId() const { return _localId; }
         long long getGlobalId() const { return _globalId; }
         long long getGroupId() const { return _groupId; }
+        long long getGeoPointIndex() const { return _geoPointIndex; }
         const std::vector<Font::Glyph>& getGlyphs() const { return _glyphs; }
         const std::optional<cglib::vec2<float>>& getPosition() const { return _position; }
         const std::vector<cglib::vec2<float>>& getVertices() const { return _vertices; }
         const std::shared_ptr<const Style>& getStyle() const { return _style; }
         const PlacementInfo& getPlacementInfo() const { return _placementInfo; }
-        
+        const std::string getText() const { return _text; }
+
         std::size_t getResidentSize() const {
             return 16 + sizeof(TileLabel);
         }
@@ -69,6 +71,7 @@ namespace carto::vt {
         const long long _localId;
         const long long _globalId;
         const long long _groupId;
+        const int _geoPointIndex;
         const std::vector<Font::Glyph> _glyphs;
         const std::optional<cglib::vec2<float>> _position;
         const std::vector<cglib::vec2<float>> _vertices;

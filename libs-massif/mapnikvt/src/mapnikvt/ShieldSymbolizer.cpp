@@ -85,8 +85,11 @@ namespace carto::mvt {
                     }
 
                     if (auto pointGeometry = std::get_if<PointGeometry>(featureCollection.getGeometry(featureIndex).get())) {
-                        for (const auto& vertex : pointGeometry->getVertices()) {
-                            textProcessor(featureCollection.getLocalId(featureIndex), vertex, text);
+                        auto verticesList = pointGeometry->getVerticesList();
+                        for (const auto& vertices : verticesList) {
+                            for (const auto &vertex: vertices) {
+                                textProcessor(featureCollection.getLocalId(featureIndex), vertex, text);
+                            }
                         }
                     }
                     else if (placement != vt::LabelOrientation::LINE) {
@@ -144,19 +147,24 @@ namespace carto::mvt {
                 }
 
                 if (auto pointGeometry = std::get_if<PointGeometry>(featureCollection.getGeometry(featureIndex).get())) {
-                    for (const auto& vertex : pointGeometry->getVertices()) {
-                        textProcessor(localId, labelId, groupId, vertex, vt::TileLayerBuilder::Vertices(), text, placementPriority, minimumDistance, false, false);
+                    auto verticesList = pointGeometry->getVerticesList();
+                    int index = 0;
+                    for (const auto& vertices : verticesList) {
+                        for (const auto &vertex: vertices) {
+                            textProcessor(localId, 10 * labelId + index, groupId, vertex, vt::TileLayerBuilder::Vertices(), text, placementPriority, minimumDistance, false, false, index);
+                        }
+                        index++;
                     }
                 }
                 else if (placement != vt::LabelOrientation::LINE) {
                     if (auto lineGeometry = std::get_if<LineGeometry>(featureCollection.getGeometry(featureIndex).get())) {
                         for (const auto& vertices : lineGeometry->getVerticesList()) {
-                            textProcessor(localId, labelId, groupId, std::optional<vt::TileLayerBuilder::Vertex>(), vertices, text, placementPriority, minimumDistance, false, false);
+                            textProcessor(localId, labelId, groupId, std::optional<vt::TileLayerBuilder::Vertex>(), vertices, text, placementPriority, minimumDistance, false, false, 0);
                         }
                     }
                     else if (auto polygonGeometry = std::get_if<PolygonGeometry>(featureCollection.getGeometry(featureIndex).get())) {
                         for (const auto& vertex : polygonGeometry->getSurfacePoints()) {
-                            textProcessor(localId, labelId, groupId, vertex, vt::TileLayerBuilder::Vertices(), text, placementPriority, minimumDistance, false, false);
+                            textProcessor(localId, labelId, groupId, vertex, vt::TileLayerBuilder::Vertices(), text, placementPriority, minimumDistance, false, false, 0);
                         }
                     }
                 }
@@ -171,7 +179,7 @@ namespace carto::mvt {
 
                     for (const auto& vertices : verticesList) {
                         if (spacing <= 0) {
-                            textProcessor(localId, labelId, groupId, std::optional<vt::TileLayerBuilder::Vertex>(), vertices, text, placementPriority, minimumDistance, false, false);
+                            textProcessor(localId, labelId, groupId, std::optional<vt::TileLayerBuilder::Vertex>(), vertices, text, placementPriority, minimumDistance, false, false, 0);
                             continue;
                         }
 
@@ -179,7 +187,7 @@ namespace carto::mvt {
                             int counter = 0;
                             for (const auto& vertex : transformedPoints.second) {
                                 long long generatedLabelId = combineId(labelId, std::hash<vt::TileId>()(tileId) * 63 + counter);
-                                textProcessor(localId, generatedLabelId, groupId, vertex, vertices, text, placementPriority, minimumDistance, false, false);
+                                textProcessor(localId, generatedLabelId, groupId, vertex, vertices, text, placementPriority, minimumDistance, false, false, 0);
                                 counter++;
                             }
                         }

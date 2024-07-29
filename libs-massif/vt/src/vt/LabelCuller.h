@@ -53,6 +53,8 @@ namespace carto::vt {
             float opacity;
             std::shared_ptr<Label> label;
             CullRecord cullRecord;
+            // This is to debug labels with text
+//            std::string text;
         };
 
         cglib::vec2<int> getGridIndex(const cglib::vec2<float>& pos) const;

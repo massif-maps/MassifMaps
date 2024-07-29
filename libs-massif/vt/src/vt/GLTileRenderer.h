@@ -53,10 +53,11 @@ namespace carto::vt {
             TileId tileId;
             int layerIndex;
             long long featureId;
+            int geoPointIndex; // used only for MultiPoint Point Geometry
             std::size_t rayIndex;
             double rayT;
 
-            explicit GeometryIntersectionInfo(const TileId& tileId, int layerIndex, long long featureId, std::size_t rayIndex, double rayT) : tileId(tileId), layerIndex(layerIndex), featureId(featureId), rayIndex(rayIndex), rayT(rayT) { }
+            explicit GeometryIntersectionInfo(const TileId& tileId, int layerIndex, long long featureId, int geoPointIndex, std::size_t rayIndex, double rayT) : tileId(tileId), layerIndex(layerIndex), featureId(featureId), rayIndex(rayIndex), geoPointIndex(geoPointIndex), rayT(rayT) { }
         };
 
         struct BitmapIntersectionInfo {

@@ -39,8 +39,8 @@ namespace carto::vt {
         using LineProcessor = std::function<void(long long id, const Vertices& vertices)>;
         using PolygonProcessor = std::function<void(long long id, const VerticesList& verticesList)>;
         using Polygon3DProcessor = std::function<void(long long id, const VerticesList& verticesList, float minHeight, float maxHeight)>;
-        using PointLabelProcessor = std::function<void(long long id, long long labelId, long long groupId, const std::variant<Vertex, Vertices>& position, float priority, float minimumGroupDistance, bool allowOverlapSameFeatureId, bool sameFeatureIdDependent)>;
-        using TextLabelProcessor = std::function<void(long long id, long long labelId, long long groupId, const std::optional<Vertex>& position, const Vertices& vertices, const std::string& text, float priority, float minimumGroupDistance, bool allowOverlapSameFeatureId, bool sameFeatureIdDependent)>;
+        using PointLabelProcessor = std::function<void(long long id, long long labelId, long long groupId, const std::variant<Vertex, Vertices>& position, float priority, float minimumGroupDistance, bool allowOverlapSameFeatureId, bool sameFeatureIdDependent, int geoPointIndex)>;
+        using TextLabelProcessor = std::function<void(long long id, long long labelId, long long groupId, const std::optional<Vertex>& position, const Vertices& vertices, const std::string& text, float priority, float minimumGroupDistance, bool allowOverlapSameFeatureId, bool sameFeatureIdDependent, int geoPointIndex)>;
 
         explicit TileLayerBuilder(std::string layerName, int layerIdx, const TileId& tileId, const std::shared_ptr<const TileTransformer>& transformer, float tileSize, float geomScale);
 

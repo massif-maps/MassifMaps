@@ -566,7 +566,7 @@ namespace carto::vt {
 
                         cglib::vec3<double> pos = cglib::transform_point(cglib::vec3<double>::convert(posTile), tileMatrix);
                         double rayT = cglib::dot_product(pos - ray.origin, ray.direction) / cglib::dot_product(ray.direction, ray.direction);
-                        GeometryIntersectionInfo intersectionInfo(resultTile.tileId, renderLayer.layer->getLayerIndex(), resultTile.featureId, resultTile.rayIndex, rayT);
+                        GeometryIntersectionInfo intersectionInfo(resultTile.tileId, renderLayer.layer->getLayerIndex(), resultTile.featureId, resultTile.geoPointIndex, resultTile.rayIndex, rayT);
                         if (geometry->getType() != TileGeometry::Type::POLYGON3D) {
                             results.push_back(std::move(intersectionInfo));
                         } else {
@@ -626,7 +626,7 @@ namespace carto::vt {
                             continue;
                         }
 
-                        results.emplace_back(result.tileId, label->getLayerIndex(), result.featureId, result.rayIndex, result.rayT);
+                        results.emplace_back(result.tileId, label->getLayerIndex(), result.featureId, result.geoPointIndex, result.rayIndex, result.rayT);
                     }
                 }
             }
@@ -1043,7 +1043,7 @@ namespace carto::vt {
                             break;
                         }
                     }
-                    results.emplace_back(tileId, -1, featureId, i, t);
+                    results.emplace_back(tileId, -1, featureId, 0, i, t);
                     break;
                 }
             }
@@ -1080,7 +1080,7 @@ namespace carto::vt {
         for (std::size_t i = 0; i < rays.size(); i++) {
             double t = 0;
             if (cglib::intersect_triangle(quad[0], quad[1], quad[2], rays[i], &t) || cglib::intersect_triangle(quad[0], quad[2], quad[3], rays[i], &t)) {
-                results.emplace_back(label->getTileId(), -1, label->getLocalId(), i, t);
+                results.emplace_back(label->getTileId(), -1, label->getLocalId(), label->getGeoPointIndex(), i, t);
                 break;
             }
         }

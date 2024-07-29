@@ -32,8 +32,9 @@ namespace carto::vt {
 
         long long getGlobalId() const { return _globalId; }
         long long getLocalId() const { return _placement ? _placement->localId : _localId; }
+        int getGeoPointIndex() const { return _geoPointIndex; }
         long long getGroupId() const { return _groupId; }
-        
+
         TileId getTileId() const { return _placement ? _placement->tileId : _tileId; }
         int getLayerIndex() const { return _layerIndex; }
 
@@ -187,6 +188,7 @@ namespace carto::vt {
 
         const TileId _tileId;
         const int _layerIndex;
+        const int _geoPointIndex;
         const long long _localId;
         const long long _globalId;
         const long long _groupId;

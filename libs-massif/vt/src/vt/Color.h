@@ -154,9 +154,9 @@ namespace carto::vt {
         }
 
         static Color fade(Color color, float amount) {
-            std::array<float, 4> hsla = color.hsla();
-            hsla[3] = std::max(0.0f, std::min(1.0f, hsla[3] + amount));
-            return Color::fromHSLA(hsla[0], hsla[1], hsla[2], hsla[3]);
+            std::array<float, 4> rgba = color.rgba();
+            rgba[3] = std::max(0.0f, std::min(1.0f, rgba[3] + amount));
+            return Color::fromRGBA(rgba[0], rgba[1], rgba[2], rgba[3]);
         }
 
     private:

@@ -63,9 +63,9 @@ namespace carto::mvt {
             static unsigned int makeRGBAColor(float r, float g, float b, float a) {
                 float alpha = std::min(1.0f, std::max(0.0f, a));
                 float components[3] = { r, g, b };
-                unsigned int value = static_cast<unsigned int>(alpha * 255.0f);
+                unsigned int value = static_cast<unsigned int>(round(alpha * 255.0f));
                 for (int i = 0; i < 3; i++) {
-                    value = (value << 8) | static_cast<unsigned int>(std::min(255.0f, std::max(0.0f, components[i] * alpha)));
+                    value = (value << 8) | static_cast<unsigned int>(std::min(255.0f, std::max(0.0f, round(components[i]))));
                 }
                 return value;
             }

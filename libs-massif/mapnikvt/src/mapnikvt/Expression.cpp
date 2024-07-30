@@ -217,6 +217,9 @@ namespace carto::mvt {
 
 
     vt::Color FunctionExpression::getColor(const Value& value) {
+        if (auto colorVal = std::get_if<std::string>(&value)) {
+            return parseColor(*colorVal);
+        }
         return vt::Color::fromValue(ValueConverter<unsigned int>::convert(value));
     }
 

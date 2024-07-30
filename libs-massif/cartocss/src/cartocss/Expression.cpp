@@ -146,6 +146,9 @@ namespace carto::css {
             return Value(getString(vals[0]));
         }
         else if (func == "color" && vals.size() == 1) {
+            if (auto colorVal = std::get_if<Color>(&vals[0])) {
+                return *colorVal;
+            }
             unsigned int value = 0;
             if (!mvt::parseCSSColor(getString(vals[0]), value)) {
                 return Value();
@@ -233,6 +236,12 @@ namespace carto::css {
     Color FunctionExpression::getColor(const Value& value) {
         if (auto colorVal = std::get_if<Color>(&value)) {
             return *colorVal;
+        }
+        if (auto stringVal = std::get_if<std::string>(&value)) {
+            unsigned int value = 0;
+            if (mvt::parseCSSColor(*stringVal, value)) {
+                return Color::fromValue(value);
+            }
         }
         throw std::invalid_argument("Wrong type, expecting color");
     }

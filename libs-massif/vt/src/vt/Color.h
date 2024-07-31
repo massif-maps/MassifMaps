@@ -104,7 +104,9 @@ namespace carto::vt {
         static constexpr Color fromColorOpacity(const Color& baseColor, float opacity) {
             Color color = baseColor;
             if (opacity < 1.0f) {
-                color._components[3] *= std::max(opacity, 0.0f);
+                for (std::size_t i = 0; i < 4; i++) {
+                    color._components[i] *= std::max(opacity, 0.0f);
+                }
             }
             return color;
         }

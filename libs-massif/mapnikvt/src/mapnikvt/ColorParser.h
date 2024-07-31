@@ -66,7 +66,7 @@ namespace carto::mvt {
                 float components[3] = { r, g, b };
                 unsigned int value = static_cast<unsigned int>(round(alpha * 255.0f));
                 for (int i = 0; i < 3; i++) {
-                    value = (value << 8) | static_cast<unsigned int>(std::min(255.0f, std::max(0.0f, std::roundf(components[i]))));
+                    value = (value << 8) | static_cast<unsigned int>(std::min(255.0f, std::max(0.0f, std::roundf(components[i] * alpha))));
                 }
                 return value;
             }

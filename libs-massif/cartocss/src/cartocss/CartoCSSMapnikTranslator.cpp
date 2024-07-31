@@ -247,7 +247,7 @@ namespace carto::css {
 
             mvt::Expression mapnikTimeExpr = buildExpression(funcExpr.getArgs()[0]);
 
-            std::vector<mvt::Value> mapnikKeyFrames;
+            std::vector<mvt::Expression> mapnikKeyFrames;
             mapnikKeyFrames.reserve((argCount - 1) * 2);
             for (std::size_t i = 1; i < argCount; i++) {
                 auto listExpr = std::get_if<std::shared_ptr<ListExpression>>(&funcExpr.getArgs()[i]);
@@ -263,12 +263,12 @@ namespace carto::css {
                     throw TranslatorException("Expecting constant scalar keys for interpolation function");
                 }
                 auto mapnikValueExpr = buildExpression((*listExpr)->getExpressions()[1]);
-                auto valueVal = std::get_if<mvt::Value>(&mapnikValueExpr);
-                if (!valueVal) {
-                    throw TranslatorException("Expecting constant scalar values for interpolation function");
-                }
-                mapnikKeyFrames.push_back(*keyVal);
-                mapnikKeyFrames.push_back(*valueVal);
+//                auto valueVal = std::get_if<mvt::Value>(&mapnikValueExpr);
+//                if (!valueVal) {
+//                    throw TranslatorException("Expecting constant scalar values for interpolation function");
+//                }
+                mapnikKeyFrames.push_back(mapnikKeyExpr);
+                mapnikKeyFrames.push_back(mapnikValueExpr);
             }
             return std::make_shared<mvt::InterpolateExpression>(funcIt->second, std::move(mapnikTimeExpr), std::move(mapnikKeyFrames));
         }

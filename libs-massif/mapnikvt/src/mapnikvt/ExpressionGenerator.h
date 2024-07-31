@@ -110,9 +110,9 @@ namespace carto::mvt {
                     | (karma::lit("pow" )   << '(' << expression << ',' << expression << ')') [_pass = phoenix::bind(&getBinaryExpression, BinaryExpression::Op::POW, _val, _1, _2)]
                     | (karma::lit("min")    << '(' << expression << ',' << expression << ')') [_pass = phoenix::bind(&getBinaryExpression, BinaryExpression::Op::MIN, _val, _1, _2)]
                     | (karma::lit("max")    << '(' << expression << ',' << expression << ')') [_pass = phoenix::bind(&getBinaryExpression, BinaryExpression::Op::MAX, _val, _1, _2)]
-                    | (karma::lit("step")   << '(' << expression << ',' << (constant % ',') << ')') [_pass = phoenix::bind(&getInterpolateExpression, InterpolateExpression::Method::STEP, _val, _1, _2)]
-                    | (karma::lit("linear") << '(' << expression << ',' << (constant % ',') << ')') [_pass = phoenix::bind(&getInterpolateExpression, InterpolateExpression::Method::LINEAR, _val, _1, _2)]
-                    | (karma::lit("cubic")  << '(' << expression << ',' << (constant % ',') << ')') [_pass = phoenix::bind(&getInterpolateExpression, InterpolateExpression::Method::CUBIC, _val, _1, _2)]
+                    | (karma::lit("step")   << '(' << expression << ',' << (expression % ',') << ')') [_pass = phoenix::bind(&getInterpolateExpression, InterpolateExpression::Method::STEP, _val, _1, _2)]
+                    | (karma::lit("linear") << '(' << expression << ',' << (expression % ',') << ')') [_pass = phoenix::bind(&getInterpolateExpression, InterpolateExpression::Method::LINEAR, _val, _1, _2)]
+                    | (karma::lit("cubic")  << '(' << expression << ',' << (expression % ',') << ')') [_pass = phoenix::bind(&getInterpolateExpression, InterpolateExpression::Method::CUBIC, _val, _1, _2)]
                     | (karma::lit("matrix") << '(' << expression << ',' << expression << ',' << expression << ',' << expression << ',' << expression << ',' << expression << ')') [_pass = phoenix::bind(&getMatrixTransformExpression, _val, _1, _2, _3, _4, _5, _6)]
                     | (karma::lit("translate") << '(' << expression << ',' << expression << ')') [_pass = phoenix::bind(&getTranslateTransformExpression, _val, _1, _2)]
                     | (karma::lit("rotate") << '(' << expression << ',' << expression << ',' << expression << ')') [_pass = phoenix::bind(&getRotateTransformExpression, _val, _2, _3, _1)]
@@ -261,7 +261,7 @@ namespace carto::mvt {
                 return false;
             }
 
-            static bool getInterpolateExpression(InterpolateExpression::Method method, const Expression& expr, Expression& timeExpr, std::vector<Value>& keyFrames) {
+            static bool getInterpolateExpression(InterpolateExpression::Method method, const Expression& expr, Expression& timeExpr, std::vector<Expression>& keyFrames) {
                 if (auto interpolateExpr = std::get_if<std::shared_ptr<InterpolateExpression>>(&expr)) {
                     if ((*interpolateExpr)->getMethod() == method) {
                         timeExpr = (*interpolateExpr)->getTimeExpression();

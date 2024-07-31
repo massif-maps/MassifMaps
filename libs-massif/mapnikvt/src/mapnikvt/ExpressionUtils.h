@@ -43,7 +43,7 @@ namespace carto::mvt {
         }
         Value operator() (const std::shared_ptr<InterpolateExpression>& interpExpr) const {
             Value timeVal = std::visit(*this, interpExpr->getTimeExpression());
-            return interpExpr->evaluate(ValueConverter<float>::convert(timeVal));
+            return interpExpr->evaluate(ValueConverter<float>::convert(timeVal), _context);
         }
         Value operator() (const std::shared_ptr<TransformExpression>& transExpr) const {
             return Value();

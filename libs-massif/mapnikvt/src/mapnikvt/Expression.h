@@ -8,6 +8,7 @@
 #define _CARTO_MAPNIKVT_EXPRESSION_H_
 
 #include "ExpressionPredicateBase.h"
+#include "ExpressionContext.h"
 #include "ValueConverter.h"
 #include "Transform.h"
 #include "vt/Color.h"
@@ -17,6 +18,7 @@
 #include <variant>
 #include <functional>
 #include <vector>
+#include <optional>
 
 #include <cglib/fcurve.h>
 
@@ -116,21 +118,22 @@ namespace carto::mvt {
             CUBIC
         };
         
-        explicit InterpolateExpression(Method method, Expression timeExpr, std::vector<Value> keyFrames) : _method(method), _timeExpr(std::move(timeExpr)), _keyFrames(std::move(keyFrames)), _fcurve(buildFCurve(method, _keyFrames)) { }
+        explicit InterpolateExpression(Method method, Expression timeExpr, std::vector<Expression> keyFrames) : _method(method), _timeExpr(std::move(timeExpr)), _keyFrames(std::move(keyFrames)), _fcurve(buildConstantFCurve(method, _keyFrames)) { }
 
         Method getMethod() const { return _method; }
         const Expression& getTimeExpression() const { return _timeExpr; }
-        const std::vector<Value>& getKeyFrames() const { return _keyFrames; }
+        const std::vector<Expression>& getKeyFrames() const { return _keyFrames; }
 
-        Value evaluate(float t) const;
+        Value evaluate(float t, ExpressionContext context) const;
 
     private:
-        static std::variant<cglib::fcurve2<float>, cglib::fcurve5<float>> buildFCurve(Method method, const std::vector<Value>& keyFrames);
+        static std::variant<cglib::fcurve2<float>, cglib::fcurve5<float>> buildFCurve(Method method, const std::vector<Expression>& , const ExpressionContext context);
+        static std::optional<std::variant<cglib::fcurve2<float>, cglib::fcurve5<float>>> buildConstantFCurve(Method method, const std::vector<Expression>&);
 
         const Method _method;
         const Expression _timeExpr;
-        const std::vector<Value> _keyFrames;
-        const std::variant<cglib::fcurve2<float>, cglib::fcurve5<float>> _fcurve;
+        const std::vector<Expression> _keyFrames;
+        const std::optional<std::variant<cglib::fcurve2<float>, cglib::fcurve5<float>>> _fcurve;
     };
 
     class TransformExpression final {

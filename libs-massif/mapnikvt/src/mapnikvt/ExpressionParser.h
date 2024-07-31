@@ -163,9 +163,9 @@ namespace carto::mvt {
                     | (pow_kw       >> '(' > expression > ',' > expression > ')') [_val = phoenix::bind(&makeBinaryExpression, BinaryExpression::Op::POW, _1, _2)]
                     | (min_kw  >> ('(' > expression > ',' > expression > ')')) [_val = phoenix::bind(&makeBinaryExpression, BinaryExpression::Op::MIN, _1, _2)]
                     | (max_kw  >> ('(' > expression > ',' > expression > ')')) [_val = phoenix::bind(&makeBinaryExpression, BinaryExpression::Op::MAX, _1, _2)]
-                    | (step_kw      >> '(' > expression > ',' > (constant % ',') > ')') [_val = phoenix::bind(&makeInterpolateExpression, InterpolateExpression::Method::STEP, _1, _2)]
-                    | (linear_kw    >> '(' > expression > ',' > (constant % ',') > ')') [_val = phoenix::bind(&makeInterpolateExpression, InterpolateExpression::Method::LINEAR, _1, _2)]
-                    | (cubic_kw     >> '(' > expression > ',' > (constant % ',') > ')') [_val = phoenix::bind(&makeInterpolateExpression, InterpolateExpression::Method::CUBIC, _1, _2)]
+                    | (step_kw      >> '(' > expression > ',' > (expression % ',') > ')') [_val = phoenix::bind(&makeInterpolateExpression, InterpolateExpression::Method::STEP, _1, _2)]
+                    | (linear_kw    >> '(' > expression > ',' > (expression % ',') > ')') [_val = phoenix::bind(&makeInterpolateExpression, InterpolateExpression::Method::LINEAR, _1, _2)]
+                    | (cubic_kw     >> '(' > expression > ',' > (expression % ',') > ')') [_val = phoenix::bind(&makeInterpolateExpression, InterpolateExpression::Method::CUBIC, _1, _2)]
                     | (matrix_kw    >> '(' > expression >> ',' > expression > ',' > expression > ',' > expression > ',' > expression > ',' > expression > ')') [_val = phoenix::bind(&makeMatrixTransformExpression, _1, _2, _3, _4, _5, _6)]
                     | (translate_kw >> '(' > expression > ',' > expression > ')') [_val = phoenix::bind(&makeTranslateTransformExpression, _1, _2)]
                     | (rotate_kw    >> '(' >> expression >> ')')        [_val = phoenix::bind(&makeRotateTransformExpression, Expression(Value(0.0)), Expression(Value(0.0)), _1)]
@@ -272,7 +272,7 @@ namespace carto::mvt {
                 return std::make_shared<TertiaryExpression>(op, expr1, expr2, expr3);
             }
 
-            static Expression makeInterpolateExpression(InterpolateExpression::Method method, const Expression& timeExpr, const std::vector<Value>& keyFrames) {
+            static Expression makeInterpolateExpression(InterpolateExpression::Method method, const Expression& timeExpr, const std::vector<Expression>& keyFrames) {
                 return std::make_shared<InterpolateExpression>(method, timeExpr, keyFrames);
             }
 

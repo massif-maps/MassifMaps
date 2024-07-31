@@ -324,9 +324,9 @@ namespace carto::mvt {
         }
 
         T getFunction(const ExpressionContext& context) const {
-            if (!_contextVars) {
-                return _func;
-            }
+//            if (!_contextVars) {
+//                return _func;
+//            }
             return buildFunction(context);
         }
 

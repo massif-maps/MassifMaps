@@ -12,6 +12,7 @@
 #include <memory>
 #include <functional>
 #include <typeinfo>
+#include <algorithm>
 
 #include <boost/phoenix.hpp>
 #include <boost/spirit/include/qi.hpp>
@@ -55,7 +56,7 @@ namespace carto::mvt {
                 float components[3] = { r, g, b };
                 unsigned int value = 255;
                 for (int i = 0; i < 3; i++) {
-                    value = (value << 8) | static_cast<unsigned int>(std::min(255.0f, std::max(0.0f, components[i])));
+                    value = (value << 8) | static_cast<unsigned int>(std::min(255.0f, std::max(0.0f, std::roundf(components[i]))));
                 }
                 return value;
             }
@@ -65,7 +66,7 @@ namespace carto::mvt {
                 float components[3] = { r, g, b };
                 unsigned int value = static_cast<unsigned int>(round(alpha * 255.0f));
                 for (int i = 0; i < 3; i++) {
-                    value = (value << 8) | static_cast<unsigned int>(std::min(255.0f, std::max(0.0f, round(components[i]))));
+                    value = (value << 8) | static_cast<unsigned int>(std::min(255.0f, std::max(0.0f, std::roundf(components[i]))));
                 }
                 return value;
             }

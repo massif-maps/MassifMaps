@@ -157,7 +157,7 @@ namespace carto::mvt {
         throw std::invalid_argument("Illegal operator");
     }
 
-    Value InterpolateExpression::evaluate(float t) const {
+    Value InterpolateExpression::evaluate(float t, ExpressionContext context) const {
         struct Evaluator {
             explicit Evaluator(float t) : _time(t) { }
             Value operator() (const cglib::fcurve2<float>& fcurve) const {
@@ -171,11 +171,57 @@ namespace carto::mvt {
         private:
             float _time;
         };
-        
-        return std::visit(Evaluator(t), _fcurve);
+        auto fcurve = _fcurve ? _fcurve.value(): buildFCurve(_method, _keyFrames, context);
+        return std::visit(Evaluator(t), fcurve);
     }
 
-    std::variant<cglib::fcurve2<float>, cglib::fcurve5<float>> InterpolateExpression::buildFCurve(Method method, const std::vector<Value>& keyFrames) {
+    std::optional<std::variant<cglib::fcurve2<float>, cglib::fcurve5<float>>> InterpolateExpression::buildConstantFCurve(Method method, const std::vector<Expression>& keyFrames) {
+        bool isConstant = true;
+        for (std::size_t i = 0; i + 1 < keyFrames.size(); i += 2) {
+            auto val = std::get_if<mvt::Value>(&keyFrames[i + 1]);
+            if (!val) {
+                isConstant = false;
+            }
+        }
+        if (isConstant) {
+            cglib::fcurve_type type = cglib::fcurve_type::linear;
+            switch (method) {
+                case Method::STEP:
+                    type = cglib::fcurve_type::step;
+                    break;
+                case Method::LINEAR:
+                    type = cglib::fcurve_type::linear;
+                    break;
+                case Method::CUBIC:
+                    type = cglib::fcurve_type::cubic;
+                    break;
+            }
+
+            std::vector<cglib::vec2<float>> floatKeyFramesList;
+            std::vector<cglib::vec<float, 5>> colorKeyFramesList;
+            for (std::size_t i = 0; i + 1 < keyFrames.size(); i += 2) {
+                auto keyVal = std::get_if<mvt::Value>(&keyFrames[i + 0]);
+                float key = ValueConverter<float>::convert(*keyVal);
+                auto val = std::get_if<mvt::Value>(&keyFrames[i + 1]);
+                if (auto str = std::get_if<std::string>(val)) {
+                    vt::Color color = parseColor(*str);
+                    colorKeyFramesList.emplace_back(cglib::vec<float, 5>{ { key, color[0], color[1], color[2], color[3] } });
+                }
+                else {
+                    floatKeyFramesList.emplace_back(key, ValueConverter<float>::convert(*val));
+                }
+            }
+            if (!colorKeyFramesList.empty()) {
+                if (!floatKeyFramesList.empty()) {
+                    throw std::invalid_argument("Mismatched types in interpolation lists");
+                }
+                return cglib::fcurve5<float>::create(type, colorKeyFramesList.begin(), colorKeyFramesList.end());
+            }
+            return cglib::fcurve2<float>::create(type, floatKeyFramesList.begin(), floatKeyFramesList.end());
+        }
+        return std::optional<std::variant<cglib::fcurve2<float>, cglib::fcurve5<float>>>();
+    }
+    std::variant<cglib::fcurve2<float>, cglib::fcurve5<float>> InterpolateExpression::buildFCurve(Method method, const std::vector<Expression>& keyFrames, const ExpressionContext context) {
         cglib::fcurve_type type = cglib::fcurve_type::linear;
         switch (method) {
         case Method::STEP:
@@ -192,8 +238,10 @@ namespace carto::mvt {
         std::vector<cglib::vec2<float>> floatKeyFramesList;
         std::vector<cglib::vec<float, 5>> colorKeyFramesList;
         for (std::size_t i = 0; i + 1 < keyFrames.size(); i += 2) {
-            float key = ValueConverter<float>::convert(keyFrames[i + 0]);
-            const Value& val = keyFrames[i + 1];
+            auto keyVal = std::get_if<mvt::Value>(&keyFrames[i + 0]);
+            float key = ValueConverter<float>::convert(*keyVal);
+            const Expression &expr = keyFrames[i + 1];
+            Value val = std::visit(ExpressionEvaluator(context, nullptr), expr);
             if (auto str = std::get_if<std::string>(&val)) {
                 vt::Color color = parseColor(*str);
                 colorKeyFramesList.emplace_back(cglib::vec<float, 5>{ { key, color[0], color[1], color[2], color[3] } });

@@ -59,17 +59,19 @@ namespace carto::vt {
             VertexGeometryLayoutParameters() : vertexSize(0), dimensions(2), coordOffset(-1), attribsOffset(-1), texCoordOffset(-1), normalOffset(-1), binormalOffset(-1), heightOffset(-1), coordScale(0), texCoordScale(0), binormalScale(0), heightScale(0) { }
         };
 
-        explicit TileGeometry(Type type, float geomScale, const StyleParameters& styleParameters, const VertexGeometryLayoutParameters& vertexGeometryLayoutParameters, VertexArray<std::uint8_t> vertexGeometry, VertexArray<std::uint16_t> indices, std::vector<std::pair<std::size_t, long long>> ids) : _type(type), _geomScale(geomScale), _styleParameters(styleParameters), _vertexGeometryLayoutParameters(vertexGeometryLayoutParameters), _indicesCount(static_cast<unsigned int>(indices.size())), _vertexGeometry(std::move(vertexGeometry)), _indices(std::move(indices)), _ids(std::move(ids)) { }
+        explicit TileGeometry(Type type, float geomScale, const StyleParameters& styleParameters, const VertexGeometryLayoutParameters& vertexGeometryLayoutParameters, VertexArray<std::uint8_t> vertexGeometry, VertexArray<std::uint16_t> indices, std::vector<std::pair<std::size_t, long long>> ids, std::vector<std::pair<std::size_t, std::uint16_t>> geoPosIndexes) : _type(type), _geomScale(geomScale), _styleParameters(styleParameters), _vertexGeometryLayoutParameters(vertexGeometryLayoutParameters), _indicesCount(static_cast<unsigned int>(indices.size())), _vertexGeometry(std::move(vertexGeometry)), _indices(std::move(indices)), _ids(std::move(ids)), _geoPosIndexes(std::move(geoPosIndexes)), _geoPosIndexesCount(static_cast<unsigned int>(indices.size())) { }
 
         Type getType() const { return _type; }
         float getGeometryScale() const { return _geomScale; }
         const StyleParameters& getStyleParameters() const { return _styleParameters; }
         const VertexGeometryLayoutParameters& getVertexGeometryLayoutParameters() const { return _vertexGeometryLayoutParameters; }
         unsigned int getIndicesCount() const { return _indicesCount; }
+        unsigned int getGeoPosIndexesCount() const { return _geoPosIndexesCount; }
 
         const VertexArray<std::uint8_t>& getVertexGeometry() const { return _vertexGeometry; }
         const VertexArray<std::uint16_t>& getIndices() const { return _indices; }
         const std::vector<std::pair<std::size_t, long long>>& getIds() const { return _ids; }
+        const std::vector<std::pair<std::size_t, std::uint16_t>>& getGeoPosIndexes() const { return _geoPosIndexes; }
 
         void releaseVertexArrays() {
             _vertexGeometry.clear();
@@ -78,7 +80,10 @@ namespace carto::vt {
             _indices.shrink_to_fit();
             _ids.clear();
             _ids.shrink_to_fit();
+            _geoPosIndexes.clear();
+            _geoPosIndexes.shrink_to_fit();
         }
+
 
         std::size_t getFeatureCount() const {
             switch (_type) {
@@ -103,10 +108,12 @@ namespace carto::vt {
         const StyleParameters _styleParameters;
         const VertexGeometryLayoutParameters _vertexGeometryLayoutParameters;
         const unsigned int _indicesCount; // real count, even if indices are released
+        const unsigned int _geoPosIndexesCount;
 
         VertexArray<std::uint8_t> _vertexGeometry;
         VertexArray<std::uint16_t> _indices;
         std::vector<std::pair<std::size_t, long long>> _ids; // vertex count, feature id
+        std::vector<std::pair<std::size_t, std::uint16_t>> _geoPosIndexes; // vertex count, feature id
     };
 }
 

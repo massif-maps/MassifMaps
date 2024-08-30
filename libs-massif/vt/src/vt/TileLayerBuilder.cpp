@@ -53,6 +53,7 @@ namespace carto::vt {
         _attribs.reserve(RESERVED_VERTICES);
         _indices.reserve(RESERVED_VERTICES);
         _ids.reserve(RESERVED_VERTICES);
+        _geoPosIndexes.reserve(RESERVED_VERTICES);
     }
 
     void TileLayerBuilder::setCompOp(std::optional<CompOp> compOp) {
@@ -123,6 +124,7 @@ namespace carto::vt {
                 tesselateGlyph(vertex, static_cast<std::int8_t>(styleIndex), pen * style.image->scale, cglib::vec2<float>(glyph->width, glyph->height) * style.image->scale, glyph);
             }
             _ids.fill(id, _indices.size() - _ids.size());
+            _geoPosIndexes.fill(0, _indices.size() - _geoPosIndexes.size());
             if (transform) {
                 for (std::size_t i = i0; i < _binormals.size(); i++) {
                     _binormals[i] = cglib::transform(_binormals[i], *transform);
@@ -180,7 +182,7 @@ namespace carto::vt {
             }
         }
 
-        return [style, transform, styleIndex, haloStyleIndex, font, formatter, this](long long id, const Vertex& vertex, const std::string& text) {
+        return [style, transform, styleIndex, haloStyleIndex, font, formatter, this](long long id, const Vertex& vertex, const std::string& text, int geoPosIndex) {
             std::size_t i0 = _coords.size();
             std::vector<Font::Glyph> glyphs = formatter.format(text, 1.0f);
             Font::Metrics metrics = font->getMetrics(1.0f);
@@ -208,6 +210,7 @@ namespace carto::vt {
                 }
             }
             _ids.fill(id, _indices.size() - _ids.size());
+            _geoPosIndexes.fill(geoPosIndex, _indices.size() - _geoPosIndexes.size());
             if (transform) {
                 for (std::size_t i = i0; i < _binormals.size(); i++) {
                     _binormals[i] = cglib::transform(_binormals[i], *transform);
@@ -263,6 +266,7 @@ namespace carto::vt {
             _binormals.fill(cglib::vec2<float>(0, 0), _coords.size() - _binormals.size()); // needed if previously only polygons were used
             tesselateLine(vertices, static_cast<std::int8_t>(styleIndex), stroke, style);
             _ids.fill(id, _indices.size() - _ids.size());
+            _geoPosIndexes.fill(0, _indices.size() - _geoPosIndexes.size());
             if (transform) {
                 for (std::size_t i = i0; i < _coords.size(); i++) {
                     _coords[i] = cglib::transform(_coords[i], *transform);
@@ -317,6 +321,7 @@ namespace carto::vt {
             std::size_t i0 = _coords.size();
             tesselatePolygon(verticesList, static_cast<std::int8_t>(styleIndex), style);
             _ids.fill(id, _indices.size() - _ids.size());
+            _geoPosIndexes.fill(0, _indices.size() - _geoPosIndexes.size());
             if (type == TileGeometry::Type::LINE) {
                 _binormals.fill(cglib::vec2<float>(0, 0), _coords.size() - _binormals.size()); // use zero binormals if using 'lines'
             }
@@ -360,6 +365,7 @@ namespace carto::vt {
             std::size_t i0 = _coords.size();
             tesselatePolygon3D(verticesList, minHeight, maxHeight, static_cast<std::int8_t>(styleIndex), style);
             _ids.fill(id, _indices.size() - _ids.size());
+            _geoPosIndexes.fill(0, _indices.size() - _geoPosIndexes.size());
             if (transform) {
                 for (std::size_t i = i0; i < _coords.size(); i++) {
                     _coords[i] = cglib::transform(_coords[i], *transform);
@@ -493,6 +499,7 @@ namespace carto::vt {
         _attribs.clear();
         _indices.clear();
         _ids.clear();
+        _geoPosIndexes.clear();
     }
 
     void TileLayerBuilder::packGeometry(std::vector<std::shared_ptr<TileGeometry>>& geometryList) const {
@@ -613,6 +620,8 @@ namespace carto::vt {
             remappedIndices.reserve(count);
             VertexArray<long long> remappedIds;
             remappedIds.reserve(count);
+            VertexArray<std::uint16_t> remappedGeoPosIndexes;
+            remappedGeoPosIndexes.reserve(count);
             for (std::size_t i = 0; i < count; i++) {
                 std::size_t index = _indices[offset + i];
                 std::size_t remappedIndex = indexTable[index];
@@ -640,15 +649,16 @@ namespace carto::vt {
 
                 remappedIndices.append(remappedIndex);
                 remappedIds.append(_ids[offset + i]);
+                remappedGeoPosIndexes.append(_geoPosIndexes[offset + i]);
             }
 
-            packGeometry(_builderParameters.type, dimensions, coordScale, binormalScale, texCoordScale, heightScale, remappedCoords, remappedTexCoords, remappedNormals, remappedBinormals, remappedHeights, remappedAttribs, remappedIndices, remappedIds, styleParameters, geometryList);
+            packGeometry(_builderParameters.type, dimensions, coordScale, binormalScale, texCoordScale, heightScale, remappedCoords, remappedTexCoords, remappedNormals, remappedBinormals, remappedHeights, remappedAttribs, remappedIndices, remappedIds, remappedGeoPosIndexes, styleParameters,  geometryList);
 
             offset += count;
         }
     }
 
-    void TileLayerBuilder::packGeometry(TileGeometry::Type type, int dimensions, float coordScale, float binormalScale, float texCoordScale, float heightScale, const VertexArray<cglib::vec3<float>>& coords, const VertexArray<cglib::vec2<float>>& texCoords, const VertexArray<cglib::vec3<float>>& normals, const VertexArray<cglib::vec3<float>>& binormals, const VertexArray<float>& heights, const VertexArray<cglib::vec4<std::int8_t>>& attribs, const VertexArray<std::size_t>& indices, const VertexArray<long long>& ids, const TileGeometry::StyleParameters& styleParameters, std::vector<std::shared_ptr<TileGeometry>>& geometryList) const {
+    void TileLayerBuilder::packGeometry(TileGeometry::Type type, int dimensions, float coordScale, float binormalScale, float texCoordScale, float heightScale, const VertexArray<cglib::vec3<float>>& coords, const VertexArray<cglib::vec2<float>>& texCoords, const VertexArray<cglib::vec3<float>>& normals, const VertexArray<cglib::vec3<float>>& binormals, const VertexArray<float>& heights, const VertexArray<cglib::vec4<std::int8_t>>& attribs, const VertexArray<std::size_t>& indices, const VertexArray<long long>& ids, const VertexArray<std::uint16_t>& geoPosIndexes, const TileGeometry::StyleParameters& styleParameters, std::vector<std::shared_ptr<TileGeometry>>& geometryList) const {
         if (indices.empty()) {
             return;
         }
@@ -745,9 +755,10 @@ namespace carto::vt {
         }
 
         // Compress indices
+        size_t size = indices.size();
         VertexArray<std::uint16_t> compressedIndices;
         compressedIndices.reserve(indices.size());
-        for (std::size_t i = 0; i < indices.size(); i++) {
+        for (std::size_t i = 0; i < size; i++) {
             compressedIndices.append(static_cast<std::uint16_t>(indices[i]));
         }
 
@@ -755,7 +766,8 @@ namespace carto::vt {
         std::vector<std::pair<std::size_t, long long>> compressedIds;
         if (!ids.empty()) {
             std::size_t offset = 0;
-            for (std::size_t i = 1; i < ids.size(); i++) {
+            size_t size = ids.size();
+            for (std::size_t i = 1; i < size; i++) {
                 if (ids[i] != ids[offset]) {
                     compressedIds.emplace_back(i - offset, ids[offset]);
                     offset = i;
@@ -764,9 +776,23 @@ namespace carto::vt {
             compressedIds.emplace_back(ids.size() - offset, ids[offset]);
             compressedIds.shrink_to_fit();
         }
+        // Compress geoPosIndexes
+        std::vector<std::pair<std::size_t, std::uint16_t>> compressedGeoPosIndexes;
+        if (!geoPosIndexes.empty()) {
+            std::size_t offset = 0;
+            size_t size = geoPosIndexes.size();
+            for (std::size_t i = 1; i < size; i++) {
+                if (geoPosIndexes[i] != geoPosIndexes[offset]) {
+                    compressedGeoPosIndexes.emplace_back(i - offset, geoPosIndexes[offset]);
+                    offset = i;
+                }
+            }
+            compressedGeoPosIndexes.emplace_back(geoPosIndexes.size() - offset, geoPosIndexes[offset]);
+            compressedGeoPosIndexes.shrink_to_fit();
+        }
 
         // Store geometry
-        auto geometry = std::make_shared<TileGeometry>(type, _geomScale, styleParameters, vertexGeomLayoutParams, std::move(compressedVertexGeometry), std::move(compressedIndices), std::move(compressedIds));
+        auto geometry = std::make_shared<TileGeometry>(type, _geomScale, styleParameters, vertexGeomLayoutParams, std::move(compressedVertexGeometry), std::move(compressedIndices), std::move(compressedIds), std::move(compressedGeoPosIndexes));
         geometryList.push_back(std::move(geometry));
     }
 

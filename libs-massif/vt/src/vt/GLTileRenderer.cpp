@@ -1019,7 +1019,9 @@ namespace carto::vt {
     void GLTileRenderer::findTileGeometryIntersections(const TileId& tileId, const std::shared_ptr<const TileGeometry>& geometry, const std::vector<cglib::ray3<double>>& rays, float tileSize, float pointBuffer, float lineBuffer, float heightScale, std::vector<GeometryIntersectionInfo>& results) const {
         float scale = geometry->getGeometryScale() / tileSize / std::pow(2.0f, _viewState.zoom - tileId.zoom);
         for (TileGeometryIterator it(tileId, geometry, _transformer, _viewState, pointBuffer, lineBuffer, scale, heightScale); it; ++it) {
-            long long featureId = it.id();
+            size_t indicesCount = geometry->getIndicesCount();
+            size_t featuresCount = geometry->getFeatureCount();
+            size_t geoPosIndexesCount = geometry->getGeoPosIndexesCount();
             TileGeometryIterator::TriangleCoords coords = it.triangleCoords();
 
             for (std::size_t i = 0; i < rays.size(); i++) {
@@ -1037,13 +1039,15 @@ namespace carto::vt {
                             continue;
                         }
                     }
+                    long long featureId = it.id();
                     if (!results.empty()) {
                         const GeometryIntersectionInfo& result = results.back();
                         if (result.tileId == tileId && result.featureId == featureId) {
                             break;
                         }
                     }
-                    results.emplace_back(tileId, -1, featureId, 0, i, t);
+                    std::uint16_t geoPosIndex = it.geoPosIndex();
+                    results.emplace_back(tileId, -1, featureId, geoPosIndex, i, t);
                     break;
                 }
             }

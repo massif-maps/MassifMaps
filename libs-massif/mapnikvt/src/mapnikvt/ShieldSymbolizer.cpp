@@ -86,10 +86,12 @@ namespace carto::mvt {
 
                     if (auto pointGeometry = std::get_if<PointGeometry>(featureCollection.getGeometry(featureIndex).get())) {
                         auto verticesList = pointGeometry->getVerticesList();
+                        int index = 0;
                         for (const auto& vertices : verticesList) {
                             for (const auto &vertex: vertices) {
-                                textProcessor(featureCollection.getLocalId(featureIndex), vertex, text);
+                                textProcessor(featureCollection.getLocalId(featureIndex), vertex, text, index);
                             }
+                            index++;
                         }
                     }
                     else if (placement != vt::LabelOrientation::LINE) {
@@ -102,7 +104,7 @@ namespace carto::mvt {
                         }
 
                         for (const auto& vertex : vertices) {
-                            textProcessor(featureCollection.getLocalId(featureIndex), vertex, text);
+                            textProcessor(featureCollection.getLocalId(featureIndex), vertex, text, 0);
                         }
                     }
                     else {
@@ -117,7 +119,7 @@ namespace carto::mvt {
                         for (const auto& vertices : verticesList) {
                             for (const auto& transformedPoints : generateLinePoints(vertices, spacing, textSize, tileSize)) {
                                 for (const auto& vertex : transformedPoints.second) {
-                                    textProcessor(featureCollection.getLocalId(featureIndex), vertex, text);
+                                    textProcessor(featureCollection.getLocalId(featureIndex), vertex, text, 0);
                                 }
                             }
                         }

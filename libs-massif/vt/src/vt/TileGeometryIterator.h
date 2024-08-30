@@ -29,6 +29,8 @@ namespace carto::vt {
 
         operator bool() const { return _index + 2 < _geometry->getIndices().size(); }
         long long id() const { return getId(_index); }
+        std::uint16_t geoPosIndex() const { return getGeoPosIndex(_index); }
+        std::size_t index() const { return _index; }
         cglib::vec4<std::int8_t> attribs() const { return getAttribs(_index); }
         TriangleCoords triangleCoords() const { return getTriangleCoords(_index); }
         TriangleUVs triangleUVs() const { return getTriangleUVs(_index); }
@@ -36,6 +38,7 @@ namespace carto::vt {
 
     private:
         long long getId(std::size_t index) const;
+        std::uint16_t getGeoPosIndex(std::size_t index) const;
         cglib::vec4<std::int8_t> getAttribs(std::size_t index) const;
         TriangleCoords getTriangleCoords(std::size_t index) const;
         TriangleUVs getTriangleUVs(std::size_t index) const;

@@ -85,11 +85,13 @@ namespace carto::mvt {
                     if (auto pointGeometry = std::get_if<PointGeometry>(featureCollection.getGeometry(featureIndex).get())) {
                         long long localId = featureCollection.getLocalId(featureIndex);
                         auto verticesList = pointGeometry->getVerticesList();
+
+                        int index = 0;
                         for (const auto& vertices : verticesList) {
-                            int index = &vertices - &verticesList[0];
                             for (const auto &vertex: vertices) {
-                                textProcessor(localId, vertex, text);
+                                textProcessor(localId, vertex, text, index);
                             }
+                            index++;
                         }
                     }
                     else if (placement == vt::LabelOrientation::LINE_BILLBOARD_3D) {
@@ -104,7 +106,7 @@ namespace carto::mvt {
                         for (const auto& vertices : verticesList) {
                             for (const auto& transformedPoints : generateLinePoints(vertices, spacing, textSize, tileSize)) {
                                 for (const auto& vertex : transformedPoints.second) {
-                                    textProcessor(featureCollection.getLocalId(featureIndex), vertex, text);
+                                    textProcessor(featureCollection.getLocalId(featureIndex), vertex, text, 0);
                                 }
                             }
                         }
@@ -119,7 +121,7 @@ namespace carto::mvt {
                         }
 
                         for (const auto& vertex : vertices) {
-                            textProcessor(featureCollection.getLocalId(featureIndex), vertex, text);
+                            textProcessor(featureCollection.getLocalId(featureIndex), vertex, text, 0);
                         }
                     }
                     else {
@@ -137,7 +139,7 @@ namespace carto::mvt {
                                 textProcessor = layerBuilder.createTextProcessor(transformedStyle, formatter);
                                 if (textProcessor) {
                                     for (const auto& vertex : transformedPoints.second) {
-                                        textProcessor(featureCollection.getLocalId(featureIndex), vertex, text);
+                                        textProcessor(featureCollection.getLocalId(featureIndex), vertex, text, 0);
                                     }
                                     textProcessor = vt::TileLayerBuilder::TextProcessor();
                                 }

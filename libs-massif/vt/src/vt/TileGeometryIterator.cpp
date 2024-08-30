@@ -22,6 +22,16 @@ namespace carto::vt {
         }
         return 0;
     }
+    std::uint16_t TileGeometryIterator::getGeoPosIndex(std::size_t index) const {
+        int size = _geometry->getGeoPosIndexes().size();
+        for (std::size_t i = 0; i < size; i++) {
+            if (index < _geometry->getGeoPosIndexes()[i].first) {
+                return _geometry->getGeoPosIndexes()[i].second;
+            }
+            index -= _geometry->getGeoPosIndexes()[i].first;
+        }
+        return 0;
+    }
 
     cglib::vec4<std::int8_t> TileGeometryIterator::getAttribs(std::size_t index) const {
         std::size_t i0 = _geometry->getIndices()[index + 0];

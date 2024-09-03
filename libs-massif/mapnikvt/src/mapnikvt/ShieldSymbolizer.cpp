@@ -14,11 +14,14 @@ namespace carto::mvt {
         }
 
         std::string file = _file.getValue(exprContext);
-        std::shared_ptr<const vt::BitmapImage> backgroundImage = symbolizerContext.getBitmapManager()->loadBitmapImage(file, IMAGE_UPSAMPLING_SCALE);
-        if (!backgroundImage || !backgroundImage->bitmap) {
-            _logger->write(Logger::Severity::ERROR, "Failed to load shield bitmap " + file);
-            return FeatureProcessor();
+        std::shared_ptr<const vt::BitmapImage> backgroundImage;
+        if (!file.empty()) {
+            backgroundImage = symbolizerContext.getBitmapManager()->loadBitmapImage(file, IMAGE_UPSAMPLING_SCALE);
         }
+        // if (!backgroundImage || !backgroundImage->bitmap) {
+        //     _logger->write(Logger::Severity::ERROR, "Failed to load shield bitmap " + file);
+        //     return FeatureProcessor();
+        // }
 
         bool allowOverlap = _allowOverlap.getValue(exprContext);
         bool clip = _clip.isDefined() ? _clip.getValue(exprContext) : allowOverlap;
@@ -27,7 +30,10 @@ namespace carto::mvt {
 
         float tileSize = symbolizerContext.getSettings().getTileSize();
         float fontScale = symbolizerContext.getSettings().getFontScale();
-        float bitmapSize = static_cast<float>(std::max(backgroundImage->bitmap->width, backgroundImage->bitmap->height)) * fontScale;
+        float bitmapSize = 0;
+        if (backgroundImage && backgroundImage->bitmap) {
+            bitmapSize = static_cast<float>(std::max(backgroundImage->bitmap->width, backgroundImage->bitmap->height)) * fontScale;
+        }
         float minimumDistance = _minimumDistance.getValue(exprContext);
         float placementPriority = _placementPriority.getValue(exprContext);
         float orientationAngle = _orientationAngle.getValue(exprContext);
@@ -65,11 +71,13 @@ namespace carto::mvt {
 
         cglib::vec2<float> backgroundOffset(0, 0);
         vt::TextFormatter formatter = (unlockImage ? textFormatter : shieldFormatter);
-        if (unlockImage) {
-            backgroundOffset = cglib::vec2<float>(-backgroundImage->bitmap->width * fontScale * 0.5f + shieldFormatterOptions.offset(0), -backgroundImage->bitmap->height * fontScale * 0.5f + shieldFormatterOptions.offset(1));
-        }
-        else {
-            backgroundOffset = cglib::vec2<float>(-backgroundImage->bitmap->width * fontScale * 0.5f, -backgroundImage->bitmap->height * fontScale * 0.5f);
+        if (backgroundImage && backgroundImage->bitmap) {
+            if (unlockImage) {
+                backgroundOffset = cglib::vec2<float>(-backgroundImage->bitmap->width * fontScale * 0.5f + shieldFormatterOptions.offset(0), -backgroundImage->bitmap->height * fontScale * 0.5f + shieldFormatterOptions.offset(1));
+            }
+            else {
+                backgroundOffset = cglib::vec2<float>(-backgroundImage->bitmap->width * fontScale * 0.5f, -backgroundImage->bitmap->height * fontScale * 0.5f);
+            }
         }
 
         if (clip) {

@@ -360,6 +360,18 @@ namespace carto::css {
                 return std::make_shared<mvt::ComparisonPredicate>(buildComparisonOp(opPred.getOp()), std::make_shared<mvt::VariableExpression>(std::move(var)), std::move(varConst));
             }
 
+            std::optional<mvt::Predicate> operator() (const OpNutiPredicate& opPred) const {
+                if (!opPred.getFieldOrVar().isField()) {
+                    throw TranslatorException("Undefined variable in predicate (@" + opPred.getFieldOrVar().getName() + ")");
+                }
+                if (!opPred.getFieldOrVar2().isField()) {
+                    throw TranslatorException("Undefined variable in predicate (@" + opPred.getFieldOrVar().getName() + ")");
+                }
+                std::string var = opPred.getFieldOrVar().getName();
+                std::string var2 = opPred.getFieldOrVar2().getName();
+                return std::make_shared<mvt::ComparisonPredicate>(buildComparisonOp(opPred.getOp()), std::make_shared<mvt::VariableExpression>(std::move(var)), std::make_shared<mvt::VariableExpression>(std::move(var2)));
+            }
+
             std::optional<mvt::Predicate> operator() (const WhenPredicate& whenPred) const {
                 mvt::Expression mapnikExpr = buildExpression(whenPred.getExpression());
                 return std::make_shared<mvt::ExpressionPredicate>(std::move(mapnikExpr));

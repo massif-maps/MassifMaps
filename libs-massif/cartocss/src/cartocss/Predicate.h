@@ -23,9 +23,10 @@ namespace carto::css {
     class OpPredicate;
     class ConstOpPredicate;
     class OpConstPredicate;
+    class OpNutiPredicate;
     class WhenPredicate;
 
-    using Predicate = std::variant<MapPredicate, LayerPredicate, ClassPredicate, AttachmentPredicate, OpPredicate, ConstOpPredicate, OpConstPredicate, WhenPredicate>;
+    using Predicate = std::variant<MapPredicate, LayerPredicate, ClassPredicate, AttachmentPredicate, OpPredicate, ConstOpPredicate, OpConstPredicate, OpNutiPredicate, WhenPredicate>;
 
     class MapPredicate final {
     public:
@@ -147,6 +148,26 @@ namespace carto::css {
         OpPredicate::Op _op;
         std::string _name;
         FieldOrVar _fieldOrVar;
+    };
+
+    class OpNutiPredicate final {
+    public:
+
+        explicit OpNutiPredicate(OpPredicate::Op op, const FieldOrVar &fieldOrVar, const FieldOrVar &fieldOrVar2) : _op(op), _fieldOrVar(fieldOrVar), _fieldOrVar2(fieldOrVar2) { }
+
+        OpPredicate::Op getOp() const { return _op; }
+        const FieldOrVar &getFieldOrVar() const { return _fieldOrVar; }
+        const FieldOrVar &getFieldOrVar2() const { return _fieldOrVar2; }
+
+        bool operator == (const OpNutiPredicate& other) const { return _op == other._op && _fieldOrVar2 == other._fieldOrVar2 && _fieldOrVar == other._fieldOrVar; }
+        bool operator != (const OpNutiPredicate& other) const { return !(*this == other); }
+
+        static boost::tribool applyOp(OpPredicate::Op op, const Value& val1, const Value& val2);
+
+    private:
+        OpPredicate::Op _op;
+        FieldOrVar _fieldOrVar;
+        FieldOrVar _fieldOrVar2;
     };
 
     class WhenPredicate final {

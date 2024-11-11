@@ -130,12 +130,26 @@ namespace carto::css {
                     fieldOrVarValue2 = it->second;
                 }
             }
+            if (!fieldOrVarValue2 && _context.expressionContext.variableMap) {
+                auto it = _context.expressionContext.variableMap->find(constFieldName);
+                if (it != _context.expressionContext.variableMap->end()) {
+                    Expression result = std::visit(ExpressionEvaluator(_context.expressionContext), it->second);
+                    if (auto val = std::get_if<Value>(&result)) {
+                        fieldOrVarValue2 = *val;
+                    }
+                }
+            }
             if (fieldOrVarValue && !fieldOrVarValue2) {
                 return false;
             }
             if (fieldOrVarValue && fieldOrVarValue2) {
                 return OpPredicate::applyOp(opPred.getOp(), *fieldOrVarValue, *fieldOrVarValue2);
             }
+            return boost::indeterminate;
+        }
+
+
+        boost::tribool operator() (const OpNutiPredicate& opPred) const {
             return boost::indeterminate;
         }
 

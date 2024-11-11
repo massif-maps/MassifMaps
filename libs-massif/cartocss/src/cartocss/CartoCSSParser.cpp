@@ -88,6 +88,7 @@ namespace carto::css {
                 varid   = qi::lexeme[+(qi::char_("_a-zA-Z0-9-") | nonascii_)];
                 fieldid = qi::lexeme[+(qi::char_("_a-zA-Z0-9-") | nonascii_)];
                 constid = qi::lexeme['$' >> +(qi::char_("_a-zA-Z0-9-") | nonascii_)];
+                nutiid = qi::lexeme["nuti::" >> (+(qi::char_("_a-zA-Z0-9-") | nonascii_))];
                 unescapedfieldid = qi::lexeme[+(qi::print - qi::char_("[]{}")) > -(qi::char_("[") > unescapedfieldid > qi::char_("]")) > -(qi::char_("{") > unescapedfieldid > qi::char_("}"))];
 
                 expressionlist =
@@ -160,15 +161,15 @@ namespace carto::css {
                     ;
 
                 predicate =
-                      qi::lit("Map")                                                [_val = phoenix::construct<MapPredicate>()]
-                    | (qi::lit('#') > blockid)                                      [_val = phoenix::construct<LayerPredicate>(_1)]
-                    | (qi::lit('.') > blockid)                                      [_val = phoenix::construct<ClassPredicate>(_1)]
-                    | (qi::lit("::") > blockid)                                     [_val = phoenix::construct<AttachmentPredicate>(_1)]
-                    | ((qi::lit('[') >> '$') > varid > op > constant > ']')         [_val = phoenix::bind(&makeConstOpPredicate, _2, false, _1, _3)]
-                    | ((qi::lit('[') >> '@') > varid > op > constant > ']')         [_val = phoenix::bind(&makeOpPredicate, _2, false, _1, _3)]
-                    | (qi::lit('[') > (fieldid | string) > op > (constid | constant) > ']')  [_val = phoenix::bind(&makeOpOrOpConstPredicate, _2, true, _1, _3)]
+                      qi::lit("Map")                                                            [_val = phoenix::construct<MapPredicate>()]
+                    | (qi::lit('#') > blockid)                                                  [_val = phoenix::construct<LayerPredicate>(_1)]
+                    | (qi::lit('.') > blockid)                                                  [_val = phoenix::construct<ClassPredicate>(_1)]
+                    | (qi::lit("::") > blockid)                                                 [_val = phoenix::construct<AttachmentPredicate>(_1)]
+                    | ((qi::lit('[') >> '$') > varid > op > constant > ']')                     [_val = phoenix::bind(&makeConstOpPredicate, _2, false, _1, _3)]
+                    | ((qi::lit('[') >> '@') > varid > op > constant > ']')                     [_val = phoenix::bind(&makeOpPredicate, _2, false, _1, _3)]
+                    | (qi::lit('[') > (fieldid | string) > op > (constid | constant) > ']')     [_val = phoenix::bind(&makeOpOrOpConstPredicate, _2, true, _1, _3)]
                     // | (qi::lit('[') > (fieldid | string) > op > constant > ']')     [_val = phoenix::bind(&makeOpPredicate, _2, true, _1, _3)]
-                    | ((qi::lit("when") >> '(') > expression > ')')                 [_val = phoenix::bind(&makeWhenPredicate, _1)]
+                    | ((qi::lit("when") >> '(') > expression > ')')                             [_val = phoenix::bind(&makeWhenPredicate, _1)]
                     ;
                 
                 selector = (*predicate)                             [_val = phoenix::construct<Selector>(_1)];
@@ -204,7 +205,7 @@ namespace carto::css {
             boost::spirit::qi::rule<Iterator, std::string(), Skipper<Iterator> > uri;
             boost::spirit::qi::rule<Iterator, Color(), Skipper<Iterator> > color;
             boost::spirit::qi::rule<Iterator, Value(), Skipper<Iterator> > number, constant;
-            boost::spirit::qi::rule<Iterator, std::string()> blockid, propid, funcid, varid, constid, fieldid, unescapedfieldid;
+            boost::spirit::qi::rule<Iterator, std::string()> blockid, propid, funcid, varid, constid, fieldid, nutiid, unescapedfieldid;
             boost::spirit::qi::rule<Iterator, Expression(), Skipper<Iterator> > expressionlist, expression, term0, term1, term2, term3, unary, factor;
             boost::spirit::qi::rule<Iterator, OpPredicate::Op()> op;
             boost::spirit::qi::rule<Iterator, Predicate(), Skipper<Iterator> > predicate;
@@ -292,7 +293,11 @@ namespace carto::css {
             static Predicate makeOpOrOpConstPredicate(OpPredicate::Op op, bool field, const std::string& name, const boost::variant<std::string, Value>& nameOrVal) {
                 if (const Value* value = boost::get<Value>(&nameOrVal))
                 {
-                        return OpPredicate(op, FieldOrVar(field, name), *value);
+                    auto strVal = std::get_if<std::string>(value);
+                    if (strVal && mvt::ExpressionContext::isNutiVariable(*strVal)) {
+                        return OpNutiPredicate(op, FieldOrVar(field, name), FieldOrVar(field, *strVal));
+                    }
+                    return OpPredicate(op, FieldOrVar(field, name), *value);
                 }
                 else 
                 {
@@ -302,6 +307,9 @@ namespace carto::css {
             }
             static Predicate makeConstOpPredicate(OpPredicate::Op op, bool field, const std::string& name, const Value& refValue) {
                 return ConstOpPredicate(op, name, refValue);
+            }
+            static Predicate makeNutiOpPredicate(OpPredicate::Op op, bool field, const std::string& name,  const std::string& name2) {
+                return OpNutiPredicate(op, FieldOrVar(false, name), FieldOrVar(field, name2));
             }
             static Predicate makeOpConstPredicate(OpPredicate::Op op, bool field, const std::string& name, const std::string& nameConst) {
                 return OpConstPredicate(op, FieldOrVar(field, name), nameConst);

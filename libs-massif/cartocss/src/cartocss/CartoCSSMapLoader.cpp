@@ -306,7 +306,7 @@ namespace carto::css {
     }
 
     std::shared_ptr<mvt::Style> CartoCSSMapLoader::buildStyle(const AttachmentStyle& attachmentStyle, const std::string& styleName) const {
-        auto style = std::make_shared<mvt::Style>(styleName, attachmentStyle.opacity, attachmentStyle.imageFilters, attachmentStyle.compOp, mvt::Style::FilterMode::FIRST, attachmentStyle.rules);
+        auto style = std::make_shared<mvt::Style>(styleName, attachmentStyle.opacity, attachmentStyle.imageFilters, attachmentStyle.compOp, mvt::Style::FilterMode::FIRST, attachmentStyle.simplify, attachmentStyle.rules);
         style->optimizeRules();
         return style;
     }
@@ -368,6 +368,22 @@ namespace carto::css {
                     }
                     else {
                         _logger->write(mvt::Logger::Severity::WARNING, "CompOp must be constant expression");
+                    }
+                }
+                if (auto simplifyProp = propertySet.findProperty("simplify")) {
+                    if (auto val = std::get_if<Value>(&simplifyProp->getExpression())) {
+                        std::string simplify = mvt::ValueConverter<std::string>::convert(translator.buildValue(*val));
+                        if (!simplify.empty()) {
+                            try {
+                                attachmentStyle.simplify = simplify;
+                            }
+                            catch (const mvt::ParserException& ex) {
+                                _logger->write(mvt::Logger::Severity::WARNING, std::string("Failed to parse layer simplify: ") + ex.what());
+                            }
+                        }
+                    }
+                    else {
+                        _logger->write(mvt::Logger::Severity::WARNING, "simplify must be constant expression");
                     }
                 }
             }

@@ -123,6 +123,8 @@ namespace carto::mvt {
                     continue;
                 }
 
+                // TODO: add simplify possibility
+
                 // Process symbolizers
                 std::shared_ptr<const FeatureData> symbolizerFeatureData = featureIt->getFeatureData(explicitSymbolizerFeatureId, symbolizerFieldsPtr);
                 for (const std::shared_ptr<const Symbolizer>& symbolizer : symbolizersIt->second) {

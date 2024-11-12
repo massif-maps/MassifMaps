@@ -79,6 +79,9 @@ namespace carto::mvt {
                 std::string compOp = generateCompOpString(*style.getCompOp());
                 styleNode.append_attribute("comp-op").set_value(compOp.c_str());
             }
+            if (!style.getSimplify().empty()) {
+                styleNode.append_attribute("simplify").set_value(style.getSimplify().c_str());
+            }
 
             switch (style.getFilterMode())
             {

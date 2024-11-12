@@ -56,6 +56,7 @@ namespace carto::css {
             int order = 0;
             float opacity = 1.0f;
             std::string imageFilters;
+            std::string simplify;
             std::optional<vt::CompOp> compOp;
             std::vector<std::shared_ptr<const mvt::Rule>> rules;
         };

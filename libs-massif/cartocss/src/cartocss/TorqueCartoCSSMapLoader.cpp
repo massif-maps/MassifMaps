@@ -102,7 +102,7 @@ namespace carto::css {
                 for (const AttachmentStyle& attachmentStyle : attachmentStyles) {
                     // Build style, but ignore layer level opacity
                     std::string styleName = layerName + attachmentStyle.attachment + "#" + std::to_string(frameOffset);
-                    auto style = std::make_shared<mvt::Style>(styleName, 1.0f, attachmentStyle.imageFilters, attachmentStyle.compOp, mvt::Style::FilterMode::FIRST, attachmentStyle.rules);
+                    auto style = std::make_shared<mvt::Style>(styleName, 1.0f, attachmentStyle.imageFilters, attachmentStyle.compOp, mvt::Style::FilterMode::FIRST, attachmentStyle.simplify, attachmentStyle.rules);
                     map->addStyle(style);
                     styleNames.push_back(styleName);
                 }

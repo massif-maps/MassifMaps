@@ -110,6 +110,10 @@ namespace carto::mvt {
             if (pugi::xml_attribute imageFiltersAttr = styleNode.attribute("image-filters")) {
                 imageFilters = imageFiltersAttr.as_string();
             }
+            std::string simplify;
+            if (pugi::xml_attribute simplifyAttr = styleNode.attribute("simplify")) {
+                simplify = simplifyAttr.as_string();
+            }
             std::optional<vt::CompOp> compOp;
             if (pugi::xml_attribute compOpAttr = styleNode.attribute("comp-op")) {
                 compOp = parseCompOp(compOpAttr.as_string());
@@ -197,7 +201,7 @@ namespace carto::mvt {
                 rules.push_back(rule);
             }
 
-            auto style = std::make_shared<Style>(styleName, opacity, imageFilters, compOp, filterMode, std::move(rules));
+            auto style = std::make_shared<Style>(styleName, opacity, imageFilters, compOp, filterMode, simplify, std::move(rules));
             map->addStyle(style);
         }
 

@@ -307,7 +307,7 @@ namespace carto::mvt {
         }
         return true;
     }
-    std::vector<std::pair<float, vt::TileLayerBuilder::Vertices>> TextSymbolizer::generateLinePoints(const vt::TileLayerBuilder::Vertices& vertices, float spacing, float textSize, float tileSize, bool applyAngle = true) {
+    std::vector<std::pair<float, vt::TileLayerBuilder::Vertices>> TextSymbolizer::generateLinePoints(const vt::TileLayerBuilder::Vertices& vertices, float spacing, float textSize, float tileSize, bool applyAngle) {
         std::vector<std::pair<float, vt::TileLayerBuilder::Vertices>> transformedPointList;
 
         float linePos = 0;

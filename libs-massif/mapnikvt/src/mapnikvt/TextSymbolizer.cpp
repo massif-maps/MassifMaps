@@ -307,7 +307,7 @@ namespace carto::mvt {
         }
         return true;
     }
-    std::vector<std::pair<float, vt::TileLayerBuilder::Vertices>> TextSymbolizer::generateLinePoints(const vt::TileLayerBuilder::Vertices& vertices, float spacing, float textSize, float tileSize) {
+    std::vector<std::pair<float, vt::TileLayerBuilder::Vertices>> TextSymbolizer::generateLinePoints(const vt::TileLayerBuilder::Vertices& vertices, float spacing, float textSize, float tileSize, bool applyAngle = true) {
         std::vector<std::pair<float, vt::TileLayerBuilder::Vertices>> transformedPointList;
 
         float linePos = 0;
@@ -343,9 +343,14 @@ namespace carto::mvt {
                 linePos += spacing + textSize;
             }
             if (!points.empty()) {
-                cglib::vec2<float> dir = cglib::unit(v1 - v0);
-                float angle = std::atan2(-dir(1), dir(0));
-                transformedPointList.emplace_back(angle * 180.0f / boost::math::constants::pi<float>(), std::move(points));
+                if (applyAngle) {
+                    cglib::vec2<float> dir = cglib::unit(v1 - v0);
+                    float angle = std::atan2(-dir(1), dir(0));
+                    transformedPointList.emplace_back(angle * 180.0f / boost::math::constants::pi<float>(), std::move(points));
+                } else {
+                    transformedPointList.emplace_back(0.0f, std::move(points));
+                }
+                
             }
 
             linePos -= lineLen;

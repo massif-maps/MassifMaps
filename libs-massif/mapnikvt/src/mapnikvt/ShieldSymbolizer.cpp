@@ -125,7 +125,7 @@ namespace carto::mvt {
                         }
 
                         for (const auto& vertices : verticesList) {
-                            for (const auto& transformedPoints : generateLinePoints(vertices, spacing, textSize, tileSize)) {
+                            for (const auto& transformedPoints : generateLinePoints(vertices, spacing, textSize, tileSize, false)) {
                                 for (const auto& vertex : transformedPoints.second) {
                                     textProcessor(featureCollection.getLocalId(featureIndex), vertex, text, 0);
                                 }
@@ -193,7 +193,7 @@ namespace carto::mvt {
                             continue;
                         }
 
-                        for (const auto& transformedPoints : generateLinePoints(vertices, spacing, textSize, tileSize)) {
+                        for (const auto& transformedPoints : generateLinePoints(vertices, spacing, textSize, tileSize, false)) {
                             int counter = 0;
                             for (const auto& vertex : transformedPoints.second) {
                                 long long generatedLabelId = combineId(labelId, std::hash<vt::TileId>()(tileId) * 63 + counter);

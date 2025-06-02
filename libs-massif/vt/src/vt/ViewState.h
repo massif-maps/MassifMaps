@@ -31,7 +31,7 @@ namespace carto::vt {
 
         ViewState() = default;
 
-        explicit ViewState(const cglib::mat4x4<double>& projectionMatrix, const cglib::mat4x4<double>& cameraMatrix, float zoom, float rotation, float tilt, float aspect, float resolution) : zoom(zoom), rotation(rotation),tilt(tilt) aspect(aspect), resolution(resolution), zoomScale(std::pow(2.0f, -zoom)), projectionMatrix(projectionMatrix), cameraMatrix(cameraMatrix), origin(), frustum(), orientation() {
+        explicit ViewState(const cglib::mat4x4<double>& projectionMatrix, const cglib::mat4x4<double>& cameraMatrix, float zoom, float rotation, float tilt, float aspect, float resolution) : zoom(zoom), rotation(rotation), tilt(tilt), aspect(aspect), resolution(resolution), zoomScale(std::pow(2.0f, -zoom)), projectionMatrix(projectionMatrix), cameraMatrix(cameraMatrix), origin(), frustum(), orientation() {
             cglib::mat4x4<double> invCameraMatrix = cglib::inverse(cameraMatrix);
             origin = cglib::proj_p(cglib::col_vector(invCameraMatrix, 3));
             frustum = cglib::gl_projection_frustum(projectionMatrix * cameraMatrix);

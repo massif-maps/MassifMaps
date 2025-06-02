@@ -333,6 +333,8 @@ namespace carto::mvt {
         V getStaticValue(const ExpressionContext& context) const {
             vt::ViewState viewState;
             viewState.zoom = ValueConverter<float>::convert(context.getVariable("view::zoom"));
+            viewState.angle = ValueConverter<float>::convert(context.getVariable("view::angle"));
+            viewState.tilt = ValueConverter<float>::convert(context.getVariable("view::tilt"));
             if (!_contextVars) {
                 return _func(viewState);
             }

@@ -60,6 +60,10 @@ namespace carto::mvt {
         if (isViewStateVariable(name)) {
             if (name == "view::zoom") {
                 return viewState.zoom;
+            } else if (name == "view::angle") {
+                return viewState.angle;
+            } else if (name == "view::tilt") {
+                return viewState.tilt;
             }
             return Value();
         }

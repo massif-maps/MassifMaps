@@ -172,9 +172,6 @@ namespace carto::css {
                 else if (binaryExpr->getOp() == BinaryExpression::Op::OR) {
                     return std::make_shared<mvt::OrPredicate>(std::make_shared<mvt::ExpressionPredicate>(std::move(mapnikExpr1)), std::make_shared<mvt::ExpressionPredicate>(std::move(mapnikExpr2)));
                 }
-                else if (binaryExpr->getOp() == BinaryExpression::Op::NULLISH_COALESCING) {
-                    return std::make_shared<mvt::NullishCoalescingPredicate>(std::make_shared<mvt::ExpressionPredicate>(std::move(mapnikExpr1)), std::make_shared<mvt::ExpressionPredicate>(std::move(mapnikExpr2)));
-                }
 
 
                 auto it1 = std::find_if(_comparisonOpTable.begin(), _comparisonOpTable.end(), [binaryExpr](const std::pair<BinaryExpression::Op, mvt::ComparisonPredicate::Op>& item) { return item.first == binaryExpr->getOp(); });
@@ -548,7 +545,8 @@ namespace carto::css {
         { BinaryExpression::Op::ADD, mvt::BinaryExpression::Op::ADD },
         { BinaryExpression::Op::SUB, mvt::BinaryExpression::Op::SUB },
         { BinaryExpression::Op::MUL, mvt::BinaryExpression::Op::MUL },
-        { BinaryExpression::Op::DIV, mvt::BinaryExpression::Op::DIV }
+        { BinaryExpression::Op::DIV, mvt::BinaryExpression::Op::DIV },
+        { BinaryExpression::Op::NULLISH_COALESCING, mvt::BinaryExpression::Op::NULLISH_COALESCING }
     };
 
     const std::vector<std::pair<BinaryExpression::Op, mvt::ComparisonPredicate::Op>> CartoCSSMapnikTranslator::_comparisonOpTable = {

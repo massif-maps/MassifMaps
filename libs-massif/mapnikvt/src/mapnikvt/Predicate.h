@@ -79,18 +79,6 @@ namespace carto::mvt {
         const Predicate _pred1;
         const Predicate _pred2;
     };
-    
-    class NullishCoalescingPredicate final {
-    public:
-        explicit NullishCoalescingPredicate(Predicate pred1, Predicate pred2) : _pred1(std::move(pred1)), _pred2(std::move(pred2)) { }
-
-        const Predicate& getPredicate1() const { return _pred1; }
-        const Predicate& getPredicate2() const { return _pred2; }
-
-    protected:
-        const Predicate _pred1;
-        const Predicate _pred2;
-    };
 }
 
 #endif

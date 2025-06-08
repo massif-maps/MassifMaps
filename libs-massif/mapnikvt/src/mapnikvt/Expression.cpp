@@ -143,6 +143,8 @@ namespace carto::mvt {
             return Value(std::min(ValueConverter<float>::convert(val1), ValueConverter<float>::convert(val2)));
         case Op::MAX:
             return Value(std::max(ValueConverter<float>::convert(val1), ValueConverter<float>::convert(val2)));
+        case Op::NULLISH_COALESCING:
+            return std::visit(CondEvaluator(), val1) ? val1 : val2;
         }
         throw std::invalid_argument("Illegal operator");
     }

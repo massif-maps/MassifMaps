@@ -31,6 +31,11 @@ namespace {
         Value operator() (bool val1, bool val2) const { return Value(val1 || val2); }
         template <typename S, typename T> Value operator() (S val1, T val2) const { throw std::invalid_argument("Unexpected types in binary || operator"); }
     };
+    
+    struct NullishCoalescingOp {
+        Value operator() (bool val1, bool val2) const { return Value(val1 ? val1 : val2); }
+        template <typename S, typename T> Value operator() (S val1, T val2) const { throw std::invalid_argument("Unexpected types in binary ?? operator"); }
+    };
 
     template <template <typename> class OpImpl, bool NullResult, bool MismatchResult>
     struct CompOp  {

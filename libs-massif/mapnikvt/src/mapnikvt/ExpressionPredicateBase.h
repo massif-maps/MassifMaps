@@ -18,6 +18,7 @@ namespace carto::mvt {
     class NotPredicate;
     class OrPredicate;
     class AndPredicate;
+    class NullishCoalescingPredicate;
     class VariableExpression;
     class PredicateExpression;
     class UnaryExpression;

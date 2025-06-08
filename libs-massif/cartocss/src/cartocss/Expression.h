@@ -78,6 +78,7 @@ namespace carto::css {
         enum class Op {
             AND,
             OR,
+            NULLISH_COALESCING,
             EQ,
             NEQ,
             LT,

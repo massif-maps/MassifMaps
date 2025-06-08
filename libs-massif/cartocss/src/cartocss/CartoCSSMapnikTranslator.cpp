@@ -172,6 +172,10 @@ namespace carto::css {
                 else if (binaryExpr->getOp() == BinaryExpression::Op::OR) {
                     return std::make_shared<mvt::OrPredicate>(std::make_shared<mvt::ExpressionPredicate>(std::move(mapnikExpr1)), std::make_shared<mvt::ExpressionPredicate>(std::move(mapnikExpr2)));
                 }
+                else if (binaryExpr->getOp() == BinaryExpression::Op::NULLISH_COALESCING) {
+                    return std::make_shared<mvt::NullishCoalescingPredicate>(std::make_shared<mvt::ExpressionPredicate>(std::move(mapnikExpr1)), std::make_shared<mvt::ExpressionPredicate>(std::move(mapnikExpr2)));
+                }
+
 
                 auto it1 = std::find_if(_comparisonOpTable.begin(), _comparisonOpTable.end(), [binaryExpr](const std::pair<BinaryExpression::Op, mvt::ComparisonPredicate::Op>& item) { return item.first == binaryExpr->getOp(); });
                 if (it1 != _comparisonOpTable.end()) {

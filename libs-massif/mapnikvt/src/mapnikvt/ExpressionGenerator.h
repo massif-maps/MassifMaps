@@ -58,6 +58,7 @@ namespace carto::mvt {
                 term0 =
                       (term0 << " and " << term1)          [_pass = phoenix::bind(&getAndPredicate, _val, _1, _2)]
                     | (term0 << " or "  << term1)          [_pass = phoenix::bind(&getOrPredicate,  _val, _1, _2)]
+                    | (term0 << " ?? "  << term1)          [_pass = phoenix::bind(&getNullishCoalescingPredicate,  _val, _1, _2)]
                     | term1                                [_1 = _val]
                     ;
 
@@ -196,6 +197,17 @@ namespace carto::mvt {
             static bool getOrPredicate(const Expression& expr, Expression& expr1, Expression& expr2) {
                 if (auto pred = std::get_if<Predicate>(&expr)) {
                     if (auto orPred = std::get_if<std::shared_ptr<OrPredicate>>(pred)) {
+                        expr1 = (*orPred)->getPredicate1();
+                        expr2 = (*orPred)->getPredicate2();
+                        return true;
+                    }
+                }
+                return false;
+            }
+            
+            static bool getNullishCoalescingPredicate(const Expression& expr, Expression& expr1, Expression& expr2) {
+                if (auto pred = std::get_if<Predicate>(&expr)) {
+                    if (auto orPred = std::get_if<std::shared_ptr<NullishCoalescingPredicate>>(pred)) {
                         expr1 = (*orPred)->getPredicate1();
                         expr2 = (*orPred)->getPredicate2();
                         return true;

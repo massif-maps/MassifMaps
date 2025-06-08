@@ -106,6 +106,7 @@ namespace carto::css {
                     term1                                           [_val = _1]
                     >> *( (qi::lit("&&") > term1)                   [_val = phoenix::bind(&makeBinaryExpression, BinaryExpression::Op::AND, _val, _1)]
                         | (qi::lit("||") > term1)                   [_val = phoenix::bind(&makeBinaryExpression, BinaryExpression::Op::OR,  _val, _1)]
+                        | (qi::lit("??") > term1)                   [_val = phoenix::bind(&makeBinaryExpression, BinaryExpression::Op::NULLISH_COALESCING,  _val, _1)]
                         )
                     ;
 

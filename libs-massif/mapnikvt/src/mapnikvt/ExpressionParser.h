@@ -107,6 +107,7 @@ namespace carto::mvt {
                     term1                                            [_val = _1]
                     >> *( ((qi::lit("&&") | and_kw) > term1)         [_val = phoenix::bind(&makeAndPredicate, _val, _1)]
                         | ((qi::lit("||") | or_kw)  > term1)         [_val = phoenix::bind(&makeOrPredicate,  _val, _1)]
+                        | (qi::lit("??")  > term1) [_val = phoenix::bind(&makeTertiaryExpression, TertiaryExpression::Op::CONDITIONAL, _val, _val, _1)]
                         )
                     ;
 

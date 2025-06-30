@@ -970,7 +970,7 @@ namespace carto::vt {
             for (auto labelIt = labelMap.begin(); labelIt != labelMap.end(); labelIt++) {
                 const std::shared_ptr<Label>& label = labelIt->second;
                 const std::shared_ptr<const Bitmap>& bitmap = label->getStyle()->glyphMap->getBitmapPattern()->bitmap;
-                int pass = (label->getStyle()->(orientation == LabelOrientation::BILLBOARD_3D || orientation == LabelOrientation::LINE_BILLBOARD_3D) ? 1 : 0);
+                int pass = ((label->getStyle()->orientation == LabelOrientation::BILLBOARD_3D || label->getStyle()->orientation == LabelOrientation::LINE_BILLBOARD_3D) ? 1 : 0);
 
                 std::vector<std::shared_ptr<Label>>& bitmapLabels = (*bitmapLabelMap[pass])[bitmap];
                 if (bitmapLabels.empty()) {

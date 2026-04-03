@@ -348,14 +348,14 @@ namespace carto::mvt {
 
         if (zlib::inflate_gzip(data.data(), data.size(), uncompressedData)) {
             protobuf::message tileMsg(uncompressedData.data(), uncompressedData.size());
-        _tile = std::make_shared<vector_tile::Tile>(tileMsg);
+            _tile = std::make_shared<vector_tile::Tile>(tileMsg);
         } else if (compression::inflate_brotli(data.data(), data.size(), uncompressedData)) {
             protobuf::message tileMsg(uncompressedData.data(), uncompressedData.size());
-        _tile = std::make_shared<vector_tile::Tile>(tileMsg);
+            _tile = std::make_shared<vector_tile::Tile>(tileMsg);
 #ifdef HAVE_ZSTD
         } else if (compression::inflate_zstd(data.data(), data.size(), uncompressedData)) {
             protobuf::message tileMsg(uncompressedData.data(), uncompressedData.size());
-        _tile = std::make_shared<vector_tile::Tile>(tileMsg);
+            _tile = std::make_shared<vector_tile::Tile>(tileMsg);
 #endif
         } else {
             protobuf::message tileMsg(data.data(), data.size());

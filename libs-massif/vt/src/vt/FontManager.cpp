@@ -324,7 +324,11 @@ namespace carto::vt {
                     
                     if (key == "glyph_size") {
                         try {
-                            glyphRenderSize = std::stoi(value);
+                            int parsedSize = std::stoi(value);
+                            // Validate: must be between 8 and 512 pixels
+                            if (parsedSize >= 8 && parsedSize <= 512) {
+                                glyphRenderSize = parsedSize;
+                            }
                         } catch (...) {
                             // Ignore invalid values
                         }

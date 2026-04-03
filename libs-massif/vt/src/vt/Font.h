@@ -17,7 +17,7 @@
 #include <cglib/vec.h>
 
 namespace carto::vt {
-    inline constexpr int GLYPH_RENDER_SIZE = 27;
+    inline constexpr int GLYPH_RENDER_SIZE = 64;
     inline constexpr int GLYPH_RENDER_SPREAD = 4; // NOTE: keep it equal or smaller than BITMAP_SDF_SCALE
 
     class Font {

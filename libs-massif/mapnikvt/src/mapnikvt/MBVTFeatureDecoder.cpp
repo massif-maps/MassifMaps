@@ -346,20 +346,37 @@ namespace carto::mvt {
     {
         std::vector<unsigned char> uncompressedData;
 
-        if (zlib::inflate_gzip(data.data(), data.size(), uncompressedData)) {
-            protobuf::message tileMsg(uncompressedData.data(), uncompressedData.size());
-            _tile = std::make_shared<vector_tile::Tile>(tileMsg);
-        } else if (compression::inflate_brotli(data.data(), data.size(), uncompressedData)) {
-            protobuf::message tileMsg(uncompressedData.data(), uncompressedData.size());
-            _tile = std::make_shared<vector_tile::Tile>(tileMsg);
+        // Use fast header-based detection where possible to avoid expensive trial decompression.
+        const unsigned char* bytes = data.empty() ? nullptr : data.data();
+        std::size_t size = data.size();
+
+        bool decoded = false;
+        if (bytes && compression::is_gzip(bytes, size)) {
+            decoded = zlib::inflate_gzip(bytes, size, uncompressedData);
+        }
 #ifdef HAVE_ZSTD
-        } else if (compression::inflate_zstd(data.data(), data.size(), uncompressedData)) {
+        else if (bytes && compression::is_zstd(bytes, size)) {
+            decoded = compression::inflate_zstd(bytes, size, uncompressedData);
+        }
+#endif
+#ifdef HAVE_BROTLI
+        else if (bytes) {
+            // Try cheaper detection for brotli first; only attempt full inflate when detected.
+            if (compression::is_brotli(bytes, size)) {
+                decoded = compression::inflate_brotli(bytes, size, uncompressedData);
+            } else {
+                decoded = false;
+            }
+        }
+#endif
+
+        if (decoded) {
             protobuf::message tileMsg(uncompressedData.data(), uncompressedData.size());
             _tile = std::make_shared<vector_tile::Tile>(tileMsg);
-#endif
         } else {
+            // As a last fallback, try raw protobuf (uncompressed)
             protobuf::message tileMsg(data.data(), data.size());
-        _tile = std::make_shared<vector_tile::Tile>(tileMsg);
+            _tile = std::make_shared<vector_tile::Tile>(tileMsg);
         }
 
         for (int i = 0; i < _tile->layers_size(); i++) {

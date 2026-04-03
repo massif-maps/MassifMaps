@@ -1,4 +1,5 @@
 #include "MBVTFeatureDecoder.h"
+#include "CompressionUtils.h"
 #include "Logger.h"
 
 #include "mbvtpackage/MBVTPackage.pb.h"
@@ -344,13 +345,21 @@ namespace carto::mvt {
         _logger(std::move(logger))
     {
         std::vector<unsigned char> uncompressedData;
+
         if (zlib::inflate_gzip(data.data(), data.size(), uncompressedData)) {
             protobuf::message tileMsg(uncompressedData.data(), uncompressedData.size());
-            _tile = std::make_shared<vector_tile::Tile>(tileMsg);
-        }
-        else {
+        _tile = std::make_shared<vector_tile::Tile>(tileMsg);
+        } else if (compression::inflate_brotli(data.data(), data.size(), uncompressedData)) {
+            protobuf::message tileMsg(uncompressedData.data(), uncompressedData.size());
+        _tile = std::make_shared<vector_tile::Tile>(tileMsg);
+#ifdef HAVE_ZSTD
+        } else if (compression::inflate_zstd(data.data(), data.size(), uncompressedData)) {
+            protobuf::message tileMsg(uncompressedData.data(), uncompressedData.size());
+        _tile = std::make_shared<vector_tile::Tile>(tileMsg);
+#endif
+        } else {
             protobuf::message tileMsg(data.data(), data.size());
-            _tile = std::make_shared<vector_tile::Tile>(tileMsg);
+        _tile = std::make_shared<vector_tile::Tile>(tileMsg);
         }
 
         for (int i = 0; i < _tile->layers_size(); i++) {

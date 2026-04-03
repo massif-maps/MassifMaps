@@ -38,8 +38,9 @@ namespace carto::vt {
             std::shared_ptr<const BitmapPattern> pattern;
             std::optional<cglib::vec2<float>> translate;
             CompOp compOp;
+            int glyphRenderSize;
 
-            StyleParameters() : parameterCount(0), colorFuncs(), widthFuncs(), offsetFuncs(), strokeScales(), pattern(), translate(), compOp(CompOp::SRC_OVER) { }
+            StyleParameters() : parameterCount(0), colorFuncs(), widthFuncs(), offsetFuncs(), strokeScales(), pattern(), translate(), compOp(CompOp::SRC_OVER), glyphRenderSize(64) { }
         };
 
         struct VertexGeometryLayoutParameters {

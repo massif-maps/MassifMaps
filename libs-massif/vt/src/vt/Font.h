@@ -54,6 +54,7 @@ namespace carto::vt {
         virtual Metrics getMetrics(float size) const = 0;
         virtual std::vector<Glyph> shapeGlyphs(const std::uint32_t* utf32Text, std::size_t len, float size, bool rtl) const = 0;
         virtual std::shared_ptr<GlyphMap> getGlyphMap() const = 0;
+        virtual int getGlyphRenderSize() const = 0;
     };
 }
 

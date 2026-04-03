@@ -146,12 +146,14 @@ namespace carto::vt {
         }
 
         const std::shared_ptr<const Font>& font = formatter.getFont();
+        int fontGlyphRenderSize = font->getGlyphRenderSize();
 
-        if (_builderParameters.type != TileGeometry::Type::POINT || _builderParameters.glyphMap != font->getGlyphMap() || _builderParameters.translate != translate || _builderParameters.compOp != style.compOp || _builderParameters.parameterCount + 2 > TileGeometry::StyleParameters::MAX_PARAMETERS) {
+        if (_builderParameters.type != TileGeometry::Type::POINT || _builderParameters.glyphMap != font->getGlyphMap() || _builderParameters.glyphRenderSize != fontGlyphRenderSize || _builderParameters.translate != translate || _builderParameters.compOp != style.compOp || _builderParameters.parameterCount + 2 > TileGeometry::StyleParameters::MAX_PARAMETERS) {
             appendGeometry();
         }
         _builderParameters.type = TileGeometry::Type::POINT;
         _builderParameters.glyphMap = font->getGlyphMap();
+        _builderParameters.glyphRenderSize = fontGlyphRenderSize;
         _builderParameters.translate = translate;
         _builderParameters.compOp = style.compOp;
         int styleIndex = _builderParameters.parameterCount;
@@ -440,8 +442,9 @@ namespace carto::vt {
 
         const std::shared_ptr<const Font>& font = formatter.getFont();
         Font::Metrics metrics = formatter.getFont()->getMetrics(1.0f);
-        if (!_labelStyle || _labelStyle->orientation != style.orientation || _labelStyle->colorFunc != style.colorFunc || _labelStyle->sizeFunc != style.sizeFunc || _labelStyle->haloColorFunc != style.haloColorFunc || _labelStyle->haloRadiusFunc != style.haloRadiusFunc || _labelStyle->autoflip != style.autoflip || _labelStyle->scale != scale || _labelStyle->ascent != metrics.ascent || _labelStyle->descent != metrics.descent || _labelStyle->transform != transform || _labelStyle->glyphMap != font->getGlyphMap()) {
-            _labelStyle = std::make_shared<TileLabel::Style>(style.orientation, style.colorFunc, style.sizeFunc, style.haloColorFunc, style.haloRadiusFunc, style.autoflip, scale, metrics.ascent, metrics.descent, transform, font->getGlyphMap());
+        int glyphRenderSize = font->getGlyphRenderSize();
+        if (!_labelStyle || _labelStyle->orientation != style.orientation || _labelStyle->colorFunc != style.colorFunc || _labelStyle->sizeFunc != style.sizeFunc || _labelStyle->haloColorFunc != style.haloColorFunc || _labelStyle->haloRadiusFunc != style.haloRadiusFunc || _labelStyle->autoflip != style.autoflip || _labelStyle->scale != scale || _labelStyle->ascent != metrics.ascent || _labelStyle->descent != metrics.descent || _labelStyle->transform != transform || _labelStyle->glyphMap != font->getGlyphMap() || _labelStyle->glyphRenderSize != glyphRenderSize) {
+            _labelStyle = std::make_shared<TileLabel::Style>(style.orientation, style.colorFunc, style.sizeFunc, style.haloColorFunc, style.haloRadiusFunc, style.autoflip, scale, metrics.ascent, metrics.descent, transform, font->getGlyphMap(), glyphRenderSize);
         }
 
         return [style, font, formatter, this](long long id, long long labelId, long long groupId, const std::optional<Vertex>& position, const Vertices& vertices, const std::string& text, float priority, float minimumGroupDistance, bool allowOverlapSameFeatureId, bool sameFeatureIdDependent, int geoPointIndex) {
@@ -524,6 +527,7 @@ namespace carto::vt {
             styleParameters.translate = _builderParameters.translate * (1.0f / _tileSize);
         }
         styleParameters.compOp = _builderParameters.compOp;
+        styleParameters.glyphRenderSize = _builderParameters.glyphRenderSize;
 
         if (_builderParameters.strokeMap) {
             bool strokeUsed = std::any_of(_builderParameters.lineStrokeIds.begin(), _builderParameters.lineStrokeIds.begin() + _builderParameters.parameterCount, [](StrokeMap::StrokeId strokeId) { return strokeId != 0; });

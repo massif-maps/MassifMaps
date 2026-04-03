@@ -190,12 +190,13 @@ namespace carto::vt {
             int labelCount;
             int parameterCount;
             float scale;
+            int glyphRenderSize;
             cglib::mat4x4<double> labelMatrix;
             std::array<cglib::vec4<float>, MAX_PARAMETERS> colorTable;
             std::array<float, MAX_PARAMETERS> widthTable;
             std::array<float, MAX_PARAMETERS> strokeWidthTable;
 
-            LabelBatchParameters() : labelCount(0), parameterCount(0), scale(0), labelMatrix(cglib::mat4x4<double>::identity()), colorTable(), widthTable(), strokeWidthTable() { }
+            LabelBatchParameters() : labelCount(0), parameterCount(0), scale(0), glyphRenderSize(64), labelMatrix(cglib::mat4x4<double>::identity()), colorTable(), widthTable(), strokeWidthTable() { }
         };
 
         static constexpr float HALO_RADIUS_SCALE = 2.5f; // the scaling factor for halo radius

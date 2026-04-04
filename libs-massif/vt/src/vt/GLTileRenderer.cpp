@@ -1379,11 +1379,12 @@ namespace carto::vt {
                 float haloRadius = (labelStyle->haloRadiusFunc)(_viewState) * HALO_RADIUS_SCALE;
                 haloRadius = std::min(haloRadius, static_cast<float>(GLYPH_RENDER_SPREAD));
 
-                if (labelStyle->transform || (lastLabelStyle && lastLabelStyle->transform) || labelBatchParams.scale != labelStyle->scale || labelBatchParams.parameterCount + 2 > LabelBatchParameters::MAX_PARAMETERS) {
+                if (labelStyle->transform || (lastLabelStyle && lastLabelStyle->transform) || labelBatchParams.scale != labelStyle->scale || labelBatchParams.glyphRenderSize != labelStyle->glyphRenderSize || labelBatchParams.parameterCount + 2 > LabelBatchParameters::MAX_PARAMETERS) {
                     renderLabelBatch(labelBatchParams, bitmap);
                     labelBatchParams.labelCount = 0;
                     labelBatchParams.parameterCount = 0;
                     labelBatchParams.scale = labelStyle->scale;
+                    labelBatchParams.glyphRenderSize = labelStyle->glyphRenderSize;
                     if (labelStyle->transform) {
                         float zoomScale = std::pow(2.0f, label->getTileId().zoom - _viewState.zoom);
                         cglib::vec2<float> translate = labelStyle->transform->translate() * zoomScale;
@@ -1777,7 +1778,7 @@ namespace carto::vt {
             }
             
             glUniform1f(shaderProgram.uniforms[U_BINORMALSCALE], vertexGeomLayoutParams.coordScale / vertexGeomLayoutParams.binormalScale / std::pow(2.0f, _viewState.zoom - sourceTileId.zoom));
-            glUniform1f(shaderProgram.uniforms[U_SDFSCALE], GLYPH_RENDER_SIZE / _fullResolution / BITMAP_SDF_SCALE);
+            glUniform1f(shaderProgram.uniforms[U_SDFSCALE], styleParams.glyphRenderSize / _fullResolution / BITMAP_SDF_SCALE);
             glUniform1fv(shaderProgram.uniforms[U_WIDTHTABLE], styleParams.parameterCount, widths.data());
             if (styleOffsetting) {
                 glUniform1fv(shaderProgram.uniforms[U_STROKEWIDTHTABLE], styleParams.parameterCount, strokeWidths.data());
@@ -1984,7 +1985,7 @@ namespace carto::vt {
         cglib::mat4x4<float> mvpMatrix = cglib::mat4x4<float>::convert(_viewState.projectionMatrix * labelBatchParams.labelMatrix);
         glUniformMatrix4fv(shaderProgram.uniforms[U_MVPMATRIX], 1, GL_FALSE, mvpMatrix.data());
 
-        glUniform1f(shaderProgram.uniforms[U_SDFSCALE], GLYPH_RENDER_SIZE / labelBatchParams.scale / _fullResolution / BITMAP_SDF_SCALE);
+        glUniform1f(shaderProgram.uniforms[U_SDFSCALE], labelBatchParams.glyphRenderSize / labelBatchParams.scale / _fullResolution / BITMAP_SDF_SCALE);
         if (useDerivatives) {
             float scale = 1.0f / labelBatchParams.scale / _fullResolution / BITMAP_SDF_SCALE;
             glUniform2f(shaderProgram.uniforms[U_DERIVSCALE], bitmap->width * scale, bitmap->height * scale);

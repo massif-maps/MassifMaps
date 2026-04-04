@@ -77,8 +77,9 @@ namespace carto::vt {
             std::shared_ptr<const BitmapPattern> pattern;
             cglib::vec2<float> translate;
             CompOp compOp;
+            int glyphRenderSize;
 
-            BuilderParameters() : type(TileGeometry::Type::NONE), parameterCount(0), colorFuncs(), widthFuncs(), offsetFuncs(), lineStrokeIds(), strokeMap(), glyphMap(), pattern(), translate(0, 0), compOp(CompOp::SRC_OVER) { }
+            BuilderParameters() : type(TileGeometry::Type::NONE), parameterCount(0), colorFuncs(), widthFuncs(), offsetFuncs(), lineStrokeIds(), strokeMap(), glyphMap(), pattern(), translate(0, 0), compOp(CompOp::SRC_OVER), glyphRenderSize(64) { }
         };
 
         void packGeometry(std::vector<std::shared_ptr<TileGeometry>>& geometryList) const;

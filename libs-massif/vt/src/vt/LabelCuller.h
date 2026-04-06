@@ -47,6 +47,7 @@ namespace carto::vt {
 
         struct LabelInfo {
             bool valid;
+            bool wasVisible;
             float priority;
             int layerIndex;
             float size;

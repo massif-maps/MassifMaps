@@ -124,10 +124,19 @@ namespace carto::vt {
             }
         }
 
-        // Sort active labels by priority/size/opacity
+        // Sort active labels by priority/visibility/size/opacity.
+        // Already-visible labels (opacity > 0) are sorted before invisible ones at the same
+        // priority level so that a small map movement cannot cause a visible label to be
+        // displaced by a newly-appearing label of equal or lower effective rank.  This
+        // mirrors the "committed placement" strategy used by MapLibre / Mapbox GL.
         std::stable_sort(validLabelList.begin(), validLabelList.end(), [&](const LabelInfo& labelInfo1, const LabelInfo& labelInfo2) {
             if (labelInfo1.priority != labelInfo2.priority) {
                 return labelInfo1.priority > labelInfo2.priority;
+            }
+            bool vis1 = labelInfo1.opacity > 0;
+            bool vis2 = labelInfo2.opacity > 0;
+            if (vis1 != vis2) {
+                return vis1; // already-visible labels win over newly-appearing ones
             }
             if (labelInfo1.layerIndex != labelInfo2.layerIndex) {
                 return labelInfo1.layerIndex < labelInfo2.layerIndex;

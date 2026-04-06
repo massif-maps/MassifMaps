@@ -101,6 +101,10 @@ namespace carto::vt {
 
         std::lock_guard<std::mutex> lock(_mutex);
 
+        // Rebuild the grid from scratch every frame so stale screen-space entries from
+        // previous frames do not cause false overlaps as the viewport moves.
+        clearGrid();
+
         // Start by collecting valid labels and updating label placements
         std::vector<LabelInfo> validLabelList;
         validLabelList.reserve(labelList.size());
@@ -112,6 +116,10 @@ namespace carto::vt {
                 continue;
             }
 
+            // Capture visibility from the previous frame BEFORE updatePlacement, which may
+            // reset opacity to 0 even for labels that were already visible on screen.
+            bool wasVisible = label->isVisible();
+
             if (label->updatePlacement(_viewState)) {
                 label->setOpacity(0);
             }
@@ -120,23 +128,23 @@ namespace carto::vt {
                 CullRecord cullRecord;
                 bool valid = calculateScreenEnvelope(label, cullRecord.envelope);
                 cullRecord.bounds = cglib::bbox2<float>::make_union(cullRecord.envelope.begin(), cullRecord.envelope.end());
-                validLabelList.push_back({ valid, label->getPriority(), label->getLayerIndex(), label->getStyle()->sizeFunc(_viewState), label->getOpacity(), label, cullRecord });
+                validLabelList.push_back({ valid, wasVisible, label->getPriority(), label->getLayerIndex(), label->getStyle()->sizeFunc(_viewState), label->getOpacity(), label, cullRecord });
             }
         }
 
-        // Sort active labels by priority/visibility/size/opacity.
-        // Already-visible labels (opacity > 0) are sorted before invisible ones at the same
-        // priority level so that a small map movement cannot cause a visible label to be
-        // displaced by a newly-appearing label of equal or lower effective rank.  This
-        // mirrors the "committed placement" strategy used by MapLibre / Mapbox GL.
+        // Sort active labels by priority/wasVisible/layerIndex/size/opacity.
+        // Labels that were visible in the previous frame (wasVisible=true) are placed before
+        // newly-appearing labels of equal priority.  This mirrors the "committed placement"
+        // strategy used by MapLibre / Mapbox GL: once a label is on screen it keeps its grid
+        // slot unless a strictly higher-priority label needs to displace it.  Using the
+        // isVisible() boolean (captured before this frame's placement update) is more reliable
+        // than opacity, which can be reset to 0 by updatePlacement() even for visible labels.
         std::stable_sort(validLabelList.begin(), validLabelList.end(), [&](const LabelInfo& labelInfo1, const LabelInfo& labelInfo2) {
             if (labelInfo1.priority != labelInfo2.priority) {
                 return labelInfo1.priority > labelInfo2.priority;
             }
-            bool vis1 = labelInfo1.opacity > 0;
-            bool vis2 = labelInfo2.opacity > 0;
-            if (vis1 != vis2) {
-                return vis1; // already-visible labels win over newly-appearing ones
+            if (labelInfo1.wasVisible != labelInfo2.wasVisible) {
+                return labelInfo1.wasVisible; // previously-visible labels claim grid slots first
             }
             if (labelInfo1.layerIndex != labelInfo2.layerIndex) {
                 return labelInfo1.layerIndex < labelInfo2.layerIndex;

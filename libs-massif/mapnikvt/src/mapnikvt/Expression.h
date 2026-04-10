@@ -61,6 +61,7 @@ namespace carto::mvt {
     class BinaryExpression final {
     public:
         enum class Op {
+            AND,
             ADD,
             SUB,
             MUL,
@@ -71,6 +72,8 @@ namespace carto::mvt {
             NTIME,
             MIN,
             MAX,
+            XOR,
+            BITWISE_AND,
             NULLISH_COALESCING
         };
 

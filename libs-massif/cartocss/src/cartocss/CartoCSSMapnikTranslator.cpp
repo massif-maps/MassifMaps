@@ -546,7 +546,9 @@ namespace carto::css {
         { BinaryExpression::Op::SUB, mvt::BinaryExpression::Op::SUB },
         { BinaryExpression::Op::MUL, mvt::BinaryExpression::Op::MUL },
         { BinaryExpression::Op::DIV, mvt::BinaryExpression::Op::DIV },
-        { BinaryExpression::Op::NULLISH_COALESCING, mvt::BinaryExpression::Op::NULLISH_COALESCING }
+        { BinaryExpression::Op::NULLISH_COALESCING, mvt::BinaryExpression::Op::NULLISH_COALESCING },
+        { BinaryExpression::Op::XOR, mvt::BinaryExpression::Op::XOR },
+        { BinaryExpression::Op::BITWISE_AND, mvt::BinaryExpression::Op::BITWISE_AND }
     };
 
     const std::vector<std::pair<BinaryExpression::Op, mvt::ComparisonPredicate::Op>> CartoCSSMapnikTranslator::_comparisonOpTable = {

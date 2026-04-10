@@ -7,6 +7,7 @@
 #include "GeneratorUtils.h"
 
 #include <algorithm>
+#include <functional>
 
 namespace {
     using carto::mvt::Value;
@@ -62,7 +63,7 @@ namespace {
         Value operator() (long long val1, double val2) const { return Value(std::fmod(static_cast<double>(val1), val2)); }
         Value operator() (double val1, long long val2) const { return Value(std::fmod(val1, static_cast<double>(val2))); }
         Value operator() (double val1, double val2) const { return Value(std::fmod(val1, val2)); }
-        template <typename S, typename T> Value operator() (S val1, T val2) const { return Value(val1); }
+        template <typename S, typename T> Value operator() (S val1, T val2) const { return ArithmeticOperator<std::modulus>()(val1, val2); }
     };
 
     struct PowOperator {
@@ -71,6 +72,22 @@ namespace {
         Value operator() (double val1, long long val2) const { return Value(std::pow(val1, static_cast<double>(val2))); }
         Value operator() (double val1, double val2) const { return Value(std::pow(val1, val2)); }
         template <typename S, typename T> Value operator() (S val1, T val2) const { return Value(val1); }
+    };
+
+    struct AndOperator {
+        Value operator() (long long val1, long long val2) const { return Value(val1 & val2); }
+        Value operator() (long long val1, double val2) const { return Value(val1 & static_cast<long>(val2)); }
+        Value operator() (double val1, long long val2) const { return Value(static_cast<long>(val1) & val2); }
+        Value operator() (double val1, double val2) const { return Value(static_cast<long>(val1) & static_cast<long>(val2)); }
+        template <typename S, typename T> Value operator() (S val1, T val2) const { return ArithmeticOperator<std::bit_and>()(val1, val2); }
+    };
+
+    struct XorOperator {
+        Value operator() (long long val1, long long val2) const { return Value(val1 ^ val2); }
+        Value operator() (long long val1, double val2) const { return Value(val1 ^ static_cast<long>(val2)); }
+        Value operator() (double val1, long long val2) const { return Value(static_cast<long>(val1) ^ val2); }
+        Value operator() (double val1, double val2) const { return Value(static_cast<long>(val1) ^ static_cast<long>(val2)); }
+        template <typename S, typename T> Value operator() (S val1, T val2) const { return ArithmeticOperator<std::bit_xor>()(val1, val2); }
     };
 
     struct CondEvaluator {
@@ -135,6 +152,10 @@ namespace carto::mvt {
             return std::visit(ModOperator(), val1, val2);
         case Op::POW:
             return std::visit(PowOperator(), val1, val2);
+        case Op::BITWISE_AND:
+            return std::visit(AndOperator(), val1, val2);
+        case Op::XOR:
+            return std::visit(XorOperator(), val1, val2);
         case Op::CONCAT:
             return Value(ValueConverter<std::string>::convert(val1) + ValueConverter<std::string>::convert(val2));
         case Op::NTIME:

@@ -133,6 +133,8 @@ namespace carto::css {
                     unary                                           [_val = _1]
                     >> *( (qi::lit("*") > unary)                    [_val = phoenix::bind(&makeBinaryExpression, BinaryExpression::Op::MUL, _val, _1)]
                         | (qi::lit("/") > unary)                    [_val = phoenix::bind(&makeBinaryExpression, BinaryExpression::Op::DIV, _val, _1)]
+                        | (qi::lit("&") > unary)                    [_val = phoenix::bind(&makeBinaryExpression, BinaryExpression::Op::BITWISE_AND, _val, _1)]
+                        | (qi::lit("^") > unary)                    [_val = phoenix::bind(&makeBinaryExpression, BinaryExpression::Op::XOR, _val, _1)]
                         )
                     ;
                 

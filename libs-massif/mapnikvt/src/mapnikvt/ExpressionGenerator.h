@@ -83,6 +83,8 @@ namespace carto::mvt {
                       (term3 << '*' << unary)              [_pass = phoenix::bind(&getBinaryExpression, BinaryExpression::Op::MUL, _val, _1, _2)]
                     | (term3 << '/' << unary)              [_pass = phoenix::bind(&getBinaryExpression, BinaryExpression::Op::DIV, _val, _1, _2)]
                     | (term3 << '%' << unary)              [_pass = phoenix::bind(&getBinaryExpression, BinaryExpression::Op::MOD, _val, _1, _2)]
+                    | (term3 << '^' << unary)              [_pass = phoenix::bind(&getBinaryExpression, BinaryExpression::Op::XOR, _val, _1, _2)]
+                    | (term3 << '&' << unary)              [_pass = phoenix::bind(&getBinaryExpression, BinaryExpression::Op::BITWISE_AND, _val, _1, _2)]
                     | unary                                [_1 = _val]
                     ;
 

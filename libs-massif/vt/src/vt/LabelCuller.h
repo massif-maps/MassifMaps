@@ -39,11 +39,11 @@ namespace carto::vt {
         struct CullRecord {
             cglib::bbox2<float> bounds;
             std::array<cglib::vec2<float>, 4> envelope;
+            long long localId = 0;
+            bool allowOverlapSameFeatureId = false;
 
             CullRecord() = default;
-            explicit CullRecord(const cglib::bbox2<float>& bounds, const std::array<cglib::vec2<float>, 4>& envelope) : bounds(bounds), envelope(envelope) { }
         };
-
 
         struct LabelInfo {
             bool valid;
@@ -58,13 +58,13 @@ namespace carto::vt {
 
         cglib::vec2<int> getGridIndex(const cglib::vec2<float>& pos) const;
         void clearGrid();
-        void addGridRecord(const LabelInfo& cullRecord);
-        bool testGridOverlap(const LabelInfo& cullRecord) const;
-        bool calculateScreenEnvelope(const std::shared_ptr<Label>& label, std::array<cglib::vec2<float>, 4>& envelope) const;
+        void addGridRecord(const CullRecord& cullRecord);
+        bool testGridOverlap(const LabelInfo& labelInfo) const;
+        bool calculateScreenEnvelope(const std::shared_ptr<Label>& label, float size, std::array<cglib::vec2<float>, 4>& envelope) const;
 
         cglib::mat4x4<float> _localCameraProjMatrix;
         ViewState _viewState;
-        std::vector<LabelInfo> _recordGrid[GRID_RESOLUTION_Y][GRID_RESOLUTION_X];
+        std::vector<CullRecord> _recordGrid[GRID_RESOLUTION_Y][GRID_RESOLUTION_X];
 
         const float _scale;
 

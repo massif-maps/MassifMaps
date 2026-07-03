@@ -125,10 +125,15 @@ namespace carto::vt {
             }
 
             if (label->isValid()) {
+                float size = (label->getStyle()->sizeFunc)(_viewState);
                 CullRecord cullRecord;
-                bool valid = calculateScreenEnvelope(label, cullRecord.envelope);
+                bool valid = calculateScreenEnvelope(label, size, cullRecord.envelope);
                 cullRecord.bounds = cglib::bbox2<float>::make_union(cullRecord.envelope.begin(), cullRecord.envelope.end());
-                validLabelList.push_back({ valid, wasVisible, label->getPriority(), label->getLayerIndex(), label->getStyle()->sizeFunc(_viewState), label->getOpacity(), label, cullRecord });
+                // Snapshot the identity fields; the placement (and thus the local id) can be
+                // changed concurrently by tile updates once labelMutex is released.
+                cullRecord.localId = label->getLocalId();
+                cullRecord.allowOverlapSameFeatureId = label->allowOverlapSameFeatureId();
+                validLabelList.push_back({ valid, wasVisible, label->getPriority(), label->getLayerIndex(), size, label->getOpacity(), label, cullRecord });
             }
         }
 
@@ -176,7 +181,7 @@ namespace carto::vt {
                 for (const LabelInfo* otherLabelInfo : groupMap[groupId]) {
                     const std::shared_ptr<Label>& otherLabel = otherLabelInfo->label;
                     float minimumDistance = std::min(label->getMinimumGroupDistance(), otherLabel->getMinimumGroupDistance());
-                    if ((!labelInfo.label->allowOverlapSameFeatureId() || !otherLabel->allowOverlapSameFeatureId() ||  labelInfo.label->getLocalId() != otherLabel->getLocalId()) && testPolygonOverlap(labelInfo.cullRecord.envelope, otherLabelInfo->cullRecord.envelope, minimumDistance)) {
+                    if ((!labelInfo.cullRecord.allowOverlapSameFeatureId || !otherLabelInfo->cullRecord.allowOverlapSameFeatureId || labelInfo.cullRecord.localId != otherLabelInfo->cullRecord.localId) && testPolygonOverlap(labelInfo.cullRecord.envelope, otherLabelInfo->cullRecord.envelope, minimumDistance)) {
                         visible = false;
                         break;
                     }
@@ -185,7 +190,7 @@ namespace carto::vt {
 
             if (visible) {
                 if (groupId >= 0) {
-                    addGridRecord(labelInfo);
+                    addGridRecord(labelInfo.cullRecord);
                 }
                 if (groupId > 0) {
                     groupMap[groupId].push_back(&labelInfo);
@@ -213,29 +218,30 @@ namespace carto::vt {
         }
     }
 
-    void LabelCuller::addGridRecord(const LabelInfo& labelInfo) {
-        cglib::vec2<int> minPos = getGridIndex(labelInfo.cullRecord.bounds.min);
-        cglib::vec2<int> maxPos = getGridIndex(labelInfo.cullRecord.bounds.max);
+    void LabelCuller::addGridRecord(const CullRecord& cullRecord) {
+        cglib::vec2<int> minPos = getGridIndex(cullRecord.bounds.min);
+        cglib::vec2<int> maxPos = getGridIndex(cullRecord.bounds.max);
         for (int y = minPos(1); y <= maxPos(1); y++) {
             for (int x = minPos(0); x <= maxPos(0); x++) {
-                _recordGrid[y][x].push_back(labelInfo);
+                _recordGrid[y][x].push_back(cullRecord);
             }
         }
     }
 
     bool LabelCuller::testGridOverlap(const LabelInfo& labelInfo) const {
-        cglib::vec2<int> minPos = getGridIndex(labelInfo.cullRecord.bounds.min);
-        cglib::vec2<int> maxPos = getGridIndex(labelInfo.cullRecord.bounds.max);
+        const CullRecord& cullRecord = labelInfo.cullRecord;
+        cglib::vec2<int> minPos = getGridIndex(cullRecord.bounds.min);
+        cglib::vec2<int> maxPos = getGridIndex(cullRecord.bounds.max);
         bool hasFoundTheSame = false;
         for (int y = minPos(1); y <= maxPos(1); y++) {
             for (int x = minPos(0); x <= maxPos(0); x++) {
-                for (const LabelInfo& otherLabelInfo : _recordGrid[y][x]) {
-                    if (otherLabelInfo.cullRecord.bounds.inside(labelInfo.cullRecord.bounds)) {
-                        if ((!labelInfo.label->allowOverlapSameFeatureId() || !otherLabelInfo.label->allowOverlapSameFeatureId() ||  labelInfo.label->getLocalId() != otherLabelInfo.label->getLocalId()) && testPolygonOverlap(otherLabelInfo.cullRecord.envelope, labelInfo.cullRecord.envelope, 0)) {
+                for (const CullRecord& otherRecord : _recordGrid[y][x]) {
+                    if (otherRecord.bounds.inside(cullRecord.bounds)) {
+                        if ((!cullRecord.allowOverlapSameFeatureId || !otherRecord.allowOverlapSameFeatureId || cullRecord.localId != otherRecord.localId) && testPolygonOverlap(otherRecord.envelope, cullRecord.envelope, 0)) {
                             return false;
                         }
                     }
-                    if (labelInfo.label->getLocalId() == otherLabelInfo.label->getLocalId()) {
+                    if (cullRecord.localId == otherRecord.localId) {
                         hasFoundTheSame = true;
                     }
                 }
@@ -244,9 +250,9 @@ namespace carto::vt {
         return (!labelInfo.label->sameFeatureIdDependent() || hasFoundTheSame);
     }
 
-    bool LabelCuller::calculateScreenEnvelope(const std::shared_ptr<Label>& label, std::array<cglib::vec2<float>, 4>& envelope) const {
+    bool LabelCuller::calculateScreenEnvelope(const std::shared_ptr<Label>& label, float size, std::array<cglib::vec2<float>, 4>& envelope) const {
         std::array<cglib::vec3<float>, 4> worldEnvelope;
-        if (!label->calculateEnvelope((label->getStyle()->sizeFunc)(_viewState), EXTRA_LABEL_BUFFER, _viewState, worldEnvelope)) {
+        if (!label->calculateEnvelope(size, EXTRA_LABEL_BUFFER, _viewState, worldEnvelope)) {
             return false;
         }
         

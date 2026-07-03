@@ -262,7 +262,7 @@ namespace carto::vt {
         _visibleBitmapLabelMap = _bitmapLabelMap;
         float dOpacity = (_labelBlendingSpeed > 0.0f ? dt * _labelBlendingSpeed : 1.0f);
         for (int pass = 0; pass < 2; pass++) {
-            for (BitmapLabelsPair bitmapLabels : *_visibleBitmapLabelMap[pass]) {
+            for (const BitmapLabelsPair& bitmapLabels : *_visibleBitmapLabelMap[pass]) {
                 for (const std::shared_ptr<Label>& label : bitmapLabels.second) {
                     refresh = updateLabel(label, dOpacity) || refresh;
                 }
@@ -368,7 +368,7 @@ namespace carto::vt {
         // Label pass
         for (int pass = 0; pass < 2; pass++) {
             if ((pass == 0 && labels2D) || (pass == 1 && labels3D)) {
-                for (BitmapLabelsPair bitmapLabels : *_visibleBitmapLabelMap[pass]) {
+                for (const BitmapLabelsPair& bitmapLabels : *_visibleBitmapLabelMap[pass]) {
                     renderLabels(bitmapLabels.second, bitmapLabels.first);
                 }
             }
@@ -609,7 +609,7 @@ namespace carto::vt {
                 continue;
             }
 
-            for (BitmapLabelsPair bitmapLabels : *_bitmapLabelMap[pass]) {
+            for (const BitmapLabelsPair& bitmapLabels : *_bitmapLabelMap[pass]) {
                 for (const std::shared_ptr<Label>& label : bitmapLabels.second) {
                     if (!label->isValid() || !label->isVisible() || !label->isActive() || label->getOpacity() <= 0) {
                         continue;

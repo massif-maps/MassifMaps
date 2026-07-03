@@ -69,16 +69,24 @@ namespace carto::vt {
             return;
         }
 
+        // Prefer re-snapping onto the same source geometry (tile + feature) the placement
+        // was attached to. The merged geometry lists contain one copy of the feature per
+        // tile and are rebuilt in tile order whenever the visible tile set changes, so an
+        // unbiased nearest-geometry search can flip between copies clipped differently by
+        // neighbouring tiles. The rebuilt placement may then fail line fitting or move,
+        // which shows up as labels jumping or disappearing while panning.
+        const Placement* oldPlacement = label._placement.get();
+
         _cachedFlippedPlacement.reset();
         if (!_tilePoints.empty()) {
-            _placement = findSnappedPointPlacement(_placement->position, _tilePoints);
+            _placement = findSnappedPointPlacement(_placement->position, _tilePoints, oldPlacement);
             if (_placement && !_tileLines.empty()) {
-                _placement = findSnappedLinePlacement(_placement->position, _tileLines);
+                _placement = findSnappedLinePlacement(_placement->position, _tileLines, oldPlacement);
             }
             return;
         }
         if (!_tileLines.empty()) {
-            _placement = findSnappedLinePlacement(_placement->position, _tileLines);
+            _placement = findSnappedLinePlacement(_placement->position, _tileLines, oldPlacement);
         }
     }
 
@@ -492,14 +500,22 @@ namespace carto::vt {
         return _cachedFlippedPlacement;
     }
 
-    std::shared_ptr<const Label::Placement> Label::findSnappedPointPlacement(const cglib::vec3<double>& position, const std::list<TilePoint>& tilePoints) const {
+    std::shared_ptr<const Label::Placement> Label::findSnappedPointPlacement(const cglib::vec3<double>& position, const std::list<TilePoint>& tilePoints, const Placement* oldPlacement) const {
         const TilePoint* bestTilePoint = nullptr;
         double bestDist = std::numeric_limits<double>::infinity();
+        bool bestSameSource = false;
         for (const TilePoint& tilePoint : tilePoints) {
+            // A candidate from the placement's original source geometry always wins over
+            // copies of the feature coming from other tiles (see snapPlacement).
+            bool sameSource = oldPlacement && tilePoint.tileId == oldPlacement->tileId && tilePoint.localId == oldPlacement->localId;
+            if (bestSameSource && !sameSource) {
+                continue;
+            }
             double dist = cglib::length(tilePoint.position - position);
-            if (dist < bestDist) {
+            if (dist < bestDist || (sameSource && !bestSameSource)) {
                 bestTilePoint = &tilePoint;
                 bestDist = dist;
+                bestSameSource = sameSource;
             }
         }
         if (!bestTilePoint) {
@@ -509,12 +525,26 @@ namespace carto::vt {
         return std::make_shared<const Placement>(bestTilePoint->tileId, bestTilePoint->localId, bestTilePoint->position, bestTilePoint->normal, bestTilePoint->xAxis, bestTilePoint->yAxis);
     }
 
-    std::shared_ptr<const Label::Placement> Label::findSnappedLinePlacement(const cglib::vec3<double>& position, const std::list<TileLine>& tileLines) const {
+    std::shared_ptr<const Label::Placement> Label::findSnappedLinePlacement(const cglib::vec3<double>& position, const std::list<TileLine>& tileLines, const Placement* oldPlacement) const {
         const TileLine* bestTileLine = nullptr;
         std::size_t bestIndex = 0;
         cglib::vec3<double> bestPos = position;
         double bestDist = std::numeric_limits<double>::infinity();
+        bool bestSameSource = false;
         for (const TileLine& tileLine : tileLines) {
+            // A candidate from the placement's original source geometry always wins over
+            // copies of the feature coming from other tiles (see snapPlacement).
+            bool sameSource = oldPlacement && tileLine.tileId == oldPlacement->tileId && tileLine.localId == oldPlacement->localId;
+            if (bestSameSource && !sameSource) {
+                continue;
+            }
+            if (sameSource && !bestSameSource) {
+                bestTileLine = nullptr;
+                bestIndex = 0;
+                bestPos = position;
+                bestDist = std::numeric_limits<double>::infinity();
+                bestSameSource = true;
+            }
             // Try to find a closest point on vertices to the given position
             for (std::size_t j = 1; j < tileLine.vertices.size(); j++) {
                 cglib::vec3<double> edgeVec = tileLine.vertices[j] - tileLine.vertices[j - 1];

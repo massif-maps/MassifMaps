@@ -69,6 +69,12 @@ namespace carto::vt {
         _terrainDepthBias = depthBias;
     }
 
+    void GLTileRenderer::setLabelOcclusionTest(std::function<bool(const cglib::vec3<double>&)> occlusionTest) {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        _labelOcclusionTest = std::move(occlusionTest);
+    }
+
     void GLTileRenderer::setLayerBlendingSpeed(float speed) {
         std::lock_guard<std::mutex> lock(_mutex);
 
@@ -1023,7 +1029,14 @@ namespace carto::vt {
     bool GLTileRenderer::updateLabel(const std::shared_ptr<Label>& label, float dOpacity) const {
         bool refresh = false;
         if (label->isValid()) {
-            if (label->isVisible() && label->isActive()) {
+            bool occluded = false;
+            if (_labelOcclusionTest && label->isVisible() && label->isActive()) {
+                cglib::vec3<double> center(0, 0, 0);
+                if (label->calculateCenter(center)) {
+                    occluded = _labelOcclusionTest(center);
+                }
+            }
+            if (label->isVisible() && label->isActive() && !occluded) {
                 float opacity = std::min(1.0f, label->getOpacity() + dOpacity);
                 label->setOpacity(opacity);
                 refresh = (opacity < 1.0f) || refresh;

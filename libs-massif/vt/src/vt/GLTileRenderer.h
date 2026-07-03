@@ -79,6 +79,7 @@ namespace carto::vt {
         
         void setInteractionMode(bool enabled);
         void setTerrainMode(bool enabled, float depthBias);
+        void setLabelOcclusionTest(std::function<bool(const cglib::vec3<double>&)> occlusionTest);
         void setLayerBlendingSpeed(float speed);
         void setLabelBlendingSpeed(float speed);
         void setRasterFilterMode(RasterFilterMode filterMode);
@@ -284,6 +285,7 @@ namespace carto::vt {
         bool _interactionMode = false;
         bool _terrainMode = false;
         float _terrainDepthBias = 0.0f;
+        std::function<bool(const cglib::vec3<double>&)> _labelOcclusionTest;
         float _layerBlendingSpeed = 1.0f;
         float _labelBlendingSpeed = 1.0f;
         RasterFilterMode _rasterFilterMode = RasterFilterMode::BILINEAR;

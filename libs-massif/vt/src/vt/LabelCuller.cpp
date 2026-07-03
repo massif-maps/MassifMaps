@@ -97,13 +97,13 @@ namespace carto::vt {
     }
 
     bool LabelCuller::process(const std::vector<std::shared_ptr<Label>>& labelList, std::mutex& labelMutex) {
-
-
         std::lock_guard<std::mutex> lock(_mutex);
 
-        // Rebuild the grid from scratch every frame so stale screen-space entries from
-        // previous frames do not cause false overlaps as the viewport moves.
-        clearGrid();
+        // NOTE: the grid is intentionally NOT cleared here. One culler instance is shared
+        // by all layers within a single placement pass (see VTLabelPlacementWorker), so
+        // records must accumulate across process() calls for labels of different layers
+        // to collide with each other. Each pass uses a freshly constructed culler, so no
+        // stale records from previous passes can exist.
 
         // Start by collecting valid labels and updating label placements
         std::vector<LabelInfo> validLabelList;

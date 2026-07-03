@@ -181,8 +181,8 @@ namespace carto::vt {
         bool buildLineVertexData(const std::shared_ptr<const Placement>& placement, float scale, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const;
 
         std::shared_ptr<const Placement> getPlacement(const ViewState& viewState) const;
-        std::shared_ptr<const Placement> findSnappedPointPlacement(const cglib::vec3<double>& position, const std::list<TilePoint>& tilePoints) const;
-        std::shared_ptr<const Placement> findSnappedLinePlacement(const cglib::vec3<double>& position, const std::list<TileLine>& tileLines) const;
+        std::shared_ptr<const Placement> findSnappedPointPlacement(const cglib::vec3<double>& position, const std::list<TilePoint>& tilePoints, const Placement* oldPlacement = nullptr) const;
+        std::shared_ptr<const Placement> findSnappedLinePlacement(const cglib::vec3<double>& position, const std::list<TileLine>& tileLines, const Placement* oldPlacement = nullptr) const;
         std::shared_ptr<const Placement> findClippedPointPlacement(const ViewState& viewState, const std::list<TilePoint>& tilePoints) const;
         std::shared_ptr<const Placement> findClippedLinePlacement(const ViewState& viewState, const std::list<TileLine>& tileLines) const;
 

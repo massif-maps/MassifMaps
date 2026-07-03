@@ -22,6 +22,10 @@ namespace carto::vt {
         }
     }
 
+    void TileSurfaceBuilder::invalidateCaches() {
+        _tileSurfaceCache.clear();
+    }
+
     void TileSurfaceBuilder::setVisibleTiles(const std::set<TileId>& tileIds) {
         std::map<TileId, TileNeighbours> tileSplitNeighbours;
         for (const TileId& tileId : tileIds) {

@@ -38,14 +38,16 @@ namespace carto::vt {
         U_BITMAP,
         U_TEXTURE,
         U_SDFSCALE,
-        U_DERIVSCALE
+        U_DERIVSCALE,
+        U_DEPTHBIAS
     };
 
     enum : unsigned int {
         TRANSFORM_FLAG   = 1,
         OFFSET_FLAG      = 2,
         PATTERN_FLAG     = 4,
-        DERIVATIVES_FLAG = 8
+        DERIVATIVES_FLAG = 8,
+        TERRAIN_FLAG     = 16
     };
 
     static const std::map<std::string, int> attribMap = {
@@ -78,14 +80,16 @@ namespace carto::vt {
         { "uColor",            U_COLOR },
         { "uOpacity",          U_OPACITY },
         { "uSDFScale",         U_SDFSCALE },
-        { "uDerivScale",       U_DERIVSCALE }
+        { "uDerivScale",       U_DERIVSCALE },
+        { "uDepthBias",        U_DEPTHBIAS }
     };
 
     static const std::map<unsigned int, std::string> flagDefineMap = {
         { TRANSFORM_FLAG,   "TRANSFORM" },
         { OFFSET_FLAG,      "OFFSET" },
         { PATTERN_FLAG,     "PATTERN" },
-        { DERIVATIVES_FLAG, "DERIVATIVES" }
+        { DERIVATIVES_FLAG, "DERIVATIVES" },
+        { TERRAIN_FLAG,     "TERRAIN_DEPTH_BIAS" }
     };
 
     static const std::string textureFiltersFsh = R"GLSL(
@@ -160,6 +164,12 @@ namespace carto::vt {
         #define highp_opt highp
         #else
         #define highp_opt mediump
+        #endif
+        #ifdef TERRAIN_DEPTH_BIAS
+        uniform float uDepthBias;
+        #define applyDepthBias(clipPos) vec4(clipPos.xy, clipPos.z - uDepthBias * clipPos.w, clipPos.w)
+        #else
+        #define applyDepthBias(clipPos) (clipPos)
         #endif
     )GLSL";
 
@@ -506,7 +516,7 @@ namespace carto::vt {
         #ifdef LIGHTING_FSH
             vNormal = aVertexNormal;
         #endif
-            gl_Position = uMVPMatrix * vec4(pos + delta, 1.0);
+            gl_Position = applyDepthBias(uMVPMatrix * vec4(pos + delta, 1.0));
         }
     )GLSL";
 
@@ -600,7 +610,7 @@ namespace carto::vt {
         #ifdef LIGHTING_FSH
             vNormal = aVertexNormal;
         #endif
-            gl_Position = uMVPMatrix * vec4(pos + delta, 1.0);
+            gl_Position = applyDepthBias(uMVPMatrix * vec4(pos + delta, 1.0));
         }
     )GLSL";
 
@@ -673,7 +683,7 @@ namespace carto::vt {
         #ifdef LIGHTING_FSH
             vNormal = aVertexNormal;
         #endif
-            gl_Position = uMVPMatrix * vec4(pos, 1.0);
+            gl_Position = applyDepthBias(uMVPMatrix * vec4(pos, 1.0));
         }
     )GLSL";
 

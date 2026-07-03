@@ -62,6 +62,13 @@ namespace carto::vt {
         _interactionMode = enabled;
     }
 
+    void GLTileRenderer::setTerrainMode(bool enabled, float depthBias) {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        _terrainMode = enabled;
+        _terrainDepthBias = depthBias;
+    }
+
     void GLTileRenderer::setLayerBlendingSpeed(float speed) {
         std::lock_guard<std::mutex> lock(_mutex);
 
@@ -176,9 +183,18 @@ namespace carto::vt {
         _screenQuad = CompiledQuad();
     }
         
+    void GLTileRenderer::resetTileSurfaces() {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        // Drop built tile surfaces. They will be lazily rebuilt with the current
+        // transformer state; the corresponding compiled VBOs are released in endFrame.
+        _tileSurfaceMap.clear();
+        _tileSurfaceBuilder.invalidateCaches();
+    }
+
     void GLTileRenderer::deinitializeRenderer() {
         std::lock_guard<std::mutex> lock(_mutex);
-        
+
         // Release shaders
         for (auto it = _shaderProgramMap.begin(); it != _shaderProgramMap.end(); it++) {
             deleteShaderProgram(it->second);
@@ -301,11 +317,16 @@ namespace carto::vt {
                 glGetIntegerv(GL_STENCIL_BITS, &stencilBits);
             }
 
-            // Update GL state
+            // Update GL state. In terrain mode 2D geometry is displaced onto the terrain
+            // surface and depth-tested against it (tile backgrounds/bitmaps write depth).
             glEnable(GL_BLEND);
             glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
             glBlendEquation(GL_FUNC_ADD);
-            glDisable(GL_DEPTH_TEST);
+            if (_terrainMode) {
+                glEnable(GL_DEPTH_TEST);
+            } else {
+                glDisable(GL_DEPTH_TEST);
+            }
             glDepthMask(GL_FALSE);
             glDisable(GL_STENCIL_TEST);
             glStencilMask(0);
@@ -1224,6 +1245,13 @@ namespace carto::vt {
                     glStencilFunc(GL_EQUAL, stencilValue, 255);
                 }
 
+                // In terrain mode tile backgrounds and raster bitmaps form the terrain
+                // surface and write depth, so that 2D overlay geometry, 3D geometry and
+                // later passes can be correctly occluded by the terrain.
+                if (_terrainMode) {
+                    glDepthMask(GL_TRUE);
+                }
+
                 for (const std::shared_ptr<TileBackground>& background : renderLayer->layer->getBackgrounds()) {
                     CompOp backgroundCompOp = CompOp::SRC_OVER;
                     if (currentCompOp != backgroundCompOp) {
@@ -1240,6 +1268,10 @@ namespace carto::vt {
                         currentCompOp = bitmapCompOp;
                     }
                     renderTileBitmap(renderLayer->sourceTileId, renderLayer->targetTileId, renderLayer->blend, geometryOpacity, bitmap);
+                }
+
+                if (_terrainMode) {
+                    glDepthMask(GL_FALSE);
                 }
 
                 for (const std::shared_ptr<TileGeometry>& geometry : renderLayer->layer->getGeometries()) {
@@ -1722,16 +1754,17 @@ namespace carto::vt {
 
         bool styleOffsetting = std::count(styleParams.offsetFuncs.begin(), styleParams.offsetFuncs.begin() + styleParams.parameterCount, FloatFunction(0)) != styleParams.parameterCount;
 
+        unsigned int terrainFlag = (_terrainMode ? TERRAIN_FLAG : 0);
         const ShaderProgram* shaderProgramPtr = nullptr;
         switch (geometry->getType()) {
         case TileGeometry::Type::POINT:
-            shaderProgramPtr = &buildShaderProgram("point", pointVsh, pointFsh, LightingMode::GEOMETRY2D, RasterFilterMode::NONE, (styleParams.pattern ? PATTERN_FLAG : 0) | (styleParams.translate ? TRANSFORM_FLAG : 0) | (styleOffsetting ? OFFSET_FLAG : 0));
+            shaderProgramPtr = &buildShaderProgram("point", pointVsh, pointFsh, LightingMode::GEOMETRY2D, RasterFilterMode::NONE, (styleParams.pattern ? PATTERN_FLAG : 0) | (styleParams.translate ? TRANSFORM_FLAG : 0) | (styleOffsetting ? OFFSET_FLAG : 0) | terrainFlag);
             break;
         case TileGeometry::Type::LINE:
-            shaderProgramPtr = &buildShaderProgram("line", lineVsh, lineFsh, LightingMode::GEOMETRY2D, RasterFilterMode::NONE, (styleParams.pattern ? PATTERN_FLAG : 0) | (styleParams.translate ? TRANSFORM_FLAG : 0) | (styleOffsetting ? OFFSET_FLAG : 0));
+            shaderProgramPtr = &buildShaderProgram("line", lineVsh, lineFsh, LightingMode::GEOMETRY2D, RasterFilterMode::NONE, (styleParams.pattern ? PATTERN_FLAG : 0) | (styleParams.translate ? TRANSFORM_FLAG : 0) | (styleOffsetting ? OFFSET_FLAG : 0) | terrainFlag);
             break;
         case TileGeometry::Type::POLYGON:
-            shaderProgramPtr = &buildShaderProgram("polygon", polygonVsh, polygonFsh, LightingMode::GEOMETRY2D, RasterFilterMode::NONE, (styleParams.pattern ? PATTERN_FLAG : 0) | (styleParams.translate ? TRANSFORM_FLAG : 0));
+            shaderProgramPtr = &buildShaderProgram("polygon", polygonVsh, polygonFsh, LightingMode::GEOMETRY2D, RasterFilterMode::NONE, (styleParams.pattern ? PATTERN_FLAG : 0) | (styleParams.translate ? TRANSFORM_FLAG : 0) | terrainFlag);
             break;
         case TileGeometry::Type::POLYGON3D:
             shaderProgramPtr = &buildShaderProgram("polygon3d", polygon3DVsh, polygon3DFsh, LightingMode::GEOMETRY3D, RasterFilterMode::NONE, (styleParams.pattern ? PATTERN_FLAG : 0) | (styleParams.translate ? TRANSFORM_FLAG : 0));
@@ -1744,6 +1777,9 @@ namespace carto::vt {
 
         cglib::mat4x4<float> mvpMatrix = calculateTileMVPMatrix(sourceTileId, 1.0f / vertexGeomLayoutParams.coordScale);
         glUniformMatrix4fv(shaderProgram.uniforms[U_MVPMATRIX], 1, GL_FALSE, mvpMatrix.data());
+        if (terrainFlag != 0 && geometry->getType() != TileGeometry::Type::POLYGON3D) {
+            glUniform1f(shaderProgram.uniforms[U_DEPTHBIAS], _terrainDepthBias);
+        }
         
         if (styleParams.translate) {
             float zoomScale = std::pow(2.0f, sourceTileId.zoom - _viewState.zoom);

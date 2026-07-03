@@ -78,6 +78,7 @@ namespace carto::vt {
         void setLightingShaderNormalMap(const std::optional<LightingShader>& lightingShaderNormalMap);
         
         void setInteractionMode(bool enabled);
+        void setTerrainMode(bool enabled, float depthBias);
         void setLayerBlendingSpeed(float speed);
         void setLabelBlendingSpeed(float speed);
         void setRasterFilterMode(RasterFilterMode filterMode);
@@ -89,6 +90,7 @@ namespace carto::vt {
 
         void initializeRenderer();
         void resetRenderer();
+        void resetTileSurfaces();
         void deinitializeRenderer();
 
         bool startFrame(float dt);
@@ -280,6 +282,8 @@ namespace carto::vt {
         std::set<TileId> _tileSurfaceBuilderOriginTileIds;
 
         bool _interactionMode = false;
+        bool _terrainMode = false;
+        float _terrainDepthBias = 0.0f;
         float _layerBlendingSpeed = 1.0f;
         float _labelBlendingSpeed = 1.0f;
         RasterFilterMode _rasterFilterMode = RasterFilterMode::BILINEAR;

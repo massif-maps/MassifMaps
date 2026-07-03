@@ -27,6 +27,7 @@ namespace carto::vt {
 
         void setOrigin(const cglib::vec3<double>& origin);
         void setVisibleTiles(const std::set<TileId>& tileIds);
+        void invalidateCaches();
 
         std::vector<std::shared_ptr<TileSurface>> buildTileSurface(const TileId& tileId) const;
 

@@ -512,7 +512,25 @@ namespace carto::vt {
     }
 
     void Label::setupCoordinateSystem(const ViewState& viewState, const std::shared_ptr<const Placement>& placement, cglib::vec3<float>& origin, cglib::vec3<float>& xAxis, cglib::vec3<float>& yAxis) const {
-        origin = cglib::vec3<float>::convert(placement->position - viewState.origin);
+        cglib::vec3<double> position = placement->position;
+        if (viewState.planarTerrain && _style->orientation != LabelOrientation::LINE && viewState.resolution > 0) {
+            // Snap the label anchor to a quarter of the (normalized) pixel grid: glyphs then
+            // rasterize at a stable subpixel phase, which keeps text noticeably sharper and
+            // shimmer-free (tangram-style screen-space anchoring)
+            cglib::mat4x4<double> viewProjMatrix = viewState.projectionMatrix * viewState.cameraMatrix;
+            cglib::vec4<double> clipPos = cglib::transform(cglib::vec4<double>(position(0), position(1), position(2), 1), viewProjMatrix);
+            if (clipPos(3) > 0) {
+                double screenWidth = viewState.resolution * viewState.aspect;
+                double screenHeight = viewState.resolution;
+                double pixelX = (clipPos(0) / clipPos(3) * 0.5 + 0.5) * screenWidth;
+                double pixelY = (clipPos(1) / clipPos(3) * 0.5 + 0.5) * screenHeight;
+                double snappedX = std::round(pixelX * 4.0) * 0.25;
+                double snappedY = std::round(pixelY * 4.0) * 0.25;
+                cglib::vec3<double> snappedNDC((snappedX / screenWidth - 0.5) * 2.0, (snappedY / screenHeight - 0.5) * 2.0, clipPos(2) / clipPos(3));
+                position = cglib::transform_point(snappedNDC, cglib::inverse(viewProjMatrix));
+            }
+        }
+        origin = cglib::vec3<float>::convert(position - viewState.origin);
         switch (_style->orientation) {
         case LabelOrientation::BILLBOARD_2D:
             xAxis = cglib::unit(cglib::vector_product(viewState.orientation[1], placement->normal));

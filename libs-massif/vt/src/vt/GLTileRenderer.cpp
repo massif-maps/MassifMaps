@@ -329,17 +329,6 @@ namespace carto::vt {
                 glGetIntegerv(GL_STENCIL_BITS, &stencilBits);
             }
 
-            // Stencil-based tile clipping assumes that tile projections never overlap on
-            // screen. Terrain displacement breaks this: a near ridge rises in front of far
-            // tiles, so their screen footprints overlap - the arbitrary winner of the
-            // stencil mask pass then clips away the other tile's color AND depth writes
-            // (missing triangles at ridge silhouettes, geometry behind ridges showing
-            // through the depth holes). In terrain mode tile separation is handled by the
-            // depth buffer instead, so render through the (fully supported) no-stencil path.
-            // This also skips the per-frame stencil mask pass entirely.
-            if (_terrainMode) {
-                stencilBits = 0;
-            }
 
             // Update GL state. In terrain mode 2D geometry is displaced onto the terrain
             // surface and depth-tested (with a small bias towards the viewer) against the
@@ -1269,7 +1258,27 @@ namespace carto::vt {
                 glClearStencil(0);
                 glClear(GL_STENCIL_BUFFER_BIT);
                 glStencilOp(GL_REPLACE, GL_REPLACE, GL_REPLACE);
-                for (auto it = tileStencilMap.begin(); it != tileStencilMap.end(); it++) {
+                std::vector<std::pair<TileId, GLint>> orderedTileMasks(tileStencilMap.begin(), tileStencilMap.end());
+                if (_terrainMode) {
+                    // Terrain displacement makes near tiles rise in front of far tiles, so
+                    // their screen footprints can overlap. Draw the masks far-to-near so that
+                    // the NEAREST tile owns the overlapping pixels - the stencil clipping then
+                    // matches true occlusion (clipping in arbitrary order would cut away color
+                    // and depth of whichever tile happens to lose, including near ridges).
+                    std::vector<std::pair<double, std::size_t>> tileMaskOrder(orderedTileMasks.size());
+                    for (std::size_t i = 0; i < orderedTileMasks.size(); i++) {
+                        cglib::vec3<double> center = _transformer->calculateTileBBox(orderedTileMasks[i].first).center();
+                        tileMaskOrder[i] = std::make_pair(-cglib::length(center - _viewState.origin), i);
+                    }
+                    std::sort(tileMaskOrder.begin(), tileMaskOrder.end());
+                    std::vector<std::pair<TileId, GLint>> sortedTileMasks;
+                    sortedTileMasks.reserve(orderedTileMasks.size());
+                    for (const std::pair<double, std::size_t>& order : tileMaskOrder) {
+                        sortedTileMasks.push_back(orderedTileMasks[order.second]);
+                    }
+                    orderedTileMasks = std::move(sortedTileMasks);
+                }
+                for (auto it = orderedTileMasks.begin(); it != orderedTileMasks.end(); it++) {
                     glStencilFunc(GL_ALWAYS, it->second, 255);
                     renderTileMask(it->first);
                 }

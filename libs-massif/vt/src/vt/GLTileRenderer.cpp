@@ -65,6 +65,12 @@ namespace carto::vt {
     void GLTileRenderer::setTerrainMode(bool enabled, float depthBias) {
         std::lock_guard<std::mutex> lock(_mutex);
 
+        if (enabled != _terrainMode) {
+            // Height-displaced tiles get border skirts that hide LOD-boundary cracks;
+            // drop the built surfaces so that they are rebuilt with the new setting
+            _tileSurfaceBuilder.setHeightSkirts(enabled);
+            _tileSurfaceMap.clear();
+        }
         _terrainMode = enabled;
         _terrainDepthBias = depthBias;
     }
@@ -1193,19 +1199,25 @@ namespace carto::vt {
 
         // Allocate stencil value for each target tile
         std::map<TileId, GLint> tileStencilMap;
+        std::set<TileId> activeStencilTiles;
         if (stencilBits > 0) {
             for (const RenderTile& renderTile : renderTiles) {
                 if (!renderTile.visible || renderTile.renderLayers.empty()) {
                     continue;
                 }
                 auto it = renderTile.renderLayers.begin();
+                bool active = it->second.active;
                 TileId targetTileId = it->second.targetTileId;
                 while (++it != renderTile.renderLayers.end()) {
+                    active = active || it->second.active;
                     if (it->second.targetTileId.zoom < targetTileId.zoom) {
                         targetTileId = it->second.targetTileId;
                     }
                 }
                 tileStencilMap[targetTileId] = static_cast<int>(tileStencilMap.size() + 1);
+                if (active) {
+                    activeStencilTiles.insert(targetTileId);
+                }
             }
             glEnable(GL_STENCIL_TEST);
         }
@@ -1262,22 +1274,27 @@ namespace carto::vt {
                 if (_terrainMode) {
                     // Terrain displacement makes near tiles rise in front of far tiles, so
                     // their screen footprints can overlap. Draw the masks so that the tile that
-                    // should be visible owns the overlapping pixels: primarily by zoom level
-                    // ascending - during LOD/overzoom transitions parent and child tiles have
-                    // IDENTICAL footprints and the child must own them (distances are arbitrary
-                    // there) - and by descending camera distance within a zoom level, so that
-                    // near ridges own pixels against far tiles behind them (by LOD construction
-                    // nearer tiles never have a lower zoom level than farther ones).
-                    std::vector<std::tuple<int, double, std::size_t>> tileMaskOrder(orderedTileMasks.size());
+                    // should be visible owns the overlapping pixels: retained blend-out tiles
+                    // (no active layers) first - stale tiles kept only for crossfading must
+                    // never steal pixels from live tiles (a retained high-zoom tile far behind
+                    // a ridge would otherwise punch through the near ridge during LOD
+                    // transitions) - then by zoom level ascending - during LOD/overzoom
+                    // transitions parent and child tiles have IDENTICAL footprints and the
+                    // child must own them (distances are arbitrary there) - and by descending
+                    // camera distance within a zoom level, so that near ridges own pixels
+                    // against far tiles behind them (by LOD construction nearer tiles never
+                    // have a lower zoom level than farther ones).
+                    std::vector<std::tuple<int, int, double, std::size_t>> tileMaskOrder(orderedTileMasks.size());
                     for (std::size_t i = 0; i < orderedTileMasks.size(); i++) {
                         cglib::vec3<double> center = _transformer->calculateTileBBox(orderedTileMasks[i].first).center();
-                        tileMaskOrder[i] = std::make_tuple(orderedTileMasks[i].first.zoom, -cglib::length(center - _viewState.origin), i);
+                        int activeRank = (activeStencilTiles.count(orderedTileMasks[i].first) > 0 ? 1 : 0);
+                        tileMaskOrder[i] = std::make_tuple(activeRank, orderedTileMasks[i].first.zoom, -cglib::length(center - _viewState.origin), i);
                     }
                     std::sort(tileMaskOrder.begin(), tileMaskOrder.end());
                     std::vector<std::pair<TileId, GLint>> sortedTileMasks;
                     sortedTileMasks.reserve(orderedTileMasks.size());
-                    for (const std::tuple<int, double, std::size_t>& order : tileMaskOrder) {
-                        sortedTileMasks.push_back(orderedTileMasks[std::get<2>(order)]);
+                    for (const std::tuple<int, int, double, std::size_t>& order : tileMaskOrder) {
+                        sortedTileMasks.push_back(orderedTileMasks[std::get<3>(order)]);
                     }
                     orderedTileMasks = std::move(sortedTileMasks);
                 }
@@ -1329,7 +1346,14 @@ namespace carto::vt {
                         // prevented exactly by the surface-fan height clamp in the transformer.
                         glPolygonOffset(0.0f, 2.0f);
                     } else {
-                        glPolygonOffset(-1.0f, -2.0f);
+                        // Draped background/bitmap surfaces use the same deterministic tile
+                        // surface tesselation as the depth-write surfaces, so their depth
+                        // matches exactly and a small constant pull suffices. A slope-scaled
+                        // pull must NOT be used here: at ridge silhouettes the per-pixel depth
+                        // gradient is enormous, and a slope-scaled pull lets surfaces (e.g.
+                        // hillshade rasters) far behind a ridge jump in front of the written
+                        // ridge depth - 'see-through ridges' at grazing angles.
+                        glPolygonOffset(0.0f, -2.0f);
                     }
                 }
 

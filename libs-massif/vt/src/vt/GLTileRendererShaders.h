@@ -39,7 +39,11 @@ namespace carto::vt {
         U_TEXTURE,
         U_SDFSCALE,
         U_DERIVSCALE,
-        U_DEPTHBIAS
+        U_DEPTHBIAS,
+        U_ELEVATIONTEXTURE,
+        U_ELEVATIONUV,
+        U_ELEVATIONDECODE,
+        U_ELEVATIONSCALE
     };
 
     enum : unsigned int {
@@ -47,7 +51,8 @@ namespace carto::vt {
         OFFSET_FLAG      = 2,
         PATTERN_FLAG     = 4,
         DERIVATIVES_FLAG = 8,
-        TERRAIN_FLAG     = 16
+        TERRAIN_FLAG     = 16,
+        TERRAIN_VTF_FLAG = 32
     };
 
     static const std::map<std::string, int> attribMap = {
@@ -81,7 +86,11 @@ namespace carto::vt {
         { "uOpacity",          U_OPACITY },
         { "uSDFScale",         U_SDFSCALE },
         { "uDerivScale",       U_DERIVSCALE },
-        { "uDepthBias",        U_DEPTHBIAS }
+        { "uDepthBias",        U_DEPTHBIAS },
+        { "uElevationTexture", U_ELEVATIONTEXTURE },
+        { "uElevationUV",      U_ELEVATIONUV },
+        { "uElevationDecode",  U_ELEVATIONDECODE },
+        { "uElevationScale",   U_ELEVATIONSCALE }
     };
 
     static const std::map<unsigned int, std::string> flagDefineMap = {
@@ -89,7 +98,8 @@ namespace carto::vt {
         { OFFSET_FLAG,      "OFFSET" },
         { PATTERN_FLAG,     "PATTERN" },
         { DERIVATIVES_FLAG, "DERIVATIVES" },
-        { TERRAIN_FLAG,     "TERRAIN_DEPTH_BIAS" }
+        { TERRAIN_FLAG,     "TERRAIN_DEPTH_BIAS" },
+        { TERRAIN_VTF_FLAG, "TERRAIN" }
     };
 
     static const std::string textureFiltersFsh = R"GLSL(
@@ -175,6 +185,28 @@ namespace carto::vt {
             return clipPos;
         }
         #endif
+        #ifdef TERRAIN
+        uniform sampler2D uElevationTexture;
+        uniform highp vec4 uElevationUV;     // elevation texture uv = uv.xy + pos.xy * uv.zw
+        uniform vec4 uElevationDecode;       // meters = dot(texture sample, decode)
+        uniform highp vec4 uElevationScale;  // x: meters to vertex z units (equator), y/z: mercator y = y + pos.y * z
+        // GPU terrain draping: the vertex z is REPLACED with the height sampled from the
+        // elevation texture. Every draped layer samples the same textures, so all layers
+        // agree on heights exactly and no geometric depth tolerances are needed.
+        // The bilinearly filtered texture sample matches the CPU-side elevation grid
+        // sampling (ElevationTileGrid::sampleHeight semantics): samples at texel centers,
+        // clamped at edges. The Mercator latitude scale (1/cos) is applied per vertex.
+        vec3 applyTerrain(vec3 pos) {
+            float meters = dot(texture2D(uElevationTexture, uElevationUV.xy + pos.xy * uElevationUV.zw), uElevationDecode);
+            highp float my = uElevationScale.y + pos.y * uElevationScale.z;
+            float coshMY = 0.5 * (exp(my) + exp(-my));
+            return vec3(pos.xy, meters * uElevationScale.x * coshMY);
+        }
+        #else
+        vec3 applyTerrain(vec3 pos) {
+            return pos;
+        }
+        #endif
     )GLSL";
 
     static const std::string commonFsh = R"GLSL(
@@ -218,7 +250,7 @@ namespace carto::vt {
         #ifdef LIGHTING_FSH
             vNormal = aVertexNormal;
         #endif
-            gl_Position = applyDepthBias(uMVPMatrix * vec4(aVertexPosition, 1.0));
+            gl_Position = applyDepthBias(uMVPMatrix * vec4(applyTerrain(aVertexPosition), 1.0));
         }
     )GLSL";
 
@@ -277,7 +309,7 @@ namespace carto::vt {
         #ifdef LIGHTING_FSH
             vNormal = aVertexNormal;
         #endif
-            gl_Position = applyDepthBias(uMVPMatrix * vec4(aVertexPosition, 1.0));
+            gl_Position = applyDepthBias(uMVPMatrix * vec4(applyTerrain(aVertexPosition), 1.0));
         }
     )GLSL";
 
@@ -330,7 +362,7 @@ namespace carto::vt {
             vNormal = aVertexNormal;
             vBinormal = aVertexBinormal;
         #endif
-            gl_Position = applyDepthBias(uMVPMatrix * vec4(aVertexPosition, 1.0));
+            gl_Position = applyDepthBias(uMVPMatrix * vec4(applyTerrain(aVertexPosition), 1.0));
         }
     )GLSL";
 
@@ -520,7 +552,7 @@ namespace carto::vt {
         #ifdef LIGHTING_FSH
             vNormal = aVertexNormal;
         #endif
-            gl_Position = applyDepthBias(uMVPMatrix * vec4(pos + delta, 1.0));
+            gl_Position = applyDepthBias(uMVPMatrix * vec4(applyTerrain(pos) + delta, 1.0));
         }
     )GLSL";
 
@@ -614,7 +646,8 @@ namespace carto::vt {
         #ifdef LIGHTING_FSH
             vNormal = aVertexNormal;
         #endif
-            gl_Position = applyDepthBias(uMVPMatrix * vec4(pos + delta, 1.0));
+            // sample the terrain at the extruded position, so wide lines follow the slope
+            gl_Position = applyDepthBias(uMVPMatrix * vec4(applyTerrain(pos + delta), 1.0));
         }
     )GLSL";
 
@@ -687,7 +720,7 @@ namespace carto::vt {
         #ifdef LIGHTING_FSH
             vNormal = aVertexNormal;
         #endif
-            gl_Position = applyDepthBias(uMVPMatrix * vec4(pos, 1.0));
+            gl_Position = applyDepthBias(uMVPMatrix * vec4(applyTerrain(pos), 1.0));
         }
     )GLSL";
 
@@ -747,7 +780,7 @@ namespace carto::vt {
         #ifdef TRANSFORM
             pos = vec3(uTransformMatrix * vec4(pos, 1.0));
         #endif
-            pos = pos + aVertexNormal * (aVertexHeight * uHeightScale);
+            pos = applyTerrain(pos) + aVertexNormal * (aVertexHeight * uHeightScale);
             vec3 normal = normalize(sideVertex > 0.0 ? aVertexBinormal : aVertexNormal);
             vec4 color = uColorTable[styleIndex];
             vTilePos = (uTileMatrix * vec3(aVertexUV * uUVScale, 1.0)).xy;

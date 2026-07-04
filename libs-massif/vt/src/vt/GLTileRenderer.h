@@ -70,7 +70,26 @@ namespace carto::vt {
 
             explicit BitmapIntersectionInfo(const TileId& tileId, int layerIndex, std::shared_ptr<const TileBitmap> bitmap, const cglib::vec2<float>& uv, std::size_t rayIndex, double rayT) : tileId(tileId), layerIndex(layerIndex), bitmap(bitmap), uv(uv), rayIndex(rayIndex), rayT(rayT) { }
         };
-        
+
+        /**
+         * A GL elevation texture covering a tile, for GPU terrain draping: in terrain mode
+         * every draped vertex replaces its z with the height sampled from this texture in
+         * the vertex shader (requires vertex texture fetch support). The texture may cover
+         * an ancestor tile (overzoom); the internal bounds define the world rectangle
+         * mapped to the [0,1]x[0,1] uv range, with v growing towards north (up).
+         * Height in meters = dot(RGBA texture sample (normalized to [0,1]), decode).
+         */
+        struct TerrainTexture {
+            GLuint textureId = 0;
+            cglib::vec2<double> internalOrigin = cglib::vec2<double>(0, 0); // world position of uv (0,0)
+            cglib::vec2<double> internalSize = cglib::vec2<double>(0, 0);   // world size covered by uv [0,1]
+            cglib::vec4<float> decode = cglib::vec4<float>(0, 0, 0, 0);     // texture sample -> meters
+            float metersToInternal = 0.0f; // meters -> world z units at the equator (exaggeration included)
+            float mercatorYScale = 0.0f;   // world y -> mercator angle (for the per-vertex 1/cos(latitude) factor)
+        };
+
+        using TerrainTextureProvider = std::function<bool(const TileId&, TerrainTexture&)>;
+
         explicit GLTileRenderer(std::shared_ptr<GLExtensions> glExtensions, std::shared_ptr<const TileTransformer> transformer, float scale);
 
         void setLightingShader2D(const std::optional<LightingShader>& lightingShader2D);
@@ -80,6 +99,7 @@ namespace carto::vt {
         void setInteractionMode(bool enabled);
         void setTerrainMode(bool enabled, float depthBias);
         void setTerrainDepthWrite(bool enabled);
+        void setTerrainTextureProvider(TerrainTextureProvider provider);
         void setLabelOcclusionTest(std::function<bool(const cglib::vec3<double>&)> occlusionTest);
         void setLayerBlendingSpeed(float speed);
         void setLabelBlendingSpeed(float speed);
@@ -206,6 +226,7 @@ namespace carto::vt {
         static constexpr float HALO_RADIUS_SCALE = 2.5f; // the scaling factor for halo radius
         static constexpr float STROKE_UV_SCALE = 2.857f; // stroked line UV scale factor
         static constexpr float POLYGON3D_HEIGHT_SCALE = 10018754.17f; // scaling factor for zoom 0 heights
+        static constexpr float TERRAIN_LAYER_DEPTH_DELTA = 1.0f / 524288.0f; // 2^-19: fixed clip-space depth separation per draped layer (GPU terrain draping mode)
         static constexpr float ALPHA_HIT_THRESHOLD = 0.05f; // threshold value for 'transparent' pixel alphas
 
         bool isTileVisible(const TileId& tileId) const;
@@ -238,6 +259,7 @@ namespace carto::vt {
 
         void setCompOp(CompOp compOp);
         void blendScreenTexture(float opacity, GLuint texture);
+        bool setupTerrainUniforms(const ShaderProgram& shaderProgram, const TileId& tileId, const cglib::mat4x4<double>& vertexFrameMatrix);
         void renderTileMask(const TileId& tileId);
         void renderTileBackground(const TileId& tileId, float blend, float opacity, float tileSize, const std::shared_ptr<TileBackground>& background);
         void renderTileBitmap(const TileId& sourceTileId, const TileId& targetTileId, float blend, float opacity, const std::shared_ptr<TileBitmap>& bitmap);
@@ -287,6 +309,8 @@ namespace carto::vt {
         bool _terrainMode = false;
         bool _terrainDepthWrite = false;
         float _terrainDepthBias = 0.0f;
+        float _terrainDrawDepthBias = 0.0f; // per-draw bias while rendering 2D layers (GPU draping mode)
+        TerrainTextureProvider _terrainTextureProvider;
         std::function<bool(const cglib::vec3<double>&)> _labelOcclusionTest;
         float _layerBlendingSpeed = 1.0f;
         float _labelBlendingSpeed = 1.0f;

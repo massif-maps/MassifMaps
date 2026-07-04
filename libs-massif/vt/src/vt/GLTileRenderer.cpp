@@ -91,8 +91,14 @@ namespace carto::vt {
     }
 
     void GLTileRenderer::updateTerrainSkirts() {
-        // Tile border skirts require the terrain vertex shader to decode their sentinel z
-        bool skirts = _terrainMode && (bool) _terrainTextureProvider;
+        // Tile border skirts are DISABLED: their walls (textured with stretched tile
+        // edge/background pixels) rasterize over neighbouring tile content wherever a
+        // displaced tile edge leans off-nadir, showing as stable background-colored
+        // patches that grow with the tile size (the skirt drop) when zooming out.
+        // Same-level tile borders are seam-free via the shared elevation texture
+        // borders instead, and residual cross-LOD cracks are far less objectionable
+        // than the skirt walls (tangram has no skirts either).
+        bool skirts = false;
         if (skirts != _terrainSkirtsEnabled) {
             _terrainSkirtsEnabled = skirts;
             _tileSurfaceBuilder.setTerrainSkirts(skirts);

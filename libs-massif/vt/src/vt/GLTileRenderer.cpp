@@ -1315,10 +1315,16 @@ namespace carto::vt {
                 // fixed ~1 pixel worth of depth slope at any distance.
                 bool depthWriteSurfaces = _terrainMode && _terrainDepthWrite && !layer->getCompOp();
                 if (_terrainMode) {
+                    glEnable(GL_POLYGON_OFFSET_FILL);
                     if (depthWriteSurfaces) {
                         glDepthMask(GL_TRUE);
+                        // Push the WRITTEN depth slightly back (slope-scaled): draped geometry is
+                        // tesselated independently of the surface triangulation and can dip below
+                        // the surface by a fraction of the local per-pixel relief - this tolerance
+                        // must scale with meters-per-pixel (zooming out), which is exactly what
+                        // slope-scaled offset does, while staying a fixed ~1px band at silhouettes.
+                        glPolygonOffset(1.0f, 4.0f);
                     } else {
-                        glEnable(GL_POLYGON_OFFSET_FILL);
                         glPolygonOffset(-1.0f, -2.0f);
                     }
                 }

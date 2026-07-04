@@ -1424,9 +1424,13 @@ namespace carto::vt {
                         glDepthMask(GL_FALSE);
                     }
                     if (terrainVTF) {
-                        // geometry renders just above the surfaces of its own layer
+                        // Geometry renders with GENEROUS slack above the surfaces: geometry and
+                        // surface meshes are different piecewise-linear approximations of the
+                        // same height field, and between vertices their chords deviate by tens
+                        // of meters at coarse mesh cells (large white 'tears' on slopes at low
+                        // zooms otherwise). Tangram-scale separation (~32 delta units).
                         float proxyBias = (renderLayer->active ? 0.0f : 48.0f * TERRAIN_LAYER_DEPTH_DELTA);
-                        _terrainDrawDepthBias = _terrainDepthBias + (layerOrdinal + 0.5f) * TERRAIN_LAYER_DEPTH_DELTA - proxyBias;
+                        _terrainDrawDepthBias = _terrainDepthBias + (layerOrdinal + 32.0f) * TERRAIN_LAYER_DEPTH_DELTA - proxyBias;
                     } else {
                         glEnable(GL_POLYGON_OFFSET_FILL);
                         glPolygonOffset(-1.0f, -2.0f);

@@ -228,6 +228,7 @@ namespace carto::vt {
         static constexpr float STROKE_UV_SCALE = 2.857f; // stroked line UV scale factor
         static constexpr float POLYGON3D_HEIGHT_SCALE = 10018754.17f; // scaling factor for zoom 0 heights
         static constexpr float TERRAIN_LAYER_DEPTH_DELTA = 1.0f / 524288.0f; // 2^-19: fixed clip-space depth separation per draped layer (GPU terrain draping mode)
+        static constexpr float TERRAIN_OCCLUSION_TILT_THRESHOLD = 62.0f; // terrain depth testing of draped 2D content only below this tilt (90 = top-down: no self-occlusion possible)
         static constexpr float ALPHA_HIT_THRESHOLD = 0.05f; // threshold value for 'transparent' pixel alphas
 
         bool isTileVisible(const TileId& tileId) const;

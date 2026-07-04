@@ -373,7 +373,16 @@ namespace carto::vt {
             glEnable(GL_BLEND);
             glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
             glBlendEquation(GL_FUNC_ADD);
-            if (_terrainMode) {
+            // Terrain self-occlusion (ridges hiding draped content behind them) is only
+            // possible at oblique views. Near top-down views nothing can be occluded, but
+            // the depth buffer precision is extreme there (near ~ far), so the small
+            // depth deviations between the terrain surface mesh and draped geometry
+            // meshes (different piecewise-linear approximations of the same height
+            // field) would exceed any usable bias and tear draped content on slopes.
+            // So the terrain depth test is only enabled at oblique tilts, where it is
+            // both needed and covered by the depth biases (depth precision at range is
+            // orders of magnitude looser there).
+            if (_terrainMode && _viewState.tilt < TERRAIN_OCCLUSION_TILT_THRESHOLD) {
                 glEnable(GL_DEPTH_TEST);
             } else {
                 glDisable(GL_DEPTH_TEST);

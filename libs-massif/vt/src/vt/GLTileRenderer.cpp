@@ -1343,7 +1343,10 @@ namespace carto::vt {
                         glDepthMask(GL_TRUE);
                     }
                     if (terrainVTF) {
-                        _terrainDrawDepthBias = _terrainDepthBias + layerOrdinal * TERRAIN_LAYER_DEPTH_DELTA;
+                        // Retained blend-out (proxy) tiles are pushed back so that live tiles
+                        // always win overlapping pixels during LOD transitions (tangram-style)
+                        float proxyBias = (renderLayer->active ? 0.0f : 48.0f * TERRAIN_LAYER_DEPTH_DELTA);
+                        _terrainDrawDepthBias = _terrainDepthBias + layerOrdinal * TERRAIN_LAYER_DEPTH_DELTA - proxyBias;
                     } else {
                         glEnable(GL_POLYGON_OFFSET_FILL);
                         if (depthWriteSurfaces) {
@@ -1384,7 +1387,8 @@ namespace carto::vt {
                     }
                     if (terrainVTF) {
                         // geometry renders just above the surfaces of its own layer
-                        _terrainDrawDepthBias = _terrainDepthBias + (layerOrdinal + 0.5f) * TERRAIN_LAYER_DEPTH_DELTA;
+                        float proxyBias = (renderLayer->active ? 0.0f : 48.0f * TERRAIN_LAYER_DEPTH_DELTA);
+                        _terrainDrawDepthBias = _terrainDepthBias + (layerOrdinal + 0.5f) * TERRAIN_LAYER_DEPTH_DELTA - proxyBias;
                     } else {
                         glEnable(GL_POLYGON_OFFSET_FILL);
                         glPolygonOffset(-1.0f, -2.0f);
@@ -1707,7 +1711,7 @@ namespace carto::vt {
             static_cast<float>(terrainTexture.metersToInternal / frameScaleZ),
             static_cast<float>(frameOrigin(1) * terrainTexture.mercatorYScale),
             static_cast<float>(frameScale(1) * terrainTexture.mercatorYScale),
-            0.0f);
+            static_cast<float>(-vertexFrameMatrix(2, 3) / frameScaleZ)); // tile surface frames are origin-relative, with a non-zero origin z in terrain mode
         return true;
     }
 

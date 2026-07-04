@@ -189,18 +189,20 @@ namespace carto::vt {
         uniform sampler2D uElevationTexture;
         uniform highp vec4 uElevationUV;     // elevation texture uv = uv.xy + pos.xy * uv.zw
         uniform vec4 uElevationDecode;       // meters = dot(texture sample, decode)
-        uniform highp vec4 uElevationScale;  // x: meters to vertex z units (equator), y/z: mercator y = y + pos.y * z
+        uniform highp vec4 uElevationScale;  // x: meters to vertex z units (equator), y/z: mercator y = y + pos.y * z, w: vertex frame z offset
         // GPU terrain draping: the vertex z is REPLACED with the height sampled from the
         // elevation texture. Every draped layer samples the same textures, so all layers
         // agree on heights exactly and no geometric depth tolerances are needed.
         // The bilinearly filtered texture sample matches the CPU-side elevation grid
         // sampling (ElevationTileGrid::sampleHeight semantics): samples at texel centers,
         // clamped at edges. The Mercator latitude scale (1/cos) is applied per vertex.
+        // The w component maps the absolute height into the vertex frame (tile surface
+        // frames are origin-relative and the origin can have a non-zero z).
         vec3 applyTerrain(vec3 pos) {
             float meters = dot(texture2D(uElevationTexture, uElevationUV.xy + pos.xy * uElevationUV.zw), uElevationDecode);
             highp float my = uElevationScale.y + pos.y * uElevationScale.z;
             float coshMY = 0.5 * (exp(my) + exp(-my));
-            return vec3(pos.xy, meters * uElevationScale.x * coshMY);
+            return vec3(pos.xy, meters * uElevationScale.x * coshMY + uElevationScale.w);
         }
         #else
         vec3 applyTerrain(vec3 pos) {

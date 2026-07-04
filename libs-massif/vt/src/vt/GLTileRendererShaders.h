@@ -167,9 +167,13 @@ namespace carto::vt {
         #endif
         #ifdef TERRAIN_DEPTH_BIAS
         uniform float uDepthBias;
-        #define applyDepthBias(clipPos) vec4(clipPos.xy, clipPos.z - uDepthBias * clipPos.w, clipPos.w)
+        vec4 applyDepthBias(vec4 clipPos) {
+            return vec4(clipPos.xy, clipPos.z - uDepthBias * clipPos.w, clipPos.w);
+        }
         #else
-        #define applyDepthBias(clipPos) (clipPos)
+        vec4 applyDepthBias(vec4 clipPos) {
+            return clipPos;
+        }
         #endif
     )GLSL";
 

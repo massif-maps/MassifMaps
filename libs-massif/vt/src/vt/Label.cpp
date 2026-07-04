@@ -154,26 +154,29 @@ namespace carto::vt {
     }
 
     float Label::calculateTerrainScaleFactor(const Placement& placement, const ViewState& viewState) const {
-        // With planar 3D terrain the label anchor is lifted to the terrain height, which moves
-        // it closer to the camera. The label world size is derived from the zoom level only,
-        // so the perspective divide would make such labels appear oversized (drastically so
-        // around high mountains). Rescale by the ratio of the actual view depth to the view
-        // depth of the same anchor at ground level, so that the on-screen size matches what
-        // the label would have on a flat map.
-        if (!viewState.planarTerrain || placement.position(2) == 0) {
+        // With planar 3D terrain, labels keep a CONSTANT ON-SCREEN SIZE (tangram-style):
+        // the label world size is derived from the zoom level only, so the perspective
+        // divide would otherwise scale labels by their distance - drastically oversizing
+        // labels lifted onto high mountains and shrinking labels towards the horizon.
+        // Rescale by the ratio of the label view depth to the focus depth (where the view
+        // axis meets the ground plane), which exactly cancels the perspective scaling.
+        if (!viewState.planarTerrain) {
             return 1.0f;
         }
         cglib::vec3<double> viewDir = -cglib::vec3<double>::convert(viewState.orientation[2]);
         double depth = cglib::dot_product(placement.position - viewState.origin, viewDir);
-        double groundDepth = depth - placement.position(2) * viewDir(2);
-        if (!(depth > 0 && groundDepth > 0)) {
+        if (!(depth > 0)) {
             return 1.0f;
         }
-        float factor = static_cast<float>(depth / groundDepth);
+        double focusDepth = (viewDir(2) < 0 ? viewState.origin(2) / -viewDir(2) : depth);
+        if (!(focusDepth > 0)) {
+            return 1.0f;
+        }
+        float factor = static_cast<float>(depth / focusDepth);
         // Quantize to ~1% steps: line label vertex data is cached by scale and would
         // otherwise be rebuilt on every frame while the camera moves
         factor = std::exp2(std::round(std::log2(factor) * 64.0f) / 64.0f);
-        return std::min(2.0f, std::max(0.05f, factor));
+        return std::min(8.0f, std::max(0.05f, factor));
     }
 
     bool Label::calculateEnvelope(float size, float buffer, const ViewState& viewState, std::array<cglib::vec3<float>, 4>& envelope) const {

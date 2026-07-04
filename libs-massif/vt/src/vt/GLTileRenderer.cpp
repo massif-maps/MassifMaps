@@ -345,8 +345,15 @@ namespace carto::vt {
             glDepthMask(GL_FALSE);
             glDisable(GL_STENCIL_TEST);
             glStencilMask(0);
-            glEnable(GL_CULL_FACE);
-            glCullFace(GL_BACK);
+            if (_terrainMode) {
+                // Terrain-displaced surfaces can face away from the camera near ridge
+                // crests (impossible for flat surfaces); culling them would leave holes
+                // in both color and depth exactly along ridge silhouettes
+                glDisable(GL_CULL_FACE);
+            } else {
+                glEnable(GL_CULL_FACE);
+                glCullFace(GL_BACK);
+            }
 
             // 2D geometry pass
             renderGeometry2D(*_visibleRenderTiles, stencilBits);
@@ -358,6 +365,7 @@ namespace carto::vt {
             glDepthMask(GL_TRUE);
             glDisable(GL_STENCIL_TEST);
             glStencilMask(255);
+            glEnable(GL_CULL_FACE);
         }
 
         if (geom3D) {

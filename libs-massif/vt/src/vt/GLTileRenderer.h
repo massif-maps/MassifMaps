@@ -79,6 +79,7 @@ namespace carto::vt {
         
         void setInteractionMode(bool enabled);
         void setTerrainMode(bool enabled, float depthBias);
+        void setTerrainDepthWrite(bool enabled);
         void setLabelOcclusionTest(std::function<bool(const cglib::vec3<double>&)> occlusionTest);
         void setLayerBlendingSpeed(float speed);
         void setLabelBlendingSpeed(float speed);
@@ -284,6 +285,7 @@ namespace carto::vt {
 
         bool _interactionMode = false;
         bool _terrainMode = false;
+        bool _terrainDepthWrite = false;
         float _terrainDepthBias = 0.0f;
         std::function<bool(const cglib::vec3<double>&)> _labelOcclusionTest;
         float _layerBlendingSpeed = 1.0f;

@@ -69,6 +69,12 @@ namespace carto::vt {
         _terrainDepthBias = depthBias;
     }
 
+    void GLTileRenderer::setTerrainDepthWrite(bool enabled) {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        _terrainDepthWrite = enabled;
+    }
+
     void GLTileRenderer::setLabelOcclusionTest(std::function<bool(const cglib::vec3<double>&)> occlusionTest) {
         std::lock_guard<std::mutex> lock(_mutex);
 
@@ -1269,6 +1275,14 @@ namespace carto::vt {
                     glStencilFunc(GL_EQUAL, stencilValue, 255);
                 }
 
+                // The designated terrain depth-write layer (typically the bottom tile layer)
+                // writes the depth of its background/raster surfaces: these ARE the terrain
+                // surface, so the depth source is exactly what is drawn - draped geometry,
+                // other layers and vector elements depth-test against it without artifacts.
+                if (_terrainMode && _terrainDepthWrite && !layer->getCompOp()) {
+                    glDepthMask(GL_TRUE);
+                }
+
                 for (const std::shared_ptr<TileBackground>& background : renderLayer->layer->getBackgrounds()) {
                     CompOp backgroundCompOp = CompOp::SRC_OVER;
                     if (currentCompOp != backgroundCompOp) {
@@ -1285,6 +1299,10 @@ namespace carto::vt {
                         currentCompOp = bitmapCompOp;
                     }
                     renderTileBitmap(renderLayer->sourceTileId, renderLayer->targetTileId, renderLayer->blend, geometryOpacity, bitmap);
+                }
+
+                if (_terrainMode && _terrainDepthWrite) {
+                    glDepthMask(GL_FALSE);
                 }
 
                 for (const std::shared_ptr<TileGeometry>& geometry : renderLayer->layer->getGeometries()) {
@@ -1607,7 +1625,7 @@ namespace carto::vt {
             const TileSurface::VertexGeometryLayoutParameters& vertexGeomLayoutParams = tileSurface->getVertexGeometryLayoutParameters();
             const CompiledSurface& compiledTileSurface = _compiledTileSurfaceMap[tileSurface];
 
-            unsigned int terrainFlag = (_terrainMode ? TERRAIN_FLAG : 0);
+            unsigned int terrainFlag = (_terrainMode && !_terrainDepthWrite ? TERRAIN_FLAG : 0);
             const ShaderProgram& shaderProgram = buildShaderProgram("tilebackground", backgroundVsh, backgroundFsh, LightingMode::GEOMETRY2D, RasterFilterMode::NONE, (background->getPattern() ? PATTERN_FLAG : 0) | terrainFlag);
             glUseProgram(shaderProgram.program);
             if (terrainFlag != 0) {
@@ -1686,7 +1704,7 @@ namespace carto::vt {
             const TileSurface::VertexGeometryLayoutParameters& vertexGeomLayoutParams = tileSurface->getVertexGeometryLayoutParameters();
             const CompiledSurface& compiledTileSurface = _compiledTileSurfaceMap[tileSurface];
 
-            unsigned int terrainFlag = (_terrainMode ? TERRAIN_FLAG : 0);
+            unsigned int terrainFlag = (_terrainMode && !_terrainDepthWrite ? TERRAIN_FLAG : 0);
             const ShaderProgram* shaderProgramPtr = nullptr;
             switch (bitmap->getType()) {
             case TileBitmap::Type::COLORMAP:

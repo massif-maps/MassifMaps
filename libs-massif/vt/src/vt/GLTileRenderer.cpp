@@ -67,6 +67,7 @@ namespace carto::vt {
 
         _terrainMode = enabled;
         _terrainDepthBias = depthBias;
+        updateTerrainSkirts();
     }
 
     void GLTileRenderer::setTerrainDepthWrite(bool enabled) {
@@ -79,6 +80,17 @@ namespace carto::vt {
         std::lock_guard<std::mutex> lock(_mutex);
 
         _terrainTextureProvider = std::move(provider);
+        updateTerrainSkirts();
+    }
+
+    void GLTileRenderer::updateTerrainSkirts() {
+        // Tile border skirts require the terrain vertex shader to decode their sentinel z
+        bool skirts = _terrainMode && (bool) _terrainTextureProvider;
+        if (skirts != _terrainSkirtsEnabled) {
+            _terrainSkirtsEnabled = skirts;
+            _tileSurfaceBuilder.setTerrainSkirts(skirts);
+            _tileSurfaceMap.clear();
+        }
     }
 
     void GLTileRenderer::setLabelOcclusionTest(std::function<bool(const cglib::vec3<double>&)> occlusionTest) {
@@ -1153,10 +1165,15 @@ namespace carto::vt {
         const TileSurface::VertexGeometryLayoutParameters& vertexGeomLayoutParams = tileSurface->getVertexGeometryLayoutParameters();
         for (std::size_t index = 0; index + 2 < tileSurface->getIndices().size(); index += 3) {
             std::array<cglib::vec3<double>, 3> triangle;
+            bool skirt = false;
             for (int i = 0; i < 3; i++) {
                 std::size_t coordOffset = tileSurface->getIndices()[index + i] * vertexGeomLayoutParams.vertexSize + vertexGeomLayoutParams.coordOffset;
                 const float* coordPtr = reinterpret_cast<const float*>(&tileSurface->getVertexGeometry()[coordOffset]);
+                skirt = skirt || coordPtr[2] < -900000.0f; // skirt bottoms carry sentinel z values
                 triangle[i] = cglib::transform_point(cglib::vec3<double>(coordPtr[0], coordPtr[1], coordPtr[2]), surfaceToTileTransform);
+            }
+            if (skirt) {
+                continue;
             }
 
             for (std::size_t i = 0; i < rays.size(); i++) {

@@ -202,7 +202,14 @@ namespace carto::vt {
             float meters = dot(texture2D(uElevationTexture, uElevationUV.xy + pos.xy * uElevationUV.zw), uElevationDecode);
             highp float my = uElevationScale.y + pos.y * uElevationScale.z;
             float coshMY = 0.5 * (exp(my) + exp(-my));
-            return vec3(pos.xy, meters * uElevationScale.x * coshMY + uElevationScale.w);
+            float z = meters * uElevationScale.x * coshMY + uElevationScale.w;
+            if (pos.z < -900000.0) {
+                // tile skirt bottom vertex: z encodes -1000000 - drop; extrude downwards
+                // from the terrain surface to cover cracks between neighbouring tiles
+                // that sample different elevation levels
+                z += pos.z + 1000000.0;
+            }
+            return vec3(pos.xy, z);
         }
         #else
         vec3 applyTerrain(vec3 pos) {

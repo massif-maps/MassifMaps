@@ -259,6 +259,7 @@ namespace carto::vt {
 
         void setCompOp(CompOp compOp);
         void blendScreenTexture(float opacity, GLuint texture);
+        void updateTerrainSkirts();
         bool setupTerrainUniforms(const ShaderProgram& shaderProgram, const TileId& tileId, const cglib::mat4x4<double>& vertexFrameMatrix);
         void renderTileMask(const TileId& tileId);
         void renderTileBackground(const TileId& tileId, float blend, float opacity, float tileSize, const std::shared_ptr<TileBackground>& background);
@@ -310,6 +311,7 @@ namespace carto::vt {
         bool _terrainDepthWrite = false;
         float _terrainDepthBias = 0.0f;
         float _terrainDrawDepthBias = 0.0f; // per-draw bias while rendering 2D layers (GPU draping mode)
+        bool _terrainSkirtsEnabled = false;
         TerrainTextureProvider _terrainTextureProvider;
         std::function<bool(const cglib::vec3<double>&)> _labelOcclusionTest;
         float _layerBlendingSpeed = 1.0f;

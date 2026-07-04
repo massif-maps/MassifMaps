@@ -22,6 +22,13 @@ namespace carto::vt {
         }
     }
 
+    void TileSurfaceBuilder::setTerrainSkirts(bool terrainSkirts) {
+        if (terrainSkirts != _terrainSkirts) {
+            _tileSurfaceCache.clear();
+            _terrainSkirts = terrainSkirts;
+        }
+    }
+
     void TileSurfaceBuilder::invalidateCaches() {
         _tileSurfaceCache.clear();
     }
@@ -182,6 +189,54 @@ namespace carto::vt {
             std::size_t i1 = appendTilePoint(vertexIds[3][i]);
             tesselateTriangle(i0, i1, i2, matrix, transformer);
             i2 = i1;
+        }
+
+        // GPU terrain skirts: extrude the tile borders downwards to cover cracks between
+        // neighbouring tiles that sample different elevation texture levels. The skirt
+        // bottom z is a sentinel encoding (SKIRT_SENTINEL - drop) that the terrain vertex
+        // shader decodes into 'terrain height at this position minus drop'; without the
+        // terrain shader these vertices would be garbage, so skirts are only built when
+        // enabled by the renderer (GPU draping mode).
+        if (_terrainSkirts) {
+            float drop = SKIRT_DEPTH * static_cast<float>(matrix(0, 0));
+
+            auto appendSkirtPoint = [&](std::size_t idx) -> std::size_t {
+                coords2D.append(coords2D[idx]);
+                texCoords.append(texCoords[idx]);
+                coords3D.append(cglib::vec3<float>(coords3D[idx](0), coords3D[idx](1), SKIRT_SENTINEL - drop));
+                normals.append(normals[idx]);
+                binormals.append(binormals[idx]);
+                return coords2D.size() - 1;
+            };
+
+            std::size_t vertexCount = coords2D.size();
+            for (int side = 0; side < 4; side++) {
+                int coordIndex = (side < 2 ? 0 : 1);
+                float borderValue = static_cast<float>(side & 1);
+
+                std::vector<std::pair<float, std::size_t>> borderVertices;
+                for (std::size_t i = 0; i < vertexCount; i++) {
+                    if (coords2D[i](coordIndex) == borderValue) {
+                        borderVertices.emplace_back(coords2D[i](coordIndex ^ 1), i);
+                    }
+                }
+                std::sort(borderVertices.begin(), borderVertices.end());
+                borderVertices.erase(std::unique(borderVertices.begin(), borderVertices.end(), [](const std::pair<float, std::size_t>& p1, const std::pair<float, std::size_t>& p2) { return p1.first == p2.first; }), borderVertices.end());
+
+                if (borderVertices.size() < 2) {
+                    continue;
+                }
+                std::size_t prevTop = borderVertices[0].second;
+                std::size_t prevBottom = appendSkirtPoint(prevTop);
+                for (std::size_t i = 1; i < borderVertices.size(); i++) {
+                    std::size_t top = borderVertices[i].second;
+                    std::size_t bottom = appendSkirtPoint(top);
+                    indices.append(prevTop, top, bottom);
+                    indices.append(prevTop, bottom, prevBottom);
+                    prevTop = top;
+                    prevBottom = bottom;
+                }
+            }
         }
     }
 

@@ -1077,6 +1077,10 @@ namespace carto::vt {
         // Update built label lists and maps
         _labels = std::move(labels);
         _bitmapLabelMap = std::move(bitmapLabelMap);
+
+        // Tile geometry is built flat in GPU draping mode - newly built labels must be
+        // re-anchored onto the terrain (startFrame applies the elevation provider)
+        _appliedLabelElevationVersion = _labelElevationVersion - 1;
     }
 
     bool GLTileRenderer::updateLabel(const std::shared_ptr<Label>& label, float dOpacity) const {

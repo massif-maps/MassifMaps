@@ -1261,20 +1261,23 @@ namespace carto::vt {
                 std::vector<std::pair<TileId, GLint>> orderedTileMasks(tileStencilMap.begin(), tileStencilMap.end());
                 if (_terrainMode) {
                     // Terrain displacement makes near tiles rise in front of far tiles, so
-                    // their screen footprints can overlap. Draw the masks far-to-near so that
-                    // the NEAREST tile owns the overlapping pixels - the stencil clipping then
-                    // matches true occlusion (clipping in arbitrary order would cut away color
-                    // and depth of whichever tile happens to lose, including near ridges).
-                    std::vector<std::pair<double, std::size_t>> tileMaskOrder(orderedTileMasks.size());
+                    // their screen footprints can overlap. Draw the masks so that the tile that
+                    // should be visible owns the overlapping pixels: primarily by zoom level
+                    // ascending - during LOD/overzoom transitions parent and child tiles have
+                    // IDENTICAL footprints and the child must own them (distances are arbitrary
+                    // there) - and by descending camera distance within a zoom level, so that
+                    // near ridges own pixels against far tiles behind them (by LOD construction
+                    // nearer tiles never have a lower zoom level than farther ones).
+                    std::vector<std::tuple<int, double, std::size_t>> tileMaskOrder(orderedTileMasks.size());
                     for (std::size_t i = 0; i < orderedTileMasks.size(); i++) {
                         cglib::vec3<double> center = _transformer->calculateTileBBox(orderedTileMasks[i].first).center();
-                        tileMaskOrder[i] = std::make_pair(-cglib::length(center - _viewState.origin), i);
+                        tileMaskOrder[i] = std::make_tuple(orderedTileMasks[i].first.zoom, -cglib::length(center - _viewState.origin), i);
                     }
                     std::sort(tileMaskOrder.begin(), tileMaskOrder.end());
                     std::vector<std::pair<TileId, GLint>> sortedTileMasks;
                     sortedTileMasks.reserve(orderedTileMasks.size());
-                    for (const std::pair<double, std::size_t>& order : tileMaskOrder) {
-                        sortedTileMasks.push_back(orderedTileMasks[order.second]);
+                    for (const std::tuple<int, double, std::size_t>& order : tileMaskOrder) {
+                        sortedTileMasks.push_back(orderedTileMasks[std::get<2>(order)]);
                     }
                     orderedTileMasks = std::move(sortedTileMasks);
                 }
@@ -1318,12 +1321,13 @@ namespace carto::vt {
                     glEnable(GL_POLYGON_OFFSET_FILL);
                     if (depthWriteSurfaces) {
                         glDepthMask(GL_TRUE);
-                        // Push the WRITTEN depth slightly back (slope-scaled): draped geometry is
-                        // tesselated independently of the surface triangulation and can dip below
-                        // the surface by a fraction of the local per-pixel relief - this tolerance
-                        // must scale with meters-per-pixel (zooming out), which is exactly what
-                        // slope-scaled offset does, while staying a fixed ~1px band at silhouettes.
-                        glPolygonOffset(1.0f, 4.0f);
+                        // Push the WRITTEN depth slightly back by a small constant only. A
+                        // slope-scaled factor here leaks along tall steep mountain faces (the
+                        // projected face spans a few pixels with an enormous per-pixel depth
+                        // gradient, so the whole strip gets pushed far back and geometry behind
+                        // the ridge shows through). Geometry-below-surface dips are instead
+                        // prevented exactly by the surface-fan height clamp in the transformer.
+                        glPolygonOffset(0.0f, 2.0f);
                     } else {
                         glPolygonOffset(-1.0f, -2.0f);
                     }

@@ -214,7 +214,7 @@ namespace carto::vt {
         #ifdef LIGHTING_FSH
             vNormal = aVertexNormal;
         #endif
-            gl_Position = uMVPMatrix * vec4(aVertexPosition, 1.0);
+            gl_Position = applyDepthBias(uMVPMatrix * vec4(aVertexPosition, 1.0));
         }
     )GLSL";
 
@@ -273,7 +273,7 @@ namespace carto::vt {
         #ifdef LIGHTING_FSH
             vNormal = aVertexNormal;
         #endif
-            gl_Position = uMVPMatrix * vec4(aVertexPosition, 1.0);
+            gl_Position = applyDepthBias(uMVPMatrix * vec4(aVertexPosition, 1.0));
         }
     )GLSL";
 
@@ -326,7 +326,7 @@ namespace carto::vt {
             vNormal = aVertexNormal;
             vBinormal = aVertexBinormal;
         #endif
-            gl_Position = uMVPMatrix * vec4(aVertexPosition, 1.0);
+            gl_Position = applyDepthBias(uMVPMatrix * vec4(aVertexPosition, 1.0));
         }
     )GLSL";
 

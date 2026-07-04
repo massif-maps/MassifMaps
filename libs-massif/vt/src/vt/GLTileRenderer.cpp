@@ -324,7 +324,10 @@ namespace carto::vt {
             }
 
             // Update GL state. In terrain mode 2D geometry is displaced onto the terrain
-            // surface and depth-tested against it (tile backgrounds/bitmaps write depth).
+            // surface and depth-tested (with a small bias towards the viewer) against the
+            // terrain depth pre-pass that the host renderer performs before the tile layers.
+            // Nothing in the 2D pass writes depth, so painter's order is preserved and
+            // co-planar surfaces from different layers can not z-fight.
             glEnable(GL_BLEND);
             glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
             glBlendEquation(GL_FUNC_ADD);
@@ -1258,13 +1261,6 @@ namespace carto::vt {
                     glStencilFunc(GL_EQUAL, stencilValue, 255);
                 }
 
-                // In terrain mode tile backgrounds and raster bitmaps form the terrain
-                // surface and write depth, so that 2D overlay geometry, 3D geometry and
-                // later passes can be correctly occluded by the terrain.
-                if (_terrainMode) {
-                    glDepthMask(GL_TRUE);
-                }
-
                 for (const std::shared_ptr<TileBackground>& background : renderLayer->layer->getBackgrounds()) {
                     CompOp backgroundCompOp = CompOp::SRC_OVER;
                     if (currentCompOp != backgroundCompOp) {
@@ -1281,10 +1277,6 @@ namespace carto::vt {
                         currentCompOp = bitmapCompOp;
                     }
                     renderTileBitmap(renderLayer->sourceTileId, renderLayer->targetTileId, renderLayer->blend, geometryOpacity, bitmap);
-                }
-
-                if (_terrainMode) {
-                    glDepthMask(GL_FALSE);
                 }
 
                 for (const std::shared_ptr<TileGeometry>& geometry : renderLayer->layer->getGeometries()) {
@@ -1596,8 +1588,12 @@ namespace carto::vt {
             const TileSurface::VertexGeometryLayoutParameters& vertexGeomLayoutParams = tileSurface->getVertexGeometryLayoutParameters();
             const CompiledSurface& compiledTileSurface = _compiledTileSurfaceMap[tileSurface];
 
-            const ShaderProgram& shaderProgram = buildShaderProgram("tilebackground", backgroundVsh, backgroundFsh, LightingMode::GEOMETRY2D, RasterFilterMode::NONE, background->getPattern() ? PATTERN_FLAG : 0);
+            unsigned int terrainFlag = (_terrainMode ? TERRAIN_FLAG : 0);
+            const ShaderProgram& shaderProgram = buildShaderProgram("tilebackground", backgroundVsh, backgroundFsh, LightingMode::GEOMETRY2D, RasterFilterMode::NONE, (background->getPattern() ? PATTERN_FLAG : 0) | terrainFlag);
             glUseProgram(shaderProgram.program);
+            if (terrainFlag != 0) {
+                glUniform1f(shaderProgram.uniforms[U_DEPTHBIAS], _terrainDepthBias);
+            }
 
             glBindBuffer(GL_ARRAY_BUFFER, compiledTileSurface.vertexGeometryVBO);
             glVertexAttribPointer(shaderProgram.attribs[A_VERTEXPOSITION], 3, GL_FLOAT, GL_FALSE, vertexGeomLayoutParams.vertexSize, bufferGLOffset(vertexGeomLayoutParams.coordOffset));
@@ -1671,19 +1667,23 @@ namespace carto::vt {
             const TileSurface::VertexGeometryLayoutParameters& vertexGeomLayoutParams = tileSurface->getVertexGeometryLayoutParameters();
             const CompiledSurface& compiledTileSurface = _compiledTileSurfaceMap[tileSurface];
 
+            unsigned int terrainFlag = (_terrainMode ? TERRAIN_FLAG : 0);
             const ShaderProgram* shaderProgramPtr = nullptr;
             switch (bitmap->getType()) {
             case TileBitmap::Type::COLORMAP:
-                shaderProgramPtr = &buildShaderProgram("tilecolormap", colormapVsh, colormapFsh, LightingMode::GEOMETRY2D, _rasterFilterMode, PATTERN_FLAG);
+                shaderProgramPtr = &buildShaderProgram("tilecolormap", colormapVsh, colormapFsh, LightingMode::GEOMETRY2D, _rasterFilterMode, PATTERN_FLAG | terrainFlag);
                 break;
             case TileBitmap::Type::NORMALMAP:
-                shaderProgramPtr = &buildShaderProgram("tilenormalmap", normalmapVsh, normalmapFsh, LightingMode::NORMALMAP, _rasterFilterMode, PATTERN_FLAG);
+                shaderProgramPtr = &buildShaderProgram("tilenormalmap", normalmapVsh, normalmapFsh, LightingMode::NORMALMAP, _rasterFilterMode, PATTERN_FLAG | terrainFlag);
                 break;
             default:
                 return;
             }
             const ShaderProgram& shaderProgram = *shaderProgramPtr;
             glUseProgram(shaderProgram.program);
+            if (terrainFlag != 0) {
+                glUniform1f(shaderProgram.uniforms[U_DEPTHBIAS], _terrainDepthBias);
+            }
 
             glBindBuffer(GL_ARRAY_BUFFER, compiledTileSurface.vertexGeometryVBO);
             glVertexAttribPointer(shaderProgram.attribs[A_VERTEXPOSITION], 3, GL_FLOAT, GL_FALSE, vertexGeomLayoutParams.vertexSize, bufferGLOffset(vertexGeomLayoutParams.coordOffset));

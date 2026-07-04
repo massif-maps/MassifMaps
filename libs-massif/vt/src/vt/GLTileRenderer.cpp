@@ -1299,8 +1299,19 @@ namespace carto::vt {
                 // writes the depth of its background/raster surfaces: these ARE the terrain
                 // surface, so the depth source is exactly what is drawn - draped geometry,
                 // other layers and vector elements depth-test against it without artifacts.
-                if (_terrainMode && _terrainDepthWrite && !layer->getCompOp()) {
-                    glDepthMask(GL_TRUE);
+                // All other draped rendering is pulled slightly towards the viewer with a
+                // slope-scaled polygon offset. Unlike a constant clip-space bias (whose
+                // eye-space tolerance grows with distance^2, letting geometry hundreds of
+                // meters behind a distant ridge 'shine through'), the polygon offset is a
+                // fixed ~1 pixel worth of depth slope at any distance.
+                bool depthWriteSurfaces = _terrainMode && _terrainDepthWrite && !layer->getCompOp();
+                if (_terrainMode) {
+                    if (depthWriteSurfaces) {
+                        glDepthMask(GL_TRUE);
+                    } else {
+                        glEnable(GL_POLYGON_OFFSET_FILL);
+                        glPolygonOffset(-1.0f, -2.0f);
+                    }
                 }
 
                 for (const std::shared_ptr<TileBackground>& background : renderLayer->layer->getBackgrounds()) {
@@ -1321,8 +1332,12 @@ namespace carto::vt {
                     renderTileBitmap(renderLayer->sourceTileId, renderLayer->targetTileId, renderLayer->blend, geometryOpacity, bitmap);
                 }
 
-                if (_terrainMode && _terrainDepthWrite) {
-                    glDepthMask(GL_FALSE);
+                if (_terrainMode) {
+                    if (depthWriteSurfaces) {
+                        glDepthMask(GL_FALSE);
+                    }
+                    glEnable(GL_POLYGON_OFFSET_FILL);
+                    glPolygonOffset(-1.0f, -2.0f);
                 }
 
                 for (const std::shared_ptr<TileGeometry>& geometry : renderLayer->layer->getGeometries()) {
@@ -1334,6 +1349,11 @@ namespace carto::vt {
                         }
                         renderTileGeometry(renderLayer->sourceTileId, renderLayer->targetTileId, renderLayer->blend, geometryOpacity, renderLayer->tileSize, geometry);
                     }
+                }
+
+                if (_terrainMode) {
+                    glDisable(GL_POLYGON_OFFSET_FILL);
+                    glPolygonOffset(0.0f, 0.0f);
                 }
             }
 

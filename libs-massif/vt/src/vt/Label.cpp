@@ -91,6 +91,30 @@ namespace carto::vt {
         }
     }
 
+    void Label::updateElevation(const std::function<double(const cglib::vec3<double>&)>& heightFunc) {
+        // Refresh anchor heights from the elevation data. Label geometry is built when the
+        // tile is decoded, possibly before its elevation data has arrived - this re-anchors
+        // the labels onto the terrain when the elevation version changes. Line placements
+        // keep their edge geometry (relative to the position), so the whole label shifts
+        // vertically - within the resolution of the elevation data.
+        for (TilePoint& tilePoint : _tilePoints) {
+            tilePoint.position(2) = heightFunc(tilePoint.position);
+        }
+        for (TileLine& tileLine : _tileLines) {
+            for (cglib::vec3<double>& vertex : tileLine.vertices) {
+                vertex(2) = heightFunc(vertex);
+            }
+        }
+        if (_placement) {
+            auto placement = std::make_shared<Placement>(*_placement);
+            placement->position(2) = heightFunc(placement->position);
+            _placement = std::move(placement);
+            _cachedFlippedPlacement.reset();
+            _cachedPlacement.reset();
+            _cachedValid = false;
+        }
+    }
+
     bool Label::updatePlacement(const ViewState& viewState) {
         if (_placement) {
             std::array<cglib::vec3<float>, 4> envelope;

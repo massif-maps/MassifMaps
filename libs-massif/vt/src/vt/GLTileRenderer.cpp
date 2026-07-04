@@ -83,6 +83,13 @@ namespace carto::vt {
         updateTerrainSkirts();
     }
 
+    void GLTileRenderer::setLabelElevationProvider(std::function<double(const cglib::vec3<double>&)> provider, unsigned int version) {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        _labelElevationProvider = std::move(provider);
+        _labelElevationVersion = version;
+    }
+
     void GLTileRenderer::updateTerrainSkirts() {
         // Tile border skirts require the terrain vertex shader to decode their sentinel z
         bool skirts = _terrainMode && (bool) _terrainTextureProvider;
@@ -304,6 +311,16 @@ namespace carto::vt {
             refresh = updateRenderTile(renderTile, dBlend) || refresh;
         }
         
+        // Re-anchor labels onto the terrain when the elevation data has changed (labels are
+        // built when their tile is decoded, possibly before elevation data was available)
+        if (_labelElevationProvider && _appliedLabelElevationVersion != _labelElevationVersion) {
+            _appliedLabelElevationVersion = _labelElevationVersion;
+            for (const std::shared_ptr<Label>& label : _labels) {
+                label->updateElevation(_labelElevationProvider);
+            }
+            refresh = true;
+        }
+
         // Update labels
         _visibleBitmapLabelMap = _bitmapLabelMap;
         float dOpacity = (_labelBlendingSpeed > 0.0f ? dt * _labelBlendingSpeed : 1.0f);

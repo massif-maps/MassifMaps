@@ -60,6 +60,7 @@ namespace carto::vt {
         void mergeGeometries(Label& label);
         void snapPlacement(const Label& label);
         bool updatePlacement(const ViewState& viewState);
+        void updateElevation(const std::function<double(const cglib::vec3<double>&)>& heightFunc);
 
         bool calculateCenter(cglib::vec3<double>& pos) const;
         bool calculateEnvelope(const ViewState& viewState, std::array<cglib::vec3<float>, 4>& envelope) const { return calculateEnvelope((_style->sizeFunc)(viewState), 0, viewState, envelope); }

@@ -100,6 +100,7 @@ namespace carto::vt {
         void setTerrainMode(bool enabled, float depthBias);
         void setTerrainDepthWrite(bool enabled);
         void setTerrainTextureProvider(TerrainTextureProvider provider);
+        void setLabelElevationProvider(std::function<double(const cglib::vec3<double>&)> provider, unsigned int version);
         void setLabelOcclusionTest(std::function<bool(const cglib::vec3<double>&)> occlusionTest);
         void setLayerBlendingSpeed(float speed);
         void setLabelBlendingSpeed(float speed);
@@ -313,6 +314,9 @@ namespace carto::vt {
         float _terrainDrawDepthBias = 0.0f; // per-draw bias while rendering 2D layers (GPU draping mode)
         bool _terrainSkirtsEnabled = false;
         TerrainTextureProvider _terrainTextureProvider;
+        std::function<double(const cglib::vec3<double>&)> _labelElevationProvider;
+        unsigned int _labelElevationVersion = 0;
+        unsigned int _appliedLabelElevationVersion = 0;
         std::function<bool(const cglib::vec3<double>&)> _labelOcclusionTest;
         float _layerBlendingSpeed = 1.0f;
         float _labelBlendingSpeed = 1.0f;

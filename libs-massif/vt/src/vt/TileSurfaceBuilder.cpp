@@ -22,13 +22,6 @@ namespace carto::vt {
         }
     }
 
-    void TileSurfaceBuilder::setHeightSkirts(bool heightSkirts) {
-        if (heightSkirts != _heightSkirts) {
-            _tileSurfaceCache.clear();
-            _heightSkirts = heightSkirts;
-        }
-    }
-
     void TileSurfaceBuilder::invalidateCaches() {
         _tileSurfaceCache.clear();
     }
@@ -130,8 +123,6 @@ namespace carto::vt {
     }
 
     void TileSurfaceBuilder::buildTileGeometry(const TileId& tileId, const std::array<std::vector<TileId>, 4>& vertexIds, VertexArray<cglib::vec2<float>>& coords2D, VertexArray<cglib::vec3<float>>& coords3D, VertexArray<cglib::vec2<float>>& texCoords, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec3<float>>& binormals, VertexArray<std::size_t>& indices) const {
-        VertexArray<float> localZs; // vertex heights in tileId local units, for skirt generation
-
         auto appendTilePoint = [&, this](const TileId& vertexId) -> std::size_t {
             int deltaZoom = vertexId.zoom - tileId.zoom;
             float s = 1.0f / (1 << deltaZoom);
@@ -140,13 +131,11 @@ namespace carto::vt {
 
             cglib::mat4x4<double> matrix = _transformer->calculateTileMatrix(vertexId, 1.0f);
             std::shared_ptr<const TileTransformer::VertexTransformer> transformer = _transformer->createTileVertexTransformer(vertexId);
-            cglib::vec3<float> localPos = transformer->calculatePoint(cglib::vec2<float>(0, 0));
-            cglib::vec3<double> pos = cglib::transform_point(cglib::vec3<double>::convert(localPos), matrix);
+            cglib::vec3<double> pos = cglib::transform_point(cglib::vec3<double>::convert(transformer->calculatePoint(cglib::vec2<float>(0, 0))), matrix);
 
             coords2D.append(cglib::vec2<float>(u, v));
             texCoords.append(cglib::vec2<float>(u, v));
             coords3D.append(cglib::vec3<float>::convert(pos - _origin));
-            localZs.append(localPos(2) * s); // convert from vertexId local units to tileId local units
             normals.append(transformer->calculateNormal(cglib::vec2<float>(0, 0)));
             binormals.append(cglib::unit(transformer->calculateVector(cglib::vec2<float>(0, 0), cglib::vec2<float>(0, 1))));
             return coords2D.size() - 1;
@@ -157,11 +146,9 @@ namespace carto::vt {
             transformer->tesselateTriangles(srcIndices.data(), 3, coords2D, texCoords, indices);
 
             for (std::size_t i = coords3D.size(); i < coords2D.size(); i++) {
-                cglib::vec3<float> localPos = transformer->calculatePoint(coords2D[i]);
-                cglib::vec3<double> pos = cglib::transform_point(cglib::vec3<double>::convert(localPos), matrix);
-
+                cglib::vec3<double> pos = cglib::transform_point(cglib::vec3<double>::convert(transformer->calculatePoint(coords2D[i])), matrix);
+                
                 coords3D.append(cglib::vec3<float>::convert(pos - _origin));
-                localZs.append(localPos(2));
                 normals.append(transformer->calculateNormal(coords2D[i]));
                 binormals.append(cglib::unit(transformer->calculateVector(coords2D[i], cglib::vec2<float>(0, 1))));
             }
@@ -195,64 +182,6 @@ namespace carto::vt {
             std::size_t i1 = appendTilePoint(vertexIds[3][i]);
             tesselateTriangle(i0, i1, i2, matrix, transformer);
             i2 = i1;
-        }
-
-        // Skirts (height-displaced tiles only): extrude the tile borders downwards.
-        // Neighbouring tiles at different zoom levels sample their heights from
-        // different elevation grid levels, so shared edges sag differently between
-        // the shared (exactly matching) T-junction corners - without skirts the
-        // resulting cracks show the map background through the terrain.
-        if (_heightSkirts) {
-            float minZ = 0;
-            bool flat = true;
-            for (std::size_t i = 0; i < localZs.size(); i++) {
-                minZ = std::min(minZ, localZs[i]);
-                flat = flat && localZs[i] == 0;
-            }
-            if (!flat) {
-                float skirtZ = std::min(0.0f, minZ) - SKIRT_DEPTH;
-
-                auto appendSkirtPoint = [&](std::size_t idx) -> std::size_t {
-                    const cglib::vec2<float>& p = coords2D[idx];
-                    cglib::vec3<double> pos = cglib::transform_point(cglib::vec3<double>(p(0), 1 - p(1), skirtZ), matrix);
-                    coords2D.append(p);
-                    texCoords.append(texCoords[idx]);
-                    coords3D.append(cglib::vec3<float>::convert(pos - _origin));
-                    localZs.append(skirtZ);
-                    normals.append(normals[idx]);
-                    binormals.append(binormals[idx]);
-                    return coords2D.size() - 1;
-                };
-
-                std::size_t vertexCount = coords2D.size();
-                for (int side = 0; side < 4; side++) {
-                    int coordIndex = (side < 2 ? 0 : 1);
-                    float borderValue = static_cast<float>(side & 1);
-
-                    std::vector<std::pair<float, std::size_t>> borderVertices;
-                    for (std::size_t i = 0; i < vertexCount; i++) {
-                        if (coords2D[i](coordIndex) == borderValue) {
-                            borderVertices.emplace_back(coords2D[i](coordIndex ^ 1), i);
-                        }
-                    }
-                    std::sort(borderVertices.begin(), borderVertices.end());
-                    borderVertices.erase(std::unique(borderVertices.begin(), borderVertices.end(), [](const std::pair<float, std::size_t>& p1, const std::pair<float, std::size_t>& p2) { return p1.first == p2.first; }), borderVertices.end());
-
-                    if (borderVertices.size() < 2) {
-                        continue;
-                    }
-                    std::size_t prevTop = borderVertices[0].second;
-                    std::size_t prevBottom = appendSkirtPoint(prevTop);
-                    for (std::size_t i = 1; i < borderVertices.size(); i++) {
-                        std::size_t top = borderVertices[i].second;
-                        std::size_t bottom = appendSkirtPoint(top);
-                        indices.append(prevTop, top, bottom);
-                        indices.append(prevTop, bottom, prevBottom);
-                        prevTop = top;
-                        prevBottom = bottom;
-                    }
-                }
-            }
         }
     }
 

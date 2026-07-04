@@ -65,12 +65,6 @@ namespace carto::vt {
     void GLTileRenderer::setTerrainMode(bool enabled, float depthBias) {
         std::lock_guard<std::mutex> lock(_mutex);
 
-        if (enabled != _terrainMode) {
-            // Height-displaced tiles get border skirts that hide LOD-boundary cracks;
-            // drop the built surfaces so that they are rebuilt with the new setting
-            _tileSurfaceBuilder.setHeightSkirts(enabled);
-            _tileSurfaceMap.clear();
-        }
         _terrainMode = enabled;
         _terrainDepthBias = depthBias;
     }
@@ -1346,14 +1340,7 @@ namespace carto::vt {
                         // prevented exactly by the surface-fan height clamp in the transformer.
                         glPolygonOffset(0.0f, 2.0f);
                     } else {
-                        // Draped background/bitmap surfaces use the same deterministic tile
-                        // surface tesselation as the depth-write surfaces, so their depth
-                        // matches exactly and a small constant pull suffices. A slope-scaled
-                        // pull must NOT be used here: at ridge silhouettes the per-pixel depth
-                        // gradient is enormous, and a slope-scaled pull lets surfaces (e.g.
-                        // hillshade rasters) far behind a ridge jump in front of the written
-                        // ridge depth - 'see-through ridges' at grazing angles.
-                        glPolygonOffset(0.0f, -2.0f);
+                        glPolygonOffset(-1.0f, -2.0f);
                     }
                 }
 

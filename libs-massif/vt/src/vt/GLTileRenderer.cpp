@@ -329,6 +329,18 @@ namespace carto::vt {
                 glGetIntegerv(GL_STENCIL_BITS, &stencilBits);
             }
 
+            // Stencil-based tile clipping assumes that tile projections never overlap on
+            // screen. Terrain displacement breaks this: a near ridge rises in front of far
+            // tiles, so their screen footprints overlap - the arbitrary winner of the
+            // stencil mask pass then clips away the other tile's color AND depth writes
+            // (missing triangles at ridge silhouettes, geometry behind ridges showing
+            // through the depth holes). In terrain mode tile separation is handled by the
+            // depth buffer instead, so render through the (fully supported) no-stencil path.
+            // This also skips the per-frame stencil mask pass entirely.
+            if (_terrainMode) {
+                stencilBits = 0;
+            }
+
             // Update GL state. In terrain mode 2D geometry is displaced onto the terrain
             // surface and depth-tested (with a small bias towards the viewer) against the
             // terrain depth pre-pass that the host renderer performs before the tile layers.

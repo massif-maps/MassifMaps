@@ -1229,10 +1229,15 @@ namespace carto::vt {
                 resetStencil = true;
             }
 
-            // If needed, initialize the stencil buffer with target tile masks
+            // If needed, initialize the stencil buffer with target tile masks.
+            // The masks implement screen-space tile clipping and must not be depth-tested
+            // against the terrain depth pre-pass (the mask surfaces carry no depth bias).
             if (resetStencil && stencilBits > 0) {
                 resetStencil = false;
 
+                if (_terrainMode) {
+                    glDisable(GL_DEPTH_TEST);
+                }
                 glStencilMask(255);
                 glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
                 glClearStencil(0);
@@ -1245,6 +1250,9 @@ namespace carto::vt {
                 glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
                 glStencilMask(0);
                 glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+                if (_terrainMode) {
+                    glEnable(GL_DEPTH_TEST);
+                }
             }
 
             // Render tile layers for this layer
@@ -1512,6 +1520,13 @@ namespace carto::vt {
             return;
         }
 
+        // Screen-space composite quad; must never be depth-tested (in terrain mode the
+        // depth buffer contains the terrain depth pre-pass, which would clip the quad)
+        GLboolean depthTestEnabled = glIsEnabled(GL_DEPTH_TEST);
+        if (depthTestEnabled) {
+            glDisable(GL_DEPTH_TEST);
+        }
+
         const ShaderProgram& shaderProgram = buildShaderProgram("blendscreen", blendVsh, blendFsh, LightingMode::NONE, RasterFilterMode::NONE, 0);
         glUseProgram(shaderProgram.program);
         
@@ -1533,12 +1548,16 @@ namespace carto::vt {
         glUniform2f(shaderProgram.uniforms[U_UVSCALE], 1.0f / _screenWidth, 1.0f / _screenHeight);
         
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-        
+
         glBindTexture(GL_TEXTURE_2D, 0);
-        
+
         glDisableVertexAttribArray(shaderProgram.attribs[A_VERTEXPOSITION]);
 
         glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+        if (depthTestEnabled) {
+            glEnable(GL_DEPTH_TEST);
+        }
 
         checkGLError();
     }

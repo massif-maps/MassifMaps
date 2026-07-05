@@ -1767,10 +1767,18 @@ namespace carto::vt {
         // the depth test tears draped content on rugged terrain. Scaled by the tile
         // size (mesh cells scale with it) and the projection depth coefficient |m22|
         // (which grows as the near-far range compresses, e.g. near top-down views).
-        float biasUnits = _terrainDrawDepthBias / TERRAIN_LAYER_DEPTH_DELTA;
+        // Only the WITHIN-LAYER bias units (layer ordinal / geometry step / proxy push)
+        // scale the clip-constant slack: mesh deviations are bounded by the cell
+        // interpolation error regardless of how many tile layers are stacked, and
+        // multiplying the cross-layer stride (128 units per tile layer) into the slack
+        // would let an upper layer (e.g. a hillshade raster) reach through ridges and
+        // paint far-slope content over near cliff faces at grazing views. Cross-layer
+        // ordering keeps only the w-scaled NDC component, which is enough because the
+        // layers share the same surface meshes and displacement (deviation ~ 0).
+        float clipUnits = (_terrainDrawDepthBias - _terrainDepthBias) / TERRAIN_LAYER_DEPTH_DELTA;
         double tileSize = std::abs(_transformer->calculateTileMatrix(tileId, 1.0f)(0, 0));
         double projScaleZ = std::abs(_viewState.projectionMatrix(2, 2));
-        glUniform1f(shaderProgram.uniforms[U_DEPTHBIASCLIP], static_cast<float>(biasUnits * TERRAIN_DEPTH_CLIP_SLACK * tileSize * projScaleZ));
+        glUniform1f(shaderProgram.uniforms[U_DEPTHBIASCLIP], static_cast<float>(clipUnits * TERRAIN_DEPTH_CLIP_SLACK * tileSize * projScaleZ));
 
         TerrainTexture terrainTexture;
         bool valid = _terrainTextureProvider && _terrainTextureProvider(tileId, terrainTexture);

@@ -40,6 +40,7 @@ namespace carto::vt {
         U_SDFSCALE,
         U_DERIVSCALE,
         U_DEPTHBIAS,
+        U_DEPTHBIASCLIP,
         U_ELEVATIONTEXTURE,
         U_ELEVATIONUV,
         U_ELEVATIONDECODE,
@@ -87,6 +88,7 @@ namespace carto::vt {
         { "uSDFScale",         U_SDFSCALE },
         { "uDerivScale",       U_DERIVSCALE },
         { "uDepthBias",        U_DEPTHBIAS },
+        { "uDepthBiasClip",    U_DEPTHBIASCLIP },
         { "uElevationTexture", U_ELEVATIONTEXTURE },
         { "uElevationUV",      U_ELEVATIONUV },
         { "uElevationDecode",  U_ELEVATIONDECODE },
@@ -176,9 +178,13 @@ namespace carto::vt {
         #define highp_opt mediump
         #endif
         #ifdef TERRAIN_DEPTH_BIAS
-        uniform float uDepthBias;
+        uniform float uDepthBias;     // NDC-constant component (scaled by w)
+        uniform float uDepthBiasClip; // clip-constant component: in eye units the slack
+                                      // grows with distance, tracking the growth of the
+                                      // piecewise-linear interpolation error between the
+                                      // surface and geometry meshes (tangram depth_shift)
         vec4 applyDepthBias(vec4 clipPos) {
-            return vec4(clipPos.xy, clipPos.z - uDepthBias * clipPos.w, clipPos.w);
+            return vec4(clipPos.xy, clipPos.z - (uDepthBias * clipPos.w + uDepthBiasClip), clipPos.w);
         }
         #else
         vec4 applyDepthBias(vec4 clipPos) {

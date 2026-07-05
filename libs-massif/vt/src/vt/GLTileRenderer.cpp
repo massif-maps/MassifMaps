@@ -385,16 +385,12 @@ namespace carto::vt {
             glEnable(GL_BLEND);
             glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
             glBlendEquation(GL_FUNC_ADD);
-            // Terrain self-occlusion (ridges hiding draped content behind them) is only
-            // possible at oblique views. Near top-down views nothing can be occluded, but
-            // the depth buffer precision is extreme there (near ~ far), so the small
-            // depth deviations between the terrain surface mesh and draped geometry
-            // meshes (different piecewise-linear approximations of the same height
-            // field) would exceed any usable bias and tear draped content on slopes.
-            // So the terrain depth test is only enabled at oblique tilts, where it is
-            // both needed and covered by the depth biases (depth precision at range is
-            // orders of magnitude looser there).
-            if (_terrainMode && _viewState.tilt < TERRAIN_OCCLUSION_TILT_THRESHOLD) {
+            // In terrain mode draped 2D content is depth-tested against the depth-write
+            // surfaces so that terrain ridges occlude content behind them. The mesh
+            // deviations between the surface and geometry meshes are covered by the
+            // two-component depth bias (see setupTerrainUniforms), which stays valid at
+            // all tilts and zooms - no tilt gating needed.
+            if (_terrainMode) {
                 glEnable(GL_DEPTH_TEST);
             } else {
                 glDisable(GL_DEPTH_TEST);
@@ -1383,12 +1379,8 @@ namespace carto::vt {
                 glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
                 glStencilMask(0);
                 glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-                // Restore the tilt-gated terrain depth test (see renderGeometry): near
-                // top-down views the depth test MUST stay off - depth precision there is
-                // extreme (near ~ far) and the piecewise-linear height deviations between
-                // the surface meshes (which write depth) and draped geometry meshes exceed
-                // any usable bias, tearing draped content all over rugged terrain.
-                if (_terrainMode && _viewState.tilt < TERRAIN_OCCLUSION_TILT_THRESHOLD) {
+                // Restore the terrain depth test disabled for the mask stamping above
+                if (_terrainMode) {
                     glEnable(GL_DEPTH_TEST);
                 }
             }
@@ -1765,6 +1757,21 @@ namespace carto::vt {
         // transforms taking vertex xy coordinates (in the axis-aligned frame defined by
         // vertexFrameMatrix - a tile matrix or the tile surface origin translation) to
         // elevation texture uv coordinates and to the mercator latitude argument.
+        // Distance-proportional depth slack (tangram's 'depth_shift'): on top of the
+        // w-scaled (constant-NDC) per-layer delta, each bias unit also gets a CONSTANT
+        // clip-space shift. In eye units a clip-constant shift grows linearly with
+        // distance, which matches how the piecewise-linear interpolation error between
+        // the depth-writing surface meshes and draped geometry meshes grows with the
+        // mesh cell size (coarser tiles at range / lower zooms) - a pure constant-NDC
+        // delta becomes vanishingly small relative to that error when zoomed out and
+        // the depth test tears draped content on rugged terrain. Scaled by the tile
+        // size (mesh cells scale with it) and the projection depth coefficient |m22|
+        // (which grows as the near-far range compresses, e.g. near top-down views).
+        float biasUnits = _terrainDrawDepthBias / TERRAIN_LAYER_DEPTH_DELTA;
+        double tileSize = std::abs(_transformer->calculateTileMatrix(tileId, 1.0f)(0, 0));
+        double projScaleZ = std::abs(_viewState.projectionMatrix(2, 2));
+        glUniform1f(shaderProgram.uniforms[U_DEPTHBIASCLIP], static_cast<float>(biasUnits * TERRAIN_DEPTH_CLIP_SLACK * tileSize * projScaleZ));
+
         TerrainTexture terrainTexture;
         bool valid = _terrainTextureProvider && _terrainTextureProvider(tileId, terrainTexture);
         if (!valid || terrainTexture.textureId == 0 || terrainTexture.internalSize(0) <= 0 || terrainTexture.internalSize(1) <= 0) {

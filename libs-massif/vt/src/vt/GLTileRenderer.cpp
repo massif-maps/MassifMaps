@@ -83,6 +83,12 @@ namespace carto::vt {
         updateTerrainSkirts();
     }
 
+    void GLTileRenderer::setDebugWireframe(bool enabled) {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        _debugWireframe = enabled;
+    }
+
     void GLTileRenderer::setLabelElevationProvider(std::function<double(const cglib::vec3<double>&)> provider, unsigned int version) {
         std::lock_guard<std::mutex> lock(_mutex);
 
@@ -408,6 +414,20 @@ namespace carto::vt {
 
             // 2D geometry pass
             renderGeometry2D(*_visibleRenderTiles, stencilBits);
+
+            // Debug: overlay the FINAL stencil buffer contents (stencil-tested fullscreen
+            // quads, one distinct color per allocated stencil value, black = unowned 0)
+            // and the displaced tile surface meshes as red wireframes
+            if (_debugWireframe) {
+                glDisable(GL_DEPTH_TEST);
+                renderStencilDebugOverlay();
+                glDisable(GL_STENCIL_TEST);
+                for (const RenderTile& renderTile : *_visibleRenderTiles) {
+                    if (renderTile.visible) {
+                        renderTileWireframe(renderTile.targetTileId);
+                    }
+                }
+            }
 
             // Restore GL state
             glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
@@ -1357,10 +1377,18 @@ namespace carto::vt {
                     glStencilFunc(GL_ALWAYS, it->second, 255);
                     renderTileMask(it->first);
                 }
+                if (_debugWireframe) {
+                    _debugOrderedTileMasks = orderedTileMasks; // for the debug overlay pass
+                }
                 glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
                 glStencilMask(0);
                 glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-                if (_terrainMode) {
+                // Restore the tilt-gated terrain depth test (see renderGeometry): near
+                // top-down views the depth test MUST stay off - depth precision there is
+                // extreme (near ~ far) and the piecewise-linear height deviations between
+                // the surface meshes (which write depth) and draped geometry meshes exceed
+                // any usable bias, tearing draped content all over rugged terrain.
+                if (_terrainMode && _viewState.tilt < TERRAIN_OCCLUSION_TILT_THRESHOLD) {
                     glEnable(GL_DEPTH_TEST);
                 }
             }
@@ -1808,6 +1836,109 @@ namespace carto::vt {
         }
     }
     
+    void GLTileRenderer::renderStencilDebugOverlay() {
+        // Debug view: what the stencil buffer ACTUALLY contains at the end of the 2D pass.
+        // Each allocated stencil value is shown as a distinct translucent color via a
+        // stencil-tested fullscreen quad; value 0 (pixels owned by no tile mask) = black.
+        if (_debugOrderedTileMasks.empty()) {
+            return;
+        }
+
+        glEnable(GL_STENCIL_TEST);
+        glStencilMask(0);
+        glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+
+        const ShaderProgram& shaderProgram = buildShaderProgram("tilemask", backgroundVsh, backgroundFsh, LightingMode::NONE, RasterFilterMode::NONE, 0);
+        glUseProgram(shaderProgram.program);
+
+        if (_screenQuad.vbo == 0) {
+            createCompiledQuad(_screenQuad);
+        }
+        glBindBuffer(GL_ARRAY_BUFFER, _screenQuad.vbo);
+        glVertexAttribPointer(shaderProgram.attribs[A_VERTEXPOSITION], 2, GL_FLOAT, GL_FALSE, 0, 0);
+        glEnableVertexAttribArray(shaderProgram.attribs[A_VERTEXPOSITION]);
+
+        cglib::mat4x4<float> mvpMatrix = cglib::mat4x4<float>::identity();
+        glUniformMatrix4fv(shaderProgram.uniforms[U_MVPMATRIX], 1, GL_FALSE, mvpMatrix.data());
+        glUniform1f(shaderProgram.uniforms[U_OPACITY], 0.45f);
+
+        // Unowned pixels first (black), then one color per allocated value
+        glStencilFunc(GL_EQUAL, 0, 255);
+        Color black(0.0f, 0.0f, 0.0f, 1.0f);
+        glUniform4fv(shaderProgram.uniforms[U_COLOR], 1, black.rgba().data());
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+        for (const std::pair<TileId, GLint>& tileMask : _debugOrderedTileMasks) {
+            int v = tileMask.second;
+            glStencilFunc(GL_EQUAL, v, 255);
+            Color color(((v * 97) % 256) / 255.0f, ((v * 57 + 128) % 256) / 255.0f, ((v * 173 + 64) % 256) / 255.0f, 1.0f);
+            glUniform4fv(shaderProgram.uniforms[U_COLOR], 1, color.rgba().data());
+            glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+        }
+
+        glDisableVertexAttribArray(shaderProgram.attribs[A_VERTEXPOSITION]);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glStencilFunc(GL_ALWAYS, 0, 255);
+
+        checkGLError();
+    }
+
+    void GLTileRenderer::renderTileWireframe(const TileId& tileId) {
+        // Debug view: the tile surface triangle mesh as red edges, displaced exactly like
+        // the rendered surfaces (same vertex buffers + terrain uniforms as the mask/background).
+        for (const std::shared_ptr<TileSurface>& tileSurface : buildCompiledTileSurfaces(tileId)) {
+            const TileSurface::VertexGeometryLayoutParameters& vertexGeomLayoutParams = tileSurface->getVertexGeometryLayoutParameters();
+            CompiledSurface& compiledTileSurface = _compiledTileSurfaceMap[tileSurface];
+
+            if (compiledTileSurface.wireframeIndicesVBO == 0) {
+                const VertexArray<std::uint16_t>& indices = tileSurface->getIndices();
+                std::vector<std::uint16_t> lineIndices;
+                lineIndices.reserve(indices.size() * 2);
+                for (std::size_t i = 0; i + 2 < indices.size(); i += 3) {
+                    lineIndices.push_back(indices[i + 0]); lineIndices.push_back(indices[i + 1]);
+                    lineIndices.push_back(indices[i + 1]); lineIndices.push_back(indices[i + 2]);
+                    lineIndices.push_back(indices[i + 2]); lineIndices.push_back(indices[i + 0]);
+                }
+                glGenBuffers(1, &compiledTileSurface.wireframeIndicesVBO);
+                glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, compiledTileSurface.wireframeIndicesVBO);
+                glBufferData(GL_ELEMENT_ARRAY_BUFFER, lineIndices.size() * sizeof(std::uint16_t), lineIndices.data(), GL_STATIC_DRAW);
+                compiledTileSurface.wireframeIndicesCount = static_cast<GLsizei>(lineIndices.size());
+            }
+            if (compiledTileSurface.wireframeIndicesCount == 0) {
+                continue;
+            }
+
+            unsigned int terrainFlag = (_terrainMode && _terrainTextureProvider ? TERRAIN_VTF_FLAG : 0);
+            const ShaderProgram& shaderProgram = buildShaderProgram("tilemask", backgroundVsh, backgroundFsh, LightingMode::NONE, RasterFilterMode::NONE, terrainFlag);
+            glUseProgram(shaderProgram.program);
+            if (terrainFlag != 0) {
+                setupTerrainUniforms(shaderProgram, tileId, cglib::translate4_matrix(_tileSurfaceBuilderOrigin));
+            }
+
+            glBindBuffer(GL_ARRAY_BUFFER, compiledTileSurface.vertexGeometryVBO);
+            glVertexAttribPointer(shaderProgram.attribs[A_VERTEXPOSITION], 3, GL_FLOAT, GL_FALSE, vertexGeomLayoutParams.vertexSize, bufferGLOffset(vertexGeomLayoutParams.coordOffset));
+            glEnableVertexAttribArray(shaderProgram.attribs[A_VERTEXPOSITION]);
+
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, compiledTileSurface.wireframeIndicesVBO);
+
+            cglib::mat4x4<float> mvpMatrix = cglib::mat4x4<float>::convert(_cameraProjMatrix * cglib::translate4_matrix(_tileSurfaceBuilderOrigin));
+            glUniformMatrix4fv(shaderProgram.uniforms[U_MVPMATRIX], 1, GL_FALSE, mvpMatrix.data());
+
+            Color color(1.0f, 0.0f, 0.0f, 1.0f);
+            glUniform4fv(shaderProgram.uniforms[U_COLOR], 1, color.rgba().data());
+            glUniform1f(shaderProgram.uniforms[U_OPACITY], 1.0f);
+
+            glDrawElements(GL_LINES, compiledTileSurface.wireframeIndicesCount, GL_UNSIGNED_SHORT, 0);
+
+            glDisableVertexAttribArray(shaderProgram.attribs[A_VERTEXPOSITION]);
+
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+            glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+            checkGLError();
+        }
+    }
+
     void GLTileRenderer::renderTileBackground(const TileId& tileId, float blend, float opacity, float tileSize, const std::shared_ptr<TileBackground>& background) {
         if (blend * opacity <= 0) {
             return;
@@ -2713,6 +2844,11 @@ namespace carto::vt {
         if (compiledSurface.indicesVBO != 0) {
             glDeleteBuffers(1, &compiledSurface.indicesVBO);
             compiledSurface.indicesVBO = 0;
+        }
+        if (compiledSurface.wireframeIndicesVBO != 0) {
+            glDeleteBuffers(1, &compiledSurface.wireframeIndicesVBO);
+            compiledSurface.wireframeIndicesVBO = 0;
+            compiledSurface.wireframeIndicesCount = 0;
         }
     }
 

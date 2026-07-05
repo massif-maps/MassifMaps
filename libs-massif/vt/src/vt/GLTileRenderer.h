@@ -100,6 +100,7 @@ namespace carto::vt {
         void setTerrainMode(bool enabled, float depthBias);
         void setTerrainDepthWrite(bool enabled);
         void setTerrainTextureProvider(TerrainTextureProvider provider);
+        void setDebugWireframe(bool enabled);
         void setLabelElevationProvider(std::function<double(const cglib::vec3<double>&)> provider, unsigned int version);
         void setLabelOcclusionTest(std::function<bool(const cglib::vec3<double>&)> occlusionTest);
         void setLayerBlendingSpeed(float speed);
@@ -186,8 +187,10 @@ namespace carto::vt {
         struct CompiledSurface {
             GLuint vertexGeometryVBO;
             GLuint indicesVBO;
+            GLuint wireframeIndicesVBO;
+            GLsizei wireframeIndicesCount;
 
-            CompiledSurface() : vertexGeometryVBO(0), indicesVBO(0) { }
+            CompiledSurface() : vertexGeometryVBO(0), indicesVBO(0), wireframeIndicesVBO(0), wireframeIndicesCount(0) { }
         };
 
         struct CompiledGeometry {
@@ -264,6 +267,8 @@ namespace carto::vt {
         void updateTerrainSkirts();
         bool setupTerrainUniforms(const ShaderProgram& shaderProgram, const TileId& tileId, const cglib::mat4x4<double>& vertexFrameMatrix);
         void renderTileMask(const TileId& tileId);
+        void renderStencilDebugOverlay();
+        void renderTileWireframe(const TileId& tileId);
         void renderTileBackground(const TileId& tileId, float blend, float opacity, float tileSize, const std::shared_ptr<TileBackground>& background);
         void renderTileBitmap(const TileId& sourceTileId, const TileId& targetTileId, float blend, float opacity, const std::shared_ptr<TileBitmap>& bitmap);
         void renderTileGeometry(const TileId& sourceTileId, const TileId& targetTileId, float blend, float opacity, float tileSize, const std::shared_ptr<TileGeometry>& geometry);
@@ -314,6 +319,8 @@ namespace carto::vt {
         float _terrainDepthBias = 0.0f;
         float _terrainDrawDepthBias = 0.0f; // per-draw bias while rendering 2D layers (GPU draping mode)
         bool _terrainSkirtsEnabled = false;
+        bool _debugWireframe = false;
+        std::vector<std::pair<TileId, GLint>> _debugOrderedTileMasks;
         TerrainTextureProvider _terrainTextureProvider;
         std::function<double(const cglib::vec3<double>&)> _labelElevationProvider;
         unsigned int _labelElevationVersion = 0;

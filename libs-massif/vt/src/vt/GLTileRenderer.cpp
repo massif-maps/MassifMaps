@@ -1778,7 +1778,14 @@ namespace carto::vt {
         float clipUnits = (_terrainDrawDepthBias - _terrainDepthBias) / TERRAIN_LAYER_DEPTH_DELTA;
         double tileSize = std::abs(_transformer->calculateTileMatrix(tileId, 1.0f)(0, 0));
         double projScaleZ = std::abs(_viewState.projectionMatrix(2, 2));
-        glUniform1f(shaderProgram.uniforms[U_DEPTHBIASCLIP], static_cast<float>(clipUnits * TERRAIN_DEPTH_CLIP_SLACK * tileSize * projScaleZ));
+        // The mesh interpolation error is curvature limited and scales ~QUADRATICALLY
+        // with the cell size, not linearly: a linear-in-tile-size slack calibrated for
+        // low zooms overshoots several-fold at high zooms, and all the excess turns
+        // into far-slope content bleeding over ridge crests and grazing faces (the
+        // slack band is exactly the depth range that ignores occlusion). Anchor the
+        // quadratic law at zoom 11 tiles (TERRAIN_DEPTH_CLIP_REF_TILE_SIZE).
+        double slackScale = tileSize * std::min(4.0, tileSize / TERRAIN_DEPTH_CLIP_REF_TILE_SIZE);
+        glUniform1f(shaderProgram.uniforms[U_DEPTHBIASCLIP], static_cast<float>(clipUnits * TERRAIN_DEPTH_CLIP_SLACK * slackScale * projScaleZ));
 
         TerrainTexture terrainTexture;
         bool valid = _terrainTextureProvider && _terrainTextureProvider(tileId, terrainTexture);
@@ -1886,7 +1893,17 @@ namespace carto::vt {
         for (const std::pair<TileId, GLint>& tileMask : _debugOrderedTileMasks) {
             int v = tileMask.second;
             glStencilFunc(GL_EQUAL, v, 255);
-            Color color(((v * 97) % 256) / 255.0f, ((v * 57 + 128) % 256) / 255.0f, ((v * 173 + 64) % 256) / 255.0f, 1.0f);
+            // Color keyed by TILE ZOOM: z10-=grey, z11=red, z12=orange, z13=yellow,
+            // z14=green, z15=cyan, z16+=magenta
+            Color color(0.5f, 0.5f, 0.5f, 1.0f);
+            switch (tileMask.first.zoom) {
+            case 11: color = Color(1.0f, 0.0f, 0.0f, 1.0f); break;
+            case 12: color = Color(1.0f, 0.5f, 0.0f, 1.0f); break;
+            case 13: color = Color(1.0f, 1.0f, 0.0f, 1.0f); break;
+            case 14: color = Color(0.0f, 1.0f, 0.0f, 1.0f); break;
+            case 15: color = Color(0.0f, 1.0f, 1.0f, 1.0f); break;
+            default: if (tileMask.first.zoom >= 16) color = Color(1.0f, 0.0f, 1.0f, 1.0f); break;
+            }
             glUniform4fv(shaderProgram.uniforms[U_COLOR], 1, color.rgba().data());
             glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
         }

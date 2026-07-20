@@ -102,6 +102,7 @@ namespace carto::vt {
         void setTerrainTextureProvider(TerrainTextureProvider provider);
         void setDebugWireframe(bool enabled);
         void setDebugSurfacePrefill(bool enabled);
+        void setTerrainBackgroundColor(const Color& color);
         void setLabelElevationProvider(std::function<double(const cglib::vec3<double>&)> provider, unsigned int version);
         void setLabelOcclusionTest(std::function<bool(const cglib::vec3<double>&)> occlusionTest);
         void setLayerBlendingSpeed(float speed);
@@ -324,6 +325,7 @@ namespace carto::vt {
         bool _terrainSkirtsEnabled = false;
         bool _debugWireframe = false;
         bool _debugSurfacePrefill = false;
+        Color _terrainBackgroundColor; // opaque terrain base fill + depth pre-pass color; transparent = depth-only
         std::vector<std::pair<TileId, GLint>> _debugOrderedTileMasks;
         TerrainTextureProvider _terrainTextureProvider;
         std::function<double(const cglib::vec3<double>&)> _labelElevationProvider;

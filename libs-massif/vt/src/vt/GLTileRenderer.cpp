@@ -95,6 +95,12 @@ namespace carto::vt {
         _debugSurfacePrefill = enabled;
     }
 
+    void GLTileRenderer::setTerrainBackgroundColor(const Color& color) {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        _terrainBackgroundColor = color;
+    }
+
     void GLTileRenderer::setLabelElevationProvider(std::function<double(const cglib::vec3<double>&)> provider, unsigned int version) {
         std::lock_guard<std::mutex> lock(_mutex);
 
@@ -417,6 +423,35 @@ namespace carto::vt {
             // Debug: opaque pre-fill of all displaced tile surfaces UNDER the style
             // content - any 'see-through' spot that still shows the app background is a
             // terrain mesh rendering gap; one showing this color is unpainted style.
+            // Terrain surface pre-pass of the depth-write layer: renders the tile
+            // surfaces once BEFORE the 2D content, writing depth (kept!) and optionally
+            // an opaque terrain background color. Two purposes:
+            // 1. The terrain base color uses the SAME meshes as the draped content -
+            //    no cross-mesh z-fighting (unlike a separate CPU-mesh background pass).
+            // 2. It is a depth pre-pass: translucent draped surfaces (e.g. hillshade)
+            //    then pass the depth test only at their NEAREST fragment, so the far
+            //    slope of a ridge can no longer blend under the near slope inside one
+            //    draw call (which overlaid both slopes' shading and read as
+            //    'seeing the other side of the mountain' darkening).
+            if (_terrainMode && _terrainDepthWrite && _terrainTextureProvider) {
+                bool colorFill = (_terrainBackgroundColor.value() != 0);
+                glEnable(GL_DEPTH_TEST);
+                glDepthMask(GL_TRUE);
+                glDisable(GL_STENCIL_TEST);
+                if (!colorFill) {
+                    glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+                }
+                for (const RenderTile& renderTile : *_visibleRenderTiles) {
+                    if (renderTile.visible) {
+                        renderTileSurfaceFill(renderTile.targetTileId, _terrainBackgroundColor);
+                    }
+                }
+                if (!colorFill) {
+                    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+                }
+                glDepthMask(GL_FALSE);
+            }
+
             if (_debugSurfacePrefill) {
                 // Depth-resolved within the prefill itself (front faces must win over
                 // back faces exactly like a correct render would); the depth buffer is

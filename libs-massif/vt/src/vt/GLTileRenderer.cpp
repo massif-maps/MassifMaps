@@ -1550,7 +1550,11 @@ namespace carto::vt {
                         // of meters at coarse mesh cells (large white 'tears' on slopes at low
                         // zooms otherwise). Tangram-scale separation (~32 delta units).
                         float proxyBias = (renderLayer->active ? 0.0f : 48.0f * TERRAIN_LAYER_DEPTH_DELTA);
-                        _terrainDrawDepthBias = _terrainDepthBias + (layerOrdinal + 32.0f) * TERRAIN_LAYER_DEPTH_DELTA - proxyBias;
+                        // 12 units: sized against the OWN-layer surface pre-pass depth
+                        // (geometry and surface meshes deviate by the interpolation error
+                        // only); larger values re-admit far-slope content over ridge
+                        // crests in a band proportional to the excess
+                        _terrainDrawDepthBias = _terrainDepthBias + (layerOrdinal + 12.0f) * TERRAIN_LAYER_DEPTH_DELTA - proxyBias;
                     } else {
                         glEnable(GL_POLYGON_OFFSET_FILL);
                         glPolygonOffset(-1.0f, -2.0f);

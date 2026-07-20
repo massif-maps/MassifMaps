@@ -89,6 +89,12 @@ namespace carto::vt {
         _debugWireframe = enabled;
     }
 
+    void GLTileRenderer::setDebugSurfacePrefill(bool enabled) {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        _debugSurfacePrefill = enabled;
+    }
+
     void GLTileRenderer::setLabelElevationProvider(std::function<double(const cglib::vec3<double>&)> provider, unsigned int version) {
         std::lock_guard<std::mutex> lock(_mutex);
 
@@ -406,6 +412,23 @@ namespace carto::vt {
             } else {
                 glEnable(GL_CULL_FACE);
                 glCullFace(GL_BACK);
+            }
+
+            // Debug: opaque pre-fill of all displaced tile surfaces UNDER the style
+            // content - any 'see-through' spot that still shows the app background is a
+            // terrain mesh rendering gap; one showing this color is unpainted style.
+            if (_debugSurfacePrefill) {
+                glDisable(GL_DEPTH_TEST);
+                glDisable(GL_STENCIL_TEST);
+                Color prefillColor(1.0f, 0.0f, 1.0f, 1.0f); // magenta - never in map styles
+                for (const RenderTile& renderTile : *_visibleRenderTiles) {
+                    if (renderTile.visible) {
+                        renderTileSurfaceFill(renderTile.targetTileId, prefillColor);
+                    }
+                }
+                if (_terrainMode) {
+                    glEnable(GL_DEPTH_TEST);
+                }
             }
 
             // 2D geometry pass
@@ -1913,6 +1936,45 @@ namespace carto::vt {
         glStencilFunc(GL_ALWAYS, 0, 255);
 
         checkGLError();
+    }
+
+    void GLTileRenderer::renderTileSurfaceFill(const TileId& tileId, const Color& color) {
+        // Debug view: the displaced tile surface as an opaque solid color. Drawn UNDER the
+        // style content (before the 2D geometry pass), it separates 'seeing through the
+        // terrain mesh' (background/sky color visible) from 'style paints nothing there'
+        // (this fill color visible).
+        for (const std::shared_ptr<TileSurface>& tileSurface : buildCompiledTileSurfaces(tileId)) {
+            const TileSurface::VertexGeometryLayoutParameters& vertexGeomLayoutParams = tileSurface->getVertexGeometryLayoutParameters();
+            const CompiledSurface& compiledTileSurface = _compiledTileSurfaceMap[tileSurface];
+
+            unsigned int terrainFlag = (_terrainMode && _terrainTextureProvider ? TERRAIN_VTF_FLAG : 0);
+            const ShaderProgram& shaderProgram = buildShaderProgram("tilemask", backgroundVsh, backgroundFsh, LightingMode::NONE, RasterFilterMode::NONE, terrainFlag);
+            glUseProgram(shaderProgram.program);
+            if (terrainFlag != 0) {
+                setupTerrainUniforms(shaderProgram, tileId, cglib::translate4_matrix(_tileSurfaceBuilderOrigin));
+            }
+
+            glBindBuffer(GL_ARRAY_BUFFER, compiledTileSurface.vertexGeometryVBO);
+            glVertexAttribPointer(shaderProgram.attribs[A_VERTEXPOSITION], 3, GL_FLOAT, GL_FALSE, vertexGeomLayoutParams.vertexSize, bufferGLOffset(vertexGeomLayoutParams.coordOffset));
+            glEnableVertexAttribArray(shaderProgram.attribs[A_VERTEXPOSITION]);
+
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, compiledTileSurface.indicesVBO);
+
+            cglib::mat4x4<float> mvpMatrix = cglib::mat4x4<float>::convert(_cameraProjMatrix * cglib::translate4_matrix(_tileSurfaceBuilderOrigin));
+            glUniformMatrix4fv(shaderProgram.uniforms[U_MVPMATRIX], 1, GL_FALSE, mvpMatrix.data());
+
+            glUniform4fv(shaderProgram.uniforms[U_COLOR], 1, color.rgba().data());
+            glUniform1f(shaderProgram.uniforms[U_OPACITY], 1.0f);
+
+            glDrawElements(GL_TRIANGLES, tileSurface->getIndicesCount(), GL_UNSIGNED_SHORT, 0);
+
+            glDisableVertexAttribArray(shaderProgram.attribs[A_VERTEXPOSITION]);
+
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+            glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+            checkGLError();
+        }
     }
 
     void GLTileRenderer::renderTileWireframe(const TileId& tileId) {

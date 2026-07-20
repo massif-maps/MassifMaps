@@ -101,6 +101,7 @@ namespace carto::vt {
         void setTerrainDepthWrite(bool enabled);
         void setTerrainTextureProvider(TerrainTextureProvider provider);
         void setDebugWireframe(bool enabled);
+        void setDebugSurfacePrefill(bool enabled);
         void setLabelElevationProvider(std::function<double(const cglib::vec3<double>&)> provider, unsigned int version);
         void setLabelOcclusionTest(std::function<bool(const cglib::vec3<double>&)> occlusionTest);
         void setLayerBlendingSpeed(float speed);
@@ -269,6 +270,7 @@ namespace carto::vt {
         bool setupTerrainUniforms(const ShaderProgram& shaderProgram, const TileId& tileId, const cglib::mat4x4<double>& vertexFrameMatrix);
         void renderTileMask(const TileId& tileId);
         void renderStencilDebugOverlay();
+        void renderTileSurfaceFill(const TileId& tileId, const Color& color);
         void renderTileWireframe(const TileId& tileId);
         void renderTileBackground(const TileId& tileId, float blend, float opacity, float tileSize, const std::shared_ptr<TileBackground>& background);
         void renderTileBitmap(const TileId& sourceTileId, const TileId& targetTileId, float blend, float opacity, const std::shared_ptr<TileBitmap>& bitmap);
@@ -321,6 +323,7 @@ namespace carto::vt {
         float _terrainDrawDepthBias = 0.0f; // per-draw bias while rendering 2D layers (GPU draping mode)
         bool _terrainSkirtsEnabled = false;
         bool _debugWireframe = false;
+        bool _debugSurfacePrefill = false;
         std::vector<std::pair<TileId, GLint>> _debugOrderedTileMasks;
         TerrainTextureProvider _terrainTextureProvider;
         std::function<double(const cglib::vec3<double>&)> _labelElevationProvider;

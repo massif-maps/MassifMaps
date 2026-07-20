@@ -1799,6 +1799,17 @@ namespace carto::vt {
         // ordering keeps only the w-scaled NDC component, which is enough because the
         // layers share the same surface meshes and displacement (deviation ~ 0).
         float clipUnits = (_terrainDrawDepthBias - _terrainDepthBias) / TERRAIN_LAYER_DEPTH_DELTA;
+        // Content of an UPPER tile layer depth-tests against depth written by a DIFFERENT
+        // renderer's surface meshes. Those meshes are identical only while both layers
+        // show the same LOD at a pixel; during loading, or with different source zoom
+        // ranges, the LODs differ and the meshes deviate just like geometry deviates from
+        // surfaces - with no cross-layer slack the upper layer tears along ridge crests
+        // and the lower layer's far slope shows through (grazing bands). One constant
+        // geometry-scale slack step covers this; it deliberately does NOT scale with the
+        // layer count (a per-layer-stride slack lets upper layers reach through ridges).
+        if (_terrainDepthBias > 0.0f) {
+            clipUnits += 48.0f;
+        }
         double tileSize = std::abs(_transformer->calculateTileMatrix(tileId, 1.0f)(0, 0));
         double projScaleZ = std::abs(_viewState.projectionMatrix(2, 2));
         // The mesh interpolation error is curvature limited and scales ~QUADRATICALLY

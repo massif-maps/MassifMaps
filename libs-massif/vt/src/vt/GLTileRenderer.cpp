@@ -423,9 +423,13 @@ namespace carto::vt {
             // Debug: opaque pre-fill of all displaced tile surfaces UNDER the style
             // content - any 'see-through' spot that still shows the app background is a
             // terrain mesh rendering gap; one showing this color is unpainted style.
-            // Terrain surface pre-pass of the depth-write layer: renders the tile
+            // Terrain surface pre-pass, for EVERY terrain tile layer: renders the tile
             // surfaces once BEFORE the 2D content, writing depth (kept!) and optionally
-            // an opaque terrain background color. Two purposes:
+            // an opaque terrain background color. Each layer overwrites the depth with
+            // its OWN meshes, so its content depth-tests against a bit-exact surface and
+            // needs only the small within-layer slack - no cross-layer mesh-mismatch
+            // slack at all (which is what previously let far-slope content of upper
+            // layers through at ridges). Purposes:
             // 1. The terrain base color uses the SAME meshes as the draped content -
             //    no cross-mesh z-fighting (unlike a separate CPU-mesh background pass).
             // 2. It is a depth pre-pass: translucent draped surfaces (e.g. hillshade)
@@ -433,7 +437,7 @@ namespace carto::vt {
             //    slope of a ridge can no longer blend under the near slope inside one
             //    draw call (which overlaid both slopes' shading and read as
             //    'seeing the other side of the mountain' darkening).
-            if (_terrainMode && _terrainDepthWrite && _terrainTextureProvider) {
+            if (_terrainMode && _terrainTextureProvider) {
                 bool colorFill = (_terrainBackgroundColor.value() != 0);
                 glEnable(GL_DEPTH_TEST);
                 glDepthMask(GL_TRUE);
@@ -1857,17 +1861,9 @@ namespace carto::vt {
         // ordering keeps only the w-scaled NDC component, which is enough because the
         // layers share the same surface meshes and displacement (deviation ~ 0).
         float clipUnits = (_terrainDrawDepthBias - _terrainDepthBias) / TERRAIN_LAYER_DEPTH_DELTA;
-        // Content of an UPPER tile layer depth-tests against depth written by a DIFFERENT
-        // renderer's surface meshes. Those meshes are identical only while both layers
-        // show the same LOD at a pixel; during loading, or with different source zoom
-        // ranges, the LODs differ and the meshes deviate just like geometry deviates from
-        // surfaces - with no cross-layer slack the upper layer tears along ridge crests
-        // and the lower layer's far slope shows through (grazing bands). One constant
-        // geometry-scale slack step covers this; it deliberately does NOT scale with the
-        // layer count (a per-layer-stride slack lets upper layers reach through ridges).
-        if (_terrainDepthBias > 0.0f) {
-            clipUnits += 48.0f;
-        }
+        // No cross-layer slack: every terrain tile layer re-writes the depth with its
+        // OWN surface meshes in its pre-pass (see renderGeometry), so content only ever
+        // tests against a bit-exact surface and the within-layer slack suffices.
         double tileSize = std::abs(_transformer->calculateTileMatrix(tileId, 1.0f)(0, 0));
         double projScaleZ = std::abs(_viewState.projectionMatrix(2, 2));
         // The mesh interpolation error is curvature limited and scales ~QUADRATICALLY

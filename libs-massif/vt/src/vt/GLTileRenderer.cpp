@@ -418,16 +418,39 @@ namespace carto::vt {
             // content - any 'see-through' spot that still shows the app background is a
             // terrain mesh rendering gap; one showing this color is unpainted style.
             if (_debugSurfacePrefill) {
-                glDisable(GL_DEPTH_TEST);
+                // Depth-resolved within the prefill itself (front faces must win over
+                // back faces exactly like a correct render would); the depth buffer is
+                // cleared afterwards so the real passes start pristine.
+                glEnable(GL_DEPTH_TEST);
+                glDepthMask(GL_TRUE);
                 glDisable(GL_STENCIL_TEST);
-                Color prefillColor(1.0f, 0.0f, 1.0f, 1.0f); // magenta - never in map styles
+                // Facing-coded: FRONT faces magenta, BACK faces cyan. A 'see-through'
+                // spot later showing cyan means literal back faces are visible
+                // (winding/mesh problem); magenta means the far slope's front faces
+                // painted there (occlusion failure).
+                glEnable(GL_CULL_FACE);
+                glCullFace(GL_BACK); // front faces remain
+                Color frontColor(1.0f, 0.0f, 1.0f, 1.0f); // magenta
                 for (const RenderTile& renderTile : *_visibleRenderTiles) {
                     if (renderTile.visible) {
-                        renderTileSurfaceFill(renderTile.targetTileId, prefillColor);
+                        renderTileSurfaceFill(renderTile.targetTileId, frontColor);
                     }
                 }
+                glCullFace(GL_FRONT); // back faces remain
+                Color backColor(0.0f, 1.0f, 1.0f, 1.0f); // cyan
+                for (const RenderTile& renderTile : *_visibleRenderTiles) {
+                    if (renderTile.visible) {
+                        renderTileSurfaceFill(renderTile.targetTileId, backColor);
+                    }
+                }
+                glCullFace(GL_BACK);
+                glClear(GL_DEPTH_BUFFER_BIT);
+                glDepthMask(GL_FALSE);
                 if (_terrainMode) {
+                    glDisable(GL_CULL_FACE); // terrain mode draws surfaces unculled
                     glEnable(GL_DEPTH_TEST);
+                } else {
+                    glDisable(GL_DEPTH_TEST);
                 }
             }
 

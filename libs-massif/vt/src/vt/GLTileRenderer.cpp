@@ -1501,10 +1501,19 @@ namespace carto::vt {
                         glDepthMask(GL_TRUE);
                     }
                     if (terrainVTF) {
-                        // Retained blend-out (proxy) tiles are pushed back so that live tiles
-                        // always win overlapping pixels during LOD transitions (tangram-style)
-                        float proxyBias = (renderLayer->active ? 0.0f : 48.0f * TERRAIN_LAYER_DEPTH_DELTA);
-                        _terrainDrawDepthBias = _terrainDepthBias + layerOrdinal * TERRAIN_LAYER_DEPTH_DELTA - proxyBias;
+                        // Backgrounds/bitmaps render the SAME surface meshes (same VBOs) the
+                        // pre-pass wrote the depth with - LEQUAL passes at equal depth, so a
+                        // single delta unit of equality slack suffices. Style-layer stacking is
+                        // painter's order (content never writes depth); scaling the bias with
+                        // the style layer ordinal would grow the eye-space tolerance as
+                        // distance^2/near and let far-slope content of upper style layers
+                        // bleed through ridges when the camera flies low (small near plane).
+                        // No proxy (blend-out) push: with the small equality bias any push
+                        // lands the retained content BEHIND its own pre-pass surface and
+                        // depth-kills it wholesale (solid base-fill patches during LOD
+                        // transitions). The stencil mask ordering already gives contested
+                        // pixels to live tiles, which is the protection that matters.
+                        _terrainDrawDepthBias = _terrainDepthBias + 1.0f * TERRAIN_LAYER_DEPTH_DELTA;
                     } else {
                         glEnable(GL_POLYGON_OFFSET_FILL);
                         if (depthWriteSurfaces) {
@@ -1544,17 +1553,15 @@ namespace carto::vt {
                         glDepthMask(GL_FALSE);
                     }
                     if (terrainVTF) {
-                        // Geometry renders with GENEROUS slack above the surfaces: geometry and
-                        // surface meshes are different piecewise-linear approximations of the
-                        // same height field, and between vertices their chords deviate by tens
-                        // of meters at coarse mesh cells (large white 'tears' on slopes at low
-                        // zooms otherwise). Tangram-scale separation (~32 delta units).
-                        float proxyBias = (renderLayer->active ? 0.0f : 48.0f * TERRAIN_LAYER_DEPTH_DELTA);
                         // 12 units: sized against the OWN-layer surface pre-pass depth
                         // (geometry and surface meshes deviate by the interpolation error
                         // only); larger values re-admit far-slope content over ridge
-                        // crests in a band proportional to the excess
-                        _terrainDrawDepthBias = _terrainDepthBias + (layerOrdinal + 12.0f) * TERRAIN_LAYER_DEPTH_DELTA - proxyBias;
+                        // crests in a band proportional to the excess. NOT scaled by the
+                        // style layer ordinal - stacking is painter's order and any extra
+                        // constant-NDC units turn into distance^2/near eye-space tolerance
+                        // (see-through ridges from a low-flying camera). No proxy push -
+                        // see the background bias above.
+                        _terrainDrawDepthBias = _terrainDepthBias + 12.0f * TERRAIN_LAYER_DEPTH_DELTA;
                     } else {
                         glEnable(GL_POLYGON_OFFSET_FILL);
                         glPolygonOffset(-1.0f, -2.0f);

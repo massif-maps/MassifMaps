@@ -420,36 +420,38 @@ namespace carto::vt {
                 glCullFace(GL_BACK);
             }
 
-            // Debug: opaque pre-fill of all displaced tile surfaces UNDER the style
-            // content - any 'see-through' spot that still shows the app background is a
-            // terrain mesh rendering gap; one showing this color is unpainted style.
-            // Terrain surface pre-pass, for EVERY terrain tile layer: renders the tile
-            // surfaces once BEFORE the 2D content, writing depth (kept!) and optionally
-            // an opaque terrain background color. Each layer overwrites the depth with
-            // its OWN meshes, so its content depth-tests against a bit-exact surface and
-            // needs only the small within-layer slack - no cross-layer mesh-mismatch
-            // slack at all (which is what previously let far-slope content of upper
-            // layers through at ridges). Purposes:
-            // 1. The terrain base color uses the SAME meshes as the draped content -
-            //    no cross-mesh z-fighting (unlike a separate CPU-mesh background pass).
-            // 2. It is a depth pre-pass: translucent draped surfaces (e.g. hillshade)
-            //    then pass the depth test only at their NEAREST fragment, so the far
-            //    slope of a ridge can no longer blend under the near slope inside one
-            //    draw call (which overlaid both slopes' shading and read as
-            //    'seeing the other side of the mountain' darkening).
+            // Terrain reference surface pre-pass, for EVERY terrain tile layer
+            // (tangram-style depth model). Each tile layer works in its OWN depth
+            // domain: the depth buffer is cleared, the displaced tile surfaces are
+            // rendered pushed slightly AWAY from the viewer (by the mesh interpolation
+            // error slack), and the 2D content then WRITES its real depth on top.
+            // Occlusion between content is decided by the actual drawn geometry (no
+            // distance-growing slack on content at all - the pushed-back reference
+            // surface only bounds how far behind the terrain unpainted content can
+            // still show). The pre-pass also keeps translucent surfaces (hillshade)
+            // from blending both slopes of a ridge in one draw call, and optionally
+            // paints the terrain background color with the same meshes.
             if (_terrainMode && _terrainTextureProvider) {
                 bool colorFill = (_terrainBackgroundColor.value() != 0);
                 glEnable(GL_DEPTH_TEST);
                 glDepthMask(GL_TRUE);
                 glDisable(GL_STENCIL_TEST);
+                glClear(GL_DEPTH_BUFFER_BIT); // own depth domain per tile layer; cross-layer stacking is painter's order
                 if (!colorFill) {
                     glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
                 }
+                // Reference surface pushed back: constant part clears float rounding,
+                // clip part covers the chord deviation of differently-tesselated
+                // geometry (grows with distance / coarser mesh cells)
+                _terrainDrawDepthBias = _terrainDepthBias - 2.0f * TERRAIN_LAYER_DEPTH_DELTA;
+                _terrainDrawDepthClipUnits = -12.0f;
                 for (const RenderTile& renderTile : *_visibleRenderTiles) {
                     if (renderTile.visible) {
                         renderTileSurfaceFill(renderTile.targetTileId, _terrainBackgroundColor);
                     }
                 }
+                _terrainDrawDepthBias = _terrainDepthBias;
+                _terrainDrawDepthClipUnits = 0.0f;
                 if (!colorFill) {
                     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
                 }
@@ -1376,12 +1378,24 @@ namespace carto::vt {
             glEnable(GL_STENCIL_TEST);
         }
         
+        // In terrain mode, draw the tiles of each style layer NEAR-TO-FAR: content
+        // writes depth (tangram-style), so near tiles occlude far tiles by real
+        // geometry, and translucent content of a far tile can not blend under
+        // already-drawn near content.
+        if (_terrainMode && _terrainTextureProvider) {
+            for (auto it = renderLayerMap.begin(); it != renderLayerMap.end(); it++) {
+                std::sort(it->second.begin(), it->second.end(), [this](const RenderTileLayer* layer1, const RenderTileLayer* layer2) {
+                    cglib::vec3<double> center1 = _transformer->calculateTileBBox(layer1->targetTileId).center();
+                    cglib::vec3<double> center2 = _transformer->calculateTileBBox(layer2->targetTileId).center();
+                    return cglib::length(center1 - _viewState.origin) < cglib::length(center2 - _viewState.origin);
+                });
+            }
+        }
+
         // Render tile layers in correct order
         bool resetStencil = true;
         std::optional<CompOp> currentCompOp;
-        int layerOrdinal = -1;
         for (auto it = renderLayerMap.begin(); it != renderLayerMap.end(); it++) {
-            layerOrdinal++;
             const std::vector<const RenderTileLayer*>& renderLayers = it->second;
             if (renderLayers.empty()) {
                 continue;
@@ -1484,30 +1498,32 @@ namespace carto::vt {
                     glStencilFunc(GL_EQUAL, stencilValue, 255);
                 }
 
-                // The designated terrain depth-write layer (typically the bottom tile layer)
-                // writes the depth of its background/raster surfaces: these ARE the terrain
-                // surface, so the depth source is exactly what is drawn - draped geometry,
-                // other layers and vector elements depth-test against it.
-                // GPU draping mode: every draped vertex gets its height from the shared
-                // elevation textures, so all layers agree on heights exactly; coincident
-                // layers are separated by a small fixed clip-space delta per layer
-                // (tangram-style), with geometry drawn slightly above its own surfaces.
-                // CPU fallback mode: mesh tesselations differ between layers, so surfaces
-                // are separated with slope-scaled polygon offsets instead.
+                // Terrain GPU draping mode (tangram-style depth model): ALL 2D content
+                // writes its real depth. Coplanar content of different style layers
+                // shares the same displaced heights, so LEQUAL + painter's order stacks
+                // it without any per-layer bias; occlusion between tiles/slopes is
+                // decided by the actual drawn geometry. Backgrounds/bitmaps share the
+                // reference surface VBOs and carry no bias at all; retained blend-out
+                // (proxy) tiles are pushed back one delta so live content always wins
+                // their overlaps. CPU fallback mode: mesh tesselations differ between
+                // layers, so surfaces are separated with slope-scaled polygon offsets.
                 bool terrainVTF = _terrainMode && (bool) _terrainTextureProvider;
-                bool depthWriteSurfaces = _terrainMode && _terrainDepthWrite && !layer->getCompOp();
+                bool contentDepthWrite = _terrainMode && !layer->getCompOp() && (terrainVTF || _terrainDepthWrite);
                 if (_terrainMode) {
-                    if (depthWriteSurfaces) {
+                    if (contentDepthWrite) {
                         glDepthMask(GL_TRUE);
                     }
                     if (terrainVTF) {
-                        // Retained blend-out (proxy) tiles are pushed back so that live tiles
-                        // always win overlapping pixels during LOD transitions (tangram-style)
-                        float proxyBias = (renderLayer->active ? 0.0f : 48.0f * TERRAIN_LAYER_DEPTH_DELTA);
-                        _terrainDrawDepthBias = _terrainDepthBias + layerOrdinal * TERRAIN_LAYER_DEPTH_DELTA - proxyBias;
+                        // Backgrounds/bitmaps ARE the terrain occluders: they render the
+                        // reference surface meshes at their real depth (no bias) and
+                        // WRITE it. Retained blend-out (proxy) tiles are pushed back one
+                        // delta so live content always wins their overlaps.
+                        float proxyBias = (renderLayer->active ? 0.0f : 1.0f * TERRAIN_LAYER_DEPTH_DELTA);
+                        _terrainDrawDepthBias = _terrainDepthBias - proxyBias;
+                        _terrainDrawDepthClipUnits = 0.0f;
                     } else {
                         glEnable(GL_POLYGON_OFFSET_FILL);
-                        if (depthWriteSurfaces) {
+                        if (_terrainDepthWrite && !layer->getCompOp()) {
                             // Push the WRITTEN depth slightly back by a small constant only. A
                             // slope-scaled factor here leaks along tall steep mountain faces (the
                             // projected face spans a few pixels with an enormous per-pixel depth
@@ -1540,21 +1556,26 @@ namespace carto::vt {
                 }
 
                 if (_terrainMode) {
-                    if (depthWriteSurfaces) {
+                    // Geometry does NOT write depth: it stacks by painter's order over
+                    // the backgrounds (coplanar same-displacement content needs no
+                    // per-layer bias), so road casings/fills from different style layers
+                    // can not z-fight each other, and vector elements drawn after the
+                    // tile layers stay in front of all tile content.
+                    if (contentDepthWrite) {
                         glDepthMask(GL_FALSE);
                     }
                     if (terrainVTF) {
-                        // Geometry renders with GENEROUS slack above the surfaces: geometry and
-                        // surface meshes are different piecewise-linear approximations of the
-                        // same height field, and between vertices their chords deviate by tens
-                        // of meters at coarse mesh cells (large white 'tears' on slopes at low
-                        // zooms otherwise). Tangram-scale separation (~32 delta units).
-                        float proxyBias = (renderLayer->active ? 0.0f : 48.0f * TERRAIN_LAYER_DEPTH_DELTA);
-                        // 12 units: sized against the OWN-layer surface pre-pass depth
-                        // (geometry and surface meshes deviate by the interpolation error
-                        // only); larger values re-admit far-slope content over ridge
-                        // crests in a band proportional to the excess
-                        _terrainDrawDepthBias = _terrainDepthBias + (layerOrdinal + 12.0f) * TERRAIN_LAYER_DEPTH_DELTA - proxyBias;
+                        // Geometry (roads, lines, polygons) is a different piecewise-linear
+                        // approximation of the height field than the background/surface
+                        // meshes: between vertices its chords deviate by the interpolation
+                        // error, so it renders with a small distance-growing clip slack -
+                        // otherwise it dips below the written background depth and tears
+                        // on slopes. The slack band is the only depth range where far
+                        // content can leak over a ridge - it does not grow with the style
+                        // layer count.
+                        float proxyBias = (renderLayer->active ? 0.0f : 1.0f * TERRAIN_LAYER_DEPTH_DELTA);
+                        _terrainDrawDepthBias = _terrainDepthBias + 1.0f * TERRAIN_LAYER_DEPTH_DELTA - proxyBias;
+                        _terrainDrawDepthClipUnits = 12.0f;
                     } else {
                         glEnable(GL_POLYGON_OFFSET_FILL);
                         glPolygonOffset(-1.0f, -2.0f);
@@ -1572,9 +1593,14 @@ namespace carto::vt {
                     }
                 }
 
-                if (_terrainMode && !terrainVTF) {
-                    glDisable(GL_POLYGON_OFFSET_FILL);
-                    glPolygonOffset(0.0f, 0.0f);
+                if (_terrainMode) {
+                    if (contentDepthWrite) {
+                        glDepthMask(GL_FALSE);
+                    }
+                    if (!terrainVTF) {
+                        glDisable(GL_POLYGON_OFFSET_FILL);
+                        glPolygonOffset(0.0f, 0.0f);
+                    }
                 }
             }
 
@@ -1846,28 +1872,20 @@ namespace carto::vt {
         // transforms taking vertex xy coordinates (in the axis-aligned frame defined by
         // vertexFrameMatrix - a tile matrix or the tile surface origin translation) to
         // elevation texture uv coordinates and to the mercator latitude argument.
-        // Distance-proportional depth slack (tangram's 'depth_shift'): on top of the
-        // w-scaled (constant-NDC) per-layer delta, each bias unit also gets a CONSTANT
-        // clip-space shift. In eye units a clip-constant shift grows linearly with
-        // distance, which matches how the piecewise-linear interpolation error between
-        // the depth-writing surface meshes and draped geometry meshes grows with the
-        // mesh cell size (coarser tiles at range / lower zooms) - a pure constant-NDC
-        // delta becomes vanishingly small relative to that error when zoomed out and
-        // the depth test tears draped content on rugged terrain. Scaled by the tile
-        // size (mesh cells scale with it) and the projection depth coefficient |m22|
-        // (which grows as the near-far range compresses, e.g. near top-down views).
-        // Only the WITHIN-LAYER bias units (layer ordinal / geometry step / proxy push)
-        // scale the clip-constant slack: mesh deviations are bounded by the cell
-        // interpolation error regardless of how many tile layers are stacked, and
-        // multiplying the cross-layer stride (128 units per tile layer) into the slack
-        // would let an upper layer (e.g. a hillshade raster) reach through ridges and
-        // paint far-slope content over near cliff faces at grazing views. Cross-layer
-        // ordering keeps only the w-scaled NDC component, which is enough because the
-        // layers share the same surface meshes and displacement (deviation ~ 0).
-        float clipUnits = (_terrainDrawDepthBias - _terrainDepthBias) / TERRAIN_LAYER_DEPTH_DELTA;
-        // No cross-layer slack: every terrain tile layer re-writes the depth with its
-        // OWN surface meshes in its pre-pass (see renderGeometry), so content only ever
-        // tests against a bit-exact surface and the within-layer slack suffices.
+        // Distance-proportional depth slack (tangram's 'depth_shift'): independent of
+        // the w-scaled (constant-NDC) bias, a draw can carry a CONSTANT clip-space
+        // shift. In eye units a clip-constant shift grows linearly with distance,
+        // which matches how the piecewise-linear interpolation error between the
+        // reference surface meshes and draped geometry meshes grows with the mesh
+        // cell size (coarser tiles at range / lower zooms) - a pure constant-NDC
+        // delta becomes vanishingly small relative to that error when zoomed out.
+        // Scaled by the tile size (mesh cells scale with it) and the projection depth
+        // coefficient |m22| (which grows as the near-far range compresses).
+        // NEGATIVE units push the draw AWAY from the viewer: the surface pre-pass is
+        // pushed back by the interpolation-error slack so that draped geometry passes
+        // over it at its REAL depth - content itself carries no distance-growing
+        // slack, which is what previously let far-slope content through at ridges.
+        float clipUnits = _terrainDrawDepthClipUnits;
         double tileSize = std::abs(_transformer->calculateTileMatrix(tileId, 1.0f)(0, 0));
         double projScaleZ = std::abs(_viewState.projectionMatrix(2, 2));
         // The mesh interpolation error is curvature limited and scales ~QUADRATICALLY
@@ -2012,18 +2030,19 @@ namespace carto::vt {
     }
 
     void GLTileRenderer::renderTileSurfaceFill(const TileId& tileId, const Color& color) {
-        // Debug view: the displaced tile surface as an opaque solid color. Drawn UNDER the
-        // style content (before the 2D geometry pass), it separates 'seeing through the
-        // terrain mesh' (background/sky color visible) from 'style paints nothing there'
-        // (this fill color visible).
+        // The displaced tile surface as a solid color (or depth-only when transparent).
+        // Drawn UNDER the style content with the per-draw depth bias applied - the
+        // terrain pre-pass renders it pushed slightly back so content passes over it
+        // at its real depth.
         for (const std::shared_ptr<TileSurface>& tileSurface : buildCompiledTileSurfaces(tileId)) {
             const TileSurface::VertexGeometryLayoutParameters& vertexGeomLayoutParams = tileSurface->getVertexGeometryLayoutParameters();
             const CompiledSurface& compiledTileSurface = _compiledTileSurfaceMap[tileSurface];
 
-            unsigned int terrainFlag = (_terrainMode && _terrainTextureProvider ? TERRAIN_VTF_FLAG : 0);
-            const ShaderProgram& shaderProgram = buildShaderProgram("tilemask", backgroundVsh, backgroundFsh, LightingMode::NONE, RasterFilterMode::NONE, terrainFlag);
+            unsigned int terrainFlag = (_terrainMode && _terrainTextureProvider ? TERRAIN_FLAG | TERRAIN_VTF_FLAG : 0);
+            const ShaderProgram& shaderProgram = buildShaderProgram("tilesurfacefill", backgroundVsh, backgroundFsh, LightingMode::NONE, RasterFilterMode::NONE, terrainFlag);
             glUseProgram(shaderProgram.program);
             if (terrainFlag != 0) {
+                glUniform1f(shaderProgram.uniforms[U_DEPTHBIAS], _terrainDrawDepthBias);
                 setupTerrainUniforms(shaderProgram, tileId, cglib::translate4_matrix(_tileSurfaceBuilderOrigin));
             }
 

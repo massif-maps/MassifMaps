@@ -616,6 +616,11 @@ namespace carto::vt {
         #else
             lowp vec4 color = vColor;
         #endif
+        #ifdef TERRAIN
+            // depth-writing terrain content: fully transparent fragments (sprite/dash
+            // quad corners) must not write depth or they block later style layers
+            if (color.a < 0.004) discard;
+        #endif
         #ifdef LIGHTING_FSH
             gl_FragColor = applyLighting(color, normalize(vNormal));
         #else
@@ -709,6 +714,11 @@ namespace carto::vt {
         #else
             lowp vec4 color = vColor * a;
         #endif
+        #ifdef TERRAIN
+            // depth-writing terrain content: fully transparent fragments (AA aprons,
+            // dash gaps) must not write depth or they block later style layers
+            if (color.a < 0.004) discard;
+        #endif
         #ifdef LIGHTING_FSH
             gl_FragColor = applyLighting(color, normalize(vNormal));
         #else
@@ -777,6 +787,11 @@ namespace carto::vt {
             lowp vec4 color = texture2D(uPattern, vUV) * vColor;
         #else
             lowp vec4 color = vColor;
+        #endif
+        #ifdef TERRAIN
+            // depth-writing terrain content: fully transparent fragments (pattern
+            // gaps) must not write depth or they block later style layers
+            if (color.a < 0.004) discard;
         #endif
         #ifdef LIGHTING_FSH
             gl_FragColor = applyLighting(color, normalize(vNormal));

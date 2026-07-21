@@ -322,7 +322,8 @@ namespace carto::vt {
         bool _terrainMode = false;
         bool _terrainDepthWrite = false;
         float _terrainDepthBias = 0.0f;
-        float _terrainDrawDepthBias = 0.0f; // per-draw bias while rendering 2D layers (GPU draping mode)
+        float _terrainDrawDepthBias = 0.0f;      // per-draw NDC (w-scaled) depth bias while rendering 2D layers (GPU draping mode)
+        float _terrainDrawDepthClipUnits = 0.0f; // per-draw clip-constant slack units (distance-growing; see setupTerrainUniforms)
         bool _terrainSkirtsEnabled = false;
         bool _debugWireframe = false;
         bool _debugSurfacePrefill = false;

@@ -1,6 +1,7 @@
 #include "Label.h"
 
 #include <algorithm>
+#include <cmath>
 #include <map>
 
 namespace carto::vt {
@@ -90,6 +91,30 @@ namespace carto::vt {
         }
     }
 
+    void Label::updateElevation(const std::function<double(const cglib::vec3<double>&)>& heightFunc) {
+        // Refresh anchor heights from the elevation data. Label geometry is built when the
+        // tile is decoded, possibly before its elevation data has arrived - this re-anchors
+        // the labels onto the terrain when the elevation version changes. Line placements
+        // keep their edge geometry (relative to the position), so the whole label shifts
+        // vertically - within the resolution of the elevation data.
+        for (TilePoint& tilePoint : _tilePoints) {
+            tilePoint.position(2) = heightFunc(tilePoint.position);
+        }
+        for (TileLine& tileLine : _tileLines) {
+            for (cglib::vec3<double>& vertex : tileLine.vertices) {
+                vertex(2) = heightFunc(vertex);
+            }
+        }
+        if (_placement) {
+            auto placement = std::make_shared<Placement>(*_placement);
+            placement->position(2) = heightFunc(placement->position);
+            _placement = std::move(placement);
+            _cachedFlippedPlacement.reset();
+            _cachedPlacement.reset();
+            _cachedValid = false;
+        }
+    }
+
     bool Label::updatePlacement(const ViewState& viewState) {
         if (_placement) {
             std::array<cglib::vec3<float>, 4> envelope;
@@ -128,9 +153,38 @@ namespace carto::vt {
         return true;
     }
 
+    float Label::calculateTerrainScaleFactor(const Placement& placement, const ViewState& viewState) const {
+        // With planar 3D terrain, labels keep a CONSTANT ON-SCREEN SIZE (tangram-style):
+        // the label world size is derived from the zoom level only, so the perspective
+        // divide would otherwise scale labels by their distance - drastically oversizing
+        // labels lifted onto high mountains and shrinking labels towards the horizon.
+        // Rescale by the ratio of the label view depth to the focus depth (where the view
+        // axis meets the ground plane), which exactly cancels the perspective scaling.
+        if (!viewState.planarTerrain) {
+            return 1.0f;
+        }
+        cglib::vec3<double> viewDir = -cglib::vec3<double>::convert(viewState.orientation[2]);
+        double depth = cglib::dot_product(placement.position - viewState.origin, viewDir);
+        if (!(depth > 0)) {
+            return 1.0f;
+        }
+        double focusDepth = (viewDir(2) < 0 ? viewState.origin(2) / -viewDir(2) : depth);
+        if (!(focusDepth > 0)) {
+            return 1.0f;
+        }
+        float factor = static_cast<float>(depth / focusDepth);
+        // Quantize to ~1% steps: line label vertex data is cached by scale and would
+        // otherwise be rebuilt on every frame while the camera moves
+        factor = std::exp2(std::round(std::log2(factor) * 64.0f) / 64.0f);
+        return std::min(8.0f, std::max(0.05f, factor));
+    }
+
     bool Label::calculateEnvelope(float size, float buffer, const ViewState& viewState, std::array<cglib::vec3<float>, 4>& envelope) const {
         std::shared_ptr<const Placement> placement = getPlacement(viewState);
         float scale = size * viewState.zoomScale * _style->scale;
+        if (placement) {
+            scale *= calculateTerrainScaleFactor(*placement, viewState);
+        }
         if (!placement || scale <= 0) {
             cglib::vec3<float> origin(0, 0, static_cast<float>(-viewState.origin(2)));
             for (int i = 0; i < 4; i++) {
@@ -139,7 +193,7 @@ namespace carto::vt {
             return false;
         }
 
-        float padding = buffer * viewState.zoomScale * _style->scale / std::sqrt(2.0f);
+        float padding = buffer * viewState.zoomScale * _style->scale * calculateTerrainScaleFactor(*placement, viewState) / std::sqrt(2.0f);
         cglib::vec3<float> origin, xAxis, yAxis;
         setupCoordinateSystem(viewState, placement, origin, xAxis, yAxis);
 
@@ -206,6 +260,9 @@ namespace carto::vt {
     bool Label::calculateVertexData(float size, const ViewState& viewState, int styleIndex, int haloStyleIndex, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const {
         std::shared_ptr<const Placement> placement = getPlacement(viewState);
         float scale = size * viewState.zoomScale * _style->scale;
+        if (placement) {
+            scale *= calculateTerrainScaleFactor(*placement, viewState);
+        }
         if (!placement || scale <= 0) {
             return false;
         }
@@ -455,7 +512,25 @@ namespace carto::vt {
     }
 
     void Label::setupCoordinateSystem(const ViewState& viewState, const std::shared_ptr<const Placement>& placement, cglib::vec3<float>& origin, cglib::vec3<float>& xAxis, cglib::vec3<float>& yAxis) const {
-        origin = cglib::vec3<float>::convert(placement->position - viewState.origin);
+        cglib::vec3<double> position = placement->position;
+        if (viewState.planarTerrain && _style->orientation != LabelOrientation::LINE && viewState.resolution > 0) {
+            // Snap the label anchor to a quarter of the (normalized) pixel grid: glyphs then
+            // rasterize at a stable subpixel phase, which keeps text noticeably sharper and
+            // shimmer-free (tangram-style screen-space anchoring)
+            cglib::mat4x4<double> viewProjMatrix = viewState.projectionMatrix * viewState.cameraMatrix;
+            cglib::vec4<double> clipPos = cglib::transform(cglib::vec4<double>(position(0), position(1), position(2), 1), viewProjMatrix);
+            if (clipPos(3) > 0) {
+                double screenWidth = viewState.resolution * viewState.aspect;
+                double screenHeight = viewState.resolution;
+                double pixelX = (clipPos(0) / clipPos(3) * 0.5 + 0.5) * screenWidth;
+                double pixelY = (clipPos(1) / clipPos(3) * 0.5 + 0.5) * screenHeight;
+                double snappedX = std::round(pixelX * 4.0) * 0.25;
+                double snappedY = std::round(pixelY * 4.0) * 0.25;
+                cglib::vec3<double> snappedNDC((snappedX / screenWidth - 0.5) * 2.0, (snappedY / screenHeight - 0.5) * 2.0, clipPos(2) / clipPos(3));
+                position = cglib::transform_point(snappedNDC, cglib::inverse(viewProjMatrix));
+            }
+        }
+        origin = cglib::vec3<float>::convert(position - viewState.origin);
         switch (_style->orientation) {
         case LabelOrientation::BILLBOARD_2D:
             xAxis = cglib::unit(cglib::vector_product(viewState.orientation[1], placement->normal));

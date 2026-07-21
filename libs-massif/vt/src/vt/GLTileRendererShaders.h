@@ -38,14 +38,23 @@ namespace carto::vt {
         U_BITMAP,
         U_TEXTURE,
         U_SDFSCALE,
-        U_DERIVSCALE
+        U_DERIVSCALE,
+        U_DEPTHBIAS,
+        U_DEPTHBIASCLIP,
+        U_ELEVATIONTEXTURE,
+        U_ELEVATIONUV,
+        U_ELEVATIONDECODE,
+        U_ELEVATIONSCALE,
+        U_ELEVATIONTEXELSIZE
     };
 
     enum : unsigned int {
         TRANSFORM_FLAG   = 1,
         OFFSET_FLAG      = 2,
         PATTERN_FLAG     = 4,
-        DERIVATIVES_FLAG = 8
+        DERIVATIVES_FLAG = 8,
+        TERRAIN_FLAG     = 16,
+        TERRAIN_VTF_FLAG = 32
     };
 
     static const std::map<std::string, int> attribMap = {
@@ -78,14 +87,23 @@ namespace carto::vt {
         { "uColor",            U_COLOR },
         { "uOpacity",          U_OPACITY },
         { "uSDFScale",         U_SDFSCALE },
-        { "uDerivScale",       U_DERIVSCALE }
+        { "uDerivScale",       U_DERIVSCALE },
+        { "uDepthBias",        U_DEPTHBIAS },
+        { "uDepthBiasClip",    U_DEPTHBIASCLIP },
+        { "uElevationTexture", U_ELEVATIONTEXTURE },
+        { "uElevationUV",      U_ELEVATIONUV },
+        { "uElevationDecode",  U_ELEVATIONDECODE },
+        { "uElevationScale",   U_ELEVATIONSCALE },
+        { "uElevationTexelSize", U_ELEVATIONTEXELSIZE }
     };
 
     static const std::map<unsigned int, std::string> flagDefineMap = {
         { TRANSFORM_FLAG,   "TRANSFORM" },
         { OFFSET_FLAG,      "OFFSET" },
         { PATTERN_FLAG,     "PATTERN" },
-        { DERIVATIVES_FLAG, "DERIVATIVES" }
+        { DERIVATIVES_FLAG, "DERIVATIVES" },
+        { TERRAIN_FLAG,     "TERRAIN_DEPTH_BIAS" },
+        { TERRAIN_VTF_FLAG, "TERRAIN" }
     };
 
     static const std::string textureFiltersFsh = R"GLSL(
@@ -161,6 +179,72 @@ namespace carto::vt {
         #else
         #define highp_opt mediump
         #endif
+        #ifdef TERRAIN_DEPTH_BIAS
+        uniform float uDepthBias;     // NDC-constant component (scaled by w)
+        uniform float uDepthBiasClip; // clip-constant component: in eye units the slack
+                                      // grows with distance, tracking the growth of the
+                                      // piecewise-linear interpolation error between the
+                                      // surface and geometry meshes (tangram depth_shift)
+        vec4 applyDepthBias(vec4 clipPos) {
+            return vec4(clipPos.xy, clipPos.z - (uDepthBias * clipPos.w + uDepthBiasClip), clipPos.w);
+        }
+        #else
+        vec4 applyDepthBias(vec4 clipPos) {
+            return clipPos;
+        }
+        #endif
+        #ifdef TERRAIN
+        uniform sampler2D uElevationTexture;
+        uniform highp vec4 uElevationUV;     // elevation texture uv = uv.xy + pos.xy * uv.zw
+        uniform vec4 uElevationDecode;       // meters = dot(texture sample, decode)
+        uniform highp vec4 uElevationScale;  // x: meters to vertex z units (equator), y/z: mercator y = y + pos.y * z, w: vertex frame z offset
+        uniform highp vec4 uElevationTexelSize; // xy: texture size in texels, zw: 1 / size
+        // GPU terrain draping: the vertex z is REPLACED with the height sampled from the
+        // elevation texture. Every draped layer samples the same textures, so all layers
+        // agree on heights exactly and no geometric depth tolerances are needed.
+        // The bilinear filter is applied MANUALLY: 4 samples at exact texel centers +
+        // mix. At texel centers NEAREST and LINEAR hardware filtering return the same
+        // texel, so the reconstructed height field is identical on every GPU - several
+        // mobile GPUs filter VERTEX-stage texture fetches as NEAREST regardless of the
+        // requested LINEAR filter, which would make draped geometry deviate from the
+        // depth-writing surface meshes by up to a full texel height step (tens of
+        // meters on cliffs: content pokes through ridges / needs huge depth slack).
+        // The math matches the CPU-side sampling (ElevationTileGrid::sampleHeight
+        // semantics): samples at texel centers, clamped at edges (CLAMP_TO_EDGE plus
+        // the 1-texel neighbour border in the texture). The Mercator latitude scale
+        // (1/cos) is applied per vertex. The w component maps the absolute height into
+        // the vertex frame (tile surface frames are origin-relative and the origin can
+        // have a non-zero z).
+        float sampleElevation(highp vec2 uv) {
+            return dot(texture2D(uElevationTexture, uv), uElevationDecode);
+        }
+        vec3 applyTerrain(vec3 pos) {
+            highp vec2 uv = uElevationUV.xy + pos.xy * uElevationUV.zw;
+            highp vec2 texelPos = uv * uElevationTexelSize.xy - 0.5;
+            highp vec2 texelBase = floor(texelPos);
+            highp vec2 f = texelPos - texelBase;
+            highp vec2 uv00 = (texelBase + 0.5) * uElevationTexelSize.zw;
+            float h00 = sampleElevation(uv00);
+            float h10 = sampleElevation(uv00 + vec2(uElevationTexelSize.z, 0.0));
+            float h01 = sampleElevation(uv00 + vec2(0.0, uElevationTexelSize.w));
+            float h11 = sampleElevation(uv00 + uElevationTexelSize.zw);
+            float meters = mix(mix(h00, h10, f.x), mix(h01, h11, f.x), f.y);
+            highp float my = uElevationScale.y + pos.y * uElevationScale.z;
+            float coshMY = 0.5 * (exp(my) + exp(-my));
+            float z = meters * uElevationScale.x * coshMY + uElevationScale.w;
+            if (pos.z < -900000.0) {
+                // tile skirt bottom vertex: z encodes -1000000 - drop; extrude downwards
+                // from the terrain surface to cover cracks between neighbouring tiles
+                // that sample different elevation levels
+                z += pos.z + 1000000.0;
+            }
+            return vec3(pos.xy, z);
+        }
+        #else
+        vec3 applyTerrain(vec3 pos) {
+            return pos;
+        }
+        #endif
     )GLSL";
 
     static const std::string commonFsh = R"GLSL(
@@ -204,7 +288,7 @@ namespace carto::vt {
         #ifdef LIGHTING_FSH
             vNormal = aVertexNormal;
         #endif
-            gl_Position = uMVPMatrix * vec4(aVertexPosition, 1.0);
+            gl_Position = applyDepthBias(uMVPMatrix * vec4(applyTerrain(aVertexPosition), 1.0));
         }
     )GLSL";
 
@@ -263,7 +347,7 @@ namespace carto::vt {
         #ifdef LIGHTING_FSH
             vNormal = aVertexNormal;
         #endif
-            gl_Position = uMVPMatrix * vec4(aVertexPosition, 1.0);
+            gl_Position = applyDepthBias(uMVPMatrix * vec4(applyTerrain(aVertexPosition), 1.0));
         }
     )GLSL";
 
@@ -316,7 +400,7 @@ namespace carto::vt {
             vNormal = aVertexNormal;
             vBinormal = aVertexBinormal;
         #endif
-            gl_Position = uMVPMatrix * vec4(aVertexPosition, 1.0);
+            gl_Position = applyDepthBias(uMVPMatrix * vec4(applyTerrain(aVertexPosition), 1.0));
         }
     )GLSL";
 
@@ -506,7 +590,7 @@ namespace carto::vt {
         #ifdef LIGHTING_FSH
             vNormal = aVertexNormal;
         #endif
-            gl_Position = uMVPMatrix * vec4(pos + delta, 1.0);
+            gl_Position = applyDepthBias(uMVPMatrix * vec4(applyTerrain(pos) + delta, 1.0));
         }
     )GLSL";
 
@@ -531,6 +615,11 @@ namespace carto::vt {
             }
         #else
             lowp vec4 color = vColor;
+        #endif
+        #ifdef TERRAIN
+            // depth-writing terrain content: fully transparent fragments (sprite/dash
+            // quad corners) must not write depth or they block later style layers
+            if (color.a < 0.004) discard;
         #endif
         #ifdef LIGHTING_FSH
             gl_FragColor = applyLighting(color, normalize(vNormal));
@@ -600,7 +689,8 @@ namespace carto::vt {
         #ifdef LIGHTING_FSH
             vNormal = aVertexNormal;
         #endif
-            gl_Position = uMVPMatrix * vec4(pos + delta, 1.0);
+            // sample the terrain at the extruded position, so wide lines follow the slope
+            gl_Position = applyDepthBias(uMVPMatrix * vec4(applyTerrain(pos + delta), 1.0));
         }
     )GLSL";
 
@@ -623,6 +713,11 @@ namespace carto::vt {
             lowp vec4 color = texture2D(uPattern, vUV) * vColor * a;
         #else
             lowp vec4 color = vColor * a;
+        #endif
+        #ifdef TERRAIN
+            // depth-writing terrain content: fully transparent fragments (AA aprons,
+            // dash gaps) must not write depth or they block later style layers
+            if (color.a < 0.004) discard;
         #endif
         #ifdef LIGHTING_FSH
             gl_FragColor = applyLighting(color, normalize(vNormal));
@@ -673,7 +768,7 @@ namespace carto::vt {
         #ifdef LIGHTING_FSH
             vNormal = aVertexNormal;
         #endif
-            gl_Position = uMVPMatrix * vec4(pos, 1.0);
+            gl_Position = applyDepthBias(uMVPMatrix * vec4(applyTerrain(pos), 1.0));
         }
     )GLSL";
 
@@ -692,6 +787,11 @@ namespace carto::vt {
             lowp vec4 color = texture2D(uPattern, vUV) * vColor;
         #else
             lowp vec4 color = vColor;
+        #endif
+        #ifdef TERRAIN
+            // depth-writing terrain content: fully transparent fragments (pattern
+            // gaps) must not write depth or they block later style layers
+            if (color.a < 0.004) discard;
         #endif
         #ifdef LIGHTING_FSH
             gl_FragColor = applyLighting(color, normalize(vNormal));
@@ -733,7 +833,7 @@ namespace carto::vt {
         #ifdef TRANSFORM
             pos = vec3(uTransformMatrix * vec4(pos, 1.0));
         #endif
-            pos = pos + aVertexNormal * (aVertexHeight * uHeightScale);
+            pos = applyTerrain(pos) + aVertexNormal * (aVertexHeight * uHeightScale);
             vec3 normal = normalize(sideVertex > 0.0 ? aVertexBinormal : aVertexNormal);
             vec4 color = uColorTable[styleIndex];
             vTilePos = (uTileMatrix * vec3(aVertexUV * uUVScale, 1.0)).xy;

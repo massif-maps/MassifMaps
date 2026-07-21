@@ -23,6 +23,7 @@ namespace carto::vt {
         float aspect = 1;
         float resolution = 0;
         float zoomScale = 1;
+        bool planarTerrain = false; // planar mode with 3D terrain: world z of geometry is the terrain height over the z=0 ground plane
         cglib::mat4x4<double> projectionMatrix = cglib::mat4x4<double>::identity();
         cglib::mat4x4<double> cameraMatrix = cglib::mat4x4<double>::identity();
         cglib::vec3<double> origin = cglib::vec3<double>::zero();

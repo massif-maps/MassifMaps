@@ -420,17 +420,15 @@ namespace carto::vt {
                 glCullFace(GL_BACK);
             }
 
-            // Terrain reference surface pre-pass, for EVERY terrain tile layer
-            // (tangram-style depth model). Each tile layer works in its OWN depth
-            // domain: the depth buffer is cleared, the displaced tile surfaces are
-            // rendered pushed slightly AWAY from the viewer (by the mesh interpolation
-            // error slack), and the 2D content then WRITES its real depth on top.
-            // Occlusion between content is decided by the actual drawn geometry (no
-            // distance-growing slack on content at all - the pushed-back reference
-            // surface only bounds how far behind the terrain unpainted content can
-            // still show). The pre-pass also keeps translucent surfaces (hillshade)
-            // from blending both slopes of a ridge in one draw call, and optionally
-            // paints the terrain background color with the same meshes.
+            // Terrain reference surface pre-pass, for EVERY terrain tile layer.
+            // Each tile layer works in its OWN depth domain: the depth buffer is
+            // cleared, the displaced tile surfaces are rendered at their TRUE depth,
+            // and the 2D surface content (backgrounds/bitmaps) then WRITES its real
+            // depth on top. The true-depth surface blocks far-slope fragments exactly:
+            // translucent surfaces (hillshade) can not blend both slopes of a ridge in
+            // one draw call, and draped geometry passes only within its own small
+            // forward slack. It also optionally paints the terrain background color
+            // with the same meshes.
             if (_terrainMode && _terrainTextureProvider) {
                 bool colorFill = (_terrainBackgroundColor.value() != 0);
                 glEnable(GL_DEPTH_TEST);
@@ -440,11 +438,8 @@ namespace carto::vt {
                 if (!colorFill) {
                     glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
                 }
-                // Reference surface pushed back: constant part clears float rounding,
-                // clip part covers the chord deviation of differently-tesselated
-                // geometry (grows with distance / coarser mesh cells)
-                _terrainDrawDepthBias = _terrainDepthBias - 2.0f * TERRAIN_LAYER_DEPTH_DELTA;
-                _terrainDrawDepthClipUnits = -12.0f;
+                _terrainDrawDepthBias = _terrainDepthBias;
+                _terrainDrawDepthClipUnits = 0.0f;
                 for (const RenderTile& renderTile : *_visibleRenderTiles) {
                     if (renderTile.visible) {
                         renderTileSurfaceFill(renderTile.targetTileId, _terrainBackgroundColor);

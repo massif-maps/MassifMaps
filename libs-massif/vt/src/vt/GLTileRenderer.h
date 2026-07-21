@@ -99,6 +99,7 @@ namespace carto::vt {
         
         void setInteractionMode(bool enabled);
         void setTerrainMode(bool enabled, float depthBias);
+        void setTerrainRegularGrid(bool enabled, int resolution);
         void setTerrainSlackScale(float slackScale);
         void setTerrainDepthWrite(bool enabled);
         void setTerrainTextureProvider(TerrainTextureProvider provider);
@@ -284,6 +285,7 @@ namespace carto::vt {
         const CompiledBitmap& buildCompiledTileBitmap(const std::shared_ptr<TileBitmap>& tileBitmap);
         const CompiledGeometry& buildCompiledTileGeometry(const std::shared_ptr<TileGeometry>& tileGeometry);
         const ShaderProgram& buildShaderProgram(const std::string& id, const std::string& vsh, const std::string& fsh, LightingMode lightingMode, RasterFilterMode filterMode, unsigned int flags);
+        const std::vector<std::shared_ptr<TileSurface>>& buildCompiledTerrainGridSurfaces();
         const std::vector<std::shared_ptr<TileSurface>>& buildCompiledTileSurfaces(const TileId& tileId);
 
         void createShaderProgram(ShaderProgram& shaderProgram, const std::string& vsh, const std::string& fsh, const std::set<std::string>& defs, const std::map<std::string, int>& uniformMap, const std::map<std::string, int>& attribMap);
@@ -327,6 +329,9 @@ namespace carto::vt {
         float _terrainDrawDepthBias = 0.0f;      // per-draw NDC (w-scaled) depth bias while rendering 2D layers (GPU draping mode)
         float _terrainDrawDepthClipUnits = 0.0f; // per-draw clip-constant slack units (distance-growing; see setupTerrainUniforms)
         bool _terrainSkirtsEnabled = false;
+        bool _terrainRegularGrid = false;        // shared unit-grid surfaces instead of per-tile tesselated meshes (planar terrain)
+        int _terrainRegularGridResolution = 0;   // resolution of the currently built shared grid
+        std::vector<std::shared_ptr<TileSurface>> _terrainGridSurfaces; // the single shared unit-grid surface, drawn per tile
         bool _debugWireframe = false;
         bool _debugSurfacePrefill = false;
         Color _terrainBackgroundColor; // opaque terrain base fill + depth pre-pass color; transparent = depth-only

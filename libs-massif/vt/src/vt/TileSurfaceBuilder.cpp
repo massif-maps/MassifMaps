@@ -398,6 +398,48 @@ namespace carto::vt {
         tileSurfaces.push_back(std::move(tileSurface));
     }
 
+    std::shared_ptr<TileSurface> TileSurfaceBuilder::buildRegularGridSurface(int resolution) const {
+        // Keep the vertex count within the uint16 index range: (res + 1)^2 <= 65535.
+        int res = std::max(1, std::min(254, resolution));
+
+        VertexArray<cglib::vec3<float>> coords;
+        VertexArray<cglib::vec2<float>> texCoords;
+        VertexArray<cglib::vec3<float>> normals;
+        VertexArray<cglib::vec3<float>> binormals;
+        VertexArray<std::size_t> indices;
+
+        // Flat planar geometry (matches DefaultVertexTransformer): the height is applied on
+        // the GPU from the elevation texture, so the mesh z is 0 and the normal/binormal are
+        // the constant flat-tile frame (calculatePoint(u,v) = (u, 1-v, 0),
+        // calculateNormal = (0, 0, 1), calculateVector((0,1)) = (0, -1, 0)).
+        float invRes = 1.0f / static_cast<float>(res);
+        for (int j = 0; j <= res; j++) {
+            float v = j * invRes;
+            for (int i = 0; i <= res; i++) {
+                float u = i * invRes;
+                coords.append(cglib::vec3<float>(u, 1.0f - v, 0.0f));
+                texCoords.append(cglib::vec2<float>(u, v));
+                normals.append(cglib::vec3<float>(0.0f, 0.0f, 1.0f));
+                binormals.append(cglib::vec3<float>(0.0f, -1.0f, 0.0f));
+            }
+        }
+        int stride = res + 1;
+        for (int j = 0; j < res; j++) {
+            for (int i = 0; i < res; i++) {
+                std::size_t a = static_cast<std::size_t>(j * stride + i);
+                std::size_t b = a + 1;
+                std::size_t c = a + stride + 1;
+                std::size_t d = a + stride;
+                indices.append(a, b, c);
+                indices.append(a, c, d);
+            }
+        }
+
+        std::vector<std::shared_ptr<TileSurface>> tileSurfaces;
+        packGeometry(coords, texCoords, normals, binormals, indices, tileSurfaces);
+        return tileSurfaces.empty() ? std::shared_ptr<TileSurface>() : tileSurfaces.front();
+    }
+
     std::vector<TileId> TileSurfaceBuilder::tesselateTile(const TileId& baseTileId, const std::vector<TileId>& tileIds, bool xCoord) {
         auto calculatePosition = [&baseTileId, xCoord](const TileId& tileId) -> float {
             int deltaZoom = tileId.zoom - baseTileId.zoom;

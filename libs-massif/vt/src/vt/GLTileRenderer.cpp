@@ -70,6 +70,18 @@ namespace carto::vt {
         updateTerrainSkirts();
     }
 
+    void GLTileRenderer::setTerrainRegularGrid(bool enabled, int resolution) {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        _terrainRegularGrid = enabled;
+        if (!enabled) {
+            _terrainGridSurfaces.clear();
+        } else if (resolution != _terrainRegularGridResolution) {
+            _terrainRegularGridResolution = resolution;
+            _terrainGridSurfaces.clear(); // rebuilt lazily; the old compiled VBO is released in endFrame
+        }
+    }
+
     void GLTileRenderer::setTerrainSlackScale(float slackScale) {
         std::lock_guard<std::mutex> lock(_mutex);
 
@@ -1941,7 +1953,9 @@ namespace carto::vt {
     }
 
     void GLTileRenderer::renderTileMask(const TileId& tileId) {
-        for (const std::shared_ptr<TileSurface>& tileSurface : buildCompiledTileSurfaces(tileId)) {
+        bool gridMode = _terrainRegularGrid && _terrainMode && static_cast<bool>(_terrainTextureProvider);
+        cglib::mat4x4<double> surfaceFrame = gridMode ? calculateTileMatrix(tileId, 1.0f) : cglib::translate4_matrix(_tileSurfaceBuilderOrigin);
+        for (const std::shared_ptr<TileSurface>& tileSurface : (gridMode ? buildCompiledTerrainGridSurfaces() : buildCompiledTileSurfaces(tileId))) {
             const TileSurface::VertexGeometryLayoutParameters& vertexGeomLayoutParams = tileSurface->getVertexGeometryLayoutParameters();
             const CompiledSurface& compiledTileSurface = _compiledTileSurfaceMap[tileSurface];
 
@@ -1949,7 +1963,7 @@ namespace carto::vt {
             const ShaderProgram& shaderProgram = buildShaderProgram("tilemask", backgroundVsh, backgroundFsh, LightingMode::NONE, RasterFilterMode::NONE, terrainFlag);
             glUseProgram(shaderProgram.program);
             if (terrainFlag != 0) {
-                setupTerrainUniforms(shaderProgram, tileId, cglib::translate4_matrix(_tileSurfaceBuilderOrigin));
+                setupTerrainUniforms(shaderProgram, tileId, surfaceFrame);
             }
 
             glBindBuffer(GL_ARRAY_BUFFER, compiledTileSurface.vertexGeometryVBO);
@@ -1958,7 +1972,7 @@ namespace carto::vt {
 
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, compiledTileSurface.indicesVBO);
 
-            cglib::mat4x4<float> mvpMatrix = cglib::mat4x4<float>::convert(_cameraProjMatrix * cglib::translate4_matrix(_tileSurfaceBuilderOrigin));
+            cglib::mat4x4<float> mvpMatrix = gridMode ? calculateTileMVPMatrix(tileId, 1.0f) : cglib::mat4x4<float>::convert(_cameraProjMatrix * surfaceFrame);
             glUniformMatrix4fv(shaderProgram.uniforms[U_MVPMATRIX], 1, GL_FALSE, mvpMatrix.data());
 
             Color color(0, 0, 0, 0);
@@ -2038,7 +2052,9 @@ namespace carto::vt {
         // Drawn UNDER the style content with the per-draw depth bias applied - the
         // terrain pre-pass renders it pushed slightly back so content passes over it
         // at its real depth.
-        for (const std::shared_ptr<TileSurface>& tileSurface : buildCompiledTileSurfaces(tileId)) {
+        bool gridMode = _terrainRegularGrid && _terrainMode && static_cast<bool>(_terrainTextureProvider);
+        cglib::mat4x4<double> surfaceFrame = gridMode ? calculateTileMatrix(tileId, 1.0f) : cglib::translate4_matrix(_tileSurfaceBuilderOrigin);
+        for (const std::shared_ptr<TileSurface>& tileSurface : (gridMode ? buildCompiledTerrainGridSurfaces() : buildCompiledTileSurfaces(tileId))) {
             const TileSurface::VertexGeometryLayoutParameters& vertexGeomLayoutParams = tileSurface->getVertexGeometryLayoutParameters();
             const CompiledSurface& compiledTileSurface = _compiledTileSurfaceMap[tileSurface];
 
@@ -2047,7 +2063,7 @@ namespace carto::vt {
             glUseProgram(shaderProgram.program);
             if (terrainFlag != 0) {
                 glUniform1f(shaderProgram.uniforms[U_DEPTHBIAS], _terrainDrawDepthBias);
-                setupTerrainUniforms(shaderProgram, tileId, cglib::translate4_matrix(_tileSurfaceBuilderOrigin));
+                setupTerrainUniforms(shaderProgram, tileId, surfaceFrame);
             }
 
             glBindBuffer(GL_ARRAY_BUFFER, compiledTileSurface.vertexGeometryVBO);
@@ -2056,7 +2072,7 @@ namespace carto::vt {
 
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, compiledTileSurface.indicesVBO);
 
-            cglib::mat4x4<float> mvpMatrix = cglib::mat4x4<float>::convert(_cameraProjMatrix * cglib::translate4_matrix(_tileSurfaceBuilderOrigin));
+            cglib::mat4x4<float> mvpMatrix = gridMode ? calculateTileMVPMatrix(tileId, 1.0f) : cglib::mat4x4<float>::convert(_cameraProjMatrix * surfaceFrame);
             glUniformMatrix4fv(shaderProgram.uniforms[U_MVPMATRIX], 1, GL_FALSE, mvpMatrix.data());
 
             glUniform4fv(shaderProgram.uniforms[U_COLOR], 1, color.rgba().data());
@@ -2076,7 +2092,9 @@ namespace carto::vt {
     void GLTileRenderer::renderTileWireframe(const TileId& tileId) {
         // Debug view: the tile surface triangle mesh as red edges, displaced exactly like
         // the rendered surfaces (same vertex buffers + terrain uniforms as the mask/background).
-        for (const std::shared_ptr<TileSurface>& tileSurface : buildCompiledTileSurfaces(tileId)) {
+        bool gridMode = _terrainRegularGrid && _terrainMode && static_cast<bool>(_terrainTextureProvider);
+        cglib::mat4x4<double> surfaceFrame = gridMode ? calculateTileMatrix(tileId, 1.0f) : cglib::translate4_matrix(_tileSurfaceBuilderOrigin);
+        for (const std::shared_ptr<TileSurface>& tileSurface : (gridMode ? buildCompiledTerrainGridSurfaces() : buildCompiledTileSurfaces(tileId))) {
             const TileSurface::VertexGeometryLayoutParameters& vertexGeomLayoutParams = tileSurface->getVertexGeometryLayoutParameters();
             CompiledSurface& compiledTileSurface = _compiledTileSurfaceMap[tileSurface];
 
@@ -2102,7 +2120,7 @@ namespace carto::vt {
             const ShaderProgram& shaderProgram = buildShaderProgram("tilemask", backgroundVsh, backgroundFsh, LightingMode::NONE, RasterFilterMode::NONE, terrainFlag);
             glUseProgram(shaderProgram.program);
             if (terrainFlag != 0) {
-                setupTerrainUniforms(shaderProgram, tileId, cglib::translate4_matrix(_tileSurfaceBuilderOrigin));
+                setupTerrainUniforms(shaderProgram, tileId, surfaceFrame);
             }
 
             glBindBuffer(GL_ARRAY_BUFFER, compiledTileSurface.vertexGeometryVBO);
@@ -2111,7 +2129,7 @@ namespace carto::vt {
 
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, compiledTileSurface.wireframeIndicesVBO);
 
-            cglib::mat4x4<float> mvpMatrix = cglib::mat4x4<float>::convert(_cameraProjMatrix * cglib::translate4_matrix(_tileSurfaceBuilderOrigin));
+            cglib::mat4x4<float> mvpMatrix = gridMode ? calculateTileMVPMatrix(tileId, 1.0f) : cglib::mat4x4<float>::convert(_cameraProjMatrix * surfaceFrame);
             glUniformMatrix4fv(shaderProgram.uniforms[U_MVPMATRIX], 1, GL_FALSE, mvpMatrix.data());
 
             Color color(1.0f, 0.0f, 0.0f, 1.0f);
@@ -2138,11 +2156,13 @@ namespace carto::vt {
             return;
         }
 
-        for (const std::shared_ptr<TileSurface>& tileSurface : buildCompiledTileSurfaces(tileId)) {
+        bool terrainVTF = _terrainMode && (bool) _terrainTextureProvider;
+        bool gridMode = _terrainRegularGrid && terrainVTF;
+        cglib::mat4x4<double> surfaceFrame = gridMode ? calculateTileMatrix(tileId, 1.0f) : cglib::translate4_matrix(_tileSurfaceBuilderOrigin);
+        for (const std::shared_ptr<TileSurface>& tileSurface : (gridMode ? buildCompiledTerrainGridSurfaces() : buildCompiledTileSurfaces(tileId))) {
             const TileSurface::VertexGeometryLayoutParameters& vertexGeomLayoutParams = tileSurface->getVertexGeometryLayoutParameters();
             const CompiledSurface& compiledTileSurface = _compiledTileSurfaceMap[tileSurface];
 
-            bool terrainVTF = _terrainMode && (bool) _terrainTextureProvider;
             unsigned int terrainFlag = (terrainVTF ? TERRAIN_FLAG | TERRAIN_VTF_FLAG : (_terrainMode && !_terrainDepthWrite ? TERRAIN_FLAG : 0));
             const ShaderProgram& shaderProgram = buildShaderProgram("tilebackground", backgroundVsh, backgroundFsh, LightingMode::GEOMETRY2D, RasterFilterMode::NONE, (background->getPattern() ? PATTERN_FLAG : 0) | terrainFlag);
             glUseProgram(shaderProgram.program);
@@ -2150,7 +2170,7 @@ namespace carto::vt {
                 glUniform1f(shaderProgram.uniforms[U_DEPTHBIAS], terrainVTF ? _terrainDrawDepthBias : _terrainDepthBias);
             }
             if (terrainVTF) {
-                setupTerrainUniforms(shaderProgram, tileId, cglib::translate4_matrix(_tileSurfaceBuilderOrigin));
+                setupTerrainUniforms(shaderProgram, tileId, surfaceFrame);
             }
 
             glBindBuffer(GL_ARRAY_BUFFER, compiledTileSurface.vertexGeometryVBO);
@@ -2172,7 +2192,7 @@ namespace carto::vt {
 
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, compiledTileSurface.indicesVBO);
 
-            cglib::mat4x4<float> mvpMatrix = cglib::mat4x4<float>::convert(_cameraProjMatrix * cglib::translate4_matrix(_tileSurfaceBuilderOrigin));
+            cglib::mat4x4<float> mvpMatrix = gridMode ? calculateTileMVPMatrix(tileId, 1.0f) : cglib::mat4x4<float>::convert(_cameraProjMatrix * surfaceFrame);
             glUniformMatrix4fv(shaderProgram.uniforms[U_MVPMATRIX], 1, GL_FALSE, mvpMatrix.data());
 
             if (auto pattern = background->getPattern()) {
@@ -2221,11 +2241,13 @@ namespace carto::vt {
             return;
         }
 
-        for (const std::shared_ptr<TileSurface>& tileSurface : buildCompiledTileSurfaces(targetTileId)) {
+        bool terrainVTF = _terrainMode && (bool) _terrainTextureProvider;
+        bool gridMode = _terrainRegularGrid && terrainVTF;
+        cglib::mat4x4<double> surfaceFrame = gridMode ? calculateTileMatrix(targetTileId, 1.0f) : cglib::translate4_matrix(_tileSurfaceBuilderOrigin);
+        for (const std::shared_ptr<TileSurface>& tileSurface : (gridMode ? buildCompiledTerrainGridSurfaces() : buildCompiledTileSurfaces(targetTileId))) {
             const TileSurface::VertexGeometryLayoutParameters& vertexGeomLayoutParams = tileSurface->getVertexGeometryLayoutParameters();
             const CompiledSurface& compiledTileSurface = _compiledTileSurfaceMap[tileSurface];
 
-            bool terrainVTF = _terrainMode && (bool) _terrainTextureProvider;
             unsigned int terrainFlag = (terrainVTF ? TERRAIN_FLAG | TERRAIN_VTF_FLAG : (_terrainMode && !_terrainDepthWrite ? TERRAIN_FLAG : 0));
             const ShaderProgram* shaderProgramPtr = nullptr;
             switch (bitmap->getType()) {
@@ -2244,7 +2266,7 @@ namespace carto::vt {
                 glUniform1f(shaderProgram.uniforms[U_DEPTHBIAS], terrainVTF ? _terrainDrawDepthBias : _terrainDepthBias);
             }
             if (terrainVTF) {
-                setupTerrainUniforms(shaderProgram, targetTileId, cglib::translate4_matrix(_tileSurfaceBuilderOrigin));
+                setupTerrainUniforms(shaderProgram, targetTileId, surfaceFrame);
             }
 
             glBindBuffer(GL_ARRAY_BUFFER, compiledTileSurface.vertexGeometryVBO);
@@ -2278,7 +2300,7 @@ namespace carto::vt {
 
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, compiledTileSurface.indicesVBO);
 
-            cglib::mat4x4<float> mvpMatrix = cglib::mat4x4<float>::convert(_cameraProjMatrix * cglib::translate4_matrix(_tileSurfaceBuilderOrigin));
+            cglib::mat4x4<float> mvpMatrix = gridMode ? calculateTileMVPMatrix(targetTileId, 1.0f) : cglib::mat4x4<float>::convert(_cameraProjMatrix * surfaceFrame);
             glUniformMatrix4fv(shaderProgram.uniforms[U_MVPMATRIX], 1, GL_FALSE, mvpMatrix.data());
 
             const CompiledBitmap& compiledTileBitmap = buildCompiledTileBitmap(bitmap);
@@ -2815,6 +2837,29 @@ namespace carto::vt {
             it = _shaderProgramMap.emplace(shaderProgramId, shaderProgram).first;
         }
         return it->second;
+    }
+
+    const std::vector<std::shared_ptr<TileSurface>>& GLTileRenderer::buildCompiledTerrainGridSurfaces() {
+        // The single shared unit-grid surface, built once and reused for every tile
+        // (drawn with the tile's own MVP + terrain uniforms). No per-tile tesselation.
+        if (_terrainGridSurfaces.empty()) {
+            if (std::shared_ptr<TileSurface> surface = _tileSurfaceBuilder.buildRegularGridSurface(_terrainRegularGridResolution)) {
+                _terrainGridSurfaces.push_back(std::move(surface));
+            }
+        }
+        for (const std::shared_ptr<TileSurface>& tileSurface : _terrainGridSurfaces) {
+            CompiledSurface& compiledSurface = _compiledTileSurfaceMap[tileSurface];
+            if (compiledSurface.indicesVBO == 0) {
+                createCompiledSurface(compiledSurface);
+
+                glBindBuffer(GL_ARRAY_BUFFER, compiledSurface.vertexGeometryVBO);
+                glBufferData(GL_ARRAY_BUFFER, tileSurface->getVertexGeometry().size() * sizeof(std::uint8_t), tileSurface->getVertexGeometry().data(), GL_STATIC_DRAW);
+
+                glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, compiledSurface.indicesVBO);
+                glBufferData(GL_ELEMENT_ARRAY_BUFFER, tileSurface->getIndices().size() * sizeof(std::uint16_t), tileSurface->getIndices().data(), GL_STATIC_DRAW);
+            }
+        }
+        return _terrainGridSurfaces;
     }
 
     const std::vector<std::shared_ptr<TileSurface>>& GLTileRenderer::buildCompiledTileSurfaces(const TileId& tileId) {

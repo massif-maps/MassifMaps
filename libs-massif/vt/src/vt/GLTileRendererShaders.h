@@ -45,7 +45,8 @@ namespace carto::vt {
         U_ELEVATIONUV,
         U_ELEVATIONDECODE,
         U_ELEVATIONSCALE,
-        U_ELEVATIONTEXELSIZE
+        U_ELEVATIONTEXELSIZE,
+        U_ELEVATIONLATTICECELL
     };
 
     enum : unsigned int {
@@ -94,7 +95,8 @@ namespace carto::vt {
         { "uElevationUV",      U_ELEVATIONUV },
         { "uElevationDecode",  U_ELEVATIONDECODE },
         { "uElevationScale",   U_ELEVATIONSCALE },
-        { "uElevationTexelSize", U_ELEVATIONTEXELSIZE }
+        { "uElevationTexelSize", U_ELEVATIONTEXELSIZE },
+        { "uElevationLatticeCell", U_ELEVATIONLATTICECELL }
     };
 
     static const std::map<unsigned int, std::string> flagDefineMap = {
@@ -199,6 +201,7 @@ namespace carto::vt {
         uniform vec4 uElevationDecode;       // meters = dot(texture sample, decode)
         uniform highp vec4 uElevationScale;  // x: meters to vertex z units (equator), y/z: mercator y = y + pos.y * z, w: vertex frame z offset
         uniform highp vec4 uElevationTexelSize; // xy: texture size in texels, zw: 1 / size
+        uniform highp vec2 uElevationLatticeCell; // regular-grid surface cell size in elevation-uv units (0 = off = sample the full DEM detail)
         // GPU terrain draping: the vertex z is REPLACED with the height sampled from the
         // elevation texture. Every draped layer samples the same textures, so all layers
         // agree on heights exactly and no geometric depth tolerances are needed.
@@ -218,8 +221,8 @@ namespace carto::vt {
         float sampleElevation(highp vec2 uv) {
             return dot(texture2D(uElevationTexture, uv), uElevationDecode);
         }
-        vec3 applyTerrain(vec3 pos) {
-            highp vec2 uv = uElevationUV.xy + pos.xy * uElevationUV.zw;
+        // Full DEM detail: manual bilinear of the elevation texture at uv (4 texel-center taps).
+        float demMeters(highp vec2 uv) {
             highp vec2 texelPos = uv * uElevationTexelSize.xy - 0.5;
             highp vec2 texelBase = floor(texelPos);
             highp vec2 f = texelPos - texelBase;
@@ -228,7 +231,36 @@ namespace carto::vt {
             float h10 = sampleElevation(uv00 + vec2(uElevationTexelSize.z, 0.0));
             float h01 = sampleElevation(uv00 + vec2(0.0, uElevationTexelSize.w));
             float h11 = sampleElevation(uv00 + uElevationTexelSize.zw);
-            float meters = mix(mix(h00, h10, f.x), mix(h01, h11, f.x), f.y);
+            return mix(mix(h00, h10, f.x), mix(h01, h11, f.x), f.y);
+        }
+        vec3 applyTerrain(vec3 pos) {
+            highp vec2 uv = uElevationUV.xy + pos.xy * uElevationUV.zw;
+            float meters;
+            if (uElevationLatticeCell.x != 0.0) {
+                // LATTICE CLAMP (regular-grid surface mode): the reference surface is a
+                // regular grid, so its rendered height at any point comes from just the 4
+                // surrounding grid vertices. Draped geometry samples the same 4 grid-corner
+                // heights (each a full DEM bilinear) and bilinearly blends them, so it
+                // follows the identical coarse surface instead of the finer DEM field.
+                // Heights therefore agree with the surface at every grid vertex and deviate
+                // only by the tiny in-cell bilinear-vs-triangle twist between them - so no
+                // distance-growing depth slack is needed to keep geometry off the surface.
+                // Sampling in shared elevation-uv space (identical for the surface and every
+                // draped layer) makes the lattice independent of each draw's coordinate
+                // frame, and the symmetric bilinear blend is independent of the cell diagonal
+                // and of the sign of the cell vector.
+                highp vec2 rel = (uv - uElevationUV.xy) / uElevationLatticeCell;
+                highp vec2 gi = floor(rel);
+                highp vec2 fg = rel - gi;
+                highp vec2 uv00 = uElevationUV.xy + gi * uElevationLatticeCell;
+                float H00 = demMeters(uv00);
+                float H10 = demMeters(uv00 + vec2(uElevationLatticeCell.x, 0.0));
+                float H01 = demMeters(uv00 + vec2(0.0, uElevationLatticeCell.y));
+                float H11 = demMeters(uv00 + uElevationLatticeCell);
+                meters = mix(mix(H00, H10, fg.x), mix(H01, H11, fg.x), fg.y);
+            } else {
+                meters = demMeters(uv);
+            }
             highp float my = uElevationScale.y + pos.y * uElevationScale.z;
             float coshMY = 0.5 * (exp(my) + exp(-my));
             float z = meters * uElevationScale.x * coshMY + uElevationScale.w;

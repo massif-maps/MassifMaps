@@ -1588,7 +1588,11 @@ namespace carto::vt {
                         // layer count.
                         float proxyBias = (renderLayer->active ? 0.0f : 1.0f * TERRAIN_LAYER_DEPTH_DELTA);
                         _terrainDrawDepthBias = _terrainDepthBias + 1.0f * TERRAIN_LAYER_DEPTH_DELTA - proxyBias;
-                        _terrainDrawDepthClipUnits = 12.0f;
+                        // Lattice clamp (regular-grid mode) makes draped geometry follow the
+                        // reference grid surface within the tiny in-cell bilinear-vs-triangle
+                        // twist, so the distance-growing slack collapses to a small margin;
+                        // adaptive meshes keep the full calibrated slack.
+                        _terrainDrawDepthClipUnits = _terrainRegularGrid ? 2.0f : 12.0f;
                     } else {
                         glEnable(GL_POLYGON_OFFSET_FILL);
                         glPolygonOffset(-1.0f, -2.0f);
@@ -1922,6 +1926,7 @@ namespace carto::vt {
             glUniform4f(shaderProgram.uniforms[U_ELEVATIONDECODE], 0.0f, 0.0f, 0.0f, 0.0f);
             glUniform4f(shaderProgram.uniforms[U_ELEVATIONSCALE], 0.0f, 0.0f, 0.0f, 0.0f);
             glUniform4f(shaderProgram.uniforms[U_ELEVATIONTEXELSIZE], 1.0f, 1.0f, 1.0f, 1.0f);
+            glUniform2f(shaderProgram.uniforms[U_ELEVATIONLATTICECELL], 0.0f, 0.0f);
             return false;
         }
 
@@ -1943,6 +1948,21 @@ namespace carto::vt {
         float texelSizeX = static_cast<float>(std::max(1, terrainTexture.textureSize(0)));
         float texelSizeY = static_cast<float>(std::max(1, terrainTexture.textureSize(1)));
         glUniform4f(shaderProgram.uniforms[U_ELEVATIONTEXELSIZE], texelSizeX, texelSizeY, 1.0f / texelSizeX, 1.0f / texelSizeY);
+        // Lattice clamp (regular-grid surface mode): the reference surface is a regular
+        // grid of _terrainRegularGridResolution cells over the tile, so draped geometry
+        // snaps its height to the same grid. The cell size in elevation-uv units is the
+        // tile's full uv extent (world tile size / texture internal size) divided by the
+        // grid resolution - a property of the tile+texture, so it is identical for the
+        // surface and every draped layer regardless of their coordinate frame. Off (0) in
+        // adaptive mode: geometry then samples the full DEM detail with the calibrated slack.
+        if (_terrainRegularGrid && _terrainRegularGridResolution > 0) {
+            double worldTileSize = std::abs(_transformer->calculateTileMatrix(tileId, 1.0f)(0, 0));
+            float latticeCellX = static_cast<float>(worldTileSize * invSizeX / _terrainRegularGridResolution);
+            float latticeCellY = static_cast<float>(worldTileSize * invSizeY / _terrainRegularGridResolution);
+            glUniform2f(shaderProgram.uniforms[U_ELEVATIONLATTICECELL], latticeCellX, latticeCellY);
+        } else {
+            glUniform2f(shaderProgram.uniforms[U_ELEVATIONLATTICECELL], 0.0f, 0.0f);
+        }
         double frameScaleZ = (vertexFrameMatrix(2, 2) != 0 ? vertexFrameMatrix(2, 2) : 1.0);
         glUniform4f(shaderProgram.uniforms[U_ELEVATIONSCALE],
             static_cast<float>(terrainTexture.metersToInternal / frameScaleZ),

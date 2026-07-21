@@ -44,7 +44,8 @@ namespace carto::vt {
         U_ELEVATIONTEXTURE,
         U_ELEVATIONUV,
         U_ELEVATIONDECODE,
-        U_ELEVATIONSCALE
+        U_ELEVATIONSCALE,
+        U_ELEVATIONTEXELSIZE
     };
 
     enum : unsigned int {
@@ -92,7 +93,8 @@ namespace carto::vt {
         { "uElevationTexture", U_ELEVATIONTEXTURE },
         { "uElevationUV",      U_ELEVATIONUV },
         { "uElevationDecode",  U_ELEVATIONDECODE },
-        { "uElevationScale",   U_ELEVATIONSCALE }
+        { "uElevationScale",   U_ELEVATIONSCALE },
+        { "uElevationTexelSize", U_ELEVATIONTEXELSIZE }
     };
 
     static const std::map<unsigned int, std::string> flagDefineMap = {
@@ -196,16 +198,37 @@ namespace carto::vt {
         uniform highp vec4 uElevationUV;     // elevation texture uv = uv.xy + pos.xy * uv.zw
         uniform vec4 uElevationDecode;       // meters = dot(texture sample, decode)
         uniform highp vec4 uElevationScale;  // x: meters to vertex z units (equator), y/z: mercator y = y + pos.y * z, w: vertex frame z offset
+        uniform highp vec4 uElevationTexelSize; // xy: texture size in texels, zw: 1 / size
         // GPU terrain draping: the vertex z is REPLACED with the height sampled from the
         // elevation texture. Every draped layer samples the same textures, so all layers
         // agree on heights exactly and no geometric depth tolerances are needed.
-        // The bilinearly filtered texture sample matches the CPU-side elevation grid
-        // sampling (ElevationTileGrid::sampleHeight semantics): samples at texel centers,
-        // clamped at edges. The Mercator latitude scale (1/cos) is applied per vertex.
-        // The w component maps the absolute height into the vertex frame (tile surface
-        // frames are origin-relative and the origin can have a non-zero z).
+        // The bilinear filter is applied MANUALLY: 4 samples at exact texel centers +
+        // mix. At texel centers NEAREST and LINEAR hardware filtering return the same
+        // texel, so the reconstructed height field is identical on every GPU - several
+        // mobile GPUs filter VERTEX-stage texture fetches as NEAREST regardless of the
+        // requested LINEAR filter, which would make draped geometry deviate from the
+        // depth-writing surface meshes by up to a full texel height step (tens of
+        // meters on cliffs: content pokes through ridges / needs huge depth slack).
+        // The math matches the CPU-side sampling (ElevationTileGrid::sampleHeight
+        // semantics): samples at texel centers, clamped at edges (CLAMP_TO_EDGE plus
+        // the 1-texel neighbour border in the texture). The Mercator latitude scale
+        // (1/cos) is applied per vertex. The w component maps the absolute height into
+        // the vertex frame (tile surface frames are origin-relative and the origin can
+        // have a non-zero z).
+        float sampleElevation(highp vec2 uv) {
+            return dot(texture2D(uElevationTexture, uv), uElevationDecode);
+        }
         vec3 applyTerrain(vec3 pos) {
-            float meters = dot(texture2D(uElevationTexture, uElevationUV.xy + pos.xy * uElevationUV.zw), uElevationDecode);
+            highp vec2 uv = uElevationUV.xy + pos.xy * uElevationUV.zw;
+            highp vec2 texelPos = uv * uElevationTexelSize.xy - 0.5;
+            highp vec2 texelBase = floor(texelPos);
+            highp vec2 f = texelPos - texelBase;
+            highp vec2 uv00 = (texelBase + 0.5) * uElevationTexelSize.zw;
+            float h00 = sampleElevation(uv00);
+            float h10 = sampleElevation(uv00 + vec2(uElevationTexelSize.z, 0.0));
+            float h01 = sampleElevation(uv00 + vec2(0.0, uElevationTexelSize.w));
+            float h11 = sampleElevation(uv00 + uElevationTexelSize.zw);
+            float meters = mix(mix(h00, h10, f.x), mix(h01, h11, f.x), f.y);
             highp float my = uElevationScale.y + pos.y * uElevationScale.z;
             float coshMY = 0.5 * (exp(my) + exp(-my));
             float z = meters * uElevationScale.x * coshMY + uElevationScale.w;

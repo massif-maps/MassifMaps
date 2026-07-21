@@ -99,6 +99,7 @@ namespace carto::vt {
         
         void setInteractionMode(bool enabled);
         void setTerrainMode(bool enabled, float depthBias);
+        void setTerrainSlackScale(float slackScale);
         void setTerrainDepthWrite(bool enabled);
         void setTerrainTextureProvider(TerrainTextureProvider provider);
         void setDebugWireframe(bool enabled);
@@ -322,6 +323,7 @@ namespace carto::vt {
         bool _terrainMode = false;
         bool _terrainDepthWrite = false;
         float _terrainDepthBias = 0.0f;
+        float _terrainSlackScale = 1.0f;         // scales the clip-constant slack; ~(32/meshResolution)^2 - the chord error shrinks quadratically with the tesselation
         float _terrainDrawDepthBias = 0.0f;      // per-draw NDC (w-scaled) depth bias while rendering 2D layers (GPU draping mode)
         float _terrainDrawDepthClipUnits = 0.0f; // per-draw clip-constant slack units (distance-growing; see setupTerrainUniforms)
         bool _terrainSkirtsEnabled = false;

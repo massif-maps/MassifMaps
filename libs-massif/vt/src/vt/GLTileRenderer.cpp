@@ -70,6 +70,12 @@ namespace carto::vt {
         updateTerrainSkirts();
     }
 
+    void GLTileRenderer::setTerrainSlackScale(float slackScale) {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        _terrainSlackScale = slackScale;
+    }
+
     void GLTileRenderer::setTerrainDepthWrite(bool enabled) {
         std::lock_guard<std::mutex> lock(_mutex);
 
@@ -1889,7 +1895,10 @@ namespace carto::vt {
         // into far-slope content bleeding over ridge crests and grazing faces (the
         // slack band is exactly the depth range that ignores occlusion). Anchor the
         // quadratic law at zoom 11 tiles (TERRAIN_DEPTH_CLIP_REF_TILE_SIZE).
-        double slackScale = tileSize * std::min(4.0, tileSize / TERRAIN_DEPTH_CLIP_REF_TILE_SIZE);
+        // _terrainSlackScale scales the slack with the actual surface/geometry
+        // tesselation resolution (the chord error is quadratic in the cell size, so
+        // doubling the mesh resolution allows a 4x tighter slack)
+        double slackScale = tileSize * std::min(4.0, tileSize / TERRAIN_DEPTH_CLIP_REF_TILE_SIZE) * _terrainSlackScale;
         glUniform1f(shaderProgram.uniforms[U_DEPTHBIASCLIP], static_cast<float>(clipUnits * TERRAIN_DEPTH_CLIP_SLACK * slackScale * projScaleZ));
 
         TerrainTexture terrainTexture;

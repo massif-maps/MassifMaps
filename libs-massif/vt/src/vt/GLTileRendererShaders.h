@@ -256,15 +256,17 @@ namespace carto::vt {
                 // LATTICE CLAMP (regular-grid surface mode): the reference surface is a
                 // regular grid, so its rendered height at any point comes from just the 4
                 // surrounding grid vertices. Draped geometry samples the same 4 grid-corner
-                // heights (each a full DEM bilinear) and bilinearly blends them, so it
-                // follows the identical coarse surface instead of the finer DEM field.
-                // Heights therefore agree with the surface at every grid vertex and deviate
-                // only by the tiny in-cell bilinear-vs-triangle twist between them - so no
-                // distance-growing depth slack is needed to keep geometry off the surface.
-                // Sampling in shared elevation-uv space (identical for the surface and every
-                // draped layer) makes the lattice independent of each draw's coordinate
-                // frame, and the symmetric bilinear blend is independent of the cell diagonal
-                // and of the sign of the cell vector.
+                // heights (each a full DEM bilinear) and interpolates them with the SAME
+                // two-triangle split the surface mesh uses, so it follows the surface exactly
+                // (not just at the grid vertices). A bilinear blend instead of the triangle
+                // split leaves an in-cell twist that, at low zoom / large cells, exceeds the
+                // (near zero, painter-order) depth slack where the surface triangle rises above
+                // the bilinear sheet - draped lines then dip behind the surface and crack.
+                // The surface mesh (TileSurfaceBuilder::buildRegularGridSurface) emits triangles
+                // (a,b,c),(a,c,d) with a=(i,j),b=(i+1,j),c=(i+1,j+1),d=(i,j+1); vertex y is 1-v,
+                // which flips the v axis, so in elevation-uv fg-space the corners are
+                // d=(0,0)=H00, c=(1,0)=H10, a=(0,1)=H01, b=(1,1)=H11 and the shared edge is the
+                // ANTI-diagonal fg.x+fg.y=1 (the H10-H01 split). Match it exactly here.
                 highp vec2 rel = (uv - uElevationUV.xy) / uElevationLatticeCell;
                 highp vec2 gi = floor(rel);
                 highp vec2 fg = rel - gi;
@@ -273,7 +275,13 @@ namespace carto::vt {
                 float H10 = demMeters(uv00 + vec2(uElevationLatticeCell.x, 0.0));
                 float H01 = demMeters(uv00 + vec2(0.0, uElevationLatticeCell.y));
                 float H11 = demMeters(uv00 + uElevationLatticeCell);
-                meters = mix(mix(H00, H10, fg.x), mix(H01, H11, fg.x), fg.y);
+                if (fg.x + fg.y <= 1.0) {
+                    // lower-left triangle (H00, H10, H01)
+                    meters = H00 + (H10 - H00) * fg.x + (H01 - H00) * fg.y;
+                } else {
+                    // upper-right triangle (H10, H11, H01)
+                    meters = H10 * (1.0 - fg.y) + H01 * (1.0 - fg.x) + H11 * (fg.x + fg.y - 1.0);
+                }
             } else {
                 meters = demMeters(uv);
             }

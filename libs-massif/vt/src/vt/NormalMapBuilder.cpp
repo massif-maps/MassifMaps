@@ -6,7 +6,18 @@
 #include <boost/math/constants/constants.hpp>
 
 namespace carto::vt {
-    NormalMapBuilder::NormalMapBuilder(const std::array<float, 4>& rgbaHeightScale, std::uint8_t alpha) : _rgbaHeightScale(rgbaHeightScale), _alpha(alpha) {
+    NormalMapBuilder::NormalMapBuilder(const std::array<float, 4>& rgbaHeightScale, std::uint8_t alpha, bool encodeElevation, const std::array<float, 4>& elevationCoeffs) : _rgbaHeightScale(rgbaHeightScale), _elevationCoeffs(elevationCoeffs), _alpha(alpha), _encodeElevation(encodeElevation) {
+    }
+
+    float NormalMapBuilder::unpackElevationMeters(std::uint32_t color) const {
+        union {
+            std::uint32_t u32;
+            std::uint8_t u8[sizeof(std::uint32_t)];
+        } packedColor;
+        packedColor.u32 = color;
+        // Absolute elevation in meters: c0*R + c1*G + c2*B + c3 (DEM tiles are opaque, so the alpha
+        // dependent offset term reduces to the constant c3).
+        return _elevationCoeffs[0] * packedColor.u8[0] + _elevationCoeffs[1] * packedColor.u8[1] + _elevationCoeffs[2] * packedColor.u8[2] + _elevationCoeffs[3];
     }
 
     std::shared_ptr<const Bitmap> NormalMapBuilder::buildNormalMapFromHeightMap(const carto::vt::TileId& tileId, const std::shared_ptr<const Bitmap>& bitmap) const {
@@ -103,7 +114,7 @@ namespace carto::vt {
                         }
                     }
 
-                    data[y * width + x] = packNormal(normal);
+                    data[y * width + x] = packNormal(normal, 0.0f); // elevation encoding unsupported in the sub-tile path
                 }
             }
         }
@@ -174,7 +185,10 @@ namespace carto::vt {
                     float dy = (heights[2][0] + 2 * heights[2][1] + heights[2][2]) - (heights[0][0] + 2 * heights[0][1] + heights[0][2]);
                     float dz = 8.0f * static_cast<float>(ss);
 
-                    data[y * width + x] = packNormal(cglib::vec3<float>(dx, dy, dz));
+                    // heights[1][1] is the slope-scaled height, not meters; decode absolute meters
+                    // directly from the raw DEM pixel for elevation encoding.
+                    float elevMeters = _encodeElevation ? unpackElevationMeters(bitmap->data[static_cast<std::size_t>(y) * width + x]) : 0.0f;
+                    data[y * width + x] = packNormal(cglib::vec3<float>(dx, dy, dz), elevMeters);
                     // buffer[y * subWidth + x] = cglib::vec3<float>(dx, dy, dz);
                 }
             }
@@ -220,7 +234,7 @@ namespace carto::vt {
         return height;
     }
 
-    std::uint32_t NormalMapBuilder::packNormal(cglib::vec3<float> normal) const {
+    std::uint32_t NormalMapBuilder::packNormal(cglib::vec3<float> normal, float heightMeters) const {
         union {
             std::uint32_t u32;
             std::uint8_t u8[sizeof(std::uint32_t)];
@@ -228,8 +242,17 @@ namespace carto::vt {
         normal = cglib::unit(normal);
         packedNormal.u8[0] = static_cast<std::uint8_t>((normal(0) + 1.0f) * 127.5f);
         packedNormal.u8[1] = static_cast<std::uint8_t>((normal(1) + 1.0f) * 127.5f);
-        packedNormal.u8[2] = static_cast<std::uint8_t>((normal(2) + 1.0f) * 127.5f);
-        packedNormal.u8[3] = _alpha;
+        if (_encodeElevation) {
+            // R,G = normal.xy (z is reconstructed in the shader); B,A = 16-bit elevation.
+            // Contrast is passed to the shader as a uniform instead of the alpha channel.
+            float q = (heightMeters - ELEVATION_OFFSET) / ELEVATION_SCALE;
+            int elev16 = static_cast<int>(q < 0.0f ? 0.0f : (q > 65535.0f ? 65535.0f : q + 0.5f));
+            packedNormal.u8[2] = static_cast<std::uint8_t>((elev16 >> 8) & 0xff);
+            packedNormal.u8[3] = static_cast<std::uint8_t>(elev16 & 0xff);
+        } else {
+            packedNormal.u8[2] = static_cast<std::uint8_t>((normal(2) + 1.0f) * 127.5f);
+            packedNormal.u8[3] = _alpha;
+        }
         return packedNormal.u32;
     }
 }

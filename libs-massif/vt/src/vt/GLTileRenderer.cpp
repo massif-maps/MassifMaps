@@ -2851,10 +2851,15 @@ namespace carto::vt {
             }
             else if (lightingMode == LightingMode::NORMALMAP && _lightingShaderNormalMap) {
                 defs.insert(_lightingShaderNormalMap->perVertex ? "LIGHTING_VSH" : "LIGHTING_FSH");
+                // Enable screen-space derivatives (fwidth) for anti-aliased contour lines in the
+                // elevation-encoded hillshade path. Harmless when contours are off (branch not taken).
+                defs.insert("DERIVATIVES");
                 if (_lightingShaderNormalMap->perVertex) {
                     lightingVsh = _lightingShaderNormalMap->shader;
                 } else {
-                    lightingFsh = _lightingShaderNormalMap->shader;
+                    // Prepend the shared DEM prelude so the custom/built-in shader can call
+                    // getElevation()/getMapZoom()/sampleElevation() and read the shared uniforms.
+                    lightingFsh = normalmapCustomPrelude + _lightingShaderNormalMap->shader;
                 }
             }
             if (filterMode == RasterFilterMode::NEAREST) {

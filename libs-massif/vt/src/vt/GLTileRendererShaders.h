@@ -460,14 +460,53 @@ namespace carto::vt {
         }
     )GLSL";
 
-    static const std::string normalmapFsh = R"GLSL(
+    // Prepended to the normal-map lighting shader (custom or built-in) so both the injected shader
+    // and the base fragment shader can read the DEM. Declares the shared samplers/uniforms and the
+    // elevation helpers a CUSTOM shader can call: getElevation() (meters at this fragment),
+    // getMapZoom() (fractional map zoom) and sampleElevation(uv). Only used in the normal-map path.
+    static const std::string normalmapCustomPrelude = R"GLSL(
         uniform sampler2D uBitmap;
         uniform highp_opt vec4 uUVScale;
-        uniform lowp float uOpacity;
         varying highp_opt vec2 vUV;
+        // Elevation-encoded normal map (opt-in): R,G hold normal.xy (z is reconstructed), B,A hold a
+        // 16-bit elevation and contrast comes from a uniform. u_elevationEncoded <= 0.5 keeps the
+        // classic RGB=normal, A=contrast behaviour byte for byte.
+        uniform mediump float u_elevationEncoded;
+        uniform highp_opt vec2 u_elevationDecode; // meters = elev16 * x + y
+        uniform lowp float u_contrast;            // replaces the alpha channel when elevation-encoded
+        uniform highp_opt float u_zoom;           // current fractional map zoom (for per-zoom custom shaders)
+
+        highp_opt float decodeElevation(lowp vec4 s) {
+            return (s.b * 255.0 * 256.0 + s.a * 255.0) * u_elevationDecode.x + u_elevationDecode.y;
+        }
+        // Manual bilinear of the decoded METERS (decode each texel first, then blend) so the 16-bit
+        // hi/lo byte split can not wrap under texture filtering and produce false contour lines.
+        highp_opt float sampleElevation(highp_opt vec2 uv) {
+            highp_opt vec2 tc = uv * uUVScale.xy - 0.5;
+            highp_opt vec2 f = fract(tc);
+            highp_opt vec2 base = (floor(tc) + 0.5) * uUVScale.zw;
+            highp_opt float e00 = decodeElevation(texture2D(uBitmap, base));
+            highp_opt float e10 = decodeElevation(texture2D(uBitmap, base + vec2(uUVScale.z, 0.0)));
+            highp_opt float e01 = decodeElevation(texture2D(uBitmap, base + vec2(0.0, uUVScale.w)));
+            highp_opt float e11 = decodeElevation(texture2D(uBitmap, base + uUVScale.zw));
+            return mix(mix(e00, e10, f.x), mix(e01, e11, f.x), f.y);
+        }
+        // Convenience for custom normal-map / custom raster shaders.
+        highp_opt float getElevation() { return sampleElevation(vUV); }
+        highp_opt float getMapZoom() { return u_zoom; }
+        // Raw texel of the source tile at this fragment (e.g. the untouched RGB(A) raster for a
+        // CustomRasterTileLayer filter shader).
+        lowp vec4 getRawColor() { return texture2D(uBitmap, vUV); }
+    )GLSL";
+
+    static const std::string normalmapFsh = R"GLSL(
+        uniform lowp float uOpacity;
         #ifdef LIGHTING_FSH
         varying mediump vec3 vNormal;
         varying mediump vec3 vBinormal;
+        uniform lowp vec4 u_contourColor;
+        uniform highp_opt float u_contourInterval; // meters between contour lines; <= 0 disables the built-in contours
+        uniform mediump float u_contourWidth;      // contour half-width in screen pixels
         #endif
 
         void main(void) {
@@ -480,14 +519,34 @@ namespace carto::vt {
         #endif
             lowp vec4 color = vec4(packedNormalAlpha.a);
         #if defined(LIGHTING_FSH)
-            mediump vec3 tspaceNormal = packedNormalAlpha.xyz * 2.0 - vec3(1.0, 1.0, 1.0);
+            mediump vec3 tspaceNormal;
+            if (u_elevationEncoded > 0.5) {
+                mediump vec2 nxy = packedNormalAlpha.xy * 2.0 - vec2(1.0);
+                tspaceNormal = vec3(nxy, sqrt(max(0.0, 1.0 - dot(nxy, nxy))));
+                color = vec4(u_contrast); // contrast is a uniform; the alpha channel now holds elevation
+            } else {
+                tspaceNormal = packedNormalAlpha.xyz * 2.0 - vec3(1.0, 1.0, 1.0);
+            }
             mediump vec3 normal = normalize(vNormal);
             mediump vec3 tangent = normalize(cross(vBinormal, vNormal));
             mediump vec3 binormal = cross(normal, tangent);
             mediump vec3 wspaceNormal = mat3(tangent, binormal, normal) * tspaceNormal;
-            mediump float dot = dot(normal, wspaceNormal);
-            mediump float intensity = sqrt(max(0.0, 1.0 - dot * dot));
-            gl_FragColor = applyLighting(color, wspaceNormal, normal, intensity) * uOpacity;
+            mediump float dotp = dot(normal, wspaceNormal);
+            mediump float intensity = sqrt(max(0.0, 1.0 - dotp * dotp));
+            lowp vec4 shade = applyLighting(color, wspaceNormal, normal, intensity);
+            if (u_elevationEncoded > 0.5 && u_contourInterval > 0.0) {
+                // Screen-width anti-aliased contour lines (tangram/ascendmaps style): distance to the
+                // nearest contour in meters, divided by the per-pixel elevation change (fwidth).
+                highp_opt float e = sampleElevation(vUV);
+                highp_opt float frac = fract(e / u_contourInterval);
+                highp_opt float distM = min(frac, 1.0 - frac) * u_contourInterval;
+                mediump float px = distM / max(fwidth(e), 1e-4);
+                mediump float cov = clamp(u_contourWidth - px + 0.5, 0.0, 1.0) * u_contourColor.a;
+                // premultiplied over-composite (applyLighting returns premultiplied rgb)
+                shade.rgb = u_contourColor.rgb * cov + shade.rgb * (1.0 - cov);
+                shade.a = cov + shade.a * (1.0 - cov);
+            }
+            gl_FragColor = shade * uOpacity;
         #else
             gl_FragColor = color * uOpacity;
         #endif

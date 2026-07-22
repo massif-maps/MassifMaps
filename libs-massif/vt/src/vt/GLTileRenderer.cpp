@@ -1415,12 +1415,14 @@ namespace carto::vt {
         // Render tile layers in correct order
         bool resetStencil = true;
         std::optional<CompOp> currentCompOp;
+        int painterLayerOrdinal = 0; // painter-order: increasing paint order; each style layer is pulled one delta further forward than the previous, above the ground surface (ordinal 0)
         for (auto it = renderLayerMap.begin(); it != renderLayerMap.end(); it++) {
             const std::vector<const RenderTileLayer*>& renderLayers = it->second;
             if (renderLayers.empty()) {
                 continue;
             }
             const std::shared_ptr<const TileLayer>& layer = renderLayers.front()->layer;
+            painterLayerOrdinal++;
 
             // Layer settings
             float layerOpacity = (layer->getOpacityFunc())(_viewState);
@@ -1534,14 +1536,12 @@ namespace carto::vt {
                         glDepthMask(GL_TRUE);
                     }
                     if (terrainVTF && _terrainPainterOrder) {
-                        // Painter-order: content sits a small CONSTANT offset in front of
-                        // the ground surface. Style layers stack by draw order + LEQUAL (not
-                        // by depth separation), so the offset must not grow with the layer
-                        // count - a growing offset leaks far content over near ridges and
-                        // yanks near content in front of vector elements. Retained (proxy)
-                        // tiles are pushed back so live content wins. No occluder, no slack.
+                        // Painter-order: this style layer's content is pulled one delta
+                        // further forward than the previous, above the ground surface
+                        // (ordinal 0). Retained (proxy) tiles are pushed back so live
+                        // content always wins. No occluder, no slack.
                         float proxyLevel = (renderLayer->active ? 0.0f : 1.0f);
-                        _terrainDrawLayerOffset = proxyLevel * TERRAIN_PAINTER_CONTENT_PROXY - TERRAIN_PAINTER_CONTENT_FORWARD;
+                        _terrainDrawLayerOffset = proxyLevel * TERRAIN_PAINTER_CONTENT_PROXY - static_cast<float>(painterLayerOrdinal);
                         _terrainDrawDepthBias = 0.0f;
                         _terrainDrawDepthClipUnits = 0.0f;
                     } else if (terrainVTF) {
@@ -1596,12 +1596,12 @@ namespace carto::vt {
                         glDepthMask(GL_FALSE);
                     }
                     if (terrainVTF && _terrainPainterOrder) {
-                        // Painter-order: geometry shares the same small constant forward
-                        // offset as content, above the ground surface. It does not write
-                        // depth (see above); the ground surface it tests against decides
-                        // ridge occlusion. No slack.
+                        // Painter-order: geometry shares its style layer's forward offset
+                        // (same as this layer's background), above the ground surface. It
+                        // does not write depth (see above); the ground surface it tests
+                        // against decides ridge occlusion. No slack.
                         float proxyLevel = (renderLayer->active ? 0.0f : 1.0f);
-                        _terrainDrawLayerOffset = proxyLevel * TERRAIN_PAINTER_CONTENT_PROXY - TERRAIN_PAINTER_CONTENT_FORWARD;
+                        _terrainDrawLayerOffset = proxyLevel * TERRAIN_PAINTER_CONTENT_PROXY - static_cast<float>(painterLayerOrdinal);
                         _terrainDrawDepthBias = 0.0f;
                         _terrainDrawDepthClipUnits = 0.0f;
                     } else if (terrainVTF) {

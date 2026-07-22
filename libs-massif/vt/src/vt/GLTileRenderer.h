@@ -238,7 +238,8 @@ namespace carto::vt {
         static constexpr float POLYGON3D_HEIGHT_SCALE = 10018754.17f; // scaling factor for zoom 0 heights
         static constexpr float TERRAIN_LAYER_DEPTH_DELTA = 1.0f / 524288.0f; // 2^-19: NDC depth separation per draped layer bias unit (GPU terrain draping mode)
         static constexpr float TERRAIN_PAINTER_SURFACE_PROXY = 48.0f; // painter-order: proxy (LOD stand-in) push for the ground surface (tangram proxy*=48)
-        static constexpr float TERRAIN_PAINTER_CONTENT_PROXY = 1.0f;  // painter-order: proxy push for content layers
+        static constexpr float TERRAIN_PAINTER_CONTENT_PROXY = 1.0f;  // painter-order: proxy push per LOD level for content layers
+        static constexpr float TERRAIN_PAINTER_CONTENT_FORWARD = 2.0f; // painter-order: constant forward offset of content over the ground surface. Constant (NOT scaled by style-layer count): a growing offset would be pulled far forward at distance (far content leaks over near ridges) and near camera (content jumps in front of vector elements). Style layers stack by draw order + LEQUAL, not by depth separation.
         static constexpr float TERRAIN_PAINTER_DEPTH_SHIFT = 0.02f;   // painter-order: near-camera separation boost factor (tangram depth_shift = -0.02*proj(2,3))
         static constexpr float TERRAIN_DEPTH_CLIP_SLACK = 1.0e-3f; // clip-space depth shift per bias unit at the reference tile size, scaled by tile size (quadratic law, see setupTerrainUniforms) and |proj m22|
         static constexpr double TERRAIN_DEPTH_CLIP_REF_TILE_SIZE = 512.0; // zoom 11 tile size in internal units - the anchor of the quadratic slack law

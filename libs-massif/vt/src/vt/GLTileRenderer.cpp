@@ -82,6 +82,12 @@ namespace carto::vt {
         }
     }
 
+    void GLTileRenderer::setTerrainPainterOrder(bool enabled) {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        _terrainPainterOrder = enabled;
+    }
+
     void GLTileRenderer::setTerrainSlackScale(float slackScale) {
         std::lock_guard<std::mutex> lock(_mutex);
 
@@ -458,6 +464,7 @@ namespace carto::vt {
                 }
                 _terrainDrawDepthBias = _terrainDepthBias;
                 _terrainDrawDepthClipUnits = 0.0f;
+                _terrainDrawLayerOffset = 0.0f; // painter-order: the ground surface is the bottom layer
                 for (const RenderTile& renderTile : *_visibleRenderTiles) {
                     if (renderTile.visible) {
                         renderTileSurfaceFill(renderTile.targetTileId, _terrainBackgroundColor);
@@ -1408,12 +1415,14 @@ namespace carto::vt {
         // Render tile layers in correct order
         bool resetStencil = true;
         std::optional<CompOp> currentCompOp;
+        int painterLayerOrdinal = 0; // painter-order: increasing paint order; each style layer is pulled one delta further forward than the previous, above the ground surface (ordinal 0)
         for (auto it = renderLayerMap.begin(); it != renderLayerMap.end(); it++) {
             const std::vector<const RenderTileLayer*>& renderLayers = it->second;
             if (renderLayers.empty()) {
                 continue;
             }
             const std::shared_ptr<const TileLayer>& layer = renderLayers.front()->layer;
+            painterLayerOrdinal++;
 
             // Layer settings
             float layerOpacity = (layer->getOpacityFunc())(_viewState);
@@ -1526,7 +1535,16 @@ namespace carto::vt {
                     if (contentDepthWrite) {
                         glDepthMask(GL_TRUE);
                     }
-                    if (terrainVTF) {
+                    if (terrainVTF && _terrainPainterOrder) {
+                        // Painter-order: this style layer's content is pulled one delta
+                        // further forward than the previous, above the ground surface
+                        // (ordinal 0). Retained (proxy) tiles are pushed back so live
+                        // content always wins. No occluder, no slack.
+                        float proxyLevel = (renderLayer->active ? 0.0f : 1.0f);
+                        _terrainDrawLayerOffset = proxyLevel * TERRAIN_PAINTER_CONTENT_PROXY - static_cast<float>(painterLayerOrdinal);
+                        _terrainDrawDepthBias = 0.0f;
+                        _terrainDrawDepthClipUnits = 0.0f;
+                    } else if (terrainVTF) {
                         // Backgrounds/bitmaps ARE the terrain occluders: they render the
                         // reference surface meshes at their real depth (no bias) and
                         // WRITE it. Retained blend-out (proxy) tiles are pushed back one
@@ -1577,7 +1595,16 @@ namespace carto::vt {
                     if (contentDepthWrite) {
                         glDepthMask(GL_FALSE);
                     }
-                    if (terrainVTF) {
+                    if (terrainVTF && _terrainPainterOrder) {
+                        // Painter-order: geometry shares its style layer's forward offset
+                        // (same as this layer's background), above the ground surface. It
+                        // does not write depth (see above); the ground surface it tests
+                        // against decides ridge occlusion. No slack.
+                        float proxyLevel = (renderLayer->active ? 0.0f : 1.0f);
+                        _terrainDrawLayerOffset = proxyLevel * TERRAIN_PAINTER_CONTENT_PROXY - static_cast<float>(painterLayerOrdinal);
+                        _terrainDrawDepthBias = 0.0f;
+                        _terrainDrawDepthClipUnits = 0.0f;
+                    } else if (terrainVTF) {
                         // Geometry (roads, lines, polygons) is a different piecewise-linear
                         // approximation of the height field than the background/surface
                         // meshes: between vertices its chords deviate by the interpolation
@@ -1915,7 +1942,19 @@ namespace carto::vt {
         // tesselation resolution (the chord error is quadratic in the cell size, so
         // doubling the mesh resolution allows a 4x tighter slack)
         double slackScale = tileSize * std::min(4.0, tileSize / TERRAIN_DEPTH_CLIP_REF_TILE_SIZE) * _terrainSlackScale;
-        glUniform1f(shaderProgram.uniforms[U_DEPTHBIASCLIP], static_cast<float>(clipUnits * TERRAIN_DEPTH_CLIP_SLACK * slackScale * projScaleZ));
+        if (_terrainPainterOrder) {
+            // Painter-order model: no distance-growing slack. Coincident draped layers are
+            // separated by uLayerDepthOffset*(2^-19*w + uDepthShift). uDepthShift boosts the
+            // near-camera separation where depth precision is worst (tangram depth_shift =
+            // -0.02*proj(2,3)). The slack terms (uDepthBias/uDepthBiasClip) are zeroed.
+            glUniform1f(shaderProgram.uniforms[U_DEPTHBIASCLIP], 0.0f);
+            glUniform1f(shaderProgram.uniforms[U_LAYERDEPTHOFFSET], _terrainDrawLayerOffset);
+            glUniform1f(shaderProgram.uniforms[U_DEPTHSHIFT], static_cast<float>(TERRAIN_PAINTER_DEPTH_SHIFT * projScaleZ));
+        } else {
+            glUniform1f(shaderProgram.uniforms[U_DEPTHBIASCLIP], static_cast<float>(clipUnits * TERRAIN_DEPTH_CLIP_SLACK * slackScale * projScaleZ));
+            glUniform1f(shaderProgram.uniforms[U_LAYERDEPTHOFFSET], 0.0f);
+            glUniform1f(shaderProgram.uniforms[U_DEPTHSHIFT], 0.0f);
+        }
 
         TerrainTexture terrainTexture;
         bool valid = _terrainTextureProvider && _terrainTextureProvider(tileId, terrainTexture);
@@ -1927,6 +1966,8 @@ namespace carto::vt {
             glUniform4f(shaderProgram.uniforms[U_ELEVATIONSCALE], 0.0f, 0.0f, 0.0f, 0.0f);
             glUniform4f(shaderProgram.uniforms[U_ELEVATIONTEXELSIZE], 1.0f, 1.0f, 1.0f, 1.0f);
             glUniform2f(shaderProgram.uniforms[U_ELEVATIONLATTICECELL], 0.0f, 0.0f);
+            glUniform1f(shaderProgram.uniforms[U_LAYERDEPTHOFFSET], _terrainPainterOrder ? _terrainDrawLayerOffset : 0.0f);
+            glUniform1f(shaderProgram.uniforms[U_DEPTHSHIFT], 0.0f);
             return false;
         }
 

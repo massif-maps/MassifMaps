@@ -100,6 +100,7 @@ namespace carto::vt {
         void setInteractionMode(bool enabled);
         void setTerrainMode(bool enabled, float depthBias);
         void setTerrainRegularGrid(bool enabled, int resolution);
+        void setTerrainPainterOrder(bool enabled);
         void setTerrainSlackScale(float slackScale);
         void setTerrainDepthWrite(bool enabled);
         void setTerrainTextureProvider(TerrainTextureProvider provider);
@@ -236,6 +237,9 @@ namespace carto::vt {
         static constexpr float STROKE_UV_SCALE = 2.857f; // stroked line UV scale factor
         static constexpr float POLYGON3D_HEIGHT_SCALE = 10018754.17f; // scaling factor for zoom 0 heights
         static constexpr float TERRAIN_LAYER_DEPTH_DELTA = 1.0f / 524288.0f; // 2^-19: NDC depth separation per draped layer bias unit (GPU terrain draping mode)
+        static constexpr float TERRAIN_PAINTER_SURFACE_PROXY = 48.0f; // painter-order: proxy (LOD stand-in) push for the ground surface (tangram proxy*=48)
+        static constexpr float TERRAIN_PAINTER_CONTENT_PROXY = 1.0f;  // painter-order: proxy push for content layers
+        static constexpr float TERRAIN_PAINTER_DEPTH_SHIFT = 0.02f;   // painter-order: near-camera separation boost factor (tangram depth_shift = -0.02*proj(2,3))
         static constexpr float TERRAIN_DEPTH_CLIP_SLACK = 1.0e-3f; // clip-space depth shift per bias unit at the reference tile size, scaled by tile size (quadratic law, see setupTerrainUniforms) and |proj m22|
         static constexpr double TERRAIN_DEPTH_CLIP_REF_TILE_SIZE = 512.0; // zoom 11 tile size in internal units - the anchor of the quadratic slack law
         static constexpr float ALPHA_HIT_THRESHOLD = 0.05f; // threshold value for 'transparent' pixel alphas
@@ -332,6 +336,8 @@ namespace carto::vt {
         bool _terrainRegularGrid = false;        // shared unit-grid surfaces instead of per-tile tesselated meshes (planar terrain)
         int _terrainRegularGridResolution = 0;   // resolution of the currently built shared grid
         std::vector<std::shared_ptr<TileSurface>> _terrainGridSurfaces; // the single shared unit-grid surface, drawn per tile
+        bool _terrainPainterOrder = false;       // tangram painter-order depth model (no surface occluder / no slack); implies regular grid
+        float _terrainDrawLayerOffset = 0.0f;    // painter-order per-draw (proxy - layer) offset
         bool _debugWireframe = false;
         bool _debugSurfacePrefill = false;
         Color _terrainBackgroundColor; // opaque terrain base fill + depth pre-pass color; transparent = depth-only

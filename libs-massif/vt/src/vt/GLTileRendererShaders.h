@@ -46,7 +46,9 @@ namespace carto::vt {
         U_ELEVATIONDECODE,
         U_ELEVATIONSCALE,
         U_ELEVATIONTEXELSIZE,
-        U_ELEVATIONLATTICECELL
+        U_ELEVATIONLATTICECELL,
+        U_LAYERDEPTHOFFSET,
+        U_DEPTHSHIFT
     };
 
     enum : unsigned int {
@@ -96,7 +98,9 @@ namespace carto::vt {
         { "uElevationDecode",  U_ELEVATIONDECODE },
         { "uElevationScale",   U_ELEVATIONSCALE },
         { "uElevationTexelSize", U_ELEVATIONTEXELSIZE },
-        { "uElevationLatticeCell", U_ELEVATIONLATTICECELL }
+        { "uElevationLatticeCell", U_ELEVATIONLATTICECELL },
+        { "uLayerDepthOffset",  U_LAYERDEPTHOFFSET },
+        { "uDepthShift",        U_DEPTHSHIFT }
     };
 
     static const std::map<unsigned int, std::string> flagDefineMap = {
@@ -187,8 +191,20 @@ namespace carto::vt {
                                       // grows with distance, tracking the growth of the
                                       // piecewise-linear interpolation error between the
                                       // surface and geometry meshes (tangram depth_shift)
+        uniform float uLayerDepthOffset; // painter-order model: (proxy - layer). 0 in slack mode
+        uniform float uDepthShift;       // painter-order near-camera separation boost
+        // Two depth models share this function, selected by which uniforms are non-zero:
+        //  - slack (occluder) model: pull the draw towards the viewer by
+        //    (uDepthBias*w + uDepthBiasClip) so draped content clears the surface pre-pass.
+        //  - painter-order model (tangram): separate coincident draped layers by a fixed
+        //    per-layer delta, uLayerDepthOffset*(DELTA*w + uDepthShift), DELTA = 2^-19. The
+        //    surface is just the bottom layer; there is no occluder and no distance-growing
+        //    slack, so far content can not leak in front of a near ridge.
         vec4 applyDepthBias(vec4 clipPos) {
-            return vec4(clipPos.xy, clipPos.z - (uDepthBias * clipPos.w + uDepthBiasClip), clipPos.w);
+            float z = clipPos.z
+                + uLayerDepthOffset * (0.0000019073486328125 * clipPos.w + uDepthShift)
+                - (uDepthBias * clipPos.w + uDepthBiasClip);
+            return vec4(clipPos.xy, z, clipPos.w);
         }
         #else
         vec4 applyDepthBias(vec4 clipPos) {

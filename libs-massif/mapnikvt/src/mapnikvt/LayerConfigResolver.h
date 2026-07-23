@@ -12,6 +12,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <utility>
 
 namespace carto::mvt {
     class Map;
@@ -44,6 +45,15 @@ namespace carto::mvt {
                                            const std::string& layerName,
                                            float viewZoom,
                                            const std::shared_ptr<const std::map<std::string, Value>>& nutiValues);
+
+    /**
+     * Returns the (minZoom, maxZoom) range over which the named layer's config symbolizer
+     * rules are active, aggregated across all its config rules (min of minZooms, max of
+     * maxZooms). Used to constrain the visible zoom range of an external source's child
+     * layer so it is not fetched/drawn outside the zooms the style enables it. If the layer
+     * has no config symbolizer rules, returns (0, 24) meaning unconstrained.
+     */
+    std::pair<int, int> resolveLayerZoomRange(const Map& map, const std::string& layerName);
 }
 
 #endif

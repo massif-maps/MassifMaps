@@ -10,6 +10,9 @@
 #include "ExpressionUtils.h"
 #include "PredicateUtils.h"
 
+#include <algorithm>
+#include <limits>
+
 namespace carto::mvt {
     ResolvedLayerConfig resolveLayerConfig(const Map& map, const std::string& layerName, float viewZoom,
                                            const std::shared_ptr<const std::map<std::string, Value>>& nutiValues) {
@@ -74,5 +77,41 @@ namespace carto::mvt {
             result.visible = false;
         }
         return result;
+    }
+
+    std::pair<int, int> resolveLayerZoomRange(const Map& map, const std::string& layerName) {
+        const std::shared_ptr<Layer>& layer = map.getLayer(layerName);
+        if (!layer) {
+            return { 0, 24 };
+        }
+
+        int minZoom = std::numeric_limits<int>::max();
+        int maxZoom = std::numeric_limits<int>::min();
+        bool found = false;
+        for (const std::string& styleName : layer->getStyleNames()) {
+            const std::shared_ptr<Style>& style = map.getStyle(styleName);
+            if (!style) {
+                continue;
+            }
+            for (const std::shared_ptr<const Rule>& rule : style->getRules()) {
+                bool isConfigRule = false;
+                for (const std::shared_ptr<const Symbolizer>& symbolizer : rule->getSymbolizers()) {
+                    if (std::dynamic_pointer_cast<const LayerConfigSymbolizer>(symbolizer)) {
+                        isConfigRule = true;
+                        break;
+                    }
+                }
+                if (!isConfigRule) {
+                    continue;
+                }
+                found = true;
+                minZoom = std::min(minZoom, rule->getMinZoom());
+                maxZoom = std::max(maxZoom, rule->getMaxZoom());
+            }
+        }
+        if (!found) {
+            return { 0, 24 };
+        }
+        return { minZoom, maxZoom };
     }
 }

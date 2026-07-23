@@ -177,7 +177,13 @@ namespace carto::vt {
 
         _rendererLayerFilter = filter;
     }
-    
+
+    void GLTileRenderer::setRendererLayerIndexRange(const std::optional<std::pair<int, int>>& range) {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        _rendererLayerIndexRange = range;
+    }
+
     void GLTileRenderer::setClickHandlerLayerFilter(const std::optional<std::regex>& filter) {
         std::lock_guard<std::mutex> lock(_mutex);
 
@@ -1367,7 +1373,9 @@ namespace carto::vt {
                     contains2DGeometry = (geometry->getType() != TileGeometry::Type::POLYGON3D) || contains2DGeometry;
                 }
                 if (contains2DGeometry || (layer->getCompOp() && isEmptyBlendRequired(*layer->getCompOp()))) {
-                    renderLayerMap[it->first].push_back(&it->second);
+                    if (!_rendererLayerIndexRange || (it->first >= _rendererLayerIndexRange->first && it->first < _rendererLayerIndexRange->second)) {
+                        renderLayerMap[it->first].push_back(&it->second);
+                    }
                 }
             }
         }
@@ -1671,7 +1679,9 @@ namespace carto::vt {
                     contains3DGeometry = (geometry->getType() == TileGeometry::Type::POLYGON3D) || contains3DGeometry;
                 }
                 if (contains3DGeometry || (layer->getCompOp() && isEmptyBlendRequired(*layer->getCompOp()))) {
-                    renderLayerMap[it->first].push_back(&it->second);
+                    if (!_rendererLayerIndexRange || (it->first >= _rendererLayerIndexRange->first && it->first < _rendererLayerIndexRange->second)) {
+                        renderLayerMap[it->first].push_back(&it->second);
+                    }
                 }
             }
         }

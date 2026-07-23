@@ -1,0 +1,78 @@
+#include "LayerConfigResolver.h"
+#include "Map.h"
+#include "Layer.h"
+#include "Style.h"
+#include "Rule.h"
+#include "Filter.h"
+#include "Symbolizer.h"
+#include "LayerConfigSymbolizer.h"
+#include "ExpressionContext.h"
+#include "ExpressionUtils.h"
+#include "PredicateUtils.h"
+
+namespace carto::mvt {
+    ResolvedLayerConfig resolveLayerConfig(const Map& map, const std::string& layerName, float viewZoom,
+                                           const std::shared_ptr<const std::map<std::string, Value>>& nutiValues) {
+        ResolvedLayerConfig result;
+
+        const std::shared_ptr<Layer>& layer = map.getLayer(layerName);
+        if (!layer) {
+            return result;
+        }
+
+        // Build the evaluation context: adjusted (integer) zoom for rule/predicate selection,
+        // nuti parameter map for nuti:: predicates/expressions, and a ViewState carrying the
+        // fractional view zoom for zoom-dependent property functions (view::zoom).
+        ExpressionContext exprContext;
+        exprContext.setAdjustedZoom(static_cast<int>(viewZoom));
+        if (nutiValues) {
+            exprContext.setNutiParameterValueMap(nutiValues);
+        }
+        vt::ViewState viewState;
+        viewState.zoom = viewZoom;
+
+        PredicateEvaluator predEvaluator(exprContext, &viewState);
+
+        for (const std::string& styleName : layer->getStyleNames()) {
+            const std::shared_ptr<Style>& style = map.getStyle(styleName);
+            if (!style) {
+                continue;
+            }
+            for (const std::shared_ptr<const Rule>& rule : style->getZoomRules(exprContext.getAdjustedZoom())) {
+                // Apply the rule filter predicate (zoom / nuti::) if present.
+                if (const std::shared_ptr<const Filter>& filter = rule->getFilter()) {
+                    if (filter->getType() == Filter::Type::FILTER && filter->getPredicate()) {
+                        if (!std::visit(predEvaluator, *filter->getPredicate())) {
+                            continue;
+                        }
+                    }
+                }
+                for (const std::shared_ptr<const Symbolizer>& symbolizer : rule->getSymbolizers()) {
+                    auto configSymbolizer = std::dynamic_pointer_cast<const LayerConfigSymbolizer>(symbolizer);
+                    if (!configSymbolizer) {
+                        continue;
+                    }
+                    result.visible = true;
+                    // Evaluate every property the style actually set. Evaluating the raw
+                    // property Expression handles view::zoom (via viewState), 'zoom' and
+                    // nuti:: (via exprContext) uniformly, regardless of the property type.
+                    for (const std::string& propertyName : configSymbolizer->getPropertyNames()) {
+                        const Property* property = configSymbolizer->getProperty(propertyName);
+                        if (!property || !property->isDefined()) {
+                            continue;
+                        }
+                        Value value = std::visit(ExpressionEvaluator(exprContext, &viewState), property->getExpression());
+                        result.values[propertyName] = value;
+                    }
+                }
+            }
+        }
+
+        // An explicit 'visible: false' in the style hides the source regardless of matches.
+        auto it = result.values.find("visible");
+        if (it != result.values.end() && !ValueConverter<bool>::convert(it->second)) {
+            result.visible = false;
+        }
+        return result;
+    }
+}

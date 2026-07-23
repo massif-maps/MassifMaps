@@ -19,6 +19,9 @@
 #include "mapnikvt/MarkersSymbolizer.h"
 #include "mapnikvt/ShieldSymbolizer.h"
 #include "mapnikvt/BuildingSymbolizer.h"
+#include "mapnikvt/RasterConfigSymbolizer.h"
+#include "mapnikvt/HillshadeConfigSymbolizer.h"
+#include "mapnikvt/ContourConfigSymbolizer.h"
 #include "mapnikvt/GeneratorUtils.h"
 
 #include <algorithm>
@@ -503,6 +506,15 @@ namespace carto::css {
         else if (symbolizerType == "building") {
             mapnikSymbolizer = std::make_shared<mvt::BuildingSymbolizer>(_logger);
         }
+        else if (symbolizerType == "raster") {
+            mapnikSymbolizer = std::make_shared<mvt::RasterConfigSymbolizer>(_logger);
+        }
+        else if (symbolizerType == "hillshade") {
+            mapnikSymbolizer = std::make_shared<mvt::HillshadeConfigSymbolizer>(_logger);
+        }
+        else if (symbolizerType == "contour") {
+            mapnikSymbolizer = std::make_shared<mvt::ContourConfigSymbolizer>(_logger);
+        }
         else {
             _logger->write(mvt::Logger::Severity::ERROR, "Unsupported symbolizer type: " + symbolizerType);
             return nullptr;
@@ -632,7 +644,10 @@ namespace carto::css {
         "text",
         "marker",
         "shield",
-        "building"
+        "building",
+        "hillshade",
+        "raster",
+        "contour"
     };
 
     const std::unordered_map<std::string, std::string> CartoCSSMapnikTranslator::_symbolizerPropertyMap = {
@@ -767,7 +782,35 @@ namespace carto::css {
         { "building-fill-opacity", "fill-opacity" },
         { "building-height", "height" },
         { "building-min-height", "min-height" },
-        { "building-geometry-transform", "geometry-transform" }
+        { "building-geometry-transform", "geometry-transform" },
         // NOTE: comp-op not supported for building symbolizer
+
+        // Config symbolizers for external data sources (CompositeVectorTileLayer).
+        // These produce no geometry; the values are read per frame by the SDK layer.
+        { "raster-visible",     "visible" },
+        { "raster-opacity",     "opacity" },
+        { "raster-comp-op",     "comp-op" },
+        { "raster-filter-mode", "filter-mode" },
+
+        { "hillshade-visible",               "visible" },
+        { "hillshade-opacity",               "opacity" },
+        { "hillshade-comp-op",               "comp-op" },
+        { "hillshade-exaggeration",          "exaggeration" },
+        { "hillshade-height-scale",          "height-scale" },
+        { "hillshade-contrast",              "contrast" },
+        { "hillshade-illumination-direction","illumination-direction" },
+        { "hillshade-shadow-color",          "shadow-color" },
+        { "hillshade-highlight-color",       "highlight-color" },
+        { "hillshade-accent-color",          "accent-color" },
+        { "hillshade-method",                "method" },
+        { "hillshade-contour-interval",      "contour-interval" },
+        { "hillshade-contour-color",         "contour-color" },
+        { "hillshade-contour-width",         "contour-width" },
+
+        { "contour-visible",            "visible" },
+        { "contour-base-interval",      "base-interval" },
+        { "contour-resolution",         "resolution" },
+        { "contour-min-visible-zoom",   "min-visible-zoom" },
+        { "contour-simplify-tolerance", "simplify-tolerance" }
     };
 }

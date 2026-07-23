@@ -1619,15 +1619,14 @@ namespace carto::vt {
                         // reference grid surface within the tiny in-cell bilinear-vs-triangle
                         // twist, so the distance-growing slack collapses to a small margin;
                         // adaptive meshes keep the full calibrated slack.
-                        _terrainDrawDepthClipUnits = _terrainPainterOrder ? 0.0f : (_terrainRegularGrid ? 2.0f : 12.0f);
-                        // Source-density (tangram) draping: content is NOT subdivided to hug the
-                        // surface, so its chords sag below the fine occluder by up to the source
-                        // segment length's interpolation error. Lift it with a tunable slack
-                        // (fed by the existing distance-scaled slack law) instead of the
-                        // painter-order zero / lattice-clamp margin.
-                        if (_terrainSourceDensityDrape) {
-                            _terrainDrawDepthClipUnits = _terrainSourceDensitySlackClipUnits;
-                        }
+                        _terrainDrawBaseClipUnits = _terrainPainterOrder ? 0.0f : (_terrainRegularGrid ? 2.0f : 12.0f);
+                        _terrainDrawDepthClipUnits = _terrainDrawBaseClipUnits;
+                        // Source-density (tangram) draping targets FILLS only: they are left at
+                        // source density (not subdivided) so their chords sag below the fine
+                        // occluder and need a tunable lift slack. LINES stay subdivided (they must
+                        // hug the terrain - contours lie on the surface), so they keep the small
+                        // base slack. The per-geometry choice is applied in the draw loop.
+                        _terrainDrawFillClipUnits = _terrainSourceDensityDrape ? _terrainSourceDensitySlackClipUnits : _terrainDrawBaseClipUnits;
                     } else {
                         glEnable(GL_POLYGON_OFFSET_FILL);
                         glPolygonOffset(-1.0f, -2.0f);
@@ -1640,6 +1639,11 @@ namespace carto::vt {
                         if (currentCompOp != geometryCompOp) {
                             setCompOp(geometryCompOp);
                             currentCompOp = geometryCompOp;
+                        }
+                        if (_terrainMode && terrainVTF) {
+                            // Fills carry the source-density lift slack; lines/points keep the
+                            // small base slack (they stay subdivided and sit on the surface).
+                            _terrainDrawDepthClipUnits = (geometry->getType() == TileGeometry::Type::POLYGON) ? _terrainDrawFillClipUnits : _terrainDrawBaseClipUnits;
                         }
                         renderTileGeometry(renderLayer->sourceTileId, renderLayer->targetTileId, renderLayer->blend, geometryOpacity, renderLayer->tileSize, geometry);
                     }

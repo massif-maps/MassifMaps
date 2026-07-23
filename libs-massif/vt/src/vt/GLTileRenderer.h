@@ -336,6 +336,8 @@ namespace carto::vt {
         float _terrainSlackScale = 1.0f;         // scales the clip-constant slack; ~(32/meshResolution)^2 - the chord error shrinks quadratically with the tesselation
         float _terrainDrawDepthBias = 0.0f;      // per-draw NDC (w-scaled) depth bias while rendering 2D layers (GPU draping mode)
         float _terrainDrawDepthClipUnits = 0.0f; // per-draw clip-constant slack units (distance-growing; see setupTerrainUniforms)
+        float _terrainDrawBaseClipUnits = 0.0f;  // base (line/point) slack for the current layer; fills may override per draw
+        float _terrainDrawFillClipUnits = 0.0f;  // fill slack for the current layer (source-density lift when enabled)
         bool _terrainSkirtsEnabled = false;
         bool _terrainRegularGrid = false;        // shared unit-grid surfaces instead of per-tile tesselated meshes (planar terrain)
         int _terrainRegularGridResolution = 0;   // resolution of the currently built shared grid

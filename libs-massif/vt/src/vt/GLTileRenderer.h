@@ -113,6 +113,11 @@ namespace carto::vt {
         void setLabelBlendingSpeed(float speed);
         void setRasterFilterMode(RasterFilterMode filterMode);
         void setRendererLayerFilter(const std::optional<std::regex>& filter);
+        // Render-time layer-index gate: when set, only tile layers whose layerIndex is in
+        // [first, second) are drawn this frame. Unlike setRendererLayerFilter (build-time), this is
+        // consulted every frame, so one renderer can draw disjoint style-layer ranges across frames.
+        // nullopt (default) = draw all layers (no effect).
+        void setRendererLayerIndexRange(const std::optional<std::pair<int, int>>& range);
         void setClickHandlerLayerFilter(const std::optional<std::regex>& filter);
         void setViewState(const ViewState& viewState);
         void setVisibleTiles(const std::map<TileId, std::shared_ptr<const Tile>>& tiles);
@@ -349,6 +354,7 @@ namespace carto::vt {
         float _labelBlendingSpeed = 1.0f;
         RasterFilterMode _rasterFilterMode = RasterFilterMode::BILINEAR;
         std::optional<std::regex> _rendererLayerFilter;
+        std::optional<std::pair<int, int>> _rendererLayerIndexRange;
         std::optional<std::regex> _clickHandlerLayerFilter;
 
         std::shared_ptr<std::vector<RenderTile>> _renderTiles;

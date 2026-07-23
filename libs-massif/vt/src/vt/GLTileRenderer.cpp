@@ -94,6 +94,13 @@ namespace carto::vt {
         _terrainSlackScale = slackScale;
     }
 
+    void GLTileRenderer::setTerrainSourceDensityDrape(bool enabled, float slackClipUnits) {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        _terrainSourceDensityDrape = enabled;
+        _terrainSourceDensitySlackClipUnits = slackClipUnits;
+    }
+
     void GLTileRenderer::setTerrainDepthWrite(bool enabled) {
         std::lock_guard<std::mutex> lock(_mutex);
 
@@ -1613,6 +1620,14 @@ namespace carto::vt {
                         // twist, so the distance-growing slack collapses to a small margin;
                         // adaptive meshes keep the full calibrated slack.
                         _terrainDrawDepthClipUnits = _terrainPainterOrder ? 0.0f : (_terrainRegularGrid ? 2.0f : 12.0f);
+                        // Source-density (tangram) draping: content is NOT subdivided to hug the
+                        // surface, so its chords sag below the fine occluder by up to the source
+                        // segment length's interpolation error. Lift it with a tunable slack
+                        // (fed by the existing distance-scaled slack law) instead of the
+                        // painter-order zero / lattice-clamp margin.
+                        if (_terrainSourceDensityDrape) {
+                            _terrainDrawDepthClipUnits = _terrainSourceDensitySlackClipUnits;
+                        }
                     } else {
                         glEnable(GL_POLYGON_OFFSET_FILL);
                         glPolygonOffset(-1.0f, -2.0f);

@@ -102,6 +102,7 @@ namespace carto::vt {
         void setTerrainRegularGrid(bool enabled, int resolution);
         void setTerrainPainterOrder(bool enabled);
         void setTerrainSlackScale(float slackScale);
+        void setTerrainSourceDensityDrape(bool enabled, float slackClipUnits);
         void setTerrainDepthWrite(bool enabled);
         void setTerrainTextureProvider(TerrainTextureProvider provider);
         void setDebugWireframe(bool enabled);
@@ -341,6 +342,8 @@ namespace carto::vt {
         std::vector<std::shared_ptr<TileSurface>> _terrainGridSurfaces; // the single shared unit-grid surface, drawn per tile
         bool _terrainPainterOrder = false;       // tangram painter-order depth model (no surface occluder / no slack); implies regular grid
         float _terrainDrawLayerOffset = 0.0f;    // painter-order per-draw (proxy - layer) offset
+        bool _terrainSourceDensityDrape = false; // tangram source-density draping: content not subdivided; lifted by a tunable slack
+        float _terrainSourceDensitySlackClipUnits = 12.0f; // lifting slack (clip units) for source-density draped content
         bool _debugWireframe = false;
         bool _debugSurfacePrefill = false;
         Color _terrainBackgroundColor; // opaque terrain base fill + depth pre-pass color; transparent = depth-only

@@ -2227,35 +2227,30 @@ namespace carto::vt {
     }
 
     void GLTileRenderer::renderDrapeTextures(const std::vector<RenderTile>& renderTiles) {
-        // Maplibre-style drape: bake each tile's polygon fills FLAT (no terrain
-        // displacement) into a per-tile offscreen texture. The terrain surface then
-        // samples that texture as its color, so fills follow the terrain exactly with
-        // no depth interplay (no holes, no see-through). Only native (non-overzoomed)
-        // fills are draped; overzoomed fills fall through to the normal geometry pass.
-        if (_drapeFBO == 0) {
-            glGenFramebuffers(1, &_drapeFBO);
-        }
-        GLint prevFBO = 0;
-        glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prevFBO);
-
-        glBindFramebuffer(GL_FRAMEBUFFER, _drapeFBO);
-        glViewport(0, 0, _drapeTextureSize, _drapeTextureSize);
-        glDisable(GL_DEPTH_TEST);
-        glDepthMask(GL_FALSE);
-        glDisable(GL_STENCIL_TEST);
-        setCompOp(CompOp::SRC_OVER);
-
-        // tile-local [0,1] -> clip [-1,1]; renderTileGeometry pre-multiplies by 1/coordScale.
-        cglib::mat4x4<float> drapeOrtho = cglib::translate4_matrix(cglib::vec3<float>(-1.0f, -1.0f, 0.0f)) * cglib::scale4_matrix(cglib::vec3<float>(2.0f, 2.0f, 1.0f));
-        _drapeMVPOverride = &drapeOrtho;
+        // Maplibre-style drape: bake each tile's fills/backgrounds FLAT (no terrain
+        // displacement) into a per-tile offscreen texture. The terrain surface then samples
+        // it as its color, so fills follow the terrain exactly (no holes/see-through).
+        //
+        // The bake is CACHED per target tile: a tile's texture is baked ONCE (when its content
+        // first appears) at full opacity and reused every frame after. Re-baking every visible
+        // tile every frame stalls the render thread during fast zooms (a burst of tiles), which
+        // is not present in flat rendering. A cached tile is dropped (texture freed) when it
+        // leaves the view; it re-bakes if it returns. Only native (non-overzoomed) content is
+        // draped; overzoomed content falls through to the normal geometry pass.
+        // A tile is "draped" this frame only once its texture is actually baked; until then
+        // its content renders as normal geometry (no gap). New-tile bakes are capped per frame
+        // so a fast zoom's burst of tiles is spread over a few frames instead of stalling one.
+        static const std::size_t DRAPE_BAKE_BUDGET_PER_FRAME = 4;
         _drapeTilesThisFrame.clear();
+        std::set<TileId> drapeContentTiles;
 
+        std::vector<const RenderTile*> tilesToBake;
         for (const RenderTile& renderTile : renderTiles) {
             if (!renderTile.visible) {
                 continue;
             }
             const TileId& targetTileId = renderTile.targetTileId;
-            if (_drapeTilesThisFrame.count(targetTileId)) {
+            if (drapeContentTiles.count(targetTileId)) {
                 continue;
             }
             bool hasContent = false;
@@ -2278,38 +2273,17 @@ namespace carto::vt {
             if (!hasContent) {
                 continue;
             }
-
-            GLuint tex = ensureDrapeTexture(targetTileId);
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex, 0);
-            glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-            glClear(GL_COLOR_BUFFER_BIT);
-
-            // Bake all opaque-ish sub-content BELOW the lines - backgrounds then polygon
-            // fills - in layer order, so their mutual painter order is preserved in the
-            // texture. Bitmaps (rasters/hillshade) stay as displaced surface draws that
-            // blend over the drape surface; lines/points/labels stay sharp geometry on top.
-            for (auto it = renderTile.renderLayers.begin(); it != renderTile.renderLayers.end(); it++) {
-                const RenderTileLayer& renderLayer = it->second;
-                if (renderLayer.sourceTileId != targetTileId) {
-                    continue;
-                }
-                for (const std::shared_ptr<TileBackground>& background : renderLayer.layer->getBackgrounds()) {
-                    renderTileBackground(renderLayer.targetTileId, renderLayer.blend, 1.0f, renderLayer.tileSize, background);
-                }
-                for (const std::shared_ptr<TileGeometry>& geometry : renderLayer.layer->getGeometries()) {
-                    TileGeometry::Type type = geometry->getType();
-                    if (type == TileGeometry::Type::POLYGON || (_terrainDrapeLines && type == TileGeometry::Type::LINE)) {
-                        renderTileGeometry(renderLayer.sourceTileId, renderLayer.targetTileId, renderLayer.blend, 1.0f, renderLayer.tileSize, geometry);
-                    }
-                }
+            drapeContentTiles.insert(targetTileId);
+            if (_drapeTextures.find(targetTileId) != _drapeTextures.end()) {
+                _drapeTilesThisFrame.insert(targetTileId); // already baked - drape it now
+            } else if (tilesToBake.size() < DRAPE_BAKE_BUDGET_PER_FRAME) {
+                tilesToBake.push_back(&renderTile); // new tile - bake this frame (within budget)
             }
-            _drapeTilesThisFrame.insert(targetTileId);
         }
 
-        _drapeMVPOverride = nullptr;
-
+        // Free textures for tiles no longer needing a drape.
         for (auto it = _drapeTextures.begin(); it != _drapeTextures.end(); ) {
-            if (!_drapeTilesThisFrame.count(it->first)) {
+            if (!drapeContentTiles.count(it->first)) {
                 glDeleteTextures(1, &it->second);
                 it = _drapeTextures.erase(it);
             } else {
@@ -2317,6 +2291,56 @@ namespace carto::vt {
             }
         }
 
+        if (tilesToBake.empty()) {
+            return; // all draped tiles cached - no offscreen work this frame
+        }
+
+        if (_drapeFBO == 0) {
+            glGenFramebuffers(1, &_drapeFBO);
+        }
+        GLint prevFBO = 0;
+        glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prevFBO);
+        glBindFramebuffer(GL_FRAMEBUFFER, _drapeFBO);
+        glViewport(0, 0, _drapeTextureSize, _drapeTextureSize);
+        glDisable(GL_DEPTH_TEST);
+        glDepthMask(GL_FALSE);
+        glDisable(GL_STENCIL_TEST);
+        setCompOp(CompOp::SRC_OVER);
+
+        // tile-local [0,1] -> clip [-1,1]; renderTileGeometry pre-multiplies by 1/coordScale.
+        cglib::mat4x4<float> drapeOrtho = cglib::translate4_matrix(cglib::vec3<float>(-1.0f, -1.0f, 0.0f)) * cglib::scale4_matrix(cglib::vec3<float>(2.0f, 2.0f, 1.0f));
+        _drapeMVPOverride = &drapeOrtho;
+
+        for (const RenderTile* renderTilePtr : tilesToBake) {
+            const RenderTile& renderTile = *renderTilePtr;
+            const TileId& targetTileId = renderTile.targetTileId;
+            _drapeTilesThisFrame.insert(targetTileId); // baked now - drape it this frame
+            GLuint tex = ensureDrapeTexture(targetTileId);
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex, 0);
+            glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+            glClear(GL_COLOR_BUFFER_BIT);
+
+            // Bake backgrounds then polygon fills (and lines, if enabled) in layer order at
+            // FULL opacity, so the cached texture is stable regardless of fade-in blend.
+            // Bitmaps stay as displaced surface draws; lines/points/labels stay sharp on top.
+            for (auto it = renderTile.renderLayers.begin(); it != renderTile.renderLayers.end(); it++) {
+                const RenderTileLayer& renderLayer = it->second;
+                if (renderLayer.sourceTileId != targetTileId) {
+                    continue;
+                }
+                for (const std::shared_ptr<TileBackground>& background : renderLayer.layer->getBackgrounds()) {
+                    renderTileBackground(renderLayer.targetTileId, 1.0f, 1.0f, renderLayer.tileSize, background);
+                }
+                for (const std::shared_ptr<TileGeometry>& geometry : renderLayer.layer->getGeometries()) {
+                    TileGeometry::Type type = geometry->getType();
+                    if (type == TileGeometry::Type::POLYGON || (_terrainDrapeLines && type == TileGeometry::Type::LINE)) {
+                        renderTileGeometry(renderLayer.sourceTileId, renderLayer.targetTileId, 1.0f, 1.0f, renderLayer.tileSize, geometry);
+                    }
+                }
+            }
+        }
+
+        _drapeMVPOverride = nullptr;
         glBindFramebuffer(GL_FRAMEBUFFER, prevFBO);
         glViewport(0, 0, _screenWidth, _screenHeight);
         checkGLError();

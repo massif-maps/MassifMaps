@@ -62,6 +62,9 @@ namespace carto::vt {
         bool updatePlacement(const ViewState& viewState);
         void updateElevation(const std::function<double(const cglib::vec3<double>&)>& heightFunc);
 
+        std::uint64_t getElevationVersion() const { return _elevationVersion; }
+        void setElevationVersion(std::uint64_t version) { _elevationVersion = version; }
+
         bool calculateCenter(cglib::vec3<double>& pos) const;
         bool calculateEnvelope(const ViewState& viewState, std::array<cglib::vec3<float>, 4>& envelope) const { return calculateEnvelope((_style->sizeFunc)(viewState), 0, viewState, envelope); }
         bool calculateEnvelope(float size, float buffer, const ViewState& viewState, std::array<cglib::vec3<float>, 4>& envelope) const;
@@ -208,6 +211,7 @@ namespace carto::vt {
         float _opacity = 0.0f;
         bool _visible = false;
         bool _active = false;
+        std::uint64_t _elevationVersion = ~static_cast<std::uint64_t>(0); // last terrain elevation version this label's geometry was anchored to (sentinel = never anchored)
 
         std::shared_ptr<const Placement> _placement;
         mutable std::shared_ptr<const Placement> _cachedFlippedPlacement;

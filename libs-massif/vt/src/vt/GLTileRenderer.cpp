@@ -557,8 +557,18 @@ namespace carto::vt {
                 }
             }
 
-            // 2D geometry pass
+            // 2D geometry pass. With the true-depth drape occluder, lattice-clamped content
+            // sits at the SAME depth as the surface, so test it with GL_LEQUAL and no forward
+            // bias: coincident content passes (visible), but content behind a near ridge is at
+            // greater depth and fails (occluded) - zero forward pull means zero ridge leak.
+            bool leEqualDepth = _terrainMode && _terrainDrapeFills;
+            if (leEqualDepth) {
+                glDepthFunc(GL_LEQUAL);
+            }
             renderGeometry2D(*_visibleRenderTiles, stencilBits);
+            if (leEqualDepth) {
+                glDepthFunc(GL_LESS);
+            }
 
             // Debug: overlay the FINAL stencil buffer contents (stencil-tested fullscreen
             // quads, one distinct color per allocated stencil value, black = unowned 0)
@@ -1649,12 +1659,12 @@ namespace carto::vt {
                         // clearance is provided by pushing the surface BACK instead, so
                         // geometry is never pulled forward and can not leak over a ridge.
                         float proxyBias = (renderLayer->active ? 0.0f : 1.0f * TERRAIN_LAYER_DEPTH_DELTA);
-                        // Painter-order: lattice-clamped content sits exactly on the true-depth
-                        // occluder surface, so it needs only ONE depth-delta of forward bias to win
-                        // the depth test against it (a larger clip-space bias leaks over ridges at
-                        // range - that was the contour see-through). The occluder now writes true
-                        // depth (see the drape surface pass), so a near ridge blocks the far slope.
-                        _terrainDrawDepthBias = (_terrainPainterOrder ? 1.0f * TERRAIN_LAYER_DEPTH_DELTA : _terrainDepthBias + 1.0f * TERRAIN_LAYER_DEPTH_DELTA) - proxyBias;
+                        // Painter-order: lattice-clamped content is coincident with the true-depth
+                        // occluder surface and is drawn with GL_LEQUAL, so it needs ZERO forward
+                        // bias - it passes at equal depth and is occluded (fails) behind a ridge.
+                        // Any forward clip bias here leaks over ridges at range (the contour
+                        // see-through), so keep it at zero in painter-order.
+                        _terrainDrawDepthBias = (_terrainPainterOrder ? 0.0f : _terrainDepthBias + 1.0f * TERRAIN_LAYER_DEPTH_DELTA) - proxyBias;
                         // Lattice clamp (regular-grid mode) makes draped geometry follow the
                         // reference grid surface within the tiny in-cell bilinear-vs-triangle
                         // twist, so the distance-growing slack collapses to a small margin;

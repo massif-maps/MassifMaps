@@ -101,10 +101,11 @@ namespace carto::vt {
         _terrainSourceDensitySlackClipUnits = slackClipUnits;
     }
 
-    void GLTileRenderer::setTerrainDrapeFills(bool enabled) {
+    void GLTileRenderer::setTerrainDrapeFills(bool enabled, bool includeLines) {
         std::lock_guard<std::mutex> lock(_mutex);
 
         _terrainDrapeFills = enabled;
+        _terrainDrapeLines = enabled && includeLines;
     }
 
     void GLTileRenderer::setTerrainDepthWrite(bool enabled) {
@@ -1664,8 +1665,8 @@ namespace carto::vt {
                 }
 
                 for (const std::shared_ptr<TileGeometry>& geometry : renderLayer->layer->getGeometries()) {
-                    // Draped native fills are baked into the surface texture already; skip them here.
-                    if (drapedTile && geometry->getType() == TileGeometry::Type::POLYGON) {
+                    // Draped native fills (and lines, if enabled) are baked into the surface texture already.
+                    if (drapedTile && (geometry->getType() == TileGeometry::Type::POLYGON || (_terrainDrapeLines && geometry->getType() == TileGeometry::Type::LINE))) {
                         continue;
                     }
                     if (geometry->getType() != TileGeometry::Type::POLYGON3D) {
@@ -2248,7 +2249,8 @@ namespace carto::vt {
                     break;
                 }
                 for (const std::shared_ptr<TileGeometry>& geometry : it->second.layer->getGeometries()) {
-                    if (geometry->getType() == TileGeometry::Type::POLYGON) {
+                    TileGeometry::Type type = geometry->getType();
+                    if (type == TileGeometry::Type::POLYGON || (_terrainDrapeLines && type == TileGeometry::Type::LINE)) {
                         hasContent = true;
                         break;
                     }
@@ -2276,7 +2278,8 @@ namespace carto::vt {
                     renderTileBackground(renderLayer.targetTileId, renderLayer.blend, 1.0f, renderLayer.tileSize, background);
                 }
                 for (const std::shared_ptr<TileGeometry>& geometry : renderLayer.layer->getGeometries()) {
-                    if (geometry->getType() == TileGeometry::Type::POLYGON) {
+                    TileGeometry::Type type = geometry->getType();
+                    if (type == TileGeometry::Type::POLYGON || (_terrainDrapeLines && type == TileGeometry::Type::LINE)) {
                         renderTileGeometry(renderLayer.sourceTileId, renderLayer.targetTileId, renderLayer.blend, 1.0f, renderLayer.tileSize, geometry);
                     }
                 }

@@ -103,7 +103,7 @@ namespace carto::vt {
         void setTerrainPainterOrder(bool enabled);
         void setTerrainSlackScale(float slackScale);
         void setTerrainSourceDensityDrape(bool enabled, float slackClipUnits);
-        void setTerrainDrapeFills(bool enabled);
+        void setTerrainDrapeFills(bool enabled, bool includeLines);
         void setTerrainDepthWrite(bool enabled);
         void setTerrainTextureProvider(TerrainTextureProvider provider);
         void setDebugWireframe(bool enabled);
@@ -351,6 +351,7 @@ namespace carto::vt {
         bool _terrainSourceDensityDrape = false; // tangram source-density draping: content not subdivided; lifted by a tunable slack
         float _terrainSourceDensitySlackClipUnits = 12.0f; // lifting slack (clip units) for source-density draped content
         bool _terrainDrapeFills = false;         // maplibre-style: bake polygon fills flat to a per-tile texture, sampled on the surface
+        bool _terrainDrapeLines = false;         // also bake vt tile lines into the drape texture (softer, but zero leak/hug error)
         int _drapeTextureSize = 512;             // per-tile drape texture resolution
         GLuint _drapeFBO = 0;                    // shared offscreen FBO for baking drape textures
         std::map<TileId, GLuint> _drapeTextures; // per-target-tile baked fill textures (frame pool)

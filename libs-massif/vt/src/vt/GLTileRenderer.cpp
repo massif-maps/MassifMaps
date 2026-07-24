@@ -505,7 +505,9 @@ namespace carto::vt {
                     glDepthMask(GL_FALSE);
                     glDisable(GL_STENCIL_TEST);
                     setCompOp(CompOp::SRC_OVER);
-                    _terrainDrawDepthBias = _terrainDepthBias;
+                    // The drape surface IS the grid surface (lattice-exact), so it draws at real
+                    // depth in painter-order - no forward bias to leak over ridges.
+                    _terrainDrawDepthBias = _terrainPainterOrder ? 0.0f : _terrainDepthBias;
                     _terrainDrawDepthClipUnits = _terrainPainterOrder ? 0.0f : (_terrainRegularGrid ? 2.0f : 12.0f);
                     for (const RenderTile& renderTile : *_visibleRenderTiles) {
                         if (renderTile.visible) {
@@ -1645,7 +1647,11 @@ namespace carto::vt {
                         // clearance is provided by pushing the surface BACK instead, so
                         // geometry is never pulled forward and can not leak over a ridge.
                         float proxyBias = (renderLayer->active ? 0.0f : 1.0f * TERRAIN_LAYER_DEPTH_DELTA);
-                        _terrainDrawDepthBias = _terrainDepthBias + (_terrainPainterOrder ? 0.0f : 1.0f * TERRAIN_LAYER_DEPTH_DELTA) - proxyBias;
+                        // Painter-order: lattice-clamped content sits exactly on the grid surface,
+                        // so it draws at REAL depth (no forward _terrainDepthBias) - clearance is
+                        // provided by pushing the surface BACK. The stray forward bias here was the
+                        // contour see-through: a clip-space forward pull leaks over ridges at range.
+                        _terrainDrawDepthBias = (_terrainPainterOrder ? 0.0f : _terrainDepthBias + 1.0f * TERRAIN_LAYER_DEPTH_DELTA) - proxyBias;
                         // Lattice clamp (regular-grid mode) makes draped geometry follow the
                         // reference grid surface within the tiny in-cell bilinear-vs-triangle
                         // twist, so the distance-growing slack collapses to a small margin;

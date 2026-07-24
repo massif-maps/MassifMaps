@@ -94,13 +94,6 @@ namespace carto::vt {
         _terrainSlackScale = slackScale;
     }
 
-    void GLTileRenderer::setTerrainSourceDensityDrape(bool enabled, float slackClipUnits) {
-        std::lock_guard<std::mutex> lock(_mutex);
-
-        _terrainSourceDensityDrape = enabled;
-        _terrainSourceDensitySlackClipUnits = slackClipUnits;
-    }
-
     void GLTileRenderer::setTerrainDrapeFills(bool enabled, bool includeLines) {
         std::lock_guard<std::mutex> lock(_mutex);
 
@@ -1669,14 +1662,7 @@ namespace carto::vt {
                         // reference grid surface within the tiny in-cell bilinear-vs-triangle
                         // twist, so the distance-growing slack collapses to a small margin;
                         // adaptive meshes keep the full calibrated slack.
-                        _terrainDrawBaseClipUnits = _terrainPainterOrder ? 0.0f : (_terrainRegularGrid ? 2.0f : 12.0f);
-                        _terrainDrawDepthClipUnits = _terrainDrawBaseClipUnits;
-                        // Source-density (tangram) draping targets FILLS only: they are left at
-                        // source density (not subdivided) so their chords sag below the fine
-                        // occluder and need a tunable lift slack. LINES stay subdivided (they must
-                        // hug the terrain - contours lie on the surface), so they keep the small
-                        // base slack. The per-geometry choice is applied in the draw loop.
-                        _terrainDrawFillClipUnits = _terrainSourceDensityDrape ? _terrainSourceDensitySlackClipUnits : _terrainDrawBaseClipUnits;
+                        _terrainDrawDepthClipUnits = _terrainPainterOrder ? 0.0f : (_terrainRegularGrid ? 2.0f : 12.0f);
                     } else {
                         glEnable(GL_POLYGON_OFFSET_FILL);
                         glPolygonOffset(-1.0f, -2.0f);
@@ -1693,11 +1679,6 @@ namespace carto::vt {
                         if (currentCompOp != geometryCompOp) {
                             setCompOp(geometryCompOp);
                             currentCompOp = geometryCompOp;
-                        }
-                        if (_terrainMode && terrainVTF) {
-                            // Fills carry the source-density lift slack; lines/points keep the
-                            // small base slack (they stay subdivided and sit on the surface).
-                            _terrainDrawDepthClipUnits = (geometry->getType() == TileGeometry::Type::POLYGON) ? _terrainDrawFillClipUnits : _terrainDrawBaseClipUnits;
                         }
                         renderTileGeometry(renderLayer->sourceTileId, renderLayer->targetTileId, renderLayer->blend, geometryOpacity, renderLayer->tileSize, geometry);
                     }

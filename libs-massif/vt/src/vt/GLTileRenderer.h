@@ -102,7 +102,6 @@ namespace carto::vt {
         void setTerrainRegularGrid(bool enabled, int resolution);
         void setTerrainPainterOrder(bool enabled);
         void setTerrainSlackScale(float slackScale);
-        void setTerrainSourceDensityDrape(bool enabled, float slackClipUnits);
         void setTerrainDrapeFills(bool enabled, bool includeLines);
         void setTerrainDepthWrite(bool enabled);
         void setTerrainTextureProvider(TerrainTextureProvider provider);
@@ -340,16 +339,12 @@ namespace carto::vt {
         float _terrainSlackScale = 1.0f;         // scales the clip-constant slack; ~(32/meshResolution)^2 - the chord error shrinks quadratically with the tesselation
         float _terrainDrawDepthBias = 0.0f;      // per-draw NDC (w-scaled) depth bias while rendering 2D layers (GPU draping mode)
         float _terrainDrawDepthClipUnits = 0.0f; // per-draw clip-constant slack units (distance-growing; see setupTerrainUniforms)
-        float _terrainDrawBaseClipUnits = 0.0f;  // base (line/point) slack for the current layer; fills may override per draw
-        float _terrainDrawFillClipUnits = 0.0f;  // fill slack for the current layer (source-density lift when enabled)
         bool _terrainSkirtsEnabled = false;
         bool _terrainRegularGrid = false;        // shared unit-grid surfaces instead of per-tile tesselated meshes (planar terrain)
         int _terrainRegularGridResolution = 0;   // resolution of the currently built shared grid
         std::vector<std::shared_ptr<TileSurface>> _terrainGridSurfaces; // the single shared unit-grid surface, drawn per tile
         bool _terrainPainterOrder = false;       // tangram painter-order depth model (no surface occluder / no slack); implies regular grid
         float _terrainDrawLayerOffset = 0.0f;    // painter-order per-draw (proxy - layer) offset
-        bool _terrainSourceDensityDrape = false; // tangram source-density draping: content not subdivided; lifted by a tunable slack
-        float _terrainSourceDensitySlackClipUnits = 12.0f; // lifting slack (clip units) for source-density draped content
         bool _terrainDrapeFills = false;         // maplibre-style: bake polygon fills flat to a per-tile texture, sampled on the surface
         bool _terrainDrapeLines = false;         // also bake vt tile lines into the drape texture (softer, but zero leak/hug error)
         int _drapeTextureSize = 512;             // per-tile drape texture resolution

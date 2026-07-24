@@ -48,7 +48,8 @@ namespace carto::vt {
         U_ELEVATIONTEXELSIZE,
         U_ELEVATIONLATTICECELL,
         U_LAYERDEPTHOFFSET,
-        U_DEPTHSHIFT
+        U_DEPTHSHIFT,
+        U_DRAPETEXTURE
     };
 
     enum : unsigned int {
@@ -57,7 +58,8 @@ namespace carto::vt {
         PATTERN_FLAG     = 4,
         DERIVATIVES_FLAG = 8,
         TERRAIN_FLAG     = 16,
-        TERRAIN_VTF_FLAG = 32
+        TERRAIN_VTF_FLAG = 32,
+        DRAPE_FLAG       = 64
     };
 
     static const std::map<std::string, int> attribMap = {
@@ -100,7 +102,8 @@ namespace carto::vt {
         { "uElevationTexelSize", U_ELEVATIONTEXELSIZE },
         { "uElevationLatticeCell", U_ELEVATIONLATTICECELL },
         { "uLayerDepthOffset",  U_LAYERDEPTHOFFSET },
-        { "uDepthShift",        U_DEPTHSHIFT }
+        { "uDepthShift",        U_DEPTHSHIFT },
+        { "uDrapeTexture",      U_DRAPETEXTURE }
     };
 
     static const std::map<unsigned int, std::string> flagDefineMap = {
@@ -109,7 +112,8 @@ namespace carto::vt {
         { PATTERN_FLAG,     "PATTERN" },
         { DERIVATIVES_FLAG, "DERIVATIVES" },
         { TERRAIN_FLAG,     "TERRAIN_DEPTH_BIAS" },
-        { TERRAIN_VTF_FLAG, "TERRAIN" }
+        { TERRAIN_VTF_FLAG, "TERRAIN" },
+        { DRAPE_FLAG,       "DRAPE" }
     };
 
     static const std::string textureFiltersFsh = R"GLSL(
@@ -333,10 +337,19 @@ namespace carto::vt {
         #ifdef LIGHTING_VSH
         varying lowp vec4 vColor;
         #endif
+        #ifdef DRAPE
+        varying highp_opt vec2 vDrapeUV;
+        #endif
 
         void main(void) {
         #ifdef PATTERN
             vUV = aVertexUV * uUVScale;
+        #endif
+        #ifdef DRAPE
+            // The regular-grid surface vertex xy is the tile-local [0,1] parametrization;
+            // it is exactly the uv the tile's fills were baked into the drape texture with.
+            // If fills appear vertically mirrored on device, flip to vec2(x, 1.0 - y).
+            vDrapeUV = aVertexPosition.xy;
         #endif
         #ifdef LIGHTING_VSH
             vColor = applyLighting(vec4(1.0, 1.0, 1.0, 1.0), aVertexNormal);
@@ -355,6 +368,10 @@ namespace carto::vt {
         uniform sampler2D uPattern;
         varying highp_opt vec2 vUV;
         #endif
+        #ifdef DRAPE
+        uniform sampler2D uDrapeTexture;
+        varying highp_opt vec2 vDrapeUV;
+        #endif
         #ifdef LIGHTING_FSH
         varying mediump vec3 vNormal;
         #endif
@@ -363,7 +380,9 @@ namespace carto::vt {
         #endif
 
         void main(void) {
-        #ifdef PATTERN
+        #ifdef DRAPE
+            lowp vec4 color = texture2D(uDrapeTexture, vDrapeUV);
+        #elif defined(PATTERN)
             lowp vec4 patternColor = texture2D(uPattern, vUV);
             lowp vec4 color = uColor * (1.0 - patternColor.a) + patternColor;
         #else

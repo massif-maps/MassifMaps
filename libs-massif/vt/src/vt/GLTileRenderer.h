@@ -103,6 +103,7 @@ namespace carto::vt {
         void setTerrainPainterOrder(bool enabled);
         void setTerrainSlackScale(float slackScale);
         void setTerrainSourceDensityDrape(bool enabled, float slackClipUnits);
+        void setTerrainDrapeFills(bool enabled);
         void setTerrainDepthWrite(bool enabled);
         void setTerrainTextureProvider(TerrainTextureProvider provider);
         void setDebugWireframe(bool enabled);
@@ -283,6 +284,9 @@ namespace carto::vt {
         void renderTileMask(const TileId& tileId);
         void renderStencilDebugOverlay();
         void renderTileSurfaceFill(const TileId& tileId, const Color& color);
+        void renderDrapeTextures(const std::vector<RenderTile>& renderTiles);
+        void renderTileSurfaceDrape(const TileId& tileId);
+        GLuint ensureDrapeTexture(const TileId& tileId);
         void renderTileWireframe(const TileId& tileId);
         void renderTileBackground(const TileId& tileId, float blend, float opacity, float tileSize, const std::shared_ptr<TileBackground>& background);
         void renderTileBitmap(const TileId& sourceTileId, const TileId& targetTileId, float blend, float opacity, const std::shared_ptr<TileBitmap>& bitmap);
@@ -346,6 +350,12 @@ namespace carto::vt {
         float _terrainDrawLayerOffset = 0.0f;    // painter-order per-draw (proxy - layer) offset
         bool _terrainSourceDensityDrape = false; // tangram source-density draping: content not subdivided; lifted by a tunable slack
         float _terrainSourceDensitySlackClipUnits = 12.0f; // lifting slack (clip units) for source-density draped content
+        bool _terrainDrapeFills = false;         // maplibre-style: bake polygon fills flat to a per-tile texture, sampled on the surface
+        int _drapeTextureSize = 512;             // per-tile drape texture resolution
+        GLuint _drapeFBO = 0;                    // shared offscreen FBO for baking drape textures
+        std::map<TileId, GLuint> _drapeTextures; // per-target-tile baked fill textures (frame pool)
+        std::set<TileId> _drapeTilesThisFrame;   // target tiles that have a valid drape texture this frame
+        const cglib::mat4x4<float>* _drapeMVPOverride = nullptr; // when set, renderTileGeometry draws flat into the drape FBO
         bool _debugWireframe = false;
         bool _debugSurfacePrefill = false;
         Color _terrainBackgroundColor; // opaque terrain base fill + depth pre-pass color; transparent = depth-only

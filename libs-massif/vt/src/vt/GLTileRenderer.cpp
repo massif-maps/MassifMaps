@@ -101,6 +101,12 @@ namespace carto::vt {
         _terrainSourceDensitySlackClipUnits = slackClipUnits;
     }
 
+    void GLTileRenderer::setTerrainDrapeFills(bool enabled) {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        _terrainDrapeFills = enabled;
+    }
+
     void GLTileRenderer::setTerrainDepthWrite(bool enabled) {
         std::lock_guard<std::mutex> lock(_mutex);
 
@@ -488,6 +494,25 @@ namespace carto::vt {
                     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
                 }
                 glDepthMask(GL_FALSE);
+
+                // Drape pass: bake fills flat into per-tile textures, then draw the
+                // terrain surface textured with them (at content depth, over the
+                // back-pushed pre-pass surface). Fills then hug the terrain exactly.
+                if (_terrainDrapeFills) {
+                    renderDrapeTextures(*_visibleRenderTiles);
+                    glEnable(GL_DEPTH_TEST);
+                    glDepthMask(GL_FALSE);
+                    glDisable(GL_STENCIL_TEST);
+                    setCompOp(CompOp::SRC_OVER);
+                    _terrainDrawDepthBias = _terrainDepthBias;
+                    _terrainDrawDepthClipUnits = _terrainPainterOrder ? 0.0f : (_terrainRegularGrid ? 2.0f : 12.0f);
+                    for (const RenderTile& renderTile : *_visibleRenderTiles) {
+                        if (renderTile.visible) {
+                            renderTileSurfaceDrape(renderTile.targetTileId);
+                        }
+                    }
+                    _terrainDrawDepthClipUnits = 0.0f;
+                }
             }
 
             if (_debugSurfacePrefill) {
@@ -1634,6 +1659,10 @@ namespace carto::vt {
                 }
 
                 for (const std::shared_ptr<TileGeometry>& geometry : renderLayer->layer->getGeometries()) {
+                    // Draped native fills are baked into the surface texture already; skip them here.
+                    if (_terrainDrapeFills && geometry->getType() == TileGeometry::Type::POLYGON && renderLayer->sourceTileId == renderLayer->targetTileId) {
+                        continue;
+                    }
                     if (geometry->getType() != TileGeometry::Type::POLYGON3D) {
                         CompOp geometryCompOp = geometry->getStyleParameters().compOp;
                         if (currentCompOp != geometryCompOp) {
@@ -2157,6 +2186,148 @@ namespace carto::vt {
         }
     }
 
+    GLuint GLTileRenderer::ensureDrapeTexture(const TileId& tileId) {
+        GLuint& tex = _drapeTextures[tileId];
+        if (tex == 0) {
+            glGenTextures(1, &tex);
+            glBindTexture(GL_TEXTURE_2D, tex);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, _drapeTextureSize, _drapeTextureSize, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+            glBindTexture(GL_TEXTURE_2D, 0);
+        }
+        return tex;
+    }
+
+    void GLTileRenderer::renderDrapeTextures(const std::vector<RenderTile>& renderTiles) {
+        // Maplibre-style drape: bake each tile's polygon fills FLAT (no terrain
+        // displacement) into a per-tile offscreen texture. The terrain surface then
+        // samples that texture as its color, so fills follow the terrain exactly with
+        // no depth interplay (no holes, no see-through). Only native (non-overzoomed)
+        // fills are draped; overzoomed fills fall through to the normal geometry pass.
+        if (_drapeFBO == 0) {
+            glGenFramebuffers(1, &_drapeFBO);
+        }
+        GLint prevFBO = 0;
+        glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prevFBO);
+
+        glBindFramebuffer(GL_FRAMEBUFFER, _drapeFBO);
+        glViewport(0, 0, _drapeTextureSize, _drapeTextureSize);
+        glDisable(GL_DEPTH_TEST);
+        glDepthMask(GL_FALSE);
+        glDisable(GL_STENCIL_TEST);
+        setCompOp(CompOp::SRC_OVER);
+
+        // tile-local [0,1] -> clip [-1,1]; renderTileGeometry pre-multiplies by 1/coordScale.
+        cglib::mat4x4<float> drapeOrtho = cglib::translate4_matrix(cglib::vec3<float>(-1.0f, -1.0f, 0.0f)) * cglib::scale4_matrix(cglib::vec3<float>(2.0f, 2.0f, 1.0f));
+        _drapeMVPOverride = &drapeOrtho;
+        _drapeTilesThisFrame.clear();
+
+        for (const RenderTile& renderTile : renderTiles) {
+            if (!renderTile.visible) {
+                continue;
+            }
+            const TileId& targetTileId = renderTile.targetTileId;
+            if (_drapeTilesThisFrame.count(targetTileId)) {
+                continue;
+            }
+            bool hasFill = false;
+            for (auto it = renderTile.renderLayers.begin(); it != renderTile.renderLayers.end() && !hasFill; it++) {
+                if (it->second.sourceTileId != targetTileId) {
+                    continue;
+                }
+                for (const std::shared_ptr<TileGeometry>& geometry : it->second.layer->getGeometries()) {
+                    if (geometry->getType() == TileGeometry::Type::POLYGON) {
+                        hasFill = true;
+                        break;
+                    }
+                }
+            }
+            if (!hasFill) {
+                continue;
+            }
+
+            GLuint tex = ensureDrapeTexture(targetTileId);
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex, 0);
+            glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+            glClear(GL_COLOR_BUFFER_BIT);
+
+            for (auto it = renderTile.renderLayers.begin(); it != renderTile.renderLayers.end(); it++) {
+                const RenderTileLayer& renderLayer = it->second;
+                if (renderLayer.sourceTileId != targetTileId) {
+                    continue;
+                }
+                for (const std::shared_ptr<TileGeometry>& geometry : renderLayer.layer->getGeometries()) {
+                    if (geometry->getType() == TileGeometry::Type::POLYGON) {
+                        renderTileGeometry(renderLayer.sourceTileId, renderLayer.targetTileId, renderLayer.blend, 1.0f, renderLayer.tileSize, geometry);
+                    }
+                }
+            }
+            _drapeTilesThisFrame.insert(targetTileId);
+        }
+
+        _drapeMVPOverride = nullptr;
+
+        for (auto it = _drapeTextures.begin(); it != _drapeTextures.end(); ) {
+            if (!_drapeTilesThisFrame.count(it->first)) {
+                glDeleteTextures(1, &it->second);
+                it = _drapeTextures.erase(it);
+            } else {
+                it++;
+            }
+        }
+
+        glBindFramebuffer(GL_FRAMEBUFFER, prevFBO);
+        glViewport(0, 0, _screenWidth, _screenHeight);
+        checkGLError();
+    }
+
+    void GLTileRenderer::renderTileSurfaceDrape(const TileId& tileId) {
+        auto texIt = _drapeTextures.find(tileId);
+        if (texIt == _drapeTextures.end() || !_drapeTilesThisFrame.count(tileId)) {
+            return;
+        }
+        bool gridMode = _terrainRegularGrid && _terrainMode && static_cast<bool>(_terrainTextureProvider);
+        cglib::mat4x4<double> surfaceFrame = gridMode ? calculateTileMatrix(tileId, 1.0f) : cglib::translate4_matrix(_tileSurfaceBuilderOrigin);
+        for (const std::shared_ptr<TileSurface>& tileSurface : (gridMode ? buildCompiledTerrainGridSurfaces() : buildCompiledTileSurfaces(tileId))) {
+            const TileSurface::VertexGeometryLayoutParameters& vertexGeomLayoutParams = tileSurface->getVertexGeometryLayoutParameters();
+            const CompiledSurface& compiledTileSurface = _compiledTileSurfaceMap[tileSurface];
+
+            unsigned int flags = (_terrainMode && _terrainTextureProvider ? TERRAIN_FLAG | TERRAIN_VTF_FLAG : 0) | DRAPE_FLAG;
+            const ShaderProgram& shaderProgram = buildShaderProgram("tilesurfacedrape", backgroundVsh, backgroundFsh, LightingMode::NONE, RasterFilterMode::NONE, flags);
+            glUseProgram(shaderProgram.program);
+            if (flags & TERRAIN_FLAG) {
+                glUniform1f(shaderProgram.uniforms[U_DEPTHBIAS], _terrainDrawDepthBias);
+                setupTerrainUniforms(shaderProgram, tileId, surfaceFrame);
+            }
+
+            glBindBuffer(GL_ARRAY_BUFFER, compiledTileSurface.vertexGeometryVBO);
+            glVertexAttribPointer(shaderProgram.attribs[A_VERTEXPOSITION], 3, GL_FLOAT, GL_FALSE, vertexGeomLayoutParams.vertexSize, bufferGLOffset(vertexGeomLayoutParams.coordOffset));
+            glEnableVertexAttribArray(shaderProgram.attribs[A_VERTEXPOSITION]);
+
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, compiledTileSurface.indicesVBO);
+
+            cglib::mat4x4<float> mvpMatrix = gridMode ? calculateTileMVPMatrix(tileId, 1.0f) : cglib::mat4x4<float>::convert(_cameraProjMatrix * surfaceFrame);
+            glUniformMatrix4fv(shaderProgram.uniforms[U_MVPMATRIX], 1, GL_FALSE, mvpMatrix.data());
+
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, texIt->second);
+            glUniform1i(shaderProgram.uniforms[U_DRAPETEXTURE], 0);
+            glUniform4f(shaderProgram.uniforms[U_COLOR], 0.0f, 0.0f, 0.0f, 0.0f);
+            glUniform1f(shaderProgram.uniforms[U_OPACITY], 1.0f);
+
+            glDrawElements(GL_TRIANGLES, tileSurface->getIndicesCount(), GL_UNSIGNED_SHORT, 0);
+
+            glBindTexture(GL_TEXTURE_2D, 0);
+            glDisableVertexAttribArray(shaderProgram.attribs[A_VERTEXPOSITION]);
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+            glBindBuffer(GL_ARRAY_BUFFER, 0);
+            checkGLError();
+        }
+    }
+
     void GLTileRenderer::renderTileWireframe(const TileId& tileId) {
         // Debug view: the tile surface triangle mesh as red edges, displaced exactly like
         // the rendered surfaces (same vertex buffers + terrain uniforms as the mask/background).
@@ -2419,8 +2590,11 @@ namespace carto::vt {
 
         bool styleOffsetting = std::count(styleParams.offsetFuncs.begin(), styleParams.offsetFuncs.begin() + styleParams.parameterCount, FloatFunction(0)) != styleParams.parameterCount;
 
-        bool terrainVTF = _terrainMode && (bool) _terrainTextureProvider;
-        unsigned int terrainFlag = (_terrainMode ? TERRAIN_FLAG : 0) | (terrainVTF ? TERRAIN_VTF_FLAG : 0);
+        // Flat drape pass: draw the fill into the per-tile drape texture with NO terrain
+        // displacement, NO depth bias, and a tile-local orthographic MVP (set by the caller).
+        bool flatDrape = (_drapeMVPOverride != nullptr);
+        bool terrainVTF = _terrainMode && (bool) _terrainTextureProvider && !flatDrape;
+        unsigned int terrainFlag = flatDrape ? 0 : ((_terrainMode ? TERRAIN_FLAG : 0) | (terrainVTF ? TERRAIN_VTF_FLAG : 0));
         const ShaderProgram* shaderProgramPtr = nullptr;
         switch (geometry->getType()) {
         case TileGeometry::Type::POINT:
@@ -2441,7 +2615,14 @@ namespace carto::vt {
         const ShaderProgram& shaderProgram = *shaderProgramPtr;
         glUseProgram(shaderProgram.program);
 
-        cglib::mat4x4<float> mvpMatrix = calculateTileMVPMatrix(sourceTileId, 1.0f / vertexGeomLayoutParams.coordScale);
+        cglib::mat4x4<float> mvpMatrix;
+        if (flatDrape) {
+            // fill coords * (1/coordScale) = tile-local [0,1]; the override maps [0,1] -> clip.
+            cglib::mat4x4<float> local = cglib::scale4_matrix(cglib::vec3<float>(1.0f / vertexGeomLayoutParams.coordScale, 1.0f / vertexGeomLayoutParams.coordScale, 1.0f));
+            mvpMatrix = (*_drapeMVPOverride) * local;
+        } else {
+            mvpMatrix = calculateTileMVPMatrix(sourceTileId, 1.0f / vertexGeomLayoutParams.coordScale);
+        }
         glUniformMatrix4fv(shaderProgram.uniforms[U_MVPMATRIX], 1, GL_FALSE, mvpMatrix.data());
         if (terrainFlag != 0 && geometry->getType() != TileGeometry::Type::POLYGON3D) {
             glUniform1f(shaderProgram.uniforms[U_DEPTHBIAS], terrainVTF ? _terrainDrawDepthBias : _terrainDepthBias);

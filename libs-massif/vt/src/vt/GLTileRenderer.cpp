@@ -379,25 +379,14 @@ namespace carto::vt {
             refresh = updateRenderTile(renderTile, dBlend) || refresh;
         }
         
-        // Re-anchor labels onto the terrain (labels are built flat when their tile is decoded).
-        // Only labels not yet anchored at the current elevation version are re-anchored, and at
-        // most a bounded number per frame: anchoring samples the elevation grid (mutex) per label
-        // point, so re-anchoring EVERY label on every tile-set change stalls the render thread on
-        // a fast zoom. The rendered anchor comes from the carried placement (snapPlacement), so
-        // spreading the per-vertex re-anchor over a few frames is not visible.
-        if (_labelElevationProvider) {
-            std::size_t anchorBudget = LABEL_ELEVATION_ANCHOR_BUDGET;
+        // Re-anchor labels onto the terrain when the elevation data has changed (labels are
+        // built when their tile is decoded, possibly before elevation data was available)
+        if (_labelElevationProvider && _appliedLabelElevationVersion != _labelElevationVersion) {
+            _appliedLabelElevationVersion = _labelElevationVersion;
             for (const std::shared_ptr<Label>& label : _labels) {
-                if (label->getElevationVersion() == _labelElevationVersion) {
-                    continue;
-                }
                 label->updateElevation(_labelElevationProvider);
-                label->setElevationVersion(_labelElevationVersion);
-                refresh = true;
-                if (--anchorBudget == 0) {
-                    break; // remaining labels re-anchor over the next frames
-                }
             }
+            refresh = true;
         }
 
         // Update labels
@@ -1279,9 +1268,9 @@ namespace carto::vt {
         _labels = std::move(labels);
         _bitmapLabelMap = std::move(bitmapLabelMap);
 
-        // Newly built labels carry the sentinel elevation version, so startFrame re-anchors
-        // them onto the terrain (budgeted); carried-over labels keep their rendered placement
-        // via snapPlacement in the meantime, so no forced full re-anchor is needed here.
+        // Tile geometry is built flat in GPU draping mode - newly built labels must be
+        // re-anchored onto the terrain (startFrame applies the elevation provider)
+        _appliedLabelElevationVersion = _labelElevationVersion - 1;
     }
 
     bool GLTileRenderer::updateLabel(const std::shared_ptr<Label>& label, float dOpacity) const {

@@ -1599,7 +1599,12 @@ namespace carto::vt {
                     }
                 }
 
+                bool drapedTile = _terrainDrapeFills && renderLayer->sourceTileId == renderLayer->targetTileId && _drapeTilesThisFrame.count(renderLayer->targetTileId);
                 for (const std::shared_ptr<TileBackground>& background : renderLayer->layer->getBackgrounds()) {
+                    // Draped native backgrounds are baked into the surface texture already.
+                    if (drapedTile) {
+                        continue;
+                    }
                     CompOp backgroundCompOp = CompOp::SRC_OVER;
                     if (currentCompOp != backgroundCompOp) {
                         setCompOp(backgroundCompOp);
@@ -1660,7 +1665,7 @@ namespace carto::vt {
 
                 for (const std::shared_ptr<TileGeometry>& geometry : renderLayer->layer->getGeometries()) {
                     // Draped native fills are baked into the surface texture already; skip them here.
-                    if (_terrainDrapeFills && geometry->getType() == TileGeometry::Type::POLYGON && renderLayer->sourceTileId == renderLayer->targetTileId) {
+                    if (drapedTile && geometry->getType() == TileGeometry::Type::POLYGON) {
                         continue;
                     }
                     if (geometry->getType() != TileGeometry::Type::POLYGON3D) {
@@ -2233,19 +2238,23 @@ namespace carto::vt {
             if (_drapeTilesThisFrame.count(targetTileId)) {
                 continue;
             }
-            bool hasFill = false;
-            for (auto it = renderTile.renderLayers.begin(); it != renderTile.renderLayers.end() && !hasFill; it++) {
+            bool hasContent = false;
+            for (auto it = renderTile.renderLayers.begin(); it != renderTile.renderLayers.end() && !hasContent; it++) {
                 if (it->second.sourceTileId != targetTileId) {
                     continue;
                 }
+                if (!it->second.layer->getBackgrounds().empty()) {
+                    hasContent = true;
+                    break;
+                }
                 for (const std::shared_ptr<TileGeometry>& geometry : it->second.layer->getGeometries()) {
                     if (geometry->getType() == TileGeometry::Type::POLYGON) {
-                        hasFill = true;
+                        hasContent = true;
                         break;
                     }
                 }
             }
-            if (!hasFill) {
+            if (!hasContent) {
                 continue;
             }
 
@@ -2254,10 +2263,17 @@ namespace carto::vt {
             glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
             glClear(GL_COLOR_BUFFER_BIT);
 
+            // Bake all opaque-ish sub-content BELOW the lines - backgrounds then polygon
+            // fills - in layer order, so their mutual painter order is preserved in the
+            // texture. Bitmaps (rasters/hillshade) stay as displaced surface draws that
+            // blend over the drape surface; lines/points/labels stay sharp geometry on top.
             for (auto it = renderTile.renderLayers.begin(); it != renderTile.renderLayers.end(); it++) {
                 const RenderTileLayer& renderLayer = it->second;
                 if (renderLayer.sourceTileId != targetTileId) {
                     continue;
+                }
+                for (const std::shared_ptr<TileBackground>& background : renderLayer.layer->getBackgrounds()) {
+                    renderTileBackground(renderLayer.targetTileId, renderLayer.blend, 1.0f, renderLayer.tileSize, background);
                 }
                 for (const std::shared_ptr<TileGeometry>& geometry : renderLayer.layer->getGeometries()) {
                     if (geometry->getType() == TileGeometry::Type::POLYGON) {
@@ -2395,6 +2411,7 @@ namespace carto::vt {
             return;
         }
 
+        bool flatDrape = (_drapeMVPOverride != nullptr);
         bool terrainVTF = _terrainMode && (bool) _terrainTextureProvider;
         bool gridMode = _terrainRegularGrid && terrainVTF;
         cglib::mat4x4<double> surfaceFrame = gridMode ? calculateTileMatrix(tileId, 1.0f) : cglib::translate4_matrix(_tileSurfaceBuilderOrigin);
@@ -2402,13 +2419,14 @@ namespace carto::vt {
             const TileSurface::VertexGeometryLayoutParameters& vertexGeomLayoutParams = tileSurface->getVertexGeometryLayoutParameters();
             const CompiledSurface& compiledTileSurface = _compiledTileSurfaceMap[tileSurface];
 
-            unsigned int terrainFlag = (terrainVTF ? TERRAIN_FLAG | TERRAIN_VTF_FLAG : (_terrainMode && !_terrainDepthWrite ? TERRAIN_FLAG : 0));
+            // Flat drape pass: bake the background onto the flat [0,1] grid (no displacement).
+            unsigned int terrainFlag = flatDrape ? 0 : (terrainVTF ? TERRAIN_FLAG | TERRAIN_VTF_FLAG : (_terrainMode && !_terrainDepthWrite ? TERRAIN_FLAG : 0));
             const ShaderProgram& shaderProgram = buildShaderProgram("tilebackground", backgroundVsh, backgroundFsh, LightingMode::GEOMETRY2D, RasterFilterMode::NONE, (background->getPattern() ? PATTERN_FLAG : 0) | terrainFlag);
             glUseProgram(shaderProgram.program);
             if ((terrainFlag & TERRAIN_FLAG) != 0) {
                 glUniform1f(shaderProgram.uniforms[U_DEPTHBIAS], terrainVTF ? _terrainDrawDepthBias : _terrainDepthBias);
             }
-            if (terrainVTF) {
+            if (terrainVTF && !flatDrape) {
                 setupTerrainUniforms(shaderProgram, tileId, surfaceFrame);
             }
 
@@ -2431,7 +2449,7 @@ namespace carto::vt {
 
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, compiledTileSurface.indicesVBO);
 
-            cglib::mat4x4<float> mvpMatrix = gridMode ? calculateTileMVPMatrix(tileId, 1.0f) : cglib::mat4x4<float>::convert(_cameraProjMatrix * surfaceFrame);
+            cglib::mat4x4<float> mvpMatrix = flatDrape ? (*_drapeMVPOverride) : (gridMode ? calculateTileMVPMatrix(tileId, 1.0f) : cglib::mat4x4<float>::convert(_cameraProjMatrix * surfaceFrame));
             glUniformMatrix4fv(shaderProgram.uniforms[U_MVPMATRIX], 1, GL_FALSE, mvpMatrix.data());
 
             if (auto pattern = background->getPattern()) {

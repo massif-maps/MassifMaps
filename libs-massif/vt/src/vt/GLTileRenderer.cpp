@@ -501,20 +501,22 @@ namespace carto::vt {
                 // back-pushed pre-pass surface). Fills then hug the terrain exactly.
                 if (_terrainDrapeFills) {
                     renderDrapeTextures(*_visibleRenderTiles);
+                    // The drape surface IS the terrain grid surface (lattice-exact). Draw it at
+                    // TRUE depth and let it WRITE depth: it becomes the real occluder, so a near
+                    // ridge blocks the whole far slope (raster/contours/elements) behind it. A
+                    // pushed-back / non-writing surface is what let far slopes show through.
                     glEnable(GL_DEPTH_TEST);
-                    glDepthMask(GL_FALSE);
+                    glDepthMask(GL_TRUE);
                     glDisable(GL_STENCIL_TEST);
                     setCompOp(CompOp::SRC_OVER);
-                    // The drape surface IS the grid surface (lattice-exact), so it draws at real
-                    // depth in painter-order - no forward bias to leak over ridges.
-                    _terrainDrawDepthBias = _terrainPainterOrder ? 0.0f : _terrainDepthBias;
-                    _terrainDrawDepthClipUnits = _terrainPainterOrder ? 0.0f : (_terrainRegularGrid ? 2.0f : 12.0f);
+                    _terrainDrawDepthBias = 0.0f;
+                    _terrainDrawDepthClipUnits = 0.0f;
                     for (const RenderTile& renderTile : *_visibleRenderTiles) {
                         if (renderTile.visible) {
                             renderTileSurfaceDrape(renderTile.targetTileId);
                         }
                     }
-                    _terrainDrawDepthClipUnits = 0.0f;
+                    glDepthMask(GL_FALSE);
                 }
             }
 
@@ -1647,11 +1649,12 @@ namespace carto::vt {
                         // clearance is provided by pushing the surface BACK instead, so
                         // geometry is never pulled forward and can not leak over a ridge.
                         float proxyBias = (renderLayer->active ? 0.0f : 1.0f * TERRAIN_LAYER_DEPTH_DELTA);
-                        // Painter-order: lattice-clamped content sits exactly on the grid surface,
-                        // so it draws at REAL depth (no forward _terrainDepthBias) - clearance is
-                        // provided by pushing the surface BACK. The stray forward bias here was the
-                        // contour see-through: a clip-space forward pull leaks over ridges at range.
-                        _terrainDrawDepthBias = (_terrainPainterOrder ? 0.0f : _terrainDepthBias + 1.0f * TERRAIN_LAYER_DEPTH_DELTA) - proxyBias;
+                        // Painter-order: lattice-clamped content sits exactly on the true-depth
+                        // occluder surface, so it needs only ONE depth-delta of forward bias to win
+                        // the depth test against it (a larger clip-space bias leaks over ridges at
+                        // range - that was the contour see-through). The occluder now writes true
+                        // depth (see the drape surface pass), so a near ridge blocks the far slope.
+                        _terrainDrawDepthBias = (_terrainPainterOrder ? 1.0f * TERRAIN_LAYER_DEPTH_DELTA : _terrainDepthBias + 1.0f * TERRAIN_LAYER_DEPTH_DELTA) - proxyBias;
                         // Lattice clamp (regular-grid mode) makes draped geometry follow the
                         // reference grid surface within the tiny in-cell bilinear-vs-triangle
                         // twist, so the distance-growing slack collapses to a small margin;

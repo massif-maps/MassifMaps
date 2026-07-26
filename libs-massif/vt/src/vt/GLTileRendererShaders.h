@@ -49,7 +49,18 @@ namespace carto::vt {
         U_ELEVATIONLATTICECELL,
         U_LAYERDEPTHOFFSET,
         U_DEPTHSHIFT,
-        U_DRAPETEXTURE
+        U_DRAPETEXTURE,
+        U_SUNDIR,
+        U_SUNCOLOR,
+        U_LIGHTPARAMS,
+        U_TERRAINSLOPESCALE,
+        U_SHADOWMATRIX,
+        U_SHADOWTEXTURE,
+        U_SHADOWPARAMS,
+        U_SHADOWBIAS,
+        U_FOGCOLOR,
+        U_FOGPARAMS,
+        U_DRAPEUVTRANSFORM
     };
 
     enum : unsigned int {
@@ -59,7 +70,10 @@ namespace carto::vt {
         DERIVATIVES_FLAG = 8,
         TERRAIN_FLAG     = 16,
         TERRAIN_VTF_FLAG = 32,
-        DRAPE_FLAG       = 64
+        DRAPE_FLAG       = 64,
+        TERRAIN_LIGHT_FLAG = 128,
+        TERRAIN_SHADOW_FLAG = 256,
+        FOG_FLAG = 512
     };
 
     static const std::map<std::string, int> attribMap = {
@@ -103,7 +117,18 @@ namespace carto::vt {
         { "uElevationLatticeCell", U_ELEVATIONLATTICECELL },
         { "uLayerDepthOffset",  U_LAYERDEPTHOFFSET },
         { "uDepthShift",        U_DEPTHSHIFT },
-        { "uDrapeTexture",      U_DRAPETEXTURE }
+        { "uDrapeTexture",      U_DRAPETEXTURE },
+        { "uSunDir",            U_SUNDIR },
+        { "uSunColor",          U_SUNCOLOR },
+        { "uLightParams",       U_LIGHTPARAMS },
+        { "uTerrainSlopeScale", U_TERRAINSLOPESCALE },
+        { "uShadowMatrix",      U_SHADOWMATRIX },
+        { "uShadowTexture",     U_SHADOWTEXTURE },
+        { "uShadowParams",      U_SHADOWPARAMS },
+        { "uShadowBias",        U_SHADOWBIAS },
+        { "uFogColor",          U_FOGCOLOR },
+        { "uFogParams",         U_FOGPARAMS },
+        { "uDrapeUVTransform",  U_DRAPEUVTRANSFORM }
     };
 
     static const std::map<unsigned int, std::string> flagDefineMap = {
@@ -113,7 +138,10 @@ namespace carto::vt {
         { DERIVATIVES_FLAG, "DERIVATIVES" },
         { TERRAIN_FLAG,     "TERRAIN_DEPTH_BIAS" },
         { TERRAIN_VTF_FLAG, "TERRAIN" },
-        { DRAPE_FLAG,       "DRAPE" }
+        { DRAPE_FLAG,       "DRAPE" },
+        { TERRAIN_LIGHT_FLAG, "TERRAIN_LIGHT" },
+        { TERRAIN_SHADOW_FLAG, "TERRAIN_SHADOW" },
+        { FOG_FLAG, "FOG" }
     };
 
     static const std::string textureFiltersFsh = R"GLSL(
@@ -213,6 +241,31 @@ namespace carto::vt {
         #else
         vec4 applyDepthBias(vec4 clipPos) {
             return clipPos;
+        }
+        #endif
+        #ifdef TERRAIN_SHADOW
+        // Tile-local -> light clip space, one matrix per cascade. The matrices are built per tile
+        // so their input stays in [0,1] and float precision is never asked to hold a world
+        // coordinate. EVERY cascade is computed here: which one a fragment ends up using is
+        // decided in the fragment stage from the result, and a varying cannot be written
+        // conditionally on something only the fragment stage knows.
+        uniform highp mat4 uShadowMatrix[4];
+        varying highp vec3 vShadowPos0;
+        varying highp vec3 vShadowPos1;
+        varying highp vec3 vShadowPos2;
+        varying highp vec3 vShadowPos3;
+        void applyShadowPos(highp vec3 pos) {
+            highp vec4 clip0 = uShadowMatrix[0] * vec4(pos, 1.0);
+            vShadowPos0 = clip0.xyz / clip0.w * 0.5 + 0.5;
+            highp vec4 clip1 = uShadowMatrix[1] * vec4(pos, 1.0);
+            vShadowPos1 = clip1.xyz / clip1.w * 0.5 + 0.5;
+            highp vec4 clip2 = uShadowMatrix[2] * vec4(pos, 1.0);
+            vShadowPos2 = clip2.xyz / clip2.w * 0.5 + 0.5;
+            highp vec4 clip3 = uShadowMatrix[3] * vec4(pos, 1.0);
+            vShadowPos3 = clip3.xyz / clip3.w * 0.5 + 0.5;
+        }
+        #else
+        void applyShadowPos(highp vec3 pos) {
         }
         #endif
         #ifdef TERRAIN
@@ -318,6 +371,157 @@ namespace carto::vt {
         #endif
 
         precision mediump float;
+        #ifdef FOG
+        uniform lowp vec4 uFogColor;    // rgb = fog colour, a = how opaque the fog gets at full distance
+        uniform highp vec2 uFogParams;  // x = distance where the fog starts, y = 1 / (end - start)
+
+        // Distance from the eye WITHOUT a varying: gl_FragCoord.w is 1/w_clip, and w_clip of a
+        // perspective projection is the eye-space depth. An orthographic pass - the drape bake -
+        // has w = 1, which is a whole world in internal units, so it never fogs: exactly right,
+        // since the bake is flat content that gets fogged later as part of the terrain surface.
+        lowp vec4 applyFog(lowp vec4 color) {
+            highp float dist = 1.0 / max(1.0e-9, gl_FragCoord.w);
+            lowp float amount = clamp((dist - uFogParams.x) * uFogParams.y, 0.0, 1.0) * uFogColor.a;
+            // Colours here are PREMULTIPLIED, so the fog colour has to be premultiplied by this
+            // fragment's own alpha; and the fog tints what is there rather than adding coverage,
+            // so alpha is left alone.
+            return vec4(mix(color.rgb, uFogColor.rgb * color.a, amount), color.a);
+        }
+        #else
+        lowp vec4 applyFog(lowp vec4 color) {
+            return color;
+        }
+        #endif
+        #ifdef TERRAIN_SHADOW
+        uniform sampler2D uShadowTexture;
+        uniform mediump vec4 uShadowParams; // x = 1/mapSize within one cascade, y = strength, z = PCF radius in texels, w = 1/cascade count
+        uniform mediump vec4 uShadowBias;   // normalised depth bias, per cascade
+        varying highp vec3 vShadowPos0;
+        varying highp vec3 vShadowPos1;
+        varying highp vec3 vShadowPos2;
+        varying highp vec3 vShadowPos3;
+
+        // True when a light-space position does not land inside its cascade's page, with room for
+        // the PCF kernel: such a fragment has to fall back to the next, coarser cascade.
+        bool outsideShadowPage(highp vec3 pos, mediump float margin) {
+            return pos.x < margin || pos.x > 1.0 - margin || pos.y < margin || pos.y > 1.0 - margin || pos.z < 0.0 || pos.z > 1.0;
+        }
+
+        // The caster pass packs window-space depth into RGB; unpack and compare with a slope
+        // independent constant plus the caller's bias. The uv is in ATLAS space: the cascades are
+        // pages of one texture, side by side, near page first.
+        highp float shadowDepth(highp vec2 uv) {
+            highp vec4 enc = texture2D(uShadowTexture, uv);
+            return dot(enc.rgb, vec3(1.0, 1.0 / 255.0, 1.0 / 65025.0));
+        }
+        // 3x3 PCF over a radius in shadow-map texels. One shadow texel covers many metres of
+        // ground, so a single tap gives hard stair-stepped edges; averaging over a small kernel is
+        // what makes a finite-resolution shadow map look like a shadow rather than a mask.
+        // ndl scales the bias with the angle between the surface and the light: at a grazing
+        // angle one shadow texel spans a large depth range, and a constant bias cannot cover it.
+        // Left constant, the residual self-shadowing lands in bands of constant height - which on
+        // a hillside reads as ripples following the contour lines.
+        mediump float shadowFactorSlope(mediump float ndl) {
+            // Cascades, near page first: a fragment takes the sharpest page it falls inside. The
+            // margin keeps the PCF taps of the chosen page off its border, where they would read
+            // the neighbouring cascade's texels.
+            mediump float margin = uShadowParams.x * (uShadowParams.z + 1.0);
+            highp vec3 pos = vShadowPos0;
+            mediump float page = 0.0;
+            mediump float bias = uShadowBias.x;
+            if (outsideShadowPage(pos, margin)) {
+                pos = vShadowPos1;
+                page = 1.0;
+                bias = uShadowBias.y;
+            }
+            if (outsideShadowPage(pos, margin)) {
+                pos = vShadowPos2;
+                page = 2.0;
+                bias = uShadowBias.z;
+            }
+            if (outsideShadowPage(pos, margin)) {
+                pos = vShadowPos3;
+                page = 3.0;
+                bias = uShadowBias.w;
+            }
+            // Derivatives are taken before any early return: a fragment that leaves the function
+            // early would leave its quad neighbours with an undefined gradient.
+            highp vec2 dzduv = vec2(0.0);
+            highp float o = uShadowParams.x * uShadowParams.z;
+            highp float ref = pos.z;
+        #ifdef DERIVATIVES
+            // Receiver-plane depth bias: how the receiver's own depth changes per unit of shadow
+            // uv, from screen-space derivatives. Each PCF tap then compares against the receiver's
+            // PLANE instead of against one point on it. Without it every off-centre tap needs the
+            // constant bias to cover a whole texel of slope, which is why the acne only cleared at
+            // a bias large enough to detach the shadows.
+            highp vec3 dpdx = dFdx(pos);
+            highp vec3 dpdy = dFdy(pos);
+            highp float det = dpdx.x * dpdy.y - dpdx.y * dpdy.x;
+            if (abs(det) > 1.0e-12) {
+                dzduv.x = ( dpdy.y * dpdx.z - dpdx.y * dpdy.z) / det;
+                dzduv.y = (-dpdy.x * dpdx.z + dpdx.x * dpdy.z) / det;
+                // A near-silhouette texel has an unbounded gradient; clamp it so it cannot invert
+                // the comparison and punch holes in the shadow. The limit is a cap on how much
+                // depth the receiver plane may rise over ONE texel, as a fraction of the box
+                // depth. Derived from the PCF radius instead, it allowed a single texel to be
+                // worth half the whole light box - which does not bias the comparison so much as
+                // delete it, and is what left holes in the shadow on steep ground.
+                highp float limit = 0.02 / max(1.0e-6, uShadowParams.x);
+                dzduv = clamp(dzduv, vec2(-limit), vec2(limit));
+                // The stored depth belongs to the TEXEL CENTRE, up to half a texel away from this
+                // fragment; on a slope lit at a grazing angle that half texel is metres of height,
+                // so the surface shadows itself in regular stripes - the bands seen inside a long
+                // shadow stretched downhill. Subtracting the receiver plane's own rise over half a
+                // texel makes the bias exactly as large as the local slope demands and no larger,
+                // where a constant big enough for the worst slope would detach every shadow.
+                ref -= 0.5 * uShadowParams.x * (abs(dzduv.x) + abs(dzduv.y));
+            }
+        #endif
+            if (pos.x < 0.0 || pos.x > 1.0 || pos.y < 0.0 || pos.y > 1.0 || pos.z < 0.0 || pos.z > 1.0) {
+                // Outside every cascade: unshadowed rather than black - but the back-face rule
+                // below still applies, or the ground would brighten along a hard ring exactly where
+                // the last cascade ends.
+                return mix(1.0, smoothstep(0.0, 0.15, ndl), uShadowParams.y);
+            }
+            // The constant bias grows as the surface turns away from the light, but only up to a
+            // point: divided by N.L it runs away exactly where the shadows are - the slopes facing
+            // away from the sun - and lifts the reference depth in front of every caster there,
+            // which is the second source of holes. Beyond this the back-face rule below takes over.
+            ref -= bias / max(0.5, ndl);
+            // Page space -> atlas space. The offsets stay in page space so the kernel is square in
+            // the map, and the bias terms above stay in the units the derivatives produced.
+            highp vec2 atlasScale = vec2(uShadowParams.w, 1.0);
+            highp vec2 atlasBase = vec2(page * uShadowParams.w, 0.0);
+            mediump float lit = 0.0;
+            for (int j = -1; j <= 1; j++) {
+                for (int i = -1; i <= 1; i++) {
+                    highp vec2 offset = vec2(float(i) * o, float(j) * o);
+                    lit += ref + dot(offset, dzduv) <= shadowDepth(atlasBase + (pos.xy + offset) * atlasScale) ? 1.0 : 0.0;
+                }
+            }
+            lit *= 1.0 / 9.0;
+            // The outermost cascade ends somewhere - at the shadow distance, or at the point where
+            // covering more ground would only coarsen every texel. Ending it abruptly draws a line
+            // across the terrain, so the shadow fades out over the outer margin of the LAST page.
+            // Earlier pages must not fade: a fragment leaving one of those is picked up by the next
+            // cascade, and fading there would thin the shadow along every cascade boundary.
+            mediump float lastPage = 1.0 / uShadowParams.w - 1.0;
+            if (page >= lastPage - 0.5) {
+                mediump float edge = min(min(pos.x, 1.0 - pos.x), min(pos.y, 1.0 - pos.y));
+                lit = mix(1.0, lit, smoothstep(0.0, 0.08, edge));
+            }
+            // A surface turned away from the sun is in its own shadow whatever the map says, and
+            // the map cannot say anything useful there anyway: its texels are seen edge-on, so the
+            // depth stored for one covers the whole face. Shadowing those outright is both correct
+            // and what makes it safe to keep the bias small everywhere else.
+            lit = min(lit, smoothstep(0.0, 0.15, ndl));
+            return mix(1.0, lit, uShadowParams.y);
+        }
+        mediump float shadowFactor() {
+            return shadowFactorSlope(1.0);
+        }
+        #endif
     )GLSL";
 
     static const std::string backgroundVsh = R"GLSL(
@@ -338,18 +542,33 @@ namespace carto::vt {
         varying lowp vec4 vColor;
         #endif
         #ifdef DRAPE
+        // xy = uv offset, zw = uv scale. Identity for a tile drawn with its own drape texture;
+        // a sub-rect when the tile is standing in on an ancestor's texture because its own is
+        // not baked yet.
+        uniform highp vec4 uDrapeUVTransform;
         varying highp_opt vec2 vDrapeUV;
+        #endif
+        #if defined(TERRAIN_LIGHT) && defined(TERRAIN)
+        // Per-fragment terrain lighting needs the elevation uv of the fragment and the local
+        // mercator height stretch; both are linear in the vertex position, so they interpolate.
+        varying highp vec2 vElevUV;
+        varying mediump float vElevCosh;
         #endif
 
         void main(void) {
         #ifdef PATTERN
             vUV = aVertexUV * uUVScale;
         #endif
+        #if defined(TERRAIN_LIGHT) && defined(TERRAIN)
+            vElevUV = uElevationUV.xy + aVertexPosition.xy * uElevationUV.zw;
+            highp float lightMY = uElevationScale.y + aVertexPosition.y * uElevationScale.z;
+            vElevCosh = 0.5 * (exp(lightMY) + exp(-lightMY));
+        #endif
         #ifdef DRAPE
             // The regular-grid surface vertex xy is the tile-local [0,1] parametrization;
             // it is exactly the uv the tile's fills were baked into the drape texture with.
             // If fills appear vertically mirrored on device, flip to vec2(x, 1.0 - y).
-            vDrapeUV = aVertexPosition.xy;
+            vDrapeUV = uDrapeUVTransform.xy + aVertexPosition.xy * uDrapeUVTransform.zw;
         #endif
         #ifdef LIGHTING_VSH
             vColor = applyLighting(vec4(1.0, 1.0, 1.0, 1.0), aVertexNormal);
@@ -357,7 +576,22 @@ namespace carto::vt {
         #ifdef LIGHTING_FSH
             vNormal = aVertexNormal;
         #endif
-            gl_Position = applyDepthBias(uMVPMatrix * vec4(applyTerrain(aVertexPosition), 1.0));
+            highp vec3 terrainPos = applyTerrain(aVertexPosition);
+            applyShadowPos(terrainPos);
+            gl_Position = applyDepthBias(uMVPMatrix * vec4(terrainPos, 1.0));
+        }
+    )GLSL";
+
+    // Caster pass: the light-space depth of the terrain surface, packed into RGB so no depth
+    // texture extension is needed. The vertex shader is backgroundVsh with the light matrix in
+    // uMVPMatrix, so the caster geometry is bit-identical to the geometry that is drawn.
+    static const std::string shadowCasterFsh = R"GLSL(
+        void main(void) {
+            highp float depth = gl_FragCoord.z;
+            highp vec3 enc = vec3(1.0, 255.0, 65025.0) * depth; // 'packed' is a reserved word
+            enc = fract(enc);
+            enc -= enc.yzz * vec3(1.0 / 255.0, 1.0 / 255.0, 0.0);
+            gl_FragColor = vec4(enc, 1.0);
         }
     )GLSL";
 
@@ -371,6 +605,35 @@ namespace carto::vt {
         #ifdef DRAPE
         uniform sampler2D uDrapeTexture;
         varying highp_opt vec2 vDrapeUV;
+        #endif
+        #if defined(TERRAIN_LIGHT) && defined(TERRAIN)
+        // Precision qualifiers must match the vertex-stage declarations exactly, or the
+        // program fails to LINK (same name, different precision is an error in GLSL ES 1.00).
+        uniform sampler2D uElevationTexture;
+        uniform highp vec4 uElevationDecode; // 'vec4' in the vertex stage means highp there
+        uniform highp vec4 uElevationTexelSize;
+        uniform mediump vec3 uSunDir;         // east, north, up - the same frame the tile mesh lives in
+        uniform lowp vec4 uSunColor;          // rgb = colour, a = unused
+        uniform mediump vec2 uLightParams;    // x = sun intensity, y = ambient intensity
+        uniform highp vec2 uTerrainSlopeScale; // metres of height -> world units, per elevation-uv unit
+        varying highp vec2 vElevUV;
+        varying mediump float vElevCosh;
+
+        // Central difference on the DEM, one texel each way. The surface is displaced by exactly
+        // this height field in the vertex stage, so the normal is the normal of what is drawn -
+        // no second DEM decode, no pre-baked normal map, and it follows the live sun.
+        mediump vec3 terrainNormal() {
+            // Heights are metres and reach several thousand: mediump would quantise them to
+            // whole metres and the central difference would be mostly rounding noise.
+            highp vec2 st = uElevationTexelSize.zw;
+            highp float hL = dot(texture2D(uElevationTexture, vElevUV - vec2(st.x, 0.0)), uElevationDecode);
+            highp float hR = dot(texture2D(uElevationTexture, vElevUV + vec2(st.x, 0.0)), uElevationDecode);
+            highp float hD = dot(texture2D(uElevationTexture, vElevUV - vec2(0.0, st.y)), uElevationDecode);
+            highp float hU = dot(texture2D(uElevationTexture, vElevUV + vec2(0.0, st.y)), uElevationDecode);
+            highp float dx = (hR - hL) * uTerrainSlopeScale.x * vElevCosh / (2.0 * st.x);
+            highp float dy = (hU - hD) * uTerrainSlopeScale.y * vElevCosh / (2.0 * st.y);
+            return normalize(vec3(-dx, -dy, 1.0));
+        }
         #endif
         #ifdef LIGHTING_FSH
         varying mediump vec3 vNormal;
@@ -388,12 +651,29 @@ namespace carto::vt {
         #else
             lowp vec4 color = uColor;
         #endif
+        #if defined(TERRAIN_LIGHT) && defined(TERRAIN)
+            // The draped colour is premultiplied, so scaling rgb alone is a valid tint; clamp
+            // back to alpha so an intensity above 1 cannot break premultiplication.
+            mediump float ndl = max(0.0, dot(terrainNormal(), uSunDir));
+            // Normalised Lambert: ambient is the floor, the sun fills the REMAINING headroom, so
+            // a surface facing the sun lands at 1 instead of ambient+1. Adding them blows the
+            // ground out to white at a high sun, and a clipped highlight cannot show a shadow.
+            mediump vec3 lit = vec3(uLightParams.y) + uSunColor.rgb * ((1.0 - uLightParams.y) * ndl * uLightParams.x);
+        #ifdef TERRAIN_SHADOW
+            // The shadow multiplies the FINAL colour, exactly as it does on the 3D extrusions.
+            // Folding it into N.L instead made it vanish at ambient 1 (where N.L has no weight
+            // left), so ground and buildings disagreed about what a shadow is. Shadow depth is
+            // the strength parameter's job, not the ambient level's.
+            lit *= shadowFactorSlope(ndl);
+        #endif
+            color = vec4(min(color.rgb * lit, vec3(color.a)), color.a);
+        #endif
         #if defined(LIGHTING_VSH)
-            gl_FragColor = vColor * color * uOpacity;
+            gl_FragColor = applyFog(vColor * color * uOpacity);
         #elif defined(LIGHTING_FSH)
-            gl_FragColor = applyLighting(color, normalize(vNormal)) * uOpacity;
+            gl_FragColor = applyFog(applyLighting(color, normalize(vNormal)) * uOpacity);
         #else
-            gl_FragColor = color * uOpacity;
+            gl_FragColor = applyFog(color * uOpacity);
         #endif
         }
     )GLSL";
@@ -422,7 +702,9 @@ namespace carto::vt {
         #ifdef LIGHTING_FSH
             vNormal = aVertexNormal;
         #endif
-            gl_Position = applyDepthBias(uMVPMatrix * vec4(applyTerrain(aVertexPosition), 1.0));
+            highp vec3 terrainPos = applyTerrain(aVertexPosition);
+            applyShadowPos(terrainPos);
+            gl_Position = applyDepthBias(uMVPMatrix * vec4(terrainPos, 1.0));
         }
     )GLSL";
 
@@ -446,12 +728,29 @@ namespace carto::vt {
         #else
             lowp vec4 color = texture2D_bilinear(uBitmap, vUV, uUVScale);
         #endif
+        #if defined(TERRAIN_LIGHT) && defined(TERRAIN)
+            // The draped colour is premultiplied, so scaling rgb alone is a valid tint; clamp
+            // back to alpha so an intensity above 1 cannot break premultiplication.
+            mediump float ndl = max(0.0, dot(terrainNormal(), uSunDir));
+            // Normalised Lambert: ambient is the floor, the sun fills the REMAINING headroom, so
+            // a surface facing the sun lands at 1 instead of ambient+1. Adding them blows the
+            // ground out to white at a high sun, and a clipped highlight cannot show a shadow.
+            mediump vec3 lit = vec3(uLightParams.y) + uSunColor.rgb * ((1.0 - uLightParams.y) * ndl * uLightParams.x);
+        #ifdef TERRAIN_SHADOW
+            // The shadow multiplies the FINAL colour, exactly as it does on the 3D extrusions.
+            // Folding it into N.L instead made it vanish at ambient 1 (where N.L has no weight
+            // left), so ground and buildings disagreed about what a shadow is. Shadow depth is
+            // the strength parameter's job, not the ambient level's.
+            lit *= shadowFactorSlope(ndl);
+        #endif
+            color = vec4(min(color.rgb * lit, vec3(color.a)), color.a);
+        #endif
         #if defined(LIGHTING_VSH)
-            gl_FragColor = vColor * color * uOpacity;
+            gl_FragColor = applyFog(vColor * color * uOpacity);
         #elif defined(LIGHTING_FSH)
-            gl_FragColor = applyLighting(color, normalize(vNormal)) * uOpacity;
+            gl_FragColor = applyFog(applyLighting(color, normalize(vNormal)) * uOpacity);
         #else
-            gl_FragColor = color * uOpacity;
+            gl_FragColor = applyFog(color * uOpacity);
         #endif
         }
     )GLSL";
@@ -475,7 +774,9 @@ namespace carto::vt {
             vNormal = aVertexNormal;
             vBinormal = aVertexBinormal;
         #endif
-            gl_Position = applyDepthBias(uMVPMatrix * vec4(applyTerrain(aVertexPosition), 1.0));
+            highp vec3 terrainPos = applyTerrain(aVertexPosition);
+            applyShadowPos(terrainPos);
+            gl_Position = applyDepthBias(uMVPMatrix * vec4(terrainPos, 1.0));
         }
     )GLSL";
 
@@ -565,9 +866,9 @@ namespace carto::vt {
                 shade.rgb = u_contourColor.rgb * cov + shade.rgb * (1.0 - cov);
                 shade.a = cov + shade.a * (1.0 - cov);
             }
-            gl_FragColor = shade * uOpacity;
+            gl_FragColor = applyFog(shade * uOpacity);
         #else
-            gl_FragColor = color * uOpacity;
+            gl_FragColor = applyFog(color * uOpacity);
         #endif
         }
     )GLSL";
@@ -756,9 +1057,9 @@ namespace carto::vt {
             if (color.a < 0.004) discard;
         #endif
         #ifdef LIGHTING_FSH
-            gl_FragColor = applyLighting(color, normalize(vNormal));
+            gl_FragColor = applyFog(applyLighting(color, normalize(vNormal)));
         #else
-            gl_FragColor = color;
+            gl_FragColor = applyFog(color);
         #endif
         }
     )GLSL";
@@ -854,9 +1155,9 @@ namespace carto::vt {
             if (color.a < 0.004) discard;
         #endif
         #ifdef LIGHTING_FSH
-            gl_FragColor = applyLighting(color, normalize(vNormal));
+            gl_FragColor = applyFog(applyLighting(color, normalize(vNormal)));
         #else
-            gl_FragColor = color;
+            gl_FragColor = applyFog(color);
         #endif
         }
     )GLSL";
@@ -928,9 +1229,9 @@ namespace carto::vt {
             if (color.a < 0.004) discard;
         #endif
         #ifdef LIGHTING_FSH
-            gl_FragColor = applyLighting(color, normalize(vNormal));
+            gl_FragColor = applyFog(applyLighting(color, normalize(vNormal)));
         #else
-            gl_FragColor = color;
+            gl_FragColor = applyFog(color);
         #endif
         }
     )GLSL";
@@ -968,6 +1269,7 @@ namespace carto::vt {
             pos = vec3(uTransformMatrix * vec4(pos, 1.0));
         #endif
             pos = applyTerrain(pos) + aVertexNormal * (aVertexHeight * uHeightScale);
+            applyShadowPos(pos);
             vec3 normal = normalize(sideVertex > 0.0 ? aVertexBinormal : aVertexNormal);
             vec4 color = uColorTable[styleIndex];
             vTilePos = (uTileMatrix * vec3(aVertexUV * uUVScale, 1.0)).xy;
@@ -999,9 +1301,14 @@ namespace carto::vt {
                 discard;
             }
         #ifdef LIGHTING_FSH
-            gl_FragColor = applyLighting(vColor, normalize(vNormal), vHeight, vSideVertex > 0.0);
+            gl_FragColor = applyFog(applyLighting(vColor, normalize(vNormal), vHeight, vSideVertex > 0.0));
         #else
-            gl_FragColor = vColor;
+            gl_FragColor = applyFog(vColor);
+        #endif
+        #ifdef TERRAIN_SHADOW
+            // Extrusions receive as well as cast: a building in the shadow of a ridge, or of a
+            // taller neighbour, darkens the same way the ground does.
+            gl_FragColor.rgb *= shadowFactor();
         #endif
         }
     )GLSL";

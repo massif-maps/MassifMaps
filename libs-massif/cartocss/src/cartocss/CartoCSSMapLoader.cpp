@@ -237,6 +237,43 @@ namespace carto::css {
             mapSettings.southPoleColor.setExpression(CartoCSSMapnikTranslator::buildExpression(southPoleColor));
         }
 
+        // Sun, shadows, fog and the terrain view distance. Same treatment as every other map
+        // property: whatever expression the style wrote, zoom-dependent or not, is kept as an
+        // expression and evaluated per frame.
+        const std::pair<const char*, mvt::FloatFunctionProperty mvt::Map::Settings::*> floatProperties[] = {
+            { "sun-azimuth", &mvt::Map::Settings::sunAzimuth },
+            { "sun-altitude", &mvt::Map::Settings::sunAltitude },
+            { "sun-intensity", &mvt::Map::Settings::sunIntensity },
+            { "ambient-intensity", &mvt::Map::Settings::ambientIntensity },
+            { "terrain-lighting", &mvt::Map::Settings::terrainLighting },
+            { "shadow-strength", &mvt::Map::Settings::shadowStrength },
+            { "shadow-bias", &mvt::Map::Settings::shadowBias },
+            { "shadow-softness", &mvt::Map::Settings::shadowSoftness },
+            { "shadow-distance", &mvt::Map::Settings::shadowDistance },
+            { "shadow-map-size", &mvt::Map::Settings::shadowMapSize },
+            { "shadow-cascades", &mvt::Map::Settings::shadowCascades },
+            { "shadow-caster-margin", &mvt::Map::Settings::shadowCasterMargin },
+            { "fog-start-distance", &mvt::Map::Settings::fogStartDistance },
+            { "fog-distance", &mvt::Map::Settings::fogDistance },
+            { "terrain-max-visible-distance", &mvt::Map::Settings::terrainMaxVisibleDistance }
+        };
+        for (const auto& floatProperty : floatProperties) {
+            Expression expr;
+            if (getMapProperty(mapProperties, floatProperty.first, expr)) {
+                (mapSettings.*floatProperty.second).setExpression(CartoCSSMapnikTranslator::buildExpression(expr));
+            }
+        }
+        const std::pair<const char*, mvt::ColorFunctionProperty mvt::Map::Settings::*> colorProperties[] = {
+            { "sun-color", &mvt::Map::Settings::sunColor },
+            { "fog-color", &mvt::Map::Settings::fogColor }
+        };
+        for (const auto& colorProperty : colorProperties) {
+            Expression expr;
+            if (getMapProperty(mapProperties, colorProperty.first, expr)) {
+                (mapSettings.*colorProperty.second).setExpression(CartoCSSMapnikTranslator::buildExpression(expr));
+            }
+        }
+
         getMapProperty(mapProperties, "font-directory", mapSettings.fontDirectory);
         double bufferSize = 0;
         if (getMapProperty(mapProperties, "buffer-size", bufferSize)) {

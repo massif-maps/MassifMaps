@@ -29,6 +29,28 @@ namespace carto::mvt {
             ColorFunctionProperty southPoleColor = ColorFunctionProperty("transparent");
             std::string fontDirectory = "fonts";
             float bufferSize = -1.0f;
+
+            // Sun, shadows, fog and the terrain view distance. Every one of them is a normal
+            // style property: it may be a constant or any zoom-dependent expression, linear()
+            // included, and isDefined() says whether the style set it at all - unset means the
+            // application's own setting stands.
+            FloatFunctionProperty sunAzimuth = FloatFunctionProperty(315.0f);      // degrees from north, clockwise
+            FloatFunctionProperty sunAltitude = FloatFunctionProperty(45.0f);      // degrees above the horizon
+            ColorFunctionProperty sunColor = ColorFunctionProperty("#ffffff");
+            FloatFunctionProperty sunIntensity = FloatFunctionProperty(1.0f);
+            FloatFunctionProperty ambientIntensity = FloatFunctionProperty(0.35f);
+            FloatFunctionProperty terrainLighting = FloatFunctionProperty(0.0f);   // 0/1: light the terrain with the sun
+            FloatFunctionProperty shadowStrength = FloatFunctionProperty(0.0f);    // 0 = no shadows
+            FloatFunctionProperty shadowBias = FloatFunctionProperty(0.25f);       // meters
+            FloatFunctionProperty shadowSoftness = FloatFunctionProperty(1.0f);    // PCF radius in shadow texels
+            FloatFunctionProperty shadowDistance = FloatFunctionProperty(0.0f);    // meters, 0 = everything visible
+            FloatFunctionProperty shadowMapSize = FloatFunctionProperty(1024.0f);  // pixels, per cascade
+            FloatFunctionProperty shadowCascades = FloatFunctionProperty(3.0f);
+            FloatFunctionProperty shadowCasterMargin = FloatFunctionProperty(1.0f); // tiles beyond the visible ones
+            ColorFunctionProperty fogColor = ColorFunctionProperty("transparent");  // transparent = no fog
+            FloatFunctionProperty fogStartDistance = FloatFunctionProperty(0.0f);   // meters
+            FloatFunctionProperty fogDistance = FloatFunctionProperty(0.0f);        // meters, 0 = no fog
+            FloatFunctionProperty terrainMaxVisibleDistance = FloatFunctionProperty(0.0f); // meters, 0 = unlimited
         };
         
         explicit Map(const Settings& settings) : _settings(settings) { }

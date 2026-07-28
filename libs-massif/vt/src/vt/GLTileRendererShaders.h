@@ -1283,7 +1283,7 @@ namespace carto::vt {
             vHeight = height;
             vSideVertex = sideVertex;
         #endif
-            gl_Position = uMVPMatrix * vec4(pos, 1.0);
+            gl_Position = applyDepthBias(uMVPMatrix * vec4(pos, 1.0));
         }
     )GLSL";
 

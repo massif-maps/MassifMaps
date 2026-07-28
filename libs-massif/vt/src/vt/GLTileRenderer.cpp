@@ -2679,12 +2679,75 @@ namespace carto::vt {
                 glGetIntegerv(GL_FRAMEBUFFER_BINDING, &currentFBO);
 
                 if (_overlayBuffer3D.fbo == 0) {
-                    createFrameBuffer(_overlayBuffer3D, true, true, false);
+                    // Ask for the packed depth-stencil buffer where it exists: that is the only
+                    // way to get a 24-bit depth buffer here (the plain path is DEPTH_COMPONENT16),
+                    // and 16 bits over a terrain-sized near-far range quantises to several metres
+                    // at a couple of kilometres - enough to eat the bottom of every extrusion once
+                    // the terrain surface is an occluder in this buffer. The stencil half is left
+                    // unused. Without the extension the fallback stays 16-bit, and the extrusion
+                    // depth slack below is what keeps the bases intact.
+                    createFrameBuffer(_overlayBuffer3D, true, true, _glExtensions->GL_OES_packed_depth_stencil_supported());
                 }
 
                 glBindFramebuffer(GL_FRAMEBUFFER, _overlayBuffer3D.fbo);
                 glClearColor(0, 0, 0, 0);
                 glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            }
+
+            // Terrain reference surface pre-pass, INSIDE the 3D overlay.
+            // The extrusions are drawn into a private framebuffer whose depth buffer was
+            // just cleared, and the result is composited back as a flat screen quad with
+            // depth testing off - so without this the terrain in the main framebuffer can
+            // not occlude anything, and a building behind a ridge paints straight over the
+            // ridge. Seeding this depth buffer with the same displaced tile surfaces that
+            // the 2D pass uses as its occluder restores the occlusion inside the overlay:
+            // fragments behind a crest are simply never painted, so the composite leaves
+            // the terrain pixels untouched.
+            // Done here rather than by rendering the extrusions into the main framebuffer
+            // because the overlay is also what gives 3D polygons their layer opacity /
+            // comp-op compositing and their own self-occlusion domain, and because the main
+            // framebuffer's depth belongs to whichever tile layer rendered last (with
+            // buildingOrder = 1 the extrusions are drawn from onDrawFrame3D, after every
+            // layer's 2D pass).
+            // Only when this layer actually has extrusions to occlude: the map above also
+            // collects comp-op layers that need the empty-blend overlay but contain no 3D
+            // geometry at all, and the pre-pass is a full terrain surface draw.
+            bool terrainOccluders = _terrainMode && static_cast<bool>(_terrainTextureProvider) &&
+                std::any_of(renderLayers.begin(), renderLayers.end(), [](const RenderTileLayer* renderLayer) {
+                    const std::vector<std::shared_ptr<TileGeometry>>& geometries = renderLayer->layer->getGeometries();
+                    return std::any_of(geometries.begin(), geometries.end(), [](const std::shared_ptr<TileGeometry>& geometry) {
+                        return geometry->getType() == TileGeometry::Type::POLYGON3D;
+                    });
+                });
+            if (terrainOccluders) {
+                glEnable(GL_DEPTH_TEST);
+                glDepthFunc(GL_LESS);
+                glDepthMask(GL_TRUE);
+                glDisable(GL_CULL_FACE); // displaced surfaces can face away near ridge crests
+                glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+                _terrainDrawDepthBias = _terrainDepthBias;
+                _terrainDrawDepthClipUnits = 0.0f; // TRUE depth: the occluder is never pushed back
+                for (const RenderTile& renderTile : renderTiles) {
+                    if (renderTile.visible) {
+                        renderTileSurfaceFill(renderTile.targetTileId, Color());
+                    }
+                }
+                glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+                glEnable(GL_CULL_FACE);
+                glCullFace(GL_BACK);
+                // Clearance for the extrusions themselves. Two separate errors to cover:
+                //  - the base ring samples the elevation texture at arbitrary xy while the
+                //    surface mesh interpolates it linearly over its cells (the same chord
+                //    error the draped 2D geometry carries) -> the clip-slack component;
+                //  - a wall stands ON the surface it is tested against, so the two are only
+                //    separable to the depth buffer's resolution, which in eye units grows
+                //    like distance^2/near -> the constant-NDC component, which follows the
+                //    same law. Without it the buffer eats the lower walls from a couple of
+                //    kilometres out, taking most of a 40 m building with it.
+                // A uniform bias shifts every extrusion equally, so building-vs-building
+                // occlusion inside the overlay is unaffected.
+                _terrainDrawDepthBias = _terrainDepthBias + TERRAIN_EXTRUSION_DEPTH_DELTAS * TERRAIN_LAYER_DEPTH_DELTA;
+                _terrainDrawDepthClipUnits = (_terrainRegularGrid ? 2.0f : 12.0f);
             }
 
             // Render tile layers for this layer
@@ -2695,6 +2758,11 @@ namespace carto::vt {
                         renderTileGeometry(renderLayer->sourceTileId, renderLayer->targetTileId, renderLayer->blend, geometryOpacity, renderLayer->tileSize, geometry);
                     }
                 }
+            }
+
+            if (terrainOccluders) {
+                _terrainDrawDepthBias = _terrainDepthBias;
+                _terrainDrawDepthClipUnits = 0.0f;
             }
 
             // Blend the rendered layer with framebuffer
@@ -4038,7 +4106,11 @@ namespace carto::vt {
                 shaderProgramPtr = &buildShaderProgram("polygon3dshadow", polygon3DVsh, shadowCasterFsh, LightingMode::NONE, RasterFilterMode::NONE, (styleParams.translate ? TRANSFORM_FLAG : 0) | (terrainVTF ? TERRAIN_VTF_FLAG : 0));
                 break;
             }
-            shaderProgramPtr = &buildShaderProgram("polygon3d", polygon3DVsh, polygon3DFsh, LightingMode::GEOMETRY3D, RasterFilterMode::NONE, (styleParams.pattern ? PATTERN_FLAG : 0) | (styleParams.translate ? TRANSFORM_FLAG : 0) | (terrainVTF ? TERRAIN_VTF_FLAG : 0) | (shadowReceiver ? TERRAIN_SHADOW_FLAG | DERIVATIVES_FLAG : 0) | fogFlag());
+            // TERRAIN_FLAG (depth bias) too: in terrain mode the extrusions are depth-tested
+            // against a terrain surface pre-pass (renderGeometry3D seeds the 3D overlay's
+            // depth buffer with it), so they need the same base-clearance slack as draped
+            // 2D geometry - otherwise the lower walls are clipped by the ground on slopes.
+            shaderProgramPtr = &buildShaderProgram("polygon3d", polygon3DVsh, polygon3DFsh, LightingMode::GEOMETRY3D, RasterFilterMode::NONE, (styleParams.pattern ? PATTERN_FLAG : 0) | (styleParams.translate ? TRANSFORM_FLAG : 0) | (terrainVTF ? TERRAIN_VTF_FLAG | TERRAIN_FLAG : 0) | (shadowReceiver ? TERRAIN_SHADOW_FLAG | DERIVATIVES_FLAG : 0) | fogFlag());
             break;
         default:
             return;
@@ -4062,6 +4134,10 @@ namespace carto::vt {
         glUniformMatrix4fv(shaderProgram.uniforms[U_MVPMATRIX], 1, GL_FALSE, mvpMatrix.data());
         if (terrainFlag != 0 && geometry->getType() != TileGeometry::Type::POLYGON3D) {
             glUniform1f(shaderProgram.uniforms[U_DEPTHBIAS], terrainVTF ? _terrainDrawDepthBias : _terrainDepthBias);
+        } else if (terrainVTF && !_shadowCasterViewProj && geometry->getType() == TileGeometry::Type::POLYGON3D) {
+            // Extrusions: only the VTF path has a terrain surface to clear (the caster pass
+            // renders depth from the light and must not be biased towards the camera).
+            glUniform1f(shaderProgram.uniforms[U_DEPTHBIAS], _terrainDrawDepthBias);
         }
         if (terrainVTF) {
             // Two separate things here, and they had swapped roles.

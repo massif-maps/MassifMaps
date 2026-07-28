@@ -3434,7 +3434,12 @@ namespace carto::vt {
         // drawn terrain tile lies within this tile. A FINER tile is not draped - it is not baked
         // either, so it keeps drawing itself in the 3D pass while it blends away. Claiming it
         // was draped suppressed the only content on that ground during a zoom out, which is the
-        // ground going white until the coarse tiles finish loading.
+        // ground going white until the coarse tiles finish loading. (Re-tested: the drape cover
+        // is routinely COARSER than the render tiles - the leaves are capped at the camera zoom
+        // and a hillshade contributes its DEM-limited zoom - so suppressing finer tiles replaces
+        // the map with a stretched coarse drape. This is also why fills can not be decoded at
+        // source density under draping: those fall-through tiles must carry real terrain-following
+        // geometry. See TileLayer::calculateDrawData.)
         for (const TileId& drapeTileId : _externalDrapeTiles) {
             if (tileCovers(targetTileId, drapeTileId)) {
                 return true;

@@ -183,6 +183,13 @@ namespace carto::vt {
         // Draws the terrain surface for a tile whose drape texture has no content yet, in a flat
         // colour. Keeps the depth buffer complete while bakes are still catching up.
         int renderDrapedSurfaceFill(const TileId& targetTileId, const Color& color);
+        // Copies a rectangle of one drape texture into the currently bound drape framebuffer,
+        // flat and unblended. This is how a brand new tile is given the picture the cache
+        // already holds for its ground - magnified from an ancestor, or assembled from the finer
+        // tiles it replaces - so that it never has to be shown as an empty fill while its own
+        // bake waits for a budget. dstOffset/dstScale place it in the target texture's [0,1]
+        // square, uvOffset/uvScale select the part of the source.
+        int blitDrapeTexture(GLuint srcTexture, float dstOffsetX, float dstOffsetY, float dstScale, float uvOffsetX, float uvOffsetY, float uvScale);
         void setTerrainDepthWrite(bool enabled);
         void setTerrainTextureProvider(TerrainTextureProvider provider);
         void setDebugWireframe(bool enabled);

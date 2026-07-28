@@ -3114,6 +3114,13 @@ namespace carto::vt {
         // COARSEST FIRST, with retained (proxy) tiles before active ones at the same zoom, or a
         // parent's full-tile background paints over a child's content and the tile reverts to bare
         // background colour. _visibleRenderTiles is in no such order.
+        // COVERS, strictly: only content whose own tile contains this terrain tile is baked.
+        // Baking a FINER render tile into its sub-rect looked like free extra detail, but the
+        // content is drawn at its own zoom's scale into a fraction of the texture - hairline
+        // roads and fills, minified with no mipmap - and a zoom out, which holds a whole
+        // generation of finer tiles while they blend away, turned the drape into white aliasing
+        // noise. Finer tiles are the generation being replaced; they stay in the 3D pass and
+        // fade out there.
         std::vector<const RenderTile*> coveringTiles;
         for (const RenderTile& renderTile : *_visibleRenderTiles) {
             if (renderTile.visible && tileCovers(renderTile.targetTileId, targetTileId)) {
@@ -3131,9 +3138,18 @@ namespace carto::vt {
                 if (!hasDrapeableContent(renderLayer)) {
                     continue;
                 }
+                // A render layer can be finer than the render tile that holds it (retained
+                // children blending out). Such a layer may sit entirely OUTSIDE this terrain tile
+                // - baking it anyway painted a neighbouring tile's content over this one - and
+                // even when it is inside, it belongs to the generation being replaced, not to
+                // this tile. Same rule as above: it has to COVER the terrain tile.
+                if (!tileCovers(renderLayer.targetTileId, targetTileId)) {
+                    continue;
+                }
                 // Backgrounds/rasters draw their own target tile's surface mesh (their uv logic
                 // resolves source-vs-target overzoom); geometry is in source tile coordinates.
-                // Both may be coarser than the terrain tile, hence the sub-rect in each case.
+                // Either may be coarser OR finer than the terrain tile, hence the sub-rect in
+                // each case.
                 drapeOrtho = calculateDrapeMVPMatrix(renderLayer.targetTileId, targetTileId);
                 for (const std::shared_ptr<TileBackground>& background : renderLayer.layer->getBackgrounds()) {
                     renderTileBackground(renderLayer.targetTileId, 1.0f, 1.0f, renderLayer.tileSize, background);
@@ -3202,6 +3218,56 @@ namespace carto::vt {
         return 1;
     }
 
+    int GLTileRenderer::blitDrapeTexture(GLuint srcTexture, float dstOffsetX, float dstOffsetY, float dstScale, float uvOffsetX, float uvOffsetY, float uvScale) {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        if (srcTexture == 0) {
+            return 0;
+        }
+        // Flat and unblended: this is a copy, not a draw over something. The unit quad is the
+        // same one the flat bake uses, so no geometry is built for it.
+        glDisable(GL_DEPTH_TEST);
+        glDepthMask(GL_FALSE);
+        glDisable(GL_STENCIL_TEST);
+        glDisable(GL_BLEND);
+        glDisable(GL_CULL_FACE);
+        int draws = 0;
+        for (const std::shared_ptr<TileSurface>& tileSurface : buildCompiledFlatSurfaces()) {
+            const TileSurface::VertexGeometryLayoutParameters& vertexGeomLayoutParams = tileSurface->getVertexGeometryLayoutParameters();
+            const CompiledSurface& compiledTileSurface = _compiledTileSurfaceMap[tileSurface];
+
+            const ShaderProgram& shaderProgram = buildShaderProgram("drapeblit", backgroundVsh, backgroundFsh, LightingMode::NONE, RasterFilterMode::NONE, DRAPE_FLAG);
+            glUseProgram(shaderProgram.program);
+
+            glBindBuffer(GL_ARRAY_BUFFER, compiledTileSurface.vertexGeometryVBO);
+            enableVertexAttrib(shaderProgram.attribs[A_VERTEXPOSITION], 3, GL_FLOAT, GL_FALSE, vertexGeomLayoutParams.vertexSize, bufferGLOffset(vertexGeomLayoutParams.coordOffset));
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, compiledTileSurface.indicesVBO);
+
+            // unit quad [0,1] -> the destination sub-rect -> clip [-1,1]
+            cglib::mat4x4<float> mvpMatrix = cglib::translate4_matrix(cglib::vec3<float>(-1.0f + 2.0f * dstOffsetX, -1.0f + 2.0f * dstOffsetY, 0.0f))
+                                           * cglib::scale4_matrix(cglib::vec3<float>(2.0f * dstScale, 2.0f * dstScale, 1.0f));
+            glUniformMatrix4fv(shaderProgram.uniforms[U_MVPMATRIX], 1, GL_FALSE, mvpMatrix.data());
+
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, srcTexture);
+            glUniform1i(shaderProgram.uniforms[U_DRAPETEXTURE], 0);
+            glUniform4f(shaderProgram.uniforms[U_DRAPEUVTRANSFORM], uvOffsetX, uvOffsetY, uvScale, uvScale);
+            glUniform4f(shaderProgram.uniforms[U_COLOR], 0.0f, 0.0f, 0.0f, 0.0f);
+            glUniform1f(shaderProgram.uniforms[U_OPACITY], 1.0f);
+
+            glDrawElements(GL_TRIANGLES, tileSurface->getIndicesCount(), GL_UNSIGNED_SHORT, 0);
+            draws++;
+
+            glBindTexture(GL_TEXTURE_2D, 0);
+            disableVertexAttrib(shaderProgram.attribs[A_VERTEXPOSITION]);
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+            glBindBuffer(GL_ARRAY_BUFFER, 0);
+        }
+        glEnable(GL_BLEND);
+        checkGLError();
+        return draws;
+    }
+
     void GLTileRenderer::deleteDrapeResources() {
         // Called on renderer reset/deinit. Without this the FBO and every cached drape texture
         // survive GL context loss as stale names - a leak, and a source of draws against
@@ -3252,10 +3318,12 @@ namespace carto::vt {
         if (!_externalDrapeTarget) {
             return _drapeTilesThisFrame.count(targetTileId) > 0;
         }
-        // Under a cross-layer drape the baked tiles are the OWNER's terrain tiles, which are the
-        // finest cover across all layers - this layer's tile is therefore equal to or coarser than
-        // them, and its content was baked into every terrain tile it covers (bakeDrapeTile takes
-        // covering render tiles). So "draped" means: some drawn terrain tile lies within it.
+        // Under a cross-layer drape the baked tiles are the OWNER's terrain tiles, and
+        // bakeDrapeTile takes exactly the render tiles that COVER one. So "draped" means: some
+        // drawn terrain tile lies within this tile. A FINER tile is not draped - it is not baked
+        // either, so it keeps drawing itself in the 3D pass while it blends away. Claiming it
+        // was draped suppressed the only content on that ground during a zoom out, which is the
+        // ground going white until the coarse tiles finish loading.
         for (const TileId& drapeTileId : _externalDrapeTiles) {
             if (tileCovers(targetTileId, drapeTileId)) {
                 return true;
@@ -3291,6 +3359,18 @@ namespace carto::vt {
             n = static_cast<float>(span);
             fx = static_cast<float>(targetTileId.x - (sourceTileId.x << deltaZoom));
             gy = static_cast<float>(span - 1 - (targetTileId.y - (sourceTileId.y << deltaZoom)));
+        } else if (deltaZoom < 0) {
+            // Source FINER than the drape tile: it covers only a SUB-RECT of the texture, so the
+            // sub-rect transform runs the other way. This is the zoom-out case - a render tile
+            // retains the finer tiles it replaces until they blend out, and those render layers
+            // keep their own finer target/source tile id (initializeRenderTile), so a coarse
+            // render tile really does carry z+1/z+2 content. Left unhandled (n = 1) that content
+            // was stretched over the WHOLE drape tile: a quarter of the map painted at 2x scale
+            // in the wrong place, for the few frames the finer layer survives.
+            int span = 1 << (-deltaZoom);
+            n = 1.0f / span;
+            fx = -static_cast<float>(sourceTileId.x - (targetTileId.x << (-deltaZoom))) / span;
+            gy = -static_cast<float>(span - 1 - (sourceTileId.y - (targetTileId.y << (-deltaZoom)))) / span;
         }
         // source-local [0,1] -> target-local [0,1] -> clip [-1,1]
         return cglib::translate4_matrix(cglib::vec3<float>(-1.0f, -1.0f, 0.0f))
@@ -3447,9 +3527,15 @@ namespace carto::vt {
                 if (!hasDrapeableContent(renderLayer)) {
                     continue;
                 }
-                // Backgrounds and rasters draw the TARGET tile's surface mesh (their own uv logic
-                // already resolves overzoom), so they bake through the plain target-tile square.
-                drapeOrtho = calculateDrapeMVPMatrix(targetTileId, targetTileId);
+                // Only layers whose own tile covers this one, for the same reason as the
+                // cross-layer bake: a finer retained layer is the generation being replaced, and
+                // baking it minified into a sub-rect aliases into noise.
+                if (!tileCovers(renderLayer.targetTileId, targetTileId)) {
+                    continue;
+                }
+                // Backgrounds and rasters draw the target tile's surface mesh (their own uv logic
+                // already resolves overzoom).
+                drapeOrtho = calculateDrapeMVPMatrix(renderLayer.targetTileId, targetTileId);
                 for (const std::shared_ptr<TileBackground>& background : renderLayer.layer->getBackgrounds()) {
                     renderTileBackground(renderLayer.targetTileId, 1.0f, 1.0f, renderLayer.tileSize, background);
                 }

@@ -29,6 +29,8 @@
 #include <vector>
 #include <map>
 #include <unordered_map>
+#include <unordered_set>
+#include <cstdint>
 #include <set>
 #include <utility>
 #include <regex>
@@ -214,6 +216,7 @@ namespace carto::vt {
         void initializeRenderer();
         void resetRenderer();
         void resetTileSurfaces();
+        void invalidateTileSurfaces(const std::vector<TileId>& tileIds);
         void deinitializeRenderer();
 
         bool startFrame(float dt);
@@ -359,6 +362,7 @@ namespace carto::vt {
         void mergeExistingRenderTile(TileId targetTileId, const RenderTile& existingRenderTile, std::vector<RenderTile>& renderTiles, int depth) const;
         bool updateRenderTile(RenderTile& renderTile, float dBlend) const;
 
+        static long long calculateLabelGeometryHash(const Tile* tile, long long localId);
         void buildLabelMaps(const std::vector<std::shared_ptr<const Tile>>& labelTiles);
         bool updateLabel(const std::shared_ptr<Label>& label, float dOpacity) const;
 

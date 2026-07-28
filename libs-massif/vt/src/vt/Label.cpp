@@ -1,4 +1,5 @@
 #include "Label.h"
+#include "RenderStats.h"
 
 #include <algorithm>
 #include <cmath>
@@ -25,6 +26,25 @@ namespace carto::vt {
             }
 
             pen += glyph.advance;
+        }
+
+        // How far the glyphs reach from the anchor, with the style transform applied the same
+        // way findClippedPointPlacement applies it. updatePlacement grows the label's geometry
+        // bounds by this before testing them against the frustum, so an anchor that sits just
+        // outside the view but whose text reaches into it is not rejected.
+        cglib::bbox2<float> glyphBBox = _glyphBBox;
+        if (glyphBBox.min(0) <= glyphBBox.max(0)) {
+            if (_style->transform) {
+                cglib::mat2x2<float> transform = _style->transform->matrix2();
+                std::array<cglib::vec2<float>, 4> envelope;
+                envelope[0] = cglib::transform(cglib::vec2<float>(glyphBBox.min(0), glyphBBox.min(1)), transform);
+                envelope[1] = cglib::transform(cglib::vec2<float>(glyphBBox.min(0), glyphBBox.max(1)), transform);
+                envelope[2] = cglib::transform(cglib::vec2<float>(glyphBBox.max(0), glyphBBox.min(1)), transform);
+                envelope[3] = cglib::transform(cglib::vec2<float>(glyphBBox.max(0), glyphBBox.max(1)), transform);
+                glyphBBox = cglib::bbox2<float>::make_union(envelope.begin(), envelope.end());
+            }
+            _maxGlyphExtent = std::max(std::max(std::abs(glyphBBox.min(0)), std::abs(glyphBBox.max(0))),
+                                       std::max(std::abs(glyphBBox.min(1)), std::abs(glyphBBox.max(1))));
         }
 
         if (tileLabel.getPosition()) {
@@ -61,14 +81,58 @@ namespace carto::vt {
                 _tileLines.push_back(std::move(tileLine));
             }
         }
+
+        _geometryBBoxValid = false;
     }
     
+    cglib::bbox3<double> Label::calculateGeometryBBox(const ViewState& viewState) const {
+        if (!_geometryBBoxValid) {
+            _geometryBBox = cglib::bbox3<double>::smallest();
+            for (const TilePoint& tilePoint : _tilePoints) {
+                _geometryBBox.add(tilePoint.position);
+            }
+            for (const TileLine& tileLine : _tileLines) {
+                for (const cglib::vec3<double>& vertex : tileLine.vertices) {
+                    _geometryBBox.add(vertex);
+                }
+            }
+            _geometryBBoxValid = true;
+        }
+
+        // Line placements need no margin - findClippedLinePlacement clips the raw vertices -
+        // but point placements do, and growing a line label's bounds only makes the rejection
+        // more conservative.
+        double margin = _maxGlyphExtent * _style->scale * viewState.zoomScale;
+        cglib::vec3<double> marginVec(margin, margin, margin);
+        return cglib::bbox3<double>(_geometryBBox.min - marginVec, _geometryBBox.max + marginVec);
+    }
+
+    std::shared_ptr<const Label::Placement> Label::buildLinePlacement(const TileLine& tileLine, std::size_t index, const cglib::vec3<double>& position) const {
+        // Keeps the anchor where it is horizontally and takes its height from the line's
+        // own chord, so the anchor sits exactly on the geometry the glyphs are laid out
+        // along - the vertex heights and the anchor height can otherwise come from
+        // different elevation states (see updateElevation).
+        const cglib::vec3<double>& vertex0 = tileLine.vertices[index];
+        const cglib::vec3<double>& vertex1 = tileLine.vertices[index + 1];
+        double dx = vertex1(0) - vertex0(0);
+        double dy = vertex1(1) - vertex0(1);
+        double len2 = dx * dx + dy * dy;
+        double t = (len2 > 0 ? ((position(0) - vertex0(0)) * dx + (position(1) - vertex0(1)) * dy) / len2 : 0);
+        t = std::max(0.0, std::min(1.0, t));
+        cglib::vec3<double> pos = vertex0 + (vertex1 - vertex0) * t;
+        return std::make_shared<const Placement>(tileLine.tileId, tileLine.localId, tileLine.vertices, index, pos, tileLine.normal);
+    }
+
     void Label::snapPlacement(const Label& label) {
         _placement = label._placement;
         _cachedFlippedPlacement = label._cachedFlippedPlacement;
         if (!_placement) {
             return;
         }
+#if CARTO_VT_RENDER_STATS
+        VT_STAT_INC(snapPlacements);
+        cglib::vec3<double> oldPosition = _placement->position;
+#endif
 
         // Prefer re-snapping onto the same source geometry (tile + feature) the placement
         // was attached to. The merged geometry lists contain one copy of the feature per
@@ -84,38 +148,92 @@ namespace carto::vt {
             if (_placement && !_tileLines.empty()) {
                 _placement = findSnappedLinePlacement(_placement->position, _tileLines, oldPlacement);
             }
-            return;
         }
-        if (!_tileLines.empty()) {
+        else if (!_tileLines.empty()) {
             _placement = findSnappedLinePlacement(_placement->position, _tileLines, oldPlacement);
         }
+
+#if CARTO_VT_RENDER_STATS
+        if (_placement) {
+            double dx = _placement->position(0) - oldPosition(0);
+            double dy = _placement->position(1) - oldPosition(1);
+            if (dx * dx + dy * dy > SNAP_MOVE_EPSILON * SNAP_MOVE_EPSILON) {
+                VT_STAT_INC(snapPlacementsMoved);
+            }
+        }
+#endif
     }
 
     void Label::updateElevation(const std::function<double(const cglib::vec3<double>&)>& heightFunc) {
         // Refresh anchor heights from the elevation data. Label geometry is built when the
         // tile is decoded, possibly before its elevation data has arrived - this re-anchors
-        // the labels onto the terrain when the elevation version changes. Line placements
-        // keep their edge geometry (relative to the position), so the whole label shifts
-        // vertically - within the resolution of the elevation data.
+        // the labels onto the terrain when the elevation version changes. A line placement
+        // is rebuilt from the re-anchored line (below) rather than just shifted, so the
+        // glyph run keeps following the terrain profile it is drawn over.
+        bool changed = false;
         for (TilePoint& tilePoint : _tilePoints) {
-            tilePoint.position(2) = heightFunc(tilePoint.position);
+            double height = heightFunc(tilePoint.position);
+            if (height != tilePoint.position(2)) {
+                tilePoint.position(2) = height;
+                changed = true;
+            }
         }
         for (TileLine& tileLine : _tileLines) {
             for (cglib::vec3<double>& vertex : tileLine.vertices) {
-                vertex(2) = heightFunc(vertex);
+                double height = heightFunc(vertex);
+                if (height != vertex(2)) {
+                    vertex(2) = height;
+                    changed = true;
+                }
             }
         }
-        if (_placement) {
-            auto placement = std::make_shared<Placement>(*_placement);
-            placement->position(2) = heightFunc(placement->position);
-            _placement = std::move(placement);
-            _cachedFlippedPlacement.reset();
-            _cachedPlacement.reset();
-            _cachedValid = false;
+
+        // The elevation version is global: it changes whenever ANY elevation tile is
+        // decoded, while the labels affected are only those over that tile. Re-anchoring a
+        // label whose heights did not move would drop its cached vertex data (and rebuild
+        // the placement) for nothing.
+        if (!changed) {
+            return;
         }
+        _geometryBBoxValid = false;
+        VT_STAT_INC(labelElevationReanchors);
+        if (!_placement) {
+            return;
+        }
+
+        cglib::vec3<double> position = _placement->position;
+        std::shared_ptr<const Placement> placement;
+        if (!_placement->edges.empty()) {
+            // Line placement: Placement::edges are stored RELATIVE to the anchor and were
+            // built from the vertex heights of the time. Moving the anchor alone leaves the
+            // whole glyph run laid out on the old terrain profile, so the label lifts off
+            // the line and snaps back the next time the placement is rebuilt - which reads
+            // as the text sliding along the road while elevation tiles stream in. Rebuild
+            // the edges from the re-anchored line instead.
+            for (const TileLine& tileLine : _tileLines) {
+                if (!(tileLine.tileId == _placement->tileId && tileLine.localId == _placement->localId)) {
+                    continue;
+                }
+                if (_placement->index + 1 < tileLine.vertices.size()) {
+                    placement = buildLinePlacement(tileLine, _placement->index, position);
+                }
+                break;
+            }
+        }
+        if (!placement) {
+            position(2) = heightFunc(position);
+            auto pointPlacement = std::make_shared<Placement>(*_placement);
+            pointPlacement->position = position;
+            placement = std::move(pointPlacement);
+        }
+        _placement = std::move(placement);
+        _cachedFlippedPlacement.reset();
+        _cachedPlacement.reset();
+        _cachedValid = false;
     }
 
     bool Label::updatePlacement(const ViewState& viewState) {
+        VT_STAT_INC(placementUpdates);
         if (_placement) {
             std::array<cglib::vec3<float>, 4> envelope;
             calculateEnvelope(viewState, envelope);
@@ -128,6 +246,42 @@ namespace carto::vt {
             }
         }
 
+        if (_tilePoints.empty() && _tileLines.empty()) {
+            return false;
+        }
+
+        // Split by what is actually being thrown away: only a re-anchor of a label that was
+        // both placed and visible can be seen as the label moving. The rest is a label the
+        // user can not see, retrying a placement that keeps failing.
+        if (!_placement) {
+            VT_STAT_INC(placementReanchorsNull);
+        }
+        else if (_visible) {
+            VT_STAT_INC(placementReanchorsVisible);
+        }
+        else {
+            VT_STAT_INC(placementReanchorsHidden);
+        }
+
+        // Nothing of this label's geometry is in view, so the clipped searches below can only
+        // walk all of it and return nothing - which is most of the placement work on a
+        // typical frame, because the loaded tile set extends well past the viewport. Decide
+        // it once against the cached geometry bounds instead.
+        //
+        // The placement still has to be dropped rather than kept: an invalid label is what
+        // excludes it from the culler, and a label that kept a placement while off screen
+        // would go on claiming grid cells (screen positions are clamped into the grid, so it
+        // would claim border cells) and hide labels that are actually visible.
+        if (!viewState.frustum.inside(calculateGeometryBBox(viewState))) {
+            _cachedFlippedPlacement.reset();
+            if (!_placement) {
+                return false; // already unplaced, nothing changed - do not reset the opacity
+            }
+            _placement.reset();
+            return true;
+        }
+        VT_STAT_INC(placementSearches);
+
         _cachedFlippedPlacement.reset();
         if (!_tilePoints.empty()) {
             _placement = findClippedPointPlacement(viewState, _tilePoints);
@@ -136,12 +290,8 @@ namespace carto::vt {
             }
             return true;
         }
-        if (!_tileLines.empty()) {
-            _placement = findClippedLinePlacement(viewState, _tileLines);
-            return true;
-        }
-
-        return false;
+        _placement = findClippedLinePlacement(viewState, _tileLines);
+        return true;
     }
 
     bool Label::calculateCenter(cglib::vec3<double>& pos) const {
@@ -601,6 +751,26 @@ namespace carto::vt {
     }
 
     std::shared_ptr<const Label::Placement> Label::findSnappedLinePlacement(const cglib::vec3<double>& position, const std::list<TileLine>& tileLines, const Placement* oldPlacement) const {
+        // Exact preservation: when the placement's own source line is still there, keep the
+        // anchor on the segment it already sits on instead of re-deriving it. Re-deriving
+        // scores candidates by distance, and the anchor only scores an exact 0 while it lies
+        // exactly on the line. On terrain it does not: a label rebuilt from a freshly decoded
+        // tile carries the vertex heights of its decode time while the anchor carries the
+        // current ones, so every segment scores nonzero, the mid-line weight below decides
+        // instead, and the anchor creeps toward the middle of the road - on every tile-set
+        // change, which is several times a second while tiles stream in.
+        if (oldPlacement) {
+            for (const TileLine& tileLine : tileLines) {
+                if (!(tileLine.tileId == oldPlacement->tileId && tileLine.localId == oldPlacement->localId)) {
+                    continue;
+                }
+                if (oldPlacement->index + 1 < tileLine.vertices.size()) {
+                    return buildLinePlacement(tileLine, oldPlacement->index, position);
+                }
+                break;
+            }
+        }
+
         const TileLine* bestTileLine = nullptr;
         std::size_t bestIndex = 0;
         cglib::vec3<double> bestPos = position;
@@ -620,17 +790,28 @@ namespace carto::vt {
                 bestDist = std::numeric_limits<double>::infinity();
                 bestSameSource = true;
             }
-            // Try to find a closest point on vertices to the given position
+            // Try to find a closest point on vertices to the given position. Distances are
+            // measured horizontally: the vertex heights and the anchor height can come from
+            // different elevation states, and a height mismatch must not decide which
+            // segment of the road the label ends up on.
             for (std::size_t j = 1; j < tileLine.vertices.size(); j++) {
                 cglib::vec3<double> edgeVec = tileLine.vertices[j] - tileLine.vertices[j - 1];
-                double edgeLen2 = cglib::dot_product(edgeVec, edgeVec);
+                double edgeLen2 = edgeVec(0) * edgeVec(0) + edgeVec(1) * edgeVec(1);
                 if (edgeLen2 == 0) {
                     continue;
                 }
-                double t = cglib::dot_product(edgeVec, position - tileLine.vertices[j - 1]) / edgeLen2;
+                cglib::vec3<double> posVec = position - tileLine.vertices[j - 1];
+                double t = (edgeVec(0) * posVec(0) + edgeVec(1) * posVec(1)) / edgeLen2;
                 cglib::vec3<double> edgePos = tileLine.vertices[j - 1] + edgeVec * std::max(0.0, std::min(1.0, t));
-                double weight = (1.0 / j) + (1.0 / (tileLine.vertices.size() - j)); // favor positions far from endpoint, will result in more stable placements
-                double dist = cglib::length(edgePos - position) * weight;
+                // The mid-line bias picks a placement far from the line's endpoints, which is
+                // what you want when choosing a FRESH anchor. When re-snapping an existing
+                // one it does the opposite: a zoom step changes every tile id, so the
+                // placement's own source line is gone and this fallback runs - and the bias
+                // then drags the anchor away from where it was, toward the middle of the
+                // road. Re-snapping takes the nearest point instead.
+                double weight = (oldPlacement ? 1.0 : (1.0 / j) + (1.0 / (tileLine.vertices.size() - j)));
+                cglib::vec3<double> distVec = edgePos - position;
+                double dist = std::sqrt(distVec(0) * distVec(0) + distVec(1) * distVec(1)) * weight;
                 if (dist < bestDist) {
                     bestIndex = j - 1;
                     bestTileLine = &tileLine;

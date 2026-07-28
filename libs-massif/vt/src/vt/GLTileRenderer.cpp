@@ -5,6 +5,7 @@
 #include "TileSurfaceBuilder.h"
 #include "BitmapManager.h"
 #include "LabelCuller.h"
+#include "RenderStats.h"
 
 #include <cassert>
 #include <algorithm>
@@ -1007,6 +1008,7 @@ namespace carto::vt {
         // All other operations must be synchronized
         std::lock_guard<std::mutex> lock(_mutex);
 
+        VT_STAT_INC(visibleTileSetChanges);
         buildTileSurfaces(tileIds);
         buildLabelMaps(labelTiles);
         buildRenderTiles(tiles);
@@ -1062,8 +1064,36 @@ namespace carto::vt {
 
         // Drop built tile surfaces. They will be lazily rebuilt with the current
         // transformer state; the corresponding compiled VBOs are released in endFrame.
+        VT_STAT_ADD(tileSurfacesInvalidated, static_cast<long long>(_tileSurfaceMap.size()));
         _tileSurfaceMap.clear();
         _tileSurfaceBuilder.invalidateCaches();
+    }
+
+    void GLTileRenderer::invalidateTileSurfaces(const std::vector<TileId>& tileIds) {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        // Targeted version of resetTileSurfaces: only the surfaces built over one of the
+        // given (elevation) tiles are dropped. A full reset re-tesselates and re-uploads
+        // every visible tile surface, which during the initial elevation stream means the
+        // whole screen is rebuilt again and again while nothing on it actually changed.
+        if (tileIds.empty()) {
+            return;
+        }
+        for (auto it = _tileSurfaceMap.begin(); it != _tileSurfaceMap.end(); ) {
+            TileId tileId = it->first.getWrapped();
+            bool invalidate = false;
+            for (const TileId& changedTileId : tileIds) {
+                if (tileId.intersects(changedTileId)) {
+                    invalidate = true;
+                    break;
+                }
+            }
+            if (invalidate) {
+                VT_STAT_INC(tileSurfacesInvalidated);
+            }
+            it = (invalidate ? _tileSurfaceMap.erase(it) : std::next(it));
+        }
+        _tileSurfaceBuilder.invalidateCaches(tileIds);
     }
 
     void GLTileRenderer::deinitializeRenderer() {
@@ -1956,9 +1986,42 @@ namespace carto::vt {
         return refresh;
     }
 
+    long long GLTileRenderer::calculateLabelGeometryHash(const Tile* tile, long long localId) {
+        std::uint64_t hash = static_cast<std::uint64_t>(reinterpret_cast<std::uintptr_t>(tile));
+        hash ^= static_cast<std::uint64_t>(localId) + 0x9e3779b97f4a7c15ULL + (hash << 6) + (hash >> 2);
+        hash *= 0xff51afd7ed558ccdULL;
+        hash ^= hash >> 33;
+        return static_cast<long long>(hash);
+    }
+
     void GLTileRenderer::buildLabelMaps(const std::vector<std::shared_ptr<const Tile>>& labelTiles) {
+        VT_STAT_INC(labelMapRebuilds);
+
+        // Pass 1: work out which tile geometries each label is built from, WITHOUT building
+        // anything. A label is identified by the set of (tile object, local id) pairs
+        // contributing to it; the tile object rather than the tile id, because the same tile
+        // id can be re-served by a different (re-decoded) tile whose geometry differs.
+        // Summing the per-contribution hashes makes the signature independent of the order
+        // the tiles are visited in, which follows the visible tile order and is not stable.
+        std::map<int, std::unordered_map<long long, std::pair<long long, int>>> newLayerSignatureMap;
+        for (const std::shared_ptr<const Tile>& tile : labelTiles) {
+            for (const std::shared_ptr<TileLayer>& layer : tile->getLayers()) {
+                if (!testLayerFilter(layer->getLayerName(), _rendererLayerFilter)) {
+                    continue;
+                }
+
+                std::unordered_map<long long, std::pair<long long, int>>& signatureMap = newLayerSignatureMap[layer->getLayerIndex()];
+                for (const std::shared_ptr<TileLabel>& tileLabel : layer->getLabels()) {
+                    std::pair<long long, int>& signature = signatureMap[tileLabel->getGlobalId()];
+                    signature.first += calculateLabelGeometryHash(tile.get(), tileLabel->getLocalId());
+                    signature.second++;
+                }
+            }
+        }
+
         // Create label list, merge geometries
         std::map<int, GlobalIdLabelMap> newLayerLabelMap;
+        std::map<int, std::unordered_set<long long>> reusedLayerLabelIds;
         for (const std::shared_ptr<const Tile>& tile : labelTiles) {
             cglib::mat4x4<double> tileMatrix = _transformer->calculateTileMatrix(tile->getTileId(), 1.0f);
             std::shared_ptr<const TileTransformer::VertexTransformer> transformer = _transformer->createTileVertexTransformer(tile->getTileId());
@@ -1966,21 +2029,60 @@ namespace carto::vt {
                 if (!testLayerFilter(layer->getLayerName(), _rendererLayerFilter)) {
                     continue;
                 }
-                
+
                 GlobalIdLabelMap& newLabelMap = newLayerLabelMap[layer->getLayerIndex()];
                 if (newLabelMap.empty()) {
                     newLabelMap.reserve(_layerLabelMap[layer->getLayerIndex()].size() + 64);
                 }
+                const GlobalIdLabelMap& oldLabelMap = _layerLabelMap[layer->getLayerIndex()];
+                const std::unordered_map<long long, std::pair<long long, int>>& signatureMap = newLayerSignatureMap[layer->getLayerIndex()];
+                std::unordered_set<long long>& reusedLabelIds = reusedLayerLabelIds[layer->getLayerIndex()];
                 for (const std::shared_ptr<TileLabel>& tileLabel : layer->getLabels()) {
-                    std::shared_ptr<Label>& label = newLabelMap[tileLabel->getGlobalId()];
+                    long long globalId = tileLabel->getGlobalId();
+                    std::shared_ptr<Label>& label = newLabelMap[globalId];
                     if (label) {
+                        // A reused label already holds every contribution - merging this tile
+                        // into it would duplicate the geometry it was reused for.
+                        if (reusedLabelIds.count(globalId) > 0) {
+                            continue;
+                        }
                         Label newLabel(*tileLabel, tile->getTileId(), layer->getLayerIndex(), tileMatrix, transformer);
                         label->mergeGeometries(newLabel);
+                        VT_STAT_INC(labelsAllocated); // the merge copy costs the same geometry transform
+                        continue;
                     }
-                    else {
-                        label = std::make_shared<Label>(*tileLabel, tile->getTileId(), layer->getLayerIndex(), tileMatrix, transformer);
+
+                    // Reuse the existing label object when every contribution to it is
+                    // unchanged. Rebuilding it transforms the same geometry again, drops its
+                    // cached vertex data and forces a re-snap of its anchor - which is what
+                    // makes the visible label set churn while tiles stream in.
+                    const std::pair<long long, int>& signature = signatureMap.at(globalId);
+                    auto oldLabelIt = oldLabelMap.find(globalId);
+                    if (oldLabelIt != oldLabelMap.end() && oldLabelIt->second->hasGeometrySignature(signature.first, signature.second)) {
+                        label = oldLabelIt->second;
+                        reusedLabelIds.insert(globalId);
+                        VT_STAT_INC(labelsReused);
+                        continue;
                     }
+
+                    label = std::make_shared<Label>(*tileLabel, tile->getTileId(), layer->getLayerIndex(), tileMatrix, transformer);
+                    VT_STAT_INC(labelsAllocated);
                 }
+            }
+        }
+
+        // Stamp the signature on the freshly built labels, now that every contributing tile
+        // has been merged into them. Doing it at construction time would make the label look
+        // complete to the merge branch above and swallow its remaining contributions.
+        for (auto newLayerLabelIt = newLayerLabelMap.begin(); newLayerLabelIt != newLayerLabelMap.end(); newLayerLabelIt++) {
+            const std::unordered_map<long long, std::pair<long long, int>>& signatureMap = newLayerSignatureMap[newLayerLabelIt->first];
+            const std::unordered_set<long long>& reusedLabelIds = reusedLayerLabelIds[newLayerLabelIt->first];
+            for (auto newLabelIt = newLayerLabelIt->second.begin(); newLabelIt != newLayerLabelIt->second.end(); newLabelIt++) {
+                if (reusedLabelIds.count(newLabelIt->first) > 0) {
+                    continue;
+                }
+                const std::pair<long long, int>& signature = signatureMap.at(newLabelIt->first);
+                newLabelIt->second->setGeometrySignature(signature.first, signature.second);
             }
         }
 
@@ -2003,10 +2105,18 @@ namespace carto::vt {
         for (auto newLayerLabelIt = newLayerLabelMap.begin(); newLayerLabelIt != newLayerLabelMap.end(); newLayerLabelIt++) {
             const GlobalIdLabelMap& newLabelMap = newLayerLabelIt->second;
             GlobalIdLabelMap& labelMap = _layerLabelMap[newLayerLabelIt->first];
+            const std::unordered_set<long long>& reusedLabelIds = reusedLayerLabelIds[newLayerLabelIt->first];
             for (auto newLabelIt = newLabelMap.begin(); newLabelIt != newLabelMap.end(); newLabelIt++) {
                 const std::shared_ptr<Label>& newLabel = newLabelIt->second;
                 std::shared_ptr<Label>& label = labelMap[newLabelIt->first];
-                if (label) {
+                // A reused object IS the previous label: its placement, visibility and
+                // opacity are already the current ones. Note this can not be decided by
+                // comparing against the map entry - the release pass above erases entries
+                // whose label has faded out, and a reused label may be one of them.
+                if (reusedLabelIds.count(newLabelIt->first) > 0) {
+                    // nothing to carry over
+                }
+                else if (label) {
                     newLabel->setVisible(label->isVisible());
                     newLabel->setOpacity(label->getOpacity());
                     newLabel->snapPlacement(*label);
@@ -2059,6 +2169,7 @@ namespace carto::vt {
         // Update built label lists and maps
         _labels = std::move(labels);
         _bitmapLabelMap = std::move(bitmapLabelMap);
+        VT_STAT_SET(labelsLive, static_cast<long long>(_labels.size()));
 
         // Tile geometry is built flat in GPU draping mode - newly built labels must be
         // re-anchored onto the terrain (startFrame applies the elevation provider)

@@ -1,4 +1,5 @@
 #include "LabelCuller.h"
+#include "RenderStats.h"
 
 #include <array>
 #include <vector>
@@ -99,6 +100,8 @@ namespace carto::vt {
     bool LabelCuller::process(const std::vector<std::shared_ptr<Label>>& labelList, std::mutex& labelMutex) {
         std::lock_guard<std::mutex> lock(_mutex);
 
+        VT_STAT_INC(cullerPasses);
+
         // NOTE: the grid is intentionally NOT cleared here. One culler instance is shared
         // by all layers within a single placement pass (see VTLabelPlacementWorker), so
         // records must accumulate across process() calls for labels of different layers
@@ -198,6 +201,7 @@ namespace carto::vt {
             }
             if (visible != label->isVisible()) {
                 label->setVisible(visible);
+                VT_STAT_INC(cullerVisibilityFlips);
                 changed = true;
             }
         }

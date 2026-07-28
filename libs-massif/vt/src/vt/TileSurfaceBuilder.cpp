@@ -1,5 +1,6 @@
 #include "TileSurfaceBuilder.h"
 #include "TextFormatter.h"
+#include "RenderStats.h"
 
 #include <utility>
 #include <algorithm>
@@ -31,6 +32,20 @@ namespace carto::vt {
 
     void TileSurfaceBuilder::invalidateCaches() {
         _tileSurfaceCache.clear();
+    }
+
+    void TileSurfaceBuilder::invalidateCaches(const std::vector<TileId>& tileIds) {
+        for (auto it = _tileSurfaceCache.begin(); it != _tileSurfaceCache.end(); ) {
+            TileId tileId = it->first.getWrapped();
+            bool invalidate = false;
+            for (const TileId& changedTileId : tileIds) {
+                if (tileId.intersects(changedTileId)) {
+                    invalidate = true;
+                    break;
+                }
+            }
+            it = (invalidate ? _tileSurfaceCache.erase(it) : std::next(it));
+        }
     }
 
     void TileSurfaceBuilder::setVisibleTiles(const std::set<TileId>& tileIds) {
@@ -74,6 +89,7 @@ namespace carto::vt {
         if (cacheIt != _tileSurfaceCache.end()) {
             return cacheIt->second;
         }
+        VT_STAT_INC(tileSurfacesBuilt);
 
         // Tesselate tile along edges to avoid T-vertices between neighbouring tiles.
         TileNeighbours tileNeighbours;

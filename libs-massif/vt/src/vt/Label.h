@@ -57,6 +57,13 @@ namespace carto::vt {
         bool isActive() const { return _active; }
         void setActive(bool active) { _active = active; }
 
+        // Identifies the set of tile geometries this label was built from, so that a rebuild
+        // can tell whether anything about its source actually changed (see
+        // GLTileRenderer::buildLabelMaps). Order-independent: the merge order follows the
+        // visible tile order, which is not stable.
+        void setGeometrySignature(long long hash, int count) { _geometryHash = hash; _geometryCount = count; }
+        bool hasGeometrySignature(long long hash, int count) const { return _geometryCount == count && _geometryHash == hash && count > 0; }
+
         void mergeGeometries(Label& label);
         void snapPlacement(const Label& label);
         bool updatePlacement(const ViewState& viewState);
@@ -76,6 +83,7 @@ namespace carto::vt {
         static constexpr float SUMMED_ANGLE_SPLIT_THRESHOLD = 2.09f; // maximum sum of segment angles, in radians
         static constexpr float SINGLE_ANGLE_SPLIT_THRESHOLD = 1.57f; // maximum single segment angle, in radians
         static constexpr float MIN_LINE_SEGMENT_DOTPRODUCT = 0.5f; // the minimum allowed dot product between consecutive segments
+        static constexpr double SNAP_MOVE_EPSILON = 1.0e-9; // internal world units (1 unit ~ 38m); a 1px anchor drift is ~1e-4 at z15
         static constexpr float MIN_BILLBOARD_VIEW_NORMAL_DOTPRODUCT = 0.1f; // the minimum allowed dot product between view vector and surface normal (cos ~78.5deg -> labels valid down to ~tilt 11.5; was 0.49 = calibrated to the old 30deg tilt clamp)
 
         struct TilePoint {
@@ -182,6 +190,8 @@ namespace carto::vt {
         void buildPointVertexData(VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const;
         bool buildLineVertexData(const std::shared_ptr<const Placement>& placement, float scale, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const;
 
+        cglib::bbox3<double> calculateGeometryBBox(const ViewState& viewState) const;
+        std::shared_ptr<const Placement> buildLinePlacement(const TileLine& tileLine, std::size_t index, const cglib::vec3<double>& position) const;
         std::shared_ptr<const Placement> getPlacement(const ViewState& viewState) const;
         std::shared_ptr<const Placement> findSnappedPointPlacement(const cglib::vec3<double>& position, const std::list<TilePoint>& tilePoints, const Placement* oldPlacement = nullptr) const;
         std::shared_ptr<const Placement> findSnappedLinePlacement(const cglib::vec3<double>& position, const std::list<TileLine>& tileLines, const Placement* oldPlacement = nullptr) const;
@@ -202,12 +212,18 @@ namespace carto::vt {
         const bool _sameFeatureIdDependent;
 
         cglib::bbox2<float> _glyphBBox;
+        float _maxGlyphExtent = 0; // largest distance a glyph reaches from the anchor, style transform included
         std::list<TilePoint> _tilePoints;
         std::list<TileLine> _tileLines;
+
+        mutable bool _geometryBBoxValid = false;
+        mutable cglib::bbox3<double> _geometryBBox = cglib::bbox3<double>::smallest();
 
         float _opacity = 0.0f;
         bool _visible = false;
         bool _active = false;
+        long long _geometryHash = 0;
+        int _geometryCount = 0;
 
         std::shared_ptr<const Placement> _placement;
         mutable std::shared_ptr<const Placement> _cachedFlippedPlacement;

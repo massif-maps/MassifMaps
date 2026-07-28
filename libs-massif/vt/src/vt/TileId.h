@@ -43,6 +43,14 @@ namespace carto::vt {
         constexpr bool intersects(const TileId& other) const {
             return covers(other) || other.covers(*this);
         }
+
+        // Wraps the tile into the [0, 2^zoom) x range. Teleported tiles (see getTeleported)
+        // carry an out-of-range x, which covers/intersects would otherwise never match.
+        constexpr TileId getWrapped() const {
+            int n = 1 << zoom;
+            int wx = x % n;
+            return TileId(zoom, wx < 0 ? wx + n : wx, y);
+        }
     };
 
     constexpr bool operator == (const TileId& tile1, const TileId& tile2) {

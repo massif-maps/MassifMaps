@@ -29,6 +29,9 @@ namespace carto::vt {
         void setVisibleTiles(const std::set<TileId>& tileIds);
         void setTerrainSkirts(bool terrainSkirts);
         void invalidateCaches();
+        // Drops only the cached surfaces overlapping one of the given tiles (in either
+        // direction - an elevation tile may be coarser or finer than the surface tile).
+        void invalidateCaches(const std::vector<TileId>& tileIds);
 
         std::vector<std::shared_ptr<TileSurface>> buildTileSurface(const TileId& tileId) const;
 

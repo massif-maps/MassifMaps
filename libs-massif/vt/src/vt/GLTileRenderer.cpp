@@ -187,6 +187,15 @@ namespace carto::vt {
         _terrainPainterOrder = enabled;
     }
 
+    void GLTileRenderer::setTerrainEdgeStitching(bool enabled) {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        if (_terrainEdgeStitching != enabled) {
+            _terrainEdgeStitching = enabled;
+            _terrainEdgeCoarseningMap.clear(); // rebuilt on the next visible tile set
+        }
+    }
+
     void GLTileRenderer::setTerrainSlackScale(float slackScale) {
         std::lock_guard<std::mutex> lock(_mutex);
 
@@ -777,7 +786,7 @@ namespace carto::vt {
                 for (const TileId& tileId : tileIds) {
                     cglib::mat4x4<double> surfaceFrame = calculateTileMatrix(tileId, 1.0f);
                     cglib::mat4x4<float> mvpMatrix = cglib::mat4x4<float>::convert(lightViewProj * surfaceFrame);
-                    setupTerrainUniforms(shaderProgram, tileId, surfaceFrame);
+                    setupTerrainUniforms(shaderProgram, tileId, surfaceFrame, true);
                     glUniformMatrix4fv(shaderProgram.uniforms[U_MVPMATRIX], 1, GL_FALSE, mvpMatrix.data());
                     glDrawElements(GL_TRIANGLES, tileSurface->getIndicesCount(), GL_UNSIGNED_SHORT, 0);
                     draws++;
@@ -1009,9 +1018,56 @@ namespace carto::vt {
         std::lock_guard<std::mutex> lock(_mutex);
 
         VT_STAT_INC(visibleTileSetChanges);
+        buildTerrainEdgeCoarsening(tileIds);
         buildTileSurfaces(tileIds);
         buildLabelMaps(labelTiles);
         buildRenderTiles(tiles);
+    }
+
+    void GLTileRenderer::buildTerrainEdgeCoarsening(const std::set<TileId>& tileIds) {
+        // Per visible tile: how much coarser the neighbour on each edge is. The shared grid
+        // surface is drawn for every tile, so a coarser neighbour interpolates the DEM between
+        // its own (2^k times wider) lattice nodes; the fine tile must chord across the same
+        // nodes on that edge or the shared edge cracks open. The lattices only line up when
+        // the resolution is a multiple of the level difference, which caps k.
+        _terrainEdgeCoarseningMap.clear();
+        if (!(_terrainEdgeStitching && _terrainRegularGrid)) {
+            return;
+        }
+        int maxLevels = 0;
+        for (int res = _terrainRegularGridResolution; res > 0 && (res & 1) == 0; res >>= 1) {
+            maxLevels++;
+        }
+        if (maxLevels < 1) {
+            return; // odd resolution: no coarser lattice is a subset of this one
+        }
+
+        auto edgeFactor = [&tileIds, maxLevels](const TileId& tileId, int dx, int dy) -> float {
+            TileId neighbour(tileId.zoom, tileId.x + dx, tileId.y + dy);
+            if (tileIds.count(neighbour) > 0) {
+                return 1.0f; // same level (a finer neighbour stitches on its own side)
+            }
+            TileId ancestor = neighbour;
+            for (int k = 1; k <= maxLevels && ancestor.zoom > 0; k++) {
+                ancestor = ancestor.getParent();
+                if (tileIds.count(ancestor) > 0) {
+                    return static_cast<float>(1 << k);
+                }
+            }
+            return 1.0f; // not visible, or coarser than the lattices can follow
+        };
+
+        for (const TileId& tileId : tileIds) {
+            cglib::vec4<float> coarsening(
+                edgeFactor(tileId, -1, 0), // west
+                edgeFactor(tileId,  1, 0), // east
+                edgeFactor(tileId, 0,  1), // south (XYZ: y grows south)
+                edgeFactor(tileId, 0, -1)  // north
+            );
+            if (coarsening != cglib::vec4<float>(1, 1, 1, 1)) {
+                _terrainEdgeCoarseningMap.emplace(tileId, coarsening);
+            }
+        }
     }
 
     void GLTileRenderer::teleportVisibleTiles(int dx, int dy) {
@@ -2944,7 +3000,7 @@ namespace carto::vt {
         checkGLError();
     }
 
-    bool GLTileRenderer::setupTerrainUniforms(const ShaderProgram& shaderProgram, const TileId& tileId, const cglib::mat4x4<double>& vertexFrameMatrix) {
+    bool GLTileRenderer::setupTerrainUniforms(const ShaderProgram& shaderProgram, const TileId& tileId, const cglib::mat4x4<double>& vertexFrameMatrix, bool gridSurface) {
         // GPU terrain draping: bind the elevation texture covering the tile and the affine
         // transforms taking vertex xy coordinates (in the axis-aligned frame defined by
         // vertexFrameMatrix - a tile matrix or the tile surface origin translation) to
@@ -2981,6 +3037,19 @@ namespace carto::vt {
         glUniform1f(shaderProgram.uniforms[U_DEPTHBIASCLIP], static_cast<float>(clipUnits * TERRAIN_DEPTH_CLIP_SLACK * slackScale * projScaleZ));
         glUniform1f(shaderProgram.uniforms[U_LAYERDEPTHOFFSET], 0.0f);
         glUniform1f(shaderProgram.uniforms[U_DEPTHSHIFT], 0.0f);
+
+        // Cross-LOD edge stitching applies to the shared grid SURFACE only: its vertices are
+        // the tile-local unit square, so the edge test in the shader is meaningful. Draped
+        // content is drawn in its own frames and must keep the plain lattice (it follows the
+        // surface everywhere except within the outermost cell, where the stitch bends it).
+        cglib::vec4<float> edgeCoarsening(1, 1, 1, 1);
+        if (gridSurface && !_terrainEdgeCoarseningMap.empty()) {
+            auto edgeIt = _terrainEdgeCoarseningMap.find(tileId);
+            if (edgeIt != _terrainEdgeCoarseningMap.end()) {
+                edgeCoarsening = edgeIt->second;
+            }
+        }
+        glUniform4f(shaderProgram.uniforms[U_TERRAINEDGECOARSENING], edgeCoarsening(0), edgeCoarsening(1), edgeCoarsening(2), edgeCoarsening(3));
 
         TerrainTexture terrainTexture;
         bool valid = _terrainTextureProvider && _terrainTextureProvider(tileId, terrainTexture);
@@ -3069,7 +3138,7 @@ namespace carto::vt {
             const ShaderProgram& shaderProgram = buildShaderProgram("tilemask", backgroundVsh, backgroundFsh, LightingMode::NONE, RasterFilterMode::NONE, terrainFlag);
             glUseProgram(shaderProgram.program);
             if (terrainFlag != 0) {
-                setupTerrainUniforms(shaderProgram, tileId, surfaceFrame);
+                setupTerrainUniforms(shaderProgram, tileId, surfaceFrame, gridMode);
             }
 
             glBindBuffer(GL_ARRAY_BUFFER, compiledTileSurface.vertexGeometryVBO);
@@ -3168,7 +3237,7 @@ namespace carto::vt {
             setupFogUniforms(shaderProgram);
             if (terrainFlag != 0) {
                 glUniform1f(shaderProgram.uniforms[U_DEPTHBIAS], _terrainDrawDepthBias);
-                setupTerrainUniforms(shaderProgram, tileId, surfaceFrame);
+                setupTerrainUniforms(shaderProgram, tileId, surfaceFrame, gridMode);
             }
 
             glBindBuffer(GL_ARRAY_BUFFER, compiledTileSurface.vertexGeometryVBO);
@@ -3256,6 +3325,14 @@ namespace carto::vt {
             // fingerprint reflecting all of them.
             std::size_t& fingerprint = drapeTiles[renderTile.targetTileId];
             std::size_t contribution = calculateDrapeFingerprint(renderTile);
+            if (contribution == 0) {
+                continue; // reported for the cover, but nothing here to bake: the entry stays 0
+            }
+            // Mixing in a zero contribution would still leave a non-zero fingerprint, and the owner
+            // reads a non-zero fingerprint as "this layer HAS something for that tile". It then
+            // waits for a bake that can never deliver it, keeps the tile marked incomplete and goes
+            // on drawing the previous, finer generation's textures over it - a patch of stale map
+            // that survives a zoom out for as long as those textures stay cached.
             fingerprint ^= contribution + 0x9e3779b9 + (fingerprint << 6) + (fingerprint >> 2);
         }
     }
@@ -3567,7 +3644,11 @@ namespace carto::vt {
         // Identifies exactly what would be baked. When it changes - a style layer finishes
         // loading, a proxy is replaced by its native tile - the cached texture is stale and must
         // be re-baked, which the original bake-once cache had no way to notice.
+        // ZERO MEANS NOTHING TO BAKE, and callers rely on that: a tile with no drapeable content
+        // must be distinguishable from one that has some. Hence the explicit flag rather than
+        // "hash != 0" - the hash of real content can in principle land on zero.
         std::size_t hash = 0;
+        bool anyContent = false;
         auto combine = [&hash](std::size_t value) {
             hash ^= value + 0x9e3779b9 + (hash << 6) + (hash >> 2);
         };
@@ -3576,13 +3657,17 @@ namespace carto::vt {
             if (!hasDrapeableContent(renderLayer)) {
                 continue;
             }
+            anyContent = true;
             combine(static_cast<std::size_t>(it->first));
             combine(static_cast<std::size_t>(renderLayer.sourceTileId.zoom) * 2654435761u
                   ^ static_cast<std::size_t>(renderLayer.sourceTileId.x) * 40503u
                   ^ static_cast<std::size_t>(renderLayer.sourceTileId.y));
             combine(std::hash<const void*>()(renderLayer.layer.get()));
         }
-        return hash;
+        if (anyContent && hash == 0) {
+            hash = 1;
+        }
+        return anyContent ? hash : 0;
     }
 
     bool GLTileRenderer::hasDrapeableContent(const RenderTileLayer& renderLayer) const {
@@ -3764,7 +3849,7 @@ namespace carto::vt {
             setupFogUniforms(shaderProgram);
             if (flags & TERRAIN_FLAG) {
                 glUniform1f(shaderProgram.uniforms[U_DEPTHBIAS], _terrainDrawDepthBias);
-                hasElevation = setupTerrainUniforms(shaderProgram, tileId, surfaceFrame);
+                hasElevation = setupTerrainUniforms(shaderProgram, tileId, surfaceFrame, gridMode);
             }
             if (lit) {
                 setupTerrainLightingUniforms(shaderProgram, tileId, surfaceFrame);
@@ -3846,7 +3931,7 @@ namespace carto::vt {
             const ShaderProgram& shaderProgram = buildShaderProgram("tilemask", backgroundVsh, backgroundFsh, LightingMode::NONE, RasterFilterMode::NONE, terrainFlag);
             glUseProgram(shaderProgram.program);
             if (terrainFlag != 0) {
-                setupTerrainUniforms(shaderProgram, tileId, surfaceFrame);
+                setupTerrainUniforms(shaderProgram, tileId, surfaceFrame, gridMode);
             }
 
             glBindBuffer(GL_ARRAY_BUFFER, compiledTileSurface.vertexGeometryVBO);
@@ -3901,7 +3986,7 @@ namespace carto::vt {
                 glUniform1f(shaderProgram.uniforms[U_DEPTHBIAS], terrainVTF ? _terrainDrawDepthBias : _terrainDepthBias);
             }
             if (terrainVTF && !flatDrape) {
-                setupTerrainUniforms(shaderProgram, tileId, surfaceFrame);
+                setupTerrainUniforms(shaderProgram, tileId, surfaceFrame, gridMode && !flatDrape);
             }
 
             glBindBuffer(GL_ARRAY_BUFFER, compiledTileSurface.vertexGeometryVBO);
@@ -4000,7 +4085,7 @@ namespace carto::vt {
                 glUniform1f(shaderProgram.uniforms[U_DEPTHBIAS], terrainVTF ? _terrainDrawDepthBias : _terrainDepthBias);
             }
             if (terrainVTF && !flatDrape) {
-                setupTerrainUniforms(shaderProgram, targetTileId, surfaceFrame);
+                setupTerrainUniforms(shaderProgram, targetTileId, surfaceFrame, gridMode && !flatDrape);
             }
 
             glBindBuffer(GL_ARRAY_BUFFER, compiledTileSurface.vertexGeometryVBO);

@@ -47,6 +47,7 @@ namespace carto::vt {
         U_ELEVATIONSCALE,
         U_ELEVATIONTEXELSIZE,
         U_ELEVATIONLATTICECELL,
+        U_TERRAINEDGECOARSENING,
         U_LAYERDEPTHOFFSET,
         U_DEPTHSHIFT,
         U_DRAPETEXTURE,
@@ -115,6 +116,7 @@ namespace carto::vt {
         { "uElevationScale",   U_ELEVATIONSCALE },
         { "uElevationTexelSize", U_ELEVATIONTEXELSIZE },
         { "uElevationLatticeCell", U_ELEVATIONLATTICECELL },
+        { "uTerrainEdgeCoarsening", U_TERRAINEDGECOARSENING },
         { "uLayerDepthOffset",  U_LAYERDEPTHOFFSET },
         { "uDepthShift",        U_DEPTHSHIFT },
         { "uDrapeTexture",      U_DRAPETEXTURE },
@@ -275,6 +277,7 @@ namespace carto::vt {
         uniform highp vec4 uElevationScale;  // x: meters to vertex z units (equator), y/z: mercator y = y + pos.y * z, w: vertex frame z offset
         uniform highp vec4 uElevationTexelSize; // xy: texture size in texels, zw: 1 / size
         uniform highp vec2 uElevationLatticeCell; // regular-grid surface cell size in elevation-uv units (0 = off = sample the full DEM detail)
+        uniform highp vec4 uTerrainEdgeCoarsening; // lattice cell scale (2^k, 1 = off) on the west/east/south/north tile edge
         // GPU terrain draping: the vertex z is REPLACED with the height sampled from the
         // elevation texture. Every draped layer samples the same textures, so all layers
         // agree on heights exactly and no geometric depth tolerances are needed.
@@ -324,14 +327,27 @@ namespace carto::vt {
                 // which flips the v axis, so in elevation-uv fg-space the corners are
                 // d=(0,0)=H00, c=(1,0)=H10, a=(0,1)=H01, b=(1,1)=H11 and the shared edge is the
                 // ANTI-diagonal fg.x+fg.y=1 (the H10-H01 split). Match it exactly here.
-                highp vec2 rel = (uv - uElevationUV.xy) / uElevationLatticeCell;
+                // CROSS-LOD STITCHING: on an edge shared with a COARSER neighbouring tile the
+                // two tiles otherwise interpolate the DEM between different lattice nodes and
+                // the shared edge cracks open (the coarse tile chords across what the fine tile
+                // follows). The neighbour's lattice is a strict subset of this tile's lattice
+                // (same anchor, cell scaled by 2^k), so scaling the cell along the edge for the
+                // vertices ON that edge reproduces the neighbour's chords exactly. The factors
+                // are 1 for same-level or finer neighbours, i.e. a no-op by default. Corner
+                // vertices sit on a node of every lattice, so a double scaling is harmless.
+                highp vec2 cell = uElevationLatticeCell;
+                if (pos.x < 0.00001) cell.y *= uTerrainEdgeCoarsening.x;       // west edge
+                else if (pos.x > 0.99999) cell.y *= uTerrainEdgeCoarsening.y;  // east edge
+                if (pos.y < 0.00001) cell.x *= uTerrainEdgeCoarsening.z;       // south edge
+                else if (pos.y > 0.99999) cell.x *= uTerrainEdgeCoarsening.w;  // north edge
+                highp vec2 rel = (uv - uElevationUV.xy) / cell;
                 highp vec2 gi = floor(rel);
                 highp vec2 fg = rel - gi;
-                highp vec2 uv00 = uElevationUV.xy + gi * uElevationLatticeCell;
+                highp vec2 uv00 = uElevationUV.xy + gi * cell;
                 float H00 = demMeters(uv00);
-                float H10 = demMeters(uv00 + vec2(uElevationLatticeCell.x, 0.0));
-                float H01 = demMeters(uv00 + vec2(0.0, uElevationLatticeCell.y));
-                float H11 = demMeters(uv00 + uElevationLatticeCell);
+                float H10 = demMeters(uv00 + vec2(cell.x, 0.0));
+                float H01 = demMeters(uv00 + vec2(0.0, cell.y));
+                float H11 = demMeters(uv00 + cell);
                 if (fg.x + fg.y <= 1.0) {
                     // lower-left triangle (H00, H10, H01)
                     meters = H00 + (H10 - H00) * fg.x + (H01 - H00) * fg.y;

@@ -122,6 +122,11 @@ namespace carto::vt {
         void setTerrainMode(bool enabled, float depthBias);
         void setTerrainRegularGrid(bool enabled, int resolution);
         void setTerrainPainterOrder(bool enabled);
+        // Cross-LOD edge stitching for the shared regular grid surfaces: on an edge shared with
+        // a coarser neighbouring tile, the surface follows the neighbour's coarser lattice so
+        // the two tiles agree along the edge instead of cracking open. No effect without the
+        // regular grid mode (the adaptive per-tile surfaces tesselate their borders to match).
+        void setTerrainEdgeStitching(bool enabled);
         void setTerrainSlackScale(float slackScale);
         void setTerrainDrapeFills(bool enabled, bool includeLines);
         void setTerrainDrapeResolution(int resolution);
@@ -378,7 +383,8 @@ namespace carto::vt {
         void setCompOp(CompOp compOp);
         void blendScreenTexture(float opacity, GLuint texture);
         void updateTerrainSkirts();
-        bool setupTerrainUniforms(const ShaderProgram& shaderProgram, const TileId& tileId, const cglib::mat4x4<double>& vertexFrameMatrix);
+        bool setupTerrainUniforms(const ShaderProgram& shaderProgram, const TileId& tileId, const cglib::mat4x4<double>& vertexFrameMatrix, bool gridSurface = false);
+        void buildTerrainEdgeCoarsening(const std::set<TileId>& tileIds);
         void setupTerrainLightingUniforms(const ShaderProgram& shaderProgram, const TileId& tileId, const cglib::mat4x4<double>& vertexFrameMatrix);
         void renderTileMask(const TileId& tileId);
         void renderStencilDebugOverlay();
@@ -453,6 +459,8 @@ namespace carto::vt {
         bool _terrainSkirtsEnabled = false;
         bool _terrainRegularGrid = false;        // shared unit-grid surfaces instead of per-tile tesselated meshes (planar terrain)
         int _terrainRegularGridResolution = 0;   // resolution of the currently built shared grid
+        bool _terrainEdgeStitching = false;      // snap grid surface edges to a coarser neighbour's lattice
+        std::map<TileId, cglib::vec4<float>> _terrainEdgeCoarseningMap; // per visible tile: lattice cell scale (2^k) on the west/east/south/north edge
         std::vector<std::shared_ptr<TileSurface>> _terrainGridSurfaces;
         std::vector<std::shared_ptr<TileSurface>> _terrainFlatSurfaces; // 1x1 grid for the flat drape bake // the single shared unit-grid surface, drawn per tile
         bool _terrainPainterOrder = false;       // tangram painter-order depth model (no surface occluder / no slack); implies regular grid

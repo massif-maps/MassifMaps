@@ -187,6 +187,12 @@ namespace carto::mvt {
                         verticesList = polygonGeometry->getClosedOuterRings(true);
                     }
 
+                    // One counter for the WHOLE feature: it makes the id of each repeat along the line
+                    // unique. Restarting it per segment (generateLinePoints returns one entry per
+                    // segment) gave the same id to one repeat in every segment, and labels sharing an
+                    // id are merged into a single one - so text-spacing placed the repeats and then
+                    // collapsed them, leaving one label per line.
+                    int counter = 0;
                     for (const auto& vertices : verticesList) {
                         if (spacing <= 0) {
                             textProcessor(localId, labelId, groupId, std::optional<vt::TileLayerBuilder::Vertex>(), vertices, text, placementPriority, minimumDistance, false, false, 0);
@@ -194,7 +200,6 @@ namespace carto::mvt {
                         }
 
                         for (const auto& transformedPoints : generateLinePoints(vertices, spacing, textSize, tileSize, false)) {
-                            int counter = 0;
                             for (const auto& vertex : transformedPoints.second) {
                                 long long generatedLabelId = combineId(labelId, std::hash<vt::TileId>()(tileId) * 63 + counter);
                                 textProcessor(localId, generatedLabelId, groupId, vertex, vertices, text, placementPriority, minimumDistance, false, false, 0);

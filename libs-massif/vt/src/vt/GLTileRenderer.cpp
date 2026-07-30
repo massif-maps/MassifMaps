@@ -2550,13 +2550,19 @@ namespace carto::vt {
                         // Backgrounds/bitmaps ARE the terrain occluders: they render the
                         // reference surface meshes and WRITE depth. Retained blend-out
                         // (proxy) tiles are pushed back one delta so live content wins.
-                        // Painter-order: push this depth-writing surface BACK by the
-                        // twist-clearing slack, so geometry can draw at its REAL depth (no
-                        // forward pull -> can not leak in front of a near ridge) and still
-                        // clear the surface by the same proven margin.
+                        // They draw at TRUE depth, exactly like the drape surface does: they
+                        // render the SAME meshes the reference pre-pass already drew, so any
+                        // pushback here puts them at (or behind) the depth the pre-pass wrote
+                        // and GL_LESS rejects them. Near the camera they survive on the tiny
+                        // numerical difference between the two shader paths; beyond a few
+                        // kilometres the two depths quantize to the same value and every
+                        // raster (hillshade, imagery) vanishes along a hard horizontal line -
+                        // the "far tiles go flat with drape off" report. The geometry pass
+                        // gets its clearance from the pre-pass pushback instead, which is
+                        // where the twist-clearing slack belongs.
                         float proxyBias = (renderLayer->active ? 0.0f : 1.0f * TERRAIN_LAYER_DEPTH_DELTA);
                         _terrainDrawDepthBias = _terrainDepthBias - proxyBias;
-                        _terrainDrawDepthClipUnits = _terrainPainterOrder ? -TERRAIN_PAINTER_SURFACE_BACK : 0.0f;
+                        _terrainDrawDepthClipUnits = 0.0f;
                     } else {
                         glEnable(GL_POLYGON_OFFSET_FILL);
                         if (_terrainDepthWrite && !layer->getCompOp()) {

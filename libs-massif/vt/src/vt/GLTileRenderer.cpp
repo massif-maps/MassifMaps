@@ -2659,7 +2659,25 @@ namespace carto::vt {
                             setCompOp(geometryCompOp);
                             currentCompOp = geometryCompOp;
                         }
+                        // Undraped LINES are a DECAL on the surface, and they need the decal
+                        // treatment. A line is a chain of quads: between two vertices it chords
+                        // over the surface instead of following it, so unlike a fill it is not
+                        // coincident with the true-depth occluder surface, and at zero bias the
+                        // sagging half of every segment fails the depth test - the line breaks
+                        // into dashes over relief (flat ground shows none). A polygon offset is
+                        // the right tool over a constant bias: it scales with the primitive's own
+                        // depth slope, which is what the sag scales with, so it stays a hairline
+                        // clearance head-on and grows exactly where the surface tilts away.
+                        bool lineDecal = terrainVTF && geometry->getType() == TileGeometry::Type::LINE;
+                        if (lineDecal) {
+                            glEnable(GL_POLYGON_OFFSET_FILL);
+                            glPolygonOffset(-2.0f, -8.0f);
+                        }
                         renderTileGeometry(renderLayer->sourceTileId, renderLayer->targetTileId, renderLayer->blend, geometryOpacity, renderLayer->tileSize, geometry);
+                        if (lineDecal) {
+                            glDisable(GL_POLYGON_OFFSET_FILL);
+                            glPolygonOffset(0.0f, 0.0f);
+                        }
                     }
                 }
 
@@ -3570,7 +3588,12 @@ namespace carto::vt {
         // The maplibre drapeable set: backgrounds, fills, lines and rasters go into the texture;
         // 3D extrusions and point symbols stay live in the scene (they are not surface-conformal,
         // so flattening them into the terrain skin would be wrong, not just imprecise).
-        return type == TileGeometry::Type::POLYGON || type == TileGeometry::Type::LINE;
+        // Lines are opt-out (setTerrainDrapeFills includeLines): the bake resolves them at the
+        // drape texture's resolution, so a slope that magnifies the texture also blurs them.
+        if (type == TileGeometry::Type::LINE) {
+            return _terrainDrapeLines;
+        }
+        return type == TileGeometry::Type::POLYGON;
     }
 
     bool GLTileRenderer::isTileDraped(const TileId& targetTileId) const {
@@ -4323,6 +4346,13 @@ namespace carto::vt {
             }
 
             glUniform1f(shaderProgram.uniforms[U_BINORMALSCALE], vertexGeomLayoutParams.coordScale / (_halfResolution * vertexGeomLayoutParams.binormalScale * std::pow(2.0f, _viewState.zoom - sourceTileId.zoom)));
+            if (terrainVTF) {
+                // Screen-space line extrusion over terrain (see lineVsh): the aspect converts an
+                // NDC x offset into the same units as y, and one line-width unit is 1/halfResolution
+                // of the NDC height - the very scale uBinormalScale is built from, so a line ends
+                // up exactly as wide as it is on the flat map.
+                glUniform2f(shaderProgram.uniforms[U_SCREENSCALE], std::max(0.0001f, _viewState.aspect), 1.0f / std::max(1.0f, _halfResolution));
+            }
             glUniform1fv(shaderProgram.uniforms[U_WIDTHTABLE], styleParams.parameterCount, widths.data());
             if (styleOffsetting) {
                 glUniform1fv(shaderProgram.uniforms[U_OFFSETTABLE], styleParams.parameterCount, offsets.data());

@@ -61,7 +61,8 @@ namespace carto::vt {
         U_SHADOWBIAS,
         U_FOGCOLOR,
         U_FOGPARAMS,
-        U_DRAPEUVTRANSFORM
+        U_DRAPEUVTRANSFORM,
+        U_SCREENSCALE
     };
 
     enum : unsigned int {
@@ -130,7 +131,8 @@ namespace carto::vt {
         { "uShadowBias",        U_SHADOWBIAS },
         { "uFogColor",          U_FOGCOLOR },
         { "uFogParams",         U_FOGPARAMS },
-        { "uDrapeUVTransform",  U_DRAPEUVTRANSFORM }
+        { "uDrapeUVTransform",  U_DRAPEUVTRANSFORM },
+        { "uScreenScale",       U_SCREENSCALE }
     };
 
     static const std::map<unsigned int, std::string> flagDefineMap = {
@@ -1093,6 +1095,9 @@ namespace carto::vt {
         uniform float uStrokeScaleTable[16];
         #endif
         uniform float uBinormalScale;
+        #ifdef TERRAIN
+        uniform highp vec2 uScreenScale; // x = viewport aspect (w/h), y = NDC height of one line-width unit
+        #endif
         #ifdef TRANSFORM
         uniform mat4 uTransformMatrix;
         #endif
@@ -1140,8 +1145,32 @@ namespace carto::vt {
         #ifdef LIGHTING_FSH
             vNormal = aVertexNormal;
         #endif
+        #ifdef TERRAIN
+            // SCREEN-SPACE extrusion. The binormal offset is calibrated to project to
+            // 'roundedWidth' line-width units on the flat map; over terrain the quad is extruded
+            // horizontally and THEN displaced onto the slope, so what reaches the screen is
+            // anything but that width: stretched into a blurred band where the slope faces the
+            // camera (a contour line is the worst case - its width direction IS the gradient),
+            // and squeezed below a pixel where the ground is foreshortened, which drops the line
+            // out of the rasteriser in gaps. So take only the DIRECTION of the displaced offset
+            // and give it the nominal length in screen space. Both quad edges keep the centre
+            // line's depth, so this cannot poke the line through the relief either.
+            highp vec3 centerPos = applyTerrain(pos);
+            highp vec4 centerClip = uMVPMatrix * vec4(centerPos, 1.0);
+            highp vec4 edgeClip = uMVPMatrix * vec4(applyTerrain(pos + delta), 1.0);
+            highp vec2 edgeDir = edgeClip.xy / edgeClip.w - centerClip.xy / centerClip.w;
+            edgeDir = vec2(edgeDir.x * uScreenScale.x, edgeDir.y); // NDC is anisotropic, work in height units
+            highp float edgeLen = length(edgeDir);
+            if (edgeLen > 0.0000001) {
+                edgeDir = edgeDir * (roundedWidth * uScreenScale.y / edgeLen);
+                highp vec2 offset = vec2(edgeDir.x / uScreenScale.x, edgeDir.y);
+                centerClip = vec4((centerClip.xy / centerClip.w + offset) * centerClip.w, centerClip.z, centerClip.w);
+            }
+            gl_Position = applyDepthBias(centerClip);
+        #else
             // sample the terrain at the extruded position, so wide lines follow the slope
             gl_Position = applyDepthBias(uMVPMatrix * vec4(applyTerrain(pos + delta), 1.0));
+        #endif
         }
     )GLSL";
 

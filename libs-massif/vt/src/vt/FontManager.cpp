@@ -7,6 +7,7 @@
 #include <memory>
 #include <array>
 #include <map>
+#include <set>
 #include <unordered_map>
 
 #include <freetype/freetype.h>
@@ -294,6 +295,12 @@ namespace carto::vt {
             return registeredName;
         }
 
+        void setFontDataLoader(FontDataLoader loader) {
+            std::lock_guard<std::mutex> lock(_mutex);
+
+            _fontDataLoader = std::move(loader);
+        }
+
         std::shared_ptr<const Font> getFont(const std::string& name, const std::shared_ptr<const Font>& baseFont) const {
             std::lock_guard<std::mutex> lock(_mutex);
 
@@ -338,10 +345,13 @@ namespace carto::vt {
                 }
             }
 
-            // Check if we have font corresponding to the name
+            // Check if we have font corresponding to the name, otherwise try to resolve it externally
             auto fontDataIt = _fontDataMap.find(fontName);
             if (fontDataIt == _fontDataMap.end()) {
-                return std::shared_ptr<Font>();
+                fontDataIt = loadExternalFontData(fontName);
+                if (fontDataIt == _fontDataMap.end()) {
+                    return std::shared_ptr<Font>();
+                }
             }
 
             // Get existing glyph map or create new one (use full name with query params for caching)
@@ -366,6 +376,31 @@ namespace carto::vt {
         }
 
     private:
+        // Note: _mutex is expected to be locked by the caller
+        std::map<std::string, std::vector<unsigned char>>::iterator loadExternalFontData(const std::string& fontName) const {
+            if (!_fontDataLoader || _missingFontSet.find(fontName) != _missingFontSet.end()) {
+                return _fontDataMap.end();
+            }
+
+            std::vector<unsigned char> data = _fontDataLoader(fontName);
+            if (!data.empty()) {
+                FontManagerLibrary library;
+                FT_Face face = nullptr;
+                int error = FT_New_Memory_Face(library.getLibrary(), data.data(), static_cast<FT_Long>(data.size()), 0, &face);
+                if (error != 0) {
+                    data.clear();
+                }
+                else {
+                    FT_Done_Face(face);
+                }
+            }
+            if (data.empty()) {
+                _missingFontSet.insert(fontName);
+                return _fontDataMap.end();
+            }
+            return _fontDataMap.emplace(fontName, std::move(data)).first;
+        }
+
         static std::string readSfntName(const FT_SfntName& sfntName) {
             static const std::pair<int, int> be16Encodings[] = {
                 { TT_PLATFORM_APPLE_UNICODE, TT_APPLE_ID_DEFAULT },
@@ -397,7 +432,9 @@ namespace carto::vt {
         const std::string _glyphPreloadTable = ""; // list of glyphs to preload when initializing
         const int _maxGlyphMapWidth;
         const int _maxGlyphMapHeight;
-        std::map<std::string, std::vector<unsigned char>> _fontDataMap;
+        FontDataLoader _fontDataLoader;
+        mutable std::map<std::string, std::vector<unsigned char>> _fontDataMap;
+        mutable std::set<std::string> _missingFontSet;
         std::shared_ptr<FontManagerLibrary> _library;
         mutable std::map<std::pair<std::string, std::shared_ptr<const Font>>, std::shared_ptr<FontManagerFont>> _fontMap;
         mutable std::map<std::string, std::shared_ptr<GlyphMap>> _glyphMapMap;
@@ -412,6 +449,10 @@ namespace carto::vt {
 
     std::string FontManager::loadFontData(const std::vector<unsigned char>& data) {
         return _impl->loadFontData(data);
+    }
+
+    void FontManager::setFontDataLoader(FontDataLoader loader) {
+        _impl->setFontDataLoader(std::move(loader));
     }
 
     std::shared_ptr<const Font> FontManager::getFont(const std::string& name, const std::shared_ptr<const Font>& baseFont) const {

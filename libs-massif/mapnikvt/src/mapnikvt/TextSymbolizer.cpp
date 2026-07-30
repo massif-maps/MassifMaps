@@ -1,4 +1,5 @@
 #include "TextSymbolizer.h"
+
 #include "ParserUtils.h"
 #include "FontSet.h"
 #include "Expression.h"
@@ -396,7 +397,10 @@ namespace carto::mvt {
         std::string faceName = _faceName.getValue(exprContext);
         std::string fontSetName = _fontSetName.getValue(exprContext);
         if (!faceName.empty()) {
-            font = symbolizerContext.getFontManager()->getFont(faceName, font);
+            // Keep the fallback font if the requested face can not be resolved
+            if (std::shared_ptr<const vt::Font> mainFont = symbolizerContext.getFontManager()->getFont(faceName, font)) {
+                font = mainFont;
+            }
         }
         else if (!fontSetName.empty()) {
             for (const std::shared_ptr<FontSet>& fontSet : _fontSets) {

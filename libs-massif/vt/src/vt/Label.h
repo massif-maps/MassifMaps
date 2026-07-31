@@ -80,10 +80,13 @@ namespace carto::vt {
         static constexpr unsigned int MAX_LABEL_VERTICES = 16384;
         static constexpr unsigned int MAX_LINE_FITTING_ITERATIONS = 1; // number of iterations for line glyph placement on corners
 
-        static constexpr float EXTRA_PLACEMENT_PIXELS = 30.0f; // extra visible pixels required for placement
         static constexpr float SUMMED_ANGLE_SPLIT_THRESHOLD = 2.09f; // maximum sum of segment angles, in radians
         static constexpr float SINGLE_ANGLE_SPLIT_THRESHOLD = 1.57f; // maximum single segment angle, in radians
         static constexpr float MIN_LINE_SEGMENT_DOTPRODUCT = 0.5f; // the minimum allowed dot product between consecutive segments
+        static constexpr float MIN_LINE_SEGMENT_DOTPRODUCT_KEEP = 0.3f; // the same, for a run that is already laid out (hysteresis)
+        static constexpr float MAX_LINE_RUN_ANGLE_SPREAD = 1.22f; // total turn a glyph run may take, in radians (~70 deg)
+        static constexpr float MAX_LINE_RUN_ANGLE_SPREAD_KEEP = 1.57f; // the same, for a run that is already laid out (hysteresis)
+        static constexpr int LINE_LAYOUT_FAILURE_GRACE = 4; // layouts a run that is already on screen may fail before it is dropped
         static constexpr float MIN_LINE_GLYPH_SPAN = 0.5f; // shortest span a glyph takes its direction from, in glyph units
         static constexpr double PLACEMENT_ROOM_FACTOR = 1.25; // room the glyph run is given on the line, relative to its own length
         static constexpr double PLACEMENT_SMOOTH_TEXT_FRACTION = 1.0 / 3.0; // line detail below this fraction of the text length is smoothed away before laying out glyphs
@@ -241,6 +244,11 @@ namespace carto::vt {
 
         std::shared_ptr<const Placement> _placement;
         mutable std::shared_ptr<const Placement> _cachedFlippedPlacement;
+
+        // Verdict of the last line layout, kept across cache rebuilds (and carried over by
+        // snapPlacement) so the readability test below can be hysteretic.
+        mutable bool _lineLayoutValid = false;
+        mutable int _lineLayoutFailures = 0;
 
         mutable bool _cachedValid = false;
         mutable float _cachedScale = 0;

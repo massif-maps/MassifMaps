@@ -228,6 +228,10 @@ namespace carto::vt {
         // view state - it has to smooth its line by the same length the old one did, or the
         // glyph run changes shape on every tile-set change.
         _placementTextLength = label._placementTextLength;
+        // A label recreated by a tile-set change is the same label to the user: it keeps the
+        // allowance its run already earned, or it would be re-judged strictly (and blink) every
+        // time tiles stream in.
+        _lineLayoutValid = label._lineLayoutValid;
         if (!_placement) {
             return;
         }
@@ -344,7 +348,11 @@ namespace carto::vt {
         // wrong amount of line and its run then walks off the end.
         if (_style->orientation == LabelOrientation::LINE) {
             float scale = (_style->sizeFunc)(viewState) * viewState.zoomScale * _style->scale;
-            scale *= calculateTerrainScaleFactor(calculateGeometryBBox(viewState).center(), viewState);
+            // Measured at the placement itself, not at the center of the label's geometry: the
+            // geometry is the feature merged over every tile holding it, so its center can be far
+            // from where the label sits - and the terrain factor, which is what the run is
+            // measured with when it is laid out, changes with that distance.
+            scale *= calculateTerrainScaleFactor(_placement ? _placement->position : calculateGeometryBBox(viewState).center(), viewState);
             float textLength = 0;
             for (const Font::Glyph& glyph : _glyphs) {
                 textLength += glyph.advance(0) * scale;
@@ -358,7 +366,13 @@ namespace carto::vt {
             for (const cglib::vec3<float>& pos : envelope) {
                 bbox.add(viewState.origin + cglib::vec3<double>::convert(pos));
             }
-            if (viewState.frustum.inside(bbox)) {
+            // A line placement is only worth keeping while the glyph run can be laid out on it.
+            // The run follows the PROJECTED line, whose length changes with the camera - a stretch
+            // of road that carried the text a moment ago can be foreshortened to half of it - and
+            // keeping such a placement only hides the label, on a line that may well have another
+            // piece able to carry it. calculateEnvelope above has just laid the run out at this
+            // view, so its verdict is the current one.
+            if (viewState.frustum.inside(bbox) && (_style->orientation != LabelOrientation::LINE || _lineLayoutValid)) {
                 return false;
             }
         }
@@ -726,12 +740,18 @@ namespace carto::vt {
             return false;
         }
 
+        // Past either end the line is CONTINUED in its own direction rather than clamped: the ends
+        // are where the tile that carries this copy of the feature was cut, not where the road
+        // stops, and a run allowed to reach a little past them (see below) has to keep going
+        // straight there instead of piling its last glyphs onto the end point.
         auto pointAt = [&points, &lengths](float distance) {
             if (distance <= 0) {
-                return points.front();
+                cglib::vec2<float> edge = points[1] - points.front();
+                return points.front() + (cglib::norm(edge) > 0 ? cglib::unit(edge) * distance : cglib::vec2<float>(0, 0));
             }
             if (distance >= lengths.back()) {
-                return points.back();
+                cglib::vec2<float> edge = points.back() - points[points.size() - 2];
+                return points.back() + (cglib::norm(edge) > 0 ? cglib::unit(edge) * (distance - lengths.back()) : cglib::vec2<float>(0, 0));
             }
             std::size_t i = 0;
             while (i + 2 < points.size() && lengths[i + 1] < distance) {
@@ -750,21 +770,65 @@ namespace carto::vt {
         // The anchor is the origin of this space, so its distance along the line is where the pen
         // starts.
         float penStart = lengths[segment] + cglib::dot_product(-points[segment], cglib::unit(segmentVec));
-        penStart = std::min(std::max(penStart, 0.0f), total);
+
+        // Longest line of the run, in glyph units. The anchor is kept away from the ends of the
+        // line in world units (clampPlacementAnchor), but the line the glyphs are actually laid
+        // out on is the PROJECTED one: with a tilted view its far half is compressed by the
+        // perspective divide, so a run that has room on the ground can still overrun the end.
+        // Slide the run back onto the line rather than dropping the label - the smallest camera
+        // move changes the compression, and dropping made labels blink in and out while panning.
+        float runLength = 0;
+        float lineLength = 0;
+        for (const Font::Glyph& glyph : _glyphs) {
+            if (glyph.codePoint == Font::CR_CODEPOINT) {
+                lineLength = 0;
+                continue;
+            }
+            lineLength += glyph.advance(0);
+            runLength = std::max(runLength, lineLength);
+        }
+        // The run may reach a little past either end, on the line's own direction: the projected
+        // length of a line running away from a tilted camera changes with every camera step, and
+        // an exact fit test on it means a label that blinks out whenever the compression takes a
+        // fraction of a glyph more than the line has left. The allowance is the same room the
+        // anchor is given on the ground (clampPlacementAnchor).
+        float overhang = std::min(runLength, total) * static_cast<float>(PLACEMENT_ROOM_FACTOR - 1.0);
+        if (runLength > total + 2 * overhang) {
+            return false; // the line is genuinely too short to carry the text
+        }
+        penStart = std::min(std::max(penStart, -overhang), total - runLength + overhang);
         float offset = penStart;
 
+        // Readability is judged against the direction the run takes as a whole, not against its
+        // first glyph: measured from the first glyph, a gently curving line accumulates deviation
+        // along the word and trips the test at whatever point the run happens to start - which the
+        // perspective projection moves on every camera step, so the label blinks. The chord is
+        // symmetric, so the same curve gives half the deviation and it does not depend on where
+        // the run starts.
+        cglib::vec2<float> runVec = pointAt(penStart + runLength) - pointAt(penStart);
+        cglib::vec2<float> runDir = (cglib::norm(runVec) > 0 ? cglib::unit(runVec) : cglib::vec2<float>(0, 0));
+
+        // Hysteresis: the deviation of a run laid out on the PROJECTED line moves with the camera -
+        // over 3D terrain a tilted view re-compresses the line on every step - so a run sitting
+        // near the threshold flips on the smallest pan, and the label blinks. A run that is
+        // already laid out is given a wider allowance than one that is not yet placed, which
+        // costs nothing in readability (the run has to be readable to get there in the first
+        // place) and turns the flapping into a one-way transition.
+        float minSegmentDotProduct = (_lineLayoutValid ? MIN_LINE_SEGMENT_DOTPRODUCT_KEEP : MIN_LINE_SEGMENT_DOTPRODUCT);
+        float maxRunAngleSpread = (_lineLayoutValid ? MAX_LINE_RUN_ANGLE_SPREAD_KEEP : MAX_LINE_RUN_ANGLE_SPREAD);
+
         bool valid = true;
-        cglib::vec2<float> anchorDir(0, 0);
+        cglib::vec2<float> prevDir(0, 0);
+        float turnAngle = 0, minAngle = 0, maxAngle = 0;
         for (const Font::Glyph& glyph : _glyphs) {
             if (glyph.codePoint == Font::CR_CODEPOINT) {
                 offset = penStart;
+                prevDir = cglib::vec2<float>(0, 0);
+                turnAngle = 0;
                 continue;
             }
 
             float advance = glyph.advance(0);
-            if (offset + advance > total) {
-                valid = false;
-            }
 
             // Direction over the glyph's OWN span, not the direction of whatever tiny segment it
             // happens to start on: a line that shakes at a scale below the glyphs would otherwise
@@ -778,12 +842,24 @@ namespace carto::vt {
             }
             cglib::vec2<float> xAxis = cglib::unit(spanVec);
             cglib::vec2<float> yAxis(-xAxis(1), xAxis(0));
-            if (anchorDir == cglib::vec2<float>(0, 0)) {
-                anchorDir = xAxis;
-            }
-            else if (cglib::dot_product(xAxis, anchorDir) < MIN_LINE_SEGMENT_DOTPRODUCT) {
+            if (runDir != cglib::vec2<float>(0, 0) && cglib::dot_product(xAxis, runDir) < minSegmentDotProduct) {
                 valid = false;
             }
+            if (prevDir != cglib::vec2<float>(0, 0)) {
+                // A run whose chord says one thing while consecutive glyphs turn the other way is
+                // torn apart even when every glyph stays near the chord.
+                if (cglib::dot_product(xAxis, prevDir) < minSegmentDotProduct) {
+                    valid = false;
+                }
+                // Total turn of the run, accumulated glyph by glyph rather than measured against
+                // the chord: a run that follows a hairpin turns steadily - every glyph is close to
+                // its neighbour, and the chord of the run is degenerate, so neither test above
+                // sees anything - and the word then reads as a spiral.
+                turnAngle += std::atan2(prevDir(0) * xAxis(1) - prevDir(1) * xAxis(0), cglib::dot_product(xAxis, prevDir));
+                minAngle = std::min(minAngle, turnAngle);
+                maxAngle = std::max(maxAngle, turnAngle);
+            }
+            prevDir = xAxis;
 
             if (glyph.codePoint != Font::SPACE_CODEPOINT) {
                 cglib::vec2<float> base = pen + xAxis * glyph.offset(0) + yAxis * glyph.offset(1);
@@ -808,6 +884,9 @@ namespace carto::vt {
 
             offset += advance;
         }
+        if (maxAngle - minAngle > maxRunAngleSpread) {
+            valid = false;
+        }
         return valid;
     }
 
@@ -822,6 +901,17 @@ namespace carto::vt {
         _cachedAttribs.clear();
         _cachedIndices.clear();
         _cachedValid = buildLineVertexData(placement, scale, viewState, _cachedVertices, _cachedTexCoords, _cachedAttribs, _cachedIndices);
+        // A run that is already on screen rides out a few failed layouts. The layout is judged on
+        // the projected line, and it is judged from two different view states - the culler works
+        // on the snapshot of its pass, the renderer on the current camera - so a run at the edge
+        // of what fits alternates between them, which shows up as a label blinking at frame rate.
+        if (_cachedValid) {
+            _lineLayoutFailures = 0;
+        }
+        else if (_lineLayoutValid && ++_lineLayoutFailures <= LINE_LAYOUT_FAILURE_GRACE) {
+            _cachedValid = true;
+        }
+        _lineLayoutValid = _cachedValid;
         _cachedScale = scale;
         _cachedPlacement = placement;
         _cachedCameraXAxis = viewState.orientation[0];
@@ -926,12 +1016,30 @@ namespace carto::vt {
         // current ones, so every segment scores nonzero, the mid-line weight below decides
         // instead, and the anchor creeps toward the middle of the road - on every tile-set
         // change, which is several times a second while tiles stream in.
+        // The merged geometry holds one copy of the feature per tile, and a copy clipped by a tile
+        // border can be a stub of a few meters. Such a stub can not carry the text: the label
+        // would be dropped by the line fitting, which reads as it disappearing while panning -
+        // the more so over 3D terrain with a tilted view, where the run needs more line the
+        // further away it is placed. Copies long enough to carry the run therefore beat the ones
+        // that are not, ahead of every other preference below.
+        double requiredLength = _placementTextLength * PLACEMENT_ROOM_FACTOR;
+        auto isUsable = [&requiredLength](const TileLine& tileLine) {
+            double length = 0;
+            for (std::size_t i = 1; i < tileLine.vertices.size(); i++) {
+                length += cglib::length(tileLine.vertices[i] - tileLine.vertices[i - 1]);
+                if (length >= requiredLength) {
+                    return true;
+                }
+            }
+            return !(requiredLength > 0);
+        };
+
         if (oldPlacement) {
             for (const TileLine& tileLine : tileLines) {
                 if (!(tileLine.tileId == oldPlacement->tileId && tileLine.localId == oldPlacement->localId)) {
                     continue;
                 }
-                if (oldPlacement->sourceIndex + 1 < tileLine.vertices.size()) {
+                if (oldPlacement->sourceIndex + 1 < tileLine.vertices.size() && isUsable(tileLine)) {
                     return buildLinePlacement(tileLine, oldPlacement->sourceIndex, position);
                 }
                 break;
@@ -942,20 +1050,21 @@ namespace carto::vt {
         std::size_t bestIndex = 0;
         cglib::vec3<double> bestPos = position;
         double bestDist = std::numeric_limits<double>::infinity();
-        bool bestSameSource = false;
+        int bestRank = -1;
         for (const TileLine& tileLine : tileLines) {
             // A candidate from the placement's original source geometry always wins over
             // copies of the feature coming from other tiles (see snapPlacement).
             bool sameSource = oldPlacement && tileLine.tileId == oldPlacement->tileId && tileLine.localId == oldPlacement->localId;
-            if (bestSameSource && !sameSource) {
+            int rank = (isUsable(tileLine) ? 2 : 0) + (sameSource ? 1 : 0);
+            if (rank < bestRank) {
                 continue;
             }
-            if (sameSource && !bestSameSource) {
+            if (rank > bestRank) {
                 bestTileLine = nullptr;
                 bestIndex = 0;
                 bestPos = position;
                 bestDist = std::numeric_limits<double>::infinity();
-                bestSameSource = true;
+                bestRank = rank;
             }
             // Try to find a closest point on vertices to the given position. Distances are
             // measured horizontally: the vertex heights and the anchor height can come from
@@ -1057,7 +1166,43 @@ namespace carto::vt {
 
     std::shared_ptr<const Label::Placement> Label::findClippedLinePlacement(const ViewState& viewState, const std::list<TileLine>& tileLines) const {
         // Clip each vertex list against frustum, if resulting list is inside frustum, return its center
-        double bestLen = (_style->orientation == LabelOrientation::LINE ? (_glyphBBox.size()(0) + EXTRA_PLACEMENT_PIXELS) * _style->scale * viewState.zoomScale : 0);
+        double bestScreenLen = 0;
+
+        // World length of the glyph run BEFORE the terrain scale factor. Labels over planar 3D
+        // terrain keep a constant on-screen size, so the world length a run needs depends on where
+        // it is placed; _placementTextLength can not serve here, it carries the factor of the
+        // placement this search is about to replace.
+        double textLengthBase = 0;
+        if (_style->orientation == LabelOrientation::LINE) {
+            float glyphScale = (_style->sizeFunc)(viewState) * viewState.zoomScale * _style->scale;
+            for (const Font::Glyph& glyph : _glyphs) {
+                textLengthBase += glyph.advance(0) * glyphScale;
+            }
+        }
+
+        // Candidates are compared ON SCREEN, not on the ground: the glyphs are laid out on the
+        // projected line (see buildLineVertexData), and a line running away from a tilted camera
+        // is worth a fraction of its ground length there. Measured on the ground, such a line wins
+        // the placement over a shorter one across the view and the run then does not fit on it -
+        // which drops the label, and the smallest camera move flips that decision.
+        cglib::mat4x4<double> mvpMatrix = viewState.projectionMatrix * viewState.cameraMatrix;
+        auto projectPoint = [&mvpMatrix, &viewState](const cglib::vec3<double>& pos, cglib::vec2<double>& result) {
+            cglib::vec4<double> clipPos = cglib::transform(cglib::vec4<double>(pos(0), pos(1), pos(2), 1), mvpMatrix);
+            if (!(clipPos(3) > 0)) {
+                return false;
+            }
+            result = cglib::vec2<double>(clipPos(0) / clipPos(3) * viewState.aspect, clipPos(1) / clipPos(3));
+            return true;
+        };
+        // Screen length of the run, if it were laid out across the view at the given position.
+        auto screenTextLength = [&](const cglib::vec3<double>& pos) {
+            cglib::vec3<double> runVec = cglib::vec3<double>::convert(viewState.orientation[0]) * (textLengthBase * calculateTerrainScaleFactor(pos, viewState));
+            cglib::vec2<double> p0, p1;
+            if (!projectPoint(pos, p0) || !projectPoint(pos + runVec, p1)) {
+                return std::numeric_limits<double>::infinity();
+            }
+            return cglib::length(p1 - p0);
+        };
         std::shared_ptr<const Placement> bestPlacement;
         auto updateBestPlacement = [&](const TileLine& tileLine, std::size_t i0, std::size_t i1) {
             if (i1 < i0 + 2) {
@@ -1095,6 +1240,9 @@ namespace carto::vt {
             }
             if (t0 < t1) {
                 double len = 0;
+                double screenLen = 0;
+                bool projectable = true;
+                cglib::vec3<double> midPos = tileLine.vertices[(t0.first + t1.first) / 2];
                 for (std::size_t i = t0.first; i <= t1.first; i++) {
                     cglib::vec3<double> pos0 = tileLine.vertices[i];
                     if (i == t0.first) {
@@ -1106,9 +1254,16 @@ namespace carto::vt {
                     }
                     double diff = cglib::length(pos1 - pos0);
                     len += diff;
+
+                    cglib::vec2<double> screenPos0, screenPos1;
+                    if (!projectPoint(pos0, screenPos0) || !projectPoint(pos1, screenPos1)) {
+                        projectable = false; // partly behind the camera: the glyphs can not use it
+                        break;
+                    }
+                    screenLen += cglib::length(screenPos1 - screenPos0);
                 }
 
-                if (len > bestLen) {
+                if (projectable && screenLen > bestScreenLen && screenLen >= screenTextLength(midPos) * PLACEMENT_ROOM_FACTOR) {
                     double ofs = len * 0.5;
                     for (std::size_t i = t0.first; i <= t1.first; i++) {
                         cglib::vec3<double> pos0 = tileLine.vertices[i];
@@ -1127,7 +1282,7 @@ namespace carto::vt {
                             smoothPlacementLine(tileLine.vertices, i, _placementTextLength * PLACEMENT_SMOOTH_TEXT_FRACTION, smoothedVertices, smoothedIndex);
                             clampPlacementAnchor(smoothedVertices, _placementTextLength, smoothedIndex, pos);
                             bestPlacement = std::make_shared<const Placement>(tileLine.tileId, tileLine.localId, smoothedVertices, smoothedIndex, i, pos, tileLine.normal);
-                            bestLen = len;
+                            bestScreenLen = screenLen;
                             break;
                         }
                         ofs -= diff;

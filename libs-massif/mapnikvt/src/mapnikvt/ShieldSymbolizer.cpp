@@ -35,6 +35,7 @@ namespace carto::mvt {
             bitmapSize = static_cast<float>(std::max(backgroundImage->bitmap->width, backgroundImage->bitmap->height)) * fontScale;
         }
         float minimumDistance = _minimumDistance.getValue(exprContext);
+        float maxDistance = _maxDistance.getValue(exprContext);
         float placementPriority = _placementPriority.getValue(exprContext);
         float orientationAngle = _orientationAngle.getValue(exprContext);
         float sizeStatic = _size.getStaticValue(exprContext);
@@ -136,8 +137,8 @@ namespace carto::mvt {
             };
         }
 
-        return [compOp, fillFunc, haloFillFunc, sizeFunc, haloRadiusFunc, fontScale, placement, orientation, text, hash, orientationAngle, formatter, backgroundOffset, backgroundImage, spacing, textSize, tileId, tileSize, labelIdOverride, groupId, placementPriority, minimumDistance, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
-            vt::TextLabelStyle style(orientation, fillFunc, sizeFunc, haloFillFunc, haloRadiusFunc, true, orientationAngle, fontScale, backgroundOffset, backgroundImage);
+        return [compOp, fillFunc, haloFillFunc, sizeFunc, haloRadiusFunc, fontScale, placement, orientation, text, hash, orientationAngle, formatter, backgroundOffset, backgroundImage, spacing, textSize, tileId, tileSize, labelIdOverride, groupId, placementPriority, minimumDistance, maxDistance, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
+            vt::TextLabelStyle style(orientation, fillFunc, sizeFunc, haloFillFunc, haloRadiusFunc, true, orientationAngle, fontScale, backgroundOffset, backgroundImage, maxDistance);
             vt::TileLayerBuilder::TextLabelProcessor textProcessor;
             for (std::size_t featureIndex = 0; featureIndex < featureCollection.size(); featureIndex++) {
                 if (!textProcessor) {

@@ -65,6 +65,14 @@ namespace carto::vt {
         void setGeometrySignature(long long hash, int count) { _geometryHash = hash; _geometryCount = count; }
         bool hasGeometrySignature(long long hash, int count) const { return _geometryCount == count && _geometryHash == hash && count > 0; }
 
+        // Terrain re-anchoring state (see updateElevation). A label is anchored once, when it
+        // is built, and re-anchored only when the elevation under one of the tiles it is built
+        // from actually changes. Re-anchoring costs one elevation sample per line vertex, so
+        // doing it for every label on every tile-set change is a whole-screen resample.
+        bool isElevationDirty() const { return _elevationDirty; }
+        void setElevationDirty(bool dirty) { _elevationDirty = dirty; }
+        bool hasGeometryOverTile(const TileId& tileId) const;
+
         void mergeGeometries(Label& label);
         void snapPlacement(const Label& label);
         bool updatePlacement(const ViewState& viewState);
@@ -73,10 +81,14 @@ namespace carto::vt {
         bool calculateCenter(cglib::vec3<double>& pos) const;
         bool calculateEnvelope(const ViewState& viewState, std::array<cglib::vec3<float>, 4>& envelope) const { return calculateEnvelope((_style->sizeFunc)(viewState), 0, viewState, envelope); }
         bool calculateEnvelope(float size, float buffer, const ViewState& viewState, std::array<cglib::vec3<float>, 4>& envelope) const;
-        bool calculateVertexData(const ViewState& viewState, int styleIndex, int haloStyleIndex, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const { return calculateVertexData((_style->sizeFunc)(viewState), viewState, styleIndex, haloStyleIndex, vertices, normals, texCoords, attribs, indices); }
-        bool calculateVertexData(float size, const ViewState& viewState, int styleIndex, int haloStyleIndex, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const;
+        bool calculateVertexData(const ViewState& viewState, int styleIndex, int haloStyleIndex, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& offsets, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const { return calculateVertexData((_style->sizeFunc)(viewState), viewState, styleIndex, haloStyleIndex, vertices, offsets, normals, texCoords, attribs, indices); }
+        bool calculateVertexData(float size, const ViewState& viewState, int styleIndex, int haloStyleIndex, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& offsets, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const;
 
     private:
+        // How labelVsh must read a glyph offset (attribs[3]); see calculateVertexData.
+        static constexpr std::int8_t WORLD_OFFSET = 0;       // already spanned, add it as is
+        static constexpr std::int8_t CAMERA_AXIS_OFFSET = 1; // x/y on the camera axes
+
         static constexpr unsigned int MAX_LABEL_VERTICES = 16384;
         static constexpr unsigned int MAX_LINE_FITTING_ITERATIONS = 1; // number of iterations for line glyph placement on corners
 
@@ -88,6 +100,14 @@ namespace carto::vt {
         static constexpr float MAX_LINE_RUN_ANGLE_SPREAD_KEEP = 1.57f; // the same, for a run that is already laid out (hysteresis)
         static constexpr int LINE_LAYOUT_FAILURE_GRACE = 4; // layouts a run that is already on screen may fail before it is dropped
         static constexpr float MIN_LINE_GLYPH_SPAN = 0.5f; // shortest span a glyph takes its direction from, in glyph units
+        // Tangram's hairpin test (CurvedLabel::updateScreenTransform): two segments within a short
+        // window whose directions sum to less than this chord point back at each other - an inner
+        // angle under ~120 degrees - and the glyphs pile up on each other there. Their window is 20
+        // screen pixels; in glyph units (1 unit = the font size) that is a little over one glyph.
+        static constexpr float LINE_HAIRPIN_CHORD = 1.7f;
+        static constexpr float LINE_DIRECTION_WINDOW = 1.5f; // glyph units
+        static constexpr float LINE_REVERSE_HYSTERESIS = 0.02f; // fraction of the run length
+        static constexpr float LINE_VERTICAL_RUN_FRACTION = 0.2f; // |dx| below this fraction of the run counts as vertical
         static constexpr double PLACEMENT_ROOM_FACTOR = 1.25; // room the glyph run is given on the line, relative to its own length
         static constexpr double PLACEMENT_SMOOTH_TEXT_FRACTION = 1.0 / 3.0; // line detail below this fraction of the text length is smoothed away before laying out glyphs
         static constexpr double SNAP_MOVE_EPSILON = 1.0e-9; // internal world units (1 unit ~ 38m); a 1px anchor drift is ~1e-4 at z15
@@ -197,8 +217,8 @@ namespace carto::vt {
         float calculateTerrainScaleFactor(const cglib::vec3<double>& position, const ViewState& viewState) const;
         void setupCoordinateSystem(const ViewState& viewState, const std::shared_ptr<const Placement>& placement, cglib::vec3<float>& origin, cglib::vec3<float>& xAxis, cglib::vec3<float>& yAxis) const;
         void buildPointVertexData(VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const;
-        void updateLineVertexData(const std::shared_ptr<const Placement>& placement, float scale, const ViewState& viewState) const;
-        bool buildLineVertexData(const std::shared_ptr<const Placement>& placement, float scale, const ViewState& viewState, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const;
+        void updateLineVertexData(const std::shared_ptr<const Placement>& placement, float scale, const ViewState& viewState, bool rebuildForView) const;
+        bool buildLineVertexData(const std::shared_ptr<const Placement>& placement, float scale, const ViewState& viewState, const cglib::mat4x4<double>& mvpMatrix, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const;
 
         cglib::bbox3<double> calculateGeometryBBox(const ViewState& viewState) const;
         static void smoothPlacementLine(const std::vector<cglib::vec3<double>>& vertices, std::size_t index, double minEdgeLength, std::vector<cglib::vec3<double>>& smoothedVertices, std::size_t& smoothedIndex);
@@ -239,6 +259,7 @@ namespace carto::vt {
         float _opacity = 0.0f;
         bool _visible = false;
         bool _active = false;
+        bool _elevationDirty = true; // built flat: anchor it onto the terrain on the next frame
         long long _geometryHash = 0;
         int _geometryCount = 0;
 
@@ -248,12 +269,19 @@ namespace carto::vt {
         // Verdict of the last line layout, kept across cache rebuilds (and carried over by
         // snapPlacement) so the readability test below can be hysteretic.
         mutable bool _lineLayoutValid = false;
+        mutable bool _lineReversed = false; // the projected run reads right to left, so the glyphs walk the line backwards
         mutable int _lineLayoutFailures = 0;
 
         mutable bool _cachedValid = false;
         mutable float _cachedScale = 0;
-        mutable cglib::vec3<float> _cachedCameraXAxis = cglib::vec3<float>(0, 0, 0);
-        mutable cglib::vec3<float> _cachedCameraYAxis = cglib::vec3<float>(0, 0, 0);
+        // The view-projection the cached run was laid out for. The run follows the line as the
+        // camera PROJECTS it (see buildLineVertexData), so the whole matrix is the key - a
+        // camera that only moved leaves the axes and the scale alone while the perspective
+        // compression along the line changes, and the glyphs then walk a road the camera no
+        // longer sees that way. Tangram rebuilds its screen transform every frame for the same
+        // reason (LabelManager::updateLabelSet -> CurvedLabel::updateScreenTransform); this
+        // keeps the frame-to-frame reuse only for a camera that has not moved at all.
+        mutable cglib::mat4x4<double> _cachedMVPMatrix = cglib::mat4x4<double>::zero();
         mutable std::shared_ptr<const Placement> _cachedPlacement;
         mutable VertexArray<cglib::vec3<float>> _cachedVertices;
         mutable VertexArray<cglib::vec2<std::int16_t>> _cachedTexCoords;

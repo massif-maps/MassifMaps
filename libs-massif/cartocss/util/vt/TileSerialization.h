@@ -197,6 +197,7 @@ namespace boost::serialization {
             ar & make_nvp("transform", *style.transform);
         }
         ar & make_nvp("glyphmap", style.glyphMap);
+        ar & make_nvp("max_distance", style.maxDistance);
     }
 
     template <class Archive>

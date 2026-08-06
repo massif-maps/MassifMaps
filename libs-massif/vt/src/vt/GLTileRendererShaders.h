@@ -15,7 +15,8 @@ namespace carto::vt {
         A_VERTEXBINORMAL,
         A_VERTEXHEIGHT,
         A_VERTEXCOLOR,
-        A_VERTEXATTRIBS
+        A_VERTEXATTRIBS,
+        A_VERTEXOFFSET
     };
 
     enum : int {
@@ -24,6 +25,8 @@ namespace carto::vt {
         U_TILEMATRIX,
         U_UVMATRIX,
         U_BINORMALSCALE,
+        U_ANTIALIASSCALE,
+        U_TILEUNITSCALE,
         U_UVSCALE,
         U_HEIGHTSCALE,
         U_ABSHEIGHTSCALE,
@@ -38,18 +41,20 @@ namespace carto::vt {
         U_BITMAP,
         U_TEXTURE,
         U_SDFSCALE,
-        U_DERIVSCALE,
+        U_SDFRAMP,
         U_DEPTHBIAS,
         U_DEPTHBIASCLIP,
         U_ELEVATIONTEXTURE,
         U_ELEVATIONUV,
         U_ELEVATIONDECODE,
+        U_ELEVATIONOFFSET,
         U_ELEVATIONSCALE,
         U_ELEVATIONTEXELSIZE,
         U_ELEVATIONLATTICECELL,
         U_TERRAINEDGECOARSENING,
         U_LAYERDEPTHOFFSET,
         U_DEPTHSHIFT,
+        U_DEPTHCLEARANCE,
         U_DRAPETEXTURE,
         U_SUNDIR,
         U_SUNCOLOR,
@@ -62,7 +67,12 @@ namespace carto::vt {
         U_FOGCOLOR,
         U_FOGPARAMS,
         U_DRAPEUVTRANSFORM,
-        U_SCREENSCALE
+        U_SCREENSCALE,
+        U_LABELAXISX,
+        U_LABELAXISY,
+        U_PAINTSLOPESCALE,
+        U_PAINTPARAMS,
+        U_GROUNDCOLOR
     };
 
     enum : unsigned int {
@@ -75,7 +85,10 @@ namespace carto::vt {
         DRAPE_FLAG       = 64,
         TERRAIN_LIGHT_FLAG = 128,
         TERRAIN_SHADOW_FLAG = 256,
-        FOG_FLAG = 512
+        PAINT_SURFACE_FLAG = 1024,
+        FOG_FLAG = 512,
+        GROUND_BASE_FLAG = 2048,
+        DEM_HW_FILTER_FLAG = 4096
     };
 
     static const std::map<std::string, int> attribMap = {
@@ -85,7 +98,8 @@ namespace carto::vt {
         { "aVertexBinormal", A_VERTEXBINORMAL },
         { "aVertexHeight",   A_VERTEXHEIGHT },
         { "aVertexColor",    A_VERTEXCOLOR },
-        { "aVertexAttribs",  A_VERTEXATTRIBS }
+        { "aVertexAttribs",  A_VERTEXATTRIBS },
+        { "aVertexOffset",   A_VERTEXOFFSET }
     };
 
     static const std::map<std::string, int> uniformMap = {
@@ -94,6 +108,8 @@ namespace carto::vt {
         { "uTileMatrix",       U_TILEMATRIX },
         { "uUVMatrix",         U_UVMATRIX },
         { "uBinormalScale",    U_BINORMALSCALE },
+        { "uAntialiasScale",   U_ANTIALIASSCALE },
+        { "uTileUnitScale",    U_TILEUNITSCALE },
         { "uUVScale",          U_UVSCALE },
         { "uHeightScale",      U_HEIGHTSCALE },
         { "uAbsHeightScale",   U_ABSHEIGHTSCALE },
@@ -108,18 +124,20 @@ namespace carto::vt {
         { "uColor",            U_COLOR },
         { "uOpacity",          U_OPACITY },
         { "uSDFScale",         U_SDFSCALE },
-        { "uDerivScale",       U_DERIVSCALE },
+        { "uSDFRamp",          U_SDFRAMP },
         { "uDepthBias",        U_DEPTHBIAS },
         { "uDepthBiasClip",    U_DEPTHBIASCLIP },
         { "uElevationTexture", U_ELEVATIONTEXTURE },
         { "uElevationUV",      U_ELEVATIONUV },
         { "uElevationDecode",  U_ELEVATIONDECODE },
+        { "uElevationOffset",  U_ELEVATIONOFFSET },
         { "uElevationScale",   U_ELEVATIONSCALE },
         { "uElevationTexelSize", U_ELEVATIONTEXELSIZE },
         { "uElevationLatticeCell", U_ELEVATIONLATTICECELL },
         { "uTerrainEdgeCoarsening", U_TERRAINEDGECOARSENING },
         { "uLayerDepthOffset",  U_LAYERDEPTHOFFSET },
         { "uDepthShift",        U_DEPTHSHIFT },
+        { "uDepthClearance",    U_DEPTHCLEARANCE },
         { "uDrapeTexture",      U_DRAPETEXTURE },
         { "uSunDir",            U_SUNDIR },
         { "uSunColor",          U_SUNCOLOR },
@@ -132,7 +150,12 @@ namespace carto::vt {
         { "uFogColor",          U_FOGCOLOR },
         { "uFogParams",         U_FOGPARAMS },
         { "uDrapeUVTransform",  U_DRAPEUVTRANSFORM },
-        { "uScreenScale",       U_SCREENSCALE }
+        { "uScreenScale",       U_SCREENSCALE },
+        { "uLabelAxisX",        U_LABELAXISX },
+        { "uLabelAxisY",        U_LABELAXISY },
+        { "uPaintSlopeScale",   U_PAINTSLOPESCALE },
+        { "uPaintParams",       U_PAINTPARAMS },
+        { "uGroundColor",       U_GROUNDCOLOR }
     };
 
     static const std::map<unsigned int, std::string> flagDefineMap = {
@@ -145,7 +168,10 @@ namespace carto::vt {
         { DRAPE_FLAG,       "DRAPE" },
         { TERRAIN_LIGHT_FLAG, "TERRAIN_LIGHT" },
         { TERRAIN_SHADOW_FLAG, "TERRAIN_SHADOW" },
-        { FOG_FLAG, "FOG" }
+        { PAINT_SURFACE_FLAG, "PAINT_SURFACE" },
+        { FOG_FLAG, "FOG" },
+        { GROUND_BASE_FLAG, "GROUND_BASE" },
+        { DEM_HW_FILTER_FLAG, "DEM_HW_FILTER" }
     };
 
     static const std::string textureFiltersFsh = R"GLSL(
@@ -229,6 +255,7 @@ namespace carto::vt {
                                       // surface and geometry meshes (tangram depth_shift)
         uniform float uLayerDepthOffset; // painter-order model: (proxy - layer). 0 in slack mode
         uniform float uDepthShift;       // painter-order near-camera separation boost
+        uniform float uDepthClearance;   // METRE-constant clearance: proj[2][3] * metres (see below)
         // Two depth models share this function, selected by which uniforms are non-zero:
         //  - slack (occluder) model: pull the draw towards the viewer by
         //    (uDepthBias*w + uDepthBiasClip) so draped content clears the surface pre-pass.
@@ -236,9 +263,18 @@ namespace carto::vt {
         //    per-layer delta, uLayerDepthOffset*(DELTA*w + uDepthShift), DELTA = 2^-19. The
         //    surface is just the bottom layer; there is no occluder and no distance-growing
         //    slack, so far content can not leak in front of a near ridge.
+        // uDepthClearance is the third form, and the only one that is worth the SAME DISTANCE at
+        // every range. With ndc = -proj[2][2] + proj[2][3]/d, moving a vertex d -> d - c changes ndc
+        // by proj[2][3]*c/d^2, so the clip term is proj[2][3]*c/w - the 1/w below. A constant-NDC
+        // bias is worth distance^2/near metres and a constant-CLIP one distance/near, which is why
+        // both are a choice between a line cut into the ground up close and a line leaking through
+        // a ridge far away; this one is c metres at 100 m and c metres at 5 km. It is what a draped
+        // LINE needs: between two of its vertices it chords over relief the ground has, by a fixed
+        // number of metres that does not care how far away the line is.
         vec4 applyDepthBias(vec4 clipPos) {
             float z = clipPos.z
                 + uLayerDepthOffset * (0.0000019073486328125 * clipPos.w + uDepthShift)
+                + uDepthClearance / clipPos.w
                 - (uDepthBias * clipPos.w + uDepthBiasClip);
             return vec4(clipPos.xy, z, clipPos.w);
         }
@@ -272,14 +308,20 @@ namespace carto::vt {
         void applyShadowPos(highp vec3 pos) {
         }
         #endif
+        // Vertex frame units -> tile units (1 for the surface, whose vertices ARE the unit square).
+        // Declared in every mode: the flat line path carries it to the fragment stage too, and a
+        // uniform referenced without being declared fails the compile.
+        uniform highp vec2 uTileUnitScale;
         #ifdef TERRAIN
-        uniform sampler2D uElevationTexture;
+        uniform highp sampler2D uElevationTexture;
         uniform highp vec4 uElevationUV;     // elevation texture uv = uv.xy + pos.xy * uv.zw
-        uniform vec4 uElevationDecode;       // meters = dot(texture sample, decode)
+        uniform vec4 uElevationDecode;       // meters = dot(texture sample, decode) + offset
+        uniform float uElevationOffset;      // the constant term: a 2-channel texture has no free channel to carry it
         uniform highp vec4 uElevationScale;  // x: meters to vertex z units (equator), y/z: mercator y = y + pos.y * z, w: vertex frame z offset
         uniform highp vec4 uElevationTexelSize; // xy: texture size in texels, zw: 1 / size
         uniform highp vec2 uElevationLatticeCell; // regular-grid surface cell size in elevation-uv units (0 = off = sample the full DEM detail)
         uniform highp vec4 uTerrainEdgeCoarsening; // lattice cell scale (2^k, 1 = off) on the west/east/south/north tile edge
+
         // GPU terrain draping: the vertex z is REPLACED with the height sampled from the
         // elevation texture. Every draped layer samples the same textures, so all layers
         // agree on heights exactly and no geometric depth tolerances are needed.
@@ -297,9 +339,21 @@ namespace carto::vt {
         // the vertex frame (tile surface frames are origin-relative and the origin can
         // have a non-zero z).
         float sampleElevation(highp vec2 uv) {
-            return dot(texture2D(uElevationTexture, uv), uElevationDecode);
+            // The elevation texture is LUMINANCE_ALPHA: the height's high byte arrives in .rgb and
+            // its low byte in .a, so the decode is linear in both and the constant term needs a
+            // uniform of its own (RGBA had a spare channel pinned to 1 to carry it).
+            return dot(texture2D(uElevationTexture, uv), uElevationDecode) + uElevationOffset;
         }
         // Full DEM detail: manual bilinear of the elevation texture at uv (4 texel-center taps).
+        // DEM_HW_FILTER collapses it to ONE hardware-filtered fetch, which is what tangram's
+        // terrain vertex does. It exists because some mobile GPUs ignore LINEAR for vertex texture
+        // fetch and return NEAREST, which shows as terraced geometry - so it is a measurement
+        // switch, not a default, until a device says the filtering is honoured.
+        #ifdef DEM_HW_FILTER
+        float demMeters(highp vec2 uv) {
+            return sampleElevation(uv);
+        }
+        #else
         float demMeters(highp vec2 uv) {
             highp vec2 texelPos = uv * uElevationTexelSize.xy - 0.5;
             highp vec2 texelBase = floor(texelPos);
@@ -311,6 +365,7 @@ namespace carto::vt {
             float h11 = sampleElevation(uv00 + uElevationTexelSize.zw);
             return mix(mix(h00, h10, f.x), mix(h01, h11, f.x), f.y);
         }
+        #endif
         vec3 applyTerrain(vec3 pos) {
             highp vec2 uv = uElevationUV.xy + pos.xy * uElevationUV.zw;
             float meters;
@@ -337,11 +392,19 @@ namespace carto::vt {
                 // vertices ON that edge reproduces the neighbour's chords exactly. The factors
                 // are 1 for same-level or finer neighbours, i.e. a no-op by default. Corner
                 // vertices sit on a node of every lattice, so a double scaling is harmless.
+                // The edge test is in TILE units. The surface's vertices already are the unit
+                // square; draped CONTENT arrives in its own vertex frame, so it is converted -
+                // without this the test can never fire for content, and a road crossing the seam
+                // keeps this tile's own interpolation while its other half follows the coarse
+                // neighbour's chord. The ground is stitched and the road on it is not: the two
+                // halves meet at different heights, which is invisible looking straight down and
+                // steps as soon as the camera tilts.
+                highp vec2 unitPos = pos.xy * uTileUnitScale;
                 highp vec2 cell = uElevationLatticeCell;
-                if (pos.x < 0.00001) cell.y *= uTerrainEdgeCoarsening.x;       // west edge
-                else if (pos.x > 0.99999) cell.y *= uTerrainEdgeCoarsening.y;  // east edge
-                if (pos.y < 0.00001) cell.x *= uTerrainEdgeCoarsening.z;       // south edge
-                else if (pos.y > 0.99999) cell.x *= uTerrainEdgeCoarsening.w;  // north edge
+                if (unitPos.x < 0.00001) cell.y *= uTerrainEdgeCoarsening.x;       // west edge
+                else if (unitPos.x > 0.99999) cell.y *= uTerrainEdgeCoarsening.y;  // east edge
+                if (unitPos.y < 0.00001) cell.x *= uTerrainEdgeCoarsening.z;       // south edge
+                else if (unitPos.y > 0.99999) cell.x *= uTerrainEdgeCoarsening.w;  // north edge
                 highp vec2 rel = (uv - uElevationUV.xy) / cell;
                 highp vec2 gi = floor(rel);
                 highp vec2 fg = rel - gi;
@@ -376,6 +439,23 @@ namespace carto::vt {
             return pos;
         }
         #endif
+        // Draped 2D content receiving terrain shadows needs the elevation uv of the fragment and
+        // the local mercator height stretch, so its fragment stage can take the SAME terrain
+        // normal the surface takes (see commonFsh). The surface shaders declare these themselves
+        // under TERRAIN_LIGHT - declaring them twice in one program is a link error, so this copy
+        // exists only for the programs that have no lighting of their own.
+        #if defined(TERRAIN) && defined(TERRAIN_SHADOW) && !defined(TERRAIN_LIGHT)
+        varying highp vec2 vElevUV;
+        varying mediump float vElevCosh;
+        void setTerrainSlopeVaryings(highp vec3 pos) {
+            vElevUV = uElevationUV.xy + pos.xy * uElevationUV.zw;
+            highp float slopeMY = uElevationScale.y + pos.y * uElevationScale.z;
+            vElevCosh = 0.5 * (exp(slopeMY) + exp(-slopeMY));
+        }
+        #else
+        void setTerrainSlopeVaryings(highp vec3 pos) {
+        }
+        #endif
     )GLSL";
 
     static const std::string commonFsh = R"GLSL(
@@ -408,6 +488,49 @@ namespace carto::vt {
         #else
         lowp vec4 applyFog(lowp vec4 color) {
             return color;
+        }
+        #endif
+        // The terrain normal at this fragment, for draped 2D content that receives shadows and has
+        // no lighting of its own. Same 3x3 stencil, same uniforms and same varyings as the surface
+        // takes (backgroundFsh), so a road and the ground it lies on get the SAME N.L - and with
+        // it the same slope-scaled shadow bias and the same back-face rule. Taken at normal
+        // incidence instead, a coplanar receiver gets the minimum bias against a caster it shares
+        // its depth with, so half the PCF taps fail and the whole ground shadows itself.
+        #if defined(TERRAIN) && defined(TERRAIN_SHADOW) && !defined(TERRAIN_LIGHT)
+        uniform highp sampler2D uElevationTexture;
+        uniform highp vec4 uElevationDecode; // 'vec4' in the vertex stage means highp there
+        uniform highp vec4 uElevationTexelSize;
+        uniform mediump vec3 uSunDir;          // east, north, up - the frame the tile mesh lives in
+        uniform highp vec2 uTerrainSlopeScale; // metres of height -> world units, per elevation-uv unit
+        varying highp vec2 vElevUV;
+        varying mediump float vElevCosh;
+
+        mediump float terrainNdl() {
+            highp vec2 duv = uElevationTexelSize.zw;
+            highp vec2 ij = vElevUV * uElevationTexelSize.xy;
+            highp vec2 cen = floor(ij) + 0.5;
+            highp vec2 uv = cen * duv;
+            highp float h00 = dot(texture2D(uElevationTexture, uv - duv), uElevationDecode);
+            highp float h01 = dot(texture2D(uElevationTexture, uv + vec2(-duv.x, 0.0)), uElevationDecode);
+            highp float h02 = dot(texture2D(uElevationTexture, uv + vec2(-duv.x, duv.y)), uElevationDecode);
+            highp float h10 = dot(texture2D(uElevationTexture, uv + vec2(0.0, -duv.y)), uElevationDecode);
+            highp float h11 = dot(texture2D(uElevationTexture, uv), uElevationDecode);
+            highp float h12 = dot(texture2D(uElevationTexture, uv + vec2(0.0, duv.y)), uElevationDecode);
+            highp float h20 = dot(texture2D(uElevationTexture, uv + vec2(duv.x, -duv.y)), uElevationDecode);
+            highp float h21 = dot(texture2D(uElevationTexture, uv + vec2(duv.x, 0.0)), uElevationDecode);
+            highp float h22 = dot(texture2D(uElevationTexture, uv + duv), uElevationDecode);
+            highp vec2 f = ij - cen;
+            highp float ddxy = (h22 - h20 - h02 + h00) * 0.25;
+            highp mat2 curv = mat2(h21 - 2.0 * h11 + h01, ddxy, ddxy, h12 - 2.0 * h11 + h10);
+            highp vec2 grad0 = vec2(h21 - h01, h12 - h10) * 0.5;
+            highp vec2 grad = grad0 + curv * f; // metres per texel
+            highp float dx = grad.x * uTerrainSlopeScale.x * vElevCosh / duv.x;
+            highp float dy = grad.y * uTerrainSlopeScale.y * vElevCosh / duv.y;
+            return max(0.0, dot(normalize(vec3(-dx, -dy, 1.0)), uSunDir));
+        }
+        #else
+        mediump float terrainNdl() {
+            return 1.0;
         }
         #endif
         #ifdef TERRAIN_SHADOW
@@ -627,7 +750,7 @@ namespace carto::vt {
         #if defined(TERRAIN_LIGHT) && defined(TERRAIN)
         // Precision qualifiers must match the vertex-stage declarations exactly, or the
         // program fails to LINK (same name, different precision is an error in GLSL ES 1.00).
-        uniform sampler2D uElevationTexture;
+        uniform highp sampler2D uElevationTexture;
         uniform highp vec4 uElevationDecode; // 'vec4' in the vertex stage means highp there
         uniform highp vec4 uElevationTexelSize;
         uniform mediump vec3 uSunDir;         // east, north, up - the same frame the tile mesh lives in
@@ -637,19 +760,39 @@ namespace carto::vt {
         varying highp vec2 vElevUV;
         varying mediump float vElevCosh;
 
-        // Central difference on the DEM, one texel each way. The surface is displaced by exactly
-        // this height field in the vertex stage, so the normal is the normal of what is drawn -
-        // no second DEM decode, no pre-baked normal map, and it follows the live sun.
+        // The DEM gradient at this fragment, as tangram takes it (res/scenes/hillshade.yaml, the
+        // `normal` block): a 3x3 stencil at TEXEL CENTERS, then a quadratic expansion around the
+        // center texel so the gradient varies LINEARLY inside the texel. A plain central
+        // difference at a fixed texel step is constant over each texel cell, which shades the
+        // ground in texel-sized facets - very visible close up, where one DEM texel covers many
+        // pixels. The extra taps are free next to the fill they light.
+        // The surface is displaced by exactly this height field in the vertex stage, so the normal
+        // is the normal of what is drawn - no second DEM decode, no pre-baked normal map, and it
+        // follows the live sun.
+        // No decode offset is needed: only differences of heights are used, and it cancels.
+        // Heights are metres and reach several thousand: mediump would quantise them to whole
+        // metres and the differences would be mostly rounding noise.
         mediump vec3 terrainNormal() {
-            // Heights are metres and reach several thousand: mediump would quantise them to
-            // whole metres and the central difference would be mostly rounding noise.
-            highp vec2 st = uElevationTexelSize.zw;
-            highp float hL = dot(texture2D(uElevationTexture, vElevUV - vec2(st.x, 0.0)), uElevationDecode);
-            highp float hR = dot(texture2D(uElevationTexture, vElevUV + vec2(st.x, 0.0)), uElevationDecode);
-            highp float hD = dot(texture2D(uElevationTexture, vElevUV - vec2(0.0, st.y)), uElevationDecode);
-            highp float hU = dot(texture2D(uElevationTexture, vElevUV + vec2(0.0, st.y)), uElevationDecode);
-            highp float dx = (hR - hL) * uTerrainSlopeScale.x * vElevCosh / (2.0 * st.x);
-            highp float dy = (hU - hD) * uTerrainSlopeScale.y * vElevCosh / (2.0 * st.y);
+            highp vec2 duv = uElevationTexelSize.zw;
+            highp vec2 ij = vElevUV * uElevationTexelSize.xy;
+            highp vec2 cen = floor(ij) + 0.5;
+            highp vec2 uv = cen * duv;
+            highp float h00 = dot(texture2D(uElevationTexture, uv - duv), uElevationDecode);
+            highp float h01 = dot(texture2D(uElevationTexture, uv + vec2(-duv.x, 0.0)), uElevationDecode);
+            highp float h02 = dot(texture2D(uElevationTexture, uv + vec2(-duv.x, duv.y)), uElevationDecode);
+            highp float h10 = dot(texture2D(uElevationTexture, uv + vec2(0.0, -duv.y)), uElevationDecode);
+            highp float h11 = dot(texture2D(uElevationTexture, uv), uElevationDecode);
+            highp float h12 = dot(texture2D(uElevationTexture, uv + vec2(0.0, duv.y)), uElevationDecode);
+            highp float h20 = dot(texture2D(uElevationTexture, uv + vec2(duv.x, -duv.y)), uElevationDecode);
+            highp float h21 = dot(texture2D(uElevationTexture, uv + vec2(duv.x, 0.0)), uElevationDecode);
+            highp float h22 = dot(texture2D(uElevationTexture, uv + duv), uElevationDecode);
+            highp vec2 f = ij - cen;
+            highp float ddxy = (h22 - h20 - h02 + h00) * 0.25;
+            highp mat2 curv = mat2(h21 - 2.0 * h11 + h01, ddxy, ddxy, h12 - 2.0 * h11 + h10);
+            highp vec2 grad0 = vec2(h21 - h01, h12 - h10) * 0.5;
+            highp vec2 grad = grad0 + curv * f; // metres per texel
+            highp float dx = grad.x * uTerrainSlopeScale.x * vElevCosh / duv.x;
+            highp float dy = grad.y * uTerrainSlopeScale.y * vElevCosh / duv.y;
             return normalize(vec3(-dx, -dy, 1.0));
         }
         #endif
@@ -891,6 +1034,206 @@ namespace carto::vt {
         }
     )GLSL";
 
+    // Terrain paint: hillshading computed directly from the shared terrain elevation texture,
+    // as one quad per tile, instead of from a per-tile normal map raster of its own. There is
+    // no tile set behind it - the DEM the 3D terrain already has bound IS the data - so the
+    // paint costs one draw where a hillshade layer costs a tile set, a decode, a normal map
+    // and a surface pass. The lighting itself is unchanged: the same normal-map lighting
+    // shader (built-in or custom) is injected and fed a normal rebuilt from the DEM gradient.
+    static const std::string terrainPaintPrelude = R"GLSL(
+        uniform highp sampler2D uElevationTexture;
+        // Precision qualifiers must match the vertex-stage declarations exactly, or the program
+        // fails to LINK (same name, different precision is an error in GLSL ES 1.00).
+        uniform highp vec4 uElevationDecode;
+        uniform highp float uElevationOffset;   // the decode's constant term (the texture carries no spare channel for it)
+        uniform highp vec4 uElevationTexelSize; // xy: texture size in texels, zw: 1 / size
+        uniform highp vec2 uPaintSlopeScale;    // metres per texel -> the dimensionless slope the hillshade algorithms expect (height scale folded in)
+        uniform mediump vec4 uPaintParams;      // x = contrast, y = opacity, zw reserved
+        uniform highp_opt float u_zoom;         // current fractional map zoom, for per-zoom custom shaders
+        varying highp vec2 vElevUV;
+        varying mediump float vElevCosh;
+
+        highp float sampleElevation(highp vec2 uv) {
+            return dot(texture2D(uElevationTexture, uv), uElevationDecode) + uElevationOffset;
+        }
+
+        // Tangram's DEM sample, ported whole from the `normal` block of res/scenes/hillshade.yaml.
+        // Both outputs come from ONE 3x3 stencil taken at TEXEL CENTERS (cen_ij = floor(ij) + 0.5),
+        // so the taps are exact whatever the hardware filter does, plus a quadratic Taylor
+        // expansion around the center texel:
+        //   grad = grad0 + curv * f     (gradient varies LINEARLY inside the texel)
+        //   elev = h11 + f.grad0 + 0.5 * f.curv.f
+        // The gradient is what makes the difference: a plain central difference at a fixed texel
+        // step is CONSTANT over each texel cell, so the shading breaks into texel-sized facets -
+        // the "pixelated hillshade" seen close up, where one DEM texel covers many screen pixels.
+        // Interpolating it through the curvature costs nothing (the 9 taps replace the 8 the Sobel
+        // took) and makes the shading continuous across texel boundaries.
+        // Heights are metres and reach several thousand: mediump would quantise them to whole
+        // metres and the differences would be mostly rounding noise.
+        // Tangram extrapolates the stencil at the texture edges; our elevation textures carry a
+        // 1-texel border taken from the neighbouring DEM tiles instead, so the stencil always
+        // reads real data and no edge case is needed here.
+        // The stencil is taken ONCE per fragment, by terrainPaintPrepare() at the top of main, and
+        // read from here by everything that needs it (the hillshade slope, the sun normal, the
+        // contours, a custom shader's getElevation()). Sampling it per consumer would be three
+        // 9-tap stencils on the ground pass.
+        highp float gTerrainElev;      // metres at this fragment
+        highp vec2 gTerrainGrad;       // metres per elevation texel, (du, dv), v growing north
+
+        void terrainPaintSample(out highp float elev, out highp vec2 gradPerTexel) {
+            highp vec2 duv = uElevationTexelSize.zw;
+            highp vec2 ij = vElevUV * uElevationTexelSize.xy;
+            highp vec2 cen = floor(ij) + 0.5;
+            highp vec2 uv = cen * duv;
+            highp float h00 = sampleElevation(uv - duv);
+            highp float h01 = sampleElevation(uv + vec2(-duv.x, 0.0));
+            highp float h02 = sampleElevation(uv + vec2(-duv.x, duv.y));
+            highp float h10 = sampleElevation(uv + vec2(0.0, -duv.y));
+            highp float h11 = sampleElevation(uv);
+            highp float h12 = sampleElevation(uv + vec2(0.0, duv.y));
+            highp float h20 = sampleElevation(uv + vec2(duv.x, -duv.y));
+            highp float h21 = sampleElevation(uv + vec2(duv.x, 0.0));
+            highp float h22 = sampleElevation(uv + duv);
+            highp vec2 f = ij - cen;
+            highp float ddxy = (h22 - h20 - h02 + h00) * 0.25;
+            highp mat2 curv = mat2(h21 - 2.0 * h11 + h01, ddxy, ddxy, h12 - 2.0 * h11 + h10);
+            highp vec2 grad0 = vec2(h21 - h01, h12 - h10) * 0.5;
+            gradPerTexel = grad0 + curv * f;
+            elev = h11 + dot(f, grad0) + 0.5 * dot(f, curv * f);
+        }
+
+        void terrainPaintPrepare() { terrainPaintSample(gTerrainElev, gTerrainGrad); }
+
+        // The same contract the normal-map path offers custom shaders, backed by the shared DEM.
+        highp float getElevation() { return gTerrainElev; }
+        highp float getMapZoom() { return u_zoom; }
+        lowp vec4 getRawColor() { return texture2D(uElevationTexture, vElevUV); }
+
+        // The slope handed to the hillshade algorithms, in the (dh/dEast, -dh/dNorth) convention
+        // the normal map encoded - v grows NORTH in the elevation texture. The mercator 1/cos
+        // stretch is per fragment; everything constant over the tile is in uPaintSlopeScale.
+        mediump vec2 terrainPaintDeriv() {
+            return vec2(gTerrainGrad.x, -gTerrainGrad.y) * vElevCosh * uPaintSlopeScale;
+        }
+    )GLSL";
+
+    static const std::string terrainPaintVsh = R"GLSL(
+        attribute vec3 aVertexPosition;
+        uniform mat4 uMVPMatrix;
+        varying highp vec2 vElevUV;
+        varying mediump float vElevCosh;
+
+        void main(void) {
+            vElevUV = uElevationUV.xy + aVertexPosition.xy * uElevationUV.zw;
+            highp float my = uElevationScale.y + aVertexPosition.y * uElevationScale.z;
+            vElevCosh = 0.5 * (exp(my) + exp(-my));
+        #ifdef PAINT_SURFACE
+            // Drawn as the terrain surface itself, displaced by the DEM - tangram's model, where
+            // the hillshade is a draw on the tile's own terrain mesh rather than a texture baked
+            // for it. Same grid VBO as every other surface draw, per-tile uniforms only.
+            highp vec3 terrainPos = applyTerrain(aVertexPosition);
+            applyShadowPos(terrainPos);
+            gl_Position = applyDepthBias(uMVPMatrix * vec4(terrainPos, 1.0));
+        #else
+            // The drape bake is flat and orthographic: the quad is the tile-local unit square and
+            // the paint is a function of the DEM alone, so no displacement is needed there.
+            gl_Position = uMVPMatrix * vec4(aVertexPosition.xy, 0.0, 1.0);
+        #endif
+        }
+    )GLSL";
+
+    static const std::string terrainPaintFsh = R"GLSL(
+        #ifdef GROUND_BASE
+        // The paint IS the ground in this mode, so it carries the ground's own colour underneath
+        // its shading and there is no separate fill draw - tangram's arrangement, where the terrain
+        // raster's `color` block starts from a base colour (res/scenes/hillshade.yaml:
+        // `base_color = vec4(0.88, 0.88, 0.88, 1.0)` under TANGRAM_TERRAIN_3D) and shades THAT.
+        uniform lowp vec4 uGroundColor;
+        #endif
+        #ifdef PAINT_SURFACE
+        // Contour lines as a fragment block on the terrain draw, which is where tangram puts them
+        // (res/scenes/hillshade.yaml computes hillshade, hypsometric tint and contours in the
+        // `color` block of the raster style that IS the terrain surface). Same uniforms and the
+        // same screen-width anti-aliasing as the normal-map path, so a layer gets identical
+        // contours whether it shades a per-tile normal map or the shared DEM - the paint used to
+        // switch itself off when contours were asked for, precisely because it lacked this.
+        // Declared here and NOT in the prelude: normalmapFsh is not part of this program.
+        uniform lowp vec4 u_contourColor;
+        uniform highp_opt float u_contourInterval; // metres between contour lines; <= 0 disables them
+        uniform mediump float u_contourWidth;      // contour half-width in screen pixels
+        #endif
+        #if defined(PAINT_SURFACE) && defined(TERRAIN_LIGHT)
+        // Drawn as the terrain surface, so it takes the sun and the shadow map the surface takes -
+        // otherwise the paint covers a lit, shadowed ground with an unlit copy of it and the
+        // shadows simply disappear under the hillshade. The uniforms the paint prelude already
+        // declares (elevation sampler, texel size, vElevUV) are NOT redeclared here: a second
+        // declaration of the same name is a link error.
+        uniform mediump vec3 uSunDir;          // east, north, up - the frame the tile mesh lives in
+        uniform lowp vec4 uSunColor;           // rgb = colour, a = unused
+        uniform mediump vec2 uLightParams;     // x = sun intensity, y = ambient intensity
+        uniform highp vec2 uTerrainSlopeScale; // metres of height -> world units, per elevation-uv unit
+
+        // The GEOMETRIC normal, from the true slope scale - not terrainPaintDeriv(), whose scale
+        // carries the hillshade's own height scale and relief boost and would light the ground
+        // several times too hard.
+        mediump vec3 terrainSurfaceNormal() {
+            // Same stencil as the hillshade (terrainPaintSample): the gradient interpolated
+            // through the curvature, not a per-texel-constant central difference, so the sun
+            // lighting does not facet at texel boundaries either.
+            highp vec2 st = uElevationTexelSize.zw;
+            highp float dx = gTerrainGrad.x * uTerrainSlopeScale.x * vElevCosh / st.x;
+            highp float dy = gTerrainGrad.y * uTerrainSlopeScale.y * vElevCosh / st.y;
+            return normalize(vec3(-dx, -dy, 1.0));
+        }
+        #endif
+
+        void main(void) {
+            terrainPaintPrepare(); // the one DEM stencil this fragment takes
+            mediump vec2 deriv = terrainPaintDeriv();
+            // applyLighting() recovers the gradient as vec2(-n.x, n.y)/n.z, so hand it a normal
+            // that reproduces this deriv exactly. The surface normal is the flat one: the paint
+            // is baked into the tile texture, and the terrain surface tilts it afterwards.
+            mediump vec3 normal = normalize(vec3(-deriv.x, deriv.y, 1.0));
+            lowp vec4 color = applyLighting(vec4(uPaintParams.x), normal, vec3(0.0, 0.0, 1.0), 0.0);
+        #ifdef PAINT_SURFACE
+            color = color * uPaintParams.y;
+        #if defined(TERRAIN_LIGHT)
+            // Same normalised Lambert and the same final-colour shadow multiply as the terrain
+            // surface itself (backgroundFsh), so ground and paint agree about what a shadow is.
+            mediump float ndl = max(0.0, dot(terrainSurfaceNormal(), uSunDir));
+            mediump vec3 lit = vec3(uLightParams.y) + uSunColor.rgb * ((1.0 - uLightParams.y) * ndl * uLightParams.x);
+        #ifdef TERRAIN_SHADOW
+            lit *= shadowFactorSlope(ndl);
+        #endif
+            color = vec4(min(color.rgb * lit, vec3(color.a)), color.a);
+        #endif
+            if (u_contourInterval > 0.0) {
+                // Distance to the nearest contour in metres, divided by the per-pixel elevation
+                // change, gives a screen-space width that stays constant as the ground tilts away.
+                // Composited OVER the shaded ground, premultiplied - the same order and the same
+                // result as normalmapFsh, so switching a layer to the paint does not move the lines.
+                highp_opt float e = getElevation(); // the quadratic reconstruction: contours that
+                                                    // do not kink at every texel boundary
+                highp_opt float frac = fract(e / u_contourInterval);
+                highp_opt float distM = min(frac, 1.0 - frac) * u_contourInterval;
+                mediump float px = distM / max(fwidth(e), 1e-4);
+                mediump float cov = clamp(u_contourWidth - px + 0.5, 0.0, 1.0) * u_contourColor.a;
+                color.rgb = u_contourColor.rgb * cov + color.rgb * (1.0 - cov);
+                color.a = cov + color.a * (1.0 - cov);
+            }
+        #ifdef GROUND_BASE
+            // Over the ground colour, premultiplied - the shade already is. One opaque draw per
+            // tile then covers what the fill pass used to draw underneath it.
+            color = vec4(color.rgb + uGroundColor.rgb * uGroundColor.a * (1.0 - color.a),
+                         color.a + uGroundColor.a * (1.0 - color.a));
+        #endif
+            gl_FragColor = applyFog(color); // drawn in the scene, so it fogs with it
+        #else
+            gl_FragColor = color * uPaintParams.y;
+        #endif
+        }
+    )GLSL";
+
     static const std::string blendVsh = R"GLSL(
         attribute vec3 aVertexPosition;
         uniform mat4 uMVPMatrix;
@@ -913,15 +1256,25 @@ namespace carto::vt {
 
     static const std::string labelVsh = R"GLSL(
         attribute vec3 aVertexPosition;
+        // Glyph quad corner, relative to the label anchor in aVertexPosition. Already scaled.
+        // aVertexAttribs[3] says how to orient it: 0 = a world offset ready to add (labels
+        // whose axes come from their placement, computed once on the CPU), 1 = x/y on the
+        // camera axes. Resolving the camera case here rather than on the CPU takes the camera
+        // out of the vertex data, which is what lets a label batch be uploaded once instead
+        // of once per frame.
+        attribute vec3 aVertexOffset;
         #if defined(LIGHTING_FSH) || defined(LIGHTING_VSH)
         attribute vec3 aVertexNormal;
         #endif
         attribute vec2 aVertexUV;
         attribute vec4 aVertexColor;
         attribute vec4 aVertexAttribs;
+        uniform vec3 uLabelAxisX;
+        uniform vec3 uLabelAxisY;
         uniform mat4 uMVPMatrix;
         uniform vec2 uUVScale;
         uniform float uSDFScale;
+        uniform float uSDFRamp;
         uniform vec4 uColorTable[16];
         uniform float uWidthTable[16];
         uniform float uStrokeWidthTable[16];
@@ -938,7 +1291,10 @@ namespace carto::vt {
             float opacity = aVertexAttribs[2] * (1.0 / 127.0);
             vec4 color = aVertexAttribs[1] > 1.0 ? vec4(1.0, 1.0, 1.0, 1.0) : uColorTable[styleIndex];
             vUV = aVertexUV * uUVScale;
-            vAttribs = vec4(aVertexAttribs[1], uStrokeWidthTable[styleIndex], uSDFScale / size, size / uSDFScale);
+            // [2] is the halo width, [3] the antialias ramp - both in texture value units. They
+            // are not the same scale: the ramp is one screen pixel of signed distance, the halo
+            // is what HALO_RADIUS_SCALE says it is.
+            vAttribs = vec4(aVertexAttribs[1], uStrokeWidthTable[styleIndex], uSDFScale / size, uSDFRamp / size);
         #ifdef LIGHTING_VSH
             vColor = applyLighting(color, aVertexNormal) * opacity;
         #else
@@ -947,15 +1303,15 @@ namespace carto::vt {
         #ifdef LIGHTING_FSH
             vNormal = aVertexNormal;
         #endif
-            gl_Position = uMVPMatrix * vec4(aVertexPosition, 1.0);
+            vec3 offset = aVertexAttribs[3] > 0.5
+                ? uLabelAxisX * aVertexOffset.x + uLabelAxisY * aVertexOffset.y
+                : aVertexOffset;
+            gl_Position = uMVPMatrix * vec4(aVertexPosition + offset, 1.0);
         }
     )GLSL";
 
     static const std::string labelFsh = R"GLSL(
         uniform sampler2D uBitmap;
-        #ifdef DERIVATIVES
-        uniform highp_opt vec2 uDerivScale;
-        #endif
         varying lowp vec4 vColor;
         varying highp_opt vec2 vUV;
         varying mediump vec4 vAttribs;
@@ -964,19 +1320,24 @@ namespace carto::vt {
         #endif
 
         void main(void) {
-            lowp vec4 color = texture2D(uBitmap, vUV);
+            // The signed distance is read at mediump on purpose: at lowp the 8-bit field is
+            // quantized coarser than the one-pixel ramp below, which shows up as banded glyph
+            // edges - and the derivative taken from it would be noise.
+            mediump vec4 color = texture2D(uBitmap, vUV);
             if (vAttribs[0] > 0.0) {
                 color = color * vColor;
             } else {
         #ifdef DERIVATIVES
-                float size = dot(uDerivScale, fwidth(vUV));
-                float scale = 1.0 / size;
+                // The gradient of the field itself is the width of one screen pixel expressed in
+                // the field's own units - it needs no constant and, unlike the per-batch value
+                // below, it follows a label the perspective magnifies (one lying on the ground
+                // under a tilt is drawn at a scale that varies over the label).
+                mediump float size = max(length(vec2(dFdx(color.r), dFdy(color.r))), 0.00001);
         #else
-                float size = vAttribs[2];
-                float scale = vAttribs[3];
+                mediump float size = vAttribs[3];
         #endif
                 float offset = 0.5 * (1.0 - size - vAttribs[1] * vAttribs[2]);
-                color = clamp((color.r - offset) * scale, 0.0, 1.0) * vColor;
+                color = clamp((color.r - offset) / size, 0.0, 1.0) * vColor;
             }
         #ifdef LIGHTING_FSH
             gl_FragColor = applyLighting(color, normalize(vNormal));
@@ -1043,7 +1404,10 @@ namespace carto::vt {
         #ifdef LIGHTING_FSH
             vNormal = aVertexNormal;
         #endif
-            gl_Position = applyDepthBias(uMVPMatrix * vec4(applyTerrain(pos) + delta, 1.0));
+            setTerrainSlopeVaryings(pos);
+            highp vec3 terrainPos = applyTerrain(pos);
+            applyShadowPos(terrainPos);
+            gl_Position = applyDepthBias(uMVPMatrix * vec4(terrainPos + delta, 1.0));
         }
     )GLSL";
 
@@ -1074,6 +1438,18 @@ namespace carto::vt {
             // quad corners) must not write depth or they block later style layers
             if (color.a < 0.004) discard;
         #endif
+        #ifdef TERRAIN_SHADOW
+            // 2D content standing ON the ground takes the ground's shadow: it is drawn in the 3D
+            // scene now that fills are the only thing baked into the drape, so a road crossing a
+            // shadowed slope stayed lit while the slope around it went dark.
+            // N.L comes from the terrain itself (terrainNdl, the same stencil the surface uses),
+            // NOT from the geometry - which has no meaningful normal, lying flat on the ground.
+            // It has to: this receiver is COPLANAR with the surface that cast into the shadow map,
+            // so at normal incidence it gets the minimum bias against its own depth, half the PCF
+            // taps fail, and the whole ground shadows itself.
+            // The colour is premultiplied, so scaling rgb alone keeps rgb <= a.
+            color = vec4(color.rgb * shadowFactorSlope(terrainNdl()), color.a);
+        #endif
         #ifdef LIGHTING_FSH
             gl_FragColor = applyFog(applyLighting(color, normalize(vNormal)));
         #else
@@ -1098,6 +1474,8 @@ namespace carto::vt {
         #ifdef TERRAIN
         uniform highp vec2 uScreenScale; // x = viewport aspect (w/h), y = NDC height of one line-width unit
         #endif
+        // Where this fragment sits in the TARGET tile, for the tile clipping in lineFsh.
+        varying mediump vec2 vTileUnit;
         #ifdef TRANSFORM
         uniform mat4 uTransformMatrix;
         #endif
@@ -1146,30 +1524,41 @@ namespace carto::vt {
             vNormal = aVertexNormal;
         #endif
         #ifdef TERRAIN
-            // SCREEN-SPACE extrusion. The binormal offset is calibrated to project to
-            // 'roundedWidth' line-width units on the flat map; over terrain the quad is extruded
-            // horizontally and THEN displaced onto the slope, so what reaches the screen is
-            // anything but that width: stretched into a blurred band where the slope faces the
-            // camera (a contour line is the worst case - its width direction IS the gradient),
-            // and squeezed below a pixel where the ground is foreshortened, which drops the line
-            // out of the rasteriser in gaps. So take only the DIRECTION of the displaced offset
-            // and give it the nominal length in screen space. Both quad edges keep the centre
-            // line's depth, so this cannot poke the line through the relief either.
+            // Tangram's line model with a CEILING. Tangram extrudes in model space and displaces
+            // the extruded vertex onto the terrain (polyline.vs + terrain-3d.yaml), so a line is a
+            // world quad through the projection and tapers with distance like everything else -
+            // which is what a line on the ground should do. Left alone it also GROWS without bound
+            // towards the camera, and a near contour turns into a fat blob.
+            // So: take tangram's offset, measure what it is worth on screen, and shrink it back to
+            // the nominal width when it exceeds it. Never grow it - the factor is <= 1 by
+            // construction, so this can not manufacture the oversized quads an unbounded screen
+            // fit can. Far lines keep tangram's taper, near lines stop at the width the style asked
+            // for, which is the flat map's width.
+            setTerrainSlopeVaryings(pos);
+            vTileUnit = pos.xy * uTileUnitScale;
             highp vec3 centerPos = applyTerrain(pos);
+            applyShadowPos(centerPos);
             highp vec4 centerClip = uMVPMatrix * vec4(centerPos, 1.0);
             highp vec4 edgeClip = uMVPMatrix * vec4(applyTerrain(pos + delta), 1.0);
             highp vec2 edgeDir = edgeClip.xy / edgeClip.w - centerClip.xy / centerClip.w;
             edgeDir = vec2(edgeDir.x * uScreenScale.x, edgeDir.y); // NDC is anisotropic, work in height units
             highp float edgeLen = length(edgeDir);
-            if (edgeLen > 0.0000001) {
-                edgeDir = edgeDir * (roundedWidth * uScreenScale.y / edgeLen);
+            highp float nominalLen = roundedWidth * uScreenScale.y;
+            if (edgeLen > nominalLen && nominalLen > 0.0) {
+                edgeDir = edgeDir * (nominalLen / edgeLen);
                 highp vec2 offset = vec2(edgeDir.x / uScreenScale.x, edgeDir.y);
                 centerClip = vec4((centerClip.xy / centerClip.w + offset) * centerClip.w, centerClip.z, centerClip.w);
+                gl_Position = applyDepthBias(centerClip);
+            } else {
+                gl_Position = applyDepthBias(uMVPMatrix * vec4(applyTerrain(pos + delta), 1.0));
             }
-            gl_Position = applyDepthBias(centerClip);
         #else
             // sample the terrain at the extruded position, so wide lines follow the slope
-            gl_Position = applyDepthBias(uMVPMatrix * vec4(applyTerrain(pos + delta), 1.0));
+            vTileUnit = pos.xy * uTileUnitScale;
+            setTerrainSlopeVaryings(pos + delta);
+            highp vec3 flatTerrainPos = applyTerrain(pos + delta);
+            applyShadowPos(flatTerrainPos);
+            gl_Position = applyDepthBias(uMVPMatrix * vec4(flatTerrainPos, 1.0));
         #endif
         }
     )GLSL";
@@ -1179,6 +1568,9 @@ namespace carto::vt {
         uniform sampler2D uPattern;
         varying highp_opt vec2 vUV;
         #endif
+        uniform mediump float uAntialiasScale;
+        uniform highp vec2 uTileUnitScale;
+        varying mediump vec2 vTileUnit;
         varying lowp vec4 vColor;
         varying highp_opt vec2 vDist;
         varying highp_opt float vWidth;
@@ -1187,8 +1579,28 @@ namespace carto::vt {
         #endif
 
         void main(void) {
+            // CLIP TO THE TILE. Lines are built with a buffer an eighth of a tile wide, so a tile
+            // carries a good stretch of its neighbours' roads. Every tile draws that overflow with
+            // ITS OWN elevation mapping - a different DEM level and a different lattice than the
+            // tile the overflow actually lies on - so the same road is painted twice at two
+            // different heights. Looking straight down the two copies coincide and it looks
+            // perfect; tilt, and the heights separate into the mismatch at tile junctions.
+            // The stencil tile masks used to clip this, but they need a stencil buffer and there
+            // is none here (GL_STENCIL_BITS = 0 on this target), so the masks never run. Doing it
+            // per fragment needs no attachment and no extra draw.
+            // uTileUnitScale is 0 when the tile has no elevation, which disables the test.
+            if (uTileUnitScale != vec2(0.0)) {
+                if (vTileUnit.x < -0.0005 || vTileUnit.x > 1.0005 || vTileUnit.y < -0.0005 || vTileUnit.y > 1.0005) {
+                    discard;
+                }
+            }
             float dist = vWidth - length(vDist);
-            lowp float a = clamp(dist, 0.0, 1.0);
+            // The antialias ramp is one unit of the quad, and a unit is NOT a pixel: line widths
+            // are given in unscaled-DPI units, so on a 2.6x display one unit covers about 1.8
+            // device pixels (uAntialiasScale is exactly that ratio, screen height over the
+            // normalized resolution). A contour a pixel wide was therefore mostly ramp - the blur.
+            // Ramping over one DEVICE pixel keeps a thin line a thin line at any density.
+            lowp float a = clamp(dist * uAntialiasScale, 0.0, 1.0);
         #ifdef PATTERN
             lowp vec4 color = texture2D(uPattern, vUV) * vColor * a;
         #else
@@ -1198,6 +1610,10 @@ namespace carto::vt {
             // depth-writing terrain content: fully transparent fragments (AA aprons,
             // dash gaps) must not write depth or they block later style layers
             if (color.a < 0.004) discard;
+        #endif
+        #ifdef TERRAIN_SHADOW
+            // 2D content standing ON the ground takes the ground's shadow (see pointFsh).
+            color = vec4(color.rgb * shadowFactorSlope(terrainNdl()), color.a);
         #endif
         #ifdef LIGHTING_FSH
             gl_FragColor = applyFog(applyLighting(color, normalize(vNormal)));
@@ -1248,7 +1664,10 @@ namespace carto::vt {
         #ifdef LIGHTING_FSH
             vNormal = aVertexNormal;
         #endif
-            gl_Position = applyDepthBias(uMVPMatrix * vec4(applyTerrain(pos), 1.0));
+            setTerrainSlopeVaryings(pos);
+            highp vec3 terrainPos = applyTerrain(pos);
+            applyShadowPos(terrainPos);
+            gl_Position = applyDepthBias(uMVPMatrix * vec4(terrainPos, 1.0));
         }
     )GLSL";
 
@@ -1272,6 +1691,10 @@ namespace carto::vt {
             // depth-writing terrain content: fully transparent fragments (pattern
             // gaps) must not write depth or they block later style layers
             if (color.a < 0.004) discard;
+        #endif
+        #ifdef TERRAIN_SHADOW
+            // 2D content standing ON the ground takes the ground's shadow (see pointFsh).
+            color = vec4(color.rgb * shadowFactorSlope(terrainNdl()), color.a);
         #endif
         #ifdef LIGHTING_FSH
             gl_FragColor = applyFog(applyLighting(color, normalize(vNormal)));
@@ -1304,6 +1727,11 @@ namespace carto::vt {
         varying lowp float vSideVertex;
         varying mediump vec3 vNormal;
         #endif
+        #ifdef TERRAIN_SHADOW
+        // The extrusion's OWN normal, for the shadow's N.L. Separate from vNormal, which only
+        // exists when the lighting runs per fragment - the shadow needs it either way.
+        varying mediump vec3 vShadowNormal;
+        #endif
 
         void main(void) {
             int styleIndex = int(aVertexAttribs[0]);
@@ -1316,6 +1744,9 @@ namespace carto::vt {
             pos = applyTerrain(pos) + aVertexNormal * (aVertexHeight * uHeightScale);
             applyShadowPos(pos);
             vec3 normal = normalize(sideVertex > 0.0 ? aVertexBinormal : aVertexNormal);
+        #ifdef TERRAIN_SHADOW
+            vShadowNormal = normal;
+        #endif
             vec4 color = uColorTable[styleIndex];
             vTilePos = (uTileMatrix * vec3(aVertexUV * uUVScale, 1.0)).xy;
         #ifdef LIGHTING_VSH
@@ -1335,6 +1766,9 @@ namespace carto::vt {
     static const std::string polygon3DFsh = R"GLSL(
         varying highp_opt vec2 vTilePos;
         varying lowp vec4 vColor;
+        #ifdef TERRAIN_SHADOW
+        varying mediump vec3 vShadowNormal;
+        #endif
         #ifdef LIGHTING_FSH
         varying highp_opt float vHeight;
         varying lowp float vSideVertex;
@@ -1353,7 +1787,12 @@ namespace carto::vt {
         #ifdef TERRAIN_SHADOW
             // Extrusions receive as well as cast: a building in the shadow of a ridge, or of a
             // taller neighbour, darkens the same way the ground does.
-            gl_FragColor.rgb *= shadowFactor();
+            // N.L is the extrusion's own normal, not normal incidence: a roof IS its own caster,
+            // so at N.L = 1 it gets the minimum bias against its own depth in the map and speckles
+            // itself as soon as a shadow texel covers more ground than a roof is wide - which is
+            // what shredded the buildings on zooming out. It also lets the back-face rule shadow
+            // a wall facing away from the sun, which no depth comparison can decide.
+            gl_FragColor.rgb *= shadowFactorSlope(max(0.0, dot(normalize(vShadowNormal), uSunDir)));
         #endif
         }
     )GLSL";

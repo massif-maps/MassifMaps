@@ -324,9 +324,16 @@ namespace carto::mvt {
         }
 
         T getFunction(const ExpressionContext& context) const {
-//            if (!_contextVars) {
-//                return _func;
-//            }
+            // No context variables means the expression reads nothing but the view state, so
+            // the function built once in setExpression is the same one buildFunction would
+            // return here - and returning it hands every tile and every feature the SAME
+            // function object. That is what lets the renderer memoise the evaluation for a
+            // frame instead of re-running the expression interpreter once per draw call.
+            // (Disabled while linear() key frames were invisible to the dependency checker;
+            // ExpressionVariableVisitor now descends into them.)
+            if (!_contextVars) {
+                return _func;
+            }
             return buildFunction(context);
         }
 

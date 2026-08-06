@@ -128,10 +128,10 @@ namespace carto::mvt {
         const Expression& getTimeExpression() const { return _timeExpr; }
         const std::vector<Expression>& getKeyFrames() const { return _keyFrames; }
 
-        Value evaluate(float t, ExpressionContext context) const;
+        Value evaluate(float t, const ExpressionContext& context) const;
 
     private:
-        static std::variant<cglib::fcurve2<float>, cglib::fcurve5<float>> buildFCurve(Method method, const std::vector<Expression>& , const ExpressionContext context);
+        static std::variant<cglib::fcurve2<float>, cglib::fcurve5<float>> buildFCurve(Method method, const std::vector<Expression>& , const ExpressionContext& context);
         static std::optional<std::variant<cglib::fcurve2<float>, cglib::fcurve5<float>>> buildConstantFCurve(Method method, const std::vector<Expression>&);
 
         const Method _method;

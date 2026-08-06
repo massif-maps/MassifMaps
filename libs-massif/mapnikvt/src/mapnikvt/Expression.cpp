@@ -180,7 +180,7 @@ namespace carto::mvt {
         throw std::invalid_argument("Illegal operator");
     }
 
-    Value InterpolateExpression::evaluate(float t, ExpressionContext context) const {
+    Value InterpolateExpression::evaluate(float t, const ExpressionContext& context) const {
         struct Evaluator {
             explicit Evaluator(float t) : _time(t) { }
             Value operator() (const cglib::fcurve2<float>& fcurve) const {
@@ -194,8 +194,13 @@ namespace carto::mvt {
         private:
             float _time;
         };
-        auto fcurve = _fcurve ? _fcurve.value(): buildFCurve(_method, _keyFrames, context);
-        return std::visit(Evaluator(t), fcurve);
+        // The constant curve is evaluated in place: it owns a vector of key frames, so
+        // taking it by value copied (and heap-allocated) that vector on every evaluation -
+        // and this runs per style parameter per draw call.
+        if (_fcurve) {
+            return std::visit(Evaluator(t), *_fcurve);
+        }
+        return std::visit(Evaluator(t), buildFCurve(_method, _keyFrames, context));
     }
 
     std::optional<std::variant<cglib::fcurve2<float>, cglib::fcurve5<float>>> InterpolateExpression::buildConstantFCurve(Method method, const std::vector<Expression>& keyFrames) {
@@ -244,7 +249,7 @@ namespace carto::mvt {
         }
         return std::optional<std::variant<cglib::fcurve2<float>, cglib::fcurve5<float>>>();
     }
-    std::variant<cglib::fcurve2<float>, cglib::fcurve5<float>> InterpolateExpression::buildFCurve(Method method, const std::vector<Expression>& keyFrames, const ExpressionContext context) {
+    std::variant<cglib::fcurve2<float>, cglib::fcurve5<float>> InterpolateExpression::buildFCurve(Method method, const std::vector<Expression>& keyFrames, const ExpressionContext& context) {
         cglib::fcurve_type type = cglib::fcurve_type::linear;
         switch (method) {
         case Method::STEP:

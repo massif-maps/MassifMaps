@@ -270,6 +270,22 @@ namespace carto::vt {
 #endif
     }
 
+    bool Label::hasGeometryOverTile(const TileId& tileId) const {
+        // Elevation tiles and label tiles are different tile sets at different zooms, so the
+        // test is 'the two tiles overlap on the ground', not equality.
+        for (const TilePoint& tilePoint : _tilePoints) {
+            if (tilePoint.tileId.getWrapped().intersects(tileId)) {
+                return true;
+            }
+        }
+        for (const TileLine& tileLine : _tileLines) {
+            if (tileLine.tileId.getWrapped().intersects(tileId)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     void Label::updateElevation(const std::function<double(const cglib::vec3<double>&)>& heightFunc) {
         // Refresh anchor heights from the elevation data. Label geometry is built when the
         // tile is decoded, possibly before its elevation data has arrived - this re-anchors
@@ -439,13 +455,13 @@ namespace carto::vt {
     }
 
     float Label::calculateTerrainScaleFactor(const cglib::vec3<double>& position, const ViewState& viewState) const {
-        // With planar 3D terrain, labels keep a CONSTANT ON-SCREEN SIZE (tangram-style):
-        // the label world size is derived from the zoom level only, so the perspective
-        // divide would otherwise scale labels by their distance - drastically oversizing
-        // labels lifted onto high mountains and shrinking labels towards the horizon.
-        // Rescale by the ratio of the label view depth to the focus depth (where the view
+        // In a planar projection labels keep a CONSTANT ON-SCREEN SIZE (tangram-style): the
+        // label world size is derived from the zoom level only, so the perspective divide would
+        // otherwise scale labels by their distance - oversizing labels lifted onto high mountains,
+        // shrinking them towards the horizon, and on a tilted 2D map making the nearest ones far
+        // too big. Rescale by the ratio of the label view depth to the focus depth (where the view
         // axis meets the ground plane), which exactly cancels the perspective scaling.
-        if (!viewState.planarTerrain) {
+        if (!viewState.planarProjection) {
             return 1.0f;
         }
         cglib::vec3<double> viewDir = -cglib::vec3<double>::convert(viewState.orientation[2]);
@@ -486,8 +502,9 @@ namespace carto::vt {
         if (_style->orientation == LabelOrientation::LINE) {
             // The run is laid out in glyph units on the camera axes (see buildLineVertexData), so
             // its envelope is the bounds of that run put back on those axes - the same shape the
-            // renderer draws.
-            updateLineVertexData(placement, scale, viewState);
+            // renderer draws. The envelope serves collision, so it takes the layout that is there
+            // rather than re-laying the run out for this caller's view (see updateLineVertexData).
+            updateLineVertexData(placement, scale, viewState, false);
 
             const cglib::vec3<float>& cameraXAxis = viewState.orientation[0];
             const cglib::vec3<float>& cameraYAxis = viewState.orientation[1];
@@ -536,8 +553,10 @@ namespace carto::vt {
         return valid;
     }
 
-    bool Label::calculateVertexData(float size, const ViewState& viewState, int styleIndex, int haloStyleIndex, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const {
+    bool Label::calculateVertexData(float size, const ViewState& viewState, int styleIndex, int haloStyleIndex, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& offsets, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const {
+        VT_STAT_CLOCK(labelClock);
         std::shared_ptr<const Placement> placement = getPlacement(viewState);
+        VT_STAT_SPLIT(labelPlacementNs, labelClock);
         float scale = size * viewState.zoomScale * _style->scale;
         if (placement) {
             scale *= calculateTerrainScaleFactor(*placement, viewState);
@@ -548,17 +567,23 @@ namespace carto::vt {
 
         // Build vertex data cache
         bool valid = cglib::dot_product(viewState.orientation[2], placement->normal) > MIN_BILLBOARD_VIEW_NORMAL_DOTPRODUCT;
+        // Which frame the offsets below are expressed in; the shader reads it from attribs[3].
+        std::int8_t billboardMode = CAMERA_AXIS_OFFSET;
         if (_style->orientation == LabelOrientation::LINE) {
-            updateLineVertexData(placement, scale, viewState);
+            // The drawn run has to follow the line as THIS view projects it - this is the caller
+            // that rebuilds it (see updateLineVertexData).
+            updateLineVertexData(placement, scale, viewState, true);
+            VT_STAT_SPLIT(labelLineBuildNs, labelClock);
             if (_cachedVertices.size() > MAX_LABEL_VERTICES) {
                 return false;
             }
 
+            // The glyph run is laid out on the camera axes, so the shader can span it from
+            // them: emit the anchor and the run-local offset and let uLabelAxisX/Y do the rest.
             cglib::vec3<float> origin = cglib::vec3<float>::convert(placement->position - viewState.origin);
-            const cglib::vec3<float>& cameraXAxis = viewState.orientation[0];
-            const cglib::vec3<float>& cameraYAxis = viewState.orientation[1];
+            vertices.fill(origin, _cachedVertices.size());
             for (const cglib::vec3<float>& vertex : _cachedVertices) {
-                vertices.append(origin + cameraXAxis * (vertex(0) * scale) + cameraYAxis * (vertex(1) * scale));
+                offsets.append(cglib::vec3<float>(vertex(0) * scale, vertex(1) * scale, 0));
             }
 
             valid = valid && _cachedValid;
@@ -579,17 +604,29 @@ namespace carto::vt {
 
             cglib::vec3<float> origin, xAxis, yAxis;
             setupCoordinateSystem(viewState, placement, origin, xAxis, yAxis);
-            for (const cglib::vec3<float>& vertex : _cachedVertices) {
-                vertices.append(origin + xAxis * (vertex(0) * scale) + yAxis * (vertex(1) * scale));
+            vertices.fill(origin, _cachedVertices.size());
+            if (_style->orientation == LabelOrientation::BILLBOARD_3D || _style->orientation == LabelOrientation::LINE_BILLBOARD_3D) {
+                // Axes are the camera's: leave them to the shader (see labelVsh).
+                for (const cglib::vec3<float>& vertex : _cachedVertices) {
+                    offsets.append(cglib::vec3<float>(vertex(0) * scale, vertex(1) * scale, 0));
+                }
+            } else {
+                // Axes come from the placement (or from the placement normal and the camera
+                // up vector) - span the offset here and hand the shader a world offset.
+                billboardMode = WORLD_OFFSET;
+                for (const cglib::vec3<float>& vertex : _cachedVertices) {
+                    offsets.append(xAxis * (vertex(0) * scale) + yAxis * (vertex(1) * scale));
+                }
             }
         }
 
+        VT_STAT_SPLIT(labelTransformNs, labelClock);
         normals.fill(placement->normal, _cachedVertices.size());
         texCoords.copy(_cachedTexCoords, 0, _cachedTexCoords.size());
 
         if (haloStyleIndex >= 0) {
             for (const cglib::vec4<std::int8_t>& attrib : _cachedAttribs) {
-                attribs.append(cglib::vec4<std::int8_t>(static_cast<std::int8_t>(haloStyleIndex), attrib(1), static_cast<std::int8_t>(_opacity * 127.0f), 0));
+                attribs.append(cglib::vec4<std::int8_t>(static_cast<std::int8_t>(haloStyleIndex), attrib(1), static_cast<std::int8_t>(_opacity * 127.0f), billboardMode));
             }
             
             std::uint16_t offset = static_cast<std::uint16_t>(vertices.size() - _cachedVertices.size());
@@ -598,13 +635,14 @@ namespace carto::vt {
             }
 
             vertices.copy(vertices, vertices.size() - _cachedVertices.size(), _cachedVertices.size());
+            offsets.copy(offsets, offsets.size() - _cachedVertices.size(), _cachedVertices.size());
 
             normals.fill(placement->normal, _cachedVertices.size());
             texCoords.copy(_cachedTexCoords, 0, _cachedTexCoords.size());
         }
 
         for (const cglib::vec4<std::int8_t>& attrib : _cachedAttribs) {
-            attribs.append(cglib::vec4<std::int8_t>(static_cast<std::int8_t>(styleIndex), attrib(1), static_cast<std::int8_t>(_opacity * 127.0f), 0));
+            attribs.append(cglib::vec4<std::int8_t>(static_cast<std::int8_t>(styleIndex), attrib(1), static_cast<std::int8_t>(_opacity * 127.0f), billboardMode));
         }
         
         std::uint16_t offset = static_cast<std::uint16_t>(vertices.size() - _cachedVertices.size());
@@ -614,6 +652,7 @@ namespace carto::vt {
             }
         }
 
+        VT_STAT_SPLIT(labelAttribNs, labelClock);
         return valid;
     }
 
@@ -656,7 +695,7 @@ namespace carto::vt {
         }
     }
 
-    bool Label::buildLineVertexData(const std::shared_ptr<const Placement>& placement, float scale, const ViewState& viewState, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const {
+    bool Label::buildLineVertexData(const std::shared_ptr<const Placement>& placement, float scale, const ViewState& viewState, const cglib::mat4x4<double>& mvpMatrix, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const {
         const std::vector<Placement::Edge>& edges = placement->edges;
         if (edges.empty() || !(scale > 0)) {
             return false;
@@ -673,8 +712,8 @@ namespace carto::vt {
         // Project through the view-projection, not just onto the camera axes: with a tilted view
         // the far half of a line is compressed by the perspective divide, and glyphs laid out on
         // an orthographic projection of it drift off the line and pick up the wrong angle. The
-        // basis is the anchor's own glyph unit, so the run stays in glyph units either way.
-        cglib::mat4x4<double> mvpMatrix = viewState.projectionMatrix * viewState.cameraMatrix;
+        // basis is the anchor's own glyph unit, so the run stays in glyph units either way. The
+        // matrix comes from the caller, which keys the cache on it (see updateLineVertexData).
         cglib::vec3<double> anchorPos = placement->position;
         auto projectPoint = [&mvpMatrix, &viewState](const cglib::vec3<double>& pos, cglib::vec2<float>& result) {
             cglib::vec4<double> clipPos = cglib::transform(cglib::vec4<double>(pos(0), pos(1), pos(2), 1), mvpMatrix);
@@ -797,6 +836,91 @@ namespace carto::vt {
             return false; // the line is genuinely too short to carry the text
         }
         penStart = std::min(std::max(penStart, -overhang), total - runLength + overhang);
+
+        // WHICH WAY THE WORD READS, decided on the projected line - tangram's rule, ported from
+        // CurvedLabel::updateScreenTransform. Three parts, all measured over the span the glyphs
+        // actually cover:
+        //  - a segment pointing right beyond the tolerance means the word must run forwards there,
+        //    one pointing left means it must run backwards; needing BOTH is a line that cannot
+        //    carry the text either way round, and the label is dropped rather than drawn as a
+        //    mixture (their "Cannot reverse the direction when some glyphs must be placed in
+        //    forward direction and vice versa");
+        //  - otherwise the run is reversed when its end lands left of its start;
+        //  - a hairpin inside the run - two segments within a short window pointing back at each
+        //    other - is dropped. Arc length keeps growing around a hairpin while the screen
+        //    position barely moves, so the pen advances but the glyphs land on top of each other.
+        //    Their chord limit is |dir(k) + dir(i)|^2 < 1.7^2, i.e. an inner angle under ~120 deg.
+        // The anchor's own tangent, which the placement-level autoflip uses, is not enough: on a
+        // curving line it can point the opposite way to the word as a whole.
+        {
+            float flipTolerance = std::sin(45.0f * 3.14159265f / 180.0f);
+            bool mustForward = false, mustReverse = false;
+            bool hairpin = false;
+            std::size_t first = 0, last = points.size() - 2;
+            while (first < last && lengths[first + 1] < penStart) {
+                first++;
+            }
+            while (last > first && lengths[last] > penStart + runLength) {
+                last--;
+            }
+            auto segmentDir = [&points](std::size_t i) {
+                cglib::vec2<float> v = points[i + 1] - points[i];
+                return (cglib::norm(v) > 0 ? cglib::unit(v) : cglib::vec2<float>(0, 0));
+            };
+            for (std::size_t i = first; i <= last; i++) {
+                cglib::vec2<float> dir = segmentDir(i);
+                if (dir == cglib::vec2<float>(0, 0)) {
+                    continue;
+                }
+                mustForward = mustForward || dir(0) > flipTolerance;
+                mustReverse = mustReverse || dir(0) < -flipTolerance;
+                for (std::size_t k = i; k-- > first; ) {
+                    if (cglib::norm(segmentDir(k) + dir) < LINE_HAIRPIN_CHORD * LINE_HAIRPIN_CHORD) {
+                        hairpin = true;
+                        break;
+                    }
+                    if (lengths[k] < lengths[i] - LINE_DIRECTION_WINDOW) {
+                        break;
+                    }
+                }
+                if (hairpin) {
+                    break;
+                }
+            }
+            if (hairpin || (mustForward && mustReverse)) {
+                return false;
+            }
+            // Which way the word reads is decided by the run's CHORD alone. Tangram lets a single
+            // segment pointing the wrong way (their mustReverse) force the reversal, and on a line
+            // that wiggles - a contour does constantly - one such segment turns a run that reads
+            // perfectly well upside down. Their own comment there is "TODO use better heuristic to
+            // decide flipping"; the segment test is kept, but only for the REJECTION above, where
+            // it is unambiguous.
+            cglib::vec2<float> startPoint = pointAt(penStart);
+            cglib::vec2<float> endPoint = pointAt(penStart + runLength);
+            float dx = endPoint(0) - startPoint(0);
+            float dy = endPoint(1) - startPoint(1);
+            if (std::abs(dx) < LINE_VERTICAL_RUN_FRACTION * runLength) {
+                // A run this close to vertical has no meaningful left or right, and a test on dx
+                // alone picks one at random there. Map convention is that a vertical label reads
+                // bottom to top, so the run must head UP the screen.
+                _lineReversed = (dy < 0);
+            }
+            else {
+                // Hysteresis, so a run whose chord is near the vertical band does not flip back and
+                // forth on the smallest camera step.
+                float bias = (_lineReversed ? LINE_REVERSE_HYSTERESIS : -LINE_REVERSE_HYSTERESIS) * runLength;
+                _lineReversed = (dx < bias);
+            }
+            if (_lineReversed) {
+                std::reverse(points.begin(), points.end());
+                for (std::size_t i = 0; i < points.size(); i++) {
+                    lengths[i] = (i > 0 ? lengths[i - 1] + cglib::length(points[i] - points[i - 1]) : 0.0f);
+                }
+                penStart = total - (penStart + runLength);
+            }
+        }
+
         float offset = penStart;
 
         // Readability is judged against the direction the run takes as a whole, not against its
@@ -890,17 +1014,30 @@ namespace carto::vt {
         return valid;
     }
 
-    void Label::updateLineVertexData(const std::shared_ptr<const Placement>& placement, float scale, const ViewState& viewState) const {
-        // The run is built on the camera axes, so it has to be rebuilt when they turn, not only
-        // when the scale or the placement change.
-        if (scale == _cachedScale && placement == _cachedPlacement && viewState.orientation[0] == _cachedCameraXAxis && viewState.orientation[1] == _cachedCameraYAxis) {
+    void Label::updateLineVertexData(const std::shared_ptr<const Placement>& placement, float scale, const ViewState& viewState, bool rebuildForView) const {
+        // The run is laid out on the line AS THE CAMERA PROJECTS IT, so the view-projection is
+        // part of the key: keying on the camera axes alone kept a run laid out for the camera
+        // position it was built at, and a pan then left the glyphs following a projection of the
+        // road that no longer holds - the text drifts off the line, and can be laid out past the
+        // end of it, until a zoom (which changes the scale) rebuilds it.
+        //
+        // Only the RENDERER asks for a rebuild on a view change (rebuildForView). The culler runs
+        // on a worker thread whose view state lags the frame, and its layout decides both the
+        // envelope and, through _cachedValid, whether the label is drawn at all - re-laying the
+        // run out on that older camera judges the label against a view nobody sees, and the ones
+        // that no longer fit there are hidden even though they lay out fine at the frame's own
+        // camera. It reuses whatever layout is there (the renderer's, at most a frame old) and
+        // only builds one when there is none for this placement or scale.
+        cglib::mat4x4<double> mvpMatrix = viewState.projectionMatrix * viewState.cameraMatrix;
+        if (scale == _cachedScale && placement == _cachedPlacement && (mvpMatrix == _cachedMVPMatrix || !rebuildForView)) {
             return;
         }
+        VT_STAT_INC(lineLayoutBuilds);
         _cachedVertices.clear();
         _cachedTexCoords.clear();
         _cachedAttribs.clear();
         _cachedIndices.clear();
-        _cachedValid = buildLineVertexData(placement, scale, viewState, _cachedVertices, _cachedTexCoords, _cachedAttribs, _cachedIndices);
+        _cachedValid = buildLineVertexData(placement, scale, viewState, mvpMatrix, _cachedVertices, _cachedTexCoords, _cachedAttribs, _cachedIndices);
         // A run that is already on screen rides out a few failed layouts. The layout is judged on
         // the projected line, and it is judged from two different view states - the culler works
         // on the snapshot of its pass, the renderer on the current camera - so a run at the edge
@@ -914,13 +1051,12 @@ namespace carto::vt {
         _lineLayoutValid = _cachedValid;
         _cachedScale = scale;
         _cachedPlacement = placement;
-        _cachedCameraXAxis = viewState.orientation[0];
-        _cachedCameraYAxis = viewState.orientation[1];
+        _cachedMVPMatrix = mvpMatrix;
     }
 
     void Label::setupCoordinateSystem(const ViewState& viewState, const std::shared_ptr<const Placement>& placement, cglib::vec3<float>& origin, cglib::vec3<float>& xAxis, cglib::vec3<float>& yAxis) const {
         cglib::vec3<double> position = placement->position;
-        if (viewState.planarTerrain && _style->orientation != LabelOrientation::LINE && viewState.resolution > 0) {
+        if (viewState.planarProjection && _style->orientation != LabelOrientation::LINE && viewState.resolution > 0) {
             // Snap the label anchor to a quarter of the (normalized) pixel grid: glyphs then
             // rasterize at a stable subpixel phase, which keeps text noticeably sharper and
             // shimmer-free (tangram-style screen-space anchoring)
@@ -961,6 +1097,15 @@ namespace carto::vt {
         }
 
         if (!_style->autoflip) {
+            return _placement;
+        }
+
+        // A LINE label decides this in buildLineVertexData instead, from the PROJECTED run's own
+        // start and end - tangram's rule (CurvedLabel::updateScreenTransform). The anchor tangent
+        // used below is only the direction at one point of the line: a curving line (a contour, a
+        // bending street) can leave the anchor pointing right while the word runs left, and the
+        // label then reads upside down. Flipping the placement here as well would fight that.
+        if (_style->orientation == LabelOrientation::LINE) {
             return _placement;
         }
 

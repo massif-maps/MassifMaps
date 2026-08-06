@@ -91,6 +91,12 @@ namespace carto::vt {
         _viewState.zoomScale *= _scale;
     }
 
+    void LabelCuller::setMetersToInternal(double metersToInternal) {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        _metersToInternal = metersToInternal;
+    }
+
     void LabelCuller::reset() {
         std::lock_guard<std::mutex> lock(_mutex);
 
@@ -122,6 +128,22 @@ namespace carto::vt {
             // Capture visibility from the previous frame BEFORE updatePlacement, which may
             // reset opacity to 0 even for labels that were already visible on screen.
             bool wasVisible = label->isVisible();
+
+            // Style max-distance: a label glyph is screen-space, so an unlimited view fills its
+            // horizon band with labels drawn at full size for features kilometres away. Hiding
+            // rather than skipping keeps the existing opacity animation, so the label FADES out
+            // when it passes the limit and fades back in when it returns - no per-frame work, the
+            // GL thread already animates opacity towards isVisible().
+            float maxDistance = label->getStyle()->maxDistance;
+            if (maxDistance > 0 && _metersToInternal > 0) {
+                cglib::vec3<double> position(0, 0, 0);
+                if (label->calculateCenter(position)) {
+                    if (cglib::length(position - _viewState.origin) > maxDistance * _metersToInternal) {
+                        label->setVisible(false);
+                        continue;
+                    }
+                }
+            }
 
             if (label->updatePlacement(_viewState)) {
                 label->setOpacity(0);

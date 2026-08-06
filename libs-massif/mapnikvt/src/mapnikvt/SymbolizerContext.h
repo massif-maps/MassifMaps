@@ -19,12 +19,16 @@ namespace carto::mvt {
     class SymbolizerContext final {
     public:
         struct Settings {
-            explicit Settings(float tileSize, std::shared_ptr<const std::map<std::string, Value>> nutiParameterValueMap, std::shared_ptr<const vt::Font> fallbackFont);
+            explicit Settings(float tileSize, std::shared_ptr<const std::map<std::string, Value>> nutiParameterValueMap, std::shared_ptr<const vt::Font> fallbackFont, float pixelScale = 1.0f);
 
             float getTileSize() const { return _tileSize; }
             float getGeometryScale() const { return _geometryScale; }
             float getFontScale() const { return _fontScale; }
             float getZoomLevelBias() const { return _zoomLevelBias; }
+            // Screen pixels per style pixel - the renderer scales everything by it, so a label's
+            // size in style units only becomes a size in pixels here. Glyph rasterization needs it
+            // (see pickGlyphRenderSize); nothing else does.
+            float getPixelScale() const { return _pixelScale; }
 
             const std::shared_ptr<const std::map<std::string, Value>>& getNutiParameterValueMap() const { return _nutiParameterValueMap; }
             const std::shared_ptr<const vt::Font>& getFallbackFont() const { return _fallbackFont; }
@@ -34,6 +38,7 @@ namespace carto::mvt {
             float _geometryScale;
             float _fontScale;
             float _zoomLevelBias;
+            float _pixelScale;
             
             std::shared_ptr<const std::map<std::string, Value>> _nutiParameterValueMap;
             std::shared_ptr<const vt::Font> _fallbackFont;

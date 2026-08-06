@@ -39,6 +39,12 @@ namespace carto::mvt {
             ColorFunctionProperty sunColor = ColorFunctionProperty("#ffffff");
             FloatFunctionProperty sunIntensity = FloatFunctionProperty(1.0f);
             FloatFunctionProperty ambientIntensity = FloatFunctionProperty(0.35f);
+            // Building (3D extrusion) lighting. Unset means the extrusions follow the terrain sun
+            // when terrain lighting is on, and the legacy view-direction shading when it is off -
+            // which is why walls change darkness as terrain lighting is toggled. Setting either of
+            // these puts the extrusions on the normalised-Lambert model whatever the terrain does.
+            FloatFunctionProperty buildingLightIntensity = FloatFunctionProperty(1.0f);
+            FloatFunctionProperty buildingAmbient = FloatFunctionProperty(0.35f);
             FloatFunctionProperty terrainLighting = FloatFunctionProperty(0.0f);   // 0/1: light the terrain with the sun
             FloatFunctionProperty shadowStrength = FloatFunctionProperty(0.0f);    // 0 = no shadows
             FloatFunctionProperty shadowBias = FloatFunctionProperty(0.25f);       // meters

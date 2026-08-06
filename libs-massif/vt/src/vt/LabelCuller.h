@@ -27,6 +27,12 @@ namespace carto::vt {
         explicit LabelCuller(float scale);
 
         void setViewState(const ViewState& viewState);
+        /**
+         * Internal units per meter at the current view, so that a label style's max-distance
+         * (which is in meters) can be compared against world-space distances. 0 disables the
+         * test - a caller that does not set it gets the previous behaviour exactly.
+         */
+        void setMetersToInternal(double metersToInternal);
         void reset();
         bool process(const std::vector<std::shared_ptr<Label>>& labelList, std::mutex& labelMutex);
 
@@ -64,6 +70,7 @@ namespace carto::vt {
 
         cglib::mat4x4<float> _localCameraProjMatrix;
         ViewState _viewState;
+        double _metersToInternal = 0;
         std::vector<CullRecord> _recordGrid[GRID_RESOLUTION_Y][GRID_RESOLUTION_X];
 
         const float _scale;

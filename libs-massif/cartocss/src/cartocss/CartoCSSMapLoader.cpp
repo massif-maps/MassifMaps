@@ -245,6 +245,8 @@ namespace carto::css {
             { "sun-altitude", &mvt::Map::Settings::sunAltitude },
             { "sun-intensity", &mvt::Map::Settings::sunIntensity },
             { "ambient-intensity", &mvt::Map::Settings::ambientIntensity },
+            { "building-light-intensity", &mvt::Map::Settings::buildingLightIntensity },
+            { "building-ambient", &mvt::Map::Settings::buildingAmbient },
             { "terrain-lighting", &mvt::Map::Settings::terrainLighting },
             { "shadow-strength", &mvt::Map::Settings::shadowStrength },
             { "shadow-bias", &mvt::Map::Settings::shadowBias },

@@ -28,6 +28,9 @@ namespace carto::vt {
         std::string loadFontData(const std::vector<unsigned char>& data);
         void setFontDataLoader(FontDataLoader loader);
         std::shared_ptr<const Font> getFont(const std::string& name, const std::shared_ptr<const Font>& baseFont) const;
+        // The same font (and the same fallback chain) rasterized at another glyph render size. A
+        // font whose name declares a size of its own is returned as it is - see pickGlyphRenderSize.
+        std::shared_ptr<const Font> getFont(const std::shared_ptr<const Font>& font, int glyphRenderSize) const;
 
     private:
         class Impl;

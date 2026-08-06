@@ -34,6 +34,7 @@ namespace carto::mvt {
         float tileSize = symbolizerContext.getSettings().getTileSize();
         float fontScale = symbolizerContext.getSettings().getFontScale();
         float minimumDistance = _minimumDistance.getValue(exprContext);
+        float maxDistance = _maxDistance.getValue(exprContext);
         float placementPriority = _placementPriority.getValue(exprContext);
         float orientationAngle = _orientationAngle.getValue(exprContext);
         float sizeStatic = _size.getStaticValue(exprContext);
@@ -151,8 +152,8 @@ namespace carto::mvt {
             };
         }
 
-        return [compOp, fillFunc, haloFillFunc, sizeFunc, haloRadiusFunc, fontScale, placement, text, hash, orientationAngle, formatter, backgroundOffset, backgroundImage, spacing, textSize, tileId, tileSize, labelIdOverride, groupId, placementPriority, minimumDistance, allowOverlapSameFeatureId, sameFeatureIdDependent, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
-            vt::TextLabelStyle style(placement, fillFunc, sizeFunc, haloFillFunc, haloRadiusFunc, true, orientationAngle, fontScale, backgroundOffset, backgroundImage);
+        return [compOp, fillFunc, haloFillFunc, sizeFunc, haloRadiusFunc, fontScale, placement, text, hash, orientationAngle, formatter, backgroundOffset, backgroundImage, spacing, textSize, tileId, tileSize, labelIdOverride, groupId, placementPriority, minimumDistance, maxDistance, allowOverlapSameFeatureId, sameFeatureIdDependent, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
+            vt::TextLabelStyle style(placement, fillFunc, sizeFunc, haloFillFunc, haloRadiusFunc, true, orientationAngle, fontScale, backgroundOffset, backgroundImage, maxDistance);
             vt::TileLayerBuilder::TextLabelProcessor textProcessor;
             for (std::size_t featureIndex = 0; featureIndex < featureCollection.size(); featureIndex++) {
                 if (!textProcessor) {
@@ -426,6 +427,16 @@ namespace carto::mvt {
                     break;
                 }
             }
+        }
+
+        // Rasterize the glyphs at a size that covers the label instead of magnifying one raster to
+        // every size, which is what left large text soft (tangram's s_fontRasterSizes ladder,
+        // core/src/text/fontContext.cpp). The style keeps the last word: a face named
+        // 'face?glyph_size=N' is handed back untouched.
+        const SymbolizerContext::Settings& settings = symbolizerContext.getSettings();
+        float emSizePixels = _size.getStaticValue(exprContext) * settings.getFontScale() * settings.getPixelScale();
+        if (std::shared_ptr<const vt::Font> sizedFont = symbolizerContext.getFontManager()->getFont(font, vt::pickGlyphRenderSize(emSizePixels))) {
+            font = sizedFont;
         }
         return font;
     }

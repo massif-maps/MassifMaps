@@ -39,6 +39,7 @@ namespace carto::mvt {
             bindProperty("dy", &_dy);
             bindProperty("placement-priority", &_placementPriority);
             bindProperty("minimum-distance", &_minimumDistance);
+            bindProperty("max-distance", &_maxDistance);
             bindProperty("allow-overlap", &_allowOverlap);
             bindProperty("allow-overlap-same-feature-id", &_allowOverlapSameFeatureId);
             bindProperty("same-feature-id-dependent", &_sameFeatureIdDependent);
@@ -91,6 +92,7 @@ namespace carto::mvt {
         FloatProperty _dy = FloatProperty(0.0f);
         FloatProperty _placementPriority = FloatProperty(0.0f);
         FloatProperty _minimumDistance = FloatProperty(0.0f);
+        FloatProperty _maxDistance = FloatProperty(0.0f); // meters from the camera; 0 = no limit
         BoolProperty _allowOverlap = BoolProperty(false);
         BoolProperty _clip = BoolProperty(false);
         BoolProperty _allowOverlapSameFeatureId = BoolProperty(false);

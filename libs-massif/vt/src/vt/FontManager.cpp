@@ -28,8 +28,12 @@ namespace carto::vt {
 
             FT_Init_FreeType(&_library);
 
+            // The glyph field is built from a rasterized coverage bitmap by the 'bsdf' module,
+            // never from the outline by the 'sdf' one - see addFreeTypeGlyph for why. Both carry
+            // their own spread, and both have to match the range the field is encoded over.
             FT_Int spread = GLYPH_RENDER_SPREAD;
             FT_Property_Set(_library, "sdf", "spread", &spread);
+            FT_Property_Set(_library, "bsdf", "spread", &spread);
         }
 
         ~FontManagerLibrary() {
@@ -56,7 +60,7 @@ namespace carto::vt {
 
     class FontManagerFont : public Font {
     public:
-        explicit FontManagerFont(const std::shared_ptr<FontManagerLibrary>& library, const std::shared_ptr<GlyphMap>& glyphMap, const std::vector<unsigned char>* data, const std::shared_ptr<const Font>& baseFont, int glyphRenderSize) : _library(library), _baseFont(baseFont), _glyphMap(glyphMap), _glyphRenderSize(glyphRenderSize), _face(nullptr), _font(nullptr) {
+        explicit FontManagerFont(const std::shared_ptr<FontManagerLibrary>& library, const std::string& name, const std::shared_ptr<GlyphMap>& glyphMap, const std::vector<unsigned char>* data, const std::shared_ptr<const Font>& baseFont, int glyphRenderSize) : _library(library), _name(name), _baseFont(baseFont), _glyphMap(glyphMap), _glyphRenderSize(glyphRenderSize), _face(nullptr), _font(nullptr) {
             std::lock_guard<std::recursive_mutex> lock(_library->getMutex());
 
             // Load FreeType font
@@ -162,7 +166,10 @@ namespace carto::vt {
                     if (const GlyphMap::Glyph* baseGlyph = _glyphMap->getGlyph(it->second)) {
                         std::size_t cluster = info[i].cluster;
                         std::uint32_t utf32Char = (cluster < len ? utf32Text[cluster] : 0);
-                        int renderSize = _glyphRenderSize - GLYPH_RENDER_SPREAD;
+                        // The glyph was rasterized and shaped by 'font', which is this font or one
+                        // of its fallbacks - and a fallback can carry a different render size, so
+                        // the metrics have to be scaled by the size they actually came out at.
+                        int renderSize = font->_glyphRenderSize - GLYPH_RENDER_SPREAD;
                         float glyphScale = size / renderSize;
                         cglib::vec2<float> glyphSize(static_cast<float>(baseGlyph->width), static_cast<float>(baseGlyph->height));
                         Glyph glyph(utf32Char, info[i].codepoint, *baseGlyph, glyphSize * glyphScale, baseGlyph->origin * glyphScale, cglib::vec2<float>(0, 0));
@@ -185,12 +192,29 @@ namespace carto::vt {
             return _glyphRenderSize;
         }
 
+        virtual const std::string& getName() const override {
+            return _name;
+        }
+
+        const std::shared_ptr<const Font>& getBaseFont() const {
+            return _baseFont;
+        }
+
     private:
         static constexpr int RENDER_SIZE = GLYPH_RENDER_SIZE - GLYPH_RENDER_SPREAD;
 
         GlyphMap::GlyphId addFreeTypeGlyph(FT_Face face, CodePoint codePoint) const {
             FT_Error error = FT_Load_Glyph(face, codePoint, FT_LOAD_NO_BITMAP | FT_LOAD_NO_HINTING);
             if (error != 0) {
+                return 0;
+            }
+            // Rasterize coverage first, then let FreeType's 'bsdf' module build the field from
+            // that bitmap - the same thing tangram does (fontContext.cpp rasterizes, then
+            // sdfBuildDistanceFieldNoAlloc). FreeType's outline SDF ('sdf' module, which is what
+            // rendering straight to FT_RENDER_MODE_SDF uses) gets the sign wrong where a stem
+            // meets a shoulder, so the middle of a stroke reads as outside the glyph.
+            error = FT_Render_Glyph(face->glyph, FT_RENDER_MODE_NORMAL);
+            if (error != 0 && error != FT_Err_Cannot_Render_Glyph) {
                 return 0;
             }
             error = FT_Render_Glyph(face->glyph, FT_RENDER_MODE_SDF);
@@ -219,6 +243,7 @@ namespace carto::vt {
         }
 
         const std::shared_ptr<FontManagerLibrary> _library;
+        const std::string _name;
         const std::shared_ptr<const Font> _baseFont;
         std::shared_ptr<GlyphMap> _glyphMap;
         const int _glyphRenderSize;
@@ -304,6 +329,38 @@ namespace carto::vt {
         std::shared_ptr<const Font> getFont(const std::string& name, const std::shared_ptr<const Font>& baseFont) const {
             std::lock_guard<std::mutex> lock(_mutex);
 
+            return getFontUnlocked(name, baseFont);
+        }
+
+        std::shared_ptr<const Font> getFont(const std::shared_ptr<const Font>& font, int glyphRenderSize) const {
+            std::lock_guard<std::mutex> lock(_mutex);
+
+            return getFontAtSizeUnlocked(font, glyphRenderSize);
+        }
+
+    private:
+        // Note: _mutex is expected to be locked by the caller
+        std::shared_ptr<const Font> getFontAtSizeUnlocked(const std::shared_ptr<const Font>& font, int glyphRenderSize) const {
+            auto managerFont = std::dynamic_pointer_cast<const FontManagerFont>(font);
+            if (!managerFont || managerFont->getGlyphRenderSize() == glyphRenderSize) {
+                return font;
+            }
+            const std::string& name = managerFont->getName();
+            if (name.find("glyph_size=") != std::string::npos) {
+                return font; // the style asked for a render size by name - it wins
+            }
+            // The fallbacks come along: a glyph taken from one of them is rasterized by that font,
+            // at that font's render size (see shapeGlyphs).
+            std::shared_ptr<const Font> baseFont = getFontAtSizeUnlocked(managerFont->getBaseFont(), glyphRenderSize);
+            std::string sizedName = name + (name.find('?') != std::string::npos ? "&" : "?") + "glyph_size=" + std::to_string(glyphRenderSize);
+            if (std::shared_ptr<const Font> sizedFont = getFontUnlocked(sizedName, baseFont)) {
+                return sizedFont;
+            }
+            return font;
+        }
+
+        // Note: _mutex is expected to be locked by the caller
+        std::shared_ptr<const Font> getFontUnlocked(const std::string& name, const std::shared_ptr<const Font>& baseFont) const {
             // Try to use already cached font
             auto fontIt = _fontMap.find(std::make_pair(name, baseFont));
             if (fontIt != _fontMap.end()) {
@@ -361,7 +418,7 @@ namespace carto::vt {
             }
 
             // Create new font
-            auto font = std::make_shared<FontManagerFont>(_library, glyphMapIt->second, &fontDataIt->second, baseFont, glyphRenderSize);
+            auto font = std::make_shared<FontManagerFont>(_library, name, glyphMapIt->second, &fontDataIt->second, baseFont, glyphRenderSize);
 
             // Preload often-used characters
             std::vector<std::uint32_t> glyphPreloadTable;
@@ -375,7 +432,6 @@ namespace carto::vt {
             return font;
         }
 
-    private:
         // Note: _mutex is expected to be locked by the caller
         std::map<std::string, std::vector<unsigned char>>::iterator loadExternalFontData(const std::string& fontName) const {
             if (!_fontDataLoader || _missingFontSet.find(fontName) != _missingFontSet.end()) {
@@ -457,5 +513,9 @@ namespace carto::vt {
 
     std::shared_ptr<const Font> FontManager::getFont(const std::string& name, const std::shared_ptr<const Font>& baseFont) const {
         return _impl->getFont(name, baseFont);
+    }
+
+    std::shared_ptr<const Font> FontManager::getFont(const std::shared_ptr<const Font>& font, int glyphRenderSize) const {
+        return _impl->getFont(font, glyphRenderSize);
     }
 }

@@ -85,6 +85,12 @@ namespace carto::mvt {
         }
         void operator() (const std::shared_ptr<InterpolateExpression>& interpExpr) const {
             std::visit(*this, interpExpr->getTimeExpression());
+            // Key frames are expressions too (they may reference variables), so they carry
+            // dependencies of their own. Missing them made a linear() over a variable look
+            // like it depended on nothing but the view state.
+            for (const Expression& keyFrame : interpExpr->getKeyFrames()) {
+                std::visit(*this, keyFrame);
+            }
         }
         void operator() (const std::shared_ptr<TransformExpression>& transExpr) const {
             for (const Expression& subExpr : transExpr->getSubExpressions()) {

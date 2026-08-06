@@ -29,6 +29,7 @@ namespace carto::mvt {
             bindProperty("stroke-width", &_strokeWidth);
             bindProperty("spacing", &_spacing);
             bindProperty("placement-priority", &_placementPriority);
+            bindProperty("max-distance", &_maxDistance);
             bindProperty("allow-overlap", &_allowOverlap);
             bindProperty("allow-overlap-same-feature-id", &_allowOverlapSameFeatureId);
             bindProperty("same-feature-id-dependent", &_sameFeatureIdDependent);
@@ -67,6 +68,7 @@ namespace carto::mvt {
         FloatFunctionProperty _strokeWidth = FloatFunctionProperty(0.5f);
         FloatProperty _spacing = FloatProperty(100.0f);
         FloatProperty _placementPriority = FloatProperty(0.0f);
+        FloatProperty _maxDistance = FloatProperty(0.0f); // meters from the camera; 0 = no limit
         BoolProperty _allowOverlap = BoolProperty(false);
         BoolProperty _clip = BoolProperty(false);
         BoolProperty _allowOverlapSameFeatureId = BoolProperty(false);

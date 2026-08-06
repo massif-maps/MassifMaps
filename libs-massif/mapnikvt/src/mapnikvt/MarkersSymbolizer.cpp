@@ -19,6 +19,7 @@ namespace carto::mvt {
         float fontScale = symbolizerContext.getSettings().getFontScale();
         float spacing = _spacing.getValue(exprContext);
         float placementPriority = _placementPriority.getValue(exprContext);
+        float maxDistance = _maxDistance.getValue(exprContext);
         float widthStatic = _width.getStaticValue(exprContext);
         float heightStatic = _height.getStaticValue(exprContext);
         float strokeWidthStatic = _strokeWidth.getStaticValue(exprContext);
@@ -198,8 +199,8 @@ namespace carto::mvt {
             };
         }
 
-        return [compOp, fillFunc, normalizedSizeFunc, bitmapImage, transform, orientation, placement, placementPriority, spacing, bitmapSize, tileId, tileSize, glyphMap, groupId, labelIdOverride, allowOverlapSameFeatureId, sameFeatureIdDependent, hash, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
-            vt::PointLabelStyle style(orientation, fillFunc, normalizedSizeFunc, false, bitmapImage, transform);
+        return [compOp, fillFunc, normalizedSizeFunc, bitmapImage, transform, orientation, placement, placementPriority, spacing, bitmapSize, tileId, tileSize, glyphMap, groupId, labelIdOverride, allowOverlapSameFeatureId, sameFeatureIdDependent, hash, maxDistance, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
+            vt::PointLabelStyle style(orientation, fillFunc, normalizedSizeFunc, false, bitmapImage, transform, maxDistance);
             vt::TileLayerBuilder::PointLabelProcessor pointProcessor;
             for (std::size_t featureIndex = 0; featureIndex < featureCollection.size(); featureIndex++) {
                 if (!pointProcessor) {
@@ -262,7 +263,7 @@ namespace carto::mvt {
                         }
                         
                         for (const auto& transformedPoints : generateTransformedPoints(vertices, spacing, bitmapSize, tileSize)) {
-                            vt::PointLabelStyle transformedStyle(orientation, fillFunc, normalizedSizeFunc, false, bitmapImage, transformedPoints.first * (transform ? *transform : vt::Transform()));
+                            vt::PointLabelStyle transformedStyle(orientation, fillFunc, normalizedSizeFunc, false, bitmapImage, transformedPoints.first * (transform ? *transform : vt::Transform()), maxDistance);
                             pointProcessor = layerBuilder.createPointLabelProcessor(transformedStyle, glyphMap);
                             if (pointProcessor) {
                                     for (const auto& vertex : transformedPoints.second) {

@@ -11,8 +11,8 @@
 #include "ValueConverter.h"
 
 namespace carto::mvt {
-    SymbolizerContext::Settings::Settings(float tileSize, std::shared_ptr<const std::map<std::string, Value>> nutiParameterValueMap, std::shared_ptr<const vt::Font> fallbackFont) :
-        _tileSize(tileSize), _geometryScale(1.0f), _fontScale(1.0f), _zoomLevelBias(0.0f), _nutiParameterValueMap(std::move(nutiParameterValueMap)), _fallbackFont(std::move(fallbackFont))
+    SymbolizerContext::Settings::Settings(float tileSize, std::shared_ptr<const std::map<std::string, Value>> nutiParameterValueMap, std::shared_ptr<const vt::Font> fallbackFont, float pixelScale) :
+        _tileSize(tileSize), _geometryScale(1.0f), _fontScale(1.0f), _zoomLevelBias(0.0f), _pixelScale(pixelScale), _nutiParameterValueMap(std::move(nutiParameterValueMap)), _fallbackFont(std::move(fallbackFont))
     {
         if (_nutiParameterValueMap) {
             auto geometryScaleIt = _nutiParameterValueMap->find("_geometryscale");

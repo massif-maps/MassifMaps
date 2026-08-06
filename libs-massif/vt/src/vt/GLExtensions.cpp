@@ -10,19 +10,42 @@ namespace carto::vt {
             paddedExtensions = " " + std::string(extensions) + " ";
         }
 
+        // Vertex array objects are core in OpenGL ES 3.0, under the unsuffixed names and with
+        // no extension string to advertise them. Without them every draw call re-specifies
+        // each vertex attribute one by one - measured at 170-510 geometry draws per frame for
+        // an ordinary style, i.e. thousands of redundant GL calls a frame.
+        bool gles3 = false;
+        if (const char* version = reinterpret_cast<const char*>(glGetString(GL_VERSION))) {
+            std::string versionStr(version);
+            std::size_t pos = versionStr.find("OpenGL ES ");
+            if (pos != std::string::npos && pos + 10 < versionStr.size()) {
+                gles3 = versionStr[pos + 10] >= '3';
+            }
+        }
+
 #ifdef GL_OES_vertex_array_object
-#ifdef __ANDROID__
-        _GL_OES_vertex_array_object_supported = false; // Android is a wild-wild west of GL implementations, at least one instance is known (Asus MemoPad) where extension support is reported but does not actually work
-#else
-        _GL_OES_vertex_array_object_supported = paddedExtensions.find(" GL_OES_vertex_array_object ") != std::string::npos;
-#endif
-        if (_GL_OES_vertex_array_object_supported) {
-            _glBindVertexArrayOES = reinterpret_cast<PFNGLBINDVERTEXARRAYOESPROC>(eglGetProcAddress("glBindVertexArrayOES"));
-            _glDeleteVertexArraysOES = reinterpret_cast<PFNGLDELETEVERTEXARRAYSOESPROC>(eglGetProcAddress("glDeleteVertexArraysOES"));
-            _glGenVertexArraysOES = reinterpret_cast<PFNGLGENVERTEXARRAYSOESPROC>(eglGetProcAddress("glGenVertexArraysOES"));
-            _glIsVertexArrayOES = reinterpret_cast<PFNGLISVERTEXARRAYOESPROC>(eglGetProcAddress("glIsVertexArrayOES"));
+        if (gles3) {
+            _glBindVertexArrayOES = reinterpret_cast<PFNGLBINDVERTEXARRAYOESPROC>(eglGetProcAddress("glBindVertexArray"));
+            _glDeleteVertexArraysOES = reinterpret_cast<PFNGLDELETEVERTEXARRAYSOESPROC>(eglGetProcAddress("glDeleteVertexArrays"));
+            _glGenVertexArraysOES = reinterpret_cast<PFNGLGENVERTEXARRAYSOESPROC>(eglGetProcAddress("glGenVertexArrays"));
+            _glIsVertexArrayOES = reinterpret_cast<PFNGLISVERTEXARRAYOESPROC>(eglGetProcAddress("glIsVertexArray"));
             _GL_OES_vertex_array_object_supported = _glBindVertexArrayOES && _glDeleteVertexArraysOES && _glGenVertexArraysOES && _glIsVertexArrayOES;
         }
+#ifdef __ANDROID__
+        // ES 2 only: the OES extension stays off on Android - it is reported by
+        // implementations where it does not actually work (a known Asus MemoPad case).
+#else
+        if (!_GL_OES_vertex_array_object_supported) {
+            _GL_OES_vertex_array_object_supported = paddedExtensions.find(" GL_OES_vertex_array_object ") != std::string::npos;
+            if (_GL_OES_vertex_array_object_supported) {
+                _glBindVertexArrayOES = reinterpret_cast<PFNGLBINDVERTEXARRAYOESPROC>(eglGetProcAddress("glBindVertexArrayOES"));
+                _glDeleteVertexArraysOES = reinterpret_cast<PFNGLDELETEVERTEXARRAYSOESPROC>(eglGetProcAddress("glDeleteVertexArraysOES"));
+                _glGenVertexArraysOES = reinterpret_cast<PFNGLGENVERTEXARRAYSOESPROC>(eglGetProcAddress("glGenVertexArraysOES"));
+                _glIsVertexArrayOES = reinterpret_cast<PFNGLISVERTEXARRAYOESPROC>(eglGetProcAddress("glIsVertexArrayOES"));
+                _GL_OES_vertex_array_object_supported = _glBindVertexArrayOES && _glDeleteVertexArraysOES && _glGenVertexArraysOES && _glIsVertexArrayOES;
+            }
+        }
+#endif
 #endif
 
 #ifdef GL_EXT_discard_framebuffer

@@ -23,7 +23,12 @@ namespace carto::vt {
         float aspect = 1;
         float resolution = 0;
         float zoomScale = 1;
-        bool planarTerrain = false; // planar mode with 3D terrain: world z of geometry is the terrain height over the z=0 ground plane
+        // Planar render projection, with or without 3D terrain. Labels then keep a CONSTANT
+        // ON-SCREEN SIZE (tangram-style: their world size comes from the zoom alone, so the
+        // perspective divide would otherwise blow them up towards the camera on a tilted view)
+        // and snap to the pixel grid. Terrain only made it visible - the geometry z is the
+        // terrain height there - but the correction is a property of the projection, not of it.
+        bool planarProjection = false;
         cglib::mat4x4<double> projectionMatrix = cglib::mat4x4<double>::identity();
         cglib::mat4x4<double> cameraMatrix = cglib::mat4x4<double>::identity();
         cglib::vec3<double> origin = cglib::vec3<double>::zero();

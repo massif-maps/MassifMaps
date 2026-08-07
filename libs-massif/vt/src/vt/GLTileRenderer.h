@@ -458,6 +458,10 @@ namespace carto::vt {
         // ~800 entries and 0.5-0.9 ms a frame - and all it buys is releasing a VBO a few
         // frames earlier.
         static constexpr int RESOURCE_SWEEP_INTERVAL_FRAMES = 8;
+        // Stencil bit reserved for the single-blend pass of a translucent style layer. The lower
+        // bits carry the per-tile mask values, so the pass only runs while a frame has fewer target
+        // tiles than this.
+        static constexpr int SINGLE_BLEND_STENCIL_BIT = 128;
         static constexpr float HALO_RADIUS_SCALE = 2.5f; // the scaling factor for halo radius
         static constexpr float STROKE_UV_SCALE = 2.857f; // stroked line UV scale factor
         static constexpr float POLYGON3D_HEIGHT_SCALE = 10018754.17f; // scaling factor for zoom 0 heights

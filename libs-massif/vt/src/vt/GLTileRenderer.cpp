@@ -1641,7 +1641,7 @@ namespace carto::vt {
             // retained tile from the previous zoom paints its whole footprint through every gap in
             // the new tile's content: the same roads twice, one zoom level apart, blinking as the
             // blend runs.
-            renderGeometry2D(*_visibleRenderTiles, _terrainSharedGround ? 0 : stencilBits);
+            renderGeometry2D(*_visibleRenderTiles, stencilBits);
             if (leEqualDepth) {
                 glDepthFunc(GL_LESS);
             }
@@ -2673,7 +2673,12 @@ namespace carto::vt {
         // A layer with a comp-op is the exception in both: it composites through the overlay
         // buffer, which has its own stencil and no depth at all, so its content has nothing else
         // to clip it to its tile.
-        if (stencilBits > 0 && _tileMasks < 0 && _terrainMode) {
+        // Whether the MASKS run is a separate question from whether the buffer HAS a stencil:
+        // the single-blend pass below needs one spare bit and no masks at all, so it must not be
+        // switched off with them (under a shared ground it never ran, which is where a translucent
+        // line kept blending itself twice at every join).
+        GLint maskStencilBits = (_terrainSharedGround ? 0 : stencilBits);
+        if (maskStencilBits > 0 && _tileMasks < 0 && _terrainMode) {
             bool anyCompOp = false;
             for (auto it = renderLayerMap.begin(); it != renderLayerMap.end() && !anyCompOp; it++) {
                 for (const RenderTileLayer* renderLayer : it->second) {
@@ -2684,16 +2689,16 @@ namespace carto::vt {
                 }
             }
             if (!anyCompOp) {
-                stencilBits = 0;
+                maskStencilBits = 0;
             }
         } else if (_tileMasks == 0) {
-            stencilBits = 0;
+            maskStencilBits = 0;
         }
 
         // Allocate stencil value for each target tile
         std::map<TileId, GLint> tileStencilMap;
         std::set<TileId> activeStencilTiles;
-        if (stencilBits > 0) {
+        if (maskStencilBits > 0) {
             for (const RenderTile& renderTile : renderTiles) {
                 if (!renderTile.visible || renderTile.renderLayers.empty()) {
                     continue;
@@ -2788,13 +2793,37 @@ namespace carto::vt {
             }
             CompOp layerCompOp = (layer->getCompOp() ? *layer->getCompOp() : CompOp::SRC_OVER);
 
+            // SINGLE BLEND: a translucent style layer must paint each pixel once. Its geometry
+            // overlaps itself in ways no tesselation can avoid - a line whose vertices sit closer
+            // together than it is wide folds at every join, a route doubles back within its own
+            // width - and every overlap blends again, which reads as darker knots along the line.
+            // Marking each pixel in a spare stencil bit as the layer paints it and rejecting the
+            // second fragment costs one bit and a masked clear per layer, no extra geometry pass.
+            // Only for a layer that IS translucent: an opaque one cannot show the artifact, and a
+            // later fragment of it legitimately covers an earlier one. A comp-op layer already
+            // composites once through its own buffer, and the low stencil bits carry the per-tile
+            // mask values, so this needs the tile count to leave the top bit free.
+            bool singleBlend = false;
+            if (stencilBits > 0 && !layer->getCompOp() && tileStencilMap.size() < SINGLE_BLEND_STENCIL_BIT) {
+                singleBlend = geometryOpacity < 1.0f;
+                for (auto layerIt = renderLayers.begin(); layerIt != renderLayers.end() && !singleBlend; layerIt++) {
+                    for (const std::shared_ptr<TileGeometry>& geometry : (*layerIt)->layer->getGeometries()) {
+                        const TileGeometry::StyleParameters& styleParams = geometry->getStyleParameters();
+                        for (int i = 0; i < styleParams.parameterCount && !singleBlend; i++) {
+                            if ((styleParams.colorFuncs[i])(_viewState).alpha() < 1.0f) {
+                                singleBlend = true;
+                            }
+                        }
+                    }
+                }
+            }
             // If compositing is enabled for this layer, prepare overlay rendering buffer.
             GLint currentFBO = 0;
             if (layer->getCompOp()) {
                 glGetIntegerv(GL_FRAMEBUFFER_BINDING, &currentFBO);
 
                 if (_overlayBuffer2D.fbo == 0) {
-                    createFrameBuffer(_overlayBuffer2D, true, false, stencilBits > 0);
+                    createFrameBuffer(_overlayBuffer2D, true, false, maskStencilBits > 0);
                 }
 
                 glBindFramebuffer(GL_FRAMEBUFFER, _overlayBuffer2D.fbo);
@@ -2807,7 +2836,7 @@ namespace carto::vt {
             // If needed, initialize the stencil buffer with target tile masks.
             // The masks implement screen-space tile clipping and must not be depth-tested
             // against the terrain depth pre-pass (the mask surfaces carry no depth bias).
-            if (resetStencil && stencilBits > 0) {
+            if (resetStencil && maskStencilBits > 0) {
                 resetStencil = false;
 
                 if (_terrainMode) {
@@ -2862,9 +2891,26 @@ namespace carto::vt {
                 }
             }
 
+            // Single blend, GL state. After the mask reset above, which clears every bit and puts
+            // the op back to KEEP - setting it before would be undone for the first layer of the
+            // frame and for the first one after a comp-op layer.
+            if (singleBlend) {
+                glEnable(GL_STENCIL_TEST); // the masks may not be running at all
+                glStencilMask(SINGLE_BLEND_STENCIL_BIT); // clear the paint bit only
+                glClearStencil(0);
+                glClear(GL_STENCIL_BUFFER_BIT);
+                // INVERT flips the paint bit on fragments that pass; the GL_EQUAL test then rejects
+                // anything landing where this layer already painted. With the masks off there is no
+                // per-tile value to match, so the test reads the paint bit alone.
+                glStencilOp(GL_KEEP, GL_KEEP, GL_INVERT);
+                if (maskStencilBits == 0) {
+                    glStencilFunc(GL_EQUAL, 0, SINGLE_BLEND_STENCIL_BIT);
+                }
+            }
+
             // Render tile layers for this layer
             for (const RenderTileLayer* renderLayer : renderLayers) {
-                if (stencilBits > 0) {
+                if (maskStencilBits > 0) {
                     int stencilValue = 0;
                     for (TileId targetTileId = renderLayer->targetTileId; targetTileId.zoom >= 0; targetTileId = targetTileId.getParent()) {
                         auto stencilIt = tileStencilMap.find(targetTileId);
@@ -3110,6 +3156,14 @@ namespace carto::vt {
                 }
             }
 
+            if (singleBlend) {
+                glStencilMask(0);
+                glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+                if (maskStencilBits == 0) {
+                    glDisable(GL_STENCIL_TEST); // nothing else in this pass uses it
+                }
+            }
+
             // If compositing was enabled for this layer, blend the rendered layer with framebuffer
             if (layer->getCompOp()) {
                 if (_glExtensions->GL_OES_packed_depth_stencil_supported() && !_overlayBuffer2D.depthStencilAttachments.empty()) {
@@ -3118,7 +3172,7 @@ namespace carto::vt {
 
                 glBindFramebuffer(GL_FRAMEBUFFER, currentFBO);
 
-                if (stencilBits > 0) {
+                if (maskStencilBits > 0) {
                     glDisable(GL_STENCIL_TEST);
                 }
                 if (currentCompOp != layerCompOp) {
@@ -3126,7 +3180,7 @@ namespace carto::vt {
                     currentCompOp = layerCompOp;
                 }
                 blendScreenTexture(layerOpacity, _overlayBuffer2D.colorTexture);
-                if (stencilBits > 0) {
+                if (maskStencilBits > 0) {
                     glEnable(GL_STENCIL_TEST);
                 }
             }

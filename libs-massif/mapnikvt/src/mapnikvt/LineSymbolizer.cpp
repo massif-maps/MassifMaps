@@ -55,10 +55,15 @@ namespace carto::mvt {
             if (strokeLinejoin == vt::LineJoinMode::BEVEL) {
                 miterDotLimit = 1.0f;
             } else {
-                float strokeMiterLimit = std::max(_strokeMiterLimit.getStaticValue(exprContext), 1.0f / 16.0f);
-                float strokeWidth = std::max(_strokeWidth.getStaticValue(exprContext), 1.0f);
-                float maxMiterAngle = std::acos(-1.0f) - 2.0f * std::asin(std::min(strokeWidth / strokeMiterLimit, 1.0f));
-                miterDotLimit = std::cos(maxMiterAngle);
+                // 'miterlimit' is the RATIO miter-length / line-width at which a join falls back to
+                // a bevel (SVG, mapnik, tangram's PolyLineBuilder::miterLimit); the line width does
+                // not enter it. It used to - min(width / limit, 1) taken as the sine of the half
+                // angle - which made the cut depend on the static width in two wrong directions: a
+                // thin line kept mitering into a 5x-long needle at a hairpin, and a line wider than
+                // the limit never mitered at all.
+                // ratio = 1 / cos(turn / 2) = 1 / sqrt((1 + dot) / 2)  =>  dot = 2 / ratio^2 - 1.
+                float strokeMiterLimit = std::max(_strokeMiterLimit.getStaticValue(exprContext), 1.0f);
+                miterDotLimit = 2.0f / (strokeMiterLimit * strokeMiterLimit) - 1.0f;
             }
             if (strokePattern) {
                 splitDotLimit = miterDotLimit = DASH_MITER_DOT_LIMIT;

@@ -10,6 +10,14 @@
 #include <boost/math/constants/constants.hpp>
 
 namespace {
+    // Triangles in the fan of a round line join - tangram's PolyLineBuilder value (JoinTypes::round,
+    // core/src/util/builders.h). Each one costs a vertex and an index triple per join.
+    static const std::size_t ROUND_JOIN_TRIANGLES = 5;
+    // Below this turn (about 10 degrees) a round join is drawn as a plain miter. Tangram fans at
+    // every angle, but their line shader has no antialias ramp: here five near-degenerate slivers
+    // each carry their own ramp, and the ramps cut a hairline seam across the line.
+    static const float ROUND_JOIN_DOT_LIMIT = 0.985f;
+
     static float calculateScale(const carto::vt::VertexArray<float>& values, const carto::vt::VertexArray<std::size_t>& indices) {
         float maxValue = 0.0f;
         if (!values.empty()) {
@@ -983,6 +991,10 @@ namespace carto::vt {
 
         bool cycle = points[0] == points[points.size() - 1];
         bool endpoints = !cycle && style.capMode != LineCapMode::NONE;
+        // An offset line carries its offset in the vertex shader as binormal * offset * side, so a
+        // vertex with a zero binormal is not offset at all: the sharp-join fix below can not be
+        // applied to it and such a line keeps the plain (overlapping) split.
+        bool offsetLine = !(style.offsetFunc == FloatFunction(0));
         float linePos = 0;
 
         std::size_t i = 1;
@@ -1054,40 +1066,188 @@ namespace carto::vt {
             }
 
             float dot = cglib::dot_product(binormal, prevBinormal);
-            if (dot < style.splitDotLimit) {
-                // Split line segments
-                _coords.append(p0, p0);
-                _texCoords.append(cglib::vec2<float>(u0, v0), cglib::vec2<float>(u0, v1));
-                _binormals.append(-prevBinormal, prevBinormal);
-                _attribs.append(cglib::vec4<std::int8_t>(styleIndex, 0, 1, 0), cglib::vec4<std::int8_t>(styleIndex, 0, -1, 0));
+            if (dot < style.splitDotLimit && (offsetLine || dot < 0.0f)) {
+                if (offsetLine) {
+                    // Split line segments
+                    _coords.append(p0, p0);
+                    _texCoords.append(cglib::vec2<float>(u0, v0), cglib::vec2<float>(u0, v1));
+                    _binormals.append(-prevBinormal, prevBinormal);
+                    _attribs.append(cglib::vec4<std::int8_t>(styleIndex, 0, 1, 0), cglib::vec4<std::int8_t>(styleIndex, 0, -1, 0));
 
-                _coords.append(p0, p0);
-                _texCoords.append(cglib::vec2<float>(u0, v0), cglib::vec2<float>(u0, v1));
-                _binormals.append(-binormal, binormal);
-                _attribs.append(cglib::vec4<std::int8_t>(styleIndex, 0, 1, 0), cglib::vec4<std::int8_t>(styleIndex, 0, -1, 0));
+                    _coords.append(p0, p0);
+                    _texCoords.append(cglib::vec2<float>(u0, v0), cglib::vec2<float>(u0, v1));
+                    _binormals.append(-binormal, binormal);
+                    _attribs.append(cglib::vec4<std::int8_t>(styleIndex, 0, 1, 0), cglib::vec4<std::int8_t>(styleIndex, 0, -1, 0));
+                }
+                else {
+                    // Split line segments, INNER corners collapsed onto the centre line. Two full
+                    // width quads meeting at p0 overlap in a lens on the inside of the turn, and
+                    // every pixel of that lens is blended twice - which is what makes a line with
+                    // line-opacity go dark at each sharp turn, and a hairpin the worst case of all.
+                    // Collapsing both inner corners to p0 (mapbox's inner join) leaves the quads
+                    // touching instead of overlapping; one triangle closes the outer gap the plain
+                    // split used to leave. The notch this leaves on the inside is only ever cut
+                    // where the line reverses onto itself, which is where the line covers it.
+                    bool innerSecond = cglib::dot_product(prevTangent, binormal) < 0;
+                    cglib::vec2<float> centre(0, 0);
+                    cglib::vec2<float> outerTexCoord(u0, innerSecond ? v0 : v1);
+                    cglib::vec2<float> centreTexCoord(u0, (v0 + v1) * 0.5f);
+                    std::int8_t outerSide = innerSecond ? 1 : -1;
+                    cglib::vec4<std::int8_t> outerAttribs(styleIndex, 0, outerSide, 0);
+                    cglib::vec4<std::int8_t> centreAttribs(styleIndex, 0, 0, 0);
+
+                    for (int n = 0; n < 2; n++) {
+                        const cglib::vec2<float>& b = (n == 0 ? prevBinormal : binormal);
+                        _coords.append(p0, p0);
+                        if (innerSecond) {
+                            _texCoords.append(outerTexCoord, centreTexCoord);
+                            _binormals.append(-b, centre);
+                            _attribs.append(outerAttribs, centreAttribs);
+                        } else {
+                            _texCoords.append(centreTexCoord, outerTexCoord);
+                            _binormals.append(centre, b);
+                            _attribs.append(centreAttribs, outerAttribs);
+                        }
+                    }
+
+                    // Winding mirrors with the turn side - back faces are culled for 2D geometry.
+                    // A round join must stay round HERE too: this branch takes over from the bevel
+                    // branch below at 90 degrees, and closing a hairpin with the single triangle
+                    // cuts its outer corner flat - the join reads as square, which is what a
+                    // simplified route shows at the zooms where simplification leaves a turn
+                    // sharper than a right angle.
+                    std::size_t hubIndex = i0 + (innerSecond ? 1 : 0);
+                    std::size_t lastRimIndex = i0 + (innerSecond ? 0 : 1);
+                    std::size_t outerIndexB = i0 + (innerSecond ? 2 : 3);
+                    std::size_t fanTriangles = (style.joinMode == LineJoinMode::ROUND ? ROUND_JOIN_TRIANGLES : 1);
+                    if (fanTriangles > 1) {
+                        cglib::vec2<float> outerA = (innerSecond ? -prevBinormal : prevBinormal);
+                        cglib::vec2<float> outerB = (innerSecond ? -binormal : binormal);
+                        float cross = outerA(0) * outerB(1) - outerA(1) * outerB(0);
+                        float turn = std::atan2(cross, cglib::dot_product(outerA, outerB));
+                        if (std::abs(cross) < 1.0e-4f) {
+                            // A line reversing exactly onto itself: the two outer offsets are
+                            // antiparallel and the cross product no longer carries the direction.
+                            // Sweep the half circle that faces AWAY from the incoming segment.
+                            cglib::vec2<float> ccwMid(-outerA(1), outerA(0));
+                            float halfTurn = boost::math::constants::pi<float>();
+                            turn = (cglib::dot_product(ccwMid, prevTangent) < 0 ? halfTurn : -halfTurn);
+                        }
+                        float step = turn / fanTriangles;
+                        float cosStep = std::cos(step), sinStep = std::sin(step);
+                        cglib::vec2<float> radial = outerA;
+                        for (std::size_t n = 1; n < fanTriangles; n++) {
+                            radial = cglib::vec2<float>(radial(0) * cosStep - radial(1) * sinStep, radial(0) * sinStep + radial(1) * cosStep);
+                            std::size_t radialIndex = _coords.size();
+                            _coords.append(p0);
+                            _texCoords.append(outerTexCoord);
+                            _binormals.append(radial);
+                            _attribs.append(outerAttribs);
+                            _indices.append(hubIndex, lastRimIndex, radialIndex);
+                            lastRimIndex = radialIndex;
+                        }
+                    }
+                    _indices.append(hubIndex, lastRimIndex, outerIndexB);
+                }
             }
-            else if (dot < style.miterDotLimit) {
-                // Use bevel line join
+            else if ((style.joinMode == LineJoinMode::ROUND && dot < ROUND_JOIN_DOT_LIMIT) || dot < style.miterDotLimit) {
+                // Use bevel line join - and, for a round join, a fan of triangles across the outer
+                // corner instead of the single flattening triangle. A round join is round at EVERY
+                // angle, so it does not wait for the miter limit the way a bevel does.
                 cglib::vec2<float> lerpedBinormal = cglib::unit(binormal + prevBinormal);
                 std::int8_t sin = static_cast<std::int8_t>(127.0f * cglib::dot_product(prevTangent, lerpedBinormal));
                 cglib::vec2<float> lerpedScaledBinormal = lerpedBinormal * (1 / std::sqrt((1 + dot) * 0.5f));
+                bool innerSecond = cglib::dot_product(prevTangent, binormal) < 0;
 
+                // The cross-section that ENDS the incoming quad. The next loop iteration links the
+                // outgoing quad to the LAST TWO vertices written here, so whatever a round join adds
+                // has to sit BETWEEN the two pairs, never after them.
                 _coords.append(p0, p0);
                 _texCoords.append(cglib::vec2<float>(u0, v0), cglib::vec2<float>(u0, v1));
                 _attribs.append(cglib::vec4<std::int8_t>(styleIndex, 0, 1, -sin), cglib::vec4<std::int8_t>(styleIndex, 0, -1, 0));
+                if (innerSecond) {
+                    _binormals.append(-prevBinormal, lerpedScaledBinormal);
+                } else {
+                    _binormals.append(-lerpedScaledBinormal, prevBinormal);
+                }
 
+                // Round join: a fan across the outer corner. Tangram's addFan, same triangle count,
+                // but hubbed on the CENTRE LINE rather than on the miter point: the miter point sits
+                // at a full half-width, where the antialias ramp is already down to zero alpha, so a
+                // hub there drew five triangles meeting at a transparent vertex - a hairline gap at
+                // every join. The inner half of the corner needs no fan anyway, both quads reach the
+                // miter point across it.
+                std::size_t innerIndex = i0 + (innerSecond ? 1 : 0);
+                std::size_t outerIndexA = i0 + (innerSecond ? 0 : 1);
+                std::size_t fanTriangles = (style.joinMode == LineJoinMode::ROUND && dot < ROUND_JOIN_DOT_LIMIT ? ROUND_JOIN_TRIANGLES : 1);
+                std::size_t lastRimIndex = outerIndexA;
+                std::size_t miterIndex = innerIndex;
+                if (fanTriangles > 1) {
+                    innerIndex = _coords.size();
+                    _coords.append(p0);
+                    _texCoords.append(cglib::vec2<float>(u0, (v0 + v1) * 0.5f));
+                    _binormals.append(cglib::vec2<float>(0, 0));
+                    _attribs.append(cglib::vec4<std::int8_t>(styleIndex, 0, 0, 0));
+                    // A quad ends on the CHORD from its outer corner to the miter point, which does
+                    // not pass through the centre, so a fan hubbed on the centre leaves a sliver
+                    // against that chord - a hairline seam at every join. Close it on both sides.
+                    if (innerSecond) {
+                        _indices.append(innerIndex, miterIndex, outerIndexA);
+                    } else {
+                        _indices.append(miterIndex, innerIndex, outerIndexA);
+                    }
+                }
+                if (fanTriangles > 1) {
+                    cglib::vec2<float> outerA = (innerSecond ? -prevBinormal : prevBinormal);
+                    cglib::vec2<float> outerB = (innerSecond ? -binormal : binormal);
+                    float turn = std::atan2(outerA(0) * outerB(1) - outerA(1) * outerB(0), cglib::dot_product(outerA, outerB));
+                    float step = turn / fanTriangles;
+                    float cosStep = std::cos(step), sinStep = std::sin(step);
+
+                    cglib::vec2<float> radial = outerA;
+                    for (std::size_t n = 1; n < fanTriangles; n++) {
+                        radial = cglib::vec2<float>(radial(0) * cosStep - radial(1) * sinStep, radial(0) * sinStep + radial(1) * cosStep);
+                        std::size_t radialIndex = _coords.size();
+                        _coords.append(p0);
+                        _texCoords.append(cglib::vec2<float>(u0, innerSecond ? v0 : v1));
+                        _binormals.append(radial);
+                        _attribs.append(cglib::vec4<std::int8_t>(styleIndex, 0, innerSecond ? 1 : -1, 0));
+                        // Winding follows the turn side, as the bevel triangle below does: back
+                        // faces are culled for 2D geometry, so a fan wound the same way for both
+                        // turn directions loses every join that turns the other way.
+                        if (innerSecond) {
+                            _indices.append(innerIndex, lastRimIndex, radialIndex);
+                        } else {
+                            _indices.append(lastRimIndex, innerIndex, radialIndex);
+                        }
+                        lastRimIndex = radialIndex;
+                    }
+                }
+
+                // The cross-section that STARTS the outgoing quad - last, so the next iteration
+                // finds it where it expects.
+                std::size_t i1 = _coords.size();
                 _coords.append(p0, p0);
                 _texCoords.append(cglib::vec2<float>(u0, v0), cglib::vec2<float>(u0, v1));
                 _attribs.append(cglib::vec4<std::int8_t>(styleIndex, 0, 1, sin), cglib::vec4<std::int8_t>(styleIndex, 0, -1, 0));
-
-                if (cglib::dot_product(prevTangent, binormal) < 0) {
-                    _binormals.append(-prevBinormal, lerpedScaledBinormal);
+                if (innerSecond) {
                     _binormals.append(-binormal, lerpedScaledBinormal);
-                    _indices.append(i0 + 1, i0 + 0, i0 + 2);
                 } else {
-                    _binormals.append(-lerpedScaledBinormal, prevBinormal);
                     _binormals.append(-lerpedScaledBinormal, binormal);
-                    _indices.append(i0 + 1, i0 + 0, i0 + 3);
+                }
+
+                if (innerSecond) {
+                    _indices.append(innerIndex, lastRimIndex, i1 + 0);
+                } else {
+                    _indices.append(lastRimIndex, innerIndex, i1 + 1);
+                }
+                if (fanTriangles > 1) {
+                    // ... and the same sliver on the outgoing quad's chord.
+                    if (innerSecond) {
+                        _indices.append(innerIndex, i1 + 0, i1 + 1);
+                    } else {
+                        _indices.append(i1 + 1, innerIndex, i1 + 0);
+                    }
                 }
             }
             else {

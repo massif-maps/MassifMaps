@@ -27,6 +27,7 @@ namespace carto::vt {
         U_BINORMALSCALE,
         U_ANTIALIASSCALE,
         U_TILEUNITSCALE,
+        U_TILEUNITOFFSET,
         U_UVSCALE,
         U_HEIGHTSCALE,
         U_ABSHEIGHTSCALE,
@@ -110,6 +111,7 @@ namespace carto::vt {
         { "uBinormalScale",    U_BINORMALSCALE },
         { "uAntialiasScale",   U_ANTIALIASSCALE },
         { "uTileUnitScale",    U_TILEUNITSCALE },
+        { "uTileUnitOffset",   U_TILEUNITOFFSET },
         { "uUVScale",          U_UVSCALE },
         { "uHeightScale",      U_HEIGHTSCALE },
         { "uAbsHeightScale",   U_ABSHEIGHTSCALE },
@@ -312,6 +314,7 @@ namespace carto::vt {
         // Declared in every mode: the flat line path carries it to the fragment stage too, and a
         // uniform referenced without being declared fails the compile.
         uniform highp vec2 uTileUnitScale;
+        uniform highp vec2 uTileUnitOffset;
         #ifdef TERRAIN
         uniform highp sampler2D uElevationTexture;
         uniform highp vec4 uElevationUV;     // elevation texture uv = uv.xy + pos.xy * uv.zw
@@ -1535,7 +1538,7 @@ namespace carto::vt {
             // fit can. Far lines keep tangram's taper, near lines stop at the width the style asked
             // for, which is the flat map's width.
             setTerrainSlopeVaryings(pos);
-            vTileUnit = pos.xy * uTileUnitScale;
+            vTileUnit = pos.xy * uTileUnitScale + uTileUnitOffset;
             highp vec3 centerPos = applyTerrain(pos);
             applyShadowPos(centerPos);
             highp vec4 centerClip = uMVPMatrix * vec4(centerPos, 1.0);
@@ -1554,7 +1557,7 @@ namespace carto::vt {
             }
         #else
             // sample the terrain at the extruded position, so wide lines follow the slope
-            vTileUnit = pos.xy * uTileUnitScale;
+            vTileUnit = pos.xy * uTileUnitScale + uTileUnitOffset;
             setTerrainSlopeVaryings(pos + delta);
             highp vec3 flatTerrainPos = applyTerrain(pos + delta);
             applyShadowPos(flatTerrainPos);

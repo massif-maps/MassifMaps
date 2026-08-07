@@ -3644,12 +3644,27 @@ namespace carto::vt {
             }
         }
         glUniform4f(shaderProgram.uniforms[U_TERRAINEDGECOARSENING], edgeCoarsening(0), edgeCoarsening(1), edgeCoarsening(2), edgeCoarsening(3));
-        // Vertex frame units -> tile units, for the edge test above: 1 for the surface (its
-        // vertices are the unit square), the frame's scale over the tile's world size otherwise.
-        double tileWorldSize = std::abs(_transformer->calculateTileMatrix(tileId, 1.0f)(0, 0));
-        double unitScaleX = (tileWorldSize != 0 ? std::abs(vertexFrameMatrix(0, 0)) / tileWorldSize : 1.0);
-        double unitScaleY = (tileWorldSize != 0 ? std::abs(vertexFrameMatrix(1, 1)) / tileWorldSize : 1.0);
+        // Vertex frame units -> TARGET tile units, for the edge test above and for the tile clip
+        // in the fragment shaders: 1 for the surface (its vertices are the unit square), the
+        // frame's scale over the tile's world size otherwise.
+        // The OFFSET is what makes this hold for a STAND-IN, where the vertex frame is the source
+        // (an ancestor) tile and the target is one of its descendants: the scale alone puts the
+        // source's unit square in [0, 2^dz] and the clip then discards every fragment of it except
+        // the one quadrant that happens to land in [0, 1] - which blanks all content served by a
+        // stand-in, i.e. every layer for a second or two after each integer zoom step. Measuring
+        // the position from the TARGET tile's own origin selects the right part of the ancestor
+        // for each target, so the four targets together still paint the whole ancestor, each with
+        // the elevation mapping of the surface it stands on.
+        const cglib::mat4x4<double> targetTileMatrix = _transformer->calculateTileMatrix(tileId, 1.0f);
+        double unitScaleX = 1.0, unitScaleY = 1.0, unitOffsetX = 0.0, unitOffsetY = 0.0;
+        if (targetTileMatrix(0, 0) != 0 && targetTileMatrix(1, 1) != 0) {
+            unitScaleX = vertexFrameMatrix(0, 0) / targetTileMatrix(0, 0);
+            unitScaleY = vertexFrameMatrix(1, 1) / targetTileMatrix(1, 1);
+            unitOffsetX = (vertexFrameMatrix(0, 3) - targetTileMatrix(0, 3)) / targetTileMatrix(0, 0);
+            unitOffsetY = (vertexFrameMatrix(1, 3) - targetTileMatrix(1, 3)) / targetTileMatrix(1, 1);
+        }
         glUniform2f(shaderProgram.uniforms[U_TILEUNITSCALE], static_cast<float>(unitScaleX), static_cast<float>(unitScaleY));
+        glUniform2f(shaderProgram.uniforms[U_TILEUNITOFFSET], static_cast<float>(unitOffsetX), static_cast<float>(unitOffsetY));
 
         const std::pair<bool, TerrainTexture>& resolved = resolveTerrainTexture(tileId);
         bool valid = resolved.first;
@@ -3664,6 +3679,7 @@ namespace carto::vt {
             glUniform4f(shaderProgram.uniforms[U_ELEVATIONTEXELSIZE], 1.0f, 1.0f, 1.0f, 1.0f);
             glUniform2f(shaderProgram.uniforms[U_ELEVATIONLATTICECELL], 0.0f, 0.0f);
             glUniform2f(shaderProgram.uniforms[U_TILEUNITSCALE], 0.0f, 0.0f); // no tile clipping without elevation
+            glUniform2f(shaderProgram.uniforms[U_TILEUNITOFFSET], 0.0f, 0.0f);
             glUniform1f(shaderProgram.uniforms[U_LAYERDEPTHOFFSET], 0.0f);
             glUniform1f(shaderProgram.uniforms[U_DEPTHSHIFT], 0.0f);
             return false;

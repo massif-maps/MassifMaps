@@ -1547,13 +1547,22 @@ namespace carto::vt {
             edgeDir = vec2(edgeDir.x * uScreenScale.x, edgeDir.y); // NDC is anisotropic, work in height units
             highp float edgeLen = length(edgeDir);
             highp float nominalLen = roundedWidth * uScreenScale.y;
+            highp vec3 edgePos = applyTerrain(pos + delta);
             if (edgeLen > nominalLen && nominalLen > 0.0) {
-                edgeDir = edgeDir * (nominalLen / edgeLen);
+                highp float shrink = nominalLen / edgeLen;
+                edgeDir = edgeDir * shrink;
                 highp vec2 offset = vec2(edgeDir.x / uScreenScale.x, edgeDir.y);
-                centerClip = vec4((centerClip.xy / centerClip.w + offset) * centerClip.w, centerClip.z, centerClip.w);
-                gl_Position = applyDepthBias(centerClip);
+                // The capped vertex keeps the SCREEN offset (so the width is exactly nominal,
+                // and neighbouring vertices can not disagree about it) but takes its DEPTH from
+                // the terrain-following position it was shrunk towards. Keeping centerClip.z
+                // instead put the outer edge of a wide line at the centreline's height, which on
+                // a cross-slope is below the ground on the uphill side: the depth test against
+                // the terrain surface then ate the line from that side, worst on the widest
+                // layer - a route's casing broke up while its fill survived.
+                highp vec4 depthClip = uMVPMatrix * vec4(mix(centerPos, edgePos, shrink), 1.0);
+                gl_Position = applyDepthBias(vec4((centerClip.xy / centerClip.w + offset) * depthClip.w, depthClip.z, depthClip.w));
             } else {
-                gl_Position = applyDepthBias(uMVPMatrix * vec4(applyTerrain(pos + delta), 1.0));
+                gl_Position = applyDepthBias(uMVPMatrix * vec4(edgePos, 1.0));
             }
         #else
             // sample the terrain at the extruded position, so wide lines follow the slope

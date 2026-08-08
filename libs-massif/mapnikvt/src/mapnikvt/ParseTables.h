@@ -12,6 +12,8 @@
 #include <string>
 #include <unordered_map>
 
+#include <cglib/vec.h>
+
 namespace carto::mvt {
     template <typename T>
     using ParseTable = std::unordered_map<std::string, T>;
@@ -20,6 +22,9 @@ namespace carto::mvt {
     const ParseTable<vt::LineJoinMode>& getLineJoinModeTable();
     const ParseTable<vt::CompOp>& getCompOpTable();
     const ParseTable<vt::LabelOrientation>& getLabelOrientationTable();
+    // Points of a label's own box, normalized: (-1,-1) is its bottom left corner, (1,1) the top
+    // right one. Used by the callout properties (leader line end, band alignment).
+    const ParseTable<cglib::vec2<float>>& getLabelBoxAnchorTable();
 }
 
 #endif

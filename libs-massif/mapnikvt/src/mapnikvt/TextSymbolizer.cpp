@@ -1,5 +1,6 @@
 #include "TextSymbolizer.h"
 
+#include "ParseTables.h"
 #include "ParserUtils.h"
 #include "FontSet.h"
 #include "Expression.h"
@@ -10,6 +11,16 @@
 #include <tuple>
 
 #include <boost/math/constants/constants.hpp>
+
+namespace {
+    // Unset (and unknown) leaves the label laid out around its own anchor, which is what a style
+    // that says nothing about callout anchoring gets.
+    std::optional<cglib::vec2<float>> parseBoxAnchor(const std::string& name) {
+        const carto::mvt::ParseTable<cglib::vec2<float>>& table = carto::mvt::getLabelBoxAnchorTable();
+        auto it = table.find(name);
+        return it != table.end() ? std::optional<cglib::vec2<float>>(it->second) : std::optional<cglib::vec2<float>>();
+    }
+}
 
 namespace carto::mvt {
     TextSymbolizer::FeatureProcessor TextSymbolizer::createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const {
@@ -36,6 +47,24 @@ namespace carto::mvt {
         float minimumDistance = _minimumDistance.getValue(exprContext);
         float maxDistance = _maxDistance.getValue(exprContext);
         float placementPriority = _placementPriority.getValue(exprContext);
+        float calloutScreenAnchor = _calloutScreenAnchor.getValue(exprContext);
+        float calloutOffset = _calloutOffset.getValue(exprContext) * fontScale;
+        float calloutStep = _calloutStep.getValue(exprContext) * fontScale;
+        int calloutMaxRows = static_cast<int>(_calloutMaxRows.getValue(exprContext));
+        int calloutPersistPasses = static_cast<int>(_calloutPersist.getValue(exprContext));
+        float calloutLineWidth = _calloutLineWidth.getValue(exprContext) * fontScale;
+        std::optional<cglib::vec2<float>> calloutLineAnchor = parseBoxAnchor(_calloutLineAnchor.getValue(exprContext));
+        std::optional<cglib::vec2<float>> calloutBandAnchor = parseBoxAnchor(_calloutAlign.getValue(exprContext));
+        vt::FloatFunction rankFunc = _rank.getFunction(exprContext);
+        std::optional<vt::ColorFunction> secondaryColorFunc;
+        if (_secondaryFill.isDefined() || _secondaryOpacity.isDefined()) {
+            secondaryColorFunc = _secondaryFillFuncBuilder.createColorOpacityFunction(_secondaryFill.getFunction(exprContext), _secondaryOpacity.getFunction(exprContext));
+        }
+        float backgroundOpacity = _backgroundOpacity.getValue(exprContext);
+        vt::Color backgroundColorValue = _backgroundFill.getValue(exprContext);
+        vt::Color backgroundColor = vt::Color::fromColorOpacity(backgroundColorValue, backgroundOpacity);
+        float backgroundRadius = _backgroundRadius.getValue(exprContext) * fontScale;
+        cglib::vec2<float> backgroundPadding(_backgroundPaddingX.getValue(exprContext) * fontScale, _backgroundPaddingY.getValue(exprContext) * fontScale);
         float orientationAngle = _orientationAngle.getValue(exprContext);
         float sizeStatic = _size.getStaticValue(exprContext);
 
@@ -152,8 +181,8 @@ namespace carto::mvt {
             };
         }
 
-        return [compOp, fillFunc, haloFillFunc, sizeFunc, haloRadiusFunc, fontScale, placement, text, hash, orientationAngle, formatter, backgroundOffset, backgroundImage, spacing, textSize, tileId, tileSize, labelIdOverride, groupId, placementPriority, minimumDistance, maxDistance, allowOverlapSameFeatureId, sameFeatureIdDependent, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
-            vt::TextLabelStyle style(placement, fillFunc, sizeFunc, haloFillFunc, haloRadiusFunc, true, orientationAngle, fontScale, backgroundOffset, backgroundImage, maxDistance);
+        return [compOp, fillFunc, haloFillFunc, sizeFunc, haloRadiusFunc, fontScale, placement, text, hash, orientationAngle, formatter, backgroundOffset, backgroundImage, spacing, textSize, tileId, tileSize, labelIdOverride, groupId, placementPriority, minimumDistance, maxDistance, secondaryColorFunc, rankFunc, calloutScreenAnchor, calloutOffset, calloutStep, calloutMaxRows, calloutPersistPasses, calloutLineWidth, calloutLineAnchor, calloutBandAnchor, backgroundColor, backgroundRadius, backgroundPadding, allowOverlapSameFeatureId, sameFeatureIdDependent, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
+            vt::TextLabelStyle style(placement, fillFunc, sizeFunc, haloFillFunc, haloRadiusFunc, true, orientationAngle, fontScale, backgroundOffset, backgroundImage, maxDistance, secondaryColorFunc, rankFunc, calloutScreenAnchor, calloutOffset, calloutStep, calloutMaxRows, calloutPersistPasses, calloutLineWidth, calloutLineAnchor, calloutBandAnchor, backgroundColor, backgroundRadius, backgroundPadding);
             vt::TileLayerBuilder::TextLabelProcessor textProcessor;
             for (std::size_t featureIndex = 0; featureIndex < featureCollection.size(); featureIndex++) {
                 if (!textProcessor) {
@@ -390,7 +419,10 @@ namespace carto::mvt {
 
     vt::LabelOrientation TextSymbolizer::getPlacement(const ExpressionContext& exprContext) const {
         vt::LabelOrientation placement = _placement.getValue(exprContext);
-        if (placement != vt::LabelOrientation::LINE) {
+        // CALLOUT keeps its placement: the rotation is applied to the glyph quads by the style
+        // transform like any other billboard, and a rotated callout (the peak-finder look) is a
+        // normal thing to ask for.
+        if (placement != vt::LabelOrientation::LINE && placement != vt::LabelOrientation::CALLOUT) {
             if (_orientationAngle.isDefined()) { // if orientation is explictly defined, use POINT placement
                 placement = vt::LabelOrientation::POINT;
             }
@@ -455,6 +487,12 @@ namespace carto::mvt {
 
         cglib::vec2<float> offset(dx * fontScale, -dy * fontScale);
         cglib::vec2<float> alignment(horizontalAlignment, verticalAlignment);
-        return vt::TextFormatter::Options(alignment, offset, wrapCharacter, wrapBefore, wrapWidth * fontScale, characterSpacing, lineSpacing);
+        // The second run of text, if the style asks for one - the formatter lays it out with the
+        // first one so that the pair share a baseline, a bounding box and a background plate.
+        std::string secondaryText = _secondaryText.getValue(exprContext);
+        float secondaryScale = _secondaryScale.getValue(exprContext);
+        float secondaryGap = _secondaryDx.getValue(exprContext) * fontScale;
+        float secondaryOffset = -_secondaryDy.getValue(exprContext) * fontScale;
+        return vt::TextFormatter::Options(alignment, offset, wrapCharacter, wrapBefore, wrapWidth * fontScale, characterSpacing, lineSpacing, secondaryText, secondaryScale, secondaryGap, secondaryOffset);
     }
 }

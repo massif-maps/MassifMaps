@@ -76,6 +76,9 @@ namespace carto::vt {
             cglib::vec2<float> size;
             cglib::vec2<float> offset;
             cglib::vec2<float> advance;
+            // The glyph belongs to the label's SECOND run of text (TextFormatter::Options), which
+            // may have its own colour. Set by the formatter, read when the quads are built.
+            bool secondary = false;
 
             explicit Glyph(std::uint32_t utf32Char, CodePoint codePoint, const GlyphMap::Glyph& baseGlyph, const cglib::vec2<float>& size, const cglib::vec2<float>& offset, const cglib::vec2<float>& advance) : utf32Char(utf32Char), codePoint(codePoint), baseGlyph(baseGlyph), size(size), offset(offset), advance(advance) { }
         };

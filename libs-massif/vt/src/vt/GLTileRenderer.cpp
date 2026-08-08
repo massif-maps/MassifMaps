@@ -1993,7 +1993,13 @@ namespace carto::vt {
                     findLabelIntersections(label, rays, buffer, resultsLocal);
                     
                     for (const GeometryIntersectionInfo& result : resultsLocal) {
-                        if (cglib::dot_product(label->getNormal(), cglib::vec3<float>::convert(rays[result.rayIndex].direction)) >= 0) {
+                        // "Is the label facing us" - the anchor's ground normal against the ray. A
+                        // CALLOUT is exempt: it is drawn where it is not anchored, its quad is
+                        // spanned on the camera axes so it always faces the viewer, and a label
+                        // lifted into the SKY is hit by an upward ray - which this test rejects.
+                        // That was "peak names below the horizon are clickable, the ones over the
+                        // sky are not".
+                        if (label->getStyle()->orientation != LabelOrientation::CALLOUT && cglib::dot_product(label->getNormal(), cglib::vec3<float>::convert(rays[result.rayIndex].direction)) >= 0) {
                             continue;
                         }
 
@@ -3384,10 +3390,25 @@ namespace carto::vt {
     }
     
     void GLTileRenderer::renderLabels(const std::vector<std::shared_ptr<Label>>& labels, const std::shared_ptr<const Bitmap>& bitmap) {
+        // Leader lines first, all of them, then all the text: a line that crossed a neighbouring
+        // label's glyphs would read as a strike-through. The extra pass only exists when some
+        // label actually has a line to draw.
+        bool anyCallout = std::any_of(labels.begin(), labels.end(), [](const std::shared_ptr<Label>& label) {
+            return label->getStyle()->orientation == LabelOrientation::CALLOUT && label->getStyle()->calloutLineGlyph;
+        });
+        if (anyCallout) {
+            renderLabelPass(labels, bitmap, Label::DrawPass::CALLOUT_LINE);
+        }
+        renderLabelPass(labels, bitmap, anyCallout ? Label::DrawPass::TEXT : Label::DrawPass::ALL);
+    }
+
+    void GLTileRenderer::renderLabelPass(const std::vector<std::shared_ptr<Label>>& labels, const std::shared_ptr<const Bitmap>& bitmap, Label::DrawPass pass) {
         LabelBatchParameters labelBatchParams;
         std::shared_ptr<const TileLabel::Style> lastLabelStyle;
         int styleIndex = -1;
         int haloStyleIndex = -1;
+        int backgroundStyleIndex = -1;
+        int secondaryStyleIndex = -1;
         for (const std::shared_ptr<Label>& label : labels) {
             if (!label->isValid()) {
                 continue;
@@ -3396,6 +3417,9 @@ namespace carto::vt {
                 continue;
             }
             const std::shared_ptr<const TileLabel::Style>& labelStyle = label->getStyle();
+            if (pass == Label::DrawPass::CALLOUT_LINE && !(labelStyle->orientation == LabelOrientation::CALLOUT && labelStyle->calloutLineGlyph)) {
+                continue;
+            }
 
             if (lastLabelStyle != labelStyle) {
                 cglib::vec4<float> color = cglib::vec4<float>(evaluateColorFunc(labelStyle->colorFunc).rgba());
@@ -3404,7 +3428,13 @@ namespace carto::vt {
                 float haloRadius = evaluateFloatFunc(labelStyle->haloRadiusFunc) * HALO_RADIUS_SCALE;
                 haloRadius = std::min(haloRadius, static_cast<float>(GLYPH_RENDER_SPREAD));
 
-                if (labelStyle->transform || (lastLabelStyle && lastLabelStyle->transform) || labelBatchParams.scale != labelStyle->scale || labelBatchParams.glyphRenderSize != labelStyle->glyphRenderSize || labelBatchParams.parameterCount + 2 > LabelBatchParameters::MAX_PARAMETERS) {
+                cglib::vec4<float> backgroundColor = cglib::vec4<float>(labelStyle->backgroundColor.rgba());
+                bool hasBackground = labelStyle->backgroundColor.value() != 0 && labelStyle->backgroundGlyph;
+                // The second run of text may have its own colour, which is one more slot in the
+                // batch - exactly like the halo and the plate.
+                bool hasSecondaryColor = static_cast<bool>(labelStyle->secondaryColorFunc);
+                cglib::vec4<float> secondaryColor = hasSecondaryColor ? cglib::vec4<float>(evaluateColorFunc(*labelStyle->secondaryColorFunc).rgba()) : color;
+                if (labelStyle->transform || (lastLabelStyle && lastLabelStyle->transform) || labelBatchParams.scale != labelStyle->scale || labelBatchParams.glyphRenderSize != labelStyle->glyphRenderSize || labelBatchParams.parameterCount + (hasBackground ? 3 : 2) + (hasSecondaryColor ? 1 : 0) > LabelBatchParameters::MAX_PARAMETERS) {
                     renderLabelBatch(labelBatchParams, bitmap);
                     labelBatchParams.labelCount = 0;
                     labelBatchParams.parameterCount = 0;
@@ -3422,6 +3452,8 @@ namespace carto::vt {
 
                     styleIndex = -1;
                     haloStyleIndex = -1;
+                    backgroundStyleIndex = -1;
+                    secondaryStyleIndex = -1;
                 } else {
                     for (styleIndex = labelBatchParams.parameterCount; --styleIndex >= 0; ) {
                         if (labelBatchParams.colorTable[styleIndex] == color && labelBatchParams.widthTable[styleIndex] == size && labelBatchParams.strokeWidthTable[styleIndex] == 0) {
@@ -3447,12 +3479,43 @@ namespace carto::vt {
                     labelBatchParams.widthTable[haloStyleIndex] = size;
                     labelBatchParams.strokeWidthTable[haloStyleIndex] = haloRadius;
                 }
+                // The plate behind the text has its own colour, so it needs its own slot in the
+                // batch - exactly like the halo.
+                backgroundStyleIndex = -1;
+                if (hasBackground) {
+                    for (backgroundStyleIndex = labelBatchParams.parameterCount; --backgroundStyleIndex >= 0; ) {
+                        if (labelBatchParams.colorTable[backgroundStyleIndex] == backgroundColor && labelBatchParams.widthTable[backgroundStyleIndex] == size && labelBatchParams.strokeWidthTable[backgroundStyleIndex] == 0) {
+                            break;
+                        }
+                    }
+                    if (backgroundStyleIndex < 0) {
+                        backgroundStyleIndex = labelBatchParams.parameterCount++;
+                        labelBatchParams.colorTable[backgroundStyleIndex] = backgroundColor;
+                        labelBatchParams.widthTable[backgroundStyleIndex] = size;
+                        labelBatchParams.strokeWidthTable[backgroundStyleIndex] = 0;
+                    }
+                }
+
+                secondaryStyleIndex = -1;
+                if (hasSecondaryColor) {
+                    for (secondaryStyleIndex = labelBatchParams.parameterCount; --secondaryStyleIndex >= 0; ) {
+                        if (labelBatchParams.colorTable[secondaryStyleIndex] == secondaryColor && labelBatchParams.widthTable[secondaryStyleIndex] == size && labelBatchParams.strokeWidthTable[secondaryStyleIndex] == 0) {
+                            break;
+                        }
+                    }
+                    if (secondaryStyleIndex < 0) {
+                        secondaryStyleIndex = labelBatchParams.parameterCount++;
+                        labelBatchParams.colorTable[secondaryStyleIndex] = secondaryColor;
+                        labelBatchParams.widthTable[secondaryStyleIndex] = size;
+                        labelBatchParams.strokeWidthTable[secondaryStyleIndex] = 0;
+                    }
+                }
 
                 lastLabelStyle = labelStyle;
             }
 
             VT_STAT_CLOCK(statClock);
-            label->calculateVertexData(labelBatchParams.widthTable[styleIndex], _viewState, styleIndex, haloStyleIndex, _labelVertices, _labelOffsets, _labelNormals, _labelTexCoords, _labelAttribs, _labelIndices);
+            label->calculateVertexData(labelBatchParams.widthTable[styleIndex], _viewState, styleIndex, haloStyleIndex, _labelVertices, _labelOffsets, _labelNormals, _labelTexCoords, _labelAttribs, _labelIndices, pass, pass == Label::DrawPass::CALLOUT_LINE ? -1 : backgroundStyleIndex, pass == Label::DrawPass::CALLOUT_LINE ? -1 : secondaryStyleIndex);
             VT_STAT_SPLIT(labelVertexBuildNs, statClock);
             VT_STAT_INC(labelsDrawnVertices);
 

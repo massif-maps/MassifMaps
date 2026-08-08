@@ -516,6 +516,9 @@ namespace carto::vt {
         void renderGeometry2D(const std::vector<RenderTile>& renderTiles, GLint stencilBits);
         void renderGeometry3D(const std::vector<RenderTile>& renderTiles, bool allowInline);
         void renderLabels(const std::vector<std::shared_ptr<Label>>& labels, const std::shared_ptr<const Bitmap>& bitmap);
+        // One batching pass over a label list. CALLOUT leader lines get a pass of their own before
+        // the text, so that no line is drawn over another label's glyphs.
+        void renderLabelPass(const std::vector<std::shared_ptr<Label>>& labels, const std::shared_ptr<const Bitmap>& bitmap, Label::DrawPass pass);
 
         float evaluateFloatFunc(const FloatFunction& func);
         Color evaluateColorFunc(const ColorFunction& func);

@@ -1,4 +1,8 @@
 #include "TileLayerBuilder.h"
+
+#include <map>
+#include <mutex>
+#include <cmath>
 #include "TextFormatter.h"
 #include "Color.h"
 
@@ -47,6 +51,39 @@ namespace {
             return 1.0f;
         }
         return std::pow(2.0f, std::floor(std::log(32767.0f / maxValue) / std::log(2.0f)));
+    }
+}
+
+namespace {
+    // A white square with rounded corners, antialiased, used as the atlas cell a label's
+    // background plate is 3-sliced from. Cached per radius: the glyph map dedupes by bitmap
+    // POINTER, so handing it a fresh instance every time would add a cell per style rebuild.
+    std::shared_ptr<const carto::vt::Bitmap> buildRoundedRectBitmap(int radius) {
+        static std::mutex mutex;
+        static std::map<int, std::shared_ptr<const carto::vt::Bitmap>> cache;
+        std::lock_guard<std::mutex> lock(mutex);
+        auto it = cache.find(radius);
+        if (it != cache.end()) {
+            return it->second;
+        }
+
+        int size = std::max(4, radius * 2 + 2);
+        std::vector<std::uint32_t> data(static_cast<std::size_t>(size) * size, 0xffffffffU);
+        float r = static_cast<float>(radius);
+        for (int y = 0; y < size; y++) {
+            for (int x = 0; x < size; x++) {
+                // Distance outside the rounded rectangle, in pixels, at the nearest corner.
+                float dx = std::max(0.0f, r - 0.5f - std::min(static_cast<float>(x), static_cast<float>(size - 1 - x)));
+                float dy = std::max(0.0f, r - 0.5f - std::min(static_cast<float>(y), static_cast<float>(size - 1 - y)));
+                float d = std::sqrt(dx * dx + dy * dy) - r + 0.5f;
+                float alpha = std::min(1.0f, std::max(0.0f, 0.5f - d));
+                std::uint32_t a = static_cast<std::uint32_t>(alpha * 255.0f + 0.5f);
+                data[static_cast<std::size_t>(y) * size + x] = (a << 24) | (a << 16) | (a << 8) | a; // premultiplied white
+            }
+        }
+        auto bitmap = std::make_shared<carto::vt::Bitmap>(size, size, std::move(data));
+        cache[radius] = bitmap;
+        return bitmap;
     }
 }
 
@@ -472,10 +509,47 @@ namespace carto::vt {
             || _labelStyle->transform != transform 
             || _labelStyle->glyphMap != font->getGlyphMap() 
             || _labelStyle->glyphRenderSize != glyphRenderSize
-            || _labelStyle->maxDistance != style.maxDistance;
-        
+            || _labelStyle->maxDistance != style.maxDistance
+            || _labelStyle->rankFunc != style.rankFunc
+            || _labelStyle->secondaryColorFunc.has_value() != style.secondaryColorFunc.has_value()
+            || (style.secondaryColorFunc && *_labelStyle->secondaryColorFunc != *style.secondaryColorFunc)
+            || _labelStyle->calloutLineAnchor != style.calloutLineAnchor
+            || _labelStyle->calloutBandAnchor != style.calloutBandAnchor
+            || _labelStyle->calloutScreenAnchor != style.calloutScreenAnchor
+            || _labelStyle->calloutOffset != style.calloutOffset
+            || _labelStyle->calloutStep != style.calloutStep
+            || _labelStyle->calloutMaxRows != style.calloutMaxRows
+            || _labelStyle->calloutPersistPasses != style.calloutPersistPasses
+            || _labelStyle->calloutLineWidth != style.calloutLineWidth
+            || _labelStyle->backgroundColor != style.backgroundColor
+            || _labelStyle->backgroundRadius != style.backgroundRadius
+            || _labelStyle->backgroundPadding != style.backgroundPadding;
+
         if (needsNewLabelStyle) {
-            _labelStyle = std::make_shared<TileLabel::Style>(style.orientation, style.colorFunc, style.sizeFunc, style.haloColorFunc, style.haloRadiusFunc, style.autoflip, scale, metrics.ascent, metrics.descent, transform, font->getGlyphMap(), glyphRenderSize, style.maxDistance);
+            std::optional<GlyphMap::Glyph> calloutLineGlyph;
+            if (style.orientation == LabelOrientation::CALLOUT && style.calloutLineWidth > 0) {
+                // The leader line is drawn as one more glyph quad, so it needs an opaque cell in
+                // the same atlas the text comes from - the quad is sized at draw time (the length
+                // is the culler's, and it changes every frame), so only the cell is loaded here.
+                // One shared instance: the glyph map dedupes by bitmap POINTER, so a new one per
+                // style would add a cell to the atlas every time a style is rebuilt.
+                static const std::shared_ptr<const Bitmap> whiteBitmap = std::make_shared<Bitmap>(4, 4, std::vector<std::uint32_t>(16, 0xffffffffU));
+                if (const GlyphMap::Glyph* lineGlyph = font->getGlyphMap()->getGlyph(font->getGlyphMap()->loadBitmapGlyph(whiteBitmap, GlyphMap::GlyphMode::BITMAP))) {
+                    calloutLineGlyph = *lineGlyph;
+                }
+            }
+            // The plate behind the text is 3-sliced from one atlas cell: a rounded-corner square
+            // whose left and right halves are the caps and whose middle column is stretched. The
+            // bitmaps are cached by radius (the glyph map dedupes by POINTER), so a style that
+            // rebuilds does not grow the atlas.
+            std::optional<GlyphMap::Glyph> backgroundGlyph;
+            if (style.backgroundColor.value() != 0) {
+                int radius = std::min(32, std::max(0, static_cast<int>(style.backgroundRadius + 0.5f)));
+                if (const GlyphMap::Glyph* glyph = font->getGlyphMap()->getGlyph(font->getGlyphMap()->loadBitmapGlyph(buildRoundedRectBitmap(radius), GlyphMap::GlyphMode::BITMAP))) {
+                    backgroundGlyph = *glyph;
+                }
+            }
+            _labelStyle = std::make_shared<TileLabel::Style>(style.orientation, style.colorFunc, style.sizeFunc, style.haloColorFunc, style.haloRadiusFunc, style.autoflip, scale, metrics.ascent, metrics.descent, transform, font->getGlyphMap(), glyphRenderSize, style.maxDistance, style.secondaryColorFunc, style.rankFunc, style.calloutScreenAnchor, style.calloutOffset, style.calloutStep, style.calloutMaxRows, style.calloutPersistPasses, style.calloutLineWidth, style.calloutLineAnchor, style.calloutBandAnchor, calloutLineGlyph, style.backgroundColor, style.backgroundRadius, style.backgroundPadding, backgroundGlyph);
         }
 
         return [style, font, formatter, this](long long id, long long labelId, long long groupId, const std::optional<Vertex>& position, const Vertices& vertices, const std::string& text, float priority, float minimumGroupDistance, bool allowOverlapSameFeatureId, bool sameFeatureIdDependent, int geoPointIndex) {

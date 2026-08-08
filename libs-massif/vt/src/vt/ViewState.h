@@ -23,6 +23,17 @@ namespace carto::vt {
         float aspect = 1;
         float resolution = 0;
         float zoomScale = 1;
+        // Distance from the camera to the focus point, in internal units; 0 = not set, and the
+        // label scaling then falls back to where the view axis meets the z=0 plane. That fallback
+        // is only right for a camera whose focus IS on the ground: lift the viewpoint (free roam)
+        // or flatten the tilt towards the horizon and it runs away, taking every label's size with
+        // it. The application knows the real distance - see TileRenderer.
+        float focusDistance = 0;
+        // Meters from the camera to the label being evaluated (style variable view::distance).
+        // Only set where the evaluation is PER LABEL - the culler's ranking pass; it is 0
+        // everywhere else, because the renderer evaluates a style function once per batch and a
+        // per-label value there would break batching (see GLTileRenderer::renderLabelPass).
+        float labelDistance = 0;
         // Planar render projection, with or without 3D terrain. Labels then keep a CONSTANT
         // ON-SCREEN SIZE (tangram-style: their world size comes from the zoom alone, so the
         // perspective divide would otherwise blow them up towards the camera on a tilted view)

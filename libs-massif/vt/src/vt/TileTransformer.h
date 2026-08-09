@@ -33,6 +33,13 @@ namespace carto::vt {
             virtual float calculateHeight(const cglib::vec2<float>& pos, float height) const = 0;
 
             virtual void tesselateLineString(const cglib::vec2<float>* points, std::size_t count, VertexArray<cglib::vec2<float>>& tesselatedPoints) const = 0;
+            // The line a LABEL is laid along, which is never drawn as line geometry - only read,
+            // to place glyphs and to anchor them onto the terrain. It therefore does not need the
+            // subdivision a drawn line needs to stay inside the surface it is painted on, and one
+            // vertex of it costs an elevation sample on every re-anchor. Same result by default.
+            virtual void tesselateLabelLineString(const cglib::vec2<float>* points, std::size_t count, VertexArray<cglib::vec2<float>>& tesselatedPoints) const {
+                tesselateLineString(points, count, tesselatedPoints);
+            }
             virtual void tesselateTriangles(const std::size_t* indices, std::size_t count, VertexArray<cglib::vec2<float>>& coords, VertexArray<cglib::vec2<float>>& texCoords, VertexArray<std::size_t>& tesselatedIndices) const = 0;
         };
 

@@ -545,7 +545,7 @@ namespace carto::vt {
             }
             else if (auto vertices = std::get_if<Vertices>(&position)) {
                 VertexArray<cglib::vec2<float>> tesselatedVertices;
-                _transformer->tesselateLineString(vertices->data(), vertices->size(), tesselatedVertices);
+                _transformer->tesselateLabelLineString(vertices->data(), vertices->size(), tesselatedVertices);
                 labelVertices.assign(tesselatedVertices.begin(), tesselatedVertices.end());
             }
 
@@ -686,7 +686,7 @@ namespace carto::vt {
                 std::vector<cglib::vec2<float>> labelVertices;
                 if (!vertices.empty()) {
                     VertexArray<cglib::vec2<float>> tesselatedVertices;
-                    _transformer->tesselateLineString(vertices.data(), vertices.size(), tesselatedVertices);
+                    _transformer->tesselateLabelLineString(vertices.data(), vertices.size(), tesselatedVertices);
                     labelVertices.assign(tesselatedVertices.begin(), tesselatedVertices.end());
                 }
 

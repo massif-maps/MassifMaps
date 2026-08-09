@@ -409,6 +409,7 @@ namespace carto::vt {
         // is rebuilt from the re-anchored line (below) rather than just shifted, so the
         // glyph run keeps following the terrain profile it is drawn over.
         bool changed = false;
+        _elevationAnchored = true;
         for (TilePoint& tilePoint : _tilePoints) {
             double height = heightFunc(tilePoint.position);
             if (height != tilePoint.position(2)) {

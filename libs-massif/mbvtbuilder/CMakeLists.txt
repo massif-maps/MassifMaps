@@ -18,6 +18,9 @@ else()
     "${mbvtbuilder_LIBS_DIR}/pbf"
     "${mbvtbuilder_LIBS_DIR}/cglib"
     "${mbvtbuilder_LIBS_DIR}/stdext"
+    "${mbvtbuilder_LIBS_DIR}/geojsonvt/geojson-vt-cpp/include"
+    "${mbvtbuilder_LIBS_DIR}/geojsonvt/geometry.hpp/include"
+    "${mbvtbuilder_LIBS_DIR}/geojsonvt/variant/include"
   )
   add_library(mbvtbuilder OBJECT ${mbvtbuilder_SRC_FILES})
 endif()

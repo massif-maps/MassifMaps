@@ -8,9 +8,12 @@
 #define _CARTO_MBVTBUILDER_MBVTTILEBUILDER_H_
 
 #include <cstdint>
-#include <variant>
-#include <vector>
+#include <functional>
+#include <map>
+#include <memory>
 #include <mutex>
+#include <string>
+#include <vector>
 
 #include <boost/math/constants/constants.hpp>
 
@@ -23,7 +26,13 @@
 
 namespace carto::mbvtbuilder {
     class MBVTLayerEncoder;
-    
+
+    // The per-layer geometry store and its geojson-vt tile index, and a wrapper around one feature's
+    // geometry. Both are defined in the .cpp so that the mapbox headers stay out of every
+    // translation unit that includes this one.
+    struct MBVTLayerData;
+    struct MBVTFeatureGeometry;
+
     class MBVTTileBuilder final {
     public:
         using LayerIndex = int;
@@ -33,11 +42,8 @@ namespace carto::mbvtbuilder {
         using MultiPoint = std::vector<Point>;
         using MultiLineString = std::vector<std::vector<Point>>;
         using MultiPolygon = std::vector<std::vector<std::vector<Point>>>;
-        
-        explicit MBVTTileBuilder(int minZoom, int maxZoom);
 
-        bool isFastSimplifyMode() const;
-        void setFastSimplifyMode(bool enabled);
+        explicit MBVTTileBuilder(int minZoom, int maxZoom);
 
         float getSimplifyTolerance() const;
         void setSimplifyTolerance(float tolerance);
@@ -65,20 +71,11 @@ namespace carto::mbvtbuilder {
         void buildTiles(std::function<void(int, int, int, const protobuf::encoded_message&)> handler) const;
 
     private:
-        using Geometry = std::variant<MultiPoint, MultiLineString, MultiPolygon>;
-
-        struct Feature {
-            std::uint64_t id = 0;
-            Bounds bounds = Bounds::smallest(); // EPSG3856
-            Geometry geometry; // EPSG3856
-            picojson::value properties;
-        };
-
         struct Layer {
             std::string name;
-            Bounds bounds = Bounds::smallest(); // EPSG3856
-            std::vector<Feature> features;
-            float buffer = 0;
+            Bounds bounds = Bounds::smallest(); // EPSG3857
+            float buffer = 0; // fraction of a tile
+            std::shared_ptr<MBVTLayerData> data;
         };
 
         static constexpr double PI = boost::math::constants::pi<double>();
@@ -88,18 +85,19 @@ namespace carto::mbvtbuilder {
 
         std::uint64_t extractFeatureId(LayerIndex layerIndex, picojson::value id, const picojson::value& properties);
 
-        const std::map<LayerIndex, Layer>& simplifyAndCacheLayers(int zoom) const;
+        void storeFeature(LayerIndex layerIndex, MBVTFeatureGeometry& geometry, const Bounds& bounds, picojson::value id, picojson::value properties, const bool updateOnly);
+        static void restampFeatureSlots(MBVTLayerData& data);
+
+        // Drops every layer's tile index; the next buildTile rebuilds the ones it needs.
         void invalidateCache() const;
 
-        static void simplifyLayer(Layer& layer, double tolerance);
-        static bool encodeLayer(const Layer& layer, const Point& tileOrigin, double tileSize, const Bounds& tileBounds, MBVTLayerEncoder& layerEncoder);
+        bool buildTileLayers(int zoom, int tileX, int tileY, protobuf::encoded_message& encodedTile) const;
 
         static std::vector<std::vector<cglib::vec2<double>>> parseCoordinatesRings(const picojson::value& coordsDef);
         static std::vector<cglib::vec2<double>> parseCoordinatesList(const picojson::value& coordsDef);
         static cglib::vec2<double> parseCoordinates(const picojson::value& coordsDef);
         static Point wgs84ToWM(const cglib::vec2<double>& posWgs84);
 
-        bool _fastSimplifyMode = false;
         float _simplifyTolerance = 1.0f;
         float _defaultLayerBuffer = 4.0f;
 
@@ -107,8 +105,6 @@ namespace carto::mbvtbuilder {
 
         const int _minZoom;
         const int _maxZoom;
-
-        mutable std::map<int, std::map<LayerIndex, Layer>> _cachedZoomLayers;
 
         mutable std::mutex _mutex;
     };

@@ -3407,8 +3407,9 @@ namespace carto::vt {
         std::shared_ptr<const TileLabel::Style> lastLabelStyle;
         int styleIndex = -1;
         int haloStyleIndex = -1;
-        int backgroundStyleIndex = -1;
+        LabelPlateIndices plateIndices;
         int secondaryStyleIndex = -1;
+        int iconStyleIndex = -1;
         for (const std::shared_ptr<Label>& label : labels) {
             if (!label->isValid()) {
                 continue;
@@ -3428,13 +3429,24 @@ namespace carto::vt {
                 float haloRadius = evaluateFloatFunc(labelStyle->haloRadiusFunc) * HALO_RADIUS_SCALE;
                 haloRadius = std::min(haloRadius, static_cast<float>(GLYPH_RENDER_SPREAD));
 
-                cglib::vec4<float> backgroundColor = cglib::vec4<float>(labelStyle->backgroundColor.rgba());
-                bool hasBackground = labelStyle->backgroundColor.value() != 0 && labelStyle->backgroundGlyph;
+                // Up to four plates: a fill and a border behind the text, and the same behind the
+                // icon. Each colour is one more slot in the batch, exactly like the halo.
+                const TileLabel::Style::Plate* plateList[4] = { &labelStyle->textPlate, &labelStyle->textPlate, &labelStyle->iconPlate, &labelStyle->iconPlate };
+                const bool plateIsBorder[4] = { false, true, false, true };
+                int plateCount = 0;
+                for (int i = 0; i < 4; i++) {
+                    if (plateIsBorder[i] ? plateList[i]->drawsBorder() : plateList[i]->drawsFill()) {
+                        plateCount++;
+                    }
+                }
                 // The second run of text may have its own colour, which is one more slot in the
                 // batch - exactly like the halo and the plate.
                 bool hasSecondaryColor = static_cast<bool>(labelStyle->secondaryColorFunc);
                 cglib::vec4<float> secondaryColor = hasSecondaryColor ? cglib::vec4<float>(evaluateColorFunc(*labelStyle->secondaryColorFunc).rgba()) : color;
-                if (labelStyle->transform || (lastLabelStyle && lastLabelStyle->transform) || labelBatchParams.scale != labelStyle->scale || labelBatchParams.glyphRenderSize != labelStyle->glyphRenderSize || labelBatchParams.parameterCount + (hasBackground ? 3 : 2) + (hasSecondaryColor ? 1 : 0) > LabelBatchParameters::MAX_PARAMETERS) {
+                // And so may the icon run - a font icon in its own colour next to the name.
+                bool hasIconColor = static_cast<bool>(labelStyle->iconColorFunc);
+                cglib::vec4<float> iconColor = hasIconColor ? cglib::vec4<float>(evaluateColorFunc(*labelStyle->iconColorFunc).rgba()) : color;
+                if (labelStyle->transform || (lastLabelStyle && lastLabelStyle->transform) || labelBatchParams.scale != labelStyle->scale || labelBatchParams.glyphRenderSize != labelStyle->glyphRenderSize || labelBatchParams.parameterCount + 2 + plateCount + (hasSecondaryColor ? 1 : 0) + (hasIconColor ? 1 : 0) > LabelBatchParameters::MAX_PARAMETERS) {
                     renderLabelBatch(labelBatchParams, bitmap);
                     labelBatchParams.labelCount = 0;
                     labelBatchParams.parameterCount = 0;
@@ -3452,8 +3464,9 @@ namespace carto::vt {
 
                     styleIndex = -1;
                     haloStyleIndex = -1;
-                    backgroundStyleIndex = -1;
+                    plateIndices = LabelPlateIndices();
                     secondaryStyleIndex = -1;
+                    iconStyleIndex = -1;
                 } else {
                     for (styleIndex = labelBatchParams.parameterCount; --styleIndex >= 0; ) {
                         if (labelBatchParams.colorTable[styleIndex] == color && labelBatchParams.widthTable[styleIndex] == size && labelBatchParams.strokeWidthTable[styleIndex] == 0) {
@@ -3479,21 +3492,28 @@ namespace carto::vt {
                     labelBatchParams.widthTable[haloStyleIndex] = size;
                     labelBatchParams.strokeWidthTable[haloStyleIndex] = haloRadius;
                 }
-                // The plate behind the text has its own colour, so it needs its own slot in the
-                // batch - exactly like the halo.
-                backgroundStyleIndex = -1;
-                if (hasBackground) {
-                    for (backgroundStyleIndex = labelBatchParams.parameterCount; --backgroundStyleIndex >= 0; ) {
-                        if (labelBatchParams.colorTable[backgroundStyleIndex] == backgroundColor && labelBatchParams.widthTable[backgroundStyleIndex] == size && labelBatchParams.strokeWidthTable[backgroundStyleIndex] == 0) {
+                // Every plate colour needs its own slot in the batch - exactly like the halo.
+                plateIndices = LabelPlateIndices();
+                int* plateTargets[4] = { &plateIndices.textFill, &plateIndices.textBorder, &plateIndices.iconFill, &plateIndices.iconBorder };
+                for (int i = 0; i < 4; i++) {
+                    const TileLabel::Style::Plate& plate = *plateList[i];
+                    if (!(plateIsBorder[i] ? plate.drawsBorder() : plate.drawsFill())) {
+                        continue;
+                    }
+                    cglib::vec4<float> plateColor = cglib::vec4<float>((plateIsBorder[i] ? plate.style.borderColor : plate.style.color).rgba());
+                    int index = labelBatchParams.parameterCount;
+                    for (--index; index >= 0; index--) {
+                        if (labelBatchParams.colorTable[index] == plateColor && labelBatchParams.widthTable[index] == size && labelBatchParams.strokeWidthTable[index] == 0) {
                             break;
                         }
                     }
-                    if (backgroundStyleIndex < 0) {
-                        backgroundStyleIndex = labelBatchParams.parameterCount++;
-                        labelBatchParams.colorTable[backgroundStyleIndex] = backgroundColor;
-                        labelBatchParams.widthTable[backgroundStyleIndex] = size;
-                        labelBatchParams.strokeWidthTable[backgroundStyleIndex] = 0;
+                    if (index < 0 && labelBatchParams.parameterCount < LabelBatchParameters::MAX_PARAMETERS) {
+                        index = labelBatchParams.parameterCount++;
+                        labelBatchParams.colorTable[index] = plateColor;
+                        labelBatchParams.widthTable[index] = size;
+                        labelBatchParams.strokeWidthTable[index] = 0;
                     }
+                    *plateTargets[i] = index;
                 }
 
                 secondaryStyleIndex = -1;
@@ -3511,11 +3531,26 @@ namespace carto::vt {
                     }
                 }
 
+                iconStyleIndex = -1;
+                if (hasIconColor) {
+                    for (iconStyleIndex = labelBatchParams.parameterCount; --iconStyleIndex >= 0; ) {
+                        if (labelBatchParams.colorTable[iconStyleIndex] == iconColor && labelBatchParams.widthTable[iconStyleIndex] == size && labelBatchParams.strokeWidthTable[iconStyleIndex] == 0) {
+                            break;
+                        }
+                    }
+                    if (iconStyleIndex < 0) {
+                        iconStyleIndex = labelBatchParams.parameterCount++;
+                        labelBatchParams.colorTable[iconStyleIndex] = iconColor;
+                        labelBatchParams.widthTable[iconStyleIndex] = size;
+                        labelBatchParams.strokeWidthTable[iconStyleIndex] = 0;
+                    }
+                }
+
                 lastLabelStyle = labelStyle;
             }
 
             VT_STAT_CLOCK(statClock);
-            label->calculateVertexData(labelBatchParams.widthTable[styleIndex], _viewState, styleIndex, haloStyleIndex, _labelVertices, _labelOffsets, _labelNormals, _labelTexCoords, _labelAttribs, _labelIndices, pass, pass == Label::DrawPass::CALLOUT_LINE ? -1 : backgroundStyleIndex, pass == Label::DrawPass::CALLOUT_LINE ? -1 : secondaryStyleIndex);
+            label->calculateVertexData(labelBatchParams.widthTable[styleIndex], _viewState, styleIndex, haloStyleIndex, _labelVertices, _labelOffsets, _labelNormals, _labelTexCoords, _labelAttribs, _labelIndices, pass, pass == Label::DrawPass::CALLOUT_LINE ? LabelPlateIndices() : plateIndices, pass == Label::DrawPass::CALLOUT_LINE ? -1 : secondaryStyleIndex, pass == Label::DrawPass::CALLOUT_LINE ? -1 : iconStyleIndex);
             VT_STAT_SPLIT(labelVertexBuildNs, statClock);
             VT_STAT_INC(labelsDrawnVertices);
 

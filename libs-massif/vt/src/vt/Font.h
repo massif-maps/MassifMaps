@@ -79,6 +79,10 @@ namespace carto::vt {
             // The glyph belongs to the label's SECOND run of text (TextFormatter::Options), which
             // may have its own colour. Set by the formatter, read when the quads are built.
             bool secondary = false;
+            // The glyph belongs to the label's ICON run - the glyphs drawn before the text and left
+            // where they are when the text moves to another side (TextLabelStyle::iconGlyphs). Its
+            // own colour again, so a font icon does not have to be the colour of the name.
+            bool icon = false;
 
             explicit Glyph(std::uint32_t utf32Char, CodePoint codePoint, const GlyphMap::Glyph& baseGlyph, const cglib::vec2<float>& size, const cglib::vec2<float>& offset, const cglib::vec2<float>& advance) : utf32Char(utf32Char), codePoint(codePoint), baseGlyph(baseGlyph), size(size), offset(offset), advance(advance) { }
         };

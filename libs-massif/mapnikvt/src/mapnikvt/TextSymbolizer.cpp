@@ -60,11 +60,7 @@ namespace carto::mvt {
         if (_secondaryFill.isDefined() || _secondaryOpacity.isDefined()) {
             secondaryColorFunc = _secondaryFillFuncBuilder.createColorOpacityFunction(_secondaryFill.getFunction(exprContext), _secondaryOpacity.getFunction(exprContext));
         }
-        float backgroundOpacity = _backgroundOpacity.getValue(exprContext);
-        vt::Color backgroundColorValue = _backgroundFill.getValue(exprContext);
-        vt::Color backgroundColor = vt::Color::fromColorOpacity(backgroundColorValue, backgroundOpacity);
-        float backgroundRadius = _backgroundRadius.getValue(exprContext) * fontScale;
-        cglib::vec2<float> backgroundPadding(_backgroundPaddingX.getValue(exprContext) * fontScale, _backgroundPaddingY.getValue(exprContext) * fontScale);
+        vt::LabelPlateStyle textPlate = getPlateStyle(symbolizerContext, exprContext);
         float orientationAngle = _orientationAngle.getValue(exprContext);
         float sizeStatic = _size.getStaticValue(exprContext);
 
@@ -181,8 +177,8 @@ namespace carto::mvt {
             };
         }
 
-        return [compOp, fillFunc, haloFillFunc, sizeFunc, haloRadiusFunc, fontScale, placement, text, hash, orientationAngle, formatter, backgroundOffset, backgroundImage, spacing, textSize, tileId, tileSize, labelIdOverride, groupId, placementPriority, minimumDistance, maxDistance, secondaryColorFunc, rankFunc, calloutScreenAnchor, calloutOffset, calloutStep, calloutMaxRows, calloutPersistPasses, calloutLineWidth, calloutLineAnchor, calloutBandAnchor, backgroundColor, backgroundRadius, backgroundPadding, allowOverlapSameFeatureId, sameFeatureIdDependent, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
-            vt::TextLabelStyle style(placement, fillFunc, sizeFunc, haloFillFunc, haloRadiusFunc, true, orientationAngle, fontScale, backgroundOffset, backgroundImage, maxDistance, secondaryColorFunc, rankFunc, calloutScreenAnchor, calloutOffset, calloutStep, calloutMaxRows, calloutPersistPasses, calloutLineWidth, calloutLineAnchor, calloutBandAnchor, backgroundColor, backgroundRadius, backgroundPadding);
+        return [compOp, fillFunc, haloFillFunc, sizeFunc, haloRadiusFunc, fontScale, placement, text, hash, orientationAngle, formatter, backgroundOffset, backgroundImage, spacing, textSize, tileId, tileSize, labelIdOverride, groupId, placementPriority, minimumDistance, maxDistance, secondaryColorFunc, rankFunc, calloutScreenAnchor, calloutOffset, calloutStep, calloutMaxRows, calloutPersistPasses, calloutLineWidth, calloutLineAnchor, calloutBandAnchor, textPlate, allowOverlapSameFeatureId, sameFeatureIdDependent, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
+            vt::TextLabelStyle style(placement, fillFunc, sizeFunc, haloFillFunc, haloRadiusFunc, true, orientationAngle, fontScale, backgroundOffset, backgroundImage, maxDistance, secondaryColorFunc, rankFunc, calloutScreenAnchor, calloutOffset, calloutStep, calloutMaxRows, calloutPersistPasses, calloutLineWidth, calloutLineAnchor, calloutBandAnchor, textPlate);
             vt::TileLayerBuilder::TextLabelProcessor textProcessor;
             for (std::size_t featureIndex = 0; featureIndex < featureCollection.size(); featureIndex++) {
                 if (!textProcessor) {
@@ -471,6 +467,17 @@ namespace carto::mvt {
             font = sizedFont;
         }
         return font;
+    }
+
+    vt::LabelPlateStyle TextSymbolizer::getPlateStyle(const SymbolizerContext& symbolizerContext, const ExpressionContext& exprContext) const {
+        float fontScale = symbolizerContext.getSettings().getFontScale();
+        vt::LabelPlateStyle plate;
+        plate.color = vt::Color::fromColorOpacity(_backgroundFill.getValue(exprContext), _backgroundOpacity.getValue(exprContext));
+        plate.radius = _backgroundRadius.getValue(exprContext) * fontScale;
+        plate.padding = cglib::vec2<float>(_backgroundPaddingX.getValue(exprContext) * fontScale, _backgroundPaddingY.getValue(exprContext) * fontScale);
+        plate.borderColor = vt::Color::fromColorOpacity(_backgroundBorderFill.getValue(exprContext), _backgroundBorderOpacity.getValue(exprContext));
+        plate.borderWidth = _backgroundBorderWidth.getValue(exprContext) * fontScale;
+        return plate;
     }
 
     vt::TextFormatter::Options TextSymbolizer::getFormatterOptions(const SymbolizerContext& symbolizerContext, const ExpressionContext& exprContext) const {

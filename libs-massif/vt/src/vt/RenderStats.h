@@ -158,6 +158,11 @@ namespace carto::vt {
         // Culling
         static inline std::atomic<long long> cullerPasses{0};
         static inline std::atomic<long long> cullerVisibilityFlips{0}; // labels that appeared or disappeared
+        // Wall time inside LabelCuller::process, summed over the layers of a pass. A label whose
+        // style allows several sides is placed by retrying them (placeAnchoredLabel), so this is
+        // where that costs anything - it runs on the placement worker, never on the GL thread, and
+        // no frame section shows it.
+        static inline std::atomic<long long> cullerNs{0};
     };
 }
 

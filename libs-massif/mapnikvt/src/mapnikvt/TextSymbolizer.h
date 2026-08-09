@@ -60,6 +60,9 @@ namespace carto::mvt {
             bindProperty("background-radius", &_backgroundRadius);
             bindProperty("background-padding-x", &_backgroundPaddingX);
             bindProperty("background-padding-y", &_backgroundPaddingY);
+            bindProperty("background-border-fill", &_backgroundBorderFill);
+            bindProperty("background-border-opacity", &_backgroundBorderOpacity);
+            bindProperty("background-border-width", &_backgroundBorderWidth);
             bindProperty("allow-overlap", &_allowOverlap);
             bindProperty("allow-overlap-same-feature-id", &_allowOverlapSameFeatureId);
             bindProperty("same-feature-id-dependent", &_sameFeatureIdDependent);
@@ -91,6 +94,9 @@ namespace carto::mvt {
         std::string getTransformedText(const ExpressionContext& exprContext) const;
         std::shared_ptr<const vt::Font> getFont(const SymbolizerContext& symbolizerContext, const ExpressionContext& exprContext) const;
         vt::TextFormatter::Options getFormatterOptions(const SymbolizerContext& symbolizerContext, const ExpressionContext& exprContext) const;
+        // The plate behind the text: 'background-*', in screen pixels. Nothing is drawn unless the
+        // style asks for a fill or a border, which is what every style without them gets.
+        vt::LabelPlateStyle getPlateStyle(const SymbolizerContext& symbolizerContext, const ExpressionContext& exprContext) const;
 
         const std::vector<std::shared_ptr<FontSet>> _fontSets;
 
@@ -148,6 +154,10 @@ namespace carto::mvt {
         FloatProperty _backgroundRadius = FloatProperty(0.0f);
         FloatProperty _backgroundPaddingX = FloatProperty(3.0f);
         FloatProperty _backgroundPaddingY = FloatProperty(2.0f);
+        // A border around the plate: one more plate behind it, that much larger on every side.
+        ColorProperty _backgroundBorderFill = ColorProperty("#000000");
+        FloatProperty _backgroundBorderOpacity = FloatProperty(1.0f);
+        FloatProperty _backgroundBorderWidth = FloatProperty(0.0f);
         BoolProperty _allowOverlap = BoolProperty(false);
         BoolProperty _clip = BoolProperty(false);
         BoolProperty _allowOverlapSameFeatureId = BoolProperty(false);

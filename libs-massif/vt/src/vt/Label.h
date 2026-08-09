@@ -27,6 +27,15 @@
 #include <algorithm>
 
 namespace carto::vt {
+    // Where a label's plate colours landed in the draw batch (see TileLabel::Style::Plate). -1 is
+    // 'this one is not drawn'.
+    struct LabelPlateIndices {
+        int textFill = -1;
+        int textBorder = -1;
+        int iconFill = -1;
+        int iconBorder = -1;
+    };
+
     class Label final {
     public:
         explicit Label(const TileLabel& tileLabel, const TileId& tileId, int layerIdx, const cglib::mat4x4<double>& tileMatrix, const std::shared_ptr<const TileTransformer::VertexTransformer>& transformer);
@@ -57,6 +66,15 @@ namespace carto::vt {
 
         bool isActive() const { return _active; }
         void setActive(bool active) { _active = active; }
+
+        // Which of the style's sides the text is laid out on (see TileLabel::Variant). Owned by
+        // LabelCuller, the only place that knows what else is on screen; carried over by
+        // snapPlacement, or a label rebuilt on a tile-set change would take the first side again
+        // and the name would hop from one side of its icon to the other while the map pans.
+        std::size_t getVariantCount() const { return _variants.size(); }
+        int getVariantIndex() const { return _variantIndex; }
+        void setVariantIndex(int index);
+        bool drawsText() const { return _variants.empty() || _variants[_variantIndex].drawText; }
 
         // CALLOUT orientation: how far the label is lifted from its anchor, in SCREEN PIXELS along
         // the camera up axis. Owned by LabelCuller, which is the only place that knows what else is
@@ -107,8 +125,13 @@ namespace carto::vt {
         bool calculateCenter(cglib::vec3<double>& pos) const;
         bool calculateEnvelope(const ViewState& viewState, std::array<cglib::vec3<float>, 4>& envelope) const { return calculateEnvelope((_style->sizeFunc)(viewState), 0, viewState, envelope); }
         bool calculateEnvelope(float size, float buffer, const ViewState& viewState, std::array<cglib::vec3<float>, 4>& envelope) const;
-        bool calculateVertexData(const ViewState& viewState, int styleIndex, int haloStyleIndex, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& offsets, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices, DrawPass pass = DrawPass::ALL, int backgroundStyleIndex = -1, int secondaryStyleIndex = -1) const { return calculateVertexData((_style->sizeFunc)(viewState), viewState, styleIndex, haloStyleIndex, vertices, offsets, normals, texCoords, attribs, indices, pass, backgroundStyleIndex, secondaryStyleIndex); }
-        bool calculateVertexData(float size, const ViewState& viewState, int styleIndex, int haloStyleIndex, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& offsets, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices, DrawPass pass = DrawPass::ALL, int backgroundStyleIndex = -1, int secondaryStyleIndex = -1) const;
+        // The envelope of EVERY side the text may be laid out on, in one call. The placement, the
+        // scale and the label's screen axes are the same for all of them - only the glyph box moves
+        // - so the culler, which tries the sides in order, pays for one placement instead of one
+        // per side. Falls back to the single current envelope for a label with no variants.
+        bool calculateVariantEnvelopes(float size, float buffer, const ViewState& viewState, std::vector<std::array<cglib::vec3<float>, 4>>& envelopes) const;
+        bool calculateVertexData(const ViewState& viewState, int styleIndex, int haloStyleIndex, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& offsets, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices, DrawPass pass = DrawPass::ALL, const LabelPlateIndices& plates = LabelPlateIndices(), int secondaryStyleIndex = -1, int iconStyleIndex = -1) const { return calculateVertexData((_style->sizeFunc)(viewState), viewState, styleIndex, haloStyleIndex, vertices, offsets, normals, texCoords, attribs, indices, pass, plates, secondaryStyleIndex, iconStyleIndex); }
+        bool calculateVertexData(float size, const ViewState& viewState, int styleIndex, int haloStyleIndex, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& offsets, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices, DrawPass pass = DrawPass::ALL, const LabelPlateIndices& plates = LabelPlateIndices(), int secondaryStyleIndex = -1, int iconStyleIndex = -1) const;
 
     private:
         // How labelVsh must read a glyph offset (attribs[3]); see calculateVertexData.
@@ -262,9 +285,13 @@ namespace carto::vt {
         float calculateTerrainScaleFactor(const cglib::vec3<double>& position, const ViewState& viewState) const;
         void setupCoordinateSystem(const ViewState& viewState, const std::shared_ptr<const Placement>& placement, cglib::vec3<float>& origin, cglib::vec3<float>& xAxis, cglib::vec3<float>& yAxis) const;
         void buildPointVertexData(VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const;
-        // Appends the plate behind the text - three quads, so the corners keep their radius at any
-        // text width. Drawn with its own style index (its own colour), before the glyphs.
-        void appendLabelBackground(float size, float scale, const ViewState& viewState, const std::shared_ptr<const Placement>& placement, int backgroundStyleIndex, const cglib::vec2<float>& calloutShift, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& offsets, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const;
+        // Appends the plates behind the text and behind the icon - each one three quads, so the
+        // corners keep their radius at any text width, and each one drawn with its own style index
+        // (its own colour) before the glyphs. A border is one more plate behind the fill, grown by
+        // the border width.
+        void appendLabelPlates(float size, float scale, const std::shared_ptr<const Placement>& placement, const LabelPlateIndices& plates, const cglib::vec2<float>& calloutShift, const cglib::vec3<float>& origin, const cglib::vec3<float>& xAxis, const cglib::vec3<float>& yAxis, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& offsets, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const;
+        // One plate: the 3-sliced rounded rectangle around 'box', grown by 'grow' glyph units.
+        void appendPlate(const cglib::bbox2<float>& box, const GlyphMap::Glyph& glyph, float radius, const cglib::vec2<float>& grow, float scale, int styleIndex, bool cameraAxes, const cglib::vec2<float>& calloutShift, const cglib::vec3<float>& origin, const cglib::vec3<float>& xAxis, const cglib::vec3<float>& yAxis, const std::shared_ptr<const Placement>& placement, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& offsets, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const;
         // Appends the leader line to a draw batch (nothing for a label that has none).
         void appendCalloutLine(float size, float scale, const ViewState& viewState, const std::shared_ptr<const Placement>& placement, int styleIndex, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& offsets, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const;
         // The leader line quad, in the same units as the drawn glyph offsets. Built per frame
@@ -273,6 +300,52 @@ namespace carto::vt {
         void buildCalloutLineVertexData(float calloutLift, float pixelScale, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const;
         void updateLineVertexData(const std::shared_ptr<const Placement>& placement, float scale, const ViewState& viewState, bool rebuildForView) const;
         bool buildLineVertexData(const std::shared_ptr<const Placement>& placement, float scale, const ViewState& viewState, const cglib::mat4x4<double>& mvpMatrix, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const;
+
+        // Where the text pen starts for the variant in use - zero for a label with one fixed
+        // layout, which is every label a style without anchors builds.
+        cglib::vec2<float> calculateVariantShift() const { return _variants.empty() ? cglib::vec2<float>(0, 0) : _variants[_variantIndex].shift; }
+        // Which glyphs of the run a box covers: the icon prefix, the text after the first line
+        // break, or both.
+        enum class Part { ALL, ICON, TEXT };
+        // The one pen walk over the glyph run, shared by the box and the quads so the two can not
+        // drift apart: 'fn(glyph, pen, isText)' is called for every glyph that is drawn. The icon
+        // glyphs come before the first line break, the text after it starts at 'shift' (plus its
+        // line's justification), and !drawText stops at the break.
+        template <typename Func>
+        void walkGlyphs(const cglib::vec2<float>& shift, bool drawText, float lineAlign, Func fn) const {
+            cglib::vec2<float> pen(0, 0);
+            bool text = false;
+            std::size_t lineIndex = 0;
+            for (const Font::Glyph& glyph : _glyphs) {
+                if (glyph.codePoint == Font::CR_CODEPOINT) {
+                    if (!drawText) {
+                        return;
+                    }
+                    pen = shift + cglib::vec2<float>(calculateLineShift(text ? ++lineIndex : lineIndex, lineAlign), 0);
+                    text = true;
+                }
+                else {
+                    fn(glyph, pen, text);
+                }
+                pen += glyph.advance;
+            }
+        }
+        cglib::bbox2<float> calculateGlyphBBox(const cglib::vec2<float>& shift, bool drawText, Part part = Part::ALL, float lineAlign = 0.0f) const;
+        // Justification of the text's lines for the variant in use: -1 flush left, 0 centred (which
+        // is how the formatter laid them out), +1 flush right.
+        float calculateLineAlign() const { return _variants.empty() ? _style->textLineAlign : _variants[_variantIndex].lineAlign; }
+        // How far a line moves for that justification. The formatter centres every line inside the
+        // block, so this is the distance from the centred position to the flush one; it is 0 for a
+        // single-line label, which is nearly all of them.
+        float calculateLineShift(std::size_t lineIndex, float lineAlign) const;
+        // Ink extents of every line of the text, in the pen's own frame, plus the block's - the two
+        // things a justification needs. Measured once, when the label is built.
+        void measureTextLines();
+        // The variant's content box grown by whatever its plates add around it - what the label
+        // actually covers on screen, which is what the culler has to test.
+        cglib::bbox2<float> calculatePlatedBBox(int variantIndex, float pixelScale) const;
+        // The four corners a glyph box takes on the label's screen axes, style transform included.
+        void buildBoxEnvelope(const cglib::bbox2<float>& glyphBBox, float scale, const cglib::vec2<float>& padding, const cglib::vec3<float>& origin, const cglib::vec3<float>& xAxis, const cglib::vec3<float>& yAxis, std::array<cglib::vec3<float>, 4>& envelope) const;
 
         cglib::bbox3<double> calculateGeometryBBox(const ViewState& viewState) const;
         static void smoothPlacementLine(const std::vector<cglib::vec3<double>>& vertices, std::size_t index, double minEdgeLength, std::vector<cglib::vec3<double>>& smoothedVertices, std::size_t& smoothedIndex);
@@ -291,14 +364,22 @@ namespace carto::vt {
         const long long _globalId;
         const long long _groupId;
         const std::vector<Font::Glyph> _glyphs;
+        const std::vector<TileLabel::Variant> _variants;
         const std::shared_ptr<const TileLabel::Style> _style;
         const float _priority;
         const float _minimumGroupDistance;
         const bool _allowOverlapSameFeatureId;
         const bool _sameFeatureIdDependent;
 
-        cglib::bbox2<float> _glyphBBox;
-        float _maxGlyphExtent = 0; // largest distance a glyph reaches from the anchor, style transform included
+        cglib::bbox2<float> _glyphBBox;               // of the variant in use
+        cglib::bbox2<float> _textBBox;                // its text part alone (what the text plate sits behind)
+        cglib::bbox2<float> _iconBBox;                // the icon run, which no variant moves
+        std::vector<cglib::vec2<float>> _lineExtents; // per line of the text: ink min/max x, pen-relative
+        cglib::vec2<float> _blockExtent = cglib::vec2<float>(0, 0); // the same over all of them
+        std::vector<cglib::bbox2<float>> _variantBBoxes;
+        std::vector<cglib::bbox2<float>> _variantTextBBoxes;
+        int _variantIndex = 0;
+        float _maxGlyphExtent = 0; // largest distance a glyph reaches from the anchor, style transform and every variant included
         std::list<TilePoint> _tilePoints;
         std::list<TileLine> _tileLines;
 

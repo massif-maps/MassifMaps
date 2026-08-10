@@ -90,6 +90,10 @@ namespace carto::vt {
         bool tesselatePolygon3D(const std::vector<std::vector<cglib::vec2<float>>>& pointsList, float minHeight, float maxHeight, std::int8_t styleIndex, const Polygon3DStyle& style);
         bool tesselateLine(const std::vector<cglib::vec2<float>>& points, std::int8_t styleIndex, const StrokeMap::Stroke* stroke, const LineStyle& style);
         bool tesselateLineEndPoint(const cglib::vec2<float>& p0, float u0, float v0, float v1, std::size_t i0, std::size_t i1, const cglib::vec2<float>& tangent, const cglib::vec2<float>& binormal, std::int8_t styleIndex, const LineStyle& style);
+        static float lineEndArrowInradius(const LineStyle& style);
+        static std::vector<cglib::vec2<float>> lineEndArrowShapeOutline(const LineStyle& style);
+        bool tesselateLineEndArrowShape(const cglib::vec2<float>& p0, float u0, float v0, float v1, const cglib::vec2<float>& tangent, const cglib::vec2<float>& binormal, std::int8_t styleIndex, const LineStyle& style);
+        bool tesselateLineEndArrow(const cglib::vec2<float>& p0, float u0, float v0, float v1, const cglib::vec2<float>& tangent, const cglib::vec2<float>& binormal, std::int8_t styleIndex, const LineStyle& style);
         void appendGeometry();
 
         const std::string _layerName;

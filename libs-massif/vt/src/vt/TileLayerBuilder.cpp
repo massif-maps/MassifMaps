@@ -1,5 +1,7 @@
 #include "TileLayerBuilder.h"
 
+#include <array>
+
 #include <map>
 #include <mutex>
 #include <cmath>
@@ -1177,6 +1179,27 @@ namespace carto::vt {
         _transformer->tesselateLineString(linePoints.data(), linePoints.size(), points);
 
         bool cycle = points[0] == points[points.size() - 1];
+
+        // 'arrow only' emits the head and nothing else, so a style can paint it OVER the shaft:
+        // the shaft rules draw first, the head rules after, and where the head overlaps its own
+        // line - a U-turn, a hairpin - the head keeps the outline that tells it apart from the
+        // line it sits on. Drawn from the last segment that has a direction; the head hangs on the
+        // last vertex itself, with no pull-back, because there is no line here to pull back.
+        if (style.endArrowOnly) {
+            if (cycle || !style.hasEndArrow()) {
+                return false;
+            }
+            for (std::size_t k = points.size() - 1; k > 0; k--) {
+                if (points[k] == points[k - 1]) {
+                    continue;
+                }
+                cglib::vec2<float> arrowTangent = cglib::unit(points[k] - points[k - 1]);
+                cglib::vec2<float> arrowBinormal(arrowTangent(1), -arrowTangent(0));
+                return tesselateLineEndArrow(points[k], 0, v0, v1, arrowTangent, arrowBinormal, styleIndex, style);
+            }
+            return false;
+        }
+
         bool endpoints = !cycle && style.capMode != LineCapMode::NONE;
         // An offset line carries its offset in the vertex shader as binormal * offset * side, so a
         // vertex with a zero binormal is not offset at all: the sharp-join fix below can not be
@@ -1470,17 +1493,291 @@ namespace carto::vt {
                 _indices.append(i0 - 1, i0 + 0, i0 + 1);
             }
 
+            // An arrow head replaces the cap and pulls the line's last vertices back by its own
+            // length, so the line stops where the head starts instead of poking out of it. The
+            // pull-back rides the binormal attribute - the shader multiplies it by the line width,
+            // so it is the same screen-space offset the extrusion uses, which the tile coordinates
+            // here can not express (the head's size is in pixels, not in metres).
+            bool endArrow = !cycle && style.hasEndArrow();
+            cglib::vec2<float> setback = endArrow ? tangent * lineEndArrowInradius(style) : cglib::vec2<float>(0, 0);
+
             _coords.append(p0, p0);
             _texCoords.append(cglib::vec2<float>(u0, v0), cglib::vec2<float>(u0, v1));
-            _binormals.append(-binormal, binormal);
+            _binormals.append(-binormal - setback, binormal - setback);
             _attribs.append(cglib::vec4<std::int8_t>(styleIndex, 0, 1, 0), cglib::vec4<std::int8_t>(styleIndex, 0, -1, 0));
 
-            if (endpoints) {
+            if (endArrow) {
+                tesselateLineEndArrow(p0, u0, v0, v1, tangent, binormal, styleIndex, style);
+            }
+            else if (endpoints) {
                 std::size_t i1 = _coords.size();
                 tesselateLineEndPoint(p0, u0, v0, v1, i1, i0, tangent, binormal, styleIndex, style);
             }
         }
         return true;
+    }
+
+    float TileLayerBuilder::lineEndArrowInradius(const LineStyle& style) {
+        // Sizes are multiples of the LINE WIDTH; one binormal unit is half a line width, so a base
+        // of endArrowWidth line widths is endArrowWidth units to each side, and a length of
+        // endArrowLength line widths is 2 * endArrowLength units.
+        float halfBase = style.endArrowWidth;
+        float length = 2.0f * style.endArrowLength;
+        return halfBase * length / (halfBase + std::sqrt(halfBase * halfBase + length * length));
+    }
+
+    // A CUSTOM head outline, offset outward by one unit - half a line width - with miter joins.
+    // For the built-in triangle this is the same thing as growing it about its incenter, which is
+    // why both look identical; on any other contour the homothety would stop keeping the edges an
+    // equal distance apart and only the per-edge offset stays right. The miter is left unclamped:
+    // clamping bevels the tip, and a maneuver arrow is read by its point. A concave contour can
+    // self-intersect here - that is the known limit of offsetting a polygon this cheaply.
+    std::vector<cglib::vec2<float>> TileLayerBuilder::lineEndArrowShapeOutline(const LineStyle& style) {
+        const std::vector<cglib::vec2<float>>& shape = *style.endArrowShape;
+        std::size_t n = shape.size();
+        std::vector<cglib::vec2<float>> skeleton;
+        skeleton.reserve(n);
+        // MEASURED, not assumed: the line's own edge sits TWO binormal units from its centre, so a
+        // unit is a quarter of the line width. A path coordinate is documented as one line width,
+        // hence the four, and the outward offset below is two units - half a line width, the same
+        // distance a casing rule puts between its edge and the fill's.
+        constexpr float UNITS_PER_LINE_WIDTH = 4.0f;
+        constexpr float OFFSET_UNITS = UNITS_PER_LINE_WIDTH * 0.5f;
+        for (const cglib::vec2<float>& vertex : shape) {
+            skeleton.emplace_back(vertex(0) * UNITS_PER_LINE_WIDTH, vertex(1) * UNITS_PER_LINE_WIDTH);
+        }
+
+        double area = 0;
+        for (std::size_t i = 0; i < n; i++) {
+            const cglib::vec2<float>& p = skeleton[i];
+            const cglib::vec2<float>& q = skeleton[(i + 1) % n];
+            area += static_cast<double>(p(0)) * q(1) - static_cast<double>(q(0)) * p(1);
+        }
+        float winding = area < 0 ? -1.0f : 1.0f;
+
+        std::vector<cglib::vec2<float>> outline;
+        outline.reserve(n);
+        for (std::size_t i = 0; i < n; i++) {
+            const cglib::vec2<float>& prev = skeleton[(i + n - 1) % n];
+            const cglib::vec2<float>& cur = skeleton[i];
+            const cglib::vec2<float>& next = skeleton[(i + 1) % n];
+            cglib::vec2<float> d0 = cglib::unit(cur - prev), d1 = cglib::unit(next - cur);
+            cglib::vec2<float> n0(d0(1) * winding, -d0(0) * winding), n1(d1(1) * winding, -d1(0) * winding);
+            cglib::vec2<float> bisector = n0 + n1;
+            float len = cglib::length(bisector);
+            if (len < 1.0e-6f) {
+                outline.push_back(cur + n0 * OFFSET_UNITS);
+                continue;
+            }
+            bisector = bisector * (1.0f / len);
+            // A REFLEX vertex - the inside of a swallow tail's notch - has to be clamped: its miter
+            // runs away from the contour instead of along it, and an unclamped one folds the outline
+            // over itself. Convex corners keep the exact miter, which is what keeps a tip sharp.
+            float turn = (d0(0) * d1(1) - d0(1) * d1(0)) * winding;
+            float miter = 1.0f / std::max(1.0e-2f, cglib::dot_product(bisector, n0));
+            outline.push_back(cur + bisector * OFFSET_UNITS * (turn < 0 ? std::min(miter, 1.0f) : miter));
+        }
+        return outline;
+    }
+
+    bool TileLayerBuilder::tesselateLineEndArrow(const cglib::vec2<float>& p0, float u0, float v0, float v1, const cglib::vec2<float>& tangent, const cglib::vec2<float>& binormal, std::int8_t styleIndex, const LineStyle& style) {
+        if (!_clipBox.inside(p0)) {
+            return false;
+        }
+        if (style.endArrowShape && style.endArrowShape->size() >= 3) {
+            return tesselateLineEndArrowShape(p0, u0, v0, v1, tangent, binormal, styleIndex, style);
+        }
+
+        float halfBase = style.endArrowWidth;
+        float length = 2.0f * style.endArrowLength;
+        // The head hangs on its INCENTER, not on its tip or its base. Every offset here is a
+        // multiple of the line width, so a casing rule draws the same triangle a few units bigger
+        // about the same incenter - and a homothety about the incenter moves every edge by the
+        // SAME distance. Anchoring the tip instead pins the two triangles together at the point:
+        // the border is then zero at the tip and widest at the base, which reads as a wedge.
+        float inradius = lineEndArrowInradius(style);
+        cglib::vec2<float> base = -tangent * inradius;
+        cglib::vec2<float> tip = tangent * (length - inradius);
+
+        // The head is solid: its corners carry a zero antialias distance, so the fragment shader
+        // keeps them opaque. The distance field a line uses describes a band one width wide, not a
+        // triangle - stretched over this one it faded the silhouette near the barbs while leaving
+        // the tip hard.
+        const cglib::vec4<std::int8_t> attrib(styleIndex, 0, 0, 0);
+        std::size_t i0 = _coords.size();
+
+        // A head drawn on its own has a SLOT cut out of its base, one line width wide - the width
+        // of the very line this rule draws elsewhere. It is what lets a style put the head OVER the
+        // shaft and still read as one polygon: the slot leaves the shaft it docks on untouched, so
+        // no bar of head colour crosses the line, while everything outside the slot - the shoulders
+        // beside the shaft, the barbs, the tip - paints over it and keeps the arrow's silhouette
+        // where the head lies on its own line, a U-turn seen from far enough away.
+        if (style.endArrowOnly && halfBase > 1.0f) {
+            cglib::vec2<float> slot = binormal;
+            _coords.append(p0, p0, p0);
+            _texCoords.append(cglib::vec2<float>(u0, v0), cglib::vec2<float>(u0, v0), cglib::vec2<float>(u0, (v0 + v1) * 0.5f));
+            _binormals.append(base + binormal * halfBase, base + slot, slot);
+            _attribs.append(attrib, attrib, attrib);
+
+            _coords.append(p0, p0, p0);
+            _texCoords.append(cglib::vec2<float>(u0, (v0 + v1) * 0.5f), cglib::vec2<float>(u0, v1), cglib::vec2<float>(u0, v1));
+            _binormals.append(-slot, base - slot, base - binormal * halfBase);
+            _attribs.append(attrib, attrib, attrib);
+
+            _coords.append(p0);
+            _texCoords.append(cglib::vec2<float>(u0, (v0 + v1) * 0.5f));
+            _binormals.append(tip);
+            _attribs.append(attrib);
+
+            // A fan from the tip: the slotted head is still star-shaped from it.
+            std::size_t tipIndex = i0 + 6;
+            for (std::size_t k = 0; k + 1 < 6; k++) {
+                _indices.append(tipIndex, i0 + k, i0 + k + 1);
+            }
+            return true;
+        }
+
+        _coords.append(p0, p0);
+        _texCoords.append(cglib::vec2<float>(u0, v0), cglib::vec2<float>(u0, v1));
+        _binormals.append(base + binormal * halfBase, base - binormal * halfBase);
+        _attribs.append(attrib, attrib);
+
+        _coords.append(p0);
+        _texCoords.append(cglib::vec2<float>(u0, (v0 + v1) * 0.5f));
+        _binormals.append(tip);
+        _attribs.append(attrib);
+
+        _indices.append(i0 + 0, i0 + 1, i0 + 2);
+        return true;
+    }
+
+    namespace {
+        // Sutherland-Hodgman against one half plane, keeping nx*x + ny*y >= d. Correct on a concave
+        // polygon too - a half plane can not split one into pieces, only dent it.
+        std::vector<cglib::vec2<float>> clipHalfPlane(const std::vector<cglib::vec2<float>>& poly, float nx, float ny, float d) {
+            std::vector<cglib::vec2<float>> result;
+            result.reserve(poly.size() + 2);
+            for (std::size_t i = 0; i < poly.size(); i++) {
+                const cglib::vec2<float>& cur = poly[i];
+                const cglib::vec2<float>& next = poly[(i + 1) % poly.size()];
+                float dc = nx * cur(0) + ny * cur(1) - d;
+                float dn = nx * next(0) + ny * next(1) - d;
+                if (dc >= 0) {
+                    result.push_back(cur);
+                }
+                if ((dc >= 0) != (dn >= 0)) {
+                    float t = dc / (dc - dn);
+                    result.push_back(cur + (next - cur) * t);
+                }
+            }
+            return result;
+        }
+
+        // Ear clipping: the head can be concave - a swallow tail, a chevron with a notch - and a fan
+        // from one vertex would fill exactly the dent that makes the shape what it is.
+        void earClip(const std::vector<cglib::vec2<float>>& poly, std::vector<std::array<std::size_t, 3>>& triangles) {
+            std::size_t n = poly.size();
+            if (n < 3) {
+                return;
+            }
+            double area = 0;
+            for (std::size_t i = 0; i < n; i++) {
+                const cglib::vec2<float>& p = poly[i];
+                const cglib::vec2<float>& q = poly[(i + 1) % n];
+                area += static_cast<double>(p(0)) * q(1) - static_cast<double>(q(0)) * p(1);
+            }
+            float winding = area < 0 ? -1.0f : 1.0f;
+
+            std::vector<std::size_t> remaining(n);
+            for (std::size_t i = 0; i < n; i++) {
+                remaining[i] = i;
+            }
+            auto cross = [&poly, winding](std::size_t a, std::size_t b, std::size_t c) {
+                cglib::vec2<float> u = poly[b] - poly[a], v = poly[c] - poly[a];
+                return (u(0) * v(1) - u(1) * v(0)) * winding;
+            };
+            // A flattened curve leaves runs of nearly straight points: an ear whose area is a
+            // rounding error is not a failure, it is just flat, so it is clipped rather than
+            // refused. Refusing them is what left holes in the head.
+            std::size_t guard = 0;
+            while (remaining.size() > 3 && guard++ < n * n * 2) {
+                bool clipped = false;
+                for (std::size_t k = 0; k < remaining.size(); k++) {
+                    std::size_t a = remaining[(k + remaining.size() - 1) % remaining.size()];
+                    std::size_t b = remaining[k];
+                    std::size_t c = remaining[(k + 1) % remaining.size()];
+                    if (cross(a, b, c) < -1.0e-6f) {
+                        continue; // reflex, not an ear
+                    }
+                    bool empty = true;
+                    for (std::size_t other : remaining) {
+                        if (other == a || other == b || other == c) {
+                            continue;
+                        }
+                        if (cross(a, b, other) > 1.0e-6f && cross(b, c, other) > 1.0e-6f && cross(c, a, other) > 1.0e-6f) {
+                            empty = false;
+                            break;
+                        }
+                    }
+                    if (!empty) {
+                        continue;
+                    }
+                    triangles.push_back({ a, b, c });
+                    remaining.erase(remaining.begin() + k);
+                    clipped = true;
+                    break;
+                }
+                if (!clipped) {
+                    break; // degenerate contour: keep what was clipped, drop the rest
+                }
+            }
+            if (remaining.size() == 3) {
+                triangles.push_back({ remaining[0], remaining[1], remaining[2] });
+            }
+        }
+    }
+
+    bool TileLayerBuilder::tesselateLineEndArrowShape(const cglib::vec2<float>& p0, float u0, float v0, float v1, const cglib::vec2<float>& tangent, const cglib::vec2<float>& binormal, std::int8_t styleIndex, const LineStyle& style) {
+        std::vector<cglib::vec2<float>> outline = lineEndArrowShapeOutline(style);
+        if (outline.size() < 3) {
+            return false;
+        }
+
+        // The head minus its docking slot, as three convex clips rather than a polygon subtraction:
+        // what is in front of the base, plus each shoulder beside the shaft. Their union is the head
+        // with a slot one line width wide - the shaft it docks on stays untouched, so no bar of head
+        // colour crosses the line, and everything else still paints over it.
+        // No docking slot here, unlike the built-in triangle: a slot is a notch where the shaft
+        // enters the head, and a custom contour is placed AHEAD of the line end rather than
+        // straddling it - cutting one through the middle of an icon only gashes it.
+        std::vector<std::vector<cglib::vec2<float>>> pieces { outline };
+
+        const cglib::vec4<std::int8_t> attrib(styleIndex, 0, 0, 0);
+        bool drawn = false;
+        for (const std::vector<cglib::vec2<float>>& piece : pieces) {
+            if (piece.size() < 3) {
+                continue;
+            }
+            std::vector<std::array<std::size_t, 3>> triangles;
+            earClip(piece, triangles);
+            if (triangles.empty()) {
+                continue;
+            }
+            // Solid, with a zero antialias distance: the distance field a line carries describes a
+            // band one width wide, not a head, and stretched over one it eats the silhouette.
+            std::size_t i0 = _coords.size();
+            for (const cglib::vec2<float>& vertex : piece) {
+                _coords.append(p0);
+                _texCoords.append(cglib::vec2<float>(u0, (v0 + v1) * 0.5f));
+                _binormals.append(tangent * vertex(0) + binormal * vertex(1));
+                _attribs.append(attrib);
+            }
+            for (const std::array<std::size_t, 3>& triangle : triangles) {
+                _indices.append(i0 + triangle[0], i0 + triangle[1], i0 + triangle[2]);
+            }
+            drawn = true;
+        }
+        return drawn;
     }
 
     bool TileLayerBuilder::tesselateLineEndPoint(const cglib::vec2<float>& p0, float u0, float v0, float v1, std::size_t i0, std::size_t i1, const cglib::vec2<float>& tangent, const cglib::vec2<float>& binormal, std::int8_t styleIndex, const LineStyle& style) {

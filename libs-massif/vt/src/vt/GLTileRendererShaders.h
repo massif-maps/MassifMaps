@@ -1546,7 +1546,10 @@ namespace carto::vt {
             highp vec2 edgeDir = edgeClip.xy / edgeClip.w - centerClip.xy / centerClip.w;
             edgeDir = vec2(edgeDir.x * uScreenScale.x, edgeDir.y); // NDC is anisotropic, work in height units
             highp float edgeLen = length(edgeDir);
-            highp float nominalLen = roundedWidth * uScreenScale.y;
+            // The ceiling is what this vertex is EXTRUDED by, not one line width: a cap corner sits
+            // sqrt(2) widths out and an end arrow's barb several, and clamping those to one width
+            // squashes the shape they belong to back into the line's own silhouette.
+            highp float nominalLen = roundedWidth * length(aVertexBinormal) * uScreenScale.y;
             highp vec3 edgePos = applyTerrain(pos + delta);
             if (edgeLen > nominalLen && nominalLen > 0.0) {
                 highp float shrink = nominalLen / edgeLen;

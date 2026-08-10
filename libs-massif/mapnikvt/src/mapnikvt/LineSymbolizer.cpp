@@ -1,4 +1,7 @@
 #include "LineSymbolizer.h"
+
+#include <cctype>
+#include <cstdlib>
 #include "ParserUtils.h"
 #include "vt/BitmapCanvas.h"
 
@@ -70,7 +73,26 @@ namespace carto::mvt {
             }
         }
 
-        vt::LineStyle style(compOp, strokeLinejoin, strokeLinecap, strokeFunc, strokeWidthFunc, offsetFunc, splitDotLimit, miterDotLimit, strokePattern, geometryTransform);
+        bool endArrow = _endArrow.getValue(exprContext);
+        float arrowWidth = endArrow ? _arrowWidth.getValue(exprContext) : 0.0f;
+        float arrowLength = endArrow ? _arrowLength.getValue(exprContext) : 0.0f;
+        bool arrowOnly = endArrow && _arrowOnly.getValue(exprContext);
+        std::shared_ptr<const std::vector<cglib::vec2<float>>> arrowShape;
+        if (endArrow) {
+            std::string arrowPath = _arrowPath.getValue(exprContext);
+            if (!arrowPath.empty()) {
+                arrowShape = parseArrowPath(arrowPath, arrowLength, arrowWidth,
+                                            _arrowScale.getValue(exprContext), _arrowRotation.getValue(exprContext));
+                if (!arrowShape) {
+                    _logger->write(Logger::Severity::ERROR, "Ignoring unreadable arrow-path: " + arrowPath);
+                }
+                else if (!isConvexArrowPath(*arrowShape)) {
+                    _logger->write(Logger::Severity::WARNING, "Concave arrow-path, its border will fold on itself: " + arrowPath);
+                }
+            }
+        }
+
+        vt::LineStyle style(compOp, strokeLinejoin, strokeLinecap, strokeFunc, strokeWidthFunc, offsetFunc, splitDotLimit, miterDotLimit, strokePattern, geometryTransform, arrowWidth, arrowLength, arrowOnly, arrowShape);
         
         std::shared_ptr<vt::StrokeMap> strokeMap = symbolizerContext.getStrokeMap();
 
@@ -97,6 +119,210 @@ namespace carto::mvt {
                 }
             }
         };
+    }
+
+    // The head is painted by offsetting the contour outward by half the line width. Where a
+    // contour turns back on itself that offset folds over and the border blows out into blobs, so
+    // only a CONVEX head is supported - removing those loops is a polygon-offsetting algorithm of
+    // its own, and every navigation arrow head in the wild is convex.
+    bool LineSymbolizer::isConvexArrowPath(const std::vector<cglib::vec2<float>>& points) {
+        std::size_t n = points.size();
+        int sign = 0;
+        for (std::size_t i = 0; i < n; i++) {
+            cglib::vec2<float> d0 = points[(i + 1) % n] - points[i];
+            cglib::vec2<float> d1 = points[(i + 2) % n] - points[(i + 1) % n];
+            float turn = d0(0) * d1(1) - d0(1) * d1(0);
+            if (std::abs(turn) < 1.0e-6f) {
+                continue;
+            }
+            int turnSign = turn > 0 ? 1 : -1;
+            if (sign == 0) {
+                sign = turnSign;
+            }
+            else if (sign != turnSign) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    // Enough of the SVG path grammar for an icon: M/L/H/V/C/S and Z, absolute or relative, with
+    // curves flattened to a polyline. Not a general SVG reader - it takes the 'd' attribute, which
+    // is what an icon set actually hands over, and keeps the head a POLYGON, since the tesselator
+    // extrudes points and knows nothing of curves.
+    std::shared_ptr<const std::vector<cglib::vec2<float>>> LineSymbolizer::parseArrowPath(const std::string& path, float boxLength, float boxWidth, float scale, float rotation) {
+        constexpr int CURVE_SEGMENTS = 8;
+        std::vector<cglib::vec2<float>> points;
+        std::size_t pos = 0;
+        char command = 0;
+        cglib::vec2<float> cursor(0, 0), start(0, 0), lastControl(0, 0);
+        bool hadCurve = false;
+
+        auto skipSeparators = [&path, &pos]() {
+            while (pos < path.size() && (std::isspace(static_cast<unsigned char>(path[pos])) || path[pos] == ',')) {
+                pos++;
+            }
+        };
+        auto readNumber = [&path, &pos, &skipSeparators](float& value) -> bool {
+            skipSeparators();
+            std::size_t begin = pos;
+            if (pos < path.size() && (path[pos] == '-' || path[pos] == '+')) {
+                pos++;
+            }
+            while (pos < path.size() && (std::isdigit(static_cast<unsigned char>(path[pos])) || path[pos] == '.')) {
+                pos++;
+            }
+            if (pos < path.size() && (path[pos] == 'e' || path[pos] == 'E')) {
+                pos++;
+                if (pos < path.size() && (path[pos] == '-' || path[pos] == '+')) {
+                    pos++;
+                }
+                while (pos < path.size() && std::isdigit(static_cast<unsigned char>(path[pos]))) {
+                    pos++;
+                }
+            }
+            if (pos == begin) {
+                return false;
+            }
+            value = static_cast<float>(std::atof(path.substr(begin, pos - begin).c_str()));
+            return true;
+        };
+        auto flattenCubic = [&points, CURVE_SEGMENTS](const cglib::vec2<float>& p0, const cglib::vec2<float>& p1, const cglib::vec2<float>& p2, const cglib::vec2<float>& p3) {
+            for (int k = 1; k <= CURVE_SEGMENTS; k++) {
+                float t = static_cast<float>(k) / CURVE_SEGMENTS, u = 1.0f - t;
+                points.push_back(p0 * (u * u * u) + p1 * (3 * u * u * t) + p2 * (3 * u * t * t) + p3 * (t * t * t));
+            }
+        };
+
+        while (true) {
+            skipSeparators();
+            if (pos >= path.size()) {
+                break;
+            }
+            char c = path[pos];
+            if (std::isalpha(static_cast<unsigned char>(c))) {
+                command = c;
+                pos++;
+                if (c == 'Z' || c == 'z') {
+                    cursor = start;
+                    continue;
+                }
+            }
+            bool relative = std::islower(static_cast<unsigned char>(command));
+            char op = static_cast<char>(std::toupper(static_cast<unsigned char>(command)));
+            cglib::vec2<float> base = relative ? cursor : cglib::vec2<float>(0, 0);
+            if (op == 'M' || op == 'L') {
+                float x = 0, y = 0;
+                if (!readNumber(x) || !readNumber(y)) {
+                    return std::shared_ptr<const std::vector<cglib::vec2<float>>>();
+                }
+                cursor = base + cglib::vec2<float>(x, y);
+                if (op == 'M' && points.empty()) {
+                    start = cursor;
+                }
+                points.push_back(cursor);
+                if (op == 'M') {
+                    command = relative ? 'l' : 'L'; // further pairs after a moveto are linetos
+                }
+            }
+            else if (op == 'H' || op == 'V') {
+                float value = 0;
+                if (!readNumber(value)) {
+                    return std::shared_ptr<const std::vector<cglib::vec2<float>>>();
+                }
+                cursor = op == 'H' ? cglib::vec2<float>(base(0) + value, cursor(1))
+                                   : cglib::vec2<float>(cursor(0), base(1) + value);
+                points.push_back(cursor);
+            }
+            else if (op == 'C' || op == 'S') {
+                cglib::vec2<float> c1, c2, end;
+                float x = 0, y = 0;
+                if (op == 'C') {
+                    if (!readNumber(x) || !readNumber(y)) {
+                        return std::shared_ptr<const std::vector<cglib::vec2<float>>>();
+                    }
+                    c1 = base + cglib::vec2<float>(x, y);
+                }
+                else {
+                    c1 = hadCurve ? cursor * 2.0f - lastControl : cursor;
+                }
+                if (!readNumber(x) || !readNumber(y)) {
+                    return std::shared_ptr<const std::vector<cglib::vec2<float>>>();
+                }
+                c2 = base + cglib::vec2<float>(x, y);
+                if (!readNumber(x) || !readNumber(y)) {
+                    return std::shared_ptr<const std::vector<cglib::vec2<float>>>();
+                }
+                end = base + cglib::vec2<float>(x, y);
+                flattenCubic(cursor, c1, c2, end);
+                lastControl = c2;
+                hadCurve = true;
+                cursor = end;
+            }
+            else {
+                return std::shared_ptr<const std::vector<cglib::vec2<float>>>(); // arcs, quadratics: not read
+            }
+            if (op != 'C' && op != 'S') {
+                hadCurve = false;
+            }
+        }
+        if (points.size() < 3) {
+            return std::shared_ptr<const std::vector<cglib::vec2<float>>>();
+        }
+
+        // Drop the points the curve flattening piles up on top of each other: they carry no shape
+        // and each one is a degenerate ear that stops the triangulation dead, which shows up as
+        // holes in the head.
+        std::vector<cglib::vec2<float>> cleaned;
+        cleaned.reserve(points.size());
+        for (const cglib::vec2<float>& point : points) {
+            if (cleaned.empty() || cglib::length(point - cleaned.back()) > 1.0e-4f) {
+                cleaned.push_back(point);
+            }
+        }
+        while (cleaned.size() > 1 && cglib::length(cleaned.front() - cleaned.back()) < 1.0e-4f) {
+            cleaned.pop_back();
+        }
+        if (cleaned.size() < 3) {
+            return std::shared_ptr<const std::vector<cglib::vec2<float>>>();
+        }
+
+        // Fit the contour into the arrow box - LENGTH along the line by WIDTH across it, both in
+        // multiples of the line width - so a path lifted out of an icon set works whatever its
+        // viewBox. The ASPECT RATIO is kept: scaling x and y independently squashes a wide icon
+        // into a square and it stops being the shape the author drew. SVG's y grows downwards, the
+        // tile's y across the line, hence the flip.
+        //
+        // The head is CENTRED on the last vertex, and that is not a detail: every offset here is in
+        // multiples of the rule's OWN line width, so placing the contour by its back edge shifts
+        // the casing further back than the fill - by half of (casing - fill) - and the border comes
+        // out visibly slid along the arrow instead of wrapping it. Sharing the centre leaves the
+        // outward offset as the only difference between the two, which is the whole point.
+        //
+        // It is not slotted the way the built-in triangle is: a slot is a notch where the shaft
+        // enters the head, and cutting one through the middle of an icon that is not an arrow
+        // leaves exactly the gashes it was meant to avoid. The head is drawn after the shaft, so
+        // it covers the line end anyway.
+        cglib::vec2<float> minPos = cleaned[0], maxPos = cleaned[0];
+        for (const cglib::vec2<float>& point : cleaned) {
+            minPos = cglib::vec2<float>(std::min(minPos(0), point(0)), std::min(minPos(1), point(1)));
+            maxPos = cglib::vec2<float>(std::max(maxPos(0), point(0)), std::max(maxPos(1), point(1)));
+        }
+        float spanX = std::max(1.0e-6f, maxPos(0) - minPos(0)), spanY = std::max(1.0e-6f, maxPos(1) - minPos(1));
+        float fit = std::min(boxLength / spanX, boxWidth / spanY) * (scale > 0 ? scale : 1.0f);
+        // The rotation turns the head about the same centre, in degrees clockwise on screen: the
+        // tile's y runs across the line and downwards on screen, so a positive angle here reads
+        // clockwise like a compass, not like a maths convention.
+        float angle = rotation * boost::math::constants::pi<float>() / 180.0f;
+        float cosA = std::cos(angle), sinA = std::sin(angle);
+        auto shape = std::make_shared<std::vector<cglib::vec2<float>>>();
+        shape->reserve(cleaned.size());
+        for (const cglib::vec2<float>& point : cleaned) {
+            float x = (point(0) - (minPos(0) + maxPos(0)) * 0.5f) * fit;
+            float y = -(point(1) - (minPos(1) + maxPos(1)) * 0.5f) * fit;
+            shape->emplace_back(x * cosA - y * sinA, x * sinA + y * cosA);
+        }
+        return shape;
     }
 
     std::shared_ptr<vt::BitmapPattern> LineSymbolizer::createDashBitmapPattern(const std::vector<float>& strokeDashArray, float height, vt::LineCapMode lineCap) {

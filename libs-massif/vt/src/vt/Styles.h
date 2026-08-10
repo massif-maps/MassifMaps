@@ -141,8 +141,27 @@ namespace carto::vt {
         float miterDotLimit;
         std::shared_ptr<const BitmapPattern> strokePattern;
         std::optional<Transform> transform;
+        // An arrow head at the last vertex, in multiples of the line width - a route's maneuver
+        // arrow, a one-way marker. Both must be positive for the head to be drawn. The line stops
+        // where the head starts, and the head is extruded like the line itself, so it keeps its
+        // screen size and a casing rule of the same shape produces an even border round the whole
+        // arrow. 0 (the default) leaves the line's own cap alone.
+        float endArrowWidth;
+        float endArrowLength;
+        // Draw the head and NOT the line, so a style can paint the head over the shaft instead of
+        // under it: shaft rules first, head rules after. Where the head overlaps its own shaft -
+        // a U-turn, a hairpin, anything tight enough at the zoom being looked at - the head keeps
+        // its outline, which is what tells it apart from the line it sits on.
+        bool endArrowOnly;
+        // A custom head outline, in the same multiples of the line width as the two sizes above:
+        // x runs along the line, y across it. Null means the built-in triangle. The contour is a
+        // SKELETON - what is drawn is half a line width larger all round, so a casing rule using
+        // the same path lands (casing - fill) / 2 outside the fill, as it does along the shaft.
+        std::shared_ptr<const std::vector<cglib::vec2<float>>> endArrowShape;
 
-        explicit LineStyle(CompOp compOp, LineJoinMode joinMode, LineCapMode capMode, ColorFunction colorFunc, FloatFunction widthFunc, FloatFunction offsetFunc, float splitDotLimit, float miterDotLimit, std::shared_ptr<const BitmapPattern> strokePattern, const std::optional<Transform>& transform) : compOp(compOp), joinMode(joinMode), capMode(capMode), colorFunc(std::move(colorFunc)), widthFunc(std::move(widthFunc)), offsetFunc(std::move(offsetFunc)), splitDotLimit(splitDotLimit), miterDotLimit(miterDotLimit), strokePattern(std::move(strokePattern)), transform(transform) { }
+        bool hasEndArrow() const { return (endArrowWidth > 0 && endArrowLength > 0) || (endArrowShape && endArrowShape->size() >= 3); }
+
+        explicit LineStyle(CompOp compOp, LineJoinMode joinMode, LineCapMode capMode, ColorFunction colorFunc, FloatFunction widthFunc, FloatFunction offsetFunc, float splitDotLimit, float miterDotLimit, std::shared_ptr<const BitmapPattern> strokePattern, const std::optional<Transform>& transform, float endArrowWidth = 0, float endArrowLength = 0, bool endArrowOnly = false, std::shared_ptr<const std::vector<cglib::vec2<float>>> endArrowShape = std::shared_ptr<const std::vector<cglib::vec2<float>>>()) : compOp(compOp), joinMode(joinMode), capMode(capMode), colorFunc(std::move(colorFunc)), widthFunc(std::move(widthFunc)), offsetFunc(std::move(offsetFunc)), splitDotLimit(splitDotLimit), miterDotLimit(miterDotLimit), strokePattern(std::move(strokePattern)), transform(transform), endArrowWidth(endArrowWidth), endArrowLength(endArrowLength), endArrowOnly(endArrowOnly), endArrowShape(std::move(endArrowShape)) { }
     };
 
     struct PolygonStyle final {

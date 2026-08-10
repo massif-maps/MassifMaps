@@ -659,6 +659,13 @@ namespace carto::css {
         { "line-cap", "stroke-linecap" },
         { "line-miterlimit", "stroke-miterlimit" },
         { "line-offset", "offset" },
+        { "line-end-arrow", "end-arrow" },
+        { "line-arrow-width", "arrow-width" },
+        { "line-arrow-length", "arrow-length" },
+        { "line-arrow-only", "arrow-only" },
+        { "line-arrow-path", "arrow-path" },
+        { "line-arrow-scale", "arrow-scale" },
+        { "line-arrow-rotation", "arrow-rotation" },
         { "line-geometry-transform", "geometry-transform" },
         { "line-comp-op", "comp-op" },
 

@@ -5548,6 +5548,10 @@ namespace carto::vt {
                 // of the NDC height - the very scale uBinormalScale is built from, so a line ends
                 // up exactly as wide as it is on the flat map.
                 glUniform2f(shaderProgram.uniforms[U_SCREENSCALE], std::max(0.0001f, _viewState.aspect), 1.0f / std::max(1.0f, _halfResolution));
+                // How many line widths a vertex is extruded by: the binormal ships packed as int16
+                // against a per-geometry scale, so only this undoes it - 1 for a plain vertex,
+                // more for a miter, a round cap corner or an arrow barb.
+                glUniform1f(shaderProgram.uniforms[U_BINORMALUNITSCALE], 1.0f / vertexGeomLayoutParams.binormalScale);
             }
             glUniform1fv(shaderProgram.uniforms[U_WIDTHTABLE], styleParams.parameterCount, widths.data());
             if (styleOffsetting) {

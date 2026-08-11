@@ -25,6 +25,7 @@ namespace carto::vt {
         U_TILEMATRIX,
         U_UVMATRIX,
         U_BINORMALSCALE,
+        U_BINORMALUNITSCALE,
         U_ANTIALIASSCALE,
         U_TILEUNITSCALE,
         U_TILEUNITOFFSET,
@@ -109,6 +110,7 @@ namespace carto::vt {
         { "uTileMatrix",       U_TILEMATRIX },
         { "uUVMatrix",         U_UVMATRIX },
         { "uBinormalScale",    U_BINORMALSCALE },
+        { "uBinormalUnitScale", U_BINORMALUNITSCALE },
         { "uAntialiasScale",   U_ANTIALIASSCALE },
         { "uTileUnitScale",    U_TILEUNITSCALE },
         { "uTileUnitOffset",   U_TILEUNITOFFSET },
@@ -1476,6 +1478,7 @@ namespace carto::vt {
         uniform float uBinormalScale;
         #ifdef TERRAIN
         uniform highp vec2 uScreenScale; // x = viewport aspect (w/h), y = NDC height of one line-width unit
+        uniform highp float uBinormalUnitScale; // packed binormal -> its length in line widths
         #endif
         // Where this fragment sits in the TARGET tile, for the tile clipping in lineFsh.
         varying mediump vec2 vTileUnit;
@@ -1548,8 +1551,10 @@ namespace carto::vt {
             highp float edgeLen = length(edgeDir);
             // The ceiling is what this vertex is EXTRUDED by, not one line width: a cap corner sits
             // sqrt(2) widths out and an end arrow's barb several, and clamping those to one width
-            // squashes the shape they belong to back into the line's own silhouette.
-            highp float nominalLen = roundedWidth * length(aVertexBinormal) * uScreenScale.y;
+            // squashes the shape they belong to back into the line's own silhouette. The binormal
+            // is PACKED (int16, per-geometry scale), so its length only means widths once scaled -
+            // raw it is ~32768 and the ceiling never engages at all.
+            highp float nominalLen = roundedWidth * length(aVertexBinormal * uBinormalUnitScale) * uScreenScale.y;
             highp vec3 edgePos = applyTerrain(pos + delta);
             if (edgeLen > nominalLen && nominalLen > 0.0) {
                 highp float shrink = nominalLen / edgeLen;

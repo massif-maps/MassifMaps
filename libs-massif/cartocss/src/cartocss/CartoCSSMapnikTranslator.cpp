@@ -613,6 +613,9 @@ namespace carto::css {
         { "skewy",     std::type_index(typeid(mvt::SkewYTransform)) }
     };
     const std::vector<std::string> CartoCSSMapnikTranslator::_functionsTable = {
+        "get",    // get(table, key[, fallback]) - reads an object/array style parameter
+        "has",
+        "length",
         "url",
         "color",
         "rgb",

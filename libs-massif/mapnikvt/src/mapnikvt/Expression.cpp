@@ -304,7 +304,26 @@ namespace carto::mvt {
 
     }
     Value FunctionExpression::applyFunc(const std::string& func, const std::vector<Value>& vals) {
-        if (func == "url" && vals.size() == 1) {
+        // Table lookups: a style parameter can hold an object or an array, so a style reads a
+        // per-class value out of one the app owns instead of declaring a parameter per class.
+        if (func == "get" && (vals.size() == 2 || vals.size() == 3)) {
+            Value value = getValueElement(vals[0], vals[1]);
+            if (std::get_if<std::monostate>(&value) && vals.size() == 3) {
+                return vals[2]; // the fallback for a key the table does not have
+            }
+            return value;
+        }
+        else if (func == "has" && vals.size() == 2) {
+            Value value = getValueElement(vals[0], vals[1]);
+            return Value(std::get_if<std::monostate>(&value) == nullptr);
+        }
+        else if (func == "length" && vals.size() == 1) {
+            if (auto str = std::get_if<std::string>(&vals[0])) {
+                return Value(static_cast<long long>(stringLength(*str)));
+            }
+            return Value(getValueSize(vals[0]));
+        }
+        else if (func == "url" && vals.size() == 1) {
             return Value(ValueConverter<std::string>::convert(vals[0]));
         }
         else if (func == "color" && vals.size() == 1) {

@@ -33,6 +33,9 @@ namespace carto::mvt {
                     return V();
                 }
             }
+            // A container has no scalar reading; use get()/length() in the expression instead.
+            V operator() (const std::shared_ptr<const ValueArray>&) const { return V(); }
+            V operator() (const std::shared_ptr<const ValueObject>&) const { return V(); }
             template <typename T> V operator() (T val) const { return static_cast<V>(val); }
         };
     };
@@ -54,6 +57,8 @@ namespace carto::mvt {
         struct Converter {
             bool operator() (std::monostate) const { return false; }
             bool operator() (bool val) const { return val; }
+            bool operator() (const std::shared_ptr<const ValueArray>& val) const { return val && !val->elements.empty(); }
+            bool operator() (const std::shared_ptr<const ValueObject>& val) const { return val && !val->members.empty(); }
             bool operator() (const std::string& val) const {
                 if (val.empty()) {
                     return false;
@@ -83,6 +88,8 @@ namespace carto::mvt {
         struct Converter {
             std::string operator() (std::monostate) const { return std::string(); }
             std::string operator() (const std::string& val) const { return val; }
+            std::string operator() (const std::shared_ptr<const ValueArray>&) const { return std::string(); }
+            std::string operator() (const std::shared_ptr<const ValueObject>&) const { return std::string(); }
             template <typename T> std::string operator() (T val) const {
                 try {
                     return boost::lexical_cast<std::string>(val);

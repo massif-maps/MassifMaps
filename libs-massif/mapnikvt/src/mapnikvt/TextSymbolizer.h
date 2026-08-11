@@ -27,7 +27,7 @@ namespace carto::mvt {
             bindProperty("face-name", &_faceName);
             bindProperty("fontset-name", &_fontSetName);
             bindProperty("placement", &_placement);
-            bindProperty("size", &_size);
+            bindProperty("size", &_size, true); // picks the glyph raster size
             bindProperty("spacing", &_spacing);
             bindProperty("fill", &_fill);
             bindProperty("opacity", &_opacity);

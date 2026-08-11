@@ -164,6 +164,8 @@ namespace carto::mvt {
             std::string operator() (double) const { return "float"; }
             std::string operator() (long long) const { return "int"; }
             std::string operator() (const std::string&) const { return "string"; }
+            std::string operator() (const std::shared_ptr<const ValueArray>&) const { return "array"; }
+            std::string operator() (const std::shared_ptr<const ValueObject>&) const { return "object"; }
         };
 
         std::string typeString = std::visit(TypeExtractor(), value);

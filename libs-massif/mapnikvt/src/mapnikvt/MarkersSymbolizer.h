@@ -22,11 +22,11 @@ namespace carto::mvt {
             bindProperty("opacity", &_opacity);
             bindProperty("fill", &_fill);
             bindProperty("fill-opacity", &_fillOpacity);
-            bindProperty("width", &_width);
-            bindProperty("height", &_height);
+            bindProperty("width", &_width, true); // sizes the generated marker bitmap
+            bindProperty("height", &_height, true); // sizes the generated marker bitmap
             bindProperty("stroke", &_stroke);
             bindProperty("stroke-opacity", &_strokeOpacity);
-            bindProperty("stroke-width", &_strokeWidth);
+            bindProperty("stroke-width", &_strokeWidth, true); // drawn into the generated bitmap
             bindProperty("spacing", &_spacing);
             bindProperty("placement-priority", &_placementPriority);
             bindProperty("max-distance", &_maxDistance);

@@ -35,9 +35,10 @@ namespace carto::mvt {
             return Value();
         }
         else if (isNutiVariable(name)) {
-            if (_nutiParameterValueMap) {
-                auto it = _nutiParameterValueMap->find(name.substr(6));
-                if (it != _nutiParameterValueMap->end()) {
+            if (_nutiParameterStore) {
+                std::shared_ptr<const std::map<std::string, Value>> values = _nutiParameterStore->getValues();
+                auto it = values->find(name.substr(6));
+                if (it != values->end()) {
                     return it->second;
                 }
             }

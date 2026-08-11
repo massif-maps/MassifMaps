@@ -15,12 +15,12 @@ namespace carto::mvt {
     public:
         explicit LineSymbolizer(std::shared_ptr<Logger> logger) : GeometrySymbolizer(std::move(logger)) {
             bindProperty("stroke", &_stroke);
-            bindProperty("stroke-width", &_strokeWidth);
+            bindProperty("stroke-width", &_strokeWidth, true); // sizes the stroke pattern raster
             bindProperty("stroke-opacity", &_strokeOpacity);
             bindProperty("stroke-linejoin", &_strokeLinejoin);
             bindProperty("stroke-linecap", &_strokeLinecap);
             bindProperty("stroke-dasharray", &_strokeDashArray);
-            bindProperty("stroke-miterlimit", &_strokeMiterLimit);
+            bindProperty("stroke-miterlimit", &_strokeMiterLimit, true); // shapes the joins at decode
             bindProperty("offset", &_offset);
             bindProperty("end-arrow", &_endArrow);
             bindProperty("arrow-width", &_arrowWidth);

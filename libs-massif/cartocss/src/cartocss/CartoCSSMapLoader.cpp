@@ -21,6 +21,24 @@ namespace carto::css {
             if (value.is<double>()) {
                 return mvt::Value(value.get<double>());
             }
+            // An object or an array becomes a container value the style reads with get(): a
+            // parameter can hold a table (a colour per POI class) the app owns and replaces.
+            if (value.is<picojson::object>()) {
+                std::map<std::string, mvt::Value> members;
+                const picojson::object& obj = value.get<picojson::object>();
+                for (auto it = obj.begin(); it != obj.end(); it++) {
+                    members[it->first] = convertJSONValue(it->second);
+                }
+                return mvt::Value(std::make_shared<const mvt::ValueObject>(std::move(members)));
+            }
+            if (value.is<picojson::array>()) {
+                std::vector<mvt::Value> elements;
+                const picojson::array& arr = value.get<picojson::array>();
+                for (auto it = arr.begin(); it != arr.end(); it++) {
+                    elements.push_back(convertJSONValue(*it));
+                }
+                return mvt::Value(std::make_shared<const mvt::ValueArray>(std::move(elements)));
+            }
             return mvt::Value();
         }
         Value convertJSONNonMVTValue(const picojson::value& value) {

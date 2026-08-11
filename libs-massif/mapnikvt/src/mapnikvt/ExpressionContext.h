@@ -8,6 +8,7 @@
 #define _CARTO_MAPNIKVT_EXPRESSIONCONTEXT_H_
 
 #include "Value.h"
+#include "NutiParameterStore.h"
 #include "ScaleUtils.h"
 #include "vt/TileId.h"
 #include "vt/ViewState.h"
@@ -34,8 +35,8 @@ namespace carto::mvt {
         void setFeatureData(std::shared_ptr<const FeatureData> featureData) { _featureData = std::move(featureData); }
         const std::shared_ptr<const FeatureData>& getFeatureData() const { return _featureData; }
 
-        void setNutiParameterValueMap(std::shared_ptr<const std::map<std::string, Value>> paramValueMap) { _nutiParameterValueMap = std::move(paramValueMap); }
-        const std::shared_ptr<const std::map<std::string, Value>>& getNutiParameterValueMap() const { return _nutiParameterValueMap; }
+        void setNutiParameterStore(std::shared_ptr<const NutiParameterStore> paramStore) { _nutiParameterStore = std::move(paramStore); }
+        const std::shared_ptr<const NutiParameterStore>& getNutiParameterStore() const { return _nutiParameterStore; }
 
         Value getVariable(const std::string& name) const;
         Value getViewStateVariable(const vt::ViewState& viewState, const std::string& name) const;
@@ -50,7 +51,7 @@ namespace carto::mvt {
         int _adjustedZoom = 0;
         float _scaleDenom = zoom2ScaleDenominator(0);
         std::shared_ptr<const FeatureData> _featureData;
-        std::shared_ptr<const std::map<std::string, Value>> _nutiParameterValueMap;
+        std::shared_ptr<const NutiParameterStore> _nutiParameterStore;
     };
 }
 

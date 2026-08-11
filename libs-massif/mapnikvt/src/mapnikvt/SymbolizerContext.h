@@ -19,7 +19,7 @@ namespace carto::mvt {
     class SymbolizerContext final {
     public:
         struct Settings {
-            explicit Settings(float tileSize, std::shared_ptr<const std::map<std::string, Value>> nutiParameterValueMap, std::shared_ptr<const vt::Font> fallbackFont, float pixelScale = 1.0f);
+            explicit Settings(float tileSize, std::shared_ptr<const NutiParameterStore> nutiParameterStore, std::shared_ptr<const vt::Font> fallbackFont, float pixelScale = 1.0f);
 
             float getTileSize() const { return _tileSize; }
             float getGeometryScale() const { return _geometryScale; }
@@ -30,7 +30,8 @@ namespace carto::mvt {
             // (see pickGlyphRenderSize); nothing else does.
             float getPixelScale() const { return _pixelScale; }
 
-            const std::shared_ptr<const std::map<std::string, Value>>& getNutiParameterValueMap() const { return _nutiParameterValueMap; }
+            const std::shared_ptr<const NutiParameterStore>& getNutiParameterStore() const { return _nutiParameterStore; }
+            std::shared_ptr<const std::map<std::string, Value>> getNutiParameterValueMap() const { return _nutiParameterStore ? _nutiParameterStore->getValues() : std::shared_ptr<const std::map<std::string, Value>>(); }
             const std::shared_ptr<const vt::Font>& getFallbackFont() const { return _fallbackFont; }
 
         private:
@@ -40,7 +41,7 @@ namespace carto::mvt {
             float _zoomLevelBias;
             float _pixelScale;
             
-            std::shared_ptr<const std::map<std::string, Value>> _nutiParameterValueMap;
+            std::shared_ptr<const NutiParameterStore> _nutiParameterStore;
             std::shared_ptr<const vt::Font> _fallbackFont;
         };
 

@@ -39,7 +39,7 @@ namespace carto::mvt {
             bindProperty("comp-op", &_compOp);
         }
 
-        void bindProperty(const std::string& name, Property* prop);
+        void bindProperty(const std::string& name, Property* prop, bool bakedAtDecode = false);
         void unbindProperty(const std::string& name);
 
         static long long convertId(const Value& val);

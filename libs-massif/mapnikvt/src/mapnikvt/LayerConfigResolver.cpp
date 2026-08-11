@@ -15,7 +15,7 @@
 
 namespace carto::mvt {
     ResolvedLayerConfig resolveLayerConfig(const Map& map, const std::string& layerName, float viewZoom,
-                                           const std::shared_ptr<const std::map<std::string, Value>>& nutiValues) {
+                                           const std::shared_ptr<const NutiParameterStore>& nutiParameterStore) {
         ResolvedLayerConfig result;
 
         const std::shared_ptr<Layer>& layer = map.getLayer(layerName);
@@ -28,8 +28,8 @@ namespace carto::mvt {
         // fractional view zoom for zoom-dependent property functions (view::zoom).
         ExpressionContext exprContext;
         exprContext.setAdjustedZoom(static_cast<int>(viewZoom));
-        if (nutiValues) {
-            exprContext.setNutiParameterValueMap(nutiValues);
+        if (nutiParameterStore) {
+            exprContext.setNutiParameterStore(nutiParameterStore);
         }
         vt::ViewState viewState;
         viewState.zoom = viewZoom;

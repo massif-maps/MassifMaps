@@ -8,6 +8,7 @@
 #define _CARTO_MAPNIKVT_LAYERCONFIGRESOLVER_H_
 
 #include "Value.h"
+#include "NutiParameterStore.h"
 
 #include <map>
 #include <memory>
@@ -39,12 +40,12 @@ namespace carto::mvt {
      * @param layerName  The style layer name (e.g. "hillshade").
      * @param viewZoom   The fractional view zoom (view::zoom), used both for rule selection
      *                   and for evaluating zoom-dependent property expressions.
-     * @param nutiValues The current nuti parameter value map (may be null).
+     * @param nutiParameterStore The nuti parameter store (may be null).
      */
     ResolvedLayerConfig resolveLayerConfig(const Map& map,
                                            const std::string& layerName,
                                            float viewZoom,
-                                           const std::shared_ptr<const std::map<std::string, Value>>& nutiValues);
+                                           const std::shared_ptr<const NutiParameterStore>& nutiParameterStore);
 
     /**
      * Returns the (minZoom, maxZoom) range over which the named layer's config symbolizer

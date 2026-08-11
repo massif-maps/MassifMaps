@@ -61,7 +61,8 @@ namespace carto::css {
         std::list<FilteredPropertyList> propertyLists;
         buildPropertyLists(styleSheet, context, state, propertyLists);
 
-        // Sort the properties by decreasing specificity
+        // Sort the properties by decreasing specificity. buildLayerAttachment relies on this order:
+        // the property that already set a field always wins over the ones that follow.
         for (FilteredPropertyList& propertyList : propertyLists) {
             std::stable_sort(propertyList.properties.begin(), propertyList.properties.end(), [&state](const FilteredProperty& property1, const FilteredProperty& property2) {
                 return state.getPropertyRef(property1.property).getSpecificity() > state.getPropertyRef(property2.property).getSpecificity();
@@ -168,13 +169,24 @@ namespace carto::css {
         }
 
         ExpressionEvaluator exprEvaluator(context.expressionContext);
+        // The same property appears in as many lists as it has attachments, and evaluating it does
+        // not depend on where it appears - so evaluate each one once.
+        std::unordered_map<std::size_t, std::size_t> evaluatedProperties;
         for (FilteredPropertyList& propertyList : propertyLists) {
             for (FilteredProperty& property : propertyList.properties) {
-                std::shared_ptr<const Property> prop = state.getProperty(property.property);
-                Expression evaluatedExpr = std::visit(exprEvaluator, prop->getExpression());
-                if (evaluatedExpr != prop->getExpression()) {
-                    property.property = state.insertProperty(Property(prop->getField(), std::move(evaluatedExpr), prop->getSpecificity()));
+                auto evaluatedIt = evaluatedProperties.find(property.property);
+                if (evaluatedIt != evaluatedProperties.end()) {
+                    property.property = evaluatedIt->second;
+                    continue;
                 }
+
+                std::size_t sourceProperty = property.property;
+                const Property& prop = state.getPropertyRef(sourceProperty);
+                Expression evaluatedExpr = std::visit(exprEvaluator, prop.getExpression());
+                if (evaluatedExpr != prop.getExpression()) {
+                    property.property = state.insertProperty(Property(prop.getField(), std::move(evaluatedExpr), prop.getSpecificity()));
+                }
+                evaluatedProperties[sourceProperty] = property.property;
             }
         }
     }
@@ -257,18 +269,20 @@ namespace carto::css {
         FilteredPropertySet trialPropertySet; // reused: assigning into it keeps the two vector
                                               // buffers, one per property per property set otherwise
         for (const FilteredProperty& property : propertyList.properties) {
-            const Property& prop = state.getPropertyRef(property.property);
             std::size_t fieldId = state.getPropertyFieldId(property.property);
 
             for (auto propertySetIt = propertySets.begin(); propertySetIt != propertySets.end(); propertySetIt++) {
-                // Check if this attribute is already set for given property set
-                if (const Property* existingProp = state.findPropertySetProperty(*propertySetIt, fieldId)) {
-                    if (existingProp->getSpecificity() >= prop.getSpecificity()) {
-                        continue;
-                    }
+                // Check if this attribute is already set for given property set. The property that
+                // set it came earlier in this list, which compileLayer sorted by decreasing
+                // specificity, so it always wins over this one - no need to compare them.
+                if (state.propertySetHasField(*propertySetIt, fieldId)) {
+                    continue;
                 }
 
                 // Build new property set by setting the attribute and combining filters
+                if (!state.canMergePropertySetProperty(*propertySetIt, property)) {
+                    continue;
+                }
                 trialPropertySet = *propertySetIt;
                 if (!state.mergePropertySetProperty(trialPropertySet, property)) {
                     continue;

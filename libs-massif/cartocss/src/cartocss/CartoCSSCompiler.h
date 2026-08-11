@@ -14,6 +14,8 @@
 #include "PropertySets.h"
 
 #include <tuple>
+#include <cstdint>
+#include <array>
 #include <string>
 #include <vector>
 #include <list>
@@ -62,9 +64,18 @@ namespace carto::css {
             }
         };
 
+        // A layer stays far below both: ~50 property fields and ~80 predicates for the biggest layer
+        // of a full OSM style. Anything above falls back to the scans these masks replace.
+        static constexpr std::size_t FIELD_MASK_BITS = 256;
+        static constexpr std::size_t PREDICATE_MASK_BITS = 256;
+
+        using PredicateMask = std::array<std::uint64_t, PREDICATE_MASK_BITS / 64>;
+
         struct FilteredPropertySet {
             std::vector<std::size_t> filters;
             std::vector<std::size_t> properties;
+            std::uint64_t fieldMask[FIELD_MASK_BITS / 64] = { 0, 0, 0, 0 }; // which fields 'properties' sets
+            PredicateMask filterMask = {}; // which predicates 'filters' holds
 
             bool operator == (const FilteredPropertySet& other) const {
                 return filters == other.filters && properties == other.properties;
@@ -93,14 +104,25 @@ namespace carto::css {
                     std::size_t i = it - _predicates.begin();
                     _predicateContains.emplace_back();
                     _predicateIntersects.emplace_back();
+                    _predicateContainsMasks.emplace_back();
+                    _predicateDisjointMasks.emplace_back();
                     for (std::size_t j = 0; j < _predicates.size() - 1; j++) {
-                        _predicateContains[i].push_back(std::visit(PredicateContainsChecker(), *_predicates[i], *_predicates[j]));
-                        _predicateContains[j].push_back(std::visit(PredicateContainsChecker(), *_predicates[j], *_predicates[i]));
-                        _predicateIntersects[i].push_back(std::visit(PredicateIntersectsChecker(), *_predicates[i], *_predicates[j]));
-                        _predicateIntersects[j].push_back(std::visit(PredicateIntersectsChecker(), *_predicates[j], *_predicates[i]));
+                        boost::tribool containsIJ = std::visit(PredicateContainsChecker(), *_predicates[i], *_predicates[j]);
+                        boost::tribool containsJI = std::visit(PredicateContainsChecker(), *_predicates[j], *_predicates[i]);
+                        boost::tribool intersectsIJ = std::visit(PredicateIntersectsChecker(), *_predicates[i], *_predicates[j]);
+                        boost::tribool intersectsJI = std::visit(PredicateIntersectsChecker(), *_predicates[j], *_predicates[i]);
+                        _predicateContains[i].push_back(containsIJ);
+                        _predicateContains[j].push_back(containsJI);
+                        _predicateIntersects[i].push_back(intersectsIJ);
+                        _predicateIntersects[j].push_back(intersectsJI);
+                        setPredicateMaskBit(_predicateContainsMasks[i], j, bool(containsIJ));
+                        setPredicateMaskBit(_predicateContainsMasks[j], i, bool(containsJI));
+                        setPredicateMaskBit(_predicateDisjointMasks[i], j, bool(!intersectsIJ));
+                        setPredicateMaskBit(_predicateDisjointMasks[j], i, bool(!intersectsJI));
                     }
                     _predicateContains[i].push_back(true);
                     _predicateIntersects[i].push_back(true);
+                    setPredicateMaskBit(_predicateContainsMasks[i], i, true);
                 }
                 return it - _predicates.begin();
             }
@@ -128,7 +150,10 @@ namespace carto::css {
                 std::size_t fieldId = _fieldIds.emplace(prop.getField(), _fieldIds.size()).first->second;
                 std::vector<std::size_t>& fieldProperties = _fieldPropertyIndex[fieldId];
                 auto it = std::find_if(fieldProperties.begin(), fieldProperties.end(), [&prop, this](std::size_t otherProperty) {
-                    return prop == *_properties[otherProperty];
+                    // Same bucket means the same field, so compare the rest: the specificity first,
+                    // which rules most candidates out before the deep expression comparison.
+                    const Property& otherProp = *_properties[otherProperty];
+                    return prop.getSpecificity() == otherProp.getSpecificity() && std::visit(ExpressionDeepEqualsChecker(), prop.getExpression(), otherProp.getExpression());
                 });
                 if (it != fieldProperties.end()) {
                     return *it;
@@ -139,11 +164,43 @@ namespace carto::css {
                 return _properties.size() - 1;
             }
 
+            // Exact membership test - every (property, property set) pair asks it, and it replaces
+            // a scan over the whole property list of the set. Fields past the mask (no real style
+            // gets there) fall back to that scan.
+            bool propertySetHasField(const FilteredPropertySet& propertySet, std::size_t fieldId) const {
+                if (fieldId >= FIELD_MASK_BITS) {
+                    return findPropertySetProperty(propertySet, fieldId) != nullptr;
+                }
+                return (propertySet.fieldMask[fieldId / 64] & fieldMaskBit(fieldId)) != 0;
+            }
+
             const Property* findPropertySetProperty(const FilteredPropertySet& propertySet, std::size_t fieldId) const {
                 auto it = std::find_if(propertySet.properties.begin(), propertySet.properties.end(), [fieldId, this](std::size_t existingProperty) {
                     return _propertyFieldIds[existingProperty] == fieldId;
                 });
                 return it != propertySet.properties.end() ? _properties[*it].get() : nullptr;
+            }
+
+            // The first thing mergePropertySetProperty does, without the property set copy the merge
+            // needs. Most pairs are rejected here, so the copy is worth avoiding. One mask test per
+            // filter replaces the walk over the property set's own filters.
+            bool canMergePropertySetProperty(const FilteredPropertySet& propertySet, const FilteredProperty& property) const {
+                if (_predicateMasksOverflowed) {
+                    for (std::size_t filter : property.filters) {
+                        for (std::size_t existingFilter : propertySet.filters) {
+                            if (!_predicateIntersects[filter][existingFilter]) {
+                                return false;
+                            }
+                        }
+                    }
+                    return true;
+                }
+                for (std::size_t filter : property.filters) {
+                    if (predicateMasksIntersect(_predicateDisjointMasks[filter], propertySet.filterMask)) {
+                        return false;
+                    }
+                }
+                return true;
             }
 
             bool mergePropertySetProperty(FilteredPropertySet& existingPropertySet, const FilteredProperty& property) const {
@@ -172,26 +229,70 @@ namespace carto::css {
                 }
 
                 std::size_t fieldId = _propertyFieldIds[property.property];
-                auto it = std::find_if(existingPropertySet.properties.begin(), existingPropertySet.properties.end(), [fieldId, this](std::size_t existingProperty) {
-                    return _propertyFieldIds[existingProperty] == fieldId;
-                });
+                auto it = existingPropertySet.properties.end();
+                if (propertySetHasField(existingPropertySet, fieldId)) {
+                    it = std::find_if(existingPropertySet.properties.begin(), existingPropertySet.properties.end(), [fieldId, this](std::size_t existingProperty) {
+                        return _propertyFieldIds[existingProperty] == fieldId;
+                    });
+                }
                 if (it != existingPropertySet.properties.end()) {
                     *it = property.property;
                 } else {
-                    existingPropertySet.properties.insert(it, property.property);
+                    existingPropertySet.properties.push_back(property.property);
                 }
+                if (fieldId < FIELD_MASK_BITS) {
+                    existingPropertySet.fieldMask[fieldId / 64] |= fieldMaskBit(fieldId);
+                }
+                rebuildFilterMask(existingPropertySet);
                 return true;
             }
 
             bool testPropertySetFilterCover(const FilteredPropertySet& existingPropertySet, const FilteredPropertySet& propertySet) const {
-                return std::all_of(existingPropertySet.filters.begin(), existingPropertySet.filters.end(), [&, this](std::size_t existingFilter) {
-                    return std::any_of(propertySet.filters.begin(), propertySet.filters.end(), [existingFilter, this](std::size_t filter) {
-                        return _predicateContains[existingFilter][filter];
+                if (_predicateMasksOverflowed) {
+                    return std::all_of(existingPropertySet.filters.begin(), existingPropertySet.filters.end(), [&, this](std::size_t existingFilter) {
+                        return std::any_of(propertySet.filters.begin(), propertySet.filters.end(), [existingFilter, this](std::size_t filter) {
+                            return _predicateContains[existingFilter][filter];
+                        });
                     });
+                }
+                return std::all_of(existingPropertySet.filters.begin(), existingPropertySet.filters.end(), [&, this](std::size_t existingFilter) {
+                    return predicateMasksIntersect(_predicateContainsMasks[existingFilter], propertySet.filterMask);
                 });
             }
 
         private:
+            static std::uint64_t fieldMaskBit(std::size_t fieldId) {
+                return std::uint64_t(1) << (fieldId % 64);
+            }
+
+            void setPredicateMaskBit(PredicateMask& mask, std::size_t predicate, bool value) const {
+                if (predicate >= PREDICATE_MASK_BITS) {
+                    _predicateMasksOverflowed = true;
+                    return;
+                }
+                if (value) {
+                    mask[predicate / 64] |= std::uint64_t(1) << (predicate % 64);
+                }
+            }
+
+            static bool predicateMasksIntersect(const PredicateMask& mask1, const PredicateMask& mask2) {
+                for (std::size_t i = 0; i < mask1.size(); i++) {
+                    if (mask1[i] & mask2[i]) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            // The filters of a property set are rewritten in place by mergePropertySetProperty, so
+            // the mask is rebuilt from them rather than tracked through every case.
+            void rebuildFilterMask(FilteredPropertySet& propertySet) const {
+                propertySet.filterMask = PredicateMask {};
+                for (std::size_t filter : propertySet.filters) {
+                    setPredicateMaskBit(propertySet.filterMask, filter, true);
+                }
+            }
+
             std::vector<std::shared_ptr<const Predicate>> _predicates;
             std::vector<std::shared_ptr<const Property>> _properties;
             std::vector<std::size_t> _propertyFieldIds; // property -> interned field id
@@ -200,6 +301,9 @@ namespace carto::css {
 
             std::vector<std::vector<boost::tribool>> _predicateContains;
             std::vector<std::vector<boost::tribool>> _predicateIntersects;
+            std::vector<PredicateMask> _predicateContainsMasks; // definitely-contains rows of _predicateContains
+            std::vector<PredicateMask> _predicateDisjointMasks; // definitely-does-not-intersect rows
+            mutable bool _predicateMasksOverflowed = false; // set from the const merge path too
         };
 
         void buildPropertyLists(const StyleSheet& styleSheet, PredicateContext& context, FilteredPropertyState& state, std::list<FilteredPropertyList>& propertyLists) const;

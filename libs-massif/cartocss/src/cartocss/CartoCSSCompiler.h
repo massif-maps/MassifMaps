@@ -18,6 +18,7 @@
 #include <vector>
 #include <list>
 #include <map>
+#include <unordered_map>
 #include <utility>
 
 namespace carto::css {
@@ -77,6 +78,8 @@ namespace carto::css {
         struct FilteredPropertyState {
             FilteredPropertyState() = default;
 
+            std::size_t getPredicateCount() const { return _predicates.size(); }
+
             std::shared_ptr<const Predicate> getPredicate(std::size_t predicate) const {
                 return _predicates.at(predicate);
             }
@@ -106,21 +109,41 @@ namespace carto::css {
                 return _properties.at(property);
             }
 
-            std::size_t insertProperty(const Property& prop) {
-                auto it = std::find_if(_properties.begin(), _properties.end(), [&prop](const std::shared_ptr<const Property>& otherProp) {
-                    return prop == *otherProp;
-                });
-                if (it == _properties.end()) {
-                    it = _properties.insert(it, std::make_shared<Property>(prop));
-                }
-                return it - _properties.begin();
+            // Reference accessors for the hot paths (the sort comparator, buildLayerAttachment):
+            // handing back a shared_ptr there costs an atomic pair per property visited.
+            const Property& getPropertyRef(std::size_t property) const {
+                return *_properties[property];
             }
 
-            std::shared_ptr<const Property> findPropertySetProperty(const FilteredPropertySet& propertySet, const std::string& field) const {
-                auto it = std::find_if(propertySet.properties.begin(), propertySet.properties.end(), [&field, this](std::size_t existingProperty) {
-                    return _properties[existingProperty]->getField() == field;
+            // Two properties can only collide when they set the same field, and comparing the
+            // field strings is the innermost operation of buildLayerAttachment - intern them.
+            std::size_t getPropertyFieldId(std::size_t property) const {
+                return _propertyFieldIds[property];
+            }
+
+            std::size_t insertProperty(const Property& prop) {
+                // Only properties of the same field can compare equal, so the scan goes over that
+                // field's bucket instead of everything inserted so far - comparing two properties
+                // means a deep expression comparison, and a big layer inserts hundreds of them.
+                std::size_t fieldId = _fieldIds.emplace(prop.getField(), _fieldIds.size()).first->second;
+                std::vector<std::size_t>& fieldProperties = _fieldPropertyIndex[fieldId];
+                auto it = std::find_if(fieldProperties.begin(), fieldProperties.end(), [&prop, this](std::size_t otherProperty) {
+                    return prop == *_properties[otherProperty];
                 });
-                return it != propertySet.properties.end() ? _properties[*it] : std::shared_ptr<const Property>();
+                if (it != fieldProperties.end()) {
+                    return *it;
+                }
+                _properties.push_back(std::make_shared<Property>(prop));
+                _propertyFieldIds.push_back(fieldId);
+                fieldProperties.push_back(_properties.size() - 1);
+                return _properties.size() - 1;
+            }
+
+            const Property* findPropertySetProperty(const FilteredPropertySet& propertySet, std::size_t fieldId) const {
+                auto it = std::find_if(propertySet.properties.begin(), propertySet.properties.end(), [fieldId, this](std::size_t existingProperty) {
+                    return _propertyFieldIds[existingProperty] == fieldId;
+                });
+                return it != propertySet.properties.end() ? _properties[*it].get() : nullptr;
             }
 
             bool mergePropertySetProperty(FilteredPropertySet& existingPropertySet, const FilteredProperty& property) const {
@@ -148,8 +171,9 @@ namespace carto::css {
                     }
                 }
 
-                auto it = std::find_if(existingPropertySet.properties.begin(), existingPropertySet.properties.end(), [&property, this](std::size_t existingProperty) {
-                    return _properties[existingProperty]->getField() == _properties[property.property]->getField();
+                std::size_t fieldId = _propertyFieldIds[property.property];
+                auto it = std::find_if(existingPropertySet.properties.begin(), existingPropertySet.properties.end(), [fieldId, this](std::size_t existingProperty) {
+                    return _propertyFieldIds[existingProperty] == fieldId;
                 });
                 if (it != existingPropertySet.properties.end()) {
                     *it = property.property;
@@ -170,6 +194,9 @@ namespace carto::css {
         private:
             std::vector<std::shared_ptr<const Predicate>> _predicates;
             std::vector<std::shared_ptr<const Property>> _properties;
+            std::vector<std::size_t> _propertyFieldIds; // property -> interned field id
+            std::unordered_map<std::string, std::size_t> _fieldIds;
+            std::unordered_map<std::size_t, std::vector<std::size_t>> _fieldPropertyIndex; // field id -> properties
 
             std::vector<std::vector<boost::tribool>> _predicateContains;
             std::vector<std::vector<boost::tribool>> _predicateIntersects;

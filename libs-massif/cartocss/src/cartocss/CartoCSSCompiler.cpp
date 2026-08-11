@@ -5,6 +5,12 @@
 #include <set>
 
 namespace carto::css {
+    namespace {
+        // Three-state predicate result, in a form that can be compared as a block (boost::tribool
+        // compares to a tribool, so two indeterminate results do not test equal).
+        enum : unsigned char { PREDICATE_FALSE = 0, PREDICATE_TRUE = 1, PREDICATE_INDETERMINATE = 2 };
+    }
+
     void CartoCSSCompiler::compileMap(const StyleSheet& styleSheet, std::map<std::string, Expression>& mapProperties, std::map<std::string, Value>& constantFieldMap) const {
         // Build flat property lists
         std::map<std::string, Expression> variableMap;
@@ -58,7 +64,7 @@ namespace carto::css {
         // Sort the properties by decreasing specificity
         for (FilteredPropertyList& propertyList : propertyLists) {
             std::stable_sort(propertyList.properties.begin(), propertyList.properties.end(), [&state](const FilteredProperty& property1, const FilteredProperty& property2) {
-                return state.getProperty(property1.property)->getSpecificity() > state.getProperty(property2.property)->getSpecificity();
+                return state.getPropertyRef(property1.property).getSpecificity() > state.getPropertyRef(property2.property).getSpecificity();
             });
         }
 
@@ -66,12 +72,31 @@ namespace carto::css {
         int prevZoom = minZoom, zoom = minZoom;
         std::list<FilteredPropertyList> prevOptimizedPropertyLists;
         std::list<AttachmentPropertySets> prevLayerAttachments;
+        std::vector<unsigned char> predicateResults, prevPredicateResults;
         for (; zoom < maxZoom; zoom++) {
             std::map<std::string, Value> predefinedFieldMap;
             context.expressionContext.predefinedFieldMap = &predefinedFieldMap;
             context.expressionContext.constantFieldMap = &constantFieldMap;
             (*context.expressionContext.predefinedFieldMap)["zoom"] = Value(static_cast<long long>(zoom));
             PredicateEvaluator predEvaluator(context);
+
+            // A predicate evaluates the same for every property that references it at this zoom,
+            // and a layer's properties reference the same few dozen predicates thousands of times.
+            predicateResults.clear();
+            predicateResults.reserve(state.getPredicateCount());
+            for (std::size_t predicate = 0; predicate < state.getPredicateCount(); predicate++) {
+                boost::tribool result = std::visit(predEvaluator, *state.getPredicate(predicate));
+                predicateResults.push_back(boost::indeterminate(result) ? PREDICATE_INDETERMINATE : (result ? PREDICATE_TRUE : PREDICATE_FALSE));
+            }
+
+            // The optimized property lists are a pure function of these results, so identical
+            // results at the next zoom mean identical lists and identical attachments. Most zooms
+            // of a layer land on a range that was already built - comparing 80 bytes here replaces
+            // rebuilding and deep-comparing every property of the layer.
+            if (zoom > minZoom && predicateResults == prevPredicateResults) {
+                continue;
+            }
+            prevPredicateResults = predicateResults;
 
             // Evaluate and optimize property lists
             std::list<FilteredPropertyList> optimizedPropertyLists;
@@ -85,12 +110,12 @@ namespace carto::css {
                     optimizedFilters.reserve(property.filters.size());
                     bool unreachableProp = false;
                     for (std::size_t filter : property.filters) {
-                        boost::tribool result = std::visit(predEvaluator, *state.getPredicate(filter));
-                        if (!result) {
+                        unsigned char result = predicateResults[filter];
+                        if (result == PREDICATE_FALSE) {
                             unreachableProp = true;
                             break;
                         }
-                        if (boost::indeterminate(result)) { // keep only indeterminate filters, ignore always true filters
+                        if (result == PREDICATE_INDETERMINATE) { // keep only indeterminate filters, ignore always true filters
                             optimizedFilters.push_back(filter);
                         }
                     }
@@ -229,36 +254,39 @@ namespace carto::css {
     void CartoCSSCompiler::buildLayerAttachment(const FilteredPropertyList& propertyList, const FilteredPropertyState& state, std::list<AttachmentPropertySets>& layerAttachments) const {
         // Build preliminary property sets, with optimized internal structures
         std::list<FilteredPropertySet> propertySets;
+        FilteredPropertySet trialPropertySet; // reused: assigning into it keeps the two vector
+                                              // buffers, one per property per property set otherwise
         for (const FilteredProperty& property : propertyList.properties) {
-            std::shared_ptr<const Property> prop = state.getProperty(property.property);
+            const Property& prop = state.getPropertyRef(property.property);
+            std::size_t fieldId = state.getPropertyFieldId(property.property);
 
             for (auto propertySetIt = propertySets.begin(); propertySetIt != propertySets.end(); propertySetIt++) {
                 // Check if this attribute is already set for given property set
-                if (std::shared_ptr<const Property> existingProp = state.findPropertySetProperty(*propertySetIt, prop->getField())) {
-                    if (existingProp->getSpecificity() >= prop->getSpecificity()) {
+                if (const Property* existingProp = state.findPropertySetProperty(*propertySetIt, fieldId)) {
+                    if (existingProp->getSpecificity() >= prop.getSpecificity()) {
                         continue;
                     }
                 }
 
                 // Build new property set by setting the attribute and combining filters
-                FilteredPropertySet propertySet(*propertySetIt);
-                if (!state.mergePropertySetProperty(propertySet, property)) {
+                trialPropertySet = *propertySetIt;
+                if (!state.mergePropertySetProperty(trialPropertySet, property)) {
                     continue;
                 }
 
                 // Check if the property set is redundant (existing filters already cover it)
-                if (std::any_of(propertySets.begin(), propertySetIt, [&state, &propertySet](const FilteredPropertySet& existingPropertySet) {
-                    return state.testPropertySetFilterCover(existingPropertySet, propertySet);
+                if (std::any_of(propertySets.begin(), propertySetIt, [&state, &trialPropertySet](const FilteredPropertySet& existingPropertySet) {
+                    return state.testPropertySetFilterCover(existingPropertySet, trialPropertySet);
                 })) {
                     continue;
                 }
 
                 // If filters did not change, replace existing filter otherwise we must insert the new filter and keep old one
-                if (propertySet.filters == propertySetIt->filters) {
-                    *propertySetIt = std::move(propertySet);
+                if (trialPropertySet.filters == propertySetIt->filters) {
+                    *propertySetIt = std::move(trialPropertySet);
                 }
                 else {
-                    propertySets.insert(propertySetIt, std::move(propertySet));
+                    propertySets.insert(propertySetIt, std::move(trialPropertySet));
                 }
             }
 

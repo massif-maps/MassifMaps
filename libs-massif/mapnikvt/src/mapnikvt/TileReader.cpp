@@ -39,11 +39,20 @@ namespace carto::mvt {
                 if (!style) {
                     continue;
                 }
-                
+
+                // Prefilter before building anything: a style with no rule left at this zoom (or
+                // none that its parameters can satisfy) contributes nothing, and building a layer
+                // builder for it is pure cost - a tile goes through every style of every layer.
+                std::vector<std::shared_ptr<const Rule>> rules = preFilterStyleRules(style, exprContext);
+                if (rules.empty()) {
+                    styleIdx++;
+                    continue;
+                }
+
                 vt::TileLayerBuilder tileLayerBuilder(styleName, styleLayerIdx, tileId, _transformer, _symbolizerContext.getSettings().getTileSize(), _symbolizerContext.getSettings().getGeometryScale());
                 tileLayerBuilder.setOpacityFunc(vt::FloatFunction(style->getOpacity()));
                 tileLayerBuilder.setCompOp(style->getCompOp());
-                processLayer(layer, style, exprContext, tileLayerBuilder);
+                processLayer(layer, style, rules, exprContext, tileLayerBuilder);
 
                 std::shared_ptr<vt::TileLayer> tileLayer = tileLayerBuilder.buildTileLayer();
                 if (!(tileLayer->getBackgrounds().empty() && tileLayer->getBitmaps().empty() && tileLayer->getLabels().empty() && tileLayer->getGeometries().empty() && !tileLayer->getCompOp())) {
@@ -56,13 +65,7 @@ namespace carto::mvt {
         return std::make_shared<vt::Tile>(tileId, _symbolizerContext.getSettings().getTileSize(), std::move(tileLayers));
     }
 
-    void TileReader::processLayer(const std::shared_ptr<const Layer>& layer, const std::shared_ptr<const Style>& style, ExpressionContext& exprContext, vt::TileLayerBuilder& layerBuilder) const {
-        // Read and prefilter rules from the style
-        std::vector<std::shared_ptr<const Rule>> rules = preFilterStyleRules(style, exprContext);
-        if (rules.empty()) {
-            return;
-        }
-
+    void TileReader::processLayer(const std::shared_ptr<const Layer>& layer, const std::shared_ptr<const Style>& style, const std::vector<std::shared_ptr<const Rule>>& rules, ExpressionContext& exprContext, vt::TileLayerBuilder& layerBuilder) const {
         // Build sets of referenced fields from the rules
         std::set<std::string> filterFields, symbolizerFields;
         bool explicitFilterFeatureId = false, explicitSymbolizerFeatureId = false;

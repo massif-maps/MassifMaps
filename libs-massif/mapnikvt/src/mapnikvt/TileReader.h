@@ -9,6 +9,8 @@
 
 #include "FeatureDecoder.h"
 #include "ExpressionContext.h"
+#include "SelectionParameter.h"
+#include "Symbolizer.h"
 #include "SymbolizerContext.h"
 #include "Logger.h"
 #include "vt/Tile.h"
@@ -37,7 +39,11 @@ namespace carto::mvt {
     protected:
         explicit TileReader(std::shared_ptr<const Map> map, std::shared_ptr<const vt::TileTransformer> transformer, const SymbolizerContext& symbolizerContext, std::shared_ptr<Logger> logger);
 
-        void processLayer(const std::shared_ptr<const Layer>& layer, const std::shared_ptr<const Style>& style, const std::vector<std::shared_ptr<const Rule>>& rules, ExpressionContext& exprContext, vt::TileLayerBuilder& layerBuilder) const;
+        void processLayer(const std::shared_ptr<const Layer>& layer, const std::shared_ptr<const Style>& style, const std::vector<std::shared_ptr<const Rule>>& rules, ExpressionContext& exprContext, std::uint64_t selectionStateKey, vt::TileLayerBuilder& layerBuilder) const;
+
+        // One processor drawing the feature once but registering BOTH styles the selecting parameter
+        // can give it, so a change to the parameter is a repaint - see SelectionParameter.
+        std::shared_ptr<Symbolizer::FeatureProcessor> createSelectionFeatureProcessor(const std::shared_ptr<const Symbolizer>& symbolizer, const SelectionParameter& selectionParameter, std::uint64_t stateKey, ExpressionContext& exprContext) const;
 
         std::vector<std::shared_ptr<const Rule>> preFilterStyleRules(const std::shared_ptr<const Style>& style, ExpressionContext& exprContext) const;
         std::vector<std::shared_ptr<const Symbolizer>> findFeatureSymbolizers(const std::shared_ptr<const Style>& style, const std::vector<std::shared_ptr<const Rule>>& rules, ExpressionContext& exprContext) const;

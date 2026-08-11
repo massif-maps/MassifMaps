@@ -156,8 +156,14 @@ namespace carto::css {
                 const picojson::value& paramValue = pit->second;
                 std::map<std::string, mvt::Value> enumMap;
                 mvt::Value defaultValue;
+                bool selects = false;
                 if (paramValue.is<picojson::object>()) {
                     defaultValue = convertJSONValue(paramValue.get("default"));
+                    // "selects": the parameter picks ONE feature out by being compared with a field,
+                    // so setting it should repaint instead of decoding the tiles again
+                    if (paramValue.contains("selects")) {
+                        selects = mvt::ValueConverter<bool>::convert(convertJSONValue(paramValue.get("selects")));
+                    }
                     if (paramValue.contains("values")) {
                         const picojson::object& valuesObj = paramValue.get("values").get<picojson::object>();
                         for (auto vit = valuesObj.begin(); vit != valuesObj.end(); vit++) {
@@ -174,7 +180,7 @@ namespace carto::css {
                 } else {
                     defaultValue = convertJSONValue(paramValue);
                 }
-                nutiParameters.emplace_back(paramName, defaultValue, enumMap);
+                nutiParameters.emplace_back(paramName, defaultValue, enumMap, selects);
             }
         }
         // Constant parameters (for macros)

@@ -38,6 +38,13 @@ namespace carto::mvt {
         void setNutiParameterStore(std::shared_ptr<const NutiParameterStore> paramStore) { _nutiParameterStore = std::move(paramStore); }
         const std::shared_ptr<const NutiParameterStore>& getNutiParameterStore() const { return _nutiParameterStore; }
 
+        // While the selecting parameter is folded both ways, it reads as the value forced on it
+        // rather than as the one the store holds - see resolveSelectionParameter. Held by value:
+        // a property that is not foldable copies the context into a per-frame function.
+        void setNutiParameterOverride(const std::string& name, const Value& value) { _nutiOverrideName = name; _nutiOverrideValue = value; _nutiOverride = true; }
+        void clearNutiParameterOverride() { _nutiOverride = false; }
+        bool hasNutiParameterOverride() const { return _nutiOverride; }
+
         Value getVariable(const std::string& name) const;
         Value getViewStateVariable(const vt::ViewState& viewState, const std::string& name) const;
 
@@ -52,6 +59,9 @@ namespace carto::mvt {
         float _scaleDenom = zoom2ScaleDenominator(0);
         std::shared_ptr<const FeatureData> _featureData;
         std::shared_ptr<const NutiParameterStore> _nutiParameterStore;
+        bool _nutiOverride = false;
+        std::string _nutiOverrideName;
+        Value _nutiOverrideValue;
     };
 }
 

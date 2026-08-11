@@ -48,8 +48,19 @@ namespace carto::mvt {
         bool isBakedAtDecode() const { return _bakedAtDecode; }
         void setBakedAtDecode(bool bakedAtDecode) { _bakedAtDecode = bakedAtDecode; }
 
+        /**
+         * True when the only parameter this property reads is the SELECTING one, and it only reads
+         * it through a comparison with a feature field. Forcing that parameter to a fixed value
+         * then leaves an expression of feature fields alone, which folds to a constant - so the
+         * tile can carry both answers as two style slots and a selection change becomes a repaint.
+         * Set by resolveSelectionParameter.
+         */
+        bool isSelectionFoldable() const { return _selectionFoldable; }
+        void setSelectionFoldable(bool selectionFoldable) { _selectionFoldable = selectionFoldable; }
+
     protected:
         bool _bakedAtDecode = false;
+        bool _selectionFoldable = false;
 
         struct DependencyChecker {
             DependencyChecker() = delete;
@@ -412,6 +423,13 @@ namespace carto::mvt {
         }
 
     protected:
+        // A folded parameter is fixed for the whole evaluation, so it no longer stands between the
+        // property and a constant - which is the point: the two folded constants become the two
+        // style slots one feature can be repointed between.
+        bool readsLiveNutiVars(const ExpressionContext& context) const {
+            return _nutiVars && !(_selectionFoldable && context.hasNutiParameterOverride());
+        }
+
         GenericFunctionProperty() = default;
         template <typename S> explicit GenericFunctionProperty(const S& defaultValue) : _func(defaultValue), _expr(Value(defaultValue)) { }
         
@@ -440,7 +458,7 @@ namespace carto::mvt {
 
     protected:
         virtual vt::FloatFunction buildFunction(const ExpressionContext& context) const override {
-            if (_viewStateVars || _nutiVars) {
+            if (_viewStateVars || readsLiveNutiVars(context)) {
                 Expression expr = _expr;
                 auto func = [expr, context](const vt::ViewState& viewState) -> float {
                     try {
@@ -465,7 +483,7 @@ namespace carto::mvt {
 
     protected:
         virtual vt::ColorFunction buildFunction(const ExpressionContext& context) const override {
-            if (_viewStateVars || _nutiVars) {
+            if (_viewStateVars || readsLiveNutiVars(context)) {
                 Expression expr = _expr;
                 auto func = [expr, context](const vt::ViewState& viewState) -> vt::Color {
                     try {

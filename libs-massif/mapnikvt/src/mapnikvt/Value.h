@@ -7,6 +7,7 @@
 #ifndef _CARTO_MAPNIKVT_VALUE_H_
 #define _CARTO_MAPNIKVT_VALUE_H_
 
+#include <cstdint>
 #include <map>
 #include <memory>
 #include <string>
@@ -50,6 +51,15 @@ namespace carto::mvt {
      * The number of elements of an array or members of an object; 0 for anything else.
      */
     long long getValueSize(const Value& container);
+
+    /**
+     * A hash that agrees with '=': two values hash alike exactly when the operator calls them
+     * equal. Numbers therefore hash as doubles, whatever alternative holds them, and a string never
+     * hashes like a number. This is what lets a decoded tile carry the value a style parameter is
+     * compared with as 64 bits, so a selection change is a comparison of two hashes rather than a
+     * decode. Above 2^53 two long longs can collide, as they already compare equal to one double.
+     */
+    std::uint64_t hashValue(const Value& val);
 }
 
 #endif

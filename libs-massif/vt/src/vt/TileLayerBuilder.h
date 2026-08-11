@@ -34,6 +34,23 @@ namespace carto::vt {
         using Vertices = std::vector<Vertex>;
         using VerticesList = std::vector<Vertices>;
 
+        // The value the selecting style parameter holds, shared with the renderer: it decides which
+        // of a variant's two slots each feature takes, and a change to it is answered by rewriting
+        // style bytes rather than by decoding the tile again.
+        void setStyleState(StyleStateRef styleState, std::uint64_t stateKey) { _styleState = std::move(styleState); _stateKey = stateKey; }
+
+        // A STYLE VARIANT is one feature drawn once but carrying both of the styles a selecting
+        // style parameter can give it. The decoder folds the comparison both ways and registers the
+        // two styles between these calls; the vertices tesselated in between are recorded with both
+        // slots and with stateKey, the hash of the field value the parameter is compared with.
+        //
+        // Exactly two styles must be registered, and only the ACTIVE one is drawn - the other is
+        // registered by running its processor over an empty feature collection, or, when that
+        // branch paints nothing at all, by reserveInvisibleLineStyle.
+        void beginStyleVariant(std::uint64_t stateKey);
+        void reserveInvisibleLineStyle();
+        void endStyleVariant(int selectedSlot, bool selected);
+
         using PointProcessor = std::function<void(long long id, const Vertex& vertex)>;
         using TextProcessor = std::function<void(long long id, const Vertex& vertex, const std::string& text, int geoPointIndex)>;
         using LineProcessor = std::function<void(long long id, const Vertices& vertices)>;
@@ -83,7 +100,8 @@ namespace carto::vt {
         };
 
         void packGeometry(std::vector<std::shared_ptr<TileGeometry>>& geometryList) const;
-        void packGeometry(TileGeometry::Type type, int dimensions, float coordScale, float binormalScale, float texCoordScale, float heightScale, const VertexArray<cglib::vec3<float>>& coords, const VertexArray<cglib::vec2<float>>& texCoords, const VertexArray<cglib::vec3<float>>& normals, const VertexArray<cglib::vec3<float>>& binormals, const VertexArray<float>& heights, const VertexArray<cglib::vec4<std::int8_t>>& attribs, const VertexArray<std::size_t>& indices, const VertexArray<long long>& ids, const VertexArray<std::uint16_t >& geoPosIndexes, const TileGeometry::StyleParameters& styleParameters, std::vector<std::shared_ptr<TileGeometry>>& geometryList) const;
+        void packGeometry(TileGeometry::Type type, int dimensions, float coordScale, float binormalScale, float texCoordScale, float heightScale, const VertexArray<cglib::vec3<float>>& coords, const VertexArray<cglib::vec2<float>>& texCoords, const VertexArray<cglib::vec3<float>>& normals, const VertexArray<cglib::vec3<float>>& binormals, const VertexArray<float>& heights, const VertexArray<cglib::vec4<std::int8_t>>& attribs, const VertexArray<std::size_t>& indices, const VertexArray<long long>& ids, const VertexArray<std::uint16_t >& geoPosIndexes, const TileGeometry::StyleParameters& styleParameters, std::vector<TileGeometry::FeatureStyleRange> featureStyleRanges, std::vector<std::shared_ptr<TileGeometry>>& geometryList) const;
+        void registerStyleVariantSlot(int styleIndex);
 
         bool tesselateGlyph(const cglib::vec2<float>& point, std::int8_t styleIndex, const cglib::vec2<float>& pen, const cglib::vec2<float>& size, const GlyphMap::Glyph* glyph);
         bool tesselatePolygon(const std::vector<std::vector<cglib::vec2<float>>>& pointsList, std::int8_t styleIndex, const PolygonStyle& style);
@@ -120,6 +138,23 @@ namespace carto::vt {
         VertexArray<std::size_t> _indices;
         VertexArray<std::uint16_t> _geoPosIndexes;
         VertexArray<long long> _ids;
+        // A style variant while it is open, and the vertex runs the closed ones left behind. The
+        // runs are in _coords space here; packGeometry maps them onto the repacked vertices.
+        struct StyleVariantRange {
+            std::size_t firstVertex;
+            std::size_t vertexCount;
+            std::uint64_t stateKey;
+            std::uint8_t styleIndices[2];
+        };
+
+        StyleStateRef _styleState;
+        std::uint64_t _stateKey = 0;
+        std::vector<StyleVariantRange> _styleVariantRanges;
+        std::vector<int> _styleVariantSlots; // the slots registered while a variant is open
+        std::size_t _styleVariantFirstVertex = 0;
+        std::uint64_t _styleVariantStateKey = 0;
+        int _styleVariantGeneration = -1; // the geometry the variant opened in; -1 = none open
+        int _geometryGeneration = 0;
 
         std::vector<std::shared_ptr<TileBackground>> _backgroundList;
         std::vector<std::shared_ptr<TileBitmap>> _bitmapList;

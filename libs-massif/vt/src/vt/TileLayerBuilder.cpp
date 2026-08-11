@@ -392,6 +392,7 @@ namespace carto::vt {
             _builderParameters.offsetFuncs[styleIndex] = style.offsetFunc;
             _builderParameters.lineStrokeIds[styleIndex] = strokeId;
         }
+        registerStyleVariantSlot(styleIndex);
 
         return [style, transform, invTransTransform, styleIndex, stroke, this](long long id, const Vertices& vertices) {
             std::size_t i0 = _coords.size();
@@ -707,6 +708,57 @@ namespace carto::vt {
         return std::make_shared<TileLayer>(_layerName, _layerIdx, _compOp, _opacityFunc, _backgroundList, _bitmapList, std::move(geometryList), _labelList);
     }
 
+    void TileLayerBuilder::beginStyleVariant(std::uint64_t stateKey) {
+        // Both slots have to land in the SAME geometry as the vertices, so make room for them
+        // before anything is registered - a flush in the middle of a variant would leave the second
+        // slot indexing another geometry's style parameters.
+        if (_builderParameters.parameterCount + 2 > TileGeometry::StyleParameters::MAX_PARAMETERS) {
+            appendGeometry();
+        }
+        _styleVariantSlots.clear();
+        _styleVariantFirstVertex = _coords.size();
+        _styleVariantStateKey = stateKey;
+        _styleVariantGeneration = _geometryGeneration;
+    }
+
+    void TileLayerBuilder::reserveInvisibleLineStyle() {
+        // The branch that paints nothing still needs a slot to be repointed at: a zero width is
+        // what makes the feature disappear when the parameter stops picking it.
+        if (_styleVariantGeneration != _geometryGeneration || _builderParameters.type != TileGeometry::Type::LINE || _builderParameters.parameterCount >= TileGeometry::StyleParameters::MAX_PARAMETERS) {
+            return;
+        }
+        int styleIndex = _builderParameters.parameterCount++;
+        _builderParameters.colorFuncs[styleIndex] = ColorFunction(Color());
+        _builderParameters.widthFuncs[styleIndex] = FloatFunction(0);
+        _builderParameters.offsetFuncs[styleIndex] = FloatFunction(0);
+        _builderParameters.lineStrokeIds[styleIndex] = 0;
+        registerStyleVariantSlot(styleIndex);
+    }
+
+    void TileLayerBuilder::registerStyleVariantSlot(int styleIndex) {
+        if (_styleVariantGeneration == _geometryGeneration && _styleVariantSlots.size() < 2) {
+            _styleVariantSlots.push_back(styleIndex);
+        }
+    }
+
+    void TileLayerBuilder::endStyleVariant(int selectedSlot, bool selected) {
+        std::size_t vertexCount = _coords.size() - _styleVariantFirstVertex;
+        bool complete = _styleVariantGeneration == _geometryGeneration && _styleVariantSlots.size() == 2 && vertexCount > 0;
+        _styleVariantGeneration = -1;
+        if (!complete) {
+            return; // nothing drawn, or the geometry was flushed underneath: not repointable
+        }
+
+        // The vertices carry the slot of whichever branch tesselated them, which is not the active
+        // one when the active branch paints nothing.
+        std::uint8_t styleIndices[2] = { static_cast<std::uint8_t>(_styleVariantSlots[selectedSlot == 0 ? 1 : 0]), static_cast<std::uint8_t>(_styleVariantSlots[selectedSlot]) };
+        std::uint8_t styleIndex = styleIndices[selected ? 1 : 0];
+        for (std::size_t i = _styleVariantFirstVertex; i < _coords.size() && i < _attribs.size(); i++) {
+            _attribs[i](0) = static_cast<std::int8_t>(styleIndex);
+        }
+        _styleVariantRanges.push_back(StyleVariantRange { _styleVariantFirstVertex, vertexCount, _styleVariantStateKey, { styleIndices[0], styleIndices[1] } });
+    }
+
     void TileLayerBuilder::appendGeometry() {
         if (_builderParameters.type == TileGeometry::Type::NONE) {
             return;
@@ -714,6 +766,7 @@ namespace carto::vt {
 
         packGeometry(_geometryList);
 
+        _geometryGeneration++;
         _builderParameters = BuilderParameters();
         _coords.clear();
         _texCoords.clear();
@@ -723,6 +776,7 @@ namespace carto::vt {
         _indices.clear();
         _ids.clear();
         _geoPosIndexes.clear();
+        _styleVariantRanges.clear();
     }
 
     void TileLayerBuilder::packGeometry(std::vector<std::shared_ptr<TileGeometry>>& geometryList) const {
@@ -803,7 +857,9 @@ namespace carto::vt {
         // Compress attributes
         VertexArray<cglib::vec4<std::int8_t>> attribs;
         attribs.copy(_attribs, 0, _attribs.size());
-        if (std::all_of(attribs.begin(), attribs.end(), [](const cglib::vec4<std::int8_t>& attrib) { return attrib == cglib::vec4<std::int8_t>(0, 0, 0, 0); })) {
+        // A variant is repointed by rewriting the style byte, so the attributes have to survive even
+        // when both of its slots happen to be slot 0.
+        if (_styleVariantRanges.empty() && std::all_of(attribs.begin(), attribs.end(), [](const cglib::vec4<std::int8_t>& attrib) { return attrib == cglib::vec4<std::int8_t>(0, 0, 0, 0); })) {
             attribs.clear();
         }
 
@@ -817,6 +873,17 @@ namespace carto::vt {
         }
         else if (std::any_of(binormals.begin(), binormals.end(), [](const cglib::vec3<float>& binormal) { return binormal(2) != 0; })) {
             dimensions = 3;
+        }
+
+        // The variant each vertex belongs to, so the runs can be rebuilt after the repacking below
+        // renumbers and drops vertices.
+        std::vector<int> vertexVariants;
+        if (!_styleVariantRanges.empty()) {
+            vertexVariants.assign(_coords.size(), -1);
+            for (std::size_t i = 0; i < _styleVariantRanges.size(); i++) {
+                const StyleVariantRange& range = _styleVariantRanges[i];
+                std::fill(vertexVariants.begin() + range.firstVertex, vertexVariants.begin() + std::min(range.firstVertex + range.vertexCount, vertexVariants.size()), static_cast<int>(i));
+            }
         }
 
         // Split/repack geometry
@@ -846,6 +913,8 @@ namespace carto::vt {
             remappedIds.reserve(count);
             VertexArray<std::uint16_t> remappedGeoPosIndexes;
             remappedGeoPosIndexes.reserve(count);
+            std::vector<TileGeometry::FeatureStyleRange> remappedStyleRanges;
+            int lastVariant = -1;
             for (std::size_t i = 0; i < count; i++) {
                 std::size_t index = _indices[offset + i];
                 std::size_t remappedIndex = indexTable[index];
@@ -869,6 +938,19 @@ namespace carto::vt {
                     if (!heights.empty()) {
                         remappedHeights.append(heights[index]);
                     }
+                    if (int variant = vertexVariants.empty() ? -1 : vertexVariants[index]; variant >= 0) {
+                        // The vertices arrive in first-touch order, so a variant is a run here as
+                        // well - just not the same run it was before the repacking.
+                        if (variant == lastVariant && remappedStyleRanges.back().firstVertex + remappedStyleRanges.back().vertexCount == remappedIndex) {
+                            remappedStyleRanges.back().vertexCount++;
+                        }
+                        else {
+                            const StyleVariantRange& range = _styleVariantRanges[variant];
+                            std::uint8_t styleIndex = static_cast<std::uint8_t>(attribs.empty() ? 0 : attribs[index](0));
+                            remappedStyleRanges.push_back(TileGeometry::FeatureStyleRange { range.stateKey, static_cast<std::uint32_t>(remappedIndex), 1, styleIndex, { range.styleIndices[0], range.styleIndices[1] } });
+                        }
+                    }
+                    lastVariant = vertexVariants.empty() ? -1 : vertexVariants[index];
                 }
 
                 remappedIndices.append(remappedIndex);
@@ -876,13 +958,13 @@ namespace carto::vt {
                 remappedGeoPosIndexes.append(_geoPosIndexes[offset + i]);
             }
 
-            packGeometry(_builderParameters.type, dimensions, coordScale, binormalScale, texCoordScale, heightScale, remappedCoords, remappedTexCoords, remappedNormals, remappedBinormals, remappedHeights, remappedAttribs, remappedIndices, remappedIds, remappedGeoPosIndexes, styleParameters,  geometryList);
+            packGeometry(_builderParameters.type, dimensions, coordScale, binormalScale, texCoordScale, heightScale, remappedCoords, remappedTexCoords, remappedNormals, remappedBinormals, remappedHeights, remappedAttribs, remappedIndices, remappedIds, remappedGeoPosIndexes, styleParameters, std::move(remappedStyleRanges), geometryList);
 
             offset += count;
         }
     }
 
-    void TileLayerBuilder::packGeometry(TileGeometry::Type type, int dimensions, float coordScale, float binormalScale, float texCoordScale, float heightScale, const VertexArray<cglib::vec3<float>>& coords, const VertexArray<cglib::vec2<float>>& texCoords, const VertexArray<cglib::vec3<float>>& normals, const VertexArray<cglib::vec3<float>>& binormals, const VertexArray<float>& heights, const VertexArray<cglib::vec4<std::int8_t>>& attribs, const VertexArray<std::size_t>& indices, const VertexArray<long long>& ids, const VertexArray<std::uint16_t>& geoPosIndexes, const TileGeometry::StyleParameters& styleParameters, std::vector<std::shared_ptr<TileGeometry>>& geometryList) const {
+    void TileLayerBuilder::packGeometry(TileGeometry::Type type, int dimensions, float coordScale, float binormalScale, float texCoordScale, float heightScale, const VertexArray<cglib::vec3<float>>& coords, const VertexArray<cglib::vec2<float>>& texCoords, const VertexArray<cglib::vec3<float>>& normals, const VertexArray<cglib::vec3<float>>& binormals, const VertexArray<float>& heights, const VertexArray<cglib::vec4<std::int8_t>>& attribs, const VertexArray<std::size_t>& indices, const VertexArray<long long>& ids, const VertexArray<std::uint16_t>& geoPosIndexes, const TileGeometry::StyleParameters& styleParameters, std::vector<TileGeometry::FeatureStyleRange> featureStyleRanges, std::vector<std::shared_ptr<TileGeometry>>& geometryList) const {
         if (indices.empty()) {
             return;
         }
@@ -1017,6 +1099,9 @@ namespace carto::vt {
 
         // Store geometry
         auto geometry = std::make_shared<TileGeometry>(type, _geomScale, styleParameters, vertexGeomLayoutParams, std::move(compressedVertexGeometry), std::move(compressedIndices), std::move(compressedIds), std::move(compressedGeoPosIndexes));
+        if (!featureStyleRanges.empty()) {
+            geometry->setFeatureStyleRanges(std::move(featureStyleRanges), _styleState, _stateKey);
+        }
         geometryList.push_back(std::move(geometry));
     }
 

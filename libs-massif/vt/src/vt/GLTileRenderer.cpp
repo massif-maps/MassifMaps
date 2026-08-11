@@ -5873,6 +5873,12 @@ namespace carto::vt {
     }
 
     const GLTileRenderer::CompiledGeometry& GLTileRenderer::buildCompiledTileGeometry(const std::shared_ptr<TileGeometry>& tileGeometry) {
+        // The style parameter that picks a feature out may have changed since this geometry was
+        // built: repointing its features at their other style slot is a byte rewrite here, not a
+        // tile decode. Done before the buffers are looked at, so a geometry compiled for the first
+        // time uploads the repointed data straight away.
+        tileGeometry->applyStyleState();
+
         auto it = _compiledTileGeometryMap.find(tileGeometry.get());
         if (it != _compiledTileGeometryMap.end() && it->second.owner.expired()) {
             // The geometry this entry was built for is gone and the allocator handed its
@@ -5900,8 +5906,16 @@ namespace carto::vt {
             if (!_interactionMode) {
                 tileGeometry->releaseVertexArrays(); // if interaction is enabled, we must keep the vertex arrays. Otherwise optimize for lower memory usage
             }
+            tileGeometry->clearDirtyVertexBytes(); // the upload above already carries them
 
             it = _compiledTileGeometryMap.emplace(tileGeometry.get(), OwnedCompiledGeometry { tileGeometry, compiledGeometry }).first;
+        }
+        else if (const std::optional<std::pair<std::size_t, std::size_t>>& dirtyBytes = tileGeometry->getDirtyVertexBytes()) {
+            // A feature was repointed at another style slot: re-upload just the bytes it touched
+            // instead of decoding the tile again
+            glBindBuffer(GL_ARRAY_BUFFER, it->second.geometry.vertexGeometryVBO);
+            glBufferSubData(GL_ARRAY_BUFFER, dirtyBytes->first, dirtyBytes->second - dirtyBytes->first, tileGeometry->getVertexGeometry().data() + dirtyBytes->first);
+            tileGeometry->clearDirtyVertexBytes();
         }
         return it->second.geometry;
     }

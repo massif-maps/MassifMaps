@@ -13,8 +13,10 @@
 #include "Parameter.h"
 #include "NutiParameter.h"
 #include "Properties.h"
+#include "SelectionParameter.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 #include <map>
@@ -66,6 +68,11 @@ namespace carto::mvt {
 
         void setNutiParameters(const std::vector<NutiParameter>& nutiParameters);
         const std::map<std::string, NutiParameter>& getNutiParameterMap() const { return _nutiParameterMap; }
+
+        // The parameter this style selects features with, once resolveSelectionParameter has looked
+        // for one. Unset means every parameter change is a re-decode, as it always was.
+        void setSelectionParameter(std::optional<SelectionParameter> selectionParameter) { _selectionParameter = std::move(selectionParameter); }
+        const std::optional<SelectionParameter>& getSelectionParameter() const { return _selectionParameter; }
         
         void setParameters(const std::vector<Parameter>& parameters);
         const std::map<std::string, Parameter>& getParameterMap() const { return _parameterMap; }
@@ -88,6 +95,7 @@ namespace carto::mvt {
     private:
         Settings _settings;
         std::map<std::string, NutiParameter> _nutiParameterMap;
+        std::optional<SelectionParameter> _selectionParameter;
         std::map<std::string, Parameter> _parameterMap;
         std::vector<std::shared_ptr<Style>> _styles;
         std::map<std::string, std::shared_ptr<Style>> _styleMap;

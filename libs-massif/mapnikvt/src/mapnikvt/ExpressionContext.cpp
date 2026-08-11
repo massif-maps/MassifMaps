@@ -35,6 +35,9 @@ namespace carto::mvt {
             return Value();
         }
         else if (isNutiVariable(name)) {
+            if (_nutiOverride && name.compare(6, std::string::npos, _nutiOverrideName) == 0) {
+                return _nutiOverrideValue;
+            }
             if (_nutiParameterStore) {
                 std::shared_ptr<const std::map<std::string, Value>> values = _nutiParameterStore->getValues();
                 auto it = values->find(name.substr(6));

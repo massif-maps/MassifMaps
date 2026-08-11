@@ -12,6 +12,7 @@
 #include "vt/FontManager.h"
 #include "vt/StrokeMap.h"
 #include "vt/GlyphMap.h"
+#include "vt/TileGeometry.h"
 
 #include <memory>
 
@@ -19,7 +20,7 @@ namespace carto::mvt {
     class SymbolizerContext final {
     public:
         struct Settings {
-            explicit Settings(float tileSize, std::shared_ptr<const NutiParameterStore> nutiParameterStore, std::shared_ptr<const vt::Font> fallbackFont, float pixelScale = 1.0f);
+            explicit Settings(float tileSize, std::shared_ptr<const NutiParameterStore> nutiParameterStore, std::shared_ptr<const vt::Font> fallbackFont, float pixelScale = 1.0f, vt::StyleStateRef styleState = vt::StyleStateRef());
 
             float getTileSize() const { return _tileSize; }
             float getGeometryScale() const { return _geometryScale; }
@@ -33,6 +34,9 @@ namespace carto::mvt {
             const std::shared_ptr<const NutiParameterStore>& getNutiParameterStore() const { return _nutiParameterStore; }
             std::shared_ptr<const std::map<std::string, Value>> getNutiParameterValueMap() const { return _nutiParameterStore ? _nutiParameterStore->getValues() : std::shared_ptr<const std::map<std::string, Value>>(); }
             const std::shared_ptr<const vt::Font>& getFallbackFont() const { return _fallbackFont; }
+            // The hash of the value the selecting parameter holds, handed to the tiles as they are
+            // built so a change to it is answered by a repaint - see SelectionParameter.
+            const vt::StyleStateRef& getStyleState() const { return _styleState; }
 
         private:
             float _tileSize;
@@ -43,6 +47,7 @@ namespace carto::mvt {
             
             std::shared_ptr<const NutiParameterStore> _nutiParameterStore;
             std::shared_ptr<const vt::Font> _fallbackFont;
+            vt::StyleStateRef _styleState;
         };
 
         explicit SymbolizerContext(std::shared_ptr<vt::BitmapManager> bitmapManager, std::shared_ptr<vt::FontManager> fontManager, std::shared_ptr<vt::StrokeMap> strokeMap, std::shared_ptr<vt::GlyphMap> glyphMap, const Settings& settings) : _bitmapManager(std::move(bitmapManager)), _fontManager(std::move(fontManager)), _strokeMap(std::move(strokeMap)), _glyphMap(std::move(glyphMap)), _settings(settings) { }

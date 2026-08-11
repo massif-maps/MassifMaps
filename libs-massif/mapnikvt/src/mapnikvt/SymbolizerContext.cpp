@@ -11,8 +11,8 @@
 #include "ValueConverter.h"
 
 namespace carto::mvt {
-    SymbolizerContext::Settings::Settings(float tileSize, std::shared_ptr<const NutiParameterStore> nutiParameterStore, std::shared_ptr<const vt::Font> fallbackFont, float pixelScale) :
-        _tileSize(tileSize), _geometryScale(1.0f), _fontScale(1.0f), _zoomLevelBias(0.0f), _pixelScale(pixelScale), _nutiParameterStore(std::move(nutiParameterStore)), _fallbackFont(std::move(fallbackFont))
+    SymbolizerContext::Settings::Settings(float tileSize, std::shared_ptr<const NutiParameterStore> nutiParameterStore, std::shared_ptr<const vt::Font> fallbackFont, float pixelScale, vt::StyleStateRef styleState) :
+        _tileSize(tileSize), _geometryScale(1.0f), _fontScale(1.0f), _zoomLevelBias(0.0f), _pixelScale(pixelScale), _nutiParameterStore(std::move(nutiParameterStore)), _fallbackFont(std::move(fallbackFont)), _styleState(std::move(styleState))
     {
         // These three are read ONCE, here: they scale the geometry and the glyphs a tile is built
         // with, so they can never be live - changing one goes through a full re-decode, which

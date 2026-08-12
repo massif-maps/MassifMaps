@@ -463,6 +463,14 @@ namespace carto::vt {
         // tiles than this.
         static constexpr int SINGLE_BLEND_STENCIL_BIT = 128;
         static constexpr float HALO_RADIUS_SCALE = 2.5f; // the scaling factor for halo radius
+        // Screen pixels per halo unit. The halo used to be converted with the glyph's RENDER size,
+        // which was one constant when every glyph was rastered at 27 texels; the raster ladder made
+        // it 24, 36 or 48, so the same style drew a halo twice as wide on a small label as on a
+        // large one and up to five times what it drew before (docs/rendering/06-labels.md). The
+        // conversion belongs to the antialias ramp - one screen pixel - and this is the width the
+        // single-raster build gave: 27 / (32 * GLYPH_SDF_UNIT_then * 23), with the spread of 4 it
+        // had. Kept so no style has to be retouched.
+        static constexpr float HALO_PIXELS_PER_UNIT = 0.589f;
         static constexpr float STROKE_UV_SCALE = 2.857f; // stroked line UV scale factor
         static constexpr float POLYGON3D_HEIGHT_SCALE = 10018754.17f; // scaling factor for zoom 0 heights
         static constexpr float TERRAIN_LAYER_DEPTH_DELTA = 1.0f / 524288.0f; // 2^-19: NDC depth separation per draped layer bias unit (GPU terrain draping mode)

@@ -1278,7 +1278,6 @@ namespace carto::vt {
         uniform vec3 uLabelAxisY;
         uniform mat4 uMVPMatrix;
         uniform vec2 uUVScale;
-        uniform float uSDFScale;
         uniform float uSDFRamp;
         uniform vec4 uColorTable[16];
         uniform float uWidthTable[16];
@@ -1296,10 +1295,11 @@ namespace carto::vt {
             float opacity = aVertexAttribs[2] * (1.0 / 127.0);
             vec4 color = aVertexAttribs[1] > 1.0 ? vec4(1.0, 1.0, 1.0, 1.0) : uColorTable[styleIndex];
             vUV = aVertexUV * uUVScale;
-            // [2] is the halo width, [3] the antialias ramp - both in texture value units. They
-            // are not the same scale: the ramp is one screen pixel of signed distance, the halo
-            // is what HALO_RADIUS_SCALE says it is.
-            vAttribs = vec4(aVertexAttribs[1], uStrokeWidthTable[styleIndex], uSDFScale / size, uSDFRamp / size);
+            // [1] is the halo width in SCREEN PIXELS, [3] the antialias ramp - one screen pixel of
+            // signed distance. The fragment shader measures the halo in ramps, so both are the
+            // same unit and a halo is as wide as the style asks whatever raster size the label
+            // landed on (the ramp is re-measured per fragment when derivatives are available).
+            vAttribs = vec4(aVertexAttribs[1], uStrokeWidthTable[styleIndex], 0.0, uSDFRamp / size);
         #ifdef LIGHTING_VSH
             vColor = applyLighting(color, aVertexNormal) * opacity;
         #else
@@ -1341,7 +1341,9 @@ namespace carto::vt {
         #else
                 mediump float size = vAttribs[3];
         #endif
-                float offset = 0.5 * (1.0 - size - vAttribs[1] * vAttribs[2]);
+                // The ramp is centred on the outline, and the halo pushes that centre outward by
+                // its own width in screen pixels - 'size' being exactly one of those.
+                float offset = 0.5 * (1.0 - size * (1.0 + 2.0 * vAttribs[1]));
                 color = clamp((color.r - offset) / size, 0.0, 1.0) * vColor;
             }
         #ifdef LIGHTING_FSH

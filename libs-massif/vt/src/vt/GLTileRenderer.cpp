@@ -3428,6 +3428,11 @@ namespace carto::vt {
                 cglib::vec4<float> haloColor = cglib::vec4<float>(evaluateColorFunc(labelStyle->haloColorFunc).rgba());
                 float haloRadius = evaluateFloatFunc(labelStyle->haloRadiusFunc) * HALO_RADIUS_SCALE;
                 haloRadius = std::min(haloRadius, static_cast<float>(GLYPH_RENDER_SPREAD));
+                // In SCREEN PIXELS from here on: labelFsh measures the halo against the same one
+                // screen pixel the antialias ramp is, so it no longer depends on which raster size
+                // the label landed on. The clamp above stays where it was - it is the point past
+                // which the encoded field runs out, and it is what a style's widest halo met before.
+                haloRadius *= HALO_PIXELS_PER_UNIT;
 
                 // Up to four plates: a fill and a border behind the text, and the same behind the
                 // icon. Each colour is one more slot in the batch, exactly like the halo.
@@ -5730,7 +5735,6 @@ namespace carto::vt {
         cglib::mat4x4<float> mvpMatrix = cglib::mat4x4<float>::convert(_viewState.projectionMatrix * labelBatchParams.labelMatrix);
         glUniformMatrix4fv(shaderProgram.uniforms[U_MVPMATRIX], 1, GL_FALSE, mvpMatrix.data());
 
-        glUniform1f(shaderProgram.uniforms[U_SDFSCALE], labelBatchParams.glyphRenderSize / labelBatchParams.scale / _fullResolution / BITMAP_SDF_SCALE);
         // The antialias ramp has to be one screen pixel wide, and it is expressed in the texture
         // values the field is encoded in. One em is (glyphRenderSize - GLYPH_RENDER_SPREAD) glyph
         // texels and is drawn over 'size * scale * _fullResolution / 2' screen pixels (vt's

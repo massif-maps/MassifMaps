@@ -274,10 +274,15 @@ namespace carto::vt {
         // text (the plate's padding included), (0,0) the centre, (1,1) the top right - in drawn
         // offset units, rotated with the glyphs. Both the leader line's end and the row the culler
         // aligns the label on are one of these, so a rotated name can hang from its first letter.
-        cglib::vec2<float> calculateBoxPoint(const cglib::vec2<float>& anchor, float scale, float pixelScale) const;
+        // 'glyphScale' is glyph units per SCREEN PIXEL (1 / the label size): what the plates add
+        // around the text is a pixel amount, and the box it grows is in glyph units.
+        cglib::vec2<float> calculateBoxPoint(const cglib::vec2<float>& anchor, float scale, float glyphScale) const;
+        // Whether the surface the label is anchored on is seen steeply enough for the label to be
+        // worth drawing. Always true for a CALLOUT, which is a screen object (see the definition).
+        bool isSurfaceFacingView(const ViewState& viewState, const Placement& placement) const;
         // How far the label is moved so that the style's line anchor lands on its feature's
         // vertical; zero unless the style names one.
-        cglib::vec2<float> calculateCalloutShift(float scale, float pixelScale) const;
+        cglib::vec2<float> calculateCalloutShift(float scale, float glyphScale) const;
         // World units one SCREEN PIXEL is worth at the label's own depth, read off the projection
         // instead of the label's scale: the scale comes from the zoom, so converting with it makes
         // a callout's lift drift up and down the screen whenever the camera moves.
@@ -351,7 +356,7 @@ namespace carto::vt {
         void measureTextLines();
         // The variant's content box grown by whatever its plates add around it - what the label
         // actually covers on screen, which is what the culler has to test.
-        cglib::bbox2<float> calculatePlatedBBox(int variantIndex, float pixelScale) const;
+        cglib::bbox2<float> calculatePlatedBBox(int variantIndex, float glyphScale) const;
         // The four corners a glyph box takes on the label's screen axes, style transform included.
         void buildBoxEnvelope(const cglib::bbox2<float>& glyphBBox, float scale, const cglib::vec2<float>& padding, const cglib::vec3<float>& origin, const cglib::vec3<float>& xAxis, const cglib::vec3<float>& yAxis, std::array<cglib::vec3<float>, 4>& envelope) const;
 

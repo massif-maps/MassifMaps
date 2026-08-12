@@ -142,11 +142,11 @@ namespace carto::vt {
         return bbox;
     }
 
-    cglib::bbox2<float> Label::calculatePlatedBBox(int variantIndex, float pixelScale) const {
+    cglib::bbox2<float> Label::calculatePlatedBBox(int variantIndex, float glyphScale) const {
         bool indexed = variantIndex >= 0 && variantIndex < static_cast<int>(_variantBBoxes.size());
         cglib::bbox2<float> bbox = (indexed ? _variantBBoxes[variantIndex] : _glyphBBox);
         const cglib::bbox2<float>& textBBox = (indexed ? _variantTextBBoxes[variantIndex] : _textBBox);
-        auto expand = [&bbox, pixelScale](const cglib::bbox2<float>& part, const TileLabel::Style::Plate& plate) {
+        auto expand = [&bbox, glyphScale](const cglib::bbox2<float>& part, const TileLabel::Style::Plate& plate) {
             if (!plate.draws() || part.min(0) > part.max(0)) {
                 return;
             }
@@ -154,7 +154,7 @@ namespace carto::vt {
             if (plate.drawsBorder()) {
                 grow += cglib::vec2<float>(plate.style.borderWidth, plate.style.borderWidth);
             }
-            grow *= pixelScale;
+            grow *= glyphScale;
             bbox.add(part.min - grow);
             bbox.add(part.max + grow);
         };
@@ -627,12 +627,12 @@ namespace carto::vt {
             // of the font size), and the envelope has to move with the glyphs or the collision
             // test is done where the label is not.
             float pixelScale = scale / size;
-            cglib::vec2<float> calloutShift = calculateCalloutShift(scale, pixelScale)
+            cglib::vec2<float> calloutShift = calculateCalloutShift(scale, 1.0f / size)
                 + cglib::vec2<float>(0, calculateCalloutLift(viewState) * calculatePixelToWorld(viewState, *placement, pixelScale));
             origin = origin + xAxis * calloutShift(0) + yAxis * calloutShift(1);
         }
 
-        bool valid = cglib::dot_product(viewState.orientation[2], placement->normal) > MIN_BILLBOARD_VIEW_NORMAL_DOTPRODUCT;
+        bool valid = isSurfaceFacingView(viewState, *placement);
         if (_style->orientation == LabelOrientation::LINE) {
             // The run is laid out in glyph units on the camera axes (see buildLineVertexData), so
             // its envelope is the bounds of that run put back on those axes - the same shape the
@@ -666,7 +666,7 @@ namespace carto::vt {
             // Use bounding box for envelope. The plates are part of what the label covers, so what
             // they add around the glyphs belongs here too - the band aligns labels on this box, and
             // a box smaller than what is drawn puts the row a few pixels off.
-            cglib::bbox2<float> box = (size > 0 ? calculatePlatedBBox(_variantIndex, scale / size) : _glyphBBox);
+            cglib::bbox2<float> box = (size > 0 ? calculatePlatedBBox(_variantIndex, 1.0f / size) : _glyphBBox);
             buildBoxEnvelope(box, scale, cglib::vec2<float>(padding, padding), origin, xAxis, yAxis, envelope);
         }
         return valid;
@@ -714,14 +714,26 @@ namespace carto::vt {
         }
 
         float padding = buffer * viewState.zoomScale * _style->scale * calculateTerrainScaleFactor(*placement, viewState) / std::sqrt(2.0f);
-        float pixelScale = (size > 0 ? scale / size : 0.0f);
+        float glyphScale = (size > 0 ? 1.0f / size : 0.0f);
         cglib::vec3<float> origin, xAxis, yAxis;
         setupCoordinateSystem(viewState, placement, origin, xAxis, yAxis);
         for (std::size_t i = 0; i < _variantBBoxes.size(); i++) {
-            cglib::bbox2<float> box = (pixelScale > 0 ? calculatePlatedBBox(static_cast<int>(i), pixelScale) : _variantBBoxes[i]);
+            cglib::bbox2<float> box = (glyphScale > 0 ? calculatePlatedBBox(static_cast<int>(i), glyphScale) : _variantBBoxes[i]);
             buildBoxEnvelope(box, scale, cglib::vec2<float>(padding, padding), origin, xAxis, yAxis, envelopes[i]);
         }
-        return cglib::dot_product(viewState.orientation[2], placement->normal) > MIN_BILLBOARD_VIEW_NORMAL_DOTPRODUCT;
+        return isSurfaceFacingView(viewState, *placement);
+    }
+
+    bool Label::isSurfaceFacingView(const ViewState& viewState, const Placement& placement) const {
+        // A CALLOUT is a screen object: it faces the camera, it is lifted along the camera up axis
+        // and it is joined to its feature by a leader line, so how steeply the view meets the
+        // ground it is anchored on says nothing about whether it can be read. Every other
+        // orientation is laid out against that surface and does degenerate as it is seen edge-on -
+        // and a panorama, which is what callouts are for, is that view by definition.
+        if (_style->orientation == LabelOrientation::CALLOUT) {
+            return true;
+        }
+        return cglib::dot_product(viewState.orientation[2], placement.normal) > MIN_BILLBOARD_VIEW_NORMAL_DOTPRODUCT;
     }
 
     bool Label::calculateVertexData(float size, const ViewState& viewState, int styleIndex, int haloStyleIndex, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& offsets, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices, DrawPass pass, const LabelPlateIndices& plates, int secondaryStyleIndex, int iconStyleIndex) const {
@@ -734,7 +746,7 @@ namespace carto::vt {
         }
 
         // Build vertex data cache
-        bool valid = cglib::dot_product(viewState.orientation[2], placement->normal) > MIN_BILLBOARD_VIEW_NORMAL_DOTPRODUCT;
+        bool valid = isSurfaceFacingView(viewState, *placement);
         if (pass == DrawPass::CALLOUT_LINE) {
             appendCalloutLine(size, scale, viewState, placement, styleIndex, vertices, offsets, normals, texCoords, attribs, indices);
             return valid;
@@ -781,7 +793,7 @@ namespace carto::vt {
             cglib::vec2<float> calloutShift(0, 0);
             if (_style->orientation == LabelOrientation::CALLOUT && size > 0) {
                 float pixelScale = scale / size;
-                calloutShift = calculateCalloutShift(scale, pixelScale)
+                calloutShift = calculateCalloutShift(scale, 1.0f / size)
                     + cglib::vec2<float>(0, calculateCalloutLift(viewState) * calculatePixelToWorld(viewState, *placement, pixelScale));
             }
             appendLabelPlates(size, scale, placement, plates, calloutShift, origin, xAxis, yAxis, vertices, offsets, normals, texCoords, attribs, indices);
@@ -1094,23 +1106,23 @@ namespace carto::vt {
         return static_cast<float>(depth / halfScreen);
     }
 
-    cglib::vec2<float> Label::calculateCalloutShift(float scale, float pixelScale) const {
+    cglib::vec2<float> Label::calculateCalloutShift(float scale, float glyphScale) const {
         // The style names a point OF THE LABEL and that point is what the callout holds over the
         // feature: the label moves so that it lands on the anchor's vertical, which is what keeps
         // every leader line vertical and lets a tilted name start exactly above its summit.
         if (_style->orientation != LabelOrientation::CALLOUT || !_style->calloutLineAnchor) {
             return cglib::vec2<float>(0, 0);
         }
-        return -calculateBoxPoint(*_style->calloutLineAnchor, scale, pixelScale);
+        return -calculateBoxPoint(*_style->calloutLineAnchor, scale, glyphScale);
     }
 
-    cglib::vec2<float> Label::calculateBoxPoint(const cglib::vec2<float>& anchor, float scale, float pixelScale) const {
+    cglib::vec2<float> Label::calculateBoxPoint(const cglib::vec2<float>& anchor, float scale, float glyphScale) const {
         if (_glyphBBox.min(0) > _glyphBBox.max(0)) {
             return cglib::vec2<float>(0, 0);
         }
         // The plates are part of the box the style points at: a leader line that stopped at the
         // glyph bounds would end inside them.
-        cglib::bbox2<float> box = calculatePlatedBBox(_variantIndex, pixelScale);
+        cglib::bbox2<float> box = calculatePlatedBBox(_variantIndex, glyphScale);
         float x0 = box.min(0) * scale, x1 = box.max(0) * scale;
         float y0 = box.min(1) * scale, y1 = box.max(1) * scale;
         cglib::vec2<float> p(x0 + (x1 - x0) * (anchor(0) + 1.0f) * 0.5f, y0 + (y1 - y0) * (anchor(1) + 1.0f) * 0.5f);

@@ -426,11 +426,18 @@ namespace carto::vt {
         // correctly, and a margin proportional to the label's own height would then push long names
         // further down than short ones - the row stops being a row.
         float maxLift = _viewState.resolution - top - SCREEN_EDGE_MARGIN;
-        float minLift = SCREEN_EDGE_MARGIN - labelInfo.cullRecord.bounds.min(1); // rows may go down (negative step)
-        // A summit that is already high on screen has no room left above it, and its name is
-        // exactly the one worth keeping: pull the label back DOWN to the edge rather than draw it
-        // half off the screen. Its leader line shortens with it, and may end up pointing down.
-        lift = std::min(lift, maxLift);
+        // Rows may go down (negative step), but never below the lift the style asks for: the label
+        // belongs ABOVE its feature, and its leader line only exists while it is.
+        float minLift = std::max(style->calloutOffset, SCREEN_EDGE_MARGIN - labelInfo.cullRecord.bounds.min(1));
+        // A summit already so high on screen that its name would not fit above it has no place for
+        // that name: drop it. Pulling the label back down to the screen edge instead put it BELOW
+        // its own summit - off the band the style asks for, and with a leader line pointing down
+        // (or, at a negative lift, no line at all).
+        if (lift > maxLift || minLift > maxLift) {
+            label->setCalloutFailures(0);
+            return false;
+        }
+        lift = std::max(lift, minLift);
 
         float step = (style->calloutStep > 0 ? style->calloutStep : labelInfo.size * 1.2f);
 
@@ -473,7 +480,7 @@ namespace carto::vt {
         if (labelInfo.wasVisible && label->getCalloutFailures() < style->calloutPersistPasses) {
             // Held over ON THE LINE the band asks for, and nowhere else: a name kept at its old
             // lift is a name off the row, and the row is the whole point of the band.
-            if (envelopeAt(std::min(lift, maxLift)) && testGridOverlap(labelInfo)) {
+            if (envelopeAt(lift) && testGridOverlap(labelInfo)) {
                 label->setCalloutFailures(label->getCalloutFailures() + 1);
                 return true;
             }

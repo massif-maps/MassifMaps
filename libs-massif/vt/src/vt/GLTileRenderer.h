@@ -320,6 +320,12 @@ namespace carto::vt {
         // consulted every frame, so one renderer can draw disjoint style-layer ranges across frames.
         // nullopt (default) = draw all layers (no effect).
         void setRendererLayerIndexRange(const std::optional<std::pair<int, int>>& range);
+        // Style layers matching this filter stay OUT of the terrain drape bake and are drawn live
+        // in the 3D pass instead, at screen resolution. The drape resolves content at the drape
+        // texture's resolution, which is what a slope then magnifies: fills and road casings
+        // survive that, hairline content (contours) does not. nullopt (default) = drape everything
+        // the geometry type allows.
+        void setNoDrapeLayerFilter(const std::optional<std::regex>& filter);
         void setClickHandlerLayerFilter(const std::optional<std::regex>& filter);
         void setViewState(const ViewState& viewState);
         void setLineAntialiasScale(float scale);
@@ -504,6 +510,7 @@ namespace carto::vt {
         cglib::mat4x4<float> calculateTileMVPMatrix(const TileId& tileId, float coordScale = 1.0f) const;
 
         bool testLayerFilter(const std::string& layerName, const std::optional<std::regex>& filter) const;
+        bool isLayerDraped(const std::shared_ptr<const TileLayer>& layer) const;
         bool testIntersectionOpacity(const std::shared_ptr<const BitmapPattern>& pattern, const cglib::vec2<float>& uvp, const cglib::vec2<float>& uv0, const cglib::vec2<float>& uv1) const;
 
         void buildTileSurfaces(const std::set<TileId>& tileIds);
@@ -700,6 +707,7 @@ namespace carto::vt {
         float _labelBlendingSpeed = 1.0f;
         RasterFilterMode _rasterFilterMode = RasterFilterMode::BILINEAR;
         std::optional<std::regex> _rendererLayerFilter;
+        std::optional<std::regex> _noDrapeLayerFilter;
         std::optional<std::pair<int, int>> _rendererLayerIndexRange;
         std::optional<std::regex> _clickHandlerLayerFilter;
 

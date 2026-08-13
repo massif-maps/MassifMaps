@@ -1057,6 +1057,12 @@ namespace carto::vt {
         _rendererLayerIndexRange = range;
     }
 
+    void GLTileRenderer::setNoDrapeLayerFilter(const std::optional<std::regex>& filter) {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        _noDrapeLayerFilter = filter;
+    }
+
     void GLTileRenderer::setClickHandlerLayerFilter(const std::optional<std::regex>& filter) {
         std::lock_guard<std::mutex> lock(_mutex);
 
@@ -2100,6 +2106,13 @@ namespace carto::vt {
         return std::regex_match(layerName, *filter);
     }
 
+    bool GLTileRenderer::isLayerDraped(const std::shared_ptr<const TileLayer>& layer) const {
+        if (!_noDrapeLayerFilter || !layer) {
+            return true;
+        }
+        return !std::regex_match(layer->getLayerName(), *_noDrapeLayerFilter);
+    }
+
     bool GLTileRenderer::testIntersectionOpacity(const std::shared_ptr<const BitmapPattern>& pattern, const cglib::vec2<float>& uvp, const cglib::vec2<float>& uv0, const cglib::vec2<float>& uv1) const {
         if (!pattern) {
             return false;
@@ -3107,8 +3120,10 @@ namespace carto::vt {
                 }
 
                 for (const std::shared_ptr<TileGeometry>& geometry : renderLayer->layer->getGeometries()) {
-                    // Draped fills/lines are baked into the drape texture already.
-                    if (drapedTile && isDrapeableGeometry(geometry->getType())) {
+                    // Draped fills/lines are baked into the drape texture already - unless the
+                    // layer opted out of the bake (setNoDrapeLayerFilter), in which case this pass
+                    // is the only one that draws it.
+                    if (drapedTile && isDrapeableGeometry(geometry->getType()) && isLayerDraped(renderLayer->layer)) {
                         continue;
                     }
                     if (geometry->getType() != TileGeometry::Type::POLYGON3D) {
@@ -4310,7 +4325,7 @@ namespace carto::vt {
                 }
                 drapeOrtho = calculateDrapeMVPMatrix(renderLayer.sourceTileId, targetTileId);
                 for (const std::shared_ptr<TileGeometry>& geometry : renderLayer.layer->getGeometries()) {
-                    if (isDrapeableGeometry(geometry->getType())) {
+                    if (isDrapeableGeometry(geometry->getType()) && isLayerDraped(renderLayer.layer)) {
                         renderTileGeometry(renderLayer.sourceTileId, renderLayer.targetTileId, 1.0f, 1.0f, renderLayer.tileSize, geometry);
                         bakedPrimitives++;
                     }
@@ -4808,7 +4823,7 @@ namespace carto::vt {
     }
 
     bool GLTileRenderer::hasDrapeableContent(const RenderTileLayer& renderLayer) const {
-        if (!renderLayer.layer) {
+        if (!renderLayer.layer || !isLayerDraped(renderLayer.layer)) {
             return false;
         }
         if (!renderLayer.layer->getBackgrounds().empty() || !renderLayer.layer->getBitmaps().empty()) {

@@ -64,6 +64,10 @@ namespace carto::vt {
         static inline std::atomic<long long> geometryDraws{0};
         static inline std::atomic<long long> geometryIndices{0};
         static inline std::atomic<long long> labelDraws{0};
+        // Of those, the ones redrawn from the kept 3D batches, with no vertex build and no upload.
+        static inline std::atomic<long long> labelBatchesReplayed{0};
+        // ... and the ones whose only change was a fade, patched in place.
+        static inline std::atomic<long long> labelBatchesPatched{0};
         static inline std::atomic<long long> renderTilesDrawn{0};
         static inline std::atomic<long long> styleLayersDrawn{0};
         static inline std::atomic<long long> surfaceDraws{0};     // terrain tile surface draws (depth pre-pass, drape, fill, main) - NOT in geometryDraws

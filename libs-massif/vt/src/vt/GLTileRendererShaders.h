@@ -72,6 +72,8 @@ namespace carto::vt {
         U_SCREENSCALE,
         U_LABELAXISX,
         U_LABELAXISY,
+        U_LABELDEPTHSCALE,
+        U_LABELSCREENSIZE,
         U_PAINTSLOPESCALE,
         U_PAINTPARAMS,
         U_GROUNDCOLOR
@@ -157,6 +159,8 @@ namespace carto::vt {
         { "uScreenScale",       U_SCREENSCALE },
         { "uLabelAxisX",        U_LABELAXISX },
         { "uLabelAxisY",        U_LABELAXISY },
+        { "uLabelDepthScale",   U_LABELDEPTHSCALE },
+        { "uLabelScreenSize",   U_LABELSCREENSIZE },
         { "uPaintSlopeScale",   U_PAINTSLOPESCALE },
         { "uPaintParams",       U_PAINTPARAMS },
         { "uGroundColor",       U_GROUNDCOLOR }
@@ -1276,6 +1280,12 @@ namespace carto::vt {
         attribute vec4 aVertexAttribs;
         uniform vec3 uLabelAxisX;
         uniform vec3 uLabelAxisY;
+        // 1 / camera-to-focus distance. Mode 2 cancels the perspective divide with it, so the
+        // offset carries no view depth and the batch survives a pan (docs/rendering/06-labels.md).
+        uniform float uLabelDepthScale;
+        // Screen size the quarter-pixel anchor snap is measured on; mode 2 does that snap here so
+        // the anchor in the buffer carries no camera either (docs/rendering/06-labels.md).
+        uniform vec2 uLabelScreenSize;
         uniform mat4 uMVPMatrix;
         uniform vec2 uUVScale;
         uniform float uSDFRamp;
@@ -1311,7 +1321,20 @@ namespace carto::vt {
             vec3 offset = aVertexAttribs[3] > 0.5
                 ? uLabelAxisX * aVertexOffset.x + uLabelAxisY * aVertexOffset.y
                 : aVertexOffset;
-            gl_Position = uMVPMatrix * vec4(aVertexPosition + offset, 1.0);
+            highp vec4 anchorClip = uMVPMatrix * vec4(aVertexPosition, 1.0);
+            if (aVertexAttribs[3] > 1.5) {
+                // clip w IS the view depth, which is what the CPU factor was a ratio of. Same
+                // bounds as Label::calculateTerrainScaleFactor.
+                offset *= clamp(anchorClip.w * uLabelDepthScale, 0.05, 8.0);
+                if (anchorClip.w > 0.0 && uLabelScreenSize.y > 0.0) {
+                    // Glyphs rasterize at a stable subpixel phase; same grid as the CPU snap in
+                    // Label::setupCoordinateSystem, which this mode skips.
+                    highp vec2 px = (anchorClip.xy / anchorClip.w * 0.5 + 0.5) * uLabelScreenSize;
+                    px = floor(px * 4.0 + 0.5) * 0.25;
+                    anchorClip.xy = (px / uLabelScreenSize * 2.0 - 1.0) * anchorClip.w;
+                }
+            }
+            gl_Position = anchorClip + uMVPMatrix * vec4(offset, 0.0);
         }
     )GLSL";
 

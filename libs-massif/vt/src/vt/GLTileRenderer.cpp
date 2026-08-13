@@ -2938,7 +2938,10 @@ namespace carto::vt {
                             break;
                         }
                     }
-                    glStencilFunc(GL_EQUAL, stencilValue, 255);
+                    // Only a single-blend layer compares the paint bit (that comparison IS its
+                    // rejection); nothing clears the bit afterwards, so any other layer must
+                    // ignore it or it inherits the last translucent layer's shape as a hole.
+                    glStencilFunc(GL_EQUAL, stencilValue, singleBlend ? 255 : (255 & ~SINGLE_BLEND_STENCIL_BIT));
                 }
 
                 // Terrain GPU draping mode (tangram-style depth model): ALL 2D content

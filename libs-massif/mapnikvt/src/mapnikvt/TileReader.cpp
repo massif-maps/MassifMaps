@@ -54,12 +54,20 @@ namespace carto::mvt {
 
         int layerIdx = 0;
         for (const std::shared_ptr<Layer>& layer : _map->getLayers()) {
+            bool layerPresent = hasLayer(layer);
             int styleIdx = 0;
             for (const std::string& styleName : layer->getStyleNames()) {
                 int styleLayerIdx = layerIdx * 65536 + static_cast<int>(layer->getStyleNames().size()) * 256 + styleIdx;
 
                 const std::shared_ptr<Style>& style = _map->getStyle(styleName);
                 if (!style) {
+                    continue;
+                }
+
+                // Same for a layer the tile does not carry: it can only produce an empty tile
+                // layer, and one is kept only for its comp-op (GLTileRenderer's empty-blend pass).
+                if (!layerPresent && !style->getCompOp()) {
+                    styleIdx++;
                     continue;
                 }
 

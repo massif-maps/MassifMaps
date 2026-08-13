@@ -15,7 +15,14 @@ namespace carto::mvt {
     }
     
     std::shared_ptr<FeatureDecoder::FeatureIterator> MBVTTileReader::createFeatureIterator(const std::shared_ptr<const Layer>& layer, const std::set<std::string>* fields) const {
-        std::string layerName = _layerNameOverride.empty() ? layer->getName() : _layerNameOverride;
-        return _featureDecoder.createLayerFeatureIterator(layerName, fields);
+        return _featureDecoder.createLayerFeatureIterator(resolveLayerName(layer), fields);
+    }
+
+    bool MBVTTileReader::hasLayer(const std::shared_ptr<const Layer>& layer) const {
+        return _featureDecoder.hasLayer(resolveLayerName(layer));
+    }
+
+    std::string MBVTTileReader::resolveLayerName(const std::shared_ptr<const Layer>& layer) const {
+        return _layerNameOverride.empty() ? layer->getName() : _layerNameOverride;
     }
 }

@@ -419,6 +419,10 @@ namespace carto::mvt {
         return layerNames;
     }
 
+    bool MBVTFeatureDecoder::hasLayer(const std::string& name) const {
+        return _layerMap.find(name) != _layerMap.end();
+    }
+
     std::shared_ptr<FeatureDecoder::FeatureIterator> MBVTFeatureDecoder::createLayerFeatureIterator(const std::string& name, const std::set<std::string>* fields) const {
         auto layerIt = _layerMap.find(name);
         if (layerIt == _layerMap.end()) {

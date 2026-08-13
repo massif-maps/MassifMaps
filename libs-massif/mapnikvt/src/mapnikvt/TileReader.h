@@ -52,6 +52,10 @@ namespace carto::mvt {
 
         virtual std::shared_ptr<FeatureDecoder::FeatureIterator> createFeatureIterator(const std::shared_ptr<const Layer>& layer, const std::set<std::string>* fields) const = 0;
 
+        // Whether the tile carries this layer at all - readTile skips everything it can for a layer
+        // it does not. Sources that do not address features by layer answer yes.
+        virtual bool hasLayer(const std::shared_ptr<const Layer>& layer) const { return true; }
+
         const std::shared_ptr<const Map> _map;
         const std::shared_ptr<const vt::TileTransformer> _transformer;
         const SymbolizerContext& _symbolizerContext;

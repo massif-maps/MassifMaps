@@ -35,6 +35,8 @@ namespace carto::mvt {
 
         std::vector<std::string> getLayerNames() const;
 
+        bool hasLayer(const std::string& name) const;
+
         std::shared_ptr<FeatureIterator> createLayerFeatureIterator(const std::string& name, const std::set<std::string>* fields) const;
 
         bool findFeature(long long localId, std::string& layerName, Feature& feature) const;

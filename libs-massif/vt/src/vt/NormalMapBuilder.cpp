@@ -156,14 +156,6 @@ namespace carto::vt {
 
         std::vector<std::uint32_t> data(width * height, 0);
         if (width >= 2 && height >= 2) {
-//            int delta = subTileId.zoom - tileId.zoom;
-//            int x0 = (subTileId.x - (tileId.x << delta)) * (width >> delta);
-//            int y0 = ((1 << delta) - 1 - subTileId.y + (tileId.y << delta)) * (height >> delta);
-//            int subWidth = (width >> delta) + 1;
-//            int subHeight = (height >> delta) + 1;
-//
-//            std::vector<cglib::vec3<float>> buffer(subWidth * subHeight, cglib::vec3<float>(0.0f, 0.0f, 0.0f));
-
             float heights[3][3];
             for (int y = 0; y < height; y++) {
                 double y1 = boost::math::constants::pi<double>() * ((tileId.y + (height - y - 0.5) / height) / (1 << tileId.zoom) - 0.5);
@@ -192,34 +184,8 @@ namespace carto::vt {
                     // directly from the raw DEM pixel for elevation encoding.
                     float elevMeters = _encodeElevation ? unpackElevationMeters(bitmap->data[static_cast<std::size_t>(y) * width + x]) : 0.0f;
                     data[y * width + x] = packNormal(cglib::vec3<float>(dx, dy, dz), elevMeters);
-                    // buffer[y * subWidth + x] = cglib::vec3<float>(dx, dy, dz);
                 }
             }
-
-            // for (int y = 0; y < height; y++) {
-            //     for (int x = 0; x < width; x++) {
-            //         cglib::vec3<float> normal(0.0f, 0.0f, 0.0f);
-            //         if (delta == 0) {
-            //             normal = buffer[y * subWidth + x];
-            //         } else {
-            //             int sx = x >> delta;
-            //             int sy = y >> delta;
-            //             float wx = (x - (sx << delta) + 0.5f) / (1 << delta);
-            //             float wy = (y - (sy << delta) + 0.5f) / (1 << delta);
-            //             for (int dy = 0; dy < 2; dy++) {
-            //                 wy = 1.0f - wy;
-            //                 for (int dx = 0; dx < 2; dx++) {
-            //                     wx = 1.0f - wx;
-            //                     if (sx + dx < subWidth && sy + dy < subHeight) {
-            //                         normal += buffer[(sy + dy) * subWidth + sx + dx] * wx * wy;
-            //                     }
-            //                 }
-            //             }
-            //         }
-
-            //         data[y * width + x] = packNormal(normal);
-            //     }
-            // }
         }
         return std::make_shared<Bitmap>(width, height, std::move(data));
     }

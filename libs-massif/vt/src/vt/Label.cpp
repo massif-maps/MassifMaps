@@ -527,15 +527,10 @@ namespace carto::vt {
             VT_STAT_INC(placementReanchorsHidden);
         }
 
-        // Nothing of this label's geometry is in view, so the clipped searches below can only
-        // walk all of it and return nothing - which is most of the placement work on a
-        // typical frame, because the loaded tile set extends well past the viewport. Decide
-        // it once against the cached geometry bounds instead.
-        //
-        // The placement still has to be dropped rather than kept: an invalid label is what
-        // excludes it from the culler, and a label that kept a placement while off screen
-        // would go on claiming grid cells (screen positions are clamped into the grid, so it
-        // would claim border cells) and hide labels that are actually visible.
+        // Nothing of this label is in view, and the loaded tile set reaches well past the viewport,
+        // so this is most of a frame's placement work. The placement is DROPPED rather than kept:
+        // an invalid label is what excludes it from the culler, and one holding a placement off
+        // screen would keep claiming (clamped) border grid cells from visible labels.
         if (!viewState.frustum.inside(calculateGeometryBBox(viewState))) {
             _cachedFlippedPlacement.reset();
             if (!_placement) {
@@ -1274,21 +1269,13 @@ namespace carto::vt {
         }
         penStart = std::min(std::max(penStart, -overhang), total - runLength + overhang);
 
-        // WHICH WAY THE WORD READS, decided on the projected line - tangram's rule, ported from
-        // CurvedLabel::updateScreenTransform. Three parts, all measured over the span the glyphs
-        // actually cover:
-        //  - a segment pointing right beyond the tolerance means the word must run forwards there,
-        //    one pointing left means it must run backwards; needing BOTH is a line that cannot
-        //    carry the text either way round, and the label is dropped rather than drawn as a
-        //    mixture (their "Cannot reverse the direction when some glyphs must be placed in
-        //    forward direction and vice versa");
-        //  - otherwise the run is reversed when its end lands left of its start;
-        //  - a hairpin inside the run - two segments within a short window pointing back at each
-        //    other - is dropped. Arc length keeps growing around a hairpin while the screen
-        //    position barely moves, so the pen advances but the glyphs land on top of each other.
-        //    Their chord limit is |dir(k) + dir(i)|^2 < 1.7^2, i.e. an inner angle under ~120 deg.
-        // The anchor's own tangent, which the placement-level autoflip uses, is not enough: on a
-        // curving line it can point the opposite way to the word as a whole.
+        // WHICH WAY THE WORD READS, decided on the projected line over the span the glyphs cover -
+        // tangram's CurvedLabel::updateScreenTransform. A segment past the tolerance forces its
+        // direction, and needing both ways drops the label rather than drawing a mixture; otherwise
+        // reverse when the end lands left of the start; and a hairpin (two segments in a short
+        // window pointing back at each other, their |dir(k)+dir(i)|^2 < 1.7^2) is dropped, because
+        // arc length grows around it while the screen position does not and the glyphs pile up.
+        // The anchor's own tangent is not enough - on a curve it can point the other way.
         {
             float flipTolerance = std::sin(45.0f * 3.14159265f / 180.0f);
             bool mustForward = false, mustReverse = false;
@@ -1455,19 +1442,12 @@ namespace carto::vt {
     }
 
     void Label::updateLineVertexData(const std::shared_ptr<const Placement>& placement, float scale, const ViewState& viewState, bool rebuildForView) const {
-        // The run is laid out on the line AS THE CAMERA PROJECTS IT, so the view-projection is
-        // part of the key: keying on the camera axes alone kept a run laid out for the camera
-        // position it was built at, and a pan then left the glyphs following a projection of the
-        // road that no longer holds - the text drifts off the line, and can be laid out past the
-        // end of it, until a zoom (which changes the scale) rebuilds it.
-        //
-        // Only the RENDERER asks for a rebuild on a view change (rebuildForView). The culler runs
-        // on a worker thread whose view state lags the frame, and its layout decides both the
-        // envelope and, through _cachedValid, whether the label is drawn at all - re-laying the
-        // run out on that older camera judges the label against a view nobody sees, and the ones
-        // that no longer fit there are hidden even though they lay out fine at the frame's own
-        // camera. It reuses whatever layout is there (the renderer's, at most a frame old) and
-        // only builds one when there is none for this placement or scale.
+        // The run is laid out on the line AS THE CAMERA PROJECTS IT, so the view-projection is part
+        // of the key: keyed on the camera axes alone a pan leaves the glyphs on a projection of the
+        // road that no longer holds until a zoom rebuilds it.
+        // Only the RENDERER rebuilds on a view change. The culler's view state lags the frame, and
+        // its layout decides whether the label is drawn at all, so re-laying out there judges the
+        // label against a view nobody sees; it reuses whatever layout exists.
         cglib::mat4x4<double> mvpMatrix = viewState.projectionMatrix * viewState.cameraMatrix;
         if (scale == _cachedScale && placement == _cachedPlacement && (mvpMatrix == _cachedMVPMatrix || !rebuildForView)) {
             return;
@@ -1594,20 +1574,12 @@ namespace carto::vt {
     }
 
     std::shared_ptr<const Label::Placement> Label::findSnappedLinePlacement(const cglib::vec3<double>& position, const std::list<TileLine>& tileLines, const Placement* oldPlacement) const {
-        // Exact preservation: when the placement's own source line is still there, keep the
-        // anchor on the segment it already sits on instead of re-deriving it. Re-deriving
-        // scores candidates by distance, and the anchor only scores an exact 0 while it lies
-        // exactly on the line. On terrain it does not: a label rebuilt from a freshly decoded
-        // tile carries the vertex heights of its decode time while the anchor carries the
-        // current ones, so every segment scores nonzero, the mid-line weight below decides
-        // instead, and the anchor creeps toward the middle of the road - on every tile-set
-        // change, which is several times a second while tiles stream in.
-        // The merged geometry holds one copy of the feature per tile, and a copy clipped by a tile
-        // border can be a stub of a few meters. Such a stub can not carry the text: the label
-        // would be dropped by the line fitting, which reads as it disappearing while panning -
-        // the more so over 3D terrain with a tilted view, where the run needs more line the
-        // further away it is placed. Copies long enough to carry the run therefore beat the ones
-        // that are not, ahead of every other preference below.
+        // Keep the anchor on the segment it already sits on when its source line is still there.
+        // Re-deriving scores by distance and only an anchor exactly on the line scores 0 - on
+        // terrain it never does (a freshly decoded tile carries its decode-time heights), so the
+        // mid-line weight decides instead and the anchor creeps toward the middle of the road on
+        // every tile-set change. A copy clipped by a tile border can be a stub too short to carry
+        // the text, so copies long enough beat the ones that are not, ahead of every other rule.
         double requiredLength = _placementTextLength * PLACEMENT_ROOM_FACTOR;
         auto isUsable = [&requiredLength](const TileLine& tileLine) {
             double length = 0;

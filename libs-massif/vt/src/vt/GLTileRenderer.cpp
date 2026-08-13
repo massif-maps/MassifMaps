@@ -187,12 +187,6 @@ namespace carto::vt {
         }
     }
 
-    void GLTileRenderer::setTerrainPainterOrder(bool enabled) {
-        std::lock_guard<std::mutex> lock(_mutex);
-
-        _terrainPainterOrder = enabled;
-    }
-
     void GLTileRenderer::setTerrainLayerOrdinalBase(int base) {
         std::lock_guard<std::mutex> lock(_mutex);
 
@@ -374,18 +368,10 @@ namespace carto::vt {
             minZ = minHeight;
             maxZ = maxHeight;
         }
-        // Clamp the covered ground to what the camera can actually SEE, and to a radius around it.
-        // The map has a fixed resolution, so its texel size is the ground it spans divided by that
-        // resolution. Bounding the drawn tiles alone spends most of the map on ground that is
-        // behind the camera or outside its cone: at a tilt the visible ground is a narrow wedge,
-        // and fitting the box to that wedge instead of to its bounding square is worth several
-        // times the texel density - which is what a shadow edge and a stretched shadow's interior
-        // are limited by. Beyond the radius there are simply no shadows.
-        //
-        // The wedge is kept as a POLYGON, not only as its bounding rectangle: the box below is
-        // fitted in LIGHT space, and a world-axis-aligned rectangle rotated into light space
-        // bounds far more ground than the wedge itself - up to twice the extent per axis when the
-        // map is rotated diagonally to the sun, which is a factor of two on every texel.
+        // Clamp the covered ground to what the camera SEES: the map's texel size is the ground it
+        // spans over its resolution, and at a tilt that ground is a narrow wedge. Kept as a POLYGON
+        // - the box is fitted in LIGHT space, and a world-axis-aligned rectangle rotated into it
+        // bounds up to twice the extent per axis with the sun diagonal to the map.
         std::vector<cglib::vec2<double> > groundPolygon;
         {
             double visMinX = 0, visMinY = 0, visMaxX = 0, visMaxY = 0;
@@ -394,19 +380,11 @@ namespace carto::vt {
             cglib::mat4x4<double> invCameraProj = cglib::inverse(_viewState.projectionMatrix * _viewState.cameraMatrix);
             double maxDistance = (maxDistanceMeters > 0 ? maxDistanceMeters * metersToInternal : 0);
             const cglib::vec3<double>& eye = _viewState.origin; // camera position in world units
-            // Each frustum edge, reduced to the piece of it that can see shadowed GROUND: the part
-            // inside the height slab, in front of the camera and no further than the shadow
-            // distance. Everything outside that is sky, or under the terrain.
-            //
-            // Two quantities are taken from rays sampled across the screen: the DISTANCE RANGE over
-            // which the view crosses the slab, and the horizontal opening ANGLE of the frustum. The
-            // footprint itself is then built from those rather than from the rays, because a ray
-            // only crosses the slab over a short piece of its length: at this camera the five
-            // sampled screen heights cross it at 14.5-16.7, 16.6-19.2, 20.7-23.8, 29.1-33.6 and
-            // 53.7-62.0 km. Those are disjoint. A cascade whose distance slice lands in one of the
-            // gaps intersects NO ray and reports an empty box - which is exactly what the outermost
-            // cascade did (its texel size logged as 0.0 m) before the far half of the view lost its
-            // shadows. Sampling more rays only makes the gaps smaller, it does not remove them.
+            // Each frustum edge, reduced to the piece that can see shadowed GROUND. The footprint is
+            // built from the sampled rays' distance RANGE and opening ANGLE, not from the rays
+            // themselves: a ray crosses the slab over a short piece of its length and the samples'
+            // crossings are disjoint, so a cascade landing in a gap intersects none and reports an
+            // empty box (the far half of the view losing its shadows). More rays only shrink the gaps.
             cglib::vec2<double> viewDir(1, 0);
             double halfAngle = 0;
             double groundNear = 0, groundFar = 0;
@@ -477,27 +455,12 @@ namespace carto::vt {
             if (fullCircle) {
                 halfAngle = 3.14159265358979323846;
             }
-            // Cap how far the shadowed ground reaches. Left unbounded it runs to wherever the
-            // frustum finally leaves the height slab, which at a tilt is the horizon: measured
-            // 176 km of box at tilt 39 (172 m texels) against 12 km at tilt 35 (12 m) - the same
-            // camera, four degrees apart. That cliff is the distant shadows turning into blocks
-            // and then vanishing, and no split can hide it, since the outermost cascade is nested
-            // and must reach groundFar.
-            //
-            // Texel size follows the ground extent almost linearly, so the budget is simply how
-            // much ground is worth covering. Its unit is taken from the sun and the relief -
-            // relief/tan(altitude), the distance a ridge throws its shadow - because that is the
-            // scale over which shadows still carry information: three of them covers the part of
-            // the view where shadows read as shadows. (This term also stretches the light box, but
-            // along the light's DEPTH axis, which costs bias precision rather than texels.)
-            //
-            // The budget is measured from groundNear, and groundNear is a distance from the EYE:
-            // a camera at zoom 11 is 15 km up, so the nearest ground it sees is already 15 km away
-            // and the screen spans out to a hundred. A budget of ONE slab extent therefore ended
-            // the shadows just past the bottom of the screen - shadows "disappeared" instead of
-            // going blocky. Three slab extents keeps the outermost cascade near 4x the near one
-            // and still reaches well past the middle of a tilted view; the shader fades the shadow
-            // out at the edge of the last page, so where it does end there is no line.
+            // Cap how far the shadowed ground reaches: unbounded it runs to the horizon at a tilt
+            // (measured 176 km of box at tilt 39 against 12 km at tilt 35 - four degrees apart), and
+            // texel size follows the extent almost linearly. The unit is relief/tan(altitude), the
+            // distance a ridge throws its shadow, i.e. the scale over which shadows carry
+            // information. Three of them, because groundNear is a distance from the EYE (15 km up at
+            // zoom 11) and one ended the shadows just past the bottom of the screen.
             if (groundFar > groundNear) {
                 cglib::vec3<double> sunUnit = cglib::unit(cglib::vec3<double>(sunDir(0), sunDir(1), sunDir(2)));
                 double horizontal = std::sqrt(std::max(0.0, 1.0 - sunUnit(2) * sunUnit(2)));
@@ -517,28 +480,14 @@ namespace carto::vt {
                 }
                 groundFar = std::min(groundFar, groundNear + allowedGround);
             }
-            // Split THAT distance range, not the raw frustum: a camera above a mountain spends the
-            // first kilometres of every edge in the air, and a cascade cut from the frustum alone
-            // would own only sky and then fall back to covering everything.
-            // The split is the usual mix of a geometric and a linear one: a screen pixel covers
-            // ground in proportion to its distance, so a geometric split keeps texels about the
-            // same size relative to the pixels that read them, while the linear term stops the
-            // near cascade from collapsing to nothing.
-            // OVERLAPPING, not nested and not disjoint. Fully nested (every cascade starting at
-            // groundNear) means the outermost one always spans the WHOLE visible range, so with
-            // three cascades the far half of a tilted screen is served by a box as wide as the
-            // view - the 176 km box that produced 172 m texels. Fully disjoint is what nesting was
-            // introduced to fix: a fragment that just fails the near cascade's test (inside its
-            // PCF margin, or above its narrowed height slab) falls through to a cascade that does
-            // not contain it either and comes out UNSHADOWED, in patches with straight edges.
-            // Overlapping by 40% of the previous cascade's reach gives the density of disjoint
-            // slices with a fall-through band orders of magnitude wider than the PCF margin.
-            //
-            // The split itself is geometric with a token linear part: a screen pixel covers ground
-            // in proportion to its distance, so a geometric split keeps texels about the same size
-            // relative to the pixels that read them. A larger linear term hands the near cascade a
-            // slice measured in kilometres (with 3 cascades, a third of the whole view distance),
-            // which is what made near shadows staircase at a tilt.
+            // Split the GROUND distance range, not the raw frustum: above a mountain the first
+            // kilometres of every edge are air, and a cascade cut from the frustum owns only sky.
+            // OVERLAPPING by 40%, neither nested nor disjoint: fully nested makes the outermost
+            // cascade span the whole visible range (the 176 km box), fully disjoint drops fragments
+            // that just fail the near cascade's PCF margin through to one that does not contain
+            // them either - unshadowed patches with straight edges.
+            // Geometric with a token linear part (a pixel covers ground in proportion to distance);
+            // a larger linear term hands the near cascade kilometres and staircases it at a tilt.
             double sliceNear = groundNear, sliceFar = groundFar;
             if (cascadeCount > 1 && groundFar > groundNear && groundNear > 0) {
                 // The ratio being split is capped at 100. When the camera sits INSIDE the height
@@ -713,16 +662,10 @@ namespace carto::vt {
         // reused. Anchored to the world, the texel lattice below is absolute.
         cglib::mat4x4<double> lightView = cglib::lookat4_matrix(dir, cglib::vec3<double>(0, 0, 0), up);
 
-        // Fit the box: the SIDES to the ground that receives shadows, the DEPTH range to the
-        // ground that casts them. Fitting the sides to the casters too would mean every extra
-        // margin tile widens the box and coarsens every texel in it - which is why raising the
-        // caster margin blurred and displaced the building shadows. Extending only the depth
-        // range lets an off-screen mountain be rasterised into the same texels at no cost.
-        //
-        // The sides are fitted to the visible-ground POLYGON clipped to the drawn tiles, not to
-        // its bounding rectangle. The rectangle is world-axis-aligned and the fit happens in light
-        // space, so it is bounded twice - once by the world axes and once by the light axes - and
-        // at a tilt with the sun diagonal to the view that costs a factor of two on every texel.
+        // SIDES fitted to the ground that RECEIVES shadows, DEPTH range to the ground that CASTS
+        // them: fitting the sides to the casters too means every margin tile coarsens every texel
+        // (raising the caster margin blurred the building shadows). Sides take the visible-ground
+        // POLYGON, not its world-axis-aligned rectangle - see collectShadowGroundPolygon.
         std::vector<cglib::vec2<double> > footprint = clipPolygonToRect(convexHull2D(groundPolygon), minX, minY, maxX, maxY);
         if (footprint.size() < 3) {
             footprint.clear(); // no usable wedge (or it misses the tiles entirely): fall back to the rectangle
@@ -1519,24 +1462,11 @@ namespace carto::vt {
                 glCullFace(GL_BACK);
             }
 
-            // Terrain reference surface pre-pass, for EVERY terrain tile layer.
-            // Each tile layer works in its OWN depth domain: the depth buffer is
-            // cleared, the displaced tile surfaces are rendered at their TRUE depth,
-            // and the 2D surface content (backgrounds/bitmaps) then WRITES its real
-            // depth on top. The true-depth surface blocks far-slope fragments exactly:
-            // translucent surfaces (hillshade) can not blend both slopes of a ridge in
-            // one draw call, and draped geometry passes only within its own small
-            // forward slack. It also optionally paints the terrain background color
-            // with the same meshes.
-            //
-            // Skipped entirely under a cross-layer drape: the owner has already baked every
-            // layer's content into one texture per tile and drawn the shared surface, which is
-            // then the only depth-writing terrain geometry. Running this per-layer pre-pass would
-            // glClear(DEPTH) that shared surface away and re-establish the private depth domain
-            // the shared drape exists to remove.
-            // Content composited onto the shared ground is coincident with it, so it has to pass
-            // at EQUAL depth; the ground pass itself ran with GL_LESS. Set before the paint, which
-            // is the first such layer.
+            // Terrain reference surface pre-pass: this tile layer's own depth domain (clear, draw
+            // the displaced surfaces at TRUE depth, content writes on top). Skipped under a shared
+            // ground or cross-layer drape - the glClear(DEPTH) would throw away the shared surface
+            // that exists to remove exactly this per-layer domain. Content composited onto that
+            // ground is coincident with it, so it passes at EQUAL depth.
             bool leEqualDepth = _terrainMode && (_terrainDrapeFills || _terrainSharedGround);
             if (leEqualDepth) {
                 glDepthFunc(GL_LEQUAL);
@@ -1561,7 +1491,7 @@ namespace carto::vt {
                     glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
                 }
                 _terrainDrawDepthBias = _terrainDepthBias;
-                _terrainDrawDepthClipUnits = _terrainPainterOrder ? -TERRAIN_PAINTER_SURFACE_BACK : 0.0f; // painter-order: the ground surface is pushed back like the backgrounds/bitmaps
+                _terrainDrawDepthClipUnits = _terrainRegularGrid ? -TERRAIN_PAINTER_SURFACE_BACK : 0.0f; // painter-order: the ground surface is pushed back like the backgrounds/bitmaps
                 for (const RenderTile& renderTile : *_visibleRenderTiles) {
                     if (renderTile.visible) {
                         renderTileSurfaceFill(renderTile.targetTileId, _terrainBackgroundColor);
@@ -1635,18 +1565,10 @@ namespace carto::vt {
                 }
             }
 
-            // 2D geometry pass. With the true-depth ground occluder, lattice-clamped content
-            // sits at the SAME depth as the surface, so test it with GL_LEQUAL and no forward
-            // bias: coincident content passes (visible), but content behind a near ridge is at
-            // greater depth and fails (occluded) - zero forward pull means zero ridge leak.
-            //
-            // No stencil tile masks: a full displaced surface draw per tile PER LAYER, and tangram
-            // has none. What replaces them is tangram's answer - the ground-shaped content writes
-            // depth and a retained (proxy) tile writes pushed back, so the tile that replaces it
-            // wins the ground and the proxy's own content fails against it. Without that, the
-            // retained tile from the previous zoom paints its whole footprint through every gap in
-            // the new tile's content: the same roads twice, one zoom level apart, blinking as the
-            // blend runs.
+            // 2D geometry pass: lattice-clamped content is coincident with the true-depth ground,
+            // so GL_LEQUAL and no forward bias - zero pull means zero ridge leak. No stencil masks
+            // here; content writing depth plus a pushed-back proxy is what replaces them
+            // (docs/rendering/05-depth-model.md).
             renderGeometry2D(*_visibleRenderTiles, stencilBits);
             if (leEqualDepth) {
                 glDepthFunc(GL_LESS);
@@ -2682,20 +2604,12 @@ namespace carto::vt {
             return std::max(static_cast<float>(maxVisibleZoom - renderLayer->targetTileId.zoom), TERRAIN_PROXY_DEPTH_UNITS);
         };
 
-        // The stencil tile masks, and when they are worth their cost. They clip a tile's content
-        // to its own screen footprint, which is what stops a retained tile painting through the
-        // gaps of the tile that replaced it - and tangram has no stencil at all. In a TERRAIN
-        // frame a mask is a full displaced grid drawn per tile per stencil reset, two thirds of
-        // all the surface geometry a frame submits (device, north pan: 19.5 -> 23.5 fps without
-        // them), so they are dropped there. In 2D a mask is a two-triangle quad and costs nothing
-        // measurable (40.2 vs 40.7 fps), so 2D keeps them.
-        // A layer with a comp-op is the exception in both: it composites through the overlay
-        // buffer, which has its own stencil and no depth at all, so its content has nothing else
-        // to clip it to its tile.
-        // Whether the MASKS run is a separate question from whether the buffer HAS a stencil:
-        // the single-blend pass below needs one spare bit and no masks at all, so it must not be
-        // switched off with them (under a shared ground it never ran, which is where a translucent
-        // line kept blending itself twice at every join).
+        // Stencil tile masks clip a tile's content to its footprint. In a TERRAIN frame a mask is a
+        // full displaced grid per tile per reset - two thirds of the surface geometry, 19.5 -> 23.5
+        // fps without them - so they are dropped there; in 2D a mask is a quad and costs nothing.
+        // A comp-op layer is the exception in both: its overlay buffer has no depth to clip it.
+        // Whether the MASKS run is separate from whether the buffer HAS a stencil - the single-blend
+        // pass below needs one spare bit and no masks.
         GLint maskStencilBits = (_terrainSharedGround ? 0 : stencilBits);
         if (maskStencilBits > 0 && _tileMasks < 0 && _terrainMode) {
             bool anyCompOp = false;
@@ -2780,18 +2694,11 @@ namespace carto::vt {
         // Render tile layers in correct order
         bool resetStencil = true;
         std::optional<CompOp> currentCompOp;
-        // Tangram's style-layer order as a small dense index. The term it feeds carries a
-        // constant-NDC part (2^-19 per unit) whose eye tolerance grows as distance^2 - which is how
-        // rounds 45-56 saw through ridges - but that took 128-256 units, and a style layer count is
-        // tens. The base separates one tile layer's style layers from another's, since every tile
-        // layer has a renderer of its own.
-        // Numbered over every style layer this renderer has EVER drawn, not over the ones present
-        // this frame. Tangram's `order` is a property of the scene, fixed before a tile loads
-        // (osm-bright.yaml numbers them 1..93); a rank over what happens to be on screen renumbers
-        // the whole stack as tiles come and go - measured walking a layer's base 7 -> 5 -> 7 between
-        // frames - so the depth relation between two layers is a moving target and content pops in
-        // and out from under the layer above it. The set only grows, and a style has a bounded
-        // number of layers.
+        // Tangram's style-layer order as a small dense index (docs/rendering/05-depth-model.md).
+        // Numbered over every style layer this renderer has EVER drawn, not the ones on screen:
+        // their `order` is a scene property fixed before a tile loads, and a rank over what happens
+        // to be present renumbers the stack as tiles come and go (measured 7 -> 5 -> 7 between
+        // frames), so content pops in and out from under the layer above it.
         for (auto it = renderLayerMap.begin(); it != renderLayerMap.end(); it++) {
             _terrainStyleLayerIndices.insert(it->first);
         }
@@ -2812,16 +2719,10 @@ namespace carto::vt {
             }
             CompOp layerCompOp = (layer->getCompOp() ? *layer->getCompOp() : CompOp::SRC_OVER);
 
-            // SINGLE BLEND: a translucent style layer must paint each pixel once. Its geometry
-            // overlaps itself in ways no tesselation can avoid - a line whose vertices sit closer
-            // together than it is wide folds at every join, a route doubles back within its own
-            // width - and every overlap blends again, which reads as darker knots along the line.
-            // Marking each pixel in a spare stencil bit as the layer paints it and rejecting the
-            // second fragment costs one bit and a masked clear per layer, no extra geometry pass.
-            // Only for a layer that IS translucent: an opaque one cannot show the artifact, and a
-            // later fragment of it legitimately covers an earlier one. A comp-op layer already
-            // composites once through its own buffer, and the low stencil bits carry the per-tile
-            // mask values, so this needs the tile count to leave the top bit free.
+            // SINGLE BLEND: a translucent layer must paint each pixel once - its geometry overlaps
+            // itself (a line folds at every join) and each overlap blends again, the darker knots.
+            // One spare stencil bit plus a masked clear per layer, no extra geometry pass. Only for
+            // a translucent, non-comp-op layer, and it needs the tile count to leave the top bit free.
             bool singleBlend = false;
             if (stencilBits > 0 && !layer->getCompOp() && tileStencilMap.size() < SINGLE_BLEND_STENCIL_BIT) {
                 singleBlend = geometryOpacity < 1.0f;
@@ -2868,18 +2769,10 @@ namespace carto::vt {
                 glStencilOp(GL_REPLACE, GL_REPLACE, GL_REPLACE);
                 std::vector<std::pair<TileId, GLint>> orderedTileMasks(tileStencilMap.begin(), tileStencilMap.end());
                 if (_terrainMode) {
-                    // Terrain displacement makes near tiles rise in front of far tiles, so
-                    // their screen footprints can overlap. Draw the masks so that the tile that
-                    // should be visible owns the overlapping pixels: retained blend-out tiles
-                    // (no active layers) first - stale tiles kept only for crossfading must
-                    // never steal pixels from live tiles (a retained high-zoom tile far behind
-                    // a ridge would otherwise punch through the near ridge during LOD
-                    // transitions) - then by zoom level ascending - during LOD/overzoom
-                    // transitions parent and child tiles have IDENTICAL footprints and the
-                    // child must own them (distances are arbitrary there) - and by descending
-                    // camera distance within a zoom level, so that near ridges own pixels
-                    // against far tiles behind them (by LOD construction nearer tiles never
-                    // have a lower zoom level than farther ones).
+                    // Displaced tiles overlap on screen, so the mask order decides who owns a pixel:
+                    // retained blend-out tiles first (they must never steal from live ones), then
+                    // zoom ascending (parent and child have identical footprints during an LOD
+                    // transition and the child must win), then camera distance descending.
                     std::vector<std::tuple<int, int, double, std::size_t>> tileMaskOrder(orderedTileMasks.size());
                     for (std::size_t i = 0; i < orderedTileMasks.size(); i++) {
                         cglib::vec3<double> center = _transformer->calculateTileBBox(orderedTileMasks[i].first).center();
@@ -2944,15 +2837,9 @@ namespace carto::vt {
                     glStencilFunc(GL_EQUAL, stencilValue, singleBlend ? 255 : (255 & ~SINGLE_BLEND_STENCIL_BIT));
                 }
 
-                // Terrain GPU draping mode (tangram-style depth model): ALL 2D content
-                // writes its real depth. Coplanar content of different style layers
-                // shares the same displaced heights, so LEQUAL + painter's order stacks
-                // it without any per-layer bias; occlusion between tiles/slopes is
-                // decided by the actual drawn geometry. Backgrounds/bitmaps share the
-                // reference surface VBOs and carry no bias at all; retained blend-out
-                // (proxy) tiles are pushed back one delta so live content always wins
-                // their overlaps. CPU fallback mode: mesh tesselations differ between
-                // layers, so surfaces are separated with slope-scaled polygon offsets.
+                // GPU draping: ALL 2D content writes real depth, LEQUAL + painter's order stacks
+                // coplanar layers with no per-layer bias, proxy tiles are pushed back one delta.
+                // CPU fallback: tesselations differ per layer, so slope-scaled polygon offsets.
                 bool terrainVTF = _terrainMode && (bool) _terrainTextureProvider;
                 // Under a shared ground NOTHING but the ground pass writes depth: backgrounds and
                 // rasters are drawn on the cover tiles, coincident with it, so a write would only
@@ -2964,34 +2851,18 @@ namespace carto::vt {
                         glDepthMask(GL_TRUE);
                     }
                     if (_terrainSharedGround) {
-                        // Tangram's model, whole. Three parts, and none of them does the job on its
-                        // own - which is what adopting it piecemeal cost:
-                        //  - content WRITES depth, so a live tile beats the proxy it replaces and
-                        //    the stencil tile masks are not needed;
-                        //  - every style layer is pulled forward by its own ordinal, so coplanar
-                        //    content of two layers cannot fight once both write (round 52's washed
-                        //    road casings were writes WITHOUT this);
-                        //  - the pull is (2^-19*w + depth_shift), and depth_shift is CONSTANT CLIP:
-                        //    large near the camera, where content and the ground disagree most and
-                        //    fills shred into stripes, and dying as 1/w at range, where a forward
-                        //    pull is what leaks over a ridge.
+                        // Tangram's model, whole - writes + per-layer ordinal + a constant-CLIP
+                        // depth_shift. None of the three works alone; adopting it piecemeal cost two
+                        // rounds of artifacts. docs/rendering/05-depth-model.md.
                         _terrainDrawDepthBias = _terrainDepthBias;
                         _terrainDrawDepthClipUnits = 0.0f;
                         _terrainDrawLayerOffset = proxyDepth(renderLayer) - layerOrdinal;
                     } else if (terrainVTF) {
-                        // Backgrounds/bitmaps ARE the terrain occluders: they render the
-                        // reference surface meshes and WRITE depth. Retained blend-out
-                        // (proxy) tiles are pushed back one delta so live content wins.
-                        // They draw at TRUE depth, exactly like the drape surface does: they
-                        // render the SAME meshes the reference pre-pass already drew, so any
-                        // pushback here puts them at (or behind) the depth the pre-pass wrote
-                        // and GL_LESS rejects them. Near the camera they survive on the tiny
-                        // numerical difference between the two shader paths; beyond a few
-                        // kilometres the two depths quantize to the same value and every
-                        // raster (hillshade, imagery) vanishes along a hard horizontal line -
-                        // the "far tiles go flat with drape off" report. The geometry pass
-                        // gets its clearance from the pre-pass pushback instead, which is
-                        // where the twist-clearing slack belongs.
+                        // Backgrounds/bitmaps ARE the terrain occluders and draw at TRUE depth: they
+                        // render the SAME meshes the pre-pass drew, so any pushback here is rejected
+                        // by GL_LESS once the two depths quantize together - every raster vanishing
+                        // along a hard horizontal line a few km out. Clearance comes from the
+                        // pre-pass pushback instead. Proxy tiles are pushed back one delta.
                         float proxyBias = (renderLayer->active ? 0.0f : 1.0f * TERRAIN_LAYER_DEPTH_DELTA);
                         _terrainDrawDepthBias = _terrainDepthBias - proxyBias;
                         _terrainDrawDepthClipUnits = 0.0f;
@@ -3032,15 +2903,10 @@ namespace carto::vt {
                         setCompOp(backgroundCompOp);
                         currentCompOp = backgroundCompOp;
                     }
-                    // Tangram has NO per-tile background mesh at all: the map background is the
-                    // framebuffer clear colour, applied once per frame
-                    // (core/src/map.cpp, FrameBuffer::apply(..., background.toColorF())). Ours gives
-                    // every tile layer a Map{background-color} and drew it as a full grid per cover
-                    // tile PER LAYER - with three layers over a 28-tile cover that is ~84 grid
-                    // draws a frame for pixels the ground pass already painted.
                     // Under a shared ground the ground pass owns the ground colour, so a patternless
-                    // background is skipped whatever its colour. A PATTERN is real content (a
-                    // texture over the ground) and still draws; tangram has no equivalent of it.
+                    // background is skipped - it was ~84 grid draws a frame (3 layers, 28 tiles) for
+                    // pixels already painted. Tangram has no per-tile background mesh at all. A
+                    // PATTERN is real content and still draws.
                     if (_terrainSharedGround && !background->getPattern() && !_terrainTileBackgrounds) {
                         continue;
                     }
@@ -3077,45 +2943,32 @@ namespace carto::vt {
                         glDepthMask(GL_FALSE);
                     }
                     if (_terrainSharedGround) {
-                        // Geometry writes as well (tangram writes for opaque AND translucent) and
-                        // carries the same ordinal as the backgrounds and rasters of its own layer.
-                        // The ordinal term is tangram's flat per-step shift, and it separates
-                        // coplanar style layers - it is NOT a budget to spread over the stack.
-                        // Scaling it by the ordinal span put ten times their pull on every layer,
-                        // which is what let far content over a near ridge. An un-subdivided AREA
-                        // FILL that chords over the ground needs more clearance than one step
-                        // gives, and there is no room for it here: measured at zoom 14, a fill
-                        // slack of half a step leaves the slivers and two steps hides the ground
-                        // paint under the fill. That one is tangram-unreachable (their terrain base
-                        // map is a raster inside the ground draw, so no vector fill ever chords
-                        // over their terrain) and it is open - do not pay for it out of this term.
+                        // Geometry writes too (tangram writes for opaque AND translucent) and carries
+                        // its layer's ordinal. That term separates COPLANAR style layers, one step
+                        // each - not a budget to spread over the stack. An un-subdivided fill needs
+                        // more than one step and there is no room for it here (half a step leaves
+                        // slivers at z14, two steps hides the ground paint): still open, and not to
+                        // be paid out of this term.
                         _terrainDrawDepthBias = _terrainDepthBias;
                         _terrainDrawDepthClipUnits = 0.0f;
                         _terrainDrawLayerOffset = proxyDepth(renderLayer) - layerOrdinal;
                     } else if (terrainVTF) {
-                        // Geometry (roads, lines, polygons) is a different piecewise-linear
-                        // approximation of the height field than the background/surface
-                        // meshes: between vertices its chords deviate by the interpolation
-                        // error, so it renders with a small distance-growing clip slack -
-                        // otherwise it dips below the written background depth and tears
-                        // on slopes. The slack band is the only depth range where far
-                        // content can leak over a ridge - it does not grow with the style
-                        // layer count.
-                        // Painter-order: geometry draws at its REAL depth (no slack) - the
-                        // clearance is provided by pushing the surface BACK instead, so
-                        // geometry is never pulled forward and can not leak over a ridge.
+                        // Geometry draws at its REAL depth: the clearance comes from pushing the
+                        // SURFACE back, so nothing is ever pulled forward and nothing leaks over a
+                        // ridge. (The adaptive fallback keeps the old distance-growing slack, which
+                        // is the only depth range far content can leak through.)
                         float proxyBias = (renderLayer->active ? 0.0f : 1.0f * TERRAIN_LAYER_DEPTH_DELTA);
                         // Painter-order: lattice-clamped content is coincident with the true-depth
                         // occluder surface and is drawn with GL_LEQUAL, so it needs ZERO forward
                         // bias - it passes at equal depth and is occluded (fails) behind a ridge.
                         // Any forward clip bias here leaks over ridges at range (the contour
                         // see-through), so keep it at zero in painter-order.
-                        _terrainDrawDepthBias = (_terrainPainterOrder ? 0.0f : _terrainDepthBias + 1.0f * TERRAIN_LAYER_DEPTH_DELTA) - proxyBias;
+                        _terrainDrawDepthBias = (_terrainRegularGrid ? 0.0f : _terrainDepthBias + 1.0f * TERRAIN_LAYER_DEPTH_DELTA) - proxyBias;
                         // Lattice clamp (regular-grid mode) makes draped geometry follow the
                         // reference grid surface within the tiny in-cell bilinear-vs-triangle
                         // twist, so the distance-growing slack collapses to a small margin;
                         // adaptive meshes keep the full calibrated slack.
-                        _terrainDrawDepthClipUnits = _terrainPainterOrder ? 0.0f : (_terrainRegularGrid ? 2.0f : 12.0f);
+                        _terrainDrawDepthClipUnits = _terrainRegularGrid ? 0.0f : 12.0f;
                     } else {
                         glEnable(GL_POLYGON_OFFSET_FILL);
                         glPolygonOffset(-1.0f, -2.0f);
@@ -3135,15 +2988,10 @@ namespace carto::vt {
                             setCompOp(geometryCompOp);
                             currentCompOp = geometryCompOp;
                         }
-                        // Undraped LINES are a DECAL on the surface, and they need the decal
-                        // treatment. A line is a chain of quads: between two vertices it chords
-                        // over the surface instead of following it, so unlike a fill it is not
-                        // coincident with the true-depth occluder surface, and at zero bias the
-                        // sagging half of every segment fails the depth test - the line breaks
-                        // into dashes over relief (flat ground shows none). A polygon offset is
-                        // the right tool over a constant bias: it scales with the primitive's own
-                        // depth slope, which is what the sag scales with, so it stays a hairline
-                        // clearance head-on and grows exactly where the surface tilts away.
+                        // Undraped LINES are a DECAL: a line chords between its vertices, so unlike a
+                        // fill it is not coincident with the surface and at zero bias the sagging
+                        // half of every segment dashes out over relief. A polygon offset scales with
+                        // the primitive's own depth slope, which is what the sag scales with.
                         bool lineDecal = terrainVTF && geometry->getType() == TileGeometry::Type::LINE;
                         if (lineDecal) {
                             glEnable(GL_POLYGON_OFFSET_FILL);
@@ -3249,18 +3097,11 @@ namespace carto::vt {
             }
             CompOp layerCompOp = (layer->getCompOp() ? *layer->getCompOp() : CompOp::SRC_OVER);
 
-            // Tangram draws its extrusions straight into the main framebuffer, depth-tested
-            // against the ground it stands on - it has no per-layer 3D overlay at all. The
-            // overlay here buys exactly two things: comp-op compositing, and 'flatten the whole
-            // layer, then blend it once' semantics for a fading layer (overlapping translucent
-            // buildings must not blend against each other). Neither applies to an opaque layer
-            // with no comp-op, which is the normal case - and the overlay costs it a full-screen
-            // clear, a full terrain surface pre-pass (one displaced mesh draw per visible tile,
-            // only to re-seed a depth buffer the main framebuffer already holds) and a
-            // full-screen composite, every frame.
-            // Only when the caller says the extrusions are the last tile content of the frame
-            // (buildingOrder 1): drawn inline they WRITE depth into the main framebuffer, which
-            // would otherwise occlude the 2D content of the layers drawn after them.
+            // The 3D overlay buys comp-op compositing and 'flatten then blend once' for a fading
+            // layer; neither applies to the normal opaque case, which it costs a full-screen clear,
+            // a terrain surface pre-pass and a composite every frame. Tangram has no overlay at all.
+            // Inline only when the extrusions are the frame's last tile content (buildingOrder 1) -
+            // they write depth and would otherwise occlude the 2D content drawn after them.
             bool useOverlay = !allowInline || static_cast<bool>(layer->getCompOp()) || geometryOpacity < 1.0f - 1.0f / 255.0f;
 
             // Prepare the overlay buffer.
@@ -3284,23 +3125,10 @@ namespace carto::vt {
                 glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             }
 
-            // Terrain reference surface pre-pass, INSIDE the 3D overlay.
-            // The extrusions are drawn into a private framebuffer whose depth buffer was
-            // just cleared, and the result is composited back as a flat screen quad with
-            // depth testing off - so without this the terrain in the main framebuffer can
-            // not occlude anything, and a building behind a ridge paints straight over the
-            // ridge. Seeding this depth buffer with the same displaced tile surfaces that
-            // the 2D pass uses as its occluder restores the occlusion inside the overlay:
-            // fragments behind a crest are simply never painted, so the composite leaves
-            // the terrain pixels untouched.
-            // Skipped on the inline path: there the extrusions ARE in the main framebuffer,
-            // whose depth already holds that same cover - the shared ground, or the last tile
-            // layer's own surface pre-pass (with buildingOrder = 1 the extrusions are drawn
-            // from onDrawFrame3D, after every layer's 2D pass). Re-seeding it would draw the
-            // same meshes a second time for the same result.
-            // Only when this layer actually has extrusions to occlude: the map above also
-            // collects comp-op layers that need the empty-blend overlay but contain no 3D
-            // geometry at all, and the pre-pass is a full terrain surface draw.
+            // Seed the OVERLAY's own depth buffer with the terrain surfaces: it is composited back
+            // as a flat quad with depth testing off, so without this a building behind a ridge
+            // paints straight over it. Skipped inline (the main framebuffer already holds that
+            // cover) and skipped for a comp-op layer with no extrusions - this is a full surface draw.
             bool terrainOccluders = _terrainMode && static_cast<bool>(_terrainTextureProvider) &&
                 std::any_of(renderLayers.begin(), renderLayers.end(), [](const RenderTileLayer* renderLayer) {
                     const std::vector<std::shared_ptr<TileGeometry>>& geometries = renderLayer->layer->getGeometries();
@@ -3335,17 +3163,11 @@ namespace carto::vt {
                     glEnable(GL_CULL_FACE);
                     glCullFace(GL_BACK);
                 }
-                // Clearance for the extrusions themselves. Two separate errors to cover:
-                //  - the base ring samples the elevation texture at arbitrary xy while the
-                //    surface mesh interpolates it linearly over its cells (the same chord
-                //    error the draped 2D geometry carries) -> the clip-slack component;
-                //  - a wall stands ON the surface it is tested against, so the two are only
-                //    separable to the depth buffer's resolution, which in eye units grows
-                //    like distance^2/near -> the constant-NDC component, which follows the
-                //    same law. Without it the buffer eats the lower walls from a couple of
-                //    kilometres out, taking most of a 40 m building with it.
-                // A uniform bias shifts every extrusion equally, so building-vs-building
-                // occlusion inside the overlay is unaffected.
+                // Extrusion clearance, two errors: the base ring samples elevation at arbitrary xy
+                // while the mesh interpolates over cells (clip slack), and a wall standing ON the
+                // surface is only separable to the depth buffer's resolution, which grows as
+                // distance^2/near (constant-NDC) - without it the buffer eats most of a 40 m
+                // building from a couple of km out. Uniform, so building-vs-building is unaffected.
                 _terrainDrawDepthBias = _terrainDepthBias + TERRAIN_EXTRUSION_DEPTH_DELTAS * TERRAIN_LAYER_DEPTH_DELTA;
                 _terrainDrawDepthClipUnits = (_terrainRegularGrid ? 2.0f : 12.0f);
             }
@@ -3683,35 +3505,18 @@ namespace carto::vt {
     }
 
     bool GLTileRenderer::setupTerrainUniforms(const ShaderProgram& shaderProgram, const TileId& tileId, const cglib::mat4x4<double>& vertexFrameMatrix, bool gridSurface) {
-        // GPU terrain draping: bind the elevation texture covering the tile and the affine
-        // transforms taking vertex xy coordinates (in the axis-aligned frame defined by
-        // vertexFrameMatrix - a tile matrix or the tile surface origin translation) to
-        // elevation texture uv coordinates and to the mercator latitude argument.
-        // Distance-proportional depth slack (tangram's 'depth_shift'): independent of
-        // the w-scaled (constant-NDC) bias, a draw can carry a CONSTANT clip-space
-        // shift. In eye units a clip-constant shift grows linearly with distance,
-        // which matches how the piecewise-linear interpolation error between the
-        // reference surface meshes and draped geometry meshes grows with the mesh
-        // cell size (coarser tiles at range / lower zooms) - a pure constant-NDC
-        // delta becomes vanishingly small relative to that error when zoomed out.
-        // Scaled by the tile size (mesh cells scale with it) and the projection depth
-        // coefficient |m22| (which grows as the near-far range compresses).
-        // NEGATIVE units push the draw AWAY from the viewer: the surface pre-pass is
-        // pushed back by the interpolation-error slack so that draped geometry passes
-        // over it at its REAL depth - content itself carries no distance-growing
-        // slack, which is what previously let far-slope content through at ridges.
+        // GPU draping: bind the tile's elevation texture and the transforms taking vertex xy (in
+        // vertexFrameMatrix's frame) to elevation uv and to the mercator latitude argument.
+        // The clip-constant slack grows linearly with distance in eye units, matching how the
+        // surface-vs-geometry interpolation error grows with the mesh cell. NEGATIVE units push the
+        // draw AWAY: the surface pre-pass takes the slack so content keeps its REAL depth.
         float clipUnits = _terrainDrawDepthClipUnits;
         double tileSize = std::abs(_transformer->calculateTileMatrix(tileId, 1.0f)(0, 0));
         double projScaleZ = std::abs(_viewState.projectionMatrix(2, 2));
-        // The mesh interpolation error is curvature limited and scales ~QUADRATICALLY
-        // with the cell size, not linearly: a linear-in-tile-size slack calibrated for
-        // low zooms overshoots several-fold at high zooms, and all the excess turns
-        // into far-slope content bleeding over ridge crests and grazing faces (the
-        // slack band is exactly the depth range that ignores occlusion). Anchor the
-        // quadratic law at zoom 11 tiles (TERRAIN_DEPTH_CLIP_REF_TILE_SIZE).
-        // _terrainSlackScale scales the slack with the actual surface/geometry
-        // tesselation resolution (the chord error is quadratic in the cell size, so
-        // doubling the mesh resolution allows a 4x tighter slack)
+        // The interpolation error is curvature limited and QUADRATIC in the cell size: a linear
+        // slack calibrated at low zoom overshoots several-fold at high zoom, and the excess is
+        // exactly the depth range that ignores occlusion. Anchored at zoom 11 tiles, and scaled by
+        // the mesh resolution (doubling it allows a 4x tighter slack).
         double slackScale = tileSize * std::min(4.0, tileSize / TERRAIN_DEPTH_CLIP_REF_TILE_SIZE) * _terrainSlackScale;
         // The clip slack magnitude is the same proven, twist-clearing value in both models;
         // the sign / which draw carries it differs (see the loop). The painter-order per-layer
@@ -3748,15 +3553,10 @@ namespace carto::vt {
         // rasters ARE the ground.
         glUniform1f(shaderProgram.uniforms[U_DEPTHCLEARANCE], static_cast<float>(_terrainDrawClearance * _viewState.projectionMatrix(2, 3)));
 
-        // Cross-LOD edge stitching applies to the shared grid SURFACE only: its vertices are
-        // the tile-local unit square, so the edge test in the shader is meaningful. Draped
-        // content is drawn in its own frames and must keep the plain lattice (it follows the
-        // surface everywhere except within the outermost cell, where the stitch bends it).
-        // Cross-LOD edge stitching: the shared edge with a COARSER neighbour is bent onto that
-        // neighbour's chords so the two grounds meet. Draped CONTENT takes it too - a road or a
-        // contour crossing the seam has to land on the same stitched edge as the ground it lies
-        // on, or its two halves meet at different heights (a step that only shows once the camera
-        // tilts). Only the outermost cell is affected; everything else keeps the plain lattice.
+        // Cross-LOD edge stitching bends the edge shared with a COARSER neighbour onto that
+        // neighbour's chords. Draped CONTENT takes it too - a road crossing the seam must land on
+        // the same stitched edge as the ground it lies on, or its halves meet at different heights
+        // (invisible from straight down, a step as soon as the camera tilts).
         cglib::vec4<float> edgeCoarsening(1, 1, 1, 1);
         if (!_terrainEdgeCoarseningMap.empty()) {
             auto edgeIt = _terrainEdgeCoarseningMap.find(tileId);
@@ -3765,17 +3565,10 @@ namespace carto::vt {
             }
         }
         glUniform4f(shaderProgram.uniforms[U_TERRAINEDGECOARSENING], edgeCoarsening(0), edgeCoarsening(1), edgeCoarsening(2), edgeCoarsening(3));
-        // Vertex frame units -> TARGET tile units, for the edge test above and for the tile clip
-        // in the fragment shaders: 1 for the surface (its vertices are the unit square), the
-        // frame's scale over the tile's world size otherwise.
-        // The OFFSET is what makes this hold for a STAND-IN, where the vertex frame is the source
-        // (an ancestor) tile and the target is one of its descendants: the scale alone puts the
-        // source's unit square in [0, 2^dz] and the clip then discards every fragment of it except
-        // the one quadrant that happens to land in [0, 1] - which blanks all content served by a
-        // stand-in, i.e. every layer for a second or two after each integer zoom step. Measuring
-        // the position from the TARGET tile's own origin selects the right part of the ancestor
-        // for each target, so the four targets together still paint the whole ancestor, each with
-        // the elevation mapping of the surface it stands on.
+        // Vertex frame units -> TARGET tile units, for the edge test above and the fragment tile
+        // clip. The OFFSET is what makes it hold for a STAND-IN: with the scale alone the source
+        // ancestor's unit square lands in [0, 2^dz] and the clip keeps only the one quadrant inside
+        // [0, 1], blanking every layer served by a stand-in for a second after each zoom step.
         const cglib::mat4x4<double> targetTileMatrix = _transformer->calculateTileMatrix(tileId, 1.0f);
         double unitScaleX = 1.0, unitScaleY = 1.0, unitOffsetX = 0.0, unitOffsetY = 0.0;
         if (targetTileMatrix(0, 0) != 0 && targetTileMatrix(1, 1) != 0) {
@@ -3825,20 +3618,12 @@ namespace carto::vt {
         float texelSizeX = static_cast<float>(std::max(1, terrainTexture.textureSize(0)));
         float texelSizeY = static_cast<float>(std::max(1, terrainTexture.textureSize(1)));
         glUniform4f(shaderProgram.uniforms[U_ELEVATIONTEXELSIZE], texelSizeX, texelSizeY, 1.0f / texelSizeX, 1.0f / texelSizeY);
-        // Lattice clamp (regular-grid surface mode): the reference surface is a regular
-        // grid of _terrainRegularGridResolution cells over the tile, so draped geometry
-        // snaps its height to the same grid. The cell size in elevation-uv units is the
-        // tile's full uv extent (world tile size / texture internal size) divided by the
-        // grid resolution - a property of the tile+texture, so it is identical for the
-        // surface and every draped layer regardless of their coordinate frame. Off (0) in
-        // adaptive mode: geometry then samples the full DEM detail with the calibrated slack.
-        // THE SURFACE ITSELF DOES NOT NEED IT: its vertices ARE the lattice nodes, so the clamp
-        // returns the node's own bilinear height and costs four of them (16 texture fetches a
-        // vertex) to do it. The surface carries the bulk of the vertex work in a terrain frame -
-        // tangram's terrain vertex takes ONE fetch - so it takes the plain sample, which is the
-        // identical value. The exception is a tile whose edge is stitched to a coarser
-        // neighbour: there the clamp is what bends the outermost cell onto the neighbour's
-        // chords, so those tiles keep it.
+        // Lattice clamp: draped geometry snaps its height to the same regular grid the surface is
+        // built from. The cell size is a property of the tile+texture, identical for the surface and
+        // every draped layer whatever their frame; 0 in adaptive mode.
+        // THE SURFACE DOES NOT NEED IT - its vertices ARE the nodes, so the clamp returns the same
+        // height for 16 texture fetches a vertex instead of one. Except on a stitched edge, where
+        // the clamp is what bends the outermost cell onto the coarse neighbour's chords.
         bool latticeNodes = gridSurface && edgeCoarsening == cglib::vec4<float>(1, 1, 1, 1);
         if (_terrainRegularGrid && _terrainRegularGridResolution > 0 && _terrainDemTaps >= 16 && !latticeNodes) {
             double worldTileSize = std::abs(_transformer->calculateTileMatrix(tileId, 1.0f)(0, 0));
@@ -4272,22 +4057,12 @@ namespace carto::vt {
         glEnable(GL_BLEND);
         setCompOp(CompOp::SRC_OVER);
 
-        // Accept render tiles that COVER the terrain tile, not just exact matches: the terrain
-        // tile set is one normalized cover shared by every layer, so a layer whose own tiles are
-        // coarser (a hillshade limited by its DEM max zoom) contributes through its ancestor tile.
-        //
-        // Several of this renderer's tiles can cover the same terrain tile at once - during a zoom
-        // it holds a proxy parent that is blending out AND the live children. They must be baked
-        // COARSEST FIRST, with retained (proxy) tiles before active ones at the same zoom, or a
-        // parent's full-tile background paints over a child's content and the tile reverts to bare
-        // background colour. _visibleRenderTiles is in no such order.
-        // COVERS, strictly: only content whose own tile contains this terrain tile is baked.
-        // Baking a FINER render tile into its sub-rect looked like free extra detail, but the
-        // content is drawn at its own zoom's scale into a fraction of the texture - hairline
-        // roads and fills, minified with no mipmap - and a zoom out, which holds a whole
-        // generation of finer tiles while they blend away, turned the drape into white aliasing
-        // noise. Finer tiles are the generation being replaced; they stay in the 3D pass and
-        // fade out there.
+        // Take render tiles that COVER this terrain tile - a coarser layer contributes through its
+        // ancestor - baked COARSEST FIRST, proxies before active tiles at the same zoom, or a
+        // parent's background paints over a child's content. _visibleRenderTiles is in no such order.
+        // COVERS strictly: a FINER tile baked into its sub-rect is minified with no mipmap, and a
+        // zoom out (which holds a whole finer generation) turns the drape into white aliasing noise.
+        // Those tiles are the generation being replaced and fade out in the 3D pass instead.
         std::vector<const RenderTile*> coveringTiles;
         for (const RenderTile& renderTile : *_visibleRenderTiles) {
             if (renderTile.visible && tileCovers(renderTile.targetTileId, targetTileId)) {
@@ -4664,16 +4439,10 @@ namespace carto::vt {
     }
 
     float GLTileRenderer::calculateTerrainPaintReliefBoost(float metersPerTexel) const {
-        // Verbatim from the normal-map path (HillshadeRasterTileLayer::createVectorTile), so a
-        // layer switched to paint mode keeps its relief: MapLibre's low-zoom boost by default,
-        // or the legacy formula, which damps the relief by the ABSOLUTE zoom instead.
-        //
-        // The zoom that goes in is the one the SAMPLING density corresponds to, not the tile id
-        // of the elevation grid: the normal-map path multiplied the tile zoom by its bitmap
-        // resolution, so a 512-texel grid at z11 was worth a z12 tile of 256 texels - which is
-        // exactly what the terrain's elevation grids are. Keyed off the grid's own zoom instead,
-        // the paint reads the same data as one level coarser and boosts the relief ~1.5x too far.
-        // 156543.03 m/texel is the web-mercator resolution at zoom 0 for 256-texel tiles.
+        // Verbatim from the normal-map path, so a layer switched to paint mode keeps its relief.
+        // The zoom that goes in is the SAMPLING density's, not the grid's tile id: a 512-texel grid
+        // at z11 is worth a z12 tile of 256 texels, and keying off the grid's own zoom boosts the
+        // relief ~1.5x too far. 156543.03 is the zoom-0 m/texel for 256-texel tiles.
         if (!(metersPerTexel > 0.0f)) {
             return 1.0f;
         }
@@ -4719,17 +4488,11 @@ namespace carto::vt {
         if (!_externalDrapeTarget) {
             return _drapeTilesThisFrame.count(targetTileId) > 0;
         }
-        // Under a cross-layer drape the baked tiles are the OWNER's terrain tiles, and
-        // bakeDrapeTile takes exactly the render tiles that COVER one. So "draped" means: some
-        // drawn terrain tile lies within this tile. A FINER tile is not draped - it is not baked
-        // either, so it keeps drawing itself in the 3D pass while it blends away. Claiming it
-        // was draped suppressed the only content on that ground during a zoom out, which is the
-        // ground going white until the coarse tiles finish loading. (Re-tested: the drape cover
-        // is routinely COARSER than the render tiles - the leaves are capped at the camera zoom
-        // and a hillshade contributes its DEM-limited zoom - so suppressing finer tiles replaces
-        // the map with a stretched coarse drape. This is also why fills can not be decoded at
-        // source density under draping: those fall-through tiles must carry real terrain-following
-        // geometry. See TileLayer::calculateDrawData.)
+        // "Draped" = some drawn terrain tile lies within this one. A FINER tile is not draped and
+        // not baked either, so it keeps drawing itself in the 3D pass while it blends away; claiming
+        // otherwise suppresses the only content on that ground during a zoom out. The drape cover is
+        // routinely COARSER than the render tiles, which is also why fills cannot be decoded at
+        // source density under draping - see TileLayer::calculateDrawData.
         for (const TileId& drapeTileId : _externalDrapeTiles) {
             if (tileCovers(targetTileId, drapeTileId)) {
                 return true;
@@ -4747,16 +4510,10 @@ namespace carto::vt {
     }
 
     cglib::mat4x4<float> GLTileRenderer::calculateDrapeMVPMatrix(const TileId& sourceTileId, const TileId& targetTileId) const {
-        // Orthographic bake frame: map the part of the SOURCE tile covering the target tile onto
-        // the full [-1,1] clip square of the target's drape texture.
-        //
-        // Handling source != target is the whole point: overzoomed/proxy content (a parent tile
-        // standing in while the native tile loads) is exactly what is on screen during a pan or
-        // zoom. Left undraped it falls through to the displaced-geometry path, where it samples a
-        // coarser lattice than the surface it sits on and sinks into it.
-        //
-        // Tile-local vertex y runs NORTHWARD (the vertex transformer maps (u,v) -> (u, 1-v) and v
-        // grows southward with the XYZ tile y), so the y sub-rect index is mirrored.
+        // Orthographic bake frame: the part of the SOURCE tile covering the target onto the target
+        // texture's full [-1,1] clip square. source != target is the point - proxy content is what
+        // is on screen during a pan, and left undraped it samples a coarser lattice than the surface
+        // it sits on and sinks in. Tile-local vertex y runs NORTHWARD, so the y sub-rect is mirrored.
         int deltaZoom = targetTileId.zoom - sourceTileId.zoom;
         float n = 1.0f;
         float fx = 0.0f, gy = 0.0f;
@@ -4841,19 +4598,11 @@ namespace carto::vt {
     }
 
     void GLTileRenderer::renderDrapeTextures(const std::vector<RenderTile>& renderTiles) {
-        // Maplibre-style drape: bake each tile's fills/backgrounds FLAT (no terrain
-        // displacement) into a per-tile offscreen texture. The terrain surface then samples
-        // it as its color, so fills follow the terrain exactly (no holes/see-through).
-        //
-        // The bake is CACHED per target tile: a tile's texture is baked ONCE (when its content
-        // first appears) at full opacity and reused every frame after. Re-baking every visible
-        // tile every frame stalls the render thread during fast zooms (a burst of tiles), which
-        // is not present in flat rendering. A cached tile is dropped (texture freed) when it
-        // leaves the view; it re-bakes if it returns. Only native (non-overzoomed) content is
-        // draped; overzoomed content falls through to the normal geometry pass.
-        // A tile is "draped" this frame only once its texture is actually baked; until then
-        // its content renders as normal geometry (no gap). New-tile bakes are capped per frame
-        // so a fast zoom's burst of tiles is spread over a few frames instead of stalling one.
+        // Maplibre-style drape: bake each tile's fills/backgrounds FLAT into an offscreen texture
+        // the surface then samples as its colour, so fills follow the terrain exactly. Baked ONCE
+        // per target tile and reused, dropped when it leaves the view; new bakes are capped per
+        // frame so a fast zoom's burst is spread out. A tile counts as draped only once its texture
+        // exists - until then its content renders as normal geometry, so there is no gap.
         if (_externalDrapeTarget) {
             return; // the owner drives baking across all layers (cross-layer stacks)
         }
@@ -5460,16 +5209,10 @@ namespace carto::vt {
             glUniform1f(shaderProgram.uniforms[U_DEPTHBIAS], _terrainDrawDepthBias);
         }
         if (terrainVTF) {
-            // Two separate things here, and they had swapped roles.
-            // The elevation TEXTURE must be the TARGET tile's: that is the tile whose surface this
-            // content stands on, and the terrain surface is drawn per target tile. Sampling the
-            // source tile's texture picks a different DEM level, so content sat at a different
-            // height than the ground beneath it and slid during a pan while tiles streamed in,
-            // settling only once source and target became the same tile again.
-            // The vertex FRAME must be the SOURCE tile's: the vertices are source-tile-local, and
-            // this matrix is what maps them to world for the uv. (An earlier attempt to change
-            // only the frame looked like it broke the raster stack; that comparison was against a
-            // demo that had silently switched to a different style, so it proved nothing.)
+            // The elevation TEXTURE is the TARGET tile's - that is the surface this content stands
+            // on - while the vertex FRAME is the SOURCE tile's, since the vertices are source-local.
+            // They were swapped: content then sat at a different DEM level than the ground beneath
+            // it and slid during a pan until source and target became the same tile.
             setupTerrainUniforms(shaderProgram, targetTileId, calculateTileMatrix(sourceTileId, 1.0f / vertexGeomLayoutParams.coordScale));
         }
         if (shadowReceiver) {

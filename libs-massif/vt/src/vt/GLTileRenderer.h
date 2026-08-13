@@ -144,7 +144,6 @@ namespace carto::vt {
         void setInteractionMode(bool enabled);
         void setTerrainMode(bool enabled, float depthBias);
         void setTerrainRegularGrid(bool enabled, int resolution);
-        void setTerrainPainterOrder(bool enabled);
         // Where this renderer's style layers start in the stack's depth ordering (see
         // renderGeometry2D). Every tile layer has its own renderer and its own style layers, so
         // without a base they would all claim ordinal 0 and fight each other once content writes.
@@ -216,17 +215,11 @@ namespace carto::vt {
         // own framebuffer from the light, then hands the packed-depth texture and the same
         // light matrix back here so the draped surface can look itself up in it.
         void setTerrainShadowMap(GLuint texture, int mapSize, int cascades, const std::array<float, MAX_SHADOW_CASCADES>& depthBiases, float strength, float softness, const std::array<cglib::mat4x4<double>, MAX_SHADOW_CASCADES>& lightViewProjs);
-        // Light-space view-projection fitted to the given terrain tiles. Returns false when the
-        // tile set is empty or no elevation data is available yet.
-        // minHeight/maxHeight bound the shadowed volume in world z units. A generous slab is
-        // what makes a low sun pixelated: the light box is fitted around it, and at a grazing
-        // angle a 10 km slab stretches the box to tens of kilometres across.
-        // mapSize is the shadow map resolution: the box is snapped to a world-anchored lattice of
-        // whole texels, so the matrix repeats exactly while the camera moves inside one step.
-        // One call per cascade: cascade c of cascadeCount covers its own slice of the camera's
-        // view distance, so the near slice gets a box small enough for its texels to be about the
-        // size of a screen pixel, while the far slice - where a screen pixel is tens of metres of
-        // ground anyway - keeps the coarse one.
+        // Light-space view-projection fitted to the given terrain tiles; false if the set is empty
+        // or no elevation is loaded. minHeight/maxHeight bound the shadowed volume - a generous slab
+        // is what makes a low sun pixelated, since the box is fitted around it. The box is snapped
+        // to a world lattice of whole mapSize texels, so it repeats within one step. One call per
+        // cascade, each covering its own slice of the view distance.
         bool calculateShadowViewProj(const std::vector<TileId>& tileIds, const std::vector<TileId>& casterTileIds, const cglib::vec3<float>& sunDir, const std::vector<std::pair<double, double> >& tileHeights, double minHeight, double maxHeight, float maxDistanceMeters, int mapSize, int cascade, int cascadeCount, std::vector<TileId>& boxCasterTileIds, double& depthRangeMeters, double& texelMeters, cglib::mat4x4<double>& lightViewProj) const;
         // Moves as the caster geometry does: 3D extrusions fade in by growing, so the sum of
         // their blend factors says how far the shadow map has drifted from what is on screen.
@@ -235,26 +228,16 @@ namespace carto::vt {
         // Returns the number of draws issued.
         int renderShadowCasters(const std::vector<TileId>& tileIds, const cglib::mat4x4<double>& lightViewProj, bool castGround);
 
-        // Cross-layer drape (S3). When an external drape target is set, this renderer stops
-        // owning drape textures and becomes a pure content baker: the owner collects the target
-        // tiles via collectDrapeTiles, bakes every participating renderer into ONE texture per
-        // tile in layer order via bakeDrapeTile, and then draws the surface once per tile with
-        // renderDrapedSurface. That is what lets a hillshade layer and a vector tile layer share
-        // a single drape texture, a single surface draw and a single depth domain.
-        // Shared terrain ground (the tangram model, and what replaces the RTT drape). The owner
-        // hands every participating renderer the SAME cover of terrain tiles and draws the ground
-        // for it ONCE per frame with renderTerrainGround; each layer then composites its content
-        // straight onto it in layer order. A renderer with a ground cover set stops establishing a
-        // depth domain of its own - no depth clear, no reference surface pre-pass - and stops
-        // stamping tile stencil masks, so a frame costs one ground draw per tile instead of a
-        // pre-pass plus a mask per tile PER LAYER. Ground-shaped content (tile backgrounds and
-        // rasters) is drawn on the cover tiles rather than on the layer's own, because two
-        // tesselations of the same height field do not agree and would z-fight.
-        // proxyDepths, parallel to tileIds: how many levels COARSER than asked for each ground
-        // tile is (0 = its own level). Tangram multiplies the proxy term by 48 for the terrain
-        // raster - "need sufficient offset for proxy levels to prevent terrain poking through
-        // level above" (res/scenes/terrain-3d.yaml) - because a coarse stand-in is a different
-        // height field and pokes through the content drawn on the level above it.
+        // Cross-layer drape: with an external target this renderer stops owning drape textures and
+        // becomes a content baker - the owner collects the tiles, bakes every renderer into ONE
+        // texture per tile in layer order, and draws the surface once.
+        // Shared terrain ground (tangram's model, what replaces the RTT drape): every renderer gets
+        // the SAME cover and the ground is drawn once per frame, so a renderer with a cover set
+        // establishes no depth domain of its own and stamps no masks. Ground-shaped content goes on
+        // the COVER tiles, not the layer's own - two tesselations of one height field z-fight.
+        // proxyDepths, parallel to tileIds: levels coarser than asked for (0 = its own). Tangram
+        // multiplies the term by 48 for the terrain raster; a coarse stand-in is a different height
+        // field and pokes through the content drawn on the level above it.
         void setTerrainGroundTiles(const std::vector<TileId>& tileIds, const std::vector<int>& proxyDepths);
         // Draws the shared ground for the cover: the displaced grid surface per tile in the given
         // colour, writing depth at its TRUE depth. The only depth-writing terrain geometry in the
@@ -640,7 +623,7 @@ namespace carto::vt {
         float _terrainDrawDepthBias = 0.0f;      // per-draw NDC (w-scaled) depth bias while rendering 2D layers (GPU draping mode)
         float _terrainDrawDepthClipUnits = 0.0f; // per-draw clip-constant slack units (distance-growing; see setupTerrainUniforms)
         bool _terrainSkirtsEnabled = false;
-        bool _terrainRegularGrid = false;        // shared unit-grid surfaces instead of per-tile tesselated meshes (planar terrain)
+        bool _terrainRegularGrid = false;        // tangram's model: one shared grid surface per tile + painter-order depth (no occluder, no slack)
         int _terrainRegularGridResolution = 0;   // resolution of the currently built shared grid
         bool _terrainEdgeStitching = false;      // snap grid surface edges to a coarser neighbour's lattice
         std::set<TileId> _visibleTileIds;        // this renderer's own visible tiles (surface cover when no external one is set)
@@ -648,7 +631,6 @@ namespace carto::vt {
         std::map<TileId, cglib::vec4<float>> _terrainEdgeCoarseningMap; // per drawn cover tile: lattice cell scale (2^k) on the west/east/south/north edge
         std::vector<std::shared_ptr<TileSurface>> _terrainGridSurfaces;
         std::vector<std::shared_ptr<TileSurface>> _terrainFlatSurfaces; // 1x1 grid for the flat drape bake // the single shared unit-grid surface, drawn per tile
-        bool _terrainPainterOrder = false;       // tangram painter-order depth model (no surface occluder / no slack); implies regular grid
         float _terrainDrawLayerOffset = 0.0f;    // painter-order per-draw (proxy - layer) offset
         float _terrainLineClearance = 0.0f;      // world units a draped line clears the ground by, constant in metres at any range
         float _terrainDrawClearance = 0.0f;      // per-draw METRE-constant clearance in world units (applyDepthBias); non-zero only for content that chords over the ground
@@ -747,17 +729,11 @@ namespace carto::vt {
         };
         std::unordered_map<ShaderProgramKey, const ShaderProgram*, ShaderProgramKeyHash> _shaderProgramCache;
 
-        // Memo for the style colour/width/offset functions, keyed on the function object
-        // itself. They take only the view state, which is fixed for the whole frame, yet
-        // every draw re-evaluates up to MAX_PARAMETERS of each of the three - and a cartocss
-        // function is a chain of std::functions over an expression, not a constant. Measured
-        // on an Adreno 610 with a 21-layer style: 16.5 us of the 44 us a draw costs, against
-        // 1.8 us for a 6-layer one. The style layers are shared by every tile, so the same
-        // function object is evaluated once per layer instead of once per tile per layer.
-        // Cleared in setViewState - the only place the argument can change.
-        // Keyed on the function object's address, so the entry keeps a reference to it: a
-        // function that died mid-frame could otherwise have its address handed to a new one
-        // and hand back the wrong colour or width.
+        // Memo for the style colour/width/offset functions. They take only the view state, fixed
+        // for the frame, yet every draw re-evaluated up to MAX_PARAMETERS of each: 16.5 us of a
+        // 44 us draw on an Adreno 610 with a 21-layer style. Cleared in setViewState, the only place
+        // the argument changes. The entry holds a reference to the function object it is keyed on,
+        // or a function that died mid-frame could have its address reused and answer wrongly.
         std::unordered_map<const void*, std::pair<FloatFunction::Function, float>> _floatFuncCache;
         std::unordered_map<const void*, std::pair<ColorFunction::Function, Color>> _colorFuncCache;
 

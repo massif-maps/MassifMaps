@@ -105,18 +105,12 @@ namespace carto::vt {
         void setGeometrySignature(long long hash, int count) { _geometryHash = hash; _geometryCount = count; }
         bool hasGeometrySignature(long long hash, int count) const { return _geometryCount == count && _geometryHash == hash && count > 0; }
 
-        // Terrain re-anchoring state (see updateElevation). A label is anchored once, when it
-        // is built, and re-anchored only when the elevation under one of the tiles it is built
-        // from actually changes. Re-anchoring costs one elevation sample per line vertex, so
-        // doing it for every label on every tile-set change is a whole-screen resample.
-        // A label that has ALREADY been anchored and is neither placed nor on screen defers its
-        // re-anchor instead of resampling every vertex for something nothing draws: it keeps the
-        // heights it has (one LOD step out at worst, because the tile that just arrived replaces
-        // an ancestor it was already sampling) and reports itself dirty again as soon as the
-        // culler gives it a placement. A label that has NEVER been anchored never defers - its
-        // geometry is still flat, and placing it at sea level under a mountain is what makes
-        // labels pop. Measured before this: ~750 000 elevation samples a frame, most of them for
-        // labels with no placement.
+        // Terrain re-anchoring state (see updateElevation). Anchored once when built, re-anchored
+        // only when the elevation under one of its tiles changes - it costs one sample per line
+        // vertex, and ~750 000 samples a frame before this. An already-anchored label that is
+        // neither placed nor on screen DEFERS (its heights are one LOD step out at worst) and
+        // reports itself dirty when the culler gives it a placement; one never anchored does not,
+        // since its geometry is flat and placing it at sea level under a mountain is what pops.
         bool isElevationDirty() const { return _elevationDirty && (!_elevationAnchored || _visible || _opacity > 0.0f || (bool) _placement); }
         void setElevationDirty(bool dirty) { _elevationDirty = dirty; }
         bool hasGeometryOverTile(const TileId& tileId) const;

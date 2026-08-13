@@ -260,21 +260,15 @@ namespace carto::vt {
         uniform float uLayerDepthOffset; // painter-order model: (proxy - layer). 0 in slack mode
         uniform float uDepthShift;       // painter-order near-camera separation boost
         uniform float uDepthClearance;   // METRE-constant clearance: proj[2][3] * metres (see below)
-        // Two depth models share this function, selected by which uniforms are non-zero:
-        //  - slack (occluder) model: pull the draw towards the viewer by
-        //    (uDepthBias*w + uDepthBiasClip) so draped content clears the surface pre-pass.
-        //  - painter-order model (tangram): separate coincident draped layers by a fixed
-        //    per-layer delta, uLayerDepthOffset*(DELTA*w + uDepthShift), DELTA = 2^-19. The
-        //    surface is just the bottom layer; there is no occluder and no distance-growing
-        //    slack, so far content can not leak in front of a near ridge.
-        // uDepthClearance is the third form, and the only one that is worth the SAME DISTANCE at
-        // every range. With ndc = -proj[2][2] + proj[2][3]/d, moving a vertex d -> d - c changes ndc
-        // by proj[2][3]*c/d^2, so the clip term is proj[2][3]*c/w - the 1/w below. A constant-NDC
-        // bias is worth distance^2/near metres and a constant-CLIP one distance/near, which is why
-        // both are a choice between a line cut into the ground up close and a line leaking through
-        // a ridge far away; this one is c metres at 100 m and c metres at 5 km. It is what a draped
-        // LINE needs: between two of its vertices it chords over relief the ground has, by a fixed
-        // number of metres that does not care how far away the line is.
+        // Three depth terms, selected by which uniforms are non-zero:
+        //  - slack (occluder) model: (uDepthBias*w + uDepthBiasClip) pulls the draw towards the
+        //    viewer so draped content clears the surface pre-pass;
+        //  - painter-order (tangram): uLayerDepthOffset*(DELTA*w + uDepthShift), DELTA = 2^-19 -
+        //    a fixed per-layer delta, no occluder and no distance-growing slack;
+        //  - uDepthClearance: worth the SAME METRES at every range. ndc = -proj[2][2] + proj[2][3]/d,
+        //    so moving a vertex by c gives a clip term proj[2][3]*c/w - the 1/w below. Constant-NDC
+        //    is worth distance^2/near and constant-CLIP distance/near; only this one is what a
+        //    draped LINE needs, since its chord over relief is a fixed number of metres.
         vec4 applyDepthBias(vec4 clipPos) {
             float z = clipPos.z
                 + uLayerDepthOffset * (0.0000019073486328125 * clipPos.w + uDepthShift)
@@ -327,22 +321,13 @@ namespace carto::vt {
         uniform highp vec2 uElevationLatticeCell; // regular-grid surface cell size in elevation-uv units (0 = off = sample the full DEM detail)
         uniform highp vec4 uTerrainEdgeCoarsening; // lattice cell scale (2^k, 1 = off) on the west/east/south/north tile edge
 
-        // GPU terrain draping: the vertex z is REPLACED with the height sampled from the
-        // elevation texture. Every draped layer samples the same textures, so all layers
-        // agree on heights exactly and no geometric depth tolerances are needed.
-        // The bilinear filter is applied MANUALLY: 4 samples at exact texel centers +
-        // mix. At texel centers NEAREST and LINEAR hardware filtering return the same
-        // texel, so the reconstructed height field is identical on every GPU - several
-        // mobile GPUs filter VERTEX-stage texture fetches as NEAREST regardless of the
-        // requested LINEAR filter, which would make draped geometry deviate from the
-        // depth-writing surface meshes by up to a full texel height step (tens of
-        // meters on cliffs: content pokes through ridges / needs huge depth slack).
-        // The math matches the CPU-side sampling (ElevationTileGrid::sampleHeight
-        // semantics): samples at texel centers, clamped at edges (CLAMP_TO_EDGE plus
-        // the 1-texel neighbour border in the texture). The Mercator latitude scale
-        // (1/cos) is applied per vertex. The w component maps the absolute height into
-        // the vertex frame (tile surface frames are origin-relative and the origin can
-        // have a non-zero z).
+        // GPU draping: the vertex z is REPLACED with the height sampled from the elevation
+        // texture, the same texture for every layer, so all of them agree exactly.
+        // The bilinear filter is MANUAL - 4 samples at exact texel centres plus mix - because
+        // several mobile GPUs filter VERTEX-stage fetches as NEAREST whatever is requested, and
+        // that deviates from the depth-writing surface by up to a full texel step (tens of metres
+        // on a cliff). At texel centres both filters return the same texel, so this is identical
+        // everywhere, and it matches ElevationTileGrid::sampleHeight on the CPU side.
         float sampleElevation(highp vec2 uv) {
             // The elevation texture is LUMINANCE_ALPHA: the height's high byte arrives in .rgb and
             // its low byte in .a, so the decode is linear in both and the constant term needs a
@@ -375,35 +360,19 @@ namespace carto::vt {
             highp vec2 uv = uElevationUV.xy + pos.xy * uElevationUV.zw;
             float meters;
             if (uElevationLatticeCell.x != 0.0) {
-                // LATTICE CLAMP (regular-grid surface mode): the reference surface is a
-                // regular grid, so its rendered height at any point comes from just the 4
-                // surrounding grid vertices. Draped geometry samples the same 4 grid-corner
-                // heights (each a full DEM bilinear) and interpolates them with the SAME
-                // two-triangle split the surface mesh uses, so it follows the surface exactly
-                // (not just at the grid vertices). A bilinear blend instead of the triangle
-                // split leaves an in-cell twist that, at low zoom / large cells, exceeds the
-                // (near zero, painter-order) depth slack where the surface triangle rises above
-                // the bilinear sheet - draped lines then dip behind the surface and crack.
-                // The surface mesh (TileSurfaceBuilder::buildRegularGridSurface) emits triangles
-                // (a,b,c),(a,c,d) with a=(i,j),b=(i+1,j),c=(i+1,j+1),d=(i,j+1); vertex y is 1-v,
-                // which flips the v axis, so in elevation-uv fg-space the corners are
-                // d=(0,0)=H00, c=(1,0)=H10, a=(0,1)=H01, b=(1,1)=H11 and the shared edge is the
-                // ANTI-diagonal fg.x+fg.y=1 (the H10-H01 split). Match it exactly here.
-                // CROSS-LOD STITCHING: on an edge shared with a COARSER neighbouring tile the
-                // two tiles otherwise interpolate the DEM between different lattice nodes and
-                // the shared edge cracks open (the coarse tile chords across what the fine tile
-                // follows). The neighbour's lattice is a strict subset of this tile's lattice
-                // (same anchor, cell scaled by 2^k), so scaling the cell along the edge for the
-                // vertices ON that edge reproduces the neighbour's chords exactly. The factors
-                // are 1 for same-level or finer neighbours, i.e. a no-op by default. Corner
-                // vertices sit on a node of every lattice, so a double scaling is harmless.
-                // The edge test is in TILE units. The surface's vertices already are the unit
-                // square; draped CONTENT arrives in its own vertex frame, so it is converted -
-                // without this the test can never fire for content, and a road crossing the seam
-                // keeps this tile's own interpolation while its other half follows the coarse
-                // neighbour's chord. The ground is stitched and the road on it is not: the two
-                // halves meet at different heights, which is invisible looking straight down and
-                // steps as soon as the camera tilts.
+                // LATTICE CLAMP: take the 4 surrounding grid-corner heights (each a full DEM
+                // bilinear) and interpolate them with the SAME two-triangle split the surface mesh
+                // uses, so draped geometry follows the surface everywhere, not only at the nodes.
+                // A bilinear blend instead leaves an in-cell twist that exceeds the (near zero)
+                // painter-order slack at large cells and cracks draped lines.
+                // buildRegularGridSurface emits (a,b,c),(a,c,d) with a=(i,j)..d=(i,j+1), and vertex
+                // y is 1-v, so in elevation-uv fg-space d=(0,0)=H00, c=(1,0)=H10, a=(0,1)=H01,
+                // b=(1,1)=H11 and the shared edge is the ANTI-diagonal fg.x+fg.y=1. Match it.
+                // CROSS-LOD STITCHING: a coarser neighbour's lattice is a strict subset of this
+                // one's, so scaling the cell along a shared edge reproduces its chords exactly
+                // (factors are 1 by default; a corner sits on every lattice, so double scaling is
+                // harmless). The edge test is in TILE units - draped CONTENT arrives in its own
+                // frame and must be converted, or the ground is stitched and the road on it is not.
                 highp vec2 unitPos = pos.xy * uTileUnitScale;
                 highp vec2 cell = uElevationLatticeCell;
                 if (unitPos.x < 0.00001) cell.y *= uTerrainEdgeCoarsening.x;       // west edge
@@ -765,18 +734,11 @@ namespace carto::vt {
         varying highp vec2 vElevUV;
         varying mediump float vElevCosh;
 
-        // The DEM gradient at this fragment, as tangram takes it (res/scenes/hillshade.yaml, the
-        // `normal` block): a 3x3 stencil at TEXEL CENTERS, then a quadratic expansion around the
-        // center texel so the gradient varies LINEARLY inside the texel. A plain central
-        // difference at a fixed texel step is constant over each texel cell, which shades the
-        // ground in texel-sized facets - very visible close up, where one DEM texel covers many
-        // pixels. The extra taps are free next to the fill they light.
-        // The surface is displaced by exactly this height field in the vertex stage, so the normal
-        // is the normal of what is drawn - no second DEM decode, no pre-baked normal map, and it
-        // follows the live sun.
-        // No decode offset is needed: only differences of heights are used, and it cancels.
-        // Heights are metres and reach several thousand: mediump would quantise them to whole
-        // metres and the differences would be mostly rounding noise.
+        // The DEM gradient, as tangram's `normal` block takes it - see terrainSampleDem below for
+        // why the stencil is quadratic rather than a central difference. The surface is displaced by
+        // exactly this height field in the vertex stage, so this is the normal of what is drawn.
+        // No decode offset needed (only differences are used); highp because heights reach several
+        // thousand metres and mediump would leave the differences as rounding noise.
         mediump vec3 terrainNormal() {
             highp vec2 duv = uElevationTexelSize.zw;
             highp vec2 ij = vElevUV * uElevationTexelSize.xy;
@@ -1062,26 +1024,15 @@ namespace carto::vt {
             return dot(texture2D(uElevationTexture, uv), uElevationDecode) + uElevationOffset;
         }
 
-        // Tangram's DEM sample, ported whole from the `normal` block of res/scenes/hillshade.yaml.
-        // Both outputs come from ONE 3x3 stencil taken at TEXEL CENTERS (cen_ij = floor(ij) + 0.5),
-        // so the taps are exact whatever the hardware filter does, plus a quadratic Taylor
-        // expansion around the center texel:
-        //   grad = grad0 + curv * f     (gradient varies LINEARLY inside the texel)
-        //   elev = h11 + f.grad0 + 0.5 * f.curv.f
-        // The gradient is what makes the difference: a plain central difference at a fixed texel
-        // step is CONSTANT over each texel cell, so the shading breaks into texel-sized facets -
-        // the "pixelated hillshade" seen close up, where one DEM texel covers many screen pixels.
-        // Interpolating it through the curvature costs nothing (the 9 taps replace the 8 the Sobel
-        // took) and makes the shading continuous across texel boundaries.
-        // Heights are metres and reach several thousand: mediump would quantise them to whole
-        // metres and the differences would be mostly rounding noise.
-        // Tangram extrapolates the stencil at the texture edges; our elevation textures carry a
-        // 1-texel border taken from the neighbouring DEM tiles instead, so the stencil always
-        // reads real data and no edge case is needed here.
-        // The stencil is taken ONCE per fragment, by terrainPaintPrepare() at the top of main, and
-        // read from here by everything that needs it (the hillshade slope, the sun normal, the
-        // contours, a custom shader's getElevation()). Sampling it per consumer would be three
-        // 9-tap stencils on the ground pass.
+        // Tangram's DEM sample, ported whole from the `normal` block of hillshade.yaml: ONE 3x3
+        // stencil at TEXEL CENTRES (exact whatever the hardware filter does) plus a quadratic Taylor
+        // expansion, grad = grad0 + curv*f and elev = h11 + f.grad0 + 0.5*f.curv.f. The gradient is
+        // the point - a central difference at a fixed step is CONSTANT over a texel cell and breaks
+        // the shading into texel-sized facets (the "pixelated hillshade" close up); the 9 taps
+        // replace the 8 the Sobel took. highp because differences of thousands of metres in mediump
+        // are rounding noise. Our textures carry a 1-texel neighbour border, so unlike tangram no
+        // edge extrapolation is needed. Taken ONCE per fragment in terrainPaintPrepare() and read
+        // from here by the slope, the sun normal, the contours and a custom getElevation().
         highp float gTerrainElev;      // metres at this fragment
         highp vec2 gTerrainGrad;       // metres per elevation texel, (du, dv), v growing north
 
@@ -1446,14 +1397,11 @@ namespace carto::vt {
             if (color.a < 0.004) discard;
         #endif
         #ifdef TERRAIN_SHADOW
-            // 2D content standing ON the ground takes the ground's shadow: it is drawn in the 3D
-            // scene now that fills are the only thing baked into the drape, so a road crossing a
-            // shadowed slope stayed lit while the slope around it went dark.
-            // N.L comes from the terrain itself (terrainNdl, the same stencil the surface uses),
-            // NOT from the geometry - which has no meaningful normal, lying flat on the ground.
-            // It has to: this receiver is COPLANAR with the surface that cast into the shadow map,
-            // so at normal incidence it gets the minimum bias against its own depth, half the PCF
-            // taps fail, and the whole ground shadows itself.
+            // 2D content standing ON the ground takes the ground's shadow - it is drawn in the 3D
+            // scene now, so a road crossing a shadowed slope stayed lit. N.L comes from the TERRAIN
+            // (terrainNdl), not the geometry, which lies flat and has no meaningful normal: this
+            // receiver is coplanar with what cast into the shadow map, so at normal incidence it
+            // gets the minimum bias, half the PCF taps fail and the ground shadows itself.
             // The colour is premultiplied, so scaling rgb alone keeps rgb <= a.
             color = vec4(color.rgb * shadowFactorSlope(terrainNdl()), color.a);
         #endif
@@ -1532,16 +1480,11 @@ namespace carto::vt {
             vNormal = aVertexNormal;
         #endif
         #ifdef TERRAIN
-            // Tangram's line model with a CEILING. Tangram extrudes in model space and displaces
-            // the extruded vertex onto the terrain (polyline.vs + terrain-3d.yaml), so a line is a
-            // world quad through the projection and tapers with distance like everything else -
-            // which is what a line on the ground should do. Left alone it also GROWS without bound
-            // towards the camera, and a near contour turns into a fat blob.
-            // So: take tangram's offset, measure what it is worth on screen, and shrink it back to
-            // the nominal width when it exceeds it. Never grow it - the factor is <= 1 by
-            // construction, so this can not manufacture the oversized quads an unbounded screen
-            // fit can. Far lines keep tangram's taper, near lines stop at the width the style asked
-            // for, which is the flat map's width.
+            // Tangram's line model (extrude in model space, displace onto the terrain) with a
+            // CEILING: their quad tapers with distance, which is right, but grows without bound
+            // towards the camera and turns a near contour into a blob. Measure the offset on screen
+            // and shrink it back to the nominal width when it exceeds it - the factor is <= 1 by
+            // construction, so this can never manufacture an oversized quad.
             setTerrainSlopeVaryings(pos);
             vTileUnit = pos.xy * uTileUnitScale + uTileUnitOffset;
             highp vec3 centerPos = applyTerrain(pos);
@@ -1601,15 +1544,10 @@ namespace carto::vt {
         #endif
 
         void main(void) {
-            // CLIP TO THE TILE. Lines are built with a buffer an eighth of a tile wide, so a tile
-            // carries a good stretch of its neighbours' roads. Every tile draws that overflow with
-            // ITS OWN elevation mapping - a different DEM level and a different lattice than the
-            // tile the overflow actually lies on - so the same road is painted twice at two
-            // different heights. Looking straight down the two copies coincide and it looks
-            // perfect; tilt, and the heights separate into the mismatch at tile junctions.
-            // The stencil tile masks used to clip this, but they need a stencil buffer and there
-            // is none here (GL_STENCIL_BITS = 0 on this target), so the masks never run. Doing it
-            // per fragment needs no attachment and no extra draw.
+            // CLIP TO THE TILE. A tile's line buffer is an eighth of a tile wide, so it carries its
+            // neighbours' roads and draws them with ITS OWN elevation mapping - the same road twice,
+            // at two heights, which coincide looking straight down and separate on a tilt. The
+            // stencil masks used to clip this, but there is no stencil buffer on this target.
             // uTileUnitScale is 0 when the tile has no elevation, which disables the test.
             if (uTileUnitScale != vec2(0.0)) {
                 if (vTileUnit.x < -0.0005 || vTileUnit.x > 1.0005 || vTileUnit.y < -0.0005 || vTileUnit.y > 1.0005) {

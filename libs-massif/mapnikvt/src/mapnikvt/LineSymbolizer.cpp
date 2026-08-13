@@ -287,22 +287,15 @@ namespace carto::mvt {
             return std::shared_ptr<const std::vector<cglib::vec2<float>>>();
         }
 
-        // Fit the contour into the arrow box - LENGTH along the line by WIDTH across it, both in
-        // multiples of the line width - so a path lifted out of an icon set works whatever its
-        // viewBox. The ASPECT RATIO is kept: scaling x and y independently squashes a wide icon
-        // into a square and it stops being the shape the author drew. SVG's y grows downwards, the
-        // tile's y across the line, hence the flip.
-        //
-        // The head is CENTRED on the last vertex, and that is not a detail: every offset here is in
-        // multiples of the rule's OWN line width, so placing the contour by its back edge shifts
-        // the casing further back than the fill - by half of (casing - fill) - and the border comes
-        // out visibly slid along the arrow instead of wrapping it. Sharing the centre leaves the
-        // outward offset as the only difference between the two, which is the whole point.
-        //
-        // It is not slotted the way the built-in triangle is: a slot is a notch where the shaft
-        // enters the head, and cutting one through the middle of an icon that is not an arrow
-        // leaves exactly the gashes it was meant to avoid. The head is drawn after the shaft, so
-        // it covers the line end anyway.
+        // Fit the contour into the arrow box (length along the line by width across it, both in
+        // line widths) so an icon-set path works whatever its viewBox, keeping the ASPECT RATIO -
+        // scaling the axes independently stops it being the shape the author drew. SVG's y grows
+        // downwards and the tile's across the line, hence the flip.
+        // CENTRED on the last vertex: offsets are in the rule's own line width, so placing it by
+        // the back edge slides the casing half of (casing - fill) behind the fill instead of
+        // wrapping it. Not slotted like the built-in triangle - a notch through the middle of an
+        // icon that is not an arrow leaves the gashes it was meant to avoid, and the head is drawn
+        // after the shaft anyway.
         cglib::vec2<float> minPos = cleaned[0], maxPos = cleaned[0];
         for (const cglib::vec2<float>& point : cleaned) {
             minPos = cglib::vec2<float>(std::min(minPos(0), point(0)), std::min(minPos(1), point(1)));

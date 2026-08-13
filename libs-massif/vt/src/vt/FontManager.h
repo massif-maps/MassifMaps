@@ -28,16 +28,11 @@ namespace carto::vt {
         virtual ~FontManager();
 
         std::string loadFontData(const std::vector<unsigned char>& data);
-        // Registers a font that is only decoded once a name it may answer to is asked for.
-        // Decoding is not free - a woff2 must be decompressed to be read at all, 1-11 ms each on a
-        // mid-range phone - and a style packs far more fonts than it asks for.
-        // 'hintName' is what the font is expected to be called (the file name, normally): a request
-        // whose name normalizes to it takes that font alone. A request that matches no hint is
-        // offered to the FontDataLoader first, and only then decodes every font still pending and
-        // registers the names they really carry. So a package whose file names match its font
-        // names never decodes a font it does not use, and one whose names disagree resolves exactly
-        // as eager loading did - EXCEPT that a name the FontDataLoader also answers now resolves
-        // from there. Eagerly loaded fonts always won that; hinted ones still do.
+        // Registers a font decoded only once a name it may answer to is asked for - a woff2 must be
+        // decompressed to be read at all (1-11 ms on a mid-range phone) and a style packs far more
+        // fonts than it uses. 'hintName' is what the font is expected to be called (the file name):
+        // a request normalizing to it takes that font alone, and one matching no hint goes to the
+        // FontDataLoader before every pending font is decoded to register its real names.
         void addPendingFontData(const std::string& hintName, FontDataProvider dataProvider);
         void setFontDataLoader(FontDataLoader loader);
         std::shared_ptr<const Font> getFont(const std::string& name, const std::shared_ptr<const Font>& baseFont) const;

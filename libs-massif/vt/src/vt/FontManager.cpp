@@ -3,6 +3,7 @@
 #include "GlyphMap.h"
 
 #include <atomic>
+#include <cctype>
 #include <mutex>
 #include <memory>
 #include <array>
@@ -260,6 +261,19 @@ namespace carto::vt {
         std::string loadFontData(const std::vector<unsigned char>& data) {
             std::lock_guard<std::mutex> lock(_mutex);
 
+            return loadFontDataUnlocked(data);
+        }
+
+        void addPendingFontData(const std::string& hintName, FontDataProvider dataProvider) {
+            std::lock_guard<std::mutex> lock(_mutex);
+
+            if (dataProvider) {
+                _pendingFonts.push_back({ normalizeFontName(hintName), std::move(dataProvider) });
+            }
+        }
+
+        // Note: _mutex is expected to be locked by the caller
+        std::string loadFontDataUnlocked(const std::vector<unsigned char>& data) const {
             if (data.empty()) {
                 return std::string();
             }
@@ -402,10 +416,20 @@ namespace carto::vt {
                 }
             }
 
-            // Check if we have font corresponding to the name, otherwise try to resolve it externally
+            // Already decoded, then a pending font whose hint says it is this one, then the
+            // external loader, and only as a last resort every pending font. The sweep is what
+            // decoding all of them up front used to do, and it is the expensive part - resolving
+            // the fallback font ('Arial', which no style package carries) would trigger it on
+            // every context build if it came before the external loader.
             auto fontDataIt = _fontDataMap.find(fontName);
             if (fontDataIt == _fontDataMap.end()) {
+                fontDataIt = loadHintedFontData(fontName);
+            }
+            if (fontDataIt == _fontDataMap.end()) {
                 fontDataIt = loadExternalFontData(fontName);
+            }
+            if (fontDataIt == _fontDataMap.end()) {
+                fontDataIt = loadRemainingFontData(fontName);
                 if (fontDataIt == _fontDataMap.end()) {
                     return std::shared_ptr<Font>();
                 }
@@ -430,6 +454,40 @@ namespace carto::vt {
             // Cache the font
             _fontMap[std::make_pair(name, baseFont)] = font;
             return font;
+        }
+
+        // Note: _mutex is expected to be locked by the caller
+        std::map<std::string, std::vector<unsigned char>>::iterator loadHintedFontData(const std::string& fontName) const {
+            // One font answers the request, in the common case: the hint is what it is expected to
+            // be called. It is only a hint - a font whose file says one thing and whose name table
+            // says another is found by the sweep instead.
+            std::string normalizedName = normalizeFontName(fontName);
+            for (auto it = _pendingFonts.begin(); it != _pendingFonts.end(); it++) {
+                if (it->hintName != normalizedName) {
+                    continue;
+                }
+                FontDataProvider dataProvider = std::move(it->dataProvider);
+                _pendingFonts.erase(it);
+                loadFontDataUnlocked(dataProvider());
+                return _fontDataMap.find(fontName);
+            }
+            return _fontDataMap.end();
+        }
+
+        // Note: _mutex is expected to be locked by the caller
+        std::map<std::string, std::vector<unsigned char>>::iterator loadRemainingFontData(const std::string& fontName) const {
+            // What eager loading did: decode everything left and register the names those fonts
+            // actually carry. Only a package whose file names do not match its font names gets
+            // here, and only once.
+            if (_pendingFonts.empty()) {
+                return _fontDataMap.end();
+            }
+            std::vector<PendingFont> pendingFonts;
+            std::swap(pendingFonts, _pendingFonts);
+            for (const PendingFont& pendingFont : pendingFonts) {
+                loadFontDataUnlocked(pendingFont.dataProvider());
+            }
+            return _fontDataMap.find(fontName);
         }
 
         // Note: _mutex is expected to be locked by the caller
@@ -485,10 +543,26 @@ namespace carto::vt {
             return std::string(reinterpret_cast<const char*>(sfntName.string), sfntName.string_len);
         }
 
+        static std::string normalizeFontName(const std::string& name) {
+            std::string normalized;
+            for (char c : name) {
+                if (std::isalnum(static_cast<unsigned char>(c))) {
+                    normalized.append(1, static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
+                }
+            }
+            return normalized;
+        }
+
+        struct PendingFont {
+            std::string hintName; // normalized
+            FontDataProvider dataProvider;
+        };
+
         const std::string _glyphPreloadTable = ""; // list of glyphs to preload when initializing
         const int _maxGlyphMapWidth;
         const int _maxGlyphMapHeight;
         FontDataLoader _fontDataLoader;
+        mutable std::vector<PendingFont> _pendingFonts;
         mutable std::map<std::string, std::vector<unsigned char>> _fontDataMap;
         mutable std::set<std::string> _missingFontSet;
         std::shared_ptr<FontManagerLibrary> _library;
@@ -505,6 +579,10 @@ namespace carto::vt {
 
     std::string FontManager::loadFontData(const std::vector<unsigned char>& data) {
         return _impl->loadFontData(data);
+    }
+
+    void FontManager::addPendingFontData(const std::string& hintName, FontDataProvider dataProvider) {
+        _impl->addPendingFontData(hintName, std::move(dataProvider));
     }
 
     void FontManager::setFontDataLoader(FontDataLoader loader) {

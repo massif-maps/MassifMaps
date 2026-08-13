@@ -345,32 +345,7 @@ namespace carto::mvt {
         _logger(std::move(logger))
     {
         std::vector<unsigned char> uncompressedData;
-
-        // Use fast header-based detection where possible to avoid expensive trial decompression.
-        const unsigned char* bytes = data.empty() ? nullptr : data.data();
-        std::size_t size = data.size();
-
-        bool decoded = false;
-        if (bytes && compression::is_gzip(bytes, size)) {
-            decoded = zlib::inflate_gzip(bytes, size, uncompressedData);
-        }
-#ifdef HAVE_ZSTD
-        else if (bytes && compression::is_zstd(bytes, size)) {
-            decoded = compression::inflate_zstd(bytes, size, uncompressedData);
-        }
-#endif
-#ifdef HAVE_BROTLI
-        else if (bytes) {
-            // Try cheaper detection for brotli first; only attempt full inflate when detected.
-            if (compression::is_brotli(bytes, size)) {
-                decoded = compression::inflate_brotli(bytes, size, uncompressedData);
-            } else {
-                decoded = false;
-            }
-        }
-#endif
-
-        if (decoded) {
+        if (compression::inflate_tile(data.empty() ? nullptr : data.data(), data.size(), uncompressedData)) {
             protobuf::message tileMsg(uncompressedData.data(), uncompressedData.size());
             _tile = std::make_shared<vector_tile::Tile>(tileMsg);
         } else {
@@ -390,25 +365,9 @@ namespace carto::mvt {
         }
     }
 
-    void MBVTFeatureDecoder::setTransform(const cglib::mat3x3<float>& transform) {
-        if (transform != _transform) {
-            _transform = transform;
-            _layerGeometryCache.first.clear();
-            _layerGeometryCache.second.reset();
-        }
-    }
-
-    void MBVTFeatureDecoder::setClipBox(const cglib::bbox2<float>& clipBox) {
-        if (clipBox != _clipBox) {
-            _clipBox = clipBox;
-            _layerGeometryCache.first.clear();
-            _layerGeometryCache.second.reset();
-        }
-    }
-
-    void MBVTFeatureDecoder::setFeatureIdOverride(bool featureIdOverride, long long tileIdOffset) {
-        _featureIdOverride = featureIdOverride;
-        _tileIdOffset = tileIdOffset;
+    void MBVTFeatureDecoder::invalidateGeometryCache() {
+        _layerGeometryCache.first.clear();
+        _layerGeometryCache.second.reset();
     }
 
     std::vector<std::string> MBVTFeatureDecoder::getLayerNames() const {

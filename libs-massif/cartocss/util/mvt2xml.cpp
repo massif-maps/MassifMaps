@@ -4,7 +4,7 @@
 #include <mapnikvt/SymbolizerGenerator.h>
 #include <mapnikvt/SymbolizerContext.h>
 #include <mapnikvt/MBVTFeatureDecoder.h>
-#include <mapnikvt/MBVTTileReader.h>
+#include <mapnikvt/LayerTileReader.h>
 
 #include <cartocss/CartoCSSMapLoader.h>
 
@@ -155,7 +155,7 @@ public:
         carto::mvt::MBVTFeatureDecoder decoder(tileData, _logger);
         decoder.setTransform(calculateTileTransform(tileId, targetTileId));
 
-        carto::mvt::MBVTTileReader reader(_map, _transformer, *_context, decoder, _logger);
+        carto::mvt::LayerTileReader reader(_map, _transformer, *_context, decoder, _logger);
         auto vectorTile = reader.readTile(targetTileId);
 
         std::ofstream ofs(destFilePath.c_str());

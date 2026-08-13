@@ -13,6 +13,8 @@
 #include <brotli/decode.h>
 #endif
 
+#include <stdext/zlib.h>
+
 namespace carto::mvt {
 
     /**
@@ -166,6 +168,35 @@ namespace carto::mvt {
             }
         }
 #endif
+
+        /**
+         * Decompress a tile payload, whatever it is wrapped in. Detects the container from its
+         * header rather than attempting trial decompression, so an already-uncompressed tile costs
+         * nothing.
+         * @param data Pointer to the tile data.
+         * @param size Size of the tile data.
+         * @param uncompressedData Output vector, only written when this returns true.
+         * @return True if the data was compressed and has been inflated, false if it is raw.
+         */
+        inline bool inflate_tile(const unsigned char* data, std::size_t size, std::vector<unsigned char>& uncompressedData) {
+            if (!data || size == 0) {
+                return false;
+            }
+            if (is_gzip(data, size)) {
+                return zlib::inflate_gzip(data, size, uncompressedData);
+            }
+#ifdef HAVE_ZSTD
+            if (is_zstd(data, size)) {
+                return inflate_zstd(data, size, uncompressedData);
+            }
+#endif
+#ifdef HAVE_BROTLI
+            if (is_brotli(data, size)) {
+                return inflate_brotli(data, size, uncompressedData);
+            }
+#endif
+            return false;
+        }
 
     }
 

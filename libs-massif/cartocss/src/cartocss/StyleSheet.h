@@ -54,7 +54,7 @@ namespace carto::css {
         using Element = std::variant<PropertyDeclaration, RuleSet>;
 
         Block() = default;
-        explicit Block(std::vector<Element> elements) : _elements(std::move(elements)) { }
+        explicit Block(std::vector<Element> elements); // defined below: Element needs RuleSet complete
 
         const std::vector<Element>& getElements() const { return _elements; }
 
@@ -74,6 +74,8 @@ namespace carto::css {
         std::vector<Selector> _selectors; // any may match, or empty
         Block _block;
     };
+
+    inline Block::Block(std::vector<Element> elements) : _elements(std::move(elements)) { }
 
     class VariableDeclaration final {
     public:

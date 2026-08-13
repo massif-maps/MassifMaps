@@ -7,16 +7,13 @@
 #ifndef _CARTO_MAPNIKVT_MBVTFEATUREDECODER_H_
 #define _CARTO_MAPNIKVT_MBVTFEATUREDECODER_H_
 
-#include "FeatureDecoder.h"
+#include "LayerFeatureDecoder.h"
 
 #include <memory>
 #include <mutex>
 #include <vector>
 #include <map>
 #include <set>
-
-#include <cglib/bbox.h>
-#include <cglib/mat.h>
 
 namespace vector_tile {
     class Tile;
@@ -25,31 +22,26 @@ namespace vector_tile {
 namespace carto::mvt {
     class Logger;
     
-    class MBVTFeatureDecoder : public FeatureDecoder {
+    class MBVTFeatureDecoder : public LayerFeatureDecoder {
     public:
         explicit MBVTFeatureDecoder(const std::vector<unsigned char>& data, std::shared_ptr<Logger> logger);
 
-        void setTransform(const cglib::mat3x3<float>& transform);
-        void setClipBox(const cglib::bbox2<float>& clipBox);
-        void setFeatureIdOverride(bool featureIdOverride, long long tileIdOffset = 0);
+        virtual std::vector<std::string> getLayerNames() const override;
 
-        std::vector<std::string> getLayerNames() const;
+        virtual bool hasLayer(const std::string& name) const override;
 
-        bool hasLayer(const std::string& name) const;
+        virtual std::shared_ptr<FeatureIterator> createLayerFeatureIterator(const std::string& name, const std::set<std::string>* fields) const override;
 
-        std::shared_ptr<FeatureIterator> createLayerFeatureIterator(const std::string& name, const std::set<std::string>* fields) const;
+        virtual bool findFeature(long long localId, std::string& layerName, Feature& feature) const override;
 
-        bool findFeature(long long localId, std::string& layerName, Feature& feature) const;
+    protected:
+        virtual void invalidateGeometryCache() override;
 
     private:
         class MBVTFeatureIterator;
 
         const std::shared_ptr<Logger> _logger;
 
-        cglib::mat3x3<float> _transform = cglib::mat3x3<float>::identity();
-        cglib::bbox2<float> _clipBox = cglib::bbox2<float>(cglib::vec2<float>(-0.125f, -0.125f), cglib::vec2<float>(1.125f, 1.125f));
-        bool _featureIdOverride = false;
-        long long _tileIdOffset = 0;
         std::shared_ptr<vector_tile::Tile> _tile;
         std::map<std::string, int> _layerMap;
 

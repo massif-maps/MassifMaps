@@ -27,6 +27,7 @@ else()
     "${mapnikvt_LIBS_DIR}/utf8/source"
     "${mapnikvt_LIBS_DIR}/cglib"
     "${mapnikvt_LIBS_DIR}/stdext"
+    "${mapnikvt_LIBS_DIR}/mlt/mlt/cpp/include"
   )
   add_library(mapnikvt OBJECT ${mapnikvt_SRC_FILES})
 endif()

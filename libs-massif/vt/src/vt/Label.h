@@ -19,7 +19,6 @@
 #include "Styles.h"
 
 #include <cstdint>
-#include <atomic>
 #include <memory>
 #include <array>
 #include <list>
@@ -60,27 +59,7 @@ namespace carto::vt {
         bool isValid() const { return (bool) _placement; }
 
         float getOpacity() const { return _opacity; }
-        // A fade in progress only moves one byte per glyph, which the renderer patches into the
-        // kept batch; a label appearing or disappearing changes what the batch HOLDS.
-        void setOpacity(float opacity) {
-            if (_opacity == opacity) {
-                return;
-            }
-            bool structural = (_opacity <= 0.0f || opacity <= 0.0f);
-            _opacity = opacity;
-            if (structural) {
-                touchDrawGeneration();
-            } else if (isDrawGenerationTracked()) {
-                _opacityGeneration.fetch_add(1, std::memory_order_relaxed);
-            }
-        }
-
-        // Bumped by everything the DRAWN vertex data depends on - placement, layout, opacity. The
-        // renderer keeps its 3D label batches across frames and this is what makes them stale
-        // (docs/rendering/06-labels.md); it is global, so any label invalidates every batch.
-        static std::uint64_t getDrawGeneration() { return _drawGeneration.load(std::memory_order_relaxed); }
-        // Fades only, and only of labels already in the batch: the renderer patches those in place.
-        static std::uint64_t getOpacityGeneration() { return _opacityGeneration.load(std::memory_order_relaxed); }
+        void setOpacity(float opacity) { _opacity = opacity; }
 
         bool isVisible() const { return _visible; }
         void setVisible(bool visible) { _visible = visible; }
@@ -166,9 +145,6 @@ namespace carto::vt {
         // How labelVsh must read a glyph offset (attribs[3]); see calculateVertexData.
         static constexpr std::int8_t WORLD_OFFSET = 0;       // already spanned, add it as is
         static constexpr std::int8_t CAMERA_AXIS_OFFSET = 1; // x/y on the camera axes
-        // Same, plus the perspective cancel the CPU used to bake into the offset (see labelVsh).
-        // The offset is then free of view depth, which is what a persistent batch needs.
-        static constexpr std::int8_t CAMERA_AXIS_DEPTH_OFFSET = 2;
 
         static constexpr unsigned int MAX_LABEL_VERTICES = 16384;
         static constexpr unsigned int MAX_LINE_FITTING_ITERATIONS = 1; // number of iterations for line glyph placement on corners
@@ -320,22 +296,7 @@ namespace carto::vt {
         float calculateCalloutLift(const ViewState& viewState) const;
         float calculateTerrainScaleFactor(const Placement& placement, const ViewState& viewState) const;
         float calculateTerrainScaleFactor(const cglib::vec3<double>& position, const ViewState& viewState) const;
-        // Only a 3D label counts: the batches kept across frames are the 3D pass's, and 2D road
-        // labels re-place and fade constantly.
-        bool isDrawGenerationTracked() const {
-            return _style->orientation == LabelOrientation::BILLBOARD_3D || _style->orientation == LabelOrientation::LINE_BILLBOARD_3D;
-        }
-        void touchDrawGeneration() const {
-            if (isDrawGenerationTracked()) {
-                _drawGeneration.fetch_add(1, std::memory_order_relaxed);
-            }
-        }
-        // Most placement churn is on labels nothing draws - measured over one city pan, 4184
-        // re-anchors of unplaced labels against 24 of visible ones - and those leave a kept batch
-        // alone, because the batch only ever held the drawn ones.
-        void touchDrawGenerationIfDrawn() const { if (_opacity > 0.0f) { touchDrawGeneration(); } }
-        // snapAnchor false leaves the anchor unsnapped, for the modes where labelVsh snaps instead.
-        void setupCoordinateSystem(const ViewState& viewState, const std::shared_ptr<const Placement>& placement, cglib::vec3<float>& origin, cglib::vec3<float>& xAxis, cglib::vec3<float>& yAxis, bool snapAnchor = true) const;
+        void setupCoordinateSystem(const ViewState& viewState, const std::shared_ptr<const Placement>& placement, cglib::vec3<float>& origin, cglib::vec3<float>& xAxis, cglib::vec3<float>& yAxis) const;
         void buildPointVertexData(VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const;
         // Appends the plates behind the text and behind the icon - each one three quads, so the
         // corners keep their radius at any text width, and each one drawn with its own style index
@@ -457,9 +418,6 @@ namespace carto::vt {
 
         std::shared_ptr<const Placement> _placement;
         mutable std::shared_ptr<const Placement> _cachedFlippedPlacement;
-
-        static inline std::atomic<std::uint64_t> _drawGeneration{0};
-        static inline std::atomic<std::uint64_t> _opacityGeneration{0};
 
         // Verdict of the last line layout, kept across cache rebuilds (and carried over by
         // snapPlacement) so the readability test below can be hysteretic.

@@ -43,25 +43,15 @@ namespace carto::vt {
         cglib::mat4x4<double> projectionMatrix = cglib::mat4x4<double>::identity();
         cglib::mat4x4<double> cameraMatrix = cglib::mat4x4<double>::identity();
         cglib::vec3<double> origin = cglib::vec3<double>::zero();
-        // Base the DRAWN label anchors are relative to. The renderer latches it so it survives a
-        // pan (docs/rendering/06-labels.md); everything else, the culler included, uses origin.
-        cglib::vec3<double> labelOrigin = cglib::vec3<double>::zero();
         cglib::frustum3<double> frustum = cglib::gl_projection_frustum(cglib::mat4x4<double>::identity());
         std::array<cglib::vec3<float>, 3> orientation = { { cglib::vec3<float>(1, 0, 0), cglib::vec3<float>(0, 1, 0), cglib::vec3<float>(0, 0, 1) } };
-        // Kept here because the label path needs both PER LABEL (Label::setupCoordinateSystem);
-        // deriving them there cost a 4x4 double inverse per label per frame, on the culler thread too.
-        cglib::mat4x4<double> viewProjMatrix = cglib::mat4x4<double>::identity();
-        cglib::mat4x4<double> invViewProjMatrix = cglib::mat4x4<double>::identity();
 
         ViewState() = default;
 
         explicit ViewState(const cglib::mat4x4<double>& projectionMatrix, const cglib::mat4x4<double>& cameraMatrix, float zoom, float rotation, float tilt, float aspect, float resolution) : zoom(zoom), rotation(rotation), tilt(tilt), aspect(aspect), resolution(resolution), zoomScale(std::pow(2.0f, -zoom)), projectionMatrix(projectionMatrix), cameraMatrix(cameraMatrix), origin(), frustum(), orientation() {
             cglib::mat4x4<double> invCameraMatrix = cglib::inverse(cameraMatrix);
             origin = cglib::proj_p(cglib::col_vector(invCameraMatrix, 3));
-            labelOrigin = origin;
-            viewProjMatrix = projectionMatrix * cameraMatrix;
-            invViewProjMatrix = cglib::inverse(viewProjMatrix);
-            frustum = cglib::gl_projection_frustum(viewProjMatrix);
+            frustum = cglib::gl_projection_frustum(projectionMatrix * cameraMatrix);
             for (int i = 0; i < 3; i++) {
                 orientation[i] = cglib::vec3<float>::convert(cglib::proj_o(cglib::col_vector(invCameraMatrix, i)));
             }

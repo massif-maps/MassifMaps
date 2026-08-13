@@ -232,15 +232,6 @@ namespace carto::vt {
         _terrainContentDepthShift = depthShift;
     }
 
-    void GLTileRenderer::setLabelBatchCaching(bool enabled) {
-        std::lock_guard<std::mutex> lock(_mutex);
-
-        if (_labelBatchCachingEnabled != enabled) {
-            _labelBatchCachingEnabled = enabled;
-            _labelBatchCache.valid = false;
-        }
-    }
-
     void GLTileRenderer::setTerrainDrapeFills(bool enabled, bool includeLines) {
         std::lock_guard<std::mutex> lock(_mutex);
 
@@ -1090,28 +1081,12 @@ namespace carto::vt {
 
     void GLTileRenderer::setViewState(const ViewState& viewState) {
         std::lock_guard<std::mutex> lock(_mutex);
-
-        // A kept label batch survives a camera TRANSLATION and nothing else: the rest moves either
-        // the glyph scale, the anchors or a style function (view::zoom/rotation/tilt).
-        // The glyph scale and the style functions (view::zoom/rotation/tilt) are baked into the
-        // buffers; the rest of the camera - position, focus distance, screen size - only reaches
-        // uniforms, which the replay recomputes.
-        if (viewState.zoom != _viewState.zoom || viewState.rotation != _viewState.rotation || viewState.tilt != _viewState.tilt
-            || viewState.planarProjection != _viewState.planarProjection) {
-            _labelBatchCache.valid = false;
-        }
-        if (!_labelOriginValid || cglib::length(viewState.origin - _labelOrigin) > LABEL_ORIGIN_LATCH_DISTANCE) {
-            _labelOrigin = viewState.origin;
-            _labelOriginValid = true;
-            _labelBatchCache.valid = false;
-        }
-
+        
         _cameraProjMatrix = viewState.projectionMatrix * viewState.cameraMatrix;
         _fullResolution = viewState.resolution;
         _halfResolution = viewState.resolution * 0.5f;
         _viewState = viewState;
         _viewState.zoomScale *= _scale;
-        _viewState.labelOrigin = _labelOrigin;
         _floatFuncCache.clear();
         _colorFuncCache.clear();
         _tileMatrixCache.clear();
@@ -1286,7 +1261,6 @@ namespace carto::vt {
         _compiledTileSurfaceMap.clear();
         _compiledTileGeometryMap.clear();
         _compiledLabelBatches.clear();
-        _labelBatchCache = LabelBatchCache();
         _overlayBuffer2D = FrameBuffer();
         _overlayBuffer3D = FrameBuffer();
         _screenQuad = CompiledQuad();
@@ -1374,9 +1348,6 @@ namespace carto::vt {
             deleteCompiledLabelBatch(it->second);
         }
         _compiledLabelBatches.clear();
-        _labelBatchCache.index = 0;
-        trimLabelBatchCache();
-        _labelBatchCache = LabelBatchCache();
         
         // Release screen and overlay FBOs
         deleteFrameBuffer(_overlayBuffer2D);
@@ -1762,36 +1733,12 @@ namespace carto::vt {
         glEnable(GL_CULL_FACE);
         glCullFace(GL_BACK);
 
-        // Label pass. The 3D one is kept across frames (see LabelBatchCache): its buffers carry no
-        // camera, so a pan only re-issues the draws.
+        // Label pass
         for (int pass = 0; pass < 2; pass++) {
-            if (!((pass == 0 && labels2D) || (pass == 1 && labels3D))) {
-                continue;
-            }
-            bool cacheable = (pass == 1 && _labelBatchCachingEnabled);
-            if (cacheable && _labelBatchCache.valid && _labelBatchCache.generation != Label::getDrawGeneration()) {
-                _labelBatchCache.valid = false;
-            }
-            if (cacheable && _labelBatchCache.valid) {
-                std::uint64_t opacityGeneration = Label::getOpacityGeneration();
-                if (_labelBatchCache.opacityGeneration != opacityGeneration) {
-                    patchLabelBatchOpacities();
-                    _labelBatchCache.opacityGeneration = opacityGeneration;
+            if ((pass == 0 && labels2D) || (pass == 1 && labels3D)) {
+                for (const BitmapLabelsPair& bitmapLabels : *_visibleBitmapLabelMap[pass]) {
+                    renderLabels(bitmapLabels.second, bitmapLabels.first);
                 }
-                replayLabelBatches();
-                continue;
-            }
-            _labelBatchCache.recording = cacheable;
-            _labelBatchCache.index = 0;
-            for (const BitmapLabelsPair& bitmapLabels : *_visibleBitmapLabelMap[pass]) {
-                renderLabels(bitmapLabels.second, bitmapLabels.first);
-            }
-            if (cacheable) {
-                _labelBatchCache.recording = false;
-                trimLabelBatchCache();
-                _labelBatchCache.generation = Label::getDrawGeneration();
-                _labelBatchCache.opacityGeneration = Label::getOpacityGeneration();
-                _labelBatchCache.valid = true;
             }
         }
         
@@ -2562,7 +2509,6 @@ namespace carto::vt {
         // Update built label lists and maps
         _labels = std::move(labels);
         _bitmapLabelMap = std::move(bitmapLabelMap);
-        _labelBatchCache.valid = false; // every Label object here is new
         VT_STAT_SET(labelsLive, static_cast<long long>(_labels.size()));
     }
 
@@ -3473,7 +3419,6 @@ namespace carto::vt {
 
     void GLTileRenderer::renderLabelPass(const std::vector<std::shared_ptr<Label>>& labels, const std::shared_ptr<const Bitmap>& bitmap, Label::DrawPass pass) {
         LabelBatchParameters labelBatchParams;
-        _labelBatchPreMatrix = cglib::mat4x4<double>::identity();
         std::shared_ptr<const TileLabel::Style> lastLabelStyle;
         int styleIndex = -1;
         int haloStyleIndex = -1;
@@ -3527,20 +3472,15 @@ namespace carto::vt {
                     labelBatchParams.parameterCount = 0;
                     labelBatchParams.scale = labelStyle->scale;
                     labelBatchParams.glyphRenderSize = labelStyle->glyphRenderSize;
-                    // A 3D label puts its anchors against the latched origin (see Label::
-                    // calculateVertexData); every other one stays camera-relative.
-                    bool latchedOrigin = _viewState.planarProjection && _viewState.focusDistance > 0
-                        && (labelStyle->orientation == LabelOrientation::BILLBOARD_3D || labelStyle->orientation == LabelOrientation::LINE_BILLBOARD_3D);
-                    const cglib::vec3<double>& batchOrigin = (latchedOrigin ? _viewState.labelOrigin : _viewState.origin);
-                    _labelBatchPreMatrix = cglib::mat4x4<double>::identity();
                     if (labelStyle->transform) {
                         float zoomScale = std::pow(2.0f, label->getTileId().zoom - _viewState.zoom);
                         cglib::vec2<float> translate = labelStyle->transform->translate() * zoomScale;
                         cglib::mat4x4<double> translateMatrix = cglib::mat4x4<double>::convert(_transformer->calculateTileTransform(label->getTileId(), translate, 1.0f));
                         cglib::mat4x4<double> tileMatrix = _transformer->calculateTileMatrix(label->getTileId(), 1);
-                        _labelBatchPreMatrix = tileMatrix * translateMatrix * cglib::inverse(tileMatrix);
+                        labelBatchParams.labelMatrix = _viewState.cameraMatrix * tileMatrix * translateMatrix * cglib::inverse(tileMatrix) * cglib::translate4_matrix(_viewState.origin);
+                    } else {
+                        labelBatchParams.labelMatrix = _viewState.cameraMatrix * cglib::translate4_matrix(_viewState.origin);
                     }
-                    labelBatchParams.labelMatrix = _viewState.cameraMatrix * _labelBatchPreMatrix * cglib::translate4_matrix(batchOrigin);
 
                     styleIndex = -1;
                     haloStyleIndex = -1;
@@ -3630,14 +3570,10 @@ namespace carto::vt {
             }
 
             VT_STAT_CLOCK(statClock);
-            std::size_t attribBegin = _labelAttribs.size();
             label->calculateVertexData(labelBatchParams.widthTable[styleIndex], _viewState, styleIndex, haloStyleIndex, _labelVertices, _labelOffsets, _labelNormals, _labelTexCoords, _labelAttribs, _labelIndices, pass, pass == Label::DrawPass::CALLOUT_LINE ? LabelPlateIndices() : plateIndices, pass == Label::DrawPass::CALLOUT_LINE ? -1 : secondaryStyleIndex, pass == Label::DrawPass::CALLOUT_LINE ? -1 : iconStyleIndex);
             VT_STAT_SPLIT(labelVertexBuildNs, statClock);
             VT_STAT_INC(labelsDrawnVertices);
 
-            if (_labelBatchCache.recording && _labelAttribs.size() > attribBegin) {
-                _labelBatchRanges.push_back({ label.get(), static_cast<std::uint32_t>(attribBegin), static_cast<std::uint32_t>(_labelAttribs.size()) });
-            }
             labelBatchParams.labelCount++;
 
             if (_labelVertices.size() >= 32768) { // flush the batch if largest vertex index is getting 'close' to 64k limit
@@ -5790,97 +5726,28 @@ namespace carto::vt {
         checkGLError();
     }
 
-    void GLTileRenderer::trimLabelBatchCache() {
-        while (_labelBatchCache.batches.size() > _labelBatchCache.index) {
-            deleteCompiledLabelBatch(_labelBatchCache.batches.back().compiledBatch);
-            _labelBatchCache.batches.pop_back();
+    void GLTileRenderer::renderLabelBatch(const LabelBatchParameters& labelBatchParams, const std::shared_ptr<const Bitmap>& bitmap) {
+        if (_labelIndices.empty()) {
+            return;
         }
-    }
 
-    void GLTileRenderer::patchLabelBatchOpacities() {
-        for (PersistentLabelBatch& batch : _labelBatchCache.batches) {
-            std::size_t dirtyBegin = batch.attribs.size(), dirtyEnd = 0;
-            for (const PersistentLabelBatch::LabelRange& range : batch.labelRanges) {
-                std::int8_t opacity = static_cast<std::int8_t>(range.label->getOpacity() * 127.0f);
-                if (batch.attribs[range.begin](2) == opacity) {
-                    continue;
-                }
-                for (std::uint32_t i = range.begin; i < range.end; i++) {
-                    batch.attribs[i](2) = opacity;
-                }
-                dirtyBegin = std::min<std::size_t>(dirtyBegin, range.begin);
-                dirtyEnd = std::max<std::size_t>(dirtyEnd, range.end);
-            }
-            if (dirtyBegin >= dirtyEnd) {
-                continue;
-            }
-            glBindBuffer(GL_ARRAY_BUFFER, batch.compiledBatch.attribsVBO);
-            glBufferSubData(GL_ARRAY_BUFFER, dirtyBegin * 4 * sizeof(std::int8_t), (dirtyEnd - dirtyBegin) * 4 * sizeof(std::int8_t), batch.attribs.data() + dirtyBegin);
-            VT_STAT_INC(labelBatchesPatched);
+        CompiledLabelBatch compiledLabelBatch;
+        auto itBatch = _compiledLabelBatches.find(_labelBatchCounter);
+        if (itBatch == _compiledLabelBatches.end()) {
+            createCompiledLabelBatch(compiledLabelBatch);
+            _compiledLabelBatches[_labelBatchCounter] = compiledLabelBatch;
+        } else {
+            compiledLabelBatch = itBatch->second;
         }
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-    }
+        _labelBatchCounter++;
 
-    void GLTileRenderer::replayLabelBatches() {
         bool useDerivatives = _glExtensions->GL_OES_standard_derivatives_supported();
+
+        const CompiledBitmap& compiledBitmap = buildCompiledBitmap(bitmap, false);
         const ShaderProgram& shaderProgram = buildShaderProgram("labels", labelVsh, labelFsh, LightingMode::GEOMETRY2D, RasterFilterMode::NONE, useDerivatives ? DERIVATIVES_FLAG : 0);
         useProgram(shaderProgram);
 
-        for (const PersistentLabelBatch& batch : _labelBatchCache.batches) {
-            // Only the camera is new; the anchors are against the latched origin, so this is the
-            // whole per-frame cost of the pass.
-            setupLabelBatchUniforms(shaderProgram, batch.params, _viewState.cameraMatrix * batch.preMatrix * cglib::translate4_matrix(_viewState.labelOrigin));
-
-            glBindBuffer(GL_ARRAY_BUFFER, batch.compiledBatch.verticesVBO);
-            enableVertexAttrib(shaderProgram.attribs[A_VERTEXPOSITION], 3, GL_FLOAT, GL_FALSE, 0, 0);
-
-            glBindBuffer(GL_ARRAY_BUFFER, batch.compiledBatch.offsetsVBO);
-            enableVertexAttrib(shaderProgram.attribs[A_VERTEXOFFSET], 3, GL_FLOAT, GL_FALSE, 0, 0);
-
-            if (batch.hasNormals && _lightingShader2D) {
-                glBindBuffer(GL_ARRAY_BUFFER, batch.compiledBatch.normalsVBO);
-                enableVertexAttrib(shaderProgram.attribs[A_VERTEXNORMAL], 3, GL_FLOAT, GL_FALSE, 0, 0);
-
-                _lightingShader2D->setupFunc(shaderProgram.program, _viewState);
-            }
-
-            glBindBuffer(GL_ARRAY_BUFFER, batch.compiledBatch.texCoordsVBO);
-            enableVertexAttrib(shaderProgram.attribs[A_VERTEXUV], 2, GL_SHORT, GL_FALSE, 0, 0);
-
-            glBindBuffer(GL_ARRAY_BUFFER, batch.compiledBatch.attribsVBO);
-            enableVertexAttrib(shaderProgram.attribs[A_VERTEXATTRIBS], 4, GL_BYTE, GL_FALSE, 0, 0);
-
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, batch.compiledBatch.indicesVBO);
-
-            const CompiledBitmap& compiledBitmap = buildCompiledBitmap(batch.bitmap, false);
-            glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, compiledBitmap.texture);
-            glUniform1i(shaderProgram.uniforms[U_BITMAP], 0);
-            glUniform2f(shaderProgram.uniforms[U_UVSCALE], 1.0f / batch.bitmap->width, 1.0f / batch.bitmap->height);
-
-            glDrawElements(GL_TRIANGLES, batch.indexCount, GL_UNSIGNED_SHORT, 0);
-            VT_STAT_INC(labelDraws);
-            VT_STAT_INC(labelBatchesReplayed);
-
-            glBindTexture(GL_TEXTURE_2D, 0);
-
-            disableVertexAttrib(shaderProgram.attribs[A_VERTEXATTRIBS]);
-            disableVertexAttrib(shaderProgram.attribs[A_VERTEXUV]);
-            if (batch.hasNormals && _lightingShader2D) {
-                disableVertexAttrib(shaderProgram.attribs[A_VERTEXNORMAL]);
-            }
-            disableVertexAttrib(shaderProgram.attribs[A_VERTEXOFFSET]);
-            disableVertexAttrib(shaderProgram.attribs[A_VERTEXPOSITION]);
-        }
-
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-        checkGLError();
-    }
-
-    void GLTileRenderer::setupLabelBatchUniforms(const ShaderProgram& shaderProgram, const LabelBatchParameters& labelBatchParams, const cglib::mat4x4<double>& labelMatrix) {
-        cglib::mat4x4<float> mvpMatrix = cglib::mat4x4<float>::convert(_viewState.projectionMatrix * labelMatrix);
+        cglib::mat4x4<float> mvpMatrix = cglib::mat4x4<float>::convert(_viewState.projectionMatrix * labelBatchParams.labelMatrix);
         glUniformMatrix4fv(shaderProgram.uniforms[U_MVPMATRIX], 1, GL_FALSE, mvpMatrix.data());
 
         // The antialias ramp has to be one screen pixel wide, and it is expressed in the texture
@@ -5895,49 +5762,10 @@ namespace carto::vt {
         // camera-relative, so these are the plain camera basis vectors.
         glUniform3f(shaderProgram.uniforms[U_LABELAXISX], _viewState.orientation[0](0), _viewState.orientation[0](1), _viewState.orientation[0](2));
         glUniform3f(shaderProgram.uniforms[U_LABELAXISY], _viewState.orientation[1](0), _viewState.orientation[1](1), _viewState.orientation[1](2));
-        glUniform1f(shaderProgram.uniforms[U_LABELDEPTHSCALE], _viewState.focusDistance > 0 ? 1.0f / _viewState.focusDistance : 0.0f);
-        // Same grid Label::setupCoordinateSystem snapped on, so the shader-side snap lands where
-        // the CPU one did; 0 turns it off, as the CPU snap is off without a planar projection.
-        bool snapAnchor = _viewState.planarProjection && _viewState.resolution > 0;
-        glUniform2f(shaderProgram.uniforms[U_LABELSCREENSIZE], snapAnchor ? _viewState.resolution * _viewState.aspect : 0.0f, snapAnchor ? _viewState.resolution : 0.0f);
         glUniform4fv(shaderProgram.uniforms[U_COLORTABLE], labelBatchParams.parameterCount, labelBatchParams.colorTable[0].data());
         glUniform1fv(shaderProgram.uniforms[U_WIDTHTABLE], labelBatchParams.parameterCount, labelBatchParams.widthTable.data());
         glUniform1fv(shaderProgram.uniforms[U_STROKEWIDTHTABLE], labelBatchParams.parameterCount, labelBatchParams.strokeWidthTable.data());
-    }
-
-    void GLTileRenderer::renderLabelBatch(const LabelBatchParameters& labelBatchParams, const std::shared_ptr<const Bitmap>& bitmap) {
-        if (_labelIndices.empty()) {
-            return;
-        }
-
-        CompiledLabelBatch compiledLabelBatch;
-        PersistentLabelBatch* persistentBatch = nullptr;
-        if (_labelBatchCache.recording) {
-            if (_labelBatchCache.index >= _labelBatchCache.batches.size()) {
-                _labelBatchCache.batches.emplace_back();
-                createCompiledLabelBatch(_labelBatchCache.batches.back().compiledBatch);
-            }
-            persistentBatch = &_labelBatchCache.batches[_labelBatchCache.index++];
-            compiledLabelBatch = persistentBatch->compiledBatch;
-        } else {
-            auto itBatch = _compiledLabelBatches.find(_labelBatchCounter);
-            if (itBatch == _compiledLabelBatches.end()) {
-                createCompiledLabelBatch(compiledLabelBatch);
-                _compiledLabelBatches[_labelBatchCounter] = compiledLabelBatch;
-            } else {
-                compiledLabelBatch = itBatch->second;
-            }
-            _labelBatchCounter++;
-        }
-
-        bool useDerivatives = _glExtensions->GL_OES_standard_derivatives_supported();
-
-        const CompiledBitmap& compiledBitmap = buildCompiledBitmap(bitmap, false);
-        const ShaderProgram& shaderProgram = buildShaderProgram("labels", labelVsh, labelFsh, LightingMode::GEOMETRY2D, RasterFilterMode::NONE, useDerivatives ? DERIVATIVES_FLAG : 0);
-        useProgram(shaderProgram);
-
-        setupLabelBatchUniforms(shaderProgram, labelBatchParams, labelBatchParams.labelMatrix);
-
+        
         glBindBuffer(GL_ARRAY_BUFFER, compiledLabelBatch.verticesVBO);
         glBufferData(GL_ARRAY_BUFFER, _labelVertices.size() * 3 * sizeof(float), _labelVertices.data(), GL_DYNAMIC_DRAW);
         enableVertexAttrib(shaderProgram.attribs[A_VERTEXPOSITION], 3, GL_FLOAT, GL_FALSE, 0, 0);
@@ -5973,16 +5801,6 @@ namespace carto::vt {
         glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(_labelIndices.size()), GL_UNSIGNED_SHORT, 0);
         VT_STAT_INC(labelDraws);
 
-        if (persistentBatch) {
-            persistentBatch->attribs.assign(_labelAttribs.data(), _labelAttribs.data() + _labelAttribs.size());
-            persistentBatch->labelRanges = std::move(_labelBatchRanges);
-            persistentBatch->params = labelBatchParams;
-            persistentBatch->preMatrix = _labelBatchPreMatrix;
-            persistentBatch->bitmap = bitmap;
-            persistentBatch->indexCount = static_cast<GLsizei>(_labelIndices.size());
-            persistentBatch->hasNormals = static_cast<bool>(_lightingShader2D);
-        }
-
         glBindTexture(GL_TEXTURE_2D, 0);
 
         disableVertexAttrib(shaderProgram.attribs[A_VERTEXATTRIBS]);
@@ -6006,7 +5824,6 @@ namespace carto::vt {
         _labelTexCoords.clear();
         _labelAttribs.clear();
         _labelIndices.clear();
-        _labelBatchRanges.clear();
 
         checkGLError();
     }

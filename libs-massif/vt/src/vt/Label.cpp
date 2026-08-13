@@ -171,7 +171,6 @@ namespace carto::vt {
         _glyphBBox = _variantBBoxes[_variantIndex];
         _textBBox = _variantTextBBoxes[_variantIndex];
         _cachedValid = false; // the quads are laid out around the pen, so they have to be rebuilt
-        touchDrawGenerationIfDrawn();
     }
 
     void Label::mergeGeometries(Label& label) {
@@ -327,7 +326,6 @@ namespace carto::vt {
     }
 
     void Label::snapPlacement(const Label& label) {
-        touchDrawGenerationIfDrawn();
         _placement = label._placement;
         _cachedFlippedPlacement = label._cachedFlippedPlacement;
         // The re-snapped placement below is rebuilt right here, before this label ever sees a
@@ -471,7 +469,6 @@ namespace carto::vt {
         _cachedFlippedPlacement.reset();
         _cachedPlacement.reset();
         _cachedValid = false;
-        touchDrawGenerationIfDrawn();
     }
 
     bool Label::updatePlacement(const ViewState& viewState) {
@@ -545,13 +542,11 @@ namespace carto::vt {
                 return false; // already unplaced, nothing changed - do not reset the opacity
             }
             _placement.reset();
-        touchDrawGenerationIfDrawn();
             return true;
         }
         VT_STAT_INC(placementSearches);
 
         _cachedFlippedPlacement.reset();
-        touchDrawGenerationIfDrawn();
         if (!_tilePoints.empty()) {
             _placement = findClippedPointPlacement(viewState, _tilePoints);
             if (_placement && !_tileLines.empty()) {
@@ -752,10 +747,6 @@ namespace carto::vt {
 
         // Build vertex data cache
         bool valid = isSurfaceFacingView(viewState, *placement);
-        float terrainFactor = calculateTerrainScaleFactor(*placement, viewState);
-        bool shaderDepthCancel = (viewState.planarProjection && viewState.focusDistance > 0
-                                  && (_style->orientation == LabelOrientation::BILLBOARD_3D
-                                      || _style->orientation == LabelOrientation::LINE_BILLBOARD_3D));
         if (pass == DrawPass::CALLOUT_LINE) {
             appendCalloutLine(size, scale, viewState, placement, styleIndex, vertices, offsets, normals, texCoords, attribs, indices);
             return valid;
@@ -796,12 +787,7 @@ namespace carto::vt {
             }
 
             cglib::vec3<float> origin, xAxis, yAxis;
-            setupCoordinateSystem(viewState, placement, origin, xAxis, yAxis, !shaderDepthCancel);
-            if (shaderDepthCancel) {
-                // Against the latched base, not the camera: the anchor then holds through a pan
-                // and the whole batch can be kept (see GLTileRenderer::LabelBatchCache).
-                origin = cglib::vec3<float>::convert(placement->position - viewState.labelOrigin);
-            }
+            setupCoordinateSystem(viewState, placement, origin, xAxis, yAxis);
             // The plates first: within one label the draw order is the index order, so anything
             // appended after the glyphs would cover them.
             cglib::vec2<float> calloutShift(0, 0);
@@ -812,17 +798,7 @@ namespace carto::vt {
             }
             appendLabelPlates(size, scale, placement, plates, calloutShift, origin, xAxis, yAxis, vertices, offsets, normals, texCoords, attribs, indices);
             vertices.fill(origin, _cachedVertices.size());
-            // A plain billboard hands the perspective cancel to the shader (CAMERA_AXIS_DEPTH_OFFSET):
-            // the offsets then carry no view depth, which is what a pan leaves alone. A callout keeps
-            // the CPU factor - its lift and shift are measured against the same scale.
-            if (shaderDepthCancel) {
-                billboardMode = CAMERA_AXIS_DEPTH_OFFSET;
-                float unscale = (terrainFactor > 0 ? 1.0f / terrainFactor : 1.0f);
-                for (const cglib::vec3<float>& vertex : _cachedVertices) {
-                    offsets.append(cglib::vec3<float>(vertex(0) * scale * unscale, vertex(1) * scale * unscale, 0));
-                }
-            }
-            else if (_style->orientation == LabelOrientation::BILLBOARD_3D || _style->orientation == LabelOrientation::LINE_BILLBOARD_3D || _style->orientation == LabelOrientation::CALLOUT) {
+            if (_style->orientation == LabelOrientation::BILLBOARD_3D || _style->orientation == LabelOrientation::LINE_BILLBOARD_3D || _style->orientation == LabelOrientation::CALLOUT) {
                 // Axes are the camera's: leave them to the shader (see labelVsh). A callout is
                 // lifted along the camera up axis by what the culler decided (see
                 // setCalloutOffset) and slid sideways so that the style's line anchor sits over
@@ -1518,13 +1494,14 @@ namespace carto::vt {
         _cachedMVPMatrix = mvpMatrix;
     }
 
-    void Label::setupCoordinateSystem(const ViewState& viewState, const std::shared_ptr<const Placement>& placement, cglib::vec3<float>& origin, cglib::vec3<float>& xAxis, cglib::vec3<float>& yAxis, bool snapAnchor) const {
+    void Label::setupCoordinateSystem(const ViewState& viewState, const std::shared_ptr<const Placement>& placement, cglib::vec3<float>& origin, cglib::vec3<float>& xAxis, cglib::vec3<float>& yAxis) const {
         cglib::vec3<double> position = placement->position;
-        if (snapAnchor && viewState.planarProjection && _style->orientation != LabelOrientation::LINE && viewState.resolution > 0) {
+        if (viewState.planarProjection && _style->orientation != LabelOrientation::LINE && viewState.resolution > 0) {
             // Snap the label anchor to a quarter of the (normalized) pixel grid: glyphs then
             // rasterize at a stable subpixel phase, which keeps text noticeably sharper and
             // shimmer-free (tangram-style screen-space anchoring)
-            cglib::vec4<double> clipPos = cglib::transform(cglib::vec4<double>(position(0), position(1), position(2), 1), viewState.viewProjMatrix);
+            cglib::mat4x4<double> viewProjMatrix = viewState.projectionMatrix * viewState.cameraMatrix;
+            cglib::vec4<double> clipPos = cglib::transform(cglib::vec4<double>(position(0), position(1), position(2), 1), viewProjMatrix);
             if (clipPos(3) > 0) {
                 double screenWidth = viewState.resolution * viewState.aspect;
                 double screenHeight = viewState.resolution;
@@ -1533,7 +1510,7 @@ namespace carto::vt {
                 double snappedX = std::round(pixelX * 4.0) * 0.25;
                 double snappedY = std::round(pixelY * 4.0) * 0.25;
                 cglib::vec3<double> snappedNDC((snappedX / screenWidth - 0.5) * 2.0, (snappedY / screenHeight - 0.5) * 2.0, clipPos(2) / clipPos(3));
-                position = cglib::transform_point(snappedNDC, viewState.invViewProjMatrix);
+                position = cglib::transform_point(snappedNDC, cglib::inverse(viewProjMatrix));
             }
         }
         origin = cglib::vec3<float>::convert(position - viewState.origin);

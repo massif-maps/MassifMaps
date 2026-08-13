@@ -169,9 +169,6 @@ namespace carto::vt {
          * is only correct while geometry is subdivided to follow it.
          */
         void setTerrainContentDepthShift(float depthShift);
-        // Keep the 3D label batches across frames (docs/rendering/06-labels.md). Off rebuilds and
-        // re-uploads them every frame, which is how the two are A/B'd.
-        void setLabelBatchCaching(bool enabled);
         // Clearance a draped LINE is drawn in front of the ground with, in world units, constant in
         // METRES at every distance (see applyDepthBias). A line chords over the relief between its
         // vertices by a fixed number of metres; a clip- or ndc-constant bias cannot pay for that
@@ -462,36 +459,6 @@ namespace carto::vt {
             LabelBatchParameters() : labelCount(0), parameterCount(0), scale(0), glyphRenderSize(64), labelMatrix(cglib::mat4x4<double>::identity()), colorTable(), widthTable(), strokeWidthTable() { }
         };
 
-        // One batch of the 3D label pass, kept across frames: nothing in its buffers depends on
-        // where the camera is, so a pan only re-issues the draw (docs/rendering/06-labels.md).
-        struct PersistentLabelBatch {
-            // What one label contributed, so a fade can be patched in place instead of rebuilding.
-            struct LabelRange {
-                const Label* label;
-                std::uint32_t begin;
-                std::uint32_t end;
-            };
-
-            CompiledLabelBatch compiledBatch;
-            LabelBatchParameters params;
-            std::vector<cglib::vec4<std::int8_t>> attribs; // CPU copy of the attribs VBO
-            std::vector<LabelRange> labelRanges;
-            // The label matrix without the camera: labelMatrix = cameraMatrix * preMatrix * translate(labelOrigin).
-            cglib::mat4x4<double> preMatrix = cglib::mat4x4<double>::identity();
-            std::shared_ptr<const Bitmap> bitmap;
-            GLsizei indexCount = 0;
-            bool hasNormals = false;
-        };
-
-        struct LabelBatchCache {
-            std::vector<PersistentLabelBatch> batches;
-            std::uint64_t generation = 0; // Label::getDrawGeneration() the batches were built at
-            std::uint64_t opacityGeneration = 0; // ... and the fade state they were last patched to
-            std::size_t index = 0; // next slot to fill while recording
-            bool valid = false;
-            bool recording = false;
-        };
-
         // Frames between two sweeps of the compiled-resource maps for expired owners (see
         // endFrame). The sweep touches every entry the tile cache still holds - measured at
         // ~800 entries and 0.5-0.9 ms a frame - and all it buys is releasing a VBO a few
@@ -501,10 +468,6 @@ namespace carto::vt {
         // bits carry the per-tile mask values, so the pass only runs while a frame has fewer target
         // tiles than this.
         static constexpr int SINGLE_BLEND_STENCIL_BIT = 128;
-        // How far the camera may move before the drawn label anchors are re-based (internal units,
-        // ~38 m each). Large enough that a pan almost never pays for it, small enough that float32
-        // anchors keep sub-millimetre precision.
-        static constexpr double LABEL_ORIGIN_LATCH_DISTANCE = 256.0;
         static constexpr float HALO_RADIUS_SCALE = 2.5f; // the scaling factor for halo radius
         // Screen pixels per halo unit. The halo used to be converted with the glyph's RENDER size,
         // which was one constant when every glyph was rastered at 27 texels; the raster ladder made
@@ -622,10 +585,6 @@ namespace carto::vt {
         void renderTileBitmap(const TileId& sourceTileId, const TileId& targetTileId, float blend, float opacity, const std::shared_ptr<TileBitmap>& bitmap);
         void renderTileGeometry(const TileId& sourceTileId, const TileId& targetTileId, float blend, float opacity, float tileSize, const std::shared_ptr<TileGeometry>& geometry);
         void renderLabelBatch(const LabelBatchParameters& labelBatchParams, const std::shared_ptr<const Bitmap>& bitmap);
-        void setupLabelBatchUniforms(const ShaderProgram& shaderProgram, const LabelBatchParameters& labelBatchParams, const cglib::mat4x4<double>& labelMatrix);
-        void replayLabelBatches();
-        void trimLabelBatchCache();
-        void patchLabelBatchOpacities();
 
         const CompiledBitmap& buildCompiledBitmap(const std::shared_ptr<const Bitmap>& bitmap, bool genMipmaps);
         const CompiledBitmap& buildCompiledTileBitmap(const std::shared_ptr<TileBitmap>& tileBitmap);
@@ -846,16 +805,6 @@ namespace carto::vt {
         std::map<std::weak_ptr<const TileSurface>, CompiledSurface, std::owner_less<std::weak_ptr<const TileSurface>>> _compiledTileSurfaceMap;
         std::map<int, CompiledLabelBatch> _compiledLabelBatches;
         int _labelBatchCounter = 0;
-        LabelBatchCache _labelBatchCache;
-        bool _labelBatchCachingEnabled = true;
-        // Base the drawn label anchors are relative to. Re-latched only when the camera has left
-        // it by LABEL_ORIGIN_LATCH_DISTANCE, so a pan does not move the anchors; the culler keeps
-        // working against viewState.origin.
-        cglib::vec3<double> _labelOrigin = cglib::vec3<double>::zero();
-        bool _labelOriginValid = false;
-        // The tile-local part of the current batch's label matrix (a style transform), or identity.
-        cglib::mat4x4<double> _labelBatchPreMatrix = cglib::mat4x4<double>::identity();
-        std::vector<PersistentLabelBatch::LabelRange> _labelBatchRanges; // of the batch being built
 
         VertexArray<cglib::vec3<float>> _labelVertices;
         VertexArray<cglib::vec3<float>> _labelOffsets;

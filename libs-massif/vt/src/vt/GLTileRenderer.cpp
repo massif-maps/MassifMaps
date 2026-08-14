@@ -134,6 +134,9 @@ namespace {
 }
 
 namespace carto::vt {
+    // The widest shadow texel that still reads as a shadow rather than a wash, in metres. It bounds
+    // how far the shadowed ground may reach for a given map resolution (see calculateShadowViewProj).
+    static constexpr double TARGET_SHADOW_TEXEL_METERS = 10.0;
     GLTileRenderer::GLTileRenderer(std::shared_ptr<GLExtensions> glExtensions, std::shared_ptr<const TileTransformer> transformer, float scale) :
         _tileSurfaceBuilder(transformer), _glExtensions(std::move(glExtensions)), _transformer(std::move(transformer)), _scale(scale)
     {
@@ -296,14 +299,9 @@ namespace carto::vt {
         _terrainShadowStrength = strength;
         _terrainShadowSoftness = softness;
         _terrainShadowViewProjs = lightViewProjs;
-        // Pages beyond the cascade count do not exist in the atlas. Their matrices are pushed
-        // clean out of the light box, so the fragment stage's "inside this cascade?" test always
-        // fails for them and it can never sample past the last real page - which with CLAMP_TO_EDGE
-        // would silently read the neighbouring cascade's edge column.
-        for (int i = _terrainShadowCascades; i < MAX_SHADOW_CASCADES; i++) {
-            _terrainShadowViewProjs[i] = cglib::translate4_matrix(cglib::vec3<double>(4, 0, 0)) * _terrainShadowViewProjs[0];
-            _terrainShadowBiases[i] = _terrainShadowBiases[0];
-        }
+        // Pages beyond the cascade count do not exist in the atlas, and the receiver lookup is
+        // compiled for the count (see shadowReceiverFlags), so those slots are never uploaded and
+        // never sampled - which is what keeps CLAMP_TO_EDGE from reading a neighbouring page.
     }
 
     void GLTileRenderer::setFog(const Color& color, float startDistance, float distance) {
@@ -474,6 +472,14 @@ namespace carto::vt {
                 // shadows were blobs and got worse the more the view was tilted. At z16 this gives
                 // about a kilometre and a metre-scale texel instead.
                 double allowedGround = std::min(std::max(3.0 * slabExtent, 4.0 * groundNear), 60000.0 * metersToInternal);
+                // And never further than the map can REPRESENT. The outer cascade's texel is its
+                // extent over the resolution, so shadowing 50 km through a 1024 page buys texels
+                // wider than the ridges casting into them - a grey wash, not a shadow. Bounding the
+                // range by (target texel x resolution) instead ties how far shadows reach to how
+                // well they can be drawn, which is what the eye reads. Measured on the Crosscall,
+                // z14 tilt 30: 3.3/13.1/52.6 m texels and 205 caster tiles unbounded, against
+                // 1.2/1.9/8.4 m and 110 tiles here, with nothing visibly lost in the distance.
+                allowedGround = std::min(allowedGround, TARGET_SHADOW_TEXEL_METERS * metersToInternal * std::max(1, mapSize));
                 allowedGround = std::max(allowedGround, 1000.0 * metersToInternal);
                 if (maxDistance > 0) {
                     allowedGround = maxDistance; // an explicit distance is the caller's decision
@@ -689,6 +695,38 @@ namespace carto::vt {
                 }
             }
         }
+        // Snap the box to a world-anchored lattice of whole shadow texels, and quantise its size so
+        // the texel size itself only changes in steps. Fitted exactly, the box breathes with every
+        // camera movement: the same piece of ground falls in a different texel each frame, so every
+        // shadow edge crawls and the interior of a large shadow flickers. Snapped, the matrix is
+        // bit-identical while the camera moves inside one step - which both stabilises the image and
+        // lets the caller skip the caster pass entirely.
+        auto snapAxis = [mapSize](double& lo, double& hi, bool depthAxis) {
+            double size = hi - lo;
+            if (!(mapSize > 0) || !(size > 0)) {
+                return;
+            }
+            // A ladder of eighths of a power of two: at most 12.5% of the box is wasted, and the
+            // step changes rarely enough that the texel size is stable in practice.
+            double step = std::pow(2.0, std::floor(std::log2(size)) - 3.0);
+            double quantSize = std::ceil(size / step) * step;
+            // The depth axis has no texels; quantising it keeps the depth range - and with it the
+            // shader's normalised bias - constant while the camera moves.
+            double grid = (depthAxis ? step : quantSize / mapSize);
+            if (quantSize - size < grid) {
+                quantSize += step; // snapping moves the low edge down by up to one grid cell
+                grid = (depthAxis ? step : quantSize / mapSize);
+            }
+            lo = std::floor(lo / grid) * grid;
+            hi = lo + quantSize;
+        };
+        // The SIDES are snapped before the casters are culled against them, so the cull can use the
+        // final box and a one-texel margin. Culling against the unsnapped box needed a slop of 20%
+        // of its width to cover the growth, which on the outer cascade is kilometres of ground and
+        // dozens of tiles drawn into a page they cannot reach.
+        snapAxis(l, r, false);
+        snapAxis(b, t, false);
+        double marginX = (r - l) / std::max(1, mapSize), marginY = (t - b) / std::max(1, mapSize);
         for (const TileId& tileId : casterTileIds) {
             cglib::mat4x4<double> tileMatrix = calculateTileMatrix(tileId, 1.0f);
             double tileL = 0, tileR = 0, tileB = 0, tileT = 0, tileN = 0, tileF = 0;
@@ -710,48 +748,19 @@ namespace carto::vt {
                 }
             }
             // Light-space xy is constant along a light ray, so a tile whose xy does not overlap
-            // the box cannot cast into it however tall it is. Skipping those keeps the depth range
-            // - and with it the resolution of the normalised bias - tied to what really casts,
-            // instead of to the whole tile cover, and it is also the list of tiles the caster pass
-            // has to draw for this cascade: a near cascade covers a fraction of the tiles, and
-            // drawing the rest into it is pure cost. The margin covers the box growth from the
-            // texel snapping below.
-            double marginX = (r - l) * 0.2, marginY = (t - b) * 0.2;
+            // the box cannot cast into it however tall it is - the tile's own box is taken over the
+            // CASTER slab, so the throw of a distant mountain is already in it. Skipping the rest
+            // keeps the depth range - and with it the resolution of the normalised bias - tied to
+            // what really casts, and it is also the list of tiles the caster pass has to draw for
+            // this cascade: a near cascade covers a fraction of the tiles, and drawing the rest
+            // into it is pure cost.
             if (tileR < l - marginX || tileL > r + marginX || tileT < b - marginY || tileB > t + marginY) {
                 continue;
             }
             n = std::min(n, tileN); f = std::max(f, tileF);
             boxCasterTileIds.push_back(tileId);
         }
-        // Snap the box to a world-anchored lattice of whole shadow texels, and quantise its size
-        // so the texel size itself only changes in steps. Fitted exactly, the box breathes with
-        // every camera movement: the same piece of ground falls in a different texel each frame,
-        // so every shadow edge crawls and the interior of a large shadow flickers. Snapped, the
-        // matrix is bit-identical while the camera moves inside one step - which both stabilises
-        // the image and lets the caller skip the caster pass entirely.
-        if (mapSize > 0) {
-            for (int axis = 0; axis < 3; axis++) {
-                double& lo = (axis == 0 ? l : axis == 1 ? b : n);
-                double& hi = (axis == 0 ? r : axis == 1 ? t : f);
-                double size = hi - lo;
-                if (!(size > 0)) {
-                    continue;
-                }
-                // A ladder of eighths of a power of two: at most 12.5% of the box is wasted, and
-                // the step changes rarely enough that the texel size is stable in practice.
-                double step = std::pow(2.0, std::floor(std::log2(size)) - 3.0);
-                double quantSize = std::ceil(size / step) * step;
-                // The depth axis has no texels; quantising it keeps the depth range - and with it
-                // the shader's normalised bias - constant while the camera moves.
-                double grid = (axis == 2 ? step : quantSize / mapSize);
-                if (quantSize - size < grid) {
-                    quantSize += step; // snapping moves the low edge down by up to one grid cell
-                    grid = (axis == 2 ? step : quantSize / mapSize);
-                }
-                lo = std::floor(lo / grid) * grid;
-                hi = lo + quantSize;
-            }
-        }
+        snapAxis(n, f, true);
         lightViewProj = cglib::ortho4_matrix(l, r, b, t, n, f) * lightView;
         // The depth the box spans, in metres. The shader's bias is a fraction of the normalised
         // depth, so a bias that is constant there grows in WORLD terms as the box grows - which is
@@ -791,7 +800,12 @@ namespace carto::vt {
                 for (const TileId& tileId : tileIds) {
                     cglib::mat4x4<double> surfaceFrame = calculateTileMatrix(tileId, 1.0f);
                     cglib::mat4x4<float> mvpMatrix = cglib::mat4x4<float>::convert(lightViewProj * surfaceFrame);
-                    setupTerrainUniforms(shaderProgram, tileId, surfaceFrame, true);
+                    // No elevation yet: the tile would be drawn as a flat plane at sea level, which
+                    // is not the terrain it stands for and is not what the receiver uses either (a
+                    // tile without elevation receives no shadow at all).
+                    if (!setupTerrainUniforms(shaderProgram, tileId, surfaceFrame, true)) {
+                        continue;
+                    }
                     glUniformMatrix4fv(shaderProgram.uniforms[U_MVPMATRIX], 1, GL_FALSE, mvpMatrix.data());
                     glDrawElements(GL_TRIANGLES, tileSurface->getIndicesCount(), GL_UNSIGNED_SHORT, 0);
             VT_STAT_INC(surfaceDraws);
@@ -1964,6 +1978,83 @@ namespace carto::vt {
         // Fully transparent fog, or a zero range, means the style/app did not ask for any: the
         // programs are then built without it and cost nothing.
         return (_fogColor[3] > 0.0f && _fogDistance > _fogStartDistance ? FOG_FLAG : 0);
+    }
+
+    unsigned int GLTileRenderer::shadowReceiverFlags() const {
+        // The cascade count is compiled in: it is a matrix per vertex and a highp varying per
+        // fragment each, which is what a shadowed surface actually costs
+        // (docs/rendering/08-lighting-sky-fog.md).
+        unsigned int cascadeFlag = (_terrainShadowCascades >= 4 ? SHADOW_CASCADES4_FLAG :
+                                    _terrainShadowCascades == 3 ? SHADOW_CASCADES3_FLAG :
+                                    _terrainShadowCascades == 2 ? SHADOW_CASCADES2_FLAG : 0);
+        return TERRAIN_SHADOW_FLAG | DERIVATIVES_FLAG | cascadeFlag;
+    }
+
+    unsigned int GLTileRenderer::surfaceShadowFlags() const {
+        // The terrain surface is drawn over the whole screen - as the drape, and again as the paint
+        // over it - so its shadow is resolved once into a screen-space mask and sampled from there.
+        // The pass that PRODUCES the mask is the one draw that still computes it analytically.
+        if (_terrainShadowMaskPass) {
+            return shadowReceiverFlags() | SHADOW_MASK_OUT_FLAG;
+        }
+        return shadowReceiverFlags() | (_terrainShadowMaskTexture != 0 ? SHADOW_MASK_IN_FLAG : 0);
+    }
+
+    void GLTileRenderer::setupSurfaceShadowUniforms(const ShaderProgram& shaderProgram, const cglib::mat4x4<double>& surfaceFrame, bool hasElevation) {
+        if (!_terrainShadowMaskPass && _terrainShadowMaskTexture != 0) {
+            glActiveTexture(GL_TEXTURE2);
+            glBindTexture(GL_TEXTURE_2D, _terrainShadowMaskTexture);
+            glUniform1i(shaderProgram.uniforms[U_SHADOWMASK], 2);
+            glActiveTexture(GL_TEXTURE0);
+            glUniform2f(shaderProgram.uniforms[U_SHADOWMASKSCALE], _terrainShadowMaskScale(0), _terrainShadowMaskScale(1));
+            return;
+        }
+        std::array<cglib::mat4x4<float>, MAX_SHADOW_CASCADES> shadowMatrices;
+        for (int i = 0; i < _terrainShadowCascades; i++) {
+            shadowMatrices[i] = cglib::mat4x4<float>::convert(_terrainShadowViewProjs[i] * surfaceFrame);
+        }
+        glUniformMatrix4fv(shaderProgram.uniforms[U_SHADOWMATRIX], _terrainShadowCascades, GL_FALSE, shadowMatrices[0].data());
+        glActiveTexture(GL_TEXTURE2);
+        glBindTexture(GL_TEXTURE_2D, _terrainShadowTexture);
+        glUniform1i(shaderProgram.uniforms[U_SHADOWTEXTURE], 2);
+        glActiveTexture(GL_TEXTURE0);
+        // A tile whose elevation has not arrived is drawn FLAT, at zero. In the mountains that is a
+        // kilometre below everything around it, so the surrounding terrain shadows every texel of it
+        // and it reads as a solid dark block the exact shape of the tile. It has no relief to shadow
+        // anyway, so it takes no shadow until its heights are there.
+        glUniform4f(shaderProgram.uniforms[U_SHADOWPARAMS], 1.0f / std::max(1, _terrainShadowMapSize), hasElevation ? _terrainShadowStrength : 0.0f, _terrainShadowSoftness, 1.0f / _terrainShadowCascades);
+        glUniform4f(shaderProgram.uniforms[U_SHADOWBIAS], _terrainShadowBiases[0], _terrainShadowBiases[1], _terrainShadowBiases[2], _terrainShadowBiases[3]);
+    }
+
+    void GLTileRenderer::setTerrainShadowMask(GLuint texture, float invScreenWidth, float invScreenHeight) {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        _terrainShadowMaskTexture = texture;
+        _terrainShadowMaskScale = cglib::vec2<float>(invScreenWidth, invScreenHeight);
+    }
+
+    int GLTileRenderer::renderTerrainShadowMask(const std::vector<TileId>& tileIds) {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        resetProgramState(); // another renderer may have bound its own program since the last draw
+
+        if (!(_terrainRegularGrid && _terrainMode && _terrainTextureProvider)) {
+            return 0;
+        }
+        if (_terrainShadowTexture == 0 || _terrainShadowStrength <= 0.0f || !_terrainLighting.enabled) {
+            return 0;
+        }
+        // The same geometry, elevation and normal the surface will be drawn with - the fill path IS
+        // that draw, with a fragment shader that stops at the shadow value.
+        _terrainShadowMaskPass = true;
+        int draws = 0;
+        for (const TileId& tileId : tileIds) {
+            renderTileSurfaceFill(tileId, Color(1.0f, 1.0f, 1.0f, 1.0f), true);
+            draws++;
+        }
+        _terrainShadowMaskPass = false;
+        checkGLError();
+        return draws;
     }
 
     void GLTileRenderer::useProgram(const ShaderProgram& shaderProgram) {
@@ -3780,7 +3871,7 @@ namespace carto::vt {
             // colour-masked or invisible, and lighting them is pure shader cost.
             bool litSurface = lit && terrainFlag != 0 && _terrainLighting.enabled;
             bool shadowedSurface = litSurface && _terrainShadowTexture != 0 && _terrainShadowStrength > 0.0f;
-            unsigned int lightFlags = (litSurface ? TERRAIN_LIGHT_FLAG : 0) | (shadowedSurface ? TERRAIN_SHADOW_FLAG | DERIVATIVES_FLAG : 0);
+            unsigned int lightFlags = (litSurface ? TERRAIN_LIGHT_FLAG : 0) | (shadowedSurface ? surfaceShadowFlags() : 0);
             const ShaderProgram& shaderProgram = buildShaderProgram("tilesurfacefill", backgroundVsh, backgroundFsh, LightingMode::NONE, RasterFilterMode::NONE, terrainFlag | lightFlags | fogFlag());
             useProgram(shaderProgram);
             setupFogUniforms(shaderProgram);
@@ -3793,19 +3884,7 @@ namespace carto::vt {
                 setupTerrainLightingUniforms(shaderProgram, tileId, surfaceFrame);
             }
             if (shadowedSurface) {
-                std::array<cglib::mat4x4<float>, MAX_SHADOW_CASCADES> shadowMatrices;
-                for (int i = 0; i < MAX_SHADOW_CASCADES; i++) {
-                    shadowMatrices[i] = cglib::mat4x4<float>::convert(_terrainShadowViewProjs[i] * surfaceFrame);
-                }
-                glUniformMatrix4fv(shaderProgram.uniforms[U_SHADOWMATRIX], MAX_SHADOW_CASCADES, GL_FALSE, shadowMatrices[0].data());
-                glActiveTexture(GL_TEXTURE2);
-                glBindTexture(GL_TEXTURE_2D, _terrainShadowTexture);
-                glUniform1i(shaderProgram.uniforms[U_SHADOWTEXTURE], 2);
-                glActiveTexture(GL_TEXTURE0);
-                // A tile drawn flat because its elevation has not arrived has no relief to shadow,
-                // and the terrain around it would shadow every texel of it (see renderTileSurfaceDrape).
-                glUniform4f(shaderProgram.uniforms[U_SHADOWPARAMS], 1.0f / std::max(1, _terrainShadowMapSize), hasElevation ? _terrainShadowStrength : 0.0f, _terrainShadowSoftness, 1.0f / _terrainShadowCascades);
-                glUniform4f(shaderProgram.uniforms[U_SHADOWBIAS], _terrainShadowBiases[0], _terrainShadowBiases[1], _terrainShadowBiases[2], _terrainShadowBiases[3]);
+                setupSurfaceShadowUniforms(shaderProgram, surfaceFrame, hasElevation);
             }
 
             glBindBuffer(GL_ARRAY_BUFFER, compiledTileSurface.vertexGeometryVBO);
@@ -4355,7 +4434,7 @@ namespace carto::vt {
         // way to know whether the layer asked for contours (the interval arrives as a uniform, set
         // by the shared normal-map setup func). The NORMALMAP path does the same for the same
         // reason - harmless when contours are off, since the branch is not taken.
-        unsigned int lightFlags = (litSurface ? TERRAIN_LIGHT_FLAG : 0) | (shadowedSurface ? TERRAIN_SHADOW_FLAG : 0) | DERIVATIVES_FLAG | (asGround ? GROUND_BASE_FLAG : 0);
+        unsigned int lightFlags = (litSurface ? TERRAIN_LIGHT_FLAG : 0) | (shadowedSurface ? surfaceShadowFlags() : DERIVATIVES_FLAG) | (asGround ? GROUND_BASE_FLAG : 0);
 
         int draws = 0;
         for (std::size_t paintIndex = 0; paintIndex < paintTiles.size(); paintIndex++) {
@@ -4384,17 +4463,7 @@ namespace carto::vt {
                     setupTerrainLightingUniforms(shaderProgram, tileId, surfaceFrame);
                 }
                 if (shadowedSurface) {
-                    std::array<cglib::mat4x4<float>, MAX_SHADOW_CASCADES> shadowMatrices;
-                    for (int i = 0; i < MAX_SHADOW_CASCADES; i++) {
-                        shadowMatrices[i] = cglib::mat4x4<float>::convert(_terrainShadowViewProjs[i] * surfaceFrame);
-                    }
-                    glUniformMatrix4fv(shaderProgram.uniforms[U_SHADOWMATRIX], MAX_SHADOW_CASCADES, GL_FALSE, shadowMatrices[0].data());
-                    glActiveTexture(GL_TEXTURE2);
-                    glBindTexture(GL_TEXTURE_2D, _terrainShadowTexture);
-                    glUniform1i(shaderProgram.uniforms[U_SHADOWTEXTURE], 2);
-                    glActiveTexture(GL_TEXTURE0);
-                    glUniform4f(shaderProgram.uniforms[U_SHADOWPARAMS], 1.0f / std::max(1, _terrainShadowMapSize), hasElevation ? _terrainShadowStrength : 0.0f, _terrainShadowSoftness, 1.0f / _terrainShadowCascades);
-                    glUniform4f(shaderProgram.uniforms[U_SHADOWBIAS], _terrainShadowBiases[0], _terrainShadowBiases[1], _terrainShadowBiases[2], _terrainShadowBiases[3]);
+                    setupSurfaceShadowUniforms(shaderProgram, surfaceFrame, hasElevation);
                 }
 
                 float slopeScale = _terrainPaint.heightScale * calculateTerrainPaintReliefBoost(resolved.second.metersPerTexel) / resolved.second.metersPerTexel;
@@ -4751,7 +4820,7 @@ namespace carto::vt {
             bool lit = _terrainLighting.enabled && _terrainMode && static_cast<bool>(_terrainTextureProvider);
             bool shadowed = lit && _terrainShadowTexture != 0 && _terrainShadowStrength > 0.0f;
             bool hasElevation = true;
-            unsigned int flags = (_terrainMode && _terrainTextureProvider ? TERRAIN_FLAG | TERRAIN_VTF_FLAG : 0) | DRAPE_FLAG | (lit ? TERRAIN_LIGHT_FLAG : 0) | (shadowed ? TERRAIN_SHADOW_FLAG | DERIVATIVES_FLAG : 0);
+            unsigned int flags = (_terrainMode && _terrainTextureProvider ? TERRAIN_FLAG | TERRAIN_VTF_FLAG : 0) | DRAPE_FLAG | (lit ? TERRAIN_LIGHT_FLAG : 0) | (shadowed ? surfaceShadowFlags() : 0);
             const ShaderProgram& shaderProgram = buildShaderProgram("tilesurfacedrape", backgroundVsh, backgroundFsh, LightingMode::NONE, RasterFilterMode::NONE, flags | fogFlag());
             useProgram(shaderProgram);
             setupFogUniforms(shaderProgram);
@@ -4763,22 +4832,7 @@ namespace carto::vt {
                 setupTerrainLightingUniforms(shaderProgram, tileId, surfaceFrame);
             }
             if (shadowed) {
-                std::array<cglib::mat4x4<float>, MAX_SHADOW_CASCADES> shadowMatrices;
-                for (int i = 0; i < MAX_SHADOW_CASCADES; i++) {
-                    shadowMatrices[i] = cglib::mat4x4<float>::convert(_terrainShadowViewProjs[i] * surfaceFrame);
-                }
-                glUniformMatrix4fv(shaderProgram.uniforms[U_SHADOWMATRIX], MAX_SHADOW_CASCADES, GL_FALSE, shadowMatrices[0].data());
-                glActiveTexture(GL_TEXTURE2);
-                glBindTexture(GL_TEXTURE_2D, _terrainShadowTexture);
-                glUniform1i(shaderProgram.uniforms[U_SHADOWTEXTURE], 2);
-                glActiveTexture(GL_TEXTURE0);
-                // A tile whose elevation has not arrived is drawn FLAT, at zero. In the mountains
-                // that is a kilometre below everything around it, so the surrounding terrain
-                // shadows every texel of it and it reads as a solid dark block the exact shape of
-                // the tile - most visible far away, where elevation arrives last. It has no relief
-                // to shadow anyway, so it takes no shadow until its heights are there.
-                glUniform4f(shaderProgram.uniforms[U_SHADOWPARAMS], 1.0f / std::max(1, _terrainShadowMapSize), hasElevation ? _terrainShadowStrength : 0.0f, _terrainShadowSoftness, 1.0f / _terrainShadowCascades);
-                glUniform4f(shaderProgram.uniforms[U_SHADOWBIAS], _terrainShadowBiases[0], _terrainShadowBiases[1], _terrainShadowBiases[2], _terrainShadowBiases[3]);
+                setupSurfaceShadowUniforms(shaderProgram, surfaceFrame, hasElevation);
             }
 
             glBindBuffer(GL_ARRAY_BUFFER, compiledTileSurface.vertexGeometryVBO);
@@ -5159,13 +5213,13 @@ namespace carto::vt {
         const ShaderProgram* shaderProgramPtr = nullptr;
         switch (geometry->getType()) {
         case TileGeometry::Type::POINT:
-            shaderProgramPtr = &buildShaderProgram("point", pointVsh, pointFsh, LightingMode::GEOMETRY2D, RasterFilterMode::NONE, (styleParams.pattern ? PATTERN_FLAG : 0) | (styleParams.translate ? TRANSFORM_FLAG : 0) | (styleOffsetting ? OFFSET_FLAG : 0) | terrainFlag | (shadowReceiver ? TERRAIN_SHADOW_FLAG | DERIVATIVES_FLAG : 0) | fogFlag());
+            shaderProgramPtr = &buildShaderProgram("point", pointVsh, pointFsh, LightingMode::GEOMETRY2D, RasterFilterMode::NONE, (styleParams.pattern ? PATTERN_FLAG : 0) | (styleParams.translate ? TRANSFORM_FLAG : 0) | (styleOffsetting ? OFFSET_FLAG : 0) | terrainFlag | (shadowReceiver ? shadowReceiverFlags() : 0) | fogFlag());
             break;
         case TileGeometry::Type::LINE:
-            shaderProgramPtr = &buildShaderProgram("line", lineVsh, lineFsh, LightingMode::GEOMETRY2D, RasterFilterMode::NONE, (styleParams.pattern ? PATTERN_FLAG : 0) | (styleParams.translate ? TRANSFORM_FLAG : 0) | (styleOffsetting ? OFFSET_FLAG : 0) | terrainFlag | (shadowReceiver ? TERRAIN_SHADOW_FLAG | DERIVATIVES_FLAG : 0) | fogFlag());
+            shaderProgramPtr = &buildShaderProgram("line", lineVsh, lineFsh, LightingMode::GEOMETRY2D, RasterFilterMode::NONE, (styleParams.pattern ? PATTERN_FLAG : 0) | (styleParams.translate ? TRANSFORM_FLAG : 0) | (styleOffsetting ? OFFSET_FLAG : 0) | terrainFlag | (shadowReceiver ? shadowReceiverFlags() : 0) | fogFlag());
             break;
         case TileGeometry::Type::POLYGON:
-            shaderProgramPtr = &buildShaderProgram("polygon", polygonVsh, polygonFsh, LightingMode::GEOMETRY2D, RasterFilterMode::NONE, (styleParams.pattern ? PATTERN_FLAG : 0) | (styleParams.translate ? TRANSFORM_FLAG : 0) | terrainFlag | (shadowReceiver ? TERRAIN_SHADOW_FLAG | DERIVATIVES_FLAG : 0) | fogFlag());
+            shaderProgramPtr = &buildShaderProgram("polygon", polygonVsh, polygonFsh, LightingMode::GEOMETRY2D, RasterFilterMode::NONE, (styleParams.pattern ? PATTERN_FLAG : 0) | (styleParams.translate ? TRANSFORM_FLAG : 0) | terrainFlag | (shadowReceiver ? shadowReceiverFlags() : 0) | fogFlag());
             break;
         case TileGeometry::Type::POLYGON3D:
             if (_shadowCasterViewProj) {
@@ -5178,7 +5232,10 @@ namespace carto::vt {
             // against a terrain surface pre-pass (renderGeometry3D seeds the 3D overlay's
             // depth buffer with it), so they need the same base-clearance slack as draped
             // 2D geometry - otherwise the lower walls are clipped by the ground on slopes.
-            shaderProgramPtr = &buildShaderProgram("polygon3d", polygon3DVsh, polygon3DFsh, LightingMode::GEOMETRY3D, RasterFilterMode::NONE, (styleParams.pattern ? PATTERN_FLAG : 0) | (styleParams.translate ? TRANSFORM_FLAG : 0) | (terrainVTF ? TERRAIN_VTF_FLAG | TERRAIN_FLAG : 0) | (shadowReceiver ? TERRAIN_SHADOW_FLAG | DERIVATIVES_FLAG : 0) | fogFlag());
+            // SHADOW_SINGLE_TAP: an extrusion cannot use the terrain's screen-space mask - that holds
+            // the ground's shadow, not its own - so it is the one receiver still running the kernel
+            // per fragment, over a wall that is shadowed or lit almost in one piece.
+            shaderProgramPtr = &buildShaderProgram("polygon3d", polygon3DVsh, polygon3DFsh, LightingMode::GEOMETRY3D, RasterFilterMode::NONE, (styleParams.pattern ? PATTERN_FLAG : 0) | (styleParams.translate ? TRANSFORM_FLAG : 0) | (terrainVTF ? TERRAIN_VTF_FLAG | TERRAIN_FLAG : 0) | (shadowReceiver ? shadowReceiverFlags() | SHADOW_SINGLE_TAP_FLAG : 0) | fogFlag());
             break;
         default:
             return;
@@ -5218,10 +5275,10 @@ namespace carto::vt {
         if (shadowReceiver) {
             cglib::mat4x4<double> shadowFrame = calculateTileMatrix(sourceTileId, 1.0f / vertexGeomLayoutParams.coordScale);
             std::array<cglib::mat4x4<float>, MAX_SHADOW_CASCADES> shadowMatrices;
-            for (int i = 0; i < MAX_SHADOW_CASCADES; i++) {
+            for (int i = 0; i < _terrainShadowCascades; i++) {
                 shadowMatrices[i] = cglib::mat4x4<float>::convert(_terrainShadowViewProjs[i] * shadowFrame);
             }
-            glUniformMatrix4fv(shaderProgram.uniforms[U_SHADOWMATRIX], MAX_SHADOW_CASCADES, GL_FALSE, shadowMatrices[0].data());
+            glUniformMatrix4fv(shaderProgram.uniforms[U_SHADOWMATRIX], _terrainShadowCascades, GL_FALSE, shadowMatrices[0].data());
             glActiveTexture(GL_TEXTURE2);
             glBindTexture(GL_TEXTURE_2D, _terrainShadowTexture);
             glUniform1i(shaderProgram.uniforms[U_SHADOWTEXTURE], 2);

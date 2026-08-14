@@ -221,6 +221,11 @@ namespace carto::vt {
         // to a world lattice of whole mapSize texels, so it repeats within one step. One call per
         // cascade, each covering its own slice of the view distance.
         bool calculateShadowViewProj(const std::vector<TileId>& tileIds, const std::vector<TileId>& casterTileIds, const cglib::vec3<float>& sunDir, const std::vector<std::pair<double, double> >& tileHeights, double minHeight, double maxHeight, float maxDistanceMeters, int mapSize, int cascade, int cascadeCount, std::vector<TileId>& boxCasterTileIds, double& depthRangeMeters, double& texelMeters, cglib::mat4x4<double>& lightViewProj) const;
+        // The terrain's shadow resolved once per screen pixel, into a half-resolution mask the
+        // surface draws then sample by screen position instead of computing it each time.
+        void setTerrainShadowMask(GLuint texture, float invScreenWidth, float invScreenHeight);
+        // Draws the mask for the given tiles into the bound framebuffer. Returns the draw count.
+        int renderTerrainShadowMask(const std::vector<TileId>& tileIds);
         // Moves as the caster geometry does: 3D extrusions fade in by growing, so the sum of
         // their blend factors says how far the shadow map has drifted from what is on screen.
         float shadowCasterFadeSignature() const;
@@ -482,6 +487,11 @@ namespace carto::vt {
         bool isEmptyBlendRequired(CompOp compOp) const;
 
         unsigned int fogFlag() const;
+        // TERRAIN_SHADOW plus the cascade count the receiver lookup is compiled for.
+        unsigned int shadowReceiverFlags() const;
+        // Same, for the terrain surface: reads the screen-space mask, or produces it.
+        unsigned int surfaceShadowFlags() const;
+        void setupSurfaceShadowUniforms(const ShaderProgram& shaderProgram, const cglib::mat4x4<double>& surfaceFrame, bool hasElevation);
         // Binds the program only when it is not the one already bound (see the definition).
         void useProgram(const ShaderProgram& shaderProgram);
         // Forgets which program is bound. Must be called wherever another renderer may have
@@ -672,6 +682,9 @@ namespace carto::vt {
         int _terrainShadowMapSize = 0;
         int _terrainShadowCascades = 1;
         std::array<float, MAX_SHADOW_CASCADES> _terrainShadowBiases = { { 0.0f, 0.0f, 0.0f, 0.0f } };
+        GLuint _terrainShadowMaskTexture = 0;
+        cglib::vec2<float> _terrainShadowMaskScale = cglib::vec2<float>(0.0f, 0.0f);
+        bool _terrainShadowMaskPass = false; // the draw that produces the mask, not one that reads it
         float _terrainShadowStrength = 0.0f;
         float _terrainShadowSoftness = 1.0f;
         Color _fogColor;

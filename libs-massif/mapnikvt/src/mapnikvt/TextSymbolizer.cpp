@@ -6,6 +6,7 @@
 #include "Expression.h"
 #include "StringUtils.h"
 #include "vt/FontManager.h"
+#include "vt/FontNames.h"
 
 #include <vector>
 #include <tuple>
@@ -435,25 +436,31 @@ namespace massif::mvt {
         std::shared_ptr<const vt::Font> font = symbolizerContext.getSettings().getFallbackFont();
         std::string faceName = _faceName.getValue(exprContext);
         std::string fontSetName = _fontSetName.getValue(exprContext);
+
+        // A face name is a CSS-like list of its own ("Roboto, Helvetica Neue"), so a single
+        // 'face-name' and a font set of several both end up as one chain of names
+        std::vector<std::string> faceNames;
         if (!faceName.empty()) {
-            // Keep the fallback font if the requested face can not be resolved
-            if (std::shared_ptr<const vt::Font> mainFont = symbolizerContext.getFontManager()->getFont(faceName, font)) {
-                font = mainFont;
-            }
+            faceNames = vt::parseFontNames(faceName);
         }
         else if (!fontSetName.empty()) {
             for (const std::shared_ptr<FontSet>& fontSet : _fontSets) {
                 if (fontSet->getName() == fontSetName) {
-                    const std::vector<StringProperty>& faceNames = fontSet->getFaceNames();
-                    for (auto it = faceNames.rbegin(); it != faceNames.rend(); it++) {
-                        std::string faceName = it->getValue(exprContext);
-                        std::shared_ptr<const vt::Font> mainFont = symbolizerContext.getFontManager()->getFont(faceName, font);
-                        if (mainFont) {
-                            font = mainFont;
-                        }
+                    for (const StringProperty& faceNameProp : fontSet->getFaceNames()) {
+                        std::vector<std::string> names = vt::parseFontNames(faceNameProp.getValue(exprContext));
+                        faceNames.insert(faceNames.end(), names.begin(), names.end());
                     }
                     break;
                 }
+            }
+        }
+
+        // Built from the back, so the first name that resolves becomes the main font and the ones
+        // after it its glyph fallbacks. An unresolved name is skipped, and a list where nothing
+        // resolves keeps the fallback font.
+        for (auto it = faceNames.rbegin(); it != faceNames.rend(); it++) {
+            if (std::shared_ptr<const vt::Font> mainFont = symbolizerContext.getFontManager()->getFont(*it, font)) {
+                font = mainFont;
             }
         }
 

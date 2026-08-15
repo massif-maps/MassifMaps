@@ -3,7 +3,8 @@ project(vt)
 set(vt_SRC_DIR "${PROJECT_SOURCE_DIR}/src/vt")
 set(vt_LIBS_DIR "${PROJECT_SOURCE_DIR}/../../libs-external")
 
-file(GLOB vt_SRC_FILES "${vt_SRC_DIR}/*.cpp" "${vt_SRC_DIR}/*.h")
+# CONFIGURE_DEPENDS: without it a newly added source file is silently left out of the build
+file(GLOB vt_SRC_FILES CONFIGURE_DEPENDS "${vt_SRC_DIR}/*.cpp" "${vt_SRC_DIR}/*.h")
 
 if(EXCLUDE_GL)
   list(FILTER vt_SRC_FILES EXCLUDE REGEX ".*(GLExtensions|GLShaderManager|GLTileRenderer).cpp$")

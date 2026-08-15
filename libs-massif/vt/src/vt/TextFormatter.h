@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_VT_TEXTFORMATTER_H_
-#define _CARTO_VT_TEXTFORMATTER_H_
+#ifndef _MASSIF_VT_TEXTFORMATTER_H_
+#define _MASSIF_VT_TEXTFORMATTER_H_
 
 #include "Font.h"
 
@@ -16,7 +16,7 @@
 #include <cglib/vec.h>
 #include <cglib/bbox.h>
 
-namespace carto::vt {
+namespace massif::vt {
     class TextFormatter final {
     public:
         struct Options {

@@ -10,7 +10,7 @@
 
 #include <boost/algorithm/string.hpp>
 
-namespace carto::mvt {
+namespace massif::mvt {
     std::string generateLineCapModeString(vt::LineCapMode lineCapMode) {
         auto it = std::find_if(getLineCapModeTable().begin(), getLineCapModeTable().end(), [lineCapMode](const auto& keyVal) {
             return keyVal.second == lineCapMode;

@@ -1,6 +1,6 @@
 #include "TileTransformer.h"
 
-namespace carto::vt {
+namespace massif::vt {
     DefaultTileTransformer::DefaultVertexTransformer::DefaultVertexTransformer(const TileId& tileId) :
         _tileId(tileId)
     {

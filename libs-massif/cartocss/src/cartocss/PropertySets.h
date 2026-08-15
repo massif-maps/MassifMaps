@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_CARTOCSS_PROPERTYSETS_H_
-#define _CARTO_CARTOCSS_PROPERTYSETS_H_
+#ifndef _MASSIF_CARTOCSS_PROPERTYSETS_H_
+#define _MASSIF_CARTOCSS_PROPERTYSETS_H_
 
 #include "Value.h"
 #include "Expression.h"
@@ -22,7 +22,7 @@
 #include <functional>
 #include <algorithm>
 
-namespace carto::css {
+namespace massif::css {
     class Property final {
     public:
         using RuleSpecificity = std::tuple<int, int, int, int>; // layers, filters, classes, order

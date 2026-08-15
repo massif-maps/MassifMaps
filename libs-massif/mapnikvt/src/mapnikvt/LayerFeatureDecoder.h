@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_MAPNIKVT_LAYERFEATUREDECODER_H_
-#define _CARTO_MAPNIKVT_LAYERFEATUREDECODER_H_
+#ifndef _MASSIF_MAPNIKVT_LAYERFEATUREDECODER_H_
+#define _MASSIF_MAPNIKVT_LAYERFEATUREDECODER_H_
 
 #include "FeatureDecoder.h"
 
@@ -17,7 +17,7 @@
 #include <cglib/bbox.h>
 #include <cglib/mat.h>
 
-namespace carto::mvt {
+namespace massif::mvt {
     /**
      * A feature decoder for tile formats whose features are addressed by layer name - MVT and MLT.
      * Holds the tile-to-target transform and the clip box both of them need, so LayerTileReader

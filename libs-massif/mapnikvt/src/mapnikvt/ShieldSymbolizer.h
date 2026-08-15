@@ -4,12 +4,12 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_MAPNIKVT_SHIELDSYMBOLIZER_H_
-#define _CARTO_MAPNIKVT_SHIELDSYMBOLIZER_H_
+#ifndef _MASSIF_MAPNIKVT_SHIELDSYMBOLIZER_H_
+#define _MASSIF_MAPNIKVT_SHIELDSYMBOLIZER_H_
 
 #include "TextSymbolizer.h"
 
-namespace carto::mvt {
+namespace massif::mvt {
     class ShieldSymbolizer : public TextSymbolizer {
     public:
         explicit ShieldSymbolizer(const Expression& text, std::vector<std::shared_ptr<FontSet>> fontSets, std::shared_ptr<Logger> logger) : TextSymbolizer(text, std::move(fontSets), std::move(logger)) {

@@ -1,6 +1,6 @@
 #include "Result.h"
 
-namespace carto::sgre {
+namespace massif::sgre {
     picojson::value Result::serialize() const {
         picojson::object resultObj;
         resultObj["status"] = picojson::value(static_cast<std::int64_t>(_status));

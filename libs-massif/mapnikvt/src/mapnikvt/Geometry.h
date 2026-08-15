@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_MAPNIKVT_GEOMETRY_H_
-#define _CARTO_MAPNIKVT_GEOMETRY_H_
+#ifndef _MASSIF_MAPNIKVT_GEOMETRY_H_
+#define _MASSIF_MAPNIKVT_GEOMETRY_H_
 
 #include <memory>
 #include <list>
@@ -14,7 +14,7 @@
 
 #include <cglib/vec.h>
 
-namespace carto::mvt {
+namespace massif::mvt {
     class PointGeometry final {
     public:
         using Vertices = std::vector<cglib::vec2<float>>;

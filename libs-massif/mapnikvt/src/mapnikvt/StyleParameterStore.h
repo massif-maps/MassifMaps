@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_MAPNIKVT_NUTIPARAMETERSTORE_H_
-#define _CARTO_MAPNIKVT_NUTIPARAMETERSTORE_H_
+#ifndef _MASSIF_MAPNIKVT_STYLEPARAMETERSTORE_H_
+#define _MASSIF_MAPNIKVT_STYLEPARAMETERSTORE_H_
 
 #include "Value.h"
 
@@ -14,9 +14,9 @@
 #include <mutex>
 #include <string>
 
-namespace carto::mvt {
+namespace massif::mvt {
     /**
-     * The current value of every nuti parameter, behind one indirection.
+     * The current value of every style parameter, behind one indirection.
      *
      * Decoded tiles capture the store, not the values: a style property that reads nothing but
      * parameters (a colour, a width) is turned into a function that is evaluated at render time,
@@ -24,10 +24,10 @@ namespace carto::mvt {
      * Properties that feed a filter, a text or a marker choice are still resolved at decode time
      * and still need the tiles re-read - see Property::isLiveCapable.
      */
-    class NutiParameterStore final {
+    class StyleParameterStore final {
     public:
-        NutiParameterStore() : _values(std::make_shared<const std::map<std::string, Value>>()) { }
-        explicit NutiParameterStore(std::map<std::string, Value> values) : _values(std::make_shared<const std::map<std::string, Value>>(std::move(values))) { }
+        StyleParameterStore() : _values(std::make_shared<const std::map<std::string, Value>>()) { }
+        explicit StyleParameterStore(std::map<std::string, Value> values) : _values(std::make_shared<const std::map<std::string, Value>>(std::move(values))) { }
 
         std::shared_ptr<const std::map<std::string, Value>> getValues() const {
             std::lock_guard<std::mutex> lock(_mutex);

@@ -4,13 +4,13 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_MAPNIKVT_TORQUEMARKERSYMBOLIZER_H_
-#define _CARTO_MAPNIKVT_TORQUEMARKERSYMBOLIZER_H_
+#ifndef _MASSIF_MAPNIKVT_TORQUEMARKERSYMBOLIZER_H_
+#define _MASSIF_MAPNIKVT_TORQUEMARKERSYMBOLIZER_H_
 
 #include "Symbolizer.h"
 #include "FunctionBuilder.h"
 
-namespace carto::mvt {
+namespace massif::mvt {
     class TorqueMarkerSymbolizer : public Symbolizer {
     public:
         explicit TorqueMarkerSymbolizer(std::shared_ptr<Logger> logger) : Symbolizer(std::move(logger)) {

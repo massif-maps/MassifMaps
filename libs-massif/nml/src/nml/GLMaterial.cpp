@@ -219,7 +219,7 @@ namespace {
     )GLSL";
 }
 
-namespace carto::nml {
+namespace massif::nml {
     GLMaterial::GLColorOrTexture::GLColorOrTexture() :
         textureId(),
         texture(),

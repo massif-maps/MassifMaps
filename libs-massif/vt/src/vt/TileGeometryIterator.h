@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_VT_TILEGEOMETRYITERATOR_H_
-#define _CARTO_VT_TILEGEOMETRYITERATOR_H_
+#ifndef _MASSIF_VT_TILEGEOMETRYITERATOR_H_
+#define _MASSIF_VT_TILEGEOMETRYITERATOR_H_
 
 #include "TileId.h"
 #include "Tile.h"
@@ -18,7 +18,7 @@
 
 #include <cglib/mat.h>
 
-namespace carto::vt {
+namespace massif::vt {
     class TileGeometryIterator final {
     public:
         using TriangleCoords = std::array<cglib::vec3<float>, 3>;

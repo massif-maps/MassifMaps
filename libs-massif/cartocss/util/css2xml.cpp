@@ -14,7 +14,7 @@
 
 #include <pugixml.hpp>
 
-class Logger : public carto::mvt::Logger {
+class Logger : public massif::mvt::Logger {
 public:
     virtual void write(Severity severity, const std::string& msg) override {
         if (severity == Severity::WARNING) {
@@ -26,7 +26,7 @@ public:
     }
 };
 
-class AssetLoader : public carto::css::CartoCSSMapLoader::AssetLoader {
+class AssetLoader : public massif::css::CartoCSSMapLoader::AssetLoader {
 public:
     explicit AssetLoader(const std::string& folder) : _folder(folder) { }
 
@@ -65,11 +65,11 @@ void compileCartoCSS(const std::string& sourceProjectFile, const std::string& co
     auto logger = std::make_shared<Logger>();
     auto loader = std::make_shared<AssetLoader>(folder);
 
-    carto::css::CartoCSSMapLoader cartoCSSLoader(loader, logger);
-    std::shared_ptr<carto::mvt::Map> map = cartoCSSLoader.loadMapProject(file);
+    massif::css::CartoCSSMapLoader cartoCSSLoader(loader, logger);
+    std::shared_ptr<massif::mvt::Map> map = cartoCSSLoader.loadMapProject(file);
 
-    auto symbolizerGenerator = std::make_shared<carto::mvt::SymbolizerGenerator>(logger);
-    carto::mvt::MapGenerator mapGen(symbolizerGenerator, logger);
+    auto symbolizerGenerator = std::make_shared<massif::mvt::SymbolizerGenerator>(logger);
+    massif::mvt::MapGenerator mapGen(symbolizerGenerator, logger);
     std::shared_ptr<pugi::xml_document> docPtr = mapGen.generateMap(*map);
     docPtr->save_file(compiledProjectFile.c_str());
 }

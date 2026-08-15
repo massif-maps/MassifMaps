@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_SGRE_RESULT_H_
-#define _CARTO_SGRE_RESULT_H_
+#ifndef _MASSIF_SGRE_RESULT_H_
+#define _MASSIF_SGRE_RESULT_H_
 
 #include "Base.h"
 #include "Instruction.h"
@@ -15,7 +15,7 @@
 
 #include <picojson/picojson.h>
 
-namespace carto::sgre {
+namespace massif::sgre {
     class Result final {
     public:
         enum class Status {

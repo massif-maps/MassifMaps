@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_MAPNIKVT_STYLE_H_
-#define _CARTO_MAPNIKVT_STYLE_H_
+#ifndef _MASSIF_MAPNIKVT_STYLE_H_
+#define _MASSIF_MAPNIKVT_STYLE_H_
 
 #include "Expression.h"
 #include "Predicate.h"
@@ -18,7 +18,7 @@
 #include <vector>
 #include <unordered_map>
 
-namespace carto::mvt {
+namespace massif::mvt {
     class Rule;
     
     class Style final {

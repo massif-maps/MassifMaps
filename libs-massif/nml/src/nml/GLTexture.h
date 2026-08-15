@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_NML_GLTEXTURE_H_
-#define _CARTO_NML_GLTEXTURE_H_
+#ifndef _MASSIF_NML_GLTEXTURE_H_
+#define _MASSIF_NML_GLTEXTURE_H_
 
 #include "GLBase.h"
 
@@ -15,7 +15,7 @@
 #include <string>
 #include <unordered_set>
 
-namespace carto::nml {
+namespace massif::nml {
     class Texture;
     class Sampler;
     class GLResourceManager;

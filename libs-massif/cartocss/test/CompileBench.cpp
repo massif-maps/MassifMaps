@@ -33,7 +33,7 @@
 #include <cstdlib>
 #include <ostream>
 
-using namespace carto::css;
+using namespace massif::css;
 
 namespace {
     std::string g_baseDir;
@@ -71,7 +71,7 @@ namespace {
             picojson::value extendsMapDoc = loadMapDocument(mapDoc.get("extends").get<std::string>());
             mapDoc.swap(extendsMapDoc);
             const picojson::object& overrideObj = extendsMapDoc.get<picojson::object>();
-            const std::set<std::string> mergeCases { "nutiparameters", "constants" };
+            const std::set<std::string> mergeCases { "styleparameters", "nutiparameters", "constants" };
             for (auto it = overrideObj.begin(); it != overrideObj.end(); it++) {
                 if (mergeCases.count(it->first) && mapDoc.contains(it->first)) {
                     picojson::value& subObj = mapDoc.get(it->first);
@@ -96,7 +96,7 @@ namespace {
         if (auto p = std::get_if<AttachmentPredicate>(&pred)) ss << ":" << p->getAttachment();
         if (auto p = std::get_if<OpPredicate>(&pred)) ss << ":" << static_cast<int>(p->getOp()) << ":" << p->getFieldOrVar().getName();
         if (auto p = std::get_if<OpConstPredicate>(&pred)) ss << ":" << static_cast<int>(p->getOp()) << ":" << p->getFieldOrVar().getName();
-        if (auto p = std::get_if<OpNutiPredicate>(&pred)) ss << ":" << static_cast<int>(p->getOp()) << ":" << p->getFieldOrVar().getName() << ":" << p->getFieldOrVar2().getName();
+        if (auto p = std::get_if<OpParamPredicate>(&pred)) ss << ":" << static_cast<int>(p->getOp()) << ":" << p->getFieldOrVar().getName() << ":" << p->getFieldOrVar2().getName();
         return ss.str();
     }
 

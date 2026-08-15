@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_VT_BITMAPMANAGER_H_
-#define _CARTO_VT_BITMAPMANAGER_H_
+#ifndef _MASSIF_VT_BITMAPMANAGER_H_
+#define _MASSIF_VT_BITMAPMANAGER_H_
 
 #include "Bitmap.h"
 
@@ -14,7 +14,7 @@
 #include <map>
 #include <mutex>
 
-namespace carto::vt {
+namespace massif::vt {
     class BitmapManager {
     public:
         class BitmapLoader {

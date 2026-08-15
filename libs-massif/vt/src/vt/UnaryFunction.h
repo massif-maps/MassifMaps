@@ -4,13 +4,13 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_VT_UNARYFUNCTION_H_
-#define _CARTO_VT_UNARYFUNCTION_H_
+#ifndef _MASSIF_VT_UNARYFUNCTION_H_
+#define _MASSIF_VT_UNARYFUNCTION_H_
 
 #include <memory>
 #include <functional>
 
-namespace carto::vt {
+namespace massif::vt {
     template <typename Result, typename Argument>
     class UnaryFunction final {
     public:
@@ -48,8 +48,8 @@ namespace carto::vt {
 
 namespace std {
     template <typename Result, typename Argument>
-    struct hash<carto::vt::UnaryFunction<Result, Argument>> {
-        std::size_t operator() (const carto::vt::UnaryFunction<Result, Argument>& func) const {
+    struct hash<massif::vt::UnaryFunction<Result, Argument>> {
+        std::size_t operator() (const massif::vt::UnaryFunction<Result, Argument>& func) const {
             return std::hash<Result>()(func.value()) + std::hash<void*>()(func.function().get()) * 2;
         }
     };

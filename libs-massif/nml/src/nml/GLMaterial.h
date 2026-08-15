@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_NML_GLMATERIAL_H_
-#define _CARTO_NML_GLMATERIAL_H_
+#ifndef _MASSIF_NML_GLMATERIAL_H_
+#define _MASSIF_NML_GLMATERIAL_H_
 
 #include "GLBase.h"
 
@@ -14,7 +14,7 @@
 #include <set>
 #include <string>
 
-namespace carto::nml {
+namespace massif::nml {
     class Material;
     class ColorOrTexture;
     class GLTexture;

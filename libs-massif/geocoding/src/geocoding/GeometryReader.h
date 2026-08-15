@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_GEOCODING_GEOMETRYREADER_H_
-#define _CARTO_GEOCODING_GEOMETRYREADER_H_
+#ifndef _MASSIF_GEOCODING_GEOMETRYREADER_H_
+#define _MASSIF_GEOCODING_GEOMETRYREADER_H_
 
 #include "Geometry.h"
 #include "EncodingStream.h"
@@ -13,7 +13,7 @@
 #include <memory>
 #include <functional>
 
-namespace carto::geocoding {
+namespace massif::geocoding {
     using PointConverter = std::function<cglib::vec2<double>(const cglib::vec2<double>&)>;
 
     class GeometryReader final {

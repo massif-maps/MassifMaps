@@ -4,13 +4,13 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_MAPNIKVT_POINTSYMBOLIZER_H_
-#define _CARTO_MAPNIKVT_POINTSYMBOLIZER_H_
+#ifndef _MASSIF_MAPNIKVT_POINTSYMBOLIZER_H_
+#define _MASSIF_MAPNIKVT_POINTSYMBOLIZER_H_
 
 #include "GeometrySymbolizer.h"
 #include "FunctionBuilder.h"
 
-namespace carto::mvt {
+namespace massif::mvt {
     class PointSymbolizer : public GeometrySymbolizer {
     public:
         explicit PointSymbolizer(std::shared_ptr<Logger> logger) : GeometrySymbolizer(std::move(logger)) {

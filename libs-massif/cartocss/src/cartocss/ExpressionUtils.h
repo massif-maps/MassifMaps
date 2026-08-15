@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_CARTOCSS_EXPRESSIONUTILS_H_
-#define _CARTO_CARTOCSS_EXPRESSIONUTILS_H_
+#ifndef _MASSIF_CARTOCSS_EXPRESSIONUTILS_H_
+#define _MASSIF_CARTOCSS_EXPRESSIONUTILS_H_
 
 #include "Value.h"
 #include "Expression.h"
@@ -16,7 +16,7 @@
 #include <utility>
 #include <functional>
 
-namespace carto::css {
+namespace massif::css {
     struct ExpressionContext {
         std::map<std::string, Expression>* variableMap = nullptr;
         std::map<std::string, Value>* predefinedFieldMap = nullptr;

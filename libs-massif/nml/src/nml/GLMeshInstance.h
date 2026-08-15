@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_NML_GLMESHINSTANCE_H_
-#define _CARTO_NML_GLMESHINSTANCE_H_
+#ifndef _MASSIF_NML_GLMESHINSTANCE_H_
+#define _MASSIF_NML_GLMESHINSTANCE_H_
 
 #include "GLBase.h"
 
@@ -15,7 +15,7 @@
 #include <memory>
 #include <string>
 
-namespace carto::nml {
+namespace massif::nml {
     class MeshInstance;
     class GLMaterial;
     class GLMesh;

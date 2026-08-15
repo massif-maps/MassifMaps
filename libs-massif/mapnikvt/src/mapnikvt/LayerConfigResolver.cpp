@@ -13,9 +13,9 @@
 #include <algorithm>
 #include <limits>
 
-namespace carto::mvt {
+namespace massif::mvt {
     ResolvedLayerConfig resolveLayerConfig(const Map& map, const std::string& layerName, float viewZoom,
-                                           const std::shared_ptr<const NutiParameterStore>& nutiParameterStore) {
+                                           const std::shared_ptr<const StyleParameterStore>& styleParameterStore) {
         ResolvedLayerConfig result;
 
         const std::shared_ptr<Layer>& layer = map.getLayer(layerName);
@@ -24,12 +24,12 @@ namespace carto::mvt {
         }
 
         // Build the evaluation context: adjusted (integer) zoom for rule/predicate selection,
-        // nuti parameter map for nuti:: predicates/expressions, and a ViewState carrying the
+        // style parameter map for param:: predicates/expressions, and a ViewState carrying the
         // fractional view zoom for zoom-dependent property functions (view::zoom).
         ExpressionContext exprContext;
         exprContext.setAdjustedZoom(static_cast<int>(viewZoom));
-        if (nutiParameterStore) {
-            exprContext.setNutiParameterStore(nutiParameterStore);
+        if (styleParameterStore) {
+            exprContext.setStyleParameterStore(styleParameterStore);
         }
         vt::ViewState viewState;
         viewState.zoom = viewZoom;
@@ -42,7 +42,7 @@ namespace carto::mvt {
                 continue;
             }
             for (const std::shared_ptr<const Rule>& rule : style->getZoomRules(exprContext.getAdjustedZoom())) {
-                // Apply the rule filter predicate (zoom / nuti::) if present.
+                // Apply the rule filter predicate (zoom / param::) if present.
                 if (const std::shared_ptr<const Filter>& filter = rule->getFilter()) {
                     if (filter->getType() == Filter::Type::FILTER && filter->getPredicate()) {
                         if (!std::visit(predEvaluator, *filter->getPredicate())) {
@@ -58,7 +58,7 @@ namespace carto::mvt {
                     result.visible = true;
                     // Evaluate every property the style actually set. Evaluating the raw
                     // property Expression handles view::zoom (via viewState), 'zoom' and
-                    // nuti:: (via exprContext) uniformly, regardless of the property type.
+                    // param:: (via exprContext) uniformly, regardless of the property type.
                     for (const std::string& propertyName : configSymbolizer->getPropertyNames()) {
                         const Property* property = configSymbolizer->getProperty(propertyName);
                         if (!property || !property->isDefined()) {

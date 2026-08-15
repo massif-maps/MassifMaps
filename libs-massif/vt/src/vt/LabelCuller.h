@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_VT_LABELCULLER_H_
-#define _CARTO_VT_LABELCULLER_H_
+#ifndef _MASSIF_VT_LABELCULLER_H_
+#define _MASSIF_VT_LABELCULLER_H_
 
 #include "ViewState.h"
 #include "Label.h"
@@ -22,7 +22,7 @@
 #include <cglib/mat.h>
 #include <cglib/bbox.h>
 
-namespace carto::vt {
+namespace massif::vt {
     class LabelCuller final {
     public:
         explicit LabelCuller(float scale);

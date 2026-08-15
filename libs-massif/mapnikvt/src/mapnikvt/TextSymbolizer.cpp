@@ -16,13 +16,13 @@ namespace {
     // Unset (and unknown) leaves the label laid out around its own anchor, which is what a style
     // that says nothing about callout anchoring gets.
     std::optional<cglib::vec2<float>> parseBoxAnchor(const std::string& name) {
-        const carto::mvt::ParseTable<cglib::vec2<float>>& table = carto::mvt::getLabelBoxAnchorTable();
+        const massif::mvt::ParseTable<cglib::vec2<float>>& table = massif::mvt::getLabelBoxAnchorTable();
         auto it = table.find(name);
         return it != table.end() ? std::optional<cglib::vec2<float>>(it->second) : std::optional<cglib::vec2<float>>();
     }
 }
 
-namespace carto::mvt {
+namespace massif::mvt {
     TextSymbolizer::FeatureProcessor TextSymbolizer::createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const {
         vt::FloatFunction baseSizeFunc = _size.getFunction(exprContext);
         if (baseSizeFunc == vt::FloatFunction(0)) {

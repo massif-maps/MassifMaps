@@ -4,13 +4,13 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_VT_TILEID_H_
-#define _CARTO_VT_TILEID_H_
+#ifndef _MASSIF_VT_TILEID_H_
+#define _MASSIF_VT_TILEID_H_
 
 #include <utility>
 #include <functional>
 
-namespace carto::vt {
+namespace massif::vt {
     struct TileId final {
         int zoom;
         int x;
@@ -74,8 +74,8 @@ namespace carto::vt {
 
 namespace std {
     template <>
-    struct hash<carto::vt::TileId> {
-        std::size_t operator() (const carto::vt::TileId& tileId) const {
+    struct hash<massif::vt::TileId> {
+        std::size_t operator() (const massif::vt::TileId& tileId) const {
             return std::hash<long long>()(tileId.zoom + (((static_cast<long long>(tileId.x) << 32) + tileId.y) << 5));
         }
     };

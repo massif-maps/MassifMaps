@@ -4,26 +4,26 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_MAPNIKVT_LAYERCONFIGRESOLVER_H_
-#define _CARTO_MAPNIKVT_LAYERCONFIGRESOLVER_H_
+#ifndef _MASSIF_MAPNIKVT_LAYERCONFIGRESOLVER_H_
+#define _MASSIF_MAPNIKVT_LAYERCONFIGRESOLVER_H_
 
 #include "Value.h"
-#include "NutiParameterStore.h"
+#include "StyleParameterStore.h"
 
 #include <map>
 #include <memory>
 #include <string>
 #include <utility>
 
-namespace carto::mvt {
+namespace massif::mvt {
     class Map;
 
     /**
      * Evaluated configuration of a single LayerConfigSymbolizer-based style layer
-     * (raster / hillshade / contour) at a given view zoom and nuti parameter state.
+     * (raster / hillshade / contour) at a given view zoom and style parameter state.
      */
     struct ResolvedLayerConfig {
-        // False if the layer does not exist, no rule matches the current zoom/nuti state,
+        // False if the layer does not exist, no rule matches the current zoom/style-parameter state,
         // it carries no config symbolizer, or its 'visible' property evaluates to false.
         bool visible = false;
         // Evaluated values of the config symbolizer properties that the style actually set
@@ -34,18 +34,18 @@ namespace carto::mvt {
 
     /**
      * Evaluate the config symbolizer(s) of the named layer in 'map' without decoding a tile.
-     * Honors the rule zoom range (via view zoom) and any filter predicate (zoom + nuti::).
+     * Honors the rule zoom range (via view zoom) and any filter predicate (zoom + param::).
      *
      * @param map        The compiled style map.
      * @param layerName  The style layer name (e.g. "hillshade").
      * @param viewZoom   The fractional view zoom (view::zoom), used both for rule selection
      *                   and for evaluating zoom-dependent property expressions.
-     * @param nutiParameterStore The nuti parameter store (may be null).
+     * @param styleParameterStore The style parameter store (may be null).
      */
     ResolvedLayerConfig resolveLayerConfig(const Map& map,
                                            const std::string& layerName,
                                            float viewZoom,
-                                           const std::shared_ptr<const NutiParameterStore>& nutiParameterStore);
+                                           const std::shared_ptr<const StyleParameterStore>& styleParameterStore);
 
     /**
      * Returns the (minZoom, maxZoom) range over which the named layer's config symbolizer

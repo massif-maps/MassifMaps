@@ -19,7 +19,7 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/cast.hpp>
 
-namespace carto::mvt {
+namespace massif::mvt {
     std::shared_ptr<Map> MapParser::parseMap(const pugi::xml_document& doc) const {
         pugi::xpath_node_set mapNodes = pugi::xpath_query("Map").evaluate_node_set(doc);
         if (mapNodes.size() != 1) {
@@ -62,11 +62,11 @@ namespace carto::mvt {
         }
         map->setParameters(parameters);
 
-        // NutiParameters
-        std::vector<NutiParameter> nutiParameters;
-        pugi::xpath_node_set nutiParamNodes = pugi::xpath_query("NutiParameters/NutiParameter").evaluate_node_set(mapNode);
-        for (pugi::xpath_node_set::const_iterator nutiParamIt = nutiParamNodes.begin(); nutiParamIt != nutiParamNodes.end(); ++nutiParamIt) {
-            pugi::xml_node parameterNode = (*nutiParamIt).node();
+        // StyleParameters
+        std::vector<StyleParameter> styleParameters;
+        pugi::xpath_node_set styleParamNodes = pugi::xpath_query("StyleParameters/StyleParameter").evaluate_node_set(mapNode);
+        for (pugi::xpath_node_set::const_iterator styleParamIt = styleParamNodes.begin(); styleParamIt != styleParamNodes.end(); ++styleParamIt) {
+            pugi::xml_node parameterNode = (*styleParamIt).node();
             std::string name = parameterNode.attribute("name").as_string();
             std::string type = parameterNode.attribute("type").as_string();
             Value defaultValue = parseTypedValue(type, parameterNode.attribute("value").as_string());
@@ -77,9 +77,9 @@ namespace carto::mvt {
                 std::string id = valueNode.attribute("id").as_string();
                 enumMap[id] = parseTypedValue(type, valueNode.attribute("value").as_string());
             }
-            nutiParameters.emplace_back(name, defaultValue, enumMap);
+            styleParameters.emplace_back(name, defaultValue, enumMap);
         }
-        map->setNutiParameters(nutiParameters);
+        map->setStyleParameters(styleParameters);
 
         // FontSets
         pugi::xpath_node_set fontSetNodes = pugi::xpath_query("FontSet").evaluate_node_set(mapNode);

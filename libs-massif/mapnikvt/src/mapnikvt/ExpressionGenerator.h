@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_MAPNIKVT_EXPRESSIONGENERATOR_H_
-#define _CARTO_MAPNIKVT_EXPRESSIONGENERATOR_H_
+#ifndef _MASSIF_MAPNIKVT_EXPRESSIONGENERATOR_H_
+#define _MASSIF_MAPNIKVT_EXPRESSIONGENERATOR_H_
 
 #include "Value.h"
 #include "Expression.h"
@@ -19,7 +19,7 @@
 #include <boost/phoenix.hpp>
 #include <boost/spirit/include/karma.hpp>
 
-namespace carto::mvt {
+namespace massif::mvt {
     namespace exprgenimpl {
         template <typename OutputIterator, bool StringExpression>
         struct Grammar : boost::spirit::karma::grammar<OutputIterator, Expression()> {

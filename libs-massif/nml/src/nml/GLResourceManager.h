@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_NML_GLRESOURCEMANAGER_H_
-#define _CARTO_NML_GLRESOURCEMANAGER_H_
+#ifndef _MASSIF_NML_GLRESOURCEMANAGER_H_
+#define _MASSIF_NML_GLRESOURCEMANAGER_H_
 
 #include "GLBase.h"
 
@@ -15,7 +15,7 @@
 #include <set>
 #include <vector>
 
-namespace carto::nml {
+namespace massif::nml {
     class GLTexture;
     class GLSubmesh;
 

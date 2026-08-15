@@ -4,12 +4,12 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_MAPNIKVT_LAYERCONFIGSYMBOLIZER_H_
-#define _CARTO_MAPNIKVT_LAYERCONFIGSYMBOLIZER_H_
+#ifndef _MASSIF_MAPNIKVT_LAYERCONFIGSYMBOLIZER_H_
+#define _MASSIF_MAPNIKVT_LAYERCONFIGSYMBOLIZER_H_
 
 #include "Symbolizer.h"
 
-namespace carto::mvt {
+namespace massif::mvt {
     /**
      * Base class for "external source config" symbolizers (raster / hillshade / contour).
      *
@@ -30,7 +30,7 @@ namespace carto::mvt {
 
     protected:
         explicit LayerConfigSymbolizer(std::shared_ptr<Logger> logger) : Symbolizer(std::move(logger)) {
-            bindProperty("visible", &_visible);  // force-hide independent of zoom/nuti predicates
+            bindProperty("visible", &_visible);  // force-hide independent of zoom/param:: predicates
             bindProperty("opacity", &_opacity);
         }
 

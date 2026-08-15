@@ -4,15 +4,15 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_GEOCODING_ENCODINGSTREAM_H_
-#define _CARTO_GEOCODING_ENCODINGSTREAM_H_
+#ifndef _MASSIF_GEOCODING_ENCODINGSTREAM_H_
+#define _MASSIF_GEOCODING_ENCODINGSTREAM_H_
 
 #include <string>
 #include <stdexcept>
 
 #include <cglib/vec.h>
 
-namespace carto::geocoding {
+namespace massif::geocoding {
     class EncodingStream final {
     public:
         explicit EncodingStream(const void* data, std::size_t size) : _data(reinterpret_cast<const unsigned char*>(data)), _size(size) { }

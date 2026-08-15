@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_CARTOCSS_PREDICATEUTILS_H_
-#define _CARTO_CARTOCSS_PREDICATEUTILS_H_
+#ifndef _MASSIF_CARTOCSS_PREDICATEUTILS_H_
+#define _MASSIF_CARTOCSS_PREDICATEUTILS_H_
 
 #include "Value.h"
 #include "Expression.h"
@@ -16,7 +16,7 @@
 #include <utility>
 #include <functional>
 
-namespace carto::css {
+namespace massif::css {
     struct PredicateContext {
         std::string layerName;
         ExpressionContext expressionContext;
@@ -149,7 +149,7 @@ namespace carto::css {
         }
 
 
-        boost::tribool operator() (const OpNutiPredicate& opPred) const {
+        boost::tribool operator() (const OpParamPredicate& opPred) const {
             return boost::indeterminate;
         }
 

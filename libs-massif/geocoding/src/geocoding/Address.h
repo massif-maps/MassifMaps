@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_GEOCODING_ADDRESS_H_
-#define _CARTO_GEOCODING_ADDRESS_H_
+#ifndef _MASSIF_GEOCODING_ADDRESS_H_
+#define _MASSIF_GEOCODING_ADDRESS_H_
 
 #include "Feature.h"
 #include "FeatureReader.h"
@@ -20,7 +20,7 @@ namespace sqlite3pp {
     class database;
 }
 
-namespace carto::geocoding {
+namespace massif::geocoding {
     struct Address final {
         enum class EntityType {
             NONE, COUNTRY, REGION, COUNTY, LOCALITY, NEIGHBOURHOOD, STREET, RESERVED1, POI, ADDRESS

@@ -1,6 +1,6 @@
 #include "Rule.h"
 
-namespace carto::sgre {
+namespace massif::sgre {
     void Rule::apply(Graph::Attributes& attribs, bool forward) const {
         int ruleIndex = forward ? 0 : 1;
         if (_speed[ruleIndex].index() != 0) {

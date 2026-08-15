@@ -10,7 +10,7 @@
 
 #include <tesselator.h>
 
-namespace carto::vt {
+namespace massif::vt {
     TileSurfaceBuilder::TileSurfaceBuilder(std::shared_ptr<const TileTransformer> transformer) :
         _transformer(std::move(transformer))
     {

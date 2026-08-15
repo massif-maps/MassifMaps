@@ -4,15 +4,15 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_MAPNIKVT_FEATURECOLLECTION_H_
-#define _CARTO_MAPNIKVT_FEATURECOLLECTION_H_
+#ifndef _MASSIF_MAPNIKVT_FEATURECOLLECTION_H_
+#define _MASSIF_MAPNIKVT_FEATURECOLLECTION_H_
 
 #include "Feature.h"
 
 #include <vector>
 #include <utility>
 
-namespace carto::mvt {
+namespace massif::mvt {
     class FeatureCollection final {
     public:
         FeatureCollection() = default;

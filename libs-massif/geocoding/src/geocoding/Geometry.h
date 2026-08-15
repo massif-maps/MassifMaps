@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_GEOCODING_GEOMETRY_H_
-#define _CARTO_GEOCODING_GEOMETRY_H_
+#ifndef _MASSIF_GEOCODING_GEOMETRY_H_
+#define _MASSIF_GEOCODING_GEOMETRY_H_
 
 #include <utility>
 #include <algorithm>
@@ -15,7 +15,7 @@
 #include <cglib/vec.h>
 #include <cglib/bbox.h>
 
-namespace carto::geocoding {
+namespace massif::geocoding {
     class Geometry {
     public:
         using Point = cglib::vec2<double>;

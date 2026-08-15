@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_GEOCODING_FEATUREREADER_H_
-#define _CARTO_GEOCODING_FEATUREREADER_H_
+#ifndef _MASSIF_GEOCODING_FEATUREREADER_H_
+#define _MASSIF_GEOCODING_FEATUREREADER_H_
 
 #include "Feature.h"
 #include "GeometryReader.h"
@@ -15,7 +15,7 @@
 #include <string>
 #include <vector>
 
-namespace carto::geocoding {
+namespace massif::geocoding {
     class FeatureReader final {
     public:
         explicit FeatureReader(EncodingStream& stream, const PointConverter& converter) : _stream(stream), _geometryReader(stream, converter) { }

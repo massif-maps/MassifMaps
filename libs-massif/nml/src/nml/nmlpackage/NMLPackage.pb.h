@@ -12,7 +12,7 @@
 
 // @@protoc_insertion_point(includes)
 
-namespace carto {
+namespace massif {
 namespace nml {
 class Vector3;
 class ColorRGBA;
@@ -113,7 +113,7 @@ public:
   inline bool has_z() const;
   inline float z() const;
 
-  // @@protoc_insertion_point(class_scope:carto.nml.Vector3)
+  // @@protoc_insertion_point(class_scope:massif.nml.Vector3)
 private:
   std::uint32_t _has_bits_[1];
   float x_ = 0;
@@ -157,7 +157,7 @@ public:
   inline bool has_a() const;
   inline float a() const;
 
-  // @@protoc_insertion_point(class_scope:carto.nml.ColorRGBA)
+  // @@protoc_insertion_point(class_scope:massif.nml.ColorRGBA)
 private:
   std::uint32_t _has_bits_[1];
   float r_ = 0;
@@ -182,21 +182,21 @@ public:
 
   // accessors -------------------------------------------------------
 
-  // required .carto.nml.Vector3 min = 1;
+  // required .massif.nml.Vector3 min = 1;
   static const int kMinFieldNumber = 1;
   inline bool has_min() const;
-  inline const ::carto::nml::Vector3& min() const;
+  inline const ::massif::nml::Vector3& min() const;
 
-  // required .carto.nml.Vector3 max = 2;
+  // required .massif.nml.Vector3 max = 2;
   static const int kMaxFieldNumber = 2;
   inline bool has_max() const;
-  inline const ::carto::nml::Vector3& max() const;
+  inline const ::massif::nml::Vector3& max() const;
 
-  // @@protoc_insertion_point(class_scope:carto.nml.Bounds3)
+  // @@protoc_insertion_point(class_scope:massif.nml.Bounds3)
 private:
   std::uint32_t _has_bits_[1];
-  ::carto::nml::Vector3 min_ = ::carto::nml::Vector3();
-  ::carto::nml::Vector3 max_ = ::carto::nml::Vector3();
+  ::massif::nml::Vector3 min_ = ::massif::nml::Vector3();
+  ::massif::nml::Vector3 max_ = ::massif::nml::Vector3();
 };
 // -------------------------------------------------------------------
 
@@ -295,7 +295,7 @@ public:
   inline bool has_m33() const;
   inline float m33() const;
 
-  // @@protoc_insertion_point(class_scope:carto.nml.Matrix4)
+  // @@protoc_insertion_point(class_scope:massif.nml.Matrix4)
 private:
   std::uint32_t _has_bits_[1];
   float m00_ = 0;
@@ -342,22 +342,22 @@ public:
 
   // accessors -------------------------------------------------------
 
-  // optional .carto.nml.Sampler.Filter filter = 1;
+  // optional .massif.nml.Sampler.Filter filter = 1;
   static const int kFilterFieldNumber = 1;
   inline bool has_filter() const;
-  inline ::carto::nml::Sampler_Filter filter() const;
+  inline ::massif::nml::Sampler_Filter filter() const;
 
-  // optional .carto.nml.Sampler.WrapMode wrap_s = 2;
+  // optional .massif.nml.Sampler.WrapMode wrap_s = 2;
   static const int kWrapSFieldNumber = 2;
   inline bool has_wrap_s() const;
-  inline ::carto::nml::Sampler_WrapMode wrap_s() const;
+  inline ::massif::nml::Sampler_WrapMode wrap_s() const;
 
-  // optional .carto.nml.Sampler.WrapMode wrap_t = 3;
+  // optional .massif.nml.Sampler.WrapMode wrap_t = 3;
   static const int kWrapTFieldNumber = 3;
   inline bool has_wrap_t() const;
-  inline ::carto::nml::Sampler_WrapMode wrap_t() const;
+  inline ::massif::nml::Sampler_WrapMode wrap_t() const;
 
-  // @@protoc_insertion_point(class_scope:carto.nml.Sampler)
+  // @@protoc_insertion_point(class_scope:massif.nml.Sampler)
 private:
   std::uint32_t _has_bits_[1];
   int filter_ = 1;
@@ -397,11 +397,11 @@ public:
   inline const ::std::string& id() const;
   inline void set_id(const std::string& id) { id_ = id; }
 
-  // required .carto.nml.Texture.Format format = 2;
+  // required .massif.nml.Texture.Format format = 2;
   static const int kFormatFieldNumber = 2;
   inline bool has_format() const;
-  inline ::carto::nml::Texture_Format format() const;
-  inline void set_format(::carto::nml::Texture_Format format) { format_ = format; }
+  inline ::massif::nml::Texture_Format format() const;
+  inline void set_format(::massif::nml::Texture_Format format) { format_ = format; }
 
   // required int32 width = 3;
   static const int kWidthFieldNumber = 3;
@@ -415,10 +415,10 @@ public:
   inline std::int32_t height() const;
   inline void set_height(int height) { height_ = height; }
 
-  // required .carto.nml.Sampler sampler = 5;
+  // required .massif.nml.Sampler sampler = 5;
   static const int kSamplerFieldNumber = 5;
   inline bool has_sampler() const;
-  inline const ::carto::nml::Sampler& sampler() const;
+  inline const ::massif::nml::Sampler& sampler() const;
 
   // repeated bytes mipmaps = 6;
   static const int kMipmapsFieldNumber = 6;
@@ -434,13 +434,13 @@ public:
     return &mipmaps_.back();
   }
 
-  // @@protoc_insertion_point(class_scope:carto.nml.Texture)
+  // @@protoc_insertion_point(class_scope:massif.nml.Texture)
 private:
   std::uint32_t _has_bits_[1];
   ::std::string id_ = "";
   int format_ = -2;
   std::int32_t width_ = 0;
-  ::carto::nml::Sampler sampler_ = ::carto::nml::Sampler();
+  ::massif::nml::Sampler sampler_ = ::massif::nml::Sampler();
   std::vector< ::std::string > mipmaps_;
   std::int32_t height_ = 0;
 };
@@ -465,25 +465,25 @@ public:
 
   // accessors -------------------------------------------------------
 
-  // required .carto.nml.ColorOrTexture.Type type = 1;
+  // required .massif.nml.ColorOrTexture.Type type = 1;
   static const int kTypeFieldNumber = 1;
   inline bool has_type() const;
-  inline ::carto::nml::ColorOrTexture_Type type() const;
+  inline ::massif::nml::ColorOrTexture_Type type() const;
 
-  // optional .carto.nml.ColorRGBA color = 2;
+  // optional .massif.nml.ColorRGBA color = 2;
   static const int kColorFieldNumber = 2;
   inline bool has_color() const;
-  inline const ::carto::nml::ColorRGBA& color() const;
+  inline const ::massif::nml::ColorRGBA& color() const;
 
   // optional string texture_id = 3;
   static const int kTextureIdFieldNumber = 3;
   inline bool has_texture_id() const;
   inline const ::std::string& texture_id() const;
 
-  // @@protoc_insertion_point(class_scope:carto.nml.ColorOrTexture)
+  // @@protoc_insertion_point(class_scope:massif.nml.ColorOrTexture)
 private:
   std::uint32_t _has_bits_[1];
-  ::carto::nml::ColorRGBA color_ = ::carto::nml::ColorRGBA();
+  ::massif::nml::ColorRGBA color_ = ::massif::nml::ColorRGBA();
   ::std::string texture_id_ = "";
   int type_ = 1;
 };
@@ -526,69 +526,69 @@ public:
   inline bool has_id() const;
   inline const ::std::string& id() const;
 
-  // required .carto.nml.Material.Type type = 2;
+  // required .massif.nml.Material.Type type = 2;
   static const int kTypeFieldNumber = 2;
   inline bool has_type() const;
-  inline ::carto::nml::Material_Type type() const;
+  inline ::massif::nml::Material_Type type() const;
 
-  // required .carto.nml.Material.Culling culling = 3;
+  // required .massif.nml.Material.Culling culling = 3;
   static const int kCullingFieldNumber = 3;
   inline bool has_culling() const;
-  inline ::carto::nml::Material_Culling culling() const;
+  inline ::massif::nml::Material_Culling culling() const;
 
-  // optional .carto.nml.ColorOrTexture emission = 4;
+  // optional .massif.nml.ColorOrTexture emission = 4;
   static const int kEmissionFieldNumber = 4;
   inline bool has_emission() const;
-  inline const ::carto::nml::ColorOrTexture& emission() const;
+  inline const ::massif::nml::ColorOrTexture& emission() const;
 
-  // optional .carto.nml.ColorOrTexture ambient = 5;
+  // optional .massif.nml.ColorOrTexture ambient = 5;
   static const int kAmbientFieldNumber = 5;
   inline bool has_ambient() const;
-  inline const ::carto::nml::ColorOrTexture& ambient() const;
+  inline const ::massif::nml::ColorOrTexture& ambient() const;
 
-  // optional .carto.nml.ColorOrTexture diffuse = 6;
+  // optional .massif.nml.ColorOrTexture diffuse = 6;
   static const int kDiffuseFieldNumber = 6;
   inline bool has_diffuse() const;
-  inline const ::carto::nml::ColorOrTexture& diffuse() const;
+  inline const ::massif::nml::ColorOrTexture& diffuse() const;
 
-  // optional .carto.nml.Material.OpaqueMode opaque_mode = 7;
+  // optional .massif.nml.Material.OpaqueMode opaque_mode = 7;
   static const int kOpaqueModeFieldNumber = 7;
   inline bool has_opaque_mode() const;
-  inline ::carto::nml::Material_OpaqueMode opaque_mode() const;
+  inline ::massif::nml::Material_OpaqueMode opaque_mode() const;
 
   // optional float transparency = 8;
   static const int kTransparencyFieldNumber = 8;
   inline bool has_transparency() const;
   inline float transparency() const;
 
-  // optional .carto.nml.ColorOrTexture transparent = 9;
+  // optional .massif.nml.ColorOrTexture transparent = 9;
   static const int kTransparentFieldNumber = 9;
   inline bool has_transparent() const;
-  inline const ::carto::nml::ColorOrTexture& transparent() const;
+  inline const ::massif::nml::ColorOrTexture& transparent() const;
 
   // optional float shininess = 10;
   static const int kShininessFieldNumber = 10;
   inline bool has_shininess() const;
   inline float shininess() const;
 
-  // optional .carto.nml.ColorOrTexture specular = 11;
+  // optional .massif.nml.ColorOrTexture specular = 11;
   static const int kSpecularFieldNumber = 11;
   inline bool has_specular() const;
-  inline const ::carto::nml::ColorOrTexture& specular() const;
+  inline const ::massif::nml::ColorOrTexture& specular() const;
 
-  // @@protoc_insertion_point(class_scope:carto.nml.Material)
+  // @@protoc_insertion_point(class_scope:massif.nml.Material)
 private:
   std::uint32_t _has_bits_[1];
   ::std::string id_ = "";
   int type_ = 1;
   int culling_ = 1;
-  ::carto::nml::ColorOrTexture emission_ = ::carto::nml::ColorOrTexture();
-  ::carto::nml::ColorOrTexture ambient_ = ::carto::nml::ColorOrTexture();
-  ::carto::nml::ColorOrTexture diffuse_ = ::carto::nml::ColorOrTexture();
+  ::massif::nml::ColorOrTexture emission_ = ::massif::nml::ColorOrTexture();
+  ::massif::nml::ColorOrTexture ambient_ = ::massif::nml::ColorOrTexture();
+  ::massif::nml::ColorOrTexture diffuse_ = ::massif::nml::ColorOrTexture();
   int opaque_mode_ = 0;
   float transparency_ = 0;
-  ::carto::nml::ColorOrTexture transparent_ = ::carto::nml::ColorOrTexture();
-  ::carto::nml::ColorOrTexture specular_ = ::carto::nml::ColorOrTexture();
+  ::massif::nml::ColorOrTexture transparent_ = ::massif::nml::ColorOrTexture();
+  ::massif::nml::ColorOrTexture specular_ = ::massif::nml::ColorOrTexture();
   float shininess_ = 0;
 };
 // -------------------------------------------------------------------
@@ -616,10 +616,10 @@ public:
 
   // accessors -------------------------------------------------------
 
-  // required .carto.nml.Submesh.Type type = 1;
+  // required .massif.nml.Submesh.Type type = 1;
   static const int kTypeFieldNumber = 1;
   inline bool has_type() const;
-  inline ::carto::nml::Submesh_Type type() const;
+  inline ::massif::nml::Submesh_Type type() const;
 
   // required string material_id = 2;
   static const int kMaterialIdFieldNumber = 2;
@@ -658,7 +658,7 @@ public:
   inline std::int64_t vertex_ids(int index) const;
   inline const std::vector< std::int64_t >& vertex_ids() const;
 
-  // @@protoc_insertion_point(class_scope:carto.nml.Submesh)
+  // @@protoc_insertion_point(class_scope:massif.nml.Submesh)
 private:
   std::uint32_t _has_bits_[1];
   ::std::string material_id_ = "";
@@ -692,23 +692,23 @@ public:
   inline bool has_id() const;
   inline const ::std::string& id() const;
 
-  // required .carto.nml.Bounds3 bounds = 2;
+  // required .massif.nml.Bounds3 bounds = 2;
   static const int kBoundsFieldNumber = 2;
   inline bool has_bounds() const;
-  inline const ::carto::nml::Bounds3& bounds() const;
+  inline const ::massif::nml::Bounds3& bounds() const;
 
-  // repeated .carto.nml.Submesh submeshes = 3;
+  // repeated .massif.nml.Submesh submeshes = 3;
   static const int kSubmeshesFieldNumber = 3;
   inline int submeshes_size() const;
-  inline const ::carto::nml::Submesh& submeshes(int index) const;
-  inline const std::vector< ::carto::nml::Submesh >& submeshes() const;
+  inline const ::massif::nml::Submesh& submeshes(int index) const;
+  inline const std::vector< ::massif::nml::Submesh >& submeshes() const;
 
-  // @@protoc_insertion_point(class_scope:carto.nml.Mesh)
+  // @@protoc_insertion_point(class_scope:massif.nml.Mesh)
 private:
   std::uint32_t _has_bits_[1];
   ::std::string id_ = "";
-  ::carto::nml::Bounds3 bounds_ = ::carto::nml::Bounds3();
-  std::vector< ::carto::nml::Submesh > submeshes_;
+  ::massif::nml::Bounds3 bounds_ = ::massif::nml::Bounds3();
+  std::vector< ::massif::nml::Submesh > submeshes_;
 };
 // -------------------------------------------------------------------
 
@@ -732,23 +732,23 @@ public:
   inline bool has_mesh_id() const;
   inline const ::std::string& mesh_id() const;
 
-  // repeated .carto.nml.Material materials = 2;
+  // repeated .massif.nml.Material materials = 2;
   static const int kMaterialsFieldNumber = 2;
   inline int materials_size() const;
-  inline const ::carto::nml::Material& materials(int index) const;
-  inline const std::vector< ::carto::nml::Material >& materials() const;
+  inline const ::massif::nml::Material& materials(int index) const;
+  inline const std::vector< ::massif::nml::Material >& materials() const;
 
-  // optional .carto.nml.Matrix4 transform = 3;
+  // optional .massif.nml.Matrix4 transform = 3;
   static const int kTransformFieldNumber = 3;
   inline bool has_transform() const;
-  inline const ::carto::nml::Matrix4& transform() const;
+  inline const ::massif::nml::Matrix4& transform() const;
 
-  // @@protoc_insertion_point(class_scope:carto.nml.MeshInstance)
+  // @@protoc_insertion_point(class_scope:massif.nml.MeshInstance)
 private:
   std::uint32_t _has_bits_[1];
   ::std::string mesh_id_ = "";
-  std::vector< ::carto::nml::Material > materials_;
-  ::carto::nml::Matrix4 transform_ = ::carto::nml::Matrix4();
+  std::vector< ::massif::nml::Material > materials_;
+  ::massif::nml::Matrix4 transform_ = ::massif::nml::Matrix4();
 };
 // -------------------------------------------------------------------
 
@@ -802,7 +802,7 @@ public:
   inline bool has_tex_v_trans() const;
   inline float tex_v_trans() const;
 
-  // @@protoc_insertion_point(class_scope:carto.nml.SubmeshOp)
+  // @@protoc_insertion_point(class_scope:massif.nml.SubmeshOp)
 private:
   std::uint32_t _has_bits_[1];
   std::int32_t submesh_idx_ = 0;
@@ -830,27 +830,27 @@ public:
 
   // accessors -------------------------------------------------------
 
-  // required .carto.nml.Submesh.Type type = 1;
+  // required .massif.nml.Submesh.Type type = 1;
   static const int kTypeFieldNumber = 1;
   inline bool has_type() const;
-  inline ::carto::nml::Submesh_Type type() const;
+  inline ::massif::nml::Submesh_Type type() const;
 
   // required string material_id = 2;
   static const int kMaterialIdFieldNumber = 2;
   inline bool has_material_id() const;
   inline const ::std::string& material_id() const;
 
-  // repeated .carto.nml.SubmeshOp submesh_ops = 3;
+  // repeated .massif.nml.SubmeshOp submesh_ops = 3;
   static const int kSubmeshOpsFieldNumber = 3;
   inline int submesh_ops_size() const;
-  inline const ::carto::nml::SubmeshOp& submesh_ops(int index) const;
-  inline const std::vector< ::carto::nml::SubmeshOp >& submesh_ops() const;
+  inline const ::massif::nml::SubmeshOp& submesh_ops(int index) const;
+  inline const std::vector< ::massif::nml::SubmeshOp >& submesh_ops() const;
 
-  // @@protoc_insertion_point(class_scope:carto.nml.SubmeshOpList)
+  // @@protoc_insertion_point(class_scope:massif.nml.SubmeshOpList)
 private:
   std::uint32_t _has_bits_[1];
   ::std::string material_id_ = "";
-  std::vector< ::carto::nml::SubmeshOp > submesh_ops_;
+  std::vector< ::massif::nml::SubmeshOp > submesh_ops_;
   int type_ = 1;
 };
 // -------------------------------------------------------------------
@@ -875,23 +875,23 @@ public:
   inline bool has_id() const;
   inline const ::std::string& id() const;
 
-  // required .carto.nml.Bounds3 bounds = 2;
+  // required .massif.nml.Bounds3 bounds = 2;
   static const int kBoundsFieldNumber = 2;
   inline bool has_bounds() const;
-  inline const ::carto::nml::Bounds3& bounds() const;
+  inline const ::massif::nml::Bounds3& bounds() const;
 
-  // repeated .carto.nml.SubmeshOpList submesh_op_lists = 3;
+  // repeated .massif.nml.SubmeshOpList submesh_op_lists = 3;
   static const int kSubmeshOpListsFieldNumber = 3;
   inline int submesh_op_lists_size() const;
-  inline const ::carto::nml::SubmeshOpList& submesh_op_lists(int index) const;
-  inline const std::vector< ::carto::nml::SubmeshOpList >& submesh_op_lists() const;
+  inline const ::massif::nml::SubmeshOpList& submesh_op_lists(int index) const;
+  inline const std::vector< ::massif::nml::SubmeshOpList >& submesh_op_lists() const;
 
-  // @@protoc_insertion_point(class_scope:carto.nml.MeshOp)
+  // @@protoc_insertion_point(class_scope:massif.nml.MeshOp)
 private:
   std::uint32_t _has_bits_[1];
   ::std::string id_ = "";
-  ::carto::nml::Bounds3 bounds_ = ::carto::nml::Bounds3();
-  std::vector< ::carto::nml::SubmeshOpList > submesh_op_lists_;
+  ::massif::nml::Bounds3 bounds_ = ::massif::nml::Bounds3();
+  std::vector< ::massif::nml::SubmeshOpList > submesh_op_lists_;
 };
 // -------------------------------------------------------------------
 
@@ -915,28 +915,28 @@ public:
   inline bool has_id() const;
   inline const ::std::string& id() const;
 
-  // repeated .carto.nml.MeshInstance mesh_instances = 2;
+  // repeated .massif.nml.MeshInstance mesh_instances = 2;
   static const int kMeshInstancesFieldNumber = 2;
   inline int mesh_instances_size() const;
-  inline const ::carto::nml::MeshInstance& mesh_instances(int index) const;
-  inline const std::vector< ::carto::nml::MeshInstance >& mesh_instances() const;
+  inline const ::massif::nml::MeshInstance& mesh_instances(int index) const;
+  inline const std::vector< ::massif::nml::MeshInstance >& mesh_instances() const;
 
-  // repeated .carto.nml.Mesh meshes = 3;
+  // repeated .massif.nml.Mesh meshes = 3;
   static const int kMeshesFieldNumber = 3;
   inline int meshes_size() const;
-  inline const ::carto::nml::Mesh& meshes(int index) const;
-  inline const std::vector< ::carto::nml::Mesh >& meshes() const;
+  inline const ::massif::nml::Mesh& meshes(int index) const;
+  inline const std::vector< ::massif::nml::Mesh >& meshes() const;
 
-  // repeated .carto.nml.Texture textures = 4;
+  // repeated .massif.nml.Texture textures = 4;
   static const int kTexturesFieldNumber = 4;
   inline int textures_size() const;
-  inline const ::carto::nml::Texture& textures(int index) const;
-  inline const std::vector< ::carto::nml::Texture >& textures() const;
+  inline const ::massif::nml::Texture& textures(int index) const;
+  inline const std::vector< ::massif::nml::Texture >& textures() const;
 
-  // required .carto.nml.Bounds3 bounds = 5;
+  // required .massif.nml.Bounds3 bounds = 5;
   static const int kBoundsFieldNumber = 5;
   inline bool has_bounds() const;
-  inline const ::carto::nml::Bounds3& bounds() const;
+  inline const ::massif::nml::Bounds3& bounds() const;
 
   // required int32 mesh_footprint = 6;
   static const int kMeshFootprintFieldNumber = 6;
@@ -948,14 +948,14 @@ public:
   inline bool has_texture_footprint() const;
   inline std::int32_t texture_footprint() const;
 
-  // @@protoc_insertion_point(class_scope:carto.nml.Model)
+  // @@protoc_insertion_point(class_scope:massif.nml.Model)
 private:
   std::uint32_t _has_bits_[1];
   ::std::string id_ = "";
-  std::vector< ::carto::nml::MeshInstance > mesh_instances_;
-  std::vector< ::carto::nml::Mesh > meshes_;
-  std::vector< ::carto::nml::Texture > textures_;
-  ::carto::nml::Bounds3 bounds_ = ::carto::nml::Bounds3();
+  std::vector< ::massif::nml::MeshInstance > mesh_instances_;
+  std::vector< ::massif::nml::Mesh > meshes_;
+  std::vector< ::massif::nml::Texture > textures_;
+  ::massif::nml::Bounds3 bounds_ = ::massif::nml::Bounds3();
   std::int32_t mesh_footprint_ = 0;
   std::int32_t texture_footprint_ = 0;
 };
@@ -981,15 +981,15 @@ public:
   inline bool has_id() const;
   inline std::int32_t id() const;
 
-  // required .carto.nml.Bounds3 bounds = 2;
+  // required .massif.nml.Bounds3 bounds = 2;
   static const int kBoundsFieldNumber = 2;
   inline bool has_bounds() const;
-  inline const ::carto::nml::Bounds3& bounds() const;
+  inline const ::massif::nml::Bounds3& bounds() const;
 
-  // required .carto.nml.Model model = 3;
+  // required .massif.nml.Model model = 3;
   static const int kModelFieldNumber = 3;
   inline bool has_model() const;
-  inline const ::carto::nml::Model& model() const;
+  inline const ::massif::nml::Model& model() const;
 
   // repeated int32 children_ids = 4;
   static const int kChildrenIdsFieldNumber = 4;
@@ -997,11 +997,11 @@ public:
   inline std::int32_t children_ids(int index) const;
   inline const std::vector< std::int32_t >& children_ids() const;
 
-  // @@protoc_insertion_point(class_scope:carto.nml.ModelLODTreeNode)
+  // @@protoc_insertion_point(class_scope:massif.nml.ModelLODTreeNode)
 private:
   std::uint32_t _has_bits_[1];
-  ::carto::nml::Bounds3 bounds_ = ::carto::nml::Bounds3();
-  ::carto::nml::Model model_ = ::carto::nml::Model();
+  ::massif::nml::Bounds3 bounds_ = ::massif::nml::Bounds3();
+  ::massif::nml::Model model_ = ::massif::nml::Model();
   std::vector< std::int32_t > children_ids_;
   std::int32_t id_ = 0;
 };
@@ -1022,16 +1022,16 @@ public:
 
   // accessors -------------------------------------------------------
 
-  // repeated .carto.nml.ModelLODTreeNode nodes = 1;
+  // repeated .massif.nml.ModelLODTreeNode nodes = 1;
   static const int kNodesFieldNumber = 1;
   inline int nodes_size() const;
-  inline const ::carto::nml::ModelLODTreeNode& nodes(int index) const;
-  inline const std::vector< ::carto::nml::ModelLODTreeNode >& nodes() const;
+  inline const ::massif::nml::ModelLODTreeNode& nodes(int index) const;
+  inline const std::vector< ::massif::nml::ModelLODTreeNode >& nodes() const;
 
-  // @@protoc_insertion_point(class_scope:carto.nml.ModelLODTree)
+  // @@protoc_insertion_point(class_scope:massif.nml.ModelLODTree)
 private:
   std::uint32_t _has_bits_[1];
-  std::vector< ::carto::nml::ModelLODTreeNode > nodes_;
+  std::vector< ::massif::nml::ModelLODTreeNode > nodes_;
 };
 // ===================================================================
 
@@ -1066,7 +1066,7 @@ inline bool Vector3::has_x() const {
 }
 
 inline float Vector3::x() const {
-  // @@protoc_insertion_point(field_get:carto.nml.Vector3.x)
+  // @@protoc_insertion_point(field_get:massif.nml.Vector3.x)
   return x_;
 }
 
@@ -1076,7 +1076,7 @@ inline bool Vector3::has_y() const {
 }
 
 inline float Vector3::y() const {
-  // @@protoc_insertion_point(field_get:carto.nml.Vector3.y)
+  // @@protoc_insertion_point(field_get:massif.nml.Vector3.y)
   return y_;
 }
 
@@ -1086,7 +1086,7 @@ inline bool Vector3::has_z() const {
 }
 
 inline float Vector3::z() const {
-  // @@protoc_insertion_point(field_get:carto.nml.Vector3.z)
+  // @@protoc_insertion_point(field_get:massif.nml.Vector3.z)
   return z_;
 }
 
@@ -1127,7 +1127,7 @@ inline bool ColorRGBA::has_r() const {
 }
 
 inline float ColorRGBA::r() const {
-  // @@protoc_insertion_point(field_get:carto.nml.ColorRGBA.r)
+  // @@protoc_insertion_point(field_get:massif.nml.ColorRGBA.r)
   return r_;
 }
 
@@ -1137,7 +1137,7 @@ inline bool ColorRGBA::has_g() const {
 }
 
 inline float ColorRGBA::g() const {
-  // @@protoc_insertion_point(field_get:carto.nml.ColorRGBA.g)
+  // @@protoc_insertion_point(field_get:massif.nml.ColorRGBA.g)
   return g_;
 }
 
@@ -1147,7 +1147,7 @@ inline bool ColorRGBA::has_b() const {
 }
 
 inline float ColorRGBA::b() const {
-  // @@protoc_insertion_point(field_get:carto.nml.ColorRGBA.b)
+  // @@protoc_insertion_point(field_get:massif.nml.ColorRGBA.b)
   return b_;
 }
 
@@ -1157,7 +1157,7 @@ inline bool ColorRGBA::has_a() const {
 }
 
 inline float ColorRGBA::a() const {
-  // @@protoc_insertion_point(field_get:carto.nml.ColorRGBA.a)
+  // @@protoc_insertion_point(field_get:massif.nml.ColorRGBA.a)
   return a_;
 }
 
@@ -1173,34 +1173,34 @@ inline Bounds3::Bounds3(const protobuf::message& srcMsg) {
   std::fill(_has_bits_, _has_bits_ + sizeof(_has_bits_) / sizeof(std::uint32_t), 0);
   for (protobuf::message msg(srcMsg); msg.next(); ) {
     if (msg.tag == kMinFieldNumber) {
-      min_ = ::carto::nml::Vector3(msg.read_message());
+      min_ = ::massif::nml::Vector3(msg.read_message());
       _has_bits_[0] |= 0x00000001u;
     }
     else if (msg.tag == kMaxFieldNumber) {
-      max_ = ::carto::nml::Vector3(msg.read_message());
+      max_ = ::massif::nml::Vector3(msg.read_message());
       _has_bits_[0] |= 0x00000002u;
     }
     else msg.skip();
   }
 }
 
-// required .carto.nml.Vector3 min = 1;
+// required .massif.nml.Vector3 min = 1;
 inline bool Bounds3::has_min() const {
   return (_has_bits_[0] & 0x00000001u) != 0;
 }
 
-inline const ::carto::nml::Vector3& Bounds3::min() const {
-  // @@protoc_insertion_point(field_get:carto.nml.Bounds3.min)
+inline const ::massif::nml::Vector3& Bounds3::min() const {
+  // @@protoc_insertion_point(field_get:massif.nml.Bounds3.min)
   return min_;
 }
 
-// required .carto.nml.Vector3 max = 2;
+// required .massif.nml.Vector3 max = 2;
 inline bool Bounds3::has_max() const {
   return (_has_bits_[0] & 0x00000002u) != 0;
 }
 
-inline const ::carto::nml::Vector3& Bounds3::max() const {
-  // @@protoc_insertion_point(field_get:carto.nml.Bounds3.max)
+inline const ::massif::nml::Vector3& Bounds3::max() const {
+  // @@protoc_insertion_point(field_get:massif.nml.Bounds3.max)
   return max_;
 }
 
@@ -1289,7 +1289,7 @@ inline bool Matrix4::has_m00() const {
 }
 
 inline float Matrix4::m00() const {
-  // @@protoc_insertion_point(field_get:carto.nml.Matrix4.m00)
+  // @@protoc_insertion_point(field_get:massif.nml.Matrix4.m00)
   return m00_;
 }
 
@@ -1299,7 +1299,7 @@ inline bool Matrix4::has_m01() const {
 }
 
 inline float Matrix4::m01() const {
-  // @@protoc_insertion_point(field_get:carto.nml.Matrix4.m01)
+  // @@protoc_insertion_point(field_get:massif.nml.Matrix4.m01)
   return m01_;
 }
 
@@ -1309,7 +1309,7 @@ inline bool Matrix4::has_m02() const {
 }
 
 inline float Matrix4::m02() const {
-  // @@protoc_insertion_point(field_get:carto.nml.Matrix4.m02)
+  // @@protoc_insertion_point(field_get:massif.nml.Matrix4.m02)
   return m02_;
 }
 
@@ -1319,7 +1319,7 @@ inline bool Matrix4::has_m03() const {
 }
 
 inline float Matrix4::m03() const {
-  // @@protoc_insertion_point(field_get:carto.nml.Matrix4.m03)
+  // @@protoc_insertion_point(field_get:massif.nml.Matrix4.m03)
   return m03_;
 }
 
@@ -1329,7 +1329,7 @@ inline bool Matrix4::has_m10() const {
 }
 
 inline float Matrix4::m10() const {
-  // @@protoc_insertion_point(field_get:carto.nml.Matrix4.m10)
+  // @@protoc_insertion_point(field_get:massif.nml.Matrix4.m10)
   return m10_;
 }
 
@@ -1339,7 +1339,7 @@ inline bool Matrix4::has_m11() const {
 }
 
 inline float Matrix4::m11() const {
-  // @@protoc_insertion_point(field_get:carto.nml.Matrix4.m11)
+  // @@protoc_insertion_point(field_get:massif.nml.Matrix4.m11)
   return m11_;
 }
 
@@ -1349,7 +1349,7 @@ inline bool Matrix4::has_m12() const {
 }
 
 inline float Matrix4::m12() const {
-  // @@protoc_insertion_point(field_get:carto.nml.Matrix4.m12)
+  // @@protoc_insertion_point(field_get:massif.nml.Matrix4.m12)
   return m12_;
 }
 
@@ -1359,7 +1359,7 @@ inline bool Matrix4::has_m13() const {
 }
 
 inline float Matrix4::m13() const {
-  // @@protoc_insertion_point(field_get:carto.nml.Matrix4.m13)
+  // @@protoc_insertion_point(field_get:massif.nml.Matrix4.m13)
   return m13_;
 }
 
@@ -1369,7 +1369,7 @@ inline bool Matrix4::has_m20() const {
 }
 
 inline float Matrix4::m20() const {
-  // @@protoc_insertion_point(field_get:carto.nml.Matrix4.m20)
+  // @@protoc_insertion_point(field_get:massif.nml.Matrix4.m20)
   return m20_;
 }
 
@@ -1379,7 +1379,7 @@ inline bool Matrix4::has_m21() const {
 }
 
 inline float Matrix4::m21() const {
-  // @@protoc_insertion_point(field_get:carto.nml.Matrix4.m21)
+  // @@protoc_insertion_point(field_get:massif.nml.Matrix4.m21)
   return m21_;
 }
 
@@ -1389,7 +1389,7 @@ inline bool Matrix4::has_m22() const {
 }
 
 inline float Matrix4::m22() const {
-  // @@protoc_insertion_point(field_get:carto.nml.Matrix4.m22)
+  // @@protoc_insertion_point(field_get:massif.nml.Matrix4.m22)
   return m22_;
 }
 
@@ -1399,7 +1399,7 @@ inline bool Matrix4::has_m23() const {
 }
 
 inline float Matrix4::m23() const {
-  // @@protoc_insertion_point(field_get:carto.nml.Matrix4.m23)
+  // @@protoc_insertion_point(field_get:massif.nml.Matrix4.m23)
   return m23_;
 }
 
@@ -1409,7 +1409,7 @@ inline bool Matrix4::has_m30() const {
 }
 
 inline float Matrix4::m30() const {
-  // @@protoc_insertion_point(field_get:carto.nml.Matrix4.m30)
+  // @@protoc_insertion_point(field_get:massif.nml.Matrix4.m30)
   return m30_;
 }
 
@@ -1419,7 +1419,7 @@ inline bool Matrix4::has_m31() const {
 }
 
 inline float Matrix4::m31() const {
-  // @@protoc_insertion_point(field_get:carto.nml.Matrix4.m31)
+  // @@protoc_insertion_point(field_get:massif.nml.Matrix4.m31)
   return m31_;
 }
 
@@ -1429,7 +1429,7 @@ inline bool Matrix4::has_m32() const {
 }
 
 inline float Matrix4::m32() const {
-  // @@protoc_insertion_point(field_get:carto.nml.Matrix4.m32)
+  // @@protoc_insertion_point(field_get:massif.nml.Matrix4.m32)
   return m32_;
 }
 
@@ -1439,7 +1439,7 @@ inline bool Matrix4::has_m33() const {
 }
 
 inline float Matrix4::m33() const {
-  // @@protoc_insertion_point(field_get:carto.nml.Matrix4.m33)
+  // @@protoc_insertion_point(field_get:massif.nml.Matrix4.m33)
   return m33_;
 }
 
@@ -1470,34 +1470,34 @@ inline Sampler::Sampler(const protobuf::message& srcMsg) {
   }
 }
 
-// optional .carto.nml.Sampler.Filter filter = 1;
+// optional .massif.nml.Sampler.Filter filter = 1;
 inline bool Sampler::has_filter() const {
   return (_has_bits_[0] & 0x00000001u) != 0;
 }
 
-inline ::carto::nml::Sampler_Filter Sampler::filter() const {
-  // @@protoc_insertion_point(field_get:carto.nml.Sampler.filter)
-  return static_cast< ::carto::nml::Sampler_Filter >(filter_);
+inline ::massif::nml::Sampler_Filter Sampler::filter() const {
+  // @@protoc_insertion_point(field_get:massif.nml.Sampler.filter)
+  return static_cast< ::massif::nml::Sampler_Filter >(filter_);
 }
 
-// optional .carto.nml.Sampler.WrapMode wrap_s = 2;
+// optional .massif.nml.Sampler.WrapMode wrap_s = 2;
 inline bool Sampler::has_wrap_s() const {
   return (_has_bits_[0] & 0x00000002u) != 0;
 }
 
-inline ::carto::nml::Sampler_WrapMode Sampler::wrap_s() const {
-  // @@protoc_insertion_point(field_get:carto.nml.Sampler.wrap_s)
-  return static_cast< ::carto::nml::Sampler_WrapMode >(wrap_s_);
+inline ::massif::nml::Sampler_WrapMode Sampler::wrap_s() const {
+  // @@protoc_insertion_point(field_get:massif.nml.Sampler.wrap_s)
+  return static_cast< ::massif::nml::Sampler_WrapMode >(wrap_s_);
 }
 
-// optional .carto.nml.Sampler.WrapMode wrap_t = 3;
+// optional .massif.nml.Sampler.WrapMode wrap_t = 3;
 inline bool Sampler::has_wrap_t() const {
   return (_has_bits_[0] & 0x00000004u) != 0;
 }
 
-inline ::carto::nml::Sampler_WrapMode Sampler::wrap_t() const {
-  // @@protoc_insertion_point(field_get:carto.nml.Sampler.wrap_t)
-  return static_cast< ::carto::nml::Sampler_WrapMode >(wrap_t_);
+inline ::massif::nml::Sampler_WrapMode Sampler::wrap_t() const {
+  // @@protoc_insertion_point(field_get:massif.nml.Sampler.wrap_t)
+  return static_cast< ::massif::nml::Sampler_WrapMode >(wrap_t_);
 }
 
 // -------------------------------------------------------------------
@@ -1528,7 +1528,7 @@ inline Texture::Texture(const protobuf::message& srcMsg) {
       _has_bits_[0] |= 0x00000008u;
     }
     else if (msg.tag == kSamplerFieldNumber) {
-      sampler_ = ::carto::nml::Sampler(msg.read_message());
+      sampler_ = ::massif::nml::Sampler(msg.read_message());
       _has_bits_[0] |= 0x00000010u;
     }
     else if (msg.tag == kMipmapsFieldNumber) {
@@ -1545,18 +1545,18 @@ inline bool Texture::has_id() const {
 }
 
 inline const ::std::string& Texture::id() const {
-  // @@protoc_insertion_point(field_get:carto.nml.Texture.id)
+  // @@protoc_insertion_point(field_get:massif.nml.Texture.id)
   return id_;
 }
 
-// required .carto.nml.Texture.Format format = 2;
+// required .massif.nml.Texture.Format format = 2;
 inline bool Texture::has_format() const {
   return (_has_bits_[0] & 0x00000002u) != 0;
 }
 
-inline ::carto::nml::Texture_Format Texture::format() const {
-  // @@protoc_insertion_point(field_get:carto.nml.Texture.format)
-  return static_cast< ::carto::nml::Texture_Format >(format_);
+inline ::massif::nml::Texture_Format Texture::format() const {
+  // @@protoc_insertion_point(field_get:massif.nml.Texture.format)
+  return static_cast< ::massif::nml::Texture_Format >(format_);
 }
 
 // required int32 width = 3;
@@ -1565,7 +1565,7 @@ inline bool Texture::has_width() const {
 }
 
 inline std::int32_t Texture::width() const {
-  // @@protoc_insertion_point(field_get:carto.nml.Texture.width)
+  // @@protoc_insertion_point(field_get:massif.nml.Texture.width)
   return width_;
 }
 
@@ -1575,17 +1575,17 @@ inline bool Texture::has_height() const {
 }
 
 inline std::int32_t Texture::height() const {
-  // @@protoc_insertion_point(field_get:carto.nml.Texture.height)
+  // @@protoc_insertion_point(field_get:massif.nml.Texture.height)
   return height_;
 }
 
-// required .carto.nml.Sampler sampler = 5;
+// required .massif.nml.Sampler sampler = 5;
 inline bool Texture::has_sampler() const {
   return (_has_bits_[0] & 0x00000010u) != 0;
 }
 
-inline const ::carto::nml::Sampler& Texture::sampler() const {
-  // @@protoc_insertion_point(field_get:carto.nml.Texture.sampler)
+inline const ::massif::nml::Sampler& Texture::sampler() const {
+  // @@protoc_insertion_point(field_get:massif.nml.Texture.sampler)
   return sampler_;
 }
 
@@ -1595,11 +1595,11 @@ inline int Texture::mipmaps_size() const {
 }
 
 inline const ::std::string& Texture::mipmaps(int index) const {
-  // @@protoc_insertion_point(field_get:carto.nml.Texture.mipmaps)
+  // @@protoc_insertion_point(field_get:massif.nml.Texture.mipmaps)
   return mipmaps_[index];
 }
 inline const std::vector< ::std::string>& Texture::mipmaps() const {
-  // @@protoc_insertion_point(field_list:carto.nml.Texture.mipmaps)
+  // @@protoc_insertion_point(field_list:massif.nml.Texture.mipmaps)
   return mipmaps_;
 }
 
@@ -1619,7 +1619,7 @@ inline ColorOrTexture::ColorOrTexture(const protobuf::message& srcMsg) {
       _has_bits_[0] |= 0x00000001u;
     }
     else if (msg.tag == kColorFieldNumber) {
-      color_ = ::carto::nml::ColorRGBA(msg.read_message());
+      color_ = ::massif::nml::ColorRGBA(msg.read_message());
       _has_bits_[0] |= 0x00000002u;
     }
     else if (msg.tag == kTextureIdFieldNumber) {
@@ -1630,23 +1630,23 @@ inline ColorOrTexture::ColorOrTexture(const protobuf::message& srcMsg) {
   }
 }
 
-// required .carto.nml.ColorOrTexture.Type type = 1;
+// required .massif.nml.ColorOrTexture.Type type = 1;
 inline bool ColorOrTexture::has_type() const {
   return (_has_bits_[0] & 0x00000001u) != 0;
 }
 
-inline ::carto::nml::ColorOrTexture_Type ColorOrTexture::type() const {
-  // @@protoc_insertion_point(field_get:carto.nml.ColorOrTexture.type)
-  return static_cast< ::carto::nml::ColorOrTexture_Type >(type_);
+inline ::massif::nml::ColorOrTexture_Type ColorOrTexture::type() const {
+  // @@protoc_insertion_point(field_get:massif.nml.ColorOrTexture.type)
+  return static_cast< ::massif::nml::ColorOrTexture_Type >(type_);
 }
 
-// optional .carto.nml.ColorRGBA color = 2;
+// optional .massif.nml.ColorRGBA color = 2;
 inline bool ColorOrTexture::has_color() const {
   return (_has_bits_[0] & 0x00000002u) != 0;
 }
 
-inline const ::carto::nml::ColorRGBA& ColorOrTexture::color() const {
-  // @@protoc_insertion_point(field_get:carto.nml.ColorOrTexture.color)
+inline const ::massif::nml::ColorRGBA& ColorOrTexture::color() const {
+  // @@protoc_insertion_point(field_get:massif.nml.ColorOrTexture.color)
   return color_;
 }
 
@@ -1656,7 +1656,7 @@ inline bool ColorOrTexture::has_texture_id() const {
 }
 
 inline const ::std::string& ColorOrTexture::texture_id() const {
-  // @@protoc_insertion_point(field_get:carto.nml.ColorOrTexture.texture_id)
+  // @@protoc_insertion_point(field_get:massif.nml.ColorOrTexture.texture_id)
   return texture_id_;
 }
 
@@ -1684,15 +1684,15 @@ inline Material::Material(const protobuf::message& srcMsg) {
       _has_bits_[0] |= 0x00000004u;
     }
     else if (msg.tag == kEmissionFieldNumber) {
-      emission_ = ::carto::nml::ColorOrTexture(msg.read_message());
+      emission_ = ::massif::nml::ColorOrTexture(msg.read_message());
       _has_bits_[0] |= 0x00000008u;
     }
     else if (msg.tag == kAmbientFieldNumber) {
-      ambient_ = ::carto::nml::ColorOrTexture(msg.read_message());
+      ambient_ = ::massif::nml::ColorOrTexture(msg.read_message());
       _has_bits_[0] |= 0x00000010u;
     }
     else if (msg.tag == kDiffuseFieldNumber) {
-      diffuse_ = ::carto::nml::ColorOrTexture(msg.read_message());
+      diffuse_ = ::massif::nml::ColorOrTexture(msg.read_message());
       _has_bits_[0] |= 0x00000020u;
     }
     else if (msg.tag == kOpaqueModeFieldNumber) {
@@ -1704,7 +1704,7 @@ inline Material::Material(const protobuf::message& srcMsg) {
       _has_bits_[0] |= 0x00000080u;
     }
     else if (msg.tag == kTransparentFieldNumber) {
-      transparent_ = ::carto::nml::ColorOrTexture(msg.read_message());
+      transparent_ = ::massif::nml::ColorOrTexture(msg.read_message());
       _has_bits_[0] |= 0x00000100u;
     }
     else if (msg.tag == kShininessFieldNumber) {
@@ -1712,7 +1712,7 @@ inline Material::Material(const protobuf::message& srcMsg) {
       _has_bits_[0] |= 0x00000200u;
     }
     else if (msg.tag == kSpecularFieldNumber) {
-      specular_ = ::carto::nml::ColorOrTexture(msg.read_message());
+      specular_ = ::massif::nml::ColorOrTexture(msg.read_message());
       _has_bits_[0] |= 0x00000400u;
     }
     else msg.skip();
@@ -1725,68 +1725,68 @@ inline bool Material::has_id() const {
 }
 
 inline const ::std::string& Material::id() const {
-  // @@protoc_insertion_point(field_get:carto.nml.Material.id)
+  // @@protoc_insertion_point(field_get:massif.nml.Material.id)
   return id_;
 }
 
-// required .carto.nml.Material.Type type = 2;
+// required .massif.nml.Material.Type type = 2;
 inline bool Material::has_type() const {
   return (_has_bits_[0] & 0x00000002u) != 0;
 }
 
-inline ::carto::nml::Material_Type Material::type() const {
-  // @@protoc_insertion_point(field_get:carto.nml.Material.type)
-  return static_cast< ::carto::nml::Material_Type >(type_);
+inline ::massif::nml::Material_Type Material::type() const {
+  // @@protoc_insertion_point(field_get:massif.nml.Material.type)
+  return static_cast< ::massif::nml::Material_Type >(type_);
 }
 
-// required .carto.nml.Material.Culling culling = 3;
+// required .massif.nml.Material.Culling culling = 3;
 inline bool Material::has_culling() const {
   return (_has_bits_[0] & 0x00000004u) != 0;
 }
 
-inline ::carto::nml::Material_Culling Material::culling() const {
-  // @@protoc_insertion_point(field_get:carto.nml.Material.culling)
-  return static_cast< ::carto::nml::Material_Culling >(culling_);
+inline ::massif::nml::Material_Culling Material::culling() const {
+  // @@protoc_insertion_point(field_get:massif.nml.Material.culling)
+  return static_cast< ::massif::nml::Material_Culling >(culling_);
 }
 
-// optional .carto.nml.ColorOrTexture emission = 4;
+// optional .massif.nml.ColorOrTexture emission = 4;
 inline bool Material::has_emission() const {
   return (_has_bits_[0] & 0x00000008u) != 0;
 }
 
-inline const ::carto::nml::ColorOrTexture& Material::emission() const {
-  // @@protoc_insertion_point(field_get:carto.nml.Material.emission)
+inline const ::massif::nml::ColorOrTexture& Material::emission() const {
+  // @@protoc_insertion_point(field_get:massif.nml.Material.emission)
   return emission_;
 }
 
-// optional .carto.nml.ColorOrTexture ambient = 5;
+// optional .massif.nml.ColorOrTexture ambient = 5;
 inline bool Material::has_ambient() const {
   return (_has_bits_[0] & 0x00000010u) != 0;
 }
 
-inline const ::carto::nml::ColorOrTexture& Material::ambient() const {
-  // @@protoc_insertion_point(field_get:carto.nml.Material.ambient)
+inline const ::massif::nml::ColorOrTexture& Material::ambient() const {
+  // @@protoc_insertion_point(field_get:massif.nml.Material.ambient)
   return ambient_;
 }
 
-// optional .carto.nml.ColorOrTexture diffuse = 6;
+// optional .massif.nml.ColorOrTexture diffuse = 6;
 inline bool Material::has_diffuse() const {
   return (_has_bits_[0] & 0x00000020u) != 0;
 }
 
-inline const ::carto::nml::ColorOrTexture& Material::diffuse() const {
-  // @@protoc_insertion_point(field_get:carto.nml.Material.diffuse)
+inline const ::massif::nml::ColorOrTexture& Material::diffuse() const {
+  // @@protoc_insertion_point(field_get:massif.nml.Material.diffuse)
   return diffuse_;
 }
 
-// optional .carto.nml.Material.OpaqueMode opaque_mode = 7;
+// optional .massif.nml.Material.OpaqueMode opaque_mode = 7;
 inline bool Material::has_opaque_mode() const {
   return (_has_bits_[0] & 0x00000040u) != 0;
 }
 
-inline ::carto::nml::Material_OpaqueMode Material::opaque_mode() const {
-  // @@protoc_insertion_point(field_get:carto.nml.Material.opaque_mode)
-  return static_cast< ::carto::nml::Material_OpaqueMode >(opaque_mode_);
+inline ::massif::nml::Material_OpaqueMode Material::opaque_mode() const {
+  // @@protoc_insertion_point(field_get:massif.nml.Material.opaque_mode)
+  return static_cast< ::massif::nml::Material_OpaqueMode >(opaque_mode_);
 }
 
 // optional float transparency = 8;
@@ -1795,17 +1795,17 @@ inline bool Material::has_transparency() const {
 }
 
 inline float Material::transparency() const {
-  // @@protoc_insertion_point(field_get:carto.nml.Material.transparency)
+  // @@protoc_insertion_point(field_get:massif.nml.Material.transparency)
   return transparency_;
 }
 
-// optional .carto.nml.ColorOrTexture transparent = 9;
+// optional .massif.nml.ColorOrTexture transparent = 9;
 inline bool Material::has_transparent() const {
   return (_has_bits_[0] & 0x00000100u) != 0;
 }
 
-inline const ::carto::nml::ColorOrTexture& Material::transparent() const {
-  // @@protoc_insertion_point(field_get:carto.nml.Material.transparent)
+inline const ::massif::nml::ColorOrTexture& Material::transparent() const {
+  // @@protoc_insertion_point(field_get:massif.nml.Material.transparent)
   return transparent_;
 }
 
@@ -1815,17 +1815,17 @@ inline bool Material::has_shininess() const {
 }
 
 inline float Material::shininess() const {
-  // @@protoc_insertion_point(field_get:carto.nml.Material.shininess)
+  // @@protoc_insertion_point(field_get:massif.nml.Material.shininess)
   return shininess_;
 }
 
-// optional .carto.nml.ColorOrTexture specular = 11;
+// optional .massif.nml.ColorOrTexture specular = 11;
 inline bool Material::has_specular() const {
   return (_has_bits_[0] & 0x00000400u) != 0;
 }
 
-inline const ::carto::nml::ColorOrTexture& Material::specular() const {
-  // @@protoc_insertion_point(field_get:carto.nml.Material.specular)
+inline const ::massif::nml::ColorOrTexture& Material::specular() const {
+  // @@protoc_insertion_point(field_get:massif.nml.Material.specular)
   return specular_;
 }
 
@@ -1876,14 +1876,14 @@ inline Submesh::Submesh(const protobuf::message& srcMsg) {
   }
 }
 
-// required .carto.nml.Submesh.Type type = 1;
+// required .massif.nml.Submesh.Type type = 1;
 inline bool Submesh::has_type() const {
   return (_has_bits_[0] & 0x00000001u) != 0;
 }
 
-inline ::carto::nml::Submesh_Type Submesh::type() const {
-  // @@protoc_insertion_point(field_get:carto.nml.Submesh.type)
-  return static_cast< ::carto::nml::Submesh_Type >(type_);
+inline ::massif::nml::Submesh_Type Submesh::type() const {
+  // @@protoc_insertion_point(field_get:massif.nml.Submesh.type)
+  return static_cast< ::massif::nml::Submesh_Type >(type_);
 }
 
 // required string material_id = 2;
@@ -1892,7 +1892,7 @@ inline bool Submesh::has_material_id() const {
 }
 
 inline const ::std::string& Submesh::material_id() const {
-  // @@protoc_insertion_point(field_get:carto.nml.Submesh.material_id)
+  // @@protoc_insertion_point(field_get:massif.nml.Submesh.material_id)
   return material_id_;
 }
 
@@ -1902,12 +1902,12 @@ inline int Submesh::vertex_counts_size() const {
 }
 
 inline std::int32_t Submesh::vertex_counts(int index) const {
-  // @@protoc_insertion_point(field_get:carto.nml.Submesh.vertex_counts)
+  // @@protoc_insertion_point(field_get:massif.nml.Submesh.vertex_counts)
   return vertex_counts_[index];
 }
 
 inline const std::vector< std::int32_t >& Submesh::vertex_counts() const {
-  // @@protoc_insertion_point(field_list:carto.nml.Submesh.vertex_counts)
+  // @@protoc_insertion_point(field_list:massif.nml.Submesh.vertex_counts)
   return vertex_counts_;
 }
 
@@ -1917,7 +1917,7 @@ inline bool Submesh::has_positions() const {
 }
 
 inline const ::std::string& Submesh::positions() const {
-  // @@protoc_insertion_point(field_get:carto.nml.Submesh.positions)
+  // @@protoc_insertion_point(field_get:massif.nml.Submesh.positions)
   return positions_;
 }
 
@@ -1927,7 +1927,7 @@ inline bool Submesh::has_normals() const {
 }
 
 inline const ::std::string& Submesh::normals() const {
-  // @@protoc_insertion_point(field_get:carto.nml.Submesh.normals)
+  // @@protoc_insertion_point(field_get:massif.nml.Submesh.normals)
   return normals_;
 }
 
@@ -1937,7 +1937,7 @@ inline bool Submesh::has_uvs() const {
 }
 
 inline const ::std::string& Submesh::uvs() const {
-  // @@protoc_insertion_point(field_get:carto.nml.Submesh.uvs)
+  // @@protoc_insertion_point(field_get:massif.nml.Submesh.uvs)
   return uvs_;
 }
 
@@ -1947,7 +1947,7 @@ inline bool Submesh::has_colors() const {
 }
 
 inline const ::std::string& Submesh::colors() const {
-  // @@protoc_insertion_point(field_get:carto.nml.Submesh.colors)
+  // @@protoc_insertion_point(field_get:massif.nml.Submesh.colors)
   return colors_;
 }
 
@@ -1957,12 +1957,12 @@ inline int Submesh::vertex_ids_size() const {
 }
 
 inline std::int64_t Submesh::vertex_ids(int index) const {
-  // @@protoc_insertion_point(field_get:carto.nml.Submesh.vertex_ids)
+  // @@protoc_insertion_point(field_get:massif.nml.Submesh.vertex_ids)
   return vertex_ids_[index];
 }
 
 inline const std::vector< std::int64_t >& Submesh::vertex_ids() const {
-  // @@protoc_insertion_point(field_list:carto.nml.Submesh.vertex_ids)
+  // @@protoc_insertion_point(field_list:massif.nml.Submesh.vertex_ids)
   return vertex_ids_;
 }
 
@@ -1982,7 +1982,7 @@ inline Mesh::Mesh(const protobuf::message& srcMsg) {
       _has_bits_[0] |= 0x00000001u;
     }
     else if (msg.tag == kBoundsFieldNumber) {
-      bounds_ = ::carto::nml::Bounds3(msg.read_message());
+      bounds_ = ::massif::nml::Bounds3(msg.read_message());
       _has_bits_[0] |= 0x00000002u;
     }
     else if (msg.tag == kSubmeshesFieldNumber) {
@@ -1999,31 +1999,31 @@ inline bool Mesh::has_id() const {
 }
 
 inline const ::std::string& Mesh::id() const {
-  // @@protoc_insertion_point(field_get:carto.nml.Mesh.id)
+  // @@protoc_insertion_point(field_get:massif.nml.Mesh.id)
   return id_;
 }
 
-// required .carto.nml.Bounds3 bounds = 2;
+// required .massif.nml.Bounds3 bounds = 2;
 inline bool Mesh::has_bounds() const {
   return (_has_bits_[0] & 0x00000002u) != 0;
 }
 
-inline const ::carto::nml::Bounds3& Mesh::bounds() const {
-  // @@protoc_insertion_point(field_get:carto.nml.Mesh.bounds)
+inline const ::massif::nml::Bounds3& Mesh::bounds() const {
+  // @@protoc_insertion_point(field_get:massif.nml.Mesh.bounds)
   return bounds_;
 }
 
-// repeated .carto.nml.Submesh submeshes = 3;
+// repeated .massif.nml.Submesh submeshes = 3;
 inline int Mesh::submeshes_size() const {
   return static_cast<int>(submeshes_.size());
 }
 
-inline const ::carto::nml::Submesh& Mesh::submeshes(int index) const {
-  // @@protoc_insertion_point(field_get:carto.nml.Mesh.submeshes)
+inline const ::massif::nml::Submesh& Mesh::submeshes(int index) const {
+  // @@protoc_insertion_point(field_get:massif.nml.Mesh.submeshes)
   return submeshes_[index];
 }
-inline const std::vector< ::carto::nml::Submesh >& Mesh::submeshes() const {
-  // @@protoc_insertion_point(field_list:carto.nml.Mesh.submeshes)
+inline const std::vector< ::massif::nml::Submesh >& Mesh::submeshes() const {
+  // @@protoc_insertion_point(field_list:massif.nml.Mesh.submeshes)
   return submeshes_;
 }
 
@@ -2047,7 +2047,7 @@ inline MeshInstance::MeshInstance(const protobuf::message& srcMsg) {
       _has_bits_[0] |= 0x00000002u;
     }
     else if (msg.tag == kTransformFieldNumber) {
-      transform_ = ::carto::nml::Matrix4(msg.read_message());
+      transform_ = ::massif::nml::Matrix4(msg.read_message());
       _has_bits_[0] |= 0x00000004u;
     }
     else msg.skip();
@@ -2060,31 +2060,31 @@ inline bool MeshInstance::has_mesh_id() const {
 }
 
 inline const ::std::string& MeshInstance::mesh_id() const {
-  // @@protoc_insertion_point(field_get:carto.nml.MeshInstance.mesh_id)
+  // @@protoc_insertion_point(field_get:massif.nml.MeshInstance.mesh_id)
   return mesh_id_;
 }
 
-// repeated .carto.nml.Material materials = 2;
+// repeated .massif.nml.Material materials = 2;
 inline int MeshInstance::materials_size() const {
   return static_cast<int>(materials_.size());
 }
 
-inline const ::carto::nml::Material& MeshInstance::materials(int index) const {
-  // @@protoc_insertion_point(field_get:carto.nml.MeshInstance.materials)
+inline const ::massif::nml::Material& MeshInstance::materials(int index) const {
+  // @@protoc_insertion_point(field_get:massif.nml.MeshInstance.materials)
   return materials_[index];
 }
-inline const std::vector< ::carto::nml::Material >& MeshInstance::materials() const {
-  // @@protoc_insertion_point(field_list:carto.nml.MeshInstance.materials)
+inline const std::vector< ::massif::nml::Material >& MeshInstance::materials() const {
+  // @@protoc_insertion_point(field_list:massif.nml.MeshInstance.materials)
   return materials_;
 }
 
-// optional .carto.nml.Matrix4 transform = 3;
+// optional .massif.nml.Matrix4 transform = 3;
 inline bool MeshInstance::has_transform() const {
   return (_has_bits_[0] & 0x00000004u) != 0;
 }
 
-inline const ::carto::nml::Matrix4& MeshInstance::transform() const {
-  // @@protoc_insertion_point(field_get:carto.nml.MeshInstance.transform)
+inline const ::massif::nml::Matrix4& MeshInstance::transform() const {
+  // @@protoc_insertion_point(field_get:massif.nml.MeshInstance.transform)
   return transform_;
 }
 
@@ -2137,7 +2137,7 @@ inline bool SubmeshOp::has_submesh_idx() const {
 }
 
 inline std::int32_t SubmeshOp::submesh_idx() const {
-  // @@protoc_insertion_point(field_get:carto.nml.SubmeshOp.submesh_idx)
+  // @@protoc_insertion_point(field_get:massif.nml.SubmeshOp.submesh_idx)
   return submesh_idx_;
 }
 
@@ -2147,7 +2147,7 @@ inline bool SubmeshOp::has_offset() const {
 }
 
 inline std::int32_t SubmeshOp::offset() const {
-  // @@protoc_insertion_point(field_get:carto.nml.SubmeshOp.offset)
+  // @@protoc_insertion_point(field_get:massif.nml.SubmeshOp.offset)
   return offset_;
 }
 
@@ -2157,7 +2157,7 @@ inline bool SubmeshOp::has_count() const {
 }
 
 inline std::int32_t SubmeshOp::count() const {
-  // @@protoc_insertion_point(field_get:carto.nml.SubmeshOp.count)
+  // @@protoc_insertion_point(field_get:massif.nml.SubmeshOp.count)
   return count_;
 }
 
@@ -2167,7 +2167,7 @@ inline bool SubmeshOp::has_tex_u_scale() const {
 }
 
 inline float SubmeshOp::tex_u_scale() const {
-  // @@protoc_insertion_point(field_get:carto.nml.SubmeshOp.tex_u_scale)
+  // @@protoc_insertion_point(field_get:massif.nml.SubmeshOp.tex_u_scale)
   return tex_u_scale_;
 }
 
@@ -2177,7 +2177,7 @@ inline bool SubmeshOp::has_tex_v_scale() const {
 }
 
 inline float SubmeshOp::tex_v_scale() const {
-  // @@protoc_insertion_point(field_get:carto.nml.SubmeshOp.tex_v_scale)
+  // @@protoc_insertion_point(field_get:massif.nml.SubmeshOp.tex_v_scale)
   return tex_v_scale_;
 }
 
@@ -2187,7 +2187,7 @@ inline bool SubmeshOp::has_tex_u_trans() const {
 }
 
 inline float SubmeshOp::tex_u_trans() const {
-  // @@protoc_insertion_point(field_get:carto.nml.SubmeshOp.tex_u_trans)
+  // @@protoc_insertion_point(field_get:massif.nml.SubmeshOp.tex_u_trans)
   return tex_u_trans_;
 }
 
@@ -2197,7 +2197,7 @@ inline bool SubmeshOp::has_tex_v_trans() const {
 }
 
 inline float SubmeshOp::tex_v_trans() const {
-  // @@protoc_insertion_point(field_get:carto.nml.SubmeshOp.tex_v_trans)
+  // @@protoc_insertion_point(field_get:massif.nml.SubmeshOp.tex_v_trans)
   return tex_v_trans_;
 }
 
@@ -2228,14 +2228,14 @@ inline SubmeshOpList::SubmeshOpList(const protobuf::message& srcMsg) {
   }
 }
 
-// required .carto.nml.Submesh.Type type = 1;
+// required .massif.nml.Submesh.Type type = 1;
 inline bool SubmeshOpList::has_type() const {
   return (_has_bits_[0] & 0x00000001u) != 0;
 }
 
-inline ::carto::nml::Submesh_Type SubmeshOpList::type() const {
-  // @@protoc_insertion_point(field_get:carto.nml.SubmeshOpList.type)
-  return static_cast< ::carto::nml::Submesh_Type >(type_);
+inline ::massif::nml::Submesh_Type SubmeshOpList::type() const {
+  // @@protoc_insertion_point(field_get:massif.nml.SubmeshOpList.type)
+  return static_cast< ::massif::nml::Submesh_Type >(type_);
 }
 
 // required string material_id = 2;
@@ -2244,21 +2244,21 @@ inline bool SubmeshOpList::has_material_id() const {
 }
 
 inline const ::std::string& SubmeshOpList::material_id() const {
-  // @@protoc_insertion_point(field_get:carto.nml.SubmeshOpList.material_id)
+  // @@protoc_insertion_point(field_get:massif.nml.SubmeshOpList.material_id)
   return material_id_;
 }
 
-// repeated .carto.nml.SubmeshOp submesh_ops = 3;
+// repeated .massif.nml.SubmeshOp submesh_ops = 3;
 inline int SubmeshOpList::submesh_ops_size() const {
   return static_cast<int>(submesh_ops_.size());
 }
 
-inline const ::carto::nml::SubmeshOp& SubmeshOpList::submesh_ops(int index) const {
-  // @@protoc_insertion_point(field_get:carto.nml.SubmeshOpList.submesh_ops)
+inline const ::massif::nml::SubmeshOp& SubmeshOpList::submesh_ops(int index) const {
+  // @@protoc_insertion_point(field_get:massif.nml.SubmeshOpList.submesh_ops)
   return submesh_ops_[index];
 }
-inline const std::vector< ::carto::nml::SubmeshOp >& SubmeshOpList::submesh_ops() const {
-  // @@protoc_insertion_point(field_list:carto.nml.SubmeshOpList.submesh_ops)
+inline const std::vector< ::massif::nml::SubmeshOp >& SubmeshOpList::submesh_ops() const {
+  // @@protoc_insertion_point(field_list:massif.nml.SubmeshOpList.submesh_ops)
   return submesh_ops_;
 }
 
@@ -2278,7 +2278,7 @@ inline MeshOp::MeshOp(const protobuf::message& srcMsg) {
       _has_bits_[0] |= 0x00000001u;
     }
     else if (msg.tag == kBoundsFieldNumber) {
-      bounds_ = ::carto::nml::Bounds3(msg.read_message());
+      bounds_ = ::massif::nml::Bounds3(msg.read_message());
       _has_bits_[0] |= 0x00000002u;
     }
     else if (msg.tag == kSubmeshOpListsFieldNumber) {
@@ -2295,31 +2295,31 @@ inline bool MeshOp::has_id() const {
 }
 
 inline const ::std::string& MeshOp::id() const {
-  // @@protoc_insertion_point(field_get:carto.nml.MeshOp.id)
+  // @@protoc_insertion_point(field_get:massif.nml.MeshOp.id)
   return id_;
 }
 
-// required .carto.nml.Bounds3 bounds = 2;
+// required .massif.nml.Bounds3 bounds = 2;
 inline bool MeshOp::has_bounds() const {
   return (_has_bits_[0] & 0x00000002u) != 0;
 }
 
-inline const ::carto::nml::Bounds3& MeshOp::bounds() const {
-  // @@protoc_insertion_point(field_get:carto.nml.MeshOp.bounds)
+inline const ::massif::nml::Bounds3& MeshOp::bounds() const {
+  // @@protoc_insertion_point(field_get:massif.nml.MeshOp.bounds)
   return bounds_;
 }
 
-// repeated .carto.nml.SubmeshOpList submesh_op_lists = 3;
+// repeated .massif.nml.SubmeshOpList submesh_op_lists = 3;
 inline int MeshOp::submesh_op_lists_size() const {
   return static_cast<int>(submesh_op_lists_.size());
 }
 
-inline const ::carto::nml::SubmeshOpList& MeshOp::submesh_op_lists(int index) const {
-  // @@protoc_insertion_point(field_get:carto.nml.MeshOp.submesh_op_lists)
+inline const ::massif::nml::SubmeshOpList& MeshOp::submesh_op_lists(int index) const {
+  // @@protoc_insertion_point(field_get:massif.nml.MeshOp.submesh_op_lists)
   return submesh_op_lists_[index];
 }
-inline const std::vector< ::carto::nml::SubmeshOpList >& MeshOp::submesh_op_lists() const {
-  // @@protoc_insertion_point(field_list:carto.nml.MeshOp.submesh_op_lists)
+inline const std::vector< ::massif::nml::SubmeshOpList >& MeshOp::submesh_op_lists() const {
+  // @@protoc_insertion_point(field_list:massif.nml.MeshOp.submesh_op_lists)
   return submesh_op_lists_;
 }
 
@@ -2351,7 +2351,7 @@ inline Model::Model(const protobuf::message& srcMsg) {
       _has_bits_[0] |= 0x00000008u;
     }
     else if (msg.tag == kBoundsFieldNumber) {
-      bounds_ = ::carto::nml::Bounds3(msg.read_message());
+      bounds_ = ::massif::nml::Bounds3(msg.read_message());
       _has_bits_[0] |= 0x00000010u;
     }
     else if (msg.tag == kMeshFootprintFieldNumber) {
@@ -2372,59 +2372,59 @@ inline bool Model::has_id() const {
 }
 
 inline const ::std::string& Model::id() const {
-  // @@protoc_insertion_point(field_get:carto.nml.Model.id)
+  // @@protoc_insertion_point(field_get:massif.nml.Model.id)
   return id_;
 }
 
-// repeated .carto.nml.MeshInstance mesh_instances = 2;
+// repeated .massif.nml.MeshInstance mesh_instances = 2;
 inline int Model::mesh_instances_size() const {
   return static_cast<int>(mesh_instances_.size());
 }
 
-inline const ::carto::nml::MeshInstance& Model::mesh_instances(int index) const {
-  // @@protoc_insertion_point(field_get:carto.nml.Model.mesh_instances)
+inline const ::massif::nml::MeshInstance& Model::mesh_instances(int index) const {
+  // @@protoc_insertion_point(field_get:massif.nml.Model.mesh_instances)
   return mesh_instances_[index];
 }
-inline const std::vector< ::carto::nml::MeshInstance >& Model::mesh_instances() const {
-  // @@protoc_insertion_point(field_list:carto.nml.Model.mesh_instances)
+inline const std::vector< ::massif::nml::MeshInstance >& Model::mesh_instances() const {
+  // @@protoc_insertion_point(field_list:massif.nml.Model.mesh_instances)
   return mesh_instances_;
 }
 
-// repeated .carto.nml.Mesh meshes = 3;
+// repeated .massif.nml.Mesh meshes = 3;
 inline int Model::meshes_size() const {
   return static_cast<int>(meshes_.size());
 }
 
-inline const ::carto::nml::Mesh& Model::meshes(int index) const {
-  // @@protoc_insertion_point(field_get:carto.nml.Model.meshes)
+inline const ::massif::nml::Mesh& Model::meshes(int index) const {
+  // @@protoc_insertion_point(field_get:massif.nml.Model.meshes)
   return meshes_[index];
 }
-inline const std::vector< ::carto::nml::Mesh >& Model::meshes() const {
-  // @@protoc_insertion_point(field_list:carto.nml.Model.meshes)
+inline const std::vector< ::massif::nml::Mesh >& Model::meshes() const {
+  // @@protoc_insertion_point(field_list:massif.nml.Model.meshes)
   return meshes_;
 }
 
-// repeated .carto.nml.Texture textures = 4;
+// repeated .massif.nml.Texture textures = 4;
 inline int Model::textures_size() const {
   return static_cast<int>(textures_.size());
 }
 
-inline const ::carto::nml::Texture& Model::textures(int index) const {
-  // @@protoc_insertion_point(field_get:carto.nml.Model.textures)
+inline const ::massif::nml::Texture& Model::textures(int index) const {
+  // @@protoc_insertion_point(field_get:massif.nml.Model.textures)
   return textures_[index];
 }
-inline const std::vector< ::carto::nml::Texture >& Model::textures() const {
-  // @@protoc_insertion_point(field_list:carto.nml.Model.textures)
+inline const std::vector< ::massif::nml::Texture >& Model::textures() const {
+  // @@protoc_insertion_point(field_list:massif.nml.Model.textures)
   return textures_;
 }
 
-// required .carto.nml.Bounds3 bounds = 5;
+// required .massif.nml.Bounds3 bounds = 5;
 inline bool Model::has_bounds() const {
   return (_has_bits_[0] & 0x00000010u) != 0;
 }
 
-inline const ::carto::nml::Bounds3& Model::bounds() const {
-  // @@protoc_insertion_point(field_get:carto.nml.Model.bounds)
+inline const ::massif::nml::Bounds3& Model::bounds() const {
+  // @@protoc_insertion_point(field_get:massif.nml.Model.bounds)
   return bounds_;
 }
 
@@ -2434,7 +2434,7 @@ inline bool Model::has_mesh_footprint() const {
 }
 
 inline std::int32_t Model::mesh_footprint() const {
-  // @@protoc_insertion_point(field_get:carto.nml.Model.mesh_footprint)
+  // @@protoc_insertion_point(field_get:massif.nml.Model.mesh_footprint)
   return mesh_footprint_;
 }
 
@@ -2444,7 +2444,7 @@ inline bool Model::has_texture_footprint() const {
 }
 
 inline std::int32_t Model::texture_footprint() const {
-  // @@protoc_insertion_point(field_get:carto.nml.Model.texture_footprint)
+  // @@protoc_insertion_point(field_get:massif.nml.Model.texture_footprint)
   return texture_footprint_;
 }
 
@@ -2464,11 +2464,11 @@ inline ModelLODTreeNode::ModelLODTreeNode(const protobuf::message& srcMsg) {
       _has_bits_[0] |= 0x00000001u;
     }
     else if (msg.tag == kBoundsFieldNumber) {
-      bounds_ = ::carto::nml::Bounds3(msg.read_message());
+      bounds_ = ::massif::nml::Bounds3(msg.read_message());
       _has_bits_[0] |= 0x00000002u;
     }
     else if (msg.tag == kModelFieldNumber) {
-      model_ = ::carto::nml::Model(msg.read_message());
+      model_ = ::massif::nml::Model(msg.read_message());
       _has_bits_[0] |= 0x00000004u;
     }
     else if (msg.tag == kChildrenIdsFieldNumber) {
@@ -2485,27 +2485,27 @@ inline bool ModelLODTreeNode::has_id() const {
 }
 
 inline std::int32_t ModelLODTreeNode::id() const {
-  // @@protoc_insertion_point(field_get:carto.nml.ModelLODTreeNode.id)
+  // @@protoc_insertion_point(field_get:massif.nml.ModelLODTreeNode.id)
   return id_;
 }
 
-// required .carto.nml.Bounds3 bounds = 2;
+// required .massif.nml.Bounds3 bounds = 2;
 inline bool ModelLODTreeNode::has_bounds() const {
   return (_has_bits_[0] & 0x00000002u) != 0;
 }
 
-inline const ::carto::nml::Bounds3& ModelLODTreeNode::bounds() const {
-  // @@protoc_insertion_point(field_get:carto.nml.ModelLODTreeNode.bounds)
+inline const ::massif::nml::Bounds3& ModelLODTreeNode::bounds() const {
+  // @@protoc_insertion_point(field_get:massif.nml.ModelLODTreeNode.bounds)
   return bounds_;
 }
 
-// required .carto.nml.Model model = 3;
+// required .massif.nml.Model model = 3;
 inline bool ModelLODTreeNode::has_model() const {
   return (_has_bits_[0] & 0x00000004u) != 0;
 }
 
-inline const ::carto::nml::Model& ModelLODTreeNode::model() const {
-  // @@protoc_insertion_point(field_get:carto.nml.ModelLODTreeNode.model)
+inline const ::massif::nml::Model& ModelLODTreeNode::model() const {
+  // @@protoc_insertion_point(field_get:massif.nml.ModelLODTreeNode.model)
   return model_;
 }
 
@@ -2515,12 +2515,12 @@ inline int ModelLODTreeNode::children_ids_size() const {
 }
 
 inline std::int32_t ModelLODTreeNode::children_ids(int index) const {
-  // @@protoc_insertion_point(field_get:carto.nml.ModelLODTreeNode.children_ids)
+  // @@protoc_insertion_point(field_get:massif.nml.ModelLODTreeNode.children_ids)
   return children_ids_[index];
 }
 
 inline const std::vector< std::int32_t >& ModelLODTreeNode::children_ids() const {
-  // @@protoc_insertion_point(field_list:carto.nml.ModelLODTreeNode.children_ids)
+  // @@protoc_insertion_point(field_list:massif.nml.ModelLODTreeNode.children_ids)
   return children_ids_;
 }
 
@@ -2543,17 +2543,17 @@ inline ModelLODTree::ModelLODTree(const protobuf::message& srcMsg) {
   }
 }
 
-// repeated .carto.nml.ModelLODTreeNode nodes = 1;
+// repeated .massif.nml.ModelLODTreeNode nodes = 1;
 inline int ModelLODTree::nodes_size() const {
   return static_cast<int>(nodes_.size());
 }
 
-inline const ::carto::nml::ModelLODTreeNode& ModelLODTree::nodes(int index) const {
-  // @@protoc_insertion_point(field_get:carto.nml.ModelLODTree.nodes)
+inline const ::massif::nml::ModelLODTreeNode& ModelLODTree::nodes(int index) const {
+  // @@protoc_insertion_point(field_get:massif.nml.ModelLODTree.nodes)
   return nodes_[index];
 }
-inline const std::vector< ::carto::nml::ModelLODTreeNode >& ModelLODTree::nodes() const {
-  // @@protoc_insertion_point(field_list:carto.nml.ModelLODTree.nodes)
+inline const std::vector< ::massif::nml::ModelLODTreeNode >& ModelLODTree::nodes() const {
+  // @@protoc_insertion_point(field_list:massif.nml.ModelLODTree.nodes)
   return nodes_;
 }
 
@@ -2561,7 +2561,7 @@ inline const std::vector< ::carto::nml::ModelLODTreeNode >& ModelLODTree::nodes(
 // @@protoc_insertion_point(namespace_scope)
 
 }  // namespace nml
-}  // namespace carto
+}  // namespace massif
 
 // @@protoc_insertion_point(global_scope)
 

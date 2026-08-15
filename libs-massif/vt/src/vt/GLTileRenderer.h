@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_VT_GLTILERENDERER_H_
-#define _CARTO_VT_GLTILERENDERER_H_
+#ifndef _MASSIF_VT_GLTILERENDERER_H_
+#define _MASSIF_VT_GLTILERENDERER_H_
 
 #include "Bitmap.h"
 #include "Color.h"
@@ -38,7 +38,7 @@
 
 #include <cglib/ray.h>
 
-namespace carto::vt {
+namespace massif::vt {
     class LabelCuller;
 
     class GLTileRenderer final {

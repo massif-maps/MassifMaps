@@ -4,12 +4,12 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_CARTOCSS_FIELDORVAR_H_
-#define _CARTO_CARTOCSS_FIELDORVAR_H_
+#ifndef _MASSIF_CARTOCSS_FIELDORVAR_H_
+#define _MASSIF_CARTOCSS_FIELDORVAR_H_
 
 #include <string>
 
-namespace carto::css {
+namespace massif::css {
     class FieldOrVar final {
     public:
         explicit FieldOrVar(bool field, std::string name) : _field(field), _name(std::move(name)) { }

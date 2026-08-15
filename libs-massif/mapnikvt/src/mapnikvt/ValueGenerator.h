@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_MAPNIKVT_VALUEPARSER_H_
-#define _CARTO_MAPNIKVT_VALUEPARSER_H_
+#ifndef _MASSIF_MAPNIKVT_VALUEPARSER_H_
+#define _MASSIF_MAPNIKVT_VALUEPARSER_H_
 
 #include "Value.h"
 
@@ -15,7 +15,7 @@
 #include <boost/phoenix.hpp>
 #include <boost/spirit/include/karma.hpp>
 
-namespace carto::mvt {
+namespace massif::mvt {
     namespace valgenimpl {
         template <typename OutputIterator>
         struct Grammar : boost::spirit::karma::grammar<OutputIterator, Value()> {

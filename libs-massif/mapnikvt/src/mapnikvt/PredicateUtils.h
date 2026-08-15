@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_MAPNIKVT_PREDICATEUTILS_H_
-#define _CARTO_MAPNIKVT_PREDICATEUTILS_H_
+#ifndef _MASSIF_MAPNIKVT_PREDICATEUTILS_H_
+#define _MASSIF_MAPNIKVT_PREDICATEUTILS_H_
 
 #include "Predicate.h"
 #include "ExpressionContext.h"
@@ -15,7 +15,7 @@
 
 #include <boost/logic/tribool.hpp>
 
-namespace carto::mvt {
+namespace massif::mvt {
     struct PredicateEvaluator {
         explicit PredicateEvaluator(const ExpressionContext& context, const vt::ViewState* viewState) : _context(context), _viewState(viewState) { }
 

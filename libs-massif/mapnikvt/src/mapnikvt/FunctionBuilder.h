@@ -4,14 +4,14 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_MAPNIKVT_FUNCTIONBUILDER_H_
-#define _CARTO_MAPNIKVT_FUNCTIONBUILDER_H_
+#ifndef _MASSIF_MAPNIKVT_FUNCTIONBUILDER_H_
+#define _MASSIF_MAPNIKVT_FUNCTIONBUILDER_H_
 
 #include <mutex>
 
 #include "vt/Styles.h"
 
-namespace carto::mvt {
+namespace massif::mvt {
     class FloatFunctionBuilder final {
     public:
         vt::FloatFunction createFloatFunction(float value) const {

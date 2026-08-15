@@ -10,8 +10,8 @@
 #include <functional>
 
 namespace {
-    using carto::mvt::Value;
-    using carto::mvt::ValueConverter;
+    using massif::mvt::Value;
+    using massif::mvt::ValueConverter;
 
     struct NegOperator {
         Value operator() (bool val) const { return Value(-static_cast<long long>(val)); }
@@ -95,7 +95,7 @@ namespace {
     };
 }
 
-namespace carto::mvt {
+namespace massif::mvt {
 
     std::string string_repeat(std::string str, const std::size_t n)
     {

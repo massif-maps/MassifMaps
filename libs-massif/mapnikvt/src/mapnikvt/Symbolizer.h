@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_MAPNIKVT_SYMBOLIZER_H_
-#define _CARTO_MAPNIKVT_SYMBOLIZER_H_
+#ifndef _MASSIF_MAPNIKVT_SYMBOLIZER_H_
+#define _MASSIF_MAPNIKVT_SYMBOLIZER_H_
 
 #include "FeatureCollection.h"
 #include "Expression.h"
@@ -20,7 +20,7 @@
 #include <memory>
 #include <set>
 
-namespace carto::mvt {
+namespace massif::mvt {
     class Symbolizer {
     public:
         using FeatureProcessor = std::function<void(const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder)>;

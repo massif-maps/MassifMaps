@@ -4,12 +4,12 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_CARTOCSS_TORQUECARTOCSSMAPNIKTRANSLATOR_H_
-#define _CARTO_CARTOCSS_TORQUECARTOCSSMAPNIKTRANSLATOR_H_
+#ifndef _MASSIF_CARTOCSS_TORQUECARTOCSSMAPNIKTRANSLATOR_H_
+#define _MASSIF_CARTOCSS_TORQUECARTOCSSMAPNIKTRANSLATOR_H_
 
 #include "CartoCSSMapnikTranslator.h"
 
-namespace carto::css {
+namespace massif::css {
     class TorqueCartoCSSMapnikTranslator : public CartoCSSMapnikTranslator {
     public:
         explicit TorqueCartoCSSMapnikTranslator(std::shared_ptr<mvt::Logger> logger) : CartoCSSMapnikTranslator(std::move(logger)) { }

@@ -20,7 +20,7 @@ void createTiles(const std::string& geoJSONFile, const std::string& outputDir, i
     }
     ifs.close();
 
-    carto::mbvtbuilder::MBVTTileBuilder builder(minZoom, maxZoom);
+    massif::mbvtbuilder::MBVTTileBuilder builder(minZoom, maxZoom);
     builder.importGeoJSON(builder.createLayer("layer"), geoJSON);
     builder.buildTiles([&outputDir](int zoom, int tileX, int tileY, const protobuf::encoded_message& msg) {
         std::string fileName = "tile" + std::to_string(zoom) + "_" + std::to_string(tileX) + "_" + std::to_string(tileY) + ".mvt";

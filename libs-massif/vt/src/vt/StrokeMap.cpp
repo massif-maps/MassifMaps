@@ -1,7 +1,7 @@
 #include "StrokeMap.h"
 #include "BitmapManager.h"
 
-namespace carto::vt {
+namespace massif::vt {
     StrokeMap::StrokeMap(int width, int maxHeight) :
         _width(width), _maxHeight(maxHeight), _height(0), _strokeMap(), _bitmapStrokeMap(), _bitmapPattern(), _mutex()
     {

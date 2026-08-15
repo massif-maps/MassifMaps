@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_MAPNIKVT_EXPRESSIONPARSER_H_
-#define _CARTO_MAPNIKVT_EXPRESSIONPARSER_H_
+#ifndef _MASSIF_MAPNIKVT_EXPRESSIONPARSER_H_
+#define _MASSIF_MAPNIKVT_EXPRESSIONPARSER_H_
 
 #include "Value.h"
 #include "Expression.h"
@@ -23,7 +23,7 @@
 #include <boost/spirit/include/qi.hpp>
 #include <boost/spirit/repository/include/qi_distinct.hpp>
 
-namespace carto::mvt {
+namespace massif::mvt {
     namespace exprparserimpl {
         using Skipper = boost::spirit::qi::iso8859_1::space_type;
 

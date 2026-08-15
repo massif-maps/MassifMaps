@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_CARTOCSS_CARTOCSSMAPNIKTRANSLATOR_H_
-#define _CARTO_CARTOCSS_CARTOCSSMAPNIKTRANSLATOR_H_
+#ifndef _MASSIF_CARTOCSS_CARTOCSSMAPNIKTRANSLATOR_H_
+#define _MASSIF_CARTOCSS_CARTOCSSMAPNIKTRANSLATOR_H_
 
 #include "Expression.h"
 #include "ExpressionUtils.h"
@@ -27,7 +27,7 @@
 #include <optional>
 #include <unordered_map>
 
-namespace carto::css {
+namespace massif::css {
     class CartoCSSMapnikTranslator {
     public:
         class TranslatorException : public std::runtime_error {

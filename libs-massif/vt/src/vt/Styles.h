@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_VT_STYLES_H_
-#define _CARTO_VT_STYLES_H_
+#ifndef _MASSIF_VT_STYLES_H_
+#define _MASSIF_VT_STYLES_H_
 
 #include "Color.h"
 #include "Transform.h"
@@ -23,7 +23,7 @@
 #include <cglib/vec.h>
 #include <cglib/mat.h>
 
-namespace carto::vt {
+namespace massif::vt {
     using FloatFunction = UnaryFunction<float, ViewState>;
     using ColorFunction = UnaryFunction<Color, ViewState>;
 

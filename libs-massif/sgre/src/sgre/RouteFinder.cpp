@@ -9,7 +9,7 @@
 
 #include <boost/math/constants/constants.hpp>
 
-namespace carto::sgre {
+namespace massif::sgre {
     Result RouteFinder::find(const Query& query) const {
         struct EndPoint {
             Point point = Point();

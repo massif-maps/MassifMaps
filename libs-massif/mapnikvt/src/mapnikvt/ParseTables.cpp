@@ -1,6 +1,6 @@
 #include "ParseTables.h"
 
-namespace carto::mvt {
+namespace massif::mvt {
     const ParseTable<vt::LineCapMode>& getLineCapModeTable() {
         static const std::unordered_map<std::string, vt::LineCapMode> lineCapModeTable = {
             { "round",  vt::LineCapMode::ROUND  },
@@ -44,12 +44,17 @@ namespace carto::mvt {
 
     const ParseTable<vt::LabelOrientation>& getLabelOrientationTable() {
         static const std::unordered_map<std::string, vt::LabelOrientation> labelOrientationTable = {
-            { "point",         vt::LabelOrientation::BILLBOARD_2D },
-            { "nutibillboard", vt::LabelOrientation::BILLBOARD_3D },
+            { "point",          vt::LabelOrientation::BILLBOARD_2D },
+            { "billboard",      vt::LabelOrientation::BILLBOARD_3D },
+            { "billboard-line", vt::LabelOrientation::LINE_BILLBOARD_3D },
+            { "flat",           vt::LabelOrientation::POINT },
+            { "callout",        vt::LabelOrientation::CALLOUT },
+            { "line",           vt::LabelOrientation::LINE },
+            // Pre-rebrand spellings, still accepted (CartoCSSMapLoader warns once per stylesheet)
+            { "nutibillboard",     vt::LabelOrientation::BILLBOARD_3D },
             { "nutibillboardline", vt::LabelOrientation::LINE_BILLBOARD_3D },
-            { "nutipoint",     vt::LabelOrientation::POINT },
-            { "nuticallout",   vt::LabelOrientation::CALLOUT },
-            { "line",          vt::LabelOrientation::LINE }
+            { "nutipoint",         vt::LabelOrientation::POINT },
+            { "nuticallout",       vt::LabelOrientation::CALLOUT }
         };
         return labelOrientationTable;
     }

@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_GEOCODING_REVGEOCODER_H_
-#define _CARTO_GEOCODING_REVGEOCODER_H_
+#ifndef _MASSIF_GEOCODING_REVGEOCODER_H_
+#define _MASSIF_GEOCODING_REVGEOCODER_H_
 
 #include "Address.h"
 #include "Geometry.h"
@@ -25,7 +25,7 @@ namespace sqlite3pp {
     class database;
 }
 
-namespace carto::geocoding {
+namespace massif::geocoding {
     class RevGeocoder final {
     public:
         RevGeocoder() : _addressCache(ADDRESS_CACHE_SIZE), _queryCache(QUERY_CACHE_SIZE) { }

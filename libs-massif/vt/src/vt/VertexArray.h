@@ -4,13 +4,13 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_VT_VERTEXARRAY_H_
-#define _CARTO_VT_VERTEXARRAY_H_
+#ifndef _MASSIF_VT_VERTEXARRAY_H_
+#define _MASSIF_VT_VERTEXARRAY_H_
 
 #include <utility>
 #include <algorithm>
 
-namespace carto::vt {
+namespace massif::vt {
     template <typename T>
     class VertexArray final {
     public:

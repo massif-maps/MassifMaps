@@ -3,7 +3,7 @@
 #include "Feature.h"
 #include "ValueConverter.h"
 
-namespace carto::mvt {
+namespace massif::mvt {
     void ExpressionContext::setTileId(const vt::TileId& tileId) {
         _tileId = tileId;
     }
@@ -34,13 +34,13 @@ namespace carto::mvt {
             }
             return Value();
         }
-        else if (isNutiVariable(name)) {
-            if (_nutiOverride && name.compare(6, std::string::npos, _nutiOverrideName) == 0) {
-                return _nutiOverrideValue;
+        else if (std::size_t prefixLen = styleParameterPrefixLen(name)) {
+            if (_styleParamOverride && name.compare(prefixLen, std::string::npos, _styleParamOverrideName) == 0) {
+                return _styleParamOverrideValue;
             }
-            if (_nutiParameterStore) {
-                std::shared_ptr<const std::map<std::string, Value>> values = _nutiParameterStore->getValues();
-                auto it = values->find(name.substr(6));
+            if (_styleParameterStore) {
+                std::shared_ptr<const std::map<std::string, Value>> values = _styleParameterStore->getValues();
+                auto it = values->find(name.substr(prefixLen));
                 if (it != values->end()) {
                     return it->second;
                 }

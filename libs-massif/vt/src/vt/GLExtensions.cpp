@@ -2,7 +2,7 @@
 
 #include <EGL/egl.h>
 
-namespace carto::vt {
+namespace massif::vt {
     GLExtensions::GLExtensions() {
         std::string paddedExtensions;
         const char* extensions = reinterpret_cast<const char*>(glGetString(GL_EXTENSIONS));

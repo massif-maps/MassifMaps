@@ -1,7 +1,7 @@
 #include "TorqueTileReader.h"
 #include "TorqueLayer.h"
 
-namespace carto::mvt {
+namespace massif::mvt {
     std::shared_ptr<vt::TileBackground> TorqueTileReader::createTileBackground(const vt::TileId& tileId, const ExpressionContext& exprContext) const {
         const TorqueMap::TorqueSettings& torqueSettings = std::dynamic_pointer_cast<const TorqueMap>(_map)->getTorqueSettings();
         return std::make_shared<vt::TileBackground>(torqueSettings.clearColor.getFunction(exprContext), std::shared_ptr<const vt::BitmapPattern>());

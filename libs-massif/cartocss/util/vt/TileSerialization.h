@@ -1,5 +1,5 @@
-#ifndef _CARTO_VT_TILESERIALIZATION_H_
-#define _CARTO_VT_TILESERIALIZATION_H_
+#ifndef _MASSIF_VT_TILESERIALIZATION_H_
+#define _MASSIF_VT_TILESERIALIZATION_H_
 
 #include <vt/Tile.h>
 
@@ -46,7 +46,7 @@ namespace boost::serialization {
     }
 
     template <class Archive>
-    void serialize(Archive& ar, carto::vt::VertexArray<std::uint8_t>& data, const unsigned int version) {
+    void serialize(Archive& ar, massif::vt::VertexArray<std::uint8_t>& data, const unsigned int version) {
         std::size_t size = data.size();
         std::string serialData;
         serialData.reserve(size * 2);
@@ -60,7 +60,7 @@ namespace boost::serialization {
     }
 
     template <class Archive>
-    void serialize(Archive& ar, carto::vt::VertexArray<std::uint16_t>& data, const unsigned int version) {
+    void serialize(Archive& ar, massif::vt::VertexArray<std::uint16_t>& data, const unsigned int version) {
         std::size_t size = data.size();
         std::string serialData;
         serialData.reserve(size * 4);
@@ -84,7 +84,7 @@ namespace boost::serialization {
     }
 
     template <class Archive>
-    void serialize(Archive& ar, carto::vt::Color& color, const unsigned int version) {
+    void serialize(Archive& ar, massif::vt::Color& color, const unsigned int version) {
         for (int i = 0; i < 4; i++) {
             char name[64];
             std::snprintf(name, sizeof(name), "c%d", i);
@@ -94,7 +94,7 @@ namespace boost::serialization {
     }
 
     template <class Archive>
-    void serialize(Archive& ar, carto::vt::Transform& transform, const unsigned int version) {
+    void serialize(Archive& ar, massif::vt::Transform& transform, const unsigned int version) {
         for (int i = 0; i < 3; i++) {
             for (int j = 0; j < 3; j++) {
                 char name[64];
@@ -106,26 +106,26 @@ namespace boost::serialization {
     }
 
     template <class Archive>
-    void serialize(Archive& ar, carto::vt::Bitmap& bitmap, const unsigned int version) {
+    void serialize(Archive& ar, massif::vt::Bitmap& bitmap, const unsigned int version) {
         ar & make_nvp("width", bitmap.width);
         ar & make_nvp("height", bitmap.height);
         ar & make_nvp("data", bitmap.data);
     }
 
     template <class Archive>
-    void serialize(Archive& ar, carto::vt::BitmapPattern& bitmapPattern, const unsigned int version) {
+    void serialize(Archive& ar, massif::vt::BitmapPattern& bitmapPattern, const unsigned int version) {
         ar & make_nvp("width_scale", bitmapPattern.widthScale);
         ar & make_nvp("height_scale", bitmapPattern.heightScale);
         ar & make_nvp("bitmap", bitmapPattern.bitmap);
     }
 
     template <class Archive>
-    void serialize(Archive& ar, carto::vt::GlyphMap& glyphMap, const unsigned int version) {
+    void serialize(Archive& ar, massif::vt::GlyphMap& glyphMap, const unsigned int version) {
         ar & make_nvp("bitmap_pattern", glyphMap.getBitmapPattern());
     }
 
     template <class Archive>
-    void serialize(Archive& ar, carto::vt::GlyphMap::Glyph& glyph, const unsigned int version) {
+    void serialize(Archive& ar, massif::vt::GlyphMap::Glyph& glyph, const unsigned int version) {
         ar & make_nvp("mode", glyph.mode);
         ar & make_nvp("x", glyph.x);
         ar & make_nvp("y", glyph.y);
@@ -135,7 +135,7 @@ namespace boost::serialization {
     }
 
     template <class Archive>
-    void serialize(Archive& ar, carto::vt::Font::Glyph& glyph, const unsigned int version) {
+    void serialize(Archive& ar, massif::vt::Font::Glyph& glyph, const unsigned int version) {
         ar & make_nvp("utf32_char", glyph.utf32Char);
         ar & make_nvp("code_point", glyph.codePoint);
         ar & make_nvp("base_glyph", glyph.baseGlyph);
@@ -145,7 +145,7 @@ namespace boost::serialization {
     }
 
     template <class Archive, class T>
-    void serialize(Archive& ar, carto::vt::UnaryFunction<T, carto::vt::ViewState>& func, const unsigned int version) {
+    void serialize(Archive& ar, massif::vt::UnaryFunction<T, massif::vt::ViewState>& func, const unsigned int version) {
         auto value = func.value();
         ar & make_nvp("value", value);
         if (func.function()) {
@@ -155,21 +155,21 @@ namespace boost::serialization {
     }
 
     template <class Archive>
-    void serialize(Archive& ar, carto::vt::TileId& tileId, const unsigned int version) {
+    void serialize(Archive& ar, massif::vt::TileId& tileId, const unsigned int version) {
         ar & make_nvp("zoom", tileId.zoom);
         ar & make_nvp("x", tileId.x);
         ar & make_nvp("y", tileId.y);
     }
 
     template <class Archive>
-    void serialize(Archive& ar, carto::vt::TileBackground& tileBackground, const unsigned int version) {
+    void serialize(Archive& ar, massif::vt::TileBackground& tileBackground, const unsigned int version) {
         auto color = tileBackground.getColor();
         ar & make_nvp("color", color);
         ar & make_nvp("pattern", tileBackground.getPattern());
     }
 
     template <class Archive>
-    void serialize(Archive& ar, carto::vt::TileBitmap& tileBitmap, const unsigned int version) {
+    void serialize(Archive& ar, massif::vt::TileBitmap& tileBitmap, const unsigned int version) {
         auto type = static_cast<int>(tileBitmap.getType());
         auto format = static_cast<int>(tileBitmap.getFormat());
         auto width = tileBitmap.getWidth();
@@ -182,7 +182,7 @@ namespace boost::serialization {
     }
 
     template <class Archive>
-    void serialize(Archive& ar, carto::vt::TileLabel::Style& style, const unsigned int version) {
+    void serialize(Archive& ar, massif::vt::TileLabel::Style& style, const unsigned int version) {
         auto orientation = static_cast<int>(style.orientation);
         ar & make_nvp("orientation", orientation);
         ar & make_nvp("color_func", style.colorFunc);
@@ -201,13 +201,13 @@ namespace boost::serialization {
     }
 
     template <class Archive>
-    void serialize(Archive& ar, carto::vt::TileLabel::PlacementInfo& placementInfo, const unsigned int version) {
+    void serialize(Archive& ar, massif::vt::TileLabel::PlacementInfo& placementInfo, const unsigned int version) {
         ar & make_nvp("priority", placementInfo.priority);
         ar & make_nvp("minimumGroupDistance", placementInfo.minimumGroupDistance);
     }
 
     template <class Archive>
-    void serialize(Archive& ar, carto::vt::TileLabel& tileLabel, const unsigned int version) {
+    void serialize(Archive& ar, massif::vt::TileLabel& tileLabel, const unsigned int version) {
         auto localId = tileLabel.getLocalId();
         auto globalId = tileLabel.getGlobalId();
         auto groupId = tileLabel.getGroupId();
@@ -224,7 +224,7 @@ namespace boost::serialization {
     }
 
     template <class Archive>
-    void serialize(Archive& ar, carto::vt::TileGeometry::StyleParameters& styleParams, const unsigned int version) {
+    void serialize(Archive& ar, massif::vt::TileGeometry::StyleParameters& styleParams, const unsigned int version) {
         auto compOp = static_cast<int>(styleParams.compOp);
         ar & make_nvp("parameter_count", styleParams.parameterCount);
         for (int i = 0; i < styleParams.parameterCount; i++) {
@@ -241,7 +241,7 @@ namespace boost::serialization {
     }
 
     template <class Archive>
-    void serialize(Archive& ar, carto::vt::TileGeometry::VertexGeometryLayoutParameters& layoutParams, const unsigned int version) {
+    void serialize(Archive& ar, massif::vt::TileGeometry::VertexGeometryLayoutParameters& layoutParams, const unsigned int version) {
         ar & make_nvp("vertex_size", layoutParams.vertexSize);
         ar & make_nvp("dimensions", layoutParams.dimensions);
         ar & make_nvp("coord_offset", layoutParams.coordOffset);
@@ -257,7 +257,7 @@ namespace boost::serialization {
     }
 
     template <class Archive>
-    void serialize(Archive& ar, carto::vt::TileGeometry& tileGeometry, const unsigned int version) {
+    void serialize(Archive& ar, massif::vt::TileGeometry& tileGeometry, const unsigned int version) {
         int type = static_cast<int>(tileGeometry.getType());
         float geometryScale = tileGeometry.getGeometryScale();
         ar & make_nvp("type", type);
@@ -269,7 +269,7 @@ namespace boost::serialization {
     }
 
     template <class Archive>
-    void serialize(Archive& ar, carto::vt::TileLayer& tileLayer, const unsigned int version) {
+    void serialize(Archive& ar, massif::vt::TileLayer& tileLayer, const unsigned int version) {
         int layerIndex = tileLayer.getLayerIndex();
         ar & make_nvp("layer_name", tileLayer.getLayerName());
         ar & make_nvp("layer_index", layerIndex);
@@ -284,7 +284,7 @@ namespace boost::serialization {
     }
 
     template <class Archive>
-    void serialize(Archive& ar, carto::vt::Tile& tile, const unsigned int version) {
+    void serialize(Archive& ar, massif::vt::Tile& tile, const unsigned int version) {
         float tileSize = tile.getTileSize();
         ar & make_nvp("tile_id", tile.getTileId());
         ar & make_nvp("tile_size", tileSize);

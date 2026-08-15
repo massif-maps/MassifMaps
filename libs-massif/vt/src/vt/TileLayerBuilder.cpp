@@ -27,12 +27,12 @@ namespace {
     // The pen walk Label::buildPointVertexData does. 'textPart' selects which half of the run is
     // measured: the icon glyphs come first, and the first CR pseudo-glyph resets the pen onto the
     // text's own origin.
-    static cglib::bbox2<float> measureGlyphRun(const std::vector<carto::vt::Font::Glyph>& glyphs, bool textPart) {
+    static cglib::bbox2<float> measureGlyphRun(const std::vector<massif::vt::Font::Glyph>& glyphs, bool textPart) {
         cglib::bbox2<float> bbox = cglib::bbox2<float>::smallest();
         cglib::vec2<float> pen(0, 0);
         bool text = false;
-        for (const carto::vt::Font::Glyph& glyph : glyphs) {
-            if (glyph.codePoint == carto::vt::Font::CR_CODEPOINT) {
+        for (const massif::vt::Font::Glyph& glyph : glyphs) {
+            if (glyph.codePoint == massif::vt::Font::CR_CODEPOINT) {
                 pen = cglib::vec2<float>(0, 0);
                 text = true;
             }
@@ -47,11 +47,11 @@ namespace {
 
     // Justification of the lines of a wrapped name on a given side. AUTO follows the side; an
     // explicit value is mirrored on the left, so "flush against the icon" means the same on both.
-    static float resolveLineAlign(carto::vt::LabelLineAlign align, const cglib::vec2<float>& dir) {
-        if (align == carto::vt::LabelLineAlign::AUTO) {
+    static float resolveLineAlign(massif::vt::LabelLineAlign align, const cglib::vec2<float>& dir) {
+        if (align == massif::vt::LabelLineAlign::AUTO) {
             return (dir(0) > 0 ? -1.0f : dir(0) < 0 ? 1.0f : 0.0f);
         }
-        float base = (align == carto::vt::LabelLineAlign::LEFT ? -1.0f : align == carto::vt::LabelLineAlign::RIGHT ? 1.0f : 0.0f);
+        float base = (align == massif::vt::LabelLineAlign::LEFT ? -1.0f : align == massif::vt::LabelLineAlign::RIGHT ? 1.0f : 0.0f);
         return (dir(0) < 0 ? -base : base);
     }
 
@@ -62,8 +62,8 @@ namespace {
     // as a gap - pushed AWAY from the icon on either side. Across it the text is centred on the
     // anchor: a name above the icon has to be centred over it, and the formatter's own alignment is
     // derived from the sign of dx, which means nothing once dx is a gap.
-    static std::vector<carto::vt::TileLabel::Variant> buildLabelVariants(const std::vector<carto::vt::LabelAnchor>& anchors, carto::vt::LabelLineAlign lineAlign, bool textOptional, bool hasIcon, const std::vector<carto::vt::Font::Glyph>& glyphs, const cglib::vec2<float>& iconExtent, const cglib::vec2<float>& styleOffset) {
-        std::vector<carto::vt::TileLabel::Variant> variants;
+    static std::vector<massif::vt::TileLabel::Variant> buildLabelVariants(const std::vector<massif::vt::LabelAnchor>& anchors, massif::vt::LabelLineAlign lineAlign, bool textOptional, bool hasIcon, const std::vector<massif::vt::Font::Glyph>& glyphs, const cglib::vec2<float>& iconExtent, const cglib::vec2<float>& styleOffset) {
+        std::vector<massif::vt::TileLabel::Variant> variants;
         if (anchors.empty()) {
             return variants;
         }
@@ -77,8 +77,8 @@ namespace {
         cglib::vec2<float> boxMax = textBBox.max - styleOffset;
 
         variants.reserve(anchors.size() + 1);
-        for (carto::vt::LabelAnchor anchor : anchors) {
-            cglib::vec2<float> dir = carto::vt::labelAnchorDirection(anchor);
+        for (massif::vt::LabelAnchor anchor : anchors) {
+            cglib::vec2<float> dir = massif::vt::labelAnchorDirection(anchor);
             cglib::vec2<float> desired(0, 0);
             for (int i = 0; i < 2; i++) {
                 float gap = std::abs(styleOffset(i));
@@ -100,7 +100,7 @@ namespace {
         return variants;
     }
 
-    static float calculateScale(const carto::vt::VertexArray<float>& values, const carto::vt::VertexArray<std::size_t>& indices) {
+    static float calculateScale(const massif::vt::VertexArray<float>& values, const massif::vt::VertexArray<std::size_t>& indices) {
         float maxValue = 0.0f;
         if (!values.empty()) {
             for (std::size_t index : indices) {
@@ -115,7 +115,7 @@ namespace {
     }
 
     template <typename T>
-    static float calculateScale(const carto::vt::VertexArray<T>& values, const carto::vt::VertexArray<std::size_t>& indices) {
+    static float calculateScale(const massif::vt::VertexArray<T>& values, const massif::vt::VertexArray<std::size_t>& indices) {
         float maxValue = 0.0f;
         if (!values.empty()) {
             for (std::size_t index : indices) {
@@ -136,9 +136,9 @@ namespace {
     // A white square with rounded corners, antialiased, used as the atlas cell a label's
     // background plate is 3-sliced from. Cached per radius: the glyph map dedupes by bitmap
     // POINTER, so handing it a fresh instance every time would add a cell per style rebuild.
-    std::shared_ptr<const carto::vt::Bitmap> buildRoundedRectBitmap(int radius) {
+    std::shared_ptr<const massif::vt::Bitmap> buildRoundedRectBitmap(int radius) {
         static std::mutex mutex;
-        static std::map<int, std::shared_ptr<const carto::vt::Bitmap>> cache;
+        static std::map<int, std::shared_ptr<const massif::vt::Bitmap>> cache;
         std::lock_guard<std::mutex> lock(mutex);
         auto it = cache.find(radius);
         if (it != cache.end()) {
@@ -159,13 +159,13 @@ namespace {
                 data[static_cast<std::size_t>(y) * size + x] = (a << 24) | (a << 16) | (a << 8) | a; // premultiplied white
             }
         }
-        auto bitmap = std::make_shared<carto::vt::Bitmap>(size, size, std::move(data));
+        auto bitmap = std::make_shared<massif::vt::Bitmap>(size, size, std::move(data));
         cache[radius] = bitmap;
         return bitmap;
     }
 }
 
-namespace carto::vt {
+namespace massif::vt {
     TileLayerBuilder::TileLayerBuilder(std::string layerName, int layerIdx, const TileId& tileId, const std::shared_ptr<const TileTransformer>& transformer, float tileSize, float geomScale) :
         _layerName(std::move(layerName)), _layerIdx(layerIdx), _tileId(tileId), _transformer(transformer->createTileVertexTransformer(tileId)), _tileSize(tileSize), _geomScale(geomScale)
     {

@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_MAPNIKVT_GENERATORUTILS_H_
-#define _CARTO_MAPNIKVT_GENERATORUTILS_H_
+#ifndef _MASSIF_MAPNIKVT_GENERATORUTILS_H_
+#define _MASSIF_MAPNIKVT_GENERATORUTILS_H_
 
 #include "Value.h"
 #include "Expression.h"
@@ -17,7 +17,7 @@
 #include <string>
 #include <vector>
 
-namespace carto::mvt {
+namespace massif::mvt {
     class GeneratorException : public std::runtime_error {
     public:
         explicit GeneratorException(const std::string& msg) : runtime_error(msg) { }

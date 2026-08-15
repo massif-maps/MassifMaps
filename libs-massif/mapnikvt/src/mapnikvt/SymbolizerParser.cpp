@@ -14,7 +14,7 @@
 
 #include <boost/algorithm/string.hpp>
 
-namespace carto::mvt {
+namespace massif::mvt {
     std::shared_ptr<Symbolizer> SymbolizerParser::parseSymbolizer(const pugi::xml_node& node, const std::shared_ptr<Map>& map) const {
         std::shared_ptr<Symbolizer> symbolizer = createSymbolizer(node, map);
         if (!symbolizer) {

@@ -1,6 +1,6 @@
 #include "PolygonPatternSymbolizer.h"
 
-namespace carto::mvt {
+namespace massif::mvt {
     PolygonPatternSymbolizer::FeatureProcessor PolygonPatternSymbolizer::createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const {
         vt::FloatFunction opacityFunc = _opacity.getFunction(exprContext);
         vt::ColorFunction colorFunc = _fill.getFunction(exprContext);

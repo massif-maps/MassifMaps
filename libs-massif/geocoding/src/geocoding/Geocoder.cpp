@@ -20,7 +20,7 @@ namespace {
     }
 }
 
-namespace carto::geocoding {
+namespace massif::geocoding {
     void Geocoder::prepare(sqlite3pp::database& db) {
     }
     

@@ -9,7 +9,7 @@
 #include "Symbolizer.h"
 #include "Map.h"
 
-namespace carto::mvt {
+namespace massif::mvt {
     namespace {
         // A value the selecting parameter cannot be equal to, to fold the comparison the other way.
         // '=' calls two values of unrelated types unequal, so a string does for everything that is
@@ -34,13 +34,13 @@ namespace carto::mvt {
         ExpressionContext exprContext;
         exprContext.setTileId(tileId);
         exprContext.setAdjustedZoom(tileId.zoom + static_cast<int>(_symbolizerContext.getSettings().getZoomLevelBias()));
-        exprContext.setNutiParameterStore(_symbolizerContext.getSettings().getNutiParameterStore());
+        exprContext.setStyleParameterStore(_symbolizerContext.getSettings().getStyleParameterStore());
 
         // What the selecting parameter holds right now, hashed the way each feature hashes the
         // field it is compared with: that is the whole of the selection state a tile carries.
         std::uint64_t selectionStateKey = 0;
         if (const std::optional<SelectionParameter>& selectionParameter = _map->getSelectionParameter()) {
-            selectionStateKey = hashValue(exprContext.getVariable("nuti::" + selectionParameter->name));
+            selectionStateKey = hashValue(exprContext.getVariable("param::" + selectionParameter->name));
         }
 
         std::vector<std::shared_ptr<vt::TileLayer>> tileLayers;
@@ -124,7 +124,7 @@ namespace carto::mvt {
                 explicitFeatureId = explicitFeatureId || field == "mapnik::feature_id";
                 return false;
             }
-            else if (ExpressionContext::isViewStateVariable(field) || ExpressionContext::isNutiVariable(field) || ExpressionContext::isZoomVariable(field)) {
+            else if (ExpressionContext::isViewStateVariable(field) || ExpressionContext::isStyleParameterVariable(field) || ExpressionContext::isZoomVariable(field)) {
                 return false;
             }
             fields.insert(field);
@@ -241,11 +241,11 @@ namespace carto::mvt {
         // Both appearances, built by forcing the parameter to a value that answers the comparison
         // one way and then the other. The foldable properties then read no parameter at all, so
         // each branch folds to a constant - which is what makes it a style slot.
-        exprContext.setNutiParameterOverride(selectionParameter.name, fieldValue);
+        exprContext.setStyleParameterOverride(selectionParameter.name, fieldValue);
         Symbolizer::FeatureProcessor selectedProcessor = symbolizer->createFeatureProcessor(exprContext, _symbolizerContext);
-        exprContext.setNutiParameterOverride(selectionParameter.name, makeUnequalValue(fieldValue));
+        exprContext.setStyleParameterOverride(selectionParameter.name, makeUnequalValue(fieldValue));
         Symbolizer::FeatureProcessor unselectedProcessor = symbolizer->createFeatureProcessor(exprContext, _symbolizerContext);
-        exprContext.clearNutiParameterOverride();
+        exprContext.clearStyleParameterOverride();
 
         if (!selectedProcessor && !unselectedProcessor) {
             return std::shared_ptr<Symbolizer::FeatureProcessor>(); // invisible either way

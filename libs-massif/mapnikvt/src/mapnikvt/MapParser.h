@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_MAPNIKVT_MAPPARSER_H_
-#define _CARTO_MAPNIKVT_MAPPARSER_H_
+#ifndef _MASSIF_MAPNIKVT_MAPPARSER_H_
+#define _MASSIF_MAPNIKVT_MAPPARSER_H_
 
 #include "Value.h"
 
@@ -14,7 +14,7 @@
 
 #include <pugixml.hpp>
 
-namespace carto::mvt {
+namespace massif::mvt {
     class Map;
     class Logger;
     class SymbolizerParser;

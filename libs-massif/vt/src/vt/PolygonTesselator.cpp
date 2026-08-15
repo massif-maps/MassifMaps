@@ -7,7 +7,7 @@
 
 #include <tesselator.h>
 
-namespace carto::vt {
+namespace massif::vt {
     class PolygonTesselator::PoolAllocator {
     public:
         PoolAllocator() : _first(nullptr) {

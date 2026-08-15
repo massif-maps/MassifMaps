@@ -12,7 +12,7 @@
 
 #include <boost/algorithm/string.hpp>
 
-namespace carto::mvt {
+namespace massif::mvt {
     vt::LineCapMode parseLineCapMode(const std::string& str) {
         auto it = getLineCapModeTable().find(toLower(str));
         if (it == getLineCapModeTable().end()) {

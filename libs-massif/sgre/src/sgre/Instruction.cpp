@@ -1,6 +1,6 @@
 #include "Instruction.h"
 
-namespace carto::sgre {
+namespace massif::sgre {
     picojson::value Instruction::serialize() const {
         picojson::object instructionObj;
         instructionObj["type"] = picojson::value(static_cast<std::int64_t>(_type));

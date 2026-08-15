@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_GEOCODING_GEOCODER_H_
-#define _CARTO_GEOCODING_GEOCODER_H_
+#ifndef _MASSIF_GEOCODING_GEOCODER_H_
+#define _MASSIF_GEOCODING_GEOCODER_H_
 
 #include "Address.h"
 #include "TaggedTokenList.h"
@@ -29,7 +29,7 @@ namespace sqlite3pp {
     class database;
 }
 
-namespace carto::geocoding {
+namespace massif::geocoding {
     class Geocoder final {
     public:
         struct Options {

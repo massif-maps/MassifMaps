@@ -6,7 +6,7 @@
 
 #include <picojson/picojson.h>
 
-namespace carto::css {
+namespace massif::css {
     namespace {
         mvt::Value convertJSONValue(const picojson::value& value) {
             if (value.is<std::string>()) {
@@ -58,7 +58,32 @@ namespace carto::css {
         }
     }
 
+    // One line per deprecated spelling per stylesheet. A plain text scan: it also hits the tokens
+    // inside strings and comments, which is the right trade for a warning that costs one pass.
+    void CartoCSSMapLoader::warnDeprecatedTokens(const std::string& cartoCSS, const std::string& fileName) const {
+        static const std::pair<std::string, std::string> deprecatedTokens[] = {
+            { "nuti::",            "param::" },
+            { "nutibillboardline", "billboard-line" },
+            { "nutibillboard",     "billboard" },
+            { "nutipoint",         "flat" },
+            { "nuticallout",       "callout" }
+        };
+        for (const auto& [oldToken, newToken] : deprecatedTokens) {
+            for (std::string::size_type pos = cartoCSS.find(oldToken); pos != std::string::npos; pos = cartoCSS.find(oldToken, pos + 1)) {
+                // 'nutibillboard' is a prefix of 'nutibillboardline' - only the longer one matches there
+                std::string::size_type end = pos + oldToken.size();
+                if (end < cartoCSS.size() && std::isalpha(static_cast<unsigned char>(cartoCSS[end]))) {
+                    continue;
+                }
+                _logger->write(mvt::Logger::Severity::WARNING, fileName + ": '" + oldToken + "' is deprecated, use '" + newToken + "'");
+                break;
+            }
+        }
+    }
+
     std::shared_ptr<mvt::Map> CartoCSSMapLoader::loadMap(const std::string& cartoCSS) const {
+        warnDeprecatedTokens(cartoCSS, "CartoCSS");
+
         // Parse the given CSS into stylesheet and process errors
         StyleSheet styleSheet;
         try {
@@ -86,7 +111,7 @@ namespace carto::css {
 
         // Build Map
         std::map<std::string, Value> constantFieldMap;
-        return buildMap(styleSheet, layerNames, std::vector<mvt::Parameter>(), std::vector<mvt::NutiParameter>(), constantFieldMap);
+        return buildMap(styleSheet, layerNames, std::vector<mvt::Parameter>(), std::vector<mvt::StyleParameter>(), constantFieldMap);
     }
 
     std::shared_ptr<mvt::Map> CartoCSSMapLoader::loadMapProject(const std::string& fileName) const {
@@ -116,6 +141,7 @@ namespace carto::css {
                 throw LoaderException(std::string("Could not load CartoCSS file ") + mssFileName);
             }
             std::string cartoCSS(reinterpret_cast<const char*>(mssData->data()), reinterpret_cast<const char*>(mssData->data() + mssData->size()));
+            warnDeprecatedTokens(cartoCSS, mssFileName);
             StyleSheet mssStyleSheet;
             try {
                 mssStyleSheet = CartoCSSParser::parse(cartoCSS);
@@ -147,11 +173,12 @@ namespace carto::css {
             }
         }
 
-        // Nutiparameters
-        std::vector<mvt::NutiParameter> nutiParameters;
-        if (mapDoc.contains("nutiparameters")) {
-            const picojson::object& nutiparamsObj = mapDoc.get("nutiparameters").get<picojson::object>();
-            for (auto pit = nutiparamsObj.begin(); pit != nutiparamsObj.end(); pit++) {
+        // Style parameters ("nutiparameters" is the pre-rebrand key, still accepted)
+        std::vector<mvt::StyleParameter> styleParameters;
+        const char* styleParamsKey = mapDoc.contains("styleparameters") ? "styleparameters" : "nutiparameters";
+        if (mapDoc.contains(styleParamsKey)) {
+            const picojson::object& styleParamsObj = mapDoc.get(styleParamsKey).get<picojson::object>();
+            for (auto pit = styleParamsObj.begin(); pit != styleParamsObj.end(); pit++) {
                 const std::string& paramName = pit->first;
                 const picojson::value& paramValue = pit->second;
                 std::map<std::string, mvt::Value> enumMap;
@@ -180,14 +207,14 @@ namespace carto::css {
                 } else {
                     defaultValue = convertJSONValue(paramValue);
                 }
-                nutiParameters.emplace_back(paramName, defaultValue, enumMap, selects);
+                styleParameters.emplace_back(paramName, defaultValue, enumMap, selects);
             }
         }
         // Constant parameters (for macros)
         std::map<std::string, Value> constantFieldMap;
         if (mapDoc.contains("constants")) {
-            const picojson::object& nutiparamsObj = mapDoc.get("constants").get<picojson::object>();
-            for (auto pit = nutiparamsObj.begin(); pit != nutiparamsObj.end(); pit++) {
+            const picojson::object& constantsObj = mapDoc.get("constants").get<picojson::object>();
+            for (auto pit = constantsObj.begin(); pit != constantsObj.end(); pit++) {
                 const std::string& paramName = pit->first;
                 const picojson::value& paramValue = pit->second;
                 std::map<std::string, mvt::Value> enumMap;
@@ -195,7 +222,7 @@ namespace carto::css {
             }
         }
 
-        return buildMap(styleSheet, layerNames, parameters, nutiParameters, constantFieldMap);
+        return buildMap(styleSheet, layerNames, parameters, styleParameters, constantFieldMap);
     }
 
     picojson::value CartoCSSMapLoader::loadMapDocument(const std::string& fileName, std::set<std::string> loadedFileNames) const {
@@ -224,7 +251,7 @@ namespace carto::css {
 
             mapDoc.swap(extendsMapDoc);
             const picojson::object& extendsMapDocObj = extendsMapDoc.get<picojson::object>();
-            std::vector<std::string> mergeCases = {"nutiparameters", "constants"};
+            std::vector<std::string> mergeCases = {"styleparameters", "nutiparameters", "constants"};
             for (auto it = extendsMapDocObj.begin(); it != extendsMapDocObj.end(); it++) {
                 if(std::find(mergeCases.begin(), mergeCases.end(), it->first) != mergeCases.end()) {
                     // we extend
@@ -309,7 +336,7 @@ namespace carto::css {
         return mapSettings;
     }
 
-    std::shared_ptr<mvt::Map> CartoCSSMapLoader::buildMap(const StyleSheet& styleSheet, const std::vector<std::string>& layerNames, const std::vector<mvt::Parameter>& parameters, const std::vector<mvt::NutiParameter>& nutiParameters, std::map<std::string, Value>& constantFieldMap) const {
+    std::shared_ptr<mvt::Map> CartoCSSMapLoader::buildMap(const StyleSheet& styleSheet, const std::vector<std::string>& layerNames, const std::vector<mvt::Parameter>& parameters, const std::vector<mvt::StyleParameter>& styleParameters, std::map<std::string, Value>& constantFieldMap) const {
         // Map properties
         mvt::Map::Settings mapSettings;
         {
@@ -328,7 +355,7 @@ namespace carto::css {
         
         // Set parameters
         map->setParameters(parameters);
-        map->setNutiParameters(nutiParameters);
+        map->setStyleParameters(styleParameters);
 
         // Compile and build layers
         for (const std::string& layerName : layerNames) {

@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_SGRE_BASE_H_
-#define _CARTO_SGRE_BASE_H_
+#ifndef _MASSIF_SGRE_BASE_H_
+#define _MASSIF_SGRE_BASE_H_
 
 #include <string>
 #include <variant>
@@ -16,7 +16,7 @@
 
 #include <picojson/picojson.h>
 
-namespace carto::sgre {
+namespace massif::sgre {
     using Point = cglib::vec3<double>;
 
     using FeatureFilter = picojson::object;

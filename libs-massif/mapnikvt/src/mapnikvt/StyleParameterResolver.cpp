@@ -1,4 +1,4 @@
-#include "NutiParameterResolver.h"
+#include "StyleParameterResolver.h"
 #include "Expression.h"
 #include "ExpressionContext.h"
 #include "ExpressionUtils.h"
@@ -15,7 +15,7 @@
 
 #include <algorithm>
 
-namespace carto::mvt {
+namespace massif::mvt {
     namespace {
         // Every comparison in an expression tree, predicates and the expressions inside them alike.
         // The variable visitors only surface variables, and a fold has to see the comparison itself.
@@ -73,15 +73,21 @@ namespace carto::mvt {
             return names;
         }
 
-        std::size_t countNutiVariable(const Expression& expr, const std::string& name) {
-            std::vector<std::string> names = collectVariableNames(expr);
-            return std::count(names.begin(), names.end(), "nuti::" + name);
+        // Whether a variable name reads the given style parameter, under either accepted prefix.
+        bool namesStyleParameter(const std::string& varName, const std::string& name) {
+            std::size_t prefixLen = ExpressionContext::styleParameterPrefixLen(varName);
+            return prefixLen != 0 && varName.compare(prefixLen, std::string::npos, name) == 0;
         }
 
-        bool isNutiVariable(const Expression& expr, const std::string& name) {
+        std::size_t countStyleParameterReads(const Expression& expr, const std::string& name) {
+            std::vector<std::string> names = collectVariableNames(expr);
+            return std::count_if(names.begin(), names.end(), [&name](const std::string& varName) { return namesStyleParameter(varName, name); });
+        }
+
+        bool readsStyleParameter(const Expression& expr, const std::string& name) {
             if (auto varExpr = std::get_if<std::shared_ptr<VariableExpression>>(&expr)) {
                 if (auto val = std::get_if<Value>(&(*varExpr)->getVariableExpression())) {
-                    return ValueConverter<std::string>::convert(*val) == "nuti::" + name;
+                    return namesStyleParameter(ValueConverter<std::string>::convert(*val), name);
                 }
             }
             return false;
@@ -91,24 +97,24 @@ namespace carto::mvt {
         // expression is an '=' against something the feature alone answers. Nothing otherwise: a
         // read the fold cannot account for would be frozen at the value the decode happened to use.
         std::optional<Expression> resolveFieldExpression(const Expression& expr, const std::string& name) {
-            std::size_t reads = countNutiVariable(expr, name);
+            std::size_t reads = countStyleParameterReads(expr, name);
             std::vector<std::shared_ptr<ComparisonPredicate>> comparisons;
             std::visit(ComparisonCollector(comparisons), expr);
 
             std::optional<Expression> fieldExpr;
             std::size_t foldedReads = 0;
             for (const std::shared_ptr<ComparisonPredicate>& compPred : comparisons) {
-                if (countNutiVariable(Expression(Predicate(compPred)), name) == 0) {
+                if (countStyleParameterReads(Expression(Predicate(compPred)), name) == 0) {
                     continue;
                 }
                 if (compPred->getOp() != ComparisonPredicate::Op::EQ) {
                     return std::optional<Expression>();
                 }
                 const Expression* field = nullptr;
-                if (isNutiVariable(compPred->getExpression1(), name)) {
+                if (readsStyleParameter(compPred->getExpression1(), name)) {
                     field = &compPred->getExpression2();
                 }
-                else if (isNutiVariable(compPred->getExpression2(), name)) {
+                else if (readsStyleParameter(compPred->getExpression2(), name)) {
                     field = &compPred->getExpression1();
                 }
                 else {
@@ -116,7 +122,7 @@ namespace carto::mvt {
                 }
                 for (const std::string& varName : collectVariableNames(*field)) {
                     // The hash the feature keeps has to be fixed once the tile is decoded
-                    if (varName.empty() || ExpressionContext::isNutiVariable(varName) || ExpressionContext::isViewStateVariable(varName)) {
+                    if (varName.empty() || ExpressionContext::isStyleParameterVariable(varName) || ExpressionContext::isViewStateVariable(varName)) {
                         return std::optional<Expression>();
                     }
                 }
@@ -132,13 +138,13 @@ namespace carto::mvt {
             return fieldExpr;
         }
 
-        struct NutiParameterCollector {
-            explicit NutiParameterCollector(std::set<std::string>& names, bool& computedName) : _names(names), _computedName(computedName) { }
+        struct StyleParameterCollector {
+            explicit StyleParameterCollector(std::set<std::string>& names, bool& computedName) : _names(names), _computedName(computedName) { }
 
             void operator() (const std::shared_ptr<VariableExpression>& varExpr) const {
                 if (auto val = std::get_if<Value>(&varExpr->getVariableExpression())) {
                     std::string name = ValueConverter<std::string>::convert(*val);
-                    if (ExpressionContext::isNutiVariable(name)) {
+                    if (ExpressionContext::isStyleParameterVariable(name)) {
                         _names.insert(name.substr(6));
                     }
                 }
@@ -153,7 +159,7 @@ namespace carto::mvt {
         };
     }
 
-    std::set<std::string> resolveLiveNutiParameters(const Map& map) {
+    std::set<std::string> resolveLiveStyleParameters(const Map& map) {
         std::set<std::string> liveParameters, bakedParameters;
         bool computedName = false;
 
@@ -162,7 +168,7 @@ namespace carto::mvt {
                 // A parameter that selects rules decides what the tile contains at all
                 if (const std::shared_ptr<const Filter>& filter = rule->getFilter()) {
                     if (filter->getPredicate()) {
-                        std::visit(PredicateVariableVisitor(NutiParameterCollector(bakedParameters, computedName)), *filter->getPredicate());
+                        std::visit(PredicateVariableVisitor(StyleParameterCollector(bakedParameters, computedName)), *filter->getPredicate());
                     }
                 }
 
@@ -173,7 +179,7 @@ namespace carto::mvt {
                             continue;
                         }
                         bool live = property->isLiveCapable() && !property->isBakedAtDecode();
-                        std::visit(ExpressionVariableVisitor(NutiParameterCollector(live ? liveParameters : bakedParameters, computedName)), property->getExpression());
+                        std::visit(ExpressionVariableVisitor(StyleParameterCollector(live ? liveParameters : bakedParameters, computedName)), property->getExpression());
                     }
                 }
             }
@@ -200,9 +206,9 @@ namespace carto::mvt {
 
         // Opt-in: a style that asks for nothing is not walked at all
         std::set<std::string> declaredParameters;
-        for (const std::pair<const std::string, NutiParameter>& nutiParameter : map.getNutiParameterMap()) {
-            if (nutiParameter.second.selectsFeatures()) {
-                declaredParameters.insert(nutiParameter.first);
+        for (const std::pair<const std::string, StyleParameter>& styleParameter : map.getStyleParameterMap()) {
+            if (styleParameter.second.selectsFeatures()) {
+                declaredParameters.insert(styleParameter.first);
             }
         }
         if (declaredParameters.empty()) {
@@ -227,7 +233,7 @@ namespace carto::mvt {
                     if (filter->getPredicate()) {
                         std::set<std::string> filterParameters;
                         bool computedName = false;
-                        std::visit(PredicateVariableVisitor(NutiParameterCollector(filterParameters, computedName)), *filter->getPredicate());
+                        std::visit(PredicateVariableVisitor(StyleParameterCollector(filterParameters, computedName)), *filter->getPredicate());
                         refuse(filterParameters, "it is read by a rule filter, which decides whether the geometry exists at all");
                         if (computedName) {
                             refuse(declaredParameters, "a rule filter builds a variable name at runtime");
@@ -251,7 +257,7 @@ namespace carto::mvt {
                             if (varName.empty()) {
                                 refuse(declaredParameters, "the style builds a variable name at runtime");
                             }
-                            else if (ExpressionContext::isNutiVariable(varName)) {
+                            else if (ExpressionContext::isStyleParameterVariable(varName)) {
                                 parameters.insert(varName.substr(6));
                             }
                         }
@@ -277,7 +283,7 @@ namespace carto::mvt {
                         const std::string& parameter = *parameters.begin();
                         std::optional<Expression> fieldExpr = resolveFieldExpression(property->getExpression(), parameter);
                         if (!fieldExpr) {
-                            refuse(parameters, "it is not written as [nuti::" + parameter + "] = <expression of feature fields> in " + propertyName);
+                            refuse(parameters, "it is not written as [param::" + parameter + "] = <expression of feature fields> in " + propertyName);
                             continue;
                         }
                         auto it = fieldExpressions.find(parameter);

@@ -4,14 +4,14 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_MAPNIKVT_TORQUETILEREADER_H_
-#define _CARTO_MAPNIKVT_TORQUETILEREADER_H_
+#ifndef _MASSIF_MAPNIKVT_TORQUETILEREADER_H_
+#define _MASSIF_MAPNIKVT_TORQUETILEREADER_H_
 
 #include "TileReader.h"
 #include "TorqueFeatureDecoder.h"
 #include "TorqueMap.h"
 
-namespace carto::mvt {
+namespace massif::mvt {
     class TorqueTileReader : public TileReader {
     public:
         explicit TorqueTileReader(std::shared_ptr<const TorqueMap> map, int frame, bool loop, std::shared_ptr<const vt::TileTransformer> transformer, const SymbolizerContext& symbolizerContext, const TorqueFeatureDecoder& featureDecoder, std::shared_ptr<Logger> logger) : TileReader(std::move(map), std::move(transformer), symbolizerContext, std::move(logger)), _frame(frame), _loop(loop), _featureDecoder(featureDecoder) { }

@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_CARTOCSS_CARTOCSSCOMPILER_H_
-#define _CARTO_CARTOCSS_CARTOCSSCOMPILER_H_
+#ifndef _MASSIF_CARTOCSS_CARTOCSSCOMPILER_H_
+#define _MASSIF_CARTOCSS_CARTOCSSCOMPILER_H_
 
 #include "Expression.h"
 #include "Predicate.h"
@@ -23,7 +23,7 @@
 #include <unordered_map>
 #include <utility>
 
-namespace carto::css {
+namespace massif::css {
     class CartoCSSCompiler final {
     public:
         CartoCSSCompiler() = default;

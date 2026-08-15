@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_MAPNIKVT_PROPERTIES_H_
-#define _CARTO_MAPNIKVT_PROPERTIES_H_
+#ifndef _MASSIF_MAPNIKVT_PROPERTIES_H_
+#define _MASSIF_MAPNIKVT_PROPERTIES_H_
 
 #include "Expression.h"
 #include "ExpressionContext.h"
@@ -23,7 +23,7 @@
 #include <set>
 #include <functional>
 
-namespace carto::mvt {
+namespace massif::mvt {
     struct Property {
         virtual ~Property() = default;
 
@@ -32,7 +32,7 @@ namespace carto::mvt {
         virtual void setExpression(const Expression& expr) = 0;
 
         /**
-         * True when this property reads nuti parameters and NOTHING that is fixed at decode time
+         * True when this property reads style parameters and NOTHING that is fixed at decode time
          * (no feature field, no mapnik:: variable, no zoom): it is evaluated per frame, so changing
          * a parameter it depends on is a redraw rather than a re-decode. Only the function-valued
          * properties (colours, widths) can be live; everything else is baked into the tile.
@@ -64,7 +64,7 @@ namespace carto::mvt {
 
         struct DependencyChecker {
             DependencyChecker() = delete;
-            explicit DependencyChecker(bool& contextVars, bool& viewStateVars, bool& nutiVars) : _contextVars(contextVars), _viewStateVars(viewStateVars), _nutiVars(nutiVars) { }
+            explicit DependencyChecker(bool& contextVars, bool& viewStateVars, bool& styleParamVars) : _contextVars(contextVars), _viewStateVars(viewStateVars), _styleParamVars(styleParamVars) { }
 
             void operator() (const std::shared_ptr<VariableExpression>& varExpr) {
                 if (auto val = std::get_if<Value>(&varExpr->getVariableExpression())) {
@@ -72,22 +72,22 @@ namespace carto::mvt {
                     if (ExpressionContext::isViewStateVariable(name)) {
                         _viewStateVars = true; // view variables do not depend on expression context, just on view state
                     }
-                    else if (ExpressionContext::isNutiVariable(name)) {
-                        _nutiVars = true; // parameters live in a store that can be swapped after decoding
+                    else if (ExpressionContext::isStyleParameterVariable(name)) {
+                        _styleParamVars = true; // parameters live in a store that can be swapped after decoding
                     }
                     else {
                         _contextVars = true; // mapnik variables, feature fields and zoom are fixed when the tile is decoded
                     }
                 }
                 else {
-                    _contextVars = _viewStateVars = _nutiVars = true; // generic expression, must assume everything is used
+                    _contextVars = _viewStateVars = _styleParamVars = true; // generic expression, must assume everything is used
                 }
             }
 
         private:
             bool& _contextVars;
             bool& _viewStateVars;
-            bool& _nutiVars;
+            bool& _styleParamVars;
         };
 
         static vt::Color convertColor(const Value& val) {
@@ -107,9 +107,9 @@ namespace carto::mvt {
         virtual void setExpression(const Expression& expr) override {
             _expr = expr;
             _defined = true;
-            _contextVars = _viewStateVars = _nutiVars = false;
-            std::visit(ExpressionVariableVisitor(DependencyChecker(_contextVars, _viewStateVars, _nutiVars)), expr);
-            if (!_contextVars && !_viewStateVars && !_nutiVars) {
+            _contextVars = _viewStateVars = _styleParamVars = false;
+            std::visit(ExpressionVariableVisitor(DependencyChecker(_contextVars, _viewStateVars, _styleParamVars)), expr);
+            if (!_contextVars && !_viewStateVars && !_styleParamVars) {
                 _value = buildValue(ExpressionContext());
             }
         }
@@ -117,7 +117,7 @@ namespace carto::mvt {
         T getValue(const ExpressionContext& context) const {
             // A plain value is baked into the tile, so a parameter it reads is resolved here and
             // now - same as a feature field.
-            if (!_contextVars && !_viewStateVars && !_nutiVars) {
+            if (!_contextVars && !_viewStateVars && !_styleParamVars) {
                 return _value;
             }
             return buildValue(context);
@@ -135,7 +135,7 @@ namespace carto::mvt {
         bool _defined = false;
         bool _contextVars = false;
         bool _viewStateVars = false;
-        bool _nutiVars = false;
+        bool _styleParamVars = false;
         T _value = T();
         Expression _expr;
     };
@@ -350,14 +350,14 @@ namespace carto::mvt {
 
         virtual const Expression& getExpression() const override { return _expr; }
 
-        virtual bool isLiveCapable() const override { return _nutiVars && !_contextVars; }
+        virtual bool isLiveCapable() const override { return _styleParamVars && !_contextVars; }
 
         virtual void setExpression(const Expression& expr) override {
             _expr = expr;
             _defined = true;
-            _contextVars = _viewStateVars = _nutiVars = false;
-            std::visit(ExpressionVariableVisitor(DependencyChecker(_contextVars, _viewStateVars, _nutiVars)), expr);
-            if (!_contextVars && !_nutiVars) {
+            _contextVars = _viewStateVars = _styleParamVars = false;
+            std::visit(ExpressionVariableVisitor(DependencyChecker(_contextVars, _viewStateVars, _styleParamVars)), expr);
+            if (!_contextVars && !_styleParamVars) {
                 _func = buildFunction(ExpressionContext());
             }
         }
@@ -370,7 +370,7 @@ namespace carto::mvt {
             // frame instead of re-running the expression interpreter once per draw call.
             // (Disabled while linear() key frames were invisible to the dependency checker;
             // ExpressionVariableVisitor now descends into them.)
-            if (!_contextVars && !_nutiVars) {
+            if (!_contextVars && !_styleParamVars) {
                 return _func;
             }
             if (!_contextVars) {
@@ -379,9 +379,9 @@ namespace carto::mvt {
                 // once per store, or every feature gets its own function object and the renderer
                 // can neither memoise it nor batch geometries that share it. Keyed by store because
                 // a compiled map may be shared by several decoders, each with its own values.
-                const NutiParameterStore* store = context.getNutiParameterStore().get();
+                const StyleParameterStore* store = context.getStyleParameterStore().get();
                 std::lock_guard<std::mutex> lock(_liveFuncMutex);
-                for (const std::pair<const NutiParameterStore*, T>& liveFunc : _liveFuncs) {
+                for (const std::pair<const StyleParameterStore*, T>& liveFunc : _liveFuncs) {
                     if (liveFunc.first == store) {
                         return liveFunc.second;
                     }
@@ -406,14 +406,14 @@ namespace carto::mvt {
         // Map::Settings holds these by value and is copied, so the cache below - which is not
         // copyable and is only ever a cache - is left out of the copy.
         GenericFunctionProperty(const GenericFunctionProperty& other) :
-            _defined(other._defined), _contextVars(other._contextVars), _viewStateVars(other._viewStateVars), _nutiVars(other._nutiVars), _func(other._func), _expr(other._expr) { }
+            _defined(other._defined), _contextVars(other._contextVars), _viewStateVars(other._viewStateVars), _styleParamVars(other._styleParamVars), _func(other._func), _expr(other._expr) { }
 
         GenericFunctionProperty& operator = (const GenericFunctionProperty& other) {
             if (this != &other) {
                 _defined = other._defined;
                 _contextVars = other._contextVars;
                 _viewStateVars = other._viewStateVars;
-                _nutiVars = other._nutiVars;
+                _styleParamVars = other._styleParamVars;
                 _func = other._func;
                 _expr = other._expr;
                 std::lock_guard<std::mutex> lock(_liveFuncMutex);
@@ -426,8 +426,8 @@ namespace carto::mvt {
         // A folded parameter is fixed for the whole evaluation, so it no longer stands between the
         // property and a constant - which is the point: the two folded constants become the two
         // style slots one feature can be repointed between.
-        bool readsLiveNutiVars(const ExpressionContext& context) const {
-            return _nutiVars && !(_selectionFoldable && context.hasNutiParameterOverride());
+        bool readsLiveStyleParams(const ExpressionContext& context) const {
+            return _styleParamVars && !(_selectionFoldable && context.hasStyleParameterOverride());
         }
 
         GenericFunctionProperty() = default;
@@ -441,7 +441,7 @@ namespace carto::mvt {
         bool _defined = false;
         bool _contextVars = false;
         bool _viewStateVars = false;
-        bool _nutiVars = false;
+        bool _styleParamVars = false;
         T _func;
         Expression _expr;
 
@@ -449,7 +449,7 @@ namespace carto::mvt {
         // between the tile decoding threads, hence the mutex.
         static constexpr std::size_t MAX_LIVE_FUNCS = 4;
         mutable std::mutex _liveFuncMutex;
-        mutable std::vector<std::pair<const NutiParameterStore*, T>> _liveFuncs;
+        mutable std::vector<std::pair<const StyleParameterStore*, T>> _liveFuncs;
     };
 
     struct FloatFunctionProperty : GenericFunctionProperty<float, vt::FloatFunction> {
@@ -458,7 +458,7 @@ namespace carto::mvt {
 
     protected:
         virtual vt::FloatFunction buildFunction(const ExpressionContext& context) const override {
-            if (_viewStateVars || readsLiveNutiVars(context)) {
+            if (_viewStateVars || readsLiveStyleParams(context)) {
                 Expression expr = _expr;
                 auto func = [expr, context](const vt::ViewState& viewState) -> float {
                     try {
@@ -483,7 +483,7 @@ namespace carto::mvt {
 
     protected:
         virtual vt::ColorFunction buildFunction(const ExpressionContext& context) const override {
-            if (_viewStateVars || readsLiveNutiVars(context)) {
+            if (_viewStateVars || readsLiveStyleParams(context)) {
                 Expression expr = _expr;
                 auto func = [expr, context](const vt::ViewState& viewState) -> vt::Color {
                     try {

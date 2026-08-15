@@ -10,7 +10,7 @@
 
 #include <boost/algorithm/string.hpp>
 
-namespace carto::mvt {
+namespace massif::mvt {
     LineSymbolizer::FeatureProcessor LineSymbolizer::createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const {
         vt::FloatFunction strokeWidthFunc = _strokeWidth.getFunction(exprContext);
         vt::FloatFunction strokeOpacityFunc = _strokeOpacity.getFunction(exprContext);

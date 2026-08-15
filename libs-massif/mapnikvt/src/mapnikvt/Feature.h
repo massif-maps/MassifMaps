@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_MAPNIKVT_FEATURE_H_
-#define _CARTO_MAPNIKVT_FEATURE_H_
+#ifndef _MASSIF_MAPNIKVT_FEATURE_H_
+#define _MASSIF_MAPNIKVT_FEATURE_H_
 
 #include "Value.h"
 #include "Geometry.h"
@@ -16,7 +16,7 @@
 #include <map>
 #include <utility>
 
-namespace carto::mvt {
+namespace massif::mvt {
     class FeatureData final {
     public:
         enum class GeometryType {

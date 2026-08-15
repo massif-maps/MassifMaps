@@ -7,7 +7,7 @@
 
 #include <stdext/unistring.h>
 
-namespace carto::mvt {
+namespace massif::mvt {
     std::size_t stringLength(const std::string& str) {
         unistring::unistring unistr = unistring::to_unistring(str);
         return unistr.size();

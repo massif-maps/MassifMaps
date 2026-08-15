@@ -7,7 +7,7 @@
 #include <map>
 #include <unordered_map>
 
-namespace carto::vt {
+namespace massif::vt {
     GlyphMap::GlyphMap(int maxWidth, int maxHeight) : _maxWidth(maxWidth), _maxHeight(maxHeight) {
         _glyphMap[0] = std::make_unique<Glyph>(GlyphMode::BACKGROUND, 0, 0, 0, 0, cglib::vec2<float>(0, 0));
     }

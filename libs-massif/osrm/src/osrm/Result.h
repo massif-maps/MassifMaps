@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_OSRM_RESULT_H_
-#define _CARTO_OSRM_RESULT_H_
+#ifndef _MASSIF_OSRM_RESULT_H_
+#define _MASSIF_OSRM_RESULT_H_
 
 #include "Base.h"
 #include "Instruction.h"
@@ -13,7 +13,7 @@
 #include <vector>
 #include <numeric>
 
-namespace carto::osrm {
+namespace massif::osrm {
     class Result final {
     public:
         enum class Status {

@@ -1,6 +1,6 @@
 #include "Geometry.h"
 
-namespace carto::mvt {
+namespace massif::mvt {
     LineGeometry::Vertices LineGeometry::getMidPoints() const {
         Vertices midPoints;
         midPoints.reserve(getVerticesList().size());

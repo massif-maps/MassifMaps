@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_MAPNIKVT_EXPRESSION_H_
-#define _CARTO_MAPNIKVT_EXPRESSION_H_
+#ifndef _MASSIF_MAPNIKVT_EXPRESSION_H_
+#define _MASSIF_MAPNIKVT_EXPRESSION_H_
 
 #include "ExpressionPredicateBase.h"
 #include "ExpressionContext.h"
@@ -22,7 +22,7 @@
 
 #include <cglib/fcurve.h>
 
-namespace carto::mvt {
+namespace massif::mvt {
     class VariableExpression final {
     public:
         explicit VariableExpression(std::string variableName) : _variableExpr(Value(std::move(variableName))) { }

@@ -4,15 +4,15 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_MAPNIKVT_RASTERCONFIGSYMBOLIZER_H_
-#define _CARTO_MAPNIKVT_RASTERCONFIGSYMBOLIZER_H_
+#ifndef _MASSIF_MAPNIKVT_RASTERCONFIGSYMBOLIZER_H_
+#define _MASSIF_MAPNIKVT_RASTERCONFIGSYMBOLIZER_H_
 
 #include "LayerConfigSymbolizer.h"
 
-namespace carto::mvt {
+namespace massif::mvt {
     /**
      * Config symbolizer for a raster external source. Carries appearance settings that the
-     * owning SDK layer applies to a RasterTileLayer every frame. Zoom- and nuti-dependent.
+     * owning SDK layer applies to a RasterTileLayer every frame. Zoom- and style-parameter-dependent.
      * CartoCSS: '#name { raster-opacity: ...; raster-comp-op: ...; raster-filter-mode: ...; }'
      */
     class RasterConfigSymbolizer : public LayerConfigSymbolizer {

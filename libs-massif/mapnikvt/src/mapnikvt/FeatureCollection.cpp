@@ -16,7 +16,7 @@ namespace {
     }
 }
 
-namespace carto::mvt {
+namespace massif::mvt {
     void FeatureCollection::clear() {
         _features.clear();
     }

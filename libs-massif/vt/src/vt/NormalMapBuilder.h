@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_VT_NORMALMAPBUILDER_H_
-#define _CARTO_VT_NORMALMAPBUILDER_H_
+#ifndef _MASSIF_VT_NORMALMAPBUILDER_H_
+#define _MASSIF_VT_NORMALMAPBUILDER_H_
 
 #include "Bitmap.h"
 #include "TileId.h"
@@ -16,7 +16,7 @@
 
 #include <cglib/vec.h>
 
-namespace carto::vt {
+namespace massif::vt {
     class NormalMapBuilder final {
     public:
         // rgbaHeightScale: coefficients used to build the slope/normal (tile-scaled, constant term
@@ -25,9 +25,9 @@ namespace carto::vt {
         explicit NormalMapBuilder(const std::array<float, 4>& rgbaHeightScale, std::uint8_t alpha, bool encodeElevation = false, const std::array<float, 4>& elevationCoeffs = { { 0.0f, 0.0f, 0.0f, 0.0f } });
         virtual ~NormalMapBuilder() = default;
 
-        std::shared_ptr<const Bitmap> buildNormalMapFromHeightMap(const carto::vt::TileId& tileId, const std::shared_ptr<const Bitmap>& bitmap) const;
-        std::shared_ptr<const Bitmap> buildNormalMapFromHeightMap(const carto::vt::TileId& subTileId, const carto::vt::TileId& tileId, const std::shared_ptr<const Bitmap>& bitmap) const;
-        std::shared_ptr<const Bitmap> buildNormalMapFromHeightMap2(const carto::vt::TileId& subTileId, const carto::vt::TileId& tileId, const std::shared_ptr<const Bitmap>& bitmap) const;
+        std::shared_ptr<const Bitmap> buildNormalMapFromHeightMap(const massif::vt::TileId& tileId, const std::shared_ptr<const Bitmap>& bitmap) const;
+        std::shared_ptr<const Bitmap> buildNormalMapFromHeightMap(const massif::vt::TileId& subTileId, const massif::vt::TileId& tileId, const std::shared_ptr<const Bitmap>& bitmap) const;
+        std::shared_ptr<const Bitmap> buildNormalMapFromHeightMap2(const massif::vt::TileId& subTileId, const massif::vt::TileId& tileId, const std::shared_ptr<const Bitmap>& bitmap) const;
 
         // Fixed-point elevation packing used when encodeElevation is set: the B (high) and A (low)
         // channels hold a 16-bit height, meters = elev16 * ELEVATION_SCALE + ELEVATION_OFFSET.

@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_MAPNIKVT_FEATUREDECODER_H_
-#define _CARTO_MAPNIKVT_FEATUREDECODER_H_
+#ifndef _MASSIF_MAPNIKVT_FEATUREDECODER_H_
+#define _MASSIF_MAPNIKVT_FEATUREDECODER_H_
 
 #include "Feature.h"
 
@@ -17,7 +17,7 @@
 #include <unordered_map>
 #include <set>
 
-namespace carto::mvt {
+namespace massif::mvt {
     class FeatureDecoder {
     public:
         class FeatureIterator {

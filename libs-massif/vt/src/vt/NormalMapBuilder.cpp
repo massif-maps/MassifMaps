@@ -5,7 +5,7 @@
 
 #include <boost/math/constants/constants.hpp>
 
-namespace carto::vt {
+namespace massif::vt {
     NormalMapBuilder::NormalMapBuilder(const std::array<float, 4>& rgbaHeightScale, std::uint8_t alpha, bool encodeElevation, const std::array<float, 4>& elevationCoeffs) : _rgbaHeightScale(rgbaHeightScale), _elevationCoeffs(elevationCoeffs), _alpha(alpha), _encodeElevation(encodeElevation) {
     }
 
@@ -20,7 +20,7 @@ namespace carto::vt {
         return _elevationCoeffs[0] * packedColor.u8[0] + _elevationCoeffs[1] * packedColor.u8[1] + _elevationCoeffs[2] * packedColor.u8[2] + _elevationCoeffs[3];
     }
 
-    std::shared_ptr<const Bitmap> NormalMapBuilder::buildNormalMapFromHeightMap(const carto::vt::TileId& tileId, const std::shared_ptr<const Bitmap>& bitmap) const {
+    std::shared_ptr<const Bitmap> NormalMapBuilder::buildNormalMapFromHeightMap(const massif::vt::TileId& tileId, const std::shared_ptr<const Bitmap>& bitmap) const {
         return buildNormalMapFromHeightMap(tileId, tileId, bitmap);
     }
 

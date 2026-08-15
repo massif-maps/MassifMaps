@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_VT_TILELABEL_H_
-#define _CARTO_VT_TILELABEL_H_
+#ifndef _MASSIF_VT_TILELABEL_H_
+#define _MASSIF_VT_TILELABEL_H_
 
 #include "Color.h"
 #include "Transform.h"
@@ -23,7 +23,7 @@
 #include <limits>
 #include <algorithm>
 
-namespace carto::vt {
+namespace massif::vt {
     class TileLabel final {
     public:
         struct Style {

@@ -8,8 +8,8 @@
 #include <boost/lexical_cast.hpp>
 
 namespace {
-    using carto::css::Color;
-    using carto::css::Value;
+    using massif::css::Color;
+    using massif::css::Value;
 
     struct NotOp {
         Value operator() (bool val) const { return Value(!val); }
@@ -51,7 +51,7 @@ namespace {
     };
 
     struct MatchOp {
-        Value operator() (const std::string& val1, const std::string& val2) const { return Value(carto::mvt::regexMatch(val1, val2)); }
+        Value operator() (const std::string& val1, const std::string& val2) const { return Value(massif::mvt::regexMatch(val1, val2)); }
         template <typename S, typename T> Value operator() (S val1, T val2) const { return Value(false); }
     };
 
@@ -103,7 +103,7 @@ namespace {
     };
 }
 
-namespace carto::css {
+namespace massif::css {
     Value UnaryExpression::applyOp(Op op, const Value& val) {
         switch (op) {
         case Op::NOT:

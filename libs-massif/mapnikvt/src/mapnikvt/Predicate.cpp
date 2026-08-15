@@ -17,7 +17,7 @@ namespace {
     };
 }
 
-namespace carto::mvt {
+namespace massif::mvt {
     bool ComparisonPredicate::applyOp(Op op, const Value& val1, const Value& val2) {
         switch (op) {
         case Op::EQ:

@@ -4,10 +4,10 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_VT_GLTILERENDERERSHADERS_H_
-#define _CARTO_VT_GLTILERENDERERSHADERS_H_
+#ifndef _MASSIF_VT_GLTILERENDERERSHADERS_H_
+#define _MASSIF_VT_GLTILERENDERERSHADERS_H_
 
-namespace carto::vt {
+namespace massif::vt {
     enum : int {
         A_VERTEXPOSITION,
         A_VERTEXUV,

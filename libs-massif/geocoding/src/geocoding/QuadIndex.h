@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_GEOCODING_QUADINDEX_H_
-#define _CARTO_GEOCODING_QUADINDEX_H_
+#ifndef _MASSIF_GEOCODING_QUADINDEX_H_
+#define _MASSIF_GEOCODING_QUADINDEX_H_
 
 #include "Geometry.h"
 #include "GeometryReader.h"
@@ -17,7 +17,7 @@
 #include <vector>
 #include <functional>
 
-namespace carto::geocoding {
+namespace massif::geocoding {
     class QuadIndex {
     public:
         using Result = std::pair<std::uint64_t, double>;

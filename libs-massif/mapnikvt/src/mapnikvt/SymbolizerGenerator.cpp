@@ -11,7 +11,7 @@
 #include "GeneratorUtils.h"
 #include "Logger.h"
 
-namespace carto::mvt {
+namespace massif::mvt {
     void SymbolizerGenerator::generateSymbolizer(const Symbolizer& symbolizer, pugi::xml_node& symbolizerNode) const {
         std::string type;
         if (dynamic_cast<const PointSymbolizer*>(&symbolizer)) {

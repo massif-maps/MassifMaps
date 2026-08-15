@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_CARTOCSS_TORQUECARTOCSSMAPLOADER_H_
-#define _CARTO_CARTOCSS_TORQUECARTOCSSMAPLOADER_H_
+#ifndef _MASSIF_CARTOCSS_TORQUECARTOCSSMAPLOADER_H_
+#define _MASSIF_CARTOCSS_TORQUECARTOCSSMAPLOADER_H_
 
 #include <string>
 #include <vector>
@@ -15,7 +15,7 @@
 #include "mapnikvt/TorqueMap.h"
 #include "mapnikvt/Logger.h"
 
-namespace carto::css {
+namespace massif::css {
     class TorqueCartoCSSMapLoader : protected CartoCSSMapLoader {
     public:
         explicit TorqueCartoCSSMapLoader(std::shared_ptr<AssetLoader> assetLoader, std::shared_ptr<mvt::Logger> logger) : CartoCSSMapLoader(std::move(assetLoader), std::move(logger)) { }

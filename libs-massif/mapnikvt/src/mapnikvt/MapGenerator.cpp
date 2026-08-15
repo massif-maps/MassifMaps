@@ -16,7 +16,7 @@
 
 #include <boost/lexical_cast.hpp>
 
-namespace carto::mvt {
+namespace massif::mvt {
     std::shared_ptr<pugi::xml_document> MapGenerator::generateMap(const Map& map) const {
         auto doc = std::make_shared<pugi::xml_document>();
         pugi::xml_node mapNode = doc->append_child("Map");
@@ -37,17 +37,17 @@ namespace carto::mvt {
             paramNode.append_child(pugi::node_pcdata).set_value(param.getValue().c_str());
         }
 
-        // NutiParameters
-        pugi::xml_node nutiParamsNode = mapNode.append_child("NutiParameters");
-        for (auto it = map.getNutiParameterMap().begin(); it != map.getNutiParameterMap().end(); it++) {
-            const NutiParameter& nutiParam = it->second;
-            pugi::xml_node nutiParamNode = nutiParamsNode.append_child("NutiParameter");
-            nutiParamNode.append_attribute("name").set_value(nutiParam.getName().c_str());
-            nutiParamNode.append_attribute("type").set_value(generateTypeString(nutiParam.getDefaultValue()).c_str());
-            nutiParamNode.append_attribute("value").set_value(ValueConverter<std::string>::convert(nutiParam.getDefaultValue()).c_str());
+        // StyleParameters
+        pugi::xml_node styleParamsNode = mapNode.append_child("StyleParameters");
+        for (auto it = map.getStyleParameterMap().begin(); it != map.getStyleParameterMap().end(); it++) {
+            const StyleParameter& styleParam = it->second;
+            pugi::xml_node styleParamNode = styleParamsNode.append_child("StyleParameter");
+            styleParamNode.append_attribute("name").set_value(styleParam.getName().c_str());
+            styleParamNode.append_attribute("type").set_value(generateTypeString(styleParam.getDefaultValue()).c_str());
+            styleParamNode.append_attribute("value").set_value(ValueConverter<std::string>::convert(styleParam.getDefaultValue()).c_str());
 
-            for (auto it2 = nutiParam.getEnumMap().begin(); it2 != nutiParam.getEnumMap().end(); it2++) {
-                pugi::xml_node valueNode = nutiParamNode.append_child("Value");
+            for (auto it2 = styleParam.getEnumMap().begin(); it2 != styleParam.getEnumMap().end(); it2++) {
+                pugi::xml_node valueNode = styleParamNode.append_child("Value");
                 valueNode.append_attribute("id").set_value(it2->first.c_str());
                 valueNode.append_attribute("value").set_value(ValueConverter<std::string>::convert(it2->second).c_str());
             }

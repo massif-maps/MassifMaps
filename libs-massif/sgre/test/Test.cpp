@@ -11,7 +11,7 @@
 #include <boost/math/constants/constants.hpp>
 #include <boost/test/included/unit_test.hpp>
 
-using namespace carto::sgre;
+using namespace massif::sgre;
 
 static bool equal(const Point& point0, const Point& point1) {
     static constexpr double EPSILON = 1.0e-8;

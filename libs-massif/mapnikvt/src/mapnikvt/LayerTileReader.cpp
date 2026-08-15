@@ -1,7 +1,7 @@
 #include "LayerTileReader.h"
 #include "Layer.h"
 
-namespace carto::mvt {
+namespace massif::mvt {
     void LayerTileReader::setLayerNameOverride(const std::string& name) {
         _layerNameOverride = name;
     }

@@ -9,7 +9,7 @@
 #include <boost/spirit/include/qi.hpp>
 #include <boost/spirit/repository/include/qi_distinct.hpp>
 
-namespace carto::css {
+namespace massif::css {
     namespace cssparserimpl {
         template <typename Iterator>
         struct Skipper : boost::spirit::qi::grammar<Iterator> {
@@ -88,7 +88,6 @@ namespace carto::css {
                 varid   = qi::lexeme[+(qi::char_("_a-zA-Z0-9-") | nonascii_)];
                 fieldid = qi::lexeme[+(qi::char_("_a-zA-Z0-9-") | nonascii_)];
                 constid = qi::lexeme['$' >> +(qi::char_("_a-zA-Z0-9-") | nonascii_)];
-                nutiid = qi::lexeme["nuti::" >> (+(qi::char_("_a-zA-Z0-9-") | nonascii_))];
                 unescapedfieldid = qi::lexeme[+(qi::print - qi::char_("[]{}")) > -(qi::char_("[") > unescapedfieldid > qi::char_("]")) > -(qi::char_("{") > unescapedfieldid > qi::char_("}"))];
 
                 expressionlist =
@@ -208,7 +207,7 @@ namespace carto::css {
             boost::spirit::qi::rule<Iterator, std::string(), Skipper<Iterator> > uri;
             boost::spirit::qi::rule<Iterator, Color(), Skipper<Iterator> > color;
             boost::spirit::qi::rule<Iterator, Value(), Skipper<Iterator> > number, constant;
-            boost::spirit::qi::rule<Iterator, std::string()> blockid, propid, funcid, varid, constid, fieldid, nutiid, unescapedfieldid;
+            boost::spirit::qi::rule<Iterator, std::string()> blockid, propid, funcid, varid, constid, fieldid, unescapedfieldid;
             boost::spirit::qi::rule<Iterator, Expression(), Skipper<Iterator> > expressionlist, expression, term0, term1, term2, term3, unary, factor;
             boost::spirit::qi::rule<Iterator, OpPredicate::Op()> op;
             boost::spirit::qi::rule<Iterator, Predicate(), Skipper<Iterator> > predicate;
@@ -297,8 +296,8 @@ namespace carto::css {
                 if (const Value* value = boost::get<Value>(&nameOrVal))
                 {
                     auto strVal = std::get_if<std::string>(value);
-                    if (strVal && mvt::ExpressionContext::isNutiVariable(*strVal)) {
-                        return OpNutiPredicate(op, FieldOrVar(field, name), FieldOrVar(field, *strVal));
+                    if (strVal && mvt::ExpressionContext::isStyleParameterVariable(*strVal)) {
+                        return OpParamPredicate(op, FieldOrVar(field, name), FieldOrVar(field, *strVal));
                     }
                     return OpPredicate(op, FieldOrVar(field, name), *value);
                 }
@@ -311,8 +310,8 @@ namespace carto::css {
             static Predicate makeConstOpPredicate(OpPredicate::Op op, bool field, const std::string& name, const Value& refValue) {
                 return ConstOpPredicate(op, name, refValue);
             }
-            static Predicate makeNutiOpPredicate(OpPredicate::Op op, bool field, const std::string& name,  const std::string& name2) {
-                return OpNutiPredicate(op, FieldOrVar(false, name), FieldOrVar(field, name2));
+            static Predicate makeParamOpPredicate(OpPredicate::Op op, bool field, const std::string& name,  const std::string& name2) {
+                return OpParamPredicate(op, FieldOrVar(false, name), FieldOrVar(field, name2));
             }
             static Predicate makeOpConstPredicate(OpPredicate::Op op, bool field, const std::string& name, const std::string& nameConst) {
                 return OpConstPredicate(op, FieldOrVar(field, name), nameConst);

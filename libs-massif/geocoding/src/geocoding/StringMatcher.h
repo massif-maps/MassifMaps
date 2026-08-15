@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_GEOCODING_STRINGMATCHER_H_
-#define _CARTO_GEOCODING_STRINGMATCHER_H_
+#ifndef _MASSIF_GEOCODING_STRINGMATCHER_H_
+#define _MASSIF_GEOCODING_STRINGMATCHER_H_
 
 #include <vector>
 #include <utility>
@@ -17,7 +17,7 @@
 #include <boost/algorithm/string/split.hpp>
 #include <boost/algorithm/string/classification.hpp>
 
-namespace carto::geocoding {
+namespace massif::geocoding {
     template <typename StringType>
     class StringMatcher final {
     public:

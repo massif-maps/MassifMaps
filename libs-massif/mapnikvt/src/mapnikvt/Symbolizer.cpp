@@ -8,7 +8,7 @@
 
 #include <atomic>
 
-namespace carto::mvt {
+namespace massif::mvt {
     std::set<std::string> Symbolizer::getPropertyNames() const {
         std::set<std::string> names;
         for (std::pair<std::string, Property*> prop : _propertyMap) {

@@ -12,7 +12,7 @@
 #include <boost/math/constants/constants.hpp>
 #include <boost/test/included/unit_test.hpp>
 
-using namespace carto::mbvtbuilder;
+using namespace massif::mbvtbuilder;
 
 static std::vector<std::vector<cglib::vec2<float>>> decodeGeometry(const vector_tile::Tile::Feature& feature, float scale = 1.0f / 4096.0f) {
     std::vector<std::vector<cglib::vec2<float>>> verticesList;

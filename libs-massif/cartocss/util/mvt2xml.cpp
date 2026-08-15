@@ -62,7 +62,7 @@ static void saveFile(const std::string& filePath, const std::vector<unsigned cha
     std::fwrite(fileData.data(), sizeof(unsigned char), fileData.size(), fpRaw);
 }
 
-class Logger : public carto::mvt::Logger {
+class Logger : public massif::mvt::Logger {
 public:
     virtual void write(Severity severity, const std::string& msg) override {
         if (severity == Severity::WARNING) {
@@ -74,7 +74,7 @@ public:
     }
 };
 
-class AssetLoader : public carto::css::CartoCSSMapLoader::AssetLoader {
+class AssetLoader : public massif::css::CartoCSSMapLoader::AssetLoader {
 public:
     explicit AssetLoader(const std::string& folder) : _folder(folder) { }
 
@@ -89,11 +89,11 @@ protected:
     const std::string _folder;
 };
 
-class BitmapLoader : public carto::vt::BitmapManager::BitmapLoader {
+class BitmapLoader : public massif::vt::BitmapManager::BitmapLoader {
 public:
     BitmapLoader(const std::shared_ptr<AssetLoader>& assetLoader) : _assetLoader(assetLoader) { }
     
-    virtual std::shared_ptr<const carto::vt::Bitmap> load(const std::string& fileNameOrig, float& resolution) const override {
+    virtual std::shared_ptr<const massif::vt::Bitmap> load(const std::string& fileNameOrig, float& resolution) const override {
         auto fileData = _assetLoader->load(fileNameOrig);
 
         int width = 0, height = 0, comp = 0;
@@ -103,7 +103,7 @@ public:
         stbi_image_free(buf);
 
         resolution = 1.0f;
-        return std::make_shared<carto::vt::Bitmap>(width, height, std::move(data));
+        return std::make_shared<massif::vt::Bitmap>(width, height, std::move(data));
     }
 
 protected:
@@ -124,19 +124,19 @@ public:
         _logger = std::make_shared<Logger>();
         _loader = std::make_shared<AssetLoader>(folder);
 
-        carto::css::CartoCSSMapLoader cartoCSSLoader(_loader, _logger);
+        massif::css::CartoCSSMapLoader cartoCSSLoader(_loader, _logger);
         _map = cartoCSSLoader.loadMapProject(file);
 
-        std::map<std::string, carto::mvt::Value> nutiParams; 
-        for (auto it = _map->getNutiParameterMap().begin(); it != _map->getNutiParameterMap().end(); it++) {
-            nutiParams[it->first] = it->second.getDefaultValue();
+        std::map<std::string, massif::mvt::Value> styleParams; 
+        for (auto it = _map->getStyleParameterMap().begin(); it != _map->getStyleParameterMap().end(); it++) {
+            styleParams[it->first] = it->second.getDefaultValue();
         }
-        auto bitmapManager = std::make_shared<carto::vt::BitmapManager>(std::make_shared<BitmapLoader>(_loader));
-        auto strokeMap = std::make_shared<carto::vt::StrokeMap>(128, 512);
-        auto glyphMap = std::make_shared<carto::vt::GlyphMap>(1024, 1024);
-        carto::mvt::SymbolizerContext::Settings settings(256, nutiParams, {});
-        auto fontManager = std::make_shared<carto::vt::FontManager>(1024, 1024);
-        _context = std::make_shared<carto::mvt::SymbolizerContext>(bitmapManager, fontManager, strokeMap, glyphMap, settings);
+        auto bitmapManager = std::make_shared<massif::vt::BitmapManager>(std::make_shared<BitmapLoader>(_loader));
+        auto strokeMap = std::make_shared<massif::vt::StrokeMap>(128, 512);
+        auto glyphMap = std::make_shared<massif::vt::GlyphMap>(1024, 1024);
+        massif::mvt::SymbolizerContext::Settings settings(256, styleParams, {});
+        auto fontManager = std::make_shared<massif::vt::FontManager>(1024, 1024);
+        _context = std::make_shared<massif::mvt::SymbolizerContext>(bitmapManager, fontManager, strokeMap, glyphMap, settings);
 
         std::string fontPrefix = _map->getSettings().fontDirectory;
         if (fontPrefix.size() > 0 && fontPrefix[fontPrefix.size() - 1] != '/') {
@@ -147,15 +147,15 @@ public:
             fontManager->loadFontData(loadFile(fontPath));
         }
 
-        _transformer = std::make_shared<carto::vt::DefaultTileTransformer>(1.0f);
+        _transformer = std::make_shared<massif::vt::DefaultTileTransformer>(1.0f);
     }
 
-    void serializeTile(const carto::vt::TileId& tileId, const carto::vt::TileId& targetTileId, const std::string& sourceFilePath, const std::string& destFilePath) {
+    void serializeTile(const massif::vt::TileId& tileId, const massif::vt::TileId& targetTileId, const std::string& sourceFilePath, const std::string& destFilePath) {
         auto tileData = loadFile(sourceFilePath);
-        carto::mvt::MBVTFeatureDecoder decoder(tileData, _logger);
+        massif::mvt::MBVTFeatureDecoder decoder(tileData, _logger);
         decoder.setTransform(calculateTileTransform(tileId, targetTileId));
 
-        carto::mvt::LayerTileReader reader(_map, _transformer, *_context, decoder, _logger);
+        massif::mvt::LayerTileReader reader(_map, _transformer, *_context, decoder, _logger);
         auto vectorTile = reader.readTile(targetTileId);
 
         std::ofstream ofs(destFilePath.c_str());
@@ -167,11 +167,11 @@ public:
     }
 
 protected:
-    static cglib::mat3x3<float> calculateTileTransform(const carto::vt::TileId& tileId, const carto::vt::TileId& targetTileId) {
+    static cglib::mat3x3<float> calculateTileTransform(const massif::vt::TileId& tileId, const massif::vt::TileId& targetTileId) {
         assert(targetTileId.zoom >= tileId.zoom && targetTileId.intersects(tileId));
 
         float x0 = 0, y0 = 0, scale = 1;
-        for (carto::vt::TileId parentTileId = targetTileId; parentTileId != tileId; parentTileId = parentTileId.getParent()) {
+        for (massif::vt::TileId parentTileId = targetTileId; parentTileId != tileId; parentTileId = parentTileId.getParent()) {
             x0 *= 0.5f; y0 *= 0.5f; scale *= 2;
             for (int i = 0; i < 4; i++) {
                 if (parentTileId == parentTileId.getParent().getChild(i % 2, i / 2)) {
@@ -185,9 +185,9 @@ protected:
 
     std::shared_ptr<Logger> _logger;
     std::shared_ptr<AssetLoader> _loader;
-    std::shared_ptr<carto::mvt::Map> _map;
-    std::shared_ptr<carto::mvt::SymbolizerContext> _context;
-    std::shared_ptr<carto::vt::TileTransformer> _transformer;
+    std::shared_ptr<massif::mvt::Map> _map;
+    std::shared_ptr<massif::mvt::SymbolizerContext> _context;
+    std::shared_ptr<massif::vt::TileTransformer> _transformer;
 };
 
 void processTiles(const std::string& sourceProjectFile, const std::string& inputTileDir, const std::string& outputTileDir) {
@@ -205,7 +205,7 @@ void processTiles(const std::string& sourceProjectFile, const std::string& input
             int x = std::stoi(m[2].str());
             int y = std::stoi(m[3].str());
 
-            carto::vt::TileId tileId(zoom, x, y);
+            massif::vt::TileId tileId(zoom, x, y);
             serializer.serializeTile(tileId, tileId, inPath, outPath);
 
             std::cout << "Processed " << inPath << std::endl;

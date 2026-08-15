@@ -4,13 +4,13 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_VT_TILEBITMAP_H_
-#define _CARTO_VT_TILEBITMAP_H_
+#ifndef _MASSIF_VT_TILEBITMAP_H_
+#define _MASSIF_VT_TILEBITMAP_H_
 
 #include <cstdint>
 #include <vector>
 
-namespace carto::vt {
+namespace massif::vt {
     class TileBitmap final {
     public:
         enum class Type {

@@ -1,6 +1,6 @@
 #include "AddressInterpolator.h"
 
-namespace carto::geocoding {
+namespace massif::geocoding {
     AddressInterpolator::AddressInterpolator(EncodingStream& houseNumberStream) {
         while (!houseNumberStream.eof()) {
             _houseNumbers.push_back(houseNumberStream.readNumber<std::uint64_t>());

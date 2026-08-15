@@ -4,12 +4,12 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_GEOCODING_PROJUTILS_H_
-#define _CARTO_GEOCODING_PROJUTILS_H_
+#ifndef _MASSIF_GEOCODING_PROJUTILS_H_
+#define _MASSIF_GEOCODING_PROJUTILS_H_
 
 #include <cglib/vec.h>
 
-namespace carto::geocoding {
+namespace massif::geocoding {
     namespace consts {
         inline constexpr double PI = 3.1415926535897932;
         inline constexpr double DEG_TO_RAD = 0.017453292519943295;

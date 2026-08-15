@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_CARTOCSS_PREDICATE_H_
-#define _CARTO_CARTOCSS_PREDICATE_H_
+#ifndef _MASSIF_CARTOCSS_PREDICATE_H_
+#define _MASSIF_CARTOCSS_PREDICATE_H_
 
 #include "Value.h"
 #include "FieldOrVar.h"
@@ -15,7 +15,7 @@
 
 #include <boost/logic/tribool.hpp>
 
-namespace carto::css {
+namespace massif::css {
     class MapPredicate;
     class LayerPredicate;
     class ClassPredicate;
@@ -23,10 +23,10 @@ namespace carto::css {
     class OpPredicate;
     class ConstOpPredicate;
     class OpConstPredicate;
-    class OpNutiPredicate;
+    class OpParamPredicate;
     class WhenPredicate;
 
-    using Predicate = std::variant<MapPredicate, LayerPredicate, ClassPredicate, AttachmentPredicate, OpPredicate, ConstOpPredicate, OpConstPredicate, OpNutiPredicate, WhenPredicate>;
+    using Predicate = std::variant<MapPredicate, LayerPredicate, ClassPredicate, AttachmentPredicate, OpPredicate, ConstOpPredicate, OpConstPredicate, OpParamPredicate, WhenPredicate>;
 
     class MapPredicate final {
     public:
@@ -150,17 +150,17 @@ namespace carto::css {
         FieldOrVar _fieldOrVar;
     };
 
-    class OpNutiPredicate final {
+    class OpParamPredicate final {
     public:
 
-        explicit OpNutiPredicate(OpPredicate::Op op, const FieldOrVar &fieldOrVar, const FieldOrVar &fieldOrVar2) : _op(op), _fieldOrVar(fieldOrVar), _fieldOrVar2(fieldOrVar2) { }
+        explicit OpParamPredicate(OpPredicate::Op op, const FieldOrVar &fieldOrVar, const FieldOrVar &fieldOrVar2) : _op(op), _fieldOrVar(fieldOrVar), _fieldOrVar2(fieldOrVar2) { }
 
         OpPredicate::Op getOp() const { return _op; }
         const FieldOrVar &getFieldOrVar() const { return _fieldOrVar; }
         const FieldOrVar &getFieldOrVar2() const { return _fieldOrVar2; }
 
-        bool operator == (const OpNutiPredicate& other) const { return _op == other._op && _fieldOrVar2 == other._fieldOrVar2 && _fieldOrVar == other._fieldOrVar; }
-        bool operator != (const OpNutiPredicate& other) const { return !(*this == other); }
+        bool operator == (const OpParamPredicate& other) const { return _op == other._op && _fieldOrVar2 == other._fieldOrVar2 && _fieldOrVar == other._fieldOrVar; }
+        bool operator != (const OpParamPredicate& other) const { return !(*this == other); }
 
         static boost::tribool applyOp(OpPredicate::Op op, const Value& val1, const Value& val2);
 

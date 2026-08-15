@@ -28,7 +28,7 @@
 #include <typeinfo>
 #include <iostream>
 
-namespace carto::css {
+namespace massif::css {
     std::shared_ptr<const mvt::Rule> CartoCSSMapnikTranslator::buildRule(const PropertySet& propertySet, const std::shared_ptr<mvt::Map>& map, int minZoom, int maxZoom) const {
         std::vector<std::shared_ptr<const Property>> properties = propertySet.getProperties();
         std::sort(properties.begin(), properties.end(), [](const std::shared_ptr<const Property>& prop1, const std::shared_ptr<const Property>& prop2) {
@@ -364,7 +364,7 @@ namespace carto::css {
                 return std::make_shared<mvt::ComparisonPredicate>(buildComparisonOp(opPred.getOp()), std::make_shared<mvt::VariableExpression>(std::move(var)), std::move(varConst));
             }
 
-            std::optional<mvt::Predicate> operator() (const OpNutiPredicate& opPred) const {
+            std::optional<mvt::Predicate> operator() (const OpParamPredicate& opPred) const {
                 if (!opPred.getFieldOrVar().isField()) {
                     throw TranslatorException("Undefined variable in predicate (@" + opPred.getFieldOrVar().getName() + ")");
                 }

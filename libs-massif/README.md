@@ -1,6 +1,6 @@
-# Internal dependencies for CARTO Mobile SDK
+# Internal dependencies for Massif Maps
 
-This repository contains various libraries that are used by CARTO Mobile SDK.
+This repository contains various libraries that are used by Massif Maps.
 These libraries have no dependencies with the rest of the SDK, so they
 are kept as a separate project.
 

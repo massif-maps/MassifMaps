@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_CARTOCSS_EXPRESSION_H_
-#define _CARTO_CARTOCSS_EXPRESSION_H_
+#ifndef _MASSIF_CARTOCSS_EXPRESSION_H_
+#define _MASSIF_CARTOCSS_EXPRESSION_H_
 
 #include "FieldOrVar.h"
 #include "Value.h"
@@ -15,7 +15,7 @@
 #include <variant>
 #include <vector>
 
-namespace carto::css {
+namespace massif::css {
 class StringExpression;
 class ListExpression;
 class UnaryExpression;
@@ -182,6 +182,6 @@ private:
   std::string _func;
   std::vector<Expression> _args;
 };
-} // namespace carto::css
+} // namespace massif::css
 
 #endif

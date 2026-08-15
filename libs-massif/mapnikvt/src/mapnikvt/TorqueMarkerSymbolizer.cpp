@@ -2,7 +2,7 @@
 #include "ParserUtils.h"
 #include "vt/BitmapCanvas.h"
 
-namespace carto::mvt {
+namespace massif::mvt {
     TorqueMarkerSymbolizer::FeatureProcessor TorqueMarkerSymbolizer::createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const {
         float width = _width.getValue(exprContext);
         if (width <= 0) {

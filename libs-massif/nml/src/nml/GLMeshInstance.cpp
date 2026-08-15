@@ -6,7 +6,7 @@
 #include "GLResourceManager.h"
 #include "Package.h"
 
-namespace carto::nml {
+namespace massif::nml {
     GLMeshInstance::GLMeshInstance(const MeshInstance& meshInstance, const std::map<std::string, std::shared_ptr<GLMesh>>& meshMap, const std::map<std::string, std::shared_ptr<GLTexture>>& textureMap) :
         _transformEnabled(false)
     {

@@ -4,14 +4,14 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_MAPNIKVT_LAYERTILEREADER_H_
-#define _CARTO_MAPNIKVT_LAYERTILEREADER_H_
+#ifndef _MASSIF_MAPNIKVT_LAYERTILEREADER_H_
+#define _MASSIF_MAPNIKVT_LAYERTILEREADER_H_
 
 #include "TileReader.h"
 #include "LayerFeatureDecoder.h"
 #include "Map.h"
 
-namespace carto::mvt {
+namespace massif::mvt {
     class LayerTileReader : public TileReader {
     public:
         explicit LayerTileReader(std::shared_ptr<const Map> map, std::shared_ptr<const vt::TileTransformer> transformer, const SymbolizerContext& symbolizerContext, const LayerFeatureDecoder& featureDecoder, std::shared_ptr<Logger> logger) : TileReader(std::move(map), std::move(transformer), symbolizerContext, std::move(logger)), _featureDecoder(featureDecoder) { }

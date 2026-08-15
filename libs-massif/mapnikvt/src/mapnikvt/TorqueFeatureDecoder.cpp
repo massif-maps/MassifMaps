@@ -36,8 +36,8 @@ namespace {
     }
 }
 
-namespace carto::mvt {
-    class TorqueFeatureDecoder::TorqueFeatureIterator : public carto::mvt::FeatureDecoder::FeatureIterator {
+namespace massif::mvt {
+    class TorqueFeatureDecoder::TorqueFeatureIterator : public massif::mvt::FeatureDecoder::FeatureIterator {
     public:
         explicit TorqueFeatureIterator(const std::vector<TorqueFeatureDecoder::Element>& elements, int frameOffset, int tileSize, const cglib::mat3x3<float>& transform, const cglib::bbox2<float>& clipBox) : _elements(elements), _frameOffset(frameOffset), _tileSize(tileSize), _transform(transform), _clipBox(clipBox) {
             while (++_index1 < _elements.size()) {

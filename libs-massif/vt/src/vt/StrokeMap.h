@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_VT_STROKEMAP_H_
-#define _CARTO_VT_STROKEMAP_H_
+#ifndef _MASSIF_VT_STROKEMAP_H_
+#define _MASSIF_VT_STROKEMAP_H_
 
 #include "Bitmap.h"
 
@@ -13,7 +13,7 @@
 #include <mutex>
 #include <unordered_map>
 
-namespace carto::vt {
+namespace massif::vt {
     class StrokeMap final {
     public:
         using StrokeId = unsigned int;

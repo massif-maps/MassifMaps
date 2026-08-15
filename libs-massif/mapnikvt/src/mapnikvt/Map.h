@@ -4,14 +4,14 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_MAPNIKVT_MAP_H_
-#define _CARTO_MAPNIKVT_MAP_H_
+#ifndef _MASSIF_MAPNIKVT_MAP_H_
+#define _MASSIF_MAPNIKVT_MAP_H_
 
 #include "FontSet.h"
 #include "Layer.h"
 #include "Style.h"
 #include "Parameter.h"
-#include "NutiParameter.h"
+#include "StyleParameter.h"
 #include "Properties.h"
 #include "SelectionParameter.h"
 
@@ -21,7 +21,7 @@
 #include <vector>
 #include <map>
 
-namespace carto::mvt {
+namespace massif::mvt {
     class Map {
     public:
         struct Settings {
@@ -66,8 +66,8 @@ namespace carto::mvt {
 
         const Settings& getSettings() const { return _settings; }
 
-        void setNutiParameters(const std::vector<NutiParameter>& nutiParameters);
-        const std::map<std::string, NutiParameter>& getNutiParameterMap() const { return _nutiParameterMap; }
+        void setStyleParameters(const std::vector<StyleParameter>& styleParameters);
+        const std::map<std::string, StyleParameter>& getStyleParameterMap() const { return _styleParameterMap; }
 
         // The parameter this style selects features with, once resolveSelectionParameter has looked
         // for one. Unset means every parameter change is a re-decode, as it always was.
@@ -94,7 +94,7 @@ namespace carto::mvt {
 
     private:
         Settings _settings;
-        std::map<std::string, NutiParameter> _nutiParameterMap;
+        std::map<std::string, StyleParameter> _styleParameterMap;
         std::optional<SelectionParameter> _selectionParameter;
         std::map<std::string, Parameter> _parameterMap;
         std::vector<std::shared_ptr<Style>> _styles;

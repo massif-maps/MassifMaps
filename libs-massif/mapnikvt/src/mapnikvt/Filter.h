@@ -4,15 +4,15 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_MAPNIKVT_FILTER_H_
-#define _CARTO_MAPNIKVT_FILTER_H_
+#ifndef _MASSIF_MAPNIKVT_FILTER_H_
+#define _MASSIF_MAPNIKVT_FILTER_H_
 
 #include "Predicate.h"
 
 #include <memory>
 #include <optional>
 
-namespace carto::mvt {
+namespace massif::mvt {
     class Filter final {
     public:
         enum class Type {

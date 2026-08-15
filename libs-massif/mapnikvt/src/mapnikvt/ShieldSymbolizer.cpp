@@ -7,7 +7,7 @@
 
 #include <utf8.h>
 
-namespace carto::mvt {
+namespace massif::mvt {
     std::vector<vt::LabelAnchor> ShieldSymbolizer::parseAnchors(const std::string& anchors) {
         static const std::pair<const char*, vt::LabelAnchor> anchorTable[] = {
             { "center",       vt::LabelAnchor::CENTER },

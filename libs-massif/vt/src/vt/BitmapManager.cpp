@@ -2,7 +2,7 @@
 
 #include <algorithm>
 
-namespace carto::vt {
+namespace massif::vt {
     BitmapManager::BitmapManager(std::shared_ptr<BitmapLoader> loader) : _bitmapLoader(std::move(loader)) {
     }
 

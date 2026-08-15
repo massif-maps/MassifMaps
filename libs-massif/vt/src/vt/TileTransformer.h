@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_VT_TILETRANSFORMER_H_
-#define _CARTO_VT_TILETRANSFORMER_H_
+#ifndef _MASSIF_VT_TILETRANSFORMER_H_
+#define _MASSIF_VT_TILETRANSFORMER_H_
 
 #include "TileId.h"
 #include "VertexArray.h"
@@ -19,7 +19,7 @@
 #include <cglib/mat.h>
 #include <cglib/bbox.h>
 
-namespace carto::vt {
+namespace massif::vt {
     class TileTransformer {
     public:
         class VertexTransformer {

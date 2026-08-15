@@ -4,15 +4,15 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_MAPNIKVT_VALUECONVERTER_H_
-#define _CARTO_MAPNIKVT_VALUECONVERTER_H_
+#ifndef _MASSIF_MAPNIKVT_VALUECONVERTER_H_
+#define _MASSIF_MAPNIKVT_VALUECONVERTER_H_
 
 #include "Value.h"
 #include "StringUtils.h"
 
 #include <boost/lexical_cast.hpp>
 
-namespace carto::mvt {
+namespace massif::mvt {
     template <typename V>
     struct ValueConverter {
         static V convert(const Value& val) {

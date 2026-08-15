@@ -13,7 +13,7 @@
 
 #include <bidi.h>
 
-namespace carto::vt {
+namespace massif::vt {
     TextFormatter::TextFormatter(std::shared_ptr<const Font> font, float fontSize, const Options& options) :
         _font(font), _metrics(font->getMetrics(1.0f)), _fontSize(fontSize), _options(options)
     {

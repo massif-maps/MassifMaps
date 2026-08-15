@@ -1,7 +1,7 @@
 #include "PolygonSymbolizer.h"
 #include "ParserUtils.h"
 
-namespace carto::mvt {
+namespace massif::mvt {
     PolygonSymbolizer::FeatureProcessor PolygonSymbolizer::createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const {
         vt::ColorFunction fillColorFunc = _fill.getFunction(exprContext);
         vt::FloatFunction fillOpacityFunc = _fillOpacity.getFunction(exprContext);

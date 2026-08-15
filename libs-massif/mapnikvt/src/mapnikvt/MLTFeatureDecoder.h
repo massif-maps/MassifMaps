@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_MAPNIKVT_MLTFEATUREDECODER_H_
-#define _CARTO_MAPNIKVT_MLTFEATUREDECODER_H_
+#ifndef _MASSIF_MAPNIKVT_MLTFEATUREDECODER_H_
+#define _MASSIF_MAPNIKVT_MLTFEATUREDECODER_H_
 
 #include "LayerFeatureDecoder.h"
 
@@ -19,7 +19,7 @@ namespace mlt {
     class MapLibreTile;
 }
 
-namespace carto::mvt {
+namespace massif::mvt {
     class Logger;
 
     /**

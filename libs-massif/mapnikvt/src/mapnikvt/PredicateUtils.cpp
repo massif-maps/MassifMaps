@@ -9,7 +9,7 @@ namespace {
     };
 }
 
-namespace carto::mvt {
+namespace massif::mvt {
     bool PredicateEvaluator::operator() (const std::shared_ptr<ExpressionPredicate>& exprPred) const {
         Value val = std::visit(ExpressionEvaluator(_context, _viewState), exprPred->getExpression());
         return std::visit(CondEvaluator(), val);
@@ -30,7 +30,7 @@ namespace carto::mvt {
             if (auto varExpr = std::get_if<std::shared_ptr<VariableExpression>>(&expr)) {
                 if (auto var = std::get_if<Value>(&(*varExpr)->getVariableExpression())) {
                     std::string name = ValueConverter<std::string>::convert(*var);
-                    if (ExpressionContext::isNutiVariable(name) || ExpressionContext::isZoomVariable(name)) {
+                    if (ExpressionContext::isStyleParameterVariable(name) || ExpressionContext::isZoomVariable(name)) {
                         result = _context.getVariable(name);
                         return true;
                     }

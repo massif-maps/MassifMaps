@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_VT_TILESURFACEBUILDER_H_
-#define _CARTO_VT_TILESURFACEBUILDER_H_
+#ifndef _MASSIF_VT_TILESURFACEBUILDER_H_
+#define _MASSIF_VT_TILESURFACEBUILDER_H_
 
 #include "TileId.h"
 #include "TileTransformer.h"
@@ -20,7 +20,7 @@
 
 #include <cglib/vec.h>
 
-namespace carto::vt {
+namespace massif::vt {
     class TileSurfaceBuilder final {
     public:
         explicit TileSurfaceBuilder(std::shared_ptr<const TileTransformer> transformer);

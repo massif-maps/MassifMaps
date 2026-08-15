@@ -4,15 +4,15 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_MAPNIKVT_EXPRESSIONPREDICATEBASE_H_
-#define _CARTO_MAPNIKVT_EXPRESSIONPREDICATEBASE_H_
+#ifndef _MASSIF_MAPNIKVT_EXPRESSIONPREDICATEBASE_H_
+#define _MASSIF_MAPNIKVT_EXPRESSIONPREDICATEBASE_H_
 
 #include "Value.h"
 
 #include <memory>
 #include <variant>
 
-namespace carto::mvt {
+namespace massif::mvt {
     class ExpressionPredicate;
     class ComparisonPredicate;
     class NotPredicate;

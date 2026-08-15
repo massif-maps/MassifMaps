@@ -25,7 +25,7 @@ namespace {
     }
 }
 
-namespace carto::sgre {
+namespace massif::sgre {
     void GraphBuilder::addLineString(const std::vector<Point>& coordsList, const Graph::FeatureProperties& properties) {
         Graph::FeatureId featureId = addFeature(properties);
         addLineString(featureId, coordsList, properties);

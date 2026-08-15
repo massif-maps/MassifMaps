@@ -19,8 +19,8 @@
 
 #include <stdext/zlib.h>
 
-namespace carto::mvt {
-    class MBVTFeatureDecoder::MBVTFeatureIterator : public carto::mvt::FeatureDecoder::FeatureIterator {
+namespace massif::mvt {
+    class MBVTFeatureDecoder::MBVTFeatureIterator : public massif::mvt::FeatureDecoder::FeatureIterator {
     public:
         explicit MBVTFeatureIterator(const std::shared_ptr<const vector_tile::Tile>& tile, int layerIndex, const std::set<std::string>* fields, const cglib::mat3x3<float>& transform, const cglib::bbox2<float>& clipBox, bool featureIdOverride, long long tileIdOffset, const std::shared_ptr<MBVTFeatureDecoder::GeometryCache>& geometryCache, const std::shared_ptr<MBVTFeatureDecoder::FeatureDataCache<std::vector<int>>>& featureDataCache) :
             _tile(tile), _layer(&tile->layers(layerIndex)), _transform(transform), _clipBox(clipBox), _featureIdOverride(featureIdOverride), _tileIdOffset(tileIdOffset), _geometryCache(geometryCache), _featureDataCache(featureDataCache)

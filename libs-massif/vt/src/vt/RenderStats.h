@@ -4,29 +4,29 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_VT_RENDERSTATS_H_
-#define _CARTO_VT_RENDERSTATS_H_
+#ifndef _MASSIF_VT_RENDERSTATS_H_
+#define _MASSIF_VT_RENDERSTATS_H_
 
 /**
  * Diagnostic counters for label and tile churn, and the single switch that turns them on.
  *
  * They live in hot paths - every label placement update, every label built, every culled
- * label - so they must cost nothing when unused: with CARTO_VT_RENDER_STATS at 0 the
+ * label - so they must cost nothing when unused: with MASSIF_VT_RENDER_STATS at 0 the
  * counters do not exist, the VT_STAT_* macros expand to nothing, their arguments are never
  * evaluated, and the SDK's per-second printout in MapRenderer is not compiled either.
  *
  * Set it to 1 here, or define it as a build flag, to get the printout back.
  */
-#ifndef CARTO_VT_RENDER_STATS
-#define CARTO_VT_RENDER_STATS 0
+#ifndef MASSIF_VT_RENDER_STATS
+#define MASSIF_VT_RENDER_STATS 0
 #endif
 
-#if CARTO_VT_RENDER_STATS
+#if MASSIF_VT_RENDER_STATS
 
 #include <atomic>
 #include <chrono>
 
-namespace carto::vt {
+namespace massif::vt {
     struct RenderStats {
         // Tile churn
         static inline std::atomic<long long> cullWorkerUpdates{0};     // CullWorker passes that pushed a cull state to the layers
@@ -166,15 +166,15 @@ namespace carto::vt {
     };
 }
 
-#define VT_STAT_INC(name) (carto::vt::RenderStats::name++)
-#define VT_STAT_ADD(name, value) (carto::vt::RenderStats::name += (value))
-#define VT_STAT_SET(name, value) (carto::vt::RenderStats::name = (value))
+#define VT_STAT_INC(name) (massif::vt::RenderStats::name++)
+#define VT_STAT_ADD(name, value) (massif::vt::RenderStats::name += (value))
+#define VT_STAT_SET(name, value) (massif::vt::RenderStats::name = (value))
 // A clock read is ~30 ns here, so a handful per draw is affordable; 'var' is reset to the
 // current time so the same variable can walk through consecutive sections of one draw.
 #define VT_STAT_CLOCK(var) std::chrono::steady_clock::time_point var = std::chrono::steady_clock::now()
 #define VT_STAT_SPLIT(name, var) do { \
         std::chrono::steady_clock::time_point vtStatNow = std::chrono::steady_clock::now(); \
-        carto::vt::RenderStats::name += std::chrono::duration_cast<std::chrono::nanoseconds>(vtStatNow - (var)).count(); \
+        massif::vt::RenderStats::name += std::chrono::duration_cast<std::chrono::nanoseconds>(vtStatNow - (var)).count(); \
         (var) = vtStatNow; \
     } while (false)
 

@@ -4,15 +4,15 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_MBVTBUILDER_SIMPLIFIER_H_
-#define _CARTO_MBVTBUILDER_SIMPLIFIER_H_
+#ifndef _MASSIF_MBVTBUILDER_SIMPLIFIER_H_
+#define _MASSIF_MBVTBUILDER_SIMPLIFIER_H_
 
 #include <vector>
 #include <queue>
 
 #include <cglib/vec.h>
 
-namespace carto::mbvtbuilder {
+namespace massif::mbvtbuilder {
     template <typename T>
     class Simplifier final {
     public:

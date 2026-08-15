@@ -1,5 +1,5 @@
-#ifndef _CARTO_COMPRESSIONUTILS_H_
-#define _CARTO_COMPRESSIONUTILS_H_
+#ifndef _MASSIF_COMPRESSIONUTILS_H_
+#define _MASSIF_COMPRESSIONUTILS_H_
 
 #include <vector>
 #include <cstring>
@@ -15,7 +15,7 @@
 
 #include <stdext/zlib.h>
 
-namespace carto::mvt {
+namespace massif::mvt {
 
     /**
      * Compression utilities namespace for handling various compression formats.

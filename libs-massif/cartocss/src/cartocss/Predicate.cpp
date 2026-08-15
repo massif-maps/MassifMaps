@@ -4,7 +4,7 @@
 #include <utility>
 
 namespace {
-    using carto::css::Color;
+    using massif::css::Color;
 
     template <template <typename> class Op>
     struct CompareOp {
@@ -19,7 +19,7 @@ namespace {
     };
 }
 
-namespace carto::css {
+namespace massif::css {
     boost::tribool OpPredicate::applyOp(Op op, const Value& val1, const Value& val2) {
         switch (op) {
         case Op::EQ:

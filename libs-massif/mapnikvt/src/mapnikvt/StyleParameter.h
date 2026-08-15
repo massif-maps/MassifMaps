@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_MAPNIKVT_NUTIPARAMETER_H_
-#define _CARTO_MAPNIKVT_NUTIPARAMETER_H_
+#ifndef _MASSIF_MAPNIKVT_STYLEPARAMETER_H_
+#define _MASSIF_MAPNIKVT_STYLEPARAMETER_H_
 
 #include "Value.h"
 
@@ -13,10 +13,10 @@
 #include <string>
 #include <map>
 
-namespace carto::mvt {
-    class NutiParameter final {
+namespace massif::mvt {
+    class StyleParameter final {
     public:
-        explicit NutiParameter(std::string name, Value defaultValue, std::map<std::string, Value> enumMap, bool selects = false) : _name(std::move(name)), _defaultValue(std::move(defaultValue)), _enumMap(std::move(enumMap)), _selects(selects) { }
+        explicit StyleParameter(std::string name, Value defaultValue, std::map<std::string, Value> enumMap, bool selects = false) : _name(std::move(name)), _defaultValue(std::move(defaultValue)), _enumMap(std::move(enumMap)), _selects(selects) { }
 
         const std::string& getName() const { return _name; }
         const Value& getDefaultValue() const { return _defaultValue; }

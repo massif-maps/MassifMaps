@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_MAPNIKVT_TEXTSYMBOLIZER_H_
-#define _CARTO_MAPNIKVT_TEXTSYMBOLIZER_H_
+#ifndef _MASSIF_MAPNIKVT_TEXTSYMBOLIZER_H_
+#define _MASSIF_MAPNIKVT_TEXTSYMBOLIZER_H_
 
 #include "Symbolizer.h"
 #include "FontSet.h"
@@ -16,7 +16,7 @@
 #include <optional>
 #include <functional>
 
-namespace carto::mvt {
+namespace massif::mvt {
     class TextSymbolizer : public Symbolizer {
     public:
         explicit TextSymbolizer(const Expression& text, std::vector<std::shared_ptr<FontSet>> fontSets, std::shared_ptr<Logger> logger) : Symbolizer(std::move(logger)), _fontSets(std::move(fontSets)) {
@@ -119,7 +119,7 @@ namespace carto::mvt {
         FloatProperty _placementPriority = FloatProperty(0.0f);
         FloatProperty _minimumDistance = FloatProperty(0.0f);
         FloatProperty _maxDistance = FloatProperty(0.0f); // meters from the camera; 0 = no limit
-        // 'nuticallout' placement only (see vt::LabelOrientation::CALLOUT). Screen pixels, except
+        // 'callout' placement only (see vt::LabelOrientation::CALLOUT). Screen pixels, except
         // the anchor: a fraction of the screen height from the top, < 0 = stack from the anchor.
         FloatProperty _calloutScreenAnchor = FloatProperty(-1.0f);
         FloatProperty _calloutOffset = FloatProperty(0.0f);

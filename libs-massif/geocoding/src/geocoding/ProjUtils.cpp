@@ -2,7 +2,7 @@
 
 #include <cmath>
 
-namespace carto::geocoding {
+namespace massif::geocoding {
     cglib::vec2<double> webMercatorToWgs84(const cglib::vec2<double>& mercatorPoint) {
         double x = mercatorPoint(0);
         double y = mercatorPoint(1);

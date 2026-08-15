@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_VT_GLYPHMAP_H_
-#define _CARTO_VT_GLYPHMAP_H_
+#ifndef _MASSIF_VT_GLYPHMAP_H_
+#define _MASSIF_VT_GLYPHMAP_H_
 
 #include "Bitmap.h"
 
@@ -16,7 +16,7 @@
 
 #include <cglib/vec.h>
 
-namespace carto::vt {
+namespace massif::vt {
     class GlyphMap final {
     public:
         using GlyphId = unsigned int;

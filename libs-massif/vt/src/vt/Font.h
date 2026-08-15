@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_VT_FONT_H_
-#define _CARTO_VT_FONT_H_
+#ifndef _MASSIF_VT_FONT_H_
+#define _MASSIF_VT_FONT_H_
 
 #include "Bitmap.h"
 #include "GlyphMap.h"
@@ -17,7 +17,7 @@
 
 #include <cglib/vec.h>
 
-namespace carto::vt {
+namespace massif::vt {
     inline constexpr int GLYPH_RENDER_SIZE = 27;
     // The SDF spread FreeType renders, and it must MATCH the range the field is encoded over
     // (BITMAP_SDF_SCALE): with a smaller spread the distance field is truncated mid-gradient at the

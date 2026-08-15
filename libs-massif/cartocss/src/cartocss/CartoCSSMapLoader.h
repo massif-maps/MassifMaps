@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_CARTOCSS_CARTOCSSMAPLOADER_H_
-#define _CARTO_CARTOCSS_CARTOCSSMAPLOADER_H_
+#ifndef _MASSIF_CARTOCSS_CARTOCSSMAPLOADER_H_
+#define _MASSIF_CARTOCSS_CARTOCSSMAPLOADER_H_
 
 #include "CartoCSSCompiler.h"
 #include "CartoCSSMapnikTranslator.h"
@@ -23,7 +23,7 @@
 
 #include <picojson/picojson.h>
 
-namespace carto::css {
+namespace massif::css {
     class CartoCSSMapLoader {
     public:
         class LoaderException : public std::runtime_error {
@@ -84,11 +84,13 @@ namespace carto::css {
             return false;
         }
 
+        void warnDeprecatedTokens(const std::string& cartoCSS, const std::string& fileName) const;
+
         picojson::value loadMapDocument(const std::string& fileName, std::set<std::string> loadedFileNames) const;
 
         mvt::Map::Settings loadMapSettings(const std::map<std::string, Expression>& mapProperties) const;
 
-        std::shared_ptr<mvt::Map> buildMap(const StyleSheet& styleSheet, const std::vector<std::string>& layerNames, const std::vector<mvt::Parameter>& parameters, const std::vector<mvt::NutiParameter>& nutiParameters, std::map<std::string, Value>& constantFieldMap) const;
+        std::shared_ptr<mvt::Map> buildMap(const StyleSheet& styleSheet, const std::vector<std::string>& layerNames, const std::vector<mvt::Parameter>& parameters, const std::vector<mvt::StyleParameter>& styleParameters, std::map<std::string, Value>& constantFieldMap) const;
 
         std::shared_ptr<mvt::Style> buildStyle(const AttachmentStyle& attachmentStyle, const std::string& styleName) const;
 

@@ -4,15 +4,15 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_VT_TRANSFORM_H_
-#define _CARTO_VT_TRANSFORM_H_
+#ifndef _MASSIF_VT_TRANSFORM_H_
+#define _MASSIF_VT_TRANSFORM_H_
 
 #include <functional>
 
 #include <cglib/vec.h>
 #include <cglib/mat.h>
 
-namespace carto::vt {
+namespace massif::vt {
     class Transform final {
     public:
         Transform() : _matrix { 1, 0, 0, 1 }, _translate { 0, 0 } { }
@@ -74,8 +74,8 @@ namespace carto::vt {
 
 namespace std {
     template <>
-    struct hash<carto::vt::Transform> {
-        std::size_t operator() (const carto::vt::Transform& transform) const {
+    struct hash<massif::vt::Transform> {
+        std::size_t operator() (const massif::vt::Transform& transform) const {
             std::size_t hash = 0;
             cglib::mat3x3<float> mat = transform.matrix3();
             for (std::size_t i = 0; i < 3; i++) {

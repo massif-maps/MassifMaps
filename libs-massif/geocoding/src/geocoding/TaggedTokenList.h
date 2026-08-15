@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_GEOCODING_TAGGEDTOKENLIST_H_
-#define _CARTO_GEOCODING_TAGGEDTOKENLIST_H_
+#ifndef _MASSIF_GEOCODING_TAGGEDTOKENLIST_H_
+#define _MASSIF_GEOCODING_TAGGEDTOKENLIST_H_
 
 #include <cstdint>
 #include <string>
@@ -14,7 +14,7 @@
 #include <utility>
 #include <algorithm>
 
-namespace carto::geocoding {
+namespace massif::geocoding {
     template <typename StringType, typename TokenType, typename TagType>
     class TaggedTokenList final {
     public:

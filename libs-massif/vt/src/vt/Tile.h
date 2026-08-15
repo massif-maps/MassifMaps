@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_VT_TILE_H_
-#define _CARTO_VT_TILE_H_
+#ifndef _MASSIF_VT_TILE_H_
+#define _MASSIF_VT_TILE_H_
 
 #include "TileId.h"
 #include "TileLayer.h"
@@ -14,7 +14,7 @@
 #include <vector>
 #include <numeric>
 
-namespace carto::vt {
+namespace massif::vt {
     class Tile final {
     public:
         explicit Tile(const TileId& tileId, float tileSize, std::vector<std::shared_ptr<TileLayer>> layers) : _tileId(tileId), _tileSize(tileSize), _layers(std::move(layers)) { }

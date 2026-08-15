@@ -5,7 +5,7 @@
 
 #include <cassert>
 
-namespace carto::nml {
+namespace massif::nml {
     GLSubmesh::GLSubmesh(const Submesh& submesh) :
         _glType(-1),
         _vertexCounts(),

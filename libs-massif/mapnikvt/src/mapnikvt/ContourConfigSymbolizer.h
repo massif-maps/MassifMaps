@@ -4,12 +4,12 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_MAPNIKVT_CONTOURCONFIGSYMBOLIZER_H_
-#define _CARTO_MAPNIKVT_CONTOURCONFIGSYMBOLIZER_H_
+#ifndef _MASSIF_MAPNIKVT_CONTOURCONFIGSYMBOLIZER_H_
+#define _MASSIF_MAPNIKVT_CONTOURCONFIGSYMBOLIZER_H_
 
 #include "LayerConfigSymbolizer.h"
 
-namespace carto::mvt {
+namespace massif::mvt {
     /**
      * Optional config symbolizer for a contour external source (ContourTileDataSource).
      *
@@ -17,7 +17,7 @@ namespace carto::mvt {
      * ordinary line/text symbolizers on the '#contour' layer. This symbolizer only carries
      * the datasource GENERATION parameters (base interval, tracing resolution, ...). Because
      * changing them regenerates tiles, the owning SDK layer applies these to the
-     * ContourTileDataSource on style/nuti changes - NOT every frame.
+     * ContourTileDataSource on style/parameter changes - NOT every frame.
      */
     class ContourConfigSymbolizer : public LayerConfigSymbolizer {
     public:

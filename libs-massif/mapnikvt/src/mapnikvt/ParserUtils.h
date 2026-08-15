@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_MAPNIKVT_PARSERUTILS_H_
-#define _CARTO_MAPNIKVT_PARSERUTILS_H_
+#ifndef _MASSIF_MAPNIKVT_PARSERUTILS_H_
+#define _MASSIF_MAPNIKVT_PARSERUTILS_H_
 
 #include "Value.h"
 #include "Expression.h"
@@ -17,7 +17,7 @@
 #include <string>
 #include <vector>
 
-namespace carto::mvt {
+namespace massif::mvt {
     class ParserException : public std::runtime_error {
     public:
         explicit ParserException(const std::string& msg) : runtime_error(msg), _message(msg), _source() { }

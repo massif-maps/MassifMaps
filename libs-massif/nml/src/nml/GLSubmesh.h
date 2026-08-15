@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_NML_GLSUBMESH_H_
-#define _CARTO_NML_GLSUBMESH_H_
+#ifndef _MASSIF_NML_GLSUBMESH_H_
+#define _MASSIF_NML_GLSUBMESH_H_
 
 #include "GLBase.h"
 
@@ -13,7 +13,7 @@
 #include <string>
 #include <vector>
 
-namespace carto::nml {
+namespace massif::nml {
     class Submesh;
     class SubmeshOpList;
     class GLMesh;

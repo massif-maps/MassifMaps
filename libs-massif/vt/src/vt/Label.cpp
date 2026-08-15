@@ -7,7 +7,7 @@
 
 
 
-namespace carto::vt {
+namespace massif::vt {
     Label::Label(const TileLabel& tileLabel, const TileId& tileId, int layerIdx, const cglib::mat4x4<double>& tileMatrix, const std::shared_ptr<const TileTransformer::VertexTransformer>& transformer) :
         _tileId(tileId), _layerIndex(layerIdx), _localId(tileLabel.getLocalId()), _globalId(tileLabel.getGlobalId()), _groupId(tileLabel.getGroupId()), _glyphs(tileLabel.getGlyphs()), _variants(tileLabel.getVariants()), _style(tileLabel.getStyle()), _priority(tileLabel.getPlacementInfo().priority), _minimumGroupDistance(tileLabel.getPlacementInfo().minimumGroupDistance), _allowOverlapSameFeatureId(tileLabel.getPlacementInfo().allowOverlapSameFeatureId), _sameFeatureIdDependent(tileLabel.getPlacementInfo().sameFeatureIdDependent), _geoPointIndex(tileLabel.getGeoPointIndex())
     {
@@ -351,7 +351,7 @@ namespace carto::vt {
         if (!_placement) {
             return;
         }
-#if CARTO_VT_RENDER_STATS
+#if MASSIF_VT_RENDER_STATS
         VT_STAT_INC(snapPlacements);
         cglib::vec3<double> oldPosition = _placement->position;
 #endif
@@ -375,7 +375,7 @@ namespace carto::vt {
             _placement = findSnappedLinePlacement(_placement->position, _tileLines, oldPlacement);
         }
 
-#if CARTO_VT_RENDER_STATS
+#if MASSIF_VT_RENDER_STATS
         if (_placement) {
             double dx = _placement->position(0) - oldPosition(0);
             double dy = _placement->position(1) - oldPosition(1);

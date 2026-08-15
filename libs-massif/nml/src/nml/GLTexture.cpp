@@ -41,7 +41,7 @@
 #include <sstream>
 #include <unordered_set>
 
-namespace carto::nml {
+namespace massif::nml {
     GLTexture::GLTexture(std::shared_ptr<Texture> texture) :
         _texture(texture),
         _glTextureId(0)

@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_MBVTBUILDER_MBVTTILEBUILDER_H_
-#define _CARTO_MBVTBUILDER_MBVTTILEBUILDER_H_
+#ifndef _MASSIF_MBVTBUILDER_MBVTTILEBUILDER_H_
+#define _MASSIF_MBVTBUILDER_MBVTTILEBUILDER_H_
 
 #include <cstdint>
 #include <functional>
@@ -24,7 +24,7 @@
 
 #include <protobuf/encodedpbf.hpp>
 
-namespace carto::mbvtbuilder {
+namespace massif::mbvtbuilder {
     class MBVTLayerEncoder;
 
     // The per-layer geometry store and its geojson-vt tile index, and a wrapper around one feature's

@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_VT_COLOR_H_
-#define _CARTO_VT_COLOR_H_
+#ifndef _MASSIF_VT_COLOR_H_
+#define _MASSIF_VT_COLOR_H_
 
 #include <cstdint>
 #include <array>
@@ -13,7 +13,7 @@
 #include <functional>
 #include <cmath>
 
-namespace carto::vt {
+namespace massif::vt {
     class Color final {
     public:
         constexpr Color() : _components{ { 0, 0, 0, 0 } } { }

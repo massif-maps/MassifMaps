@@ -5,7 +5,7 @@
 #include "GLResourceManager.h"
 #include "Package.h"
 
-namespace carto::nml {
+namespace massif::nml {
     GLModel::GLModel(const Model& model) :
         _meshMap(),
         _textureMap(),

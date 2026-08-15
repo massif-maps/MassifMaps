@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_MAPNIKVT_NUTIPARAMETERRESOLVER_H_
-#define _CARTO_MAPNIKVT_NUTIPARAMETERRESOLVER_H_
+#ifndef _MASSIF_MAPNIKVT_STYLEPARAMETERRESOLVER_H_
+#define _MASSIF_MAPNIKVT_STYLEPARAMETERRESOLVER_H_
 
 #include "SelectionParameter.h"
 #include "Logger.h"
@@ -15,23 +15,23 @@
 #include <set>
 #include <string>
 
-namespace carto::mvt {
+namespace massif::mvt {
     class Map;
 
     /**
-     * The nuti parameters of a map whose every use is a property the renderer evaluates per frame -
+     * The style parameters of a map whose every use is a property the renderer evaluates per frame -
      * a colour, an opacity, a width that is not also read while the tile is built. Changing one of
-     * these means swapping the value in the NutiParameterStore and redrawing; changing any other
+     * these means swapping the value in the StyleParameterStore and redrawing; changing any other
      * parameter means decoding the tiles again.
      *
      * Deliberately conservative: a parameter is live only when EVERY place it appears says so, and
      * a parameter that appears in no rule (in the map settings, say) is not reported as live.
      */
-    std::set<std::string> resolveLiveNutiParameters(const Map& map);
+    std::set<std::string> resolveLiveStyleParameters(const Map& map);
 
     /**
      * Verifies the parameter a style declared as SELECTING a feature - one compared with a feature
-     * field to pick a route or a POI out ("selects": true in nutiparameters). Reported so the
+     * field to pick a route or a POI out ("selects": true in styleparameters). Reported so the
      * decoder can fold the comparison both ways and answer a change with a repaint instead of a
      * decode (see SelectionParameter), and marks the properties it may fold with
      * Property::setSelectionFoldable.

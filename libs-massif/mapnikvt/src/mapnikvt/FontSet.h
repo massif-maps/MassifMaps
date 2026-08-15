@@ -4,15 +4,15 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_MAPNIKVT_FONTSET_H_
-#define _CARTO_MAPNIKVT_FONTSET_H_
+#ifndef _MASSIF_MAPNIKVT_FONTSET_H_
+#define _MASSIF_MAPNIKVT_FONTSET_H_
 
 #include "Properties.h"
 
 #include <string>
 #include <vector>
 
-namespace carto::mvt {
+namespace massif::mvt {
     class FontSet final {
     public:
         explicit FontSet(std::string name, std::vector<StringProperty> faceNames) : _name(std::move(name)), _faceNames(std::move(faceNames)) { }

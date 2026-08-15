@@ -10,7 +10,7 @@
 
 #include "mapnikvt/mbvtpackage/MBVTPackage.pb.h"
 
-namespace carto::mbvtbuilder
+namespace massif::mbvtbuilder
 {
     // geojson-vt's tile pyramid, driven by our own drill instead of its GeoJSONVT glue.
     //

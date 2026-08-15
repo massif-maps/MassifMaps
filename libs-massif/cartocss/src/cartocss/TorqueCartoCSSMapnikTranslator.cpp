@@ -1,7 +1,7 @@
 #include "TorqueCartoCSSMapnikTranslator.h"
 #include "mapnikvt/TorqueMarkerSymbolizer.h"
 
-namespace carto::css {
+namespace massif::css {
     std::string TorqueCartoCSSMapnikTranslator::getPropertySymbolizerId(const std::string& propertyName) const {
         // Torque uses very simplified CartoCSS with no attachments, etc
         return "marker";

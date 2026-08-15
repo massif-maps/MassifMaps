@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_MAPNIKVT_SYMBOLIZERGENERATOR_H_
-#define _CARTO_MAPNIKVT_SYMBOLIZERGENERATOR_H_
+#ifndef _MASSIF_MAPNIKVT_SYMBOLIZERGENERATOR_H_
+#define _MASSIF_MAPNIKVT_SYMBOLIZERGENERATOR_H_
 
 #include "Properties.h"
 
@@ -14,7 +14,7 @@
 
 #include <pugixml.hpp>
 
-namespace carto::mvt {
+namespace massif::mvt {
     class Logger;
     class Symbolizer;
     

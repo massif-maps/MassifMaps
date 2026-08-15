@@ -21,7 +21,7 @@
 #include <variant>
 #include <vector>
 
-namespace carto::mvt {
+namespace massif::mvt {
     namespace {
         using MLTGeometryType = mlt::metadata::tileset::GeometryType;
 
@@ -79,7 +79,7 @@ namespace carto::mvt {
         }
     }
 
-    class MLTFeatureDecoder::MLTFeatureIterator : public carto::mvt::FeatureDecoder::FeatureIterator {
+    class MLTFeatureDecoder::MLTFeatureIterator : public massif::mvt::FeatureDecoder::FeatureIterator {
     public:
         explicit MLTFeatureIterator(const std::shared_ptr<const mlt::MapLibreTile>& tile, const mlt::Layer* layer, int layerIndex, const std::vector<std::string>& layerKeys, const std::set<std::string>* fields, const cglib::mat3x3<float>& transform, const cglib::bbox2<float>& clipBox, bool featureIdOverride, long long tileIdOffset, const std::shared_ptr<MLTFeatureDecoder::GeometryCache>& geometryCache) :
             _tile(tile), _layer(layer), _transform(transform), _clipBox(clipBox), _featureIdOverride(featureIdOverride), _tileIdOffset(tileIdOffset), _geometryCache(geometryCache)

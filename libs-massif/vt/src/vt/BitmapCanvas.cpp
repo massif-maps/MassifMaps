@@ -10,7 +10,7 @@ namespace {
     }
 }
 
-namespace carto::vt {
+namespace massif::vt {
     BitmapCanvas::BitmapCanvas(int width, int height) : _width(width), _height(height), _sdfMode(false), _data(width * height) {
     }
 

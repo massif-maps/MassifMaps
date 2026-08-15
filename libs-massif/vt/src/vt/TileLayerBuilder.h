@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_VT_TILELAYERBUILDER_H_
-#define _CARTO_VT_TILELAYERBUILDER_H_
+#ifndef _MASSIF_VT_TILELAYERBUILDER_H_
+#define _MASSIF_VT_TILELAYERBUILDER_H_
 
 #include "TileBackground.h"
 #include "TileBitmap.h"
@@ -27,7 +27,7 @@
 #include <cglib/vec.h>
 #include <cglib/bbox.h>
 
-namespace carto::vt {
+namespace massif::vt {
     class TileLayerBuilder final {
     public:
         using Vertex = cglib::vec2<float>;

@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_SGRE_INSTRUCTION_H_
-#define _CARTO_SGRE_INSTRUCTION_H_
+#ifndef _MASSIF_SGRE_INSTRUCTION_H_
+#define _MASSIF_SGRE_INSTRUCTION_H_
 
 #include "Base.h"
 
@@ -14,7 +14,7 @@
 
 #include <picojson/picojson.h>
 
-namespace carto::sgre {
+namespace massif::sgre {
     class Instruction final {
     public:
         enum class Type {

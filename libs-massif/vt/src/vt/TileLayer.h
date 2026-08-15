@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_VT_TILELAYER_H_
-#define _CARTO_VT_TILELAYER_H_
+#ifndef _MASSIF_VT_TILELAYER_H_
+#define _MASSIF_VT_TILELAYER_H_
 
 #include "TileBackground.h"
 #include "TileBitmap.h"
@@ -18,7 +18,7 @@
 #include <vector>
 #include <numeric>
 
-namespace carto::vt {
+namespace massif::vt {
     class TileLayer final {
     public:
         explicit TileLayer(std::string layerName, int layerIdx, std::optional<CompOp> compOp, FloatFunction opacityFunc, std::vector<std::shared_ptr<TileBackground>> backgrounds, std::vector<std::shared_ptr<TileBitmap>> bitmaps, std::vector<std::shared_ptr<TileGeometry>> geometries, std::vector<std::shared_ptr<TileLabel>> labels) : _layerName(std::move(layerName)), _layerIdx(layerIdx), _compOp(std::move(compOp)), _opacityFunc(std::move(opacityFunc)), _backgrounds(std::move(backgrounds)), _bitmaps(std::move(bitmaps)), _geometries(std::move(geometries)), _labels(std::move(labels)) { }

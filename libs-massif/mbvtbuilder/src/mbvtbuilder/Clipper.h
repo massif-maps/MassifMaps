@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_MBVTBUILDER_CLIPPER_H_
-#define _CARTO_MBVTBUILDER_CLIPPER_H_
+#ifndef _MASSIF_MBVTBUILDER_CLIPPER_H_
+#define _MASSIF_MBVTBUILDER_CLIPPER_H_
 
 #include <vector>
 #include <algorithm>
@@ -14,7 +14,7 @@
 #include <cglib/vec.h>
 #include <cglib/bbox.h>
 
-namespace carto::mbvtbuilder {
+namespace massif::mbvtbuilder {
     template <typename T>
     class Clipper final {
     public:

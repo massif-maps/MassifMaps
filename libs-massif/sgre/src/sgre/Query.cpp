@@ -1,6 +1,6 @@
 #include "Query.h"
 
-namespace carto::sgre {
+namespace massif::sgre {
     picojson::value Query::serialize() const {
         picojson::array pos0Def, pos1Def;
         for (std::size_t i = 0; i < 3; i++) {

@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_NML_PACKAGE_H_
-#define _CARTO_NML_PACKAGE_H_
+#ifndef _MASSIF_NML_PACKAGE_H_
+#define _MASSIF_NML_PACKAGE_H_
 
 #include "nmlpackage/NMLPackage.pb.h"
 

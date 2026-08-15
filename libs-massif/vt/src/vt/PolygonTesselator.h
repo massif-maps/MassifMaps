@@ -4,15 +4,15 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_VT_POLYGONTESSELATOR_H_
-#define _CARTO_VT_POLYGONTESSELATOR_H_
+#ifndef _MASSIF_VT_POLYGONTESSELATOR_H_
+#define _MASSIF_VT_POLYGONTESSELATOR_H_
 
 #include <vector>
 #include <memory>
 
 #include <cglib/vec.h>
 
-namespace carto::vt {
+namespace massif::vt {
     class PolygonTesselator final {
     public:
         using Vertex = cglib::vec2<float>;

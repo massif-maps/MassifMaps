@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_CARTOCSS_CARTOCSSPARSER_H_
-#define _CARTO_CARTOCSS_CARTOCSSPARSER_H_
+#ifndef _MASSIF_CARTOCSS_CARTOCSSPARSER_H_
+#define _MASSIF_CARTOCSS_CARTOCSSPARSER_H_
 
 #include "Expression.h"
 #include "Predicate.h"
@@ -19,7 +19,7 @@
 #include <utility>
 #include <stdexcept>
 
-namespace carto::css {
+namespace massif::css {
     class CartoCSSParser final {
     public:
         class ParserError : public std::runtime_error {

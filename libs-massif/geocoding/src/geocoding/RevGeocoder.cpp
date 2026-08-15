@@ -10,7 +10,7 @@
 
 #include <sqlite3pp.h>
 
-namespace carto::geocoding {
+namespace massif::geocoding {
     bool RevGeocoder::import(const std::shared_ptr<sqlite3pp::database>& db) {
         std::lock_guard<std::recursive_mutex> lock(_mutex);
         Database database;

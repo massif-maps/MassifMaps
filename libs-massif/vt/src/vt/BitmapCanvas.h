@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_VT_BITMAPCANVAS_H_
-#define _CARTO_VT_BITMAPCANVAS_H_
+#ifndef _MASSIF_VT_BITMAPCANVAS_H_
+#define _MASSIF_VT_BITMAPCANVAS_H_
 
 #include "Color.h"
 #include "Bitmap.h"
@@ -17,7 +17,7 @@
 #include <cglib/vec.h>
 #include <cglib/mat.h>
 
-namespace carto::vt {
+namespace massif::vt {
     class BitmapCanvas final {
     public:
         explicit BitmapCanvas(int width, int height);

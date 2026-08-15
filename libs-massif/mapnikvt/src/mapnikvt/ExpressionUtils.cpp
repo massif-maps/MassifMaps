@@ -1,7 +1,7 @@
 #include "ExpressionUtils.h"
 #include "PredicateUtils.h"
 
-namespace carto::mvt {
+namespace massif::mvt {
     Value ExpressionEvaluator::operator() (const Predicate& pred) const {
         return std::visit(PredicateEvaluator(_context, _viewState), pred);
     }

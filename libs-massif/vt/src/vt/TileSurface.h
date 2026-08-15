@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_VT_TILESURFACE_H_
-#define _CARTO_VT_TILESURFACE_H_
+#ifndef _MASSIF_VT_TILESURFACE_H_
+#define _MASSIF_VT_TILESURFACE_H_
 
 #include "Bitmap.h"
 #include "Color.h"
@@ -15,7 +15,7 @@
 
 #include <memory>
 
-namespace carto::vt {
+namespace massif::vt {
     class TileSurface final {
     public:
         struct VertexGeometryLayoutParameters {

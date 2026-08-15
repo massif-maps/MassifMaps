@@ -2,7 +2,7 @@
 #include "ParserUtils.h"
 #include "vt/BitmapCanvas.h"
 
-namespace carto::mvt {
+namespace massif::mvt {
     PointSymbolizer::FeatureProcessor PointSymbolizer::createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const {
         vt::FloatFunction opacityFunc = _opacity.getFunction(exprContext);
         if (opacityFunc == vt::FloatFunction(0)) {

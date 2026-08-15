@@ -4,14 +4,14 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_MAPNIKVT_TRANSFORM_H_
-#define _CARTO_MAPNIKVT_TRANSFORM_H_
+#ifndef _MASSIF_MAPNIKVT_TRANSFORM_H_
+#define _MASSIF_MAPNIKVT_TRANSFORM_H_
 
 #include "ExpressionPredicateBase.h"
 
 #include <array>
 
-namespace carto::mvt {
+namespace massif::mvt {
     class MatrixTransform final {
     public:
         explicit MatrixTransform(const std::array<Expression, 6>& values) : _values(values) { }

@@ -6,7 +6,7 @@
 #include <iomanip>
 #include <algorithm>
 
-namespace carto::mvt {
+namespace massif::mvt {
     bool parseCSSColor(std::string name, unsigned int& value) {
         static const struct ColorEntry { const char* name; unsigned int value; } colorEntries[] = {
             { "aliceblue", 0xf0f8ff },

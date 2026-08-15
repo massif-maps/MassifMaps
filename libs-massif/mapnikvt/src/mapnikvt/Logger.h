@@ -4,12 +4,12 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_MAPNIKVT_LOGGER_H_
-#define _CARTO_MAPNIKVT_LOGGER_H_
+#ifndef _MASSIF_MAPNIKVT_LOGGER_H_
+#define _MASSIF_MAPNIKVT_LOGGER_H_
 
 #include <string>
 
-namespace carto::mvt {
+namespace massif::mvt {
     class Logger {
     public:
         enum class Severity {

@@ -10,7 +10,7 @@
 
 #include <utf8.h>
 
-namespace carto::osrm {
+namespace massif::osrm {
     Graph::Graph(const Settings& settings) :
         _packages(),
         _nodeBlockCache(settings.nodeBlockCacheSize),

@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_MAPNIKVT_PARSETABLES_H_
-#define _CARTO_MAPNIKVT_PARSETABLES_H_
+#ifndef _MASSIF_MAPNIKVT_PARSETABLES_H_
+#define _MASSIF_MAPNIKVT_PARSETABLES_H_
 
 #include "vt/Styles.h"
 
@@ -14,7 +14,7 @@
 
 #include <cglib/vec.h>
 
-namespace carto::mvt {
+namespace massif::mvt {
     template <typename T>
     using ParseTable = std::unordered_map<std::string, T>;
 

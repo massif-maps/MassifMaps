@@ -133,7 +133,7 @@ namespace {
     }
 }
 
-namespace carto::vt {
+namespace massif::vt {
     // The widest shadow texel that still reads as a shadow rather than a wash, in metres. It bounds
     // how far the shadowed ground may reach for a given map resolution (see calculateShadowViewProj).
     static constexpr double TARGET_SHADOW_TEXEL_METERS = 10.0;
@@ -3754,7 +3754,7 @@ namespace carto::vt {
     }
 
     void GLTileRenderer::renderTileMask(const TileId& tileId) {
-#if CARTO_VT_RENDER_STATS
+#if MASSIF_VT_RENDER_STATS
         VT_STAT_CLOCK(maskClock);
         struct MaskTimer { std::chrono::steady_clock::time_point& c; ~MaskTimer() { VT_STAT_SPLIT(surfMaskNs, c); } } maskTimer { maskClock };
 #endif
@@ -4802,7 +4802,7 @@ namespace carto::vt {
     }
 
     int GLTileRenderer::renderTileSurfaceDrape(const TileId& tileId, float uvOffsetX, float uvOffsetY, float uvScale) {
-#if CARTO_VT_RENDER_STATS
+#if MASSIF_VT_RENDER_STATS
         VT_STAT_CLOCK(drapeClock);
         struct DrapeTimer { std::chrono::steady_clock::time_point& c; ~DrapeTimer() { VT_STAT_SPLIT(surfDrapeNs, c); } } drapeTimer { drapeClock };
 #endif

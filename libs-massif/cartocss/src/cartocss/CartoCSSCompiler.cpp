@@ -4,7 +4,7 @@
 
 #include <set>
 
-namespace carto::css {
+namespace massif::css {
     namespace {
         // Three-state predicate result, in a form that can be compared as a block (boost::tribool
         // compares to a tribool, so two indeterminate results do not test equal).
@@ -352,7 +352,7 @@ namespace carto::css {
             void operator() (const ConstOpPredicate&) { }
             void operator() (const OpPredicate&) { filters++; }
             void operator() (const OpConstPredicate&) { filters++; }
-            void operator() (const OpNutiPredicate&) { filters++; }
+            void operator() (const OpParamPredicate&) { filters++; }
             void operator() (const WhenPredicate&) { filters++; }
 
             int layers = 0;

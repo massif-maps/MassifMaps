@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_GEOCODING_FEATURE_H_
-#define _CARTO_GEOCODING_FEATURE_H_
+#ifndef _MASSIF_GEOCODING_FEATURE_H_
+#define _MASSIF_GEOCODING_FEATURE_H_
 
 #include "Geometry.h"
 
@@ -14,7 +14,7 @@
 #include <map>
 #include <variant>
 
-namespace carto::geocoding {
+namespace massif::geocoding {
     using Value = std::variant<std::monostate, bool, long long, double, std::string>;
 
     class Feature final {

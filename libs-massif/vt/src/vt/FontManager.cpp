@@ -21,7 +21,7 @@
 #include <hb.h>
 #include <hb-ft.h>
 
-namespace carto::vt {
+namespace massif::vt {
     class FontManagerLibrary {
     public:
         FontManagerLibrary() : _library(nullptr) {

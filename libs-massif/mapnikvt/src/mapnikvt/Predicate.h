@@ -4,12 +4,12 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_MAPNIKVT_PREDICATE_H_
-#define _CARTO_MAPNIKVT_PREDICATE_H_
+#ifndef _MASSIF_MAPNIKVT_PREDICATE_H_
+#define _MASSIF_MAPNIKVT_PREDICATE_H_
 
 #include "ExpressionPredicateBase.h"
 
-namespace carto::mvt {
+namespace massif::mvt {
     class ExpressionPredicate final {
     public:
         explicit ExpressionPredicate(Expression expr) : _expr(std::move(expr)) { }

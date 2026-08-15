@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_VT_FONTMANAGER_H_
-#define _CARTO_VT_FONTMANAGER_H_
+#ifndef _MASSIF_VT_FONTMANAGER_H_
+#define _MASSIF_VT_FONTMANAGER_H_
 
 #include "Color.h"
 #include "Font.h"
@@ -15,7 +15,7 @@
 #include <string>
 #include <vector>
 
-namespace carto::vt {
+namespace massif::vt {
     class FontManager {
     public:
         // Called when a font name is not among the loaded fonts. Must return the font file data or an empty

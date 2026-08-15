@@ -4,15 +4,15 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_VT_TILEBACKGROUND_H_
-#define _CARTO_VT_TILEBACKGROUND_H_
+#ifndef _MASSIF_VT_TILEBACKGROUND_H_
+#define _MASSIF_VT_TILEBACKGROUND_H_
 
 #include "Bitmap.h"
 #include "Styles.h"
 
 #include <memory>
 
-namespace carto::vt {
+namespace massif::vt {
     class TileBackground final {
     public:
         explicit TileBackground(ColorFunction colorFunc, std::shared_ptr<const BitmapPattern> pattern) : _colorFunc(std::move(colorFunc)), _pattern(std::move(pattern)) { }

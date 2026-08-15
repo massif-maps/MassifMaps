@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_VT_TILEGEOMETRY_H_
-#define _CARTO_VT_TILEGEOMETRY_H_
+#ifndef _MASSIF_VT_TILEGEOMETRY_H_
+#define _MASSIF_VT_TILEGEOMETRY_H_
 
 #include "Bitmap.h"
 #include "Color.h"
@@ -23,7 +23,7 @@
 
 #include <cglib/mat.h>
 
-namespace carto::vt {
+namespace massif::vt {
     // The hash of the value a style parameter currently holds, shared between whoever sets the
     // parameter and the renderer. A feature keeps the hash of the field value that parameter is
     // compared with, so a selection change is a byte rewrite in the vertex data instead of a tile

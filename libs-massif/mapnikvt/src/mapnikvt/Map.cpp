@@ -1,10 +1,10 @@
 #include "Map.h"
 
-namespace carto::mvt {
-    void Map::setNutiParameters(const std::vector<NutiParameter>& nutiParameters) {
-        _nutiParameterMap.clear();
-        for (const NutiParameter& nutiParam : nutiParameters) {
-            _nutiParameterMap.insert({ nutiParam.getName(), nutiParam });
+namespace massif::mvt {
+    void Map::setStyleParameters(const std::vector<StyleParameter>& styleParameters) {
+        _styleParameterMap.clear();
+        for (const StyleParameter& styleParam : styleParameters) {
+            _styleParameterMap.insert({ styleParam.getName(), styleParam });
         }
     }
     

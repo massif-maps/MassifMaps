@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_VT_VIEWSTATE_H_
-#define _CARTO_VT_VIEWSTATE_H_
+#ifndef _MASSIF_VT_VIEWSTATE_H_
+#define _MASSIF_VT_VIEWSTATE_H_
 
 #include <cmath>
 #include <array>
@@ -15,7 +15,7 @@
 #include <cglib/bbox.h>
 #include <cglib/frustum3.h>
 
-namespace carto::vt {
+namespace massif::vt {
     struct ViewState final {
         float zoom = 0;
         float rotation = 0;

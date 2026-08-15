@@ -4,14 +4,14 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_MAPNIKVT_LAYER_H_
-#define _CARTO_MAPNIKVT_LAYER_H_
+#ifndef _MASSIF_MAPNIKVT_LAYER_H_
+#define _MASSIF_MAPNIKVT_LAYER_H_
 
 #include <string>
 #include <vector>
 #include <map>
 
-namespace carto::mvt {
+namespace massif::mvt {
     class Layer {
     public:
         explicit Layer(std::string name, std::vector<std::string> styleNames) : _name(std::move(name)), _styleNames(std::move(styleNames)) { }

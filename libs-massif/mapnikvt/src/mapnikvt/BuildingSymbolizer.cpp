@@ -3,7 +3,7 @@
 
 #include <cmath>
 
-namespace carto::mvt {
+namespace massif::mvt {
     BuildingSymbolizer::FeatureProcessor BuildingSymbolizer::createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const {
         vt::FloatFunction fillOpacityFunc = _fillOpacity.getFunction(exprContext);
         vt::ColorFunction fillColorFunc = _fill.getFunction(exprContext);

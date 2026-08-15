@@ -3,7 +3,7 @@
 #include "GLResourceManager.h"
 #include "Package.h"
 
-namespace carto::nml {
+namespace massif::nml {
     GLMesh::GLMesh(const Mesh& mesh) :
         _submeshList()
     {

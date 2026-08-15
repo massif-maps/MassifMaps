@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_MBVTBUILDER_MBVTENCODER_H_
-#define _CARTO_MBVTBUILDER_MBVTENCODER_H_
+#ifndef _MASSIF_MBVTBUILDER_MBVTENCODER_H_
+#define _MASSIF_MBVTBUILDER_MBVTENCODER_H_
 
 #include <cstdint>
 #include <string>
@@ -19,7 +19,7 @@
 
 #include <protobuf/encodedpbf.hpp>
 
-namespace carto::mbvtbuilder {
+namespace massif::mbvtbuilder {
     class MBVTLayerEncoder final {
     public:
         using Point = cglib::vec2<float>;

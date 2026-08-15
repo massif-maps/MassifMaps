@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_VT_LABEL_H_
-#define _CARTO_VT_LABEL_H_
+#ifndef _MASSIF_VT_LABEL_H_
+#define _MASSIF_VT_LABEL_H_
 
 #include "TileId.h"
 #include "TileLabel.h"
@@ -26,7 +26,7 @@
 #include <limits>
 #include <algorithm>
 
-namespace carto::vt {
+namespace massif::vt {
     // Where a label's plate colours landed in the draw batch (see TileLabel::Style::Plate). -1 is
     // 'this one is not drawn'.
     struct LabelPlateIndices {

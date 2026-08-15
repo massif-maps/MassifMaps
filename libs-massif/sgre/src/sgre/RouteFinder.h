@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_SGRE_ROUTEFINDER_H_
-#define _CARTO_SGRE_ROUTEFINDER_H_
+#ifndef _MASSIF_SGRE_ROUTEFINDER_H_
+#define _MASSIF_SGRE_ROUTEFINDER_H_
 
 #include "Base.h"
 #include "Graph.h"
@@ -21,7 +21,7 @@
 
 #include <picojson/picojson.h>
 
-namespace carto::sgre {
+namespace massif::sgre {
     class RouteFinder final {
     public:
         struct RouteOptions {

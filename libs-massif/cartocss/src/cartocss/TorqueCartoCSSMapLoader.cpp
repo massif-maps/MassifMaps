@@ -6,7 +6,7 @@
 #include <set>
 #include <optional>
 
-namespace carto::css {
+namespace massif::css {
     std::shared_ptr<mvt::TorqueMap> TorqueCartoCSSMapLoader::loadMap(const std::string& cartoCSS) const {
         StyleSheet styleSheet;
         try {

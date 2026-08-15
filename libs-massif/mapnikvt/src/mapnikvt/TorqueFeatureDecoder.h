@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_MAPNIKVT_TORQUEFEATUREDECODER_H_
-#define _CARTO_MAPNIKVT_TORQUEFEATUREDECODER_H_
+#ifndef _MASSIF_MAPNIKVT_TORQUEFEATUREDECODER_H_
+#define _MASSIF_MAPNIKVT_TORQUEFEATUREDECODER_H_
 
 #include "FeatureDecoder.h"
 
@@ -17,7 +17,7 @@
 #include <cglib/bbox.h>
 #include <cglib/mat.h>
 
-namespace carto::mvt {
+namespace massif::mvt {
     class Logger;
     
     class TorqueFeatureDecoder : public FeatureDecoder {

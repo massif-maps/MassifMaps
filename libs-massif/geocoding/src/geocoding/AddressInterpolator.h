@@ -4,8 +4,8 @@
  * to license terms, as given in https://cartodb.com/terms/
  */
 
-#ifndef _CARTO_GEOCODING_ADDRESSINTERPOLATOR_H_
-#define _CARTO_GEOCODING_ADDRESSINTERPOLATOR_H_
+#ifndef _MASSIF_GEOCODING_ADDRESSINTERPOLATOR_H_
+#define _MASSIF_GEOCODING_ADDRESSINTERPOLATOR_H_
 
 #include "Feature.h"
 #include "FeatureReader.h"
@@ -13,7 +13,7 @@
 #include <cstdint>
 #include <vector>
 
-namespace carto::geocoding {
+namespace massif::geocoding {
     class AddressInterpolator final {
     public:
         explicit AddressInterpolator(EncodingStream& houseNumberStream);

@@ -5,7 +5,7 @@
 
 #include "mapnikvt/mbvtpackage/MBVTPackage.pb.h"
 
-namespace carto::mbvtbuilder {
+namespace massif::mbvtbuilder {
     MBVTLayerEncoder::MBVTLayerEncoder(const std::string& name, int version, int extent) :
         _name(name),
         _version(version > 0 ? version : DEFAULT_LAYER_VERSION),

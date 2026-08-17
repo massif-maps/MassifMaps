@@ -153,7 +153,9 @@ namespace massif::mvt {
         // }
 
         bool allowOverlap = _allowOverlap.getValue(exprContext);
-        bool clip = _clip.isDefined() ? _clip.getValue(exprContext) : allowOverlap;
+        // Its own property, not a synonym for allow-overlap - see TextSymbolizer. A shield IS a
+        // label (icon plus name, placed together), so clipping it costs the whole placement.
+        bool clip = _clip.getValue(exprContext);
         float shieldDx = _shieldDx.getValue(exprContext);
         float shieldDy = _shieldDy.getValue(exprContext);
 

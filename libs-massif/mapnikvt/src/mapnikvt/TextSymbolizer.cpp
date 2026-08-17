@@ -41,7 +41,12 @@ namespace massif::mvt {
         bool allowOverlap = _allowOverlap.getValue(exprContext);
         bool allowOverlapSameFeatureId = _allowOverlapSameFeatureId.getValue(exprContext);
         bool sameFeatureIdDependent = _sameFeatureIdDependent.getValue(exprContext);
-        bool clip = _clip.isDefined() ? _clip.getValue(exprContext) : allowOverlap;
+        // 'clip' is its own property, and it means something entirely different from allow-overlap:
+        // clipped text leaves the label pipeline for the tile geometry, so it gets no culler, no
+        // text-min-distance, no run following the line and no placement - it is cut at the tile
+        // border instead. Upstream defaulted it to allow-overlap (2019, no rationale recorded),
+        // which handed the geometry path to every style that only wanted its labels to overlap.
+        bool clip = _clip.getValue(exprContext);
 
         float tileSize = symbolizerContext.getSettings().getTileSize();
         float fontScale = symbolizerContext.getSettings().getFontScale();
@@ -68,7 +73,7 @@ namespace massif::mvt {
         vt::TextFormatter formatter(font, sizeStatic, getFormatterOptions(symbolizerContext, exprContext));
         vt::CompOp compOp = _compOp.getValue(exprContext);
         vt::LabelOrientation placement = getPlacement(exprContext);
-        if (placement == vt::LabelOrientation::LINE) {
+        if (placement == vt::LabelOrientation::LINE || placement == vt::LabelOrientation::LINE_BILLBOARD_3D) {
             orientationAngle = 0; // not supported when using line placements
         }
 
@@ -87,7 +92,9 @@ namespace massif::mvt {
         }
 
         float bitmapSize = -1;
-        bool linePlacement = (placement == vt::LabelOrientation::LINE);
+        // Both line orientations lay a glyph RUN out along the line (vt::Label::isLineRun), so both
+        // need the anchors, the spacing and the run length a line placement is measured with.
+        bool linePlacement = (placement == vt::LabelOrientation::LINE || placement == vt::LabelOrientation::LINE_BILLBOARD_3D);
         float textSize = bitmapSize < 0 ? (linePlacement ? calculateTextSize(formatter.getFont(), text, formatter).size()(0) : 0) : bitmapSize;
         float spacing = _spacing.getValue(exprContext);
         long long groupId = (allowOverlap ? -1 : 0);
@@ -99,7 +106,7 @@ namespace massif::mvt {
         std::shared_ptr<vt::BitmapImage> backgroundImage;
 
         if (clip) {
-            return [compOp, fillFunc, haloFillFunc, sizeFunc, haloRadiusFunc, fontScale, placement, text, orientationAngle, formatter, backgroundOffset, backgroundImage, spacing, textSize, tileSize, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
+            return [compOp, fillFunc, haloFillFunc, sizeFunc, haloRadiusFunc, fontScale, linePlacement, text, orientationAngle, formatter, backgroundOffset, backgroundImage, spacing, textSize, tileSize, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
                 vt::TextStyle style(compOp, fillFunc, sizeFunc, haloFillFunc, haloRadiusFunc, orientationAngle, fontScale, backgroundOffset, backgroundImage);
                 vt::TileLayerBuilder::TextProcessor textProcessor;
                 for (std::size_t featureIndex = 0; featureIndex < featureCollection.size(); featureIndex++) {
@@ -122,24 +129,7 @@ namespace massif::mvt {
                             index++;
                         }
                     }
-                    else if (placement == vt::LabelOrientation::LINE_BILLBOARD_3D) {
-                        vt::TileLayerBuilder::VerticesList verticesList;
-                        if (auto lineGeometry = std::get_if<LineGeometry>(featureCollection.getGeometry(featureIndex).get())) {
-                            verticesList = lineGeometry->getVerticesList();
-                        }
-                        else if (auto polygonGeometry = std::get_if<PolygonGeometry>(featureCollection.getGeometry(featureIndex).get())) {
-                            verticesList = polygonGeometry->getClosedOuterRings(true);
-                        }
-
-                        for (const auto& vertices : verticesList) {
-                            for (const auto& transformedPoints : generateLinePoints(vertices, spacing, textSize, tileSize)) {
-                                for (const auto& vertex : transformedPoints.second) {
-                                    textProcessor(featureCollection.getLocalId(featureIndex), vertex, text, 0);
-                                }
-                            }
-                        }
-                    }
-                    else if (placement != vt::LabelOrientation::LINE) {
+                    else if (!linePlacement) {
                         vt::TileLayerBuilder::Vertices vertices;
                         if (auto lineGeometry = std::get_if<LineGeometry>(featureCollection.getGeometry(featureIndex).get())) {
                             vertices = lineGeometry->getMidPoints();
@@ -178,7 +168,7 @@ namespace massif::mvt {
             };
         }
 
-        return [compOp, fillFunc, haloFillFunc, sizeFunc, haloRadiusFunc, fontScale, placement, text, hash, orientationAngle, formatter, backgroundOffset, backgroundImage, spacing, textSize, tileId, tileSize, labelIdOverride, groupId, placementPriority, minimumDistance, maxDistance, secondaryColorFunc, rankFunc, calloutScreenAnchor, calloutOffset, calloutStep, calloutMaxRows, calloutPersistPasses, calloutLineWidth, calloutLineAnchor, calloutBandAnchor, textPlate, allowOverlapSameFeatureId, sameFeatureIdDependent, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
+        return [compOp, fillFunc, haloFillFunc, sizeFunc, haloRadiusFunc, fontScale, placement, linePlacement, text, hash, orientationAngle, formatter, backgroundOffset, backgroundImage, spacing, textSize, tileId, tileSize, labelIdOverride, groupId, placementPriority, minimumDistance, maxDistance, secondaryColorFunc, rankFunc, calloutScreenAnchor, calloutOffset, calloutStep, calloutMaxRows, calloutPersistPasses, calloutLineWidth, calloutLineAnchor, calloutBandAnchor, textPlate, allowOverlapSameFeatureId, sameFeatureIdDependent, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
             vt::TextLabelStyle style(placement, fillFunc, sizeFunc, haloFillFunc, haloRadiusFunc, true, orientationAngle, fontScale, backgroundOffset, backgroundImage, maxDistance, secondaryColorFunc, rankFunc, calloutScreenAnchor, calloutOffset, calloutStep, calloutMaxRows, calloutPersistPasses, calloutLineWidth, calloutLineAnchor, calloutBandAnchor, textPlate);
             vt::TileLayerBuilder::TextLabelProcessor textProcessor;
             for (std::size_t featureIndex = 0; featureIndex < featureCollection.size(); featureIndex++) {
@@ -214,37 +204,7 @@ namespace massif::mvt {
                         index++;
                     }
                 }
-                else if (placement == vt::LabelOrientation::LINE_BILLBOARD_3D) {
-                    vt::TileLayerBuilder::VerticesList verticesList;
-                    if (auto lineGeometry = std::get_if<LineGeometry>(featureCollection.getGeometry(featureIndex).get())) {
-                        verticesList = lineGeometry->getVerticesList();
-                    }
-                    else if (auto polygonGeometry = std::get_if<PolygonGeometry>(featureCollection.getGeometry(featureIndex).get())) {
-                        verticesList = polygonGeometry->getClosedOuterRings(true);
-                    }
-
-                    // One counter for the WHOLE feature: it makes the id of each repeat along the line
-                    // unique. Restarting it per segment (generateLinePoints returns one entry per
-                    // segment) gave the same id to one repeat in every segment, and labels sharing an
-                    // id are merged into a single one - so text-spacing placed the repeats and then
-                    // collapsed them, leaving one label per line.
-                    int counter = 0;
-                    for (const auto& vertices : verticesList) {
-                        if (spacing <= 0) {
-                            textProcessor(localId, labelId, groupId, std::optional<vt::TileLayerBuilder::Vertex>(), vertices, text, placementPriority, minimumDistance, allowOverlapSameFeatureId, sameFeatureIdDependent, 0);
-                            continue;
-                        }
-                        auto transformedPointsList = generateLinePoints(vertices, spacing, textSize, tileSize);
-                        for (const auto& transformedPoints : transformedPointsList) {
-                            for (const auto& vertex : transformedPoints.second) {
-                                long long generatedLabelId = combineId(labelId, std::hash<vt::TileId>()(tileId) * 63 + counter);
-                                textProcessor(localId, generatedLabelId, groupId, vertex, vt::TileLayerBuilder::Vertices(), text, placementPriority, minimumDistance, allowOverlapSameFeatureId, sameFeatureIdDependent, 0);
-                                counter++;
-                            }
-                        }
-                    }
-                }
-                else if (placement != vt::LabelOrientation::LINE) {
+                else if (!linePlacement) {
                     if (auto lineGeometry = std::get_if<LineGeometry>(featureCollection.getGeometry(featureIndex).get())) {
                         for (const auto& vertices : lineGeometry->getVerticesList()) {
                             textProcessor(localId, labelId, groupId, std::optional<vt::TileLayerBuilder::Vertex>(), vertices, text, placementPriority, minimumDistance, allowOverlapSameFeatureId, sameFeatureIdDependent, 0);
@@ -348,24 +308,26 @@ namespace massif::mvt {
     std::vector<std::pair<float, vt::TileLayerBuilder::Vertices>> TextSymbolizer::generateLinePoints(const vt::TileLayerBuilder::Vertices& vertices, float spacing, float textSize, float tileSize, bool applyAngle) {
         std::vector<std::pair<float, vt::TileLayerBuilder::Vertices>> transformedPointList;
 
-        float linePos = 0;
-        bool firstIndex = true;
+        // text-spacing 0 means ONE run for the WHOLE line, which is what the label path does with
+        // it (it hands the whole vertex list over as a single label). Restarting the pen at the
+        // middle of every segment instead is why the same style drew one label per line when it
+        // was culled and one per bend when it was clipped.
+        float totalLength = 0;
+        for (std::size_t i = 1; i < vertices.size(); i++) {
+            totalLength += cglib::length(vertices[i] - vertices[i - 1]) * tileSize;
+        }
+        float step = (spacing > 0 ? spacing : totalLength) + textSize;
+        float linePos = std::min(totalLength, step) * 0.5f;
         for (std::size_t i = 1; i < vertices.size(); i++) {
             const cglib::vec2<float>& v0 = vertices[i - 1];
             const cglib::vec2<float>& v1 = vertices[i];
             float lineLen = cglib::length(v1 - v0) * tileSize;
+            // A segment outside the tile carries no anchor, but the pen still walks it: consuming
+            // its length is what keeps the spacing constant ALONG THE LINE rather than restarting
+            // it at every tile border.
             if (!segmentIntersectRectangle(0,0,1,1, v0(0), v0(1), v1(0), v1(1))) {
+                linePos -= lineLen;
                 continue;
-            }
-            if (std::min(v0(0), v0(1)) > 0.0f && std::max(v0(0), v0(1)) < 1.0f && std::min(v1(0), v1(1)) > 0.0f && std::max(v1(0), v1(1)) < 1.0f) {
-
-            }
-            if (spacing <= 0) {
-                linePos = lineLen * 0.5f;
-            }
-            else if (firstIndex) {
-                firstIndex = false;
-                linePos = std::min(lineLen, spacing) * 0.5f;
             }
 
             vt::TileLayerBuilder::Vertices points;
@@ -374,11 +336,7 @@ namespace massif::mvt {
                 if (std::min(pos(0), pos(1)) > 0.0f && std::max(pos(0), pos(1)) < 1.0f) {
                     points.push_back(pos);
                 }
-
-                if (spacing <= 0) {
-                    break;
-                }
-                linePos += spacing + textSize;
+                linePos += step;
             }
             if (!points.empty()) {
                 if (applyAngle) {

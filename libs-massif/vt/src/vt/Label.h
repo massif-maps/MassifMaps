@@ -135,6 +135,14 @@ namespace massif::vt {
         bool calculateVertexData(const ViewState& viewState, int styleIndex, int haloStyleIndex, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& offsets, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices, DrawPass pass = DrawPass::ALL, const LabelPlateIndices& plates = LabelPlateIndices(), int secondaryStyleIndex = -1, int iconStyleIndex = -1) const { return calculateVertexData((_style->sizeFunc)(viewState), viewState, styleIndex, haloStyleIndex, vertices, offsets, normals, texCoords, attribs, indices, pass, plates, secondaryStyleIndex, iconStyleIndex); }
         bool calculateVertexData(float size, const ViewState& viewState, int styleIndex, int haloStyleIndex, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& offsets, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices, DrawPass pass = DrawPass::ALL, const LabelPlateIndices& plates = LabelPlateIndices(), int secondaryStyleIndex = -1, int iconStyleIndex = -1) const;
 
+        // The glyph run follows the LINE the label is placed on, rather than sitting in a box on
+        // its anchor. Both line orientations lay the same run out; they differ in the plane it is
+        // laid out in (see isScreenLineRun).
+        bool isLineRun() const { return _style->orientation == LabelOrientation::LINE || _style->orientation == LabelOrientation::LINE_BILLBOARD_3D; }
+        // ... and this one lays it out on the CAMERA axes, so the text keeps its size and shape at
+        // any tilt. 'line' lies flat on the surface instead, like the map it is drawn on.
+        bool isScreenLineRun() const { return _style->orientation == LabelOrientation::LINE_BILLBOARD_3D; }
+
     private:
         // How labelVsh must read a glyph offset (attribs[3]); see calculateVertexData.
         static constexpr std::int8_t WORLD_OFFSET = 0;       // already spanned, add it as is
@@ -305,8 +313,14 @@ namespace massif::vt {
         // rather than cached with the text: its length is the culler's offset, which changes with
         // everything else on screen.
         void buildCalloutLineVertexData(float calloutLift, float pixelScale, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const;
+        // Why a line layout did not produce a drawable run. The two are held differently: a run
+        // that does not FIT is a transient of this camera and a run already on screen rides a few
+        // of them out, while an UNREADABLE one - glyphs turning so far they pile up on the inside
+        // of a corner - is a property of the line's shape at this scale and must never be drawn.
+        enum class LineLayout { PLACED, NO_ROOM, UNREADABLE };
+
         void updateLineVertexData(const std::shared_ptr<const Placement>& placement, float scale, const ViewState& viewState, bool rebuildForView) const;
-        bool buildLineVertexData(const std::shared_ptr<const Placement>& placement, float scale, const ViewState& viewState, const cglib::mat4x4<double>& mvpMatrix, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const;
+        LineLayout buildLineVertexData(const std::shared_ptr<const Placement>& placement, float scale, const ViewState& viewState, const cglib::mat4x4<double>& mvpMatrix, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const;
 
         // Where the text pen starts for the variant in use - zero for a label with one fixed
         // layout, which is every label a style without anchors builds.

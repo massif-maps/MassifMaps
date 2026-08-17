@@ -1203,7 +1203,7 @@ namespace massif::vt {
     void GLTileRenderer::initializeRenderer() {
         _renderTiles = std::make_shared<std::vector<RenderTile>>();
         for (int pass = 0; pass < 2; pass++) {
-            _bitmapLabelMap[pass] = std::make_shared<BitmapLabelMap>();
+            _passLabels[pass] = std::make_shared<PassLabels>();
         }
     }
     
@@ -1319,16 +1319,14 @@ namespace massif::vt {
         _renderTiles.reset();
         _visibleRenderTiles.reset();
         for (int pass = 0; pass < 2; pass++) {
-            _bitmapLabelMap[pass].reset();
-            _visibleBitmapLabelMap[pass].reset();
+            _passLabels[pass].reset();
+            _visiblePassLabels[pass].reset();
         }
         _labels.clear();
         _layerLabelMap.clear();
     }
     
     bool GLTileRenderer::startFrame(float dt) {
-        using BitmapLabelsPair = std::pair<std::shared_ptr<const Bitmap>, std::vector<std::shared_ptr<Label>>>;
-
         std::lock_guard<std::mutex> lock(_mutex);
 
         resetProgramState(); // another renderer may have bound its own program since the last draw
@@ -1399,13 +1397,11 @@ namespace massif::vt {
         }
 
         // Update labels
-        _visibleBitmapLabelMap = _bitmapLabelMap;
+        _visiblePassLabels = _passLabels;
         float dOpacity = (_labelBlendingSpeed > 0.0f ? dt * _labelBlendingSpeed : 1.0f);
         for (int pass = 0; pass < 2; pass++) {
-            for (const BitmapLabelsPair& bitmapLabels : *_visibleBitmapLabelMap[pass]) {
-                for (const std::shared_ptr<Label>& label : bitmapLabels.second) {
-                    refresh = updateLabel(label, dOpacity) || refresh;
-                }
+            for (const std::shared_ptr<Label>& label : *_visiblePassLabels[pass]) {
+                refresh = updateLabel(label, dOpacity) || refresh;
             }
         }
         VT_STAT_SPLIT(prepLabelBlendNs, prepClock);
@@ -1646,15 +1642,13 @@ namespace massif::vt {
     }
     
     void GLTileRenderer::renderLabels(bool labels2D, bool labels3D) {
-        using BitmapLabelsPair = std::pair<std::shared_ptr<const Bitmap>, std::vector<std::shared_ptr<Label>>>;
-
         VT_STAT_CLOCK(lockClock);
         std::lock_guard<std::mutex> lock(_mutex);
         VT_STAT_SPLIT(mutexWaitNs, lockClock);
 
         resetProgramState(); // another renderer may have bound its own program since the last draw
 
-        if (!_visibleBitmapLabelMap[0] || !_visibleBitmapLabelMap[1]) {
+        if (!_visiblePassLabels[0] || !_visiblePassLabels[1]) {
             return;
         }
         
@@ -1672,9 +1666,7 @@ namespace massif::vt {
         // Label pass
         for (int pass = 0; pass < 2; pass++) {
             if ((pass == 0 && labels2D) || (pass == 1 && labels3D)) {
-                for (const BitmapLabelsPair& bitmapLabels : *_visibleBitmapLabelMap[pass]) {
-                    renderLabels(bitmapLabels.second, bitmapLabels.first);
-                }
+                renderLabels(*_visiblePassLabels[pass]);
             }
         }
         
@@ -1900,7 +1892,6 @@ namespace massif::vt {
     }
     
     bool GLTileRenderer::findLabelIntersections(const std::vector<cglib::ray3<double>>& rays, float buffer, bool labels2D, bool labels3D, std::vector<GeometryIntersectionInfo>& results) const {
-        using BitmapLabelsPair = std::pair<std::shared_ptr<const Bitmap>, std::vector<std::shared_ptr<Label>>>;
 
         std::lock_guard<std::mutex> lock(_mutex);
 
@@ -1922,31 +1913,29 @@ namespace massif::vt {
                 continue;
             }
 
-            for (const BitmapLabelsPair& bitmapLabels : *_bitmapLabelMap[pass]) {
-                for (const std::shared_ptr<Label>& label : bitmapLabels.second) {
-                    if (!label->isValid() || !label->isVisible() || !label->isActive() || label->getOpacity() <= 0) {
-                        continue;
-                    }
-                    if (clickHandlerLayerIdxs.count(label->getLayerIndex()) == 0) {
+            for (const std::shared_ptr<Label>& label : *_passLabels[pass]) {
+                if (!label->isValid() || !label->isVisible() || !label->isActive() || label->getOpacity() <= 0) {
+                    continue;
+                }
+                if (clickHandlerLayerIdxs.count(label->getLayerIndex()) == 0) {
+                    continue;
+                }
+
+                std::vector<GeometryIntersectionInfo> resultsLocal;
+                findLabelIntersections(label, rays, buffer, resultsLocal);
+                
+                for (const GeometryIntersectionInfo& result : resultsLocal) {
+                    // "Is the label facing us" - the anchor's ground normal against the ray. A
+                    // CALLOUT is exempt: it is drawn where it is not anchored, its quad is
+                    // spanned on the camera axes so it always faces the viewer, and a label
+                    // lifted into the SKY is hit by an upward ray - which this test rejects.
+                    // That was "peak names below the horizon are clickable, the ones over the
+                    // sky are not".
+                    if (label->getStyle()->orientation != LabelOrientation::CALLOUT && cglib::dot_product(label->getNormal(), cglib::vec3<float>::convert(rays[result.rayIndex].direction)) >= 0) {
                         continue;
                     }
 
-                    std::vector<GeometryIntersectionInfo> resultsLocal;
-                    findLabelIntersections(label, rays, buffer, resultsLocal);
-                    
-                    for (const GeometryIntersectionInfo& result : resultsLocal) {
-                        // "Is the label facing us" - the anchor's ground normal against the ray. A
-                        // CALLOUT is exempt: it is drawn where it is not anchored, its quad is
-                        // spanned on the camera axes so it always faces the viewer, and a label
-                        // lifted into the SKY is hit by an upward ray - which this test rejects.
-                        // That was "peak names below the horizon are clickable, the ones over the
-                        // sky are not".
-                        if (label->getStyle()->orientation != LabelOrientation::CALLOUT && cglib::dot_product(label->getNormal(), cglib::vec3<float>::convert(rays[result.rayIndex].direction)) >= 0) {
-                            continue;
-                        }
-
-                        results.emplace_back(result.tileId, label->getLayerIndex(), result.featureId, result.geoPointIndex, result.rayIndex, result.rayT);
-                    }
+                    results.emplace_back(result.tileId, label->getLayerIndex(), result.featureId, result.geoPointIndex, result.rayIndex, result.rayT);
                 }
             }
         }
@@ -2483,45 +2472,41 @@ namespace massif::vt {
             }
         }
 
-        // Build final label list, group labels by font bitmaps. Sort the groups to have stable render order.
+        // Build the final label lists: ONE list per pass, in draw order. The order is the style's
+        // (priority, then layer, then id) and nothing else - grouping by glyph atlas first made the
+        // order of two labels in different atlases a pointer hash, so a label small enough to be
+        // rastered at another size than the icon it sits on could be drawn under it.
         std::vector<std::shared_ptr<Label>> labels;
         labels.reserve(_labels.size() + 64);
-        std::array<std::shared_ptr<BitmapLabelMap>, 2> bitmapLabelMap;
+        std::array<std::shared_ptr<PassLabels>, 2> passLabels;
         for (int pass = 0; pass < 2; pass++) {
-            bitmapLabelMap[pass] = std::make_shared<BitmapLabelMap>();
+            passLabels[pass] = std::make_shared<PassLabels>();
+            passLabels[pass]->reserve(_passLabels[pass] ? _passLabels[pass]->size() + 64 : 64);
         }
         for (auto layerLabelIt = _layerLabelMap.begin(); layerLabelIt != _layerLabelMap.end(); layerLabelIt++) {
             const GlobalIdLabelMap& labelMap = layerLabelIt->second;
             for (auto labelIt = labelMap.begin(); labelIt != labelMap.end(); labelIt++) {
                 const std::shared_ptr<Label>& label = labelIt->second;
-                const std::shared_ptr<const Bitmap>& bitmap = label->getStyle()->glyphMap->getBitmapPattern()->bitmap;
                 int pass = ((label->getStyle()->orientation == LabelOrientation::BILLBOARD_3D || label->getStyle()->orientation == LabelOrientation::LINE_BILLBOARD_3D) ? 1 : 0);
-
-                std::vector<std::shared_ptr<Label>>& bitmapLabels = (*bitmapLabelMap[pass])[bitmap];
-                if (bitmapLabels.empty()) {
-                    bitmapLabels.reserve((*_bitmapLabelMap[pass])[bitmap].size() + 64);
-                }
-                bitmapLabels.push_back(label);
+                passLabels[pass]->push_back(label);
                 labels.push_back(label);
             }
         }
         for (int pass = 0; pass < 2; pass++) {
-            for (auto it = bitmapLabelMap[pass]->begin(); it != bitmapLabelMap[pass]->end(); it++) {
-                std::stable_sort(it->second.begin(), it->second.end(), [](const std::shared_ptr<Label>& label1, const std::shared_ptr<Label>& label2) {
-                    if (label1->getPriority() != label2->getPriority()) {
-                        return label1->getPriority() > label2->getPriority();
-                    }
-                    if (label1->getLayerIndex() != label2->getLayerIndex()) {
-                        return label1->getLayerIndex() < label2->getLayerIndex();
-                    }
-                    return label1->getGlobalId() > label2->getGlobalId();
-                });
-            }
+            std::stable_sort(passLabels[pass]->begin(), passLabels[pass]->end(), [](const std::shared_ptr<Label>& label1, const std::shared_ptr<Label>& label2) {
+                if (label1->getPriority() != label2->getPriority()) {
+                    return label1->getPriority() > label2->getPriority();
+                }
+                if (label1->getLayerIndex() != label2->getLayerIndex()) {
+                    return label1->getLayerIndex() < label2->getLayerIndex();
+                }
+                return label1->getGlobalId() > label2->getGlobalId();
+            });
         }
 
         // Update built label lists and maps
         _labels = std::move(labels);
-        _bitmapLabelMap = std::move(bitmapLabelMap);
+        _passLabels = std::move(passLabels);
         VT_STAT_SET(labelsLive, static_cast<long long>(_labels.size()));
     }
 
@@ -2810,24 +2795,6 @@ namespace massif::vt {
             }
             CompOp layerCompOp = (layer->getCompOp() ? *layer->getCompOp() : CompOp::SRC_OVER);
 
-            // SINGLE BLEND: a translucent layer must paint each pixel once - its geometry overlaps
-            // itself (a line folds at every join) and each overlap blends again, the darker knots.
-            // One spare stencil bit plus a masked clear per layer, no extra geometry pass. Only for
-            // a translucent, non-comp-op layer, and it needs the tile count to leave the top bit free.
-            bool singleBlend = false;
-            if (stencilBits > 0 && !layer->getCompOp() && tileStencilMap.size() < SINGLE_BLEND_STENCIL_BIT) {
-                singleBlend = geometryOpacity < 1.0f;
-                for (auto layerIt = renderLayers.begin(); layerIt != renderLayers.end() && !singleBlend; layerIt++) {
-                    for (const std::shared_ptr<TileGeometry>& geometry : (*layerIt)->layer->getGeometries()) {
-                        const TileGeometry::StyleParameters& styleParams = geometry->getStyleParameters();
-                        for (int i = 0; i < styleParams.parameterCount && !singleBlend; i++) {
-                            if ((styleParams.colorFuncs[i])(_viewState).alpha() < 1.0f) {
-                                singleBlend = true;
-                            }
-                        }
-                    }
-                }
-            }
             // If compositing is enabled for this layer, prepare overlay rendering buffer.
             GLint currentFBO = 0;
             if (layer->getCompOp()) {
@@ -2894,23 +2861,6 @@ namespace massif::vt {
                 }
             }
 
-            // Single blend, GL state. After the mask reset above, which clears every bit and puts
-            // the op back to KEEP - setting it before would be undone for the first layer of the
-            // frame and for the first one after a comp-op layer.
-            if (singleBlend) {
-                glEnable(GL_STENCIL_TEST); // the masks may not be running at all
-                glStencilMask(SINGLE_BLEND_STENCIL_BIT); // clear the paint bit only
-                glClearStencil(0);
-                glClear(GL_STENCIL_BUFFER_BIT);
-                // INVERT flips the paint bit on fragments that pass; the GL_EQUAL test then rejects
-                // anything landing where this layer already painted. With the masks off there is no
-                // per-tile value to match, so the test reads the paint bit alone.
-                glStencilOp(GL_KEEP, GL_KEEP, GL_INVERT);
-                if (maskStencilBits == 0) {
-                    glStencilFunc(GL_EQUAL, 0, SINGLE_BLEND_STENCIL_BIT);
-                }
-            }
-
             // Render tile layers for this layer
             for (const RenderTileLayer* renderLayer : renderLayers) {
                 if (maskStencilBits > 0) {
@@ -2922,10 +2872,7 @@ namespace massif::vt {
                             break;
                         }
                     }
-                    // Only a single-blend layer compares the paint bit (that comparison IS its
-                    // rejection); nothing clears the bit afterwards, so any other layer must
-                    // ignore it or it inherits the last translucent layer's shape as a hole.
-                    glStencilFunc(GL_EQUAL, stencilValue, singleBlend ? 255 : (255 & ~SINGLE_BLEND_STENCIL_BIT));
+                    glStencilFunc(GL_EQUAL, stencilValue, 255);
                 }
 
                 // GPU draping: ALL 2D content writes real depth, LEQUAL + painter's order stacks
@@ -3079,12 +3026,16 @@ namespace massif::vt {
                             setCompOp(geometryCompOp);
                             currentCompOp = geometryCompOp;
                         }
-                        // Undraped LINES are a DECAL: a line chords between its vertices, so unlike a
-                        // fill it is not coincident with the surface and at zero bias the sagging
-                        // half of every segment dashes out over relief. A polygon offset scales with
-                        // the primitive's own depth slope, which is what the sag scales with.
-                        bool lineDecal = terrainVTF && geometry->getType() == TileGeometry::Type::LINE;
-                        if (lineDecal) {
+                        // Undraped LINES and POINTS are DECALS: both are flat quads over a curved
+                        // surface, so unlike a fill neither is coincident with it and at zero bias
+                        // the sagging half of every quad is cut away over relief. A polygon offset
+                        // scales with the primitive's own depth slope, which is what the sag scales
+                        // with. A point quad chords MORE than a line's cross-section, not less - a
+                        // glyph of clipped text is tens of metres wide - and it was left out: whole
+                        // letters disappeared over 3D terrain, only where the ground is draped
+                        // (a draped tile draws its surface at TRUE depth and writes it).
+                        bool decal = terrainVTF && (geometry->getType() == TileGeometry::Type::LINE || geometry->getType() == TileGeometry::Type::POINT);
+                        if (decal) {
                             glEnable(GL_POLYGON_OFFSET_FILL);
                             glPolygonOffset(-2.0f, -8.0f);
                         }
@@ -3095,12 +3046,12 @@ namespace massif::vt {
                         // ordinal pull (clip-constant, worth distance/near) nor a depth bias
                         // (ndc-constant, worth distance^2/near) can express without leaking through
                         // ridges at range.
-                        if (lineDecal) {
+                        if (decal) {
                             _terrainDrawClearance = _terrainLineClearance;
                         }
                         renderTileGeometry(renderLayer->sourceTileId, renderLayer->targetTileId, renderLayer->blend, geometryOpacity, renderLayer->tileSize, geometry);
                         _terrainDrawClearance = 0.0f;
-                        if (lineDecal) {
+                        if (decal) {
                             glDisable(GL_POLYGON_OFFSET_FILL);
                             glPolygonOffset(0.0f, 0.0f);
                         }
@@ -3116,14 +3067,6 @@ namespace massif::vt {
                         glDisable(GL_POLYGON_OFFSET_FILL);
                         glPolygonOffset(0.0f, 0.0f);
                     }
-                }
-            }
-
-            if (singleBlend) {
-                glStencilMask(0);
-                glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
-                if (maskStencilBits == 0) {
-                    glDisable(GL_STENCIL_TEST); // nothing else in this pass uses it
                 }
             }
 
@@ -3320,7 +3263,7 @@ namespace massif::vt {
         }
     }
     
-    void GLTileRenderer::renderLabels(const std::vector<std::shared_ptr<Label>>& labels, const std::shared_ptr<const Bitmap>& bitmap) {
+    void GLTileRenderer::renderLabels(const std::vector<std::shared_ptr<Label>>& labels) {
         // Leader lines first, all of them, then all the text: a line that crossed a neighbouring
         // label's glyphs would read as a strike-through. The extra pass only exists when some
         // label actually has a line to draw.
@@ -3328,13 +3271,16 @@ namespace massif::vt {
             return label->getStyle()->orientation == LabelOrientation::CALLOUT && label->getStyle()->calloutLineGlyph;
         });
         if (anyCallout) {
-            renderLabelPass(labels, bitmap, Label::DrawPass::CALLOUT_LINE);
+            renderLabelPass(labels, Label::DrawPass::CALLOUT_LINE);
         }
-        renderLabelPass(labels, bitmap, anyCallout ? Label::DrawPass::TEXT : Label::DrawPass::ALL);
+        renderLabelPass(labels, anyCallout ? Label::DrawPass::TEXT : Label::DrawPass::ALL);
     }
 
-    void GLTileRenderer::renderLabelPass(const std::vector<std::shared_ptr<Label>>& labels, const std::shared_ptr<const Bitmap>& bitmap, Label::DrawPass pass) {
+    void GLTileRenderer::renderLabelPass(const std::vector<std::shared_ptr<Label>>& labels, Label::DrawPass pass) {
         LabelBatchParameters labelBatchParams;
+        // The atlas the batch being built draws from. A batch samples ONE texture, so a label from
+        // another atlas ends the batch - the list is in draw order and stays that way.
+        std::shared_ptr<const Bitmap> bitmap;
         std::shared_ptr<const TileLabel::Style> lastLabelStyle;
         int styleIndex = -1;
         int haloStyleIndex = -1;
@@ -3353,6 +3299,7 @@ namespace massif::vt {
                 continue;
             }
 
+            const std::shared_ptr<const Bitmap>& labelBitmap = labelStyle->glyphMap->getBitmapPattern()->bitmap;
             if (lastLabelStyle != labelStyle) {
                 cglib::vec4<float> color = cglib::vec4<float>(evaluateColorFunc(labelStyle->colorFunc).rgba());
                 float size = evaluateFloatFunc(labelStyle->sizeFunc);
@@ -3382,8 +3329,9 @@ namespace massif::vt {
                 // And so may the icon run - a font icon in its own colour next to the name.
                 bool hasIconColor = static_cast<bool>(labelStyle->iconColorFunc);
                 cglib::vec4<float> iconColor = hasIconColor ? cglib::vec4<float>(evaluateColorFunc(*labelStyle->iconColorFunc).rgba()) : color;
-                if (labelStyle->transform || (lastLabelStyle && lastLabelStyle->transform) || labelBatchParams.scale != labelStyle->scale || labelBatchParams.glyphRenderSize != labelStyle->glyphRenderSize || labelBatchParams.parameterCount + 2 + plateCount + (hasSecondaryColor ? 1 : 0) + (hasIconColor ? 1 : 0) > LabelBatchParameters::MAX_PARAMETERS) {
+                if (bitmap != labelBitmap || labelStyle->transform || (lastLabelStyle && lastLabelStyle->transform) || labelBatchParams.scale != labelStyle->scale || labelBatchParams.glyphRenderSize != labelStyle->glyphRenderSize || labelBatchParams.parameterCount + 2 + plateCount + (hasSecondaryColor ? 1 : 0) + (hasIconColor ? 1 : 0) > LabelBatchParameters::MAX_PARAMETERS) {
                     renderLabelBatch(labelBatchParams, bitmap);
+                    bitmap = labelBitmap;
                     labelBatchParams.labelCount = 0;
                     labelBatchParams.parameterCount = 0;
                     labelBatchParams.scale = labelStyle->scale;
@@ -5317,8 +5265,11 @@ namespace massif::vt {
                 }
                 widths[i] = width;
 
-                float strokeWidth = evaluateFloatFunc(styleParams.offsetFuncs[i]) * HALO_RADIUS_SCALE;
-                strokeWidths[i] = strokeWidth;
+                // Text drawn as geometry (text-clip) takes the same halo units as a label: measured
+                // in antialias ramps, and pointVsh pushes the ramp centre out by twice its width in
+                // screen pixels, exactly like labelFsh.
+                float haloRadius = std::min(evaluateFloatFunc(styleParams.offsetFuncs[i]) * HALO_RADIUS_SCALE, static_cast<float>(GLYPH_RENDER_SPREAD));
+                strokeWidths[i] = 2.0f * haloRadius * HALO_PIXELS_PER_UNIT;
             }
             VT_STAT_SPLIT(geomStyleEvalNs, statClock);
 
@@ -5330,7 +5281,13 @@ namespace massif::vt {
             }
 
             glUniform1f(shaderProgram.uniforms[U_BINORMALSCALE], vertexGeomLayoutParams.coordScale / vertexGeomLayoutParams.binormalScale / std::pow(2.0f, _viewState.zoom - sourceTileId.zoom));
-            glUniform1f(shaderProgram.uniforms[U_SDFSCALE], styleParams.glyphRenderSize / _fullResolution / BITMAP_SDF_SCALE);
+            // The antialias ramp of text drawn as geometry, in the texture values the field is
+            // encoded in - the same rule the label batch uses (see renderLabelBatch), against this
+            // path's own 'size', which already carries the tile scale. The old form was written for
+            // the single 27-texel raster and a spread of 4: the raster ladder and the wider spread
+            // left it measuring a ramp up to six screen pixels, which is the glyph dissolving into
+            // its halo.
+            glUniform1f(shaderProgram.uniforms[U_SDFSCALE], 2.0f * GLYPH_SDF_UNIT * static_cast<float>(styleParams.glyphRenderSize - GLYPH_RENDER_SPREAD) / _fullResolution);
             glUniform1fv(shaderProgram.uniforms[U_WIDTHTABLE], styleParams.parameterCount, widths.data());
             if (styleOffsetting) {
                 glUniform1fv(shaderProgram.uniforms[U_STROKEWIDTHTABLE], styleParams.parameterCount, strokeWidths.data());

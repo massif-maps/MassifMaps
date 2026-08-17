@@ -479,7 +479,7 @@ namespace massif::vt {
         // that keeps labels the same size on screen, which the layout below is measured against
         // (calculateEnvelope applies it too). Without it, a label over terrain reserves the
         // wrong amount of line and its run then walks off the end.
-        if (_style->orientation == LabelOrientation::LINE) {
+        if (isLineRun()) {
             float scale = (_style->sizeFunc)(viewState) * viewState.zoomScale * _style->scale;
             // Measured at the placement itself, not at the center of the label's geometry: the
             // geometry is the feature merged over every tile holding it, so its center can be far
@@ -505,7 +505,7 @@ namespace massif::vt {
             // keeping such a placement only hides the label, on a line that may well have another
             // piece able to carry it. calculateEnvelope above has just laid the run out at this
             // view, so its verdict is the current one.
-            if (viewState.frustum.inside(bbox) && (_style->orientation != LabelOrientation::LINE || _lineLayoutValid)) {
+            if (viewState.frustum.inside(bbox) && (!isLineRun() || _lineLayoutValid)) {
                 return false;
             }
         }
@@ -628,15 +628,13 @@ namespace massif::vt {
         }
 
         bool valid = isSurfaceFacingView(viewState, *placement);
-        if (_style->orientation == LabelOrientation::LINE) {
-            // The run is laid out in glyph units on the camera axes (see buildLineVertexData), so
-            // its envelope is the bounds of that run put back on those axes - the same shape the
+        if (isLineRun()) {
+            // The run is laid out in glyph units on the label's own axes (see buildLineVertexData),
+            // so its envelope is the bounds of that run put back on them - the same shape the
             // renderer draws. The envelope serves collision, so it takes the layout that is there
             // rather than re-laying the run out for this caller's view (see updateLineVertexData).
             updateLineVertexData(placement, scale, viewState, false);
 
-            const cglib::vec3<float>& cameraXAxis = viewState.orientation[0];
-            const cglib::vec3<float>& cameraYAxis = viewState.orientation[1];
             float glyphPadding = (scale > 0 ? padding / scale : 0);
             float minX = std::numeric_limits<float>::max(), maxX = -std::numeric_limits<float>::max();
             float minY = std::numeric_limits<float>::max(), maxY = -std::numeric_limits<float>::max();
@@ -650,10 +648,10 @@ namespace massif::vt {
             minX -= glyphPadding; maxX += glyphPadding;
             minY -= glyphPadding; maxY += glyphPadding;
 
-            envelope[0] = origin + cameraXAxis * (minX * scale) + cameraYAxis * (minY * scale);
-            envelope[1] = origin + cameraXAxis * (maxX * scale) + cameraYAxis * (minY * scale);
-            envelope[2] = origin + cameraXAxis * (maxX * scale) + cameraYAxis * (maxY * scale);
-            envelope[3] = origin + cameraXAxis * (minX * scale) + cameraYAxis * (maxY * scale);
+            envelope[0] = origin + xAxis * (minX * scale) + yAxis * (minY * scale);
+            envelope[1] = origin + xAxis * (maxX * scale) + yAxis * (minY * scale);
+            envelope[2] = origin + xAxis * (maxX * scale) + yAxis * (maxY * scale);
+            envelope[3] = origin + xAxis * (minX * scale) + yAxis * (maxY * scale);
 
             valid = valid && _cachedValid;
         }
@@ -692,7 +690,7 @@ namespace massif::vt {
     bool Label::calculateVariantEnvelopes(float size, float buffer, const ViewState& viewState, std::vector<std::array<cglib::vec3<float>, 4>>& envelopes) const {
         // Only a point label carries variants: a LINE label's envelope comes from the laid-out run
         // and a CALLOUT has a placement search of its own.
-        if (_variantBBoxes.empty() || _style->orientation == LabelOrientation::LINE || _style->orientation == LabelOrientation::CALLOUT) {
+        if (_variantBBoxes.empty() || isLineRun() || _style->orientation == LabelOrientation::CALLOUT) {
             envelopes.resize(1);
             return calculateEnvelope(size, buffer, viewState, envelopes[0]);
         }
@@ -748,7 +746,7 @@ namespace massif::vt {
         }
         // Which frame the offsets below are expressed in; the shader reads it from attribs[3].
         std::int8_t billboardMode = CAMERA_AXIS_OFFSET;
-        if (_style->orientation == LabelOrientation::LINE) {
+        if (isLineRun()) {
             // The drawn run has to follow the line as THIS view projects it - this is the caller
             // that rebuilds it (see updateLineVertexData).
             updateLineVertexData(placement, scale, viewState, true);
@@ -757,12 +755,23 @@ namespace massif::vt {
                 return false;
             }
 
-            // The glyph run is laid out on the camera axes, so the shader can span it from
-            // them: emit the anchor and the run-local offset and let uLabelAxisX/Y do the rest.
-            cglib::vec3<float> origin = cglib::vec3<float>::convert(placement->position - viewState.origin);
+            cglib::vec3<float> origin, xAxis, yAxis;
+            setupCoordinateSystem(viewState, placement, origin, xAxis, yAxis);
             vertices.fill(origin, _cachedVertices.size());
-            for (const cglib::vec3<float>& vertex : _cachedVertices) {
-                offsets.append(cglib::vec3<float>(vertex(0) * scale, vertex(1) * scale, 0));
+            if (isScreenLineRun()) {
+                // Laid out on the camera axes, so the shader can span it from them: emit the
+                // anchor and the run-local offset and let uLabelAxisX/Y do the rest.
+                for (const cglib::vec3<float>& vertex : _cachedVertices) {
+                    offsets.append(cglib::vec3<float>(vertex(0) * scale, vertex(1) * scale, 0));
+                }
+            }
+            else {
+                // Flat on the surface: the run was laid out on the placement's own tangent frame,
+                // so span it here and hand the shader a world offset.
+                billboardMode = WORLD_OFFSET;
+                for (const cglib::vec3<float>& vertex : _cachedVertices) {
+                    offsets.append(xAxis * (vertex(0) * scale) + yAxis * (vertex(1) * scale));
+                }
             }
 
             valid = valid && _cachedValid;
@@ -1127,25 +1136,25 @@ namespace massif::vt {
         return p;
     }
 
-    bool Label::buildLineVertexData(const std::shared_ptr<const Placement>& placement, float scale, const ViewState& viewState, const cglib::mat4x4<double>& mvpMatrix, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const {
+    Label::LineLayout Label::buildLineVertexData(const std::shared_ptr<const Placement>& placement, float scale, const ViewState& viewState, const cglib::mat4x4<double>& mvpMatrix, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const {
         const std::vector<Placement::Edge>& edges = placement->edges;
         if (edges.empty() || !(scale > 0)) {
-            return false;
+            return LineLayout::NO_ROOM;
         }
 
-        // The glyphs follow the line as it appears ON SCREEN, not as it lies on the ground: the
-        // line is projected onto the camera axes (and expressed in glyph units, like a point
-        // label), the run is laid out there, and the renderer puts the quads back on those same
-        // axes. Text then keeps its size and its shape whatever the tilt, where laying it out in
-        // the ground plane flattened it into a smear as soon as the surface was seen edge-on.
-        const cglib::vec3<float>& cameraXAxis = viewState.orientation[0];
-        const cglib::vec3<float>& cameraYAxis = viewState.orientation[1];
+        // Which plane the run is laid out in. 'billboard-line' projects the line onto the CAMERA
+        // axes, so the text keeps its size and its shape at any tilt; 'line' lays it out on the
+        // placement's own tangent frame, so the text lies flat on the map like the line it names.
+        bool screenRun = isScreenLineRun();
+        const cglib::vec3<float>& xBasis = (screenRun ? viewState.orientation[0] : placement->xAxis);
+        const cglib::vec3<float>& yBasis = (screenRun ? viewState.orientation[1] : placement->yAxis);
 
-        // Project through the view-projection, not just onto the camera axes: with a tilted view
-        // the far half of a line is compressed by the perspective divide, and glyphs laid out on
-        // an orthographic projection of it drift off the line and pick up the wrong angle. The
-        // basis is the anchor's own glyph unit, so the run stays in glyph units either way. The
-        // matrix comes from the caller, which keys the cache on it (see updateLineVertexData).
+        // A screen run is projected through the view-projection, not just onto the camera axes:
+        // with a tilted view the far half of a line is compressed by the perspective divide, and
+        // glyphs laid out on an orthographic projection of it drift off the line and pick up the
+        // wrong angle. The basis is the anchor's own glyph unit, so the run stays in glyph units
+        // either way. The matrix comes from the caller, which keys the cache on it (see
+        // updateLineVertexData). A flat run is not projected at all - it IS the ground plane.
         cglib::vec3<double> anchorPos = placement->position;
         auto projectPoint = [&mvpMatrix, &viewState](const cglib::vec3<double>& pos, cglib::vec2<float>& result) {
             cglib::vec4<double> clipPos = cglib::transform(cglib::vec4<double>(pos(0), pos(1), pos(2), 1), mvpMatrix);
@@ -1157,9 +1166,10 @@ namespace massif::vt {
         };
 
         cglib::vec2<float> anchorScreen, xUnitScreen, yUnitScreen;
-        bool perspective = projectPoint(anchorPos, anchorScreen)
-            && projectPoint(anchorPos + cglib::vec3<double>::convert(cameraXAxis * scale), xUnitScreen)
-            && projectPoint(anchorPos + cglib::vec3<double>::convert(cameraYAxis * scale), yUnitScreen);
+        bool perspective = screenRun
+            && projectPoint(anchorPos, anchorScreen)
+            && projectPoint(anchorPos + cglib::vec3<double>::convert(xBasis * scale), xUnitScreen)
+            && projectPoint(anchorPos + cglib::vec3<double>::convert(yBasis * scale), yUnitScreen);
         cglib::vec2<float> xUnit = xUnitScreen - anchorScreen;
         cglib::vec2<float> yUnit = yUnitScreen - anchorScreen;
         float determinant = xUnit(0) * yUnit(1) - xUnit(1) * yUnit(0);
@@ -1168,7 +1178,7 @@ namespace massif::vt {
         float invScale = 1.0f / scale;
         auto toGlyphSpace = [&](const cglib::vec3<float>& offset, cglib::vec2<float>& result) {
             if (!perspective) {
-                result = cglib::vec2<float>(cglib::dot_product(cameraXAxis, offset) * invScale, cglib::dot_product(cameraYAxis, offset) * invScale);
+                result = cglib::vec2<float>(cglib::dot_product(xBasis, offset) * invScale, cglib::dot_product(yBasis, offset) * invScale);
                 return true;
             }
             cglib::vec2<float> screenPos;
@@ -1197,7 +1207,7 @@ namespace massif::vt {
             }
         }
         if (points.size() < 2) {
-            return false;
+            return LineLayout::NO_ROOM;
         }
 
         // Arc length along the projected line, so a glyph can be put at a distance rather than
@@ -1208,7 +1218,7 @@ namespace massif::vt {
         }
         float total = lengths.back();
         if (!(total > 0)) {
-            return false;
+            return LineLayout::NO_ROOM;
         }
 
         // Past either end the line is CONTINUED in its own direction rather than clamped: the ends
@@ -1236,7 +1246,7 @@ namespace massif::vt {
         std::size_t segment = std::min(placement->index, points.size() - 2);
         cglib::vec2<float> segmentVec = points[segment + 1] - points[segment];
         if (cglib::norm(segmentVec) == 0) {
-            return false;
+            return LineLayout::NO_ROOM;
         }
         // The anchor is the origin of this space, so its distance along the line is where the pen
         // starts.
@@ -1265,7 +1275,7 @@ namespace massif::vt {
         // anchor is given on the ground (clampPlacementAnchor).
         float overhang = std::min(runLength, total) * static_cast<float>(PLACEMENT_ROOM_FACTOR - 1.0);
         if (runLength > total + 2 * overhang) {
-            return false; // the line is genuinely too short to carry the text
+            return LineLayout::NO_ROOM; // the line is genuinely too short to carry the text
         }
         penStart = std::min(std::max(penStart, -overhang), total - runLength + overhang);
 
@@ -1312,7 +1322,7 @@ namespace massif::vt {
                 }
             }
             if (hairpin || (mustForward && mustReverse)) {
-                return false;
+                return LineLayout::UNREADABLE; // the run doubles back on itself
             }
             // Which way the word reads is decided by the run's CHORD alone. Tangram lets a single
             // segment pointing the wrong way (their mustReverse) force the reversal, and on a line
@@ -1365,7 +1375,7 @@ namespace massif::vt {
         float minSegmentDotProduct = (_lineLayoutValid ? MIN_LINE_SEGMENT_DOTPRODUCT_KEEP : MIN_LINE_SEGMENT_DOTPRODUCT);
         float maxRunAngleSpread = (_lineLayoutValid ? MAX_LINE_RUN_ANGLE_SPREAD_KEEP : MAX_LINE_RUN_ANGLE_SPREAD);
 
-        bool valid = true;
+        bool readable = true;
         cglib::vec2<float> prevDir(0, 0);
         float turnAngle = 0, minAngle = 0, maxAngle = 0;
         for (const Font::Glyph& glyph : _glyphs) {
@@ -1385,19 +1395,19 @@ namespace massif::vt {
             cglib::vec2<float> next = pointAt(offset + std::max(advance, MIN_LINE_GLYPH_SPAN));
             cglib::vec2<float> spanVec = next - pen;
             if (cglib::norm(spanVec) == 0) {
-                valid = false;
+                readable = false;
                 break;
             }
             cglib::vec2<float> xAxis = cglib::unit(spanVec);
             cglib::vec2<float> yAxis(-xAxis(1), xAxis(0));
             if (runDir != cglib::vec2<float>(0, 0) && cglib::dot_product(xAxis, runDir) < minSegmentDotProduct) {
-                valid = false;
+                readable = false;
             }
             if (prevDir != cglib::vec2<float>(0, 0)) {
                 // A run whose chord says one thing while consecutive glyphs turn the other way is
                 // torn apart even when every glyph stays near the chord.
                 if (cglib::dot_product(xAxis, prevDir) < minSegmentDotProduct) {
-                    valid = false;
+                    readable = false;
                 }
                 // Total turn of the run, accumulated glyph by glyph rather than measured against
                 // the chord: a run that follows a hairpin turns steadily - every glyph is close to
@@ -1436,9 +1446,9 @@ namespace massif::vt {
             offset += advance;
         }
         if (maxAngle - minAngle > maxRunAngleSpread) {
-            valid = false;
+            readable = false;
         }
-        return valid;
+        return readable ? LineLayout::PLACED : LineLayout::UNREADABLE;
     }
 
     void Label::updateLineVertexData(const std::shared_ptr<const Placement>& placement, float scale, const ViewState& viewState, bool rebuildForView) const {
@@ -1449,7 +1459,7 @@ namespace massif::vt {
         // its layout decides whether the label is drawn at all, so re-laying out there judges the
         // label against a view nobody sees; it reuses whatever layout exists.
         cglib::mat4x4<double> mvpMatrix = viewState.projectionMatrix * viewState.cameraMatrix;
-        if (scale == _cachedScale && placement == _cachedPlacement && (mvpMatrix == _cachedMVPMatrix || !rebuildForView)) {
+        if (scale == _cachedScale && placement == _cachedPlacement && (!isScreenLineRun() || mvpMatrix == _cachedMVPMatrix || !rebuildForView)) {
             return;
         }
         VT_STAT_INC(lineLayoutBuilds);
@@ -1457,16 +1467,31 @@ namespace massif::vt {
         _cachedTexCoords.clear();
         _cachedAttribs.clear();
         _cachedIndices.clear();
-        _cachedValid = buildLineVertexData(placement, scale, viewState, mvpMatrix, _cachedVertices, _cachedTexCoords, _cachedAttribs, _cachedIndices);
-        // A run that is already on screen rides out a few failed layouts. The layout is judged on
-        // the projected line, and it is judged from two different view states - the culler works
-        // on the snapshot of its pass, the renderer on the current camera - so a run at the edge
-        // of what fits alternates between them, which shows up as a label blinking at frame rate.
+        LineLayout layout = buildLineVertexData(placement, scale, viewState, mvpMatrix, _cachedVertices, _cachedTexCoords, _cachedAttribs, _cachedIndices);
+        _cachedValid = (layout == LineLayout::PLACED);
+        // A run that is already on screen rides out a few layouts that do not FIT. Fit is judged on
+        // the projected line, and it is judged from two different view states - the culler works on
+        // the snapshot of its pass, the renderer on the current camera - so a run at the edge of
+        // what fits alternates between them, which shows up as a label blinking at frame rate.
+        // An UNREADABLE run gets no such grace: the layout has just measured its glyphs turning far
+        // enough to pile up on the inside of a corner, and holding that on screen is how a label
+        // that the code already knows is illegible stays there for several passes.
         if (_cachedValid) {
             _lineLayoutFailures = 0;
         }
-        else if (_lineLayoutValid && ++_lineLayoutFailures <= LINE_LAYOUT_FAILURE_GRACE) {
+        else if (layout == LineLayout::NO_ROOM && _lineLayoutValid && ++_lineLayoutFailures <= LINE_LAYOUT_FAILURE_GRACE) {
             _cachedValid = true;
+        }
+        else {
+            _lineLayoutFailures = 0;
+            if (layout == LineLayout::UNREADABLE) {
+                // Nothing of it is drawn while it fades out - the quads it just built are the
+                // overlapping ones.
+                _cachedVertices.clear();
+                _cachedTexCoords.clear();
+                _cachedAttribs.clear();
+                _cachedIndices.clear();
+            }
         }
         _lineLayoutValid = _cachedValid;
         _cachedScale = scale;
@@ -1476,7 +1501,7 @@ namespace massif::vt {
 
     void Label::setupCoordinateSystem(const ViewState& viewState, const std::shared_ptr<const Placement>& placement, cglib::vec3<float>& origin, cglib::vec3<float>& xAxis, cglib::vec3<float>& yAxis) const {
         cglib::vec3<double> position = placement->position;
-        if (viewState.planarProjection && _style->orientation != LabelOrientation::LINE && viewState.resolution > 0) {
+        if (viewState.planarProjection && !isLineRun() && viewState.resolution > 0) {
             // Snap the label anchor to a quarter of the (normalized) pixel grid: glyphs then
             // rasterize at a stable subpixel phase, which keeps text noticeably sharper and
             // shimmer-free (tangram-style screen-space anchoring)
@@ -1526,7 +1551,7 @@ namespace massif::vt {
         // used below is only the direction at one point of the line: a curving line (a contour, a
         // bending street) can leave the anchor pointing right while the word runs left, and the
         // label then reads upside down. Flipping the placement here as well would fight that.
-        if (_style->orientation == LabelOrientation::LINE) {
+        if (isLineRun()) {
             return _placement;
         }
 
@@ -1724,25 +1749,31 @@ namespace massif::vt {
 
     std::shared_ptr<const Label::Placement> Label::findClippedLinePlacement(const ViewState& viewState, const std::list<TileLine>& tileLines) const {
         // Clip each vertex list against frustum, if resulting list is inside frustum, return its center
-        double bestScreenLen = 0;
+        // How much line a candidate offers, in the units the run is laid out in (see below).
+        double bestLen = 0;
 
         // World length of the glyph run BEFORE the terrain scale factor. Labels over planar 3D
         // terrain keep a constant on-screen size, so the world length a run needs depends on where
         // it is placed; _placementTextLength can not serve here, it carries the factor of the
         // placement this search is about to replace.
         double textLengthBase = 0;
-        if (_style->orientation == LabelOrientation::LINE) {
+        if (isLineRun()) {
             float glyphScale = (_style->sizeFunc)(viewState) * viewState.zoomScale * _style->scale;
             for (const Font::Glyph& glyph : _glyphs) {
                 textLengthBase += glyph.advance(0) * glyphScale;
             }
         }
 
-        // Candidates are compared ON SCREEN, not on the ground: the glyphs are laid out on the
-        // projected line (see buildLineVertexData), and a line running away from a tilted camera
-        // is worth a fraction of its ground length there. Measured on the ground, such a line wins
-        // the placement over a shorter one across the view and the run then does not fit on it -
-        // which drops the label, and the smallest camera move flips that decision.
+        // A candidate is measured in the plane its run will be laid out in, and both the ranking and
+        // the fit test use that one measure.
+        //  - a SCREEN run (billboard-line) is laid out on the projected line, so a line running away
+        //    from a tilted camera is worth a fraction of its ground length and has to be compared on
+        //    screen; measured on the ground it wins the placement and the run then does not fit.
+        //  - a FLAT run (line) lies on the ground, so its own length is the ground length. Comparing
+        //    it against a screen-HORIZONTAL run of the same world length asks for several times the
+        //    room it needs as soon as the view tilts, and the label only appears once the camera is
+        //    close enough for that inflated demand - which is what "have to zoom in a lot" was.
+        bool screenRun = isScreenLineRun();
         cglib::mat4x4<double> mvpMatrix = viewState.projectionMatrix * viewState.cameraMatrix;
         auto projectPoint = [&mvpMatrix, &viewState](const cglib::vec3<double>& pos, cglib::vec2<double>& result) {
             cglib::vec4<double> clipPos = cglib::transform(cglib::vec4<double>(pos(0), pos(1), pos(2), 1), mvpMatrix);
@@ -1752,9 +1783,14 @@ namespace massif::vt {
             result = cglib::vec2<double>(clipPos(0) / clipPos(3) * viewState.aspect, clipPos(1) / clipPos(3));
             return true;
         };
-        // Screen length of the run, if it were laid out across the view at the given position.
-        auto screenTextLength = [&](const cglib::vec3<double>& pos) {
-            cglib::vec3<double> runVec = cglib::vec3<double>::convert(viewState.orientation[0]) * (textLengthBase * calculateTerrainScaleFactor(pos, viewState));
+        // How much line the run needs at the given position, in the same units a candidate is
+        // measured in: the ground length it covers, or that length laid across the view.
+        auto requiredLength = [&](const cglib::vec3<double>& pos) {
+            double worldLength = textLengthBase * calculateTerrainScaleFactor(pos, viewState);
+            if (!screenRun) {
+                return worldLength;
+            }
+            cglib::vec3<double> runVec = cglib::vec3<double>::convert(viewState.orientation[0]) * worldLength;
             cglib::vec2<double> p0, p1;
             if (!projectPoint(pos, p0) || !projectPoint(pos + runVec, p1)) {
                 return std::numeric_limits<double>::infinity();
@@ -1821,7 +1857,8 @@ namespace massif::vt {
                     screenLen += cglib::length(screenPos1 - screenPos0);
                 }
 
-                if (projectable && screenLen > bestScreenLen && screenLen >= screenTextLength(midPos) * PLACEMENT_ROOM_FACTOR) {
+                double candidateLen = (screenRun ? screenLen : len);
+                if (projectable && candidateLen > bestLen && candidateLen >= requiredLength(midPos) * PLACEMENT_ROOM_FACTOR) {
                     double ofs = len * 0.5;
                     for (std::size_t i = t0.first; i <= t1.first; i++) {
                         cglib::vec3<double> pos0 = tileLine.vertices[i];
@@ -1840,7 +1877,7 @@ namespace massif::vt {
                             smoothPlacementLine(tileLine.vertices, i, _placementTextLength * PLACEMENT_SMOOTH_TEXT_FRACTION, smoothedVertices, smoothedIndex);
                             clampPlacementAnchor(smoothedVertices, _placementTextLength, smoothedIndex, pos);
                             bestPlacement = std::make_shared<const Placement>(tileLine.tileId, tileLine.localId, smoothedVertices, smoothedIndex, i, pos, tileLine.normal);
-                            bestScreenLen = screenLen;
+                            bestLen = candidateLen;
                             break;
                         }
                         ofs -= diff;

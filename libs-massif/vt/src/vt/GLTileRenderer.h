@@ -339,7 +339,10 @@ namespace massif::vt {
 
     private:
         using GlobalIdLabelMap = std::unordered_map<long long, std::shared_ptr<Label>>;
-        using BitmapLabelMap = std::unordered_map<std::shared_ptr<const Bitmap>, std::vector<std::shared_ptr<Label>>>;
+        // One list per pass, in DRAW order. Grouping by glyph atlas instead put the order of two
+        // labels in different atlases at the mercy of a pointer hash, so a small label could land
+        // under the icon it is meant to sit on; the batch changes atlas mid-list instead.
+        using PassLabels = std::vector<std::shared_ptr<Label>>;
 
         enum class LightingMode {
             NONE,
@@ -452,10 +455,6 @@ namespace massif::vt {
         // ~800 entries and 0.5-0.9 ms a frame - and all it buys is releasing a VBO a few
         // frames earlier.
         static constexpr int RESOURCE_SWEEP_INTERVAL_FRAMES = 8;
-        // Stencil bit reserved for the single-blend pass of a translucent style layer. The lower
-        // bits carry the per-tile mask values, so the pass only runs while a frame has fewer target
-        // tiles than this.
-        static constexpr int SINGLE_BLEND_STENCIL_BIT = 128;
         static constexpr float HALO_RADIUS_SCALE = 2.5f; // the scaling factor for halo radius
         // Screen pixels per halo unit. The halo used to be converted with the glyph's RENDER size,
         // which was one constant when every glyph was rastered at 27 texels; the raster ladder made
@@ -523,10 +522,10 @@ namespace massif::vt {
 
         void renderGeometry2D(const std::vector<RenderTile>& renderTiles, GLint stencilBits);
         void renderGeometry3D(const std::vector<RenderTile>& renderTiles, bool allowInline);
-        void renderLabels(const std::vector<std::shared_ptr<Label>>& labels, const std::shared_ptr<const Bitmap>& bitmap);
-        // One batching pass over a label list. CALLOUT leader lines get a pass of their own before
-        // the text, so that no line is drawn over another label's glyphs.
-        void renderLabelPass(const std::vector<std::shared_ptr<Label>>& labels, const std::shared_ptr<const Bitmap>& bitmap, Label::DrawPass pass);
+        void renderLabels(const std::vector<std::shared_ptr<Label>>& labels);
+        // One batching pass over a label list, in list order. CALLOUT leader lines get a pass of
+        // their own before the text, so that no line is drawn over another label's glyphs.
+        void renderLabelPass(const std::vector<std::shared_ptr<Label>>& labels, Label::DrawPass pass);
 
         float evaluateFloatFunc(const FloatFunction& func);
         Color evaluateColorFunc(const ColorFunction& func);
@@ -708,8 +707,8 @@ namespace massif::vt {
 
         std::shared_ptr<std::vector<RenderTile>> _renderTiles;
         std::shared_ptr<std::vector<RenderTile>> _visibleRenderTiles;
-        std::array<std::shared_ptr<BitmapLabelMap>, 2> _bitmapLabelMap; // for 'ground' labels and for 'billboard' labels
-        std::array<std::shared_ptr<BitmapLabelMap>, 2> _visibleBitmapLabelMap;  // for 'ground' labels and for 'billboard' labels
+        std::array<std::shared_ptr<PassLabels>, 2> _passLabels; // for 'ground' labels and for 'billboard' labels
+        std::array<std::shared_ptr<PassLabels>, 2> _visiblePassLabels;  // for 'ground' labels and for 'billboard' labels
         std::vector<std::shared_ptr<Label>> _labels;
         int _resourceSweepCounter = 0;
         std::map<int, GlobalIdLabelMap> _layerLabelMap;

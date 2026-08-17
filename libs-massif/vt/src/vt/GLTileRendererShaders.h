@@ -1474,10 +1474,15 @@ namespace massif::vt {
         #ifdef LIGHTING_FSH
             vNormal = aVertexNormal;
         #endif
-            setTerrainSlopeVaryings(pos);
-            highp vec3 terrainPos = applyTerrain(pos);
+            // Sample the terrain at the EXTRUDED corner, exactly as the line shader does: a quad
+            // placed at the anchor's height and then offset sideways is a flat plate, and on a
+            // slope its uphill half sits under the ground, where the depth test against the terrain
+            // surface eats it. A glyph quad of clipped text is wide enough for that to cut letters
+            // in half.
+            setTerrainSlopeVaryings(pos + delta);
+            highp vec3 terrainPos = applyTerrain(pos + delta);
             applyShadowPos(terrainPos);
-            gl_Position = applyDepthBias(uMVPMatrix * vec4(terrainPos + delta, 1.0));
+            gl_Position = applyDepthBias(uMVPMatrix * vec4(terrainPos, 1.0));
         }
     )GLSL";
 

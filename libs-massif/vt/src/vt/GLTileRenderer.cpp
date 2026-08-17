@@ -304,12 +304,37 @@ namespace massif::vt {
         // never sampled - which is what keeps CLAMP_TO_EDGE from reading a neighbouring page.
     }
 
-    void GLTileRenderer::setFog(const Color& color, float startDistance, float distance) {
+    void GLTileRenderer::setFog(const Color& color, float startDistance, float distance, float rangeScale) {
         std::lock_guard<std::mutex> lock(_mutex);
 
         _fogColor = color;
-        _fogStartDistance = startDistance;
-        _fogDistance = distance;
+        _fogRangeScale = std::max(1.0e-9f, rangeScale);
+        _fogStartDistance = startDistance / _fogRangeScale;
+        _fogDistance = distance / _fogRangeScale;
+    }
+
+    void GLTileRenderer::setFogColors(const Color& highColor, const Color& spaceColor) {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        _fogHighColor = highColor;
+        _fogSpaceColor = spaceColor;
+    }
+
+    void GLTileRenderer::setFogShaderSource(const std::string& shaderSource) {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        if (_fogShaderSource == shaderSource) {
+            return;
+        }
+        _fogShaderSource = shaderSource;
+        // The blend is compiled into every program, so they all have to go. Called from the GL
+        // thread (TileRenderer::onDrawFrame), which is what makes deleting them here safe.
+        for (auto it = _shaderProgramMap.begin(); it != _shaderProgramMap.end(); it++) {
+            deleteShaderProgram(it->second);
+        }
+        _shaderProgramMap.clear();
+        _shaderProgramCache.clear();
+        resetProgramState();
     }
 
     bool GLTileRenderer::calculateShadowViewProj(const std::vector<TileId>& tileIds, const std::vector<TileId>& casterTileIds, const cglib::vec3<float>& sunDir, const std::vector<std::pair<double, double> >& tileHeights, double minHeight, double maxHeight, float maxDistanceMeters, int mapSize, int cascade, int cascadeCount, std::vector<TileId>& boxCasterTileIds, double& depthRangeMeters, double& texelMeters, cglib::mat4x4<double>& lightViewProj) const {
@@ -1964,6 +1989,15 @@ namespace massif::vt {
     }
 
     unsigned int GLTileRenderer::fogFlag() const {
+        // The drape bake must never fog: it is flat content baked into a texture that is then
+        // painted on the terrain surface and fogged there, once. Anything fogged here is BURNT IN
+        // and survives the fog being turned off, because the drape texture is cached. It used to
+        // fall out of the arithmetic - an orthographic pass has gl_FragCoord.w = 1, a whole world
+        // in internal units, which no metric range ever reached - but a camera-relative range does
+        // reach it at high zoom, so the bake now says so itself.
+        if (_drapeMVPOverride) {
+            return 0;
+        }
         // Fully transparent fog, or a zero range, means the style/app did not ask for any: the
         // programs are then built without it and cost nothing.
         return (_fogColor[3] > 0.0f && _fogDistance > _fogStartDistance ? FOG_FLAG : 0);
@@ -2068,7 +2102,9 @@ namespace massif::vt {
             return;
         }
         glUniform4f(shaderProgram.uniforms[U_FOGCOLOR], _fogColor[0], _fogColor[1], _fogColor[2], _fogColor[3]);
-        glUniform2f(shaderProgram.uniforms[U_FOGPARAMS], _fogStartDistance, 1.0f / std::max(1.0e-9f, _fogDistance - _fogStartDistance));
+        glUniform4f(shaderProgram.uniforms[U_FOGHIGHCOLOR], _fogHighColor[0], _fogHighColor[1], _fogHighColor[2], _fogHighColor[3]);
+        glUniform4f(shaderProgram.uniforms[U_FOGSPACECOLOR], _fogSpaceColor[0], _fogSpaceColor[1], _fogSpaceColor[2], _fogSpaceColor[3]);
+        glUniform4f(shaderProgram.uniforms[U_FOGPARAMS], _fogStartDistance, 1.0f / std::max(1.0e-9f, _fogDistance - _fogStartDistance), 1.0f / _fogRangeScale, _fogDistance);
     }
 
     cglib::mat4x4<double> GLTileRenderer::calculateTileMatrix(const TileId& tileId, float coordScale) const {
@@ -5784,9 +5820,12 @@ namespace massif::vt {
                 filterFsh = textureFiltersFsh;
             }
 
+            std::string fogCommonFsh = commonFsh;
+            fogCommonFsh.replace(fogCommonFsh.find(FOG_BLEND_PLACEHOLDER), FOG_BLEND_PLACEHOLDER.size(), _fogShaderSource.empty() ? fogBlendFsh : _fogShaderSource);
+
             ShaderProgram shaderProgram;
-            createShaderProgram(shaderProgram, commonVsh + lightingVsh + vsh, commonFsh + lightingFsh + filterFsh + fsh, defs, uniformMap, attribMap);
-            
+            createShaderProgram(shaderProgram, commonVsh + lightingVsh + vsh, fogCommonFsh + lightingFsh + filterFsh + fsh, defs, uniformMap, attribMap);
+
             it = _shaderProgramMap.emplace(shaderProgramId, shaderProgram).first;
         }
         _shaderProgramCache[cacheKey] = &it->second;

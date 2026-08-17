@@ -306,8 +306,11 @@ namespace massif::css {
             { "shadow-map-size", &mvt::Map::Settings::shadowMapSize },
             { "shadow-cascades", &mvt::Map::Settings::shadowCascades },
             { "shadow-caster-margin", &mvt::Map::Settings::shadowCasterMargin },
-            { "fog-start-distance", &mvt::Map::Settings::fogStartDistance },
-            { "fog-distance", &mvt::Map::Settings::fogDistance },
+            { "fog-enabled", &mvt::Map::Settings::fogEnabled },
+            { "fog-range-start", &mvt::Map::Settings::fogRangeStart },
+            { "fog-range-end", &mvt::Map::Settings::fogRangeEnd },
+            { "fog-horizon-blend", &mvt::Map::Settings::fogHorizonBlend },
+            { "fog-star-intensity", &mvt::Map::Settings::fogStarIntensity },
             { "terrain-max-visible-distance", &mvt::Map::Settings::terrainMaxVisibleDistance }
         };
         for (const auto& floatProperty : floatProperties) {
@@ -318,7 +321,9 @@ namespace massif::css {
         }
         const std::pair<const char*, mvt::ColorFunctionProperty mvt::Map::Settings::*> colorProperties[] = {
             { "sun-color", &mvt::Map::Settings::sunColor },
-            { "fog-color", &mvt::Map::Settings::fogColor }
+            { "fog-color", &mvt::Map::Settings::fogColor },
+            { "fog-high-color", &mvt::Map::Settings::fogHighColor },
+            { "fog-space-color", &mvt::Map::Settings::fogSpaceColor }
         };
         for (const auto& colorProperty : colorProperties) {
             Expression expr;

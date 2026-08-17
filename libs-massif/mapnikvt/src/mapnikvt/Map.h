@@ -55,9 +55,16 @@ namespace massif::mvt {
             FloatFunctionProperty shadowMapSize = FloatFunctionProperty(1024.0f);  // pixels, per cascade
             FloatFunctionProperty shadowCascades = FloatFunctionProperty(3.0f);
             FloatFunctionProperty shadowCasterMargin = FloatFunctionProperty(1.0f); // tiles beyond the visible ones
+            // Fog, on the Mapbox model: the range is in multiples of the camera-to-focus
+            // distance, so one setting holds at every zoom.
+            FloatFunctionProperty fogEnabled = FloatFunctionProperty(1.0f);        // 0/1: the switch, wins over the app
             ColorFunctionProperty fogColor = ColorFunctionProperty("transparent");  // transparent = no fog
-            FloatFunctionProperty fogStartDistance = FloatFunctionProperty(0.0f);   // meters
-            FloatFunctionProperty fogDistance = FloatFunctionProperty(0.0f);        // meters, 0 = no fog
+            FloatFunctionProperty fogRangeStart = FloatFunctionProperty(0.8f);
+            FloatFunctionProperty fogRangeEnd = FloatFunctionProperty(8.0f);
+            ColorFunctionProperty fogHighColor = ColorFunctionProperty("transparent");  // the upper atmosphere
+            ColorFunctionProperty fogSpaceColor = ColorFunctionProperty("transparent"); // the zenith
+            FloatFunctionProperty fogHorizonBlend = FloatFunctionProperty(12.0f / 90.0f); // fraction of a quarter turn
+            FloatFunctionProperty fogStarIntensity = FloatFunctionProperty(0.0f);
             FloatFunctionProperty terrainMaxVisibleDistance = FloatFunctionProperty(0.0f); // meters, 0 = unlimited
         };
         

@@ -69,6 +69,8 @@ namespace massif::vt {
         U_SHADOWMASK,
         U_SHADOWMASKSCALE,
         U_FOGCOLOR,
+        U_FOGHIGHCOLOR,
+        U_FOGSPACECOLOR,
         U_FOGPARAMS,
         U_DRAPEUVTRANSFORM,
         U_SCREENSCALE,
@@ -173,6 +175,8 @@ namespace massif::vt {
         { "uShadowMask",        U_SHADOWMASK },
         { "uShadowMaskScale",   U_SHADOWMASKSCALE },
         { "uFogColor",          U_FOGCOLOR },
+        { "uFogHighColor",      U_FOGHIGHCOLOR },
+        { "uFogSpaceColor",     U_FOGSPACECOLOR },
         { "uFogParams",         U_FOGPARAMS },
         { "uDrapeUVTransform",  U_DRAPEUVTRANSFORM },
         { "uScreenScale",       U_SCREENSCALE },
@@ -485,6 +489,20 @@ namespace massif::vt {
         #endif
     )GLSL";
 
+    // The default fog blend, substituted into commonFsh at $FOG_BLEND$ unless the application
+    // supplied its own (GLTileRenderer::setFogShaderSource). Colours here are PREMULTIPLIED, so
+    // the fog colour has to be premultiplied by this fragment's own alpha; and the fog tints what
+    // is there rather than adding coverage, so alpha is left alone.
+    static const std::string fogBlendFsh = R"GLSL(
+        lowp vec4 applyFog(lowp vec4 color, lowp float amount, highp float dist) {
+            return vec4(mix(color.rgb, uFogColor.rgb * color.a, amount), color.a);
+        }
+    )GLSL";
+
+    // Marks where fogBlendFsh (or the application's own) goes in commonFsh - it has to come after
+    // the uniform declarations it reads and before the applyFog(color) that calls it.
+    static const std::string FOG_BLEND_PLACEHOLDER = "$FOG_BLEND$";
+
     static const std::string commonFsh = R"GLSL(
         #ifdef DERIVATIVES
         #extension GL_OES_standard_derivatives : enable
@@ -497,20 +515,24 @@ namespace massif::vt {
 
         precision mediump float;
         #ifdef FOG
-        uniform lowp vec4 uFogColor;    // rgb = fog colour, a = how opaque the fog gets at full distance
-        uniform highp vec2 uFogParams;  // x = distance where the fog starts, y = 1 / (end - start)
+        uniform lowp vec4 uFogColor;      // rgb = fog colour, a = how opaque the fog gets at full distance
+        uniform lowp vec4 uFogHighColor;  // the upper atmosphere, for a custom fog shader
+        uniform lowp vec4 uFogSpaceColor; // the zenith, for a custom fog shader
+        uniform highp vec4 uFogParams;    // range start, 1 / (end - start), internal -> range units, range end
+
+        // fogBlend is either the built-in blend or FogOptions::setShaderSource, substituted here
+        // so one custom function covers the tile content, the background plane and the sky.
+        $FOG_BLEND$
 
         // Distance from the eye WITHOUT a varying: gl_FragCoord.w is 1/w_clip, and w_clip of a
         // perspective projection is the eye-space depth. An orthographic pass - the drape bake -
         // has w = 1, which is a whole world in internal units, so it never fogs: exactly right,
         // since the bake is flat content that gets fogged later as part of the terrain surface.
+        // The range is camera-relative, so the distance is scaled into range units first.
         lowp vec4 applyFog(lowp vec4 color) {
-            highp float dist = 1.0 / max(1.0e-9, gl_FragCoord.w);
+            highp float dist = uFogParams.z / max(1.0e-9, gl_FragCoord.w);
             lowp float amount = clamp((dist - uFogParams.x) * uFogParams.y, 0.0, 1.0) * uFogColor.a;
-            // Colours here are PREMULTIPLIED, so the fog colour has to be premultiplied by this
-            // fragment's own alpha; and the fog tints what is there rather than adding coverage,
-            // so alpha is left alone.
-            return vec4(mix(color.rgb, uFogColor.rgb * color.a, amount), color.a);
+            return applyFog(color, amount, dist);
         }
         #else
         lowp vec4 applyFog(lowp vec4 color) {

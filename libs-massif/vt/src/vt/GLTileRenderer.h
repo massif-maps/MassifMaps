@@ -205,12 +205,22 @@ namespace massif::vt {
         // The terrain tiles a paint covers when it draws itself (no drape to bake into). A paint
         // has no tile set, so the owner hands it the terrain's own cover.
         void setTerrainPaintTiles(const std::vector<TileId>& tileIds);
-        // Distance fog over the whole 3D scene, in world units: the terrain surface, rasters,
+        // Distance fog over the whole scene, in world units: the terrain surface, rasters,
         // 2D geometry and 3D extrusions all fade towards this colour between the two distances.
         // A transparent colour or a zero range turns it off, and the programs are then built
         // without it. The drape bake is orthographic and is never fogged - its content is fogged
         // once, as part of the terrain surface it is painted on.
-        void setFog(const Color& color, float startDistance, float distance);
+        // rangeScale is how many world units one range unit is (the camera-to-focus distance):
+        // the shaders work in range units so a custom fog shader sees the same numbers the API
+        // and the style are written in.
+        void setFog(const Color& color, float startDistance, float distance, float rangeScale);
+        // The atmosphere colours a custom fog shader can reach (Mapbox high-color / space-color).
+        // The built-in blend ignores them; they are here so one shader source works everywhere.
+        void setFogColors(const Color& highColor, const Color& spaceColor);
+        // Replaces the fog blend with application GLSL defining
+        // "vec4 applyFog(vec4 color, float amount, float dist)". Rebuilds every program, so it is
+        // only for a real change - callers pass the current source every frame.
+        void setFogShaderSource(const std::string& shaderSource);
         // Directional shadows. The owner renders the caster pass (renderShadowCasters) into its
         // own framebuffer from the light, then hands the packed-depth texture and the same
         // light matrix back here so the draped surface can look itself up in it.
@@ -687,8 +697,12 @@ namespace massif::vt {
         float _terrainShadowStrength = 0.0f;
         float _terrainShadowSoftness = 1.0f;
         Color _fogColor;
-        float _fogStartDistance = 0.0f;
+        Color _fogHighColor;
+        Color _fogSpaceColor;
+        float _fogStartDistance = 0.0f; // range units, i.e. multiples of _fogRangeScale
         float _fogDistance = 0.0f;
+        float _fogRangeScale = 1.0f;    // world units per range unit
+        std::string _fogShaderSource;
         std::array<cglib::mat4x4<double>, MAX_SHADOW_CASCADES> _terrainShadowViewProjs;
         Color _terrainBackgroundColor; // opaque terrain base fill + depth pre-pass color; transparent = depth-only
         std::vector<std::pair<TileId, GLint>> _debugOrderedTileMasks;

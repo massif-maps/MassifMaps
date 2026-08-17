@@ -576,7 +576,13 @@ namespace massif::vt {
         void releaseDrapeTexture(GLuint texture);
         void deleteDrapeResources();
         bool isDrapeableGeometry(TileGeometry::Type type) const;
+        // Builds the lit raster program ahead of the zoom-out that first needs it, so its compile
+        // does not land inside the gesture.
+        void warmTerrainRasterShader();
         bool hasDrapeableContent(const RenderTileLayer& renderLayer) const;
+        // Element opacity a draped layer is baked with: the style's layer opacity, or 1 when the
+        // layer has a comp-op (which the bake can not reproduce).
+        float calculateDrapeOpacity(const RenderTileLayer& renderLayer) const;
         bool tileCovers(const TileId& tileId, const TileId& targetTileId) const;
         bool isTileDraped(const TileId& targetTileId) const;
         cglib::mat4x4<float> calculateDrapeMVPMatrix(const TileId& sourceTileId, const TileId& targetTileId) const;
@@ -696,6 +702,7 @@ namespace massif::vt {
         bool _terrainShadowMaskPass = false; // the draw that produces the mask, not one that reads it
         float _terrainShadowStrength = 0.0f;
         float _terrainShadowSoftness = 1.0f;
+        unsigned int _warmedRasterShaderFlags = 0; // flag set warmTerrainRasterShader last built for (0 = none)
         Color _fogColor;
         Color _fogHighColor;
         Color _fogSpaceColor;

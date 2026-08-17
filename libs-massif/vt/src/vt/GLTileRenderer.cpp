@@ -1355,6 +1355,7 @@ namespace massif::vt {
         std::lock_guard<std::mutex> lock(_mutex);
 
         resetProgramState(); // another renderer may have bound its own program since the last draw
+        warmTerrainRasterShader();
 
         bool refresh = false;
 
@@ -2011,6 +2012,24 @@ namespace massif::vt {
                                     _terrainShadowCascades == 3 ? SHADOW_CASCADES3_FLAG :
                                     _terrainShadowCascades == 2 ? SHADOW_CASCADES2_FLAG : 0);
         return TERRAIN_SHADOW_FLAG | DERIVATIVES_FLAG | cascadeFlag;
+    }
+
+    void GLTileRenderer::warmTerrainRasterShader() {
+        // The lit raster program is only ever ASKED for at an integer zoom out - the one moment a
+        // raster draws outside the drape (see renderTileBitmap) - so building it lazily put a full
+        // compile and link of the largest colormap variant (DEM taps, PCF, cascades) inside that
+        // gesture. Build it on an ordinary frame instead. The flag set is re-derived every frame
+        // and only a change rebuilds, so a shadow or cascade config change warms itself too.
+        if (!_terrainMode || !_terrainTextureProvider || !_terrainLighting.enabled) {
+            return;
+        }
+        bool shadowed = _terrainShadowTexture != 0 && _terrainShadowStrength > 0.0f;
+        unsigned int flags = PATTERN_FLAG | TERRAIN_FLAG | TERRAIN_VTF_FLAG | TERRAIN_LIGHT_FLAG | (shadowed ? surfaceShadowFlags() : 0) | fogFlag();
+        if (flags == _warmedRasterShaderFlags) {
+            return;
+        }
+        _warmedRasterShaderFlags = flags;
+        buildShaderProgram("tilecolormap", colormapVsh, colormapFsh, LightingMode::GEOMETRY2D, _rasterFilterMode, flags);
     }
 
     unsigned int GLTileRenderer::surfaceShadowFlags() const {
@@ -4155,19 +4174,20 @@ namespace massif::vt {
                 // resolves source-vs-target overzoom); geometry is in source tile coordinates.
                 // Either may be coarser OR finer than the terrain tile, hence the sub-rect in
                 // each case.
+                float geometryOpacity = calculateDrapeOpacity(renderLayer);
                 drapeOrtho = calculateDrapeMVPMatrix(renderLayer.targetTileId, targetTileId);
                 for (const std::shared_ptr<TileBackground>& background : renderLayer.layer->getBackgrounds()) {
-                    renderTileBackground(renderLayer.targetTileId, 1.0f, 1.0f, renderLayer.tileSize, background);
+                    renderTileBackground(renderLayer.targetTileId, 1.0f, geometryOpacity, renderLayer.tileSize, background);
                     bakedPrimitives++;
                 }
                 for (const std::shared_ptr<TileBitmap>& bitmap : renderLayer.layer->getBitmaps()) {
-                    renderTileBitmap(renderLayer.sourceTileId, renderLayer.targetTileId, 1.0f, 1.0f, bitmap);
+                    renderTileBitmap(renderLayer.sourceTileId, renderLayer.targetTileId, 1.0f, geometryOpacity, bitmap);
                     bakedPrimitives++;
                 }
                 drapeOrtho = calculateDrapeMVPMatrix(renderLayer.sourceTileId, targetTileId);
                 for (const std::shared_ptr<TileGeometry>& geometry : renderLayer.layer->getGeometries()) {
                     if (isDrapeableGeometry(geometry->getType()) && isLayerDraped(renderLayer.layer)) {
-                        renderTileGeometry(renderLayer.sourceTileId, renderLayer.targetTileId, 1.0f, 1.0f, renderLayer.tileSize, geometry);
+                        renderTileGeometry(renderLayer.sourceTileId, renderLayer.targetTileId, 1.0f, geometryOpacity, renderLayer.tileSize, geometry);
                         bakedPrimitives++;
                     }
                 }
@@ -4541,13 +4561,16 @@ namespace massif::vt {
         if (!_externalDrapeTarget) {
             return _drapeTilesThisFrame.count(targetTileId) > 0;
         }
-        // "Draped" = some drawn terrain tile lies within this one. A FINER tile is not draped and
-        // not baked either, so it keeps drawing itself in the 3D pass while it blends away; claiming
-        // otherwise suppresses the only content on that ground during a zoom out. The drape cover is
-        // routinely COARSER than the render tiles, which is also why fills cannot be decoded at
-        // source density under draping - see TileLayer::calculateDrawData.
+        // "Draped" = the drape and this tile describe the same ground, whichever is coarser. The
+        // drape cover is routinely COARSER than the render tiles, which is also why fills cannot be
+        // decoded at source density under draping - see TileLayer::calculateDrawData.
+        //
+        // The FINER direction is the outgoing generation of a zoom out. It used to be left undraped
+        // so it kept drawing itself while it blended away, on the grounds that nothing else covered
+        // that ground - but a drape tile that CONTAINS it does cover it, and the direct draw then
+        // paints the previous zoom's raster over the new one for the length of the fade.
         for (const TileId& drapeTileId : _externalDrapeTiles) {
-            if (tileCovers(targetTileId, drapeTileId)) {
+            if (tileCovers(targetTileId, drapeTileId) || tileCovers(drapeTileId, targetTileId)) {
                 return true;
             }
         }
@@ -4633,6 +4656,17 @@ namespace massif::vt {
             hash = 1;
         }
         return anyContent ? hash : 0;
+    }
+
+    float GLTileRenderer::calculateDrapeOpacity(const RenderTileLayer& renderLayer) const {
+        // The style's own layer opacity, which the on-screen path passes as element opacity when
+        // the layer has no comp-op (see renderTileLayers). The bake used to hardcode 1.0 and drew
+        // every draped layer fully opaque. A comp-op layer needs the overlay buffer the bake has
+        // no equivalent of, so it keeps its current full-opacity behaviour.
+        if (!renderLayer.layer || renderLayer.layer->getCompOp()) {
+            return 1.0f;
+        }
+        return (renderLayer.layer->getOpacityFunc())(_viewState);
     }
 
     bool GLTileRenderer::hasDrapeableContent(const RenderTileLayer& renderLayer) const {
@@ -4761,19 +4795,20 @@ namespace massif::vt {
                 }
                 // Backgrounds and rasters draw the target tile's surface mesh (their own uv logic
                 // already resolves overzoom).
+                float geometryOpacity = calculateDrapeOpacity(renderLayer);
                 drapeOrtho = calculateDrapeMVPMatrix(renderLayer.targetTileId, targetTileId);
                 for (const std::shared_ptr<TileBackground>& background : renderLayer.layer->getBackgrounds()) {
-                    renderTileBackground(renderLayer.targetTileId, 1.0f, 1.0f, renderLayer.tileSize, background);
+                    renderTileBackground(renderLayer.targetTileId, 1.0f, geometryOpacity, renderLayer.tileSize, background);
                 }
                 for (const std::shared_ptr<TileBitmap>& bitmap : renderLayer.layer->getBitmaps()) {
-                    renderTileBitmap(renderLayer.sourceTileId, renderLayer.targetTileId, 1.0f, 1.0f, bitmap);
+                    renderTileBitmap(renderLayer.sourceTileId, renderLayer.targetTileId, 1.0f, geometryOpacity, bitmap);
                 }
                 // Geometry vertices are in SOURCE tile-local coordinates, so an overzoomed layer
                 // needs the sub-rect transform to land on the target tile's texture.
                 drapeOrtho = calculateDrapeMVPMatrix(renderLayer.sourceTileId, targetTileId);
                 for (const std::shared_ptr<TileGeometry>& geometry : renderLayer.layer->getGeometries()) {
                     if (isDrapeableGeometry(geometry->getType())) {
-                        renderTileGeometry(renderLayer.sourceTileId, renderLayer.targetTileId, 1.0f, 1.0f, renderLayer.tileSize, geometry);
+                        renderTileGeometry(renderLayer.sourceTileId, renderLayer.targetTileId, 1.0f, geometryOpacity, renderLayer.tileSize, geometry);
                     }
                 }
             }
@@ -5082,10 +5117,18 @@ namespace massif::vt {
             const CompiledSurface& compiledTileSurface = _compiledTileSurfaceMap[tileSurface];
 
             unsigned int terrainFlag = flatDrape ? 0 : (terrainVTF ? TERRAIN_FLAG | TERRAIN_VTF_FLAG : (_terrainMode && !_terrainDepthWrite ? TERRAIN_FLAG : 0));
+            // A raster drawn HERE covers the same ground the drape surface does, so it takes the
+            // same sun and shadow. It is not draped when it is finer than the drape cover - the
+            // outgoing generation of a zoom out - and drawing that unlit next to the lit surface
+            // below is the flash at every integer zoom out. Never in the bake: the drape texture is
+            // lit once, by the surface that samples it. NORMALMAP has its own lighting model.
+            bool litBitmap = !flatDrape && !_terrainShadowMaskPass && terrainVTF && _terrainLighting.enabled && bitmap->getType() == TileBitmap::Type::COLORMAP;
+            bool shadowedBitmap = litBitmap && _terrainShadowTexture != 0 && _terrainShadowStrength > 0.0f;
+            unsigned int lightFlags = (litBitmap ? TERRAIN_LIGHT_FLAG : 0) | (shadowedBitmap ? surfaceShadowFlags() : 0);
             const ShaderProgram* shaderProgramPtr = nullptr;
             switch (bitmap->getType()) {
             case TileBitmap::Type::COLORMAP:
-                shaderProgramPtr = &buildShaderProgram("tilecolormap", colormapVsh, colormapFsh, LightingMode::GEOMETRY2D, _rasterFilterMode, PATTERN_FLAG | terrainFlag | fogFlag());
+                shaderProgramPtr = &buildShaderProgram("tilecolormap", colormapVsh, colormapFsh, LightingMode::GEOMETRY2D, _rasterFilterMode, PATTERN_FLAG | terrainFlag | lightFlags | fogFlag());
                 break;
             case TileBitmap::Type::NORMALMAP:
                 shaderProgramPtr = &buildShaderProgram("tilenormalmap", normalmapVsh, normalmapFsh, LightingMode::NORMALMAP, _rasterFilterMode, PATTERN_FLAG | terrainFlag | fogFlag());
@@ -5095,11 +5138,22 @@ namespace massif::vt {
             }
             const ShaderProgram& shaderProgram = *shaderProgramPtr;
             useProgram(shaderProgram);
+            // The program is built with fogFlag() like every other draw, but this was the one path
+            // that never set the uniforms - so a raster drawn outside the drape kept whatever fog
+            // state the program object last held, i.e. none.
+            setupFogUniforms(shaderProgram);
             if ((terrainFlag & TERRAIN_FLAG) != 0) {
                 glUniform1f(shaderProgram.uniforms[U_DEPTHBIAS], terrainVTF ? _terrainDrawDepthBias : _terrainDepthBias);
             }
+            bool hasElevation = true;
             if (terrainVTF && !flatDrape) {
-                setupTerrainUniforms(shaderProgram, targetTileId, surfaceFrame, gridMode && !flatDrape);
+                hasElevation = setupTerrainUniforms(shaderProgram, targetTileId, surfaceFrame, gridMode && !flatDrape);
+            }
+            if (litBitmap) {
+                setupTerrainLightingUniforms(shaderProgram, targetTileId, surfaceFrame);
+            }
+            if (shadowedBitmap) {
+                setupSurfaceShadowUniforms(shaderProgram, surfaceFrame, hasElevation);
             }
 
             glBindBuffer(GL_ARRAY_BUFFER, compiledTileSurface.vertexGeometryVBO);

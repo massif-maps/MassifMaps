@@ -123,7 +123,11 @@ namespace massif::vt {
         // Hardware depth comparison (sampler2DShadow). Implies ESSL3 - the type does not exist in
         // GLSL ES 1.00, and GL_EXT_shadow_samplers is not advertised on an ES3 context because the
         // feature is core there.
-        SHADOW_HW_FLAG = 2097152
+        SHADOW_HW_FLAG = 2097152,
+        // Terrain sun on UNDRAPED 2D geometry. A separate flag from TERRAIN_LIGHT because that one
+        // marks the surface shaders, which declare the same uniforms themselves - one name twice in
+        // a stage is a link error.
+        GEOMETRY_LIGHT_FLAG = 4194304
     };
 
     static const std::map<std::string, int> attribMap = {
@@ -223,7 +227,8 @@ namespace massif::vt {
         { SHADOW_SINGLE_TAP_FLAG, "SHADOW_SINGLE_TAP" },
         { SHADOW_DEPTH_TEXTURE_FLAG, "SHADOW_DEPTH_TEXTURE" },
         { ESSL3_FLAG, "ESSL3" },
-        { SHADOW_HW_FLAG, "SHADOW_HW" }
+        { SHADOW_HW_FLAG, "SHADOW_HW" },
+        { GEOMETRY_LIGHT_FLAG, "GEOMETRY_LIGHT" }
     };
 
     static const std::string textureFiltersFsh = R"GLSL(
@@ -509,12 +514,12 @@ namespace massif::vt {
             return pos;
         }
         #endif
-        // Draped 2D content receiving terrain shadows needs the elevation uv of the fragment and
+        // 2D content shaded or shadowed by the terrain needs the elevation uv of the fragment and
         // the local mercator height stretch, so its fragment stage can take the SAME terrain
         // normal the surface takes (see commonFsh). The surface shaders declare these themselves
         // under TERRAIN_LIGHT - declaring them twice in one program is a link error, so this copy
         // exists only for the programs that have no lighting of their own.
-        #if defined(TERRAIN) && defined(TERRAIN_SHADOW) && !defined(TERRAIN_LIGHT)
+        #if defined(TERRAIN) && (defined(TERRAIN_SHADOW) || defined(GEOMETRY_LIGHT)) && !defined(TERRAIN_LIGHT)
         varying highp vec2 vElevUV;
         varying mediump float vElevCosh;
         void setTerrainSlopeVaryings(highp vec3 pos) {
@@ -578,13 +583,13 @@ namespace massif::vt {
             return color;
         }
         #endif
-        // The terrain normal at this fragment, for draped 2D content that receives shadows and has
-        // no lighting of its own. Same 3x3 stencil, same uniforms and same varyings as the surface
-        // takes (backgroundFsh), so a road and the ground it lies on get the SAME N.L - and with
-        // it the same slope-scaled shadow bias and the same back-face rule. Taken at normal
-        // incidence instead, a coplanar receiver gets the minimum bias against a caster it shares
-        // its depth with, so half the PCF taps fail and the whole ground shadows itself.
-        #if defined(TERRAIN) && defined(TERRAIN_SHADOW) && !defined(TERRAIN_LIGHT)
+        // The terrain normal at this fragment, for 2D content that is lit or shadowed by the
+        // ground and has no lighting of its own. Same 3x3 stencil, same uniforms and same varyings
+        // as the surface takes (backgroundFsh), so a road and the ground it lies on get the SAME
+        // N.L - and with it the same slope-scaled shadow bias and the same back-face rule. Taken at
+        // normal incidence instead, a coplanar receiver gets the minimum bias against a caster it
+        // shares its depth with, so half the PCF taps fail and the whole ground shadows itself.
+        #if defined(TERRAIN) && (defined(TERRAIN_SHADOW) || defined(GEOMETRY_LIGHT)) && !defined(TERRAIN_LIGHT)
         uniform highp sampler2D uElevationTexture;
         uniform highp vec4 uElevationDecode; // 'vec4' in the vertex stage means highp there
         uniform highp vec4 uElevationTexelSize;
@@ -816,6 +821,41 @@ namespace massif::vt {
         }
         mediump float shadowFactor() {
             return shadowFactorSlope(1.0);
+        }
+        #endif
+        // 2D content standing ON the ground, drawn in the 3D scene instead of baked into the drape:
+        // it takes the ground's sun AND the ground's shadow, from the terrain normal under it.
+        // Without the sun a no-drape layer (contours) kept its full style colour while everything
+        // draped around it was lit - GEOMETRY_LIGHT is what closes that.
+        #if defined(TERRAIN) && defined(GEOMETRY_LIGHT) && !defined(TERRAIN_LIGHT)
+        uniform lowp vec4 uSunColor;        // rgb = colour, a = unused
+        uniform mediump vec2 uLightParams;  // x = sun intensity, y = ambient intensity
+        lowp vec4 applyTerrainShading(lowp vec4 color) {
+            mediump float ndl = terrainNdl();
+            // The same normalised Lambert the draped surface uses (backgroundFsh): ambient is the
+            // floor, the sun fills the remaining headroom. The colour is premultiplied, so scaling
+            // rgb alone is a valid tint and the clamp keeps rgb <= a.
+            mediump vec3 lit = vec3(uLightParams.y) + uSunColor.rgb * ((1.0 - uLightParams.y) * ndl * uLightParams.x);
+        #if defined(TERRAIN_SHADOW) && defined(SHADOW_MASK_IN)
+            lit *= shadowFactorScreen();
+        #elif defined(TERRAIN_SHADOW)
+            lit *= shadowFactorSlope(ndl);
+        #endif
+            return vec4(min(color.rgb * lit, vec3(color.a)), color.a);
+        }
+        #elif defined(TERRAIN_SHADOW) && defined(SHADOW_MASK_IN)
+        // The mask already holds this pixel's terrain shadow; the analytic form would also have to
+        // build the normal first, which is a 3x3 stencil over the elevation texture.
+        lowp vec4 applyTerrainShading(lowp vec4 color) {
+            return vec4(color.rgb * shadowFactorScreen(), color.a);
+        }
+        #elif defined(TERRAIN_SHADOW)
+        lowp vec4 applyTerrainShading(lowp vec4 color) {
+            return vec4(color.rgb * shadowFactorSlope(terrainNdl()), color.a);
+        }
+        #else
+        lowp vec4 applyTerrainShading(lowp vec4 color) {
+            return color;
         }
         #endif
     )GLSL";
@@ -1605,21 +1645,9 @@ namespace massif::vt {
             // quad corners) must not write depth or they block later style layers
             if (color.a < 0.004) discard;
         #endif
-        #ifdef TERRAIN_SHADOW
-            // 2D content standing ON the ground takes the ground's shadow - it is drawn in the 3D
-            // scene now, so a road crossing a shadowed slope stayed lit. N.L comes from the TERRAIN
-            // (terrainNdl), not the geometry, which lies flat and has no meaningful normal: this
-            // receiver is coplanar with what cast into the shadow map, so at normal incidence it
-            // gets the minimum bias, half the PCF taps fail and the ground shadows itself.
-            // The colour is premultiplied, so scaling rgb alone keeps rgb <= a.
-        #ifdef SHADOW_MASK_IN
-            // The mask already holds this pixel's terrain shadow; the analytic form would also
-            // have to build the normal first, which is a 3x3 stencil over the elevation texture.
-            color = vec4(color.rgb * shadowFactorScreen(), color.a);
-        #else
-            color = vec4(color.rgb * shadowFactorSlope(terrainNdl()), color.a);
-        #endif
-        #endif
+            // Sun and shadow of the ground this lies on, from the TERRAIN normal - the geometry
+            // lies flat and has no meaningful normal of its own (see applyTerrainShading).
+            color = applyTerrainShading(color);
         #ifdef LIGHTING_FSH
             glFragColor = applyFog(applyLighting(color, normalize(vNormal)));
         #else
@@ -1786,16 +1814,8 @@ namespace massif::vt {
             // dash gaps) must not write depth or they block later style layers
             if (color.a < 0.004) discard;
         #endif
-        #ifdef TERRAIN_SHADOW
-            // 2D content standing ON the ground takes the ground's shadow (see pointFsh).
-        #ifdef SHADOW_MASK_IN
-            // The mask already holds this pixel's terrain shadow; the analytic form would also
-            // have to build the normal first, which is a 3x3 stencil over the elevation texture.
-            color = vec4(color.rgb * shadowFactorScreen(), color.a);
-        #else
-            color = vec4(color.rgb * shadowFactorSlope(terrainNdl()), color.a);
-        #endif
-        #endif
+            // Sun and shadow of the ground this lies on (see pointFsh).
+            color = applyTerrainShading(color);
         #ifdef LIGHTING_FSH
             glFragColor = applyFog(applyLighting(color, normalize(vNormal)));
         #else
@@ -1873,16 +1893,8 @@ namespace massif::vt {
             // gaps) must not write depth or they block later style layers
             if (color.a < 0.004) discard;
         #endif
-        #ifdef TERRAIN_SHADOW
-            // 2D content standing ON the ground takes the ground's shadow (see pointFsh).
-        #ifdef SHADOW_MASK_IN
-            // The mask already holds this pixel's terrain shadow; the analytic form would also
-            // have to build the normal first, which is a 3x3 stencil over the elevation texture.
-            color = vec4(color.rgb * shadowFactorScreen(), color.a);
-        #else
-            color = vec4(color.rgb * shadowFactorSlope(terrainNdl()), color.a);
-        #endif
-        #endif
+            // Sun and shadow of the ground this lies on (see pointFsh).
+            color = applyTerrainShading(color);
         #ifdef LIGHTING_FSH
             glFragColor = applyFog(applyLighting(color, normalize(vNormal)));
         #else

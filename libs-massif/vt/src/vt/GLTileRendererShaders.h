@@ -820,7 +820,26 @@ namespace massif::vt {
         #endif
     )GLSL";
 
-    static const std::string backgroundVsh = R"GLSL(
+    // Per-fragment terrain lighting needs the elevation uv of the fragment and the local mercator
+    // height stretch; both are linear in the vertex position, so they interpolate. Prepended to
+    // every vertex shader whose fragment stage takes the terrain normal - commonVsh cannot hold it,
+    // the terrain-paint path declares the same varyings itself.
+    static const std::string terrainLightVsh = R"GLSL(
+        #if defined(TERRAIN_LIGHT) && defined(TERRAIN)
+        varying highp vec2 vElevUV;
+        varying mediump float vElevCosh;
+        void setTerrainLightVaryings(highp vec3 pos) {
+            vElevUV = uElevationUV.xy + pos.xy * uElevationUV.zw;
+            highp float lightMY = uElevationScale.y + pos.y * uElevationScale.z;
+            vElevCosh = 0.5 * (exp(lightMY) + exp(-lightMY));
+        }
+        #else
+        void setTerrainLightVaryings(highp vec3 pos) {
+        }
+        #endif
+    )GLSL";
+
+    static const std::string backgroundVsh = terrainLightVsh + R"GLSL(
         attribute vec3 aVertexPosition;
         #if defined(LIGHTING_FSH) || defined(LIGHTING_VSH)
         attribute vec3 aVertexNormal;
@@ -844,22 +863,12 @@ namespace massif::vt {
         uniform highp vec4 uDrapeUVTransform;
         varying highp_opt vec2 vDrapeUV;
         #endif
-        #if defined(TERRAIN_LIGHT) && defined(TERRAIN)
-        // Per-fragment terrain lighting needs the elevation uv of the fragment and the local
-        // mercator height stretch; both are linear in the vertex position, so they interpolate.
-        varying highp vec2 vElevUV;
-        varying mediump float vElevCosh;
-        #endif
 
         void main(void) {
         #ifdef PATTERN
             vUV = aVertexUV * uUVScale;
         #endif
-        #if defined(TERRAIN_LIGHT) && defined(TERRAIN)
-            vElevUV = uElevationUV.xy + aVertexPosition.xy * uElevationUV.zw;
-            highp float lightMY = uElevationScale.y + aVertexPosition.y * uElevationScale.z;
-            vElevCosh = 0.5 * (exp(lightMY) + exp(-lightMY));
-        #endif
+            setTerrainLightVaryings(aVertexPosition);
         #ifdef DRAPE
             // The regular-grid surface vertex xy is the tile-local [0,1] parametrization;
             // it is exactly the uv the tile's fills were baked into the drape texture with.
@@ -891,17 +900,10 @@ namespace massif::vt {
         }
     )GLSL";
 
-    static const std::string backgroundFsh = R"GLSL(
-        uniform lowp vec4 uColor;
-        uniform lowp float uOpacity;
-        #ifdef PATTERN
-        uniform sampler2D uPattern;
-        varying highp_opt vec2 vUV;
-        #endif
-        #ifdef DRAPE
-        uniform sampler2D uDrapeTexture;
-        varying highp_opt vec2 vDrapeUV;
-        #endif
+    // The terrain normal at this fragment and the sun that lights it. Prepended to every fragment
+    // shader that lights draped content - commonFsh cannot hold it, the terrain-paint path declares
+    // the same names for itself and one name declared twice in a stage does not compile.
+    static const std::string terrainLightFsh = R"GLSL(
         #if defined(TERRAIN_LIGHT) && defined(TERRAIN)
         // Precision qualifiers must match the vertex-stage declarations exactly, or the
         // program fails to LINK (same name, different precision is an error in GLSL ES 1.00).
@@ -943,6 +945,19 @@ namespace massif::vt {
             highp float dy = grad.y * uTerrainSlopeScale.y * vElevCosh / duv.y;
             return normalize(vec3(-dx, -dy, 1.0));
         }
+        #endif
+    )GLSL";
+
+    static const std::string backgroundFsh = terrainLightFsh + R"GLSL(
+        uniform lowp vec4 uColor;
+        uniform lowp float uOpacity;
+        #ifdef PATTERN
+        uniform sampler2D uPattern;
+        varying highp_opt vec2 vUV;
+        #endif
+        #ifdef DRAPE
+        uniform sampler2D uDrapeTexture;
+        varying highp_opt vec2 vDrapeUV;
         #endif
         #ifdef LIGHTING_FSH
         varying mediump vec3 vNormal;
@@ -994,7 +1009,7 @@ namespace massif::vt {
         }
     )GLSL";
 
-    static const std::string colormapVsh = R"GLSL(
+    static const std::string colormapVsh = terrainLightVsh + R"GLSL(
         attribute vec3 aVertexPosition;
         #if defined(LIGHTING_FSH) || defined(LIGHTING_VSH)
         attribute vec3 aVertexNormal;
@@ -1012,6 +1027,7 @@ namespace massif::vt {
 
         void main(void) {
             vUV = vec2(uUVMatrix * vec3(aVertexUV, 1.0));
+            setTerrainLightVaryings(aVertexPosition);
         #ifdef LIGHTING_VSH
             vColor = applyLighting(vec4(1.0, 1.0, 1.0, 1.0), aVertexNormal);
         #endif
@@ -1024,7 +1040,7 @@ namespace massif::vt {
         }
     )GLSL";
 
-    static const std::string colormapFsh = R"GLSL(
+    static const std::string colormapFsh = terrainLightFsh + R"GLSL(
         uniform sampler2D uBitmap;
         uniform highp_opt vec4 uUVScale;
         uniform lowp float uOpacity;

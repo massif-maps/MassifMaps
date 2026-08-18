@@ -45,6 +45,11 @@ namespace massif::vt {
 
         virtual ~TileTransformer() = default;
 
+        // True when tile geometry is displaced by a terrain elevation - the style variable
+        // 'render::3d'. The transformer is the right source: the layer builds a new one whenever
+        // the terrain is switched, and the tile caches are dropped with it.
+        virtual bool isElevationBased() const { return false; }
+
         virtual cglib::vec3<double> calculateTileOrigin(const TileId& tileId) const = 0;
         virtual cglib::bbox3<double> calculateTileBBox(const TileId& tileId) const = 0;
         virtual cglib::mat4x4<double> calculateTileMatrix(const TileId& tileId, float coordScale) const = 0;

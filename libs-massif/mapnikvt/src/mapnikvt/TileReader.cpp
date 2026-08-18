@@ -35,6 +35,7 @@ namespace massif::mvt {
         exprContext.setTileId(tileId);
         exprContext.setAdjustedZoom(tileId.zoom + static_cast<int>(_symbolizerContext.getSettings().getZoomLevelBias()));
         exprContext.setStyleParameterStore(_symbolizerContext.getSettings().getStyleParameterStore());
+        exprContext.setRender3D(_transformer && _transformer->isElevationBased());
 
         // What the selecting parameter holds right now, hashed the way each feature hashes the
         // field it is compared with: that is the whole of the selection state a tile carries.
@@ -124,7 +125,7 @@ namespace massif::mvt {
                 explicitFeatureId = explicitFeatureId || field == "mapnik::feature_id";
                 return false;
             }
-            else if (ExpressionContext::isViewStateVariable(field) || ExpressionContext::isStyleParameterVariable(field) || ExpressionContext::isZoomVariable(field)) {
+            else if (ExpressionContext::isViewStateVariable(field) || ExpressionContext::isStyleParameterVariable(field) || ExpressionContext::isZoomVariable(field) || ExpressionContext::isRenderVariable(field)) {
                 return false;
             }
             fields.insert(field);

@@ -25,6 +25,12 @@ namespace massif::mvt {
             }
             return Value();
         }
+        else if (isRenderVariable(name)) {
+            if (name == "render::3d") {
+                return Value(_render3D);
+            }
+            return Value();
+        }
         else if (isMapnikVariable(name)) {
             if (name == "mapnik::geometry_type") {
                 return Value(static_cast<long long>(_featureData->getGeometryType()));

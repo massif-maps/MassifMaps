@@ -32,6 +32,9 @@ namespace massif::mvt {
         void setScaleDenominator(float scaleDenom);
         float getScaleDenominator() const { return _scaleDenom; }
 
+        void setRender3D(bool render3D) { _render3D = render3D; }
+        bool isRender3D() const { return _render3D; }
+
         void setFeatureData(std::shared_ptr<const FeatureData> featureData) { _featureData = std::move(featureData); }
         const std::shared_ptr<const FeatureData>& getFeatureData() const { return _featureData; }
 
@@ -49,6 +52,9 @@ namespace massif::mvt {
         Value getViewStateVariable(const vt::ViewState& viewState, const std::string& name) const;
 
         static bool isViewStateVariable(const std::string& name) { return name.compare(0, 6, "view::") == 0; }
+        // Fixed for the whole tile, like a feature field - NOT a view variable, or every property
+        // reading it would become a per-frame function.
+        static bool isRenderVariable(const std::string& name) { return name.compare(0, 8, "render::") == 0; }
         static bool isMapnikVariable(const std::string& name) { return name.compare(0, 8, "mapnik::") == 0; }
         static bool isZoomVariable(const std::string& name) { return name == "zoom"; }
 
@@ -68,6 +74,7 @@ namespace massif::mvt {
     private:
         vt::TileId _tileId = vt::TileId(0, 0, 0);
         int _adjustedZoom = 0;
+        bool _render3D = false;
         float _scaleDenom = zoom2ScaleDenominator(0);
         std::shared_ptr<const FeatureData> _featureData;
         std::shared_ptr<const StyleParameterStore> _styleParameterStore;

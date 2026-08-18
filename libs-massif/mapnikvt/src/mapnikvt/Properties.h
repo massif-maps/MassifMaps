@@ -76,7 +76,7 @@ namespace massif::mvt {
                         _styleParamVars = true; // parameters live in a store that can be swapped after decoding
                     }
                     else {
-                        _contextVars = true; // mapnik variables, feature fields and zoom are fixed when the tile is decoded
+                        _contextVars = true; // mapnik/render variables, feature fields and zoom are fixed when the tile is decoded
                     }
                 }
                 else {

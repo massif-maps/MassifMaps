@@ -30,7 +30,7 @@ namespace massif::mvt {
             if (auto varExpr = std::get_if<std::shared_ptr<VariableExpression>>(&expr)) {
                 if (auto var = std::get_if<Value>(&(*varExpr)->getVariableExpression())) {
                     std::string name = ValueConverter<std::string>::convert(*var);
-                    if (ExpressionContext::isStyleParameterVariable(name) || ExpressionContext::isZoomVariable(name)) {
+                    if (ExpressionContext::isStyleParameterVariable(name) || ExpressionContext::isZoomVariable(name) || ExpressionContext::isRenderVariable(name)) {
                         result = _context.getVariable(name);
                         return true;
                     }

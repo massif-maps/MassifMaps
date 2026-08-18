@@ -51,7 +51,7 @@ namespace massif::mvt {
             FloatFunctionProperty shadowStrength = FloatFunctionProperty(0.0f);    // 0 = no shadows
             FloatFunctionProperty shadowBias = FloatFunctionProperty(0.25f);       // meters
             FloatFunctionProperty shadowSoftness = FloatFunctionProperty(1.0f);    // PCF radius in shadow texels
-            FloatFunctionProperty shadowDistance = FloatFunctionProperty(0.0f);    // meters, 0 = everything visible
+            FloatFunctionProperty shadowDistance = FloatFunctionProperty(0.0f);    // multiples of the camera-to-focus distance, 0 = built-in 4.5
             FloatFunctionProperty shadowMapSize = FloatFunctionProperty(1024.0f);  // pixels, per cascade
             FloatFunctionProperty shadowCascades = FloatFunctionProperty(3.0f);
             FloatFunctionProperty shadowCasterMargin = FloatFunctionProperty(1.0f); // tiles beyond the visible ones

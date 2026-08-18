@@ -66,77 +66,18 @@ namespace {
         }
     }
 
-    // Convex hull of a small point set (monotone chain), used to turn the endpoints of the visible
-    // frustum edges back into the ground polygon they outline. The visible ground is the
-    // intersection of convex sets, so its footprint is convex and the hull loses nothing.
-    std::vector<cglib::vec2<double> > convexHull2D(std::vector<cglib::vec2<double> > points) {
-        if (points.size() < 3) {
-            return points;
-        }
-        std::sort(points.begin(), points.end(), [](const cglib::vec2<double>& a, const cglib::vec2<double>& b) {
-            return a(0) != b(0) ? a(0) < b(0) : a(1) < b(1);
-        });
-        points.erase(std::unique(points.begin(), points.end(), [](const cglib::vec2<double>& a, const cglib::vec2<double>& b) {
-            return a(0) == b(0) && a(1) == b(1);
-        }), points.end());
-        if (points.size() < 3) {
-            return points;
-        }
-        auto cross = [](const cglib::vec2<double>& o, const cglib::vec2<double>& a, const cglib::vec2<double>& b) {
-            return (a(0) - o(0)) * (b(1) - o(1)) - (a(1) - o(1)) * (b(0) - o(0));
-        };
-        std::vector<cglib::vec2<double> > hull(points.size() * 2);
-        std::size_t k = 0;
-        for (std::size_t i = 0; i < points.size(); i++) {
-            while (k >= 2 && cross(hull[k - 2], hull[k - 1], points[i]) <= 0) {
-                k--;
-            }
-            hull[k++] = points[i];
-        }
-        for (std::size_t i = points.size() - 1, lower = k + 1; i > 0; i--) {
-            while (k >= lower && cross(hull[k - 2], hull[k - 1], points[i - 1]) <= 0) {
-                k--;
-            }
-            hull[k++] = points[i - 1];
-        }
-        hull.resize(k > 0 ? k - 1 : 0); // the first point is repeated at the end
-        return hull;
-    }
-
-    // Sutherland-Hodgman clip of a convex polygon against an axis-aligned rectangle.
-    std::vector<cglib::vec2<double> > clipPolygonToRect(const std::vector<cglib::vec2<double> >& polygon, double minX, double minY, double maxX, double maxY) {
-        std::vector<cglib::vec2<double> > input = polygon, output;
-        for (int side = 0; side < 4 && !input.empty(); side++) {
-            output.clear();
-            int axis = side & 1;
-            bool keepAbove = (side < 2);
-            double limit = (side == 0 ? minX : side == 1 ? minY : side == 2 ? maxX : maxY);
-            auto inside = [axis, keepAbove, limit](const cglib::vec2<double>& p) {
-                return keepAbove ? p(axis) >= limit : p(axis) <= limit;
-            };
-            for (std::size_t i = 0; i < input.size(); i++) {
-                const cglib::vec2<double>& current = input[i];
-                const cglib::vec2<double>& previous = input[(i + input.size() - 1) % input.size()];
-                bool currentInside = inside(current), previousInside = inside(previous);
-                if (currentInside != previousInside) {
-                    double denom = current(axis) - previous(axis);
-                    double t = (std::abs(denom) > 1.0e-12 ? (limit - previous(axis)) / denom : 0.0);
-                    output.emplace_back(previous(0) + (current(0) - previous(0)) * t, previous(1) + (current(1) - previous(1)) * t);
-                }
-                if (currentInside) {
-                    output.push_back(current);
-                }
-            }
-            input = output;
-        }
-        return input;
-    }
 }
 
 namespace massif::vt {
-    // The widest shadow texel that still reads as a shadow rather than a wash, in metres. It bounds
-    // how far the shadowed ground may reach for a given map resolution (see calculateShadowViewProj).
-    static constexpr double TARGET_SHADOW_TEXEL_METERS = 10.0;
+    // How far shadows reach, as a multiple of the camera-to-focus distance. mapbox's model verbatim
+    // (3d-style/render/shadow_renderer.ts: cameraToCenterDistance * 1.5 * 3.0). A METRIC radius
+    // cannot hold at two zooms - the budget this replaces was 10 m x mapSize, i.e. ~10 km at every
+    // camera, which ended a mountain's shadow one screen away at z12.
+    static constexpr double SHADOW_CUTOUT_DISTANCE_FACTOR = 4.5;
+    // The cascade ladder steps by this between pages, anchored on the cutout, so two cascades split
+    // at cutout/3 - mapbox's cascadeSplitDist = cameraToCenterDistance * 1.5 against a cutout of
+    // 4.5x, exactly.
+    static constexpr double SHADOW_CASCADE_STEP = 3.0;
     GLTileRenderer::GLTileRenderer(std::shared_ptr<GLExtensions> glExtensions, std::shared_ptr<const TileTransformer> transformer, float scale) :
         _tileSurfaceBuilder(transformer), _glExtensions(std::move(glExtensions)), _transformer(std::move(transformer)), _scale(scale)
     {
@@ -289,7 +230,7 @@ namespace massif::vt {
         _tileMasks = mode;
     }
 
-    void GLTileRenderer::setTerrainShadowMap(GLuint texture, int mapSize, int cascades, const std::array<float, MAX_SHADOW_CASCADES>& depthBiases, float strength, float softness, const std::array<cglib::mat4x4<double>, MAX_SHADOW_CASCADES>& lightViewProjs) {
+    void GLTileRenderer::setTerrainShadowMap(GLuint texture, int mapSize, int cascades, const std::array<float, MAX_SHADOW_CASCADES>& depthBiases, float strength, float softness, bool depthTexture, bool hardwarePCF, float normalOffset, const cglib::vec3<float>& sunDir, const std::array<cglib::mat4x4<double>, MAX_SHADOW_CASCADES>& lightViewProjs) {
         std::lock_guard<std::mutex> lock(_mutex);
 
         _terrainShadowTexture = texture;
@@ -298,6 +239,10 @@ namespace massif::vt {
         _terrainShadowBiases = depthBiases;
         _terrainShadowStrength = strength;
         _terrainShadowSoftness = softness;
+        _terrainShadowDepthTexture = depthTexture;
+        _terrainShadowHardwarePCF = hardwarePCF;
+        _terrainShadowNormalOffset = normalOffset;
+        _terrainShadowSunDir = sunDir;
         _terrainShadowViewProjs = lightViewProjs;
         // Pages beyond the cascade count do not exist in the atlas, and the receiver lookup is
         // compiled for the count (see shadowReceiverFlags), so those slots are never uploaded and
@@ -337,7 +282,7 @@ namespace massif::vt {
         resetProgramState();
     }
 
-    bool GLTileRenderer::calculateShadowViewProj(const std::vector<TileId>& tileIds, const std::vector<TileId>& casterTileIds, const cglib::vec3<float>& sunDir, const std::vector<std::pair<double, double> >& tileHeights, double minHeight, double maxHeight, float maxDistanceMeters, int mapSize, int cascade, int cascadeCount, std::vector<TileId>& boxCasterTileIds, double& depthRangeMeters, double& texelMeters, cglib::mat4x4<double>& lightViewProj) const {
+    bool GLTileRenderer::calculateShadowViewProj(const std::vector<TileId>& tileIds, const std::vector<TileId>& casterTileIds, const cglib::vec3<float>& sunDir, const std::vector<std::pair<double, double> >& tileHeights, double minHeight, double maxHeight, float distanceFactor, double cameraDistance, int mapSize, int cascade, int cascadeCount, std::vector<TileId>& boxCasterTileIds, double& depthRangeMeters, double& texelMeters, cglib::mat4x4<double>& lightViewProj) const {
         std::lock_guard<std::mutex> lock(_mutex);
 
         if (tileIds.empty()) {
@@ -391,225 +336,66 @@ namespace massif::vt {
             minZ = minHeight;
             maxZ = maxHeight;
         }
-        // Clamp the covered ground to what the camera SEES: the map's texel size is the ground it
-        // spans over its resolution, and at a tilt that ground is a narrow wedge. Kept as a POLYGON
-        // - the box is fitted in LIGHT space, and a world-axis-aligned rectangle rotated into it
-        // bounds up to twice the extent per axis with the sun diagonal to the map.
-        std::vector<cglib::vec2<double> > groundPolygon;
+        // The box for this cascade is the MINIMUM BOUNDING SPHERE of its slice of the view frustum,
+        // which is mapbox's model verbatim (3d-style/render/shadow_renderer.ts createLightMatrix,
+        // "rotation invariant shadow volume"). Its radius is a function of the slice distances and
+        // the field of view ALONE - not of the pitch, the bearing or the sun azimuth - so one texel
+        // is the same size at every camera. That is the whole point, and it is why mapbox's shadows
+        // look identical at a low tilt and straight down where a ground-footprint fit does not: a
+        // wedge of visible ground stretches towards the horizon as the view flattens, and its extent
+        // in LIGHT space also swings with the sun, so the texel size followed both.
+        double sphereRadius = 0;
+        cglib::vec3<double> sphereCenter(0, 0, 0);
         {
-            double visMinX = 0, visMinY = 0, visMaxX = 0, visMaxY = 0;
-            bool visFirst = true;
-            groundPolygon.clear();
-            cglib::mat4x4<double> invCameraProj = cglib::inverse(_viewState.projectionMatrix * _viewState.cameraMatrix);
-            double maxDistance = (maxDistanceMeters > 0 ? maxDistanceMeters * metersToInternal : 0);
-            const cglib::vec3<double>& eye = _viewState.origin; // camera position in world units
-            // Each frustum edge, reduced to the piece that can see shadowed GROUND. The footprint is
-            // built from the sampled rays' distance RANGE and opening ANGLE, not from the rays
-            // themselves: a ray crosses the slab over a short piece of its length and the samples'
-            // crossings are disjoint, so a cascade landing in a gap intersects none and reports an
-            // empty box (the far half of the view losing its shadows). More rays only shrink the gaps.
-            cglib::vec2<double> viewDir(1, 0);
-            double halfAngle = 0;
-            double groundNear = 0, groundFar = 0;
-            bool rangeFirst = true;
-            auto sampleRay = [&](double ndcX, double ndcY, cglib::vec3<double>& origin, double& d0, double& length) {
-                cglib::vec3<double> p0 = cglib::proj_p(cglib::transform(cglib::vec4<double>(ndcX, ndcY, -1.0, 1.0), invCameraProj));
-                cglib::vec3<double> p1 = cglib::proj_p(cglib::transform(cglib::vec4<double>(ndcX, ndcY,  1.0, 1.0), invCameraProj));
-                origin = p0;
-                d0 = cglib::length(p0 - eye);
-                cglib::vec3<double> delta = p1 - p0;
-                length = cglib::length(delta);
-                return delta;
-            };
-            {
-                cglib::vec3<double> centreOrigin;
-                double centreD0 = 0, centreLength = 0;
-                cglib::vec3<double> centreDelta = sampleRay(0.0, 0.0, centreOrigin, centreD0, centreLength);
-                cglib::vec2<double> centreHorizontal(centreDelta(0), centreDelta(1));
-                if (cglib::length(centreHorizontal) > 1.0e-12) {
-                    viewDir = cglib::unit(centreHorizontal);
-                }
-            }
-            const int GROUND_SAMPLES = 5; // screen heights sampled per side, bottom to top
-            for (int sample = 0; sample < 2 * GROUND_SAMPLES; sample++) {
-                double ndcX = (sample & 1 ? 1.0 : -1.0);
-                double ndcY = -1.0 + 2.0 * (sample / 2) / (GROUND_SAMPLES - 1);
-                cglib::vec3<double> p0;
-                double d0 = 0, length = 0;
-                cglib::vec3<double> delta = sampleRay(ndcX, ndcY, p0, d0, length);
-                if (!(length > 0)) {
-                    continue;
-                }
-                cglib::vec2<double> horizontal(delta(0), delta(1));
-                if (cglib::length(horizontal) > 1.0e-12) {
-                    cglib::vec2<double> unitHorizontal = cglib::unit(horizontal);
-                    double cosAngle = std::min(1.0, std::max(-1.0, cglib::dot_product(unitHorizontal, viewDir)));
-                    halfAngle = std::max(halfAngle, std::acos(cosAngle));
-                }
-                double t0 = 0, t1 = 1;
-                if (maxDistance > 0 && length > maxDistance) {
-                    t1 = maxDistance / length; // cap the far end at the shadow distance
-                }
-                if (std::abs(delta(2)) > 1.0e-12) {
-                    double ta = (minZ - p0(2)) / delta(2), tb = (maxZ - p0(2)) / delta(2);
-                    t0 = std::max(t0, std::min(ta, tb));
-                    t1 = std::min(t1, std::max(ta, tb));
-                } else if (p0(2) < minZ || p0(2) > maxZ) {
-                    continue; // parallel to the slab and outside it
-                }
-                if (t1 < t0) {
-                    continue; // this ray never crosses the shadowed height range
-                }
-                if (rangeFirst) {
-                    groundNear = d0 + t0 * length;
-                    groundFar = d0 + t1 * length;
-                    rangeFirst = false;
-                } else {
-                    groundNear = std::min(groundNear, d0 + t0 * length);
-                    groundFar = std::max(groundFar, d0 + t1 * length);
-                }
-            }
-            // Looking straight down, the rays fan out into EVERY azimuth and the centre ray's own
-            // azimuth is numerical noise. Capping the opening angle there cuts the sector and
-            // leaves whatever falls outside it - the top and the bottom of the screen - with no
-            // light box over it and therefore no shadow. Past a wide fan the honest footprint is
-            // the whole disc around the camera, which the tile-cover rectangle then bounds anyway.
-            bool fullCircle = (halfAngle > 1.0);
-            if (fullCircle) {
-                halfAngle = 3.14159265358979323846;
-            }
-            // Cap how far the shadowed ground reaches: unbounded it runs to the horizon at a tilt
-            // (measured 176 km of box at tilt 39 against 12 km at tilt 35 - four degrees apart), and
-            // texel size follows the extent almost linearly. The unit is relief/tan(altitude), the
-            // distance a ridge throws its shadow, i.e. the scale over which shadows carry
-            // information. Three of them, because groundNear is a distance from the EYE (15 km up at
-            // zoom 11) and one ended the shadows just past the bottom of the screen.
-            if (groundFar > groundNear) {
-                cglib::vec3<double> sunUnit = cglib::unit(cglib::vec3<double>(sunDir(0), sunDir(1), sunDir(2)));
-                double horizontal = std::sqrt(std::max(0.0, 1.0 - sunUnit(2) * sunUnit(2)));
-                double slabExtent = (maxZ - minZ) * horizontal / std::max(0.05, std::abs(sunUnit(2)));
-                // The second term is what makes this scale with the VIEW rather than being a fixed
-                // number of kilometres. groundNear is the distance to the nearest visible ground,
-                // so it grows both as the camera rises and as the view tilts towards the horizon -
-                // exactly the two ways the useful shadow range grows. A fixed 8 km floor meant that
-                // zooming into a city still spent the map on 8 km of ground while the camera was
-                // 400 m up: 8 m texels against buildings 10-30 m wide, which is why building
-                // shadows were blobs and got worse the more the view was tilted. At z16 this gives
-                // about a kilometre and a metre-scale texel instead.
-                double allowedGround = std::min(std::max(3.0 * slabExtent, 4.0 * groundNear), 60000.0 * metersToInternal);
-                // And never further than the map can REPRESENT. The outer cascade's texel is its
-                // extent over the resolution, so shadowing 50 km through a 1024 page buys texels
-                // wider than the ridges casting into them - a grey wash, not a shadow. Bounding the
-                // range by (target texel x resolution) instead ties how far shadows reach to how
-                // well they can be drawn, which is what the eye reads. Measured on the Crosscall,
-                // z14 tilt 30: 3.3/13.1/52.6 m texels and 205 caster tiles unbounded, against
-                // 1.2/1.9/8.4 m and 110 tiles here, with nothing visibly lost in the distance.
-                allowedGround = std::min(allowedGround, TARGET_SHADOW_TEXEL_METERS * metersToInternal * std::max(1, mapSize));
-                allowedGround = std::max(allowedGround, 1000.0 * metersToInternal);
-                if (maxDistance > 0) {
-                    allowedGround = maxDistance; // an explicit distance is the caller's decision
-                }
-                groundFar = std::min(groundFar, groundNear + allowedGround);
-            }
-            // Split the GROUND distance range, not the raw frustum: above a mountain the first
-            // kilometres of every edge are air, and a cascade cut from the frustum owns only sky.
-            // OVERLAPPING by 40%, neither nested nor disjoint: fully nested makes the outermost
-            // cascade span the whole visible range (the 176 km box), fully disjoint drops fragments
-            // that just fail the near cascade's PCF margin through to one that does not contain
-            // them either - unshadowed patches with straight edges.
-            // Geometric with a token linear part (a pixel covers ground in proportion to distance);
-            // a larger linear term hands the near cascade kilometres and staircases it at a tilt.
-            double sliceNear = groundNear, sliceFar = groundFar;
-            if (cascadeCount > 1 && groundFar > groundNear && groundNear > 0) {
-                // The ratio being split is capped at 100. When the camera sits INSIDE the height
-                // slab - anywhere near mountains, or at a city zoom where the cover reaches the
-                // hills - the frustum rays start already inside it, so groundNear collapses to the
-                // near plane, a few metres. A geometric split over a ratio of thousands then gives
-                // the near cascade a few tens of METRES of ground and hands everything the user is
-                // actually looking at to the coarse ones. Capped, the ladder stays useful: with
-                // 3 cascades the first covers about a hundredth of the range, the last all of it.
-                double splitNear = std::max(groundNear, groundFar / 100.0);
-                auto splitFar = [&](int index) {
-                    if (index + 1 >= cascadeCount) {
-                        return groundFar; // the last cascade always reaches the end of the range
-                    }
-                    double part = static_cast<double>(index + 1) / cascadeCount;
-                    double logSplit = splitNear * std::pow(groundFar / splitNear, part);
-                    double linearSplit = splitNear + (groundFar - splitNear) * part;
-                    return 0.95 * logSplit + 0.05 * linearSplit;
-                };
-                sliceFar = splitFar(cascade);
-                if (cascade > 0) {
-                    sliceNear = groundNear + (splitFar(cascade - 1) - groundNear) * 0.6;
-                }
-            }
-            // The ground this cascade covers is the piece of the view cone between two distances:
-            // an annulus sector, centred on the camera, spanning the frustum's horizontal opening
-            // angle. Its inner and outer radii are the horizontal distances at which a slant range
-            // meets the slab - taken at BOTH slab heights, since the terrain in between is what
-            // receives. Built this way the footprint exists for every slice inside the distance
-            // range, which is what the ray-intersection version could not guarantee.
-            if (!rangeFirst && sliceFar > 0) {
-                // A sector is well approximated by five directions; a full circle sampled five
-                // times is a pentagon INSIDE the disc, which would clip the corners off the very
-                // footprint this is meant to cover.
-                const int ANGLE_SAMPLES = (fullCircle ? 13 : 5);
-                for (int level = 0; level < 2; level++) {
-                    // CLAMPED at zero: with mountains in the cover the top of the slab can be ABOVE
-                    // the camera, and then |height| > distance makes the radius zero - every sample
-                    // collapses onto the camera position, the footprint has fewer than three points
-                    // and falls back to the WHOLE tile cover. That is how the nearest cascade ended
-                    // up with the coarsest box of the three (measured 31 m for cascade 0 against
-                    // 2.7 m for cascade 1). A slab face at or above the eye is treated as being at
-                    // eye height, which covers the ground conservatively instead of collapsing.
-                    double height = std::max(0.0, eye(2) - (level ? maxZ : minZ));
-                    for (int end = 0; end < 2; end++) {
-                        double distance = (end ? sliceFar : sliceNear);
-                        double radius = std::sqrt(std::max(0.0, distance * distance - height * height));
-                        for (int i = 0; i < ANGLE_SAMPLES; i++) {
-                            double angle = halfAngle * (-1.0 + 2.0 * i / (ANGLE_SAMPLES - 1));
-                            double c = std::cos(angle), s = std::sin(angle);
-                            cglib::vec2<double> direction(viewDir(0) * c - viewDir(1) * s, viewDir(0) * s + viewDir(1) * c);
-                            double x = eye(0) + direction(0) * radius;
-                            double y = eye(1) + direction(1) * radius;
-                            groundPolygon.emplace_back(x, y);
-                            if (visFirst) {
-                                visMinX = visMaxX = x;
-                                visMinY = visMaxY = y;
-                                visFirst = false;
-                            } else {
-                                visMinX = std::min(visMinX, x); visMaxX = std::max(visMaxX, x);
-                                visMinY = std::min(visMinY, y); visMaxY = std::max(visMaxY, y);
-                            }
-                        }
-                    }
-                }
-            }
-            // Narrowing to the visible slice is an OPTIMISATION - the drawn tiles are the ground
-            // that can be shadowed at all, and this only trims them to the part this cascade
-            // covers. When the trim comes out empty the answer is therefore the tiles, NOT failure:
-            // a cascade slice can miss the cover completely (at a high zoom the cover is a handful
-            // of tiles around the focus while the near slice sits in front of them), and cascade 0
-            // returning false takes every shadow on screen with it. Measured: z16 tilt 50 over
-            // Grenoble, 4 drape tiles, "shadows WANTED BUT UNAVAILABLE" and a black-and-white map.
-            if (!visFirst) {
-                double trimMinX = std::max(minX, visMinX), trimMaxX = std::min(maxX, visMaxX);
-                double trimMinY = std::max(minY, visMinY), trimMaxY = std::min(maxY, visMaxY);
-                if (trimMaxX > trimMinX && trimMaxY > trimMinY) {
-                    minX = trimMinX; maxX = trimMaxX;
-                    minY = trimMinY; maxY = trimMaxY;
-                }
-            } else if (maxDistance > 0) {
-                double trimMinX = std::max(minX, eye(0) - maxDistance), trimMaxX = std::min(maxX, eye(0) + maxDistance);
-                double trimMinY = std::max(minY, eye(1) - maxDistance), trimMaxY = std::min(maxY, eye(1) + maxDistance);
-                if (trimMaxX > trimMinX && trimMaxY > trimMinY) {
-                    minX = trimMinX; maxX = trimMaxX;
-                    minY = trimMinY; maxY = trimMaxY;
-                }
-            }
-            if (maxX <= minX || maxY <= minY) {
-                texelMeters = -5; // the drawn tiles themselves are degenerate: nothing to shadow
+            // The cutout is a distance from the CAMERA, in multiples of the camera-to-focus
+            // distance. That distance follows the zoom alone, so the same factor holds from a city
+            // to a massif.
+            // The camera-to-focus distance is passed IN, not read from _viewState: that field is
+            // filled by TileRenderer::onDrawFrame, which runs after the shadow pass, so the fit
+            // would be reading the previous frame's value or none at all.
+            double cutout = (cameraDistance > 0 ? (distanceFactor > 0 ? distanceFactor : SHADOW_CUTOUT_DISTANCE_FACTOR) * cameraDistance : 0);
+            if (!(cutout > 0)) {
+                texelMeters = -4; // no camera-to-focus distance: nothing to fit a slice to
                 return false;
+            }
+            // Slices step by SHADOW_CASCADE_STEP from the cutout, so two cascades split at
+            // cutout/3 - mapbox's 1.5x / 4.5x of the camera distance exactly.
+            auto sliceFarAt = [&](int index) {
+                double f = cutout;
+                for (int i = index; i + 1 < cascadeCount; i++) {
+                    f /= SHADOW_CASCADE_STEP;
+                }
+                return f;
+            };
+            double sliceNear = (cascade > 0 ? sliceFarAt(cascade - 1) : 0.0);
+            double sliceFar = sliceFarAt(cascade);
+            // k is the tangent of the half-angle to a frustum CORNER, taken from the projection
+            // matrix so it needs no field-of-view plumbing: m(0,0) = 1/tan(fovX/2), m(1,1) = 1/tan(fovY/2).
+            const cglib::mat4x4<double>& proj = _viewState.projectionMatrix;
+            double tanX = (std::abs(proj(0, 0)) > 1.0e-12 ? 1.0 / std::abs(proj(0, 0)) : 1.0);
+            double tanY = (std::abs(proj(1, 1)) > 1.0e-12 ? 1.0 / std::abs(proj(1, 1)) : 1.0);
+            double k2 = tanX * tanX + tanY * tanY;
+            double farMinusNear = sliceFar - sliceNear, farPlusNear = sliceFar + sliceNear;
+            double centerDepth = 0;
+            if (k2 > farMinusNear / std::max(1.0e-12, farPlusNear)) {
+                centerDepth = sliceFar;
+                sphereRadius = sliceFar * std::sqrt(k2);
+            } else {
+                centerDepth = 0.5 * farPlusNear * (1.0 + k2);
+                sphereRadius = 0.5 * std::sqrt(farMinusNear * farMinusNear + 2.0 * (sliceFar * sliceFar + sliceNear * sliceNear) * k2 + farPlusNear * farPlusNear * k2 * k2);
+            }
+            // Half a texel of slack, so snapping the box below cannot uncover its own edge.
+            sphereRadius *= static_cast<double>(mapSize) / std::max(1, mapSize - 1);
+            // The camera looks along -Z of its own basis; orientation holds that basis in world.
+            cglib::vec3<double> viewDir = -cglib::vec3<double>::convert(_viewState.orientation[2]);
+            sphereCenter = _viewState.origin + viewDir * centerDepth;
+            // The slab narrowing and the caster prefilter below work on a world rectangle; the
+            // sphere's own bounds are that rectangle, intersected with the drawn tiles.
+            double trimMinX = std::max(minX, sphereCenter(0) - sphereRadius), trimMaxX = std::min(maxX, sphereCenter(0) + sphereRadius);
+            double trimMinY = std::max(minY, sphereCenter(1) - sphereRadius), trimMaxY = std::min(maxY, sphereCenter(1) + sphereRadius);
+            if (trimMaxX > trimMinX && trimMaxY > trimMinY) {
+                minX = trimMinX; maxX = trimMaxX;
+                minY = trimMinY; maxY = trimMaxY;
             }
         }
 
@@ -693,30 +479,28 @@ namespace massif::vt {
         // reused. Anchored to the world, the texel lattice below is absolute.
         cglib::mat4x4<double> lightView = cglib::lookat4_matrix(dir, cglib::vec3<double>(0, 0, 0), up);
 
-        // SIDES fitted to the ground that RECEIVES shadows, DEPTH range to the ground that CASTS
-        // them: fitting the sides to the casters too means every margin tile coarsens every texel
-        // (raising the caster margin blurred the building shadows). Sides take the visible-ground
-        // POLYGON, not its world-axis-aligned rectangle - see collectShadowGroundPolygon.
-        std::vector<cglib::vec2<double> > footprint = clipPolygonToRect(convexHull2D(groundPolygon), minX, minY, maxX, maxY);
-        if (footprint.size() < 3) {
-            footprint.clear(); // no usable wedge (or it misses the tiles entirely): fall back to the rectangle
-            footprint.emplace_back(minX, minY);
-            footprint.emplace_back(maxX, minY);
-            footprint.emplace_back(maxX, maxY);
-            footprint.emplace_back(minX, maxY);
-        }
-        double l = 0, r = 0, b = 0, t = 0, n = 0, f = 0;
-        bool fitFirst = true;
-        for (const cglib::vec2<double>& corner : footprint) {
-            for (int level = 0; level < 2; level++) {
-                cglib::vec4<double> p = cglib::transform(cglib::vec4<double>(corner(0), corner(1), level ? maxZ : minZ, 1.0), lightView);
-                if (fitFirst) {
-                    l = r = p(0); b = t = p(1); n = f = -p(2);
-                    fitFirst = false;
-                } else {
-                    l = std::min(l, p(0)); r = std::max(r, p(0));
-                    b = std::min(b, p(1)); t = std::max(t, p(1));
-                    n = std::min(n, -p(2)); f = std::max(f, -p(2));
+        // SIDES are the bounding sphere, DEPTH comes from the ground that CASTS: a sphere projects
+        // to the same square from every direction, which is what makes the texel size independent
+        // of the pitch, the bearing and the sun azimuth. Fitting the sides to the casters as well
+        // would let every margin tile coarsen every texel.
+        cglib::vec4<double> lightCenter = cglib::transform(cglib::vec4<double>(sphereCenter(0), sphereCenter(1), sphereCenter(2), 1.0), lightView);
+        double l = lightCenter(0) - sphereRadius, r = lightCenter(0) + sphereRadius;
+        double b = lightCenter(1) - sphereRadius, t = lightCenter(1) + sphereRadius;
+        double n = 0, f = 0;
+        {
+            // The depth range still comes from the slab the receivers live in; the caster loop below
+            // widens it to whatever actually casts into this box.
+            bool fitFirst = true;
+            for (int corner = 0; corner < 4; corner++) {
+                for (int level = 0; level < 2; level++) {
+                    double x = (corner & 1 ? maxX : minX), y = (corner & 2 ? maxY : minY);
+                    cglib::vec4<double> p = cglib::transform(cglib::vec4<double>(x, y, level ? maxZ : minZ, 1.0), lightView);
+                    if (fitFirst) {
+                        n = f = -p(2);
+                        fitFirst = false;
+                    } else {
+                        n = std::min(n, -p(2)); f = std::max(f, -p(2));
+                    }
                 }
             }
         }
@@ -829,6 +613,7 @@ namespace massif::vt {
                     // is not the terrain it stands for and is not what the receiver uses either (a
                     // tile without elevation receives no shadow at all).
                     if (!setupTerrainUniforms(shaderProgram, tileId, surfaceFrame, true)) {
+                        _shadowCastersMissingElevation++;
                         continue;
                     }
                     glUniformMatrix4fv(shaderProgram.uniforms[U_MVPMATRIX], 1, GL_FALSE, mvpMatrix.data());
@@ -2011,7 +1796,13 @@ namespace massif::vt {
         unsigned int cascadeFlag = (_terrainShadowCascades >= 4 ? SHADOW_CASCADES4_FLAG :
                                     _terrainShadowCascades == 3 ? SHADOW_CASCADES3_FLAG :
                                     _terrainShadowCascades == 2 ? SHADOW_CASCADES2_FLAG : 0);
-        return TERRAIN_SHADOW_FLAG | DERIVATIVES_FLAG | cascadeFlag;
+        // Hardware comparison needs BOTH a real depth texture to compare against and ESSL 3.00 for
+        // the sampler type. Either missing falls back to manual taps, not to no shadows.
+        unsigned int hwFlags = 0;
+        if (_terrainShadowDepthTexture) {
+            hwFlags = SHADOW_DEPTH_TEXTURE_FLAG | (_terrainShadowHardwarePCF ? (ESSL3_FLAG | SHADOW_HW_FLAG) : 0);
+        }
+        return TERRAIN_SHADOW_FLAG | DERIVATIVES_FLAG | cascadeFlag | hwFlags;
     }
 
     void GLTileRenderer::warmTerrainRasterShader() {
@@ -2042,6 +1833,44 @@ namespace massif::vt {
         return shadowReceiverFlags() | (_terrainShadowMaskTexture != 0 ? SHADOW_MASK_IN_FLAG : 0);
     }
 
+    void GLTileRenderer::setupShadowNormalOffsetUniforms(const ShaderProgram& shaderProgram, const cglib::mat4x4<double>& tileFrame) const {
+        cglib::vec4<float> offsets = calculateShadowNormalOffsets(tileFrame);
+        glUniform4f(shaderProgram.uniforms[U_SHADOWNORMALOFFSET], offsets(0), offsets(1), offsets(2), offsets(3));
+        glUniform3f(shaderProgram.uniforms[U_SHADOWSUNDIR], _terrainShadowSunDir(0), _terrainShadowSunDir(1), _terrainShadowSunDir(2));
+    }
+
+    cglib::vec4<float> GLTileRenderer::calculateShadowNormalOffsets(const cglib::mat4x4<double>& tileFrame) const {
+        // The normal offset is a number of shadow-map TEXELS, and the shader adds it to a
+        // tile-local position. One texel is (box width / mapSize) in world units, and the box width
+        // is read straight off the light matrix: its ortho part scales x by 2/(r-l), and the view
+        // part is a pure rotation, so the first row's LENGTH is that scale. Reading it back here
+        // instead of threading it through the caller keeps the two in step by construction.
+        cglib::vec4<float> offsets(0.0f, 0.0f, 0.0f, 0.0f);
+        double tileScale = cglib::length(cglib::vec3<double>(tileFrame(0, 0), tileFrame(0, 1), tileFrame(0, 2)));
+        if (!(tileScale > 0) || !(_terrainShadowNormalOffset > 0) || _terrainShadowMapSize <= 0) {
+            return offsets;
+        }
+        // CLAMPED to the near cascade's offset, not each cascade's own. The offset moves the sample
+        // across the shadow map, so on the far cascade - whose texel is metres of ground - three of
+        // them walk a roof out of the mountain shadow it stands in, and the further the value is
+        // raised the more of the roof loses it. mapbox does not hit this: two cascades over a
+        // shorter range, so their worst texel is small. Acne is a NEAR-surface problem anyway.
+        double nearOffsetWorld = 0;
+        for (int i = 0; i < _terrainShadowCascades; i++) {
+            const cglib::mat4x4<double>& m = _terrainShadowViewProjs[i];
+            double boxScale = cglib::length(cglib::vec3<double>(m(0, 0), m(0, 1), m(0, 2)));
+            if (!(boxScale > 0)) {
+                continue;
+            }
+            double offsetWorld = _terrainShadowNormalOffset * 2.0 / (boxScale * _terrainShadowMapSize);
+            if (i == 0) {
+                nearOffsetWorld = offsetWorld;
+            }
+            offsets[i] = static_cast<float>(std::min(offsetWorld, nearOffsetWorld) / tileScale);
+        }
+        return offsets;
+    }
+
     void GLTileRenderer::setupSurfaceShadowUniforms(const ShaderProgram& shaderProgram, const cglib::mat4x4<double>& surfaceFrame, bool hasElevation) {
         if (!_terrainShadowMaskPass && _terrainShadowMaskTexture != 0) {
             glActiveTexture(GL_TEXTURE2);
@@ -2056,6 +1885,7 @@ namespace massif::vt {
             shadowMatrices[i] = cglib::mat4x4<float>::convert(_terrainShadowViewProjs[i] * surfaceFrame);
         }
         glUniformMatrix4fv(shaderProgram.uniforms[U_SHADOWMATRIX], _terrainShadowCascades, GL_FALSE, shadowMatrices[0].data());
+        setupShadowNormalOffsetUniforms(shaderProgram, surfaceFrame);
         glActiveTexture(GL_TEXTURE2);
         glBindTexture(GL_TEXTURE_2D, _terrainShadowTexture);
         glUniform1i(shaderProgram.uniforms[U_SHADOWTEXTURE], 2);
@@ -5317,6 +5147,7 @@ namespace massif::vt {
                 shadowMatrices[i] = cglib::mat4x4<float>::convert(_terrainShadowViewProjs[i] * shadowFrame);
             }
             glUniformMatrix4fv(shaderProgram.uniforms[U_SHADOWMATRIX], _terrainShadowCascades, GL_FALSE, shadowMatrices[0].data());
+            setupShadowNormalOffsetUniforms(shaderProgram, shadowFrame);
             glActiveTexture(GL_TEXTURE2);
             glBindTexture(GL_TEXTURE_2D, _terrainShadowTexture);
             glUniform1i(shaderProgram.uniforms[U_SHADOWTEXTURE], 2);
@@ -5878,7 +5709,23 @@ namespace massif::vt {
             fogCommonFsh.replace(fogCommonFsh.find(FOG_BLEND_PLACEHOLDER), FOG_BLEND_PLACEHOLDER.size(), _fogShaderSource.empty() ? fogBlendFsh : _fogShaderSource);
 
             ShaderProgram shaderProgram;
-            createShaderProgram(shaderProgram, commonVsh + lightingVsh + vsh, fogCommonFsh + lightingFsh + filterFsh + fsh, defs, uniformMap, attribMap);
+            std::string fullVsh = commonVsh + lightingVsh + vsh;
+            std::string fullFsh = fogCommonFsh + lightingFsh + filterFsh + fsh;
+            try {
+                createShaderProgram(shaderProgram, fullVsh, fullFsh, defs, uniformMap, attribMap);
+            } catch (const std::exception& ex) {
+                // A driver that will not take the ESSL 3.00 variant - or an application shader
+                // concatenated into it that is 1.00-only - must not take the whole map with it.
+                // The 1.00 path is a complete implementation, only slower.
+                if (defs.count("ESSL3") == 0) {
+                    throw;
+                }
+                _essl3Failed = true; // the owner logs it once; vt has no logger of its own
+                std::set<std::string> fallbackDefs = defs;
+                fallbackDefs.erase("ESSL3");
+                fallbackDefs.erase("SHADOW_HW");
+                createShaderProgram(shaderProgram, fullVsh, fullFsh, fallbackDefs, uniformMap, attribMap);
+            }
 
             it = _shaderProgramMap.emplace(shaderProgramId, shaderProgram).first;
         }
@@ -5949,10 +5796,26 @@ namespace massif::vt {
     }
 
     void GLTileRenderer::createShaderProgram(ShaderProgram& shaderProgram, const std::string& vsh, const std::string& fsh, const std::set<std::string>& defs, const std::map<std::string, int>& uniformMap, const std::map<std::string, int>& attribMap) {
-        auto compileShader = [&defs](GLenum type, const std::string& sh) -> GLuint {
-            std::string shaderSourceStr = "#version 100\n";
+        // GLSL ES 3.00 for the programs that ask for it, 1.00 for the rest, from ONE set of shader
+        // sources: the differences are a handful of renamed keywords, and mapbox does the same (their
+        // fragment shaders write `glFragColor`, a macro, for this reason). The only source-level cost
+        // is that a fragment shader writes glFragColor, never gl_FragColor - a name starting with gl_
+        // cannot be #defined, so that one had to be a real rename.
+        bool essl3 = defs.count("ESSL3") > 0;
+        auto compileShader = [&defs, essl3](GLenum type, const std::string& sh) -> GLuint {
+            std::string shaderSourceStr = essl3 ? "#version 300 es\n" : "#version 100\n";
             for (const std::string& def : defs) {
                 shaderSourceStr += "#define " + def + "\n";
+            }
+            if (essl3) {
+                shaderSourceStr += "#define texture2D texture\n#define texture2DLod textureLod\n";
+                if (type == GL_VERTEX_SHADER) {
+                    shaderSourceStr += "#define attribute in\n#define varying out\n";
+                } else {
+                    shaderSourceStr += "#define varying in\nout mediump vec4 glFragColor;\n";
+                }
+            } else if (type == GL_FRAGMENT_SHADER) {
+                shaderSourceStr += "#define glFragColor gl_FragColor\n";
             }
             shaderSourceStr += sh;
 
@@ -5970,7 +5833,38 @@ namespace massif::vt {
                 glGetShaderInfoLog(shader, infoLogLength, &charactersWritten, infoLog.data());
                 std::string msg(infoLog.begin(), infoLog.begin() + charactersWritten);
                 glDeleteShader(shader);
-                throw std::runtime_error("Shader compiling failed: " + msg);
+                // The reported line number is into the CONCATENATED source, which nothing on disk
+                // matches - quote it, or every compile error costs a round of guessing.
+                std::size_t colon = msg.find(':');
+                std::size_t colon2 = colon == std::string::npos ? std::string::npos : msg.find(':', colon + 1);
+                int line = 0;
+                if (colon2 != std::string::npos) {
+                    line = std::atoi(msg.c_str() + colon2 + 1); // "ERROR: 0:376:" - the line is after the SECOND colon
+                }
+                if (line > 0) {
+                    std::size_t pos = 0;
+                    for (int i = 1; i < std::max(1, line - 2) && pos != std::string::npos; i++) {
+                        pos = shaderSourceStr.find('\n', pos);
+                        if (pos != std::string::npos) {
+                            pos++;
+                        }
+                    }
+                    std::size_t end = pos;
+                    for (int i = 0; i < 5 && end != std::string::npos; i++) {
+                        end = shaderSourceStr.find('\n', end);
+                        if (end != std::string::npos) {
+                            end++;
+                        }
+                    }
+                    if (pos != std::string::npos) {
+                        msg += " | source near line " + std::to_string(line) + ": " + shaderSourceStr.substr(pos, (end == std::string::npos ? shaderSourceStr.size() : end) - pos);
+                    }
+                }
+                std::string defList;
+                for (const std::string& def : defs) {
+                    defList += " " + def;
+                }
+                throw std::runtime_error("Shader compiling failed: " + msg + " | defines:" + defList);
             }
             return shader;
         };

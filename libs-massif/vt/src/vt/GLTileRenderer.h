@@ -224,13 +224,20 @@ namespace massif::vt {
         // Directional shadows. The owner renders the caster pass (renderShadowCasters) into its
         // own framebuffer from the light, then hands the packed-depth texture and the same
         // light matrix back here so the draped surface can look itself up in it.
-        void setTerrainShadowMap(GLuint texture, int mapSize, int cascades, const std::array<float, MAX_SHADOW_CASCADES>& depthBiases, float strength, float softness, const std::array<cglib::mat4x4<double>, MAX_SHADOW_CASCADES>& lightViewProjs);
+        // True once an ESSL 3.00 program failed to build and its 1.00 fallback was used instead.
+        // Sticky - the owner logs it once rather than every frame.
+        bool hasShaderVersionFallback() const { return _essl3Failed; }
+        // Caster tiles skipped because their elevation was not loaded - they would otherwise be
+        // drawn as a flat sea-level plane. Tells a missing shadow caused by a tile that was never
+        // asked for apart from one clipped by the light box. Reading it clears it.
+        int consumeShadowCastersMissingElevation() { int n = _shadowCastersMissingElevation; _shadowCastersMissingElevation = 0; return n; }
+        void setTerrainShadowMap(GLuint texture, int mapSize, int cascades, const std::array<float, MAX_SHADOW_CASCADES>& depthBiases, float strength, float softness, bool depthTexture, bool hardwarePCF, float normalOffset, const cglib::vec3<float>& sunDir, const std::array<cglib::mat4x4<double>, MAX_SHADOW_CASCADES>& lightViewProjs);
         // Light-space view-projection fitted to the given terrain tiles; false if the set is empty
         // or no elevation is loaded. minHeight/maxHeight bound the shadowed volume - a generous slab
         // is what makes a low sun pixelated, since the box is fitted around it. The box is snapped
         // to a world lattice of whole mapSize texels, so it repeats within one step. One call per
         // cascade, each covering its own slice of the view distance.
-        bool calculateShadowViewProj(const std::vector<TileId>& tileIds, const std::vector<TileId>& casterTileIds, const cglib::vec3<float>& sunDir, const std::vector<std::pair<double, double> >& tileHeights, double minHeight, double maxHeight, float maxDistanceMeters, int mapSize, int cascade, int cascadeCount, std::vector<TileId>& boxCasterTileIds, double& depthRangeMeters, double& texelMeters, cglib::mat4x4<double>& lightViewProj) const;
+        bool calculateShadowViewProj(const std::vector<TileId>& tileIds, const std::vector<TileId>& casterTileIds, const cglib::vec3<float>& sunDir, const std::vector<std::pair<double, double> >& tileHeights, double minHeight, double maxHeight, float distanceFactor, double cameraDistance, int mapSize, int cascade, int cascadeCount, std::vector<TileId>& boxCasterTileIds, double& depthRangeMeters, double& texelMeters, cglib::mat4x4<double>& lightViewProj) const;
         // The terrain's shadow resolved once per screen pixel, into a half-resolution mask the
         // surface draws then sample by screen position instead of computing it each time.
         void setTerrainShadowMask(GLuint texture, float invScreenWidth, float invScreenHeight);
@@ -500,6 +507,8 @@ namespace massif::vt {
         unsigned int shadowReceiverFlags() const;
         // Same, for the terrain surface: reads the screen-space mask, or produces it.
         unsigned int surfaceShadowFlags() const;
+        cglib::vec4<float> calculateShadowNormalOffsets(const cglib::mat4x4<double>& tileFrame) const;
+        void setupShadowNormalOffsetUniforms(const ShaderProgram& shaderProgram, const cglib::mat4x4<double>& tileFrame) const;
         void setupSurfaceShadowUniforms(const ShaderProgram& shaderProgram, const cglib::mat4x4<double>& surfaceFrame, bool hasElevation);
         // Binds the program only when it is not the one already bound (see the definition).
         void useProgram(const ShaderProgram& shaderProgram);
@@ -702,6 +711,12 @@ namespace massif::vt {
         bool _terrainShadowMaskPass = false; // the draw that produces the mask, not one that reads it
         float _terrainShadowStrength = 0.0f;
         float _terrainShadowSoftness = 1.0f;
+        bool _terrainShadowDepthTexture = false; // the map is the depth buffer, not a packed copy
+        bool _terrainShadowHardwarePCF = false;  // ... and it is sampled through a comparison sampler
+        int _shadowCastersMissingElevation = 0;
+        mutable bool _essl3Failed = false;       // an ESSL 3.00 program did not build; see hasShaderVersionFallback
+        float _terrainShadowNormalOffset = 3.0f; // in shadow-map texels; mapbox's default
+        cglib::vec3<float> _terrainShadowSunDir = cglib::vec3<float>(0.0f, 0.0f, 1.0f);
         unsigned int _warmedRasterShaderFlags = 0; // flag set warmTerrainRasterShader last built for (0 = none)
         Color _fogColor;
         Color _fogHighColor;

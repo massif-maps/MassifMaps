@@ -3217,22 +3217,14 @@ namespace massif::vt {
                 // And so may the icon run - a font icon in its own colour next to the name.
                 bool hasIconColor = static_cast<bool>(labelStyle->iconColorFunc);
                 cglib::vec4<float> iconColor = hasIconColor ? cglib::vec4<float>(evaluateColorFunc(*labelStyle->iconColorFunc).rgba()) : color;
-                if (bitmap != labelBitmap || labelStyle->transform || (lastLabelStyle && lastLabelStyle->transform) || labelBatchParams.scale != labelStyle->scale || labelBatchParams.glyphRenderSize != labelStyle->glyphRenderSize || labelBatchParams.parameterCount + 2 + plateCount + (hasSecondaryColor ? 1 : 0) + (hasIconColor ? 1 : 0) > LabelBatchParameters::MAX_PARAMETERS) {
+                if (bitmap != labelBitmap || labelBatchParams.scale != labelStyle->scale || labelBatchParams.glyphRenderSize != labelStyle->glyphRenderSize || labelBatchParams.parameterCount + 2 + plateCount + (hasSecondaryColor ? 1 : 0) + (hasIconColor ? 1 : 0) > LabelBatchParameters::MAX_PARAMETERS) {
                     renderLabelBatch(labelBatchParams, bitmap);
                     bitmap = labelBitmap;
                     labelBatchParams.labelCount = 0;
                     labelBatchParams.parameterCount = 0;
                     labelBatchParams.scale = labelStyle->scale;
                     labelBatchParams.glyphRenderSize = labelStyle->glyphRenderSize;
-                    if (labelStyle->transform) {
-                        float zoomScale = std::pow(2.0f, label->getTileId().zoom - _viewState.zoom);
-                        cglib::vec2<float> translate = labelStyle->transform->translate() * zoomScale;
-                        cglib::mat4x4<double> translateMatrix = cglib::mat4x4<double>::convert(_transformer->calculateTileTransform(label->getTileId(), translate, 1.0f));
-                        cglib::mat4x4<double> tileMatrix = _transformer->calculateTileMatrix(label->getTileId(), 1);
-                        labelBatchParams.labelMatrix = _viewState.cameraMatrix * tileMatrix * translateMatrix * cglib::inverse(tileMatrix) * cglib::translate4_matrix(_viewState.origin);
-                    } else {
-                        labelBatchParams.labelMatrix = _viewState.cameraMatrix * cglib::translate4_matrix(_viewState.origin);
-                    }
+                    labelBatchParams.labelMatrix = _viewState.cameraMatrix * cglib::translate4_matrix(_viewState.origin);
 
                     styleIndex = -1;
                     haloStyleIndex = -1;
@@ -3322,7 +3314,21 @@ namespace massif::vt {
             }
 
             VT_STAT_CLOCK(statClock);
+            std::size_t labelVertexOffset = _labelVertices.size();
             label->calculateVertexData(labelBatchParams.widthTable[styleIndex], _viewState, styleIndex, haloStyleIndex, _labelVertices, _labelOffsets, _labelNormals, _labelTexCoords, _labelAttribs, _labelIndices, pass, pass == Label::DrawPass::CALLOUT_LINE ? LabelPlateIndices() : plateIndices, pass == Label::DrawPass::CALLOUT_LINE ? -1 : secondaryStyleIndex, pass == Label::DrawPass::CALLOUT_LINE ? -1 : iconStyleIndex);
+            if (labelStyle->transform) {
+                // Conjugated by the tile matrix the style's translate is a pure world translation, so
+                // it rides on the vertices - as a BATCH matrix it made every such label its own draw.
+                float zoomScale = std::pow(2.0f, label->getTileId().zoom - _viewState.zoom);
+                cglib::vec2<float> translate = labelStyle->transform->translate() * zoomScale;
+                cglib::mat4x4<double> translateMatrix = cglib::mat4x4<double>::convert(_transformer->calculateTileTransform(label->getTileId(), translate, 1.0f));
+                cglib::mat4x4<double> tileMatrix = _transformer->calculateTileMatrix(label->getTileId(), 1);
+                cglib::mat4x4<double> worldTransform = tileMatrix * translateMatrix * cglib::inverse(tileMatrix);
+                cglib::vec3<float> delta = cglib::vec3<float>::convert(cglib::transform_point(cglib::vec3<double>(0, 0, 0), worldTransform));
+                for (std::size_t i = labelVertexOffset; i < _labelVertices.size(); i++) {
+                    _labelVertices[i] += delta;
+                }
+            }
             VT_STAT_SPLIT(labelVertexBuildNs, statClock);
             VT_STAT_INC(labelsDrawnVertices);
 

@@ -37,6 +37,7 @@ namespace massif::vt {
         U_OFFSETTABLE,
         U_STROKEWIDTHTABLE,
         U_STROKESCALETABLE,
+        U_PATTERNTABLE,
         U_COLOR,
         U_OPACITY,
         U_PATTERN,
@@ -159,6 +160,7 @@ namespace massif::vt {
         { "uOffsetTable",      U_OFFSETTABLE },
         { "uStrokeWidthTable", U_STROKEWIDTHTABLE },
         { "uStrokeScaleTable", U_STROKESCALETABLE },
+        { "uPatternTable",     U_PATTERNTABLE },
         { "uPattern",          U_PATTERN },
         { "uBitmap",           U_BITMAP },
         { "uTexture",          U_TEXTURE },
@@ -1833,6 +1835,9 @@ namespace massif::vt {
         #ifdef PATTERN
         attribute vec2 aVertexUV;
         uniform vec2 uUVScale;
+        // 1 where the style slot is a patterned fill, 0 where it is a plain one - so both live in
+        // the same geometry and one draw covers them.
+        uniform float uPatternTable[16];
         #endif
         #ifdef TRANSFORM
         uniform mat4 uTransformMatrix;
@@ -1840,7 +1845,7 @@ namespace massif::vt {
         uniform mat4 uMVPMatrix;
         uniform vec4 uColorTable[16];
         #ifdef PATTERN
-        varying highp_opt vec2 vUV;
+        varying highp_opt vec3 vUV; // .xy uv, .z pattern flag
         #endif
         varying lowp vec4 vColor;
         #ifdef LIGHTING_FSH
@@ -1855,7 +1860,7 @@ namespace massif::vt {
         #endif
             vec4 color = uColorTable[styleIndex];
         #ifdef PATTERN
-            vUV = uUVScale * aVertexUV;
+            vUV = vec3(uUVScale * aVertexUV, uPatternTable[styleIndex]);
         #endif
         #ifdef LIGHTING_VSH
             vColor = applyLighting(color, aVertexNormal);
@@ -1875,7 +1880,8 @@ namespace massif::vt {
     static const std::string polygonFsh = R"GLSL(
         #ifdef PATTERN
         uniform sampler2D uPattern;
-        varying highp_opt vec2 vUV;
+        // .xy is the uv, .z the pattern flag - packed so the flag costs no extra varying vector.
+        varying highp_opt vec3 vUV;
         #endif
         varying lowp vec4 vColor;
         #ifdef LIGHTING_FSH
@@ -1884,7 +1890,8 @@ namespace massif::vt {
 
         void main(void) {
         #ifdef PATTERN
-            lowp vec4 color = texture2D(uPattern, vUV) * vColor;
+            // A plain fill sharing the draw has vUV.z 0 and keeps its flat colour.
+            lowp vec4 color = mix(vColor, texture2D(uPattern, vUV.xy) * vColor, vUV.z);
         #else
             lowp vec4 color = vColor;
         #endif

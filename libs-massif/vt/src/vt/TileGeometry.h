@@ -44,12 +44,15 @@ namespace massif::vt {
             std::array<FloatFunction, MAX_PARAMETERS> widthFuncs; // for lines, points
             std::array<FloatFunction, MAX_PARAMETERS> offsetFuncs; // for lines, points (stroke width in case of points)
             std::array<float, MAX_PARAMETERS> strokeScales; // for patterned lines
+            // 1 where the slot samples 'pattern', 0 where it is a plain fill. Lines and points
+            // leave it at 1 - a line selects its stroke through the stroke atlas instead.
+            std::array<float, MAX_PARAMETERS> patternScales;
             std::shared_ptr<const BitmapPattern> pattern;
             std::optional<cglib::vec2<float>> translate;
             CompOp compOp;
             int glyphRenderSize;
 
-            StyleParameters() : parameterCount(0), colorFuncs(), widthFuncs(), offsetFuncs(), strokeScales(), pattern(), translate(), compOp(CompOp::SRC_OVER), glyphRenderSize(64) { }
+            StyleParameters() : parameterCount(0), colorFuncs(), widthFuncs(), offsetFuncs(), strokeScales(), pattern(), translate(), compOp(CompOp::SRC_OVER), glyphRenderSize(64) { patternScales.fill(1.0f); }
         };
 
         // A run of vertices that a style parameter can repoint, so a feature it picks out repaints

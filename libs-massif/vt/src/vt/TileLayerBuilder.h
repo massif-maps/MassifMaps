@@ -89,6 +89,7 @@ namespace massif::vt {
             std::array<FloatFunction, TileGeometry::StyleParameters::MAX_PARAMETERS> widthFuncs;
             std::array<FloatFunction, TileGeometry::StyleParameters::MAX_PARAMETERS> offsetFuncs;
             std::array<StrokeMap::StrokeId, TileGeometry::StyleParameters::MAX_PARAMETERS> lineStrokeIds;
+            std::array<bool, TileGeometry::StyleParameters::MAX_PARAMETERS> patternUsed; // this slot is a patterned fill
             std::shared_ptr<const StrokeMap> strokeMap;
             std::shared_ptr<const GlyphMap> glyphMap;
             std::shared_ptr<const BitmapPattern> pattern;
@@ -96,7 +97,9 @@ namespace massif::vt {
             CompOp compOp;
             int glyphRenderSize;
 
-            BuilderParameters() : type(TileGeometry::Type::NONE), parameterCount(0), colorFuncs(), widthFuncs(), offsetFuncs(), lineStrokeIds(), strokeMap(), glyphMap(), pattern(), translate(0, 0), compOp(CompOp::SRC_OVER), glyphRenderSize(64) { }
+            // patternUsed defaults to TRUE so every path that does not manage it (lines, points)
+            // keeps sampling its pattern; only the polygon processor sets it per slot.
+            BuilderParameters() : type(TileGeometry::Type::NONE), parameterCount(0), colorFuncs(), widthFuncs(), offsetFuncs(), lineStrokeIds(), patternUsed(), strokeMap(), glyphMap(), pattern(), translate(0, 0), compOp(CompOp::SRC_OVER), glyphRenderSize(64) { patternUsed.fill(true); }
         };
 
         void packGeometry(std::vector<std::shared_ptr<TileGeometry>>& geometryList) const;

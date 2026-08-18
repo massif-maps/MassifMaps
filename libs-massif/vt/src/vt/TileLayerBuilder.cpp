@@ -423,7 +423,11 @@ namespace massif::vt {
 
         TileGeometry::Type type = TileGeometry::Type::POLYGON;
 
-        if (_builderParameters.pattern != style.pattern || _builderParameters.translate != translate || _builderParameters.compOp != style.compOp || _builderParameters.parameterCount >= TileGeometry::StyleParameters::MAX_PARAMETERS) {
+        // Only a SECOND, different pattern splits the geometry. A plain fill joins a patterned one
+        // (and the other way round) on a per-slot flag, because alternating the two was 48% of
+        // every geometry draw in a city frame - see docs/internals/rendering/10-performance.md.
+        bool patternConflict = style.pattern && _builderParameters.pattern && _builderParameters.pattern != style.pattern;
+        if (patternConflict || _builderParameters.translate != translate || _builderParameters.compOp != style.compOp || _builderParameters.parameterCount >= TileGeometry::StyleParameters::MAX_PARAMETERS) {
             appendGeometry();
         }
         else if (!(_builderParameters.type == TileGeometry::Type::POLYGON || (_builderParameters.type == TileGeometry::Type::LINE && !style.pattern))) { // we can use also line drawing shader but ONLY if pattern is not used for polygons (pattern can be used for lines)
@@ -433,12 +437,16 @@ namespace massif::vt {
             type = _builderParameters.type;
         }
         _builderParameters.type = type;
-        _builderParameters.pattern = style.pattern;
+        // Sticky: a plain fill must not clear the pattern the geometry already carries.
+        if (style.pattern || !_builderParameters.pattern) {
+            _builderParameters.pattern = style.pattern;
+        }
         _builderParameters.translate = translate;
         _builderParameters.compOp = style.compOp;
+        bool patternUsed = static_cast<bool>(style.pattern);
         int styleIndex = _builderParameters.parameterCount;
         while (--styleIndex >= 0) {
-            if (_builderParameters.colorFuncs[styleIndex] == style.colorFunc && _builderParameters.widthFuncs[styleIndex] == FloatFunction(0) && _builderParameters.offsetFuncs[styleIndex] == FloatFunction(0) && _builderParameters.lineStrokeIds[styleIndex] == 0) {
+            if (_builderParameters.colorFuncs[styleIndex] == style.colorFunc && _builderParameters.widthFuncs[styleIndex] == FloatFunction(0) && _builderParameters.offsetFuncs[styleIndex] == FloatFunction(0) && _builderParameters.lineStrokeIds[styleIndex] == 0 && _builderParameters.patternUsed[styleIndex] == patternUsed) {
                 break;
             }
         }
@@ -448,6 +456,7 @@ namespace massif::vt {
             _builderParameters.widthFuncs[styleIndex] = FloatFunction(0); // fill width information when we need to use line shader with polygons
             _builderParameters.offsetFuncs[styleIndex] = FloatFunction(0); // fill offset information when we need to use line shader with polygons
             _builderParameters.lineStrokeIds[styleIndex] = 0; // fill stroke information when we need to use line shader with polygons
+            _builderParameters.patternUsed[styleIndex] = patternUsed;
         }
 
         return [type, style, transform, styleIndex, this](long long id, const VerticesList& verticesList) {
@@ -796,6 +805,7 @@ namespace massif::vt {
                 stroke = _builderParameters.strokeMap->getStroke(_builderParameters.lineStrokeIds[i]);
             }
             styleParameters.strokeScales[i] = (stroke ? stroke->scale : 0);
+            styleParameters.patternScales[i] = (_builderParameters.patternUsed[i] ? 1.0f : 0.0f);
         }
         if (_builderParameters.translate != cglib::vec2<float>(0, 0)) {
             styleParameters.translate = _builderParameters.translate * (1.0f / _tileSize);

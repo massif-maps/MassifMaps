@@ -3184,7 +3184,10 @@ namespace massif::vt {
                 continue;
             }
 
-            const std::shared_ptr<const Bitmap>& labelBitmap = labelStyle->glyphMap->getBitmapPattern()->bitmap;
+            // Held by value for the whole iteration: getBitmapPattern returns a temporary, a tile
+            // thread can reset the map's pattern, and a reference through its -> is not extended.
+            std::shared_ptr<const BitmapPattern> labelPattern = labelStyle->glyphMap->getBitmapPattern();
+            const std::shared_ptr<const Bitmap>& labelBitmap = labelPattern->bitmap;
             if (lastLabelStyle != labelStyle) {
                 cglib::vec4<float> color = cglib::vec4<float>(evaluateColorFunc(labelStyle->colorFunc).rgba());
                 float size = evaluateFloatFunc(labelStyle->sizeFunc);
@@ -5309,6 +5312,9 @@ namespace massif::vt {
                 uvScale *= zoomScale;
             }
             glUniform2f(shaderProgram.uniforms[U_UVSCALE], uvScale(0), uvScale(1));
+            // Which slots of this draw are patterned: a polygon geometry now carries plain fills
+            // alongside the patterned ones instead of being split at every alternation.
+            glUniform1fv(shaderProgram.uniforms[U_PATTERNTABLE], styleParams.parameterCount, styleParams.patternScales.data());
 
             const CompiledBitmap& compiledBitmap = buildCompiledBitmap(styleParams.pattern->bitmap, geometry->getType() != TileGeometry::Type::LINE);
             glActiveTexture(GL_TEXTURE0);

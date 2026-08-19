@@ -15,7 +15,7 @@ namespace massif::nml {
         GLuint vertexShaderId = 0, fragmentShaderId = 0, programId = 0;
         try {
             fragmentShaderId = glCreateShader(GL_FRAGMENT_SHADER);
-            std::string fragmentShaderSourceStr = createShader(fragmentShader, defs);
+            std::string fragmentShaderSourceStr = createShader(fragmentShader, defs, GL_FRAGMENT_SHADER);
             const char* fragmentShaderSource = fragmentShaderSourceStr.c_str();
             glShaderSource(fragmentShaderId, 1, const_cast<const char**>(&fragmentShaderSource), NULL);
             glCompileShader(fragmentShaderId);
@@ -31,7 +31,7 @@ namespace massif::nml {
             }
 
             vertexShaderId = glCreateShader(GL_VERTEX_SHADER);
-            std::string vertexShaderSourceStr = createShader(vertexShader, defs);
+            std::string vertexShaderSourceStr = createShader(vertexShader, defs, GL_VERTEX_SHADER);
             const char* vertexShaderSource = vertexShaderSourceStr.c_str();
             glShaderSource(vertexShaderId, 1, const_cast<const char**>(&vertexShaderSource), NULL);
             glCompileShader(vertexShaderId);
@@ -144,10 +144,20 @@ namespace massif::nml {
         _bufferMap.clear();
     }
 
-    std::string GLResourceManager::createShader(const std::string& code, const std::set<std::string>& defs) {
-        std::string glslShader = "#version 100\n";
+    std::string GLResourceManager::createShader(const std::string& code, const std::set<std::string>& defs, GLenum shaderType) {
+        // tangram's ESSL 3.00 preamble (core/src/gl/shaderSource.cpp), same as all/native's
+        // Shader.cpp, so the shader sources below stay written in ESSL 1.00.
+        std::string glslShader = "#version 300 es\n";
         for (const std::string& def : defs) {
             glslShader += "#define " + def + "\n";
+        }
+        glslShader += "#define texture2D texture\n";
+        if (shaderType == GL_VERTEX_SHADER) {
+            glslShader += "#define attribute in\n#define varying out\n";
+        } else {
+            glslShader += "#define varying in\n"
+                          "#define gl_FragColor TANGRAM_FragColor\n"
+                          "layout (location = 0) out highp vec4 TANGRAM_FragColor;\n";
         }
         glslShader += code;
         return glslShader;

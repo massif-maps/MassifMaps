@@ -34,7 +34,7 @@ namespace massif::nml {
         void resetAll();
 
     private:
-        static std::string createShader(const std::string& shader, const std::set<std::string>& defs);
+        static std::string createShader(const std::string& shader, const std::set<std::string>& defs, GLenum shaderType);
         
         std::map<std::pair<std::pair<std::string, std::string>, std::set<std::string>>, GLuint> _programMap;
         std::map<std::weak_ptr<GLTexture>, std::vector<GLuint>, std::owner_less<std::weak_ptr<GLTexture>>> _textureMap;

@@ -1796,11 +1796,12 @@ namespace massif::vt {
         unsigned int cascadeFlag = (_terrainShadowCascades >= 4 ? SHADOW_CASCADES4_FLAG :
                                     _terrainShadowCascades == 3 ? SHADOW_CASCADES3_FLAG :
                                     _terrainShadowCascades == 2 ? SHADOW_CASCADES2_FLAG : 0);
-        // Hardware comparison needs BOTH a real depth texture to compare against and ESSL 3.00 for
-        // the sampler type. Either missing falls back to manual taps, not to no shadows.
+        // Hardware comparison needs a real depth texture to compare against; sampler2DShadow itself
+        // is ESSL 3.00 core, which every program now is. No depth texture falls back to manual taps,
+        // not to no shadows.
         unsigned int hwFlags = 0;
         if (_terrainShadowDepthTexture) {
-            hwFlags = SHADOW_DEPTH_TEXTURE_FLAG | (_terrainShadowHardwarePCF ? (ESSL3_FLAG | SHADOW_HW_FLAG) : 0);
+            hwFlags = SHADOW_DEPTH_TEXTURE_FLAG | (_terrainShadowHardwarePCF ? SHADOW_HW_FLAG : 0);
         }
         return TERRAIN_SHADOW_FLAG | DERIVATIVES_FLAG | cascadeFlag | hwFlags;
     }
@@ -5640,6 +5641,10 @@ namespace massif::vt {
     }
 
     const GLTileRenderer::ShaderProgram& GLTileRenderer::buildShaderProgram(const char* id, const std::string& vsh, const std::string& fsh, LightingMode lightingMode, RasterFilterMode filterMode, unsigned int flags) {
+        // Every program is ESSL 3.00. Set here rather than at the 20-odd call sites, and before the
+        // cache key is built so the key still distinguishes a program that fell back to 1.00.
+        flags |= ESSL3_FLAG;
+
         // Fast path: the call site's literal pointer + the flags, no allocation (see the
         // cache declaration). Only a miss builds the string key below.
         ShaderProgramKey cacheKey { id, flags, static_cast<int>(lightingMode), static_cast<int>(filterMode) };
@@ -5815,11 +5820,15 @@ namespace massif::vt {
     }
 
     void GLTileRenderer::createShaderProgram(ShaderProgram& shaderProgram, const std::string& vsh, const std::string& fsh, const std::set<std::string>& defs, const std::map<std::string, int>& uniformMap, const std::map<std::string, int>& attribMap) {
-        // GLSL ES 3.00 for the programs that ask for it, 1.00 for the rest, from ONE set of shader
-        // sources: the differences are a handful of renamed keywords, and mapbox does the same (their
-        // fragment shaders write `glFragColor`, a macro, for this reason). The only source-level cost
-        // is that a fragment shader writes glFragColor, never gl_FragColor - a name starting with gl_
-        // cannot be #defined, so that one had to be a real rename.
+        // GLSL ES 3.00 from ONE set of shader sources: the differences are a handful of renamed
+        // keywords. The 1.00 path below is the per-program fallback, kept one release as a canary.
+        //
+        // The fragment shaders here write `glFragColor`, a plain rename. That rename is NOT
+        // required - `#define gl_FragColor ...` compiles and is applied, measured through ANGLE's
+        // translator (docs/internals/rendering/16-graphics-api-migration.md); ESSL reserves the GL_
+        // prefix for MACRO names, and gl_FragColor is a built-in variable ESSL 3.00 does not
+        // declare. all/native's Shader.cpp takes tangram's #define form so that application GLSL
+        // needs no migration. The rename is harmless, so it stays.
         bool essl3 = defs.count("ESSL3") > 0;
         auto compileShader = [&defs, essl3](GLenum type, const std::string& sh) -> GLuint {
             std::string shaderSourceStr = essl3 ? "#version 300 es\n" : "#version 100\n";

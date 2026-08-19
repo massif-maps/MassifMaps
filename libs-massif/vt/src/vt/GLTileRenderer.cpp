@@ -2957,8 +2957,8 @@ namespace massif::vt {
 
             // If compositing was enabled for this layer, blend the rendered layer with framebuffer
             if (layer->getCompOp()) {
-                if (_glExtensions->GL_OES_packed_depth_stencil_supported() && !_overlayBuffer2D.depthStencilAttachments.empty()) {
-                    _glExtensions->glDiscardFramebufferEXT(GL_FRAMEBUFFER, static_cast<GLsizei>(_overlayBuffer2D.depthStencilAttachments.size()), _overlayBuffer2D.depthStencilAttachments.data());
+                if (!_overlayBuffer2D.depthStencilAttachments.empty()) {
+                    glInvalidateFramebuffer(GL_FRAMEBUFFER, static_cast<GLsizei>(_overlayBuffer2D.depthStencilAttachments.size()), _overlayBuffer2D.depthStencilAttachments.data());
                 }
 
                 glBindFramebuffer(GL_FRAMEBUFFER, currentFBO);
@@ -3029,14 +3029,11 @@ namespace massif::vt {
                 glGetIntegerv(GL_FRAMEBUFFER_BINDING, &currentFBO);
 
                 if (_overlayBuffer3D.fbo == 0) {
-                    // Ask for the packed depth-stencil buffer where it exists: that is the only
-                    // way to get a 24-bit depth buffer here (the plain path is DEPTH_COMPONENT16),
-                    // and 16 bits over a terrain-sized near-far range quantises to several metres
-                    // at a couple of kilometres - enough to eat the bottom of every extrusion once
-                    // the terrain surface is an occluder in this buffer. The stencil half is left
-                    // unused. Without the extension the fallback stays 16-bit, and the extrusion
-                    // depth slack below is what keeps the bases intact.
-                    createFrameBuffer(_overlayBuffer3D, true, true, _glExtensions->GL_OES_packed_depth_stencil_supported());
+                    // Packed depth-stencil, which is the only way to get a 24-bit depth buffer
+                    // here: 16 bits over a terrain-sized near-far range quantises to several metres
+                    // at a couple of kilometres, enough to eat the bottom of every extrusion once
+                    // the terrain surface is an occluder in this buffer. The stencil half is unused.
+                    createFrameBuffer(_overlayBuffer3D, true, true, true);
                 }
 
                 glBindFramebuffer(GL_FRAMEBUFFER, _overlayBuffer3D.fbo);
@@ -3129,9 +3126,9 @@ namespace massif::vt {
 
             // Blend the rendered layer with framebuffer
             if (useOverlay) {
-                if (_glExtensions->GL_OES_packed_depth_stencil_supported() && !_overlayBuffer3D.depthStencilAttachments.empty()) {
+                if (!_overlayBuffer3D.depthStencilAttachments.empty()) {
                     // TODO: for now it crashes. See why
-//                    _glExtensions->glDiscardFramebufferEXT(GL_FRAMEBUFFER, static_cast<GLsizei>(_overlayBuffer3D.depthStencilAttachments.size()), _overlayBuffer3D.depthStencilAttachments.data());
+//                    glInvalidateFramebuffer(GL_FRAMEBUFFER, static_cast<GLsizei>(_overlayBuffer3D.depthStencilAttachments.size()), _overlayBuffer3D.depthStencilAttachments.data());
                 }
 
                 glBindFramebuffer(GL_FRAMEBUFFER, currentFBO);
@@ -5332,7 +5329,7 @@ namespace massif::vt {
         const CompiledGeometry& compiledGeometry = buildCompiledTileGeometry(geometry);
         VT_STAT_SPLIT(geomCompileNs, statClock);
         if (compiledGeometry.geometryVAO != 0) {
-            _glExtensions->glBindVertexArrayOES(compiledGeometry.geometryVAO);
+            glBindVertexArray(compiledGeometry.geometryVAO);
         }
         if (compiledGeometry.geometryVAO == 0 || compiledGeometry.geometryVAOProgram != shaderProgram.program) {
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, compiledGeometry.indicesVBO);
@@ -5386,7 +5383,7 @@ namespace massif::vt {
         VT_STAT_ADD(geometryIndices, geometry->getIndicesCount());
 
         if (compiledGeometry.geometryVAO != 0) {
-            _glExtensions->glBindVertexArrayOES(0);
+            glBindVertexArray(0);
         } else {
             if (vertexGeomLayoutParams.heightOffset >= 0) {
                 disableVertexAttrib(shaderProgram.attribs[A_VERTEXHEIGHT]);
@@ -5442,7 +5439,9 @@ namespace massif::vt {
         }
         _labelBatchCounter++;
 
-        bool useDerivatives = _glExtensions->GL_OES_standard_derivatives_supported();
+        // fwidth() is core on an ES 3.0 context. The shaders are still GLSL ES 1.00 until Phase 3,
+        // so commonFsh keeps emitting '#extension GL_OES_standard_derivatives : enable' for them.
+        bool useDerivatives = true;
 
         const CompiledBitmap& compiledBitmap = buildCompiledBitmap(bitmap, false);
         const ShaderProgram& shaderProgram = buildShaderProgram("labels", labelVsh, labelFsh, LightingMode::GEOMETRY2D, RasterFilterMode::NONE, useDerivatives ? DERIVATIVES_FLAG : 0);
@@ -5953,11 +5952,11 @@ namespace massif::vt {
         glGenFramebuffers(1, &frameBuffer.fbo);
         glBindFramebuffer(GL_FRAMEBUFFER, frameBuffer.fbo);
 
-        if (useDepth && useStencil && _glExtensions->GL_OES_packed_depth_stencil_supported()) {
+        if (useDepth && useStencil) {
             GLuint depthStencilRB = 0;
             glGenRenderbuffers(1, &depthStencilRB);
             glBindRenderbuffer(GL_RENDERBUFFER, depthStencilRB);
-            glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8_OES, _screenWidth, _screenHeight);
+            glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, _screenWidth, _screenHeight);
             glBindRenderbuffer(GL_RENDERBUFFER, 0);
             glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthStencilRB);
             glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_RENDERBUFFER, depthStencilRB);
@@ -6068,16 +6067,14 @@ namespace massif::vt {
     }
 
     void GLTileRenderer::createCompiledGeometry(CompiledGeometry& compiledGeometry) {
-        if (_glExtensions->GL_OES_vertex_array_object_supported()) {
-            _glExtensions->glGenVertexArraysOES(1, &compiledGeometry.geometryVAO);
-        }
+        glGenVertexArrays(1, &compiledGeometry.geometryVAO);
         glGenBuffers(1, &compiledGeometry.vertexGeometryVBO);
         glGenBuffers(1, &compiledGeometry.indicesVBO);
     }
     
     void GLTileRenderer::deleteCompiledGeometry(CompiledGeometry& compiledGeometry) {
         if (compiledGeometry.geometryVAO != 0) {
-            _glExtensions->glDeleteVertexArraysOES(1, &compiledGeometry.geometryVAO);
+            glDeleteVertexArrays(1, &compiledGeometry.geometryVAO);
             compiledGeometry.geometryVAO = 0;
         }
         if (compiledGeometry.vertexGeometryVBO != 0) {

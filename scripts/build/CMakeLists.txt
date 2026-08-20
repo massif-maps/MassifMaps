@@ -286,8 +286,29 @@ endif()
 source_group("Wrapper Sources" REGULAR_EXPRESSION ".*_wrap.cpp")
 source_group("Wrapper Headers" REGULAR_EXPRESSION ".*_wrap.h")
 
+# The facade API's property table is derived from the Swig attribute macros, so it is generated
+# here rather than checked in: adding a setter adds a path with no second step to remember.
+# CMAKE_CONFIGURE_DEPENDS re-runs this when any module changes - a stale table would show up as a
+# property that silently does not exist.
+find_program(SDK_PYTHON NAMES python3 python)
+if(NOT SDK_PYTHON)
+  message(FATAL_ERROR "python3 is required to generate the API property table")
+endif()
+file(GLOB_RECURSE SDK_MODULE_FILES "${SDK_BASE_DIR}/all/modules/*.i" "${SDK_BASE_DIR}/android/modules/*.i")
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${SDK_MODULE_FILES})
+execute_process(
+  COMMAND "${SDK_PYTHON}" "${SDK_BASE_DIR}/scripts/gen-api-tables.py"
+          "--sourcedir" "${SDK_BASE_DIR}/all/modules;${SDK_BASE_DIR}/android/modules"
+          "--outdir" "${SDK_BASE_DIR}/generated/api"
+  RESULT_VARIABLE SDK_API_TABLES_RESULT
+  OUTPUT_VARIABLE SDK_API_TABLES_OUTPUT)
+if(NOT SDK_API_TABLES_RESULT EQUAL 0)
+  message(FATAL_ERROR "Failed to generate the API property table: ${SDK_API_TABLES_OUTPUT}")
+endif()
+message(STATUS "API property table: ${SDK_API_TABLES_OUTPUT}")
+
 # Include directories for main SDK project
-include_directories("${SDK_SRC_DIR}")
+include_directories("${SDK_SRC_DIR}" "${SDK_BASE_DIR}/generated")
 
 foreach(SDK_HEADER_LIB IN ITEMS "cglib" "stdext" "picojson" "pbf" "rapidjson/include" "tinyformat" "nanosvg/src" "utf8/source" "geojsonvt/geojson-vt-cpp/include" "geojsonvt/geometry.hpp/include" "geojsonvt/variant/include")
   include_directories("${SDK_EXTERNAL_LIBS_DIR}/${SDK_HEADER_LIB}")

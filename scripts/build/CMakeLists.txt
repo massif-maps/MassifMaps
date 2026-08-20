@@ -297,18 +297,33 @@ find_program(SDK_PYTHON NAMES python3 python)
 if(NOT SDK_PYTHON)
   message(FATAL_ERROR "python3 is required to generate the API property table")
 endif()
-file(GLOB_RECURSE SDK_MODULE_FILES "${SDK_BASE_DIR}/all/modules/*.i" "${SDK_BASE_DIR}/android/modules/*.i")
+# The platform's own modules go with all/modules: android/modules declares classes that only
+# exist on Android, and emitting thunks for them breaks every other platform's build.
+set(SDK_API_MODULE_DIRS "${SDK_BASE_DIR}/all/modules")
+if(ANDROID)
+  list(APPEND SDK_API_MODULE_DIRS "${SDK_BASE_DIR}/android/modules")
+elseif(IOS OR APPLE)
+  list(APPEND SDK_API_MODULE_DIRS "${SDK_BASE_DIR}/ios/modules")
+elseif(WIN32)
+  list(APPEND SDK_API_MODULE_DIRS "${SDK_BASE_DIR}/winphone/modules")
+endif()
+set(SDK_MODULE_FILES "")
+foreach(SDK_API_MODULE_DIR IN LISTS SDK_API_MODULE_DIRS)
+  file(GLOB_RECURSE SDK_API_MODULE_GLOB "${SDK_API_MODULE_DIR}/*.i")
+  list(APPEND SDK_MODULE_FILES ${SDK_API_MODULE_GLOB})
+endforeach()
+list(JOIN SDK_API_MODULE_DIRS "," SDK_API_SOURCEDIR)
 # This build's own support defines, not a profile name: the thunks have to be emitted for exactly
 # the classes being compiled, or a lite build fails to link.
 string(REGEX MATCHALL "_MASSIF_[A-Za-z0-9_]+" SDK_API_DEFINE_LIST "${SDK_CPP_DEFINES}")
 list(JOIN SDK_API_DEFINE_LIST "," SDK_API_DEFINES)
-set(SDK_API_TABLE_DIR "${SDK_BASE_DIR}/generated/api")
+set(SDK_API_TABLE_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated/api")
 set(SDK_API_TABLE_FILES "${SDK_API_TABLE_DIR}/PropertyTable.inc" "${SDK_API_TABLE_DIR}/PropertyAccessors.inc")
 add_custom_command(
   OUTPUT ${SDK_API_TABLE_FILES}
   COMMAND "${SDK_PYTHON}" "${SDK_BASE_DIR}/scripts/gen-api-tables.py"
           # Comma, not semicolon: ninja runs this through a shell, which would split on one.
-          "--sourcedir" "${SDK_BASE_DIR}/all/modules,${SDK_BASE_DIR}/android/modules"
+          "--sourcedir" "${SDK_API_SOURCEDIR}"
           "--defines" "${SDK_API_DEFINES}"
           "--outdir" "${SDK_API_TABLE_DIR}"
   DEPENDS ${SDK_MODULE_FILES} "${SDK_BASE_DIR}/scripts/gen-api-tables.py"
@@ -317,7 +332,7 @@ add_custom_target(massif_api_tables DEPENDS ${SDK_API_TABLE_FILES})
 set_source_files_properties("${SDK_SRC_DIR}/api/PropertyTable.cpp" PROPERTIES OBJECT_DEPENDS "${SDK_API_TABLE_FILES}")
 
 # Include directories for main SDK project
-include_directories("${SDK_SRC_DIR}" "${SDK_BASE_DIR}/generated")
+include_directories("${SDK_SRC_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/generated")
 
 foreach(SDK_HEADER_LIB IN ITEMS "cglib" "stdext" "picojson" "pbf" "rapidjson/include" "tinyformat" "nanosvg/src" "utf8/source" "geojsonvt/geojson-vt-cpp/include" "geojsonvt/geometry.hpp/include" "geojsonvt/variant/include")
   include_directories("${SDK_EXTERNAL_LIBS_DIR}/${SDK_HEADER_LIB}")

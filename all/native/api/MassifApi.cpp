@@ -3,21 +3,21 @@
 
 namespace massif { namespace api {
 
-    int MassifApi::registerOptions(const std::string& kind, const std::string& id,
+    int MassifApi::registerOptions(const std::string& kind, const std::string& objectId,
                                    const std::shared_ptr<Options>& options) {
         Handle handle = NULL_HANDLE;
-        if (Context::GetDefault()->registerObject(kind, id, options, "massif::Options", handle) != RESULT_OK) {
+        if (Context::GetDefault()->registerObject(kind, objectId, options, "massif::Options", handle) != RESULT_OK) {
             return NULL_HANDLE;
         }
         return static_cast<int>(handle);
     }
 
-    bool MassifApi::unregisterObject(const std::string& kind, const std::string& id) {
-        return Context::GetDefault()->unregisterObject(kind, id);
+    bool MassifApi::unregisterObject(const std::string& kind, const std::string& objectId) {
+        return Context::GetDefault()->unregisterObject(kind, objectId);
     }
 
-    int MassifApi::findObject(const std::string& kind, const std::string& id) {
-        return static_cast<int>(Context::GetDefault()->findObject(kind, id));
+    int MassifApi::findObject(const std::string& kind, const std::string& objectId) {
+        return static_cast<int>(Context::GetDefault()->findObject(kind, objectId));
     }
 
     int MassifApi::setFloat(int handle, const std::string& path, double value) {

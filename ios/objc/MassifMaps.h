@@ -7,6 +7,7 @@
 #ifndef _MASSIFMAPS_H_
 #define _MASSIFMAPS_H_
 
+#import "MSFMassifApi.h"
 #import "MSFOptions.h"
 #import "MSFLayers.h"
 

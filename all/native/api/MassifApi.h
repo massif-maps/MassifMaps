@@ -32,23 +32,23 @@ namespace massif {
          * Adopts an object built with the object API, so it can be addressed by id and handle.
          * One overload per kind, and the set of kinds is closed.
          * @param kind The namespace, e.g. "options". Ids only collide within a kind.
-         * @param id The caller's name for the object.
+         * @param objectId The caller's name for the object. "id" is a keyword in Objective-C.
          * @param options The object.
          * @return The handle, or 0 when the id is already taken.
          */
-        static int registerOptions(const std::string& kind, const std::string& id,
+        static int registerOptions(const std::string& kind, const std::string& objectId,
                                    const std::shared_ptr<Options>& options);
 
         /**
          * Drops an id and the context's reference to the object behind it.
          * @return True when the id existed.
          */
-        static bool unregisterObject(const std::string& kind, const std::string& id);
+        static bool unregisterObject(const std::string& kind, const std::string& objectId);
 
         /**
          * Returns the handle registered under a kind and id, or 0.
          */
-        static int findObject(const std::string& kind, const std::string& id);
+        static int findObject(const std::string& kind, const std::string& objectId);
 
         /**
          * Writes a property. The path may walk object properties: "fogOptions.rangeStart".

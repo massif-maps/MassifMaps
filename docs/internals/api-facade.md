@@ -13,8 +13,8 @@ describe it.
 
 Design discussion and the full plan live in
 [issue #146](https://github.com/massif-maps/MassifMaps/issues/146). **Built so far: the property
-table, the handle table, the registry, `set`/`get`, dotted path traversal, and a minimal Java
-binding.** See [Known gaps](#known-gaps).
+table, the handle table, the registry, `set`/`get`, dotted path traversal, and minimal Java and
+Objective-C bindings.** See [Known gaps](#known-gaps).
 
 ## Why a facade at all
 
@@ -153,24 +153,33 @@ downcasting it, which lands with the spec factories.
 The spellings are the mechanical ones — `fogOptions.rangeStart`, not `fog.rangeStart`. Shortening
 them is the alias table's job.
 
-## The Java binding
+## The bindings
 
 `MassifApi` (`all/native/api/MassifApi.h`, wrapped by `all/modules/api/MassifApi.i`) is the
 verification surface, not the final one: static methods, typed `set`/`get` per scalar kind, and a
 result code rather than an exception.
+
+Both generators picked the new module up **with no change** — a new `.i` directory is found by the
+directory walk. Two platform details did need attention:
+
+- **`id` is a keyword in Objective-C.** A parameter called `id` makes SWIG emit `arg1:` selectors
+  (`registerOptions:kind:arg1:options:`), so the parameter is named `objectId`.
+- **`ios/objc/MassifMaps.h` is hand-maintained**, not generated, so a new Objective-C class has to
+  be added to that umbrella by hand.
 
 ```java
 int h = MassifApi.registerOptions("options", "demo", mapView.getOptions());
 MassifApi.setFloat(h, "fogOptions.rangeStart", 2.5);
 ```
 
-The demo drives it from adb, which is how the path is checked on a device:
+Both demos drive it, which is how the path is checked on a device:
 
 ```sh
 adb shell am broadcast -a com.massifmaps.MassifDemo.CONFIG --es apiSet fogOptions.rangeStart=2.5
+xcrun simctl launch <device> com.massifmaps.MassifDemo -apiSet fogOptions.rangeStart=2.5
 ```
 
-Measured on an emulator, reading the result code back out of logcat:
+Measured on an Android emulator, reading the result code out of logcat:
 
 | path | result | meaning |
 |---|---|---|
@@ -180,8 +189,12 @@ Measured on an emulator, reading the result code back out of logcat:
 | `nosuch.rangeStart` | `3` | unknown intermediate |
 | `zoomRange` | `5` | unsupported type - `STRUCT` has no accessor yet |
 
-The handle came back as `1048577`, which is generation 1, index 1 - the encoding above, confirmed
-end to end.
+The handle came back as `1048577`, which is generation 1, index 1 — the encoding above, confirmed
+end to end. The iOS simulator gives the identical line, handle included:
+
+```
+apiSet fogOptions.rangeStart 0.800000 -> 2.500000 (handle=1048577, result=0)
+```
 
 ## Build wiring
 
@@ -194,6 +207,13 @@ Gradle: AGP decides whether to re-run CMake from its own hash of the configurati
 module never triggers a reconfigure and the table goes stale. A stale table presents as a property
 that silently does not exist. The working form is `add_custom_command` with the modules as
 `DEPENDS`, which ninja checks on every build, plus `OBJECT_DEPENDS` on `PropertyTable.cpp`.
+
+**The tables go in the build tree, one set per platform.** Writing them to a shared
+`generated/api` looks harmless and breaks the second platform to build: the table is generated from
+`all/modules` plus the *platform's* modules, so an Android run leaves `#include
+"utils/AndroidAssetPackage.h"` in a file the iOS compile then reads. The iOS build found this, not
+review. Output is `${CMAKE_CURRENT_BINARY_DIR}/generated/api`, and the module directory list follows
+`ANDROID` / `IOS` / `WIN32`.
 
 Two more things that bit, both worth knowing before touching this:
 
@@ -223,7 +243,6 @@ cd scripts && python3 gen-api-tables.py
   `ElevationManager`, `Bitmap` codecs and more — so the native harness covers `FogOptions` and the
   path-walking failure modes only. The `Options -> FogOptions` happy path is checked on a device
   instead, through the Java binding above. Anything needing `Options` has to be verified that way.
-- **Obj-C has no binding**, so nothing here has run on iOS.
 - **`MassifApi` returns result codes, not exceptions**, which is not what the design calls for. It
   is a verification surface and will be replaced by the six verbs and their closed sugar.
 - **The 6 static attributes are flagged but have no resolution path**, since a static has no target

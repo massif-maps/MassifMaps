@@ -812,6 +812,7 @@ static const DemoFeature LAYER_ORDER[] = {
     [_terrainOptions setViewDistance:[DemoConfig floatFor:@"viewDistanceMeters"]];
     [_terrainOptions setMaxTileZoomCoarsening:[DemoConfig intFor:@"coarsening"]];
     [self applyReliefSurface];
+    [self applyApiSet];
     [self requestRender];
 }
 
@@ -847,6 +848,35 @@ static const DemoFeature LAYER_ORDER[] = {
 }
 
 /** Fog is its own options object and is independent of the terrain - it fogs a plain 2D map too. */
+/**
+ * Drives a property through the facade API (#146) instead of the typed setters, so the generated
+ * property table and its dotted path walking can be exercised on a device:
+ *
+ *   xcrun simctl launch <device> com.massifmaps.MassifDemo -apiSet fogOptions.rangeStart=2.5
+ */
+- (void)applyApiSet {
+    NSString *assignment = [DemoConfig stringFor:@"apiSet"];
+    if (assignment.length == 0) {
+        return;
+    }
+    NSRange equals = [assignment rangeOfString:@"="];
+    if (equals.location == NSNotFound || equals.location == 0) {
+        NSLog(@"apiSet wants path=value, got: %@", assignment);
+        return;
+    }
+    NSString *path = [assignment substringToIndex:equals.location];
+    double value = [[assignment substringFromIndex:equals.location + 1] doubleValue];
+
+    int handle = [MSFMassifApi findObject:@"options" objectId:@"demo"];
+    if (handle == 0) {
+        handle = [MSFMassifApi registerOptions:@"options" objectId:@"demo" options:[self.mapView getOptions]];
+    }
+    double before = [MSFMassifApi getFloat:handle path:path defaultValue:NAN];
+    int result = [MSFMassifApi setFloat:handle path:path value:value];
+    NSLog(@"apiSet %@ %f -> %f (handle=%d, result=%d)", path, before,
+          [MSFMassifApi getFloat:handle path:path defaultValue:NAN], handle, result);
+}
+
 - (void)applyFogOptions {
     if (!_fogOptions) {
         _fogOptions = [[MSFFogOptions alloc] init];

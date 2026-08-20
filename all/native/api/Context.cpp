@@ -77,24 +77,24 @@ namespace massif { namespace api {
 
     Result Context::getProperty(Handle handle, const std::string& path, PropertyValue& value) const {
         std::lock_guard<std::mutex> lock(_mutex);
-        const Slot* slot = nullptr;
+        ObjectRef target;
         Result result = RESULT_OK;
-        const PropertyEntry* entry = lookup(handle, path, slot, result);
+        const PropertyEntry* entry = lookup(handle, path, target, result);
         if (!entry) {
             return result;
         }
         if (!entry->getter) {
             return RESULT_UNSUPPORTED_TYPE;
         }
-        entry->getter(slot->obj.get(), value);
+        entry->getter(target.obj.get(), value);
         return RESULT_OK;
     }
 
     Result Context::setProperty(Handle handle, const std::string& path, const PropertyValue& value) {
         std::lock_guard<std::mutex> lock(_mutex);
-        const Slot* slot = nullptr;
+        ObjectRef target;
         Result result = RESULT_OK;
-        const PropertyEntry* entry = lookup(handle, path, slot, result);
+        const PropertyEntry* entry = lookup(handle, path, target, result);
         if (!entry) {
             return result;
         }
@@ -106,7 +106,7 @@ namespace massif { namespace api {
         }
         // The generated thunk calls the class' own setter, so the option-changed notification and
         // therefore the redraw granularity are exactly those of a direct call.
-        entry->setter(slot->obj.get(), value);
+        entry->setter(target.obj.get(), value);
         return RESULT_OK;
     }
 
@@ -139,23 +139,48 @@ namespace massif { namespace api {
     }
 
     const PropertyEntry* Context::lookup(Handle handle, const std::string& path,
-                                         const Slot*& slot, Result& result) const {
-        slot = resolve(handle);
+                                         ObjectRef& target, Result& result) const {
+        const Slot* slot = resolve(handle);
         if (!slot) {
             result = RESULT_BAD_HANDLE;
             return nullptr;
         }
-        const ClassEntry* classEntry = findClass(slot->cppClass);
-        if (!classEntry) {
-            result = RESULT_UNKNOWN_CLASS;
-            return nullptr;
+        target.obj = slot->obj;
+        target.cppClass = slot->cppClass;
+
+        // A dotted path walks OBJECT properties: every segment but the last has to be one, and
+        // the reference keeps each intermediate alive while the walk continues.
+        std::size_t start = 0;
+        while (true) {
+            std::size_t dot = path.find('.', start);
+            std::string segment = path.substr(start, dot == std::string::npos ? dot : dot - start);
+
+            const ClassEntry* classEntry = findClass(target.cppClass);
+            if (!classEntry) {
+                result = RESULT_UNKNOWN_CLASS;
+                return nullptr;
+            }
+            const PropertyEntry* entry = findProperty(classEntry, segment.c_str());
+            if (!entry) {
+                result = RESULT_UNKNOWN_PROPERTY;
+                return nullptr;
+            }
+            if (dot == std::string::npos) {
+                return entry;
+            }
+            if (!entry->objectGetter) {
+                result = RESULT_NOT_TRAVERSABLE;
+                return nullptr;
+            }
+            ObjectRef next;
+            entry->objectGetter(target.obj.get(), next);
+            if (!next.obj) {
+                result = RESULT_NULL_OBJECT;
+                return nullptr;
+            }
+            target = next;
+            start = dot + 1;
         }
-        const PropertyEntry* entry = findProperty(classEntry, path.c_str());
-        if (!entry) {
-            result = RESULT_UNKNOWN_PROPERTY;
-            return nullptr;
-        }
-        return entry;
     }
 
 } }

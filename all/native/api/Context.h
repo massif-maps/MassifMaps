@@ -36,8 +36,10 @@ namespace massif { namespace api {
         RESULT_UNKNOWN_CLASS,    // the object's class declares no properties
         RESULT_UNKNOWN_PROPERTY, // dropped with a warning by callers that tolerate it
         RESULT_READONLY,
-        RESULT_UNSUPPORTED_TYPE, // OBJECT and STRUCT until their accessors land
-        RESULT_DUPLICATE_ID
+        RESULT_UNSUPPORTED_TYPE, // STRUCT, and writing an OBJECT, until their accessors land
+        RESULT_DUPLICATE_ID,
+        RESULT_NOT_TRAVERSABLE,  // a dotted path crossed something that is not an OBJECT
+        RESULT_NULL_OBJECT       // an OBJECT property on the way was not set
     };
 
     /**
@@ -112,8 +114,9 @@ namespace massif { namespace api {
 
         Handle allocate(const std::shared_ptr<void>& obj, const char* cppClass);
         const Slot* resolve(Handle handle) const;
+        // Walks a dotted path, leaving the object owning the final segment in target.
         const PropertyEntry* lookup(Handle handle, const std::string& path,
-                                    const Slot*& slot, Result& result) const;
+                                    ObjectRef& target, Result& result) const;
 
         mutable std::mutex _mutex;
         std::vector<Slot> _slots;

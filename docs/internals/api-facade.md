@@ -13,7 +13,8 @@ describe it.
 
 Design discussion and the full plan live in
 [issue #146](https://github.com/massif-maps/MassifMaps/issues/146). **Built so far: the property
-table, the handle table, the registry and `set`/`get`.** See [Known gaps](#known-gaps).
+table, the handle table, the registry, `set`/`get`, and dotted path traversal.** See
+[Known gaps](#known-gaps).
 
 ## Why a facade at all
 
@@ -52,7 +53,7 @@ becomes a new path on the next build.
 
 `scripts/gen-api-tables.py` walks `all/modules` and `android/modules` and emits
 `generated/api/PropertyTable.inc`; `all/native/api/PropertyTable.{h,cpp}` define the structures and
-the lookups. Current output for the full profile: **716 properties over 158 classes**, 495 of them with accessors.
+the lookups. Current output for the full profile: **720 properties over 158 classes** — 495 with a value accessor, 113 with an object accessor.
 
 Six macro forms carry the declarations, and they do not all mean the same thing — the table records
 a value type per row, not just an accessor. Counts below are every declaration in the tree; a build
@@ -131,6 +132,27 @@ That is what makes the redraw granularity above true in practice rather than by 
 `PropertyValue` is deliberately not a union: the `std::string` member makes one impossible, and
 these are configuration calls, not a per-frame path.
 
+### Dotted paths
+
+A path walks `OBJECT` properties: every segment but the last has to be one, and the walk keeps each
+intermediate alive while it continues.
+
+```cpp
+ctx->setProperty(mapOptions, "fogOptions.rangeStart", v);   // Options -> FogOptions -> setter
+```
+
+Traversal is **derived, not hand-listed**. `Options::getFogOptions()` and its three siblings were
+plain getters, so they are now declared with `%attributestring` in `Options.i` and appear in the
+table like any other property. That is not a breaking change: `%attributestring` leaves the existing
+Java getter and setter in place — verified against `getBackgroundBitmap`, which has been declared
+that way all along.
+
+Writing an `OBJECT` property is not supported yet: assigning one means resolving a registry id and
+downcasting it, which lands with the spec factories.
+
+The spellings are the mechanical ones — `fogOptions.rangeStart`, not `fog.rangeStart`. Shortening
+them is the alias table's job.
+
 ## Build wiring
 
 The tables are generated at **build** time and are not checked in, so there is no second step to
@@ -165,12 +187,14 @@ cd scripts && python3 gen-api-tables.py
 - **`OBJECT` and `STRUCT` properties have no accessor** (216 of the 716). They need the registry for
   object references and JSON marshalling for structs, so their table rows carry null thunks and
   `set`/`get` return `RESULT_UNSUPPORTED_TYPE`.
-- **No dotted paths.** `set(map, "fog.rangeStart", …)` does not work: traversal would follow an
-  `OBJECT` property, and those have no accessor yet. Worse, the four option groups are plain getters
-  (`Options::getFogOptions()`), not `%attribute` declarations, so even with object accessors they
-  need either an alias entry or an `.i` change.
-- **No binding.** Nothing reaches this from Java or Obj-C, so the fog A/B on a device has not been
-  run; verification so far is a native harness.
+- **Writing an `OBJECT` property** is unsupported: it needs a registry id and a checked downcast.
+  Reading one works, which is what traversal needs.
+- **The dotted happy path is not verified natively.** `Options` cannot be linked into a standalone
+  harness — it pulls the renderer, `ElevationManager`, `Bitmap` codecs and more — so the harness
+  covers the failure modes (a dot into a scalar, an unknown intermediate, a deep unknown path) and
+  the `Options -> FogOptions` walk is gated on the on-device A/B instead. Do not assume it works
+  because it compiles.
+- **No binding.** Nothing reaches this from Java or Obj-C, so nothing has been run on a device.
 - **The 6 static attributes are flagged but have no resolution path**, since a static has no target
   object.
 - **No alias table.** Every path is the mechanical spelling; mapbox-familiar aliases

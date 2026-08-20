@@ -36,6 +36,12 @@
 %import "graphics/Color.i"
 %import "projections/Projection.i"
 
+// Declared as attributes so the facade's property table can traverse into them: "fogOptions.rangeStart"
+// resolves without anything being hand-listed. The getters and setters are unaffected.
+%attributestring(massif::Options, std::shared_ptr<massif::TerrainOptions>, TerrainOptions, getTerrainOptions, setTerrainOptions)
+%attributestring(massif::Options, std::shared_ptr<massif::SkyOptions>, SkyOptions, getSkyOptions, setSkyOptions)
+%attributestring(massif::Options, std::shared_ptr<massif::FogOptions>, FogOptions, getFogOptions, setFogOptions)
+%attributestring(massif::Options, std::shared_ptr<massif::LightOptions>, LightOptions, getLightOptions, setLightOptions)
 %attribute(massif::Options, int, FieldOfViewY, getFieldOfViewY, setFieldOfViewY)
 %attribute(massif::Options, bool, KineticZoom, isKineticZoom, setKineticZoom)
 %attribute(massif::Options, bool, Rotatable, isRotatable, setRotatable)

@@ -9,6 +9,7 @@
 
 #include <cstdint>
 #include <cstddef>
+#include <memory>
 #include <string>
 
 namespace massif { namespace api {
@@ -43,14 +44,26 @@ namespace massif { namespace api {
         std::string stringValue;
     };
 
+    /**
+     * Another object reached through an OBJECT property, kept alive for as long as the reference
+     * lives. The class name is what lets a dotted path keep resolving into it.
+     */
+    struct ObjectRef {
+        std::shared_ptr<void> obj;
+        const char* cppClass = nullptr;
+    };
+
     struct PropertyEntry {
         const char* path;
         PropertyType type;
         std::uint8_t flags;
-        // Null for a type the accessors cannot carry yet (OBJECT, STRUCT), for a static, and -
-        // for setter - for a read-only property.
+        // Null for a type the accessors cannot carry yet (STRUCT), for a static, and - for
+        // setter - for a read-only property.
         void (*getter)(void* obj, PropertyValue& value);
         void (*setter)(void* obj, const PropertyValue& value);
+        // Set only for OBJECT. Reading is enough to traverse a dotted path; writing one needs
+        // the registry and a checked downcast, which land with the spec factories.
+        void (*objectGetter)(void* obj, ObjectRef& out);
     };
 
     struct ClassEntry {

@@ -38,8 +38,8 @@ FLOAT_TYPES = {'float', 'double'}
 
 TYPE_NAMES = ['BOOL', 'INT', 'FLOAT', 'COLOR', 'ENUM', 'STRING', 'OBJECT', 'STRUCT']
 
-# Types the accessors can carry today. OBJECT and STRUCT need the registry and the JSON
-# marshalling, so they are listed in the table but have no thunk yet.
+# Types a value accessor can carry today. STRUCT needs JSON marshalling, so it is listed in the
+# table but has no thunk yet. OBJECT gets its own accessor instead - see objectClassOf.
 ACCESSIBLE_TYPES = {'BOOL', 'INT', 'FLOAT', 'COLOR', 'ENUM', 'STRING'}
 
 FLAG_READONLY = 1
@@ -184,6 +184,24 @@ def accessible(entry):
   return entry['type'] in ACCESSIBLE_TYPES and not (entry['flags'] & FLAG_STATIC)
 
 
+def objectClassOf(entry):
+  """The C++ class an OBJECT property points at, or None when it cannot be named.
+
+  Two spellings reach here: a real shared_ptr type, and the polymorphic macro's Java-ish
+  'package.Class', whose class is by convention the same name in the massif namespace.
+  """
+  if entry['type'] != 'OBJECT' or (entry['flags'] & FLAG_STATIC):
+    return None
+  cppType = entry['cppType']
+  match = re.match(r'^std::shared_ptr<\s*(.+?)\s*>$', cppType)
+  if match:
+    return match.group(1)
+  match = re.match(r'^[\w.]*\.(\w+)$', cppType)
+  if match:
+    return 'massif::%s' % match.group(1)
+  return None
+
+
 def readExpr(entry):
   call = 'self->%s()' % entry['getter']
   if entry['type'] == 'COLOR':
@@ -219,6 +237,13 @@ def emitAccessors(headers, entries, outPath):
     lines.append('#include "%s"\n' % header)
   lines.append('\nnamespace massif { namespace api { namespace accessors {\n\n')
   for entry in entries:
+    objectClass = objectClassOf(entry)
+    if objectClass:
+      lines.append('inline void %s(void* obj, ObjectRef& out) {\n'
+                   '    out.obj = static_cast<%s*>(obj)->%s();\n'
+                   '    out.cppClass = "%s";\n}\n' %
+                   (symbolOf(entry, 'getobj'), entry['cppClass'], entry['getter'], objectClass))
+      continue
     if not accessible(entry):
       continue
     cppClass = entry['cppClass']
@@ -252,8 +277,9 @@ def emitTable(entries, outPath):
       getFn = 'accessors::%s' % symbolOf(entry, 'get') if accessible(entry) else 'nullptr'
       setFn = ('accessors::%s' % symbolOf(entry, 'set')
                if accessible(entry) and not (entry['flags'] & FLAG_READONLY) else 'nullptr')
-      lines.append('    { "%s", PT_%s, %d, %s, %s },\n' %
-                   (path, entry['type'], entry['flags'], getFn, setFn))
+      objFn = 'accessors::%s' % symbolOf(entry, 'getobj') if objectClassOf(entry) else 'nullptr'
+      lines.append('    { "%s", PT_%s, %d, %s, %s, %s },\n' %
+                   (path, entry['type'], entry['flags'], getFn, setFn, objFn))
     lines.append('};\n\n')
 
   lines.append('static const ClassEntry kClasses[] = {\n')
@@ -298,6 +324,7 @@ byClass = emitTable(entries, os.path.join(args.outDir, 'PropertyTable.inc'))
 counts = {}
 for entry in entries:
   counts[entry['type']] = counts.get(entry['type'], 0) + 1
-print('%d properties over %d classes (%d with accessors, %d modules out of profile)' %
-      (len(entries), len(byClass), sum(1 for e in entries if accessible(e)), skipped))
+print('%d properties over %d classes (%d value, %d object, %d modules out of profile)' %
+      (len(entries), len(byClass), sum(1 for e in entries if accessible(e)),
+       sum(1 for e in entries if objectClassOf(e)), skipped))
 print('  ' + '  '.join('%s=%d' % (name, counts[name]) for name in TYPE_NAMES if name in counts))

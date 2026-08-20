@@ -9,6 +9,7 @@
 
 #include <cstdint>
 #include <cstddef>
+#include <string>
 
 namespace massif { namespace api {
 
@@ -31,12 +32,25 @@ namespace massif { namespace api {
         PF_STATIC = 2
     };
 
+    /**
+     * A property value in transit. Deliberately not a union: the string makes one impossible and
+     * these are configuration calls, not a per-frame path.
+     */
+    struct PropertyValue {
+        bool boolValue = false;
+        long long intValue = 0;   // also carries COLOR as ARGB and ENUM as its constant
+        double floatValue = 0;
+        std::string stringValue;
+    };
+
     struct PropertyEntry {
         const char* path;
         PropertyType type;
         std::uint8_t flags;
-        const char* getter;
-        const char* setter;
+        // Null for a type the accessors cannot carry yet (OBJECT, STRUCT), for a static, and -
+        // for setter - for a read-only property.
+        void (*getter)(void* obj, PropertyValue& value);
+        void (*setter)(void* obj, const PropertyValue& value);
     };
 
     struct ClassEntry {

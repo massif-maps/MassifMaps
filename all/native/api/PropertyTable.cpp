@@ -3,6 +3,9 @@
 #include <algorithm>
 #include <cstring>
 
+// The class headers plus one thunk per accessor. At file scope, because it is #includes.
+#include "api/PropertyAccessors.inc"
+
 namespace massif { namespace api {
 
     namespace {

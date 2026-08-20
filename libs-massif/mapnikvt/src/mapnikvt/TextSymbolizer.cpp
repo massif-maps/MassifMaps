@@ -52,6 +52,7 @@ namespace massif::mvt {
         float fontScale = symbolizerContext.getSettings().getFontScale();
         float minimumDistance = _minimumDistance.getValue(exprContext);
         float maxDistance = _maxDistance.getValue(exprContext);
+        float occlusionOpacity = _occlusionOpacity.getValue(exprContext);
         float placementPriority = _placementPriority.getValue(exprContext);
         float calloutScreenAnchor = _calloutScreenAnchor.getValue(exprContext);
         float calloutOffset = _calloutOffset.getValue(exprContext) * fontScale;
@@ -168,8 +169,11 @@ namespace massif::mvt {
             };
         }
 
-        return [compOp, fillFunc, haloFillFunc, sizeFunc, haloRadiusFunc, fontScale, placement, linePlacement, text, hash, orientationAngle, formatter, backgroundOffset, backgroundImage, spacing, textSize, tileId, tileSize, labelIdOverride, groupId, placementPriority, minimumDistance, maxDistance, secondaryColorFunc, rankFunc, calloutScreenAnchor, calloutOffset, calloutStep, calloutMaxRows, calloutPersistPasses, calloutLineWidth, calloutLineAnchor, calloutBandAnchor, textPlate, allowOverlapSameFeatureId, sameFeatureIdDependent, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
+        return [compOp, fillFunc, haloFillFunc, sizeFunc, haloRadiusFunc, fontScale, placement, linePlacement, text, hash, orientationAngle, formatter, backgroundOffset, backgroundImage, spacing, textSize, tileId, tileSize, labelIdOverride, groupId, placementPriority, minimumDistance, maxDistance, occlusionOpacity, secondaryColorFunc, rankFunc, calloutScreenAnchor, calloutOffset, calloutStep, calloutMaxRows, calloutPersistPasses, calloutLineWidth, calloutLineAnchor, calloutBandAnchor, textPlate, allowOverlapSameFeatureId, sameFeatureIdDependent, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
             vt::TextLabelStyle style(placement, fillFunc, sizeFunc, haloFillFunc, haloRadiusFunc, true, orientationAngle, fontScale, backgroundOffset, backgroundImage, maxDistance, secondaryColorFunc, rankFunc, calloutScreenAnchor, calloutOffset, calloutStep, calloutMaxRows, calloutPersistPasses, calloutLineWidth, calloutLineAnchor, calloutBandAnchor, textPlate);
+            if (occlusionOpacity >= 0.0f) {
+                style.occlusionOpacity = occlusionOpacity;
+            }
             vt::TileLayerBuilder::TextLabelProcessor textProcessor;
             for (std::size_t featureIndex = 0; featureIndex < featureCollection.size(); featureIndex++) {
                 if (!textProcessor) {

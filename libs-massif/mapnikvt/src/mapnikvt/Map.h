@@ -41,12 +41,36 @@ namespace massif::mvt {
             ColorFunctionProperty sunColor = ColorFunctionProperty("#ffffff");
             FloatFunctionProperty sunIntensity = FloatFunctionProperty(1.0f);
             FloatFunctionProperty ambientIntensity = FloatFunctionProperty(0.35f);
-            // Building (3D extrusion) lighting. Unset means the extrusions follow the terrain sun
-            // when terrain lighting is on, and the legacy view-direction shading when it is off -
-            // which is why walls change darkness as terrain lighting is toggled. Setting either of
-            // these puts the extrusions on the normalised-Lambert model whatever the terrain does.
+            ColorFunctionProperty ambientColor = ColorFunctionProperty("#ffffff"); // the sky's tint in shadow
+            // Building (3D extrusion) lighting. Unset means the extrusions follow the sun, on the
+            // same normalised-Lambert model the terrain surface uses; these two tune the walls
+            // alone, without moving the sun that lights the ground.
             FloatFunctionProperty buildingLightIntensity = FloatFunctionProperty(1.0f);
             FloatFunctionProperty buildingAmbient = FloatFunctionProperty(0.35f);
+            // How dark the foot of a wall goes (0 = flat facade), and over how many metres of
+            // absolute height it fades out - shared by every part of one building.
+            FloatFunctionProperty buildingVerticalGradient = FloatFunctionProperty(0.65f);
+            FloatFunctionProperty buildingVerticalGradientHeight = FloatFunctionProperty(20.0f);
+            // Contact shadow on the GROUND around a footprint, on the mapbox names. ON by default:
+            // an extrusion without one reads as pasted onto the map rather than standing on it.
+            // 0 radius turns it off.
+            FloatFunctionProperty buildingAoGroundRadius = FloatFunctionProperty(4.0f);      // metres
+            FloatFunctionProperty buildingAoGroundAttenuation = FloatFunctionProperty(1.75f); // exponent of (1 - d)
+            // Metres between subdivisions ALONG a wall. 0 = the terrain grid's own cell, which is
+            // what the shadow has to follow; raise it to see the chord artifact, lower it to kill it.
+            FloatFunctionProperty buildingAoGroundStep = FloatFunctionProperty(0.0f);         // metres, 0 = auto
+            FloatFunctionProperty buildingAoIntensity = FloatFunctionProperty(0.2f);
+            // The opacity a label keeps while its ANCHOR is hidden by 3D content (mapbox's
+            // text-occlusion-opacity). 1 = no occlusion, and the pass that answers it does not run.
+            FloatFunctionProperty textOcclusionOpacity = FloatFunctionProperty(1.0f);
+            // Bevel between a wall and the roof, rounding the hard 90 degrees. 0 = off.
+            FloatFunctionProperty buildingEdgeRadius = FloatFunctionProperty(0.0f); // metres
+            // Roofs multiplied by this. A roof faces the sky and is physically the BRIGHTEST face,
+            // but darkening it is what makes a block read as 3D rather than as a lit slab - it is
+            // how mapbox's buildings look, and it is a styling choice, not a lighting one.
+            FloatFunctionProperty buildingRoofShade = FloatFunctionProperty(1.0f);
+            // 0 makes the bevel a flat facet with its own tone instead of a rolled edge.
+            FloatFunctionProperty buildingRoundedRoof = FloatFunctionProperty(1.0f);
             FloatFunctionProperty terrainLighting = FloatFunctionProperty(0.0f);   // 0/1: light the terrain with the sun
             FloatFunctionProperty shadowStrength = FloatFunctionProperty(0.0f);    // 0 = no shadows
             FloatFunctionProperty shadowBias = FloatFunctionProperty(0.25f);       // meters

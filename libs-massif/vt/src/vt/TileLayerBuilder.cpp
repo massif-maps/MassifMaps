@@ -5,6 +5,7 @@
 #include <map>
 #include <mutex>
 #include <cmath>
+#include <limits>
 #include "TextFormatter.h"
 #include "Color.h"
 
@@ -506,7 +507,14 @@ namespace massif::vt {
         return [style, transform, invTransTransform, styleIndex, this](long long id, const VerticesList& verticesList, float minHeight, float maxHeight) {
             std::size_t i0 = _coords.size();
             tesselatePolygon3D(verticesList, minHeight, maxHeight, static_cast<std::int8_t>(styleIndex), style);
+            // The footprint's reach, over every vertex this feature produced. Stamped here rather
+            // than at each append: the vertex stage needs it on all of them, and the tesselator has
+            // half a dozen paths that emit one.
+            for (std::size_t i = i0; i < _attribs.size(); i++) {
+                _attribs[i](2) = _polygon3DExtent;
+            }
             _ids.fill(id, _indices.size() - _ids.size());
+            _groundIds.fill(id, _groundIndices.size() - _groundIds.size());
             _geoPosIndexes.fill(0, _indices.size() - _geoPosIndexes.size());
             if (transform) {
                 for (std::size_t i = i0; i < _coords.size(); i++) {
@@ -545,8 +553,10 @@ namespace massif::vt {
             transform = Transform::fromMatrix2Translate(matrix, translate);
         }
 
-        if (!_labelStyle || _labelStyle->orientation != style.orientation || _labelStyle->colorFunc != style.colorFunc || _labelStyle->sizeFunc != style.sizeFunc || _labelStyle->haloColorFunc != ColorFunction() || _labelStyle->haloRadiusFunc != FloatFunction() || _labelStyle->autoflip != style.autoflip || _labelStyle->scale != scale || _labelStyle->ascent != 0.0f || _labelStyle->descent != 0.0f || _labelStyle->transform != transform || _labelStyle->glyphMap != glyphMap || _labelStyle->maxDistance != style.maxDistance) {
-            _labelStyle = std::make_shared<TileLabel::Style>(style.orientation, style.colorFunc, style.sizeFunc, ColorFunction(), FloatFunction(), style.autoflip, scale, 0.0f, 0.0f, transform, glyphMap, 27, style.maxDistance);
+        if (!_labelStyle || _labelStyle->orientation != style.orientation || _labelStyle->colorFunc != style.colorFunc || _labelStyle->sizeFunc != style.sizeFunc || _labelStyle->haloColorFunc != ColorFunction() || _labelStyle->haloRadiusFunc != FloatFunction() || _labelStyle->autoflip != style.autoflip || _labelStyle->scale != scale || _labelStyle->ascent != 0.0f || _labelStyle->descent != 0.0f || _labelStyle->transform != transform || _labelStyle->glyphMap != glyphMap || _labelStyle->maxDistance != style.maxDistance || _labelStyle->occlusionOpacity != style.occlusionOpacity) {
+            auto labelStyle = std::make_shared<TileLabel::Style>(style.orientation, style.colorFunc, style.sizeFunc, ColorFunction(), FloatFunction(), style.autoflip, scale, 0.0f, 0.0f, transform, glyphMap, 27, style.maxDistance);
+            labelStyle->occlusionOpacity = style.occlusionOpacity; // not in the ctor: its signature is long enough
+            _labelStyle = labelStyle;
         }
 
         return [bitmapGlyphs, this](long long id, long long labelId, long long groupId, const std::variant<Vertex, Vertices>& position, float priority, float minimumGroupDistance, bool allowOverlapSameFeatureId, bool sameFeatureIdDependent, int geoPointIndex) {
@@ -598,6 +608,7 @@ namespace massif::vt {
             || _labelStyle->glyphMap != font->getGlyphMap() 
             || _labelStyle->glyphRenderSize != glyphRenderSize
             || _labelStyle->maxDistance != style.maxDistance
+            || _labelStyle->occlusionOpacity != style.occlusionOpacity
             || _labelStyle->rankFunc != style.rankFunc
             || _labelStyle->secondaryColorFunc.has_value() != style.secondaryColorFunc.has_value()
             || (style.secondaryColorFunc && *_labelStyle->secondaryColorFunc != *style.secondaryColorFunc)
@@ -650,7 +661,9 @@ namespace massif::vt {
             };
             TileLabel::Style::Plate textPlate = resolvePlate(style.textPlate);
             TileLabel::Style::Plate iconPlate = resolvePlate(style.iconPlate);
-            _labelStyle = std::make_shared<TileLabel::Style>(style.orientation, style.colorFunc, style.sizeFunc, style.haloColorFunc, style.haloRadiusFunc, style.autoflip, scale, metrics.ascent, metrics.descent, transform, font->getGlyphMap(), glyphRenderSize, style.maxDistance, style.secondaryColorFunc, style.rankFunc, style.calloutScreenAnchor, style.calloutOffset, style.calloutStep, style.calloutMaxRows, style.calloutPersistPasses, style.calloutLineWidth, style.calloutLineAnchor, style.calloutBandAnchor, calloutLineGlyph, textPlate, iconPlate, resolveLineAlign(style.textLineAlign, cglib::vec2<float>(0, 0)), style.iconColorFunc);
+            auto labelStyle = std::make_shared<TileLabel::Style>(style.orientation, style.colorFunc, style.sizeFunc, style.haloColorFunc, style.haloRadiusFunc, style.autoflip, scale, metrics.ascent, metrics.descent, transform, font->getGlyphMap(), glyphRenderSize, style.maxDistance, style.secondaryColorFunc, style.rankFunc, style.calloutScreenAnchor, style.calloutOffset, style.calloutStep, style.calloutMaxRows, style.calloutPersistPasses, style.calloutLineWidth, style.calloutLineAnchor, style.calloutBandAnchor, calloutLineGlyph, textPlate, iconPlate, resolveLineAlign(style.textLineAlign, cglib::vec2<float>(0, 0)), style.iconColorFunc);
+            labelStyle->occlusionOpacity = style.occlusionOpacity; // not in the ctor: its signature is long enough
+            _labelStyle = labelStyle;
         }
 
         // The glyphs that come before the text and stay on the anchor when the text moves: the
@@ -713,8 +726,83 @@ namespace massif::vt {
     std::shared_ptr<TileLayer> TileLayerBuilder::buildTileLayer() const {
         std::vector<std::shared_ptr<TileGeometry>> geometryList = _geometryList;
         packGeometry(geometryList);
+        packGroundSkirt(geometryList);
 
         return std::make_shared<TileLayer>(_layerName, _layerIdx, _compOp, _opacityFunc, _backgroundList, _bitmapList, std::move(geometryList), _labelList);
+    }
+
+    void TileLayerBuilder::packGroundSkirt(std::vector<std::shared_ptr<TileGeometry>>& geometryList) const {
+        if (_groundIndices.empty()) {
+            return;
+        }
+        VertexArray<cglib::vec3<float>> coords;
+        VertexArray<cglib::vec3<float>> normals;
+        coords.reserve(_groundCoords.size());
+        normals.reserve(_groundCoords.size());
+        for (std::size_t i = 0; i < _groundCoords.size(); i++) {
+            coords.append(_transformer->calculatePoint(_groundCoords[i]));
+            normals.append(_transformer->calculateNormal(_groundCoords[i]));
+        }
+        VertexArray<float> heights;
+        heights.reserve(_groundHeights.size());
+        for (std::size_t i = 0; i < _groundHeights.size(); i++) {
+            heights.append(_transformer->calculateHeight(_groundCoords[i], _groundHeights[i]));
+        }
+
+        // White, so the draw survives the all-transparent skip in renderTileGeometry: the darkening
+        // itself is the fragment's distance to the footprint times the style's intensity, not a colour.
+        TileGeometry::StyleParameters styleParameters;
+        styleParameters.parameterCount = 1;
+        styleParameters.colorFuncs[0] = ColorFunction(Color(1.0f, 1.0f, 1.0f, 1.0f));
+
+        VertexArray<std::uint16_t> geoPosIndexes;
+        // The scales are what the vertices are QUANTISED to on the way into int16, so they have to
+        // be measured from the data exactly as the main path does. Passing 1 collapsed every skirt
+        // vertex onto integer tile coordinates - one triangle per block instead of a contact
+        // shadow, multiplied into the ground as a black wedge.
+        float coordScale = calculateScale(coords, _groundIndices);
+        float binormalScale = calculateScale(_groundBinormals, _groundIndices);
+        float texCoordScale = calculateScale(_groundTexCoords, _groundIndices);
+        float heightScale = calculateScale(heights, _groundIndices);
+
+        // ...and the index buffer is UNSIGNED SHORT, so the same split and remap the main path does.
+        // Without it a dense tile runs past 65535 skirt vertices, the indices wrap, and triangles
+        // stitch unrelated vertices into slivers hundreds of metres long - dark bands raking across
+        // the map wherever buildings are packed tightly.
+        for (std::size_t offset = 0; offset < _groundIndices.size(); ) {
+            std::size_t count = std::min(std::size_t(65535), _groundIndices.size() - offset);
+
+            std::vector<std::size_t> indexTable(coords.size(), 65536);
+            VertexArray<cglib::vec3<float>> remappedCoords;
+            VertexArray<cglib::vec2<float>> remappedTexCoords;
+            VertexArray<cglib::vec3<float>> remappedNormals;
+            VertexArray<cglib::vec3<float>> remappedBinormals;
+            VertexArray<float> remappedHeights;
+            VertexArray<cglib::vec4<std::int8_t>> remappedAttribs;
+            VertexArray<std::size_t> remappedIndices;
+            VertexArray<long long> remappedIds;
+            remappedIndices.reserve(count);
+            remappedIds.reserve(count);
+            for (std::size_t i = 0; i < count; i++) {
+                std::size_t index = _groundIndices[offset + i];
+                std::size_t remappedIndex = indexTable[index];
+                if (remappedIndex == 65536) {
+                    remappedIndex = remappedCoords.size();
+                    indexTable[index] = remappedIndex;
+                    remappedCoords.append(coords[index]);
+                    remappedTexCoords.append(_groundTexCoords[index]);
+                    remappedNormals.append(normals[index]);
+                    remappedBinormals.append(_groundBinormals[index]);
+                    remappedHeights.append(heights[index]);
+                    remappedAttribs.append(_groundAttribs[index]);
+                }
+                remappedIndices.append(remappedIndex);
+                remappedIds.append(offset + i < _groundIds.size() ? _groundIds[offset + i] : 0);
+            }
+            offset += count;
+
+            packGeometry(TileGeometry::Type::POLYGON3DGROUND, 3, coordScale, binormalScale, texCoordScale, heightScale, remappedCoords, remappedTexCoords, remappedNormals, remappedBinormals, remappedHeights, remappedAttribs, remappedIndices, remappedIds, geoPosIndexes, styleParameters, std::vector<TileGeometry::FeatureStyleRange>(), geometryList);
+        }
     }
 
     void TileLayerBuilder::beginStyleVariant(std::uint64_t stateKey) {
@@ -899,7 +987,9 @@ namespace massif::vt {
         // Split/repack geometry
         float coordScale = calculateScale(coords, _indices);
         float binormalScale = calculateScale(binormals, _indices);
-        float texCoordScale = calculateScale(texCoords, _indices);
+        // For an extrusion the texcoord slot carries the footprint centroid, and the vertex stage
+        // hands it straight to applyTerrain - which expects raw coord units. Same scale, then.
+        float texCoordScale = (_builderParameters.type == TileGeometry::Type::POLYGON3D ? coordScale : calculateScale(texCoords, _indices));
         float heightScale = calculateScale(heights, _indices);
         for (std::size_t offset = 0; offset < _indices.size(); ) {
             std::size_t count = std::min(std::size_t(65535), _indices.size() - offset);
@@ -1184,14 +1274,391 @@ namespace massif::vt {
         return true;
     }
 
-    bool TileLayerBuilder::tesselatePolygon3D(const std::vector<std::vector<cglib::vec2<float>>>& pointsList, float minHeight, float maxHeight, std::int8_t styleIndex, const Polygon3DStyle& style) {
-        _tesselator.clear();
-        if (!_tesselator.tesselate(pointsList)) {
+    float TileLayerBuilder::insetRings(const std::vector<std::vector<cglib::vec2<float>>>& pointsList, float radius, std::vector<std::vector<cglib::vec2<float>>>& insetList) const {
+        insetList = pointsList;
+        bool any = false;
+        for (std::size_t ring = 0; ring < pointsList.size(); ring++) {
+            const std::vector<cglib::vec2<float>>& points = pointsList[ring];
+            if (points.size() < 3) {
+                return 0.0f;
+            }
+            // Which way is IN, from the ring's winding, exactly as the ground skirt does.
+            float area = 0.0f;
+            for (std::size_t i = 0, j = points.size() - 1; i < points.size(); j = i++) {
+                area += points[j](0) * points[i](1) - points[i](0) * points[j](1);
+            }
+            float sign = area < 0.0f ? -1.0f : 1.0f;
+
+            for (std::size_t i = 0; i < points.size(); i++) {
+                std::size_t prev = (i + points.size() - 1) % points.size();
+                std::size_t next = (i + 1) % points.size();
+                cglib::vec2<float> ePrev = points[i] - points[prev];
+                cglib::vec2<float> eNext = points[next] - points[i];
+                float lenPrev = cglib::length(ePrev);
+                float lenNext = cglib::length(eNext);
+                if (!(lenPrev > 0.0f) || !(lenNext > 0.0f)) {
+                    return 0.0f; // a ring that touches itself
+                }
+                cglib::vec2<float> tPrev = ePrev * (1.0f / lenPrev);
+                cglib::vec2<float> tNext = eNext * (1.0f / lenNext);
+                cglib::vec2<float> nPrev = cglib::vec2<float>(tPrev(1), -tPrev(0)) * sign;
+                cglib::vec2<float> nNext = cglib::vec2<float>(tNext(1), -tNext(0)) * sign;
+
+                // The miter is 1/cos(halfAngle) - NOT 2/(1 + dot), which is that value squared and
+                // over-insets every corner (2x instead of 1.41x at a right angle, far worse when
+                // sharp). Capped at 4, past which the corner is simply cut.
+                float cosHalfAngle = std::sqrt(std::max(0.0f, 0.5f * (1.0f + cglib::dot_product(nPrev, nNext))));
+                cglib::vec2<float> bisector = nPrev + nNext;
+                float bisectorLen = cglib::length(bisector);
+                if (!(bisectorLen > 0.0f) || !(cosHalfAngle > 0.0f)) {
+                    return 0.0f; // the two edges double back on each other
+                }
+                bisector = bisector * (1.0f / bisectorLen);
+                insetList[ring][i] = points[i] - bisector * (radius * std::min(4.0f, 1.0f / cosHalfAngle));
+                any = true;
+            }
+        }
+        return any ? radius : 0.0f;
+    }
+
+    void TileLayerBuilder::appendBevelQuad(const cglib::vec2<float>& p0, const cglib::vec2<float>& p1, const cglib::vec2<float>& i0p, const cglib::vec2<float>& i1p, const cglib::vec2<float>& binormal, float wallTop, float roofHeight, std::int8_t styleIndex) {
+        auto packT = [this](float h) -> std::int8_t {
+            float t = _polygon3DGradientHeight > 0.0f ? h / _polygon3DGradientHeight : 1.0f;
+            return static_cast<std::int8_t>(std::max(0, std::min(127, static_cast<int>(std::lround(t * 127.0f)))));
+        };
+        std::int8_t tLo = packT(wallTop);
+        std::int8_t tHi = packT(roofHeight);
+        // 127 at the wall's normal, 0 at the roof's: the vertex stage blends the two and that
+        // interpolation IS the rounding. Held at 64 across the whole band instead, the bevel
+        // becomes a flat facet - one tone belonging to neither wall nor roof, which reads as a rim
+        // around every roof and is what makes shapes separable looking straight down.
+        std::int8_t sideLo = _polygon3DRoundedRoof ? static_cast<std::int8_t>(127) : static_cast<std::int8_t>(64);
+        std::int8_t sideHi = _polygon3DRoundedRoof ? static_cast<std::int8_t>(0) : static_cast<std::int8_t>(64);
+        const cglib::vec4<std::int8_t> low0(styleIndex, sideLo, 0, tLo);
+        const cglib::vec4<std::int8_t> high0(styleIndex, sideHi, 0, tHi);
+
+        std::size_t i0 = _coords.size();
+        _coords.append(p0, p1, i1p, i0p);
+        _texCoords.append(_polygon3DCentroid, _polygon3DCentroid, _polygon3DCentroid, _polygon3DCentroid);
+        _binormals.append(binormal, binormal, binormal, binormal);
+        _heights.append(wallTop, wallTop, roofHeight, roofHeight);
+        _attribs.append(low0, low0, high0, high0);
+        _indices.append(i0 + 0, i0 + 1, i0 + 2);
+        _indices.append(i0 + 0, i0 + 2, i0 + 3);
+    }
+
+    // Tile-local length of one contact-shadow quad along a wall. 1/32 of a tile is the regular
+    // terrain grid's own cell, which is the resolution the surface actually bends at.
+    static constexpr float GROUND_SKIRT_STEP = 1.0f / 64.0f;
+
+    void TileLayerBuilder::appendGroundSkirt(const std::vector<cglib::vec2<float>>& points, float height, bool hole, std::int8_t styleIndex) {
+        if (points.size() < 3 || _polygon3DGroundRadius <= 0.0f) {
+            return;
+        }
+        // Only footprints that reach this TILE. The walls have always been clipped this way and the
+        // shadow never was, so under overzoom - where one source tile's features are handed to every
+        // target tile derived from it - each tile laid the shadow of every building in the source.
+        cglib::bbox2<float> bounds;
+        for (const cglib::vec2<float>& p : points) {
+            bounds.add(p);
+        }
+        if (!_polygonClipBox.inside(bounds)) {
+            return;
+        }
+        // Metres to tile-local, as the walls convert their heights. mapbox divides the AO ground
+        // radius by 3.5 before using it, so the style's metres mean there what they mean here.
+        float radius = _transformer->calculateHeight(points[0], _polygon3DGroundRadius / 3.5f);
+        if (!(radius > 0.0f)) {
+            return;
+        }
+        float invRadius = 1.0f / radius;
+
+        // Which side of an edge the building stands on, so the fragment can hold the band at full
+        // strength there instead of letting it fall off under the walls. The left normal below
+        // points into a counter-clockwise ring - and OUT of a hole ring, where the material is the
+        // side the ring does not enclose. Which ring is a hole cannot be read from its winding
+        // here: the tile data does not guarantee holes wind the other way, and a courtyard whose
+        // winding matched its outer ring came out filled solid.
+        float area2 = 0.0f;
+        for (std::size_t i = 0, j = points.size() - 1; i < points.size(); j = i++) {
+            area2 += points[j](0) * points[i](1) - points[i](0) * points[j](1);
+        }
+        float inwardSign = (area2 > 0.0f ? 1.0f : -1.0f) * (hole ? -1.0f : 1.0f);
+
+        // One quad per edge, covering that edge's bounding CAPSULE: the fragment measures its own
+        // distance to the segment, so the caps round every corner and join one edge's shadow to the
+        // next without any outline, offset or union here. Overlaps - between edges, between a
+        // building and its parts, between neighbours - are resolved by MIN blending in the mask
+        // pass, which is what stops them compounding towards black.
+        for (std::size_t i = 0, j = points.size() - 1; i < points.size(); j = i++) {
+            cglib::vec2<float> delta = points[i] - points[j];
+            float len = cglib::length(delta);
+            if (!(len > 0.0f)) {
+                continue;
+            }
+            cglib::vec2<float> tangent = delta * (1.0f / len);
+            cglib::vec2<float> normal(-tangent(1), tangent(0));
+            cglib::vec2<float> offset = normal * radius;
+            float segLen = len * invRadius;
+
+            // Split ALONG the wall, at the terrain lattice's own step. The quad's four corners land
+            // on the surface but its interior interpolates linearly between them, so one quad over
+            // a 50 m wall cuts into a slope at one end and floats at the other. Across the wall the
+            // span is only 2 * radius, so that direction needs no split.
+            float span = len + 2.0f * radius;
+            float step = (_polygon3DGroundStep > 0.0f ? _transformer->calculateHeight(points[0], _polygon3DGroundStep) : GROUND_SKIRT_STEP);
+            int steps = std::max(1, std::min(128, static_cast<int>(std::ceil(span / std::max(1.0e-6f, step)))));
+            cglib::vec4<std::int8_t> attribs(styleIndex, 0, 0, 0);
+            for (int k = 0; k < steps; k++) {
+                // Distance along the segment's own frame, from -radius (the near cap) onward.
+                float tA = -radius + span * (static_cast<float>(k) / steps);
+                float tB = -radius + span * (static_cast<float>(k + 1) / steps);
+                cglib::vec2<float> a = points[j] + tangent * tA;
+                cglib::vec2<float> b = points[j] + tangent * tB;
+                float alongA = tA * invRadius;
+                float alongB = tB * invRadius;
+
+                std::size_t i0 = _groundCoords.size();
+                _groundCoords.append(a - offset, b - offset, b + offset, a + offset);
+                _groundTexCoords.append(a - offset, b - offset, b + offset, a + offset);
+                // Affine in the vertex, so interpolating it over the quad is exact.
+                _groundBinormals.append(cglib::vec3<float>(alongA, -inwardSign, segLen), cglib::vec3<float>(alongB, -inwardSign, segLen),
+                                        cglib::vec3<float>(alongB, inwardSign, segLen), cglib::vec3<float>(alongA, inwardSign, segLen));
+                _groundHeights.append(height, height, height, height);
+                _groundAttribs.append(attribs, attribs, attribs, attribs);
+                _groundIndices.append(i0 + 0, i0 + 1, i0 + 2);
+                _groundIndices.append(i0 + 0, i0 + 2, i0 + 3);
+            }
+        }
+    }
+
+    bool TileLayerBuilder::appendRoof(const std::vector<std::vector<cglib::vec2<float>>>& pointsList, float baseHeight, float roofHeight, RoofShape shape, std::int8_t styleIndex) {
+        if (shape == RoofShape::FLAT || !(roofHeight > 0.0f) || pointsList.empty() || pointsList[0].size() < 3) {
+            return false;
+        }
+        const std::vector<cglib::vec2<float>>& points = pointsList[0];
+        // Only the outer ring carries a shaped roof. A footprint with a courtyard has no single
+        // apex or ridge, and OSM tags one anyway - flat is the honest answer there.
+        if (pointsList.size() > 1) {
             return false;
         }
 
+        // Area centroid, not the average of the vertices: a footprint digitised with more points
+        // along one side would drag a vertex average towards it and lean the apex.
+        float area = 0.0f;
+        cglib::vec2<float> centroid(0, 0);
+        for (std::size_t i = 0, j = points.size() - 1; i < points.size(); j = i++) {
+            float cross = points[j](0) * points[i](1) - points[i](0) * points[j](1);
+            area += cross;
+            centroid = centroid + (points[j] + points[i]) * cross;
+        }
+        if (!(std::abs(area) > 0.0f)) {
+            return false;
+        }
+        centroid = centroid * (1.0f / (3.0f * area));
+
+        // The apex line. A pyramid collapses it to the centroid; a gable stretches it along the
+        // footprint's longest axis, which is the ridge an OSM 'gabled' roof means without carrying
+        // a direction. Taken from the longest EDGE rather than a full oriented bounding box: a
+        // building long enough to read as gabled has its ridge parallel to its longest wall.
+        cglib::vec2<float> ridge(0, 0);
+        if (shape == RoofShape::GABLED) {
+            float longest = 0.0f;
+            for (std::size_t i = 0, j = points.size() - 1; i < points.size(); j = i++) {
+                cglib::vec2<float> edge = points[i] - points[j];
+                float len = cglib::length(edge);
+                if (len > longest) {
+                    longest = len;
+                    ridge = edge * (1.0f / len);
+                }
+            }
+            // Half the footprint's extent along the ridge, so the two ends sit inside it.
+            float minT = 0.0f, maxT = 0.0f;
+            for (std::size_t i = 0; i < points.size(); i++) {
+                float t = cglib::dot_product(points[i] - centroid, ridge);
+                minT = std::min(minT, t);
+                maxT = std::max(maxT, t);
+            }
+            ridge = ridge * (0.5f * (maxT - minT) * 0.5f);
+        }
+
+        float apexHeight = baseHeight + roofHeight;
+        for (std::size_t i = 0, j = points.size() - 1; i < points.size(); j = i++) {
+            if (points[i] == points[j]) {
+                continue;
+            }
+            // Which end of the ridge this edge faces. For a pyramid both are the centroid, so the
+            // fan degenerates to the apex and the two triangles below become one.
+            cglib::vec2<float> apex0 = centroid + ridge * (cglib::dot_product(points[j] - centroid, ridge) < 0.0f ? -1.0f : 1.0f);
+            cglib::vec2<float> apex1 = centroid + ridge * (cglib::dot_product(points[i] - centroid, ridge) < 0.0f ? -1.0f : 1.0f);
+
+            cglib::vec2<float> tangent(cglib::unit(points[i] - points[j]));
+            cglib::vec2<float> binormal = cglib::vec2<float>(tangent(1), -tangent(0));
+
+            std::size_t i0 = _coords.size();
+            _coords.append(points[j], points[i], apex1, apex0);
+            _texCoords.append(_polygon3DCentroid, _polygon3DCentroid, _polygon3DCentroid, _polygon3DCentroid);
+            _binormals.append(binormal, binormal, binormal, binormal);
+            _heights.append(baseHeight, baseHeight, apexHeight, apexHeight);
+            // A roof slope is neither wall nor flat top: 64 leans its normal half way between the
+            // two, which is what a pitched surface catches of the sun.
+            const cglib::vec4<std::int8_t> eave(styleIndex, 64, 0, 127);
+            const cglib::vec4<std::int8_t> peak(styleIndex, 0, 0, 127);
+            _attribs.append(eave, eave, peak, peak);
+            _indices.append(i0 + 0, i0 + 1, i0 + 2);
+            if (apex0 != apex1) {
+                _indices.append(i0 + 0, i0 + 2, i0 + 3);
+            }
+        }
+        return true;
+    }
+
+    std::uint64_t TileLayerBuilder::roofKey(const std::vector<std::vector<cglib::vec2<float>>>& pointsList, float height) {
+        // Summed, so the ring's start vertex and its winding do not matter - the same building
+        // arriving from two source layers is rarely digitised identically.
+        std::uint64_t sum = 0;
+        std::uint64_t count = 0;
+        for (const std::vector<cglib::vec2<float>>& points : pointsList) {
+            for (const cglib::vec2<float>& p : points) {
+                sum += (static_cast<std::uint64_t>(static_cast<int>(std::lround(p(0) * 32768.0f)) + 128) << 20)
+                     ^ static_cast<std::uint64_t>(static_cast<int>(std::lround(p(1) * 32768.0f)) + 128);
+                count++;
+            }
+        }
+        return (sum * 1099511628211ULL) ^ (count << 40) ^ static_cast<std::uint64_t>(std::lround(height * 1024.0f));
+    }
+
+    std::uint64_t TileLayerBuilder::wallEdgeKey(const cglib::vec2<float>& p0, const cglib::vec2<float>& p1) const {
+        // 1/32768 of a tile - 7 cm at zoom 14, finer than any tiler's grid, so two features that
+        // share a wall in the source share a key here. The clip box reaches slightly outside the
+        // tile, hence the offset that keeps the quantised value unsigned.
+        auto quantize = [](float v) -> std::uint64_t {
+            return static_cast<std::uint64_t>(std::max(0, std::min(65535, static_cast<int>(std::lround(v * 32768.0f)) + 128)));
+        };
+        std::uint64_t a = (quantize(p0(0)) << 16) | quantize(p0(1));
+        std::uint64_t b = (quantize(p1(0)) << 16) | quantize(p1(1));
+        // Undirected: the two features walk their shared edge in opposite directions.
+        std::uint64_t edge = (a < b ? (a << 32) | b : (b << 32) | a);
+        // ...and the ANCHOR that wall stands on. Two features sharing an edge only have coincident
+        // walls if they are lifted to the same height, and that is now per footprint (see
+        // tesselatePolygon3D). Suppressing the second wall regardless left a hole in the building
+        // wherever the two anchors differ - one wall missing where two wings meet.
+        std::uint64_t anchor = (quantize(_polygon3DCentroid(0)) << 16) | quantize(_polygon3DCentroid(1));
+        anchor = anchor * 2654435761ULL + static_cast<std::uint64_t>(static_cast<std::uint8_t>(_polygon3DExtent));
+        return edge ^ (anchor + 0x9e3779b97f4a7c15ULL + (edge << 6) + (edge >> 2));
+    }
+
+    void TileLayerBuilder::appendWallQuad(const cglib::vec2<float>& p0, const cglib::vec2<float>& p1, const cglib::vec2<float>& binormal, float lo, float hi, std::int8_t styleIndex) {
+        // The facade gradient, evaluated HERE rather than in the shader: this height and the reach
+        // are both style values in the same units, while the shader's height carries a packing and
+        // a tile scale (see uAbsHeightScale) that no constant in metres can be compared against.
+        // Absolute, so every part of a building shares one ramp instead of restarting per wall.
+        auto packT = [this](float h) -> std::int8_t {
+            float t = _polygon3DGradientHeight > 0.0f ? h / _polygon3DGradientHeight : 1.0f;
+            return static_cast<std::int8_t>(std::max(0, std::min(127, static_cast<int>(std::lround(t * 127.0f)))));
+        };
+        std::int8_t tLo = packT(lo);
+        std::int8_t tHi = packT(hi);
+
+        std::size_t i0 = _coords.size();
+        _coords.append(p0, p1, p1);
+        _texCoords.append(_polygon3DCentroid, _polygon3DCentroid, _polygon3DCentroid);
+        _binormals.append(binormal, binormal, binormal);
+        _heights.append(lo, lo, hi);
+        _attribs.append(cglib::vec4<std::int8_t>(styleIndex, 127, 0, tLo), cglib::vec4<std::int8_t>(styleIndex, 127, 0, tLo), cglib::vec4<std::int8_t>(styleIndex, 127, 1, tHi));
+        _indices.append(i0 + 0, i0 + 1, i0 + 2);
+
+        std::size_t i1 = _coords.size();
+        _coords.append(p1, p0, p0);
+        _texCoords.append(_polygon3DCentroid, _polygon3DCentroid, _polygon3DCentroid);
+        _binormals.append(binormal, binormal, binormal);
+        _heights.append(hi, hi, lo);
+        _attribs.append(cglib::vec4<std::int8_t>(styleIndex, 127, 1, tHi), cglib::vec4<std::int8_t>(styleIndex, 127, 1, tHi), cglib::vec4<std::int8_t>(styleIndex, 127, 0, tLo));
+        _indices.append(i1 + 0, i1 + 1, i1 + 2);
+    }
+
+    bool TileLayerBuilder::tesselatePolygon3D(const std::vector<std::vector<cglib::vec2<float>>>& rawPointsList, float minHeight, float maxHeight, std::int8_t styleIndex, const Polygon3DStyle& style) {
+        _tesselator.clear();
+        // Drop repeated points, including the one an MVT ring closes with. A zero-length edge only
+        // ever produced a zero-area wall quad, but the bevel spans corner to corner and turns one
+        // into a NaN tangent - a vertex that quantises to garbage and streaks across the tile.
+        std::vector<std::vector<cglib::vec2<float>>> pointsList;
+        pointsList.reserve(rawPointsList.size());
+        for (const std::vector<cglib::vec2<float>>& raw : rawPointsList) {
+            std::vector<cglib::vec2<float>> points;
+            points.reserve(raw.size());
+            for (const cglib::vec2<float>& p : raw) {
+                if (points.empty() || points.back() != p) {
+                    points.push_back(p);
+                }
+            }
+            while (points.size() > 1 && points.back() == points.front()) {
+                points.pop_back();
+            }
+            pointsList.push_back(std::move(points));
+        }
+        // The anchor every vertex of this extrusion is elevated at: the mean of the OUTER ring, as
+        // maplibre's fill-extrusion does. A building is a rigid prism standing at one elevation -
+        // sampling the terrain per vertex instead shears the roof down the slope.
+        _polygon3DCentroid = cglib::vec2<float>(0, 0);
+        if (!pointsList.empty() && !pointsList[0].empty()) {
+            cglib::vec2<float> centroid(0, 0);
+            for (const cglib::vec2<float>& p : pointsList[0]) {
+                centroid = centroid + p;
+            }
+            centroid = centroid * (1.0f / pointsList[0].size());
+            // Through the transformer, like the coords beside it: calculatePoint FLIPS Y, and the
+            // vertex stage hands this straight to applyTerrain. Stored unflipped it samples the
+            // elevation at a mirrored position - which on a hillside is a different hill.
+            cglib::vec3<float> anchor = _transformer->calculatePoint(centroid);
+            _polygon3DCentroid = cglib::vec2<float>(anchor(0), anchor(1));
+            // ...and how far the footprint reaches from it, so the vertex stage can find the
+            // HIGHEST ground the building stands on and lift the whole prism above it. Anchored at
+            // the centroid alone, everything uphill of it is swallowed by the slope.
+            // In 1/512 of a tile, which is 1 m at zoom 16 and caps the reach at a quarter tile.
+            float extent = 0.0f;
+            for (const cglib::vec2<float>& p : pointsList[0]) {
+                extent = std::max(extent, cglib::length(p - centroid));
+            }
+            _polygon3DExtent = static_cast<std::int8_t>(std::min(127.0f, std::round(extent * 512.0f)));
+        }
+        // Edge radius: the wall stops short of the roof and a bevel band bridges the two, with the
+        // roof ring inset by the same amount. What makes it read as ROUNDED is that the band's
+        // normals interpolate from the wall's to the roof's - one quad per edge, not a fillet.
+        // Skipped for a building too short to give up the height, or one whose footprint has an
+        // edge too short to inset without folding the ring through itself.
+        float edgeRadius = 0.0f;
+        float wallTop = maxHeight;
+        std::vector<std::vector<cglib::vec2<float>>> roofList = pointsList;
+        // A shaped roof puts its eaves on the ORIGINAL footprint, so an inset top ring would leave
+        // the two disagreeing along every edge. The roof is the cap in that case; the bevel is not.
+        bool shapedRoof = style.roofShape != RoofShape::FLAT && style.roofHeight > 0.0f;
+        if (!shapedRoof && _polygon3DEdgeRadius > 0.0f && maxHeight - minHeight > 2.0f * _polygon3DEdgeRadius && !pointsList.empty() && !pointsList[0].empty()) {
+            // The horizontal inset is TILE-LOCAL and the vertical drop is in the style's metres, so
+            // the clamp the ring imposes has to come back through the same conversion or the bevel
+            // is taller than it is wide.
+            float localPerMeter = _transformer->calculateHeight(pointsList[0][0], 1.0f);
+            float inset = insetRings(pointsList, _polygon3DEdgeRadius * localPerMeter, roofList);
+            if (inset > 0.0f && localPerMeter > 0.0f) {
+                edgeRadius = inset / localPerMeter;
+                wallTop = maxHeight - edgeRadius;
+            }
+        }
+
+        if (!_tesselator.tesselate(roofList)) {
+            return false;
+        }
+
+        // A duplicated footprint puts two roofs on one plane, which z-fights exactly as the walls
+        // do. Decided BEFORE the walls, because the bevel belongs to the roof: gated on the wall
+        // instead, a feature whose wall was deduped away still drew its inset roof and left an
+        // unclosed ring around it - a slit right where the bevel should be.
+        bool drawRoof = _polygon3DRoofs.insert(roofKey(pointsList, maxHeight)).second;
+
         if (minHeight != maxHeight) {
-            for (const std::vector<cglib::vec2<float>>& points : pointsList) {
+            for (std::size_t ring = 0; ring < pointsList.size(); ring++) {
+                const std::vector<cglib::vec2<float>>& points = pointsList[ring];
+                const std::vector<cglib::vec2<float>>& inset = roofList[ring];
                 std::size_t j = points.size() - 1;
                 for (std::size_t i = 0; i < points.size(); i++) {
                     cglib::bbox2<float> bounds(points[i]);
@@ -1200,21 +1667,51 @@ namespace massif::vt {
                         cglib::vec2<float> tangent(cglib::unit(points[i] - points[j]));
                         cglib::vec2<float> binormal = cglib::vec2<float>(tangent(1), -tangent(0));
 
-                        std::size_t i0 = _coords.size();
-                        _coords.append(points[i], points[j], points[j]);
-                        _texCoords.append(points[i], points[j], points[j]);
-                        _binormals.append(binormal, binormal, binormal);
-                        _heights.append(minHeight, minHeight, maxHeight);
-                        _attribs.append(cglib::vec4<std::int8_t>(styleIndex, 1, 0, 0), cglib::vec4<std::int8_t>(styleIndex, 1, 0, 0), cglib::vec4<std::int8_t>(styleIndex, 1, 1, 0));
-                        _indices.append(i0 + 0, i0 + 1, i0 + 2);
-
-                        std::size_t i1 = _coords.size();
-                        _coords.append(points[j], points[i], points[i]);
-                        _texCoords.append(points[j], points[i], points[i]);
-                        _binormals.append(binormal, binormal, binormal);
-                        _heights.append(maxHeight, maxHeight, minHeight);
-                        _attribs.append(cglib::vec4<std::int8_t>(styleIndex, 1, 1, 0), cglib::vec4<std::int8_t>(styleIndex, 1, 1, 0), cglib::vec4<std::int8_t>(styleIndex, 1, 0, 0));
-                        _indices.append(i1 + 0, i1 + 1, i1 + 2);
+                        // An extra ring where the gradient knees, or the per-vertex lighting draws a
+                        // straight line from the wall's foot to its roof and the gradient's reach
+                        // means nothing (see setPolygon3DGradientHeight).
+                        auto emitBand = [this](float lo, float hi, const std::function<void(float, float)>& append) {
+                            if (hi <= lo) {
+                                return;
+                            }
+                            float knee = _polygon3DGradientHeight;
+                            if (knee > lo && knee < hi) {
+                                append(lo, knee);
+                                lo = knee;
+                            }
+                            append(lo, hi);
+                        };
+                        // Only the part of this wall no other feature has already walled. A
+                        // building and its building:part share footprint edges, and the two
+                        // coincident walls z-fight into a stipple that reads as shadow acne.
+                        auto emit = [&](float lo, float hi) {
+                            emitBand(lo, hi, [&](float l, float h) {
+                                appendWallQuad(points[i], points[j], binormal, l, h, styleIndex);
+                            });
+                        };
+                        auto it = _polygon3DWalls.find(wallEdgeKey(points[i], points[j]));
+                        if (it == _polygon3DWalls.end()) {
+                            _polygon3DWalls.emplace(wallEdgeKey(points[i], points[j]), std::make_pair(minHeight, maxHeight));
+                            emit(minHeight, wallTop);
+                        } else {
+                            // Up to two quads: a wall taller at both ends than what is there
+                            // sticks out below AND above it.
+                            emit(minHeight, std::min(wallTop, it->second.first));
+                            emit(std::max(minHeight, it->second.second), wallTop);
+                            it->second.first = std::min(it->second.first, minHeight);
+                            it->second.second = std::max(it->second.second, maxHeight);
+                        }
+                        // The bevel closes this feature's own roof, so it follows the ROOF's
+                        // dedupe, not the wall's (see drawRoof).
+                        //
+                        // Mitred: the band spans the TRUE wall top, and at a corner the two
+                        // adjacent bands share the edge points[i] -> inset[i] exactly, so nothing
+                        // has to fill the corner. The wall keeps its real footprint all the way
+                        // down - cutting it back to make room for a chamfer put the bevel on the
+                        // building's BASE too, which is a notch at every ground-level corner.
+                        if (edgeRadius > 0.0f && drawRoof) {
+                            appendBevelQuad(points[i], points[j], inset[i], inset[j], binormal, wallTop, maxHeight, styleIndex);
+                        }
                     }
 
                     j = i;
@@ -1222,12 +1719,33 @@ namespace massif::vt {
             }
         }
 
+        if (!drawRoof) {
+            return true;
+        }
+
+        // The contact shadow, on the GROUND - not at minHeight. A building:part starting at 20 m
+        // would otherwise cast its shadow 20 m up, floating beside the one its parent casts at 0.
+        // Only for a footprint that is actually EXTRUDED and STANDS ON THE GROUND: a flat one was
+        // casting a full ring onto open ground with nothing above it, and a building:part starting
+        // at 20 m - a bridge deck, a tunnel roof - does not touch the ground it was shadowing.
+        if (minHeight <= 0.0f && maxHeight > minHeight) {
+            for (std::size_t ring = 0; ring < pointsList.size(); ring++) {
+                appendGroundSkirt(pointsList[ring], 0.0f, ring > 0, styleIndex);
+            }
+        }
+
+        // A shaped roof replaces the flat cap entirely - its slopes already close the top. The
+        // bevel above stops at the wall, so an edge radius and a pitched roof do not fight.
+        if (appendRoof(pointsList, maxHeight, style.roofHeight, style.roofShape, styleIndex)) {
+            return true;
+        }
+
         std::size_t offset = _coords.size();
         for (std::size_t i = 0; i < _tesselator.getVertices().size(); i++) {
             cglib::vec2<float> p = _tesselator.getVertices()[i];
 
             _coords.append(p);
-            _texCoords.append(p);
+            _texCoords.append(_polygon3DCentroid);
         }
 
         for (std::size_t i = 0; i < _tesselator.getElements().size(); i += 3) {
@@ -1252,7 +1770,7 @@ namespace massif::vt {
 
         _binormals.fill(cglib::vec2<float>(0, 0), _coords.size() - offset);
         _heights.fill(maxHeight, _coords.size() - offset);
-        _attribs.fill(cglib::vec4<std::int8_t>(styleIndex, 0, 1, 0), _coords.size() - offset);
+        _attribs.fill(cglib::vec4<std::int8_t>(styleIndex, 0, 1, 127), _coords.size() - offset); // roof: never darkened
 
         return true;
     }

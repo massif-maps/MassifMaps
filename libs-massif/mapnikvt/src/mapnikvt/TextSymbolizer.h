@@ -40,6 +40,7 @@ namespace massif::mvt {
             bindProperty("placement-priority", &_placementPriority);
             bindProperty("minimum-distance", &_minimumDistance);
             bindProperty("max-distance", &_maxDistance);
+            bindProperty("occlusion-opacity", &_occlusionOpacity);
             bindProperty("callout-screen-anchor", &_calloutScreenAnchor);
             bindProperty("callout-offset", &_calloutOffset);
             bindProperty("callout-step", &_calloutStep);
@@ -118,6 +119,9 @@ namespace massif::mvt {
         FloatProperty _dy = FloatProperty(0.0f);
         FloatProperty _placementPriority = FloatProperty(0.0f);
         FloatProperty _minimumDistance = FloatProperty(0.0f);
+        // What this label keeps while its anchor is hidden by 3D content (mapbox's
+        // text-occlusion-opacity). Negative = unset, i.e. the layer's own default stands.
+        FloatProperty _occlusionOpacity = FloatProperty(-1.0f);
         FloatProperty _maxDistance = FloatProperty(0.0f); // meters from the camera; 0 = no limit
         // 'callout' placement only (see vt::LabelOrientation::CALLOUT). Screen pixels, except
         // the anchor: a fraction of the screen height from the top, < 0 = stack from the anchor.

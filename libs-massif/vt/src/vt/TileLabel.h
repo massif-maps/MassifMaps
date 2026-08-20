@@ -45,6 +45,9 @@ namespace massif::vt {
             // labels a tile carries is already decided by the style at the TILE's zoom, so this is
             // the second half of that: how far the ones that exist may be seen.
             float maxDistance;
+            // What this label keeps while its anchor is hidden by 3D content (mapbox's
+            // text-occlusion-opacity, per style layer). Unset = the layer's own default.
+            std::optional<float> occlusionOpacity;
             // Own colour for the second run of text (see TextLabelStyle); unset = the label's fill.
             std::optional<ColorFunction> secondaryColorFunc;
             // Own colour for the icon run (the glyphs before the text, see TextLabelStyle);

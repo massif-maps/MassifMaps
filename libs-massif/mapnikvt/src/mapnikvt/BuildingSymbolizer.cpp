@@ -16,7 +16,17 @@ namespace massif::mvt {
         float height = _height.getValue(exprContext);
         float minHeight = _minHeight.getValue(exprContext);
 
-        vt::Polygon3DStyle style(fillFunc, geometryTransform);
+        std::string roofShapeName = _roofShape.getValue(exprContext);
+        vt::RoofShape roofShape = vt::RoofShape::FLAT;
+        if (roofShapeName == "pyramidal") {
+            roofShape = vt::RoofShape::PYRAMIDAL;
+        }
+        else if (roofShapeName == "gabled") {
+            roofShape = vt::RoofShape::GABLED;
+        }
+        float roofHeight = _roofHeight.getValue(exprContext);
+
+        vt::Polygon3DStyle style(fillFunc, geometryTransform, roofShape, roofHeight);
 
         return [style, height, minHeight, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
             bool suppressWarning = false;

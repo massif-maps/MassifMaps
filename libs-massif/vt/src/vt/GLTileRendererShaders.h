@@ -31,7 +31,6 @@ namespace massif::vt {
         U_TILEUNITOFFSET,
         U_UVSCALE,
         U_HEIGHTSCALE,
-        U_ABSHEIGHTSCALE,
         U_COLORTABLE,
         U_WIDTHTABLE,
         U_OFFSETTABLE,
@@ -61,7 +60,9 @@ namespace massif::vt {
         U_DRAPETEXTURE,
         U_SUNDIR,
         U_SUNCOLOR,
+        U_AMBIENTCOLOR,
         U_LIGHTPARAMS,
+        U_GROUNDAOPARAMS,
         U_TERRAINSLOPESCALE,
         U_SHADOWMATRIX,
         U_SHADOWTEXTURE,
@@ -81,7 +82,9 @@ namespace massif::vt {
         U_LABELAXISY,
         U_PAINTSLOPESCALE,
         U_PAINTPARAMS,
-        U_GROUNDCOLOR
+        U_GROUNDCOLOR,
+        U_LABELOCCLUSIONTEX,
+        U_LABELOCCLUSIONPARAMS
     };
 
     enum : unsigned int {
@@ -128,7 +131,10 @@ namespace massif::vt {
         // Terrain sun on UNDRAPED 2D geometry. A separate flag from TERRAIN_LIGHT because that one
         // marks the surface shaders, which declare the same uniforms themselves - one name twice in
         // a stage is a link error.
-        GEOMETRY_LIGHT_FLAG = 4194304
+        GEOMETRY_LIGHT_FLAG = 4194304,
+        // A label asks a screen depth texture of the 3D occluders whether its ANCHOR is behind
+        // one, and fades the whole label out if it is (mapbox's model - see labelVsh).
+        LABEL_OCCLUSION_FLAG = 8388608
     };
 
     static const std::map<std::string, int> attribMap = {
@@ -154,7 +160,6 @@ namespace massif::vt {
         { "uTileUnitOffset",   U_TILEUNITOFFSET },
         { "uUVScale",          U_UVSCALE },
         { "uHeightScale",      U_HEIGHTSCALE },
-        { "uAbsHeightScale",   U_ABSHEIGHTSCALE },
         { "uColorTable",       U_COLORTABLE },
         { "uWidthTable",       U_WIDTHTABLE },
         { "uOffsetTable",      U_OFFSETTABLE },
@@ -184,7 +189,9 @@ namespace massif::vt {
         { "uDrapeTexture",      U_DRAPETEXTURE },
         { "uSunDir",            U_SUNDIR },
         { "uSunColor",          U_SUNCOLOR },
+        { "uAmbientColor",      U_AMBIENTCOLOR },
         { "uLightParams",       U_LIGHTPARAMS },
+        { "uGroundAOParams",    U_GROUNDAOPARAMS },
         { "uTerrainSlopeScale", U_TERRAINSLOPESCALE },
         { "uShadowMatrix",      U_SHADOWMATRIX },
         { "uShadowTexture",     U_SHADOWTEXTURE },
@@ -204,7 +211,9 @@ namespace massif::vt {
         { "uLabelAxisY",        U_LABELAXISY },
         { "uPaintSlopeScale",   U_PAINTSLOPESCALE },
         { "uPaintParams",       U_PAINTPARAMS },
-        { "uGroundColor",       U_GROUNDCOLOR }
+        { "uGroundColor",       U_GROUNDCOLOR },
+        { "uLabelOcclusionTex",    U_LABELOCCLUSIONTEX },
+        { "uLabelOcclusionParams", U_LABELOCCLUSIONPARAMS }
     };
 
     static const std::map<unsigned int, std::string> flagDefineMap = {
@@ -224,6 +233,7 @@ namespace massif::vt {
         { SHADOW_CASCADES2_FLAG, "SHADOW_CASCADES_2" },
         { SHADOW_CASCADES3_FLAG, "SHADOW_CASCADES_3" },
         { SHADOW_CASCADES4_FLAG, "SHADOW_CASCADES_4" },
+        { LABEL_OCCLUSION_FLAG, "LABEL_OCCLUSION" },
         { SHADOW_MASK_OUT_FLAG, "SHADOW_MASK_OUT" },
         { SHADOW_MASK_IN_FLAG, "SHADOW_MASK_IN" },
         { SHADOW_SINGLE_TAP_FLAG, "SHADOW_SINGLE_TAP" },
@@ -831,13 +841,14 @@ namespace massif::vt {
         // draped around it was lit - GEOMETRY_LIGHT is what closes that.
         #if defined(TERRAIN) && defined(GEOMETRY_LIGHT) && !defined(TERRAIN_LIGHT)
         uniform lowp vec4 uSunColor;        // rgb = colour, a = unused
+        uniform lowp vec4 uAmbientColor;    // rgb = colour, a = unused
         uniform mediump vec2 uLightParams;  // x = sun intensity, y = ambient intensity
         lowp vec4 applyTerrainShading(lowp vec4 color) {
             mediump float ndl = terrainNdl();
             // The same normalised Lambert the draped surface uses (backgroundFsh): ambient is the
             // floor, the sun fills the remaining headroom. The colour is premultiplied, so scaling
             // rgb alone is a valid tint and the clamp keeps rgb <= a.
-            mediump vec3 lit = vec3(uLightParams.y) + uSunColor.rgb * ((1.0 - uLightParams.y) * ndl * uLightParams.x);
+            mediump vec3 lit = uAmbientColor.rgb * uLightParams.y + uSunColor.rgb * ((1.0 - uLightParams.y) * ndl * uLightParams.x);
         #if defined(TERRAIN_SHADOW) && defined(SHADOW_MASK_IN)
             lit *= shadowFactorScreen();
         #elif defined(TERRAIN_SHADOW)
@@ -954,6 +965,7 @@ namespace massif::vt {
         uniform highp vec4 uElevationTexelSize;
         uniform mediump vec3 uSunDir;         // east, north, up - the same frame the tile mesh lives in
         uniform lowp vec4 uSunColor;          // rgb = colour, a = unused
+        uniform lowp vec4 uAmbientColor;      // rgb = colour, a = unused
         uniform mediump vec2 uLightParams;    // x = sun intensity, y = ambient intensity
         uniform highp vec2 uTerrainSlopeScale; // metres of height -> world units, per elevation-uv unit
         varying highp vec2 vElevUV;
@@ -1031,7 +1043,7 @@ namespace massif::vt {
             // Normalised Lambert: ambient is the floor, the sun fills the REMAINING headroom, so
             // a surface facing the sun lands at 1 instead of ambient+1. Adding them blows the
             // ground out to white at a high sun, and a clipped highlight cannot show a shadow.
-            mediump vec3 lit = vec3(uLightParams.y) + uSunColor.rgb * ((1.0 - uLightParams.y) * ndl * uLightParams.x);
+            mediump vec3 lit = uAmbientColor.rgb * uLightParams.y + uSunColor.rgb * ((1.0 - uLightParams.y) * ndl * uLightParams.x);
         #ifdef TERRAIN_SHADOW
             // The shadow multiplies the FINAL colour, exactly as it does on the 3D extrusions.
             // Folding it into N.L instead made it vanish at ambient 1 (where N.L has no weight
@@ -1109,7 +1121,7 @@ namespace massif::vt {
             // Normalised Lambert: ambient is the floor, the sun fills the REMAINING headroom, so
             // a surface facing the sun lands at 1 instead of ambient+1. Adding them blows the
             // ground out to white at a high sun, and a clipped highlight cannot show a shadow.
-            mediump vec3 lit = vec3(uLightParams.y) + uSunColor.rgb * ((1.0 - uLightParams.y) * ndl * uLightParams.x);
+            mediump vec3 lit = uAmbientColor.rgb * uLightParams.y + uSunColor.rgb * ((1.0 - uLightParams.y) * ndl * uLightParams.x);
         #ifdef TERRAIN_SHADOW
             // The shadow multiplies the FINAL colour, exactly as it does on the 3D extrusions.
             // Folding it into N.L instead made it vanish at ambient 1 (where N.L has no weight
@@ -1372,6 +1384,7 @@ namespace massif::vt {
         // declaration of the same name is a link error.
         uniform mediump vec3 uSunDir;          // east, north, up - the frame the tile mesh lives in
         uniform lowp vec4 uSunColor;           // rgb = colour, a = unused
+        uniform lowp vec4 uAmbientColor;       // rgb = colour, a = unused
         uniform mediump vec2 uLightParams;     // x = sun intensity, y = ambient intensity
         uniform highp vec2 uTerrainSlopeScale; // metres of height -> world units, per elevation-uv unit
 
@@ -1403,7 +1416,7 @@ namespace massif::vt {
             // Same normalised Lambert and the same final-colour shadow multiply as the terrain
             // surface itself (backgroundFsh), so ground and paint agree about what a shadow is.
             mediump float ndl = max(0.0, dot(terrainSurfaceNormal(), uSunDir));
-            mediump vec3 lit = vec3(uLightParams.y) + uSunColor.rgb * ((1.0 - uLightParams.y) * ndl * uLightParams.x);
+            mediump vec3 lit = uAmbientColor.rgb * uLightParams.y + uSunColor.rgb * ((1.0 - uLightParams.y) * ndl * uLightParams.x);
         #ifdef TERRAIN_SHADOW
             lit *= shadowFactorSlope(ndl);
         #endif
@@ -1474,6 +1487,12 @@ namespace massif::vt {
         uniform vec3 uLabelAxisX;
         uniform vec3 uLabelAxisY;
         uniform mat4 uMVPMatrix;
+        #ifdef LABEL_OCCLUSION
+        uniform sampler2D uLabelOcclusionTex;
+        // x = half the occluder square, in uv; y = depth offset, NDC; z = the opacity an occluded
+        // label keeps; w = 1/(the ramp the comparison is softened over).
+        uniform vec4 uLabelOcclusionParams;
+        #endif
         uniform vec2 uUVScale;
         uniform float uSDFRamp;
         uniform vec4 uColorTable[16];
@@ -1508,6 +1527,29 @@ namespace massif::vt {
             vec3 offset = aVertexAttribs[3] > 0.5
                 ? uLabelAxisX * aVertexOffset.x + uLabelAxisY * aVertexOffset.y
                 : aVertexOffset;
+        #ifdef LABEL_OCCLUSION
+            // Is the ANCHOR behind a 3D occluder? Four taps around it, each a soft comparison,
+            // averaged - so a label goes out as it slides behind a building rather than popping,
+            // and one texel of a half-resolution buffer cannot decide it alone. Per LABEL, not per
+            // fragment: the glyph run is never cut in half by a wall crossing it.
+            highp vec4 anchorClip = uMVPMatrix * vec4(aVertexPosition, 1.0);
+            if (anchorClip.w > 0.0) {
+                highp vec2 anchorUV = anchorClip.xy / anchorClip.w * 0.5 + 0.5;
+                highp float anchorDepth = anchorClip.z / anchorClip.w * 0.5 + 0.5 + uLabelOcclusionParams.y;
+                highp vec2 d = vec2(uLabelOcclusionParams.x);
+                // The occluders arrive with their window depth PACKED into rgb (the shadow
+                // caster's encoding), so an empty texel - white - decodes past 1 and reads as
+                // nothing in front.
+                highp vec3 unpack = vec3(1.0, 1.0 / 255.0, 1.0 / 65025.0);
+                highp vec4 taps = vec4(
+                    dot(texture2D(uLabelOcclusionTex, anchorUV + vec2( d.x,  d.y)).rgb, unpack),
+                    dot(texture2D(uLabelOcclusionTex, anchorUV + vec2(-d.x,  d.y)).rgb, unpack),
+                    dot(texture2D(uLabelOcclusionTex, anchorUV + vec2( d.x, -d.y)).rgb, unpack),
+                    dot(texture2D(uLabelOcclusionTex, anchorUV + vec2(-d.x, -d.y)).rgb, unpack));
+                lowp float visible = dot(vec4(0.25), clamp((taps - vec4(anchorDepth)) * uLabelOcclusionParams.w, 0.0, 1.0));
+                vColor *= mix(uLabelOcclusionParams.z, 1.0, visible); // premultiplied, so one scalar is enough
+            }
+        #endif
             gl_Position = uMVPMatrix * vec4(aVertexPosition + offset, 1.0);
         }
     )GLSL";
@@ -1910,6 +1952,79 @@ namespace massif::vt {
         }
     )GLSL";
 
+    // The contact shadow an extrusion casts on the ground it stands on: one quad per footprint
+    // edge, covering that edge's bounding capsule. It carries no colour of its own - only the
+    // fragment's own distance to the segment.
+    //
+    // Drawn ONLY into the offscreen mask (GLTileRenderer::renderGroundAOMask), under MIN blending,
+    // so that a corner, a building:part and a neighbour meeting on one pixel take the darkest of
+    // the three. The frame gets the resolved mask multiplied in once, as one screen quad - per-quad
+    // compositing would multiply again at every overlap and undo exactly what MIN just resolved.
+    static const std::string polygon3DGroundVsh = R"GLSL(
+        attribute vec3 aVertexPosition;
+        attribute vec3 aVertexNormal;
+        attribute vec3 aVertexBinormal;
+        attribute vec2 aVertexUV;
+        attribute float aVertexHeight;
+        uniform mat4 uMVPMatrix;
+        uniform mat3 uTileMatrix;
+        uniform float uUVScale;
+        uniform float uHeightScale;
+        uniform float uBinormalScale;
+        uniform vec4 uColorTable[16];
+        varying highp_opt vec2 vTilePos;
+        varying mediump vec3 vSegment;
+        varying lowp float vGroundBlend;
+
+        void main(void) {
+            vec3 pos = applyTerrain(aVertexPosition) + aVertexNormal * (aVertexHeight * uHeightScale);
+            vTilePos = (uTileMatrix * vec3(aVertexUV * uUVScale, 1.0)).xy;
+            // (along, across, length) in the segment's own frame, in units of the shadow radius.
+            // Affine in the vertex, so interpolating it over the quad is exact.
+            vSegment = aVertexBinormal * uBinormalScale;
+            // The tile's fade, which reaches here as the style colour's alpha. An extrusion fades
+            // in by GROWING, and without this its contact shadow arrives at full strength on a
+            // building that is not there yet - a footprint painted on the ground as a tile appears.
+            vGroundBlend = uColorTable[0].a;
+            gl_Position = applyDepthBias(uMVPMatrix * vec4(pos, 1.0));
+        }
+    )GLSL";
+
+    static const std::string polygon3DGroundFsh = R"GLSL(
+        uniform mediump vec2 uGroundAOParams; // x = intensity, y = attenuation
+        varying highp_opt vec2 vTilePos;
+        varying mediump vec3 vSegment;
+        varying lowp float vGroundBlend;
+
+        void main(void) {
+            // This tile's ground only. Under overzoom one source tile's capsules are handed to
+            // every target tile derived from it, and each of those draws displaces them with ITS
+            // OWN elevation texture - so without this the same footprint casts a second shadow at
+            // a neighbouring tile's height, floating beside the right one.
+            if (min(vTilePos.x, vTilePos.y) < -0.01 || max(vTilePos.x, vTilePos.y) > 1.01) {
+                discard;
+            }
+            // Distance to the footprint SEGMENT, per fragment - not a value interpolated between
+            // vertices. The caps are what rounds every corner, and what joins one edge's shadow to
+            // the next; a per-vertex distance is linear inside a triangle and facets there.
+            mediump float t = clamp(vSegment.x, 0.0, vSegment.z);
+            // Under the building the ground is fully occluded, so the band holds there instead of
+            // falling off (positive across = the side the walls stand on). Alongside the edge only:
+            // past its ends that half-plane leaves the footprint, and the next edge's own quad
+            // covers what is left. This is also what hides the seam where a draped shadow meets a
+            // wall on a slope - the dark side is the side the displacement moves it towards.
+            mediump float across = (vSegment.y > 0.0 && vSegment.x == t) ? 0.0 : vSegment.y;
+            mediump float dist = min(1.0, length(vec2(vSegment.x - t, across)));
+            // Occlusion = (1 - d)^k: full against the wall, zero at the radius, and above 1 it
+            // reaches the radius with zero slope so there is no crease to read as an outline.
+            // k IS the style's ground-attenuation - the default 1.75 halves the shadow by a third
+            // of the way out (0.5 -> 0.3), which is the profile a contact shadow wants.
+            mediump float occlusion = pow(1.0 - dist, uGroundAOParams.y);
+            mediump float f = 1.0 - uGroundAOParams.x * vGroundBlend * occlusion;
+            glFragColor = vec4(f, f, f, 1.0);
+        }
+    )GLSL";
+
     static const std::string polygon3DVsh = R"GLSL(
         attribute vec3 aVertexPosition;
         attribute vec3 aVertexNormal;
@@ -1924,12 +2039,11 @@ namespace massif::vt {
         uniform mat3 uTileMatrix;
         uniform float uUVScale;
         uniform float uHeightScale;
-        uniform float uAbsHeightScale;
         uniform vec4 uColorTable[16];
         varying highp_opt vec2 vTilePos;
         varying lowp vec4 vColor;
         #ifdef LIGHTING_FSH
-        varying highp_opt float vHeight;
+        varying lowp float vWallT;
         varying lowp float vSideVertex;
         varying mediump vec3 vNormal;
         #endif
@@ -1939,30 +2053,78 @@ namespace massif::vt {
         varying mediump vec3 vShadowNormal;
         #endif
 
+        // Ground height at a point of THIS extrusion's footprint frame, transform included.
+        float footprintGround(vec2 c) {
+            vec3 a = vec3(c, aVertexPosition.z);
+        #ifdef TRANSFORM
+            a = vec3(uTransformMatrix * vec4(a, 1.0));
+        #endif
+            return applyTerrain(a).z;
+        }
+
         void main(void) {
             int styleIndex = int(aVertexAttribs[0]);
-            float sideVertex = aVertexAttribs[1];
-            float height = aVertexHeight * uAbsHeightScale;
+            // 0 on the roof, 1 on a wall, and BETWEEN on the bevel band that rounds the edge
+            // between them (see TileLayerBuilder edge radius). It blends the two normals, which is
+            // where the softness comes from - the band itself is one quad, not a subdivided fillet.
+            float sideVertex = aVertexAttribs[1] * (1.0 / 127.0);
+            // The facade gradient, baked per vertex by the tesselator (appendWallQuad): 0 at the
+            // foot of the building, 1 once past the gradient's reach.
+            float wallT = aVertexAttribs[3] * (1.0 / 127.0);
             vec3 pos = aVertexPosition;
+            // Anything ABOVE the ground is measured from ONE elevation - the footprint's centroid,
+            // which the tesselator put in the texcoord slot - so the roof stays level instead of
+            // shearing down the slope. The ground ring itself keeps the terrain under each vertex,
+            // so the wall still meets the slope everywhere and the walls simply grow taller
+            // downhill. mapbox's fill-extrusion base-alignment terrain + height-alignment flat.
+            // Anchoring the base to the centroid too (maplibre's rigid prism) buries a building
+            // whole wherever the hillside rises more than its own height.
+            vec3 anchor = vec3(aVertexUV, aVertexPosition.z);
         #ifdef TRANSFORM
             pos = vec3(uTransformMatrix * vec4(pos, 1.0));
+            anchor = vec3(uTransformMatrix * vec4(anchor, 1.0));
         #endif
-            pos = applyTerrain(pos) + aVertexNormal * (aVertexHeight * uHeightScale);
-            vec3 normal = normalize(sideVertex > 0.0 ? aVertexBinormal : aVertexNormal);
+            float groundZ = applyTerrain(pos).z;
+            float baseZ = groundZ;
+            if (aVertexHeight > 0.0) {
+                // The HIGHEST ground the footprint stands on: the centroid and its reach in four
+                // directions, the reach being the tesselator's own footprint extent. The prism is
+                // RAISED to it, so the roof stays flat AND no part of the building is left under
+                // the hill. Anchoring at the centroid alone buried everything uphill of it;
+                // clamping the finished top to the ground instead collapsed those walls to nothing
+                // (whole faces missing); taking the ground per vertex bends the roof down the slope.
+                float reach = float(aVertexAttribs[2]) * (1.0 / 512.0) / uUVScale;
+                baseZ = applyTerrain(anchor).z;
+                baseZ = max(baseZ, footprintGround(aVertexUV + vec2(reach, 0.0)));
+                baseZ = max(baseZ, footprintGround(aVertexUV - vec2(reach, 0.0)));
+                baseZ = max(baseZ, footprintGround(aVertexUV + vec2(0.0, reach)));
+                baseZ = max(baseZ, footprintGround(aVertexUV - vec2(0.0, reach)));
+            }
+            pos = vec3(pos.xy, baseZ) + aVertexNormal * (aVertexHeight * uHeightScale);
+            vec3 normal = normalize(mix(aVertexNormal, aVertexBinormal, sideVertex));
             applyShadowPos(pos, normal);
         #ifdef TERRAIN_SHADOW
             vShadowNormal = normal;
         #endif
             vec4 color = uColorTable[styleIndex];
-            vTilePos = (uTileMatrix * vec3(aVertexUV * uUVScale, 1.0)).xy;
+            // The overzoom clip, per VERTEX. Not on the centroid: a building can reach into a tile
+            // while its centroid sits in another, and a centroid test then drops it from every tile
+            // that holds it - walls missing until a zoom-out retiles them. The position works here
+            // because an extrusion's texcoords carry the centroid at the COORD scale (see
+            // packGeometry), so uUVScale converts either of them. Y is flipped back out of the
+            // transformer's frame - uTileMatrix works in tile space.
+            vec2 vertexTile = aVertexPosition.xy * uUVScale;
+            vTilePos = (uTileMatrix * vec3(vertexTile.x, 1.0 - vertexTile.y, 1.0)).xy;
         #ifdef LIGHTING_VSH
-            vColor = applyLighting(color, normal, height, sideVertex > 0.0);
+            // Unshadowed: the shadow is a per-fragment term, so a per-vertex lighting still takes
+            // it as a plain multiply in the fragment shader (and loses its ambient doing so).
+            vColor = applyLighting3D(color, normal, wallT, sideVertex, 1.0);
         #else
             vColor = color;
         #endif
         #ifdef LIGHTING_FSH
             vNormal = normal;
-            vHeight = height;
+            vWallT = wallT;
             vSideVertex = sideVertex;
         #endif
             gl_Position = applyDepthBias(uMVPMatrix * vec4(pos, 1.0));
@@ -1976,7 +2138,7 @@ namespace massif::vt {
         varying mediump vec3 vShadowNormal;
         #endif
         #ifdef LIGHTING_FSH
-        varying highp_opt float vHeight;
+        varying lowp float vWallT;
         varying lowp float vSideVertex;
         varying mediump vec3 vNormal;
         #endif
@@ -1985,12 +2147,6 @@ namespace massif::vt {
             if (min(vTilePos.x, vTilePos.y) < -0.01 || max(vTilePos.x, vTilePos.y) > 1.01) {
                 discard;
             }
-        #ifdef LIGHTING_FSH
-            glFragColor = applyFog(applyLighting(vColor, normalize(vNormal), vHeight, vSideVertex > 0.0));
-        #else
-            glFragColor = applyFog(vColor);
-        #endif
-        #ifdef TERRAIN_SHADOW
             // Extrusions receive as well as cast: a building in the shadow of a ridge, or of a
             // taller neighbour, darkens the same way the ground does.
             // N.L is the extrusion's own normal, not normal incidence: a roof IS its own caster,
@@ -1998,7 +2154,19 @@ namespace massif::vt {
             // itself as soon as a shadow texel covers more ground than a roof is wide - which is
             // what shredded the buildings on zooming out. It also lets the back-face rule shadow
             // a wall facing away from the sun, which no depth comparison can decide.
-            glFragColor.rgb *= shadowFactorSlope(max(0.0, dot(normalize(vShadowNormal), uSunDir)));
+            mediump float shadow = 1.0;
+        #ifdef TERRAIN_SHADOW
+            shadow = shadowFactorSlope(max(0.0, dot(normalize(vShadowNormal), uSunDir)));
+        #endif
+        #ifdef LIGHTING_FSH
+            // The shadow goes INTO the lighting, where it dims the sun alone. Multiplied over the
+            // finished colour instead it took the ambient with it, and since a wall facing away
+            // from the sun is fully shadowed by the back-face rule above, every such wall went
+            // black - the whole reason facades did not match mapbox.
+            glFragColor = applyFog(applyLighting3D(vColor, normalize(vNormal), vWallT, vSideVertex, shadow));
+        #else
+            glFragColor = applyFog(vColor);
+            glFragColor.rgb *= shadow;
         #endif
         }
     )GLSL";

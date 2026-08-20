@@ -298,6 +298,16 @@ namespace massif::css {
             { "ambient-intensity", &mvt::Map::Settings::ambientIntensity },
             { "building-light-intensity", &mvt::Map::Settings::buildingLightIntensity },
             { "building-ambient", &mvt::Map::Settings::buildingAmbient },
+            { "building-vertical-gradient", &mvt::Map::Settings::buildingVerticalGradient },
+            { "building-vertical-gradient-height", &mvt::Map::Settings::buildingVerticalGradientHeight },
+            { "building-ao-ground-radius", &mvt::Map::Settings::buildingAoGroundRadius },
+            { "building-ao-ground-step", &mvt::Map::Settings::buildingAoGroundStep },
+            { "building-ao-ground-attenuation", &mvt::Map::Settings::buildingAoGroundAttenuation },
+            { "building-ao-intensity", &mvt::Map::Settings::buildingAoIntensity },
+            { "text-occlusion-opacity", &mvt::Map::Settings::textOcclusionOpacity },
+            { "building-edge-radius", &mvt::Map::Settings::buildingEdgeRadius },
+            { "building-roof-shade", &mvt::Map::Settings::buildingRoofShade },
+            { "building-rounded-roof", &mvt::Map::Settings::buildingRoundedRoof },
             { "terrain-lighting", &mvt::Map::Settings::terrainLighting },
             { "shadow-strength", &mvt::Map::Settings::shadowStrength },
             { "shadow-bias", &mvt::Map::Settings::shadowBias },
@@ -321,6 +331,7 @@ namespace massif::css {
         }
         const std::pair<const char*, mvt::ColorFunctionProperty mvt::Map::Settings::*> colorProperties[] = {
             { "sun-color", &mvt::Map::Settings::sunColor },
+            { "ambient-color", &mvt::Map::Settings::ambientColor },
             { "fog-color", &mvt::Map::Settings::fogColor },
             { "fog-high-color", &mvt::Map::Settings::fogHighColor },
             { "fog-space-color", &mvt::Map::Settings::fogSpaceColor }

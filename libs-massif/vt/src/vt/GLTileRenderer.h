@@ -110,6 +110,7 @@ namespace massif::vt {
             bool enabled = false;
             cglib::vec3<float> sunDir = cglib::vec3<float>(0, 0, 1);
             cglib::vec3<float> sunColor = cglib::vec3<float>(1, 1, 1);
+            cglib::vec3<float> ambientColor = cglib::vec3<float>(1, 1, 1);
             float sunIntensity = 1.0f;
             float ambientIntensity = 0.35f;
         };
@@ -176,6 +177,36 @@ namespace massif::vt {
         void setTerrainDrapeFills(bool enabled, bool includeLines);
         void setTerrainDrapeResolution(int resolution);
         void setTerrainLighting(const TerrainLighting& lighting);
+        // The contact shadow extrusions cast on the ground (POLYGON3DGROUND): how dark it goes
+        // against the wall, and the falloff curve out to the skirt's edge.
+        void setGroundAO(float intensity, float attenuation);
+        // 0 below the minimum zoom, ramping to 1 one level above it.
+        static float groundAOZoomFade(float zoom);
+        // Whether the contact shadows would draw anything at all this frame (intensity and zoom).
+        bool isGroundAOActive() const;
+        // The same, for the drape bake, which applies no zoom fade - see the body.
+        bool isGroundAOBakeable() const;
+        // Draws every visible contact-shadow quad into the bound framebuffer under MIN blending,
+        // resolving their overlaps into one mask. Returns the number of geometries drawn.
+        int renderGroundAOMask();
+        // Per-label occlusion against a screen depth texture holding the 3D occluders, rendered
+        // from the same camera (mapbox's model: the whole label fades, it is never clipped).
+        // texture 0 turns it off. occluderSize is the square sampled around the anchor, in screen
+        // pixels. The buffer is the owner's, shared by every layer that samples it.
+        void setLabelOcclusionDepth(unsigned int depthTexture, float occluderSize);
+        // What an occluded label keeps, this layer's own default. A style LAYER may set its own
+        // (TileLabel::Style::occlusionOpacity), which wins for its labels. 1 = no occlusion.
+        void setLabelOcclusionOpacity(float occludedOpacity);
+        // True when some style layer asks for occlusion even though the default does not.
+        bool hasStyledLabelOcclusion() const;
+        // Draws every visible extrusion into the bound depth target from the camera. The ground is
+        // NOT drawn: labels are already tested against the terrain on the CPU, per label
+        // (TileRenderer::setLabelOcclusionTest). Returns the number of geometries drawn.
+        int renderLabelOcclusionDepth();
+
+        // The same capsules resolved in ONE DRAPE TILE's frame, into the bound target. Baked into
+        // the ground, the shadow follows the terrain exactly. Changes no GL state - see the body.
+        int bakeGroundAOMask(const TileId& targetTileId);
         // Turns this renderer into a paint baker (see TerrainPaint): it draws the DEM-derived
         // paint for every draped tile and nothing else. Only effective under a cross-layer drape
         // target, which is where the layer order is resolved.
@@ -463,8 +494,13 @@ namespace massif::vt {
             std::array<cglib::vec4<float>, MAX_PARAMETERS> colorTable;
             std::array<float, MAX_PARAMETERS> widthTable;
             std::array<float, MAX_PARAMETERS> strokeWidthTable;
+            // What an occluded label keeps (see setLabelOcclusionOpacity). One value per BATCH
+            // rather than a per-style slot: it is a property of the style layer, so consecutive
+            // labels share it, and a slot would have to join the colour/size key every label is
+            // matched on.
+            float occlusionOpacity;
 
-            LabelBatchParameters() : labelCount(0), parameterCount(0), scale(0), glyphRenderSize(64), labelMatrix(cglib::mat4x4<double>::identity()), colorTable(), widthTable(), strokeWidthTable() { }
+            LabelBatchParameters() : labelCount(0), parameterCount(0), scale(0), glyphRenderSize(64), labelMatrix(cglib::mat4x4<double>::identity()), colorTable(), widthTable(), strokeWidthTable(), occlusionOpacity(1.0f) { }
         };
 
         // Frames between two sweeps of the compiled-resource maps for expired owners (see
@@ -482,7 +518,6 @@ namespace massif::vt {
         // had. Kept so no style has to be retouched.
         static constexpr float HALO_PIXELS_PER_UNIT = 0.589f;
         static constexpr float STROKE_UV_SCALE = 2.857f; // stroked line UV scale factor
-        static constexpr float POLYGON3D_HEIGHT_SCALE = 10018754.17f; // scaling factor for zoom 0 heights
         static constexpr float TERRAIN_LAYER_DEPTH_DELTA = 1.0f / 524288.0f; // 2^-19: NDC depth separation per draped layer bias unit (GPU terrain draping mode)
         // The FLOOR of a proxy tile's depth, tangram's `1` in
         //     setProxyDepth(m_proxyCounter > 0 ? std::max(maxVisS - tileId.s, 1) : 0)
@@ -541,6 +576,25 @@ namespace massif::vt {
 
         void renderGeometry2D(const std::vector<RenderTile>& renderTiles, GLint stencilBits);
         void renderGeometry3D(const std::vector<RenderTile>& renderTiles, bool allowInline);
+        // What begin3DPass set up, and what end3DPass has to undo. One layer's worth.
+        struct Pass3DState {
+            bool useOverlay = false;
+            bool terrainOccluders = false;
+            GLint previousFBO = 0;
+            float layerOpacity = 1.0f;
+            float geometryOpacity = 1.0f;
+            CompOp layerCompOp = CompOp::SRC_OVER;
+        };
+        // Opens the 3D pass for one style layer: the overlay framebuffer when the layer needs one,
+        // the terrain occluder pre-pass, and the depth/blend state the draws run under. Anything
+        // drawn between the two calls is resolved against the ground exactly as an extrusion is.
+        Pass3DState begin3DPass(const std::vector<const RenderTileLayer*>& renderLayers, const std::vector<RenderTile>& renderTiles, bool allowInline);
+        void end3DPass(const Pass3DState& state);
+        // Every POLYGON3D geometry of every visible tile, in draw order, optionally restricted to
+        // the tiles covered by `coveredBy`. The callback returns false to skip the rest of that
+        // layer's geometries.
+        template <typename Func>
+        void forEachVisibleExtrusion(const std::vector<TileId>* coveredBy, Func&& func) const;
         void renderLabels(const std::vector<std::shared_ptr<Label>>& labels);
         // One batching pass over a label list, in list order. CALLOUT leader lines get a pass of
         // their own before the text, so that no line is drawn over another label's glyphs.
@@ -589,6 +643,9 @@ namespace massif::vt {
         // does not land inside the gesture.
         void warmTerrainRasterShader();
         bool hasDrapeableContent(const RenderTileLayer& renderLayer) const;
+        // Contact shadows this layer would bake into the drape (see calculateDrapeFingerprint).
+        bool hasGroundAOContent(const RenderTileLayer& renderLayer) const;
+        bool hasGroundAOTiles(float zoomFade) const;
         // Element opacity a draped layer is baked with: the style's layer opacity, or 1 when the
         // layer has a comp-op (which the bake can not reproduce).
         float calculateDrapeOpacity(const RenderTileLayer& renderLayer) const;
@@ -601,6 +658,22 @@ namespace massif::vt {
         void renderTileBackground(const TileId& tileId, float blend, float opacity, float tileSize, const std::shared_ptr<TileBackground>& background);
         void renderTileBitmap(const TileId& sourceTileId, const TileId& targetTileId, float blend, float opacity, const std::shared_ptr<TileBitmap>& bitmap);
         void renderTileGeometry(const TileId& sourceTileId, const TileId& targetTileId, float blend, float opacity, float tileSize, const std::shared_ptr<TileGeometry>& geometry);
+        // Which optional blocks a geometry draw runs with. Decided once by renderTileGeometry and
+        // handed to the uniform setup, so the program flags and the uniforms cannot disagree.
+        struct GeometryDrawMode {
+            bool flatDrape = false;
+            bool terrainVTF = false;
+            bool shadowReceiver = false;
+            bool terrainLit = false;
+            unsigned int terrainFlag = 0;
+        };
+        // Everything a geometry draw needs that does not depend on its type: the MVP, the terrain
+        // depth bias and elevation, the shadow cascades and the style translation.
+        void setupGeometryCommonUniforms(const ShaderProgram& shaderProgram, const TileId& sourceTileId, const TileId& targetTileId, const std::shared_ptr<TileGeometry>& geometry, const GeometryDrawMode& mode);
+        // The vertex attribute layout of one compiled geometry. Bound as a VAO where the geometry
+        // has one, attribute by attribute otherwise - which is also what the unbind undoes.
+        void bindGeometryVertexLayout(const ShaderProgram& shaderProgram, const std::shared_ptr<TileGeometry>& geometry, const CompiledGeometry& compiledGeometry);
+        void unbindGeometryVertexLayout(const ShaderProgram& shaderProgram, const std::shared_ptr<TileGeometry>& geometry, const CompiledGeometry& compiledGeometry);
         void renderLabelBatch(const LabelBatchParameters& labelBatchParams, const std::shared_ptr<const Bitmap>& bitmap);
 
         const CompiledBitmap& buildCompiledBitmap(const std::shared_ptr<const Bitmap>& bitmap, bool genMipmaps);
@@ -697,6 +770,22 @@ namespace massif::vt {
         static constexpr int TILE_BORDER_SEGMENTS = 16; // per edge, so the line follows the terrain
         bool _debugSurfacePrefill = false;
         TerrainLighting _terrainLighting;
+        // Below this zoom a contact shadow is a sub-pixel rim; groundAOZoomFade ramps it over one level.
+        static constexpr float GROUND_AO_MIN_ZOOM = 16.0f;
+        float _groundAOIntensity = 0.0f;
+        float _groundAOAttenuation = 0.69f;
+        bool _groundAOMaskPass = false; // set only while the mask is being drawn
+        // A label's anchor sits ON the ground, and the buffer it is compared against is half
+        // resolution and drawn from the same camera, so the two depths meet within rounding.
+        // The offset is mapbox's own (-0.0001 NDC, "to prevent coplanar symbol/geometry cases");
+        // the ramp is what turns the comparison into a fade instead of a switch.
+        static constexpr float LABEL_OCCLUSION_DEPTH_OFFSET = -0.0001f;
+        static constexpr float LABEL_OCCLUSION_DEPTH_RAMP = 0.0033f;
+        GLuint _labelOcclusionTexture = 0;    // 0 = labels are not occluded by 3D content
+        float _labelOcclusionSize = 30.0f;    // screen pixels sampled around a label's anchor
+        float _labelOcclusionOpacity = 1.0f;  // what an occluded label keeps; 1 = no occlusion
+        bool _labelOcclusionStyled = false;   // ... or some style layer sets its own
+        bool _groundAOBakePass = false; // ... and only while that mask is a DRAPE bake
         TerrainPaint _terrainPaint;
         bool _terrainPaintOnGround = false;      // the paint replaces the ground fill (see setTerrainPaintOnGround)
         int _terrainDemTaps = 16;                // texture fetches per terrain vertex (see setTerrainDemTaps)

@@ -19,6 +19,8 @@
 
 #include <cstdint>
 #include <memory>
+#include <unordered_map>
+#include <unordered_set>
 #include <variant>
 #include <vector>
 #include <list>
@@ -64,6 +66,23 @@ namespace massif::vt {
         void setCompOp(std::optional<CompOp> compOp);
         void setOpacityFunc(FloatFunction opacityFunc);
         void setClipBox(const cglib::bbox2<float>& clipBox);
+        // Height in metres at which an extrusion wall gets an extra ring. The 3D lighting is
+        // evaluated PER VERTEX, so the facade gradient is a straight line between a wall's base
+        // and its roof unless there is a vertex where the gradient's own curve knees - which is
+        // what makes 'building-vertical-gradient-height' mean anything on a wall taller than it.
+        // 0 = no split.
+        void setPolygon3DGradientHeight(float height) { _polygon3DGradientHeight = height; }
+        // Metres the contact shadow on the ground reaches out from a footprint. 0 = no skirt.
+        void setPolygon3DGroundRadius(float radius) { _polygon3DGroundRadius = radius; }
+        // Metres between subdivisions along a wall of the contact shadow. 0 = the terrain grid cell.
+        void setPolygon3DGroundStep(float step) { _polygon3DGroundStep = step; }
+        // Metres of bevel between a wall and the roof, rounding the edge. 0 = a hard 90 degrees.
+        void setPolygon3DEdgeRadius(float radius) { _polygon3DEdgeRadius = radius; }
+        // True blends the bevel's normal from wall to roof, so the edge reads as ROLLED. False
+        // holds it halfway across the band, making it a facet with a tone of its own - a rim
+        // tracing every roof, which is what separates one building from the next looking straight
+        // down. mapbox's fill-extrusion-rounded-roof.
+        void setPolygon3DRoundedRoof(bool rounded) { _polygon3DRoundedRoof = rounded; }
         void setPolygonClipBox(const cglib::bbox2<float>& clipBox);
 
         void addBackground(const std::shared_ptr<TileBackground>& background);
@@ -103,12 +122,39 @@ namespace massif::vt {
         };
 
         void packGeometry(std::vector<std::shared_ptr<TileGeometry>>& geometryList) const;
+        // The skirt stream, packed once per layer into its own POLYGON3DGROUND geometry.
+        void packGroundSkirt(std::vector<std::shared_ptr<TileGeometry>>& geometryList) const;
         void packGeometry(TileGeometry::Type type, int dimensions, float coordScale, float binormalScale, float texCoordScale, float heightScale, const VertexArray<cglib::vec3<float>>& coords, const VertexArray<cglib::vec2<float>>& texCoords, const VertexArray<cglib::vec3<float>>& normals, const VertexArray<cglib::vec3<float>>& binormals, const VertexArray<float>& heights, const VertexArray<cglib::vec4<std::int8_t>>& attribs, const VertexArray<std::size_t>& indices, const VertexArray<long long>& ids, const VertexArray<std::uint16_t >& geoPosIndexes, const TileGeometry::StyleParameters& styleParameters, std::vector<TileGeometry::FeatureStyleRange> featureStyleRanges, std::vector<std::shared_ptr<TileGeometry>>& geometryList) const;
         void registerStyleVariantSlot(int styleIndex);
 
         bool tesselateGlyph(const cglib::vec2<float>& point, std::int8_t styleIndex, const cglib::vec2<float>& pen, const cglib::vec2<float>& size, const GlyphMap::Glyph* glyph);
         bool tesselatePolygon(const std::vector<std::vector<cglib::vec2<float>>>& pointsList, std::int8_t styleIndex, const PolygonStyle& style);
         bool tesselatePolygon3D(const std::vector<std::vector<cglib::vec2<float>>>& pointsList, float minHeight, float maxHeight, std::int8_t styleIndex, const Polygon3DStyle& style);
+        // The footprint pulled inward, for the roof ring an edge radius leaves behind. Returns the
+        // inset ACTUALLY used in tile-local units - clamped to what the narrowest edge can give up,
+        // and 0 when the ring cannot take any, in which case the extrusion keeps its hard edge.
+        float insetRings(const std::vector<std::vector<cglib::vec2<float>>>& pointsList, float radius, std::vector<std::vector<cglib::vec2<float>>>& insetList) const;
+        // The band bridging the top of a wall to the inset roof ring. Mitred at the corners: two
+        // adjacent bands share the edge from the footprint corner to its inset roof vertex.
+        void appendBevelQuad(const cglib::vec2<float>& p0, const cglib::vec2<float>& p1, const cglib::vec2<float>& i0p, const cglib::vec2<float>& i1p, const cglib::vec2<float>& binormal, float wallTop, float roofHeight, std::int8_t styleIndex);
+        // One wall quad of an extrusion, over the height range [lo, hi].
+        void appendWallQuad(const cglib::vec2<float>& p0, const cglib::vec2<float>& p1, const cglib::vec2<float>& binormal, float lo, float hi, std::int8_t styleIndex);
+        // The contact shadow on the ground around one footprint ring: one quad per edge, covering
+        // that edge's bounding capsule. The fragment measures its own distance to the segment, so
+        // corners are round and the overlaps are resolved by MIN blending rather than avoided here.
+        // Accumulated apart from the walls because the builder has ONE vertex stream, keyed by
+        // _builderParameters.type, and this is a different geometry.
+        void appendGroundSkirt(const std::vector<cglib::vec2<float>>& points, float height, bool hole, std::int8_t styleIndex);
+
+        // A shaped roof on top of the walls, from the OSM roof:shape tag. Returns false when the
+        // footprint cannot carry one, in which case the caller tesselates a flat roof as before.
+        bool appendRoof(const std::vector<std::vector<cglib::vec2<float>>>& pointsList, float baseHeight, float roofHeight, RoofShape shape, std::int8_t styleIndex);
+        // A footprint plus the height its roof sits at. Order- and winding-independent (the parts
+        // are summed), so the same building digitised twice from a different start vertex matches.
+        static std::uint64_t roofKey(const std::vector<std::vector<cglib::vec2<float>>>& pointsList, float height);
+        // An undirected footprint edge, quantised to a fine tile grid so two features that share
+        // a wall land on the same key.
+        std::uint64_t wallEdgeKey(const cglib::vec2<float>& p0, const cglib::vec2<float>& p1) const;
         bool tesselateLine(const std::vector<cglib::vec2<float>>& points, std::int8_t styleIndex, const StrokeMap::Stroke* stroke, const LineStyle& style);
         bool tesselateLineEndPoint(const cglib::vec2<float>& p0, float u0, float v0, float v1, std::size_t i0, std::size_t i1, const cglib::vec2<float>& tangent, const cglib::vec2<float>& binormal, std::int8_t styleIndex, const LineStyle& style);
         static float lineEndArrowInradius(const LineStyle& style);
@@ -138,6 +184,35 @@ namespace massif::vt {
         VertexArray<cglib::vec2<float>> _binormals;
         VertexArray<float> _heights;
         VertexArray<cglib::vec4<std::int8_t>> _attribs;
+        // Height range already walled on each footprint edge of this layer. An OSM building and its
+        // building:part share edges, and two coincident walls z-fight into a stipple that reads as
+        // shadow acne; the second one is emitted only where the first left a gap.
+        std::unordered_map<std::uint64_t, std::pair<float, float>> _polygon3DWalls;
+        // The current extrusion's footprint centroid, carried by every one of its vertices.
+        cglib::vec2<float> _polygon3DCentroid = cglib::vec2<float>(0, 0);
+        // ...and how far its footprint reaches from that centroid, in 1/512 of a tile.
+        std::int8_t _polygon3DExtent = 0;
+        float _polygon3DGradientHeight = 0.0f;
+        // Roofs already emitted this layer. Walls are deduped per edge above; a roof is a polygon,
+        // so it is matched whole - which catches a duplicated footprint, the case that actually
+        // z-fights. A building:part normally differs in height from its parent, putting its roof on
+        // another plane entirely.
+        std::unordered_set<std::uint64_t> _polygon3DRoofs;
+        float _polygon3DGroundRadius = 0.0f;   // metres the contact shadow reaches; 0 = off
+        float _polygon3DGroundStep = 0.0f;     // metres between subdivisions; 0 = the terrain grid cell
+        float _polygon3DEdgeRadius = 0.0f;     // metres of bevel at the roof edge; 0 = hard edge
+        bool _polygon3DRoundedRoof = true;     // false = the bevel is a flat facet with its own tone
+        // The skirt's own stream (see appendGroundSkirt), packed once by buildTileLayer.
+        VertexArray<cglib::vec2<float>> _groundCoords;
+        // (along, across, length) of the footprint segment this vertex belongs to, in units of the
+        // shadow radius. The fragment measures its own distance from it.
+        VertexArray<cglib::vec3<float>> _groundBinormals;
+        // Tile-local, so the ground shader can discard what belongs to a neighbouring tile.
+        VertexArray<cglib::vec2<float>> _groundTexCoords;
+        VertexArray<float> _groundHeights;
+        VertexArray<cglib::vec4<std::int8_t>> _groundAttribs;
+        VertexArray<std::size_t> _groundIndices;
+        VertexArray<long long> _groundIds;
         VertexArray<std::size_t> _indices;
         VertexArray<std::uint16_t> _geoPosIndexes;
         VertexArray<long long> _ids;

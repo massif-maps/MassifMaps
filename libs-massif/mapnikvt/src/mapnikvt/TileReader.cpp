@@ -83,6 +83,16 @@ namespace massif::mvt {
 
                 vt::TileLayerBuilder tileLayerBuilder(styleName, styleLayerIdx, tileId, _transformer, _symbolizerContext.getSettings().getTileSize(), _symbolizerContext.getSettings().getGeometryScale());
                 tileLayerBuilder.setStyleState(_symbolizerContext.getSettings().getStyleState(), selectionStateKey);
+                // The tile's own zoom, not the render zoom: this decides GEOMETRY, so it has to be
+                // fixed when the tile is built. A zoom-dependent reach is therefore sampled once
+                // per tile, which is as close as a decode-time split can get.
+                vt::ViewState tileViewState;
+                tileViewState.zoom = static_cast<float>(tileId.zoom);
+                tileLayerBuilder.setPolygon3DGradientHeight((_map->getSettings().buildingVerticalGradientHeight.getFunction(exprContext))(tileViewState));
+                tileLayerBuilder.setPolygon3DGroundRadius((_map->getSettings().buildingAoGroundRadius.getFunction(exprContext))(tileViewState));
+                tileLayerBuilder.setPolygon3DGroundStep((_map->getSettings().buildingAoGroundStep.getFunction(exprContext))(tileViewState));
+                tileLayerBuilder.setPolygon3DEdgeRadius((_map->getSettings().buildingEdgeRadius.getFunction(exprContext))(tileViewState));
+                tileLayerBuilder.setPolygon3DRoundedRoof((_map->getSettings().buildingRoundedRoof.getFunction(exprContext))(tileViewState) != 0.0f);
                 tileLayerBuilder.setOpacityFunc(vt::FloatFunction(style->getOpacity()));
                 tileLayerBuilder.setCompOp(style->getCompOp());
                 processLayer(layer, style, rules, exprContext, selectionStateKey, tileLayerBuilder);

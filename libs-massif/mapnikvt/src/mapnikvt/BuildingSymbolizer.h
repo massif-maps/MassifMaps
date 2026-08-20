@@ -19,6 +19,8 @@ namespace massif::mvt {
             bindProperty("fill-opacity", &_fillOpacity);
             bindProperty("height", &_height);
             bindProperty("min-height", &_minHeight);
+            bindProperty("roof-shape", &_roofShape);
+            bindProperty("roof-height", &_roofHeight);
         }
 
         virtual FeatureProcessor createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const override;
@@ -28,6 +30,10 @@ namespace massif::mvt {
         FloatFunctionProperty _fillOpacity = FloatFunctionProperty(1.0f);
         FloatProperty _height = FloatProperty(0.0f);
         FloatProperty _minHeight = FloatProperty(0.0f);
+        // OSM roof:shape and roof:height, when the tiles carry them. 'flat' is what every extrusion
+        // has always been; the rest raise a roof on top of the walls rather than capping them.
+        StringProperty _roofShape = StringProperty("flat");
+        FloatProperty _roofHeight = FloatProperty(0.0f);
 
         ColorFunctionBuilder _fillFuncBuilder;
     };

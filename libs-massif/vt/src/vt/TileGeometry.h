@@ -33,7 +33,9 @@ namespace massif::vt {
     class TileGeometry final {
     public:
         enum class Type {
-            NONE, POINT, LINE, POLYGON, POLYGON3D
+            // POLYGON3DGROUND is the contact shadow an extrusion casts on the ground it stands on:
+            // a flat skirt around the footprint, drawn multiplied over whatever is already there.
+            NONE, POINT, LINE, POLYGON, POLYGON3D, POLYGON3DGROUND
         };
 
         struct StyleParameters {

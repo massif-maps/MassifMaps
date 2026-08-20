@@ -173,11 +173,20 @@ namespace massif::vt {
         explicit PolygonStyle(CompOp compOp, ColorFunction colorFunc, std::shared_ptr<const BitmapPattern> pattern, const std::optional<Transform>& transform) : compOp(compOp), colorFunc(std::move(colorFunc)), pattern(std::move(pattern)), transform(transform) { }
     };
 
+    // How an extrusion is capped. FLAT is one polygon at the top, as every extrusion has always
+    // been; the rest raise a roof on it from the OSM roof:shape tag.
+    enum class RoofShape {
+        FLAT, PYRAMIDAL, GABLED
+    };
+
     struct Polygon3DStyle final {
         ColorFunction colorFunc;
         std::optional<Transform> transform;
+        RoofShape roofShape = RoofShape::FLAT;
+        float roofHeight = 0.0f; // metres above the wall top; 0 leaves the roof flat whatever the shape
 
         explicit Polygon3DStyle(ColorFunction colorFunc, const std::optional<Transform>& transform) : colorFunc(std::move(colorFunc)), transform(transform) { }
+        explicit Polygon3DStyle(ColorFunction colorFunc, const std::optional<Transform>& transform, RoofShape roofShape, float roofHeight) : colorFunc(std::move(colorFunc)), transform(transform), roofShape(roofShape), roofHeight(roofHeight) { }
     };
 
     struct PointLabelStyle final {
@@ -188,6 +197,9 @@ namespace massif::vt {
         std::shared_ptr<const BitmapImage> image;
         std::optional<Transform> transform;
         float maxDistance; // meters from the camera beyond which the label is not placed; 0 = no limit
+        // What this label keeps while its anchor is hidden by 3D content (mapbox's
+        // text-occlusion-opacity). Unset = the layer's own default stands.
+        std::optional<float> occlusionOpacity;
 
         explicit PointLabelStyle(LabelOrientation orientation, ColorFunction colorFunc, FloatFunction sizeFunc, bool autoflip, std::shared_ptr<const BitmapImage> image, const std::optional<Transform>& transform, float maxDistance = 0.0f) : orientation(orientation), colorFunc(std::move(colorFunc)), sizeFunc(std::move(sizeFunc)), autoflip(autoflip), image(std::move(image)), transform(transform), maxDistance(maxDistance) { }
     };
@@ -204,6 +216,9 @@ namespace massif::vt {
         cglib::vec2<float> backgroundOffset;
         std::shared_ptr<const BitmapImage> backgroundImage;
         float maxDistance; // meters from the camera beyond which the label is not placed; 0 = no limit
+        // What this label keeps while its anchor is hidden by 3D content (mapbox's
+        // text-occlusion-opacity). Unset = the layer's own default stands.
+        std::optional<float> occlusionOpacity;
         // The second run of text may have its own colour (unset = the label's own fill).
         std::optional<ColorFunction> secondaryColorFunc;
         // Added to the label's placement priority by the culler, once per pass and per label, so

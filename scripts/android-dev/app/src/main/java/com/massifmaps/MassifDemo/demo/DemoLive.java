@@ -6,6 +6,8 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 
+import com.massifmaps.api.MassifApi;
+
 /**
  * Applies intent extras to a RUNNING demo, so any knob can be changed from adb without a relaunch:
  *
@@ -91,7 +93,43 @@ public final class DemoLive extends BroadcastReceiver {
         if (has(extras, CAMERA_KEYS)) {
             demo.applyCamera();
         }
+        if (extras.containsKey("apiSet")) {
+            applyApiSet(extras.getString("apiSet"));
+        }
         demo.mapView.requestRender();
+    }
+
+    /**
+     * Drives a property through the facade API (#146) instead of the typed setters, so the
+     * generated property table and its dotted path walking can be exercised on a device:
+     *
+     *   adb shell am broadcast -a com.massifmaps.MassifDemo.CONFIG --es apiSet fogOptions.rangeStart=2.5
+     */
+    private void applyApiSet(String assignment) {
+        int equals = assignment != null ? assignment.indexOf('=') : -1;
+        if (equals <= 0) {
+            Log.w(TAG, "apiSet wants path=value, got: " + assignment);
+            return;
+        }
+        String path = assignment.substring(0, equals);
+        String value = assignment.substring(equals + 1);
+
+        int handle = MassifApi.findObject("options", "demo");
+        if (handle == 0) {
+            handle = MassifApi.registerOptions("options", "demo", demo.mapView.getOptions());
+        }
+
+        int result;
+        double before;
+        try {
+            before = MassifApi.getFloat(handle, path, Double.NaN);
+            result = MassifApi.setFloat(handle, path, Double.parseDouble(value));
+        } catch (NumberFormatException e) {
+            before = Double.NaN;
+            result = MassifApi.setString(handle, path, value);
+        }
+        Log.i(TAG, "apiSet " + path + " " + before + " -> " + MassifApi.getFloat(handle, path, Double.NaN)
+                + " (handle=" + handle + ", result=" + result + ")");
     }
 
     private static boolean has(Bundle extras, String[] keys) {

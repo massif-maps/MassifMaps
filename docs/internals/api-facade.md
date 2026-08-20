@@ -13,8 +13,8 @@ describe it.
 
 Design discussion and the full plan live in
 [issue #146](https://github.com/massif-maps/MassifMaps/issues/146). **Built so far: the property
-table, the handle table, the registry, `set`/`get`, and dotted path traversal.** See
-[Known gaps](#known-gaps).
+table, the handle table, the registry, `set`/`get`, dotted path traversal, and a minimal Java
+binding.** See [Known gaps](#known-gaps).
 
 ## Why a facade at all
 
@@ -153,6 +153,36 @@ downcasting it, which lands with the spec factories.
 The spellings are the mechanical ones — `fogOptions.rangeStart`, not `fog.rangeStart`. Shortening
 them is the alias table's job.
 
+## The Java binding
+
+`MassifApi` (`all/native/api/MassifApi.h`, wrapped by `all/modules/api/MassifApi.i`) is the
+verification surface, not the final one: static methods, typed `set`/`get` per scalar kind, and a
+result code rather than an exception.
+
+```java
+int h = MassifApi.registerOptions("options", "demo", mapView.getOptions());
+MassifApi.setFloat(h, "fogOptions.rangeStart", 2.5);
+```
+
+The demo drives it from adb, which is how the path is checked on a device:
+
+```sh
+adb shell am broadcast -a com.massifmaps.MassifDemo.CONFIG --es apiSet fogOptions.rangeStart=2.5
+```
+
+Measured on an emulator, reading the result code back out of logcat:
+
+| path | result | meaning |
+|---|---|---|
+| `fogOptions.rangeStart=2.5` | `0.8 -> 2.5`, `0` | the dotted write reaches `FogOptions::setRangeStart` |
+| `fogOptions.nope` | `3` | unknown property |
+| `fieldOfViewY.x` | `7` | not traversable - a dot into a scalar |
+| `nosuch.rangeStart` | `3` | unknown intermediate |
+| `zoomRange` | `5` | unsupported type - `STRUCT` has no accessor yet |
+
+The handle came back as `1048577`, which is generation 1, index 1 - the encoding above, confirmed
+end to end.
+
 ## Build wiring
 
 The tables are generated at **build** time and are not checked in, so there is no second step to
@@ -189,12 +219,13 @@ cd scripts && python3 gen-api-tables.py
   `set`/`get` return `RESULT_UNSUPPORTED_TYPE`.
 - **Writing an `OBJECT` property** is unsupported: it needs a registry id and a checked downcast.
   Reading one works, which is what traversal needs.
-- **The dotted happy path is not verified natively.** `Options` cannot be linked into a standalone
-  harness — it pulls the renderer, `ElevationManager`, `Bitmap` codecs and more — so the harness
-  covers the failure modes (a dot into a scalar, an unknown intermediate, a deep unknown path) and
-  the `Options -> FogOptions` walk is gated on the on-device A/B instead. Do not assume it works
-  because it compiles.
-- **No binding.** Nothing reaches this from Java or Obj-C, so nothing has been run on a device.
+- **`Options` cannot be linked into a standalone harness** — it pulls the renderer,
+  `ElevationManager`, `Bitmap` codecs and more — so the native harness covers `FogOptions` and the
+  path-walking failure modes only. The `Options -> FogOptions` happy path is checked on a device
+  instead, through the Java binding above. Anything needing `Options` has to be verified that way.
+- **Obj-C has no binding**, so nothing here has run on iOS.
+- **`MassifApi` returns result codes, not exceptions**, which is not what the design calls for. It
+  is a verification surface and will be replaced by the six verbs and their closed sugar.
 - **The 6 static attributes are flagged but have no resolution path**, since a static has no target
   object.
 - **No alias table.** Every path is the mechanical spelling; mapbox-familiar aliases

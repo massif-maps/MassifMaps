@@ -47,12 +47,14 @@ namespace massif::mvt {
             { "point",          vt::LabelOrientation::BILLBOARD_2D },
             { "billboard",      vt::LabelOrientation::BILLBOARD_3D },
             { "billboard-line", vt::LabelOrientation::LINE_BILLBOARD_3D },
+            { "billboard-line-repeat", vt::LabelOrientation::LINE_BILLBOARD_REPEAT },
             { "flat",           vt::LabelOrientation::POINT },
             { "callout",        vt::LabelOrientation::CALLOUT },
             { "line",           vt::LabelOrientation::LINE },
             // Pre-rebrand spellings, still accepted (CartoCSSMapLoader warns once per stylesheet)
             { "nutibillboard",     vt::LabelOrientation::BILLBOARD_3D },
-            { "nutibillboardline", vt::LabelOrientation::LINE_BILLBOARD_3D },
+            // The 5.x meaning: one upright label per spacing step, no run following the line
+            { "nutibillboardline", vt::LabelOrientation::LINE_BILLBOARD_REPEAT },
             { "nutipoint",         vt::LabelOrientation::POINT },
             { "nuticallout",       vt::LabelOrientation::CALLOUT }
         };

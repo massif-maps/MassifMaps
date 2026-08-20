@@ -38,8 +38,10 @@ namespace massif::vt {
     // by a leader line: the culler moves it until it is free instead of hiding it, so a dense set
     // of point features (summits in a panorama) is read as a stack of named lines rather than as
     // whichever few labels happened to win.
+    // LINE_BILLBOARD_REPEAT never reaches a label style: the symbolizers repeat it along the line
+    // like the other line placements and then hand vt a BILLBOARD_3D, which is the whole point of it.
     enum class LabelOrientation {
-        BILLBOARD_2D, BILLBOARD_3D, LINE_BILLBOARD_3D, POINT, LINE, CALLOUT
+        BILLBOARD_2D, BILLBOARD_3D, LINE_BILLBOARD_3D, LINE_BILLBOARD_REPEAT, POINT, LINE, CALLOUT
     };
 
     // Which side of its anchor a label's text is laid out on. A style may name SEVERAL of them, in

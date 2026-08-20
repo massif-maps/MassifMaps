@@ -13,6 +13,9 @@ namespace massif::mvt {
     class ShieldSymbolizer : public TextSymbolizer {
     public:
         explicit ShieldSymbolizer(const Expression& text, std::vector<std::shared_ptr<FontSet>> fontSets, std::shared_ptr<Logger> logger) : TextSymbolizer(text, std::move(fontSets), std::move(logger)) {
+            // A shield is a road marker: repeated along its road and facing the camera, which is
+            // what every style had to spell out by hand. 'point' is still there for the old default.
+            _placement = LabelOrientationProperty("billboard-line-repeat");
             bindProperty("file", &_file);
             bindProperty("shield-dx", &_shieldDx);
             bindProperty("shield-dy", &_shieldDy);

@@ -93,21 +93,26 @@ namespace massif::mvt {
         }
 
         float bitmapSize = -1;
-        // Both line orientations lay a glyph RUN out along the line (vt::Label::isLineRun), so both
-        // need the anchors, the spacing and the run length a line placement is measured with.
-        bool linePlacement = (placement == vt::LabelOrientation::LINE || placement == vt::LabelOrientation::LINE_BILLBOARD_3D);
-        float textSize = bitmapSize < 0 ? (linePlacement ? calculateTextSize(formatter.getFont(), text, formatter).size()(0) : 0) : bitmapSize;
+        // Every line placement walks the line at 'spacing' and is measured with the run length a
+        // line placement needs. Only the two that lay a glyph RUN out get the line itself
+        // (vt::Label::isLineRun); 'billboard-line-repeat' puts one upright billboard per step.
+        bool billboardRepeat = (placement == vt::LabelOrientation::LINE_BILLBOARD_REPEAT);
+        bool repeatAlongLine = (placement == vt::LabelOrientation::LINE || placement == vt::LabelOrientation::LINE_BILLBOARD_3D || billboardRepeat);
+        bool lineRun = (repeatAlongLine && !billboardRepeat);
+        // What vt is given: the repeat is a billboard, and vt has no case for anything else.
+        vt::LabelOrientation orientation = (billboardRepeat ? vt::LabelOrientation::BILLBOARD_3D : placement);
+        float textSize = bitmapSize < 0 ? (repeatAlongLine ? calculateTextSize(formatter.getFont(), text, formatter).size()(0) : 0) : bitmapSize;
         float spacing = _spacing.getValue(exprContext);
         long long groupId = (allowOverlap ? -1 : 0);
         if (!allowOverlap && minimumDistance > 0) {
-            groupId = (linePlacement ? (hash & 0x7fffffffU) : 1);
+            groupId = (repeatAlongLine ? (hash & 0x7fffffffU) : 1);
         }
         
         cglib::vec2<float> backgroundOffset(0, 0);
         std::shared_ptr<vt::BitmapImage> backgroundImage;
 
         if (clip) {
-            return [compOp, fillFunc, haloFillFunc, sizeFunc, haloRadiusFunc, fontScale, linePlacement, text, orientationAngle, formatter, backgroundOffset, backgroundImage, spacing, textSize, tileSize, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
+            return [compOp, fillFunc, haloFillFunc, sizeFunc, haloRadiusFunc, fontScale, repeatAlongLine, billboardRepeat, lineRun, text, orientationAngle, formatter, backgroundOffset, backgroundImage, spacing, textSize, tileSize, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
                 vt::TextStyle style(compOp, fillFunc, sizeFunc, haloFillFunc, haloRadiusFunc, orientationAngle, fontScale, backgroundOffset, backgroundImage);
                 vt::TileLayerBuilder::TextProcessor textProcessor;
                 for (std::size_t featureIndex = 0; featureIndex < featureCollection.size(); featureIndex++) {
@@ -117,6 +122,10 @@ namespace massif::mvt {
                             return;
                         }
                     }
+
+                    // 'billboard-line-repeat' walks a LINE only: on any other geometry it is the
+                    // plain billboard its name says.
+                    bool repeat = repeatAlongLine && (!billboardRepeat || std::get_if<LineGeometry>(featureCollection.getGeometry(featureIndex).get()) != nullptr);
 
                     if (auto pointGeometry = std::get_if<PointGeometry>(featureCollection.getGeometry(featureIndex).get())) {
                         long long localId = featureCollection.getLocalId(featureIndex);
@@ -130,7 +139,7 @@ namespace massif::mvt {
                             index++;
                         }
                     }
-                    else if (!linePlacement) {
+                    else if (!repeat) {
                         vt::TileLayerBuilder::Vertices vertices;
                         if (auto lineGeometry = std::get_if<LineGeometry>(featureCollection.getGeometry(featureIndex).get())) {
                             vertices = lineGeometry->getMidPoints();
@@ -153,7 +162,9 @@ namespace massif::mvt {
                         }
 
                         for (const auto& vertices : verticesList) {
-                            for (const auto& transformedPoints : generateLinePoints(vertices, spacing, textSize, tileSize)) {
+                            // A repeat is not rotated by its segment: clipped text has no camera to
+                            // face, so all a billboard can keep here is the style's own angle.
+                            for (const auto& transformedPoints : generateLinePoints(vertices, spacing, textSize, tileSize, lineRun)) {
                                 vt::TextStyle transformedStyle(compOp, fillFunc, sizeFunc, haloFillFunc, haloRadiusFunc, transformedPoints.first + orientationAngle, fontScale, backgroundOffset, backgroundImage);
                                 textProcessor = layerBuilder.createTextProcessor(transformedStyle, formatter);
                                 if (textProcessor) {
@@ -169,8 +180,8 @@ namespace massif::mvt {
             };
         }
 
-        return [compOp, fillFunc, haloFillFunc, sizeFunc, haloRadiusFunc, fontScale, placement, linePlacement, text, hash, orientationAngle, formatter, backgroundOffset, backgroundImage, spacing, textSize, tileId, tileSize, labelIdOverride, groupId, placementPriority, minimumDistance, maxDistance, occlusionOpacity, secondaryColorFunc, rankFunc, calloutScreenAnchor, calloutOffset, calloutStep, calloutMaxRows, calloutPersistPasses, calloutLineWidth, calloutLineAnchor, calloutBandAnchor, textPlate, allowOverlapSameFeatureId, sameFeatureIdDependent, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
-            vt::TextLabelStyle style(placement, fillFunc, sizeFunc, haloFillFunc, haloRadiusFunc, true, orientationAngle, fontScale, backgroundOffset, backgroundImage, maxDistance, secondaryColorFunc, rankFunc, calloutScreenAnchor, calloutOffset, calloutStep, calloutMaxRows, calloutPersistPasses, calloutLineWidth, calloutLineAnchor, calloutBandAnchor, textPlate);
+        return [compOp, fillFunc, haloFillFunc, sizeFunc, haloRadiusFunc, fontScale, orientation, repeatAlongLine, billboardRepeat, lineRun, text, hash, orientationAngle, formatter, backgroundOffset, backgroundImage, spacing, textSize, tileId, tileSize, labelIdOverride, groupId, placementPriority, minimumDistance, maxDistance, occlusionOpacity, secondaryColorFunc, rankFunc, calloutScreenAnchor, calloutOffset, calloutStep, calloutMaxRows, calloutPersistPasses, calloutLineWidth, calloutLineAnchor, calloutBandAnchor, textPlate, allowOverlapSameFeatureId, sameFeatureIdDependent, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
+            vt::TextLabelStyle style(orientation, fillFunc, sizeFunc, haloFillFunc, haloRadiusFunc, true, orientationAngle, fontScale, backgroundOffset, backgroundImage, maxDistance, secondaryColorFunc, rankFunc, calloutScreenAnchor, calloutOffset, calloutStep, calloutMaxRows, calloutPersistPasses, calloutLineWidth, calloutLineAnchor, calloutBandAnchor, textPlate);
             if (occlusionOpacity >= 0.0f) {
                 style.occlusionOpacity = occlusionOpacity;
             }
@@ -195,6 +206,10 @@ namespace massif::mvt {
                     }
                 }
 
+                // 'billboard-line-repeat' walks a LINE only: on any other geometry it is the plain
+                // billboard its name says.
+                bool repeat = repeatAlongLine && (!billboardRepeat || std::get_if<LineGeometry>(featureCollection.getGeometry(featureIndex).get()) != nullptr);
+
                 if (auto pointGeometry = std::get_if<PointGeometry>(featureCollection.getGeometry(featureIndex).get())) {
                     auto verticesList = pointGeometry->getVerticesList();
                     int index = 0;
@@ -208,7 +223,7 @@ namespace massif::mvt {
                         index++;
                     }
                 }
-                else if (!linePlacement) {
+                else if (!repeat) {
                     if (auto lineGeometry = std::get_if<LineGeometry>(featureCollection.getGeometry(featureIndex).get())) {
                         for (const auto& vertices : lineGeometry->getVerticesList()) {
                             textProcessor(localId, labelId, groupId, std::optional<vt::TileLayerBuilder::Vertex>(), vertices, text, placementPriority, minimumDistance, allowOverlapSameFeatureId, sameFeatureIdDependent, 0);
@@ -236,7 +251,10 @@ namespace massif::mvt {
                     // collapsed them, leaving one label per line.
                     int counter = 0;
                     for (const auto& vertices : verticesList) {
-                        if (spacing <= 0) {
+                        // A run with no spacing is ONE run for the whole line, and it is the line
+                        // that carries it. A repeat has no run, so spacing 0 falls through to
+                        // generateLinePoints, which steps it once - at the middle, like a billboard.
+                        if (spacing <= 0 && lineRun) {
                             textProcessor(localId, labelId, groupId, std::optional<vt::TileLayerBuilder::Vertex>(), vertices, text, placementPriority, minimumDistance, allowOverlapSameFeatureId, sameFeatureIdDependent, 0);
                             continue;
                         }
@@ -244,7 +262,9 @@ namespace massif::mvt {
                         for (const auto& transformedPoints : generateLinePoints(vertices, spacing, textSize, tileSize)) {
                             for (const auto& vertex : transformedPoints.second) {
                                 long long generatedLabelId = combineId(labelId, std::hash<vt::TileId>()(tileId) * 63 + counter);
-                                textProcessor(localId, generatedLabelId, groupId, vertex, vertices, text, placementPriority, minimumDistance, allowOverlapSameFeatureId, sameFeatureIdDependent, 0);
+                                // The line goes with the label only when a run is laid out on it:
+                                // TileLayerBuilder tesselates it per label and a billboard never reads it.
+                                textProcessor(localId, generatedLabelId, groupId, vertex, billboardRepeat ? vt::TileLayerBuilder::Vertices() : vertices, text, placementPriority, minimumDistance, allowOverlapSameFeatureId, sameFeatureIdDependent, 0);
                                 counter++;
                             }
                         }

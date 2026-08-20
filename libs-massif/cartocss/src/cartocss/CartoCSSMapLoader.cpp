@@ -63,7 +63,7 @@ namespace massif::css {
     void CartoCSSMapLoader::warnDeprecatedTokens(const std::string& cartoCSS, const std::string& fileName) const {
         static const std::pair<std::string, std::string> deprecatedTokens[] = {
             { "nuti::",            "param::" },
-            { "nutibillboardline", "billboard-line" },
+            { "nutibillboardline", "billboard-line-repeat" },
             { "nutibillboard",     "billboard" },
             { "nutipoint",         "flat" },
             { "nuticallout",       "callout" }

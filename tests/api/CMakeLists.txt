@@ -103,6 +103,7 @@ find_program(TEST_PYTHON NAMES python3 python REQUIRED)
 
 add_custom_command(
   OUTPUT "${TEST_TABLE_DIR}/PropertyTable.inc" "${TEST_TABLE_DIR}/PropertyAccessors.inc"
+         "${TEST_TABLE_DIR}/SpecConstructors.inc"
   COMMAND "${TEST_PYTHON}" "${SDK_BASE_DIR}/scripts/gen-api-tables.py"
           "--modules" "${TEST_MODULE_LIST}"
           "--defines" "${TEST_DEFINES}"

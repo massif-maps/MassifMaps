@@ -132,9 +132,32 @@ def decapitalize(name):
   return name[0].lower() + name[1:] if name else name
 
 
+SPEC_MACRO = re.compile(r'^\s*!spec\s*\((.*)\)\s*$')
+
+
+def parseSpec(args):
+  """!spec(cppClass, kind, type, alias(key, param), default(param, value))."""
+  if len(args) < 3:
+    return None
+  entry = {'cppClass': args[0], 'kind': args[1], 'type': args[2], 'aliases': {}, 'defaults': {}}
+  for extra in args[3:]:
+    inner = re.match(r'^(alias|default)\s*\((.*)\)$', extra.strip())
+    if not inner:
+      print('warning: cannot parse spec option %s' % extra)
+      continue
+    parts = splitArgs(inner.group(2))
+    if len(parts) != 2:
+      continue
+    if inner.group(1) == 'alias':
+      entry['aliases'][parts[1]] = parts[0]                  # parameter -> readable spec key
+    else:
+      entry['defaults'][parts[0]] = parts[1]
+  return entry
+
+
 def parseModule(sourcePath, defines, pattern):
-  """Returns (headers, entries), or (None, None) when the module is not in this profile."""
-  headers, entries, inCode = [], [], False
+  """Returns (headers, entries, specs), or (None, None, None) when the module is out of profile."""
+  headers, entries, specs, inCode = [], [], [], False
   with open(sourcePath) as f:
     for line in f:
       line = line.rstrip('\n')
@@ -143,7 +166,7 @@ def parseModule(sourcePath, defines, pattern):
       if match:
         define = match.group(1) or match.group(2)
         if define not in defines:
-          return None, None
+          return None, None, None
 
       if line.strip() == '%{':
         inCode = True
@@ -155,6 +178,14 @@ def parseModule(sourcePath, defines, pattern):
         match = re.match(r'\s*#include\s+"([^"]+)"', line)
         if match and not match.group(1).endswith('Exceptions.h'):
           headers.append(match.group(1))
+        continue
+
+      match = SPEC_MACRO.match(line)
+      if match:
+        entry = parseSpec(splitArgs(match.group(1)))
+        if entry:
+          entry['headers'] = headers
+          specs.append(entry)
         continue
 
       match = pattern.match(line)
@@ -187,7 +218,73 @@ def parseModule(sourcePath, defines, pattern):
       if objectClassOf(entry) == PROJECTION_CLASS:
         entry['flags'] |= FLAG_PROJECTION
       entries.append(entry)
-  return headers, entries
+  # The spec entries share this module's header list, which is where its constructors are.
+  for entry in specs:
+    entry['headers'] = headers
+  return headers, entries, specs
+
+
+
+def parseParams(text):
+  """[(type, name), ...] from a parameter list, with const and & stripped from the type."""
+  params = []
+  for arg in splitArgs(text):
+    arg = re.sub(r'\s*=\s*.+$', '', arg).strip()             # a C++ default argument
+    if not arg or arg == 'void':
+      continue
+    match = re.match(r'^(.*?[\w>])\s*[&*]?\s*(\w+)$', arg)
+    if not match:
+      return None                                            # unnamed parameter: not buildable
+    cppType = re.sub(r'^const\s+', '', match.group(1)).strip()
+    params.append((stripArgMacro(cppType), match.group(2)))
+  return params
+
+
+def parseConstructors(cppClass, headers, headerDirs):
+  """The public constructors of one class, as [(type, name), ...] per overload.
+
+  Read from the header rather than declared in the .i, because the signature IS the declaration -
+  names, types and order are all there. Public and at class scope only: a listener nested in the
+  same header has constructors too, and they are not something a spec can build.
+  """
+  shortName = cppClass.split('::')[-1]
+  ctor = re.compile(r'^\s*(?:explicit\s+)?%s\s*\((.*)\)\s*;' % shortName)
+  opening = re.compile(r'^\s*class\s+%s\b' % shortName)
+  access = re.compile(r'^\s*(public|protected|private)\s*:')
+  found = []
+  for header in sorted(set(headers)):
+    path = findHeader(header, headerDirs)
+    if not path:
+      continue
+    depth, inClass, visibility = 0, False, 'private'
+    for line in open(path, errors='ignore'):
+      if not inClass:
+        if opening.match(line):
+          inClass, depth, visibility = True, 0, 'private'
+        else:
+          continue
+      match = access.match(line)
+      if match:
+        visibility = match.group(1)
+      # Depth 1 is the class body; deeper is a nested class, which a spec cannot build.
+      if depth == 1 and visibility == 'public':
+        match = ctor.match(line)
+        if match:
+          params = parseParams(match.group(1))
+          if params is not None:
+            found.append(params)
+      depth += line.count('{') - line.count('}')
+      if depth <= 0 and '}' in line:
+        inClass = False
+  return found
+
+
+def findHeader(header, headerDirs):
+  for headerDir in headerDirs:
+    candidate = os.path.join(headerDir, header)
+    if os.path.isfile(candidate):
+      return candidate
+  return None
 
 
 def parseBases(headers, headerDirs):
@@ -245,17 +342,18 @@ def collectModulePaths(sourceDirs, modules):
 def parseModules(sourceDirs, defines, modules=None):
   pattern = re.compile(r'^\s*[%!](' + '|'.join(sorted(ATTRIBUTE_MACROS, key=len, reverse=True)) +
                        r')\s*\((.*)\)\s*$')
-  headers, entries, skipped = [], [], 0
+  headers, entries, specs, skipped = [], [], [], 0
   for sourcePath in collectModulePaths(sourceDirs, modules):
-    moduleHeaders, moduleEntries = parseModule(sourcePath, defines, pattern)
+    moduleHeaders, moduleEntries, moduleSpecs = parseModule(sourcePath, defines, pattern)
     if moduleHeaders is None:
       skipped += 1
       continue
+    specs += moduleSpecs
     # Headers come from every in-profile module, attributes or not: a class with no properties
     # of its own still needs its base recorded.
     headers += moduleHeaders
     entries += moduleEntries
-  return headers, entries, skipped
+  return headers, entries, specs, skipped
 
 
 def symbolOf(entry, prefix):
@@ -400,6 +498,132 @@ def emitAccessors(headers, entries, outPath):
     f.writelines(lines)
 
 
+
+def qualify(cppType):
+  """massif::X for an SDK class named unqualified in a signature (TileDataSource, Color)."""
+  if '::' in cppType or cppType.startswith('std::'):
+    return cppType
+  return 'massif::%s' % cppType
+
+
+def specArgReader(cppType, key, default, childKind, childClass):
+  """The C++ that turns one spec key into one constructor argument, or None when it cannot."""
+  cppType = stripArgMacro(cppType)
+  match = re.match(r'^std::shared_ptr<\s*(.+?)\s*>$', cppType)
+  if match:
+    if not childKind:
+      return None                                            # nothing declares a kind for it
+    return ('OBJECT', childKind, qualify(match.group(1)))
+  if cppType in BOOL_TYPES:
+    return ('boolAt(spec, "%s", %s)' % (key, default or 'false'), None, None)
+  if cppType in INT_TYPES:
+    return ('static_cast<%s>(intAt(spec, "%s", %s))' % (cppType, key, default or '0'), None, None)
+  if cppType in FLOAT_TYPES:
+    return ('static_cast<%s>(floatAt(spec, "%s", %s))' % (cppType, key, default or '0'), None, None)
+  if cppType == 'std::string':
+    return ('stringAt(spec, "%s", %s)' % (key, '"%s"' % default if default else '""'), None, None)
+  if qualify(cppType) == 'massif::Color':
+    return ('massif::Color(static_cast<int>(intAt(spec, "%s", %s)))' % (key, default or '0'),
+            None, None)
+  if qualify(cppType) == 'massif::Variant':
+    return ('variantAt(spec, "%s")' % key, None, None)
+  match = re.match(r'^massif::(\w+)::(\w+)$', cppType)
+  if match and match.group(1) == match.group(2):
+    return ('static_cast<%s>(intAt(spec, "%s", %s))' % (cppType, key, default or '0'), None, None)
+  return None
+
+
+def emitSpecs(specs, bases, headerDirs, outPath):
+  """One builder per declared class, from its own constructor signatures.
+
+  A factory used to be a hand-written branch per class - the one place the facade grew when the SDK
+  did. The signature already carries the names, the types and the order, so it is read instead.
+  """
+  # A shared_ptr parameter names a BASE (TileDataSource); the kind that builds it is declared on
+  # the concrete classes below it, so the chain is walked to find one.
+  kindOf = {}
+  for entry in specs:
+    cppClass = entry['cppClass']
+    while cppClass:
+      kindOf.setdefault(cppClass, entry['kind'])
+      cppClass = bases.get(cppClass)
+
+  lines = [
+    '// Generated by scripts/gen-api-tables.py. Do not edit.\n',
+    '// One builder per !spec class, from its own constructor signatures.\n\n',
+  ]
+  dispatch, unbuildable = {}, []
+  for entry in specs:
+    cppClass = entry['cppClass']
+    symbol = re.sub(r'\W', '_', cppClass)
+    ctors = parseConstructors(cppClass, entry['headers'], headerDirs)
+    usable = []
+    for index, params in enumerate(sorted(ctors, key=len, reverse=True)):
+      reads, required, keys, skip = [], [], [], None
+      for cppType, name in params:
+        key = entry['aliases'].get(name, name)
+        default = entry['defaults'].get(name)
+        reader = specArgReader(cppType, key, default,
+                               kindOf.get(qualify(re.sub(r'^std::shared_ptr<\s*|\s*>$', '', cppType))),
+                               None)
+        if reader is None:
+          skip = '%s %s' % (cppType, name)
+          break
+        keys.append(key)
+        if reader[0] == 'OBJECT':
+          reads.append(('OBJECT', key, reader[1], reader[2]))
+          required.append(key)
+        else:
+          reads.append(('VALUE', key, reader[0], None))
+          if default is None:
+            required.append(key)
+      if skip:
+        unbuildable.append('%s: %s' % (cppClass, skip))
+        continue
+      usable.append((index, reads, required, keys))
+
+    if not usable:
+      continue
+    for index, reads, required, keys in usable:
+      name = 'make_%s_%d' % (symbol, index)
+      lines.append('inline Result %s(Context& context, const Variant& spec, ObjectRef& object,\n'
+                   '                 std::set<std::string>& consumed) {\n' % name)
+      args = []
+      for order, (shape, key, a, b) in enumerate(reads):
+        lines.append('    consumed.insert("%s");\n' % key)
+        if shape == 'OBJECT':
+          lines.append('    std::shared_ptr<void> arg%d;\n'
+                       '    { Result child = childOf(context, spec, "%s", "%s", "%s", arg%d);\n'
+                       '      if (child != RESULT_OK) return child; }\n' % (order, key, a, b, order))
+          args.append('std::static_pointer_cast<%s>(arg%d)' % (b, order))
+        else:
+          args.append(a)
+      lines.append('    object.obj = std::make_shared<%s>(%s);\n' % (cppClass, ', '.join(args)))
+      lines.append('    object.cppClass = "%s";\n    return RESULT_OK;\n}\n\n' % cppClass)
+    dispatch.setdefault(entry['kind'], []).append((entry['type'], symbol, usable))
+
+  lines.append('inline Result buildFromConstructor(Context& context, const std::string& kind,\n'
+               '                                   const Variant& spec, ObjectRef& object,\n'
+               '                                   std::set<std::string>& consumed) {\n')
+  lines.append('    std::string type = stringAt(spec, "type");\n    consumed.insert("type");\n')
+  for kind in sorted(dispatch):
+    lines.append('    if (kind == "%s") {\n' % kind)
+    for specType, symbol, usable in sorted(dispatch[kind]):
+      lines.append('        if (type == "%s") {\n' % specType)
+      # Longest first: the overload the spec fully satisfies is the one it meant.
+      for index, reads, required, keys in usable:
+        guard = ' && '.join('spec.containsObjectKey("%s")' % key for key in required) or 'true'
+        lines.append('            if (%s) {\n'
+                     '                return make_%s_%d(context, spec, object, consumed);\n'
+                     '            }\n' % (guard, symbol, index))
+      lines.append('            return RESULT_BAD_SPEC;\n        }\n')
+    lines.append('    }\n')
+  lines.append('    return RESULT_UNKNOWN_TYPE;\n}\n')
+  with open(outPath, 'w') as f:
+    f.writelines(lines)
+  return dispatch, unbuildable
+
+
 def emitTable(entries, bases, outPath):
   byClass = {}
   for entry in entries:
@@ -472,7 +696,7 @@ args = parser.parse_args()
 source = args.defines if args.defines else getProfile(args.profile).get('defines', '')
 defines = set(d.strip() for d in re.split(r'[;,]', source) if d.strip())
 
-headers, entries, skipped = parseModules(re.split(r'[;,]', args.sourceDir), defines,
+headers, entries, specs, skipped = parseModules(re.split(r'[;,]', args.sourceDir), defines,
                                         re.split(r'[;,]', args.modules) if args.modules else None)
 if not entries:
   print('No attribute macros found - is --sourcedir right?')
@@ -482,6 +706,8 @@ os.makedirs(args.outDir, exist_ok=True)
 emitAccessors(headers, entries, os.path.join(args.outDir, 'PropertyAccessors.inc'))
 bases = parseBases(headers, re.split(r'[;,]', args.cppDir))
 byClass = emitTable(entries, bases, os.path.join(args.outDir, 'PropertyTable.inc'))
+built, unbuildable = emitSpecs(specs, bases, re.split(r'[;,]', args.cppDir),
+                               os.path.join(args.outDir, 'SpecConstructors.inc'))
 
 counts = {}
 for entry in entries:
@@ -504,3 +730,8 @@ if unreachable:
   print('  %d properties have no accessor:' % sum(len(v) for v in unreachable.values()))
   for cppType in sorted(unreachable, key=lambda t: (-len(unreachable[t]), t)):
     print('    %-42s %2d  e.g. %s' % (cppType, len(unreachable[cppType]), unreachable[cppType][0]))
+
+print('  %d classes build from their constructors, over %d kinds' %
+      (sum(len(v) for v in built.values()), len(built)))
+for note in sorted(set(unbuildable)):
+  print('    overload skipped, no reader for %s' % note)

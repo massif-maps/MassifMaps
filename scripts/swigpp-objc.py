@@ -267,6 +267,11 @@ def transformSwigFile(sourcePath, outPath, moduleDirs, headerDirs):
     if match:
       continue
 
+    # Spec factory declarations: read by scripts/gen-api-tables.py, meaningless to Swig.
+    match = re.search(r'^\s*!spec\s*[(].*$', line)
+    if match:
+      continue
+
     # Detect enum directive
     match = re.search(r'^\s*!enum\s*[(]([^)]*)[)].*$', line)
     if match:

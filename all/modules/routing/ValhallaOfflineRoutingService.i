@@ -24,6 +24,8 @@
 
 !polymorphic_shared_ptr(massif::ValhallaOfflineRoutingService, routing.ValhallaOfflineRoutingService)
 
+
+!spec(massif::ValhallaOfflineRoutingService, routing, valhalla-offline)
 %std_io_exceptions(massif::ValhallaOfflineRoutingService::ValhallaOfflineRoutingService)
 %std_io_exceptions(massif::ValhallaOfflineRoutingService::matchRoute)
 %std_io_exceptions(massif::ValhallaOfflineRoutingService::calculateRoute)

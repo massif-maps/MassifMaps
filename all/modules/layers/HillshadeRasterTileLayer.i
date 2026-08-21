@@ -23,6 +23,8 @@
 !enum(massif::HillshadeMethod::HillshadeMethod)
 !polymorphic_shared_ptr(massif::HillshadeRasterTileLayer, layers.HillshadeRasterTileLayer)
 
+
+!spec(massif::HillshadeRasterTileLayer, layer, hillshade, alias(source, dataSource))
 %attribute(massif::HillshadeRasterTileLayer, float, Contrast, getContrast, setContrast)
 %attribute(massif::HillshadeRasterTileLayer, float, HeightScale, getHeightScale, setHeightScale)
 %attribute(massif::HillshadeRasterTileLayer, float, Exaggeration, getExaggeration, setExaggeration)

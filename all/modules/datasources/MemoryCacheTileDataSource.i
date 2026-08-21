@@ -19,6 +19,8 @@
 
 !polymorphic_shared_ptr(massif::MemoryCacheTileDataSource, datasources.MemoryCacheTileDataSource)
 
+
+!spec(massif::MemoryCacheTileDataSource, source, memory-cache, alias(source, dataSource))
 %std_exceptions(massif::MemoryCacheTileDataSource::MemoryCacheTileDataSource)
 
 %feature("director") massif::MemoryCacheTileDataSource;

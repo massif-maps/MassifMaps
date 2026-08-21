@@ -25,6 +25,8 @@
 !enum(massif::CompositeSourceType::CompositeSourceType)
 !polymorphic_shared_ptr(massif::CompositeVectorTileLayer, layers.CompositeVectorTileLayer)
 
+
+!spec(massif::CompositeVectorTileLayer, layer, composite-vector, alias(source, dataSource), alias(style, decoder))
 %attribute(massif::CompositeVectorTileLayer, bool, SinglePassRenderingEnabled, isSinglePassRenderingEnabled, setSinglePassRenderingEnabled)
 %std_exceptions(massif::CompositeVectorTileLayer::CompositeVectorTileLayer)
 %std_exceptions(massif::CompositeVectorTileLayer::addExternalDataSource)

@@ -56,7 +56,7 @@ Most of the time this costs **nothing**, and that is the design working — chec
 |---|---|
 | a getter/setter declared with `%attribute*` in a `.i` | nothing — the generated table picks it up on the next build |
 | a new option class reached from an existing one | nothing — a dotted path traverses `OBJECT` properties |
-| a new **class** an app constructs (source, layer, style) | a factory in `SpecFactories.cpp`, keyed `kind/type` |
+| a new **class** an app constructs (source, layer, style) | one `!spec(...)` line in its `.i` — the factory is generated from the constructor |
 | a new **event** on an existing listener | a bridge method in `MapEventBridge.cpp` |
 | a new **listener interface** | a bridge class beside the others |
 | a new **method** (not a property) | a `call` entry, and a converter if it returns binary or bulk data |

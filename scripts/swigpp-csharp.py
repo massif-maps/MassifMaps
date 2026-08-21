@@ -283,6 +283,11 @@ def transformSwigFile(sourcePath, outPath, headerDirs):
         continue
       line = '%%rename%s' % match.group(2)
 
+    # Spec factory declarations: read by scripts/gen-api-tables.py, meaningless to Swig.
+    match = re.search(r'^\s*!spec\s*[(].*$', line)
+    if match:
+      continue
+
     # Polymorphic read-write attribute
     match = re.search(r'^\s*!(static|)attributestring_polymorphic\s*[(]([^,]*),([^,]*),([^,]*),([^,]*),([^)]*)[)].*', line)
     if match:

@@ -55,6 +55,18 @@ namespace massif { namespace api {
             return spec.containsObjectKey(key) ? static_cast<int>(spec.getObjectElement(key).getLong()) : fallback;
         }
 
+        double floatAt(const Variant& spec, const char* key, double fallback) {
+            return spec.containsObjectKey(key) ? spec.getObjectElement(key).getDouble() : fallback;
+        }
+
+        bool boolAt(const Variant& spec, const char* key, bool fallback) {
+            return spec.containsObjectKey(key) ? spec.getObjectElement(key).getBool() : fallback;
+        }
+
+        Variant variantAt(const Variant& spec, const char* key) {
+            return spec.containsObjectKey(key) ? spec.getObjectElement(key) : Variant();
+        }
+
         /**
          * Resolves a nested source: an object is an anonymous child built here and now, a string
          * names something already in the registry.
@@ -79,88 +91,6 @@ namespace massif { namespace api {
             }
             source = std::static_pointer_cast<TileDataSource>(object.obj);
             return RESULT_OK;
-        }
-
-        Result buildSource(Context& context, const Variant& spec, ObjectRef& object,
-                           std::set<std::string>& consumed) {
-            std::string type = stringAt(spec, "type");
-            consumed.insert("type");
-
-            // Zoom bounds are constructor arguments rather than properties on most sources, so
-            // they are read here and not left to the property pass.
-            int minZoom = intAt(spec, "minZoom", 0);
-            int maxZoom = intAt(spec, "maxZoom", 24);
-            consumed.insert("minZoom");
-            consumed.insert("maxZoom");
-
-            if (type == "http") {
-                consumed.insert("url");
-                object.obj = std::make_shared<HTTPTileDataSource>(minZoom, maxZoom, stringAt(spec, "url"));
-                object.cppClass = "massif::HTTPTileDataSource";
-                return RESULT_OK;
-            }
-            if (type == "assets") {
-                consumed.insert("path");
-                object.obj = std::make_shared<AssetTileDataSource>(minZoom, maxZoom, stringAt(spec, "path"));
-                object.cppClass = "massif::AssetTileDataSource";
-                return RESULT_OK;
-            }
-            if (type == "memory-cache" || type == "persistent-cache" || type == "ordered" ||
-                type == "combined") {
-                std::shared_ptr<TileDataSource> source;
-                Result result = childSource(context, spec, "source", source);
-                if (result != RESULT_OK) {
-                    Log::Errorf("Spec: '%s' needs a \"source\"", type.c_str());
-                    return result;
-                }
-                consumed.insert("source");
-
-                if (type == "memory-cache") {
-                    object.obj = std::make_shared<MemoryCacheTileDataSource>(source);
-                    object.cppClass = "massif::MemoryCacheTileDataSource";
-                    return RESULT_OK;
-                }
-#ifdef _MASSIF_OFFLINE_SUPPORT
-                if (type == "persistent-cache") {
-                    consumed.insert("databasePath");
-                    object.obj = std::make_shared<PersistentCacheTileDataSource>(source, stringAt(spec, "databasePath"));
-                    object.cppClass = "massif::PersistentCacheTileDataSource";
-                    return RESULT_OK;
-                }
-#endif
-                std::shared_ptr<TileDataSource> second;
-                if (childSource(context, spec, "source2", second) != RESULT_OK) {
-                    Log::Errorf("Spec: '%s' needs a second \"source2\"", type.c_str());
-                    return RESULT_UNKNOWN_PROPERTY;
-                }
-                consumed.insert("source2");
-                if (type == "ordered") {
-                    object.obj = std::make_shared<OrderedTileDataSource>(source, second);
-                    object.cppClass = "massif::OrderedTileDataSource";
-                    return RESULT_OK;
-                }
-                consumed.insert("zoomLevel");
-                object.obj = std::make_shared<CombinedTileDataSource>(source, second, intAt(spec, "zoomLevel", 0));
-                object.cppClass = "massif::CombinedTileDataSource";
-                return RESULT_OK;
-            }
-#ifdef _MASSIF_OFFLINE_SUPPORT
-            if (type == "mbtiles") {
-                consumed.insert("path");
-                object.obj = std::make_shared<MBTilesTileDataSource>(minZoom, maxZoom, stringAt(spec, "path"));
-                object.cppClass = "massif::MBTilesTileDataSource";
-                return RESULT_OK;
-            }
-#endif
-            if (type == "multi") {
-                consumed.insert("maxOpenedPackages");
-                object.obj = std::make_shared<MultiTileDataSource>(intAt(spec, "maxOpenedPackages", 4));
-                object.cppClass = "massif::MultiTileDataSource";
-                return RESULT_OK;
-            }
-
-            Log::Errorf("Spec: no source type '%s'", type.c_str());
-            return RESULT_UNKNOWN_TYPE;
         }
 
         /** A vector tile decoder and the CartoCSS behind it. */
@@ -223,59 +153,18 @@ namespace massif { namespace api {
             return RESULT_OK;
         }
 
+        // Every class that declares a !spec in its .i, built from its own constructor signature.
+        // Here because it calls childOf and the value helpers above.
+        #include "api/SpecConstructors.inc"
+
+        Result buildSource(Context& context, const Variant& spec, ObjectRef& object,
+                           std::set<std::string>& consumed) {
+            return buildFromConstructor(context, "source", spec, object, consumed);
+        }
+
         Result buildLayer(Context& context, const Variant& spec, ObjectRef& object,
                           std::set<std::string>& consumed) {
-            std::string type = stringAt(spec, "type");
-            consumed.insert("type");
-
-            if (type == "solid") {
-                consumed.insert("color");
-                object.obj = std::make_shared<SolidLayer>(
-                    Color(static_cast<int>(spec.containsObjectKey("color")
-                                           ? spec.getObjectElement("color").getLong() : 0)));
-                object.cppClass = "massif::SolidLayer";
-                return RESULT_OK;
-            }
-
-            std::shared_ptr<void> source;
-            Result result = childOf(context, spec, "source", "source", "massif::TileDataSource", source);
-            if (result != RESULT_OK) {
-                Log::Errorf("Spec: layer '%s' needs a \"source\"", type.c_str());
-                return result;
-            }
-            consumed.insert("source");
-            auto dataSource = std::static_pointer_cast<TileDataSource>(source);
-
-            if (type == "raster") {
-                object.obj = std::make_shared<RasterTileLayer>(dataSource);
-                object.cppClass = "massif::RasterTileLayer";
-                return RESULT_OK;
-            }
-            if (type == "hillshade") {
-                object.obj = std::make_shared<HillshadeRasterTileLayer>(dataSource);
-                object.cppClass = "massif::HillshadeRasterTileLayer";
-                return RESULT_OK;
-            }
-            if (type == "vector" || type == "composite-vector") {
-                std::shared_ptr<void> style;
-                if (childOf(context, spec, "style", "style", "massif::VectorTileDecoder", style) != RESULT_OK) {
-                    Log::Errorf("Spec: layer '%s' needs a \"style\"", type.c_str());
-                    return RESULT_UNKNOWN_PROPERTY;
-                }
-                consumed.insert("style");
-                auto decoder = std::static_pointer_cast<VectorTileDecoder>(style);
-                if (type == "vector") {
-                    object.obj = std::make_shared<VectorTileLayer>(dataSource, decoder);
-                    object.cppClass = "massif::VectorTileLayer";
-                } else {
-                    object.obj = std::make_shared<CompositeVectorTileLayer>(dataSource, decoder);
-                    object.cppClass = "massif::CompositeVectorTileLayer";
-                }
-                return RESULT_OK;
-            }
-
-            Log::Errorf("Spec: no layer type '%s'", type.c_str());
-            return RESULT_UNKNOWN_TYPE;
+            return buildFromConstructor(context, "layer", spec, object, consumed);
         }
 
         /**
@@ -358,50 +247,26 @@ namespace massif { namespace api {
          * the part with a constructor: it takes a source and a decoder, or the layer that has both,
          * which is how the app this API is measured against builds it.
          */
+        /**
+         * Only the shortcut is hand-written: a "vectortile" search built FROM A LAYER, which is
+         * what the app this is measured against does - the source and the decoder both come from
+         * the layer it is already showing, and no constructor signature says that.
+         */
         Result buildSearch(Context& context, const Variant& spec, ObjectRef& object,
                            std::set<std::string>& consumed) {
-            std::string type = stringAt(spec, "type");
+            if (stringAt(spec, "type") != "vectortile" || !spec.containsObjectKey("layer")) {
+                return buildFromConstructor(context, "search", spec, object, consumed);
+            }
             consumed.insert("type");
-
-            if (type == "request") {
-                object.obj = std::make_shared<SearchRequest>();
-                object.cppClass = "massif::SearchRequest";
-                return RESULT_OK;
+            consumed.insert("layer");
+            std::shared_ptr<void> child;
+            Result result = childOf(context, spec, "layer", "layer", "massif::VectorTileLayer", child);
+            if (result != RESULT_OK) {
+                return result;
             }
-            if (type != "vectortile") {
-                Log::Errorf("Spec: no search type '%s'", type.c_str());
-                return RESULT_UNKNOWN_TYPE;
-            }
-
-            std::shared_ptr<TileDataSource> dataSource;
-            std::shared_ptr<VectorTileDecoder> decoder;
-            if (spec.containsObjectKey("layer")) {
-                consumed.insert("layer");
-                std::shared_ptr<void> child;
-                Result result = childOf(context, spec, "layer", "layer", "massif::VectorTileLayer", child);
-                if (result != RESULT_OK) {
-                    return result;
-                }
-                auto layer = std::static_pointer_cast<VectorTileLayer>(child);
-                dataSource = layer->getDataSource();
-                decoder = layer->getTileDecoder();
-            } else {
-                std::shared_ptr<TileDataSource> source;
-                if (childSource(context, spec, "source", source) != RESULT_OK) {
-                    Log::Error("Spec: a vectortile search needs a \"layer\", or a \"source\" and a \"style\"");
-                    return RESULT_UNKNOWN_PROPERTY;
-                }
-                consumed.insert("source");
-                std::shared_ptr<void> style;
-                if (childOf(context, spec, "style", "style", "massif::VectorTileDecoder", style) != RESULT_OK) {
-                    Log::Error("Spec: a vectortile search needs a \"style\" beside its \"source\"");
-                    return RESULT_UNKNOWN_PROPERTY;
-                }
-                consumed.insert("style");
-                dataSource = source;
-                decoder = std::static_pointer_cast<VectorTileDecoder>(style);
-            }
-            object.obj = std::make_shared<VectorTileSearchService>(dataSource, decoder);
+            auto layer = std::static_pointer_cast<VectorTileLayer>(child);
+            object.obj = std::make_shared<VectorTileSearchService>(layer->getDataSource(),
+                                                                   layer->getTileDecoder());
             object.cppClass = "massif::VectorTileSearchService";
             return RESULT_OK;
         }
@@ -411,57 +276,32 @@ namespace massif { namespace api {
 #ifdef _MASSIF_ROUTING_SUPPORT
 
         /**
-         * A routing request and the service that answers it.
-         *
-         * The request's via points and projection are constructor arguments, so they are read here;
-         * everything else on a service - profile, custom URL, timeout - is already a property.
+         * Only the request is hand-written: its projection is a NAME rather than a registry object
+         * and its via points are a list of positions, neither of which a signature describes. The
+         * services are plain constructors.
          */
-        Result buildRouting(Context&, const Variant& spec, ObjectRef& object,
+        Result buildRouting(Context& context, const Variant& spec, ObjectRef& object,
                             std::set<std::string>& consumed) {
-            std::string type = stringAt(spec, "type");
+            if (stringAt(spec, "type") != "request") {
+                return buildFromConstructor(context, "routing", spec, object, consumed);
+            }
             consumed.insert("type");
-
-            if (type == "request") {
-                consumed.insert("points");
-                consumed.insert("projection");
-                std::shared_ptr<Projection> projection = Projections::find(
-                    stringAt(spec, "projection", "EPSG:4326"));
-                if (!projection) {
-                    return RESULT_UNKNOWN_TYPE;
-                }
-                std::vector<MapPos> points;
-                if (!StructCodec::decode(spec.getObjectElement("points").toString(), points) ||
-                    points.size() < 2) {
-                    Log::Error("Spec: a routing request needs at least two \"points\"");
-                    return RESULT_BAD_SPEC;
-                }
-                object.obj = std::make_shared<RoutingRequest>(projection, points);
-                object.cppClass = "massif::RoutingRequest";
-                return RESULT_OK;
+            consumed.insert("points");
+            consumed.insert("projection");
+            std::shared_ptr<Projection> projection =
+                Projections::find(stringAt(spec, "projection", "EPSG:4326"));
+            if (!projection) {
+                return RESULT_UNKNOWN_TYPE;
             }
-            if (type == "valhalla-online") {
-                consumed.insert("apiKey");
-                object.obj = std::make_shared<ValhallaOnlineRoutingService>(
-                    stringAt(spec, "apiKey"));
-                object.cppClass = "massif::ValhallaOnlineRoutingService";
-                return RESULT_OK;
+            std::vector<MapPos> points;
+            if (!StructCodec::decode(spec.getObjectElement("points").toString(), points) ||
+                points.size() < 2) {
+                Log::Error("Spec: a routing request needs at least two \"points\"");
+                return RESULT_BAD_SPEC;
             }
-#if defined(_MASSIF_VALHALLA_ROUTING_SUPPORT) && defined(_MASSIF_OFFLINE_SUPPORT)
-            if (type == "valhalla-offline") {
-                consumed.insert("path");
-                try {
-                    object.obj = std::make_shared<ValhallaOfflineRoutingService>(
-                        stringAt(spec, "path"));
-                } catch (const std::exception& ex) {
-                    Log::Errorf("Spec: valhalla-offline: %s", ex.what());
-                    return RESULT_FAILED;
-                }
-                object.cppClass = "massif::ValhallaOfflineRoutingService";
-                return RESULT_OK;
-            }
-#endif
-            Log::Errorf("Spec: no routing type '%s'", type.c_str());
-            return RESULT_UNKNOWN_TYPE;
+            object.obj = std::make_shared<RoutingRequest>(projection, points);
+            object.cppClass = "massif::RoutingRequest";
+            return RESULT_OK;
         }
 
 #endif

@@ -19,6 +19,8 @@
 
 !polymorphic_shared_ptr(massif::SolidLayer, layers.SolidLayer)
 
+
+!spec(massif::SolidLayer, layer, solid)
 %attributeval(massif::SolidLayer, massif::Color, Color, getColor, setColor)
 %attributestring(massif::SolidLayer, std::shared_ptr<massif::Bitmap>, Bitmap, getBitmap, setBitmap)
 %attribute(massif::SolidLayer, float, BitmapScale, getBitmapScale, setBitmapScale)

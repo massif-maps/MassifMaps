@@ -395,6 +395,70 @@ inline spec of that kind, and it is checked against the class the caller is abou
 `opacity` is declared on `Layer`, not on `CompositeVectorTileLayer`, so it only applies because
 lookups walk the base chain — which is what that section is for.
 
+### A factory is generated from the constructor
+
+A factory used to be a hand-written branch per class — the one place the facade grew when the SDK
+did, and the biggest violation of "adding a feature never adds code here". It is read from the
+constructor now, because the signature already carries the names, the types and the order:
+
+```cpp
+HTTPTileDataSource(int minZoom, int maxZoom, const std::string& baseURL);
+CombinedTileDataSource(const shared_ptr<TileDataSource>& dataSource1,
+                       const shared_ptr<TileDataSource>& dataSource2, int zoomLevel);
+```
+
+One line per class in its `.i` says what to call it and how to spell the awkward parts:
+
+```
+!spec(massif::HTTPTileDataSource, source, http, alias(url, baseURL),
+      default(minZoom, 0), default(maxZoom, 24))
+!spec(massif::CombinedTileDataSource, source, combined,
+      alias(source, dataSource1), alias(source2, dataSource2), default(zoomLevel, 0))
+```
+
+- **`alias` is a naming tool, not a compatibility one.** It exists so `url` beats `baseURL` and so
+  `style` covers a parameter two classes spell differently (`decoder` on `VectorTileLayer`,
+  `tileDecoder` on `VectorTileSearchService`). Drop one freely; nothing depends on the old spelling
+  except the spelling itself.
+- **`default` is knowledge the signature does not carry** — the 0/24 zoom bounds are a convention,
+  not a C++ default argument. It also drives overload choice, below.
+- **A `shared_ptr<X>` parameter resolves as a child**: an id from the registry or an inline spec of
+  whatever kind builds an `X`. The kind is found by walking `X`'s subclasses' declarations, so a
+  parameter typed as the base `TileDataSource` resolves against `source`.
+- **The longest constructor the spec fully satisfies wins.** `MBTilesTileDataSource` has three;
+  `{"type":"mbtiles","path":"x"}` picks the 3-argument one because `minZoom`/`maxZoom` have declared
+  defaults and `scheme` does not — and passing `scheme` now reaches the 4-argument one, which no
+  hand-written factory ever exposed. Same for `HillshadeRasterTileLayer`'s `elevationDecoder`.
+
+Seventeen classes over four kinds build this way. `SpecFactories.cpp` went from 486 lines to 326,
+and everything left in it is genuinely adaptive rather than boilerplate:
+
+| still hand-written | why the signature cannot say it |
+|---|---|
+| `style` | parses a `dir://` prefix, builds an asset package, wraps a style set in a decoder |
+| `projection` | a name registry lookup, not a constructor |
+| `geometry` | a GeoJSON reader, not a constructor |
+| `search` **from a layer** | the source and the decoder both come from a layer already on the map |
+| `routing` **request** | a projection by name, and a list of positions |
+
+The generator reports what it could not build, the same way it reports unreachable properties:
+
+```
+17 classes build from their constructors, over 4 kinds
+  overload skipped, no reader for massif::SolidLayer: std::shared_ptr<Bitmap> bitmap
+  overload skipped, no reader for massif::HillshadeRasterTileLayer: std::shared_ptr<ElevationDecoder> elevationDecoder
+```
+
+Those are overloads whose parameter type no kind builds — not errors, just the next thing to
+declare if someone needs it.
+
+**Not covered by the host tests.** The reduced property table has no `!spec` class in it, and
+`SpecFactories.cpp` is not linked there — it needs every source, layer and service. Verified on the
+phone instead: seven builds across all four kinds, an unknown type answering `RESULT_UNKNOWN_TYPE`,
+and `maxZoom` reading back 14 from the spec while `minZoom` reads 0 from the declared default. The
+follow-up is to move the value helpers and the generated include into a light translation unit so a
+reduced table can exercise them.
+
 **The factory table is a registry, not a switch.** `Spec::registerFactory(kind, fn)` is the hook a
 plugin would extend, and it is also what makes `create` testable: the tests register a fake kind
 whose factory constructs something trivial, so reuse, conflicts and tolerant key application are

@@ -21,6 +21,8 @@
 !enum(massif::RasterTileFilterMode::RasterTileFilterMode)
 !polymorphic_shared_ptr(massif::RasterTileLayer, layers.RasterTileLayer)
 
+
+!spec(massif::RasterTileLayer, layer, raster, alias(source, dataSource))
 %attribute(massif::RasterTileLayer, std::size_t, TextureCacheCapacity, getTextureCacheCapacity, setTextureCacheCapacity)
 %attribute(massif::RasterTileLayer, massif::RasterTileFilterMode::RasterTileFilterMode, TileFilterMode, getTileFilterMode, setTileFilterMode)
 %attribute(massif::RasterTileLayer, float, TileBlendingSpeed, getTileBlendingSpeed, setTileBlendingSpeed)

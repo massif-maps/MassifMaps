@@ -23,6 +23,8 @@
 
 !polymorphic_shared_ptr(massif::ValhallaOnlineRoutingService, routing.ValhallaOnlineRoutingService)
 
+
+!spec(massif::ValhallaOnlineRoutingService, routing, valhalla-online)
 %attributestring(massif::ValhallaOnlineRoutingService, std::string, CustomServiceURL, getCustomServiceURL, setCustomServiceURL)
 
 %attribute(massif::ValhallaOnlineRoutingService, int, Timeout, getTimeout, setTimeout)

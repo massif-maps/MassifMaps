@@ -23,6 +23,8 @@
 !enum(massif::VectorTileRenderOrder::VectorTileRenderOrder)
 !polymorphic_shared_ptr(massif::VectorTileLayer, layers.VectorTileLayer)
 
+
+!spec(massif::VectorTileLayer, layer, vector, alias(source, dataSource), alias(style, decoder))
 %attribute(massif::VectorTileLayer, std::size_t, TileCacheCapacity, getTileCacheCapacity, setTileCacheCapacity)
 %attribute(massif::VectorTileLayer, massif::VectorTileRenderOrder::VectorTileRenderOrder, LabelRenderOrder, getLabelRenderOrder, setLabelRenderOrder)
 %attribute(massif::VectorTileLayer, massif::VectorTileRenderOrder::VectorTileRenderOrder, BuildingRenderOrder, getBuildingRenderOrder, setBuildingRenderOrder)

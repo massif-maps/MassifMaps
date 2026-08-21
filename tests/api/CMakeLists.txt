@@ -5,6 +5,7 @@ set(TEST_MODULES
   "${SDK_BASE_DIR}/all/modules/components/FogOptions.i"
   "${SDK_BASE_DIR}/all/modules/geometry/Feature.i"
   "${SDK_BASE_DIR}/all/modules/geometry/Geometry.i"
+  "${SDK_BASE_DIR}/all/modules/ui/VectorTileClickInfo.i"
   "${SDK_BASE_DIR}/all/modules/geometry/PointGeometry.i"
 )
 
@@ -26,6 +27,10 @@ set(TEST_SDK_SOURCES
   "${SDK_BASE_DIR}/all/native/core/ScreenPos.cpp"
   "${SDK_BASE_DIR}/all/native/components/FogOptions.cpp"
   "${SDK_BASE_DIR}/all/native/geometry/Feature.cpp"
+  "${SDK_BASE_DIR}/all/native/geometry/VectorTileFeature.cpp"
+  "${SDK_BASE_DIR}/all/native/ui/VectorTileClickInfo.cpp"
+  "${SDK_BASE_DIR}/all/native/ui/ClickInfo.cpp"
+  "${SDK_BASE_DIR}/all/native/core/MapTile.cpp"
   "${SDK_BASE_DIR}/all/native/geometry/GeoJSONGeometryWriter.cpp"
   # The writer handles every geometry type, so they all come with it. They are light - no
   # renderer, no data sources - which is why this stays inside the rule in ../README.md.
@@ -40,6 +45,8 @@ set(TEST_SDK_SOURCES
   "${SDK_BASE_DIR}/all/native/graphics/Color.cpp"
   "${SDK_BASE_DIR}/all/native/utils/Log.cpp"
   "${SDK_BASE_DIR}/all/native/utils/GeomUtils.cpp"
+  "${SDK_BASE_DIR}/all/native/utils/GeneralUtils.cpp"
+  "${SDK_BASE_DIR}/all/native/utils/Const.cpp"
 )
 
 set(TEST_TABLE_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated/api")

@@ -123,3 +123,42 @@ void testVariantPaths() {
     TEST_CHECK(context->getProperty(emptyHandle, "geometryGeoJSON", value) == RESULT_OK &&
                value.stringValue.empty(), "a feature with no geometry gives an empty string");
 }
+
+/* The clicked position of a MultiPoint feature, which needed a downcast before. */
+
+#include "ui/VectorTileClickInfo.h"
+#include "geometry/MultiPointGeometry.h"
+
+void testFeaturePos() {
+    auto context = std::make_shared<Context>();
+    std::vector<std::shared_ptr<PointGeometry> > points;
+    // Deliberately asymmetric: with evenly spaced points the middle one IS the centre, and the
+    // test would pass whether or not the index was used.
+    points.push_back(std::make_shared<PointGeometry>(MapPos(0, 0)));
+    points.push_back(std::make_shared<PointGeometry>(MapPos(20, 20)));
+    points.push_back(std::make_shared<PointGeometry>(MapPos(100, 100)));
+    auto multi = std::make_shared<MultiPointGeometry>(points);
+    auto feature = std::make_shared<VectorTileFeature>(1, MapTile(0, 0, 0, 0), "poi", multi, Variant());
+
+    // Index 1 is the second point, not the centre of all three.
+    VectorTileClickInfo clicked(ClickInfo(ClickType::CLICK_TYPE_SINGLE, 0),
+                                MapPos(0, 0), MapPos(0, 0), feature, std::shared_ptr<Layer>(), 1);
+    TEST_CHECK(clicked.getFeaturePos() == MapPos(20, 20), "a MultiPoint gives the clicked point");
+    TEST_CHECK(clicked.getFeaturePos() != multi->getCenterPos(), "not the centre of the set");
+
+    VectorTileClickInfo noIndex(ClickInfo(ClickType::CLICK_TYPE_SINGLE, 0),
+                                MapPos(0, 0), MapPos(0, 0), feature, std::shared_ptr<Layer>(), -1);
+    TEST_CHECK(noIndex.getFeaturePos() == multi->getCenterPos(),
+               "with no index it falls back to the centre");
+
+    VectorTileClickInfo outOfRange(ClickInfo(ClickType::CLICK_TYPE_SINGLE, 0),
+                                   MapPos(0, 0), MapPos(0, 0), feature, std::shared_ptr<Layer>(), 99);
+    TEST_CHECK(outOfRange.getFeaturePos() == multi->getCenterPos(),
+               "an out-of-range index falls back rather than reading past the end");
+
+    auto point = std::make_shared<VectorTileFeature>(2, MapTile(0, 0, 0, 0), "poi",
+                                                     std::make_shared<PointGeometry>(MapPos(5, 6)), Variant());
+    VectorTileClickInfo single(ClickInfo(ClickType::CLICK_TYPE_SINGLE, 0),
+                               MapPos(0, 0), MapPos(0, 0), point, std::shared_ptr<Layer>(), 0);
+    TEST_CHECK(single.getFeaturePos() == MapPos(5, 6), "a plain Point is unaffected by the index");
+}

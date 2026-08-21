@@ -1,4 +1,5 @@
 #include "VectorTileClickInfo.h"
+#include "geometry/MultiGeometry.h"
 
 namespace massif {
 
@@ -30,6 +31,20 @@ namespace massif {
         return _clickPos;
     }
         
+    MapPos VectorTileClickInfo::getFeaturePos() const {
+        std::shared_ptr<Geometry> geometry = _feature ? _feature->getGeometry() : std::shared_ptr<Geometry>();
+        if (!geometry) {
+            return MapPos();
+        }
+        if (_featurePosIndex >= 0 && geometry->getType() == GeometryType::GEOMETRY_TYPE_MULTIPOINT) {
+            auto multiGeometry = std::static_pointer_cast<MultiGeometry>(geometry);
+            if (_featurePosIndex < multiGeometry->getGeometryCount()) {
+                return multiGeometry->getGeometry(_featurePosIndex)->getCenterPos();
+            }
+        }
+        return geometry->getCenterPos();
+    }
+
     const MapPos& VectorTileClickInfo::getFeatureClickPos() const {
         return _featureClickPos;
     }

@@ -26,6 +26,7 @@
 %attributeval(massif::VectorTileClickInfo, massif::ClickInfo, ClickInfo, getClickInfo)
 %attributeval(massif::VectorTileClickInfo, massif::MapPos, ClickPos, getClickPos)
 %attributeval(massif::VectorTileClickInfo, massif::MapPos, FeatureClickPos, getFeatureClickPos)
+%attributeval(massif::VectorTileClickInfo, massif::MapPos, FeaturePos, getFeaturePos)
 %attributeval(massif::VectorTileClickInfo, massif::MapTile, MapTile, getMapTile)
 %attribute(massif::VectorTileClickInfo, long long, FeatureId, getFeatureId)
 %attribute(massif::VectorTileClickInfo, int, FeaturePosIndex, getFeaturePosIndex)

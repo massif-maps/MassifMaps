@@ -2,6 +2,8 @@
 
 #include <algorithm>
 #include <cstdlib>
+#include <typeindex>
+#include <unordered_map>
 #include <cstring>
 #include <sstream>
 
@@ -125,6 +127,20 @@ namespace massif { namespace api {
             }
         }
         return nullptr;
+    }
+
+    // Built once, on first use: the generated table is in declaration order, and a linear scan
+    // per traversal step over 160 entries is not what a dotted path should cost.
+    const char* concreteClass(const std::type_info& type, const char* declared) {
+        static const std::unordered_map<std::type_index, const char*> byType = []() {
+            std::unordered_map<std::type_index, const char*> map;
+            for (const ClassTypeEntry& entry : kTypes) {
+                map.emplace(std::type_index(*entry.type), entry.cppClass);
+            }
+            return map;
+        }();
+        auto it = byType.find(std::type_index(type));
+        return it != byType.end() ? it->second : declared;
     }
 
     bool isSubclassOf(const char* cppClass, const char* base) {

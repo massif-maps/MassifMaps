@@ -11,6 +11,7 @@
 #include <cstddef>
 #include <memory>
 #include <string>
+#include <typeinfo>
 
 namespace massif { namespace api {
 
@@ -103,6 +104,23 @@ namespace massif { namespace api {
         // this chain rather than the table being flattened.
         const char* base;
     };
+
+    /**
+     * One class' runtime type, so a traversal can name what it actually found.
+     */
+    struct ClassTypeEntry {
+        const std::type_info* type;
+        const char* cppClass;
+    };
+
+    /**
+     * The class of an object as it really is, rather than as the property that reached it declares.
+     *
+     * A `tileDecoder` declared as a `VectorTileDecoder` is nearly always an `MBVectorTileDecoder`,
+     * and everything the subclass adds is unreachable by name without this. Falls back to the
+     * declared name for a class the profile does not build, so the walk never loses its footing.
+     */
+    const char* concreteClass(const std::type_info& type, const char* declared);
 
     /**
      * Looks up a class' property table by its fully qualified C++ name.

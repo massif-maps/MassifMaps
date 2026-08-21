@@ -328,13 +328,24 @@ def emitAccessors(headers, entries, outPath):
   lines.append('#include "api/StructCodec.h"\n')
   lines.append('#include <memory>\n')
   lines.append('\nnamespace massif { namespace api { namespace accessors {\n\n')
+  # typeid needs a COMPLETE type, and an object property can point at a class this profile only
+  # forward-declares (VectorTileClickInfo.layer without Layer.i). Those keep the declared name.
+  complete = set(entry['cppClass'] for entry in entries)
   for entry in entries:
     objectClass = objectClassOf(entry)
     if objectClass:
-      lines.append('inline void %s(void* obj, ObjectRef& out) {\n'
-                   '    out.obj = static_cast<%s*>(obj)->%s();\n'
-                   '    out.cppClass = "%s";\n}\n' %
-                   (symbolOf(entry, 'getobj'), entry['cppClass'], entry['getter'], objectClass))
+      # The CONCRETE class, not the declared one: a tileDecoder declared as VectorTileDecoder is
+      # usually an MBVectorTileDecoder, and its own properties are unreachable otherwise.
+      if objectClass in complete:
+        read = ('    auto value = static_cast<%s*>(obj)->%s();\n'
+                '    out.cppClass = value ? concreteClass(typeid(*value), "%s") : "%s";\n'
+                '    out.obj = value;\n' %
+                (entry['cppClass'], entry['getter'], objectClass, objectClass))
+      else:
+        read = ('    out.obj = static_cast<%s*>(obj)->%s();\n'
+                '    out.cppClass = "%s";\n' % (entry['cppClass'], entry['getter'], objectClass))
+      lines.append('inline void %s(void* obj, ObjectRef& out) {\n%s}\n' %
+                   (symbolOf(entry, 'getobj'), read))
       if not (entry['flags'] & FLAG_READONLY):
         # The cast is from shared_ptr<void>, so it is only sound because Context checks the
         # registered class against objectClass first - see isSubclassOf.
@@ -353,6 +364,14 @@ def emitAccessors(headers, entries, outPath):
                    '    auto self = static_cast<%s*>(obj);\n'
                    '    %s\n}\n' % (symbolOf(entry, 'set'), cppClass, writeExpr(entry)))
   lines.append('\n} } }\n')
+  lines.append('\nnamespace massif { namespace api {\n\n')
+  lines.append('// Every class the profile has, by runtime type. Hashed on first use - see\n'
+               '// concreteClass in PropertyTable.cpp.\n')
+  lines.append('static const ClassTypeEntry kTypes[] = {\n')
+  for cppClass in sorted(complete):
+    lines.append('    { &typeid(%s), "%s" },\n' % (cppClass, cppClass))
+  lines.append('};\n')
+  lines.append('\n} }\n')
   with open(outPath, 'w') as f:
     f.writelines(lines)
 

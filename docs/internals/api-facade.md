@@ -84,6 +84,33 @@ const ClassEntry*    cls  = findClass("massif::FogOptions");
 const PropertyEntry* prop = findProperty(cls, "rangeStart");
 ```
 
+### The concrete class, not the declared one
+
+A traversal reports what it actually found. `VectorTileLayer.tileDecoder` declares a
+`VectorTileDecoder`, but the object is almost always an `MBVectorTileDecoder`, and everything the
+subclass adds — `styleParameters`, `cartoCSSStyle`, `setStyleParameter` — was unreachable by name
+while the walk carried the declared name.
+
+The generator emits a `&typeid(X)` table beside the thunks and each object getter resolves through
+it, so `out.cppClass` is the runtime class:
+
+```cpp
+inline void getobj_massif__VectorTileLayer_tileDecoder(void* obj, ObjectRef& out) {
+    auto value = static_cast<massif::VectorTileLayer*>(obj)->getTileDecoder();
+    out.cppClass = value ? concreteClass(typeid(*value), "massif::VectorTileDecoder")
+                         : "massif::VectorTileDecoder";
+    out.obj = value;
+}
+```
+
+`concreteClass` hashes the table on first use and **falls back to the declared name** for anything
+it does not know, so a walk never loses its footing. Property lookup and method lookup both start
+from the reported class and walk its bases, so both gain the subclass in the same change.
+
+Not `ClassRegistry`: it is keyed by the *binding's* class name (`vectortiles.MBVectorTileDecoder`),
+it is populated only by the Swig wrappers — so a host test or a C-ABI-only build has nothing in it —
+and it logs an error for every class it does not know.
+
 ### Base classes
 
 A lookup walks the class' base chain, because almost every useful property is declared on a base:
@@ -782,7 +809,7 @@ Chosen by counting, not by guessing: the NativeScript app this API is measured a
 |---|---|---|
 | `loadTile([x,y,z])` | `TileDataSource` | binary result, blocking |
 | `getElevation([x,y])`, `getElevations([[x,y],…])` | `HillshadeRasterTileLayer` | scalar, flat array |
-| `setStyleParameter(name, value)`, `getStyleParameter(name)`, `getStyleParameters()` | `VectorTileDecoder` | a live theme switch without a full re-decode |
+| `setStyleParameter(name, value)`, `getStyleParameter(name)` | `MBVectorTileDecoder` | a live theme switch; the *list* is the `styleParameters` property |
 | `clearTileCaches(all)` | `TileLayer` | |
 | `refresh()` | `Layer` | |
 | `findFeatures([requestHandle])` | `VectorTileSearchService`, `FeatureCollectionSearchService` | blocking — see [Search](#search) |
@@ -795,9 +822,18 @@ a search is the one thing an app cannot rebuild on top of the facade, so it is c
 (`camera().fitBounds(...)`, `map.screenToMap(x, y)`) rather than the method table — the object API
 already has them and the wrapper only has to reach them.
 
-The style-parameter methods are registered on `VectorTileDecoder` and **downcast to
-`MBVectorTileDecoder` inside the thunk**, because traversal records the class a property *declares*
-rather than the concrete one — see the gaps.
+The style-parameter methods are registered on `MBVectorTileDecoder` directly, and there is no
+`getStyleParameters()` method: `styleParameters` is an `%attributeval` on that class, and once
+traversal names the concrete class and `vector<std::string>` has a codec, the property covers it.
+Device check, through the path, with nothing registered but the layer:
+
+```
+apiSet layer:demoBase:tileDecoder.styleParameters
+  json=["_fontscale","building_min_zoom","buildings","contours","lang", … ]
+apiCall tileDecoder.getStyleParameter ["buildings"]  -> 1
+apiCall tileDecoder.setStyleParameter ["buildings","0"]
+apiCall tileDecoder.getStyleParameter ["buildings"]  -> 0
+```
 
 ### A method can be addressed through a path
 
@@ -1091,12 +1127,10 @@ cd scripts && python3 gen-api-tables.py
 - **The method table is hand-registered.** Unlike properties, methods are not declared by a macro
   the generator can read, so each one is a thunk in `MethodImpls.cpp`. Twelve exist — see the table
   above for which and why.
-- **Traversal records the DECLARED class, not the concrete one.** `layer.tileDecoder` resolves as a
-  `VectorTileDecoder` even when it is an `MBVectorTileDecoder`, so a property or method that only
-  the subclass has is not found by name. The style-parameter thunks work around it with a
-  `dynamic_cast`. The real fix is for the generated objectGetter to resolve the concrete class
-  through `ClassRegistry`, the way adoption does; it is not done because `ClassRegistry` logs an
-  error for every class it does not know, and in a host build nothing is registered.
+- **A class the profile only forward-declares keeps its declared name in a traversal.** 14 of the
+  116 object getters are in that position — `VectorTileClickInfo.layer` without `Layer.i` — because
+  `typeid` needs a complete type. In the full profile they all have headers; in a reduced table they
+  fall back, which is the old behaviour rather than a wrong answer.
 - **The routing calls are not exposed.** `RoutingService::calculateRoute` returns a
   `RoutingResult` with instruction and point vectors — the same collection shape `findFeatures`
   needed, so it is a `getInstruction(i)`-style registration plus a factory, not new machinery.

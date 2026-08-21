@@ -236,6 +236,22 @@ void testCall() {
     TEST_CHECK(context->call(point, "sum", "[]", value) == RESULT_UNKNOWN_METHOD,
                "but not sideways into an unrelated class");
 
+    // Traversal names the CONCRETE class, so what only the subclass has is reachable. Feature
+    // declares geometry as a Geometry; pos is PointGeometry's alone.
+    Handle held = NULL_HANDLE;
+    context->registerObject("feature", "held",
+                            std::make_shared<Feature>(std::make_shared<PointGeometry>(MapPos(7, 8)),
+                                                      Variant()),
+                            "massif::Feature", held);
+    TEST_CHECK(context->getProperty(held, "geometry.centerPos", value) == RESULT_OK,
+               "a base property through a path, as before");
+    TEST_CHECK(context->getProperty(held, "geometry.pos", value) == RESULT_OK &&
+               value.stringValue.find("7") != std::string::npos,
+               "and a property only the concrete class declares");
+    Methods::registerMethod("massif::PointGeometry", "onPoint", &onBase);
+    TEST_CHECK(context->call(held, "geometry.onPoint", "", value) == RESULT_OK,
+               "a method registered on the concrete class is found through a path too");
+
     // A method addressed through a path, so an intermediate object needs no id of its own.
     Handle feature = NULL_HANDLE;
     context->registerObject("feature", "pathed",

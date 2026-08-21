@@ -143,8 +143,10 @@ public final class DemoLive extends BroadcastReceiver {
             before = Double.NaN;
             result = MassifApi.setString(handle, path, value);
         }
+        // Both: a struct property carries JSON in the string, a scalar carries a number.
         Log.i(TAG, "apiSet " + kind + ":" + id + ":" + path + " " + before + " -> "
                 + MassifApi.getFloat(handle, path, Double.NaN)
+                + " json=" + MassifApi.getString(handle, path, "-")
                 + " (handle=" + handle + ", result=" + result + ")");
     }
 

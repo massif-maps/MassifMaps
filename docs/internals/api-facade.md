@@ -92,6 +92,25 @@ This was not designed in. It shipped without inheritance, and the first spec-bui
 device answered `Context::create: demoApiSource.capacity ignored (2)` — `RESULT_UNKNOWN_CLASS`,
 because the concrete class was not in the table at all.
 
+### Structs
+
+`%attributeval` properties — `MapPos`, `MapRange`, `MapBounds`, `ScreenPos`, `MapVec`, `Variant` —
+carry **JSON in the string field**, encoded by `StructCodec`. A position is `[x, y]` or `[x, y, z]`
+and a range is `[min, max]`, because that is what an app writes in a spec.
+
+```sh
+adb shell am broadcast -a …CONFIG --es apiSet 'zoomRange=[3,17]'
+```
+
+Decoding is lenient in exactly one direction: a missing `z` is 0. Everything else — a wrong length,
+a non-number, an object where an array belongs — **fails and leaves the property untouched**, so a
+malformed spec cannot quietly write a default over a real value. Verified on a device: sending
+`zoomRange=nonsense` after `zoomRange=[3,17]` leaves it reading `[3,17]`.
+
+The other 59 struct properties — vectors, maps, `BalloonPopupMargins`, `ClickInfo` — have no
+accessor. They are listed in `CODEC_TYPES` when someone needs them; nothing about the mechanism
+changes.
+
 ### Path spelling
 
 An attribute's name is decapitalised with the `java.beans.Introspector` rule: an acronym keeps its
@@ -365,7 +384,8 @@ key order not mattering, conflict on a different spec, tolerant application of u
 the parse and factory failure paths, plus the whole event layer — the three removals, dispatch
 order, consumption, removal from inside a handler, death-with-target, and the delivery layer —
 queueing, the single drain post, coalescing, the consume/queued rejection, and payload retain
-across a destroy. 92 checks. Two things keep it small on purpose:
+across a destroy — and the struct codec's round-trips and its refusal of every malformed shape.
+108 checks. Two things keep it small on purpose:
 the property table takes the address of **every** accessor thunk, so a full table needs the full
 SDK to link — the tests generate a reduced one from an explicit module list
 (`gen-api-tables.py --modules`), which exercises the generator as a side effect. And `Options`

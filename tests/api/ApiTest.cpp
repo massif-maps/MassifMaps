@@ -23,6 +23,7 @@ int failures = 0;
 
 void testEvents();
 void testDelivery();
+void testStructCodec();
 
 namespace {
 
@@ -228,6 +229,7 @@ int main() {
     testHandles(context);
     testEvents();
     testDelivery();
+    testStructCodec();
 
     std::printf("\n%d failure(s)\n", failures);
     return failures ? 1 : 0;

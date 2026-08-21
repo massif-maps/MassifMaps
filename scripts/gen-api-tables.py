@@ -42,6 +42,11 @@ TYPE_NAMES = ['BOOL', 'INT', 'FLOAT', 'COLOR', 'ENUM', 'STRING', 'OBJECT', 'STRU
 # table but has no thunk yet. OBJECT gets its own accessor instead - see objectClassOf.
 ACCESSIBLE_TYPES = {'BOOL', 'INT', 'FLOAT', 'COLOR', 'ENUM', 'STRING'}
 
+# STRUCT properties carry JSON, and only for the types StructCodec knows. The rest - vectors,
+# maps, BalloonPopupMargins, ClickInfo - stay accessorless until someone needs them.
+CODEC_TYPES = {'massif::MapPos', 'massif::MapVec', 'massif::ScreenPos', 'massif::MapRange',
+               'massif::MapBounds', 'massif::Variant'}
+
 FLAG_READONLY = 1
 FLAG_STATIC = 2
 
@@ -228,7 +233,11 @@ def symbolOf(entry, prefix):
 
 
 def accessible(entry):
-  return entry['type'] in ACCESSIBLE_TYPES and not (entry['flags'] & FLAG_STATIC)
+  if entry['flags'] & FLAG_STATIC:
+    return False
+  if entry['type'] in ACCESSIBLE_TYPES:
+    return True
+  return entry['type'] == 'STRUCT' and entry['cppType'] in CODEC_TYPES
 
 
 def objectClassOf(entry):
@@ -263,6 +272,8 @@ def readExpr(entry):
     return prefix + 'value.floatValue = static_cast<double>(%s);' % call
   if entry['type'] == 'STRING':
     return prefix + 'value.stringValue = %s;' % call
+  if entry['type'] == 'STRUCT':
+    return prefix + 'value.stringValue = StructCodec::encode(%s);' % call
   return prefix + 'value.intValue = static_cast<long long>(%s);' % call  # INT, ENUM
 
 
@@ -277,6 +288,10 @@ def writeExpr(entry):
     return 'self->%s(static_cast<%s>(value.asDouble()));' % (entry['setter'], entry['cppType'])
   if entry['type'] == 'STRING':
     return 'self->%s(value.stringValue);' % entry['setter']
+  if entry['type'] == 'STRUCT':
+    # A malformed struct leaves the property alone rather than writing a default over it.
+    return ('%s decoded; if (StructCodec::decode(value.stringValue, decoded)) { self->%s(decoded); }'
+            % (entry['cppType'], entry['setter']))
   return 'self->%s(static_cast<%s>(value.asLong()));' % (entry['setter'], entry['cppType'])
 
 
@@ -288,6 +303,7 @@ def emitAccessors(headers, entries, outPath):
   ]
   for header in sorted(set(headers)):
     lines.append('#include "%s"\n' % header)
+  lines.append('#include "api/StructCodec.h"\n')
   lines.append('\nnamespace massif { namespace api { namespace accessors {\n\n')
   for entry in entries:
     objectClass = objectClassOf(entry)
@@ -362,12 +378,14 @@ parser.add_argument('--profile', dest='profile', default=getDefaultProfileId(), 
 parser.add_argument('--defines', dest='defines', default='',
                     help='The build\'s own defines, comma or semicolon separated. Takes precedence '
                          'over --profile, so the build compiles thunks for exactly the classes it has')
-parser.add_argument('--sourcedir', dest='sourceDir', default='../all/modules,../android/modules',
+# all/modules only, matching the build: a platform module set pulls in headers that are
+# Objective-C on Apple, and PropertyTable.cpp is a plain C++ translation unit.
+parser.add_argument('--sourcedir', dest='sourceDir', default='../all/modules',
                     help='input directories containing subdirectories of Swig wrappers, comma or '
                          'semicolon separated')
 parser.add_argument('--modules', dest='modules', default='',
                     help='explicit .i files, comma separated, instead of walking --sourcedir')
-parser.add_argument('--cppdir', dest='cppDir', default='../all/native,../android/native,../ios/native',
+parser.add_argument('--cppdir', dest='cppDir', default='../all/native',
                     help='directories containing C++ headers, for the base-class chain')
 parser.add_argument('--outdir', dest='outDir', default='../generated/api',
                     help='output directory for the generated tables')

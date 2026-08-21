@@ -101,22 +101,37 @@ public final class DemoLive extends BroadcastReceiver {
 
     /**
      * Drives a property through the facade API (#146) instead of the typed setters, so the
-     * generated property table and its dotted path walking can be exercised on a device:
+     * generated property table and its dotted path walking can be exercised on a device.
      *
-     *   adb shell am broadcast -a com.massifmaps.MassifDemo.CONFIG --es apiSet fogOptions.rangeStart=2.5
+     *   --es apiSet fogOptions.rangeStart=2.5            (the map's options, the default target)
+     *   --es apiSet layer:demoApiLayer:opacity=0.3       (anything else in the registry)
      */
     private void applyApiSet(String assignment) {
         int equals = assignment != null ? assignment.indexOf('=') : -1;
         if (equals <= 0) {
-            Log.w(TAG, "apiSet wants path=value, got: " + assignment);
+            Log.w(TAG, "apiSet wants [kind:id:]path=value, got: " + assignment);
             return;
         }
-        String path = assignment.substring(0, equals);
+        String target = assignment.substring(0, equals);
         String value = assignment.substring(equals + 1);
 
-        int handle = MassifApi.findObject("options", "demo");
+        String kind = "options";
+        String id = "demo";
+        String path = target;
+        int second = target.indexOf(':', target.indexOf(':') + 1);
+        if (second > 0) {
+            kind = target.substring(0, target.indexOf(':'));
+            id = target.substring(target.indexOf(':') + 1, second);
+            path = target.substring(second + 1);
+        }
+
+        int handle = MassifApi.findObject(kind, id);
+        if (handle == 0 && "options".equals(kind) && "demo".equals(id)) {
+            handle = MassifApi.registerOptions(kind, id, demo.mapView.getOptions());
+        }
         if (handle == 0) {
-            handle = MassifApi.registerOptions("options", "demo", demo.mapView.getOptions());
+            Log.w(TAG, "apiSet: nothing registered as " + kind + ":" + id);
+            return;
         }
 
         int result;
@@ -128,7 +143,8 @@ public final class DemoLive extends BroadcastReceiver {
             before = Double.NaN;
             result = MassifApi.setString(handle, path, value);
         }
-        Log.i(TAG, "apiSet " + path + " " + before + " -> " + MassifApi.getFloat(handle, path, Double.NaN)
+        Log.i(TAG, "apiSet " + kind + ":" + id + ":" + path + " " + before + " -> "
+                + MassifApi.getFloat(handle, path, Double.NaN)
                 + " (handle=" + handle + ", result=" + result + ")");
     }
 

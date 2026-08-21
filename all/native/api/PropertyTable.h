@@ -42,6 +42,22 @@ namespace massif { namespace api {
         long long intValue = 0;   // also carries COLOR as ARGB and ENUM as its constant
         double floatValue = 0;
         std::string stringValue;
+        // Which field a getter filled. Without it a caller reading a bool as a float gets 0 and
+        // cannot tell that from a real 0.
+        PropertyType type = PT_STRING;
+
+        /** The value as a number, whatever field carries it. */
+        double asDouble() const;
+        /** The value as an integer, whatever field carries it. */
+        long long asLong() const;
+        /** The value as a boolean, whatever field carries it. */
+        bool asBool() const;
+
+        // Use these rather than assigning a field: an unstamped type reads as the wrong thing.
+        static PropertyValue ofBool(bool v);
+        static PropertyValue ofLong(long long v);
+        static PropertyValue ofDouble(double v);
+        static PropertyValue ofString(const std::string& v);
     };
 
     /**

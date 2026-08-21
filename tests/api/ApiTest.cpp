@@ -61,8 +61,7 @@ namespace {
                    "an object registers");
         TEST_CHECK(handle != NULL_HANDLE, "and gets a non-null handle");
 
-        PropertyValue value;
-        value.floatValue = 1.25;
+        PropertyValue value = PropertyValue::ofDouble(1.25);
         TEST_CHECK(context->setProperty(handle, "rangeStart", value) == RESULT_OK, "set a float");
         TEST_CHECK(options->getRangeStart() == 1.25f, "the object has the new value");
         // The load-bearing one: the generated thunk calls the class' own setter, so the redraw
@@ -74,17 +73,40 @@ namespace {
         TEST_CHECK(context->getProperty(handle, "rangeStart", readBack) == RESULT_OK &&
                    readBack.floatValue == 1.25, "get returns what was set");
 
-        value = PropertyValue();
-        value.boolValue = false;
+        value = PropertyValue::ofBool(false);
         TEST_CHECK(context->setProperty(handle, "enabled", value) == RESULT_OK, "set a bool");
         TEST_CHECK(!options->isEnabled(), "the bool took effect");
 
-        value = PropertyValue();
-        value.intValue = 0xFF804020;
+        value = PropertyValue::ofLong(0xFF804020);
         TEST_CHECK(context->setProperty(handle, "color", value) == RESULT_OK, "set a colour");
         TEST_CHECK(context->getProperty(handle, "color", readBack) == RESULT_OK &&
                    readBack.intValue == 0xFF804020, "a colour round-trips as ARGB");
 
+        // Reading across types has to coerce: without the stamped type a bool read as a float is
+        // 0 and indistinguishable from a real 0.
+        TEST_CHECK(context->getProperty(handle, "enabled", readBack) == RESULT_OK &&
+                   readBack.type == PT_BOOL && readBack.asDouble() == 0 && !readBack.asBool(),
+                   "a false bool reads as 0 through every accessor");
+        context->setProperty(handle, "enabled", PropertyValue::ofBool(true));
+        TEST_CHECK(context->getProperty(handle, "enabled", readBack) == RESULT_OK &&
+                   readBack.asDouble() == 1 && readBack.asLong() == 1 && readBack.asBool(),
+                   "a true bool reads as 1 through every accessor");
+        TEST_CHECK(context->getProperty(handle, "rangeStart", readBack) == RESULT_OK &&
+                   readBack.type == PT_FLOAT && readBack.asLong() == 1,
+                   "a float reads as a truncated integer");
+
+        // ...and writing across types has to coerce the same way, or setFloat on a bool writes false.
+        value = PropertyValue::ofDouble(0);
+        TEST_CHECK(context->setProperty(handle, "enabled", value) == RESULT_OK &&
+                   !options->isEnabled(), "a float 0 written to a bool is false");
+        value.floatValue = 1;
+        TEST_CHECK(context->setProperty(handle, "enabled", value) == RESULT_OK &&
+                   options->isEnabled(), "a float 1 written to a bool is true");
+        value = PropertyValue::ofLong(2);
+        TEST_CHECK(context->setProperty(handle, "rangeStart", value) == RESULT_OK &&
+                   options->getRangeStart() == 2.0f, "an integer written to a float converts");
+
+        value = PropertyValue();
         TEST_CHECK(context->setProperty(handle, "nope", value) == RESULT_UNKNOWN_PROPERTY,
                    "an unknown property is reported, not applied");
         TEST_CHECK(context->setProperty(handle + 7777, "rangeStart", value) == RESULT_BAD_HANDLE,
@@ -95,8 +117,7 @@ namespace {
         // Options -> FogOptions cannot be linked standalone, so the happy path is checked on a
         // device. These are the failure modes, which do not need a traversable class.
         Handle handle = context->findObject("options", "fog");
-        PropertyValue value;
-        value.floatValue = 1;
+        PropertyValue value = PropertyValue::ofDouble(1);
         TEST_CHECK(context->setProperty(handle, "enabled.foo", value) == RESULT_NOT_TRAVERSABLE,
                    "a dot into a scalar is not traversable");
         TEST_CHECK(context->setProperty(handle, "nosuch.foo", value) == RESULT_UNKNOWN_PROPERTY,

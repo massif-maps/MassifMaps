@@ -144,7 +144,32 @@ ctx->setProperty(h, "rangeStart", v);   // calls FogOptions::setRangeStart
 That is what makes the redraw granularity above true in practice rather than by construction.
 
 `PropertyValue` is deliberately not a union: the `std::string` member makes one impossible, and
-these are configuration calls, not a per-frame path.
+these are configuration calls, not a per-frame path. It **carries the type it was stamped with**,
+and both directions coerce through `asBool()` / `asLong()` / `asDouble()`.
+
+That is not tidiness. Without it each thunk touched only its own field, so reading a bool as a
+float returned 0 — indistinguishable from a real 0 — and writing a bool through `setFloat` wrote
+`false` whatever you passed. Both shipped, and both were caught on a device rather than in review.
+Build values with `PropertyValue::ofBool/ofLong/ofDouble/ofString` rather than assigning a field,
+so the type cannot be forgotten.
+
+### What you can do with a handle
+
+A handle from `create` is immediately usable for **properties**, including inherited ones:
+
+```java
+int h = MassifApi.create("layer", "base", spec);
+MassifApi.setFloat(h, "opacity", 0.25);   // declared on Layer, reached through the base chain
+MassifApi.setBool (h, "visible", false);
+```
+
+Two things it is **not** yet usable for, both waiting on verbs that do not exist:
+
+- **Replacing an object-valued property** — a layer's style, a cache's inner source. Writing an
+  `OBJECT` property needs a registry id and a checked downcast.
+- **Anything that is a method rather than a property** — `loadTile` on a source,
+  `setStyleParameter` on a decoder, `clearTileCaches` on a layer. Those are `call`, which is not
+  implemented.
 
 ### Dotted paths
 

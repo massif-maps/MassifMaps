@@ -62,17 +62,19 @@ namespace massif { namespace api {
             PropertyValue propertyValue;
             switch (value.getType()) {
             case VariantType::VARIANT_TYPE_BOOL:
+                propertyValue.type = PT_BOOL;
                 propertyValue.boolValue = value.getBool();
                 break;
             case VariantType::VARIANT_TYPE_INTEGER:
+                propertyValue.type = PT_INT;
                 propertyValue.intValue = value.getLong();
-                propertyValue.floatValue = static_cast<double>(value.getLong());
                 break;
             case VariantType::VARIANT_TYPE_DOUBLE:
+                propertyValue.type = PT_FLOAT;
                 propertyValue.floatValue = value.getDouble();
-                propertyValue.intValue = static_cast<long long>(value.getDouble());
                 break;
             case VariantType::VARIANT_TYPE_STRING:
+                propertyValue.type = PT_STRING;
                 propertyValue.stringValue = value.getString();
                 break;
             default:

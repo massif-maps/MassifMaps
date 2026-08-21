@@ -50,26 +50,22 @@ namespace massif { namespace api {
     }
 
     int MassifApi::setFloat(int handle, const std::string& path, double value) {
-        PropertyValue propertyValue;
-        propertyValue.floatValue = value;
+        PropertyValue propertyValue = PropertyValue::ofDouble(value);
         return Context::GetDefault()->setProperty(static_cast<Handle>(handle), path, propertyValue);
     }
 
     int MassifApi::setInt(int handle, const std::string& path, long long value) {
-        PropertyValue propertyValue;
-        propertyValue.intValue = value;
+        PropertyValue propertyValue = PropertyValue::ofLong(value);
         return Context::GetDefault()->setProperty(static_cast<Handle>(handle), path, propertyValue);
     }
 
     int MassifApi::setBool(int handle, const std::string& path, bool value) {
-        PropertyValue propertyValue;
-        propertyValue.boolValue = value;
+        PropertyValue propertyValue = PropertyValue::ofBool(value);
         return Context::GetDefault()->setProperty(static_cast<Handle>(handle), path, propertyValue);
     }
 
     int MassifApi::setString(int handle, const std::string& path, const std::string& value) {
-        PropertyValue propertyValue;
-        propertyValue.stringValue = value;
+        PropertyValue propertyValue = PropertyValue::ofString(value);
         return Context::GetDefault()->setProperty(static_cast<Handle>(handle), path, propertyValue);
     }
 
@@ -78,7 +74,7 @@ namespace massif { namespace api {
         if (Context::GetDefault()->getProperty(static_cast<Handle>(handle), path, value) != RESULT_OK) {
             return defaultValue;
         }
-        return value.floatValue;
+        return value.asDouble();
     }
 
     long long MassifApi::getInt(int handle, const std::string& path, long long defaultValue) {
@@ -86,7 +82,7 @@ namespace massif { namespace api {
         if (Context::GetDefault()->getProperty(static_cast<Handle>(handle), path, value) != RESULT_OK) {
             return defaultValue;
         }
-        return value.intValue;
+        return value.asLong();
     }
 
     bool MassifApi::getBool(int handle, const std::string& path, bool defaultValue) {
@@ -94,7 +90,7 @@ namespace massif { namespace api {
         if (Context::GetDefault()->getProperty(static_cast<Handle>(handle), path, value) != RESULT_OK) {
             return defaultValue;
         }
-        return value.boolValue;
+        return value.asBool();
     }
 
     std::string MassifApi::getString(int handle, const std::string& path, const std::string& defaultValue) {

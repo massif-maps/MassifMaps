@@ -23,6 +23,46 @@ namespace massif { namespace api {
         }
     }
 
+    PropertyValue PropertyValue::ofBool(bool v) {
+        PropertyValue value; value.type = PT_BOOL; value.boolValue = v; return value;
+    }
+
+    PropertyValue PropertyValue::ofLong(long long v) {
+        PropertyValue value; value.type = PT_INT; value.intValue = v; return value;
+    }
+
+    PropertyValue PropertyValue::ofDouble(double v) {
+        PropertyValue value; value.type = PT_FLOAT; value.floatValue = v; return value;
+    }
+
+    PropertyValue PropertyValue::ofString(const std::string& v) {
+        PropertyValue value; value.type = PT_STRING; value.stringValue = v; return value;
+    }
+
+    double PropertyValue::asDouble() const {
+        switch (type) {
+        case PT_BOOL:  return boolValue ? 1 : 0;
+        case PT_FLOAT: return floatValue;
+        default:       return static_cast<double>(intValue);
+        }
+    }
+
+    long long PropertyValue::asLong() const {
+        switch (type) {
+        case PT_BOOL:  return boolValue ? 1 : 0;
+        case PT_FLOAT: return static_cast<long long>(floatValue);
+        default:       return intValue;
+        }
+    }
+
+    bool PropertyValue::asBool() const {
+        switch (type) {
+        case PT_BOOL:  return boolValue;
+        case PT_FLOAT: return floatValue != 0;
+        default:       return intValue != 0;
+        }
+    }
+
     const ClassEntry* findClass(const char* cppClass) {
         if (!cppClass) {
             return nullptr;

@@ -250,30 +250,34 @@ def objectClassOf(entry):
 
 
 def readExpr(entry):
+  # Stamped so a caller reading a bool as a float can be told from a real zero.
   call = 'self->%s()' % entry['getter']
+  prefix = 'value.type = PT_%s; ' % entry['type']
   if entry['type'] == 'COLOR':
     # Unsigned: getARGB returns int, so an opaque colour would sign-extend to a negative and the
     # round-trip would not be symmetric. A colour is a bit pattern, not a quantity.
-    return 'value.intValue = static_cast<unsigned int>(%s.getARGB());' % call
+    return prefix + 'value.intValue = static_cast<unsigned int>(%s.getARGB());' % call
   if entry['type'] == 'BOOL':
-    return 'value.boolValue = %s;' % call
+    return prefix + 'value.boolValue = %s;' % call
   if entry['type'] == 'FLOAT':
-    return 'value.floatValue = static_cast<double>(%s);' % call
+    return prefix + 'value.floatValue = static_cast<double>(%s);' % call
   if entry['type'] == 'STRING':
-    return 'value.stringValue = %s;' % call
-  return 'value.intValue = static_cast<long long>(%s);' % call  # INT, ENUM
+    return prefix + 'value.stringValue = %s;' % call
+  return prefix + 'value.intValue = static_cast<long long>(%s);' % call  # INT, ENUM
 
 
 def writeExpr(entry):
+  # asX() rather than the raw field: a caller that sets a bool through setFloat must not write
+  # false, and the type it stamped is what makes the conversion possible.
   if entry['type'] == 'COLOR':
-    return 'self->%s(massif::Color(static_cast<int>(value.intValue)));' % entry['setter']
+    return 'self->%s(massif::Color(static_cast<int>(value.asLong())));' % entry['setter']
   if entry['type'] == 'BOOL':
-    return 'self->%s(value.boolValue);' % entry['setter']
+    return 'self->%s(value.asBool());' % entry['setter']
   if entry['type'] == 'FLOAT':
-    return 'self->%s(static_cast<%s>(value.floatValue));' % (entry['setter'], entry['cppType'])
+    return 'self->%s(static_cast<%s>(value.asDouble()));' % (entry['setter'], entry['cppType'])
   if entry['type'] == 'STRING':
     return 'self->%s(value.stringValue);' % entry['setter']
-  return 'self->%s(static_cast<%s>(value.intValue));' % (entry['setter'], entry['cppType'])
+  return 'self->%s(static_cast<%s>(value.asLong()));' % (entry['setter'], entry['cppType'])
 
 
 def emitAccessors(headers, entries, outPath):

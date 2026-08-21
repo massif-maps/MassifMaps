@@ -2,6 +2,7 @@
 #import "MSFMassifApi.h"
 #import "MSFMapPos.h"
 #import "MSFTileDataSource.h"
+#import "MSFLayer.h"
 
 NSString * const MSFMassifErrorDomain = @"MSFMassifErrorDomain";
 
@@ -42,6 +43,20 @@ NSString * const MSFMassifErrorDomain = @"MSFMassifErrorDomain";
     }
     NSData *data = [NSJSONSerialization dataWithJSONObject:converted options:0 error:nil];
     return data ? [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding] : @"";
+}
+
+// Stands in for "no default": Swig's std::string typemap rejects nil, which is what a nullable
+// getter wants to pass. Contains a NUL, so no real value equals it.
+static NSString * const kAbsent = @"\0massif:absent";
+
++ (NSString *)stringOrNil:(int)handle path:(NSString *)path {
+    NSString *value = [MSFMassifApi getString:handle path:path defaultValue:kAbsent];
+    return [kAbsent isEqualToString:value] ? nil : value;
+}
+
++ (NSString *)string:(int)handle path:(NSString *)path defaultValue:(NSString *)defaultValue {
+    NSString *value = [self stringOrNil:handle path:path];
+    return value ?: defaultValue;
 }
 
 + (NSError *)errorWithResult:(int)result message:(NSString *)message {
@@ -173,6 +188,18 @@ NSString * const MSFMassifErrorDomain = @"MSFMassifErrorDomain";
     int handle = [MSFMassifApi findObject:@"layer" objectId:objectId];
     return handle == 0 ? nil
         : [[MSFMassifLayer alloc] initWithHandle:handle objectId:objectId map:nil];
+}
+
++ (MSFMassifLayer *)adoptLayer:(NSString *)objectId layer:(MSFLayer *)layer {
+    int handle = [MSFMassifApi registerLayer:@"layer" objectId:objectId layer:layer];
+    return handle == 0 ? nil
+        : [[MSFMassifLayer alloc] initWithHandle:handle objectId:objectId map:nil];
+}
+
++ (MSFMassifSource *)adoptSource:(NSString *)objectId source:(MSFTileDataSource *)source {
+    int handle = [MSFMassifApi registerSource:@"source" objectId:objectId source:source];
+    return handle == 0 ? nil
+        : [[MSFMassifSource alloc] initWithHandle:handle kind:@"source" objectId:objectId];
 }
 
 + (BOOL)has:(NSString *)kind objectId:(NSString *)objectId {

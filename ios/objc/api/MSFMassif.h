@@ -13,6 +13,7 @@
 @class MSFMassifSource;
 @class MSFMassifLayer;
 @class MSFTileDataSource;
+@class MSFLayer;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -89,6 +90,18 @@ NS_SWIFT_NAME(Massif)
                              error:(NSError **)error;
 
 + (nullable MSFMassifLayer *)layer:(NSString *)objectId;
+
+/**
+ * Adopts a layer built with the object API, so it gains an id, properties, methods and events.
+ *
+ * This is how an app moves to the facade a piece at a time: everything it already built keeps
+ * working. The CONCRETE class is recovered, so an adopted MSFVectorTileLayer answers to a vector
+ * tile layer's properties rather than only to MSFLayer's.
+ */
++ (nullable MSFMassifLayer *)adoptLayer:(NSString *)objectId layer:(MSFLayer *)layer;
+
+/** The same for a source. */
++ (nullable MSFMassifSource *)adoptSource:(NSString *)objectId source:(MSFTileDataSource *)source;
 
 + (BOOL)has:(NSString *)kind objectId:(NSString *)objectId;
 

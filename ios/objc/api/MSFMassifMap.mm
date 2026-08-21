@@ -169,6 +169,21 @@ static NSString * const kMapKind = @"map";
     return layer ? [self add:layer] : nil;
 }
 
+- (MSFMassifLayer *)adoptLayer:(NSString *)objectId atIndex:(int)index {
+    MSFMassifLayer *existing = [self layer:objectId];
+    if (existing) {
+        return existing;
+    }
+    if (index < 0 || index >= self.layerCount) {
+        return nil;
+    }
+    int handle = [MSFMassifApi registerLayer:@"layer"
+                                    objectId:objectId
+                                       layer:[[_view getLayers] get:index]];
+    return handle == 0 ? nil
+        : [[MSFMassifLayer alloc] initWithHandle:handle objectId:objectId map:self];
+}
+
 - (MSFMassifLayer *)layer:(NSString *)objectId {
     int handle = [MSFMassifApi findObject:@"layer" objectId:objectId];
     return handle == 0 ? nil

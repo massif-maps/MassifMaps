@@ -48,6 +48,25 @@ namespace massif {
                                    const std::shared_ptr<Options>& options);
 
         /**
+         * The same for a layer or a source built with the object API.
+         *
+         * This is what lets an app adopt the facade a piece at a time: everything it already
+         * built keeps working, and gains an id, properties, methods and events. The CONCRETE
+         * class is recovered at runtime, so an adopted VectorTileLayer answers to a vector tile
+         * layer's properties rather than only to Layer's.
+         *
+         * @return The handle, or 0 when the id is taken or the class is not a wrapped one.
+         */
+        static int registerLayer(const std::string& kind, const std::string& objectId,
+                                 const std::shared_ptr<Layer>& layer);
+
+        /**
+         * @copydoc MassifApi::registerLayer
+         */
+        static int registerSource(const std::string& kind, const std::string& objectId,
+                                  const std::shared_ptr<TileDataSource>& source);
+
+        /**
          * Builds an object from a JSON spec and registers it under a kind and id.
          *
          * Creating an id that already exists with an IDENTICAL spec returns the existing handle,

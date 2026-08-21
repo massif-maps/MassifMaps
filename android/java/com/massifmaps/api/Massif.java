@@ -1,6 +1,7 @@
 package com.massifmaps.api;
 
 import com.massifmaps.datasources.TileDataSource;
+import com.massifmaps.layers.Layer;
 
 /**
  * The registry, for objects that do not belong to a map.
@@ -54,9 +55,25 @@ public final class Massif {
     }
 
     /**
-     * Adopts a source built with the object API, so it can be addressed by id like any other.
-     * The escape hatch in the other direction is {@link MassifSource#handle}.
+     * Adopts a layer built with the object API, so it gains an id, properties, methods and events.
+     *
+     * This is how an app moves to the facade a piece at a time: everything it already built keeps
+     * working. The CONCRETE class is recovered, so an adopted VectorTileLayer answers to a vector
+     * tile layer's properties rather than only to Layer's.
+     *
+     * @return The wrapper, or null when the id is taken.
      */
+    public static MassifLayer adopt(String id, Layer layer) {
+        int handle = MassifApi.registerLayer("layer", id, layer);
+        return handle == 0 ? null : new MassifLayer(handle, id, null);
+    }
+
+    /** The same for a source. */
+    public static MassifSource adopt(String id, TileDataSource source) {
+        int handle = MassifApi.registerSource("source", id, source);
+        return handle == 0 ? null : new MassifSource(handle, id);
+    }
+
     public static boolean has(String kind, String id) {
         return MassifApi.findObject(kind, id) != 0;
     }

@@ -7,6 +7,10 @@
 #include "ui/MapEventListener.h"
 
 #include <map>
+#include <mutex>
+#include <set>
+#include <typeinfo>
+#include "components/ClassRegistry.h"
 #include "components/Options.h"
 #include "datasources/TileDataSource.h"
 #include "layers/Layer.h"
@@ -18,6 +22,56 @@ namespace massif { namespace api {
                                    const std::shared_ptr<Options>& options) {
         Handle handle = NULL_HANDLE;
         if (Context::GetDefault()->registerObject(kind, objectId, options, "massif::Options", handle) != RESULT_OK) {
+            return NULL_HANDLE;
+        }
+        return static_cast<int>(handle);
+    }
+
+    namespace {
+        /**
+         * The property table's name for an object's CONCRETE class.
+         *
+         * Every Swig-wrapped class registers its short name in ClassRegistry at static-init time;
+         * the table keys on the qualified one. Interned because a slot keeps the pointer, and
+         * GetClassName returns by value.
+         */
+        const char* internedClassName(const std::type_info& type, const char* fallback) {
+            static std::mutex mutex;
+            static std::set<std::string> names;
+            std::string name = ClassRegistry::GetClassName(type);
+            if (name.empty()) {
+                return fallback;
+            }
+            std::lock_guard<std::mutex> lock(mutex);
+            return names.insert("massif::" + name).first->c_str();
+        }
+    }
+
+    int MassifApi::registerLayer(const std::string& kind, const std::string& objectId,
+                                 const std::shared_ptr<Layer>& layer) {
+        if (!layer) {
+            return NULL_HANDLE;
+        }
+        // Bound to a reference first: typeid on a smart-pointer dereference is a call, which the
+        // compiler warns is evaluated despite being a typeid operand.
+        const Layer& concrete = *layer;
+        Handle handle = NULL_HANDLE;
+        if (Context::GetDefault()->registerObject(kind, objectId, layer,
+                internedClassName(typeid(concrete), "massif::Layer"), handle) != RESULT_OK) {
+            return NULL_HANDLE;
+        }
+        return static_cast<int>(handle);
+    }
+
+    int MassifApi::registerSource(const std::string& kind, const std::string& objectId,
+                                  const std::shared_ptr<TileDataSource>& source) {
+        if (!source) {
+            return NULL_HANDLE;
+        }
+        const TileDataSource& concrete = *source;
+        Handle handle = NULL_HANDLE;
+        if (Context::GetDefault()->registerObject(kind, objectId, source,
+                internedClassName(typeid(concrete), "massif::TileDataSource"), handle) != RESULT_OK) {
             return NULL_HANDLE;
         }
         return static_cast<int>(handle);

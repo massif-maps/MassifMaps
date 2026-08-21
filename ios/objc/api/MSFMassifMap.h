@@ -109,6 +109,12 @@ NS_SWIFT_NAME(MassifMap)
                                  spec:(MSFSpec *)spec
                                 error:(NSError **)error;
 
+/**
+ * Adopts the layer at a stack position, so a map built with the object API can be driven through
+ * the facade without rebuilding it.
+ */
+- (nullable MSFMassifLayer *)adoptLayer:(NSString *)objectId atIndex:(int)index;
+
 /** A layer already on this map, by id, or nil. */
 - (nullable MSFMassifLayer *)layer:(NSString *)objectId;
 

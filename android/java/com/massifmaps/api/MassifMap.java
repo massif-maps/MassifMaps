@@ -112,6 +112,38 @@ public final class MassifMap implements AutoCloseable {
         return add(Massif.layer(id, spec));
     }
 
+    /**
+     * Adopts the layer at a stack position, so a map built with the object API can be driven
+     * through the facade without rebuilding it.
+     *
+     * @return The wrapper, or the existing one when the id is already registered.
+     */
+    public MassifLayer adoptLayer(String id, int index) {
+        MassifLayer existing = layer(id);
+        if (existing != null) {
+            return existing;
+        }
+        Layer target = index >= 0 && index < layerCount() ? view.getLayers().get(index) : null;
+        if (target == null) {
+            return null;
+        }
+        int handle = MassifApi.registerLayer("layer", id, target);
+        return handle == 0 ? null : new MassifLayer(handle, id, this);
+    }
+
+    /**
+     * Adopts the FIRST layer of a kind, which is what an app usually means by "the base map".
+     * @param type A class from com.massifmaps.layers, e.g. VectorTileLayer.class.
+     */
+    public MassifLayer adoptFirst(String id, Class<? extends Layer> type) {
+        for (int index = 0; index < layerCount(); index++) {
+            if (type.isInstance(view.getLayers().get(index))) {
+                return adoptLayer(id, index);
+            }
+        }
+        return null;
+    }
+
     /** A layer already on this map, by id, or null. */
     public MassifLayer layer(String id) {
         int handle = MassifApi.findObject("layer", id);

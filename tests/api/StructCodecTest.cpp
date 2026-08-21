@@ -3,6 +3,9 @@
  */
 
 #include "api/StructCodec.h"
+#include "core/MapTile.h"
+
+#include <map>
 
 #include "TestCheck.h"
 
@@ -177,4 +180,52 @@ void testFeaturePos() {
     VectorTileClickInfo single(ClickInfo(ClickType::CLICK_TYPE_SINGLE, 0),
                                MapPos(0, 0), MapPos(0, 0), point, std::shared_ptr<Layer>(), 0);
     TEST_CHECK(single.getFeaturePos() == MapPos(5, 6), "a plain Point is unaffected by the index");
+}
+
+/*
+ * The struct types added after the first round, each because something real was unreachable
+ * without it. Unit level: the properties that carry them live on classes too heavy for this link.
+ */
+void testMoreStructs() {
+    // A tile - what a raster click and a vector tile feature carry.
+    MapTile tile(8467, 5852, 14, 0);
+    MapTile decodedTile;
+    TEST_CHECK(StructCodec::encode(tile) == "[8467,5852,14]", "a tile reads as [x,y,zoom]");
+    TEST_CHECK(StructCodec::decode(StructCodec::encode(tile), decodedTile) &&
+               decodedTile.getX() == 8467 && decodedTile.getY() == 5852 &&
+               decodedTile.getZoom() == 14, "and round-trips");
+    // frameNr is not part of the spelling: a tile named from outside the map belongs to no frame.
+    TEST_CHECK(decodedTile.getFrameNr() == 0, "with no frame number");
+    TEST_CHECK(!StructCodec::decode("[1,2]", decodedTile), "a two-element array is not a tile");
+
+    // A string map - HTTP headers, and a layer's metadata.
+    std::map<std::string, std::string> headers;
+    headers["X-Client-Id"] = "MassifMaps";
+    headers["Accept"] = "*/*";
+    std::map<std::string, std::string> decodedHeaders;
+    TEST_CHECK(StructCodec::decode(StructCodec::encode(headers), decodedHeaders) &&
+               decodedHeaders == headers, "a string map round-trips");
+    TEST_CHECK(StructCodec::decode("{\"n\":7}", decodedHeaders) && decodedHeaders["n"] == "7",
+               "a number is spelled out rather than refused");
+    decodedHeaders = headers;
+    TEST_CHECK(!StructCodec::decode("[1,2]", decodedHeaders) && decodedHeaders == headers,
+               "an array is not a map, and the refusal leaves the value alone");
+
+    std::map<std::string, Variant> meta;
+    meta["count"] = Variant(static_cast<long long>(3));
+    meta["name"] = Variant(std::string("x"));
+    std::map<std::string, Variant> decodedMeta;
+    TEST_CHECK(StructCodec::decode(StructCodec::encode(meta), decodedMeta) &&
+               decodedMeta["count"].getLong() == 3 && decodedMeta["name"].getString() == "x",
+               "a variant map keeps each value's type");
+
+    // A list of positions, which the routing request spec needs. Deliberately NOT a property type.
+    std::vector<MapPos> path;
+    path.push_back(MapPos(1, 2));
+    path.push_back(MapPos(3, 4));
+    std::vector<MapPos> decodedPath;
+    TEST_CHECK(StructCodec::decode(StructCodec::encode(path), decodedPath) &&
+               decodedPath.size() == 2 && decodedPath[1] == MapPos(3, 4, 0),
+               "a list of positions round-trips");
+    TEST_CHECK(!StructCodec::decode("[[1,2],[3]]", decodedPath), "one bad element fails the list");
 }

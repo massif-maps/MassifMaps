@@ -34,6 +34,10 @@ ATTRIBUTE_MACROS = {
 BOOL_TYPES = {'bool'}
 INT_TYPES = {'int', 'long', 'long long', 'short', 'char', 'signed char', 'unsigned char',
              'unsigned int', 'unsigned long', 'unsigned short', 'size_t', 'std::size_t'}
+# The fixed-width spellings too: PackageInfo.size is a std::uint64_t, and without these it lands in
+# STRUCT and silently loses its accessor - the same failure the unqualified enum had.
+INT_TYPES |= set('%s%sint%d_t' % (prefix, sign, bits)
+                 for prefix in ('', 'std::') for sign in ('', 'u') for bits in (8, 16, 32, 64))
 FLOAT_TYPES = {'float', 'double'}
 
 TYPE_NAMES = ['BOOL', 'INT', 'FLOAT', 'COLOR', 'ENUM', 'STRING', 'OBJECT', 'STRUCT', 'VARIANT']
@@ -45,7 +49,8 @@ ACCESSIBLE_TYPES = {'BOOL', 'INT', 'FLOAT', 'COLOR', 'ENUM', 'STRING'}
 # STRUCT properties carry JSON, and only for the types StructCodec knows. The rest - vectors,
 # maps, BalloonPopupMargins, ClickInfo - stay accessorless until someone needs them.
 CODEC_TYPES = {'massif::MapPos', 'massif::MapVec', 'massif::ScreenPos', 'massif::MapRange',
-               'massif::MapBounds', 'std::vector<std::string>'}
+               'massif::MapBounds', 'massif::MapTile', 'std::vector<std::string>',
+               'std::map<std::string, std::string>', 'std::map<std::string, massif::Variant>'}
 
 FLAG_READONLY = 1
 FLAG_STATIC = 2
@@ -258,8 +263,6 @@ def symbolOf(entry, prefix):
 
 
 def accessible(entry):
-  if entry['flags'] & FLAG_STATIC:
-    return False
   if entry['type'] in ACCESSIBLE_TYPES:
     return True
   if entry['type'] == 'VARIANT':
@@ -273,7 +276,7 @@ def objectClassOf(entry):
   Two spellings reach here: a real shared_ptr type, and the polymorphic macro's Java-ish
   'package.Class', whose class is by convention the same name in the massif namespace.
   """
-  if entry['type'] != 'OBJECT' or (entry['flags'] & FLAG_STATIC):
+  if entry['type'] != 'OBJECT':
     return None
   cppType = entry['cppType']
   match = re.match(r'^std::shared_ptr<\s*(.+?)\s*>$', cppType)
@@ -285,9 +288,14 @@ def objectClassOf(entry):
   return None
 
 
+def selfExpr(entry):
+  # A static property has no instance, so the thunk ignores its obj and names the class.
+  return ('%s::' % entry['cppClass']) if entry['flags'] & FLAG_STATIC else 'self->'
+
+
 def readExpr(entry):
   # Stamped so a caller reading a bool as a float can be told from a real zero.
-  call = 'self->%s()' % entry['getter']
+  call = '%s%s()' % (selfExpr(entry), entry['getter'])
   prefix = 'value.type = PT_%s; ' % entry['type']
   if entry['type'] == 'COLOR':
     # Unsigned: getARGB returns int, so an opaque colour would sign-extend to a negative and the
@@ -307,21 +315,22 @@ def readExpr(entry):
 def writeExpr(entry):
   # asX() rather than the raw field: a caller that sets a bool through setFloat must not write
   # false, and the type it stamped is what makes the conversion possible.
+  setter = selfExpr(entry) + entry['setter']
   if entry['type'] == 'COLOR':
-    return 'self->%s(massif::Color(static_cast<int>(value.asLong())));' % entry['setter']
+    return '%s(massif::Color(static_cast<int>(value.asLong())));' % setter
   if entry['type'] == 'BOOL':
-    return 'self->%s(value.asBool());' % entry['setter']
+    return '%s(value.asBool());' % setter
   if entry['type'] == 'FLOAT':
-    return 'self->%s(static_cast<%s>(value.asDouble()));' % (entry['setter'], entry['cppType'])
+    return '%s(static_cast<%s>(value.asDouble()));' % (setter, entry['cppType'])
   if entry['type'] == 'STRING':
     # asString, not the raw field: a caller that sets a string property through setFloat must not
     # write an empty one.
-    return 'self->%s(value.asString());' % entry['setter']
+    return '%s(value.asString());' % setter
   if entry['type'] in ('STRUCT', 'VARIANT'):
     # A malformed struct leaves the property alone rather than writing a default over it.
-    return ('%s decoded; if (StructCodec::decode(value.stringValue, decoded)) { self->%s(decoded); }'
-            % (entry['cppType'], entry['setter']))
-  return 'self->%s(static_cast<%s>(value.asLong()));' % (entry['setter'], entry['cppType'])
+    return ('%s decoded; if (StructCodec::decode(value.stringValue, decoded)) { %s(decoded); }'
+            % (entry['cppType'], setter))
+  return '%s(static_cast<%s>(value.asLong()));' % (setter, entry['cppType'])
 
 
 def emitAccessors(headers, entries, outPath):
@@ -343,33 +352,41 @@ def emitAccessors(headers, entries, outPath):
     if objectClass:
       # The CONCRETE class, not the declared one: a tileDecoder declared as VectorTileDecoder is
       # usually an MBVectorTileDecoder, and its own properties are unreachable otherwise.
+      call = ('%s::%s()' % (entry['cppClass'], entry['getter'])
+              if entry['flags'] & FLAG_STATIC
+              else 'static_cast<%s*>(obj)->%s()' % (entry['cppClass'], entry['getter']))
       if objectClass in complete:
-        read = ('    auto value = static_cast<%s*>(obj)->%s();\n'
+        read = ('    auto value = %s;\n'
                 '    out.cppClass = value ? concreteClass(typeid(*value), "%s") : "%s";\n'
-                '    out.obj = value;\n' %
-                (entry['cppClass'], entry['getter'], objectClass, objectClass))
+                '    out.obj = value;\n' % (call, objectClass, objectClass))
       else:
-        read = ('    out.obj = static_cast<%s*>(obj)->%s();\n'
-                '    out.cppClass = "%s";\n' % (entry['cppClass'], entry['getter'], objectClass))
-      lines.append('inline void %s(void* obj, ObjectRef& out) {\n%s}\n' %
-                   (symbolOf(entry, 'getobj'), read))
+        read = ('    out.obj = %s;\n    out.cppClass = "%s";\n' % (call, objectClass))
+      lines.append('inline void %s(%s, ObjectRef& out) {\n%s}\n' %
+                   (symbolOf(entry, 'getobj'),
+                    'void*' if entry['flags'] & FLAG_STATIC else 'void* obj', read))
       if not (entry['flags'] & FLAG_READONLY):
         # The cast is from shared_ptr<void>, so it is only sound because Context checks the
         # registered class against objectClass first - see isSubclassOf.
-        lines.append('inline void %s(void* obj, const ObjectRef& value) {\n'
-                     '    static_cast<%s*>(obj)->%s(std::static_pointer_cast<%s>(value.obj));\n}\n' %
-                     (symbolOf(entry, 'setobj'), entry['cppClass'], entry['setter'], objectClass))
+        write = ('%s::%s' % (entry['cppClass'], entry['setter'])
+                 if entry['flags'] & FLAG_STATIC
+                 else 'static_cast<%s*>(obj)->%s' % (entry['cppClass'], entry['setter']))
+        lines.append('inline void %s(%s, const ObjectRef& value) {\n'
+                     '    %s(std::static_pointer_cast<%s>(value.obj));\n}\n' %
+                     (symbolOf(entry, 'setobj'),
+                      'void*' if entry['flags'] & FLAG_STATIC else 'void* obj', write, objectClass))
       continue
     if not accessible(entry):
       continue
     cppClass = entry['cppClass']
-    lines.append('inline void %s(void* obj, PropertyValue& value) {\n'
-                 '    auto self = static_cast<%s*>(obj);\n'
-                 '    %s\n}\n' % (symbolOf(entry, 'get'), cppClass, readExpr(entry)))
+    # A static thunk names the class instead, so it declares no self and ignores its obj.
+    isStatic = entry['flags'] & FLAG_STATIC
+    obj = 'void*' if isStatic else 'void* obj'
+    bind = '' if isStatic else '    auto self = static_cast<%s*>(obj);\n' % cppClass
+    lines.append('inline void %s(%s, PropertyValue& value) {\n%s    %s\n}\n' %
+                 (symbolOf(entry, 'get'), obj, bind, readExpr(entry)))
     if not (entry['flags'] & FLAG_READONLY):
-      lines.append('inline void %s(void* obj, const PropertyValue& value) {\n'
-                   '    auto self = static_cast<%s*>(obj);\n'
-                   '    %s\n}\n' % (symbolOf(entry, 'set'), cppClass, writeExpr(entry)))
+      lines.append('inline void %s(%s, const PropertyValue& value) {\n%s    %s\n}\n' %
+                   (symbolOf(entry, 'set'), obj, bind, writeExpr(entry)))
   lines.append('\n} } }\n')
   lines.append('\nnamespace massif { namespace api {\n\n')
   lines.append('// Every class the profile has, by runtime type. Hashed on first use - see\n'
@@ -474,3 +491,16 @@ print('%d properties over %d classes, %d classes in the chain (%d value, %d obje
        sum(1 for e in entries if accessible(e)),
        sum(1 for e in entries if objectClassOf(e)), skipped))
 print('  ' + '  '.join('%s=%d' % (name, counts[name]) for name in TYPE_NAMES if name in counts))
+
+# A property with no accessor is silently unreadable - the failure mode that hid
+# RoutingInstruction.action and PackageInfo.size. Name what is still out of reach, by type, so the
+# next gap costs a glance instead of a device session.
+unreachable = {}
+for entry in entries:
+  if accessible(entry) or objectClassOf(entry):
+    continue
+  unreachable.setdefault(entry['cppType'], []).append(entry['cppClass'] + '.' + entry['path'])
+if unreachable:
+  print('  %d properties have no accessor:' % sum(len(v) for v in unreachable.values()))
+  for cppType in sorted(unreachable, key=lambda t: (-len(unreachable[t]), t)):
+    print('    %-42s %2d  e.g. %s' % (cppType, len(unreachable[cppType]), unreachable[cppType][0]))

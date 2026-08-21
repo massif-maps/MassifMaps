@@ -24,6 +24,7 @@ int failures = 0;
 void testEvents();
 void testDelivery();
 void testStructCodec();
+void testMoreStructs();
 void testVariantPaths();
 void testFeaturePos();
 void testProjections();
@@ -35,6 +36,7 @@ void testCallAsync();
 void testCallCancel();
 void testCollections();
 void testRouting();
+void testStatics();
 void testCAbi();
 void testCAbiEvents();
 
@@ -230,9 +232,11 @@ namespace {
         TEST_CHECK(context->registerObject("options", "fog", other, "massif::FogOptions", duplicate) ==
                    RESULT_DUPLICATE_ID, "a taken id is refused");
 
+        // Not zero: every all-static class holds a handle from construction - see testStatics.
+        std::size_t baseline = context->getObjectCount() - 1;
         TEST_CHECK(context->unregisterObject("options", "fog"), "unregister reports it existed");
         TEST_CHECK(!context->unregisterObject("options", "fog"), "and not the second time");
-        TEST_CHECK(context->getObjectCount() == 0, "the object is gone");
+        TEST_CHECK(context->getObjectCount() == baseline, "the object is gone");
 
         PropertyValue value;
         TEST_CHECK(context->getProperty(handle, "rangeStart", value) == RESULT_BAD_HANDLE,
@@ -260,6 +264,7 @@ int main() {
     testEvents();
     testDelivery();
     testStructCodec();
+    testMoreStructs();
     testVariantPaths();
     testFeaturePos();
     testProjections();
@@ -271,6 +276,7 @@ int main() {
     testCallCancel();
     testCollections();
     testRouting();
+    testStatics();
     testCAbi();
     testCAbiEvents();
 

@@ -84,6 +84,25 @@ namespace massif { namespace api { namespace StructCodec {
         return Variant(items).toString();
     }
 
+    // frameNr is not part of the spelling: a tile addressed from outside the map belongs to no
+    // frame, which is the same reason CallArgs::getTile writes 0.
+    std::string encode(const MapTile& value) {
+        return "[" + std::to_string(value.getX()) + "," + std::to_string(value.getY()) + "," +
+               std::to_string(value.getZoom()) + "]";
+    }
+
+    std::string encode(const std::map<std::string, std::string>& value) {
+        std::map<std::string, Variant> variants;
+        for (const std::pair<const std::string, std::string>& item : value) {
+            variants[item.first] = Variant(item.second);
+        }
+        return encode(variants);
+    }
+
+    std::string encode(const std::map<std::string, Variant>& value) {
+        return Variant(value).toString();
+    }
+
     std::string encode(const std::vector<MapPos>& value) {
         std::string json = "[";
         for (std::size_t index = 0; index < value.size(); index++) {
@@ -168,6 +187,44 @@ namespace massif { namespace api { namespace StructCodec {
                 return false;   // a list of names, not of anything
             }
             items.push_back(item.getString());
+        }
+        value.swap(items);
+        return true;
+    }
+
+    bool decode(const std::string& json, MapTile& value) {
+        std::vector<double> numbers(3, 0);
+        if (!decodeNumbers(json, 3, 3, numbers)) {
+            return false;
+        }
+        value = MapTile(static_cast<int>(numbers[0]), static_cast<int>(numbers[1]),
+                        static_cast<int>(numbers[2]), 0);
+        return true;
+    }
+
+    bool decode(const std::string& json, std::map<std::string, Variant>& value) {
+        Variant object;
+        if (!decode(json, object) || object.getType() != VariantType::VARIANT_TYPE_OBJECT) {
+            return false;
+        }
+        std::map<std::string, Variant> items;
+        for (const std::string& key : object.getObjectKeys()) {
+            items[key] = object.getObjectElement(key);
+        }
+        value.swap(items);
+        return true;
+    }
+
+    bool decode(const std::string& json, std::map<std::string, std::string>& value) {
+        std::map<std::string, Variant> variants;
+        if (!decode(json, variants)) {
+            return false;
+        }
+        std::map<std::string, std::string> items;
+        for (const std::pair<const std::string, Variant>& item : variants) {
+            // A header value is text; a number written as one is spelled out rather than refused.
+            items[item.first] = item.second.getType() == VariantType::VARIANT_TYPE_STRING
+                              ? item.second.getString() : item.second.toString();
         }
         value.swap(items);
         return true;

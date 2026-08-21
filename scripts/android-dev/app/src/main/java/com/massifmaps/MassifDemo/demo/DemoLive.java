@@ -352,6 +352,7 @@ public final class DemoLive extends BroadcastReceiver {
                     Log.i(TAG, "  " + i
                             + " id=" + MassifApi.getInt(feature, "id", -1)
                             + " layer=" + MassifApi.getString(feature, "layerName", "-")
+                            + " tile=" + MassifApi.getString(feature, "mapTile", "-")
                             + " name=" + MassifApi.getString(feature, "properties.name", "-")
                             + " at=" + MassifApi.getPos(feature, "geometry.centerPos", "EPSG:4326"));
                     MassifApi.destroy(feature);

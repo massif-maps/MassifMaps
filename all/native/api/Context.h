@@ -414,6 +414,9 @@ namespace massif {
         // The object a method belongs to: the handle itself, or what a dotted prefix walks to.
         Result resolveTarget(Handle handle, const std::string& path, ObjectRef& out) const;
 
+        /** Gives every all-static class a handle, so a class with no instance is addressable. */
+        void registerStaticClasses();
+
         mutable std::mutex _mutex;
         std::vector<Slot> _slots;
         std::vector<std::uint32_t> _freeSlots;

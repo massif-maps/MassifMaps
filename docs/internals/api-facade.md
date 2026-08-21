@@ -157,9 +157,52 @@ a non-number, an object where an array belongs — **fails and leaves the proper
 malformed spec cannot quietly write a default over a real value. Verified on a device: sending
 `zoomRange=nonsense` after `zoomRange=[3,17]` leaves it reading `[3,17]`.
 
-The other 59 struct properties — vectors, maps, `BalloonPopupMargins`, `ClickInfo` — have no
-accessor. They are listed in `CODEC_TYPES` when someone needs them; nothing about the mechanism
-changes.
+`CODEC_TYPES` in the generator says which types get an accessor. It now also carries `MapTile`
+(`[x, y, zoom]` — the tile a click or a feature came from), `vector<string>` (a search's layer
+filter) and the two string-keyed maps (`httpHeaders`, `Layer.metaData`; a `Variant` map keeps each
+value's type, so `{"level":3}` reads back as a number, not `"3"`).
+
+Two deliberate exclusions, both because a property is the wrong channel for the size:
+
+- **`std::vector<MapPos>`** has codec functions — a routing spec's via points need them — but is
+  kept **out** of `CODEC_TYPES`, so no accessor is emitted. A route is hundreds of positions; the
+  flat `getDoubles` channel is the one way to read a path.
+- **`BalloonPopupMargins`, `TextMargins`, `ClickInfo`** are simply not needed yet. Adding one is a
+  line in `CODEC_TYPES` plus an `encode`/`decode` pair; nothing about the mechanism changes.
+
+**A property with no accessor is silently unreadable**, and that is how two real bugs hid:
+`RoutingInstruction.action` (an enum spelled unqualified) and `PackageInfo.size` (a
+`std::uint64_t`, a spelling `INT_TYPES` did not list) both classified as `STRUCT` and got no thunk,
+with nothing reported. The generator now **names what it cannot reach**, by type, on every run:
+
+```
+725 properties over 157 classes … (570 value, 116 object)
+  39 properties have no accessor:
+    massif::BalloonPopupMargins                12  e.g. massif::BalloonPopupButtonStyle.textMargins
+    massif::ClickInfo                           7  e.g. massif::BalloonPopupButtonClickInfo.clickInfo
+    std::vector<massif::MapPos>                 7  e.g. massif::MapEnvelope.convexHull
+    …
+```
+
+That list is the to-do, and a new unreachable type shows up the moment it is added rather than the
+next time someone tries to read it.
+
+### Static classes
+
+`Log` has no instance — its properties are `%staticattribute` — and every verb here is addressed by
+a handle. So the context gives such a class one at construction, under kind `"static"` and its
+short name:
+
+```java
+int log = MassifApi.findObject("static", "Log");
+MassifApi.setFloat(log, "showDebug", 1);
+MassifApi.setString(log, "tag", "probe");
+```
+
+Derived from the table, not named in code: any class whose properties are **all** static is
+registered, so a new one is covered without the facade knowing about it. All of them, not some — a
+mixed class would hand an instance thunk the sentinel object that only exists to be a non-null
+address. The generated static thunks take no `obj` at all.
 
 ### Projections
 
@@ -1198,8 +1241,8 @@ cd scripts && python3 gen-api-tables.py
 - **A collection is read one element per crossing.** A route's *path* has the flat channel, but its
   21 instructions are 21 calls plus a handful of property reads each. Fine at that size; the
   general answer is probably a bulk channel per collection type.
-- **`std::map<std::string, std::string>` has no codec**, so `ValhallaOnlineRoutingService.httpHeaders`
-  and the other map attributes cannot be written through the facade.
+- **39 properties still have no accessor**, listed by type on every generator run. The largest
+  groups are `BalloonPopupMargins` (12), `ClickInfo` (7) and `vector<MapPos>` (7, deliberate).
 - **`FeatureCollectionSearchService` has no factory.** Its constructor takes a `FeatureCollection`,
   which today only exists as a call result, and `childOf` resolves by kind and id. `findFeatures` is
   registered on it and works on a handle built elsewhere.

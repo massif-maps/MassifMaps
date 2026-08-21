@@ -9,11 +9,13 @@
 
 #include "core/MapBounds.h"
 #include "core/MapPos.h"
+#include "core/MapTile.h"
 #include "core/MapRange.h"
 #include "core/MapVec.h"
 #include "core/ScreenPos.h"
 #include "core/Variant.h"
 
+#include <map>
 #include <string>
 #include <vector>
 
@@ -36,6 +38,8 @@ namespace massif { namespace api {
         std::string encode(const ScreenPos& value);
         std::string encode(const MapRange& value);
         std::string encode(const MapBounds& value);
+        /** A tile, as [x, y, zoom] - the same spelling a call argument uses. */
+        std::string encode(const MapTile& value);
         std::string encode(const Variant& value);
         /** A list of names - the shape a "which layers" filter has. */
         std::string encode(const std::vector<std::string>& value);
@@ -47,15 +51,21 @@ namespace massif { namespace api {
          * exists to avoid. This is for the handful a spec or an argument list carries.
          */
         std::string encode(const std::vector<MapPos>& value);
+        /** A string map - HTTP headers, and a layer's metadata. */
+        std::string encode(const std::map<std::string, std::string>& value);
+        std::string encode(const std::map<std::string, Variant>& value);
 
         bool decode(const std::string& json, MapPos& value);
         bool decode(const std::string& json, MapVec& value);
         bool decode(const std::string& json, ScreenPos& value);
         bool decode(const std::string& json, MapRange& value);
         bool decode(const std::string& json, MapBounds& value);
+        bool decode(const std::string& json, MapTile& value);
         bool decode(const std::string& json, Variant& value);
         bool decode(const std::string& json, std::vector<std::string>& value);
         bool decode(const std::string& json, std::vector<MapPos>& value);
+        bool decode(const std::string& json, std::map<std::string, std::string>& value);
+        bool decode(const std::string& json, std::map<std::string, Variant>& value);
 
     }
 

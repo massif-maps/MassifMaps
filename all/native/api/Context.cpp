@@ -92,6 +92,41 @@ namespace massif { namespace api {
     Context::Context() {
         // Slot 0 is never handed out, so NULL_HANDLE cannot collide with a real object.
         _slots.resize(1);
+        registerStaticClasses();
+    }
+
+    /*
+     * A class whose properties are all static has no instance, and every verb here is addressed by
+     * handle - so it gets one at construction, under kind "static" and its short name:
+     *
+     *   set(findObject("static", "Log"), "showDebug", true)
+     *
+     * Derived from the table rather than named here, so a new static class is covered without the
+     * facade knowing about it. The sentinel exists only to be a non-null address; the generated
+     * static thunks do not take an obj at all.
+     */
+    void Context::registerStaticClasses() {
+        for (std::size_t index = 0; index < getClassCount(); index++) {
+            const ClassEntry* entry = getClass(index);
+            if (!entry || !entry->count) {
+                continue;
+            }
+            bool allStatic = true;
+            for (std::size_t property = 0; property < entry->count; property++) {
+                allStatic = allStatic && (entry->props[property].flags & PF_STATIC);
+            }
+            // All of them, not some: a mixed class would hand an instance thunk the sentinel.
+            if (!allStatic) {
+                continue;
+            }
+            std::string name = entry->cppClass;
+            std::size_t colons = name.rfind("::");
+            if (colons != std::string::npos) {
+                name = name.substr(colons + 2);
+            }
+            Handle handle = NULL_HANDLE;
+            registerObject("static", name, std::make_shared<int>(0), entry->cppClass, handle);
+        }
     }
 
     Context::~Context() {

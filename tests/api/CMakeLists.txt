@@ -28,6 +28,8 @@ set(TEST_MODULES
   "${SDK_BASE_DIR}/all/modules/routing/RoutingRequest.i"
   "${SDK_BASE_DIR}/all/modules/routing/RoutingResult.i"
   "${SDK_BASE_DIR}/all/modules/routing/RoutingInstruction.i"
+  # Log is the SDK's only all-static class, and the only way to exercise a class with no instance.
+  "${SDK_BASE_DIR}/all/modules/utils/Log.i"
 )
 
 # The routing modules are behind this, so the generator and the compile have to agree on it.

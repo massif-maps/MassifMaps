@@ -356,6 +356,9 @@ void testCollections() {
     TEST_CHECK(context->getProperty(feature, "geometry.centerPos", value) == RESULT_OK &&
                value.stringValue.find("12") != std::string::npos,
                "and a path walks on into the element");
+    // The tile a feature came from, which had no accessor until MapTile got a codec.
+    TEST_CHECK(context->getProperty(feature, "mapTile", value) == RESULT_OK &&
+               value.stringValue == "[1,2,3]", "and the tile it came from");
     context->destroy(feature);
 
     TEST_CHECK(context->call(collection, "getFeature", "[3]", value) == RESULT_BAD_SPEC,
@@ -668,4 +671,43 @@ void testRouting() {
     TEST_CHECK(context->getProperty(route, "points", value) == RESULT_UNSUPPORTED_TYPE,
                "and points is deliberately NOT a readable property");
     context->destroy(route);
+}
+
+/*
+ * A class with no instance.
+ *
+ * Log is the SDK's only all-static class. Every verb here is addressed by handle, so the context
+ * gives such a class one at construction, derived from the table rather than named in code.
+ */
+
+#include "utils/Log.h"
+
+void testStatics() {
+    auto context = std::make_shared<Context>();
+
+    Handle log = context->findObject("static", "Log");
+    TEST_CHECK(log != NULL_HANDLE, "an all-static class is addressable without an instance");
+    TEST_CHECK(context->findObject("static", "massif::Log") == NULL_HANDLE,
+               "under its short name, not its qualified one");
+    TEST_CHECK(context->findObject("static", "FogOptions") == NULL_HANDLE,
+               "and a class with instance properties is not registered this way");
+
+    bool before = Log::IsShowDebug();
+    PropertyValue value;
+    TEST_CHECK(context->getProperty(log, "showDebug", value) == RESULT_OK &&
+               value.asBool() == before, "a static property reads");
+    TEST_CHECK(context->setProperty(log, "showDebug", PropertyValue::ofBool(!before)) == RESULT_OK,
+               "and writes");
+    TEST_CHECK(Log::IsShowDebug() == !before, "reaching the SDK's own static setter");
+    TEST_CHECK(context->getProperty(log, "showDebug", value) == RESULT_OK &&
+               value.asBool() == !before, "and reads back what was written");
+    Log::SetShowDebug(before);
+
+    std::string tag = Log::GetTag();
+    TEST_CHECK(context->setProperty(log, "tag", PropertyValue::ofString("probe")) == RESULT_OK &&
+               Log::GetTag() == "probe", "a static string property too");
+    Log::SetTag(tag);
+
+    TEST_CHECK(context->getProperty(log, "nope", value) == RESULT_UNKNOWN_PROPERTY,
+               "an unknown one is still reported");
 }

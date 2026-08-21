@@ -39,6 +39,67 @@ to! we want to copy it", "use their model ALL THE WAY".)
 - **Short comments — shorter than you think.** Say why, in **one line, two at most**. Never restate what the code already says, never write a paragraph where a clause does. Standing correction from Martin (2026-08-13): AI-written comments here are consistently far too long. A measurement belongs in `docs/internals/rendering/`, not above the constant it produced — the code keeps the number and one clause of why; the doc keeps the table, the camera, the dead ends. Same for a comment that re-explains a mechanism already documented: link the page or name the function, do not restate it.
 - **Observed or unverified — never blur the two.** A syntax check is not a render result; an emulator pass is not a device pass. Say which you actually have. A measurement is only evidence if it measures what you claim — state the method, and retract plainly when it turns out not to.
 - **Documentation ships in the same commit** — see the section below.
+- **Tests ship in the same commit too** — see [Tests](#tests--every-change-ships-them).
+- **Every new feature reaches the facade API** — see the section below.
+
+## The facade API — every new feature reaches it
+
+There are now **two** public surfaces, and a feature that only lands on one is a half-feature. The
+object API (`all/modules/*.i`) is what an app calls today; the facade
+([`docs/internals/api-facade.md`](../docs/internals/api-facade.md), [#146](https://github.com/massif-maps/MassifMaps/issues/146))
+is the id/handle + JSON surface the C ABI, NativeScript and React Native bindings use, and it is
+intended to become the only one.
+
+Most of the time this costs **nothing**, and that is the design working — check, do not assume:
+
+| What you added | What the facade needs |
+|---|---|
+| a getter/setter declared with `%attribute*` in a `.i` | nothing — the generated table picks it up on the next build |
+| a new option class reached from an existing one | nothing — a dotted path traverses `OBJECT` properties |
+| a new **class** an app constructs (source, layer, style) | a factory in `SpecFactories.cpp`, keyed `kind/type` |
+| a new **event** on an existing listener | a bridge method in `MapEventBridge.cpp` |
+| a new **listener interface** | a bridge class beside the others |
+| a new **method** (not a property) | a `call` entry, and a converter if it returns binary or bulk data |
+| a derived value a binding would otherwise compute | **an SDK method, not a facade one** — declare it as an attribute and both surfaces gain it |
+
+That last row is the recurring one and the most valuable: `Geometry::getType`,
+`Feature::getGeometryGeoJSON` and `VectorTileClickInfo::getFeaturePos` all started as "the facade
+needs this" and were SDK gaps. Fix them in `all/native` + `all/modules` and the facade path is free.
+
+- **Add the flag, not the special case.** Behaviour that depends on what a property *is* — a
+  coordinate, a projection — belongs in `scripts/gen-api-tables.py` as a flag the table carries, so
+  a new class is covered without the facade naming it. Never a per-class branch in `Context`.
+- **A `.i` signature change is breaking for every binding** even when the C++ compiles, and the
+  facade's paths are derived from those signatures — renaming an attribute renames a path.
+- **Demo it.** A facade feature nobody can exercise is unverified: add the knob to
+  `scripts/android-dev/.../demo/DemoLive.java` (and say so if the iOS demo still has no live-config
+  channel — [#154](https://github.com/massif-maps/MassifMaps/issues/154)).
+
+## Tests — every change ships them
+
+`tests/` is a host-native ctest suite over everything that links without the renderer. It runs in
+under a second:
+
+```sh
+cd tests && ./run.sh
+```
+
+**Write tests for new work — that is not optional, and not a follow-up commit.** What it has caught
+so far, none of it by review: a colour round-trip sign-extending through `getARGB()`, event dispatch
+ordering by slot index instead of registration order, a payload not released when its subscription
+died between the emit and the drain.
+
+- **Cover the failure modes, not the happy path.** A malformed spec must leave the value untouched;
+  a stale handle must be rejected; an unknown name must be an error rather than a silent
+  pass-through. Those are the checks that fail when someone refactors.
+- **Assert on something that could be wrong.** A test whose data passes either way is worse than
+  none — a MultiPoint test with evenly spaced points passes whether or not the index is used.
+- **Keep the link small.** The property table takes the address of every accessor thunk, so a full
+  table needs the full SDK: `tests/api/CMakeLists.txt` generates a **reduced** one from an explicit
+  module list (`gen-api-tables.py --modules`) and lists only the sources those classes need. Adding
+  a heavy class (anything pulling `Options`, the renderer or boost) is a signal to verify on a
+  device instead.
+- **State what the tests do not cover.** They are not a render check and not a device check.
 
 ## Documentation — every change updates it
 
@@ -136,8 +197,10 @@ Every repo here is a fork of an **archived** CartoDB original, so **`gh` always 
 
 ## Verification
 
-No test framework exists in this repo (`package.json` has no real `test` script), and a full build takes 1+ hour. The ladder, cheapest first:
+A full build takes 1+ hour, so the ladder runs cheapest first:
 
+- **Run and extend the host tests** — `cd tests && ./run.sh`, seconds, and the only gate that checks
+  behaviour rather than syntax. New work ships its own; see [Tests](#tests--every-change-ships-them).
 - **Syntax/type check every touched translation unit** — the mandatory gate for any C++ change:
   ```sh
   clang++ -fsyntax-only -std=c++20 -I all/native -I libs-massif/vt/src -I libs-massif/mapnikvt/src \

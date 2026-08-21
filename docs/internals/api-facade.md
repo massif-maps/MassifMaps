@@ -16,8 +16,8 @@ Design discussion and the full plan live in
 table with its base-class chain, the handle table, the registry, `set`/`get`, dotted path
 traversal, `create`/`destroy` from JSON specs, events with a chosen delivery thread and real map
 payloads, per-read and per-subscription projections, `call`/`callAsync` with binary and bulk
-results, the flat C ABI, and minimal Java and Objective-C bindings.** The closed sugar layer over
-the ABI is the next slice. See [Known gaps](#known-gaps).
+results, the flat C ABI, and an idiomatic hand-written sugar layer for Java and Objective-C.**
+See [Known gaps](#known-gaps).
 
 ## Why a facade at all
 
@@ -354,7 +354,7 @@ mm_data_copy(ctx, tile, "data", buffer, size, NULL);
 mm_destroy_handle(ctx, tile);
 ```
 
-**29 entry points, six concepts.** The count grows with *types* — a scalar setter per C type, a
+**30 entry points, six concepts.** The count grows with *types* — a scalar setter per C type, a
 size/copy pair per bulk shape — never with features. A new source type is a spec factory, a new
 option a table row, a new event a bridge, a new method a table row. None of them touches this
 header, which is what makes an ABI version worth having.
@@ -394,15 +394,128 @@ Two things that had to change underneath it:
 **The Release build hid every one of them.** `scripts/android/version-script` exported `Java_*`,
 `CSharp_*` and `SWIG*` and nothing else, so the ABI was present in a debug build and gone from the
 shipped library. `mm_*` is in the list now. Verified with `llvm-nm --dynamic` on the arm64 `.so` and
-`nm -g` on the iOS `.a`: 29 symbols on both. Watch for the stale-artifact trap while checking —
+`nm -g` on the iOS `.a`: every symbol on both. Watch for the stale-artifact trap while checking —
 `build/intermediates/cmake/debug/obj/` holds an old `.so` that reports zero.
 
-## The bindings
+## The sugar layer
 
-`MassifApi` (`all/native/api/MassifApi.h`, wrapped by `all/modules/api/MassifApi.i`) is the
-verification surface for the object-oriented bindings, not the final one: static methods, typed
-`set`/`get` per scalar kind, and a result code rather than an exception. The C ABI above is the one
-that will outlive it.
+The two surfaces above are complete and neither is pleasant to write an app against. `MassifApi`
+(`all/native/api/MassifApi.h`) is the generated verification surface — a handle on every call, a
+result code rather than an exception. On top of it sits a **hand-written, per-language layer**:
+
+| | where | entry point |
+|---|---|---|
+| Java | `android/java/com/massifmaps/api/` | `MassifMap.attach(mapView)` |
+| Objective-C | `ios/objc/api/` | `[MSFMassifMap attach:mapView]` |
+
+```java
+MassifMap map = MassifMap.attach(mapView).eventProjection("EPSG:4326");
+map.fog().set("rangeStart", 2.5);
+map.addLayer("base", Spec.of("vector").set("source", "osm"));
+map.onClick(e -> Log.i(TAG, "clicked " + e.position()));
+```
+
+**Hand-written, and that is the decision.** It does not move the way the property table does: the
+concepts are map lifecycle, camera, layer ordering, registry CRUD, calls and event subscription, and
+that list is closed. A new source type, option or event arrives as **data** through the existing
+methods and adds nothing. Generating it would buy nothing and cost a generator to maintain.
+
+### What it is for
+
+The complaint it answers is transposing. Before, a click handler read
+`MassifApi.getInt(payload, "featureId", -1)` and a JSON string it then parsed. Now it reads
+`e.featureId()`, and `e.position()` is a `MapPos` already in the projection the map was told to use.
+Four rules make that work:
+
+- **Typed event classes**, one per event, thin views over the payload handle. Reads stay **lazy**:
+  nothing is materialised until asked for, so a feature with a long geometry costs nothing unless
+  the handler wants the geometry. An event is valid only for the duration of the handler.
+- **`Spec` builders with one `set`**, not a named setter per option — a named one would have to grow
+  with the SDK, which is the maintenance the facade exists to remove.
+- **`PropertyGroup`** scopes a path prefix, so `map.fog().set("rangeStart", …)` is short without 700
+  hand-written methods. Named accessors per property stay a non-goal.
+- **Subscriptions are the language's own idiom** — `AutoCloseable` in Java, self-invalidating on
+  `dealloc` in Objective-C — so removal is not a call an app has to remember.
+
+Everything else delegates. The camera passes through to `MapView`, which already has the flight
+code; what the wrapper adds is one `moveTo` that moves position, zoom, rotation and tilt in a
+**single** flight, because four separate setters animate independently and visibly fight each other.
+
+### Adopting what an app already built
+
+`registerLayer` / `registerSource` give an object built with the object API an id, and with it
+properties, methods and events — so an app moves to the facade a piece at a time rather than
+rebuilding its map:
+
+```java
+MassifLayer base = map.adoptFirst("base", VectorTileLayer.class);
+base.onFeatureClick(e -> …);
+```
+
+The **concrete** class is recovered at runtime, so an adopted `VectorTileLayer` answers to a vector
+tile layer's properties rather than only to `Layer`'s. Every Swig-wrapped class already registers
+its short name in `ClassRegistry` at static-init; the qualified name the table keys on is that plus
+`massif::`. The names are interned, because a slot keeps the `const char*` and `GetClassName`
+returns by value.
+
+### Swift and Kotlin come for free, mostly
+
+No `.swift` or `.kt` files ship. The Objective-C and Java surfaces are shaped so the modern
+languages read well through plain interop:
+
+- An ObjC method returning **void** with a trailing `completion:` block imports into Swift as
+  `async` — `-loadTileX:y:zoom:completion:` is `try await source.loadTile(x:y:zoom:)` with no Swift
+  code at all. That is why the async form returns void and the generic `callAsync:` (which hands
+  back a call id for cancellation) is the separate, advanced one.
+- `NS_SWIFT_NAME` drops the `MSF` prefix for Swift only: `MassifMap`, `Spec`, `VectorTileClickEvent`.
+- `NS_ASSUME_NONNULL` makes every Swift type non-optional except where nil is real.
+- A Java interface with one method is already a Kotlin trailing lambda;
+  `suspendCancellableCoroutine` wraps the callback form into a `suspend fun` in about ten lines.
+
+Real shims stay a later slice — see the gaps.
+
+### What the device found
+
+The Android path was verified on an Adreno device, and three of the four things it turned up were
+only visible there:
+
+- **A layer had no projection.** Map clicks converted to lon/lat and feature clicks did not, because
+  `PayloadEmitter` gives a payload the projection of the target it fires on — and a vector tile
+  click fires on the LAYER, which declared none. The fix is an SDK method, not a facade one:
+  `TileLayer::getProjection()` returning its data source's, declared `!attributestring_polymorphic`.
+  The generator flagged it `PF_PROJECTION` on the next build and **nothing in the facade changed**.
+  That is "add the flag, not the special case" paying for itself.
+- **Swig's `std::string` typemap rejects a null default.** `getString(handle, path, null)` throws
+  `NullPointerException: null string` — which is exactly what a nullable getter wants to pass. Both
+  sugars pass a sentinel containing a NUL and map it back, so `e.property("name")` returns null for
+  a feature with no name instead of crashing the handler.
+- **`dataSource` was already declared on `TileLayer`.** Adding it again passed Swig and failed the
+  C++ compile as a duplicate thunk: the generator emits one row per macro occurrence and does not
+  deduplicate. The compiler catching it is enough.
+- **Java cannot overload on functional interfaces.** `onFeatureClick(Handler)` and
+  `onFeatureClick(ConsumingHandler)` compile, but `onFeatureClick(e -> …)` is *ambiguous* against
+  them. The consuming one is named `consumeFeatureClick`.
+
+What the log looks like once it works:
+
+```
+apiSugar on, map=1048577 fogRangeStart=0.800000011920929 layer=MassifLayer(1048578)
+sugar map.clicked at MapPos [x=5.717578, y=45.183765, z=302.503276] type=0
+sugar feature 0 layer=landcover at=MapPos [x=5.717461, y=45.183335] name=null geojsonLen=226
+```
+
+Handle `1048577` is generation 1, index 1. The positions are lon/lat because the map was attached
+with `eventProjection("EPSG:4326")`; the SDK's own are EPSG:3857 metres.
+
+`CompletableFuture` is out — minSdk is 21 and it is API 24 — so async is a callback interface, which
+is also what Kotlin wraps most cleanly. `MassifApi.isValid` / `mm_valid` exist for the sugar: a
+wrapper needs to tell "destroyed" from "never existed" without a property read, which can
+legitimately fail for another reason.
+
+**A new Objective-C class needs two lines by hand** — one in `ios/objc/MassifMaps.h` and one in
+`build-ios.py`'s `extraHeaders`, which copies it into the framework. The umbrella is not generated.
+`extraHeaders` also used to prefix unconditionally, which would have produced `MSFMSFMassif.h`; it
+now leaves an already-prefixed name alone.
 
 Both generators picked the new module up **with no change** — a new `.i` directory is found by the
 directory walk. Two platform details did need attention:
@@ -805,10 +918,18 @@ cd scripts && python3 gen-api-tables.py
 
 ## Known gaps
 
-- **No closed sugar layer, and no binding uses the C ABI yet.** The ABI is exercised by the host
-  tests, not by NativeScript or React Native. The per-platform sugar over it - the ~30 methods that
-  will not grow - is the next slice, in
-  [#146](https://github.com/massif-maps/MassifMaps/issues/146).
+- **No binding uses the C ABI yet.** It is exercised by the host tests; the Java and Objective-C
+  sugar goes through `MassifApi` instead, because Swig already generates that. NativeScript and
+  React Native are what the ABI is there for.
+- **The sugar has no automated tests.** It is Java and Objective-C, which the host ctest suite
+  cannot link, so it is covered by the demo knob and a device run — see above for what that caught.
+  Everything it calls underneath is tested.
+- **Only Android was run on a device.** The Objective-C sugar compiles and its symbols are in the
+  framework; it has not been exercised, and the iOS demo has no live-config channel
+  ([#154](https://github.com/massif-maps/MassifMaps/issues/154)).
+- **No Swift or Kotlin shims.** The interop above covers most of it; `suspend fun`, sealed event
+  types and property syntax are a later slice, and Kotlin would add kotlin-stdlib to every Android
+  consumer, which is a distribution decision rather than a code one.
 - **One context.** `mm_context_default` is the only one; `mm_ctx` is a parameter everywhere so that
   a second isolated world can be added without an ABI break, but nothing creates one. A WASM module
   instance already has its own, since it has its own linear memory.

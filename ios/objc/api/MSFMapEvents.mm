@@ -34,7 +34,7 @@
 }
 
 - (NSString *)get:(NSString *)path {
-    return [MSFMassifApi getString:_payload path:path defaultValue:nil];
+    return [MSFValues stringOrNil:_payload path:path];
 }
 
 - (double)getDouble:(NSString *)path defaultValue:(double)defaultValue {
@@ -98,9 +98,8 @@
 }
 
 - (NSString *)property:(NSString *)key {
-    return [MSFMassifApi getString:self.payload
-                              path:[@"feature.properties." stringByAppendingString:key]
-                      defaultValue:nil];
+    return [MSFValues stringOrNil:self.payload
+                             path:[@"feature.properties." stringByAppendingString:key]];
 }
 
 - (double)propertyDouble:(NSString *)key defaultValue:(double)defaultValue {

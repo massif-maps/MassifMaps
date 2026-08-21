@@ -256,15 +256,11 @@ public final class DemoLive extends BroadcastReceiver {
         sugarClick = sugarMap.onClick(e ->
             Log.i(TAG, "sugar map.clicked at " + e.position() + " type=" + e.clickType()));
 
-        // A layer by id if the demo built one through the registry, otherwise the first vector one.
+        // A layer the demo built through the registry, else ADOPT the first vector one - the demo
+        // builds its layers with the object API, which is exactly the migration case.
         com.massifmaps.api.MassifLayer layer = sugarMap.layer("demoApiLayer");
         if (layer == null) {
-            for (int i = 0; i < sugarMap.layerCount(); i++) {
-                if (sugarMap.rawLayer(i) instanceof com.massifmaps.layers.VectorTileLayer) {
-                    layer = sugarMap.layer("base");
-                    break;
-                }
-            }
+            layer = sugarMap.adoptFirst("demoBase", com.massifmaps.layers.VectorTileLayer.class);
         }
         if (layer != null) {
             sugarFeature = layer.onFeatureClick(e ->

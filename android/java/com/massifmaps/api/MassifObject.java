@@ -96,8 +96,9 @@ public class MassifObject implements AutoCloseable {
         return MassifApi.getBool(handle, path, defaultValue);
     }
 
+    /** @param defaultValue May be null, which the layer underneath cannot be handed directly. */
     public String getString(String path, String defaultValue) {
-        return MassifApi.getString(handle, path, defaultValue);
+        return Values.getString(handle, path, defaultValue);
     }
 
     /** A position, in the object's own projection. */

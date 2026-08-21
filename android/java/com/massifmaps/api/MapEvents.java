@@ -69,7 +69,7 @@ public final class MapEvents {
          * paths are the ones in the property table.
          */
         public String get(String path) {
-            return MassifApi.getString(payload, path, null);
+            return Values.getStringOrNull(payload, path);
         }
 
         public double getDouble(String path, double defaultValue) {
@@ -152,7 +152,7 @@ public final class MapEvents {
          * @return null when the feature does not have it.
          */
         public String property(String key) {
-            return MassifApi.getString(payload, "feature.properties." + key, null);
+            return Values.getStringOrNull(payload, "feature.properties." + key);
         }
 
         public double propertyDouble(String key, double defaultValue) {

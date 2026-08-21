@@ -39,6 +39,7 @@ public final class PropertyGroup {
         return target.getBool(prefix + name, defaultValue);
     }
 
+    /** @param defaultValue May be null. */
     public String getString(String name, String defaultValue) {
         return target.getString(prefix + name, defaultValue);
     }

@@ -41,6 +41,9 @@ typedef NS_ENUM(NSInteger, MSFDelivery) {
 + (NSString *)jsonFromPos:(MSFMapPos *)pos;
 + (NSString *)argsJson:(nullable NSArray *)args;
 + (NSError *)errorWithResult:(int)result message:(NSString *)message;
+/** A string property, or nil - Swig's std::string typemap will not take a nil default. */
++ (nullable NSString *)stringOrNil:(int)handle path:(NSString *)path;
++ (nullable NSString *)string:(int)handle path:(NSString *)path defaultValue:(nullable NSString *)defaultValue;
 @end
 
 @interface MSFSpec ()

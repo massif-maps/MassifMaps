@@ -120,7 +120,7 @@
 }
 
 - (NSString *)getString:(NSString *)path defaultValue:(NSString *)defaultValue {
-    return [MSFMassifApi getString:_handle path:path defaultValue:defaultValue];
+    return [MSFValues string:_handle path:path defaultValue:defaultValue];
 }
 
 - (MSFMapPos *)getPos:(NSString *)path {

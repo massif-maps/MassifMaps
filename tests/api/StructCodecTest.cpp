@@ -62,3 +62,52 @@ void testStructCodec() {
     MapBounds unchangedBounds;
     TEST_CHECK(!StructCodec::decode("[[1,2]]", unchangedBounds), "bounds take exactly two positions");
 }
+
+/* Path walking that continues INSIDE a Variant, so one key can be read without the whole bag. */
+
+#include "api/Context.h"
+#include "geometry/Feature.h"
+#include "geometry/PointGeometry.h"
+
+void testVariantPaths() {
+    auto context = std::make_shared<Context>();
+    Variant properties = Variant::FromString(
+        "{\"name\":\"Aiguille\",\"ele\":3842,\"open\":true,\"ratio\":0.5,"
+        "\"tags\":[\"peak\",\"alpine\"],\"nested\":{\"a\":{\"b\":7}}}");
+    auto feature = std::make_shared<Feature>(std::make_shared<PointGeometry>(MapPos(1, 2)), properties);
+
+    Handle handle = NULL_HANDLE;
+    context->registerObject("feature", "f", feature, "massif::Feature", handle);
+
+    PropertyValue value;
+    TEST_CHECK(context->getProperty(handle, "properties", value) == RESULT_OK &&
+               value.type == PT_VARIANT, "the whole bag reads as a Variant");
+
+    TEST_CHECK(context->getProperty(handle, "properties.name", value) == RESULT_OK &&
+               value.stringValue == "Aiguille", "one string key");
+    TEST_CHECK(context->getProperty(handle, "properties.ele", value) == RESULT_OK &&
+               value.asLong() == 3842, "one integer key");
+    TEST_CHECK(context->getProperty(handle, "properties.open", value) == RESULT_OK &&
+               value.asBool(), "one boolean key");
+    TEST_CHECK(context->getProperty(handle, "properties.ratio", value) == RESULT_OK &&
+               value.asDouble() == 0.5, "one double key");
+    TEST_CHECK(context->getProperty(handle, "properties.tags.1", value) == RESULT_OK &&
+               value.stringValue == "alpine", "a numeric segment indexes an array");
+    TEST_CHECK(context->getProperty(handle, "properties.nested.a.b", value) == RESULT_OK &&
+               value.asLong() == 7, "a deep key");
+    TEST_CHECK(context->getProperty(handle, "properties.nested.a", value) == RESULT_OK &&
+               value.type == PT_VARIANT, "a subtree reads as JSON");
+
+    TEST_CHECK(context->getProperty(handle, "properties.nope", value) == RESULT_UNKNOWN_PROPERTY,
+               "a missing key is reported");
+    TEST_CHECK(context->getProperty(handle, "properties.tags.9", value) == RESULT_UNKNOWN_PROPERTY,
+               "an out-of-range index is reported");
+    TEST_CHECK(context->getProperty(handle, "properties.tags.x", value) == RESULT_UNKNOWN_PROPERTY,
+               "a non-numeric index into an array is reported");
+    TEST_CHECK(context->getProperty(handle, "properties.name.more", value) == RESULT_UNKNOWN_PROPERTY,
+               "walking past a leaf is reported");
+
+    // Traversal through an object property still works alongside it.
+    TEST_CHECK(context->getProperty(handle, "geometry.type", value) == RESULT_OK &&
+               value.asLong() == GeometryType::GEOMETRY_TYPE_POINT, "geometry.type resolves");
+}

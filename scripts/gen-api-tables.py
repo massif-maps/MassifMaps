@@ -36,7 +36,7 @@ INT_TYPES = {'int', 'long', 'long long', 'short', 'char', 'signed char', 'unsign
              'unsigned int', 'unsigned long', 'unsigned short', 'size_t', 'std::size_t'}
 FLOAT_TYPES = {'float', 'double'}
 
-TYPE_NAMES = ['BOOL', 'INT', 'FLOAT', 'COLOR', 'ENUM', 'STRING', 'OBJECT', 'STRUCT']
+TYPE_NAMES = ['BOOL', 'INT', 'FLOAT', 'COLOR', 'ENUM', 'STRING', 'OBJECT', 'STRUCT', 'VARIANT']
 
 # Types a value accessor can carry today. STRUCT needs JSON marshalling, so it is listed in the
 # table but has no thunk yet. OBJECT gets its own accessor instead - see objectClassOf.
@@ -45,7 +45,7 @@ ACCESSIBLE_TYPES = {'BOOL', 'INT', 'FLOAT', 'COLOR', 'ENUM', 'STRING'}
 # STRUCT properties carry JSON, and only for the types StructCodec knows. The rest - vectors,
 # maps, BalloonPopupMargins, ClickInfo - stay accessorless until someone needs them.
 CODEC_TYPES = {'massif::MapPos', 'massif::MapVec', 'massif::ScreenPos', 'massif::MapRange',
-               'massif::MapBounds', 'massif::Variant'}
+               'massif::MapBounds'}
 
 FLAG_READONLY = 1
 FLAG_STATIC = 2
@@ -91,6 +91,9 @@ def classifyType(cppType, polymorphic):
     return 'COLOR'
   if cppType == 'std::string':
     return 'STRING'
+  # Its own type, not a STRUCT: a path can carry on walking inside a Variant.
+  if cppType == 'massif::Variant':
+    return 'VARIANT'
   if cppType.startswith('std::shared_ptr<'):
     return 'OBJECT'
   # namespace and enum share a name by convention: massif::PanningMode::PanningMode
@@ -237,6 +240,8 @@ def accessible(entry):
     return False
   if entry['type'] in ACCESSIBLE_TYPES:
     return True
+  if entry['type'] == 'VARIANT':
+    return True
   return entry['type'] == 'STRUCT' and entry['cppType'] in CODEC_TYPES
 
 
@@ -272,7 +277,7 @@ def readExpr(entry):
     return prefix + 'value.floatValue = static_cast<double>(%s);' % call
   if entry['type'] == 'STRING':
     return prefix + 'value.stringValue = %s;' % call
-  if entry['type'] == 'STRUCT':
+  if entry['type'] in ('STRUCT', 'VARIANT'):
     return prefix + 'value.stringValue = StructCodec::encode(%s);' % call
   return prefix + 'value.intValue = static_cast<long long>(%s);' % call  # INT, ENUM
 
@@ -288,7 +293,7 @@ def writeExpr(entry):
     return 'self->%s(static_cast<%s>(value.asDouble()));' % (entry['setter'], entry['cppType'])
   if entry['type'] == 'STRING':
     return 'self->%s(value.stringValue);' % entry['setter']
-  if entry['type'] == 'STRUCT':
+  if entry['type'] in ('STRUCT', 'VARIANT'):
     # A malformed struct leaves the property alone rather than writing a default over it.
     return ('%s decoded; if (StructCodec::decode(value.stringValue, decoded)) { self->%s(decoded); }'
             % (entry['cppType'], entry['setter']))

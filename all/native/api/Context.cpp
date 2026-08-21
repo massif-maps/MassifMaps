@@ -1,5 +1,8 @@
 #include "api/Context.h"
+#include "core/Variant.h"
 #include "utils/Log.h"
+
+#include <cstdlib>
 
 namespace massif { namespace api {
 
@@ -292,11 +295,65 @@ namespace massif { namespace api {
         return count;
     }
 
+    namespace {
+        /**
+         * Walks the rest of a path inside a Variant: object keys, and a numeric segment indexes
+         * an array. This is what lets "properties.name" read one key without the caller having to
+         * materialise and parse the whole bag.
+         */
+        bool readVariantPath(const Variant& root, const std::string& path, std::size_t start,
+                             PropertyValue& value) {
+            Variant current = root;
+            while (start < path.size()) {
+                std::size_t dot = path.find('.', start);
+                std::string segment = path.substr(start, dot == std::string::npos ? dot : dot - start);
+                start = dot == std::string::npos ? path.size() : dot + 1;
+
+                if (current.getType() == VariantType::VARIANT_TYPE_ARRAY) {
+                    char* end = nullptr;
+                    long index = std::strtol(segment.c_str(), &end, 10);
+                    if (*end != 0 || index < 0 || index >= current.getArraySize()) {
+                        return false;
+                    }
+                    current = current.getArrayElement(static_cast<int>(index));
+                } else if (current.getType() == VariantType::VARIANT_TYPE_OBJECT) {
+                    if (!current.containsObjectKey(segment)) {
+                        return false;
+                    }
+                    current = current.getObjectElement(segment);
+                } else {
+                    return false;
+                }
+            }
+
+            switch (current.getType()) {
+            case VariantType::VARIANT_TYPE_BOOL:
+                value = PropertyValue::ofBool(current.getBool());
+                return true;
+            case VariantType::VARIANT_TYPE_INTEGER:
+                value = PropertyValue::ofLong(current.getLong());
+                return true;
+            case VariantType::VARIANT_TYPE_DOUBLE:
+                value = PropertyValue::ofDouble(current.getDouble());
+                return true;
+            case VariantType::VARIANT_TYPE_STRING:
+                value = PropertyValue::ofString(current.getString());
+                return true;
+            default:
+                // An object or an array reads as its JSON, so a caller can take a subtree whole.
+                value = PropertyValue::ofString(current.toString());
+                value.type = PT_VARIANT;
+                return true;
+            }
+        }
+    }
+
     Result Context::getProperty(Handle handle, const std::string& path, PropertyValue& value) const {
         std::lock_guard<std::mutex> lock(_mutex);
         ObjectRef target;
         Result result = RESULT_OK;
-        const PropertyEntry* entry = lookup(handle, path, target, result);
+        std::size_t variantRest = std::string::npos;
+        const PropertyEntry* entry = lookup(handle, path, target, result, &variantRest);
         if (!entry) {
             return result;
         }
@@ -304,6 +361,18 @@ namespace massif { namespace api {
             return RESULT_UNSUPPORTED_TYPE;
         }
         entry->getter(target.obj.get(), value);
+
+        if (variantRest != std::string::npos) {
+            Variant root;
+            try {
+                root = Variant::FromString(value.stringValue);
+            } catch (const std::exception&) {
+                return RESULT_BAD_SPEC;
+            }
+            if (!readVariantPath(root, path, variantRest, value)) {
+                return RESULT_UNKNOWN_PROPERTY;
+            }
+        }
         return RESULT_OK;
     }
 
@@ -356,7 +425,8 @@ namespace massif { namespace api {
     }
 
     const PropertyEntry* Context::lookup(Handle handle, const std::string& path,
-                                         ObjectRef& target, Result& result) const {
+                                         ObjectRef& target, Result& result,
+                                         std::size_t* variantRest) const {
         const Slot* slot = resolve(handle);
         if (!slot) {
             result = RESULT_BAD_HANDLE;
@@ -383,6 +453,12 @@ namespace massif { namespace api {
                 return nullptr;
             }
             if (dot == std::string::npos) {
+                return entry;
+            }
+            // A Variant is where object traversal stops and JSON traversal begins: the caller
+            // reads the Variant, then walks what is left of the path inside it.
+            if (entry->type == PT_VARIANT && variantRest) {
+                *variantRest = dot + 1;
                 return entry;
             }
             if (!entry->objectGetter) {

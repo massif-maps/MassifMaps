@@ -92,6 +92,25 @@ This was not designed in. It shipped without inheritance, and the first spec-bui
 device answered `Context::create: demoApiSource.capacity ignored (2)` — `RESULT_UNKNOWN_CLASS`,
 because the concrete class was not in the table at all.
 
+### Variants
+
+`Variant` is its own property type, not a struct, because a path does not stop at one — it keeps
+walking:
+
+```cpp
+ctx->getProperty(payload, "feature.properties.name", value);      // one key, no bag parsed
+ctx->getProperty(payload, "feature.properties.tags.1", value);    // a number indexes an array
+ctx->getProperty(payload, "feature.properties.nested.a.b", value);
+```
+
+A leaf comes back as its natural type — string, integer, double, boolean — and an object or array
+comes back as JSON, so a caller can take a subtree whole. A missing key, an out-of-range index, a
+non-numeric index into an array, or walking past a leaf are all `UNKNOWN_PROPERTY`.
+
+This is what makes a `hover` handler affordable: reading one property of a clicked feature does not
+mean materialising and parsing the whole bag on every event. Writing *into* a Variant is not
+supported — it would mean rebuilding the tree.
+
 ### Structs
 
 `%attributeval` properties — `MapPos`, `MapRange`, `MapBounds`, `ScreenPos`, `MapVec`, `Variant` —
@@ -380,7 +399,8 @@ the generated table:
 | `featureId`, `featureLayerName`, `clickType`, `featurePosIndex` | the generated table |
 | `clickPos`, `featureClickPos` | the struct codec, as `[x,y,z]` |
 | `feature.geometry.type` | traversal, plus `Geometry::getType` |
-| `feature.properties` | the struct codec — `Variant` is a codec type, so the whole bag is JSON |
+| `feature.properties` | reads as JSON |
+| `feature.properties.name` | the path keeps walking **inside** the `Variant` |
 
 `Geometry::getType` is a **new SDK method**, not a facade one. There was no way to tell a
 MultiPoint from a Point except a downcast, or — from a scripting binding — matching on the
@@ -390,8 +410,6 @@ attribute it appears in the table automatically, and the object API gains it too
 That is the pattern for the rest: **the derived values a payload needs are SDK gaps, and fixing
 them there gives the facade the path for free.** What is still missing:
 
-- `properties.<key>` — reading one key without materialising the bag needs the path walk to
-  continue *into* a `Variant`.
 - `geometryGeoJSON` — `GeoJSONGeometryWriter` exists; it needs wiring with the source projection
   preset, or every binding serialises it itself.
 - a MultiPoint-aware `featurePos` — `getFeatureClickPos()` documents that it does **not** cover the

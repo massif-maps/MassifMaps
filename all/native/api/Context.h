@@ -215,9 +215,11 @@ namespace massif { namespace api {
         std::string getObjectSpec(Handle handle) const;
 
     private:
-        // Walks a dotted path, leaving the object owning the final segment in target.
+        // Walks a dotted path, leaving the object owning the final segment in target. When the
+        // path runs into a Variant, variantRest is set to where the JSON part of it starts.
         const PropertyEntry* lookup(Handle handle, const std::string& path,
-                                    ObjectRef& target, Result& result) const;
+                                    ObjectRef& target, Result& result,
+                                    std::size_t* variantRest = nullptr) const;
 
         mutable std::mutex _mutex;
         std::vector<Slot> _slots;

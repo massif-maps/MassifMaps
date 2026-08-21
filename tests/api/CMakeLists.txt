@@ -3,6 +3,9 @@
 # of modules instead, which keeps the link to a handful of files - and exercises the generator.
 set(TEST_MODULES
   "${SDK_BASE_DIR}/all/modules/components/FogOptions.i"
+  "${SDK_BASE_DIR}/all/modules/geometry/Feature.i"
+  "${SDK_BASE_DIR}/all/modules/geometry/Geometry.i"
+  "${SDK_BASE_DIR}/all/modules/geometry/PointGeometry.i"
 )
 
 # The SDK sources those modules' classes need. Keep this short: a case that needs a long list is a
@@ -22,6 +25,8 @@ set(TEST_SDK_SOURCES
   "${SDK_BASE_DIR}/all/native/core/MapBounds.cpp"
   "${SDK_BASE_DIR}/all/native/core/ScreenPos.cpp"
   "${SDK_BASE_DIR}/all/native/components/FogOptions.cpp"
+  "${SDK_BASE_DIR}/all/native/geometry/Feature.cpp"
+  "${SDK_BASE_DIR}/all/native/geometry/PointGeometry.cpp"
   "${SDK_BASE_DIR}/all/native/graphics/Color.cpp"
   "${SDK_BASE_DIR}/all/native/utils/Log.cpp"
 )

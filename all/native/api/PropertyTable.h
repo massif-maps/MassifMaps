@@ -25,7 +25,8 @@ namespace massif { namespace api {
         PT_ENUM,    // an int constant; the name table gives the string spellings
         PT_STRING,
         PT_OBJECT,  // another registry object, addressed by id
-        PT_STRUCT   // MapPos, MapRange, Variant, a vector - carried as JSON
+        PT_STRUCT,  // MapPos, MapRange, a vector - carried as JSON
+        PT_VARIANT  // free-form JSON, and a path can keep walking INTO it
     };
 
     enum PropertyFlags {

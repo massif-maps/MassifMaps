@@ -8,12 +8,36 @@
 #define _MASSIF_API_MAPEVENTBRIDGE_H_
 
 #include "api/Context.h"
+#include "layers/VectorElementEventListener.h"
+#include "layers/VectorTileEventListener.h"
 #include "ui/MapEventListener.h"
 
 #include <memory>
 #include <string>
 
 namespace massif { namespace api {
+
+    /**
+     * Registers an event's data as a payload, emits, and drops the id again.
+     *
+     * The payload is a real registry object only for the duration of the emit, so it can be read
+     * with the property verbs. A queued handler keeps it alive through the normal retain, so
+     * dropping the id here does not free it early.
+     */
+    class PayloadEmitter {
+    public:
+        PayloadEmitter(const std::shared_ptr<Context>& context, Handle target);
+
+        /**
+         * @return True when a consuming subscriber took the event.
+         */
+        bool emit(const std::string& event, const std::shared_ptr<void>& obj, const char* cppClass);
+
+    private:
+        std::shared_ptr<Context> _context;
+        Handle _target;
+        long long _payloadCounter;
+    };
 
     /**
      * Turns the map's listener callbacks into facade events.
@@ -44,14 +68,43 @@ namespace massif { namespace api {
         virtual void onMapClicked(const std::shared_ptr<MapClickInfo>& mapClickInfo);
 
     private:
-        /** Registers obj under a throwaway id, emits, and drops the id again. */
-        void emitWith(const std::string& event, const std::shared_ptr<void>& obj,
-                      const char* cppClass);
-
-        std::shared_ptr<Context> _context;
-        Handle _target;
+        PayloadEmitter _emitter;
         std::shared_ptr<MapEventListener> _chained;
-        long long _payloadCounter;
+    };
+
+    /**
+     * The same for a vector tile layer's clicks, which is where a feature payload comes from.
+     *
+     * onVectorTileClicked returns whether the click was handled, so a subscription that asked to
+     * consume decides it - that is what the consume flag is for.
+     */
+    class VectorTileEventBridge : public VectorTileEventListener {
+    public:
+        VectorTileEventBridge(const std::shared_ptr<Context>& context, Handle target,
+                              const std::shared_ptr<VectorTileEventListener>& chained);
+        virtual ~VectorTileEventBridge();
+
+        virtual bool onVectorTileClicked(const std::shared_ptr<VectorTileClickInfo>& clickInfo);
+
+    private:
+        PayloadEmitter _emitter;
+        std::shared_ptr<VectorTileEventListener> _chained;
+    };
+
+    /**
+     * The same for a vector layer's element clicks.
+     */
+    class VectorElementEventBridge : public VectorElementEventListener {
+    public:
+        VectorElementEventBridge(const std::shared_ptr<Context>& context, Handle target,
+                                 const std::shared_ptr<VectorElementEventListener>& chained);
+        virtual ~VectorElementEventBridge();
+
+        virtual bool onVectorElementClicked(const std::shared_ptr<VectorElementClickInfo>& clickInfo);
+
+    private:
+        PayloadEmitter _emitter;
+        std::shared_ptr<VectorElementEventListener> _chained;
     };
 
 } }

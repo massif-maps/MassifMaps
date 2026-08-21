@@ -65,6 +65,18 @@ namespace massif { namespace api {
                                                 chained);
     }
 
+    std::shared_ptr<VectorTileEventListener> MassifApi::createVectorTileEventBridge(
+            int handle, const std::shared_ptr<VectorTileEventListener>& chained) {
+        return std::make_shared<VectorTileEventBridge>(Context::GetDefault(),
+                                                       static_cast<Handle>(handle), chained);
+    }
+
+    std::shared_ptr<VectorElementEventListener> MassifApi::createVectorElementEventBridge(
+            int handle, const std::shared_ptr<VectorElementEventListener>& chained) {
+        return std::make_shared<VectorElementEventBridge>(Context::GetDefault(),
+                                                          static_cast<Handle>(handle), chained);
+    }
+
     int MassifApi::on(int handle, const std::string& event,
                       const std::shared_ptr<EventListener>& listener, int delivery, bool coalesce) {
         if (!listener) {

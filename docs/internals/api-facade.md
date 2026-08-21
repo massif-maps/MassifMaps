@@ -450,9 +450,30 @@ apiEvents off, removed=true
                                                 <- a tap after off produces nothing
 ```
 
-Events wired so far: `map.clicked`, `map.moved`, `map.idle`, `map.stable`, `map.interaction`.
-Layer-level events — vector tile and vector element clicks — go through per-layer listeners and
-are not bridged yet.
+Layer-level events work the same way, installed on the layer instead:
+
+```java
+vector.setVectorTileEventListener(
+    MassifApi.createVectorTileEventBridge(handle, vector.getVectorTileEventListener()));
+```
+
+`onVectorTileClicked` returns whether the click was handled, so the results are **OR-ed**: either
+the chained listener or a consuming subscriber can claim it, and the facade's answer never
+replaces the app's.
+
+Tapping a real map, the payload arrives whole:
+
+```
+apiEvent vectortile.clicked id=0 layer=landcover type=2
+         pos=[636464.89,5650430.07,0] name=- geojsonLen=226
+```
+
+`type=2` is `GEOMETRY_TYPE_POLYGON`, `name=-` is a missing key returning the caller's default, and
+the geometry serialised. **`pos` is in EPSG:3857 metres** — the data source's own projection — which
+is the projection gap below, shown rather than argued.
+
+Wired so far: `map.clicked`, `map.moved`, `map.idle`, `map.stable`, `map.interaction`,
+`vectortile.clicked`, `vectorelement.clicked`.
 
 ## Tests
 

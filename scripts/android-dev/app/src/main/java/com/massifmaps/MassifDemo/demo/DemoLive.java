@@ -190,7 +190,34 @@ public final class DemoLive extends BroadcastReceiver {
             }
         };
         apiSubscription = MassifApi.on(handle, "map.clicked", apiListener, 0, false);
-        Log.i(TAG, "apiEvents on, handle=" + handle + " subscription=" + apiSubscription);
+
+        // The layer-level one, which is where a feature payload comes from.
+        com.massifmaps.layers.VectorTileLayer vector = null;
+        for (int i = 0; i < demo.mapView.getLayers().count(); i++) {
+            if (demo.mapView.getLayers().get(i) instanceof com.massifmaps.layers.VectorTileLayer) {
+                vector = (com.massifmaps.layers.VectorTileLayer) demo.mapView.getLayers().get(i);
+                break;
+            }
+        }
+        if (vector != null) {
+            vector.setVectorTileEventListener(MassifApi.createVectorTileEventBridge(
+                handle, vector.getVectorTileEventListener()));
+            MassifApi.on(handle, "vectortile.clicked", new EventListener() {
+                @Override
+                public boolean onEvent(int target, String event, int payload) {
+                    Log.i(TAG, "apiEvent " + event
+                            + " id=" + MassifApi.getInt(payload, "featureId", -1)
+                            + " layer=" + MassifApi.getString(payload, "featureLayerName", "-")
+                            + " type=" + MassifApi.getInt(payload, "feature.geometry.type", -1)
+                            + " pos=" + MassifApi.getString(payload, "featurePos", "-")
+                            + " name=" + MassifApi.getString(payload, "feature.properties.name", "-")
+                            + " geojsonLen=" + MassifApi.getString(payload, "feature.geometryGeoJSON", "").length());
+                    return false;
+                }
+            }, 0, false);
+        }
+        Log.i(TAG, "apiEvents on, handle=" + handle + " subscription=" + apiSubscription
+                + " vectorLayer=" + (vector != null ? vector.getClass().getSimpleName() : "none"));
     }
 
     private static boolean has(Bundle extras, String[] keys) {

@@ -18,6 +18,8 @@ namespace massif {
     class TileDataSource;
     class Layer;
     class MapEventListener;
+    class VectorTileEventListener;
+    class VectorElementEventListener;
 
     namespace api {
 
@@ -89,6 +91,21 @@ namespace massif {
          */
         static std::shared_ptr<MapEventListener> createEventBridge(
             int handle, const std::shared_ptr<MapEventListener>& chained);
+
+        /**
+         * The same for a vector tile layer's clicks, which is where a feature payload comes from.
+         * Install it with the layer's setVectorTileEventListener.
+         *
+         * The click is claimed if either the chained listener or a consuming subscriber claims it.
+         */
+        static std::shared_ptr<VectorTileEventListener> createVectorTileEventBridge(
+            int handle, const std::shared_ptr<VectorTileEventListener>& chained);
+
+        /**
+         * The same for a vector layer's element clicks.
+         */
+        static std::shared_ptr<VectorElementEventListener> createVectorElementEventBridge(
+            int handle, const std::shared_ptr<VectorElementEventListener>& chained);
 
         /**
          * Subscribes to an event on an object.

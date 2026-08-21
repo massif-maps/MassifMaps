@@ -1165,6 +1165,17 @@ namespace massif::vt {
             return true;
         };
 
+        // Where the screen's right and up are IN THE SPACE THE RUN IS LAID OUT IN - the identity for
+        // a screen run, the camera axes projected onto the tangent frame for a flat one. Which way
+        // the word reads is a screen question, and a flat run's own space cannot see the camera: its
+        // x always points forward along the line, so a test there reads the word in vertex order and
+        // half the lines come out upside down.
+        cglib::vec2<float> screenX(1, 0), screenY(0, 1);
+        if (!screenRun) {
+            screenX = cglib::vec2<float>(cglib::dot_product(xBasis, viewState.orientation[0]), cglib::dot_product(yBasis, viewState.orientation[0]));
+            screenY = cglib::vec2<float>(cglib::dot_product(xBasis, viewState.orientation[1]), cglib::dot_product(yBasis, viewState.orientation[1]));
+        }
+
         cglib::vec2<float> anchorScreen, xUnitScreen, yUnitScreen;
         bool perspective = screenRun
             && projectPoint(anchorPos, anchorScreen)
@@ -1306,8 +1317,9 @@ namespace massif::vt {
                 if (dir == cglib::vec2<float>(0, 0)) {
                     continue;
                 }
-                mustForward = mustForward || dir(0) > flipTolerance;
-                mustReverse = mustReverse || dir(0) < -flipTolerance;
+                float dirX = cglib::dot_product(dir, screenX);
+                mustForward = mustForward || dirX > flipTolerance;
+                mustReverse = mustReverse || dirX < -flipTolerance;
                 for (std::size_t k = i; k-- > first; ) {
                     if (cglib::norm(segmentDir(k) + dir) < LINE_HAIRPIN_CHORD * LINE_HAIRPIN_CHORD) {
                         hairpin = true;
@@ -1330,11 +1342,13 @@ namespace massif::vt {
             // perfectly well upside down. Their own comment there is "TODO use better heuristic to
             // decide flipping"; the segment test is kept, but only for the REJECTION above, where
             // it is unambiguous.
-            cglib::vec2<float> startPoint = pointAt(penStart);
-            cglib::vec2<float> endPoint = pointAt(penStart + runLength);
-            float dx = endPoint(0) - startPoint(0);
-            float dy = endPoint(1) - startPoint(1);
-            if (std::abs(dx) < LINE_VERTICAL_RUN_FRACTION * runLength) {
+            cglib::vec2<float> chord = pointAt(penStart + runLength) - pointAt(penStart);
+            float dx = cglib::dot_product(chord, screenX);
+            float dy = cglib::dot_product(chord, screenY);
+            // A flat run's chord is foreshortened by the tilt, so the thresholds are taken against
+            // what it measures ON SCREEN rather than against its length on the ground.
+            float chordRef = (screenRun ? runLength : cglib::length(cglib::vec2<float>(dx, dy)));
+            if (std::abs(dx) < LINE_VERTICAL_RUN_FRACTION * chordRef) {
                 // A run this close to vertical has no meaningful left or right, and a test on dx
                 // alone picks one at random there. Map convention is that a vertical label reads
                 // bottom to top, so the run must head UP the screen.
@@ -1343,7 +1357,7 @@ namespace massif::vt {
             else {
                 // Hysteresis, so a run whose chord is near the vertical band does not flip back and
                 // forth on the smallest camera step.
-                float bias = (_lineReversed ? LINE_REVERSE_HYSTERESIS : -LINE_REVERSE_HYSTERESIS) * runLength;
+                float bias = (_lineReversed ? LINE_REVERSE_HYSTERESIS : -LINE_REVERSE_HYSTERESIS) * chordRef;
                 _lineReversed = (dx < bias);
             }
             if (_lineReversed) {
@@ -1459,7 +1473,14 @@ namespace massif::vt {
         // its layout decides whether the label is drawn at all, so re-laying out there judges the
         // label against a view nobody sees; it reuses whatever layout exists.
         cglib::mat4x4<double> mvpMatrix = viewState.projectionMatrix * viewState.cameraMatrix;
-        if (scale == _cachedScale && placement == _cachedPlacement && (!isScreenLineRun() || mvpMatrix == _cachedMVPMatrix || !rebuildForView)) {
+        // A flat run does not follow the projection - it lies on the ground - but which way it
+        // reads does, so the camera AXES are its key: a rotation turns the line under the word
+        // and nothing else about the layout changes. That leaves a flat run reused across a pan,
+        // where a screen run rebuilds.
+        bool viewChanged = rebuildForView && (isScreenLineRun()
+            ? mvpMatrix != _cachedMVPMatrix
+            : viewState.orientation[0] != _cachedCameraXAxis || viewState.orientation[1] != _cachedCameraYAxis);
+        if (scale == _cachedScale && placement == _cachedPlacement && !viewChanged) {
             return;
         }
         VT_STAT_INC(lineLayoutBuilds);
@@ -1497,6 +1518,8 @@ namespace massif::vt {
         _cachedScale = scale;
         _cachedPlacement = placement;
         _cachedMVPMatrix = mvpMatrix;
+        _cachedCameraXAxis = viewState.orientation[0];
+        _cachedCameraYAxis = viewState.orientation[1];
     }
 
     void Label::setupCoordinateSystem(const ViewState& viewState, const std::shared_ptr<const Placement>& placement, cglib::vec3<float>& origin, cglib::vec3<float>& xAxis, cglib::vec3<float>& yAxis) const {

@@ -443,6 +443,10 @@ namespace massif::vt {
         // reason (LabelManager::updateLabelSet -> CurvedLabel::updateScreenTransform); this
         // keeps the frame-to-frame reuse only for a camera that has not moved at all.
         mutable cglib::mat4x4<double> _cachedMVPMatrix = cglib::mat4x4<double>::zero();
+        // A flat run is keyed on the camera axes instead: it is laid out on the ground, so only a
+        // rotation changes it - through which way the word has to read (see buildLineVertexData).
+        mutable cglib::vec3<float> _cachedCameraXAxis = cglib::vec3<float>(0, 0, 0);
+        mutable cglib::vec3<float> _cachedCameraYAxis = cglib::vec3<float>(0, 0, 0);
         mutable std::shared_ptr<const Placement> _cachedPlacement;
         mutable VertexArray<cglib::vec3<float>> _cachedVertices;
         mutable VertexArray<cglib::vec2<std::int16_t>> _cachedTexCoords;

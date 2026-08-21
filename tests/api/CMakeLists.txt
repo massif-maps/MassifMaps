@@ -26,9 +26,20 @@ set(TEST_SDK_SOURCES
   "${SDK_BASE_DIR}/all/native/core/ScreenPos.cpp"
   "${SDK_BASE_DIR}/all/native/components/FogOptions.cpp"
   "${SDK_BASE_DIR}/all/native/geometry/Feature.cpp"
+  "${SDK_BASE_DIR}/all/native/geometry/GeoJSONGeometryWriter.cpp"
+  # The writer handles every geometry type, so they all come with it. They are light - no
+  # renderer, no data sources - which is why this stays inside the rule in ../README.md.
+  "${SDK_BASE_DIR}/all/native/geometry/FeatureCollection.cpp"
+  "${SDK_BASE_DIR}/all/native/geometry/LineGeometry.cpp"
+  "${SDK_BASE_DIR}/all/native/geometry/MultiGeometry.cpp"
+  "${SDK_BASE_DIR}/all/native/geometry/MultiLineGeometry.cpp"
+  "${SDK_BASE_DIR}/all/native/geometry/MultiPointGeometry.cpp"
+  "${SDK_BASE_DIR}/all/native/geometry/MultiPolygonGeometry.cpp"
+  "${SDK_BASE_DIR}/all/native/geometry/PolygonGeometry.cpp"
   "${SDK_BASE_DIR}/all/native/geometry/PointGeometry.cpp"
   "${SDK_BASE_DIR}/all/native/graphics/Color.cpp"
   "${SDK_BASE_DIR}/all/native/utils/Log.cpp"
+  "${SDK_BASE_DIR}/all/native/utils/GeomUtils.cpp"
 )
 
 set(TEST_TABLE_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated/api")
@@ -62,6 +73,7 @@ target_include_directories(api_tests PRIVATE
   "${SDK_BASE_DIR}/libs-external/cglib"
   "${SDK_BASE_DIR}/libs-external/stdext"
   "${SDK_BASE_DIR}/libs-external/picojson"
+  "${SDK_BASE_DIR}/libs-external/rapidjson/include"
   "${SDK_BASE_DIR}/libs-external/tinyformat")
 
 add_test(NAME api COMMAND api_tests)

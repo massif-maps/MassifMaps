@@ -22,6 +22,7 @@
 
 !attributestring_polymorphic(massif::Feature, geometry.Geometry, Geometry, getGeometry)
 %attributeval(massif::Feature, massif::Variant, Properties, getProperties)
+%attributestring(massif::Feature, std::string, GeometryGeoJSON, getGeometryGeoJSON)
 !standard_equals(massif::Feature);
 
 %include "geometry/Feature.h"

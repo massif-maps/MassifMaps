@@ -110,4 +110,16 @@ void testVariantPaths() {
     // Traversal through an object property still works alongside it.
     TEST_CHECK(context->getProperty(handle, "geometry.type", value) == RESULT_OK &&
                value.asLong() == GeometryType::GEOMETRY_TYPE_POINT, "geometry.type resolves");
+
+    // GeoJSON without the binding having to build a writer.
+    TEST_CHECK(context->getProperty(handle, "geometryGeoJSON", value) == RESULT_OK &&
+               value.stringValue.find("\"Point\"") != std::string::npos &&
+               value.stringValue.find("\"coordinates\"") != std::string::npos,
+               "geometryGeoJSON serialises the geometry");
+
+    auto empty = std::make_shared<Feature>(std::shared_ptr<Geometry>(), Variant());
+    Handle emptyHandle = NULL_HANDLE;
+    context->registerObject("feature", "empty", empty, "massif::Feature", emptyHandle);
+    TEST_CHECK(context->getProperty(emptyHandle, "geometryGeoJSON", value) == RESULT_OK &&
+               value.stringValue.empty(), "a feature with no geometry gives an empty string");
 }

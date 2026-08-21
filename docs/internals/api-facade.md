@@ -401,17 +401,18 @@ the generated table:
 | `feature.geometry.type` | traversal, plus `Geometry::getType` |
 | `feature.properties` | reads as JSON |
 | `feature.properties.name` | the path keeps walking **inside** the `Variant` |
+| `feature.geometryGeoJSON` | `Feature::getGeometryGeoJSON` |
 
-`Geometry::getType` is a **new SDK method**, not a facade one. There was no way to tell a
+`Geometry::getType` and `Feature::getGeometryGeoJSON` are **new SDK methods**, not facade ones. There was no way to tell a
 MultiPoint from a Point except a downcast, or — from a scripting binding — matching on the
-wrapper's class name, which is what a real NativeScript app was reduced to. Declared as an
-attribute it appears in the table automatically, and the object API gains it too.
+wrapper's class name, which is what a real NativeScript app was reduced to; and serialising a
+geometry meant every binding constructing a `GeoJSONGeometryWriter` itself, differently, and in a
+scripting binding slowly. Declared as attributes they appear in the table automatically, and the
+object API gains them too.
 
 That is the pattern for the rest: **the derived values a payload needs are SDK gaps, and fixing
 them there gives the facade the path for free.** What is still missing:
 
-- `geometryGeoJSON` — `GeoJSONGeometryWriter` exists; it needs wiring with the source projection
-  preset, or every binding serialises it itself.
 - a MultiPoint-aware `featurePos` — `getFeatureClickPos()` documents that it does **not** cover the
   index case.
 - a per-subscription projection, so positions arrive converted instead of every binding repeating

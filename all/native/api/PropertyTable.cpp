@@ -88,6 +88,18 @@ namespace massif { namespace api {
         return nullptr;
     }
 
+    const PropertyEntry* findProjectionProperty(const ClassEntry* classEntry) {
+        for (; classEntry; classEntry = classEntry->base ? findClass(classEntry->base) : nullptr) {
+            for (std::size_t index = 0; index < classEntry->count; index++) {
+                const PropertyEntry& entry = classEntry->props[index];
+                if ((entry.flags & PF_PROJECTION) && entry.objectGetter) {
+                    return &entry;
+                }
+            }
+        }
+        return nullptr;
+    }
+
     std::size_t getClassCount() {
         return sizeof(kClasses) / sizeof(kClasses[0]);
     }

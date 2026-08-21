@@ -113,10 +113,15 @@ namespace massif {
          * @param event The event name, e.g. "map.clicked".
          * @param listener Called when it fires.
          * @param delivery 0 origin, 1 UI, 2 background.
-         * @return The subscription, or 0 when the handle is stale.
+         * @param projection The well-known name of the projection this handler's position reads
+         *        default to, e.g. "EPSG:4326". Empty leaves them in the map's own projection. It
+         *        applies for the duration of the call, so a payload kept and read afterwards has
+         *        to name the projection per read - see getPos.
+         * @return The subscription, or 0 when the handle is stale or the projection is unknown.
          */
         static int on(int handle, const std::string& event,
-                      const std::shared_ptr<EventListener>& listener, int delivery, bool coalesce);
+                      const std::shared_ptr<EventListener>& listener, int delivery, bool coalesce,
+                      const std::string& projection = std::string());
 
         /**
          * Removes one subscription.
@@ -179,6 +184,18 @@ namespace massif {
          * @copydoc MassifApi::getFloat
          */
         static std::string getString(int handle, const std::string& path, const std::string& defaultValue);
+
+        /**
+         * Reads a position property as JSON, in the projection asked for.
+         *
+         * A position is `[x, y]` or `[x, y, z]` and bounds are a pair of them, so one call covers
+         * clickPos, featurePos and dataExtent alike.
+         * @param projection The well-known name, e.g. "EPSG:4326". Empty leaves the value in the
+         *        object's own projection, or in the one the running event handler asked for.
+         * @return The JSON, or an empty string when the path does not resolve.
+         */
+        static std::string getPos(int handle, const std::string& path,
+                                  const std::string& projection = std::string());
 
     private:
         MassifApi();

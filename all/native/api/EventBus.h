@@ -49,6 +49,20 @@ namespace massif { namespace api {
                                  std::uint32_t payload);
 
     /**
+     * Everything dispatch needs about one subscription, resolved just before the handler runs.
+     */
+    struct Dispatch {
+        EventHandler handler = nullptr;
+        void* userData = nullptr;
+        bool consume = false;
+        Delivery delivery = DELIVERY_ORIGIN;
+        bool coalesce = false;
+        // The projection positions are read in for the duration of this handler. Empty leaves
+        // them in whatever the source object uses.
+        std::string projection;
+    };
+
+    /**
      * Who is listening to what.
      *
      * Dispatch order is registration order, so which of two consuming handlers wins is decided by
@@ -68,7 +82,8 @@ namespace massif { namespace api {
          * @param consume Whether this handler's return value can stop the event.
          */
         Subscription subscribe(std::uint32_t target, const std::string& event, EventHandler handler,
-                               void* userData, bool consume, Delivery delivery, bool coalesce);
+                               void* userData, bool consume, Delivery delivery, bool coalesce,
+                               const std::string& projection);
 
         /**
          * Removes one subscription.
@@ -102,8 +117,7 @@ namespace massif { namespace api {
         /**
          * Resolves a subscription for dispatch. False when it has been removed since collect.
          */
-        bool lookup(Subscription subscription, EventHandler& handler, void*& userData,
-                    bool& consume, Delivery& delivery, bool& coalesce) const;
+        bool lookup(Subscription subscription, Dispatch& out) const;
 
         /**
          * The number of live subscriptions. For tests and leak checks.
@@ -121,6 +135,7 @@ namespace massif { namespace api {
             // Replace a queued event rather than adding another, so a UI-thread handler for a
             // high-frequency event cannot flood the loop.
             bool coalesce = false;
+            std::string projection;
             bool live = false;
             std::uint32_t generation = 1;
             // Registration order. Slots are reused, so index order is NOT registration order, and

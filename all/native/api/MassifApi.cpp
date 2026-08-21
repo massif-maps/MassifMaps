@@ -78,13 +78,14 @@ namespace massif { namespace api {
     }
 
     int MassifApi::on(int handle, const std::string& event,
-                      const std::shared_ptr<EventListener>& listener, int delivery, bool coalesce) {
+                      const std::shared_ptr<EventListener>& listener, int delivery, bool coalesce,
+                      const std::string& projection) {
         if (!listener) {
             throw NullArgumentException("Null listener");
         }
         Subscription subscription = Context::GetDefault()->subscribe(
             static_cast<Handle>(handle), event, &dispatchToListener, listener.get(), false,
-            static_cast<Delivery>(delivery), coalesce);
+            static_cast<Delivery>(delivery), coalesce, projection);
         if (subscription != NULL_SUBSCRIPTION) {
             listeners()[static_cast<int>(subscription)] = listener;
         }
@@ -161,6 +162,16 @@ namespace massif { namespace api {
         PropertyValue value;
         if (Context::GetDefault()->getProperty(static_cast<Handle>(handle), path, value) != RESULT_OK) {
             return defaultValue;
+        }
+        return value.stringValue;
+    }
+
+    std::string MassifApi::getPos(int handle, const std::string& path,
+                                  const std::string& projection) {
+        PropertyValue value;
+        if (Context::GetDefault()->getProperty(static_cast<Handle>(handle), path, value,
+                                               projection) != RESULT_OK) {
+            return std::string();
         }
         return value.stringValue;
     }

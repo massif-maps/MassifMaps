@@ -31,7 +31,13 @@ namespace massif { namespace api {
 
     enum PropertyFlags {
         PF_READONLY = 1,
-        PF_STATIC = 2
+        PF_STATIC = 2,
+        // A MapPos or MapBounds, so a read can convert it to another projection. Nothing else is
+        // a coordinate, and converting a MapRange or a ScreenPos would be nonsense.
+        PF_POSITION = 4,
+        // An OBJECT property pointing at a Projection - whatever the class calls it. This is how
+        // a read learns the coordinate system of the PF_POSITION properties beside it.
+        PF_PROJECTION = 8
     };
 
     /**
@@ -106,6 +112,15 @@ namespace massif { namespace api {
      * @return The property, or null when neither the class nor any base declares it.
      */
     const PropertyEntry* findProperty(const ClassEntry* classEntry, const char* path);
+
+    /**
+     * Finds the class' PF_PROJECTION property, walking up its base chain.
+     *
+     * Scanned rather than looked up by name: a class is free to call it "projection" or
+     * "baseProjection", and the facade should not have to know which.
+     * @return The property, or null when nothing in the chain declares one.
+     */
+    const PropertyEntry* findProjectionProperty(const ClassEntry* classEntry);
 
     /**
      * Returns the number of classes in the table. Used by tests and tooling.

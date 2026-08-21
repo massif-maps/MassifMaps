@@ -25,6 +25,9 @@ namespace massif { namespace api {
         if (_context->registerObject("payload", id, obj, cppClass, payload) != RESULT_OK) {
             return false;
         }
+        // A click info carries map coordinates but names no projection, so it borrows the one the
+        // event's target is in - which for a map is its base projection.
+        _context->setObjectProjection(payload, _context->getObjectProjection(_target));
         bool consumed = _context->emit(_target, event, payload);
         _context->unregisterObject("payload", id);
         return consumed;

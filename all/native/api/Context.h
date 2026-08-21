@@ -17,7 +17,10 @@
 #include <unordered_map>
 #include <vector>
 
-namespace massif { namespace api {
+namespace massif {
+    class Projection;
+
+    namespace api {
 
     /**
      * An opaque reference to a registered object.
@@ -105,8 +108,27 @@ namespace massif { namespace api {
 
         /**
          * Reads a property of a registered object.
+         * @param projection The well-known name of the projection to return positions in, e.g.
+         *                   "EPSG:4326". Empty falls back to the projection the subscription being
+         *                   dispatched asked for, and then to leaving the source projection alone.
+         *                   Only PF_POSITION properties are affected.
          */
-        Result getProperty(Handle handle, const std::string& path, PropertyValue& value) const;
+        Result getProperty(Handle handle, const std::string& path, PropertyValue& value,
+                           const std::string& projection = std::string()) const;
+
+        /**
+         * The projection an object's positions are in when its class does not say so itself.
+         *
+         * A click info carries map coordinates but has no projection of its own, so it inherits
+         * one; a data source names its projection as a property and needs no help.
+         */
+        void setObjectProjection(Handle handle, const std::shared_ptr<Projection>& projection);
+
+        /**
+         * The projection an object's positions are in: the one its class declares, else the one
+         * attached with setObjectProjection, else null.
+         */
+        std::shared_ptr<Projection> getObjectProjection(Handle handle) const;
 
         /**
          * Writes a property of a registered object. The underlying setter is called, so the
@@ -123,11 +145,15 @@ namespace massif { namespace api {
          * Adds an event handler to an object.
          * @param consume Whether the handler's return value can stop the event reaching later
          *                handlers. A consuming handler has to answer synchronously.
+         * @param projection The projection this handler's position reads default to. It applies
+         *                   for the duration of the call only, so a payload kept and read later
+         *                   has to name the projection per read.
          * @return The subscription, or NULL_SUBSCRIPTION when the handle is stale.
          */
         Subscription subscribe(Handle handle, const std::string& event, EventHandler handler,
                                void* userData, bool consume, Delivery delivery = DELIVERY_ORIGIN,
-                               bool coalesce = false);
+                               bool coalesce = false,
+                               const std::string& projection = std::string());
 
         /**
          * Registers how to reach the UI thread. Without one, DELIVERY_UI falls back to running
@@ -197,6 +223,8 @@ namespace massif { namespace api {
             // The spec this was built from, canonicalised, so an identical create can be
             // recognised as a reuse rather than a conflict.
             std::string spec;
+            // Only for an object whose class does not declare a projection of its own.
+            std::shared_ptr<Projection> projection;
         };
 
         static const int INDEX_BITS = 20;
@@ -220,6 +248,10 @@ namespace massif { namespace api {
         const PropertyEntry* lookup(Handle handle, const std::string& path,
                                     ObjectRef& target, Result& result,
                                     std::size_t* variantRest = nullptr) const;
+
+        // What coordinate system target's positions are in: what its class declares, else what
+        // was attached to the handle the walk started from.
+        std::shared_ptr<Projection> sourceProjection(const ObjectRef& target, Handle handle) const;
 
         mutable std::mutex _mutex;
         std::vector<Slot> _slots;

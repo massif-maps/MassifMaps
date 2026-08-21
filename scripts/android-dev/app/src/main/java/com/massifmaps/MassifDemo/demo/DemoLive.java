@@ -185,7 +185,8 @@ public final class DemoLive extends BroadcastReceiver {
             @Override
             public boolean onEvent(int target, String event, int payload) {
                 Log.i(TAG, "apiEvent " + event + " payload=" + payload
-                        + " clickPos=" + MassifApi.getString(payload, "clickPos", "-"));
+                        + " clickPos=" + MassifApi.getString(payload, "clickPos", "-")
+                        + " lonlat=" + MassifApi.getPos(payload, "clickPos", "EPSG:4326"));
                 return false;
             }
         };
@@ -209,12 +210,15 @@ public final class DemoLive extends BroadcastReceiver {
                             + " id=" + MassifApi.getInt(payload, "featureId", -1)
                             + " layer=" + MassifApi.getString(payload, "featureLayerName", "-")
                             + " type=" + MassifApi.getInt(payload, "feature.geometry.type", -1)
+                            // The subscription asked for EPSG:4326, so a plain read is lon/lat
+                            // already; the source projection still needs naming per read.
                             + " pos=" + MassifApi.getString(payload, "featurePos", "-")
+                            + " merc=" + MassifApi.getPos(payload, "featurePos", "EPSG:3857")
                             + " name=" + MassifApi.getString(payload, "feature.properties.name", "-")
                             + " geojsonLen=" + MassifApi.getString(payload, "feature.geometryGeoJSON", "").length());
                     return false;
                 }
-            }, 0, false);
+            }, 0, false, "EPSG:4326");
         }
         Log.i(TAG, "apiEvents on, handle=" + handle + " subscription=" + apiSubscription
                 + " vectorLayer=" + (vector != null ? vector.getClass().getSimpleName() : "none"));

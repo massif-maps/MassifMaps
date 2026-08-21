@@ -11,7 +11,8 @@ namespace massif { namespace api {
 
     Subscription EventBus::subscribe(std::uint32_t target, const std::string& event,
                                      EventHandler handler, void* userData, bool consume,
-                                     Delivery delivery, bool coalesce) {
+                                     Delivery delivery, bool coalesce,
+                                     const std::string& projection) {
         if (!handler) {
             return NULL_SUBSCRIPTION;
         }
@@ -31,6 +32,7 @@ namespace massif { namespace api {
         entry.consume = consume;
         entry.delivery = delivery;
         entry.coalesce = coalesce;
+        entry.projection = projection;
         entry.live = true;
         entry.sequence = _nextSequence++;
         return (entry.generation << INDEX_BITS) | index;
@@ -54,6 +56,7 @@ namespace massif { namespace api {
         entry.handler = nullptr;
         entry.userData = nullptr;
         entry.event.clear();
+        entry.projection.clear();
         // Bumping the generation is what turns a stale subscription into an error rather than a
         // cancellation of whatever takes the slot next.
         entry.generation = entry.generation >= MAX_GENERATION ? 1 : entry.generation + 1;
@@ -107,17 +110,17 @@ namespace massif { namespace api {
         }
     }
 
-    bool EventBus::lookup(Subscription subscription, EventHandler& handler, void*& userData,
-                          bool& consume, Delivery& delivery, bool& coalesce) const {
+    bool EventBus::lookup(Subscription subscription, Dispatch& out) const {
         const Entry* entry = resolve(subscription);
         if (!entry) {
             return false;
         }
-        handler = entry->handler;
-        userData = entry->userData;
-        consume = entry->consume;
-        delivery = entry->delivery;
-        coalesce = entry->coalesce;
+        out.handler = entry->handler;
+        out.userData = entry->userData;
+        out.consume = entry->consume;
+        out.delivery = entry->delivery;
+        out.coalesce = entry->coalesce;
+        out.projection = entry->projection;
         return true;
     }
 

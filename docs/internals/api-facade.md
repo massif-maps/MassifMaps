@@ -130,6 +130,52 @@ The other 59 struct properties — vectors, maps, `BalloonPopupMargins`, `ClickI
 accessor. They are listed in `CODEC_TYPES` when someone needs them; nothing about the mechanism
 changes.
 
+### Projections
+
+A `MapPos` carries no coordinate system, so a click position comes back in whatever the map uses —
+EPSG:3857 in practice — and every binding then repeats the same `toWgs84`/`fromWgs84` chain. A read
+can ask for a projection by name instead:
+
+```java
+MassifApi.getPos(payload, "featurePos", "EPSG:4326");   // [5.7606, 45.2442]
+```
+
+Three pieces, none of them payload-specific:
+
+- **Which properties are coordinates.** The generator flags `MapPos` and `MapBounds` rows
+  `PF_POSITION` (24 rows). A `MapRange` or a `ScreenPos` is not a coordinate and is never converted.
+- **What projection the value is already in.** The generator also flags any `OBJECT` property
+  pointing at a `Projection` as `PF_PROJECTION` (7 rows) — `Options.baseProjection`,
+  `TileDataSource.projection`, `GeoJSONGeometryWriter.sourceProjection`. `findProjectionProperty`
+  scans for the flag rather than looking a name up, so a class is free to call it whatever it likes
+  and a new one costs nothing. A class that declares none — a click info — carries the projection
+  **attached to its handle**; `PayloadEmitter` gives a payload the projection of the target the
+  event fires on, which for a map is its base projection.
+- **Which projection to convert to.** `Projections::find` maps a well-known name to a `Projection`,
+  case-insensitively, with EPSG:3857 and EPSG:4326 built in and `registerProjection` for anything
+  else. Names, not objects, because a C or JavaScript caller cannot hold a `Projection`.
+
+A subscription can set a **default** for the reads its handler makes, which is the shape an app
+actually wants — ask once, read plainly:
+
+```java
+MassifApi.on(handle, "vectortile.clicked", listener, 0, false, "EPSG:4326");
+```
+
+It is a `thread_local` set around the handler call (saved and restored, so a handler that emits
+another event nests), which means it lives **for the duration of the call only**. A payload kept
+and read later falls back to the source projection — so the per-read form is the reliable one, and
+the per-subscription one is the convenience. A per-read name always wins over it.
+
+With neither given the value is **left in the source projection**, and so is a value whose source
+projection is unknown: a wrong guess is worse than an unconverted number. An unknown projection
+name is an error at subscribe time and `RESULT_UNKNOWN_TYPE` at read time, never a silent
+pass-through — a typo would otherwise show up as plausible coordinates in the wrong system.
+
+One real edge: Mercator sends the poles to infinity, and `inf` is not JSON. A conversion that comes
+out non-finite fails with `RESULT_UNSUPPORTED_TYPE` rather than handing over a string that will not
+parse. Reading WGS84 world bounds as EPSG:3857 is exactly that case.
+
 ### Path spelling
 
 An attribute's name is decapitalised with the `java.beans.Introspector` rule: an acronym keeps its
@@ -415,13 +461,11 @@ centre for points. Declared as attributes they appear in the table automatically
 API gains them too.
 
 That is the pattern for the rest: **the derived values a payload needs are SDK gaps, and fixing
-them there gives the facade the path for free.** What is still missing:
+them there gives the facade the path for free.**
 
-- **a projection for positions**, so a binding does not repeat the `toWgs84`/`fromWgs84` chain.
-  The design said per-subscription, and that turns out to be awkward: a payload is read through
-  the generic property table, which has no subscription in scope. Per-read
-  (`getPos(handle, path, "EPSG:4326")`) is the implementable shape; per-subscription would need a
-  proxy payload object per subscriber. Not decided.
+`clickPos`, `featureClickPos` and `featurePos` are also readable in another projection — see
+[Projections](#projections). A payload declares none of its own, so it inherits the one attached to
+the event's target.
 
 ### Reaching a real map event
 
@@ -490,8 +534,10 @@ key order not mattering, conflict on a different spec, tolerant application of u
 the parse and factory failure paths, plus the whole event layer — the three removals, dispatch
 order, consumption, removal from inside a handler, death-with-target, and the delivery layer —
 queueing, the single drain post, coalescing, the consume/queued rejection, and payload retain
-across a destroy — and the struct codec's round-trips and its refusal of every malformed shape.
-108 checks. Two things keep it small on purpose:
+across a destroy — and the struct codec's round-trips and its refusal of every malformed shape, and
+the projection layer — the name registry, a declared source projection versus an attached one, the
+per-read argument, the per-subscription default and its expiry when the handler returns, the drain
+path, and the non-finite refusal. 155 checks. Two things keep it small on purpose:
 the property table takes the address of **every** accessor thunk, so a full table needs the full
 SDK to link — the tests generate a reduced one from an explicit module list
 (`gen-api-tables.py --modules`), which exercises the generator as a side effect. And `Options`
@@ -541,8 +587,9 @@ cd scripts && python3 gen-api-tables.py
 
 ## Known gaps
 
-- **`create`, `destroy`, `call` and `on` do not exist.** Specs, factories, events and the C ABI are
-  the following slices — plan in [#146](https://github.com/massif-maps/MassifMaps/issues/146).
+- **`call`, `callAsync` and the C ABI do not exist.** `create`, `destroy` and `on` do. The
+  remaining slices, including binary and bulk returns, are in
+  [#146](https://github.com/massif-maps/MassifMaps/issues/146).
 - **`OBJECT` and `STRUCT` properties have no accessor** (216 of the 716). They need the registry for
   object references and JSON marshalling for structs, so their table rows carry null thunks and
   `set`/`get` return `RESULT_UNSUPPORTED_TYPE`.

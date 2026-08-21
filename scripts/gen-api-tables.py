@@ -49,6 +49,14 @@ CODEC_TYPES = {'massif::MapPos', 'massif::MapVec', 'massif::ScreenPos', 'massif:
 
 FLAG_READONLY = 1
 FLAG_STATIC = 2
+FLAG_POSITION = 4
+FLAG_PROJECTION = 8
+
+# The struct types that are coordinates, and so can be converted between projections.
+POSITION_TYPES = {'massif::MapPos', 'massif::MapBounds'}
+
+# The class an object property must point at for it to answer "what projection is this in?".
+PROJECTION_CLASS = 'massif::Projection'
 
 SUPPORT_DEFINE = re.compile(r'#ifdef\s+(_MASSIF_\w+_SUPPORT)|defined\((_MASSIF_\w+_SUPPORT)\)')
 
@@ -151,7 +159,9 @@ def parseModule(sourcePath, defines, pattern):
         flags |= FLAG_READONLY
       if macro.startswith('static'):
         flags |= FLAG_STATIC
-      entries.append({
+      if stripArgMacro(cppType) in POSITION_TYPES:
+        flags |= FLAG_POSITION
+      entry = {
         'cppClass': cppClass,
         'cppType': stripArgMacro(cppType),
         'path': decapitalize(name),
@@ -159,7 +169,12 @@ def parseModule(sourcePath, defines, pattern):
         'flags': flags,
         'getter': getter,
         'setter': setter,
-      })
+      }
+      # Whatever a class calls its projection - baseProjection, projection - this is how a read
+      # finds out what coordinate system its positions are in, without the facade naming classes.
+      if objectClassOf(entry) == PROJECTION_CLASS:
+        entry['flags'] |= FLAG_PROJECTION
+      entries.append(entry)
   return headers, entries
 
 

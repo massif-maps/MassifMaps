@@ -7,6 +7,10 @@ set(TEST_MODULES
   "${SDK_BASE_DIR}/all/modules/geometry/Geometry.i"
   "${SDK_BASE_DIR}/all/modules/ui/VectorTileClickInfo.i"
   "${SDK_BASE_DIR}/all/modules/geometry/PointGeometry.i"
+  # For the projection flags: Projection declares a position (bounds), and the GeoJSON writer is
+  # the lightest class that declares a projection of its own.
+  "${SDK_BASE_DIR}/all/modules/projections/Projection.i"
+  "${SDK_BASE_DIR}/all/modules/geometry/GeoJSONGeometryWriter.i"
 )
 
 # The SDK sources those modules' classes need. Keep this short: a case that needs a long list is a
@@ -16,6 +20,10 @@ set(TEST_SDK_SOURCES
   "${SDK_BASE_DIR}/all/native/api/EventBus.cpp"
   "${SDK_BASE_DIR}/all/native/api/StructCodec.cpp"
   "${SDK_BASE_DIR}/all/native/api/PropertyTable.cpp"
+  "${SDK_BASE_DIR}/all/native/api/Projections.cpp"
+  "${SDK_BASE_DIR}/all/native/projections/Projection.cpp"
+  "${SDK_BASE_DIR}/all/native/projections/EPSG3857.cpp"
+  "${SDK_BASE_DIR}/all/native/projections/EPSG4326.cpp"
   # Spec.cpp holds create() and the registry; the built-in factories live in SpecFactories.cpp,
   # which is deliberately NOT here - linking it would need every source and layer constructor.
   "${SDK_BASE_DIR}/all/native/api/Spec.cpp"
@@ -69,6 +77,7 @@ add_executable(api_tests
   ApiTest.cpp
   EventTest.cpp
   StructCodecTest.cpp
+  ProjectionTest.cpp
   "${TEST_TABLE_DIR}/PropertyTable.inc"
   ${TEST_SDK_SOURCES})
 

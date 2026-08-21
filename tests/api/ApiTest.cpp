@@ -26,6 +26,8 @@ void testDelivery();
 void testStructCodec();
 void testVariantPaths();
 void testFeaturePos();
+void testProjections();
+void testEventProjection();
 
 namespace {
 
@@ -234,6 +236,8 @@ int main() {
     testStructCodec();
     testVariantPaths();
     testFeaturePos();
+    testProjections();
+    testEventProjection();
 
     std::printf("\n%d failure(s)\n", failures);
     return failures ? 1 : 0;

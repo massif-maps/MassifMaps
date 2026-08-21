@@ -1,10 +1,65 @@
 #include "api/Context.h"
+#include "api/Projections.h"
+#include "api/StructCodec.h"
 #include "core/Variant.h"
+#include "projections/Projection.h"
 #include "utils/Log.h"
 
+#include <cmath>
 #include <cstdlib>
 
 namespace massif { namespace api {
+
+    namespace {
+        // The projection reads default to for the duration of one event handler. Per thread, so a
+        // GL-thread emit and a UI-thread drain do not overwrite each other's.
+        thread_local std::string tActiveProjection;
+
+        /** Saves and restores, so a handler that emits another event nests correctly. */
+        struct ScopedProjection {
+            std::string saved;
+            explicit ScopedProjection(const std::string& name) : saved(tActiveProjection) {
+                tActiveProjection = name;
+            }
+            ~ScopedProjection() { tActiveProjection = saved; }
+        };
+
+        /**
+         * Rewrites an encoded MapPos or MapBounds into another projection.
+         *
+         * The two shapes are told apart by decoding: bounds are a pair of positions, and a
+         * position never parses as one. Corner-wise is right for the axis-aligned projections
+         * reachable by name here.
+         */
+        bool finite(const MapPos& pos) {
+            // Mercator sends the poles to infinity, and "inf" is not JSON. Refused rather than
+            // handed over as a number that will not parse.
+            return std::isfinite(pos.getX()) && std::isfinite(pos.getY()) && std::isfinite(pos.getZ());
+        }
+
+        bool reproject(std::string& json, const Projection& source, const Projection& target) {
+            MapBounds bounds;
+            if (StructCodec::decode(json, bounds)) {
+                MapPos min = target.fromWgs84(source.toWgs84(bounds.getMin()));
+                MapPos max = target.fromWgs84(source.toWgs84(bounds.getMax()));
+                if (!finite(min) || !finite(max)) {
+                    return false;
+                }
+                json = StructCodec::encode(MapBounds(min, max));
+                return true;
+            }
+            MapPos pos;
+            if (StructCodec::decode(json, pos)) {
+                MapPos converted = target.fromWgs84(source.toWgs84(pos));
+                if (!finite(converted)) {
+                    return false;
+                }
+                json = StructCodec::encode(converted);
+                return true;
+            }
+            return false;
+        }
+    }
 
     Context::Context() {
         // Slot 0 is never handed out, so NULL_HANDLE cannot collide with a real object.
@@ -37,6 +92,25 @@ namespace massif { namespace api {
         std::lock_guard<std::mutex> lock(_mutex);
         const Slot* slot = resolve(handle);
         return slot ? slot->spec : std::string();
+    }
+
+    void Context::setObjectProjection(Handle handle, const std::shared_ptr<Projection>& projection) {
+        std::lock_guard<std::mutex> lock(_mutex);
+        if (resolve(handle)) {
+            _slots[handle & INDEX_MASK].projection = projection;
+        }
+    }
+
+    std::shared_ptr<Projection> Context::getObjectProjection(Handle handle) const {
+        std::lock_guard<std::mutex> lock(_mutex);
+        const Slot* slot = resolve(handle);
+        if (!slot) {
+            return std::shared_ptr<Projection>();
+        }
+        ObjectRef target;
+        target.obj = slot->obj;
+        target.cppClass = slot->cppClass;
+        return sourceProjection(target, handle);
     }
 
     std::shared_ptr<void> Context::getObject(Handle handle) const {
@@ -92,6 +166,7 @@ namespace massif { namespace api {
         slot.used = false;
         slot.idDropped = false;
         slot.spec.clear();
+        slot.projection.reset();
         // Bumping the generation is what turns a stale handle into an error instead of a
         // reference to whatever takes the slot next. Wrapping is the ABA window.
         slot.generation = slot.generation >= MAX_GENERATION ? 1 : slot.generation + 1;
@@ -131,9 +206,16 @@ namespace massif { namespace api {
     }
 
     Subscription Context::subscribe(Handle handle, const std::string& event, EventHandler handler,
-                                    void* userData, bool consume, Delivery delivery, bool coalesce) {
+                                    void* userData, bool consume, Delivery delivery, bool coalesce,
+                                    const std::string& projection) {
         std::lock_guard<std::mutex> lock(_mutex);
         if (!resolve(handle)) {
+            return NULL_SUBSCRIPTION;
+        }
+        if (!projection.empty() && !Projections::find(projection)) {
+            // Refused here rather than silently ignored: a typo would otherwise show up as
+            // coordinates that look plausible and are in the wrong system.
+            Log::Errorf("Context::subscribe: unknown projection '%s'", projection.c_str());
             return NULL_SUBSCRIPTION;
         }
         if (consume && delivery != DELIVERY_ORIGIN) {
@@ -142,7 +224,8 @@ namespace massif { namespace api {
             Log::Error("Context::subscribe: a consuming handler must be DELIVERY_ORIGIN");
             return NULL_SUBSCRIPTION;
         }
-        return _events.subscribe(handle, event, handler, userData, consume, delivery, coalesce);
+        return _events.subscribe(handle, event, handler, userData, consume, delivery, coalesce,
+                                 projection);
     }
 
     bool Context::unsubscribe(Subscription subscription) {
@@ -188,17 +271,13 @@ namespace massif { namespace api {
 
         bool queued = false;
         for (Subscription subscription : subscriptions) {
-            EventHandler handler = nullptr;
-            void* userData = nullptr;
-            bool consume = false;
-            Delivery delivery = DELIVERY_ORIGIN;
-            bool coalesce = false;
+            Dispatch dispatch;
             {
                 std::lock_guard<std::mutex> lock(_mutex);
-                if (!_events.lookup(subscription, handler, userData, consume, delivery, coalesce)) {
+                if (!_events.lookup(subscription, dispatch)) {
                     continue;
                 }
-                if (delivery != DELIVERY_ORIGIN) {
+                if (dispatch.delivery != DELIVERY_ORIGIN) {
                     if (!_dispatcher) {
                         if (!_warnedNoDispatcher) {
                             _warnedNoDispatcher = true;
@@ -208,7 +287,7 @@ namespace massif { namespace api {
                         // Coalescing replaces the pending payload rather than adding a second, so
                         // a UI handler for a per-frame event cannot outrun the loop.
                         bool replaced = false;
-                        if (coalesce) {
+                        if (dispatch.coalesce) {
                             for (Queued& pending : _queue) {
                                 if (pending.subscription == subscription) {
                                     if (pending.payload != payload) {
@@ -236,8 +315,9 @@ namespace massif { namespace api {
                     }
                 }
             }
-            bool result = handler(userData, handle, event.c_str(), payload);
-            if (consume && result) {
+            ScopedProjection active(dispatch.projection);
+            bool result = dispatch.handler(dispatch.userData, handle, event.c_str(), payload);
+            if (dispatch.consume && result) {
                 return true;
             }
         }
@@ -254,20 +334,17 @@ namespace massif { namespace api {
         }
 
         for (const Queued& pending : batch) {
-            EventHandler handler = nullptr;
-            void* userData = nullptr;
-            bool consume = false;
-            Delivery delivery = DELIVERY_ORIGIN;
-            bool coalesce = false;
+            Dispatch dispatch;
             bool live;
             {
                 std::lock_guard<std::mutex> lock(_mutex);
-                live = _events.lookup(pending.subscription, handler, userData, consume,
-                                      delivery, coalesce);
+                live = _events.lookup(pending.subscription, dispatch);
             }
             // Unsubscribed between the emit and the drain: the payload still has to be released.
             if (live) {
-                handler(userData, pending.target, pending.event.c_str(), pending.payload);
+                ScopedProjection active(dispatch.projection);
+                dispatch.handler(dispatch.userData, pending.target, pending.event.c_str(),
+                                 pending.payload);
             }
             release(pending.payload);
         }
@@ -348,7 +425,23 @@ namespace massif { namespace api {
         }
     }
 
-    Result Context::getProperty(Handle handle, const std::string& path, PropertyValue& value) const {
+    std::shared_ptr<Projection> Context::sourceProjection(const ObjectRef& target,
+                                                          Handle handle) const {
+        const ClassEntry* classEntry = findClass(target.cppClass);
+        if (const PropertyEntry* entry = findProjectionProperty(classEntry)) {
+            ObjectRef projection;
+            entry->objectGetter(target.obj.get(), projection);
+            if (projection.obj) {
+                return std::static_pointer_cast<Projection>(projection.obj);
+            }
+        }
+        // Nothing declared: a click info is in map coordinates and only the map knows which.
+        const Slot* slot = resolve(handle);
+        return slot ? slot->projection : std::shared_ptr<Projection>();
+    }
+
+    Result Context::getProperty(Handle handle, const std::string& path, PropertyValue& value,
+                                const std::string& projection) const {
         std::lock_guard<std::mutex> lock(_mutex);
         ObjectRef target;
         Result result = RESULT_OK;
@@ -361,6 +454,21 @@ namespace massif { namespace api {
             return RESULT_UNSUPPORTED_TYPE;
         }
         entry->getter(target.obj.get(), value);
+
+        // The per-read name wins over the one the running handler asked for; with neither, the
+        // value stays in whatever projection its object uses.
+        const std::string& wanted = projection.empty() ? tActiveProjection : projection;
+        if ((entry->flags & PF_POSITION) && !wanted.empty()) {
+            std::shared_ptr<Projection> to = Projections::find(wanted);
+            std::shared_ptr<Projection> from = sourceProjection(target, handle);
+            if (!to) {
+                return RESULT_UNKNOWN_TYPE;
+            }
+            if (from && from->getName() != to->getName() &&
+                !reproject(value.stringValue, *from, *to)) {
+                return RESULT_UNSUPPORTED_TYPE;
+            }
+        }
 
         if (variantRest != std::string::npos) {
             Variant root;

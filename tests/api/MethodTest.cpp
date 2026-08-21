@@ -22,6 +22,7 @@
 #include "routing/RoutingResult.h"
 #include "routing/RoutingService.h"
 
+#include <chrono>
 #include <cmath>
 #include <condition_variable>
 #include <stdexcept>
@@ -710,4 +711,63 @@ void testStatics() {
 
     TEST_CHECK(context->getProperty(log, "nope", value) == RESULT_UNKNOWN_PROPERTY,
                "an unknown one is still reported");
+}
+
+/*
+ * Two objects, two slow calls: they must overlap. One worker meant a 20 s search blocked a route
+ * queued behind it, and a free-for-all pool would instead lose the order of five loadTiles on one
+ * source - which the event cannot distinguish, since it carries the result and not the call id.
+ */
+void testCallConcurrency() {
+    auto context = std::make_shared<Context>();
+    auto first = std::make_shared<TileData>(std::make_shared<BinaryData>());
+    auto second = std::make_shared<TileData>(std::make_shared<BinaryData>());
+    Handle a = NULL_HANDLE, b = NULL_HANDLE;
+    context->registerObject("tile", "a", first, "massif::TileData", a);
+    context->registerObject("tile", "b", second, "massif::TileData", b);
+
+    {
+        std::lock_guard<std::mutex> lock(slowMutex);
+        slowReleased = false;
+        slowRuns = 0;
+    }
+    context->callAsync(a, "slow", "", "slow.done");
+    context->callAsync(b, "slow", "", "slow.done");
+    {
+        // Bounded: with a single worker the second call never starts, and a suite that hangs
+        // reports nothing. Five seconds is far past the microseconds this needs.
+        std::unique_lock<std::mutex> lock(slowMutex);
+        slowCondition.wait_for(lock, std::chrono::seconds(5), []() { return slowRuns == 2; });
+    }
+    TEST_CHECK(slowRuns == 2, "calls on different objects run at the same time");
+    TEST_CHECK(context->getPendingCallCount() == 2, "and both count as pending");
+    {
+        std::lock_guard<std::mutex> lock(slowMutex);
+        slowReleased = true;
+    }
+    slowCondition.notify_all();
+    context->waitForCalls();
+    TEST_CHECK(context->getPendingCallCount() == 0, "and both finish");
+
+    // Same object: the second waits, whatever the pool has spare.
+    {
+        std::lock_guard<std::mutex> lock(slowMutex);
+        slowReleased = false;
+        slowRuns = 0;
+    }
+    context->callAsync(a, "slow", "", "slow.done");
+    context->callAsync(a, "slow", "", "slow.done");
+    {
+        std::unique_lock<std::mutex> lock(slowMutex);
+        slowCondition.wait_for(lock, std::chrono::seconds(5), []() { return slowRuns >= 1; });
+    }
+    // A worker is free - the previous pair grew the pool - so only the serialisation holds it back.
+    TEST_CHECK(slowRuns == 1, "calls on ONE object are still serialised");
+    {
+        std::lock_guard<std::mutex> lock(slowMutex);
+        slowReleased = true;
+    }
+    slowCondition.notify_all();
+    context->waitForCalls();
+    TEST_CHECK(slowRuns == 2, "and the second one did run, after the first");
 }

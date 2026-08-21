@@ -449,19 +449,35 @@ namespace massif {
             std::string event;
         };
 
-        // One worker, not a pool: the SDK's own pool needs a per-platform Task.cpp, and running
-        // async calls in submission order is what an app expects anyway.
-        void startWorker();
+        struct RunningCall {
+            Call id = NULL_CALL;
+            Handle target = NULL_HANDLE;
+            bool cancelled = false;
+        };
+
+        /**
+         * Calls on ONE object run in order; calls on different objects run in parallel.
+         *
+         * A single worker meant a 20 s search blocked a route queued behind it. A free-for-all pool
+         * would instead make five loadTiles on one source finish in an order the caller cannot
+         * predict - and the event carries the result, not the call id, so it could not tell them
+         * apart. Serialising per target keeps the order where it is observable and removes the
+         * blocking where it hurts.
+         */
+        void startWorkerIfNeeded();
         void runCalls();
         int cancelCallsLocked(Handle handle);
+        /** The first queued call whose target is idle, or _calls.end(). */
+        std::deque<AsyncCall>::iterator claimableCall();
+
+        // Four: an app's concurrent async work is a search, a route, a tile prime and a profile.
+        // More threads than that queue at the network instead.
+        static const std::size_t MAX_WORKERS = 4;
 
         std::deque<AsyncCall> _calls;
-        std::thread _worker;
+        std::vector<std::thread> _workers;
         std::condition_variable _callCondition;
-        // At most one call runs at a time, so the running one needs no container of its own.
-        Call _runningCall = NULL_CALL;
-        Handle _runningTarget = NULL_HANDLE;
-        bool _runningCancelled = false;
+        std::vector<RunningCall> _running;
         Call _callCounter = 0;
         bool _stopping = false;
         long long _resultCounter = 0;

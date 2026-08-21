@@ -34,6 +34,7 @@ void testCallArgs();
 void testCall();
 void testCallAsync();
 void testCallCancel();
+void testCallConcurrency();
 void testCollections();
 void testRouting();
 void testStatics();
@@ -274,6 +275,7 @@ int main() {
     testCall();
     testCallAsync();
     testCallCancel();
+    testCallConcurrency();
     testCollections();
     testRouting();
     testStatics();

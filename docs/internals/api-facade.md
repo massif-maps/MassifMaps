@@ -934,10 +934,38 @@ MassifApi.callAsync(source, "loadTile", "[[8467,5852,14]]", "loadTile.done");
   for a click payload — so nothing has to be destroyed by hand. A synchronous result does.
 - The target is retained for the duration, or destroying the source mid-call would leave the result
   nowhere to go.
-- **One worker thread, not a pool, and calls run in submission order.** The SDK's own
-  `CancelableThreadPool` needs `Task::operator()`, which is implemented per platform
-  (`android/native/components/Task.cpp`) and does not exist on a host build — using it would have
-  taken the test suite with it. Serial execution is also what an app expects of a queue it filled.
+#### Calls on one object run in order; calls on different objects run in parallel
+
+This was one worker, and it was wrong in a way a device made obvious: a cold `findFeatures` takes
+~20 s, and a route queued behind it waited the whole time for work that shares nothing with it.
+
+A free-for-all pool is not the answer either. Five `loadTile`s on one source would finish in an
+order the caller cannot predict — and the event carries the **result**, not the call id, so there is
+nothing to tell them apart with. Serialising per target keeps the order where it is observable and
+removes the blocking where it hurts.
+
+A worker claims the first queued call whose target has no call running. The pool is grown on demand
+up to four — most apps make no async call at all — and the measure for growing it is **distinct
+targets**, not queued calls: three loads on one source are serialised, so a second worker for them
+would only idle. Four because an app's concurrent async work is a search, a route, a tile prime and
+an elevation profile; past that they queue at the network instead.
+
+Device check, cold caches, the two started a second apart:
+
+```
+22:15:55.629  apiSearch 'Grenoble' at z14 queued as 1
+22:15:56.798  apiRoute  [[5.7249,45.1877],[5.7148,45.1916]] queued as 2
+22:15:57.342  apiRoute  1032.0 m, 72 points, 21 instructions, in 544 ms      (thread 24758)
+22:16:17.382  apiSearch 'Grenoble' -> 4 in 21753 ms                          (thread 24751)
+```
+
+The route finished while the search still had 20 s to run. The host test asserts both halves — two
+objects overlap, one object does not — and **waits with a timeout**, because a single-worker
+regression would otherwise hang the suite instead of reporting.
+
+The SDK's own `CancelableThreadPool` is still not used: it needs `Task::operator()`, implemented per
+platform (`android/native/components/Task.cpp`) and absent from a host build, which would have taken
+the test suite with it.
 
 ### Cancelling
 
@@ -1254,8 +1282,8 @@ cd scripts && python3 gen-api-tables.py
   paths take no cancellation token, so `cancelCall` prevents a call starting and prevents its
   result being delivered, and that is all it can honestly do. A `loadTile` already in flight
   finishes.
-- **The async queue is one thread.** A slow call blocks the ones behind it — the right default for
-  a queue an app filled in order, wrong for two independent sources being primed at once.
+- **The worker pool is capped at four and not configurable.** No app has asked for a different
+  number; if one does it is a property on the context, not a new verb.
 - **178 of the 724 rows have no value accessor** — every `OBJECT` (114, all of which are readable
   as a traversal step instead) and the 59 `STRUCT` types `StructCodec` does not know: vectors, maps,
   `BalloonPopupMargins`, `ClickInfo`. 65 rows have neither, and `set`/`get` on one returns

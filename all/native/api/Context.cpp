@@ -7,6 +7,8 @@
 #include "projections/Projection.h"
 #include "utils/Log.h"
 
+#include <algorithm>
+
 #include <cmath>
 #include <cstdlib>
 
@@ -135,8 +137,10 @@ namespace massif { namespace api {
             _stopping = true;
         }
         _callCondition.notify_all();
-        if (_worker.joinable()) {
-            _worker.join();
+        for (std::thread& worker : _workers) {
+            if (worker.joinable()) {
+                worker.join();
+            }
         }
     }
 
@@ -618,7 +622,7 @@ namespace massif { namespace api {
             // The target has to outlive the call, or the result has nowhere to be emitted.
             retainLocked(handle);
             _calls.push_back(pending);
-            startWorker();
+            startWorkerIfNeeded();
         }
         // notify_all, not notify_one: waitForCalls blocks on the same condition, and waking it
         // instead of the worker would hang.
@@ -626,11 +630,40 @@ namespace massif { namespace api {
         return RESULT_OK;
     }
 
-    void Context::startWorker() {
-        if (_worker.joinable() || _stopping) {
+    // Grown on demand: most apps make no async call at all, and one that makes them one at a time
+    // never needs a second thread. The measure is DISTINCT targets, not calls - three loadTiles on
+    // one source are serialised, so a second worker for them would only idle.
+    void Context::startWorkerIfNeeded() {
+        if (_stopping || _workers.size() >= MAX_WORKERS) {
             return;
         }
-        _worker = std::thread([this]() { runCalls(); });
+        std::vector<Handle> targets;
+        for (const AsyncCall& call : _calls) {
+            if (std::find(targets.begin(), targets.end(), call.target) == targets.end()) {
+                targets.push_back(call.target);
+            }
+        }
+        for (const RunningCall& running : _running) {
+            if (std::find(targets.begin(), targets.end(), running.target) == targets.end()) {
+                targets.push_back(running.target);
+            }
+        }
+        if (_workers.size() < targets.size()) {
+            _workers.push_back(std::thread([this]() { runCalls(); }));
+        }
+    }
+
+    std::deque<Context::AsyncCall>::iterator Context::claimableCall() {
+        for (auto it = _calls.begin(); it != _calls.end(); ++it) {
+            bool busy = false;
+            for (const RunningCall& running : _running) {
+                busy = busy || running.target == it->target;
+            }
+            if (!busy) {
+                return it;
+            }
+        }
+        return _calls.end();
     }
 
     void Context::runCalls() {
@@ -638,15 +671,24 @@ namespace massif { namespace api {
             AsyncCall pending;
             {
                 std::unique_lock<std::mutex> lock(_mutex);
-                _callCondition.wait(lock, [this]() { return _stopping || !_calls.empty(); });
+                // Not "a call is queued": one whose target is already busy has to keep waiting, or
+                // the per-target order this exists to preserve is lost.
+                _callCondition.wait(lock, [this]() {
+                    return _stopping || claimableCall() != _calls.end();
+                });
                 if (_stopping && _calls.empty()) {
                     return;
                 }
-                pending = _calls.front();
-                _calls.pop_front();
-                _runningCall = pending.id;
-                _runningTarget = pending.target;
-                _runningCancelled = false;
+                auto claimed = claimableCall();
+                if (claimed == _calls.end()) {
+                    continue;   // stopping, with work left that belongs to another worker
+                }
+                pending = *claimed;
+                _calls.erase(claimed);
+                RunningCall running;
+                running.id = pending.id;
+                running.target = pending.target;
+                _running.push_back(running);
             }
 
             Handle payload = NULL_HANDLE;
@@ -657,13 +699,16 @@ namespace massif { namespace api {
                 payload = NULL_HANDLE;
             }
 
-            bool cancelled;
+            bool cancelled = false;
             {
                 std::lock_guard<std::mutex> lock(_mutex);
-                cancelled = _runningCancelled;
-                _runningCall = NULL_CALL;
-                _runningTarget = NULL_HANDLE;
-                _runningCancelled = false;
+                for (auto it = _running.begin(); it != _running.end(); ++it) {
+                    if (it->id == pending.id) {
+                        cancelled = it->cancelled;
+                        _running.erase(it);
+                        break;
+                    }
+                }
             }
             // Cancelled while it ran: the work could not be stopped, but the result is dropped
             // rather than delivered to a caller that has moved on.
@@ -693,12 +738,17 @@ namespace massif { namespace api {
                 _callCondition.notify_all();
                 return true;
             }
-            if (_runningCall != call || call == NULL_CALL) {
+            if (call == NULL_CALL) {
                 return false;
             }
-            _runningCancelled = true;
+            for (RunningCall& running : _running) {
+                if (running.id == call && !running.cancelled) {
+                    running.cancelled = true;
+                    return true;
+                }
+            }
+            return false;
         }
-        return true;
     }
 
     int Context::cancelCalls(Handle handle) {
@@ -717,10 +767,13 @@ namespace massif { namespace api {
                 ++it;
             }
         }
-        // The running one, if it is this object's, keeps running but delivers nothing.
-        if (_runningCall != NULL_CALL && !_runningCancelled && _runningTarget == handle) {
-            _runningCancelled = true;
-            cancelled++;
+        // A running one, if it is this object's, keeps running but delivers nothing. Only one can
+        // be, since calls on a target are serialised, but the loop costs nothing and says so.
+        for (RunningCall& running : _running) {
+            if (running.target == handle && !running.cancelled) {
+                running.cancelled = true;
+                cancelled++;
+            }
         }
         if (cancelled) {
             _callCondition.notify_all();
@@ -730,13 +783,13 @@ namespace massif { namespace api {
 
     std::size_t Context::getPendingCallCount() const {
         std::lock_guard<std::mutex> lock(_mutex);
-        return _calls.size() + (_runningCall != NULL_CALL ? 1 : 0);
+        return _calls.size() + _running.size();
     }
 
     void Context::waitForCalls() {
         std::unique_lock<std::mutex> lock(_mutex);
         _callCondition.wait(lock, [this]() {
-            return _calls.empty() && _runningCall == NULL_CALL;
+            return _calls.empty() && _running.empty();
         });
     }
 

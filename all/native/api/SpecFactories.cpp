@@ -16,6 +16,7 @@
 #include "layers/SolidLayer.h"
 #include "layers/VectorTileLayer.h"
 #include "styles/CartoCSSStyleSet.h"
+#include "styles/CompiledStyleSet.h"
 #include "utils/DirAssetPackage.h"
 #include "vectortiles/MBVectorTileDecoder.h"
 #include "graphics/Color.h"
@@ -93,37 +94,6 @@ namespace massif { namespace api {
             return RESULT_OK;
         }
 
-        /** A vector tile decoder and the CartoCSS behind it. */
-        Result buildStyle(Context& context, const Variant& spec, ObjectRef& object,
-                          std::set<std::string>& consumed) {
-            std::string type = stringAt(spec, "type", "cartocss");
-            consumed.insert("type");
-            if (type != "cartocss") {
-                Log::Errorf("Spec: no style type '%s'", type.c_str());
-                return RESULT_UNKNOWN_TYPE;
-            }
-
-            consumed.insert("css");
-            consumed.insert("assets");
-            std::string css = stringAt(spec, "css");
-            std::string assets = stringAt(spec, "assets");
-
-            std::shared_ptr<CartoCSSStyleSet> styleSet;
-            if (assets.rfind("dir://", 0) == 0) {
-                auto package = std::make_shared<DirAssetPackage>(assets.substr(6));
-                styleSet = std::make_shared<CartoCSSStyleSet>(css, package);
-            } else {
-                if (!assets.empty()) {
-                    // zip:// needs the archive read into BinaryData, which is platform work.
-                    Log::Warnf("Spec: only dir:// asset packages are supported, ignoring '%s'", assets.c_str());
-                }
-                styleSet = std::make_shared<CartoCSSStyleSet>(css);
-            }
-            object.obj = std::make_shared<MBVectorTileDecoder>(styleSet);
-            object.cppClass = "massif::MBVectorTileDecoder";
-            return RESULT_OK;
-        }
-
         /**
          * Resolves a reference that is either a registry id or an inline spec of another kind.
          *
@@ -160,6 +130,21 @@ namespace massif { namespace api {
         Result buildSource(Context& context, const Variant& spec, ObjectRef& object,
                            std::set<std::string>& consumed) {
             return buildFromConstructor(context, "source", spec, object, consumed);
+        }
+
+        Result buildAssets(Context& context, const Variant& spec, ObjectRef& object,
+                           std::set<std::string>& consumed) {
+            return buildFromConstructor(context, "assets", spec, object, consumed);
+        }
+
+        Result buildStyleSet(Context& context, const Variant& spec, ObjectRef& object,
+                             std::set<std::string>& consumed) {
+            return buildFromConstructor(context, "styleset", spec, object, consumed);
+        }
+
+        Result buildStyle(Context& context, const Variant& spec, ObjectRef& object,
+                          std::set<std::string>& consumed) {
+            return buildFromConstructor(context, "style", spec, object, consumed);
         }
 
         Result buildLayer(Context& context, const Variant& spec, ObjectRef& object,
@@ -311,6 +296,8 @@ namespace massif { namespace api {
 
     void Spec::registerBuiltinFactories() {
         registerFactory("source", &buildSource);
+        registerFactory("assets", &buildAssets);
+        registerFactory("styleset", &buildStyleSet);
         registerFactory("style", &buildStyle);
         registerFactory("layer", &buildLayer);
         registerFactory("projection", &buildProjection);

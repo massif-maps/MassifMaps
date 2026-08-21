@@ -19,6 +19,8 @@
 
 !shared_ptr(massif::CompiledStyleSet, styles.CompiledStyleSet)
 
+
+!spec(massif::CompiledStyleSet, styleset, project, alias(assets, assetPackage), alias(name, styleName))
 %attributestring(massif::CompiledStyleSet, std::string, StyleName, getStyleName)
 %attributestring(massif::CompiledStyleSet, std::string, StyleAssetName, getStyleAssetName)
 %attributestring(massif::CompiledStyleSet, std::shared_ptr<massif::AssetPackage>, AssetPackage, getAssetPackage)

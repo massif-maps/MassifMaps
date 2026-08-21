@@ -379,7 +379,9 @@ inline spec of that kind, and it is checked against the class the caller is abou
 | kind | types |
 |---|---|
 | `source` | `http` `assets` `mbtiles` `memory-cache` `persistent-cache` `ordered` `combined` `multi` |
-| `style` | `cartocss` — inline `css`, plus an optional `dir://` asset package |
+| `assets` | `dir` — a directory of style files |
+| `styleset` | `cartocss` (inline `css`), `project` (an asset package + the `name` of one style in it) |
+| `style` | `mbvt` — a vector tile decoder over a `cartocss` or a `project` style set |
 | `layer` | `raster` `vector` `composite-vector` `hillshade` `solid` |
 | `projection` | any name in the projection registry |
 | `geometry` | `geojson` — a JSON string or the document inline, optional target `projection` |
@@ -430,16 +432,57 @@ One line per class in its `.i` says what to call it and how to spell the awkward
   defaults and `scheme` does not — and passing `scheme` now reaches the 4-argument one, which no
   hand-written factory ever exposed. Same for `HillshadeRasterTileLayer`'s `elevationDecoder`.
 
-Seventeen classes over four kinds build this way. `SpecFactories.cpp` went from 486 lines to 326,
+Twenty-one classes over seven kinds build this way. `SpecFactories.cpp` went from 486 lines to 313,
 and everything left in it is genuinely adaptive rather than boilerplate:
 
 | still hand-written | why the signature cannot say it |
 |---|---|
-| `style` | parses a `dir://` prefix, builds an asset package, wraps a style set in a decoder |
 | `projection` | a name registry lookup, not a constructor |
 | `geometry` | a GeoJSON reader, not a constructor |
 | `search` **from a layer** | the source and the decoder both come from a layer already on the map |
 | `routing` **request** | a projection by name, and a list of positions |
+
+#### The style chain, which used to be flattened
+
+`buildStyle` used to collapse three objects into one spec and support only half of them. Each is its
+own class with its own constructor, so each is now its own declaration:
+
+```
+!spec(massif::DirAssetPackage,  assets,   dir,      alias(path, dirPath))
+!spec(massif::CartoCSSStyleSet, styleset, cartocss, alias(css, cartoCSS), alias(assets, assetPackage))
+!spec(massif::CompiledStyleSet, styleset, project,  alias(assets, assetPackage), alias(name, styleName))
+!spec(massif::MBVectorTileDecoder, style,  mbvt,    alias(cartocss, cartoCSSStyleSet),
+                                                    alias(project,  compiledStyleSet))
+```
+
+```json
+{"type":"vector",
+ "source":{"type":"http","maxZoom":14,"url":"…/{z}/{x}/{y}.pbf"},
+ "style":{"type":"mbvt","project":{"type":"project",
+          "assets":{"type":"dir","path":"/sdcard/massif_style"},"name":"osm"}}}
+```
+
+**`CompiledStyleSet` had no spec form at all before**, so a style *project* — an asset package with
+several named styles in it — was unreachable, and so was `styleName`. That is the mode the demo runs
+as `--es style project`, so it was not hypothetical.
+
+The decoder's two constructors take differently-named parameters, which is what makes the choice
+unambiguous: `project` selects one, `cartocss` the other, and writing neither is `RESULT_BAD_SPEC`
+rather than a silent default. Device check — a four-level inline spec, then reading back through
+three object properties:
+
+```
+apiCreate layer:full -> handle=1048583
+apiSet layer:full:tileDecoder.compiledStyle.styleName    json=osm
+apiSet style:dec2:cartoCSSStyle.cartoCSS                 json=#water{polygon-fill:#0000ff;}
+apiSet style:dec2:compiledStyle.styleName                result=8   (RESULT_NULL_OBJECT)
+```
+
+The last line is the one that matters: `dec2` was built from a `cartocss`, so it has no compiled
+style — the overload was chosen, not both.
+
+`ZippedAssetPackage` is still not buildable: it takes `BinaryData`, the zip already read into
+memory, and a spec has no way to name a file to read.
 
 The generator reports what it could not build, the same way it reports unreachable properties:
 

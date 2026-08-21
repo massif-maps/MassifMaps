@@ -26,7 +26,7 @@
 !polymorphic_shared_ptr(massif::MBVectorTileDecoder, vectortiles.MBVectorTileDecoder)
 
 
-!spec(massif::MBVectorTileDecoder, style, cartocss)
+!spec(massif::MBVectorTileDecoder, style, mbvt, alias(cartocss, cartoCSSStyleSet), alias(project, compiledStyleSet))
 %attributeval(massif::MBVectorTileDecoder, std::vector<std::string>, StyleParameters, getStyleParameters)
 %attributeval(massif::MBVectorTileDecoder, std::vector<std::string>, StyleLayerNames, getStyleLayerNames)
 %attributestring(massif::MBVectorTileDecoder, std::shared_ptr<massif::CompiledStyleSet>, CompiledStyle, getCompiledStyleSet, setCompiledStyleSet)

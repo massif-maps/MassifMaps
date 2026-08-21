@@ -20,6 +20,8 @@
 
 !shared_ptr(massif::CartoCSSStyleSet, styles.CartoCSSStyleSet)
 
+
+!spec(massif::CartoCSSStyleSet, styleset, cartocss, alias(css, cartoCSS), alias(assets, assetPackage))
 %attributestring(massif::CartoCSSStyleSet, std::string, CartoCSS, getCartoCSS)
 %attributestring(massif::CartoCSSStyleSet, std::shared_ptr<massif::AssetPackage>, AssetPackage, getAssetPackage)
 %std_exceptions(massif::CartoCSSStyleSet::CartoCSSStyleSet)

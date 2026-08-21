@@ -22,6 +22,8 @@
 
 !polymorphic_shared_ptr(massif::DirAssetPackage, utils.DirAssetPackage)
 
+
+!spec(massif::DirAssetPackage, assets, dir, alias(path, dirPath), alias(base, baseAssetPackage))
 %attributestring(massif::DirAssetPackage, std::string, DirPath, getDirPath)
 %attributeval(massif::DirAssetPackage, %arg(std::vector<std::string>), LocalAssetNames, getLocalAssetNames)
 %std_io_exceptions(massif::DirAssetPackage::DirAssetPackage)

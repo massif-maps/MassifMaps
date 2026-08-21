@@ -671,8 +671,18 @@ public final class DemoConfig {
             "{\"type\":\"composite-vector\",\"opacity\":0.5,"
             + "\"source\":{\"type\":\"http\",\"minZoom\":0,\"maxZoom\":14,"
             + "\"url\":\"https://example.com/{z}/{x}/{y}.mvt\"},"
-            + "\"style\":{\"type\":\"cartocss\",\"css\":\"#water{polygon-fill:#0000ff;}\"}}");
+            + "\"style\":{\"type\":\"mbvt\",\"cartocss\":"
+            + "{\"type\":\"cartocss\",\"css\":\"#water{polygon-fill:#0000ff;}\"}}}");
         API_LAYER_SPECS.put("solid", "{\"type\":\"solid\",\"color\":-16776961}");
+        // A style PROJECT, which had no spec form at all before: an asset package plus the name of
+        // one style inside it.
+        API_LAYER_SPECS.put("project",
+            "{\"type\":\"vector\","
+            + "\"source\":{\"type\":\"http\",\"minZoom\":0,\"maxZoom\":14,"
+            + "\"url\":\"https://tiles.akylas.fr/data/france/{z}/{x}/{y}.pbf\"},"
+            + "\"style\":{\"type\":\"mbvt\",\"project\":{\"type\":\"project\","
+            + "\"assets\":{\"type\":\"dir\",\"path\":\"/sdcard/alpimaps_mbtiles/osm\"},"
+            + "\"name\":\"voyager\"}}}");
     }
 
     /** The spec to build, resolving a preset name if that is what was given. */

@@ -7,10 +7,16 @@
 namespace massif { namespace api {
 
     namespace {
+        // Keyed by "kind" for the SDK's own factories, and by "kind/type" for the ones a plugin
+        // adds - so registering a type never displaces the built-ins for that kind.
         std::map<std::string, Spec::Factory>& factories() {
             static std::map<std::string, Spec::Factory> registry;
             return registry;
         }
+    }
+
+    void Spec::registerFactory(const std::string& kind, const std::string& type, Factory factory) {
+        factories()[kind + "/" + type] = factory;
     }
 
     void Spec::registerFactory(const std::string& kind, Factory factory) {
@@ -96,7 +102,13 @@ namespace massif { namespace api {
             Log::Error("Spec: a spec has to be a JSON object");
             return RESULT_BAD_SPEC;
         }
-        auto it = factories().find(kind);
+        // A type-level factory wins, so a plugin's type is reached before the SDK's fallback.
+        std::string type = spec.containsObjectKey("type") ? spec.getObjectElement("type").getString()
+                                                          : std::string();
+        auto it = factories().find(kind + "/" + type);
+        if (it == factories().end()) {
+            it = factories().find(kind);
+        }
         if (it == factories().end()) {
             Log::Errorf("Spec: no kind '%s'", kind.c_str());
             return RESULT_UNKNOWN_TYPE;

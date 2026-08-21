@@ -179,8 +179,19 @@ namespace {
         TEST_CHECK(Spec::create(*context, "fake", "f", "{\"fail\":true}", bad) == RESULT_UNKNOWN_TYPE,
                    "a factory failure is propagated");
 
+        // A plugin adds a TYPE without displacing the kind's own factory, and is reached first.
+        Spec::registerFactory("fake", "plugin", &fakeFactory);
+        Handle plugin = NULL_HANDLE;
+        TEST_CHECK(Spec::create(*context, "fake", "p", "{\"type\":\"plugin\"}", plugin) == RESULT_OK,
+                   "a type-level factory is used");
+        Handle stillFallback = NULL_HANDLE;
+        TEST_CHECK(Spec::create(*context, "fake", "q", "{\"type\":\"anything\"}", stillFallback) == RESULT_OK,
+                   "and the kind's fallback still handles the rest");
+
         context->unregisterObject("fake", "a");
         context->unregisterObject("fake", "b");
+        context->unregisterObject("fake", "p");
+        context->unregisterObject("fake", "q");
     }
 
     void testHandles(const std::shared_ptr<Context>& context) {

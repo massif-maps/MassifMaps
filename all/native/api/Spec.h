@@ -37,7 +37,14 @@ namespace massif { namespace api {
                                   std::set<std::string>& consumed);
 
         /**
-         * Registers a factory for a kind. Replaces any factory already registered for it.
+         * Registers a factory for one "type" of a kind - the hook a plugin uses to ADD a type
+         * without disturbing the ones the SDK ships.
+         */
+        static void registerFactory(const std::string& kind, const std::string& type, Factory factory);
+
+        /**
+         * Registers the fallback factory for a kind, used when no type-level one matches. The
+         * SDK's own factories are registered this way because they switch on "type" internally.
          */
         static void registerFactory(const std::string& kind, Factory factory);
 

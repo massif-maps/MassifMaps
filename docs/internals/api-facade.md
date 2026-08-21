@@ -474,10 +474,10 @@ languages read well through plain interop:
 
 Real shims stay a later slice — see the gaps.
 
-### What the device found
+### What the devices found
 
-The Android path was verified on an Adreno device, and three of the four things it turned up were
-only visible there:
+Verified on an Adreno phone and the iOS simulator. Six things turned up, and only one of them was
+visible without running it:
 
 - **A layer had no projection.** Map clicks converted to lon/lat and feature clicks did not, because
   `PayloadEmitter` gives a payload the projection of the target it fires on — and a vector tile
@@ -494,9 +494,25 @@ only visible there:
   deduplicate. The compiler catching it is enough.
 - **Java cannot overload on functional interfaces.** `onFeatureClick(Handler)` and
   `onFeatureClick(ConsumingHandler)` compile, but `onFeatureClick(e -> …)` is *ambiguous* against
-  them. The consuming one is named `consumeFeatureClick`.
+  them. The consuming one is named `consumeFeatureClick`. (The only one the compiler caught.)
+- **ARC freed the Objective-C listener immediately.** The C++ side keeps the director as a raw
+  pointer, so with no strong reference on the ObjC side the block was collected the moment
+  `subscribe:` returned and the handler *silently never ran* — no crash, no warning, nothing in the
+  log. `MSFSubscription` holds it now.
+- **Nothing registered a UI dispatcher.** Every handler in this API is documented as main-thread,
+  and every one of them was running inline on the GL or tile thread that produced the event, with
+  one `Context: no UI dispatcher set, delivering inline` line to say so. The sugar owes the hop and
+  now installs it: a `UiDispatcher` director posting to the main `Looper` on Android, and a plain C
+  function calling `dispatch_async` on iOS, which needs no director because the sugar is
+  Objective-C++. Proof is the thread id in the log — Android moved from `5398 5433` to `5398 5398`,
+  iOS from `9889014` to `9919040`.
+- **A director module needs `std_string.i` even with no strings in it.**
+  `!polymorphic_shared_ptr` generates a `swigGetClassName` returning `std::string`; without the
+  typemap it comes back as a pointer and the generated Java does not compile.
 
 What the log looks like once it works:
+
+What the logs look like once it works. Android, `--es apiSugar true`:
 
 ```
 apiSugar on, map=1048577 fogRangeStart=0.800000011920929 layer=MassifLayer(1048578)
@@ -504,8 +520,18 @@ sugar map.clicked at MapPos [x=5.717578, y=45.183765, z=302.503276] type=0
 sugar feature 0 layer=landcover at=MapPos [x=5.717461, y=45.183335] name=null geojsonLen=226
 ```
 
-Handle `1048577` is generation 1, index 1. The positions are lon/lat because the map was attached
-with `eventProjection("EPSG:4326")`; the SDK's own are EPSG:3857 metres.
+iOS simulator, `xcrun simctl launch --console-pty <device> com.massifmaps.MassifDemo -apiSugar true`:
+
+```
+apiSugar on, map=1048577 fogRangeStart=0.800000 layer=MSFMassifLayer(1048578)
+sugar feature 0 layer=landcover at=[5.717181, 45.182109] merc=[636433.637688, 5650236.576489] …
+```
+
+Handle `1048577` is generation 1, index 1 — the same on both, since the encoding is the context's,
+not the platform's. `at=` is lon/lat because the map was attached with
+`eventProjection("EPSG:4326")`, and `merc=` on the same event is a **per-read** projection winning
+over the subscription's — both conversions in one handler, which is the rule the host tests assert
+and this is it running for real.
 
 `CompletableFuture` is out — minSdk is 21 and it is API 24 — so async is a callback interface, which
 is also what Kotlin wraps most cleanly. `MassifApi.isValid` / `mm_valid` exist for the sugar: a
@@ -924,9 +950,13 @@ cd scripts && python3 gen-api-tables.py
 - **The sugar has no automated tests.** It is Java and Objective-C, which the host ctest suite
   cannot link, so it is covered by the demo knob and a device run — see above for what that caught.
   Everything it calls underneath is tested.
-- **Only Android was run on a device.** The Objective-C sugar compiles and its symbols are in the
-  framework; it has not been exercised, and the iOS demo has no live-config channel
+- **iOS was exercised on the simulator, not on hardware**, and through a launch argument rather
+  than live, since the iOS demo still has no live-config channel
   ([#154](https://github.com/massif-maps/MassifMaps/issues/154)).
+- **`ClassRegistry` does not know the bridge classes.** Creating an event bridge logs
+  `Could not find class: N6massif3api14MapEventBridgeE` once per bridge: they are internal and no
+  Swig module wraps them, so the polymorphic proxy falls back to the base class - which is all the
+  caller wants anyway. Noise, not a fault.
 - **No Swift or Kotlin shims.** The interop above covers most of it; `suspend fun`, sealed event
   types and property syntax are a later slice, and Kotlin would add kotlin-stdlib to every Android
   consumer, which is a distribution decision rather than a code one.

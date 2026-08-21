@@ -75,6 +75,14 @@ public final class MapEvents {
         public double getDouble(String path, double defaultValue) {
             return MassifApi.getFloat(payload, path, defaultValue);
         }
+
+        /**
+         * A position from the payload in a named projection, when one read wants a different one
+         * from the subscription's - "EPSG:3857" for metres, say, on a handler set up for lon/lat.
+         */
+        public MapPos getPos(String path, String projection) {
+            return Values.toPos(MassifApi.getPos(payload, path, projection));
+        }
     }
 
     /** A click on the map itself. */

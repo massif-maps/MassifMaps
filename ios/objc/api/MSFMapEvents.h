@@ -42,6 +42,12 @@ NS_SWIFT_NAME(MapEvent)
 - (nullable NSString *)get:(NSString *)path;
 - (double)getDouble:(NSString *)path defaultValue:(double)defaultValue;
 
+/**
+ * A position from the payload in a named projection, when one read wants a different one from the
+ * subscription's - "EPSG:3857" for metres, say, on a handler set up for lon/lat.
+ */
+- (nullable MSFMapPos *)getPos:(NSString *)path projection:(NSString *)projection;
+
 @end
 
 /** A click on the map itself. */

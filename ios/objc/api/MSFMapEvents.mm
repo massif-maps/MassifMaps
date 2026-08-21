@@ -41,6 +41,10 @@
     return [MSFMassifApi getFloat:_payload path:path defaultValue:defaultValue];
 }
 
+- (MSFMapPos *)getPos:(NSString *)path projection:(NSString *)projection {
+    return [MSFValues posFromJson:[MSFMassifApi getPos:_payload path:path projection:projection]];
+}
+
 @end
 
 @implementation MSFMapClickEvent

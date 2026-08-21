@@ -3,7 +3,9 @@
 #include "api/Spec.h"
 #include "api/SpecBuilders.h"
 #include "api/StructCodec.h"
+#include "core/BinaryData.h"
 #include "geometry/GeoJSONGeometryReader.h"
+#include "utils/URLFileLoader.h"
 #include "projections/Projection.h"
 #include "utils/Log.h"
 
@@ -79,6 +81,43 @@ namespace massif { namespace api {
          * a binding that has coordinates at all has them in that form. This is what lets a search
          * be bounded - a request with no geometry scans the whole world at its zoom.
          */
+        /**
+         * Bytes, from a URL the SDK can already read: file://, assets:// or http(s)://.
+         *
+         * What a ZippedAssetPackage needs and a constructor cannot say - it takes the zip already
+         * in memory. One type over URLFileLoader rather than one per scheme, so a bundled asset and
+         * a downloaded style cost the same spec.
+         *
+         * Local files are enabled here: the SDK gates them because a URL can come from tile data,
+         * but a spec is written by the app, which is already naming the path. A remote URL is
+         * fetched on the CALLING thread - create() is synchronous, so build one off the UI thread.
+         */
+        Result buildData(Context&, const Variant& spec, ObjectRef& object,
+                         std::set<std::string>& consumed) {
+            std::string type = stringAt(spec, "type", "url");
+            consumed.insert("type");
+            consumed.insert("url");
+            if (type != "url") {
+                Log::Errorf("Spec: no data type '%s'", type.c_str());
+                return RESULT_UNKNOWN_TYPE;
+            }
+            std::string url = stringAt(spec, "url");
+            if (url.empty()) {
+                Log::Error("Spec: a data spec needs a \"url\"");
+                return RESULT_UNKNOWN_PROPERTY;
+            }
+            URLFileLoader loader;
+            loader.setLocalFiles(true);
+            std::shared_ptr<BinaryData> data;
+            if (!loader.load(url, data) || !data) {
+                Log::Errorf("Spec: could not read '%s'", url.c_str());
+                return RESULT_FAILED;
+            }
+            object.obj = data;
+            object.cppClass = "massif::BinaryData";
+            return RESULT_OK;
+        }
+
         Result buildFeature(Context& context, const Variant& spec, ObjectRef& object,
                             std::set<std::string>& consumed) {
             return buildFromConstructor(context, "feature", spec, object, consumed);
@@ -203,6 +242,7 @@ namespace massif { namespace api {
 
     void Spec::registerBuiltinFactories() {
         registerFactory("source", &buildSource);
+        registerFactory("data", &buildData);
         registerFactory("assets", &buildAssets);
         registerFactory("styleset", &buildStyleSet);
         registerFactory("style", &buildStyle);

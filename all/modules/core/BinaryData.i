@@ -22,6 +22,8 @@
 
 !shared_ptr(massif::BinaryData, core.BinaryData)
 
+
+!spec(massif::BinaryData, data, -)
 #ifdef SWIGCSHARP
 %rename(GetData) massif::BinaryData::data;
 #else

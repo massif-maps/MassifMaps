@@ -139,6 +139,8 @@ def parseSpec(args):
   """!spec(cppClass, kind, type, alias(key, param), default(param, value))."""
   if len(args) < 3:
     return None
+  # type "-" declares only which kind builds this class, for a hand-written factory whose objects
+  # a generated constructor still has to resolve as children.
   entry = {'cppClass': args[0], 'kind': args[1], 'type': args[2], 'aliases': {}, 'defaults': {}}
   for extra in args[3:]:
     inner = re.match(r'^(alias|default)\s*\((.*)\)$', extra.strip())
@@ -232,7 +234,12 @@ def parseParams(text):
     arg = re.sub(r'\s*=\s*.+$', '', arg).strip()             # a C++ default argument
     if not arg or arg == 'void':
       continue
-    match = re.match(r'^(.*?[\w>])\s*[&*]?\s*(\w+)$', arg)
+    # A pointer parameter is not something a spec can supply, and letting one through would drop
+    # the '*' and emit an argument of the pointed-to type - a build break waiting for the first
+    # class that has one (BinaryData(const unsigned char*, size_t)).
+    if '*' in arg:
+      return None
+    match = re.match(r'^(.*?[\w>])\s*&?\s*(\w+)$', arg)
     if not match:
       return None                                            # unnamed parameter: not buildable
     cppType = re.sub(r'^const\s+', '', match.group(1)).strip()
@@ -563,6 +570,8 @@ def emitSpecs(specs, bases, headerDirs, outPath):
   for entry in specs:
     cppClass = entry['cppClass']
     symbol = re.sub(r'\W', '_', cppClass)
+    if entry['type'] == '-':
+      continue                                               # kind mapping only, see parseSpec
     ctors = parseConstructors(cppClass, entry['headers'], headerDirs)
     usable = []
     for index, params in enumerate(sorted(ctors, key=len, reverse=True)):

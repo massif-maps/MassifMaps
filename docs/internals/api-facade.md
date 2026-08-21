@@ -379,7 +379,8 @@ inline spec of that kind, and it is checked against the class the caller is abou
 | kind | types |
 |---|---|
 | `source` | `http` `assets` `mbtiles` `memory-cache` `persistent-cache` `ordered` `combined` `multi` |
-| `assets` | `dir` — a directory of style files |
+| `data` | `url` — bytes from `file://`, `assets://` or `http(s)://` |
+| `assets` | `dir` (a directory), `zip` (a `data` archive) |
 | `geometry` | `geojson`, and `point` from a `pos` |
 | `feature` | `feature` — a `geometry` and free-form `properties` |
 | `styleset` | `cartocss` (inline `css`), `project` (an asset package + the `name` of one style in it) |
@@ -434,7 +435,7 @@ One line per class in its `.i` says what to call it and how to spell the awkward
   defaults and `scheme` does not — and passing `scheme` now reaches the 4-argument one, which no
   hand-written factory ever exposed. Same for `HillshadeRasterTileLayer`'s `elevationDecoder`.
 
-Twenty-three classes over nine kinds build this way. `SpecFactories.cpp` went from 486 lines to 313,
+Twenty-four classes over nine kinds build this way. `SpecFactories.cpp` went from 486 lines to 313,
 and everything left in it is genuinely adaptive rather than boilerplate:
 
 | still hand-written | why the signature cannot say it |
@@ -483,8 +484,24 @@ apiSet style:dec2:compiledStyle.styleName                result=8   (RESULT_NULL
 The last line is the one that matters: `dec2` was built from a `cartocss`, so it has no compiled
 style — the overload was chosen, not both.
 
-`ZippedAssetPackage` is still not buildable: it takes `BinaryData`, the zip already read into
-memory, and a spec has no way to name a file to read.
+A zipped style project works the same way, with one more level: the archive is `BinaryData`, which
+a constructor cannot describe either — it is bytes, not a path. A `data` kind reads them through the
+SDK's own `URLFileLoader`, so `file://`, `assets://` and `http(s)://` all cost the same spec:
+
+```json
+{"type":"mbvt","project":{"type":"project","name":"streets",
+  "assets":{"type":"zip","data":{"type":"url","url":"file:///sdcard/massif_style.zip"}}}}
+```
+
+Two things worth knowing about it. **Local files are enabled** — the SDK gates them because a URL
+can arrive inside tile data, but a spec is written by the app, which is already naming the path.
+And **a remote URL is fetched on the calling thread**, because `create` is synchronous; build one
+off the UI thread. A URL that does not resolve is `RESULT_FAILED` with the reason logged.
+
+`BinaryData` declares `!spec(massif::BinaryData, data, -)`. The `-` type means *kind mapping only*:
+nothing builds from it, but a generated constructor taking a `shared_ptr<BinaryData>` now knows
+which kind resolves its child. `MBVectorTileDecoder` needed the same trick before its own
+constructors became buildable.
 
 The generator reports what it could not build, the same way it reports unreachable properties:
 

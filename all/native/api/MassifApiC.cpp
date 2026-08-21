@@ -29,6 +29,7 @@ namespace {
     static_assert(MM_UNKNOWN_TYPE == RESULT_UNKNOWN_TYPE, "MM_UNKNOWN_TYPE");
     static_assert(MM_UNKNOWN_METHOD == RESULT_UNKNOWN_METHOD, "MM_UNKNOWN_METHOD");
     static_assert(MM_FAILED == RESULT_FAILED, "MM_FAILED");
+    static_assert(MM_REJECTED == RESULT_REJECTED, "MM_REJECTED");
 
     Context* resolve(mm_ctx ctx) {
         return static_cast<Context*>(ctx);
@@ -99,6 +100,7 @@ const char* mm_result_name(int result) {
     case MM_UNKNOWN_TYPE:       return "MM_UNKNOWN_TYPE";
     case MM_UNKNOWN_METHOD:     return "MM_UNKNOWN_METHOD";
     case MM_FAILED:             return "MM_FAILED";
+    case MM_REJECTED:           return "MM_REJECTED";
     case MM_BAD_CONTEXT:        return "MM_BAD_CONTEXT";
     case MM_BUFFER_TOO_SMALL:   return "MM_BUFFER_TOO_SMALL";
     default:                    return "MM_UNKNOWN";
@@ -173,6 +175,14 @@ int mm_set_double(mm_ctx ctx, mm_handle handle, const char* path, double value) 
 
 int mm_set_string(mm_ctx ctx, mm_handle handle, const char* path, const char* value) {
     return write(ctx, handle, path, PropertyValue::ofString(text(value)));
+}
+
+int mm_set_object(mm_ctx ctx, mm_handle handle, const char* path, mm_handle value) {
+    Context* context = resolve(ctx);
+    if (!context) {
+        return MM_BAD_CONTEXT;
+    }
+    return context->setObjectProperty(handle, text(path), value);
 }
 
 int mm_get_bool(mm_ctx ctx, mm_handle handle, const char* path, int* value) {

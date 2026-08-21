@@ -457,7 +457,12 @@ namespace massif { namespace api {
         }
         // Unlocked: loadTile does network I/O, and a method reaching back into the context - to
         // register its result, which every object-returning one does - would deadlock.
-        return invoke(*this, obj.get(), args, result);
+        try {
+            return invoke(*this, obj.get(), args, result);
+        } catch (const std::exception& ex) {
+            Log::Errorf("Context::call: '%s' threw: %s", method.c_str(), ex.what());
+            return RESULT_REJECTED;
+        }
     }
 
     Result Context::callHandle(Handle handle, const std::string& method,
@@ -778,7 +783,14 @@ namespace massif { namespace api {
         if (!entry->getter) {
             return RESULT_UNSUPPORTED_TYPE;
         }
-        entry->getter(target.obj.get(), value);
+        // Guarded like every other call into the SDK: an accessor is free to validate, and an
+        // exception crossing a binding boundary kills the process.
+        try {
+            entry->getter(target.obj.get(), value);
+        } catch (const std::exception& ex) {
+            Log::Errorf("Context::getProperty: '%s' threw: %s", path.c_str(), ex.what());
+            return RESULT_REJECTED;
+        }
 
         // The per-read name wins over the one the running handler asked for; with neither, the
         // value stays in whatever projection its object uses.
@@ -824,8 +836,54 @@ namespace massif { namespace api {
             return RESULT_UNSUPPORTED_TYPE;
         }
         // The generated thunk calls the class' own setter, so the option-changed notification and
-        // therefore the redraw granularity are exactly those of a direct call.
-        entry->setter(target.obj.get(), value);
+        // therefore the redraw granularity are exactly those of a direct call - INCLUDING its
+        // validation. Options::setZoomRange and friends throw on a value they will not take, and
+        // an exception crossing into Java or Objective-C kills the process.
+        try {
+            entry->setter(target.obj.get(), value);
+        } catch (const std::exception& ex) {
+            Log::Errorf("Context::setProperty: '%s' rejected: %s", path.c_str(), ex.what());
+            return RESULT_REJECTED;
+        }
+        return RESULT_OK;
+    }
+
+    Result Context::setObjectProperty(Handle handle, const std::string& path, Handle value) {
+        std::lock_guard<std::mutex> lock(_mutex);
+        ObjectRef target;
+        Result result = RESULT_OK;
+        const PropertyEntry* entry = lookup(handle, path, target, result);
+        if (!entry) {
+            return result;
+        }
+        if (entry->flags & PF_READONLY) {
+            return RESULT_READONLY;
+        }
+        if (entry->type != PT_OBJECT || !entry->objectSetter) {
+            return RESULT_UNSUPPORTED_TYPE;
+        }
+
+        ObjectRef assigned;
+        if (value != NULL_HANDLE) {
+            const Slot* slot = resolve(value);
+            if (!slot) {
+                return RESULT_BAD_HANDLE;
+            }
+            // Checked BEFORE the cast, which is from shared_ptr<void> and would otherwise be
+            // undefined for the wrong class.
+            if (!isSubclassOf(slot->cppClass, entry->objectClass)) {
+                return RESULT_UNKNOWN_CLASS;
+            }
+            assigned.obj = slot->obj;
+            assigned.cppClass = slot->cppClass;
+        }
+        // Options::setBaseProjection throws on null, and it is not the only setter that validates.
+        try {
+            entry->objectSetter(target.obj.get(), assigned);
+        } catch (const std::exception& ex) {
+            Log::Errorf("Context::setObjectProperty: '%s' rejected: %s", path.c_str(), ex.what());
+            return RESULT_REJECTED;
+        }
         return RESULT_OK;
     }
 

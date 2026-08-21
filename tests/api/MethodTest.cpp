@@ -11,6 +11,7 @@
 #include "geometry/PointGeometry.h"
 
 #include <condition_variable>
+#include <stdexcept>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -73,6 +74,11 @@ namespace {
 
     Result fails(Context&, void*, const CallArgs&, PropertyValue&) {
         return RESULT_FAILED;
+    }
+
+    /** Throws rather than returning a code - the SDK's own setters and methods do validate. */
+    Result throws(Context&, void*, const CallArgs&, PropertyValue&) {
+        throw std::runtime_error("refused");
     }
 
     /** Returns a flat array of numbers, so the bulk channel is exercised. */
@@ -188,6 +194,7 @@ void testCall() {
     Methods::registerMethod("massif::TileData", "fails", &fails);
     Methods::registerMethod("massif::TileData", "doubles", &doubles);
     Methods::registerMethod("massif::TileData", "slow", &slow);
+    Methods::registerMethod("massif::TileData", "throws", &throws);
     Methods::registerMethod("massif::Geometry", "onBase", &onBase);
 
     auto context = std::make_shared<Context>();
@@ -210,6 +217,9 @@ void testCall() {
                "and arguments that do not fit the method");
     TEST_CHECK(context->call(target, "fails", "", value) == RESULT_FAILED,
                "a method that fails says so");
+    // An exception crossing into Java or Objective-C kills the process, so it stops here.
+    TEST_CHECK(context->call(target, "throws", "", value) == RESULT_REJECTED,
+               "a method that throws is caught, not propagated");
 
     // A method registered on a base is callable on a subclass, without being registered again.
     Handle point = registerPoint(context, "p");

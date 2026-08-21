@@ -50,6 +50,7 @@ public class MassifException extends RuntimeException {
         case 10: return "unknown type";
         case 11: return "unknown method";
         case 12: return "failed";
+        case 13: return "rejected by the SDK";
         default: return "result " + result;
         }
     }

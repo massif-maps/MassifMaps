@@ -68,6 +68,7 @@ typedef void* mm_ctx;
 #define MM_UNKNOWN_TYPE      10  /* no factory builds that "type", or no such projection */
 #define MM_UNKNOWN_METHOD    11
 #define MM_FAILED            12  /* it ran and could not produce a result */
+#define MM_REJECTED          13  /* the SDK's own setter refused the value */
 
 #define MM_BAD_CONTEXT      100  /* a null or unknown mm_ctx */
 #define MM_BUFFER_TOO_SMALL 101  /* ask with a null buffer first, then allocate */
@@ -155,6 +156,15 @@ MM_API int mm_set_long(mm_ctx ctx, mm_handle handle, const char* path, int64_t v
 MM_API int mm_set_double(mm_ctx ctx, mm_handle handle, const char* path, double value);
 /** Also how a struct is written: a position is "[x,y]" or "[x,y,z]", a range "[min,max]". */
 MM_API int mm_set_string(mm_ctx ctx, mm_handle handle, const char* path, const char* value);
+
+/**
+ * Points an object property at another registered object - a layer's data source, a decoder's
+ * style. MM_NULL_HANDLE clears it.
+ *
+ * The value's class is checked against the property's first, so pointing a style property at a
+ * source is MM_UNKNOWN_CLASS rather than undefined behaviour.
+ */
+MM_API int mm_set_object(mm_ctx ctx, mm_handle handle, const char* path, mm_handle value);
 
 MM_API int mm_get_bool(mm_ctx ctx, mm_handle handle, const char* path, int* value);
 MM_API int mm_get_long(mm_ctx ctx, mm_handle handle, const char* path, int64_t* value);

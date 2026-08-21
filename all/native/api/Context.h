@@ -54,14 +54,15 @@ namespace massif {
         RESULT_UNKNOWN_CLASS,    // the object's class declares no properties
         RESULT_UNKNOWN_PROPERTY, // dropped with a warning by callers that tolerate it
         RESULT_READONLY,
-        RESULT_UNSUPPORTED_TYPE, // STRUCT, and writing an OBJECT, until their accessors land
+        RESULT_UNSUPPORTED_TYPE, // a type with no accessor - a STRUCT outside CODEC_TYPES
         RESULT_DUPLICATE_ID,
         RESULT_NOT_TRAVERSABLE,  // a dotted path crossed something that is not an OBJECT
         RESULT_NULL_OBJECT,      // an OBJECT property on the way was not set
         RESULT_BAD_SPEC,         // not a JSON object, or it does not parse
         RESULT_UNKNOWN_TYPE,     // no factory builds that "type"
         RESULT_UNKNOWN_METHOD,
-        RESULT_FAILED            // the method ran and could not produce a result
+        RESULT_FAILED,           // the method ran and could not produce a result
+        RESULT_REJECTED          // the SDK's own setter refused the value, e.g. a null it needs
     };
 
     /**
@@ -167,6 +168,21 @@ namespace massif {
          * change reaches the renderer exactly as a direct call would.
          */
         Result setProperty(Handle handle, const std::string& path, const PropertyValue& value);
+
+        /**
+         * Points an object property at another registered object - a layer's data source, a
+         * decoder's style, a cache's inner source.
+         *
+         * The value's registered class is checked against the property's before anything is cast,
+         * because the generated thunk casts from a type-erased pointer. A class the table does not
+         * know is not a subclass of anything, so the check fails closed.
+         *
+         * @param value The object to point at, or NULL_HANDLE to clear the property.
+         * @return RESULT_UNSUPPORTED_TYPE when the property is not an object or has no setter,
+         *         RESULT_BAD_HANDLE when the value is stale, RESULT_UNKNOWN_CLASS when it is the
+         *         wrong kind of object.
+         */
+        Result setObjectProperty(Handle handle, const std::string& path, Handle value);
 
         /**
          * Runs a method on an object.

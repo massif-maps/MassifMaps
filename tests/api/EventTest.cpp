@@ -24,14 +24,14 @@ namespace {
         bool consumeResult = false;
     };
 
-    bool recordingHandler(void* userData, std::uint32_t, const char* event, std::uint32_t payload) {
+    int recordingHandler(void* userData, std::uint32_t, const char* event, std::uint32_t payload) {
         Record* record = static_cast<Record*>(userData);
         record->calls.push_back(std::string(event) + ":" + std::to_string(payload));
         return record->consumeResult;
     }
 
     /** Removes another subscription from inside a dispatch, which is the crash-prone case. */
-    bool removingHandler(void* userData, std::uint32_t, const char* event, std::uint32_t) {
+    int removingHandler(void* userData, std::uint32_t, const char* event, std::uint32_t) {
         Record* record = static_cast<Record*>(userData);
         record->calls.push_back(std::string("remover:") + event);
         record->context->unsubscribe(record->toRemove);

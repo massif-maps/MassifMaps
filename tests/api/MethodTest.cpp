@@ -124,7 +124,7 @@ namespace {
         int count = 0;
     };
 
-    bool receivingHandler(void* userData, std::uint32_t, const char*, std::uint32_t payload) {
+    int receivingHandler(void* userData, std::uint32_t, const char*, std::uint32_t payload) {
         Received* received = static_cast<Received*>(userData);
         received->payload = payload;
         received->count++;

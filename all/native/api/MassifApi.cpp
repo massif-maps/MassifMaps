@@ -1,4 +1,5 @@
 #include "api/MassifApi.h"
+#include "api/Builtins.h"
 #include "api/Spec.h"
 #include "api/MapEventBridge.h"
 #include "api/Methods.h"
@@ -23,11 +24,7 @@ namespace massif { namespace api {
     }
 
     int MassifApi::create(const std::string& kind, const std::string& objectId, const std::string& json) {
-        // Registered here rather than at static-init time: Spec itself must not depend on the
-        // factories, or a test cannot exercise create() without linking every constructor.
-        static bool registered = (Spec::registerBuiltinFactories(), true);
-        (void)registered;
-
+        registerBuiltins();
         Handle handle = NULL_HANDLE;
         Result result = Spec::create(*Context::GetDefault(), kind, objectId, json, handle);
         if (result != RESULT_OK) {
@@ -54,10 +51,10 @@ namespace massif { namespace api {
             return registry;
         }
 
-        bool dispatchToListener(void* userData, std::uint32_t target, const char* event,
-                                std::uint32_t payload) {
+        int dispatchToListener(void* userData, std::uint32_t target, const char* event,
+                               std::uint32_t payload) {
             auto listener = static_cast<EventListener*>(userData);
-            return listener->onEvent(static_cast<int>(target), event, static_cast<int>(payload));
+            return listener->onEvent(static_cast<int>(target), event, static_cast<int>(payload)) ? 1 : 0;
         }
     }
 
@@ -179,13 +176,6 @@ namespace massif { namespace api {
     }
 
     namespace {
-        // Registered on first use, for the same reason the spec factories are: the registry
-        // itself must not drag in every class that has a method.
-        void ensureMethods() {
-            static bool registered = (Methods::registerBuiltins(), true);
-            (void)registered;
-        }
-
         std::string describe(const std::string& method, Result result) {
             return "Cannot call '" + method + "' (result " + std::to_string(result) +
                    "), see the log";
@@ -193,7 +183,7 @@ namespace massif { namespace api {
     }
 
     int MassifApi::call(int handle, const std::string& method, const std::string& argsJson) {
-        ensureMethods();
+        registerBuiltins();
         Handle result = NULL_HANDLE;
         Result called = Context::GetDefault()->callHandle(static_cast<Handle>(handle), method,
                                                           argsJson, result);
@@ -205,7 +195,7 @@ namespace massif { namespace api {
 
     int MassifApi::callAsync(int handle, const std::string& method, const std::string& argsJson,
                              const std::string& event) {
-        ensureMethods();
+        registerBuiltins();
         Call call = NULL_CALL;
         Result queued = Context::GetDefault()->callAsync(static_cast<Handle>(handle), method,
                                                          argsJson, event, &call);

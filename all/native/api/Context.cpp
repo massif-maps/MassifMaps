@@ -388,8 +388,8 @@ namespace massif { namespace api {
                 }
             }
             ScopedProjection active(dispatch.projection);
-            bool result = dispatch.handler(dispatch.userData, handle, event.c_str(), payload);
-            if (dispatch.consume && result) {
+            int result = dispatch.handler(dispatch.userData, handle, event.c_str(), payload);
+            if (dispatch.consume && result != 0) {
                 return true;
             }
         }

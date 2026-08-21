@@ -16,8 +16,8 @@ Design discussion and the full plan live in
 table with its base-class chain, the handle table, the registry, `set`/`get`, dotted path
 traversal, `create`/`destroy` from JSON specs, events with a chosen delivery thread and real map
 payloads, per-read and per-subscription projections, `call`/`callAsync` with binary and bulk
-results, and minimal Java and Objective-C bindings.** The C ABI is the next slice. See
-[Known gaps](#known-gaps).
+results, the flat C ABI, and minimal Java and Objective-C bindings.** The closed sugar layer over
+the ABI is the next slice. See [Known gaps](#known-gaps).
 
 ## Why a facade at all
 
@@ -30,12 +30,13 @@ NativeScript or WASM without paying for JNI or a per-class binding.
 ## Six verbs
 
 ```c
-mm_obj create (mm_ctx, const char* kind, const char* id, const char* json);
-int    destroy(mm_ctx, const char* kind, const char* id);
-int    set    (mm_obj target, const char* path, /* typed value */);
-int    get    (mm_obj target, const char* path, /* out */);
-int    call   (mm_obj target, const char* method, const char* json, char** out);
-int    on     (mm_obj target, const char* event, mm_handler h, const char* optsJson, void* ud);
+int mm_create(mm_ctx, const char* kind, const char* id, const char* json, mm_handle* out);
+int mm_destroy(mm_ctx, const char* kind, const char* id);
+int mm_set_double(mm_ctx, mm_handle, const char* path, double value);
+int mm_get_double(mm_ctx, mm_handle, const char* path, double* value);
+int mm_call(mm_ctx, mm_handle, const char* method, const char* args_json, mm_handle* result);
+int mm_on(mm_ctx, mm_handle, const char* event, mm_handler, void* ud, const char* opts_json,
+          mm_subscription* out);
 ```
 
 Everything else is **data**: a layer is `create("layer", …)`, a reorder is `set(layer,"index",2)`, a
@@ -326,11 +327,73 @@ Two rules, both checked on a device:
   *different* spec under that id is refused, never a silent replace. Comparison is on
   `Variant::toString()`, which sorts object keys, so writing order does not matter.
 
+## The C ABI
+
+`all/native/api/MassifApiC.h` is the flat surface NativeScript, React Native, a WASM build and any
+other FFI bind to. No C++ types, no exceptions, no ownership rules beyond the ones the header
+states. It compiles as C99, C11 and C17 — checked, not assumed.
+
+```c
+mm_ctx ctx = mm_context_default();
+mm_handle source;
+mm_create(ctx, "source", "osm", "{\"type\":\"http\",\"url\":\"…\"}", &source);
+
+mm_handle tile;
+mm_call(ctx, source, "loadTile", "[[8467,5852,14]]", &tile);
+size_t size; mm_data_size(ctx, tile, "data", &size);
+mm_data_copy(ctx, tile, "data", buffer, size, NULL);
+mm_destroy_handle(ctx, tile);
+```
+
+**29 entry points, six concepts.** The count grows with *types* — a scalar setter per C type, a
+size/copy pair per bulk shape — never with features. A new source type is a spec factory, a new
+option a table row, a new event a bridge, a new method a table row. None of them touches this
+header, which is what makes an ABI version worth having.
+
+Conventions, each chosen because a binding author would otherwise get it wrong:
+
+- **Everything returns `int`.** 0..99 mirror `massif::api::Result` one for one, kept in step by
+  `static_assert` rather than by a translation table someone forgets. 100 and above are ABI-only:
+  `MM_BAD_CONTEXT`, `MM_BUFFER_TOO_SMALL`. `mm_result_name` gives a readable name so a binding does
+  not keep its own copy of the list.
+- **Handles are `uint32_t`**, which is also a JavaScript number — no BigInt anywhere.
+- **Every out-param is optional.** A caller that only wants the result code passes null.
+- **A null `const char*` is an empty string**, so nothing has to carry `""` just to pass nothing.
+- **Two-call buffer protocol** for strings and blobs: ask with a null buffer, allocate, ask again.
+  A short buffer is `MM_BUFFER_TOO_SMALL` with the needed size filled in — refused, never
+  truncated, and the retry costs one call rather than two.
+- **A null `mm_ctx` is `MM_BAD_CONTEXT` everywhere**, not a silent fallback to the default. A
+  binding that forgot to fetch it finds out on the first call.
+- **`mm_on` takes its options as JSON**, not as parameters — delivery thread, consume, coalesce,
+  projection. That is the invariant applied to the ABI's own shape: a new option never changes a
+  signature. Each key is read only when present; `getObjectElement` on a missing key returns
+  `"null"`, which would otherwise look like a projection nobody has heard of.
+
+Two things that had to change underneath it:
+
+- **`EventHandler` now returns `int`, not `bool`.** It IS `mm_handler` — identical types, so a C
+  handler is passed straight through. Casting between them would have been undefined behaviour, and
+  wrapping would have meant a trampoline whose lifetime the ABI cannot track, since a subscription
+  can also die with its target.
+- **`PropertyValue` coerces text both ways.** `mm_set_string(h, "rangeStart", "3")` wrote **0**:
+  `asDouble` did not parse a string. A binding whose only type is text — a C caller, a URL query, a
+  scripting language — would silently write zero over a real value. `asDouble`/`asLong` parse now,
+  `asBool` understands `"false"`/`"no"`/`"0"` (which `strtod` would have made true), and `asString`
+  renders a number so the reverse direction stops writing an empty string. Garbage still reads as 0,
+  the same as every other unrepresentable conversion here.
+
+**The Release build hid every one of them.** `scripts/android/version-script` exported `Java_*`,
+`CSharp_*` and `SWIG*` and nothing else, so the ABI was present in a debug build and gone from the
+shipped library. `mm_*` is in the list now. Verified with `llvm-nm --dynamic` on the arm64 `.so` and
+`nm -g` on the iOS `.a`: 29 symbols on both. Watch for the stale-artifact trap while checking —
+`build/intermediates/cmake/debug/obj/` holds an old `.so` that reports zero.
+
 ## The bindings
 
 `MassifApi` (`all/native/api/MassifApi.h`, wrapped by `all/modules/api/MassifApi.i`) is the
-verification surface, not the final one: static methods, typed `set`/`get` per scalar kind, and a
-result code rather than an exception.
+verification surface for the object-oriented bindings, not the final one: static methods, typed
+`set`/`get` per scalar kind, and a result code rather than an exception. The C ABI above is the one
+that will outlive it.
 
 Both generators picked the new module up **with no change** — a new `.i` directory is found by the
 directory walk. Two platform details did need attention:
@@ -664,7 +727,9 @@ per-read argument, the per-subscription default and its expiry when the handler 
 path, and the non-finite refusal — and the call layer: argument decoding and its refusals, the
 base-chain lookup, result ownership and destroy, the binary channel, and an async result arriving
 as an event, failing as a payload of 0, and queueing in order, the flat numeric channel, and
-cancellation - queued, running, by target, and dying with the target. 227 checks.
+cancellation - queued, running, by target, and dying with the target - and the C ABI: the two-call
+buffer protocol, the option JSON, out-params being optional, and a null context being refused rather
+than dereferenced. 293 checks.
 Two things keep it small on purpose:
 the property table takes the address of **every** accessor thunk, so a full table needs the full
 SDK to link — the tests generate a reduced one from an explicit module list
@@ -715,9 +780,13 @@ cd scripts && python3 gen-api-tables.py
 
 ## Known gaps
 
-- **The C ABI does not exist.** Every verb does: `create`, `destroy`, `set`, `get`, `call`,
-  `callAsync`, `on`/`off`. The remaining slices are in
+- **No closed sugar layer, and no binding uses the C ABI yet.** The ABI is exercised by the host
+  tests, not by NativeScript or React Native. The per-platform sugar over it - the ~30 methods that
+  will not grow - is the next slice, in
   [#146](https://github.com/massif-maps/MassifMaps/issues/146).
+- **One context.** `mm_context_default` is the only one; `mm_ctx` is a parameter everywhere so that
+  a second isolated world can be added without an ABI break, but nothing creates one. A WASM module
+  instance already has its own, since it has its own linear memory.
 - **The bulk numeric channel is doubles only.** Positions, colours or integers arriving in bulk
   would each want their own accessor and their own typemap per language. Nothing needs one yet.
 - **The method table is hand-registered.** Unlike properties, methods are not declared by a macro

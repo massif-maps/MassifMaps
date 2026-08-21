@@ -42,11 +42,14 @@ namespace massif { namespace api {
 
     /**
      * Delivered on the thread the subscription asked for.
-     * @return True when the handler consumed the event, stopping it reaching later handlers.
+     *
+     * int rather than bool because this typedef IS the C ABI's mm_handler - identical types, so
+     * a C handler is passed straight through with no trampoline to keep alive.
+     * @return Non-zero when the handler consumed the event, stopping it reaching later handlers.
      *         Only meaningful for a subscription that asked to consume.
      */
-    typedef bool (*EventHandler)(void* userData, std::uint32_t target, const char* event,
-                                 std::uint32_t payload);
+    typedef int (*EventHandler)(void* userData, std::uint32_t target, const char* event,
+                                std::uint32_t payload);
 
     /**
      * Everything dispatch needs about one subscription, resolved just before the handler runs.

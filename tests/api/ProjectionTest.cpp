@@ -44,7 +44,7 @@ namespace {
         std::string perRead;   // asked for explicitly inside the handler, when set
     };
 
-    bool readingHandler(void* userData, std::uint32_t, const char*, std::uint32_t) {
+    int readingHandler(void* userData, std::uint32_t, const char*, std::uint32_t) {
         Seen* seen = static_cast<Seen*>(userData);
         PropertyValue value;
         seen->context->getProperty(seen->target, "bounds", value, seen->perRead);

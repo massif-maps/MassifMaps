@@ -27,6 +27,9 @@ set(TEST_SDK_SOURCES
   # Methods.cpp is the registry; MethodImpls.cpp holds the SDK's own methods and is deliberately
   # NOT here - it needs TileDataSource and the hillshade layer. The tests register their own.
   "${SDK_BASE_DIR}/all/native/api/Methods.cpp"
+  # MassifApiC.cpp is the flat ABI; Builtins.cpp is NOT here - it pulls in every source and layer,
+  # so CAbiTest.cpp defines registerBuiltins() itself over a handful of classes.
+  "${SDK_BASE_DIR}/all/native/api/MassifApiC.cpp"
   "${SDK_BASE_DIR}/all/native/core/BinaryData.cpp"
   "${SDK_BASE_DIR}/all/native/datasources/components/TileData.cpp"
   "${SDK_BASE_DIR}/all/native/projections/Projection.cpp"
@@ -87,6 +90,7 @@ add_executable(api_tests
   StructCodecTest.cpp
   ProjectionTest.cpp
   MethodTest.cpp
+  CAbiTest.cpp
   "${TEST_TABLE_DIR}/PropertyTable.inc"
   ${TEST_SDK_SOURCES})
 

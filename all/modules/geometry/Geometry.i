@@ -24,6 +24,9 @@
 %attributeval(massif::Geometry, massif::MapPos, CenterPos, getCenterPos)
 !standard_equals(massif::Geometry);
 
+!enum(massif::GeometryType::GeometryType)
+%attribute(massif::Geometry, massif::GeometryType::GeometryType, Type, getType)
+
 %include "geometry/Geometry.h"
 
 !value_template(std::vector<std::shared_ptr<massif::Geometry> >, geometry.GeometryVector)

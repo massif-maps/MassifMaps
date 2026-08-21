@@ -26,6 +26,8 @@ namespace massif {
         virtual ~LineGeometry();
         
         virtual MapPos getCenterPos() const;
+
+        virtual GeometryType::GeometryType getType() const { return GeometryType::GEOMETRY_TYPE_LINE; }
     
         /**
          * Returns the list of of map positions defining the line.

@@ -23,6 +23,8 @@ namespace massif {
          */
         explicit MultiLineGeometry(const std::vector<std::shared_ptr<LineGeometry> >& geometries);
         virtual ~MultiLineGeometry();
+
+        virtual GeometryType::GeometryType getType() const { return GeometryType::GEOMETRY_TYPE_MULTILINE; }
         
         /**
          * Returns the line geometry at the specified index. Index must be between 0 and getGeometryCount (exclusive)

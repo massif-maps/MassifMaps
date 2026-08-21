@@ -369,6 +369,39 @@ where the handler is skipped but the payload still has to be released.
 `retain`/`release` are on `Context` and are what the C ABI exposes for a handler that wants to keep
 a payload beyond its call.
 
+## Event payloads
+
+A payload is a registered object, so **most of a payload costs no payload-specific code**. A
+vector-tile click carries a `VectorTileClickInfo`, and its `%attribute` declarations are already in
+the generated table:
+
+| path | where it comes from |
+|---|---|
+| `featureId`, `featureLayerName`, `clickType`, `featurePosIndex` | the generated table |
+| `clickPos`, `featureClickPos` | the struct codec, as `[x,y,z]` |
+| `feature.geometry.type` | traversal, plus `Geometry::getType` |
+| `feature.properties` | the struct codec — `Variant` is a codec type, so the whole bag is JSON |
+
+`Geometry::getType` is a **new SDK method**, not a facade one. There was no way to tell a
+MultiPoint from a Point except a downcast, or — from a scripting binding — matching on the
+wrapper's class name, which is what a real NativeScript app was reduced to. Declared as an
+attribute it appears in the table automatically, and the object API gains it too.
+
+That is the pattern for the rest: **the derived values a payload needs are SDK gaps, and fixing
+them there gives the facade the path for free.** What is still missing:
+
+- `properties.<key>` — reading one key without materialising the bag needs the path walk to
+  continue *into* a `Variant`.
+- `geometryGeoJSON` — `GeoJSONGeometryWriter` exists; it needs wiring with the source projection
+  preset, or every binding serialises it itself.
+- a MultiPoint-aware `featurePos` — `getFeatureClickPos()` documents that it does **not** cover the
+  index case.
+- a per-subscription projection, so positions arrive converted instead of every binding repeating
+  the `toWgs84`/`fromWgs84` chain.
+
+And nothing is wired to a real SDK event yet: `emit` is tested, but no click or tile listener calls
+it.
+
 ## Tests
 
 `tests/` is a host-native binary over the parts that link without the renderer — see

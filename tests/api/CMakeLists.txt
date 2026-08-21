@@ -22,7 +22,16 @@ set(TEST_MODULES
   # For call/getData: TileData is the lightest class with a BinaryData property.
   "${SDK_BASE_DIR}/all/modules/datasources/components/TileData.i"
   "${SDK_BASE_DIR}/all/modules/core/BinaryData.i"
+  # For routing: a request, a result and the service base need only a projection. The concrete
+  # Valhalla services need sqlite and the routing library and stay out - see ../README.md.
+  "${SDK_BASE_DIR}/all/modules/routing/RoutingService.i"
+  "${SDK_BASE_DIR}/all/modules/routing/RoutingRequest.i"
+  "${SDK_BASE_DIR}/all/modules/routing/RoutingResult.i"
+  "${SDK_BASE_DIR}/all/modules/routing/RoutingInstruction.i"
 )
+
+# The routing modules are behind this, so the generator and the compile have to agree on it.
+set(TEST_DEFINES "_MASSIF_ROUTING_SUPPORT")
 
 # The SDK sources those modules' classes need. Keep this short: a case that needs a long list is a
 # case that belongs behind a device check.
@@ -38,6 +47,11 @@ set(TEST_SDK_SOURCES
   # GeometryMethods.cpp is the light half of the built-ins - it needs nothing but the geometry
   # classes, which is why it was split out of MethodImpls.cpp.
   "${SDK_BASE_DIR}/all/native/api/GeometryMethods.cpp"
+  "${SDK_BASE_DIR}/all/native/api/RoutingMethods.cpp"
+  "${SDK_BASE_DIR}/all/native/routing/RoutingService.cpp"
+  "${SDK_BASE_DIR}/all/native/routing/RoutingRequest.cpp"
+  "${SDK_BASE_DIR}/all/native/routing/RoutingResult.cpp"
+  "${SDK_BASE_DIR}/all/native/routing/RoutingInstruction.cpp"
   "${SDK_BASE_DIR}/all/native/geometry/VectorTileFeatureCollection.cpp"
   # MassifApiC.cpp is the flat ABI; Builtins.cpp is NOT here - it pulls in every source and layer,
   # so CAbiTest.cpp defines registerBuiltins() itself over a handful of classes.
@@ -89,6 +103,7 @@ add_custom_command(
   OUTPUT "${TEST_TABLE_DIR}/PropertyTable.inc" "${TEST_TABLE_DIR}/PropertyAccessors.inc"
   COMMAND "${TEST_PYTHON}" "${SDK_BASE_DIR}/scripts/gen-api-tables.py"
           "--modules" "${TEST_MODULE_LIST}"
+          "--defines" "${TEST_DEFINES}"
           "--cppdir" "${SDK_BASE_DIR}/all/native"
           "--outdir" "${TEST_TABLE_DIR}"
   DEPENDS ${TEST_MODULES} "${SDK_BASE_DIR}/scripts/gen-api-tables.py"
@@ -108,12 +123,17 @@ add_executable(api_tests
 
 set_source_files_properties("${TEST_TABLE_DIR}/PropertyTable.inc" PROPERTIES HEADER_FILE_ONLY TRUE)
 
+target_compile_definitions(api_tests PRIVATE ${TEST_DEFINES})
+
 target_include_directories(api_tests PRIVATE
   "${SDK_BASE_DIR}/all/native"
   "${TEST_TABLE_DIR}/.."
   "${SDK_BASE_DIR}/libs-external/cglib"
   "${SDK_BASE_DIR}/libs-external/stdext"
   "${SDK_BASE_DIR}/libs-external/picojson"
+  # RoutingRequest uses boost::algorithm for its parameter paths - see ../../BUILDING.md for the
+  # symlink this expects.
+  "${SDK_BASE_DIR}/libs-external/boost"
   "${SDK_BASE_DIR}/libs-external/rapidjson/include"
   "${SDK_BASE_DIR}/libs-external/tinyformat")
 

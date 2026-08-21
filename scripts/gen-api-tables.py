@@ -82,7 +82,14 @@ def splitArgs(text):
 def stripArgMacro(cppType):
   # %arg(...) only exists to hide commas from the Swig preprocessor.
   match = re.match(r'^%arg\s*\((.*)\)$', cppType.strip())
-  return match.group(1).strip() if match else cppType.strip()
+  cppType = match.group(1).strip() if match else cppType.strip()
+  # A few .i files spell an enum unqualified (RoutingAction::RoutingAction). Swig resolves it from
+  # the %import; here it has to be qualified, or it classifies as a STRUCT and silently loses its
+  # accessor - which is what happened to RoutingInstruction.action.
+  match = re.match(r'^(\w+)::(\w+)$', cppType)
+  if match and match.group(1) == match.group(2):
+    cppType = 'massif::' + cppType
+  return cppType
 
 
 def classifyType(cppType, polymorphic):

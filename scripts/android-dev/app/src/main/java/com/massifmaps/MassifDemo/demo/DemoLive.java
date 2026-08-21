@@ -109,6 +109,9 @@ public final class DemoLive extends BroadcastReceiver {
         if (extras.containsKey("apiSearch")) {
             applyApiSearch(extras.getString("apiSearch"));
         }
+        if (extras.containsKey("apiRoute")) {
+            applyApiRoute(extras.getString("apiRoute"), extras.getString("apiRouteProfile"));
+        }
         if (extras.containsKey("apiSugar")) {
             applyApiSugar("true".equals(extras.getString("apiSugar")));
         }
@@ -360,6 +363,96 @@ public final class DemoLive extends BroadcastReceiver {
         MassifApi.on(service, "search.done", apiSearchListener, 1, false);
         apiCall = MassifApi.callAsync(service, "findFeatures", "[" + query + "]", "search.done");
         Log.i(TAG, "apiSearch '" + label + "' at z" + zoom + " queued as " + apiCall);
+    }
+
+    /** Kept alive while subscribed, and does the reading when the route arrives. */
+    private EventListener apiRouteListener;
+
+    /**
+     * A route from the SDK's OWN Valhalla service, end to end through the facade (#146):
+     *
+     *   --es apiRoute '45.1877,5.7249;45.1916,5.7148'
+     *   --es apiRoute '...' --es apiRouteProfile bicycle
+     *
+     * The demo's other routing test (DemoTests.runOnlineRouting) drives routing-lib, a separate
+     * library with its own JNI - this one drives massif::ValhallaOnlineRoutingService, which is what
+     * the facade's "routing" kind builds. Public OSM endpoint, so no key and no data files.
+     *
+     * The result is read the way a search result is: counts are properties, elements are calls, and
+     * the path itself comes back flat rather than as JSON.
+     */
+    private void applyApiRoute(String waypoints, String profile) {
+        String[] stops = waypoints != null ? waypoints.split(";") : new String[0];
+        if (stops.length < 2) {
+            Log.w(TAG, "apiRoute wants lat,lon;lat,lon[;...], got: " + waypoints);
+            return;
+        }
+        StringBuilder points = new StringBuilder("[");
+        for (int i = 0; i < stops.length; i++) {
+            String[] pair = stops[i].split(",");
+            if (pair.length != 2) {
+                Log.w(TAG, "apiRoute: '" + stops[i] + "' is not lat,lon");
+                return;
+            }
+            // The request is built in EPSG:4326, so a point is [lon, lat].
+            points.append(i > 0 ? "," : "").append("[").append(pair[1].trim())
+                  .append(",").append(pair[0].trim()).append("]");
+        }
+        points.append("]");
+
+        MassifApi.unregisterObject("routing", "demoRouter");
+        int service = MassifApi.create("routing", "demoRouter", "{\"type\":\"valhalla-online\"}");
+        MassifApi.setString(service, "customServiceURL",
+                            "https://valhalla1.openstreetmap.de/{service}");
+        MassifApi.setString(service, "profile", profile != null ? profile : "pedestrian");
+
+        MassifApi.unregisterObject("routing", "demoRoutingRequest");
+        final int query = MassifApi.create("routing", "demoRoutingRequest",
+                "{\"type\":\"request\",\"projection\":\"EPSG:4326\",\"points\":" + points + "}");
+        // Free-form JSON, so it is a call rather than a property.
+        MassifApi.call(query, "setCustomParameter", "[\"language\",\"fr-FR\"]");
+
+        final long start = System.currentTimeMillis();
+        apiRouteListener = new EventListener() {
+            @Override
+            public boolean onEvent(int target, String name, int route) {
+                long elapsed = System.currentTimeMillis() - start;
+                if (route == 0) {
+                    Log.i(TAG, "apiRoute failed after " + elapsed + " ms");
+                    return false;
+                }
+                int count = (int) MassifApi.getInt(route, "instructionCount", 0);
+                Log.i(TAG, "apiRoute " + MassifApi.getFloat(route, "totalDistance", 0) + " m, "
+                        + MassifApi.getFloat(route, "totalTime", 0) + " s, "
+                        + MassifApi.getInt(route, "pointCount", 0) + " points, "
+                        + count + " instructions, in " + elapsed + " ms"
+                        + " (" + MassifApi.getString(route, "projection.name", "-") + ")");
+                for (int i = 0; i < count; i++) {
+                    int step = MassifApi.call(route, "getInstruction", "[" + i + "]");
+                    Log.i(TAG, "  " + i
+                            + " action=" + MassifApi.getInt(step, "action", -1)
+                            + " at=" + MassifApi.getInt(step, "pointIndex", -1)
+                            + " " + MassifApi.getFloat(step, "distance", 0) + "m"
+                            + " street=" + MassifApi.getString(step, "streetName", "-")
+                            + " : " + MassifApi.getString(step, "instruction", "-"));
+                    MassifApi.destroy(step);
+                }
+                // The path is flat, not JSON: one crossing for the whole polyline.
+                int path = MassifApi.call(route, "getPoints", "");
+                double[] flat = MassifApi.getDoubles(path);
+                Log.i(TAG, "  path " + (flat.length / 2) + " positions, first=["
+                        + (flat.length > 1 ? flat[0] + "," + flat[1] : "") + "] last=["
+                        + (flat.length > 1 ? flat[flat.length - 2] + "," + flat[flat.length - 1] : "")
+                        + "]");
+                MassifApi.destroy(path);
+                return false;
+            }
+        };
+        MassifApi.offEvent(service, "route.done");
+        MassifApi.on(service, "route.done", apiRouteListener, 1, false);
+        // Async: the online service does an HTTP round trip on the calling thread.
+        apiCall = MassifApi.callAsync(service, "calculateRoute", "[" + query + "]", "route.done");
+        Log.i(TAG, "apiRoute " + points + " queued as " + apiCall);
     }
 
     private static String corner(com.massifmaps.core.MapPos centre, double dx, double dy) {

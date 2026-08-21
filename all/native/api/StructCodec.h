@@ -39,6 +39,14 @@ namespace massif { namespace api {
         std::string encode(const Variant& value);
         /** A list of names - the shape a "which layers" filter has. */
         std::string encode(const std::vector<std::string>& value);
+        /**
+         * A list of positions, as [[x,y],…].
+         *
+         * Deliberately NOT in the generator's CODEC_TYPES, so no property accessor is emitted for
+         * a vector<MapPos>: a route is thousands of positions and JSON is what the bulk channel
+         * exists to avoid. This is for the handful a spec or an argument list carries.
+         */
+        std::string encode(const std::vector<MapPos>& value);
 
         bool decode(const std::string& json, MapPos& value);
         bool decode(const std::string& json, MapVec& value);
@@ -47,6 +55,7 @@ namespace massif { namespace api {
         bool decode(const std::string& json, MapBounds& value);
         bool decode(const std::string& json, Variant& value);
         bool decode(const std::string& json, std::vector<std::string>& value);
+        bool decode(const std::string& json, std::vector<MapPos>& value);
 
     }
 

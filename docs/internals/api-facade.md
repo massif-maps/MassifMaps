@@ -341,6 +341,7 @@ inline spec of that kind, and it is checked against the class the caller is abou
 | `projection` | any name in the projection registry |
 | `geometry` | `geojson` — a JSON string or the document inline, optional target `projection` |
 | `search` | `request`, `vectortile` (from a `layer`, or a `source` + `style`) |
+| `routing` | `request` (`points` + `projection`), `valhalla-online`, `valhalla-offline` |
 
 ```json
 {"type":"composite-vector","opacity":0.5,
@@ -814,6 +815,9 @@ Chosen by counting, not by guessing: the NativeScript app this API is measured a
 | `refresh()` | `Layer` | |
 | `findFeatures([requestHandle])` | `VectorTileSearchService`, `FeatureCollectionSearchService` | blocking — see [Search](#search) |
 | `getFeature([index])` | `FeatureCollection` | the collection channel |
+| `calculateRoute([requestHandle])` | `RoutingService` | blocking — see [Routing](#routing) |
+| `getInstruction([index])`, `getPoints()` | `RoutingResult` | an element, and the path flat |
+| `setCustomParameter(name, value)` | `RoutingRequest` | free-form JSON, so not a property |
 
 `findFeatures` and `getFeature` are not on that list — the app wraps them in its own service — but
 a search is the one thing an app cannot rebuild on top of the facade, so it is covered below.
@@ -854,8 +858,9 @@ The method table is **hand-registered**, not generated, and that is the one plac
 derived from the `.i` files. A property is declared by a Swig macro a script can read; a method is
 an ordinary C++ signature, and its arguments have to be decoded from JSON by something that knows
 the types. So `Methods::registerMethod(cppClass, name, thunk)` and a thunk per method in
-`MethodImpls.cpp`, ~15 lines each (the geometry and collection ones live in `GeometryMethods.cpp`,
-split out so the host tests can link them without a tile source or a decoder):
+`MethodImpls.cpp`, ~15 lines each (the geometry and routing ones live in
+`GeometryMethods.cpp` and `RoutingMethods.cpp`, split out so the host tests can link them without a
+tile source, a decoder or sqlite):
 
 - Lookup **walks the base chain** from the generated table, so `loadTile` registered on
   `massif::TileDataSource` is callable on every source without being registered again.
@@ -989,6 +994,62 @@ receiver it ANR'd the app, and a request with **no geometry** searched every til
 its zoom — the whole `y=16383` row went past before the call had to be killed. So: `callAsync`, and
 always bound the request. Bounded to ±0.1° around the focus at z14 over Grenoble it is 19.6 s cold,
 and 0.2 s once the tiles are cached and `layers` narrows it to one.
+
+### Routing
+
+The same three shapes as a search, and it needed no new machinery — the object-argument channel,
+the count-plus-element pattern and `callAsync` were all already there:
+
+```java
+int service = MassifApi.create("routing", "demoRouter", "{\"type\":\"valhalla-online\"}");
+MassifApi.setString(service, "customServiceURL", "https://valhalla1.openstreetmap.de/{service}");
+MassifApi.setString(service, "profile", "bicycle");
+
+int query = MassifApi.create("routing", "demoRoutingRequest",
+        "{\"type\":\"request\",\"projection\":\"EPSG:4326\",\"points\":[[5.72,45.18],[5.74,45.24]]}");
+MassifApi.call(query, "setCustomParameter", "[\"language\",\"fr-FR\"]");
+
+MassifApi.callAsync(service, "calculateRoute", "[" + query + "]", "route.done");
+```
+
+`profile`, `customServiceURL` and `timeout` are already `%attribute`s, so the factory only has to
+build the object; the via points and the projection are constructor arguments and are read from the
+spec. A custom parameter is free-form JSON, which is not a property shape, so it is a call.
+
+**The path comes back flat, and `points` is deliberately not readable.** A 9 km cycling route is 562
+positions; as JSON that is a ~15 KB string to build, cross and parse, and as a property-per-element
+it is 562 crossings. `getPoints()` returns a handle onto `x0,y0,x1,y1,…` through the same
+`getDoubles` channel `getElevations` uses — one crossing, no copy. `StructCodec` can encode a
+`std::vector<MapPos>` (a spec's via points need it) but that type is **kept out of the generator's
+`CODEC_TYPES` on purpose**, so no property accessor is emitted for it and there is exactly one way
+to read a path. Reading `points` is `RESULT_UNSUPPORTED_TYPE`.
+
+The flat channel applies no projection — read `projection.name` to know what the numbers are. The
+counts *are* properties: `instructionCount` and `pointCount` were added to `RoutingResult` in the
+SDK, the same "a value a binding would compute is an SDK gap" move as `TileLayer::getProjection`.
+
+An instruction is a **value type**, not a `shared_ptr` one, so `getInstruction(i)` copies the element
+onto the heap to have a handle for it. That works because the property thunks only need an address —
+a `!value_type` class has a generated table row like any other.
+
+Device run against the public OSM Valhalla endpoint, through `--es apiRoute`:
+
+```
+apiRoute 1032.0 m, 758.63 s, 72 points, 21 instructions, in 681 ms (EPSG:4326)
+   1 action=6 at=2 96.0m street=Cours Lafontaine : Tournez à gauche dans Cours Lafontaine.
+  20 action=1 at=71 0.0m street= : Vous êtes arrivé à votre destination.
+   path 72 positions, first=[5.724944,45.187755] last=[5.714818,45.191561]
+```
+
+French because `setCustomParameter("language","fr-FR")` reached the service, and the readable
+`action=` constants are the generator fix below.
+
+**A generator bug this found:** `%attribute(massif::RoutingInstruction, RoutingAction::RoutingAction,
+Action, getAction)` spells the enum *unqualified*. Swig resolves that from the `%import`; the
+generator's enum test wanted `massif::X::X`, so it classified as a `STRUCT` and **silently emitted
+no accessor** — the maneuver's action was unreadable and nothing said so. `stripArgMacro` now
+qualifies the bare form. Two properties in the SDK were affected (`RoutingInstruction.action`,
+`RouteMatchingPoint.type`); ENUM went 45 → 47.
 
 ### Binary and bulk results
 
@@ -1125,19 +1186,20 @@ cd scripts && python3 gen-api-tables.py
 - **The bulk numeric channel is doubles only.** Positions, colours or integers arriving in bulk
   would each want their own accessor and their own typemap per language. Nothing needs one yet.
 - **The method table is hand-registered.** Unlike properties, methods are not declared by a macro
-  the generator can read, so each one is a thunk in `MethodImpls.cpp`. Twelve exist — see the table
+  the generator can read, so each one is a thunk in `MethodImpls.cpp`. Sixteen exist — see the table
   above for which and why.
 - **A class the profile only forward-declares keeps its declared name in a traversal.** 14 of the
   116 object getters are in that position — `VectorTileClickInfo.layer` without `Layer.i` — because
   `typeid` needs a complete type. In the full profile they all have headers; in a reduced table they
   fall back, which is the old behaviour rather than a wrong answer.
-- **The routing calls are not exposed.** `RoutingService::calculateRoute` returns a
-  `RoutingResult` with instruction and point vectors — the same collection shape `findFeatures`
-  needed, so it is a `getInstruction(i)`-style registration plus a factory, not new machinery.
-- **A collection is read one element per crossing.** Fine for a bounded search, wrong for a route's
-  instruction list. A whole-collection GeoJSON would be one crossing but drops `layerName` and
-  `distance`, so the answer is probably a bulk channel per collection type rather than one shared
-  document.
+- **`matchRoute` and the offline routing services are not demoed.** `matchRoute` has no thunk;
+  `valhalla-offline` has a factory but needs a tile database the demo does not carry, so only
+  `valhalla-online` was actually run.
+- **A collection is read one element per crossing.** A route's *path* has the flat channel, but its
+  21 instructions are 21 calls plus a handful of property reads each. Fine at that size; the
+  general answer is probably a bulk channel per collection type.
+- **`std::map<std::string, std::string>` has no codec**, so `ValhallaOnlineRoutingService.httpHeaders`
+  and the other map attributes cannot be written through the facade.
 - **`FeatureCollectionSearchService` has no factory.** Its constructor takes a `FeatureCollection`,
   which today only exists as a call result, and `childOf` resolves by kind and id. `findFeatures` is
   registered on it and works on a handle built elsewhere.

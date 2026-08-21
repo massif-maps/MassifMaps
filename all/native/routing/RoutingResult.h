@@ -49,6 +49,18 @@ namespace massif {
         const std::vector<RoutingInstruction>& getInstructions() const;
 
         /**
+         * Returns the number of turn-by-turn instructions.
+         * @return The number of instructions in the list.
+         */
+        int getInstructionCount() const;
+
+        /**
+         * Returns the number of points in the path.
+         * @return The number of points in the path.
+         */
+        int getPointCount() const;
+
+        /**
          * Returns the total distance of the path.
          * @return The total distance in meters.
          */

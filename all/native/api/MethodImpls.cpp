@@ -6,6 +6,7 @@
  */
 
 #include "api/GeometryMethods.h"
+#include "api/RoutingMethods.h"
 #include "api/Methods.h"
 #include "api/StructCodec.h"
 #include "core/MapPos.h"
@@ -24,6 +25,7 @@
 #include "search/SearchRequest.h"
 #include "search/VectorTileSearchService.h"
 #endif
+
 
 namespace massif { namespace api {
 
@@ -170,6 +172,7 @@ namespace massif { namespace api {
 
 #endif
 
+
     }
 
     void Methods::registerBuiltins() {
@@ -185,6 +188,9 @@ namespace massif { namespace api {
         registerMethod("massif::VectorTileSearchService", "findFeatures", &findVectorTileFeatures);
         registerMethod("massif::FeatureCollectionSearchService", "findFeatures",
                        &findCollectionFeatures);
+#endif
+#ifdef _MASSIF_ROUTING_SUPPORT
+        registerRoutingMethods();
 #endif
     }
 

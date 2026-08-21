@@ -97,19 +97,8 @@ namespace massif { namespace api {
 
     bool CallArgs::getPositions(int index, std::vector<MapPos>& value) const {
         Variant argument = get(index);
-        if (argument.getType() != VariantType::VARIANT_TYPE_ARRAY) {
-            return false;
-        }
-        std::vector<MapPos> positions;
-        for (int element = 0; element < argument.getArraySize(); element++) {
-            MapPos pos;
-            if (!StructCodec::decode(argument.getArrayElement(element).toString(), pos)) {
-                return false;
-            }
-            positions.push_back(pos);
-        }
-        value.swap(positions);
-        return true;
+        return argument.getType() == VariantType::VARIANT_TYPE_ARRAY &&
+               StructCodec::decode(argument.toString(), value);
     }
 
     bool CallArgs::getTile(int index, MapTile& value) const {

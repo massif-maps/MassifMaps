@@ -34,6 +34,7 @@ void testCall();
 void testCallAsync();
 void testCallCancel();
 void testCollections();
+void testRouting();
 void testCAbi();
 void testCAbiEvents();
 
@@ -269,6 +270,7 @@ int main() {
     testCallAsync();
     testCallCancel();
     testCollections();
+    testRouting();
     testCAbi();
     testCAbiEvents();
 

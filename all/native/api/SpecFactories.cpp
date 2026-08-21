@@ -1,5 +1,6 @@
 #include "api/Projections.h"
 #include "api/Spec.h"
+#include "api/StructCodec.h"
 #include "api/Context.h"
 #include "datasources/AssetTileDataSource.h"
 #include "datasources/CombinedTileDataSource.h"
@@ -30,6 +31,14 @@
 #ifdef _MASSIF_SEARCH_SUPPORT
 #include "search/SearchRequest.h"
 #include "search/VectorTileSearchService.h"
+#endif
+
+#ifdef _MASSIF_ROUTING_SUPPORT
+#include "routing/RoutingRequest.h"
+#include "routing/ValhallaOnlineRoutingService.h"
+#endif
+#if defined(_MASSIF_ROUTING_SUPPORT) && defined(_MASSIF_VALHALLA_ROUTING_SUPPORT) && defined(_MASSIF_OFFLINE_SUPPORT)
+#include "routing/ValhallaOfflineRoutingService.h"
 #endif
 
 #include <memory>
@@ -399,6 +408,64 @@ namespace massif { namespace api {
 
 #endif
 
+#ifdef _MASSIF_ROUTING_SUPPORT
+
+        /**
+         * A routing request and the service that answers it.
+         *
+         * The request's via points and projection are constructor arguments, so they are read here;
+         * everything else on a service - profile, custom URL, timeout - is already a property.
+         */
+        Result buildRouting(Context&, const Variant& spec, ObjectRef& object,
+                            std::set<std::string>& consumed) {
+            std::string type = stringAt(spec, "type");
+            consumed.insert("type");
+
+            if (type == "request") {
+                consumed.insert("points");
+                consumed.insert("projection");
+                std::shared_ptr<Projection> projection = Projections::find(
+                    stringAt(spec, "projection", "EPSG:4326"));
+                if (!projection) {
+                    return RESULT_UNKNOWN_TYPE;
+                }
+                std::vector<MapPos> points;
+                if (!StructCodec::decode(spec.getObjectElement("points").toString(), points) ||
+                    points.size() < 2) {
+                    Log::Error("Spec: a routing request needs at least two \"points\"");
+                    return RESULT_BAD_SPEC;
+                }
+                object.obj = std::make_shared<RoutingRequest>(projection, points);
+                object.cppClass = "massif::RoutingRequest";
+                return RESULT_OK;
+            }
+            if (type == "valhalla-online") {
+                consumed.insert("apiKey");
+                object.obj = std::make_shared<ValhallaOnlineRoutingService>(
+                    stringAt(spec, "apiKey"));
+                object.cppClass = "massif::ValhallaOnlineRoutingService";
+                return RESULT_OK;
+            }
+#if defined(_MASSIF_VALHALLA_ROUTING_SUPPORT) && defined(_MASSIF_OFFLINE_SUPPORT)
+            if (type == "valhalla-offline") {
+                consumed.insert("path");
+                try {
+                    object.obj = std::make_shared<ValhallaOfflineRoutingService>(
+                        stringAt(spec, "path"));
+                } catch (const std::exception& ex) {
+                    Log::Errorf("Spec: valhalla-offline: %s", ex.what());
+                    return RESULT_FAILED;
+                }
+                object.cppClass = "massif::ValhallaOfflineRoutingService";
+                return RESULT_OK;
+            }
+#endif
+            Log::Errorf("Spec: no routing type '%s'", type.c_str());
+            return RESULT_UNKNOWN_TYPE;
+        }
+
+#endif
+
     }
 
 
@@ -408,6 +475,9 @@ namespace massif { namespace api {
         registerFactory("layer", &buildLayer);
         registerFactory("projection", &buildProjection);
         registerFactory("geometry", &buildGeometry);
+#ifdef _MASSIF_ROUTING_SUPPORT
+        registerFactory("routing", &buildRouting);
+#endif
 #ifdef _MASSIF_SEARCH_SUPPORT
         registerFactory("search", &buildSearch);
 #endif

@@ -5,6 +5,7 @@
 
 #include "api/Context.h"
 #include "api/GeometryMethods.h"
+#include "api/RoutingMethods.h"
 #include "api/StructCodec.h"
 #include "api/Methods.h"
 #include "core/BinaryData.h"
@@ -16,6 +17,10 @@
 #include "geometry/VectorTileFeature.h"
 #include "geometry/VectorTileFeatureCollection.h"
 #include "projections/EPSG3857.h"
+#include "routing/RoutingInstruction.h"
+#include "routing/RoutingRequest.h"
+#include "routing/RoutingResult.h"
+#include "routing/RoutingService.h"
 
 #include <cmath>
 #include <condition_variable>
@@ -539,4 +544,128 @@ void testCallAsync() {
     context->waitForCalls();
     TEST_CHECK(received.count == 5, "every queued call was delivered");
     TEST_CHECK(context->getPendingCallCount() == 0, "and the queue is empty");
+}
+
+/*
+ * Routing: the read path of a result, and what calculateRoute checks before it runs.
+ *
+ * The result is built here rather than fetched, because the concrete Valhalla services need sqlite
+ * and the routing library. What is left to a device is the service; everything between it and the
+ * caller is below.
+ */
+
+namespace {
+
+    /** A service that answers without a network, so the argument checks can be exercised. */
+    class StubRoutingService : public RoutingService {
+    public:
+        std::string getProfile() const override { return _profile; }
+        void setProfile(const std::string& profile) override { _profile = profile; }
+
+        std::shared_ptr<RouteMatchingResult> matchRoute(
+            const std::shared_ptr<RouteMatchingRequest>&) const override {
+            return std::shared_ptr<RouteMatchingResult>();
+        }
+
+        std::shared_ptr<RoutingResult> calculateRoute(
+            const std::shared_ptr<RoutingRequest>& request) const override {
+            seenPoints = static_cast<int>(request->getPoints().size());
+            seenLanguage = request->getCustomParameter("language").toString();
+
+            std::vector<MapPos> points;
+            points.push_back(MapPos(1000, 2000));
+            points.push_back(MapPos(3000, 4000));
+            points.push_back(MapPos(5000, 6000));
+            std::vector<RoutingInstruction> instructions;
+            instructions.push_back(RoutingInstruction(
+                RoutingAction::ROUTING_ACTION_HEAD_ON, 0, "First street", "Head on", 0, 90, 10, 5,
+                Variant()));
+            instructions.push_back(RoutingInstruction(
+                RoutingAction::ROUTING_ACTION_TURN_RIGHT, 2, "Second street", "Turn right",
+                90, 180, 20, 7, Variant()));
+            return std::make_shared<RoutingResult>(std::make_shared<EPSG3857>(), points,
+                                                   instructions, "{}");
+        }
+
+        mutable int seenPoints = 0;
+        mutable std::string seenLanguage;
+
+    private:
+        std::string _profile;
+    };
+
+}
+
+void testRouting() {
+    registerRoutingMethods();
+
+    auto context = std::make_shared<Context>();
+    auto service = std::make_shared<StubRoutingService>();
+    Handle serviceHandle = NULL_HANDLE;
+    context->registerObject("routing", "s", service, "massif::RoutingService", serviceHandle);
+
+    auto request = std::make_shared<RoutingRequest>(
+        std::make_shared<EPSG3857>(), std::vector<MapPos>{ MapPos(0, 0), MapPos(10, 10) });
+    Handle requestHandle = NULL_HANDLE;
+    context->registerObject("routing", "r", request, "massif::RoutingRequest", requestHandle);
+
+    PropertyValue value;
+    TEST_CHECK(context->call(serviceHandle, "calculateRoute", "[]", value) == RESULT_BAD_SPEC,
+               "calculateRoute needs a request");
+    TEST_CHECK(context->call(serviceHandle, "calculateRoute",
+                             "[" + std::to_string(requestHandle + 7777) + "]", value) ==
+               RESULT_BAD_HANDLE, "a stale request handle is refused");
+    TEST_CHECK(context->call(serviceHandle, "calculateRoute",
+                             "[" + std::to_string(serviceHandle) + "]", value) ==
+               RESULT_BAD_HANDLE, "and so is a handle onto something that is not a request");
+
+    // A custom parameter is free-form JSON, so it goes through a method rather than a property.
+    TEST_CHECK(context->call(requestHandle, "setCustomParameter", "[\"language\",\"fr-FR\"]",
+                             value) == RESULT_OK, "a custom parameter is accepted");
+    TEST_CHECK(context->call(requestHandle, "setCustomParameter", "[\"language\"]", value) ==
+               RESULT_BAD_SPEC, "without a value it is not");
+
+    Handle route = NULL_HANDLE;
+    TEST_CHECK(context->callHandle(serviceHandle, "calculateRoute",
+                                   "[" + std::to_string(requestHandle) + "]", route) == RESULT_OK,
+               "a route comes back as a handle");
+    TEST_CHECK(service->seenPoints == 2, "with the request's via points");
+    TEST_CHECK(service->seenLanguage == "\"fr-FR\"", "and its custom parameter");
+
+    TEST_CHECK(context->getProperty(route, "instructionCount", value) == RESULT_OK &&
+               value.asDouble() == 2, "the instruction count is a property");
+    TEST_CHECK(context->getProperty(route, "pointCount", value) == RESULT_OK &&
+               value.asDouble() == 3, "so is the point count");
+    TEST_CHECK(context->getProperty(route, "totalDistance", value) == RESULT_OK &&
+               value.asDouble() == 30, "and the totals the SDK sums");
+
+    // An instruction is a VALUE type, so the element is a copy on the heap - it still reads by name.
+    Handle instruction = NULL_HANDLE;
+    TEST_CHECK(context->callHandle(route, "getInstruction", "[1]", instruction) == RESULT_OK,
+               "an instruction comes back as a handle");
+    TEST_CHECK(context->getProperty(instruction, "streetName", value) == RESULT_OK &&
+               value.stringValue == "Second street", "the one that was asked for");
+    TEST_CHECK(context->getProperty(instruction, "pointIndex", value) == RESULT_OK &&
+               value.asDouble() == 2, "with the index into the path it refers to");
+    TEST_CHECK(context->getProperty(instruction, "action", value) == RESULT_OK &&
+               value.asDouble() == RoutingAction::ROUTING_ACTION_TURN_RIGHT,
+               "and its action as the enum constant");
+    context->destroy(instruction);
+    TEST_CHECK(context->call(route, "getInstruction", "[2]", value) == RESULT_BAD_SPEC,
+               "an index past the end is refused");
+
+    // The path is flat, through the bulk channel: JSON is what it exists to avoid.
+    Handle path = NULL_HANDLE;
+    std::vector<double> flat;
+    TEST_CHECK(context->callHandle(route, "getPoints", "", path) == RESULT_OK &&
+               context->getDoubles(path, flat) == RESULT_OK, "the path reads as flat doubles");
+    TEST_CHECK(flat.size() == 6, "two numbers per position");
+    TEST_CHECK(flat[0] == 1000 && flat[1] == 2000 && flat[4] == 5000 && flat[5] == 6000,
+               "interleaved x, y, in order");
+    context->destroy(path);
+
+    // The result carries the service's projection, so its positions convert.
+    TEST_CHECK(context->getProperty(route, "points", value) == RESULT_UNSUPPORTED_TYPE,
+               "and points is deliberately NOT a readable property");
+    context->destroy(route);
 }

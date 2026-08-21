@@ -152,6 +152,12 @@ namespace massif {
         static int findObject(const std::string& kind, const std::string& objectId);
 
         /**
+         * Whether a handle still resolves. A binding needs this to tell "destroyed" from "never
+         * existed" without a property read that might legitimately fail for another reason.
+         */
+        static bool isValid(int handle);
+
+        /**
          * Writes a property. The path may walk object properties: "fogOptions.rangeStart".
          * @return 0 on success, see the Result enum otherwise.
          */

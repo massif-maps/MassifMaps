@@ -113,6 +113,10 @@ namespace massif { namespace api {
         return static_cast<int>(Context::GetDefault()->findObject(kind, objectId));
     }
 
+    bool MassifApi::isValid(int handle) {
+        return Context::GetDefault()->getObject(static_cast<Handle>(handle)) != nullptr;
+    }
+
     int MassifApi::setFloat(int handle, const std::string& path, double value) {
         PropertyValue propertyValue = PropertyValue::ofDouble(value);
         return Context::GetDefault()->setProperty(static_cast<Handle>(handle), path, propertyValue);

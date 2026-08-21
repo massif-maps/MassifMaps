@@ -140,6 +140,12 @@ void testCAbi() {
     // Every out-param is optional: a caller that only wants the result code passes null.
     TEST_CHECK(mm_find(ctx, "options", "cfog", nullptr) == MM_OK, "find without an out-param");
 
+    // A liveness check that does not go through a property, which can fail for another reason.
+    TEST_CHECK(mm_valid(ctx, fog) == MM_OK, "a live handle validates");
+    TEST_CHECK(mm_valid(ctx, fog + 7777) == MM_BAD_HANDLE, "a stale one does not");
+    TEST_CHECK(mm_valid(ctx, MM_NULL_HANDLE) == MM_BAD_HANDLE, "nor the null handle");
+    TEST_CHECK(mm_valid(nullptr, fog) == MM_BAD_CONTEXT, "nor without a context");
+
     double number = 0;
     TEST_CHECK(mm_get_double(ctx, fog, "rangeStart", &number) == MM_OK && number == 2.5,
                "a spec key the factory did not consume was applied");

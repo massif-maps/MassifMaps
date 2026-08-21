@@ -151,6 +151,14 @@ int mm_find(mm_ctx ctx, const char* kind, const char* id, mm_handle* out) {
     return handle == NULL_HANDLE ? MM_BAD_HANDLE : MM_OK;
 }
 
+int mm_valid(mm_ctx ctx, mm_handle handle) {
+    Context* context = resolve(ctx);
+    if (!context) {
+        return MM_BAD_CONTEXT;
+    }
+    return context->getObject(handle) ? MM_OK : MM_BAD_HANDLE;
+}
+
 int mm_set_bool(mm_ctx ctx, mm_handle handle, const char* path, int value) {
     return write(ctx, handle, path, PropertyValue::ofBool(value != 0));
 }

@@ -132,6 +132,14 @@ MM_API int mm_destroy_handle(mm_ctx ctx, mm_handle handle);
  */
 MM_API int mm_find(mm_ctx ctx, const char* kind, const char* id, mm_handle* out);
 
+/**
+ * Whether a handle still resolves. MM_OK or MM_BAD_HANDLE.
+ *
+ * A binding needs this to tell "destroyed" from "never existed" without a property read, which
+ * can legitimately fail for another reason.
+ */
+MM_API int mm_valid(mm_ctx ctx, mm_handle handle);
+
 /* --- set / get ----------------------------------------------------------------------------- */
 
 /*

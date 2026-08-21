@@ -1,0 +1,125 @@
+#import "MSFMassifInternal.h"
+#import "MSFMassifApi.h"
+#import "MSFBinaryData.h"
+#import "MSFMapPos.h"
+#import "MSFLayer.h"
+#import "MSFLayers.h"
+#import "ui/MapView.h"
+#import "MSFVectorTileLayer.h"
+#import "MSFVectorTileEventListener.h"
+
+@implementation MSFMassifSource
+
+- (NSData *)loadTileX:(int)x y:(int)y zoom:(int)zoom {
+    MSFMassifObject *tile = [self call:@"loadTile" args:@[ @[ @(x), @(y), @(zoom) ] ] error:nil];
+    if (!tile) {
+        return nil;
+    }
+    NSData *data = [tile data:@"data"];
+    [tile destroy];
+    return data;
+}
+
+- (void)loadTileX:(int)x
+                y:(int)y
+             zoom:(int)zoom
+       completion:(void (^)(NSData * _Nullable))completion {
+    // Returns void so Swift imports it as `async`. The generic callAsync:args:completion: is the
+    // form that hands back a call id for cancellation.
+    [self callAsync:@"loadTile"
+               args:@[ @[ @(x), @(y), @(zoom) ] ]
+         completion:^(MSFMassifObject *result) {
+             completion(result ? [result data:@"data"] : nil);
+         }];
+}
+
+@end
+
+@implementation MSFMassifLayer {
+    __weak MSFMassifMap *_map;
+    BOOL _bridged;
+}
+
+- (instancetype)initWithHandle:(int)handle objectId:(NSString *)objectId map:(MSFMassifMap *)map {
+    if ((self = [super initWithHandle:handle kind:@"layer" objectId:objectId])) {
+        _map = map;
+    }
+    return self;
+}
+
+- (instancetype)opacity:(float)opacity {
+    [self set:@"opacity" value:@(opacity)];
+    return self;
+}
+
+- (instancetype)visible:(BOOL)visible {
+    [self set:@"visible" value:@(visible)];
+    return self;
+}
+
+- (instancetype)moveTo:(int)index {
+    MSFLayer *target = self.layer;
+    if (target && _map) {
+        [[_map.view getLayers] insert:index layer:target];
+    }
+    return self;
+}
+
+- (instancetype)detach {
+    MSFLayer *target = self.layer;
+    if (target && _map) {
+        [[_map.view getLayers] remove:target];
+    }
+    return self;
+}
+
+- (MSFLayer *)layer {
+    return self.objectId ? [MSFMassifApi getLayer:self.objectId] : nil;
+}
+
+- (MSFSubscription *)onFeatureClick:(MSFVectorTileClickHandler)handler {
+    return [self featureClick:handler consuming:NO];
+}
+
+- (MSFSubscription *)consumeFeatureClick:(MSFVectorTileClickFilter)handler {
+    return [self featureClick:handler consuming:YES];
+}
+
+- (MSFSubscription *)featureClick:(id)block consuming:(BOOL)consuming {
+    MSFLayer *target = self.layer;
+    if (![target isKindOfClass:[MSFVectorTileLayer class]]) {
+        return nil;
+    }
+    MSFVectorTileLayer *vector = (MSFVectorTileLayer *)target;
+    if (!_bridged) {
+        // Chains to whatever listener was already installed, so an app that also uses the object
+        // API keeps working - there is only one listener slot.
+        MSFVectorTileEventListener *chained = [vector getVectorTileEventListener];
+        [vector setVectorTileEventListener:
+            [MSFMassifApi createVectorTileEventBridge:self.handle chained:chained]];
+        _bridged = YES;
+    }
+    return [self subscribe:@"vectortile.clicked"
+                      kind:MSFEventKindTileClick
+                  delivery:consuming ? MSFDeliveryOrigin : MSFDeliveryMain
+                  coalesce:NO
+                projection:_map.eventProjection
+                     block:block
+                 consuming:consuming];
+}
+
+- (NSData *)elevations:(NSArray<MSFMapPos *> *)positions {
+    NSMutableArray *argument = [NSMutableArray arrayWithCapacity:positions.count];
+    for (MSFMapPos *pos in positions) {
+        [argument addObject:@[ @([pos getX]), @([pos getY]) ]];
+    }
+    MSFMassifObject *result = [self call:@"getElevations" args:@[ argument ] error:nil];
+    if (!result) {
+        return nil;
+    }
+    NSData *values = result.doubles;
+    [result destroy];
+    return values;
+}
+
+@end

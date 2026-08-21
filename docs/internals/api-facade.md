@@ -739,7 +739,7 @@ native signature with a `new DoubleVector(...)` body.
 cd tests && ./run.sh
 ```
 
-**293 checks**, one file per layer:
+**297 checks**, one file per layer:
 
 | file | what it covers |
 |---|---|
@@ -748,7 +748,7 @@ cd tests && ./run.sh
 | `StructCodecTest.cpp` | round-trips, and the refusal of every malformed shape |
 | `ProjectionTest.cpp` | the name registry, a declared source projection versus an attached one, the per-read argument, the per-subscription default and its expiry when the handler returns, the drain path, the non-finite refusal |
 | `MethodTest.cpp` | argument decoding and its refusals, the base-chain lookup, result ownership and `destroy`, the binary and flat-numeric channels, an async result arriving as an event and failing as a payload of 0, and cancellation — queued, running, by target, and dying with the target |
-| `CAbiTest.cpp` | the two-call buffer protocol, the option JSON, out-params being optional, a null context refused rather than dereferenced |
+| `CAbiTest.cpp` | the two-call buffer protocol, the option JSON, out-params being optional, handle liveness, a null context refused rather than dereferenced |
 
 Three things keep the link small, and all three are deliberate:
 

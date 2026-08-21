@@ -103,6 +103,9 @@ public final class DemoLive extends BroadcastReceiver {
         if (extras.containsKey("apiCall")) {
             applyApiCall(extras.getString("apiCall"), "true".equals(extras.getString("apiAsync")));
         }
+        if (extras.containsKey("apiSugar")) {
+            applyApiSugar("true".equals(extras.getString("apiSugar")));
+        }
         if (extras.containsKey("apiCancel")) {
             Log.i(TAG, "apiCancel " + apiCall + " -> " + MassifApi.cancelCall(apiCall));
         }
@@ -223,6 +226,57 @@ public final class DemoLive extends BroadcastReceiver {
                      : numbers.length > 0 ? " doubles=" + numbers.length + " first=" + numbers[0]
                      : " json=" + MassifApi.getString(result, "", "-");
         Log.i(TAG, "apiCall " + what + " -> handle=" + result + shape);
+    }
+
+    private com.massifmaps.api.MassifMap sugarMap;
+    private com.massifmaps.api.Subscription sugarClick;
+    private com.massifmaps.api.Subscription sugarFeature;
+
+    /**
+     * The same events as applyApiEvents, through the Java sugar (#146), so the two can be compared
+     * on one device:
+     *
+     *   adb shell am broadcast -a ...CONFIG --es apiSugar true
+     *
+     * The point of the comparison is the handler bodies. Above: getInt(payload, "featureId", -1)
+     * and a JSON string to parse. Here: e.featureId() and a MapPos already in lon/lat.
+     */
+    private void applyApiSugar(boolean enable) {
+        if (!enable) {
+            if (sugarClick != null) { sugarClick.close(); sugarClick = null; }
+            if (sugarFeature != null) { sugarFeature.close(); sugarFeature = null; }
+            Log.i(TAG, "apiSugar off");
+            return;
+        }
+        if (sugarMap == null) {
+            sugarMap = com.massifmaps.api.MassifMap.attach(demo.mapView, "demo")
+                                                   .eventProjection("EPSG:4326");
+        }
+
+        sugarClick = sugarMap.onClick(e ->
+            Log.i(TAG, "sugar map.clicked at " + e.position() + " type=" + e.clickType()));
+
+        // A layer by id if the demo built one through the registry, otherwise the first vector one.
+        com.massifmaps.api.MassifLayer layer = sugarMap.layer("demoApiLayer");
+        if (layer == null) {
+            for (int i = 0; i < sugarMap.layerCount(); i++) {
+                if (sugarMap.rawLayer(i) instanceof com.massifmaps.layers.VectorTileLayer) {
+                    layer = sugarMap.layer("base");
+                    break;
+                }
+            }
+        }
+        if (layer != null) {
+            sugarFeature = layer.onFeatureClick(e ->
+                Log.i(TAG, "sugar feature " + e.featureId()
+                        + " layer=" + e.layerName()
+                        + " at=" + e.position()
+                        + " name=" + e.property("name")
+                        + " geojsonLen=" + e.geoJson().length()));
+        }
+        Log.i(TAG, "apiSugar on, map=" + sugarMap.options().handle()
+                + " fogRangeStart=" + sugarMap.fog().getDouble("rangeStart", -1)
+                + " layer=" + layer);
     }
 
     /** Kept alive for as long as it is subscribed, or the director would be collected. */

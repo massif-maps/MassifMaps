@@ -3,7 +3,7 @@
 
 %module(directors="1") MassifApi
 
-!proxy_imports(massif::api::MassifApi, core.BinaryData, components.Options, datasources.TileDataSource, layers.Layer, ui.MapEventListener, api.EventListener, layers.VectorTileEventListener, layers.VectorElementEventListener)
+!proxy_imports(massif::api::MassifApi, core.BinaryData, components.Options, datasources.TileDataSource, layers.Layer, ui.MapEventListener, api.EventListener, api.UiDispatcher, layers.VectorTileEventListener, layers.VectorElementEventListener)
 
 %{
 #include "api/MassifApi.h"
@@ -23,6 +23,7 @@
 %import "layers/VectorTileEventListener.i"
 %import "layers/VectorElementEventListener.i"
 %import "api/EventListener.i"
+%import "api/UiDispatcher.i"
 
 // A bulk result is thousands of numbers, so it crosses as one array rather than as the
 // DoubleVector proxy, which is a JNI call per element. AFTER the imports on purpose: DoubleVector.i

@@ -6,6 +6,8 @@
 #import "MSFLayers.h"
 #import "MSFMapEventListener.h"
 
+#include "api/Context.h"
+
 static NSString * const kMapKind = @"map";
 
 @implementation MSFMapCamera {
@@ -99,10 +101,34 @@ static NSString * const kMapKind = @"map";
     return [self attach:view objectId:@"main"];
 }
 
+/**
+ * Sends queued handlers to the main queue, once per process.
+ *
+ * Without it a subscription that asked for main-queue delivery runs INLINE on the thread that
+ * produced the event - a GL or tile thread - and the facade warns once. Every handler in this API
+ * is documented as main-queue, so the sugar owes the hop.
+ *
+ * No director needed here, unlike Java: this is Objective-C++ and can hand the context a plain C
+ * function.
+ */
+static void MSFInstallUiDispatcher(void) {
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{
+        massif::api::Context::GetDefault()->setUiDispatcher(
+            [](void*, void (*function)(void*), void* argument) {
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    function(argument);
+                });
+            },
+            nullptr);
+    });
+}
+
 + (instancetype)attach:(MSFMapView *)view objectId:(NSString *)objectId {
     if (!view) {
         return nil;
     }
+    MSFInstallUiDispatcher();
     int handle = [MSFMassifApi findObject:kMapKind objectId:objectId];
     if (handle == 0) {
         handle = [MSFMassifApi registerOptions:kMapKind objectId:objectId options:[view getOptions]];

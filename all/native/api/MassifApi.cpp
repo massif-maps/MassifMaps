@@ -145,6 +145,26 @@ namespace massif { namespace api {
         return static_cast<int>(subscription);
     }
 
+    void MassifApi::setUiDispatcher(const std::shared_ptr<UiDispatcher>& dispatcher) {
+        // Held for as long as it is installed: Context keeps only a raw pointer, so nothing else
+        // would stop a director being collected the moment this returns.
+        static std::shared_ptr<UiDispatcher> held;
+        held = dispatcher;
+        if (!dispatcher) {
+            Context::GetDefault()->setUiDispatcher(nullptr, nullptr);
+            return;
+        }
+        Context::GetDefault()->setUiDispatcher(
+            [](void* userData, void (*)(void*), void*) {
+                static_cast<UiDispatcher*>(userData)->post();
+            },
+            dispatcher.get());
+    }
+
+    int MassifApi::drain() {
+        return Context::GetDefault()->drainQueue();
+    }
+
     bool MassifApi::off(int subscription) {
         bool removed = Context::GetDefault()->unsubscribe(static_cast<Subscription>(subscription));
         listeners().erase(subscription);

@@ -9,6 +9,7 @@
 
 #include "api/Context.h"
 #include "api/EventListener.h"
+#include "api/UiDispatcher.h"
 
 #include <memory>
 #include <string>
@@ -143,6 +144,23 @@ namespace massif {
         static int on(int handle, const std::string& event,
                       const std::shared_ptr<EventListener>& listener, int delivery, bool coalesce,
                       const std::string& projection = std::string());
+
+        /**
+         * Registers how to reach the app's UI thread, for subscriptions that asked for it.
+         *
+         * The dispatcher's post() is called from whatever thread produced the event, and must get
+         * onto the UI thread and call drain. Without one, UI subscriptions run inline on the
+         * producing thread and the facade warns once.
+         *
+         * @param dispatcher The dispatcher, or null to go back to inline delivery.
+         */
+        static void setUiDispatcher(const std::shared_ptr<UiDispatcher>& dispatcher);
+
+        /**
+         * Runs the handlers waiting for this thread. Called by whatever the dispatcher posted.
+         * @return How many were delivered.
+         */
+        static int drain();
 
         /**
          * Removes one subscription.

@@ -53,8 +53,38 @@ public final class MassifMap implements AutoCloseable {
                 throw new MassifException("Cannot attach map '" + id + "'");
             }
         }
+        installUiDispatcher();
         return new MassifMap(view, new MassifObject(handle, KIND, id));
     }
+
+    /**
+     * Sends queued handlers to the main looper, once per process.
+     *
+     * Without it a subscription that asked for UI delivery runs INLINE on the thread that produced
+     * the event - a GL or tile thread - and the facade warns once. Every handler in this API is
+     * documented as main-thread, so the sugar owes the hop.
+     */
+    private static void installUiDispatcher() {
+        if (dispatcher != null) {
+            return;
+        }
+        final android.os.Handler main = new android.os.Handler(android.os.Looper.getMainLooper());
+        dispatcher = new UiDispatcher() {
+            @Override
+            public void post() {
+                main.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        MassifApi.drain();
+                    }
+                });
+            }
+        };
+        MassifApi.setUiDispatcher(dispatcher);
+    }
+
+    /** Held for the life of the process: the C++ side keeps only a raw pointer to the director. */
+    private static UiDispatcher dispatcher;
 
     /** The view this is attached to. Nothing here replaces it. */
     public MapView view() {

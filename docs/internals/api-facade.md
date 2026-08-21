@@ -14,7 +14,8 @@ describe it.
 Design discussion and the full plan live in
 [issue #146](https://github.com/massif-maps/MassifMaps/issues/146). **Built so far: the property
 table with its base-class chain, the handle table, the registry, `set`/`get`, dotted path
-traversal, `create` from JSON specs, and minimal Java and Objective-C bindings.** See
+traversal, `create` from JSON specs for sources, styles and layers, and minimal Java and
+Objective-C bindings.** See
 [Known gaps](#known-gaps).
 
 ## Why a facade at all
@@ -181,6 +182,31 @@ option to a class costs nothing here:
 the table. A nested `"source"` is an anonymous child built recursively; a **string** there names a
 registry entry instead.
 
+Three kinds build today. A `"source"` or `"style"` reference inside a layer spec is either a
+registry id or an inline spec of that kind:
+
+| kind | types |
+|---|---|
+| `source` | `http` `assets` `mbtiles` `memory-cache` `persistent-cache` `ordered` `combined` `multi` |
+| `style` | `cartocss` — inline `css`, plus an optional `dir://` asset package |
+| `layer` | `raster` `vector` `composite-vector` `hillshade` `solid` |
+
+```json
+{"type":"composite-vector","opacity":0.5,
+ "source":{"type":"http","minZoom":0,"maxZoom":14,"url":"https://…/{z}/{x}/{y}.mvt"},
+ "style":{"type":"cartocss","css":"#water{polygon-fill:#0000ff;}"}}
+```
+
+`opacity` is declared on `Layer`, not on `CompositeVectorTileLayer`, so it only applies because
+lookups walk the base chain — which is what that section is for.
+
+**The factory table is a registry, not a switch.** `Spec::registerFactory(kind, fn)` is the hook a
+plugin would extend, and it is also what makes `create` testable: the tests register a fake kind
+whose factory constructs something trivial, so reuse, conflicts and tolerant key application are
+covered without linking every source and layer constructor. The built-ins live in a separate
+translation unit (`SpecFactories.cpp`) for exactly that reason, and are registered from
+`MassifApi` rather than from `Spec` itself.
+
 Two rules, both checked on a device:
 
 - **Parsing is tolerant.** A key the SDK does not know is dropped with a warning, so a spec written
@@ -201,9 +227,12 @@ directory walk. Two platform details did need attention:
 
 - **`id` is a keyword in Objective-C.** A parameter called `id` makes SWIG emit `arg1:` selectors
   (`registerOptions:kind:arg1:options:`), so the parameter is named `objectId`.
-- **Only `source` specs exist.** Layers, styles, element styles and services are not buildable
-  from a spec yet, and `destroy` is `unregisterObject`. Source types covered: `http`, `assets`,
-  `mbtiles`, `memory-cache`, `persistent-cache`, `ordered`, `combined`, `multi`.
+- **`create` does not attach a layer to a map.** It builds and registers it; the demo adds it with
+  the object API through `getLayer`. Attaching needs the map verbs.
+- **Element styles and services are not buildable from a spec**, and `destroy` is
+  `unregisterObject`.
+- **`zip://` asset packages are not supported** — the archive has to be read into `BinaryData`,
+  which is platform work. `dir://` works.
 - **`ios/objc/MassifMaps.h` is hand-maintained**, not generated, so a new Objective-C class has to
   be added to that umbrella by hand.
 
@@ -246,7 +275,9 @@ cd tests && ./run.sh
 ```
 
 It covers table lookups and the base chain, handle generations and the stale-handle rule,
-`set`/`get` per value type, and path-resolution failures. Two things keep it small on purpose:
+`set`/`get` per value type, path-resolution failures, and `create` — reuse on an identical spec,
+key order not mattering, conflict on a different spec, tolerant application of unknown keys, and
+the parse and factory failure paths. Two things keep it small on purpose:
 the property table takes the address of **every** accessor thunk, so a full table needs the full
 SDK to link — the tests generate a reduced one from an explicit module list
 (`gen-api-tables.py --modules`), which exercises the generator as a side effect. And `Options`

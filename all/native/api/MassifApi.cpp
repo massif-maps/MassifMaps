@@ -2,6 +2,8 @@
 #include "api/Spec.h"
 #include "components/Options.h"
 #include "datasources/TileDataSource.h"
+#include "layers/Layer.h"
+#include "components/Exceptions.h"
 
 namespace massif { namespace api {
 
@@ -15,9 +17,16 @@ namespace massif { namespace api {
     }
 
     int MassifApi::create(const std::string& kind, const std::string& objectId, const std::string& json) {
+        // Registered here rather than at static-init time: Spec itself must not depend on the
+        // factories, or a test cannot exercise create() without linking every constructor.
+        static bool registered = (Spec::registerBuiltinFactories(), true);
+        (void)registered;
+
         Handle handle = NULL_HANDLE;
-        if (Spec::create(*Context::GetDefault(), kind, objectId, json, handle) != RESULT_OK) {
-            return NULL_HANDLE;
+        Result result = Spec::create(*Context::GetDefault(), kind, objectId, json, handle);
+        if (result != RESULT_OK) {
+            throw GenericException("Cannot create '" + objectId + "' of kind '" + kind +
+                                   "' (result " + std::to_string(result) + "), see the log");
         }
         return static_cast<int>(handle);
     }
@@ -25,6 +34,11 @@ namespace massif { namespace api {
     std::shared_ptr<TileDataSource> MassifApi::getSource(const std::string& objectId) {
         Handle handle = Context::GetDefault()->findObject("source", objectId);
         return std::static_pointer_cast<TileDataSource>(Context::GetDefault()->getObject(handle));
+    }
+
+    std::shared_ptr<Layer> MassifApi::getLayer(const std::string& objectId) {
+        Handle handle = Context::GetDefault()->findObject("layer", objectId);
+        return std::static_pointer_cast<Layer>(Context::GetDefault()->getObject(handle));
     }
 
     bool MassifApi::unregisterObject(const std::string& kind, const std::string& objectId) {

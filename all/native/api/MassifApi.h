@@ -15,6 +15,7 @@
 namespace massif {
     class Options;
     class TileDataSource;
+    class Layer;
 
     namespace api {
 
@@ -48,10 +49,12 @@ namespace massif {
          * id fails. Keys the factory does not need are applied as properties, and a key the SDK
          * does not know is dropped with a warning.
          *
-         * @param kind The object kind, currently only "source".
+         * @param kind The object kind: "source", "style" or "layer".
          * @param objectId The caller's name for the object.
          * @param json The spec.
-         * @return The handle, or 0 on failure.
+         * @return The handle.
+         * @throws std::runtime_error If the spec does not parse, names no known type, or the id is
+         *         taken by a different spec.
          */
         static int create(const std::string& kind, const std::string& objectId, const std::string& json);
 
@@ -60,6 +63,12 @@ namespace massif {
          * This is the escape hatch: anything the facade cannot express yet is still reachable.
          */
         static std::shared_ptr<TileDataSource> getSource(const std::string& objectId);
+
+        /**
+         * Returns a layer built earlier, so it can be added to a map with the object API. Layers
+         * are not attached by create - that needs the map verbs.
+         */
+        static std::shared_ptr<Layer> getLayer(const std::string& objectId);
 
         /**
          * Drops an id and the context's reference to the object behind it.

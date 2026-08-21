@@ -26,6 +26,28 @@ namespace massif { namespace api {
     class Spec {
     public:
         /**
+         * Builds one object from a spec. The registry is what a plugin extends to add a type,
+         * and what a test replaces to exercise create() without linking every constructor.
+         * @param context For resolving nested references by id.
+         * @param spec The parsed spec, whose "type" chose this factory.
+         * @param object Set to the new object and its class on success.
+         * @param consumed The spec keys the factory used; the rest are applied as properties.
+         */
+        typedef Result (*Factory)(Context& context, const Variant& spec, ObjectRef& object,
+                                  std::set<std::string>& consumed);
+
+        /**
+         * Registers a factory for a kind. Replaces any factory already registered for it.
+         */
+        static void registerFactory(const std::string& kind, Factory factory);
+
+        /**
+         * Registers the factories the SDK ships. Called on first use; a test that wants only its
+         * own kinds can register those instead.
+         */
+        static void registerBuiltinFactories();
+
+        /**
          * Builds an object from a JSON spec and registers it under a kind and id.
          *
          * An identical spec under an existing id returns that handle - two maps share one source

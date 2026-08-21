@@ -10,6 +10,10 @@ set(TEST_MODULES
 set(TEST_SDK_SOURCES
   "${SDK_BASE_DIR}/all/native/api/Context.cpp"
   "${SDK_BASE_DIR}/all/native/api/PropertyTable.cpp"
+  # Spec.cpp holds create() and the registry; the built-in factories live in SpecFactories.cpp,
+  # which is deliberately NOT here - linking it would need every source and layer constructor.
+  "${SDK_BASE_DIR}/all/native/api/Spec.cpp"
+  "${SDK_BASE_DIR}/all/native/core/Variant.cpp"
   "${SDK_BASE_DIR}/all/native/components/FogOptions.cpp"
   "${SDK_BASE_DIR}/all/native/graphics/Color.cpp"
   "${SDK_BASE_DIR}/all/native/utils/Log.cpp"

@@ -4,6 +4,7 @@
  */
 
 #include "api/Context.h"
+#include "api/Spec.h"
 #include "api/PropertyTable.h"
 #include "components/FogOptions.h"
 #include "graphics/Color.h"
@@ -104,6 +105,63 @@ namespace {
                    "a deep unknown path is reported");
     }
 
+    /**
+     * A factory for a kind that needs no SDK constructor, so create() can be tested without
+     * linking every source and layer type. This is the same hook a plugin would use.
+     */
+    Result fakeFactory(Context&, const Variant& spec, ObjectRef& object,
+                       std::set<std::string>& consumed) {
+        consumed.insert("type");
+        if (spec.containsObjectKey("fail")) {
+            return RESULT_UNKNOWN_TYPE;
+        }
+        object.obj = std::make_shared<FogOptions>();
+        object.cppClass = "massif::FogOptions";
+        return RESULT_OK;
+    }
+
+    void testCreate(const std::shared_ptr<Context>& context) {
+        Spec::registerFactory("fake", &fakeFactory);
+
+        Handle handle = NULL_HANDLE;
+        const std::string spec = "{\"type\":\"fog\",\"rangeStart\":2.5}";
+        TEST_CHECK(Spec::create(*context, "fake", "a", spec, handle) == RESULT_OK, "create from a spec");
+
+        // The key the factory did not consume is applied through the property table, which is what
+        // keeps adding an option free.
+        PropertyValue value;
+        TEST_CHECK(context->getProperty(handle, "rangeStart", value) == RESULT_OK &&
+                   value.floatValue == 2.5, "an unconsumed key is applied as a property");
+
+        // Identical spec reuses; a different one under the same id is a conflict, not a replace.
+        Handle again = NULL_HANDLE;
+        TEST_CHECK(Spec::create(*context, "fake", "a", spec, again) == RESULT_OK && again == handle,
+                   "an identical spec reuses the object");
+        Handle reordered = NULL_HANDLE;
+        TEST_CHECK(Spec::create(*context, "fake", "a", "{\"rangeStart\":2.5,\"type\":\"fog\"}", reordered) ==
+                   RESULT_OK && reordered == handle, "key order does not make it a different spec");
+        Handle conflict = NULL_HANDLE;
+        TEST_CHECK(Spec::create(*context, "fake", "a", "{\"type\":\"other\"}", conflict) == RESULT_DUPLICATE_ID,
+                   "a different spec under that id is refused");
+
+        // Tolerant parsing: a key the SDK does not know is dropped, and the object is still built.
+        Handle tolerant = NULL_HANDLE;
+        TEST_CHECK(Spec::create(*context, "fake", "b", "{\"type\":\"fog\",\"noSuchOption\":1,\"rangeStart\":3}",
+                                tolerant) == RESULT_OK, "an unknown key does not fail the create");
+        TEST_CHECK(context->getProperty(tolerant, "rangeStart", value) == RESULT_OK && value.floatValue == 3,
+                   "and the keys it does know still applied");
+
+        Handle bad = NULL_HANDLE;
+        TEST_CHECK(Spec::create(*context, "fake", "c", "not json", bad) == RESULT_BAD_SPEC, "bad JSON is reported");
+        TEST_CHECK(Spec::create(*context, "fake", "d", "[1,2]", bad) == RESULT_BAD_SPEC, "a non-object spec is reported");
+        TEST_CHECK(Spec::create(*context, "nosuchkind", "e", "{}", bad) == RESULT_UNKNOWN_TYPE, "an unknown kind is reported");
+        TEST_CHECK(Spec::create(*context, "fake", "f", "{\"fail\":true}", bad) == RESULT_UNKNOWN_TYPE,
+                   "a factory failure is propagated");
+
+        context->unregisterObject("fake", "a");
+        context->unregisterObject("fake", "b");
+    }
+
     void testHandles(const std::shared_ptr<Context>& context) {
         Handle handle = context->findObject("options", "fog");
         TEST_CHECK(handle != NULL_HANDLE, "an id resolves to its handle");
@@ -139,6 +197,7 @@ int main() {
     auto context = std::make_shared<Context>();
     testValues(context);
     testPaths(context);
+    testCreate(context);
     testHandles(context);
 
     std::printf("\n%d failure(s)\n", failures);

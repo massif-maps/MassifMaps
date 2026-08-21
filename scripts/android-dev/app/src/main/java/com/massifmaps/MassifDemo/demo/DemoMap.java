@@ -685,32 +685,42 @@ public class DemoMap {
 
     /** CustomRasterTileLayer: any filter shader over any raster source (here: hypsometric tint). */
     /**
-     * Facade API (#146): a raster layer whose whole source stack is described by ONE JSON spec.
+     * Facade API (#146): a layer whose whole stack - layer, nested sources, style - is ONE JSON
+     * spec. Nothing below is constructed here.
      *
-     * The nesting is the point - a memory cache in front of an HTTP source is two objects, and
-     * neither is constructed here. Only "type" and the constructor arguments are read by a
-     * factory; every other key (tmsScheme, maxOpenedPackages, ...) is applied through the
-     * generated property table, so an option costs nothing to support.
+     * Only "type" and the constructor arguments are read by a factory; every other key
+     * (opacity, visible, capacity, ...) is applied through the generated property table, and the
+     * table walks base classes, so a layer's opacity comes from Layer and a cache's capacity from
+     * CacheTileDataSource without either being declared on the concrete type.
      *
-     * Creating the same id twice with the SAME spec reuses the object rather than failing, which
-     * is how two maps come to share one source without coordinating.
+     * Override it to try another shape, composite-vector included:
+     *   --es apiLayerSpec composite      (a preset: raster, composite, solid)
+     *   --es apiLayerSpec '{"type":...}'  (raw JSON, if the shell lets the quotes through)
      */
     private Layer createApiSourceLayer() {
-        String spec = DemoConfig.API_SOURCE_SPEC;
-        int handle = MassifApi.create("source", "demoApiSource", spec);
-        Log.i(TAG, "api create source -> handle=" + handle + " spec=" + spec);
-        if (handle == 0) {
-            Log.w(TAG, "api create failed, see the Spec warnings above");
+        String spec = DemoConfig.apiLayerSpec();
+        int handle;
+        try {
+            handle = MassifApi.create("layer", "demoApiLayer", spec);
+        } catch (Exception e) {
+            Log.w(TAG, "api create layer failed: " + e.getMessage());
             return null;
         }
-        // The reuse rule, checked where it can be seen: the same id with the SAME spec hands back
-        // the same object, a different spec under that id is refused rather than replacing it.
-        int again = MassifApi.create("source", "demoApiSource", spec);
-        int conflict = MassifApi.create("source", "demoApiSource", "{\"type\":\"http\",\"url\":\"https://example.com/{z}/{x}/{y}.png\"}");
-        Log.i(TAG, "api reuse=" + (again == handle) + " conflictRefused=" + (conflict == 0));
+        Log.i(TAG, "api create layer -> handle=" + handle + " spec=" + spec);
 
-        TileDataSource source = MassifApi.getSource("demoApiSource");
-        return source != null ? new RasterTileLayer(source) : null;
+        // The reuse rule, where it can be seen: the same id with the SAME spec hands back the same
+        // object, a different spec under that id is refused rather than replacing it.
+        int again = MassifApi.create("layer", "demoApiLayer", spec);
+        boolean conflictRefused = false;
+        try {
+            MassifApi.create("layer", "demoApiLayer", "{\"type\":\"solid\",\"color\":-65536}");
+        } catch (Exception e) {
+            conflictRefused = true;
+        }
+        Log.i(TAG, "api reuse=" + (again == handle) + " conflictRefused=" + conflictRefused
+                + " opacity=" + MassifApi.getFloat(handle, "opacity", -1));
+
+        return MassifApi.getLayer("demoApiLayer");
     }
 
     private Layer createHypsoLayer() {

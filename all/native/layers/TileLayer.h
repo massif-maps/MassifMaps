@@ -27,7 +27,8 @@ namespace massif {
     class CullState;
     class ElevationManager;
     class GLResourceManager;
-    class ProjectionSurface;
+    class Projection;
+class ProjectionSurface;
     class TerrainOptions;
     class TileRenderer;
     class TileLoadListener;
@@ -70,6 +71,12 @@ namespace massif {
          * @return The tile data source assigned to this layer.
          */
         std::shared_ptr<TileDataSource> getDataSource() const;
+
+        /**
+         * Returns the projection this layer's data is in, which is its data source's.
+         * @return The projection, or null when the layer has no data source.
+         */
+        std::shared_ptr<Projection> getProjection() const;
 
         /**
          * Returns the tile data source of the associated UTF grid. By default this is null.

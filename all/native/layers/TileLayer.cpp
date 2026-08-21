@@ -68,6 +68,10 @@ namespace massif {
     std::shared_ptr<TileDataSource> TileLayer::getDataSource() const {
         return _dataSource.get();
     }
+
+    std::shared_ptr<Projection> TileLayer::getProjection() const {
+        return _dataSource ? _dataSource->getProjection() : std::shared_ptr<Projection>();
+    }
     
     std::shared_ptr<TileDataSource> TileLayer::getUTFGridDataSource() const {
         return _utfGridDataSource.get();

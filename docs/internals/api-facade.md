@@ -57,7 +57,8 @@ becomes a new path on the next build.
 
 `scripts/gen-api-tables.py` walks `all/modules` and emits
 `generated/api/PropertyTable.inc`; `all/native/api/PropertyTable.{h,cpp}` define the structures and
-the lookups. Current output for the full profile: **718 properties over 157 classes**, 229 classes in the chain — 494 with a value accessor, 113 with an object accessor.
+the lookups. Current output for the full profile: **724 properties over 159 classes**, 234 classes
+in the chain — 546 with a value accessor, 113 with an object accessor.
 
 Six macro forms carry the declarations, and they do not all mean the same thing — the table records
 a value type per row, not just an accessor. Counts below are every declaration in the tree; a build
@@ -65,14 +66,15 @@ sees fewer, because modules behind a support define it does not set are skipped:
 
 | macro | count | meaning |
 |---|---|---|
-| `%attribute` | 386 | a scalar — bool, int, float, `Color`, or an enum constant |
-| `%attributeval` | 150 | a by-value struct: `MapRange`, `MapBounds`, `MapPos`, a vector |
-| `%attributestring` | 126 | a `std::string` **or** a `shared_ptr` — string vs object reference |
+| `%attribute` | 387 | a scalar — bool, int, float, `Color`, or an enum constant |
+| `%attributeval` | 151 | a by-value struct: `MapRange`, `MapBounds`, `MapPos`, a vector |
+| `%attributestring` | 131 | a `std::string` **or** a `shared_ptr` — string vs object reference |
 | `!attributestring_polymorphic` | 49 | an object reference, addressed by registry id |
 | `%staticattribute` and friends | 6 | static, flagged and otherwise the same |
 
-Resulting distribution for the full profile: `FLOAT` 152, `OBJECT` 110, `STRUCT` 106, `INT` 103,
-`BOOL` 82, `STRING` 71, `COLOR` 48, `ENUM` 44. A `lite` build skips 56 modules and lands at 608.
+Resulting distribution for the full profile: `FLOAT` 152, `OBJECT` 114, `INT` 103, `STRUCT` 101,
+`BOOL` 85, `STRING` 71, `COLOR` 48, `ENUM` 45, `VARIANT` 5. A `lite` build skips 56 modules and
+lands at 613; the default profile skips 45 and lands at 639.
 
 Both tables are emitted sorted, so a lookup is a binary search over static data — no `std::map`, no
 allocation, nothing built at load time.
@@ -88,7 +90,7 @@ A lookup walks the class' base chain, because almost every useful property is de
 `MemoryCacheTileDataSource` declares none of its own and gets `capacity` from `CacheTileDataSource`.
 The generator reads `class X : public Y` from the headers the modules pull in, and emits an entry
 for **every** class it sees — with or without properties of its own, or the chain breaks at exactly
-the classes that need it. 157 classes declare a property; 229 are in the table.
+the classes that need it. 159 classes declare a property; 234 are in the table.
 
 This was not designed in. It shipped without inheritance, and the first spec-built source on a
 device answered `Context::create: demoApiSource.capacity ignored (2)` — `RESULT_UNKNOWN_CLASS`,
@@ -231,11 +233,19 @@ That is what makes the redraw granularity above true in practice rather than by 
 
 `PropertyValue` is deliberately not a union: the `std::string` member makes one impossible, and
 these are configuration calls, not a per-frame path. It **carries the type it was stamped with**,
-and both directions coerce through `asBool()` / `asLong()` / `asDouble()`.
+and every direction coerces through `asBool()` / `asLong()` / `asDouble()` / `asString()`.
 
-That is not tidiness. Without it each thunk touched only its own field, so reading a bool as a
-float returned 0 — indistinguishable from a real 0 — and writing a bool through `setFloat` wrote
-`false` whatever you passed. Both shipped, and both were caught on a device rather than in review.
+That is not tidiness, and it took three rounds to get right. Without the stamp each thunk touched
+only its own field, so reading a bool as a float returned 0 — indistinguishable from a real 0 — and
+writing a bool through `setFloat` wrote `false` whatever you passed; both shipped, and both were
+caught on a device rather than in review. Text was the third: `set_string(h, "rangeStart", "3")`
+wrote **0**, because `asDouble` never parsed a string, and the reverse wrote an empty string.
+
+A binding whose only type is text — a C caller, a URL query, a scripting language — hits that on
+its first call, which is where it was finally found. `asDouble`/`asLong` parse now; `asBool` is
+spelled out rather than parsed, because `"false"` is not a number and `strtod` would make it true.
+Garbage reads as 0, the same as every other unrepresentable conversion here.
+
 Build values with `PropertyValue::ofBool/ofLong/ofDouble/ofString` rather than assigning a field,
 so the type cannot be forgotten.
 
@@ -249,13 +259,12 @@ MassifApi.setFloat(h, "opacity", 0.25);   // declared on Layer, reached through 
 MassifApi.setBool (h, "visible", false);
 ```
 
-Two things it is **not** yet usable for, both waiting on verbs that do not exist:
+A method is `call` — `loadTile` on a source, `getElevations` on a hillshade layer — and an event is
+`on`. See [Calls](#calls) and [Events](#events).
 
-- **Replacing an object-valued property** — a layer's style, a cache's inner source. Writing an
-  `OBJECT` property needs a registry id and a checked downcast.
-- **Anything that is a method rather than a property** — `loadTile` on a source,
-  `setStyleParameter` on a decoder, `clearTileCaches` on a layer. Those are `call`, which is not
-  implemented.
+One thing a handle is **not** yet usable for: **replacing an object-valued property**, a layer's
+style or a cache's inner source. Writing an `OBJECT` property needs a registry id and a checked
+downcast, and only reading one is implemented — which is what traversal needs.
 
 ### Dotted paths
 
@@ -421,6 +430,20 @@ adb shell am broadcast -a com.massifmaps.MassifDemo.CONFIG --es apiSet fogOption
 xcrun simctl launch <device> com.massifmaps.MassifDemo -apiSet fogOptions.rangeStart=2.5
 ```
 
+The Android demo has a knob per verb, all in `demo/DemoLive.java` — a facade feature nobody can
+exercise is unverified:
+
+```sh
+--es apiSet fogOptions.rangeStart=2.5              # set/get, dotted
+--es apiEvents true                                # subscribe, and log a click payload
+--es apiCall 'source:osm:loadTile:[[8467,5852,14]]'          # call, synchronous
+--es apiCall 'source:osm:loadTile:[[8467,5852,14]]' --es apiAsync true
+--es apiCancel true                                # cancel the last async call
+```
+
+The iOS demo has no live-config channel yet ([#154](https://github.com/massif-maps/MassifMaps/issues/154)),
+so it takes the same keys as launch arguments only.
+
 Measured on an Android emulator, reading the result code out of logcat:
 
 | path | result | meaning |
@@ -429,7 +452,7 @@ Measured on an Android emulator, reading the result code out of logcat:
 | `fogOptions.nope` | `3` | unknown property |
 | `fieldOfViewY.x` | `7` | not traversable - a dot into a scalar |
 | `nosuch.rangeStart` | `3` | unknown intermediate |
-| `zoomRange` | `5` | unsupported type - `STRUCT` has no accessor yet |
+| `zoomRange` | `5` | unsupported type — taken **before** the struct codec existed. `MapRange` has an accessor now; see [Structs](#structs) for the device check that replaced this row |
 
 The handle came back as `1048577`, which is generation 1, index 1 — the encoding above, confirmed
 end to end. The iOS simulator gives the identical line, handle included:
@@ -448,8 +471,9 @@ whatever took the slot. Three removals, because all three come up: `unsubscribe`
 
 Four rules, each of which is a bug if it is not there:
 
-- **Subscriptions die with their target.** `unregisterObject` drops them, or the first destroy on
-  an object with a handler is a use-after-free.
+- **Subscriptions die with their target**, and so do its pending async calls. `unregisterObject`
+  drops both, or the first destroy on an object with a handler is a use-after-free — and a queued
+  call would keep the object alive, through the retain it took, long after the app dropped it.
 - **Dispatch is in registration order** — *not* slot order. Slots are reused, so index order and
   registration order diverge, and dispatching by index would make which of two consuming handlers
   wins depend on allocation history. Entries carry a sequence number and `collect` sorts by it.
@@ -715,26 +739,27 @@ native signature with a `new DoubleVector(...)` body.
 cd tests && ./run.sh
 ```
 
-It covers table lookups and the base chain, handle generations and the stale-handle rule,
-`set`/`get` per value type, path-resolution failures, and `create` — reuse on an identical spec,
-key order not mattering, conflict on a different spec, tolerant application of unknown keys, and
-the parse and factory failure paths, plus the whole event layer — the three removals, dispatch
-order, consumption, removal from inside a handler, death-with-target, and the delivery layer —
-queueing, the single drain post, coalescing, the consume/queued rejection, and payload retain
-across a destroy — and the struct codec's round-trips and its refusal of every malformed shape, and
-the projection layer — the name registry, a declared source projection versus an attached one, the
-per-read argument, the per-subscription default and its expiry when the handler returns, the drain
-path, and the non-finite refusal — and the call layer: argument decoding and its refusals, the
-base-chain lookup, result ownership and destroy, the binary channel, and an async result arriving
-as an event, failing as a payload of 0, and queueing in order, the flat numeric channel, and
-cancellation - queued, running, by target, and dying with the target - and the C ABI: the two-call
-buffer protocol, the option JSON, out-params being optional, and a null context being refused rather
-than dereferenced. 293 checks.
-Two things keep it small on purpose:
-the property table takes the address of **every** accessor thunk, so a full table needs the full
-SDK to link — the tests generate a reduced one from an explicit module list
-(`gen-api-tables.py --modules`), which exercises the generator as a side effect. And `Options`
-drags the renderer, so `Options -> FogOptions` traversal stays a device check.
+**293 checks**, one file per layer:
+
+| file | what it covers |
+|---|---|
+| `ApiTest.cpp` | table lookups, the base chain, handle generations and the stale-handle rule, `set`/`get` per value type in both directions, path-resolution failures, and `create` — reuse on an identical spec, conflict on a different one, key order not mattering, tolerant unknown keys, and the parse and factory failures |
+| `EventTest.cpp` | the three removals, dispatch order, consumption, removal from inside a handler, death-with-target, and delivery — queueing, the single drain post, coalescing, the consume/queued rejection, payload retain across a destroy |
+| `StructCodecTest.cpp` | round-trips, and the refusal of every malformed shape |
+| `ProjectionTest.cpp` | the name registry, a declared source projection versus an attached one, the per-read argument, the per-subscription default and its expiry when the handler returns, the drain path, the non-finite refusal |
+| `MethodTest.cpp` | argument decoding and its refusals, the base-chain lookup, result ownership and `destroy`, the binary and flat-numeric channels, an async result arriving as an event and failing as a payload of 0, and cancellation — queued, running, by target, and dying with the target |
+| `CAbiTest.cpp` | the two-call buffer protocol, the option JSON, out-params being optional, a null context refused rather than dereferenced |
+
+Three things keep the link small, and all three are deliberate:
+
+- The property table takes the address of **every** accessor thunk, so a full table needs the full
+  SDK. The tests generate a reduced one from an explicit module list (`gen-api-tables.py
+  --modules`), which exercises the generator as a side effect.
+- The **built-in registrations are a seam**. `registerBuiltins()` is declared in `Builtins.h` and
+  defined in `Builtins.cpp` for the SDK — which pulls in every source, layer and method — and
+  defined *again* in `CAbiTest.cpp` over three test classes. A separate program, so a second
+  definition is not a violation, and it is what lets `create` and `call` be tested at all.
+- `Options` drags the renderer, so `Options -> FogOptions` traversal stays a device check.
 
 Writing them moved `create` out of `Context` and into `Spec`: `Context` is the object registry and
 should not depend on the JSON layer, which is what made it unlinkable without every source
@@ -798,9 +823,10 @@ cd scripts && python3 gen-api-tables.py
   finishes.
 - **The async queue is one thread.** A slow call blocks the ones behind it — the right default for
   a queue an app filled in order, wrong for two independent sources being primed at once.
-- **`OBJECT` and `STRUCT` properties have no accessor** (216 of the 716). They need the registry for
-  object references and JSON marshalling for structs, so their table rows carry null thunks and
-  `set`/`get` return `RESULT_UNSUPPORTED_TYPE`.
+- **178 of the 724 rows have no value accessor** — every `OBJECT` (114, all of which are readable
+  as a traversal step instead) and the 59 `STRUCT` types `StructCodec` does not know: vectors, maps,
+  `BalloonPopupMargins`, `ClickInfo`. 65 rows have neither, and `set`/`get` on one returns
+  `RESULT_UNSUPPORTED_TYPE`. Adding a struct type is a line in `CODEC_TYPES`.
 - **Writing an `OBJECT` property** is unsupported: it needs a registry id and a checked downcast.
   Reading one works, which is what traversal needs.
 - **`Options` cannot be linked into a standalone harness** — it pulls the renderer,
@@ -813,6 +839,6 @@ cd scripts && python3 gen-api-tables.py
   object.
 - **No alias table.** Every path is the mechanical spelling; mapbox-familiar aliases
   (`fog-range` for the `rangeStart`/`rangeEnd` pair) are not implemented.
-- **One translation unit includes 158 class headers**, which is a heavy compile and couples
+- **One translation unit includes 220 class headers**, which is a heavy compile and couples
   `PropertyTable.cpp` to most of the SDK. Splitting the accessors per module directory is the
   obvious fix if build time becomes a problem; it has not been measured.

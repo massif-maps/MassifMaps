@@ -1,5 +1,6 @@
 package com.massifmaps.api;
 
+import com.massifmaps.core.MapPos;
 import com.massifmaps.layers.Layer;
 import com.massifmaps.ui.MapEventListener;
 import com.massifmaps.ui.MapView;
@@ -193,6 +194,18 @@ public final class MassifMap implements AutoCloseable {
     /** A layer by stack position, for the ones the app did not build through the registry. */
     public Layer rawLayer(int index) {
         return view.getLayers().get(index);
+    }
+
+    // --- screen and map ------------------------------------------------------------------------
+
+    /** Where a touch point is on the map. Straight through to the view; here so one class has it. */
+    public MapPos screenToMap(float x, float y) {
+        return view.screenToMap(new com.massifmaps.core.ScreenPos(x, y));
+    }
+
+    /** And the other way, for placing a native view over a coordinate. */
+    public com.massifmaps.core.ScreenPos mapToScreen(MapPos pos) {
+        return view.mapToScreen(pos);
     }
 
     // --- events --------------------------------------------------------------------------------

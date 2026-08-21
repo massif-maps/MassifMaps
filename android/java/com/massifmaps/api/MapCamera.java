@@ -1,6 +1,9 @@
 package com.massifmaps.api;
 
+import com.massifmaps.core.MapBounds;
 import com.massifmaps.core.MapPos;
+import com.massifmaps.core.ScreenBounds;
+import com.massifmaps.core.ScreenPos;
 import com.massifmaps.ui.MapView;
 
 /**
@@ -58,6 +61,25 @@ public final class MapCamera {
     public MapCamera moveTo(MapPos pos, float zoom) {
         view.flyTo(pos, zoom, take());
         return this;
+    }
+
+    /**
+     * Frames a bounding box, which is what "zoom to this route" or "fit these markers" means.
+     *
+     * @param screenBounds The part of the view to fit it into - the whole view unless something
+     *                     overlays it.
+     * @param integerZoom Snap to a whole zoom level, which keeps raster tiles crisp.
+     */
+    public MapCamera fitBounds(MapBounds bounds, ScreenBounds screenBounds, boolean integerZoom) {
+        view.moveToFitBounds(bounds, screenBounds, integerZoom, take());
+        return this;
+    }
+
+    /** The same, over the whole view. */
+    public MapCamera fitBounds(MapBounds bounds) {
+        return fitBounds(bounds, new ScreenBounds(new ScreenPos(0, 0),
+                                                  new ScreenPos(view.getWidth(), view.getHeight())),
+                         false);
     }
 
     public MapPos position() {

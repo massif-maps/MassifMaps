@@ -12,6 +12,9 @@
 
 @class MSFMapView;
 @class MSFMapPos;
+@class MSFMapBounds;
+@class MSFScreenPos;
+@class MSFScreenBounds;
 @class MSFLayer;
 @class MSFMassifObject;
 @class MSFMassifLayer;
@@ -46,6 +49,17 @@ NS_SWIFT_NAME(MapCamera)
  */
 - (instancetype)moveTo:(MSFMapPos *)pos zoom:(float)zoom rotation:(float)rotation tilt:(float)tilt;
 - (instancetype)moveTo:(MSFMapPos *)pos zoom:(float)zoom;
+
+/**
+ * Frames a bounding box, which is what "zoom to this route" or "fit these markers" means.
+ * @param integerZoom Snap to a whole zoom level, which keeps raster tiles crisp.
+ */
+- (instancetype)fitBounds:(MSFMapBounds *)bounds
+             screenBounds:(MSFScreenBounds *)screenBounds
+              integerZoom:(BOOL)integerZoom;
+
+/** The same, over the whole view. */
+- (instancetype)fitBounds:(MSFMapBounds *)bounds;
 
 @property (nonatomic, readonly) MSFMapPos *currentPosition;
 @property (nonatomic, readonly) float currentZoom;
@@ -134,6 +148,12 @@ NS_SWIFT_NAME(MassifMap)
  * each one repeating the same toWgs84 chain. Empty leaves them in the map's own projection.
  */
 @property (nonatomic, copy) NSString *eventProjection;
+
+/** Where a touch point is on the map. Straight through to the view; here so one class has it. */
+- (nullable MSFMapPos *)screenToMapX:(float)x y:(float)y;
+
+/** And the other way, for placing a native view over a coordinate. */
+- (nullable MSFScreenPos *)mapToScreen:(MSFMapPos *)pos;
 
 - (nullable MSFSubscription *)onClick:(MSFMapClickHandler)handler;
 - (nullable MSFSubscription *)onMove:(MSFMapEventHandler)handler;

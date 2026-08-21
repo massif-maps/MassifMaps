@@ -768,6 +768,41 @@ path inside — including an **empty** path, meaning the document itself. That i
 `Context` that names a class, and it is what lets a scalar result travel without a result class
 being invented for it.
 
+### Which methods exist, and why those
+
+Chosen by counting, not by guessing: the NativeScript app this API is measured against
+(`/Volumes/dev/nativescript/alpimaps`) calls `setStyleParameter` **14** times, `getElevation` 11,
+`moveToFitBounds` 9, `loadTile` 5, `screenToMap` 4, then `clearTileCaches` and `refresh` once each.
+
+| method | on | notes |
+|---|---|---|
+| `loadTile([x,y,z])` | `TileDataSource` | binary result |
+| `getElevation([x,y])`, `getElevations([[x,y],…])` | `HillshadeRasterTileLayer` | scalar, flat array |
+| `setStyleParameter(name, value)`, `getStyleParameter(name)`, `getStyleParameters()` | `VectorTileDecoder` | a live theme switch without a full re-decode |
+| `clearTileCaches(all)` | `TileLayer` | |
+| `refresh()` | `Layer` | |
+
+`moveToFitBounds` and `screenToMap` are camera and view calls, so they went into the sugar
+(`camera().fitBounds(...)`, `map.screenToMap(x, y)`) rather than the method table — the object API
+already has them and the wrapper only has to reach them.
+
+The style-parameter methods are registered on `VectorTileDecoder` and **downcast to
+`MBVectorTileDecoder` inside the thunk**, because traversal records the class a property *declares*
+rather than the concrete one — see the gaps.
+
+### A method can be addressed through a path
+
+`set` and `get` walk dotted paths and `call` did not, so a method on a nested object was
+unreachable without registering that object under an id of its own. It walks the same way now:
+
+```java
+layer.call("tileDecoder.setStyleParameter", "buildings", "true");
+```
+
+Everything before the last dot traverses object properties; the last segment is the method. A
+scalar on the way is `RESULT_NOT_TRAVERSABLE`, a missing segment `RESULT_UNKNOWN_PROPERTY`, and a
+null intermediate `RESULT_NULL_OBJECT` — the same answers the property verbs give.
+
 ### Where methods come from
 
 The method table is **hand-registered**, not generated, and that is the one place the facade is not
@@ -878,7 +913,7 @@ native signature with a `new DoubleVector(...)` body.
 cd tests && ./run.sh
 ```
 
-**316 checks**, one file per layer:
+**319 checks**, one file per layer:
 
 | file | what it covers |
 |---|---|
@@ -886,7 +921,7 @@ cd tests && ./run.sh
 | `EventTest.cpp` | the three removals, dispatch order, consumption, removal from inside a handler, death-with-target, and delivery — queueing, the single drain post, coalescing, the consume/queued rejection, payload retain across a destroy |
 | `StructCodecTest.cpp` | round-trips, and the refusal of every malformed shape |
 | `ProjectionTest.cpp` | the name registry, a declared source projection versus an attached one, the per-read argument, the per-subscription default and its expiry when the handler returns, the drain path, the non-finite refusal, and object writes — the subclass check in both directions, an unknown class failing closed, and the wrong kind of object leaving the property alone |
-| `MethodTest.cpp` | argument decoding and its refusals, the base-chain lookup, result ownership and `destroy`, the binary and flat-numeric channels, a thunk that throws being caught rather than propagated, an async result arriving as an event and failing as a payload of 0, and cancellation — queued, running, by target, and dying with the target |
+| `MethodTest.cpp` | argument decoding and its refusals, the base-chain lookup, a method addressed through a path and its failure modes, result ownership and `destroy`, the binary and flat-numeric channels, a thunk that throws being caught rather than propagated, an async result arriving as an event and failing as a payload of 0, and cancellation — queued, running, by target, and dying with the target |
 | `CAbiTest.cpp` | the two-call buffer protocol, the option JSON, out-params being optional, handle liveness, object writes, a null context refused rather than dereferenced |
 
 Three things keep the link small, and all three are deliberate:
@@ -966,8 +1001,16 @@ cd scripts && python3 gen-api-tables.py
 - **The bulk numeric channel is doubles only.** Positions, colours or integers arriving in bulk
   would each want their own accessor and their own typemap per language. Nothing needs one yet.
 - **The method table is hand-registered.** Unlike properties, methods are not declared by a macro
-  the generator can read, so each one is a thunk in `MethodImpls.cpp`. Three exist:
-  `TileDataSource.loadTile`, `HillshadeRasterTileLayer.getElevation` and `.getElevations`.
+  the generator can read, so each one is a thunk in `MethodImpls.cpp`. Eight exist — see the table
+  above for which and why.
+- **Traversal records the DECLARED class, not the concrete one.** `layer.tileDecoder` resolves as a
+  `VectorTileDecoder` even when it is an `MBVectorTileDecoder`, so a property or method that only
+  the subclass has is not found by name. The style-parameter thunks work around it with a
+  `dynamic_cast`. The real fix is for the generated objectGetter to resolve the concrete class
+  through `ClassRegistry`, the way adoption does; it is not done because `ClassRegistry` logs an
+  error for every class it does not know, and in a host build nothing is registered.
+- **`findFeatures` and the routing calls are not exposed.** Both return collections the facade has
+  no channel for yet.
 - **`callAsync` has no progress, and cancelling cannot abort work already running.** The SDK's load
   paths take no cancellation token, so `cancelCall` prevents a call starting and prevents its
   result being delivered, and that is all it can honestly do. A `loadTile` already in flight

@@ -5,6 +5,9 @@
 #import "MSFLayer.h"
 #import "MSFLayers.h"
 #import "MSFMapEventListener.h"
+#import "MSFMapBounds.h"
+#import "MSFScreenPos.h"
+#import "MSFScreenBounds.h"
 
 #include "api/Context.h"
 
@@ -61,6 +64,25 @@ static NSString * const kMapKind = @"map";
 - (instancetype)moveTo:(MSFMapPos *)pos zoom:(float)zoom {
     [_view flyTo:pos zoom:zoom durationSeconds:[self take]];
     return self;
+}
+
+- (instancetype)fitBounds:(MSFMapBounds *)bounds
+             screenBounds:(MSFScreenBounds *)screenBounds
+              integerZoom:(BOOL)integerZoom {
+    [_view moveToFitBounds:bounds
+              screenBounds:screenBounds
+               integerZoom:integerZoom
+           durationSeconds:[self take]];
+    return self;
+}
+
+- (instancetype)fitBounds:(MSFMapBounds *)bounds {
+    CGSize size = _view.bounds.size;
+    MSFScreenBounds *whole =
+        [[MSFScreenBounds alloc] initWithMin:[[MSFScreenPos alloc] initWithX:0 y:0]
+                                         max:[[MSFScreenPos alloc] initWithX:size.width
+                                                                           y:size.height]];
+    return [self fitBounds:bounds screenBounds:whole integerZoom:NO];
 }
 
 - (MSFMapPos *)currentPosition {
@@ -239,6 +261,14 @@ static void MSFInstallUiDispatcher(void) {
 }
 
 // --- events -----------------------------------------------------------------------------------
+
+- (MSFMapPos *)screenToMapX:(float)x y:(float)y {
+    return [_view screenToMap:[[MSFScreenPos alloc] initWithX:x y:y]];
+}
+
+- (MSFScreenPos *)mapToScreen:(MSFMapPos *)pos {
+    return [_view mapToScreen:pos];
+}
 
 - (MSFSubscription *)onClick:(MSFMapClickHandler)handler {
     return [self on:@"map.clicked" kind:MSFEventKindClick coalesce:NO block:handler];

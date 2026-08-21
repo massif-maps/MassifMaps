@@ -52,9 +52,9 @@ maintenance the facade exists to remove.
 declare every settable property of every wrapped class. Nothing is hand-listed, so a new setter
 becomes a new path on the next build.
 
-`scripts/gen-api-tables.py` walks `all/modules` and `android/modules` and emits
+`scripts/gen-api-tables.py` walks `all/modules` and emits
 `generated/api/PropertyTable.inc`; `all/native/api/PropertyTable.{h,cpp}` define the structures and
-the lookups. Current output for the full profile: **720 properties over 158 classes** — 495 with a value accessor, 113 with an object accessor.
+the lookups. Current output for the full profile: **718 properties over 157 classes**, 229 classes in the chain — 494 with a value accessor, 113 with an object accessor.
 
 Six macro forms carry the declarations, and they do not all mean the same thing — the table records
 a value type per row, not just an accessor. Counts below are every declaration in the tree; a build
@@ -85,7 +85,7 @@ A lookup walks the class' base chain, because almost every useful property is de
 `MemoryCacheTileDataSource` declares none of its own and gets `capacity` from `CacheTileDataSource`.
 The generator reads `class X : public Y` from the headers the modules pull in, and emits an entry
 for **every** class it sees — with or without properties of its own, or the chain breaks at exactly
-the classes that need it. 158 classes declare a property; 233 are in the table.
+the classes that need it. 157 classes declare a property; 229 are in the table.
 
 This was not designed in. It shipped without inheritance, and the first spec-built source on a
 device answered `Context::create: demoApiSource.capacity ignored (2)` — `RESULT_UNKNOWN_CLASS`,
@@ -248,12 +248,15 @@ module never triggers a reconfigure and the table goes stale. A stale table pres
 that silently does not exist. The working form is `add_custom_command` with the modules as
 `DEPENDS`, which ninja checks on every build, plus `OBJECT_DEPENDS` on `PropertyTable.cpp`.
 
-**The tables go in the build tree, one set per platform.** Writing them to a shared
-`generated/api` looks harmless and breaks the second platform to build: the table is generated from
-`all/modules` plus the *platform's* modules, so an Android run leaves `#include
-"utils/AndroidAssetPackage.h"` in a file the iOS compile then reads. The iOS build found this, not
-review. Output is `${CMAKE_CURRENT_BINARY_DIR}/generated/api`, and the module directory list follows
-`ANDROID` / `IOS` / `WIN32`.
+**The tables go in the build tree, and cover `all/modules` only.** Two separate lessons, both
+from the iOS build rather than from review:
+
+- A shared `generated/api` breaks the second platform to build, because a build's table depends on
+  its profile defines. Output is `${CMAKE_CURRENT_BINARY_DIR}/generated/api`.
+- The **platform** module sets have to stay out. `ios/modules` pulls in `ios/native/utils/
+  BitmapUtils.h`, which is Objective-C, and `PropertyTable.cpp` is a plain C++ translation unit —
+  Foundation's headers fail to parse in one. They are glue (bitmap conversion, asset packages), not
+  the cross-platform surface the facade is about, so the cost is two Android-only properties.
 
 Two more things that bit, both worth knowing before touching this:
 

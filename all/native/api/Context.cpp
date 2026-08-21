@@ -1108,8 +1108,9 @@ namespace massif { namespace api {
                 return entry;
             }
             // A Variant is where object traversal stops and JSON traversal begins: the caller
-            // reads the Variant, then walks what is left of the path inside it.
-            if (entry->type == PT_VARIANT && variantRest) {
+            // reads the Variant, then walks what is left of the path inside it. A STRUCT carries
+            // JSON too, so clickInfo.clickType and bounds.0 walk the same way.
+            if ((entry->type == PT_VARIANT || entry->type == PT_STRUCT) && variantRest) {
                 *variantRest = dot + 1;
                 return entry;
             }

@@ -91,6 +91,13 @@ namespace massif { namespace api { namespace StructCodec {
                std::to_string(value.getZoom()) + "]";
     }
 
+    std::string encode(const ClickInfo& value) {
+        std::map<std::string, Variant> fields;
+        fields["clickType"] = Variant(static_cast<long long>(value.getClickType()));
+        fields["duration"] = Variant(static_cast<double>(value.getDuration()));
+        return Variant(fields).toString();
+    }
+
     std::string encode(const std::map<std::string, std::string>& value) {
         std::map<std::string, Variant> variants;
         for (const std::pair<const std::string, std::string>& item : value) {
@@ -199,6 +206,16 @@ namespace massif { namespace api { namespace StructCodec {
         }
         value = MapTile(static_cast<int>(numbers[0]), static_cast<int>(numbers[1]),
                         static_cast<int>(numbers[2]), 0);
+        return true;
+    }
+
+    bool decode(const std::string& json, ClickInfo& value) {
+        std::map<std::string, Variant> fields;
+        if (!decode(json, fields) || !fields.count("clickType")) {
+            return false;
+        }
+        value = ClickInfo(static_cast<ClickType::ClickType>(fields["clickType"].getLong()),
+                          static_cast<float>(fields["duration"].getDouble()));
         return true;
     }
 

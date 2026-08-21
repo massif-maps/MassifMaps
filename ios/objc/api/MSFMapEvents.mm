@@ -54,7 +54,7 @@
 }
 
 - (int)clickType {
-    return (int)[MSFMassifApi getInt:self.payload path:@"clickType" defaultValue:-1];
+    return (int)[MSFMassifApi getInt:self.payload path:@"clickInfo.clickType" defaultValue:-1];
 }
 
 @end
@@ -133,7 +133,7 @@
 }
 
 - (int)clickType {
-    return (int)[MSFMassifApi getInt:self.payload path:@"clickType" defaultValue:-1];
+    return (int)[MSFMassifApi getInt:self.payload path:@"clickInfo.clickType" defaultValue:-1];
 }
 
 @end

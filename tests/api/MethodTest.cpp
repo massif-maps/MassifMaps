@@ -360,6 +360,13 @@ void testCollections() {
     // The tile a feature came from, which had no accessor until MapTile got a codec.
     TEST_CHECK(context->getProperty(feature, "mapTile", value) == RESULT_OK &&
                value.stringValue == "[1,2,3]", "and the tile it came from");
+    // A path walks INTO a struct, the same way it walks into a Variant.
+    TEST_CHECK(context->getProperty(feature, "mapTile.2", value) == RESULT_OK &&
+               value.asLong() == 3, "a path walks into a struct value");
+    TEST_CHECK(context->getProperty(feature, "geometry.centerPos.0", value) == RESULT_OK &&
+               value.asDouble() == 12, "including one reached through an object property");
+    TEST_CHECK(context->getProperty(feature, "mapTile.9", value) == RESULT_UNKNOWN_PROPERTY,
+               "and an index past its end is reported");
     context->destroy(feature);
 
     TEST_CHECK(context->call(collection, "getFeature", "[3]", value) == RESULT_BAD_SPEC,

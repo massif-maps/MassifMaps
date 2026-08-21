@@ -14,6 +14,7 @@
 #include "core/MapVec.h"
 #include "core/ScreenPos.h"
 #include "core/Variant.h"
+#include "ui/ClickInfo.h"
 
 #include <map>
 #include <string>
@@ -40,6 +41,11 @@ namespace massif { namespace api {
         std::string encode(const MapBounds& value);
         /** A tile, as [x, y, zoom] - the same spelling a call argument uses. */
         std::string encode(const MapTile& value);
+        /**
+         * A click, as an OBJECT rather than an array: its two fields mean different things and
+         * neither order is natural. A path walks into it, so clickInfo.clickType reads directly.
+         */
+        std::string encode(const ClickInfo& value);
         std::string encode(const Variant& value);
         /** A list of names - the shape a "which layers" filter has. */
         std::string encode(const std::vector<std::string>& value);
@@ -61,6 +67,7 @@ namespace massif { namespace api {
         bool decode(const std::string& json, MapRange& value);
         bool decode(const std::string& json, MapBounds& value);
         bool decode(const std::string& json, MapTile& value);
+        bool decode(const std::string& json, ClickInfo& value);
         bool decode(const std::string& json, Variant& value);
         bool decode(const std::string& json, std::vector<std::string>& value);
         bool decode(const std::string& json, std::vector<MapPos>& value);

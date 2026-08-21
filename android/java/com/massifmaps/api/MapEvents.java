@@ -98,7 +98,7 @@ public final class MapEvents {
 
         /** 0 single, 1 long, 2 double, 3 dual. */
         public int clickType() {
-            return (int) MassifApi.getInt(payload, "clickType", -1);
+            return (int) MassifApi.getInt(payload, "clickInfo.clickType", -1);
         }
     }
 
@@ -193,7 +193,7 @@ public final class MapEvents {
         }
 
         public int clickType() {
-            return (int) MassifApi.getInt(payload, "clickType", -1);
+            return (int) MassifApi.getInt(payload, "clickInfo.clickType", -1);
         }
     }
 

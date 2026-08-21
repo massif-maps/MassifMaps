@@ -170,6 +170,21 @@ Two deliberate exclusions, both because a property is the wrong channel for the 
 - **`BalloonPopupMargins`, `TextMargins`, `ClickInfo`** are simply not needed yet. Adding one is a
   line in `CODEC_TYPES` plus an `encode`/`decode` pair; nothing about the mechanism changes.
 
+**A path walks INTO a struct**, the same way it walks into a `Variant` — a struct's value is JSON
+too, so the machinery was already there and it is one condition in `lookup`:
+
+```
+mapTile.2            -> 3            the zoom of the tile a feature came from
+geometry.centerPos.0 -> 12           through an object property first
+clickInfo.clickType  -> 1            a long press
+```
+
+That last one was a **live bug in the sugar**: `MapEvents.clickType()` read a `clickType` path that
+never existed, because `ClickInfo` is an `%attributeval` on all seven click-info classes and had no
+codec. It silently returned `-1`. `ClickInfo` now encodes as an OBJECT rather than an array — its
+two fields mean different things and neither order is natural — and the sugar reads
+`clickInfo.clickType`. Device-checked: `0` on a tap, `1` on a long press.
+
 **A property with no accessor is silently unreadable**, and that is how two real bugs hid:
 `RoutingInstruction.action` (an enum spelled unqualified) and `PackageInfo.size` (a
 `std::uint64_t`, a spelling `INT_TYPES` did not list) both classified as `STRUCT` and got no thunk,
@@ -1400,8 +1415,15 @@ cd scripts && python3 gen-api-tables.py
 - **A collection is read one element per crossing.** A route's *path* has the flat channel, but its
   21 instructions are 21 calls plus a handful of property reads each. Fine at that size; the
   general answer is probably a bulk channel per collection type.
-- **39 properties still have no accessor**, listed by type on every generator run. The largest
-  groups are `BalloonPopupMargins` (12), `ClickInfo` (7) and `vector<MapPos>` (7, deliberate).
+- **32 properties still have no accessor**, listed by type on every generator run — and all but
+  three are in code slated for removal. `BalloonPopupMargins` (12) and `TextMargins` (2) go with the
+  vector-element styles; `GeocodingAddress` and the routing-result vectors are being replaced by
+  plain JSON. `vector<MapPos>` (7) is deliberate. What is genuinely left is `ViewState` (renderer
+  plumbing, reachable only through `CullState`) and two package-manager vectors.
+- **`ElevationDecoder` is not a spec kind, and does not need to be.** `HillshadeRasterTileLayer`'s
+  one-argument constructor leaves it null, and the layer reads the encoding from the tile's own
+  `encoding` metadata, falling back to MapBox. Verified through the facade against an `.etiles` DEM:
+  the layer builds from `{"type":"hillshade","source":"dem"}` and all 19 of its knobs are settable.
 - **`FeatureCollectionSearchService` has no factory.** Its constructor takes a `FeatureCollection`,
   which today only exists as a call result, and `childOf` resolves by kind and id. `findFeatures` is
   registered on it and works on a handle built elsewhere.

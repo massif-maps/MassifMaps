@@ -49,7 +49,8 @@ ACCESSIBLE_TYPES = {'BOOL', 'INT', 'FLOAT', 'COLOR', 'ENUM', 'STRING'}
 # STRUCT properties carry JSON, and only for the types StructCodec knows. The rest - vectors,
 # maps, BalloonPopupMargins, ClickInfo - stay accessorless until someone needs them.
 CODEC_TYPES = {'massif::MapPos', 'massif::MapVec', 'massif::ScreenPos', 'massif::MapRange',
-               'massif::MapBounds', 'massif::MapTile', 'std::vector<std::string>',
+               'massif::MapBounds', 'massif::MapTile', 'massif::ClickInfo',
+               'std::vector<std::string>',
                'std::map<std::string, std::string>', 'std::map<std::string, massif::Variant>'}
 
 FLAG_READONLY = 1

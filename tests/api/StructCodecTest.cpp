@@ -4,6 +4,7 @@
 
 #include "api/StructCodec.h"
 #include "core/MapTile.h"
+#include "ui/ClickInfo.h"
 
 #include <map>
 
@@ -218,6 +219,17 @@ void testMoreStructs() {
     TEST_CHECK(StructCodec::decode(StructCodec::encode(meta), decodedMeta) &&
                decodedMeta["count"].getLong() == 3 && decodedMeta["name"].getString() == "x",
                "a variant map keeps each value's type");
+
+    // A click, as an object - its two fields mean different things and neither order is natural.
+    ClickInfo click(ClickType::CLICK_TYPE_LONG, 0.75f);
+    ClickInfo decodedClick(ClickType::CLICK_TYPE_SINGLE, 0);
+    TEST_CHECK(StructCodec::encode(click).find("\"clickType\":") != std::string::npos,
+               "a click reads as a named object, not a tuple");
+    TEST_CHECK(StructCodec::decode(StructCodec::encode(click), decodedClick) &&
+               decodedClick.getClickType() == ClickType::CLICK_TYPE_LONG &&
+               decodedClick.getDuration() == 0.75f, "and round-trips");
+    TEST_CHECK(!StructCodec::decode("{\"duration\":1}", decodedClick),
+               "without a clickType it is not a click");
 
     // A list of positions, which the routing request spec needs. Deliberately NOT a property type.
     std::vector<MapPos> path;

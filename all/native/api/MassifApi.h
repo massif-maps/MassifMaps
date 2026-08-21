@@ -14,6 +14,7 @@
 
 namespace massif {
     class Options;
+    class TileDataSource;
 
     namespace api {
 
@@ -38,6 +39,27 @@ namespace massif {
          */
         static int registerOptions(const std::string& kind, const std::string& objectId,
                                    const std::shared_ptr<Options>& options);
+
+        /**
+         * Builds an object from a JSON spec and registers it under a kind and id.
+         *
+         * Creating an id that already exists with an IDENTICAL spec returns the existing handle,
+         * so two maps can share one source without coordinating. A different spec under the same
+         * id fails. Keys the factory does not need are applied as properties, and a key the SDK
+         * does not know is dropped with a warning.
+         *
+         * @param kind The object kind, currently only "source".
+         * @param objectId The caller's name for the object.
+         * @param json The spec.
+         * @return The handle, or 0 on failure.
+         */
+        static int create(const std::string& kind, const std::string& objectId, const std::string& json);
+
+        /**
+         * Returns a source built or adopted earlier, so it can be handed to the object API.
+         * This is the escape hatch: anything the facade cannot express yet is still reachable.
+         */
+        static std::shared_ptr<TileDataSource> getSource(const std::string& objectId);
 
         /**
          * Drops an id and the context's reference to the object behind it.

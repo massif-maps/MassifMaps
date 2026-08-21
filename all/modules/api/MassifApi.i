@@ -3,7 +3,7 @@
 
 %module MassifApi
 
-!proxy_imports(massif::api::MassifApi, components.Options)
+!proxy_imports(massif::api::MassifApi, components.Options, datasources.TileDataSource)
 
 %{
 #include "api/MassifApi.h"
@@ -14,6 +14,7 @@
 %include <massifswig.i>
 
 %import "components/Options.i"
+%import "datasources/TileDataSource.i"
 
 %include "api/MassifApi.h"
 

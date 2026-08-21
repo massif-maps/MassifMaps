@@ -655,6 +655,13 @@ public final class DemoConfig {
     // =============================================================================================
 
     /** Style regression repro layer (synthetic GeoJSON + DemoStyles.bugStyle). */
+    // FACADE API (#146) - the layer whose source stack is built from one JSON spec.
+    public static boolean LAYER_API_SOURCE = false;
+    public static String API_SOURCE_SPEC =
+        "{\"type\":\"memory-cache\",\"capacity\":33554432,"
+        + "\"source\":{\"type\":\"http\",\"minZoom\":0,\"maxZoom\":19,"
+        + "\"url\":\"https://tile.openstreetmap.org/{z}/{x}/{y}.png\"}}";
+
     public static boolean LAYER_BUGS = false;
 
     /** ::icon attachment: glyph = a real icon under the label, empty = text-name '' as reported,
@@ -1004,6 +1011,8 @@ public final class DemoConfig {
         ROUTE_SELECT_CYCLE_MS = DemoCfg.cfgInt("routeSelectCycle", ROUTE_SELECT_CYCLE_MS);
         ROUTE_SELECT_WIDTH = DemoCfg.cfgFloat("routeSelectWidth", ROUTE_SELECT_WIDTH);
         LAYER_MANEUVERS = DemoCfg.cfgBool("maneuvers", LAYER_MANEUVERS);
+        LAYER_API_SOURCE = DemoCfg.cfgBool("apiSource", LAYER_API_SOURCE);
+        API_SOURCE_SPEC = DemoCfg.cfgStr("apiSourceSpec", API_SOURCE_SPEC);
         LAYER_BUGS = DemoCfg.cfgBool("bugs", LAYER_BUGS);
 
         // style regression repros

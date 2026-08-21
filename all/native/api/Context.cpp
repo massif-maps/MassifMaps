@@ -1,4 +1,8 @@
 #include "api/Context.h"
+#include "api/Spec.h"
+#include "utils/Log.h"
+
+#include <set>
 
 namespace massif { namespace api {
 
@@ -28,8 +32,96 @@ namespace massif { namespace api {
         return RESULT_OK;
     }
 
+    Result Context::create(const std::string& kind, const std::string& id, const std::string& json,
+                           Handle& handle) {
+        Variant spec;
+        try {
+            spec = Variant::FromString(json);
+        } catch (const std::exception& e) {
+            Log::Errorf("Context::create: %s does not parse: %s", id.c_str(), e.what());
+            return RESULT_BAD_SPEC;
+        }
+        // toString is the canonical form: picojson keeps object keys sorted, so two specs that
+        // mean the same thing compare equal whatever order they were written in.
+        std::string canonical = spec.toString();
+
+        {
+            std::lock_guard<std::mutex> lock(_mutex);
+            Handle existing = findObjectLocked(kind, id);
+            if (existing != NULL_HANDLE) {
+                const Slot* slot = resolve(existing);
+                if (slot && slot->spec == canonical) {
+                    handle = existing;
+                    return RESULT_OK;
+                }
+                return RESULT_DUPLICATE_ID;
+            }
+        }
+
+        ObjectRef object;
+        std::set<std::string> consumed;
+        Result result = Spec::build(*this, kind, spec, object, consumed);
+        if (result != RESULT_OK) {
+            return result;
+        }
+
+        {
+            std::lock_guard<std::mutex> lock(_mutex);
+            if (findObjectLocked(kind, id) != NULL_HANDLE) {
+                return RESULT_DUPLICATE_ID;
+            }
+            handle = allocate(object.obj, object.cppClass);
+            _slots[handle & INDEX_MASK].spec = canonical;
+            _ids[kind][id] = handle;
+        }
+
+        // Everything the factory did not need is a property. An option the SDK does not have is
+        // a warning, so a spec from another version still applies what it can.
+        for (const std::string& key : spec.getObjectKeys()) {
+            if (consumed.count(key)) {
+                continue;
+            }
+            Variant value = spec.getObjectElement(key);
+            PropertyValue propertyValue;
+            switch (value.getType()) {
+            case VariantType::VARIANT_TYPE_BOOL:
+                propertyValue.boolValue = value.getBool();
+                break;
+            case VariantType::VARIANT_TYPE_INTEGER:
+                propertyValue.intValue = value.getLong();
+                propertyValue.floatValue = static_cast<double>(value.getLong());
+                break;
+            case VariantType::VARIANT_TYPE_DOUBLE:
+                propertyValue.floatValue = value.getDouble();
+                propertyValue.intValue = static_cast<long long>(value.getDouble());
+                break;
+            case VariantType::VARIANT_TYPE_STRING:
+                propertyValue.stringValue = value.getString();
+                break;
+            default:
+                Log::Warnf("Context::create: %s.%s is not a scalar, ignored", id.c_str(), key.c_str());
+                continue;
+            }
+            Result applied = setProperty(handle, key, propertyValue);
+            if (applied != RESULT_OK) {
+                Log::Warnf("Context::create: %s.%s ignored (%d)", id.c_str(), key.c_str(), applied);
+            }
+        }
+        return RESULT_OK;
+    }
+
+    std::shared_ptr<void> Context::getObject(Handle handle) const {
+        std::lock_guard<std::mutex> lock(_mutex);
+        const Slot* slot = resolve(handle);
+        return slot ? slot->obj : std::shared_ptr<void>();
+    }
+
     Handle Context::findObject(const std::string& kind, const std::string& id) const {
         std::lock_guard<std::mutex> lock(_mutex);
+        return findObjectLocked(kind, id);
+    }
+
+    Handle Context::findObjectLocked(const std::string& kind, const std::string& id) const {
         auto kindIt = _ids.find(kind);
         if (kindIt == _ids.end()) {
             return NULL_HANDLE;
@@ -55,6 +147,7 @@ namespace massif { namespace api {
             slot.obj.reset();
             slot.cppClass = nullptr;
             slot.used = false;
+            slot.spec.clear();
             // Bumping the generation is what turns a stale handle into an error instead of a
             // reference to whatever takes the slot next. Wrapping is the ABA window.
             slot.generation = slot.generation >= MAX_GENERATION ? 1 : slot.generation + 1;

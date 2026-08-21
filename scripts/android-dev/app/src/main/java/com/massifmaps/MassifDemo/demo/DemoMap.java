@@ -10,6 +10,7 @@ import com.massifmaps.components.Options;
 import com.massifmaps.components.SkyOptions;
 import com.massifmaps.components.FogOptions;
 import com.massifmaps.components.TerrainOptions;
+import com.massifmaps.api.MassifApi;
 import com.massifmaps.core.MapPos;
 import com.massifmaps.core.MapPosVector;
 import com.massifmaps.core.MapVec;
@@ -89,7 +90,7 @@ public class DemoMap {
 
     /** One switchable layer of the demo. */
     public enum Feature {
-        CELESTIAL, STARS, BASE, SATELLITE, HILLSHADE, HYPSO, CONTOUR, CONTOUR_TILES, ROUTES, ROUTE_TEST, ROUTE_SELECT, MANEUVERS, ELEMENTS, BUGS, PEAKS
+        CELESTIAL, STARS, BASE, SATELLITE, API_SOURCE, HILLSHADE, HYPSO, CONTOUR, CONTOUR_TILES, ROUTES, ROUTE_TEST, ROUTE_SELECT, MANEUVERS, ELEMENTS, BUGS, PEAKS
     }
 
     /** Bottom -> top draw order. Toggling a layer never reorders the others. */
@@ -97,7 +98,7 @@ public class DemoMap {
         // The sky goes FIRST, so the map and the terrain draw over it and a ridge hides what is
         // behind it - which is what a body in the sky should do.
         Feature.CELESTIAL, Feature.STARS,
-        Feature.BASE, Feature.SATELLITE, Feature.HILLSHADE, Feature.HYPSO,
+        Feature.BASE, Feature.SATELLITE, Feature.API_SOURCE, Feature.HILLSHADE, Feature.HYPSO,
         Feature.CONTOUR, Feature.CONTOUR_TILES, Feature.ROUTES, Feature.ROUTE_TEST, Feature.ROUTE_SELECT, Feature.MANEUVERS, Feature.ELEMENTS,
         Feature.BUGS,
         // Last: the summit names go over everything the map draws.
@@ -247,6 +248,7 @@ public class DemoMap {
             case ROUTE_SELECT: return DemoConfig.LAYER_ROUTE_SELECT;
             case MANEUVERS: return DemoConfig.LAYER_MANEUVERS;
             case ELEMENTS: return DemoConfig.LAYER_ELEMENTS;
+            case API_SOURCE: return DemoConfig.LAYER_API_SOURCE;
             case BUGS: return DemoConfig.LAYER_BUGS;
             case PEAKS: return DemoConfig.LAYER_PEAKS;
             default: return false;
@@ -268,6 +270,7 @@ public class DemoMap {
             case ROUTE_SELECT: DemoConfig.LAYER_ROUTE_SELECT = enabled; break;
             case MANEUVERS: DemoConfig.LAYER_MANEUVERS = enabled; break;
             case ELEMENTS: DemoConfig.LAYER_ELEMENTS = enabled; break;
+            case API_SOURCE: DemoConfig.LAYER_API_SOURCE = enabled; break;
             case BUGS: DemoConfig.LAYER_BUGS = enabled; break;
             case PEAKS: DemoConfig.LAYER_PEAKS = enabled; break;
         }
@@ -330,6 +333,7 @@ public class DemoMap {
             case ROUTE_SELECT: return createRouteSelectLayer();
             case MANEUVERS: return createManeuversLayer();
             case ELEMENTS: return createElementsLayer();
+            case API_SOURCE: return createApiSourceLayer();
             case BUGS: return createBugsLayer();
             case PEAKS: return createPeaksLayer();
             default: return null;
@@ -680,6 +684,35 @@ public class DemoMap {
     // --- other layers ----------------------------------------------------------------------------
 
     /** CustomRasterTileLayer: any filter shader over any raster source (here: hypsometric tint). */
+    /**
+     * Facade API (#146): a raster layer whose whole source stack is described by ONE JSON spec.
+     *
+     * The nesting is the point - a memory cache in front of an HTTP source is two objects, and
+     * neither is constructed here. Only "type" and the constructor arguments are read by a
+     * factory; every other key (tmsScheme, maxOpenedPackages, ...) is applied through the
+     * generated property table, so an option costs nothing to support.
+     *
+     * Creating the same id twice with the SAME spec reuses the object rather than failing, which
+     * is how two maps come to share one source without coordinating.
+     */
+    private Layer createApiSourceLayer() {
+        String spec = DemoConfig.API_SOURCE_SPEC;
+        int handle = MassifApi.create("source", "demoApiSource", spec);
+        Log.i(TAG, "api create source -> handle=" + handle + " spec=" + spec);
+        if (handle == 0) {
+            Log.w(TAG, "api create failed, see the Spec warnings above");
+            return null;
+        }
+        // The reuse rule, checked where it can be seen: the same id with the SAME spec hands back
+        // the same object, a different spec under that id is refused rather than replacing it.
+        int again = MassifApi.create("source", "demoApiSource", spec);
+        int conflict = MassifApi.create("source", "demoApiSource", "{\"type\":\"http\",\"url\":\"https://example.com/{z}/{x}/{y}.png\"}");
+        Log.i(TAG, "api reuse=" + (again == handle) + " conflictRefused=" + (conflict == 0));
+
+        TileDataSource source = MassifApi.getSource("demoApiSource");
+        return source != null ? new RasterTileLayer(source) : null;
+    }
+
     private Layer createHypsoLayer() {
         CustomRasterTileLayer layer = new CustomRasterTileLayer(demSource());
         layer.setShaderSource(DemoStyles.hypsometricShader());

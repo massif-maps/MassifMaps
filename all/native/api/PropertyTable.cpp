@@ -32,11 +32,20 @@ namespace massif { namespace api {
     }
 
     const PropertyEntry* findProperty(const ClassEntry* classEntry, const char* path) {
-        if (!classEntry || !path) {
+        if (!path) {
             return nullptr;
         }
-        return findSorted(classEntry->props, classEntry->count, path,
-                          [](const PropertyEntry& entry) { return entry.path; });
+        for (; classEntry; classEntry = classEntry->base ? findClass(classEntry->base) : nullptr) {
+            if (!classEntry->props) {
+                continue;
+            }
+            const PropertyEntry* entry = findSorted(classEntry->props, classEntry->count, path,
+                                                    [](const PropertyEntry& e) { return e.path; });
+            if (entry) {
+                return entry;
+            }
+        }
+        return nullptr;
     }
 
     std::size_t getClassCount() {

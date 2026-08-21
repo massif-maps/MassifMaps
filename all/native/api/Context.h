@@ -39,7 +39,18 @@ namespace massif { namespace api {
         RESULT_UNSUPPORTED_TYPE, // STRUCT, and writing an OBJECT, until their accessors land
         RESULT_DUPLICATE_ID,
         RESULT_NOT_TRAVERSABLE,  // a dotted path crossed something that is not an OBJECT
-        RESULT_NULL_OBJECT       // an OBJECT property on the way was not set
+        RESULT_NULL_OBJECT,      // an OBJECT property on the way was not set
+        RESULT_BAD_SPEC,         // not a JSON object, or it does not parse
+        RESULT_UNKNOWN_TYPE      // no factory builds that "type"
+    };
+
+    /**
+     * How a spec key that does not resolve is treated. Unknown keys are dropped with a warning,
+     * so a spec written against another SDK version still applies what it can.
+     */
+    enum SpecTolerance {
+        SPEC_TOLERANT = 0,
+        SPEC_STRICT
     };
 
     /**
@@ -73,9 +84,32 @@ namespace massif { namespace api {
                               Handle& handle);
 
         /**
+         * Builds an object from a JSON spec and registers it under a kind and id.
+         *
+         * Creating an id that already exists with an IDENTICAL spec returns the existing handle,
+         * which is how two maps come to share one source without coordinating. A different spec
+         * under the same id is an error, never a silent replace.
+         *
+         * Keys the factory does not consume are applied as properties, so an option needs no
+         * work here. An unknown key is dropped with a warning.
+         *
+         * @param kind The object kind, e.g. "source".
+         * @param id The caller's name for the object.
+         * @param json The spec.
+         * @param handle Set to the handle on success.
+         */
+        Result create(const std::string& kind, const std::string& id, const std::string& json,
+                      Handle& handle);
+
+        /**
          * Returns the handle registered under a kind and id, or NULL_HANDLE.
          */
         Handle findObject(const std::string& kind, const std::string& id) const;
+
+        /**
+         * Returns the object behind a handle, or null when the handle is stale.
+         */
+        std::shared_ptr<void> getObject(Handle handle) const;
 
         /**
          * Drops the id and, with it, the context's reference to the object. Handles held
@@ -106,6 +140,9 @@ namespace massif { namespace api {
             const char* cppClass = nullptr;
             std::uint32_t generation = 1;
             bool used = false;
+            // The spec this was built from, canonicalised, so an identical create can be
+            // recognised as a reuse rather than a conflict.
+            std::string spec;
         };
 
         static const int INDEX_BITS = 20;
@@ -114,6 +151,7 @@ namespace massif { namespace api {
 
         Handle allocate(const std::shared_ptr<void>& obj, const char* cppClass);
         const Slot* resolve(Handle handle) const;
+        Handle findObjectLocked(const std::string& kind, const std::string& id) const;
         // Walks a dotted path, leaving the object owning the final segment in target.
         const PropertyEntry* lookup(Handle handle, const std::string& path,
                                     ObjectRef& target, Result& result) const;

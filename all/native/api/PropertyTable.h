@@ -68,8 +68,11 @@ namespace massif { namespace api {
 
     struct ClassEntry {
         const char* cppClass;
-        const PropertyEntry* props;
+        const PropertyEntry* props;   // null for a class that declares none of its own
         std::uint16_t count;
+        // A property declared on a base is reachable from every class below it, so lookups walk
+        // this chain rather than the table being flattened.
+        const char* base;
     };
 
     /**
@@ -80,10 +83,10 @@ namespace massif { namespace api {
     const ClassEntry* findClass(const char* cppClass);
 
     /**
-     * Looks up one property of a class.
+     * Looks up one property of a class, walking up its base chain.
      * @param classEntry The class, from findClass.
      * @param path The property path, e.g. "rangeStart".
-     * @return The property, or null when the class has no such property.
+     * @return The property, or null when neither the class nor any base declares it.
      */
     const PropertyEntry* findProperty(const ClassEntry* classEntry, const char* path);
 

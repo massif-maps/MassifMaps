@@ -13,8 +13,9 @@ describe it.
 
 Design discussion and the full plan live in
 [issue #146](https://github.com/massif-maps/MassifMaps/issues/146). **Built so far: the property
-table, the handle table, the registry, `set`/`get`, dotted path traversal, and minimal Java and
-Objective-C bindings.** See [Known gaps](#known-gaps).
+table with its base-class chain, the handle table, the registry, `set`/`get`, dotted path
+traversal, `create` from JSON specs, and minimal Java and Objective-C bindings.** See
+[Known gaps](#known-gaps).
 
 ## Why a facade at all
 
@@ -77,6 +78,18 @@ allocation, nothing built at load time.
 const ClassEntry*    cls  = findClass("massif::FogOptions");
 const PropertyEntry* prop = findProperty(cls, "rangeStart");
 ```
+
+### Base classes
+
+A lookup walks the class' base chain, because almost every useful property is declared on a base:
+`MemoryCacheTileDataSource` declares none of its own and gets `capacity` from `CacheTileDataSource`.
+The generator reads `class X : public Y` from the headers the modules pull in, and emits an entry
+for **every** class it sees — with or without properties of its own, or the chain breaks at exactly
+the classes that need it. 158 classes declare a property; 233 are in the table.
+
+This was not designed in. It shipped without inheritance, and the first spec-built source on a
+device answered `Context::create: demoApiSource.capacity ignored (2)` — `RESULT_UNKNOWN_CLASS`,
+because the concrete class was not in the table at all.
 
 ### Path spelling
 
@@ -153,6 +166,30 @@ downcasting it, which lands with the spec factories.
 The spellings are the mechanical ones — `fogOptions.rangeStart`, not `fog.rangeStart`. Shortening
 them is the alias table's job.
 
+## Specs and `create`
+
+`create(kind, id, json)` builds an object and registers it. **A factory only handles what a
+constructor needs**; every other key is applied afterwards through the property table, so adding an
+option to a class costs nothing here:
+
+```json
+{"type":"memory-cache","capacity":33554432,
+ "source":{"type":"http","minZoom":0,"maxZoom":19,"url":"https://…/{z}/{x}/{y}.png"}}
+```
+
+`capacity` is not a constructor argument — it reaches `CacheTileDataSource::setCapacity` through
+the table. A nested `"source"` is an anonymous child built recursively; a **string** there names a
+registry entry instead.
+
+Two rules, both checked on a device:
+
+- **Parsing is tolerant.** A key the SDK does not know is dropped with a warning, so a spec written
+  against another version still applies what it can. There is no `"version"` key.
+- **An identical spec reuses.** Creating an id that already exists with the same spec returns the
+  existing handle — that is how two maps come to share one source without coordinating. A
+  *different* spec under that id is refused, never a silent replace. Comparison is on
+  `Variant::toString()`, which sorts object keys, so writing order does not matter.
+
 ## The bindings
 
 `MassifApi` (`all/native/api/MassifApi.h`, wrapped by `all/modules/api/MassifApi.i`) is the
@@ -164,6 +201,9 @@ directory walk. Two platform details did need attention:
 
 - **`id` is a keyword in Objective-C.** A parameter called `id` makes SWIG emit `arg1:` selectors
   (`registerOptions:kind:arg1:options:`), so the parameter is named `objectId`.
+- **Only `source` specs exist.** Layers, styles, element styles and services are not buildable
+  from a spec yet, and `destroy` is `unregisterObject`. Source types covered: `http`, `assets`,
+  `mbtiles`, `memory-cache`, `persistent-cache`, `ordered`, `combined`, `multi`.
 - **`ios/objc/MassifMaps.h` is hand-maintained**, not generated, so a new Objective-C class has to
   be added to that umbrella by hand.
 

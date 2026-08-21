@@ -1,5 +1,6 @@
 #include "api/MassifApi.h"
 #include "components/Options.h"
+#include "datasources/TileDataSource.h"
 
 namespace massif { namespace api {
 
@@ -10,6 +11,19 @@ namespace massif { namespace api {
             return NULL_HANDLE;
         }
         return static_cast<int>(handle);
+    }
+
+    int MassifApi::create(const std::string& kind, const std::string& objectId, const std::string& json) {
+        Handle handle = NULL_HANDLE;
+        if (Context::GetDefault()->create(kind, objectId, json, handle) != RESULT_OK) {
+            return NULL_HANDLE;
+        }
+        return static_cast<int>(handle);
+    }
+
+    std::shared_ptr<TileDataSource> MassifApi::getSource(const std::string& objectId) {
+        Handle handle = Context::GetDefault()->findObject("source", objectId);
+        return std::static_pointer_cast<TileDataSource>(Context::GetDefault()->getObject(handle));
     }
 
     bool MassifApi::unregisterObject(const std::string& kind, const std::string& objectId) {

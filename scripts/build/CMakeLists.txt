@@ -313,6 +313,15 @@ foreach(SDK_API_MODULE_DIR IN LISTS SDK_API_MODULE_DIRS)
   list(APPEND SDK_MODULE_FILES ${SDK_API_MODULE_GLOB})
 endforeach()
 list(JOIN SDK_API_MODULE_DIRS "," SDK_API_SOURCEDIR)
+set(SDK_API_CPPDIRS "${SDK_SRC_DIR}")
+if(ANDROID)
+  list(APPEND SDK_API_CPPDIRS "${SDK_BASE_DIR}/android/native")
+elseif(IOS OR APPLE)
+  list(APPEND SDK_API_CPPDIRS "${SDK_BASE_DIR}/ios/native")
+elseif(WIN32)
+  list(APPEND SDK_API_CPPDIRS "${SDK_BASE_DIR}/winphone/native")
+endif()
+list(JOIN SDK_API_CPPDIRS "," SDK_API_CPPDIR)
 # This build's own support defines, not a profile name: the thunks have to be emitted for exactly
 # the classes being compiled, or a lite build fails to link.
 string(REGEX MATCHALL "_MASSIF_[A-Za-z0-9_]+" SDK_API_DEFINE_LIST "${SDK_CPP_DEFINES}")
@@ -325,6 +334,9 @@ add_custom_command(
           # Comma, not semicolon: ninja runs this through a shell, which would split on one.
           "--sourcedir" "${SDK_API_SOURCEDIR}"
           "--defines" "${SDK_API_DEFINES}"
+          # The base-class chain is read from the headers, so the generator needs the same
+          # include roots the compile does.
+          "--cppdir" "${SDK_API_CPPDIR}"
           "--outdir" "${SDK_API_TABLE_DIR}"
   DEPENDS ${SDK_MODULE_FILES} "${SDK_BASE_DIR}/scripts/gen-api-tables.py"
   COMMENT "Generating the API property table")

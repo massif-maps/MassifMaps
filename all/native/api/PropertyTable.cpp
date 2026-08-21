@@ -1,7 +1,9 @@
 #include "api/PropertyTable.h"
 
 #include <algorithm>
+#include <cstdlib>
 #include <cstring>
+#include <sstream>
 
 // The class headers plus one thunk per accessor. At file scope, because it is #includes.
 #include "api/PropertyAccessors.inc"
@@ -39,27 +41,52 @@ namespace massif { namespace api {
         PropertyValue value; value.type = PT_STRING; value.stringValue = v; return value;
     }
 
+    // Text coerces to a number too, because a binding with one string type - a C caller, a URL
+    // query, a scripting language - would otherwise write 0 over a real value. Garbage reads as 0,
+    // the same as every other unrepresentable conversion here.
     double PropertyValue::asDouble() const {
         switch (type) {
-        case PT_BOOL:  return boolValue ? 1 : 0;
-        case PT_FLOAT: return floatValue;
-        default:       return static_cast<double>(intValue);
+        case PT_BOOL:   return boolValue ? 1 : 0;
+        case PT_FLOAT:  return floatValue;
+        case PT_STRING: return std::strtod(stringValue.c_str(), nullptr);
+        default:        return static_cast<double>(intValue);
         }
     }
 
     long long PropertyValue::asLong() const {
         switch (type) {
-        case PT_BOOL:  return boolValue ? 1 : 0;
-        case PT_FLOAT: return static_cast<long long>(floatValue);
-        default:       return intValue;
+        case PT_BOOL:   return boolValue ? 1 : 0;
+        case PT_FLOAT:  return static_cast<long long>(floatValue);
+        case PT_STRING: return std::strtoll(stringValue.c_str(), nullptr, 0);
+        default:        return intValue;
         }
     }
 
     bool PropertyValue::asBool() const {
         switch (type) {
-        case PT_BOOL:  return boolValue;
-        case PT_FLOAT: return floatValue != 0;
-        default:       return intValue != 0;
+        case PT_BOOL:   return boolValue;
+        case PT_FLOAT:  return floatValue != 0;
+        // "false" is not a number, so strtod would make it true. Spelled booleans are what an
+        // intent extra and a JSON-ish caller actually send.
+        case PT_STRING: return !(stringValue.empty() || stringValue == "0" ||
+                                 stringValue == "false" || stringValue == "no");
+        default:        return intValue != 0;
+        }
+    }
+
+    std::string PropertyValue::asString() const {
+        switch (type) {
+        case PT_BOOL:   return boolValue ? "true" : "false";
+        case PT_FLOAT: {
+            std::ostringstream stream;
+            stream.precision(17);
+            stream << floatValue;
+            return stream.str();
+        }
+        case PT_STRING:
+        case PT_STRUCT:
+        case PT_VARIANT: return stringValue;
+        default:         return std::to_string(intValue);
         }
     }
 

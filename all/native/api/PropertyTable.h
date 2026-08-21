@@ -59,6 +59,8 @@ namespace massif { namespace api {
         long long asLong() const;
         /** The value as a boolean, whatever field carries it. */
         bool asBool() const;
+        /** The value as text, whatever field carries it. */
+        std::string asString() const;
 
         // Use these rather than assigning a field: an unstamped type reads as the wrong thing.
         static PropertyValue ofBool(bool v);

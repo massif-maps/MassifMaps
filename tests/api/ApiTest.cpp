@@ -32,6 +32,8 @@ void testCallArgs();
 void testCall();
 void testCallAsync();
 void testCallCancel();
+void testCAbi();
+void testCAbiEvents();
 
 namespace {
 
@@ -109,6 +111,23 @@ namespace {
         value = PropertyValue::ofLong(2);
         TEST_CHECK(context->setProperty(handle, "rangeStart", value) == RESULT_OK &&
                    options->getRangeStart() == 2.0f, "an integer written to a float converts");
+
+        // ...and so does text, or a binding with only strings - a C caller, a URL query, a
+        // scripting language - writes 0 over a real value.
+        TEST_CHECK(context->setProperty(handle, "rangeStart", PropertyValue::ofString("3.5")) == RESULT_OK &&
+                   options->getRangeStart() == 3.5f, "a numeric string written to a float parses");
+        TEST_CHECK(context->setProperty(handle, "enabled", PropertyValue::ofString("false")) == RESULT_OK &&
+                   !options->isEnabled(), "\"false\" written to a bool is false, not truthy text");
+        TEST_CHECK(context->setProperty(handle, "enabled", PropertyValue::ofString("1")) == RESULT_OK &&
+                   options->isEnabled(), "and \"1\" is true");
+        TEST_CHECK(context->setProperty(handle, "rangeStart", PropertyValue::ofString("abc")) == RESULT_OK &&
+                   options->getRangeStart() == 0.0f, "garbage reads as 0, like every other bad conversion");
+        context->setProperty(handle, "rangeStart", PropertyValue::ofDouble(1));
+
+        // The other direction: a number read as text renders rather than coming back empty.
+        TEST_CHECK(PropertyValue::ofDouble(2.5).asString() == "2.5" &&
+                   PropertyValue::ofLong(7).asString() == "7" &&
+                   PropertyValue::ofBool(true).asString() == "true", "asString renders every field");
 
         value = PropertyValue();
         TEST_CHECK(context->setProperty(handle, "nope", value) == RESULT_UNKNOWN_PROPERTY,
@@ -246,6 +265,8 @@ int main() {
     testCall();
     testCallAsync();
     testCallCancel();
+    testCAbi();
+    testCAbiEvents();
 
     std::printf("\n%d failure(s)\n", failures);
     return failures ? 1 : 0;

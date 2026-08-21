@@ -307,7 +307,9 @@ def writeExpr(entry):
   if entry['type'] == 'FLOAT':
     return 'self->%s(static_cast<%s>(value.asDouble()));' % (entry['setter'], entry['cppType'])
   if entry['type'] == 'STRING':
-    return 'self->%s(value.stringValue);' % entry['setter']
+    # asString, not the raw field: a caller that sets a string property through setFloat must not
+    # write an empty one.
+    return 'self->%s(value.asString());' % entry['setter']
   if entry['type'] in ('STRUCT', 'VARIANT'):
     # A malformed struct leaves the property alone rather than writing a default over it.
     return ('%s decoded; if (StructCodec::decode(value.stringValue, decoded)) { self->%s(decoded); }'

@@ -417,11 +417,42 @@ API gains them too.
 That is the pattern for the rest: **the derived values a payload needs are SDK gaps, and fixing
 them there gives the facade the path for free.** What is still missing:
 
-- a per-subscription projection, so positions arrive converted instead of every binding repeating
-  the `toWgs84`/`fromWgs84` chain.
+- **a projection for positions**, so a binding does not repeat the `toWgs84`/`fromWgs84` chain.
+  The design said per-subscription, and that turns out to be awkward: a payload is read through
+  the generic property table, which has no subscription in scope. Per-read
+  (`getPos(handle, path, "EPSG:4326")`) is the implementable shape; per-subscription would need a
+  proxy payload object per subscriber. Not decided.
 
-And nothing is wired to a real SDK event yet: `emit` is tested, but no click or tile listener calls
-it.
+### Reaching a real map event
+
+`MapEventBridge` turns the map's listener callbacks into facade events. `BaseMapView` has a
+**single** listener slot, so the bridge **chains**: whatever the app installed keeps being called
+before the event is emitted, or adopting the facade would silently disconnect existing handlers.
+
+```java
+int handle = MassifApi.registerOptions("options", "demo", mapView.getOptions());
+mapView.setMapEventListener(
+    MassifApi.createEventBridge(handle, mapView.getMapEventListener()));
+
+MassifApi.on(handle, "map.clicked", listener, /* delivery */ 0, /* coalesce */ false);
+```
+
+The payload is a real registry object for the duration of the emit — registered under a throwaway
+id, emitted, then dropped. A queued handler keeps it alive through the normal retain.
+
+Measured on an emulator, tapping the map:
+
+```
+apiEvents on, handle=1048577 subscription=1048577
+apiEvent map.clicked payload=1048578 clickPos=[5.71750206519,45.18356755721,302.83362844964]
+apiEvent map.clicked payload=2097154 ...        <- generation 2, the previous slot reused
+apiEvents off, removed=true
+                                                <- a tap after off produces nothing
+```
+
+Events wired so far: `map.clicked`, `map.moved`, `map.idle`, `map.stable`, `map.interaction`.
+Layer-level events — vector tile and vector element clicks — go through per-layer listeners and
+are not bridged yet.
 
 ## Tests
 

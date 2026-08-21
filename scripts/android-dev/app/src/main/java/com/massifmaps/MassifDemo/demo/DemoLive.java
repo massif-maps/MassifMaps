@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 
+import com.massifmaps.api.EventListener;
 import com.massifmaps.api.MassifApi;
 
 /**
@@ -96,6 +97,9 @@ public final class DemoLive extends BroadcastReceiver {
         if (extras.containsKey("apiSet")) {
             applyApiSet(extras.getString("apiSet"));
         }
+        if (extras.containsKey("apiEvents")) {
+            applyApiEvents("true".equals(extras.getString("apiEvents")));
+        }
         demo.mapView.requestRender();
     }
 
@@ -148,6 +152,45 @@ public final class DemoLive extends BroadcastReceiver {
                 + MassifApi.getFloat(handle, path, Double.NaN)
                 + " json=" + MassifApi.getString(handle, path, "-")
                 + " (handle=" + handle + ", result=" + result + ")");
+    }
+
+    /** Kept alive for as long as it is subscribed, or the director would be collected. */
+    private EventListener apiListener;
+    private int apiSubscription;
+
+    /**
+     * Subscribes to the map's events through the facade (#146), so real callbacks can be seen
+     * arriving as facade events with a readable payload:
+     *
+     *   adb shell am broadcast -a ...CONFIG --es apiEvents true
+     *
+     * The bridge chains to whatever listener the demo already installed, so the normal demo
+     * behaviour keeps working alongside it.
+     */
+    private void applyApiEvents(boolean enable) {
+        if (!enable) {
+            Log.i(TAG, "apiEvents off, removed=" + MassifApi.off(apiSubscription));
+            apiSubscription = 0;
+            apiListener = null;
+            return;
+        }
+        int handle = MassifApi.findObject("options", "demo");
+        if (handle == 0) {
+            handle = MassifApi.registerOptions("options", "demo", demo.mapView.getOptions());
+        }
+        demo.mapView.setMapEventListener(
+            MassifApi.createEventBridge(handle, demo.mapView.getMapEventListener()));
+
+        apiListener = new EventListener() {
+            @Override
+            public boolean onEvent(int target, String event, int payload) {
+                Log.i(TAG, "apiEvent " + event + " payload=" + payload
+                        + " clickPos=" + MassifApi.getString(payload, "clickPos", "-"));
+                return false;
+            }
+        };
+        apiSubscription = MassifApi.on(handle, "map.clicked", apiListener, 0, false);
+        Log.i(TAG, "apiEvents on, handle=" + handle + " subscription=" + apiSubscription);
     }
 
     private static boolean has(Bundle extras, String[] keys) {

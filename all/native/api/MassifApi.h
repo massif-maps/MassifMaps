@@ -8,6 +8,7 @@
 #define _MASSIF_API_MASSIFAPI_H_
 
 #include "api/Context.h"
+#include "api/EventListener.h"
 
 #include <memory>
 #include <string>
@@ -16,6 +17,7 @@ namespace massif {
     class Options;
     class TileDataSource;
     class Layer;
+    class MapEventListener;
 
     namespace api {
 
@@ -69,6 +71,50 @@ namespace massif {
          * are not attached by create - that needs the map verbs.
          */
         static std::shared_ptr<Layer> getLayer(const std::string& objectId);
+
+        /**
+         * Builds the listener that turns a map's callbacks into facade events on a target.
+         *
+         * The app installs it with the map view's own setMapEventListener, which is also why it
+         * takes the listener that was already there: a single slot means adopting the facade
+         * would otherwise disconnect the app's existing handlers.
+         *
+         *   int handle = MassifApi.registerOptions("map", "main", mapView.getOptions());
+         *   mapView.setMapEventListener(
+         *       MassifApi.createEventBridge(handle, mapView.getMapEventListener()));
+         *
+         * @param handle The target events are emitted on.
+         * @param chained The listener already installed, or null.
+         * @return The bridge.
+         */
+        static std::shared_ptr<MapEventListener> createEventBridge(
+            int handle, const std::shared_ptr<MapEventListener>& chained);
+
+        /**
+         * Subscribes to an event on an object.
+         * @param handle The target, from create or registerMapView.
+         * @param event The event name, e.g. "map.clicked".
+         * @param listener Called when it fires.
+         * @param delivery 0 origin, 1 UI, 2 background.
+         * @return The subscription, or 0 when the handle is stale.
+         */
+        static int on(int handle, const std::string& event,
+                      const std::shared_ptr<EventListener>& listener, int delivery, bool coalesce);
+
+        /**
+         * Removes one subscription.
+         */
+        static bool off(int subscription);
+
+        /**
+         * Removes every handler of one event on one object.
+         */
+        static int offEvent(int handle, const std::string& event);
+
+        /**
+         * Removes every handler on one object.
+         */
+        static int offAll(int handle);
 
         /**
          * Drops an id and the context's reference to the object behind it.

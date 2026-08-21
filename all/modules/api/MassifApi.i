@@ -1,9 +1,9 @@
 #ifndef _MASSIFAPI_I
 #define _MASSIFAPI_I
 
-%module MassifApi
+%module(directors="1") MassifApi
 
-!proxy_imports(massif::api::MassifApi, components.Options, datasources.TileDataSource, layers.Layer)
+!proxy_imports(massif::api::MassifApi, components.Options, datasources.TileDataSource, layers.Layer, ui.MapEventListener, api.EventListener)
 
 %{
 #include "api/MassifApi.h"
@@ -14,9 +14,12 @@
 %include <std_string.i>
 %include <massifswig.i>
 
+
 %import "components/Options.i"
 %import "datasources/TileDataSource.i"
 %import "layers/Layer.i"
+%import "ui/MapEventListener.i"
+%import "api/EventListener.i"
 
 %std_exceptions(massif::api::MassifApi::create)
 

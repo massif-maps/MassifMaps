@@ -1,5 +1,9 @@
 #include "api/MassifApi.h"
 #include "api/Spec.h"
+#include "api/MapEventBridge.h"
+#include "ui/MapEventListener.h"
+
+#include <map>
 #include "components/Options.h"
 #include "datasources/TileDataSource.h"
 #include "layers/Layer.h"
@@ -39,6 +43,54 @@ namespace massif { namespace api {
     std::shared_ptr<Layer> MassifApi::getLayer(const std::string& objectId) {
         Handle handle = Context::GetDefault()->findObject("layer", objectId);
         return std::static_pointer_cast<Layer>(Context::GetDefault()->getObject(handle));
+    }
+
+    namespace {
+        // The listener a subscription belongs to, kept alive for as long as the subscription is.
+        std::map<int, std::shared_ptr<EventListener> >& listeners() {
+            static std::map<int, std::shared_ptr<EventListener> > registry;
+            return registry;
+        }
+
+        bool dispatchToListener(void* userData, std::uint32_t target, const char* event,
+                                std::uint32_t payload) {
+            auto listener = static_cast<EventListener*>(userData);
+            return listener->onEvent(static_cast<int>(target), event, static_cast<int>(payload));
+        }
+    }
+
+    std::shared_ptr<MapEventListener> MassifApi::createEventBridge(
+            int handle, const std::shared_ptr<MapEventListener>& chained) {
+        return std::make_shared<MapEventBridge>(Context::GetDefault(), static_cast<Handle>(handle),
+                                                chained);
+    }
+
+    int MassifApi::on(int handle, const std::string& event,
+                      const std::shared_ptr<EventListener>& listener, int delivery, bool coalesce) {
+        if (!listener) {
+            throw NullArgumentException("Null listener");
+        }
+        Subscription subscription = Context::GetDefault()->subscribe(
+            static_cast<Handle>(handle), event, &dispatchToListener, listener.get(), false,
+            static_cast<Delivery>(delivery), coalesce);
+        if (subscription != NULL_SUBSCRIPTION) {
+            listeners()[static_cast<int>(subscription)] = listener;
+        }
+        return static_cast<int>(subscription);
+    }
+
+    bool MassifApi::off(int subscription) {
+        bool removed = Context::GetDefault()->unsubscribe(static_cast<Subscription>(subscription));
+        listeners().erase(subscription);
+        return removed;
+    }
+
+    int MassifApi::offEvent(int handle, const std::string& event) {
+        return Context::GetDefault()->unsubscribeEvent(static_cast<Handle>(handle), event);
+    }
+
+    int MassifApi::offAll(int handle) {
+        return Context::GetDefault()->unsubscribeAll(static_cast<Handle>(handle));
     }
 
     bool MassifApi::unregisterObject(const std::string& kind, const std::string& objectId) {

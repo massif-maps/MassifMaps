@@ -75,6 +75,12 @@ written out.
 `xcodegen generate` on its own fails after any CMake reconfigure, and fails *silently* in the
 sense that the project keeps its old file list.
 
+**A new file under `all/native` needs `./bootstrap.sh`, not `regen.sh`.** The SDK target's file
+list comes from CMake's glob, so it only changes when CMake reconfigures; `regen.sh` regenerates
+the Xcode project around the *existing* list. The symptom is a link error naming symbols from the
+new file, after a build that looked like it should have compiled it. Android does not show this —
+its glob is `CONFIGURE_DEPENDS` and Gradle reconfigures on its own.
+
 ## The settings sheet
 
 A bottom sheet rather than a full-screen modal: the point of a knob is watching the map change as

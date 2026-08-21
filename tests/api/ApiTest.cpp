@@ -17,17 +17,11 @@
 using namespace massif;
 using namespace massif::api;
 
-static int failures = 0;
+#include "TestCheck.h"
 
-#define TEST_CHECK(condition, what)                                              \
-    do {                                                                         \
-        if (condition) {                                                         \
-            std::printf("ok    %s\n", what);                                     \
-        } else {                                                                 \
-            std::printf("FAIL  %s (%s:%d)\n", what, __FILE__, __LINE__);         \
-            failures++;                                                          \
-        }                                                                        \
-    } while (false)
+int failures = 0;
+
+void testEvents();
 
 namespace {
 
@@ -231,6 +225,7 @@ int main() {
     testPaths(context);
     testCreate(context);
     testHandles(context);
+    testEvents();
 
     std::printf("\n%d failure(s)\n", failures);
     return failures ? 1 : 0;

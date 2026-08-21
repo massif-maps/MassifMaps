@@ -78,8 +78,70 @@ namespace massif { namespace api {
             slot.generation = slot.generation >= MAX_GENERATION ? 1 : slot.generation + 1;
             _freeSlots.push_back(index);
         }
+        // Subscriptions die with their target: otherwise the first destroy on an object with a
+        // handler is a use-after-free, and that is not the app's job to prevent.
+        _events.unsubscribeAll(idIt->second);
         kindIt->second.erase(idIt);
         return true;
+    }
+
+    Subscription Context::subscribe(Handle handle, const std::string& event, EventHandler handler,
+                                    void* userData, bool consume) {
+        std::lock_guard<std::mutex> lock(_mutex);
+        if (!resolve(handle)) {
+            return NULL_SUBSCRIPTION;
+        }
+        return _events.subscribe(handle, event, handler, userData, consume);
+    }
+
+    bool Context::unsubscribe(Subscription subscription) {
+        std::lock_guard<std::mutex> lock(_mutex);
+        return _events.unsubscribe(subscription);
+    }
+
+    int Context::unsubscribeEvent(Handle handle, const std::string& event) {
+        std::lock_guard<std::mutex> lock(_mutex);
+        return _events.unsubscribeEvent(handle, event);
+    }
+
+    int Context::unsubscribeAll(Handle handle) {
+        std::lock_guard<std::mutex> lock(_mutex);
+        return _events.unsubscribeAll(handle);
+    }
+
+    bool Context::emit(Handle handle, const std::string& event, Handle payload) {
+        // Two phases. The handler list cannot be walked unlocked, and the handlers cannot run
+        // under the lock - they are app code, and one that calls back would deadlock. So the
+        // matching subscriptions are collected under the lock, then each is resolved again just
+        // before it is called: a handler removed earlier in this same pass is skipped, and a
+        // recycled slot fails the generation check rather than being called by mistake.
+        std::vector<Subscription> subscriptions;
+        {
+            std::lock_guard<std::mutex> lock(_mutex);
+            _events.collect(handle, event, subscriptions);
+        }
+
+        for (Subscription subscription : subscriptions) {
+            EventHandler handler = nullptr;
+            void* userData = nullptr;
+            bool consume = false;
+            {
+                std::lock_guard<std::mutex> lock(_mutex);
+                if (!_events.lookup(subscription, handler, userData, consume)) {
+                    continue;
+                }
+            }
+            bool result = handler(userData, handle, event.c_str(), payload);
+            if (consume && result) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    std::size_t Context::getSubscriptionCount() const {
+        std::lock_guard<std::mutex> lock(_mutex);
+        return _events.getSubscriptionCount();
     }
 
     std::size_t Context::getObjectCount() const {

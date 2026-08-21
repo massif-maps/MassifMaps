@@ -290,6 +290,32 @@ end to end. The iOS simulator gives the identical line, handle included:
 apiSet fogOptions.rangeStart 0.800000 -> 2.500000 (handle=1048577, result=0)
 ```
 
+## Events
+
+`EventBus` (`all/native/api/EventBus.{h,cpp}`) holds the subscriptions; `Context` owns one and
+holds the lock. `on` returns a **subscription handle** with the same 20-bit index / 12-bit
+generation encoding as an object handle, so `off` twice is an error rather than a cancellation of
+whatever took the slot. Three removals, because all three come up: `unsubscribe` (one),
+`unsubscribeEvent` (an event on a target), `unsubscribeAll` (a target).
+
+Four rules, each of which is a bug if it is not there:
+
+- **Subscriptions die with their target.** `unregisterObject` drops them, or the first destroy on
+  an object with a handler is a use-after-free.
+- **Dispatch is in registration order** — *not* slot order. Slots are reused, so index order and
+  registration order diverge, and dispatching by index would make which of two consuming handlers
+  wins depend on allocation history. Entries carry a sequence number and `collect` sorts by it.
+  This shipped wrong and the tests caught it.
+- **Dispatch is two-phase.** The handler list cannot be walked unlocked, and handlers cannot run
+  under the lock — they are app code, and one that calls back would deadlock a non-recursive
+  mutex. So `collect` gathers handles under the lock, and each is resolved again immediately
+  before it is called. A handler removed earlier in the same pass therefore fails that resolve and
+  is skipped rather than called.
+- **A non-consuming subscription cannot stop an event**, whatever its handler returns.
+
+A subscription added *during* a pass is not delivered in that pass. Delivery thread, coalescing
+and payload handles are not built yet.
+
 ## Tests
 
 `tests/` is a host-native binary over the parts that link without the renderer — see
@@ -302,7 +328,8 @@ cd tests && ./run.sh
 It covers table lookups and the base chain, handle generations and the stale-handle rule,
 `set`/`get` per value type, path-resolution failures, and `create` — reuse on an identical spec,
 key order not mattering, conflict on a different spec, tolerant application of unknown keys, and
-the parse and factory failure paths. Two things keep it small on purpose:
+the parse and factory failure paths, plus the whole event layer — the three removals, dispatch
+order, consumption, removal from inside a handler, and death-with-target. 75 checks. Two things keep it small on purpose:
 the property table takes the address of **every** accessor thunk, so a full table needs the full
 SDK to link — the tests generate a reduced one from an explicit module list
 (`gen-api-tables.py --modules`), which exercises the generator as a side effect. And `Options`

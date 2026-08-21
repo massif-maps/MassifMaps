@@ -7,6 +7,7 @@
 #ifndef _MASSIF_API_CONTEXT_H_
 #define _MASSIF_API_CONTEXT_H_
 
+#include "api/EventBus.h"
 #include "api/PropertyTable.h"
 
 #include <cstdint>
@@ -118,6 +119,41 @@ namespace massif { namespace api {
          */
         std::size_t getObjectCount() const;
 
+        /**
+         * Adds an event handler to an object.
+         * @param consume Whether the handler's return value can stop the event reaching later
+         *                handlers. A consuming handler has to answer synchronously.
+         * @return The subscription, or NULL_SUBSCRIPTION when the handle is stale.
+         */
+        Subscription subscribe(Handle handle, const std::string& event, EventHandler handler,
+                               void* userData, bool consume);
+
+        /**
+         * Removes one subscription.
+         */
+        bool unsubscribe(Subscription subscription);
+
+        /**
+         * Removes every handler of one event on one object.
+         */
+        int unsubscribeEvent(Handle handle, const std::string& event);
+
+        /**
+         * Removes every handler on one object.
+         */
+        int unsubscribeAll(Handle handle);
+
+        /**
+         * Delivers an event to an object's handlers, in registration order.
+         * @return True when a consuming handler stopped it.
+         */
+        bool emit(Handle handle, const std::string& event, Handle payload);
+
+        /**
+         * The number of live subscriptions. For tests and leak checks.
+         */
+        std::size_t getSubscriptionCount() const;
+
     private:
         struct Slot {
             std::shared_ptr<void> obj;
@@ -153,6 +189,7 @@ namespace massif { namespace api {
         std::vector<Slot> _slots;
         std::vector<std::uint32_t> _freeSlots;
         std::unordered_map<std::string, std::unordered_map<std::string, Handle> > _ids;
+        EventBus _events;
     };
 
 } }

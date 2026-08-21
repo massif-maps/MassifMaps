@@ -9,6 +9,7 @@ set(TEST_MODULES
 # case that belongs behind a device check.
 set(TEST_SDK_SOURCES
   "${SDK_BASE_DIR}/all/native/api/Context.cpp"
+  "${SDK_BASE_DIR}/all/native/api/EventBus.cpp"
   "${SDK_BASE_DIR}/all/native/api/PropertyTable.cpp"
   # Spec.cpp holds create() and the registry; the built-in factories live in SpecFactories.cpp,
   # which is deliberately NOT here - linking it would need every source and layer constructor.
@@ -37,6 +38,7 @@ add_custom_command(
 
 add_executable(api_tests
   ApiTest.cpp
+  EventTest.cpp
   "${TEST_TABLE_DIR}/PropertyTable.inc"
   ${TEST_SDK_SOURCES})
 

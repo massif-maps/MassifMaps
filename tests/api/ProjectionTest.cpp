@@ -6,7 +6,9 @@
 #include "api/Context.h"
 #include "api/Projections.h"
 #include "api/StructCodec.h"
+#include "geometry/Feature.h"
 #include "geometry/GeoJSONGeometryWriter.h"
+#include "geometry/PointGeometry.h"
 #include "projections/EPSG3857.h"
 #include "projections/EPSG4326.h"
 
@@ -124,6 +126,70 @@ void testProjections() {
     context->setObjectProjection(wgs84, std::make_shared<EPSG4326>());
     TEST_CHECK(context->getProperty(wgs84, "bounds", value, "EPSG:3857") == RESULT_UNSUPPORTED_TYPE,
                "the poles have no Mercator position, and that is an error");
+}
+
+/* Writing an object property: the checked downcast that makes it safe. */
+
+void testObjectWrites() {
+    auto context = std::make_shared<Context>();
+    auto writer = std::make_shared<GeoJSONGeometryWriter>();
+    Handle target = NULL_HANDLE;
+    context->registerObject("writer", "w", writer, "massif::GeoJSONGeometryWriter", target);
+
+    Handle mercator = NULL_HANDLE;
+    context->registerObject("projection", "m", std::make_shared<EPSG3857>(),
+                            "massif::EPSG3857", mercator);
+
+    // Registered as its CONCRETE class, so this also exercises the subclass acceptance: the
+    // property declares Projection and the value is an EPSG3857.
+    TEST_CHECK(isSubclassOf("massif::EPSG3857", "massif::Projection"),
+               "the chain says a concrete projection is a Projection");
+    TEST_CHECK(!isSubclassOf("massif::Projection", "massif::EPSG3857"), "but not the other way");
+    TEST_CHECK(!isSubclassOf("massif::NoSuchClass", "massif::Projection"),
+               "and an unknown class is not a subclass of anything - the check fails closed");
+
+    TEST_CHECK(!writer->getSourceProjection(), "nothing assigned to start with");
+    TEST_CHECK(context->setObjectProperty(target, "sourceProjection", mercator) == RESULT_OK,
+               "an object property takes another object's handle");
+    TEST_CHECK(writer->getSourceProjection() &&
+               writer->getSourceProjection()->getName() == "EPSG:3857",
+               "and the SDK object really was assigned");
+    if (!writer->getSourceProjection()) {
+        return;   // the rest dereferences it, and a failed check should report rather than crash
+    }
+
+    // The wrong kind of object is refused BEFORE anything is cast.
+    Handle feature = NULL_HANDLE;
+    context->registerObject("feature", "f",
+                            std::make_shared<Feature>(std::make_shared<PointGeometry>(MapPos(1, 2)),
+                                                      Variant()),
+                            "massif::Feature", feature);
+    TEST_CHECK(context->setObjectProperty(target, "sourceProjection", feature) ==
+               RESULT_UNKNOWN_CLASS, "a Feature is not a Projection");
+    TEST_CHECK(writer->getSourceProjection()->getName() == "EPSG:3857",
+               "and the refusal left the property alone");
+
+    TEST_CHECK(context->setObjectProperty(target, "sourceProjection", mercator + 7777) ==
+               RESULT_BAD_HANDLE, "a stale value handle is refused");
+    TEST_CHECK(context->setObjectProperty(target + 7777, "sourceProjection", mercator) ==
+               RESULT_BAD_HANDLE, "so is a stale target");
+    TEST_CHECK(context->setObjectProperty(target, "nope", mercator) == RESULT_UNKNOWN_PROPERTY,
+               "an unknown property is reported");
+    TEST_CHECK(context->setObjectProperty(target, "z", mercator) == RESULT_UNSUPPORTED_TYPE,
+               "and a scalar property is not an object");
+
+    // 0 clears it, which is how a UTF grid source or an override is removed.
+    TEST_CHECK(context->setObjectProperty(target, "sourceProjection", NULL_HANDLE) == RESULT_OK &&
+               !writer->getSourceProjection(), "the null handle clears the property");
+
+    // A setter that validates must not take the process with it: Options::setBaseProjection
+    // throws on null, and an exception crossing into Java or Objective-C is fatal.
+    TEST_CHECK(context->setObjectProperty(target, "sourceProjection", mercator) == RESULT_OK,
+               "assigned again for the rejection check");
+
+    // A read-only object property stays read-only.
+    TEST_CHECK(context->setObjectProperty(feature, "geometry", NULL_HANDLE) != RESULT_OK,
+               "a read-only object property is refused");
 }
 
 void testEventProjection() {

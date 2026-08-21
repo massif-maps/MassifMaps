@@ -83,7 +83,12 @@
 
 - (BOOL)set:(NSString *)path value:(id)value {
     int result;
-    if ([value isKindOfClass:[MSFMapPos class]]) {
+    if ([value isKindOfClass:[MSFMassifObject class]]) {
+        // Points the property at another registered object. The class is checked before the cast.
+        result = [MSFMassifApi setObject:_handle path:path value:((MSFMassifObject *)value).handle];
+    } else if (!value || value == [NSNull null]) {
+        result = [MSFMassifApi setObject:_handle path:path value:0];
+    } else if ([value isKindOfClass:[MSFMapPos class]]) {
         result = [MSFMassifApi setString:_handle path:path value:[MSFValues jsonFromPos:value]];
     } else if ([value isKindOfClass:[MSFMapBounds class]]) {
         MSFMapBounds *bounds = value;

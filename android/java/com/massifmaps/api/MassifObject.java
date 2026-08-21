@@ -59,12 +59,19 @@ public class MassifObject implements AutoCloseable {
     /**
      * Sets a property. The path may walk object properties - "fogOptions.rangeStart".
      *
-     * @param value A boolean, a number, a String, a MapPos or a MapBounds.
+     * @param value A boolean, a number, a String, a MapPos, a MapBounds, another MassifObject to
+     *              point an object property at, or null to clear one.
      * @throws MassifException When the path does not resolve, or the property is read-only.
      */
     public MassifObject set(String path, Object value) {
         int result;
-        if (value instanceof Boolean) {
+        if (value instanceof MassifObject) {
+            // Points the property at another registered object - a layer's source, a decoder's
+            // style. The class is checked before anything is cast.
+            result = MassifApi.setObject(handle, path, ((MassifObject) value).handle);
+        } else if (value == null) {
+            result = MassifApi.setObject(handle, path, 0);
+        } else if (value instanceof Boolean) {
             result = MassifApi.setBool(handle, path, (Boolean) value);
         } else if (value instanceof MapPos) {
             result = MassifApi.setString(handle, path, Values.fromPos((MapPos) value));

@@ -218,6 +218,14 @@ void testCAbi() {
                "a short numeric buffer is refused");
     mm_destroy_handle(ctx, ramp);
 
+    // Writing an object property through the ABI, and its type check.
+    TEST_CHECK(mm_set_object(ctx, fog, "nope", MM_NULL_HANDLE) == MM_UNKNOWN_PROPERTY,
+               "an unknown object property is reported");
+    TEST_CHECK(mm_set_object(ctx, fog, "rangeStart", MM_NULL_HANDLE) == MM_UNSUPPORTED_TYPE,
+               "a scalar property is not an object one");
+    TEST_CHECK(mm_set_object(nullptr, fog, "x", MM_NULL_HANDLE) == MM_BAD_CONTEXT,
+               "and a null context is refused here too");
+
     TEST_CHECK(mm_call(ctx, fog, "nope", nullptr, nullptr) == MM_UNKNOWN_METHOD,
                "an unknown method is reported");
     TEST_CHECK(mm_call(ctx, fog, "blob", "[]", nullptr) == MM_BAD_SPEC,

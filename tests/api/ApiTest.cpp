@@ -28,6 +28,7 @@ void testVariantPaths();
 void testFeaturePos();
 void testProjections();
 void testEventProjection();
+void testObjectWrites();
 void testCallArgs();
 void testCall();
 void testCallAsync();
@@ -261,6 +262,7 @@ int main() {
     testFeaturePos();
     testProjections();
     testEventProjection();
+    testObjectWrites();
     testCallArgs();
     testCall();
     testCallAsync();

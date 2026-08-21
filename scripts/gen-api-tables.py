@@ -326,6 +326,7 @@ def emitAccessors(headers, entries, outPath):
   for header in sorted(set(headers)):
     lines.append('#include "%s"\n' % header)
   lines.append('#include "api/StructCodec.h"\n')
+  lines.append('#include <memory>\n')
   lines.append('\nnamespace massif { namespace api { namespace accessors {\n\n')
   for entry in entries:
     objectClass = objectClassOf(entry)
@@ -334,6 +335,12 @@ def emitAccessors(headers, entries, outPath):
                    '    out.obj = static_cast<%s*>(obj)->%s();\n'
                    '    out.cppClass = "%s";\n}\n' %
                    (symbolOf(entry, 'getobj'), entry['cppClass'], entry['getter'], objectClass))
+      if not (entry['flags'] & FLAG_READONLY):
+        # The cast is from shared_ptr<void>, so it is only sound because Context checks the
+        # registered class against objectClass first - see isSubclassOf.
+        lines.append('inline void %s(void* obj, const ObjectRef& value) {\n'
+                     '    static_cast<%s*>(obj)->%s(std::static_pointer_cast<%s>(value.obj));\n}\n' %
+                     (symbolOf(entry, 'setobj'), entry['cppClass'], entry['setter'], objectClass))
       continue
     if not accessible(entry):
       continue
@@ -372,9 +379,13 @@ def emitTable(entries, bases, outPath):
       getFn = 'accessors::%s' % symbolOf(entry, 'get') if accessible(entry) else 'nullptr'
       setFn = ('accessors::%s' % symbolOf(entry, 'set')
                if accessible(entry) and not (entry['flags'] & FLAG_READONLY) else 'nullptr')
-      objFn = 'accessors::%s' % symbolOf(entry, 'getobj') if objectClassOf(entry) else 'nullptr'
-      lines.append('    { "%s", PT_%s, %d, %s, %s, %s },\n' %
-                   (path, entry['type'], entry['flags'], getFn, setFn, objFn))
+      objectClass = objectClassOf(entry)
+      objFn = 'accessors::%s' % symbolOf(entry, 'getobj') if objectClass else 'nullptr'
+      objSetFn = ('accessors::%s' % symbolOf(entry, 'setobj')
+                  if objectClass and not (entry['flags'] & FLAG_READONLY) else 'nullptr')
+      lines.append('    { "%s", PT_%s, %d, %s, %s, %s, %s, %s },\n' %
+                   (path, entry['type'], entry['flags'], getFn, setFn, objFn, objSetFn,
+                    '"%s"' % objectClass if objectClass else 'nullptr'))
     lines.append('};\n\n')
 
   lines.append('static const ClassEntry kClasses[] = {\n')

@@ -41,7 +41,8 @@ NS_SWIFT_NAME(MassifObject)
 
 /**
  * Sets a property. The path may walk object properties - "fogOptions.rangeStart".
- * @param value An NSNumber, NSString, MSFMapPos or MSFMapBounds.
+ * @param value An NSNumber, NSString, MSFMapPos, MSFMapBounds, another MSFMassifObject to point
+ *        an object property at, or nil/NSNull to clear one.
  * @return NO when the path does not resolve or the property is read-only.
  */
 - (BOOL)set:(NSString *)path value:(id)value;

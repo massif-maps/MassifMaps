@@ -10,6 +10,9 @@ set(TEST_MODULES
   # For the projection flags: Projection declares a position (bounds), and the GeoJSON writer is
   # the lightest class that declares a projection of its own.
   "${SDK_BASE_DIR}/all/modules/projections/Projection.i"
+  # A concrete projection too, so writing an object property can be checked against a SUBCLASS of
+  # what the property declares - the case the chain walk exists for.
+  "${SDK_BASE_DIR}/all/modules/projections/EPSG3857.i"
   "${SDK_BASE_DIR}/all/modules/geometry/GeoJSONGeometryWriter.i"
   # For call/getData: TileData is the lightest class with a BinaryData property.
   "${SDK_BASE_DIR}/all/modules/datasources/components/TileData.i"

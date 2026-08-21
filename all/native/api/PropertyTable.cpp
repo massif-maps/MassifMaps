@@ -127,6 +127,19 @@ namespace massif { namespace api {
         return nullptr;
     }
 
+    bool isSubclassOf(const char* cppClass, const char* base) {
+        if (!cppClass || !base) {
+            return false;
+        }
+        for (const ClassEntry* entry = findClass(cppClass); entry;
+             entry = entry->base ? findClass(entry->base) : nullptr) {
+            if (std::strcmp(entry->cppClass, base) == 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     std::size_t getClassCount() {
         return sizeof(kClasses) / sizeof(kClasses[0]);
     }

@@ -1,3 +1,4 @@
+#include "api/Projections.h"
 #include "api/Spec.h"
 #include "api/Context.h"
 #include "datasources/AssetTileDataSource.h"
@@ -6,6 +7,7 @@
 #include "datasources/MemoryCacheTileDataSource.h"
 #include "datasources/MultiTileDataSource.h"
 #include "datasources/OrderedTileDataSource.h"
+#include "projections/Projection.h"
 #include "layers/CompositeVectorTileLayer.h"
 #include "layers/HillshadeRasterTileLayer.h"
 #include "layers/RasterTileLayer.h"
@@ -251,6 +253,28 @@ namespace massif { namespace api {
             return RESULT_UNKNOWN_TYPE;
         }
 
+        /**
+         * A projection, by its well-known name.
+         *
+         * Needed to write one into a property - Options.baseProjection is the obvious case, and
+         * without a way to BUILD a projection there is nothing to point it at. Uses the same name
+         * registry the per-read projection argument does, so a plugin's projection is buildable
+         * the moment it registers.
+         */
+        Result buildProjection(Context&, const Variant& spec, ObjectRef& object,
+                               std::set<std::string>& consumed) {
+            consumed.insert("type");
+            std::string type = spec.getObjectElement("type").getString();
+            std::shared_ptr<Projection> projection = Projections::find(type);
+            if (!projection) {
+                Log::Errorf("Spec: no projection named '%s'", type.c_str());
+                return RESULT_UNKNOWN_TYPE;
+            }
+            object.obj = projection;
+            object.cppClass = "massif::Projection";
+            return RESULT_OK;
+        }
+
     }
 
 
@@ -258,6 +282,7 @@ namespace massif { namespace api {
         registerFactory("source", &buildSource);
         registerFactory("style", &buildStyle);
         registerFactory("layer", &buildLayer);
+        registerFactory("projection", &buildProjection);
     }
 
 } }

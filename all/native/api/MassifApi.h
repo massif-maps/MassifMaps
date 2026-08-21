@@ -213,6 +213,15 @@ namespace massif {
         static int setString(int handle, const std::string& path, const std::string& value);
 
         /**
+         * Points an object property at another registered object - a layer's data source, a
+         * decoder's style. Pass 0 to clear it.
+         *
+         * The value's class is checked against the property's before anything is cast, so pointing
+         * a style property at a source is an error rather than a crash.
+         */
+        static int setObject(int handle, const std::string& path, int value);
+
+        /**
          * Reads a property. Returns the fallback when the path does not resolve, so a caller
          * that does not care about the reason does not have to check twice.
          */

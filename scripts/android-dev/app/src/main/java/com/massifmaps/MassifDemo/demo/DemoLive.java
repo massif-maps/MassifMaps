@@ -94,6 +94,9 @@ public final class DemoLive extends BroadcastReceiver {
         if (has(extras, CAMERA_KEYS)) {
             demo.applyCamera();
         }
+        if (extras.containsKey("apiCreate")) {
+            applyApiCreate(extras.getString("apiCreate"));
+        }
         if (extras.containsKey("apiSet")) {
             applyApiSet(extras.getString("apiSet"));
         }
@@ -113,11 +116,32 @@ public final class DemoLive extends BroadcastReceiver {
     }
 
     /**
+     * Builds an object from a spec, so the create verb can be exercised live:
+     *
+     *   --es apiCreate 'projection:wgs84:{"type":"EPSG:4326"}'
+     *   --es apiCreate 'source:extra:{"type":"http","url":"https://..."}'
+     */
+    private void applyApiCreate(String request) {
+        String[] parts = request != null ? request.split(":", 3) : new String[0];
+        if (parts.length < 3) {
+            Log.w(TAG, "apiCreate wants kind:id:json, got: " + request);
+            return;
+        }
+        try {
+            Log.i(TAG, "apiCreate " + parts[0] + ":" + parts[1] + " -> handle="
+                    + MassifApi.create(parts[0], parts[1], parts[2]));
+        } catch (Exception e) {
+            Log.w(TAG, "apiCreate failed: " + e.getMessage());
+        }
+    }
+
+    /**
      * Drives a property through the facade API (#146) instead of the typed setters, so the
      * generated property table and its dotted path walking can be exercised on a device.
      *
      *   --es apiSet fogOptions.rangeStart=2.5            (the map's options, the default target)
      *   --es apiSet layer:demoApiLayer:opacity=0.3       (anything else in the registry)
+     *   --es apiSet 'options:demo:baseProjection=@projection:wgs84'   (point at another object)
      */
     private void applyApiSet(String assignment) {
         int equals = assignment != null ? assignment.indexOf('=') : -1;
@@ -149,6 +173,17 @@ public final class DemoLive extends BroadcastReceiver {
 
         int result;
         double before;
+        if (value.startsWith("@")) {
+            // @kind:id points an OBJECT property at another registered object, which is the one
+            // shape a string cannot express.
+            String[] ref = value.substring(1).split(":", 2);
+            int other = ref.length == 2 ? MassifApi.findObject(ref[0], ref[1]) : 0;
+            before = Double.NaN;
+            result = MassifApi.setObject(handle, path, other);
+            Log.i(TAG, "apiSet " + path + " <- " + value + " (handle=" + other
+                    + ", result=" + result + ")");
+            return;
+        }
         try {
             before = MassifApi.getFloat(handle, path, Double.NaN);
             result = MassifApi.setFloat(handle, path, Double.parseDouble(value));

@@ -878,16 +878,16 @@ native signature with a `new DoubleVector(...)` body.
 cd tests && ./run.sh
 ```
 
-**297 checks**, one file per layer:
+**316 checks**, one file per layer:
 
 | file | what it covers |
 |---|---|
 | `ApiTest.cpp` | table lookups, the base chain, handle generations and the stale-handle rule, `set`/`get` per value type in both directions, path-resolution failures, and `create` — reuse on an identical spec, conflict on a different one, key order not mattering, tolerant unknown keys, and the parse and factory failures |
 | `EventTest.cpp` | the three removals, dispatch order, consumption, removal from inside a handler, death-with-target, and delivery — queueing, the single drain post, coalescing, the consume/queued rejection, payload retain across a destroy |
 | `StructCodecTest.cpp` | round-trips, and the refusal of every malformed shape |
-| `ProjectionTest.cpp` | the name registry, a declared source projection versus an attached one, the per-read argument, the per-subscription default and its expiry when the handler returns, the drain path, the non-finite refusal |
-| `MethodTest.cpp` | argument decoding and its refusals, the base-chain lookup, result ownership and `destroy`, the binary and flat-numeric channels, an async result arriving as an event and failing as a payload of 0, and cancellation — queued, running, by target, and dying with the target |
-| `CAbiTest.cpp` | the two-call buffer protocol, the option JSON, out-params being optional, handle liveness, a null context refused rather than dereferenced |
+| `ProjectionTest.cpp` | the name registry, a declared source projection versus an attached one, the per-read argument, the per-subscription default and its expiry when the handler returns, the drain path, the non-finite refusal, and object writes — the subclass check in both directions, an unknown class failing closed, and the wrong kind of object leaving the property alone |
+| `MethodTest.cpp` | argument decoding and its refusals, the base-chain lookup, result ownership and `destroy`, the binary and flat-numeric channels, a thunk that throws being caught rather than propagated, an async result arriving as an event and failing as a payload of 0, and cancellation — queued, running, by target, and dying with the target |
+| `CAbiTest.cpp` | the two-call buffer protocol, the option JSON, out-params being optional, handle liveness, object writes, a null context refused rather than dereferenced |
 
 Three things keep the link small, and all three are deliberate:
 

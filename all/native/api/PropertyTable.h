@@ -86,9 +86,13 @@ namespace massif { namespace api {
         // setter - for a read-only property.
         void (*getter)(void* obj, PropertyValue& value);
         void (*setter)(void* obj, const PropertyValue& value);
-        // Set only for OBJECT. Reading is enough to traverse a dotted path; writing one needs
-        // the registry and a checked downcast, which land with the spec factories.
+        // Set only for OBJECT. Reading is enough to traverse a dotted path.
         void (*objectGetter)(void* obj, ObjectRef& out);
+        // Set for a writable OBJECT. The thunk casts from shared_ptr<void>, so the caller MUST
+        // have checked the value's registered class against objectClass first.
+        void (*objectSetter)(void* obj, const ObjectRef& value);
+        // The class an OBJECT property points at, e.g. "massif::Projection". Null otherwise.
+        const char* objectClass;
     };
 
     struct ClassEntry {
@@ -123,6 +127,15 @@ namespace massif { namespace api {
      * @return The property, or null when nothing in the chain declares one.
      */
     const PropertyEntry* findProjectionProperty(const ClassEntry* classEntry);
+
+    /**
+     * Whether one class is the other, or derives from it, per the table's base chain.
+     *
+     * This is what makes writing an object property safe: the thunk casts from a type-erased
+     * pointer, so the value's registered class has to be checked first. An unknown class is not a
+     * subclass of anything, so the check fails closed.
+     */
+    bool isSubclassOf(const char* cppClass, const char* base);
 
     /**
      * Returns the number of classes in the table. Used by tests and tooling.

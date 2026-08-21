@@ -8,6 +8,7 @@
 #include "core/BinaryData.h"
 #include "core/MapTile.h"
 #include "datasources/components/TileData.h"
+#include "geometry/Feature.h"
 #include "geometry/PointGeometry.h"
 
 #include <condition_variable>
@@ -227,6 +228,19 @@ void testCall() {
                value.stringValue == "base", "the lookup walks the base chain");
     TEST_CHECK(context->call(point, "sum", "[]", value) == RESULT_UNKNOWN_METHOD,
                "but not sideways into an unrelated class");
+
+    // A method addressed through a path, so an intermediate object needs no id of its own.
+    Handle feature = NULL_HANDLE;
+    context->registerObject("feature", "pathed",
+                            std::make_shared<Feature>(std::make_shared<PointGeometry>(MapPos(3, 4)),
+                                                      Variant()),
+                            "massif::Feature", feature);
+    TEST_CHECK(context->call(feature, "geometry.onBase", "", value) == RESULT_OK &&
+               value.stringValue == "base", "a path walks to the object the method belongs to");
+    TEST_CHECK(context->call(feature, "nosuch.onBase", "", value) == RESULT_UNKNOWN_PROPERTY,
+               "an unknown segment on the way is reported");
+    TEST_CHECK(context->call(feature, "geometryGeoJSON.onBase", "", value) == RESULT_NOT_TRAVERSABLE,
+               "and a scalar on the way is not traversable");
 
     // callHandle: one rule, a handle either way.
     Handle result = NULL_HANDLE;

@@ -433,21 +433,53 @@ namespace massif { namespace api {
         return _events.getSubscriptionCount();
     }
 
+    Result Context::resolveTarget(Handle handle, const std::string& path, ObjectRef& out) const {
+        const Slot* slot = resolve(handle);
+        if (!slot) {
+            return RESULT_BAD_HANDLE;
+        }
+        out.obj = slot->obj;
+        out.cppClass = slot->cppClass;
+        if (path.empty()) {
+            return RESULT_OK;
+        }
+
+        ObjectRef owner;
+        Result result = RESULT_OK;
+        const PropertyEntry* entry = lookup(handle, path, owner, result);
+        if (!entry) {
+            return result;
+        }
+        if (entry->type != PT_OBJECT || !entry->objectGetter) {
+            return RESULT_NOT_TRAVERSABLE;
+        }
+        entry->objectGetter(owner.obj.get(), out);
+        return out.obj ? RESULT_OK : RESULT_NULL_OBJECT;
+    }
+
     Result Context::call(Handle handle, const std::string& method, const std::string& argsJson,
                          PropertyValue& result) {
+        // A method may be addressed through a path, the same way a property is:
+        // "tileDecoder.setStyleParameter" on a layer. Everything before the last dot walks object
+        // properties; without it an app would have to register every intermediate just to call one.
+        std::size_t dot = method.rfind('.');
+        std::string path = dot == std::string::npos ? std::string() : method.substr(0, dot);
+        std::string name = dot == std::string::npos ? method : method.substr(dot + 1);
+
         std::shared_ptr<void> obj;
         const char* cppClass = nullptr;
         {
             std::lock_guard<std::mutex> lock(_mutex);
-            const Slot* slot = resolve(handle);
-            if (!slot) {
-                return RESULT_BAD_HANDLE;
+            ObjectRef target;
+            Result resolved = resolveTarget(handle, path, target);
+            if (resolved != RESULT_OK) {
+                return resolved;
             }
-            obj = slot->obj;
-            cppClass = slot->cppClass;
+            obj = target.obj;
+            cppClass = target.cppClass;
         }
 
-        MethodInvoke invoke = Methods::findMethod(cppClass, method);
+        MethodInvoke invoke = Methods::findMethod(cppClass, name);
         if (!invoke) {
             return RESULT_UNKNOWN_METHOD;
         }
@@ -460,7 +492,7 @@ namespace massif { namespace api {
         try {
             return invoke(*this, obj.get(), args, result);
         } catch (const std::exception& ex) {
-            Log::Errorf("Context::call: '%s' threw: %s", method.c_str(), ex.what());
+            Log::Errorf("Context::call: '%s' threw: %s", name.c_str(), ex.what());
             return RESULT_REJECTED;
         }
     }
@@ -507,8 +539,18 @@ namespace massif { namespace api {
                 return RESULT_BAD_HANDLE;
             }
             // Checked before queueing, so a typo is an error the caller sees rather than a line
-            // in a log minutes later.
-            if (!Methods::findMethod(slot->cppClass, method)) {
+            // in a log minutes later. The same path form as call.
+            std::size_t dot = method.rfind('.');
+            ObjectRef target;
+            Result resolved = resolveTarget(handle,
+                                            dot == std::string::npos ? std::string()
+                                                                     : method.substr(0, dot),
+                                            target);
+            if (resolved != RESULT_OK) {
+                return resolved;
+            }
+            if (!Methods::findMethod(target.cppClass,
+                                     dot == std::string::npos ? method : method.substr(dot + 1))) {
                 return RESULT_UNKNOWN_METHOD;
             }
             pending.id = ++_callCounter;

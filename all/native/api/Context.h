@@ -190,7 +190,10 @@ namespace massif {
          * The lock is NOT held while it runs: loadTile does network I/O, and a method that called
          * back into the context would otherwise deadlock.
          *
-         * @param method The method name, e.g. "loadTile".
+         * @param method The method name, optionally preceded by a path to the object it belongs
+         *               to: "loadTile" on a source, "tileDecoder.setStyleParameter" on a layer.
+         *               Without the path form an app would have to register every intermediate
+         *               object just to reach a method on it.
          * @param argsJson The arguments, as a JSON array. Empty for none.
          * @param result The return value. PT_OBJECT means intValue is a handle the CALLER OWNS
          *               and must destroy; anything else is the value itself.
@@ -398,6 +401,9 @@ namespace massif {
         // What coordinate system target's positions are in: what its class declares, else what
         // was attached to the handle the walk started from.
         std::shared_ptr<Projection> sourceProjection(const ObjectRef& target, Handle handle) const;
+
+        // The object a method belongs to: the handle itself, or what a dotted prefix walks to.
+        Result resolveTarget(Handle handle, const std::string& path, ObjectRef& out) const;
 
         mutable std::mutex _mutex;
         std::vector<Slot> _slots;

@@ -11,6 +11,9 @@ set(TEST_MODULES
   # the lightest class that declares a projection of its own.
   "${SDK_BASE_DIR}/all/modules/projections/Projection.i"
   "${SDK_BASE_DIR}/all/modules/geometry/GeoJSONGeometryWriter.i"
+  # For call/getData: TileData is the lightest class with a BinaryData property.
+  "${SDK_BASE_DIR}/all/modules/datasources/components/TileData.i"
+  "${SDK_BASE_DIR}/all/modules/core/BinaryData.i"
 )
 
 # The SDK sources those modules' classes need. Keep this short: a case that needs a long list is a
@@ -21,6 +24,11 @@ set(TEST_SDK_SOURCES
   "${SDK_BASE_DIR}/all/native/api/StructCodec.cpp"
   "${SDK_BASE_DIR}/all/native/api/PropertyTable.cpp"
   "${SDK_BASE_DIR}/all/native/api/Projections.cpp"
+  # Methods.cpp is the registry; MethodImpls.cpp holds the SDK's own methods and is deliberately
+  # NOT here - it needs TileDataSource and the hillshade layer. The tests register their own.
+  "${SDK_BASE_DIR}/all/native/api/Methods.cpp"
+  "${SDK_BASE_DIR}/all/native/core/BinaryData.cpp"
+  "${SDK_BASE_DIR}/all/native/datasources/components/TileData.cpp"
   "${SDK_BASE_DIR}/all/native/projections/Projection.cpp"
   "${SDK_BASE_DIR}/all/native/projections/EPSG3857.cpp"
   "${SDK_BASE_DIR}/all/native/projections/EPSG4326.cpp"
@@ -78,6 +86,7 @@ add_executable(api_tests
   EventTest.cpp
   StructCodecTest.cpp
   ProjectionTest.cpp
+  MethodTest.cpp
   "${TEST_TABLE_DIR}/PropertyTable.inc"
   ${TEST_SDK_SOURCES})
 

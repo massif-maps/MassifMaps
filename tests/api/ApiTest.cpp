@@ -28,6 +28,9 @@ void testVariantPaths();
 void testFeaturePos();
 void testProjections();
 void testEventProjection();
+void testCallArgs();
+void testCall();
+void testCallAsync();
 
 namespace {
 
@@ -238,6 +241,9 @@ int main() {
     testFeaturePos();
     testProjections();
     testEventProjection();
+    testCallArgs();
+    testCall();
+    testCallAsync();
 
     std::printf("\n%d failure(s)\n", failures);
     return failures ? 1 : 0;

@@ -1,6 +1,8 @@
 #include "api/MassifApi.h"
 #include "api/Spec.h"
 #include "api/MapEventBridge.h"
+#include "api/Methods.h"
+#include "core/BinaryData.h"
 #include "ui/MapEventListener.h"
 
 #include <map>
@@ -174,6 +176,51 @@ namespace massif { namespace api {
             return std::string();
         }
         return value.stringValue;
+    }
+
+    namespace {
+        // Registered on first use, for the same reason the spec factories are: the registry
+        // itself must not drag in every class that has a method.
+        void ensureMethods() {
+            static bool registered = (Methods::registerBuiltins(), true);
+            (void)registered;
+        }
+
+        std::string describe(const std::string& method, Result result) {
+            return "Cannot call '" + method + "' (result " + std::to_string(result) +
+                   "), see the log";
+        }
+    }
+
+    int MassifApi::call(int handle, const std::string& method, const std::string& argsJson) {
+        ensureMethods();
+        Handle result = NULL_HANDLE;
+        Result called = Context::GetDefault()->callHandle(static_cast<Handle>(handle), method,
+                                                          argsJson, result);
+        if (called != RESULT_OK) {
+            throw GenericException(describe(method, called));
+        }
+        return static_cast<int>(result);
+    }
+
+    void MassifApi::callAsync(int handle, const std::string& method, const std::string& argsJson,
+                              const std::string& event) {
+        ensureMethods();
+        Result queued = Context::GetDefault()->callAsync(static_cast<Handle>(handle), method,
+                                                         argsJson, event);
+        if (queued != RESULT_OK) {
+            throw GenericException(describe(method, queued));
+        }
+    }
+
+    std::shared_ptr<BinaryData> MassifApi::getData(int handle, const std::string& path) {
+        std::shared_ptr<BinaryData> data;
+        Context::GetDefault()->getData(static_cast<Handle>(handle), path, data);
+        return data;
+    }
+
+    bool MassifApi::destroy(int handle) {
+        return Context::GetDefault()->destroy(static_cast<Handle>(handle));
     }
 
 } }

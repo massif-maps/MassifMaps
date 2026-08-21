@@ -513,11 +513,89 @@ apiEvent vectortile.clicked id=0 layer=landcover type=2
 ```
 
 `type=2` is `GEOMETRY_TYPE_POLYGON`, `name=-` is a missing key returning the caller's default, and
-the geometry serialised. **`pos` is in EPSG:3857 metres** — the data source's own projection — which
-is the projection gap below, shown rather than argued.
+the geometry serialised. `pos` is in EPSG:3857 metres — the map's own projection — unless the read
+or the subscription asks otherwise; see [Projections](#projections).
 
 Wired so far: `map.clicked`, `map.moved`, `map.idle`, `map.stable`, `map.interaction`,
 `vectortile.clicked`, `vectorelement.clicked`.
+
+## Calls
+
+`set`/`get` cover a property. A **method** — `loadTile`, `getElevations` — needs `call`:
+
+```java
+int tile = MassifApi.call(source, "loadTile", "[[8467,5852,14]]");
+byte[] bytes = MassifApi.getData(tile, "data").getData();
+MassifApi.destroy(tile);
+```
+
+**A result is always a handle, and the caller owns it.** An object result is that object; anything
+else is registered as a `Variant` and read by path — `getFloat(result, "0", 0)` for the first
+element of an elevation array, `getString(result, "", "")` for the whole document. One rule instead
+of a result struct per binding, and `destroy(handle)` frees it. `destroy` takes a handle rather
+than a kind and an id, because a result has no id an app chose; the slot now records both so the
+lookup works either way.
+
+**A `Variant` handle is a JSON document.** `lookup` short-circuits on it and reads the rest of the
+path inside — including an **empty** path, meaning the document itself. That is the one branch in
+`Context` that names a class, and it is what lets a scalar result travel without a result class
+being invented for it.
+
+### Where methods come from
+
+The method table is **hand-registered**, not generated, and that is the one place the facade is not
+derived from the `.i` files. A property is declared by a Swig macro a script can read; a method is
+an ordinary C++ signature, and its arguments have to be decoded from JSON by something that knows
+the types. So `Methods::registerMethod(cppClass, name, thunk)` and a thunk per method in
+`MethodImpls.cpp`, ~15 lines each:
+
+- Lookup **walks the base chain** from the generated table, so `loadTile` registered on
+  `massif::TileDataSource` is callable on every source without being registered again.
+- Registering an existing name **replaces** it, which is how a plugin specialises one.
+- It is still data — a new method is a table row, not another verb. The ABI does not grow.
+
+`CallArgs` is the JSON array, with one getter per type (`getPos`, `getPositions`, `getTile`, …),
+each reporting whether the argument was there and of the right shape. Positional, not named,
+because parameters are positional in every language the facade binds to and naming them would mean
+maintaining a second name per parameter. An integer reads as a double — JSON has one number type,
+and `3` is not a different argument from `3.0` — but a double does not read as an integer.
+
+### callAsync
+
+`loadTile` on an HTTP source blocks the caller. `callAsync` runs it on a worker and delivers the
+result **as an event**, so subscribers pick their delivery thread with the machinery that already
+exists:
+
+```java
+MassifApi.on(source, "loadTile.done", listener, 1, false);   // 1 = UI thread
+MassifApi.callAsync(source, "loadTile", "[[8467,5852,14]]", "loadTile.done");
+```
+
+- The handle, the method name and the argument JSON are validated **before anything is queued**, so
+  a typo is an error the caller sees rather than a log line minutes later. A failure while running
+  is a payload of `0`, since the call has returned by then.
+- The payload is freed once the handlers have run — the same retain the event queue already takes
+  for a click payload — so nothing has to be destroyed by hand. A synchronous result does.
+- The target is retained for the duration, or destroying the source mid-call would leave the result
+  nowhere to go.
+- **One worker thread, not a pool, and calls run in submission order.** The SDK's own
+  `CancelableThreadPool` needs `Task::operator()`, which is implemented per platform
+  (`android/native/components/Task.cpp`) and does not exist on a host build — using it would have
+  taken the test suite with it. Serial execution is also what an app expects of a queue it filled.
+
+`Context::call` keeps the typed `PropertyValue` return; `callHandle` is the wrapper both the
+bindings and the async path use. The C ABI will want the typed one, to hand a scalar back without
+allocating a handle for it.
+
+### Binary and bulk results
+
+`getData(handle, path)` reaches a `BinaryData` **without turning it into a string** — `byte[]` in
+Java, `NSData` in Objective-C, and `mm_data_size`/`mm_data_copy` in the C ABI. The path is walked
+with the ordinary object traversal, so `getData(tile, "data")` works because `TileData.data` is
+already an `%attributestring` in the `.i`; an empty path is the handle itself being the blob.
+
+Bulk numerics are **not** solved. `getElevations` returns a JSON array, which is fine for a few
+hundred points and wrong for a whole track — see the gaps below.
 
 ## Tests
 
@@ -537,7 +615,10 @@ queueing, the single drain post, coalescing, the consume/queued rejection, and p
 across a destroy — and the struct codec's round-trips and its refusal of every malformed shape, and
 the projection layer — the name registry, a declared source projection versus an attached one, the
 per-read argument, the per-subscription default and its expiry when the handler returns, the drain
-path, and the non-finite refusal. 155 checks. Two things keep it small on purpose:
+path, and the non-finite refusal — and the call layer: argument decoding and its refusals, the
+base-chain lookup, result ownership and destroy, the binary channel, and an async result arriving
+as an event, failing as a payload of 0, and queueing in order. 205 checks.
+Two things keep it small on purpose:
 the property table takes the address of **every** accessor thunk, so a full table needs the full
 SDK to link — the tests generate a reduced one from an explicit module list
 (`gen-api-tables.py --modules`), which exercises the generator as a side effect. And `Options`
@@ -587,9 +668,20 @@ cd scripts && python3 gen-api-tables.py
 
 ## Known gaps
 
-- **`call`, `callAsync` and the C ABI do not exist.** `create`, `destroy` and `on` do. The
-  remaining slices, including binary and bulk returns, are in
+- **The C ABI does not exist.** Every verb does: `create`, `destroy`, `set`, `get`, `call`,
+  `callAsync`, `on`/`off`. The remaining slices are in
   [#146](https://github.com/massif-maps/MassifMaps/issues/146).
+- **No bulk numeric channel.** `getElevations` comes back as a JSON array, so an elevation profile
+  over a whole track pays a decimal encode and a parse for every point. The shape it wants is a
+  flat `double[]` — `mm_call_doubles(handle, method, args, buffer, count)` in the C ABI, `double[]`
+  in Java, `NSData` in Objective-C — reusing the result handle so the size can be asked for first.
+  Not measured yet; the JSON path is correct, only wasteful.
+- **The method table is hand-registered.** Unlike properties, methods are not declared by a macro
+  the generator can read, so each one is a thunk in `MethodImpls.cpp`. Three exist:
+  `TileDataSource.loadTile`, `HillshadeRasterTileLayer.getElevation` and `.getElevations`.
+- **`callAsync` has no cancellation and no progress.** A queued call runs to completion; there is
+  no handle for it to be cancelled by. `loadTile` over a slow network is the case that will want
+  one.
 - **`OBJECT` and `STRUCT` properties have no accessor** (216 of the 716). They need the registry for
   object references and JSON marshalling for structs, so their table rows carry null thunks and
   `set`/`get` return `RESULT_UNSUPPORTED_TYPE`.

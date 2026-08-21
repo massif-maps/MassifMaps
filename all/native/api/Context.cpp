@@ -1,6 +1,8 @@
 #include "api/Context.h"
+#include "api/Methods.h"
 #include "api/Projections.h"
 #include "api/StructCodec.h"
+#include "core/BinaryData.h"
 #include "core/Variant.h"
 #include "projections/Projection.h"
 #include "utils/Log.h"
@@ -31,6 +33,32 @@ namespace massif { namespace api {
          * position never parses as one. Corner-wise is right for the axis-aligned projections
          * reachable by name here.
          */
+        void readVariantRoot(void* obj, PropertyValue& value) {
+            value.type = PT_VARIANT;
+            value.stringValue = static_cast<Variant*>(obj)->toString();
+        }
+
+        // The synthetic property a Variant handle resolves to: the document itself, read-only.
+        const PropertyEntry VARIANT_ROOT = { "", PT_VARIANT, PF_READONLY, &readVariantRoot,
+                                             nullptr, nullptr };
+
+        /** A call result with no object of its own, as the Variant an async payload carries. */
+        Variant toVariant(const PropertyValue& value) {
+            switch (value.type) {
+            case PT_BOOL:   return Variant(value.boolValue);
+            case PT_FLOAT:  return Variant(value.floatValue);
+            case PT_STRING: return Variant(value.stringValue);
+            case PT_STRUCT:
+            case PT_VARIANT:
+                try {
+                    return Variant::FromString(value.stringValue);
+                } catch (const std::exception&) {
+                    return Variant(value.stringValue);
+                }
+            default:        return Variant(value.intValue);
+            }
+        }
+
         bool finite(const MapPos& pos) {
             // Mercator sends the poles to infinity, and "inf" is not JSON. Refused rather than
             // handed over as a number that will not parse.
@@ -67,6 +95,14 @@ namespace massif { namespace api {
     }
 
     Context::~Context() {
+        {
+            std::lock_guard<std::mutex> lock(_mutex);
+            _stopping = true;
+        }
+        _callCondition.notify_all();
+        if (_worker.joinable()) {
+            _worker.join();
+        }
     }
 
     const std::shared_ptr<Context>& Context::GetDefault() {
@@ -83,9 +119,39 @@ namespace massif { namespace api {
             return RESULT_DUPLICATE_ID;
         }
         handle = allocate(obj, cppClass);
-        _slots[handle & INDEX_MASK].spec = spec;
+        Slot& slot = _slots[handle & INDEX_MASK];
+        slot.spec = spec;
+        slot.kind = kind;
+        slot.id = id;
         kindIds[id] = handle;
         return RESULT_OK;
+    }
+
+    Result Context::registerResult(const std::string& kind, const std::shared_ptr<void>& obj,
+                                   const char* cppClass, Handle& handle) {
+        std::lock_guard<std::mutex> lock(_mutex);
+        // '#' cannot collide with an app's id: create refuses one, and nothing else makes them.
+        std::string id = "#" + std::to_string(++_resultCounter);
+        handle = allocate(obj, cppClass);
+        Slot& slot = _slots[handle & INDEX_MASK];
+        slot.kind = kind;
+        slot.id = id;
+        _ids[kind][id] = handle;
+        return RESULT_OK;
+    }
+
+    bool Context::destroy(Handle handle) {
+        std::string kind, id;
+        {
+            std::lock_guard<std::mutex> lock(_mutex);
+            const Slot* slot = resolve(handle);
+            if (!slot) {
+                return false;
+            }
+            kind = slot->kind;
+            id = slot->id;
+        }
+        return unregisterObject(kind, id);
     }
 
     std::string Context::getObjectSpec(Handle handle) const {
@@ -167,6 +233,8 @@ namespace massif { namespace api {
         slot.idDropped = false;
         slot.spec.clear();
         slot.projection.reset();
+        slot.kind.clear();
+        slot.id.clear();
         // Bumping the generation is what turns a stale handle into an error instead of a
         // reference to whatever takes the slot next. Wrapping is the ABA window.
         slot.generation = slot.generation >= MAX_GENERATION ? 1 : slot.generation + 1;
@@ -361,6 +429,177 @@ namespace massif { namespace api {
         return _events.getSubscriptionCount();
     }
 
+    Result Context::call(Handle handle, const std::string& method, const std::string& argsJson,
+                         PropertyValue& result) {
+        std::shared_ptr<void> obj;
+        const char* cppClass = nullptr;
+        {
+            std::lock_guard<std::mutex> lock(_mutex);
+            const Slot* slot = resolve(handle);
+            if (!slot) {
+                return RESULT_BAD_HANDLE;
+            }
+            obj = slot->obj;
+            cppClass = slot->cppClass;
+        }
+
+        MethodInvoke invoke = Methods::findMethod(cppClass, method);
+        if (!invoke) {
+            return RESULT_UNKNOWN_METHOD;
+        }
+        CallArgs args;
+        if (!CallArgs::parse(argsJson, args)) {
+            return RESULT_BAD_SPEC;
+        }
+        // Unlocked: loadTile does network I/O, and a method reaching back into the context - to
+        // register its result, which every object-returning one does - would deadlock.
+        return invoke(*this, obj.get(), args, result);
+    }
+
+    Result Context::callHandle(Handle handle, const std::string& method,
+                               const std::string& argsJson, Handle& result) {
+        PropertyValue value;
+        Result called = call(handle, method, argsJson, value);
+        if (called != RESULT_OK) {
+            return called;
+        }
+        if (value.type == PT_OBJECT) {
+            result = static_cast<Handle>(value.intValue);
+            return RESULT_OK;
+        }
+        // A scalar has no handle of its own, so it travels as a Variant a path reads out of -
+        // the same shape a JSON result already has, and one rule instead of two.
+        auto variant = std::make_shared<Variant>(toVariant(value));
+        return registerResult("result", variant, "massif::Variant", result);
+    }
+
+    Result Context::callAsync(Handle handle, const std::string& method, const std::string& argsJson,
+                              const std::string& event) {
+        if (event.empty()) {
+            return RESULT_BAD_SPEC;
+        }
+        CallArgs args;
+        if (!CallArgs::parse(argsJson, args)) {
+            return RESULT_BAD_SPEC;
+        }
+
+        AsyncCall pending;
+        pending.target = handle;
+        pending.method = method;
+        pending.argsJson = argsJson;
+        pending.event = event;
+        {
+            std::lock_guard<std::mutex> lock(_mutex);
+            const Slot* slot = resolve(handle);
+            if (!slot) {
+                return RESULT_BAD_HANDLE;
+            }
+            // Checked before queueing, so a typo is an error the caller sees rather than a line
+            // in a log minutes later.
+            if (!Methods::findMethod(slot->cppClass, method)) {
+                return RESULT_UNKNOWN_METHOD;
+            }
+            // The target has to outlive the call, or the result has nowhere to be emitted.
+            retainLocked(handle);
+            _calls.push_back(pending);
+            startWorker();
+        }
+        // notify_all, not notify_one: waitForCalls blocks on the same condition, and waking it
+        // instead of the worker would hang.
+        _callCondition.notify_all();
+        return RESULT_OK;
+    }
+
+    void Context::startWorker() {
+        if (_worker.joinable() || _stopping) {
+            return;
+        }
+        _worker = std::thread([this]() { runCalls(); });
+    }
+
+    void Context::runCalls() {
+        while (true) {
+            AsyncCall pending;
+            {
+                std::unique_lock<std::mutex> lock(_mutex);
+                _callCondition.wait(lock, [this]() { return _stopping || !_calls.empty(); });
+                if (_stopping && _calls.empty()) {
+                    return;
+                }
+                pending = _calls.front();
+                _calls.pop_front();
+                _callsRunning++;
+            }
+
+            Handle payload = NULL_HANDLE;
+            Result result = callHandle(pending.target, pending.method, pending.argsJson, payload);
+            if (result != RESULT_OK) {
+                Log::Errorf("Context::callAsync: '%s' failed with %d", pending.method.c_str(),
+                            static_cast<int>(result));
+                payload = NULL_HANDLE;
+            }
+
+            emit(pending.target, pending.event, payload);
+            // The payload was the call's result and nobody else owns it; a queued handler holds
+            // its own retain through the emit, so this does not free it early.
+            if (payload != NULL_HANDLE) {
+                destroy(payload);
+            }
+            release(pending.target);
+            {
+                std::lock_guard<std::mutex> lock(_mutex);
+                _callsRunning--;
+            }
+            _callCondition.notify_all();
+        }
+    }
+
+    std::size_t Context::getPendingCallCount() const {
+        std::lock_guard<std::mutex> lock(_mutex);
+        return _calls.size() + _callsRunning;
+    }
+
+    void Context::waitForCalls() {
+        std::unique_lock<std::mutex> lock(_mutex);
+        _callCondition.wait(lock, [this]() { return _calls.empty() && _callsRunning == 0; });
+    }
+
+    Result Context::getData(Handle handle, const std::string& path,
+                            std::shared_ptr<BinaryData>& value) const {
+        std::lock_guard<std::mutex> lock(_mutex);
+        const Slot* slot = resolve(handle);
+        if (!slot) {
+            return RESULT_BAD_HANDLE;
+        }
+        if (path.empty()) {
+            if (!slot->cppClass || std::string(slot->cppClass) != "massif::BinaryData") {
+                return RESULT_UNSUPPORTED_TYPE;
+            }
+            value = std::static_pointer_cast<BinaryData>(slot->obj);
+            return RESULT_OK;
+        }
+
+        ObjectRef target;
+        Result result = RESULT_OK;
+        const PropertyEntry* entry = lookup(handle, path, target, result);
+        if (!entry) {
+            return result;
+        }
+        if (!entry->objectGetter) {
+            return RESULT_UNSUPPORTED_TYPE;
+        }
+        ObjectRef blob;
+        entry->objectGetter(target.obj.get(), blob);
+        if (!blob.obj) {
+            return RESULT_NULL_OBJECT;
+        }
+        if (!blob.cppClass || std::string(blob.cppClass) != "massif::BinaryData") {
+            return RESULT_UNSUPPORTED_TYPE;
+        }
+        value = std::static_pointer_cast<BinaryData>(blob.obj);
+        return RESULT_OK;
+    }
+
     std::size_t Context::getObjectCount() const {
         std::lock_guard<std::mutex> lock(_mutex);
         std::size_t count = 0;
@@ -542,6 +781,14 @@ namespace massif { namespace api {
         }
         target.obj = slot->obj;
         target.cppClass = slot->cppClass;
+
+        // A Variant handle IS a JSON document, so the whole path - including an empty one, meaning
+        // the document itself - is read inside it. This is what makes an async call's scalar
+        // result readable without inventing a result class for it.
+        if (slot->cppClass && std::string(slot->cppClass) == "massif::Variant" && variantRest) {
+            *variantRest = 0;
+            return &VARIANT_ROOT;
+        }
 
         // A dotted path walks OBJECT properties: every segment but the last has to be one, and
         // the reference keeps each intermediate alive while the walk continues.

@@ -10,14 +10,18 @@
 #include "api/EventBus.h"
 #include "api/PropertyTable.h"
 
+#include <condition_variable>
 #include <cstdint>
+#include <deque>
 #include <memory>
 #include <mutex>
 #include <string>
+#include <thread>
 #include <unordered_map>
 #include <vector>
 
 namespace massif {
+    class BinaryData;
     class Projection;
 
     namespace api {
@@ -45,7 +49,9 @@ namespace massif {
         RESULT_NOT_TRAVERSABLE,  // a dotted path crossed something that is not an OBJECT
         RESULT_NULL_OBJECT,      // an OBJECT property on the way was not set
         RESULT_BAD_SPEC,         // not a JSON object, or it does not parse
-        RESULT_UNKNOWN_TYPE      // no factory builds that "type"
+        RESULT_UNKNOWN_TYPE,     // no factory builds that "type"
+        RESULT_UNKNOWN_METHOD,
+        RESULT_FAILED            // the method ran and could not produce a result
     };
 
     /**
@@ -100,11 +106,27 @@ namespace massif {
         std::shared_ptr<void> getObject(Handle handle) const;
 
         /**
+         * Registers an object under a generated id, for a result the caller owns.
+         *
+         * A call's result has no name an app would choose, but it still needs a handle - which is
+         * how a binary blob crosses the boundary without being serialised. Free it with destroy.
+         */
+        Result registerResult(const std::string& kind, const std::shared_ptr<void>& obj,
+                              const char* cppClass, Handle& handle);
+
+        /**
          * Drops the id and, with it, the context's reference to the object. Handles held
          * elsewhere become stale rather than dangling.
          * @return True when the id existed.
          */
         bool unregisterObject(const std::string& kind, const std::string& id);
+
+        /**
+         * The same, addressed by handle rather than by kind and id - which is what a caller
+         * holding a call result has.
+         * @return True when the handle was live.
+         */
+        bool destroy(Handle handle);
 
         /**
          * Reads a property of a registered object.
@@ -135,6 +157,65 @@ namespace massif {
          * change reaches the renderer exactly as a direct call would.
          */
         Result setProperty(Handle handle, const std::string& path, const PropertyValue& value);
+
+        /**
+         * Runs a method on an object.
+         *
+         * The lock is NOT held while it runs: loadTile does network I/O, and a method that called
+         * back into the context would otherwise deadlock.
+         *
+         * @param method The method name, e.g. "loadTile".
+         * @param argsJson The arguments, as a JSON array. Empty for none.
+         * @param result The return value. PT_OBJECT means intValue is a handle the CALLER OWNS
+         *               and must destroy; anything else is the value itself.
+         */
+        Result call(Handle handle, const std::string& method, const std::string& argsJson,
+                    PropertyValue& result);
+
+        /**
+         * The same, with the result always as a handle the CALLER OWNS.
+         *
+         * An object result is that object; anything else is registered as a Variant, so one rule
+         * covers both and a binding does not need a result struct. Free it with destroy.
+         */
+        Result callHandle(Handle handle, const std::string& method, const std::string& argsJson,
+                          Handle& result);
+
+        /**
+         * The same, on a worker thread, with the result delivered as an event on the object.
+         *
+         * The result arrives as the event's payload - an object result directly, anything else
+         * wrapped in a Variant a path can be read out of. A payload of 0 means the call failed;
+         * the reason is logged. Subscribers pick their own delivery thread as usual, so this adds
+         * no second callback mechanism.
+         *
+         * Validation of the handle, the method name and the argument JSON happens here, before
+         * anything is queued, so a mistake is reported to the caller rather than to a log.
+         *
+         * @param event The event name to emit the result on, e.g. "loadTile.done".
+         */
+        Result callAsync(Handle handle, const std::string& method, const std::string& argsJson,
+                         const std::string& event);
+
+        /**
+         * Reads a binary property without turning it into a string.
+         *
+         * @param path The path to a BinaryData property, e.g. "data" on a tile. Empty when the
+         *             handle is the blob itself, which is what an async result gives.
+         */
+        Result getData(Handle handle, const std::string& path,
+                       std::shared_ptr<BinaryData>& value) const;
+
+        /**
+         * How many async calls are queued or running. For tests.
+         */
+        std::size_t getPendingCallCount() const;
+
+        /**
+         * Blocks until every queued async call has finished. For tests, and for a shutdown that
+         * wants its results.
+         */
+        void waitForCalls();
 
         /**
          * The number of live handles. For tests and leak checks.
@@ -225,6 +306,9 @@ namespace massif {
             std::string spec;
             // Only for an object whose class does not declare a projection of its own.
             std::shared_ptr<Projection> projection;
+            // Where the id lives, so a handle can be destroyed without the caller knowing it.
+            std::string kind;
+            std::string id;
         };
 
         static const int INDEX_BITS = 20;
@@ -276,6 +360,25 @@ namespace massif {
         void* _dispatcherUserData = nullptr;
         bool _drainPosted = false;
         bool _warnedNoDispatcher = false;
+
+        struct AsyncCall {
+            Handle target = NULL_HANDLE;
+            std::string method;
+            std::string argsJson;
+            std::string event;
+        };
+
+        // One worker, not a pool: the SDK's own pool needs a per-platform Task.cpp, and running
+        // async calls in submission order is what an app expects anyway.
+        void startWorker();
+        void runCalls();
+
+        std::deque<AsyncCall> _calls;
+        std::thread _worker;
+        std::condition_variable _callCondition;
+        std::size_t _callsRunning = 0;
+        bool _stopping = false;
+        long long _resultCounter = 0;
     };
 
 } }

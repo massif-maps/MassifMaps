@@ -14,6 +14,7 @@
 #include <string>
 
 namespace massif {
+    class BinaryData;
     class Options;
     class TileDataSource;
     class Layer;
@@ -196,6 +197,65 @@ namespace massif {
          */
         static std::string getPos(int handle, const std::string& path,
                                   const std::string& projection = std::string());
+
+        /**
+         * Runs a method on an object.
+         *
+         * The result is ALWAYS a handle the CALLER OWNS - pass it to destroy, or it stays
+         * registered. An object result is that object; anything else is a JSON document, read
+         * with an empty path:
+         *
+         *   int tile = MassifApi.call(source, "loadTile", "[[8467,5852,14]]");
+         *   byte[] bytes = MassifApi.getData(tile, "data").getData();
+         *   MassifApi.destroy(tile);
+         *
+         *   int result = MassifApi.call(layer, "getElevations", "[[[5.76,45.24],[5.77,45.25]]]");
+         *   double first = MassifApi.getFloat(result, "0", 0);
+         *
+         * @param method The method name, e.g. "loadTile".
+         * @param argsJson The arguments as a JSON array, e.g. "[[8467,5852,14]]". Empty for none.
+         * @return The result handle.
+         * @throws std::runtime_error If the handle is stale, the method is unknown, the arguments
+         *         do not fit it, or the method failed.
+         */
+        static int call(int handle, const std::string& method,
+                        const std::string& argsJson = std::string());
+
+        /**
+         * The same, on a worker thread, with the result delivered as an event on the object.
+         *
+         * Subscribe to `event` with `on` first; the payload is the result - an object handle
+         * directly, or a JSON document a path reads out of ("" for the whole thing). A payload of
+         * 0 means the call failed. The payload is freed once the handlers have run, exactly like
+         * a map event's, so nothing has to be destroyed by hand.
+         *
+         *   MassifApi.on(source, "loadTile.done", listener, 1, false);
+         *   MassifApi.callAsync(source, "loadTile", "[[8467,5852,14]]", "loadTile.done");
+         *
+         * @throws std::runtime_error If the handle is stale, the method is unknown, or the
+         *         argument JSON does not parse. A failure while running is reported as a payload
+         *         of 0, since the call has returned by then.
+         */
+        static void callAsync(int handle, const std::string& method, const std::string& argsJson,
+                              const std::string& event);
+
+        /**
+         * Reads a binary property without turning it into a string.
+         *
+         * The blob is handed over as the SDK's own BinaryData, so a binding gets bytes rather
+         * than an encoding - `byte[]` in Java, `NSData` in Objective-C.
+         * @param path The path to the property, e.g. "data" on a tile. Empty when the handle is
+         *             the blob itself.
+         * @return The data, or null when the path does not resolve to one.
+         */
+        static std::shared_ptr<BinaryData> getData(int handle, const std::string& path);
+
+        /**
+         * Drops a handle's id, and with it the context's reference to the object. Addressed by
+         * handle rather than by kind and id, which is what a caller holding a result has.
+         * @return True when the handle was live.
+         */
+        static bool destroy(int handle);
 
     private:
         MassifApi();

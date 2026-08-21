@@ -100,6 +100,9 @@ public final class DemoLive extends BroadcastReceiver {
         if (extras.containsKey("apiEvents")) {
             applyApiEvents("true".equals(extras.getString("apiEvents")));
         }
+        if (extras.containsKey("apiCall")) {
+            applyApiCall(extras.getString("apiCall"), "true".equals(extras.getString("apiAsync")));
+        }
         demo.mapView.requestRender();
     }
 
@@ -154,8 +157,69 @@ public final class DemoLive extends BroadcastReceiver {
                 + " (handle=" + handle + ", result=" + result + ")");
     }
 
+    /**
+     * Runs a method through the facade API (#146), synchronously or on its worker thread:
+     *
+     *   --es apiCall 'source:demoApiSource:loadTile:[[8467,5852,14]]'
+     *   --es apiCall 'source:demoApiSource:loadTile:[[8467,5852,14]]' --es apiAsync true
+     *
+     * The synchronous form blocks the caller, which for an HTTP source is the point of the
+     * comparison: the same call with apiAsync true returns immediately and logs from the event.
+     */
+    private void applyApiCall(String request, boolean async) {
+        String[] parts = request != null ? request.split(":", 4) : new String[0];
+        if (parts.length < 3) {
+            Log.w(TAG, "apiCall wants kind:id:method[:argsJson], got: " + request);
+            return;
+        }
+        String args = parts.length > 3 ? parts[3] : "";
+        int handle = MassifApi.findObject(parts[0], parts[1]);
+        if (handle == 0) {
+            Log.w(TAG, "apiCall: no " + parts[0] + " named " + parts[1]);
+            return;
+        }
+
+        try {
+            if (async) {
+                final String event = parts[2] + ".done";
+                apiCallListener = new EventListener() {
+                    @Override
+                    public boolean onEvent(int target, String name, int payload) {
+                        logCallResult("async " + name, payload);
+                        return false;
+                    }
+                };
+                MassifApi.offEvent(handle, event);
+                MassifApi.on(handle, event, apiCallListener, 1, false);
+                MassifApi.callAsync(handle, parts[2], args, event);
+                Log.i(TAG, "apiCall " + parts[2] + " queued, waiting for " + event);
+            } else {
+                long start = System.currentTimeMillis();
+                int result = MassifApi.call(handle, parts[2], args);
+                logCallResult(parts[2] + " in " + (System.currentTimeMillis() - start) + " ms", result);
+                // A sync result is owned by the caller; an async one is freed with the event.
+                MassifApi.destroy(result);
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "apiCall failed: " + e.getMessage());
+        }
+    }
+
+    private void logCallResult(String what, int result) {
+        if (result == 0) {
+            Log.i(TAG, "apiCall " + what + " -> failed");
+            return;
+        }
+        // Binary comes back as bytes, not as an encoding of them; anything else is a document.
+        com.massifmaps.core.BinaryData data = MassifApi.getData(result, "data");
+        Log.i(TAG, "apiCall " + what + " -> handle=" + result
+                + (data != null ? " bytes=" + data.size()
+                                : " json=" + MassifApi.getString(result, "", "-")));
+    }
+
     /** Kept alive for as long as it is subscribed, or the director would be collected. */
     private EventListener apiListener;
+    private EventListener apiCallListener;
     private int apiSubscription;
 
     /**

@@ -3,7 +3,7 @@
 
 %module(directors="1") MassifApi
 
-!proxy_imports(massif::api::MassifApi, components.Options, datasources.TileDataSource, layers.Layer, ui.MapEventListener, api.EventListener, layers.VectorTileEventListener, layers.VectorElementEventListener)
+!proxy_imports(massif::api::MassifApi, core.BinaryData, components.Options, datasources.TileDataSource, layers.Layer, ui.MapEventListener, api.EventListener, layers.VectorTileEventListener, layers.VectorElementEventListener)
 
 %{
 #include "api/MassifApi.h"
@@ -15,6 +15,7 @@
 %include <massifswig.i>
 
 
+%import "core/BinaryData.i"
 %import "components/Options.i"
 %import "datasources/TileDataSource.i"
 %import "layers/Layer.i"
@@ -24,6 +25,8 @@
 %import "api/EventListener.i"
 
 %std_exceptions(massif::api::MassifApi::create)
+%std_exceptions(massif::api::MassifApi::call)
+%std_exceptions(massif::api::MassifApi::callAsync)
 
 %include "api/MassifApi.h"
 

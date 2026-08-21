@@ -51,7 +51,12 @@ typedef NS_ENUM(NSInteger, MSFDelivery) {
 @end
 
 @interface MSFSubscription ()
-- (instancetype)initWithId:(int)subscriptionId;
+/**
+ * @param listener Retained for the subscription's lifetime. The C++ side holds the director
+ *        through a raw pointer, so without this ARC frees it the moment subscribe returns and the
+ *        handler silently never runs.
+ */
+- (instancetype)initWithId:(int)subscriptionId listener:(id)listener;
 @end
 
 @interface MSFMassifObject ()

@@ -255,7 +255,8 @@
                                delivery:(int)delivery
                                coalesce:coalesce
                              projection:projection ?: @""];
-    return subscription == 0 ? nil : [[MSFSubscription alloc] initWithId:subscription];
+    return subscription == 0 ? nil
+        : [[MSFSubscription alloc] initWithId:subscription listener:listener];
 }
 
 - (int)off:(NSString *)event {

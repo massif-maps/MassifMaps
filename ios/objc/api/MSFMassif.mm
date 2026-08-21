@@ -105,11 +105,14 @@ static NSString * const kAbsent = @"\0massif:absent";
 
 @implementation MSFSubscription {
     int _id;
+    id _listener;
 }
 
-- (instancetype)initWithId:(int)subscriptionId {
+- (instancetype)initWithId:(int)subscriptionId listener:(id)listener {
     if ((self = [super init])) {
         _id = subscriptionId;
+        // The C++ side keeps the director as a raw pointer, so this is the only strong reference.
+        _listener = listener;
     }
     return self;
 }
@@ -122,6 +125,7 @@ static NSString * const kAbsent = @"\0massif:absent";
     if (_id != 0) {
         [MSFMassifApi off:_id];
         _id = 0;
+        _listener = nil;
     }
 }
 

@@ -66,6 +66,9 @@ set(TEST_SDK_SOURCES
   # Spec.cpp holds create() and the registry; the built-in factories live in SpecFactories.cpp,
   # which is deliberately NOT here - linking it would need every source and layer constructor.
   "${SDK_BASE_DIR}/all/native/api/Spec.cpp"
+  # The generated constructor builders. Light for THIS table: it only declares the geometry classes,
+  # so the .inc only pulls their headers in - which is the whole point of the split.
+  "${SDK_BASE_DIR}/all/native/api/SpecBuilders.cpp"
   "${SDK_BASE_DIR}/all/native/core/Variant.cpp"
   "${SDK_BASE_DIR}/all/native/core/MapPos.cpp"
   "${SDK_BASE_DIR}/all/native/core/MapVec.cpp"

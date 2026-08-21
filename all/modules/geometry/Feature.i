@@ -18,6 +18,8 @@
 %import "geometry/Geometry.i"
 
 !polymorphic_shared_ptr(massif::Feature, geometry.Feature)
+
+!spec(massif::Feature, feature, feature)
 !value_type(std::vector<std::shared_ptr<massif::Feature> >, geometry.FeatureVector)
 
 !attributestring_polymorphic(massif::Feature, geometry.Geometry, Geometry, getGeometry)

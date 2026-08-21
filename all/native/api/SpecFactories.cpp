@@ -1,131 +1,29 @@
+#include "api/Context.h"
 #include "api/Projections.h"
 #include "api/Spec.h"
+#include "api/SpecBuilders.h"
 #include "api/StructCodec.h"
-#include "api/Context.h"
-#include "datasources/AssetTileDataSource.h"
-#include "datasources/CombinedTileDataSource.h"
-#include "datasources/HTTPTileDataSource.h"
-#include "datasources/MemoryCacheTileDataSource.h"
-#include "datasources/MultiTileDataSource.h"
-#include "datasources/OrderedTileDataSource.h"
 #include "geometry/GeoJSONGeometryReader.h"
 #include "projections/Projection.h"
-#include "layers/CompositeVectorTileLayer.h"
-#include "layers/HillshadeRasterTileLayer.h"
-#include "layers/RasterTileLayer.h"
-#include "layers/SolidLayer.h"
-#include "layers/VectorTileLayer.h"
-#include "styles/CartoCSSStyleSet.h"
-#include "styles/CompiledStyleSet.h"
-#include "utils/DirAssetPackage.h"
-#include "vectortiles/MBVectorTileDecoder.h"
-#include "graphics/Color.h"
 #include "utils/Log.h"
 
-#include <map>
+#include <memory>
+#include <set>
 
-#ifdef _MASSIF_OFFLINE_SUPPORT
-#include "datasources/MBTilesTileDataSource.h"
-#include "datasources/PersistentCacheTileDataSource.h"
-#endif
-
+// Only what the ADAPTIVE factories construct themselves. Everything a constructor signature
+// describes is built in SpecBuilders.cpp, which is where those headers went.
 #ifdef _MASSIF_SEARCH_SUPPORT
-#include "search/SearchRequest.h"
+#include "layers/VectorTileLayer.h"
 #include "search/VectorTileSearchService.h"
 #endif
 
 #ifdef _MASSIF_ROUTING_SUPPORT
 #include "routing/RoutingRequest.h"
-#include "routing/ValhallaOnlineRoutingService.h"
 #endif
-#if defined(_MASSIF_ROUTING_SUPPORT) && defined(_MASSIF_VALHALLA_ROUTING_SUPPORT) && defined(_MASSIF_OFFLINE_SUPPORT)
-#include "routing/ValhallaOfflineRoutingService.h"
-#endif
-
-#include <memory>
 
 namespace massif { namespace api {
 
     namespace {
-
-        std::string stringAt(const Variant& spec, const char* key, const std::string& fallback = std::string()) {
-            return spec.containsObjectKey(key) ? spec.getObjectElement(key).getString() : fallback;
-        }
-
-        int intAt(const Variant& spec, const char* key, int fallback) {
-            return spec.containsObjectKey(key) ? static_cast<int>(spec.getObjectElement(key).getLong()) : fallback;
-        }
-
-        double floatAt(const Variant& spec, const char* key, double fallback) {
-            return spec.containsObjectKey(key) ? spec.getObjectElement(key).getDouble() : fallback;
-        }
-
-        bool boolAt(const Variant& spec, const char* key, bool fallback) {
-            return spec.containsObjectKey(key) ? spec.getObjectElement(key).getBool() : fallback;
-        }
-
-        Variant variantAt(const Variant& spec, const char* key) {
-            return spec.containsObjectKey(key) ? spec.getObjectElement(key) : Variant();
-        }
-
-        /**
-         * Resolves a nested source: an object is an anonymous child built here and now, a string
-         * names something already in the registry.
-         */
-        Result childSource(Context& context, const Variant& spec, const char* key,
-                           std::shared_ptr<TileDataSource>& source) {
-            if (!spec.containsObjectKey(key)) {
-                return RESULT_UNKNOWN_PROPERTY;
-            }
-            Variant child = spec.getObjectElement(key);
-            if (child.getType() == VariantType::VARIANT_TYPE_STRING) {
-                Handle handle = context.findObject("source", child.getString());
-                source = std::static_pointer_cast<TileDataSource>(
-                    context.getObject(handle, "massif::TileDataSource"));
-                return source ? RESULT_OK : RESULT_BAD_HANDLE;
-            }
-            ObjectRef object;
-            std::set<std::string> consumed;
-            Result result = Spec::build(context, "source", child, object, consumed);
-            if (result != RESULT_OK) {
-                return result;
-            }
-            source = std::static_pointer_cast<TileDataSource>(object.obj);
-            return RESULT_OK;
-        }
-
-        /**
-         * Resolves a reference that is either a registry id or an inline spec of another kind.
-         *
-         * requiredClass is what the caller is about to cast to: a "style" id naming a source has
-         * to be refused here, not cast and read as the wrong class.
-         */
-        Result childOf(Context& context, const Variant& spec, const char* key, const char* kind,
-                       const char* requiredClass, std::shared_ptr<void>& out) {
-            if (!spec.containsObjectKey(key)) {
-                return RESULT_UNKNOWN_PROPERTY;
-            }
-            Variant child = spec.getObjectElement(key);
-            if (child.getType() == VariantType::VARIANT_TYPE_STRING) {
-                out = context.getObject(context.findObject(kind, child.getString()), requiredClass);
-                return out ? RESULT_OK : RESULT_BAD_HANDLE;
-            }
-            ObjectRef object;
-            std::set<std::string> consumed;
-            Result result = Spec::build(context, kind, child, object, consumed);
-            if (result != RESULT_OK) {
-                return result;
-            }
-            if (!isSubclassOf(object.cppClass, requiredClass)) {
-                return RESULT_UNKNOWN_CLASS;
-            }
-            out = object.obj;
-            return RESULT_OK;
-        }
-
-        // Every class that declares a !spec in its .i, built from its own constructor signature.
-        // Here because it calls childOf and the value helpers above.
-        #include "api/SpecConstructors.inc"
 
         Result buildSource(Context& context, const Variant& spec, ObjectRef& object,
                            std::set<std::string>& consumed) {
@@ -181,8 +79,17 @@ namespace massif { namespace api {
          * a binding that has coordinates at all has them in that form. This is what lets a search
          * be bounded - a request with no geometry scans the whole world at its zoom.
          */
+        Result buildFeature(Context& context, const Variant& spec, ObjectRef& object,
+                            std::set<std::string>& consumed) {
+            return buildFromConstructor(context, "feature", spec, object, consumed);
+        }
+
         Result buildGeometry(Context& context, const Variant& spec, ObjectRef& object,
                              std::set<std::string>& consumed) {
+            // Only "geojson" is adaptive; a shape with its own constructor builds from that.
+            if (stringAt(spec, "type") != "geojson") {
+                return buildFromConstructor(context, "geometry", spec, object, consumed);
+            }
             consumed.insert("type");
             consumed.insert("geojson");
             consumed.insert("projection");
@@ -302,6 +209,7 @@ namespace massif { namespace api {
         registerFactory("layer", &buildLayer);
         registerFactory("projection", &buildProjection);
         registerFactory("geometry", &buildGeometry);
+        registerFactory("feature", &buildFeature);
 #ifdef _MASSIF_ROUTING_SUPPORT
         registerFactory("routing", &buildRouting);
 #endif

@@ -18,6 +18,8 @@
 %import "geometry/Geometry.i"
 
 !polymorphic_shared_ptr(massif::PointGeometry, geometry.PointGeometry)
+
+!spec(massif::PointGeometry, geometry, point)
 !value_type(std::vector<std::shared_ptr<massif::PointGeometry> >, geometry.PointGeometryVector)
 
 %attributeval(massif::PointGeometry, massif::MapPos, Pos, getPos)

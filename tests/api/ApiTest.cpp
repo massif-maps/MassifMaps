@@ -38,6 +38,7 @@ void testCallConcurrency();
 void testCollections();
 void testRouting();
 void testStatics();
+void testGeneratedFactories();
 void testCAbi();
 void testCAbiEvents();
 
@@ -279,6 +280,7 @@ int main() {
     testCollections();
     testRouting();
     testStatics();
+    testGeneratedFactories();
     testCAbi();
     testCAbiEvents();
 

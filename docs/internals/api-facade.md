@@ -380,6 +380,8 @@ inline spec of that kind, and it is checked against the class the caller is abou
 |---|---|
 | `source` | `http` `assets` `mbtiles` `memory-cache` `persistent-cache` `ordered` `combined` `multi` |
 | `assets` | `dir` — a directory of style files |
+| `geometry` | `geojson`, and `point` from a `pos` |
+| `feature` | `feature` — a `geometry` and free-form `properties` |
 | `styleset` | `cartocss` (inline `css`), `project` (an asset package + the `name` of one style in it) |
 | `style` | `mbvt` — a vector tile decoder over a `cartocss` or a `project` style set |
 | `layer` | `raster` `vector` `composite-vector` `hillshade` `solid` |
@@ -432,7 +434,7 @@ One line per class in its `.i` says what to call it and how to spell the awkward
   defaults and `scheme` does not — and passing `scheme` now reaches the 4-argument one, which no
   hand-written factory ever exposed. Same for `HillshadeRasterTileLayer`'s `elevationDecoder`.
 
-Twenty-one classes over seven kinds build this way. `SpecFactories.cpp` went from 486 lines to 313,
+Twenty-three classes over nine kinds build this way. `SpecFactories.cpp` went from 486 lines to 313,
 and everything left in it is genuinely adaptive rather than boilerplate:
 
 | still hand-written | why the signature cannot say it |
@@ -495,12 +497,17 @@ The generator reports what it could not build, the same way it reports unreachab
 Those are overloads whose parameter type no kind builds — not errors, just the next thing to
 declare if someone needs it.
 
-**Not covered by the host tests.** The reduced property table has no `!spec` class in it, and
-`SpecFactories.cpp` is not linked there — it needs every source, layer and service. Verified on the
-phone instead: seven builds across all four kinds, an unknown type answering `RESULT_UNKNOWN_TYPE`,
-and `maxZoom` reading back 14 from the spec while `minZoom` reads 0 from the declared default. The
-follow-up is to move the value helpers and the generated include into a light translation unit so a
-reduced table can exercise them.
+The generated builders live in **`SpecBuilders.cpp`**, not beside the hand-written factories, and
+that is what makes them testable: the `.inc` brings its own class headers, so the translation unit
+weighs exactly what the table declares. The full profile pulls in every source, layer and service;
+the reduced test table declares `PointGeometry` and `Feature` and pulls in two geometry headers.
+`SpecFactories.cpp` keeps only what the adaptive factories construct themselves, which is why its
+include list shrank with it.
+
+Covered by the host tests through those two: a struct argument (`PointGeometry(const MapPos&)`), a
+child resolved by id and as an inline spec, free-form JSON (`Feature(shared_ptr<Geometry>,
+Variant)`), and the failure modes — an unknown type, a missing required argument, a child id that
+names nothing, and one that names the wrong class. Plus a device pass over the real classes.
 
 **The factory table is a registry, not a switch.** `Spec::registerFactory(kind, fn)` is the hook a
 plugin would extend, and it is also what makes `create` testable: the tests register a fake kind

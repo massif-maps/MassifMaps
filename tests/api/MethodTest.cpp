@@ -771,3 +771,85 @@ void testCallConcurrency() {
     context->waitForCalls();
     TEST_CHECK(slowRuns == 2, "and the second one did run, after the first");
 }
+
+/*
+ * Factories generated from a constructor signature.
+ *
+ * The reduced table declares two: PointGeometry(const MapPos&) and Feature(shared_ptr<Geometry>,
+ * Variant). Between them they cover every argument shape the emitter knows - a struct, a child
+ * resolved by id or inline, and free-form JSON - plus the failure modes.
+ */
+
+#include "api/Spec.h"
+#include "api/SpecBuilders.h"
+
+namespace {
+
+    Result generatedGeometry(Context& context, const Variant& spec, ObjectRef& object,
+                             std::set<std::string>& consumed) {
+        return buildFromConstructor(context, "geometry", spec, object, consumed);
+    }
+
+    Result generatedFeature(Context& context, const Variant& spec, ObjectRef& object,
+                            std::set<std::string>& consumed) {
+        return buildFromConstructor(context, "feature", spec, object, consumed);
+    }
+
+}
+
+void testGeneratedFactories() {
+    Spec::registerFactory("geometry", &generatedGeometry);
+    Spec::registerFactory("feature", &generatedFeature);
+    auto context = std::make_shared<Context>();
+
+    // A struct argument, decoded by the same codec a property uses.
+    Handle point = NULL_HANDLE;
+    TEST_CHECK(Spec::create(*context, "geometry", "p", "{\"type\":\"point\",\"pos\":[5.5,45.25]}", point) == RESULT_OK,
+               "a class builds from its constructor");
+    PropertyValue value;
+    TEST_CHECK(context->getProperty(point, "pos", value) == RESULT_OK &&
+               value.stringValue.find("5.5") != std::string::npos &&
+               value.stringValue.find("45.25") != std::string::npos,
+               "with the struct argument decoded into it");
+
+    // A child by id, and free-form JSON alongside it.
+    Handle feature = NULL_HANDLE;
+    TEST_CHECK(Spec::create(*context, "feature", "f",
+                            "{\"type\":\"feature\",\"geometry\":\"p\","
+                            "\"properties\":{\"name\":\"Aiguille\",\"ele\":3842}}", feature) == RESULT_OK,
+               "a child argument resolves from the registry by id");
+    TEST_CHECK(context->getProperty(feature, "geometry.pos", value) == RESULT_OK &&
+               value.stringValue.find("5.5") != std::string::npos,
+               "and it is the object that id named");
+    TEST_CHECK(context->getProperty(feature, "properties.ele", value) == RESULT_OK &&
+               value.asLong() == 3842, "a Variant argument arrives whole");
+
+    // A child as an INLINE spec, built on the spot - no id for the intermediate.
+    Handle nested = NULL_HANDLE;
+    TEST_CHECK(Spec::create(*context, "feature", "n",
+                            "{\"type\":\"feature\","
+                            "\"geometry\":{\"type\":\"point\",\"pos\":[1,2]},"
+                            "\"properties\":{}}", nested) == RESULT_OK,
+               "a child argument also takes an inline spec");
+    TEST_CHECK(context->getProperty(nested, "geometry.pos", value) == RESULT_OK &&
+               value.stringValue.find("1") != std::string::npos,
+               "built on the spot, with no id of its own");
+
+    // The failure modes, which is what a generated builder has to get right to be trustworthy.
+    Handle refused = NULL_HANDLE;
+    TEST_CHECK(Spec::create(*context, "geometry", "bad1", "{\"type\":\"nosuch\"}", refused) == RESULT_UNKNOWN_TYPE,
+               "a type no declared class claims is reported");
+    TEST_CHECK(Spec::create(*context, "feature", "bad2", "{\"type\":\"feature\"}", refused) == RESULT_BAD_SPEC,
+               "a missing required argument is refused, not defaulted");
+    TEST_CHECK(Spec::create(*context, "feature", "bad3",
+                            "{\"type\":\"feature\",\"geometry\":\"nosuchid\",\"properties\":{}}", refused) == RESULT_BAD_HANDLE,
+               "a child id that names nothing is reported");
+    TEST_CHECK(Spec::create(*context, "feature", "bad4",
+                            "{\"type\":\"feature\",\"geometry\":\"f\",\"properties\":{}}", refused) == RESULT_BAD_HANDLE,
+               "and one that names the wrong class - a Feature is not a Geometry");
+
+    ObjectRef nothing;
+    std::set<std::string> consumed;
+    TEST_CHECK(buildFromConstructor(*context, "nosuchkind", Variant(), nothing, consumed) ==
+               RESULT_UNKNOWN_TYPE, "an undeclared kind builds nothing");
+}

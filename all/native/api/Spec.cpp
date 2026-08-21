@@ -136,6 +136,77 @@ namespace massif { namespace api {
 
     }
 
+    Result Spec::create(Context& context, const std::string& kind, const std::string& id,
+                        const std::string& json, Handle& handle) {
+        Variant spec;
+        try {
+            spec = Variant::FromString(json);
+        } catch (const std::exception& e) {
+            Log::Errorf("Spec::create: %s does not parse: %s", id.c_str(), e.what());
+            return RESULT_BAD_SPEC;
+        }
+        // toString is the canonical form: picojson keeps object keys sorted, so two specs that
+        // mean the same thing compare equal whatever order they were written in.
+        std::string canonical = spec.toString();
+
+        // An identical spec reuses: that is how two maps come to share one source without
+        // coordinating. A different spec under the same id is a conflict, never a replace.
+        Handle existing = context.findObject(kind, id);
+        if (existing != NULL_HANDLE) {
+            if (context.getObjectSpec(existing) == canonical) {
+                handle = existing;
+                return RESULT_OK;
+            }
+            return RESULT_DUPLICATE_ID;
+        }
+
+        ObjectRef object;
+        std::set<std::string> consumed;
+        Result result = build(context, kind, spec, object, consumed);
+        if (result != RESULT_OK) {
+            return result;
+        }
+        result = context.registerObject(kind, id, object.obj, object.cppClass, handle, canonical);
+        if (result != RESULT_OK) {
+            return result;
+        }
+
+        // Everything the factory did not need is a property. An option the SDK does not have is
+        // a warning, so a spec from another version still applies what it can.
+        for (const std::string& key : spec.getObjectKeys()) {
+            if (consumed.count(key)) {
+                continue;
+            }
+            Variant value = spec.getObjectElement(key);
+            PropertyValue propertyValue;
+            switch (value.getType()) {
+            case VariantType::VARIANT_TYPE_BOOL:
+                propertyValue.boolValue = value.getBool();
+                break;
+            case VariantType::VARIANT_TYPE_INTEGER:
+                propertyValue.intValue = value.getLong();
+                propertyValue.floatValue = static_cast<double>(value.getLong());
+                break;
+            case VariantType::VARIANT_TYPE_DOUBLE:
+                propertyValue.floatValue = value.getDouble();
+                propertyValue.intValue = static_cast<long long>(value.getDouble());
+                break;
+            case VariantType::VARIANT_TYPE_STRING:
+                propertyValue.stringValue = value.getString();
+                break;
+            default:
+                Log::Warnf("Spec::create: %s.%s is not a scalar, ignored", id.c_str(), key.c_str());
+                continue;
+            }
+            Result applied = context.setProperty(handle, key, propertyValue);
+            if (applied != RESULT_OK) {
+                Log::Warnf("Spec::create: %s.%s ignored (%d)", id.c_str(), key.c_str(), applied);
+            }
+        }
+        return RESULT_OK;
+    }
+
+
     Result Spec::build(Context& context, const std::string& kind, const Variant& spec,
                        ObjectRef& object, std::set<std::string>& consumed) {
         if (spec.getType() != VariantType::VARIANT_TYPE_OBJECT) {

@@ -1,4 +1,5 @@
 #include "api/MassifApi.h"
+#include "api/Spec.h"
 #include "components/Options.h"
 #include "datasources/TileDataSource.h"
 
@@ -15,7 +16,7 @@ namespace massif { namespace api {
 
     int MassifApi::create(const std::string& kind, const std::string& objectId, const std::string& json) {
         Handle handle = NULL_HANDLE;
-        if (Context::GetDefault()->create(kind, objectId, json, handle) != RESULT_OK) {
+        if (Spec::create(*Context::GetDefault(), kind, objectId, json, handle) != RESULT_OK) {
             return NULL_HANDLE;
         }
         return static_cast<int>(handle);

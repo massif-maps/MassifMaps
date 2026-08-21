@@ -236,6 +236,27 @@ end to end. The iOS simulator gives the identical line, handle included:
 apiSet fogOptions.rangeStart 0.800000 -> 2.500000 (handle=1048577, result=0)
 ```
 
+## Tests
+
+`tests/` is a host-native binary over the parts that link without the renderer — see
+[`tests/README.md`](https://github.com/massif-maps/MassifMaps/blob/master/tests/README.md).
+
+```sh
+cd tests && ./run.sh
+```
+
+It covers table lookups and the base chain, handle generations and the stale-handle rule,
+`set`/`get` per value type, and path-resolution failures. Two things keep it small on purpose:
+the property table takes the address of **every** accessor thunk, so a full table needs the full
+SDK to link — the tests generate a reduced one from an explicit module list
+(`gen-api-tables.py --modules`), which exercises the generator as a side effect. And `Options`
+drags the renderer, so `Options -> FogOptions` traversal stays a device check.
+
+Writing them moved `create` out of `Context` and into `Spec`: `Context` is the object registry and
+should not depend on the JSON layer, which is what made it unlinkable without every source
+constructor. The first run then failed on a colour round-trip — `getARGB()` returns `int`, so an
+opaque colour sign-extended to a negative `long long`. The read is unsigned now.
+
 ## Build wiring
 
 The tables are generated at **build** time and are not checked in, so there is no second step to

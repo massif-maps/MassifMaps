@@ -190,25 +190,36 @@ def parseBases(headers, headerDirs):
   return bases
 
 
-def parseModules(sourceDirs, defines):
-  pattern = re.compile(r'^\s*[%!](' + '|'.join(sorted(ATTRIBUTE_MACROS, key=len, reverse=True)) +
-                       r')\s*\((.*)\)\s*$')
-  headers, entries, skipped = [], [], 0
+def collectModulePaths(sourceDirs, modules):
+  """The .i files to read: an explicit list when given, otherwise every one under sourceDirs.
+
+  The explicit form is what lets a test build a small table over a handful of classes instead of
+  needing the whole SDK to link.
+  """
+  if modules:
+    return [path for path in modules if path]
+  paths = []
   for sourceDir in sourceDirs:
     if not os.path.isdir(sourceDir):
       continue
     for root, _, fileNames in os.walk(sourceDir):
-      for fileName in sorted(fileNames):
-        if not fileName.endswith('.i'):
-          continue
-        moduleHeaders, moduleEntries = parseModule(os.path.join(root, fileName), defines, pattern)
-        if moduleHeaders is None:
-          skipped += 1
-          continue
-        # Headers come from every in-profile module, attributes or not: a class with no
-        # properties of its own still needs its base recorded.
-        headers += moduleHeaders
-        entries += moduleEntries
+      paths += [os.path.join(root, name) for name in sorted(fileNames) if name.endswith('.i')]
+  return paths
+
+
+def parseModules(sourceDirs, defines, modules=None):
+  pattern = re.compile(r'^\s*[%!](' + '|'.join(sorted(ATTRIBUTE_MACROS, key=len, reverse=True)) +
+                       r')\s*\((.*)\)\s*$')
+  headers, entries, skipped = [], [], 0
+  for sourcePath in collectModulePaths(sourceDirs, modules):
+    moduleHeaders, moduleEntries = parseModule(sourcePath, defines, pattern)
+    if moduleHeaders is None:
+      skipped += 1
+      continue
+    # Headers come from every in-profile module, attributes or not: a class with no properties
+    # of its own still needs its base recorded.
+    headers += moduleHeaders
+    entries += moduleEntries
   return headers, entries, skipped
 
 
@@ -241,7 +252,9 @@ def objectClassOf(entry):
 def readExpr(entry):
   call = 'self->%s()' % entry['getter']
   if entry['type'] == 'COLOR':
-    return 'value.intValue = %s.getARGB();' % call
+    # Unsigned: getARGB returns int, so an opaque colour would sign-extend to a negative and the
+    # round-trip would not be symmetric. A colour is a bit pattern, not a quantity.
+    return 'value.intValue = static_cast<unsigned int>(%s.getARGB());' % call
   if entry['type'] == 'BOOL':
     return 'value.boolValue = %s;' % call
   if entry['type'] == 'FLOAT':
@@ -348,6 +361,8 @@ parser.add_argument('--defines', dest='defines', default='',
 parser.add_argument('--sourcedir', dest='sourceDir', default='../all/modules,../android/modules',
                     help='input directories containing subdirectories of Swig wrappers, comma or '
                          'semicolon separated')
+parser.add_argument('--modules', dest='modules', default='',
+                    help='explicit .i files, comma separated, instead of walking --sourcedir')
 parser.add_argument('--cppdir', dest='cppDir', default='../all/native,../android/native,../ios/native',
                     help='directories containing C++ headers, for the base-class chain')
 parser.add_argument('--outdir', dest='outDir', default='../generated/api',
@@ -359,13 +374,13 @@ args = parser.parse_args()
 source = args.defines if args.defines else getProfile(args.profile).get('defines', '')
 defines = set(d.strip() for d in re.split(r'[;,]', source) if d.strip())
 
-headers, entries, skipped = parseModules(re.split(r'[;,]', args.sourceDir), defines)
+headers, entries, skipped = parseModules(re.split(r'[;,]', args.sourceDir), defines,
+                                        re.split(r'[;,]', args.modules) if args.modules else None)
 if not entries:
   print('No attribute macros found - is --sourcedir right?')
   sys.exit(-1)
 
-if not os.path.isdir(args.outDir):
-  os.makedirs(args.outDir)
+os.makedirs(args.outDir, exist_ok=True)
 emitAccessors(headers, entries, os.path.join(args.outDir, 'PropertyAccessors.inc'))
 bases = parseBases(headers, re.split(r'[;,]', args.cppDir))
 byClass = emitTable(entries, bases, os.path.join(args.outDir, 'PropertyTable.inc'))

@@ -26,6 +26,17 @@ namespace massif { namespace api {
     class Spec {
     public:
         /**
+         * Builds an object from a JSON spec and registers it under a kind and id.
+         *
+         * An identical spec under an existing id returns that handle - two maps share one source
+         * that way. A different spec under that id is refused. Keys the factory does not consume
+         * are applied as properties, and a key the SDK does not know is dropped with a warning,
+         * so a spec written against another version still applies what it can.
+         */
+        static Result create(Context& context, const std::string& kind, const std::string& id,
+                             const std::string& json, Handle& handle);
+
+        /**
          * Builds an object of the given kind.
          * @param context The context, for resolving nested references by id.
          * @param kind The object kind, currently only "source".

@@ -4,13 +4,20 @@
  */
 
 #include "api/Context.h"
+#include "api/GeometryMethods.h"
+#include "api/StructCodec.h"
 #include "api/Methods.h"
 #include "core/BinaryData.h"
 #include "core/MapTile.h"
 #include "datasources/components/TileData.h"
 #include "geometry/Feature.h"
+#include "geometry/FeatureCollection.h"
 #include "geometry/PointGeometry.h"
+#include "geometry/VectorTileFeature.h"
+#include "geometry/VectorTileFeatureCollection.h"
+#include "projections/EPSG3857.h"
 
+#include <cmath>
 #include <condition_variable>
 #include <stdexcept>
 #include <memory>
@@ -289,6 +296,93 @@ void testCall() {
                context->getDoubles(result, values) == RESULT_UNSUPPORTED_TYPE,
                "and so is a scalar result, rather than being coerced into one value");
     context->destroy(result);
+}
+
+/*
+ * A collection, read one element at a time - the channel a search result comes back through.
+ *
+ * The search services themselves are not exercised here: linking one would pull in a tile source
+ * and a CartoCSS decoder, which is the point at which a check belongs on a device instead. What is
+ * checked is everything between the service and the caller.
+ */
+void testCollections() {
+    registerGeometryMethods();
+
+    auto context = std::make_shared<Context>();
+    std::vector<std::shared_ptr<VectorTileFeature> > features;
+    for (int index = 0; index < 3; index++) {
+        // Distinct positions and layer names, so reading element 2 cannot pass by reading element 0.
+        features.push_back(std::make_shared<VectorTileFeature>(
+            100 + index, MapTile(1, 2, 3, 0), "layer" + std::to_string(index),
+            std::make_shared<PointGeometry>(MapPos(10 + index, 20 + index)), Variant()));
+    }
+    Handle collection = NULL_HANDLE;
+    context->registerObject("result", "c", std::make_shared<VectorTileFeatureCollection>(features),
+                            "massif::VectorTileFeatureCollection", collection);
+
+    PropertyValue value;
+    TEST_CHECK(context->getProperty(collection, "featureCount", value) == RESULT_OK &&
+               value.asDouble() == 3, "the count is a property, not a method");
+
+    Handle feature = NULL_HANDLE;
+    TEST_CHECK(context->callHandle(collection, "getFeature", "[2]", feature) == RESULT_OK,
+               "an element comes back as a handle");
+    TEST_CHECK(context->getProperty(feature, "id", value) == RESULT_OK && value.asDouble() == 102,
+               "and it is the element that was asked for");
+    // Registered as the SUBCLASS, so what only a vector tile feature carries survives the crossing.
+    TEST_CHECK(context->getProperty(feature, "layerName", value) == RESULT_OK &&
+               value.stringValue == "layer2", "a subclass property is readable");
+    TEST_CHECK(context->getProperty(feature, "geometry.centerPos", value) == RESULT_OK &&
+               value.stringValue.find("12") != std::string::npos,
+               "and a path walks on into the element");
+    context->destroy(feature);
+
+    TEST_CHECK(context->call(collection, "getFeature", "[3]", value) == RESULT_BAD_SPEC,
+               "an index past the end is refused rather than throwing out of the SDK");
+    TEST_CHECK(context->call(collection, "getFeature", "[-1]", value) == RESULT_BAD_SPEC,
+               "so is a negative one");
+    TEST_CHECK(context->call(collection, "getFeature", "[]", value) == RESULT_BAD_SPEC,
+               "and a missing index");
+    TEST_CHECK(context->call(collection, "getFeature", "[\"2\"]", value) == RESULT_BAD_SPEC,
+               "a string index is not coerced");
+
+    // An empty collection has no element 0 - the case a search that found nothing produces.
+    Handle empty = NULL_HANDLE;
+    context->registerObject("result", "e", std::make_shared<VectorTileFeatureCollection>(
+                                std::vector<std::shared_ptr<VectorTileFeature> >()),
+                            "massif::VectorTileFeatureCollection", empty);
+    TEST_CHECK(context->call(empty, "getFeature", "[0]", value) == RESULT_BAD_SPEC,
+               "an empty collection has nothing at 0");
+
+    // The object-argument channel: what a method gets handed, and what it refuses.
+    CallArgs args;
+    Handle handle = NULL_HANDLE;
+    TEST_CHECK(CallArgs::parse("[7,-1,\"7\",4294967296]", args), "handle arguments parse");
+    TEST_CHECK(args.getHandle(0, handle) && handle == 7, "a handle is a number");
+    TEST_CHECK(!args.getHandle(1, handle), "a negative one is not a handle");
+    TEST_CHECK(!args.getHandle(2, handle), "nor a string");
+    TEST_CHECK(!args.getHandle(3, handle), "nor one that does not fit 32 bits");
+
+    TEST_CHECK(context->getObject(collection, "massif::FeatureCollection") != nullptr,
+               "an object argument resolves as its base class");
+    TEST_CHECK(context->getObject(collection, "massif::Feature") == nullptr,
+               "but not as an unrelated one - the check is what stops a wrong handle being cast");
+    TEST_CHECK(context->getObject(collection + 7777, "massif::FeatureCollection") == nullptr,
+               "and a stale handle resolves to nothing");
+
+    // A result is in the projection of whatever produced it, so its positions convert without the
+    // caller knowing where they came from.
+    context->setObjectProjection(collection, std::make_shared<EPSG3857>());
+    Handle inherited = NULL_HANDLE;
+    TEST_CHECK(context->callHandle(collection, "getFeature", "[0]", inherited) == RESULT_OK,
+               "an element of a projected collection");
+    TEST_CHECK(context->getProperty(inherited, "geometry.centerPos", value, "EPSG:4326") ==
+               RESULT_OK, "reads in another projection");
+    MapPos converted;
+    TEST_CHECK(StructCodec::decode(value.stringValue, converted) &&
+               std::fabs(converted.getX()) < 1e-3,
+               "with the position really converted - 10 metres east of Greenwich is 0 degrees");
+    context->destroy(inherited);
 }
 
 void testCallCancel() {

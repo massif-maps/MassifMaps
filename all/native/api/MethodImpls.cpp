@@ -5,6 +5,7 @@
  * every class they call, and a test should be able to link the registry without the whole SDK.
  */
 
+#include "api/GeometryMethods.h"
 #include "api/Methods.h"
 #include "api/StructCodec.h"
 #include "core/MapPos.h"
@@ -17,6 +18,12 @@
 #include "vectortiles/MBVectorTileDecoder.h"
 #include "vectortiles/VectorTileDecoder.h"
 #include "utils/Log.h"
+
+#ifdef _MASSIF_SEARCH_SUPPORT
+#include "search/FeatureCollectionSearchService.h"
+#include "search/SearchRequest.h"
+#include "search/VectorTileSearchService.h"
+#endif
 
 namespace massif { namespace api {
 
@@ -40,17 +47,7 @@ namespace massif { namespace api {
                 Log::Errorf("api loadTile: %s", ex.what());
                 return RESULT_FAILED;
             }
-            if (!data) {
-                return RESULT_FAILED;
-            }
-            Handle handle = NULL_HANDLE;
-            Result registered = context.registerResult("result", data, "massif::TileData", handle);
-            if (registered != RESULT_OK) {
-                return registered;
-            }
-            result.type = PT_OBJECT;
-            result.intValue = handle;
-            return RESULT_OK;
+            return objectResult(context, data, "massif::TileData", result);
         }
 
         Result getElevation(Context&, void* obj, const CallArgs& args, PropertyValue& result) {
@@ -78,16 +75,7 @@ namespace massif { namespace api {
             }
             auto elevations = std::make_shared<std::vector<double> >(
                 static_cast<HillshadeRasterTileLayer*>(obj)->getElevations(positions));
-
-            Handle handle = NULL_HANDLE;
-            Result registered = context.registerResult("result", elevations,
-                                                       Context::DOUBLE_VECTOR_CLASS, handle);
-            if (registered != RESULT_OK) {
-                return registered;
-            }
-            result.type = PT_OBJECT;
-            result.intValue = handle;
-            return RESULT_OK;
+            return objectResult(context, elevations, Context::DOUBLE_VECTOR_CLASS, result);
         }
 
         /*
@@ -164,6 +152,49 @@ namespace massif { namespace api {
             return RESULT_OK;
         }
 
+#ifdef _MASSIF_SEARCH_SUPPORT
+
+        /**
+         * findFeatures([requestHandle]) -> a feature collection handle.
+         *
+         * The request is an object rather than an inline spec because every one of its filters is
+         * already a property: create a "search"/"request", set them, pass the handle. Nothing about
+         * a search filter had to be taught to the facade.
+         */
+        Result findVectorTileFeatures(Context& context, void* obj, const CallArgs& args,
+                                      PropertyValue& result) {
+            Handle requestHandle = NULL_HANDLE;
+            if (!args.getHandle(0, requestHandle)) {
+                return RESULT_BAD_SPEC;
+            }
+            auto request = std::static_pointer_cast<SearchRequest>(
+                context.getObject(requestHandle, "massif::SearchRequest"));
+            if (!request) {
+                return RESULT_BAD_HANDLE;
+            }
+            return objectResult(context,
+                                static_cast<VectorTileSearchService*>(obj)->findFeatures(request),
+                                "massif::VectorTileFeatureCollection", result);
+        }
+
+        Result findCollectionFeatures(Context& context, void* obj, const CallArgs& args,
+                                      PropertyValue& result) {
+            Handle requestHandle = NULL_HANDLE;
+            if (!args.getHandle(0, requestHandle)) {
+                return RESULT_BAD_SPEC;
+            }
+            auto request = std::static_pointer_cast<SearchRequest>(
+                context.getObject(requestHandle, "massif::SearchRequest"));
+            if (!request) {
+                return RESULT_BAD_HANDLE;
+            }
+            return objectResult(context,
+                                static_cast<FeatureCollectionSearchService*>(obj)->findFeatures(request),
+                                "massif::FeatureCollection", result);
+        }
+
+#endif
+
     }
 
     void Methods::registerBuiltins() {
@@ -175,6 +206,12 @@ namespace massif { namespace api {
         registerMethod("massif::VectorTileDecoder", "getStyleParameters", &getStyleParameters);
         registerMethod("massif::TileLayer", "clearTileCaches", &clearTileCaches);
         registerMethod("massif::Layer", "refresh", &refresh);
+        registerGeometryMethods();
+#ifdef _MASSIF_SEARCH_SUPPORT
+        registerMethod("massif::VectorTileSearchService", "findFeatures", &findVectorTileFeatures);
+        registerMethod("massif::FeatureCollectionSearchService", "findFeatures",
+                       &findCollectionFeatures);
+#endif
     }
 
 } }

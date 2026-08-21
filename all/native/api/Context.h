@@ -117,6 +117,15 @@ namespace massif {
         std::shared_ptr<void> getObject(Handle handle) const;
 
         /**
+         * The same, refused unless the object is of the required class or one of its subclasses.
+         *
+         * The type check an object ARGUMENT needs: a method handed the wrong handle would
+         * otherwise cast it and read another class' memory. Same chain walk setObjectProperty uses.
+         * @return The object, or null when the handle is stale or of the wrong class.
+         */
+        std::shared_ptr<void> getObject(Handle handle, const char* requiredClass) const;
+
+        /**
          * Registers an object under a generated id, for a result the caller owns.
          *
          * A call's result has no name an app would choose, but it still needs a handle - which is

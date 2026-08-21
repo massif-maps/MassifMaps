@@ -33,6 +33,7 @@ void testCallArgs();
 void testCall();
 void testCallAsync();
 void testCallCancel();
+void testCollections();
 void testCAbi();
 void testCAbiEvents();
 
@@ -267,6 +268,7 @@ int main() {
     testCall();
     testCallAsync();
     testCallCancel();
+    testCollections();
     testCAbi();
     testCAbiEvents();
 

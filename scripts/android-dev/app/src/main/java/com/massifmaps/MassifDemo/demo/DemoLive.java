@@ -106,6 +106,9 @@ public final class DemoLive extends BroadcastReceiver {
         if (extras.containsKey("apiCall")) {
             applyApiCall(extras.getString("apiCall"), "true".equals(extras.getString("apiAsync")));
         }
+        if (extras.containsKey("apiSearch")) {
+            applyApiSearch(extras.getString("apiSearch"));
+        }
         if (extras.containsKey("apiSugar")) {
             applyApiSugar("true".equals(extras.getString("apiSugar")));
         }
@@ -246,6 +249,121 @@ public final class DemoLive extends BroadcastReceiver {
         } catch (Exception e) {
             Log.w(TAG, "apiCall failed: " + e.getMessage());
         }
+    }
+
+    /** Kept alive while subscribed, and holds the results read out of the event. */
+    private EventListener apiSearchListener;
+
+    /**
+     * A search over the base layer's tiles, end to end through the facade (#146):
+     *
+     *   --es apiSearch 'Grenoble'
+     *   --es apiSearch 'Grenoble:place,mountain_peak'
+     *
+     * Nothing about a search filter was taught to the facade: the request is created from a spec,
+     * every filter on it is an ordinary property, and the result is read through the collection
+     * channel (featureCount + getFeature). The positions come back in lon/lat because the service
+     * reports its data source's projection and the result inherits it.
+     *
+     * ASYNC, not call: findFeatures fetches and decodes every tile in range, so running it on the
+     * caller's thread ANRs the app - measured, at z14 over the start camera.
+     */
+    private void applyApiSearch(String request) {
+        String[] parts = request != null ? request.split(":", 2) : new String[0];
+        if (parts.length < 1 || parts[0].isEmpty()) {
+            Log.w(TAG, "apiSearch wants a regex[:layer,layer], got: " + request);
+            return;
+        }
+
+        // The demo builds its layers with the object API, so the search needs one under an id.
+        com.massifmaps.layers.VectorTileLayer vector = null;
+        for (int i = 0; i < demo.mapView.getLayers().count(); i++) {
+            if (demo.mapView.getLayers().get(i) instanceof com.massifmaps.layers.VectorTileLayer) {
+                vector = (com.massifmaps.layers.VectorTileLayer) demo.mapView.getLayers().get(i);
+                break;
+            }
+        }
+        if (vector == null) {
+            Log.w(TAG, "apiSearch: no vector layer to search");
+            return;
+        }
+        // Re-registered every time: rebuildBaseLayer replaces the SDK layer and the old id goes stale.
+        MassifApi.unregisterObject("layer", "searchBase");
+        MassifApi.registerLayer("layer", "searchBase", vector);
+        MassifApi.unregisterObject("search", "demoSearch");
+        final int service = MassifApi.create("search", "demoSearch",
+                                             "{\"type\":\"vectortile\",\"layer\":\"searchBase\"}");
+        if (service == 0) {
+            Log.w(TAG, "apiSearch: could not build the service");
+            return;
+        }
+        int zoom = (int) demo.mapView.getZoom();
+        MassifApi.setFloat(service, "minZoom", zoom);
+        MassifApi.setFloat(service, "maxZoom", zoom);
+        MassifApi.setFloat(service, "maxResults", 10);
+        if (parts.length > 1) {
+            // A list of names is a struct property, so it is written as JSON like any other.
+            Log.i(TAG, "apiSearch layers=" + parts[1] + " -> " + MassifApi.setString(
+                    service, "layers", "[\"" + parts[1].replace(",", "\",\"") + "\"]"));
+        }
+
+        MassifApi.unregisterObject("search", "demoRequest");
+        int query = MassifApi.create("search", "demoRequest", "{\"type\":\"request\"}");
+        MassifApi.setString(query, "regexFilter", parts[0]);
+
+        // BOUND IT. A request with no geometry searches every tile in the world at that zoom -
+        // measured: the whole y=16383 row went past before the call had to be killed.
+        // From the MAP's base projection, not the data source's: a MapView coordinate is in the
+        // former, and reading it as the latter put the search box near null island.
+        com.massifmaps.core.MapPos focus = demo.mapView.getOptions().getBaseProjection()
+                .toWgs84(demo.mapView.getFocusPos());
+        double span = 0.1;   // degrees, about 8 km at this latitude - a screenful at z14
+        String box = corner(focus, -span, -span) + "," + corner(focus, span, -span) + ","
+                   + corner(focus, span, span) + "," + corner(focus, -span, span) + ","
+                   + corner(focus, -span, -span);
+        MassifApi.unregisterObject("geometry", "demoBox");
+        int area = MassifApi.create("geometry", "demoBox",
+                "{\"geojson\":{\"type\":\"Polygon\",\"coordinates\":[[" + box + "]]}}");
+        MassifApi.setObject(query, "geometry", area);
+        int wgs84 = MassifApi.findObject("projection", "wgs84");
+        if (wgs84 == 0) {
+            wgs84 = MassifApi.create("projection", "wgs84", "{\"type\":\"EPSG:4326\"}");
+        }
+        MassifApi.setObject(query, "projection", wgs84);
+        Log.i(TAG, "apiSearch around " + focus + " +/-" + span + " geometry=" + area);
+
+        final String label = parts[0];
+        final long start = System.currentTimeMillis();
+        apiSearchListener = new EventListener() {
+            @Override
+            public boolean onEvent(int target, String name, int found) {
+                long elapsed = System.currentTimeMillis() - start;
+                if (found == 0) {
+                    Log.i(TAG, "apiSearch '" + label + "' failed after " + elapsed + " ms");
+                    return false;
+                }
+                int count = (int) MassifApi.getInt(found, "featureCount", 0);
+                Log.i(TAG, "apiSearch '" + label + "' -> " + count + " in " + elapsed + " ms");
+                for (int i = 0; i < count; i++) {
+                    int feature = MassifApi.call(found, "getFeature", "[" + i + "]");
+                    Log.i(TAG, "  " + i
+                            + " id=" + MassifApi.getInt(feature, "id", -1)
+                            + " layer=" + MassifApi.getString(feature, "layerName", "-")
+                            + " name=" + MassifApi.getString(feature, "properties.name", "-")
+                            + " at=" + MassifApi.getPos(feature, "geometry.centerPos", "EPSG:4326"));
+                    MassifApi.destroy(feature);
+                }
+                return false;
+            }
+        };
+        MassifApi.offEvent(service, "search.done");
+        MassifApi.on(service, "search.done", apiSearchListener, 1, false);
+        apiCall = MassifApi.callAsync(service, "findFeatures", "[" + query + "]", "search.done");
+        Log.i(TAG, "apiSearch '" + label + "' at z" + zoom + " queued as " + apiCall);
+    }
+
+    private static String corner(com.massifmaps.core.MapPos centre, double dx, double dy) {
+        return "[" + (centre.getX() + dx) + "," + (centre.getY() + dy) + "]";
     }
 
     private void logCallResult(String what, int result) {

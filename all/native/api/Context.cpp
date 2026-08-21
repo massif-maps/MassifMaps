@@ -185,6 +185,15 @@ namespace massif { namespace api {
         return slot ? slot->obj : std::shared_ptr<void>();
     }
 
+    std::shared_ptr<void> Context::getObject(Handle handle, const char* requiredClass) const {
+        std::lock_guard<std::mutex> lock(_mutex);
+        const Slot* slot = resolve(handle);
+        if (!slot || !slot->cppClass || !isSubclassOf(slot->cppClass, requiredClass)) {
+            return std::shared_ptr<void>();
+        }
+        return slot->obj;
+    }
+
     Handle Context::findObject(const std::string& kind, const std::string& id) const {
         std::lock_guard<std::mutex> lock(_mutex);
         return findObjectLocked(kind, id);
@@ -489,12 +498,26 @@ namespace massif { namespace api {
         }
         // Unlocked: loadTile does network I/O, and a method reaching back into the context - to
         // register its result, which every object-returning one does - would deadlock.
+        Result called;
         try {
-            return invoke(*this, obj.get(), args, result);
+            called = invoke(*this, obj.get(), args, result);
         } catch (const std::exception& ex) {
             Log::Errorf("Context::call: '%s' threw: %s", name.c_str(), ex.what());
             return RESULT_REJECTED;
         }
+        // A result is expressed in whatever the object that produced it is: a search's features are
+        // in its data source's projection. Carrying it over is what makes the result's positions
+        // convertible without the caller knowing where they came from. Only for a method addressed
+        // directly - an intermediate reached by a path has no handle to read a projection from.
+        if (called == RESULT_OK && result.type == PT_OBJECT && path.empty()) {
+            Handle produced = static_cast<Handle>(result.intValue);
+            if (!getObjectProjection(produced)) {
+                if (std::shared_ptr<Projection> projection = getObjectProjection(handle)) {
+                    setObjectProjection(produced, projection);
+                }
+            }
+        }
+        return called;
     }
 
     Result Context::callHandle(Handle handle, const std::string& method,

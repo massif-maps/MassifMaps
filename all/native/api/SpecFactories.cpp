@@ -7,6 +7,7 @@
 #include "datasources/MemoryCacheTileDataSource.h"
 #include "datasources/MultiTileDataSource.h"
 #include "datasources/OrderedTileDataSource.h"
+#include "geometry/GeoJSONGeometryReader.h"
 #include "projections/Projection.h"
 #include "layers/CompositeVectorTileLayer.h"
 #include "layers/HillshadeRasterTileLayer.h"
@@ -24,6 +25,11 @@
 #ifdef _MASSIF_OFFLINE_SUPPORT
 #include "datasources/MBTilesTileDataSource.h"
 #include "datasources/PersistentCacheTileDataSource.h"
+#endif
+
+#ifdef _MASSIF_SEARCH_SUPPORT
+#include "search/SearchRequest.h"
+#include "search/VectorTileSearchService.h"
 #endif
 
 #include <memory>
@@ -52,7 +58,8 @@ namespace massif { namespace api {
             Variant child = spec.getObjectElement(key);
             if (child.getType() == VariantType::VARIANT_TYPE_STRING) {
                 Handle handle = context.findObject("source", child.getString());
-                source = std::static_pointer_cast<TileDataSource>(context.getObject(handle));
+                source = std::static_pointer_cast<TileDataSource>(
+                    context.getObject(handle, "massif::TileDataSource"));
                 return source ? RESULT_OK : RESULT_BAD_HANDLE;
             }
             ObjectRef object;
@@ -180,22 +187,31 @@ namespace massif { namespace api {
 
         /**
          * Resolves a reference that is either a registry id or an inline spec of another kind.
+         *
+         * requiredClass is what the caller is about to cast to: a "style" id naming a source has
+         * to be refused here, not cast and read as the wrong class.
          */
         Result childOf(Context& context, const Variant& spec, const char* key, const char* kind,
-                       std::shared_ptr<void>& out) {
+                       const char* requiredClass, std::shared_ptr<void>& out) {
             if (!spec.containsObjectKey(key)) {
                 return RESULT_UNKNOWN_PROPERTY;
             }
             Variant child = spec.getObjectElement(key);
             if (child.getType() == VariantType::VARIANT_TYPE_STRING) {
-                out = context.getObject(context.findObject(kind, child.getString()));
+                out = context.getObject(context.findObject(kind, child.getString()), requiredClass);
                 return out ? RESULT_OK : RESULT_BAD_HANDLE;
             }
             ObjectRef object;
             std::set<std::string> consumed;
             Result result = Spec::build(context, kind, child, object, consumed);
+            if (result != RESULT_OK) {
+                return result;
+            }
+            if (!isSubclassOf(object.cppClass, requiredClass)) {
+                return RESULT_UNKNOWN_CLASS;
+            }
             out = object.obj;
-            return result;
+            return RESULT_OK;
         }
 
         Result buildLayer(Context& context, const Variant& spec, ObjectRef& object,
@@ -213,7 +229,7 @@ namespace massif { namespace api {
             }
 
             std::shared_ptr<void> source;
-            Result result = childOf(context, spec, "source", "source", source);
+            Result result = childOf(context, spec, "source", "source", "massif::TileDataSource", source);
             if (result != RESULT_OK) {
                 Log::Errorf("Spec: layer '%s' needs a \"source\"", type.c_str());
                 return result;
@@ -233,7 +249,7 @@ namespace massif { namespace api {
             }
             if (type == "vector" || type == "composite-vector") {
                 std::shared_ptr<void> style;
-                if (childOf(context, spec, "style", "style", style) != RESULT_OK) {
+                if (childOf(context, spec, "style", "style", "massif::VectorTileDecoder", style) != RESULT_OK) {
                     Log::Errorf("Spec: layer '%s' needs a \"style\"", type.c_str());
                     return RESULT_UNKNOWN_PROPERTY;
                 }
@@ -275,6 +291,114 @@ namespace massif { namespace api {
             return RESULT_OK;
         }
 
+        /**
+         * A geometry, from GeoJSON.
+         *
+         * One factory rather than one per shape: the SDK already reads every type from GeoJSON, and
+         * a binding that has coordinates at all has them in that form. This is what lets a search
+         * be bounded - a request with no geometry scans the whole world at its zoom.
+         */
+        Result buildGeometry(Context& context, const Variant& spec, ObjectRef& object,
+                             std::set<std::string>& consumed) {
+            consumed.insert("type");
+            consumed.insert("geojson");
+            consumed.insert("projection");
+            // Either a JSON string or the document itself - nesting one inside the other is not
+            // something a binding should have to escape by hand.
+            Variant raw = spec.getObjectElement("geojson");
+            std::string geoJson = raw.getType() == VariantType::VARIANT_TYPE_STRING
+                                ? raw.getString() : raw.toString();
+            if (!spec.containsObjectKey("geojson") || geoJson.empty() || geoJson == "null") {
+                Log::Error("Spec: a geometry needs a \"geojson\"");
+                return RESULT_UNKNOWN_PROPERTY;
+            }
+            GeoJSONGeometryReader reader;
+            // The coordinates are lon/lat by definition; a target projection says what to leave
+            // them in, for a consumer that works in metres.
+            if (spec.containsObjectKey("projection")) {
+                std::shared_ptr<Projection> projection =
+                    Projections::find(spec.getObjectElement("projection").getString());
+                if (!projection) {
+                    return RESULT_UNKNOWN_TYPE;
+                }
+                reader.setTargetProjection(projection);
+            }
+            std::shared_ptr<Geometry> geometry;
+            try {
+                geometry = reader.readGeometry(geoJson);
+            } catch (const std::exception& ex) {
+                Log::Errorf("Spec: unreadable geojson: %s", ex.what());
+                return RESULT_BAD_SPEC;
+            }
+            if (!geometry) {
+                return RESULT_BAD_SPEC;
+            }
+            object.obj = geometry;
+            object.cppClass = "massif::Geometry";
+            (void)context;
+            return RESULT_OK;
+        }
+
+#ifdef _MASSIF_SEARCH_SUPPORT
+
+        /**
+         * A search request and the service that runs it.
+         *
+         * Every filter on a request - the expression, the geometry, the radius - is already a
+         * property, so the request needs nothing here beyond being constructible. The service is
+         * the part with a constructor: it takes a source and a decoder, or the layer that has both,
+         * which is how the app this API is measured against builds it.
+         */
+        Result buildSearch(Context& context, const Variant& spec, ObjectRef& object,
+                           std::set<std::string>& consumed) {
+            std::string type = stringAt(spec, "type");
+            consumed.insert("type");
+
+            if (type == "request") {
+                object.obj = std::make_shared<SearchRequest>();
+                object.cppClass = "massif::SearchRequest";
+                return RESULT_OK;
+            }
+            if (type != "vectortile") {
+                Log::Errorf("Spec: no search type '%s'", type.c_str());
+                return RESULT_UNKNOWN_TYPE;
+            }
+
+            std::shared_ptr<TileDataSource> dataSource;
+            std::shared_ptr<VectorTileDecoder> decoder;
+            if (spec.containsObjectKey("layer")) {
+                consumed.insert("layer");
+                std::shared_ptr<void> child;
+                Result result = childOf(context, spec, "layer", "layer", "massif::VectorTileLayer", child);
+                if (result != RESULT_OK) {
+                    return result;
+                }
+                auto layer = std::static_pointer_cast<VectorTileLayer>(child);
+                dataSource = layer->getDataSource();
+                decoder = layer->getTileDecoder();
+            } else {
+                std::shared_ptr<TileDataSource> source;
+                if (childSource(context, spec, "source", source) != RESULT_OK) {
+                    Log::Error("Spec: a vectortile search needs a \"layer\", or a \"source\" and a \"style\"");
+                    return RESULT_UNKNOWN_PROPERTY;
+                }
+                consumed.insert("source");
+                std::shared_ptr<void> style;
+                if (childOf(context, spec, "style", "style", "massif::VectorTileDecoder", style) != RESULT_OK) {
+                    Log::Error("Spec: a vectortile search needs a \"style\" beside its \"source\"");
+                    return RESULT_UNKNOWN_PROPERTY;
+                }
+                consumed.insert("style");
+                dataSource = source;
+                decoder = std::static_pointer_cast<VectorTileDecoder>(style);
+            }
+            object.obj = std::make_shared<VectorTileSearchService>(dataSource, decoder);
+            object.cppClass = "massif::VectorTileSearchService";
+            return RESULT_OK;
+        }
+
+#endif
+
     }
 
 
@@ -283,6 +407,10 @@ namespace massif { namespace api {
         registerFactory("style", &buildStyle);
         registerFactory("layer", &buildLayer);
         registerFactory("projection", &buildProjection);
+        registerFactory("geometry", &buildGeometry);
+#ifdef _MASSIF_SEARCH_SUPPORT
+        registerFactory("search", &buildSearch);
+#endif
     }
 
 } }

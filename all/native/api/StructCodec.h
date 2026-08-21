@@ -15,6 +15,7 @@
 #include "core/Variant.h"
 
 #include <string>
+#include <vector>
 
 namespace massif { namespace api {
 
@@ -36,6 +37,8 @@ namespace massif { namespace api {
         std::string encode(const MapRange& value);
         std::string encode(const MapBounds& value);
         std::string encode(const Variant& value);
+        /** A list of names - the shape a "which layers" filter has. */
+        std::string encode(const std::vector<std::string>& value);
 
         bool decode(const std::string& json, MapPos& value);
         bool decode(const std::string& json, MapVec& value);
@@ -43,6 +46,7 @@ namespace massif { namespace api {
         bool decode(const std::string& json, MapRange& value);
         bool decode(const std::string& json, MapBounds& value);
         bool decode(const std::string& json, Variant& value);
+        bool decode(const std::string& json, std::vector<std::string>& value);
 
     }
 

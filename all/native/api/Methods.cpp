@@ -80,6 +80,15 @@ namespace massif { namespace api {
         return true;
     }
 
+    bool CallArgs::getHandle(int index, Handle& value) const {
+        long long number = 0;
+        if (!getLong(index, number) || number < 0 || number > 0xffffffffLL) {
+            return false;
+        }
+        value = static_cast<Handle>(number);
+        return true;
+    }
+
     bool CallArgs::getPos(int index, MapPos& value) const {
         Variant argument = get(index);
         return argument.getType() == VariantType::VARIANT_TYPE_ARRAY &&

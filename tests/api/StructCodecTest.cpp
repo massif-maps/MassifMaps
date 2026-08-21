@@ -42,6 +42,22 @@ void testStructCodec() {
     TEST_CHECK(StructCodec::decode(StructCodec::encode(bounds), decodedBounds) &&
                decodedBounds == bounds, "a MapBounds round-trips as a pair of positions");
 
+    // A list of names - what a search's layer filter is, and the first non-numeric struct.
+    std::vector<std::string> names;
+    names.push_back("place");
+    names.push_back("mountain_peak");
+    std::vector<std::string> decodedNames;
+    TEST_CHECK(StructCodec::encode(names) == "[\"place\",\"mountain_peak\"]",
+               "a list of names reads as a JSON array");
+    TEST_CHECK(StructCodec::decode(StructCodec::encode(names), decodedNames) &&
+               decodedNames == names, "and round-trips in order");
+    TEST_CHECK(StructCodec::decode("[]", decodedNames) && decodedNames.empty(),
+               "an empty list is a list, not a failure");
+    decodedNames = names;
+    TEST_CHECK(!StructCodec::decode("[\"a\",2]", decodedNames) && decodedNames == names,
+               "a non-string element is refused, and the value is left alone");
+    TEST_CHECK(!StructCodec::decode("\"place\"", decodedNames), "a bare string is not a list");
+
     Variant variant = Variant::FromString("{\"a\":[1,2],\"b\":\"x\"}");
     Variant decodedVariant;
     TEST_CHECK(StructCodec::decode(StructCodec::encode(variant), decodedVariant) &&

@@ -76,6 +76,14 @@ namespace massif { namespace api { namespace StructCodec {
         return value.toString();
     }
 
+    std::string encode(const std::vector<std::string>& value) {
+        std::vector<Variant> items;
+        for (const std::string& item : value) {
+            items.push_back(Variant(item));
+        }
+        return Variant(items).toString();
+    }
+
     bool decode(const std::string& json, MapPos& value) {
         std::vector<double> numbers(3, 0);
         if (!decodeNumbers(json, 2, 3, numbers)) {
@@ -137,6 +145,23 @@ namespace massif { namespace api { namespace StructCodec {
         } catch (const std::exception&) {
             return false;
         }
+        return true;
+    }
+
+    bool decode(const std::string& json, std::vector<std::string>& value) {
+        Variant array;
+        if (!decode(json, array) || array.getType() != VariantType::VARIANT_TYPE_ARRAY) {
+            return false;
+        }
+        std::vector<std::string> items;
+        for (int index = 0; index < array.getArraySize(); index++) {
+            Variant item = array.getArrayElement(index);
+            if (item.getType() != VariantType::VARIANT_TYPE_STRING) {
+                return false;   // a list of names, not of anything
+            }
+            items.push_back(item.getString());
+        }
+        value.swap(items);
         return true;
     }
 

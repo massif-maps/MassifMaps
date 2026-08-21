@@ -302,14 +302,18 @@ option to a class costs nothing here:
 the table. A nested `"source"` is an anonymous child built recursively; a **string** there names a
 registry entry instead.
 
-Three kinds build today. A `"source"` or `"style"` reference inside a layer spec is either a
-registry id or an inline spec of that kind:
+A `"source"`, `"style"` or `"layer"` reference inside another spec is either a registry id or an
+inline spec of that kind, and it is checked against the class the caller is about to cast to — a
+`"style"` id naming a source is refused rather than cast:
 
 | kind | types |
 |---|---|
 | `source` | `http` `assets` `mbtiles` `memory-cache` `persistent-cache` `ordered` `combined` `multi` |
 | `style` | `cartocss` — inline `css`, plus an optional `dir://` asset package |
 | `layer` | `raster` `vector` `composite-vector` `hillshade` `solid` |
+| `projection` | any name in the projection registry |
+| `geometry` | `geojson` — a JSON string or the document inline, optional target `projection` |
+| `search` | `request`, `vectortile` (from a `layer`, or a `source` + `style`) |
 
 ```json
 {"type":"composite-vector","opacity":0.5,
@@ -776,11 +780,16 @@ Chosen by counting, not by guessing: the NativeScript app this API is measured a
 
 | method | on | notes |
 |---|---|---|
-| `loadTile([x,y,z])` | `TileDataSource` | binary result |
+| `loadTile([x,y,z])` | `TileDataSource` | binary result, blocking |
 | `getElevation([x,y])`, `getElevations([[x,y],…])` | `HillshadeRasterTileLayer` | scalar, flat array |
 | `setStyleParameter(name, value)`, `getStyleParameter(name)`, `getStyleParameters()` | `VectorTileDecoder` | a live theme switch without a full re-decode |
 | `clearTileCaches(all)` | `TileLayer` | |
 | `refresh()` | `Layer` | |
+| `findFeatures([requestHandle])` | `VectorTileSearchService`, `FeatureCollectionSearchService` | blocking — see [Search](#search) |
+| `getFeature([index])` | `FeatureCollection` | the collection channel |
+
+`findFeatures` and `getFeature` are not on that list — the app wraps them in its own service — but
+a search is the one thing an app cannot rebuild on top of the facade, so it is covered below.
 
 `moveToFitBounds` and `screenToMap` are camera and view calls, so they went into the sugar
 (`camera().fitBounds(...)`, `map.screenToMap(x, y)`) rather than the method table — the object API
@@ -809,7 +818,8 @@ The method table is **hand-registered**, not generated, and that is the one plac
 derived from the `.i` files. A property is declared by a Swig macro a script can read; a method is
 an ordinary C++ signature, and its arguments have to be decoded from JSON by something that knows
 the types. So `Methods::registerMethod(cppClass, name, thunk)` and a thunk per method in
-`MethodImpls.cpp`, ~15 lines each:
+`MethodImpls.cpp`, ~15 lines each (the geometry and collection ones live in `GeometryMethods.cpp`,
+split out so the host tests can link them without a tile source or a decoder):
 
 - Lookup **walks the base chain** from the generated table, so `loadTile` registered on
   `massif::TileDataSource` is callable on every source without being registered again.
@@ -865,6 +875,84 @@ alive until a call that will never run would have finished.
 `Context::call` keeps the typed `PropertyValue` return; `callHandle` is the wrapper both the
 bindings and the async path use. The C ABI will want the typed one, to hand a scalar back without
 allocating a handle for it.
+
+### Collections
+
+A path walks object properties and stops at a `Variant`; there is no array segment. A collection is
+read one element at a time instead — `featureCount` is already a property, so a caller loops it and
+calls `getFeature(i)`, which hands back a handle onto that element:
+
+```java
+int count = (int) MassifApi.getInt(found, "featureCount", 0);
+for (int i = 0; i < count; i++) {
+    int feature = MassifApi.call(found, "getFeature", "[" + i + "]");
+    String name = MassifApi.getString(feature, "properties.name", "-");
+    double[] at = MassifApi.getPos(feature, "geometry.centerPos", "EPSG:4326");
+    MassifApi.destroy(feature);
+}
+```
+
+`getFeature` is registered **twice** — once on `FeatureCollection`, once on
+`VectorTileFeatureCollection` — because the subclass returns a `VectorTileFeature` and only that
+carries `layerName` and `distance`. The base-chain lookup takes the most derived registration, so a
+search result keeps them. A whole-collection GeoJSON would be one crossing instead of N, but it
+would drop exactly those two fields, so it is not a substitute; it is in the gaps.
+
+An index out of range, a missing index and a string index are all `RESULT_BAD_SPEC`. The SDK's
+`getFeature` throws `std::out_of_range`; the thunk checks the count first rather than letting an
+exception cross into Java.
+
+**A result inherits the projection of the object that produced it.** `findFeatures` returns features
+in its data source's projection, and `getFeature` returns an element of that collection, so both
+handles carry it and `getPos(feature, "geometry.centerPos", "EPSG:4326")` converts without the
+caller knowing where the coordinates came from. `Context::call` does this only for a method
+addressed **directly** — an intermediate reached by a path has no handle to read a projection from.
+
+For it to have anything to inherit, `VectorTileSearchService` needed a `getProjection()` of its own
+(it returns its data source's). That is the recurring pattern: a value a binding would otherwise
+compute is an SDK gap, fixed in `all/native` + `all/modules`, and the facade gets it free.
+
+### Search
+
+Nothing about a search filter was taught to the facade. Every filter on a `SearchRequest` is already
+an `%attribute`, so it is `create` + `set`, and the service is `create` too:
+
+```java
+MassifApi.registerLayer("layer", "base", vectorLayer);
+int service = MassifApi.create("search", "demoSearch",
+                               "{\"type\":\"vectortile\",\"layer\":\"base\"}");
+MassifApi.setFloat(service, "minZoom", 14);
+MassifApi.setFloat(service, "maxZoom", 14);
+MassifApi.setString(service, "layers", "[\"place\",\"mountain_peak\"]");
+
+int query = MassifApi.create("search", "demoRequest", "{\"type\":\"request\"}");
+MassifApi.setString(query, "regexFilter", "Grenoble");
+MassifApi.setObject(query, "geometry",
+    MassifApi.create("geometry", "box", "{\"geojson\":{\"type\":\"Polygon\",\"coordinates\":[…]}}"));
+MassifApi.setObject(query, "projection", MassifApi.create("projection", "wgs84", "{\"type\":\"EPSG:4326\"}"));
+
+MassifApi.callAsync(service, "findFeatures", "[" + query + "]", "search.done");
+```
+
+Three things this needed, none of them specific to search:
+
+- **A `geometry` factory**, from GeoJSON — one factory rather than one per shape, because the SDK
+  already reads every type from it and a binding that has coordinates has them in that form. The
+  `geojson` key takes either a JSON string or the document inline, so nothing has to escape one
+  JSON document inside another.
+- **A string-list struct.** `layers` is a `std::vector<std::string>`, which had no codec, so the
+  layer filter the real app uses was unreachable — a capability regression. `StructCodec` encodes it
+  as a JSON array and the generator now emits an accessor for it, which covers every
+  `vector<std::string>` attribute in the SDK, not just this one.
+- **An object argument.** `CallArgs::getHandle` reads the number and `Context::getObject(handle,
+  requiredClass)` resolves it against the class chain, so a method handed the wrong handle refuses
+  it instead of casting it. That is the general channel; `findFeatures` is its first user.
+
+**`findFeatures` blocks, and hard.** Measured on the phone: run through `call` from the broadcast
+receiver it ANR'd the app, and a request with **no geometry** searched every tile in the world at
+its zoom — the whole `y=16383` row went past before the call had to be killed. So: `callAsync`, and
+always bound the request. Bounded to ±0.1° around the focus at z14 over Grenoble it is 19.6 s cold,
+and 0.2 s once the tiles are cached and `layers` narrows it to one.
 
 ### Binary and bulk results
 
@@ -1001,7 +1089,7 @@ cd scripts && python3 gen-api-tables.py
 - **The bulk numeric channel is doubles only.** Positions, colours or integers arriving in bulk
   would each want their own accessor and their own typemap per language. Nothing needs one yet.
 - **The method table is hand-registered.** Unlike properties, methods are not declared by a macro
-  the generator can read, so each one is a thunk in `MethodImpls.cpp`. Eight exist — see the table
+  the generator can read, so each one is a thunk in `MethodImpls.cpp`. Twelve exist — see the table
   above for which and why.
 - **Traversal records the DECLARED class, not the concrete one.** `layer.tileDecoder` resolves as a
   `VectorTileDecoder` even when it is an `MBVectorTileDecoder`, so a property or method that only
@@ -1009,8 +1097,20 @@ cd scripts && python3 gen-api-tables.py
   `dynamic_cast`. The real fix is for the generated objectGetter to resolve the concrete class
   through `ClassRegistry`, the way adoption does; it is not done because `ClassRegistry` logs an
   error for every class it does not know, and in a host build nothing is registered.
-- **`findFeatures` and the routing calls are not exposed.** Both return collections the facade has
-  no channel for yet.
+- **The routing calls are not exposed.** `RoutingService::calculateRoute` returns a
+  `RoutingResult` with instruction and point vectors — the same collection shape `findFeatures`
+  needed, so it is a `getInstruction(i)`-style registration plus a factory, not new machinery.
+- **A collection is read one element per crossing.** Fine for a bounded search, wrong for a route's
+  instruction list. A whole-collection GeoJSON would be one crossing but drops `layerName` and
+  `distance`, so the answer is probably a bulk channel per collection type rather than one shared
+  document.
+- **`FeatureCollectionSearchService` has no factory.** Its constructor takes a `FeatureCollection`,
+  which today only exists as a call result, and `childOf` resolves by kind and id. `findFeatures` is
+  registered on it and works on a handle built elsewhere.
+- **The search services are not covered by the host tests.** Linking one pulls in a tile source and
+  a CartoCSS decoder, which is past the line in `tests/README.md`. The collection channel, the
+  object-argument check and the projection inheritance are tested; the services themselves were
+  verified on the phone only.
 - **`callAsync` has no progress, and cancelling cannot abort work already running.** The SDK's load
   paths take no cancellation token, so `cancelCall` prevents a call starting and prevents its
   result being delivered, and that is all it can honestly do. A `loadTile` already in flight

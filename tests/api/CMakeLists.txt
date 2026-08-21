@@ -7,6 +7,11 @@ set(TEST_MODULES
   "${SDK_BASE_DIR}/all/modules/geometry/Geometry.i"
   "${SDK_BASE_DIR}/all/modules/ui/VectorTileClickInfo.i"
   "${SDK_BASE_DIR}/all/modules/geometry/PointGeometry.i"
+  # For the collection channel: a search result is a VectorTileFeatureCollection, and only the
+  # subclass carries layerName and distance.
+  "${SDK_BASE_DIR}/all/modules/geometry/FeatureCollection.i"
+  "${SDK_BASE_DIR}/all/modules/geometry/VectorTileFeature.i"
+  "${SDK_BASE_DIR}/all/modules/geometry/VectorTileFeatureCollection.i"
   # For the projection flags: Projection declares a position (bounds), and the GeoJSON writer is
   # the lightest class that declares a projection of its own.
   "${SDK_BASE_DIR}/all/modules/projections/Projection.i"
@@ -30,6 +35,10 @@ set(TEST_SDK_SOURCES
   # Methods.cpp is the registry; MethodImpls.cpp holds the SDK's own methods and is deliberately
   # NOT here - it needs TileDataSource and the hillshade layer. The tests register their own.
   "${SDK_BASE_DIR}/all/native/api/Methods.cpp"
+  # GeometryMethods.cpp is the light half of the built-ins - it needs nothing but the geometry
+  # classes, which is why it was split out of MethodImpls.cpp.
+  "${SDK_BASE_DIR}/all/native/api/GeometryMethods.cpp"
+  "${SDK_BASE_DIR}/all/native/geometry/VectorTileFeatureCollection.cpp"
   # MassifApiC.cpp is the flat ABI; Builtins.cpp is NOT here - it pulls in every source and layer,
   # so CAbiTest.cpp defines registerBuiltins() itself over a handful of classes.
   "${SDK_BASE_DIR}/all/native/api/MassifApiC.cpp"

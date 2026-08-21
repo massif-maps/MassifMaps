@@ -43,6 +43,12 @@ namespace massif {
         bool getLong(int index, long long& value) const;
         bool getDouble(int index, double& value) const;
         bool getString(int index, std::string& value) const;
+        /**
+         * Another object, by its handle - the argument shape a method takes when it needs one
+         * (findFeatures takes a SearchRequest). Resolve it with Context::getObject, which is what
+         * checks the class; this only reads the number.
+         */
+        bool getHandle(int index, Handle& value) const;
         /** A position, as [x, y] or [x, y, z]. */
         bool getPos(int index, MapPos& value) const;
         /** An array of positions. */

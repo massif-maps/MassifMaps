@@ -140,3 +140,81 @@ void testEvents() {
     context->unregisterObject("options", "b");
     TEST_CHECK(context->getSubscriptionCount() == 0, "destroying a target drops its subscriptions");
 }
+
+namespace {
+    int posted = 0;
+    void countingDispatcher(void*, void (*)(void*), void*) { posted++; }
+}
+
+void testDelivery() {
+    auto context = std::make_shared<Context>();
+    Handle target = registerFog(context, "a");
+    Handle payload = registerFog(context, "p");
+
+    Record record;
+    TEST_CHECK(context->subscribe(target, "click", &recordingHandler, &record, true,
+                                  DELIVERY_UI, false) == NULL_SUBSCRIPTION,
+               "a consuming handler cannot be queued");
+
+    // Without a dispatcher a queued subscription runs inline rather than being dropped.
+    Subscription inline_ = context->subscribe(target, "click", &recordingHandler, &record, false,
+                                              DELIVERY_UI, false);
+    context->emit(target, "click", 1);
+    TEST_CHECK(record.calls.size() == 1, "with no dispatcher it delivers inline");
+    context->unsubscribe(inline_);
+
+    posted = 0;
+    context->setUiDispatcher(&countingDispatcher, nullptr);
+    record.calls.clear();
+
+    Subscription queued = context->subscribe(target, "click", &recordingHandler, &record, false,
+                                             DELIVERY_UI, false);
+    context->emit(target, "click", payload);
+    TEST_CHECK(record.calls.empty(), "a queued handler does not run during emit");
+    TEST_CHECK(context->getQueuedCount() == 1, "it is waiting");
+    TEST_CHECK(posted == 1, "and the dispatcher was asked once");
+
+    context->emit(target, "click", payload);
+    TEST_CHECK(context->getQueuedCount() == 2, "a second event queues too");
+    TEST_CHECK(posted == 1, "but the drain is only posted once per batch");
+
+    TEST_CHECK(context->drainQueue() == 2, "the drain delivers both");
+    TEST_CHECK(record.calls.size() == 2, "so the handler ran twice");
+    TEST_CHECK(context->getQueuedCount() == 0, "and the queue is empty");
+
+    // Coalescing keeps one pending event per subscription.
+    context->unsubscribe(queued);
+    record.calls.clear();
+    Subscription merged = context->subscribe(target, "move", &recordingHandler, &record, false,
+                                             DELIVERY_UI, true);
+    context->emit(target, "move", payload);
+    context->emit(target, "move", payload);
+    context->emit(target, "move", payload);
+    TEST_CHECK(context->getQueuedCount() == 1, "a coalescing subscription keeps one pending event");
+    TEST_CHECK(context->drainQueue() == 1 && record.calls.size() == 1, "and delivers it once");
+    context->unsubscribe(merged);
+
+    // A payload is retained while queued, so destroying its id does not free it early.
+    Subscription late = context->subscribe(target, "click", &recordingHandler, &record, false,
+                                           DELIVERY_UI, false);
+    context->emit(target, "click", payload);
+    context->unregisterObject("options", "p");
+    TEST_CHECK(context->findObject("options", "p") == NULL_HANDLE, "the payload's id is gone");
+    PropertyValue value;
+    TEST_CHECK(context->getProperty(payload, "rangeStart", value) == RESULT_OK,
+               "but the queued payload handle still resolves");
+    context->drainQueue();
+    TEST_CHECK(context->getProperty(payload, "rangeStart", value) == RESULT_BAD_HANDLE,
+               "and is freed once the handler has run");
+
+    // Unsubscribing between the emit and the drain must still release the payload.
+    Handle second = registerFog(context, "q");
+    context->emit(target, "click", second);
+    context->unsubscribe(late);
+    record.calls.clear();
+    context->drainQueue();
+    TEST_CHECK(record.calls.empty(), "a handler unsubscribed before the drain does not run");
+    context->unregisterObject("options", "q");
+    TEST_CHECK(context->getProperty(second, "rangeStart", value) == RESULT_BAD_HANDLE,
+               "and its payload is still released");
+}

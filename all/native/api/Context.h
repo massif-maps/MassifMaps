@@ -126,7 +126,37 @@ namespace massif { namespace api {
          * @return The subscription, or NULL_SUBSCRIPTION when the handle is stale.
          */
         Subscription subscribe(Handle handle, const std::string& event, EventHandler handler,
-                               void* userData, bool consume);
+                               void* userData, bool consume, Delivery delivery = DELIVERY_ORIGIN,
+                               bool coalesce = false);
+
+        /**
+         * Registers how to reach the UI thread. Without one, DELIVERY_UI falls back to running
+         * inline and says so once, rather than dropping the event.
+         */
+        void setUiDispatcher(Dispatcher dispatcher, void* userData);
+
+        /**
+         * Holds an object alive independently of its id, so a queued event's payload survives
+         * until its handler has run. The handle stays valid until the matching release.
+         */
+        void retain(Handle handle);
+
+        /**
+         * Drops a retain. The slot is freed when the last one goes and the id is gone.
+         */
+        void release(Handle handle);
+
+        /**
+         * Runs the handlers queued for another thread. Called by the dispatcher; a test calls it
+         * directly.
+         * @return How many were delivered.
+         */
+        int drainQueue();
+
+        /**
+         * How many events are waiting for another thread. For tests.
+         */
+        std::size_t getQueuedCount() const;
 
         /**
          * Removes one subscription.
@@ -160,6 +190,10 @@ namespace massif { namespace api {
             const char* cppClass = nullptr;
             std::uint32_t generation = 1;
             bool used = false;
+            // Non-zero while a queued event still needs this object. The slot is not recycled
+            // until the id is gone AND the last retain is released.
+            int retainCount = 0;
+            bool idDropped = false;
             // The spec this was built from, canonicalised, so an identical create can be
             // recognised as a reuse rather than a conflict.
             std::string spec;
@@ -190,6 +224,24 @@ namespace massif { namespace api {
         std::vector<std::uint32_t> _freeSlots;
         std::unordered_map<std::string, std::unordered_map<std::string, Handle> > _ids;
         EventBus _events;
+
+        struct Queued {
+            Subscription subscription = NULL_SUBSCRIPTION;
+            Handle target = NULL_HANDLE;
+            std::string event;
+            Handle payload = NULL_HANDLE;
+        };
+
+        void freeSlot(std::uint32_t index);
+        void retainLocked(Handle handle);
+        void releaseLocked(Handle handle);
+        void postDrain();
+
+        std::vector<Queued> _queue;
+        Dispatcher _dispatcher = nullptr;
+        void* _dispatcherUserData = nullptr;
+        bool _drainPosted = false;
+        bool _warnedNoDispatcher = false;
     };
 
 } }

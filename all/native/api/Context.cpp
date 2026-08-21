@@ -1,4 +1,5 @@
 #include "api/Context.h"
+#include "utils/Log.h"
 
 namespace massif { namespace api {
 
@@ -68,15 +69,8 @@ namespace massif { namespace api {
 
         std::uint32_t index = idIt->second & INDEX_MASK;
         if (index < _slots.size() && _slots[index].used) {
-            Slot& slot = _slots[index];
-            slot.obj.reset();
-            slot.cppClass = nullptr;
-            slot.used = false;
-            slot.spec.clear();
-            // Bumping the generation is what turns a stale handle into an error instead of a
-            // reference to whatever takes the slot next. Wrapping is the ABA window.
-            slot.generation = slot.generation >= MAX_GENERATION ? 1 : slot.generation + 1;
-            _freeSlots.push_back(index);
+            _slots[index].idDropped = true;
+            freeSlot(index);
         }
         // Subscriptions die with their target: otherwise the first destroy on an object with a
         // handler is a use-after-free, and that is not the app's job to prevent.
@@ -85,13 +79,67 @@ namespace massif { namespace api {
         return true;
     }
 
+    void Context::freeSlot(std::uint32_t index) {
+        Slot& slot = _slots[index];
+        if (!slot.used || !slot.idDropped || slot.retainCount > 0) {
+            return;
+        }
+        slot.obj.reset();
+        slot.cppClass = nullptr;
+        slot.used = false;
+        slot.idDropped = false;
+        slot.spec.clear();
+        // Bumping the generation is what turns a stale handle into an error instead of a
+        // reference to whatever takes the slot next. Wrapping is the ABA window.
+        slot.generation = slot.generation >= MAX_GENERATION ? 1 : slot.generation + 1;
+        _freeSlots.push_back(index);
+    }
+
+    void Context::retainLocked(Handle handle) {
+        std::uint32_t index = handle & INDEX_MASK;
+        if (resolve(handle)) {
+            _slots[index].retainCount++;
+        }
+    }
+
+    void Context::releaseLocked(Handle handle) {
+        std::uint32_t index = handle & INDEX_MASK;
+        if (!resolve(handle) || _slots[index].retainCount == 0) {
+            return;
+        }
+        _slots[index].retainCount--;
+        freeSlot(index);
+    }
+
+    void Context::retain(Handle handle) {
+        std::lock_guard<std::mutex> lock(_mutex);
+        retainLocked(handle);
+    }
+
+    void Context::release(Handle handle) {
+        std::lock_guard<std::mutex> lock(_mutex);
+        releaseLocked(handle);
+    }
+
+    void Context::setUiDispatcher(Dispatcher dispatcher, void* userData) {
+        std::lock_guard<std::mutex> lock(_mutex);
+        _dispatcher = dispatcher;
+        _dispatcherUserData = userData;
+    }
+
     Subscription Context::subscribe(Handle handle, const std::string& event, EventHandler handler,
-                                    void* userData, bool consume) {
+                                    void* userData, bool consume, Delivery delivery, bool coalesce) {
         std::lock_guard<std::mutex> lock(_mutex);
         if (!resolve(handle)) {
             return NULL_SUBSCRIPTION;
         }
-        return _events.subscribe(handle, event, handler, userData, consume);
+        if (consume && delivery != DELIVERY_ORIGIN) {
+            // The SDK asks whether the event was consumed NOW; a queued handler answers later.
+            // Rejected at registration rather than discovered as a race.
+            Log::Error("Context::subscribe: a consuming handler must be DELIVERY_ORIGIN");
+            return NULL_SUBSCRIPTION;
+        }
+        return _events.subscribe(handle, event, handler, userData, consume, delivery, coalesce);
     }
 
     bool Context::unsubscribe(Subscription subscription) {
@@ -109,6 +157,20 @@ namespace massif { namespace api {
         return _events.unsubscribeAll(handle);
     }
 
+    void Context::postDrain() {
+        // One post per batch: the drain empties the whole queue, so a second would find nothing.
+        if (_drainPosted || !_dispatcher) {
+            return;
+        }
+        _drainPosted = true;
+        Dispatcher dispatcher = _dispatcher;
+        void* userData = _dispatcherUserData;
+        Context* self = this;
+        dispatcher(userData, [](void* argument) {
+            static_cast<Context*>(argument)->drainQueue();
+        }, self);
+    }
+
     bool Context::emit(Handle handle, const std::string& event, Handle payload) {
         // Two phases. The handler list cannot be walked unlocked, and the handlers cannot run
         // under the lock - they are app code, and one that calls back would deadlock. So the
@@ -121,14 +183,54 @@ namespace massif { namespace api {
             _events.collect(handle, event, subscriptions);
         }
 
+        bool queued = false;
         for (Subscription subscription : subscriptions) {
             EventHandler handler = nullptr;
             void* userData = nullptr;
             bool consume = false;
+            Delivery delivery = DELIVERY_ORIGIN;
+            bool coalesce = false;
             {
                 std::lock_guard<std::mutex> lock(_mutex);
-                if (!_events.lookup(subscription, handler, userData, consume)) {
+                if (!_events.lookup(subscription, handler, userData, consume, delivery, coalesce)) {
                     continue;
+                }
+                if (delivery != DELIVERY_ORIGIN) {
+                    if (!_dispatcher) {
+                        if (!_warnedNoDispatcher) {
+                            _warnedNoDispatcher = true;
+                            Log::Warn("Context: no UI dispatcher set, delivering inline");
+                        }
+                    } else {
+                        // Coalescing replaces the pending payload rather than adding a second, so
+                        // a UI handler for a per-frame event cannot outrun the loop.
+                        bool replaced = false;
+                        if (coalesce) {
+                            for (Queued& pending : _queue) {
+                                if (pending.subscription == subscription) {
+                                    if (pending.payload != payload) {
+                                        releaseLocked(pending.payload);
+                                        pending.payload = payload;
+                                        retainLocked(payload);
+                                    }
+                                    replaced = true;
+                                    break;
+                                }
+                            }
+                        }
+                        if (!replaced) {
+                            Queued pending;
+                            pending.subscription = subscription;
+                            pending.target = handle;
+                            pending.event = event;
+                            pending.payload = payload;
+                            retainLocked(payload);
+                            _queue.push_back(pending);
+                        }
+                        queued = true;
+                        postDrain();
+                        continue;
+                    }
                 }
             }
             bool result = handler(userData, handle, event.c_str(), payload);
@@ -136,7 +238,42 @@ namespace massif { namespace api {
                 return true;
             }
         }
+        (void)queued;
         return false;
+    }
+
+    int Context::drainQueue() {
+        std::vector<Queued> batch;
+        {
+            std::lock_guard<std::mutex> lock(_mutex);
+            batch.swap(_queue);
+            _drainPosted = false;
+        }
+
+        for (const Queued& pending : batch) {
+            EventHandler handler = nullptr;
+            void* userData = nullptr;
+            bool consume = false;
+            Delivery delivery = DELIVERY_ORIGIN;
+            bool coalesce = false;
+            bool live;
+            {
+                std::lock_guard<std::mutex> lock(_mutex);
+                live = _events.lookup(pending.subscription, handler, userData, consume,
+                                      delivery, coalesce);
+            }
+            // Unsubscribed between the emit and the drain: the payload still has to be released.
+            if (live) {
+                handler(userData, pending.target, pending.event.c_str(), pending.payload);
+            }
+            release(pending.payload);
+        }
+        return static_cast<int>(batch.size());
+    }
+
+    std::size_t Context::getQueuedCount() const {
+        std::lock_guard<std::mutex> lock(_mutex);
+        return _queue.size();
     }
 
     std::size_t Context::getSubscriptionCount() const {

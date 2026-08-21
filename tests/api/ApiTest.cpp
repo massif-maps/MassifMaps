@@ -22,6 +22,7 @@ using namespace massif::api;
 int failures = 0;
 
 void testEvents();
+void testDelivery();
 
 namespace {
 
@@ -226,6 +227,7 @@ int main() {
     testCreate(context);
     testHandles(context);
     testEvents();
+    testDelivery();
 
     std::printf("\n%d failure(s)\n", failures);
     return failures ? 1 : 0;

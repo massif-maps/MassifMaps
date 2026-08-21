@@ -22,6 +22,25 @@ namespace massif { namespace api {
     static const Subscription NULL_SUBSCRIPTION = 0;
 
     /**
+     * Which thread a handler runs on.
+     *
+     * A consuming subscription must be ORIGIN: the SDK asks whether the event was consumed now,
+     * and a queued handler answers later. Waiting for it would block the producer on the UI
+     * thread, which is a deadlock waiting to happen.
+     */
+    enum Delivery {
+        DELIVERY_ORIGIN = 0,  // wherever the event was produced - the GL or a tile thread
+        DELIVERY_UI,
+        DELIVERY_BACKGROUND
+    };
+
+    /**
+     * How an embedder gets a call onto its UI thread. Java and Obj-C register one automatically;
+     * NativeScript and WASM supply their own so callbacks land on their loop.
+     */
+    typedef void (*Dispatcher)(void* userData, void (*function)(void*), void* argument);
+
+    /**
      * Delivered on the thread the subscription asked for.
      * @return True when the handler consumed the event, stopping it reaching later handlers.
      *         Only meaningful for a subscription that asked to consume.
@@ -49,7 +68,7 @@ namespace massif { namespace api {
          * @param consume Whether this handler's return value can stop the event.
          */
         Subscription subscribe(std::uint32_t target, const std::string& event, EventHandler handler,
-                               void* userData, bool consume);
+                               void* userData, bool consume, Delivery delivery, bool coalesce);
 
         /**
          * Removes one subscription.
@@ -84,7 +103,7 @@ namespace massif { namespace api {
          * Resolves a subscription for dispatch. False when it has been removed since collect.
          */
         bool lookup(Subscription subscription, EventHandler& handler, void*& userData,
-                    bool& consume) const;
+                    bool& consume, Delivery& delivery, bool& coalesce) const;
 
         /**
          * The number of live subscriptions. For tests and leak checks.
@@ -98,6 +117,10 @@ namespace massif { namespace api {
             EventHandler handler = nullptr;
             void* userData = nullptr;
             bool consume = false;
+            Delivery delivery = DELIVERY_ORIGIN;
+            // Replace a queued event rather than adding another, so a UI-thread handler for a
+            // high-frequency event cannot flood the loop.
+            bool coalesce = false;
             bool live = false;
             std::uint32_t generation = 1;
             // Registration order. Slots are reused, so index order is NOT registration order, and

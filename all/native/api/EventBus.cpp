@@ -10,7 +10,8 @@ namespace massif { namespace api {
     }
 
     Subscription EventBus::subscribe(std::uint32_t target, const std::string& event,
-                                     EventHandler handler, void* userData, bool consume) {
+                                     EventHandler handler, void* userData, bool consume,
+                                     Delivery delivery, bool coalesce) {
         if (!handler) {
             return NULL_SUBSCRIPTION;
         }
@@ -28,6 +29,8 @@ namespace massif { namespace api {
         entry.handler = handler;
         entry.userData = userData;
         entry.consume = consume;
+        entry.delivery = delivery;
+        entry.coalesce = coalesce;
         entry.live = true;
         entry.sequence = _nextSequence++;
         return (entry.generation << INDEX_BITS) | index;
@@ -105,7 +108,7 @@ namespace massif { namespace api {
     }
 
     bool EventBus::lookup(Subscription subscription, EventHandler& handler, void*& userData,
-                          bool& consume) const {
+                          bool& consume, Delivery& delivery, bool& coalesce) const {
         const Entry* entry = resolve(subscription);
         if (!entry) {
             return false;
@@ -113,6 +116,8 @@ namespace massif { namespace api {
         handler = entry->handler;
         userData = entry->userData;
         consume = entry->consume;
+        delivery = entry->delivery;
+        coalesce = entry->coalesce;
         return true;
     }
 

@@ -313,8 +313,42 @@ Four rules, each of which is a bug if it is not there:
   is skipped rather than called.
 - **A non-consuming subscription cannot stop an event**, whatever its handler returns.
 
-A subscription added *during* a pass is not delivered in that pass. Delivery thread, coalescing
-and payload handles are not built yet.
+A subscription added *during* a pass is not delivered in that pass.
+
+### Delivery thread
+
+Per subscription: `DELIVERY_ORIGIN` (whatever thread produced the event), `DELIVERY_UI` or
+`DELIVERY_BACKGROUND`. The embedder supplies the hop:
+
+```cpp
+context->setUiDispatcher(post, userData);   // Java: a main-thread Handler; iOS: the main queue
+```
+
+With no dispatcher registered, a queued subscription **runs inline** and says so once — dropping
+the event silently would be worse than delivering it on the wrong thread.
+
+**A consuming subscription must be `DELIVERY_ORIGIN`**, and that is rejected at `subscribe` rather
+than discovered as a race: the SDK asks whether the event was consumed *now*, and a queued handler
+answers later. Waiting for the answer would block the producer on the UI thread.
+
+Only one drain is posted per batch — the drain empties the whole queue, so a second post would
+find nothing.
+
+### Coalescing
+
+Per subscription. With it on, an event for a subscription that already has one pending **replaces**
+the pending payload instead of adding a second, so a UI-thread handler for a per-frame event cannot
+outrun the loop. Off by default, because a discrete event must never be dropped.
+
+### Payload lifetime
+
+A queued payload is **retained** while it waits, so destroying its id does not free it out from
+under a handler that has not run yet. The slot is recycled only when the id is gone *and* the last
+retain is released — including when the subscription was removed between the emit and the drain,
+where the handler is skipped but the payload still has to be released.
+
+`retain`/`release` are on `Context` and are what the C ABI exposes for a handler that wants to keep
+a payload beyond its call.
 
 ## Tests
 
@@ -329,7 +363,9 @@ It covers table lookups and the base chain, handle generations and the stale-han
 `set`/`get` per value type, path-resolution failures, and `create` — reuse on an identical spec,
 key order not mattering, conflict on a different spec, tolerant application of unknown keys, and
 the parse and factory failure paths, plus the whole event layer — the three removals, dispatch
-order, consumption, removal from inside a handler, and death-with-target. 75 checks. Two things keep it small on purpose:
+order, consumption, removal from inside a handler, death-with-target, and the delivery layer —
+queueing, the single drain post, coalescing, the consume/queued rejection, and payload retain
+across a destroy. 92 checks. Two things keep it small on purpose:
 the property table takes the address of **every** accessor thunk, so a full table needs the full
 SDK to link — the tests generate a reduced one from an explicit module list
 (`gen-api-tables.py --modules`), which exercises the generator as a side effect. And `Options`

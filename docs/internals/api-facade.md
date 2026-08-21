@@ -14,8 +14,9 @@ describe it.
 Design discussion and the full plan live in
 [issue #146](https://github.com/massif-maps/MassifMaps/issues/146). **Built so far: the property
 table with its base-class chain, the handle table, the registry, `set`/`get`, dotted path
-traversal, `create` from JSON specs for sources, styles and layers, and minimal Java and
-Objective-C bindings.** See
+traversal, `create`/`destroy` from JSON specs, events with a chosen delivery thread and real map
+payloads, per-read and per-subscription projections, `call`/`callAsync` with binary and bulk
+results, and minimal Java and Objective-C bindings.** The C ABI is the next slice. See
 [Known gaps](#known-gaps).
 
 ## Why a facade at all
@@ -583,19 +584,64 @@ MassifApi.callAsync(source, "loadTile", "[[8467,5852,14]]", "loadTile.done");
   (`android/native/components/Task.cpp`) and does not exist on a host build — using it would have
   taken the test suite with it. Serial execution is also what an app expects of a queue it filled.
 
+### Cancelling
+
+`callAsync` returns a `Call` id; `cancelCall(id)` stops it, `cancelCalls(handle)` stops every one
+on an object, and destroying the object does the latter — the same rule subscriptions follow.
+
+**Cancelling stops a call being STARTED and stops its result being DELIVERED. It cannot abort one
+already running**, because `loadTile` has no cancellation token to pass on. So a cancelled call in
+flight finishes its work and its result is dropped instead of emitted. Either way **no event
+fires**: the caller asked for it to stop, and a "failed" payload of 0 would be a lie.
+
+A `Call` is a plain counter, not the handle encoding: ids are never reused, so cancelling one that
+already finished is simply not found, and there is nothing to confuse it with. `cancelCall` returns
+whether it was queued or running, which is how a caller tells "stopped it" from "too late".
+
+A queued call releases the retain it took on its target when it is cancelled, or the object stays
+alive until a call that will never run would have finished.
+
 `Context::call` keeps the typed `PropertyValue` return; `callHandle` is the wrapper both the
 bindings and the async path use. The C ABI will want the typed one, to hand a scalar back without
 allocating a handle for it.
 
 ### Binary and bulk results
 
-`getData(handle, path)` reaches a `BinaryData` **without turning it into a string** — `byte[]` in
-Java, `NSData` in Objective-C, and `mm_data_size`/`mm_data_copy` in the C ABI. The path is walked
-with the ordinary object traversal, so `getData(tile, "data")` works because `TileData.data` is
-already an `%attributestring` in the `.i`; an empty path is the handle itself being the blob.
+Neither of these is allowed to become a string. A tile is a blob and a profile is thousands of
+numbers; encoding either one as JSON is the thing the facade exists to avoid.
 
-Bulk numerics are **not** solved. `getElevations` returns a JSON array, which is fine for a few
-hundred points and wrong for a whole track — see the gaps below.
+`getData(handle, path)` reaches a `BinaryData` — `byte[]` in Java, and `mm_data_size`/
+`mm_data_copy` in the C ABI. The path is walked with the ordinary object traversal, so
+`getData(tile, "data")` works because `TileData.data` is already an `%attributestring` in the `.i`;
+an empty path is the handle itself being the blob.
+
+`getDoubles(handle)` reads a bulk numeric result **flat, in one crossing**:
+
+```java
+int result = MassifApi.call(layer, "getElevations", "[[[5.76,45.24],[5.77,45.25]]]");
+double[] metres = MassifApi.getDoubles(result);
+MassifApi.destroy(result);
+```
+
+`getElevations` returns a handle onto a `std::vector<double>`, registered under
+`Context::DOUBLE_VECTOR_CLASS` — a container, so it has no property-table entry and reading it as a
+document is `RESULT_UNKNOWN_CLASS` rather than a coercion.
+
+**The binding is where the work is, and it is a typemap per language**, declared in
+`all/modules/api/MassifApi.i`:
+
+| | shape | why |
+|---|---|---|
+| Java | `double[]` | `SetDoubleArrayRegion`, one JNI crossing |
+| Objective-C | `NSData *` | the raw doubles; read with `-bytes` cast to `const double *` |
+| C ABI | pointer + count | nothing to copy |
+
+The default would have been the SWIG `DoubleVector`/`MSFDoubleVector` proxy, which is **one call
+per element** — 2000 points, 2000 JNI crossings. Two things about the typemap that cost a round:
+it has to be declared **after** the `%import`s, because `core/DoubleVector.i` installs its own
+`!value_type` typemaps for `std::vector<double>` and the last declaration wins; and the Java
+`jni`/`jtype` half applying while `javaout` did not is exactly what that looks like — a `double[]`
+native signature with a `new DoubleVector(...)` body.
 
 ## Tests
 
@@ -617,7 +663,8 @@ the projection layer — the name registry, a declared source projection versus 
 per-read argument, the per-subscription default and its expiry when the handler returns, the drain
 path, and the non-finite refusal — and the call layer: argument decoding and its refusals, the
 base-chain lookup, result ownership and destroy, the binary channel, and an async result arriving
-as an event, failing as a payload of 0, and queueing in order. 205 checks.
+as an event, failing as a payload of 0, and queueing in order, the flat numeric channel, and
+cancellation - queued, running, by target, and dying with the target. 227 checks.
 Two things keep it small on purpose:
 the property table takes the address of **every** accessor thunk, so a full table needs the full
 SDK to link — the tests generate a reduced one from an explicit module list
@@ -671,17 +718,17 @@ cd scripts && python3 gen-api-tables.py
 - **The C ABI does not exist.** Every verb does: `create`, `destroy`, `set`, `get`, `call`,
   `callAsync`, `on`/`off`. The remaining slices are in
   [#146](https://github.com/massif-maps/MassifMaps/issues/146).
-- **No bulk numeric channel.** `getElevations` comes back as a JSON array, so an elevation profile
-  over a whole track pays a decimal encode and a parse for every point. The shape it wants is a
-  flat `double[]` — `mm_call_doubles(handle, method, args, buffer, count)` in the C ABI, `double[]`
-  in Java, `NSData` in Objective-C — reusing the result handle so the size can be asked for first.
-  Not measured yet; the JSON path is correct, only wasteful.
+- **The bulk numeric channel is doubles only.** Positions, colours or integers arriving in bulk
+  would each want their own accessor and their own typemap per language. Nothing needs one yet.
 - **The method table is hand-registered.** Unlike properties, methods are not declared by a macro
   the generator can read, so each one is a thunk in `MethodImpls.cpp`. Three exist:
   `TileDataSource.loadTile`, `HillshadeRasterTileLayer.getElevation` and `.getElevations`.
-- **`callAsync` has no cancellation and no progress.** A queued call runs to completion; there is
-  no handle for it to be cancelled by. `loadTile` over a slow network is the case that will want
-  one.
+- **`callAsync` has no progress, and cancelling cannot abort work already running.** The SDK's load
+  paths take no cancellation token, so `cancelCall` prevents a call starting and prevents its
+  result being delivered, and that is all it can honestly do. A `loadTile` already in flight
+  finishes.
+- **The async queue is one thread.** A slow call blocks the ones behind it — the right default for
+  a queue an app filled in order, wrong for two independent sources being primed at once.
 - **`OBJECT` and `STRUCT` properties have no accessor** (216 of the 716). They need the registry for
   object references and JSON marshalling for structs, so their table rows carry null thunks and
   `set`/`get` return `RESULT_UNSUPPORTED_TYPE`.

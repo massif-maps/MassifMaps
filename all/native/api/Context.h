@@ -38,6 +38,16 @@ namespace massif {
 
     static const Handle NULL_HANDLE = 0;
 
+    /**
+     * A queued or running async call, so it can be cancelled.
+     *
+     * A plain counter rather than the handle encoding: ids are never reused, so cancelling a call
+     * that already finished is simply not found, and there is no slot to confuse it with.
+     */
+    typedef std::uint32_t Call;
+
+    static const Call NULL_CALL = 0;
+
     enum Result {
         RESULT_OK = 0,
         RESULT_BAD_HANDLE,       // never registered, or freed and the generation moved on
@@ -193,9 +203,29 @@ namespace massif {
          * anything is queued, so a mistake is reported to the caller rather than to a log.
          *
          * @param event The event name to emit the result on, e.g. "loadTile.done".
+         * @param call Set to the call's id, for cancelCall. Optional.
          */
         Result callAsync(Handle handle, const std::string& method, const std::string& argsJson,
-                         const std::string& event);
+                         const std::string& event, Call* call = nullptr);
+
+        /**
+         * Cancels a queued or running async call.
+         *
+         * Cancelling stops the call being STARTED and stops its result being DELIVERED. It cannot
+         * abort one already running - loadTile has no cancellation token to pass on - so a
+         * cancelled call in flight still finishes, and its result is dropped instead of emitted.
+         * Either way no event fires: the caller asked for it to stop and knows it did.
+         *
+         * @return True when the call was queued or running. False when it had already finished.
+         */
+        bool cancelCall(Call call);
+
+        /**
+         * Cancels every queued or running call on an object. Called when it is destroyed, the
+         * same way its subscriptions are.
+         * @return How many were cancelled.
+         */
+        int cancelCalls(Handle handle);
 
         /**
          * Reads a binary property without turning it into a string.
@@ -205,6 +235,22 @@ namespace massif {
          */
         Result getData(Handle handle, const std::string& path,
                        std::shared_ptr<BinaryData>& value) const;
+
+        /**
+         * Reads a bulk numeric result as a flat array.
+         *
+         * The handle is one a method returned - getElevations over a track is thousands of
+         * numbers, and neither a JSON array nor a per-element proxy is an acceptable way to move
+         * them. The vector is the SDK's own, so a binding copies once into whatever it calls an
+         * array.
+         */
+        Result getDoubles(Handle handle, std::vector<double>& value) const;
+
+        /**
+         * The C++ class name a bulk numeric result is registered under. Not in the property
+         * table: it is a container, not a class with properties.
+         */
+        static const char* const DOUBLE_VECTOR_CLASS;
 
         /**
          * How many async calls are queued or running. For tests.
@@ -362,6 +408,7 @@ namespace massif {
         bool _warnedNoDispatcher = false;
 
         struct AsyncCall {
+            Call id = NULL_CALL;
             Handle target = NULL_HANDLE;
             std::string method;
             std::string argsJson;
@@ -372,11 +419,16 @@ namespace massif {
         // async calls in submission order is what an app expects anyway.
         void startWorker();
         void runCalls();
+        int cancelCallsLocked(Handle handle);
 
         std::deque<AsyncCall> _calls;
         std::thread _worker;
         std::condition_variable _callCondition;
-        std::size_t _callsRunning = 0;
+        // At most one call runs at a time, so the running one needs no container of its own.
+        Call _runningCall = NULL_CALL;
+        Handle _runningTarget = NULL_HANDLE;
+        bool _runningCancelled = false;
+        Call _callCounter = 0;
         bool _stopping = false;
         long long _resultCounter = 0;
     };

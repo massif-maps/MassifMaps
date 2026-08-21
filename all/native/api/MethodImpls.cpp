@@ -14,8 +14,6 @@
 #include "layers/HillshadeRasterTileLayer.h"
 #include "utils/Log.h"
 
-#include <sstream>
-
 namespace massif { namespace api {
 
     namespace {
@@ -62,29 +60,29 @@ namespace massif { namespace api {
         }
 
         /**
-         * getElevations([[x, y], ...]) -> a JSON array of metres.
+         * getElevations([[x, y], ...]) -> a handle onto a flat array of metres.
          *
-         * JSON, not a typed array: the facade has no bulk numeric channel yet, and one profile
-         * of a few hundred points is small enough that it has not been worth inventing one. See
-         * the design doc's known gaps before using this for a whole track.
+         * An object result rather than a value: a profile over a track is thousands of numbers,
+         * and neither a JSON array nor a per-element proxy is an acceptable way to move them.
+         * Read it with getDoubles.
          */
-        Result getElevations(Context&, void* obj, const CallArgs& args, PropertyValue& result) {
+        Result getElevations(Context& context, void* obj, const CallArgs& args,
+                             PropertyValue& result) {
             std::vector<MapPos> positions;
             if (!args.getPositions(0, positions)) {
                 return RESULT_BAD_SPEC;
             }
-            std::vector<double> elevations =
-                static_cast<HillshadeRasterTileLayer*>(obj)->getElevations(positions);
+            auto elevations = std::make_shared<std::vector<double> >(
+                static_cast<HillshadeRasterTileLayer*>(obj)->getElevations(positions));
 
-            std::ostringstream json;
-            json.precision(17);
-            json << "[";
-            for (std::size_t index = 0; index < elevations.size(); index++) {
-                json << (index ? "," : "") << elevations[index];
+            Handle handle = NULL_HANDLE;
+            Result registered = context.registerResult("result", elevations,
+                                                       Context::DOUBLE_VECTOR_CLASS, handle);
+            if (registered != RESULT_OK) {
+                return registered;
             }
-            json << "]";
-            result = PropertyValue::ofString(json.str());
-            result.type = PT_VARIANT;
+            result.type = PT_OBJECT;
+            result.intValue = handle;
             return RESULT_OK;
         }
 

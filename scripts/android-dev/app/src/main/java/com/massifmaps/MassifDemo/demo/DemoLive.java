@@ -103,6 +103,9 @@ public final class DemoLive extends BroadcastReceiver {
         if (extras.containsKey("apiCall")) {
             applyApiCall(extras.getString("apiCall"), "true".equals(extras.getString("apiAsync")));
         }
+        if (extras.containsKey("apiCancel")) {
+            Log.i(TAG, "apiCancel " + apiCall + " -> " + MassifApi.cancelCall(apiCall));
+        }
         demo.mapView.requestRender();
     }
 
@@ -162,6 +165,7 @@ public final class DemoLive extends BroadcastReceiver {
      *
      *   --es apiCall 'source:demoApiSource:loadTile:[[8467,5852,14]]'
      *   --es apiCall 'source:demoApiSource:loadTile:[[8467,5852,14]]' --es apiAsync true
+     *   --es apiCancel true                                    (cancels the last async call)
      *
      * The synchronous form blocks the caller, which for an HTTP source is the point of the
      * comparison: the same call with apiAsync true returns immediately and logs from the event.
@@ -191,8 +195,9 @@ public final class DemoLive extends BroadcastReceiver {
                 };
                 MassifApi.offEvent(handle, event);
                 MassifApi.on(handle, event, apiCallListener, 1, false);
-                MassifApi.callAsync(handle, parts[2], args, event);
-                Log.i(TAG, "apiCall " + parts[2] + " queued, waiting for " + event);
+                apiCall = MassifApi.callAsync(handle, parts[2], args, event);
+                Log.i(TAG, "apiCall " + parts[2] + " queued as " + apiCall + ", waiting for " + event
+                        + " (--es apiCancel true to stop it)");
             } else {
                 long start = System.currentTimeMillis();
                 int result = MassifApi.call(handle, parts[2], args);
@@ -210,16 +215,21 @@ public final class DemoLive extends BroadcastReceiver {
             Log.i(TAG, "apiCall " + what + " -> failed");
             return;
         }
-        // Binary comes back as bytes, not as an encoding of them; anything else is a document.
+        // Three shapes of result: binary as bytes, bulk numerics as one flat array, anything else
+        // as a document. None of them is an encoding of the others.
         com.massifmaps.core.BinaryData data = MassifApi.getData(result, "data");
-        Log.i(TAG, "apiCall " + what + " -> handle=" + result
-                + (data != null ? " bytes=" + data.size()
-                                : " json=" + MassifApi.getString(result, "", "-")));
+        double[] numbers = MassifApi.getDoubles(result);
+        String shape = data != null ? " bytes=" + data.size()
+                     : numbers.length > 0 ? " doubles=" + numbers.length + " first=" + numbers[0]
+                     : " json=" + MassifApi.getString(result, "", "-");
+        Log.i(TAG, "apiCall " + what + " -> handle=" + result + shape);
     }
 
     /** Kept alive for as long as it is subscribed, or the director would be collected. */
     private EventListener apiListener;
     private EventListener apiCallListener;
+    /** The last async call, so --es apiCancel true has something to cancel. */
+    private int apiCall;
     private int apiSubscription;
 
     /**

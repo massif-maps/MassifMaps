@@ -31,6 +31,7 @@ void testEventProjection();
 void testCallArgs();
 void testCall();
 void testCallAsync();
+void testCallCancel();
 
 namespace {
 
@@ -244,6 +245,7 @@ int main() {
     testCallArgs();
     testCall();
     testCallAsync();
+    testCallCancel();
 
     std::printf("\n%d failure(s)\n", failures);
     return failures ? 1 : 0;

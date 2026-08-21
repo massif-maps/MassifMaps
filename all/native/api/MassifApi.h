@@ -12,6 +12,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace massif {
     class BinaryData;
@@ -230,14 +231,46 @@ namespace massif {
          * a map event's, so nothing has to be destroyed by hand.
          *
          *   MassifApi.on(source, "loadTile.done", listener, 1, false);
-         *   MassifApi.callAsync(source, "loadTile", "[[8467,5852,14]]", "loadTile.done");
+         *   int call = MassifApi.callAsync(source, "loadTile", "[[8467,5852,14]]", "loadTile.done");
          *
+         * @return The call's id, for cancelCall.
          * @throws std::runtime_error If the handle is stale, the method is unknown, or the
          *         argument JSON does not parse. A failure while running is reported as a payload
          *         of 0, since the call has returned by then.
          */
-        static void callAsync(int handle, const std::string& method, const std::string& argsJson,
-                              const std::string& event);
+        static int callAsync(int handle, const std::string& method, const std::string& argsJson,
+                             const std::string& event);
+
+        /**
+         * Cancels a queued or running async call.
+         *
+         * Cancelling stops the call being STARTED and stops its result being DELIVERED, but
+         * cannot abort one already running - loadTile has no cancellation token to pass on. Either
+         * way no event fires.
+         * @return True when the call was queued or running, false when it had already finished.
+         */
+        static bool cancelCall(int call);
+
+        /**
+         * Cancels every queued or running call on an object.
+         * @return How many were cancelled.
+         */
+        static int cancelCalls(int handle);
+
+        /**
+         * Reads a bulk numeric result as a flat array.
+         *
+         * A profile over a track is thousands of numbers, so they arrive as one array rather than
+         * as JSON or as a proxy read an element at a time - `double[]` in Java, `NSData` over the
+         * raw doubles in Objective-C:
+         *
+         *   int result = MassifApi.call(layer, "getElevations", "[[[5.76,45.24],[5.77,45.25]]]");
+         *   double[] metres = MassifApi.getDoubles(result);
+         *   MassifApi.destroy(result);
+         *
+         * @return The values, or empty when the handle is not a numeric result.
+         */
+        static std::vector<double> getDoubles(int handle);
 
         /**
          * Reads a binary property without turning it into a string.

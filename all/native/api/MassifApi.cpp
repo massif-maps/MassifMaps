@@ -203,14 +203,30 @@ namespace massif { namespace api {
         return static_cast<int>(result);
     }
 
-    void MassifApi::callAsync(int handle, const std::string& method, const std::string& argsJson,
-                              const std::string& event) {
+    int MassifApi::callAsync(int handle, const std::string& method, const std::string& argsJson,
+                             const std::string& event) {
         ensureMethods();
+        Call call = NULL_CALL;
         Result queued = Context::GetDefault()->callAsync(static_cast<Handle>(handle), method,
-                                                         argsJson, event);
+                                                         argsJson, event, &call);
         if (queued != RESULT_OK) {
             throw GenericException(describe(method, queued));
         }
+        return static_cast<int>(call);
+    }
+
+    bool MassifApi::cancelCall(int call) {
+        return Context::GetDefault()->cancelCall(static_cast<Call>(call));
+    }
+
+    int MassifApi::cancelCalls(int handle) {
+        return Context::GetDefault()->cancelCalls(static_cast<Handle>(handle));
+    }
+
+    std::vector<double> MassifApi::getDoubles(int handle) {
+        std::vector<double> values;
+        Context::GetDefault()->getDoubles(static_cast<Handle>(handle), values);
+        return values;
     }
 
     std::shared_ptr<BinaryData> MassifApi::getData(int handle, const std::string& path) {

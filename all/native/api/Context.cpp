@@ -26,13 +26,6 @@ namespace massif { namespace api {
             ~ScopedProjection() { tActiveProjection = saved; }
         };
 
-        /**
-         * Rewrites an encoded MapPos or MapBounds into another projection.
-         *
-         * The two shapes are told apart by decoding: bounds are a pair of positions, and a
-         * position never parses as one. Corner-wise is right for the axis-aligned projections
-         * reachable by name here.
-         */
         void readVariantRoot(void* obj, PropertyValue& value) {
             value.type = PT_VARIANT;
             value.stringValue = static_cast<Variant*>(obj)->toString();
@@ -65,6 +58,13 @@ namespace massif { namespace api {
             return std::isfinite(pos.getX()) && std::isfinite(pos.getY()) && std::isfinite(pos.getZ());
         }
 
+        /**
+         * Rewrites an encoded MapPos or MapBounds into another projection.
+         *
+         * The two shapes are told apart by decoding: bounds are a pair of positions, and a
+         * position never parses as one. Corner-wise is right for the axis-aligned projections
+         * reachable by name here.
+         */
         bool reproject(std::string& json, const Projection& source, const Projection& target) {
             MapBounds bounds;
             if (StructCodec::decode(json, bounds)) {
@@ -209,6 +209,10 @@ namespace massif { namespace api {
         if (idIt == kindIt->second.end()) {
             return false;
         }
+
+        // Pending calls die with their target too, or a queued one keeps it alive - through the
+        // retain it took - long after the app dropped it.
+        cancelCallsLocked(idIt->second);
 
         std::uint32_t index = idIt->second & INDEX_MASK;
         if (index < _slots.size() && _slots[index].used) {
@@ -474,7 +478,10 @@ namespace massif { namespace api {
     }
 
     Result Context::callAsync(Handle handle, const std::string& method, const std::string& argsJson,
-                              const std::string& event) {
+                              const std::string& event, Call* call) {
+        if (call) {
+            *call = NULL_CALL;
+        }
         if (event.empty()) {
             return RESULT_BAD_SPEC;
         }
@@ -498,6 +505,10 @@ namespace massif { namespace api {
             // in a log minutes later.
             if (!Methods::findMethod(slot->cppClass, method)) {
                 return RESULT_UNKNOWN_METHOD;
+            }
+            pending.id = ++_callCounter;
+            if (call) {
+                *call = pending.id;
             }
             // The target has to outlive the call, or the result has nowhere to be emitted.
             retainLocked(handle);
@@ -528,7 +539,9 @@ namespace massif { namespace api {
                 }
                 pending = _calls.front();
                 _calls.pop_front();
-                _callsRunning++;
+                _runningCall = pending.id;
+                _runningTarget = pending.target;
+                _runningCancelled = false;
             }
 
             Handle payload = NULL_HANDLE;
@@ -539,29 +552,87 @@ namespace massif { namespace api {
                 payload = NULL_HANDLE;
             }
 
-            emit(pending.target, pending.event, payload);
+            bool cancelled;
+            {
+                std::lock_guard<std::mutex> lock(_mutex);
+                cancelled = _runningCancelled;
+                _runningCall = NULL_CALL;
+                _runningTarget = NULL_HANDLE;
+                _runningCancelled = false;
+            }
+            // Cancelled while it ran: the work could not be stopped, but the result is dropped
+            // rather than delivered to a caller that has moved on.
+            if (!cancelled) {
+                emit(pending.target, pending.event, payload);
+            }
             // The payload was the call's result and nobody else owns it; a queued handler holds
             // its own retain through the emit, so this does not free it early.
             if (payload != NULL_HANDLE) {
                 destroy(payload);
             }
             release(pending.target);
-            {
-                std::lock_guard<std::mutex> lock(_mutex);
-                _callsRunning--;
-            }
             _callCondition.notify_all();
         }
     }
 
+    bool Context::cancelCall(Call call) {
+        {
+            std::lock_guard<std::mutex> lock(_mutex);
+            for (auto it = _calls.begin(); it != _calls.end(); ++it) {
+                if (it->id != call) {
+                    continue;
+                }
+                // Never started, so the retain it took on the target goes back here.
+                releaseLocked(it->target);
+                _calls.erase(it);
+                _callCondition.notify_all();
+                return true;
+            }
+            if (_runningCall != call || call == NULL_CALL) {
+                return false;
+            }
+            _runningCancelled = true;
+        }
+        return true;
+    }
+
+    int Context::cancelCalls(Handle handle) {
+        std::lock_guard<std::mutex> lock(_mutex);
+        return cancelCallsLocked(handle);
+    }
+
+    int Context::cancelCallsLocked(Handle handle) {
+        int cancelled = 0;
+        for (auto it = _calls.begin(); it != _calls.end(); ) {
+            if (it->target == handle) {
+                releaseLocked(it->target);
+                it = _calls.erase(it);
+                cancelled++;
+            } else {
+                ++it;
+            }
+        }
+        // The running one, if it is this object's, keeps running but delivers nothing.
+        if (_runningCall != NULL_CALL && !_runningCancelled && _runningTarget == handle) {
+            _runningCancelled = true;
+            cancelled++;
+        }
+        if (cancelled) {
+            _callCondition.notify_all();
+        }
+        return cancelled;
+    }
+
     std::size_t Context::getPendingCallCount() const {
         std::lock_guard<std::mutex> lock(_mutex);
-        return _calls.size() + _callsRunning;
+        return _calls.size() + (_runningCall != NULL_CALL ? 1 : 0);
     }
 
     void Context::waitForCalls() {
         std::unique_lock<std::mutex> lock(_mutex);
-        _callCondition.wait(lock, [this]() { return _calls.empty() && _callsRunning == 0; });
+        _callCondition.wait(lock, [this]() {
+            return _calls.empty() && _runningCall == NULL_CALL;
+        });
     }
 
     Result Context::getData(Handle handle, const std::string& path,
@@ -597,6 +668,21 @@ namespace massif { namespace api {
             return RESULT_UNSUPPORTED_TYPE;
         }
         value = std::static_pointer_cast<BinaryData>(blob.obj);
+        return RESULT_OK;
+    }
+
+    const char* const Context::DOUBLE_VECTOR_CLASS = "std::vector<double>";
+
+    Result Context::getDoubles(Handle handle, std::vector<double>& value) const {
+        std::lock_guard<std::mutex> lock(_mutex);
+        const Slot* slot = resolve(handle);
+        if (!slot) {
+            return RESULT_BAD_HANDLE;
+        }
+        if (!slot->cppClass || std::string(slot->cppClass) != DOUBLE_VECTOR_CLASS) {
+            return RESULT_UNSUPPORTED_TYPE;
+        }
+        value = *std::static_pointer_cast<std::vector<double> >(slot->obj);
         return RESULT_OK;
     }
 

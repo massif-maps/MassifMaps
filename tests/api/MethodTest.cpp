@@ -10,7 +10,9 @@
 #include "datasources/components/TileData.h"
 #include "geometry/PointGeometry.h"
 
+#include <condition_variable>
 #include <memory>
+#include <mutex>
 #include <string>
 
 #include "TestCheck.h"
@@ -71,6 +73,42 @@ namespace {
 
     Result fails(Context&, void*, const CallArgs&, PropertyValue&) {
         return RESULT_FAILED;
+    }
+
+    /** Returns a flat array of numbers, so the bulk channel is exercised. */
+    Result doubles(Context& context, void*, const CallArgs& args, PropertyValue& result) {
+        long long count = 0;
+        if (!args.getLong(0, count)) {
+            return RESULT_BAD_SPEC;
+        }
+        auto values = std::make_shared<std::vector<double> >();
+        for (long long index = 0; index < count; index++) {
+            values->push_back(index + 0.5);
+        }
+        Handle handle = NULL_HANDLE;
+        Result registered = context.registerResult("result", values,
+                                                   Context::DOUBLE_VECTOR_CLASS, handle);
+        if (registered != RESULT_OK) {
+            return registered;
+        }
+        result.type = PT_OBJECT;
+        result.intValue = handle;
+        return RESULT_OK;
+    }
+
+    /** Blocks until released, so a test can cancel a call while it is running. */
+    std::mutex slowMutex;
+    std::condition_variable slowCondition;
+    bool slowReleased = false;
+    int slowRuns = 0;
+
+    Result slow(Context&, void*, const CallArgs&, PropertyValue& result) {
+        std::unique_lock<std::mutex> lock(slowMutex);
+        slowRuns++;
+        slowCondition.notify_all();
+        slowCondition.wait(lock, []() { return slowReleased; });
+        result = PropertyValue::ofLong(1);
+        return RESULT_OK;
     }
 
     /** Registered on Geometry, called on a PointGeometry, to prove the chain walk. */
@@ -148,6 +186,8 @@ void testCall() {
     Methods::registerMethod("massif::TileData", "sum", &sum);
     Methods::registerMethod("massif::TileData", "makeTile", &makeTile);
     Methods::registerMethod("massif::TileData", "fails", &fails);
+    Methods::registerMethod("massif::TileData", "doubles", &doubles);
+    Methods::registerMethod("massif::TileData", "slow", &slow);
     Methods::registerMethod("massif::Geometry", "onBase", &onBase);
 
     auto context = std::make_shared<Context>();
@@ -206,6 +246,119 @@ void testCall() {
                context->getProperty(result, "", value) == RESULT_OK && value.asDouble() == 4,
                "a fractional result survives the Variant round trip");
     context->destroy(result);
+
+    // Bulk numerics come back flat, not as JSON and not as a per-element proxy.
+    std::vector<double> values;
+    TEST_CHECK(context->callHandle(target, "doubles", "[2000]", result) == RESULT_OK,
+               "a bulk numeric result is a handle");
+    TEST_CHECK(context->getDoubles(result, values) == RESULT_OK && values.size() == 2000,
+               "getDoubles reads the whole array at once");
+    TEST_CHECK(values[0] == 0.5 && values[1999] == 1999.5, "with the values intact");
+    TEST_CHECK(context->getProperty(result, "", value) == RESULT_UNKNOWN_CLASS,
+               "and it is not a document: a container has no properties");
+    context->destroy(result);
+    TEST_CHECK(context->getDoubles(result, values) == RESULT_BAD_HANDLE, "destroy frees it");
+
+    TEST_CHECK(context->getDoubles(target, values) == RESULT_UNSUPPORTED_TYPE,
+               "a handle that is not a numeric result is refused");
+    TEST_CHECK(context->callHandle(target, "sum", "[[[1,0]]]", result) == RESULT_OK &&
+               context->getDoubles(result, values) == RESULT_UNSUPPORTED_TYPE,
+               "and so is a scalar result, rather than being coerced into one value");
+    context->destroy(result);
+}
+
+void testCallCancel() {
+    auto context = std::make_shared<Context>();
+    auto data = std::make_shared<TileData>(std::make_shared<BinaryData>());
+    Handle target = NULL_HANDLE;
+    context->registerObject("tile", "t", data, "massif::TileData", target);
+
+    Received received;
+    received.context = context.get();
+    context->subscribe(target, "slow.done", &receivingHandler, &received, false);
+    context->subscribe(target, "sum.done", &receivingHandler, &received, false);
+
+    {
+        std::lock_guard<std::mutex> lock(slowMutex);
+        slowReleased = false;
+        slowRuns = 0;
+    }
+
+    // One slow call occupies the worker; the rest queue behind it and can be cancelled outright.
+    Call running = NULL_CALL;
+    TEST_CHECK(context->callAsync(target, "slow", "", "slow.done", &running) == RESULT_OK &&
+               running != NULL_CALL, "callAsync hands back a call id");
+    {
+        std::unique_lock<std::mutex> lock(slowMutex);
+        slowCondition.wait(lock, []() { return slowRuns == 1; });
+    }
+
+    Call queued = NULL_CALL;
+    context->callAsync(target, "sum", "[[[1,0]]]", "sum.done", &queued);
+    TEST_CHECK(context->getPendingCallCount() == 2, "the second call is waiting behind it");
+    TEST_CHECK(context->cancelCall(queued), "a queued call cancels");
+    TEST_CHECK(context->getPendingCallCount() == 1, "and leaves the queue");
+    TEST_CHECK(!context->cancelCall(queued), "cancelling it twice reports nothing to cancel");
+    TEST_CHECK(!context->cancelCall(NULL_CALL), "and so does the null call");
+
+    // The running one cannot be stopped, but its result is dropped rather than delivered.
+    TEST_CHECK(context->cancelCall(running), "a running call cancels");
+    {
+        std::lock_guard<std::mutex> lock(slowMutex);
+        slowReleased = true;
+    }
+    slowCondition.notify_all();
+    context->waitForCalls();
+    TEST_CHECK(slowRuns == 1, "it still ran to completion - the work cannot be aborted");
+    TEST_CHECK(received.count == 0, "but neither call delivered an event");
+    TEST_CHECK(!context->cancelCall(running), "and it is no longer cancellable");
+
+    // Cancelling by target, and dying with the target.
+    {
+        std::lock_guard<std::mutex> lock(slowMutex);
+        slowReleased = false;
+        slowRuns = 0;
+    }
+    context->callAsync(target, "slow", "", "slow.done", &running);
+    {
+        std::unique_lock<std::mutex> lock(slowMutex);
+        slowCondition.wait(lock, []() { return slowRuns == 1; });
+    }
+    context->callAsync(target, "sum", "[[[1,0]]]", "sum.done", &queued);
+    context->callAsync(target, "sum", "[[[2,0]]]", "sum.done", nullptr);
+    TEST_CHECK(context->cancelCalls(target) == 3, "cancelCalls takes the queued and the running");
+    TEST_CHECK(context->getPendingCallCount() == 1, "only the one that cannot be stopped is left");
+
+    {
+        std::lock_guard<std::mutex> lock(slowMutex);
+        slowReleased = true;
+    }
+    slowCondition.notify_all();
+    context->waitForCalls();
+    TEST_CHECK(received.count == 0, "and nothing was delivered");
+
+    // Destroying the target cancels what is queued on it, the way its subscriptions die with it.
+    {
+        std::lock_guard<std::mutex> lock(slowMutex);
+        slowReleased = false;
+        slowRuns = 0;
+    }
+    context->callAsync(target, "slow", "", "slow.done", &running);
+    {
+        std::unique_lock<std::mutex> lock(slowMutex);
+        slowCondition.wait(lock, []() { return slowRuns == 1; });
+    }
+    context->callAsync(target, "sum", "[[[1,0]]]", "sum.done", &queued);
+    context->unregisterObject("tile", "t");
+    TEST_CHECK(!context->cancelCall(queued), "a queued call died with its target");
+
+    {
+        std::lock_guard<std::mutex> lock(slowMutex);
+        slowReleased = true;
+    }
+    slowCondition.notify_all();
+    context->waitForCalls();
+    TEST_CHECK(received.count == 0, "and the running one delivered nothing either");
 }
 
 void testCallAsync() {

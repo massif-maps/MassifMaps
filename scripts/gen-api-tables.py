@@ -648,6 +648,13 @@ def emitSpecs(specs, bases, headerDirs, outPath):
       lines.append('            return RESULT_BAD_SPEC;\n        }\n')
     lines.append('    }\n')
   lines.append('    return RESULT_UNKNOWN_TYPE;\n}\n')
+  # The kinds that HAVE builders, so Spec can report one nobody registered a factory for. A
+  # declared !spec whose kind was never registered used to fail only when an app asked for it.
+  lines.append('\n// The kinds these builders cover. Spec::registerBuiltinFactories checks it.\n')
+  lines.append('const char* const SPEC_KINDS[] = {\n')
+  for kind in sorted(dispatch):
+    lines.append('    "%s",\n' % kind)
+  lines.append('    nullptr\n};\n')
   lines.append('\n} }\n')
   with open(outPath, 'w') as f:
     f.writelines(lines)

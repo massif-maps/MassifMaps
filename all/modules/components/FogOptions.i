@@ -19,6 +19,9 @@
 
 !shared_ptr(massif::FogOptions, components.FogOptions)
 
+// Fog, on the mapbox model. Independent of the terrain - it fogs a plain 2D map too. Default-constructed, then every value is an ordinary property.
+!spec(massif::FogOptions, options, fog)
+
 %attribute(massif::FogOptions, bool, Enabled, isEnabled, setEnabled)
 %attributeval(massif::FogOptions, massif::Color, Color, getColor, setColor)
 %attribute(massif::FogOptions, float, RangeStart, getRangeStart, setRangeStart)

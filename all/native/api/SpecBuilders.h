@@ -67,6 +67,13 @@ namespace massif { namespace api {
      * table can link it: the full one needs every source, layer and service.
      * @return RESULT_UNKNOWN_TYPE when no declared class of that kind has that type.
      */
+    /**
+     * The kinds the generated builders cover, nullptr-terminated. Emitted by gen-api-tables.py so
+     * a !spec whose kind nobody registered a factory for is reported at startup rather than the
+     * first time an app asks for it.
+     */
+    extern const char* const SPEC_KINDS[];
+
     Result buildFromConstructor(Context& context, const std::string& kind, const Variant& spec,
                                 ObjectRef& object, std::set<std::string>& consumed);
 

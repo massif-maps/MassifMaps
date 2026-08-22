@@ -54,6 +54,19 @@ namespace massif { namespace api {
         }
 
         /**
+         * The map's option sub-objects: "terrain", "fog", "sky", "light".
+         *
+         * One kind for the four because that is what they are - things Options points at. Build
+         * one, then set it on the map's options; every value inside is an ordinary property, and
+         * terrain's elevation decoder comes from the source's own `encoding` rather than a
+         * spec argument.
+         */
+        Result buildOptions(Context& context, const Variant& spec, ObjectRef& object,
+                            std::set<std::string>& consumed) {
+            return buildFromConstructor(context, "options", spec, object, consumed);
+        }
+
+        /**
          * A projection, by its well-known name.
          *
          * Needed to write one into a property - Options.baseProjection is the obvious case, and
@@ -248,6 +261,7 @@ namespace massif { namespace api {
         registerFactory("styleset", &buildStyleSet);
         registerFactory("style", &buildStyle);
         registerFactory("layer", &buildLayer);
+        registerFactory("options", &buildOptions);
         registerFactory("projection", &buildProjection);
         registerFactory("geometry", &buildGeometry);
         registerElementFactories();
@@ -258,6 +272,15 @@ namespace massif { namespace api {
 #ifdef _MASSIF_SEARCH_SUPPORT
         registerFactory("search", &buildSearch);
 #endif
+
+        // A !spec declares a kind; this file is what makes it reachable. Getting one and not the
+        // other used to fail as "no kind 'terrain'" the first time an app asked for it.
+        for (const char* const* kind = SPEC_KINDS; *kind; kind++) {
+            if (!hasFactory(*kind)) {
+                Log::Errorf("Spec: kind '%s' has generated builders but no factory - "
+                            "add one in SpecFactories.cpp", *kind);
+            }
+        }
     }
 
 } }

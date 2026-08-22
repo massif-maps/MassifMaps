@@ -2,6 +2,8 @@ package com.massifmaps.api;
 
 import com.massifmaps.core.MapPos;
 import com.massifmaps.layers.Layer;
+import com.massifmaps.layers.VectorElementEventListener;
+import com.massifmaps.layers.VectorLayer;
 import com.massifmaps.layers.VectorTileLayer;
 import com.massifmaps.layers.VectorTileEventListener;
 
@@ -80,6 +82,47 @@ public final class MassifLayer extends MassifObject {
     }
 
     /**
+     * Subscribes to clicks on the elements of a vector layer - a marker, a popup an app added.
+     *
+     * Installs the bridge on first use and chains to whatever listener was already there, the same
+     * way {@link #onFeatureClick} does for tile features.
+     */
+    public Subscription onElementClick(MapEvents.Handler<MapEvents.ElementClick> handler) {
+        return elementClick(handler, null);
+    }
+
+    /**
+     * The same, for a handler that can CLAIM the tap - return true and the SDK treats the gesture
+     * as handled, so the map's own onClick does not also fire for it.
+     *
+     * Without this a marker tap runs both handlers, and the usual pair of "open a popup on the
+     * marker" and "dismiss it when the map is tapped" cancel each other out. It runs on the thread
+     * the click came from, because the SDK asks whether the event was consumed NOW.
+     */
+    public Subscription consumeElementClick(
+            MapEvents.ConsumingHandler<MapEvents.ElementClick> handler) {
+        return elementClick(null, handler);
+    }
+
+    private Subscription elementClick(MapEvents.Handler<MapEvents.ElementClick> handler,
+                                      MapEvents.ConsumingHandler<MapEvents.ElementClick> consuming) {
+        Layer target = layer();
+        if (!(target instanceof VectorLayer)) {
+            throw new MassifException("Not a vector element layer: " + this);
+        }
+        VectorLayer vector = (VectorLayer) target;
+        if (!elementBridged) {
+            VectorElementEventListener chained = vector.getVectorElementEventListener();
+            vector.setVectorElementEventListener(
+                MassifApi.createVectorElementEventBridge(handle, chained));
+            elementBridged = true;
+        }
+        return subscribe(MapEvents.VECTOR_ELEMENT_CLICKED, handler, consuming,
+                         consuming != null ? Delivery.ORIGIN : Delivery.UI, false,
+                         map != null ? map.eventProjection() : "", EventKind.ELEMENT_CLICK);
+    }
+
+    /**
      * Elevations under a set of positions, as one flat array - a profile over a track is thousands
      * of numbers and neither JSON nor a per-element proxy is an acceptable way to move them.
      * Only a hillshade layer answers; anything else gives an empty array.
@@ -121,6 +164,7 @@ public final class MassifLayer extends MassifObject {
     }
 
     private boolean bridged;
+    private boolean elementBridged;
 
     private MassifMap requireMap() {
         if (map == null) {

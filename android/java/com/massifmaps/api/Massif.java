@@ -74,6 +74,16 @@ public final class Massif {
         return handle == 0 ? null : new MassifSource(handle, id);
     }
 
+    /**
+     * Builds an object of any kind - the escape hatch for a kind with no named method here.
+     *
+     * The kinds are the registered spec factories: "source", "style", "layer", "terrain",
+     * "element", "elementstyle", "geometry", "feature", "search", "routing", "projection", "data".
+     */
+    public static MassifObject object(String kind, String id, Spec spec) {
+        return new MassifObject(create(kind, id, spec), kind, id);
+    }
+
     public static boolean has(String kind, String id) {
         return MassifApi.findObject(kind, id) != 0;
     }

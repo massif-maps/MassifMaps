@@ -23,6 +23,10 @@
 
 !shared_ptr(massif::TerrainOptions, components.TerrainOptions)
 
+// 3D terrain from an elevation source. Only the source is a constructor argument: the elevation
+// decoder is picked from the source's own `encoding`, so a spec never names one.
+!spec(massif::TerrainOptions, options, terrain, alias(source, dataSource))
+
 %attribute(massif::TerrainOptions, bool, Enabled, isEnabled, setEnabled)
 %attribute(massif::TerrainOptions, float, Exaggeration, getExaggeration, setExaggeration)
 %attribute(massif::TerrainOptions, bool, SeamlessTileEdgesEnabled, isSeamlessTileEdgesEnabled, setSeamlessTileEdgesEnabled)

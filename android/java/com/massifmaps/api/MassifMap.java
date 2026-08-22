@@ -25,6 +25,9 @@ public final class MassifMap implements AutoCloseable {
     private final MapView view;
     private final MassifObject options;
     private final MapCamera camera;
+    /** Kind and id of everything this map built, so close() releases it. */
+    private final java.util.List<String[]> owned = new java.util.ArrayList<>();
+    private MassifElements elements;
     private String eventProjection = "";
     private boolean bridged;
 
@@ -124,6 +127,55 @@ public final class MassifMap implements AutoCloseable {
         return options.group("lightOptions");
     }
 
+    /**
+     * Turns 3D terrain on from an elevation source, and returns its options for tuning.
+     *
+     * <pre>
+     * map.terrain(Spec.of("terrain").set("source", Spec.of("http")
+     *         .set("url", "https://tiles.example.com/{z}/{x}/{y}.webp")
+     *         .set("encoding", "terrarium")))
+     *    .set("exaggeration", 1.2);
+     * </pre>
+     *
+     * The elevation decoder comes from the source's own `encoding`, so nothing here names one.
+     */
+    public PropertyGroup terrain(Spec spec) {
+        return optionGroup("terrainOptions", "terrain", spec);
+    }
+
+    /**
+     * Fog, on the mapbox model. Independent of the terrain - it fogs a plain 2D map too.
+     *
+     * The range is in MULTIPLES of the camera-to-focus distance rather than metres, so one pair
+     * of values holds at every zoom.
+     */
+    public PropertyGroup fog(Spec spec) {
+        return optionGroup("fogOptions", "fog", spec);
+    }
+
+    /** The sky dome behind the map. */
+    public PropertyGroup sky(Spec spec) {
+        return optionGroup("skyOptions", "sky", spec);
+    }
+
+    /** Sun direction and colour, which the terrain and 3D buildings shade from. */
+    public PropertyGroup light(Spec spec) {
+        return optionGroup("lightOptions", "light", spec);
+    }
+
+    /**
+     * Builds one of the Options sub-objects and hangs it on the map.
+     *
+     * The no-argument {@link #fog()} / {@link #sky()} accessors only work once something is there:
+     * Options starts with those properties EMPTY, and writing through an empty one is an error
+     * rather than a silent no-op.
+     */
+    private PropertyGroup optionGroup(String property, String type, Spec spec) {
+        String id = (options.id == null ? "map" : options.id) + "." + type;
+        options.set(property, object("options", id, spec == null ? Spec.of(type) : spec));
+        return options.group(property);
+    }
+
     // --- layers --------------------------------------------------------------------------------
 
     /** Adds a layer built with {@link Massif#layer} to the top of the stack. */
@@ -140,7 +192,86 @@ public final class MassifMap implements AutoCloseable {
 
     /** Builds and adds in one step, which is what an app writes most of the time. */
     public MassifLayer addLayer(String id, Spec spec) {
-        return add(Massif.layer(id, spec));
+        MassifLayer layer = add(Massif.layer(id, spec));
+        owned.add(new String[] { "layer", id });
+        return layer;
+    }
+
+    /** Builds an object of any kind, owned by this map. @see Massif#object */
+    public MassifObject object(String kind, String id, Spec spec) {
+        MassifObject object = Massif.object(kind, id, spec);
+        owned.add(new String[] { kind, id });
+        return object;
+    }
+
+    /**
+     * Builds a source this map owns, so it is released with the map rather than living on under
+     * its id. {@link Massif#source} is the one to use for a source shared between maps.
+     */
+    public MassifSource source(String id, Spec spec) {
+        MassifSource source = Massif.source(id, spec);
+        owned.add(new String[] { "source", id });
+        return source;
+    }
+
+    /**
+     * The same for a style. Worth an id whenever the app talks to it later - a style parameter, a
+     * theme switch - because an object property cannot yet be read back as a handle.
+     */
+    public MassifObject style(String id, Spec spec) {
+        MassifObject style = Massif.style(id, spec);
+        owned.add(new String[] { "style", id });
+        return style;
+    }
+
+    // --- markers and popups --------------------------------------------------------------------
+
+    /**
+     * The map's own markers and popups, on a layer created the first time this is called.
+     *
+     * @see MassifElements
+     */
+    public MassifElements elements() {
+        return elements(null);
+    }
+
+    /**
+     * The same, with the source spec chosen - which is how a map that does NOT work in lon/lat
+     * places its markers correctly:
+     *
+     * <pre>map.elements(Spec.of("local").set("projection", Spec.of("EPSG:3857")));</pre>
+     *
+     * Only the first call builds; later ones return what it built.
+     */
+    public MassifElements elements(Spec sourceSpec) {
+        if (elements == null) {
+            elements = new MassifElements(this, (options.id == null ? "map" : options.id)
+                                                + ".elements", sourceSpec);
+        }
+        return elements;
+    }
+
+    /** Registers an id this map is responsible for releasing. Used by {@link MassifElements}. */
+    void own(String kind, String id) {
+        owned.add(new String[] { kind, id });
+    }
+
+    /**
+     * Adds a marker. The spec carries its position and its style, inline or by id:
+     *
+     * <pre>
+     * map.addMarker(Spec.of("marker")
+     *     .set("position", new double[] { 6.865, 45.832 })
+     *     .set("style", Spec.of("marker").set("size", 30).set("color", 0xFFE53935)));
+     * </pre>
+     */
+    public MassifObject addMarker(Spec spec) {
+        return elements().add(spec);
+    }
+
+    /** The same for a balloon popup - a label anchored to a position, with a title and a body. */
+    public MassifObject addPopup(Spec spec) {
+        return elements().add(spec);
     }
 
     /**
@@ -261,12 +392,28 @@ public final class MassifMap implements AutoCloseable {
     }
 
     /**
-     * Detaches: removes every handler and drops the map's id. The MapView is untouched and keeps
-     * working through the object API.
+     * Detaches: removes every handler, takes off and drops every layer this map BUILT, and drops
+     * the map's own id.
+     *
+     * Releasing what it built is what makes ids reusable - a screen that opens, builds "basemap"
+     * and closes can be opened again with a different spec under the same name. Layers merely
+     * added with {@link #add} are the caller's and are left alone. The MapView is untouched and
+     * keeps working through the object API.
      */
     @Override
     public void close() {
         options.offAll();
+        for (String[] object : owned) {
+            if ("layer".equals(object[0])) {
+                MassifLayer layer = layer(object[1]);
+                if (layer != null) {
+                    view.getLayers().remove(layer.layer());
+                }
+            }
+            MassifApi.unregisterObject(object[0], object[1]);
+        }
+        owned.clear();
+        elements = null;
         if (options.id != null) {
             MassifApi.unregisterObject(KIND, options.id);
         }

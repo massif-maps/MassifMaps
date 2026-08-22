@@ -74,6 +74,9 @@ namespace massif { namespace api {
          * @param consumed The spec keys the factory used, so the caller knows which are left.
          * @return RESULT_OK, or RESULT_UNKNOWN_TYPE when nothing builds that "type".
          */
+        /** Whether a factory is registered for a kind. */
+        static bool hasFactory(const std::string& kind);
+
         static Result build(Context& context, const std::string& kind, const Variant& spec,
                             ObjectRef& object, std::set<std::string>& consumed);
 

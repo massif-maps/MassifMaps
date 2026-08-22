@@ -59,8 +59,9 @@ public class MassifObject implements AutoCloseable {
     /**
      * Sets a property. The path may walk object properties - "fogOptions.rangeStart".
      *
-     * @param value A boolean, a number, a String, a MapPos, a MapBounds, another MassifObject to
-     *              point an object property at, or null to clear one.
+     * @param value A boolean, a number, a String, a MapPos, a MapBounds, an array or a
+     *              {@link Spec} for a struct property, another MassifObject to point an object
+     *              property at, or null to clear one.
      * @throws MassifException When the path does not resolve, or the property is read-only.
      */
     public MassifObject set(String path, Object value) {
@@ -79,6 +80,11 @@ public class MassifObject implements AutoCloseable {
             MapBounds bounds = (MapBounds) value;
             result = MassifApi.setString(handle, path,
                 "[" + Values.fromPos(bounds.getMin()) + "," + Values.fromPos(bounds.getMax()) + "]");
+        } else if (value instanceof Object[] || value instanceof int[]
+                   || value instanceof double[] || value instanceof Spec) {
+            // A STRUCT property - a list of layer names, a zoom range, a header map. It crosses as
+            // JSON text, which is exactly what the generated write thunk decodes.
+            result = MassifApi.setString(handle, path, String.valueOf(Spec.unwrap(value)));
         } else if (value instanceof Number) {
             Number number = (Number) value;
             result = number instanceof Double || number instanceof Float
@@ -282,11 +288,17 @@ public class MassifObject implements AutoCloseable {
         EventListener listener = new EventListener() {
             @Override
             public boolean onEvent(int target, String name, int payload) {
-                Object typed = build(kind, target, name, payload);
-                if (consuming != null) {
-                    return consuming.handle((E) typed);
+                // Nothing may escape: this returns through a SWIG director into C++, and an
+                // exception crossing that boundary aborts the process rather than unwinding.
+                try {
+                    Object typed = build(kind, target, name, payload);
+                    if (consuming != null) {
+                        return consuming.handle((E) typed);
+                    }
+                    handler.handle((E) typed);
+                } catch (RuntimeException e) {
+                    android.util.Log.e("MassifApi", "handler for '" + event + "' threw", e);
                 }
-                handler.handle((E) typed);
                 return false;
             }
         };

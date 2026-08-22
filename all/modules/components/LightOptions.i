@@ -18,6 +18,9 @@
 
 !shared_ptr(massif::LightOptions, components.LightOptions)
 
+// Sun direction and colour, which the terrain and 3D buildings shade from. Default-constructed, then every value is an ordinary property.
+!spec(massif::LightOptions, options, light)
+
 %attribute(massif::LightOptions, float, SunAzimuth, getSunAzimuth, setSunAzimuth)
 %attribute(massif::LightOptions, float, SunAltitude, getSunAltitude, setSunAltitude)
 %attributeval(massif::LightOptions, massif::Color, SunColor, getSunColor, setSunColor)

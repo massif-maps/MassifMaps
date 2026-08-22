@@ -23,6 +23,20 @@ namespace massif { namespace api {
         factories()[kind] = factory;
     }
 
+    bool Spec::hasFactory(const std::string& kind) {
+        if (factories().count(kind)) {
+            return true;
+        }
+        // A kind may only have type-level factories, registered as "kind/type".
+        for (const auto& entry : factories()) {
+            if (entry.first.compare(0, kind.size(), kind) == 0 &&
+                entry.first.size() > kind.size() && entry.first[kind.size()] == '/') {
+                return true;
+            }
+        }
+        return false;
+    }
+
     Result Spec::create(Context& context, const std::string& kind, const std::string& id,
                         const std::string& json, Handle& handle) {
         Variant spec;

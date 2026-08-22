@@ -19,6 +19,9 @@
 
 !shared_ptr(massif::SkyOptions, components.SkyOptions)
 
+// The sky dome behind the map. Default-constructed, then every value is an ordinary property.
+!spec(massif::SkyOptions, options, sky)
+
 %attribute(massif::SkyOptions, bool, Enabled, isEnabled, setEnabled)
 %attributeval(massif::SkyOptions, massif::Color, SkyColor, getSkyColor, setSkyColor)
 %attributeval(massif::SkyOptions, massif::Color, HorizonColor, getHorizonColor, setHorizonColor)

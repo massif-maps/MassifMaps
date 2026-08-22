@@ -12,6 +12,7 @@
 #include "core/MapPos.h"
 #include "core/MapTile.h"
 #include "components/Layers.h"
+#include "datasources/GeoJSONVectorTileDataSource.h"
 #include "datasources/LocalVectorDataSource.h"
 #include "datasources/TileDataSource.h"
 #include "datasources/components/TileData.h"
@@ -190,6 +191,72 @@ namespace massif { namespace api {
             return RESULT_OK;
         }
 
+        Result clearElements(Context&, void* obj, const CallArgs&, PropertyValue&) {
+            static_cast<LocalVectorDataSource*>(obj)->clear();
+            return RESULT_OK;
+        }
+
+        /**
+         * The GeoJSON source's layers: createLayer(name) -> index, then setLayerGeoJSON(index,
+         * geojson) with the document as a string.
+         *
+         * A layer index rather than a name because that is what the SDK's own API takes, and
+         * a string rather than a Variant because a binding has the document as text already -
+         * parsing it into a Variant only to serialise it again is a round trip for nothing.
+         */
+        Result createGeoJSONLayer(Context&, void* obj, const CallArgs& args, PropertyValue& result) {
+            std::string name;
+            if (!args.getString(0, name)) {
+                return RESULT_BAD_SPEC;
+            }
+            try {
+                result = PropertyValue::ofLong(
+                    static_cast<GeoJSONVectorTileDataSource*>(obj)->createLayer(name));
+            } catch (const std::exception& ex) {
+                Log::Errorf("api createLayer: %s", ex.what());
+                return RESULT_FAILED;
+            }
+            return RESULT_OK;
+        }
+
+        Result setGeoJSONLayer(Context&, void* obj, const CallArgs& args, PropertyValue&) {
+            long long index = 0;
+            if (!args.getLong(0, index)) {
+                return RESULT_BAD_SPEC;
+            }
+            // The document may arrive as a quoted string or as the JSON itself, which is what a
+            // binding that built it with its own writer has.
+            Variant raw = args.get(1);
+            if (raw.getType() == VariantType::VARIANT_TYPE_NULL) {
+                return RESULT_BAD_SPEC;
+            }
+            std::string geoJson = raw.getType() == VariantType::VARIANT_TYPE_STRING
+                                ? raw.getString() : raw.toString();
+            try {
+                static_cast<GeoJSONVectorTileDataSource*>(obj)->setLayerGeoJSONString(
+                    static_cast<int>(index), geoJson);
+            } catch (const std::exception& ex) {
+                Log::Errorf("api setLayerGeoJSON: %s", ex.what());
+                return RESULT_FAILED;
+            }
+            return RESULT_OK;
+        }
+
+        Result deleteGeoJSONLayer(Context&, void* obj, const CallArgs& args, PropertyValue&) {
+            long long index = 0;
+            if (!args.getLong(0, index)) {
+                return RESULT_BAD_SPEC;
+            }
+            try {
+                static_cast<GeoJSONVectorTileDataSource*>(obj)->deleteLayer(
+                    static_cast<int>(index));
+            } catch (const std::exception& ex) {
+                Log::Errorf("api deleteLayer: %s", ex.what());
+                return RESULT_FAILED;
+            }
+            return RESULT_OK;
+        }
+
         Result refresh(Context&, void* obj, const CallArgs&, PropertyValue&) {
             static_cast<Layer*>(obj)->refresh();
             return RESULT_OK;
@@ -253,6 +320,10 @@ namespace massif { namespace api {
         registerMethod("massif::Layers", "remove", &removeLayer);
         registerMethod("massif::LocalVectorDataSource", "add", &addElement);
         registerMethod("massif::LocalVectorDataSource", "remove", &removeElement);
+        registerMethod("massif::LocalVectorDataSource", "clear", &clearElements);
+        registerMethod("massif::GeoJSONVectorTileDataSource", "createLayer", &createGeoJSONLayer);
+        registerMethod("massif::GeoJSONVectorTileDataSource", "setLayerGeoJSON", &setGeoJSONLayer);
+        registerMethod("massif::GeoJSONVectorTileDataSource", "deleteLayer", &deleteGeoJSONLayer);
         registerGeometryMethods();
 #ifdef _MASSIF_SEARCH_SUPPORT
         registerMethod("massif::VectorTileSearchService", "findFeatures", &findVectorTileFeatures);

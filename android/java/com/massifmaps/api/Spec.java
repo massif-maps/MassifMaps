@@ -22,7 +22,9 @@ public final class Spec {
     private final JSONObject json = new JSONObject();
 
     private Spec(String type) {
-        set("type", type);
+        if (type != null) {
+            set("type", type);
+        }
     }
 
     /**
@@ -31,6 +33,16 @@ public final class Spec {
      */
     public static Spec of(String type) {
         return new Spec(type);
+    }
+
+    /**
+     * A bare JSON object, with no "type".
+     *
+     * For a property whose value IS a map rather than an object to build - a source's
+     * httpHeaders, a style parameter holding a table of colours.
+     */
+    public static Spec object() {
+        return new Spec(null);
     }
 
     /**

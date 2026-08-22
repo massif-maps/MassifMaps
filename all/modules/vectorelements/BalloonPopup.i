@@ -24,7 +24,7 @@
 !polymorphic_shared_ptr(massif::BalloonPopup, vectorelements.BalloonPopup)
 
 
-!spec(massif::BalloonPopup, element, balloon, alias(position, pos))
+!spec(massif::BalloonPopup, element, balloon, alias(position, pos), alias(description, desc))
 %attributestring(massif::BalloonPopup, std::string, Title, getTitle, setTitle)
 %attributestring(massif::BalloonPopup, std::string, Description, getDescription, setDescription)
 %csmethodmodifiers massif::BalloonPopup::Style "public new";

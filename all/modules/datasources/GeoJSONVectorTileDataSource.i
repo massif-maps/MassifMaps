@@ -24,6 +24,11 @@
 
 !polymorphic_shared_ptr(massif::GeoJSONVectorTileDataSource, datasources.GeoJSONVectorTileDataSource)
 
+// A GeoJSON document served AS vector tiles, which is how "add a GeoJSON line" is done without a
+// separate render path: the features go through the same style and the same renderer as a tile
+// source's. Build it, createLayer(name), then setLayerGeoJSON(index, document).
+!spec(massif::GeoJSONVectorTileDataSource, source, geojson, default(minZoom, 0), default(maxZoom, 14))
+
 %attribute(massif::GeoJSONVectorTileDataSource, float, SimplifyTolerance, getSimplifyTolerance, setSimplifyTolerance)
 %attribute(massif::GeoJSONVectorTileDataSource, float, DefaultLayerBuffer, getDefaultLayerBuffer, setDefaultLayerBuffer)
 %std_io_exceptions(massif::GeoJSONVectorTileDataSource::createLayer)

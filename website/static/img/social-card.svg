@@ -1,11 +1,13 @@
-<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Massif Maps placeholder">
-  <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="630" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#036FE2"/><stop offset="1" stop-color="#00C4B3"/>
-    </linearGradient>
-  </defs>
-  <rect width="1200" height="630" fill="url(#bg)"/>
-  <path d="M0 630 L240 289 L480 441 L720 214 L960 403 L1200 264 L1200 630 Z" fill="#ffffff" opacity="0.14"/>
-  <text x="600" y="296" font-family="system-ui,Segoe UI,Roboto,sans-serif" font-size="70" font-weight="800" fill="#ffffff" text-anchor="middle">&#128506;&#65039;  Massif Maps</text>
-  <text x="600" y="378" font-family="system-ui,Segoe UI,Roboto,sans-serif" font-size="26" fill="#eaf3ff" text-anchor="middle">Maps, terrain &amp; routing for Android and iOS</text>
+<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Massif Maps — maps, terrain and routing for Android and iOS">
+  <title>Massif Maps</title>
+  <rect width="1200" height="630" fill="#0A1729"/>
+  <path d="M0 630 L200 498 L360 566 L560 468 L760 546 L960 452 L1200 518 L1200 630 Z" fill="#0E2138"/>
+  <g transform="translate(206 215) scale(5)">
+    <path d="M11.5 17 L2.5 32 L12.5 32 Z" fill="#00C4B3"/>
+    <path d="M11.5 17 L12.5 32 L20 32 Z" fill="#009184"/>
+    <path d="M23.5 8 L10.5 32 L24.5 32 Z" fill="#2C8BF0"/>
+    <path d="M23.5 8 L24.5 32 L37.5 32 Z" fill="#0A4FA8"/>
+  </g>
+  <text x="458" y="326" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="82" font-weight="700" fill="#ffffff">Massif Maps</text>
+  <text x="462" y="382" font-family="system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="30" fill="#8FA9C6">Maps, terrain &amp; routing for Android and iOS</text>
 </svg>

@@ -1,11 +1,7 @@
-<svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="g" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#036FE2"/>
-      <stop offset="1" stop-color="#00C4B3"/>
-    </linearGradient>
-  </defs>
-  <rect width="40" height="40" rx="9" fill="url(#g)"/>
-  <path d="M6 29 L15 15 L21 23 L27 12 L34 29 Z" fill="#ffffff" fill-opacity="0.95"/>
-  <circle cx="27" cy="12" r="2.4" fill="#FF4F4F"/>
+<svg width="44" height="32" viewBox="0 5.5 40 29" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Massif Maps">
+  <title>Massif Maps</title>
+  <path d="M11.5 17 L2.5 32 L12.5 32 Z" fill="#00C4B3"/>
+  <path d="M11.5 17 L12.5 32 L20 32 Z" fill="#009184"/>
+  <path d="M23.5 8 L10.5 32 L24.5 32 Z" fill="#2C8BF0"/>
+  <path d="M23.5 8 L24.5 32 L37.5 32 Z" fill="#0A4FA8"/>
 </svg>

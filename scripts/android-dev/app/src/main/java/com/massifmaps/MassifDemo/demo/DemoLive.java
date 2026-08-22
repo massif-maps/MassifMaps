@@ -109,6 +109,15 @@ public final class DemoLive extends BroadcastReceiver {
         if (extras.containsKey("apiSearch")) {
             applyApiSearch(extras.getString("apiSearch"));
         }
+        if (extras.containsKey("apiMarkers")) {
+            applyApiMarkers(Integer.parseInt(extras.getString("apiMarkers")));
+        }
+        if (extras.containsKey("apiMarkerDrag")) {
+            applyApiMarkerDrag(Integer.parseInt(extras.getString("apiMarkerDrag")));
+        }
+        if (extras.containsKey("apiMoveRate")) {
+            applyApiMoveRate(Integer.parseInt(extras.getString("apiMoveRate")));
+        }
         if (extras.containsKey("apiRoute")) {
             applyApiRoute(extras.getString("apiRoute"), extras.getString("apiRouteProfile"));
         }
@@ -364,6 +373,175 @@ public final class DemoLive extends BroadcastReceiver {
         MassifApi.on(service, "search.done", apiSearchListener, 1, false);
         apiCall = MassifApi.callAsync(service, "findFeatures", "[" + query + "]", "search.done");
         Log.i(TAG, "apiSearch '" + label + "' at z" + zoom + " queued as " + apiCall);
+    }
+
+    private com.massifmaps.datasources.GeoJSONVectorTileDataSource markerSource;
+    private int markerLayerIndex = -1;
+    private com.massifmaps.core.MapPos markerCentre;
+
+    /**
+     * MARKERS AS TILE FEATURES, to measure what replacing the vector-element path would cost.
+     *
+     *   --es apiMarkers 500        build N markers as GeoJSON features in one vector tile layer
+     *   --es apiMarkerDrag 120     move ONE of them N times, to find the drag ceiling
+     *
+     * The question this answers: a Marker today is a VectorElement with its own renderer. As a tile
+     * feature it costs nothing to draw beyond what tiles already cost, collides with tile labels and
+     * drapes on terrain - but moving one means re-tiling, and that is the number that decides it.
+     */
+    private void applyApiMarkers(int count) {
+        markerCentre = demo.mapView.getOptions().getBaseProjection()
+                .toWgs84(demo.mapView.getFocusPos());
+
+        long start = System.nanoTime();
+        long imported;
+        try {
+            markerSource = new com.massifmaps.datasources.GeoJSONVectorTileDataSource(0, 24);
+            markerLayerIndex = markerSource.createLayer("markers");
+            markerSource.setLayerGeoJSONString(markerLayerIndex, markerFeatures(count));
+            imported = (System.nanoTime() - start) / 1000000;
+        } catch (Exception e) {
+            Log.w(TAG, "apiMarkers failed: " + e);
+            return;
+        }
+
+        com.massifmaps.styles.CartoCSSStyleSet style = new com.massifmaps.styles.CartoCSSStyleSet(
+                "#markers{marker-fill:#e02020;marker-width:10;marker-allow-overlap:false;"
+                + "text-name:[name];text-face-name:'Roboto Regular';text-size:11;text-dy:-12;}");
+        com.massifmaps.layers.VectorTileLayer layer = new com.massifmaps.layers.VectorTileLayer(
+                markerSource, new com.massifmaps.vectortiles.MBVectorTileDecoder(style));
+        demo.mapView.getLayers().add(layer);
+        Log.i(TAG, "apiMarkers " + count + " features imported in " + imported + " ms");
+    }
+
+    private String markerFeatures(int count) {
+        StringBuilder json = new StringBuilder("{\"type\":\"FeatureCollection\",\"features\":[");
+        for (int i = 0; i < count; i++) {
+            // A deterministic spiral, so the same count always lays out the same way.
+            double angle = i * 2.399963;
+            double radius = 0.0006 * Math.sqrt(i);
+            json.append(i > 0 ? "," : "").append(feature(i,
+                    markerCentre.getX() + radius * Math.cos(angle),
+                    markerCentre.getY() + radius * Math.sin(angle)));
+        }
+        return json.append("]}").toString();
+    }
+
+    private static String feature(int id, double lon, double lat) {
+        return "{\"type\":\"Feature\",\"id\":" + id
+             + ",\"properties\":{\"name\":\"m" + id + "\"}"
+             + ",\"geometry\":{\"type\":\"Point\",\"coordinates\":[" + lon + "," + lat + "]}}";
+    }
+
+    /**
+     * Moves one feature N times and reports what it really costs.
+     *
+     * TWO numbers, because the first one alone is misleading: updateGeoJSONFeature only writes the
+     * in-memory feature store and calls notifyTilesChanged, so it returns long before anything is
+     * redrawn. The re-encode happens on the tile thread in loadTile, and THAT is the drag ceiling.
+     */
+    private void applyApiMarkerDrag(int updates) {
+        if (markerSource == null) {
+            Log.w(TAG, "apiMarkerDrag: run --es apiMarkers N first");
+            return;
+        }
+        int zoom = (int) demo.mapView.getZoom();
+        com.massifmaps.core.MapTile tile = tileOf(markerCentre.getX(), markerCentre.getY(), zoom);
+
+        long notifyNanos = 0, encodeNanos = 0;
+        try {
+            for (int i = 0; i < updates; i++) {
+                String moved = feature(0,
+                        markerCentre.getX() + 0.0004 * Math.cos(i * 0.2),
+                        markerCentre.getY() + 0.0004 * Math.sin(i * 0.2));
+                long a = System.nanoTime();
+                markerSource.updateGeoJSONStringFeature(markerLayerIndex, moved);
+                long b = System.nanoTime();
+                // What the tile thread would do next, on this thread so it can be timed.
+                markerSource.loadTile(tile);
+                encodeNanos += System.nanoTime() - b;
+                notifyNanos += b - a;
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "apiMarkerDrag failed: " + e);
+            return;
+        }
+        double notify = notifyNanos / 1000000.0 / updates;
+        double encode = encodeNanos / 1000000.0 / updates;
+        Log.i(TAG, "apiMarkerDrag z" + zoom + " " + updates + " updates: notify "
+                + String.format("%.2f", notify) + " ms + re-encode "
+                + String.format("%.2f", encode) + " ms = "
+                + String.format("%.2f", notify + encode) + " ms/tile -> "
+                + Math.round(1000.0 / Math.max(notify + encode, 0.001)) + " tile-updates/s");
+    }
+
+    /** The web mercator tile a position falls in, so the bench re-encodes the one that changed. */
+    private static com.massifmaps.core.MapTile tileOf(double lon, double lat, int zoom) {
+        int n = 1 << zoom;
+        int x = (int) Math.floor((lon + 180.0) / 360.0 * n);
+        double rad = Math.toRadians(lat);
+        int y = (int) Math.floor((1.0 - Math.log(Math.tan(rad) + 1.0 / Math.cos(rad)) / Math.PI)
+                                 / 2.0 * n);
+        return new com.massifmaps.core.MapTile(x, y, zoom, 0);
+    }
+
+    private EventListener apiMoveListener;
+    private EventListener apiMoveCoalescedListener;
+
+    /**
+     * How often map.moved fires, RAW and COALESCED, over the same drag.
+     *
+     * This is what decides whether a native annotation view can follow the map. The answer turned
+     * out to be the opposite of the worry - it fires far ABOVE frame rate, so the useful number is
+     * what a coalescing subscription collapses it to.
+     *
+     *   --es apiMoveRate 3      then drag during the window
+     */
+    private void applyApiMoveRate(final int seconds) {
+        // The sugar installs the UI dispatcher, and coalescing only applies to the queued path.
+        if (sugarMap == null) {
+            sugarMap = com.massifmaps.api.MassifMap.attach(demo.mapView, "demo");
+        }
+        final java.util.concurrent.atomic.AtomicInteger raw =
+                new java.util.concurrent.atomic.AtomicInteger();
+        final java.util.concurrent.atomic.AtomicInteger coalesced =
+                new java.util.concurrent.atomic.AtomicInteger();
+        int handle = MassifApi.findObject("options", "demo");
+        if (handle == 0) {
+            handle = MassifApi.registerOptions("options", "demo", demo.mapView.getOptions());
+        }
+        demo.mapView.setMapEventListener(
+                MassifApi.createEventBridge(handle, demo.mapView.getMapEventListener()));
+
+        apiMoveListener = new EventListener() {
+            @Override
+            public boolean onEvent(int target, String event, int payload) {
+                raw.incrementAndGet();
+                return false;
+            }
+        };
+        apiMoveCoalescedListener = new EventListener() {
+            @Override
+            public boolean onEvent(int target, String event, int payload) {
+                coalesced.incrementAndGet();
+                return false;
+            }
+        };
+        final int rawSub = MassifApi.on(handle, "map.moved", apiMoveListener, 0, false);
+        final int coalescedSub = MassifApi.on(handle, "map.moved", apiMoveCoalescedListener, 1, true);
+        final long start = System.currentTimeMillis();
+        Log.i(TAG, "apiMoveRate counting map.moved for " + seconds + " s - drag now");
+        new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(new Runnable() {
+            public void run() {
+                long elapsed = System.currentTimeMillis() - start;
+                MassifApi.off(rawSub);
+                MassifApi.off(coalescedSub);
+                Log.i(TAG, "apiMoveRate " + elapsed + " ms: raw " + raw.get() + " ("
+                        + Math.round(raw.get() * 1000.0 / elapsed) + "/s), coalesced "
+                        + coalesced.get() + " ("
+                        + Math.round(coalesced.get() * 1000.0 / elapsed) + "/s)");
+            }
+        }, seconds * 1000L);
     }
 
     /** Kept alive while subscribed, and does the reading when the route arrives. */

@@ -1379,6 +1379,58 @@ Run it by hand with:
 cd scripts && python3 gen-api-tables.py
 ```
 
+## Markers and annotations: what the measurements say
+
+Two questions decide whether the vector-element render path (`BillboardRenderer`, `PointRenderer`,
+`LineRenderer`, `PolygonRenderer`, `Polygon3DRenderer` + drawdatas — ~4150 lines, and 210 of the 676
+public attributes) can be deleted in favour of tile features plus native views. Both are answered by
+demo knobs: `--es apiMarkers N`, `--es apiMarkerDrag N`, `--es apiMoveRate S`.
+
+### A marker as a tile feature
+
+`GeoJSONVectorTileDataSource` already builds vector tiles in memory, so a marker can be a feature in
+a CartoCSS-styled layer with no new render code — and it then collides with tile labels and drapes on
+terrain, neither of which a billboard does today.
+
+The cost of *moving* one is the question. **Emulator, x86_64**, one feature updated in a layer of N,
+`loadTile` called on the calling thread so it can be timed:
+
+| markers in layer | import | notify | re-encode | per move | moves/s |
+|---|---|---|---|---|---|
+| 100 | — | 0.16 ms | 0.21 ms | **0.36 ms** | 2766 |
+| 1000 | 9 ms | 0.75 ms | 0.79 ms | **1.55 ms** | 647 |
+| 5000 | 30 ms | 2.11 ms | 1.46 ms | **3.57 ms** | 280 |
+
+The cost scales with the number of features **in the layer**, not in the tile — the update re-indexes
+and the builder walks the layer. So moving one marker among 5000 costs 3.6 ms even though only one
+tile changed, which is 21% of a 60 fps frame on the emulator and would be several times that on the
+Adreno 610 phone.
+
+Reading: **fine up to ~1000 markers, and fine at any count if markers move rarely.** A dragged marker
+in a large set wants its own layer, so the re-index walks a handful of features instead of thousands.
+
+**The first version of this measurement was wrong** and is worth recording: `updateGeoJSONFeature`
+only writes the in-memory feature store and calls `notifyTilesChanged`, so timing it alone reported
+2766 moves/s at 100 markers and *2607* at 5000 — faster with more data, which is what gave it away.
+The re-encode happens later on the tile thread and is the number that matters.
+
+### A native annotation view
+
+Mapbox draws annotations as a symbol layer in the style and popups as native views positioned by
+`map.project()`. The same split works here — markers as tile features, callouts as host views moved
+on `map.moved` with `mapToScreen` — and both halves already exist.
+
+`map.moved` **fires well above frame rate**: 0/s idle, 47–159/s during a continuous drag. An
+annotation view will not lag; if anything it repositions more often than it needs to.
+
+**Coalescing does not reduce it**, which was the surprise: subscribing with `coalesce = true` and
+`DELIVERY_UI` gave 140 events against the raw subscription's 141 over the same drag. Coalescing
+replaces a *pending* payload, and the queue never has more than one pending when the producer and the
+drain are the same thread — which they are, since touch handling and the UI drain both run on the
+main thread. A host that wants one reposition per frame has to throttle itself, or the SDK needs a
+camera event emitted **once per frame from the render thread** rather than once per touch move. That
+is the one piece of new API this path would want.
+
 ## Known gaps
 
 - **No binding uses the C ABI yet.** It is exercised by the host tests; the Java and Objective-C

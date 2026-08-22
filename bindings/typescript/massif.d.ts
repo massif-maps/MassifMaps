@@ -5263,16 +5263,14 @@ export type WritablePath<C extends ClassName> = {
 
 export interface AssetsSpec_dir {
   type: "dir";
-  base?: string | Record<string, Json>;
-  path?: string | Record<string, Json>;
-  [key: string]: Json | undefined;
+  base?: AssetsSpec | string;
+  path?: string;
 }
 
 export interface AssetsSpec_zip {
   type: "zip";
-  base?: string | Record<string, Json>;
-  data?: string | Record<string, Json>;
-  [key: string]: Json | undefined;
+  base?: AssetsSpec | string;
+  data?: DataSpec | string;
 }
 
 export type AssetsSpec = AssetsSpec_dir | AssetsSpec_zip;
@@ -5286,45 +5284,43 @@ export interface ElementSpec_balloon {
   /** Returns the balloon popup event listener. */
   balloonPopupEventListener?: Handle<"massif::BalloonPopupEventListener">;
   /** Returns the base billboard this billboard is attached to. */
-  baseBillboard?: Handle<"massif::Billboard">;
+  baseBillboard?: Handle<"massif::Billboard"> | ElementSpec | string;
   /** Returns the description of this balloon popup. */
-  description?: string | string | Record<string, Json>;
+  description?: string;
   /** Returns the geometry object that defines the location of this billboard. */
-  geometry?: Handle<"massif::Geometry">;
+  geometry?: Handle<"massif::Geometry"> | GeometrySpec | string;
   /** Returns the internal id of this vector element. */
   id?: number;
   /** Returns a copy of the vector element meta data map. The changes you make to this map are NOT reflected in the actual meta data of the element. */
   metaData?: Record<string, Json>;
-  position?: string | Record<string, Json>;
+  position?: Json;
   /** Returns the rotation angle of this billboard. */
   rotation?: number;
   /** Returns the style of this balloon popup. */
-  style?: Handle<"massif::BalloonPopupStyle">;
+  style?: Handle<"massif::BalloonPopupStyle"> | ElementstyleSpec | string | ElementstyleSpec | string | ElementstyleSpec | string;
   /** Returns the title of this balloon popup. */
   title?: string;
   /** Returns the state of the visibility flag of this vector element. */
   visible?: boolean;
-  [key: string]: Json | undefined;
 }
 
 export interface ElementSpec_marker {
   type: "marker";
   /** Returns the base billboard this billboard is attached to. */
-  baseBillboard?: Handle<"massif::Billboard">;
+  baseBillboard?: Handle<"massif::Billboard"> | ElementSpec | string;
   /** Returns the geometry object that defines the location of this billboard. */
-  geometry?: Handle<"massif::Geometry">;
+  geometry?: Handle<"massif::Geometry"> | GeometrySpec | string;
   /** Returns the internal id of this vector element. */
   id?: number;
   /** Returns a copy of the vector element meta data map. The changes you make to this map are NOT reflected in the actual meta data of the element. */
   metaData?: Record<string, Json>;
-  position?: string | Record<string, Json>;
+  position?: Json;
   /** Returns the rotation angle of this billboard. */
   rotation?: number;
   /** Returns the style of this marker. */
-  style?: Handle<"massif::MarkerStyle">;
+  style?: Handle<"massif::MarkerStyle"> | ElementstyleSpec | string | ElementstyleSpec | string | ElementstyleSpec | string;
   /** Returns the state of the visibility flag of this vector element. */
   visible?: boolean;
-  [key: string]: Json | undefined;
 }
 
 export type ElementSpec = ElementSpec_balloon | ElementSpec_marker;
@@ -5399,7 +5395,6 @@ export interface ElementstyleSpec_balloon {
   triangleWidth?: number;
   /** Returns the vertical offset of the billboard. */
   verticalOffset?: number;
-  [key: string]: Json | undefined;
 }
 
 export interface ElementstyleSpec_marker {
@@ -5438,21 +5433,21 @@ export interface ElementstyleSpec_marker {
   size?: number;
   /** Returns the vertical offset of the billboard. */
   verticalOffset?: number;
-  [key: string]: Json | undefined;
 }
 
 export type ElementstyleSpec = ElementstyleSpec_balloon | ElementstyleSpec_marker;
 
 export interface FeatureSpec_feature {
   type: "feature";
-  [key: string]: Json | undefined;
+  geometry?: GeometrySpec | string;
+  properties?: Json;
 }
 
 export type FeatureSpec = FeatureSpec_feature;
 
 export interface GeometrySpec_point {
   type: "point";
-  [key: string]: Json | undefined;
+  pos?: Json;
 }
 
 export type GeometrySpec = GeometrySpec_point;
@@ -5495,8 +5490,8 @@ export interface LayerSpec_composite_vector {
   rendererLayerFilter?: string;
   /** Returns whether single-pass segmented rendering is enabled (Milestone 6, optional). */
   singlePassRenderingEnabled?: boolean;
-  source?: string | Record<string, Json>;
-  style?: string | Record<string, Json>;
+  source?: SourceSpec | string;
+  style?: StyleSpec | string;
   /** Returns the state of the synchronized refresh flag. */
   synchronizedRefresh?: boolean;
   /** Returns the tile cache capacity. */
@@ -5515,7 +5510,6 @@ export interface LayerSpec_composite_vector {
   visibleZoomRange?: [number, number];
   /** Gets the current zoom level bias for this layer. */
   zoomLevelBias?: number;
-  [key: string]: Json | undefined;
 }
 
 export interface LayerSpec_elements {
@@ -5530,7 +5524,7 @@ export interface LayerSpec_elements {
   opacity?: number;
   /** Returns whether this layer goes through the post-process effect. */
   postProcessed?: boolean;
-  source?: string | Record<string, Json>;
+  source?: SourceSpec | string;
   /** Returns the layer task priority of this layer. */
   updatePriority?: number;
   /** Returns the vector element event listener. */
@@ -5539,7 +5533,6 @@ export interface LayerSpec_elements {
   visible?: boolean;
   /** Returns the visible zoom range of this layer. */
   visibleZoomRange?: [number, number];
-  [key: string]: Json | undefined;
 }
 
 export interface LayerSpec_hillshade {
@@ -5601,7 +5594,7 @@ export interface LayerSpec_hillshade {
   shaderSource?: string;
   /** Returns the shading color of areas that face away from the light source. */
   shadowColor?: number;
-  source?: string | Record<string, Json>;
+  source?: SourceSpec | string;
   /** Returns the state of the synchronized refresh flag. */
   synchronizedRefresh?: boolean;
   /** Returns whether the layer may shade the 3D terrain's own elevation texture instead of loading a DEM tile set of its own. */
@@ -5626,7 +5619,6 @@ export interface LayerSpec_hillshade {
   visibleZoomRange?: [number, number];
   /** Gets the current zoom level bias for this layer. */
   zoomLevelBias?: number;
-  [key: string]: Json | undefined;
 }
 
 export interface LayerSpec_raster {
@@ -5653,7 +5645,7 @@ export interface LayerSpec_raster {
   preloading?: boolean;
   /** Returns the raster tile event listener. */
   rasterTileEventListener?: Handle<"massif::RasterTileEventListener">;
-  source?: string | Record<string, Json>;
+  source?: SourceSpec | string;
   /** Returns the state of the synchronized refresh flag. */
   synchronizedRefresh?: boolean;
   /** Returns the tile texture cache capacity. */
@@ -5674,7 +5666,6 @@ export interface LayerSpec_raster {
   visibleZoomRange?: [number, number];
   /** Gets the current zoom level bias for this layer. */
   zoomLevelBias?: number;
-  [key: string]: Json | undefined;
 }
 
 export interface LayerSpec_solid {
@@ -5684,7 +5675,7 @@ export interface LayerSpec_solid {
   /** Returns the bitmap scaling factor. */
   bitmapScale?: number;
   /** Returns the color of this layer. */
-  color?: number;
+  color?: number | Json;
   /** Returns the culling delay of the layer in milliseconds. */
   cullDelay?: number;
   /** Returns a copy of the layer meta data map. The changes you make to this map are NOT reflected in the actual meta data of the layer. */
@@ -5699,7 +5690,6 @@ export interface LayerSpec_solid {
   visible?: boolean;
   /** Returns the visible zoom range of this layer. */
   visibleZoomRange?: [number, number];
-  [key: string]: Json | undefined;
 }
 
 export interface LayerSpec_vector {
@@ -5738,8 +5728,8 @@ export interface LayerSpec_vector {
   preloading?: boolean;
   /** Returns the renderer layer filter. The filter is given as ECMA regular expression that is applied to qualified layer names. */
   rendererLayerFilter?: string;
-  source?: string | Record<string, Json>;
-  style?: string | Record<string, Json>;
+  source?: SourceSpec | string;
+  style?: StyleSpec | string;
   /** Returns the state of the synchronized refresh flag. */
   synchronizedRefresh?: boolean;
   /** Returns the tile cache capacity. */
@@ -5758,7 +5748,6 @@ export interface LayerSpec_vector {
   visibleZoomRange?: [number, number];
   /** Gets the current zoom level bias for this layer. */
   zoomLevelBias?: number;
-  [key: string]: Json | undefined;
 }
 
 export type LayerSpec = LayerSpec_composite_vector | LayerSpec_elements | LayerSpec_hillshade | LayerSpec_raster | LayerSpec_solid | LayerSpec_vector;
@@ -5785,7 +5774,6 @@ export interface OptionsSpec_fog {
   spaceColor?: number;
   /** Returns how brightly stars are drawn beyond the atmosphere. */
   starIntensity?: number;
-  [key: string]: Json | undefined;
 }
 
 export interface OptionsSpec_light {
@@ -5820,7 +5808,6 @@ export interface OptionsSpec_light {
   sunIntensity?: number;
   /** Returns whether the sun lights the 3D terrain surface. */
   terrainLightingEnabled?: boolean;
-  [key: string]: Json | undefined;
 }
 
 export interface OptionsSpec_sky {
@@ -5839,7 +5826,6 @@ export interface OptionsSpec_sky {
   skyColor?: number;
   /** Returns whether the built-in shader draws a sun disc. */
   sunDiscEnabled?: boolean;
-  [key: string]: Json | undefined;
 }
 
 export interface OptionsSpec_terrain {
@@ -5879,7 +5865,7 @@ export interface OptionsSpec_terrain {
   noDrapeLayerFilter?: string;
   /** Returns whether seamless tile edge handling is enabled. */
   seamlessTileEdgesEnabled?: boolean;
-  source?: string | Record<string, Json>;
+  source?: SourceSpec | string;
   /** Returns the custom terrain surface fragment shader source, or an empty string if no shaded surface is drawn. */
   surfaceShaderSource?: string;
   /** Returns the opacity a label keeps while its anchor is behind 3D content. */
@@ -5890,27 +5876,26 @@ export interface OptionsSpec_terrain {
   viewDistance?: number;
   /** Returns the factor applied to the view distance. */
   viewDistanceFactor?: number;
-  [key: string]: Json | undefined;
 }
 
 export type OptionsSpec = OptionsSpec_fog | OptionsSpec_light | OptionsSpec_sky | OptionsSpec_terrain;
 
 export interface RoutingSpec_valhalla_offline {
   type: "valhalla-offline";
+  path?: string;
   profile?: string;
-  [key: string]: Json | undefined;
 }
 
 export interface RoutingSpec_valhalla_online {
   type: "valhalla-online";
   /** Returns the current set of HTTP headers used. Initially this set is empty and can be changed with setHTTPHeaders. */
   HTTPHeaders?: Record<string, string>;
+  apiKey?: string;
   /** Returns the custom backend service URL. */
   customServiceURL?: string;
   profile?: string;
   /** Returns the current timeout value. */
   timeout?: number;
-  [key: string]: Json | undefined;
 }
 
 export type RoutingSpec = RoutingSpec_valhalla_offline | RoutingSpec_valhalla_online;
@@ -5927,7 +5912,6 @@ export interface SearchSpec_request {
   regexFilter?: string;
   /** Returns the search radius for proximity search (in meters). The default is 0. */
   searchRadius?: number;
-  [key: string]: Json | undefined;
 }
 
 export interface SearchSpec_vectortile {
@@ -5944,9 +5928,8 @@ export interface SearchSpec_vectortile {
   preventDuplicates?: boolean;
   /** Returns wether result features are sorted by distance */
   sortByDistance?: boolean;
-  source?: string | Record<string, Json>;
-  style?: string | Record<string, Json>;
-  [key: string]: Json | undefined;
+  source?: SourceSpec | string;
+  style?: StyleSpec | string;
 }
 
 export type SearchSpec = SearchSpec_request | SearchSpec_vectortile;
@@ -5957,8 +5940,9 @@ export interface SourceSpec_assets {
   encoding?: string;
   /** Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" */
   maxOverzoomLevel?: number;
-  path?: string | Record<string, Json>;
-  [key: string]: Json | undefined;
+  maxZoom?: number;
+  minZoom?: number;
+  path?: string;
 }
 
 export interface SourceSpec_combined {
@@ -5967,9 +5951,9 @@ export interface SourceSpec_combined {
   encoding?: string;
   /** Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" */
   maxOverzoomLevel?: number;
-  source?: string | Record<string, Json>;
-  source2?: string | Record<string, Json>;
-  [key: string]: Json | undefined;
+  source?: SourceSpec | string;
+  source2?: SourceSpec | string;
+  zoomLevel?: number;
 }
 
 export interface SourceSpec_geojson {
@@ -5980,9 +5964,10 @@ export interface SourceSpec_geojson {
   encoding?: string;
   /** Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" */
   maxOverzoomLevel?: number;
+  maxZoom?: number;
+  minZoom?: number;
   /** Returns the simplification tolerance in tile pixels. */
   simplifyTolerance?: number;
-  [key: string]: Json | undefined;
 }
 
 export interface SourceSpec_http {
@@ -5997,20 +5982,22 @@ export interface SourceSpec_http {
   maxAgeHeaderCheck?: boolean;
   /** Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" */
   maxOverzoomLevel?: number;
+  maxZoom?: number;
+  minZoom?: number;
   /** Returns the subdomains for {s} tag. The default is ["a", "b", "c", "d"]. */
   subdomains?: string[];
   /** Returns the current timeout value. */
   timeout?: number;
   /** Returns the base URL template containing tags. */
-  url?: string | string | Record<string, Json>;
-  [key: string]: Json | undefined;
+  url?: string;
 }
 
 export interface SourceSpec_local {
   type: "local";
   /** Returns the active geometry simplifier of the data source. */
   geometrySimplifier?: Handle<"massif::GeometrySimplifier">;
-  [key: string]: Json | undefined;
+  projection?: ProjectionSpec | string;
+  spatialIndexType?: "LOCAL_SPATIAL_INDEX_TYPE_NULL" | "LOCAL_SPATIAL_INDEX_TYPE_KDTREE";
 }
 
 export interface SourceSpec_memory_cache {
@@ -6020,8 +6007,7 @@ export interface SourceSpec_memory_cache {
   encoding?: string;
   /** Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" */
   maxOverzoomLevel?: number;
-  source?: string | Record<string, Json>;
-  [key: string]: Json | undefined;
+  source?: SourceSpec | string;
 }
 
 export interface SourceSpec_ordered {
@@ -6030,9 +6016,8 @@ export interface SourceSpec_ordered {
   encoding?: string;
   /** Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" */
   maxOverzoomLevel?: number;
-  source?: string | Record<string, Json>;
-  source2?: string | Record<string, Json>;
-  [key: string]: Json | undefined;
+  source?: SourceSpec | string;
+  source2?: SourceSpec | string;
 }
 
 export type SourceSpec = SourceSpec_assets | SourceSpec_combined | SourceSpec_geojson | SourceSpec_http | SourceSpec_local | SourceSpec_memory_cache | SourceSpec_ordered;
@@ -6041,34 +6026,37 @@ export interface StyleSpec_mbvt {
   type: "mbvt";
   /** Returns the current CartoCSS style set used by the decoder. If decoder uses non-CartoCSS style set, null is returned. */
   cartoCSSStyle?: Handle<"massif::CartoCSSStyleSet">;
-  cartocss?: string | Record<string, Json>;
+  cartocss?: StylesetSpec | string;
   /** Returns the current compiled style set used by the decoder. If decoder uses non-compiled style set, null is returned. */
   compiledStyle?: Handle<"massif::CompiledStyleSet">;
   /** Returns the value of feature id override flag. This is intended for cases when feature ids in tile are not globally unique. */
   featureIdOverride?: boolean;
-  project?: string | Record<string, Json>;
+  project?: StylesetSpec | string;
   /** Returns the binary format the tiles are decoded as. */
   tileFormat?: "TILE_FORMAT_AUTO" | "TILE_FORMAT_MVT" | "TILE_FORMAT_MLT";
-  [key: string]: Json | undefined;
 }
 
 export type StyleSpec = StyleSpec_mbvt;
 
 export interface StylesetSpec_cartocss {
   type: "cartocss";
-  assets?: string | Record<string, Json>;
-  css?: string | Record<string, Json>;
-  [key: string]: Json | undefined;
+  assets?: AssetsSpec | string;
+  css?: string;
 }
 
 export interface StylesetSpec_project {
   type: "project";
-  assets?: string | Record<string, Json>;
-  name?: string | Record<string, Json>;
-  [key: string]: Json | undefined;
+  assets?: AssetsSpec | string;
+  name?: string;
 }
 
 export type StylesetSpec = StylesetSpec_cartocss | StylesetSpec_project;
+
+/** Built by a hand-written factory, so its keys are not in the schema. */
+export type DataSpec = { type: string; [key: string]: Json | undefined };
+
+/** Built by a hand-written factory, so its keys are not in the schema. */
+export type ProjectionSpec = { type: string; [key: string]: Json | undefined };
 
 export interface SpecOf {
   "assets": AssetsSpec;

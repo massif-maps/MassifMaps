@@ -22,6 +22,19 @@ const source = create('source', 'osm', {
 // @ts-expect-error
 create('source', 'bad', { type: 'nosuchsource' });
 
+// A MISSPELLED key. This is most of what these types are for, and it only fails because the
+// generated interfaces carry no index signature - one would accept every key on every spec.
+// @ts-expect-error
+create('source', 'typo', { type: 'http', url: 'x', maxZom: 14 });
+
+// A constructor argument that is neither aliased nor a writable property. It appears in the
+// spec type only because the schema carries the constructor overloads.
+create('source', 'elements', { type: 'local', projection: { type: 'EPSG:4326' } });
+create('source', 'elements2', { type: 'local', projection: 'wgs84' });
+
+// @ts-expect-error
+create('source', 'bad-projection', { type: 'local', projection: 42 });
+
 // A layer spec is not a source spec, even though both are objects.
 // @ts-expect-error
 create('layer', 'bad', { type: 'http', url: 'x' });

@@ -8899,7 +8899,37 @@
         "dirPath": "path",
         "baseAssetPackage": "base"
       },
-      "defaults": {}
+      "defaults": {},
+      "constructors": [
+        [
+          {
+            "key": "path",
+            "type": "STRING",
+            "cppType": "std::string",
+            "childKind": null,
+            "childClass": null,
+            "required": true
+          },
+          {
+            "key": "base",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<AssetPackage>",
+            "childKind": "assets",
+            "childClass": "massif::AssetPackage",
+            "required": true
+          }
+        ],
+        [
+          {
+            "key": "path",
+            "type": "STRING",
+            "cppType": "std::string",
+            "childKind": null,
+            "childClass": null,
+            "required": true
+          }
+        ]
+      ]
     },
     {
       "cppClass": "massif::ZippedAssetPackage",
@@ -8909,7 +8939,37 @@
         "zipData": "data",
         "baseAssetPackage": "base"
       },
-      "defaults": {}
+      "defaults": {},
+      "constructors": [
+        [
+          {
+            "key": "data",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<BinaryData>",
+            "childKind": "data",
+            "childClass": "massif::BinaryData",
+            "required": true
+          },
+          {
+            "key": "base",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<AssetPackage>",
+            "childKind": "assets",
+            "childClass": "massif::AssetPackage",
+            "required": true
+          }
+        ],
+        [
+          {
+            "key": "data",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<BinaryData>",
+            "childKind": "data",
+            "childClass": "massif::BinaryData",
+            "required": true
+          }
+        ]
+      ]
     },
     {
       "cppClass": "massif::BalloonPopup",
@@ -8919,7 +8979,111 @@
         "pos": "position",
         "desc": "description"
       },
-      "defaults": {}
+      "defaults": {},
+      "constructors": [
+        [
+          {
+            "key": "baseBillboard",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<Billboard>",
+            "childKind": "element",
+            "childClass": "massif::Billboard",
+            "required": true
+          },
+          {
+            "key": "style",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<BalloonPopupStyle>",
+            "childKind": "elementstyle",
+            "childClass": "massif::BalloonPopupStyle",
+            "required": true
+          },
+          {
+            "key": "title",
+            "type": "STRING",
+            "cppType": "std::string",
+            "childKind": null,
+            "childClass": null,
+            "required": true
+          },
+          {
+            "key": "description",
+            "type": "STRING",
+            "cppType": "std::string",
+            "childKind": null,
+            "childClass": null,
+            "required": true
+          }
+        ],
+        [
+          {
+            "key": "geometry",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<Geometry>",
+            "childKind": "geometry",
+            "childClass": "massif::Geometry",
+            "required": true
+          },
+          {
+            "key": "style",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<BalloonPopupStyle>",
+            "childKind": "elementstyle",
+            "childClass": "massif::BalloonPopupStyle",
+            "required": true
+          },
+          {
+            "key": "title",
+            "type": "STRING",
+            "cppType": "std::string",
+            "childKind": null,
+            "childClass": null,
+            "required": true
+          },
+          {
+            "key": "description",
+            "type": "STRING",
+            "cppType": "std::string",
+            "childKind": null,
+            "childClass": null,
+            "required": true
+          }
+        ],
+        [
+          {
+            "key": "position",
+            "type": "STRUCT",
+            "cppType": "MapPos",
+            "childKind": null,
+            "childClass": null,
+            "required": true
+          },
+          {
+            "key": "style",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<BalloonPopupStyle>",
+            "childKind": "elementstyle",
+            "childClass": "massif::BalloonPopupStyle",
+            "required": true
+          },
+          {
+            "key": "title",
+            "type": "STRING",
+            "cppType": "std::string",
+            "childKind": null,
+            "childClass": null,
+            "required": true
+          },
+          {
+            "key": "description",
+            "type": "STRING",
+            "cppType": "std::string",
+            "childKind": null,
+            "childClass": null,
+            "required": true
+          }
+        ]
+      ]
     },
     {
       "cppClass": "massif::Marker",
@@ -8928,35 +9092,129 @@
       "aliases": {
         "pos": "position"
       },
-      "defaults": {}
+      "defaults": {},
+      "constructors": [
+        [
+          {
+            "key": "baseBillboard",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<Billboard>",
+            "childKind": "element",
+            "childClass": "massif::Billboard",
+            "required": true
+          },
+          {
+            "key": "style",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<MarkerStyle>",
+            "childKind": "elementstyle",
+            "childClass": "massif::MarkerStyle",
+            "required": true
+          }
+        ],
+        [
+          {
+            "key": "geometry",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<Geometry>",
+            "childKind": "geometry",
+            "childClass": "massif::Geometry",
+            "required": true
+          },
+          {
+            "key": "style",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<MarkerStyle>",
+            "childKind": "elementstyle",
+            "childClass": "massif::MarkerStyle",
+            "required": true
+          }
+        ],
+        [
+          {
+            "key": "position",
+            "type": "STRUCT",
+            "cppType": "MapPos",
+            "childKind": null,
+            "childClass": null,
+            "required": true
+          },
+          {
+            "key": "style",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<MarkerStyle>",
+            "childKind": "elementstyle",
+            "childClass": "massif::MarkerStyle",
+            "required": true
+          }
+        ]
+      ]
     },
     {
       "cppClass": "massif::BalloonPopupStyleBuilder",
       "kind": "elementstyle",
       "type": "balloon",
       "aliases": {},
-      "defaults": {}
+      "defaults": {},
+      "constructors": [
+        []
+      ]
     },
     {
       "cppClass": "massif::MarkerStyleBuilder",
       "kind": "elementstyle",
       "type": "marker",
       "aliases": {},
-      "defaults": {}
+      "defaults": {},
+      "constructors": [
+        []
+      ]
     },
     {
       "cppClass": "massif::Feature",
       "kind": "feature",
       "type": "feature",
       "aliases": {},
-      "defaults": {}
+      "defaults": {},
+      "constructors": [
+        [
+          {
+            "key": "geometry",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<Geometry>",
+            "childKind": "geometry",
+            "childClass": "massif::Geometry",
+            "required": true
+          },
+          {
+            "key": "properties",
+            "type": "STRUCT",
+            "cppType": "Variant",
+            "childKind": null,
+            "childClass": null,
+            "required": true
+          }
+        ]
+      ]
     },
     {
       "cppClass": "massif::PointGeometry",
       "kind": "geometry",
       "type": "point",
       "aliases": {},
-      "defaults": {}
+      "defaults": {},
+      "constructors": [
+        [
+          {
+            "key": "pos",
+            "type": "STRUCT",
+            "cppType": "MapPos",
+            "childKind": null,
+            "childClass": null,
+            "required": true
+          }
+        ]
+      ]
     },
     {
       "cppClass": "massif::CompositeVectorTileLayer",
@@ -8966,7 +9224,27 @@
         "dataSource": "source",
         "decoder": "style"
       },
-      "defaults": {}
+      "defaults": {},
+      "constructors": [
+        [
+          {
+            "key": "source",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<TileDataSource>",
+            "childKind": "source",
+            "childClass": "massif::TileDataSource",
+            "required": true
+          },
+          {
+            "key": "style",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<VectorTileDecoder>",
+            "childKind": "style",
+            "childClass": "massif::VectorTileDecoder",
+            "required": true
+          }
+        ]
+      ]
     },
     {
       "cppClass": "massif::VectorLayer",
@@ -8975,7 +9253,19 @@
       "aliases": {
         "dataSource": "source"
       },
-      "defaults": {}
+      "defaults": {},
+      "constructors": [
+        [
+          {
+            "key": "source",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<VectorDataSource>",
+            "childKind": "source",
+            "childClass": "massif::VectorDataSource",
+            "required": true
+          }
+        ]
+      ]
     },
     {
       "cppClass": "massif::HillshadeRasterTileLayer",
@@ -8984,7 +9274,19 @@
       "aliases": {
         "dataSource": "source"
       },
-      "defaults": {}
+      "defaults": {},
+      "constructors": [
+        [
+          {
+            "key": "source",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<TileDataSource>",
+            "childKind": "source",
+            "childClass": "massif::TileDataSource",
+            "required": true
+          }
+        ]
+      ]
     },
     {
       "cppClass": "massif::RasterTileLayer",
@@ -8993,14 +9295,38 @@
       "aliases": {
         "dataSource": "source"
       },
-      "defaults": {}
+      "defaults": {},
+      "constructors": [
+        [
+          {
+            "key": "source",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<TileDataSource>",
+            "childKind": "source",
+            "childClass": "massif::TileDataSource",
+            "required": true
+          }
+        ]
+      ]
     },
     {
       "cppClass": "massif::SolidLayer",
       "kind": "layer",
       "type": "solid",
       "aliases": {},
-      "defaults": {}
+      "defaults": {},
+      "constructors": [
+        [
+          {
+            "key": "color",
+            "type": "STRUCT",
+            "cppType": "Color",
+            "childKind": null,
+            "childClass": null,
+            "required": true
+          }
+        ]
+      ]
     },
     {
       "cppClass": "massif::VectorTileLayer",
@@ -9010,28 +9336,57 @@
         "dataSource": "source",
         "decoder": "style"
       },
-      "defaults": {}
+      "defaults": {},
+      "constructors": [
+        [
+          {
+            "key": "source",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<TileDataSource>",
+            "childKind": "source",
+            "childClass": "massif::TileDataSource",
+            "required": true
+          },
+          {
+            "key": "style",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<VectorTileDecoder>",
+            "childKind": "style",
+            "childClass": "massif::VectorTileDecoder",
+            "required": true
+          }
+        ]
+      ]
     },
     {
       "cppClass": "massif::FogOptions",
       "kind": "options",
       "type": "fog",
       "aliases": {},
-      "defaults": {}
+      "defaults": {},
+      "constructors": [
+        []
+      ]
     },
     {
       "cppClass": "massif::LightOptions",
       "kind": "options",
       "type": "light",
       "aliases": {},
-      "defaults": {}
+      "defaults": {},
+      "constructors": [
+        []
+      ]
     },
     {
       "cppClass": "massif::SkyOptions",
       "kind": "options",
       "type": "sky",
       "aliases": {},
-      "defaults": {}
+      "defaults": {},
+      "constructors": [
+        []
+      ]
     },
     {
       "cppClass": "massif::TerrainOptions",
@@ -9040,28 +9395,68 @@
       "aliases": {
         "dataSource": "source"
       },
-      "defaults": {}
+      "defaults": {},
+      "constructors": [
+        [
+          {
+            "key": "source",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<TileDataSource>",
+            "childKind": "source",
+            "childClass": "massif::TileDataSource",
+            "required": true
+          }
+        ]
+      ]
     },
     {
       "cppClass": "massif::ValhallaOfflineRoutingService",
       "kind": "routing",
       "type": "valhalla-offline",
       "aliases": {},
-      "defaults": {}
+      "defaults": {},
+      "constructors": [
+        [
+          {
+            "key": "path",
+            "type": "STRING",
+            "cppType": "std::string",
+            "childKind": null,
+            "childClass": null,
+            "required": true
+          }
+        ]
+      ]
     },
     {
       "cppClass": "massif::ValhallaOnlineRoutingService",
       "kind": "routing",
       "type": "valhalla-online",
       "aliases": {},
-      "defaults": {}
+      "defaults": {},
+      "constructors": [
+        [
+          {
+            "key": "apiKey",
+            "type": "STRING",
+            "cppType": "std::string",
+            "childKind": null,
+            "childClass": null,
+            "required": true
+          }
+        ],
+        []
+      ]
     },
     {
       "cppClass": "massif::SearchRequest",
       "kind": "search",
       "type": "request",
       "aliases": {},
-      "defaults": {}
+      "defaults": {},
+      "constructors": [
+        []
+      ]
     },
     {
       "cppClass": "massif::VectorTileSearchService",
@@ -9071,7 +9466,27 @@
         "dataSource": "source",
         "tileDecoder": "style"
       },
-      "defaults": {}
+      "defaults": {},
+      "constructors": [
+        [
+          {
+            "key": "source",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<TileDataSource>",
+            "childKind": "source",
+            "childClass": "massif::TileDataSource",
+            "required": true
+          },
+          {
+            "key": "style",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<VectorTileDecoder>",
+            "childKind": "style",
+            "childClass": "massif::VectorTileDecoder",
+            "required": true
+          }
+        ]
+      ]
     },
     {
       "cppClass": "massif::AssetTileDataSource",
@@ -9083,7 +9498,35 @@
       "defaults": {
         "minZoom": "0",
         "maxZoom": "24"
-      }
+      },
+      "constructors": [
+        [
+          {
+            "key": "minZoom",
+            "type": "INT",
+            "cppType": "int",
+            "childKind": null,
+            "childClass": null,
+            "required": false
+          },
+          {
+            "key": "maxZoom",
+            "type": "INT",
+            "cppType": "int",
+            "childKind": null,
+            "childClass": null,
+            "required": false
+          },
+          {
+            "key": "path",
+            "type": "STRING",
+            "cppType": "std::string",
+            "childKind": null,
+            "childClass": null,
+            "required": true
+          }
+        ]
+      ]
     },
     {
       "cppClass": "massif::CombinedTileDataSource",
@@ -9095,7 +9538,35 @@
       },
       "defaults": {
         "zoomLevel": "0"
-      }
+      },
+      "constructors": [
+        [
+          {
+            "key": "source",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<TileDataSource>",
+            "childKind": "source",
+            "childClass": "massif::TileDataSource",
+            "required": true
+          },
+          {
+            "key": "source2",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<TileDataSource>",
+            "childKind": "source",
+            "childClass": "massif::TileDataSource",
+            "required": true
+          },
+          {
+            "key": "zoomLevel",
+            "type": "INT",
+            "cppType": "int",
+            "childKind": null,
+            "childClass": null,
+            "required": false
+          }
+        ]
+      ]
     },
     {
       "cppClass": "massif::GeoJSONVectorTileDataSource",
@@ -9105,7 +9576,27 @@
       "defaults": {
         "minZoom": "0",
         "maxZoom": "14"
-      }
+      },
+      "constructors": [
+        [
+          {
+            "key": "minZoom",
+            "type": "INT",
+            "cppType": "int",
+            "childKind": null,
+            "childClass": null,
+            "required": false
+          },
+          {
+            "key": "maxZoom",
+            "type": "INT",
+            "cppType": "int",
+            "childKind": null,
+            "childClass": null,
+            "required": false
+          }
+        ]
+      ]
     },
     {
       "cppClass": "massif::HTTPTileDataSource",
@@ -9117,14 +9608,72 @@
       "defaults": {
         "minZoom": "0",
         "maxZoom": "24"
-      }
+      },
+      "constructors": [
+        [
+          {
+            "key": "minZoom",
+            "type": "INT",
+            "cppType": "int",
+            "childKind": null,
+            "childClass": null,
+            "required": false
+          },
+          {
+            "key": "maxZoom",
+            "type": "INT",
+            "cppType": "int",
+            "childKind": null,
+            "childClass": null,
+            "required": false
+          },
+          {
+            "key": "url",
+            "type": "STRING",
+            "cppType": "std::string",
+            "childKind": null,
+            "childClass": null,
+            "required": true
+          }
+        ]
+      ]
     },
     {
       "cppClass": "massif::LocalVectorDataSource",
       "kind": "source",
       "type": "local",
       "aliases": {},
-      "defaults": {}
+      "defaults": {},
+      "constructors": [
+        [
+          {
+            "key": "projection",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<Projection>",
+            "childKind": "projection",
+            "childClass": "massif::Projection",
+            "required": true
+          },
+          {
+            "key": "spatialIndexType",
+            "type": "ENUM",
+            "cppType": "massif::LocalSpatialIndexType::LocalSpatialIndexType",
+            "childKind": null,
+            "childClass": null,
+            "required": true
+          }
+        ],
+        [
+          {
+            "key": "projection",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<Projection>",
+            "childKind": "projection",
+            "childClass": "massif::Projection",
+            "required": true
+          }
+        ]
+      ]
     },
     {
       "cppClass": "massif::MemoryCacheTileDataSource",
@@ -9133,7 +9682,19 @@
       "aliases": {
         "dataSource": "source"
       },
-      "defaults": {}
+      "defaults": {},
+      "constructors": [
+        [
+          {
+            "key": "source",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<TileDataSource>",
+            "childKind": "source",
+            "childClass": "massif::TileDataSource",
+            "required": true
+          }
+        ]
+      ]
     },
     {
       "cppClass": "massif::OrderedTileDataSource",
@@ -9143,7 +9704,27 @@
         "dataSource1": "source",
         "dataSource2": "source2"
       },
-      "defaults": {}
+      "defaults": {},
+      "constructors": [
+        [
+          {
+            "key": "source",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<TileDataSource>",
+            "childKind": "source",
+            "childClass": "massif::TileDataSource",
+            "required": true
+          },
+          {
+            "key": "source2",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<TileDataSource>",
+            "childKind": "source",
+            "childClass": "massif::TileDataSource",
+            "required": true
+          }
+        ]
+      ]
     },
     {
       "cppClass": "massif::MBVectorTileDecoder",
@@ -9153,7 +9734,29 @@
         "cartoCSSStyleSet": "cartocss",
         "compiledStyleSet": "project"
       },
-      "defaults": {}
+      "defaults": {},
+      "constructors": [
+        [
+          {
+            "key": "project",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<CompiledStyleSet>",
+            "childKind": "styleset",
+            "childClass": "massif::CompiledStyleSet",
+            "required": true
+          }
+        ],
+        [
+          {
+            "key": "cartocss",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<CartoCSSStyleSet>",
+            "childKind": "styleset",
+            "childClass": "massif::CartoCSSStyleSet",
+            "required": true
+          }
+        ]
+      ]
     },
     {
       "cppClass": "massif::CartoCSSStyleSet",
@@ -9163,7 +9766,37 @@
         "cartoCSS": "css",
         "assetPackage": "assets"
       },
-      "defaults": {}
+      "defaults": {},
+      "constructors": [
+        [
+          {
+            "key": "css",
+            "type": "STRING",
+            "cppType": "std::string",
+            "childKind": null,
+            "childClass": null,
+            "required": true
+          },
+          {
+            "key": "assets",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<AssetPackage>",
+            "childKind": "assets",
+            "childClass": "massif::AssetPackage",
+            "required": true
+          }
+        ],
+        [
+          {
+            "key": "css",
+            "type": "STRING",
+            "cppType": "std::string",
+            "childKind": null,
+            "childClass": null,
+            "required": true
+          }
+        ]
+      ]
     },
     {
       "cppClass": "massif::CompiledStyleSet",
@@ -9173,7 +9806,37 @@
         "assetPackage": "assets",
         "styleName": "name"
       },
-      "defaults": {}
+      "defaults": {},
+      "constructors": [
+        [
+          {
+            "key": "assets",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<AssetPackage>",
+            "childKind": "assets",
+            "childClass": "massif::AssetPackage",
+            "required": true
+          },
+          {
+            "key": "name",
+            "type": "STRING",
+            "cppType": "std::string",
+            "childKind": null,
+            "childClass": null,
+            "required": true
+          }
+        ],
+        [
+          {
+            "key": "assets",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<AssetPackage>",
+            "childKind": "assets",
+            "childClass": "massif::AssetPackage",
+            "required": true
+          }
+        ]
+      ]
     }
   ],
   "enums": {

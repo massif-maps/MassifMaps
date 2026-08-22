@@ -217,7 +217,7 @@ export type WritablePath<C extends ClassName> = {
     for spec in sorted(byKind[kind], key=lambda s: s['type']):
       name = '%sSpec_%s' % (kind.capitalize().replace('-', ''), spec['type'].replace('-', '_'))
       names.append(name)
-      # One entry per KEY. A constructor child and a writable property can share a name
+      # One entry per KEY. A constructor argument and a writable property can share a name
       # (a source's "url", a popup's "description"), and declaring it twice is a type error.
       keys = {}
       for prop in ownProperties(spec['cppClass'], classes):
@@ -225,13 +225,22 @@ export type WritablePath<C extends ClassName> = {
           continue
         key = spec['aliases'].get(prop['name'], prop['name'])
         keys[key] = [valueType(prop, enums), prop.get('doc')]
-      for param, key in sorted(spec['aliases'].items()):
-        # A child may be given inline OR named by the id something was registered under.
-        child = 'string | Record<string, Json>'
-        if key in keys:
-          keys[key][0] = '%s | %s' % (keys[key][0], child)
-        else:
-          keys[key] = [child, None]
+      # Every CONSTRUCTOR argument too, across all overloads. One that is neither aliased nor a
+      # writable property - LocalVectorDataSource's projection - appears nowhere else, and its
+      # absence made the spec type quietly wrong rather than merely incomplete.
+      for overload in spec.get('constructors', []):
+        for param in overload:
+          if param['type'] == 'OBJECT':
+            # A child may be built inline OR named by the id it was registered under.
+            childType = '%sSpec | string' % param['childKind'].capitalize().replace('-', '') \
+                if param['childKind'] else 'string | Record<string, Json>'
+          else:
+            childType = valueType({'type': param['type'], 'cppType': param['cppType'],
+                                   'enum': param['cppType']}, enums)
+          if param['key'] in keys and keys[param['key']][0] != childType:
+            keys[param['key']][0] = '%s | %s' % (keys[param['key']][0], childType)
+          elif param['key'] not in keys:
+            keys[param['key']] = [childType, None]
       lines.append('export interface %s {\n' % name)
       lines.append('  type: "%s";\n' % spec['type'])
       for key in sorted(keys):
@@ -239,10 +248,27 @@ export type WritablePath<C extends ClassName> = {
         if doc:
           lines.append('  /** %s */\n' % doc)
         lines.append('  %s?: %s;\n' % (key, valueTypeName))
-      lines.append('  [key: string]: Json | undefined;\n')
+      # NO index signature. One would make every spec accept every key, so a typo - maxZom for
+      # maxZoom - would type-check, which is most of what these types are for. A key from a
+      # newer SDK is passed with a cast instead.
       lines.append('}\n\n')
     union = '%sSpec' % kind.capitalize().replace('-', '')
     lines.append('export type %s = %s;\n\n' % (union, ' | '.join(names) if names else 'never'))
+
+  # A kind whose objects come from a HAND-WRITTEN factory ("projection", "data") declares no
+  # constructible types, so no interface was emitted for it - but a constructor child can still
+  # point at one. An open shape rather than a dangling name: the keys are real, they are simply
+  # not in the schema, and inventing a per-kind special case here is what the generator exists
+  # to avoid.
+  referenced = {param['childKind']
+                for spec in schema['specs']
+                for overload in spec.get('constructors', [])
+                for param in overload
+                if param.get('childKind')}
+  for kind in sorted(referenced - set(byKind)):
+    lines.append('/** Built by a hand-written factory, so its keys are not in the schema. */\n')
+    lines.append('export type %sSpec = { type: string; [key: string]: Json | undefined };\n\n'
+                 % kind.capitalize().replace('-', ''))
 
   lines.append('export interface SpecOf {\n')
   for kind in sorted(byKind):

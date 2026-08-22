@@ -784,6 +784,23 @@ def emitSpecs(specs, bases, headerDirs, outPath):
         unbuildable.append('%s: %s' % (cppClass, skip))
         continue
       usable.append((index, reads, required, keys))
+      # What this overload ACCEPTS, for the schema. A constructor argument that is neither
+      # aliased nor a writable property - LocalVectorDataSource's projection - is invisible
+      # otherwise, and every binding's spec type was missing it.
+      overload = []
+      for cppType, name in params:
+        key = entry['aliases'].get(name, name)
+        child = qualify(re.sub(r'^std::shared_ptr<\s*|\s*>$', '', cppType))
+        isObject = cppType.startswith('std::shared_ptr<')
+        overload.append({
+          'key': key,
+          'type': 'OBJECT' if isObject else classifyType(cppType, False),
+          'cppType': stripArgMacro(cppType),
+          'childKind': kindOf.get(child) if isObject else None,
+          'childClass': child if isObject else None,
+          'required': key in required,
+        })
+      entry.setdefault('constructors', []).append(overload)
 
     if not usable:
       unbuildable.append('%s: NOTHING - no usable constructor found' % cppClass)
@@ -930,6 +947,9 @@ def emitSchema(entries, bases, specs, methods, events, enums, docs, dispatch, ou
     'specs': sorted([{
       'cppClass': spec['cppClass'], 'kind': spec['kind'], 'type': spec['type'],
       'aliases': spec['aliases'], 'defaults': spec['defaults'],
+      # One entry per usable constructor overload, longest first - the same order the builder
+      # tries them in ("longest constructor the spec fully satisfies wins").
+      'constructors': spec.get('constructors', []),
     } for spec in specs if spec['type'] != '-'], key=lambda s: (s['kind'], s['type'])),
     'enums': {name: values for name, values in sorted(enums.items()) if values},
   }

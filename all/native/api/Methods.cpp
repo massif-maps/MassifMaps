@@ -1,5 +1,6 @@
 #include "api/Methods.h"
 #include "api/StructCodec.h"
+#include "utils/Log.h"
 #include "core/MapPos.h"
 #include "core/MapTile.h"
 
@@ -119,7 +120,10 @@ namespace massif { namespace api {
         return true;
     }
 
-    namespace Methods {
+    // Generated from the !method / !event macros in all/modules/**/*.i.
+#include "api/MethodDecls.inc"
+
+namespace Methods {
 
         namespace {
             std::mutex& mutex() {
@@ -138,7 +142,37 @@ namespace massif { namespace api {
             registry()[cppClass][name] = invoke;
         }
 
-        MethodInvoke findMethod(const char* cppClass, const std::string& name) {
+        /*
+ * The declared list, and the registry, compared.
+ *
+ * Both directions matter and neither is visible otherwise: an undeclared method cannot be
+ * completed or documented, and a declared-but-unregistered one is a call that type-checks in the
+ * binding and fails at runtime.
+ */
+void checkDeclarations() {
+    for (const MethodDecl* decl = METHOD_DECLS; decl->cppClass; decl++) {
+        auto classIt = registry().find(decl->cppClass);
+        if (classIt == registry().end() || !classIt->second.count(decl->name)) {
+            Log::Errorf("Methods: %s.%s is declared in a .i and never registered",
+                        decl->cppClass, decl->name);
+        }
+    }
+    for (const auto& classEntry : registry()) {
+        for (const auto& methodEntry : classEntry.second) {
+            bool declared = false;
+            for (const MethodDecl* decl = METHOD_DECLS; decl->cppClass && !declared; decl++) {
+                declared = classEntry.first == decl->cppClass && methodEntry.first == decl->name;
+            }
+            if (!declared) {
+                Log::Errorf("Methods: %s.%s is registered and declared in no .i, so no binding "
+                            "can complete or document it", classEntry.first.c_str(),
+                            methodEntry.first.c_str());
+            }
+        }
+    }
+}
+
+MethodInvoke findMethod(const char* cppClass, const std::string& name) {
             std::lock_guard<std::mutex> lock(mutex());
             // The base chain comes from the generated table, so a method declared on a base is
             // callable on every subclass without being registered again.

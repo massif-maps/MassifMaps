@@ -14,6 +14,7 @@ skips them - otherwise a lite build would try to compile thunks for classes it d
 """
 
 import argparse
+import json
 import os
 import re
 import sys
@@ -134,6 +135,13 @@ def decapitalize(name):
 
 
 SPEC_MACRO = re.compile(r'^\s*!spec\s*\((.*)\)\s*$')
+METHOD_MACRO = re.compile(r'^\s*!method\s*\((.*)\)\s*$')
+EVENT_MACRO = re.compile(r'^\s*!event\s*\((.*)\)\s*$')
+
+# What a `call` argument or result can be. These are the shapes CallArgs can decode and
+# PropertyValue can carry - nothing here is a new capability, it is a NAME for one that exists.
+ARG_TYPES = {'bool', 'int', 'float', 'string', 'tile', 'pos', 'positions', 'handle', 'json'}
+RETURN_TYPES = {'void', 'bool', 'int', 'float', 'string', 'json', 'doubles', 'object'}
 
 
 def parseSpec(args):
@@ -158,9 +166,52 @@ def parseSpec(args):
   return entry
 
 
+def parseMethod(args):
+  """!method(cppClass, name, arg(name, type), ..., returns(type[, class]))."""
+  if len(args) < 2:
+    return None
+  entry = {'cppClass': args[0], 'name': args[1], 'args': [], 'returns': 'void', 'returnClass': None}
+  for extra in args[2:]:
+    inner = re.match(r'^(arg|returns)\s*\((.*)\)$', extra.strip())
+    if not inner:
+      print('warning: cannot parse method option %s' % extra)
+      return None
+    parts = [part.strip() for part in splitArgs(inner.group(2))]
+    if inner.group(1) == 'arg':
+      if len(parts) != 2 or parts[1] not in ARG_TYPES:
+        print('warning: %s.%s: bad argument %s' % (args[0], args[1], extra))
+        return None
+      entry['args'].append({'name': parts[0], 'type': parts[1]})
+    else:
+      if not parts or parts[0] not in RETURN_TYPES:
+        print('warning: %s.%s: bad return %s' % (args[0], args[1], extra))
+        return None
+      entry['returns'] = parts[0]
+      entry['returnClass'] = parts[1] if len(parts) > 1 else None
+  return entry
+
+
+def parseEvent(args):
+  """!event(cppClass, name, payload(class), consumable)."""
+  if len(args) < 2:
+    return None
+  entry = {'cppClass': args[0], 'name': args[1], 'payload': None, 'consumable': False}
+  for extra in args[2:]:
+    extra = extra.strip()
+    if extra == 'consumable':
+      entry['consumable'] = True
+      continue
+    inner = re.match(r'^payload\s*\((.*)\)$', extra)
+    if not inner:
+      print('warning: cannot parse event option %s' % extra)
+      return None
+    entry['payload'] = inner.group(1).strip()
+  return entry
+
+
 def parseModule(sourcePath, defines, pattern):
-  """Returns (headers, entries, specs), or (None, None, None) when the module is out of profile."""
-  headers, entries, specs, inCode = [], [], [], False
+  """Returns (headers, entries, specs, methods, events), or all None when out of profile."""
+  headers, entries, specs, methods, events, inCode = [], [], [], [], [], False
   with open(sourcePath) as f:
     for line in f:
       line = line.rstrip('\n')
@@ -169,7 +220,7 @@ def parseModule(sourcePath, defines, pattern):
       if match:
         define = match.group(1) or match.group(2)
         if define not in defines:
-          return None, None, None
+          return None, None, None, None, None
 
       if line.strip() == '%{':
         inCode = True
@@ -189,6 +240,20 @@ def parseModule(sourcePath, defines, pattern):
         if entry:
           entry['headers'] = headers
           specs.append(entry)
+        continue
+
+      match = METHOD_MACRO.match(line)
+      if match:
+        entry = parseMethod(splitArgs(match.group(1)))
+        if entry:
+          methods.append(entry)
+        continue
+
+      match = EVENT_MACRO.match(line)
+      if match:
+        entry = parseEvent(splitArgs(match.group(1)))
+        if entry:
+          events.append(entry)
         continue
 
       match = pattern.match(line)
@@ -224,7 +289,7 @@ def parseModule(sourcePath, defines, pattern):
   # The spec entries share this module's header list, which is where its constructors are.
   for entry in specs:
     entry['headers'] = headers
-  return headers, entries, specs
+  return headers, entries, specs, methods, events
 
 
 
@@ -341,6 +406,113 @@ def parseBases(headers, headerDirs):
   return bases
 
 
+def headerPath(header, headerDirs):
+  for headerDir in headerDirs:
+    candidate = os.path.join(headerDir, header)
+    if os.path.isfile(candidate):
+      return candidate
+  return None
+
+
+DOC_LINE = re.compile(r'^\s*\*\s?(.*)$')
+ENUM_NAMESPACE = re.compile(r'^\s*namespace\s+(\w+)\s*\{')
+ENUM_OPEN = re.compile(r'^\s*enum\s+(\w+)\s*\{')
+ENUM_CONST = re.compile(r'^\s*([A-Z][A-Z0-9_]*)\s*(?:=\s*([^,]+?))?\s*,?\s*$')
+CLASS_LINE = re.compile(r'^\s*class\s+(\w+)')
+ACCESSOR_LINE = re.compile(r'^\s*(?:virtual\s+)?(?:static\s+)?[\w:<>,\s&*]+?\b(\w+)\s*\([^;{]*\)\s*(?:const)?\s*[;{]')
+
+
+def cleanDoc(lines):
+  """A doxygen block as one sentence: the description, without the @param/@return tail."""
+  text = []
+  for line in lines:
+    if line.startswith('@'):
+      break
+    text.append(line)
+  return ' '.join(' '.join(text).split()).strip()
+
+
+def parseHeaderExtras(headers, headerDirs):
+  """
+  Enum constants and doc comments, read from the C++ headers.
+
+  Neither is in the .i files: an enum is `namespace X { enum X { ... } }` in the header, and the
+  doxygen an app actually reads sits on the getter and setter. The property table never needed
+  either, but nothing can COMPLETE an enum-valued property without the constants, and completion
+  without the doc text is a list of names with no units and no defaults.
+  """
+  enums, docs = {}, {}
+  for header in sorted(set(headers)):
+    path = headerPath(header, headerDirs)
+    if not path:
+      continue
+    with open(path, errors='ignore') as f:
+      lines = f.readlines()
+
+    namespace, enumName, nextValue = None, None, 0
+    cppClass, block, inBlock = None, [], False
+    for line in lines:
+      stripped = line.rstrip('\n')
+
+      # doxygen block
+      if '/**' in stripped:
+        inBlock, block = True, []
+        rest = stripped.split('/**', 1)[1]
+        if '*/' in rest:
+          inBlock = False
+          block = [rest.split('*/', 1)[0].strip()]
+        continue
+      if inBlock:
+        if '*/' in stripped:
+          inBlock = False
+          continue
+        match = DOC_LINE.match(stripped)
+        if match:
+          block.append(match.group(1).rstrip())
+        continue
+
+      match = ENUM_NAMESPACE.match(stripped)
+      if match:
+        namespace = match.group(1)
+        block = []
+        continue
+      match = ENUM_OPEN.match(stripped)
+      if match and namespace:
+        enumName, nextValue = 'massif::%s::%s' % (namespace, match.group(1)), 0
+        enums.setdefault(enumName, [])
+        block = []
+        continue
+      if enumName:
+        if '}' in stripped:
+          enumName = None
+          block = []
+          continue
+        match = ENUM_CONST.match(stripped)
+        if match:
+          if match.group(2):
+            try:
+              nextValue = int(match.group(2).strip(), 0)
+            except ValueError:
+              pass
+          enums[enumName].append({'name': match.group(1), 'value': nextValue,
+                                  'doc': cleanDoc(block)})
+          nextValue += 1
+        block = []
+        continue
+
+      match = CLASS_LINE.match(stripped)
+      if match:
+        cppClass = 'massif::%s' % match.group(1)
+        block = []
+        continue
+
+      match = ACCESSOR_LINE.match(stripped)
+      if match and cppClass and block:
+        docs.setdefault(cppClass, {}).setdefault(match.group(1), cleanDoc(block))
+      block = []
+  return enums, docs
+
+
 def collectModulePaths(sourceDirs, modules):
   """The .i files to read: an explicit list when given, otherwise every one under sourceDirs.
 
@@ -361,18 +533,21 @@ def collectModulePaths(sourceDirs, modules):
 def parseModules(sourceDirs, defines, modules=None):
   pattern = re.compile(r'^\s*[%!](' + '|'.join(sorted(ATTRIBUTE_MACROS, key=len, reverse=True)) +
                        r')\s*\((.*)\)\s*$')
-  headers, entries, specs, skipped = [], [], [], 0
+  headers, entries, specs, methods, events, skipped = [], [], [], [], [], 0
   for sourcePath in collectModulePaths(sourceDirs, modules):
-    moduleHeaders, moduleEntries, moduleSpecs = parseModule(sourcePath, defines, pattern)
+    moduleHeaders, moduleEntries, moduleSpecs, moduleMethods, moduleEvents = parseModule(
+        sourcePath, defines, pattern)
     if moduleHeaders is None:
       skipped += 1
       continue
     specs += moduleSpecs
+    methods += moduleMethods
+    events += moduleEvents
     # Headers come from every in-profile module, attributes or not: a class with no properties
     # of its own still needs its base recorded.
     headers += moduleHeaders
     entries += moduleEntries
-  return headers, entries, specs, skipped
+  return headers, entries, specs, methods, events, skipped
 
 
 def symbolOf(entry, prefix):
@@ -709,6 +884,86 @@ def emitTable(entries, bases, outPath):
   return byClass
 
 
+def emitSchema(entries, bases, specs, methods, events, enums, docs, dispatch, outPath):
+  """
+  Everything the facade knows about itself, as one JSON document.
+
+  This is the file the per-language autocompletion emitters read, and the one a third-party
+  binding would read too - see docs/internals/api-autocompletion.md. It is deliberately NOT
+  language-shaped: no Java types, no TypeScript syntax, just the SDK's own vocabulary.
+  """
+  byClass = {}
+  for entry in entries:
+    prop = {
+      'name': entry['path'],
+      'type': entry['type'],
+      'readOnly': bool(entry['flags'] & FLAG_READONLY),
+      'static': bool(entry['flags'] & FLAG_STATIC),
+      'position': bool(entry['flags'] & FLAG_POSITION),
+      'cppType': entry['cppType'],
+    }
+    objectClass = objectClassOf(entry)
+    if objectClass:
+      prop['objectClass'] = objectClass
+    if entry['type'] == 'ENUM':
+      prop['enum'] = entry['cppType']
+    doc = docs.get(entry['cppClass'], {}).get(entry['getter'])
+    if doc:
+      prop['doc'] = doc
+    byClass.setdefault(entry['cppClass'], []).append(prop)
+
+  # A class with no properties of its own still belongs: the chain runs through it.
+  classes = {}
+  for cppClass in sorted(set(byClass) | set(bases)):
+    classes[cppClass] = {
+      'base': bases.get(cppClass),
+      'properties': sorted(byClass.get(cppClass, []), key=lambda p: p['name']),
+      'methods': sorted([m for m in methods if m['cppClass'] == cppClass],
+                        key=lambda m: m['name']),
+      'events': sorted([e for e in events if e['cppClass'] == cppClass], key=lambda e: e['name']),
+    }
+
+  schema = {
+    '_generated': 'scripts/gen-api-tables.py --schema - do not edit',
+    'classes': classes,
+    'kinds': {kind: sorted(types) for kind, types in sorted(dispatch.items())},
+    'specs': sorted([{
+      'cppClass': spec['cppClass'], 'kind': spec['kind'], 'type': spec['type'],
+      'aliases': spec['aliases'], 'defaults': spec['defaults'],
+    } for spec in specs if spec['type'] != '-'], key=lambda s: (s['kind'], s['type'])),
+    'enums': {name: values for name, values in sorted(enums.items()) if values},
+  }
+  os.makedirs(os.path.dirname(outPath), exist_ok=True)
+  with open(outPath, 'w') as f:
+    f.write(json.dumps(schema, indent=2, sort_keys=False) + '\n')
+  return schema
+
+
+def emitDeclarations(methods, events, outPath):
+  """
+  The declared methods and events, for the C++ side to check itself against.
+
+  A method registered in C++ but declared nowhere is invisible to every autocompletion emitter,
+  and one declared but never registered completes to a call that fails at runtime. Neither shows
+  up without this list - the same argument as SPEC_KINDS.
+  """
+  lines = [
+    '// Generated by scripts/gen-api-tables.py. Do not edit.\n',
+    '// What the .i files DECLARE. Methods::checkDeclarations compares the registry to it.\n',
+    '// Included INSIDE namespace massif::api, so it opens none of its own.\n\n',
+    'const MethodDecl METHOD_DECLS[] = {\n',
+  ]
+  for method in sorted(methods, key=lambda m: (m['cppClass'], m['name'])):
+    lines.append('    { "%s", "%s", %d },\n'
+                 % (method['cppClass'], method['name'], len(method['args'])))
+  lines += ['    { nullptr, nullptr, 0 }\n};\n\n', 'const EventDecl EVENT_DECLS[] = {\n']
+  for event in sorted(events, key=lambda e: (e['cppClass'], e['name'])):
+    lines.append('    { "%s", "%s" },\n' % (event['cppClass'], event['name']))
+  lines += ['    { nullptr, nullptr }\n};\n']
+  with open(outPath, 'w') as f:
+    f.writelines(lines)
+
+
 parser = argparse.ArgumentParser()
 parser.add_argument('--profile', dest='profile', default=getDefaultProfileId(), type=validProfile,
                     help='Build profile, deciding which modules exist. Ignored when --defines is given')
@@ -726,6 +981,9 @@ parser.add_argument('--cppdir', dest='cppDir', default='../all/native',
                     help='directories containing C++ headers, for the base-class chain')
 parser.add_argument('--outdir', dest='outDir', default='../generated/api',
                     help='output directory for the generated tables')
+parser.add_argument('--schema', dest='schema', default='',
+                    help='also write the machine-readable API schema here (massif-api.json), '
+                         'which the per-language autocompletion emitters read')
 args = parser.parse_args()
 
 # The build's own defines win: generating for a different profile than the one being compiled
@@ -733,8 +991,9 @@ args = parser.parse_args()
 source = args.defines if args.defines else getProfile(args.profile).get('defines', '')
 defines = set(d.strip() for d in re.split(r'[;,]', source) if d.strip())
 
-headers, entries, specs, skipped = parseModules(re.split(r'[;,]', args.sourceDir), defines,
-                                        re.split(r'[;,]', args.modules) if args.modules else None)
+headers, entries, specs, methods, events, skipped = parseModules(
+    re.split(r'[;,]', args.sourceDir), defines,
+    re.split(r'[;,]', args.modules) if args.modules else None)
 if not entries:
   print('No attribute macros found - is --sourcedir right?')
   sys.exit(-1)
@@ -745,6 +1004,11 @@ bases = parseBases(headers, re.split(r'[;,]', args.cppDir))
 byClass = emitTable(entries, bases, os.path.join(args.outDir, 'PropertyTable.inc'))
 built, unbuildable = emitSpecs(specs, bases, re.split(r'[;,]', args.cppDir),
                                os.path.join(args.outDir, 'SpecConstructors.inc'))
+cppDirs = re.split(r'[;,]', args.cppDir)
+enums, docs = parseHeaderExtras(headers, cppDirs)
+emitDeclarations(methods, events, os.path.join(args.outDir, 'MethodDecls.inc'))
+if args.schema:
+  emitSchema(entries, bases, specs, methods, events, enums, docs, built, args.schema)
 
 counts = {}
 for entry in entries:
@@ -754,6 +1018,8 @@ print('%d properties over %d classes, %d classes in the chain (%d value, %d obje
        sum(1 for e in entries if accessible(e)),
        sum(1 for e in entries if objectClassOf(e)), skipped))
 print('  ' + '  '.join('%s=%d' % (name, counts[name]) for name in TYPE_NAMES if name in counts))
+print('  %d methods, %d events declared, %d enums with %d constants'
+      % (len(methods), len(events), len(enums), sum(len(v) for v in enums.values())))
 
 # A property with no accessor is silently unreadable - the failure mode that hid
 # RoutingInstruction.action and PackageInfo.size. Name what is still out of reach, by type, so the

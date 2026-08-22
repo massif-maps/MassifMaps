@@ -18,6 +18,7 @@
 
 !polymorphic_shared_ptr(massif::FeatureCollection, geometry.FeatureCollection)
 
+!method(massif::FeatureCollection, getFeature, arg(index, int), returns(object, massif::Feature))
 %attribute(massif::FeatureCollection, int, FeatureCount, getFeatureCount)
 %std_exceptions(massif::FeatureCollection::getFeature)
 

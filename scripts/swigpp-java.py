@@ -325,9 +325,9 @@ def transformSwigFile(sourcePath, outPath, headerDirs, packageName):
     if match:
       continue
 
-    # Spec factory declarations: read by scripts/gen-api-tables.py, meaningless to Swig.
-    match = re.search(r'^\s*!spec\s*[(].*$', line)
-    if match:
+    # Facade declarations: read by scripts/gen-api-tables.py, meaningless to Swig.
+    match = re.search(r'^\s*![a-z]+\s*[(].*$', line)
+    if match and re.search(r'^\s*!(spec|method|event)\s*[(]', line):
       continue
 
     # Detect enum directive

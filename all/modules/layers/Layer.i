@@ -24,6 +24,7 @@
 %import "ui/ClickInfo.i"
 
 !polymorphic_shared_ptr(massif::Layer, layers.Layer)
+!method(massif::Layer, refresh, returns(void))
 !value_type(std::vector<std::shared_ptr<massif::Layer> >, layers.LayerVector)
 
 %attributeval(massif::Layer, %arg(std::map<std::string, massif::Variant>), MetaData, getMetaData, setMetaData)

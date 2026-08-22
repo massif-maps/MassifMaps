@@ -81,7 +81,28 @@ namespace massif {
      * signature, and every method needs argument decoding written for it anyway. Registering is
      * still data, not another verb - see the design doc.
      */
+    /**
+     * What a .i file DECLARES: read by scripts/gen-api-tables.py, emitted as MethodDecls.inc, and
+     * checked against the registry at startup. A method registered but not declared is invisible
+     * to every autocompletion emitter; one declared but not registered completes to a call that
+     * fails. Neither shows up without the check.
+     */
+    struct MethodDecl {
+        const char* cppClass;
+        const char* name;
+        int argCount;
+    };
+
+    struct EventDecl {
+        const char* cppClass;
+        const char* name;
+    };
+
     namespace Methods {
+
+        /** Reports any method the .i files declare and this build did not register, or vice versa. */
+        void checkDeclarations();
+
 
         /**
          * Adds a method to a class. Registering the same name twice replaces it, which is what

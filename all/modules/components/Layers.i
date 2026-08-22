@@ -18,6 +18,9 @@
 
 !shared_ptr(massif::Layers, components.Layers)
 
+// A spec builds a layer, it does not place it. This is how one reaches the map.
+!method(massif::Layers, add, arg(layer, handle), returns(void))
+!method(massif::Layers, remove, arg(layer, handle), returns(bool))
 %typemap(cscode) massif::Layers %{ public Layer this[int index] { get { return Get(index); } set { Set(index, value); } } %}
 
 %csmethodmodifiers massif::Layers::get "private";

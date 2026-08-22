@@ -333,6 +333,9 @@ namespace massif { namespace api {
 #ifdef _MASSIF_ROUTING_SUPPORT
         registerRoutingMethods();
 #endif
+        // Everything registered above has to be declared in a .i too, or no binding can complete
+        // it and no generated reference lists it.
+        checkDeclarations();
     }
 
 } }

@@ -25,6 +25,8 @@
 !enum(massif::TileSubstitutionPolicy::TileSubstitutionPolicy)
 !polymorphic_shared_ptr(massif::TileLayer, layers.TileLayer)
 
+// true also drops the persistent cache, not just the in-memory one.
+!method(massif::TileLayer, clearTileCaches, arg(all, bool), returns(void))
 // How the facade learns what coordinate system this layer's positions - a click, a feature - are
 // in. dataSource is already declared below.
 !attributestring_polymorphic(massif::TileLayer, projections.Projection, Projection, getProjection)

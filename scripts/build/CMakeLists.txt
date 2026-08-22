@@ -309,7 +309,7 @@ string(REGEX MATCHALL "_MASSIF_[A-Za-z0-9_]+" SDK_API_DEFINE_LIST "${SDK_CPP_DEF
 list(JOIN SDK_API_DEFINE_LIST "," SDK_API_DEFINES)
 set(SDK_API_TABLE_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated/api")
 set(SDK_API_TABLE_FILES "${SDK_API_TABLE_DIR}/PropertyTable.inc" "${SDK_API_TABLE_DIR}/PropertyAccessors.inc"
-    "${SDK_API_TABLE_DIR}/SpecConstructors.inc")
+    "${SDK_API_TABLE_DIR}/SpecConstructors.inc" "${SDK_API_TABLE_DIR}/MethodDecls.inc")
 add_custom_command(
   OUTPUT ${SDK_API_TABLE_FILES}
   COMMAND "${SDK_PYTHON}" "${SDK_BASE_DIR}/scripts/gen-api-tables.py"
@@ -325,6 +325,7 @@ add_custom_command(
 add_custom_target(massif_api_tables DEPENDS ${SDK_API_TABLE_FILES})
 set_source_files_properties("${SDK_SRC_DIR}/api/PropertyTable.cpp" PROPERTIES OBJECT_DEPENDS "${SDK_API_TABLE_FILES}")
 set_source_files_properties("${SDK_SRC_DIR}/api/SpecBuilders.cpp" PROPERTIES OBJECT_DEPENDS "${SDK_API_TABLE_FILES}")
+set_source_files_properties("${SDK_SRC_DIR}/api/Methods.cpp" PROPERTIES OBJECT_DEPENDS "${SDK_API_TABLE_FILES}")
 
 # Include directories for main SDK project
 include_directories("${SDK_SRC_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/generated")

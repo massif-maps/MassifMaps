@@ -27,6 +27,32 @@ public final class PropertyGroup {
         return this;
     }
 
+    /** The typed form, so a group reads as `map.fog().set(RANGE_START, 2.5)`. */
+    public PropertyGroup set(MassifObject.Key<Boolean> property, boolean value) {
+        target.set(prefix + property.path(), Boolean.valueOf(value));
+        return this;
+    }
+
+    public PropertyGroup set(MassifObject.Key<Double> property, double value) {
+        target.set(prefix + property.path(), Double.valueOf(value));
+        return this;
+    }
+
+    public PropertyGroup set(MassifObject.Key<Long> property, long value) {
+        target.set(prefix + property.path(), Long.valueOf(value));
+        return this;
+    }
+
+    public PropertyGroup set(MassifObject.Key<Integer> property, int value) {
+        target.set(prefix + property.path(), Integer.valueOf(value));
+        return this;
+    }
+
+    public PropertyGroup set(MassifObject.Key<String> property, String value) {
+        target.set(prefix + property.path(), value);
+        return this;
+    }
+
     public double getDouble(String name, double defaultValue) {
         return target.getDouble(prefix + name, defaultValue);
     }

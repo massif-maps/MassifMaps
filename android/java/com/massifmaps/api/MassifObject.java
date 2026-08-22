@@ -97,6 +97,76 @@ public class MassifObject implements AutoCloseable {
         return this;
     }
 
+    /**
+     * A property name that carries its VALUE type.
+     *
+     * Java has no literal string types, so a plain constant would complete and then let a colour
+     * be written to a float. A Key makes set(Key&lt;Double&gt;, double) the only overload that
+     * compiles. The generated set is {@link ApiNames}.
+     */
+    public static final class Key<T> {
+        final String path;
+
+        Key(String path) {
+            this.path = path;
+        }
+
+        public String path() {
+            return path;
+        }
+
+        /** The same name under a prefix: RANGE_START.in("fogOptions"). */
+        public Key<T> in(String prefix) {
+            return new Key<T>(prefix.isEmpty() ? path : prefix + "." + path);
+        }
+
+        @Override
+        public String toString() {
+            return path;
+        }
+    }
+
+    static <T> Key<T> key(String path) {
+        return new Key<T>(path);
+    }
+
+    public MassifObject set(Key<Boolean> property, boolean value) {
+        return set(property.path, Boolean.valueOf(value));
+    }
+
+    public MassifObject set(Key<Double> property, double value) {
+        return set(property.path, Double.valueOf(value));
+    }
+
+    public MassifObject set(Key<Long> property, long value) {
+        return set(property.path, Long.valueOf(value));
+    }
+
+    /** A COLOR is an int, 0xAARRGGBB, which is what the SDK stores. */
+    public MassifObject set(Key<Integer> property, int value) {
+        return set(property.path, Integer.valueOf(value));
+    }
+
+    public MassifObject set(Key<String> property, String value) {
+        return set(property.path, value);
+    }
+
+    public MassifObject set(Key<MassifObject> property, MassifObject value) {
+        return set(property.path, value);
+    }
+
+    public double getDouble(Key<Double> property, double defaultValue) {
+        return getDouble(property.path, defaultValue);
+    }
+
+    public boolean getBool(Key<Boolean> property, boolean defaultValue) {
+        return getBool(property.path, defaultValue);
+    }
+
+    public String getString(Key<String> property, String defaultValue) {
+        return getString(property.path, defaultValue);
+    }
+
     public double getDouble(String path, double defaultValue) {
         return MassifApi.getFloat(handle, path, defaultValue);
     }

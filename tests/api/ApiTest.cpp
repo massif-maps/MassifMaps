@@ -40,6 +40,7 @@ void testRouting();
 void testStatics();
 void testGeneratedFactories();
 void testStructSpecKeys();
+void testNestedSpecProperties();
 void testCAbi();
 void testCAbiEvents();
 
@@ -283,6 +284,7 @@ int main() {
     testStatics();
     testGeneratedFactories();
     testStructSpecKeys();
+    testNestedSpecProperties();
     testCAbi();
     testCAbiEvents();
 

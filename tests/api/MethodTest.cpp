@@ -914,3 +914,62 @@ void testStructSpecKeys() {
     TEST_CHECK(context->getProperty(bad, "mapTile", value) == RESULT_OK &&
                value.stringValue == "[0,0,0]", "and leaves the property at its default");
 }
+
+/*
+ * A NESTED spec's leftover keys.
+ *
+ * Only Spec::create used to apply the keys a factory did not consume, so one level down - a
+ * source inside a layer spec - everything that was not a constructor argument was dropped with no
+ * warning at all. Measured on device: an HTTP source's HTTPHeaders never reached the request.
+ */
+
+namespace {
+
+    /** A kind whose whole job is to hold a child, so childOf is what is under test. */
+    Result buildHolder(Context& context, const Variant& spec, ObjectRef& object,
+                       std::set<std::string>& consumed) {
+        consumed.insert("type");
+        consumed.insert("child");
+        std::shared_ptr<void> child;
+        Result result = childOf(context, spec, "child", "builder",
+                                "massif::VectorTileFeatureBuilder", child);
+        if (result != RESULT_OK) {
+            return result;
+        }
+        // The child IS the object, so the test can read the properties off the handle it gets.
+        object.obj = child;
+        object.cppClass = "massif::VectorTileFeatureBuilder";
+        return RESULT_OK;
+    }
+
+}
+
+void testNestedSpecProperties() {
+    Spec::registerFactory("builder", &buildFeatureBuilder);
+    Spec::registerFactory("holder", &buildHolder);
+    auto context = std::make_shared<Context>();
+
+    Handle handle = NULL_HANDLE;
+    TEST_CHECK(Spec::create(*context, "holder", "h",
+                            "{\"type\":\"h\",\"child\":{\"type\":\"x\",\"id\":7,"
+                            "\"layerName\":\"roads\",\"mapTile\":[1,2,3]}}", handle) == RESULT_OK,
+               "a nested spec builds");
+
+    PropertyValue value;
+    TEST_CHECK(context->getProperty(handle, "id", value) == RESULT_OK && value.asLong() == 7,
+               "a scalar key one level down is APPLIED, not dropped");
+    TEST_CHECK(context->getProperty(handle, "layerName", value) == RESULT_OK &&
+               value.stringValue == "roads", "and so is a string");
+    TEST_CHECK(context->getProperty(handle, "mapTile", value) == RESULT_OK &&
+               value.stringValue == "[1,2,3]", "and a struct");
+
+    // A key the child's class does not have is a warning, not a failure - same as at top level,
+    // so a spec written for a newer SDK still applies what it can.
+    Handle unknown = NULL_HANDLE;
+    TEST_CHECK(Spec::create(*context, "holder", "u",
+                            "{\"type\":\"h\",\"child\":{\"type\":\"x\",\"nosuch\":1,"
+                            "\"id\":9}}", unknown) == RESULT_OK,
+               "an unknown nested key does not fail the create");
+    TEST_CHECK(context->getProperty(unknown, "id", value) == RESULT_OK && value.asLong() == 9,
+               "and the keys around it still apply");
+}

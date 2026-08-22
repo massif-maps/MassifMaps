@@ -88,6 +88,10 @@ namespace massif { namespace api {
         if (!isSubclassOf(object.cppClass, requiredClass)) {
             return RESULT_UNKNOWN_CLASS;
         }
+        // A nested spec gets its leftover keys applied too. Only Spec::create used to do this, so
+        // everything that was not a constructor argument was silently dropped one level down - a
+        // source's HTTPHeaders or tmsScheme inside a layer spec went nowhere, with no warning.
+        applySpecProperties(object, child, consumed);
         out = object.obj;
         return RESULT_OK;
     }

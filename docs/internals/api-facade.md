@@ -1414,6 +1414,44 @@ only writes the in-memory feature store and calls `notifyTilesChanged`, so timin
 2766 moves/s at 100 markers and *2607* at 5000 — faster with more data, which is what gave it away.
 The re-encode happens later on the tile thread and is the number that matters.
 
+### What keeping them costs
+
+The inverse question, measured rather than argued. `.text` of the arm64 objects (RelWithDebInfo,
+unlinked — thin-LTO and `--gc-sections` will shave the absolute numbers, so read the percentages):
+
+| | .text | share of the 5620 KB SDK | attributes |
+|---|---|---|---|
+| shared billboard substrate | 192.3 KB | 3.4% | 44 |
+| Marker, on top of it | 11.7 KB | 0.2% | 22 |
+| BalloonPopup + its text/label | 96.8 KB | 1.7% | 114 |
+| line / polygon / 3D elements | 158.1 KB | 2.8% | 37 |
+
+`VectorElement`, `Billboard`, `VectorLayer`, `LocalVectorDataSource`, `BillboardRenderer`,
+`BillboardStyle`, `Style`/`StyleBuilder` and `AnimationStyle` are the **substrate**: needed by either
+Marker or BalloonPopup, so the first one you keep pays for all of it.
+
+- **Keeping Marker: ~204 KB (3.6%) and 66 attributes.** Marker itself is almost free; the substrate is
+  the bill.
+- **Keeping BalloonPopup as well: +96.8 KB (1.7%) and +114 attributes.** It is *five times* Marker's
+  API surface and more than half of the whole vector-element surface on its own.
+- **The line/polygon/3D elements are independent** — 158 KB and 37 attributes that can go whether or
+  not the billboard path stays.
+
+**Per frame it costs nothing when unused**: the pass is guarded by `if (!billboardDrawDatas.empty())`.
+
+The costs that do not show up in a size table are the ones that matter more:
+
+- **The billboard pass runs with `glDisable(GL_DEPTH_TEST)`**, which is why a marker never collides
+  with a tile label and is never occluded by terrain or a building. Keeping the path keeps those.
+- **A second styling language, a second hit-test path, a second data-source model** — `StyleBuilder`
+  vs CartoCSS, `VectorElementClickInfo` vs `VectorTileClickInfo`, `LocalVectorDataSource` vs tile
+  sources.
+- **It resists the facade.** `MarkerStyle`'s constructor takes **17 positional arguments**, all
+  required, including a `Bitmap` and an `AnimationStyle` — which is why the builder exists. The
+  generated factory picks the longest constructor a spec fully satisfies, so a style like that is not
+  spec-buildable at all: every style class would need a hand-written factory mirroring its builder,
+  which is exactly the per-class code the generator was written to delete.
+
 ### A native annotation view
 
 Mapbox draws annotations as a symbol layer in the style and popups as native views positioned by

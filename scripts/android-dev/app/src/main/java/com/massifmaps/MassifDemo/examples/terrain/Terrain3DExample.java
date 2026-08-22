@@ -26,13 +26,14 @@ public class Terrain3DExample extends MapExample {
         "MassifMapsExamples/1.0 (+https://github.com/massif-maps/MassifMaps)";
 
     /**
-     * Looking SOUTH at the Matterhorn from over Zermatt.
+     * Looking SOUTH at the Matterhorn from high over Zermatt.
      *
-     * Composed by hand: a higher tilt buries the pyramid in the ridge behind it and a closer zoom
-     * puts the camera inside the slope (the terrain keeps a clearance above the ground). This is
-     * the framing that keeps sky, horizon and the peak all in one frame.
+     * Composed by hand against three constraints that fight each other: a LOW tilt drops the
+     * camera into the slope, a CLOSE zoom hits the terrain's camera clearance and swings the view
+     * into a hillside, and a HIGH tilt buries the pyramid in the ridge behind it. This is the
+     * window where all three are satisfied and the massif fills the frame.
      */
-    private static final MapPos VIEW = new MapPos(7.6586, 45.9650);
+    private static final MapPos VIEW = new MapPos(7.6586, 45.9763);
 
     /** Open DEM tiles, terrarium-encoded. */
     private static Spec dem() {
@@ -75,7 +76,10 @@ public class Terrain3DExample extends MapExample {
            .set("exaggeration", 1.25)
            // How far the ground goes on: multiples of the camera-to-focus distance, so one value
            // holds at every zoom. Pair a short one with fog or the ground ends on a hard edge.
-           .set("viewDistanceFactor", 1.6);
+           .set("viewDistanceFactor", 1.6)
+           // The terrain normally holds the camera 200 m above the ground, which swings a close
+           // view into the nearest hillside. Lowered so the camera can sit among the peaks.
+           .set("cameraClearance", 40);
 
         // Options starts with these EMPTY, so they are BUILT here rather than written through.
         map.sky(Spec.of("sky"));
@@ -91,7 +95,7 @@ public class Terrain3DExample extends MapExample {
             .set("shadowSoftness", 1.5));
 
         // tilt 90 is straight down in this SDK, so a landscape view is a LOW tilt.
-        map.camera().moveTo(VIEW, 11.5f, 180f, 28f);
+        map.camera().moveTo(VIEW, 11.5f, 180f, 33f);
 
         host.toggle("Terrain", true, new ExampleHost.OnToggle() {
             @Override

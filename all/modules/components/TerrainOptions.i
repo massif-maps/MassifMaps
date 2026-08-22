@@ -44,6 +44,11 @@
 %attribute(massif::TerrainOptions, float, ViewDistance, getViewDistance, setViewDistance)
 %attribute(massif::TerrainOptions, int, MaxTileZoomCoarsening, getMaxTileZoomCoarsening, setMaxTileZoomCoarsening)
 %attribute(massif::TerrainOptions, float, DepthBias, getDepthBias, setDepthBias)
+// How far above the ground the camera is kept, in metres, and how long the clamp takes. Both
+// existed in C++ only, so no binding could get a camera close to a slope - which is exactly what
+// composing a 3D view needs.
+%attribute(massif::TerrainOptions, float, CameraClearance, getCameraClearance, setCameraClearance)
+%attribute(massif::TerrainOptions, float, CameraClampDuration, getCameraClampDuration, setCameraClampDuration)
 %attribute(massif::TerrainOptions, bool, BillboardOcclusionEnabled, isBillboardOcclusionEnabled, setBillboardOcclusionEnabled)
 %attribute(massif::TerrainOptions, float, BillboardOcclusionTolerance, getBillboardOcclusionTolerance, setBillboardOcclusionTolerance)
 %attribute(massif::TerrainOptions, float, TextOcclusionOpacity, getTextOcclusionOpacity, setTextOcclusionOpacity)

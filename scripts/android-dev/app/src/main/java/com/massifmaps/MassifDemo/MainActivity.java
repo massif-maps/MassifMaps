@@ -1,75 +1,93 @@
 package com.massifmaps.MassifDemo;
 
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.view.WindowCompat;
-
 import android.content.Intent;
 import android.os.Bundle;
-import android.util.Log;
+import android.view.MenuItem;
+import android.view.View;
+import android.widget.TextView;
 
-import com.massifmaps.MassifDemo.demo.DemoLive;
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
+import androidx.recyclerview.widget.GridLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
-import com.massifmaps.MassifDemo.ui.main.MainFragment;
-import com.massifmaps.MassifDemo.ui.main.SecondFragment;
+import com.google.android.material.appbar.MaterialToolbar;
+import com.massifmaps.MassifDemo.examples.Examples;
+import com.massifmaps.MassifDemo.gallery.GalleryAdapter;
 
-public class MainActivity extends AppCompatActivity {
-    private final String TAG = "MainActivity";
+/**
+ * The example gallery - what the app opens on.
+ *
+ * The list is generated from the examples' own @ExampleInfo annotations
+ * (scripts/gen-examples.py), so adding an example file is the whole job.
+ *
+ * The debugging/benchmark map is {@link BenchActivity}, reached from the toolbar or directly:
+ *   adb shell am start -n com.massifmaps.MassifDemo/.BenchActivity
+ */
+public class MainActivity extends AppCompatActivity implements GalleryAdapter.OnExampleClick {
+
+    /** A card wants about this much width to keep its screenshot readable. */
+    private static final int CARD_WIDTH_DP = 190;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-        Log.d(TAG, "onCreate");
-        // Draw edge to edge: the map runs under the status and navigation bars, and the overlay
-        // (DemoPanel) insets itself so nothing lands under them.
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
-        setContentView(R.layout.main_activity);
-        if (savedInstanceState == null) {
-            getSupportFragmentManager().beginTransaction()
-                    .replace(R.id.container, SecondFragment.newInstance())
-                    .commitNow();
+        setContentView(R.layout.gallery_activity);
+
+        MaterialToolbar toolbar = findViewById(R.id.toolbar);
+        toolbar.setOnMenuItemClickListener(new MaterialToolbar.OnMenuItemClickListener() {
+            @Override
+            public boolean onMenuItemClick(@NonNull MenuItem item) {
+                if (item.getItemId() == R.id.action_bench) {
+                    startActivity(new Intent(MainActivity.this, BenchActivity.class));
+                    return true;
+                }
+                return false;
+            }
+        });
+
+        RecyclerView list = findViewById(R.id.exampleList);
+        int columns = Math.max(1, (int) (getResources().getConfiguration().screenWidthDp
+                                         / (float) CARD_WIDTH_DP));
+        GalleryAdapter adapter = new GalleryAdapter(this, this);
+        GridLayoutManager layout = new GridLayoutManager(this, columns);
+        layout.setSpanSizeLookup(adapter.spanSizes(columns));
+        list.setLayoutManager(layout);
+        list.setAdapter(adapter);
+
+        if (Examples.all().isEmpty()) {
+            TextView empty = new TextView(this);
+            empty.setText(R.string.gallery_empty);
+            empty.setPadding(32, 32, 32, 32);
+            ((android.view.ViewGroup) findViewById(R.id.galleryRoot)).addView(empty);
         }
-    }
-
-    /**
-     * 'am start' with extras on the RUNNING demo applies them live instead of relaunching. The
-     * activity is singleTop, so Android delivers the intent here rather than recreating it, and the
-     * extras take the same path as the CONFIG broadcast (see DemoLive) - a relaunch rebuilds every
-     * cache, which is exactly what hides a stale-redraw bug.
-     */
-    @Override
-    protected void onNewIntent(Intent intent) {
-        super.onNewIntent(intent);
-        setIntent(intent);
-        Bundle extras = intent != null ? intent.getExtras() : null;
-        if (extras == null || extras.isEmpty()) {
-            return;
-        }
-        Log.d(TAG, "onNewIntent " + extras);
-        sendBroadcast(new Intent(DemoLive.ACTION).setPackage(getPackageName()).putExtras(extras));
+        // The bar, not the toolbar: the toolbar has a fixed height and padding would squash it.
+        applyInsets(findViewById(R.id.appBar), list);
     }
 
     @Override
-    protected void onPostResume() {
-        Log.d(TAG, "onPostResume");
-        super.onPostResume();
+    public void onExample(Examples.Entry entry) {
+        startActivity(new Intent(this, ExampleActivity.class)
+                          .putExtra(ExampleActivity.EXTRA_ID, entry.id()));
     }
 
-    @Override
-    protected void onStart() {
-        Log.d(TAG, "onStart");
-        super.onStart();
-    }
-
-    @Override
-    protected void onStop() {
-        Log.d(TAG, "onStop");
-        super.onStop();
-    }
-
-    @Override
-    protected void onDestroy() {
-        Log.d(TAG, "onDestroy");
-        super.onDestroy();
+    /** Edge to edge: the bar clears the status bar, the list clears the navigation bar. */
+    private void applyInsets(final View appBar, final View list) {
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.galleryRoot),
+            new androidx.core.view.OnApplyWindowInsetsListener() {
+                @Override
+                public WindowInsetsCompat onApplyWindowInsets(View view, WindowInsetsCompat insets) {
+                    Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+                    appBar.setPadding(0, bars.top, 0, 0);
+                    list.setPadding(list.getPaddingLeft(), list.getPaddingTop(),
+                                    list.getPaddingRight(), bars.bottom + 24);
+                    return insets;
+                }
+            });
     }
 }

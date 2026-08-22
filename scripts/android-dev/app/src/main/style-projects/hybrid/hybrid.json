@@ -1,0 +1,4 @@
+{
+  "styles": ["style.mss"],
+  "layers": ["mountain_peak", "place", "poi", "transportation_name", "transportation", "waterway"]
+}

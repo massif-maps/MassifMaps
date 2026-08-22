@@ -1,3 +1,12 @@
 <resources>
-    <string name="app_name">MassifTest</string>
+    <string name="app_name">Massif Maps</string>
+
+    <string name="gallery_title">Massif Maps examples</string>
+    <string name="gallery_bench">Bench</string>
+    <string name="gallery_shot_description">Screenshot of the example</string>
+    <string name="gallery_empty">No examples. Run scripts/gen-examples.py.</string>
+
+    <string name="example_back">Back</string>
+    <string name="example_source">View source</string>
+    <string name="example_source_missing">Source not bundled - run a gradle build.</string>
 </resources>

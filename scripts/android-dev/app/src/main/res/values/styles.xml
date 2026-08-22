@@ -1,14 +1,37 @@
 <resources>
 
-    <!-- No action bar: the map IS the screen, and the bar only ate 56dp of it. The system bars
-         are transparent because the app draws edge to edge and insets the overlay itself
-         (DemoPanel.applyInsets). -->
+    <!-- The BENCH screen (BenchActivity). No action bar: the map IS the screen, and the bar only
+         ate 56dp of it. The system bars are transparent because the app draws edge to edge and
+         insets the overlay itself (DemoPanel.applyInsets). -->
     <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
         <item name="colorPrimary">@color/colorPrimary</item>
         <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
         <item name="colorAccent">@color/colorAccent</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowBackground">@android:color/black</item>
+    </style>
+
+    <!-- The GALLERY and the example screens. Kept separate from AppTheme on purpose: the bench
+         panel is built in code against AppCompat and restyling it would change what the bench
+         looks like, which is a measurement surface. -->
+    <style name="GalleryTheme" parent="Theme.Material3.Light.NoActionBar">
+        <item name="colorPrimary">@color/massif_primary</item>
+        <item name="colorOnPrimary">@color/massif_on_primary</item>
+        <item name="colorSecondary">@color/massif_secondary</item>
+        <item name="colorTertiary">@color/massif_tertiary</item>
+        <item name="android:colorBackground">@color/massif_background</item>
+        <item name="colorSurface">@color/massif_surface</item>
+        <item name="colorOnSurface">@color/massif_on_surface</item>
+        <item name="colorOnSurfaceVariant">@color/massif_on_surface_variant</item>
+        <item name="colorOutline">@color/massif_outline</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+
+    <!-- An example screen is a map behind translucent chrome, so its window starts black rather
+         than flashing the gallery's background. -->
+    <style name="ExampleTheme" parent="GalleryTheme">
         <item name="android:windowBackground">@android:color/black</item>
     </style>
 

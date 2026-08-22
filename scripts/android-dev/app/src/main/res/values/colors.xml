@@ -1,6 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- The bench screen's own accents (AppTheme). Unchanged. -->
     <color name="colorPrimary">#6200EE</color>
     <color name="colorPrimaryDark">#3700B3</color>
     <color name="colorAccent">#03DAC5</color>
+
+    <!-- The gallery. A high-altitude palette: pine, glacier, late sun. -->
+    <color name="massif_primary">#1F6F5C</color>
+    <color name="massif_on_primary">#FFFFFF</color>
+    <color name="massif_secondary">#3A6EA5</color>
+    <color name="massif_tertiary">#C8763C</color>
+    <color name="massif_background">#F5F6F4</color>
+    <color name="massif_surface">#FFFFFF</color>
+    <color name="massif_on_surface">#16211D</color>
+    <color name="massif_on_surface_variant">#5A6660</color>
+    <color name="massif_outline">#D3DAD5</color>
+    <!-- Behind a screenshot that has not been captured yet. -->
+    <color name="massif_placeholder">#E2E7E3</color>
+    <!-- The scrim the caption and control row sit on, over the map. -->
+    <color name="massif_scrim">#B3101613</color>
 </resources>

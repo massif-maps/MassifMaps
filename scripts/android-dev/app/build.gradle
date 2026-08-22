@@ -21,6 +21,60 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
+
+    sourceSets {
+        main {
+            // The gallery reads its metadata and screenshots out of the same docs/examples tree the
+            // website builds from - one home, no copy to keep in step.
+            assets.srcDirs += ['../../../docs/examples',
+                               layout.buildDirectory.dir('generated/exampleSources')]
+        }
+    }
+}
+
+// The example list, from the examples' own @ExampleInfo annotations. Writes ExampleRegistry.java
+// and docs/examples/examples.json, so adding an example file is the whole job.
+tasks.register('generateExamples', Exec) {
+    description = 'Regenerates ExampleRegistry.java and docs/examples/examples.json'
+    workingDir = rootProject.file('../..')
+    commandLine 'python3', 'scripts/gen-examples.py'
+    // A machine without python3 still builds - the checked-in registry is what compiles.
+    ignoreExitValue = true
+}
+
+// The examples' own sources, as assets, so CodeActivity shows the file that actually ran rather
+// than a transcription of it.
+tasks.register('copyExampleSources', Copy) {
+    from('src/main/java/com/massifmaps/MassifDemo/examples') {
+        include '**/*.java'
+        // Framework, not examples: nothing to show.
+        exclude 'ExampleInfo.java', 'ExampleHost.java', 'MapExample.java', 'Examples.java',
+                'ExampleRegistry.java', 'Sections.java'
+    }
+    into layout.buildDirectory.dir('generated/exampleSources/example-src')
+}
+
+// Style projects ship as zips, which is what ZippedAssetPackage reads. The SOURCE stays a plain
+// folder so it is diffable and editable; the zip is a build product, never committed.
+tasks.register('zipStyleProjects') {
+    description = 'Zips each app/src/main/style-projects/<name> into assets/styles/<name>.zip'
+    def sourceDir = file('src/main/style-projects')
+    def outDir = layout.buildDirectory.dir('generated/exampleSources/styles')
+    inputs.dir(sourceDir).optional()
+    outputs.dir(outDir)
+    doLast {
+        outDir.get().asFile.mkdirs()
+        sourceDir.listFiles()?.findAll { it.directory }?.each { project ->
+            ant.zip(destfile: new File(outDir.get().asFile, "${project.name}.zip"),
+                    basedir: project)
+        }
+    }
+}
+
+tasks.configureEach { task ->
+    if (task.name == 'preBuild') {
+        task.dependsOn 'generateExamples', 'copyExampleSources', 'zipStyleProjects'
+    }
 }
 
 dependencies {
@@ -29,6 +83,9 @@ dependencies {
     implementation 'androidx.appcompat:appcompat:1.7.1'
     implementation 'androidx.constraintlayout:constraintlayout:2.2.1'
     implementation 'androidx.lifecycle:lifecycle-extensions:2.2.0'
+    // The gallery: cards, the grid and the Material 3 theme the example chrome is built from.
+    implementation 'androidx.recyclerview:recyclerview:1.4.0'
+    implementation 'com.google.android.material:material:1.12.0'
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.3.0'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'

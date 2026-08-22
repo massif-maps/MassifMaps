@@ -152,6 +152,17 @@ upstream and fails with "Repository was archived so is read-only".
 
 ## The Android demo app (the main dev loop)
 
+**The app has TWO screens, and the bench is NOT the one it opens on:**
+
+| Activity | What it is |
+|---|---|
+| `.MainActivity` | the **example gallery** — one file per example, on the facade API. Not for debugging. See [`docs/contributing/examples.md`](docs/contributing/examples.md) |
+| `.ExampleActivity` | runs one example: `--es example <id>`, plus `--es ui false` and `--es lon/lat/zoom/tilt/rotation` |
+| `.BenchActivity` | **the composable debugging/measurement map this file documents** — every layer switch, every intent extra, `DemoLive`. Everything below is about this one |
+
+So a debugging or benchmarking run names `.BenchActivity` explicitly; `am start` with no activity
+opens the gallery instead.
+
 `scripts/android-dev` builds the native SDK *and* the demo in one gradle run. This is the
 fast loop — not the full `build-android.py`:
 
@@ -159,7 +170,7 @@ fast loop — not the full `build-android.py`:
 cd scripts/android-dev && ./gradlew :app:assembleDebug -x lint   # ~40 s incremental (native included)
 adb install -r -t app/build/outputs/apk/debug/app-debug.apk      # -t: the APK is test-only
 adb shell am force-stop com.massifmaps.MassifDemo
-adb shell am start -n com.massifmaps.MassifDemo/.MainActivity --es ui false --es drape false
+adb shell am start -n com.massifmaps.MassifDemo/.BenchActivity --es ui false --es drape false
 ```
 
 - Install from `app/build/outputs/apk/debug/`. `app/build/intermediates/apk/debug/` also holds
@@ -187,7 +198,7 @@ adb shell am start -n com.massifmaps.MassifDemo/.MainActivity --es ui false --es
   camera is left alone unless a camera key is sent. This is how the A/B-per-band diff gets run
   without the tile set changing underneath it.
   **`am start` on an already-running demo does the same thing** — the activity is `singleTop` and
-  `MainActivity.onNewIntent` feeds its extras back through `DemoLive` — so one command form works
+  `BenchActivity.onNewIntent` feeds its extras back through `DemoLive` — so one command form works
   whether or not the app is up, and it never relaunches when it is.
 - **A style knob needs a re-decode, not just an option apply.** Anything written into the CartoCSS
   (`style styleLight bld3d bldLight bldAmbient bldGradient bldGradientHeight`) is carried by the

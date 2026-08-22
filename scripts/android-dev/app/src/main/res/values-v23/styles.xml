@@ -11,4 +11,24 @@
         <item name="android:windowLightStatusBar">true</item>
     </style>
 
+    <!-- Same reason: the gallery is a light surface and the example screens show a light map. -->
+    <style name="GalleryTheme" parent="Theme.Material3.Light.NoActionBar">
+        <item name="colorPrimary">@color/massif_primary</item>
+        <item name="colorOnPrimary">@color/massif_on_primary</item>
+        <item name="colorSecondary">@color/massif_secondary</item>
+        <item name="colorTertiary">@color/massif_tertiary</item>
+        <item name="android:colorBackground">@color/massif_background</item>
+        <item name="colorSurface">@color/massif_surface</item>
+        <item name="colorOnSurface">@color/massif_on_surface</item>
+        <item name="colorOnSurfaceVariant">@color/massif_on_surface_variant</item>
+        <item name="colorOutline">@color/massif_outline</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+
+    <style name="ExampleTheme" parent="GalleryTheme">
+        <item name="android:windowBackground">@android:color/black</item>
+    </style>
+
 </resources>

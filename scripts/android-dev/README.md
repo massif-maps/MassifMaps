@@ -26,6 +26,16 @@ You should be able to step into the native methods when debugging the test app.
 
 # The demo app
 
+Two screens:
+
+- **`.MainActivity`** — the example gallery. One self-contained file per example, written against
+  the facade API (`com.massifmaps.api`), with generated metadata and screenshots shared with the
+  website. How to add one: [`docs/contributing/examples.md`](../../docs/contributing/examples.md).
+- **`.BenchActivity`** — the debugging and benchmarking map described below. Launch it by name;
+  the app opens on the gallery.
+
+## The bench
+
 One map composed of independent switches — not a set of separate examples. Everything the app can
 show is a layer you can turn on or off, and everything it can be configured with is a static field.
 
@@ -48,7 +58,7 @@ show is a layer you can turn on or off, and everything it can be configured with
 2. **Rebuild-free, at launch** — intent extras:
 
 ```bash
-adb shell am start -n com.massifmaps.MassifDemo/.MainActivity --es base composite --es style dir --es hs true --es zoom 14.7 --es tilt 60 --es lon 5.760595 --es lat 45.244172
+adb shell am start -n com.massifmaps.MassifDemo/.BenchActivity --es base composite --es style dir --es hs true --es zoom 14.7 --es tilt 60 --es lon 5.760595 --es lat 45.244172
 ```
 
 3. **Permanent** — edit the static fields at the top of `DemoConfig.java`.

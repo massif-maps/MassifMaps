@@ -39,6 +39,7 @@ void testCollections();
 void testRouting();
 void testStatics();
 void testGeneratedFactories();
+void testStructSpecKeys();
 void testCAbi();
 void testCAbiEvents();
 
@@ -281,6 +282,7 @@ int main() {
     testRouting();
     testStatics();
     testGeneratedFactories();
+    testStructSpecKeys();
     testCAbi();
     testCAbiEvents();
 

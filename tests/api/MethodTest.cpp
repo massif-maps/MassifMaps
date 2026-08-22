@@ -860,3 +860,57 @@ void testGeneratedFactories() {
     TEST_CHECK(buildFromConstructor(*context, "nosuchkind", Variant(), nothing, consumed) ==
                RESULT_UNKNOWN_TYPE, "an undeclared kind builds nothing");
 }
+
+/*
+ * A spec key whose value is an array or an object.
+ *
+ * Spec::create applies every key the factory did not consume as a property, and it used to ignore
+ * anything that was not a scalar - with a warning nobody reads. So {"visibleZoomRange":[3,17]} on a
+ * layer, or a marker's anchorPoint, silently did nothing. VectorTileFeatureBuilder stands in for a
+ * layer here: it is 55 lines and has a writable MapTile.
+ */
+
+#include "geometry/VectorTileFeatureBuilder.h"
+
+namespace {
+
+    Result buildFeatureBuilder(Context&, const Variant&, ObjectRef& object,
+                               std::set<std::string>& consumed) {
+        consumed.insert("type");
+        object.obj = std::make_shared<VectorTileFeatureBuilder>();
+        object.cppClass = "massif::VectorTileFeatureBuilder";
+        return RESULT_OK;
+    }
+
+}
+
+void testStructSpecKeys() {
+    Spec::registerFactory("builder", &buildFeatureBuilder);
+    auto context = std::make_shared<Context>();
+
+    Handle handle = NULL_HANDLE;
+    TEST_CHECK(Spec::create(*context, "builder", "b",
+                            "{\"type\":\"x\",\"id\":42,\"layerName\":\"poi\","
+                            "\"mapTile\":[8467,5852,14]}", handle) == RESULT_OK,
+               "a spec with a struct key builds");
+
+    PropertyValue value;
+    TEST_CHECK(context->getProperty(handle, "id", value) == RESULT_OK && value.asLong() == 42,
+               "the scalar keys still apply");
+    TEST_CHECK(context->getProperty(handle, "layerName", value) == RESULT_OK &&
+               value.stringValue == "poi", "including strings");
+    TEST_CHECK(context->getProperty(handle, "mapTile", value) == RESULT_OK &&
+               value.stringValue == "[8467,5852,14]",
+               "and an ARRAY key reaches its struct property");
+    TEST_CHECK(context->getProperty(handle, "mapTile.2", value) == RESULT_OK &&
+               value.asLong() == 14, "readable by path, like any other struct");
+
+    // A malformed one leaves the property alone rather than writing a default over it - the write
+    // thunk decodes first and only assigns on success.
+    Handle bad = NULL_HANDLE;
+    TEST_CHECK(Spec::create(*context, "builder", "bad",
+                            "{\"type\":\"x\",\"mapTile\":[1,2]}", bad) == RESULT_OK,
+               "a struct key of the wrong shape does not fail the create");
+    TEST_CHECK(context->getProperty(bad, "mapTile", value) == RESULT_OK &&
+               value.stringValue == "[0,0,0]", "and leaves the property at its default");
+}

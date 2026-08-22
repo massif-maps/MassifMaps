@@ -84,8 +84,12 @@ namespace massif { namespace api {
                 propertyValue.stringValue = value.getString();
                 break;
             default:
-                Log::Warnf("Spec::create: %s.%s is not a scalar, ignored", id.c_str(), key.c_str());
-                continue;
+                // An array or an object is a STRUCT or a Variant - zoomRange [3,17], a marker's
+                // anchorPoint, a layer's metadata. The write thunk decodes the JSON out of the
+                // string, so the shape it carries is the same one a getter produces.
+                propertyValue.type = PT_STRUCT;
+                propertyValue.stringValue = value.toString();
+                break;
             }
             Result applied = context.setProperty(handle, key, propertyValue);
             if (applied != RESULT_OK) {

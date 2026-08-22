@@ -28,6 +28,9 @@ set(TEST_MODULES
   "${SDK_BASE_DIR}/all/modules/routing/RoutingRequest.i"
   "${SDK_BASE_DIR}/all/modules/routing/RoutingResult.i"
   "${SDK_BASE_DIR}/all/modules/routing/RoutingInstruction.i"
+  # A writable STRUCT property on a light class: Layer.visibleZoomRange is the one that matters in
+  # practice, but a layer needs the renderer. This one is 55 lines and has a default constructor.
+  "${SDK_BASE_DIR}/all/modules/geometry/VectorTileFeatureBuilder.i"
   # Log is the SDK's only all-static class, and the only way to exercise a class with no instance.
   "${SDK_BASE_DIR}/all/modules/utils/Log.i"
 )
@@ -78,6 +81,8 @@ set(TEST_SDK_SOURCES
   "${SDK_BASE_DIR}/all/native/components/FogOptions.cpp"
   "${SDK_BASE_DIR}/all/native/geometry/Feature.cpp"
   "${SDK_BASE_DIR}/all/native/geometry/VectorTileFeature.cpp"
+  "${SDK_BASE_DIR}/all/native/geometry/VectorTileFeatureBuilder.cpp"
+  "${SDK_BASE_DIR}/all/native/geometry/FeatureBuilder.cpp"
   "${SDK_BASE_DIR}/all/native/ui/VectorTileClickInfo.cpp"
   "${SDK_BASE_DIR}/all/native/ui/ClickInfo.cpp"
   "${SDK_BASE_DIR}/all/native/core/MapTile.cpp"

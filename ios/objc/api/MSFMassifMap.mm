@@ -117,6 +117,9 @@ static NSString * const kMapKind = @"map";
     MSFMassifObject *_options;
     MSFMapCamera *_camera;
     BOOL _bridged;
+    /** Kind and id of everything this map built, so detach releases it. */
+    NSMutableArray<NSArray<NSString *> *> *_owned;
+    MSFMassifElements *_elements;
 }
 
 + (instancetype)attach:(MSFMapView *)view {
@@ -214,7 +217,96 @@ static void MSFInstallUiDispatcher(void) {
 
 - (MSFMassifLayer *)addLayer:(NSString *)objectId spec:(MSFSpec *)spec error:(NSError **)error {
     MSFMassifLayer *layer = [MSFMassif layer:objectId spec:spec error:error];
-    return layer ? [self add:layer] : nil;
+    if (!layer) {
+        return nil;
+    }
+    [self own:@"layer" objectId:objectId];
+    return [self add:layer];
+}
+
+- (void)own:(NSString *)kind objectId:(NSString *)objectId {
+    if (!_owned) {
+        _owned = [NSMutableArray array];
+    }
+    [_owned addObject:@[ kind, objectId ]];
+}
+
+// --- the Options sub-objects -------------------------------------------------------------------
+
+- (MSFPropertyGroup *)optionGroup:(NSString *)property
+                             type:(NSString *)type
+                             spec:(MSFSpec *)spec
+                            error:(NSError **)error {
+    NSString *objectId = [NSString stringWithFormat:@"%@.%@", _options.objectId ?: @"map", type];
+    MSFMassifObject *built = [self object:@"options" objectId:objectId
+                                     spec:spec ?: [MSFSpec of:type] error:error];
+    if (!built || ![_options set:property value:built]) {
+        return nil;
+    }
+    return [_options group:property];
+}
+
+- (MSFPropertyGroup *)terrainWithSpec:(MSFSpec *)spec error:(NSError **)error {
+    return [self optionGroup:@"terrainOptions" type:@"terrain" spec:spec error:error];
+}
+
+- (MSFPropertyGroup *)fogWithSpec:(MSFSpec *)spec error:(NSError **)error {
+    return [self optionGroup:@"fogOptions" type:@"fog" spec:spec error:error];
+}
+
+- (MSFPropertyGroup *)skyWithSpec:(MSFSpec *)spec error:(NSError **)error {
+    return [self optionGroup:@"skyOptions" type:@"sky" spec:spec error:error];
+}
+
+- (MSFPropertyGroup *)lightWithSpec:(MSFSpec *)spec error:(NSError **)error {
+    return [self optionGroup:@"lightOptions" type:@"light" spec:spec error:error];
+}
+
+// --- objects this map owns ---------------------------------------------------------------------
+
+- (MSFMassifSource *)source:(NSString *)objectId spec:(MSFSpec *)spec error:(NSError **)error {
+    MSFMassifSource *source = [MSFMassif source:objectId spec:spec error:error];
+    if (source) {
+        [self own:@"source" objectId:objectId];
+    }
+    return source;
+}
+
+- (MSFMassifObject *)style:(NSString *)objectId spec:(MSFSpec *)spec error:(NSError **)error {
+    MSFMassifObject *style = [MSFMassif style:objectId spec:spec error:error];
+    if (style) {
+        [self own:@"style" objectId:objectId];
+    }
+    return style;
+}
+
+- (MSFMassifObject *)object:(NSString *)kind
+                   objectId:(NSString *)objectId
+                       spec:(MSFSpec *)spec
+                      error:(NSError **)error {
+    MSFMassifObject *object = [MSFMassif object:kind objectId:objectId spec:spec error:error];
+    if (object) {
+        [self own:kind objectId:objectId];
+    }
+    return object;
+}
+
+// --- markers and popups ------------------------------------------------------------------------
+
+- (MSFMassifElements *)elements {
+    if (!_elements) {
+        NSString *objectId = [NSString stringWithFormat:@"%@.elements", _options.objectId ?: @"map"];
+        _elements = [[MSFMassifElements alloc] initWithMap:self objectId:objectId sourceSpec:nil];
+    }
+    return _elements;
+}
+
+- (MSFMassifObject *)addMarker:(MSFSpec *)spec error:(NSError **)error {
+    return [self.elements add:spec error:error];
+}
+
+- (MSFMassifObject *)addPopup:(MSFSpec *)spec error:(NSError **)error {
+    return [self.elements add:spec error:error];
 }
 
 - (MSFMassifLayer *)adoptLayer:(NSString *)objectId atIndex:(int)index {
@@ -325,8 +417,24 @@ static void MSFInstallUiDispatcher(void) {
     return self;
 }
 
+/**
+ * Releasing what it BUILT is what makes ids reusable: a screen that opens, builds "basemap" and
+ * closes can be opened again with a different spec under the same name. Layers merely added with
+ * -add: are the caller's and are left alone.
+ */
 - (void)detach {
     [_options offAll];
+    for (NSArray<NSString *> *object in _owned) {
+        if ([object[0] isEqualToString:@"layer"]) {
+            MSFMassifLayer *layer = [self layer:object[1]];
+            if (layer.layer) {
+                [[_view getLayers] remove:layer.layer];
+            }
+        }
+        [MSFMassifApi unregisterObject:object[0] objectId:object[1]];
+    }
+    [_owned removeAllObjects];
+    _elements = nil;
     if (_options.objectId) {
         [MSFMassifApi unregisterObject:kMapKind objectId:_options.objectId];
     }

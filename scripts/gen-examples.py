@@ -155,7 +155,47 @@ def emitRegistry(examples, sections, path, package):
   return ordered
 
 
-def emitManifest(ordered, sections, path, screenshotDir, sourceRoot, exampleDir):
+def findIosSource(iosDir, identifier):
+  """
+  The Objective-C example with the same id, when there is one.
+
+  Matched by ID rather than by filename: the two demos name their files by each platform's
+  convention, and the id is the thing both platforms and the website already agree on.
+  """
+  if not iosDir or not os.path.isdir(iosDir):
+    return None
+  for dirPath, _, fileNames in os.walk(iosDir):
+    for fileName in sorted(fileNames):
+      if not fileName.endswith('.m'):
+        continue
+      full = os.path.join(dirPath, fileName)
+      with open(full, errors='ignore') as f:
+        source = f.read()
+      # The id is on the RETURN line, not the declaration's: matching one line at a time found
+      # nothing and said nothing, which is how every iOS example stayed invisible to the website.
+      if re.search(r'exampleId\s*\{\s*return\s+@"%s"' % re.escape(identifier), source):
+        return full
+  return None
+
+
+def iosExampleIds(iosDir):
+    """Every id the iOS demo declares, so one that matches no Android example is reported."""
+    found = {}
+    if not iosDir or not os.path.isdir(iosDir):
+      return found
+    for dirPath, _, fileNames in os.walk(iosDir):
+      for fileName in sorted(fileNames):
+        if not fileName.endswith('.m'):
+          continue
+        full = os.path.join(dirPath, fileName)
+        with open(full, errors='ignore') as f:
+          match = re.search(r'exampleId\s*\{\s*return\s+@"([^"]+)"', f.read())
+        if match:
+          found[match.group(1)] = os.path.basename(full)
+    return found
+
+
+def emitManifest(ordered, sections, path, screenshotDir, sourceRoot, exampleDir, iosDir=None):
   """
   The website's copy of the same list, with each example's source and screenshot.
 
@@ -166,6 +206,10 @@ def emitManifest(ordered, sections, path, screenshotDir, sourceRoot, exampleDir)
   bySection = {section['id']: [] for section in sections}
   missing = []
   for _, fields in ordered:
+    code = {'java': open(os.path.join(exampleDir, fields['file'])).read()}
+    iosSource = findIosSource(iosDir, fields['id'])
+    if iosSource:
+      code['objc'] = open(iosSource).read()
     shot = os.path.join(screenshotDir, fields['id'] + '.png')
     if not os.path.exists(shot):
       missing.append(fields['id'])
@@ -178,7 +222,9 @@ def emitManifest(ordered, sections, path, screenshotDir, sourceRoot, exampleDir)
       'source': sourceRoot + '/' + fields['file'],
       'screenshot': 'screenshots/' + fields['id'] + '.png',
       'hasScreenshot': os.path.exists(shot),
-      'code': open(os.path.join(exampleDir, fields['file'])).read(),
+      # One entry per language, so the website can offer a tab per binding. Java is the
+      # reference; Objective-C appears for an example the iOS demo has ported.
+      'code': code,
     })
   manifest = {
     '_generated': 'scripts/gen-examples.py - do not edit',
@@ -208,6 +254,8 @@ parser.add_argument('--examples', default=os.path.join(
 parser.add_argument('--package', default='com.massifmaps.MassifDemo.examples')
 parser.add_argument('--docs', default=os.path.join(here, '../docs/examples'),
                     help='where examples.json and screenshots/ live')
+parser.add_argument('--ios', default=os.path.join(here, 'ios-dev/MassifDemo/Examples'),
+                    help='the iOS demo\'s examples, matched to the Android ones by id')
 parser.add_argument('--strict', action='store_true',
                     help='exit non-zero when an example is malformed, for CI')
 args = parser.parse_args()
@@ -228,9 +276,16 @@ missing = emitManifest(ordered, sections, os.path.join(args.docs, 'examples.json
                        os.path.join(args.docs, 'screenshots'),
                        'scripts/android-dev/app/src/main/java/'
                        + args.package.replace('.', '/'),
-                       args.examples)
+                       args.examples, args.ios)
+
+ported = iosExampleIds(args.ios)
+orphans = sorted(set(ported) - set(f['id'] for _, f in examples))
 
 print('%d examples over %d sections' % (len(ordered), len(set(f['section'] for _, f in examples))))
+if ported:
+  print('  %d of them ported to iOS' % len(set(ported) & set(f['id'] for _, f in examples)))
+for orphan in orphans:
+  problems.append('%s declares id "%s", which no Android example has' % (ported[orphan], orphan))
 if missing:
   # Not an error: a new example has no screenshot until scripts/capture-examples.py has run.
   print('  %d without a screenshot: %s' % (len(missing), ', '.join(missing)))

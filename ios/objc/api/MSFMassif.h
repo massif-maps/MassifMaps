@@ -31,6 +31,14 @@ NS_SWIFT_NAME(Spec)
 /** A spec of the given type - "http", "mbtiles", "vector", "raster", "cartocss"... */
 + (instancetype)of:(NSString *)type;
 
+/**
+ * A bare JSON object, with no "type".
+ *
+ * For a property whose value IS a map rather than an object to build - a source's HTTPHeaders, a
+ * style parameter holding a table of colours.
+ */
++ (instancetype)object;
+
 /** Sets a key. Chainable. The value may be a string, number, MSFSpec or array. */
 - (instancetype)set:(NSString *)key value:(id)value;
 
@@ -102,6 +110,17 @@ NS_SWIFT_NAME(Massif)
 
 /** The same for a source. */
 + (nullable MSFMassifSource *)adoptSource:(NSString *)objectId source:(MSFTileDataSource *)source;
+
+/**
+ * Builds an object of any kind - the escape hatch for a kind with no named method here.
+ *
+ * The kinds are the registered spec factories: "source", "style", "layer", "options", "element",
+ * "elementstyle", "geometry", "feature", "search", "routing", "projection", "data".
+ */
++ (nullable MSFMassifObject *)object:(NSString *)kind
+                            objectId:(NSString *)objectId
+                                spec:(MSFSpec *)spec
+                               error:(NSError **)error;
 
 + (BOOL)has:(NSString *)kind objectId:(NSString *)objectId;
 

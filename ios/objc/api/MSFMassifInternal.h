@@ -11,6 +11,7 @@
 #import "MSFMassifObject.h"
 #import "MSFMassifMap.h"
 #import "MSFMapEvents.h"
+#import "MSFMassifElements.h"
 
 @class MSFMapPos;
 
@@ -81,6 +82,12 @@ typedef NS_ENUM(NSInteger, MSFDelivery) {
 @interface MSFMapEvent ()
 - (instancetype)initWithTarget:(int)target name:(NSString *)name payload:(int)payload;
 @property (nonatomic, readonly) int payload;
+@end
+
+@interface MSFMassifElements ()
+- (instancetype)initWithMap:(MSFMassifMap *)map
+                   objectId:(NSString *)objectId
+                 sourceSpec:(nullable MSFSpec *)sourceSpec;
 @end
 
 @interface MSFMapCamera ()

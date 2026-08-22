@@ -4,6 +4,8 @@
 #import "MSFMapPos.h"
 #import "MSFLayer.h"
 #import "MSFLayers.h"
+#import "MSFVectorLayer.h"
+#import "MSFVectorElementEventListener.h"
 #import "ui/MapView.h"
 #import "MSFVectorTileLayer.h"
 #import "MSFVectorTileEventListener.h"
@@ -33,11 +35,21 @@
          }];
 }
 
+- (int)createLayer:(NSString *)name {
+    MSFMassifObject *result = [self call:@"createLayer" args:@[ name ] error:nil];
+    return result ? (int)[result getLong:@"" defaultValue:-1] : -1;
+}
+
+- (BOOL)setLayerGeoJSON:(int)layer geoJson:(NSString *)geoJson {
+    return [self call:@"setLayerGeoJSON" args:@[ @(layer), geoJson ] error:nil] != nil;
+}
+
 @end
 
 @implementation MSFMassifLayer {
     __weak MSFMassifMap *_map;
     BOOL _bridged;
+    BOOL _elementBridged;
 }
 
 - (instancetype)initWithHandle:(int)handle objectId:(NSString *)objectId map:(MSFMassifMap *)map {
@@ -101,6 +113,35 @@
     }
     return [self subscribe:@"vectortile.clicked"
                       kind:MSFEventKindTileClick
+                  delivery:consuming ? MSFDeliveryOrigin : MSFDeliveryMain
+                  coalesce:NO
+                projection:_map.eventProjection
+                     block:block
+                 consuming:consuming];
+}
+
+- (MSFSubscription *)onElementClick:(MSFVectorElementClickHandler)handler {
+    return [self elementClick:handler consuming:NO];
+}
+
+- (MSFSubscription *)consumeElementClick:(MSFVectorElementClickFilter)handler {
+    return [self elementClick:handler consuming:YES];
+}
+
+- (MSFSubscription *)elementClick:(id)block consuming:(BOOL)consuming {
+    MSFLayer *target = self.layer;
+    if (![target isKindOfClass:[MSFVectorLayer class]]) {
+        return nil;
+    }
+    MSFVectorLayer *vector = (MSFVectorLayer *)target;
+    if (!_elementBridged) {
+        MSFVectorElementEventListener *chained = [vector getVectorElementEventListener];
+        [vector setVectorElementEventListener:
+            [MSFMassifApi createVectorElementEventBridge:self.handle chained:chained]];
+        _elementBridged = YES;
+    }
+    return [self subscribe:@"vectorelement.clicked"
+                      kind:MSFEventKindElementClick
                   delivery:consuming ? MSFDeliveryOrigin : MSFDeliveryMain
                   coalesce:NO
                 projection:_map.eventProjection

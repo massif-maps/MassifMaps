@@ -24,6 +24,19 @@ targets:
     platform: iOS
     sources:
       - path: MassifDemo
+      # The example metadata and screenshots, from the ONE docs/examples tree the Android gallery
+      # and the website also read. Bundled flat, so the manifest and the shots sit beside each
+      # other in the app bundle.
+      - path: ../../docs/examples/examples.json
+        buildPhase: resources
+      - path: ../../docs/examples/screenshots
+        buildPhase: resources
+        type: folder
+      # The examples' own sources, so the app can show the code that ran rather than a copy.
+      # The bundled folder keeps its own name, so the catalogue looks in "Examples".
+      - path: MassifDemo/Examples
+        buildPhase: resources
+        type: folder
     dependencies:
       - target: Massif/massif
       - sdk: Foundation.framework
@@ -45,6 +58,12 @@ targets:
         NSCameraUsageDescription: The AR and star-sky modes draw the map over the live camera.
         NSMotionUsageDescription: Following the device orientation points the camera where the phone points.
         UILaunchScreen: {}
+        # massifdemo://config?fog=false - the iOS answer to Android's CONFIG broadcast, and what
+        # `xcrun simctl openurl` can drive.
+        CFBundleURLTypes:
+          - CFBundleURLName: com.massifmaps.MassifDemo
+            CFBundleURLSchemes:
+              - massifdemo
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
           - UIInterfaceOrientationLandscapeLeft

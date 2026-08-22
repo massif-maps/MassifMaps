@@ -1,89 +1,161 @@
-import React from 'react';
+import {useEffect, useState} from 'react';
 import Layout from '@theme/Layout';
-import Link from '@docusaurus/Link';
 import CodeBlock from '@theme/CodeBlock';
-
-// The SAME manifest the Android gallery reads, generated from the examples' @ExampleInfo
-// annotations by scripts/gen-examples.py. Adding an example file is the whole job: it appears
-// here on the next build.
 import manifest from '@site/../docs/examples/examples.json';
 
-// The screenshots live in the docs tree next to the manifest, so they are browsable on GitHub and
-// shipped inside the APK as well. require.context is how a data-driven list reaches them - a
-// plain require() of a computed path does not resolve.
-const shots = require.context('@site/../docs/examples/screenshots', false, /\.png$/);
+/*
+ * The example gallery.
+ *
+ * Everything on this page is generated: docs/examples/examples.json comes from the demo apps'
+ * own @ExampleInfo annotations (scripts/gen-examples.py) and the screenshots from
+ * scripts/capture-examples.py. Adding an example to a demo adds it here - there is no list on
+ * this side to keep in step.
+ */
 
-const GITHUB = 'https://github.com/massif-maps/MassifMaps/blob/master/';
+// The screenshots live in the docs tree, which is the one home for them: the Android build ships
+// that directory as an APK asset and this reads the same files.
+const shots = require.context('../../../docs/examples/screenshots', false, /\.png$/);
 
-function shotFor(example) {
+function shotFor(id) {
   try {
-    // Webpack's asset modules hand back { default: url }, not the url itself.
-    const asset = shots('./' + example.id + '.png');
-    return asset && asset.default ? asset.default : asset;
+    return shots(`./${id}.png`).default ?? shots(`./${id}.png`);
   } catch (e) {
     return null;
   }
 }
 
-function Example({example}) {
-  const [open, setOpen] = React.useState(false);
-  const shot = shotFor(example);
-  const source = example.code;
+const LANGUAGES = [
+  {key: 'java', label: 'Java (Android)', prism: 'java'},
+  {key: 'objc', label: 'Objective-C (iOS)', prism: 'objectivec'},
+];
+
+const REPO = 'https://github.com/massif-maps/MassifMaps/blob/master/';
+
+function Card({example, onOpen}) {
+  const shot = shotFor(example.id);
   return (
-    <div className="card margin-bottom--md" style={{overflow: 'hidden'}}>
-      {shot && (
-        <div className="card__image">
-          <img src={shot} alt={example.title} style={{width: '100%', display: 'block'}} />
+    <div className="col col--4" style={{marginBottom: '1.75rem'}}>
+      <div className="exampleCard" onClick={() => onOpen(example.id)}>
+        <div className="exampleShot">
+          {shot ? (
+            <img src={shot} alt={example.title} loading="lazy" />
+          ) : (
+            <div className="exampleShotMissing">No screenshot yet</div>
+          )}
         </div>
-      )}
-      <div className="card__body">
-        <h3>{example.title}</h3>
-        <p>{example.description}</p>
-      </div>
-      <div className="card__footer">
-        <button
-          className="button button--secondary button--sm margin-right--sm"
-          onClick={() => setOpen(!open)}>
-          {open ? 'Hide code' : 'Show code'}
-        </button>
-        <Link className="button button--link button--sm" to={GITHUB + example.source}>
-          View on GitHub
-        </Link>
-        {open && (
-          source
-            ? <CodeBlock language="java">{source}</CodeBlock>
-            : <p><em>Source not found — run scripts/gen-examples.py.</em></p>
-        )}
+        <div className="exampleCardBody">
+          <h3>{example.title}</h3>
+          <p>{example.description}</p>
+        </div>
       </div>
     </div>
   );
 }
 
-export default function Examples() {
+function Detail({example, onClose}) {
+  const available = LANGUAGES.filter((language) => example.code[language.key]);
+  const [language, setLanguage] = useState(available[0]?.key ?? 'java');
+  const shot = shotFor(example.id);
+
+  useEffect(() => {
+    if (!available.some((entry) => entry.key === language)) {
+      setLanguage(available[0]?.key);
+    }
+  }, [example.id]);
+
+  return (
+    <div className="exampleDetail">
+      <button className="exampleBack" onClick={onClose}>
+        ← All examples
+      </button>
+      <h1>{example.title}</h1>
+      <p className="exampleLead">{example.description}</p>
+
+      {shot && (
+        <img className="exampleDetailShot" src={shot} alt={example.title} />
+      )}
+
+      <div className="exampleTabs">
+        {available.map((entry) => (
+          <button
+            key={entry.key}
+            className={entry.key === language ? 'exampleTab exampleTabOn' : 'exampleTab'}
+            onClick={() => setLanguage(entry.key)}>
+            {entry.label}
+          </button>
+        ))}
+        {available.length < LANGUAGES.length && (
+          <span className="exampleTabNote">
+            {LANGUAGES.filter((entry) => !example.code[entry.key])
+              .map((entry) => entry.label)
+              .join(', ')}{' '}
+            not ported yet
+          </span>
+        )}
+      </div>
+
+      <CodeBlock
+        language={LANGUAGES.find((entry) => entry.key === language)?.prism ?? 'java'}
+        showLineNumbers>
+        {example.code[language] ?? ''}
+      </CodeBlock>
+
+      <p>
+        <a href={REPO + example.source}>This example on GitHub</a>
+      </p>
+    </div>
+  );
+}
+
+export default function ExamplesPage() {
+  const [openId, setOpenId] = useState(null);
+
+  // The id lives in the URL hash, so an example is linkable and the back button works.
+  useEffect(() => {
+    const read = () => setOpenId(window.location.hash.replace('#', '') || null);
+    read();
+    window.addEventListener('hashchange', read);
+    return () => window.removeEventListener('hashchange', read);
+  }, []);
+
+  const open = (id) => {
+    window.location.hash = id;
+  };
+  const close = () => {
+    window.history.pushState('', document.title, window.location.pathname);
+    setOpenId(null);
+  };
+
+  const all = manifest.sections.flatMap((section) => section.examples);
+  const current = all.find((example) => example.id === openId);
+
   return (
     <Layout
       title="Examples"
-      description="Android examples for the Massif Maps SDK, each one a single file.">
+      description="Every Massif Maps example, with the code that produced it.">
       <main className="container margin-vert--lg">
-        <h1>Examples</h1>
-        <p>
-          Every example below is one self-contained file in the Android demo app, written against
-          the <Link to="/docs/internals/api-facade">new facade API</Link>. The screenshots are
-          captured from the app itself, so what you see is what it renders.
-        </p>
-        {manifest.sections.map((section) => (
-          <section key={section.id} className="margin-top--lg">
-            <h2>{section.title}</h2>
-            <p>{section.description}</p>
-            <div className="row">
-              {section.examples.map((example) => (
-                <div className="col col--4" key={example.id}>
-                  <Example example={example} />
+        {current ? (
+          <Detail example={current} onClose={close} />
+        ) : (
+          <>
+            <h1>Examples</h1>
+            <p className="exampleLead">
+              Each one is a single file in the demo apps, and each screenshot is that file
+              running. Adding an example to a demo adds it to this page.
+            </p>
+            {manifest.sections.map((section) => (
+              <section key={section.id} style={{marginTop: '2.5rem'}}>
+                <h2>{section.title}</h2>
+                <p>{section.description}</p>
+                <div className="row">
+                  {section.examples.map((example) => (
+                    <Card key={example.id} example={example} onOpen={open} />
+                  ))}
                 </div>
-              ))}
-            </div>
-          </section>
-        ))}
+              </section>
+            ))}
+          </>
+        )}
       </main>
     </Layout>
   );

@@ -4,6 +4,7 @@
 #import "DemoMap.h"
 #import "DemoPanel.h"
 #import "DemoToast.h"
+#import "DemoLive.h"
 
 #import "api/MSFMassif.h"
 #import "api/MSFMassifObject.h"
@@ -66,6 +67,8 @@
     [options setPanningMode:MSF_PANNING_MODE_STICKY];
 
     self.demo = [[DemoMap alloc] initWithMapView:self.mapView];
+    // So massifdemo://config can change a knob on the RUNNING map (see DemoLive).
+    [DemoLive attach:self.demo];
     [self.demo build];
 
     if ([DemoConfig boolFor:@"ui"]) {

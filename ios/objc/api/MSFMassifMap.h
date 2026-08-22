@@ -21,6 +21,8 @@
 @class MSFPropertyGroup;
 @class MSFSpec;
 @class MSFSubscription;
+@class MSFMassifSource;
+@class MSFMassifElements;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -110,6 +112,27 @@ NS_SWIFT_NAME(MassifMap)
 @property (nonatomic, readonly) MSFPropertyGroup *terrain;
 @property (nonatomic, readonly) MSFPropertyGroup *light;
 
+/**
+ * Turns 3D terrain on from an elevation source, and returns its options for tuning.
+ *
+ * The elevation decoder comes from the source's own `encoding`, so nothing here names one.
+ * Options starts with these EMPTY, which is why they are BUILT rather than written through: the
+ * no-argument accessors above only work once something is there.
+ */
+- (nullable MSFPropertyGroup *)terrainWithSpec:(MSFSpec *)spec error:(NSError **)error;
+
+/**
+ * Fog, on the mapbox model. Independent of the terrain - it fogs a plain 2D map too. The range is
+ * in MULTIPLES of the camera-to-focus distance, so one pair of values holds at every zoom.
+ */
+- (nullable MSFPropertyGroup *)fogWithSpec:(MSFSpec *)spec error:(NSError **)error;
+
+/** The sky dome behind the map. */
+- (nullable MSFPropertyGroup *)skyWithSpec:(MSFSpec *)spec error:(NSError **)error;
+
+/** Sun direction and colour, which the terrain and 3D buildings shade from. */
+- (nullable MSFPropertyGroup *)lightWithSpec:(MSFSpec *)spec error:(NSError **)error;
+
 // --- layers -----------------------------------------------------------------------------------
 
 /** Adds a layer built with MSFMassif to the top of the stack. */
@@ -128,6 +151,41 @@ NS_SWIFT_NAME(MassifMap)
  * the facade without rebuilding it.
  */
 - (nullable MSFMassifLayer *)adoptLayer:(NSString *)objectId atIndex:(int)index;
+
+/**
+ * Builds a source this map owns, so it is released with the map rather than living on under its
+ * id. MSFMassif's own +source: is the one for a source shared between maps.
+ */
+- (nullable MSFMassifSource *)source:(NSString *)objectId spec:(MSFSpec *)spec error:(NSError **)error;
+
+/**
+ * The same for a style. Worth an id whenever the app talks to it later - a style parameter, a
+ * theme switch - because an object property cannot yet be read back as a handle.
+ */
+- (nullable MSFMassifObject *)style:(NSString *)objectId spec:(MSFSpec *)spec error:(NSError **)error;
+
+/** Builds an object of any kind, owned by this map. */
+- (nullable MSFMassifObject *)object:(NSString *)kind
+                            objectId:(NSString *)objectId
+                                spec:(MSFSpec *)spec
+                               error:(NSError **)error;
+
+// --- markers and popups -------------------------------------------------------------------------
+
+/** The map's own markers and popups, on a layer created the first time this is called. */
+@property (nonatomic, readonly, nullable) MSFMassifElements *elements;
+
+/**
+ * Adds a marker. The spec carries its position AND its style, inline or by id:
+ *
+ *     [map addMarker:[[MSFSpec of:@"marker"]
+ *         set:@"position" value:@[ @6.865, @45.832 ]]
+ *         set:@"style" value:[[MSFSpec of:@"marker"] set:@"size" value:@30]] error:nil];
+ */
+- (nullable MSFMassifObject *)addMarker:(MSFSpec *)spec error:(NSError **)error;
+
+/** The same for a balloon popup - a label anchored to a position, with a title and a body. */
+- (nullable MSFMassifObject *)addPopup:(MSFSpec *)spec error:(NSError **)error;
 
 /** A layer already on this map, by id, or nil. */
 - (nullable MSFMassifLayer *)layer:(NSString *)objectId;

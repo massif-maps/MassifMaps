@@ -96,6 +96,14 @@
             value:[NSString stringWithFormat:@"[%@,%@]",
                    [MSFValues jsonFromPos:[bounds getMin]],
                    [MSFValues jsonFromPos:[bounds getMax]]]];
+    } else if ([value isKindOfClass:[NSArray class]] || [value isKindOfClass:[NSDictionary class]]
+               || [value isKindOfClass:[MSFSpec class]]) {
+        // A STRUCT property - a list of layer names, a zoom range, a header map. It crosses as
+        // JSON text, which is exactly what the generated write thunk decodes.
+        id json = [value isKindOfClass:[MSFSpec class]] ? ((MSFSpec *)value).values : value;
+        NSData *data = [NSJSONSerialization dataWithJSONObject:json options:0 error:nil];
+        NSString *text = data ? [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding] : @"";
+        result = [MSFMassifApi setString:_handle path:path value:text];
     } else if ([value isKindOfClass:[NSNumber class]]) {
         NSNumber *number = value;
         const char *type = number.objCType;
@@ -140,10 +148,15 @@
     NSString *json = [MSFMassifApi getPos:_handle path:path projection:@""];
     NSData *data = [json dataUsingEncoding:NSUTF8StringEncoding];
     id parsed = data ? [NSJSONSerialization JSONObjectWithData:data options:0 error:nil] : nil;
-    if (![parsed isKindOfClass:[NSArray class]] || [parsed count] != 2) {
+    if (![parsed isKindOfClass:[NSArray class]]) {
         return nil;
     }
-    NSArray *pair = parsed;
+    // Typed before -count is sent: on a bare `id` the selector is ambiguous the moment this
+    // translation unit sees two classes that declare one.
+    NSArray *pair = (NSArray *)parsed;
+    if (pair.count != 2) {
+        return nil;
+    }
     NSData *minData = [NSJSONSerialization dataWithJSONObject:pair[0] options:0 error:nil];
     NSData *maxData = [NSJSONSerialization dataWithJSONObject:pair[1] options:0 error:nil];
     MSFMapPos *min = [MSFValues posFromJson:[[NSString alloc] initWithData:minData encoding:NSUTF8StringEncoding]];

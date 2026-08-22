@@ -161,6 +161,20 @@ NS_SWIFT_NAME(MassifSource)
              zoom:(int)zoom
        completion:(void (^)(NSData * _Nullable data))completion;
 
+/**
+ * Adds a named layer to a "geojson" source and returns its index, or -1.
+ *
+ * The index, not the name, is what the other calls take - it is what the SDK's own API uses, and
+ * a lookup per feature update would be the wrong trade for a source that exists to be updated.
+ */
+- (int)createLayer:(NSString *)name;
+
+/**
+ * Replaces a layer's whole content with a GeoJSON document. The source re-tiles it, so the
+ * features go through the same style and the same renderer as a tile server's would.
+ */
+- (BOOL)setLayerGeoJSON:(int)layer geoJson:(NSString *)geoJson;
+
 @end
 
 /** A layer, with the things an app does to one. */
@@ -185,6 +199,12 @@ NS_SWIFT_NAME(MassifLayer)
  * was already there, so an app that also uses the object API keeps working.
  */
 - (nullable MSFSubscription *)onFeatureClick:(MSFVectorTileClickHandler)handler;
+
+/** Subscribes to clicks on the ELEMENTS of a vector layer - a marker, a popup an app added. */
+- (nullable MSFSubscription *)onElementClick:(MSFVectorElementClickHandler)handler;
+
+/** The same, claiming the tap, so the map's own onClick does not also fire. */
+- (nullable MSFSubscription *)consumeElementClick:(MSFVectorElementClickFilter)handler;
 
 /**
  * The same, for a handler that can claim the click. It runs on the thread the click came from,

@@ -124,6 +124,18 @@ typedef void (^MSFMapInteractionHandler)(MSFMapInteractionEvent *event) NS_SWIFT
 typedef void (^MSFVectorTileClickHandler)(MSFVectorTileClickEvent *event) NS_SWIFT_NAME(VectorTileClickHandler);
 
 /** The same, for a handler that can claim the event. Return YES and the gesture is handled. */
+typedef void (^MSFVectorElementClickHandler)(MSFVectorElementClickEvent *event)
+    NS_SWIFT_NAME(VectorElementClickHandler);
+
+/**
+ * A handler that can CLAIM the tap: return YES and the SDK treats the gesture as handled, so the
+ * map's own onClick does not also fire for it. Without this a marker tap runs both handlers, and
+ * the usual pair of "open a popup on the marker" and "dismiss it when the map is tapped" cancel
+ * each other out.
+ */
+typedef BOOL (^MSFVectorElementClickFilter)(MSFVectorElementClickEvent *event)
+    NS_SWIFT_NAME(VectorElementClickFilter);
+
 typedef BOOL (^MSFVectorTileClickFilter)(MSFVectorTileClickEvent *event) NS_SWIFT_NAME(VectorTileClickFilter);
 
 NS_ASSUME_NONNULL_END

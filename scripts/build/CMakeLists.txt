@@ -252,6 +252,8 @@ elseif(APPLE)
     file(GLOB SDK_OBJC_SRC_FILES CONFIGURE_DEPENDS
       "${SDK_BASE_DIR}/ios/objc/*/*.cpp"
       "${SDK_BASE_DIR}/ios/objc/*/*.mm"
+      # .m too: the generated NS_TYPED_ENUM constants are plain Objective-C.
+      "${SDK_BASE_DIR}/ios/objc/*/*.m"
       "${SDK_BASE_DIR}/ios/objc/*/*.h"
       "${SDK_BASE_DIR}/ios/objc/*.h"
     )

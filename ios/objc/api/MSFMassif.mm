@@ -16,10 +16,15 @@ NSString * const MSFMassifErrorDomain = @"MSFMassifErrorDomain";
     id parsed = [NSJSONSerialization JSONObjectWithData:[json dataUsingEncoding:NSUTF8StringEncoding]
                                                 options:NSJSONReadingFragmentsAllowed
                                                   error:&error];
-    if (![parsed isKindOfClass:[NSArray class]] || [parsed count] < 2) {
+    if (![parsed isKindOfClass:[NSArray class]]) {
         return nil;
     }
-    NSArray *array = parsed;
+    // Typed before -count is sent: on a bare `id` the selector is ambiguous the moment this
+    // translation unit sees two classes that declare one.
+    NSArray *array = (NSArray *)parsed;
+    if (array.count < 2) {
+        return nil;
+    }
     double z = array.count > 2 ? [array[2] doubleValue] : 0;
     return [[MSFMapPos alloc] initWithX:[array[0] doubleValue] y:[array[1] doubleValue] z:z];
 }
@@ -74,6 +79,11 @@ static NSString * const kAbsent = @"\0massif:absent";
 + (instancetype)of:(NSString *)type {
     MSFSpec *spec = [[MSFSpec alloc] init];
     return [spec set:@"type" value:type];
+}
+
++ (instancetype)object {
+    MSFSpec *spec = [[MSFSpec alloc] init];
+    return spec;
 }
 
 - (instancetype)init {
@@ -204,6 +214,14 @@ static NSString * const kAbsent = @"\0massif:absent";
     int handle = [MSFMassifApi registerSource:@"source" objectId:objectId source:source];
     return handle == 0 ? nil
         : [[MSFMassifSource alloc] initWithHandle:handle kind:@"source" objectId:objectId];
+}
+
++ (MSFMassifObject *)object:(NSString *)kind
+                   objectId:(NSString *)objectId
+                       spec:(MSFSpec *)spec
+                      error:(NSError **)error {
+    int handle = [self create:kind objectId:objectId spec:spec error:error];
+    return handle ? [[MSFMassifObject alloc] initWithHandle:handle kind:kind objectId:objectId] : nil;
 }
 
 + (BOOL)has:(NSString *)kind objectId:(NSString *)objectId {

@@ -95,6 +95,10 @@ public final class DemoLive extends BroadcastReceiver {
             demo.applyCamera();
         }
         if (extras.containsKey("apiCreate")) {
+            // The map's layer list, so a layer built from a spec can be put on the map.
+            if (MassifApi.findObject("layers", "demo") == 0) {
+                MassifApi.registerLayers("layers", "demo", demo.mapView.getLayers());
+            }
             applyApiCreate(extras.getString("apiCreate"));
         }
         if (extras.containsKey("apiSet")) {

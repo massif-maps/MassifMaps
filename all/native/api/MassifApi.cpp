@@ -1,4 +1,5 @@
 #include "api/MassifApi.h"
+#include "components/Layers.h"
 #include "api/Builtins.h"
 #include "api/Spec.h"
 #include "api/MapEventBridge.h"
@@ -61,6 +62,16 @@ namespace massif { namespace api {
             return NULL_HANDLE;
         }
         return static_cast<int>(handle);
+    }
+
+    int MassifApi::registerLayers(const std::string& kind, const std::string& objectId,
+                                  const std::shared_ptr<Layers>& layers) {
+        if (!layers) {
+            return NULL_HANDLE;
+        }
+        Handle handle = NULL_HANDLE;
+        Context::GetDefault()->registerObject(kind, objectId, layers, "massif::Layers", handle);
+        return handle;
     }
 
     int MassifApi::registerSource(const std::string& kind, const std::string& objectId,

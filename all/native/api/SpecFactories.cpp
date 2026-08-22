@@ -1,4 +1,5 @@
 #include "api/Context.h"
+#include "api/ElementSpecs.h"
 #include "api/Projections.h"
 #include "api/Spec.h"
 #include "api/SpecBuilders.h"
@@ -249,6 +250,7 @@ namespace massif { namespace api {
         registerFactory("layer", &buildLayer);
         registerFactory("projection", &buildProjection);
         registerFactory("geometry", &buildGeometry);
+        registerElementFactories();
         registerFactory("feature", &buildFeature);
 #ifdef _MASSIF_ROUTING_SUPPORT
         registerFactory("routing", &buildRouting);

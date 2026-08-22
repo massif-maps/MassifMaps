@@ -1,4 +1,5 @@
 #include "api/SpecBuilders.h"
+#include "utils/Log.h"
 
 namespace massif { namespace api {
 
@@ -21,6 +22,51 @@ namespace massif { namespace api {
 
     Variant variantAt(const Variant& spec, const char* key) {
         return spec.containsObjectKey(key) ? spec.getObjectElement(key) : Variant();
+    }
+
+    PropertyValue specValue(const Variant& value) {
+        PropertyValue property;
+        switch (value.getType()) {
+        case VariantType::VARIANT_TYPE_BOOL:
+            property.type = PT_BOOL; property.boolValue = value.getBool(); break;
+        case VariantType::VARIANT_TYPE_INTEGER:
+            property.type = PT_INT; property.intValue = value.getLong(); break;
+        case VariantType::VARIANT_TYPE_DOUBLE:
+            property.type = PT_FLOAT; property.floatValue = value.getDouble(); break;
+        case VariantType::VARIANT_TYPE_STRING:
+            property.type = PT_STRING; property.stringValue = value.getString(); break;
+        default:
+            // An array or an object is JSON in the string, which is what a struct thunk decodes.
+            property.type = PT_STRUCT; property.stringValue = value.toString(); break;
+        }
+        return property;
+    }
+
+    void applySpecProperties(const ObjectRef& object, const Variant& spec,
+                             std::set<std::string>& consumed) {
+        const ClassEntry* classEntry = findClass(object.cppClass);
+        if (!classEntry) {
+            return;
+        }
+        for (const std::string& key : spec.getObjectKeys()) {
+            if (consumed.count(key)) {
+                continue;
+            }
+            const PropertyEntry* entry = findProperty(classEntry, key.c_str());
+            if (!entry || !entry->setter) {
+                Log::Warnf("Spec: %s has no writable '%s', ignored", object.cppClass, key.c_str());
+                continue;
+            }
+            PropertyValue value = specValue(spec.getObjectElement(key));
+            // Marked either way: the caller's object is not the one Spec::create registers, and an
+            // immutable style would warn about every key it was built from.
+            consumed.insert(key);
+            try {
+                entry->setter(object.obj.get(), value);
+            } catch (const std::exception& ex) {
+                Log::Errorf("Spec: %s.%s refused: %s", object.cppClass, key.c_str(), ex.what());
+            }
+        }
     }
 
     Result childOf(Context& context, const Variant& spec, const char* key, const char* kind,

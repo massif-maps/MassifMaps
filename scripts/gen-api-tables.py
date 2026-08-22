@@ -256,7 +256,10 @@ def parseConstructors(cppClass, headers, headerDirs):
   same header has constructors too, and they are not something a spec can build.
   """
   shortName = cppClass.split('::')[-1]
+  # A declaration can wrap: BalloonPopup's four-argument constructor is two lines, and matching one
+  # line at a time found NOTHING for it - silently, since there was no overload to report as skipped.
   ctor = re.compile(r'^\s*(?:explicit\s+)?%s\s*\((.*)\)\s*;' % shortName)
+  ctorStart = re.compile(r'^\s*(?:explicit\s+)?%s\s*\(' % shortName)
   opening = re.compile(r'^\s*class\s+%s\b' % shortName)
   access = re.compile(r'^\s*(public|protected|private)\s*:')
   found = []
@@ -264,8 +267,13 @@ def parseConstructors(cppClass, headers, headerDirs):
     path = findHeader(header, headerDirs)
     if not path:
       continue
-    depth, inClass, visibility = 0, False, 'private'
+    depth, inClass, visibility, pending = 0, False, 'private', None
     for line in open(path, errors='ignore'):
+      if pending is not None:
+        pending += ' ' + line.strip()
+        if ';' not in line:
+          continue
+        line, pending = pending, None
       if not inClass:
         if opening.match(line):
           inClass, depth, visibility = True, 0, 'private'
@@ -276,6 +284,9 @@ def parseConstructors(cppClass, headers, headerDirs):
         visibility = match.group(1)
       # Depth 1 is the class body; deeper is a nested class, which a spec cannot build.
       if depth == 1 and visibility == 'public':
+        if ctorStart.match(line) and ';' not in line:
+          pending = line.strip()
+          continue
         match = ctor.match(line)
         if match:
           params = parseParams(match.group(1))
@@ -600,6 +611,7 @@ def emitSpecs(specs, bases, headerDirs, outPath):
       usable.append((index, reads, required, keys))
 
     if not usable:
+      unbuildable.append('%s: NOTHING - no usable constructor found' % cppClass)
       continue
     for index, reads, required, keys in usable:
       name = 'make_%s_%d' % (symbol, index)

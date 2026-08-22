@@ -20,6 +20,8 @@
 
 !polymorphic_shared_ptr(massif::BalloonPopupStyleBuilder, styles.BalloonPopupStyleBuilder)
 
+
+!spec(massif::BalloonPopupStyleBuilder, elementstyle, balloon)
 %attribute(massif::BalloonPopupStyleBuilder, int, CornerRadius, getCornerRadius, setCornerRadius)
 %attributeval(massif::BalloonPopupStyleBuilder, massif::Color, LeftColor, getLeftColor, setLeftColor)
 %attributestring(massif::BalloonPopupStyleBuilder, std::shared_ptr<massif::Bitmap>, LeftImage, getLeftImage, setLeftImage)

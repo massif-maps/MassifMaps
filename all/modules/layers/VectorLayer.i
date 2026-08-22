@@ -20,6 +20,8 @@
 
 !polymorphic_shared_ptr(massif::VectorLayer, layers.VectorLayer)
 
+
+!spec(massif::VectorLayer, layer, elements, alias(source, dataSource))
 !attributestring_polymorphic(massif::VectorLayer, datasources.VectorDataSource, DataSource, getDataSource)
 !attributestring_polymorphic(massif::VectorLayer, layers.VectorElementEventListener, VectorElementEventListener, getVectorElementEventListener, setVectorElementEventListener)
 %attribute(massif::VectorLayer, bool, ZBuffering, isZBuffering, setZBuffering)

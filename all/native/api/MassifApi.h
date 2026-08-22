@@ -20,6 +20,7 @@ namespace massif {
     class Options;
     class TileDataSource;
     class Layer;
+    class Layers;
     class MapEventListener;
     class VectorTileEventListener;
     class VectorElementEventListener;
@@ -60,6 +61,15 @@ namespace massif {
          */
         static int registerLayer(const std::string& kind, const std::string& objectId,
                                  const std::shared_ptr<Layer>& layer);
+
+        /**
+         * Registers the map's layer list, so a layer built from a spec can be PUT on the map.
+         *
+         * A spec builds an object, it does not place it - the same reason LocalVectorDataSource
+         * needs add(). This is the one for layers; call add/remove on the handle it returns.
+         */
+        static int registerLayers(const std::string& kind, const std::string& objectId,
+                                  const std::shared_ptr<Layers>& layers);
 
         /**
          * @copydoc MassifApi::registerLayer

@@ -24,6 +24,8 @@
 
 !polymorphic_shared_ptr(massif::BalloonPopupStyle, styles.BalloonPopupStyle)
 
+
+!spec(massif::BalloonPopupStyle, elementstyle, -)
 %attributeval(massif::BalloonPopupStyle, massif::Color, BackgroundColor, getBackgroundColor)
 %attribute(massif::BalloonPopupStyle, int, CornerRadius, getCornerRadius)
 %attributeval(massif::BalloonPopupStyle, massif::Color, LeftColor, getLeftColor)

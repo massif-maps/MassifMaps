@@ -48,6 +48,18 @@ namespace massif { namespace api {
     Result childOf(Context& context, const Variant& spec, const char* key, const char* kind,
                    const char* requiredClass, std::shared_ptr<void>& out);
 
+    /** One spec value as a property value: a scalar as itself, an array or object as JSON. */
+    PropertyValue specValue(const Variant& value);
+
+    /**
+     * Applies every spec key the factory did not consume, as a property ON THIS OBJECT.
+     *
+     * Spec::create does the same to a registered object; this one works on an intermediate that has
+     * no handle - a style builder, whose setters ARE the JSON schema.
+     */
+    void applySpecProperties(const ObjectRef& object, const Variant& spec,
+                             std::set<std::string>& consumed);
+
     /**
      * Builds a class that declares a !spec in its .i, from its own constructor.
      *

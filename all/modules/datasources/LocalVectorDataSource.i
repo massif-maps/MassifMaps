@@ -23,6 +23,8 @@
 !enum(massif::LocalSpatialIndexType::LocalSpatialIndexType)
 !polymorphic_shared_ptr(massif::LocalVectorDataSource, datasources.LocalVectorDataSource)
 
+
+!spec(massif::LocalVectorDataSource, source, local)
 %feature("director") massif::LocalVectorDataSource;
 
 !attributestring_polymorphic(massif::LocalVectorDataSource, geometry.GeometrySimplifier, GeometrySimplifier, getGeometrySimplifier, setGeometrySimplifier)

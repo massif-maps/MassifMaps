@@ -11,6 +11,8 @@
 #include "api/StructCodec.h"
 #include "core/MapPos.h"
 #include "core/MapTile.h"
+#include "components/Layers.h"
+#include "datasources/LocalVectorDataSource.h"
 #include "datasources/TileDataSource.h"
 #include "datasources/components/TileData.h"
 #include "layers/HillshadeRasterTileLayer.h"
@@ -124,6 +126,70 @@ namespace massif { namespace api {
             return RESULT_OK;
         }
 
+        /**
+         * add(elementHandle) / remove(elementHandle) on a local source.
+         *
+         * The one thing a spec cannot express: a spec builds an object, it does not put it
+         * anywhere. This is how a marker reaches the map.
+         */
+        Result addElement(Context& context, void* obj, const CallArgs& args, PropertyValue&) {
+            Handle handle = NULL_HANDLE;
+            if (!args.getHandle(0, handle)) {
+                return RESULT_BAD_SPEC;
+            }
+            auto element = std::static_pointer_cast<VectorElement>(
+                context.getObject(handle, "massif::VectorElement"));
+            if (!element) {
+                return RESULT_BAD_HANDLE;
+            }
+            static_cast<LocalVectorDataSource*>(obj)->add(element);
+            return RESULT_OK;
+        }
+
+        Result removeElement(Context& context, void* obj, const CallArgs& args, PropertyValue& result) {
+            Handle handle = NULL_HANDLE;
+            if (!args.getHandle(0, handle)) {
+                return RESULT_BAD_SPEC;
+            }
+            auto element = std::static_pointer_cast<VectorElement>(
+                context.getObject(handle, "massif::VectorElement"));
+            if (!element) {
+                return RESULT_BAD_HANDLE;
+            }
+            result = PropertyValue::ofBool(
+                static_cast<LocalVectorDataSource*>(obj)->remove(element));
+            return RESULT_OK;
+        }
+
+        /** add(layerHandle) / remove(layerHandle) - how a layer built from a spec reaches the map. */
+        Result addLayer(Context& context, void* obj, const CallArgs& args, PropertyValue&) {
+            Handle handle = NULL_HANDLE;
+            if (!args.getHandle(0, handle)) {
+                return RESULT_BAD_SPEC;
+            }
+            auto layer = std::static_pointer_cast<Layer>(
+                context.getObject(handle, "massif::Layer"));
+            if (!layer) {
+                return RESULT_BAD_HANDLE;
+            }
+            static_cast<Layers*>(obj)->add(layer);
+            return RESULT_OK;
+        }
+
+        Result removeLayer(Context& context, void* obj, const CallArgs& args, PropertyValue& result) {
+            Handle handle = NULL_HANDLE;
+            if (!args.getHandle(0, handle)) {
+                return RESULT_BAD_SPEC;
+            }
+            auto layer = std::static_pointer_cast<Layer>(
+                context.getObject(handle, "massif::Layer"));
+            if (!layer) {
+                return RESULT_BAD_HANDLE;
+            }
+            result = PropertyValue::ofBool(static_cast<Layers*>(obj)->remove(layer));
+            return RESULT_OK;
+        }
+
         Result refresh(Context&, void* obj, const CallArgs&, PropertyValue&) {
             static_cast<Layer*>(obj)->refresh();
             return RESULT_OK;
@@ -183,6 +249,10 @@ namespace massif { namespace api {
         registerMethod("massif::MBVectorTileDecoder", "getStyleParameter", &getStyleParameter);
         registerMethod("massif::TileLayer", "clearTileCaches", &clearTileCaches);
         registerMethod("massif::Layer", "refresh", &refresh);
+        registerMethod("massif::Layers", "add", &addLayer);
+        registerMethod("massif::Layers", "remove", &removeLayer);
+        registerMethod("massif::LocalVectorDataSource", "add", &addElement);
+        registerMethod("massif::LocalVectorDataSource", "remove", &removeElement);
         registerGeometryMethods();
 #ifdef _MASSIF_SEARCH_SUPPORT
         registerMethod("massif::VectorTileSearchService", "findFeatures", &findVectorTileFeatures);

@@ -398,6 +398,8 @@ inline spec of that kind, and it is checked against the class the caller is abou
 | `assets` | `dir` (a directory), `zip` (a `data` archive) |
 | `geometry` | `geojson`, and `point` from a `pos` |
 | `feature` | `feature` — a `geometry` and free-form `properties` |
+| `element` | `marker`, `balloon` — from a `position`, a `geometry` or a `baseBillboard` |
+| `elementstyle` | `marker`, `balloon` — built through the SDK's style BUILDER, see below |
 | `styleset` | `cartocss` (inline `css`), `project` (an asset package + the `name` of one style in it) |
 | `style` | `mbvt` — a vector tile decoder over a `cartocss` or a `project` style set |
 | `layer` | `raster` `vector` `composite-vector` `hillshade` `solid` |
@@ -1267,6 +1269,52 @@ generator's enum test wanted `massif::X::X`, so it classified as a `STRUCT` and 
 no accessor** — the maneuver's action was unreadable and nothing said so. `stripArgMacro` now
 qualifies the bare form. Two properties in the SDK were affected (`RoutingInstruction.action`,
 `RouteMatchingPoint.type`); ENUM went 45 → 47.
+
+### Vector elements: a style is JSON, never a builder
+
+`MarkerStyle`'s constructor takes **17 positional arguments**, all required, including a `Bitmap` —
+which is why the SDK has a builder for it, and why "the longest constructor a spec satisfies" cannot
+build one. So the style kind is the one place a spec goes through a builder:
+
+1. build the **builder** — generated, it has a default constructor;
+2. apply every remaining spec key as a property **on the builder**;
+3. call `buildStyle()`, which is one registration per builder because it is not virtual on
+   `StyleBuilder`.
+
+**The builder's `%attribute` setters ARE the JSON schema.** Nothing here grows when a style gains a
+property — the property table already carries it. And the immutable `XStyle` classes never need to
+be public API at all: 98 of the 210 vector-element attributes are read-only getters on outputs.
+
+```json
+{"type":"marker","size":30,"color":-65536,"clickSize":40}
+{"type":"balloon","titleFontSize":15,"descriptionFontSize":11,"cornerRadius":6}
+```
+
+The elements themselves are ordinary generated factories — `Marker(const MapPos&, const
+shared_ptr<MarkerStyle>&)` is a struct argument and a child, both of which the emitter already
+handles, and all three overloads are reachable (`position`, `geometry`, `baseBillboard`).
+
+**A spec builds an object; it does not place it.** Two methods close that: `add`/`remove` on
+`LocalVectorDataSource` for elements, and on `Layers` for the layer itself — reached through
+`registerLayers`, which is how the map's layer list gets a handle.
+
+```
+projection:wgs84   source:elements (local)   layer:elayer (elements)
+elementstyle:pin   element:m1 (marker)       -> source add -> layers add
+```
+
+Device-checked on the emulator: a red pin and a balloon reading "Aiguille / 3842 m" both drawn on
+the map, with `size`, `clickSize` and `cornerRadius` verified to have survived `buildStyle()` and the
+style itself answering `RESULT_READONLY` — it is an output, exactly as intended.
+
+**Two silent failures this found**, both the same shape as the earlier ones:
+
+- **A multi-line constructor declaration was invisible.** `BalloonPopup`'s four-argument constructor
+  wraps across two lines, and matching one line at a time found *nothing* for the class — with no
+  "overload skipped" report either, because there was no overload to report. The parser joins
+  continuation lines now.
+- **A declared class that produces no builder is now reported** (`NOTHING - no usable constructor
+  found`). That is what would have caught the first one immediately.
 
 ### Binary and bulk results
 

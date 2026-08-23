@@ -161,6 +161,7 @@
 #import "MSFAssetPackage.h"
 #import "MSFZippedAssetPackage.h"
 #import "MSFDirAssetPackage.h"
+#import "MSFBundleAssetPackage.h"
 #import "MSFCompiledStyleSet.h"
 #import "MSFCartoCSSStyleSet.h"
 #import "MSFVectorTileDecoder.h"

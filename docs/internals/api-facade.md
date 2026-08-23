@@ -395,7 +395,7 @@ inline spec of that kind, and it is checked against the class the caller is abou
 |---|---|
 | `source` | `http` `assets` `mbtiles` `memory-cache` `persistent-cache` `ordered` `combined` `multi` |
 | `data` | `url` — bytes from `file://`, `assets://` or `http(s)://` |
-| `assets` | `dir` (a directory), `zip` (a `data` archive) |
+| `assets` | `dir` (a directory), `bundle` (the app's own bundled assets), `zip` (a `data` archive) |
 | `geometry` | `geojson`, and `point` from a `pos` |
 | `feature` | `feature` — a `geometry` and free-form `properties` |
 | `element` | `marker`, `balloon` — from a `position`, a `geometry` or a `baseBillboard` |
@@ -510,8 +510,29 @@ SDK's own `URLFileLoader`, so `file://`, `assets://` and `http(s)://` all cost t
   "assets":{"type":"zip","data":{"type":"url","url":"file:///sdcard/massif_style.zip"}}}}
 ```
 
-Two things worth knowing about it. **Local files are enabled** — the SDK gates them because a URL
-can arrive inside tile data, but a spec is written by the app, which is already naming the path.
+A style shipped *inside* the app is the third case, and the one `dir` cannot serve: on Android the
+assets live in the APK, where no file path reaches them. `bundle` is `DirAssetPackage`'s shape over
+the platform's own asset lookup instead of `opendir`:
+
+```json
+{"type":"cartocss","css":"…","assets":{"type":"bundle","path":"styles/osm",
+  "base":{"type":"bundle","path":"styles/shared-fonts"}}}
+```
+
+`AssetUtils` grew `ListAssets`/`AssetExists` on iOS and Windows to make that one class rather than
+three — Android had them already. The listing contract is Android's, because the NDK asset API
+cannot do better: it is not recursive and does not tell a file from a directory, so an entry is a
+file if `AssetExists` says so and a directory if listing it answers with something.
+`BundleAssetPackage` walks that once, for every platform.
+
+Nothing is checked in the constructor, unlike `DirAssetPackage`, which throws for a missing
+directory: on Android the asset manager is connected by the first `MapView`, so a package built
+before one exists would throw for the wrong reason. `reload()` is how a listing built too early is
+thrown away.
+
+Two things worth knowing about the `data` form. **Local files are enabled** — the SDK gates them
+because a URL can arrive inside tile data, but a spec is written by the app, which is already
+naming the path.
 And **a remote URL is fetched on the calling thread**, because `create` is synchronous; build one
 off the UI thread. A URL that does not resolve is `RESULT_FAILED` with the reason logged.
 

@@ -105,6 +105,9 @@ set(TEST_SDK_SOURCES
   "${SDK_BASE_DIR}/all/native/geometry/PolygonGeometry.cpp"
   "${SDK_BASE_DIR}/all/native/geometry/PointGeometry.cpp"
   "${SDK_BASE_DIR}/all/native/graphics/Color.cpp"
+  # BundleAssetsTest.cpp defines the platform AssetUtils these two declare - see host/utils.
+  "${SDK_BASE_DIR}/all/native/utils/BundleAssetPackage.cpp"
+  "${SDK_BASE_DIR}/all/native/utils/FileUtils.cpp"
   "${SDK_BASE_DIR}/all/native/utils/Log.cpp"
   "${SDK_BASE_DIR}/all/native/utils/GeomUtils.cpp"
   "${SDK_BASE_DIR}/all/native/utils/GeneralUtils.cpp"
@@ -136,6 +139,7 @@ add_executable(api_tests
   ProjectionTest.cpp
   MethodTest.cpp
   AdoptTest.cpp
+  BundleAssetsTest.cpp
   CAbiTest.cpp
   "${TEST_TABLE_DIR}/PropertyTable.inc"
   "${TEST_TABLE_DIR}/MethodDecls.inc"
@@ -147,6 +151,8 @@ target_compile_definitions(api_tests PRIVATE ${TEST_DEFINES})
 
 target_include_directories(api_tests PRIVATE
   "${SDK_BASE_DIR}/all/native"
+  # A host stand-in for the per-platform utils/AssetUtils.h, which all/native does not carry.
+  "${CMAKE_CURRENT_SOURCE_DIR}/host"
   "${TEST_TABLE_DIR}/.."
   "${SDK_BASE_DIR}/libs-external/cglib"
   "${SDK_BASE_DIR}/libs-external/stdext"

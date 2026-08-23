@@ -1129,6 +1129,16 @@ mm_get_long(ctx, payload, "reason", &reason);
 `map.stable` is the END of a movement, reported once. A touch that did not move the camera does
 not raise it - see [Map events](map-events.md).
 
+`map.moved` fires 47-159 times a second during a drag, so a subscription can ask for a window:
+
+```
+mm_on(ctx, map, "map.moved", handler, NULL, "{\"throttle\":250}", &sub);
+```
+
+Events arriving inside the window are **dropped**, not delivered late - the payload is freed when
+the emit returns, so there would be nothing left to deliver. Refused on a consuming subscription,
+where a dropped event is one the SDK is still waiting on an answer for.
+
 ## Calls
 
 `set`/`get` cover a property. A **method** — `loadTile`, `getElevations` — needs `call`:

@@ -279,6 +279,7 @@ MM_API int mm_cancel_calls(mm_ctx ctx, mm_handle handle, int* count);
  *          {"delivery":"origin"|"ui"|"background",   where the handler runs, default "origin"
  *           "consume":true,      its return value can stop the event; requires "origin"
  *           "coalesce":true,     replace a pending event rather than queueing a second
+ *           "throttle":100,      drop events arriving within this many ms of the last delivered
  *           "projection":"EPSG:4326"}   what its position reads default to, for this call only
  */
 MM_API int mm_on(mm_ctx ctx, mm_handle handle, const char* event, mm_handler handler,

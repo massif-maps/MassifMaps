@@ -66,12 +66,19 @@ namespace massif { namespace api {
          *        defaulted, so the shape of a subscription that does not claim is unchanged - and
          *        so a binding can tell the two apart by arity or by selector name.  The SDK asks
          *        that question synchronously, so a consuming subscription must be delivery 0.
-         * @return The subscription, or 0 when the handle is stale, the projection is unknown, or a
-         *         consuming subscription asked for another thread.
+         * @param throttleMs Drops events arriving within this many milliseconds of the last one
+         *        delivered to this handler; 0 is off. A window rather than a timer, because
+         *        dropping is the point - a queued handler would read a payload the emit has
+         *        already freed. Refused on a consuming subscription: a dropped click is one the
+         *        SDK is still waiting on.
+         * @return The subscription, or 0 when the handle is stale, the projection is unknown, a
+         *         consuming subscription asked for another thread, or a consuming one asked to be
+         *         throttled.
          */
         static int on(int handle, const std::string& event,
                       const std::shared_ptr<EventListener>& listener, int delivery, bool coalesce,
-                      const std::string& projection = std::string(), bool consume = false);
+                      const std::string& projection = std::string(), bool consume = false,
+                      int throttleMs = 0);
 
         /**
          * Registers how to reach the app's UI thread, for subscriptions that asked for it.

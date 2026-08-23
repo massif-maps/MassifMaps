@@ -71,6 +71,14 @@ typedef NS_ENUM(NSInteger, MSFDelivery) {
                              projection:(nullable NSString *)projection
                                   block:(id)block
                              consuming:(BOOL)consuming;
+- (nullable MSFSubscription *)subscribe:(NSString *)event
+                                   kind:(MSFEventKind)kind
+                               delivery:(MSFDelivery)delivery
+                               coalesce:(BOOL)coalesce
+                             projection:(nullable NSString *)projection
+                                  block:(id)block
+                             consuming:(BOOL)consuming
+                               throttle:(int)throttleMs;
 @end
 
 @interface MSFMassifLayer ()

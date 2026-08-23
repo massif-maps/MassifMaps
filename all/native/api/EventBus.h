@@ -7,6 +7,7 @@
 #ifndef _MASSIF_API_EVENTBUS_H_
 #define _MASSIF_API_EVENTBUS_H_
 
+#include <chrono>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -86,7 +87,15 @@ namespace massif { namespace api {
          */
         Subscription subscribe(std::uint32_t target, const std::string& event, EventHandler handler,
                                void* userData, bool consume, Delivery delivery, bool coalesce,
-                               const std::string& projection);
+                               const std::string& projection, int throttleMs);
+
+        /**
+         * Whether a throttled subscription is due, and marks it delivered when it is.
+         *
+         * Not part of Dispatch: the window has to be READ AND WRITTEN on the entry, and a copy
+         * would let every event through. Call it under the same lock as lookup.
+         */
+        bool due(Subscription subscription, std::chrono::steady_clock::time_point now);
 
         /**
          * Removes one subscription.
@@ -147,6 +156,10 @@ namespace massif { namespace api {
             // Replace a queued event rather than adding another, so a UI-thread handler for a
             // high-frequency event cannot flood the loop.
             bool coalesce = false;
+            // 0 is off. Dropping is the point - a queued handler would read a payload the emit
+            // has already freed - so this is a window, not a timer.
+            int throttleMs = 0;
+            std::chrono::steady_clock::time_point lastDelivery;
             std::string projection;
             bool live = false;
             std::uint32_t generation = 1;

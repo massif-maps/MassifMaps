@@ -239,6 +239,18 @@
                     projection:(NSString *)projection
                          block:(id)block
                      consuming:(BOOL)consuming {
+    return [self subscribe:event kind:kind delivery:delivery coalesce:coalesce
+                projection:projection block:block consuming:consuming throttle:0];
+}
+
+- (MSFSubscription *)subscribe:(NSString *)event
+                          kind:(MSFEventKind)kind
+                      delivery:(MSFDelivery)delivery
+                      coalesce:(BOOL)coalesce
+                    projection:(NSString *)projection
+                         block:(id)block
+                     consuming:(BOOL)consuming
+                      throttle:(int)throttleMs {
     if (!block) {
         return nil;
     }
@@ -255,7 +267,8 @@
                                delivery:(int)delivery
                                coalesce:coalesce
                              projection:projection ?: @""
-                                consume:consuming];
+                                consume:consuming
+                             throttleMs:throttleMs];
     return subscription == 0 ? nil
         : [[MSFSubscription alloc] initWithId:subscription listener:listener];
 }

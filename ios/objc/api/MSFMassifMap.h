@@ -238,6 +238,17 @@ NS_SWIFT_NAME(MassifMap)
 - (nullable MSFSubscription *)onMove:(MSFMapMoveHandler)handler NS_WARN_UNUSED_RESULT;
 
 /**
+ * The same, delivering at most one event per `throttleMs`.
+ *
+ * A drag raises this 47 to 159 times a second, and a handler that repositions a view or updates a
+ * readout does not need every one. Events inside the window are DROPPED, not queued - the last one
+ * is not delivered late, because the payload does not outlive the emit. For work that should
+ * happen once the movement ENDS, use `onStable:` instead.
+ */
+- (nullable MSFSubscription *)onMove:(MSFMapMoveHandler)handler
+                            throttle:(int)throttleMs NS_WARN_UNUSED_RESULT;
+
+/**
  * Fires when the renderer has nothing left to draw. Tiles may still be loading - this is the end
  * of the frame queue, not of the data.
  */

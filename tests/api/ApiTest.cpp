@@ -25,6 +25,7 @@ void testEvents();
 void testDelivery();
 void testBindingSubscriptions();
 void testMapMoveReason();
+void testThrottle();
 void testStructCodec();
 void testMoreStructs();
 void testVariantPaths();
@@ -274,6 +275,7 @@ int main() {
     testDelivery();
     testBindingSubscriptions();
     testMapMoveReason();
+    testThrottle();
     testStructCodec();
     testMoreStructs();
     testVariantPaths();

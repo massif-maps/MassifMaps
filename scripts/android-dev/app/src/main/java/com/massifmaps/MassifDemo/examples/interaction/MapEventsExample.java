@@ -43,14 +43,17 @@ public class MapEventsExample extends MapExample {
         map.eventProjection("EPSG:4326");
         map.camera().moveTo(new Position(6.8652, 45.8326), 11);
 
-        // Every camera change, whatever caused it. This fires far above frame rate during a drag,
-        // which is exactly why it is the wrong place to refresh anything.
+        // Every camera change, whatever caused it - 47 to 159 a second during a drag, which is
+        // exactly why it is the wrong place to refresh anything. Throttled to 4 a second: events
+        // inside the window are DROPPED, not delivered late, because the payload does not outlive
+        // the emit. Good for a readout that should track the movement.
         map.onMove(new MapEvents.Handler<MapEvents.Move>() {
             @Override
             public void handle(MapEvents.Move e) {
                 moves++;
+                host.caption(String.format("moving (%s) - %d frames delivered", e.reason(), moves));
             }
-        });
+        }, 250);
 
         // The end of a movement, once, with what caused it. A tap that did not move the camera
         // does not fire it, so there is no "did it actually move?" flag to keep.

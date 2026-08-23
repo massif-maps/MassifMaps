@@ -10,7 +10,9 @@
 #include "components/FogOptions.h"
 #include "ui/MapMoveInfo.h"
 
+#include <chrono>
 #include <memory>
+#include <thread>
 #include <string>
 #include <vector>
 
@@ -408,4 +410,48 @@ void testMapMoveReason() {
     Subscription subscription = context->subscribe(target, "map.stable", &moveHandler, &record, false);
     TEST_CHECK(subscription != NULL_SUBSCRIPTION, "a map.stable subscription registers");
     context->unsubscribe(subscription);
+}
+
+void testThrottle() {
+    auto context = std::make_shared<Context>();
+    Handle target = NULL_HANDLE;
+    context->registerObject("options", "throttled", std::make_shared<FogOptions>(),
+                            "massif::FogOptions", target);
+
+    Record record;
+    Subscription subscription = context->subscribe(target, "map.moved", &recordingHandler, &record,
+                                                   false, DELIVERY_ORIGIN, false, "", 50);
+    TEST_CHECK(subscription != NULL_SUBSCRIPTION, "a throttled subscription registers");
+
+    // The first event of a throttled subscription must get through - a window starting at "now"
+    // would swallow it, which is the bug the epoch-initialised stamp exists to avoid.
+    context->emit(target, "map.moved", NULL_HANDLE);
+    TEST_CHECK(record.calls.size() == 1, "the first event is delivered");
+
+    // A burst inside the window collapses to nothing more.
+    for (int i = 0; i < 20; i++) {
+        context->emit(target, "map.moved", NULL_HANDLE);
+    }
+    TEST_CHECK(record.calls.size() == 1, "events inside the window are dropped");
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(60));
+    context->emit(target, "map.moved", NULL_HANDLE);
+    TEST_CHECK(record.calls.size() == 2, "an event after the window is delivered");
+
+    // Throttling is per subscription, not per event name: a second handler has its own window.
+    Record other;
+    Subscription second = context->subscribe(target, "map.moved", &recordingHandler, &other, false,
+                                             DELIVERY_ORIGIN, false, "", 0);
+    context->emit(target, "map.moved", NULL_HANDLE);
+    TEST_CHECK(record.calls.size() == 2 && other.calls.size() == 1,
+               "an unthrottled handler beside a throttled one still gets every event");
+
+    // A consuming subscription cannot be throttled - the SDK is waiting for the answer now.
+    Record consuming;
+    TEST_CHECK(context->subscribe(target, "map.clicked", &recordingHandler, &consuming, true,
+                                  DELIVERY_ORIGIN, false, "", 50) == NULL_SUBSCRIPTION,
+               "a consuming subscription refuses to be throttled");
+
+    context->unsubscribe(subscription);
+    context->unsubscribe(second);
 }

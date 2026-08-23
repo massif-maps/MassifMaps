@@ -373,7 +373,7 @@ namespace massif { namespace api {
 
     Subscription Context::subscribe(Handle handle, const std::string& event, EventHandler handler,
                                     void* userData, bool consume, Delivery delivery, bool coalesce,
-                                    const std::string& projection) {
+                                    const std::string& projection, int throttleMs) {
         std::lock_guard<std::mutex> lock(_mutex);
         if (!resolve(handle)) {
             return NULL_SUBSCRIPTION;
@@ -390,8 +390,13 @@ namespace massif { namespace api {
             Log::Error("Context::subscribe: a consuming handler must be DELIVERY_ORIGIN");
             return NULL_SUBSCRIPTION;
         }
+        if (consume && throttleMs > 0) {
+            // A dropped click is one the SDK is still waiting on an answer for.
+            Log::Error("Context::subscribe: a consuming handler cannot be throttled");
+            return NULL_SUBSCRIPTION;
+        }
         return _events.subscribe(handle, event, handler, userData, consume, delivery, coalesce,
-                                 projection);
+                                 projection, throttleMs);
     }
 
     bool Context::unsubscribe(Subscription subscription) {
@@ -441,6 +446,11 @@ namespace massif { namespace api {
             {
                 std::lock_guard<std::mutex> lock(_mutex);
                 if (!_events.lookup(subscription, dispatch)) {
+                    continue;
+                }
+                // Under the same lock as the lookup: the window is state on the entry, and two
+                // threads emitting at once would otherwise both find themselves due.
+                if (!_events.due(subscription, std::chrono::steady_clock::now())) {
                     continue;
                 }
                 if (dispatch.delivery != DELIVERY_ORIGIN) {

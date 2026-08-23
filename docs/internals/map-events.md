@@ -122,8 +122,13 @@ Maps for Android.
 - **`onMapInteraction` is redundant.** Its pan/zoom/rotate/tilt flags belong on the move event, and
   its "this was the user" meaning is now `reason == GESTURE`. Kept for compatibility; the next
   major should fold it in.
-- **No native debounce.** `onMapStable` being edge-triggered removes most of the need — it fires
-  once per movement — but a `map.moved` handler still fires 47–159/s during a pan. The facade's
-  subscription options (`mm_on`'s `opts_json`) already carry `delivery` and `coalesce` and are
-  designed to take new keys without a signature change, so a `debounce` belongs there rather than on
-  `Options`.
+- **No native debounce.** `throttle` — the leading edge — is a facade subscription option
+  (`mm_on`'s `opts_json`, `MassifMap.onMove(handler, ms)`, `-onMove:throttle:`): a window on the
+  subscription, checked in `EventBus::due` under the same lock as the lookup, dropping events that
+  arrive too soon. Dropping rather than queueing is forced by the payload, which does not outlive
+  the emit.
+
+  The **trailing** edge is not there. It needs a scheduled wakeup, and the facade has a worker pool
+  for async calls but no timer — sleeping a pool worker would block a call slot. The NativeScript
+  plugin implements its own in JavaScript, delivering a snapshot read at emit time. A C++ version
+  belongs beside `throttle` in the same options object.

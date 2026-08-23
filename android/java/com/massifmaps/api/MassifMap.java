@@ -372,7 +372,23 @@ public final class MassifMap implements AutoCloseable {
 
     /** Every camera change, whatever caused it. Fires well above frame rate during a drag. */
     public Subscription onMove(MapEvents.Handler<MapEvents.Move> handler) {
-        return on(MapEvents.MOVED, handler, MassifObject.EventKind.MOVE);
+        return onMove(handler, 0);
+    }
+
+    /**
+     * The same, delivering at most one event per {@code throttleMs}.
+     *
+     * A drag raises this 47 to 159 times a second, and a handler that repositions a view or
+     * updates a readout does not need every one. Events inside the window are DROPPED, not
+     * queued - the last one is not delivered late, because the payload does not outlive the emit.
+     * For work that should happen once the movement ENDS, use {@link #onStable} instead.
+     *
+     * @param throttleMs The window in milliseconds; 0 delivers every event.
+     */
+    public Subscription onMove(MapEvents.Handler<MapEvents.Move> handler, int throttleMs) {
+        bridge();
+        return options.subscribe(MapEvents.MOVED, handler, null, MassifObject.Delivery.UI, false,
+                                 eventProjection, MassifObject.EventKind.MOVE, throttleMs);
     }
 
     /**

@@ -51,11 +51,14 @@
     [map eventProjection:@"EPSG:4326"];
     [map.camera moveTo:[MSFPosition positionWithLng:6.8652 lat:45.8326] zoom:11];
 
-    // Every camera change, whatever caused it. This fires far above frame rate during a drag,
-    // which is exactly why it is the wrong place to refresh anything.
+    // Every camera change, whatever caused it - 47 to 159 a second during a drag, which is exactly
+    // why it is the wrong place to refresh anything. Throttled to 4 a second: events inside the
+    // window are DROPPED, not delivered late, because the payload does not outlive the emit. Good
+    // for a readout that should track the movement.
     _move = [map onMove:^(MSFMapMoveEvent *e) {
         self->_moves++;
-    }];
+        [host caption:[NSString stringWithFormat:@"moving - %d frames delivered", self->_moves]];
+    } throttle:250];
 
     // The end of a movement, once, with what caused it. A tap that did not move the camera does
     // not fire it, so there is no "did it actually move?" flag to keep.

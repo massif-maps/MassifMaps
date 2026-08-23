@@ -62,8 +62,8 @@ namespace massif { namespace api {
         virtual ~MapEventBridge();
 
         virtual void onMapIdle();
-        virtual void onMapMoved();
-        virtual void onMapStable();
+        virtual void onMapMoved(MapMoveReason::MapMoveReason reason);
+        virtual void onMapStable(MapMoveReason::MapMoveReason reason);
         virtual void onMapInteraction(const std::shared_ptr<MapInteractionInfo>& mapInteractionInfo);
         virtual void onMapClicked(const std::shared_ptr<MapClickInfo>& mapClickInfo);
 

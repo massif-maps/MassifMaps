@@ -50,7 +50,8 @@ There are listeners for user interaction related events, rendering events and ma
 
 An app can implement a custom `MapEventListener` to receive notifications about various events, such as:
 
-* Map is being moved or zoomed (`onMapMoved`)
+* Map is being moved or zoomed (`onMapMoved`), with a `MapMoveReason` saying whether it was the
+  user, an animation or an API call
 * Map has come to rest — animations finished, fingers lifted (`onMapStable`). This is about the
   camera, not the data: tiles may still be loading. See [Map events](/docs/internals/map-events)
   for what it does and does not guarantee.
@@ -76,7 +77,7 @@ public class MyMapEventListener extends MapEventListener {
     }
 
     @Override
-    public void onMapMoved() {
+    public void onMapMoved(int reason) {
         final MapPos topLeft = mapView.screenToMap(new ScreenPos(0, 0));
         final MapPos bottomRight = mapView.screenToMap(new ScreenPos(mapView.getWidth(), mapView.getHeight()));
     }
@@ -190,7 +191,7 @@ public class MyMapListener : MapEventListener
           _oldClickLabel = clickPopup;
       }
 
-      public override void OnMapMoved()
+      public override void OnMapMoved(MapMoveReason reason)
       {
 
       }
@@ -210,7 +211,7 @@ public class MyMapListener : MapEventListener
 @property MSFBalloonPopup* oldClickLabel;
 
 -(void)setMapView:(MSFMapView*)mapView vectorDataSource:(MSFLocalVectorDataSource*)vectorDataSource;
--(void)onMapMoved;
+-(void)onMapMoved:(enum MSFMapMoveReason)reason;
 -(void)onMapClicked:(MSFMapClickInfo*)mapClickInfo;
 
 @end
@@ -223,7 +224,7 @@ public class MyMapListener : MapEventListener
     self.vectorDataSource = vectorDataSource;
 }
 
--(void)onMapMoved
+-(void)onMapMoved:(enum MSFMapMoveReason)reason
 {
     // called very often, even just console logging can lag map movement animation
 }
@@ -293,7 +294,7 @@ public class MyMapEventListener : MSFMapEventListener {
         self.vectorDataSource = vectorDataSource
     }
     
-    public override func onMapMoved() {
+    public override func onMapMoved(_ reason: MSFMapMoveReason) {
         
         // This is called every time the map moves, and we can calculate positions as such:
         
@@ -358,7 +359,7 @@ class MyMapEventListener(var mapView: MapView?, var vectorDataSource: LocalVecto
 
     var oldClickLabel: BalloonPopup? = null
 
-    override fun onMapMoved() {
+    override fun onMapMoved(reason: Int) {
 
         // This is called every time the map moves, and we can calculate positions as such:
 

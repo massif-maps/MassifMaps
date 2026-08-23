@@ -15,6 +15,7 @@
 #include <atomic>
 #include <chrono>
 #include <memory>
+#include <optional>
 #include <thread>
 #include <mutex>
 #include <vector>
@@ -94,7 +95,7 @@ namespace massif {
         public:
             explicit MapRendererListener(const std::shared_ptr<TouchHandler>& touchHandler);
             
-            virtual void onMapChanged();
+            virtual void onMapChanged(MapMoveReason::MapMoveReason reason);
             virtual void onMapIdle();
             
         private:
@@ -102,6 +103,8 @@ namespace massif {
         };
         
         void handleTouchEvent(int action, const ScreenPos& screenPos1, const ScreenPos& screenPos2);
+
+        void noteMapMoved(MapMoveReason::MapMoveReason reason);
 
         void checkCameraEvents();
         void checkMapStable();
@@ -195,6 +198,8 @@ namespace massif {
     
         int _cameraEvents;
         int _pointersDown;
+        // The movement onMapStable owes a report for; taking it is the edge that fires the event.
+        std::optional<MapMoveReason::MapMoveReason> _pendingMoveReason;
         bool _idling;
         bool _noDualPointerYet;
         std::chrono::steady_clock::time_point _dualPointerReleaseTime;

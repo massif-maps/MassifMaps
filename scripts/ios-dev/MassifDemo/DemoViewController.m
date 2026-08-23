@@ -219,7 +219,7 @@
 
 @implementation DemoMapListener
 
-- (void)onMapMoved {
+- (void)onMapMoved:(enum MSFMapMoveReason)reason {
     DemoViewController *controller = self.controller;
     if (!controller) {
         return;

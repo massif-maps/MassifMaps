@@ -3,7 +3,7 @@
 
 %module(directors="1") MapEventListener
 
-!proxy_imports(massif::MapEventListener, ui.MapClickInfo, ui.MapInteractionInfo)
+!proxy_imports(massif::MapEventListener, ui.MapClickInfo, ui.MapInteractionInfo, ui.MapMoveInfo)
 
 %{
 #include "ui/MapEventListener.h"
@@ -15,6 +15,7 @@
 
 %import "ui/MapClickInfo.i"
 %import "ui/MapInteractionInfo.i"
+%import "ui/MapMoveInfo.i"
 
 !polymorphic_shared_ptr(massif::MapEventListener, ui.MapEventListener)
 

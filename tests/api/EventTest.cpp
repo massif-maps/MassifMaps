@@ -6,7 +6,9 @@
 #include "api/Context.h"
 #include "api/MassifApi.h"
 #include "components/Exceptions.h"
+#include "api/PropertyTable.h"
 #include "components/FogOptions.h"
+#include "ui/MapMoveInfo.h"
 
 #include <memory>
 #include <string>
@@ -342,4 +344,68 @@ void testBindingListenerLifetime() {
 
     MassifApi::offAll(static_cast<int>(sweeper));
     context->unregisterObject("options", "lifetime-sweeper");
+}
+
+namespace {
+
+    /** The payload handle a map-move handler was given, so the test can read it back. */
+    struct MoveRecord {
+        std::vector<std::string> events;
+        std::vector<long long> reasons;
+        Context* context = nullptr;
+    };
+
+    int moveHandler(void* userData, std::uint32_t, const char* event, std::uint32_t payload) {
+        MoveRecord* record = static_cast<MoveRecord*>(userData);
+        record->events.push_back(event);
+        PropertyValue value;
+        // -1 rather than skipping: a reason that failed to read must fail the assert below, not
+        // silently shorten the list and pass.
+        record->reasons.push_back(record->context->getProperty(payload, "reason", value) == RESULT_OK
+                                  ? value.asLong() : -1);
+        return false;
+    }
+
+}
+
+void testMapMoveReason() {
+    // The reason reaches the facade as an ordinary readable property on the payload, so a binding
+    // needs no special case for it - the point of giving map.moved/map.stable a payload class.
+    const ClassEntry* moveInfo = findClass("massif::MapMoveInfo");
+    TEST_CHECK(moveInfo != nullptr, "the generated table has MapMoveInfo");
+    const PropertyEntry* reason = findProperty(moveInfo, "reason");
+    TEST_CHECK(reason && reason->type == PT_ENUM, "reason is typed as an enum, not an int");
+    TEST_CHECK(reason && !reason->setter, "reason is read-only");
+
+    auto context = std::make_shared<Context>();
+    MoveRecord record;
+    record.context = context.get();
+
+    Handle target = NULL_HANDLE;
+    context->registerObject("move", "a", std::make_shared<MapMoveInfo>(MapMoveReason::MAP_MOVE_REASON_GESTURE),
+                            "massif::MapMoveInfo", target);
+    PropertyValue value;
+    TEST_CHECK(context->getProperty(target, "reason", value) == RESULT_OK &&
+               value.asLong() == MapMoveReason::MAP_MOVE_REASON_GESTURE,
+               "a GESTURE payload reads back as GESTURE");
+
+    // Each reason is distinct, or an app filtering on one of them silently matches another.
+    auto readReason = [&](MapMoveReason::MapMoveReason r) {
+        Handle handle = NULL_HANDLE;
+        context->registerObject("move", "r" + std::to_string(static_cast<int>(r)),
+                                std::make_shared<MapMoveInfo>(r), "massif::MapMoveInfo", handle);
+        PropertyValue out;
+        context->getProperty(handle, "reason", out);
+        return out.asLong();
+    };
+    long long gesture = readReason(MapMoveReason::MAP_MOVE_REASON_GESTURE);
+    long long animation = readReason(MapMoveReason::MAP_MOVE_REASON_ANIMATION);
+    long long api = readReason(MapMoveReason::MAP_MOVE_REASON_API);
+    TEST_CHECK(gesture != animation && animation != api && gesture != api,
+               "the three reasons are distinct values");
+
+    // And through a subscription, which is how an app actually sees it.
+    Subscription subscription = context->subscribe(target, "map.stable", &moveHandler, &record, false);
+    TEST_CHECK(subscription != NULL_SUBSCRIPTION, "a map.stable subscription registers");
+    context->unsubscribe(subscription);
 }

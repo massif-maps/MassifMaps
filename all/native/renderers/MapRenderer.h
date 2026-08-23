@@ -18,6 +18,7 @@
 #include "renderers/components/AnimationHandler.h"
 #include "renderers/components/KineticEventHandler.h"
 #include "components/StyleEnvironment.h"
+#include "ui/MapMoveReason.h"
 
 #include <cglib/mat.h>
 #include <cglib/ray.h>
@@ -70,7 +71,7 @@ namespace massif {
         struct OnChangeListener {
             virtual ~OnChangeListener() { }
             
-            virtual void onMapChanged() = 0;
+            virtual void onMapChanged(MapMoveReason::MapMoveReason reason) = 0;
             virtual void onMapIdle() = 0;
         };
 
@@ -156,10 +157,12 @@ namespace massif {
         AnimationHandler& getAnimationHandler();
         KineticEventHandler& getKineticEventHandler();
 
-        void calculateCameraEvent(CameraPanEvent& cameraEvent, float durationSeconds, bool updateKinetic);
-        void calculateCameraEvent(CameraRotationEvent& cameraEvent, float durationSeconds, bool updateKinetic);
-        void calculateCameraEvent(CameraTiltEvent& cameraEvent, float durationSeconds, bool updateKinetic);
-        void calculateCameraEvent(CameraZoomEvent& cameraEvent, float durationSeconds, bool updateKinetic);
+        // reason travels with the event so the camera listeners can say what moved the map. An
+        // animated call reports it once, here; the frames it produces report ANIMATION.
+        void calculateCameraEvent(CameraPanEvent& cameraEvent, float durationSeconds, bool updateKinetic, MapMoveReason::MapMoveReason reason);
+        void calculateCameraEvent(CameraRotationEvent& cameraEvent, float durationSeconds, bool updateKinetic, MapMoveReason::MapMoveReason reason);
+        void calculateCameraEvent(CameraTiltEvent& cameraEvent, float durationSeconds, bool updateKinetic, MapMoveReason::MapMoveReason reason);
+        void calculateCameraEvent(CameraZoomEvent& cameraEvent, float durationSeconds, bool updateKinetic, MapMoveReason::MapMoveReason reason);
     
         void moveToFitBounds(const MapBounds& mapBounds, const ScreenBounds& screenBounds, bool integerZoom, bool resetTilt, bool resetRotation, float durationSeconds);
         
@@ -187,7 +190,7 @@ namespace massif {
         void billboardsChanged();
         void vtLabelsChanged(const std::shared_ptr<Layer>& layer, bool delay);
         void layerChanged(const std::shared_ptr<Layer>& layer, bool delay);
-        void viewChanged(bool delay);
+        void viewChanged(bool delay, MapMoveReason::MapMoveReason reason);
     
         void registerOnChangeListener(const std::shared_ptr<OnChangeListener>& listener);
         void unregisterOnChangeListener(const std::shared_ptr<OnChangeListener>& listener);

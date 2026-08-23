@@ -1,6 +1,7 @@
 #include "api/MapEventBridge.h"
 #include "ui/MapClickInfo.h"
 #include "ui/MapInteractionInfo.h"
+#include "ui/MapMoveInfo.h"
 #include "ui/VectorTileClickInfo.h"
 #include "ui/VectorElementClickInfo.h"
 
@@ -48,18 +49,18 @@ namespace massif { namespace api {
         _emitter.emit("map.idle", std::shared_ptr<void>(), nullptr);
     }
 
-    void MapEventBridge::onMapMoved() {
+    void MapEventBridge::onMapMoved(MapMoveReason::MapMoveReason reason) {
         if (_chained) {
-            _chained->onMapMoved();
+            _chained->onMapMoved(reason);
         }
-        _emitter.emit("map.moved", std::shared_ptr<void>(), nullptr);
+        _emitter.emit("map.moved", std::make_shared<MapMoveInfo>(reason), "massif::MapMoveInfo");
     }
 
-    void MapEventBridge::onMapStable() {
+    void MapEventBridge::onMapStable(MapMoveReason::MapMoveReason reason) {
         if (_chained) {
-            _chained->onMapStable();
+            _chained->onMapStable(reason);
         }
-        _emitter.emit("map.stable", std::shared_ptr<void>(), nullptr);
+        _emitter.emit("map.stable", std::make_shared<MapMoveInfo>(reason), "massif::MapMoveInfo");
     }
 
     void MapEventBridge::onMapInteraction(const std::shared_ptr<MapInteractionInfo>& mapInteractionInfo) {

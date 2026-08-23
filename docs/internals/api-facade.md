@@ -1118,6 +1118,17 @@ or the subscription asks otherwise; see [Projections](#projections).
 Wired so far: `map.clicked`, `map.moved`, `map.idle`, `map.stable`, `map.interaction`,
 `vectortile.clicked`, `vectorelement.clicked`.
 
+`map.moved` and `map.stable` carry a `MapMoveInfo` payload whose only property is `reason` -
+`gesture`, `animation` or `api`. It is an ordinary enum property read through the same verbs as
+any other, which is why a binding needs no special case for it:
+
+```
+mm_get_long(ctx, payload, "reason", &reason);
+```
+
+`map.stable` is the END of a movement, reported once. A touch that did not move the camera does
+not raise it - see [Map events](map-events.md).
+
 ## Calls
 
 `set`/`get` cover a property. A **method** — `loadTile`, `getElevations` — needs `call`:

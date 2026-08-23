@@ -1,6 +1,5 @@
 package com.massifmaps.api;
 
-import com.massifmaps.core.MapPos;
 
 /**
  * A view of one object scoped to a path prefix.
@@ -70,7 +69,7 @@ public final class PropertyGroup {
         return target.getString(prefix + name, defaultValue);
     }
 
-    public MapPos getPos(String name) {
+    public Position getPos(String name) {
         return target.getPos(prefix + name);
     }
 

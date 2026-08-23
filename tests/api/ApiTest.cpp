@@ -29,6 +29,7 @@ void testMoreStructs();
 void testVariantPaths();
 void testFeaturePos();
 void testProjections();
+void testPositionWrites();
 void testEventProjection();
 void testObjectWrites();
 void testCallArgs();
@@ -276,6 +277,7 @@ int main() {
     testVariantPaths();
     testFeaturePos();
     testProjections();
+    testPositionWrites();
     testEventProjection();
     testObjectWrites();
     testCallArgs();

@@ -33,6 +33,8 @@ set(TEST_MODULES
   "${SDK_BASE_DIR}/all/modules/geometry/VectorTileFeatureBuilder.i"
   # Log is the SDK's only all-static class, and the only way to exercise a class with no instance.
   "${SDK_BASE_DIR}/all/modules/utils/Log.i"
+  # The only light class with a WRITABLE position - the set side of the WGS84 default (#159).
+  "${SDK_BASE_DIR}/all/modules/geocoding/GeocodingRequest.i"
   # For adopt: an abstract base an app SUBCLASSES, which is what a spec's `assets` id resolves to.
   # The base only - DirAssetPackage's !spec would pull FileUtils, and with it the platform
   # AssetUtils, which does not exist on the host.
@@ -40,7 +42,7 @@ set(TEST_MODULES
 )
 
 # The routing modules are behind this, so the generator and the compile have to agree on it.
-set(TEST_DEFINES "_MASSIF_ROUTING_SUPPORT")
+set(TEST_DEFINES "_MASSIF_ROUTING_SUPPORT" "_MASSIF_GEOCODING_SUPPORT")
 
 # The SDK sources those modules' classes need. Keep this short: a case that needs a long list is a
 # case that belongs behind a device check.
@@ -61,6 +63,7 @@ set(TEST_SDK_SOURCES
   "${SDK_BASE_DIR}/all/native/routing/RoutingRequest.cpp"
   "${SDK_BASE_DIR}/all/native/routing/RoutingResult.cpp"
   "${SDK_BASE_DIR}/all/native/routing/RoutingInstruction.cpp"
+  "${SDK_BASE_DIR}/all/native/geocoding/GeocodingRequest.cpp"
   "${SDK_BASE_DIR}/all/native/geometry/VectorTileFeatureCollection.cpp"
   # MassifApiC.cpp is the flat ABI; Builtins.cpp is NOT here - it pulls in every source and layer,
   # so CAbiTest.cpp defines registerBuiltins() itself over a handful of classes.

@@ -1,6 +1,5 @@
 package com.massifmaps.api;
 
-import com.massifmaps.core.MapPos;
 
 /**
  * Typed event payloads.
@@ -78,9 +77,9 @@ public final class MapEvents {
 
         /**
          * A position from the payload in a named projection, when one read wants a different one
-         * from the subscription's - "EPSG:3857" for metres, say, on a handler set up for lon/lat.
+         * from the default - "EPSG:3857" for map coordinates rather than degrees.
          */
-        public MapPos getPos(String path, String projection) {
+        public Position getPos(String path, String projection) {
             return Values.toPos(MassifApi.getPos(payload, path, projection));
         }
     }
@@ -91,8 +90,8 @@ public final class MapEvents {
             super(target, name, payload);
         }
 
-        /** Where it landed, in the map's projection or the one set with eventProjection. */
-        public MapPos position() {
+        /** Where it landed, in WGS84 unless the subscription named another projection. */
+        public Position position() {
             return Values.toPos(MassifApi.getPos(payload, "clickPos", ""));
         }
 
@@ -141,12 +140,12 @@ public final class MapEvents {
         }
 
         /** The clicked point, MultiPoint-aware rather than the centre of the whole feature. */
-        public MapPos position() {
+        public Position position() {
             return Values.toPos(MassifApi.getPos(payload, "featurePos", ""));
         }
 
         /** Where the finger landed, which is not the same as where the feature is. */
-        public MapPos clickPosition() {
+        public Position clickPosition() {
             return Values.toPos(MassifApi.getPos(payload, "clickPos", ""));
         }
 
@@ -184,11 +183,11 @@ public final class MapEvents {
             super(target, name, payload);
         }
 
-        public MapPos position() {
+        public Position position() {
             return Values.toPos(MassifApi.getPos(payload, "elementClickPos", ""));
         }
 
-        public MapPos clickPosition() {
+        public Position clickPosition() {
             return Values.toPos(MassifApi.getPos(payload, "clickPos", ""));
         }
 

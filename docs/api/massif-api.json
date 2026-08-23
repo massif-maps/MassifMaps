@@ -4509,6 +4509,12 @@
       "methods": [],
       "events": []
     },
+    "massif::MassifInterop": {
+      "base": null,
+      "properties": [],
+      "methods": [],
+      "events": []
+    },
     "massif::MemoryCacheTileDataSource": {
       "base": "massif::CacheTileDataSource",
       "properties": [],

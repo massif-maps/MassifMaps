@@ -1,6 +1,5 @@
 package com.massifmaps.api;
 
-import com.massifmaps.core.MapPos;
 import com.massifmaps.layers.Layer;
 import com.massifmaps.ui.MapEventListener;
 import com.massifmaps.ui.MapView;
@@ -21,6 +20,7 @@ import com.massifmaps.ui.MapView;
 public final class MassifMap implements AutoCloseable {
 
     private static final String KIND = "map";
+    private static final String VIEW_KIND = "view";
 
     private final MapView view;
     private final MassifObject options;
@@ -31,10 +31,10 @@ public final class MassifMap implements AutoCloseable {
     private String eventProjection = "";
     private boolean bridged;
 
-    private MassifMap(MapView view, MassifObject options) {
+    private MassifMap(MapView view, MassifObject options, MassifObject baseView) {
         this.view = view;
         this.options = options;
-        this.camera = new MapCamera(view);
+        this.camera = new MapCamera(baseView);
     }
 
     /** Attaches to a map view under the id "main". */
@@ -52,13 +52,23 @@ public final class MassifMap implements AutoCloseable {
         }
         int handle = MassifApi.findObject(KIND, id);
         if (handle == 0) {
-            handle = MassifApi.adopt(KIND, id, view.getOptions());
+            handle = MassifInterop.adopt(KIND, id, view.getOptions());
             if (handle == 0) {
                 throw new MassifException("Cannot attach map '" + id + "'");
             }
         }
+        // The map view is adopted too, under its own kind: it is what carries the CAMERA, and
+        // going through the facade is what gives moveTo the map's projection.
+        int viewHandle = MassifApi.findObject(VIEW_KIND, id);
+        if (viewHandle == 0) {
+            viewHandle = MassifInterop.adopt(VIEW_KIND, id, view.getBaseMapView());
+            if (viewHandle == 0) {
+                throw new MassifException("Cannot attach the map view of '" + id + "'");
+            }
+        }
         installUiDispatcher();
-        return new MassifMap(view, new MassifObject(handle, KIND, id));
+        return new MassifMap(view, new MassifObject(handle, KIND, id),
+                             new MassifObject(viewHandle, VIEW_KIND, id));
     }
 
     /**
@@ -289,7 +299,7 @@ public final class MassifMap implements AutoCloseable {
         if (target == null) {
             return null;
         }
-        int handle = MassifApi.adopt("layer", id, target);
+        int handle = MassifInterop.adopt("layer", id, target);
         return handle == 0 ? null : new MassifLayer(handle, id, this);
     }
 
@@ -329,14 +339,14 @@ public final class MassifMap implements AutoCloseable {
 
     // --- screen and map ------------------------------------------------------------------------
 
-    /** Where a touch point is on the map. Straight through to the view; here so one class has it. */
-    public MapPos screenToMap(float x, float y) {
-        return view.screenToMap(new com.massifmaps.core.ScreenPos(x, y));
+    /** Where a touch point is on the map, in WGS84. */
+    public Position screenToMap(float x, float y) {
+        return camera.screenToMap(x, y);
     }
 
     /** And the other way, for placing a native view over a coordinate. */
-    public com.massifmaps.core.ScreenPos mapToScreen(MapPos pos) {
-        return view.mapToScreen(pos);
+    public ScreenPoint mapToScreen(Position pos) {
+        return camera.mapToScreen(pos);
     }
 
     // --- events --------------------------------------------------------------------------------
@@ -438,7 +448,7 @@ public final class MassifMap implements AutoCloseable {
             return;
         }
         MapEventListener chained = view.getMapEventListener();
-        view.setMapEventListener(MassifApi.createEventBridge(options.handle, chained));
+        view.setMapEventListener(MassifInterop.createEventBridge(options.handle, chained));
         bridged = true;
     }
 

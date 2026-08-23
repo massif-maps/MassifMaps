@@ -1,7 +1,5 @@
 package com.massifmaps.api;
 
-import com.massifmaps.core.MapBounds;
-import com.massifmaps.core.MapPos;
 
 import org.json.JSONArray;
 
@@ -58,7 +56,7 @@ public class MassifObject implements AutoCloseable {
     /**
      * Sets a property. The path may walk object properties - "fogOptions.rangeStart".
      *
-     * @param value A boolean, a number, a String, a MapPos, a MapBounds, an array or a
+     * @param value A boolean, a number, a String, a {@link Position}, a {@link Bounds}, an array or a
      *              {@link Spec} for a struct property, another MassifObject to point an object
      *              property at, or null to clear one.
      * @throws MassifException When the path does not resolve, or the property is read-only.
@@ -73,12 +71,10 @@ public class MassifObject implements AutoCloseable {
             result = MassifApi.setObject(handle, path, 0);
         } else if (value instanceof Boolean) {
             result = MassifApi.setBool(handle, path, (Boolean) value);
-        } else if (value instanceof MapPos) {
-            result = MassifApi.setString(handle, path, Values.fromPos((MapPos) value));
-        } else if (value instanceof MapBounds) {
-            MapBounds bounds = (MapBounds) value;
-            result = MassifApi.setString(handle, path,
-                "[" + Values.fromPos(bounds.getMin()) + "," + Values.fromPos(bounds.getMax()) + "]");
+        } else if (value instanceof Position) {
+            result = MassifApi.setString(handle, path, Values.fromPos((Position) value));
+        } else if (value instanceof Bounds) {
+            result = MassifApi.setString(handle, path, Values.fromBounds((Bounds) value));
         } else if (value instanceof Object[] || value instanceof int[]
                    || value instanceof double[] || value instanceof Spec) {
             // A STRUCT property - a list of layer names, a zoom range, a header map. It crosses as
@@ -183,17 +179,17 @@ public class MassifObject implements AutoCloseable {
         return Values.getString(handle, path, defaultValue);
     }
 
-    /** A position, in the object's own projection. */
-    public MapPos getPos(String path) {
+    /** A position, in WGS84 - longitude, latitude, altitude. */
+    public Position getPos(String path) {
         return Values.toPos(MassifApi.getPos(handle, path, ""));
     }
 
-    /** A position, converted - "EPSG:4326" for lon/lat. */
-    public MapPos getPos(String path, String projection) {
+    /** The same, in another projection - "EPSG:3857" for map coordinates. */
+    public Position getPos(String path, String projection) {
         return Values.toPos(MassifApi.getPos(handle, path, projection));
     }
 
-    public MapBounds getBounds(String path) {
+    public Bounds getBounds(String path) {
         return Values.toBounds(MassifApi.getPos(handle, path, ""));
     }
 
@@ -396,13 +392,30 @@ public class MassifObject implements AutoCloseable {
         }
         JSONArray array = new JSONArray();
         for (Object arg : args) {
-            array.put(Spec.unwrap(arg instanceof MapPos ? posArray((MapPos) arg) : arg));
+            array.put(Spec.unwrap(toArg(arg)));
         }
         return array.toString();
     }
 
-    private static double[] posArray(MapPos pos) {
-        return new double[] { pos.getX(), pos.getY(), pos.getZ() };
+    /** The facade's own value types, as the JSON arrays the call channel carries them in. */
+    private static Object toArg(Object arg) {
+        if (arg instanceof Position) {
+            Position pos = (Position) arg;
+            return new double[] { pos.lng, pos.lat, pos.alt };
+        }
+        if (arg instanceof Bounds) {
+            Bounds bounds = (Bounds) arg;
+            return new Object[] { toArg(bounds.min), toArg(bounds.max) };
+        }
+        if (arg instanceof ScreenPoint) {
+            ScreenPoint point = (ScreenPoint) arg;
+            return new double[] { point.x, point.y };
+        }
+        if (arg instanceof ScreenRect) {
+            ScreenRect rect = (ScreenRect) arg;
+            return new Object[] { toArg(rect.min), toArg(rect.max) };
+        }
+        return arg;
     }
 
     /** Handed the result of an async call, on the UI thread. Null when the call failed. */

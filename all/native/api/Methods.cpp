@@ -1,8 +1,10 @@
 #include "api/Methods.h"
 #include "api/StructCodec.h"
 #include "utils/Log.h"
+#include "core/MapBounds.h"
 #include "core/MapPos.h"
 #include "core/MapTile.h"
+#include "projections/Projection.h"
 
 #include <map>
 #include <mutex>
@@ -90,16 +92,62 @@ namespace massif { namespace api {
         return true;
     }
 
+    void CallArgs::setProjections(const std::shared_ptr<Projection>& caller,
+                                  const std::shared_ptr<Projection>& object) {
+        _caller = caller;
+        _object = object;
+    }
+
+    namespace {
+        /** Both ends known and different, or there is nothing to convert. */
+        bool converts(const std::shared_ptr<Projection>& from, const std::shared_ptr<Projection>& to) {
+            return from && to && from->getName() != to->getName();
+        }
+    }
+
     bool CallArgs::getPos(int index, MapPos& value) const {
         Variant argument = get(index);
-        return argument.getType() == VariantType::VARIANT_TYPE_ARRAY &&
-               StructCodec::decode(argument.toString(), value);
+        if (argument.getType() != VariantType::VARIANT_TYPE_ARRAY ||
+            !StructCodec::decode(argument.toString(), value)) {
+            return false;
+        }
+        if (converts(_caller, _object)) {
+            value = _object->fromWgs84(_caller->toWgs84(value));
+        }
+        return true;
     }
 
     bool CallArgs::getPositions(int index, std::vector<MapPos>& value) const {
         Variant argument = get(index);
-        return argument.getType() == VariantType::VARIANT_TYPE_ARRAY &&
-               StructCodec::decode(argument.toString(), value);
+        if (argument.getType() != VariantType::VARIANT_TYPE_ARRAY ||
+            !StructCodec::decode(argument.toString(), value)) {
+            return false;
+        }
+        if (converts(_caller, _object)) {
+            for (MapPos& pos : value) {
+                pos = _object->fromWgs84(_caller->toWgs84(pos));
+            }
+        }
+        return true;
+    }
+
+    bool CallArgs::getBounds(int index, MapBounds& value) const {
+        Variant argument = get(index);
+        if (argument.getType() != VariantType::VARIANT_TYPE_ARRAY ||
+            !StructCodec::decode(argument.toString(), value)) {
+            return false;
+        }
+        if (converts(_caller, _object)) {
+            // Corner-wise, like Context's own reprojection - right for the axis-aligned
+            // projections reachable by name here.
+            value = MapBounds(_object->fromWgs84(_caller->toWgs84(value.getMin())),
+                              _object->fromWgs84(_caller->toWgs84(value.getMax())));
+        }
+        return true;
+    }
+
+    MapPos CallArgs::toCaller(const MapPos& value) const {
+        return converts(_object, _caller) ? _caller->fromWgs84(_object->toWgs84(value)) : value;
     }
 
     bool CallArgs::getTile(int index, MapTile& value) const {

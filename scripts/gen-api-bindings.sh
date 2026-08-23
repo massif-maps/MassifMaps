@@ -28,6 +28,9 @@ python3 gen-api-constants.py
 
 if [ "$1" = "--check" ]; then
     cd ..
+    # The other half of "the facade is carriable by a hand-written binding": generated typings are
+    # useless if MassifApi itself grew an SDK type.
+    scripts/check-facade-abi.sh
     if ! git diff --quiet -- docs/api/massif-api.json bindings/typescript/massif.d.ts \
             ios/objc/api/MassifApiNames.h ios/objc/api/MassifApiNames.m \
             android/java/com/massifmaps/api/ApiNames.java \

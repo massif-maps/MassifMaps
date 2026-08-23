@@ -1,11 +1,11 @@
 /*
  * Tests for adopting an object under an id and reaching it from a spec.
  *
- * The point of MassifApi::adopt(kind, id, AssetPackage) is that a binding's OWN subclass becomes
- * addressable from JSON: a spec's `assets` key that is a string is resolved as an id of kind
- * "assets". MassifApi.cpp itself needs Options, Layers and every source constructor to link, so
- * what is checked here is the half that carries the contract - Context::registerObject plus the
- * childOf lookup the generated builders call.
+ * The point of MassifInterop::adopt(kind, id, AssetPackage) is that a binding's OWN subclass
+ * becomes addressable from JSON: a spec's `assets` key that is a string is resolved as an id of
+ * kind "assets". MassifInterop.cpp itself needs Options, Layers and every source constructor to
+ * link, so what is checked here is the half that carries the contract - Context::registerObject
+ * plus the childOf lookup the generated builders call.
  *
  * See tests/README.md for what is deliberately out of scope.
  */

@@ -45,7 +45,7 @@ static NSString * const kUserAgent =
     [[map layer:@"basemap"] set:MassifPropertyOpacity value:@1.0];
 
     // Positions are lon/lat: the map view was set up with EPSG:4326 as its base projection.
-    [map.camera moveTo:[[MSFMapPos alloc] initWithX:6.8652 y:45.8326] zoom:11];
+    [map.camera moveTo:[MSFPosition positionWithLng:6.8652 lat:45.8326] zoom:11];
 
     [host caption:@"Mont Blanc, from OpenStreetMap raster tiles."];
 }

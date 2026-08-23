@@ -8,10 +8,10 @@
 #define _MSFMASSIFOBJECT_H_
 
 #import <Foundation/Foundation.h>
+
+#import "MSFValueTypes.h"
 #import "MSFMapEvents.h"
 
-@class MSFMapPos;
-@class MSFMapBounds;
 @class MSFPropertyGroup;
 @class MSFSubscription;
 @class MSFMassifMap;
@@ -41,7 +41,7 @@ NS_SWIFT_NAME(MassifObject)
 
 /**
  * Sets a property. The path may walk object properties - "fogOptions.rangeStart".
- * @param value An NSNumber, NSString, MSFMapPos, MSFMapBounds, another MSFMassifObject to point
+ * @param value An NSNumber, NSString, MSFPosition, MSFBounds, another MSFMassifObject to point
  *        an object property at, or nil/NSNull to clear one.
  * @return NO when the path does not resolve or the property is read-only.
  */
@@ -53,12 +53,12 @@ NS_SWIFT_NAME(MassifObject)
 - (nullable NSString *)getString:(NSString *)path defaultValue:(nullable NSString *)defaultValue;
 
 /** A position, in the object's own projection. */
-- (nullable MSFMapPos *)getPos:(NSString *)path;
+- (nullable MSFPosition *)getPos:(NSString *)path;
 
 /** A position, converted - "EPSG:4326" for lon/lat. */
-- (nullable MSFMapPos *)getPos:(NSString *)path projection:(NSString *)projection;
+- (nullable MSFPosition *)getPos:(NSString *)path projection:(NSString *)projection;
 
-- (nullable MSFMapBounds *)getBounds:(NSString *)path;
+- (nullable MSFBounds *)getBounds:(NSString *)path;
 
 /** A view scoped to a path prefix, so a group of options reads without repeating it. */
 - (MSFPropertyGroup *)group:(NSString *)prefix;
@@ -134,7 +134,7 @@ NS_SWIFT_NAME(PropertyGroup)
 - (long long)getLong:(NSString *)name defaultValue:(long long)defaultValue;
 - (BOOL)getBool:(NSString *)name defaultValue:(BOOL)defaultValue;
 - (nullable NSString *)getString:(NSString *)name defaultValue:(nullable NSString *)defaultValue;
-- (nullable MSFMapPos *)getPos:(NSString *)name;
+- (nullable MSFPosition *)getPos:(NSString *)name;
 
 /** The object this group belongs to, for anything outside the prefix. */
 @property (nonatomic, readonly) MSFMassifObject *object;
@@ -216,7 +216,7 @@ NS_SWIFT_NAME(MassifLayer)
  * Elevations under a set of positions, as one flat array of doubles - a profile over a track is
  * thousands of numbers. Only a hillshade layer answers; anything else gives nil.
  */
-- (nullable NSData *)elevations:(NSArray<MSFMapPos *> *)positions;
+- (nullable NSData *)elevations:(NSArray<MSFPosition *> *)positions;
 
 @end
 

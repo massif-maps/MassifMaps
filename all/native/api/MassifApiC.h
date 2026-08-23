@@ -177,9 +177,9 @@ MM_API int mm_get_double(mm_ctx ctx, mm_handle handle, const char* path, double*
  * byte count INCLUDING the terminating NUL, and is always set on MM_OK and MM_BUFFER_TOO_SMALL, so
  * a caller that guessed can retry without asking twice.
  *
- * @param projection A well-known name, e.g. "EPSG:4326", to read a position in. Null or empty
- *                   leaves it in the object's own projection - or in the one the running event
- *                   handler asked for. Ignored for anything that is not a coordinate.
+ * @param projection A well-known name, e.g. "EPSG:3857", to read a position in. Null or empty
+ *                   means the projection the running event handler asked for, and WGS84 when there
+ *                   is none. Ignored for anything that is not a coordinate.
  */
 MM_API int mm_get_string(mm_ctx ctx, mm_handle handle, const char* path, const char* projection,
                          char* buffer, size_t size, size_t* needed);
@@ -192,8 +192,8 @@ MM_API int mm_get_string(mm_ctx ctx, mm_handle handle, const char* path, const c
  * most 3 doubles and a bounds 6, so the caller passes a fixed buffer and is told how many were
  * there.
  *
- * @param projection A well-known name, e.g. "EPSG:4326". Null or empty leaves the position in the
- *                   object's own projection - or in the one the running event handler asked for.
+ * @param projection A well-known name, e.g. "EPSG:3857". Null or empty means the projection the
+ *                   running event handler asked for, and WGS84 when there is none.
  * @param out Filled with up to `count` numbers. May be null to ask only how many there are.
  * @param count The capacity of `out`.
  * @param needed Set to how many numbers the value HAS, whether or not they fit.

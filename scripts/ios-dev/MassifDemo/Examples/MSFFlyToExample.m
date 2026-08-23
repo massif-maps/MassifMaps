@@ -33,7 +33,7 @@ static NSString * const kUserAgent =
                          set:@"maxZoom" value:@19]
                          set:@"HTTPHeaders" value:[[MSFSpec object] set:@"User-Agent" value:kUserAgent]]]
             error:nil];
-    [map.camera moveTo:[[MSFMapPos alloc] initWithX:5.7245 y:45.1885] zoom:6];
+    [map.camera moveTo:[MSFPosition positionWithLng:5.7245 lat:45.1885] zoom:6];
 
     // name, lon, lat, zoom, rotation, tilt
     NSArray *places = @[
@@ -45,7 +45,7 @@ static NSString * const kUserAgent =
         [host button:place[0] action:^{
             // animate(seconds) applies to the next move only, then resets to 0.
             [[map.camera animate:3]
-                moveTo:[[MSFMapPos alloc] initWithX:[place[1] doubleValue] y:[place[2] doubleValue]]
+                moveTo:[MSFPosition positionWithLng:[place[1] doubleValue] lat:[place[2] doubleValue]]
                   zoom:[place[3] floatValue]
               rotation:[place[4] floatValue]
                   tilt:[place[5] floatValue]];

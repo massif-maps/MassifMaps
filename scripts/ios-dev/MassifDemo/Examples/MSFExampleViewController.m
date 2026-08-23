@@ -97,13 +97,13 @@
         && ![DemoCfg has:@"rotation"] && ![DemoCfg has:@"tilt"]) {
         return;
     }
-    MSFMapPos *focus = _massifMap.camera.currentPosition;
-    double lon = [DemoCfg doubleFor:@"lon" defaultValue:[focus getX]];
-    double lat = [DemoCfg doubleFor:@"lat" defaultValue:[focus getY]];
+    MSFPosition *focus = _massifMap.camera.currentPosition;
+    double lon = [DemoCfg doubleFor:@"lon" defaultValue:focus.lng];
+    double lat = [DemoCfg doubleFor:@"lat" defaultValue:focus.lat];
     float zoom = [DemoCfg floatFor:@"zoom" defaultValue:_massifMap.camera.currentZoom];
     float rotation = [DemoCfg floatFor:@"rotation" defaultValue:_massifMap.camera.currentRotation];
     float tilt = [DemoCfg floatFor:@"tilt" defaultValue:_massifMap.camera.currentTilt];
-    [_massifMap.camera moveTo:[[MSFMapPos alloc] initWithX:lon y:lat] zoom:zoom
+    [_massifMap.camera moveTo:[MSFPosition positionWithLng:lon lat:lat] zoom:zoom
                      rotation:rotation tilt:tilt];
     NSLog(@"camera lon=%.5f lat=%.5f zoom=%.2f rotation=%.0f tilt=%.0f", lon, lat, zoom, rotation, tilt);
 }

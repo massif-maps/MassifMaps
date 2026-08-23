@@ -27,7 +27,7 @@ import com.massifmaps.MassifDemo.examples.Examples;
 import com.massifmaps.MassifDemo.examples.MapExample;
 import com.massifmaps.api.MassifMap;
 import com.massifmaps.components.PanningMode;
-import com.massifmaps.core.MapPos;
+import com.massifmaps.api.Position;
 import com.massifmaps.projections.EPSG4326;
 import com.massifmaps.ui.MapView;
 
@@ -191,15 +191,15 @@ public class ExampleActivity extends AppCompatActivity implements ExampleHost {
         if (extras == null) {
             return;
         }
-        MapPos focus = map.camera().position();
-        double lon = number(extras, "lon", focus.getX());
-        double lat = number(extras, "lat", focus.getY());
+        Position focus = map.camera().position();
+        double lon = number(extras, "lon", focus.lng);
+        double lat = number(extras, "lat", focus.lat);
         float zoom = (float) number(extras, "zoom", map.camera().zoom());
         float rotation = (float) number(extras, "rotation", map.camera().rotation());
         float tilt = (float) number(extras, "tilt", map.camera().tilt());
         if (extras.containsKey("lon") || extras.containsKey("lat") || extras.containsKey("zoom")
                 || extras.containsKey("rotation") || extras.containsKey("tilt")) {
-            map.camera().moveTo(new MapPos(lon, lat), zoom, rotation, tilt);
+            map.camera().moveTo(new Position(lon, lat), zoom, rotation, tilt);
         }
         logCamera();
     }
@@ -212,9 +212,9 @@ public class ExampleActivity extends AppCompatActivity implements ExampleHost {
      * rather than trusting what was asked for.
      */
     private void logCamera() {
-        MapPos at = map.camera().position();
+        Position at = map.camera().position();
         Log.i(TAG, String.format("camera lon=%.5f lat=%.5f zoom=%.2f rotation=%.0f tilt=%.0f",
-                                 at.getX(), at.getY(), map.camera().zoom(),
+                                 at.lng, at.lat, map.camera().zoom(),
                                  map.camera().rotation(), map.camera().tilt()));
     }
 

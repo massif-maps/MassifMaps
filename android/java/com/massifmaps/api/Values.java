@@ -1,12 +1,9 @@
 package com.massifmaps.api;
 
-import com.massifmaps.core.MapBounds;
-import com.massifmaps.core.MapPos;
-
 import org.json.JSONArray;
 
 /**
- * The JSON the facade uses for the small by-value structs, as the SDK's own types.
+ * The JSON the facade uses for the small by-value structs, as the facade's own types.
  *
  * One place, so no binding grows its own position parser - the shape is `[x, y]` or `[x, y, z]`,
  * and bounds are a pair of those.
@@ -35,7 +32,7 @@ final class Values {
     }
 
     /** @return null when the value is missing or not a position. */
-    static MapPos toPos(String json) {
+    static Position toPos(String json) {
         if (json == null || json.isEmpty()) {
             return null;
         }
@@ -44,14 +41,14 @@ final class Values {
             if (array.length() < 2) {
                 return null;
             }
-            return new MapPos(array.getDouble(0), array.getDouble(1),
-                              array.length() > 2 ? array.getDouble(2) : 0);
+            return new Position(array.getDouble(0), array.getDouble(1),
+                                array.length() > 2 ? array.getDouble(2) : 0);
         } catch (Exception e) {
             return null;
         }
     }
 
-    static MapBounds toBounds(String json) {
+    static Bounds toBounds(String json) {
         if (json == null || json.isEmpty()) {
             return null;
         }
@@ -60,16 +57,39 @@ final class Values {
             if (array.length() != 2) {
                 return null;
             }
-            MapPos min = toPos(array.getJSONArray(0).toString());
-            MapPos max = toPos(array.getJSONArray(1).toString());
-            return min != null && max != null ? new MapBounds(min, max) : null;
+            Position min = toPos(array.getJSONArray(0).toString());
+            Position max = toPos(array.getJSONArray(1).toString());
+            return min != null && max != null ? new Bounds(min, max) : null;
         } catch (Exception e) {
             return null;
         }
     }
 
-    static String fromPos(MapPos pos) {
-        return "[" + pos.getX() + "," + pos.getY() + "," + pos.getZ() + "]";
+    static String fromPos(Position pos) {
+        return "[" + pos.lng + "," + pos.lat + "," + pos.alt + "]";
+    }
+
+    static String fromBounds(Bounds bounds) {
+        return "[" + fromPos(bounds.min) + "," + fromPos(bounds.max) + "]";
+    }
+
+    static String fromRect(ScreenRect rect) {
+        return "[[" + rect.min.x + "," + rect.min.y + "],[" + rect.max.x + "," + rect.max.y + "]]";
+    }
+
+    /** @return null when the value is missing or not a screen point. */
+    static ScreenPoint toScreenPoint(String json) {
+        if (json == null || json.isEmpty()) {
+            return null;
+        }
+        try {
+            JSONArray array = new JSONArray(json);
+            return array.length() >= 2
+                ? new ScreenPoint((float) array.getDouble(0), (float) array.getDouble(1))
+                : null;
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private Values() {

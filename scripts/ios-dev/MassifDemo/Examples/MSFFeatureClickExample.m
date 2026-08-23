@@ -46,18 +46,18 @@
                          set:@"style" value:@"alpine"]
                 error:nil];
 
-    [map.camera moveTo:[[MSFMapPos alloc] initWithX:5.7245 y:45.1885] zoom:14.5];
+    [map.camera moveTo:[MSFPosition positionWithLng:5.7245 lat:45.1885] zoom:14.5];
 
     _featureClick = [base onFeatureClick:^(MSFVectorTileClickEvent *e) {
         // Each of these is one read out of the payload. Nothing else is touched.
         NSString *name = [e property:@"name"];
         NSString *kind = [e property:@"class"];
-        MSFMapPos *where = e.position;
+        MSFPosition *where = e.position;
         [host caption:[NSString stringWithFormat:@"%@%@%@  %.5f, %.5f",
                        e.layerName,
                        name ? [@" - " stringByAppendingString:name] : @"",
                        kind ? [NSString stringWithFormat:@" (%@)", kind] : @"",
-                       where ? [where getY] : 0, where ? [where getX] : 0]];
+                       where ? where.lat : 0, where ? where.lng : 0]];
     }];
     [host caption:@"Tap a road, a building or the water."];
 }

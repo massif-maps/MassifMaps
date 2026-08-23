@@ -9,6 +9,7 @@
 #include "api/StructCodec.h"
 #include "api/Methods.h"
 #include "core/BinaryData.h"
+#include "core/MapBounds.h"
 #include "core/MapTile.h"
 #include "datasources/components/TileData.h"
 #include "geometry/Feature.h"
@@ -17,6 +18,7 @@
 #include "geometry/VectorTileFeature.h"
 #include "geometry/VectorTileFeatureCollection.h"
 #include "projections/EPSG3857.h"
+#include "projections/EPSG4326.h"
 #include "routing/RoutingInstruction.h"
 #include "routing/RoutingRequest.h"
 #include "routing/RoutingResult.h"
@@ -200,6 +202,30 @@ void testCallArgs() {
     TEST_CHECK(!args.getPos(9, pos), "an index past the end is refused");
     TEST_CHECK(!args.getTile(4, tile), "a two-element array is not a tile");
     TEST_CHECK(!args.getPositions(6, positions), "and a tile is not an array of positions");
+
+    // A position ARGUMENT is in the caller's projection, exactly like a position property, or
+    // moveTo would not accept what screenToMap just returned (#159).
+    CallArgs projected;
+    TEST_CHECK(CallArgs::parse("[[5.76,45.24],[[5.76,45.24],[0,0]],[[0,0],[5.76,45.24]]]",
+                               projected), "an argument list of positions");
+    projected.setProjections(std::make_shared<EPSG4326>(), std::make_shared<EPSG3857>());
+    TEST_CHECK(projected.getPos(0, pos) && std::fabs(pos.getX() - 641200) < 1 &&
+               std::fabs(pos.getY() - 5659384) < 1,
+               "degrees in, the object's own projection out");
+    TEST_CHECK(projected.getPositions(1, positions) && positions.size() == 2 &&
+               std::fabs(positions[0].getX() - 641200) < 1 && positions[1].getX() == 0,
+               "and every element of an array converts");
+    MapBounds bounds;
+    TEST_CHECK(projected.getBounds(2, bounds) && std::fabs(bounds.getMax().getX() - 641200) < 1,
+               "bounds convert corner-wise");
+    TEST_CHECK(std::fabs(projected.toCaller(MapPos(641200, 5659384)).getX() - 5.76) < 1e-5,
+               "and a position a thunk PRODUCES converts back");
+
+    // Without both ends, nothing is guessed at.
+    CallArgs bare;
+    TEST_CHECK(CallArgs::parse("[[5.76,45.24]]", bare), "the same list, no projections set");
+    TEST_CHECK(bare.getPos(0, pos) && pos == MapPos(5.76, 45.24, 0),
+               "an unprojected call leaves the position exactly as it arrived");
 }
 
 void testCall() {

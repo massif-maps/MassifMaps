@@ -6,6 +6,7 @@
 #include "api/Context.h"
 #include "api/Projections.h"
 #include "api/StructCodec.h"
+#include "geocoding/GeocodingRequest.h"
 #include "geometry/Feature.h"
 #include "geometry/GeoJSONGeometryWriter.h"
 #include "geometry/PointGeometry.h"
@@ -46,6 +47,21 @@ namespace {
         std::string perRead;   // asked for explicitly inside the handler, when set
     };
 
+    struct Writing {
+        Context* context = nullptr;
+        Handle target = NULL_HANDLE;
+    };
+
+    /** Writes a position from inside a handler, to check the subscription's projection applies. */
+    int writingHandler(void* userData, std::uint32_t, const char*, std::uint32_t) {
+        Writing* writing = static_cast<Writing*>(userData);
+        PropertyValue value;
+        value.type = PT_STRING;
+        value.stringValue = "[700000,5666370]";
+        writing->context->setProperty(writing->target, "location", value);
+        return false;
+    }
+
     int readingHandler(void* userData, std::uint32_t, const char*, std::uint32_t) {
         Seen* seen = static_cast<Seen*>(userData);
         PropertyValue value;
@@ -80,13 +96,16 @@ void testProjections() {
     context->setObjectProjection(handle, std::make_shared<EPSG3857>());
     TEST_CHECK(context->getObjectProjection(handle)->getName() == "EPSG:3857", "attached is used");
 
-    // Without a projection asked for, the value stays exactly as the object has it.
+    // With nobody naming a projection, a position crosses the facade in WGS84 - NOT in the
+    // object's own projection, which is what makes lng/lat honest names in a binding (#159).
     PropertyValue value;
     TEST_CHECK(context->getProperty(handle, "bounds", value) == RESULT_OK, "bounds read");
+    MapBounds defaulted;
+    TEST_CHECK(StructCodec::decode(value.stringValue, defaulted) &&
+               near(defaulted.getMax().getX(), 180, 1e-6),
+               "and defaults to WGS84 rather than the source projection");
+
     MapBounds unchanged;
-    TEST_CHECK(StructCodec::decode(value.stringValue, unchanged) &&
-               near(unchanged.getMax().getX(), 20037508.34, 1.0),
-               "and is left in the source projection");
 
     // Asked for, it converts: the right edge of the Mercator world is 180 degrees east.
     TEST_CHECK(context->getProperty(handle, "bounds", value, "EPSG:4326") == RESULT_OK,
@@ -126,6 +145,47 @@ void testProjections() {
     context->setObjectProjection(wgs84, std::make_shared<EPSG4326>());
     TEST_CHECK(context->getProperty(wgs84, "bounds", value, "EPSG:3857") == RESULT_UNSUPPORTED_TYPE,
                "the poles have no Mercator position, and that is an error");
+}
+
+/*
+ * Writing a position: it goes in through the same projection it comes out of.
+ *
+ * The one failure the WGS84 default could produce is silent - read a position, write it back, and
+ * without this it lands in the Gulf of Guinea rather than where it was read.
+ */
+void testPositionWrites() {
+    auto context = std::make_shared<Context>();
+    auto mercator = std::make_shared<EPSG3857>();
+    auto request = std::make_shared<GeocodingRequest>(mercator, "grenoble");
+    Handle handle = NULL_HANDLE;
+    context->registerObject("request", "r", request, "massif::GeocodingRequest", handle);
+
+    PropertyValue degrees;
+    degrees.type = PT_STRING;
+    degrees.stringValue = "[5.76,45.24]";
+    TEST_CHECK(context->setProperty(handle, "location", degrees) == RESULT_OK, "a position writes");
+    TEST_CHECK(near(request->getLocation().getX(), 641200, 1.0) &&
+               near(request->getLocation().getY(), 5659384, 1.0),
+               "and reached the SDK converted into the object's own projection");
+
+    PropertyValue readBack;
+    TEST_CHECK(context->getProperty(handle, "location", readBack) == RESULT_OK, "and reads back");
+    MapPos pos;
+    TEST_CHECK(StructCodec::decode(readBack.stringValue, pos) &&
+               near(pos.getX(), 5.76, 1e-6) && near(pos.getY(), 45.24, 1e-6),
+               "in the degrees it was written in - the round trip is the point");
+
+    // Inside a handler, the subscription's projection applies to the write as well as the read.
+    Writing writing;
+    writing.context = context.get();
+    writing.target = handle;
+    Subscription subscription = context->subscribe(handle, "click", &writingHandler, &writing,
+                                                   false, DELIVERY_ORIGIN, false, "EPSG:3857");
+    TEST_CHECK(subscription != NULL_SUBSCRIPTION, "subscribed");
+    context->emit(handle, "click", NULL_HANDLE);
+    TEST_CHECK(near(request->getLocation().getX(), 700000, 1.0),
+               "a write inside the handler is taken in the subscription's projection, not degrees");
+    context->unsubscribe(subscription);
 }
 
 /* Writing an object property: the checked downcast that makes it safe. */
@@ -205,26 +265,27 @@ void testEventProjection() {
                                   DELIVERY_ORIGIN, false, "EPSG:9999") == NULL_SUBSCRIPTION,
                "subscribing with an unknown projection is refused");
 
-    // The subscription's projection applies to reads made from inside its handler.
+    // The subscription's projection applies to reads made from inside its handler. 3857 here, so
+    // that it differs from the WGS84 a read outside the handler now defaults to.
     Subscription subscription = context->subscribe(target, "click", &readingHandler, &seen, false,
-                                                   DELIVERY_ORIGIN, false, "EPSG:4326");
+                                                   DELIVERY_ORIGIN, false, "EPSG:3857");
     TEST_CHECK(subscription != NULL_SUBSCRIPTION, "a known one is accepted");
     context->emit(target, "click", NULL_HANDLE);
     MapBounds bounds;
-    TEST_CHECK(StructCodec::decode(seen.pos, bounds) && near(bounds.getMax().getX(), 180, 1e-6),
+    TEST_CHECK(StructCodec::decode(seen.pos, bounds) &&
+               near(bounds.getMax().getX(), 20037508.34, 1.0),
                "a read inside the handler uses the subscription's projection");
 
     // ...and only for the duration of the call, which is why the per-read form is the reliable one.
     PropertyValue value;
     context->getProperty(target, "bounds", value);
-    TEST_CHECK(StructCodec::decode(value.stringValue, bounds) &&
-               near(bounds.getMax().getX(), 20037508.34, 1.0),
-               "a read after the handler has returned is back to the source projection");
+    TEST_CHECK(StructCodec::decode(value.stringValue, bounds) && near(bounds.getMax().getX(), 180, 1e-6),
+               "a read after the handler has returned is back to the WGS84 default");
 
     // A per-read name wins over the subscription's.
-    seen.perRead = "EPSG:3857";
+    seen.perRead = "EPSG:4326";
     context->emit(target, "click", NULL_HANDLE);
-    TEST_CHECK(StructCodec::decode(seen.pos, bounds) && near(bounds.getMax().getX(), 20037508.34, 1.0),
+    TEST_CHECK(StructCodec::decode(seen.pos, bounds) && near(bounds.getMax().getX(), 180, 1e-6),
                "an explicit projection beats the subscription's default");
     context->unsubscribe(subscription);
 

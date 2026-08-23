@@ -11,6 +11,7 @@ import com.massifmaps.components.SkyOptions;
 import com.massifmaps.components.FogOptions;
 import com.massifmaps.components.TerrainOptions;
 import com.massifmaps.api.MassifApi;
+import com.massifmaps.api.MassifInterop;
 import com.massifmaps.core.MapPos;
 import com.massifmaps.core.MapPosVector;
 import com.massifmaps.core.MapVec;
@@ -720,7 +721,7 @@ public class DemoMap {
         Log.i(TAG, "api reuse=" + (again == handle) + " conflictRefused=" + conflictRefused
                 + " opacity=" + MassifApi.getFloat(handle, "opacity", -1));
 
-        return MassifApi.getLayer("demoApiLayer");
+        return MassifInterop.getLayer("demoApiLayer");
     }
 
     private Layer createHypsoLayer() {

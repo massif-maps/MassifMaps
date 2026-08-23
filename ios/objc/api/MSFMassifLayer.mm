@@ -1,7 +1,8 @@
 #import "MSFMassifInternal.h"
 #import "MSFMassifApi.h"
+#import "MSFMassifInterop.h"
 #import "MSFBinaryData.h"
-#import "MSFMapPos.h"
+#import "MSFValueTypes.h"
 #import "MSFLayer.h"
 #import "MSFLayers.h"
 #import "MSFVectorLayer.h"
@@ -86,7 +87,7 @@
 }
 
 - (MSFLayer *)layer {
-    return self.objectId ? [MSFMassifApi getLayer:self.objectId] : nil;
+    return self.objectId ? [MSFMassifInterop getLayer:self.objectId] : nil;
 }
 
 - (MSFSubscription *)onFeatureClick:(MSFVectorTileClickHandler)handler {
@@ -108,7 +109,7 @@
         // API keeps working - there is only one listener slot.
         MSFVectorTileEventListener *chained = [vector getVectorTileEventListener];
         [vector setVectorTileEventListener:
-            [MSFMassifApi createVectorTileEventBridge:self.handle chained:chained]];
+            [MSFMassifInterop createVectorTileEventBridge:self.handle chained:chained]];
         _bridged = YES;
     }
     return [self subscribe:@"vectortile.clicked"
@@ -137,7 +138,7 @@
     if (!_elementBridged) {
         MSFVectorElementEventListener *chained = [vector getVectorElementEventListener];
         [vector setVectorElementEventListener:
-            [MSFMassifApi createVectorElementEventBridge:self.handle chained:chained]];
+            [MSFMassifInterop createVectorElementEventBridge:self.handle chained:chained]];
         _elementBridged = YES;
     }
     return [self subscribe:@"vectorelement.clicked"
@@ -149,10 +150,10 @@
                  consuming:consuming];
 }
 
-- (NSData *)elevations:(NSArray<MSFMapPos *> *)positions {
+- (NSData *)elevations:(NSArray<MSFPosition *> *)positions {
     NSMutableArray *argument = [NSMutableArray arrayWithCapacity:positions.count];
-    for (MSFMapPos *pos in positions) {
-        [argument addObject:@[ @([pos getX]), @([pos getY]) ]];
+    for (MSFPosition *pos in positions) {
+        [argument addObject:@[ @(pos.lng), @(pos.lat) ]];
     }
     MSFMassifObject *result = [self call:@"getElevations" args:@[ argument ] error:nil];
     if (!result) {

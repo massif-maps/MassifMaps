@@ -12,8 +12,7 @@
 #import "MSFMassifMap.h"
 #import "MSFMapEvents.h"
 #import "MSFMassifElements.h"
-
-@class MSFMapPos;
+#import "MSFValueTypes.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -34,12 +33,14 @@ typedef NS_ENUM(NSInteger, MSFDelivery) {
 };
 
 /**
- * The JSON the facade uses for the small by-value structs, as the SDK's own types. One place, so
- * no binding grows its own position parser.
+ * The JSON the facade uses for the small by-value structs, as the facade's own types. One place,
+ * so no binding grows its own position parser.
  */
 @interface MSFValues : NSObject
-+ (nullable MSFMapPos *)posFromJson:(nullable NSString *)json;
-+ (NSString *)jsonFromPos:(MSFMapPos *)pos;
++ (nullable MSFPosition *)posFromJson:(nullable NSString *)json;
++ (nullable MSFBounds *)boundsFromJson:(nullable NSString *)json;
++ (nullable MSFScreenPoint *)screenPointFromJson:(nullable NSString *)json;
++ (NSString *)jsonFromPos:(MSFPosition *)pos;
 + (NSString *)argsJson:(nullable NSArray *)args;
 + (NSError *)errorWithResult:(int)result message:(NSString *)message;
 /** A string property, or nil - Swig's std::string typemap will not take a nil default. */

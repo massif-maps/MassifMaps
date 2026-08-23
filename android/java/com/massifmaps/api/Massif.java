@@ -65,13 +65,13 @@ public final class Massif {
      * @return The wrapper, or null when the id is taken.
      */
     public static MassifLayer adopt(String id, Layer layer) {
-        int handle = MassifApi.adopt("layer", id, layer);
+        int handle = MassifInterop.adopt("layer", id, layer);
         return handle == 0 ? null : new MassifLayer(handle, id, null);
     }
 
     /** The same for a source. */
     public static MassifSource adopt(String id, TileDataSource source) {
-        int handle = MassifApi.adopt("source", id, source);
+        int handle = MassifInterop.adopt("source", id, source);
         return handle == 0 ? null : new MassifSource(handle, id);
     }
 
@@ -88,7 +88,7 @@ public final class Massif {
      * </pre>
      */
     public static MassifObject adopt(String id, AssetPackage assets) {
-        int handle = MassifApi.adopt("assets", id, assets);
+        int handle = MassifInterop.adopt("assets", id, assets);
         return handle == 0 ? null : new MassifObject(handle, "assets", id);
     }
 
@@ -113,7 +113,7 @@ public final class Massif {
 
     /** The object-API source behind an id, for anything the facade does not reach yet. */
     public static TileDataSource rawSource(String id) {
-        return MassifApi.getSource(id);
+        return MassifInterop.getSource(id);
     }
 
     static int create(String kind, String id, Spec spec) {

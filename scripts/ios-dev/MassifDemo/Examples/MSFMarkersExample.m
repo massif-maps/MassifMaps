@@ -68,7 +68,7 @@ static NSArray *summits(void) {
                  error:nil];
     }
 
-    [map.camera moveTo:[[MSFMapPos alloc] initWithX:6.94 y:45.87] zoom:10.6];
+    [map.camera moveTo:[MSFPosition positionWithLng:6.94 lat:45.87] zoom:10.6];
 
     // consumeClick, not onClick: a marker tap has to CLAIM the gesture, or the map's own onClick
     // below fires for the same tap and dismisses the popup as it opens.
@@ -83,7 +83,7 @@ static NSArray *summits(void) {
 }
 
 /** A balloon at a position, built the same way a marker is. */
-- (void)show:(MSFMassifMap *)map at:(MSFMapPos *)position {
+- (void)show:(MSFMassifMap *)map at:(MSFPosition *)position {
     [self dismiss:map];
     if (!position) {
         return;
@@ -91,14 +91,14 @@ static NSArray *summits(void) {
     NSString *name = @"Summit";
     int metres = 0;
     for (NSArray *summit in summits()) {
-        if (fabs([position getX] - [summit[1] doubleValue]) < 1e-4 &&
-            fabs([position getY] - [summit[2] doubleValue]) < 1e-4) {
+        if (fabs(position.lng - [summit[1] doubleValue]) < 1e-4 &&
+            fabs(position.lat - [summit[2] doubleValue]) < 1e-4) {
             name = summit[0];
             metres = [summit[3] intValue];
         }
     }
     _popup = [map addPopup:[[[[[MSFSpec of:@"balloon"]
-        set:@"position" value:@[ @([position getX]), @([position getY]) ]]
+        set:@"position" value:@[ @(position.lng), @(position.lat) ]]
         set:@"title" value:name]
         set:@"description" value:[NSString stringWithFormat:@"%d m", metres]]
         set:@"style" value:[[[[[MSFSpec of:@"balloon"]

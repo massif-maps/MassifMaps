@@ -8,7 +8,7 @@ import com.massifmaps.api.MapEvents;
 import com.massifmaps.api.MassifMap;
 import com.massifmaps.api.MassifObject;
 import com.massifmaps.api.Spec;
-import com.massifmaps.core.MapPos;
+import com.massifmaps.api.Position;
 
 /**
  * Markers and a popup, both described entirely by JSON - no style builder anywhere.
@@ -60,7 +60,7 @@ public class MarkersExample extends MapExample {
                 .set("style", pin.id()));
         }
 
-        map.camera().moveTo(new MapPos(6.94, 45.87), 10.6f);
+        map.camera().moveTo(new Position(6.94, 45.87), 10.6f);
 
         // consumeClick, not onClick: a marker tap has to CLAIM the gesture, or the map's own
         // onClick below fires for the same tap and dismisses the popup as it opens.
@@ -81,7 +81,7 @@ public class MarkersExample extends MapExample {
     }
 
     /** A balloon at a position, built the same way a marker is. */
-    private void show(MassifMap map, MapPos position) {
+    private void show(MassifMap map, Position position) {
         dismiss(map);
         String name = "Summit";
         int metres = 0;
@@ -92,7 +92,7 @@ public class MarkersExample extends MapExample {
             }
         }
         popup = map.addPopup(Spec.of("balloon")
-            .set("position", new double[] { position.getX(), position.getY() })
+            .set("position", new double[] { position.lng, position.lat })
             .set("title", name)
             .set("description", metres + " m")
             .set("style", Spec.of("balloon")
@@ -110,7 +110,7 @@ public class MarkersExample extends MapExample {
         }
     }
 
-    private static boolean near(MapPos position, double lon, double lat) {
-        return Math.abs(position.getX() - lon) < 1e-4 && Math.abs(position.getY() - lat) < 1e-4;
+    private static boolean near(Position position, double lon, double lat) {
+        return Math.abs(position.lng - lon) < 1e-4 && Math.abs(position.lat - lat) < 1e-4;
     }
 }

@@ -15,18 +15,7 @@
 #include <string>
 #include <vector>
 
-namespace massif {
-    class AssetPackage;
-    class BaseMapView;
-    class Options;
-    class TileDataSource;
-    class Layer;
-    class Layers;
-    class MapEventListener;
-    class VectorTileEventListener;
-    class VectorElementEventListener;
-
-    namespace api {
+namespace massif { namespace api {
 
     /**
      * The facade API, as an app sees it.
@@ -36,81 +25,15 @@ namespace massif {
      *
      * Every call returns a result code rather than throwing, because this is a verification
      * surface rather than the final binding.
+     *
+     * NO SDK TYPE APPEARS IN ANY SIGNATURE HERE, and that is the invariant to keep (#159):
+     * handles, strings, numbers and the facade's own EventListener/UiDispatcher, nothing else.
+     * It is what lets the C ABI carry the whole class and a hand-written binding do the same.
+     * Anything that must name an SDK type belongs in MassifInterop; scripts/check-facade-abi.sh
+     * fails the build when one lands here.
      */
     class MassifApi {
     public:
-        /**
-         * Adopts an object built with the object API, so it can be addressed by id and handle.
-         *
-         * The TYPE picks what is being adopted, not the kind string - `kind` is only the id
-         * namespace, and the same Options is legitimately adopted as "map" by one app and
-         * "options" by another. One overload per adoptable base class, and that set is closed:
-         * SWIG emits one thunk per signature, and the SDK's bases share no common root to
-         * declare a single parameter as.
-         *
-         * Not named `register`: that is a C++ keyword, and a C one, so it is not a legal
-         * Objective-C selector piece either.
-         *
-         * @param kind The namespace, e.g. "options". Ids only collide within a kind.
-         * @param objectId The caller's name for the object. "id" is a keyword in Objective-C.
-         * @param options The object.
-         * @return The handle, or 0 when the id is already taken.
-         */
-        static int adopt(const std::string& kind, const std::string& objectId,
-                         const std::shared_ptr<Options>& options);
-
-        /**
-         * The same for a layer or a source built with the object API.
-         *
-         * This is what lets an app adopt the facade a piece at a time: everything it already
-         * built keeps working, and gains an id, properties, methods and events. The CONCRETE
-         * class is recovered at runtime, so an adopted VectorTileLayer answers to a vector tile
-         * layer's properties rather than only to Layer's.
-         *
-         * @return The handle, or 0 when the id is taken or the class is not a wrapped one.
-         */
-        static int adopt(const std::string& kind, const std::string& objectId,
-                         const std::shared_ptr<Layer>& layer);
-
-        /**
-         * Registers the map's layer list, so a layer built from a spec can be PUT on the map.
-         *
-         * A spec builds an object, it does not place it - the same reason LocalVectorDataSource
-         * needs add(). This is the one for layers; call add/remove on the handle it returns.
-         */
-        static int adopt(const std::string& kind, const std::string& objectId,
-                         const std::shared_ptr<Layers>& layers);
-
-        /**
-         * @copydoc MassifApi::adopt
-         */
-        static int adopt(const std::string& kind, const std::string& objectId,
-                         const std::shared_ptr<TileDataSource>& source);
-
-        /**
-         * The same for an asset package, which is the one a binding cannot express as a spec.
-         *
-         * An app that reads its styles from somewhere the SDK has no factory for - a NativeScript
-         * app folder, an app's own decryption - subclasses AssetPackage in Java, Objective-C or
-         * TypeScript and adopts the instance here. Every spec that takes an `assets` key resolves
-         * a string as an id of this kind, so `{"type":"cartocss","css":…,"assets":"shared"}`
-         * then reaches it.
-         */
-        static int adopt(const std::string& kind, const std::string& objectId,
-                         const std::shared_ptr<AssetPackage>& assets);
-
-        /**
-         * The map view, which is what carries the CAMERA.
-         *
-         * Adopt it and moveTo, flyTo, fitBounds, screenToMap, mapToScreen and stopFlight become
-         * ordinary facade calls, with focusPos, zoom, rotation, tilt and flightActive as read-only
-         * properties beside them. Until that existed the typed sugar on each platform called the
-         * map view directly, so the camera was the one part of the surface a binding could not
-         * reach through the C ABI - see #159.
-         */
-        static int adopt(const std::string& kind, const std::string& objectId,
-                         const std::shared_ptr<BaseMapView>& view);
-
         /**
          * Builds an object from a JSON spec and registers it under a kind and id.
          *
@@ -129,53 +52,8 @@ namespace massif {
         static int create(const std::string& kind, const std::string& objectId, const std::string& json);
 
         /**
-         * Returns a source built or adopted earlier, so it can be handed to the object API.
-         * This is the escape hatch: anything the facade cannot express yet is still reachable.
-         */
-        static std::shared_ptr<TileDataSource> getSource(const std::string& objectId);
-
-        /**
-         * Returns a layer built earlier, so it can be added to a map with the object API. Layers
-         * are not attached by create - that needs the map verbs.
-         */
-        static std::shared_ptr<Layer> getLayer(const std::string& objectId);
-
-        /**
-         * Builds the listener that turns a map's callbacks into facade events on a target.
-         *
-         * The app installs it with the map view's own setMapEventListener, which is also why it
-         * takes the listener that was already there: a single slot means adopting the facade
-         * would otherwise disconnect the app's existing handlers.
-         *
-         *   int handle = MassifApi.adopt("map", "main", mapView.getOptions());
-         *   mapView.setMapEventListener(
-         *       MassifApi.createEventBridge(handle, mapView.getMapEventListener()));
-         *
-         * @param handle The target events are emitted on.
-         * @param chained The listener already installed, or null.
-         * @return The bridge.
-         */
-        static std::shared_ptr<MapEventListener> createEventBridge(
-            int handle, const std::shared_ptr<MapEventListener>& chained);
-
-        /**
-         * The same for a vector tile layer's clicks, which is where a feature payload comes from.
-         * Install it with the layer's setVectorTileEventListener.
-         *
-         * The click is claimed if either the chained listener or a consuming subscriber claims it.
-         */
-        static std::shared_ptr<VectorTileEventListener> createVectorTileEventBridge(
-            int handle, const std::shared_ptr<VectorTileEventListener>& chained);
-
-        /**
-         * The same for a vector layer's element clicks.
-         */
-        static std::shared_ptr<VectorElementEventListener> createVectorElementEventBridge(
-            int handle, const std::shared_ptr<VectorElementEventListener>& chained);
-
-        /**
          * Subscribes to an event on an object.
-         * @param handle The target, from create or registerMapView.
+         * @param handle The target, from create or MassifInterop.adopt.
          * @param event The event name, e.g. "map.clicked".
          * @param listener Called when it fires.
          * @param consume Whether the listener's return value can claim the event, stopping it
@@ -292,8 +170,10 @@ namespace massif {
          *
          * A position is `[x, y]` or `[x, y, z]` and bounds are a pair of them, so one call covers
          * clickPos, featurePos and dataExtent alike.
-         * @param projection The well-known name, e.g. "EPSG:4326". Empty leaves the value in the
-         *        object's own projection, or in the one the running event handler asked for.
+         * @param projection The well-known name, e.g. "EPSG:3857". Empty means the projection the
+         *        running event handler asked for, and WGS84 when there is none - a facade position
+         *        is DEGREES unless the caller says otherwise (#159). A position written back with
+         *        setString is taken in the same projection, so a read/write round trip is safe.
          * @return The JSON, or an empty string when the path does not resolve.
          */
         static std::string getPos(int handle, const std::string& path,

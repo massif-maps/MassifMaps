@@ -1,8 +1,6 @@
 #import "MSFMassifInternal.h"
 #import "MSFMassifApi.h"
 #import "MSFEventListener.h"
-#import "MSFMapPos.h"
-#import "MSFMapBounds.h"
 #import "MSFLayer.h"
 #import "MSFVectorTileLayer.h"
 #import "MSFVectorTileEventListener.h"
@@ -87,14 +85,14 @@
         result = [MSFMassifApi setObject:_handle path:path value:((MSFMassifObject *)value).handle];
     } else if (!value || value == [NSNull null]) {
         result = [MSFMassifApi setObject:_handle path:path value:0];
-    } else if ([value isKindOfClass:[MSFMapPos class]]) {
+    } else if ([value isKindOfClass:[MSFPosition class]]) {
         result = [MSFMassifApi setString:_handle path:path value:[MSFValues jsonFromPos:value]];
-    } else if ([value isKindOfClass:[MSFMapBounds class]]) {
-        MSFMapBounds *bounds = value;
+    } else if ([value isKindOfClass:[MSFBounds class]]) {
+        MSFBounds *bounds = value;
         result = [MSFMassifApi setString:_handle path:path
             value:[NSString stringWithFormat:@"[%@,%@]",
-                   [MSFValues jsonFromPos:[bounds getMin]],
-                   [MSFValues jsonFromPos:[bounds getMax]]]];
+                   [MSFValues jsonFromPos:bounds.min],
+                   [MSFValues jsonFromPos:bounds.max]]];
     } else if ([value isKindOfClass:[NSArray class]] || [value isKindOfClass:[NSDictionary class]]
                || [value isKindOfClass:[MSFSpec class]]) {
         // A STRUCT property - a list of layer names, a zoom range, a header map. It crosses as
@@ -135,32 +133,16 @@
     return [MSFValues string:_handle path:path defaultValue:defaultValue];
 }
 
-- (MSFMapPos *)getPos:(NSString *)path {
+- (MSFPosition *)getPos:(NSString *)path {
     return [MSFValues posFromJson:[MSFMassifApi getPos:_handle path:path projection:@""]];
 }
 
-- (MSFMapPos *)getPos:(NSString *)path projection:(NSString *)projection {
+- (MSFPosition *)getPos:(NSString *)path projection:(NSString *)projection {
     return [MSFValues posFromJson:[MSFMassifApi getPos:_handle path:path projection:projection]];
 }
 
-- (MSFMapBounds *)getBounds:(NSString *)path {
-    NSString *json = [MSFMassifApi getPos:_handle path:path projection:@""];
-    NSData *data = [json dataUsingEncoding:NSUTF8StringEncoding];
-    id parsed = data ? [NSJSONSerialization JSONObjectWithData:data options:0 error:nil] : nil;
-    if (![parsed isKindOfClass:[NSArray class]]) {
-        return nil;
-    }
-    // Typed before -count is sent: on a bare `id` the selector is ambiguous the moment this
-    // translation unit sees two classes that declare one.
-    NSArray *pair = (NSArray *)parsed;
-    if (pair.count != 2) {
-        return nil;
-    }
-    NSData *minData = [NSJSONSerialization dataWithJSONObject:pair[0] options:0 error:nil];
-    NSData *maxData = [NSJSONSerialization dataWithJSONObject:pair[1] options:0 error:nil];
-    MSFMapPos *min = [MSFValues posFromJson:[[NSString alloc] initWithData:minData encoding:NSUTF8StringEncoding]];
-    MSFMapPos *max = [MSFValues posFromJson:[[NSString alloc] initWithData:maxData encoding:NSUTF8StringEncoding]];
-    return min && max ? [[MSFMapBounds alloc] initWithMin:min max:max] : nil;
+- (MSFBounds *)getBounds:(NSString *)path {
+    return [MSFValues boundsFromJson:[MSFMassifApi getPos:_handle path:path projection:@""]];
 }
 
 - (MSFPropertyGroup *)group:(NSString *)prefix {
@@ -339,7 +321,7 @@
     return [_target getString:[_prefix stringByAppendingString:name] defaultValue:defaultValue];
 }
 
-- (MSFMapPos *)getPos:(NSString *)name {
+- (MSFPosition *)getPos:(NSString *)name {
     return [_target getPos:[_prefix stringByAppendingString:name]];
 }
 

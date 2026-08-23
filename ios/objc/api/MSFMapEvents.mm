@@ -1,6 +1,6 @@
 #import "MSFMassifInternal.h"
 #import "MSFMassifApi.h"
-#import "MSFMapPos.h"
+#import "MSFValueTypes.h"
 
 @implementation MSFMapEvent {
     int _target;
@@ -41,7 +41,7 @@
     return [MSFMassifApi getFloat:_payload path:path defaultValue:defaultValue];
 }
 
-- (MSFMapPos *)getPos:(NSString *)path projection:(NSString *)projection {
+- (MSFPosition *)getPos:(NSString *)path projection:(NSString *)projection {
     return [MSFValues posFromJson:[MSFMassifApi getPos:_payload path:path projection:projection]];
 }
 
@@ -49,7 +49,7 @@
 
 @implementation MSFMapClickEvent
 
-- (MSFMapPos *)position {
+- (MSFPosition *)position {
     return [MSFValues posFromJson:[MSFMassifApi getPos:self.payload path:@"clickPos" projection:@""]];
 }
 
@@ -89,11 +89,11 @@
     return [MSFMassifApi getString:self.payload path:@"featureLayerName" defaultValue:@""];
 }
 
-- (MSFMapPos *)position {
+- (MSFPosition *)position {
     return [MSFValues posFromJson:[MSFMassifApi getPos:self.payload path:@"featurePos" projection:@""]];
 }
 
-- (MSFMapPos *)clickPosition {
+- (MSFPosition *)clickPosition {
     return [MSFValues posFromJson:[MSFMassifApi getPos:self.payload path:@"clickPos" projection:@""]];
 }
 
@@ -124,11 +124,11 @@
 
 @implementation MSFVectorElementClickEvent
 
-- (MSFMapPos *)position {
+- (MSFPosition *)position {
     return [MSFValues posFromJson:[MSFMassifApi getPos:self.payload path:@"elementClickPos" projection:@""]];
 }
 
-- (MSFMapPos *)clickPosition {
+- (MSFPosition *)clickPosition {
     return [MSFValues posFromJson:[MSFMassifApi getPos:self.payload path:@"clickPos" projection:@""]];
 }
 

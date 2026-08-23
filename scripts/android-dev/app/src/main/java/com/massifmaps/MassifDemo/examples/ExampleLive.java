@@ -8,7 +8,7 @@ import android.util.Log;
 
 import com.massifmaps.api.MassifMap;
 import com.massifmaps.api.PropertyGroup;
-import com.massifmaps.core.MapPos;
+import com.massifmaps.api.Position;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -134,13 +134,13 @@ public final class ExampleLive extends BroadcastReceiver {
         if (!any) {
             return;
         }
-        MapPos at = map.camera().position();
-        double lon = num(extras, "lon", at.getX());
-        double lat = num(extras, "lat", at.getY());
+        Position at = map.camera().position();
+        double lon = num(extras, "lon", at.lng);
+        double lat = num(extras, "lat", at.lat);
         float zoom = (float) num(extras, "zoom", map.camera().zoom());
         float rotation = (float) num(extras, "rotation", map.camera().rotation());
         float tilt = (float) num(extras, "tilt", map.camera().tilt());
-        map.camera().moveTo(new MapPos(lon, lat), zoom, rotation, tilt);
+        map.camera().moveTo(new Position(lon, lat), zoom, rotation, tilt);
         Log.i(TAG, String.format("camera lon=%.5f lat=%.5f zoom=%.2f rotation=%.0f tilt=%.0f",
                                  lon, lat, zoom, rotation, tilt));
     }

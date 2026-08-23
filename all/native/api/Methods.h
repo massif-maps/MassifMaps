@@ -14,8 +14,10 @@
 #include <vector>
 
 namespace massif {
+    class MapBounds;
     class MapPos;
     class MapTile;
+    class Projection;
 
     namespace api {
 
@@ -49,17 +51,36 @@ namespace massif {
          * checks the class; this only reads the number.
          */
         bool getHandle(int index, Handle& value) const;
-        /** A position, as [x, y] or [x, y, z]. */
+        /**
+         * A position, as [x, y] or [x, y, z], converted into the OBJECT's own projection.
+         *
+         * An argument arrives in the same projection a property read hands back - WGS84 unless the
+         * caller named one - so moveTo takes the position screenToMap just returned. Both sides go
+         * through this pair; a thunk never sees a projection.
+         */
         bool getPos(int index, MapPos& value) const;
-        /** An array of positions. */
+        /** An array of positions, converted the same way. */
         bool getPositions(int index, std::vector<MapPos>& value) const;
+        /** Bounds, as a pair of positions, converted the same way. */
+        bool getBounds(int index, MapBounds& value) const;
+        /** The other direction: a position a thunk PRODUCES, ready to hand back. */
+        MapPos toCaller(const MapPos& value) const;
         /** A tile, as [x, y, zoom]. */
         bool getTile(int index, MapTile& value) const;
         /** The raw argument, for a thunk that takes free-form JSON. */
         Variant get(int index) const;
 
+        /**
+         * The projections a position argument is converted BETWEEN: the caller's and the object's.
+         * Set by Context::call; either being null leaves positions alone.
+         */
+        void setProjections(const std::shared_ptr<Projection>& caller,
+                            const std::shared_ptr<Projection>& object);
+
     private:
         Variant _array;
+        std::shared_ptr<Projection> _caller;
+        std::shared_ptr<Projection> _object;
     };
 
     /**

@@ -49,6 +49,23 @@ CRUD, event subscription). A new source type or option arrives as data through t
 and never adds a method. Without that rule, hand-written sugar reintroduces exactly the per-platform
 maintenance the facade exists to remove.
 
+### `MassifApi` and `MassifInterop`
+
+The C++ surface is two classes, and the line between them is what a binding can carry:
+
+| | Signatures | Who can call it |
+|---|---|---|
+| `MassifApi` | handles, strings, numbers, the facade's own `EventListener`/`UiDispatcher` | anything — the C ABI carries all of it, and so could a hand-written JNI, `@objc`, N-API or `dart:ffi` layer |
+| `MassifInterop` | `adopt`, `getSource`, `getLayer`, the three event bridges — every one names an SDK class | only a platform that already holds the object API |
+
+`MassifInterop` is not a lesser API, it is the *migration* API: it exists so an app moves to the
+facade a piece at a time. A binding built on the facade alone never calls it, which is why it must
+not sit in the same class — `MassifApi.i` importing `Layer.i` made the facade's own wrapper depend
+on the object API's proxies, so "SWIG-free" was true of the header and false of the build.
+
+`scripts/check-facade-abi.sh` fails when an SDK type reaches `MassifApi` — the invariant has no
+other guard, and it had already drifted once.
+
 ## The property table
 
 `set` and `get` resolve against a table generated from the **Swig attribute macros**, which already
@@ -221,13 +238,22 @@ address. The generated static thunks take no `obj` at all.
 
 ### Projections
 
-A `MapPos` carries no coordinate system, so a click position comes back in whatever the map uses —
-EPSG:3857 in practice — and every binding then repeats the same `toWgs84`/`fromWgs84` chain. A read
-can ask for a projection by name instead:
+A `MapPos` carries no coordinate system, so a click position used to come back in whatever the map
+uses — EPSG:3857 in practice — and every binding then repeated the same `toWgs84`/`fromWgs84` chain.
+
+**A facade position is WGS84 unless the caller says otherwise.** Degrees, not metres, with no
+projection named anywhere:
 
 ```java
-MassifApi.getPos(payload, "featurePos", "EPSG:4326");   // [5.7606, 45.2442]
+MassifApi.getPos(payload, "featurePos");                // [5.7606, 45.2442]
+MassifApi.getPos(payload, "featurePos", "EPSG:3857");   // [641267.1, 5660048.1] - opt back out
 ```
+
+That is what makes `lng`/`lat`/`alt` honest field names in a binding, and it is the default
+maplibre, mapbox and google all picked. A **write** goes through the same resolution, so a position
+read and written back lands where it was read — without that it would land in the Gulf of Guinea,
+and nothing would say so. Two properties are writable positions today (`Options.panBounds`,
+`GeocodingRequest.location`), and both were silently wrong for the length of one commit.
 
 Three pieces, none of them payload-specific:
 
@@ -253,8 +279,12 @@ MassifApi.on(handle, "vectortile.clicked", listener, 0, false, "EPSG:4326");
 
 It is a `thread_local` set around the handler call (saved and restored, so a handler that emits
 another event nests), which means it lives **for the duration of the call only**. A payload kept
-and read later falls back to the source projection — so the per-read form is the reliable one, and
-the per-subscription one is the convenience. A per-read name always wins over it.
+and read later falls back to the WGS84 default — so the per-read form is the reliable one, and the
+per-subscription one is the convenience. A per-read name always wins over it.
+
+**Known gap:** a read names its projection per call, a write cannot — `setString` has no projection
+argument, so a write outside a handler is always taken as WGS84. Writing 3857 metres directly means
+subscribing with `"EPSG:3857"`, or converting first.
 
 With neither given the value is **left in the source projection**, and so is a value whose source
 projection is unknown: a wrong guess is worse than an unconverted number. An unknown projection
@@ -653,11 +683,29 @@ result code rather than an exception. On top of it sits a **hand-written, per-la
 | Objective-C | `ios/objc/api/` | `[MSFMassifMap attach:mapView]` |
 
 ```java
-MassifMap map = MassifMap.attach(mapView).eventProjection("EPSG:4326");
+MassifMap map = MassifMap.attach(mapView);
 map.fog().set("rangeStart", 2.5);
 map.addLayer("base", Spec.of("vector").set("source", "osm"));
-map.onClick(e -> Log.i(TAG, "clicked " + e.position()));
+map.onClick(e -> map.camera().animate(2).moveTo(e.position(), 14));
 ```
+
+### The sugar's own value types
+
+`Position`, `Bounds`, `ScreenPoint`, `ScreenRect` (`MSFPosition` … on iOS) are **hand-written and
+facade-owned** — about thirty lines each, no native peer, no SWIG. Not `MapPos`/`MapBounds`, and
+the reason is not tidiness: a `MapPos` is a proxy over a C++ object, so a click handler reading
+`e.position()` pays a JNI allocation and a finalizer to carry two doubles, per event.
+
+Longitude first, matching GeoJSON and the wire format. Deliberately **not** `LatLng`: a
+latitude-first type sitting beside a longitude-first wire format is a swapped-coordinate bug
+waiting to happen, which is why maplibre named theirs `LngLat`. Kotlin destructures them
+(`val (lng, lat) = …`); TypeScript keeps the tuple, since it has structural literals and does not
+need a class at all.
+
+The camera goes through the facade like everything else — `MapCamera` is `get` and `call` on the
+adopted map view, not a pass-through to `MapView`. That is what makes it reproducible from the C
+ABI, and it is also what applies the projection, so `moveTo(e.position(), 14)` above is correct
+rather than a coordinate-system mismatch.
 
 **Hand-written, and that is the decision.** It does not move the way the property table does: the
 concepts are map lifecycle, camera, layer ordering, registry CRUD, calls and event subscription, and
@@ -668,7 +716,7 @@ methods and adds nothing. Generating it would buy nothing and cost a generator t
 
 The complaint it answers is transposing. Before, a click handler read
 `MassifApi.getInt(payload, "featureId", -1)` and a JSON string it then parsed. Now it reads
-`e.featureId()`, and `e.position()` is a `MapPos` already in the projection the map was told to use.
+`e.featureId()`, and `e.position()` is a `Position` already in degrees.
 Four rules make that work:
 
 - **Typed event classes**, one per event, thin views over the payload handle. Reads stay **lazy**:
@@ -687,7 +735,7 @@ code; what the wrapper adds is one `moveTo` that moves position, zoom, rotation 
 
 ### Adopting what an app already built
 
-`MassifApi.adopt` gives an object built with the object API an id, and with it properties, methods
+`MassifInterop.adopt` gives an object built with the object API an id, and with it properties, methods
 and events — so an app moves to the facade a piece at a time rather than rebuilding its map:
 
 ```java
@@ -826,7 +874,7 @@ directory walk. Two platform details did need attention:
   be added to that umbrella by hand.
 
 ```java
-int h = MassifApi.adopt("options", "demo", mapView.getOptions());
+int h = MassifInterop.adopt("options", "demo", mapView.getOptions());
 MassifApi.setFloat(h, "fogOptions.rangeStart", 2.5);
 ```
 
@@ -995,9 +1043,9 @@ the event's target.
 before the event is emitted, or adopting the facade would silently disconnect existing handlers.
 
 ```java
-int handle = MassifApi.adopt("options", "demo", mapView.getOptions());
+int handle = MassifInterop.adopt("options", "demo", mapView.getOptions());
 mapView.setMapEventListener(
-    MassifApi.createEventBridge(handle, mapView.getMapEventListener()));
+    MassifInterop.createEventBridge(handle, mapView.getMapEventListener()));
 
 MassifApi.on(handle, "map.clicked", listener, /* delivery */ 0, /* coalesce */ false);
 ```
@@ -1019,7 +1067,7 @@ Layer-level events work the same way, installed on the layer instead:
 
 ```java
 vector.setVectorTileEventListener(
-    MassifApi.createVectorTileEventBridge(handle, vector.getVectorTileEventListener()));
+    MassifInterop.createVectorTileEventBridge(handle, vector.getVectorTileEventListener()));
 ```
 
 `onVectorTileClicked` returns whether the click was handled, so the results are **OR-ed**: either
@@ -1249,7 +1297,7 @@ Nothing about a search filter was taught to the facade. Every filter on a `Searc
 an `%attribute`, so it is `create` + `set`, and the service is `create` too:
 
 ```java
-MassifApi.adopt("layer", "base", vectorLayer);
+MassifInterop.adopt("layer", "base", vectorLayer);
 int service = MassifApi.create("search", "demoSearch",
                                "{\"type\":\"vectortile\",\"layer\":\"base\"}");
 MassifApi.setFloat(service, "minZoom", 14);

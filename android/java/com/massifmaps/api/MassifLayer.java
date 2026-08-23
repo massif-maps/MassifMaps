@@ -1,6 +1,5 @@
 package com.massifmaps.api;
 
-import com.massifmaps.core.MapPos;
 import com.massifmaps.layers.Layer;
 import com.massifmaps.layers.VectorElementEventListener;
 import com.massifmaps.layers.VectorLayer;
@@ -50,7 +49,7 @@ public final class MassifLayer extends MassifObject {
 
     /** The object-API layer, for anything the facade does not reach yet. */
     public Layer layer() {
-        Layer target = id != null ? MassifApi.getLayer(id) : null;
+        Layer target = id != null ? MassifInterop.getLayer(id) : null;
         if (target == null) {
             throw new MassifException("Layer is no longer registered: " + this);
         }
@@ -114,7 +113,7 @@ public final class MassifLayer extends MassifObject {
         if (!elementBridged) {
             VectorElementEventListener chained = vector.getVectorElementEventListener();
             vector.setVectorElementEventListener(
-                MassifApi.createVectorElementEventBridge(handle, chained));
+                MassifInterop.createVectorElementEventBridge(handle, chained));
             elementBridged = true;
         }
         return subscribe(MapEvents.VECTOR_ELEMENT_CLICKED, handler, consuming,
@@ -127,10 +126,10 @@ public final class MassifLayer extends MassifObject {
      * of numbers and neither JSON nor a per-element proxy is an acceptable way to move them.
      * Only a hillshade layer answers; anything else gives an empty array.
      */
-    public double[] elevations(MapPos... positions) {
+    public double[] elevations(Position... positions) {
         double[][] argument = new double[positions.length][];
         for (int i = 0; i < positions.length; i++) {
-            argument[i] = new double[] { positions[i].getX(), positions[i].getY() };
+            argument[i] = new double[] { positions[i].lng, positions[i].lat };
         }
         MassifObject result = null;
         try {
@@ -155,7 +154,7 @@ public final class MassifLayer extends MassifObject {
         if (!bridged) {
             VectorTileEventListener chained = vector.getVectorTileEventListener();
             vector.setVectorTileEventListener(
-                MassifApi.createVectorTileEventBridge(handle, chained));
+                MassifInterop.createVectorTileEventBridge(handle, chained));
             bridged = true;
         }
         return subscribe(MapEvents.VECTOR_TILE_CLICKED, handler, consuming,

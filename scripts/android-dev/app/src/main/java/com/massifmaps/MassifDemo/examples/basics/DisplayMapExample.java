@@ -7,7 +7,7 @@ import com.massifmaps.MassifDemo.examples.Sections;
 import com.massifmaps.api.ApiNames;
 import com.massifmaps.api.MassifMap;
 import com.massifmaps.api.Spec;
-import com.massifmaps.core.MapPos;
+import com.massifmaps.api.Position;
 
 /**
  * The smallest thing that is a map: one raster layer and a camera.
@@ -45,7 +45,7 @@ public class DisplayMapExample extends MapExample {
         map.layer("basemap").set(ApiNames.OPACITY, 1.0);
 
         // Positions are lon/lat: the map view was set up with EPSG:4326 as its base projection.
-        map.camera().moveTo(new MapPos(6.8652, 45.8326), 11);
+        map.camera().moveTo(new Position(6.8652, 45.8326), 11);
 
         host.caption("Mont Blanc, from OpenStreetMap raster tiles.");
     }

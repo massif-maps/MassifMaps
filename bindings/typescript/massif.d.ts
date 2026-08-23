@@ -6,7 +6,13 @@
 
 export type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
 
-/** [lon, lat] or [lon, lat, altitude], in the object's own projection. */
+/**
+ * [lon, lat] or [lon, lat, altitude], in WGS84 unless a projection was named.
+ *
+ * An array, not an object: the path walker addresses a struct by index (`geometry.centerPos.0`),
+ * and it is half the bytes on every click event. A binding that wants to accept
+ * `{ lng, lat }` normalises to this at its own boundary.
+ */
 export type Position = [number, number] | [number, number, number];
 export type Bounds = [Position, Position];
 /** [x, y, zoom]. */
@@ -131,6 +137,7 @@ export type ClassName =
   | "massif::MarkerStyle"
   | "massif::MarkerStyleBuilder"
   | "massif::MassifApi"
+  | "massif::MassifInterop"
   | "massif::MemoryCacheTileDataSource"
   | "massif::MergedMBVTTileDataSource"
   | "massif::MultiGeometry"
@@ -3226,6 +3233,8 @@ export interface PropertyTypes {
     "verticalOffset": number;
   };
   "massif::MassifApi": {
+  };
+  "massif::MassifInterop": {
   };
   "massif::MemoryCacheTileDataSource": {
     "capacity": number;
@@ -6945,6 +6954,8 @@ export interface MethodTypes {
   };
   "massif::MassifApi": {
   };
+  "massif::MassifInterop": {
+  };
   "massif::MemoryCacheTileDataSource": {
     loadTile: (tile: Tile) => Handle<"massif::TileData">;
   };
@@ -7457,6 +7468,8 @@ export interface EventTypes {
   "massif::MarkerStyleBuilder": {
   };
   "massif::MassifApi": {
+  };
+  "massif::MassifInterop": {
   };
   "massif::MemoryCacheTileDataSource": {
   };

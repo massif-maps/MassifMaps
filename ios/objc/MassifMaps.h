@@ -8,8 +8,10 @@
 #define _MASSIFMAPS_H_
 
 #import "MSFMassifApi.h"
+#import "MSFMassifInterop.h"
 // The facade sugar: hand-written, and not generated, so each new class needs a line here AND an
 // entry in build-ios.py's extraHeaders, which is what copies it into the framework.
+#import "api/MSFValueTypes.h"
 #import "api/MSFMassif.h"
 #import "api/MSFMapEvents.h"
 #import "api/MSFMassifObject.h"

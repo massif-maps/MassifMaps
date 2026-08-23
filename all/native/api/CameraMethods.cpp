@@ -57,9 +57,8 @@ namespace massif { namespace api {
             ScreenBounds screenBounds;
             bool integerZoom = false;
             double seconds = 0;
-            std::string boundsJson = args.get(0).toString();
             std::string screenJson = args.get(1).toString();
-            if (!StructCodec::decode(boundsJson, bounds) ||
+            if (!args.getBounds(0, bounds) ||
                 !StructCodec::decode(screenJson, screenBounds) ||
                 !args.getBool(2, integerZoom) || !args.getDouble(3, seconds)) {
                 return RESULT_BAD_SPEC;
@@ -75,7 +74,7 @@ namespace massif { namespace api {
                 return RESULT_BAD_SPEC;
             }
             MapPos pos = view->screenToMap(ScreenPos(static_cast<float>(x), static_cast<float>(y)));
-            result = PropertyValue::ofString(StructCodec::encode(pos));
+            result = PropertyValue::ofString(StructCodec::encode(args.toCaller(pos)));
             result.type = PT_VARIANT;
             return RESULT_OK;
         }

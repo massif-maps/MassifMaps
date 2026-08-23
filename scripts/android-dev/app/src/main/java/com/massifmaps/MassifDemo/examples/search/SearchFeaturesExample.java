@@ -7,7 +7,7 @@ import com.massifmaps.MassifDemo.examples.Sections;
 import com.massifmaps.api.MassifMap;
 import com.massifmaps.api.MassifObject;
 import com.massifmaps.api.Spec;
-import com.massifmaps.core.MapPos;
+import com.massifmaps.api.Position;
 
 /**
  * Searching the vector tiles the map is already showing, and pinning what comes back.
@@ -21,7 +21,7 @@ import com.massifmaps.core.MapPos;
     order = 10)
 public class SearchFeaturesExample extends MapExample {
 
-    private static final MapPos CENTRE = new MapPos(5.7245, 45.1885);
+    private static final Position CENTRE = new Position(5.7245, 45.1885);
     /** Degrees around the centre. A search with NO geometry scans the whole world at its zoom. */
     private static final double SPAN = 0.08;
 
@@ -104,10 +104,10 @@ public class SearchFeaturesExample extends MapExample {
                 for (int i = 0; i < count; i++) {
                     MassifObject feature = found.call("getFeature", i);
                     try {
-                        MapPos at = feature.getPos("geometry.centerPos", "EPSG:4326");
+                        Position at = feature.getPos("geometry.centerPos", "EPSG:4326");
                         if (at != null) {
                             map.addMarker(Spec.of("marker")
-                                .set("position", new double[] { at.getX(), at.getY() })
+                                .set("position", new double[] { at.lng, at.lat })
                                 .set("style", hitStyle.id()));
                         }
                     } finally {
@@ -120,6 +120,6 @@ public class SearchFeaturesExample extends MapExample {
     }
 
     private static double[] corner(double dLon, double dLat) {
-        return new double[] { CENTRE.getX() + dLon, CENTRE.getY() + dLat };
+        return new double[] { CENTRE.lng + dLon, CENTRE.lat + dLat };
     }
 }

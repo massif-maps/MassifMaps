@@ -11,7 +11,14 @@
 #include "core/ScreenPos.h"
 %}
 
+%include <std_shared_ptr.i>
 %include <massifswig.i>
+
+// Held by shared_ptr like every other wrapped class, so MassifInterop.adopt can take one and the
+// camera is reachable from a binding. MapView still owns it: delete() drops the proxy's reference,
+// and an adopted handle holds the only other one - destroy it with the view, or the renderer's
+// resources outlive the surface.
+!shared_ptr(massif::BaseMapView, ui.BaseMapView)
 
 %import "core/MapPos.i"
 %import "core/MapBounds.i"

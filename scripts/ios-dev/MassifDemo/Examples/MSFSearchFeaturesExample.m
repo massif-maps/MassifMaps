@@ -53,7 +53,7 @@ static NSArray *corner(double dLon, double dLat) {
                      set:@"style" value:@"alpine"]
             error:nil];
 
-    [map.camera moveTo:[[MSFMapPos alloc] initWithX:kCentreLon y:kCentreLat] zoom:13.5];
+    [map.camera moveTo:[MSFPosition positionWithLng:kCentreLon lat:kCentreLat] zoom:13.5];
 
     // The service is built FROM THE LAYER: it takes the source and the decoder the layer is already
     // showing, so there is nothing to keep in step.
@@ -123,10 +123,10 @@ static NSArray *corner(double dLon, double dLat) {
         long long count = [found getLong:@"featureCount" defaultValue:0];
         for (long long i = 0; i < count; i++) {
             MSFMassifObject *feature = [found call:@"getFeature" args:@[ @(i) ] error:nil];
-            MSFMapPos *at = [feature getPos:@"geometry.centerPos" projection:@"EPSG:4326"];
+            MSFPosition *at = [feature getPos:@"geometry.centerPos" projection:@"EPSG:4326"];
             if (at) {
                 [map addMarker:[[[MSFSpec of:@"marker"]
-                                   set:@"position" value:@[ @([at getX]), @([at getY]) ]]
+                                   set:@"position" value:@[ @(at.lng), @(at.lat) ]]
                                    set:@"style" value:self->_hitStyle.objectId]
                          error:nil];
             }

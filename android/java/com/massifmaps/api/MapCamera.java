@@ -1,25 +1,21 @@
 package com.massifmaps.api;
 
-import com.massifmaps.core.MapBounds;
-import com.massifmaps.core.MapPos;
-import com.massifmaps.core.ScreenBounds;
-import com.massifmaps.core.ScreenPos;
-import com.massifmaps.ui.MapView;
-
 /**
  * The camera, fluent, and animated by default.
  *
- * A thin pass-through to {@link MapView} rather than a reimplementation - the object API already
- * has the flight code, and duplicating it here would be two things to keep in step. What this adds
- * is one call that moves everything at once, which is otherwise four calls with four separate
- * animations racing each other.
+ * Every call goes through the FACADE - the map view is adopted, and this is `set`, `get` and
+ * `call` on its handle. Not a pass-through to MapView any more: that was the one part of the sugar
+ * a binding could not reproduce from the C ABI, and going through the facade is also what applies
+ * the projection, so a position from a click event can be handed straight back here (#159).
+ *
+ * Positions are WGS84 - longitude, latitude - unless the map was told otherwise.
  */
 public final class MapCamera {
 
-    private final MapView view;
+    private final MassifObject view;
     private float duration;
 
-    MapCamera(MapView view) {
+    MapCamera(MassifObject view) {
         this.view = view;
     }
 
@@ -29,95 +25,109 @@ public final class MapCamera {
         return this;
     }
 
-    public MapCamera position(MapPos pos) {
-        view.setFocusPos(pos, take());
-        return this;
+    public MapCamera position(Position pos) {
+        return moveTo(pos, zoom(), rotation(), tilt());
     }
 
     public MapCamera zoom(float zoom) {
-        view.setZoom(zoom, take());
-        return this;
+        return moveTo(position(), zoom, rotation(), tilt());
     }
 
     public MapCamera rotation(float degrees) {
-        view.setMapRotation(degrees, take());
-        return this;
+        return moveTo(position(), zoom(), degrees, tilt());
     }
 
     public MapCamera tilt(float degrees) {
-        view.setTilt(degrees, take());
-        return this;
+        return moveTo(position(), zoom(), rotation(), degrees);
     }
 
     /**
      * Moves everything in ONE move. Four separate setters animate independently and visibly fight
-     * each other; this is the call an app actually wants.
+     * each other; this is the call an app actually wants, and the reason the camera is methods
+     * rather than writable properties.
      *
      * With no {@link #animate} it is immediate, and works before the map has drawn - which is when
      * a screen usually points its camera.
      */
-    public MapCamera moveTo(MapPos pos, float zoom, float rotation, float tilt) {
+    public MapCamera moveTo(Position pos, float zoom, float rotation, float tilt) {
         float seconds = take();
         if (seconds > 0) {
-            view.flyTo(pos, zoom, rotation, tilt, seconds);
+            view.call("flyTo", pos, zoom, rotation, tilt, seconds).close();
         } else {
-            view.moveTo(pos, zoom, rotation, tilt);
+            view.call("moveTo", pos, zoom, rotation, tilt).close();
         }
         return this;
     }
 
-    public MapCamera moveTo(MapPos pos, float zoom) {
-        float seconds = take();
-        if (seconds > 0) {
-            view.flyTo(pos, zoom, seconds);
-        } else {
-            view.moveTo(pos, zoom);
-        }
-        return this;
+    public MapCamera moveTo(Position pos, float zoom) {
+        return moveTo(pos, zoom, rotation(), tilt());
     }
 
     /**
      * Frames a bounding box, which is what "zoom to this route" or "fit these markers" means.
      *
-     * @param screenBounds The part of the view to fit it into - the whole view unless something
-     *                     overlays it.
+     * @param screenRect The part of the view to fit it into - the whole view unless something
+     *                   overlays it.
      * @param integerZoom Snap to a whole zoom level, which keeps raster tiles crisp.
      */
-    public MapCamera fitBounds(MapBounds bounds, ScreenBounds screenBounds, boolean integerZoom) {
-        view.moveToFitBounds(bounds, screenBounds, integerZoom, take());
+    public MapCamera fitBounds(Bounds bounds, ScreenRect screenRect, boolean integerZoom) {
+        view.call("fitBounds", bounds, screenRect, integerZoom, take()).close();
         return this;
     }
 
     /** The same, over the whole view. */
-    public MapCamera fitBounds(MapBounds bounds) {
-        return fitBounds(bounds, new ScreenBounds(new ScreenPos(0, 0),
-                                                  new ScreenPos(view.getWidth(), view.getHeight())),
-                         false);
+    public MapCamera fitBounds(Bounds bounds, float width, float height) {
+        return fitBounds(bounds, new ScreenRect(0, 0, width, height), false);
     }
 
-    public MapPos position() {
-        return view.getFocusPos();
+    public Position position() {
+        return view.getPos("focusPos");
     }
 
     public float zoom() {
-        return view.getZoom();
+        return (float) view.getDouble("zoom", 0);
     }
 
     public float rotation() {
-        return view.getMapRotation();
+        return (float) view.getDouble("rotation", 0);
     }
 
     public float tilt() {
-        return view.getTilt();
+        return (float) view.getDouble("tilt", 0);
+    }
+
+    /** Where a touch point is on the map. */
+    public Position screenToMap(float x, float y) {
+        MassifObject result = view.call("screenToMap", x, y);
+        try {
+            return Values.toPos(result.json());
+        } finally {
+            result.close();
+        }
+    }
+
+    /** And the other way, for placing a native view over a coordinate. */
+    public ScreenPoint mapToScreen(Position pos) {
+        MassifObject result = view.call("mapToScreen", pos);
+        try {
+            return Values.toScreenPoint(result.json());
+        } finally {
+            result.close();
+        }
     }
 
     /** Whether a flight is still running, and how to stop it. */
     public boolean isMoving() {
-        return view.isFlightActive();
+        return view.getBool("flightActive", false);
+    }
+
+    /** 0 to 1 through the current flight, so a UI can follow it. */
+    public float progress() {
+        return (float) view.getDouble("flightProgress", 0);
     }
 
     public MapCamera stop() {
-        view.stopFlight();
+        view.call("stopFlight").close();
         return this;
     }
 

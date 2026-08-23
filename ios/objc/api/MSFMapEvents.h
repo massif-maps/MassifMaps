@@ -9,7 +9,7 @@
 
 #import <Foundation/Foundation.h>
 
-@class MSFMapPos;
+@class MSFPosition;
 @class MSFMassifObject;
 
 NS_ASSUME_NONNULL_BEGIN
@@ -46,7 +46,7 @@ NS_SWIFT_NAME(MapEvent)
  * A position from the payload in a named projection, when one read wants a different one from the
  * subscription's - "EPSG:3857" for metres, say, on a handler set up for lon/lat.
  */
-- (nullable MSFMapPos *)getPos:(NSString *)path projection:(NSString *)projection;
+- (nullable MSFPosition *)getPos:(NSString *)path projection:(NSString *)projection;
 
 @end
 
@@ -56,7 +56,7 @@ NS_SWIFT_NAME(MapClickEvent)
 @interface MSFMapClickEvent : MSFMapEvent
 
 /** Where it landed, in the map's projection or the one set with eventProjection. */
-@property (nonatomic, readonly, nullable) MSFMapPos *position;
+@property (nonatomic, readonly, nullable) MSFPosition *position;
 
 /** 0 single, 1 long, 2 double, 3 dual. */
 @property (nonatomic, readonly) int clickType;
@@ -86,10 +86,10 @@ NS_SWIFT_NAME(VectorTileClickEvent)
 @property (nonatomic, readonly) NSString *layerName;
 
 /** The clicked point, MultiPoint-aware rather than the centre of the whole feature. */
-@property (nonatomic, readonly, nullable) MSFMapPos *position;
+@property (nonatomic, readonly, nullable) MSFPosition *position;
 
 /** Where the finger landed, which is not the same as where the feature is. */
-@property (nonatomic, readonly, nullable) MSFMapPos *clickPosition;
+@property (nonatomic, readonly, nullable) MSFPosition *clickPosition;
 
 /** POINT 0, LINE 1, POLYGON 2, MULTIPOINT 3, MULTILINE 4, MULTIPOLYGON 5, COLLECTION 6. */
 @property (nonatomic, readonly) int geometryType;
@@ -111,8 +111,8 @@ __attribute__ ((visibility("default")))
 NS_SWIFT_NAME(VectorElementClickEvent)
 @interface MSFVectorElementClickEvent : MSFMapEvent
 
-@property (nonatomic, readonly, nullable) MSFMapPos *position;
-@property (nonatomic, readonly, nullable) MSFMapPos *clickPosition;
+@property (nonatomic, readonly, nullable) MSFPosition *position;
+@property (nonatomic, readonly, nullable) MSFPosition *clickPosition;
 @property (nonatomic, readonly) int clickType;
 
 @end

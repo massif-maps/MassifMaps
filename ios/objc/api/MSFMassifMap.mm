@@ -1,20 +1,18 @@
 #import "MSFMassifInternal.h"
 #import "MSFMassifApi.h"
-#import "MSFMapPos.h"
+#import "MSFMassifInterop.h"
 #import "ui/MapView.h"
 #import "MSFLayer.h"
 #import "MSFLayers.h"
 #import "MSFMapEventListener.h"
-#import "MSFMapBounds.h"
-#import "MSFScreenPos.h"
-#import "MSFScreenBounds.h"
 
 #include "api/Context.h"
 
 static NSString * const kMapKind = @"map";
+static NSString * const kViewKind = @"view";
 
 @implementation MSFMapCamera {
-    __weak MSFMapView *_view;
+    MSFMassifObject *_view;
     float _duration;
 }
 
@@ -36,90 +34,99 @@ static NSString * const kMapKind = @"map";
     return seconds;
 }
 
-- (instancetype)position:(MSFMapPos *)pos {
-    [_view setFocusPos:pos durationSeconds:[self take]];
-    return self;
+- (instancetype)position:(MSFPosition *)pos {
+    return [self moveTo:pos zoom:self.currentZoom rotation:self.currentRotation
+                   tilt:self.currentTilt];
 }
 
 - (instancetype)zoom:(float)zoom {
-    [_view setZoom:zoom durationSeconds:[self take]];
-    return self;
+    return [self moveTo:self.currentPosition zoom:zoom rotation:self.currentRotation
+                   tilt:self.currentTilt];
 }
 
 - (instancetype)rotation:(float)degrees {
-    [_view setRotation:degrees durationSeconds:[self take]];
-    return self;
+    return [self moveTo:self.currentPosition zoom:self.currentZoom rotation:degrees
+                   tilt:self.currentTilt];
 }
 
 - (instancetype)tilt:(float)degrees {
-    [_view setTilt:degrees durationSeconds:[self take]];
-    return self;
+    return [self moveTo:self.currentPosition zoom:self.currentZoom
+               rotation:self.currentRotation tilt:degrees];
 }
 
-- (instancetype)moveTo:(MSFMapPos *)pos zoom:(float)zoom rotation:(float)rotation tilt:(float)tilt {
+- (instancetype)moveTo:(MSFPosition *)pos zoom:(float)zoom rotation:(float)rotation tilt:(float)tilt {
     float seconds = [self take];
     if (seconds > 0) {
-        [_view flyTo:pos zoom:zoom rotation:rotation tilt:tilt durationSeconds:seconds];
+        [[_view call:@"flyTo" args:@[ pos, @(zoom), @(rotation), @(tilt), @(seconds) ]
+                error:nil] destroy];
     } else {
         // Not flyTo with a duration of 0: that means "pick a duration from the path", and a flight
         // needs a frame to set itself up against. This is the immediate move, and it works before
         // the map has drawn - which is when a screen usually points its camera.
-        [_view moveTo:pos zoom:zoom rotation:rotation tilt:tilt];
+        [[_view call:@"moveTo" args:@[ pos, @(zoom), @(rotation), @(tilt) ] error:nil] destroy];
     }
     return self;
 }
 
-- (instancetype)moveTo:(MSFMapPos *)pos zoom:(float)zoom {
-    float seconds = [self take];
-    if (seconds > 0) {
-        [_view flyTo:pos zoom:zoom durationSeconds:seconds];
-    } else {
-        [_view moveTo:pos zoom:zoom];
-    }
-    return self;
+- (instancetype)moveTo:(MSFPosition *)pos zoom:(float)zoom {
+    return [self moveTo:pos zoom:zoom rotation:self.currentRotation tilt:self.currentTilt];
 }
 
-- (instancetype)fitBounds:(MSFMapBounds *)bounds
-             screenBounds:(MSFScreenBounds *)screenBounds
+- (instancetype)fitBounds:(MSFBounds *)bounds
+               screenRect:(MSFScreenRect *)screenRect
               integerZoom:(BOOL)integerZoom {
-    [_view moveToFitBounds:bounds
-              screenBounds:screenBounds
-               integerZoom:integerZoom
-           durationSeconds:[self take]];
+    [[_view call:@"fitBounds"
+            args:@[ bounds, screenRect, @(integerZoom), @([self take]) ]
+           error:nil] destroy];
     return self;
 }
 
-- (instancetype)fitBounds:(MSFMapBounds *)bounds {
-    CGSize size = _view.bounds.size;
-    MSFScreenBounds *whole =
-        [[MSFScreenBounds alloc] initWithMin:[[MSFScreenPos alloc] initWithX:0 y:0]
-                                         max:[[MSFScreenPos alloc] initWithX:size.width
-                                                                           y:size.height]];
-    return [self fitBounds:bounds screenBounds:whole integerZoom:NO];
+- (instancetype)fitBounds:(MSFBounds *)bounds width:(float)width height:(float)height {
+    return [self fitBounds:bounds
+                screenRect:[MSFScreenRect rectWithLeft:0 top:0 right:width bottom:height]
+               integerZoom:NO];
 }
 
-- (MSFMapPos *)currentPosition {
-    return [_view getFocusPos];
+- (MSFPosition *)currentPosition {
+    return [_view getPos:@"focusPos"];
 }
 
 - (float)currentZoom {
-    return [_view getZoom];
+    return (float)[_view getDouble:@"zoom" defaultValue:0];
 }
 
 - (float)currentRotation {
-    return [_view getRotation];
+    return (float)[_view getDouble:@"rotation" defaultValue:0];
 }
 
 - (float)currentTilt {
-    return [_view getTilt];
+    return (float)[_view getDouble:@"tilt" defaultValue:0];
+}
+
+- (MSFPosition *)screenToMapX:(float)x y:(float)y {
+    MSFMassifObject *result = [_view call:@"screenToMap" args:@[ @(x), @(y) ] error:nil];
+    MSFPosition *pos = [MSFValues posFromJson:result.json];
+    [result destroy];
+    return pos;
+}
+
+- (MSFScreenPoint *)mapToScreen:(MSFPosition *)pos {
+    MSFMassifObject *result = [_view call:@"mapToScreen" args:@[ pos ] error:nil];
+    MSFScreenPoint *point = [MSFValues screenPointFromJson:result.json];
+    [result destroy];
+    return point;
 }
 
 - (BOOL)isMoving {
-    return [_view isFlightActive];
+    return [_view getBool:@"flightActive" defaultValue:NO];
+}
+
+- (float)progress {
+    return (float)[_view getDouble:@"flightProgress" defaultValue:0];
 }
 
 - (instancetype)stop {
-    [_view stopFlight];
+    [[_view call:@"stopFlight" args:@[] error:nil] destroy];
     return self;
 }
 
@@ -169,15 +176,27 @@ static void MSFInstallUiDispatcher(void) {
     MSFInstallUiDispatcher();
     int handle = [MSFMassifApi findObject:kMapKind objectId:objectId];
     if (handle == 0) {
-        handle = [MSFMassifApi adopt:kMapKind objectId:objectId options:[view getOptions]];
+        handle = [MSFMassifInterop adopt:kMapKind objectId:objectId options:[view getOptions]];
         if (handle == 0) {
+            return nil;
+        }
+    }
+    // The map view is adopted too, under its own kind: it is what carries the CAMERA, and going
+    // through the facade is what gives moveTo the map's projection.
+    int viewHandle = [MSFMassifApi findObject:kViewKind objectId:objectId];
+    if (viewHandle == 0) {
+        viewHandle = [MSFMassifInterop adopt:kViewKind objectId:objectId
+                                        view:[view getBaseMapView]];
+        if (viewHandle == 0) {
             return nil;
         }
     }
     MSFMassifMap *map = [[MSFMassifMap alloc] init];
     map->_view = view;
     map->_options = [[MSFMassifObject alloc] initWithHandle:handle kind:kMapKind objectId:objectId];
-    map->_camera = [[MSFMapCamera alloc] initWithView:view];
+    map->_camera = [[MSFMapCamera alloc]
+        initWithView:[[MSFMassifObject alloc] initWithHandle:viewHandle kind:kViewKind
+                                                   objectId:objectId]];
     map.eventProjection = @"";
     return map;
 }
@@ -330,7 +349,7 @@ static void MSFInstallUiDispatcher(void) {
     if (index < 0 || index >= self.layerCount) {
         return nil;
     }
-    int handle = [MSFMassifApi adopt:@"layer"
+    int handle = [MSFMassifInterop adopt:@"layer"
                             objectId:objectId
                                layer:[[_view getLayers] get:index]];
     return handle == 0 ? nil
@@ -367,12 +386,12 @@ static void MSFInstallUiDispatcher(void) {
 
 // --- events -----------------------------------------------------------------------------------
 
-- (MSFMapPos *)screenToMapX:(float)x y:(float)y {
-    return [_view screenToMap:[[MSFScreenPos alloc] initWithX:x y:y]];
+- (MSFPosition *)screenToMapX:(float)x y:(float)y {
+    return [_camera screenToMapX:x y:y];
 }
 
-- (MSFScreenPos *)mapToScreen:(MSFMapPos *)pos {
-    return [_view mapToScreen:pos];
+- (MSFScreenPoint *)mapToScreen:(MSFPosition *)pos {
+    return [_camera mapToScreen:pos];
 }
 
 - (MSFSubscription *)onClick:(MSFMapClickHandler)handler {
@@ -421,7 +440,7 @@ static void MSFInstallUiDispatcher(void) {
         return;
     }
     MSFMapEventListener *chained = [_view getMapEventListener];
-    [_view setMapEventListener:[MSFMassifApi createEventBridge:_options.handle chained:chained]];
+    [_view setMapEventListener:[MSFMassifInterop createEventBridge:_options.handle chained:chained]];
     _bridged = YES;
 }
 

@@ -92,7 +92,7 @@ static MSFSpec *dem(void) {
 
     // Looking SOUTH at the Matterhorn from high over Zermatt. tilt 90 is straight down in this SDK,
     // so a landscape view is a LOW tilt.
-    [map.camera moveTo:[[MSFMapPos alloc] initWithX:7.6586 y:45.9763]
+    [map.camera moveTo:[MSFPosition positionWithLng:7.6586 lat:45.9763]
                   zoom:11.5 rotation:180 tilt:33];
 
     [host toggle:@"Terrain" on:YES action:^(BOOL on) {

@@ -6,7 +6,7 @@ import com.massifmaps.MassifDemo.examples.MapExample;
 import com.massifmaps.MassifDemo.examples.Sections;
 import com.massifmaps.api.MassifMap;
 import com.massifmaps.api.Spec;
-import com.massifmaps.core.MapPos;
+import com.massifmaps.api.Position;
 
 /**
  * Flying between places, moving everything in one flight.
@@ -41,7 +41,7 @@ public class FlyToExample extends MapExample {
                 // OSM's tile policy REQUIRES an identifying User-Agent; without one the server
                 // answers 403 and every tile comes back as an error image.
                 .set("HTTPHeaders", Spec.object().set("User-Agent", UA))));
-        map.camera().moveTo(new MapPos(5.7245, 45.1885), 6);
+        map.camera().moveTo(new Position(5.7245, 45.1885), 6);
 
         for (final Object[] place : PLACES) {
             host.button((String) place[0], new Runnable() {
@@ -49,7 +49,7 @@ public class FlyToExample extends MapExample {
                 public void run() {
                     // animate(seconds) applies to the next move only, then resets to 0.
                     map.camera().animate(3f).moveTo(
-                        new MapPos((Double) place[1], (Double) place[2]),
+                        new Position((Double) place[1], (Double) place[2]),
                         (Float) place[3], (Float) place[4], (Float) place[5]);
                 }
             });

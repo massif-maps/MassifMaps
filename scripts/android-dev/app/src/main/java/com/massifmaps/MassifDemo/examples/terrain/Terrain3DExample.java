@@ -6,7 +6,7 @@ import com.massifmaps.MassifDemo.examples.MapExample;
 import com.massifmaps.MassifDemo.examples.Sections;
 import com.massifmaps.api.MassifMap;
 import com.massifmaps.api.Spec;
-import com.massifmaps.core.MapPos;
+import com.massifmaps.api.Position;
 
 /**
  * The flagship: satellite imagery draped over 3D terrain, with roads and summits on top.
@@ -33,7 +33,7 @@ public class Terrain3DExample extends MapExample {
      * into a hillside, and a HIGH tilt buries the pyramid in the ridge behind it. This is the
      * window where all three are satisfied and the massif fills the frame.
      */
-    private static final MapPos VIEW = new MapPos(7.6586, 45.9763);
+    private static final Position VIEW = new Position(7.6586, 45.9763);
 
     /** Open DEM tiles, terrarium-encoded. */
     private static Spec dem() {

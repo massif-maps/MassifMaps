@@ -77,7 +77,7 @@ static NSString * const kStyle =
                          set:@"cartocss" value:[[MSFSpec of:@"cartocss"] set:@"css" value:kStyle]]]
             error:nil];
 
-    [map.camera moveTo:[[MSFMapPos alloc] initWithX:6.882 y:45.866] zoom:10.4];
+    [map.camera moveTo:[MSFPosition positionWithLng:6.882 lat:45.866] zoom:10.4];
     [host caption:@"One FeatureCollection, tiled on the fly and styled with CartoCSS."];
 }
 

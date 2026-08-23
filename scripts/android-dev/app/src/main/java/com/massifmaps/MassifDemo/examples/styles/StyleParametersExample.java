@@ -7,7 +7,7 @@ import com.massifmaps.MassifDemo.examples.Sections;
 import com.massifmaps.api.MassifMap;
 import com.massifmaps.api.MassifObject;
 import com.massifmaps.api.Spec;
-import com.massifmaps.core.MapPos;
+import com.massifmaps.api.Position;
 
 /**
  * A CartoCSS style project, and the two kinds of runtime parameter it can declare.
@@ -48,7 +48,7 @@ public class StyleParametersExample extends MapExample {
                 .set("HTTPHeaders", Spec.object().set("User-Agent", "MassifMapsExamples/1.0")))
             .set("style", "alpine"));
 
-        map.camera().moveTo(new MapPos(5.7245, 45.1885), 13.5f);
+        map.camera().moveTo(new Position(5.7245, 45.1885), 13.5f);
 
         host.button("Water colour", new Runnable() {
             @Override

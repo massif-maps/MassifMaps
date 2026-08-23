@@ -1,6 +1,6 @@
 #import "MSFMassifInternal.h"
 #import "MSFMassifApi.h"
-#import "MSFMapPos.h"
+#import "MSFMassifInterop.h"
 #import "MSFTileDataSource.h"
 #import "MSFLayer.h"
 #import "MSFAssetPackage.h"
@@ -9,7 +9,7 @@ NSString * const MSFMassifErrorDomain = @"MSFMassifErrorDomain";
 
 @implementation MSFValues
 
-+ (MSFMapPos *)posFromJson:(NSString *)json {
++ (MSFPosition *)posFromJson:(NSString *)json {
     if (json.length == 0) {
         return nil;
     }
@@ -27,11 +27,38 @@ NSString * const MSFMassifErrorDomain = @"MSFMassifErrorDomain";
         return nil;
     }
     double z = array.count > 2 ? [array[2] doubleValue] : 0;
-    return [[MSFMapPos alloc] initWithX:[array[0] doubleValue] y:[array[1] doubleValue] z:z];
+    return [[MSFPosition alloc] initWithLng:[array[0] doubleValue] lat:[array[1] doubleValue] alt:z];
 }
 
-+ (NSString *)jsonFromPos:(MSFMapPos *)pos {
-    return [NSString stringWithFormat:@"[%.17g,%.17g,%.17g]", [pos getX], [pos getY], [pos getZ]];
++ (MSFBounds *)boundsFromJson:(NSString *)json {
+    if (json.length == 0) {
+        return nil;
+    }
+    id parsed = [NSJSONSerialization JSONObjectWithData:[json dataUsingEncoding:NSUTF8StringEncoding]
+                                                options:NSJSONReadingFragmentsAllowed
+                                                  error:nil];
+    if (![parsed isKindOfClass:[NSArray class]] || ((NSArray *)parsed).count != 2) {
+        return nil;
+    }
+    NSArray *array = (NSArray *)parsed;
+    MSFPosition *min = [self posFromJson:[self jsonOf:array[0]]];
+    MSFPosition *max = [self posFromJson:[self jsonOf:array[1]]];
+    return min && max ? [[MSFBounds alloc] initWithMin:min max:max] : nil;
+}
+
++ (MSFScreenPoint *)screenPointFromJson:(NSString *)json {
+    MSFPosition *pos = [self posFromJson:json];
+    return pos ? [[MSFScreenPoint alloc] initWithX:(float)pos.lng y:(float)pos.lat] : nil;
+}
+
+/** Re-serialises one element, so the pair codec reuses the position one instead of copying it. */
++ (NSString *)jsonOf:(id)value {
+    NSData *data = [NSJSONSerialization dataWithJSONObject:value options:0 error:nil];
+    return data ? [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding] : @"";
+}
+
++ (NSString *)jsonFromPos:(MSFPosition *)pos {
+    return [NSString stringWithFormat:@"[%.17g,%.17g,%.17g]", pos.lng, pos.lat, pos.alt];
 }
 
 + (NSString *)argsJson:(NSArray *)args {
@@ -40,9 +67,17 @@ NSString * const MSFMassifErrorDomain = @"MSFMassifErrorDomain";
     }
     NSMutableArray *converted = [NSMutableArray arrayWithCapacity:args.count];
     for (id arg in args) {
-        if ([arg isKindOfClass:[MSFMapPos class]]) {
-            MSFMapPos *pos = arg;
-            [converted addObject:@[ @([pos getX]), @([pos getY]) ]];
+        if ([arg isKindOfClass:[MSFPosition class]]) {
+            MSFPosition *pos = arg;
+            [converted addObject:@[ @(pos.lng), @(pos.lat), @(pos.alt) ]];
+        } else if ([arg isKindOfClass:[MSFBounds class]]) {
+            MSFBounds *bounds = arg;
+            [converted addObject:@[ @[ @(bounds.min.lng), @(bounds.min.lat) ],
+                                    @[ @(bounds.max.lng), @(bounds.max.lat) ] ]];
+        } else if ([arg isKindOfClass:[MSFScreenRect class]]) {
+            MSFScreenRect *rect = arg;
+            [converted addObject:@[ @[ @(rect.min.x), @(rect.min.y) ],
+                                    @[ @(rect.max.x), @(rect.max.y) ] ]];
         } else {
             [converted addObject:arg];
         }
@@ -206,19 +241,19 @@ static NSString * const kAbsent = @"\0massif:absent";
 }
 
 + (MSFMassifLayer *)adoptLayer:(NSString *)objectId layer:(MSFLayer *)layer {
-    int handle = [MSFMassifApi adopt:@"layer" objectId:objectId layer:layer];
+    int handle = [MSFMassifInterop adopt:@"layer" objectId:objectId layer:layer];
     return handle == 0 ? nil
         : [[MSFMassifLayer alloc] initWithHandle:handle objectId:objectId map:nil];
 }
 
 + (MSFMassifSource *)adoptSource:(NSString *)objectId source:(MSFTileDataSource *)source {
-    int handle = [MSFMassifApi adopt:@"source" objectId:objectId source:source];
+    int handle = [MSFMassifInterop adopt:@"source" objectId:objectId source:source];
     return handle == 0 ? nil
         : [[MSFMassifSource alloc] initWithHandle:handle kind:@"source" objectId:objectId];
 }
 
 + (MSFMassifObject *)adoptAssets:(NSString *)objectId assets:(MSFAssetPackage *)assets {
-    int handle = [MSFMassifApi adopt:@"assets" objectId:objectId assets:assets];
+    int handle = [MSFMassifInterop adopt:@"assets" objectId:objectId assets:assets];
     return handle == 0 ? nil
         : [[MSFMassifObject alloc] initWithHandle:handle kind:@"assets" objectId:objectId];
 }
@@ -240,7 +275,7 @@ static NSString * const kAbsent = @"\0massif:absent";
 }
 
 + (MSFTileDataSource *)rawSource:(NSString *)objectId {
-    return [MSFMassifApi getSource:objectId];
+    return [MSFMassifInterop getSource:objectId];
 }
 
 @end

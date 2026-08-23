@@ -3,7 +3,9 @@
 
 %module(directors="1") MassifApi
 
-!proxy_imports(massif::api::MassifApi, components.Options, datasources.TileDataSource, layers.Layer, components.Layers, ui.BaseMapView, ui.MapEventListener, api.EventListener, api.UiDispatcher, layers.VectorTileEventListener, layers.VectorElementEventListener, utils.AssetPackage)
+// No SDK module here on purpose: this class names none, so its wrapper depends on no
+// object-API proxy (#159). Anything that needs one lives in MassifInterop.
+!proxy_imports(massif::api::MassifApi, api.EventListener, api.UiDispatcher)
 
 %{
 #include "api/MassifApi.h"
@@ -15,15 +17,6 @@
 %include <std_vector.i>
 %include <massifswig.i>
 
-%import "components/Options.i"
-%import "datasources/TileDataSource.i"
-%import "layers/Layer.i"
-%import "components/Layers.i"
-%import "ui/BaseMapView.i"
-%import "ui/MapEventListener.i"
-%import "layers/VectorTileEventListener.i"
-%import "layers/VectorElementEventListener.i"
-%import "utils/AssetPackage.i"
 %import "api/EventListener.i"
 %import "api/UiDispatcher.i"
 

@@ -89,6 +89,27 @@ namespace massif { namespace api {
             }
             return false;
         }
+
+        /**
+         * The projection a position crosses the facade in when nobody named one.
+         *
+         * WGS84, not the object's own, so `lng`/`lat`/`alt` are honest field names in every
+         * binding and app code never names a projection for the common case - the same default
+         * maplibre, mapbox and google picked (#159). A per-read name still wins, and so does the
+         * one the running event handler asked for.
+         */
+        const std::string& defaultProjection() {
+            static const std::string name = "EPSG:4326";
+            return name;
+        }
+
+        /** The per-read name, then the running handler's, then WGS84. */
+        const std::string& wantedProjection(const std::string& projection) {
+            if (!projection.empty()) {
+                return projection;
+            }
+            return tActiveProjection.empty() ? defaultProjection() : tActiveProjection;
+        }
     }
 
     Context::Context() {
@@ -521,6 +542,7 @@ namespace massif { namespace api {
 
         std::shared_ptr<void> obj;
         const char* cppClass = nullptr;
+        std::shared_ptr<Projection> objectProjection;
         {
             std::lock_guard<std::mutex> lock(_mutex);
             ObjectRef target;
@@ -530,6 +552,7 @@ namespace massif { namespace api {
             }
             obj = target.obj;
             cppClass = target.cppClass;
+            objectProjection = sourceProjection(target, handle);
         }
 
         MethodInvoke invoke = Methods::findMethod(cppClass, name);
@@ -540,6 +563,10 @@ namespace massif { namespace api {
         if (!CallArgs::parse(argsJson, args)) {
             return RESULT_BAD_SPEC;
         }
+        // A position argument arrives in the same projection a property read hands back, so
+        // moveTo takes what screenToMap returned. Resolved here rather than in the thunk: a
+        // method is not required to know that a projection exists (#159).
+        args.setProjections(Projections::find(wantedProjection(std::string())), objectProjection);
         // Unlocked: loadTile does network I/O, and a method reaching back into the context - to
         // register its result, which every object-returning one does - would deadlock.
         Result called;
@@ -950,10 +977,8 @@ namespace massif { namespace api {
             return RESULT_REJECTED;
         }
 
-        // The per-read name wins over the one the running handler asked for; with neither, the
-        // value stays in whatever projection its object uses.
-        const std::string& wanted = projection.empty() ? tActiveProjection : projection;
-        if ((entry->flags & PF_POSITION) && !wanted.empty()) {
+        const std::string& wanted = wantedProjection(projection);
+        if (entry->flags & PF_POSITION) {
             std::shared_ptr<Projection> to = Projections::find(wanted);
             std::shared_ptr<Projection> from = sourceProjection(target, handle);
             if (!to) {
@@ -993,12 +1018,28 @@ namespace massif { namespace api {
         if (!entry->setter) {
             return RESULT_UNSUPPORTED_TYPE;
         }
+        // A position is WRITTEN in the same projection it is read in, or a value read and written
+        // back would land somewhere else entirely - the one failure this change could produce, and
+        // it would be silent.
+        PropertyValue converted;
+        const PropertyValue* effective = &value;
+        if ((entry->flags & PF_POSITION) && value.type == PT_STRING) {
+            std::shared_ptr<Projection> from = Projections::find(wantedProjection(std::string()));
+            std::shared_ptr<Projection> to = sourceProjection(target, handle);
+            if (from && to && from->getName() != to->getName()) {
+                converted = value;
+                if (!reproject(converted.stringValue, *from, *to)) {
+                    return RESULT_UNSUPPORTED_TYPE;
+                }
+                effective = &converted;
+            }
+        }
         // The generated thunk calls the class' own setter, so the option-changed notification and
         // therefore the redraw granularity are exactly those of a direct call - INCLUDING its
         // validation. Options::setZoomRange and friends throw on a value they will not take, and
         // an exception crossing into Java or Objective-C kills the process.
         try {
-            entry->setter(target.obj.get(), value);
+            entry->setter(target.obj.get(), *effective);
         } catch (const std::exception& ex) {
             Log::Errorf("Context::setProperty: '%s' rejected: %s", path.c_str(), ex.what());
             return RESULT_REJECTED;

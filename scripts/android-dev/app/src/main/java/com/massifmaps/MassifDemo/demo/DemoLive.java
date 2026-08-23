@@ -8,6 +8,7 @@ import android.util.Log;
 
 import com.massifmaps.api.EventListener;
 import com.massifmaps.api.MassifApi;
+import com.massifmaps.api.MassifInterop;
 
 /**
  * Applies intent extras to a RUNNING demo, so any knob can be changed from adb without a relaunch:
@@ -97,7 +98,7 @@ public final class DemoLive extends BroadcastReceiver {
         if (extras.containsKey("apiCreate")) {
             // The map's layer list, so a layer built from a spec can be put on the map.
             if (MassifApi.findObject("layers", "demo") == 0) {
-                MassifApi.adopt("layers", "demo", demo.mapView.getLayers());
+                MassifInterop.adopt("layers", "demo", demo.mapView.getLayers());
             }
             applyApiCreate(extras.getString("apiCreate"));
         }
@@ -183,7 +184,7 @@ public final class DemoLive extends BroadcastReceiver {
 
         int handle = MassifApi.findObject(kind, id);
         if (handle == 0 && "options".equals(kind) && "demo".equals(id)) {
-            handle = MassifApi.adopt(kind, id, demo.mapView.getOptions());
+            handle = MassifInterop.adopt(kind, id, demo.mapView.getOptions());
         }
         if (handle == 0) {
             Log.w(TAG, "apiSet: nothing registered as " + kind + ":" + id);
@@ -305,7 +306,7 @@ public final class DemoLive extends BroadcastReceiver {
         }
         // Re-registered every time: rebuildBaseLayer replaces the SDK layer and the old id goes stale.
         MassifApi.unregisterObject("layer", "searchBase");
-        MassifApi.adopt("layer", "searchBase", vector);
+        MassifInterop.adopt("layer", "searchBase", vector);
         MassifApi.unregisterObject("search", "demoSearch");
         final int service = MassifApi.create("search", "demoSearch",
                                              "{\"type\":\"vectortile\",\"layer\":\"searchBase\"}");
@@ -512,10 +513,10 @@ public final class DemoLive extends BroadcastReceiver {
                 new java.util.concurrent.atomic.AtomicInteger();
         int handle = MassifApi.findObject("options", "demo");
         if (handle == 0) {
-            handle = MassifApi.adopt("options", "demo", demo.mapView.getOptions());
+            handle = MassifInterop.adopt("options", "demo", demo.mapView.getOptions());
         }
         demo.mapView.setMapEventListener(
-                MassifApi.createEventBridge(handle, demo.mapView.getMapEventListener()));
+                MassifInterop.createEventBridge(handle, demo.mapView.getMapEventListener()));
 
         apiMoveListener = new EventListener() {
             @Override
@@ -668,7 +669,7 @@ public final class DemoLive extends BroadcastReceiver {
      *   adb shell am broadcast -a ...CONFIG --es apiSugar true
      *
      * The point of the comparison is the handler bodies. Above: getInt(payload, "featureId", -1)
-     * and a JSON string to parse. Here: e.featureId() and a MapPos already in lon/lat.
+     * and a JSON string to parse. Here: e.featureId() and a Position already in lon/lat.
      */
     private void applyApiSugar(boolean enable) {
         if (!enable) {
@@ -729,10 +730,10 @@ public final class DemoLive extends BroadcastReceiver {
         }
         int handle = MassifApi.findObject("options", "demo");
         if (handle == 0) {
-            handle = MassifApi.adopt("options", "demo", demo.mapView.getOptions());
+            handle = MassifInterop.adopt("options", "demo", demo.mapView.getOptions());
         }
         demo.mapView.setMapEventListener(
-            MassifApi.createEventBridge(handle, demo.mapView.getMapEventListener()));
+            MassifInterop.createEventBridge(handle, demo.mapView.getMapEventListener()));
 
         apiListener = new EventListener() {
             @Override
@@ -754,7 +755,7 @@ public final class DemoLive extends BroadcastReceiver {
             }
         }
         if (vector != null) {
-            vector.setVectorTileEventListener(MassifApi.createVectorTileEventBridge(
+            vector.setVectorTileEventListener(MassifInterop.createVectorTileEventBridge(
                 handle, vector.getVectorTileEventListener()));
             MassifApi.on(handle, "vectortile.clicked", new EventListener() {
                 @Override

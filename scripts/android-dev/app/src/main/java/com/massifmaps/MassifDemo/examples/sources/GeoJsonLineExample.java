@@ -7,7 +7,7 @@ import com.massifmaps.MassifDemo.examples.Sections;
 import com.massifmaps.api.MassifMap;
 import com.massifmaps.api.MassifSource;
 import com.massifmaps.api.Spec;
-import com.massifmaps.core.MapPos;
+import com.massifmaps.api.Position;
 
 /**
  * A GeoJSON document served AS vector tiles, so it goes through the ordinary style and renderer.
@@ -75,7 +75,7 @@ public class GeoJsonLineExample extends MapExample {
             .set("style", Spec.of("mbvt")
                 .set("cartocss", Spec.of("cartocss").set("css", STYLE))));
 
-        map.camera().moveTo(new MapPos(6.882, 45.866), 10.4f);
+        map.camera().moveTo(new Position(6.882, 45.866), 10.4f);
         host.caption("One FeatureCollection, tiled on the fly and styled with CartoCSS.");
     }
 }

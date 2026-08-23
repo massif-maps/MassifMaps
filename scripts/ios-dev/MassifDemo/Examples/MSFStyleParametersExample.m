@@ -53,7 +53,7 @@ static NSArray<NSString *> *waterColours(void) {
                      set:@"style" value:@"alpine"]
             error:nil];
 
-    [map.camera moveTo:[[MSFMapPos alloc] initWithX:5.7245 y:45.1885] zoom:13.5];
+    [map.camera moveTo:[MSFPosition positionWithLng:5.7245 lat:45.1885] zoom:13.5];
 
     [host button:@"Water colour" action:^{
         self->_water = (self->_water + 1) % waterColours().count;

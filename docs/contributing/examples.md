@@ -32,7 +32,7 @@ public class DisplayMapExample extends MapExample {
         MassifMap map = host.map();
         map.addLayer("basemap", Spec.of("raster")
             .set("source", Spec.of("http").set("url", "https://…/{z}/{x}/{y}.png")));
-        map.camera().moveTo(new MapPos(6.8652, 45.8326), 11);
+        map.camera().moveTo(new Position(6.8652, 45.8326), 11);
         host.caption("What to look at.");
     }
 }

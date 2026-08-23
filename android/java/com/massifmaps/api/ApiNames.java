@@ -32,10 +32,6 @@ public final class ApiNames {
     public static final MassifObject.Key<Long> A = MassifObject.key("a");
     /** Returns the shading color used to accentuate rugged terrain like sharp cliffs and gorges. */
     public static final MassifObject.Key<Integer> ACCENT_COLOR = MassifObject.key("accentColor");
-    /** Returns the accuracy of the points in the request. */
-    public static final MassifObject.Key<Double> ACCURACY = MassifObject.key("accuracy");
-    /** Returns the action of the instruction. */
-    public static final MassifObject.Key<String> ACTION = MassifObject.key("action");
     /** Returns the altitude of a direction-anchored object. */
     public static final MassifObject.Key<Double> ALTITUDE = MassifObject.key("altitude");
     /** Returns the ambient light color. */
@@ -85,6 +81,8 @@ public final class ApiNames {
     public static final MassifObject.Key<MassifObject> BASE_BILLBOARD = MassifObject.key("baseBillboard");
     /** Returns the base contour interval in meters. */
     public static final MassifObject.Key<Double> BASE_INTERVAL = MassifObject.key("baseInterval");
+    /** Returns the path of the bundled directory the assets are read from. */
+    public static final MassifObject.Key<String> BASE_PATH = MassifObject.key("basePath");
     /** Returns the base projection. */
     public static final MassifObject.Key<MassifObject> BASE_PROJECTION = MassifObject.key("baseProjection");
     /** Returns the base URL template containing tags. */
@@ -120,6 +118,8 @@ public final class ApiNames {
     public static final MassifObject.Key<Long> BUTTON_WIDTH = MassifObject.key("buttonWidth");
     /** Returns the bytes per pixel parameter of this bitmap. Valid values are 1, 2, 3 and 4. */
     public static final MassifObject.Key<Long> BYTES_PER_PIXEL = MassifObject.key("bytesPerPixel");
+    /** Returns the state of cache only mode. */
+    public static final MassifObject.Key<Boolean> CACHE_ONLY_MODE = MassifObject.key("cacheOnlyMode");
     /** Returns the state of the camera changed flag. */
     public static final MassifObject.Key<Boolean> CAMERA_CHANGED = MassifObject.key("cameraChanged");
     /** Returns the duration of the camera terrain-following correction animation. */
@@ -234,8 +234,6 @@ public final class ApiNames {
     public static final MassifObject.Key<Double> DRAW_DISTANCE = MassifObject.key("drawDistance");
     /** Returns the click duration in seconds. */
     public static final MassifObject.Key<Double> DURATION = MassifObject.key("duration");
-    /** Returns the corresponding matching edge index in the matching result. */
-    public static final MassifObject.Key<Long> EDGE_INDEX = MassifObject.key("edgeIndex");
     /** Returns the 2D click position on the clicked popup. */
     public static final MassifObject.Key<String> ELEMENT_CLICK_POS = MassifObject.key("elementClickPos");
     /** Returns the info tag of the clicked element. */
@@ -316,8 +314,6 @@ public final class ApiNames {
     public static final MassifObject.Key<String> GEOMETRY_GEO_JSON = MassifObject.key("geometryGeoJSON");
     /** Returns the active geometry simplifier of the data source. */
     public static final MassifObject.Key<MassifObject> GEOMETRY_SIMPLIFIER = MassifObject.key("geometrySimplifier");
-    /** Returns the geometry tag associated with the instructions. */
-    public static final MassifObject.Key<String> GEOMETRY_TAG = MassifObject.key("geometryTag");
     /** Returns the ground color. */
     public static final MassifObject.Key<Integer> GROUND_COLOR = MassifObject.key("groundColor");
     /** Returns the height of the bitmap. */
@@ -348,12 +344,6 @@ public final class ApiNames {
     public static final MassifObject.Key<String> ILLUMINATION_DIRECTION = MassifObject.key("illuminationDirection");
     /** Returns wheter the illumination direction should change with the map rotation. */
     public static final MassifObject.Key<Boolean> ILLUMINATION_MAP_ROTATION_ENABLED = MassifObject.key("illuminationMapRotationEnabled");
-    /** Returns the optional instruction description. This info is dependent on the routing engine (can be empty) and may be localized. */
-    public static final MassifObject.Key<String> INSTRUCTION = MassifObject.key("instruction");
-    /** Returns the number of turn-by-turn instructions. */
-    public static final MassifObject.Key<Long> INSTRUCTION_COUNT = MassifObject.key("instructionCount");
-    /** Returns the turn-by-turn instruction list. */
-    public static final MassifObject.Key<String> INSTRUCTIONS = MassifObject.key("instructions");
     /** Returns the interpolated color at the click position. */
     public static final MassifObject.Key<Integer> INTERPOLATED_COLOR = MassifObject.key("interpolatedColor");
     /** Returns the state of the kinetic panning flag. */
@@ -403,7 +393,7 @@ public final class ApiNames {
     public static final MassifObject.Key<String> LINE_JOIN_TYPE = MassifObject.key("lineJoinType");
     /** Returns the line style. */
     public static final MassifObject.Key<MassifObject> LINE_STYLE = MassifObject.key("lineStyle");
-    /** Returns the list of assets stored in the directory, ignoring the base asset package. */
+    /** Returns the list of assets found in the bundle, ignoring the base asset package. */
     public static final MassifObject.Key<String> LOCAL_ASSET_NAMES = MassifObject.key("localAssetNames");
     /** Returns the current log listener. */
     public static final MassifObject.Key<MassifObject> LOG_EVENT_LISTENER = MassifObject.key("logEventListener");
@@ -415,14 +405,12 @@ public final class ApiNames {
     public static final MassifObject.Key<Integer> MAIN_LIGHT_COLOR = MassifObject.key("mainLightColor");
     /** Returns the direction of the main light. */
     public static final MassifObject.Key<String> MAIN_LIGHT_DIRECTION = MassifObject.key("mainLightDirection");
+    /** Returns the drag position in projection coordinate system of the layer. */
+    public static final MassifObject.Key<String> MAP_POS = MassifObject.key("mapPos");
     /** Returns the map renderer listener. Can be null. */
     public static final MassifObject.Key<MassifObject> MAP_RENDERER_LISTENER = MassifObject.key("mapRendererListener");
     /** Returns the tile id of the clicked feature. */
     public static final MassifObject.Key<String> MAP_TILE = MassifObject.key("mapTile");
-    /** Returns the list with details of the matched edges. */
-    public static final MassifObject.Key<String> MATCHING_EDGES = MassifObject.key("matchingEdges");
-    /** Returns the list with details of the matched points. */
-    public static final MassifObject.Key<String> MATCHING_POINTS = MassifObject.key("matchingPoints");
     /** Returns the maximum (north east) map position of this map envelope object. */
     public static final MassifObject.Key<String> MAX = MassifObject.key("max");
     /** Returns the maximum age of the tile data, tile data will expire after that point. */
@@ -474,6 +462,8 @@ public final class ApiNames {
     public static final MassifObject.Key<String> OBJECT_KEYS = MassifObject.key("objectKeys");
     /** Returns the opacity of this layer. */
     public static final MassifObject.Key<Double> OPACITY = MassifObject.key("opacity");
+    /** Returns the status of the cache database. */
+    public static final MassifObject.Key<Boolean> OPEN = MassifObject.key("open");
     /** Returns the orientation mode of the label. */
     public static final MassifObject.Key<String> ORIENTATION_MODE = MassifObject.key("orientationMode");
     /** Returns true if the interaction included a map pan action. */
@@ -492,14 +482,8 @@ public final class ApiNames {
     public static final MassifObject.Key<String> PIVOT_MODE = MassifObject.key("pivotMode");
     /** Returns the placement priority of the billboard. */
     public static final MassifObject.Key<Long> PLACEMENT_PRIORITY = MassifObject.key("placementPriority");
-    /** Returns the number of points in the path. */
-    public static final MassifObject.Key<Long> POINT_COUNT = MassifObject.key("pointCount");
-    /** Returns the index of the first geometry point in external point array. */
-    public static final MassifObject.Key<Long> POINT_INDEX = MassifObject.key("pointIndex");
     /** Returns the point style. */
     public static final MassifObject.Key<MassifObject> POINT_STYLE = MassifObject.key("pointStyle");
-    /** Returns the measured points of the request. */
-    public static final MassifObject.Key<String> POINTS = MassifObject.key("points");
     /** Returns the polygon style. */
     public static final MassifObject.Key<MassifObject> POLYGON_STYLE = MassifObject.key("polygonStyle");
     /** Returns the clicked popup. */
@@ -520,7 +504,6 @@ public final class ApiNames {
     public static final MassifObject.Key<Boolean> PRELOADING = MassifObject.key("preloading");
     /** Returns wether to prevent duplicate elements */
     public static final MassifObject.Key<Boolean> PREVENT_DUPLICATES = MassifObject.key("preventDuplicates");
-    public static final MassifObject.Key<String> PROFILE = MassifObject.key("profile");
     /** Returns the projection of the feature collection of the search service. */
     public static final MassifObject.Key<MassifObject> PROJECTION = MassifObject.key("projection");
     /** Returns the properties of the feature. */
@@ -535,8 +518,6 @@ public final class ApiNames {
     public static final MassifObject.Key<Double> RANGE_START = MassifObject.key("rangeStart");
     /** Returns the raster tile event listener. */
     public static final MassifObject.Key<MassifObject> RASTER_TILE_EVENT_LISTENER = MassifObject.key("rasterTileEventListener");
-    /** Returns raw result */
-    public static final MassifObject.Key<String> RAW_RESULT = MassifObject.key("rawResult");
     /** Returns the regular expression used to search all the fields. If empty, then the regular expression is not used. */
     public static final MassifObject.Key<String> REGEX_FILTER = MassifObject.key("regexFilter");
     /** Returns the relative speed of the animation. */
@@ -584,6 +565,8 @@ public final class ApiNames {
     public static final MassifObject.Key<String> SCREEN_BOUNDS = MassifObject.key("screenBounds");
     /** Returns the screen height. */
     public static final MassifObject.Key<Long> SCREEN_HEIGHT = MassifObject.key("screenHeight");
+    /** Returns the drag position in screen coordinates. */
+    public static final MassifObject.Key<String> SCREEN_POS = MassifObject.key("screenPos");
     /** Returns the screen size of the sprite. */
     public static final MassifObject.Key<Double> SCREEN_SIZE = MassifObject.key("screenSize");
     /** Returns the screen width. */
@@ -598,6 +581,8 @@ public final class ApiNames {
     public static final MassifObject.Key<Double> SEARCH_RADIUS = MassifObject.key("searchRadius");
     /** Returns true if the directions are read as separate segments rather than as a path. */
     public static final MassifObject.Key<Boolean> SEGMENTED = MassifObject.key("segmented");
+    /** Returns the selected vector element. If no element is currently selected, null is returned. */
+    public static final MassifObject.Key<MassifObject> SELECTED_VECTOR_ELEMENT = MassifObject.key("selectedVectorElement");
     /** Returns the custom fragment shader source. */
     public static final MassifObject.Key<String> SHADER_SOURCE = MassifObject.key("shaderSource");
     /** Returns the shadow depth bias. */
@@ -650,8 +635,6 @@ public final class ApiNames {
     public static final MassifObject.Key<Integer> SPACE_COLOR = MassifObject.key("spaceColor");
     /** Returns how brightly stars are drawn beyond the atmosphere. */
     public static final MassifObject.Key<Double> STAR_INTENSITY = MassifObject.key("starIntensity");
-    /** Returns the name of street. */
-    public static final MassifObject.Key<String> STREET_NAME = MassifObject.key("streetName");
     /** Returns the stretching factor of the line. */
     public static final MassifObject.Key<Double> STRETCH_FACTOR = MassifObject.key("stretchFactor");
     /** Returns the string value of this variant. */
@@ -752,8 +735,6 @@ public final class ApiNames {
     public static final MassifObject.Key<Boolean> TILT_GESTURE_REVERSED = MassifObject.key("tiltGestureReversed");
     /** Returns the tilt range constraint. */
     public static final MassifObject.Key<String> TILT_RANGE = MassifObject.key("tiltRange");
-    /** Returns the time approximate duration of the instruction. */
-    public static final MassifObject.Key<Double> TIME = MassifObject.key("time");
     /** Returns the current timeout value. */
     public static final MassifObject.Key<Long> TIMEOUT = MassifObject.key("timeout");
     /** Returns the title of this balloon popup. */
@@ -771,17 +752,11 @@ public final class ApiNames {
     /** Returns the state of the title wrap parameter. */
     public static final MassifObject.Key<Boolean> TITLE_WRAP = MassifObject.key("titleWrap");
     public static final MassifObject.Key<Long> TOP = MassifObject.key("top");
-    /** Returns the total distance of the path. */
-    public static final MassifObject.Key<Double> TOTAL_DISTANCE = MassifObject.key("totalDistance");
-    /** Returns the approximate total duration of the path. */
-    public static final MassifObject.Key<Double> TOTAL_TIME = MassifObject.key("totalTime");
     /** Returns the height of the triangle at the bottom of the popup. */
     public static final MassifObject.Key<Long> TRIANGLE_HEIGHT = MassifObject.key("triangleHeight");
     /** Returns the width of the triangle at the bottom of the popup. */
     public static final MassifObject.Key<Long> TRIANGLE_WIDTH = MassifObject.key("triangleWidth");
-    /** Returns the turn angle of the action. */
-    public static final MassifObject.Key<Double> TURN_ANGLE = MassifObject.key("turnAngle");
-    /** Returns the type of the matching point. */
+    /** Returns the type of this variant. */
     public static final MassifObject.Key<String> TYPE = MassifObject.key("type");
     /** Returns the conversion ratio between internal map units and screen density independent pixels (DP or DIP). This parameter is dependent on the zoom level, DPI and other screen parameters. */
     public static final MassifObject.Key<Double> UNIT_TO_DPCOEF = MassifObject.key("unitToDPCoef");
@@ -791,8 +766,12 @@ public final class ApiNames {
     public static final MassifObject.Key<Long> UPDATE_PRIORITY = MassifObject.key("updatePriority");
     /** Returns the state of the user input flag. */
     public static final MassifObject.Key<Boolean> USER_INPUT = MassifObject.key("userInput");
+    /** Returns the current edit event listener for the layer. */
+    public static final MassifObject.Key<MassifObject> VECTOR_EDIT_EVENT_LISTENER = MassifObject.key("vectorEditEventListener");
     /** Returns the clicked vector element. */
     public static final MassifObject.Key<MassifObject> VECTOR_ELEMENT = MassifObject.key("vectorElement");
+    /** Returns the drag mode. */
+    public static final MassifObject.Key<String> VECTOR_ELEMENT_DRAG_MODE = MassifObject.key("vectorElementDragMode");
     /** Returns the vector element event listener. */
     public static final MassifObject.Key<MassifObject> VECTOR_ELEMENT_EVENT_LISTENER = MassifObject.key("vectorElementEventListener");
     /** Returns the vector tile event listener. */
@@ -833,7 +812,6 @@ public final class ApiNames {
     // --- methods ---------------------------------------------------------
 
     public static final String METHOD_ADD = "add";
-    public static final String METHOD_CALCULATE_ROUTE = "calculateRoute";
     public static final String METHOD_CLEAR = "clear";
     public static final String METHOD_CLEAR_TILE_CACHES = "clearTileCaches";
     public static final String METHOD_CREATE_LAYER = "createLayer";
@@ -842,13 +820,10 @@ public final class ApiNames {
     public static final String METHOD_GET_ELEVATION = "getElevation";
     public static final String METHOD_GET_ELEVATIONS = "getElevations";
     public static final String METHOD_GET_FEATURE = "getFeature";
-    public static final String METHOD_GET_INSTRUCTION = "getInstruction";
-    public static final String METHOD_GET_POINTS = "getPoints";
     public static final String METHOD_GET_STYLE_PARAMETER = "getStyleParameter";
     public static final String METHOD_LOAD_TILE = "loadTile";
     public static final String METHOD_REFRESH = "refresh";
     public static final String METHOD_REMOVE = "remove";
-    public static final String METHOD_SET_CUSTOM_PARAMETER = "setCustomParameter";
     public static final String METHOD_SET_LAYER_GEO_JSON = "setLayerGeoJSON";
     public static final String METHOD_SET_STYLE_PARAMETER = "setStyleParameter";
 
@@ -871,11 +846,11 @@ public final class ApiNames {
     public static final String KIND_GEOMETRY = "geometry";
     public static final String KIND_LAYER = "layer";
     public static final String KIND_OPTIONS = "options";
-    public static final String KIND_ROUTING = "routing";
     public static final String KIND_SEARCH = "search";
     public static final String KIND_SOURCE = "source";
     public static final String KIND_STYLE = "style";
     public static final String KIND_STYLESET = "styleset";
+    public static final String TYPE_ASSETS_BUNDLE = "bundle";
     public static final String TYPE_ASSETS_DIR = "dir";
     public static final String TYPE_ASSETS_ZIP = "zip";
     public static final String TYPE_ELEMENT_BALLOON = "balloon";
@@ -894,8 +869,6 @@ public final class ApiNames {
     public static final String TYPE_OPTIONS_LIGHT = "light";
     public static final String TYPE_OPTIONS_SKY = "sky";
     public static final String TYPE_OPTIONS_TERRAIN = "terrain";
-    public static final String TYPE_ROUTING_VALHALLA_OFFLINE = "valhalla-offline";
-    public static final String TYPE_ROUTING_VALHALLA_ONLINE = "valhalla-online";
     public static final String TYPE_SEARCH_REQUEST = "request";
     public static final String TYPE_SEARCH_VECTORTILE = "vectortile";
     public static final String TYPE_SOURCE_ASSETS = "assets";
@@ -903,8 +876,11 @@ public final class ApiNames {
     public static final String TYPE_SOURCE_GEOJSON = "geojson";
     public static final String TYPE_SOURCE_HTTP = "http";
     public static final String TYPE_SOURCE_LOCAL = "local";
+    public static final String TYPE_SOURCE_MBTILES = "mbtiles";
     public static final String TYPE_SOURCE_MEMORY_CACHE = "memory-cache";
+    public static final String TYPE_SOURCE_MULTI = "multi";
     public static final String TYPE_SOURCE_ORDERED = "ordered";
+    public static final String TYPE_SOURCE_PERSISTENT_CACHE = "persistent-cache";
     public static final String TYPE_STYLE_MBVT = "mbvt";
     public static final String TYPE_STYLESET_CARTOCSS = "cartocss";
     public static final String TYPE_STYLESET_PROJECT = "project";

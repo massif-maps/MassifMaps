@@ -42,6 +42,7 @@ export type ClassName =
   | "massif::BinaryData"
   | "massif::Bitmap"
   | "massif::BitmapOverlayRasterTileDataSource"
+  | "massif::BundleAssetPackage"
   | "massif::CacheTileDataSource"
   | "massif::CartoCSSStyleSet"
   | "massif::CelestialArc"
@@ -65,8 +66,10 @@ export type ClassName =
   | "massif::DataSourceListener"
   | "massif::DirAssetPackage"
   | "massif::DouglasPeuckerGeometrySimplifier"
+  | "massif::DownloadTask"
   | "massif::EPSG3857"
   | "massif::EPSG4326"
+  | "massif::EditableVectorLayer"
   | "massif::ElevationDecoder"
   | "massif::EventListener"
   | "massif::Feature"
@@ -101,6 +104,7 @@ export type ClassName =
   | "massif::LocalVectorDataSource"
   | "massif::Log"
   | "massif::LogEventListener"
+  | "massif::MBTilesTileDataSource"
   | "massif::MBVectorTileDecoder"
   | "massif::ManeuverArrowBuilder"
   | "massif::MapBounds"
@@ -126,17 +130,15 @@ export type ClassName =
   | "massif::MultiLineGeometry"
   | "massif::MultiPointGeometry"
   | "massif::MultiPolygonGeometry"
-  | "massif::MultiValhallaOfflineRoutingService"
+  | "massif::MultiTileDataSource"
   | "massif::NMLModel"
   | "massif::NMLModelStyle"
   | "massif::NMLModelStyleBuilder"
-  | "massif::OSRMOfflineRoutingService"
   | "massif::Options"
   | "massif::OptionsListener"
   | "massif::OrderedTileDataSource"
-  | "massif::PackageManagerListener"
-  | "massif::PackageManagerRoutingService"
-  | "massif::PackageManagerValhallaRoutingService"
+  | "massif::PMTilesTileDataSource"
+  | "massif::PersistentCacheTileDataSource"
   | "massif::Point"
   | "massif::PointGeometry"
   | "massif::PointStyle"
@@ -160,15 +162,6 @@ export type ClassName =
   | "massif::RasterTileLayer"
   | "massif::RedrawRequestListener"
   | "massif::RendererCaptureListener"
-  | "massif::RouteMatchingEdge"
-  | "massif::RouteMatchingPoint"
-  | "massif::RouteMatchingRequest"
-  | "massif::RouteMatchingResult"
-  | "massif::RoutingInstruction"
-  | "massif::RoutingRequest"
-  | "massif::RoutingResult"
-  | "massif::RoutingService"
-  | "massif::SGREOfflineRoutingService"
   | "massif::ScreenBounds"
   | "massif::ScreenPos"
   | "massif::SearchRequest"
@@ -192,18 +185,19 @@ export type ClassName =
   | "massif::TileUtils"
   | "massif::TorqueTileDecoder"
   | "massif::TorqueTileLayer"
+  | "massif::TouchHandlerListener"
   | "massif::UTFGridClickInfo"
   | "massif::UTFGridEventListener"
   | "massif::UiDispatcher"
-  | "massif::ValhallaOfflineRoutingService"
-  | "massif::ValhallaOnlineRoutingService"
   | "massif::Variant"
   | "massif::VariantArrayBuilder"
   | "massif::VariantObjectBuilder"
   | "massif::VectorData"
   | "massif::VectorDataSource"
+  | "massif::VectorEditEventListener"
   | "massif::VectorElement"
   | "massif::VectorElementClickInfo"
+  | "massif::VectorElementDragInfo"
   | "massif::VectorElementEventListener"
   | "massif::VectorElementSearchService"
   | "massif::VectorLayer"
@@ -356,6 +350,13 @@ export type LocalSpatialIndexTypeLocalSpatialIndexType =
   | "LOCAL_SPATIAL_INDEX_TYPE_KDTREE"
   ;
 
+export type MBTilesSchemeMBTilesScheme =
+  /** The default scheme. Vertical coordinate is not flipped. */
+  | "MBTILES_SCHEME_TMS"
+  /** Alternative to TMS scheme. Vertical coordinate is flipped. */
+  | "MBTILES_SCHEME_XYZ"
+  ;
+
 export type PanningModePanningMode =
   /** Free panning means that the map panning is unrestricted, user is able to zoom, rotate and pan the map at the same time without any artificial limits. */
   | "PANNING_MODE_FREE"
@@ -397,56 +398,6 @@ export type RenderProjectionModeRenderProjectionMode =
   | "RENDER_PROJECTION_MODE_SPHERICAL"
   ;
 
-export type RouteMatchingPointTypeRouteMatchingPointType =
-  /** The point was unmatched. */
-  | "ROUTE_MATCHING_POINT_UNMATCHED"
-  /** The point was interpolated. */
-  | "ROUTE_MATCHING_POINT_INTERPOLATED"
-  /** The point was matched. */
-  | "ROUTE_MATCHING_POINT_MATCHED"
-  ;
-
-export type RoutingActionRoutingAction =
-  /** Head on, start the route. */
-  | "ROUTING_ACTION_HEAD_ON"
-  /** Finish the route. */
-  | "ROUTING_ACTION_FINISH"
-  /** Continue along the given street, do not turn. */
-  | "ROUTING_ACTION_NO_TURN"
-  /** Go straight. */
-  | "ROUTING_ACTION_GO_STRAIGHT"
-  /** Turn right. */
-  | "ROUTING_ACTION_TURN_RIGHT"
-  /** Do an u-turn. */
-  | "ROUTING_ACTION_UTURN"
-  /** Turn left. */
-  | "ROUTING_ACTION_TURN_LEFT"
-  /** Reached given via point. If this is the final point, FINISH action is used instead. */
-  | "ROUTING_ACTION_REACH_VIA_LOCATION"
-  /** Enter roundabout. Used by Valhalla and OSRM. */
-  | "ROUTING_ACTION_ENTER_ROUNDABOUT"
-  /** Leave roundabout. Used by Valhalla and OSRM. */
-  | "ROUTING_ACTION_LEAVE_ROUNDABOUT"
-  /** Continue along the roundabout. Only used by OSRM. */
-  | "ROUTING_ACTION_STAY_ON_ROUNDABOUT"
-  /** Start at the end of the street. Currently used only by OSRM. */
-  | "ROUTING_ACTION_START_AT_END_OF_STREET"
-  /** Enter street while moving against the allowed direction. Only used by OSRM. */
-  | "ROUTING_ACTION_ENTER_AGAINST_ALLOWED_DIRECTION"
-  /** Leave the street while moving aginst the allowed direction. Only used by OSRM. */
-  | "ROUTING_ACTION_LEAVE_AGAINST_ALLOWED_DIRECTION"
-  /** Go up. Only used by the SGRE. */
-  | "ROUTING_ACTION_GO_UP"
-  /** Go down. Only used by SGRE. */
-  | "ROUTING_ACTION_GO_DOWN"
-  /** Wait. Only used by SGRE. */
-  | "ROUTING_ACTION_WAIT"
-  /** Enter ferry. Only used by Valhalla. */
-  | "ROUTING_ACTION_ENTER_FERRY"
-  /** Leave ferry. Only used by Valhalla. */
-  | "ROUTING_ACTION_LEAVE_FERRY"
-  ;
-
 export type TileFormatTileFormat =
   /** Detect the format from the tile data. The two are unambiguous in practice, but set the format explicitly when the source is known - it skips the check and cannot be fooled. */
   | "TILE_FORMAT_AUTO"
@@ -482,6 +433,33 @@ export type VariantTypeVariantType =
   | "VARIANT_TYPE_OBJECT"
   ;
 
+export type VectorElementDragModeVectorElementDragMode =
+  /** A single vertex is being moved. */
+  | "VECTOR_ELEMENT_DRAG_MODE_VERTEX"
+  /** The whole vector element is being moved. */
+  | "VECTOR_ELEMENT_DRAG_MODE_ELEMENT"
+  ;
+
+export type VectorElementDragPointStyleVectorElementDragPointStyle =
+  /** Normal control point. Corresponds to vertex. */
+  | "VECTOR_ELEMENT_DRAG_POINT_STYLE_NORMAL"
+  /** Virtual control point (midpoint between actual vertices). Used for lines and polygons. */
+  | "VECTOR_ELEMENT_DRAG_POINT_STYLE_VIRTUAL"
+  /** Selected control point. */
+  | "VECTOR_ELEMENT_DRAG_POINT_STYLE_SELECTED"
+  ;
+
+export type VectorElementDragResultVectorElementDragResult =
+  /** Dragging should be ignored. The input event will be passed on to other handlers. */
+  | "VECTOR_ELEMENT_DRAG_RESULT_IGNORE"
+  /** Dragging should be ignored. The input event is not passed on to other handlers. */
+  | "VECTOR_ELEMENT_DRAG_RESULT_STOP"
+  /** The underlying vector element (or vertex) should be modified. */
+  | "VECTOR_ELEMENT_DRAG_RESULT_MODIFY"
+  /** The underlying vector element or vertex should be deleted. */
+  | "VECTOR_ELEMENT_DRAG_RESULT_DELETE"
+  ;
+
 export type VectorTileRenderOrderVectorTileRenderOrder =
   /** No rendering, elements are hidden. */
   | "VECTOR_TILE_RENDER_ORDER_HIDDEN"
@@ -489,6 +467,11 @@ export type VectorTileRenderOrderVectorTileRenderOrder =
   | "VECTOR_TILE_RENDER_ORDER_LAYER"
   /** Elements are rendered on top of all normal layers. */
   | "VECTOR_TILE_RENDER_ORDER_LAST"
+  ;
+
+export type ChangeType =
+  | "PACKAGES_ADDED"
+  | "PACKAGES_DELETED"
   ;
 
 // --- properties ----------------------------------------------------------
@@ -1143,6 +1126,13 @@ export interface PropertyTypes {
     readonly "projection.bounds": Bounds;
     readonly "projection.name": string;
   };
+  "massif::BundleAssetPackage": {
+    readonly "assetNames": string[];
+    /** (read-only) Returns the path of the bundled directory the assets are read from. */
+    readonly "basePath": string;
+    /** (read-only) Returns the list of assets found in the bundle, ignoring the base asset package. */
+    readonly "localAssetNames": string[];
+  };
   "massif::CacheTileDataSource": {
     "capacity": number;
     /** (read-only) Returns the extent of the tiles in this data source. The bounds are in coordinate system of the projection of the data source. */
@@ -1737,6 +1727,8 @@ export interface PropertyTypes {
   };
   "massif::DouglasPeuckerGeometrySimplifier": {
   };
+  "massif::DownloadTask": {
+  };
   "massif::EPSG3857": {
     /** (read-only) Returns the bounds of this projection. */
     readonly "bounds": Bounds;
@@ -1746,6 +1738,53 @@ export interface PropertyTypes {
     /** (read-only) Returns the bounds of this projection. */
     readonly "bounds": Bounds;
     readonly "name": string;
+  };
+  "massif::EditableVectorLayer": {
+    /** Returns true if Z-buffering is enabled for 2D geometry. By default it is disabled and used only for billboards. */
+    "ZBuffering": boolean;
+    /** Returns the culling delay of the layer in milliseconds. */
+    "cullDelay": number;
+    /** (read-only) Returns the vector data source of this vector layer. */
+    readonly "dataSource": Handle<"massif::VectorDataSource">;
+    /** (read-only) Returns the extent of the data of this data source. The bounds are in coordinate system of the projection of the data source. */
+    readonly "dataSource.dataExtent": Bounds;
+    /** (read-only) Returns the projection used by this data source. */
+    readonly "dataSource.projection": Handle<"massif::Projection">;
+    /** (read-only) Returns the bounds of this projection. */
+    readonly "dataSource.projection.bounds": Bounds;
+    readonly "dataSource.projection.name": string;
+    /** Returns a copy of the layer meta data map. The changes you make to this map are NOT reflected in the actual meta data of the layer. */
+    "metaData": Record<string, Json>;
+    /** Returns the opacity of this layer. */
+    "opacity": number;
+    /** Returns whether this layer goes through the post-process effect. */
+    "postProcessed": boolean;
+    /** Returns the selected vector element. If no element is currently selected, null is returned. */
+    "selectedVectorElement": Handle<"massif::VectorElement">;
+    /** (read-only) Returns the bounds of this vector element. */
+    readonly "selectedVectorElement.bounds": Bounds;
+    /** (read-only) Returns the geometry object that defines the location of this vector element. */
+    readonly "selectedVectorElement.geometry": Handle<"massif::Geometry">;
+    /** (read-only) Returns the minimal bounds for the geometry. */
+    readonly "selectedVectorElement.geometry.bounds": Bounds;
+    readonly "selectedVectorElement.geometry.centerPos": Position;
+    readonly "selectedVectorElement.geometry.type": "GEOMETRY_TYPE_POINT" | "GEOMETRY_TYPE_LINE" | "GEOMETRY_TYPE_POLYGON" | "GEOMETRY_TYPE_MULTIPOINT" | "GEOMETRY_TYPE_MULTILINE" | "GEOMETRY_TYPE_MULTIPOLYGON" | "GEOMETRY_TYPE_COLLECTION";
+    /** Returns the internal id of this vector element. */
+    "selectedVectorElement.id": number;
+    /** Returns a copy of the vector element meta data map. The changes you make to this map are NOT reflected in the actual meta data of the element. */
+    "selectedVectorElement.metaData": Record<string, Json>;
+    /** Returns the state of the visibility flag of this vector element. */
+    "selectedVectorElement.visible": boolean;
+    /** Returns the layer task priority of this layer. */
+    "updatePriority": number;
+    /** Returns the current edit event listener for the layer. */
+    "vectorEditEventListener": Handle<"massif::VectorEditEventListener">;
+    /** Returns the vector element event listener. */
+    "vectorElementEventListener": Handle<"massif::VectorElementEventListener">;
+    /** Returns the visibility of this layer. */
+    "visible": boolean;
+    /** Returns the visible zoom range of this layer. */
+    "visibleZoomRange": [number, number];
   };
   "massif::ElevationDecoder": {
   };
@@ -2555,6 +2594,23 @@ export interface PropertyTypes {
   };
   "massif::LogEventListener": {
   };
+  "massif::MBTilesTileDataSource": {
+    /** (read-only) Returns the extent of the tiles in this data source. The bounds are in coordinate system of the projection of the data source. */
+    readonly "dataExtent": Bounds;
+    /** Gets the current encoding type. */
+    "encoding": string;
+    /** Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" */
+    "maxOverzoomLevel": number;
+    /** (read-only) Returns the maximum zoom level supported by this data source. */
+    readonly "maxZoom": number;
+    /** (read-only) Returns the minimum zoom level supported by this data source. */
+    readonly "minZoom": number;
+    /** (read-only) Returns the projection of this tile source. */
+    readonly "projection": Handle<"massif::Projection">;
+    /** (read-only) Returns the bounds of this projection. */
+    readonly "projection.bounds": Bounds;
+    readonly "projection.name": string;
+  };
   "massif::MBVectorTileDecoder": {
     /** Returns the current CartoCSS style set used by the decoder. If decoder uses non-CartoCSS style set, null is returned. */
     "cartoCSSStyle": Handle<"massif::CartoCSSStyleSet">;
@@ -2996,8 +3052,22 @@ export interface PropertyTypes {
     readonly "geometryCount": number;
     readonly "type": "GEOMETRY_TYPE_POINT" | "GEOMETRY_TYPE_LINE" | "GEOMETRY_TYPE_POLYGON" | "GEOMETRY_TYPE_MULTIPOINT" | "GEOMETRY_TYPE_MULTILINE" | "GEOMETRY_TYPE_MULTIPOLYGON" | "GEOMETRY_TYPE_COLLECTION";
   };
-  "massif::MultiValhallaOfflineRoutingService": {
-    "profile": string;
+  "massif::MultiTileDataSource": {
+    /** (read-only) Returns the extent of the tiles in this data source. The bounds are in coordinate system of the projection of the data source. */
+    readonly "dataExtent": Bounds;
+    /** Gets the current encoding type. */
+    "encoding": string;
+    /** Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" */
+    "maxOverzoomLevel": number;
+    /** (read-only) Returns the maximum zoom level supported by this data source. */
+    readonly "maxZoom": number;
+    /** (read-only) Returns the minimum zoom level supported by this data source. */
+    readonly "minZoom": number;
+    /** (read-only) Returns the projection of this tile source. */
+    readonly "projection": Handle<"massif::Projection">;
+    /** (read-only) Returns the bounds of this projection. */
+    readonly "projection.bounds": Bounds;
+    readonly "projection.name": string;
   };
   "massif::NMLModel": {
     /** Returns the base billboard this billboard is attached to. */
@@ -3174,9 +3244,6 @@ export interface PropertyTypes {
     "scalingMode": "BILLBOARD_SCALING_WORLD_SIZE" | "BILLBOARD_SCALING_SCREEN_SIZE" | "BILLBOARD_SCALING_CONST_SCREEN_SIZE";
     /** Returns the vertical offset of the billboard. */
     "verticalOffset": number;
-  };
-  "massif::OSRMOfflineRoutingService": {
-    "profile": string;
   };
   "massif::Options": {
     /** Returns the dots per inch value. */
@@ -3409,13 +3476,61 @@ export interface PropertyTypes {
     readonly "projection.bounds": Bounds;
     readonly "projection.name": string;
   };
-  "massif::PackageManagerListener": {
+  "massif::PMTilesTileDataSource": {
+    /** (read-only) Returns the extent of the tiles in this data source. The bounds are in coordinate system of the projection of the data source. */
+    readonly "dataExtent": Bounds;
+    /** Gets the current encoding type. */
+    "encoding": string;
+    /** Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" */
+    "maxOverzoomLevel": number;
+    /** (read-only) Returns the maximum zoom level supported by this data source. */
+    readonly "maxZoom": number;
+    /** (read-only) Returns the minimum zoom level supported by this data source. */
+    readonly "minZoom": number;
+    /** (read-only) Returns the projection of this tile source. */
+    readonly "projection": Handle<"massif::Projection">;
+    /** (read-only) Returns the bounds of this projection. */
+    readonly "projection.bounds": Bounds;
+    readonly "projection.name": string;
   };
-  "massif::PackageManagerRoutingService": {
-    "profile": string;
-  };
-  "massif::PackageManagerValhallaRoutingService": {
-    "profile": string;
+  "massif::PersistentCacheTileDataSource": {
+    /** Returns the state of cache only mode. */
+    "cacheOnlyMode": boolean;
+    "capacity": number;
+    /** (read-only) Returns the extent of the tiles in this data source. The bounds are in coordinate system of the projection of the data source. */
+    readonly "dataExtent": Bounds;
+    /** (read-only) Returns the original data source that the cache uses. */
+    readonly "dataSource": Handle<"massif::TileDataSource">;
+    /** (read-only) Returns the extent of the tiles in this data source. The bounds are in coordinate system of the projection of the data source. */
+    readonly "dataSource.dataExtent": Bounds;
+    /** Gets the current encoding type. */
+    "dataSource.encoding": string;
+    /** Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" */
+    "dataSource.maxOverzoomLevel": number;
+    /** (read-only) Returns the maximum zoom level supported by this data source. */
+    readonly "dataSource.maxZoom": number;
+    /** (read-only) Returns the minimum zoom level supported by this data source. */
+    readonly "dataSource.minZoom": number;
+    /** (read-only) Returns the projection of this tile source. */
+    readonly "dataSource.projection": Handle<"massif::Projection">;
+    /** (read-only) Returns the bounds of this projection. */
+    readonly "dataSource.projection.bounds": Bounds;
+    readonly "dataSource.projection.name": string;
+    /** Gets the current encoding type. */
+    "encoding": string;
+    /** Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" */
+    "maxOverzoomLevel": number;
+    /** (read-only) Returns the maximum zoom level supported by this data source. */
+    readonly "maxZoom": number;
+    /** (read-only) Returns the minimum zoom level supported by this data source. */
+    readonly "minZoom": number;
+    /** (read-only) Returns the status of the cache database. */
+    readonly "open": boolean;
+    /** (read-only) Returns the projection of this tile source. */
+    readonly "projection": Handle<"massif::Projection">;
+    /** (read-only) Returns the bounds of this projection. */
+    readonly "projection.bounds": Bounds;
+    readonly "projection.name": string;
   };
   "massif::Point": {
     /** (read-only) Returns the bounds of this vector element. */
@@ -4080,98 +4195,6 @@ export interface PropertyTypes {
   };
   "massif::RendererCaptureListener": {
   };
-  "massif::RouteMatchingEdge": {
-  };
-  "massif::RouteMatchingPoint": {
-    /** (read-only) Returns the corresponding matching edge index in the matching result. */
-    readonly "edgeIndex": number;
-    /** (read-only) Returns the position of the matching point. */
-    readonly "pos": Position;
-    /** (read-only) Returns the type of the matching point. */
-    readonly "type": "ROUTE_MATCHING_POINT_UNMATCHED" | "ROUTE_MATCHING_POINT_INTERPOLATED" | "ROUTE_MATCHING_POINT_MATCHED";
-  };
-  "massif::RouteMatchingRequest": {
-    /** (read-only) Returns the accuracy of the points in the request. */
-    readonly "accuracy": number;
-    /** (read-only) Returns the measured points of the request. */
-    readonly "points": Json;
-    /** (read-only) Returns the projection of the points in the request. */
-    readonly "projection": Handle<"massif::Projection">;
-    /** (read-only) Returns the bounds of this projection. */
-    readonly "projection.bounds": Bounds;
-    readonly "projection.name": string;
-  };
-  "massif::RouteMatchingResult": {
-    /** (read-only) Returns the list with details of the matched edges. */
-    readonly "matchingEdges": Json;
-    /** (read-only) Returns the list with details of the matched points. */
-    readonly "matchingPoints": Json;
-    /** (read-only) Returns the point list of the result. The list contains all the points from the request snapped to the road network. */
-    readonly "points": Json;
-    /** (read-only) Returns the projection of the points in the result. */
-    readonly "projection": Handle<"massif::Projection">;
-    /** (read-only) Returns the bounds of this projection. */
-    readonly "projection.bounds": Bounds;
-    readonly "projection.name": string;
-    /** (read-only) Returns raw result */
-    readonly "rawResult": string;
-  };
-  "massif::RoutingInstruction": {
-    /** (read-only) Returns the action of the instruction. */
-    readonly "action": "ROUTING_ACTION_HEAD_ON" | "ROUTING_ACTION_FINISH" | "ROUTING_ACTION_NO_TURN" | "ROUTING_ACTION_GO_STRAIGHT" | "ROUTING_ACTION_TURN_RIGHT" | "ROUTING_ACTION_UTURN" | "ROUTING_ACTION_TURN_LEFT" | "ROUTING_ACTION_REACH_VIA_LOCATION" | "ROUTING_ACTION_ENTER_ROUNDABOUT" | "ROUTING_ACTION_LEAVE_ROUNDABOUT" | "ROUTING_ACTION_STAY_ON_ROUNDABOUT" | "ROUTING_ACTION_START_AT_END_OF_STREET" | "ROUTING_ACTION_ENTER_AGAINST_ALLOWED_DIRECTION" | "ROUTING_ACTION_LEAVE_AGAINST_ALLOWED_DIRECTION" | "ROUTING_ACTION_GO_UP" | "ROUTING_ACTION_GO_DOWN" | "ROUTING_ACTION_WAIT" | "ROUTING_ACTION_ENTER_FERRY" | "ROUTING_ACTION_LEAVE_FERRY";
-    /** (read-only) Returns the azimuth of the initial position. */
-    readonly "azimuth": number;
-    /** (read-only) Returns the distance to move along the given street. */
-    readonly "distance": number;
-    /** (read-only) Returns the geometry tag associated with the instructions. */
-    readonly "geometryTag": Json;
-    /** (read-only) Returns the optional instruction description. This info is dependent on the routing engine (can be empty) and may be localized. */
-    readonly "instruction": string;
-    /** (read-only) Returns the index of the first geometry point in external point array. */
-    readonly "pointIndex": number;
-    /** (read-only) Returns the name of street. */
-    readonly "streetName": string;
-    /** (read-only) Returns the time approximate duration of the instruction. */
-    readonly "time": number;
-    /** (read-only) Returns the turn angle of the action. */
-    readonly "turnAngle": number;
-  };
-  "massif::RoutingRequest": {
-    /** (read-only) Returns the point list of the request. */
-    readonly "points": Json;
-    /** (read-only) Returns the projection of the points in the request. */
-    readonly "projection": Handle<"massif::Projection">;
-    /** (read-only) Returns the bounds of this projection. */
-    readonly "projection.bounds": Bounds;
-    readonly "projection.name": string;
-  };
-  "massif::RoutingResult": {
-    /** (read-only) Returns the number of turn-by-turn instructions. */
-    readonly "instructionCount": number;
-    /** (read-only) Returns the turn-by-turn instruction list. */
-    readonly "instructions": Json;
-    /** (read-only) Returns the number of points in the path. */
-    readonly "pointCount": number;
-    /** (read-only) Returns the point list of the result. The list contains all the points the route must pass in correct order. */
-    readonly "points": Json;
-    /** (read-only) Returns the projection of the points in the result. */
-    readonly "projection": Handle<"massif::Projection">;
-    /** (read-only) Returns the bounds of this projection. */
-    readonly "projection.bounds": Bounds;
-    readonly "projection.name": string;
-    /** (read-only) Returns raw result */
-    readonly "rawResult": string;
-    /** (read-only) Returns the total distance of the path. */
-    readonly "totalDistance": number;
-    /** (read-only) Returns the approximate total duration of the path. */
-    readonly "totalTime": number;
-  };
-  "massif::RoutingService": {
-    "profile": string;
-  };
-  "massif::SGREOfflineRoutingService": {
-    "profile": string;
-  };
   "massif::ScreenBounds": {
     /** (read-only) Calculates the center screen position of this screen envelope object. */
     readonly "center": [number, number];
@@ -4784,6 +4807,8 @@ export interface PropertyTypes {
     /** Gets the current zoom level bias for this layer. */
     "zoomLevelBias": number;
   };
+  "massif::TouchHandlerListener": {
+  };
   "massif::UTFGridClickInfo": {
     /** (read-only) Returns the click info. */
     readonly "clickInfo": ClickInfo;
@@ -4813,18 +4838,6 @@ export interface PropertyTypes {
   "massif::UTFGridEventListener": {
   };
   "massif::UiDispatcher": {
-  };
-  "massif::ValhallaOfflineRoutingService": {
-    "profile": string;
-  };
-  "massif::ValhallaOnlineRoutingService": {
-    /** Returns the current set of HTTP headers used. Initially this set is empty and can be changed with setHTTPHeaders. */
-    "HTTPHeaders": Record<string, string>;
-    /** Returns the custom backend service URL. */
-    "customServiceURL": string;
-    "profile": string;
-    /** Returns the current timeout value. */
-    "timeout": number;
   };
   "massif::Variant": {
     /** (read-only) Returns the number of elements in the array. */
@@ -4858,6 +4871,8 @@ export interface PropertyTypes {
     /** (read-only) Returns the bounds of this projection. */
     readonly "projection.bounds": Bounds;
     readonly "projection.name": string;
+  };
+  "massif::VectorEditEventListener": {
   };
   "massif::VectorElement": {
     /** (read-only) Returns the bounds of this vector element. */
@@ -4916,6 +4931,30 @@ export interface PropertyTypes {
     "vectorElement.metaData": Record<string, Json>;
     /** Returns the state of the visibility flag of this vector element. */
     "vectorElement.visible": boolean;
+  };
+  "massif::VectorElementDragInfo": {
+    /** (read-only) Returns the drag position in projection coordinate system of the layer. */
+    readonly "mapPos": Position;
+    /** (read-only) Returns the drag position in screen coordinates. */
+    readonly "screenPos": [number, number];
+    /** (read-only) Returns the vector element being dragged. */
+    readonly "vectorElement": Handle<"massif::VectorElement">;
+    /** (read-only) Returns the bounds of this vector element. */
+    readonly "vectorElement.bounds": Bounds;
+    /** (read-only) Returns the geometry object that defines the location of this vector element. */
+    readonly "vectorElement.geometry": Handle<"massif::Geometry">;
+    /** (read-only) Returns the minimal bounds for the geometry. */
+    readonly "vectorElement.geometry.bounds": Bounds;
+    readonly "vectorElement.geometry.centerPos": Position;
+    readonly "vectorElement.geometry.type": "GEOMETRY_TYPE_POINT" | "GEOMETRY_TYPE_LINE" | "GEOMETRY_TYPE_POLYGON" | "GEOMETRY_TYPE_MULTIPOINT" | "GEOMETRY_TYPE_MULTILINE" | "GEOMETRY_TYPE_MULTIPOLYGON" | "GEOMETRY_TYPE_COLLECTION";
+    /** Returns the internal id of this vector element. */
+    "vectorElement.id": number;
+    /** Returns a copy of the vector element meta data map. The changes you make to this map are NOT reflected in the actual meta data of the element. */
+    "vectorElement.metaData": Record<string, Json>;
+    /** Returns the state of the visibility flag of this vector element. */
+    "vectorElement.visible": boolean;
+    /** (read-only) Returns the drag mode. */
+    readonly "vectorElementDragMode": "VECTOR_ELEMENT_DRAG_MODE_VERTEX" | "VECTOR_ELEMENT_DRAG_MODE_ELEMENT";
   };
   "massif::VectorElementEventListener": {
   };
@@ -5261,6 +5300,12 @@ export type WritablePath<C extends ClassName> = {
 // of the class it builds - the factory consumes what it needs and the rest is
 // applied as properties, at any nesting depth.
 
+export interface AssetsSpec_bundle {
+  type: "bundle";
+  base?: AssetsSpec | string;
+  path?: string;
+}
+
 export interface AssetsSpec_dir {
   type: "dir";
   base?: AssetsSpec | string;
@@ -5273,7 +5318,7 @@ export interface AssetsSpec_zip {
   data?: DataSpec | string;
 }
 
-export type AssetsSpec = AssetsSpec_dir | AssetsSpec_zip;
+export type AssetsSpec = AssetsSpec_bundle | AssetsSpec_dir | AssetsSpec_zip;
 
 export interface ElementSpec_balloon {
   type: "balloon";
@@ -5880,26 +5925,6 @@ export interface OptionsSpec_terrain {
 
 export type OptionsSpec = OptionsSpec_fog | OptionsSpec_light | OptionsSpec_sky | OptionsSpec_terrain;
 
-export interface RoutingSpec_valhalla_offline {
-  type: "valhalla-offline";
-  path?: string;
-  profile?: string;
-}
-
-export interface RoutingSpec_valhalla_online {
-  type: "valhalla-online";
-  /** Returns the current set of HTTP headers used. Initially this set is empty and can be changed with setHTTPHeaders. */
-  HTTPHeaders?: Record<string, string>;
-  apiKey?: string;
-  /** Returns the custom backend service URL. */
-  customServiceURL?: string;
-  profile?: string;
-  /** Returns the current timeout value. */
-  timeout?: number;
-}
-
-export type RoutingSpec = RoutingSpec_valhalla_offline | RoutingSpec_valhalla_online;
-
 export interface SearchSpec_request {
   type: "request";
   /** Returns the string based search expression. If empty, then search expression is not used. */
@@ -6000,6 +6025,18 @@ export interface SourceSpec_local {
   spatialIndexType?: "LOCAL_SPATIAL_INDEX_TYPE_NULL" | "LOCAL_SPATIAL_INDEX_TYPE_KDTREE";
 }
 
+export interface SourceSpec_mbtiles {
+  type: "mbtiles";
+  /** Gets the current encoding type. */
+  encoding?: string;
+  /** Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" */
+  maxOverzoomLevel?: number;
+  maxZoom?: number;
+  minZoom?: number;
+  path?: string;
+  scheme?: "MBTILES_SCHEME_TMS" | "MBTILES_SCHEME_XYZ";
+}
+
 export interface SourceSpec_memory_cache {
   type: "memory-cache";
   capacity?: number;
@@ -6008,6 +6045,15 @@ export interface SourceSpec_memory_cache {
   /** Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" */
   maxOverzoomLevel?: number;
   source?: SourceSpec | string;
+}
+
+export interface SourceSpec_multi {
+  type: "multi";
+  /** Gets the current encoding type. */
+  encoding?: string;
+  maxOpenedPackages?: number;
+  /** Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" */
+  maxOverzoomLevel?: number;
 }
 
 export interface SourceSpec_ordered {
@@ -6020,7 +6066,20 @@ export interface SourceSpec_ordered {
   source2?: SourceSpec | string;
 }
 
-export type SourceSpec = SourceSpec_assets | SourceSpec_combined | SourceSpec_geojson | SourceSpec_http | SourceSpec_local | SourceSpec_memory_cache | SourceSpec_ordered;
+export interface SourceSpec_persistent_cache {
+  type: "persistent-cache";
+  /** Returns the state of cache only mode. */
+  cacheOnlyMode?: boolean;
+  capacity?: number;
+  databasePath?: string;
+  /** Gets the current encoding type. */
+  encoding?: string;
+  /** Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" */
+  maxOverzoomLevel?: number;
+  source?: SourceSpec | string;
+}
+
+export type SourceSpec = SourceSpec_assets | SourceSpec_combined | SourceSpec_geojson | SourceSpec_http | SourceSpec_local | SourceSpec_mbtiles | SourceSpec_memory_cache | SourceSpec_multi | SourceSpec_ordered | SourceSpec_persistent_cache;
 
 export interface StyleSpec_mbvt {
   type: "mbvt";
@@ -6066,7 +6125,6 @@ export interface SpecOf {
   "geometry": GeometrySpec;
   "layer": LayerSpec;
   "options": OptionsSpec;
-  "routing": RoutingSpec;
   "search": SearchSpec;
   "source": SourceSpec;
   "style": StyleSpec;
@@ -6118,6 +6176,8 @@ export interface MethodTypes {
   };
   "massif::BitmapOverlayRasterTileDataSource": {
     loadTile: (tile: Tile) => Handle<"massif::TileData">;
+  };
+  "massif::BundleAssetPackage": {
   };
   "massif::CacheTileDataSource": {
     loadTile: (tile: Tile) => Handle<"massif::TileData">;
@@ -6174,9 +6234,14 @@ export interface MethodTypes {
   };
   "massif::DouglasPeuckerGeometrySimplifier": {
   };
+  "massif::DownloadTask": {
+  };
   "massif::EPSG3857": {
   };
   "massif::EPSG4326": {
+  };
+  "massif::EditableVectorLayer": {
+    refresh: () => void;
   };
   "massif::ElevationDecoder": {
   };
@@ -6263,6 +6328,9 @@ export interface MethodTypes {
   };
   "massif::LogEventListener": {
   };
+  "massif::MBTilesTileDataSource": {
+    loadTile: (tile: Tile) => Handle<"massif::TileData">;
+  };
   "massif::MBVectorTileDecoder": {
     getStyleParameter: (name: string) => string;
     setStyleParameter: (name: string, value: string) => boolean;
@@ -6318,17 +6386,14 @@ export interface MethodTypes {
   };
   "massif::MultiPolygonGeometry": {
   };
-  "massif::MultiValhallaOfflineRoutingService": {
-    calculateRoute: (request: Handle) => Handle<"massif::RoutingResult">;
+  "massif::MultiTileDataSource": {
+    loadTile: (tile: Tile) => Handle<"massif::TileData">;
   };
   "massif::NMLModel": {
   };
   "massif::NMLModelStyle": {
   };
   "massif::NMLModelStyleBuilder": {
-  };
-  "massif::OSRMOfflineRoutingService": {
-    calculateRoute: (request: Handle) => Handle<"massif::RoutingResult">;
   };
   "massif::Options": {
   };
@@ -6337,13 +6402,11 @@ export interface MethodTypes {
   "massif::OrderedTileDataSource": {
     loadTile: (tile: Tile) => Handle<"massif::TileData">;
   };
-  "massif::PackageManagerListener": {
+  "massif::PMTilesTileDataSource": {
+    loadTile: (tile: Tile) => Handle<"massif::TileData">;
   };
-  "massif::PackageManagerRoutingService": {
-    calculateRoute: (request: Handle) => Handle<"massif::RoutingResult">;
-  };
-  "massif::PackageManagerValhallaRoutingService": {
-    calculateRoute: (request: Handle) => Handle<"massif::RoutingResult">;
+  "massif::PersistentCacheTileDataSource": {
+    loadTile: (tile: Tile) => Handle<"massif::TileData">;
   };
   "massif::Point": {
   };
@@ -6392,29 +6455,6 @@ export interface MethodTypes {
   "massif::RedrawRequestListener": {
   };
   "massif::RendererCaptureListener": {
-  };
-  "massif::RouteMatchingEdge": {
-  };
-  "massif::RouteMatchingPoint": {
-  };
-  "massif::RouteMatchingRequest": {
-  };
-  "massif::RouteMatchingResult": {
-  };
-  "massif::RoutingInstruction": {
-  };
-  "massif::RoutingRequest": {
-    setCustomParameter: (name: string, value: Json) => void;
-  };
-  "massif::RoutingResult": {
-    getInstruction: (index: number) => Handle<"massif::RoutingInstruction">;
-    getPoints: () => number[];
-  };
-  "massif::RoutingService": {
-    calculateRoute: (request: Handle) => Handle<"massif::RoutingResult">;
-  };
-  "massif::SGREOfflineRoutingService": {
-    calculateRoute: (request: Handle) => Handle<"massif::RoutingResult">;
   };
   "massif::ScreenBounds": {
   };
@@ -6468,17 +6508,13 @@ export interface MethodTypes {
     clearTileCaches: (all: boolean) => void;
     refresh: () => void;
   };
+  "massif::TouchHandlerListener": {
+  };
   "massif::UTFGridClickInfo": {
   };
   "massif::UTFGridEventListener": {
   };
   "massif::UiDispatcher": {
-  };
-  "massif::ValhallaOfflineRoutingService": {
-    calculateRoute: (request: Handle) => Handle<"massif::RoutingResult">;
-  };
-  "massif::ValhallaOnlineRoutingService": {
-    calculateRoute: (request: Handle) => Handle<"massif::RoutingResult">;
   };
   "massif::Variant": {
   };
@@ -6490,9 +6526,13 @@ export interface MethodTypes {
   };
   "massif::VectorDataSource": {
   };
+  "massif::VectorEditEventListener": {
+  };
   "massif::VectorElement": {
   };
   "massif::VectorElementClickInfo": {
+  };
+  "massif::VectorElementDragInfo": {
   };
   "massif::VectorElementEventListener": {
   };
@@ -6572,6 +6612,8 @@ export interface EventTypes {
   };
   "massif::BitmapOverlayRasterTileDataSource": {
   };
+  "massif::BundleAssetPackage": {
+  };
   "massif::CacheTileDataSource": {
   };
   "massif::CartoCSSStyleSet": {
@@ -6620,9 +6662,14 @@ export interface EventTypes {
   };
   "massif::DouglasPeuckerGeometrySimplifier": {
   };
+  "massif::DownloadTask": {
+  };
   "massif::EPSG3857": {
   };
   "massif::EPSG4326": {
+  };
+  "massif::EditableVectorLayer": {
+    "vectorelement.clicked": Handle<"massif::VectorElementClickInfo">;
   };
   "massif::ElevationDecoder": {
   };
@@ -6692,6 +6739,8 @@ export interface EventTypes {
   };
   "massif::LogEventListener": {
   };
+  "massif::MBTilesTileDataSource": {
+  };
   "massif::MBVectorTileDecoder": {
   };
   "massif::ManeuverArrowBuilder": {
@@ -6742,15 +6791,13 @@ export interface EventTypes {
   };
   "massif::MultiPolygonGeometry": {
   };
-  "massif::MultiValhallaOfflineRoutingService": {
+  "massif::MultiTileDataSource": {
   };
   "massif::NMLModel": {
   };
   "massif::NMLModelStyle": {
   };
   "massif::NMLModelStyleBuilder": {
-  };
-  "massif::OSRMOfflineRoutingService": {
   };
   "massif::Options": {
     "map.clicked": Handle<"massif::MapClickInfo">;
@@ -6763,11 +6810,9 @@ export interface EventTypes {
   };
   "massif::OrderedTileDataSource": {
   };
-  "massif::PackageManagerListener": {
+  "massif::PMTilesTileDataSource": {
   };
-  "massif::PackageManagerRoutingService": {
-  };
-  "massif::PackageManagerValhallaRoutingService": {
+  "massif::PersistentCacheTileDataSource": {
   };
   "massif::Point": {
   };
@@ -6814,24 +6859,6 @@ export interface EventTypes {
   "massif::RedrawRequestListener": {
   };
   "massif::RendererCaptureListener": {
-  };
-  "massif::RouteMatchingEdge": {
-  };
-  "massif::RouteMatchingPoint": {
-  };
-  "massif::RouteMatchingRequest": {
-  };
-  "massif::RouteMatchingResult": {
-  };
-  "massif::RoutingInstruction": {
-  };
-  "massif::RoutingRequest": {
-  };
-  "massif::RoutingResult": {
-  };
-  "massif::RoutingService": {
-  };
-  "massif::SGREOfflineRoutingService": {
   };
   "massif::ScreenBounds": {
   };
@@ -6880,15 +6907,13 @@ export interface EventTypes {
   "massif::TorqueTileLayer": {
     "vectortile.clicked": Handle<"massif::VectorTileClickInfo">;
   };
+  "massif::TouchHandlerListener": {
+  };
   "massif::UTFGridClickInfo": {
   };
   "massif::UTFGridEventListener": {
   };
   "massif::UiDispatcher": {
-  };
-  "massif::ValhallaOfflineRoutingService": {
-  };
-  "massif::ValhallaOnlineRoutingService": {
   };
   "massif::Variant": {
   };
@@ -6900,9 +6925,13 @@ export interface EventTypes {
   };
   "massif::VectorDataSource": {
   };
+  "massif::VectorEditEventListener": {
+  };
   "massif::VectorElement": {
   };
   "massif::VectorElementClickInfo": {
+  };
+  "massif::VectorElementDragInfo": {
   };
   "massif::VectorElementEventListener": {
   };

@@ -1232,6 +1232,31 @@
       "methods": [],
       "events": []
     },
+    "massif::BundleAssetPackage": {
+      "base": "massif::AssetPackage",
+      "properties": [
+        {
+          "name": "basePath",
+          "type": "STRING",
+          "readOnly": true,
+          "static": false,
+          "position": false,
+          "cppType": "std::string",
+          "doc": "Returns the path of the bundled directory the assets are read from."
+        },
+        {
+          "name": "localAssetNames",
+          "type": "STRUCT",
+          "readOnly": true,
+          "static": false,
+          "position": false,
+          "cppType": "std::vector<std::string>",
+          "doc": "Returns the list of assets found in the bundle, ignoring the base asset package."
+        }
+      ],
+      "methods": [],
+      "events": []
+    },
     "massif::CacheTileDataSource": {
       "base": "massif::TileDataSource",
       "properties": [
@@ -1862,6 +1887,12 @@
       "methods": [],
       "events": []
     },
+    "massif::DownloadTask": {
+      "base": "massif::CancelableTask",
+      "properties": [],
+      "methods": [],
+      "events": []
+    },
     "massif::EPSG3857": {
       "base": "massif::Projection",
       "properties": [],
@@ -1871,6 +1902,33 @@
     "massif::EPSG4326": {
       "base": "massif::Projection",
       "properties": [],
+      "methods": [],
+      "events": []
+    },
+    "massif::EditableVectorLayer": {
+      "base": "massif::VectorLayer",
+      "properties": [
+        {
+          "name": "selectedVectorElement",
+          "type": "OBJECT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "std::shared_ptr<massif::VectorElement>",
+          "objectClass": "massif::VectorElement",
+          "doc": "Returns the selected vector element. If no element is currently selected, null is returned."
+        },
+        {
+          "name": "vectorEditEventListener",
+          "type": "OBJECT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "layers.VectorEditEventListener",
+          "objectClass": "massif::VectorEditEventListener",
+          "doc": "Returns the current edit event listener for the layer."
+        }
+      ],
       "methods": [],
       "events": []
     },
@@ -3340,6 +3398,12 @@
       "methods": [],
       "events": []
     },
+    "massif::MBTilesTileDataSource": {
+      "base": "massif::TileDataSource",
+      "properties": [],
+      "methods": [],
+      "events": []
+    },
     "massif::MBVectorTileDecoder": {
       "base": "massif::VectorTileDecoder",
       "properties": [
@@ -4069,8 +4133,8 @@
       "methods": [],
       "events": []
     },
-    "massif::MultiValhallaOfflineRoutingService": {
-      "base": "massif::RoutingService",
+    "massif::MultiTileDataSource": {
+      "base": "massif::TileDataSource",
       "properties": [],
       "methods": [],
       "events": []
@@ -4190,12 +4254,6 @@
           "doc": "Returns the scaling mode of the model."
         }
       ],
-      "methods": [],
-      "events": []
-    },
-    "massif::OSRMOfflineRoutingService": {
-      "base": "massif::RoutingService",
-      "properties": [],
       "methods": [],
       "events": []
     },
@@ -4665,21 +4723,34 @@
       "methods": [],
       "events": []
     },
-    "massif::PackageManagerListener": {
-      "base": null,
+    "massif::PMTilesTileDataSource": {
+      "base": "massif::TileDataSource",
       "properties": [],
       "methods": [],
       "events": []
     },
-    "massif::PackageManagerRoutingService": {
-      "base": "massif::RoutingService",
-      "properties": [],
-      "methods": [],
-      "events": []
-    },
-    "massif::PackageManagerValhallaRoutingService": {
-      "base": "massif::RoutingService",
-      "properties": [],
+    "massif::PersistentCacheTileDataSource": {
+      "base": "massif::CacheTileDataSource",
+      "properties": [
+        {
+          "name": "cacheOnlyMode",
+          "type": "BOOL",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "bool",
+          "doc": "Returns the state of cache only mode."
+        },
+        {
+          "name": "open",
+          "type": "BOOL",
+          "readOnly": true,
+          "static": false,
+          "position": false,
+          "cppType": "bool",
+          "doc": "Returns the status of the cache database."
+        }
+      ],
       "methods": [],
       "events": []
     },
@@ -5290,401 +5361,6 @@
     },
     "massif::RendererCaptureListener": {
       "base": null,
-      "properties": [],
-      "methods": [],
-      "events": []
-    },
-    "massif::RouteMatchingEdge": {
-      "base": null,
-      "properties": [],
-      "methods": [],
-      "events": []
-    },
-    "massif::RouteMatchingPoint": {
-      "base": null,
-      "properties": [
-        {
-          "name": "edgeIndex",
-          "type": "INT",
-          "readOnly": true,
-          "static": false,
-          "position": false,
-          "cppType": "int",
-          "doc": "Returns the corresponding matching edge index in the matching result."
-        },
-        {
-          "name": "pos",
-          "type": "STRUCT",
-          "readOnly": true,
-          "static": false,
-          "position": true,
-          "cppType": "massif::MapPos",
-          "doc": "Returns the position of the matching point."
-        },
-        {
-          "name": "type",
-          "type": "ENUM",
-          "readOnly": true,
-          "static": false,
-          "position": false,
-          "cppType": "massif::RouteMatchingPointType::RouteMatchingPointType",
-          "enum": "massif::RouteMatchingPointType::RouteMatchingPointType",
-          "doc": "Returns the type of the matching point."
-        }
-      ],
-      "methods": [],
-      "events": []
-    },
-    "massif::RouteMatchingRequest": {
-      "base": null,
-      "properties": [
-        {
-          "name": "accuracy",
-          "type": "FLOAT",
-          "readOnly": true,
-          "static": false,
-          "position": false,
-          "cppType": "float",
-          "doc": "Returns the accuracy of the points in the request."
-        },
-        {
-          "name": "points",
-          "type": "STRUCT",
-          "readOnly": true,
-          "static": false,
-          "position": false,
-          "cppType": "std::vector<massif::MapPos>",
-          "doc": "Returns the measured points of the request."
-        },
-        {
-          "name": "projection",
-          "type": "OBJECT",
-          "readOnly": true,
-          "static": false,
-          "position": false,
-          "cppType": "std::shared_ptr<massif::Projection>",
-          "objectClass": "massif::Projection",
-          "doc": "Returns the projection of the points in the request."
-        }
-      ],
-      "methods": [],
-      "events": []
-    },
-    "massif::RouteMatchingResult": {
-      "base": null,
-      "properties": [
-        {
-          "name": "matchingEdges",
-          "type": "STRUCT",
-          "readOnly": true,
-          "static": false,
-          "position": false,
-          "cppType": "std::vector<massif::RouteMatchingEdge>",
-          "doc": "Returns the list with details of the matched edges."
-        },
-        {
-          "name": "matchingPoints",
-          "type": "STRUCT",
-          "readOnly": true,
-          "static": false,
-          "position": false,
-          "cppType": "std::vector<massif::RouteMatchingPoint>",
-          "doc": "Returns the list with details of the matched points."
-        },
-        {
-          "name": "points",
-          "type": "STRUCT",
-          "readOnly": true,
-          "static": false,
-          "position": false,
-          "cppType": "std::vector<massif::MapPos>",
-          "doc": "Returns the point list of the result. The list contains all the points from the request snapped to the road network."
-        },
-        {
-          "name": "projection",
-          "type": "OBJECT",
-          "readOnly": true,
-          "static": false,
-          "position": false,
-          "cppType": "std::shared_ptr<massif::Projection>",
-          "objectClass": "massif::Projection",
-          "doc": "Returns the projection of the points in the result."
-        },
-        {
-          "name": "rawResult",
-          "type": "STRING",
-          "readOnly": true,
-          "static": false,
-          "position": false,
-          "cppType": "std::string",
-          "doc": "Returns raw result"
-        }
-      ],
-      "methods": [],
-      "events": []
-    },
-    "massif::RoutingInstruction": {
-      "base": null,
-      "properties": [
-        {
-          "name": "action",
-          "type": "ENUM",
-          "readOnly": true,
-          "static": false,
-          "position": false,
-          "cppType": "massif::RoutingAction::RoutingAction",
-          "enum": "massif::RoutingAction::RoutingAction",
-          "doc": "Returns the action of the instruction."
-        },
-        {
-          "name": "azimuth",
-          "type": "FLOAT",
-          "readOnly": true,
-          "static": false,
-          "position": false,
-          "cppType": "float",
-          "doc": "Returns the azimuth of the initial position."
-        },
-        {
-          "name": "distance",
-          "type": "FLOAT",
-          "readOnly": true,
-          "static": false,
-          "position": false,
-          "cppType": "double",
-          "doc": "Returns the distance to move along the given street."
-        },
-        {
-          "name": "geometryTag",
-          "type": "VARIANT",
-          "readOnly": true,
-          "static": false,
-          "position": false,
-          "cppType": "massif::Variant",
-          "doc": "Returns the geometry tag associated with the instructions."
-        },
-        {
-          "name": "instruction",
-          "type": "STRING",
-          "readOnly": true,
-          "static": false,
-          "position": false,
-          "cppType": "std::string",
-          "doc": "Returns the optional instruction description. This info is dependent on the routing engine (can be empty) and may be localized."
-        },
-        {
-          "name": "pointIndex",
-          "type": "INT",
-          "readOnly": true,
-          "static": false,
-          "position": false,
-          "cppType": "int",
-          "doc": "Returns the index of the first geometry point in external point array."
-        },
-        {
-          "name": "streetName",
-          "type": "STRING",
-          "readOnly": true,
-          "static": false,
-          "position": false,
-          "cppType": "std::string",
-          "doc": "Returns the name of street."
-        },
-        {
-          "name": "time",
-          "type": "FLOAT",
-          "readOnly": true,
-          "static": false,
-          "position": false,
-          "cppType": "double",
-          "doc": "Returns the time approximate duration of the instruction."
-        },
-        {
-          "name": "turnAngle",
-          "type": "FLOAT",
-          "readOnly": true,
-          "static": false,
-          "position": false,
-          "cppType": "float",
-          "doc": "Returns the turn angle of the action."
-        }
-      ],
-      "methods": [],
-      "events": []
-    },
-    "massif::RoutingRequest": {
-      "base": null,
-      "properties": [
-        {
-          "name": "points",
-          "type": "STRUCT",
-          "readOnly": true,
-          "static": false,
-          "position": false,
-          "cppType": "std::vector<massif::MapPos>",
-          "doc": "Returns the point list of the request."
-        },
-        {
-          "name": "projection",
-          "type": "OBJECT",
-          "readOnly": true,
-          "static": false,
-          "position": false,
-          "cppType": "std::shared_ptr<massif::Projection>",
-          "objectClass": "massif::Projection",
-          "doc": "Returns the projection of the points in the request."
-        }
-      ],
-      "methods": [
-        {
-          "cppClass": "massif::RoutingRequest",
-          "name": "setCustomParameter",
-          "args": [
-            {
-              "name": "name",
-              "type": "string"
-            },
-            {
-              "name": "value",
-              "type": "json"
-            }
-          ],
-          "returns": "void",
-          "returnClass": null
-        }
-      ],
-      "events": []
-    },
-    "massif::RoutingResult": {
-      "base": null,
-      "properties": [
-        {
-          "name": "instructionCount",
-          "type": "INT",
-          "readOnly": true,
-          "static": false,
-          "position": false,
-          "cppType": "int",
-          "doc": "Returns the number of turn-by-turn instructions."
-        },
-        {
-          "name": "instructions",
-          "type": "STRUCT",
-          "readOnly": true,
-          "static": false,
-          "position": false,
-          "cppType": "std::vector<massif::RoutingInstruction>",
-          "doc": "Returns the turn-by-turn instruction list."
-        },
-        {
-          "name": "pointCount",
-          "type": "INT",
-          "readOnly": true,
-          "static": false,
-          "position": false,
-          "cppType": "int",
-          "doc": "Returns the number of points in the path."
-        },
-        {
-          "name": "points",
-          "type": "STRUCT",
-          "readOnly": true,
-          "static": false,
-          "position": false,
-          "cppType": "std::vector<massif::MapPos>",
-          "doc": "Returns the point list of the result. The list contains all the points the route must pass in correct order."
-        },
-        {
-          "name": "projection",
-          "type": "OBJECT",
-          "readOnly": true,
-          "static": false,
-          "position": false,
-          "cppType": "std::shared_ptr<massif::Projection>",
-          "objectClass": "massif::Projection",
-          "doc": "Returns the projection of the points in the result."
-        },
-        {
-          "name": "rawResult",
-          "type": "STRING",
-          "readOnly": true,
-          "static": false,
-          "position": false,
-          "cppType": "std::string",
-          "doc": "Returns raw result"
-        },
-        {
-          "name": "totalDistance",
-          "type": "FLOAT",
-          "readOnly": true,
-          "static": false,
-          "position": false,
-          "cppType": "double",
-          "doc": "Returns the total distance of the path."
-        },
-        {
-          "name": "totalTime",
-          "type": "FLOAT",
-          "readOnly": true,
-          "static": false,
-          "position": false,
-          "cppType": "double",
-          "doc": "Returns the approximate total duration of the path."
-        }
-      ],
-      "methods": [
-        {
-          "cppClass": "massif::RoutingResult",
-          "name": "getInstruction",
-          "args": [
-            {
-              "name": "index",
-              "type": "int"
-            }
-          ],
-          "returns": "object",
-          "returnClass": "massif::RoutingInstruction"
-        },
-        {
-          "cppClass": "massif::RoutingResult",
-          "name": "getPoints",
-          "args": [],
-          "returns": "doubles",
-          "returnClass": null
-        }
-      ],
-      "events": []
-    },
-    "massif::RoutingService": {
-      "base": null,
-      "properties": [
-        {
-          "name": "profile",
-          "type": "STRING",
-          "readOnly": false,
-          "static": false,
-          "position": false,
-          "cppType": "std::string"
-        }
-      ],
-      "methods": [
-        {
-          "cppClass": "massif::RoutingService",
-          "name": "calculateRoute",
-          "args": [
-            {
-              "name": "request",
-              "type": "handle"
-            }
-          ],
-          "returns": "object",
-          "returnClass": "massif::RoutingResult"
-        }
-      ],
-      "events": []
-    },
-    "massif::SGREOfflineRoutingService": {
-      "base": "massif::RoutingService",
       "properties": [],
       "methods": [],
       "events": []
@@ -6750,6 +6426,12 @@
       "methods": [],
       "events": []
     },
+    "massif::TouchHandlerListener": {
+      "base": null,
+      "properties": [],
+      "methods": [],
+      "events": []
+    },
     "massif::UTFGridClickInfo": {
       "base": null,
       "properties": [
@@ -6813,46 +6495,6 @@
     "massif::UiDispatcher": {
       "base": null,
       "properties": [],
-      "methods": [],
-      "events": []
-    },
-    "massif::ValhallaOfflineRoutingService": {
-      "base": "massif::RoutingService",
-      "properties": [],
-      "methods": [],
-      "events": []
-    },
-    "massif::ValhallaOnlineRoutingService": {
-      "base": "massif::RoutingService",
-      "properties": [
-        {
-          "name": "HTTPHeaders",
-          "type": "STRUCT",
-          "readOnly": false,
-          "static": false,
-          "position": false,
-          "cppType": "std::map<std::string, std::string>",
-          "doc": "Returns the current set of HTTP headers used. Initially this set is empty and can be changed with setHTTPHeaders."
-        },
-        {
-          "name": "customServiceURL",
-          "type": "STRING",
-          "readOnly": false,
-          "static": false,
-          "position": false,
-          "cppType": "std::string",
-          "doc": "Returns the custom backend service URL."
-        },
-        {
-          "name": "timeout",
-          "type": "INT",
-          "readOnly": false,
-          "static": false,
-          "position": false,
-          "cppType": "int",
-          "doc": "Returns the current timeout value."
-        }
-      ],
       "methods": [],
       "events": []
     },
@@ -6981,6 +6623,12 @@
       "methods": [],
       "events": []
     },
+    "massif::VectorEditEventListener": {
+      "base": null,
+      "properties": [],
+      "methods": [],
+      "events": []
+    },
     "massif::VectorElement": {
       "base": null,
       "properties": [
@@ -7093,6 +6741,51 @@
           "cppType": "vectorelements.VectorElement",
           "objectClass": "massif::VectorElement",
           "doc": "Returns the clicked vector element."
+        }
+      ],
+      "methods": [],
+      "events": []
+    },
+    "massif::VectorElementDragInfo": {
+      "base": null,
+      "properties": [
+        {
+          "name": "mapPos",
+          "type": "STRUCT",
+          "readOnly": true,
+          "static": false,
+          "position": true,
+          "cppType": "massif::MapPos",
+          "doc": "Returns the drag position in projection coordinate system of the layer."
+        },
+        {
+          "name": "screenPos",
+          "type": "STRUCT",
+          "readOnly": true,
+          "static": false,
+          "position": false,
+          "cppType": "massif::ScreenPos",
+          "doc": "Returns the drag position in screen coordinates."
+        },
+        {
+          "name": "vectorElement",
+          "type": "OBJECT",
+          "readOnly": true,
+          "static": false,
+          "position": false,
+          "cppType": "vectorelements.VectorElement",
+          "objectClass": "massif::VectorElement",
+          "doc": "Returns the vector element being dragged."
+        },
+        {
+          "name": "vectorElementDragMode",
+          "type": "ENUM",
+          "readOnly": true,
+          "static": false,
+          "position": false,
+          "cppType": "massif::VectorElementDragMode::VectorElementDragMode",
+          "enum": "massif::VectorElementDragMode::VectorElementDragMode",
+          "doc": "Returns the drag mode."
         }
       ],
       "methods": [],
@@ -7797,6 +7490,54 @@
   "kinds": {
     "assets": [
       [
+        "bundle",
+        "massif__BundleAssetPackage",
+        [
+          [
+            0,
+            [
+              [
+                "VALUE",
+                "path",
+                "stringAt(spec, \"path\", \"\")",
+                null
+              ],
+              [
+                "OBJECT",
+                "base",
+                "assets",
+                "massif::AssetPackage"
+              ]
+            ],
+            [
+              "path",
+              "base"
+            ],
+            [
+              "path",
+              "base"
+            ]
+          ],
+          [
+            1,
+            [
+              [
+                "VALUE",
+                "path",
+                "stringAt(spec, \"path\", \"\")",
+                null
+              ]
+            ],
+            [
+              "path"
+            ],
+            [
+              "path"
+            ]
+          ]
+        ]
+      ],
+      [
         "dir",
         "massif__DirAssetPackage",
         [
@@ -8406,60 +8147,6 @@
         ]
       ]
     ],
-    "routing": [
-      [
-        "valhalla-offline",
-        "massif__ValhallaOfflineRoutingService",
-        [
-          [
-            0,
-            [
-              [
-                "VALUE",
-                "path",
-                "stringAt(spec, \"path\", \"\")",
-                null
-              ]
-            ],
-            [
-              "path"
-            ],
-            [
-              "path"
-            ]
-          ]
-        ]
-      ],
-      [
-        "valhalla-online",
-        "massif__ValhallaOnlineRoutingService",
-        [
-          [
-            0,
-            [
-              [
-                "VALUE",
-                "apiKey",
-                "stringAt(spec, \"apiKey\", \"\")",
-                null
-              ]
-            ],
-            [
-              "apiKey"
-            ],
-            [
-              "apiKey"
-            ]
-          ],
-          [
-            1,
-            [],
-            [],
-            []
-          ]
-        ]
-      ]
-    ],
     "search": [
       [
         "request",
@@ -8695,6 +8382,99 @@
         ]
       ],
       [
+        "mbtiles",
+        "massif__MBTilesTileDataSource",
+        [
+          [
+            0,
+            [
+              [
+                "VALUE",
+                "minZoom",
+                "static_cast<int>(intAt(spec, \"minZoom\", 0))",
+                null
+              ],
+              [
+                "VALUE",
+                "maxZoom",
+                "static_cast<int>(intAt(spec, \"maxZoom\", 24))",
+                null
+              ],
+              [
+                "VALUE",
+                "path",
+                "stringAt(spec, \"path\", \"\")",
+                null
+              ],
+              [
+                "VALUE",
+                "scheme",
+                "static_cast<massif::MBTilesScheme::MBTilesScheme>(intAt(spec, \"scheme\", 0))",
+                null
+              ]
+            ],
+            [
+              "path",
+              "scheme"
+            ],
+            [
+              "minZoom",
+              "maxZoom",
+              "path",
+              "scheme"
+            ]
+          ],
+          [
+            1,
+            [
+              [
+                "VALUE",
+                "minZoom",
+                "static_cast<int>(intAt(spec, \"minZoom\", 0))",
+                null
+              ],
+              [
+                "VALUE",
+                "maxZoom",
+                "static_cast<int>(intAt(spec, \"maxZoom\", 24))",
+                null
+              ],
+              [
+                "VALUE",
+                "path",
+                "stringAt(spec, \"path\", \"\")",
+                null
+              ]
+            ],
+            [
+              "path"
+            ],
+            [
+              "minZoom",
+              "maxZoom",
+              "path"
+            ]
+          ],
+          [
+            2,
+            [
+              [
+                "VALUE",
+                "path",
+                "stringAt(spec, \"path\", \"\")",
+                null
+              ]
+            ],
+            [
+              "path"
+            ],
+            [
+              "path"
+            ]
+          ]
+        ]
+      ],
+      [
         "memory-cache",
         "massif__MemoryCacheTileDataSource",
         [
@@ -8714,6 +8494,33 @@
             [
               "source"
             ]
+          ]
+        ]
+      ],
+      [
+        "multi",
+        "massif__MultiTileDataSource",
+        [
+          [
+            0,
+            [
+              [
+                "VALUE",
+                "maxOpenedPackages",
+                "static_cast<int>(intAt(spec, \"maxOpenedPackages\", 4))",
+                null
+              ]
+            ],
+            [],
+            [
+              "maxOpenedPackages"
+            ]
+          ],
+          [
+            1,
+            [],
+            [],
+            []
           ]
         ]
       ],
@@ -8744,6 +8551,37 @@
             [
               "source",
               "source2"
+            ]
+          ]
+        ]
+      ],
+      [
+        "persistent-cache",
+        "massif__PersistentCacheTileDataSource",
+        [
+          [
+            0,
+            [
+              [
+                "OBJECT",
+                "source",
+                "source",
+                "massif::TileDataSource"
+              ],
+              [
+                "VALUE",
+                "databasePath",
+                "stringAt(spec, \"databasePath\", \"\")",
+                null
+              ]
+            ],
+            [
+              "source",
+              "databasePath"
+            ],
+            [
+              "source",
+              "databasePath"
             ]
           ]
         ]
@@ -8891,6 +8729,46 @@
     ]
   },
   "specs": [
+    {
+      "cppClass": "massif::BundleAssetPackage",
+      "kind": "assets",
+      "type": "bundle",
+      "aliases": {
+        "basePath": "path",
+        "baseAssetPackage": "base"
+      },
+      "defaults": {},
+      "constructors": [
+        [
+          {
+            "key": "path",
+            "type": "STRING",
+            "cppType": "std::string",
+            "childKind": null,
+            "childClass": null,
+            "required": true
+          },
+          {
+            "key": "base",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<AssetPackage>",
+            "childKind": "assets",
+            "childClass": "massif::AssetPackage",
+            "required": true
+          }
+        ],
+        [
+          {
+            "key": "path",
+            "type": "STRING",
+            "cppType": "std::string",
+            "childKind": null,
+            "childClass": null,
+            "required": true
+          }
+        ]
+      ]
+    },
     {
       "cppClass": "massif::DirAssetPackage",
       "kind": "assets",
@@ -9410,45 +9288,6 @@
       ]
     },
     {
-      "cppClass": "massif::ValhallaOfflineRoutingService",
-      "kind": "routing",
-      "type": "valhalla-offline",
-      "aliases": {},
-      "defaults": {},
-      "constructors": [
-        [
-          {
-            "key": "path",
-            "type": "STRING",
-            "cppType": "std::string",
-            "childKind": null,
-            "childClass": null,
-            "required": true
-          }
-        ]
-      ]
-    },
-    {
-      "cppClass": "massif::ValhallaOnlineRoutingService",
-      "kind": "routing",
-      "type": "valhalla-online",
-      "aliases": {},
-      "defaults": {},
-      "constructors": [
-        [
-          {
-            "key": "apiKey",
-            "type": "STRING",
-            "cppType": "std::string",
-            "childKind": null,
-            "childClass": null,
-            "required": true
-          }
-        ],
-        []
-      ]
-    },
-    {
       "cppClass": "massif::SearchRequest",
       "kind": "search",
       "type": "request",
@@ -9676,6 +9515,88 @@
       ]
     },
     {
+      "cppClass": "massif::MBTilesTileDataSource",
+      "kind": "source",
+      "type": "mbtiles",
+      "aliases": {},
+      "defaults": {
+        "minZoom": "0",
+        "maxZoom": "24"
+      },
+      "constructors": [
+        [
+          {
+            "key": "minZoom",
+            "type": "INT",
+            "cppType": "int",
+            "childKind": null,
+            "childClass": null,
+            "required": false
+          },
+          {
+            "key": "maxZoom",
+            "type": "INT",
+            "cppType": "int",
+            "childKind": null,
+            "childClass": null,
+            "required": false
+          },
+          {
+            "key": "path",
+            "type": "STRING",
+            "cppType": "std::string",
+            "childKind": null,
+            "childClass": null,
+            "required": true
+          },
+          {
+            "key": "scheme",
+            "type": "ENUM",
+            "cppType": "massif::MBTilesScheme::MBTilesScheme",
+            "childKind": null,
+            "childClass": null,
+            "required": true
+          }
+        ],
+        [
+          {
+            "key": "minZoom",
+            "type": "INT",
+            "cppType": "int",
+            "childKind": null,
+            "childClass": null,
+            "required": false
+          },
+          {
+            "key": "maxZoom",
+            "type": "INT",
+            "cppType": "int",
+            "childKind": null,
+            "childClass": null,
+            "required": false
+          },
+          {
+            "key": "path",
+            "type": "STRING",
+            "cppType": "std::string",
+            "childKind": null,
+            "childClass": null,
+            "required": true
+          }
+        ],
+        [
+          {
+            "key": "path",
+            "type": "STRING",
+            "cppType": "std::string",
+            "childKind": null,
+            "childClass": null,
+            "required": true
+          }
+        ]
+      ]
+    },
+    {
       "cppClass": "massif::MemoryCacheTileDataSource",
       "kind": "source",
       "type": "memory-cache",
@@ -9694,6 +9615,28 @@
             "required": true
           }
         ]
+      ]
+    },
+    {
+      "cppClass": "massif::MultiTileDataSource",
+      "kind": "source",
+      "type": "multi",
+      "aliases": {},
+      "defaults": {
+        "maxOpenedPackages": "4"
+      },
+      "constructors": [
+        [
+          {
+            "key": "maxOpenedPackages",
+            "type": "INT",
+            "cppType": "int",
+            "childKind": null,
+            "childClass": null,
+            "required": false
+          }
+        ],
+        []
       ]
     },
     {
@@ -9721,6 +9664,35 @@
             "cppType": "std::shared_ptr<TileDataSource>",
             "childKind": "source",
             "childClass": "massif::TileDataSource",
+            "required": true
+          }
+        ]
+      ]
+    },
+    {
+      "cppClass": "massif::PersistentCacheTileDataSource",
+      "kind": "source",
+      "type": "persistent-cache",
+      "aliases": {
+        "dataSource": "source"
+      },
+      "defaults": {},
+      "constructors": [
+        [
+          {
+            "key": "source",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<TileDataSource>",
+            "childKind": "source",
+            "childClass": "massif::TileDataSource",
+            "required": true
+          },
+          {
+            "key": "databasePath",
+            "type": "STRING",
+            "cppType": "std::string",
+            "childKind": null,
+            "childClass": null,
             "required": true
           }
         ]
@@ -10106,6 +10078,18 @@
         "doc": "K-d tree index, element culling is exact and fast."
       }
     ],
+    "massif::MBTilesScheme::MBTilesScheme": [
+      {
+        "name": "MBTILES_SCHEME_TMS",
+        "value": 0,
+        "doc": "The default scheme. Vertical coordinate is not flipped."
+      },
+      {
+        "name": "MBTILES_SCHEME_XYZ",
+        "value": 1,
+        "doc": "Alternative to TMS scheme. Vertical coordinate is flipped."
+      }
+    ],
     "massif::PanningMode::PanningMode": [
       {
         "name": "PANNING_MODE_FREE",
@@ -10181,120 +10165,6 @@
         "doc": "Spherical projection."
       }
     ],
-    "massif::RouteMatchingPointType::RouteMatchingPointType": [
-      {
-        "name": "ROUTE_MATCHING_POINT_UNMATCHED",
-        "value": 0,
-        "doc": "The point was unmatched."
-      },
-      {
-        "name": "ROUTE_MATCHING_POINT_INTERPOLATED",
-        "value": 1,
-        "doc": "The point was interpolated."
-      },
-      {
-        "name": "ROUTE_MATCHING_POINT_MATCHED",
-        "value": 2,
-        "doc": "The point was matched."
-      }
-    ],
-    "massif::RoutingAction::RoutingAction": [
-      {
-        "name": "ROUTING_ACTION_HEAD_ON",
-        "value": 0,
-        "doc": "Head on, start the route."
-      },
-      {
-        "name": "ROUTING_ACTION_FINISH",
-        "value": 1,
-        "doc": "Finish the route."
-      },
-      {
-        "name": "ROUTING_ACTION_NO_TURN",
-        "value": 2,
-        "doc": "Continue along the given street, do not turn."
-      },
-      {
-        "name": "ROUTING_ACTION_GO_STRAIGHT",
-        "value": 3,
-        "doc": "Go straight."
-      },
-      {
-        "name": "ROUTING_ACTION_TURN_RIGHT",
-        "value": 4,
-        "doc": "Turn right."
-      },
-      {
-        "name": "ROUTING_ACTION_UTURN",
-        "value": 5,
-        "doc": "Do an u-turn."
-      },
-      {
-        "name": "ROUTING_ACTION_TURN_LEFT",
-        "value": 6,
-        "doc": "Turn left."
-      },
-      {
-        "name": "ROUTING_ACTION_REACH_VIA_LOCATION",
-        "value": 7,
-        "doc": "Reached given via point. If this is the final point, FINISH action is used instead."
-      },
-      {
-        "name": "ROUTING_ACTION_ENTER_ROUNDABOUT",
-        "value": 8,
-        "doc": "Enter roundabout. Used by Valhalla and OSRM."
-      },
-      {
-        "name": "ROUTING_ACTION_LEAVE_ROUNDABOUT",
-        "value": 9,
-        "doc": "Leave roundabout. Used by Valhalla and OSRM."
-      },
-      {
-        "name": "ROUTING_ACTION_STAY_ON_ROUNDABOUT",
-        "value": 10,
-        "doc": "Continue along the roundabout. Only used by OSRM."
-      },
-      {
-        "name": "ROUTING_ACTION_START_AT_END_OF_STREET",
-        "value": 11,
-        "doc": "Start at the end of the street. Currently used only by OSRM."
-      },
-      {
-        "name": "ROUTING_ACTION_ENTER_AGAINST_ALLOWED_DIRECTION",
-        "value": 12,
-        "doc": "Enter street while moving against the allowed direction. Only used by OSRM."
-      },
-      {
-        "name": "ROUTING_ACTION_LEAVE_AGAINST_ALLOWED_DIRECTION",
-        "value": 13,
-        "doc": "Leave the street while moving aginst the allowed direction. Only used by OSRM."
-      },
-      {
-        "name": "ROUTING_ACTION_GO_UP",
-        "value": 14,
-        "doc": "Go up. Only used by the SGRE."
-      },
-      {
-        "name": "ROUTING_ACTION_GO_DOWN",
-        "value": 15,
-        "doc": "Go down. Only used by SGRE."
-      },
-      {
-        "name": "ROUTING_ACTION_WAIT",
-        "value": 16,
-        "doc": "Wait. Only used by SGRE."
-      },
-      {
-        "name": "ROUTING_ACTION_ENTER_FERRY",
-        "value": 17,
-        "doc": "Enter ferry. Only used by Valhalla."
-      },
-      {
-        "name": "ROUTING_ACTION_LEAVE_FERRY",
-        "value": 18,
-        "doc": "Leave ferry. Only used by Valhalla."
-      }
-    ],
     "massif::TileFormat::TileFormat": [
       {
         "name": "TILE_FORMAT_AUTO",
@@ -10366,6 +10236,57 @@
         "doc": "Object (dictionary) element."
       }
     ],
+    "massif::VectorElementDragMode::VectorElementDragMode": [
+      {
+        "name": "VECTOR_ELEMENT_DRAG_MODE_VERTEX",
+        "value": 0,
+        "doc": "A single vertex is being moved."
+      },
+      {
+        "name": "VECTOR_ELEMENT_DRAG_MODE_ELEMENT",
+        "value": 1,
+        "doc": "The whole vector element is being moved."
+      }
+    ],
+    "massif::VectorElementDragPointStyle::VectorElementDragPointStyle": [
+      {
+        "name": "VECTOR_ELEMENT_DRAG_POINT_STYLE_NORMAL",
+        "value": 0,
+        "doc": "Normal control point. Corresponds to vertex."
+      },
+      {
+        "name": "VECTOR_ELEMENT_DRAG_POINT_STYLE_VIRTUAL",
+        "value": 1,
+        "doc": "Virtual control point (midpoint between actual vertices). Used for lines and polygons."
+      },
+      {
+        "name": "VECTOR_ELEMENT_DRAG_POINT_STYLE_SELECTED",
+        "value": 2,
+        "doc": "Selected control point."
+      }
+    ],
+    "massif::VectorElementDragResult::VectorElementDragResult": [
+      {
+        "name": "VECTOR_ELEMENT_DRAG_RESULT_IGNORE",
+        "value": 0,
+        "doc": "Dragging should be ignored. The input event will be passed on to other handlers."
+      },
+      {
+        "name": "VECTOR_ELEMENT_DRAG_RESULT_STOP",
+        "value": 1,
+        "doc": "Dragging should be ignored. The input event is not passed on to other handlers."
+      },
+      {
+        "name": "VECTOR_ELEMENT_DRAG_RESULT_MODIFY",
+        "value": 2,
+        "doc": "The underlying vector element (or vertex) should be modified."
+      },
+      {
+        "name": "VECTOR_ELEMENT_DRAG_RESULT_DELETE",
+        "value": 3,
+        "doc": "The underlying vector element or vertex should be deleted."
+      }
+    ],
     "massif::VectorTileRenderOrder::VectorTileRenderOrder": [
       {
         "name": "VECTOR_TILE_RENDER_ORDER_HIDDEN",
@@ -10381,6 +10302,18 @@
         "name": "VECTOR_TILE_RENDER_ORDER_LAST",
         "value": 1,
         "doc": "Elements are rendered on top of all normal layers."
+      }
+    ],
+    "massif::massif::ChangeType": [
+      {
+        "name": "PACKAGES_ADDED",
+        "value": 0,
+        "doc": ""
+      },
+      {
+        "name": "PACKAGES_DELETED",
+        "value": 1,
+        "doc": ""
       }
     ]
   }

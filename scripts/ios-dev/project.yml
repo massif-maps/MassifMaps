@@ -37,6 +37,24 @@ targets:
       - path: MassifDemo/Examples
         buildPhase: resources
         type: folder
+    # The style projects the examples load with assets://styles/<name>.zip. The SOURCE is the one
+    # under scripts/android-dev - a plain, diffable folder both demos read - and the zip that
+    # ZippedAssetPackage wants is a build product, exactly as android-dev's zipStyleProjects makes
+    # it. Copying the folders here would be a second copy to keep in step.
+    preBuildScripts:
+      - name: Zip the shared style projects
+        basedOnDependencyAnalysis: false
+        script: |
+          set -e
+          src="$SRCROOT/../android-dev/app/src/main/style-projects"
+          out="$BUILT_PRODUCTS_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/styles"
+          mkdir -p "$out"
+          for project in "$src"/*/; do
+            name=$(basename "$project")
+            # zip APPENDS to an existing archive, so a renamed or deleted file would live on.
+            rm -f "$out/$name.zip"
+            (cd "$project" && zip -q -r -X "$out/$name.zip" .)
+          done
     dependencies:
       - target: Massif/massif
       - sdk: Foundation.framework

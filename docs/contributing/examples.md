@@ -113,12 +113,16 @@ clearance above the ground.
 | `.../examples/ExampleRegistry.java` | **generated** |
 | `docs/examples/examples.json` | **generated** manifest, read by the website |
 | `docs/examples/screenshots/` | the captures, shared by the app and the site |
-| `app/src/main/style-projects/<name>/` | CartoCSS style projects, zipped into the APK by gradle |
+| `app/src/main/style-projects/<name>/` | CartoCSS style projects, zipped into the APK by gradle **and into the iOS bundle by `scripts/ios-dev/project.yml`** — one source, two demos |
+| `scripts/ios-dev/MassifDemo/Examples/MSFXxxExample.m` | the Objective-C twin, matched to its Java one by `+exampleId` |
 | `website/src/pages/examples.js` | the published gallery |
+
+An example exists on both platforms or it is half an example: `gen-examples.py` reports how many of
+the manifest's ids iOS has ported, the iOS gallery dims the ones it has not, and the website simply
+has no Objective-C tab for them.
 
 ## Known gaps
 
-- The gallery is Android only; iOS has no example app yet
-  ([#154](https://github.com/massif-maps/MassifMaps/issues/154)).
-- Screenshots are captured on an emulator. Text rendering and imagery differ slightly on a device.
+- Screenshots are captured on an Android emulator; the iOS gallery shows the same files. Text
+  rendering and imagery differ slightly on a device.
 - There is no check that an example still runs — a broken one shows an empty map and a toast.

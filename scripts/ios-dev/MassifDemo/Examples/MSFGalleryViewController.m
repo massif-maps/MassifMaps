@@ -110,6 +110,10 @@
                                         action:@selector(openBench)];
 
     UICollectionViewFlowLayout *layout = [[UICollectionViewFlowLayout alloc] init];
+    // A vertically scrolling collection gets no LEFT/RIGHT inset adjustment for free - the
+    // automatic behaviour only adjusts the axes that scroll - so in landscape on a notched device
+    // the first column runs under the sensor housing until the layout is told to start here.
+    layout.sectionInsetReference = UICollectionViewFlowLayoutSectionInsetFromSafeArea;
     layout.sectionInset = UIEdgeInsetsMake(0, 16, 16, 16);
     layout.minimumInteritemSpacing = 12;
     layout.minimumLineSpacing = 12;
@@ -170,7 +174,10 @@
 - (CGSize)collectionView:(UICollectionView *)collectionView
                   layout:(UICollectionViewLayout *)layout
   sizeForItemAtIndexPath:(NSIndexPath *)indexPath {
-    CGFloat available = collectionView.bounds.size.width - 32;
+    // The same safe area the section inset starts from, or the last column overflows by exactly
+    // the notch's width.
+    UIEdgeInsets safe = collectionView.safeAreaInsets;
+    CGFloat available = collectionView.bounds.size.width - safe.left - safe.right - 32;
     // A card wants about 190pt to keep its screenshot readable.
     NSInteger columns = MAX(1, (NSInteger)(available / 190));
     CGFloat width = (available - 12 * (columns - 1)) / columns;

@@ -14,6 +14,7 @@
 @property (nonatomic, strong) MSFMassifMap *massifMap;
 @property (nonatomic, strong) UIStackView *controls;
 @property (nonatomic, strong) UILabel *captionLabel;
+@property (nonatomic, strong) UIView *captionBar;
 @property (nonatomic, strong) UIView *topBar;
 @property (nonatomic, strong) NSMutableArray<NSTimer *> *timers;
 @end
@@ -47,16 +48,32 @@
 
     _massifMap = [MSFMassifMap attach:_mapView objectId:_entry.identifier];
     _massifMap.eventProjection = @"EPSG:4326";
+
+    // From viewDidLoad, deliberately: the map view has no size yet and has drawn nothing, which is
+    // exactly the case an example's opening camera has to survive. It used to wait for
+    // viewDidAppear because it did not.
+    [self startExample];
 }
 
-- (void)viewDidAppear:(BOOL)animated {
-    [super viewDidAppear:animated];
+/**
+ * The example draws its own back/title/code pills over the map, so the navigation bar would be a
+ * second back button above them - and it pushes the map down out of the full-bleed frame the
+ * screenshots are composed in.
+ */
+- (void)viewWillAppear:(BOOL)animated {
+    [super viewWillAppear:animated];
+    [self.navigationController setNavigationBarHidden:YES animated:animated];
+}
+
+- (void)viewWillDisappear:(BOOL)animated {
+    [super viewWillDisappear:animated];
+    [self.navigationController setNavigationBarHidden:NO animated:animated];
+}
+
+- (void)startExample {
     if (_example || !_entry.exampleClass) {
         return;
     }
-    // Started from viewDidAppear, not viewDidLoad: restricted panning clamps a focus set while
-    // the map view still has no size, and the camera silently ends up somewhere else entirely -
-    // the same trap Android's startWhenLaidOut exists for.
     _example = [[_entry.exampleClass alloc] init];
     @try {
         [_example startWithHost:self];
@@ -145,14 +162,21 @@
     [controlScroll addSubview:_controls];
     [self.view addSubview:controlScroll];
 
+    // The bar runs edge to edge under the home indicator, the TEXT inside it does not: a caption
+    // pinned straight to the view's bottom puts its last line under the indicator, and one pinned
+    // to the safe area leaves a bright strip of map below it.
+    _captionBar = [[UIView alloc] init];
+    _captionBar.backgroundColor = [UIColor colorWithWhite:0.05 alpha:0.7];
+    _captionBar.hidden = YES;
+    _captionBar.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.view addSubview:_captionBar];
+
     _captionLabel = [[UILabel alloc] init];
     _captionLabel.numberOfLines = 0;
     _captionLabel.textColor = UIColor.whiteColor;
-    _captionLabel.backgroundColor = [UIColor colorWithWhite:0.05 alpha:0.7];
     _captionLabel.font = [UIFont systemFontOfSize:14];
-    _captionLabel.hidden = YES;
     _captionLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    [self.view addSubview:_captionLabel];
+    [_captionBar addSubview:_captionLabel];
 
     UILayoutGuide *safe = self.view.safeAreaLayoutGuide;
     [NSLayoutConstraint activateConstraints:@[
@@ -169,7 +193,7 @@
 
         [controlScroll.leadingAnchor constraintEqualToAnchor:safe.leadingAnchor constant:12],
         [controlScroll.trailingAnchor constraintEqualToAnchor:safe.trailingAnchor constant:-12],
-        [controlScroll.bottomAnchor constraintEqualToAnchor:_captionLabel.topAnchor constant:-10],
+        [controlScroll.bottomAnchor constraintEqualToAnchor:_captionBar.topAnchor constant:-10],
         [controlScroll.heightAnchor constraintEqualToConstant:38],
         [_controls.topAnchor constraintEqualToAnchor:controlScroll.topAnchor],
         [_controls.bottomAnchor constraintEqualToAnchor:controlScroll.bottomAnchor],
@@ -177,9 +201,13 @@
         [_controls.trailingAnchor constraintEqualToAnchor:controlScroll.trailingAnchor],
         [_controls.heightAnchor constraintEqualToAnchor:controlScroll.heightAnchor],
 
-        [_captionLabel.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
-        [_captionLabel.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
-        [_captionLabel.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
+        [_captionBar.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+        [_captionBar.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        [_captionBar.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
+        [_captionLabel.topAnchor constraintEqualToAnchor:_captionBar.topAnchor constant:6],
+        [_captionLabel.bottomAnchor constraintEqualToAnchor:safe.bottomAnchor constant:-6],
+        [_captionLabel.leadingAnchor constraintEqualToAnchor:safe.leadingAnchor constant:10],
+        [_captionLabel.trailingAnchor constraintEqualToAnchor:safe.trailingAnchor constant:-10],
     ]];
 }
 
@@ -210,8 +238,8 @@
 
 - (void)caption:(NSString *)text {
     dispatch_async(dispatch_get_main_queue(), ^{
-        self.captionLabel.text = text ? [@"  " stringByAppendingString:text] : nil;
-        self.captionLabel.hidden = text.length == 0;
+        self.captionLabel.text = text;
+        self.captionBar.hidden = text.length == 0;
     });
 }
 

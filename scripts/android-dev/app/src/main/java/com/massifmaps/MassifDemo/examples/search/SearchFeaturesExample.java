@@ -57,16 +57,18 @@ public class SearchFeaturesExample extends MapExample {
         hitStyle = map.elements().style("hit",
             Spec.of("marker").set("size", 20).set("color", 0xFF3A6EA5));
 
+        // The filter is an ECMAScript regex, which has no inline flags - "(?i)" is a parse error,
+        // not a case-insensitive match, and the search comes back as a failure.
         host.button("Search \"gare\"", new Runnable() {
             @Override
             public void run() {
-                search(host, map, service, "(?i).*gare.*");
+                search(host, map, service, ".*[Gg]are.*");
             }
         });
         host.button("Search \"parc\"", new Runnable() {
             @Override
             public void run() {
-                search(host, map, service, "(?i).*parc.*");
+                search(host, map, service, ".*[Pp]arc.*");
             }
         });
         host.caption("Grenoble. Tap a search - results are pinned as markers.");

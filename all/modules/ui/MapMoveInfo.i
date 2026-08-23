@@ -6,6 +6,9 @@
 !proxy_imports(massif::MapMoveInfo)
 
 %{
+// MapMoveReason.h is listed even though MapMoveInfo.h already includes it: the table generator
+// reads the enum's constants out of the headers named HERE, and does not follow includes.
+#include "ui/MapMoveReason.h"
 #include "ui/MapMoveInfo.h"
 #include <memory>
 %}

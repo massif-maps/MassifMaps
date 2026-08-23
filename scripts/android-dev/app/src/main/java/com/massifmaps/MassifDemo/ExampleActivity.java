@@ -116,27 +116,7 @@ public class ExampleActivity extends AppCompatActivity implements ExampleHost {
             chromeHidden = true;
         }
         applyInsets();
-        startWhenLaidOut();
-    }
-
-    /**
-     * Waits for the map view to have a SIZE, then starts the example.
-     *
-     * Not a nicety: restricted panning clamps a focus set while the view is still 0x0, and the
-     * camera silently ends up somewhere else entirely - measured, a Matterhorn view that opened
-     * over western France. The example's moveTo has to run after layout.
-     */
-    private void startWhenLaidOut() {
-        if (mapView.getWidth() > 0 && mapView.getHeight() > 0) {
-            start();
-            return;
-        }
-        mapView.post(new Runnable() {
-            @Override
-            public void run() {
-                startWhenLaidOut();
-            }
-        });
+        start();
     }
 
     /**
@@ -155,15 +135,7 @@ public class ExampleActivity extends AppCompatActivity implements ExampleHost {
                     toast("Failed: " + e.getMessage());
                 }
                 applyCameraOverrides();
-                // Once more after the surface has a size: restricted panning clamps a focus set
-                // before it does, and the map opens on the equator. See MapCamera#reapply.
-                postDelayed(new Runnable() {
-                    @Override
-                    public void run() {
-                        map.camera().reapply();
-                        logCamera();
-                    }
-                }, 600);
+                logCamera();
                 ui.post(new Runnable() {
                     @Override
                     public void run() {

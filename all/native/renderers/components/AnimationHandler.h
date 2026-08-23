@@ -59,7 +59,13 @@ namespace massif {
          * instead of re-implementing the easing.
          */
         float getFlightProgress() const;
-    
+
+        /**
+         * Whether anything is still moving the camera - a flight or any per-property animation.
+         * calculate() uses it to owe itself the next frame; nothing runs a clock of its own.
+         */
+        bool isAnimating() const;
+
     private:
         void calculateFlight(const ViewState& viewState, float deltaSeconds, std::optional<CameraPanEvent>& panEvent, std::optional<CameraRotationEvent>& rotationEvent, std::optional<CameraTiltEvent>& tiltEvent, std::optional<CameraZoomEvent>& zoomEvent);
         std::optional<CameraPanEvent> calculatePan(const ViewState& viewState, float deltaSeconds);

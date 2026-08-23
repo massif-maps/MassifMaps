@@ -18,10 +18,6 @@ public final class MapCamera {
 
     private final MapView view;
     private float duration;
-    /** The last target commanded, for {@link #reapply}. */
-    private MapPos lastPos;
-    private float lastZoom, lastRotation, lastTilt;
-    private boolean commanded;
 
     MapCamera(MapView view) {
         this.view = view;
@@ -54,28 +50,19 @@ public final class MapCamera {
     }
 
     /**
-     * Moves everything in ONE flight. Four separate setters animate independently and visibly
-     * fight each other; this is the call an app actually wants.
+     * Moves everything in ONE move. Four separate setters animate independently and visibly fight
+     * each other; this is the call an app actually wants.
      *
-     * A duration of 0 is applied DIRECTLY rather than as a flight: a flight is set up on the
-     * render thread's next frame, so one asked for before the map has drawn - the usual case when
-     * a screen opens - is simply never run, and the camera stays wherever it started.
-     * See https://github.com/massif-maps/MassifMaps/issues (flyTo before the first frame).
+     * With no {@link #animate} it is immediate, and works before the map has drawn - which is when
+     * a screen usually points its camera.
      */
     public MapCamera moveTo(MapPos pos, float zoom, float rotation, float tilt) {
         float seconds = take();
         if (seconds > 0) {
             view.flyTo(pos, zoom, rotation, tilt, seconds);
         } else {
-            // ZOOM FIRST. With restricted panning on, the focus is clamped so the viewport stays
-            // inside the world, so setting it while the map is still zoomed out to the whole globe
-            // pins the latitude to 0 - and the later zoom does not undo it.
-            view.setZoom(zoom, 0);
-            view.setMapRotation(rotation, 0);
-            view.setTilt(tilt, 0);
-            view.setFocusPos(pos, 0);
+            view.moveTo(pos, zoom, rotation, tilt);
         }
-        remember(pos, zoom, rotation, tilt);
         return this;
     }
 
@@ -84,10 +71,8 @@ public final class MapCamera {
         if (seconds > 0) {
             view.flyTo(pos, zoom, seconds);
         } else {
-            view.setZoom(zoom, 0);
-            view.setFocusPos(pos, 0);
+            view.moveTo(pos, zoom);
         }
-        remember(pos, zoom, rotation(), tilt());
         return this;
     }
 
@@ -134,33 +119,6 @@ public final class MapCamera {
     public MapCamera stop() {
         view.stopFlight();
         return this;
-    }
-
-    /**
-     * Re-issues the last {@link #moveTo}.
-     *
-     * Needed because restricted panning CLAMPS a focus set before the GL surface has a size - the
-     * latitude comes back as 0 and the map opens on the equator. Android layout is not the gate;
-     * the surface is, and it arrives on the render thread. Call this once the map has drawn.
-     *
-     * A workaround for an SDK bug, not a feature: see MapCamera#moveTo.
-     */
-    public MapCamera reapply() {
-        if (commanded) {
-            view.setZoom(lastZoom, 0);
-            view.setMapRotation(lastRotation, 0);
-            view.setTilt(lastTilt, 0);
-            view.setFocusPos(lastPos, 0);
-        }
-        return this;
-    }
-
-    private void remember(MapPos pos, float zoom, float rotation, float tilt) {
-        lastPos = pos;
-        lastZoom = zoom;
-        lastRotation = rotation;
-        lastTilt = tilt;
-        commanded = true;
     }
 
     private float take() {

@@ -57,12 +57,25 @@ static NSString * const kMapKind = @"map";
 }
 
 - (instancetype)moveTo:(MSFMapPos *)pos zoom:(float)zoom rotation:(float)rotation tilt:(float)tilt {
-    [_view flyTo:pos zoom:zoom rotation:rotation tilt:tilt durationSeconds:[self take]];
+    float seconds = [self take];
+    if (seconds > 0) {
+        [_view flyTo:pos zoom:zoom rotation:rotation tilt:tilt durationSeconds:seconds];
+    } else {
+        // Not flyTo with a duration of 0: that means "pick a duration from the path", and a flight
+        // needs a frame to set itself up against. This is the immediate move, and it works before
+        // the map has drawn - which is when a screen usually points its camera.
+        [_view moveTo:pos zoom:zoom rotation:rotation tilt:tilt];
+    }
     return self;
 }
 
 - (instancetype)moveTo:(MSFMapPos *)pos zoom:(float)zoom {
-    [_view flyTo:pos zoom:zoom durationSeconds:[self take]];
+    float seconds = [self take];
+    if (seconds > 0) {
+        [_view flyTo:pos zoom:zoom durationSeconds:seconds];
+    } else {
+        [_view moveTo:pos zoom:zoom];
+    }
     return self;
 }
 

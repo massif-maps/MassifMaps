@@ -122,9 +122,29 @@ __attribute__ ((visibility("default"))) @interface MSFMapView : MSFGLKView
  */
 -(void)rotate:(float)deltaAngle durationSeconds:(float)durationSeconds;
 /**
+ * Points the camera at a position and a zoom level IMMEDIATELY, with no animation.
+ *
+ * Prefer it over setFocusPos + setZoom, which are clamped differently depending on which is applied
+ * first, and unlike flyTo it needs no frame - so it also works before the map has drawn.
+ * @param pos The target position in base projection coordinate system.
+ * @param zoom The target zoom level.
+ */
+-(void)moveTo:(MSFMapPos*)pos zoom:(float)zoom;
+/**
+ * The same, also setting rotation and tilt. See moveTo.
+ * @param pos The target position in base projection coordinate system.
+ * @param zoom The target zoom level.
+ * @param rotation The rotation in degrees.
+ * @param tilt The tilt in degrees.
+ */
+-(void)moveTo:(MSFMapPos*)pos zoom:(float)zoom rotation:(float)rotation tilt:(float)tilt;
+/**
  * Moves the camera to a position and a zoom level in ONE animation, pulling back over a long move
  * and coming down at the target. Unlike setFocusPos + setZoom, which run on their own clocks and
  * cross the map at the final zoom, this keeps the whole path in view.
+ *
+ * A duration of 0 is NOT immediate - it derives the duration from the path. For an immediate move
+ * use moveTo.
  * @param pos The target position in base projection coordinate system.
  * @param zoom The target zoom level.
  * @param durationSeconds The duration in seconds, or 0 to derive it from the length of the path.

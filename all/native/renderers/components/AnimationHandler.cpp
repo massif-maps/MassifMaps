@@ -85,6 +85,22 @@ namespace massif {
         if (cameraZoomEvent) {
             _mapRenderer.calculateCameraEvent(*cameraZoomEvent, 0, false);
         }
+
+        // An animation that is not finished owes itself the next frame, the same way
+        // KineticEventHandler does. Without this it advanced only as far as something ELSE happened
+        // to redraw - in practice the cull pass behind viewChanged - so a move over a map with no
+        // layers yet, or one asked for before the first frame, stopped at whatever it had reached.
+        // A flight was the visible case: it sets its path up on its first frame and emits progress
+        // 0, so the camera stayed exactly where it started and the move looked like it never ran.
+        if (isAnimating()) {
+            _mapRenderer.requestRedraw();
+        }
+    }
+
+    bool AnimationHandler::isAnimating() const {
+        std::lock_guard<std::mutex> lock(_mutex);
+        return _flightActive || _panDurationSeconds > 0 || _rotationDurationSeconds > 0 ||
+               _tiltDurationSeconds > 0 || _zoomDurationSeconds > 0;
     }
     
     void AnimationHandler::setPanTarget(const MapPos& panTarget, float durationSeconds) {

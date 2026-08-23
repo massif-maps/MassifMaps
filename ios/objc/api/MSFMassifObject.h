@@ -104,7 +104,7 @@ NS_SWIFT_NAME(MassifObject)
 // --- events -----------------------------------------------------------------------------------
 
 /** Subscribes to an event, delivered on the main queue. */
-- (nullable MSFSubscription *)on:(NSString *)event handler:(MSFMapEventHandler)handler;
+- (nullable MSFSubscription *)on:(NSString *)event handler:(MSFMapEventHandler)handler NS_WARN_UNUSED_RESULT;
 
 /** Removes every handler of one event on this object. */
 - (int)off:(NSString *)event;
@@ -198,19 +198,19 @@ NS_SWIFT_NAME(MassifLayer)
  * Subscribes to feature clicks. Installs the bridge on first use and chains to whatever listener
  * was already there, so an app that also uses the object API keeps working.
  */
-- (nullable MSFSubscription *)onFeatureClick:(MSFVectorTileClickHandler)handler;
+- (nullable MSFSubscription *)onFeatureClick:(MSFVectorTileClickHandler)handler NS_WARN_UNUSED_RESULT;
 
 /** Subscribes to clicks on the ELEMENTS of a vector layer - a marker, a popup an app added. */
-- (nullable MSFSubscription *)onElementClick:(MSFVectorElementClickHandler)handler;
+- (nullable MSFSubscription *)onElementClick:(MSFVectorElementClickHandler)handler NS_WARN_UNUSED_RESULT;
 
 /** The same, claiming the tap, so the map's own onClick does not also fire. */
-- (nullable MSFSubscription *)consumeElementClick:(MSFVectorElementClickFilter)handler;
+- (nullable MSFSubscription *)consumeElementClick:(MSFVectorElementClickFilter)handler NS_WARN_UNUSED_RESULT;
 
 /**
  * The same, for a handler that can claim the click. It runs on the thread the click came from,
  * because the SDK asks whether the event was consumed NOW.
  */
-- (nullable MSFSubscription *)consumeFeatureClick:(MSFVectorTileClickFilter)handler;
+- (nullable MSFSubscription *)consumeFeatureClick:(MSFVectorTileClickFilter)handler NS_WARN_UNUSED_RESULT;
 
 /**
  * Elevations under a set of positions, as one flat array of doubles - a profile over a track is

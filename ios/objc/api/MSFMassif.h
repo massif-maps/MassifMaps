@@ -52,6 +52,10 @@ NS_SWIFT_NAME(Spec)
  *
  * Removing it is `invalidate`, and it removes itself on dealloc - so a subscription stored in a
  * property dies with its owner rather than outliving the object that reads it.
+ *
+ * KEEP IT. Dropping the returned object unsubscribes immediately and the handler never runs, which
+ * is why every method returning one is marked warn_unused_result: this failed silently once, and a
+ * compiler warning is the only place it shows.
  */
 __attribute__ ((visibility("default")))
 NS_SWIFT_NAME(Subscription)

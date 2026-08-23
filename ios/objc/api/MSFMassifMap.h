@@ -213,12 +213,12 @@ NS_SWIFT_NAME(MassifMap)
 /** And the other way, for placing a native view over a coordinate. */
 - (nullable MSFScreenPos *)mapToScreen:(MSFMapPos *)pos;
 
-- (nullable MSFSubscription *)onClick:(MSFMapClickHandler)handler;
-- (nullable MSFSubscription *)onMove:(MSFMapEventHandler)handler;
+- (nullable MSFSubscription *)onClick:(MSFMapClickHandler)handler NS_WARN_UNUSED_RESULT;
+- (nullable MSFSubscription *)onMove:(MSFMapEventHandler)handler NS_WARN_UNUSED_RESULT;
 
 /** Fires once the map has stopped moving and every visible tile has settled. */
-- (nullable MSFSubscription *)onIdle:(MSFMapEventHandler)handler;
-- (nullable MSFSubscription *)onStable:(MSFMapEventHandler)handler;
+- (nullable MSFSubscription *)onIdle:(MSFMapEventHandler)handler NS_WARN_UNUSED_RESULT;
+- (nullable MSFSubscription *)onStable:(MSFMapEventHandler)handler NS_WARN_UNUSED_RESULT;
 
 /**
  * Pans, zooms, rotations and tilts the user drove.
@@ -226,7 +226,7 @@ NS_SWIFT_NAME(MassifMap)
  * Coalesced: this fires per frame while a finger is down, so a pending one is replaced rather
  * than queued, and a slow handler cannot flood the loop.
  */
-- (nullable MSFSubscription *)onInteraction:(MSFMapInteractionHandler)handler;
+- (nullable MSFSubscription *)onInteraction:(MSFMapInteractionHandler)handler NS_WARN_UNUSED_RESULT;
 
 /** Every handler on this map, gone. Layer subscriptions are the layer's own. */
 - (instancetype)offAll;

@@ -52,13 +52,13 @@ NS_SWIFT_NAME(MassifElements)
 - (instancetype)clear;
 
 /** Clicks on the elements themselves, with the element's position on the payload. */
-- (nullable MSFSubscription *)onClick:(MSFVectorElementClickHandler)handler;
+- (nullable MSFSubscription *)onClick:(MSFVectorElementClickHandler)handler NS_WARN_UNUSED_RESULT;
 
 /**
  * The same, claiming the tap so the map's own onClick does not also fire - which is what an app
  * wants whenever "tap a marker" and "tap the map" mean different things.
  */
-- (nullable MSFSubscription *)consumeClick:(MSFVectorElementClickFilter)handler;
+- (nullable MSFSubscription *)consumeClick:(MSFVectorElementClickFilter)handler NS_WARN_UNUSED_RESULT;
 
 /** The layer they are drawn on, for opacity, visibility and ordering. */
 @property (nonatomic, readonly, nullable) MSFMassifLayer *layer;

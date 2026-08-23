@@ -66,6 +66,13 @@ namespace massif {
     };
 
     /**
+     * The enum name, for a message a human reads. "result 6" and "see the log" over a log with
+     * nothing in it is not a diagnosis, and every binding renders a bare code that way.
+     * @return The name, or "RESULT_?" for a value outside the enum.
+     */
+    const char* resultName(Result result);
+
+    /**
      * How a spec key that does not resolve is treated. Unknown keys are dropped with a warning,
      * so a spec written against another SDK version still applies what it can.
      */

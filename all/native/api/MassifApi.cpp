@@ -14,8 +14,8 @@ namespace massif { namespace api {
         Handle handle = NULL_HANDLE;
         Result result = Spec::create(*Context::GetDefault(), kind, objectId, json, handle);
         if (result != RESULT_OK) {
-            throw GenericException("Cannot create '" + objectId + "' of kind '" + kind +
-                                   "' (result " + std::to_string(result) + "), see the log");
+            throw GenericException("Cannot create '" + objectId + "' of kind '" + kind + "': " +
+                                   resultName(result));
         }
         return static_cast<int>(handle);
     }
@@ -105,8 +105,7 @@ namespace massif { namespace api {
 
     namespace {
         std::string describe(const std::string& method, Result result) {
-            return "Cannot call '" + method + "' (result " + std::to_string(result) +
-                   "), see the log";
+            return "Cannot call '" + method + "': " + resultName(result);
         }
     }
 

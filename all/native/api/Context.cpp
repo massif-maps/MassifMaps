@@ -112,6 +112,26 @@ namespace massif { namespace api {
         }
     }
 
+    const char* resultName(Result result) {
+        switch (result) {
+        case RESULT_OK:               return "RESULT_OK";
+        case RESULT_BAD_HANDLE:       return "RESULT_BAD_HANDLE";
+        case RESULT_UNKNOWN_CLASS:    return "RESULT_UNKNOWN_CLASS";
+        case RESULT_UNKNOWN_PROPERTY: return "RESULT_UNKNOWN_PROPERTY";
+        case RESULT_READONLY:         return "RESULT_READONLY";
+        case RESULT_UNSUPPORTED_TYPE: return "RESULT_UNSUPPORTED_TYPE";
+        case RESULT_DUPLICATE_ID:     return "RESULT_DUPLICATE_ID";
+        case RESULT_NOT_TRAVERSABLE:  return "RESULT_NOT_TRAVERSABLE";
+        case RESULT_NULL_OBJECT:      return "RESULT_NULL_OBJECT";
+        case RESULT_BAD_SPEC:         return "RESULT_BAD_SPEC";
+        case RESULT_UNKNOWN_TYPE:     return "RESULT_UNKNOWN_TYPE";
+        case RESULT_UNKNOWN_METHOD:   return "RESULT_UNKNOWN_METHOD";
+        case RESULT_FAILED:           return "RESULT_FAILED";
+        case RESULT_REJECTED:         return "RESULT_REJECTED";
+        }
+        return "RESULT_?";
+    }
+
     Context::Context() {
         // Slot 0 is never handed out, so NULL_HANDLE cannot collide with a real object.
         _slots.resize(1);

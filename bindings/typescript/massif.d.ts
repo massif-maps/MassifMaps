@@ -22,6 +22,7 @@ export interface ClickInfo { clickType: number; }
 export type Handle<C extends ClassName = ClassName> = number & { readonly __massif: C };
 
 export type ClassName =
+  | "massif::Address"
   | "massif::AnimationStyle"
   | "massif::AnimationStyleBuilder"
   | "massif::AssetPackage"
@@ -84,6 +85,10 @@ export type ClassName =
   | "massif::GeoJSONGeometryReader"
   | "massif::GeoJSONGeometryWriter"
   | "massif::GeoJSONVectorTileDataSource"
+  | "massif::GeocodingAddress"
+  | "massif::GeocodingRequest"
+  | "massif::GeocodingResult"
+  | "massif::GeocodingService"
   | "massif::Geometry"
   | "massif::GeometryCollection"
   | "massif::GeometryCollectionStyle"
@@ -109,6 +114,8 @@ export type ClassName =
   | "massif::ManeuverArrowBuilder"
   | "massif::MapBounds"
   | "massif::MapBoxElevationDataDecoder"
+  | "massif::MapBoxOnlineGeocodingService"
+  | "massif::MapBoxOnlineReverseGeocodingService"
   | "massif::MapClickInfo"
   | "massif::MapEnvelope"
   | "massif::MapEventListener"
@@ -128,17 +135,38 @@ export type ClassName =
   | "massif::MergedMBVTTileDataSource"
   | "massif::MultiGeometry"
   | "massif::MultiLineGeometry"
+  | "massif::MultiOSMOfflineGeocodingService"
+  | "massif::MultiOSMOfflineReverseGeocodingService"
   | "massif::MultiPointGeometry"
   | "massif::MultiPolygonGeometry"
   | "massif::MultiTileDataSource"
+  | "massif::MultiValhallaOfflineRoutingService"
   | "massif::NMLModel"
   | "massif::NMLModelStyle"
   | "massif::NMLModelStyleBuilder"
+  | "massif::OSMOfflineGeocodingService"
+  | "massif::OSMOfflineReverseGeocodingService"
+  | "massif::OSRMOfflineRoutingService"
+  | "massif::OnChangeListener"
   | "massif::Options"
   | "massif::OptionsListener"
   | "massif::OrderedTileDataSource"
   | "massif::PMTilesTileDataSource"
+  | "massif::PackageInfo"
+  | "massif::PackageManager"
+  | "massif::PackageManagerGeocodingService"
+  | "massif::PackageManagerListener"
+  | "massif::PackageManagerReverseGeocodingService"
+  | "massif::PackageManagerRoutingService"
+  | "massif::PackageManagerTileDataSource"
+  | "massif::PackageManagerValhallaRoutingService"
+  | "massif::PackageMetaInfo"
+  | "massif::PackageStatus"
+  | "massif::PackageTileMask"
+  | "massif::PeliasOnlineGeocodingService"
+  | "massif::PeliasOnlineReverseGeocodingService"
   | "massif::PersistentCacheTileDataSource"
+  | "massif::PersistentTaskQueue"
   | "massif::Point"
   | "massif::PointGeometry"
   | "massif::PointStyle"
@@ -162,6 +190,17 @@ export type ClassName =
   | "massif::RasterTileLayer"
   | "massif::RedrawRequestListener"
   | "massif::RendererCaptureListener"
+  | "massif::ReverseGeocodingRequest"
+  | "massif::ReverseGeocodingService"
+  | "massif::RouteMatchingEdge"
+  | "massif::RouteMatchingPoint"
+  | "massif::RouteMatchingRequest"
+  | "massif::RouteMatchingResult"
+  | "massif::RoutingInstruction"
+  | "massif::RoutingRequest"
+  | "massif::RoutingResult"
+  | "massif::RoutingService"
+  | "massif::SGREOfflineRoutingService"
   | "massif::ScreenBounds"
   | "massif::ScreenPos"
   | "massif::SearchRequest"
@@ -183,12 +222,16 @@ export type ClassName =
   | "massif::TileLayer"
   | "massif::TileLoadListener"
   | "massif::TileUtils"
+  | "massif::TomTomOnlineGeocodingService"
+  | "massif::TomTomOnlineReverseGeocodingService"
   | "massif::TorqueTileDecoder"
   | "massif::TorqueTileLayer"
   | "massif::TouchHandlerListener"
   | "massif::UTFGridClickInfo"
   | "massif::UTFGridEventListener"
   | "massif::UiDispatcher"
+  | "massif::ValhallaOfflineRoutingService"
+  | "massif::ValhallaOnlineRoutingService"
   | "massif::Variant"
   | "massif::VariantArrayBuilder"
   | "massif::VariantObjectBuilder"
@@ -210,6 +253,10 @@ export type ClassName =
   | "massif::VectorTileLayer"
   | "massif::VectorTileSearchService"
   | "massif::ViewState"
+  | "massif::WKBGeometryReader"
+  | "massif::WKBGeometryWriter"
+  | "massif::WKTGeometryReader"
+  | "massif::WKTGeometryWriter"
   | "massif::ZippedAssetPackage"
   ;
 
@@ -357,6 +404,52 @@ export type MBTilesSchemeMBTilesScheme =
   | "MBTILES_SCHEME_XYZ"
   ;
 
+export type PackageActionPackageAction =
+  /** Package is ready. */
+  | "PACKAGE_ACTION_READY"
+  /** Package is waiting in the task queue. */
+  | "PACKAGE_ACTION_WAITING"
+  /** Package is being downloaded. */
+  | "PACKAGE_ACTION_DOWNLOADING"
+  /** Package data is being copied. */
+  | "PACKAGE_ACTION_COPYING"
+  /** Package is being removed. */
+  | "PACKAGE_ACTION_REMOVING"
+  ;
+
+export type PackageErrorTypePackageErrorType =
+  /** Internal or system error. */
+  | "PACKAGE_ERROR_TYPE_SYSTEM"
+  /** Connection or network error. */
+  | "PACKAGE_ERROR_TYPE_CONNECTION"
+  /** The number of downloaded packages exceeded subscription limit. */
+  | "PACKAGE_ERROR_TYPE_DOWNLOAD_LIMIT_EXCEEDED"
+  /** The bounding box of the package contains too many tiles. This error is only returned for custom bounding box packages. */
+  | "PACKAGE_ERROR_TYPE_PACKAGE_TOO_BIG"
+  /** The license does not allow downloading offline packages. */
+  | "PACKAGE_ERROR_TYPE_NO_OFFLINE_PLAN"
+  ;
+
+export type PackageTileStatusPackageTileStatus =
+  /** Tile is not part of the package. */
+  | "PACKAGE_TILE_STATUS_MISSING"
+  /** Tile is part of the package, but package does not fully cover it. This value is no longer used, thus this is deprecated. */
+  | "PACKAGE_TILE_STATUS_PARTIAL"
+  /** Tile if part of the package and package fully covers it. */
+  | "PACKAGE_TILE_STATUS_FULL"
+  ;
+
+export type PackageTypePackageType =
+  /** Map package. */
+  | "PACKAGE_TYPE_MAP"
+  /** Routing package. */
+  | "PACKAGE_TYPE_ROUTING"
+  /** Geocoding package. */
+  | "PACKAGE_TYPE_GEOCODING"
+  /** Valhalla routing package. */
+  | "PACKAGE_TYPE_VALHALLA_ROUTING"
+  ;
+
 export type PanningModePanningMode =
   /** Free panning means that the map panning is unrestricted, user is able to zoom, rotate and pan the map at the same time without any artificial limits. */
   | "PANNING_MODE_FREE"
@@ -396,6 +489,56 @@ export type RenderProjectionModeRenderProjectionMode =
   | "RENDER_PROJECTION_MODE_PLANAR"
   /** Spherical projection. */
   | "RENDER_PROJECTION_MODE_SPHERICAL"
+  ;
+
+export type RouteMatchingPointTypeRouteMatchingPointType =
+  /** The point was unmatched. */
+  | "ROUTE_MATCHING_POINT_UNMATCHED"
+  /** The point was interpolated. */
+  | "ROUTE_MATCHING_POINT_INTERPOLATED"
+  /** The point was matched. */
+  | "ROUTE_MATCHING_POINT_MATCHED"
+  ;
+
+export type RoutingActionRoutingAction =
+  /** Head on, start the route. */
+  | "ROUTING_ACTION_HEAD_ON"
+  /** Finish the route. */
+  | "ROUTING_ACTION_FINISH"
+  /** Continue along the given street, do not turn. */
+  | "ROUTING_ACTION_NO_TURN"
+  /** Go straight. */
+  | "ROUTING_ACTION_GO_STRAIGHT"
+  /** Turn right. */
+  | "ROUTING_ACTION_TURN_RIGHT"
+  /** Do an u-turn. */
+  | "ROUTING_ACTION_UTURN"
+  /** Turn left. */
+  | "ROUTING_ACTION_TURN_LEFT"
+  /** Reached given via point. If this is the final point, FINISH action is used instead. */
+  | "ROUTING_ACTION_REACH_VIA_LOCATION"
+  /** Enter roundabout. Used by Valhalla and OSRM. */
+  | "ROUTING_ACTION_ENTER_ROUNDABOUT"
+  /** Leave roundabout. Used by Valhalla and OSRM. */
+  | "ROUTING_ACTION_LEAVE_ROUNDABOUT"
+  /** Continue along the roundabout. Only used by OSRM. */
+  | "ROUTING_ACTION_STAY_ON_ROUNDABOUT"
+  /** Start at the end of the street. Currently used only by OSRM. */
+  | "ROUTING_ACTION_START_AT_END_OF_STREET"
+  /** Enter street while moving against the allowed direction. Only used by OSRM. */
+  | "ROUTING_ACTION_ENTER_AGAINST_ALLOWED_DIRECTION"
+  /** Leave the street while moving aginst the allowed direction. Only used by OSRM. */
+  | "ROUTING_ACTION_LEAVE_AGAINST_ALLOWED_DIRECTION"
+  /** Go up. Only used by the SGRE. */
+  | "ROUTING_ACTION_GO_UP"
+  /** Go down. Only used by SGRE. */
+  | "ROUTING_ACTION_GO_DOWN"
+  /** Wait. Only used by SGRE. */
+  | "ROUTING_ACTION_WAIT"
+  /** Enter ferry. Only used by Valhalla. */
+  | "ROUTING_ACTION_ENTER_FERRY"
+  /** Leave ferry. Only used by Valhalla. */
+  | "ROUTING_ACTION_LEAVE_FERRY"
   ;
 
 export type TileFormatTileFormat =
@@ -474,11 +617,48 @@ export type ChangeType =
   | "PACKAGES_DELETED"
   ;
 
+export type Command =
+  | "NOP"
+  | "DOWNLOAD_PACKAGE_LIST"
+  | "DOWNLOAD_PACKAGE"
+  | "IMPORT_PACKAGE"
+  | "REMOVE_PACKAGE"
+  | "DOWNLOAD_STYLE"
+  ;
+
+export type PackageChangeType =
+  | "PACKAGES_UPDATED"
+  | "PACKAGES_ADDED"
+  | "PACKAGES_DELETED"
+  ;
+
 // --- properties ----------------------------------------------------------
 //
 // One entry per class: every path reachable from it, and the type at the end.
 
 export interface PropertyTypes {
+  "massif::Address": {
+    /** (read-only) Returns the list of category tags describing the address. */
+    readonly "categories": string[];
+    /** (read-only) Returns the country name included in the address. */
+    readonly "country": string;
+    /** (read-only) Returns the county name included in the address. */
+    readonly "county": string;
+    /** (read-only) Returns the house number included in the address. */
+    readonly "houseNumber": string;
+    /** (read-only) Returns the locality (city, town, village) name included in the address. */
+    readonly "locality": string;
+    /** (read-only) Returns the name included in the address. */
+    readonly "name": string;
+    /** (read-only) Returns the local neighbourhood name included in the address. */
+    readonly "neighbourhood": string;
+    /** (read-only) Returns the postcode of the address. */
+    readonly "postcode": string;
+    /** (read-only) Returns the region name included in the address. */
+    readonly "region": string;
+    /** (read-only) Returns the street name included in the address. */
+    readonly "street": string;
+  };
   "massif::AnimationStyle": {
     /** (read-only) Returns the fade animation type. */
     readonly "fadeAnimationType": "ANIMATION_TYPE_NONE" | "ANIMATION_TYPE_STEP" | "ANIMATION_TYPE_LINEAR" | "ANIMATION_TYPE_SMOOTHSTEP" | "ANIMATION_TYPE_SPRING";
@@ -1906,6 +2086,61 @@ export interface PropertyTypes {
     /** Returns the simplification tolerance in tile pixels. */
     "simplifyTolerance": number;
   };
+  "massif::GeocodingAddress": {
+    /** (read-only) Returns the list of category tags describing the address. */
+    readonly "categories": string[];
+    /** (read-only) Returns the country name included in the address. */
+    readonly "country": string;
+    /** (read-only) Returns the county name included in the address. */
+    readonly "county": string;
+    /** (read-only) Returns the house number included in the address. */
+    readonly "houseNumber": string;
+    /** (read-only) Returns the locality (city, town, village) name included in the address. */
+    readonly "locality": string;
+    /** (read-only) Returns the name included in the address. */
+    readonly "name": string;
+    /** (read-only) Returns the local neighbourhood name included in the address. */
+    readonly "neighbourhood": string;
+    /** (read-only) Returns the postcode of the address. */
+    readonly "postcode": string;
+    /** (read-only) Returns the region name included in the address. */
+    readonly "region": string;
+    /** (read-only) Returns the street name included in the address. */
+    readonly "street": string;
+  };
+  "massif::GeocodingRequest": {
+    /** Returns the location attribute of the request. The matching address near the specified location (up to a specified radius) are preferred. */
+    "location": Position;
+    /** Returns the location radius attribute of the request (in meters). */
+    "locationRadius": number;
+    /** (read-only) Returns the projection of the request. */
+    readonly "projection": Handle<"massif::Projection">;
+    /** (read-only) Returns the bounds of this projection. */
+    readonly "projection.bounds": Bounds;
+    readonly "projection.name": string;
+    /** (read-only) Returns the text-based query of the request. */
+    readonly "query": string;
+  };
+  "massif::GeocodingResult": {
+    /** (read-only) Returns the address of the result. */
+    readonly "address": Json;
+    /** (read-only) Returns the feature collection of the result. */
+    readonly "featureCollection": Handle<"massif::FeatureCollection">;
+    /** (read-only) Returns the number of features in this container. */
+    readonly "featureCollection.featureCount": number;
+    /** (read-only) Returns the projection of the geometry in the result. */
+    readonly "projection": Handle<"massif::Projection">;
+    /** (read-only) Returns the bounds of this projection. */
+    readonly "projection.bounds": Bounds;
+    readonly "projection.name": string;
+    /** (read-only) Returns the rank of the result. The rank is a normalized number between 0 and 1, 1 meaning a perfect match. */
+    readonly "rank": number;
+  };
+  "massif::GeocodingService": {
+    "autocomplete": boolean;
+    "language": string;
+    "maxResults": number;
+  };
   "massif::Geometry": {
     /** (read-only) Returns the minimal bounds for the geometry. */
     readonly "bounds": Bounds;
@@ -2669,6 +2904,18 @@ export interface PropertyTypes {
   };
   "massif::MapBoxElevationDataDecoder": {
   };
+  "massif::MapBoxOnlineGeocodingService": {
+    "autocomplete": boolean;
+    /** Returns the custom backend service URL. */
+    "customServiceURL": string;
+    "language": string;
+    "maxResults": number;
+  };
+  "massif::MapBoxOnlineReverseGeocodingService": {
+    /** Returns the custom backend service URL. */
+    "customServiceURL": string;
+    "language": string;
+  };
   "massif::MapClickInfo": {
     /** (read-only) Returns the click info. */
     readonly "clickInfo": ClickInfo;
@@ -3048,6 +3295,14 @@ export interface PropertyTypes {
     readonly "geometryCount": number;
     readonly "type": "GEOMETRY_TYPE_POINT" | "GEOMETRY_TYPE_LINE" | "GEOMETRY_TYPE_POLYGON" | "GEOMETRY_TYPE_MULTIPOINT" | "GEOMETRY_TYPE_MULTILINE" | "GEOMETRY_TYPE_MULTIPOLYGON" | "GEOMETRY_TYPE_COLLECTION";
   };
+  "massif::MultiOSMOfflineGeocodingService": {
+    "autocomplete": boolean;
+    "language": string;
+    "maxResults": number;
+  };
+  "massif::MultiOSMOfflineReverseGeocodingService": {
+    "language": string;
+  };
   "massif::MultiPointGeometry": {
     /** (read-only) Returns the minimal bounds for the geometry. */
     readonly "bounds": Bounds;
@@ -3080,6 +3335,9 @@ export interface PropertyTypes {
     /** (read-only) Returns the bounds of this projection. */
     readonly "projection.bounds": Bounds;
     readonly "projection.name": string;
+  };
+  "massif::MultiValhallaOfflineRoutingService": {
+    "profile": string;
   };
   "massif::NMLModel": {
     /** Returns the base billboard this billboard is attached to. */
@@ -3256,6 +3514,19 @@ export interface PropertyTypes {
     "scalingMode": "BILLBOARD_SCALING_WORLD_SIZE" | "BILLBOARD_SCALING_SCREEN_SIZE" | "BILLBOARD_SCALING_CONST_SCREEN_SIZE";
     /** Returns the vertical offset of the billboard. */
     "verticalOffset": number;
+  };
+  "massif::OSMOfflineGeocodingService": {
+    "autocomplete": boolean;
+    "language": string;
+    "maxResults": number;
+  };
+  "massif::OSMOfflineReverseGeocodingService": {
+    "language": string;
+  };
+  "massif::OSRMOfflineRoutingService": {
+    "profile": string;
+  };
+  "massif::OnChangeListener": {
   };
   "massif::Options": {
     /** Returns the dots per inch value. */
@@ -3505,6 +3776,109 @@ export interface PropertyTypes {
     readonly "projection.bounds": Bounds;
     readonly "projection.name": string;
   };
+  "massif::PackageInfo": {
+    /** (read-only) Returns package meta info. If package contains no meta info, null is returned. */
+    readonly "metaInfo": Handle<"massif::PackageMetaInfo">;
+    /** (read-only) Returns the underlying variant. */
+    readonly "metaInfo.variant": Json;
+    /** (read-only) Returns the default name (short description) of the package. It is better to use getNames method instead, as each package may contain multiple names. The name returned is generic name or if that is not available, then English name. */
+    readonly "name": string;
+    /** (read-only) Returns the internal package id. This should not be displayed to the user. */
+    readonly "packageId": string;
+    /** (read-only) Returns the package type. */
+    readonly "packageType": "PACKAGE_TYPE_MAP" | "PACKAGE_TYPE_ROUTING" | "PACKAGE_TYPE_GEOCODING" | "PACKAGE_TYPE_VALHALLA_ROUTING";
+    /** (read-only) Returns the size of the package in bytes. This can be displayed to the user. */
+    readonly "size": number;
+    /** (read-only) Returns the encoded tile mask of the package. This is available for map packages but not for routing packages. This should not be displayed to the user. */
+    readonly "tileMask": Handle<"massif::PackageTileMask">;
+    /** (read-only) Returns maximum zoom level encoded in this tilemask. */
+    readonly "tileMask.maxZoomLevel": number;
+    /** (read-only) Returns the encoded tile mask value. This should not be displayed to the user. */
+    readonly "tileMask.stringValue": string;
+    /** (read-only) Returns the package version. This should not be displayed to the user. */
+    readonly "version": number;
+  };
+  "massif::PackageManager": {
+    readonly "localPackages": Json;
+    "packageManagerListener": Handle<"massif::PackageManagerListener">;
+    readonly "serverPackageListAge": number;
+    readonly "serverPackageListMetaInfo": Handle<"massif::PackageMetaInfo">;
+    /** (read-only) Returns the underlying variant. */
+    readonly "serverPackageListMetaInfo.variant": Json;
+    readonly "serverPackages": Json;
+  };
+  "massif::PackageManagerGeocodingService": {
+    "autocomplete": boolean;
+    "language": string;
+    "maxResults": number;
+  };
+  "massif::PackageManagerListener": {
+  };
+  "massif::PackageManagerReverseGeocodingService": {
+    "language": string;
+  };
+  "massif::PackageManagerRoutingService": {
+    "profile": string;
+  };
+  "massif::PackageManagerTileDataSource": {
+    /** (read-only) Returns the extent of the tiles in this data source. The bounds are in coordinate system of the projection of the data source. */
+    readonly "dataExtent": Bounds;
+    /** Gets the current encoding type. */
+    "encoding": string;
+    /** Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" */
+    "maxOverzoomLevel": number;
+    /** (read-only) Returns the maximum zoom level supported by this data source. */
+    readonly "maxZoom": number;
+    /** (read-only) Returns the minimum zoom level supported by this data source. */
+    readonly "minZoom": number;
+    /** (read-only) Returns the package manager instance used by the data source. */
+    readonly "packageManager": Handle<"massif::PackageManager">;
+    readonly "packageManager.localPackages": Json;
+    "packageManager.packageManagerListener": Handle<"massif::PackageManagerListener">;
+    readonly "packageManager.serverPackageListAge": number;
+    readonly "packageManager.serverPackageListMetaInfo": Handle<"massif::PackageMetaInfo">;
+    /** (read-only) Returns the underlying variant. */
+    readonly "packageManager.serverPackageListMetaInfo.variant": Json;
+    readonly "packageManager.serverPackages": Json;
+    /** (read-only) Returns the projection of this tile source. */
+    readonly "projection": Handle<"massif::Projection">;
+    /** (read-only) Returns the bounds of this projection. */
+    readonly "projection.bounds": Bounds;
+    readonly "projection.name": string;
+  };
+  "massif::PackageManagerValhallaRoutingService": {
+    "profile": string;
+  };
+  "massif::PackageMetaInfo": {
+    /** (read-only) Returns the underlying variant. */
+    readonly "variant": Json;
+  };
+  "massif::PackageStatus": {
+    /** (read-only) Returns the current action being performed. */
+    readonly "currentAction": "PACKAGE_ACTION_READY" | "PACKAGE_ACTION_WAITING" | "PACKAGE_ACTION_DOWNLOADING" | "PACKAGE_ACTION_COPYING" | "PACKAGE_ACTION_REMOVING";
+    /** (read-only) Returns the paused state of the action. */
+    readonly "paused": boolean;
+    /** (read-only) Returns the progress of the action. */
+    readonly "progress": number;
+  };
+  "massif::PackageTileMask": {
+    /** (read-only) Returns maximum zoom level encoded in this tilemask. */
+    readonly "maxZoomLevel": number;
+    /** (read-only) Returns the encoded tile mask value. This should not be displayed to the user. */
+    readonly "stringValue": string;
+  };
+  "massif::PeliasOnlineGeocodingService": {
+    "autocomplete": boolean;
+    /** Returns the custom backend service URL. */
+    "customServiceURL": string;
+    "language": string;
+    "maxResults": number;
+  };
+  "massif::PeliasOnlineReverseGeocodingService": {
+    /** Returns the custom backend service URL. */
+    "customServiceURL": string;
+    "language": string;
+  };
   "massif::PersistentCacheTileDataSource": {
     /** Returns the state of cache only mode. */
     "cacheOnlyMode": boolean;
@@ -3543,6 +3917,8 @@ export interface PropertyTypes {
     /** (read-only) Returns the bounds of this projection. */
     readonly "projection.bounds": Bounds;
     readonly "projection.name": string;
+  };
+  "massif::PersistentTaskQueue": {
   };
   "massif::Point": {
     /** (read-only) Returns the bounds of this vector element. */
@@ -4207,6 +4583,112 @@ export interface PropertyTypes {
   };
   "massif::RendererCaptureListener": {
   };
+  "massif::ReverseGeocodingRequest": {
+    /** (read-only) Returns the location of the query. */
+    readonly "location": Position;
+    /** (read-only) Returns the projection of the query. */
+    readonly "projection": Handle<"massif::Projection">;
+    /** (read-only) Returns the bounds of this projection. */
+    readonly "projection.bounds": Bounds;
+    readonly "projection.name": string;
+    /** Returns the search radius (in meters). */
+    "searchRadius": number;
+  };
+  "massif::ReverseGeocodingService": {
+    "language": string;
+  };
+  "massif::RouteMatchingEdge": {
+  };
+  "massif::RouteMatchingPoint": {
+    /** (read-only) Returns the corresponding matching edge index in the matching result. */
+    readonly "edgeIndex": number;
+    /** (read-only) Returns the position of the matching point. */
+    readonly "pos": Position;
+    /** (read-only) Returns the type of the matching point. */
+    readonly "type": "ROUTE_MATCHING_POINT_UNMATCHED" | "ROUTE_MATCHING_POINT_INTERPOLATED" | "ROUTE_MATCHING_POINT_MATCHED";
+  };
+  "massif::RouteMatchingRequest": {
+    /** (read-only) Returns the accuracy of the points in the request. */
+    readonly "accuracy": number;
+    /** (read-only) Returns the measured points of the request. */
+    readonly "points": Json;
+    /** (read-only) Returns the projection of the points in the request. */
+    readonly "projection": Handle<"massif::Projection">;
+    /** (read-only) Returns the bounds of this projection. */
+    readonly "projection.bounds": Bounds;
+    readonly "projection.name": string;
+  };
+  "massif::RouteMatchingResult": {
+    /** (read-only) Returns the list with details of the matched edges. */
+    readonly "matchingEdges": Json;
+    /** (read-only) Returns the list with details of the matched points. */
+    readonly "matchingPoints": Json;
+    /** (read-only) Returns the point list of the result. The list contains all the points from the request snapped to the road network. */
+    readonly "points": Json;
+    /** (read-only) Returns the projection of the points in the result. */
+    readonly "projection": Handle<"massif::Projection">;
+    /** (read-only) Returns the bounds of this projection. */
+    readonly "projection.bounds": Bounds;
+    readonly "projection.name": string;
+    /** (read-only) Returns raw result */
+    readonly "rawResult": string;
+  };
+  "massif::RoutingInstruction": {
+    /** (read-only) Returns the action of the instruction. */
+    readonly "action": "ROUTING_ACTION_HEAD_ON" | "ROUTING_ACTION_FINISH" | "ROUTING_ACTION_NO_TURN" | "ROUTING_ACTION_GO_STRAIGHT" | "ROUTING_ACTION_TURN_RIGHT" | "ROUTING_ACTION_UTURN" | "ROUTING_ACTION_TURN_LEFT" | "ROUTING_ACTION_REACH_VIA_LOCATION" | "ROUTING_ACTION_ENTER_ROUNDABOUT" | "ROUTING_ACTION_LEAVE_ROUNDABOUT" | "ROUTING_ACTION_STAY_ON_ROUNDABOUT" | "ROUTING_ACTION_START_AT_END_OF_STREET" | "ROUTING_ACTION_ENTER_AGAINST_ALLOWED_DIRECTION" | "ROUTING_ACTION_LEAVE_AGAINST_ALLOWED_DIRECTION" | "ROUTING_ACTION_GO_UP" | "ROUTING_ACTION_GO_DOWN" | "ROUTING_ACTION_WAIT" | "ROUTING_ACTION_ENTER_FERRY" | "ROUTING_ACTION_LEAVE_FERRY";
+    /** (read-only) Returns the azimuth of the initial position. */
+    readonly "azimuth": number;
+    /** (read-only) Returns the distance to move along the given street. */
+    readonly "distance": number;
+    /** (read-only) Returns the geometry tag associated with the instructions. */
+    readonly "geometryTag": Json;
+    /** (read-only) Returns the optional instruction description. This info is dependent on the routing engine (can be empty) and may be localized. */
+    readonly "instruction": string;
+    /** (read-only) Returns the index of the first geometry point in external point array. */
+    readonly "pointIndex": number;
+    /** (read-only) Returns the name of street. */
+    readonly "streetName": string;
+    /** (read-only) Returns the time approximate duration of the instruction. */
+    readonly "time": number;
+    /** (read-only) Returns the turn angle of the action. */
+    readonly "turnAngle": number;
+  };
+  "massif::RoutingRequest": {
+    /** (read-only) Returns the point list of the request. */
+    readonly "points": Json;
+    /** (read-only) Returns the projection of the points in the request. */
+    readonly "projection": Handle<"massif::Projection">;
+    /** (read-only) Returns the bounds of this projection. */
+    readonly "projection.bounds": Bounds;
+    readonly "projection.name": string;
+  };
+  "massif::RoutingResult": {
+    /** (read-only) Returns the number of turn-by-turn instructions. */
+    readonly "instructionCount": number;
+    /** (read-only) Returns the turn-by-turn instruction list. */
+    readonly "instructions": Json;
+    /** (read-only) Returns the number of points in the path. */
+    readonly "pointCount": number;
+    /** (read-only) Returns the point list of the result. The list contains all the points the route must pass in correct order. */
+    readonly "points": Json;
+    /** (read-only) Returns the projection of the points in the result. */
+    readonly "projection": Handle<"massif::Projection">;
+    /** (read-only) Returns the bounds of this projection. */
+    readonly "projection.bounds": Bounds;
+    readonly "projection.name": string;
+    /** (read-only) Returns raw result */
+    readonly "rawResult": string;
+    /** (read-only) Returns the total distance of the path. */
+    readonly "totalDistance": number;
+    /** (read-only) Returns the approximate total duration of the path. */
+    readonly "totalTime": number;
+  };
+  "massif::RoutingService": {
+    "profile": string;
+  };
+  "massif::SGREOfflineRoutingService": {
+    "profile": string;
+  };
   "massif::ScreenBounds": {
     /** (read-only) Calculates the center screen position of this screen envelope object. */
     readonly "center": [number, number];
@@ -4707,6 +5189,18 @@ export interface PropertyTypes {
   };
   "massif::TileUtils": {
   };
+  "massif::TomTomOnlineGeocodingService": {
+    "autocomplete": boolean;
+    /** Returns the custom backend service URL. */
+    "customServiceURL": string;
+    "language": string;
+    "maxResults": number;
+  };
+  "massif::TomTomOnlineReverseGeocodingService": {
+    /** Returns the custom backend service URL. */
+    "customServiceURL": string;
+    "language": string;
+  };
   "massif::TorqueTileDecoder": {
     /** (read-only) Returns the animation duration, in seconds. */
     readonly "animationDuration": number;
@@ -4850,6 +5344,18 @@ export interface PropertyTypes {
   "massif::UTFGridEventListener": {
   };
   "massif::UiDispatcher": {
+  };
+  "massif::ValhallaOfflineRoutingService": {
+    "profile": string;
+  };
+  "massif::ValhallaOnlineRoutingService": {
+    /** Returns the current set of HTTP headers used. Initially this set is empty and can be changed with setHTTPHeaders. */
+    "HTTPHeaders": Record<string, string>;
+    /** Returns the custom backend service URL. */
+    "customServiceURL": string;
+    "profile": string;
+    /** Returns the current timeout value. */
+    "timeout": number;
   };
   "massif::Variant": {
     /** (read-only) Returns the number of elements in the array. */
@@ -5280,6 +5786,20 @@ export interface PropertyTypes {
     readonly "zoom": number;
     /** (read-only) Returns the distance between the focus and the camera position, when the zoom level is set to 0. This parameter depends on the screen size, DPI, tile draw size and field of view settings. */
     readonly "zoom0Distance": number;
+  };
+  "massif::WKBGeometryReader": {
+  };
+  "massif::WKBGeometryWriter": {
+    /** Returns the endianness of output format. */
+    "bigEndian": boolean;
+    /** Returns the state of Z coordinate serialization. */
+    "z": boolean;
+  };
+  "massif::WKTGeometryReader": {
+  };
+  "massif::WKTGeometryWriter": {
+    /** Returns the state of Z coordinate serialization. */
+    "z": boolean;
   };
   "massif::ZippedAssetPackage": {
     readonly "assetNames": string[];
@@ -5937,6 +6457,26 @@ export interface OptionsSpec_terrain {
 
 export type OptionsSpec = OptionsSpec_fog | OptionsSpec_light | OptionsSpec_sky | OptionsSpec_terrain;
 
+export interface RoutingSpec_valhalla_offline {
+  type: "valhalla-offline";
+  path?: string;
+  profile?: string;
+}
+
+export interface RoutingSpec_valhalla_online {
+  type: "valhalla-online";
+  /** Returns the current set of HTTP headers used. Initially this set is empty and can be changed with setHTTPHeaders. */
+  HTTPHeaders?: Record<string, string>;
+  apiKey?: string;
+  /** Returns the custom backend service URL. */
+  customServiceURL?: string;
+  profile?: string;
+  /** Returns the current timeout value. */
+  timeout?: number;
+}
+
+export type RoutingSpec = RoutingSpec_valhalla_offline | RoutingSpec_valhalla_online;
+
 export interface SearchSpec_request {
   type: "request";
   /** Returns the string based search expression. If empty, then search expression is not used. */
@@ -6137,6 +6677,7 @@ export interface SpecOf {
   "geometry": GeometrySpec;
   "layer": LayerSpec;
   "options": OptionsSpec;
+  "routing": RoutingSpec;
   "search": SearchSpec;
   "source": SourceSpec;
   "style": StyleSpec;
@@ -6147,6 +6688,8 @@ export type Kind = keyof SpecOf & string;
 // --- methods -------------------------------------------------------------
 
 export interface MethodTypes {
+  "massif::Address": {
+  };
   "massif::AnimationStyle": {
   };
   "massif::AnimationStyleBuilder": {
@@ -6295,6 +6838,14 @@ export interface MethodTypes {
     loadTile: (tile: Tile) => Handle<"massif::TileData">;
     setLayerGeoJSON: (layer: number, geoJson: Json) => void;
   };
+  "massif::GeocodingAddress": {
+  };
+  "massif::GeocodingRequest": {
+  };
+  "massif::GeocodingResult": {
+  };
+  "massif::GeocodingService": {
+  };
   "massif::Geometry": {
   };
   "massif::GeometryCollection": {
@@ -6359,6 +6910,10 @@ export interface MethodTypes {
   };
   "massif::MapBoxElevationDataDecoder": {
   };
+  "massif::MapBoxOnlineGeocodingService": {
+  };
+  "massif::MapBoxOnlineReverseGeocodingService": {
+  };
   "massif::MapClickInfo": {
   };
   "massif::MapEnvelope": {
@@ -6400,6 +6955,10 @@ export interface MethodTypes {
   };
   "massif::MultiLineGeometry": {
   };
+  "massif::MultiOSMOfflineGeocodingService": {
+  };
+  "massif::MultiOSMOfflineReverseGeocodingService": {
+  };
   "massif::MultiPointGeometry": {
   };
   "massif::MultiPolygonGeometry": {
@@ -6407,11 +6966,23 @@ export interface MethodTypes {
   "massif::MultiTileDataSource": {
     loadTile: (tile: Tile) => Handle<"massif::TileData">;
   };
+  "massif::MultiValhallaOfflineRoutingService": {
+    calculateRoute: (request: Handle) => Handle<"massif::RoutingResult">;
+  };
   "massif::NMLModel": {
   };
   "massif::NMLModelStyle": {
   };
   "massif::NMLModelStyleBuilder": {
+  };
+  "massif::OSMOfflineGeocodingService": {
+  };
+  "massif::OSMOfflineReverseGeocodingService": {
+  };
+  "massif::OSRMOfflineRoutingService": {
+    calculateRoute: (request: Handle) => Handle<"massif::RoutingResult">;
+  };
+  "massif::OnChangeListener": {
   };
   "massif::Options": {
   };
@@ -6423,8 +6994,39 @@ export interface MethodTypes {
   "massif::PMTilesTileDataSource": {
     loadTile: (tile: Tile) => Handle<"massif::TileData">;
   };
+  "massif::PackageInfo": {
+  };
+  "massif::PackageManager": {
+  };
+  "massif::PackageManagerGeocodingService": {
+  };
+  "massif::PackageManagerListener": {
+  };
+  "massif::PackageManagerReverseGeocodingService": {
+  };
+  "massif::PackageManagerRoutingService": {
+    calculateRoute: (request: Handle) => Handle<"massif::RoutingResult">;
+  };
+  "massif::PackageManagerTileDataSource": {
+    loadTile: (tile: Tile) => Handle<"massif::TileData">;
+  };
+  "massif::PackageManagerValhallaRoutingService": {
+    calculateRoute: (request: Handle) => Handle<"massif::RoutingResult">;
+  };
+  "massif::PackageMetaInfo": {
+  };
+  "massif::PackageStatus": {
+  };
+  "massif::PackageTileMask": {
+  };
+  "massif::PeliasOnlineGeocodingService": {
+  };
+  "massif::PeliasOnlineReverseGeocodingService": {
+  };
   "massif::PersistentCacheTileDataSource": {
     loadTile: (tile: Tile) => Handle<"massif::TileData">;
+  };
+  "massif::PersistentTaskQueue": {
   };
   "massif::Point": {
   };
@@ -6474,6 +7076,33 @@ export interface MethodTypes {
   };
   "massif::RendererCaptureListener": {
   };
+  "massif::ReverseGeocodingRequest": {
+  };
+  "massif::ReverseGeocodingService": {
+  };
+  "massif::RouteMatchingEdge": {
+  };
+  "massif::RouteMatchingPoint": {
+  };
+  "massif::RouteMatchingRequest": {
+  };
+  "massif::RouteMatchingResult": {
+  };
+  "massif::RoutingInstruction": {
+  };
+  "massif::RoutingRequest": {
+    setCustomParameter: (name: string, value: Json) => void;
+  };
+  "massif::RoutingResult": {
+    getInstruction: (index: number) => Handle<"massif::RoutingInstruction">;
+    getPoints: () => number[];
+  };
+  "massif::RoutingService": {
+    calculateRoute: (request: Handle) => Handle<"massif::RoutingResult">;
+  };
+  "massif::SGREOfflineRoutingService": {
+    calculateRoute: (request: Handle) => Handle<"massif::RoutingResult">;
+  };
   "massif::ScreenBounds": {
   };
   "massif::ScreenPos": {
@@ -6520,6 +7149,10 @@ export interface MethodTypes {
   };
   "massif::TileUtils": {
   };
+  "massif::TomTomOnlineGeocodingService": {
+  };
+  "massif::TomTomOnlineReverseGeocodingService": {
+  };
   "massif::TorqueTileDecoder": {
   };
   "massif::TorqueTileLayer": {
@@ -6533,6 +7166,12 @@ export interface MethodTypes {
   "massif::UTFGridEventListener": {
   };
   "massif::UiDispatcher": {
+  };
+  "massif::ValhallaOfflineRoutingService": {
+    calculateRoute: (request: Handle) => Handle<"massif::RoutingResult">;
+  };
+  "massif::ValhallaOnlineRoutingService": {
+    calculateRoute: (request: Handle) => Handle<"massif::RoutingResult">;
   };
   "massif::Variant": {
   };
@@ -6581,6 +7220,14 @@ export interface MethodTypes {
   };
   "massif::ViewState": {
   };
+  "massif::WKBGeometryReader": {
+  };
+  "massif::WKBGeometryWriter": {
+  };
+  "massif::WKTGeometryReader": {
+  };
+  "massif::WKTGeometryWriter": {
+  };
   "massif::ZippedAssetPackage": {
   };
 }
@@ -6590,6 +7237,8 @@ export type MethodName<C extends ClassName> = keyof MethodTypes[C] & string;
 // --- events --------------------------------------------------------------
 
 export interface EventTypes {
+  "massif::Address": {
+  };
   "massif::AnimationStyle": {
   };
   "massif::AnimationStyleBuilder": {
@@ -6717,6 +7366,14 @@ export interface EventTypes {
   };
   "massif::GeoJSONVectorTileDataSource": {
   };
+  "massif::GeocodingAddress": {
+  };
+  "massif::GeocodingRequest": {
+  };
+  "massif::GeocodingResult": {
+  };
+  "massif::GeocodingService": {
+  };
   "massif::Geometry": {
   };
   "massif::GeometryCollection": {
@@ -6767,6 +7424,10 @@ export interface EventTypes {
   };
   "massif::MapBoxElevationDataDecoder": {
   };
+  "massif::MapBoxOnlineGeocodingService": {
+  };
+  "massif::MapBoxOnlineReverseGeocodingService": {
+  };
   "massif::MapClickInfo": {
   };
   "massif::MapEnvelope": {
@@ -6805,17 +7466,31 @@ export interface EventTypes {
   };
   "massif::MultiLineGeometry": {
   };
+  "massif::MultiOSMOfflineGeocodingService": {
+  };
+  "massif::MultiOSMOfflineReverseGeocodingService": {
+  };
   "massif::MultiPointGeometry": {
   };
   "massif::MultiPolygonGeometry": {
   };
   "massif::MultiTileDataSource": {
   };
+  "massif::MultiValhallaOfflineRoutingService": {
+  };
   "massif::NMLModel": {
   };
   "massif::NMLModelStyle": {
   };
   "massif::NMLModelStyleBuilder": {
+  };
+  "massif::OSMOfflineGeocodingService": {
+  };
+  "massif::OSMOfflineReverseGeocodingService": {
+  };
+  "massif::OSRMOfflineRoutingService": {
+  };
+  "massif::OnChangeListener": {
   };
   "massif::Options": {
     "map.clicked": Handle<"massif::MapClickInfo">;
@@ -6830,7 +7505,35 @@ export interface EventTypes {
   };
   "massif::PMTilesTileDataSource": {
   };
+  "massif::PackageInfo": {
+  };
+  "massif::PackageManager": {
+  };
+  "massif::PackageManagerGeocodingService": {
+  };
+  "massif::PackageManagerListener": {
+  };
+  "massif::PackageManagerReverseGeocodingService": {
+  };
+  "massif::PackageManagerRoutingService": {
+  };
+  "massif::PackageManagerTileDataSource": {
+  };
+  "massif::PackageManagerValhallaRoutingService": {
+  };
+  "massif::PackageMetaInfo": {
+  };
+  "massif::PackageStatus": {
+  };
+  "massif::PackageTileMask": {
+  };
+  "massif::PeliasOnlineGeocodingService": {
+  };
+  "massif::PeliasOnlineReverseGeocodingService": {
+  };
   "massif::PersistentCacheTileDataSource": {
+  };
+  "massif::PersistentTaskQueue": {
   };
   "massif::Point": {
   };
@@ -6878,6 +7581,28 @@ export interface EventTypes {
   };
   "massif::RendererCaptureListener": {
   };
+  "massif::ReverseGeocodingRequest": {
+  };
+  "massif::ReverseGeocodingService": {
+  };
+  "massif::RouteMatchingEdge": {
+  };
+  "massif::RouteMatchingPoint": {
+  };
+  "massif::RouteMatchingRequest": {
+  };
+  "massif::RouteMatchingResult": {
+  };
+  "massif::RoutingInstruction": {
+  };
+  "massif::RoutingRequest": {
+  };
+  "massif::RoutingResult": {
+  };
+  "massif::RoutingService": {
+  };
+  "massif::SGREOfflineRoutingService": {
+  };
   "massif::ScreenBounds": {
   };
   "massif::ScreenPos": {
@@ -6920,6 +7645,10 @@ export interface EventTypes {
   };
   "massif::TileUtils": {
   };
+  "massif::TomTomOnlineGeocodingService": {
+  };
+  "massif::TomTomOnlineReverseGeocodingService": {
+  };
   "massif::TorqueTileDecoder": {
   };
   "massif::TorqueTileLayer": {
@@ -6932,6 +7661,10 @@ export interface EventTypes {
   "massif::UTFGridEventListener": {
   };
   "massif::UiDispatcher": {
+  };
+  "massif::ValhallaOfflineRoutingService": {
+  };
+  "massif::ValhallaOnlineRoutingService": {
   };
   "massif::Variant": {
   };
@@ -6976,6 +7709,14 @@ export interface EventTypes {
   "massif::VectorTileSearchService": {
   };
   "massif::ViewState": {
+  };
+  "massif::WKBGeometryReader": {
+  };
+  "massif::WKBGeometryWriter": {
+  };
+  "massif::WKTGeometryReader": {
+  };
+  "massif::WKTGeometryWriter": {
   };
   "massif::ZippedAssetPackage": {
   };

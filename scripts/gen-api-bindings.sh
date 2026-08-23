@@ -19,7 +19,10 @@ set -e
 
 cd "$(dirname "$0")"
 
-python3 gen-api-tables.py --schema ../docs/api/massif-api.json
+# --profile full, not the default 'standard': these artefacts describe the API surface to an
+# INTEGRATION, which links whatever profile it likes. Generated as 'standard' they silently lose
+# routing, valhalla, geocoding and packagemanager, and a binding cannot tell that from "removed".
+python3 gen-api-tables.py --profile full --schema ../docs/api/massif-api.json
 python3 gen-api-typescript.py
 python3 gen-api-constants.py
 

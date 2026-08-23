@@ -61,6 +61,9 @@ set(TEST_SDK_SOURCES
   # MassifApiC.cpp is the flat ABI; Builtins.cpp is NOT here - it pulls in every source and layer,
   # so CAbiTest.cpp defines registerBuiltins() itself over a handful of classes.
   "${SDK_BASE_DIR}/all/native/api/MassifApiC.cpp"
+  # The subscription half of MassifApi. The rest of MassifApi.cpp needs Options, Layers and every
+  # source constructor, which is why these functions were split into a TU of their own.
+  "${SDK_BASE_DIR}/all/native/api/MassifApiEvents.cpp"
   "${SDK_BASE_DIR}/all/native/core/BinaryData.cpp"
   "${SDK_BASE_DIR}/all/native/datasources/components/TileData.cpp"
   "${SDK_BASE_DIR}/all/native/projections/Projection.cpp"

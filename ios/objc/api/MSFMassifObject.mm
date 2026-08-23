@@ -267,9 +267,12 @@
     listener.kind = kind;
     listener.consuming = consuming;
 
+    // A consuming handler is one whose return value the SDK acts on, so the subscription has to
+    // say so - without it the BOOL travels the whole way back and is dropped at the last step.
     int subscription = [MSFMassifApi on:_handle
                                   event:event
                                listener:listener
+                                consume:consuming
                                delivery:(int)delivery
                                coalesce:coalesce
                              projection:projection ?: @""];

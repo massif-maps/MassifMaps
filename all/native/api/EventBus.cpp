@@ -124,6 +124,10 @@ namespace massif { namespace api {
         return true;
     }
 
+    bool EventBus::isSubscribed(Subscription subscription) const {
+        return resolve(subscription) != nullptr;
+    }
+
     std::size_t EventBus::getSubscriptionCount() const {
         std::size_t count = 0;
         for (const Entry& entry : _entries) {

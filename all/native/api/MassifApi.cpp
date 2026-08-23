@@ -109,19 +109,8 @@ namespace massif { namespace api {
         return std::static_pointer_cast<Layer>(Context::GetDefault()->getObject(handle));
     }
 
-    namespace {
-        // The listener a subscription belongs to, kept alive for as long as the subscription is.
-        std::map<int, std::shared_ptr<EventListener> >& listeners() {
-            static std::map<int, std::shared_ptr<EventListener> > registry;
-            return registry;
-        }
-
-        int dispatchToListener(void* userData, std::uint32_t target, const char* event,
-                               std::uint32_t payload) {
-            auto listener = static_cast<EventListener*>(userData);
-            return listener->onEvent(static_cast<int>(target), event, static_cast<int>(payload)) ? 1 : 0;
-        }
-    }
+    // on/off/drain and the listener registry live in MassifApiEvents.cpp - they need Context and
+    // nothing else, and that is what makes them host-testable.
 
     std::shared_ptr<MapEventListener> MassifApi::createEventBridge(
             int handle, const std::shared_ptr<MapEventListener>& chained) {
@@ -139,55 +128,6 @@ namespace massif { namespace api {
             int handle, const std::shared_ptr<VectorElementEventListener>& chained) {
         return std::make_shared<VectorElementEventBridge>(Context::GetDefault(),
                                                           static_cast<Handle>(handle), chained);
-    }
-
-    int MassifApi::on(int handle, const std::string& event,
-                      const std::shared_ptr<EventListener>& listener, int delivery, bool coalesce,
-                      const std::string& projection) {
-        if (!listener) {
-            throw NullArgumentException("Null listener");
-        }
-        Subscription subscription = Context::GetDefault()->subscribe(
-            static_cast<Handle>(handle), event, &dispatchToListener, listener.get(), false,
-            static_cast<Delivery>(delivery), coalesce, projection);
-        if (subscription != NULL_SUBSCRIPTION) {
-            listeners()[static_cast<int>(subscription)] = listener;
-        }
-        return static_cast<int>(subscription);
-    }
-
-    void MassifApi::setUiDispatcher(const std::shared_ptr<UiDispatcher>& dispatcher) {
-        // Held for as long as it is installed: Context keeps only a raw pointer, so nothing else
-        // would stop a director being collected the moment this returns.
-        static std::shared_ptr<UiDispatcher> held;
-        held = dispatcher;
-        if (!dispatcher) {
-            Context::GetDefault()->setUiDispatcher(nullptr, nullptr);
-            return;
-        }
-        Context::GetDefault()->setUiDispatcher(
-            [](void* userData, void (*)(void*), void*) {
-                static_cast<UiDispatcher*>(userData)->post();
-            },
-            dispatcher.get());
-    }
-
-    int MassifApi::drain() {
-        return Context::GetDefault()->drainQueue();
-    }
-
-    bool MassifApi::off(int subscription) {
-        bool removed = Context::GetDefault()->unsubscribe(static_cast<Subscription>(subscription));
-        listeners().erase(subscription);
-        return removed;
-    }
-
-    int MassifApi::offEvent(int handle, const std::string& event) {
-        return Context::GetDefault()->unsubscribeEvent(static_cast<Handle>(handle), event);
-    }
-
-    int MassifApi::offAll(int handle) {
-        return Context::GetDefault()->unsubscribeAll(static_cast<Handle>(handle));
     }
 
     bool MassifApi::unregisterObject(const std::string& kind, const std::string& objectId) {

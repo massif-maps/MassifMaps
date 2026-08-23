@@ -127,6 +127,15 @@ namespace massif { namespace api {
          */
         std::size_t getSubscriptionCount() const;
 
+        /**
+         * Whether a subscription is still live.
+         *
+         * For a binding that keeps something alive per subscription: the bulk removals and the
+         * death of a target do not name what they took with them, so the only way to find the
+         * orphans is to ask.
+         */
+        bool isSubscribed(Subscription subscription) const;
+
     private:
         struct Entry {
             std::uint32_t target = 0;

@@ -365,6 +365,13 @@ namespace massif {
          */
         std::size_t getSubscriptionCount() const;
 
+        /**
+         * Whether a subscription is still live. A binding that keeps a listener alive per
+         * subscription needs this: unsubscribeEvent, unsubscribeAll and the death of a target do
+         * not name the subscriptions they remove, so the orphans can only be found by asking.
+         */
+        bool isSubscribed(Subscription subscription) const;
+
     private:
         struct Slot {
             std::shared_ptr<void> obj;

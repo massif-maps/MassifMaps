@@ -4,6 +4,8 @@
  */
 
 #include "api/Context.h"
+#include "api/MassifApi.h"
+#include "components/Exceptions.h"
 #include "components/FogOptions.h"
 
 #include <memory>
@@ -217,4 +219,127 @@ void testDelivery() {
     context->unregisterObject("options", "q");
     TEST_CHECK(context->getProperty(second, "rangeStart", value) == RESULT_BAD_HANDLE,
                "and its payload is still released");
+}
+
+namespace {
+    /** What a Java or Objective-C handler is on the C++ side: a director returning a bool. */
+    struct CountingListener : EventListener {
+        int calls = 0;
+        bool claim = false;
+
+        bool onEvent(int, const std::string&, int) override {
+            calls++;
+            return claim;
+        }
+    };
+}
+
+void testBindingListenerLifetime();
+
+/**
+ * MassifApi::on, the entry point every SWIG binding subscribes through.
+ *
+ * Its consume flag used to be a hardcoded false, so a handler could return true and nothing ever
+ * read it - the bool travelled from Java or Objective-C all the way to Context and was dropped at
+ * the last step. Context's own consumption was tested; this call was not, because MassifApi.cpp
+ * needed the renderer to link. It is testable now that the subscription half is its own TU.
+ */
+void testBindingSubscriptions() {
+    const std::shared_ptr<Context>& context = Context::GetDefault();
+    Handle target = registerFog(context, "binding-target");
+
+    bool threw = false;
+    try {
+        MassifApi::on(static_cast<int>(target), "click", nullptr, false, 0, false);
+    } catch (const NullArgumentException&) {
+        threw = true;
+    }
+    TEST_CHECK(threw, "a null listener is refused");
+
+    // Returns true, but did not ask to consume, so the event is not claimed.
+    auto loud = std::make_shared<CountingListener>();
+    loud->claim = true;
+    int quiet = MassifApi::on(static_cast<int>(target), "click", loud, false, 0, false);
+    TEST_CHECK(quiet != 0, "a non-consuming subscription is accepted");
+    TEST_CHECK(!context->emit(target, "click", 0), "a non-consuming handler cannot claim the event");
+    TEST_CHECK(loud->calls == 1, "though it still ran");
+    MassifApi::off(quiet);
+
+    // The same listener, subscribed as consuming: now the return value is what the SDK acts on.
+    auto claiming = std::make_shared<CountingListener>();
+    claiming->claim = true;
+    int consuming = MassifApi::on(static_cast<int>(target), "click", claiming, true, 0, false);
+    TEST_CHECK(consuming != 0, "a consuming subscription is accepted");
+    TEST_CHECK(context->emit(target, "click", 0), "and its true reaches the SDK");
+    TEST_CHECK(claiming->calls == 1, "having run once");
+
+    // False is not "no answer": a consuming handler that declines leaves the event unclaimed.
+    claiming->claim = false;
+    TEST_CHECK(!context->emit(target, "click", 0), "a consuming handler that returns false declines");
+    MassifApi::off(consuming);
+
+    // The SDK asks synchronously, so a consuming subscription cannot be queued for another thread.
+    auto queued = std::make_shared<CountingListener>();
+    TEST_CHECK(MassifApi::on(static_cast<int>(target), "click", queued, true, 1, false) == 0,
+               "a consuming subscription cannot ask for another thread");
+
+    TEST_CHECK(MassifApi::on(9999, "click", queued, false, 0, false) == 0, "a stale handle gives 0");
+
+    context->unregisterObject("options", "binding-target");
+    testBindingListenerLifetime();
+}
+
+/**
+ * The listener registry must not outlive the subscriptions it exists for.
+ *
+ * `on` keeps a shared_ptr per subscription, because Context holds only a raw pointer to the
+ * director. `off` dropped its entry, but `offEvent`, `offAll` and the death of a target remove
+ * subscriptions WITHOUT naming them - so every listener taken that way stayed referenced for the
+ * process. MassifMap.detach calls offAll, which made it one leak per screen.
+ *
+ * A weak_ptr is what makes it observable: the registry holds the only other strong reference, so
+ * an expired weak_ptr means the entry is gone and a live one means it leaked.
+ */
+void testBindingListenerLifetime() {
+    const std::shared_ptr<Context>& context = Context::GetDefault();
+    Handle target = registerFog(context, "lifetime-target");
+    Handle other = registerFog(context, "lifetime-other");
+
+    std::weak_ptr<EventListener> byEvent, byTarget, byDestroy, survivor;
+    {
+        auto a = std::make_shared<CountingListener>();
+        auto b = std::make_shared<CountingListener>();
+        auto c = std::make_shared<CountingListener>();
+        auto d = std::make_shared<CountingListener>();
+        byEvent = a;
+        byTarget = b;
+        byDestroy = c;
+        survivor = d;
+        MassifApi::on(static_cast<int>(target), "click", a, false, 0, false);
+        MassifApi::on(static_cast<int>(target), "move", b, false, 0, false);
+        MassifApi::on(static_cast<int>(other), "click", c, false, 0, false);
+        MassifApi::on(static_cast<int>(other), "move", d, false, 0, false);
+    }
+    TEST_CHECK(!byEvent.expired() && !survivor.expired(), "a live subscription keeps its listener");
+
+    TEST_CHECK(MassifApi::offEvent(static_cast<int>(target), "click") == 1, "offEvent removed one");
+    TEST_CHECK(byEvent.expired(), "and released its listener");
+    TEST_CHECK(!byTarget.expired(), "leaving the other event on the same target alone");
+
+    TEST_CHECK(MassifApi::offAll(static_cast<int>(target)) == 1, "offAll removed the remainder");
+    TEST_CHECK(byTarget.expired(), "and released that listener too");
+    TEST_CHECK(!byDestroy.expired(), "another target's listeners are untouched");
+
+    // A destroyed target takes its subscriptions with it, and it does not name them either. The
+    // sweep runs on the next add or remove, so the orphan cannot outlive one call.
+    context->unregisterObject("options", "lifetime-other");
+    TEST_CHECK(!byDestroy.expired(), "a destroy alone does not reach the registry");
+    Handle sweeper = registerFog(context, "lifetime-sweeper");
+    auto trigger = std::make_shared<CountingListener>();
+    MassifApi::on(static_cast<int>(sweeper), "click", trigger, false, 0, false);
+    TEST_CHECK(byDestroy.expired() && survivor.expired(),
+               "and the next subscription sweeps what the destroy orphaned");
+
+    MassifApi::offAll(static_cast<int>(sweeper));
+    context->unregisterObject("options", "lifetime-sweeper");
 }

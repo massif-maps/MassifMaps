@@ -23,6 +23,7 @@ int failures = 0;
 
 void testEvents();
 void testDelivery();
+void testBindingSubscriptions();
 void testStructCodec();
 void testMoreStructs();
 void testVariantPaths();
@@ -267,6 +268,7 @@ int main() {
     testHandles(context);
     testEvents();
     testDelivery();
+    testBindingSubscriptions();
     testStructCodec();
     testMoreStructs();
     testVariantPaths();

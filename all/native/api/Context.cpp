@@ -481,6 +481,11 @@ namespace massif { namespace api {
         return _events.getSubscriptionCount();
     }
 
+    bool Context::isSubscribed(Subscription subscription) const {
+        std::lock_guard<std::mutex> lock(_mutex);
+        return _events.isSubscribed(subscription);
+    }
+
     Result Context::resolveTarget(Handle handle, const std::string& path, ObjectRef& out) const {
         const Slot* slot = resolve(handle);
         if (!slot) {

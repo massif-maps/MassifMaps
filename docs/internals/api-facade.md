@@ -666,14 +666,36 @@ code; what the wrapper adds is one `moveTo` that moves position, zoom, rotation 
 
 ### Adopting what an app already built
 
-`registerLayer` / `registerSource` give an object built with the object API an id, and with it
-properties, methods and events — so an app moves to the facade a piece at a time rather than
-rebuilding its map:
+`MassifApi.adopt` gives an object built with the object API an id, and with it properties, methods
+and events — so an app moves to the facade a piece at a time rather than rebuilding its map:
 
 ```java
 MassifLayer base = map.adoptFirst("base", VectorTileLayer.class);
 base.onFeatureClick(e -> …);
 ```
+
+**The TYPE picks what is being adopted, not the kind string.** `kind` is only the id namespace —
+the same `Options` is legitimately adopted as `"map"` by `MassifMap.attach` and as `"options"` by
+the demo — so it cannot also mean "the C++ class". `adopt` is therefore one overload per adoptable
+base (`Options`, `Layer`, `Layers`, `TileDataSource`, `AssetPackage`), and that set is closed: SWIG
+emits one thunk per signature, and those bases share no common root a single parameter could be
+declared as. Not spelled `register`, which is a C++ *and* C keyword and so not a legal Objective-C
+selector piece either.
+
+`AssetPackage` is the one that matters beyond adoption-in-stages: it is what an app **subclasses**.
+A style read from somewhere the SDK has no factory for — a NativeScript app folder, an app's own
+decryption — is a `DirAssetPackage`/`AssetPackage` subclass in Java, Objective-C or TypeScript, and
+adopting it is how a spec reaches it. Every generated builder resolves an `assets` key that is a
+STRING as an id of kind `assets` (`childOf`), so nothing else has to know the subclass exists:
+
+```java
+Massif.adopt("shared", myAssetPackage);
+Massif.style("osm", Spec.of("cartocss").set("css", css).set("assets", "shared"));
+```
+
+A binding's own subclass is a Swig director, which `ClassRegistry` does not know — it logs one miss
+per adopt and falls back to `massif::AssetPackage`, which is exactly the class the `assets` key
+requires.
 
 The **concrete** class is recovered at runtime, so an adopted `VectorTileLayer` answers to a vector
 tile layer's properties rather than only to `Layer`'s. Every Swig-wrapped class already registers
@@ -770,18 +792,20 @@ Both generators picked the new module up **with no change** — a new `.i` direc
 directory walk. Two platform details did need attention:
 
 - **`id` is a keyword in Objective-C.** A parameter called `id` makes SWIG emit `arg1:` selectors
-  (`registerOptions:kind:arg1:options:`), so the parameter is named `objectId`.
+  (`adopt:kind:arg1:options:`), so the parameter is named `objectId`.
 - **`create` does not attach a layer to a map.** It builds and registers it; the demo adds it with
   the object API through `getLayer`. Attaching needs the map verbs.
 - **Element styles and services are not buildable from a spec**, and `destroy` is
   `unregisterObject`.
-- **`zip://` asset packages are not supported** — the archive has to be read into `BinaryData`,
-  which is platform work. `dir://` works.
+- **A zipped asset package needs its archive as `BinaryData` first**, which no constructor
+  signature can say. The `data` factory over `URLFileLoader` closed that:
+  `{"type":"zip","data":{"type":"url","url":"assets://styles/osm.zip"}}`, with `file://` and
+  `http(s)://` reading the same way. A remote one is fetched on the CALLING thread.
 - **`ios/objc/MassifMaps.h` is hand-maintained**, not generated, so a new Objective-C class has to
   be added to that umbrella by hand.
 
 ```java
-int h = MassifApi.registerOptions("options", "demo", mapView.getOptions());
+int h = MassifApi.adopt("options", "demo", mapView.getOptions());
 MassifApi.setFloat(h, "fogOptions.rangeStart", 2.5);
 ```
 
@@ -865,6 +889,32 @@ the event silently would be worse than delivering it on the wrong thread.
 than discovered as a race: the SDK asks whether the event was consumed *now*, and a queued handler
 answers later. Waiting for the answer would block the producer on the UI thread.
 
+**Consumption is a property of the subscription, not of the handler.** A handler that returns true
+on a subscription that did not ask to consume changes nothing — the flag is what `Context::emit`
+reads. `MassifApi::on` passed a literal `false` for it until 2026-08-23, so every `consumeFeatureClick`
+and `consumeElementClick` in the Java and Objective-C sugar was documented as claiming the gesture
+and could not: the bool travelled from the app through the director and `dispatchToListener` intact
+and was dropped at the last step. Nothing failed loudly — the marker-and-popup case just looked like
+the popup "closing itself", because the map's own click handler ran for the same tap.
+
+It survived review because `MassifApi.cpp` needed `Options`, `Layers` and every source constructor
+to link, so nothing in `tests/` could reach it. The subscription half now lives in
+`MassifApiEvents.cpp`, which depends on `Context` alone, and `testBindingSubscriptions` covers it.
+
+### The listener registry is swept, not mirrored
+
+`Context` keeps a raw pointer to the handler's user data, so the binding layer holds a
+`shared_ptr<EventListener>` per subscription to stop the director being collected under it. `off`
+knows which entry to drop; **`offEvent`, `offAll` and the death of a target do not name the
+subscriptions they remove**, so every listener taken that way stayed referenced for the life of the
+process. `MassifMap.detach` calls `offAll`, which made it one leak per screen.
+
+Mirroring those removals would mean threading a list of removed ids out of three call paths. The
+registry is swept against the context instead — `Context::isSubscribed` — on every add and every
+remove. Subscribing is the only thing that grows it, so an orphan cannot outlive one call.
+`testBindingListenerLifetime` holds `weak_ptr`s to the listeners, which is what makes a leak
+something a test can see at all.
+
 Only one drain is posted per batch — the drain empties the whole queue, so a second post would
 find nothing.
 
@@ -924,7 +974,7 @@ the event's target.
 before the event is emitted, or adopting the facade would silently disconnect existing handlers.
 
 ```java
-int handle = MassifApi.registerOptions("options", "demo", mapView.getOptions());
+int handle = MassifApi.adopt("options", "demo", mapView.getOptions());
 mapView.setMapEventListener(
     MassifApi.createEventBridge(handle, mapView.getMapEventListener()));
 
@@ -1178,7 +1228,7 @@ Nothing about a search filter was taught to the facade. Every filter on a `Searc
 an `%attribute`, so it is `create` + `set`, and the service is `create` too:
 
 ```java
-MassifApi.registerLayer("layer", "base", vectorLayer);
+MassifApi.adopt("layer", "base", vectorLayer);
 int service = MassifApi.create("search", "demoSearch",
                                "{\"type\":\"vectortile\",\"layer\":\"base\"}");
 MassifApi.setFloat(service, "minZoom", 14);
@@ -1296,7 +1346,7 @@ handles, and all three overloads are reachable (`position`, `geometry`, `baseBil
 
 **A spec builds an object; it does not place it.** Two methods close that: `add`/`remove` on
 `LocalVectorDataSource` for elements, and on `Layers` for the layer itself — reached through
-`registerLayers`, which is how the map's layer list gets a handle.
+`adopt` on the `Layers` overload, which is how the map's layer list gets a handle.
 
 ```
 projection:wgs84   source:elements (local)   layer:elayer (elements)
@@ -1363,12 +1413,12 @@ native signature with a `new DoubleVector(...)` body.
 cd tests && ./run.sh
 ```
 
-**319 checks**, one file per layer:
+**443 checks**, one file per layer:
 
 | file | what it covers |
 |---|---|
 | `ApiTest.cpp` | table lookups, the base chain, handle generations and the stale-handle rule, `set`/`get` per value type in both directions, path-resolution failures, and `create` — reuse on an identical spec, conflict on a different one, key order not mattering, tolerant unknown keys, and the parse and factory failures |
-| `EventTest.cpp` | the three removals, dispatch order, consumption, removal from inside a handler, death-with-target, and delivery — queueing, the single drain post, coalescing, the consume/queued rejection, payload retain across a destroy |
+| `EventTest.cpp` | the three removals, dispatch order, consumption, removal from inside a handler, death-with-target, and delivery — queueing, the single drain post, coalescing, the consume/queued rejection, payload retain across a destroy; plus `MassifApi::on` itself, the entry point every SWIG binding subscribes through, and the listener registry's lifetime across the bulk removals and a destroy |
 | `StructCodecTest.cpp` | round-trips, and the refusal of every malformed shape |
 | `ProjectionTest.cpp` | the name registry, a declared source projection versus an attached one, the per-read argument, the per-subscription default and its expiry when the handler returns, the drain path, the non-finite refusal, and object writes — the subclass check in both directions, an unknown class failing closed, and the wrong kind of object leaving the property alone |
 | `MethodTest.cpp` | argument decoding and its refusals, the base-chain lookup, a method addressed through a path and its failure modes, result ownership and `destroy`, the binary and flat-numeric channels, a thunk that throws being caught rather than propagated, an async result arriving as an event and failing as a payload of 0, and cancellation — queued, running, by target, and dying with the target |

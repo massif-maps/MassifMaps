@@ -19,20 +19,26 @@
 
 namespace massif::vt {
     inline constexpr int GLYPH_RENDER_SIZE = 27;
-    // The SDF spread FreeType renders, and it must MATCH the range the field is encoded over
-    // (BITMAP_SDF_SCALE): with a smaller spread the distance field is truncated mid-gradient at the
-    // glyph bitmap's edge - the outermost texel lands at ~63/255 instead of 0 - so the quad's border
-    // renders as a grey fringe hanging off every letter. Tangram ties the two together the same way
+    // The SDF spread FreeType renders, in texels. It is also the padding around the glyph in its
+    // bitmap, and therefore the largest halo that can be drawn: past it there is no field left.
+    //
+    // It must MATCH the range the field is ENCODED over (BITMAP_SDF_SCALE). Equal here but encoded
+    // over half of it, the field is truncated mid-gradient at the bitmap's edge - the outermost
+    // texel lands at 64/255 instead of 0 - and a halo wide enough to push the ramp below 64/255
+    // lights the whole border of the quad: a hairline box around every letter, on any style with a
+    // halo of about two pixels or more. Tangram ties the two together the same way
     // (core/src/text/fontContext.cpp: m_sdfRadius is the encode range, the atlas padding AND the
     // maximum stroke width).
     inline constexpr int GLYPH_RENDER_SPREAD = 8; // NOTE: keep it equal to BITMAP_SDF_SCALE
 
-    // How much the sampled texture value (0..1) changes over one texel of signed distance:
-    // FreeType spreads +-GLYPH_RENDER_SPREAD texels over +-127, and FontManager rescales that by
-    // 4 / BITMAP_SDF_SCALE when it encodes the glyph (see addFreeTypeGlyph). The renderer needs it
-    // to size the antialias ramp - one screen pixel of distance is this times the number of glyph
-    // texels a screen pixel covers.
-    inline constexpr float GLYPH_SDF_UNIT = 127.0f * (4.0f / BITMAP_SDF_SCALE) / GLYPH_RENDER_SPREAD / 255.0f;
+    // How much the sampled texture value (0..1) changes over one texel of signed distance.
+    //
+    // ONE convention for every SDF in the renderer, set by BitmapCanvas: 128 / BITMAP_SDF_SCALE per
+    // texel, so the full 0..255 range spans +-BITMAP_SDF_SCALE texels. A glyph is encoded onto it in
+    // addFreeTypeGlyph, and both have to agree - a glyph encoded over a NARROWER range never reaches
+    // 0 at the edge of its bitmap, which is what put a hairline box around every letter (see
+    // GLYPH_RENDER_SPREAD).
+    inline constexpr float GLYPH_SDF_UNIT = (128.0f / BITMAP_SDF_SCALE) / 255.0f;
 
     // The em sizes a glyph may be rasterized at, as tangram has them (core/src/text/fontContext.cpp:
     // s_fontRasterSizes = { 16, 28, 40 }): a label takes the smallest one that still covers it, and

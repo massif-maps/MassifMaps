@@ -227,7 +227,11 @@ namespace massif::vt {
             int height = face->glyph->bitmap.rows;
             float xOffset = std::ceil(-face->glyph->metrics.horiBearingX / 64.0f);
             float yOffset = std::ceil((face->glyph->metrics.height - face->glyph->metrics.horiBearingY) / 64.0f);
-            float distScale = 4.0f / BITMAP_SDF_SCALE;
+            // FreeType writes +-GLYPH_RENDER_SPREAD texels over +-127; the renderer's convention is
+            // 128 / BITMAP_SDF_SCALE per texel (BitmapCanvas). Converting between the two is this
+            // ratio - and it has to be exactly this, or the field stops short of 0 at the edge of
+            // the bitmap and every halo turns into a box (see GLYPH_RENDER_SPREAD).
+            float distScale = (128.0f / BITMAP_SDF_SCALE) * (GLYPH_RENDER_SPREAD / 127.0f);
             const unsigned char* distBuffer = face->glyph->bitmap.buffer;
             if (!distBuffer) {
                 width = height = 0;

@@ -5,6 +5,7 @@
  * every class they call, and a test should be able to link the registry without the whole SDK.
  */
 
+#include "api/CameraMethods.h"
 #include "api/GeometryMethods.h"
 #include "api/RoutingMethods.h"
 #include "api/Methods.h"
@@ -325,6 +326,7 @@ namespace massif { namespace api {
         registerMethod("massif::GeoJSONVectorTileDataSource", "setLayerGeoJSON", &setGeoJSONLayer);
         registerMethod("massif::GeoJSONVectorTileDataSource", "deleteLayer", &deleteGeoJSONLayer);
         registerGeometryMethods();
+        registerCameraMethods();
 #ifdef _MASSIF_SEARCH_SUPPORT
         registerMethod("massif::VectorTileSearchService", "findFeatures", &findVectorTileFeatures);
         registerMethod("massif::FeatureCollectionSearchService", "findFeatures",

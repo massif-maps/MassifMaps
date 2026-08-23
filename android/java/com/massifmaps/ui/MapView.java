@@ -293,6 +293,18 @@ public class MapView extends GLSurfaceView implements GLSurfaceView.Renderer, Ma
     }
 
     /**
+     * Returns the underlying BaseMapView, which is what carries the camera.
+     *
+     * For the facade: MassifApi.adopt("map", id, view.getBaseMapView()) makes moveTo, flyTo,
+     * fitBounds, screenToMap, mapToScreen and stopFlight ordinary facade calls. An app using the
+     * object API has no reason to reach for it - every one of those is on this class already.
+     * @return the BaseMapView object.
+     */
+    public BaseMapView getBaseMapView() {
+        return baseMapView;
+    }
+
+    /**
      * Returns the Options object, that can be used for modifying various map options.
      * @return the Option object.
      */

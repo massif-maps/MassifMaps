@@ -66,7 +66,13 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release upload ${{ needs.create-release.outputs.VERSION_TAG }} dist/massif-api-bindings.zip
+          # The schema and the typing go up LOOSE as well as in the zip: an integration that
+          # generates its own bindings (NativeScript reads massif-api.json and emits its typings
+          # from it) should fetch one file over https, not unpack an archive to reach it.
+          gh release upload ${{ needs.create-release.outputs.VERSION_TAG }} \
+            dist/massif-api-bindings.zip \
+            docs/api/massif-api.json \
+            bindings/typescript/massif.d.ts
 
       - uses: actions/upload-artifact@v4
         if: github.event.inputs.publish != 'true'

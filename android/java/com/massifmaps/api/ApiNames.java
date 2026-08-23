@@ -280,10 +280,16 @@ public final class ApiNames {
     public static final MassifObject.Key<Long> FIELD_OF_VIEW_Y = MassifObject.key("fieldOfViewY");
     /** Returns the string based search expression. If empty, then search expression is not used. */
     public static final MassifObject.Key<String> FILTER_EXPRESSION = MassifObject.key("filterExpression");
+    /** Returns true while a flyTo animation is running. */
+    public static final MassifObject.Key<Boolean> FLIGHT_ACTIVE = MassifObject.key("flightActive");
+    /** How far along a flyTo animation is, from 0 to 1, or -1 when none is running. It is the value the camera is actually at, so an app animating its own state alongside the move (a layer fading in, a mode switching over) reads it rather than running its own clock. */
+    public static final MassifObject.Key<Double> FLIGHT_PROGRESS = MassifObject.key("flightProgress");
     /** Returns the state of the flippable flag. */
     public static final MassifObject.Key<Boolean> FLIPPABLE = MassifObject.key("flippable");
     /** Returns the focus point offset (from screen center) in pixels. */
     public static final MassifObject.Key<String> FOCUS_POINT_OFFSET = MassifObject.key("focusPointOffset");
+    /** Returns the position that the camera is currently looking at. */
+    public static final MassifObject.Key<String> FOCUS_POS = MassifObject.key("focusPos");
     /** Returns the fog (atmosphere) options. May be null. */
     public static final MassifObject.Key<MassifObject> FOG_OPTIONS = MassifObject.key("fogOptions");
     /** Returns the font's color. */
@@ -549,7 +555,7 @@ public final class ApiNames {
     public static final MassifObject.Key<Boolean> ROTATABLE = MassifObject.key("rotatable");
     /** Returns true if the interaction included a rotate action. */
     public static final MassifObject.Key<Boolean> ROTATE_ACTION = MassifObject.key("rotateAction");
-    /** Returns the rotation angle of this billboard. */
+    /** Returns the map rotation in degrees. 0 means looking north, 90 means west, -90 means east and 180 means south. */
     public static final MassifObject.Key<Double> ROTATION = MassifObject.key("rotation");
     /** Returns the rotation angle of this model. This is deprecated. Use getRotation instead. */
     public static final MassifObject.Key<Double> ROTATION_ANGLE = MassifObject.key("rotationAngle");
@@ -727,7 +733,7 @@ public final class ApiNames {
     public static final MassifObject.Key<String> TILE_SUBSTITUTION_POLICY = MassifObject.key("tileSubstitutionPolicy");
     /** Returns the number of threads used by the tile task pool. */
     public static final MassifObject.Key<Long> TILE_THREAD_POOL_SIZE = MassifObject.key("tileThreadPoolSize");
-    /** Returns the camera tilt angle. A NEGATIVE tilt means the view looks above the horizon. */
+    /** Returns the tilt angle in degrees. 0 means looking directly at the horizon, 90 means looking directly down. */
     public static final MassifObject.Key<Double> TILT = MassifObject.key("tilt");
     /** Returns true if the interaction included a tilt action. */
     public static final MassifObject.Key<Boolean> TILT_ACTION = MassifObject.key("tiltAction");
@@ -796,7 +802,7 @@ public final class ApiNames {
     public static final MassifObject.Key<String> Y = MassifObject.key("y");
     /** Returns the state of Z coordinate serialization. */
     public static final MassifObject.Key<String> Z = MassifObject.key("z");
-    /** Returns the zoom level of this map tile. */
+    /** Returns the zoom level. The value returned is never negative, 0 means absolutely zoomed out and all other values describe some level of zoom. */
     public static final MassifObject.Key<String> ZOOM = MassifObject.key("zoom");
     /** Returns the distance between the focus and the camera position, when the zoom level is set to 0. This parameter depends on the screen size, DPI, tile draw size and field of view settings. */
     public static final MassifObject.Key<Double> ZOOM0_DISTANCE = MassifObject.key("zoom0Distance");
@@ -817,15 +823,21 @@ public final class ApiNames {
     public static final String METHOD_CREATE_LAYER = "createLayer";
     public static final String METHOD_DELETE_LAYER = "deleteLayer";
     public static final String METHOD_FIND_FEATURES = "findFeatures";
+    public static final String METHOD_FIT_BOUNDS = "fitBounds";
+    public static final String METHOD_FLY_TO = "flyTo";
     public static final String METHOD_GET_ELEVATION = "getElevation";
     public static final String METHOD_GET_ELEVATIONS = "getElevations";
     public static final String METHOD_GET_FEATURE = "getFeature";
     public static final String METHOD_GET_STYLE_PARAMETER = "getStyleParameter";
     public static final String METHOD_LOAD_TILE = "loadTile";
+    public static final String METHOD_MAP_TO_SCREEN = "mapToScreen";
+    public static final String METHOD_MOVE_TO = "moveTo";
     public static final String METHOD_REFRESH = "refresh";
     public static final String METHOD_REMOVE = "remove";
+    public static final String METHOD_SCREEN_TO_MAP = "screenToMap";
     public static final String METHOD_SET_LAYER_GEO_JSON = "setLayerGeoJSON";
     public static final String METHOD_SET_STYLE_PARAMETER = "setStyleParameter";
+    public static final String METHOD_STOP_FLIGHT = "stopFlight";
 
     // --- events ----------------------------------------------------------
 

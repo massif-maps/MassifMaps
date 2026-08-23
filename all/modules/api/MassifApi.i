@@ -3,7 +3,7 @@
 
 %module(directors="1") MassifApi
 
-!proxy_imports(massif::api::MassifApi, core.BinaryData, components.Options, datasources.TileDataSource, layers.Layer, components.Layers, ui.MapEventListener, api.EventListener, api.UiDispatcher, layers.VectorTileEventListener, layers.VectorElementEventListener, utils.AssetPackage)
+!proxy_imports(massif::api::MassifApi, core.BinaryData, components.Options, datasources.TileDataSource, layers.Layer, components.Layers, ui.BaseMapView, ui.MapEventListener, api.EventListener, api.UiDispatcher, layers.VectorTileEventListener, layers.VectorElementEventListener, utils.AssetPackage)
 
 %{
 #include "api/MassifApi.h"
@@ -20,6 +20,7 @@
 %import "datasources/TileDataSource.i"
 %import "layers/Layer.i"
 %import "components/Layers.i"
+%import "ui/BaseMapView.i"
 %import "ui/MapEventListener.i"
 %import "layers/VectorTileEventListener.i"
 %import "layers/VectorElementEventListener.i"

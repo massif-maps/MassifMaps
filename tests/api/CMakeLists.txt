@@ -85,6 +85,8 @@ set(TEST_SDK_SOURCES
   "${SDK_BASE_DIR}/all/native/core/MapRange.cpp"
   "${SDK_BASE_DIR}/all/native/core/MapBounds.cpp"
   "${SDK_BASE_DIR}/all/native/core/ScreenPos.cpp"
+  # StructCodec carries a screen rectangle now - fitBounds takes one (see CameraMethods.cpp).
+  "${SDK_BASE_DIR}/all/native/core/ScreenBounds.cpp"
   "${SDK_BASE_DIR}/all/native/components/FogOptions.cpp"
   "${SDK_BASE_DIR}/all/native/geometry/Feature.cpp"
   "${SDK_BASE_DIR}/all/native/geometry/VectorTileFeature.cpp"

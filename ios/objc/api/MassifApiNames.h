@@ -280,10 +280,16 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyFeaturePosIndex;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyFieldOfViewY;
 /** Returns the string based search expression. If empty, then search expression is not used. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyFilterExpression;
+/** Returns true while a flyTo animation is running. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyFlightActive;
+/** How far along a flyTo animation is, from 0 to 1, or -1 when none is running. It is the value the camera is actually at, so an app animating its own state alongside the move (a layer fading in, a mode switching over) reads it rather than running its own clock. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyFlightProgress;
 /** Returns the state of the flippable flag. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyFlippable;
 /** Returns the focus point offset (from screen center) in pixels. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyFocusPointOffset;
+/** Returns the position that the camera is currently looking at. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyFocusPos;
 /** Returns the fog (atmosphere) options. May be null. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyFogOptions;
 /** Returns the font's color. */
@@ -549,7 +555,7 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyRootGeometry;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyRotatable;
 /** Returns true if the interaction included a rotate action. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyRotateAction;
-/** Returns the rotation angle of this billboard. */
+/** Returns the map rotation in degrees. 0 means looking north, 90 means west, -90 means east and 180 means south. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyRotation;
 /** Returns the rotation angle of this model. This is deprecated. Use getRotation instead. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyRotationAngle;
@@ -727,7 +733,7 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyTileLoadListener;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyTileSubstitutionPolicy;
 /** Returns the number of threads used by the tile task pool. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyTileThreadPoolSize;
-/** Returns the camera tilt angle. A NEGATIVE tilt means the view looks above the horizon. */
+/** Returns the tilt angle in degrees. 0 means looking directly at the horizon, 90 means looking directly down. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyTilt;
 /** Returns true if the interaction included a tilt action. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyTiltAction;
@@ -796,7 +802,7 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyX;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyY;
 /** Returns the state of Z coordinate serialization. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyZ;
-/** Returns the zoom level of this map tile. */
+/** Returns the zoom level. The value returned is never negative, 0 means absolutely zoomed out and all other values describe some level of zoom. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyZoom;
 /** Returns the distance between the focus and the camera position, when the zoom level is set to 0. This parameter depends on the screen size, DPI, tile draw size and field of view settings. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyZoom0Distance;
@@ -818,15 +824,21 @@ FOUNDATION_EXPORT MassifMethod const MassifMethodClearTileCaches;
 FOUNDATION_EXPORT MassifMethod const MassifMethodCreateLayer;
 FOUNDATION_EXPORT MassifMethod const MassifMethodDeleteLayer;
 FOUNDATION_EXPORT MassifMethod const MassifMethodFindFeatures;
+FOUNDATION_EXPORT MassifMethod const MassifMethodFitBounds;
+FOUNDATION_EXPORT MassifMethod const MassifMethodFlyTo;
 FOUNDATION_EXPORT MassifMethod const MassifMethodGetElevation;
 FOUNDATION_EXPORT MassifMethod const MassifMethodGetElevations;
 FOUNDATION_EXPORT MassifMethod const MassifMethodGetFeature;
 FOUNDATION_EXPORT MassifMethod const MassifMethodGetStyleParameter;
 FOUNDATION_EXPORT MassifMethod const MassifMethodLoadTile;
+FOUNDATION_EXPORT MassifMethod const MassifMethodMapToScreen;
+FOUNDATION_EXPORT MassifMethod const MassifMethodMoveTo;
 FOUNDATION_EXPORT MassifMethod const MassifMethodRefresh;
 FOUNDATION_EXPORT MassifMethod const MassifMethodRemove;
+FOUNDATION_EXPORT MassifMethod const MassifMethodScreenToMap;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetLayerGeoJSON;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetStyleParameter;
+FOUNDATION_EXPORT MassifMethod const MassifMethodStopFlight;
 
 /** An event name. */
 typedef NSString *MassifEvent NS_TYPED_ENUM;

@@ -31,6 +31,7 @@
 @class MSFScreenBounds;
 @class MSFMapEventListener;
 @class MSFMapRenderer;
+@class MSFBaseMapView;
 @class MSFOptions;
 
 /**
@@ -57,6 +58,15 @@ __attribute__ ((visibility("default"))) @interface MSFMapView : MSFGLKView
  * @param translucent True to make the view translucent.
  */
 -(void)setTranslucent:(BOOL)translucent;
+/**
+ * Returns the underlying MSFBaseMapView, which is what carries the camera.
+ *
+ * For the facade: adopting it makes moveTo, flyTo, fitBounds, screenToMap, mapToScreen and
+ * stopFlight ordinary facade calls. An app using the object API has no reason to reach for it -
+ * every one of those is on this class already.
+ * @return The MSFBaseMapView object.
+ */
+-(MSFBaseMapView*)getBaseMapView;
 /**
  * Returns the Options object, that can be used for modifying various map options.
  * @return the Option object.

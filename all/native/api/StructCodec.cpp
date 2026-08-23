@@ -72,6 +72,10 @@ namespace massif { namespace api { namespace StructCodec {
         return "[" + encode(value.getMin()) + "," + encode(value.getMax()) + "]";
     }
 
+    std::string encode(const ScreenBounds& value) {
+        return "[" + encode(value.getMin()) + "," + encode(value.getMax()) + "]";
+    }
+
     std::string encode(const Variant& value) {
         return value.toString();
     }
@@ -196,6 +200,25 @@ namespace massif { namespace api { namespace StructCodec {
             items.push_back(item.getString());
         }
         value.swap(items);
+        return true;
+    }
+
+    bool decode(const std::string& json, ScreenBounds& value) {
+        Variant variant;
+        try {
+            variant = Variant::FromString(json);
+        } catch (const std::exception&) {
+            return false;
+        }
+        if (variant.getType() != VariantType::VARIANT_TYPE_ARRAY || variant.getArraySize() != 2) {
+            return false;
+        }
+        ScreenPos min, max;
+        if (!decode(variant.getArrayElement(0).toString(), min) ||
+            !decode(variant.getArrayElement(1).toString(), max)) {
+            return false;
+        }
+        value = ScreenBounds(min, max);
         return true;
     }
 

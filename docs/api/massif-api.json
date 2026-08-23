@@ -929,8 +929,175 @@
     },
     "massif::BaseMapView": {
       "base": null,
-      "properties": [],
-      "methods": [],
+      "properties": [
+        {
+          "name": "flightActive",
+          "type": "BOOL",
+          "readOnly": true,
+          "static": false,
+          "position": false,
+          "cppType": "bool",
+          "doc": "Returns true while a flyTo animation is running."
+        },
+        {
+          "name": "flightProgress",
+          "type": "FLOAT",
+          "readOnly": true,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "How far along a flyTo animation is, from 0 to 1, or -1 when none is running. It is the value the camera is actually at, so an app animating its own state alongside the move (a layer fading in, a mode switching over) reads it rather than running its own clock."
+        },
+        {
+          "name": "focusPos",
+          "type": "STRUCT",
+          "readOnly": true,
+          "static": false,
+          "position": true,
+          "cppType": "massif::MapPos",
+          "doc": "Returns the position that the camera is currently looking at."
+        },
+        {
+          "name": "rotation",
+          "type": "FLOAT",
+          "readOnly": true,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns the map rotation in degrees. 0 means looking north, 90 means west, -90 means east and 180 means south."
+        },
+        {
+          "name": "tilt",
+          "type": "FLOAT",
+          "readOnly": true,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns the tilt angle in degrees. 0 means looking directly at the horizon, 90 means looking directly down."
+        },
+        {
+          "name": "zoom",
+          "type": "FLOAT",
+          "readOnly": true,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns the zoom level. The value returned is never negative, 0 means absolutely zoomed out and all other values describe some level of zoom."
+        }
+      ],
+      "methods": [
+        {
+          "cppClass": "massif::BaseMapView",
+          "name": "fitBounds",
+          "args": [
+            {
+              "name": "bounds",
+              "type": "json"
+            },
+            {
+              "name": "screenBounds",
+              "type": "json"
+            },
+            {
+              "name": "integerZoom",
+              "type": "bool"
+            },
+            {
+              "name": "durationSeconds",
+              "type": "float"
+            }
+          ],
+          "returns": "void",
+          "returnClass": null
+        },
+        {
+          "cppClass": "massif::BaseMapView",
+          "name": "flyTo",
+          "args": [
+            {
+              "name": "pos",
+              "type": "pos"
+            },
+            {
+              "name": "zoom",
+              "type": "float"
+            },
+            {
+              "name": "rotation",
+              "type": "float"
+            },
+            {
+              "name": "tilt",
+              "type": "float"
+            },
+            {
+              "name": "durationSeconds",
+              "type": "float"
+            }
+          ],
+          "returns": "void",
+          "returnClass": null
+        },
+        {
+          "cppClass": "massif::BaseMapView",
+          "name": "mapToScreen",
+          "args": [
+            {
+              "name": "pos",
+              "type": "pos"
+            }
+          ],
+          "returns": "json",
+          "returnClass": null
+        },
+        {
+          "cppClass": "massif::BaseMapView",
+          "name": "moveTo",
+          "args": [
+            {
+              "name": "pos",
+              "type": "pos"
+            },
+            {
+              "name": "zoom",
+              "type": "float"
+            },
+            {
+              "name": "rotation",
+              "type": "float"
+            },
+            {
+              "name": "tilt",
+              "type": "float"
+            }
+          ],
+          "returns": "void",
+          "returnClass": null
+        },
+        {
+          "cppClass": "massif::BaseMapView",
+          "name": "screenToMap",
+          "args": [
+            {
+              "name": "x",
+              "type": "float"
+            },
+            {
+              "name": "y",
+              "type": "float"
+            }
+          ],
+          "returns": "json",
+          "returnClass": null
+        },
+        {
+          "cppClass": "massif::BaseMapView",
+          "name": "stopFlight",
+          "args": [],
+          "returns": "void",
+          "returnClass": null
+        }
+      ],
       "events": []
     },
     "massif::Billboard": {

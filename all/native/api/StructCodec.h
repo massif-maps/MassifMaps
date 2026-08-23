@@ -12,6 +12,7 @@
 #include "core/MapTile.h"
 #include "core/MapRange.h"
 #include "core/MapVec.h"
+#include "core/ScreenBounds.h"
 #include "core/ScreenPos.h"
 #include "core/Variant.h"
 #include "ui/ClickInfo.h"
@@ -39,6 +40,7 @@ namespace massif { namespace api {
         std::string encode(const ScreenPos& value);
         std::string encode(const MapRange& value);
         std::string encode(const MapBounds& value);
+        std::string encode(const ScreenBounds& value);
         /** A tile, as [x, y, zoom] - the same spelling a call argument uses. */
         std::string encode(const MapTile& value);
         /**
@@ -66,6 +68,7 @@ namespace massif { namespace api {
         bool decode(const std::string& json, ScreenPos& value);
         bool decode(const std::string& json, MapRange& value);
         bool decode(const std::string& json, MapBounds& value);
+        bool decode(const std::string& json, ScreenBounds& value);
         bool decode(const std::string& json, MapTile& value);
         bool decode(const std::string& json, ClickInfo& value);
         bool decode(const std::string& json, Variant& value);

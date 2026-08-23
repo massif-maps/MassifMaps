@@ -1004,6 +1004,18 @@ export interface PropertyTypes {
     "verticalOffset": number;
   };
   "massif::BaseMapView": {
+    /** (read-only) Returns true while a flyTo animation is running. */
+    readonly "flightActive": boolean;
+    /** (read-only) How far along a flyTo animation is, from 0 to 1, or -1 when none is running. It is the value the camera is actually at, so an app animating its own state alongside the move (a layer fading in, a mode switching over) reads it rather than running its own clock. */
+    readonly "flightProgress": number;
+    /** (read-only) Returns the position that the camera is currently looking at. */
+    readonly "focusPos": Position;
+    /** (read-only) Returns the map rotation in degrees. 0 means looking north, 90 means west, -90 means east and 180 means south. */
+    readonly "rotation": number;
+    /** (read-only) Returns the tilt angle in degrees. 0 means looking directly at the horizon, 90 means looking directly down. */
+    readonly "tilt": number;
+    /** (read-only) Returns the zoom level. The value returned is never negative, 0 means absolutely zoomed out and all other values describe some level of zoom. */
+    readonly "zoom": number;
   };
   "massif::Billboard": {
     /** Returns the base billboard this billboard is attached to. */
@@ -6163,6 +6175,12 @@ export interface MethodTypes {
   "massif::BalloonPopupStyleBuilder": {
   };
   "massif::BaseMapView": {
+    fitBounds: (bounds: Json, screenBounds: Json, integerZoom: boolean, durationSeconds: number) => void;
+    flyTo: (pos: Position, zoom: number, rotation: number, tilt: number, durationSeconds: number) => void;
+    mapToScreen: (pos: Position) => Json;
+    moveTo: (pos: Position, zoom: number, rotation: number, tilt: number) => void;
+    screenToMap: (x: number, y: number) => Json;
+    stopFlight: () => void;
   };
   "massif::Billboard": {
   };

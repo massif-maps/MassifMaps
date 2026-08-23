@@ -366,6 +366,10 @@ static const int NATIVE_NO_COORDINATE = -1;
     return [_baseMapView getLayers];
 }
 
+-(MSFBaseMapView*)getBaseMapView {
+    return _baseMapView;
+}
+
 -(MSFOptions*)getOptions {
     return [_baseMapView getOptions];
 }

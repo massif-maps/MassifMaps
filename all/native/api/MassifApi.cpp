@@ -5,6 +5,7 @@
 #include "api/MapEventBridge.h"
 #include "api/Methods.h"
 #include "core/BinaryData.h"
+#include "ui/BaseMapView.h"
 #include "ui/MapEventListener.h"
 
 #include <map>
@@ -100,6 +101,21 @@ namespace massif { namespace api {
         Handle handle = NULL_HANDLE;
         if (Context::GetDefault()->registerObject(kind, objectId, assets,
                 internedClassName(typeid(concrete), "massif::AssetPackage"), handle) != RESULT_OK) {
+            return NULL_HANDLE;
+        }
+        return static_cast<int>(handle);
+    }
+
+    int MassifApi::adopt(const std::string& kind, const std::string& objectId,
+                         const std::shared_ptr<BaseMapView>& view) {
+        if (!view) {
+            return NULL_HANDLE;
+        }
+        // Registered as the base, not the concrete class: the camera methods are declared on
+        // BaseMapView and every platform's map view is that same class underneath.
+        Handle handle = NULL_HANDLE;
+        if (Context::GetDefault()->registerObject(kind, objectId, view, "massif::BaseMapView",
+                                                  handle) != RESULT_OK) {
             return NULL_HANDLE;
         }
         return static_cast<int>(handle);

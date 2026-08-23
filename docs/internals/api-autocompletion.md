@@ -261,10 +261,17 @@ build, and reached the TypeScript typing, the Objective-C constants and the C en
 somebody remembered to run three scripts. The `api-bindings` job in `.github/workflows/build.yml`
 runs `--check`, so "somebody remembered" stops being the mechanism.
 
-The same job publishes **`massif-api-bindings.zip`** as a release asset - the schema, `massif.d.ts`,
-`MassifApiNames.{h,m}`, `ApiNames.java`, `massif_api_names.{h,c}` and `MassifApiC.h`. An integration
-(NativeScript, React Native, a WASM or `dart:ffi` binding) fetches the one matching the SDK version
-it links, rather than vendoring a copy that ages silently against the SDK it is bound to.
+The same job publishes them as **release assets**, so an integration fetches the ones matching the
+SDK version it links rather than vendoring a copy that ages silently against it:
+
+| Asset | For |
+|---|---|
+| `massif-api.json` | an integration that generates its OWN bindings - NativeScript reads the schema and emits its typings from it |
+| `massif.d.ts` | anything consuming the typing directly (React Native, web) |
+| `massif-api-bindings.zip` | all of the above plus `MassifApiNames.{h,m}`, `ApiNames.java`, `massif_api_names.{h,c}` and `MassifApiC.h` |
+
+The first two go up loose as well as inside the zip, deliberately: fetching one file over https beats
+unpacking an archive to reach it.
 
 ## Known gaps
 

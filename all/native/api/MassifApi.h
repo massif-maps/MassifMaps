@@ -17,6 +17,7 @@
 
 namespace massif {
     class AssetPackage;
+    class BaseMapView;
     class BinaryData;
     class Options;
     class TileDataSource;
@@ -98,6 +99,18 @@ namespace massif {
          */
         static int adopt(const std::string& kind, const std::string& objectId,
                          const std::shared_ptr<AssetPackage>& assets);
+
+        /**
+         * The map view, which is what carries the CAMERA.
+         *
+         * Adopt it and moveTo, flyTo, fitBounds, screenToMap, mapToScreen and stopFlight become
+         * ordinary facade calls, with focusPos, zoom, rotation, tilt and flightActive as read-only
+         * properties beside them. Until that existed the typed sugar on each platform called the
+         * map view directly, so the camera was the one part of the surface a binding could not
+         * reach through the C ABI - see #159.
+         */
+        static int adopt(const std::string& kind, const std::string& objectId,
+                         const std::shared_ptr<BaseMapView>& view);
 
         /**
          * Builds an object from a JSON spec and registers it under a kind and id.

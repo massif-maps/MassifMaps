@@ -46,6 +46,17 @@ void testStructCodec() {
     TEST_CHECK(StructCodec::decode(StructCodec::encode(bounds), decodedBounds) &&
                decodedBounds == bounds, "a MapBounds round-trips as a pair of positions");
 
+    // A screen rectangle, which is what fitBounds takes. Asymmetric on purpose: a codec that
+    // swapped min and max, or x and y, would still pass a square.
+    ScreenBounds rect(ScreenPos(4, 7), ScreenPos(320, 480));
+    ScreenBounds decodedRect;
+    TEST_CHECK(StructCodec::encode(rect) == "[[4,7],[320,480]]",
+               "a ScreenBounds reads as a pair of screen points");
+    TEST_CHECK(StructCodec::decode(StructCodec::encode(rect), decodedRect) &&
+               decodedRect.getMin() == rect.getMin() &&
+               decodedRect.getMax() == rect.getMax(), "and round-trips");
+    TEST_CHECK(!StructCodec::decode("[[4,7]]", decodedRect), "a rectangle needs both corners");
+
     // A list of names - what a search's layer filter is, and the first non-numeric struct.
     std::vector<std::string> names;
     names.push_back("place");

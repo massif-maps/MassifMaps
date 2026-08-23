@@ -145,7 +145,7 @@ export default function HomepageFeatures() {
 
       <section className="featureSection" style={{background: 'var(--ifm-color-emphasis-100)'}}>
         <div className="container">
-          <h2 style={{textAlign: 'center', marginBottom: '0.4rem'}}>New in the Akylas fork</h2>
+          <h2 style={{textAlign: 'center', marginBottom: '0.4rem'}}>New in Massif Maps</h2>
           <p style={{textAlign: 'center', marginBottom: '2rem', color: 'var(--ifm-color-emphasis-700)'}}>
             Features shipping beyond the original CARTO SDK.
           </p>

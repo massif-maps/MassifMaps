@@ -3,6 +3,7 @@
 #import "MSFMapPos.h"
 #import "MSFTileDataSource.h"
 #import "MSFLayer.h"
+#import "MSFAssetPackage.h"
 
 NSString * const MSFMassifErrorDomain = @"MSFMassifErrorDomain";
 
@@ -205,15 +206,21 @@ static NSString * const kAbsent = @"\0massif:absent";
 }
 
 + (MSFMassifLayer *)adoptLayer:(NSString *)objectId layer:(MSFLayer *)layer {
-    int handle = [MSFMassifApi registerLayer:@"layer" objectId:objectId layer:layer];
+    int handle = [MSFMassifApi adopt:@"layer" objectId:objectId layer:layer];
     return handle == 0 ? nil
         : [[MSFMassifLayer alloc] initWithHandle:handle objectId:objectId map:nil];
 }
 
 + (MSFMassifSource *)adoptSource:(NSString *)objectId source:(MSFTileDataSource *)source {
-    int handle = [MSFMassifApi registerSource:@"source" objectId:objectId source:source];
+    int handle = [MSFMassifApi adopt:@"source" objectId:objectId source:source];
     return handle == 0 ? nil
         : [[MSFMassifSource alloc] initWithHandle:handle kind:@"source" objectId:objectId];
+}
+
++ (MSFMassifObject *)adoptAssets:(NSString *)objectId assets:(MSFAssetPackage *)assets {
+    int handle = [MSFMassifApi adopt:@"assets" objectId:objectId assets:assets];
+    return handle == 0 ? nil
+        : [[MSFMassifObject alloc] initWithHandle:handle kind:@"assets" objectId:objectId];
 }
 
 + (MSFMassifObject *)object:(NSString *)kind

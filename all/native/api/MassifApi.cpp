@@ -15,12 +15,13 @@
 #include "components/Options.h"
 #include "datasources/TileDataSource.h"
 #include "layers/Layer.h"
+#include "utils/AssetPackage.h"
 #include "components/Exceptions.h"
 
 namespace massif { namespace api {
 
-    int MassifApi::registerOptions(const std::string& kind, const std::string& objectId,
-                                   const std::shared_ptr<Options>& options) {
+    int MassifApi::adopt(const std::string& kind, const std::string& objectId,
+                         const std::shared_ptr<Options>& options) {
         Handle handle = NULL_HANDLE;
         if (Context::GetDefault()->registerObject(kind, objectId, options, "massif::Options", handle) != RESULT_OK) {
             return NULL_HANDLE;
@@ -48,8 +49,8 @@ namespace massif { namespace api {
         }
     }
 
-    int MassifApi::registerLayer(const std::string& kind, const std::string& objectId,
-                                 const std::shared_ptr<Layer>& layer) {
+    int MassifApi::adopt(const std::string& kind, const std::string& objectId,
+                         const std::shared_ptr<Layer>& layer) {
         if (!layer) {
             return NULL_HANDLE;
         }
@@ -64,8 +65,8 @@ namespace massif { namespace api {
         return static_cast<int>(handle);
     }
 
-    int MassifApi::registerLayers(const std::string& kind, const std::string& objectId,
-                                  const std::shared_ptr<Layers>& layers) {
+    int MassifApi::adopt(const std::string& kind, const std::string& objectId,
+                         const std::shared_ptr<Layers>& layers) {
         if (!layers) {
             return NULL_HANDLE;
         }
@@ -74,8 +75,8 @@ namespace massif { namespace api {
         return handle;
     }
 
-    int MassifApi::registerSource(const std::string& kind, const std::string& objectId,
-                                  const std::shared_ptr<TileDataSource>& source) {
+    int MassifApi::adopt(const std::string& kind, const std::string& objectId,
+                         const std::shared_ptr<TileDataSource>& source) {
         if (!source) {
             return NULL_HANDLE;
         }
@@ -83,6 +84,22 @@ namespace massif { namespace api {
         Handle handle = NULL_HANDLE;
         if (Context::GetDefault()->registerObject(kind, objectId, source,
                 internedClassName(typeid(concrete), "massif::TileDataSource"), handle) != RESULT_OK) {
+            return NULL_HANDLE;
+        }
+        return static_cast<int>(handle);
+    }
+
+    int MassifApi::adopt(const std::string& kind, const std::string& objectId,
+                         const std::shared_ptr<AssetPackage>& assets) {
+        if (!assets) {
+            return NULL_HANDLE;
+        }
+        // A binding's own subclass is a Swig director, which ClassRegistry does not know - it logs
+        // a miss and the fallback is the base, which is the class a spec's `assets` key requires.
+        const AssetPackage& concrete = *assets;
+        Handle handle = NULL_HANDLE;
+        if (Context::GetDefault()->registerObject(kind, objectId, assets,
+                internedClassName(typeid(concrete), "massif::AssetPackage"), handle) != RESULT_OK) {
             return NULL_HANDLE;
         }
         return static_cast<int>(handle);

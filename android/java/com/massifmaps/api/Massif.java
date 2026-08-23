@@ -2,6 +2,7 @@ package com.massifmaps.api;
 
 import com.massifmaps.datasources.TileDataSource;
 import com.massifmaps.layers.Layer;
+import com.massifmaps.utils.AssetPackage;
 
 /**
  * The registry, for objects that do not belong to a map.
@@ -64,14 +65,31 @@ public final class Massif {
      * @return The wrapper, or null when the id is taken.
      */
     public static MassifLayer adopt(String id, Layer layer) {
-        int handle = MassifApi.registerLayer("layer", id, layer);
+        int handle = MassifApi.adopt("layer", id, layer);
         return handle == 0 ? null : new MassifLayer(handle, id, null);
     }
 
     /** The same for a source. */
     public static MassifSource adopt(String id, TileDataSource source) {
-        int handle = MassifApi.registerSource("source", id, source);
+        int handle = MassifApi.adopt("source", id, source);
         return handle == 0 ? null : new MassifSource(handle, id);
+    }
+
+    /**
+     * The same for an asset package - including an app's OWN subclass of it.
+     *
+     * This is the one thing a spec cannot build: an app reading its styles from somewhere the SDK
+     * has no factory for subclasses {@link AssetPackage}, adopts the instance here, and every
+     * spec taking an "assets" key then resolves the id:
+     *
+     * <pre>
+     * Massif.adopt("shared", myAssetPackage);
+     * Massif.style("osm", Spec.of("cartocss").set("css", css).set("assets", "shared"));
+     * </pre>
+     */
+    public static MassifObject adopt(String id, AssetPackage assets) {
+        int handle = MassifApi.adopt("assets", id, assets);
+        return handle == 0 ? null : new MassifObject(handle, "assets", id);
     }
 
     /**

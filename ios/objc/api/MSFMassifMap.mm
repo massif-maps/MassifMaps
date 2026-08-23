@@ -169,7 +169,7 @@ static void MSFInstallUiDispatcher(void) {
     MSFInstallUiDispatcher();
     int handle = [MSFMassifApi findObject:kMapKind objectId:objectId];
     if (handle == 0) {
-        handle = [MSFMassifApi registerOptions:kMapKind objectId:objectId options:[view getOptions]];
+        handle = [MSFMassifApi adopt:kMapKind objectId:objectId options:[view getOptions]];
         if (handle == 0) {
             return nil;
         }
@@ -330,9 +330,9 @@ static void MSFInstallUiDispatcher(void) {
     if (index < 0 || index >= self.layerCount) {
         return nil;
     }
-    int handle = [MSFMassifApi registerLayer:@"layer"
-                                    objectId:objectId
-                                       layer:[[_view getLayers] get:index]];
+    int handle = [MSFMassifApi adopt:@"layer"
+                            objectId:objectId
+                               layer:[[_view getLayers] get:index]];
     return handle == 0 ? nil
         : [[MSFMassifLayer alloc] initWithHandle:handle objectId:objectId map:self];
 }

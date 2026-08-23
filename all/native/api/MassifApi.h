@@ -16,6 +16,7 @@
 #include <vector>
 
 namespace massif {
+    class AssetPackage;
     class BinaryData;
     class Options;
     class TileDataSource;
@@ -40,14 +41,23 @@ namespace massif {
     public:
         /**
          * Adopts an object built with the object API, so it can be addressed by id and handle.
-         * One overload per kind, and the set of kinds is closed.
+         *
+         * The TYPE picks what is being adopted, not the kind string - `kind` is only the id
+         * namespace, and the same Options is legitimately adopted as "map" by one app and
+         * "options" by another. One overload per adoptable base class, and that set is closed:
+         * SWIG emits one thunk per signature, and the SDK's bases share no common root to
+         * declare a single parameter as.
+         *
+         * Not named `register`: that is a C++ keyword, and a C one, so it is not a legal
+         * Objective-C selector piece either.
+         *
          * @param kind The namespace, e.g. "options". Ids only collide within a kind.
          * @param objectId The caller's name for the object. "id" is a keyword in Objective-C.
          * @param options The object.
          * @return The handle, or 0 when the id is already taken.
          */
-        static int registerOptions(const std::string& kind, const std::string& objectId,
-                                   const std::shared_ptr<Options>& options);
+        static int adopt(const std::string& kind, const std::string& objectId,
+                         const std::shared_ptr<Options>& options);
 
         /**
          * The same for a layer or a source built with the object API.
@@ -59,8 +69,8 @@ namespace massif {
          *
          * @return The handle, or 0 when the id is taken or the class is not a wrapped one.
          */
-        static int registerLayer(const std::string& kind, const std::string& objectId,
-                                 const std::shared_ptr<Layer>& layer);
+        static int adopt(const std::string& kind, const std::string& objectId,
+                         const std::shared_ptr<Layer>& layer);
 
         /**
          * Registers the map's layer list, so a layer built from a spec can be PUT on the map.
@@ -68,14 +78,26 @@ namespace massif {
          * A spec builds an object, it does not place it - the same reason LocalVectorDataSource
          * needs add(). This is the one for layers; call add/remove on the handle it returns.
          */
-        static int registerLayers(const std::string& kind, const std::string& objectId,
-                                  const std::shared_ptr<Layers>& layers);
+        static int adopt(const std::string& kind, const std::string& objectId,
+                         const std::shared_ptr<Layers>& layers);
 
         /**
-         * @copydoc MassifApi::registerLayer
+         * @copydoc MassifApi::adopt
          */
-        static int registerSource(const std::string& kind, const std::string& objectId,
-                                  const std::shared_ptr<TileDataSource>& source);
+        static int adopt(const std::string& kind, const std::string& objectId,
+                         const std::shared_ptr<TileDataSource>& source);
+
+        /**
+         * The same for an asset package, which is the one a binding cannot express as a spec.
+         *
+         * An app that reads its styles from somewhere the SDK has no factory for - a NativeScript
+         * app folder, an app's own decryption - subclasses AssetPackage in Java, Objective-C or
+         * TypeScript and adopts the instance here. Every spec that takes an `assets` key resolves
+         * a string as an id of this kind, so `{"type":"cartocss","css":…,"assets":"shared"}`
+         * then reaches it.
+         */
+        static int adopt(const std::string& kind, const std::string& objectId,
+                         const std::shared_ptr<AssetPackage>& assets);
 
         /**
          * Builds an object from a JSON spec and registers it under a kind and id.
@@ -113,7 +135,7 @@ namespace massif {
          * takes the listener that was already there: a single slot means adopting the facade
          * would otherwise disconnect the app's existing handlers.
          *
-         *   int handle = MassifApi.registerOptions("map", "main", mapView.getOptions());
+         *   int handle = MassifApi.adopt("map", "main", mapView.getOptions());
          *   mapView.setMapEventListener(
          *       MassifApi.createEventBridge(handle, mapView.getMapEventListener()));
          *

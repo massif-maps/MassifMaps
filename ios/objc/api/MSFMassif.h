@@ -14,6 +14,7 @@
 @class MSFMassifLayer;
 @class MSFTileDataSource;
 @class MSFLayer;
+@class MSFAssetPackage;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -114,6 +115,15 @@ NS_SWIFT_NAME(Massif)
 
 /** The same for a source. */
 + (nullable MSFMassifSource *)adoptSource:(NSString *)objectId source:(MSFTileDataSource *)source;
+
+/**
+ * The same for an asset package - including an app's OWN subclass of it.
+ *
+ * This is the one thing a spec cannot build: an app reading its styles from somewhere the SDK has
+ * no factory for subclasses MSFAssetPackage, adopts the instance here, and every spec taking an
+ * "assets" key then resolves the id.
+ */
++ (nullable MSFMassifObject *)adoptAssets:(NSString *)objectId assets:(MSFAssetPackage *)assets;
 
 /**
  * Builds an object of any kind - the escape hatch for a kind with no named method here.

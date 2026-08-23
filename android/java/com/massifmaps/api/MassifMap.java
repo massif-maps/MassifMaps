@@ -52,7 +52,7 @@ public final class MassifMap implements AutoCloseable {
         }
         int handle = MassifApi.findObject(KIND, id);
         if (handle == 0) {
-            handle = MassifApi.registerOptions(KIND, id, view.getOptions());
+            handle = MassifApi.adopt(KIND, id, view.getOptions());
             if (handle == 0) {
                 throw new MassifException("Cannot attach map '" + id + "'");
             }
@@ -289,7 +289,7 @@ public final class MassifMap implements AutoCloseable {
         if (target == null) {
             return null;
         }
-        int handle = MassifApi.registerLayer("layer", id, target);
+        int handle = MassifApi.adopt("layer", id, target);
         return handle == 0 ? null : new MassifLayer(handle, id, this);
     }
 

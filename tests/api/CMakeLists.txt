@@ -33,6 +33,10 @@ set(TEST_MODULES
   "${SDK_BASE_DIR}/all/modules/geometry/VectorTileFeatureBuilder.i"
   # Log is the SDK's only all-static class, and the only way to exercise a class with no instance.
   "${SDK_BASE_DIR}/all/modules/utils/Log.i"
+  # For adopt: an abstract base an app SUBCLASSES, which is what a spec's `assets` id resolves to.
+  # The base only - DirAssetPackage's !spec would pull FileUtils, and with it the platform
+  # AssetUtils, which does not exist on the host.
+  "${SDK_BASE_DIR}/all/modules/utils/AssetPackage.i"
 )
 
 # The routing modules are behind this, so the generator and the compile have to agree on it.
@@ -131,6 +135,7 @@ add_executable(api_tests
   StructCodecTest.cpp
   ProjectionTest.cpp
   MethodTest.cpp
+  AdoptTest.cpp
   CAbiTest.cpp
   "${TEST_TABLE_DIR}/PropertyTable.inc"
   "${TEST_TABLE_DIR}/MethodDecls.inc"

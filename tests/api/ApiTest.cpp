@@ -44,6 +44,7 @@ void testStructSpecKeys();
 void testNestedSpecProperties();
 void testCAbi();
 void testCAbiEvents();
+void testAdopt();
 
 namespace {
 
@@ -289,6 +290,7 @@ int main() {
     testNestedSpecProperties();
     testCAbi();
     testCAbiEvents();
+    testAdopt();
 
     std::printf("\n%d failure(s)\n", failures);
     return failures ? 1 : 0;

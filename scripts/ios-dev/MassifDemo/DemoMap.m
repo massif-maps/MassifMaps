@@ -869,7 +869,7 @@ static const DemoFeature LAYER_ORDER[] = {
 
     int handle = [MSFMassifApi findObject:@"options" objectId:@"demo"];
     if (handle == 0) {
-        handle = [MSFMassifApi registerOptions:@"options" objectId:@"demo" options:[self.mapView getOptions]];
+        handle = [MSFMassifApi adopt:@"options" objectId:@"demo" options:[self.mapView getOptions]];
     }
     double before = [MSFMassifApi getFloat:handle path:path defaultValue:NAN];
     int result = [MSFMassifApi setFloat:handle path:path value:value];

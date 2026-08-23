@@ -4123,6 +4123,23 @@
       "methods": [],
       "events": []
     },
+    "massif::MapMoveInfo": {
+      "base": null,
+      "properties": [
+        {
+          "name": "reason",
+          "type": "ENUM",
+          "readOnly": true,
+          "static": false,
+          "position": false,
+          "cppType": "massif::MapMoveReason::MapMoveReason",
+          "enum": "massif::MapMoveReason::MapMoveReason",
+          "doc": "Returns what caused the movement."
+        }
+      ],
+      "methods": [],
+      "events": []
+    },
     "massif::MapPos": {
       "base": null,
       "properties": [
@@ -5182,13 +5199,13 @@
         {
           "cppClass": "massif::Options",
           "name": "map.moved",
-          "payload": null,
+          "payload": "massif::MapMoveInfo",
           "consumable": false
         },
         {
           "cppClass": "massif::Options",
           "name": "map.stable",
-          "payload": null,
+          "payload": "massif::MapMoveInfo",
           "consumable": false
         }
       ]

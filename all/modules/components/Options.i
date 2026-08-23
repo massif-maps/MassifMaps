@@ -26,8 +26,8 @@
 
 // The map events. They fire on whatever handle the Options were registered under.
 !event(massif::Options, map.idle)
-!event(massif::Options, map.moved)
-!event(massif::Options, map.stable)
+!event(massif::Options, map.moved, payload(massif::MapMoveInfo))
+!event(massif::Options, map.stable, payload(massif::MapMoveInfo))
 !event(massif::Options, map.interaction, payload(massif::MapInteractionInfo))
 !event(massif::Options, map.clicked, payload(massif::MapClickInfo))
 %import "core/MapBounds.i"

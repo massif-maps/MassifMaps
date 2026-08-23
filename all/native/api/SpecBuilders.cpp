@@ -77,7 +77,18 @@ namespace massif { namespace api {
         Variant child = spec.getObjectElement(key);
         if (child.getType() == VariantType::VARIANT_TYPE_STRING) {
             out = context.getObject(context.findObject(kind, child.getString()), requiredClass);
-            return out ? RESULT_OK : RESULT_BAD_HANDLE;
+            if (!out) {
+                // Said out loud: this came back as a bare RESULT_BAD_HANDLE, and every binding
+                // renders that as "see the log" over a log with nothing in it. A STRING here is
+                // an ID in the registry - a well-known name like "EPSG:4326" is a TYPE, and has
+                // to be written as { "type": "EPSG:4326" } so the kind's factory builds it.
+                Log::Errorf("Spec: '%s' names no registered %s (as %s); a well-known name is a "
+                            "type, not an id - write { \"type\": \"%s\" }",
+                            child.getString().c_str(), kind, requiredClass,
+                            child.getString().c_str());
+                return RESULT_BAD_HANDLE;
+            }
+            return RESULT_OK;
         }
         ObjectRef object;
         std::set<std::string> consumed;

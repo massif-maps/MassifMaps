@@ -56,20 +56,22 @@ namespace massif { namespace api {
          * @param handle The target, from create or MassifInterop.adopt.
          * @param event The event name, e.g. "map.clicked".
          * @param listener Called when it fires.
-         * @param consume Whether the listener's return value can claim the event, stopping it
-         *        reaching later handlers and telling the SDK the gesture was handled. The SDK asks
-         *        that question synchronously, so a consuming subscription must be delivery 0.
          * @param delivery 0 origin, 1 UI, 2 background.
          * @param projection The well-known name of the projection this handler's position reads
          *        default to, e.g. "EPSG:4326". Empty leaves them in the map's own projection. It
          *        applies for the duration of the call, so a payload kept and read afterwards has
          *        to name the projection per read - see getPos.
+         * @param consume Whether the listener's return value can claim the event, stopping it
+         *        reaching later handlers and telling the SDK the gesture was handled. LAST, and
+         *        defaulted, so the shape of a subscription that does not claim is unchanged - and
+         *        so a binding can tell the two apart by arity or by selector name.  The SDK asks
+         *        that question synchronously, so a consuming subscription must be delivery 0.
          * @return The subscription, or 0 when the handle is stale, the projection is unknown, or a
          *         consuming subscription asked for another thread.
          */
         static int on(int handle, const std::string& event,
-                      const std::shared_ptr<EventListener>& listener, bool consume, int delivery,
-                      bool coalesce, const std::string& projection = std::string());
+                      const std::shared_ptr<EventListener>& listener, int delivery, bool coalesce,
+                      const std::string& projection = std::string(), bool consume = false);
 
         /**
          * Registers how to reach the app's UI thread, for subscriptions that asked for it.

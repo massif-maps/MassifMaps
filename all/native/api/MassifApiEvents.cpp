@@ -50,8 +50,8 @@ namespace massif { namespace api {
     }
 
     int MassifApi::on(int handle, const std::string& event,
-                      const std::shared_ptr<EventListener>& listener, bool consume, int delivery,
-                      bool coalesce, const std::string& projection) {
+                      const std::shared_ptr<EventListener>& listener, int delivery, bool coalesce,
+                      const std::string& projection, bool consume) {
         if (!listener) {
             throw NullArgumentException("Null listener");
         }

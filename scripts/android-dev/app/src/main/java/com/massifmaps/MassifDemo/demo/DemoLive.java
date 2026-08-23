@@ -252,7 +252,7 @@ public final class DemoLive extends BroadcastReceiver {
                     }
                 };
                 MassifApi.offEvent(handle, event);
-                MassifApi.on(handle, event, apiCallListener, false, 1, false);
+                MassifApi.on(handle, event, apiCallListener, 1, false);
                 apiCall = MassifApi.callAsync(handle, parts[2], args, event);
                 Log.i(TAG, "apiCall " + parts[2] + " queued as " + apiCall + ", waiting for " + event
                         + " (--es apiCancel true to stop it)");
@@ -375,7 +375,7 @@ public final class DemoLive extends BroadcastReceiver {
             }
         };
         MassifApi.offEvent(service, "search.done");
-        MassifApi.on(service, "search.done", apiSearchListener, false, 1, false);
+        MassifApi.on(service, "search.done", apiSearchListener, 1, false);
         apiCall = MassifApi.callAsync(service, "findFeatures", "[" + query + "]", "search.done");
         Log.i(TAG, "apiSearch '" + label + "' at z" + zoom + " queued as " + apiCall);
     }
@@ -532,8 +532,8 @@ public final class DemoLive extends BroadcastReceiver {
                 return false;
             }
         };
-        final int rawSub = MassifApi.on(handle, "map.moved", apiMoveListener, false, 0, false);
-        final int coalescedSub = MassifApi.on(handle, "map.moved", apiMoveCoalescedListener, false, 1, true);
+        final int rawSub = MassifApi.on(handle, "map.moved", apiMoveListener, 0, false);
+        final int coalescedSub = MassifApi.on(handle, "map.moved", apiMoveCoalescedListener, 1, true);
         final long start = System.currentTimeMillis();
         Log.i(TAG, "apiMoveRate counting map.moved for " + seconds + " s - drag now");
         new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(new Runnable() {
@@ -633,7 +633,7 @@ public final class DemoLive extends BroadcastReceiver {
             }
         };
         MassifApi.offEvent(service, "route.done");
-        MassifApi.on(service, "route.done", apiRouteListener, false, 1, false);
+        MassifApi.on(service, "route.done", apiRouteListener, 1, false);
         // Async: the online service does an HTTP round trip on the calling thread.
         apiCall = MassifApi.callAsync(service, "calculateRoute", "[" + query + "]", "route.done");
         Log.i(TAG, "apiRoute " + points + " queued as " + apiCall);
@@ -744,7 +744,7 @@ public final class DemoLive extends BroadcastReceiver {
                 return false;
             }
         };
-        apiSubscription = MassifApi.on(handle, "map.clicked", apiListener, false, 0, false);
+        apiSubscription = MassifApi.on(handle, "map.clicked", apiListener, 0, false);
 
         // The layer-level one, which is where a feature payload comes from.
         com.massifmaps.layers.VectorTileLayer vector = null;
@@ -772,7 +772,7 @@ public final class DemoLive extends BroadcastReceiver {
                             + " geojsonLen=" + MassifApi.getString(payload, "feature.geometryGeoJSON", "").length());
                     return false;
                 }
-            }, false, 0, false, "EPSG:4326");
+            }, 0, false, "EPSG:4326");
         }
         Log.i(TAG, "apiEvents on, handle=" + handle + " subscription=" + apiSubscription
                 + " vectorLayer=" + (vector != null ? vector.getClass().getSimpleName() : "none"));

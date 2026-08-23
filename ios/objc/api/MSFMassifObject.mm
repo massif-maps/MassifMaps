@@ -249,10 +249,10 @@
     int subscription = [MSFMassifApi on:_handle
                                   event:event
                                listener:listener
-                                consume:consuming
                                delivery:(int)delivery
                                coalesce:coalesce
-                             projection:projection ?: @""];
+                             projection:projection ?: @""
+                                consume:consuming];
     return subscription == 0 ? nil
         : [[MSFSubscription alloc] initWithId:subscription listener:listener];
 }

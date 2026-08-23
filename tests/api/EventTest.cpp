@@ -250,7 +250,7 @@ void testBindingSubscriptions() {
 
     bool threw = false;
     try {
-        MassifApi::on(static_cast<int>(target), "click", nullptr, false, 0, false);
+        MassifApi::on(static_cast<int>(target), "click", nullptr, 0, false);
     } catch (const NullArgumentException&) {
         threw = true;
     }
@@ -259,7 +259,7 @@ void testBindingSubscriptions() {
     // Returns true, but did not ask to consume, so the event is not claimed.
     auto loud = std::make_shared<CountingListener>();
     loud->claim = true;
-    int quiet = MassifApi::on(static_cast<int>(target), "click", loud, false, 0, false);
+    int quiet = MassifApi::on(static_cast<int>(target), "click", loud, 0, false);
     TEST_CHECK(quiet != 0, "a non-consuming subscription is accepted");
     TEST_CHECK(!context->emit(target, "click", 0), "a non-consuming handler cannot claim the event");
     TEST_CHECK(loud->calls == 1, "though it still ran");
@@ -268,7 +268,7 @@ void testBindingSubscriptions() {
     // The same listener, subscribed as consuming: now the return value is what the SDK acts on.
     auto claiming = std::make_shared<CountingListener>();
     claiming->claim = true;
-    int consuming = MassifApi::on(static_cast<int>(target), "click", claiming, true, 0, false);
+    int consuming = MassifApi::on(static_cast<int>(target), "click", claiming, 0, false, "", true);
     TEST_CHECK(consuming != 0, "a consuming subscription is accepted");
     TEST_CHECK(context->emit(target, "click", 0), "and its true reaches the SDK");
     TEST_CHECK(claiming->calls == 1, "having run once");
@@ -280,10 +280,10 @@ void testBindingSubscriptions() {
 
     // The SDK asks synchronously, so a consuming subscription cannot be queued for another thread.
     auto queued = std::make_shared<CountingListener>();
-    TEST_CHECK(MassifApi::on(static_cast<int>(target), "click", queued, true, 1, false) == 0,
+    TEST_CHECK(MassifApi::on(static_cast<int>(target), "click", queued, 1, false, "", true) == 0,
                "a consuming subscription cannot ask for another thread");
 
-    TEST_CHECK(MassifApi::on(9999, "click", queued, false, 0, false) == 0, "a stale handle gives 0");
+    TEST_CHECK(MassifApi::on(9999, "click", queued, 0, false) == 0, "a stale handle gives 0");
 
     context->unregisterObject("options", "binding-target");
     testBindingListenerLifetime();
@@ -315,10 +315,10 @@ void testBindingListenerLifetime() {
         byTarget = b;
         byDestroy = c;
         survivor = d;
-        MassifApi::on(static_cast<int>(target), "click", a, false, 0, false);
-        MassifApi::on(static_cast<int>(target), "move", b, false, 0, false);
-        MassifApi::on(static_cast<int>(other), "click", c, false, 0, false);
-        MassifApi::on(static_cast<int>(other), "move", d, false, 0, false);
+        MassifApi::on(static_cast<int>(target), "click", a, 0, false);
+        MassifApi::on(static_cast<int>(target), "move", b, 0, false);
+        MassifApi::on(static_cast<int>(other), "click", c, 0, false);
+        MassifApi::on(static_cast<int>(other), "move", d, 0, false);
     }
     TEST_CHECK(!byEvent.expired() && !survivor.expired(), "a live subscription keeps its listener");
 
@@ -336,7 +336,7 @@ void testBindingListenerLifetime() {
     TEST_CHECK(!byDestroy.expired(), "a destroy alone does not reach the registry");
     Handle sweeper = registerFog(context, "lifetime-sweeper");
     auto trigger = std::make_shared<CountingListener>();
-    MassifApi::on(static_cast<int>(sweeper), "click", trigger, false, 0, false);
+    MassifApi::on(static_cast<int>(sweeper), "click", trigger, 0, false);
     TEST_CHECK(byDestroy.expired() && survivor.expired(),
                "and the next subscription sweeps what the destroy orphaned");
 

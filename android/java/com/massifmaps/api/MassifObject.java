@@ -368,8 +368,8 @@ public class MassifObject implements AutoCloseable {
         };
         // A consuming handler is one whose return value the SDK acts on, so the subscription has to
         // say so - without it the bool travels the whole way back and is dropped at the last step.
-        int subscription = MassifApi.on(handle, event, listener, consuming != null, delivery.value,
-                                        coalesce, projection == null ? "" : projection);
+        int subscription = MassifApi.on(handle, event, listener, delivery.value, coalesce,
+                                        projection == null ? "" : projection, consuming != null);
         if (subscription == 0) {
             throw new MassifException("Cannot subscribe to '" + event + "' on " + this);
         }

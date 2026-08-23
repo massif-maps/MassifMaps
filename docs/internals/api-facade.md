@@ -66,6 +66,32 @@ on the object API's proxies, so "SWIG-free" was true of the header and false of 
 `scripts/check-facade-abi.sh` fails when an SDK type reaches `MassifApi` — the invariant has no
 other guard, and it had already drifted once.
 
+### Never hold the context lock across a call into the SDK
+
+`Context::_mutex` is not recursive, and an SDK setter notifies its listeners **synchronously**. A
+notification can reach straight back into the facade, so holding the lock across the call is a
+self-deadlock on one thread. `emit` was written for this rule — it collects subscriptions under the
+lock and runs the handlers outside it — and `call` says so in a comment. `setProperty` and
+`setObjectProperty` did not, and the NativeScript port found it: any binding that had subscribed to
+a map event and then wrote an option froze, with no crash and nothing in the log.
+
+The chain, from the ANR trace, all on the main thread:
+
+```
+MassifApi.setObject → Context::setObjectProperty        takes _mutex
+  → Options::setTerrainOptions → notifyOptionChanged
+  → MapRenderer::OptionsListener::onOptionChanged → viewChanged
+  → TouchHandler::MapRendererListener::onMapChanged
+  → MapEventBridge::onMapMoved → Context::emit          locks _mutex again → futex wait
+```
+
+Both setters now resolve under the lock and invoke outside it. The `ObjectRef` holds a
+`shared_ptr`, and a `PropertyEntry*` points into the static table, so both stay valid unlocked.
+
+**The host suite cannot reach this**: it needs an accessor that re-enters the context, and every
+one that does pulls in `Options` and the renderer. It is a device check — the 3D terrain example,
+which subscribes and then writes `terrainOptions`.
+
 ## The property table
 
 `set` and `get` resolve against a table generated from the **Swig attribute macros**, which already

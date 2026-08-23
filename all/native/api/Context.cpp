@@ -176,6 +176,11 @@ namespace massif { namespace api {
         std::lock_guard<std::mutex> lock(_mutex);
         auto& kindIds = _ids[kind];
         if (kindIds.find(id) != kindIds.end()) {
+            // Said out loud: adopt() reports a duplicate as a handle of 0, and a binding can only
+            // turn that back into "could not register X" - which names neither the id nor the
+            // reason. This is the line that makes it a two-second diagnosis.
+            Log::Errorf("Context::registerObject: '%s' is already registered under kind '%s'",
+                        id.c_str(), kind.c_str());
             return RESULT_DUPLICATE_ID;
         }
         handle = allocate(obj, cppClass);
@@ -1005,35 +1010,47 @@ namespace massif { namespace api {
     }
 
     Result Context::setProperty(Handle handle, const std::string& path, const PropertyValue& value) {
-        std::lock_guard<std::mutex> lock(_mutex);
         ObjectRef target;
-        Result result = RESULT_OK;
-        const PropertyEntry* entry = lookup(handle, path, target, result);
-        if (!entry) {
-            return result;
-        }
-        if (entry->flags & PF_READONLY) {
-            return RESULT_READONLY;
-        }
-        if (!entry->setter) {
-            return RESULT_UNSUPPORTED_TYPE;
-        }
-        // A position is WRITTEN in the same projection it is read in, or a value read and written
-        // back would land somewhere else entirely - the one failure this change could produce, and
-        // it would be silent.
+        const PropertyEntry* entry = nullptr;
         PropertyValue converted;
         const PropertyValue* effective = &value;
-        if ((entry->flags & PF_POSITION) && value.type == PT_STRING) {
-            std::shared_ptr<Projection> from = Projections::find(wantedProjection(std::string()));
-            std::shared_ptr<Projection> to = sourceProjection(target, handle);
-            if (from && to && from->getName() != to->getName()) {
-                converted = value;
-                if (!reproject(converted.stringValue, *from, *to)) {
-                    return RESULT_UNSUPPORTED_TYPE;
+        {
+            std::lock_guard<std::mutex> lock(_mutex);
+            Result result = RESULT_OK;
+            entry = lookup(handle, path, target, result);
+            if (!entry) {
+                return result;
+            }
+            if (entry->flags & PF_READONLY) {
+                return RESULT_READONLY;
+            }
+            if (!entry->setter) {
+                return RESULT_UNSUPPORTED_TYPE;
+            }
+            // A position is WRITTEN in the same projection it is read in, or a value read and
+            // written back would land somewhere else entirely - the one failure that change could
+            // produce, and it would be silent.
+            if ((entry->flags & PF_POSITION) && value.type == PT_STRING) {
+                std::shared_ptr<Projection> from = Projections::find(wantedProjection(std::string()));
+                std::shared_ptr<Projection> to = sourceProjection(target, handle);
+                if (from && to && from->getName() != to->getName()) {
+                    converted = value;
+                    if (!reproject(converted.stringValue, *from, *to)) {
+                        return RESULT_UNSUPPORTED_TYPE;
+                    }
+                    effective = &converted;
                 }
-                effective = &converted;
             }
         }
+        // UNLOCKED, for the same reason call() is: the setter notifies its listeners
+        // SYNCHRONOUSLY, and that notification reaches back into this context. Options::
+        // setTerrainOptions -> notifyOptionChanged -> MapRenderer::viewChanged ->
+        // MapEventBridge::onMapMoved -> Context::emit, on this thread, on a mutex that is not
+        // recursive. Holding it across the call deadlocked every binding that had subscribed to
+        // a map event and then wrote an option.
+        //
+        // Safe to keep using: target holds a shared_ptr, and entry points into the static table.
+        //
         // The generated thunk calls the class' own setter, so the option-changed notification and
         // therefore the redraw granularity are exactly those of a direct call - INCLUDING its
         // validation. Options::setZoomRange and friends throw on a value they will not take, and
@@ -1048,34 +1065,40 @@ namespace massif { namespace api {
     }
 
     Result Context::setObjectProperty(Handle handle, const std::string& path, Handle value) {
-        std::lock_guard<std::mutex> lock(_mutex);
         ObjectRef target;
-        Result result = RESULT_OK;
-        const PropertyEntry* entry = lookup(handle, path, target, result);
-        if (!entry) {
-            return result;
-        }
-        if (entry->flags & PF_READONLY) {
-            return RESULT_READONLY;
-        }
-        if (entry->type != PT_OBJECT || !entry->objectSetter) {
-            return RESULT_UNSUPPORTED_TYPE;
-        }
-
         ObjectRef assigned;
-        if (value != NULL_HANDLE) {
-            const Slot* slot = resolve(value);
-            if (!slot) {
-                return RESULT_BAD_HANDLE;
+        const PropertyEntry* entry = nullptr;
+        {
+            std::lock_guard<std::mutex> lock(_mutex);
+            Result result = RESULT_OK;
+            entry = lookup(handle, path, target, result);
+            if (!entry) {
+                return result;
             }
-            // Checked BEFORE the cast, which is from shared_ptr<void> and would otherwise be
-            // undefined for the wrong class.
-            if (!isSubclassOf(slot->cppClass, entry->objectClass)) {
-                return RESULT_UNKNOWN_CLASS;
+            if (entry->flags & PF_READONLY) {
+                return RESULT_READONLY;
             }
-            assigned.obj = slot->obj;
-            assigned.cppClass = slot->cppClass;
+            if (entry->type != PT_OBJECT || !entry->objectSetter) {
+                return RESULT_UNSUPPORTED_TYPE;
+            }
+            if (value != NULL_HANDLE) {
+                const Slot* slot = resolve(value);
+                if (!slot) {
+                    return RESULT_BAD_HANDLE;
+                }
+                // Checked BEFORE the cast, which is from shared_ptr<void> and would otherwise be
+                // undefined for the wrong class.
+                if (!isSubclassOf(slot->cppClass, entry->objectClass)) {
+                    return RESULT_UNKNOWN_CLASS;
+                }
+                assigned.obj = slot->obj;
+                assigned.cppClass = slot->cppClass;
+            }
         }
+        // UNLOCKED - see setProperty. This is the call the deadlock was actually found on:
+        // setTerrainOptions notifies, the notification reaches MapEventBridge::onMapMoved, and
+        // emit() re-locks the same mutex on the same thread.
+        //
         // Options::setBaseProjection throws on null, and it is not the only setter that validates.
         try {
             entry->objectSetter(target.obj.get(), assigned);

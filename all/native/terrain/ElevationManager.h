@@ -14,6 +14,7 @@
 #include <atomic>
 #include <condition_variable>
 #include <deque>
+#include <functional>
 #include <future>
 #include <utility>
 #include <map>
@@ -205,6 +206,14 @@ namespace massif {
         bool getChangedTiles(unsigned int sinceVersion, std::vector<MapTile>& tiles) const;
 
         /**
+         * Called on a tile-loading thread whenever decoded elevation data changed. Nothing polls
+         * for it: the consumers all read the version from inside a frame, so without a redraw
+         * request the map goes idle on whatever mesh the last frame happened to have and only
+         * catches up on the next gesture.
+         */
+        void setDataChangedListener(const std::function<void()>& listener);
+
+        /**
          * Resolves the effective elevation decoder: the data source "encoding" setting takes precedence,
          * then the preferred decoder, then the MapBox decoder as the default.
          */
@@ -227,6 +236,7 @@ namespace massif {
 
         void tilesChanged();
         void bumpGlobalVersion();
+        void notifyDataChanged() const;
         double wrapInternalX(double internalX) const;
         MapTile clampTileZoom(const MapTile& mapTile) const;
         MapTile clampDataTileZoom(const MapTile& dataTile) const;
@@ -266,6 +276,7 @@ namespace massif {
         mutable cache::timed_lru_cache<long long, std::shared_ptr<ElevationTileGrid> > _gridCache;
         bool _gridCacheCapacityFixed = false; // set through setCacheCapacity: the app's number wins over the grid-count rule
         mutable std::map<long long, std::shared_future<std::shared_ptr<ElevationTileGrid> > > _pendingLoads; // single-flight de-duplication of concurrent loads
+        std::function<void()> _dataChangedListener; // called outside _mutex, see setDataChangedListener
         mutable std::mutex _mutex;
 
         // Background prefetch worker: loads elevation tiles requested by the render thread

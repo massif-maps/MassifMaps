@@ -39,6 +39,7 @@ namespace massif {
     class CameraZoomEvent;
     class Bitmap;
     class BillboardDrawData;
+    class ElevationManager;
     class Layer;
     class Layers;
     class MapRendererListener;
@@ -289,6 +290,7 @@ namespace massif {
         std::string _postProcessShaderName;
         std::optional<std::chrono::steady_clock::time_point> _postProcessStartTime;
         std::unique_ptr<TerrainRenderer> _terrainRenderer;
+        std::weak_ptr<ElevationManager> _redrawElevationManager; // the one whose loads ask for a frame
         std::vector<vt::TileId> _groundCoverTileIds; // last frame's shared ground cover (shadow refresh trigger)
         std::unique_ptr<TerrainDrapeCache> _terrainDrapeCache;
         std::unique_ptr<TerrainShadowMap> _terrainShadowMap; // shared cross-layer drape target

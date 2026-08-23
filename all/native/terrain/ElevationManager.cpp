@@ -346,8 +346,30 @@ namespace massif {
             }
             _pendingLoads.erase(tileId);
         }
+        if (grid) {
+            notifyDataChanged();
+        }
         promise.set_value(grid);
         return grid;
+    }
+
+    void ElevationManager::setDataChangedListener(const std::function<void()>& listener) {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        _dataChangedListener = listener;
+    }
+
+    void ElevationManager::notifyDataChanged() const {
+        std::function<void()> listener;
+        {
+            std::lock_guard<std::mutex> lock(_mutex);
+            listener = _dataChangedListener;
+        }
+        // Outside the lock: the listener asks the renderer for a frame, and that frame reads
+        // this manager back.
+        if (listener) {
+            listener();
+        }
     }
 
     MapTile ElevationManager::getDataTile(const MapTile& mapTile) const {
@@ -654,6 +676,7 @@ namespace massif {
         }
         _dataVersion++;
         bumpGlobalVersion();
+        notifyDataChanged();
     }
 
     void ElevationManager::bumpGlobalVersion() {

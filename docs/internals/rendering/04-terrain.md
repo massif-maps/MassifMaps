@@ -28,6 +28,15 @@ startup** on a Crosscall. The cache now grows on the first decoded grid to hold 
 loads equalled distinct tiles (128 still re-decoded ~20%). `TerrainOptions::setElevationCacheCapacity`
 still wins over the rule, for an app that cannot spend the memory.
 
+**A decoded tile asks for a frame.** Every consumer reads the elevation version from *inside* a
+frame (`TileRenderer::onDrawFrame` compares it and invalidates the surfaces it covers), so a tile
+that lands after the last drawn frame is never applied: the map goes idle on a half-displaced mesh —
+cracks at LOD rings, flat far ground — and only catches up on the next gesture, which is why "pan a
+pixel and it fixes itself" was the symptom. `ElevationManager::setDataChangedListener` closes that:
+`MapRenderer` hooks it on the terrain path and every decoded grid requests a redraw. Measured on the
+3D-terrain example, cold: frames stopped at elevation version 43 while loading ran on to 159; with
+the listener the last frame follows the last decoded tile by 146 ms and has consumed it.
+
 `setSurfaceResolution` caps the elevation level to what the mesh can express (roughly one texel per
 half surface cell), which costs about two zoom levels of detail. That cap is right for geometry and
 wrong for per-fragment shading, which is why the terrain paint can opt out of it

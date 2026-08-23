@@ -2141,6 +2141,20 @@ namespace massif {
             if (auto terrainOptions = _options->getTerrainOptions()) {
                 if (terrainOptions->isEnabled()) {
                     terrainMode = true;
+                    // Elevation arrives on a loading thread and every consumer reads it from
+                    // inside a frame, so the tiles that land after the last one are never
+                    // applied: the map sits on a half-displaced mesh until the next gesture.
+                    if (std::shared_ptr<ElevationManager> elevationManager = terrainOptions->getElevationManager()) {
+                        if (_redrawElevationManager.lock() != elevationManager) {
+                            std::weak_ptr<MapRenderer> mapRendererWeak = shared_from_this();
+                            elevationManager->setDataChangedListener([mapRendererWeak]() {
+                                if (auto mapRenderer = mapRendererWeak.lock()) {
+                                    mapRenderer->requestRedraw();
+                                }
+                            });
+                            _redrawElevationManager = elevationManager;
+                        }
+                    }
                     bool depthWriteAssigned = false;
                     int terrainRenderOrder = 0;
                     for (const std::shared_ptr<Layer>& layer : layers) {

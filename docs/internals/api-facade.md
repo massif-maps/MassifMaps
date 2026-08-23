@@ -729,9 +729,13 @@ Four rules make that work:
 - **Subscriptions are the language's own idiom** — `AutoCloseable` in Java, self-invalidating on
   `dealloc` in Objective-C — so removal is not a call an app has to remember.
 
-Everything else delegates. The camera passes through to `MapView`, which already has the flight
-code; what the wrapper adds is one `moveTo` that moves position, zoom, rotation and tilt in a
-**single** flight, because four separate setters animate independently and visibly fight each other.
+Everything else delegates — to the facade, including the camera. What the wrapper adds is one
+`moveTo` that moves position, zoom, rotation and tilt in a **single** flight, because four separate
+setters animate independently and visibly fight each other. The facade carries the SDK's richest
+overloads, not the convenient ones: `flyTo` takes `climbHeight` (the parabola that clears the ridge
+between two valleys) and `fitBounds` takes `resetRotation`/`resetTilt`. Dropping them made the
+facade camera unable to replace a binding's existing one, which is what the NativeScript port
+found — a facade method is only done when a consumer can stop calling the object API.
 
 ### Adopting what an app already built
 

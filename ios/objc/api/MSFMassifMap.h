@@ -41,6 +41,12 @@ NS_SWIFT_NAME(MapCamera)
 /** Seconds for the moves that follow. 0 is immediate. Resets to 0 after each move. */
 - (instancetype)animate:(float)seconds;
 
+/**
+ * Arches the next flight - highest halfway, nothing at either end, which is what clears the ridge
+ * between two valleys. In the base projection's units. Resets after the move.
+ */
+- (instancetype)climb:(float)height;
+
 - (instancetype)position:(MSFPosition *)pos;
 - (instancetype)zoom:(float)zoom;
 - (instancetype)rotation:(float)degrees;
@@ -60,6 +66,13 @@ NS_SWIFT_NAME(MapCamera)
 - (instancetype)fitBounds:(MSFBounds *)bounds
                screenRect:(MSFScreenRect *)screenRect
               integerZoom:(BOOL)integerZoom;
+
+/** The same, also straightening the camera on the way there. */
+- (instancetype)fitBounds:(MSFBounds *)bounds
+               screenRect:(MSFScreenRect *)screenRect
+              integerZoom:(BOOL)integerZoom
+            resetRotation:(BOOL)resetRotation
+                resetTilt:(BOOL)resetTilt;
 
 /** The same, over the whole view. */
 - (instancetype)fitBounds:(MSFBounds *)bounds width:(float)width height:(float)height;

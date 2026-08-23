@@ -379,7 +379,8 @@ Also changed, on the camera:
 
 - `MapCamera.fitBounds(bounds)` is now `fitBounds(bounds, width, height)`; the ObjC
   `fitBounds:screenBounds:integerZoom:` is `fitBounds:screenRect:integerZoom:`. The camera no
-  longer holds the view, so it cannot measure it for you.
+  longer holds the view, so it cannot measure it for you. An overload taking `resetRotation` and
+  `resetTilt` is new, as is `camera().climb(height)` for an arched flight.
 - `MassifMap.screenToMap` returns a `Position` and `mapToScreen` a `ScreenPoint`.
 - New: `MapCamera.progress()` / `MSFMapCamera.progress`, 0 to 1 through the current flight.
 

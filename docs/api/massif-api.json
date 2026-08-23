@@ -1100,6 +1100,14 @@
               "type": "bool"
             },
             {
+              "name": "resetRotation",
+              "type": "bool"
+            },
+            {
+              "name": "resetTilt",
+              "type": "bool"
+            },
+            {
               "name": "durationSeconds",
               "type": "float"
             }
@@ -1125,6 +1133,10 @@
             },
             {
               "name": "tilt",
+              "type": "float"
+            },
+            {
+              "name": "climbHeight",
               "type": "float"
             },
             {

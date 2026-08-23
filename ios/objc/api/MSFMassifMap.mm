@@ -14,6 +14,7 @@ static NSString * const kViewKind = @"view";
 @implementation MSFMapCamera {
     MSFMassifObject *_view;
     float _duration;
+    float _climb;
 }
 
 - (instancetype)initWithView:(id)view {
@@ -25,6 +26,11 @@ static NSString * const kViewKind = @"view";
 
 - (instancetype)animate:(float)seconds {
     _duration = seconds;
+    return self;
+}
+
+- (instancetype)climb:(float)height {
+    _climb = height;
     return self;
 }
 
@@ -56,8 +62,10 @@ static NSString * const kViewKind = @"view";
 
 - (instancetype)moveTo:(MSFPosition *)pos zoom:(float)zoom rotation:(float)rotation tilt:(float)tilt {
     float seconds = [self take];
+    float height = _climb;
+    _climb = 0;
     if (seconds > 0) {
-        [[_view call:@"flyTo" args:@[ pos, @(zoom), @(rotation), @(tilt), @(seconds) ]
+        [[_view call:@"flyTo" args:@[ pos, @(zoom), @(rotation), @(tilt), @(height), @(seconds) ]
                 error:nil] destroy];
     } else {
         // Not flyTo with a duration of 0: that means "pick a duration from the path", and a flight
@@ -75,8 +83,18 @@ static NSString * const kViewKind = @"view";
 - (instancetype)fitBounds:(MSFBounds *)bounds
                screenRect:(MSFScreenRect *)screenRect
               integerZoom:(BOOL)integerZoom {
+    return [self fitBounds:bounds screenRect:screenRect integerZoom:integerZoom
+             resetRotation:NO resetTilt:NO];
+}
+
+- (instancetype)fitBounds:(MSFBounds *)bounds
+               screenRect:(MSFScreenRect *)screenRect
+              integerZoom:(BOOL)integerZoom
+            resetRotation:(BOOL)resetRotation
+                resetTilt:(BOOL)resetTilt {
     [[_view call:@"fitBounds"
-            args:@[ bounds, screenRect, @(integerZoom), @([self take]) ]
+            args:@[ bounds, screenRect, @(integerZoom), @(resetRotation), @(resetTilt),
+                    @([self take]) ]
            error:nil] destroy];
     return self;
 }

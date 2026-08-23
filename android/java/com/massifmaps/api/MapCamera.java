@@ -14,6 +14,7 @@ public final class MapCamera {
 
     private final MassifObject view;
     private float duration;
+    private float climb;
 
     MapCamera(MassifObject view) {
         this.view = view;
@@ -22,6 +23,15 @@ public final class MapCamera {
     /** Seconds for the moves that follow. 0 is immediate. Resets to 0 after each move. */
     public MapCamera animate(float seconds) {
         duration = seconds;
+        return this;
+    }
+
+    /**
+     * Arches the next flight - highest halfway, nothing at either end, which is what clears the
+     * ridge between two valleys. In the base projection's units. Resets after the move.
+     */
+    public MapCamera climb(float height) {
+        climb = height;
         return this;
     }
 
@@ -51,8 +61,10 @@ public final class MapCamera {
      */
     public MapCamera moveTo(Position pos, float zoom, float rotation, float tilt) {
         float seconds = take();
+        float height = climb;
+        climb = 0;
         if (seconds > 0) {
-            view.call("flyTo", pos, zoom, rotation, tilt, seconds).close();
+            view.call("flyTo", pos, zoom, rotation, tilt, height, seconds).close();
         } else {
             view.call("moveTo", pos, zoom, rotation, tilt).close();
         }
@@ -71,7 +83,14 @@ public final class MapCamera {
      * @param integerZoom Snap to a whole zoom level, which keeps raster tiles crisp.
      */
     public MapCamera fitBounds(Bounds bounds, ScreenRect screenRect, boolean integerZoom) {
-        view.call("fitBounds", bounds, screenRect, integerZoom, take()).close();
+        return fitBounds(bounds, screenRect, integerZoom, false, false);
+    }
+
+    /** The same, also straightening the camera on the way there. */
+    public MapCamera fitBounds(Bounds bounds, ScreenRect screenRect, boolean integerZoom,
+                               boolean resetRotation, boolean resetTilt) {
+        view.call("fitBounds", bounds, screenRect, integerZoom, resetRotation, resetTilt,
+                  take()).close();
         return this;
     }
 

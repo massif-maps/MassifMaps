@@ -38,13 +38,17 @@ namespace massif { namespace api {
         Result flyTo(Context&, void* obj, const CallArgs& args, PropertyValue&) {
             auto view = static_cast<BaseMapView*>(obj);
             MapPos pos;
-            double zoom = 0, rotation = 0, tilt = 0, seconds = 0;
+            double zoom = 0, rotation = 0, tilt = 0, climbHeight = 0, seconds = 0;
             if (!args.getPos(0, pos) || !args.getDouble(1, zoom) || !args.getDouble(2, rotation) ||
-                !args.getDouble(3, tilt) || !args.getDouble(4, seconds)) {
+                !args.getDouble(3, tilt) || !args.getDouble(4, climbHeight) ||
+                !args.getDouble(5, seconds)) {
                 return RESULT_BAD_SPEC;
             }
+            // climbHeight arches the path - highest halfway, nothing at either end, which is what
+            // clears the ridge between two valleys. 0 is the straight flight.
             view->flyTo(pos, static_cast<float>(zoom), static_cast<float>(rotation),
-                        static_cast<float>(tilt), static_cast<float>(seconds));
+                        static_cast<float>(tilt), static_cast<float>(climbHeight),
+                        static_cast<float>(seconds));
             return RESULT_OK;
         }
 
@@ -55,15 +59,17 @@ namespace massif { namespace api {
             // They arrive as the same JSON the property channel already carries them in.
             MapBounds bounds;
             ScreenBounds screenBounds;
-            bool integerZoom = false;
+            bool integerZoom = false, resetRotation = false, resetTilt = false;
             double seconds = 0;
             std::string screenJson = args.get(1).toString();
             if (!args.getBounds(0, bounds) ||
                 !StructCodec::decode(screenJson, screenBounds) ||
-                !args.getBool(2, integerZoom) || !args.getDouble(3, seconds)) {
+                !args.getBool(2, integerZoom) || !args.getBool(3, resetRotation) ||
+                !args.getBool(4, resetTilt) || !args.getDouble(5, seconds)) {
                 return RESULT_BAD_SPEC;
             }
-            view->moveToFitBounds(bounds, screenBounds, integerZoom, static_cast<float>(seconds));
+            view->moveToFitBounds(bounds, screenBounds, integerZoom, resetRotation, resetTilt,
+                                  static_cast<float>(seconds));
             return RESULT_OK;
         }
 

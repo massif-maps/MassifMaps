@@ -45,8 +45,8 @@
 %attribute(massif::BaseMapView, float, FlightProgress, getFlightProgress)
 
 !method(massif::BaseMapView, moveTo, arg(pos, pos), arg(zoom, float), arg(rotation, float), arg(tilt, float), returns(void))
-!method(massif::BaseMapView, flyTo, arg(pos, pos), arg(zoom, float), arg(rotation, float), arg(tilt, float), arg(durationSeconds, float), returns(void))
-!method(massif::BaseMapView, fitBounds, arg(bounds, json), arg(screenBounds, json), arg(integerZoom, bool), arg(durationSeconds, float), returns(void))
+!method(massif::BaseMapView, flyTo, arg(pos, pos), arg(zoom, float), arg(rotation, float), arg(tilt, float), arg(climbHeight, float), arg(durationSeconds, float), returns(void))
+!method(massif::BaseMapView, fitBounds, arg(bounds, json), arg(screenBounds, json), arg(integerZoom, bool), arg(resetRotation, bool), arg(resetTilt, bool), arg(durationSeconds, float), returns(void))
 !method(massif::BaseMapView, screenToMap, arg(x, float), arg(y, float), returns(json))
 !method(massif::BaseMapView, mapToScreen, arg(pos, pos), returns(json))
 !method(massif::BaseMapView, stopFlight, returns(void))

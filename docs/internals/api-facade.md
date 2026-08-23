@@ -715,6 +715,13 @@ map.addLayer("base", Spec.of("vector").set("source", "osm"));
 map.onClick(e -> map.camera().animate(2).moveTo(e.position(), 14));
 ```
 
+**`attach` registers TWO ids, and `close` drops both.** The `Options` goes in under `map:<id>` and
+the `BaseMapView` under `view:<id>` — the view is what carries the camera. They are released
+together on `close`/`-detach`, and the failure mode when one is left behind is silent: the next
+`attach` under the same id finds the stale view handle and reuses it, so the new screen's layers
+build correctly while `camera().moveTo` drives the CLOSED screen's map view and the visible map
+never leaves its default camera.
+
 ### The sugar's own value types
 
 `Position`, `Bounds`, `ScreenPoint`, `ScreenRect` (`MSFPosition` … on iOS) are **hand-written and

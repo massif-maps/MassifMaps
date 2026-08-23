@@ -426,6 +426,9 @@ public final class MassifMap implements AutoCloseable {
         elements = null;
         if (options.id != null) {
             MassifApi.unregisterObject(KIND, options.id);
+            // The view is adopted under the SAME id and has to go with it: left registered, the
+            // next attach reuses it and the camera drives the CLOSED screen's map view.
+            MassifApi.unregisterObject(VIEW_KIND, options.id);
         }
     }
 

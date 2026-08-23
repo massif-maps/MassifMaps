@@ -6,3 +6,6 @@
 	path = libs-external
 	url = https://github.com/massif-maps/massif-external-libs
 	branch = develop
+[submodule "integrations/nativescript"]
+	path = integrations/nativescript
+	url = ../../nativescript-community/ui-massifmaps.git

@@ -2,6 +2,7 @@ package com.massifmaps.MassifDemo;
 
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -21,6 +22,7 @@ import androidx.core.view.WindowInsetsCompat;
 
 import com.google.android.material.button.MaterialButton;
 import com.massifmaps.MassifDemo.examples.ExampleHost;
+import com.massifmaps.MassifDemo.examples.ExampleLive;
 import com.massifmaps.MassifDemo.examples.Examples;
 import com.massifmaps.MassifDemo.examples.MapExample;
 import com.massifmaps.api.MassifMap;
@@ -54,6 +56,8 @@ public class ExampleActivity extends AppCompatActivity implements ExampleHost {
     private TextView caption;
     private View busy;
     private boolean chromeHidden;
+    /** The CONFIG broadcast, so a knob can be changed on the running example (see ExampleLive). */
+    private ExampleLive live;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -116,6 +120,12 @@ public class ExampleActivity extends AppCompatActivity implements ExampleHost {
             chromeHidden = true;
         }
         applyInsets();
+        // The same channel and the same adb keys the bench answers to, so an example can be tuned
+        // without a relaunch - which is the only way to see whether one change reaches every pass
+        // in the same frame.
+        live = new ExampleLive(map);
+        ContextCompat.registerReceiver(this, live, new IntentFilter(ExampleLive.ACTION),
+                                       ContextCompat.RECEIVER_NOT_EXPORTED);
         start();
     }
 
@@ -149,6 +159,10 @@ public class ExampleActivity extends AppCompatActivity implements ExampleHost {
     @Override
     protected void onDestroy() {
         ui.removeCallbacksAndMessages(null);
+        if (live != null) {
+            unregisterReceiver(live);
+            live = null;
+        }
         if (example != null) {
             example.onStop();
         }

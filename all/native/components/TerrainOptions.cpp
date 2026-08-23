@@ -18,7 +18,10 @@ namespace massif {
         _dataSource(dataSource),
         _elevationManager(dataSource ? std::make_shared<ElevationManager>(dataSource, elevationDecoder) : std::shared_ptr<ElevationManager>()),
         _enabled(true),
-        _meshResolution(32),
+        // 64 triangles per tile side, which is what tangram uses (RasterStyle::build) and what every
+        // bench here was run at. 32 leaves draped content visibly floating over the ground; 128
+        // measured 8.5 fps against 15.2 at 64 on the Crosscall.
+        _meshResolution(64),
         _tileEdgeStitchingEnabled(true),
         _drapeFillsEnabled(true),
         _drapeLinesEnabled(true),
@@ -28,13 +31,19 @@ namespace massif {
         _backgroundColorARGB(0),
         _backgroundBitmapEnabled(false),
         _depthBias(0.0002f),
-        _cameraClearance(200.0f),
+        // 60 m, not 200: 200 stops the camera well short of the surface, so a close approach swings
+        // the view into the nearest hillside instead of flying between the peaks.
+        _cameraClearance(60.0f),
         _cameraClampDuration(0.0f),
         _billboardOcclusionEnabled(true),
-        _billboardOcclusionTolerance(0.02f),
+        _billboardOcclusionTolerance(0.0f),
         _textOcclusionOpacity(1.0f),
         _viewDistanceFactor(1.0f),
         _viewDistance(0.0f),
+        // 3, not the demo's 8: 8 only pays for itself next to the demo's fixed 170 km view, where
+        // what it coarsens is the far horizon. On the default view distance it coarsens tiles that
+        // are still large on screen, and the result is a blurred band with a hard tile edge down
+        // the middle of the view.
         _maxTileZoomCoarsening(3),
         _noDrapeLayerFilter(DEFAULT_NO_DRAPE_LAYER_FILTER),
         _surfaceShaderSource(),

@@ -27,7 +27,11 @@ namespace massif {
         _longClickDuration(DEFAULT_LONG_CLICK_DURATION),
         _doubleClickMaxDuration(DEFAULT_DOUBLE_CLICK_MAX_DURATION),
         _tileDrawSize(256),
-        _tileLODFactor(1.0f),
+        // 0.5, not tangram's 1.0: half a nominal tile of screen area before the next zoom level is
+        // used. This is the value every bench and every example screenshot in this repo was made
+        // with - see scripts/android-dev/.../demo/DemoConfig.java, which is where the tuning was
+        // done, and docs/internals/rendering/02-tiles-lod.md.
+        _tileLODFactor(0.5f),
         _tileLODForeshorteningLimit(0.0f),
         _dpi(160.0f),
         _drawDistance(16),
@@ -37,7 +41,10 @@ namespace massif {
         _seamlessPanning(true),
         _restrictedPanning(false),
         _tiltGestureReversed(false),
-        _zoomGestures(false),
+        // ON: double-tap to zoom in, two-finger tap to zoom out and double-tap-and-drag to zoom
+        // continuously. Every other map SDK does these by default, and an app that had to ask for
+        // them just looked broken.
+        _zoomGestures(true),
         _rotationGestures(true),
         _clearColor(DEFAULT_CLEAR_COLOR),
         _skyColor(DEFAULT_SKY_COLOR),
@@ -65,7 +72,9 @@ namespace massif {
         _mutex()
     {
         setEnvelopeThreadPoolSize(1);
-        setTileThreadPoolSize(1);
+        // 2 decode threads, as tangram runs (SceneOptions::numTileWorkers). One is what made tiles
+        // arrive late enough to be visible.
+        setTileThreadPoolSize(2);
     }
     
     Options::~Options() {

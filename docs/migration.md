@@ -366,3 +366,41 @@ These name data or upstream work, not this SDK:
 - **CartoCSS** — the style language, MapBox's and CARTO's, which this SDK implements rather than
   owns.
 - **The CartoDB copyright headers and LICENSE attribution.**
+
+## Default option values (2026-08-23)
+
+The SDK now ships the values every bench and every example screenshot in this repo was actually made
+with, instead of values nothing was tuned at. They live in
+`scripts/android-dev/.../demo/DemoConfig.java`, which is where the tuning was done.
+
+An app that already sets one of these explicitly is unaffected. **A map that took the defaults will
+look and perform differently** — mostly better, but the terrain ones change framing enough to
+invalidate a stored camera.
+
+| Option | Was | Now | Why |
+|---|---|---|---|
+| `Options.zoomGestures` | off | **on** | double-tap, two-finger tap and double-tap-drag zoom. Every other map SDK does these; an app that had to ask just looked broken |
+| `Options.tileThreadPoolSize` | 1 | **2** | tangram's `numTileWorkers`. One made tiles arrive late enough to be seen arriving |
+| `Options.tileLODFactor` | 1.0 | **0.5** | half a nominal tile of screen area per level |
+| `TerrainOptions.meshResolution` | 32 | **64** | tangram's value. 32 leaves draped content visibly floating; 128 cost 8.5 fps against 15.2 |
+| `TerrainOptions.cameraClearance` | 200 m | **60 m** | 200 stops the camera short of the surface, so a close approach swings into the nearest hillside |
+| `TerrainOptions.billboardOcclusionTolerance` | 0.02 | **0** | a label goes out when its anchor goes behind the relief |
+| `LightOptions.ambientIntensity` | 0.35 | **1.0** | both of these only apply once terrain lighting is on |
+| `LightOptions.shadowStrength` | 0 | **0.3** | ↑ |
+| `LightOptions.shadowBias` | 0.25 | **1.0** | 0.25 leaves acne on a lit slope at 3 cascades |
+| `HillshadeRasterTileLayer.heightScale` | 1.0 | **0.05** | at 1.0 real DEM relief saturates and the shading reads as a stencil |
+| `HillshadeRasterTileLayer.hillshadeMethod` | `STANDARD` | **`IGOR`** | keeps slopes readable under imagery |
+| `HillshadeRasterTileLayer.illuminationMapRotationEnabled` | true | **false** | turning the map should not relight the terrain |
+| `ContourTileDataSource.seamlessEdges` | off | **on** | without it a traced line stops dead at every tile border |
+| `ContourTileDataSource.minVisibleZoom` | 12 | **5** | the interval ladder already coarsens a regional view |
+| `ContourTileDataSource.simplifyTolerance` | 1.0 | **1.5** | |
+
+**Not moved, and why.** The demo's sun position (azimuth 355°, altitude 9°) and hillshade
+illumination azimuth are a raking *test* light for judging relief, not a default any app wants; the
+same goes for its camera, its tile URLs and its per-source cache sizes.
+
+`TerrainOptions.maxTileZoomCoarsening` was raised to the demo's 8 and **put back to 3**. It only
+pays for itself next to the demo's fixed 170 km `viewDistance`, where what it coarsens is the far
+horizon. On the default view distance it coarsens tiles that are still large on screen: measured on
+the iOS terrain example, a blurred band with a hard tile edge down the middle of the view. The two
+are a pair — raise both or neither.

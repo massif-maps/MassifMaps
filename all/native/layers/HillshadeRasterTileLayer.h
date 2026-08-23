@@ -77,7 +77,7 @@ namespace massif {
 
         /**
          * Returns the height scale of the hillshade overlay.
-         * @return The relative height scale. Default is 1.0.
+         * @return The relative height scale. Default is 0.05.
          */
         float getHeightScale() const;
         /**
@@ -199,7 +199,7 @@ namespace massif {
 
         /**
          * Returns the hillshade rendering method.
-         * @return The hillshade method. Default is STANDARD.
+         * @return The hillshade method. Default is IGOR.
          */
         HillshadeMethod::HillshadeMethod getHillshadeMethod() const;
         /**

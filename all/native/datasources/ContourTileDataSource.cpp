@@ -355,10 +355,14 @@ namespace massif {
         _dataSource(dataSource),
         _elevationDecoder(elevationDecoder),
         _baseInterval(10.0f),
-        _simplifyTolerance(1.0f),
+        _simplifyTolerance(1.5f),
         _resolution(128),
-        _minVisibleZoom(12),
-        _seamlessEdges(false),
+        // 5, not 12: contours belong on a regional view too, and the interval ladder below already
+        // coarsens them there.
+        _minVisibleZoom(5),
+        // ON. Without it a traced line stops dead at every tile border, which is the first thing
+        // anyone notices - it costs up to 3 extra DEM fetches per tile.
+        _seamlessEdges(true),
         _labelStubs(false),
         _labelInterval(0.0f),
         _layerName("contour"),

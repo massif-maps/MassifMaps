@@ -499,6 +499,9 @@ static void MSFInstallUiDispatcher(void) {
     _elements = nil;
     if (_options.objectId) {
         [MSFMassifApi unregisterObject:kMapKind objectId:_options.objectId];
+        // The view is adopted under the SAME id and has to go with it: left registered, the next
+        // attach reuses it and the camera drives the CLOSED screen's map view.
+        [MSFMassifApi unregisterObject:kViewKind objectId:_options.objectId];
     }
 }
 

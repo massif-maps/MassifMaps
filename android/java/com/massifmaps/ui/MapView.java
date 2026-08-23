@@ -58,6 +58,7 @@ public class MapView extends GLSurfaceView implements GLSurfaceView.Renderer, Ma
     
     private int pointer1Id = INVALID_POINTER_ID;
     private int pointer2Id = INVALID_POINTER_ID;
+    private boolean gestureAccepted;
     
     /**
      * Creates a new MapView object from a context object.
@@ -190,9 +191,14 @@ public class MapView extends GLSurfaceView implements GLSurfaceView.Renderer, Ma
             return false;
         }
 
-        boolean clickable = isClickable() || isLongClickable();
-        if (!isEnabled() || !clickable) {
-            return clickable;
+        // Latched for the whole gesture, not re-tested per event: a host framework that flips
+        // clickable or enabled mid-touch (adding or removing a gesture observer) would otherwise
+        // deliver the DOWN and drop the UP, and the native pointer count never comes back down.
+        if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
+            gestureAccepted = isEnabled() && (isClickable() || isLongClickable());
+        }
+        if (!gestureAccepted) {
+            return isClickable() || isLongClickable();
         }
 
         try {
@@ -280,6 +286,13 @@ public class MapView extends GLSurfaceView implements GLSurfaceView.Renderer, Ma
         }
         catch (IllegalArgumentException e) {
             com.massifmaps.utils.Log.error("MapView.onTouchEvent: " + e);
+            // The event never reached native, so its pointer was never released there. Cancel
+            // instead, or the native pointer count stays up and onMapStable never fires again.
+            pointer1Id = INVALID_POINTER_ID;
+            pointer2Id = INVALID_POINTER_ID;
+            baseMapView.onInputEvent(NATIVE_ACTION_CANCEL,
+                    NATIVE_NO_COORDINATE, NATIVE_NO_COORDINATE,
+                    NATIVE_NO_COORDINATE, NATIVE_NO_COORDINATE);
         }
         return true;
     }

@@ -51,7 +51,9 @@ There are listeners for user interaction related events, rendering events and ma
 An app can implement a custom `MapEventListener` to receive notifications about various events, such as:
 
 * Map is being moved or zoomed (`onMapMoved`)
-* Map has reached 'stable state', all tiles and data has been loaded displayed (`onMapStable`)
+* Map has come to rest — animations finished, fingers lifted (`onMapStable`). This is about the
+  camera, not the data: tiles may still be loading. See [Map events](/docs/internals/map-events)
+  for what it does and does not guarantee.
 * Map has been clicked (`onMapClicked`)
 
 Create a new class called **MyMapEventListener** which implements MapEventListner interface.

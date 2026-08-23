@@ -54,6 +54,7 @@ public class TextureMapView extends GLTextureView implements GLSurfaceView.Rende
 
     private int pointer1Id = INVALID_POINTER_ID;
     private int pointer2Id = INVALID_POINTER_ID;
+    private boolean gestureAccepted;
 
     /**
      * Creates a new MapView object from a context object.
@@ -169,9 +170,12 @@ public class TextureMapView extends GLTextureView implements GLSurfaceView.Rende
             return false;
         }
 
-        boolean clickable = isClickable() || isLongClickable();
-        if (!isEnabled() || !clickable) {
-            return clickable;
+        // Latched for the whole gesture - see MapView.onTouchEvent.
+        if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
+            gestureAccepted = isEnabled() && (isClickable() || isLongClickable());
+        }
+        if (!gestureAccepted) {
+            return isClickable() || isLongClickable();
         }
 
         try {
@@ -259,6 +263,13 @@ public class TextureMapView extends GLTextureView implements GLSurfaceView.Rende
         }
         catch (IllegalArgumentException e) {
             com.massifmaps.utils.Log.error("MapView.onTouchEvent: " + e);
+            // The event never reached native, so its pointer was never released there. Cancel
+            // instead, or the native pointer count stays up and onMapStable never fires again.
+            pointer1Id = INVALID_POINTER_ID;
+            pointer2Id = INVALID_POINTER_ID;
+            baseMapView.onInputEvent(NATIVE_ACTION_CANCEL,
+                    NATIVE_NO_COORDINATE, NATIVE_NO_COORDINATE,
+                    NATIVE_NO_COORDINATE, NATIVE_NO_COORDINATE);
         }
         return true;
     }

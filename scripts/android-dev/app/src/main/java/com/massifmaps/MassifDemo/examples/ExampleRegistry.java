@@ -17,6 +17,7 @@ public final class ExampleRegistry {
         com.massifmaps.MassifDemo.examples.terrain.Terrain3DExample.class,
         com.massifmaps.MassifDemo.examples.annotations.MarkersExample.class,
         com.massifmaps.MassifDemo.examples.interaction.FeatureClickExample.class,
+        com.massifmaps.MassifDemo.examples.interaction.MapEventsExample.class,
         com.massifmaps.MassifDemo.examples.search.SearchFeaturesExample.class,
     };
 

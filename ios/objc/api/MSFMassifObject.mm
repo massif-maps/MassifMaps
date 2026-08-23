@@ -22,6 +22,9 @@
 - (BOOL)onEvent:(int)target event:(NSString *)event payload:(int)payload {
     MSFMapEvent *typed = nil;
     switch (self.kind) {
+    case MSFEventKindMove:
+        typed = [[MSFMapMoveEvent alloc] initWithTarget:target name:event payload:payload];
+        break;
     case MSFEventKindClick:
         typed = [[MSFMapClickEvent alloc] initWithTarget:target name:event payload:payload];
         break;

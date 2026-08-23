@@ -19,6 +19,7 @@ NS_ASSUME_NONNULL_BEGIN
 /** How a handler is built from a raw payload. One per typed event class. */
 typedef NS_ENUM(NSInteger, MSFEventKind) {
     MSFEventKindPlain,
+    MSFEventKindMove,
     MSFEventKindClick,
     MSFEventKindInteraction,
     MSFEventKindTileClick,

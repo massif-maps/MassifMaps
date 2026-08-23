@@ -337,7 +337,7 @@ public class MassifObject implements AutoCloseable {
     }
 
     enum EventKind {
-        PLAIN, CLICK, INTERACTION, TILE_CLICK, ELEMENT_CLICK
+        PLAIN, MOVE, CLICK, INTERACTION, TILE_CLICK, ELEMENT_CLICK
     }
 
     private static int asyncCounter;
@@ -378,6 +378,7 @@ public class MassifObject implements AutoCloseable {
 
     static Object build(EventKind kind, int target, String name, int payload) {
         switch (kind) {
+        case MOVE:          return new MapEvents.Move(target, name, payload);
         case CLICK:         return new MapEvents.Click(target, name, payload);
         case INTERACTION:   return new MapEvents.Interaction(target, name, payload);
         case TILE_CLICK:    return new MapEvents.VectorTileClick(target, name, payload);

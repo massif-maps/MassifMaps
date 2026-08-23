@@ -59,6 +59,19 @@
 
 @end
 
+@implementation MSFMapMoveEvent
+
+- (MSFMapMoveCause)cause {
+    return (MSFMapMoveCause)[MSFMassifApi getInt:self.payload path:@"reason"
+                                    defaultValue:MSFMapMoveCauseApi];
+}
+
+- (BOOL)byUser {
+    return self.cause == MSFMapMoveCauseGesture;
+}
+
+@end
+
 @implementation MSFMapInteractionEvent
 
 - (BOOL)isPan {

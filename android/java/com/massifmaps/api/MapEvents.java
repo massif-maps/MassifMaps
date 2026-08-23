@@ -58,7 +58,7 @@ public final class MapEvents {
             return MassifObject.wrap(target);
         }
 
-        /** Whether there is a payload to read at all - map.idle and map.moved carry none. */
+        /** Whether there is a payload to read at all - map.idle carries none. */
         public boolean hasPayload() {
             return payload != 0;
         }
@@ -81,6 +81,44 @@ public final class MapEvents {
          */
         public Position getPos(String path, String projection) {
             return Values.toPos(MassifApi.getPos(payload, path, projection));
+        }
+    }
+
+    /** What moved the camera, as carried by map.moved and map.stable. */
+    public static final class Reason {
+        /** A gesture, the wheel, or the inertia that follows one. */
+        public static final String GESTURE = "gesture";
+        /** A frame of an animation the SDK is stepping - a flight, or a move given a duration. */
+        public static final String ANIMATION = "animation";
+        /** A call that took effect immediately, and the SDK's own camera corrections. */
+        public static final String API = "api";
+
+        private static final String[] NAMES = { GESTURE, ANIMATION, API };
+
+        static String of(int value) {
+            return value >= 0 && value < NAMES.length ? NAMES[value] : null;
+        }
+
+        private Reason() { }
+    }
+
+    /** A camera movement: map.moved while it happens, map.stable when it ends. */
+    public static final class Move extends Event {
+        Move(int target, String name, int payload) {
+            super(target, name, payload);
+        }
+
+        /**
+         * What caused it - one of the Reason constants, or null for a reason this build does not
+         * know. Compare with ==: they are interned string literals.
+         */
+        public String reason() {
+            return Reason.of((int) getDouble("reason", -1));
+        }
+
+        /** Whether the user caused it, rather than the app or an animation. */
+        public boolean byUser() {
+            return Reason.GESTURE.equals(reason());
         }
     }
 

@@ -18,7 +18,6 @@
 namespace massif {
     class AssetPackage;
     class BaseMapView;
-    class BinaryData;
     class Options;
     class TileDataSource;
     class Layer;
@@ -308,7 +307,7 @@ namespace massif {
          * with an empty path:
          *
          *   int tile = MassifApi.call(source, "loadTile", "[[8467,5852,14]]");
-         *   byte[] bytes = MassifApi.getData(tile, "data").getData();
+         *   byte[] bytes = MassifApi.getData(tile, "data");
          *   MassifApi.destroy(tile);
          *
          *   int result = MassifApi.call(layer, "getElevations", "[[[5.76,45.24],[5.77,45.25]]]");
@@ -376,13 +375,14 @@ namespace massif {
         /**
          * Reads a binary property without turning it into a string.
          *
-         * The blob is handed over as the SDK's own BinaryData, so a binding gets bytes rather
-         * than an encoding - `byte[]` in Java, `NSData` in Objective-C.
+         * The blob crosses as RAW BYTES - `byte[]` in Java, `NSData` in Objective-C - not as the
+         * SDK's BinaryData. That is the point: this class names no SDK type, so a hand-written JNI,
+         * @objc, N-API or dart:ffi layer could carry the whole of it (#159).
          * @param path The path to the property, e.g. "data" on a tile. Empty when the handle is
          *             the blob itself.
-         * @return The data, or null when the path does not resolve to one.
+         * @return The data, empty when the path does not resolve to one.
          */
-        static std::shared_ptr<BinaryData> getData(int handle, const std::string& path);
+        static std::vector<unsigned char> getData(int handle, const std::string& path);
 
         /**
          * Drops a handle's id, and with it the context's reference to the object. Addressed by

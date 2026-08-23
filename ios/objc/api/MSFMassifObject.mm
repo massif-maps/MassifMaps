@@ -1,7 +1,6 @@
 #import "MSFMassifInternal.h"
 #import "MSFMassifApi.h"
 #import "MSFEventListener.h"
-#import "MSFBinaryData.h"
 #import "MSFMapPos.h"
 #import "MSFMapBounds.h"
 #import "MSFLayer.h"
@@ -225,11 +224,7 @@
 }
 
 - (NSData *)data:(NSString *)path {
-    MSFBinaryData *blob = [MSFMassifApi getData:_handle path:path];
-    if (!blob) {
-        return nil;
-    }
-    return [NSData dataWithBytes:[blob getData] length:[blob size]];
+    return [MSFMassifApi getData:_handle path:path];
 }
 
 - (NSData *)doubles {

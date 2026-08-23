@@ -3,7 +3,7 @@
 
 %module(directors="1") MassifApi
 
-!proxy_imports(massif::api::MassifApi, core.BinaryData, components.Options, datasources.TileDataSource, layers.Layer, components.Layers, ui.BaseMapView, ui.MapEventListener, api.EventListener, api.UiDispatcher, layers.VectorTileEventListener, layers.VectorElementEventListener, utils.AssetPackage)
+!proxy_imports(massif::api::MassifApi, components.Options, datasources.TileDataSource, layers.Layer, components.Layers, ui.BaseMapView, ui.MapEventListener, api.EventListener, api.UiDispatcher, layers.VectorTileEventListener, layers.VectorElementEventListener, utils.AssetPackage)
 
 %{
 #include "api/MassifApi.h"
@@ -15,7 +15,6 @@
 %include <std_vector.i>
 %include <massifswig.i>
 
-%import "core/BinaryData.i"
 %import "components/Options.i"
 %import "datasources/TileDataSource.i"
 %import "layers/Layer.i"
@@ -54,6 +53,31 @@
 %typemap(out) std::vector<double> %{
     $result = (__bridge_retained void*)[NSData dataWithBytes:$1.data()
                                                       length:$1.size() * sizeof(double)];
+%}
+#endif
+
+// A blob crosses as raw bytes for the same reason, and to keep BinaryData - an SDK type - off this
+// class entirely (#159).
+#if SWIGJAVA
+%typemap(jni) std::vector<unsigned char> "jbyteArray"
+%typemap(jtype) std::vector<unsigned char> "byte[]"
+%typemap(jstype) std::vector<unsigned char> "byte[]"
+%typemap(javaout) std::vector<unsigned char> {
+  return $jnicall;
+}
+%typemap(out) std::vector<unsigned char> {
+  $result = jenv->NewByteArray(static_cast<jsize>($1.size()));
+  jenv->SetByteArrayRegion($result, 0, static_cast<jsize>($1.size()),
+                           reinterpret_cast<const jbyte*>($1.data()));
+}
+#endif
+#ifdef SWIGOBJECTIVEC
+%typemap(objctype) std::vector<unsigned char> "NSData*"
+%typemap(objcout) std::vector<unsigned char> %{
+    return (__bridge_transfer NSData*)$imcall;
+%}
+%typemap(out) std::vector<unsigned char> %{
+    $result = (__bridge_retained void*)[NSData dataWithBytes:$1.data() length:$1.size()];
 %}
 #endif
 

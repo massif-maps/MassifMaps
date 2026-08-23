@@ -222,6 +222,47 @@ int mm_get_string(mm_ctx ctx, mm_handle handle, const char* path, const char* pr
     return copyOut(value.stringValue, buffer, size, needed);
 }
 
+int mm_get_position(mm_ctx ctx, mm_handle handle, const char* path, const char* projection,
+                    double* out, size_t count, size_t* needed) {
+    if (needed) {
+        *needed = 0;
+    }
+    PropertyValue value;
+    int result = read(ctx, handle, path, projection, value);
+    if (result != MM_OK) {
+        return result;
+    }
+    // The value crosses as the same JSON every struct does; this only saves the CALLER the parse,
+    // it does not add a second wire format. Anything that is not an array of numbers is refused
+    // rather than half-filled.
+    Variant variant;
+    try {
+        variant = Variant::FromString(value.stringValue);
+    } catch (const std::exception&) {
+        return MM_UNSUPPORTED_TYPE;
+    }
+    if (variant.getType() != VariantType::VARIANT_TYPE_ARRAY) {
+        return MM_UNSUPPORTED_TYPE;
+    }
+    std::size_t size = variant.getArraySize();
+    for (std::size_t i = 0; i < size; i++) {
+        VariantType::VariantType type = variant.getArrayElement(static_cast<int>(i)).getType();
+        if (type != VariantType::VARIANT_TYPE_INTEGER && type != VariantType::VARIANT_TYPE_DOUBLE) {
+            return MM_UNSUPPORTED_TYPE;
+        }
+    }
+    if (needed) {
+        *needed = size;
+    }
+    if (!out) {
+        return size > count ? MM_BUFFER_TOO_SMALL : MM_OK;
+    }
+    for (std::size_t i = 0; i < size && i < count; i++) {
+        out[i] = variant.getArrayElement(static_cast<int>(i)).getDouble();
+    }
+    return size > count ? MM_BUFFER_TOO_SMALL : MM_OK;
+}
+
 int mm_data_size(mm_ctx ctx, mm_handle handle, const char* path, size_t* size) {
     Context* context = resolve(ctx);
     if (!context) {

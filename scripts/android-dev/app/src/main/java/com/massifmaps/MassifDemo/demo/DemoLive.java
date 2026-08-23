@@ -649,9 +649,9 @@ public final class DemoLive extends BroadcastReceiver {
         }
         // Three shapes of result: binary as bytes, bulk numerics as one flat array, anything else
         // as a document. None of them is an encoding of the others.
-        com.massifmaps.core.BinaryData data = MassifApi.getData(result, "data");
+        byte[] data = MassifApi.getData(result, "data");
         double[] numbers = MassifApi.getDoubles(result);
-        String shape = data != null ? " bytes=" + data.size()
+        String shape = data.length > 0 ? " bytes=" + data.length
                      : numbers.length > 0 ? " doubles=" + numbers.length + " first=" + numbers[0]
                      : " json=" + MassifApi.getString(result, "", "-");
         Log.i(TAG, "apiCall " + what + " -> handle=" + result + shape);

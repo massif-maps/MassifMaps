@@ -1,6 +1,5 @@
 package com.massifmaps.api;
 
-import com.massifmaps.core.BinaryData;
 import com.massifmaps.core.MapBounds;
 import com.massifmaps.core.MapPos;
 
@@ -270,8 +269,7 @@ public class MassifObject implements AutoCloseable {
 
     /** A binary property as bytes - "data" on a tile, or "" when this object IS the blob. */
     public byte[] data(String path) {
-        BinaryData blob = MassifApi.getData(handle, path);
-        return blob != null ? blob.getData() : null;
+        return MassifApi.getData(handle, path);
     }
 
     /** A bulk numeric result, flat. Empty when this object is not one. */

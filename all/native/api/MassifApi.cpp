@@ -286,10 +286,15 @@ namespace massif { namespace api {
         return values;
     }
 
-    std::shared_ptr<BinaryData> MassifApi::getData(int handle, const std::string& path) {
+    std::vector<unsigned char> MassifApi::getData(int handle, const std::string& path) {
         std::shared_ptr<BinaryData> data;
         Context::GetDefault()->getData(static_cast<Handle>(handle), path, data);
-        return data;
+        if (!data) {
+            return std::vector<unsigned char>();
+        }
+        // Copied rather than handed over: BinaryData is an SDK type and this signature must not
+        // name one. A tile is tens of kilobytes and this is not a per-frame path.
+        return std::vector<unsigned char>(data->data(), data->data() + data->size());
     }
 
     bool MassifApi::destroy(int handle) {

@@ -83,6 +83,13 @@ namespace {
         return RESULT_OK;
     }
 
+    /** A position, so the numeric read has something with three components to carry. */
+    Result posMethod(Context&, void*, const CallArgs&, PropertyValue& result) {
+        result = PropertyValue::ofString("[5.75,45.19,1200]");
+        result.type = PT_VARIANT;
+        return RESULT_OK;
+    }
+
     int seen = 0;
     mm_handle lastPayload = MM_NULL_HANDLE;
 
@@ -108,6 +115,7 @@ namespace massif { namespace api {
         Methods::registerMethod("massif::FogOptions", "blob", &blobMethod);
         Methods::registerMethod("massif::FogOptions", "ramp", &rampMethod);
         Methods::registerMethod("massif::FogOptions", "text", &textMethod);
+        Methods::registerMethod("massif::FogOptions", "pos", &posMethod);
     }
 } }
 
@@ -190,6 +198,28 @@ void testCAbi() {
                MM_BUFFER_TOO_SMALL, "a short buffer is refused, not truncated");
     TEST_CHECK(retry == needed, "and it says how much was needed, so a retry costs one call");
     mm_destroy_handle(ctx, text);
+
+    // mm_get_position: the numbers, without a JSON string to allocate and parse per event.
+    mm_handle where = MM_NULL_HANDLE;
+    TEST_CHECK(mm_call(ctx, fog, "pos", nullptr, &where) == MM_OK, "a position result");
+    double coords[3] = { 0, 0, 0 };
+    size_t got = 0;
+    TEST_CHECK(mm_get_position(ctx, where, "", nullptr, coords, 3, &got) == MM_OK && got == 3 &&
+               coords[0] == 5.75 && coords[1] == 45.19 && coords[2] == 1200,
+               "a position reads straight into doubles");
+    TEST_CHECK(mm_get_position(ctx, where, "", nullptr, nullptr, 0, &got) == MM_BUFFER_TOO_SMALL &&
+               got == 3, "a null buffer still reports how many there are");
+    double two[2] = { 0, 0 };
+    TEST_CHECK(mm_get_position(ctx, where, "", nullptr, two, 2, &got) == MM_BUFFER_TOO_SMALL &&
+               got == 3 && two[0] == 5.75 && two[1] == 45.19,
+               "a short buffer takes what fits and says how many there were");
+    // The string result from the same surface is NOT an array of numbers.
+    mm_handle notAPos = MM_NULL_HANDLE;
+    TEST_CHECK(mm_call(ctx, fog, "text", nullptr, &notAPos) == MM_OK, "a string result again");
+    TEST_CHECK(mm_get_position(ctx, notAPos, "", nullptr, coords, 3, &got) == MM_UNSUPPORTED_TYPE,
+               "anything that is not an array of numbers is refused, not half-filled");
+    mm_destroy_handle(ctx, notAPos);
+    mm_destroy_handle(ctx, where);
 
     // call: a binary result, read without becoming a string.
     mm_handle blob = MM_NULL_HANDLE;

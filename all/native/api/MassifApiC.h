@@ -184,6 +184,25 @@ MM_API int mm_get_double(mm_ctx ctx, mm_handle handle, const char* path, double*
 MM_API int mm_get_string(mm_ctx ctx, mm_handle handle, const char* path, const char* projection,
                          char* buffer, size_t size, size_t* needed);
 
+/**
+ * Reads a position, or anything else that is a small array of numbers, straight into doubles.
+ *
+ * mm_get_string would hand a click handler a JSON string to allocate and parse, per event. JSI,
+ * WASM and dart:ffi all want the numbers. No two-call protocol here on purpose: a position is at
+ * most 3 doubles and a bounds 6, so the caller passes a fixed buffer and is told how many were
+ * there.
+ *
+ * @param projection A well-known name, e.g. "EPSG:4326". Null or empty leaves the position in the
+ *                   object's own projection - or in the one the running event handler asked for.
+ * @param out Filled with up to `count` numbers. May be null to ask only how many there are.
+ * @param count The capacity of `out`.
+ * @param needed Set to how many numbers the value HAS, whether or not they fit.
+ * @return MM_OK, MM_BUFFER_TOO_SMALL when there are more than `count`, or the read's own error.
+ *         MM_UNSUPPORTED_TYPE when the value is not an array of numbers.
+ */
+MM_API int mm_get_position(mm_ctx ctx, mm_handle handle, const char* path, const char* projection,
+                           double* out, size_t count, size_t* needed);
+
 /* --- binary and bulk ----------------------------------------------------------------------- */
 
 /*

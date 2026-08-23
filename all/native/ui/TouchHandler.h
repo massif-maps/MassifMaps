@@ -101,6 +101,8 @@ namespace massif {
             std::weak_ptr<TouchHandler> _touchHandler;
         };
         
+        void handleTouchEvent(int action, const ScreenPos& screenPos1, const ScreenPos& screenPos2);
+
         void checkCameraEvents();
         void checkMapStable();
 

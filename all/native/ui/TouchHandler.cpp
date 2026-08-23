@@ -81,12 +81,46 @@ namespace massif {
             std::lock_guard<std::mutex> lock(_onTouchListenersMutex);
             onTouchListeners = _onTouchListeners;
         }
+        bool consumed = false;
         for (std::size_t i = onTouchListeners.size(); i-- > 0; ) {
             if (onTouchListeners[i]->onTouchEvent(action, screenPos1, screenPos2)) {
-                return;
+                consumed = true;
+                break;
             }
         }
 
+        if (!consumed) {
+            handleTouchEvent(action, screenPos1, screenPos2);
+        }
+
+        // The pointer count and the event checks run whether or not a listener took the gesture.
+        // A consumed UP used to skip them, leaving _pointersDown stuck and onMapStable dead for good.
+        {
+            std::lock_guard<std::recursive_mutex> lock(_mutex);
+            switch (action) {
+            // Assigned, not incremented: a gesture start resyncs the count, so an UP the platform
+            // never delivered costs one gesture instead of every onMapStable that follows.
+            case ACTION_POINTER_1_DOWN:
+                _pointersDown = 1;
+                break;
+            case ACTION_POINTER_2_DOWN:
+                _pointersDown = 2;
+                break;
+            case ACTION_POINTER_1_UP:
+            case ACTION_POINTER_2_UP:
+                _pointersDown = std::max(0, _pointersDown - 1);
+                break;
+            case ACTION_CANCEL:
+                _pointersDown = 0;
+                break;
+            }
+        }
+
+        checkCameraEvents();
+        checkMapStable();
+    }
+
+    void TouchHandler::handleTouchEvent(int action, const ScreenPos& screenPos1, const ScreenPos& screenPos2) {
         std::unique_lock<std::recursive_mutex> lock(_mutex);
         ViewState viewState = _mapRenderer->getViewState();
         switch (action) {
@@ -171,7 +205,6 @@ namespace massif {
             break;
     
         case ACTION_CANCEL:
-            _pointersDown = 0;
             _clickHandlerWorker->cancel();
             _gestureMode = SINGLE_POINTER_CLICK_GUESS;
             break;
@@ -251,17 +284,6 @@ namespace massif {
             break;
         }
 
-        if (action == ACTION_POINTER_1_DOWN || action == ACTION_POINTER_2_DOWN) {
-            _pointersDown = std::min(2, _pointersDown + 1);
-        } else if (action == ACTION_POINTER_1_UP || action == ACTION_POINTER_2_UP) {
-            _pointersDown = std::max(0, _pointersDown - 1);
-        }
-
-        lock.unlock();
-
-        // Call event handlers
-        checkCameraEvents();
-        checkMapStable();
     }
 
     void TouchHandler::onWheelEvent(int delta, const ScreenPos& screenPos) {

@@ -39,6 +39,11 @@ namespace massif {
         std::optional<CameraZoomEvent> cameraZoomEvent;
         {
             std::lock_guard<std::mutex> lock(_mutex);
+            // An option switched off mid-flight would otherwise leave its flag set forever, as
+            // calculate*() below only ever clears it from inside the enabled branch.
+            _pan = _pan && _options.isKineticPan();
+            _rotation = _rotation && _options.isKineticRotation();
+            _zoom = _zoom && _options.isKineticZoom();
             cameraPanEvent = calculatePan(viewState, deltaSeconds);
             cameraRotationEvent = calculateRotation(viewState, deltaSeconds);
             cameraZoomEvent = calculateZoom(viewState, deltaSeconds);
@@ -79,6 +84,11 @@ namespace massif {
     }
     
     void KineticEventHandler::startPan() {
+        // Only calculatePan() clears the flag, and it is a no-op when the option is off: setting it
+        // here anyway would latch isPanning() true for good and kill onMapStable.
+        if (!_options.isKineticPan()) {
+            return;
+        }
         {
             std::lock_guard<std::mutex> lock(_mutex);
             _pan = true;
@@ -124,6 +134,9 @@ namespace massif {
     }
     
     void KineticEventHandler::startRotation() {
+        if (!_options.isKineticRotation()) {
+            return; // see startPan
+        }
         {
             std::lock_guard<std::mutex> lock(_mutex);
             _rotation = true;
@@ -163,6 +176,9 @@ namespace massif {
     }
     
     void KineticEventHandler::startZoom() {
+        if (!_options.isKineticZoom()) {
+            return; // see startPan
+        }
         {
             std::lock_guard<std::mutex> lock(_mutex);
             _zoom = true;

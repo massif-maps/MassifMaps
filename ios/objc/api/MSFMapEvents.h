@@ -35,7 +35,7 @@ NS_SWIFT_NAME(MapEvent)
 /** The object the event fired on. */
 @property (nonatomic, readonly) MSFMassifObject *source;
 
-/** Whether there is a payload at all - map.idle and map.moved carry none. */
+/** Whether there is a payload at all - map.idle carries none. */
 @property (nonatomic, readonly) BOOL hasPayload;
 
 /** Any payload property by path, for something a typed accessor does not cover yet. */
@@ -60,6 +60,29 @@ NS_SWIFT_NAME(MapClickEvent)
 
 /** 0 single, 1 long, 2 double, 3 dual. */
 @property (nonatomic, readonly) int clickType;
+
+@end
+
+/** What moved the camera, as carried by map.moved and map.stable. */
+typedef NS_ENUM(NSInteger, MSFMapMoveCause) {
+    /** A gesture, the wheel, or the inertia that follows one. */
+    MSFMapMoveCauseGesture = 0,
+    /** A frame of an animation the SDK is stepping - a flight, or a move given a duration. */
+    MSFMapMoveCauseAnimation = 1,
+    /** A call that took effect immediately, and the SDK's own camera corrections. */
+    MSFMapMoveCauseApi = 2
+} NS_SWIFT_NAME(MapMoveCause);
+
+/** A camera movement: map.moved while it happens, map.stable when it ends. */
+__attribute__ ((visibility("default")))
+NS_SWIFT_NAME(MapMoveEvent)
+@interface MSFMapMoveEvent : MSFMapEvent
+
+/** What caused it. */
+@property (nonatomic, readonly) MSFMapMoveCause cause;
+
+/** Whether the user caused it, rather than the app or an animation. */
+@property (nonatomic, readonly) BOOL byUser;
 
 @end
 
@@ -120,6 +143,7 @@ NS_SWIFT_NAME(VectorElementClickEvent)
 /** Called on the thread the subscription asked for. */
 typedef void (^MSFMapEventHandler)(MSFMapEvent *event) NS_SWIFT_NAME(MapEventHandler);
 typedef void (^MSFMapClickHandler)(MSFMapClickEvent *event) NS_SWIFT_NAME(MapClickHandler);
+typedef void (^MSFMapMoveHandler)(MSFMapMoveEvent *event) NS_SWIFT_NAME(MapMoveHandler);
 typedef void (^MSFMapInteractionHandler)(MSFMapInteractionEvent *event) NS_SWIFT_NAME(MapInteractionHandler);
 typedef void (^MSFVectorTileClickHandler)(MSFVectorTileClickEvent *event) NS_SWIFT_NAME(VectorTileClickHandler);
 

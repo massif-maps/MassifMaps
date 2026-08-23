@@ -160,6 +160,42 @@ banner at the top.
 
 ## Breaking changes after 6.0.0
 
+### Map camera events carry a reason, and onMapStable fires once per movement
+
+`MapEventListener.onMapMoved` and `onMapStable` take a `MapMoveReason` argument, so every app that
+overrides them must change the signature. The C++ compiles either way — a missed override just
+stops being called — so this is a **silent** break unless you build with an override check.
+
+```java
+// before
+public void onMapMoved() { ... }
+public void onMapStable() { ... }
+
+// after
+public void onMapMoved(int reason) { ... }
+public void onMapStable(int reason) {
+    if (reason == MapMoveReason.MAP_MOVE_REASON_GESTURE) { ... }
+}
+```
+
+```objc
+// before
+- (void)onMapMoved;
+// after
+- (void)onMapMoved:(enum MSFMapMoveReason)reason;
+```
+
+The reason is `MAP_MOVE_REASON_GESTURE`, `_ANIMATION` or `_API`. On the facade, `map.moved` and
+`map.stable` now carry a `MapMoveInfo` payload with a `reason` property, where they carried none.
+
+**`onMapStable` also changes behaviour**: it is edge-triggered. It fires once, at the end of a
+movement, and a touch that did not move the camera does not raise it at all. It used to be a poll —
+it fired for a tap on a motionless map, and could fire repeatedly while at rest. An app that kept
+its own "did the map actually move" flag can drop it, and one that relied on a tap raising stable
+must listen for the click instead.
+
+See [Map events](internals/map-events.md) for the full model.
+
 ### 3D buildings cast a contact shadow by default
 
 `building-ao-ground-radius` used to default to `0`, i.e. off, so nothing changed until a style

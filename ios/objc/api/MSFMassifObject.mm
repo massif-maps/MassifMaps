@@ -22,6 +22,9 @@
 - (BOOL)onEvent:(int)target event:(NSString *)event payload:(int)payload {
     MSFMapEvent *typed = nil;
     switch (self.kind) {
+    case MSFEventKindMove:
+        typed = [[MSFMapMoveEvent alloc] initWithTarget:target name:event payload:payload];
+        break;
     case MSFEventKindClick:
         typed = [[MSFMapClickEvent alloc] initWithTarget:target name:event payload:payload];
         break;
@@ -236,6 +239,18 @@
                     projection:(NSString *)projection
                          block:(id)block
                      consuming:(BOOL)consuming {
+    return [self subscribe:event kind:kind delivery:delivery coalesce:coalesce
+                projection:projection block:block consuming:consuming throttle:0];
+}
+
+- (MSFSubscription *)subscribe:(NSString *)event
+                          kind:(MSFEventKind)kind
+                      delivery:(MSFDelivery)delivery
+                      coalesce:(BOOL)coalesce
+                    projection:(NSString *)projection
+                         block:(id)block
+                     consuming:(BOOL)consuming
+                      throttle:(int)throttleMs {
     if (!block) {
         return nil;
     }
@@ -252,7 +267,8 @@
                                delivery:(int)delivery
                                coalesce:coalesce
                              projection:projection ?: @""
-                                consume:consuming];
+                                consume:consuming
+                             throttleMs:throttleMs];
     return subscription == 0 ? nil
         : [[MSFSubscription alloc] initWithId:subscription listener:listener];
 }

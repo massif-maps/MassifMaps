@@ -12,7 +12,7 @@ namespace massif { namespace api {
     Subscription EventBus::subscribe(std::uint32_t target, const std::string& event,
                                      EventHandler handler, void* userData, bool consume,
                                      Delivery delivery, bool coalesce,
-                                     const std::string& projection) {
+                                     const std::string& projection, int throttleMs) {
         if (!handler) {
             return NULL_SUBSCRIPTION;
         }
@@ -32,10 +32,33 @@ namespace massif { namespace api {
         entry.consume = consume;
         entry.delivery = delivery;
         entry.coalesce = coalesce;
+        entry.throttleMs = throttleMs > 0 ? throttleMs : 0;
+        // Epoch, not now: the FIRST event of a throttled subscription must get through.
+        entry.lastDelivery = std::chrono::steady_clock::time_point();
         entry.projection = projection;
         entry.live = true;
         entry.sequence = _nextSequence++;
         return (entry.generation << INDEX_BITS) | index;
+    }
+
+    bool EventBus::due(Subscription subscription, std::chrono::steady_clock::time_point now) {
+        std::uint32_t index = subscription & INDEX_MASK;
+        if (subscription == NULL_SUBSCRIPTION || index >= _entries.size()) {
+            return false;
+        }
+        Entry& entry = _entries[index];
+        if (!entry.live || entry.generation != (subscription >> INDEX_BITS)) {
+            return false;
+        }
+        if (entry.throttleMs <= 0) {
+            return true;
+        }
+        if (entry.lastDelivery.time_since_epoch().count() != 0 &&
+            now - entry.lastDelivery < std::chrono::milliseconds(entry.throttleMs)) {
+            return false;
+        }
+        entry.lastDelivery = now;
+        return true;
     }
 
     const EventBus::Entry* EventBus::resolve(Subscription subscription) const {

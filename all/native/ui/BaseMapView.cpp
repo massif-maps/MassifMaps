@@ -129,7 +129,7 @@ namespace massif {
         CameraPanEvent cameraEvent;
         cameraEvent.setKeepRotation(true);
         cameraEvent.setPosDelta(std::make_pair(focusPos0Internal, focusPos1Internal));
-        _mapRenderer->calculateCameraEvent(cameraEvent, durationSeconds, false);
+        _mapRenderer->calculateCameraEvent(cameraEvent, durationSeconds, false, MapMoveReason::MAP_MOVE_REASON_API);
     }
     
     void BaseMapView::setFocusPos(const MapPos& pos, float durationSeconds) {
@@ -139,7 +139,7 @@ namespace massif {
         CameraPanEvent cameraEvent;
         cameraEvent.setKeepRotation(true);
         cameraEvent.setPos(_options->getBaseProjection()->toInternal(pos));
-        _mapRenderer->calculateCameraEvent(cameraEvent, durationSeconds, false);
+        _mapRenderer->calculateCameraEvent(cameraEvent, durationSeconds, false, MapMoveReason::MAP_MOVE_REASON_API);
     }
     
     void BaseMapView::moveTo(const MapPos& pos, float zoom, const float* rotation,
@@ -228,7 +228,7 @@ namespace massif {
         
         CameraRotationEvent cameraEvent;
         cameraEvent.setRotationDelta(rotationDelta);
-        _mapRenderer->calculateCameraEvent(cameraEvent, durationSeconds, false);
+        _mapRenderer->calculateCameraEvent(cameraEvent, durationSeconds, false, MapMoveReason::MAP_MOVE_REASON_API);
     }
         
     void BaseMapView::rotate(float rotationDelta, const MapPos& targetPos, float durationSeconds) {
@@ -238,7 +238,7 @@ namespace massif {
         CameraRotationEvent cameraEvent;
         cameraEvent.setRotationDelta(rotationDelta);
         cameraEvent.setTargetPos(_options->getBaseProjection()->toInternal(targetPos));
-        _mapRenderer->calculateCameraEvent(cameraEvent, durationSeconds, false);
+        _mapRenderer->calculateCameraEvent(cameraEvent, durationSeconds, false, MapMoveReason::MAP_MOVE_REASON_API);
     }
     
     void BaseMapView::setRotation(float rotation, float durationSeconds) {
@@ -247,7 +247,7 @@ namespace massif {
         
         CameraRotationEvent cameraEvent;
         cameraEvent.setRotation(rotation);
-        _mapRenderer->calculateCameraEvent(cameraEvent, durationSeconds, false);
+        _mapRenderer->calculateCameraEvent(cameraEvent, durationSeconds, false, MapMoveReason::MAP_MOVE_REASON_API);
     }
         
     void BaseMapView::setRotation(float rotation, const MapPos& targetPos, float durationSeconds) {
@@ -257,7 +257,7 @@ namespace massif {
         CameraRotationEvent cameraEvent;
         cameraEvent.setRotation(rotation);
         cameraEvent.setTargetPos(_options->getBaseProjection()->toInternal(targetPos));
-        _mapRenderer->calculateCameraEvent(cameraEvent, durationSeconds, false);
+        _mapRenderer->calculateCameraEvent(cameraEvent, durationSeconds, false, MapMoveReason::MAP_MOVE_REASON_API);
     }
     
     void BaseMapView::tilt(float tiltDelta, float durationSeconds) {
@@ -266,7 +266,7 @@ namespace massif {
         CameraTiltEvent cameraEvent;
         cameraEvent.setKeepRotation(true);
         cameraEvent.setTiltDelta(tiltDelta);
-        _mapRenderer->calculateCameraEvent(cameraEvent, durationSeconds, false);
+        _mapRenderer->calculateCameraEvent(cameraEvent, durationSeconds, false, MapMoveReason::MAP_MOVE_REASON_API);
     }
     
     void BaseMapView::setTilt(float tilt, float durationSeconds) {
@@ -275,7 +275,7 @@ namespace massif {
         CameraTiltEvent cameraEvent;
         cameraEvent.setKeepRotation(true);
         cameraEvent.setTilt(tilt);
-        _mapRenderer->calculateCameraEvent(cameraEvent, durationSeconds, false);
+        _mapRenderer->calculateCameraEvent(cameraEvent, durationSeconds, false, MapMoveReason::MAP_MOVE_REASON_API);
     }
     
     void BaseMapView::zoom(float zoomDelta, float durationSeconds) {
@@ -285,7 +285,7 @@ namespace massif {
         CameraZoomEvent cameraEvent;
         cameraEvent.setKeepRotation(true);
         cameraEvent.setZoomDelta(zoomDelta);
-        _mapRenderer->calculateCameraEvent(cameraEvent, durationSeconds, false);
+        _mapRenderer->calculateCameraEvent(cameraEvent, durationSeconds, false, MapMoveReason::MAP_MOVE_REASON_API);
     }
         
     void BaseMapView::zoom(float zoomDelta, const MapPos& targetPos, float durationSeconds) {
@@ -296,7 +296,7 @@ namespace massif {
         cameraEvent.setKeepRotation(true);
         cameraEvent.setZoomDelta(zoomDelta);
         cameraEvent.setTargetPos(_options->getBaseProjection()->toInternal(targetPos));
-        _mapRenderer->calculateCameraEvent(cameraEvent, durationSeconds, false);
+        _mapRenderer->calculateCameraEvent(cameraEvent, durationSeconds, false, MapMoveReason::MAP_MOVE_REASON_API);
     }
     
     void BaseMapView::setZoom(float zoom, float durationSeconds) {
@@ -306,7 +306,7 @@ namespace massif {
         CameraZoomEvent cameraEvent;
         cameraEvent.setKeepRotation(true);
         cameraEvent.setZoom(zoom);
-        _mapRenderer->calculateCameraEvent(cameraEvent, durationSeconds, false);
+        _mapRenderer->calculateCameraEvent(cameraEvent, durationSeconds, false, MapMoveReason::MAP_MOVE_REASON_API);
     }
         
     void BaseMapView::setZoom(float zoom, const MapPos& targetPos, float durationSeconds) {
@@ -317,7 +317,7 @@ namespace massif {
         cameraEvent.setKeepRotation(true);
         cameraEvent.setZoom(zoom);
         cameraEvent.setTargetPos(_options->getBaseProjection()->toInternal(targetPos));
-        _mapRenderer->calculateCameraEvent(cameraEvent, durationSeconds, false);
+        _mapRenderer->calculateCameraEvent(cameraEvent, durationSeconds, false, MapMoveReason::MAP_MOVE_REASON_API);
     }
         
     void BaseMapView::moveToFitBounds(const MapBounds& mapBounds, const ScreenBounds& screenBounds, bool integerZoom, float durationSeconds) {

@@ -14,10 +14,30 @@ and not the render loop itself — that is [the frame](rendering/01-frame.md).
 
 | Event | Raised from | Means |
 |---|---|---|
-| `onMapMoved` | `TouchHandler::checkCameraEvents`, and `MapRendererListener::onMapChanged` for everything else | the camera changed, whatever the source |
-| `onMapInteraction` | the touch pipeline only, with pan/zoom/rotate/tilt flags | the **user** changed the camera |
+| `onMapMoved(reason)` | `TouchHandler::checkCameraEvents`, and `MapRendererListener::onMapChanged` for everything else | the camera changed, and what changed it |
+| `onMapInteraction` | the touch pipeline only, with pan/zoom/rotate/tilt flags | the **user** changed the camera; always `GESTURE` |
 | `onMapIdle` | `MapRenderer::onDrawFrame`, when a frame ended with no redraw pending | the renderer has nothing more to draw |
-| `onMapStable` | `TouchHandler::checkMapStable` | idle **and** no fingers down **and** no kinetic animation running |
+| `onMapStable(reason)` | `TouchHandler::checkMapStable` | a movement **ended**: at rest, no fingers down, no kinetic running |
+
+## The reason
+
+Every camera event carries a `MapMoveReason`, so an app can tell its own moves from the user's
+without watching touches itself:
+
+| Reason | Raised by |
+|---|---|
+| `MAP_MOVE_REASON_GESTURE` | a gesture, the wheel, or the kinetic inertia that follows one |
+| `MAP_MOVE_REASON_ANIMATION` | a frame of an animation the SDK is stepping - a flight, or any call given a duration |
+| `MAP_MOVE_REASON_API` | a call that took effect immediately, and the SDK's own camera corrections (the terrain clearance clamp) |
+
+It is decided where the movement starts and travels with the event:
+`MapRenderer::calculateCameraEvent(..., reason)` -> `viewChanged(delay, reason)` ->
+`OnChangeListener::onMapChanged(reason)`. `KineticEventHandler` passes `GESTURE`,
+`AnimationHandler` passes `ANIMATION`, `BaseMapView` passes `API`, and `TouchHandler`'s own
+gesture path passes `GESTURE`.
+
+`onMapStable` reports the reason of the movement that just ended - the last one, if several
+sources moved the camera before it came to rest.
 
 `onMapMoved` and `onMapInteraction` are not disjoint: a gesture raises both, back to back, and
 `onMapChanged` suppresses its own `onMapMoved` when camera events are already pending so it is not
@@ -25,7 +45,8 @@ sent twice.
 
 **`onMapStable` is about the camera, not the data.** Tiles may still be loading when it fires; it
 does not wait for them. `onMapIdle` does not either — it only means this frame was the last one
-requested.
+requested. For "the camera settled, refresh my data", `onMapStable` is the event; for "everything
+that was going to be drawn has been drawn", `onMapIdle` is.
 
 ## Threads
 
@@ -36,20 +57,26 @@ so, and it is a deadlock, not a race.
 
 ## What decides whether onMapStable fires
 
-`checkMapStable` is **polled**, from two call sites only — `TouchHandler::onTouchEvent` and
-`MapRendererListener::onMapIdle` — and reads three pieces of state:
+`checkMapStable` is called from two places — `TouchHandler::onTouchEvent` and
+`MapRendererListener::onMapIdle` — and fires only on the **edge** from moving to at rest. It reads
+four pieces of state:
 
+- `_pendingMoveReason`, set by every reported movement and **taken** by the event. Taking it IS the
+  edge: a second at-rest check finds nothing pending and stays quiet, and a touch that never moved
+  the camera never sets one;
 - `_idling`, set by `onMapIdle` and cleared by `onMapChanged`;
 - the three `KineticEventHandler` flags (`isPanning`, `isRotating`, `isZooming`);
 - `_pointersDown`.
 
-Two consequences an app has to know about: it fires for a **tap that moved nothing** (the map is at
-rest, so the condition holds), and it can fire **repeatedly** while at rest, once per idle, whenever
-something else keeps requesting redraws — a label fade, a tile arrival.
+So it is once per movement, and a tap that moved nothing raises nothing. Before 6.1 it was a poll
+over the last three only, which fired on such a tap and could fire repeatedly while at rest — once
+per idle, whenever a label fade or a tile arrival kept requesting redraws. Apps worked around that
+with an app-side "did it actually move" flag; that flag is now the SDK's job.
 
 ### Why it used to stop firing for good
 
-Every one of the three inputs was reachable in a state nothing recovered from
+Before the edge trigger, every one of the three at-rest inputs was reachable in a state nothing
+recovered from
 ([#162](https://github.com/massif-maps/MassifMaps/issues/162)). The failure was always the same
 shape: `onMapStable` silently never fires again until the app is restarted.
 
@@ -85,18 +112,23 @@ for a programmatic move — and `onCameraMoveStarted(int reason)` / `onCameraMov
 with `REASON_GESTURE` / `REASON_API_ANIMATION` / `REASON_DEVELOPER_ANIMATION` on Mapbox and Google
 Maps for Android.
 
-We have no `movestart`, and `onMapStable` is our de-facto `moveend`. `onMapInteraction` carries the
-information that belongs on the move event itself.
+`onMapStable(reason)` is our `moveend` with their `reason`, under a different name. We still have no
+`movestart`, and `onMapInteraction` carries flags that belong on the move event itself.
 
 ## Known gaps
 
-- **No reason on the event.** Bindings reconstruct "was this the user" by watching touches
-  themselves — the NativeScript plugin subclasses the map view on both platforms to keep a
-  `userAction` flag. [#163](https://github.com/massif-maps/MassifMaps/issues/163).
-- **`onMapStable` is polled, not edge-triggered**, hence the tap-fires-stable and repeated-stable
-  behaviour above. Same issue.
-- **No `movestart`.**
-- **No native debounce.** Apps that refresh data on stable throttle it themselves. The facade's
-  subscription options (`mm_on`'s `opts_json`) already carry `delivery` and `coalesce` and are
-  designed to take new keys without a signature change, so a `debounce` belongs there rather than on
-  `Options`.
+- **No `movestart`.** MapLibre and Mapbox both raise one; we have the change and the end, not the
+  start. An app that wants "the user began moving" watches the first `onMapMoved` after a stable.
+- **`onMapInteraction` is redundant.** Its pan/zoom/rotate/tilt flags belong on the move event, and
+  its "this was the user" meaning is now `reason == GESTURE`. Kept for compatibility; the next
+  major should fold it in.
+- **No native debounce.** `throttle` — the leading edge — is a facade subscription option
+  (`mm_on`'s `opts_json`, `MassifMap.onMove(handler, ms)`, `-onMove:throttle:`): a window on the
+  subscription, checked in `EventBus::due` under the same lock as the lookup, dropping events that
+  arrive too soon. Dropping rather than queueing is forced by the payload, which does not outlive
+  the emit.
+
+  The **trailing** edge is not there. It needs a scheduled wakeup, and the facade has a worker pool
+  for async calls but no timer — sleeping a pool worker would block a call slot. The NativeScript
+  plugin implements its own in JavaScript, delivering a snapshot read at emit time. A C++ version
+  belongs beside `throttle` in the same options object.

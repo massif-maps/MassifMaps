@@ -33,6 +33,17 @@ export const Platforms = [
     note: 'Static framework, GLES2 translated to Metal through ANGLE.',
   },
   {
+    id: 'nativescript',
+    name: 'NativeScript',
+    icon: '📜',
+    status: 'supported',
+    languages: ['TypeScript', 'JavaScript', 'Svelte', 'Vue'],
+    distribution: 'npm — `@nativescript-community/ui-massifmaps`',
+    minVersion: 'Wraps the Android + iOS builds',
+    docs: '/docs/getting-started/installation',
+    note: 'A binding over the published Android and iOS artifacts, built on the facade API. Typed events and layer specs from TypeScript.',
+  },
+  {
     id: 'desktop',
     name: 'Desktop',
     icon: '🖥️',

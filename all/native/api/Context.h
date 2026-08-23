@@ -310,12 +310,14 @@ namespace massif {
          * @param projection The projection this handler's position reads default to. It applies
          *                   for the duration of the call only, so a payload kept and read later
          *                   has to name the projection per read.
+         * @param throttleMs Drops events arriving within this many ms of the last one delivered
+         *                   to this handler; 0 is off. Refused on a consuming subscription.
          * @return The subscription, or NULL_SUBSCRIPTION when the handle is stale.
          */
         Subscription subscribe(Handle handle, const std::string& event, EventHandler handler,
                                void* userData, bool consume, Delivery delivery = DELIVERY_ORIGIN,
                                bool coalesce = false,
-                               const std::string& projection = std::string());
+                               const std::string& projection = std::string(), int throttleMs = 0);
 
         /**
          * Registers how to reach the UI thread. Without one, DELIVERY_UI falls back to running

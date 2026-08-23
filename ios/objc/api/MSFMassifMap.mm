@@ -416,16 +416,28 @@ static void MSFInstallUiDispatcher(void) {
     return [self on:@"map.clicked" kind:MSFEventKindClick coalesce:NO block:handler];
 }
 
-- (MSFSubscription *)onMove:(MSFMapEventHandler)handler {
-    return [self on:@"map.moved" kind:MSFEventKindPlain coalesce:NO block:handler];
+- (MSFSubscription *)onMove:(MSFMapMoveHandler)handler {
+    return [self onMove:handler throttle:0];
+}
+
+- (MSFSubscription *)onMove:(MSFMapMoveHandler)handler throttle:(int)throttleMs {
+    [self bridge];
+    return [_options subscribe:@"map.moved"
+                          kind:MSFEventKindMove
+                      delivery:MSFDeliveryMain
+                      coalesce:NO
+                    projection:self.eventProjection
+                         block:handler
+                     consuming:NO
+                      throttle:throttleMs];
 }
 
 - (MSFSubscription *)onIdle:(MSFMapEventHandler)handler {
     return [self on:@"map.idle" kind:MSFEventKindPlain coalesce:NO block:handler];
 }
 
-- (MSFSubscription *)onStable:(MSFMapEventHandler)handler {
-    return [self on:@"map.stable" kind:MSFEventKindPlain coalesce:NO block:handler];
+- (MSFSubscription *)onStable:(MSFMapMoveHandler)handler {
+    return [self on:@"map.stable" kind:MSFEventKindMove coalesce:NO block:handler];
 }
 
 - (MSFSubscription *)onInteraction:(MSFMapInteractionHandler)handler {

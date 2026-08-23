@@ -489,7 +489,7 @@ namespace massif {
         return _kineticEventHandler;
     }
     
-    void MapRenderer::calculateCameraEvent(CameraPanEvent& cameraEvent, float durationSeconds, bool updateKinetic) {
+    void MapRenderer::calculateCameraEvent(CameraPanEvent& cameraEvent, float durationSeconds, bool updateKinetic, MapMoveReason::MapMoveReason reason) {
         if (durationSeconds > 0) {
             if (cameraEvent.isUseDelta()) {
                 _animationHandler.setPanDelta(cameraEvent.getPosDelta(), durationSeconds);
@@ -524,14 +524,14 @@ namespace massif {
         }
     
         // Delay updating the layers, because view state will be updated only after onDrawFrame is called
-        viewChanged(true);
+        viewChanged(true, reason);
     
         if (updateKinetic) {
             _kineticEventHandler.setPanDelta(std::make_pair(oldFocusPos, newFocusPos), zoom);
         } 
     }
         
-    void MapRenderer::calculateCameraEvent(CameraRotationEvent& cameraEvent, float durationSeconds, bool updateKinetic) {
+    void MapRenderer::calculateCameraEvent(CameraRotationEvent& cameraEvent, float durationSeconds, bool updateKinetic, MapMoveReason::MapMoveReason reason) {
         if (durationSeconds > 0) {
             float oldRotation;
             {
@@ -563,14 +563,14 @@ namespace massif {
         }
     
         // Delay updating the layers, because view state will be updated only after onDrawFrame is called
-        viewChanged(true);
+        viewChanged(true, reason);
         
         if (updateKinetic) {
             _kineticEventHandler.setRotationDelta(deltaRotation, cameraEvent.isUseTarget() ? cameraEvent.getTargetPos() : focusPos);
         }
     }
         
-    void MapRenderer::calculateCameraEvent(CameraTiltEvent& cameraEvent, float durationSeconds, bool updateKinetic) {
+    void MapRenderer::calculateCameraEvent(CameraTiltEvent& cameraEvent, float durationSeconds, bool updateKinetic, MapMoveReason::MapMoveReason reason) {
         if (durationSeconds > 0) {
             float oldTilt;
             {
@@ -592,10 +592,10 @@ namespace massif {
         }
     
         // Delay updating the layers, because view state will be updated only after onDrawFrame is called
-        viewChanged(true);
+        viewChanged(true, reason);
     }
     
-    void MapRenderer::calculateCameraEvent(CameraZoomEvent& cameraEvent, float durationSeconds, bool updateKinetic) {
+    void MapRenderer::calculateCameraEvent(CameraZoomEvent& cameraEvent, float durationSeconds, bool updateKinetic, MapMoveReason::MapMoveReason reason) {
         if (durationSeconds > 0) {
             float oldZoom;
             {
@@ -627,7 +627,7 @@ namespace massif {
         }
     
         // Delay updating the layers, because view state will be updated only after onDrawFrame is called
-        viewChanged(true);
+        viewChanged(true, reason);
         
         if (updateKinetic) {
             _kineticEventHandler.setZoomDelta(deltaZoom, cameraEvent.isUseTarget() ? cameraEvent.getTargetPos() : focusPos);
@@ -768,14 +768,14 @@ namespace massif {
         }
         
         // Animate the view
-        calculateCameraEvent(cameraPanEvent, durationSeconds, false);
+        calculateCameraEvent(cameraPanEvent, durationSeconds, false, MapMoveReason::MAP_MOVE_REASON_API);
         if (resetRotation) {
-            calculateCameraEvent(cameraRotationEvent, durationSeconds, false);
+            calculateCameraEvent(cameraRotationEvent, durationSeconds, false, MapMoveReason::MAP_MOVE_REASON_API);
         }
         if (resetTilt) {
-            calculateCameraEvent(cameraTiltEvent, durationSeconds, false);
+            calculateCameraEvent(cameraTiltEvent, durationSeconds, false, MapMoveReason::MAP_MOVE_REASON_API);
         }
-        calculateCameraEvent(cameraZoomEvent, durationSeconds, false);
+        calculateCameraEvent(cameraZoomEvent, durationSeconds, false, MapMoveReason::MAP_MOVE_REASON_API);
     }
     
     void MapRenderer::onSurfaceCreated() {
@@ -882,7 +882,7 @@ namespace massif {
             _lastFrameTime.reset();
 
             // Perform culling without delay
-            viewChanged(false);
+            viewChanged(false, MapMoveReason::MAP_MOVE_REASON_API);
         }
         
         // Calculate time from the last frame
@@ -1428,7 +1428,7 @@ namespace massif {
         }
     }
     
-    void MapRenderer::viewChanged(bool delay) {
+    void MapRenderer::viewChanged(bool delay, MapMoveReason::MapMoveReason reason) {
         std::shared_ptr<Layer> vectorTileLayer;
         for (const std::shared_ptr<Layer>& layer : _layers->getAll()) {
             int delayTime = layer->getCullDelay();
@@ -1458,7 +1458,7 @@ namespace massif {
             onChangeListeners = _onChangeListeners;
         }
         for (const std::shared_ptr<OnChangeListener>& onChangeListener : onChangeListeners) {
-            onChangeListener->onMapChanged();
+            onChangeListener->onMapChanged(reason);
         }
         
         requestRedraw();
@@ -2252,7 +2252,9 @@ namespace massif {
                                 : minCameraZ / cameraPos(2));                        // degenerate (focus above the shell)
                             CameraZoomEvent zoomEvent;
                             zoomEvent.setZoomDelta(static_cast<float>(-std::log2(scale))); // negative: zoom out onto the clearance
-                            calculateCameraEvent(zoomEvent, clampDuration, false);
+                            // API, not GESTURE: the SDK corrects the camera here, and it does so
+                            // after a programmatic move just as much as after a gesture.
+                            calculateCameraEvent(zoomEvent, clampDuration, false, MapMoveReason::MAP_MOVE_REASON_API);
                         }
                     } else {
                         std::lock_guard<std::recursive_mutex> lock(_mutex);
@@ -3526,7 +3528,7 @@ namespace massif {
             }
 
             if (updateView) {
-                mapRenderer->viewChanged(false);
+                mapRenderer->viewChanged(false, MapMoveReason::MAP_MOVE_REASON_API);
             } else {
                 mapRenderer->requestRedraw();
             }

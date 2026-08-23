@@ -2,7 +2,7 @@
   "name": "massif-docs",
   "version": "0.0.0",
   "private": true,
-  "description": "Documentation site for the Akylas Massif Maps fork",
+  "description": "Documentation site for Massif Maps",
   "scripts": {
     "docusaurus": "docusaurus",
     "start": "docusaurus start",

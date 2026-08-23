@@ -337,7 +337,7 @@ public class MassifObject implements AutoCloseable {
     }
 
     enum EventKind {
-        PLAIN, CLICK, INTERACTION, TILE_CLICK, ELEMENT_CLICK
+        PLAIN, MOVE, CLICK, INTERACTION, TILE_CLICK, ELEMENT_CLICK
     }
 
     private static int asyncCounter;
@@ -346,6 +346,14 @@ public class MassifObject implements AutoCloseable {
     <E> Subscription subscribe(final String event, final MapEvents.Handler<E> handler,
                                final MapEvents.ConsumingHandler<E> consuming, Delivery delivery,
                                boolean coalesce, String projection, final EventKind kind) {
+        return subscribe(event, handler, consuming, delivery, coalesce, projection, kind, 0);
+    }
+
+    @SuppressWarnings("unchecked")
+    <E> Subscription subscribe(final String event, final MapEvents.Handler<E> handler,
+                               final MapEvents.ConsumingHandler<E> consuming, Delivery delivery,
+                               boolean coalesce, String projection, final EventKind kind,
+                               int throttleMs) {
         if (handler == null && consuming == null) {
             throw new IllegalArgumentException("Null handler");
         }
@@ -369,7 +377,8 @@ public class MassifObject implements AutoCloseable {
         // A consuming handler is one whose return value the SDK acts on, so the subscription has to
         // say so - without it the bool travels the whole way back and is dropped at the last step.
         int subscription = MassifApi.on(handle, event, listener, delivery.value, coalesce,
-                                        projection == null ? "" : projection, consuming != null);
+                                        projection == null ? "" : projection, consuming != null,
+                                        throttleMs);
         if (subscription == 0) {
             throw new MassifException("Cannot subscribe to '" + event + "' on " + this);
         }
@@ -378,6 +387,7 @@ public class MassifObject implements AutoCloseable {
 
     static Object build(EventKind kind, int target, String name, int payload) {
         switch (kind) {
+        case MOVE:          return new MapEvents.Move(target, name, payload);
         case CLICK:         return new MapEvents.Click(target, name, payload);
         case INTERACTION:   return new MapEvents.Interaction(target, name, payload);
         case TILE_CLICK:    return new MapEvents.VectorTileClick(target, name, payload);

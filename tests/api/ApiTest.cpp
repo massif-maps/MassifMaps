@@ -24,6 +24,8 @@ int failures = 0;
 void testEvents();
 void testDelivery();
 void testBindingSubscriptions();
+void testMapMoveReason();
+void testThrottle();
 void testStructCodec();
 void testMoreStructs();
 void testVariantPaths();
@@ -272,6 +274,8 @@ int main() {
     testEvents();
     testDelivery();
     testBindingSubscriptions();
+    testMapMoveReason();
+    testThrottle();
     testStructCodec();
     testMoreStructs();
     testVariantPaths();

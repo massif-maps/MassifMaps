@@ -370,17 +370,43 @@ public final class MassifMap implements AutoCloseable {
         return on(MapEvents.CLICKED, handler, MassifObject.EventKind.CLICK);
     }
 
-    public Subscription onMove(MapEvents.Handler<MapEvents.Event> handler) {
-        return on(MapEvents.MOVED, handler, MassifObject.EventKind.PLAIN);
+    /** Every camera change, whatever caused it. Fires well above frame rate during a drag. */
+    public Subscription onMove(MapEvents.Handler<MapEvents.Move> handler) {
+        return onMove(handler, 0);
     }
 
-    /** Fires once the map has stopped moving and every visible tile has settled. */
+    /**
+     * The same, delivering at most one event per {@code throttleMs}.
+     *
+     * A drag raises this 47 to 159 times a second, and a handler that repositions a view or
+     * updates a readout does not need every one. Events inside the window are DROPPED, not
+     * queued - the last one is not delivered late, because the payload does not outlive the emit.
+     * For work that should happen once the movement ENDS, use {@link #onStable} instead.
+     *
+     * @param throttleMs The window in milliseconds; 0 delivers every event.
+     */
+    public Subscription onMove(MapEvents.Handler<MapEvents.Move> handler, int throttleMs) {
+        bridge();
+        return options.subscribe(MapEvents.MOVED, handler, null, MassifObject.Delivery.UI, false,
+                                 eventProjection, MassifObject.EventKind.MOVE, throttleMs);
+    }
+
+    /**
+     * Fires when the renderer has nothing left to draw. Tiles may still be loading - this is the
+     * end of the frame queue, not of the data.
+     */
     public Subscription onIdle(MapEvents.Handler<MapEvents.Event> handler) {
         return on(MapEvents.IDLE, handler, MassifObject.EventKind.PLAIN);
     }
 
-    public Subscription onStable(MapEvents.Handler<MapEvents.Event> handler) {
-        return on(MapEvents.STABLE, handler, MassifObject.EventKind.PLAIN);
+    /**
+     * Fires once when a movement ENDS - animations finished, fingers lifted, inertia died out.
+     *
+     * Once per movement, with the reason that caused it: a tap that did not move the camera does
+     * not fire it at all. This is the one to hang "the map settled, refresh my data" on.
+     */
+    public Subscription onStable(MapEvents.Handler<MapEvents.Move> handler) {
+        return on(MapEvents.STABLE, handler, MassifObject.EventKind.MOVE);
     }
 
     /**

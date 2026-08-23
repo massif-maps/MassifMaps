@@ -35,6 +35,9 @@ set(TEST_MODULES
   "${SDK_BASE_DIR}/all/modules/utils/Log.i"
   # The only light class with a WRITABLE position - the set side of the WGS84 default (#159).
   "${SDK_BASE_DIR}/all/modules/geocoding/GeocodingRequest.i"
+  # An ENUM property on a class with no dependencies at all - the map events' reason, and the only
+  # enum in the reduced table.
+  "${SDK_BASE_DIR}/all/modules/ui/MapMoveInfo.i"
   # For adopt: an abstract base an app SUBCLASSES, which is what a spec's `assets` id resolves to.
   # The base only - DirAssetPackage's !spec would pull FileUtils, and with it the platform
   # AssetUtils, which does not exist on the host.
@@ -96,6 +99,7 @@ set(TEST_SDK_SOURCES
   "${SDK_BASE_DIR}/all/native/geometry/VectorTileFeatureBuilder.cpp"
   "${SDK_BASE_DIR}/all/native/geometry/FeatureBuilder.cpp"
   "${SDK_BASE_DIR}/all/native/ui/VectorTileClickInfo.cpp"
+  "${SDK_BASE_DIR}/all/native/ui/MapMoveInfo.cpp"
   "${SDK_BASE_DIR}/all/native/ui/ClickInfo.cpp"
   "${SDK_BASE_DIR}/all/native/core/MapTile.cpp"
   "${SDK_BASE_DIR}/all/native/geometry/GeoJSONGeometryWriter.cpp"

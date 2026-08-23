@@ -304,7 +304,7 @@ namespace massif {
             CameraZoomEvent cameraZoomTargetEvent;
             cameraZoomTargetEvent.setZoomDelta(delta * WHEEL_TICK_TO_ZOOM_DELTA);
             cameraZoomTargetEvent.setTargetPos(calculatePivotPos(screenPos, viewState));
-            _mapRenderer->calculateCameraEvent(cameraZoomTargetEvent, 0, true);
+            _mapRenderer->calculateCameraEvent(cameraZoomTargetEvent, 0, true, MapMoveReason::MAP_MOVE_REASON_GESTURE);
 
             DirectorPtr<MapEventListener> mapEventListener = _mapEventListener;
 
@@ -322,10 +322,12 @@ namespace massif {
         }
 
         if (cameraEvents) {
+            noteMapMoved(MapMoveReason::MAP_MOVE_REASON_GESTURE);
+
             DirectorPtr<MapEventListener> mapEventListener = _mapEventListener;
 
             if (mapEventListener) {
-                mapEventListener->onMapMoved();
+                mapEventListener->onMapMoved(MapMoveReason::MAP_MOVE_REASON_GESTURE);
 
                 bool pan = (cameraEvents & CAMERA_PAN) != 0;
                 bool zoom = (cameraEvents & CAMERA_ZOOM) != 0;
@@ -336,20 +338,30 @@ namespace massif {
         }
     }
     
+    void TouchHandler::noteMapMoved(MapMoveReason::MapMoveReason reason) {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
+        _pendingMoveReason = reason;
+    }
+
     void TouchHandler::checkMapStable() {
-        bool stable = !_mapRenderer->getKineticEventHandler().isPanning() && !_mapRenderer->getKineticEventHandler().isRotating() && !_mapRenderer->getKineticEventHandler().isZooming();
+        bool atRest = !_mapRenderer->getKineticEventHandler().isPanning() && !_mapRenderer->getKineticEventHandler().isRotating() && !_mapRenderer->getKineticEventHandler().isZooming();
+
+        // Edge-triggered: the end of a movement, reported once, with what caused it. Taking the
+        // reason IS the edge - a second at-rest check finds nothing pending and stays quiet, and a
+        // touch that never moved the camera never sets one.
+        std::optional<MapMoveReason::MapMoveReason> reason;
         {
             std::lock_guard<std::recursive_mutex> lock(_mutex);
-            if (_pointersDown > 0 || !_idling) {
-                stable = false;
+            if (atRest && _pointersDown == 0 && _idling) {
+                std::swap(reason, _pendingMoveReason);
             }
         }
 
-        if (stable) {
+        if (reason) {
             DirectorPtr<MapEventListener> mapEventListener = _mapEventListener;
 
             if (mapEventListener) {
-                mapEventListener->onMapStable();
+                mapEventListener->onMapStable(*reason);
             }
         }
     }
@@ -436,7 +448,7 @@ namespace massif {
             CameraPanEvent cameraEvent;
             cameraEvent.setPosDelta(std::make_pair(focusMapPos, projectionSurface->calculateMapPos(focusPos + offset)));
             _cameraEvents |= CAMERA_PAN;
-            _mapRenderer->calculateCameraEvent(cameraEvent, 0, true);
+            _mapRenderer->calculateCameraEvent(cameraEvent, 0, true, MapMoveReason::MAP_MOVE_REASON_GESTURE);
             return;
         }
 
@@ -467,7 +479,7 @@ namespace massif {
         CameraPanEvent cameraEvent;
         cameraEvent.setPosDelta(std::make_pair(currentPos, prevPos));
         _cameraEvents |= CAMERA_PAN;
-        _mapRenderer->calculateCameraEvent(cameraEvent, 0, true);
+        _mapRenderer->calculateCameraEvent(cameraEvent, 0, true, MapMoveReason::MAP_MOVE_REASON_GESTURE);
     }
 
     void TouchHandler::singlePointerLook(const ScreenPos& screenPos, const ViewState& viewState) {
@@ -497,7 +509,7 @@ namespace massif {
                     cameraEvent.setTargetPos(projectionSurface->calculateMapPos(viewState.getCameraPos()));
                 }
                 _cameraEvents |= CAMERA_ROTATE;
-                _mapRenderer->calculateCameraEvent(cameraEvent, 0, false);
+                _mapRenderer->calculateCameraEvent(cameraEvent, 0, false, MapMoveReason::MAP_MOVE_REASON_GESTURE);
             }
             // Up and down changes the tilt, in the same direction the two-finger tilt uses.
             if (dy != 0) {
@@ -508,7 +520,7 @@ namespace massif {
                 CameraTiltEvent cameraEvent;
                 cameraEvent.setTiltDelta(dy * scale);
                 _cameraEvents |= CAMERA_TILT;
-                _mapRenderer->calculateCameraEvent(cameraEvent, 0, false);
+                _mapRenderer->calculateCameraEvent(cameraEvent, 0, false, MapMoveReason::MAP_MOVE_REASON_GESTURE);
             }
         }
         _prevScreenPos1 = screenPos;
@@ -533,7 +545,7 @@ namespace massif {
             CameraZoomEvent cameraEvent;
             cameraEvent.setZoomDelta(delta);
             _cameraEvents |= CAMERA_ZOOM;
-            _mapRenderer->calculateCameraEvent(cameraEvent, 0, true);
+            _mapRenderer->calculateCameraEvent(cameraEvent, 0, true, MapMoveReason::MAP_MOVE_REASON_GESTURE);
         }
         _prevScreenPos1 = screenPos;
     }
@@ -639,7 +651,7 @@ namespace massif {
             CameraTiltEvent cameraEvent;
             cameraEvent.setTiltDelta((screenPos.getY() - _prevScreenPos1.getY()) * scale);
             _cameraEvents |= CAMERA_TILT;
-            _mapRenderer->calculateCameraEvent(cameraEvent, 0, false);
+            _mapRenderer->calculateCameraEvent(cameraEvent, 0, false, MapMoveReason::MAP_MOVE_REASON_GESTURE);
         }
         _prevScreenPos1 = screenPos;
     }
@@ -699,7 +711,7 @@ namespace massif {
             CameraPanEvent cameraEvent;
             cameraEvent.setPosDelta(std::make_pair(cameraMapPos, projectionSurface->calculateMapPos(cameraPos + offset)));
             _cameraEvents |= CAMERA_PAN;
-            _mapRenderer->calculateCameraEvent(cameraEvent, 0, true);
+            _mapRenderer->calculateCameraEvent(cameraEvent, 0, true, MapMoveReason::MAP_MOVE_REASON_GESTURE);
         }
     }
 
@@ -742,7 +754,7 @@ namespace massif {
                 cameraZoomTargetEvent.setScale(static_cast<float>(prevDist / currentDist));
                 cameraZoomTargetEvent.setTargetPos(pivotPos);
                 _cameraEvents |= CAMERA_ZOOM;
-                _mapRenderer->calculateCameraEvent(cameraZoomTargetEvent, 0, true);
+                _mapRenderer->calculateCameraEvent(cameraZoomTargetEvent, 0, true, MapMoveReason::MAP_MOVE_REASON_GESTURE);
             }
 
             if (rotate && _options->isRotationGestures() && prevDist > 0 && currentDist > 0) {
@@ -755,7 +767,7 @@ namespace massif {
                 cameraRotateTargetEvent.setRotationDelta(static_cast<float>(std::atan2(cross, dot) * Const::RAD_TO_DEG));
                 cameraRotateTargetEvent.setTargetPos(pivotPos);
                 _cameraEvents |= CAMERA_ROTATE;
-                _mapRenderer->calculateCameraEvent(cameraRotateTargetEvent, 0, true);
+                _mapRenderer->calculateCameraEvent(cameraRotateTargetEvent, 0, true, MapMoveReason::MAP_MOVE_REASON_GESTURE);
             }
         }
     
@@ -778,7 +790,7 @@ namespace massif {
         CameraZoomEvent cameraZoomTargetEvent;
         cameraZoomTargetEvent.setZoomDelta(1.0f);
         cameraZoomTargetEvent.setTargetPos(calculatePivotPos(screenPos, viewState));
-        _mapRenderer->calculateCameraEvent(cameraZoomTargetEvent, ZOOM_GESTURE_ANIMATION_DURATION.count() / 1000.0f, true);
+        _mapRenderer->calculateCameraEvent(cameraZoomTargetEvent, ZOOM_GESTURE_ANIMATION_DURATION.count() / 1000.0f, true, MapMoveReason::MAP_MOVE_REASON_GESTURE);
 
         DirectorPtr<MapEventListener> mapEventListener = _mapEventListener;
 
@@ -861,7 +873,7 @@ namespace massif {
             CameraZoomEvent cameraZoomTargetEvent;
             cameraZoomTargetEvent.setZoomDelta(-1.0f);
             cameraZoomTargetEvent.setTargetPos(_mapRenderer->getProjectionSurface()->calculateMapPos(_mapRenderer->getViewState().getFocusPos()));
-            _mapRenderer->calculateCameraEvent(cameraZoomTargetEvent, ZOOM_GESTURE_ANIMATION_DURATION.count() / 1000.0f, true);
+            _mapRenderer->calculateCameraEvent(cameraZoomTargetEvent, ZOOM_GESTURE_ANIMATION_DURATION.count() / 1000.0f, true, MapMoveReason::MAP_MOVE_REASON_GESTURE);
 
             DirectorPtr<MapEventListener> mapEventListener = _mapEventListener;
 
@@ -1077,8 +1089,9 @@ namespace massif {
     TouchHandler::MapRendererListener::MapRendererListener(const std::shared_ptr<TouchHandler>& touchHandler) : _touchHandler(touchHandler) {
     }
     
-    void TouchHandler::MapRendererListener::onMapChanged() {
+    void TouchHandler::MapRendererListener::onMapChanged(MapMoveReason::MapMoveReason reason) {
         if (auto touchHandler = _touchHandler.lock()) {
+            touchHandler->noteMapMoved(reason);
             {
                 std::lock_guard<std::recursive_mutex> lock(touchHandler->_mutex);
                 touchHandler->_idling = false;
@@ -1090,7 +1103,7 @@ namespace massif {
             DirectorPtr<MapEventListener> mapEventListener = touchHandler->_mapEventListener;
 
             if (mapEventListener) {
-                mapEventListener->onMapMoved();
+                mapEventListener->onMapMoved(reason);
             }
         }
     }

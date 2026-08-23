@@ -194,8 +194,8 @@ public class SecondFragment extends Fragment {
     private void installMapListener() {
         mapView.setMapEventListener(new MapEventListener() {
             @Override
-            public void onMapMoved() {
-                super.onMapMoved();
+            public void onMapMoved(int reason) {
+                super.onMapMoved(reason);
                 Log.d(TAG, String.format("lat=%.6f lng=%.6f rotation=%.2f z=%.2f tilt=%.0f",
                         mapView.getFocusPos().getY(), mapView.getFocusPos().getX(),
                         mapView.getMapRotation(), mapView.getZoom(), mapView.getTilt()));

@@ -4123,6 +4123,23 @@
       "methods": [],
       "events": []
     },
+    "massif::MapMoveInfo": {
+      "base": null,
+      "properties": [
+        {
+          "name": "reason",
+          "type": "ENUM",
+          "readOnly": true,
+          "static": false,
+          "position": false,
+          "cppType": "massif::MapMoveReason::MapMoveReason",
+          "enum": "massif::MapMoveReason::MapMoveReason",
+          "doc": "Returns what caused the movement."
+        }
+      ],
+      "methods": [],
+      "events": []
+    },
     "massif::MapPos": {
       "base": null,
       "properties": [
@@ -5182,13 +5199,13 @@
         {
           "cppClass": "massif::Options",
           "name": "map.moved",
-          "payload": null,
+          "payload": "massif::MapMoveInfo",
           "consumable": false
         },
         {
           "cppClass": "massif::Options",
           "name": "map.stable",
-          "payload": null,
+          "payload": "massif::MapMoveInfo",
           "consumable": false
         }
       ]
@@ -11516,6 +11533,23 @@
         "name": "MBTILES_SCHEME_XYZ",
         "value": 1,
         "doc": "Alternative to TMS scheme. Vertical coordinate is flipped."
+      }
+    ],
+    "massif::MapMoveReason::MapMoveReason": [
+      {
+        "name": "MAP_MOVE_REASON_GESTURE",
+        "value": 0,
+        "doc": "The user, directly: a gesture, a mouse wheel, or the inertia that follows one."
+      },
+      {
+        "name": "MAP_MOVE_REASON_ANIMATION",
+        "value": 1,
+        "doc": "An animation the SDK is stepping - a flight, or a move given a duration. The call that started it reported the reason it was made with; every frame after that is this one."
+      },
+      {
+        "name": "MAP_MOVE_REASON_API",
+        "value": 2,
+        "doc": "The app, through a call that took effect immediately: setFocusPos, setZoom, an option change that moved the camera."
       }
     ],
     "massif::PackageAction::PackageAction": [

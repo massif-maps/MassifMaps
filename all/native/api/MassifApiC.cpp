@@ -409,6 +409,7 @@ int mm_on(mm_ctx ctx, mm_handle handle, const char* event, mm_handler handler, v
     Delivery delivery = DELIVERY_ORIGIN;
     bool consume = false;
     bool coalesce = false;
+    int throttleMs = 0;
     std::string projection;
     std::string opts = text(opts_json);
     if (!opts.empty()) {
@@ -442,12 +443,16 @@ int mm_on(mm_ctx ctx, mm_handle handle, const char* event, mm_handler handler, v
         if (options.containsObjectKey("projection")) {
             projection = options.getObjectElement("projection").getString();
         }
+        if (options.containsObjectKey("throttle")) {
+            throttleMs = static_cast<int>(options.getObjectElement("throttle").getLong());
+        }
     }
 
     // mm_handler and EventHandler are the same type, so nothing is wrapped and there is no
     // trampoline whose lifetime the ABI would have to track.
     Subscription subscription = context->subscribe(handle, text(event), handler, user_data,
-                                                   consume, delivery, coalesce, projection);
+                                                   consume, delivery, coalesce, projection,
+                                                   throttleMs);
     if (subscription == NULL_SUBSCRIPTION) {
         return MM_BAD_HANDLE;
     }

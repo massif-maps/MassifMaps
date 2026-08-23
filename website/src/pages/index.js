@@ -49,6 +49,11 @@ function HomepageHeader() {
             to="/docs/features/3d-terrain">
             Explore Features
           </Link>
+          <Link
+            className="button button--lg button--hero-outline"
+            to="/docs/migration">
+            Coming from CARTO?
+          </Link>
         </div>
       </div>
     </header>
@@ -60,7 +65,7 @@ export default function Home() {
   return (
     <Layout
       title={`${siteConfig.title} — Documentation`}
-      description="Documentation for the Akylas Massif Maps fork: installation, guides, feature docs and API reference for Android and iOS.">
+      description="Documentation for Massif Maps: installation, guides, feature docs and API reference for Android, iOS and NativeScript.">
       <HomepageHeader />
       <main>
         <HomepagePlatforms />

@@ -234,11 +234,33 @@ NS_SWIFT_NAME(MassifMap)
 - (nullable MSFScreenPoint *)mapToScreen:(MSFPosition *)pos;
 
 - (nullable MSFSubscription *)onClick:(MSFMapClickHandler)handler NS_WARN_UNUSED_RESULT;
-- (nullable MSFSubscription *)onMove:(MSFMapEventHandler)handler NS_WARN_UNUSED_RESULT;
+/** Every camera change, whatever caused it. Fires well above frame rate during a drag. */
+- (nullable MSFSubscription *)onMove:(MSFMapMoveHandler)handler NS_WARN_UNUSED_RESULT;
 
-/** Fires once the map has stopped moving and every visible tile has settled. */
+/**
+ * The same, delivering at most one event per `throttleMs`.
+ *
+ * A drag raises this 47 to 159 times a second, and a handler that repositions a view or updates a
+ * readout does not need every one. Events inside the window are DROPPED, not queued - the last one
+ * is not delivered late, because the payload does not outlive the emit. For work that should
+ * happen once the movement ENDS, use `onStable:` instead.
+ */
+- (nullable MSFSubscription *)onMove:(MSFMapMoveHandler)handler
+                            throttle:(int)throttleMs NS_WARN_UNUSED_RESULT;
+
+/**
+ * Fires when the renderer has nothing left to draw. Tiles may still be loading - this is the end
+ * of the frame queue, not of the data.
+ */
 - (nullable MSFSubscription *)onIdle:(MSFMapEventHandler)handler NS_WARN_UNUSED_RESULT;
-- (nullable MSFSubscription *)onStable:(MSFMapEventHandler)handler NS_WARN_UNUSED_RESULT;
+
+/**
+ * Fires once when a movement ENDS - animations finished, fingers lifted, inertia died out.
+ *
+ * Once per movement, with the cause: a tap that did not move the camera does not fire it at all.
+ * This is the one to hang "the map settled, refresh my data" on.
+ */
+- (nullable MSFSubscription *)onStable:(MSFMapMoveHandler)handler NS_WARN_UNUSED_RESULT;
 
 /**
  * Pans, zooms, rotations and tilts the user drove.

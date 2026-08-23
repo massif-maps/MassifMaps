@@ -49,13 +49,13 @@ namespace massif {
             cameraZoomEvent = calculateZoom(viewState, deltaSeconds);
         }
         if (cameraPanEvent) {
-            _mapRenderer.calculateCameraEvent(*cameraPanEvent, 0, false);
+            _mapRenderer.calculateCameraEvent(*cameraPanEvent, 0, false, MapMoveReason::MAP_MOVE_REASON_GESTURE);
         }
         if (cameraRotationEvent) {
-            _mapRenderer.calculateCameraEvent(*cameraRotationEvent, 0, false);
+            _mapRenderer.calculateCameraEvent(*cameraRotationEvent, 0, false, MapMoveReason::MAP_MOVE_REASON_GESTURE);
         }
         if (cameraZoomEvent) {
-            _mapRenderer.calculateCameraEvent(*cameraZoomEvent, 0, false);
+            _mapRenderer.calculateCameraEvent(*cameraZoomEvent, 0, false, MapMoveReason::MAP_MOVE_REASON_GESTURE);
         }
     }
     

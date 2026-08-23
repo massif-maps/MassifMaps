@@ -51,13 +51,13 @@ namespace massif { namespace api {
 
     int MassifApi::on(int handle, const std::string& event,
                       const std::shared_ptr<EventListener>& listener, int delivery, bool coalesce,
-                      const std::string& projection, bool consume) {
+                      const std::string& projection, bool consume, int throttleMs) {
         if (!listener) {
             throw NullArgumentException("Null listener");
         }
         Subscription subscription = Context::GetDefault()->subscribe(
             static_cast<Handle>(handle), event, &dispatchToListener, listener.get(), consume,
-            static_cast<Delivery>(delivery), coalesce, projection);
+            static_cast<Delivery>(delivery), coalesce, projection, throttleMs);
         if (subscription != NULL_SUBSCRIPTION) {
             listeners()[static_cast<int>(subscription)] = listener;
         }

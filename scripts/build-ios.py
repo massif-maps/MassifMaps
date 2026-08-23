@@ -108,13 +108,18 @@ def copyHeaders(args, baseDir, outputDir):
         updatePublicHeader('%s/%s' % (destDir, filename))
   os.chdir(currentDir)
 
-  extraHeaders = ['%s/ios/objc/utils/ExceptionWrapper.h', '%s/ios/objc/ui/MapView.h']
+  extraHeaders = ['%s/ios/objc/utils/ExceptionWrapper.h', '%s/ios/objc/ui/MapView.h',
+                  '%s/ios/objc/api/MSFMassif.h', '%s/ios/objc/api/MSFMapEvents.h',
+                  '%s/ios/objc/api/MSFMassifObject.h', '%s/ios/objc/api/MSFMassifMap.h']
   if args.metalangle:
     for extraHeader in ['MGLKit.h', 'MGLKitPlatform.h', 'MGLContext.h', 'MGLKView.h', 'MGLLayer.h', 'MGLKViewController.h']:
       extraHeaders += ['%s/libs-external/angle-metal/include/' + extraHeader]
   for extraHeader in extraHeaders:
     dirpath, filename = (extraHeader % baseDir).rsplit('/', 1)
-    destFilename = filename if filename.startswith('MGL') else '%s%s' % (CLASS_PREFIX, filename)
+    # Already prefixed stays as it is: the facade sugar headers are written as MSF*, unlike
+    # MapView.h which is renamed on the way in.
+    destFilename = filename if filename.startswith('MGL') or filename.startswith(CLASS_PREFIX) \
+                   else '%s%s' % (CLASS_PREFIX, filename)
     publicHeaders.append(destFilename)
     if not copyfile(os.path.join(dirpath, filename), '%s/%s' % (destDir, destFilename)):
       return False  
@@ -144,13 +149,18 @@ def copyXCFrameworkHeaders(args, baseDir, outputDir):
         updatePublicHeader('%s/%s' % (destDir, filename))
   os.chdir(currentDir)
 
-  extraHeaders = ['%s/ios/objc/utils/ExceptionWrapper.h', '%s/ios/objc/ui/MapView.h']
+  extraHeaders = ['%s/ios/objc/utils/ExceptionWrapper.h', '%s/ios/objc/ui/MapView.h',
+                  '%s/ios/objc/api/MSFMassif.h', '%s/ios/objc/api/MSFMapEvents.h',
+                  '%s/ios/objc/api/MSFMassifObject.h', '%s/ios/objc/api/MSFMassifMap.h']
   if args.metalangle:
     for extraHeader in ['MGLKit.h', 'MGLKitPlatform.h', 'MGLContext.h', 'MGLKView.h', 'MGLLayer.h', 'MGLKViewController.h']:
       extraHeaders += ['%s/libs-external/angle-metal/include/' + extraHeader]
   for extraHeader in extraHeaders:
     dirpath, filename = (extraHeader % baseDir).rsplit('/', 1)
-    destFilename = filename if filename.startswith('MGL') else '%s%s' % (CLASS_PREFIX, filename)
+    # Already prefixed stays as it is: the facade sugar headers are written as MSF*, unlike
+    # MapView.h which is renamed on the way in.
+    destFilename = filename if filename.startswith('MGL') or filename.startswith(CLASS_PREFIX) \
+                   else '%s%s' % (CLASS_PREFIX, filename)
     publicHeaders.append(destFilename)
     if not copyfile(os.path.join(dirpath, filename), '%s/%s' % (destDir, destFilename)):
       return False  

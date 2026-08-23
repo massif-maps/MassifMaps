@@ -24,6 +24,12 @@
 !enum(massif::PanningSpeedMode::PanningSpeedMode)
 !shared_ptr(massif::Options, components.Options)
 
+// The map events. They fire on whatever handle the Options were registered under.
+!event(massif::Options, map.idle)
+!event(massif::Options, map.moved)
+!event(massif::Options, map.stable)
+!event(massif::Options, map.interaction, payload(massif::MapInteractionInfo))
+!event(massif::Options, map.clicked, payload(massif::MapClickInfo))
 %import "core/MapBounds.i"
 %import "core/MapRange.i"
 %import "core/MapVec.i"
@@ -36,6 +42,12 @@
 %import "graphics/Color.i"
 %import "projections/Projection.i"
 
+// Declared as attributes so the facade's property table can traverse into them: "fogOptions.rangeStart"
+// resolves without anything being hand-listed. The getters and setters are unaffected.
+%attributestring(massif::Options, std::shared_ptr<massif::TerrainOptions>, TerrainOptions, getTerrainOptions, setTerrainOptions)
+%attributestring(massif::Options, std::shared_ptr<massif::SkyOptions>, SkyOptions, getSkyOptions, setSkyOptions)
+%attributestring(massif::Options, std::shared_ptr<massif::FogOptions>, FogOptions, getFogOptions, setFogOptions)
+%attributestring(massif::Options, std::shared_ptr<massif::LightOptions>, LightOptions, getLightOptions, setLightOptions)
 %attribute(massif::Options, int, FieldOfViewY, getFieldOfViewY, setFieldOfViewY)
 %attribute(massif::Options, bool, KineticZoom, isKineticZoom, setKineticZoom)
 %attribute(massif::Options, bool, Rotatable, isRotatable, setRotatable)

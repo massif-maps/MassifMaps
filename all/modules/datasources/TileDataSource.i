@@ -27,6 +27,12 @@
 
 !polymorphic_shared_ptr(massif::TileDataSource, datasources.TileDataSource)
 
+// Fetches one tile. Synchronous - an HTTP source does network I/O, so use callAsync.
+!method(massif::TileDataSource, loadTile, arg(tile, tile), returns(object, massif::TileData))
+// How a DEM tile encodes metres: "terrarium" or "mapbox". The terrain and the hillshade pick
+// their elevation decoder from it, so a source says what it holds instead of every consumer
+// being handed a decoder.
+%attributestring(massif::TileDataSource, std::string, Encoding, getEncoding, setEncoding)
 %attribute(massif::TileDataSource, int, MinZoom, getMinZoom)
 %attribute(massif::TileDataSource, int, MaxZoom, getMaxZoom)
 %attribute(massif::TileDataSource, int, MaxOverzoomLevel, getMaxOverzoomLevel, setMaxOverzoomLevel)

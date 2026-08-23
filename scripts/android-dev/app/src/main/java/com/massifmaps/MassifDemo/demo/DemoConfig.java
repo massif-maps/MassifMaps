@@ -655,6 +655,42 @@ public final class DemoConfig {
     // =============================================================================================
 
     /** Style regression repro layer (synthetic GeoJSON + DemoStyles.bugStyle). */
+    // FACADE API (#146) - the layer whose whole stack is built from one JSON spec.
+    public static boolean LAYER_API_SOURCE = false;
+    /** A preset name from API_LAYER_SPECS, or raw JSON. Presets exist because adb eats quotes. */
+    public static String API_LAYER_SPEC = "raster";
+
+    public static final java.util.Map<String, String> API_LAYER_SPECS = new java.util.HashMap<>();
+    static {
+        API_LAYER_SPECS.put("raster",
+            "{\"type\":\"raster\",\"opacity\":0.8,"
+            + "\"source\":{\"type\":\"memory-cache\",\"capacity\":33554432,"
+            + "\"source\":{\"type\":\"http\",\"minZoom\":0,\"maxZoom\":19,"
+            + "\"url\":\"https://tile.openstreetmap.org/{z}/{x}/{y}.png\"}}}");
+        API_LAYER_SPECS.put("composite",
+            "{\"type\":\"composite-vector\",\"opacity\":0.5,"
+            + "\"source\":{\"type\":\"http\",\"minZoom\":0,\"maxZoom\":14,"
+            + "\"url\":\"https://example.com/{z}/{x}/{y}.mvt\"},"
+            + "\"style\":{\"type\":\"mbvt\",\"cartocss\":"
+            + "{\"type\":\"cartocss\",\"css\":\"#water{polygon-fill:#0000ff;}\"}}}");
+        API_LAYER_SPECS.put("solid", "{\"type\":\"solid\",\"color\":-16776961}");
+        // A style PROJECT, which had no spec form at all before: an asset package plus the name of
+        // one style inside it.
+        API_LAYER_SPECS.put("project",
+            "{\"type\":\"vector\","
+            + "\"source\":{\"type\":\"http\",\"minZoom\":0,\"maxZoom\":14,"
+            + "\"url\":\"https://tiles.akylas.fr/data/france/{z}/{x}/{y}.pbf\"},"
+            + "\"style\":{\"type\":\"mbvt\",\"project\":{\"type\":\"project\","
+            + "\"assets\":{\"type\":\"dir\",\"path\":\"/sdcard/alpimaps_mbtiles/osm\"},"
+            + "\"name\":\"voyager\"}}}");
+    }
+
+    /** The spec to build, resolving a preset name if that is what was given. */
+    public static String apiLayerSpec() {
+        String named = API_LAYER_SPECS.get(API_LAYER_SPEC);
+        return named != null ? named : API_LAYER_SPEC;
+    }
+
     public static boolean LAYER_BUGS = false;
 
     /** ::icon attachment: glyph = a real icon under the label, empty = text-name '' as reported,
@@ -1004,6 +1040,8 @@ public final class DemoConfig {
         ROUTE_SELECT_CYCLE_MS = DemoCfg.cfgInt("routeSelectCycle", ROUTE_SELECT_CYCLE_MS);
         ROUTE_SELECT_WIDTH = DemoCfg.cfgFloat("routeSelectWidth", ROUTE_SELECT_WIDTH);
         LAYER_MANEUVERS = DemoCfg.cfgBool("maneuvers", LAYER_MANEUVERS);
+        LAYER_API_SOURCE = DemoCfg.cfgBool("apiSource", LAYER_API_SOURCE);
+        API_LAYER_SPEC = DemoCfg.cfgStr("apiLayerSpec", API_LAYER_SPEC);
         LAYER_BUGS = DemoCfg.cfgBool("bugs", LAYER_BUGS);
 
         // style regression repros

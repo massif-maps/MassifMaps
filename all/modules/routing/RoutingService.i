@@ -27,6 +27,7 @@
 
 !polymorphic_shared_ptr(massif::RoutingService, routing.RoutingService)
 
+!method(massif::RoutingService, calculateRoute, arg(request, handle), returns(object, massif::RoutingResult))
 %attributestring(massif::RoutingService, std::string, Profile, getProfile, setProfile)
 %std_exceptions(massif::RoutingService::setProfile)
 %std_io_exceptions(massif::RoutingService::matchRoute)

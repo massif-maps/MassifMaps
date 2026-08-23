@@ -366,6 +366,10 @@ static const int NATIVE_NO_COORDINATE = -1;
     return [_baseMapView getLayers];
 }
 
+-(MSFBaseMapView*)getBaseMapView {
+    return _baseMapView;
+}
+
 -(MSFOptions*)getOptions {
     return [_baseMapView getOptions];
 }
@@ -400,6 +404,14 @@ static const int NATIVE_NO_COORDINATE = -1;
 
 -(void)rotate:(float)deltaAngle durationSeconds:(float)durationSeconds {
     [_baseMapView rotate:deltaAngle durationSeconds:durationSeconds];
+}
+
+-(void)moveTo:(MSFMapPos*)pos zoom:(float)zoom {
+    [_baseMapView moveTo:pos zoom:zoom];
+}
+
+-(void)moveTo:(MSFMapPos*)pos zoom:(float)zoom rotation:(float)rotation tilt:(float)tilt {
+    [_baseMapView moveTo:pos zoom:zoom rotation:rotation tilt:tilt];
 }
 
 -(void)flyTo:(MSFMapPos*)pos zoom:(float)zoom durationSeconds:(float)durationSeconds {

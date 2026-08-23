@@ -27,6 +27,7 @@
 
 !shared_ptr(massif::RoutingRequest, routing.RoutingRequest)
 
+!method(massif::RoutingRequest, setCustomParameter, arg(name, string), arg(value, json), returns(void))
 %attributestring(massif::RoutingRequest, std::shared_ptr<massif::Projection>, Projection, getProjection)
 %attributeval(massif::RoutingRequest, std::vector<massif::MapPos>, Points, getPoints)
 %ignore massif::RoutingRequest::getPointParameters;

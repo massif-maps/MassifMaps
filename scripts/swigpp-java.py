@@ -264,7 +264,9 @@ def addIntDefAnnotation(fileName):
     '  /**\n',
     '   * The accepted values of this constant namespace.\n',
     '   */\n',
-    '  @Retention(RetentionPolicy.CLASS)\n',
+    # SOURCE, not CLASS: lint warns on a typedef annotation kept in the class file, and an
+    # @IntDef has no meaning at runtime anyway - it is a compile-time check.
+    '  @Retention(RetentionPolicy.SOURCE)\n',
     '  @Target({ ElementType.METHOD, ElementType.PARAMETER, ElementType.FIELD, ElementType.LOCAL_VARIABLE })\n',
     '  @IntDef({ %s })\n' % ', '.join(constants),
     '  public @interface Value {}\n'
@@ -323,6 +325,11 @@ def transformSwigFile(sourcePath, outPath, headerDirs, packageName):
     # Attributes
     match = re.search(r'^\s*(%|!)(static|)attribute.*$', line)
     if match:
+      continue
+
+    # Facade declarations: read by scripts/gen-api-tables.py, meaningless to Swig.
+    match = re.search(r'^\s*![a-z]+\s*[(].*$', line)
+    if match and re.search(r'^\s*!(spec|method|event)\s*[(]', line):
       continue
 
     # Detect enum directive

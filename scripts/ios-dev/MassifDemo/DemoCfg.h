@@ -12,6 +12,9 @@
  */
 @interface DemoCfg : NSObject
 
+/** Whether the key was given at all, so "leave the example's own value alone" is expressible. */
++ (BOOL)has:(NSString *)key;
+
 + (BOOL)boolFor:(NSString *)key defaultValue:(BOOL)defaultValue;
 + (float)floatFor:(NSString *)key defaultValue:(float)defaultValue;
 + (double)doubleFor:(NSString *)key defaultValue:(double)defaultValue;

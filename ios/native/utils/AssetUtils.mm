@@ -31,6 +31,39 @@ namespace massif {
         return std::make_shared<BinaryData>(std::move(data));
     }
 
+    namespace {
+        /**
+         * The bundle's resource directory joined with a relative asset path.
+         *
+         * Not pathForResource: that one takes a name and an extension and finds nothing for a
+         * DIRECTORY, which is exactly what listing has to walk into.
+         */
+        NSString* BundlePath(const std::string& path) {
+            NSString* root = [[NSBundle mainBundle] resourcePath];
+            if (path.empty()) {
+                return root;
+            }
+            return [root stringByAppendingPathComponent:[NSString stringWithUTF8String:path.c_str()]];
+        }
+    }
+
+    bool AssetUtils::AssetExists(const std::string& path) {
+        BOOL isDir = NO;
+        BOOL exists = [[NSFileManager defaultManager] fileExistsAtPath:BundlePath(path)
+                                                           isDirectory:&isDir];
+        return exists && !isDir;
+    }
+
+    std::vector<std::string> AssetUtils::ListAssets(const std::string& path) {
+        std::vector<std::string> names;
+        NSArray<NSString*>* entries =
+            [[NSFileManager defaultManager] contentsOfDirectoryAtPath:BundlePath(path) error:nil];
+        for (NSString* entry in entries) {
+            names.push_back(std::string([entry UTF8String]));
+        }
+        return names;
+    }
+
     std::string AssetUtils::CalculateResourcePath(const std::string& resourceName) {
         NSString* nsResourceName = [NSString stringWithUTF8String:resourceName.c_str()];
         NSString* fileName = [nsResourceName stringByDeletingPathExtension];

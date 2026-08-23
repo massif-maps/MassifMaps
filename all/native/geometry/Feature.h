@@ -9,6 +9,8 @@
 
 #include "core/Variant.h"
 
+#include <string>
+
 #include <memory>
 
 namespace massif {
@@ -38,6 +40,15 @@ namespace massif {
          * @return The properties of the feature.
          */
         const Variant& getProperties() const;
+
+        /**
+         * Returns the feature's geometry as a GeoJSON string, in its own coordinates.
+         *
+         * Serialising a geometry otherwise means constructing a GeoJSONGeometryWriter in the
+         * binding, which every binding then does differently and, in a scripting one, slowly.
+         * @return The geometry as GeoJSON, or an empty string when there is no geometry.
+         */
+        std::string getGeometryGeoJSON() const;
     
     protected:
         const std::shared_ptr<Geometry> _geometry;

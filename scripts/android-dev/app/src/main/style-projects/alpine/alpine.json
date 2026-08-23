@@ -1,0 +1,8 @@
+{
+  "styles": ["style.mss"],
+  "layers": ["place", "mountain_peak", "transportation_name", "building", "transportation", "landcover", "waterway", "water"],
+  "styleparameters": {
+    "water_color": { "default": "#8fb8d8" },
+    "show_buildings": { "default": true }
+  }
+}

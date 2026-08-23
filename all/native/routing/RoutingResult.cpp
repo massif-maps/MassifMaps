@@ -37,6 +37,14 @@ namespace massif {
         return _instructions;
     }
 
+    int RoutingResult::getInstructionCount() const {
+        return static_cast<int>(_instructions.size());
+    }
+
+    int RoutingResult::getPointCount() const {
+        return static_cast<int>(_points.size());
+    }
+
     double RoutingResult::getTotalDistance() const {
         return std::accumulate(_instructions.begin(), _instructions.end(), 0.0, [](double dist, const RoutingInstruction& instruction) {
             return dist + instruction.getDistance();

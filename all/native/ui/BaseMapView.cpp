@@ -142,9 +142,45 @@ namespace massif {
         _mapRenderer->calculateCameraEvent(cameraEvent, durationSeconds, false);
     }
     
+    void BaseMapView::moveTo(const MapPos& pos, float zoom, const float* rotation,
+                             const float* tilt) {
+        // ZOOM BEFORE THE PAN when zooming in. Restricted panning clamps the focus so the VIEWPORT
+        // stays inside the pan bounds, so how hard a target is clamped depends on the zoom it is
+        // judged at: from the opening world view the whole of Mercator is on screen and any focus
+        // is dragged back to the bounds centre - the equator - and the zoom that follows does not
+        // undo it. Zooming out is the other way round, so the pan goes first and the zoom clamps
+        // afterwards, which is the wanted behaviour.
+        bool zoomIn = zoom > getZoom();
+        if (zoomIn) {
+            setZoom(zoom, 0);
+        }
+        if (rotation) {
+            setRotation(*rotation, 0);
+        }
+        if (tilt) {
+            setTilt(*tilt, 0);
+        }
+        setFocusPos(pos, 0);
+        if (!zoomIn) {
+            setZoom(zoom, 0);
+        }
+    }
+
+    void BaseMapView::moveTo(const MapPos& pos, float zoom) {
+        moveTo(pos, zoom, nullptr, nullptr);
+    }
+
+    void BaseMapView::moveTo(const MapPos& pos, float zoom, float rotation, float tilt) {
+        moveTo(pos, zoom, &rotation, &tilt);
+    }
+
     void BaseMapView::flyTo(const MapPos& pos, float zoom, float durationSeconds) {
         stopCameraAnimations();
         _mapRenderer->getAnimationHandler().setFlightTarget(_options->getBaseProjection()->toInternal(pos), zoom, nullptr, nullptr, 0.0f, durationSeconds, FLIGHT_RHO);
+        // The flight is stepped by the frame loop, and every other camera call gets its frame from
+        // calculateCameraEvent. Without this the flight sits at progress 0 on an on-demand
+        // renderer - it starts only if something else happens to redraw.
+        _mapRenderer->requestRedraw();
     }
 
     void BaseMapView::flyTo(const MapPos& pos, float zoom, float rotation, float tilt, float durationSeconds) {
@@ -160,6 +196,7 @@ namespace massif {
         MapPos internalClimb = _options->getBaseProjection()->toInternal(MapPos(pos.getX(), pos.getY(), climbHeight));
         double internalClimbHeight = internalClimb.getZ() - internalGround.getZ();
         _mapRenderer->getAnimationHandler().setFlightTarget(internalPos, zoom, &rotation, &tilt, static_cast<float>(internalClimbHeight), durationSeconds, FLIGHT_RHO);
+        _mapRenderer->requestRedraw();
     }
 
     float BaseMapView::getFlightProgress() const {

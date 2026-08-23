@@ -42,6 +42,12 @@ namespace massif {
         const std::shared_ptr<TileDataSource>& getDataSource() const;
 
         /**
+         * Returns the projection the results are expressed in, which is the data source's.
+         * @return The projection of the found features' positions.
+         */
+        std::shared_ptr<Projection> getProjection() const;
+
+        /**
          * Returns the tile decoder used by the search service.
          * @return The tile decoder used by the search service.
          */

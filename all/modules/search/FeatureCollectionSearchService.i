@@ -25,6 +25,7 @@
 
 !polymorphic_shared_ptr(massif::FeatureCollectionSearchService, search.FeatureCollectionSearchService)
 
+!method(massif::FeatureCollectionSearchService, findFeatures, arg(request, handle), returns(object, massif::FeatureCollection))
 %attributestring(massif::FeatureCollectionSearchService, std::shared_ptr<massif::Projection>, Projection, getProjection)
 %attributestring(massif::FeatureCollectionSearchService, std::shared_ptr<massif::FeatureCollection>, FeatureCollection, getFeatureCollection)
 %attribute(massif::FeatureCollectionSearchService, int, MaxResults, getMaxResults, setMaxResults)

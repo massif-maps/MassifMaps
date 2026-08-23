@@ -1,12 +1,23 @@
 #import "DemoViewController.h"
+#import "DemoCfg.h"
 #import "DemoConfig.h"
 #import "DemoMap.h"
 #import "DemoPanel.h"
 #import "DemoToast.h"
+#import "DemoLive.h"
+
+#import "api/MSFMassif.h"
+#import "api/MSFMassifObject.h"
+#import "api/MSFMassifMap.h"
+#import "api/MSFMapEvents.h"
 
 @interface DemoViewController ()
 @property (nonatomic, strong) MSFMapView *mapView;
 @property (nonatomic, strong) DemoMap *demo;
+/** The facade sugar (#146), when -apiSugar true is on the command line. */
+@property (nonatomic, strong) MSFMassifMap *sugarMap;
+@property (nonatomic, strong) MSFSubscription *sugarClick;
+@property (nonatomic, strong) MSFSubscription *sugarFeature;
 /** The camera readout along the bottom - Android's zoomText. */
 @property (nonatomic, strong) UILabel *statusLabel;
 @property (nonatomic, strong) MSFMapEventListener *mapListener;
@@ -56,6 +67,8 @@
     [options setPanningMode:MSF_PANNING_MODE_STICKY];
 
     self.demo = [[DemoMap alloc] initWithMapView:self.mapView];
+    // So massifdemo://config can change a knob on the RUNNING map (see DemoLive).
+    [DemoLive attach:self.demo];
     [self.demo build];
 
     if ([DemoConfig boolFor:@"ui"]) {
@@ -63,6 +76,62 @@
         [self addStatusLabel];
     }
     [self installMapListener];
+    [self installApiSugar];
+}
+
+/**
+ * Exercises the Objective-C facade sugar (#146), the counterpart of the Android demo's
+ * --es apiSugar true:
+ *
+ *   xcrun simctl launch --console-pty <device> com.massifmaps.MassifDemo -apiSugar true
+ *
+ * Installed AFTER the demo's own listener on purpose: the bridge chains to whatever was there, so
+ * the camera readout keeps working alongside it.
+ *
+ * This demo's base projection is EPSG4326, so the interesting conversion is the other way round
+ * from Android's - a position asked for in EPSG:3857 should come back in metres.
+ */
+- (void)installApiSugar {
+    // DemoCfg, not DemoConfig: the latter only knows keys its own table registers, and this is a
+    // knob rather than a demo setting.
+    if (![DemoCfg boolFor:@"apiSugar" defaultValue:NO]) {
+        return;
+    }
+    self.sugarMap = [MSFMassifMap attach:self.mapView objectId:@"demo"];
+    if (!self.sugarMap) {
+        NSLog(@"apiSugar: could not attach");
+        return;
+    }
+    self.sugarMap.eventProjection = @"EPSG:4326";
+
+    self.sugarClick = [self.sugarMap onClick:^(MSFMapClickEvent *e) {
+        MSFMapPos *pos = e.position;
+        NSLog(@"sugar map.clicked at [%f, %f] type=%d", [pos getX], [pos getY], e.clickType);
+    }];
+
+    // The demo builds its layers with the object API, which is exactly the migration case: adopt
+    // the first vector tile one rather than expecting a facade id.
+    MSFMassifLayer *layer = nil;
+    for (int index = 0; index < self.sugarMap.layerCount; index++) {
+        if ([[self.sugarMap rawLayerAt:index] isKindOfClass:[MSFVectorTileLayer class]]) {
+            layer = [self.sugarMap adoptLayer:@"demoBase" atIndex:index];
+            break;
+        }
+    }
+    if (layer) {
+        self.sugarFeature = [layer onFeatureClick:^(MSFVectorTileClickEvent *e) {
+            MSFMapPos *pos = e.position;
+            MSFMapPos *merc = [e getPos:@"featurePos" projection:@"EPSG:3857"];
+            NSLog(@"sugar feature %lld layer=%@ at=[%f, %f] merc=[%f, %f] name=%@ geojsonLen=%lu",
+                  e.featureId, e.layerName, [pos getX], [pos getY],
+                  merc ? [merc getX] : 0, merc ? [merc getY] : 0,
+                  [e property:@"name"] ?: @"(null)", (unsigned long)e.geoJson.length);
+        }];
+    }
+    NSLog(@"apiSugar on, map=%d fogRangeStart=%f layer=%@",
+          self.sugarMap.options.handle,
+          [self.sugarMap.fog getDouble:@"rangeStart" defaultValue:-1],
+          layer);
 }
 
 /** The camera readout, bottom centre - the counterpart of the Android layout's zoomText. */

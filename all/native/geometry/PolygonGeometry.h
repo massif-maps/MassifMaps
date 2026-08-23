@@ -38,6 +38,8 @@ namespace massif {
         virtual ~PolygonGeometry();
         
         virtual MapPos getCenterPos() const;
+
+        virtual GeometryType::GeometryType getType() const { return GeometryType::GEOMETRY_TYPE_POLYGON; }
     
         /**
          * Returns the list of map positions defining the outer ring of the polygon.

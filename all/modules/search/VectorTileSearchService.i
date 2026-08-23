@@ -29,8 +29,12 @@
 
 !polymorphic_shared_ptr(massif::VectorTileSearchService, search.VectorTileSearchService)
 
+
+!method(massif::VectorTileSearchService, findFeatures, arg(request, handle), returns(object, massif::VectorTileFeatureCollection))
+!spec(massif::VectorTileSearchService, search, vectortile, alias(source, dataSource), alias(style, tileDecoder))
 %attributestring(massif::VectorTileSearchService, std::shared_ptr<massif::TileDataSource>, DataSource, getDataSource)
 %attributestring(massif::VectorTileSearchService, std::shared_ptr<massif::VectorTileDecoder>, TileDecoder, getTileDecoder)
+!attributestring_polymorphic(massif::VectorTileSearchService, projections.Projection, Projection, getProjection)
 %attribute(massif::VectorTileSearchService, int, MinZoom, getMinZoom, setMinZoom)
 %attribute(massif::VectorTileSearchService, int, MaxZoom, getMaxZoom, setMaxZoom)
 %attribute(massif::VectorTileSearchService, int, MaxResults, getMaxResults, setMaxResults)

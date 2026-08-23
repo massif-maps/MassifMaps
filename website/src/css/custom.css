@@ -622,3 +622,111 @@
   font-weight: 600;
   font-size: 0.9rem;
 }
+
+/* --- Example gallery (/examples) ---------------------------------------------------------- */
+
+.exampleCard {
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: 14px;
+  overflow: hidden;
+  cursor: pointer;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--ifm-card-background-color);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.exampleCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+}
+
+/* A fixed band, because the stored screenshot IS the wide vignette. */
+.exampleShot {
+  aspect-ratio: 16 / 9;
+  background: var(--ifm-color-emphasis-200);
+}
+
+.exampleShot img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.exampleShotMissing {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--ifm-color-emphasis-600);
+  font-size: 0.85rem;
+}
+
+.exampleCardBody {
+  padding: 0.9rem 1rem 1.1rem;
+}
+
+.exampleCardBody h3 {
+  margin: 0 0 0.35rem;
+  font-size: 1.05rem;
+}
+
+.exampleCardBody p {
+  margin: 0;
+  color: var(--ifm-color-emphasis-700);
+  font-size: 0.9rem;
+}
+
+.exampleLead {
+  font-size: 1.05rem;
+  color: var(--ifm-color-emphasis-700);
+  max-width: 48rem;
+}
+
+.exampleDetailShot {
+  width: 100%;
+  border-radius: 14px;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  margin-bottom: 1.5rem;
+}
+
+.exampleBack {
+  background: none;
+  border: none;
+  color: var(--ifm-color-primary);
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 1rem;
+  font-size: 0.95rem;
+}
+
+.exampleTabs {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.exampleTab {
+  border: 1px solid var(--ifm-color-emphasis-300);
+  background: transparent;
+  border-radius: 999px;
+  padding: 0.3rem 0.9rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: var(--ifm-font-color-base);
+}
+
+.exampleTabOn {
+  background: var(--ifm-color-primary);
+  border-color: var(--ifm-color-primary);
+  color: #fff;
+}
+
+.exampleTabNote {
+  font-size: 0.82rem;
+  color: var(--ifm-color-emphasis-600);
+}

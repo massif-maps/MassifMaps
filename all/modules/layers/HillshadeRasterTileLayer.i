@@ -23,6 +23,11 @@
 !enum(massif::HillshadeMethod::HillshadeMethod)
 !polymorphic_shared_ptr(massif::HillshadeRasterTileLayer, layers.HillshadeRasterTileLayer)
 
+
+!method(massif::HillshadeRasterTileLayer, getElevation, arg(pos, pos), returns(float))
+// A profile is thousands of numbers, so the result is a bulk array rather than JSON.
+!method(massif::HillshadeRasterTileLayer, getElevations, arg(positions, positions), returns(doubles))
+!spec(massif::HillshadeRasterTileLayer, layer, hillshade, alias(source, dataSource))
 %attribute(massif::HillshadeRasterTileLayer, float, Contrast, getContrast, setContrast)
 %attribute(massif::HillshadeRasterTileLayer, float, HeightScale, getHeightScale, setHeightScale)
 %attribute(massif::HillshadeRasterTileLayer, float, Exaggeration, getExaggeration, setExaggeration)

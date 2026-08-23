@@ -18,6 +18,8 @@
 
 !polymorphic_shared_ptr(massif::Projection, projections.Projection)
 
+
+!spec(massif::Projection, projection, -)
 %attributeval(massif::Projection, massif::MapBounds, Bounds, getBounds)
 %attributestring(massif::Projection, std::string, Name, getName)
 !objc_rename(fromLat) massif::Projection::fromLatLong;

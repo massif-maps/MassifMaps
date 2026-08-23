@@ -1,5 +1,6 @@
 #include "Feature.h"
 #include "geometry/Geometry.h"
+#include "geometry/GeoJSONGeometryWriter.h"
 
 namespace massif {
 
@@ -20,4 +21,13 @@ namespace massif {
         return _properties;
     }
     
+
+    std::string Feature::getGeometryGeoJSON() const {
+        if (!_geometry) {
+            return std::string();
+        }
+        GeoJSONGeometryWriter writer;
+        return writer.writeGeometry(_geometry);
+    }
+
 }

@@ -102,6 +102,44 @@ happened to request a second redraw behind them, which is why the symptom looked
 partial ("only the sky updated"): different passes cache differently, so a stale front buffer shows
 a mixture.
 
+### An animation owes itself every frame, not just the first
+
+`AnimationHandler` is stepped from `onDrawFrame` and, until 2026-08-23, **never requested a frame**
+— unlike `KineticEventHandler`, which always has. It advanced only as far as something *else*
+happened to redraw, and what happened to redraw was the cull pass behind `viewChanged`. So an
+animation over a map with layers looked fine, and the same animation with no layers yet, or before
+the first frame, stopped where it was.
+
+A flight made it visible because its first frame does no moving: `setFlightTarget` defers the whole
+path to `calculateFlight`, which sets it up against the view state the flight actually starts from
+— not known until there is one — and emits progress 0. With no second frame the camera stayed
+exactly where it started, so a camera pointed as a screen opened produced the default view (
+measured on Android: `lon=0 lat=0 zoom=1.84 tilt=90` — null island, straight down) and looked like a
+call that had never run.
+
+Two fixes, both needed:
+
+- `AnimationHandler::calculate` ends with `if (isAnimating()) requestRedraw()`.
+- `BaseMapView::flyTo` requests the kick-off frame, the way `calculateCameraEvent` does for every
+  other camera call.
+
+**The rule for a flight before the first frame is therefore: it runs FROM that first frame.** It is
+not dropped and it does not snap. `durationSeconds = 0` on `flyTo` still means *derive the duration
+from the path*, not *immediate* — `BaseMapView::moveTo` is the immediate one, and it needs no frame
+at all, which is what the facade's `camera.moveTo(…)` uses when no `animate(…)` was asked for.
+
+### Order the camera against the clamp, not against the code
+
+With `restrictedPanning` on, `ViewState::clampFocusPos` pushes the focus back until the **viewport**
+is inside the pan bounds — so the same target is clamped hard at a world view and not at all up
+close. Setting the focus and then the zoom therefore pins the focus to the middle of the bounds (the
+equator, on an opening map) and the zoom that follows does not undo it; this is why a Matterhorn
+camera opened over western France.
+
+`BaseMapView::moveTo` applies **the zoom first when zooming in**, and last when zooming out, so the
+pan is always judged at the tighter of the two zooms. Anything setting the camera by hand has the
+same obligation — which is the reason to call `moveTo` instead.
+
 Two more consequences worth knowing:
 
 - **fps is meaningless when the map is idle** — the bench scripts drive a scripted pan for exactly

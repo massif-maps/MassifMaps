@@ -104,6 +104,7 @@ static NSMutableDictionary *sValues = nil;
 
         // --- hillshade ---
         @"hsMethod":            @"IGOR",
+        @"apiSet":              @"",
         @"hsContrast":          @0.5f,
         @"hsHeightScale":       @0.05f,
         @"hsExaggeration":      @1.0f,

@@ -9,3 +9,5 @@ build
 /.history
 boost*
 .gradle
+# Host test build tree
+/tests/build

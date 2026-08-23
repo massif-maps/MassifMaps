@@ -19,6 +19,8 @@
 
 !polymorphic_shared_ptr(massif::Marker, vectorelements.Marker)
 
+
+!spec(massif::Marker, element, marker, alias(position, pos))
 %attributestring(massif::Marker, std::shared_ptr<massif::MarkerStyle>, Style, getStyle, setStyle)
 %std_exceptions(massif::Marker::Marker)
 %std_exceptions(massif::Marker::setStyle)

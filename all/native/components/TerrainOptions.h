@@ -131,7 +131,7 @@ namespace massif {
 
         /**
          * Returns the terrain mesh resolution.
-         * @return The maximum number of grid cells per tile edge used for terrain geometry. The default is 32.
+         * @return The maximum number of grid cells per tile edge used for terrain geometry. The default is 64.
          */
         int getMeshResolution() const;
         /**
@@ -427,7 +427,7 @@ namespace massif {
         /**
          * Returns the camera terrain clearance: the minimum height the camera is kept
          * above the terrain surface, in meters.
-         * @return The camera clearance in meters. The default is 200. 0 disables camera terrain-following.
+         * @return The camera clearance in meters. The default is 60. 0 disables camera terrain-following.
          */
         float getCameraClearance() const;
         /**
@@ -464,13 +464,13 @@ namespace massif {
 
         /**
          * Returns the billboard/label terrain occlusion tolerance.
-         * @return The relative depth tolerance. The default is 0.02.
+         * @return The relative depth tolerance. The default is 0.
          */
         float getBillboardOcclusionTolerance() const;
         /**
          * Sets how far behind the terrain a billboard or label anchor may sit and still count
-         * as visible, as a fraction of its distance from the camera. The default 0.02 only
-         * absorbs the mismatch between the anchor and the terrain it sits on. Larger values
+         * as visible, as a fraction of its distance from the camera. 0, the default, hides a
+         * label the moment its anchor goes behind the relief. Larger values
          * deliberately let partly hidden features label - a summit just behind a nearer ridge
          * still shows its name, which is what a peak-finder view wants.
          * @param tolerance The new relative tolerance (clamped to 0..1).

@@ -44,6 +44,10 @@ namespace massif {
         return _dataSource;
     }
 
+    std::shared_ptr<Projection> VectorTileSearchService::getProjection() const {
+        return _dataSource ? _dataSource->getProjection() : std::shared_ptr<Projection>();
+    }
+
     const std::shared_ptr<VectorTileDecoder>& VectorTileSearchService::getTileDecoder() const {
         return _tileDecoder;
     }

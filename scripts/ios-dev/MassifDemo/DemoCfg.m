@@ -2,6 +2,11 @@
 
 @implementation DemoCfg
 
++ (BOOL)has:(NSString *)key {
+    return [[NSUserDefaults standardUserDefaults] objectForKey:key] != nil;
+}
+
+
 + (BOOL)hasKey:(NSString *)key {
     return [[NSUserDefaults standardUserDefaults] objectForKey:key] != nil;
 }

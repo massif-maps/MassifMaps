@@ -22,6 +22,8 @@
 
 !polymorphic_shared_ptr(massif::HTTPTileDataSource, datasources.HTTPTileDataSource)
 
+
+!spec(massif::HTTPTileDataSource, source, http, alias(url, baseURL), default(minZoom, 0), default(maxZoom, 24))
 %attributestring(massif::HTTPTileDataSource, std::string, BaseURL, getBaseURL, setBaseURL)
 %attributeval(massif::HTTPTileDataSource, %arg(std::vector<std::string>), Subdomains, getSubdomains, setSubdomains)
 %attribute(massif::HTTPTileDataSource, bool, TMSScheme, isTMSScheme, setTMSScheme)

@@ -163,7 +163,7 @@ namespace massif {
 
         /**
          * Returns whether seamless tile edges are enabled.
-         * @return True if seamless edges are enabled. The default is false.
+         * @return True if seamless edges are enabled. The default is true.
          */
         bool isSeamlessEdgesEnabled() const;
         /**

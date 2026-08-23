@@ -148,6 +148,29 @@ namespace massif {
         void setFocusPos(const MapPos& pos, float durationSeconds);
 
         /**
+         * Points the camera at a position and a zoom level IMMEDIATELY, with no animation.
+         *
+         * Prefer it over setFocusPos + setZoom: with restricted panning on, the focus is clamped so
+         * the viewport stays inside the pan bounds, so the same target is clamped hard at a world
+         * view and not at all up close. Setting the focus first therefore pins it to the middle of
+         * the bounds - the equator, on an opening map - and the zoom that follows does not undo it.
+         * This applies the two in whichever order avoids that.
+         *
+         * Unlike flyTo, it needs no frame, so it is also the call for pointing the camera before
+         * the map has drawn.
+         * @param pos The target position in base projection coordinate system.
+         * @param zoom The target zoom level.
+         */
+        void moveTo(const MapPos& pos, float zoom);
+        /**
+         * The same, also setting rotation and tilt. See moveTo.
+         * @param pos The target position in base projection coordinate system.
+         * @param zoom The target zoom level.
+         * @param rotation The rotation in degrees.
+         * @param tilt The tilt in degrees.
+         */
+        void moveTo(const MapPos& pos, float zoom, float rotation, float tilt);
+        /**
          * Moves the camera to a position and a zoom level in ONE animation, pulling back over a
          * long move and coming down at the target (Van Wijk & Nuij's optimal path). Unlike
          * setFocusPos + setZoom, which run on their own clocks and cross the map at the final
@@ -156,6 +179,11 @@ namespace massif {
          * @param zoom The target zoom level.
          * @param durationSeconds The duration in seconds, or 0 to derive it from the length of
          *                        the path - a move twice as far then does not take twice as long.
+         *                        0 is NOT "immediate"; for that use moveTo.
+         *
+         * A flight asked for before the map has drawn its first frame RUNS FROM THAT FIRST FRAME:
+         * the path is set up against the view it actually starts from, which is not known until
+         * there is one. It is not dropped and it does not snap.
          */
         void flyTo(const MapPos& pos, float zoom, float durationSeconds);
         /**
@@ -400,6 +428,9 @@ namespace massif {
         void stopCameraAnimations();
 
     private:
+        // Rotation and tilt optional, so both public moveTo overloads are the same code.
+        void moveTo(const MapPos& pos, float zoom, const float* rotation, const float* tilt);
+
         std::shared_ptr<CancelableThreadPool> _envelopeThreadPool;
         std::shared_ptr<CancelableThreadPool> _tileThreadPool;
         std::shared_ptr<Options> _options;

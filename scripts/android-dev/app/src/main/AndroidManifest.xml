@@ -21,12 +21,39 @@
         android:hardwareAccelerated="true"
         android:theme="@style/AppTheme"
         android:usesCleartextTraffic="true">
-        <activity android:name=".MainActivity" android:exported="true" android:launchMode="singleTop">
+
+        <!-- The example gallery: what the app opens on. -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:theme="@style/GalleryTheme">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- One example. Exported so a capture run can drive it, naming the example with an
+             "example" string extra. -->
+        <activity
+            android:name=".ExampleActivity"
+            android:exported="true"
+            android:theme="@style/ExampleTheme" />
+
+        <activity
+            android:name=".CodeActivity"
+            android:exported="false"
+            android:theme="@style/GalleryTheme" />
+
+        <!-- The BENCH: the composable debugging/measurement map the root CLAUDE.md documents.
+             singleTop so 'am start' with extras reconfigures the running map instead of
+             relaunching it - a relaunch rebuilds every cache, which hides stale-redraw bugs. -->
+        <activity
+            android:name=".BenchActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:theme="@style/AppTheme" />
+
     </application>
 
 </manifest>

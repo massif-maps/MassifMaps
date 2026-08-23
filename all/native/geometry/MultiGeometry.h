@@ -28,6 +28,8 @@ namespace massif {
 
         virtual MapPos getCenterPos() const;
 
+        virtual GeometryType::GeometryType getType() const { return GeometryType::GEOMETRY_TYPE_COLLECTION; }
+
         /**
          * Returns the number of geometry objects in this multi geometry container.
          * @return The number of geometry objects.

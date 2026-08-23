@@ -24,9 +24,14 @@
 
 !shared_ptr(massif::RoutingResult, routing.RoutingResult)
 
+!method(massif::RoutingResult, getInstruction, arg(index, int), returns(object, massif::RoutingInstruction))
+// The whole polyline as a flat array, for the same reason getElevations is one.
+!method(massif::RoutingResult, getPoints, returns(doubles))
 %attributestring(massif::RoutingResult, std::shared_ptr<massif::Projection>, Projection, getProjection)
 %attributeval(massif::RoutingResult, std::vector<massif::MapPos>, Points, getPoints)
 %attributeval(massif::RoutingResult, std::vector<massif::RoutingInstruction>, Instructions, getInstructions)
+%attribute(massif::RoutingResult, int, InstructionCount, getInstructionCount)
+%attribute(massif::RoutingResult, int, PointCount, getPointCount)
 %attribute(massif::RoutingResult, double, TotalDistance, getTotalDistance)
 %attribute(massif::RoutingResult, double, TotalTime, getTotalTime)
 %attributestring(massif::RoutingResult, std::string, RawResult, getRawResult)

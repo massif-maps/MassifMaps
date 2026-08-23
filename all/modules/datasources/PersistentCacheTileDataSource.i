@@ -22,6 +22,8 @@
 
 !polymorphic_shared_ptr(massif::PersistentCacheTileDataSource, datasources.PersistentCacheTileDataSource)
 
+
+!spec(massif::PersistentCacheTileDataSource, source, persistent-cache, alias(source, dataSource))
 %attribute(massif::PersistentCacheTileDataSource, bool, CacheOnlyMode, isCacheOnlyMode, setCacheOnlyMode)
 %attribute(massif::PersistentCacheTileDataSource, bool, Open, isOpen)
 %std_exceptions(massif::PersistentCacheTileDataSource::PersistentCacheTileDataSource)

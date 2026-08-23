@@ -7,6 +7,7 @@
 #ifndef _MASSIF_ASSETUTILS_H_
 #define _MASSIF_ASSETUTILS_H_
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -24,6 +25,24 @@ namespace massif {
          * @return The loaded resource as a byte vector or null if the resource was not found or could not be loaded.
          */
         static std::shared_ptr<BinaryData> LoadAsset(const std::string& path);
+
+        /**
+         * Returns true if the specified bundled asset exists and is a FILE (not a directory).
+         * Unlike loadAsset this does not read or log anything, so it can be used to probe.
+         * @param path The path of the asset, relative to the application root folder.
+         * @return True if the asset exists as a file.
+         */
+        static bool AssetExists(const std::string& path);
+
+        /**
+         * Lists the names of the assets directly inside the specified bundled directory. The
+         * listing is NOT recursive and does not tell files and directories apart - an entry is a
+         * directory if listing it returns something, a file if assetExists returns true for it.
+         * The contract matches Android's, where the NDK asset API cannot do better.
+         * @param path The directory path, relative to the application root folder ("" is the root).
+         * @return The names of the entries in that directory, without any path prefix.
+         */
+        static std::vector<std::string> ListAssets(const std::string& path);
 
         /**
          * Calculates path for the bundled resource.

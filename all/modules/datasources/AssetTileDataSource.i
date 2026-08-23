@@ -17,6 +17,8 @@
 
 !polymorphic_shared_ptr(massif::AssetTileDataSource, datasources.AssetTileDataSource)
 
+
+!spec(massif::AssetTileDataSource, source, assets, alias(path, basePath), default(minZoom, 0), default(maxZoom, 24))
 %feature("director") massif::AssetTileDataSource;
 
 %include "datasources/AssetTileDataSource.h"

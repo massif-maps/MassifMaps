@@ -19,6 +19,7 @@
 
 !polymorphic_shared_ptr(massif::VectorTileFeatureCollection, geometry.VectorTileFeatureCollection)
 
+!method(massif::VectorTileFeatureCollection, getFeature, arg(index, int), returns(object, massif::VectorTileFeature))
 %std_exceptions(massif::VectorTileFeatureCollection::getFeature)
 
 %include "geometry/VectorTileFeatureCollection.h"

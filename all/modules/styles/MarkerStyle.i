@@ -18,6 +18,8 @@
 
 !polymorphic_shared_ptr(massif::MarkerStyle, styles.MarkerStyle)
 
+
+!spec(massif::MarkerStyle, elementstyle, -)
 %attribute(massif::MarkerStyle, float, Size, getSize)
 %attribute(massif::MarkerStyle, float, ClickSize, getClickSize)
 %attribute(massif::MarkerStyle, massif::BillboardOrientation::BillboardOrientation, OrientationMode, getOrientationMode)

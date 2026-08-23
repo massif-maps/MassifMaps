@@ -354,6 +354,85 @@ per constant at class load — which is also what lets them be `@IntDef` members
 
 The Android artifact gains one dependency, `androidx.annotation`, for the annotation itself.
 
+### The facade sugar has its own `Position`, `Bounds`, `ScreenPoint`, `ScreenRect`
+
+Facade sugar only — `MapPos`, `MapBounds`, `ScreenPos` and `ScreenBounds` are untouched and stay
+with the object API.
+
+| Was | Now |
+|---|---|
+| `com.massifmaps.core.MapPos` | `com.massifmaps.api.Position` (`lng`, `lat`, `alt`) |
+| `com.massifmaps.core.MapBounds` | `com.massifmaps.api.Bounds` (`min`, `max`) |
+| `com.massifmaps.core.ScreenPos` | `com.massifmaps.api.ScreenPoint` (`x`, `y`) |
+| `com.massifmaps.core.ScreenBounds` | `com.massifmaps.api.ScreenRect` (`min`, `max`) |
+| `MSFMapPos` / `MSFMapBounds` / `MSFScreenPos` / `MSFScreenBounds` | `MSFPosition` / `MSFBounds` / `MSFScreenPoint` / `MSFScreenRect` |
+
+```java
+map.camera().moveTo(new MapPos(5.7245, 45.1885), 13.5f);        // was
+map.camera().moveTo(new Position(5.7245, 45.1885), 13.5f);      // now
+```
+
+Fields, not getters: `pos.lng` rather than `pos.getX()`. `MSFPosition` uses properties
+(`pos.lng`). Longitude is still FIRST, as `MapPos.getX()` was.
+
+Also changed, on the camera:
+
+- `MapCamera.fitBounds(bounds)` is now `fitBounds(bounds, width, height)`; the ObjC
+  `fitBounds:screenBounds:integerZoom:` is `fitBounds:screenRect:integerZoom:`. The camera no
+  longer holds the view, so it cannot measure it for you. An overload taking `resetRotation` and
+  `resetTilt` is new, as is `camera().climb(height)` for an arched flight.
+- `MassifMap.screenToMap` returns a `Position` and `mapToScreen` a `ScreenPoint`.
+- New: `MapCamera.progress()` / `MSFMapCamera.progress`, 0 to 1 through the current flight.
+
+Why: a `MapPos` is a SWIG proxy over a C++ object, so every position a click handler reads costs
+a JNI allocation and a finalizer to carry two doubles. These are plain objects, and they are what
+lets the sugar name no SWIG type at all.
+
+### A facade position is WGS84 by default
+
+Facade API only — the object API is untouched, and `MapPos` still means whatever its owner says.
+
+A position read through the facade with **no projection named** used to come back in the object's
+own projection (EPSG:3857 in practice). It now comes back in **EPSG:4326** — degrees:
+
+```java
+MassifApi.getPos(payload, "featurePos");                // was [641267, 5660048], now [5.7606, 45.2442]
+MassifApi.getPos(payload, "featurePos", "EPSG:3857");   // the old behaviour, asked for by name
+```
+
+This is the change most likely to pass a compiler and fail at runtime, so check every facade
+`getPos` / `mm_get_string` / `mm_get_position` call that does **not** name a projection. A
+per-read name still wins, and a per-subscription default still applies to the reads inside its
+handler; only "nobody said" changed.
+
+Writes moved with it — `setString` on a position property (`Options.panBounds`,
+`GeocodingRequest.location`) is now taken as WGS84 too, so a value read and written back is
+unchanged. That is the whole reason both sides moved at once.
+
+Unchanged: a Mercator conversion that produces a non-finite number (the poles) still fails with
+`RESULT_UNSUPPORTED_TYPE` rather than emitting JSON that will not parse, and an object with no
+known projection is still left alone rather than guessed at.
+
+### `adopt` and the event bridges moved to `MassifInterop`
+
+Facade API only, and a straight rename — same arguments, same behaviour:
+
+| Was | Now |
+|---|---|
+| `MassifApi.adopt(kind, id, …)` | `MassifInterop.adopt(kind, id, …)` |
+| `MassifApi.getSource` / `getLayer` | `MassifInterop.getSource` / `getLayer` |
+| `MassifApi.createEventBridge` | `MassifInterop.createEventBridge` |
+| `MassifApi.createVectorTileEventBridge` | `MassifInterop.createVectorTileEventBridge` |
+| `MassifApi.createVectorElementEventBridge` | `MassifInterop.createVectorElementEventBridge` |
+
+On iOS the class is `MSFMassifInterop`; `MassifMaps.h` already imports it.
+
+Those are the only facade methods that name an SDK class in their signature, so they are the only
+ones a hand-written binding cannot carry. Splitting them out is what makes "`MassifApi` is
+SWIG-free" a checkable property rather than an intention — see
+[api-facade.md](internals/api-facade.md). The typed sugar (`Massif`, `MassifMap`, `MassifLayer`,
+`MSFMassif…`) is unaffected; it already calls this for you.
+
 ## Deliberately NOT renamed
 
 These name data or upstream work, not this SDK:
@@ -366,3 +445,41 @@ These name data or upstream work, not this SDK:
 - **CartoCSS** — the style language, MapBox's and CARTO's, which this SDK implements rather than
   owns.
 - **The CartoDB copyright headers and LICENSE attribution.**
+
+## Default option values (2026-08-23)
+
+The SDK now ships the values every bench and every example screenshot in this repo was actually made
+with, instead of values nothing was tuned at. They live in
+`scripts/android-dev/.../demo/DemoConfig.java`, which is where the tuning was done.
+
+An app that already sets one of these explicitly is unaffected. **A map that took the defaults will
+look and perform differently** — mostly better, but the terrain ones change framing enough to
+invalidate a stored camera.
+
+| Option | Was | Now | Why |
+|---|---|---|---|
+| `Options.zoomGestures` | off | **on** | double-tap, two-finger tap and double-tap-drag zoom. Every other map SDK does these; an app that had to ask just looked broken |
+| `Options.tileThreadPoolSize` | 1 | **2** | tangram's `numTileWorkers`. One made tiles arrive late enough to be seen arriving |
+| `Options.tileLODFactor` | 1.0 | **0.5** | half a nominal tile of screen area per level |
+| `TerrainOptions.meshResolution` | 32 | **64** | tangram's value. 32 leaves draped content visibly floating; 128 cost 8.5 fps against 15.2 |
+| `TerrainOptions.cameraClearance` | 200 m | **60 m** | 200 stops the camera short of the surface, so a close approach swings into the nearest hillside |
+| `TerrainOptions.billboardOcclusionTolerance` | 0.02 | **0** | a label goes out when its anchor goes behind the relief |
+| `LightOptions.ambientIntensity` | 0.35 | **1.0** | both of these only apply once terrain lighting is on |
+| `LightOptions.shadowStrength` | 0 | **0.3** | ↑ |
+| `LightOptions.shadowBias` | 0.25 | **1.0** | 0.25 leaves acne on a lit slope at 3 cascades |
+| `HillshadeRasterTileLayer.heightScale` | 1.0 | **0.05** | at 1.0 real DEM relief saturates and the shading reads as a stencil |
+| `HillshadeRasterTileLayer.hillshadeMethod` | `STANDARD` | **`IGOR`** | keeps slopes readable under imagery |
+| `HillshadeRasterTileLayer.illuminationMapRotationEnabled` | true | **false** | turning the map should not relight the terrain |
+| `ContourTileDataSource.seamlessEdges` | off | **on** | without it a traced line stops dead at every tile border |
+| `ContourTileDataSource.minVisibleZoom` | 12 | **5** | the interval ladder already coarsens a regional view |
+| `ContourTileDataSource.simplifyTolerance` | 1.0 | **1.5** | |
+
+**Not moved, and why.** The demo's sun position (azimuth 355°, altitude 9°) and hillshade
+illumination azimuth are a raking *test* light for judging relief, not a default any app wants; the
+same goes for its camera, its tile URLs and its per-source cache sizes.
+
+`TerrainOptions.maxTileZoomCoarsening` was raised to the demo's 8 and **put back to 3**. It only
+pays for itself next to the demo's fixed 170 km `viewDistance`, where what it coarsens is the far
+horizon. On the default view distance it coarsens tiles that are still large on screen: measured on
+the iOS terrain example, a blurred band with a hard tile edge down the middle of the view. The two
+are a pair — raise both or neither.

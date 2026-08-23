@@ -19,6 +19,8 @@
 
 !polymorphic_shared_ptr(massif::OrderedTileDataSource, datasources.OrderedTileDataSource)
 
+
+!spec(massif::OrderedTileDataSource, source, ordered, alias(source, dataSource1), alias(source2, dataSource2))
 %std_exceptions(massif::OrderedTileDataSource::OrderedTileDataSource)
 
 %feature("director") massif::OrderedTileDataSource;

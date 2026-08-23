@@ -25,6 +25,8 @@
 
 !polymorphic_shared_ptr(massif::MultiTileDataSource, datasources.MultiTileDataSource)
 
+
+!spec(massif::MultiTileDataSource, source, multi, default(maxOpenedPackages, 4))
 %std_exceptions(massif::MultiTileDataSource::MultiTileDataSource)
 %std_exceptions(massif::LocalVectorDataSource::add)
 %std_exceptions(massif::LocalVectorDataSource::remove)

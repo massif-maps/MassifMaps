@@ -58,7 +58,9 @@ namespace massif
     HillshadeRasterTileLayer::HillshadeRasterTileLayer(const std::shared_ptr<TileDataSource> &dataSource, const std::shared_ptr<ElevationDecoder> &elevationDecoder) : CustomRasterTileLayer(dataSource),
         _elevationDecoder(elevationDecoder),
         _contrast(0.5f),
-        _heightScale(1.0f),
+        // 0.05, not 1.0: at 1.0 real DEM relief saturates to black and white and the shading reads
+        // as a stencil. This is the value the demo and every terrain screenshot here use.
+        _heightScale(0.05f),
         _exaggeration(1.0f),
         _exagerateHeightScaleEnabled(true),
         _legacyHeightScaleEnabled(false),
@@ -67,8 +69,10 @@ namespace massif
         _shadowColor(Color(0, 0, 0, 255)),
         _highlightColor(Color(255, 255, 255, 255)),
         _illuminationDirection(MapVec(-0.42261826, 0.90630779, -0.70710678)),  // azimuth=335°, altitude=45° (MapLibre defaults)
-        _illuminationMapRotationEnabled(true),
-        _hillshadeMethod(HillshadeMethod::HillshadeMethod::STANDARD),
+        // The light stays put as the map rotates: turning the map should not relight the terrain.
+        _illuminationMapRotationEnabled(false),
+        // IGOR keeps slopes readable under imagery, which is what a hillshade is usually under here.
+        _hillshadeMethod(HillshadeMethod::HillshadeMethod::IGOR),
         _contourEnabled(false),
         _elevationEncodingEnabled(false),
         _contourInterval(100.0f),
@@ -83,7 +87,9 @@ namespace massif
     HillshadeRasterTileLayer::HillshadeRasterTileLayer(const std::shared_ptr<TileDataSource> &dataSource) : CustomRasterTileLayer(dataSource),
         _elevationDecoder(nullptr),
         _contrast(0.5f),
-        _heightScale(1.0f),
+        // 0.05, not 1.0: at 1.0 real DEM relief saturates to black and white and the shading reads
+        // as a stencil. This is the value the demo and every terrain screenshot here use.
+        _heightScale(0.05f),
         _exaggeration(1.0f),
         _exagerateHeightScaleEnabled(true),
         _legacyHeightScaleEnabled(false),
@@ -92,8 +98,10 @@ namespace massif
         _shadowColor(Color(0, 0, 0, 255)),
         _highlightColor(Color(255, 255, 255, 255)),
         _illuminationDirection(MapVec(-0.42261826, 0.90630779, -0.70710678)),  // azimuth=335°, altitude=45° (MapLibre defaults)
-        _illuminationMapRotationEnabled(true),
-        _hillshadeMethod(HillshadeMethod::HillshadeMethod::STANDARD),
+        // The light stays put as the map rotates: turning the map should not relight the terrain.
+        _illuminationMapRotationEnabled(false),
+        // IGOR keeps slopes readable under imagery, which is what a hillshade is usually under here.
+        _hillshadeMethod(HillshadeMethod::HillshadeMethod::IGOR),
         _contourEnabled(false),
         _elevationEncodingEnabled(false),
         _contourInterval(100.0f),

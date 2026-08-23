@@ -10,6 +10,8 @@ import com.massifmaps.components.Options;
 import com.massifmaps.components.SkyOptions;
 import com.massifmaps.components.FogOptions;
 import com.massifmaps.components.TerrainOptions;
+import com.massifmaps.api.MassifApi;
+import com.massifmaps.api.MassifInterop;
 import com.massifmaps.core.MapPos;
 import com.massifmaps.core.MapPosVector;
 import com.massifmaps.core.MapVec;
@@ -89,7 +91,7 @@ public class DemoMap {
 
     /** One switchable layer of the demo. */
     public enum Feature {
-        CELESTIAL, STARS, BASE, SATELLITE, HILLSHADE, HYPSO, CONTOUR, CONTOUR_TILES, ROUTES, ROUTE_TEST, ROUTE_SELECT, MANEUVERS, ELEMENTS, BUGS, PEAKS
+        CELESTIAL, STARS, BASE, SATELLITE, API_SOURCE, HILLSHADE, HYPSO, CONTOUR, CONTOUR_TILES, ROUTES, ROUTE_TEST, ROUTE_SELECT, MANEUVERS, ELEMENTS, BUGS, PEAKS
     }
 
     /** Bottom -> top draw order. Toggling a layer never reorders the others. */
@@ -97,7 +99,7 @@ public class DemoMap {
         // The sky goes FIRST, so the map and the terrain draw over it and a ridge hides what is
         // behind it - which is what a body in the sky should do.
         Feature.CELESTIAL, Feature.STARS,
-        Feature.BASE, Feature.SATELLITE, Feature.HILLSHADE, Feature.HYPSO,
+        Feature.BASE, Feature.SATELLITE, Feature.API_SOURCE, Feature.HILLSHADE, Feature.HYPSO,
         Feature.CONTOUR, Feature.CONTOUR_TILES, Feature.ROUTES, Feature.ROUTE_TEST, Feature.ROUTE_SELECT, Feature.MANEUVERS, Feature.ELEMENTS,
         Feature.BUGS,
         // Last: the summit names go over everything the map draws.
@@ -247,6 +249,7 @@ public class DemoMap {
             case ROUTE_SELECT: return DemoConfig.LAYER_ROUTE_SELECT;
             case MANEUVERS: return DemoConfig.LAYER_MANEUVERS;
             case ELEMENTS: return DemoConfig.LAYER_ELEMENTS;
+            case API_SOURCE: return DemoConfig.LAYER_API_SOURCE;
             case BUGS: return DemoConfig.LAYER_BUGS;
             case PEAKS: return DemoConfig.LAYER_PEAKS;
             default: return false;
@@ -268,6 +271,7 @@ public class DemoMap {
             case ROUTE_SELECT: DemoConfig.LAYER_ROUTE_SELECT = enabled; break;
             case MANEUVERS: DemoConfig.LAYER_MANEUVERS = enabled; break;
             case ELEMENTS: DemoConfig.LAYER_ELEMENTS = enabled; break;
+            case API_SOURCE: DemoConfig.LAYER_API_SOURCE = enabled; break;
             case BUGS: DemoConfig.LAYER_BUGS = enabled; break;
             case PEAKS: DemoConfig.LAYER_PEAKS = enabled; break;
         }
@@ -330,6 +334,7 @@ public class DemoMap {
             case ROUTE_SELECT: return createRouteSelectLayer();
             case MANEUVERS: return createManeuversLayer();
             case ELEMENTS: return createElementsLayer();
+            case API_SOURCE: return createApiSourceLayer();
             case BUGS: return createBugsLayer();
             case PEAKS: return createPeaksLayer();
             default: return null;
@@ -680,6 +685,45 @@ public class DemoMap {
     // --- other layers ----------------------------------------------------------------------------
 
     /** CustomRasterTileLayer: any filter shader over any raster source (here: hypsometric tint). */
+    /**
+     * Facade API (#146): a layer whose whole stack - layer, nested sources, style - is ONE JSON
+     * spec. Nothing below is constructed here.
+     *
+     * Only "type" and the constructor arguments are read by a factory; every other key
+     * (opacity, visible, capacity, ...) is applied through the generated property table, and the
+     * table walks base classes, so a layer's opacity comes from Layer and a cache's capacity from
+     * CacheTileDataSource without either being declared on the concrete type.
+     *
+     * Override it to try another shape, composite-vector included:
+     *   --es apiLayerSpec composite      (a preset: raster, composite, solid)
+     *   --es apiLayerSpec '{"type":...}'  (raw JSON, if the shell lets the quotes through)
+     */
+    private Layer createApiSourceLayer() {
+        String spec = DemoConfig.apiLayerSpec();
+        int handle;
+        try {
+            handle = MassifApi.create("layer", "demoApiLayer", spec);
+        } catch (Exception e) {
+            Log.w(TAG, "api create layer failed: " + e.getMessage());
+            return null;
+        }
+        Log.i(TAG, "api create layer -> handle=" + handle + " spec=" + spec);
+
+        // The reuse rule, where it can be seen: the same id with the SAME spec hands back the same
+        // object, a different spec under that id is refused rather than replacing it.
+        int again = MassifApi.create("layer", "demoApiLayer", spec);
+        boolean conflictRefused = false;
+        try {
+            MassifApi.create("layer", "demoApiLayer", "{\"type\":\"solid\",\"color\":-65536}");
+        } catch (Exception e) {
+            conflictRefused = true;
+        }
+        Log.i(TAG, "api reuse=" + (again == handle) + " conflictRefused=" + conflictRefused
+                + " opacity=" + MassifApi.getFloat(handle, "opacity", -1));
+
+        return MassifInterop.getLayer("demoApiLayer");
+    }
+
     private Layer createHypsoLayer() {
         CustomRasterTileLayer layer = new CustomRasterTileLayer(demSource());
         layer.setShaderSource(DemoStyles.hypsometricShader());

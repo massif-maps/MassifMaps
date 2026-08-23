@@ -96,6 +96,7 @@ const config = {
             position: 'left',
             label: 'Documentation',
           },
+          {to: '/examples', label: 'Examples', position: 'left'},
           {to: '/docs/features/3d-terrain', label: 'Features', position: 'left'},
           {to: '/docs/internals/', label: 'Internals', position: 'left'},
           {to: '/platforms', label: 'Platforms', position: 'left'},
@@ -138,6 +139,7 @@ const config = {
             items: [
               {label: 'Getting Started', to: '/docs/getting-started/installation'},
               {label: 'Guides', to: '/docs/guides/map-view'},
+              {label: 'Examples', to: '/examples'},
               {label: 'Features', to: '/docs/features/3d-terrain'},
               {label: 'Internals', to: '/docs/internals/'},
               {label: 'Maintenance', to: '/docs/maintenance/'},

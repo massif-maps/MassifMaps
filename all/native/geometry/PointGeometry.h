@@ -24,6 +24,8 @@ namespace massif {
         virtual ~PointGeometry();
     
         virtual MapPos getCenterPos() const;
+
+        virtual GeometryType::GeometryType getType() const { return GeometryType::GEOMETRY_TYPE_POINT; }
      
         /**
          * Returns the position of the point.

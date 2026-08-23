@@ -23,6 +23,8 @@ namespace massif {
          */
         explicit MultiPolygonGeometry(const std::vector<std::shared_ptr<PolygonGeometry> >& geometries);
         virtual ~MultiPolygonGeometry();
+
+        virtual GeometryType::GeometryType getType() const { return GeometryType::GEOMETRY_TYPE_MULTIPOLYGON; }
         
         /**
          * Returns the polygon geometry at the specified index. Index must be between 0 and getGeometryCount (exclusive)

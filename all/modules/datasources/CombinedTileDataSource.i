@@ -19,6 +19,8 @@
 
 !polymorphic_shared_ptr(massif::CombinedTileDataSource, datasources.CombinedTileDataSource)
 
+
+!spec(massif::CombinedTileDataSource, source, combined, alias(source, dataSource1), alias(source2, dataSource2), default(zoomLevel, 0))
 %std_exceptions(massif::CombinedTileDataSource::CombinedTileDataSource)
 
 %feature("director") massif::CombinedTileDataSource;

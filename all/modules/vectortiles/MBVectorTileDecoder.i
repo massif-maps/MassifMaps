@@ -25,6 +25,10 @@
 !enum(massif::TileFormat::TileFormat)
 !polymorphic_shared_ptr(massif::MBVectorTileDecoder, vectortiles.MBVectorTileDecoder)
 
+
+!method(massif::MBVectorTileDecoder, setStyleParameter, arg(name, string), arg(value, string), returns(bool))
+!method(massif::MBVectorTileDecoder, getStyleParameter, arg(name, string), returns(string))
+!spec(massif::MBVectorTileDecoder, style, mbvt, alias(cartocss, cartoCSSStyleSet), alias(project, compiledStyleSet))
 %attributeval(massif::MBVectorTileDecoder, std::vector<std::string>, StyleParameters, getStyleParameters)
 %attributeval(massif::MBVectorTileDecoder, std::vector<std::string>, StyleLayerNames, getStyleLayerNames)
 %attributestring(massif::MBVectorTileDecoder, std::shared_ptr<massif::CompiledStyleSet>, CompiledStyle, getCompiledStyleSet, setCompiledStyleSet)

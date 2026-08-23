@@ -23,6 +23,11 @@
 !enum(massif::LocalSpatialIndexType::LocalSpatialIndexType)
 !polymorphic_shared_ptr(massif::LocalVectorDataSource, datasources.LocalVectorDataSource)
 
+
+!method(massif::LocalVectorDataSource, add, arg(element, handle), returns(void))
+!method(massif::LocalVectorDataSource, remove, arg(element, handle), returns(bool))
+!method(massif::LocalVectorDataSource, clear, returns(void))
+!spec(massif::LocalVectorDataSource, source, local)
 %feature("director") massif::LocalVectorDataSource;
 
 !attributestring_polymorphic(massif::LocalVectorDataSource, geometry.GeometrySimplifier, GeometrySimplifier, getGeometrySimplifier, setGeometrySimplifier)

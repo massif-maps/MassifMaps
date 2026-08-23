@@ -25,6 +25,8 @@
 !enum(massif::MBTilesScheme::MBTilesScheme)
 !polymorphic_shared_ptr(massif::MBTilesTileDataSource, datasources.MBTilesTileDataSource)
 
+
+!spec(massif::MBTilesTileDataSource, source, mbtiles, default(minZoom, 0), default(maxZoom, 24))
 %std_io_exceptions(massif::MBTilesTileDataSource::MBTilesTileDataSource)
 
 %feature("director") massif::MBTilesTileDataSource;

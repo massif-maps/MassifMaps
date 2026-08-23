@@ -11,13 +11,17 @@ namespace massif {
         _sunAltitude(45.0f),
         _sunColorARGB(Color(255, 255, 255, 255).getARGB()),
         _sunIntensity(1.0f),
-        _ambientIntensity(0.35f),
+        // Full ambient and a real shadow strength: the values every terrain bench and every example
+        // screenshot was made with. Both only take effect once an app turns terrain lighting on, so
+        // nothing changes for a map that does not ask for it.
+        _ambientIntensity(1.0f),
         _ambientColorARGB(Color(255, 255, 255, 255).getARGB()),
         _terrainLightingEnabled(false),
-        _shadowStrength(0.0f),
+        _shadowStrength(0.3f),
         _shadowMapSize(1024),
         _shadowCascades(3),
-        _shadowBias(0.25f),
+        // 1.0 shadow-map texels. 0.25 leaves acne on a lit slope at this cascade count.
+        _shadowBias(1.0f),
         _shadowNormalOffset(3.0f),
         _shadowSoftness(1.0f),
         _shadowDistance(0.0f),

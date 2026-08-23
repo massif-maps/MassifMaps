@@ -295,7 +295,7 @@ namespace massif {
 
         /**
          * Returns the factor on the screen size a tile may cover before it is refined.
-         * @return The tile LOD factor. The default is 1, which is exactly tangram's rule.
+         * @return The tile LOD factor. The default is 0.5; 1 is exactly tangram's rule.
          */
         float getTileLODFactor() const;
         /**
@@ -307,7 +307,7 @@ namespace massif {
          * Where it matters is a tilted view: a tile near the horizon collapses to a few pixels of
          * screen while its distance barely grows, so this - not the view distance - is what decides
          * how much of the horizon band is drawn at full detail.
-         * @param factor The new tile LOD factor. The default is 1.
+         * @param factor The new tile LOD factor. The default is 0.5.
          */
         void setTileLODFactor(float factor);
 
@@ -432,7 +432,7 @@ namespace massif {
         bool isZoomGestures() const;
         /**
          * Sets the zoom gestures flag. Zoom gestures allow to use double click and dual click to zoom in/out of the map.
-         * By default, zoom gestures are not enabled. Note that zoom gestures require that click detection mode is enabled and also that double click detection is enabled.
+         * Enabled by default. Note that zoom gestures require that click detection mode is enabled and also that double click detection is enabled.
          * @param enabled True if zoom gestured should be enabled, false otherwise.
          */
         void setZoomGestures(bool enabled);

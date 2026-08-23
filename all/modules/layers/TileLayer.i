@@ -5,7 +5,7 @@
 
 %module TileLayer
 
-!proxy_imports(massif::TileLayer, core.MapPos, core.MapTile, core.MapBounds, datasources.TileDataSource, layers.TileLoadListener, layers.UTFGridEventListener, layers.Layer)
+!proxy_imports(massif::TileLayer, projections.Projection, core.MapPos, core.MapTile, core.MapBounds, datasources.TileDataSource, layers.TileLoadListener, layers.UTFGridEventListener, layers.Layer)
 
 %{
 #include "layers/TileLayer.h"
@@ -17,6 +17,7 @@
 %include <massifswig.i>
 
 %import "datasources/TileDataSource.i"
+%import "projections/Projection.i"
 %import "layers/Layer.i"
 %import "layers/TileLoadListener.i"
 %import "layers/UTFGridEventListener.i"
@@ -24,6 +25,11 @@
 !enum(massif::TileSubstitutionPolicy::TileSubstitutionPolicy)
 !polymorphic_shared_ptr(massif::TileLayer, layers.TileLayer)
 
+// true also drops the persistent cache, not just the in-memory one.
+!method(massif::TileLayer, clearTileCaches, arg(all, bool), returns(void))
+// How the facade learns what coordinate system this layer's positions - a click, a feature - are
+// in. dataSource is already declared below.
+!attributestring_polymorphic(massif::TileLayer, projections.Projection, Projection, getProjection)
 %attribute(massif::TileLayer, int, FrameNr, getFrameNr, setFrameNr)
 %attribute(massif::TileLayer, bool, Preloading, isPreloading, setPreloading)
 %attribute(massif::TileLayer, bool, SynchronizedRefresh, isSynchronizedRefresh, setSynchronizedRefresh)

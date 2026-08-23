@@ -24,6 +24,8 @@
 
 !shared_ptr(massif::SearchRequest, search.SearchRequest)
 
+
+!spec(massif::SearchRequest, search, request)
 %attributestring(massif::SearchRequest, std::string, FilterExpression, getFilterExpression, setFilterExpression)
 %attributestring(massif::SearchRequest, std::string, RegexFilter, getRegexFilter, setRegexFilter)
 %attributestring(massif::SearchRequest, std::shared_ptr<massif::Geometry>, Geometry, getGeometry, setGeometry)

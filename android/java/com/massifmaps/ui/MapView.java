@@ -293,6 +293,18 @@ public class MapView extends GLSurfaceView implements GLSurfaceView.Renderer, Ma
     }
 
     /**
+     * Returns the underlying BaseMapView, which is what carries the camera.
+     *
+     * For the facade: MassifInterop.adopt("map", id, view.getBaseMapView()) makes moveTo, flyTo,
+     * fitBounds, screenToMap, mapToScreen and stopFlight ordinary facade calls. An app using the
+     * object API has no reason to reach for it - every one of those is on this class already.
+     * @return the BaseMapView object.
+     */
+    public BaseMapView getBaseMapView() {
+        return baseMapView;
+    }
+
+    /**
      * Returns the Options object, that can be used for modifying various map options.
      * @return the Option object.
      */
@@ -387,8 +399,35 @@ public class MapView extends GLSurfaceView implements GLSurfaceView.Renderer, Ma
     }
 
     /**
+     * Points the camera at a position and a zoom level immediately, with no animation.
+     *
+     * Prefer it over setFocusPos + setZoom, which are clamped differently depending on which is
+     * applied first, and unlike flyTo it needs no frame - so it also works before the map has
+     * drawn. See BaseMapView.moveTo.
+     * @param pos The target position in base projection coordinate system.
+     * @param zoom The target zoom level.
+     */
+    public void moveTo(MapPos pos, float zoom) {
+        baseMapView.moveTo(pos, zoom);
+    }
+
+    /**
+     * The same, also setting rotation and tilt. See BaseMapView.moveTo.
+     * @param pos The target position in base projection coordinate system.
+     * @param zoom The target zoom level.
+     * @param rotation The rotation in degrees.
+     * @param tilt The tilt in degrees.
+     */
+    public void moveTo(MapPos pos, float zoom, float rotation, float tilt) {
+        baseMapView.moveTo(pos, zoom, rotation, tilt);
+    }
+
+    /**
      * Moves the camera to a position and a zoom level in one animation, pulling back over a long
      * move and coming down at the target. See BaseMapView.flyTo.
+     *
+     * A duration of 0 is NOT immediate - it derives the duration from the path. For an immediate
+     * move use moveTo.
      * @param pos The target position in base projection coordinate system.
      * @param zoom The target zoom level.
      * @param durationSeconds The duration in seconds, 0 to derive it from the length of the path.

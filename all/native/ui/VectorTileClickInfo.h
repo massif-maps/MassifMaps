@@ -62,6 +62,16 @@ namespace massif {
         const MapPos& getFeatureClickPos() const;
 
         /**
+         * Returns the position of the clicked feature.
+         *
+         * For a MultiPoint this is the point that was clicked, not the centre of the whole set -
+         * which getFeatureClickPos deliberately does not cover, and which a caller otherwise has
+         * to reconstruct from getFeaturePosIndex plus a downcast.
+         * @return The feature position, in the coordinate system of the data source.
+         */
+        MapPos getFeaturePos() const;
+
+        /**
          * Returns the tile id of the clicked feature.
          * @return The tile id of the clicked feature.
          */

@@ -5,6 +5,7 @@
 #include "api/SpecBuilders.h"
 #include "api/StructCodec.h"
 #include "core/BinaryData.h"
+#include "graphics/Bitmap.h"
 #include "geometry/GeoJSONGeometryReader.h"
 #include "utils/URLFileLoader.h"
 #include "projections/Projection.h"
@@ -21,7 +22,13 @@
 #endif
 
 #ifdef _MASSIF_ROUTING_SUPPORT
+#include "routing/RouteMatchingRequest.h"
 #include "routing/RoutingRequest.h"
+#endif
+
+#ifdef _MASSIF_GEOCODING_SUPPORT
+#include "geocoding/GeocodingRequest.h"
+#include "geocoding/ReverseGeocodingRequest.h"
 #endif
 
 namespace massif { namespace api {
@@ -137,6 +144,49 @@ namespace massif { namespace api {
             return buildFromConstructor(context, "feature", spec, object, consumed);
         }
 
+        /**
+         * An image, decoded from bytes a URL gives.
+         *
+         * Not a constructor: Bitmap is built by a static factory over compressed data, so a marker
+         * icon or the map's background image had no spec form at all - which meant they were the one
+         * thing a facade-only app still needed the object API for.
+         */
+        Result buildBitmap(Context& context, const Variant& spec, ObjectRef& object,
+                           std::set<std::string>& consumed) {
+            std::shared_ptr<void> data;
+            // Either an inline { "type": "url", … } or the id of a registered `data`, exactly as
+            // a zipped asset package's archive resolves.
+            Result result = childOf(context, spec, "data", "data", "massif::BinaryData", data);
+            if (result != RESULT_OK) {
+                // A bare url is the common case, so it is accepted here rather than making every
+                // caller write the wrapper.
+                Variant inlineSpec = spec;
+                if (!spec.containsObjectKey("url")) {
+                    Log::Error("Spec: a bitmap needs a \"url\" or a \"data\"");
+                    return RESULT_UNKNOWN_PROPERTY;
+                }
+                ObjectRef bytes;
+                std::set<std::string> dataConsumed;
+                result = buildData(context, inlineSpec, bytes, dataConsumed);
+                if (result != RESULT_OK) {
+                    return result;
+                }
+                consumed.insert("url");
+                data = bytes.obj;
+            }
+            consumed.insert("type");
+            consumed.insert("data");
+            std::shared_ptr<Bitmap> bitmap =
+                Bitmap::CreateFromCompressed(std::static_pointer_cast<BinaryData>(data));
+            if (!bitmap) {
+                Log::Error("Spec: the bytes are not an image the SDK can read");
+                return RESULT_BAD_SPEC;
+            }
+            object.obj = bitmap;
+            object.cppClass = "massif::Bitmap";
+            return RESULT_OK;
+        }
+
         Result buildGeometry(Context& context, const Variant& spec, ObjectRef& object,
                              std::set<std::string>& consumed) {
             // Only "geojson" is adaptive; a shape with its own constructor builds from that.
@@ -221,13 +271,15 @@ namespace massif { namespace api {
 #ifdef _MASSIF_ROUTING_SUPPORT
 
         /**
-         * Only the request is hand-written: its projection is a NAME rather than a registry object
-         * and its via points are a list of positions, neither of which a signature describes. The
-         * services are plain constructors.
+         * Only the two requests are hand-written: their projection is a NAME rather than a registry
+         * object and their points are a list of positions, neither of which a signature describes.
+         * The services are plain constructors.
          */
         Result buildRouting(Context& context, const Variant& spec, ObjectRef& object,
                             std::set<std::string>& consumed) {
-            if (stringAt(spec, "type") != "request") {
+            std::string type = stringAt(spec, "type");
+            bool matching = type == "match-request";
+            if (type != "request" && !matching) {
                 return buildFromConstructor(context, "routing", spec, object, consumed);
             }
             consumed.insert("type");
@@ -239,13 +291,62 @@ namespace massif { namespace api {
                 return RESULT_UNKNOWN_TYPE;
             }
             std::vector<MapPos> points;
+            // A match request traces one recorded track, so a single point is meaningless there
+            // too - both need a line.
             if (!StructCodec::decode(spec.getObjectElement("points").toString(), points) ||
                 points.size() < 2) {
                 Log::Error("Spec: a routing request needs at least two \"points\"");
                 return RESULT_BAD_SPEC;
             }
+            if (matching) {
+                consumed.insert("accuracy");
+                object.obj = std::make_shared<RouteMatchingRequest>(
+                    projection, points, static_cast<float>(floatAt(spec, "accuracy", 1)));
+                object.cppClass = "massif::RouteMatchingRequest";
+                return RESULT_OK;
+            }
             object.obj = std::make_shared<RoutingRequest>(projection, points);
             object.cppClass = "massif::RoutingRequest";
+            return RESULT_OK;
+        }
+
+#endif
+
+#ifdef _MASSIF_GEOCODING_SUPPORT
+
+        /**
+         * Only the two requests are hand-written, for the same reason a routing request is: their
+         * projection is a NAME and a reverse request carries a position. The services are plain
+         * constructors.
+         */
+        Result buildGeocoding(Context& context, const Variant& spec, ObjectRef& object,
+                              std::set<std::string>& consumed) {
+            std::string type = stringAt(spec, "type");
+            bool reverse = type == "reverse-request";
+            if (type != "request" && !reverse) {
+                return buildFromConstructor(context, "geocoding", spec, object, consumed);
+            }
+            consumed.insert("type");
+            consumed.insert("projection");
+            std::shared_ptr<Projection> projection =
+                Projections::find(stringAt(spec, "projection", "EPSG:4326"));
+            if (!projection) {
+                return RESULT_UNKNOWN_TYPE;
+            }
+            if (reverse) {
+                consumed.insert("location");
+                MapPos location;
+                if (!StructCodec::decode(spec.getObjectElement("location").toString(), location)) {
+                    Log::Error("Spec: a reverse geocoding request needs a \"location\"");
+                    return RESULT_BAD_SPEC;
+                }
+                object.obj = std::make_shared<ReverseGeocodingRequest>(projection, location);
+                object.cppClass = "massif::ReverseGeocodingRequest";
+                return RESULT_OK;
+            }
+            consumed.insert("query");
+            object.obj = std::make_shared<GeocodingRequest>(projection, stringAt(spec, "query"));
+            object.cppClass = "massif::GeocodingRequest";
             return RESULT_OK;
         }
 
@@ -264,6 +365,7 @@ namespace massif { namespace api {
         registerFactory("options", &buildOptions);
         registerFactory("projection", &buildProjection);
         registerFactory("geometry", &buildGeometry);
+        registerFactory("bitmap", &buildBitmap);
         registerElementFactories();
         registerFactory("feature", &buildFeature);
 #ifdef _MASSIF_ROUTING_SUPPORT
@@ -271,6 +373,9 @@ namespace massif { namespace api {
 #endif
 #ifdef _MASSIF_SEARCH_SUPPORT
         registerFactory("search", &buildSearch);
+#endif
+#ifdef _MASSIF_GEOCODING_SUPPORT
+        registerFactory("geocoding", &buildGeocoding);
 #endif
 
         // A !spec declares a kind; this file is what makes it reachable. Getting one and not the

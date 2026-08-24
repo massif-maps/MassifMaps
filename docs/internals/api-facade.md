@@ -449,20 +449,21 @@ inline spec of that kind, and it is checked against the class the caller is abou
 
 | kind | types |
 |---|---|
-| `source` | `http` `assets` `mbtiles` `memory-cache` `persistent-cache` `ordered` `combined` `multi` |
+| `source` | `http` `assets` `mbtiles` `maptiler` `memory-cache` `persistent-cache` `ordered` `combined` `merged-mbvt` `multi` `geojson` `local` |
 | `data` | `url` — bytes from `file://`, `assets://` or `http(s)://` |
 | `assets` | `dir` (a directory), `bundle` (the app's own bundled assets), `zip` (a `data` archive) |
-| `geometry` | `geojson`, and `point` from a `pos` |
+| `geometry` | `geojson` — a JSON string or the document inline, optional target `projection` — plus `point` (`pos`), `line` (`poses`) and `polygon` (`poses`, optional `holes`, or `rings`) |
 | `feature` | `feature` — a `geometry` and free-form `properties` |
-| `element` | `marker`, `balloon` — from a `position`, a `geometry` or a `baseBillboard` |
-| `elementstyle` | `marker`, `balloon` — built through the SDK's style BUILDER, see below |
+| `element` | `marker` `balloon` `point` `line` `polygon` `text` — from a `position`, a `geometry` or a `baseBillboard` |
+| `elementstyle` | `marker` `balloon` `point` `line` `polygon` `text` — built through the SDK's style BUILDER, see below |
 | `styleset` | `cartocss` (inline `css`), `project` (an asset package + the `name` of one style in it) |
 | `style` | `mbvt` — a vector tile decoder over a `cartocss` or a `project` style set |
-| `layer` | `raster` `vector` `composite-vector` `hillshade` `solid` |
+| `layer` | `raster` `vector` `composite-vector` `hillshade` `solid` `elements` |
+| `options` | `fog` `sky` `light` `terrain` |
 | `projection` | any name in the projection registry |
-| `geometry` | `geojson` — a JSON string or the document inline, optional target `projection` |
 | `search` | `request`, `vectortile` (from a `layer`, or a `source` + `style`) |
-| `routing` | `request` (`points` + `projection`), `valhalla-online`, `valhalla-offline` |
+| `routing` | `request` (`points` + `projection`), `match-request` (+ `accuracy`), `valhalla-online`, `valhalla-offline`, `multi-valhalla-offline` |
+| `geocoding` | `request` (`query`), `reverse-request` (`location`), `multi-osm-offline`, `multi-osm-offline-reverse` |
 
 ```json
 {"type":"composite-vector","opacity":0.5,
@@ -503,20 +504,28 @@ One line per class in its `.i` says what to call it and how to spell the awkward
 - **A `shared_ptr<X>` parameter resolves as a child**: an id from the registry or an inline spec of
   whatever kind builds an `X`. The kind is found by walking `X`'s subclasses' declarations, so a
   parameter typed as the base `TileDataSource` resolves against `source`.
+- **So does a writable OBJECT *property*** — the generator emits `SPEC_KIND_OF_CLASS` beside
+  `SPEC_KINDS`, so anything a constructor argument accepts a property accepts too. A polygon style
+  carries its border as `"lineStyle": {"type":"line", …}` rather than the app registering the border
+  under an id of its own and writing back a handle.
+- **A `std::vector<MapPos>` parameter is a list of positions**, and a `std::vector<std::vector<MapPos>>`
+  a list of rings — `line`, `polygon` and the two routing requests all take one. Deliberately not a
+  property type: a route is thousands of positions and the bulk channel exists to avoid that JSON.
 - **The longest constructor the spec fully satisfies wins.** `MBTilesTileDataSource` has three;
   `{"type":"mbtiles","path":"x"}` picks the 3-argument one because `minZoom`/`maxZoom` have declared
   defaults and `scheme` does not — and passing `scheme` now reaches the 4-argument one, which no
   hand-written factory ever exposed. Same for `HillshadeRasterTileLayer`'s `elevationDecoder`.
 
-Twenty-four classes over nine kinds build this way. `SpecFactories.cpp` went from 486 lines to 313,
-and everything left in it is genuinely adaptive rather than boilerplate:
+Fifty-one classes over thirteen kinds build this way, and everything left hand-written in
+`SpecFactories.cpp` is genuinely adaptive rather than boilerplate:
 
 | still hand-written | why the signature cannot say it |
 |---|---|
 | `projection` | a name registry lookup, not a constructor |
-| `geometry` | a GeoJSON reader, not a constructor |
+| `geometry` **geojson** | a GeoJSON reader, not a constructor — the shapes themselves build from theirs |
 | `search` **from a layer** | the source and the decoder both come from a layer already on the map |
-| `routing` **request** | a projection by name, and a list of positions |
+| `routing` **request** / **match-request** | a projection by name, and a list of positions |
+| `geocoding` **request** / **reverse-request** | the same, with a query or a location |
 
 #### The style chain, which used to be flattened
 
@@ -1183,9 +1192,14 @@ Chosen by counting, not by guessing: the NativeScript app this API is measured a
 | `refresh()` | `Layer` | |
 | `findFeatures([requestHandle])` | `VectorTileSearchService`, `FeatureCollectionSearchService` | blocking — see [Search](#search) |
 | `getFeature([index])` | `FeatureCollection` | the collection channel |
-| `calculateRoute([requestHandle])` | `RoutingService` | blocking — see [Routing](#routing) |
+| `calculateRoute([requestHandle])`, `matchRoute([requestHandle])` | `RoutingService` | blocking — see [Routing](#routing) |
 | `getInstruction([index])`, `getPoints()` | `RoutingResult` | an element, and the path flat |
-| `setCustomParameter(name, value)` | `RoutingRequest` | free-form JSON, so not a property |
+| `setCustomParameter(name, value)` | `RoutingRequest`, `RouteMatchingRequest` | free-form JSON, so not a property |
+| `insert(index, layer)`, `set(index, layer)`, `get(index)`, `clear()` | `Layers` | an app that orders its stack places a layer, not only appends one |
+| `add(source, tileMask)`, `remove(source)` | `MultiTileDataSource` | one package per downloaded area, discovered at run time |
+| `add(path)`, `remove(path)`, `addLocale(key, json)`, `setConfigurationParameter(param, value)` | `MultiValhallaOfflineRoutingService` | the same, for routing databases |
+| `add(path)`, `remove(path)` | `MultiOSMOfflineGeocodingService` and its reverse | the same, for geocoding databases |
+| `calculateAddresses([requestHandle])` | `GeocodingService`, `ReverseGeocodingService` | returns **GeoJSON**: `calculateAddresses` gives a vector the facade has no channel for, and each feature carrying its result's `address` and `rank` is the shape a caller rebuilt by hand |
 
 `findFeatures` and `getFeature` are not on that list — the app wraps them in its own service — but
 a search is the one thing an app cannot rebuild on top of the facade, so it is covered below.

@@ -90,6 +90,10 @@ jobs:
       - name: Install tooling (jazzy + swig deps)
         run: |
           gem install jazzy --no-document
+          # jazzy 0.15.4 hands Mustache.template_path= a Pathname; mustache 1.1.3 only takes a
+          # String or an Array and raises. Pin the last version that accepts a Pathname.
+          gem install mustache -v 1.1.2 --no-document
+          gem uninstall mustache -v 1.1.3 --force --executables || true
           brew install bison pcre2 automake autoconf libtool || true
       - name: Build SWIG fork
         run: |

@@ -24,7 +24,10 @@ jobs:
       - id: set
         run: |
           echo 'variants=["android","ios"]' >> $GITHUB_OUTPUT
-          echo 'profiles=["full","standard", "lite"]' >> $GITHUB_OUTPUT
+          # 'full+gdal' is the only profile with a dependency the runner has to cross-build first
+          # (see the Provision GDAL step). getVariant() turns it into 'full_gdal', so it carries no
+          # '+' into an artifact name, a cache key or a jitpack/Package.swift entry.
+          echo 'profiles=["full","standard", "lite", "full+gdal"]' >> $GITHUB_OUTPUT
 
   api-bindings:
     # The facade's generated bindings - the typings an integration actually reads. The C++ property
@@ -189,6 +192,13 @@ jobs:
       matrix:
         variant: ${{ fromJson(needs.prepare.outputs.variants) }}
         profile: ${{ fromJson(needs.prepare.outputs.profiles) }}
+        exclude:
+          # iOS + GDAL is NOT wired yet. The xcframework is five slices (device, simulator on two
+          # architectures, and two Catalyst ones) and each needs its own cross-built GDAL; vcpkg
+          # covers arm64-ios but not the simulator and Catalyst slices, so there is no provisioning
+          # step that would produce a linkable library for all of them. Android is complete.
+          - variant: ios
+            profile: full+gdal
     runs-on: ${{ matrix.variant == 'android' && 'ubuntu-latest' || 'macos-latest' }}
     needs: [create-release, prepare, release-preflight]
     if: always() && (needs.create-release.result == 'success' || needs.create-release.result == 'skipped') && (needs.release-preflight.result == 'success' || needs.release-preflight.result == 'skipped')
@@ -334,11 +344,43 @@ jobs:
           cd scripts
           python swigpp-java.py --profile ${{ matrix.profile }} --swig ${{ steps.swig.outputs.swig-path }}
 
+      # GDAL is not vendored, so the 'gdal' profile needs one CROSS-BUILT GDAL PER ABI. A host
+      # package (apt libgdal-dev) is x86_64 Linux and cannot be linked into an Android .so, so this
+      # builds GDAL with vcpkg's android triplets instead and lays the installs out by ABI name -
+      # which is what the '{abi}' placeholder in --cmake-options expands to below.
+      #
+      # The first run builds GDAL, PROJ and their dependencies four times over and is SLOW (hours).
+      # The vcpkg binary cache below is what makes every run after it cheap; do not remove it.
+      - name: Cache vcpkg binaries
+        if: matrix.variant == 'android' && matrix.profile == 'full+gdal'
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/vcpkg/archives
+          key: vcpkg-gdal-android-${{ hashFiles('.github/workflows/build.yml') }}
+          restore-keys: vcpkg-gdal-android-
+
+      - name: Provision GDAL for every Android ABI
+        if: matrix.variant == 'android' && matrix.profile == 'full+gdal'
+        run: |
+          set -euo pipefail
+          git clone --depth 1 https://github.com/microsoft/vcpkg.git "$RUNNER_TEMP/vcpkg"
+          "$RUNNER_TEMP/vcpkg/bootstrap-vcpkg.sh" -disableMetrics
+          export ANDROID_NDK_HOME="${{ steps.setup-ndk.outputs.ndk-path }}"
+          # vcpkg triplet -> the Android ABI the SDK builds under that name
+          for pair in "arm64-android:arm64-v8a" "arm-neon-android:armeabi-v7a" "x64-android:x86_64" "x86-android:x86"; do
+            triplet="${pair%%:*}"
+            abi="${pair##*:}"
+            "$RUNNER_TEMP/vcpkg/vcpkg" install "gdal:$triplet"
+            mkdir -p "$RUNNER_TEMP/gdal"
+            ln -sfn "$RUNNER_TEMP/vcpkg/installed/$triplet" "$RUNNER_TEMP/gdal/$abi"
+          done
+          echo "GDAL_PREFIX_ROOT=$RUNNER_TEMP/gdal" >> $GITHUB_ENV
+
       - name: Build Massif for Android
         if: matrix.variant == 'android'
         run: |
           cd scripts
-          python build-android.py --profile ${{ matrix.profile }} --build-aar --build-version ${{ github.event.inputs.version }} --configuration=Release
+          python build-android.py --profile ${{ matrix.profile }} --build-aar --build-version ${{ github.event.inputs.version }} --configuration=Release ${{ matrix.profile == 'full+gdal' && '--cmake-options "CMAKE_PREFIX_PATH=$GDAL_PREFIX_ROOT/{abi}"' || '' }}
         env:
           ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
 
@@ -711,7 +753,10 @@ jobs:
 
       - name: Generate Package.swift using precomputed checksums and publish/tag
         run: |
-          PROFILES_CSV=$(echo '${{ needs.prepare.outputs.profiles }}' | python3 -c 'import json,sys; print(",".join(json.load(sys.stdin)))')
+          # Profiles the iOS matrix actually builds. 'full+gdal' is excluded there (see the matrix),
+          # so including it here would send the generator looking for an iOS zip that was never
+          # uploaded and it would abort on the missing checksum.
+          PROFILES_CSV=$(echo '${{ needs.prepare.outputs.profiles }}' | python3 -c 'import json,sys; print(",".join(p for p in json.load(sys.stdin) if p != "full+gdal"))')
           # Extract routing checksum if available
           ROUTING_CHECKSUM=""
           if [ -f routing-checksum/routing-checksum.json ]; then

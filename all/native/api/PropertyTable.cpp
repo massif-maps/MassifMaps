@@ -100,6 +100,20 @@ namespace massif { namespace api {
                           [](const ClassEntry& entry) { return entry.cppClass; });
     }
 
+    bool enumValueOf(const char* name, long long& value) {
+        if (!name || !*name) {
+            return false;
+        }
+        const EnumConstantEntry* entry =
+            findSorted(kEnumConstants, sizeof(kEnumConstants) / sizeof(kEnumConstants[0]), name,
+                       [](const EnumConstantEntry& e) { return e.name; });
+        if (!entry) {
+            return false;
+        }
+        value = entry->value;
+        return true;
+    }
+
     const PropertyEntry* findProperty(const ClassEntry* classEntry, const char* path) {
         if (!path) {
             return nullptr;

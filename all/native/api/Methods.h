@@ -61,6 +61,13 @@ namespace massif {
         bool getPos(int index, MapPos& value) const;
         /** An array of positions, converted the same way. */
         bool getPositions(int index, std::vector<MapPos>& value) const;
+        /**
+         * The same pair, but stopping at WGS84 - for an SDK method that takes WGS84 and reprojects
+         * internally. Handing those the object's projection converts twice: the elevation query
+         * then read metres as degrees and answered "no data" for every position.
+         */
+        bool getPosWgs84(int index, MapPos& value) const;
+        bool getPositionsWgs84(int index, std::vector<MapPos>& value) const;
         /** Bounds, as a pair of positions, converted the same way. */
         bool getBounds(int index, MapBounds& value) const;
         /** The other direction: a position a thunk PRODUCES, ready to hand back. */

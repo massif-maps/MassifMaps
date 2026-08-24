@@ -611,6 +611,13 @@ namespace massif { namespace api {
             Log::Errorf("Context::call: '%s' threw: %s", name.c_str(), ex.what());
             return RESULT_REJECTED;
         }
+        // BAD_SPEC from a thunk means it could not read an argument, and it has no way to say
+        // which - the caller gets a bare code and a log with nothing in it. The arguments ARE the
+        // diagnosis, so they are printed here rather than in every thunk.
+        if (called == RESULT_BAD_SPEC) {
+            Log::Errorf("Context::call: %s.%s rejected its arguments: %s",
+                        cppClass ? cppClass : "?", name.c_str(), argsJson.c_str());
+        }
         // A result is expressed in whatever the object that produced it is: a search's features are
         // in its data source's projection. Carrying it over is what makes the result's positions
         // convertible without the caller knowing where they came from. Only for a method addressed

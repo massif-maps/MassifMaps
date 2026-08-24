@@ -59,9 +59,10 @@ namespace massif { namespace api {
             return objectResult(context, data, "massif::TileData", result);
         }
 
+        /** WGS84: HillshadeRasterTileLayer reprojects to the data source itself. */
         Result getElevation(Context&, void* obj, const CallArgs& args, PropertyValue& result) {
             MapPos pos;
-            if (!args.getPos(0, pos)) {
+            if (!args.getPosWgs84(0, pos)) {
                 return RESULT_BAD_SPEC;
             }
             result = PropertyValue::ofDouble(
@@ -75,11 +76,13 @@ namespace massif { namespace api {
          * An object result rather than a value: a profile over a track is thousands of numbers,
          * and neither a JSON array nor a per-element proxy is an acceptable way to move them.
          * Read it with getDoubles.
+         *
+         * WGS84, like getElevation: the layer reprojects to the data source itself.
          */
         Result getElevations(Context& context, void* obj, const CallArgs& args,
                              PropertyValue& result) {
             std::vector<MapPos> positions;
-            if (!args.getPositions(0, positions)) {
+            if (!args.getPositionsWgs84(0, positions)) {
                 return RESULT_BAD_SPEC;
             }
             auto elevations = std::make_shared<std::vector<double> >(

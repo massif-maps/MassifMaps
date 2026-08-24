@@ -32,12 +32,15 @@ namespace massif { namespace api {
          *
          * Every Swig-wrapped class registers its short name in ClassRegistry at static-init time;
          * the table keys on the qualified one. Interned because a slot keeps the pointer, and
-         * GetClassName returns by value.
+         * FindClassName returns by value.
+         *
+         * A miss is normal here - the facade's own bridges are not Swig classes - so this asks
+         * without logging and falls back to the declared type.
          */
         const char* internedClassName(const std::type_info& type, const char* fallback) {
             static std::mutex mutex;
             static std::set<std::string> names;
-            std::string name = ClassRegistry::GetClassName(type);
+            std::string name = ClassRegistry::FindClassName(type);
             if (name.empty()) {
                 return fallback;
             }

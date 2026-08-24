@@ -104,6 +104,17 @@ namespace massif { namespace api {
                 continue;
             }
             PropertyValue value = specValue(spec.getObjectElement(key));
+            // An enum spelled by its constant name: JSON has no enums, and strtoll would read
+            // "VECTOR_TILE_RENDER_ORDER_LAST" as 0 - a real value, applied without a word.
+            if (entry->type == PT_ENUM && value.type == PT_STRING) {
+                long long constant = 0;
+                if (!enumValueOf(value.stringValue.c_str(), constant)) {
+                    Log::Errorf("Spec: %s.%s: no enum constant '%s'", object.cppClass, key.c_str(),
+                                value.stringValue.c_str());
+                    continue;
+                }
+                value = PropertyValue::ofLong(constant);
+            }
             try {
                 entry->setter(object.obj.get(), value);
             } catch (const std::exception& ex) {

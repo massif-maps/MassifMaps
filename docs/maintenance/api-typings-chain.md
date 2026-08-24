@@ -74,6 +74,7 @@ In order — the first mismatch is the answer.
 | Check | Command |
 |---|---|
 | the schema has the new thing | `grep instructionsJSON docs/api/massif-api.json` |
+| a nested spec resolves to a kind | `grep -A2 '"kindOfClass"' docs/api/massif-api.json` — `set` needs it to build one |
 | the plugin's typings match the schema | `cd integrations/nativescript && npm run typings.api` — a clean run rewrites nothing if it is current |
 | the built package matches `src` | `diff <(md5 -q src/ui-massifmaps/api/massif-api.d.ts) <(md5 -q packages/ui-massifmaps/api/massif-api.d.ts)` |
 | the app resolves the right package | `readlink -f node_modules/@nativescript-community/ui-massifmaps` |

@@ -312,6 +312,36 @@ per-subscription one is the convenience. A per-read name always wins over it.
 argument, so a write outside a handler is always taken as WGS84. Writing 3857 metres directly means
 subscribing with `"EPSG:3857"`, or converting first.
 
+**An enum in a spec is resolved by NAME, in C++.** JSON has no enums, so `labelRenderOrder:
+"VECTOR_TILE_RENDER_ORDER_LAST"` arrives as a string — and `PropertyValue::asLong` ran it through
+`strtoll`, which yields **0**. Zero is a real value for nearly every enum here
+(`VECTOR_TILE_RENDER_ORDER_LAYER`, `TILE_SUBSTITUTION_POLICY_ALL`), so the wrong setting applied
+and nothing was logged; only writing the raw number worked, against what the typings ask for.
+`applySpecProperties` now resolves a `PT_ENUM` written as a string through `enumValueOf`, backed by
+a generated table of every constant. Bindings still resolve names themselves for `set` — this is
+for the paths that only ever see the raw spec, which includes the C ABI. A constant name that two
+enums share with different values is **left out** of the table and refused rather than guessed; the
+generator warns which (today `PACKAGES_ADDED`, `PACKAGES_DELETED`).
+
+**A nested spec works on a write, not only on a constructor.** `setObject` carries a handle and
+nothing else, so a binding handed `{ "type": "url", … }` for an OBJECT property had nothing to send:
+the value collapsed to `NULL_HANDLE`, which **clears the property and returns `RESULT_OK`**. Writing
+`backgroundBitmap` that way blanked the map background and reported success. A binding resolves the
+spec itself, through the schema's `kindOfClass` (`massif::Bitmap` → `bitmap`, hand-written factories
+included), builds it with `create`, and sets the resulting handle — the same kind lookup
+`applyObjectSpecProperty` does at construction. **A null write is indistinguishable from a failed
+one at this verb**, which is why the resolution belongs on the caller's side of it.
+
+**A method argument is converted to the OBJECT's projection — which is wrong for an SDK method that
+reprojects internally.** `CallArgs::getPos`/`getPositions` resolve the target's projection through
+`findProjectionProperty` and convert into it, which is right for `moveTo` (`BaseMapView` wants base
+projection) and wrong for `HillshadeRasterTileLayer.getElevation(s)`: `TileLayer` declares a
+projection, so the degrees became metres, and `ElevationManager` then applied `fromWgs84` to those
+metres and found no tile — every query answered "no data", which an app reading the sentinel shows
+as one constant elevation everywhere. Those two use `getPosWgs84`/`getPositionsWgs84`, which stop at
+WGS84. **Check which end reprojects before registering a method that takes positions**; the symptom
+is a plausible number, not an error.
+
 With neither given the value is **left in the source projection**, and so is a value whose source
 projection is unknown: a wrong guess is worse than an unconverted number. An unknown projection
 name is an error at subscribe time and `RESULT_UNKNOWN_TYPE` at read time, never a silent

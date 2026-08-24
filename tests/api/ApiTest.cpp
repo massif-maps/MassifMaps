@@ -74,6 +74,26 @@ namespace {
         TEST_CHECK(findProperty(nullptr, "rangeStart") == nullptr, "a null class does not crash");
     }
 
+    /*
+     * An enum constant resolved by name.
+     *
+     * A spec is JSON, so an enum spelled as its constant arrives as a STRING and used to go
+     * through strtoll - which reads "VECTOR_TILE_RENDER_ORDER_LAST" as 0. That is a REAL value
+     * for most of these (0 was VECTOR_TILE_RENDER_ORDER_LAYER), so the wrong setting applied and
+     * nothing was logged. The check that matters is the non-zero one.
+     */
+    void testEnumConstants() {
+        long long value = -1;
+        TEST_CHECK(enumValueOf("MAP_MOVE_REASON_API", value) && value == 2,
+                   "an enum constant resolves to its own value, not to 0");
+        value = -1;
+        TEST_CHECK(enumValueOf("MAP_MOVE_REASON_GESTURE", value) && value == 0,
+                   "and one whose value really is 0 still resolves");
+        TEST_CHECK(!enumValueOf("MAP_MOVE_REASON_NOPE", value), "an unknown constant is refused");
+        TEST_CHECK(!enumValueOf("", value) && !enumValueOf(nullptr, value),
+                   "an empty or null name does not crash");
+    }
+
     void testValues(const std::shared_ptr<Context>& context) {
         auto options = std::make_shared<FogOptions>();
         auto watcher = std::make_shared<Watcher>();
@@ -336,6 +356,7 @@ namespace {
 
 int main() {
     testTable();
+    testEnumConstants();
 
     auto context = std::make_shared<Context>();
     testValues(context);

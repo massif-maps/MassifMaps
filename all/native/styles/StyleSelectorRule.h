@@ -1,0 +1,51 @@
+/*
+ * Copyright (c) 2016 CartoDB. All rights reserved.
+ * Copying and using this code is allowed only according
+ * to license terms, as given in https://cartodb.com/terms/
+ */
+
+#ifndef _MASSIF_STYLESELECTORRULE_H_
+#define _MASSIF_STYLESELECTORRULE_H_
+
+#ifdef _MASSIF_GDAL_SUPPORT
+
+#include <memory>
+
+namespace massif {
+    class Style;
+    class QueryExpression;
+
+    /**
+     * Style selector rule. Rule is a combination of the optional filter and style.
+     * If filter is present, then filter is evaluated to check if the style can be applied.
+     */
+    class StyleSelectorRule {
+    public:
+        /**
+         * Constructs a new style selector rule, given filter expression and style.
+         * @param expr The filter expression. Can be null pointer.
+         * @param style The style of the rule.
+         */
+        StyleSelectorRule(const std::shared_ptr<QueryExpression>& expr, const std::shared_ptr<Style>& style);
+        virtual ~StyleSelectorRule();
+
+        /**
+         * Returns filter expression of this rule. Result can be null pointer.
+         * @return The filter expression or null, if none is specified.
+         */
+        const std::shared_ptr<QueryExpression>& getExpression() const;
+        /**
+         * Returns the style associated with this rule.
+         * @return The style.
+         */
+        const std::shared_ptr<Style>& getStyle() const;
+
+    private:
+        const std::shared_ptr<QueryExpression> _expression;
+        const std::shared_ptr<Style> _style;
+    };
+}
+
+#endif
+
+#endif

@@ -1,0 +1,34 @@
+#ifdef _MASSIF_GDAL_SUPPORT
+
+#include "StyleSelector.h"
+#include "search/query/QueryExpression.h"
+#include "styles/StyleSelectorRule.h"
+#include "styles/StyleSelectorContext.h"
+
+namespace massif {
+
+    StyleSelector::StyleSelector(const std::vector<std::shared_ptr<StyleSelectorRule> >& rules) :
+        _rules(rules)
+    {
+    }
+
+    StyleSelector::~StyleSelector() {
+    }
+
+    const std::shared_ptr<Style>& StyleSelector::getStyle(const StyleSelectorContext& context) const {
+        static std::shared_ptr<Style> nullStyle;
+        for (const std::shared_ptr<StyleSelectorRule>& rule : _rules) {
+            if (std::shared_ptr<QueryExpression> expr = rule->getExpression()) {
+                if (expr->evaluate(context)) {
+                    return rule->getStyle();
+                }
+            } else {
+                return rule->getStyle();
+            }
+        }
+        return nullStyle;
+    }
+
+}
+
+#endif

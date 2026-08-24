@@ -48,8 +48,20 @@ namespace massif {
     }
 
     void GeocodingPackageHandler::onImportPackage() {
-        std::shared_ptr<FILE> fpIn(utf8_filesystem::fopen(_fileName.c_str(), "rb"), fclose);
-        std::shared_ptr<FILE> fpOut(utf8_filesystem::fopen(_uncompressedFileName.c_str(), "wb"), fclose);
+        // Check before wrapping: shared_ptr runs the deleter even on a null pointer, and
+        // fclose(nullptr) aborts the process under FORTIFY
+        FILE* fpInRaw = utf8_filesystem::fopen(_fileName.c_str(), "rb");
+        if (!fpInRaw) {
+            Log::Errorf("GeocodingPackageHandler::onImportPackage: Failed to open %s", _fileName.c_str());
+            return;
+        }
+        std::shared_ptr<FILE> fpIn(fpInRaw, fclose);
+        FILE* fpOutRaw = utf8_filesystem::fopen(_uncompressedFileName.c_str(), "wb");
+        if (!fpOutRaw) {
+            Log::Errorf("GeocodingPackageHandler::onImportPackage: Failed to create %s", _uncompressedFileName.c_str());
+            return;
+        }
+        std::shared_ptr<FILE> fpOut(fpOutRaw, fclose);
         if (!zlib::ungzip_file(fpIn.get(), fpOut.get())) {
             fpOut.reset();
             utf8_filesystem::unlink(_uncompressedFileName.c_str());

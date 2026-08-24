@@ -103,6 +103,14 @@ namespace massif::mvt {
         vt::LabelOrientation orientation = (billboardRepeat ? vt::LabelOrientation::BILLBOARD_3D : placement);
         float textSize = bitmapSize < 0 ? (repeatAlongLine ? calculateTextSize(formatter.getFont(), text, formatter).size()(0) : 0) : bitmapSize;
         float spacing = _spacing.getValue(exprContext);
+        // A repeat must not stack on itself. 'spacing' is walked per TILE, over that tile's clipped
+        // copy of the line, so each tile starts its own phase and two anchors can land a few pixels
+        // apart across a tile border - one road shield drawn twice. Nothing in the decode can see
+        // that; only the culler can, and it needs a group distance to do it. Without an explicit
+        // minimum the label's own size is the floor, in the screen pixels the culler measures.
+        if (repeatAlongLine && spacing > 0 && !_minimumDistance.isDefined()) {
+            minimumDistance = sizeStatic * fontScale;
+        }
         long long groupId = (allowOverlap ? -1 : 0);
         if (!allowOverlap && minimumDistance > 0) {
             groupId = (repeatAlongLine ? (hash & 0x7fffffffU) : 1);

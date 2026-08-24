@@ -28,21 +28,6 @@ namespace {
         }
     }
 
-    template <std::size_t N>
-    static bool testBufferExtent(const std::array<cglib::vec2<float>, N>& vertList, const cglib::vec2<float>& v0, const cglib::vec2<float>& v1, float buffer) {
-        if (buffer > 0) {
-            cglib::vec2<float> edge = cglib::unit(v1 - v0);
-            for (std::size_t i = 0; i < N; ++i) {
-                float t = cglib::dot_product(edge, vertList[i] - v0);
-                cglib::vec2<float> p = v0 + edge * std::max(0.0f, std::min(1.0f, t));
-                float d2 = cglib::norm(vertList[i] - p);
-                if (d2 < buffer * buffer) {
-                    return false;
-                }
-            }
-        }
-        return true;
-    }
 
     template <std::size_t N1, std::size_t N2>
     static bool findSeparatingAxis(const std::array<cglib::vec2<float>, N1>& vertList1, const std::array<cglib::vec2<float>, N2>& vertList2, float buffer) {
@@ -57,10 +42,14 @@ namespace {
             float min1, max1, min2, max2;
             gatherPolygonProjectionExtents(vertList1, proj, min1, max1);
             gatherPolygonProjectionExtents(vertList2, proj, min2, max2);
-            if (max1 < min2 || min1 > max2) {
-                if (testBufferExtent(vertList2, vertList1[i0], vertList1[i1], buffer)) {
-                    return true;
-                }
+            // The buffer widens the AXIS, not this one edge. Measuring it against the edge let the
+            // OPPOSITE edge of a rectangle - same axis, always further away than the buffer - report
+            // a separating axis and return before the near edge was ever tested, so a minimum
+            // distance did nothing at all for two labels offset along their own edge.
+            // 'proj' is not normalized, so the gap is scaled the way the extents are.
+            float gap = buffer * cglib::length(proj);
+            if (max1 + gap < min2 || min1 - gap > max2) {
+                return true;
             }
 
             i0 = i1;

@@ -250,6 +250,12 @@
 #import "MSFWKBGeometryWriter.h"
 #endif
 
+#ifdef _MASSIF_NMLMODELLODTREE_SUPPORT
+#import "MSFOnlineNMLModelLODTreeDataSource.h"
+#import "MSFOfflineNMLModelLODTreeDataSource.h"
+#import "MSFNMLModelLODTreeLayer.h"
+#endif
+
 #ifdef _MASSIF_GDAL_SUPPORT
 #import "MSFOGRVectorDataBase.h"
 #import "MSFOGRVectorDataSource.h"

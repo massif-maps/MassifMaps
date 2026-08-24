@@ -256,6 +256,23 @@ else()
   endforeach()
 endif(INCLUDE_GDAL)
 
+# Same treatment for the NML LOD tree: it needs nothing external beyond nml and sqlite3pp, which
+# are built anyway, but it is a dozen translation units that only the profile wants.
+if(NOT INCLUDE_NMLMODELLODTREE)
+  foreach(SDK_NML_SRC IN ITEMS
+      "datasources/NMLModelLODTreeDataSource"
+      "datasources/OfflineNMLModelLODTreeDataSource"
+      "datasources/OnlineNMLModelLODTreeDataSource"
+      "datasources/components/NMLModelLODTree"
+      "layers/NMLModelLODTreeEventListener"
+      "layers/NMLModelLODTreeLayer"
+      "renderers/NMLModelLODTreeRenderer"
+      "renderers/drawdatas/NMLModelLODTreeDrawData"
+      "ui/NMLModelLODTreeClickInfo")
+    list(REMOVE_ITEM SDK_SRC_FILES "${SDK_SRC_DIR}/${SDK_NML_SRC}.cpp" "${SDK_SRC_DIR}/${SDK_NML_SRC}.h")
+  endforeach()
+endif(NOT INCLUDE_NMLMODELLODTREE)
+
 if(ANDROID)
   file(GLOB SDK_ANDROID_SRC_FILES CONFIGURE_DEPENDS
     "${WRAPPER_DIR}/*.cpp"

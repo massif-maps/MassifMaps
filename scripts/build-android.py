@@ -47,7 +47,9 @@ def buildAndroidSO(args, abi):
   buildDir = getBuildDir('android', abi)
   distDir = getDistDir('android')
   defines = ["-D%s" % define for define in args.defines.split(';') if define]
-  options = ["-D%s" % option for option in args.cmakeoptions.split(';') if option]
+  # '{abi}' in a --cmake-options value expands to the ABI being built, so one option can point at a
+  # per-ABI prefix: a cross-built dependency has one install tree per ABI and no single path works.
+  options = ["-D%s" % option.replace('{abi}', abi) for option in args.cmakeoptions.split(';') if option]
   api32, api64 = detectAndroidAPIs(args)
   if api32 is None or api64 is None:
     print('Failed to detect available platform APIs')

@@ -177,7 +177,10 @@ def buildIOSLib(args, baseArch, outputDir=None):
   baseDir = getBaseDir()
   buildDir = outputDir or getFinalBuildDir('ios', '%s-%s' % (platform, arch))
   defines = ["-D%s" % define for define in args.defines.split(';') if define]
-  options = ["-D%s" % option for option in args.cmakeoptions.split(';') if option]
+  # '{platform}' and '{arch}' expand to the slice being built, so one option can point at a
+  # per-slice prefix: a cross-built dependency has one install tree per slice.
+  options = ["-D%s" % option.replace('{platform}', platform).replace('{arch}', arch)
+             for option in args.cmakeoptions.split(';') if option]
 
   if not cmake(args, buildDir, options + [
     '-G', 'Xcode',

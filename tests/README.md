@@ -30,6 +30,23 @@ than a choice:
 Spec factories (`create`) are in the same position: they reference the constructors of every source
 type, so they are device-verified rather than covered here.
 
+## The style XML round-trip — outside this suite
+
+Whether the Mapnik XML parser can read back everything `css2xml` writes is checked by `css2xml`
+itself, not here: linking `mapnikvt` drags `vt`, freetype and harfbuzz in, which is exactly the
+weight this suite avoids.
+
+```sh
+cmake -S libs-massif/cartocss/util -B build/css2xml && cmake --build build/css2xml --target css2xml
+build/css2xml/css2xml --roundtrip libs-massif/cartocss/util/fixtures/roundtrip/project.json /tmp/out.xml
+```
+
+It compiles the fixture, parses the result back, compiles that, and fails on any diff — a
+symbolizer the parser has no case for, an operator missing from the expression grammar, a `Map`
+setting only one side knows. Nothing runs it automatically: **run it when you touch mapnikvt's
+parser, generator or expression grammar**, and add the construct to
+`fixtures/roundtrip/style.mss` when you add one.
+
 ## Adding a case
 
 `api/ApiTest.cpp` is one `main` with `TEST_CHECK(condition, "what it means")`. A failure prints the

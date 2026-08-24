@@ -2126,6 +2126,12 @@
       "methods": [],
       "events": []
     },
+    "massif::DataInputStream": {
+      "base": null,
+      "properties": [],
+      "methods": [],
+      "events": []
+    },
     "massif::DataSourceListener": {
       "base": null,
       "properties": [],
@@ -2468,6 +2474,12 @@
           "doc": "Returns how brightly stars are drawn beyond the atmosphere."
         }
       ],
+      "methods": [],
+      "events": []
+    },
+    "massif::GDALRasterTileDataSource": {
+      "base": "massif::TileDataSource",
+      "properties": [],
       "methods": [],
       "events": []
     },
@@ -4317,6 +4329,12 @@
       "methods": [],
       "events": []
     },
+    "massif::MapTilesFetchTask": {
+      "base": "massif::CancelableTask",
+      "properties": [],
+      "methods": [],
+      "events": []
+    },
     "massif::MapVec": {
       "base": null,
       "properties": [
@@ -4556,6 +4574,18 @@
       "methods": [],
       "events": []
     },
+    "massif::MeshFetchTask": {
+      "base": "massif::CancelableTask",
+      "properties": [],
+      "methods": [],
+      "events": []
+    },
+    "massif::ModelLODTreeFetchTask": {
+      "base": "massif::CancelableTask",
+      "properties": [],
+      "methods": [],
+      "events": []
+    },
     "massif::MultiGeometry": {
       "base": "massif::Geometry",
       "properties": [
@@ -4658,6 +4688,116 @@
       "methods": [],
       "events": []
     },
+    "massif::NMLModelLODTreeClickInfo": {
+      "base": null,
+      "properties": [
+        {
+          "name": "clickInfo",
+          "type": "STRUCT",
+          "readOnly": true,
+          "static": false,
+          "position": false,
+          "cppType": "massif::ClickInfo",
+          "doc": "Returns the click info."
+        },
+        {
+          "name": "clickPos",
+          "type": "STRUCT",
+          "readOnly": true,
+          "static": false,
+          "position": true,
+          "cppType": "massif::MapPos",
+          "doc": "Returns the click position."
+        },
+        {
+          "name": "clickType",
+          "type": "ENUM",
+          "readOnly": true,
+          "static": false,
+          "position": false,
+          "cppType": "massif::ClickType::ClickType",
+          "enum": "massif::ClickType::ClickType",
+          "doc": "Returns the click type."
+        },
+        {
+          "name": "elementClickPos",
+          "type": "STRUCT",
+          "readOnly": true,
+          "static": false,
+          "position": true,
+          "cppType": "massif::MapPos",
+          "doc": "Returns the position on the clicked element, that is close to the click position."
+        },
+        {
+          "name": "layer",
+          "type": "OBJECT",
+          "readOnly": true,
+          "static": false,
+          "position": false,
+          "cppType": "layers.Layer",
+          "objectClass": "massif::Layer",
+          "doc": "Returns the layer of the clicked vector element."
+        },
+        {
+          "name": "metaData",
+          "type": "STRUCT",
+          "readOnly": true,
+          "static": false,
+          "position": false,
+          "cppType": "std::map<std::string, std::string>",
+          "doc": "Returns the element meta data at the click point."
+        }
+      ],
+      "methods": [],
+      "events": []
+    },
+    "massif::NMLModelLODTreeDataSource": {
+      "base": null,
+      "properties": [
+        {
+          "name": "dataExtent",
+          "type": "STRUCT",
+          "readOnly": true,
+          "static": false,
+          "position": true,
+          "cppType": "massif::MapBounds",
+          "doc": "Returns the extent of the models in this data source. The bounds are in coordinate system of the projection of the data source."
+        }
+      ],
+      "methods": [],
+      "events": []
+    },
+    "massif::NMLModelLODTreeEventListener": {
+      "base": null,
+      "properties": [],
+      "methods": [],
+      "events": []
+    },
+    "massif::NMLModelLODTreeLayer": {
+      "base": "massif::Layer",
+      "properties": [
+        {
+          "name": "LODResolutionFactor",
+          "type": "FLOAT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns relative model LOD resolution."
+        },
+        {
+          "name": "maxMemorySize",
+          "type": "INT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "std::size_t",
+          "doc": "Returns memory usage constraints for the layer."
+        }
+      ],
+      "methods": [],
+      "events": []
+    },
     "massif::NMLModelStyle": {
       "base": "massif::BillboardStyle",
       "properties": [
@@ -4732,6 +4872,85 @@
       "methods": [],
       "events": []
     },
+    "massif::OGRVectorDataBase": {
+      "base": null,
+      "properties": [
+        {
+          "name": "layerCount",
+          "type": "INT",
+          "readOnly": true,
+          "static": false,
+          "position": false,
+          "cppType": "int",
+          "doc": "Returns the total layer count for this database."
+        },
+        {
+          "name": "layerNames",
+          "type": "STRUCT",
+          "readOnly": true,
+          "static": false,
+          "position": false,
+          "cppType": "std::vector<std::string>",
+          "doc": "Returns the names of all layers in the database."
+        }
+      ],
+      "methods": [],
+      "events": []
+    },
+    "massif::OGRVectorDataSource": {
+      "base": "massif::VectorDataSource",
+      "properties": [
+        {
+          "name": "codePage",
+          "type": "STRING",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "std::string",
+          "doc": "Returns the current code page used for decoding DBF text data. The default is ISO-8859-1."
+        },
+        {
+          "name": "featureCount",
+          "type": "INT",
+          "readOnly": true,
+          "static": false,
+          "position": false,
+          "cppType": "int",
+          "doc": "Returns the total feature count for this data source."
+        },
+        {
+          "name": "fieldNames",
+          "type": "STRUCT",
+          "readOnly": true,
+          "static": false,
+          "position": false,
+          "cppType": "std::vector<std::string>",
+          "doc": "Returns the list of existing fields of the data source."
+        },
+        {
+          "name": "geometrySimplifier",
+          "type": "OBJECT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "geometry.GeometrySimplifier",
+          "objectClass": "massif::GeometrySimplifier",
+          "doc": "Returns the active geometry simplifier of the data source."
+        },
+        {
+          "name": "geometryType",
+          "type": "ENUM",
+          "readOnly": true,
+          "static": false,
+          "position": false,
+          "cppType": "massif::OGRGeometryType::OGRGeometryType",
+          "enum": "massif::OGRGeometryType::OGRGeometryType",
+          "doc": "Returns the geometry type of the data source."
+        }
+      ],
+      "methods": [],
+      "events": []
+    },
     "massif::OSMOfflineGeocodingService": {
       "base": "massif::GeocodingService",
       "properties": [],
@@ -4750,8 +4969,20 @@
       "methods": [],
       "events": []
     },
+    "massif::OfflineNMLModelLODTreeDataSource": {
+      "base": "massif::NMLModelLODTreeDataSource",
+      "properties": [],
+      "methods": [],
+      "events": []
+    },
     "massif::OnChangeListener": {
       "base": null,
+      "properties": [],
+      "methods": [],
+      "events": []
+    },
+    "massif::OnlineNMLModelLODTreeDataSource": {
+      "base": "massif::NMLModelLODTreeDataSource",
       "properties": [],
       "methods": [],
       "events": []
@@ -6842,6 +7073,18 @@
       "methods": [],
       "events": []
     },
+    "massif::StyleSelector": {
+      "base": null,
+      "properties": [],
+      "methods": [],
+      "events": []
+    },
+    "massif::StyleSelectorBuilder": {
+      "base": null,
+      "properties": [],
+      "methods": [],
+      "events": []
+    },
     "massif::TerrainOptions": {
       "base": null,
       "properties": [
@@ -7326,6 +7569,12 @@
           "doc": "Returns the margins for the text."
         }
       ],
+      "methods": [],
+      "events": []
+    },
+    "massif::TextureFetchTask": {
+      "base": "massif::CancelableTask",
+      "properties": [],
       "methods": [],
       "events": []
     },
@@ -8986,6 +9235,38 @@
         ]
       ]
     ],
+    "data": [
+      [
+        "ogr-database",
+        "massif__OGRVectorDataBase",
+        [
+          [
+            0,
+            [
+              [
+                "VALUE",
+                "path",
+                "stringAt(spec, \"path\", \"\")",
+                null
+              ],
+              [
+                "VALUE",
+                "writable",
+                "boolAt(spec, \"writable\", false)",
+                null
+              ]
+            ],
+            [
+              "path"
+            ],
+            [
+              "path",
+              "writable"
+            ]
+          ]
+        ]
+      ]
+    ],
     "element": [
       [
         "balloon",
@@ -9222,6 +9503,18 @@
             []
           ]
         ]
+      ],
+      [
+        "style-selector",
+        "massif__StyleSelectorBuilder",
+        [
+          [
+            0,
+            [],
+            [],
+            []
+          ]
+        ]
       ]
     ],
     "feature": [
@@ -9349,6 +9642,29 @@
                 "source",
                 "source",
                 "massif::TileDataSource"
+              ]
+            ],
+            [
+              "source"
+            ],
+            [
+              "source"
+            ]
+          ]
+        ]
+      ],
+      [
+        "nml-lodtree",
+        "massif__NMLModelLODTreeLayer",
+        [
+          [
+            0,
+            [
+              [
+                "OBJECT",
+                "source",
+                "source",
+                "massif::NMLModelLODTreeDataSource"
               ]
             ],
             [
@@ -9675,6 +9991,82 @@
         ]
       ],
       [
+        "gdal",
+        "massif__GDALRasterTileDataSource",
+        [
+          [
+            0,
+            [
+              [
+                "VALUE",
+                "minZoom",
+                "static_cast<int>(intAt(spec, \"minZoom\", 0))",
+                null
+              ],
+              [
+                "VALUE",
+                "maxZoom",
+                "static_cast<int>(intAt(spec, \"maxZoom\", 24))",
+                null
+              ],
+              [
+                "VALUE",
+                "path",
+                "stringAt(spec, \"path\", \"\")",
+                null
+              ],
+              [
+                "VALUE",
+                "srs",
+                "stringAt(spec, \"srs\", \"\")",
+                null
+              ]
+            ],
+            [
+              "path",
+              "srs"
+            ],
+            [
+              "minZoom",
+              "maxZoom",
+              "path",
+              "srs"
+            ]
+          ],
+          [
+            1,
+            [
+              [
+                "VALUE",
+                "minZoom",
+                "static_cast<int>(intAt(spec, \"minZoom\", 0))",
+                null
+              ],
+              [
+                "VALUE",
+                "maxZoom",
+                "static_cast<int>(intAt(spec, \"maxZoom\", 24))",
+                null
+              ],
+              [
+                "VALUE",
+                "path",
+                "stringAt(spec, \"path\", \"\")",
+                null
+              ]
+            ],
+            [
+              "path"
+            ],
+            [
+              "minZoom",
+              "maxZoom",
+              "path"
+            ]
+          ]
+        ]
+      ],
+      [
         "geojson",
         "massif__GeoJSONVectorTileDataSource",
         [
@@ -9927,6 +10319,131 @@
             [],
             [],
             []
+          ]
+        ]
+      ],
+      [
+        "nml-lodtree-offline",
+        "massif__OfflineNMLModelLODTreeDataSource",
+        [
+          [
+            0,
+            [
+              [
+                "VALUE",
+                "path",
+                "stringAt(spec, \"path\", \"\")",
+                null
+              ]
+            ],
+            [
+              "path"
+            ],
+            [
+              "path"
+            ]
+          ]
+        ]
+      ],
+      [
+        "nml-lodtree-online",
+        "massif__OnlineNMLModelLODTreeDataSource",
+        [
+          [
+            0,
+            [
+              [
+                "VALUE",
+                "url",
+                "stringAt(spec, \"url\", \"\")",
+                null
+              ]
+            ],
+            [
+              "url"
+            ],
+            [
+              "url"
+            ]
+          ]
+        ]
+      ],
+      [
+        "ogr",
+        "massif__OGRVectorDataSource",
+        [
+          [
+            0,
+            [
+              [
+                "OBJECT",
+                "projection",
+                "projection",
+                "massif::Projection"
+              ],
+              [
+                "OBJECT",
+                "style",
+                "elementstyle",
+                "massif::StyleSelector"
+              ],
+              [
+                "OBJECT",
+                "database",
+                "data",
+                "massif::OGRVectorDataBase"
+              ],
+              [
+                "VALUE",
+                "layerIndex",
+                "static_cast<int>(intAt(spec, \"layerIndex\", 0))",
+                null
+              ]
+            ],
+            [
+              "projection",
+              "style",
+              "database"
+            ],
+            [
+              "projection",
+              "style",
+              "database",
+              "layerIndex"
+            ]
+          ],
+          [
+            1,
+            [
+              [
+                "OBJECT",
+                "projection",
+                "projection",
+                "massif::Projection"
+              ],
+              [
+                "OBJECT",
+                "style",
+                "elementstyle",
+                "massif::StyleSelector"
+              ],
+              [
+                "VALUE",
+                "path",
+                "stringAt(spec, \"path\", \"\")",
+                null
+              ]
+            ],
+            [
+              "projection",
+              "style",
+              "path"
+            ],
+            [
+              "projection",
+              "style",
+              "path"
+            ]
           ]
         ]
       ],
@@ -10256,6 +10773,37 @@
       ]
     },
     {
+      "cppClass": "massif::OGRVectorDataBase",
+      "kind": "data",
+      "type": "ogr-database",
+      "aliases": {
+        "fileName": "path"
+      },
+      "defaults": {
+        "writable": "false"
+      },
+      "constructors": [
+        [
+          {
+            "key": "path",
+            "type": "STRING",
+            "cppType": "std::string",
+            "childKind": null,
+            "childClass": null,
+            "required": true
+          },
+          {
+            "key": "writable",
+            "type": "BOOL",
+            "cppType": "bool",
+            "childKind": null,
+            "childClass": null,
+            "required": false
+          }
+        ]
+      ]
+    },
+    {
       "cppClass": "massif::BalloonPopup",
       "kind": "element",
       "type": "balloon",
@@ -10455,6 +11003,16 @@
       ]
     },
     {
+      "cppClass": "massif::StyleSelectorBuilder",
+      "kind": "elementstyle",
+      "type": "style-selector",
+      "aliases": {},
+      "defaults": {},
+      "constructors": [
+        []
+      ]
+    },
+    {
       "cppClass": "massif::Feature",
       "kind": "feature",
       "type": "feature",
@@ -10567,6 +11125,27 @@
             "cppType": "std::shared_ptr<TileDataSource>",
             "childKind": "source",
             "childClass": "massif::TileDataSource",
+            "required": true
+          }
+        ]
+      ]
+    },
+    {
+      "cppClass": "massif::NMLModelLODTreeLayer",
+      "kind": "layer",
+      "type": "nml-lodtree",
+      "aliases": {
+        "dataSource": "source"
+      },
+      "defaults": {},
+      "constructors": [
+        [
+          {
+            "key": "source",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<NMLModelLODTreeDataSource>",
+            "childKind": "source",
+            "childClass": "massif::NMLModelLODTreeDataSource",
             "required": true
           }
         ]
@@ -10853,6 +11432,80 @@
       ]
     },
     {
+      "cppClass": "massif::GDALRasterTileDataSource",
+      "kind": "source",
+      "type": "gdal",
+      "aliases": {
+        "fileName": "path"
+      },
+      "defaults": {
+        "minZoom": "0",
+        "maxZoom": "24"
+      },
+      "constructors": [
+        [
+          {
+            "key": "minZoom",
+            "type": "INT",
+            "cppType": "int",
+            "childKind": null,
+            "childClass": null,
+            "required": false
+          },
+          {
+            "key": "maxZoom",
+            "type": "INT",
+            "cppType": "int",
+            "childKind": null,
+            "childClass": null,
+            "required": false
+          },
+          {
+            "key": "path",
+            "type": "STRING",
+            "cppType": "std::string",
+            "childKind": null,
+            "childClass": null,
+            "required": true
+          },
+          {
+            "key": "srs",
+            "type": "STRING",
+            "cppType": "std::string",
+            "childKind": null,
+            "childClass": null,
+            "required": true
+          }
+        ],
+        [
+          {
+            "key": "minZoom",
+            "type": "INT",
+            "cppType": "int",
+            "childKind": null,
+            "childClass": null,
+            "required": false
+          },
+          {
+            "key": "maxZoom",
+            "type": "INT",
+            "cppType": "int",
+            "childKind": null,
+            "childClass": null,
+            "required": false
+          },
+          {
+            "key": "path",
+            "type": "STRING",
+            "cppType": "std::string",
+            "childKind": null,
+            "childClass": null,
+            "required": true
+          }
+        ]
+      ]
+    },
+    {
       "cppClass": "massif::GeoJSONVectorTileDataSource",
       "kind": "source",
       "type": "geojson",
@@ -11082,6 +11735,123 @@
           }
         ],
         []
+      ]
+    },
+    {
+      "cppClass": "massif::OfflineNMLModelLODTreeDataSource",
+      "kind": "source",
+      "type": "nml-lodtree-offline",
+      "aliases": {
+        "path": "path"
+      },
+      "defaults": {},
+      "constructors": [
+        [
+          {
+            "key": "path",
+            "type": "STRING",
+            "cppType": "std::string",
+            "childKind": null,
+            "childClass": null,
+            "required": true
+          }
+        ]
+      ]
+    },
+    {
+      "cppClass": "massif::OnlineNMLModelLODTreeDataSource",
+      "kind": "source",
+      "type": "nml-lodtree-online",
+      "aliases": {
+        "serviceURL": "url"
+      },
+      "defaults": {},
+      "constructors": [
+        [
+          {
+            "key": "url",
+            "type": "STRING",
+            "cppType": "std::string",
+            "childKind": null,
+            "childClass": null,
+            "required": true
+          }
+        ]
+      ]
+    },
+    {
+      "cppClass": "massif::OGRVectorDataSource",
+      "kind": "source",
+      "type": "ogr",
+      "aliases": {
+        "fileName": "path",
+        "styleSelector": "style",
+        "dataBase": "database"
+      },
+      "defaults": {
+        "layerIndex": "0"
+      },
+      "constructors": [
+        [
+          {
+            "key": "projection",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<Projection>",
+            "childKind": "projection",
+            "childClass": "massif::Projection",
+            "required": true
+          },
+          {
+            "key": "style",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<StyleSelector>",
+            "childKind": "elementstyle",
+            "childClass": "massif::StyleSelector",
+            "required": true
+          },
+          {
+            "key": "database",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<OGRVectorDataBase>",
+            "childKind": "data",
+            "childClass": "massif::OGRVectorDataBase",
+            "required": true
+          },
+          {
+            "key": "layerIndex",
+            "type": "INT",
+            "cppType": "int",
+            "childKind": null,
+            "childClass": null,
+            "required": false
+          }
+        ],
+        [
+          {
+            "key": "projection",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<Projection>",
+            "childKind": "projection",
+            "childClass": "massif::Projection",
+            "required": true
+          },
+          {
+            "key": "style",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<StyleSelector>",
+            "childKind": "elementstyle",
+            "childClass": "massif::StyleSelector",
+            "required": true
+          },
+          {
+            "key": "path",
+            "type": "STRING",
+            "cppType": "std::string",
+            "childKind": null,
+            "childClass": null,
+            "required": true
+          }
+        ]
       ]
     },
     {
@@ -11550,6 +12320,85 @@
         "name": "MAP_MOVE_REASON_API",
         "value": 2,
         "doc": "The app, through a call that took effect immediately: setFocusPos, setZoom, an option change that moved the camera."
+      }
+    ],
+    "massif::OGRFieldType::OGRFieldType": [
+      {
+        "name": "OGR_FIELD_TYPE_UNKNOWN",
+        "value": 0,
+        "doc": "Unknown/unsupported field type."
+      },
+      {
+        "name": "OGR_FIELD_TYPE_INTEGER",
+        "value": 1,
+        "doc": "Integer field."
+      },
+      {
+        "name": "OGR_FIELD_TYPE_REAL",
+        "value": 2,
+        "doc": "Real-valued or floating point field."
+      },
+      {
+        "name": "OGR_FIELD_TYPE_STRING",
+        "value": 3,
+        "doc": "String field."
+      },
+      {
+        "name": "OGR_FIELD_TYPE_DATE",
+        "value": 4,
+        "doc": "Date field."
+      },
+      {
+        "name": "OGR_FIELD_TYPE_TIME",
+        "value": 5,
+        "doc": "Time field."
+      },
+      {
+        "name": "OGR_FIELD_TYPE_DATETIME",
+        "value": 6,
+        "doc": "Date/Time field."
+      }
+    ],
+    "massif::OGRGeometryType::OGRGeometryType": [
+      {
+        "name": "OGR_GEOMETRY_TYPE_UNKNOWN",
+        "value": 0,
+        "doc": "Unspecified/unsupported geometry type."
+      },
+      {
+        "name": "OGR_GEOMETRY_TYPE_POINT",
+        "value": 1,
+        "doc": "Point geometry."
+      },
+      {
+        "name": "OGR_GEOMETRY_TYPE_LINE",
+        "value": 2,
+        "doc": "Line geometry."
+      },
+      {
+        "name": "OGR_GEOMETRY_TYPE_POLYGON",
+        "value": 3,
+        "doc": "Polygon geometry."
+      },
+      {
+        "name": "OGR_GEOMETRY_TYPE_MULTIPOINT",
+        "value": 4,
+        "doc": "Multipoint geometry."
+      },
+      {
+        "name": "OGR_GEOMETRY_TYPE_MULTILINE",
+        "value": 5,
+        "doc": "Multiline geometry."
+      },
+      {
+        "name": "OGR_GEOMETRY_TYPE_MULTIPOLYGON",
+        "value": 6,
+        "doc": "Multipolygon geometry."
+      },
+      {
+        "name": "OGR_GEOMETRY_TYPE_GEOMETRYCOLLECTION",
+        "value": 7,
+        "doc": "Geometry collection."
       }
     ],
     "massif::PackageAction::PackageAction": [

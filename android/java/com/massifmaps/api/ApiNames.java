@@ -20,6 +20,8 @@ public final class ApiNames {
     public static final MassifObject.Key<Long> FOVY = MassifObject.key("FOVY");
     /** Returns the current set of HTTP headers used. Initially this set is empty and can be changed with setHTTPHeaders. */
     public static final MassifObject.Key<String> HTTPHEADERS = MassifObject.key("HTTPHeaders");
+    /** Returns relative model LOD resolution. */
+    public static final MassifObject.Key<Double> LODRESOLUTION_FACTOR = MassifObject.key("LODResolutionFactor");
     /** Returns true/false based whether the TMS tiling scheme is used. */
     public static final MassifObject.Key<Boolean> TMSSCHEME = MassifObject.key("TMSScheme");
     /** Returns the tile data source of the associated UTF grid. By default this is null. */
@@ -169,6 +171,8 @@ public final class ApiNames {
     public static final MassifObject.Key<Double> CLICK_WIDTH = MassifObject.key("clickWidth");
     /** Returns the current callback used for creating cluster elements. */
     public static final MassifObject.Key<MassifObject> CLUSTER_ELEMENT_BUILDER = MassifObject.key("clusterElementBuilder");
+    /** Returns the current code page used for decoding DBF text data. The default is ISO-8859-1. */
+    public static final MassifObject.Key<String> CODE_PAGE = MassifObject.key("codePage");
     /** Returns the color of the object. */
     public static final MassifObject.Key<Integer> COLOR = MassifObject.key("color");
     /** Returns the color format of this bitmap. */
@@ -203,7 +207,7 @@ public final class ApiNames {
     public static final MassifObject.Key<String> CUSTOM_SERVICE_URL = MassifObject.key("customServiceURL");
     /** Returns tile data as binary data. */
     public static final MassifObject.Key<MassifObject> DATA = MassifObject.key("data");
-    /** Returns the extent of the tiles in this data source. The bounds are in coordinate system of the projection of the data source. */
+    /** Returns the extent of the models in this data source. The bounds are in coordinate system of the projection of the data source. */
     public static final MassifObject.Key<String> DATA_EXTENT = MassifObject.key("dataExtent");
     /** Returns the original data source that the cache uses. */
     public static final MassifObject.Key<MassifObject> DATA_SOURCE = MassifObject.key("dataSource");
@@ -253,7 +257,7 @@ public final class ApiNames {
     public static final MassifObject.Key<Double> DURATION = MassifObject.key("duration");
     /** Returns the corresponding matching edge index in the matching result. */
     public static final MassifObject.Key<Long> EDGE_INDEX = MassifObject.key("edgeIndex");
-    /** Returns the 2D click position on the clicked popup. */
+    /** Returns the position on the clicked element, that is close to the click position. */
     public static final MassifObject.Key<String> ELEMENT_CLICK_POS = MassifObject.key("elementClickPos");
     /** Returns the info tag of the clicked element. */
     public static final MassifObject.Key<String> ELEMENT_INFO = MassifObject.key("elementInfo");
@@ -295,6 +299,8 @@ public final class ApiNames {
     public static final MassifObject.Key<String> FEATURE_POS = MassifObject.key("featurePos");
     /** In case of MultiPoint PointGeometry this will return the index of the clicked position */
     public static final MassifObject.Key<Long> FEATURE_POS_INDEX = MassifObject.key("featurePosIndex");
+    /** Returns the list of existing fields of the data source. */
+    public static final MassifObject.Key<String> FIELD_NAMES = MassifObject.key("fieldNames");
     /** Returns the vertial field of view angle. */
     public static final MassifObject.Key<Long> FIELD_OF_VIEW_Y = MassifObject.key("fieldOfViewY");
     /** Returns the string based search expression. If empty, then search expression is not used. */
@@ -341,6 +347,8 @@ public final class ApiNames {
     public static final MassifObject.Key<MassifObject> GEOMETRY_SIMPLIFIER = MassifObject.key("geometrySimplifier");
     /** Returns the geometry tag associated with the instructions. */
     public static final MassifObject.Key<String> GEOMETRY_TAG = MassifObject.key("geometryTag");
+    /** Returns the geometry type of the data source. */
+    public static final MassifObject.Key<String> GEOMETRY_TYPE = MassifObject.key("geometryType");
     /** Returns the ground color. */
     public static final MassifObject.Key<Integer> GROUND_COLOR = MassifObject.key("groundColor");
     /** Returns the height of the bitmap. */
@@ -396,12 +404,16 @@ public final class ApiNames {
     /** Returns whether only short label stubs are generated instead of full contour lines. */
     public static final MassifObject.Key<Boolean> LABEL_STUBS_ENABLED = MassifObject.key("labelStubsEnabled");
     public static final MassifObject.Key<String> LANGUAGE = MassifObject.key("language");
-    /** Returns the layer of the raster tile. */
+    /** Returns the layer of the clicked vector element. */
     public static final MassifObject.Key<MassifObject> LAYER = MassifObject.key("layer");
     /** Returns the current relative layer blending speed. */
     public static final MassifObject.Key<Double> LAYER_BLENDING_SPEED = MassifObject.key("layerBlendingSpeed");
+    /** Returns the total layer count for this database. */
+    public static final MassifObject.Key<Long> LAYER_COUNT = MassifObject.key("layerCount");
     /** Returns the name of the generated vector tile layer. */
     public static final MassifObject.Key<String> LAYER_NAME = MassifObject.key("layerName");
+    /** Returns the names of all layers in the database. */
+    public static final MassifObject.Key<String> LAYER_NAMES = MassifObject.key("layerNames");
     /** Returns the layers to filter while decoding tiles. */
     public static final MassifObject.Key<String> LAYERS = MassifObject.key("layers");
     /** Returns wether layers are processed in reversed order to process labels. */
@@ -464,6 +476,8 @@ public final class ApiNames {
     public static final MassifObject.Key<Long> MAX_AGE = MassifObject.key("maxAge");
     /** Returns true/false based on whether the max-age header check is used. If this is enabled, SDK will automatically refresh the tiles when tiles have expired. */
     public static final MassifObject.Key<Boolean> MAX_AGE_HEADER_CHECK = MassifObject.key("maxAgeHeaderCheck");
+    /** Returns memory usage constraints for the layer. */
+    public static final MassifObject.Key<Long> MAX_MEMORY_SIZE = MassifObject.key("maxMemorySize");
     /** Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" */
     public static final MassifObject.Key<Long> MAX_OVERZOOM_LEVEL = MassifObject.key("maxOverzoomLevel");
     /** Returns the maximum number of results the search service returns. */
@@ -597,6 +611,8 @@ public final class ApiNames {
     public static final MassifObject.Key<MassifObject> RASTER_TILE_EVENT_LISTENER = MassifObject.key("rasterTileEventListener");
     /** Returns raw result */
     public static final MassifObject.Key<String> RAW_RESULT = MassifObject.key("rawResult");
+    /** Returns what caused the movement. */
+    public static final MassifObject.Key<String> REASON = MassifObject.key("reason");
     /** Returns the regular expression used to search all the fields. If empty, then the regular expression is not used. */
     public static final MassifObject.Key<String> REGEX_FILTER = MassifObject.key("regexFilter");
     /** Returns the region name included in the address. */
@@ -954,6 +970,7 @@ public final class ApiNames {
     // --- kinds and spec types --------------------------------------------
 
     public static final String KIND_ASSETS = "assets";
+    public static final String KIND_DATA = "data";
     public static final String KIND_ELEMENT = "element";
     public static final String KIND_ELEMENTSTYLE = "elementstyle";
     public static final String KIND_FEATURE = "feature";
@@ -968,15 +985,18 @@ public final class ApiNames {
     public static final String TYPE_ASSETS_BUNDLE = "bundle";
     public static final String TYPE_ASSETS_DIR = "dir";
     public static final String TYPE_ASSETS_ZIP = "zip";
+    public static final String TYPE_DATA_OGR_DATABASE = "ogr-database";
     public static final String TYPE_ELEMENT_BALLOON = "balloon";
     public static final String TYPE_ELEMENT_MARKER = "marker";
     public static final String TYPE_ELEMENTSTYLE_BALLOON = "balloon";
     public static final String TYPE_ELEMENTSTYLE_MARKER = "marker";
+    public static final String TYPE_ELEMENTSTYLE_STYLE_SELECTOR = "style-selector";
     public static final String TYPE_FEATURE_FEATURE = "feature";
     public static final String TYPE_GEOMETRY_POINT = "point";
     public static final String TYPE_LAYER_COMPOSITE_VECTOR = "composite-vector";
     public static final String TYPE_LAYER_ELEMENTS = "elements";
     public static final String TYPE_LAYER_HILLSHADE = "hillshade";
+    public static final String TYPE_LAYER_NML_LODTREE = "nml-lodtree";
     public static final String TYPE_LAYER_RASTER = "raster";
     public static final String TYPE_LAYER_SOLID = "solid";
     public static final String TYPE_LAYER_VECTOR = "vector";
@@ -990,12 +1010,16 @@ public final class ApiNames {
     public static final String TYPE_SEARCH_VECTORTILE = "vectortile";
     public static final String TYPE_SOURCE_ASSETS = "assets";
     public static final String TYPE_SOURCE_COMBINED = "combined";
+    public static final String TYPE_SOURCE_GDAL = "gdal";
     public static final String TYPE_SOURCE_GEOJSON = "geojson";
     public static final String TYPE_SOURCE_HTTP = "http";
     public static final String TYPE_SOURCE_LOCAL = "local";
     public static final String TYPE_SOURCE_MBTILES = "mbtiles";
     public static final String TYPE_SOURCE_MEMORY_CACHE = "memory-cache";
     public static final String TYPE_SOURCE_MULTI = "multi";
+    public static final String TYPE_SOURCE_NML_LODTREE_OFFLINE = "nml-lodtree-offline";
+    public static final String TYPE_SOURCE_NML_LODTREE_ONLINE = "nml-lodtree-online";
+    public static final String TYPE_SOURCE_OGR = "ogr";
     public static final String TYPE_SOURCE_ORDERED = "ordered";
     public static final String TYPE_SOURCE_PERSISTENT_CACHE = "persistent-cache";
     public static final String TYPE_STYLE_MBVT = "mbvt";

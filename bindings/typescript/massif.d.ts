@@ -70,6 +70,7 @@ export type ClassName =
   | "massif::CustomPopup"
   | "massif::CustomPopupHandler"
   | "massif::CustomRasterTileLayer"
+  | "massif::DataInputStream"
   | "massif::DataSourceListener"
   | "massif::DirAssetPackage"
   | "massif::DouglasPeuckerGeometrySimplifier"
@@ -88,6 +89,7 @@ export type ClassName =
   | "massif::FetchingTasks"
   | "massif::FetchingTileTasks"
   | "massif::FogOptions"
+  | "massif::GDALRasterTileDataSource"
   | "massif::GeoJSONGeometryReader"
   | "massif::GeoJSONGeometryWriter"
   | "massif::GeoJSONVectorTileDataSource"
@@ -126,12 +128,14 @@ export type ClassName =
   | "massif::MapEnvelope"
   | "massif::MapEventListener"
   | "massif::MapInteractionInfo"
+  | "massif::MapMoveInfo"
   | "massif::MapPos"
   | "massif::MapRange"
   | "massif::MapRenderer"
   | "massif::MapRendererListener"
   | "massif::MapTile"
   | "massif::MapTilerOnlineTileDataSource"
+  | "massif::MapTilesFetchTask"
   | "massif::MapVec"
   | "massif::Marker"
   | "massif::MarkerStyle"
@@ -140,6 +144,8 @@ export type ClassName =
   | "massif::MassifInterop"
   | "massif::MemoryCacheTileDataSource"
   | "massif::MergedMBVTTileDataSource"
+  | "massif::MeshFetchTask"
+  | "massif::ModelLODTreeFetchTask"
   | "massif::MultiGeometry"
   | "massif::MultiLineGeometry"
   | "massif::MultiOSMOfflineGeocodingService"
@@ -149,12 +155,20 @@ export type ClassName =
   | "massif::MultiTileDataSource"
   | "massif::MultiValhallaOfflineRoutingService"
   | "massif::NMLModel"
+  | "massif::NMLModelLODTreeClickInfo"
+  | "massif::NMLModelLODTreeDataSource"
+  | "massif::NMLModelLODTreeEventListener"
+  | "massif::NMLModelLODTreeLayer"
   | "massif::NMLModelStyle"
   | "massif::NMLModelStyleBuilder"
+  | "massif::OGRVectorDataBase"
+  | "massif::OGRVectorDataSource"
   | "massif::OSMOfflineGeocodingService"
   | "massif::OSMOfflineReverseGeocodingService"
   | "massif::OSRMOfflineRoutingService"
+  | "massif::OfflineNMLModelLODTreeDataSource"
   | "massif::OnChangeListener"
+  | "massif::OnlineNMLModelLODTreeDataSource"
   | "massif::Options"
   | "massif::OptionsListener"
   | "massif::OrderedTileDataSource"
@@ -215,12 +229,15 @@ export type ClassName =
   | "massif::SolidLayer"
   | "massif::Style"
   | "massif::StyleBuilder"
+  | "massif::StyleSelector"
+  | "massif::StyleSelectorBuilder"
   | "massif::TerrainOptions"
   | "massif::TerrariumElevationDataDecoder"
   | "massif::Text"
   | "massif::TextMargins"
   | "massif::TextStyle"
   | "massif::TextStyleBuilder"
+  | "massif::TextureFetchTask"
   | "massif::TileData"
   | "massif::TileDataSource"
   | "massif::TileDecoderListener"
@@ -409,6 +426,51 @@ export type MBTilesSchemeMBTilesScheme =
   | "MBTILES_SCHEME_TMS"
   /** Alternative to TMS scheme. Vertical coordinate is flipped. */
   | "MBTILES_SCHEME_XYZ"
+  ;
+
+export type MapMoveReasonMapMoveReason =
+  /** The user, directly: a gesture, a mouse wheel, or the inertia that follows one. */
+  | "MAP_MOVE_REASON_GESTURE"
+  /** An animation the SDK is stepping - a flight, or a move given a duration. The call that started it reported the reason it was made with; every frame after that is this one. */
+  | "MAP_MOVE_REASON_ANIMATION"
+  /** The app, through a call that took effect immediately: setFocusPos, setZoom, an option change that moved the camera. */
+  | "MAP_MOVE_REASON_API"
+  ;
+
+export type OGRFieldTypeOGRFieldType =
+  /** Unknown/unsupported field type. */
+  | "OGR_FIELD_TYPE_UNKNOWN"
+  /** Integer field. */
+  | "OGR_FIELD_TYPE_INTEGER"
+  /** Real-valued or floating point field. */
+  | "OGR_FIELD_TYPE_REAL"
+  /** String field. */
+  | "OGR_FIELD_TYPE_STRING"
+  /** Date field. */
+  | "OGR_FIELD_TYPE_DATE"
+  /** Time field. */
+  | "OGR_FIELD_TYPE_TIME"
+  /** Date/Time field. */
+  | "OGR_FIELD_TYPE_DATETIME"
+  ;
+
+export type OGRGeometryTypeOGRGeometryType =
+  /** Unspecified/unsupported geometry type. */
+  | "OGR_GEOMETRY_TYPE_UNKNOWN"
+  /** Point geometry. */
+  | "OGR_GEOMETRY_TYPE_POINT"
+  /** Line geometry. */
+  | "OGR_GEOMETRY_TYPE_LINE"
+  /** Polygon geometry. */
+  | "OGR_GEOMETRY_TYPE_POLYGON"
+  /** Multipoint geometry. */
+  | "OGR_GEOMETRY_TYPE_MULTIPOINT"
+  /** Multiline geometry. */
+  | "OGR_GEOMETRY_TYPE_MULTILINE"
+  /** Multipolygon geometry. */
+  | "OGR_GEOMETRY_TYPE_MULTIPOLYGON"
+  /** Geometry collection. */
+  | "OGR_GEOMETRY_TYPE_GEOMETRYCOLLECTION"
   ;
 
 export type PackageActionPackageAction =
@@ -1915,6 +1977,8 @@ export interface PropertyTypes {
     /** Gets the current zoom level bias for this layer. */
     "zoomLevelBias": number;
   };
+  "massif::DataInputStream": {
+  };
   "massif::DataSourceListener": {
   };
   "massif::DirAssetPackage": {
@@ -2055,6 +2119,23 @@ export interface PropertyTypes {
     "spaceColor": number;
     /** Returns how brightly stars are drawn beyond the atmosphere. */
     "starIntensity": number;
+  };
+  "massif::GDALRasterTileDataSource": {
+    /** (read-only) Returns the extent of the tiles in this data source. The bounds are in coordinate system of the projection of the data source. */
+    readonly "dataExtent": Bounds;
+    /** Gets the current encoding type. */
+    "encoding": string;
+    /** Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" */
+    "maxOverzoomLevel": number;
+    /** (read-only) Returns the maximum zoom level supported by this data source. */
+    readonly "maxZoom": number;
+    /** (read-only) Returns the minimum zoom level supported by this data source. */
+    readonly "minZoom": number;
+    /** (read-only) Returns the projection of this tile source. */
+    readonly "projection": Handle<"massif::Projection">;
+    /** (read-only) Returns the bounds of this projection. */
+    readonly "projection.bounds": Bounds;
+    readonly "projection.name": string;
   };
   "massif::GeoJSONGeometryReader": {
     /** Returns the current target projection. If target projection is set, all geometry coordinates will be converted from WGS84 to target projection coordinate system. */
@@ -2951,6 +3032,10 @@ export interface PropertyTypes {
     /** (read-only) Returns true if the interaction included a zoom action. */
     readonly "zoomAction": boolean;
   };
+  "massif::MapMoveInfo": {
+    /** (read-only) Returns what caused the movement. */
+    readonly "reason": "MAP_MOVE_REASON_GESTURE" | "MAP_MOVE_REASON_ANIMATION" | "MAP_MOVE_REASON_API";
+  };
   "massif::MapPos": {
     /** (read-only) Returns the x coordinate of this map position. */
     readonly "x": number;
@@ -3007,6 +3092,8 @@ export interface PropertyTypes {
     readonly "projection.name": string;
     /** Returns the current timeout value. */
     "timeout": number;
+  };
+  "massif::MapTilesFetchTask": {
   };
   "massif::MapVec": {
     /** (read-only) Calculates the length of this map vector. */
@@ -3288,6 +3375,10 @@ export interface PropertyTypes {
     readonly "projection.bounds": Bounds;
     readonly "projection.name": string;
   };
+  "massif::MeshFetchTask": {
+  };
+  "massif::ModelLODTreeFetchTask": {
+  };
   "massif::MultiGeometry": {
     /** (read-only) Returns the minimal bounds for the geometry. */
     readonly "bounds": Bounds;
@@ -3444,6 +3535,60 @@ export interface PropertyTypes {
     /** Returns the state of the visibility flag of this vector element. */
     "visible": boolean;
   };
+  "massif::NMLModelLODTreeClickInfo": {
+    /** (read-only) Returns the click info. */
+    readonly "clickInfo": ClickInfo;
+    /** (read-only) Returns the click position. */
+    readonly "clickPos": Position;
+    /** (read-only) Returns the click type. */
+    readonly "clickType": "CLICK_TYPE_SINGLE" | "CLICK_TYPE_LONG" | "CLICK_TYPE_DOUBLE" | "CLICK_TYPE_DUAL";
+    /** (read-only) Returns the position on the clicked element, that is close to the click position. */
+    readonly "elementClickPos": Position;
+    /** (read-only) Returns the layer of the clicked vector element. */
+    readonly "layer": Handle<"massif::Layer">;
+    /** Returns the culling delay of the layer in milliseconds. */
+    "layer.cullDelay": number;
+    /** Returns a copy of the layer meta data map. The changes you make to this map are NOT reflected in the actual meta data of the layer. */
+    "layer.metaData": Record<string, Json>;
+    /** Returns the opacity of this layer. */
+    "layer.opacity": number;
+    /** Returns whether this layer goes through the post-process effect. */
+    "layer.postProcessed": boolean;
+    /** Returns the layer task priority of this layer. */
+    "layer.updatePriority": number;
+    /** Returns the visibility of this layer. */
+    "layer.visible": boolean;
+    /** Returns the visible zoom range of this layer. */
+    "layer.visibleZoomRange": [number, number];
+    /** (read-only) Returns the element meta data at the click point. */
+    readonly "metaData": Record<string, string>;
+  };
+  "massif::NMLModelLODTreeDataSource": {
+    /** (read-only) Returns the extent of the models in this data source. The bounds are in coordinate system of the projection of the data source. */
+    readonly "dataExtent": Bounds;
+  };
+  "massif::NMLModelLODTreeEventListener": {
+  };
+  "massif::NMLModelLODTreeLayer": {
+    /** Returns relative model LOD resolution. */
+    "LODResolutionFactor": number;
+    /** Returns the culling delay of the layer in milliseconds. */
+    "cullDelay": number;
+    /** Returns memory usage constraints for the layer. */
+    "maxMemorySize": number;
+    /** Returns a copy of the layer meta data map. The changes you make to this map are NOT reflected in the actual meta data of the layer. */
+    "metaData": Record<string, Json>;
+    /** Returns the opacity of this layer. */
+    "opacity": number;
+    /** Returns whether this layer goes through the post-process effect. */
+    "postProcessed": boolean;
+    /** Returns the layer task priority of this layer. */
+    "updatePriority": number;
+    /** Returns the visibility of this layer. */
+    "visible": boolean;
+    /** Returns the visible zoom range of this layer. */
+    "visibleZoomRange": [number, number];
+  };
   "massif::NMLModelStyle": {
     /** (read-only) Returns the animation style of the billboard. */
     readonly "animationStyle": Handle<"massif::AnimationStyle">;
@@ -3524,6 +3669,31 @@ export interface PropertyTypes {
     /** Returns the vertical offset of the billboard. */
     "verticalOffset": number;
   };
+  "massif::OGRVectorDataBase": {
+    /** (read-only) Returns the total layer count for this database. */
+    readonly "layerCount": number;
+    /** (read-only) Returns the names of all layers in the database. */
+    readonly "layerNames": string[];
+  };
+  "massif::OGRVectorDataSource": {
+    /** Returns the current code page used for decoding DBF text data. The default is ISO-8859-1. */
+    "codePage": string;
+    /** (read-only) Returns the extent of the data of this data source. The bounds are in coordinate system of the projection of the data source. */
+    readonly "dataExtent": Bounds;
+    /** (read-only) Returns the total feature count for this data source. */
+    readonly "featureCount": number;
+    /** (read-only) Returns the list of existing fields of the data source. */
+    readonly "fieldNames": string[];
+    /** Returns the active geometry simplifier of the data source. */
+    "geometrySimplifier": Handle<"massif::GeometrySimplifier">;
+    /** (read-only) Returns the geometry type of the data source. */
+    readonly "geometryType": "OGR_GEOMETRY_TYPE_UNKNOWN" | "OGR_GEOMETRY_TYPE_POINT" | "OGR_GEOMETRY_TYPE_LINE" | "OGR_GEOMETRY_TYPE_POLYGON" | "OGR_GEOMETRY_TYPE_MULTIPOINT" | "OGR_GEOMETRY_TYPE_MULTILINE" | "OGR_GEOMETRY_TYPE_MULTIPOLYGON" | "OGR_GEOMETRY_TYPE_GEOMETRYCOLLECTION";
+    /** (read-only) Returns the projection used by this data source. */
+    readonly "projection": Handle<"massif::Projection">;
+    /** (read-only) Returns the bounds of this projection. */
+    readonly "projection.bounds": Bounds;
+    readonly "projection.name": string;
+  };
   "massif::OSMOfflineGeocodingService": {
     "autocomplete": boolean;
     "language": string;
@@ -3535,7 +3705,15 @@ export interface PropertyTypes {
   "massif::OSRMOfflineRoutingService": {
     "profile": string;
   };
+  "massif::OfflineNMLModelLODTreeDataSource": {
+    /** (read-only) Returns the extent of the models in this data source. The bounds are in coordinate system of the projection of the data source. */
+    readonly "dataExtent": Bounds;
+  };
   "massif::OnChangeListener": {
+  };
+  "massif::OnlineNMLModelLODTreeDataSource": {
+    /** (read-only) Returns the extent of the models in this data source. The bounds are in coordinate system of the projection of the data source. */
+    readonly "dataExtent": Bounds;
   };
   "massif::Options": {
     /** Returns the dots per inch value. */
@@ -4785,6 +4963,10 @@ export interface PropertyTypes {
     /** Returns the color of the vector element. */
     "color": number;
   };
+  "massif::StyleSelector": {
+  };
+  "massif::StyleSelectorBuilder": {
+  };
   "massif::TerrainOptions": {
     /** Returns the terrain background color. */
     "backgroundColor": number;
@@ -5087,6 +5269,8 @@ export interface PropertyTypes {
     "textMargins": Json;
     /** Returns the vertical offset of the billboard. */
     "verticalOffset": number;
+  };
+  "massif::TextureFetchTask": {
   };
   "massif::TileData": {
     /** (read-only) Returns tile data as binary data. */
@@ -5861,6 +6045,14 @@ export interface AssetsSpec_zip {
 
 export type AssetsSpec = AssetsSpec_bundle | AssetsSpec_dir | AssetsSpec_zip;
 
+export interface DataSpec_ogr_database {
+  type: "ogr-database";
+  path?: string;
+  writable?: boolean;
+}
+
+export type DataSpec = DataSpec_ogr_database;
+
 export interface ElementSpec_balloon {
   type: "balloon";
   /** Returns the horizontal anchor point of this popup. */
@@ -6021,7 +6213,11 @@ export interface ElementstyleSpec_marker {
   verticalOffset?: number;
 }
 
-export type ElementstyleSpec = ElementstyleSpec_balloon | ElementstyleSpec_marker;
+export interface ElementstyleSpec_style_selector {
+  type: "style-selector";
+}
+
+export type ElementstyleSpec = ElementstyleSpec_balloon | ElementstyleSpec_marker | ElementstyleSpec_style_selector;
 
 export interface FeatureSpec_feature {
   type: "feature";
@@ -6207,6 +6403,29 @@ export interface LayerSpec_hillshade {
   zoomLevelBias?: number;
 }
 
+export interface LayerSpec_nml_lodtree {
+  type: "nml-lodtree";
+  /** Returns relative model LOD resolution. */
+  LODResolutionFactor?: number;
+  /** Returns the culling delay of the layer in milliseconds. */
+  cullDelay?: number;
+  /** Returns memory usage constraints for the layer. */
+  maxMemorySize?: number;
+  /** Returns a copy of the layer meta data map. The changes you make to this map are NOT reflected in the actual meta data of the layer. */
+  metaData?: Record<string, Json>;
+  /** Returns the opacity of this layer. */
+  opacity?: number;
+  /** Returns whether this layer goes through the post-process effect. */
+  postProcessed?: boolean;
+  source?: SourceSpec | string;
+  /** Returns the layer task priority of this layer. */
+  updatePriority?: number;
+  /** Returns the visibility of this layer. */
+  visible?: boolean;
+  /** Returns the visible zoom range of this layer. */
+  visibleZoomRange?: [number, number];
+}
+
 export interface LayerSpec_raster {
   type: "raster";
   /** Returns the tile data source of the associated UTF grid. By default this is null. */
@@ -6336,7 +6555,7 @@ export interface LayerSpec_vector {
   zoomLevelBias?: number;
 }
 
-export type LayerSpec = LayerSpec_composite_vector | LayerSpec_elements | LayerSpec_hillshade | LayerSpec_raster | LayerSpec_solid | LayerSpec_vector;
+export type LayerSpec = LayerSpec_composite_vector | LayerSpec_elements | LayerSpec_hillshade | LayerSpec_nml_lodtree | LayerSpec_raster | LayerSpec_solid | LayerSpec_vector;
 
 export interface OptionsSpec_fog {
   type: "fog";
@@ -6542,6 +6761,18 @@ export interface SourceSpec_combined {
   zoomLevel?: number;
 }
 
+export interface SourceSpec_gdal {
+  type: "gdal";
+  /** Gets the current encoding type. */
+  encoding?: string;
+  /** Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" */
+  maxOverzoomLevel?: number;
+  maxZoom?: number;
+  minZoom?: number;
+  path?: string;
+  srs?: string;
+}
+
 export interface SourceSpec_geojson {
   type: "geojson";
   /** Returns the default layer buffer in tile pixels. */
@@ -6617,6 +6848,29 @@ export interface SourceSpec_multi {
   maxOverzoomLevel?: number;
 }
 
+export interface SourceSpec_nml_lodtree_offline {
+  type: "nml-lodtree-offline";
+  path?: string;
+}
+
+export interface SourceSpec_nml_lodtree_online {
+  type: "nml-lodtree-online";
+  url?: string;
+}
+
+export interface SourceSpec_ogr {
+  type: "ogr";
+  /** Returns the current code page used for decoding DBF text data. The default is ISO-8859-1. */
+  codePage?: string;
+  database?: DataSpec | string;
+  /** Returns the active geometry simplifier of the data source. */
+  geometrySimplifier?: Handle<"massif::GeometrySimplifier">;
+  layerIndex?: number;
+  path?: string;
+  projection?: ProjectionSpec | string;
+  style?: ElementstyleSpec | string;
+}
+
 export interface SourceSpec_ordered {
   type: "ordered";
   /** Gets the current encoding type. */
@@ -6640,7 +6894,7 @@ export interface SourceSpec_persistent_cache {
   source?: SourceSpec | string;
 }
 
-export type SourceSpec = SourceSpec_assets | SourceSpec_combined | SourceSpec_geojson | SourceSpec_http | SourceSpec_local | SourceSpec_mbtiles | SourceSpec_memory_cache | SourceSpec_multi | SourceSpec_ordered | SourceSpec_persistent_cache;
+export type SourceSpec = SourceSpec_assets | SourceSpec_combined | SourceSpec_gdal | SourceSpec_geojson | SourceSpec_http | SourceSpec_local | SourceSpec_mbtiles | SourceSpec_memory_cache | SourceSpec_multi | SourceSpec_nml_lodtree_offline | SourceSpec_nml_lodtree_online | SourceSpec_ogr | SourceSpec_ordered | SourceSpec_persistent_cache;
 
 export interface StyleSpec_mbvt {
   type: "mbvt";
@@ -6673,13 +6927,11 @@ export interface StylesetSpec_project {
 export type StylesetSpec = StylesetSpec_cartocss | StylesetSpec_project;
 
 /** Built by a hand-written factory, so its keys are not in the schema. */
-export type DataSpec = { type: string; [key: string]: Json | undefined };
-
-/** Built by a hand-written factory, so its keys are not in the schema. */
 export type ProjectionSpec = { type: string; [key: string]: Json | undefined };
 
 export interface SpecOf {
   "assets": AssetsSpec;
+  "data": DataSpec;
   "element": ElementSpec;
   "elementstyle": ElementstyleSpec;
   "feature": FeatureSpec;
@@ -6798,6 +7050,8 @@ export interface MethodTypes {
     clearTileCaches: (all: boolean) => void;
     refresh: () => void;
   };
+  "massif::DataInputStream": {
+  };
   "massif::DataSourceListener": {
   };
   "massif::DirAssetPackage": {
@@ -6836,6 +7090,9 @@ export interface MethodTypes {
   "massif::FetchingTileTasks": {
   };
   "massif::FogOptions": {
+  };
+  "massif::GDALRasterTileDataSource": {
+    loadTile: (tile: Tile) => Handle<"massif::TileData">;
   };
   "massif::GeoJSONGeometryReader": {
   };
@@ -6931,6 +7188,8 @@ export interface MethodTypes {
   };
   "massif::MapInteractionInfo": {
   };
+  "massif::MapMoveInfo": {
+  };
   "massif::MapPos": {
   };
   "massif::MapRange": {
@@ -6943,6 +7202,8 @@ export interface MethodTypes {
   };
   "massif::MapTilerOnlineTileDataSource": {
     loadTile: (tile: Tile) => Handle<"massif::TileData">;
+  };
+  "massif::MapTilesFetchTask": {
   };
   "massif::MapVec": {
   };
@@ -6961,6 +7222,10 @@ export interface MethodTypes {
   };
   "massif::MergedMBVTTileDataSource": {
     loadTile: (tile: Tile) => Handle<"massif::TileData">;
+  };
+  "massif::MeshFetchTask": {
+  };
+  "massif::ModelLODTreeFetchTask": {
   };
   "massif::MultiGeometry": {
   };
@@ -6982,9 +7247,22 @@ export interface MethodTypes {
   };
   "massif::NMLModel": {
   };
+  "massif::NMLModelLODTreeClickInfo": {
+  };
+  "massif::NMLModelLODTreeDataSource": {
+  };
+  "massif::NMLModelLODTreeEventListener": {
+  };
+  "massif::NMLModelLODTreeLayer": {
+    refresh: () => void;
+  };
   "massif::NMLModelStyle": {
   };
   "massif::NMLModelStyleBuilder": {
+  };
+  "massif::OGRVectorDataBase": {
+  };
+  "massif::OGRVectorDataSource": {
   };
   "massif::OSMOfflineGeocodingService": {
   };
@@ -6993,7 +7271,11 @@ export interface MethodTypes {
   "massif::OSRMOfflineRoutingService": {
     calculateRoute: (request: Handle) => Handle<"massif::RoutingResult">;
   };
+  "massif::OfflineNMLModelLODTreeDataSource": {
+  };
   "massif::OnChangeListener": {
+  };
+  "massif::OnlineNMLModelLODTreeDataSource": {
   };
   "massif::Options": {
   };
@@ -7129,6 +7411,10 @@ export interface MethodTypes {
   };
   "massif::StyleBuilder": {
   };
+  "massif::StyleSelector": {
+  };
+  "massif::StyleSelectorBuilder": {
+  };
   "massif::TerrainOptions": {
   };
   "massif::TerrariumElevationDataDecoder": {
@@ -7140,6 +7426,8 @@ export interface MethodTypes {
   "massif::TextStyle": {
   };
   "massif::TextStyleBuilder": {
+  };
+  "massif::TextureFetchTask": {
   };
   "massif::TileData": {
   };
@@ -7334,6 +7622,8 @@ export interface EventTypes {
   };
   "massif::CustomRasterTileLayer": {
   };
+  "massif::DataInputStream": {
+  };
   "massif::DataSourceListener": {
   };
   "massif::DirAssetPackage": {
@@ -7370,6 +7660,8 @@ export interface EventTypes {
   "massif::FetchingTileTasks": {
   };
   "massif::FogOptions": {
+  };
+  "massif::GDALRasterTileDataSource": {
   };
   "massif::GeoJSONGeometryReader": {
   };
@@ -7447,6 +7739,8 @@ export interface EventTypes {
   };
   "massif::MapInteractionInfo": {
   };
+  "massif::MapMoveInfo": {
+  };
   "massif::MapPos": {
   };
   "massif::MapRange": {
@@ -7458,6 +7752,8 @@ export interface EventTypes {
   "massif::MapTile": {
   };
   "massif::MapTilerOnlineTileDataSource": {
+  };
+  "massif::MapTilesFetchTask": {
   };
   "massif::MapVec": {
   };
@@ -7474,6 +7770,10 @@ export interface EventTypes {
   "massif::MemoryCacheTileDataSource": {
   };
   "massif::MergedMBVTTileDataSource": {
+  };
+  "massif::MeshFetchTask": {
+  };
+  "massif::ModelLODTreeFetchTask": {
   };
   "massif::MultiGeometry": {
   };
@@ -7493,9 +7793,21 @@ export interface EventTypes {
   };
   "massif::NMLModel": {
   };
+  "massif::NMLModelLODTreeClickInfo": {
+  };
+  "massif::NMLModelLODTreeDataSource": {
+  };
+  "massif::NMLModelLODTreeEventListener": {
+  };
+  "massif::NMLModelLODTreeLayer": {
+  };
   "massif::NMLModelStyle": {
   };
   "massif::NMLModelStyleBuilder": {
+  };
+  "massif::OGRVectorDataBase": {
+  };
+  "massif::OGRVectorDataSource": {
   };
   "massif::OSMOfflineGeocodingService": {
   };
@@ -7503,14 +7815,18 @@ export interface EventTypes {
   };
   "massif::OSRMOfflineRoutingService": {
   };
+  "massif::OfflineNMLModelLODTreeDataSource": {
+  };
   "massif::OnChangeListener": {
+  };
+  "massif::OnlineNMLModelLODTreeDataSource": {
   };
   "massif::Options": {
     "map.clicked": Handle<"massif::MapClickInfo">;
     "map.idle": null;
     "map.interaction": Handle<"massif::MapInteractionInfo">;
-    "map.moved": null;
-    "map.stable": null;
+    "map.moved": Handle<"massif::MapMoveInfo">;
+    "map.stable": Handle<"massif::MapMoveInfo">;
   };
   "massif::OptionsListener": {
   };
@@ -7630,6 +7946,10 @@ export interface EventTypes {
   };
   "massif::StyleBuilder": {
   };
+  "massif::StyleSelector": {
+  };
+  "massif::StyleSelectorBuilder": {
+  };
   "massif::TerrainOptions": {
   };
   "massif::TerrariumElevationDataDecoder": {
@@ -7641,6 +7961,8 @@ export interface EventTypes {
   "massif::TextStyle": {
   };
   "massif::TextStyleBuilder": {
+  };
+  "massif::TextureFetchTask": {
   };
   "massif::TileData": {
   };

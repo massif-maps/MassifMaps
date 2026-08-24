@@ -19,10 +19,12 @@ set -e
 
 cd "$(dirname "$0")"
 
-# --profile full, not the default 'standard': these artefacts describe the API surface to an
+# --profile full+gdal, not the default 'standard': these artefacts describe the API surface to an
 # INTEGRATION, which links whatever profile it likes. Generated as 'standard' they silently lose
 # routing, valhalla, geocoding and packagemanager, and a binding cannot tell that from "removed".
-python3 gen-api-tables.py --profile full --schema ../docs/api/massif-api.json
+# '+gdal' is there for the same reason - a full_gdal AAR is published, so GDAL/OGR are part of the
+# surface an integration may link, and the API reference has to describe them.
+python3 gen-api-tables.py --profile full+gdal --schema ../docs/api/massif-api.json
 python3 gen-api-typescript.py
 python3 gen-api-constants.py
 

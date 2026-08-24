@@ -20,6 +20,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyDPToPX;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyFOVY;
 /** Returns the current set of HTTP headers used. Initially this set is empty and can be changed with setHTTPHeaders. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyHTTPHeaders;
+/** Returns relative model LOD resolution. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyLODResolutionFactor;
 /** Returns true/false based whether the TMS tiling scheme is used. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyTMSScheme;
 /** Returns the tile data source of the associated UTF grid. By default this is null. */
@@ -169,6 +171,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyClickTypeDetection;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyClickWidth;
 /** Returns the current callback used for creating cluster elements. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyClusterElementBuilder;
+/** Returns the current code page used for decoding DBF text data. The default is ISO-8859-1. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyCodePage;
 /** Returns the color of the object. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyColor;
 /** Returns the color format of this bitmap. */
@@ -203,7 +207,7 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyCurrentAction;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyCustomServiceURL;
 /** Returns tile data as binary data. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyData;
-/** Returns the extent of the tiles in this data source. The bounds are in coordinate system of the projection of the data source. */
+/** Returns the extent of the models in this data source. The bounds are in coordinate system of the projection of the data source. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyDataExtent;
 /** Returns the original data source that the cache uses. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyDataSource;
@@ -253,7 +257,7 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyDrawDistance;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyDuration;
 /** Returns the corresponding matching edge index in the matching result. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyEdgeIndex;
-/** Returns the 2D click position on the clicked popup. */
+/** Returns the position on the clicked element, that is close to the click position. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyElementClickPos;
 /** Returns the info tag of the clicked element. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyElementInfo;
@@ -295,6 +299,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyFeatureLayerName;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyFeaturePos;
 /** In case of MultiPoint PointGeometry this will return the index of the clicked position */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyFeaturePosIndex;
+/** Returns the list of existing fields of the data source. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyFieldNames;
 /** Returns the vertial field of view angle. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyFieldOfViewY;
 /** Returns the string based search expression. If empty, then search expression is not used. */
@@ -341,6 +347,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyGeometryGeoJSON;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyGeometrySimplifier;
 /** Returns the geometry tag associated with the instructions. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyGeometryTag;
+/** Returns the geometry type of the data source. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyGeometryType;
 /** Returns the ground color. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyGroundColor;
 /** Returns the height of the bitmap. */
@@ -396,12 +404,16 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyLabelRenderOrder;
 /** Returns whether only short label stubs are generated instead of full contour lines. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyLabelStubsEnabled;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyLanguage;
-/** Returns the layer of the raster tile. */
+/** Returns the layer of the clicked vector element. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyLayer;
 /** Returns the current relative layer blending speed. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyLayerBlendingSpeed;
+/** Returns the total layer count for this database. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyLayerCount;
 /** Returns the name of the generated vector tile layer. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyLayerName;
+/** Returns the names of all layers in the database. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyLayerNames;
 /** Returns the layers to filter while decoding tiles. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyLayers;
 /** Returns wether layers are processed in reversed order to process labels. */
@@ -464,6 +476,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyMax;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyMaxAge;
 /** Returns true/false based on whether the max-age header check is used. If this is enabled, SDK will automatically refresh the tiles when tiles have expired. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyMaxAgeHeaderCheck;
+/** Returns memory usage constraints for the layer. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyMaxMemorySize;
 /** Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyMaxOverzoomLevel;
 /** Returns the maximum number of results the search service returns. */
@@ -597,6 +611,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyRank;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyRasterTileEventListener;
 /** Returns raw result */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyRawResult;
+/** Returns what caused the movement. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyReason;
 /** Returns the regular expression used to search all the fields. If empty, then the regular expression is not used. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyRegexFilter;
 /** Returns the region name included in the address. */
@@ -957,6 +973,7 @@ FOUNDATION_EXPORT MassifEvent const MassifEventVectortileClicked;
 typedef NSString *MassifKind NS_TYPED_ENUM;
 
 FOUNDATION_EXPORT MassifKind const MassifKindAssets;
+FOUNDATION_EXPORT MassifKind const MassifKindData;
 FOUNDATION_EXPORT MassifKind const MassifKindElement;
 FOUNDATION_EXPORT MassifKind const MassifKindElementstyle;
 FOUNDATION_EXPORT MassifKind const MassifKindFeature;
@@ -975,15 +992,18 @@ typedef NSString *MassifSpecType NS_TYPED_ENUM;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeAssetsBundle;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeAssetsDir;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeAssetsZip;
+FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeDataOgrDatabase;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeElementBalloon;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeElementMarker;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeElementstyleBalloon;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeElementstyleMarker;
+FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeElementstyleStyleSelector;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeFeatureFeature;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeGeometryPoint;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeLayerCompositeVector;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeLayerElements;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeLayerHillshade;
+FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeLayerNmlLodtree;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeLayerRaster;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeLayerSolid;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeLayerVector;
@@ -997,12 +1017,16 @@ FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeSearchRequest;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeSearchVectortile;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeSourceAssets;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeSourceCombined;
+FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeSourceGdal;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeSourceGeojson;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeSourceHttp;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeSourceLocal;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeSourceMbtiles;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeSourceMemoryCache;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeSourceMulti;
+FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeSourceNmlLodtreeOffline;
+FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeSourceNmlLodtreeOnline;
+FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeSourceOgr;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeSourceOrdered;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeSourcePersistentCache;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeStyleMbvt;

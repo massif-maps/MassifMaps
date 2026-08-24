@@ -13,7 +13,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 SCRIPTS="$ROOT/scripts"
 SWIG="${SWIG:-swig}"
-PROFILE="${SWIG_PROFILE:-standard+valhalla+geocoding+routing+packagemanager}"
+PROFILE="${SWIG_PROFILE:-standard+valhalla+geocoding+routing+packagemanager+gdal+nmlmodellodtree}"
 BUILD="$ROOT/build/docs-api/ios"
 PROXY="$BUILD/proxies"
 OUT="$ROOT/website/static/api/ios"

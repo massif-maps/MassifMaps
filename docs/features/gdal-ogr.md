@@ -16,14 +16,14 @@ Two data sources that read GIS files directly, without tiling them first:
 
 :::warning Not in a default build
 GDAL is **not** vendored with the SDK. These classes only exist when the SDK is compiled with the
-`gdal` profile against a GDAL you supply — see [Building with GDAL](#building-with-gdal). A stock
+`gdal` profile against a GDAL you supply — see [Building with GDAL](#building-with-gdal-yourself). A stock
 release does not contain them, and asking for one of the specs below returns an unknown-type error.
 :::
 
 ## The published `full+gdal` build
 
 Releases publish a `full_gdal` variant for **Android only**, built by CI against a GDAL it
-cross-builds per ABI with vcpkg:
+cross-builds per ABI with `scripts/build-gdal-android.py`:
 
 ```gradle
 implementation 'com.github.massif-maps:MassifMaps-android-aar:v<version>:full_gdal'
@@ -35,13 +35,26 @@ build that is published, and the LOD tree has to be in a shipped profile to be r
 Compose `nmlmodellodtree` on its own to get it without GDAL.
 
 There is no iOS `full+gdal`. The xcframework is five slices — device, two simulator architectures
-and two Catalyst ones — and each needs its own cross-built GDAL, which vcpkg does not cover; the
-iOS matrix entry is excluded rather than left to fail.
+and two Catalyst ones — and each needs its own cross-built GDAL. `build-gdal-android.py` has no
+iOS counterpart yet, so the iOS matrix entry is excluded rather than left to fail.
 
 ## Building with GDAL yourself
 
-`libs-external` carries no GDAL, and never has. You build GDAL for each target yourself and point
-CMake at it:
+`libs-external` carries no GDAL, and never has. On Android one script cross-builds GDAL and PROJ
+for every ABI from release tarballs - no submodule, nothing added to `libs-external`:
+
+```sh
+cd scripts
+python3 build-gdal-android.py --ndk "$ANDROID_NDK_HOME"
+python3 build-android.py --profile "standard+gdal" \
+  --cmake-options "CMAKE_PREFIX_PATH=$PWD/../build/gdal/{abi}"
+```
+
+`{abi}` expands per ABI, which is what lets one option point at four different prefixes. GDAL is
+built with its internal libtiff/libgeotiff/libjson and a driver set of GTiff, VRT, MEM, RAW,
+Shapefile, GeoJSON, GPKG and SQLite; everything optional is off.
+
+On any other platform, build GDAL for the target yourself and point CMake at it:
 
 ```sh
 cd scripts
@@ -141,20 +154,30 @@ map.buildLayer('layer.places', {
 `StyleSelector` itself has no spec `type` of its own (`-`), exactly like `MarkerStyle` and
 `BalloonPopupStyle`: its constructor is `%ignore`d and the builder is the only way in.
 
+## `proj.db` — required, and not yet delivered to the device
+
+PROJ 6+ keeps its CRS definitions in a **`proj.db`** SQLite database, and
+`GDALRasterTileDataSource` calls `importFromEPSG(3857)` on every construction. Without the database
+that lookup fails, the source logs one error and reprojects nothing. It is not optional.
+
+`build-gdal-android.py` writes it to `build/gdal/proj.db` (~9 MB, architecture-independent). **What
+is missing is the last step**: the app has to ship it and PROJ has to be told where it is, and the
+SDK does neither today — nothing calls `proj_context_set_search_paths` and nothing sets `PROJ_LIB`.
+Until that exists, a `full_gdal` build reprojects nothing.
+
+Trimming the database to a handful of CRSs is possible and would cut most of the 9 MB, but it has
+not been attempted here.
+
 ## Known gaps
 
-- **No vendored GDAL.** CI cross-builds it with vcpkg per ABI, and anyone building locally supplies
-  their own. Vendoring a minimal GDAL and PROJ into `libs-external` is the obvious follow-up and is
-  a build-system project of its own; the binary-size cost is why it is not done here.
+- **`proj.db` is not wired to the device** — see above. This is the one that blocks the feature
+  actually working.
+- **No vendored GDAL.** `scripts/build-gdal-android.py` cross-builds it per ABI from release
+  tarballs — no submodule, nothing in `libs-external`. Vendoring a minimal GDAL and PROJ as
+  subprojects is the follow-up, and would give iOS its five slices for free.
 - **iOS is not wired** — see above.
-- **No `child()` in the Java facade.** `OGRVectorDataSource` needs a `Projection`, and Java has no
-  way to read an object property *as an object* the way TypeScript's `child()` does. So the Android
-  example demonstrates the GDAL raster only; the OGR vector case is reachable from the object API
-  and from TypeScript, but not from a Java spec.
 - **Untested on device by the fork.** These classes were dead code for the life of the fork —
   `_CARTO_GDAL_SUPPORT` was referenced only inside `#ifdef`s and defined by no build. They compile
   and the facade tables generate, but nothing here has opened a real GeoTIFF.
-- **`all/native/assets/gdal/`** holds ~7 MB of PROJ CSV tables as headers, included by nothing. They
-  belong to a GDAL build that supplies its own `proj.db`, and should probably go.
 - The style-selector expression language is the SDK's own, not OGR SQL, and is documented only by
   `StyleSelectorContext`.

@@ -25,7 +25,7 @@ jobs:
         run: |
           echo 'variants=["android","ios"]' >> $GITHUB_OUTPUT
           # 'full+gdal' is the only profile with a dependency the runner has to cross-build first
-          # (see the Provision GDAL step). getVariant() turns it into 'full_gdal', so it carries no
+          # (see the cross-build step). getVariant() turns it into 'full_gdal', so it carries no
           # '+' into an artifact name, a cache key or a jitpack/Package.swift entry.
           echo 'profiles=["full","standard", "lite", "full+gdal"]' >> $GITHUB_OUTPUT
 
@@ -194,9 +194,9 @@ jobs:
         profile: ${{ fromJson(needs.prepare.outputs.profiles) }}
         exclude:
           # iOS + GDAL is NOT wired yet. The xcframework is five slices (device, simulator on two
-          # architectures, and two Catalyst ones) and each needs its own cross-built GDAL; vcpkg
-          # covers arm64-ios but not the simulator and Catalyst slices, so there is no provisioning
-          # step that would produce a linkable library for all of them. Android is complete.
+          # architectures, and two Catalyst ones) and each needs its own cross-built GDAL. The
+          # Android cross-build script has no iOS counterpart yet, so there is nothing that would
+          # produce a linkable library for all five. Android is complete.
           - variant: ios
             profile: full+gdal
     runs-on: ${{ matrix.variant == 'android' && 'ubuntu-latest' || 'macos-latest' }}
@@ -344,43 +344,36 @@ jobs:
           cd scripts
           python swigpp-java.py --profile ${{ matrix.profile }} --swig ${{ steps.swig.outputs.swig-path }}
 
-      # GDAL is not vendored, so the 'gdal' profile needs one CROSS-BUILT GDAL PER ABI. A host
-      # package (apt libgdal-dev) is x86_64 Linux and cannot be linked into an Android .so, so this
-      # builds GDAL with vcpkg's android triplets instead and lays the installs out by ABI name -
-      # which is what the '{abi}' placeholder in --cmake-options expands to below.
+      # The 'gdal' profile needs one CROSS-BUILT GDAL PER ABI. A host package (apt libgdal-dev)
+      # is x86_64 Linux and cannot be linked into an Android .so, so this cross-builds GDAL and
+      # PROJ with the NDK instead. No submodule and nothing in libs-external - the SDK only ever
+      # sees an install prefix, through find_package(GDAL).
       #
-      # The first run builds GDAL, PROJ and their dependencies four times over and is SLOW (hours).
-      # The vcpkg binary cache below is what makes every run after it cheap; do not remove it.
-      - name: Cache vcpkg binaries
+      # The first run builds all of it four times over and is SLOW. The cache below is what makes
+      # every run after it cheap; do not remove it.
+      - name: Cache cross-built GDAL
         if: matrix.variant == 'android' && matrix.profile == 'full+gdal'
+        id: gdal-cache
         uses: actions/cache@v6
         with:
-          path: ~/.cache/vcpkg/archives
-          key: vcpkg-gdal-android-${{ hashFiles('.github/workflows/build.yml') }}
-          restore-keys: vcpkg-gdal-android-
+          path: build/gdal
+          key: gdal-android-${{ hashFiles('scripts/build-gdal-android.py') }}
 
-      - name: Provision GDAL for every Android ABI
-        if: matrix.variant == 'android' && matrix.profile == 'full+gdal'
-        run: |
-          set -euo pipefail
-          git clone --depth 1 https://github.com/microsoft/vcpkg.git "$RUNNER_TEMP/vcpkg"
-          "$RUNNER_TEMP/vcpkg/bootstrap-vcpkg.sh" -disableMetrics
-          export ANDROID_NDK_HOME="${{ steps.setup-ndk.outputs.ndk-path }}"
-          # vcpkg triplet -> the Android ABI the SDK builds under that name
-          for pair in "arm64-android:arm64-v8a" "arm-neon-android:armeabi-v7a" "x64-android:x86_64" "x86-android:x86"; do
-            triplet="${pair%%:*}"
-            abi="${pair##*:}"
-            "$RUNNER_TEMP/vcpkg/vcpkg" install "gdal:$triplet"
-            mkdir -p "$RUNNER_TEMP/gdal"
-            ln -sfn "$RUNNER_TEMP/vcpkg/installed/$triplet" "$RUNNER_TEMP/gdal/$abi"
-          done
-          echo "GDAL_PREFIX_ROOT=$RUNNER_TEMP/gdal" >> $GITHUB_ENV
+      # PROJ's build RUNS a host sqlite3 to generate proj.db. This one is host tooling, never
+      # linked into the SDK - that is the only thing an apt package is good for here.
+      - name: Install host sqlite3
+        if: matrix.variant == 'android' && matrix.profile == 'full+gdal' && steps.gdal-cache.outputs.cache-hit != 'true'
+        run: sudo apt-get update && sudo apt-get install -y sqlite3
+
+      - name: Cross-build GDAL for every Android ABI
+        if: matrix.variant == 'android' && matrix.profile == 'full+gdal' && steps.gdal-cache.outputs.cache-hit != 'true'
+        run: python scripts/build-gdal-android.py --ndk "${{ steps.setup-ndk.outputs.ndk-path }}"
 
       - name: Build Massif for Android
         if: matrix.variant == 'android'
         run: |
           cd scripts
-          python build-android.py --profile ${{ matrix.profile }} --build-aar --build-version ${{ github.event.inputs.version }} --configuration=Release ${{ matrix.profile == 'full+gdal' && '--cmake-options "CMAKE_PREFIX_PATH=$GDAL_PREFIX_ROOT/{abi}"' || '' }}
+          python build-android.py --profile ${{ matrix.profile }} --build-aar --build-version ${{ github.event.inputs.version }} --configuration=Release ${{ matrix.profile == 'full+gdal' && '--cmake-options "CMAKE_PREFIX_PATH=$GITHUB_WORKSPACE/build/gdal/{abi}"' || '' }}
         env:
           ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
 

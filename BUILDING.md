@@ -72,6 +72,21 @@ following instructions use 'standard' profile as an example.
 In order to make SDK binaries as small as possible, 'lite' profile can be used. This profile disables
 geocoding, routing and offline support, but resulting binaries are about 40% smaller.
 
+The 'gdal' profile is the one profile with an **external dependency you must supply**: GDAL is not
+vendored in `libs-external`. Build GDAL for the target yourself and point CMake at it, and the
+profile links it and compiles `GDALRasterTileDataSource`, `OGRVectorDataSource`, `OGRVectorDataBase`
+and the style selectors:
+
+```sh
+python3 build-android.py --profile "standard+gdal" \
+  --cmake-options "CMAKE_PREFIX_PATH=/path/to/your/gdal/install"
+```
+
+(`--cmake-options` takes `NAME=value` pairs separated by `;` — the script adds the `-D` itself.)
+
+Without the profile those sources are removed from the build entirely, so nothing else pays for
+them. See [GDAL & OGR sources](docs/features/gdal-ogr.md).
+
 ## Building process
 Be patient - full build will take 1+ hours. You can speed it up by limiting architectures and platforms where it is built.
 

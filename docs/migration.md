@@ -160,6 +160,19 @@ banner at the top.
 
 ## Breaking changes after 6.0.0
 
+### GDAL and OGR sources are back, behind a build profile
+
+v6.0.0 removed `GDALRasterTileDataSource`, `OGRVectorDataSource`, `OGRVectorDataBase`,
+`StyleSelector` and `StyleSelectorBuilder`. They are restored, and they now carry facade specs —
+but nothing changes for a stock build, because GDAL still is not vendored.
+
+They exist only when the SDK is compiled with the `gdal` profile against a GDAL you supply. See
+[GDAL & OGR sources](features/gdal-ogr.md) for the build and the API.
+
+The v6.0.0 removal note was accurate about the consequence: no app could bind these classes, since
+`_CARTO_GDAL_SUPPORT` was defined by no profile. That is still true of a default build today — the
+difference is that `standard+gdal` is now a profile that works.
+
 ### Map camera events carry a reason, and onMapStable fires once per movement
 
 `MapEventListener.onMapMoved` and `onMapStable` take a `MapMoveReason` argument, so every app that

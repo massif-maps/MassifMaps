@@ -2359,12 +2359,28 @@ namespace massif::vt {
                 }
             }
             else {
-                renderLayer.blend = std::max(0.0f, renderLayer.blend - delta);
-                refresh = (renderLayer.blend > 0.0f) || refresh;
+                // An inactive layer that a still-fading ACTIVE layer covers is the only thing
+                // painting that area until the replacement is opaque, so it HOLDS instead of
+                // fading. Fading both at once leaves coverage at blend + (1-blend)^2, which is
+                // below 1 for the whole transition - on a raster or hillshade layer that reads as
+                // a blink at every zoom step. The active branch above erases it once the
+                // replacement reaches 1, so nothing here has to fade it out.
+                bool replaced = false;
+                auto it2 = it;
+                for (it2++; it2 != renderTile.renderLayers.end() && it2->first == it->first; it2++) {
+                    if (it2->second.active && it2->second.targetTileId.covers(renderLayer.targetTileId)) {
+                        replaced = true;
+                        break;
+                    }
+                }
+                if (!replaced) {
+                    renderLayer.blend = std::max(0.0f, renderLayer.blend - delta);
+                    refresh = (renderLayer.blend > 0.0f) || refresh;
 
-                // In case of non-active layers, simply remove the layer when it has become invisible.
-                if (renderLayer.blend <= 0.0f) {
-                    it = renderTile.renderLayers.erase(it);
+                    // In case of non-active layers, simply remove the layer when it has become invisible.
+                    if (renderLayer.blend <= 0.0f) {
+                        it = renderTile.renderLayers.erase(it);
+                    }
                 }
             }
         }

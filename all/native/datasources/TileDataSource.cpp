@@ -78,7 +78,7 @@ namespace massif {
         _maxZoom(Const::MAX_SUPPORTED_ZOOM_LEVEL),
         _maxOverzoomLevel(-1),
         _projection(std::make_shared<EPSG3857>()),
-        _encoding(),
+        _metaData(),
         _onChangeListeners(),
         _mutex()
     {
@@ -89,7 +89,7 @@ namespace massif {
         _maxZoom(std::min(static_cast<int>(Const::MAX_SUPPORTED_ZOOM_LEVEL), maxZoom)),
         _maxOverzoomLevel(-1),
         _projection(std::make_shared<EPSG3857>()),
-        _encoding(),
+        _metaData(),
         _onChangeListeners(),
         _mutex()
     {
@@ -116,48 +116,60 @@ namespace massif {
         return tagValues;
     }
     
-    std::map<std::string, std::shared_ptr<Variant>> TileDataSource::buildTileMetadata(const MapTile& tile) const {
-        std::map<std::string, std::shared_ptr<Variant>> metadata;
-        
-        // Add encoding type if set
-        // Note: Mutex lock here is acceptable as decoder type is typically set once during
-        // initialization and rarely changes. If high-frequency changes become common,
-        // consider using std::atomic<std::string> or read-write lock.
+    std::shared_ptr<const std::map<std::string, Variant> > TileDataSource::getMetaDataPtr() const {
+        std::lock_guard<std::mutex> lock(_mutex);
+        return _metaData;
+    }
+
+    std::map<std::string, Variant> TileDataSource::getMetaData() const {
+        std::shared_ptr<const std::map<std::string, Variant> > metaData = getMetaDataPtr();
+        return metaData ? *metaData : std::map<std::string, Variant>();
+    }
+
+    void TileDataSource::setMetaData(const std::map<std::string, Variant>& metaData) {
         {
             std::lock_guard<std::mutex> lock(_mutex);
-            if (!_encoding.empty()) {
-                metadata["encoding"] = std::make_shared<Variant>(_encoding);
-            }
-        }
-        
-        return metadata;
-    }
-    
-    void TileDataSource::applyTileMetadata(const std::shared_ptr<TileData>& tileData, const MapTile& tile) const {
-        if (!tileData) {
-            return;
-        }
-        
-        std::map<std::string, std::shared_ptr<Variant>> metadata = buildTileMetadata(tile);
-        for (const auto& entry : metadata) {
-            tileData->setMetadata(entry.first, entry.second);
-        }
-    }
-    
-    void TileDataSource::setEncoding(const std::string& encoding) {
-        {
-            std::lock_guard<std::mutex> lock(_mutex);
-            _encoding = encoding;
+            _metaData = metaData.empty() ? std::shared_ptr<const std::map<std::string, Variant> >() : std::make_shared<const std::map<std::string, Variant> >(metaData);
         }
         notifyTilesChanged(false);
     }
-    
-    std::string TileDataSource::getEncoding() const {
-        std::lock_guard<std::mutex> lock(_mutex);
-        return _encoding;
+
+    bool TileDataSource::containsMetaDataKey(const std::string& key) const {
+        return getMetaDataElement(key).getType() != VariantType::VARIANT_TYPE_NULL;
     }
 
-    std::string TileDataSource::getMetaData(const std::string& key) const {
+    Variant TileDataSource::getMetaDataElement(const std::string& key) const {
+        std::shared_ptr<const std::map<std::string, Variant> > metaData = getMetaDataPtr();
+        if (metaData) {
+            auto it = metaData->find(key);
+            if (it != metaData->end()) {
+                return it->second;
+            }
+        }
+        // Fall back to the container's own metadata, so a tileset that already declares the key
+        // (an MBTiles metadata table row, say) works without the application repeating it.
+        std::string containerValue = getContainerMetaData(key);
+        return containerValue.empty() ? Variant() : Variant(containerValue);
+    }
+
+    void TileDataSource::setMetaDataElement(const std::string& key, const Variant& element) {
+        {
+            std::lock_guard<std::mutex> lock(_mutex);
+            auto metaData = _metaData ? std::make_shared<std::map<std::string, Variant> >(*_metaData) : std::make_shared<std::map<std::string, Variant> >();
+            (*metaData)[key] = element;
+            _metaData = metaData;
+        }
+        notifyTilesChanged(false);
+    }
+
+    void TileDataSource::applyTileMetaData(const std::shared_ptr<TileData>& tileData) const {
+        if (!tileData) {
+            return;
+        }
+        tileData->setMetaData(getMetaDataPtr());
+    }
+
+    std::string TileDataSource::getContainerMetaData(const std::string& key) const {
         return std::string();
     }
 

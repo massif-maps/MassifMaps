@@ -123,7 +123,7 @@ namespace massif {
         // Check if this is a PMTiles URL
         if (isPMTilesURL(baseURL)) {
             auto tileData = loadPMTile(baseURL, mapTile);
-            applyTileMetadata(tileData, mapTile);
+            applyTileMetaData(tileData);
             return tileData;
         } else {
 
@@ -152,7 +152,7 @@ namespace massif {
                     tileData->setMaxAge(maxAge * 1000);
                 }
             }
-            applyTileMetadata(tileData, mapTile);
+            applyTileMetaData(tileData);
             return tileData;
         }
     }

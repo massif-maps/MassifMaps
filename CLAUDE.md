@@ -188,6 +188,10 @@ adb shell am start -n com.massifmaps.MassifDemo/.BenchActivity --es ui false --e
   `roadLabelOcclusion` (the same for the road-name style layer alone, a re-decode),
   `ui false` (hide the panel), `anim zoom|pan|rotate|zoomseq|approach` (`approach` = dive close,
   pan along the slope, pull back out — the terrain close-approach repro shape).
+- **A second DEM behind an `OrderedTileDataSource`**, for the mixed-encoding case: `demEncoding`,
+  `dem2Url dem2Encoding dem2MaxZoom`. `dem_encoding` is resolved per TILE, so the two need not
+  agree. **Launch-only, and the encoding is stored WITH the cached tile** — a relabelled source
+  keeps rendering with the old one until `pm clear`, which is a real result, not a stale build.
 - **Change a knob on the RUNNING app** (`demo/DemoLive.java`) instead of relaunching — a relaunch
   rebuilds every cache, which is exactly what hides a stale-redraw bug:
   ```sh

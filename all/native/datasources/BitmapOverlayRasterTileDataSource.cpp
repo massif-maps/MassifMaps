@@ -195,7 +195,7 @@ namespace massif {
         // Build bitmap, "compress" (serialize) to internal format
         Bitmap bitmap(data.data(), _tileSize, _tileSize, ColorFormat::COLOR_FORMAT_RGBA, 4 * _tileSize);
         auto tileData = std::make_shared<TileData>(bitmap.compressToInternal());
-        applyTileMetadata(tileData, mapTile);
+        applyTileMetaData(tileData);
         return tileData;
     }
 

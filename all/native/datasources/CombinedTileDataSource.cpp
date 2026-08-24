@@ -1,5 +1,6 @@
 #include "CombinedTileDataSource.h"
 #include "core/MapTile.h"
+#include "core/Variant.h"
 #include "components/Exceptions.h"
 #include "utils/Log.h"
 
@@ -45,9 +46,18 @@ namespace massif {
         return bounds;
     }
 
-    std::string CombinedTileDataSource::getMetaData(const std::string& key) const {
-        std::string value = _dataSource1->getMetaData(key);
-        return value.empty() ? _dataSource2->getMetaData(key) : value;
+    std::shared_ptr<const std::map<std::string, Variant> > CombinedTileDataSource::getMetaDataPtr() const {
+        std::shared_ptr<const std::map<std::string, Variant> > metaData = TileDataSource::getMetaDataPtr();
+        if (metaData) {
+            return metaData;
+        }
+        metaData = _dataSource1->getMetaDataPtr();
+        return metaData ? metaData : _dataSource2->getMetaDataPtr();
+    }
+
+    std::string CombinedTileDataSource::getContainerMetaData(const std::string& key) const {
+        std::string value = _dataSource1->getContainerMetaData(key);
+        return value.empty() ? _dataSource2->getContainerMetaData(key) : value;
     }
     
     std::shared_ptr<TileData> CombinedTileDataSource::loadTile(const MapTile& mapTile) {

@@ -51,6 +51,8 @@ void testCAbi();
 void testCAbiEvents();
 void testAdopt();
 void testBundleAssets();
+void testTileMetaData();
+void testElevationDecoderResolve();
 
 namespace {
 
@@ -392,6 +394,8 @@ int main() {
     testCAbiEvents();
     testAdopt();
     testBundleAssets();
+    testTileMetaData();
+    testElevationDecoderResolve();
 
     std::printf("\n%d failure(s)\n", failures);
     return failures ? 1 : 0;

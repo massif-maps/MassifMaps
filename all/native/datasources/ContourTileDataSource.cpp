@@ -512,31 +512,12 @@ namespace massif {
         return _dataSource->getDataExtent();
     }
 
-    std::string ContourTileDataSource::getEncoding() const {
-        return _dataSource->getEncoding();
-    }
-
-    std::string ContourTileDataSource::getMetaData(const std::string& key) const {
-        return _dataSource->getMetaData(key);
+    std::string ContourTileDataSource::getContainerMetaData(const std::string& key) const {
+        return _dataSource->getContainerMetaData(key);
     }
 
     std::shared_ptr<ElevationDecoder> ContourTileDataSource::resolveDecoder(const std::shared_ptr<TileData>& tileData) const {
-        if (_elevationDecoder) {
-            return _elevationDecoder;
-        }
-        std::string encoding = _dataSource->getEncoding();
-        if (tileData) {
-            std::shared_ptr<Variant> encVariant = tileData->getMetadata("encoding");
-            if (encVariant && encVariant->getType() == VariantType::VARIANT_TYPE_STRING) {
-                encoding = encVariant->getString();
-            }
-        }
-        if (encoding == "mapbox") {
-            static std::shared_ptr<ElevationDecoder> mapboxDecoder = std::make_shared<MapBoxElevationDataDecoder>();
-            return mapboxDecoder;
-        }
-        static std::shared_ptr<ElevationDecoder> terrariumDecoder = std::make_shared<TerrariumElevationDataDecoder>();
-        return terrariumDecoder;
+        return ElevationDecoder::Resolve(tileData, _dataSource.get(), _elevationDecoder);
     }
 
     const std::size_t ContourTileDataSource::MAX_CACHED_BITMAPS = 16;
@@ -648,7 +629,7 @@ namespace massif {
             tileBuilder.buildTile(zoom, mapTile.getX(), mapTile.getY(), encodedTile);
             auto data = std::make_shared<BinaryData>(reinterpret_cast<const unsigned char*>(encodedTile.data().data()), encodedTile.data().size());
             auto tileData = std::make_shared<TileData>(data);
-            applyTileMetadata(tileData, mapTile);
+            applyTileMetaData(tileData);
             return tileData;
         }
         catch (const std::exception& ex) {
@@ -772,7 +753,7 @@ namespace massif {
                 emptyBuilder.buildTile(zoom, mapTile.getX(), mapTile.getY(), encodedTile);
                 auto data = std::make_shared<BinaryData>(reinterpret_cast<const unsigned char*>(encodedTile.data().data()), encodedTile.data().size());
                 auto tileData = std::make_shared<TileData>(data);
-                applyTileMetadata(tileData, mapTile);
+                applyTileMetaData(tileData);
                 return tileData;
             }
             catch (const std::exception& ex) {
@@ -1043,7 +1024,7 @@ namespace massif {
             tileBuilder.buildTile(zoom, mapTile.getX(), mapTile.getY(), encodedTile);
             auto data = std::make_shared<BinaryData>(reinterpret_cast<const unsigned char*>(encodedTile.data().data()), encodedTile.data().size());
             auto tileData = std::make_shared<TileData>(data);
-            applyTileMetadata(tileData, mapTile);
+            applyTileMetaData(tileData);
             return tileData;
         }
         catch (const std::exception& ex) {

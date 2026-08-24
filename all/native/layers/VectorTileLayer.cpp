@@ -83,9 +83,15 @@ namespace massif {
         // setTileFormat is the app's decision and stands.
         if (auto mbDecoder = std::dynamic_pointer_cast<MBVectorTileDecoder>(decoder)) {
             if (mbDecoder->getTileFormat() == TileFormat::TILE_FORMAT_AUTO && dataSource) {
-                TileFormat::TileFormat format = MBVectorTileDecoder::parseTileFormat(dataSource->getMetaData("encoding"));
+                // getMetaDataElement, not getContainerMetaData: an app can declare the format on
+                // the source itself for a container that does not carry one.
+                auto readDeclaration = [&dataSource](const std::string& key) {
+                    Variant value = dataSource->getMetaDataElement(key);
+                    return value.getType() == VariantType::VARIANT_TYPE_STRING ? value.getString() : std::string();
+                };
+                TileFormat::TileFormat format = MBVectorTileDecoder::parseTileFormat(readDeclaration("encoding"));
                 if (format == TileFormat::TILE_FORMAT_AUTO) {
-                    format = MBVectorTileDecoder::parseTileFormat(dataSource->getMetaData("format"));
+                    format = MBVectorTileDecoder::parseTileFormat(readDeclaration("format"));
                 }
                 if (format != TileFormat::TILE_FORMAT_AUTO) {
                     mbDecoder->setTileFormat(format);

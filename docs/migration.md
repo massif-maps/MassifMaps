@@ -469,6 +469,37 @@ SWIG-free" a checkable property rather than an intention — see
 [api-facade.md](internals/api-facade.md). The typed sugar (`Massif`, `MassifMap`, `MassifLayer`,
 `MSFMassif…`) is unaffected; it already calls this for you.
 
+### `TileDataSource.encoding` became a general meta data map
+
+`setEncoding` / `getEncoding` were a DEM-only setting on the base class of **every** data source,
+and the name already collided: `getMetaData("encoding")` meant the *tile format* (`mvt` / `mlt`) on
+the same object. They are replaced by the meta data bag `VectorElement` and `Layer` already use, and
+the DEM key is renamed:
+
+| Was | Now |
+|---|---|
+| `source.setEncoding("terrarium")` | `source.setMetaDataElement("dem_encoding", Variant("terrarium"))` |
+| `source.getEncoding()` | `source.getMetaDataElement("dem_encoding")` (a `Variant`) |
+| `source.getMetaData(key)` → `String` | `source.getContainerMetaData(key)` → `String` |
+| — | `source.getMetaData()` / `setMetaData(map)` — the whole map, `String` → `Variant` |
+| `MBTilesTileDataSource.getMetaData()` | `getContainerMetaData()` |
+
+`getMetaDataElement` falls back to `getContainerMetaData`, so a tileset that declares `dem_encoding`
+in its own MBTiles/PMTiles metadata needs no application code at all.
+
+**The decoder is now resolved per TILE**, from the map that tile carries. Two DEM sources of
+different encodings can therefore sit behind one `OrderedTileDataSource` — see
+[3D terrain](/docs/features/3d-terrain). Two consequences worth knowing:
+
+- `ContourTileDataSource`'s default changed from Terrarium to **MapBox**, which is what the terrain,
+  the hillshade and the composite layer already defaulted to. A Terrarium source that relied on the
+  contour default must now declare `dem_encoding`.
+- The `PersistentCacheTileDataSource` schema gained a `metaData` column. An existing cache database
+  is dropped and rebuilt on first open, as with any past schema change.
+
+`TileData::getMetadata` / `setMetadata` were renamed to `getMetaDataElement` / `setMetaDataElement`
+too; they were never exposed to bindings, so only C++ embedders see it.
+
 ## Deliberately NOT renamed
 
 These name data or upstream work, not this SDK:

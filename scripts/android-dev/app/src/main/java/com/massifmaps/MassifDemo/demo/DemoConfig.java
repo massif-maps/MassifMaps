@@ -143,6 +143,16 @@ public final class DemoConfig {
     public static String DEM_ENCODING = "terrarium";
     public static String DEM_CACHE_DB = "mapterhorn.db";
 
+    /** A SECOND elevation source, of the other encoding, behind an OrderedTileDataSource: the DEM
+     *  above answers first and this one fills what it does not cover. The encoding is resolved per
+     *  TILE, so the two need not agree. Off by default - '--es dem2Url <url> --es dem2Encoding mapbox'.
+     *  Launch-only, and changing an encoding needs 'pm clear': cached tiles carry the old one. */
+    public static String DEM2_URL = "";
+    public static int DEM2_MIN_ZOOM = 1;
+    public static int DEM2_MAX_ZOOM = 15;
+    public static String DEM2_ENCODING = "mapbox";
+    public static String DEM2_CACHE_DB = "dem2.db";
+
     /** Pre-baked contour vector tiles (tippecanoe, layer 'contour', fields 'ele' + 'div').
      *  Zooms 11..14 only: the tileset has no data below 11 and 14 is overzoomed above. */
     public static String CONTOUR_TILES_URL = "https://tiles.akylas.fr/data/contours/{z}/{x}/{y}.pbf";
@@ -1075,6 +1085,10 @@ public final class DemoConfig {
         VECTOR_MAX_ZOOM = DemoCfg.cfgInt("vectorMaxZoom", VECTOR_MAX_ZOOM);
         DEM_URL = DemoCfg.cfgStr("demUrl", DEM_URL);
         DEM_MAX_ZOOM = DemoCfg.cfgInt("demMaxZoom", DEM_MAX_ZOOM);
+        DEM_ENCODING = DemoCfg.cfgStr("demEncoding", DEM_ENCODING);
+        DEM2_URL = DemoCfg.cfgStr("dem2Url", DEM2_URL);
+        DEM2_MAX_ZOOM = DemoCfg.cfgInt("dem2MaxZoom", DEM2_MAX_ZOOM);
+        DEM2_ENCODING = DemoCfg.cfgStr("dem2Encoding", DEM2_ENCODING);
         RASTER_URL = DemoCfg.cfgStr("rasterUrl", RASTER_URL);
         CONTOUR_TILES_URL = DemoCfg.cfgStr("contourTilesUrl", CONTOUR_TILES_URL);
         CONTOUR_TILES_MAX_ZOOM = DemoCfg.cfgInt("contourTilesMaxZoom", CONTOUR_TILES_MAX_ZOOM);

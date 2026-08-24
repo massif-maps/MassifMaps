@@ -166,7 +166,7 @@ namespace massif {
             Log::Infof("MapTilerOnlineTileDataSource::loadOnlineTile: Replacing tile %d/%d/%d with parent", mapTile.getZoom(), mapTile.getX(), mapTile.getY());
             tileData->setReplaceWithParent(true);
         }
-        applyTileMetadata(tileData, mapTile);
+        applyTileMetaData(tileData);
         return tileData;
     }
 

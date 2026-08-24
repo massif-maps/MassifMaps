@@ -80,9 +80,9 @@ namespace massif {
          * Possible parameters can be found in MBTiles specification.
          * @return Map containing meta data information (parameter names mapped to parameter values).
          */
-        std::map<std::string, std::string> getMetaData() const;
+        std::map<std::string, std::string> getContainerMetaData() const;
         
-        virtual std::string getMetaData(const std::string & key) const;
+        virtual std::string getContainerMetaData(const std::string & key) const;
 
         virtual int getMinZoom() const;
 

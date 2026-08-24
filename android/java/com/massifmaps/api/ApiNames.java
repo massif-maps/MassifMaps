@@ -265,8 +265,6 @@ public final class ApiNames {
     public static final MassifObject.Key<Boolean> ELEVATION_PREFETCH_ENABLED = MassifObject.key("elevationPrefetchEnabled");
     /** Returns whether the fog is drawn at all. */
     public static final MassifObject.Key<Boolean> ENABLED = MassifObject.key("enabled");
-    /** Gets the current encoding type. */
-    public static final MassifObject.Key<String> ENCODING = MassifObject.key("encoding");
     /** Returns the number of threads used by the envelope task pool. */
     public static final MassifObject.Key<Long> ENVELOPE_THREAD_POOL_SIZE = MassifObject.key("envelopeThreadPoolSize");
     /** Returns the normal vector tile should be exagerated based on the zoom level. */
@@ -944,6 +942,7 @@ public final class ApiNames {
     public static final String METHOD_GET_ELEVATIONS = "getElevations";
     public static final String METHOD_GET_FEATURE = "getFeature";
     public static final String METHOD_GET_INSTRUCTION = "getInstruction";
+    public static final String METHOD_GET_META_DATA_ELEMENT = "getMetaDataElement";
     public static final String METHOD_GET_POINTS = "getPoints";
     public static final String METHOD_GET_STYLE_PARAMETER = "getStyleParameter";
     public static final String METHOD_INSERT = "insert";
@@ -959,6 +958,7 @@ public final class ApiNames {
     public static final String METHOD_SET_CONFIGURATION_PARAMETER = "setConfigurationParameter";
     public static final String METHOD_SET_CUSTOM_PARAMETER = "setCustomParameter";
     public static final String METHOD_SET_LAYER_GEO_JSON = "setLayerGeoJSON";
+    public static final String METHOD_SET_META_DATA_ELEMENT = "setMetaDataElement";
     public static final String METHOD_SET_STYLE_PARAMETER = "setStyleParameter";
     public static final String METHOD_SET_STYLE_PARAMETERS = "setStyleParameters";
     public static final String METHOD_START_DOWNLOAD_AREA = "startDownloadArea";

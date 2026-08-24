@@ -24,7 +24,7 @@ namespace massif {
             return std::shared_ptr<TileData>();
         }
         auto tileData = std::make_shared<TileData>(data);
-        applyTileMetadata(tileData, tile);
+        applyTileMetaData(tileData);
         return tileData;
     }
     

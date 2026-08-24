@@ -7754,7 +7754,20 @@
           "doc": "Returns true if the tile should be replaced with parent tile."
         }
       ],
-      "methods": [],
+      "methods": [
+        {
+          "cppClass": "massif::TileData",
+          "name": "getMetaDataElement",
+          "args": [
+            {
+              "name": "key",
+              "type": "string"
+            }
+          ],
+          "returns": "json",
+          "returnClass": null
+        }
+      ],
       "events": []
     },
     "massif::TileDataSource": {
@@ -7768,15 +7781,6 @@
           "position": true,
           "cppType": "massif::MapBounds",
           "doc": "Returns the extent of the tiles in this data source. The bounds are in coordinate system of the projection of the data source."
-        },
-        {
-          "name": "encoding",
-          "type": "STRING",
-          "readOnly": false,
-          "static": false,
-          "position": false,
-          "cppType": "std::string",
-          "doc": "Gets the current encoding type."
         },
         {
           "name": "maxOverzoomLevel",
@@ -7795,6 +7799,15 @@
           "position": false,
           "cppType": "int",
           "doc": "Returns the maximum zoom level supported by this data source."
+        },
+        {
+          "name": "metaData",
+          "type": "STRUCT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "std::map<std::string, massif::Variant>",
+          "doc": "Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - \"dem_encoding\" (\"mapbox\" or \"terrarium\") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's."
         },
         {
           "name": "minZoom",
@@ -7819,6 +7832,18 @@
       "methods": [
         {
           "cppClass": "massif::TileDataSource",
+          "name": "getMetaDataElement",
+          "args": [
+            {
+              "name": "key",
+              "type": "string"
+            }
+          ],
+          "returns": "json",
+          "returnClass": null
+        },
+        {
+          "cppClass": "massif::TileDataSource",
           "name": "loadTile",
           "args": [
             {
@@ -7828,6 +7853,22 @@
           ],
           "returns": "object",
           "returnClass": "massif::TileData"
+        },
+        {
+          "cppClass": "massif::TileDataSource",
+          "name": "setMetaDataElement",
+          "args": [
+            {
+              "name": "key",
+              "type": "string"
+            },
+            {
+              "name": "value",
+              "type": "json"
+            }
+          ],
+          "returns": "void",
+          "returnClass": null
         }
       ],
       "events": []

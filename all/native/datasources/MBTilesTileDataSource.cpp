@@ -51,10 +51,10 @@ namespace massif {
     MBTilesTileDataSource::~MBTilesTileDataSource() {
     }
     
-    std::map<std::string, std::string> MBTilesTileDataSource::getMetaData() const {
+    std::map<std::string, std::string> MBTilesTileDataSource::getContainerMetaData() const {
         std::lock_guard<std::recursive_mutex> lock(_mutex);
         if (!_database) {
-            Log::Error("MBTilesTileDataSource::getMetaData: Not connected to the database");
+            Log::Error("MBTilesTileDataSource::getContainerMetaData: Not connected to the database");
             return std::map<std::string, std::string>();
         }
         
@@ -69,7 +69,7 @@ namespace massif {
             return metaData;
         }
         catch (const std::exception& ex) {
-            Log::Errorf("MBTilesTileDataSource::getMetaData: Failed to query metadata from the database: %s", ex.what());
+            Log::Errorf("MBTilesTileDataSource::getContainerMetaData: Failed to query metadata from the database: %s", ex.what());
             return std::map<std::string, std::string>();
         }
     }
@@ -137,7 +137,7 @@ namespace massif {
                 return NULL;
             }
 
-            _cachedTileMask = getMetaData("tilemask");
+            _cachedTileMask = getContainerMetaData("tilemask");
         }
         return *_cachedTileMask;
     }
@@ -182,7 +182,7 @@ namespace massif {
             query.finish();
     
             auto tileData = std::make_shared<TileData>(data);
-            applyTileMetadata(tileData, mapTile);
+            applyTileMetaData(tileData);
             return tileData;
         }
         catch (const std::exception& ex) {
@@ -310,7 +310,7 @@ namespace massif {
         return true;
     }
 
-    std::string MBTilesTileDataSource::getMetaData(const std::string &key) const {
+    std::string MBTilesTileDataSource::getContainerMetaData(const std::string &key) const {
         // As a first step, try to use metadata
         std::string result;
         try {
@@ -322,7 +322,7 @@ namespace massif {
             query.finish();
         }
         catch (const std::exception& ex) {
-            Log::Errorf("MBTilesTileDataSource::getMetaData: Exception while reading %s metadata: %s", key, ex.what());
+            Log::Errorf("MBTilesTileDataSource::getContainerMetaData: Exception while reading %s metadata: %s", key, ex.what());
         }
         return result;
     }

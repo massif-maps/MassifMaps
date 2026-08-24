@@ -265,8 +265,6 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyElevationEncodingEnabled;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyElevationPrefetchEnabled;
 /** Returns whether the fog is drawn at all. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyEnabled;
-/** Gets the current encoding type. */
-FOUNDATION_EXPORT MassifProperty const MassifPropertyEncoding;
 /** Returns the number of threads used by the envelope task pool. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyEnvelopeThreadPoolSize;
 /** Returns the normal vector tile should be exagerated based on the zoom level. */
@@ -945,6 +943,7 @@ FOUNDATION_EXPORT MassifMethod const MassifMethodGetElevation;
 FOUNDATION_EXPORT MassifMethod const MassifMethodGetElevations;
 FOUNDATION_EXPORT MassifMethod const MassifMethodGetFeature;
 FOUNDATION_EXPORT MassifMethod const MassifMethodGetInstruction;
+FOUNDATION_EXPORT MassifMethod const MassifMethodGetMetaDataElement;
 FOUNDATION_EXPORT MassifMethod const MassifMethodGetPoints;
 FOUNDATION_EXPORT MassifMethod const MassifMethodGetStyleParameter;
 FOUNDATION_EXPORT MassifMethod const MassifMethodInsert;
@@ -960,6 +959,7 @@ FOUNDATION_EXPORT MassifMethod const MassifMethodSet;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetConfigurationParameter;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetCustomParameter;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetLayerGeoJSON;
+FOUNDATION_EXPORT MassifMethod const MassifMethodSetMetaDataElement;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetStyleParameter;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetStyleParameters;
 FOUNDATION_EXPORT MassifMethod const MassifMethodStartDownloadArea;

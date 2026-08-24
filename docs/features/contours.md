@@ -42,12 +42,12 @@ import com.massifmaps.layers.VectorTileLayer
 import com.massifmaps.vectortiles.MBVectorTileDecoder
 import com.massifmaps.styles.CompiledStyleSet
 
-// DEM source (Terrarium encoding assumed if not set).
+// DEM source (MapBox encoding assumed if not set).
 val dem = HTTPTileDataSource(0, 12, "https://your.tiles/dem/{z}/{x}/{y}.png").apply {
-    setMetaData("encoding", "terrarium")
+    setMetaDataElement("dem_encoding", Variant("terrarium"))
 }
 
-// Contour source. Decoder inferred from the "encoding" metadata.
+// Contour source. The decoder is resolved per tile from "dem_encoding".
 val contourSource = ContourTileDataSource(dem).apply {
     baseInterval = 100          // metres between contour lines
     resolution = 2              // DEM subsample factor (higher = coarser/faster)

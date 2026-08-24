@@ -104,6 +104,21 @@ shader (`res/scenes/elevation.yaml`). No re-encode, no border machinery — but 
 edge filtering, which is a seam feature this fork wants. The port that keeps both is to upload the
 grid's own samples and patch borders as small `glTexSubImage2D` strips.
 
+### The decoder is per tile, not per source
+
+`ElevationManager::loadTileGrid` resolves the decoder from the TILE's `dem_encoding` meta data
+(`ElevationDecoder::Resolve`, see [02-tiles.md](02-tiles.md)), falling back to the source's and then
+to MapBox. Everything downstream already carried the coefficients per grid — `ElevationTileGrid`
+keeps `_coeffs`, hands them to `sampleHeight` and to the GPU through `getDecode()` — so a mixed
+`OrderedTileDataSource` of a MapBox DEM and a Terrarium one needs nothing else.
+
+One place had to learn about it: the border backfill copies a same-level neighbour's texels
+**bit-exactly**, which is only valid when the neighbour encodes heights the same way. `sameLevel`
+compares `_coeffs` for that reason; a differently encoded neighbour falls to the resample path,
+which goes through metres and re-encodes. Without the check the seam between two coverages reads
+whole kilometres of bogus elevation, and only there — which is exactly the kind of bug that gets
+blamed on the tileset.
+
 ## Surfaces
 
 Two mechanisms exist; **regular-grid mode is what runs**, and it is no longer optional — the

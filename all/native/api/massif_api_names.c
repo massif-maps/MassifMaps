@@ -133,7 +133,6 @@ static const char* const kNames[] = {
     "elevationEncodingEnabled",
     "elevationPrefetchEnabled",
     "enabled",
-    "encoding",
     "envelopeThreadPoolSize",
     "exagerateHeightScaleEnabled",
     "exaggeration",

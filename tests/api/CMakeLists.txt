@@ -123,6 +123,12 @@ set(TEST_SDK_SOURCES
   "${SDK_BASE_DIR}/all/native/utils/GeomUtils.cpp"
   "${SDK_BASE_DIR}/all/native/utils/GeneralUtils.cpp"
   "${SDK_BASE_DIR}/all/native/utils/Const.cpp"
+  # The tile meta data bag and the decoder it selects. TileDataSource pulls in nothing but the
+  # projection and Variant, both already here; the two decoders are constants and a vtable.
+  "${SDK_BASE_DIR}/all/native/datasources/TileDataSource.cpp"
+  "${SDK_BASE_DIR}/all/native/rastertiles/ElevationDecoder.cpp"
+  "${SDK_BASE_DIR}/all/native/rastertiles/MapBoxElevationDataDecoder.cpp"
+  "${SDK_BASE_DIR}/all/native/rastertiles/TerrariumElevationDataDecoder.cpp"
 )
 
 set(TEST_TABLE_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated/api")
@@ -152,6 +158,7 @@ add_executable(api_tests
   AdoptTest.cpp
   BundleAssetsTest.cpp
   CAbiTest.cpp
+  MetaDataTest.cpp
   "${TEST_TABLE_DIR}/PropertyTable.inc"
   "${TEST_TABLE_DIR}/MethodDecls.inc"
   ${TEST_SDK_SOURCES})

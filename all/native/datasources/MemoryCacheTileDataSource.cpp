@@ -25,7 +25,7 @@ namespace massif {
         std::shared_ptr<TileData> tileData;
         if (_cache.read(mapTile.getTileId(), tileData)) {
             if (tileData->getMaxAge() != 0) {
-                applyCacheTileMetadata(tileData, mapTile);
+                applyCacheTileMetaData(tileData);
                 return tileData;
             }
             _cache.remove(mapTile.getTileId());
@@ -33,7 +33,7 @@ namespace massif {
 
         lock.unlock();
         tileData = _dataSource->loadTile(mapTile);
-        applyCacheTileMetadata(tileData, mapTile); // null-safe; the wrapped source may not attach any metadata itself
+        applyCacheTileMetaData(tileData); // null-safe; the wrapped source may not attach any metadata itself
         lock.lock();
 
         if (tileData) {

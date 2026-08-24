@@ -79,7 +79,7 @@ namespace massif {
     PMTilesTileDataSource::~PMTilesTileDataSource() {
     }
     
-    std::string PMTilesTileDataSource::getMetaData() const {
+    std::string PMTilesTileDataSource::getContainerMetaData() const {
         std::lock_guard<std::recursive_mutex> lock(_mutex);
         
         if (!_cachedMetadata) {
@@ -100,7 +100,7 @@ namespace massif {
                 _cachedMetadata = std::string(decompressed.begin(), decompressed.end());
             }
             catch (const std::exception& ex) {
-                Log::Errorf("PMTilesTileDataSource::getMetaData: Failed to read metadata: %s", ex.what());
+                Log::Errorf("PMTilesTileDataSource::getContainerMetaData: Failed to read metadata: %s", ex.what());
                 _cachedMetadata = "";
             }
         }
@@ -108,8 +108,8 @@ namespace massif {
         return *_cachedMetadata;
     }
 
-    std::string PMTilesTileDataSource::getMetaData(const std::string& key) const {
-        std::string metadata = getMetaData();
+    std::string PMTilesTileDataSource::getContainerMetaData(const std::string& key) const {
+        std::string metadata = getContainerMetaData();
         if (metadata.empty()) {
             return "";
         }
@@ -218,7 +218,7 @@ namespace massif {
             
             auto data = std::make_shared<BinaryData>(tileBytes.data(), tileBytes.size());
             auto tileData = std::make_shared<TileData>(data);
-            applyTileMetadata(tileData, mapTile);
+            applyTileMetaData(tileData);
             return tileData;
         }
         catch (const std::exception& ex) {

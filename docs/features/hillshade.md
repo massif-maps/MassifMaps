@@ -25,7 +25,7 @@ import com.massifmaps.layers.HillshadeMethod
 import com.massifmaps.datasources.HTTPTileDataSource
 
 val dem = HTTPTileDataSource(0, 12, "https://your.tiles/dem/{z}/{x}/{y}.png").apply {
-    setMetaData("encoding", "terrarium")   // or "mapbox"
+    setMetaDataElement("dem_encoding", Variant("terrarium"))   // or "mapbox"
 }
 
 val hillshade = HillshadeRasterTileLayer(dem).apply {

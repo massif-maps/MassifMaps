@@ -202,8 +202,8 @@ malformed spec cannot quietly write a default over a real value. Verified on a d
 
 `CODEC_TYPES` in the generator says which types get an accessor. It now also carries `MapTile`
 (`[x, y, zoom]` — the tile a click or a feature came from), `vector<string>` (a search's layer
-filter) and the two string-keyed maps (`httpHeaders`, `Layer.metaData`; a `Variant` map keeps each
-value's type, so `{"level":3}` reads back as a number, not `"3"`).
+filter) and the string-keyed maps (`httpHeaders`, `Layer.metaData`, `TileDataSource.metaData`; a
+`Variant` map keeps each value's type, so `{"level":3}` reads back as a number, not `"3"`).
 
 Two deliberate exclusions, both because a property is the wrong channel for the size:
 
@@ -1216,6 +1216,8 @@ Chosen by counting, not by guessing: the NativeScript app this API is measured a
 | method | on | notes |
 |---|---|---|
 | `loadTile([x,y,z])` | `TileDataSource` | binary result, blocking |
+| `getMetaDataElement(key)`, `setMetaDataElement(key, value)` | `TileDataSource` | one entry, without a read-modify-write of the whole `metaData` property |
+| `getMetaDataElement(key)` | `TileData` | which source answered for THIS tile — `dem_encoding` behind a wrapper source |
 | `getElevation([x,y])`, `getElevations([[x,y],…])` | `HillshadeRasterTileLayer` | scalar, flat array |
 | `setStyleParameter(name, value)`, `getStyleParameter(name)` | `MBVectorTileDecoder` | a live theme switch; the *list* is the `styleParameters` property |
 | `clearTileCaches(all)` | `TileLayer` | |
@@ -1781,7 +1783,9 @@ is the one piece of new API this path would want.
   plumbing, reachable only through `CullState`) and two package-manager vectors.
 - **`ElevationDecoder` is not a spec kind, and does not need to be.** `HillshadeRasterTileLayer`'s
   one-argument constructor leaves it null, and the layer reads the encoding from the tile's own
-  `encoding` metadata, falling back to MapBox. Verified through the facade against an `.etiles` DEM:
+  `dem_encoding` meta data, falling back to MapBox. Set it with
+  `setMetaDataElement("dem_encoding", …)` on the source, or leave it to the container's own
+  metadata. Verified through the facade against an `.etiles` DEM:
   the layer builds from `{"type":"hillshade","source":"dem"}` and all 19 of its knobs are settable.
 - **`FeatureCollectionSearchService` has no factory.** Its constructor takes a `FeatureCollection`,
   which today only exists as a call result, and `childOf` resolves by kind and id. `findFeatures` is

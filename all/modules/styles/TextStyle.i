@@ -24,6 +24,8 @@
 
 !polymorphic_shared_ptr(massif::TextStyle, styles.TextStyle)
 
+!spec(massif::TextStyle, elementstyle, -)
+
 %attributeval(massif::TextStyle, massif::Color, FontColor, getFontColor)
 %attributestring(massif::TextStyle, std::string, FontName, getFontName)
 %attributestring(massif::TextStyle, std::string, TextField, getTextField)

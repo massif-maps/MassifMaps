@@ -79,7 +79,16 @@ namespace massif {
         const MapBounds& getBounds() const {
             return _bounds;
         }
-    
+
+        /**
+         * Returns the geometry as a GeoJSON string, in its own coordinates.
+         *
+         * Here rather than only on Feature because serialising a shape otherwise means constructing
+         * a GeoJSONGeometryWriter, which no string-based binding can do.
+         * @return The geometry as GeoJSON.
+         */
+        std::string getGeoJSON() const;
+
     protected:
         Geometry() : _bounds() { }
     

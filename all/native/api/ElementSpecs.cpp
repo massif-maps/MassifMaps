@@ -11,7 +11,11 @@
 #include "api/Spec.h"
 #include "api/SpecBuilders.h"
 #include "styles/BalloonPopupStyleBuilder.h"
+#include "styles/LineStyleBuilder.h"
 #include "styles/MarkerStyleBuilder.h"
+#include "styles/PointStyleBuilder.h"
+#include "styles/PolygonStyleBuilder.h"
+#include "styles/TextStyleBuilder.h"
 #include "utils/Log.h"
 
 #include <map>
@@ -51,7 +55,7 @@ namespace massif { namespace api {
             if (result != RESULT_OK) {
                 return result;
             }
-            applySpecProperties(builder, spec, consumed);
+            applySpecProperties(context, builder, spec, consumed);
 
             auto it = finalisers().find(builder.cppClass);
             if (it == finalisers().end()) {
@@ -75,6 +79,14 @@ namespace massif { namespace api {
             "massif::MarkerStyleBuilder", "massif::MarkerStyle");
         registerFinaliser<BalloonPopupStyleBuilder, BalloonPopupStyle>(
             "massif::BalloonPopupStyleBuilder", "massif::BalloonPopupStyle");
+        registerFinaliser<PointStyleBuilder, PointStyle>(
+            "massif::PointStyleBuilder", "massif::PointStyle");
+        registerFinaliser<LineStyleBuilder, LineStyle>(
+            "massif::LineStyleBuilder", "massif::LineStyle");
+        registerFinaliser<PolygonStyleBuilder, PolygonStyle>(
+            "massif::PolygonStyleBuilder", "massif::PolygonStyle");
+        registerFinaliser<TextStyleBuilder, TextStyle>(
+            "massif::TextStyleBuilder", "massif::TextStyle");
         Spec::registerFactory("elementstyle", &buildElementStyle);
         Spec::registerFactory("element", &buildElement);
     }

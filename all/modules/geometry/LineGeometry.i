@@ -20,6 +20,7 @@
 !polymorphic_shared_ptr(massif::LineGeometry, geometry.LineGeometry)
 !value_type(std::vector<std::shared_ptr<massif::LineGeometry> >, geometry.LineGeometryVector)
 
+!spec(massif::LineGeometry, geometry, line)
 %attributeval(massif::LineGeometry, std::vector<massif::MapPos>, Poses, getPoses)
 
 %include "geometry/LineGeometry.h"

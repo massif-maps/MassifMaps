@@ -21,6 +21,7 @@
 
 !polymorphic_shared_ptr(massif::Point, vectorelements.Point)
 
+!spec(massif::Point, element, point, alias(position, pos))
 %csmethodmodifiers massif::Point::Geometry "public new";
 !attributestring_polymorphic(massif::Point, geometry.PointGeometry, Geometry, getGeometry, setGeometry)
 %attributestring(massif::Point, std::shared_ptr<massif::PointStyle>, Style, getStyle, setStyle)

@@ -18,6 +18,8 @@
 
 !polymorphic_shared_ptr(massif::PolygonStyleBuilder, styles.PolygonStyleBuilder)
 
+!spec(massif::PolygonStyleBuilder, elementstyle, polygon)
+
 %attributestring(massif::PolygonStyleBuilder, std::shared_ptr<massif::LineStyle>, LineStyle, getLineStyle, setLineStyle)
 
 %include "styles/PolygonStyleBuilder.h"

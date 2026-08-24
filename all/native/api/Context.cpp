@@ -1094,6 +1094,37 @@ namespace massif { namespace api {
         return RESULT_OK;
     }
 
+    Handle Context::handleOf(const void* obj) const {
+        if (!obj) {
+            return NULL_HANDLE;
+        }
+        std::lock_guard<std::mutex> lock(_mutex);
+        for (std::size_t index = 0; index < _slots.size(); index++) {
+            const Slot& slot = _slots[index];
+            if (slot.used && slot.obj.get() == obj) {
+                return static_cast<Handle>(index) | (slot.generation << INDEX_BITS);
+            }
+        }
+        return NULL_HANDLE;
+    }
+
+    Handle Context::getObjectProperty(Handle handle, const std::string& path) {
+        if (path.empty()) {
+            return NULL_HANDLE;
+        }
+        ObjectRef child;
+        // resolveTarget already walks to a child and reads it; registering the result is what
+        // turns "read through it" into "hold it".
+        if (resolveTarget(handle, path, child) != RESULT_OK || !child.obj) {
+            return NULL_HANDLE;
+        }
+        Handle result = NULL_HANDLE;
+        if (registerResult("result", child.obj, child.cppClass, result) != RESULT_OK) {
+            return NULL_HANDLE;
+        }
+        return result;
+    }
+
     Result Context::setObjectProperty(Handle handle, const std::string& path, Handle value) {
         ObjectRef target;
         ObjectRef assigned;

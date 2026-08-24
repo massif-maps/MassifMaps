@@ -119,6 +119,16 @@ namespace massif {
         Handle findObject(const std::string& kind, const std::string& id) const;
 
         /**
+         * The handle of an object the context already holds, found by its address.
+         *
+         * A method thunk is given the object, not the handle, and a method that EMITS needs the
+         * handle to emit on. A linear scan of the slots, which is fine for the handful of methods
+         * that need it - starting a download, not reading a property.
+         * @return NULL_HANDLE when the object is not registered.
+         */
+        Handle handleOf(const void* obj) const;
+
+        /**
          * Returns the object behind a handle, or null when the handle is stale.
          */
         std::shared_ptr<void> getObject(Handle handle) const;
@@ -199,6 +209,17 @@ namespace massif {
          *         wrong kind of object.
          */
         Result setObjectProperty(Handle handle, const std::string& path, Handle value);
+
+        /**
+         * The object an object property points at, as a handle the CALLER OWNS.
+         *
+         * The read counterpart of setObjectProperty. Traversal already resolves a child to read
+         * THROUGH it; this is what lets an app hold one - which is the only way to share a layer's
+         * data source with an overlay rather than building it twice.
+         *
+         * @return NULL_HANDLE when the path does not resolve, is not an object property, or is null.
+         */
+        Handle getObjectProperty(Handle handle, const std::string& path);
 
         /**
          * Runs a method on an object.

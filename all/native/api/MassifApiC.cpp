@@ -185,6 +185,11 @@ int mm_set_object(mm_ctx ctx, mm_handle handle, const char* path, mm_handle valu
     return context->setObjectProperty(handle, text(path), value);
 }
 
+mm_handle mm_get_object(mm_ctx ctx, mm_handle handle, const char* path) {
+    Context* context = resolve(ctx);
+    return context ? context->getObjectProperty(handle, text(path)) : 0;
+}
+
 int mm_get_bool(mm_ctx ctx, mm_handle handle, const char* path, int* value) {
     PropertyValue read_;
     int result = read(ctx, handle, path, nullptr, read_);

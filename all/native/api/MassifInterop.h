@@ -115,10 +115,20 @@ namespace massif {
         static std::shared_ptr<TileDataSource> getSource(const std::string& objectId);
 
         /**
+         * The same by HANDLE, for an object that was never given an id - a child read off a
+         * property, a call result. An app handing the base map's tiles to its own native code has
+         * one of those and no id to name it by.
+         */
+        static std::shared_ptr<TileDataSource> getSourceByHandle(int handle);
+
+        /**
          * Returns a layer built earlier, so it can be added to a map with the object API. Layers
          * are not attached by create - that needs the map verbs.
          */
         static std::shared_ptr<Layer> getLayer(const std::string& objectId);
+
+        /** @copydoc MassifInterop::getSourceByHandle */
+        static std::shared_ptr<Layer> getLayerByHandle(int handle);
 
         /**
          * Builds the listener that turns a map's callbacks into facade events on a target.

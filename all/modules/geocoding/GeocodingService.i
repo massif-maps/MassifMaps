@@ -25,6 +25,10 @@
 
 !polymorphic_shared_ptr(massif::GeocodingService, geocoding.GeocodingService)
 
+// One string for the whole answer: a FeatureCollection whose features carry the result's
+// "address" and "rank". A binding walking the results paid a crossing per feature to rebuild it.
+!method(massif::GeocodingService, calculateAddresses, arg(request, handle), returns(json))
+
 %attribute(massif::GeocodingService, bool, Autocomplete, isAutocomplete, setAutocomplete)
 %attributestring(massif::GeocodingService, std::string, Language, getLanguage, setLanguage)
 %attribute(massif::GeocodingService, int, MaxResults, getMaxResults, setMaxResults)

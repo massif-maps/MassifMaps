@@ -1089,7 +1089,12 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
     }
     
     bool TileRenderer::refreshTiles(const std::vector<std::shared_ptr<TileDrawData> >& drawDatas) {
+        // Timed separately from the work: this runs inside the layer draw pass, and the tile
+        // threads hold this mutex while storing decoded tiles - which is exactly when the set
+        // changes. A long wait here and a short one inside setVisibleTiles mean different fixes.
+        VT_STAT_CLOCK(refreshClock);
         std::lock_guard<std::mutex> lock(_mutex);
+        VT_STAT_SPLIT(refreshTilesLockNs, refreshClock);
 
         std::map<vt::TileId, std::shared_ptr<const vt::Tile> > tiles;
         for (const std::shared_ptr<TileDrawData>& drawData : drawDatas) {
@@ -1111,6 +1116,9 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
         }
         _tiles = std::move(tiles);
         _horizontalLayerOffset = 0;
+        // The changed path only - the unchanged one returns above and costs nothing. INCLUDES
+        // setVisibleTiles, whose own splits break it down further.
+        VT_STAT_SPLIT(refreshTilesNs, refreshClock);
         return true;
     }
 

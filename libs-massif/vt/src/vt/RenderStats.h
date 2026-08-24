@@ -43,6 +43,28 @@ namespace massif::vt {
         static inline std::atomic<long long> labelsLive{0};            // labels alive after the last buildLabelMaps (gauge, not a delta)
         static inline std::atomic<long long> labelElevationReanchors{0}; // updateElevation calls that actually moved a label
 
+        // buildLabelMaps, by phase and by why a label could not be reused. Declared here for the
+        // SDK's printout; the emit sites inside buildLabelMaps are still to be written, so these
+        // read zero until they are.
+        static inline std::atomic<long long> labelSignatureNs{0};    // pass 1, the geometry signatures
+        static inline std::atomic<long long> labelMergeNs{0};        // building the list and merging geometries
+        static inline std::atomic<long long> labelStampNs{0};        // stamping signatures on the fresh labels
+        static inline std::atomic<long long> labelReleaseNs{0};      // releasing the old labels
+        static inline std::atomic<long long> labelCarryNs{0};        // carrying placements over to the new labels
+        static inline std::atomic<long long> labelListNs{0};         // flattening into the visible label list
+        static inline std::atomic<long long> labelConstructNs{0};    // time in the Label constructor alone
+        static inline std::atomic<long long> labelMergeIterations{0}; // trip count of the merge loop
+        static inline std::atomic<long long> labelMissNew{0};        // no previous label with that global id
+        static inline std::atomic<long long> labelMissCount{0};      // a different number of contributions
+        static inline std::atomic<long long> labelMissHash{0};       // same count, different geometry
+        // A label fed by more than one tile - an unclipped label is one, and its signature covers
+        // every contributing tile, so any of them changing costs the reuse.
+        static inline std::atomic<long long> labelMissSpanning{0};
+        static inline std::atomic<long long> labelHitSpanning{0};
+        // Old labels dropped by the release pass, split by whether they were ever shown.
+        static inline std::atomic<long long> labelRetiredSeen{0};
+        static inline std::atomic<long long> labelRetiredUnseen{0};
+
         // Placement churn. Split by what the label was before the re-anchor: only the
         // 'visible' ones can be seen moving, the rest is wasted work on labels the user
         // can not see.
@@ -110,6 +132,16 @@ namespace massif::vt {
         // GL thread blocked on the renderer mutex - the label placement worker holds it for
         // the whole of buildLabelMaps.
         static inline std::atomic<long long> mutexWaitNs{0};
+        // The tile-set change path, which runs inside the layer draw pass. The first two are the
+        // SDK's TileRenderer::refreshTiles, the rest are the phases of setVisibleTiles it calls -
+        // so refreshTilesNs contains all of them.
+        static inline std::atomic<long long> refreshTilesLockNs{0};    // waiting for the tile mutex the tile threads hold
+        static inline std::atomic<long long> refreshTilesNs{0};        // the changed path only
+        static inline std::atomic<long long> setVisibleTilesLockNs{0}; // waiting for the renderer mutex
+        static inline std::atomic<long long> terrainCoarseningNs{0};
+        static inline std::atomic<long long> tileSurfacesNs{0};
+        static inline std::atomic<long long> labelMapsNs{0};
+        static inline std::atomic<long long> renderTilesNs{0};
         // Terrain drape bakes: how many a frame gets through, how many were waiting, and what
         // one costs. This is what decides how fast 3D content appears.
         static inline std::atomic<long long> drapeBakes{0};

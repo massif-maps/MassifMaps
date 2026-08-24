@@ -1085,14 +1085,20 @@ namespace massif::vt {
         }
 
         // All other operations must be synchronized
+        VT_STAT_CLOCK(visibleClock);
         std::lock_guard<std::mutex> lock(_mutex);
+        VT_STAT_SPLIT(setVisibleTilesLockNs, visibleClock);
 
         VT_STAT_INC(visibleTileSetChanges);
         _visibleTileIds = tileIds;
         buildTerrainEdgeCoarsening();
+        VT_STAT_SPLIT(terrainCoarseningNs, visibleClock);
         buildTileSurfaces(tileIds);
+        VT_STAT_SPLIT(tileSurfacesNs, visibleClock);
         buildLabelMaps(labelTiles);
+        VT_STAT_SPLIT(labelMapsNs, visibleClock);
         buildRenderTiles(tiles);
+        VT_STAT_SPLIT(renderTilesNs, visibleClock);
     }
 
     const std::set<TileId>& GLTileRenderer::terrainSurfaceTileIds() const {

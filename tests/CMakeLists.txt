@@ -8,3 +8,4 @@ set(SDK_BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/..")
 
 enable_testing()
 add_subdirectory(api)
+add_subdirectory(generator)

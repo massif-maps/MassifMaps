@@ -331,6 +331,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyFreeRoamMode;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyFreeRoamMoveSpeed;
 /** Returns the green component of this map color. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyG;
+/** Returns the geometry as a GeoJSON string, in its own coordinates. Here rather than only on Feature because serialising a shape otherwise means constructing a GeoJSONGeometryWriter, which no string-based binding can do. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyGeoJSON;
 /** Returns the geometry object that defines the location of this billboard. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyGeometry;
 /** Returns the number of geometry objects in this multi geometry container. */
@@ -379,6 +381,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyInstruction;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyInstructionCount;
 /** Returns the turn-by-turn instruction list. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyInstructions;
+/** Returns every turn-by-turn instruction as one JSON array. A maneuver is nine scalars, and reading them one instruction at a time costs a call per field: a mountain route has hundreds. The keys are the property names (`action`, `pointIndex`, `streetName`, `instruction`, `turnAngle`, `azimuth`, `distance`, `time`), and `action` is the enum's constant name. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyInstructionsJSON;
 /** Returns the interpolated color at the click position. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyInterpolatedColor;
 /** Returns the state of the kinetic panning flag. */
@@ -597,6 +601,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyRank;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyRasterTileEventListener;
 /** Returns raw result */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyRawResult;
+/** Returns what caused the movement. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyReason;
 /** Returns the regular expression used to search all the fields. If empty, then the regular expression is not used. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyRegexFilter;
 /** Returns the region name included in the address. */
@@ -636,6 +642,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyRotation;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyRotationAngle;
 /** Returns the rotation axis of this model. If rotation angle is 0, then the axis is irrelevant. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyRotationAxis;
+/** Returns the state of rotation gestures. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyRotationGestures;
 /** Returns the scale of this model. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyScale;
 /** Returns the state of the scale with DPI flag. */
@@ -791,10 +799,14 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyTextMargins;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyTextOcclusionOpacity;
 /** Returns the tile texture cache capacity. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyTextureCacheCapacity;
+/** Returns the tile the event concerns, which is only meaningful for a failure. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyTile;
 /** Returns the current relative tile blending speed. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyTileBlendingSpeed;
 /** Returns the tile cache capacity. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyTileCacheCapacity;
+/** Returns the number of tiles the download will fetch. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyTileCount;
 /** Returns the tile decoder assigned to this layer. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyTileDecoder;
 /** Returns the tile size used for drawing map tiles. */
@@ -917,6 +929,9 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyZoomRange;
 typedef NSString *MassifMethod NS_TYPED_ENUM;
 
 FOUNDATION_EXPORT MassifMethod const MassifMethodAdd;
+FOUNDATION_EXPORT MassifMethod const MassifMethodAddFeature;
+FOUNDATION_EXPORT MassifMethod const MassifMethodAddLocale;
+FOUNDATION_EXPORT MassifMethod const MassifMethodCalculateAddresses;
 FOUNDATION_EXPORT MassifMethod const MassifMethodCalculateRoute;
 FOUNDATION_EXPORT MassifMethod const MassifMethodClear;
 FOUNDATION_EXPORT MassifMethod const MassifMethodClearTileCaches;
@@ -925,26 +940,40 @@ FOUNDATION_EXPORT MassifMethod const MassifMethodDeleteLayer;
 FOUNDATION_EXPORT MassifMethod const MassifMethodFindFeatures;
 FOUNDATION_EXPORT MassifMethod const MassifMethodFitBounds;
 FOUNDATION_EXPORT MassifMethod const MassifMethodFlyTo;
+FOUNDATION_EXPORT MassifMethod const MassifMethodGet;
 FOUNDATION_EXPORT MassifMethod const MassifMethodGetElevation;
 FOUNDATION_EXPORT MassifMethod const MassifMethodGetElevations;
 FOUNDATION_EXPORT MassifMethod const MassifMethodGetFeature;
 FOUNDATION_EXPORT MassifMethod const MassifMethodGetInstruction;
 FOUNDATION_EXPORT MassifMethod const MassifMethodGetPoints;
 FOUNDATION_EXPORT MassifMethod const MassifMethodGetStyleParameter;
+FOUNDATION_EXPORT MassifMethod const MassifMethodInsert;
 FOUNDATION_EXPORT MassifMethod const MassifMethodLoadTile;
 FOUNDATION_EXPORT MassifMethod const MassifMethodMapToScreen;
+FOUNDATION_EXPORT MassifMethod const MassifMethodMatchRoute;
 FOUNDATION_EXPORT MassifMethod const MassifMethodMoveTo;
 FOUNDATION_EXPORT MassifMethod const MassifMethodRefresh;
 FOUNDATION_EXPORT MassifMethod const MassifMethodRemove;
+FOUNDATION_EXPORT MassifMethod const MassifMethodRemoveFeature;
 FOUNDATION_EXPORT MassifMethod const MassifMethodScreenToMap;
+FOUNDATION_EXPORT MassifMethod const MassifMethodSet;
+FOUNDATION_EXPORT MassifMethod const MassifMethodSetConfigurationParameter;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetCustomParameter;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetLayerGeoJSON;
 FOUNDATION_EXPORT MassifMethod const MassifMethodSetStyleParameter;
+FOUNDATION_EXPORT MassifMethod const MassifMethodSetStyleParameters;
+FOUNDATION_EXPORT MassifMethod const MassifMethodStartDownloadArea;
+FOUNDATION_EXPORT MassifMethod const MassifMethodStopAllDownloads;
 FOUNDATION_EXPORT MassifMethod const MassifMethodStopFlight;
+FOUNDATION_EXPORT MassifMethod const MassifMethodUpdateFeature;
 
 /** An event name. */
 typedef NSString *MassifEvent NS_TYPED_ENUM;
 
+FOUNDATION_EXPORT MassifEvent const MassifEventDownloadCompleted;
+FOUNDATION_EXPORT MassifEvent const MassifEventDownloadFailed;
+FOUNDATION_EXPORT MassifEvent const MassifEventDownloadProgress;
+FOUNDATION_EXPORT MassifEvent const MassifEventDownloadStarted;
 FOUNDATION_EXPORT MassifEvent const MassifEventMapClicked;
 FOUNDATION_EXPORT MassifEvent const MassifEventMapIdle;
 FOUNDATION_EXPORT MassifEvent const MassifEventMapInteraction;
@@ -960,6 +989,7 @@ FOUNDATION_EXPORT MassifKind const MassifKindAssets;
 FOUNDATION_EXPORT MassifKind const MassifKindElement;
 FOUNDATION_EXPORT MassifKind const MassifKindElementstyle;
 FOUNDATION_EXPORT MassifKind const MassifKindFeature;
+FOUNDATION_EXPORT MassifKind const MassifKindGeocoding;
 FOUNDATION_EXPORT MassifKind const MassifKindGeometry;
 FOUNDATION_EXPORT MassifKind const MassifKindLayer;
 FOUNDATION_EXPORT MassifKind const MassifKindOptions;
@@ -976,11 +1006,23 @@ FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeAssetsBundle;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeAssetsDir;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeAssetsZip;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeElementBalloon;
+FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeElementLine;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeElementMarker;
+FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeElementPoint;
+FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeElementPolygon;
+FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeElementText;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeElementstyleBalloon;
+FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeElementstyleLine;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeElementstyleMarker;
+FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeElementstylePoint;
+FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeElementstylePolygon;
+FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeElementstyleText;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeFeatureFeature;
+FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeGeocodingMultiOsmOffline;
+FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeGeocodingMultiOsmOfflineReverse;
+FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeGeometryLine;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeGeometryPoint;
+FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeGeometryPolygon;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeLayerCompositeVector;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeLayerElements;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeLayerHillshade;
@@ -991,6 +1033,7 @@ FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeOptionsFog;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeOptionsLight;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeOptionsSky;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeOptionsTerrain;
+FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeRoutingMultiValhallaOffline;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeRoutingValhallaOffline;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeRoutingValhallaOnline;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeSearchRequest;
@@ -1000,8 +1043,10 @@ FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeSourceCombined;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeSourceGeojson;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeSourceHttp;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeSourceLocal;
+FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeSourceMaptiler;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeSourceMbtiles;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeSourceMemoryCache;
+FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeSourceMergedMbvt;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeSourceMulti;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeSourceOrdered;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeSourcePersistentCache;

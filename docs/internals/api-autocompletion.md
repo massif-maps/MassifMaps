@@ -10,14 +10,18 @@ sidebar_position: 9
 See [`api-facade.md`](api-facade.md) for the API itself.
 
 ```sh
-# the schema, from the .i files and the C++ headers
-python3 scripts/gen-api-tables.py --schema docs/api/massif-api.json
-# and the four bindings' completion artefacts
-python3 scripts/gen-api-typescript.py
-python3 scripts/gen-api-constants.py
+# the schema, from the .i files and the C++ headers. --profile full or the modules behind a
+# define (valhalla, geocoding, routing, packagemanager, wkbt) silently drop out of the schema.
+# Run it from scripts/ - --sourcedir defaults to ../all/modules.
+cd scripts && python3 gen-api-tables.py --profile full --schema ../docs/api/massif-api.json
+# and the four bindings' completion artefacts, which read the schema just written
+python3 gen-api-typescript.py
+python3 gen-api-constants.py
 ```
 
-The schema is committed, so a pull request shows the API surface change as a diff.
+The schema is committed, so a pull request shows the API surface change as a diff. So are the four
+artefacts — run all three commands or they drift, and a stale one completes to a name that is no
+longer there.
 
 ## The problem
 

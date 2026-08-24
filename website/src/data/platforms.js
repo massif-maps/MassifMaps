@@ -40,7 +40,8 @@ export const Platforms = [
     languages: ['TypeScript', 'JavaScript', 'Svelte', 'Vue'],
     distribution: 'npm — `@nativescript-community/ui-massifmaps`',
     minVersion: 'Wraps the Android + iOS builds',
-    docs: '/docs/getting-started/installation',
+    // The plugin lives in its own repo — our installation page is native-only.
+    docs: 'https://github.com/nativescript-community/ui-massifmaps',
     note: 'A binding over the published Android and iOS artifacts, built on the facade API. Typed events and layer specs from TypeScript.',
   },
   {

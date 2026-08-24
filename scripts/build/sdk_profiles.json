@@ -22,6 +22,10 @@
 	"wkbt": {
 		"defines": "_MASSIF_WKBT_SUPPORT"
 	},
+	"gdal": {
+		"cmake-includes": "GDAL",
+		"defines": "_MASSIF_GDAL_SUPPORT"
+	},
 	"packagemanager": {
 		"cmake-includes": "PACKAGEMANAGER",
 		"cmake-excludes": "VALHALLA",

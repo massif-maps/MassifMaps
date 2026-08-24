@@ -250,4 +250,12 @@
 #import "MSFWKBGeometryWriter.h"
 #endif
 
+#ifdef _MASSIF_GDAL_SUPPORT
+#import "MSFOGRVectorDataBase.h"
+#import "MSFOGRVectorDataSource.h"
+#import "MSFGDALRasterTileDataSource.h"
+#import "MSFStyleSelector.h"
+#import "MSFStyleSelectorBuilder.h"
+#endif
+
 #endif

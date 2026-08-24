@@ -237,6 +237,25 @@ if(WIN32 OR APPLE OR ANDROID)
   list(REMOVE_ITEM SDK_SRC_FILES "${SDK_SRC_DIR}/network/HTTPClientPionImpl.cpp")
 endif()
 
+# GDAL is NOT vendored - libs-external has never carried it. The integrator builds GDAL for the
+# target and CMake finds it; -DINCLUDE_GDAL=ON is what asks for it. Without it the sources are
+# removed from the glob rather than left to compile empty behind their #ifdef, which is what made
+# them dead weight in every ABI before they were dropped.
+if(INCLUDE_GDAL)
+  find_package(GDAL REQUIRED)
+else()
+  foreach(SDK_GDAL_SRC IN ITEMS
+      "datasources/GDALRasterTileDataSource"
+      "datasources/OGRVectorDataBase"
+      "datasources/OGRVectorDataSource"
+      "styles/StyleSelector"
+      "styles/StyleSelectorBuilder"
+      "styles/StyleSelectorContext"
+      "styles/StyleSelectorRule")
+    list(REMOVE_ITEM SDK_SRC_FILES "${SDK_SRC_DIR}/${SDK_GDAL_SRC}.cpp" "${SDK_SRC_DIR}/${SDK_GDAL_SRC}.h")
+  endforeach()
+endif(INCLUDE_GDAL)
+
 if(ANDROID)
   file(GLOB SDK_ANDROID_SRC_FILES CONFIGURE_DEPENDS
     "${WRAPPER_DIR}/*.cpp"
@@ -389,3 +408,7 @@ elseif(WIN32)
   target_link_libraries(massif "${SDK_EXTERNAL_LIBS_DIR}/angle-uwp/${SDK_WINPHONE_ARCH}/libEGL.dll.lib" "${SDK_EXTERNAL_LIBS_DIR}/angle-uwp/${SDK_WINPHONE_ARCH}/libGLESv2.dll.lib")
   target_link_libraries(massif "msxml6.lib" "d3d11.lib" "dwrite.lib" "d2d1.lib")
 endif()
+
+if(INCLUDE_GDAL)
+  target_link_libraries(massif GDAL::GDAL)
+endif(INCLUDE_GDAL)

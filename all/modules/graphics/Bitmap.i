@@ -20,6 +20,11 @@
 !enum(massif::ColorFormat::ColorFormat)
 !shared_ptr(massif::Bitmap, graphics.Bitmap)
 
+// No builder: a Bitmap comes from CreateFromCompressed, not a constructor - see
+// SpecFactories.cpp. This only says which kind builds one, so an inline `{"url": …}`
+// resolves wherever a Bitmap property is writable.
+!spec(massif::Bitmap, bitmap, -)
+
 %attribute(massif::Bitmap, unsigned int, Width, getWidth)
 %attribute(massif::Bitmap, unsigned int, Height, getHeight)
 %attribute(massif::Bitmap, massif::ColorFormat::ColorFormat, ColorFormat, getColorFormat)

@@ -64,6 +64,7 @@ set(TEST_SDK_SOURCES
   "${SDK_BASE_DIR}/all/native/api/RoutingMethods.cpp"
   "${SDK_BASE_DIR}/all/native/routing/RoutingService.cpp"
   "${SDK_BASE_DIR}/all/native/routing/RoutingRequest.cpp"
+  "${SDK_BASE_DIR}/all/native/routing/RouteMatchingRequest.cpp"
   "${SDK_BASE_DIR}/all/native/routing/RoutingResult.cpp"
   "${SDK_BASE_DIR}/all/native/routing/RoutingInstruction.cpp"
   "${SDK_BASE_DIR}/all/native/geocoding/GeocodingRequest.cpp"
@@ -113,6 +114,7 @@ set(TEST_SDK_SOURCES
   "${SDK_BASE_DIR}/all/native/geometry/MultiPolygonGeometry.cpp"
   "${SDK_BASE_DIR}/all/native/geometry/PolygonGeometry.cpp"
   "${SDK_BASE_DIR}/all/native/geometry/PointGeometry.cpp"
+  "${SDK_BASE_DIR}/all/native/geometry/Geometry.cpp"
   "${SDK_BASE_DIR}/all/native/graphics/Color.cpp"
   # BundleAssetsTest.cpp defines the platform AssetUtils these two declare - see host/utils.
   "${SDK_BASE_DIR}/all/native/utils/BundleAssetPackage.cpp"

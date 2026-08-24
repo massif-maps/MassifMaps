@@ -31,6 +31,8 @@
 %attributeval(massif::RoutingResult, std::vector<massif::MapPos>, Points, getPoints)
 %attributeval(massif::RoutingResult, std::vector<massif::RoutingInstruction>, Instructions, getInstructions)
 %attribute(massif::RoutingResult, int, InstructionCount, getInstructionCount)
+// Every maneuver in one read: getInstruction(i) is a call per instruction, times nine fields.
+%attributestring(massif::RoutingResult, std::string, InstructionsJSON, getInstructionsJSON)
 %attribute(massif::RoutingResult, int, PointCount, getPointCount)
 %attribute(massif::RoutingResult, double, TotalDistance, getTotalDistance)
 %attribute(massif::RoutingResult, double, TotalTime, getTotalTime)

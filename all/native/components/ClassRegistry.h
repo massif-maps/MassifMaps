@@ -25,6 +25,9 @@ namespace massif {
 
         static std::string GetClassName(const std::type_info& typeInfo);
 
+        /** As GetClassName, but a miss is expected and not logged - for callers with a fallback. */
+        static std::string FindClassName(const std::type_info& typeInfo);
+
     private:
         ClassRegistry();
 

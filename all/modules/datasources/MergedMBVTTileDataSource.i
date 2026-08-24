@@ -19,6 +19,8 @@
 
 !polymorphic_shared_ptr(massif::MergedMBVTTileDataSource, datasources.MergedMBVTTileDataSource)
 
+!spec(massif::MergedMBVTTileDataSource, source, merged-mbvt, alias(source, dataSource1), alias(source2, dataSource2))
+
 %std_exceptions(massif::MergedMBVTTileDataSource::MergedMBVTTileDataSource)
 
 %feature("director") massif::MergedMBVTTileDataSource;

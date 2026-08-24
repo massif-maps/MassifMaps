@@ -22,6 +22,14 @@
 
 !polymorphic_shared_ptr(massif::MultiValhallaOfflineRoutingService, routing.MultiValhallaOfflineRoutingService)
 
+// The databases are discovered at run time, one per downloaded area, so they are added rather than
+// passed to the constructor.
+!spec(massif::MultiValhallaOfflineRoutingService, routing, multi-valhalla-offline)
+!method(massif::MultiValhallaOfflineRoutingService, add, arg(database, string), returns(void))
+!method(massif::MultiValhallaOfflineRoutingService, remove, arg(database, string), returns(bool))
+!method(massif::MultiValhallaOfflineRoutingService, addLocale, arg(key, string), arg(json, string), returns(void))
+!method(massif::MultiValhallaOfflineRoutingService, setConfigurationParameter, arg(param, string), arg(value, json), returns(void))
+
 %std_io_exceptions(massif::MultiValhallaOfflineRoutingService::matchRoute)
 %std_io_exceptions(massif::MultiValhallaOfflineRoutingService::calculateRoute)
 

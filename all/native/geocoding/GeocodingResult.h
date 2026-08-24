@@ -58,11 +58,21 @@ namespace massif {
         const std::shared_ptr<Projection>& getProjection() const;
 
         /**
+         * Returns the result as a GeoJSON FeatureCollection, in WGS84.
+         *
+         * Every feature carries the result's "address" and "rank" alongside its own properties, so
+         * one string is the whole answer - a binding that walked the features instead paid a
+         * crossing per feature and rebuilt this shape by hand.
+         * @return The result as GeoJSON.
+         */
+        std::string getGeoJSON() const;
+
+        /**
          * Creates a string representation of this result object, useful for logging.
          * @return The string representation of this result object.
          */
         std::string toString() const;
-        
+
     private:
         GeocodingAddress _address;
         float _rank;

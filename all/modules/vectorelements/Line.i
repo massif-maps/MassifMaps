@@ -20,6 +20,7 @@
 
 !polymorphic_shared_ptr(massif::Line, vectorelements.Line)
 
+!spec(massif::Line, element, line)
 %csmethodmodifiers massif::Line::Geometry "public new";
 !attributestring_polymorphic(massif::Line, geometry.LineGeometry, Geometry, getGeometry, setGeometry)
 %attributestring(massif::Line, std::shared_ptr<massif::LineStyle>, Style, getStyle, setStyle)

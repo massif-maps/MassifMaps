@@ -26,6 +26,9 @@
 
 !shared_ptr(massif::RouteMatchingRequest, routing.RouteMatchingRequest)
 
+!spec(massif::RouteMatchingRequest, routing, -)
+
+!method(massif::RouteMatchingRequest, setCustomParameter, arg(name, string), arg(value, json), returns(void))
 %attributestring(massif::RouteMatchingRequest, std::shared_ptr<massif::Projection>, Projection, getProjection)
 %attributeval(massif::RouteMatchingRequest, std::vector<massif::MapPos>, Points, getPoints)
 %attribute(massif::RouteMatchingRequest, float, Accuracy, getAccuracy)

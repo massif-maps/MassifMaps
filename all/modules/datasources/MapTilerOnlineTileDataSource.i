@@ -19,6 +19,8 @@
 
 !polymorphic_shared_ptr(massif::MapTilerOnlineTileDataSource, datasources.MapTilerOnlineTileDataSource)
 
+!spec(massif::MapTilerOnlineTileDataSource, source, maptiler)
+
 %attributestring(massif::MapTilerOnlineTileDataSource, std::string, CustomServiceURL, getCustomServiceURL, setCustomServiceURL)
 %attribute(massif::MapTilerOnlineTileDataSource, int, Timeout, getTimeout, setTimeout)
 %std_exceptions(massif::MapTilerOnlineTileDataSource::MapTilerOnlineTileDataSource)

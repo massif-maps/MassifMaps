@@ -24,6 +24,8 @@
 
 !shared_ptr(massif::ReverseGeocodingRequest, geocoding.ReverseGeocodingRequest)
 
+!spec(massif::ReverseGeocodingRequest, geocoding, -)
+
 %attributeval(massif::ReverseGeocodingRequest, massif::MapPos, Location, getLocation)
 %attribute(massif::ReverseGeocodingRequest, float, SearchRadius, getSearchRadius, setSearchRadius)
 %attributestring(massif::ReverseGeocodingRequest, std::shared_ptr<massif::Projection>, Projection, getProjection)

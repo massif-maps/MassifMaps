@@ -19,6 +19,7 @@
 
 !polymorphic_shared_ptr(massif::Text, vectorelements.Text)
 
+!spec(massif::Text, element, text, alias(position, pos))
 %attributestring(massif::Text, std::string, Title, getText, setText)
 %csmethodmodifiers massif::Text::Style "public new";
 !attributestring_polymorphic(massif::Text, styles.TextStyle, Style, getStyle, setStyle)

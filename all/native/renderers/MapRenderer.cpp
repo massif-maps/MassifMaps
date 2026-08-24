@@ -180,6 +180,67 @@ namespace massif {
             lastLabelBuild = labelBuild; lastLabelBatch = labelBatch; lastLabelVerts = labelVerts;
             lastLineLayouts = lineLayouts;
 
+            // The tile-set change path, which runs INSIDE the layer draw pass and was untimed.
+            // refreshMs is the total and includes the setVisibleTiles split that follows it.
+            static long long lastTileSet[7] = { 0 };
+            const long long tileSet[7] = {
+                RenderStats::refreshTilesLockNs.load(), RenderStats::refreshTilesNs.load(),
+                RenderStats::setVisibleTilesLockNs.load(), RenderStats::terrainCoarseningNs.load(),
+                RenderStats::tileSurfacesNs.load(), RenderStats::labelMapsNs.load(),
+                RenderStats::renderTilesNs.load()
+            };
+            Log::Infof("RenderStats: tileSetChange refreshLockMs=%.1f refreshMs=%.1f | "
+                       "setVisibleLockMs=%.1f coarsenMs=%.1f surfacesMs=%.1f labelMapsMs=%.1f "
+                       "renderTilesMs=%.1f (per interval)",
+                       (tileSet[0] - lastTileSet[0]) / 1.0e6, (tileSet[1] - lastTileSet[1]) / 1.0e6,
+                       (tileSet[2] - lastTileSet[2]) / 1.0e6, (tileSet[3] - lastTileSet[3]) / 1.0e6,
+                       (tileSet[4] - lastTileSet[4]) / 1.0e6, (tileSet[5] - lastTileSet[5]) / 1.0e6,
+                       (tileSet[6] - lastTileSet[6]) / 1.0e6);
+            for (int i = 0; i < 7; i++) { lastTileSet[i] = tileSet[i]; }
+
+            // buildLabelMaps by phase. signature/list run whatever happens; merge/carry are the
+            // ones reuse actually shortens.
+            static long long lastLabelMap[6] = { 0 };
+            const long long labelMap[6] = {
+                RenderStats::labelSignatureNs.load(), RenderStats::labelMergeNs.load(),
+                RenderStats::labelStampNs.load(), RenderStats::labelReleaseNs.load(),
+                RenderStats::labelCarryNs.load(), RenderStats::labelListNs.load()
+            };
+            Log::Infof("RenderStats: buildLabelMaps signatureMs=%.1f mergeMs=%.1f stampMs=%.1f "
+                       "releaseMs=%.1f carryMs=%.1f listMs=%.1f (per interval)",
+                       (labelMap[0] - lastLabelMap[0]) / 1.0e6, (labelMap[1] - lastLabelMap[1]) / 1.0e6,
+                       (labelMap[2] - lastLabelMap[2]) / 1.0e6, (labelMap[3] - lastLabelMap[3]) / 1.0e6,
+                       (labelMap[4] - lastLabelMap[4]) / 1.0e6, (labelMap[5] - lastLabelMap[5]) / 1.0e6);
+            for (int i = 0; i < 6; i++) { lastLabelMap[i] = labelMap[i]; }
+
+            // Why reuse missed. 'spanning' counts labels fed by more than one tile - an unclipped
+            // label (text-clip: false) is one, and its signature covers every contributing tile.
+            static long long lastMiss[5] = { 0 };
+            const long long miss[5] = {
+                RenderStats::labelMissNew.load(), RenderStats::labelMissCount.load(),
+                RenderStats::labelMissHash.load(), RenderStats::labelMissSpanning.load(),
+                RenderStats::labelHitSpanning.load()
+            };
+            Log::Infof("RenderStats: labelReuse missNew=%lld missCount=%lld missHash=%lld | "
+                       "spanning miss=%lld hit=%lld (per interval)",
+                       miss[0] - lastMiss[0], miss[1] - lastMiss[1], miss[2] - lastMiss[2],
+                       miss[3] - lastMiss[3], miss[4] - lastMiss[4]);
+            for (int i = 0; i < 5; i++) { lastMiss[i] = miss[i]; }
+
+            // What construction costs, and how much of it was for a label never shown.
+            static long long lastCtor[3] = { 0 };
+            const long long ctor[3] = {
+                RenderStats::labelConstructNs.load(), RenderStats::labelRetiredSeen.load(),
+                RenderStats::labelRetiredUnseen.load()
+            };
+            static long long lastMergeIters = 0;
+            long long mergeIters = RenderStats::labelMergeIterations.load();
+            Log::Infof("RenderStats: labelConstruct totalMs=%.1f | retired seen=%lld unseen=%lld | mergeIterations=%lld (per interval)",
+                       (ctor[0] - lastCtor[0]) / 1.0e6, ctor[1] - lastCtor[1], ctor[2] - lastCtor[2],
+                       mergeIters - lastMergeIters);
+            for (int i = 0; i < 3; i++) { lastCtor[i] = ctor[i]; }
+            lastMergeIters = mergeIters;
+
             static long long lastPrep[4] = { 0 }, lastLabelSplit[2] = { 0 }, lastLabelXf = 0, lastLabelAttr = 0;
             const long long prep[4] = {
                 RenderStats::prepTileBlendNs.load(), RenderStats::prepElevDirtyNs.load(),

@@ -8,9 +8,11 @@
 %{
 #include "geometry/Geometry.h"
 #include <memory>
+#include <string>
 %}
 
 %include <std_shared_ptr.i>
+%include <std_string.i>
 %include <std_vector.i>
 %include <massifswig.i>
 
@@ -22,6 +24,7 @@
 
 %attributeval(massif::Geometry, massif::MapBounds, Bounds, getBounds)
 %attributeval(massif::Geometry, massif::MapPos, CenterPos, getCenterPos)
+%attributestring(massif::Geometry, std::string, GeoJSON, getGeoJSON)
 !standard_equals(massif::Geometry);
 
 !enum(massif::GeometryType::GeometryType)

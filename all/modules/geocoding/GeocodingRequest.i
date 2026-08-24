@@ -25,6 +25,8 @@
 
 !shared_ptr(massif::GeocodingRequest, geocoding.GeocodingRequest)
 
+!spec(massif::GeocodingRequest, geocoding, -)
+
 %attributestring(massif::GeocodingRequest, std::string, Query, getQuery)
 %attributestring(massif::GeocodingRequest, std::shared_ptr<massif::Projection>, Projection, getProjection)
 %attributeval(massif::GeocodingRequest, massif::MapPos, Location, getLocation, setLocation)

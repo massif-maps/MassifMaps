@@ -1791,3 +1791,58 @@ Cost at limit 1.0, panning north at 45.2185/5.7346 z15.37 t29, 3 interleaved pai
 tile's measured area predicted 19 → 40 tiles, **7× the real cost**. The recursion boosts a parent
 and its children by the same factor, so a tile that splits produces children that stop one level
 down rather than cascading; the per-tile model has no way to see that. Build it and count.
+
+## alpimaps, eink style, zoom in/out (2026-08-24)
+
+Crosscall device (`1cba1468`), `DEBUGMASSIF=1 ns run android … --gradleArgs=-PprofileRender`,
+zooming in and out around z10–z13 over an offline mbtiles set.
+
+**18.0 fps, frame avg 47.8 ms, max 108.5 ms.**
+
+| section | CPU ms | GPU ms |
+|---|---|---|
+| sky | 18.0 | 0.9 |
+| layers | 16.0 | **16.9** |
+| layers3D | 6.3 | 0.7 |
+| other | 7.4 | — |
+| total | 47.8 | 19.9 |
+
+**`sky` is not sky.** `FrameProfiler::skyMs` covers "frame start: state, sky, background" and
+**includes the swap-buffer wait**, which is why its GPU time is 0.9 ms. Read it as frame pacing,
+not as work — it was misread as an 18 ms anomaly once already. Real CPU work is ~30 ms.
+
+Per frame: 212 draws, 505 k indices, `draw` **11.2 µs per glDrawElements** (probe overhead 0.62 µs
+carried in every section — subtract it before believing any of them).
+
+**The emulator says something completely different and must not be used for this.** Same app and
+style on `emulator-5554` (ES→Metal translator): 1431 draws and 3.6 M indices per frame, `draw`
+0.6 µs, `styleEval` 0.1 µs. Seven times the geometry and a twentieth of the per-draw cost — it
+inverts which end is expensive.
+
+What the device numbers actually point at, in order:
+
+1. `layers` is GPU-bound (16.9 GPU vs 16.0 CPU). Fewer/simpler pattern-filled polygons at low zoom
+   is the lever; see the eink pattern thresholds below.
+2. `draw` at 11.2 µs/call is Adreno submit cost — draw *count* matters independently of geometry.
+3. `tileSets` 36 and `labelMaps` 36 over 18 frames — **two full `buildLabelMaps` rebuilds per
+   frame** while zooming, 1522 labels allocated per second.
+4. `cullMs` 147 ms/s (8.2 ms/frame, 3 passes/frame), and `reNull` 4039 of `placeUpd` 5396: **75 %
+   of placement re-anchors have no placement at all**.
+5. `viewStateChanges` 210 over 18 frames — the per-frame style memo is dropped ~12×/frame, giving a
+   **36 % style-function miss rate** (6 % on the emulator) and `styleEval` 5.6 µs/draw.
+
+### The style, not the renderer, was most of the lag
+
+`eink.json` turns pattern fills on several zoom levels below `base.json`: `rock` 13→10,
+`forest` 14→11, `scrub` 14→12, `scree` 13→12, and adds `water_pattern_zoom: 0` (every zoom) and
+`iceshelf_pattern_zoom: 4`. 75 `PolygonPatternSymbolizer`s against osm's 24. Raising the four
+`*_pattern_zoom` **style parameters** back to the base defaults removed most of the lag —
+confirmed on device. The remaining two are `constants`, so they need a style rebuild.
+
+### Reading a spike
+
+The once-a-second average hides the frame the user feels. `PROF SPIKE:` lines
+(`FrameProfiler::checkSpike`, over 80 ms) print that frame's own section split next to the
+counters that moved **during that frame** — `tileSets`, `labelMaps`, `labelsAlloc`, `snaps`,
+`cullPasses`, `geomDraws`, `surfBuilt`. A spike with `tileSets 0 labelMaps 0` is not a tile-set
+change, however plausible that sounded.

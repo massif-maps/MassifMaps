@@ -21,6 +21,7 @@
 
 !polymorphic_shared_ptr(massif::Polygon, vectorelements.Polygon)
 
+!spec(massif::Polygon, element, polygon)
 %attributestring(massif::Polygon, std::shared_ptr<massif::PolygonStyle>, Style, getStyle, setStyle)
 %csmethodmodifiers massif::Polygon::Geometry "public new";
 !attributestring_polymorphic(massif::Polygon, geometry.PolygonGeometry, Geometry, getGeometry, setGeometry)

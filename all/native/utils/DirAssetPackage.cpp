@@ -91,13 +91,16 @@ namespace massif {
         }
 
         std::string fileName = _dirPath + "/" + normalizedName;
-        std::shared_ptr<FILE> fp(utf8_filesystem::fopen(fileName.c_str(), "rb"), fclose);
-        if (!fp) {
+        // Check before wrapping: shared_ptr runs the deleter even on a null pointer, and
+        // fclose(nullptr) aborts the process under FORTIFY
+        FILE* fpRaw = utf8_filesystem::fopen(fileName.c_str(), "rb");
+        if (!fpRaw) {
             if (_baseAssetPackage) {
                 return _baseAssetPackage->loadAsset(name);
             }
             return std::shared_ptr<BinaryData>();
         }
+        std::shared_ptr<FILE> fp(fpRaw, fclose);
 
         std::vector<unsigned char> data;
         if (fseek(fp.get(), 0, SEEK_END) == 0) {

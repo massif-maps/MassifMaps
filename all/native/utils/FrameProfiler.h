@@ -31,6 +31,8 @@
 #include <algorithm>
 #include <chrono>
 
+#include <vt/RenderStats.h>
+
 #include "utils/Log.h"
 
 namespace massif {
@@ -99,9 +101,72 @@ namespace massif {
             GpuFrameProfiler::beginFrame();
         }
 
+        /**
+         * A single frame far above the average, reported on its own.
+         *
+         * The once-a-second average hides exactly the frame the user feels - a 108 ms frame
+         * inside a 48 ms average is invisible in the mean and is the whole complaint. This
+         * prints that frame's own section split next to the counters that moved DURING it,
+         * which is what separates "the tile set changed and every label was rebuilt" from
+         * "the draw itself was slow": the deltas are per-frame, so a spike with tileSets 0 and
+         * labelMaps 0 is not a tile-set change however plausible that sounded.
+         *
+         * Called on EVERY frame, not only slow ones - the snapshot has to advance each frame or
+         * the deltas would span from the previous spike instead of the previous frame.
+         */
+        static void checkSpike(double frameMs) {
+            // The threshold is deliberately a fixed number rather than a multiple of the running
+            // average: while zooming the average itself climbs, and a ratio stops firing exactly
+            // when the stalls get bad.
+            constexpr double SPIKE_MS = 80.0;
+#if MASSIF_VT_RENDER_STATS
+            using vt::RenderStats;
+            struct Snapshot {
+                long long tileSets, labelMaps, labelsAlloc, snaps, cullPasses, geomDraws, surfBuilt;
+            };
+            static Snapshot last = { 0, 0, 0, 0, 0, 0, 0 };
+            Snapshot now = {
+                RenderStats::visibleTileSetChanges.load(), RenderStats::labelMapRebuilds.load(),
+                RenderStats::labelsAllocated.load(), RenderStats::snapPlacements.load(),
+                RenderStats::cullerPasses.load(), RenderStats::geometryDraws.load(),
+                RenderStats::tileSurfacesBuilt.load()
+            };
+            Snapshot delta = {
+                now.tileSets - last.tileSets, now.labelMaps - last.labelMaps,
+                now.labelsAlloc - last.labelsAlloc, now.snaps - last.snaps,
+                now.cullPasses - last.cullPasses, now.geomDraws - last.geomDraws,
+                now.surfBuilt - last.surfBuilt
+            };
+            last = now;
+#endif
+            if (frameMs < SPIKE_MS) {
+                return;
+            }
+            double other = frameMs - skyMs - preludeMs - prepareMs - coverMs - drapeMs
+                         - layerMs - layer3DMs - billboardMs;
+#if MASSIF_VT_RENDER_STATS
+            Log::Infof("PROF SPIKE: frame %.1f ms | sky %.1f prelude %.1f prepare %.1f cover %.1f "
+                       "drape %.1f layers %.1f layers3D %.1f billboards %.1f other %.1f "
+                       "| THIS FRAME: tileSets %lld labelMaps %lld labelsAlloc %lld snaps %lld "
+                       "cullPasses %lld geomDraws %lld surfBuilt %lld",
+                       frameMs, skyMs, preludeMs, prepareMs, coverMs, drapeMs, layerMs,
+                       layer3DMs, billboardMs, other,
+                       delta.tileSets, delta.labelMaps, delta.labelsAlloc, delta.snaps,
+                       delta.cullPasses, delta.geomDraws, delta.surfBuilt);
+#else
+            Log::Infof("PROF SPIKE: frame %.1f ms | sky %.1f prelude %.1f prepare %.1f cover %.1f "
+                       "drape %.1f layers %.1f layers3D %.1f billboards %.1f other %.1f "
+                       "| (build with MASSIF_VT_RENDER_STATS=1 for the per-frame counters)",
+                       frameMs, skyMs, preludeMs, prepareMs, coverMs, drapeMs, layerMs,
+                       layer3DMs, billboardMs, other);
+#endif
+        }
+
         // Accumulates one frame and prints the running averages once a second. 'frameMs' is
         // the whole frame; whatever it does not account for is reported as 'other'.
         static void endFrame(double frameMs) {
+            checkSpike(frameMs);
+
             static double sumMs = 0, maxMs = 0, sumSky = 0, sumPrelude = 0, sumPrepare = 0;
             static double sumCover = 0, sumDrape = 0, sumLayer = 0, sumLayer3D = 0, sumBillboard = 0;
             static int count = 0;

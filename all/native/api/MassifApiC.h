@@ -166,6 +166,13 @@ MM_API int mm_set_string(mm_ctx ctx, mm_handle handle, const char* path, const c
  */
 MM_API int mm_set_object(mm_ctx ctx, mm_handle handle, const char* path, mm_handle value);
 
+/**
+ * The object an object property points at, as a handle the CALLER OWNS - the read counterpart of
+ * mm_set_object, and the only way to SHARE a child rather than build it twice.
+ * @return 0 when the path does not resolve, is not an object property, or is null.
+ */
+MM_API mm_handle mm_get_object(mm_ctx ctx, mm_handle handle, const char* path);
+
 MM_API int mm_get_bool(mm_ctx ctx, mm_handle handle, const char* path, int* value);
 MM_API int mm_get_long(mm_ctx ctx, mm_handle handle, const char* path, int64_t* value);
 MM_API int mm_get_double(mm_ctx ctx, mm_handle handle, const char* path, double* value);

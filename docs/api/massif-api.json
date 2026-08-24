@@ -2539,6 +2539,22 @@
       "methods": [
         {
           "cppClass": "massif::GeoJSONVectorTileDataSource",
+          "name": "addFeature",
+          "args": [
+            {
+              "name": "layer",
+              "type": "int"
+            },
+            {
+              "name": "feature",
+              "type": "json"
+            }
+          ],
+          "returns": "void",
+          "returnClass": null
+        },
+        {
+          "cppClass": "massif::GeoJSONVectorTileDataSource",
           "name": "createLayer",
           "args": [
             {
@@ -2563,6 +2579,22 @@
         },
         {
           "cppClass": "massif::GeoJSONVectorTileDataSource",
+          "name": "removeFeature",
+          "args": [
+            {
+              "name": "layer",
+              "type": "int"
+            },
+            {
+              "name": "id",
+              "type": "json"
+            }
+          ],
+          "returns": "void",
+          "returnClass": null
+        },
+        {
+          "cppClass": "massif::GeoJSONVectorTileDataSource",
           "name": "setLayerGeoJSON",
           "args": [
             {
@@ -2571,6 +2603,22 @@
             },
             {
               "name": "geoJson",
+              "type": "json"
+            }
+          ],
+          "returns": "void",
+          "returnClass": null
+        },
+        {
+          "cppClass": "massif::GeoJSONVectorTileDataSource",
+          "name": "updateFeature",
+          "args": [
+            {
+              "name": "layer",
+              "type": "int"
+            },
+            {
+              "name": "feature",
               "type": "json"
             }
           ],
@@ -2703,7 +2751,20 @@
           "cppType": "int"
         }
       ],
-      "methods": [],
+      "methods": [
+        {
+          "cppClass": "massif::GeocodingService",
+          "name": "calculateAddresses",
+          "args": [
+            {
+              "name": "request",
+              "type": "handle"
+            }
+          ],
+          "returns": "json",
+          "returnClass": null
+        }
+      ],
       "events": []
     },
     "massif::Geometry": {
@@ -2725,6 +2786,15 @@
           "static": false,
           "position": true,
           "cppType": "massif::MapPos"
+        },
+        {
+          "name": "geoJSON",
+          "type": "STRING",
+          "readOnly": true,
+          "static": false,
+          "position": false,
+          "cppType": "std::string",
+          "doc": "Returns the geometry as a GeoJSON string, in its own coordinates. Here rather than only on Feature because serialising a shape otherwise means constructing a GeoJSONGeometryWriter, which no string-based binding can do."
         },
         {
           "name": "type",
@@ -3358,6 +3428,41 @@
         },
         {
           "cppClass": "massif::Layers",
+          "name": "clear",
+          "args": [],
+          "returns": "void",
+          "returnClass": null
+        },
+        {
+          "cppClass": "massif::Layers",
+          "name": "get",
+          "args": [
+            {
+              "name": "index",
+              "type": "int"
+            }
+          ],
+          "returns": "object",
+          "returnClass": "massif::Layer"
+        },
+        {
+          "cppClass": "massif::Layers",
+          "name": "insert",
+          "args": [
+            {
+              "name": "index",
+              "type": "int"
+            },
+            {
+              "name": "layer",
+              "type": "handle"
+            }
+          ],
+          "returns": "void",
+          "returnClass": null
+        },
+        {
+          "cppClass": "massif::Layers",
           "name": "remove",
           "args": [
             {
@@ -3366,6 +3471,22 @@
             }
           ],
           "returns": "bool",
+          "returnClass": null
+        },
+        {
+          "cppClass": "massif::Layers",
+          "name": "set",
+          "args": [
+            {
+              "name": "index",
+              "type": "int"
+            },
+            {
+              "name": "layer",
+              "type": "handle"
+            }
+          ],
+          "returns": "void",
           "returnClass": null
         }
       ],
@@ -3894,6 +4015,18 @@
             }
           ],
           "returns": "bool",
+          "returnClass": null
+        },
+        {
+          "cppClass": "massif::MBVectorTileDecoder",
+          "name": "setStyleParameters",
+          "args": [
+            {
+              "name": "params",
+              "type": "json"
+            }
+          ],
+          "returns": "void",
           "returnClass": null
         }
       ],
@@ -4581,13 +4714,63 @@
     "massif::MultiOSMOfflineGeocodingService": {
       "base": "massif::GeocodingService",
       "properties": [],
-      "methods": [],
+      "methods": [
+        {
+          "cppClass": "massif::MultiOSMOfflineGeocodingService",
+          "name": "add",
+          "args": [
+            {
+              "name": "database",
+              "type": "string"
+            }
+          ],
+          "returns": "void",
+          "returnClass": null
+        },
+        {
+          "cppClass": "massif::MultiOSMOfflineGeocodingService",
+          "name": "remove",
+          "args": [
+            {
+              "name": "database",
+              "type": "string"
+            }
+          ],
+          "returns": "bool",
+          "returnClass": null
+        }
+      ],
       "events": []
     },
     "massif::MultiOSMOfflineReverseGeocodingService": {
       "base": "massif::ReverseGeocodingService",
       "properties": [],
-      "methods": [],
+      "methods": [
+        {
+          "cppClass": "massif::MultiOSMOfflineReverseGeocodingService",
+          "name": "add",
+          "args": [
+            {
+              "name": "database",
+              "type": "string"
+            }
+          ],
+          "returns": "void",
+          "returnClass": null
+        },
+        {
+          "cppClass": "massif::MultiOSMOfflineReverseGeocodingService",
+          "name": "remove",
+          "args": [
+            {
+              "name": "database",
+              "type": "string"
+            }
+          ],
+          "returns": "bool",
+          "returnClass": null
+        }
+      ],
       "events": []
     },
     "massif::MultiPointGeometry": {
@@ -4605,13 +4788,99 @@
     "massif::MultiTileDataSource": {
       "base": "massif::TileDataSource",
       "properties": [],
-      "methods": [],
+      "methods": [
+        {
+          "cppClass": "massif::MultiTileDataSource",
+          "name": "add",
+          "args": [
+            {
+              "name": "datasource",
+              "type": "handle"
+            },
+            {
+              "name": "tileMask",
+              "type": "string"
+            }
+          ],
+          "returns": "void",
+          "returnClass": null
+        },
+        {
+          "cppClass": "massif::MultiTileDataSource",
+          "name": "remove",
+          "args": [
+            {
+              "name": "datasource",
+              "type": "handle"
+            }
+          ],
+          "returns": "bool",
+          "returnClass": null
+        }
+      ],
       "events": []
     },
     "massif::MultiValhallaOfflineRoutingService": {
       "base": "massif::RoutingService",
       "properties": [],
-      "methods": [],
+      "methods": [
+        {
+          "cppClass": "massif::MultiValhallaOfflineRoutingService",
+          "name": "add",
+          "args": [
+            {
+              "name": "database",
+              "type": "string"
+            }
+          ],
+          "returns": "void",
+          "returnClass": null
+        },
+        {
+          "cppClass": "massif::MultiValhallaOfflineRoutingService",
+          "name": "addLocale",
+          "args": [
+            {
+              "name": "key",
+              "type": "string"
+            },
+            {
+              "name": "json",
+              "type": "string"
+            }
+          ],
+          "returns": "void",
+          "returnClass": null
+        },
+        {
+          "cppClass": "massif::MultiValhallaOfflineRoutingService",
+          "name": "remove",
+          "args": [
+            {
+              "name": "database",
+              "type": "string"
+            }
+          ],
+          "returns": "bool",
+          "returnClass": null
+        },
+        {
+          "cppClass": "massif::MultiValhallaOfflineRoutingService",
+          "name": "setConfigurationParameter",
+          "args": [
+            {
+              "name": "param",
+              "type": "string"
+            },
+            {
+              "name": "value",
+              "type": "json"
+            }
+          ],
+          "returns": "void",
+          "returnClass": null
+        }
+      ],
       "events": []
     },
     "massif::NMLModel": {
@@ -5055,6 +5324,15 @@
           "position": false,
           "cppType": "bool",
           "doc": "Returns the state of the map rotatability flag."
+        },
+        {
+          "name": "rotationGestures",
+          "type": "BOOL",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "bool",
+          "doc": "Returns the state of rotation gestures."
         },
         {
           "name": "seamlessPanning",
@@ -5527,8 +5805,72 @@
           "doc": "Returns the status of the cache database."
         }
       ],
-      "methods": [],
-      "events": []
+      "methods": [
+        {
+          "cppClass": "massif::PersistentCacheTileDataSource",
+          "name": "clear",
+          "args": [],
+          "returns": "void",
+          "returnClass": null
+        },
+        {
+          "cppClass": "massif::PersistentCacheTileDataSource",
+          "name": "startDownloadArea",
+          "args": [
+            {
+              "name": "bounds",
+              "type": "json"
+            },
+            {
+              "name": "minZoom",
+              "type": "int"
+            },
+            {
+              "name": "maxZoom",
+              "type": "int"
+            },
+            {
+              "name": "fetchDelay",
+              "type": "int"
+            }
+          ],
+          "returns": "void",
+          "returnClass": null
+        },
+        {
+          "cppClass": "massif::PersistentCacheTileDataSource",
+          "name": "stopAllDownloads",
+          "args": [],
+          "returns": "void",
+          "returnClass": null
+        }
+      ],
+      "events": [
+        {
+          "cppClass": "massif::PersistentCacheTileDataSource",
+          "name": "download.completed",
+          "payload": null,
+          "consumable": false
+        },
+        {
+          "cppClass": "massif::PersistentCacheTileDataSource",
+          "name": "download.failed",
+          "payload": "massif::TileDownloadInfo",
+          "consumable": false
+        },
+        {
+          "cppClass": "massif::PersistentCacheTileDataSource",
+          "name": "download.progress",
+          "payload": "massif::TileDownloadInfo",
+          "consumable": false
+        },
+        {
+          "cppClass": "massif::PersistentCacheTileDataSource",
+          "name": "download.started",
+          "payload": "massif::TileDownloadInfo",
+          "consumable": false
+        }
+      ]
     },
     "massif::PersistentTaskQueue": {
       "base": null,
@@ -6194,7 +6536,20 @@
           "cppType": "std::string"
         }
       ],
-      "methods": [],
+      "methods": [
+        {
+          "cppClass": "massif::ReverseGeocodingService",
+          "name": "calculateAddresses",
+          "args": [
+            {
+              "name": "request",
+              "type": "handle"
+            }
+          ],
+          "returns": "json",
+          "returnClass": null
+        }
+      ],
       "events": []
     },
     "massif::RouteMatchingEdge": {
@@ -6270,7 +6625,24 @@
           "doc": "Returns the projection of the points in the request."
         }
       ],
-      "methods": [],
+      "methods": [
+        {
+          "cppClass": "massif::RouteMatchingRequest",
+          "name": "setCustomParameter",
+          "args": [
+            {
+              "name": "name",
+              "type": "string"
+            },
+            {
+              "name": "value",
+              "type": "json"
+            }
+          ],
+          "returns": "void",
+          "returnClass": null
+        }
+      ],
       "events": []
     },
     "massif::RouteMatchingResult": {
@@ -6480,6 +6852,15 @@
           "doc": "Returns the turn-by-turn instruction list."
         },
         {
+          "name": "instructionsJSON",
+          "type": "STRING",
+          "readOnly": true,
+          "static": false,
+          "position": false,
+          "cppType": "std::string",
+          "doc": "Returns every turn-by-turn instruction as one JSON array. A maneuver is nine scalars, and reading them one instruction at a time costs a call per field: a mountain route has hundreds. The keys are the property names (`action`, `pointIndex`, `streetName`, `instruction`, `turnAngle`, `azimuth`, `distance`, `time`), and `action` is the enum's constant name."
+        },
+        {
           "name": "pointCount",
           "type": "INT",
           "readOnly": true,
@@ -6582,6 +6963,18 @@
           ],
           "returns": "object",
           "returnClass": "massif::RoutingResult"
+        },
+        {
+          "cppClass": "massif::RoutingService",
+          "name": "matchRoute",
+          "args": [
+            {
+              "name": "request",
+              "type": "handle"
+            }
+          ],
+          "returns": "object",
+          "returnClass": "massif::RouteMatchingResult"
         }
       ],
       "events": []
@@ -7442,6 +7835,40 @@
     "massif::TileDecoderListener": {
       "base": null,
       "properties": [],
+      "methods": [],
+      "events": []
+    },
+    "massif::TileDownloadInfo": {
+      "base": null,
+      "properties": [
+        {
+          "name": "progress",
+          "type": "FLOAT",
+          "readOnly": true,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns the progress of the download."
+        },
+        {
+          "name": "tile",
+          "type": "STRUCT",
+          "readOnly": true,
+          "static": false,
+          "position": false,
+          "cppType": "massif::MapTile",
+          "doc": "Returns the tile the event concerns, which is only meaningful for a failure."
+        },
+        {
+          "name": "tileCount",
+          "type": "INT",
+          "readOnly": true,
+          "static": false,
+          "position": false,
+          "cppType": "int",
+          "doc": "Returns the number of tiles the download will fetch."
+        }
+      ],
       "methods": [],
       "events": []
     },
@@ -9117,6 +9544,62 @@
         ]
       ],
       [
+        "line",
+        "massif__Line",
+        [
+          [
+            0,
+            [
+              [
+                "OBJECT",
+                "geometry",
+                "geometry",
+                "massif::LineGeometry"
+              ],
+              [
+                "OBJECT",
+                "style",
+                "elementstyle",
+                "massif::LineStyle"
+              ]
+            ],
+            [
+              "geometry",
+              "style"
+            ],
+            [
+              "geometry",
+              "style"
+            ]
+          ],
+          [
+            1,
+            [
+              [
+                "VALUE",
+                "poses",
+                "structAt<std::vector<massif::MapPos> >(spec, \"poses\")",
+                null
+              ],
+              [
+                "OBJECT",
+                "style",
+                "elementstyle",
+                "massif::LineStyle"
+              ]
+            ],
+            [
+              "poses",
+              "style"
+            ],
+            [
+              "poses",
+              "style"
+            ]
+          ]
+        ]
+      ],
+      [
         "marker",
         "massif__Marker",
         [
@@ -9196,6 +9679,256 @@
             ]
           ]
         ]
+      ],
+      [
+        "point",
+        "massif__Point",
+        [
+          [
+            0,
+            [
+              [
+                "OBJECT",
+                "geometry",
+                "geometry",
+                "massif::PointGeometry"
+              ],
+              [
+                "OBJECT",
+                "style",
+                "elementstyle",
+                "massif::PointStyle"
+              ]
+            ],
+            [
+              "geometry",
+              "style"
+            ],
+            [
+              "geometry",
+              "style"
+            ]
+          ],
+          [
+            1,
+            [
+              [
+                "VALUE",
+                "position",
+                "structAt<massif::MapPos>(spec, \"position\")",
+                null
+              ],
+              [
+                "OBJECT",
+                "style",
+                "elementstyle",
+                "massif::PointStyle"
+              ]
+            ],
+            [
+              "position",
+              "style"
+            ],
+            [
+              "position",
+              "style"
+            ]
+          ]
+        ]
+      ],
+      [
+        "polygon",
+        "massif__Polygon",
+        [
+          [
+            0,
+            [
+              [
+                "VALUE",
+                "poses",
+                "structAt<std::vector<massif::MapPos> >(spec, \"poses\")",
+                null
+              ],
+              [
+                "VALUE",
+                "holes",
+                "structAt<std::vector<std::vector<massif::MapPos> > >(spec, \"holes\")",
+                null
+              ],
+              [
+                "OBJECT",
+                "style",
+                "elementstyle",
+                "massif::PolygonStyle"
+              ]
+            ],
+            [
+              "poses",
+              "holes",
+              "style"
+            ],
+            [
+              "poses",
+              "holes",
+              "style"
+            ]
+          ],
+          [
+            1,
+            [
+              [
+                "OBJECT",
+                "geometry",
+                "geometry",
+                "massif::PolygonGeometry"
+              ],
+              [
+                "OBJECT",
+                "style",
+                "elementstyle",
+                "massif::PolygonStyle"
+              ]
+            ],
+            [
+              "geometry",
+              "style"
+            ],
+            [
+              "geometry",
+              "style"
+            ]
+          ],
+          [
+            2,
+            [
+              [
+                "VALUE",
+                "poses",
+                "structAt<std::vector<massif::MapPos> >(spec, \"poses\")",
+                null
+              ],
+              [
+                "OBJECT",
+                "style",
+                "elementstyle",
+                "massif::PolygonStyle"
+              ]
+            ],
+            [
+              "poses",
+              "style"
+            ],
+            [
+              "poses",
+              "style"
+            ]
+          ]
+        ]
+      ],
+      [
+        "text",
+        "massif__Text",
+        [
+          [
+            0,
+            [
+              [
+                "OBJECT",
+                "baseBillboard",
+                "element",
+                "massif::Billboard"
+              ],
+              [
+                "OBJECT",
+                "style",
+                "elementstyle",
+                "massif::TextStyle"
+              ],
+              [
+                "VALUE",
+                "text",
+                "stringAt(spec, \"text\", \"\")",
+                null
+              ]
+            ],
+            [
+              "baseBillboard",
+              "style",
+              "text"
+            ],
+            [
+              "baseBillboard",
+              "style",
+              "text"
+            ]
+          ],
+          [
+            1,
+            [
+              [
+                "OBJECT",
+                "geometry",
+                "geometry",
+                "massif::Geometry"
+              ],
+              [
+                "OBJECT",
+                "style",
+                "elementstyle",
+                "massif::TextStyle"
+              ],
+              [
+                "VALUE",
+                "text",
+                "stringAt(spec, \"text\", \"\")",
+                null
+              ]
+            ],
+            [
+              "geometry",
+              "style",
+              "text"
+            ],
+            [
+              "geometry",
+              "style",
+              "text"
+            ]
+          ],
+          [
+            2,
+            [
+              [
+                "VALUE",
+                "position",
+                "structAt<massif::MapPos>(spec, \"position\")",
+                null
+              ],
+              [
+                "OBJECT",
+                "style",
+                "elementstyle",
+                "massif::TextStyle"
+              ],
+              [
+                "VALUE",
+                "text",
+                "stringAt(spec, \"text\", \"\")",
+                null
+              ]
+            ],
+            [
+              "position",
+              "style",
+              "text"
+            ],
+            [
+              "position",
+              "style",
+              "text"
+            ]
+          ]
+        ]
       ]
     ],
     "elementstyle": [
@@ -9212,8 +9945,56 @@
         ]
       ],
       [
+        "line",
+        "massif__LineStyleBuilder",
+        [
+          [
+            0,
+            [],
+            [],
+            []
+          ]
+        ]
+      ],
+      [
         "marker",
         "massif__MarkerStyleBuilder",
+        [
+          [
+            0,
+            [],
+            [],
+            []
+          ]
+        ]
+      ],
+      [
+        "point",
+        "massif__PointStyleBuilder",
+        [
+          [
+            0,
+            [],
+            [],
+            []
+          ]
+        ]
+      ],
+      [
+        "polygon",
+        "massif__PolygonStyleBuilder",
+        [
+          [
+            0,
+            [],
+            [],
+            []
+          ]
+        ]
+      ],
+      [
+        "text",
+        "massif__TextStyleBuilder",
         [
           [
             0,
@@ -9257,7 +10038,56 @@
         ]
       ]
     ],
+    "geocoding": [
+      [
+        "multi-osm-offline",
+        "massif__MultiOSMOfflineGeocodingService",
+        [
+          [
+            0,
+            [],
+            [],
+            []
+          ]
+        ]
+      ],
+      [
+        "multi-osm-offline-reverse",
+        "massif__MultiOSMOfflineReverseGeocodingService",
+        [
+          [
+            0,
+            [],
+            [],
+            []
+          ]
+        ]
+      ]
+    ],
     "geometry": [
+      [
+        "line",
+        "massif__LineGeometry",
+        [
+          [
+            0,
+            [
+              [
+                "VALUE",
+                "poses",
+                "structAt<std::vector<massif::MapPos> >(spec, \"poses\")",
+                null
+              ]
+            ],
+            [
+              "poses"
+            ],
+            [
+              "poses"
+            ]
+          ]
+        ]
+      ],
       [
         "point",
         "massif__PointGeometry",
@@ -9277,6 +10107,71 @@
             ],
             [
               "pos"
+            ]
+          ]
+        ]
+      ],
+      [
+        "polygon",
+        "massif__PolygonGeometry",
+        [
+          [
+            0,
+            [
+              [
+                "VALUE",
+                "poses",
+                "structAt<std::vector<massif::MapPos> >(spec, \"poses\")",
+                null
+              ],
+              [
+                "VALUE",
+                "holes",
+                "structAt<std::vector<std::vector<massif::MapPos> > >(spec, \"holes\")",
+                null
+              ]
+            ],
+            [
+              "poses",
+              "holes"
+            ],
+            [
+              "poses",
+              "holes"
+            ]
+          ],
+          [
+            1,
+            [
+              [
+                "VALUE",
+                "poses",
+                "structAt<std::vector<massif::MapPos> >(spec, \"poses\")",
+                null
+              ]
+            ],
+            [
+              "poses"
+            ],
+            [
+              "poses"
+            ]
+          ],
+          [
+            2,
+            [
+              [
+                "VALUE",
+                "rings",
+                "structAt<std::vector<std::vector<massif::MapPos> > >(spec, \"rings\")",
+                null
+              ]
+            ],
+            [
+              "rings"
+            ],
+            [
+              "rings"
             ]
           ]
         ]
@@ -9403,6 +10298,23 @@
             [
               "color"
             ]
+          ],
+          [
+            1,
+            [
+              [
+                "OBJECT",
+                "bitmap",
+                "bitmap",
+                "massif::Bitmap"
+              ]
+            ],
+            [
+              "bitmap"
+            ],
+            [
+              "bitmap"
+            ]
           ]
         ]
       ],
@@ -9500,6 +10412,18 @@
       ]
     ],
     "routing": [
+      [
+        "multi-valhalla-offline",
+        "massif__MultiValhallaOfflineRoutingService",
+        [
+          [
+            0,
+            [],
+            [],
+            []
+          ]
+        ]
+      ],
       [
         "valhalla-offline",
         "massif__ValhallaOfflineRoutingService",
@@ -9788,6 +10712,29 @@
         ]
       ],
       [
+        "maptiler",
+        "massif__MapTilerOnlineTileDataSource",
+        [
+          [
+            0,
+            [
+              [
+                "VALUE",
+                "key",
+                "stringAt(spec, \"key\", \"\")",
+                null
+              ]
+            ],
+            [
+              "key"
+            ],
+            [
+              "key"
+            ]
+          ]
+        ]
+      ],
+      [
         "mbtiles",
         "massif__MBTilesTileDataSource",
         [
@@ -9899,6 +10846,37 @@
             ],
             [
               "source"
+            ]
+          ]
+        ]
+      ],
+      [
+        "merged-mbvt",
+        "massif__MergedMBVTTileDataSource",
+        [
+          [
+            0,
+            [
+              [
+                "OBJECT",
+                "source",
+                "source",
+                "massif::TileDataSource"
+              ],
+              [
+                "OBJECT",
+                "source2",
+                "source",
+                "massif::TileDataSource"
+              ]
+            ],
+            [
+              "source",
+              "source2"
+            ],
+            [
+              "source",
+              "source2"
             ]
           ]
         ]
@@ -10133,6 +11111,96 @@
         ]
       ]
     ]
+  },
+  "kindOfClass": {
+    "massif::AssetPackage": "assets",
+    "massif::AssetTileDataSource": "source",
+    "massif::BalloonPopup": "element",
+    "massif::BalloonPopupStyle": "elementstyle",
+    "massif::BalloonPopupStyleBuilder": "elementstyle",
+    "massif::Billboard": "element",
+    "massif::BillboardStyle": "elementstyle",
+    "massif::BillboardStyleBuilder": "elementstyle",
+    "massif::BinaryData": "data",
+    "massif::Bitmap": "bitmap",
+    "massif::BundleAssetPackage": "assets",
+    "massif::CacheTileDataSource": "source",
+    "massif::CartoCSSStyleSet": "styleset",
+    "massif::CombinedTileDataSource": "source",
+    "massif::CompiledStyleSet": "styleset",
+    "massif::CompositeVectorTileLayer": "layer",
+    "massif::CustomRasterTileLayer": "layer",
+    "massif::DirAssetPackage": "assets",
+    "massif::Feature": "feature",
+    "massif::FogOptions": "options",
+    "massif::GeoJSONVectorTileDataSource": "source",
+    "massif::GeocodingRequest": "geocoding",
+    "massif::GeocodingService": "geocoding",
+    "massif::Geometry": "geometry",
+    "massif::HTTPTileDataSource": "source",
+    "massif::HillshadeRasterTileLayer": "layer",
+    "massif::Label": "element",
+    "massif::LabelStyle": "elementstyle",
+    "massif::LabelStyleBuilder": "elementstyle",
+    "massif::Layer": "layer",
+    "massif::LightOptions": "options",
+    "massif::Line": "element",
+    "massif::LineGeometry": "geometry",
+    "massif::LineStyle": "elementstyle",
+    "massif::LineStyleBuilder": "elementstyle",
+    "massif::LocalVectorDataSource": "source",
+    "massif::MBTilesTileDataSource": "source",
+    "massif::MBVectorTileDecoder": "style",
+    "massif::MapTilerOnlineTileDataSource": "source",
+    "massif::Marker": "element",
+    "massif::MarkerStyle": "elementstyle",
+    "massif::MarkerStyleBuilder": "elementstyle",
+    "massif::MemoryCacheTileDataSource": "source",
+    "massif::MergedMBVTTileDataSource": "source",
+    "massif::MultiOSMOfflineGeocodingService": "geocoding",
+    "massif::MultiOSMOfflineReverseGeocodingService": "geocoding",
+    "massif::MultiTileDataSource": "source",
+    "massif::MultiValhallaOfflineRoutingService": "routing",
+    "massif::OrderedTileDataSource": "source",
+    "massif::PersistentCacheTileDataSource": "source",
+    "massif::Point": "element",
+    "massif::PointGeometry": "geometry",
+    "massif::PointStyle": "elementstyle",
+    "massif::PointStyleBuilder": "elementstyle",
+    "massif::Polygon": "element",
+    "massif::PolygonGeometry": "geometry",
+    "massif::PolygonStyle": "elementstyle",
+    "massif::PolygonStyleBuilder": "elementstyle",
+    "massif::Popup": "element",
+    "massif::PopupStyle": "elementstyle",
+    "massif::PopupStyleBuilder": "elementstyle",
+    "massif::Projection": "projection",
+    "massif::RasterTileLayer": "layer",
+    "massif::ReverseGeocodingRequest": "geocoding",
+    "massif::ReverseGeocodingService": "geocoding",
+    "massif::RouteMatchingRequest": "routing",
+    "massif::RoutingRequest": "routing",
+    "massif::RoutingService": "routing",
+    "massif::SearchRequest": "search",
+    "massif::SkyOptions": "options",
+    "massif::SolidLayer": "layer",
+    "massif::Style": "elementstyle",
+    "massif::StyleBuilder": "elementstyle",
+    "massif::TerrainOptions": "options",
+    "massif::Text": "element",
+    "massif::TextStyle": "elementstyle",
+    "massif::TextStyleBuilder": "elementstyle",
+    "massif::TileDataSource": "source",
+    "massif::TileLayer": "layer",
+    "massif::ValhallaOfflineRoutingService": "routing",
+    "massif::ValhallaOnlineRoutingService": "routing",
+    "massif::VectorDataSource": "source",
+    "massif::VectorElement": "element",
+    "massif::VectorLayer": "layer",
+    "massif::VectorTileDecoder": "style",
+    "massif::VectorTileLayer": "layer",
+    "massif::VectorTileSearchService": "search",
+    "massif::ZippedAssetPackage": "assets"
   },
   "specs": [
     {
@@ -10370,6 +11438,51 @@
       ]
     },
     {
+      "cppClass": "massif::Line",
+      "kind": "element",
+      "type": "line",
+      "aliases": {},
+      "defaults": {},
+      "constructors": [
+        [
+          {
+            "key": "geometry",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<LineGeometry>",
+            "childKind": "geometry",
+            "childClass": "massif::LineGeometry",
+            "required": true
+          },
+          {
+            "key": "style",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<LineStyle>",
+            "childKind": "elementstyle",
+            "childClass": "massif::LineStyle",
+            "required": true
+          }
+        ],
+        [
+          {
+            "key": "poses",
+            "type": "STRUCT",
+            "cppType": "std::vector<MapPos>",
+            "childKind": null,
+            "childClass": null,
+            "required": true
+          },
+          {
+            "key": "style",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<LineStyle>",
+            "childKind": "elementstyle",
+            "childClass": "massif::LineStyle",
+            "required": true
+          }
+        ]
+      ]
+    },
+    {
       "cppClass": "massif::Marker",
       "kind": "element",
       "type": "marker",
@@ -10435,6 +11548,213 @@
       ]
     },
     {
+      "cppClass": "massif::Point",
+      "kind": "element",
+      "type": "point",
+      "aliases": {
+        "pos": "position"
+      },
+      "defaults": {},
+      "constructors": [
+        [
+          {
+            "key": "geometry",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<PointGeometry>",
+            "childKind": "geometry",
+            "childClass": "massif::PointGeometry",
+            "required": true
+          },
+          {
+            "key": "style",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<PointStyle>",
+            "childKind": "elementstyle",
+            "childClass": "massif::PointStyle",
+            "required": true
+          }
+        ],
+        [
+          {
+            "key": "position",
+            "type": "STRUCT",
+            "cppType": "MapPos",
+            "childKind": null,
+            "childClass": null,
+            "required": true
+          },
+          {
+            "key": "style",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<PointStyle>",
+            "childKind": "elementstyle",
+            "childClass": "massif::PointStyle",
+            "required": true
+          }
+        ]
+      ]
+    },
+    {
+      "cppClass": "massif::Polygon",
+      "kind": "element",
+      "type": "polygon",
+      "aliases": {},
+      "defaults": {},
+      "constructors": [
+        [
+          {
+            "key": "poses",
+            "type": "STRUCT",
+            "cppType": "std::vector<MapPos>",
+            "childKind": null,
+            "childClass": null,
+            "required": true
+          },
+          {
+            "key": "holes",
+            "type": "STRUCT",
+            "cppType": "std::vector<std::vector<MapPos> >",
+            "childKind": null,
+            "childClass": null,
+            "required": true
+          },
+          {
+            "key": "style",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<PolygonStyle>",
+            "childKind": "elementstyle",
+            "childClass": "massif::PolygonStyle",
+            "required": true
+          }
+        ],
+        [
+          {
+            "key": "geometry",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<PolygonGeometry>",
+            "childKind": "geometry",
+            "childClass": "massif::PolygonGeometry",
+            "required": true
+          },
+          {
+            "key": "style",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<PolygonStyle>",
+            "childKind": "elementstyle",
+            "childClass": "massif::PolygonStyle",
+            "required": true
+          }
+        ],
+        [
+          {
+            "key": "poses",
+            "type": "STRUCT",
+            "cppType": "std::vector<MapPos>",
+            "childKind": null,
+            "childClass": null,
+            "required": true
+          },
+          {
+            "key": "style",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<PolygonStyle>",
+            "childKind": "elementstyle",
+            "childClass": "massif::PolygonStyle",
+            "required": true
+          }
+        ]
+      ]
+    },
+    {
+      "cppClass": "massif::Text",
+      "kind": "element",
+      "type": "text",
+      "aliases": {
+        "pos": "position"
+      },
+      "defaults": {},
+      "constructors": [
+        [
+          {
+            "key": "baseBillboard",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<Billboard>",
+            "childKind": "element",
+            "childClass": "massif::Billboard",
+            "required": true
+          },
+          {
+            "key": "style",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<TextStyle>",
+            "childKind": "elementstyle",
+            "childClass": "massif::TextStyle",
+            "required": true
+          },
+          {
+            "key": "text",
+            "type": "STRING",
+            "cppType": "std::string",
+            "childKind": null,
+            "childClass": null,
+            "required": true
+          }
+        ],
+        [
+          {
+            "key": "geometry",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<Geometry>",
+            "childKind": "geometry",
+            "childClass": "massif::Geometry",
+            "required": true
+          },
+          {
+            "key": "style",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<TextStyle>",
+            "childKind": "elementstyle",
+            "childClass": "massif::TextStyle",
+            "required": true
+          },
+          {
+            "key": "text",
+            "type": "STRING",
+            "cppType": "std::string",
+            "childKind": null,
+            "childClass": null,
+            "required": true
+          }
+        ],
+        [
+          {
+            "key": "position",
+            "type": "STRUCT",
+            "cppType": "MapPos",
+            "childKind": null,
+            "childClass": null,
+            "required": true
+          },
+          {
+            "key": "style",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<TextStyle>",
+            "childKind": "elementstyle",
+            "childClass": "massif::TextStyle",
+            "required": true
+          },
+          {
+            "key": "text",
+            "type": "STRING",
+            "cppType": "std::string",
+            "childKind": null,
+            "childClass": null,
+            "required": true
+          }
+        ]
+      ]
+    },
+    {
       "cppClass": "massif::BalloonPopupStyleBuilder",
       "kind": "elementstyle",
       "type": "balloon",
@@ -10445,9 +11765,49 @@
       ]
     },
     {
+      "cppClass": "massif::LineStyleBuilder",
+      "kind": "elementstyle",
+      "type": "line",
+      "aliases": {},
+      "defaults": {},
+      "constructors": [
+        []
+      ]
+    },
+    {
       "cppClass": "massif::MarkerStyleBuilder",
       "kind": "elementstyle",
       "type": "marker",
+      "aliases": {},
+      "defaults": {},
+      "constructors": [
+        []
+      ]
+    },
+    {
+      "cppClass": "massif::PointStyleBuilder",
+      "kind": "elementstyle",
+      "type": "point",
+      "aliases": {},
+      "defaults": {},
+      "constructors": [
+        []
+      ]
+    },
+    {
+      "cppClass": "massif::PolygonStyleBuilder",
+      "kind": "elementstyle",
+      "type": "polygon",
+      "aliases": {},
+      "defaults": {},
+      "constructors": [
+        []
+      ]
+    },
+    {
+      "cppClass": "massif::TextStyleBuilder",
+      "kind": "elementstyle",
+      "type": "text",
       "aliases": {},
       "defaults": {},
       "constructors": [
@@ -10482,6 +11842,45 @@
       ]
     },
     {
+      "cppClass": "massif::MultiOSMOfflineGeocodingService",
+      "kind": "geocoding",
+      "type": "multi-osm-offline",
+      "aliases": {},
+      "defaults": {},
+      "constructors": [
+        []
+      ]
+    },
+    {
+      "cppClass": "massif::MultiOSMOfflineReverseGeocodingService",
+      "kind": "geocoding",
+      "type": "multi-osm-offline-reverse",
+      "aliases": {},
+      "defaults": {},
+      "constructors": [
+        []
+      ]
+    },
+    {
+      "cppClass": "massif::LineGeometry",
+      "kind": "geometry",
+      "type": "line",
+      "aliases": {},
+      "defaults": {},
+      "constructors": [
+        [
+          {
+            "key": "poses",
+            "type": "STRUCT",
+            "cppType": "std::vector<MapPos>",
+            "childKind": null,
+            "childClass": null,
+            "required": true
+          }
+        ]
+      ]
+    },
+    {
       "cppClass": "massif::PointGeometry",
       "kind": "geometry",
       "type": "point",
@@ -10493,6 +11892,53 @@
             "key": "pos",
             "type": "STRUCT",
             "cppType": "MapPos",
+            "childKind": null,
+            "childClass": null,
+            "required": true
+          }
+        ]
+      ]
+    },
+    {
+      "cppClass": "massif::PolygonGeometry",
+      "kind": "geometry",
+      "type": "polygon",
+      "aliases": {},
+      "defaults": {},
+      "constructors": [
+        [
+          {
+            "key": "poses",
+            "type": "STRUCT",
+            "cppType": "std::vector<MapPos>",
+            "childKind": null,
+            "childClass": null,
+            "required": true
+          },
+          {
+            "key": "holes",
+            "type": "STRUCT",
+            "cppType": "std::vector<std::vector<MapPos> >",
+            "childKind": null,
+            "childClass": null,
+            "required": true
+          }
+        ],
+        [
+          {
+            "key": "poses",
+            "type": "STRUCT",
+            "cppType": "std::vector<MapPos>",
+            "childKind": null,
+            "childClass": null,
+            "required": true
+          }
+        ],
+        [
+          {
+            "key": "rings",
+            "type": "STRUCT",
+            "cppType": "std::vector<std::vector<MapPos> >",
             "childKind": null,
             "childClass": null,
             "required": true
@@ -10609,6 +12055,16 @@
             "childClass": null,
             "required": true
           }
+        ],
+        [
+          {
+            "key": "bitmap",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<Bitmap>",
+            "childKind": "bitmap",
+            "childClass": "massif::Bitmap",
+            "required": true
+          }
         ]
       ]
     },
@@ -10691,6 +12147,16 @@
             "required": true
           }
         ]
+      ]
+    },
+    {
+      "cppClass": "massif::MultiValhallaOfflineRoutingService",
+      "kind": "routing",
+      "type": "multi-valhalla-offline",
+      "aliases": {},
+      "defaults": {},
+      "constructors": [
+        []
       ]
     },
     {
@@ -10960,6 +12426,25 @@
       ]
     },
     {
+      "cppClass": "massif::MapTilerOnlineTileDataSource",
+      "kind": "source",
+      "type": "maptiler",
+      "aliases": {},
+      "defaults": {},
+      "constructors": [
+        [
+          {
+            "key": "key",
+            "type": "STRING",
+            "cppType": "std::string",
+            "childKind": null,
+            "childClass": null,
+            "required": true
+          }
+        ]
+      ]
+    },
+    {
       "cppClass": "massif::MBTilesTileDataSource",
       "kind": "source",
       "type": "mbtiles",
@@ -11053,6 +12538,36 @@
         [
           {
             "key": "source",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<TileDataSource>",
+            "childKind": "source",
+            "childClass": "massif::TileDataSource",
+            "required": true
+          }
+        ]
+      ]
+    },
+    {
+      "cppClass": "massif::MergedMBVTTileDataSource",
+      "kind": "source",
+      "type": "merged-mbvt",
+      "aliases": {
+        "dataSource1": "source",
+        "dataSource2": "source2"
+      },
+      "defaults": {},
+      "constructors": [
+        [
+          {
+            "key": "source",
+            "type": "OBJECT",
+            "cppType": "std::shared_ptr<TileDataSource>",
+            "childKind": "source",
+            "childClass": "massif::TileDataSource",
+            "required": true
+          },
+          {
+            "key": "source2",
             "type": "OBJECT",
             "cppType": "std::shared_ptr<TileDataSource>",
             "childKind": "source",

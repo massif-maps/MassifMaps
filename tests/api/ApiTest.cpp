@@ -7,7 +7,9 @@
 #include "api/Spec.h"
 #include "api/PropertyTable.h"
 #include "components/FogOptions.h"
+#include "geometry/GeoJSONGeometryWriter.h"
 #include "graphics/Color.h"
+#include "projections/EPSG3857.h"
 
 #include <cstdio>
 #include <memory>
@@ -70,6 +72,26 @@ namespace {
                    "a Color property is typed as COLOR, not STRUCT");
         TEST_CHECK(findProperty(fog, "nope") == nullptr, "an unknown property does not resolve");
         TEST_CHECK(findProperty(nullptr, "rangeStart") == nullptr, "a null class does not crash");
+    }
+
+    /*
+     * An enum constant resolved by name.
+     *
+     * A spec is JSON, so an enum spelled as its constant arrives as a STRING and used to go
+     * through strtoll - which reads "VECTOR_TILE_RENDER_ORDER_LAST" as 0. That is a REAL value
+     * for most of these (0 was VECTOR_TILE_RENDER_ORDER_LAYER), so the wrong setting applied and
+     * nothing was logged. The check that matters is the non-zero one.
+     */
+    void testEnumConstants() {
+        long long value = -1;
+        TEST_CHECK(enumValueOf("MAP_MOVE_REASON_API", value) && value == 2,
+                   "an enum constant resolves to its own value, not to 0");
+        value = -1;
+        TEST_CHECK(enumValueOf("MAP_MOVE_REASON_GESTURE", value) && value == 0,
+                   "and one whose value really is 0 still resolves");
+        TEST_CHECK(!enumValueOf("MAP_MOVE_REASON_NOPE", value), "an unknown constant is refused");
+        TEST_CHECK(!enumValueOf("", value) && !enumValueOf(nullptr, value),
+                   "an empty or null name does not crash");
     }
 
     void testValues(const std::shared_ptr<Context>& context) {
@@ -232,6 +254,75 @@ namespace {
         context->unregisterObject("fake", "q");
     }
 
+    /** A writer, so an OBJECT property (its sourceProjection) can be written from a spec. */
+    Result fakeWriterFactory(Context&, const Variant&, ObjectRef& object,
+                             std::set<std::string>& consumed) {
+        consumed.insert("type");
+        object.obj = std::make_shared<GeoJSONGeometryWriter>();
+        object.cppClass = "massif::GeoJSONGeometryWriter";
+        return RESULT_OK;
+    }
+
+    Result fakeProjectionFactory(Context&, const Variant&, ObjectRef& object,
+                                 std::set<std::string>& consumed) {
+        consumed.insert("type");
+        object.obj = std::make_shared<EPSG3857>();
+        object.cppClass = "massif::EPSG3857";
+        return RESULT_OK;
+    }
+
+    /**
+     * An OBJECT property takes a nested spec, not only a constructor argument.
+     *
+     * Without it every such property was a two-step - register the child under an id of its own,
+     * then write the handle - and an inline object silently reached the setter as JSON text.
+     */
+    void testNestedObjectSpec(const std::shared_ptr<Context>& context) {
+        Spec::registerFactory("writer", &fakeWriterFactory);
+        Spec::registerFactory("projection", &fakeProjectionFactory);
+
+        Handle handle = NULL_HANDLE;
+        TEST_CHECK(Spec::create(*context, "writer", "w",
+                                "{\"type\":\"w\",\"z\":true,"
+                                "\"sourceProjection\":{\"type\":\"EPSG:3857\"}}", handle) == RESULT_OK,
+                   "a spec with a nested object property builds");
+        PropertyValue value;
+        TEST_CHECK(context->getProperty(handle, "z", value) == RESULT_OK && value.boolValue,
+                   "the scalar keys still apply");
+        TEST_CHECK(context->getProperty(handle, "sourceProjection.name", value) == RESULT_OK &&
+                   value.stringValue == "EPSG:3857",
+                   "and the nested spec was built and assigned, not written as text");
+
+        // A string there is a registry id, the same rule a constructor argument follows.
+        Handle projection = NULL_HANDLE;
+        TEST_CHECK(Spec::create(*context, "projection", "p3857", "{\"type\":\"EPSG:3857\"}",
+                                projection) == RESULT_OK, "a projection registers under an id");
+        Handle byId = NULL_HANDLE;
+        TEST_CHECK(Spec::create(*context, "writer", "w2",
+                                "{\"type\":\"w\",\"sourceProjection\":\"p3857\"}", byId) == RESULT_OK &&
+                   context->getProperty(byId, "sourceProjection.name", value) == RESULT_OK &&
+                   value.stringValue == "EPSG:3857", "a string names a registered object");
+
+        // A NUMBER is a handle: how an app shares an object it already holds, rather than naming it.
+        Handle byHandle = NULL_HANDLE;
+        TEST_CHECK(Spec::create(*context, "writer", "w3",
+                                "{\"type\":\"w\",\"sourceProjection\":" + std::to_string(projection) + "}",
+                                byHandle) == RESULT_OK &&
+                   context->getProperty(byHandle, "sourceProjection.name", value) == RESULT_OK &&
+                   value.stringValue == "EPSG:3857", "a number is a handle onto a live object");
+        Handle staleHandle = NULL_HANDLE;
+        TEST_CHECK(Spec::create(*context, "writer", "w4",
+                                "{\"type\":\"w\",\"sourceProjection\":" + std::to_string(projection + 7777) + "}",
+                                staleHandle) == RESULT_OK,
+                   "a stale handle is a warning on a property, not a failed create");
+
+        context->unregisterObject("writer", "w");
+        context->unregisterObject("writer", "w2");
+        context->unregisterObject("writer", "w3");
+        context->unregisterObject("writer", "w4");
+        context->unregisterObject("projection", "p3857");
+    }
+
     void testHandles(const std::shared_ptr<Context>& context) {
         Handle handle = context->findObject("options", "fog");
         TEST_CHECK(handle != NULL_HANDLE, "an id resolves to its handle");
@@ -265,11 +356,13 @@ namespace {
 
 int main() {
     testTable();
+    testEnumConstants();
 
     auto context = std::make_shared<Context>();
     testValues(context);
     testPaths(context);
     testCreate(context);
+    testNestedObjectSpec(context);
     testHandles(context);
     testEvents();
     testDelivery();

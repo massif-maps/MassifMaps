@@ -12,6 +12,14 @@ namespace massif {
     }
     
     std::string ClassRegistry::GetClassName(const std::type_info& typeInfo) {
+        std::string name = FindClassName(typeInfo);
+        if (name.empty()) {
+            Log::Errorf("ClassRegistry: Could not find class: %s", typeInfo.name());
+        }
+        return name;
+    }
+
+    std::string ClassRegistry::FindClassName(const std::type_info& typeInfo) {
         ClassRegistry& registry = GetInstance();
 
         std::lock_guard<std::mutex> lock(registry._mutex);
@@ -19,7 +27,6 @@ namespace massif {
         if (it != registry._classNames.end()) {
             return it->second;
         }
-        Log::Errorf("ClassRegistry: Could not find class: %s", typeInfo.name());
         return std::string();
     }
 

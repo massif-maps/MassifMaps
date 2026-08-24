@@ -20,6 +20,8 @@
 !enum(massif::LineJoinType::LineJoinType)
 !polymorphic_shared_ptr(massif::LineStyle, styles.LineStyle)
 
+!spec(massif::LineStyle, elementstyle, -)
+
 %attribute(massif::LineStyle, float, Width, getWidth)
 %attribute(massif::LineStyle, float, ClickWidth, getClickWidth)
 %attribute(massif::LineStyle, float, StretchFactor, getStretchFactor)

@@ -89,7 +89,7 @@ filtered to its layer name. Style it with the normal vector symbolizers on `#nam
 `ContourTileDataSource` (default layer name `contour`):
 
 ```css
-#contour[view::zoom>=12] {
+#contour['view::zoom'>=12] {
   line-color: #9a5a12; line-width: 0.8; line-opacity: 0.7;
   text-name: [ele]; text-face-name: "Noto Sans Regular"; text-size: 9;  // needs a font asset
 }
@@ -138,9 +138,9 @@ source) — no need to download the DEM at the target zoom. Set
 Gate a source's visibility with rule predicates on its `#name` block:
 
 ```css
-#satellite[view::zoom>=13] { raster-opacity: 0.4; }          // only z>=13 (also limits fetching)
-#hillshade[view::zoom>5][view::zoom<=15] { hillshade-opacity: 0.6; }
-#hillshade[param::show_relief=true] { hillshade-opacity: 0.6; } // toggled at runtime (see §6)
+#satellite['view::zoom'>=13] { raster-opacity: 0.4; }          // only z>=13 (also limits fetching)
+#hillshade['view::zoom'>5]['view::zoom'<=15] { hillshade-opacity: 0.6; }
+#hillshade['param::show_relief'=true] { hillshade-opacity: 0.6; } // toggled at runtime (see §6)
 ```
 
 Raster/hillshade children have their fetch/draw zoom range constrained to the config rules'
@@ -165,13 +165,13 @@ String mss =
     "Map { background-color: #eef2f0; }\n" +
     "#water { polygon-fill: #9cc3e0; }\n" +
     "#landcover { polygon-fill: #dbe8cc; }\n" +
-    "#hillshade[param::show_relief=true][view::zoom>=4] {\n" +
+    "#hillshade['param::show_relief'=true]['view::zoom'>=4] {\n" +
     "  hillshade-opacity: linear([view::zoom], (4, 0.4), (12, 0.7));\n" +
     "  hillshade-exaggeration: linear([view::zoom], (4, 0.6), (12, 1.4));\n" +
     "}\n" +
     "#transportation { line-color: #ffffff; line-width: 1.2; }\n" +
-    "#building[view::zoom>=14] { polygon-fill: #d9cfc4; }\n" +
-    "#contour[view::zoom>=12] { line-color: #9a5a12; line-width: 0.8; }\n";
+    "#building['view::zoom'>=14] { polygon-fill: #d9cfc4; }\n" +
+    "#contour['view::zoom'>=12] { line-color: #9a5a12; line-width: 0.8; }\n";
 
 // Zip the two assets in memory -> ZippedAssetPackage -> CompiledStyleSet (loadMapProject)
 java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream();
@@ -199,7 +199,22 @@ Style parameters can be booleans (as above), enums, or numbers; declare enums wi
 map in the project JSON. `setStyleParameter` re-symbolizes and the composite re-evaluates the
 config on the next frame.
 
-## 7. Gotchas & limitations
+## 7. Compiled Mapnik XML styles
+
+A style shipped as compiled XML (`css2xml project.json style.xml`) keeps its slots: each config
+block is written out as a symbolizer element and read back by the XML parser.
+
+| CartoCSS block | XML element |
+|---|---|
+| `#name { raster-* }` | `<RasterConfigSymbolizer …/>` |
+| `#name { hillshade-* }` | `<HillshadeConfigSymbolizer …/>` |
+| `#name { contour-* }` | `<ContourConfigSymbolizer …/>` |
+
+Attributes are the property names without the block prefix — `hillshade-shadow-color` becomes
+`shadow-color`, `raster-opacity` becomes `opacity`. A block that sets nothing still compiles to
+`visible="true"`, so the slot survives.
+
+## 8. Gotchas & limitations
 
 - **`layers` array is reversed** into draw order (first entry = top). Raw-CSS placement is
   first-reference = bottom.

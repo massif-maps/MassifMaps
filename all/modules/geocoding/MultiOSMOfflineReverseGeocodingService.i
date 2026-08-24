@@ -25,6 +25,10 @@
 
 !polymorphic_shared_ptr(massif::MultiOSMOfflineReverseGeocodingService, geocoding.MultiOSMOfflineReverseGeocodingService)
 
+!spec(massif::MultiOSMOfflineReverseGeocodingService, geocoding, multi-osm-offline-reverse)
+!method(massif::MultiOSMOfflineReverseGeocodingService, add, arg(database, string), returns(void))
+!method(massif::MultiOSMOfflineReverseGeocodingService, remove, arg(database, string), returns(bool))
+
 %std_io_exceptions(massif::MultiOSMOfflineReverseGeocodingService::MultiOSMOfflineReverseGeocodingService)
 %std_io_exceptions(massif::MultiOSMOfflineReverseGeocodingService::calculateAddresses)
 

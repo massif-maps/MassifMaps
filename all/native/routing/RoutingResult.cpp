@@ -2,6 +2,7 @@
 
 #include "RoutingResult.h"
 #include "components/Exceptions.h"
+#include "core/Variant.h"
 
 #include <numeric>
 #include <functional>
@@ -39,6 +40,26 @@ namespace massif {
 
     int RoutingResult::getInstructionCount() const {
         return static_cast<int>(_instructions.size());
+    }
+
+    std::string RoutingResult::getInstructionsJSON() const {
+        std::stringstream ss;
+        ss << std::setiosflags(std::ios::fixed) << std::setprecision(6) << "[";
+        for (std::size_t index = 0; index < _instructions.size(); index++) {
+            const RoutingInstruction& instruction = _instructions[index];
+            ss << (index ? ",{" : "{")
+               << "\"action\":" << static_cast<int>(instruction.getAction())
+               << ",\"pointIndex\":" << instruction.getPointIndex()
+               << ",\"streetName\":" << Variant(instruction.getStreetName()).toString()
+               << ",\"instruction\":" << Variant(instruction.getInstruction()).toString()
+               << ",\"turnAngle\":" << instruction.getTurnAngle()
+               << ",\"azimuth\":" << instruction.getAzimuth()
+               << ",\"distance\":" << instruction.getDistance()
+               << ",\"time\":" << instruction.getTime()
+               << "}";
+        }
+        ss << "]";
+        return ss.str();
     }
 
     int RoutingResult::getPointCount() const {

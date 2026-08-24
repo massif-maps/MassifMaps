@@ -36,6 +36,26 @@ fi
 [ -n "$ANDROID_JAR" ] && echo "==> android.jar: $ANDROID_JAR" || echo "==> WARNING: no android.jar found; javadoc may fail on android.* references"
 
 rm -rf "$BUILD" && mkdir -p "$PROXY"
+
+# The proxies of the enum namespaces carry an @IntDef, and androidx is not on a docs
+# machine (nor in the CI job — no gradle here). A source stub is enough for javadoc.
+STUBS="$BUILD/stubs"
+mkdir -p "$STUBS/androidx/annotation"
+cat > "$STUBS/androidx/annotation/IntDef.java" <<'EOF'
+package androidx.annotation;
+
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+
+/** Stub of the androidx typedef annotation, so the docs build needs no androidx dependency. */
+@Retention(RetentionPolicy.SOURCE)
+public @interface IntDef {
+  long[] value() default {};
+  boolean flag() default false;
+  boolean open() default false;
+}
+EOF
+
 echo "==> Generating Java proxies (profile: $PROFILE)"
 # swigpp-java.py resolves its paths relative to the scripts/ directory and emits
 # Javadoc-ready sources (SWIG is invoked with -doxygen). Run it from there.
@@ -62,7 +82,7 @@ javadoc \
   -windowtitle "Massif Maps — Android API" \
   -doctitle "Massif Maps — Android API" \
   -notimestamp -quiet -Xdoclint:none \
-  -sourcepath "$PROXY:$ROOT/android/java" \
+  -sourcepath "$PROXY:$ROOT/android/java:$STUBS" \
   ${ANDROID_JAR:+-classpath "$ANDROID_JAR"} \
   @"$BUILD/sources.txt" || echo "   (javadoc reported warnings/unresolved externals — output still generated)"
 

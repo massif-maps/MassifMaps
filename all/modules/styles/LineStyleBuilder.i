@@ -19,6 +19,8 @@
 
 !polymorphic_shared_ptr(massif::LineStyleBuilder, styles.LineStyleBuilder)
 
+!spec(massif::LineStyleBuilder, elementstyle, line)
+
 %attribute(massif::LineStyleBuilder, float, Width, getWidth, setWidth)
 %attribute(massif::LineStyleBuilder, float, ClickWidth, getClickWidth, setClickWidth)
 %attribute(massif::LineStyleBuilder, float, StretchFactor, getStretchFactor, setStretchFactor)

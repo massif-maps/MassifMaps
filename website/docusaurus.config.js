@@ -5,7 +5,8 @@ import {themes as prismThemes} from 'prism-react-renderer';
 const config = {
   title: 'Massif Maps',
   tagline: 'Open, multi-platform maps & location services for Android and iOS — desktop and web next',
-  favicon: 'img/favicon.svg',
+  // ?v=2 busts the browser's favicon cache — it keys on the URL, not the bytes.
+  favicon: 'img/favicon.svg?v=2',
 
   url: 'https://massif-maps.github.io',
   baseUrl: '/MassifMaps/',

@@ -105,6 +105,22 @@ namespace massif { namespace api {
         const char* base;
     };
 
+    /** One enum constant, by the name a spec spells it with. */
+    struct EnumConstantEntry {
+        const char* name;
+        long long value;
+    };
+
+    /**
+     * An enum constant's value, by name. False when nothing goes by that name.
+     *
+     * A spec is JSON, so an enum written as its constant name arrives as a STRING. `asLong` then
+     * ran it through `strtoll` and got 0 - a valid value for most of these, so the wrong setting
+     * applied silently. Bindings resolve names themselves for `set`; this is the same table for
+     * the paths that only ever see the raw spec.
+     */
+    bool enumValueOf(const char* name, long long& value);
+
     /**
      * One class' runtime type, so a traversal can name what it actually found.
      */

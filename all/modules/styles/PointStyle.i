@@ -18,6 +18,8 @@
 
 !polymorphic_shared_ptr(massif::PointStyle, styles.PointStyle)
 
+!spec(massif::PointStyle, elementstyle, -)
+
 %attribute(massif::PointStyle, float, Size, getSize)
 %attribute(massif::PointStyle, float, ClickSize, getClickSize)
 %attributestring(massif::PointStyle, std::shared_ptr<massif::Bitmap>, Bitmap, getBitmap)

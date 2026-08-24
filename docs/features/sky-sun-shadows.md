@@ -172,6 +172,11 @@ Map {
 }
 ```
 
+Every `Map` block setting on this page survives compilation to Mapnik XML: `css2xml` writes them
+as attributes of the `<Map>` element under the same names, and only the ones the style actually set
+— an absent attribute is what tells the SDK the application's own `LightOptions` / `FogOptions`
+value stands.
+
 `ViewDistanceFactor` ends the ground (tangram's rule: `2 × camera height / cos(pitch + fovy/2)`,
 capped at 127 tile widths; `1` = their rule verbatim). Without fog it ends on a hard edge.
 

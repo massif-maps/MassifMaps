@@ -5,10 +5,16 @@
 #include "api/GeometryMethods.h"
 #include "api/Methods.h"
 #include "core/MapPos.h"
+#include "routing/RouteMatchingRequest.h"
+#include "routing/RouteMatchingResult.h"
 #include "routing/RoutingInstruction.h"
 #include "routing/RoutingRequest.h"
 #include "routing/RoutingResult.h"
 #include "routing/RoutingService.h"
+
+#ifdef _MASSIF_VALHALLA_ROUTING_SUPPORT
+#include "routing/MultiValhallaOfflineRoutingService.h"
+#endif
 
 #include <memory>
 #include <vector>
@@ -37,6 +43,28 @@ namespace massif { namespace api {
             return objectResult(context,
                                 static_cast<RoutingService*>(obj)->calculateRoute(request),
                                 "massif::RoutingResult", result);
+        }
+
+        /**
+         * matchRoute([requestHandle]) -> a RouteMatchingResult handle.
+         *
+         * Map matching: what turns a recorded track into edges carrying surface, grade and road
+         * class. Blocking like calculateRoute, so it belongs on callAsync.
+         */
+        Result matchRoute(Context& context, void* obj, const CallArgs& args,
+                          PropertyValue& result) {
+            Handle requestHandle = NULL_HANDLE;
+            if (!args.getHandle(0, requestHandle)) {
+                return RESULT_BAD_SPEC;
+            }
+            auto request = std::static_pointer_cast<RouteMatchingRequest>(
+                context.getObject(requestHandle, "massif::RouteMatchingRequest"));
+            if (!request) {
+                return RESULT_BAD_HANDLE;
+            }
+            return objectResult(context,
+                                static_cast<RoutingService*>(obj)->matchRoute(request),
+                                "massif::RouteMatchingResult", result);
         }
 
         /**
@@ -85,13 +113,89 @@ namespace massif { namespace api {
             return RESULT_OK;
         }
 
+        /** The same on a match request - shape_match and the attribute filters go through it. */
+        Result setMatchingCustomParameter(Context&, void* obj, const CallArgs& args,
+                                          PropertyValue&) {
+            std::string name;
+            if (!args.getString(0, name) || args.count() < 2) {
+                return RESULT_BAD_SPEC;
+            }
+            static_cast<RouteMatchingRequest*>(obj)->setCustomParameter(name, args.get(1));
+            return RESULT_OK;
+        }
+
+#ifdef _MASSIF_VALHALLA_ROUTING_SUPPORT
+
+        /**
+         * add(path) / remove(path) on the multi-database offline service.
+         *
+         * One .vtiles per downloaded area, found by scanning at run time, so the databases cannot
+         * be constructor arguments.
+         */
+        Result addRoutingDatabase(Context&, void* obj, const CallArgs& args, PropertyValue&) {
+            std::string database;
+            if (!args.getString(0, database)) {
+                return RESULT_BAD_SPEC;
+            }
+            static_cast<MultiValhallaOfflineRoutingService*>(obj)->add(database);
+            return RESULT_OK;
+        }
+
+        Result removeRoutingDatabase(Context&, void* obj, const CallArgs& args,
+                                     PropertyValue& result) {
+            std::string database;
+            if (!args.getString(0, database)) {
+                return RESULT_BAD_SPEC;
+            }
+            result = PropertyValue::ofBool(
+                static_cast<MultiValhallaOfflineRoutingService*>(obj)->remove(database));
+            return RESULT_OK;
+        }
+
+        /** addLocale(key, json) - the maneuver wording for a language the SDK does not bundle. */
+        Result addRoutingLocale(Context&, void* obj, const CallArgs& args, PropertyValue&) {
+            std::string key;
+            std::string json;
+            if (!args.getString(0, key) || !args.getString(1, json)) {
+                return RESULT_BAD_SPEC;
+            }
+            static_cast<MultiValhallaOfflineRoutingService*>(obj)->addLocale(key, json);
+            return RESULT_OK;
+        }
+
+        /** setConfigurationParameter(param, value) - valhalla's own limits, e.g. max distances. */
+        Result setRoutingConfiguration(Context&, void* obj, const CallArgs& args, PropertyValue&) {
+            std::string param;
+            if (!args.getString(0, param) || args.count() < 2) {
+                return RESULT_BAD_SPEC;
+            }
+            static_cast<MultiValhallaOfflineRoutingService*>(obj)
+                ->setConfigurationParameter(param, args.get(1));
+            return RESULT_OK;
+        }
+
+#endif
+
     }
 
     void registerRoutingMethods() {
         Methods::registerMethod("massif::RoutingService", "calculateRoute", &calculateRoute);
+        Methods::registerMethod("massif::RoutingService", "matchRoute", &matchRoute);
         Methods::registerMethod("massif::RoutingResult", "getInstruction", &getInstruction);
         Methods::registerMethod("massif::RoutingResult", "getPoints", &getRoutePoints);
         Methods::registerMethod("massif::RoutingRequest", "setCustomParameter", &setCustomParameter);
+        Methods::registerMethod("massif::RouteMatchingRequest", "setCustomParameter",
+                                &setMatchingCustomParameter);
+#ifdef _MASSIF_VALHALLA_ROUTING_SUPPORT
+        Methods::registerMethod("massif::MultiValhallaOfflineRoutingService", "add",
+                                &addRoutingDatabase);
+        Methods::registerMethod("massif::MultiValhallaOfflineRoutingService", "remove",
+                                &removeRoutingDatabase);
+        Methods::registerMethod("massif::MultiValhallaOfflineRoutingService", "addLocale",
+                                &addRoutingLocale);
+        Methods::registerMethod("massif::MultiValhallaOfflineRoutingService",
+                                "setConfigurationParameter", &setRoutingConfiguration);
+#endif
     }
 
 } }

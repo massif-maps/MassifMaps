@@ -1,5 +1,6 @@
 #include "api/Spec.h"
 #include "api/Context.h"
+#include "api/SpecBuilders.h"
 #include "utils/Log.h"
 
 #include <map>
@@ -76,6 +77,12 @@ namespace massif { namespace api {
         // a warning, so a spec from another version still applies what it can.
         for (const std::string& key : spec.getObjectKeys()) {
             if (consumed.count(key)) {
+                continue;
+            }
+            // An OBJECT property takes the same nested spec a constructor argument does - a
+            // layer's tileDecoder, a polygon style's border - so it is built here rather than
+            // reaching setProperty as JSON it cannot use.
+            if (applyObjectSpecProperty(context, object, spec, key)) {
                 continue;
             }
             Variant value = spec.getObjectElement(key);

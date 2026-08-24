@@ -17,6 +17,8 @@
 
 !polymorphic_shared_ptr(massif::PolygonStyle, styles.PolygonStyle)
 
+!spec(massif::PolygonStyle, elementstyle, -)
+
 %attributestring(massif::PolygonStyle, std::shared_ptr<massif::LineStyle>, LineStyle, getLineStyle)
 %ignore massif::PolygonStyle::getBitmap;
 %ignore massif::PolygonStyle::PolygonStyle;

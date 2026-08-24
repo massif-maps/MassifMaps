@@ -18,6 +18,8 @@
 
 !polymorphic_shared_ptr(massif::TextStyleBuilder, styles.TextStyleBuilder)
 
+!spec(massif::TextStyleBuilder, elementstyle, text)
+
 %attributestring(massif::TextStyleBuilder, std::string, FontName, getFontName, setFontName)
 %attributestring(massif::TextStyleBuilder, std::string, TextField, getTextField, setTextField)
 %attribute(massif::TextStyleBuilder, float, FontSize, getFontSize, setFontSize)

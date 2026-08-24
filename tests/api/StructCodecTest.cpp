@@ -147,6 +147,11 @@ void testVariantPaths() {
                value.stringValue.find("\"Point\"") != std::string::npos &&
                value.stringValue.find("\"coordinates\"") != std::string::npos,
                "geometryGeoJSON serialises the geometry");
+    // The same on the geometry itself, so a shape with no feature around it serialises too - which
+    // is what an app writing a track or a route back out has.
+    TEST_CHECK(context->getProperty(handle, "geometry.geoJSON", value) == RESULT_OK &&
+               value.stringValue.find("\"Point\"") != std::string::npos,
+               "and a geometry serialises on its own");
 
     auto empty = std::make_shared<Feature>(std::shared_ptr<Geometry>(), Variant());
     Handle emptyHandle = NULL_HANDLE;
@@ -251,4 +256,19 @@ void testMoreStructs() {
                decodedPath.size() == 2 && decodedPath[1] == MapPos(3, 4, 0),
                "a list of positions round-trips");
     TEST_CHECK(!StructCodec::decode("[[1,2],[3]]", decodedPath), "one bad element fails the list");
+
+    // Rings, which a polygon spec needs: an outline and its holes.
+    std::vector<std::vector<MapPos> > rings;
+    rings.push_back(path);
+    std::vector<MapPos> hole;
+    hole.push_back(MapPos(5, 6));
+    rings.push_back(hole);
+    std::vector<std::vector<MapPos> > decodedRings;
+    TEST_CHECK(StructCodec::encode(rings) == "[[[1,2,0],[3,4,0]],[[5,6,0]]]",
+               "rings nest one level deeper than a path");
+    TEST_CHECK(StructCodec::decode(StructCodec::encode(rings), decodedRings) &&
+               decodedRings.size() == 2 && decodedRings[1].size() == 1 &&
+               decodedRings[1][0] == MapPos(5, 6, 0), "and round-trip");
+    TEST_CHECK(!StructCodec::decode("[[1,2],[3,4]]", decodedRings),
+               "a flat path is not a list of rings");
 }

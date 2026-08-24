@@ -25,6 +25,8 @@
 
 !polymorphic_shared_ptr(massif::ReverseGeocodingService, geocoding.ReverseGeocodingService)
 
+!method(massif::ReverseGeocodingService, calculateAddresses, arg(request, handle), returns(json))
+
 %attributestring(massif::ReverseGeocodingService, std::string, Language, getLanguage, setLanguage)
 %std_exceptions(massif::ReverseGeocodingService::setLanguage)
 %std_io_exceptions(massif::ReverseGeocodingService::calculateAddresses)

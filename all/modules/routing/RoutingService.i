@@ -28,6 +28,8 @@
 !polymorphic_shared_ptr(massif::RoutingService, routing.RoutingService)
 
 !method(massif::RoutingService, calculateRoute, arg(request, handle), returns(object, massif::RoutingResult))
+// Map matching: what turns a recorded track into edges with surface, grade and road class.
+!method(massif::RoutingService, matchRoute, arg(request, handle), returns(object, massif::RouteMatchingResult))
 %attributestring(massif::RoutingService, std::string, Profile, getProfile, setProfile)
 %std_exceptions(massif::RoutingService::setProfile)
 %std_io_exceptions(massif::RoutingService::matchRoute)

@@ -55,6 +55,17 @@ namespace massif {
         int getInstructionCount() const;
 
         /**
+         * Returns every turn-by-turn instruction as one JSON array.
+         *
+         * A maneuver is nine scalars, and reading them one instruction at a time costs a call per
+         * field: a mountain route has hundreds. The keys are the property names
+         * (`action`, `pointIndex`, `streetName`, `instruction`, `turnAngle`, `azimuth`,
+         * `distance`, `time`), and `action` is the enum's constant name.
+         * @return The instruction list as JSON.
+         */
+        std::string getInstructionsJSON() const;
+
+        /**
          * Returns the number of points in the path.
          * @return The number of points in the path.
          */

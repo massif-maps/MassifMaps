@@ -25,6 +25,11 @@
 
 !polymorphic_shared_ptr(massif::MultiOSMOfflineGeocodingService, geocoding.MultiOSMOfflineGeocodingService)
 
+// One .nutigeodb per downloaded area, found by scanning, so they are added not constructed.
+!spec(massif::MultiOSMOfflineGeocodingService, geocoding, multi-osm-offline)
+!method(massif::MultiOSMOfflineGeocodingService, add, arg(database, string), returns(void))
+!method(massif::MultiOSMOfflineGeocodingService, remove, arg(database, string), returns(bool))
+
 %std_io_exceptions(massif::MultiOSMOfflineGeocodingService::MultiOSMOfflineGeocodingService)
 %std_io_exceptions(massif::MultiOSMOfflineGeocodingService::calculateAddresses)
 

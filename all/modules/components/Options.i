@@ -67,6 +67,7 @@
 %attribute(massif::Options, bool, RestrictedPanning, isRestrictedPanning, setRestrictedPanning)
 %attribute(massif::Options, bool, TiltGestureReversed, isTiltGestureReversed, setTiltGestureReversed)
 %attribute(massif::Options, bool, ZoomGestures, isZoomGestures, setZoomGestures)
+%attribute(massif::Options, bool, RotationGestures, isRotationGestures, setRotationGestures)
 %attribute(massif::Options, bool, LayersLabelsProcessedInReverseOrder, isLayersLabelsProcessedInReverseOrder, setLayersLabelsProcessedInReverseOrder)
 %attributeval(massif::Options, massif::MapRange, ZoomRange, getZoomRange, setZoomRange)
 %attributeval(massif::Options, massif::MapRange, TiltRange, getTiltRange, setTiltRange)

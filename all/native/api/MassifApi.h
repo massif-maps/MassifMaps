@@ -157,6 +157,18 @@ namespace massif { namespace api {
         static int setObject(int handle, const std::string& path, int value);
 
         /**
+         * The object an object property points at, as a handle the CALLER OWNS.
+         *
+         * The counterpart of setObject, and the only way to SHARE a child: an overlay drawing the
+         * base map's tiles with a different style needs that source, and without this it had to be
+         * built a second time. Pass it to destroy when done - it is a reference, not a copy, so
+         * destroying it does not touch the object itself.
+         *
+         * @return 0 when the path does not resolve, is not an object property, or is null.
+         */
+        static int getObject(int handle, const std::string& path);
+
+        /**
          * Reads a property. Returns the fallback when the path does not resolve, so a caller
          * that does not care about the reason does not have to check twice.
          */

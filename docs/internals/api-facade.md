@@ -312,6 +312,36 @@ per-subscription one is the convenience. A per-read name always wins over it.
 argument, so a write outside a handler is always taken as WGS84. Writing 3857 metres directly means
 subscribing with `"EPSG:3857"`, or converting first.
 
+**An enum in a spec is resolved by NAME, in C++.** JSON has no enums, so `labelRenderOrder:
+"VECTOR_TILE_RENDER_ORDER_LAST"` arrives as a string — and `PropertyValue::asLong` ran it through
+`strtoll`, which yields **0**. Zero is a real value for nearly every enum here
+(`VECTOR_TILE_RENDER_ORDER_LAYER`, `TILE_SUBSTITUTION_POLICY_ALL`), so the wrong setting applied
+and nothing was logged; only writing the raw number worked, against what the typings ask for.
+`applySpecProperties` now resolves a `PT_ENUM` written as a string through `enumValueOf`, backed by
+a generated table of every constant. Bindings still resolve names themselves for `set` — this is
+for the paths that only ever see the raw spec, which includes the C ABI. A constant name that two
+enums share with different values is **left out** of the table and refused rather than guessed; the
+generator warns which (today `PACKAGES_ADDED`, `PACKAGES_DELETED`).
+
+**A nested spec works on a write, not only on a constructor.** `setObject` carries a handle and
+nothing else, so a binding handed `{ "type": "url", … }` for an OBJECT property had nothing to send:
+the value collapsed to `NULL_HANDLE`, which **clears the property and returns `RESULT_OK`**. Writing
+`backgroundBitmap` that way blanked the map background and reported success. A binding resolves the
+spec itself, through the schema's `kindOfClass` (`massif::Bitmap` → `bitmap`, hand-written factories
+included), builds it with `create`, and sets the resulting handle — the same kind lookup
+`applyObjectSpecProperty` does at construction. **A null write is indistinguishable from a failed
+one at this verb**, which is why the resolution belongs on the caller's side of it.
+
+**A method argument is converted to the OBJECT's projection — which is wrong for an SDK method that
+reprojects internally.** `CallArgs::getPos`/`getPositions` resolve the target's projection through
+`findProjectionProperty` and convert into it, which is right for `moveTo` (`BaseMapView` wants base
+projection) and wrong for `HillshadeRasterTileLayer.getElevation(s)`: `TileLayer` declares a
+projection, so the degrees became metres, and `ElevationManager` then applied `fromWgs84` to those
+metres and found no tile — every query answered "no data", which an app reading the sentinel shows
+as one constant elevation everywhere. Those two use `getPosWgs84`/`getPositionsWgs84`, which stop at
+WGS84. **Check which end reprojects before registering a method that takes positions**; the symptom
+is a plausible number, not an error.
+
 With neither given the value is **left in the source projection**, and so is a value whose source
 projection is unknown: a wrong guess is worse than an unconverted number. An unknown projection
 name is an error at subscribe time and `RESULT_UNKNOWN_TYPE` at read time, never a silent
@@ -449,20 +479,21 @@ inline spec of that kind, and it is checked against the class the caller is abou
 
 | kind | types |
 |---|---|
-| `source` | `http` `assets` `mbtiles` `memory-cache` `persistent-cache` `ordered` `combined` `multi` |
+| `source` | `http` `assets` `mbtiles` `maptiler` `memory-cache` `persistent-cache` `ordered` `combined` `merged-mbvt` `multi` `geojson` `local` |
 | `data` | `url` — bytes from `file://`, `assets://` or `http(s)://` |
 | `assets` | `dir` (a directory), `bundle` (the app's own bundled assets), `zip` (a `data` archive) |
-| `geometry` | `geojson`, and `point` from a `pos` |
+| `geometry` | `geojson` — a JSON string or the document inline, optional target `projection` — plus `point` (`pos`), `line` (`poses`) and `polygon` (`poses`, optional `holes`, or `rings`) |
 | `feature` | `feature` — a `geometry` and free-form `properties` |
-| `element` | `marker`, `balloon` — from a `position`, a `geometry` or a `baseBillboard` |
-| `elementstyle` | `marker`, `balloon` — built through the SDK's style BUILDER, see below |
+| `element` | `marker` `balloon` `point` `line` `polygon` `text` — from a `position`, a `geometry` or a `baseBillboard` |
+| `elementstyle` | `marker` `balloon` `point` `line` `polygon` `text` — built through the SDK's style BUILDER, see below |
 | `styleset` | `cartocss` (inline `css`), `project` (an asset package + the `name` of one style in it) |
 | `style` | `mbvt` — a vector tile decoder over a `cartocss` or a `project` style set |
-| `layer` | `raster` `vector` `composite-vector` `hillshade` `solid` |
+| `layer` | `raster` `vector` `composite-vector` `hillshade` `solid` `elements` |
+| `options` | `fog` `sky` `light` `terrain` |
 | `projection` | any name in the projection registry |
-| `geometry` | `geojson` — a JSON string or the document inline, optional target `projection` |
 | `search` | `request`, `vectortile` (from a `layer`, or a `source` + `style`) |
-| `routing` | `request` (`points` + `projection`), `valhalla-online`, `valhalla-offline` |
+| `routing` | `request` (`points` + `projection`), `match-request` (+ `accuracy`), `valhalla-online`, `valhalla-offline`, `multi-valhalla-offline` |
+| `geocoding` | `request` (`query`), `reverse-request` (`location`), `multi-osm-offline`, `multi-osm-offline-reverse` |
 
 ```json
 {"type":"composite-vector","opacity":0.5,
@@ -503,20 +534,28 @@ One line per class in its `.i` says what to call it and how to spell the awkward
 - **A `shared_ptr<X>` parameter resolves as a child**: an id from the registry or an inline spec of
   whatever kind builds an `X`. The kind is found by walking `X`'s subclasses' declarations, so a
   parameter typed as the base `TileDataSource` resolves against `source`.
+- **So does a writable OBJECT *property*** — the generator emits `SPEC_KIND_OF_CLASS` beside
+  `SPEC_KINDS`, so anything a constructor argument accepts a property accepts too. A polygon style
+  carries its border as `"lineStyle": {"type":"line", …}` rather than the app registering the border
+  under an id of its own and writing back a handle.
+- **A `std::vector<MapPos>` parameter is a list of positions**, and a `std::vector<std::vector<MapPos>>`
+  a list of rings — `line`, `polygon` and the two routing requests all take one. Deliberately not a
+  property type: a route is thousands of positions and the bulk channel exists to avoid that JSON.
 - **The longest constructor the spec fully satisfies wins.** `MBTilesTileDataSource` has three;
   `{"type":"mbtiles","path":"x"}` picks the 3-argument one because `minZoom`/`maxZoom` have declared
   defaults and `scheme` does not — and passing `scheme` now reaches the 4-argument one, which no
   hand-written factory ever exposed. Same for `HillshadeRasterTileLayer`'s `elevationDecoder`.
 
-Twenty-four classes over nine kinds build this way. `SpecFactories.cpp` went from 486 lines to 313,
-and everything left in it is genuinely adaptive rather than boilerplate:
+Fifty-one classes over thirteen kinds build this way, and everything left hand-written in
+`SpecFactories.cpp` is genuinely adaptive rather than boilerplate:
 
 | still hand-written | why the signature cannot say it |
 |---|---|
 | `projection` | a name registry lookup, not a constructor |
-| `geometry` | a GeoJSON reader, not a constructor |
+| `geometry` **geojson** | a GeoJSON reader, not a constructor — the shapes themselves build from theirs |
 | `search` **from a layer** | the source and the decoder both come from a layer already on the map |
-| `routing` **request** | a projection by name, and a list of positions |
+| `routing` **request** / **match-request** | a projection by name, and a list of positions |
+| `geocoding` **request** / **reverse-request** | the same, with a query or a location |
 
 #### The style chain, which used to be flattened
 
@@ -1183,9 +1222,14 @@ Chosen by counting, not by guessing: the NativeScript app this API is measured a
 | `refresh()` | `Layer` | |
 | `findFeatures([requestHandle])` | `VectorTileSearchService`, `FeatureCollectionSearchService` | blocking — see [Search](#search) |
 | `getFeature([index])` | `FeatureCollection` | the collection channel |
-| `calculateRoute([requestHandle])` | `RoutingService` | blocking — see [Routing](#routing) |
+| `calculateRoute([requestHandle])`, `matchRoute([requestHandle])` | `RoutingService` | blocking — see [Routing](#routing) |
 | `getInstruction([index])`, `getPoints()` | `RoutingResult` | an element, and the path flat |
-| `setCustomParameter(name, value)` | `RoutingRequest` | free-form JSON, so not a property |
+| `setCustomParameter(name, value)` | `RoutingRequest`, `RouteMatchingRequest` | free-form JSON, so not a property |
+| `insert(index, layer)`, `set(index, layer)`, `get(index)`, `clear()` | `Layers` | an app that orders its stack places a layer, not only appends one |
+| `add(source, tileMask)`, `remove(source)` | `MultiTileDataSource` | one package per downloaded area, discovered at run time |
+| `add(path)`, `remove(path)`, `addLocale(key, json)`, `setConfigurationParameter(param, value)` | `MultiValhallaOfflineRoutingService` | the same, for routing databases |
+| `add(path)`, `remove(path)` | `MultiOSMOfflineGeocodingService` and its reverse | the same, for geocoding databases |
+| `calculateAddresses([requestHandle])` | `GeocodingService`, `ReverseGeocodingService` | returns **GeoJSON**: `calculateAddresses` gives a vector the facade has no channel for, and each feature carrying its result's `address` and `rank` is the shape a caller rebuilt by hand |
 
 `findFeatures` and `getFeature` are not on that list — the app wraps them in its own service — but
 a search is the one thing an app cannot rebuild on top of the facade, so it is covered below.

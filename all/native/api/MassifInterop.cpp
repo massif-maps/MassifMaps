@@ -32,12 +32,15 @@ namespace massif { namespace api {
          *
          * Every Swig-wrapped class registers its short name in ClassRegistry at static-init time;
          * the table keys on the qualified one. Interned because a slot keeps the pointer, and
-         * GetClassName returns by value.
+         * FindClassName returns by value.
+         *
+         * A miss is normal here - the facade's own bridges are not Swig classes - so this asks
+         * without logging and falls back to the declared type.
          */
         const char* internedClassName(const std::type_info& type, const char* fallback) {
             static std::mutex mutex;
             static std::set<std::string> names;
-            std::string name = ClassRegistry::GetClassName(type);
+            std::string name = ClassRegistry::FindClassName(type);
             if (name.empty()) {
                 return fallback;
             }
@@ -127,9 +130,21 @@ namespace massif { namespace api {
         return std::static_pointer_cast<TileDataSource>(Context::GetDefault()->getObject(handle));
     }
 
+    std::shared_ptr<TileDataSource> MassifInterop::getSourceByHandle(int handle) {
+        // The class is CHECKED, not asserted: a handle can name anything, and the cast that
+        // follows is from a type-erased pointer.
+        return std::static_pointer_cast<TileDataSource>(
+            Context::GetDefault()->getObject(static_cast<Handle>(handle), "massif::TileDataSource"));
+    }
+
     std::shared_ptr<Layer> MassifInterop::getLayer(const std::string& objectId) {
         Handle handle = Context::GetDefault()->findObject("layer", objectId);
         return std::static_pointer_cast<Layer>(Context::GetDefault()->getObject(handle));
+    }
+
+    std::shared_ptr<Layer> MassifInterop::getLayerByHandle(int handle) {
+        return std::static_pointer_cast<Layer>(
+            Context::GetDefault()->getObject(static_cast<Handle>(handle), "massif::Layer"));
     }
 
     std::shared_ptr<MapEventListener> MassifInterop::createEventBridge(

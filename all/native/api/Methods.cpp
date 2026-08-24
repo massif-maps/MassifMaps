@@ -131,6 +131,32 @@ namespace massif { namespace api {
         return true;
     }
 
+    bool CallArgs::getPosWgs84(int index, MapPos& value) const {
+        Variant argument = get(index);
+        if (argument.getType() != VariantType::VARIANT_TYPE_ARRAY ||
+            !StructCodec::decode(argument.toString(), value)) {
+            return false;
+        }
+        if (_caller) {
+            value = _caller->toWgs84(value);
+        }
+        return true;
+    }
+
+    bool CallArgs::getPositionsWgs84(int index, std::vector<MapPos>& value) const {
+        Variant argument = get(index);
+        if (argument.getType() != VariantType::VARIANT_TYPE_ARRAY ||
+            !StructCodec::decode(argument.toString(), value)) {
+            return false;
+        }
+        if (_caller) {
+            for (MapPos& pos : value) {
+                pos = _caller->toWgs84(pos);
+            }
+        }
+        return true;
+    }
+
     bool CallArgs::getBounds(int index, MapBounds& value) const {
         Variant argument = get(index);
         if (argument.getType() != VariantType::VARIANT_TYPE_ARRAY ||

@@ -20,6 +20,8 @@
 !polymorphic_shared_ptr(massif::PolygonGeometry, geometry.PolygonGeometry)
 !value_type(std::vector<std::shared_ptr<massif::PolygonGeometry> >, geometry.PolygonGeometryVector)
 
+// Three constructors: "poses" alone, "poses" + "holes", or "rings" (the outline first).
+!spec(massif::PolygonGeometry, geometry, polygon)
 %attributeval(massif::PolygonGeometry, std::vector<massif::MapPos>, Poses, getPoses)
 %attributeval(massif::PolygonGeometry, std::vector<std::vector<massif::MapPos> >, Holes, getHoles)
 %attributeval(massif::PolygonGeometry, std::vector<std::vector<massif::MapPos> >, Rings, getRings)

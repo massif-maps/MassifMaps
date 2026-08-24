@@ -61,9 +61,12 @@ jobs:
         run: |
           
           cd libs-massif/cartocss/util
-          cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
+          cmake -B build -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
           cd build
           make css2xml
+          # Compile the fixture, parse it back and compile that: fails on anything the XML parser
+          # cannot read back, which writing the file alone reports nothing about.
+          ./css2xml --roundtrip ../fixtures/roundtrip/project.json roundtrip.xml
           mv css2xml css2xml_${{ env.PLATFORM }}
           ls ../../../..
           zip ../../../../dist/css2xml_${{ env.PLATFORM }}.zip css2xml_${{ env.PLATFORM }}

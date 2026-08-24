@@ -250,6 +250,30 @@ void testObjectWrites() {
     // A read-only object property stays read-only.
     TEST_CHECK(context->setObjectProperty(feature, "geometry", NULL_HANDLE) != RESULT_OK,
                "a read-only object property is refused");
+
+    // getObjectProperty is the read counterpart: it hands the CHILD over as its own handle, which
+    // is what sharing one needs - reading THROUGH it was all that was possible before.
+    Handle read = context->getObjectProperty(target, "sourceProjection");
+    TEST_CHECK(read != NULL_HANDLE && read != mercator,
+               "an object property reads back as a handle of its own");
+    PropertyValue name;
+    TEST_CHECK(context->getProperty(read, "name", name) == RESULT_OK &&
+               name.stringValue == "EPSG:3857", "and it is the same object, not a copy");
+    // A read-only one too: this is a read.
+    TEST_CHECK(context->getObjectProperty(feature, "geometry") != NULL_HANDLE,
+               "a read-only object property still reads");
+    TEST_CHECK(context->getObjectProperty(target, "z") == NULL_HANDLE,
+               "a scalar property is not an object");
+    TEST_CHECK(context->getObjectProperty(target, "nope") == NULL_HANDLE,
+               "nor is an unknown one");
+    TEST_CHECK(context->getObjectProperty(target, "") == NULL_HANDLE,
+               "and an empty path is the object itself, which the caller already has");
+    context->destroy(read);
+    TEST_CHECK(writer->getSourceProjection() &&
+               writer->getSourceProjection()->getName() == "EPSG:3857",
+               "destroying the reference leaves the property alone");
+    TEST_CHECK(context->getObjectProperty(target, "sourceProjection") != NULL_HANDLE,
+               "so it can be taken again");
 }
 
 void testEventProjection() {

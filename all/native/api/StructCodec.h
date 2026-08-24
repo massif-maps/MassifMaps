@@ -59,6 +59,8 @@ namespace massif { namespace api {
          * exists to avoid. This is for the handful a spec or an argument list carries.
          */
         std::string encode(const std::vector<MapPos>& value);
+        /** Rings: a polygon's outline and its holes, as [[[x,y],…],…]. */
+        std::string encode(const std::vector<std::vector<MapPos> >& value);
         /** A string map - HTTP headers, and a layer's metadata. */
         std::string encode(const std::map<std::string, std::string>& value);
         std::string encode(const std::map<std::string, Variant>& value);
@@ -74,6 +76,7 @@ namespace massif { namespace api {
         bool decode(const std::string& json, Variant& value);
         bool decode(const std::string& json, std::vector<std::string>& value);
         bool decode(const std::string& json, std::vector<MapPos>& value);
+        bool decode(const std::string& json, std::vector<std::vector<MapPos> >& value);
         bool decode(const std::string& json, std::map<std::string, std::string>& value);
         bool decode(const std::string& json, std::map<std::string, Variant>& value);
 

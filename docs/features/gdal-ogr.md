@@ -29,6 +29,11 @@ cross-builds per ABI with vcpkg:
 implementation 'com.github.massif-maps:MassifMaps-android-aar:v<version>:full_gdal'
 ```
 
+That variant also carries the **NML model LOD tree** (`nml-lodtree` and its two sources). Not a
+dependency — the LOD tree needs only `nml` and `sqlite3pp` — but `full+gdal` is the one kitchen-sink
+build that is published, and the LOD tree has to be in a shipped profile to be reachable at all.
+Compose `nmlmodellodtree` on its own to get it without GDAL.
+
 There is no iOS `full+gdal`. The xcframework is five slices — device, two simulator architectures
 and two Catalyst ones — and each needs its own cross-built GDAL, which vcpkg does not cover; the
 iOS matrix entry is excluded rather than left to fail.

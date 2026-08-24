@@ -160,20 +160,20 @@ banner at the top.
 
 ## Breaking changes after 6.0.0
 
-### The NML LOD tree is back, and `full` now carries it
+### The NML LOD tree is back, in the `full+gdal` variant
 
 v6.0.0 removed `NMLModelLODTreeLayer`, `On`/`OfflineNMLModelLODTreeDataSource`,
 `NMLModelLODTreeEventListener` and `NMLModelLODTreeClickInfo` along with the `nmlmodellodtree`
 profile. All of it is restored, with facade specs (`nml-lodtree`, `nml-lodtree-offline`,
 `nml-lodtree-online`).
 
-The profile is back too, **and `_MASSIF_NMLMODELLODTREE_SUPPORT` is now part of `full`** — so the
-published `full` and `full+gdal` builds contain it. That is the point: the reason this code was
-deleted is that no profile ever defined its guard, and restoring it without putting it in a
-shipped profile would repeat exactly that. It needs nothing external; `nml` and `sqlite3pp` are
-built anyway.
+The `nmlmodellodtree` profile is back, and the **`gdal` profile carries it too** — so the published
+`full_gdal` Android variant contains it while plain `full` is unchanged. It has to be in *some*
+shipped profile or restoring it repeats the mistake that got it deleted: the guard existed for
+years while no build defined it.
 
-A build that does not want it can use `standard` or compose its own profile. Without
+This is packaging, not a dependency — the LOD tree needs only `nml` and `sqlite3pp`, both built for
+every profile. Compose `nmlmodellodtree` on its own to get it without GDAL. Without
 `INCLUDE_NMLMODELLODTREE` the sources are dropped from the build entirely.
 
 ### GDAL and OGR sources are back, behind a build profile

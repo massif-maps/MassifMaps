@@ -727,6 +727,13 @@ def specArgReader(cppType, key, default, childKind, childClass):
   # The same struct types a property can carry, through the same codec.
   if qualify(cppType) in CODEC_TYPES:
     return ('structAt<%s>(spec, "%s")' % (qualify(cppType), key), None, None)
+  # Coordinate lists: a line's poses, a polygon's rings. Not in CODEC_TYPES on purpose - see
+  # StructCodec.h - so they are named here rather than gaining a property accessor each.
+  bare = re.sub(r'\s+|massif::', '', cppType)
+  if bare == 'std::vector<MapPos>':
+    return ('structAt<std::vector<massif::MapPos> >(spec, "%s")' % key, None, None)
+  if bare == 'std::vector<std::vector<MapPos>>':
+    return ('structAt<std::vector<std::vector<massif::MapPos> > >(spec, "%s")' % key, None, None)
   return None
 
 
@@ -847,6 +854,13 @@ def emitSpecs(specs, bases, headerDirs, outPath):
   for kind in sorted(dispatch):
     lines.append('    "%s",\n' % kind)
   lines.append('    nullptr\n};\n')
+  # Which kind builds a given class, base chain included. It is what lets a nested spec appear
+  # wherever an OBJECT property is writable, not only where a constructor takes one.
+  lines.append('\n// The kind that builds each !spec class, and everything above it.\n')
+  lines.append('const SpecKindEntry SPEC_KIND_OF_CLASS[] = {\n')
+  for cppClass in sorted(kindOf):
+    lines.append('    { "%s", "%s" },\n' % (cppClass, kindOf[cppClass]))
+  lines.append('    { nullptr, nullptr }\n};\n')
   lines.append('\n} }\n')
   with open(outPath, 'w') as f:
     f.writelines(lines)

@@ -1,6 +1,8 @@
 #include "api/SpecBuilders.h"
 #include "utils/Log.h"
 
+#include <cstring>
+
 namespace massif { namespace api {
 
     std::string stringAt(const Variant& spec, const char* key, const std::string& fallback) {
@@ -42,7 +44,45 @@ namespace massif { namespace api {
         return property;
     }
 
-    void applySpecProperties(const ObjectRef& object, const Variant& spec,
+    const char* specKindOf(const char* cppClass) {
+        if (!cppClass) {
+            return nullptr;
+        }
+        for (const SpecKindEntry* entry = SPEC_KIND_OF_CLASS; entry->cppClass; entry++) {
+            if (std::strcmp(entry->cppClass, cppClass) == 0) {
+                return entry->kind;
+            }
+        }
+        return nullptr;
+    }
+
+    bool applyObjectSpecProperty(Context& context, const ObjectRef& object, const Variant& spec,
+                                 const std::string& key) {
+        const ClassEntry* classEntry = findClass(object.cppClass);
+        const PropertyEntry* entry = classEntry ? findProperty(classEntry, key.c_str()) : nullptr;
+        if (!entry || entry->type != PT_OBJECT || !entry->objectSetter) {
+            return false;
+        }
+        const char* kind = specKindOf(entry->objectClass);
+        if (!kind) {
+            Log::Warnf("Spec: nothing builds a %s for %s.%s",
+                       entry->objectClass, object.cppClass, key.c_str());
+            return true;
+        }
+        ObjectRef child;
+        child.cppClass = entry->objectClass;
+        if (childOf(context, spec, key.c_str(), kind, entry->objectClass, child.obj) != RESULT_OK) {
+            return true;
+        }
+        try {
+            entry->objectSetter(object.obj.get(), child);
+        } catch (const std::exception& ex) {
+            Log::Errorf("Spec: %s.%s refused: %s", object.cppClass, key.c_str(), ex.what());
+        }
+        return true;
+    }
+
+    void applySpecProperties(Context& context, const ObjectRef& object, const Variant& spec,
                              std::set<std::string>& consumed) {
         const ClassEntry* classEntry = findClass(object.cppClass);
         if (!classEntry) {
@@ -53,14 +93,17 @@ namespace massif { namespace api {
                 continue;
             }
             const PropertyEntry* entry = findProperty(classEntry, key.c_str());
-            if (!entry || !entry->setter) {
+            if (!entry || !(entry->setter || entry->objectSetter)) {
                 Log::Warnf("Spec: %s has no writable '%s', ignored", object.cppClass, key.c_str());
                 continue;
             }
-            PropertyValue value = specValue(spec.getObjectElement(key));
             // Marked either way: the caller's object is not the one Spec::create registers, and an
             // immutable style would warn about every key it was built from.
             consumed.insert(key);
+            if (applyObjectSpecProperty(context, object, spec, key)) {
+                continue;
+            }
+            PropertyValue value = specValue(spec.getObjectElement(key));
             try {
                 entry->setter(object.obj.get(), value);
             } catch (const std::exception& ex) {
@@ -90,6 +133,18 @@ namespace massif { namespace api {
             }
             return RESULT_OK;
         }
+        // A NUMBER is a handle, which is how an app shares an object it already holds - the source
+        // an overlay draws with the base map's tiles, and anything else that must not be built
+        // twice. An id only exists for something the app chose to name.
+        if (child.getType() == VariantType::VARIANT_TYPE_INTEGER) {
+            out = context.getObject(static_cast<Handle>(child.getLong()), requiredClass);
+            if (!out) {
+                Log::Errorf("Spec: handle %lld is not a live %s",
+                            static_cast<long long>(child.getLong()), requiredClass);
+                return RESULT_BAD_HANDLE;
+            }
+            return RESULT_OK;
+        }
         ObjectRef object;
         std::set<std::string> consumed;
         Result result = Spec::build(context, kind, child, object, consumed);
@@ -102,7 +157,7 @@ namespace massif { namespace api {
         // A nested spec gets its leftover keys applied too. Only Spec::create used to do this, so
         // everything that was not a constructor argument was silently dropped one level down - a
         // source's HTTPHeaders or tmsScheme inside a layer spec went nowhere, with no warning.
-        applySpecProperties(object, child, consumed);
+        applySpecProperties(context, object, child, consumed);
         out = object.obj;
         return RESULT_OK;
     }

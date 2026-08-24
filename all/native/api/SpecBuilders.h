@@ -57,8 +57,17 @@ namespace massif { namespace api {
      * Spec::create does the same to a registered object; this one works on an intermediate that has
      * no handle - a style builder, whose setters ARE the JSON schema.
      */
-    void applySpecProperties(const ObjectRef& object, const Variant& spec,
+    void applySpecProperties(Context& context, const ObjectRef& object, const Variant& spec,
                              std::set<std::string>& consumed);
+
+    /**
+     * Applies one key as a writable OBJECT property, its value a nested spec or a registry id.
+     *
+     * @return false when the class has no writable object property of that name, so the caller
+     *         falls through to its own value handling; true when it was this one's to apply.
+     */
+    bool applyObjectSpecProperty(Context& context, const ObjectRef& object, const Variant& spec,
+                                 const std::string& key);
 
     /**
      * Builds a class that declares a !spec in its .i, from its own constructor.
@@ -73,6 +82,16 @@ namespace massif { namespace api {
      * first time an app asks for it.
      */
     extern const char* const SPEC_KINDS[];
+
+    /** Which kind builds a class - see SPEC_KIND_OF_CLASS. Generated, nullptr-terminated. */
+    struct SpecKindEntry {
+        const char* cppClass;
+        const char* kind;
+    };
+    extern const SpecKindEntry SPEC_KIND_OF_CLASS[];
+
+    /** The kind whose factory builds `cppClass`, or null when nothing declares one. */
+    const char* specKindOf(const char* cppClass);
 
     Result buildFromConstructor(Context& context, const std::string& kind, const Variant& spec,
                                 ObjectRef& object, std::set<std::string>& consumed);

@@ -107,7 +107,6 @@ namespace massif::mvt {
                     term1                                            [_val = _1]
                     >> *( ((qi::lit("&&") | and_kw) > term1)         [_val = phoenix::bind(&makeAndPredicate, _val, _1)]
                         | ((qi::lit("||") | or_kw)  > term1)         [_val = phoenix::bind(&makeOrPredicate,  _val, _1)]
-                        | (qi::lit("??")  > term1) [_val = phoenix::bind(&makeTertiaryExpression, TertiaryExpression::Op::CONDITIONAL, _val, _val, _1)]
                         )
                     ;
 
@@ -126,6 +125,7 @@ namespace massif::mvt {
                     term3                                            [_val = _1]
                     >> *( (qi::lit("+") > term3)                     [_val = phoenix::bind(&makeBinaryExpression, BinaryExpression::Op::ADD, _val, _1)]
                         | (qi::lit("-") > term3)                     [_val = phoenix::bind(&makeBinaryExpression, BinaryExpression::Op::SUB, _val, _1)]
+                        | (qi::lit("??") > term3)                    [_val = phoenix::bind(&makeBinaryExpression, BinaryExpression::Op::NULLISH_COALESCING, _val, _1)]
                         )
                     ;
 
@@ -134,6 +134,9 @@ namespace massif::mvt {
                     >> *( (qi::lit("*") > unary)                     [_val = phoenix::bind(&makeBinaryExpression, BinaryExpression::Op::MUL, _val, _1)]
                         | (qi::lit("/") > unary)                     [_val = phoenix::bind(&makeBinaryExpression, BinaryExpression::Op::DIV, _val, _1)]
                         | (qi::lit("%") > unary)                     [_val = phoenix::bind(&makeBinaryExpression, BinaryExpression::Op::MOD, _val, _1)]
+                        | (qi::lit("^") > unary)                     [_val = phoenix::bind(&makeBinaryExpression, BinaryExpression::Op::XOR, _val, _1)]
+                        // a single '&' only - '&&' is the logical and, handled in term0
+                        | ((qi::lit("&") >> !qi::lit("&")) > unary)   [_val = phoenix::bind(&makeBinaryExpression, BinaryExpression::Op::BITWISE_AND, _val, _1)]
                         )
                     ;
 

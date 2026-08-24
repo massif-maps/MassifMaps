@@ -9,6 +9,9 @@
 #include "MarkersSymbolizer.h"
 #include "TextSymbolizer.h"
 #include "ShieldSymbolizer.h"
+#include "RasterConfigSymbolizer.h"
+#include "HillshadeConfigSymbolizer.h"
+#include "ContourConfigSymbolizer.h"
 #include "ParserUtils.h"
 #include "Logger.h"
 
@@ -62,6 +65,15 @@ namespace massif::mvt {
         }
         else if (type == "MarkersSymbolizer") {
             symbolizer = std::make_shared<MarkersSymbolizer>(_logger);
+        }
+        else if (type == "RasterConfigSymbolizer") {
+            symbolizer = std::make_shared<RasterConfigSymbolizer>(_logger);
+        }
+        else if (type == "HillshadeConfigSymbolizer") {
+            symbolizer = std::make_shared<HillshadeConfigSymbolizer>(_logger);
+        }
+        else if (type == "ContourConfigSymbolizer") {
+            symbolizer = std::make_shared<ContourConfigSymbolizer>(_logger);
         }
         else if (type == "ShieldSymbolizer" || type == "TextSymbolizer") {
             Expression text = Value(std::string());

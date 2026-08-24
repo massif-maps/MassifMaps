@@ -8,6 +8,7 @@
 #include "Style.h"
 #include "Layer.h"
 #include "Map.h"
+#include "MapSettingsTable.h"
 #include "ParserUtils.h"
 #include "Symbolizer.h"
 #include "SymbolizerParser.h"
@@ -47,6 +48,22 @@ namespace massif::mvt {
         if (pugi::xml_attribute southPoleColorAttr = mapNode.attribute("south-pole-color")) {
             mapSettings.southPoleColor.setExpression(parseExpression(southPoleColorAttr.as_string(), true));
         }
+        if (pugi::xml_attribute bufferSizeAttr = mapNode.attribute("buffer-size")) {
+            mapSettings.bufferSize = bufferSizeAttr.as_float();
+        }
+
+        // Sun, shadows, fog, buildings. An absent attribute leaves the property undefined, which is
+        // what tells the SDK the style did not set it and the application's own value stands.
+        for (const auto& floatProperty : MAP_SETTINGS_FLOAT_PROPERTIES) {
+            if (pugi::xml_attribute attr = mapNode.attribute(floatProperty.first)) {
+                (mapSettings.*floatProperty.second).setExpression(parseExpression(attr.as_string(), false));
+            }
+        }
+        for (const auto& colorProperty : MAP_SETTINGS_COLOR_PROPERTIES) {
+            if (pugi::xml_attribute attr = mapNode.attribute(colorProperty.first)) {
+                (mapSettings.*colorProperty.second).setExpression(parseExpression(attr.as_string(), true));
+            }
+        }
 
         // Build map
         auto map = std::make_shared<Map>(mapSettings);
@@ -70,6 +87,7 @@ namespace massif::mvt {
             std::string name = parameterNode.attribute("name").as_string();
             std::string type = parameterNode.attribute("type").as_string();
             Value defaultValue = parseTypedValue(type, parameterNode.attribute("value").as_string());
+            bool selects = parameterNode.attribute("selects").as_bool(false);
             std::map<std::string, Value> enumMap;
             pugi::xpath_node_set valueNodes = pugi::xpath_query("Value").evaluate_node_set(parameterNode);
             for (pugi::xpath_node_set::const_iterator valueIt = valueNodes.begin(); valueIt != valueNodes.end(); ++valueIt) {
@@ -77,7 +95,7 @@ namespace massif::mvt {
                 std::string id = valueNode.attribute("id").as_string();
                 enumMap[id] = parseTypedValue(type, valueNode.attribute("value").as_string());
             }
-            styleParameters.emplace_back(name, defaultValue, enumMap);
+            styleParameters.emplace_back(name, defaultValue, enumMap, selects);
         }
         map->setStyleParameters(styleParameters);
 

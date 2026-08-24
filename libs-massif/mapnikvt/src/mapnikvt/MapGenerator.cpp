@@ -8,6 +8,7 @@
 #include "Style.h"
 #include "Layer.h"
 #include "Map.h"
+#include "MapSettingsTable.h"
 #include "GeneratorUtils.h"
 #include "Symbolizer.h"
 #include "SymbolizerGenerator.h"
@@ -27,6 +28,24 @@ namespace massif::mvt {
         mapNode.append_attribute("background-color").set_value(generateExpressionString(mapSettings.backgroundColor.getExpression(), true).c_str());
         mapNode.append_attribute("north-pole-color").set_value(generateExpressionString(mapSettings.northPoleColor.getExpression(), true).c_str());
         mapNode.append_attribute("south-pole-color").set_value(generateExpressionString(mapSettings.southPoleColor.getExpression(), true).c_str());
+        if (mapSettings.bufferSize >= 0.0f) {
+            mapNode.append_attribute("buffer-size").set_value(mapSettings.bufferSize);
+        }
+
+        // Only what the style actually set: writing a default back would make it look declared, and
+        // a declared value overrides the application's own setting.
+        for (const auto& floatProperty : MAP_SETTINGS_FLOAT_PROPERTIES) {
+            const FloatFunctionProperty& prop = mapSettings.*floatProperty.second;
+            if (prop.isDefined()) {
+                mapNode.append_attribute(floatProperty.first).set_value(generateExpressionString(prop.getExpression(), false).c_str());
+            }
+        }
+        for (const auto& colorProperty : MAP_SETTINGS_COLOR_PROPERTIES) {
+            const ColorFunctionProperty& prop = mapSettings.*colorProperty.second;
+            if (prop.isDefined()) {
+                mapNode.append_attribute(colorProperty.first).set_value(generateExpressionString(prop.getExpression(), true).c_str());
+            }
+        }
 
         // Parameters
         pugi::xml_node paramsNode = mapNode.append_child("Parameters");
@@ -45,6 +64,9 @@ namespace massif::mvt {
             styleParamNode.append_attribute("name").set_value(styleParam.getName().c_str());
             styleParamNode.append_attribute("type").set_value(generateTypeString(styleParam.getDefaultValue()).c_str());
             styleParamNode.append_attribute("value").set_value(ValueConverter<std::string>::convert(styleParam.getDefaultValue()).c_str());
+            if (styleParam.selectsFeatures()) {
+                styleParamNode.append_attribute("selects").set_value(true);
+            }
 
             for (auto it2 = styleParam.getEnumMap().begin(); it2 != styleParam.getEnumMap().end(); it2++) {
                 pugi::xml_node valueNode = styleParamNode.append_child("Value");
@@ -88,9 +110,8 @@ namespace massif::mvt {
             case Style::FilterMode::FIRST:
                 styleNode.append_attribute("filter-mode").set_value("first");
                 break;
-            default:
-                _logger->write(Logger::Severity::WARNING, "Unsupported filter mode");
-                break;
+            case Style::FilterMode::ALL:
+                break; // the parser's default, nothing to write
             }
             bool styleNodeHasRules = false;
             for (auto it2 = style.getRules().begin(); it2 != style.getRules().end(); it2++) {

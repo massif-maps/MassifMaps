@@ -12,6 +12,26 @@ endif()
 option(EXCLUDE_GL "Exclude GL rendering code" ON)
 option(SINGLE_LIBRARY "Compile as single library" OFF)
 
+# These are host tools, so size beats speed - and the size here is boost.spirit and vt template
+# code, all of which mapnikvt and vt hand over as OBJECT libraries, i.e. every object lands in the
+# binary whether or not it is reached. Unoptimised that is ~86 MB; -Os plus per-function sections,
+# dead-stripping and thin LTO brings css2xml to ~2 MB.
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+  set(CMAKE_BUILD_TYPE MinSizeRel CACHE STRING "" FORCE)
+endif()
+if(NOT MSVC)
+  add_compile_options(-ffunction-sections -fdata-sections)
+  if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    add_compile_options(-flto=thin)
+    add_link_options(-flto=thin)
+  endif()
+  if(APPLE)
+    add_link_options(-Wl,-dead_strip -Wl,-x)
+  else()
+    add_link_options(-Wl,--gc-sections -Wl,-s)
+  endif()
+endif()
+
 # find_package(Boost)
 
 if(WIN32)

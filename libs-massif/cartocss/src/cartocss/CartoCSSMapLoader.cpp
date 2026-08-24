@@ -344,9 +344,15 @@ namespace massif::css {
         }
 
         getMapProperty(mapProperties, "font-directory", mapSettings.fontDirectory);
+        // getMapProperty wants the exact alternative, and '64' parses to a long long - asking only
+        // for a double made every integer buffer-size silently do nothing.
         double bufferSize = 0;
+        long long bufferSizeInt = 0;
         if (getMapProperty(mapProperties, "buffer-size", bufferSize)) {
             mapSettings.bufferSize = static_cast<float>(bufferSize);
+        }
+        else if (getMapProperty(mapProperties, "buffer-size", bufferSizeInt)) {
+            mapSettings.bufferSize = static_cast<float>(bufferSizeInt);
         }
 
         return mapSettings;

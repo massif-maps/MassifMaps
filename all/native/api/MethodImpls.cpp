@@ -6,6 +6,8 @@
  */
 
 #include "api/CameraMethods.h"
+#include "api/DownloadMethods.h"
+#include "api/GeocodingMethods.h"
 #include "api/GeometryMethods.h"
 #include "api/RoutingMethods.h"
 #include "api/Methods.h"
@@ -15,6 +17,7 @@
 #include "components/Layers.h"
 #include "datasources/GeoJSONVectorTileDataSource.h"
 #include "datasources/LocalVectorDataSource.h"
+#include "datasources/MultiTileDataSource.h"
 #include "datasources/TileDataSource.h"
 #include "datasources/components/TileData.h"
 #include "layers/HillshadeRasterTileLayer.h"
@@ -110,6 +113,21 @@ namespace massif { namespace api {
             return RESULT_OK;
         }
 
+        /**
+         * setStyleParameters({name: value, …}) - several at once, in one crossing.
+         *
+         * An app switching theme writes half a dozen together, and each one re-runs the style's
+         * repaintability check; the SDK's own JSON form does that once for the whole set.
+         */
+        Result setStyleParameters(Context&, void* obj, const CallArgs& args, PropertyValue&) {
+            Variant params = args.get(0);
+            if (params.getType() != VariantType::VARIANT_TYPE_OBJECT) {
+                return RESULT_BAD_SPEC;
+            }
+            static_cast<MBVectorTileDecoder*>(obj)->setJSONStyleParameters(params.toString());
+            return RESULT_OK;
+        }
+
         Result getStyleParameter(Context&, void* obj, const CallArgs& args, PropertyValue& result) {
             std::string name;
             if (!args.getString(0, name)) {
@@ -192,6 +210,94 @@ namespace massif { namespace api {
             return RESULT_OK;
         }
 
+        /**
+         * insert(index, layerHandle) / set(index, layerHandle) / get(index) / clear().
+         *
+         * An app whose stack has an order - base, then overlays, then its own markers - places a
+         * layer at an index rather than only on top, and swaps one in place when its decoder is
+         * rebuilt. add() alone made both of those a remove-and-re-add of everything above.
+         */
+        Result insertLayer(Context& context, void* obj, const CallArgs& args, PropertyValue&) {
+            long long index = 0;
+            Handle handle = NULL_HANDLE;
+            if (!args.getLong(0, index) || !args.getHandle(1, handle)) {
+                return RESULT_BAD_SPEC;
+            }
+            auto layer = std::static_pointer_cast<Layer>(context.getObject(handle, "massif::Layer"));
+            if (!layer) {
+                return RESULT_BAD_HANDLE;
+            }
+            static_cast<Layers*>(obj)->insert(static_cast<int>(index), layer);
+            return RESULT_OK;
+        }
+
+        Result setLayer(Context& context, void* obj, const CallArgs& args, PropertyValue&) {
+            long long index = 0;
+            Handle handle = NULL_HANDLE;
+            if (!args.getLong(0, index) || !args.getHandle(1, handle)) {
+                return RESULT_BAD_SPEC;
+            }
+            auto layer = std::static_pointer_cast<Layer>(context.getObject(handle, "massif::Layer"));
+            if (!layer) {
+                return RESULT_BAD_HANDLE;
+            }
+            static_cast<Layers*>(obj)->set(static_cast<int>(index), layer);
+            return RESULT_OK;
+        }
+
+        Result getLayer(Context& context, void* obj, const CallArgs& args, PropertyValue& result) {
+            long long index = 0;
+            auto layers = static_cast<Layers*>(obj);
+            if (!args.getLong(0, index) || index < 0 || index >= layers->count()) {
+                return RESULT_BAD_SPEC;
+            }
+            return objectResult(context, layers->get(static_cast<int>(index)),
+                                "massif::Layer", result);
+        }
+
+        Result clearLayers(Context&, void* obj, const CallArgs&, PropertyValue&) {
+            static_cast<Layers*>(obj)->clear();
+            return RESULT_OK;
+        }
+
+        /**
+         * add(sourceHandle, tileMask) / remove(sourceHandle) on a MultiTileDataSource.
+         *
+         * One package per downloaded area, discovered at run time, so the list is filled after
+         * construction. An empty tileMask means "read it off the package", which is what an
+         * MBTiles or a merged source carries.
+         */
+        Result addSubSource(Context& context, void* obj, const CallArgs& args, PropertyValue&) {
+            Handle handle = NULL_HANDLE;
+            std::string tileMask;
+            if (!args.getHandle(0, handle)) {
+                return RESULT_BAD_SPEC;
+            }
+            args.getString(1, tileMask);
+            auto source = std::static_pointer_cast<TileDataSource>(
+                context.getObject(handle, "massif::TileDataSource"));
+            if (!source) {
+                return RESULT_BAD_HANDLE;
+            }
+            static_cast<MultiTileDataSource*>(obj)->add(source, tileMask);
+            return RESULT_OK;
+        }
+
+        Result removeSubSource(Context& context, void* obj, const CallArgs& args,
+                               PropertyValue& result) {
+            Handle handle = NULL_HANDLE;
+            if (!args.getHandle(0, handle)) {
+                return RESULT_BAD_SPEC;
+            }
+            auto source = std::static_pointer_cast<TileDataSource>(
+                context.getObject(handle, "massif::TileDataSource"));
+            if (!source) {
+                return RESULT_BAD_HANDLE;
+            }
+            result = PropertyValue::ofBool(static_cast<MultiTileDataSource*>(obj)->remove(source));
+            return RESULT_OK;
+        }
+
         Result clearElements(Context&, void* obj, const CallArgs&, PropertyValue&) {
             static_cast<LocalVectorDataSource*>(obj)->clear();
             return RESULT_OK;
@@ -238,6 +344,61 @@ namespace massif { namespace api {
                     static_cast<int>(index), geoJson);
             } catch (const std::exception& ex) {
                 Log::Errorf("api setLayerGeoJSON: %s", ex.what());
+                return RESULT_FAILED;
+            }
+            return RESULT_OK;
+        }
+
+        /**
+         * addFeature / updateFeature / removeFeature - one feature at a time.
+         *
+         * An app that edits a saved item otherwise re-encodes and re-tiles its whole document for
+         * every change, which on a few hundred routes is the difference between instant and not.
+         * `update` matches on the feature's own `id`, `remove` takes that id.
+         */
+        Result editGeoJSONFeature(void* obj, const CallArgs& args, bool update) {
+            long long index = 0;
+            if (!args.getLong(0, index)) {
+                return RESULT_BAD_SPEC;
+            }
+            Variant raw = args.get(1);
+            if (raw.getType() == VariantType::VARIANT_TYPE_NULL) {
+                return RESULT_BAD_SPEC;
+            }
+            std::string geoJson = raw.getType() == VariantType::VARIANT_TYPE_STRING
+                                ? raw.getString() : raw.toString();
+            auto source = static_cast<GeoJSONVectorTileDataSource*>(obj);
+            try {
+                if (update) {
+                    source->updateGeoJSONStringFeature(static_cast<int>(index), geoJson);
+                } else {
+                    source->addGeoJSONStringFeature(static_cast<int>(index), geoJson);
+                }
+            } catch (const std::exception& ex) {
+                Log::Errorf("api %s: %s", update ? "updateFeature" : "addFeature", ex.what());
+                return RESULT_FAILED;
+            }
+            return RESULT_OK;
+        }
+
+        Result addGeoJSONFeature(Context&, void* obj, const CallArgs& args, PropertyValue&) {
+            return editGeoJSONFeature(obj, args, false);
+        }
+
+        Result updateGeoJSONFeature(Context&, void* obj, const CallArgs& args, PropertyValue&) {
+            return editGeoJSONFeature(obj, args, true);
+        }
+
+        Result removeGeoJSONFeature(Context&, void* obj, const CallArgs& args, PropertyValue&) {
+            long long index = 0;
+            if (!args.getLong(0, index) || args.count() < 2) {
+                return RESULT_BAD_SPEC;
+            }
+            try {
+                static_cast<GeoJSONVectorTileDataSource*>(obj)->removeGeoJSONFeature(
+                    static_cast<int>(index), args.get(1));
+            } catch (const std::exception& ex) {
+                Log::Errorf("api removeFeature: %s", ex.what());
                 return RESULT_FAILED;
             }
             return RESULT_OK;
@@ -314,17 +475,27 @@ namespace massif { namespace api {
         registerMethod("massif::HillshadeRasterTileLayer", "getElevation", &getElevation);
         registerMethod("massif::HillshadeRasterTileLayer", "getElevations", &getElevations);
         registerMethod("massif::MBVectorTileDecoder", "setStyleParameter", &setStyleParameter);
+        registerMethod("massif::MBVectorTileDecoder", "setStyleParameters", &setStyleParameters);
         registerMethod("massif::MBVectorTileDecoder", "getStyleParameter", &getStyleParameter);
         registerMethod("massif::TileLayer", "clearTileCaches", &clearTileCaches);
         registerMethod("massif::Layer", "refresh", &refresh);
         registerMethod("massif::Layers", "add", &addLayer);
         registerMethod("massif::Layers", "remove", &removeLayer);
+        registerMethod("massif::Layers", "insert", &insertLayer);
+        registerMethod("massif::Layers", "set", &setLayer);
+        registerMethod("massif::Layers", "get", &getLayer);
+        registerMethod("massif::Layers", "clear", &clearLayers);
+        registerMethod("massif::MultiTileDataSource", "add", &addSubSource);
+        registerMethod("massif::MultiTileDataSource", "remove", &removeSubSource);
         registerMethod("massif::LocalVectorDataSource", "add", &addElement);
         registerMethod("massif::LocalVectorDataSource", "remove", &removeElement);
         registerMethod("massif::LocalVectorDataSource", "clear", &clearElements);
         registerMethod("massif::GeoJSONVectorTileDataSource", "createLayer", &createGeoJSONLayer);
         registerMethod("massif::GeoJSONVectorTileDataSource", "setLayerGeoJSON", &setGeoJSONLayer);
         registerMethod("massif::GeoJSONVectorTileDataSource", "deleteLayer", &deleteGeoJSONLayer);
+        registerMethod("massif::GeoJSONVectorTileDataSource", "addFeature", &addGeoJSONFeature);
+        registerMethod("massif::GeoJSONVectorTileDataSource", "updateFeature", &updateGeoJSONFeature);
+        registerMethod("massif::GeoJSONVectorTileDataSource", "removeFeature", &removeGeoJSONFeature);
         registerGeometryMethods();
         registerCameraMethods();
 #ifdef _MASSIF_SEARCH_SUPPORT
@@ -334,6 +505,12 @@ namespace massif { namespace api {
 #endif
 #ifdef _MASSIF_ROUTING_SUPPORT
         registerRoutingMethods();
+#endif
+#ifdef _MASSIF_GEOCODING_SUPPORT
+        registerGeocodingMethods();
+#endif
+#ifdef _MASSIF_OFFLINE_SUPPORT
+        registerDownloadMethods();
 #endif
         // Everything registered above has to be declared in a .i too, or no binding can complete
         // it and no generated reference lists it.

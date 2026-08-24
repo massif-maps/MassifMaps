@@ -20,7 +20,20 @@ GDAL is **not** vendored with the SDK. These classes only exist when the SDK is 
 release does not contain them, and asking for one of the specs below returns an unknown-type error.
 :::
 
-## Building with GDAL
+## The published `full+gdal` build
+
+Releases publish a `full_gdal` variant for **Android only**, built by CI against a GDAL it
+cross-builds per ABI with vcpkg:
+
+```gradle
+implementation 'com.github.massif-maps:MassifMaps-android-aar:v<version>:full_gdal'
+```
+
+There is no iOS `full+gdal`. The xcframework is five slices — device, two simulator architectures
+and two Catalyst ones — and each needs its own cross-built GDAL, which vcpkg does not cover; the
+iOS matrix entry is excluded rather than left to fail.
+
+## Building with GDAL yourself
 
 `libs-external` carries no GDAL, and never has. You build GDAL for each target yourself and point
 CMake at it:
@@ -125,9 +138,14 @@ map.buildLayer('layer.places', {
 
 ## Known gaps
 
-- **No vendored GDAL.** Every user builds their own, for every ABI. Vendoring a minimal GDAL and
-  PROJ into `libs-external` is the obvious follow-up and is a build-system project of its own; the
-  binary-size cost is the reason it is not done here.
+- **No vendored GDAL.** CI cross-builds it with vcpkg per ABI, and anyone building locally supplies
+  their own. Vendoring a minimal GDAL and PROJ into `libs-external` is the obvious follow-up and is
+  a build-system project of its own; the binary-size cost is why it is not done here.
+- **iOS is not wired** — see above.
+- **No `child()` in the Java facade.** `OGRVectorDataSource` needs a `Projection`, and Java has no
+  way to read an object property *as an object* the way TypeScript's `child()` does. So the Android
+  example demonstrates the GDAL raster only; the OGR vector case is reachable from the object API
+  and from TypeScript, but not from a Java spec.
 - **Untested on device by the fork.** These classes were dead code for the life of the fork —
   `_CARTO_GDAL_SUPPORT` was referenced only inside `#ifdef`s and defined by no build. They compile
   and the facade tables generate, but nothing here has opened a real GeoTIFF.

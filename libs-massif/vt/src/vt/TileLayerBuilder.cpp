@@ -134,34 +134,57 @@ namespace {
 }
 
 namespace {
-    // A white square with rounded corners, antialiased, used as the atlas cell a label's
-    // background plate is 3-sliced from. Cached per radius: the glyph map dedupes by bitmap
-    // POINTER, so handing it a fresh instance every time would add a cell per style rebuild.
-    std::shared_ptr<const massif::vt::Bitmap> buildRoundedRectBitmap(int radius) {
+    // Antialiased coverage of a rounded rectangle spanning [x0,x1] x [y0,y1] (pixel centres,
+    // inclusive) with corner radius r, sampled at (x,y) - the standard rounded-box signed distance,
+    // ramped over one texel. Measuring the corner offsets alone instead collapses to zero coverage
+    // at r = 0, which is the DEFAULT radius: a plate with no explicit radius drew nothing at all.
+    float roundedRectCoverage(float x, float y, float x0, float y0, float x1, float y1, float r) {
+        float hx = (x1 - x0) * 0.5f, hy = (y1 - y0) * 0.5f;
+        r = std::min(r, std::min(hx, hy));
+        float qx = std::abs(x - (x0 + x1) * 0.5f) - hx + r;
+        float qy = std::abs(y - (y0 + y1) * 0.5f) - hy + r;
+        float outside = std::sqrt(std::max(qx, 0.0f) * std::max(qx, 0.0f) + std::max(qy, 0.0f) * std::max(qy, 0.0f));
+        float d = outside + std::min(std::max(qx, qy), 0.0f) - r;
+        return std::min(1.0f, std::max(0.0f, 0.5f - d));
+    }
+
+    // The atlas cell a label's plate is 3-sliced from: a white rounded square, or - with
+    // borderWidth set - the RING left after punching the fill's own shape out of it. A FILLED
+    // border cell shows through the fill wherever the label is mid-fade, since both quads carry
+    // the same alpha and fill-over-border leaves border * a * (1 - a) visible; that read as the
+    // plate changing colour while it animated in.
+    // The shape keeps a transparent one-texel margin because appendPlate samples one texel inside
+    // the cell (the atlas gutter is transparent and linear filtering would bleed into it) - without
+    // the margin that inset eats the ring's own outermost column.
+    // Cached per (radius, borderWidth): the glyph map dedupes by bitmap POINTER, so handing it a
+    // fresh instance every time would add a cell per style rebuild.
+    std::shared_ptr<const massif::vt::Bitmap> buildRoundedRectBitmap(int radius, int borderWidth) {
         static std::mutex mutex;
-        static std::map<int, std::shared_ptr<const massif::vt::Bitmap>> cache;
+        static std::map<std::pair<int, int>, std::shared_ptr<const massif::vt::Bitmap>> cache;
         std::lock_guard<std::mutex> lock(mutex);
-        auto it = cache.find(radius);
+        auto it = cache.find(std::make_pair(radius, borderWidth));
         if (it != cache.end()) {
             return it->second;
         }
 
-        int size = std::max(4, radius * 2 + 2);
-        std::vector<std::uint32_t> data(static_cast<std::size_t>(size) * size, 0xffffffffU);
+        int size = std::max(4, radius * 2 + 2) + 2;
+        std::vector<std::uint32_t> data(static_cast<std::size_t>(size) * size);
         float r = static_cast<float>(radius);
+        float b = static_cast<float>(borderWidth);
+        float hi = static_cast<float>(size - 2); // the shape spans [1, size - 2]
         for (int y = 0; y < size; y++) {
             for (int x = 0; x < size; x++) {
-                // Distance outside the rounded rectangle, in pixels, at the nearest corner.
-                float dx = std::max(0.0f, r - 0.5f - std::min(static_cast<float>(x), static_cast<float>(size - 1 - x)));
-                float dy = std::max(0.0f, r - 0.5f - std::min(static_cast<float>(y), static_cast<float>(size - 1 - y)));
-                float d = std::sqrt(dx * dx + dy * dy) - r + 0.5f;
-                float alpha = std::min(1.0f, std::max(0.0f, 0.5f - d));
+                float fx = static_cast<float>(x), fy = static_cast<float>(y);
+                float alpha = roundedRectCoverage(fx, fy, 1.0f, 1.0f, hi, hi, r);
+                if (borderWidth > 0) {
+                    alpha = std::max(0.0f, alpha - roundedRectCoverage(fx, fy, 1.0f + b, 1.0f + b, hi - b, hi - b, std::max(0.0f, r - b)));
+                }
                 std::uint32_t a = static_cast<std::uint32_t>(alpha * 255.0f + 0.5f);
                 data[static_cast<std::size_t>(y) * size + x] = (a << 24) | (a << 16) | (a << 8) | a; // premultiplied white
             }
         }
         auto bitmap = std::make_shared<massif::vt::Bitmap>(size, size, std::move(data));
-        cache[radius] = bitmap;
+        cache[std::make_pair(radius, borderWidth)] = bitmap;
         return bitmap;
     }
 }
@@ -644,18 +667,20 @@ namespace massif::vt {
             auto resolvePlate = [&font](const LabelPlateStyle& plateStyle) {
                 TileLabel::Style::Plate plate;
                 plate.style = plateStyle;
-                auto loadCell = [&font](float radius) -> std::optional<GlyphMap::Glyph> {
+                auto loadCell = [&font](float radius, float border) -> std::optional<GlyphMap::Glyph> {
                     int cellRadius = std::min(32, std::max(0, static_cast<int>(radius + 0.5f)));
-                    if (const GlyphMap::Glyph* glyph = font->getGlyphMap()->getGlyph(font->getGlyphMap()->loadBitmapGlyph(buildRoundedRectBitmap(cellRadius), GlyphMap::GlyphMode::BITMAP))) {
+                    int cellBorder = std::min(cellRadius, std::max(0, static_cast<int>(border + 0.5f)));
+                    if (const GlyphMap::Glyph* glyph = font->getGlyphMap()->getGlyph(font->getGlyphMap()->loadBitmapGlyph(buildRoundedRectBitmap(cellRadius, cellBorder), GlyphMap::GlyphMode::BITMAP))) {
                         return *glyph;
                     }
                     return std::optional<GlyphMap::Glyph>();
                 };
                 if (plateStyle.hasFill()) {
-                    plate.glyph = loadCell(plateStyle.radius);
+                    plate.glyph = loadCell(plateStyle.radius, 0.0f);
                 }
                 if (plateStyle.hasBorder()) {
-                    plate.borderGlyph = loadCell(plateStyle.radius + plateStyle.borderWidth);
+                    // A ring, not a filled cell one width larger - see buildRoundedRectBitmap.
+                    plate.borderGlyph = loadCell(plateStyle.radius + plateStyle.borderWidth, plateStyle.borderWidth);
                 }
                 return plate;
             };

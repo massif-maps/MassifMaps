@@ -152,9 +152,10 @@ namespace massif::mvt {
         FloatProperty _secondaryDx = FloatProperty(0.0f); // gap between the runs, pixels
         FloatProperty _secondaryDy = FloatProperty(0.0f); // baseline shift of the second run, pixels (down is positive, like dy)
         // A filled plate behind the text, for any placement - the classic-map use is a label over
-        // busy ground. Transparent (opacity 0) draws nothing, which is the default.
-        ColorProperty _backgroundFill = ColorProperty("#ffffff");
-        FloatProperty _backgroundOpacity = FloatProperty(0.0f);
+        // busy ground. The FILL COLOUR is the switch, as the border's width is its own: no colour,
+        // no plate. Opacity defaulting to 0 made 'background-fill' alone a silent no-op.
+        ColorProperty _backgroundFill = ColorProperty("transparent");
+        FloatProperty _backgroundOpacity = FloatProperty(1.0f);
         FloatProperty _backgroundRadius = FloatProperty(0.0f);
         FloatProperty _backgroundPaddingX = FloatProperty(3.0f);
         FloatProperty _backgroundPaddingY = FloatProperty(2.0f);

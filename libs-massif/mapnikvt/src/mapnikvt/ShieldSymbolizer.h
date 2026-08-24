@@ -78,8 +78,8 @@ namespace massif::mvt {
         // which is what a label did before the property existed.
         StringProperty _textHorizontalAlignment = StringProperty("");
         // The plate behind the ICON, mirroring 'background-*' (which is the one behind the text).
-        ColorProperty _iconBackgroundFill = ColorProperty("#ffffff");
-        FloatProperty _iconBackgroundOpacity = FloatProperty(0.0f);
+        ColorProperty _iconBackgroundFill = ColorProperty("transparent");
+        FloatProperty _iconBackgroundOpacity = FloatProperty(1.0f);
         FloatProperty _iconBackgroundRadius = FloatProperty(0.0f);
         FloatProperty _iconBackgroundPaddingX = FloatProperty(3.0f);
         FloatProperty _iconBackgroundPaddingY = FloatProperty(2.0f);

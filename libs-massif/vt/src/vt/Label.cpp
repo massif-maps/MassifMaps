@@ -946,13 +946,15 @@ namespace massif::vt {
         float cap = std::max(0.0f, std::min(radius, (x1 - x0) * 0.5f));
 
         // Atlas coordinates of the cell's left cap, middle column and right cap. Sampled one texel
-        // INSIDE the cell: the outer texels blend into the transparent padding around it under
-        // linear filtering, which is what made the plate's edges look soft.
+        // INSIDE the cell on EVERY side: the outer texels blend into the transparent padding around
+        // it under linear filtering, which is what made the plate's edges look soft. The cell keeps
+        // a transparent margin of its own for this, so the inset lands on the shape's own edge
+        // (see buildRoundedRectBitmap) rather than one column into it.
         float u0 = static_cast<float>(glyph.x + 1);
-        float u1 = static_cast<float>(glyph.x + glyph.width - 1);
+        float u1 = static_cast<float>(glyph.x + glyph.width - 2);
         float uMid = (u0 + u1) * 0.5f;
         float v0 = static_cast<float>(glyph.y + 1);
-        float v1 = static_cast<float>(glyph.y + glyph.height - 1);
+        float v1 = static_cast<float>(glyph.y + glyph.height - 2);
 
         struct Slice { float x0, x1, u0, u1; };
         const Slice slices[3] = {

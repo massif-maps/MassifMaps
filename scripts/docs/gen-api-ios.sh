@@ -54,4 +54,8 @@ jazzy \
   --output "$OUT" \
   || echo "   (jazzy reported warnings — output still generated)"
 
+# A jazzy crash leaves the directory empty; without this the CI job stays green and the
+# published /api/ios/ 404s (this is how the mustache 1.1.3 breakage went unnoticed).
+[ -f "$OUT/index.html" ] || { echo "jazzy produced no output — see the errors above."; exit 1; }
+
 echo "==> iOS API reference at $OUT"

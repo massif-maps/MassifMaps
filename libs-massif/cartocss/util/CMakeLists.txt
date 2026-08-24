@@ -11,6 +11,9 @@ endif()
 
 option(EXCLUDE_GL "Exclude GL rendering code" ON)
 option(SINGLE_LIBRARY "Compile as single library" OFF)
+# vt and mapnikvt as archives rather than object libraries, so the linker keeps only what these
+# tools reach. Only the SDK build needs the object form ($<TARGET_OBJECTS:>).
+option(STATIC_LIBRARIES "Build the massif libraries as static archives" ON)
 
 # These are host tools, so size beats speed - and the size here is boost.spirit and vt template
 # code, all of which mapnikvt and vt hand over as OBJECT libraries, i.e. every object lands in the

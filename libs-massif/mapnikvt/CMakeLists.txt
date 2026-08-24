@@ -29,5 +29,11 @@ else()
     "${mapnikvt_LIBS_DIR}/stdext"
     "${mapnikvt_LIBS_DIR}/mlt/mlt/cpp/include"
   )
-  add_library(mapnikvt OBJECT ${mapnikvt_SRC_FILES})
+  # STATIC lets the linker leave out whole objects nothing references. The SDK build cannot use
+  # it: it aggregates these with $<TARGET_OBJECTS:mapnikvt>.
+  if(STATIC_LIBRARIES)
+    add_library(mapnikvt STATIC ${mapnikvt_SRC_FILES})
+  else()
+    add_library(mapnikvt OBJECT ${mapnikvt_SRC_FILES})
+  endif()
 endif()

@@ -35,5 +35,11 @@ else()
     "${vt_LIBS_DIR}/cglib"
     "${vt_LIBS_DIR}/stdext"
   )
-  add_library(vt OBJECT ${vt_SRC_FILES})
+  # STATIC lets the linker leave out whole objects nothing references, which is most of vt for a
+  # host tool. The SDK build cannot use it: it aggregates these with $<TARGET_OBJECTS:vt>.
+  if(STATIC_LIBRARIES)
+    add_library(vt STATIC ${vt_SRC_FILES})
+  else()
+    add_library(vt OBJECT ${vt_SRC_FILES})
+  endif()
 endif()

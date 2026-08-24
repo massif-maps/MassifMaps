@@ -201,6 +201,21 @@ public class MassifObject implements AutoCloseable {
         return new PropertyGroup(this, prefix);
     }
 
+    /**
+     * Reads an object property AS an object, so it can be handed to something that takes one - a
+     * source spec that needs the map's projection, an overlay drawing the base map's own tiles:
+     * <pre>map.options().child("baseProjection")</pre>
+     *
+     * <p>The path may walk object properties, like {@link #set}. The result is a REFERENCE the
+     * caller owns: close it, or it stays registered. Closing it does not touch the property.
+     *
+     * @return The child, or null when the property is empty. Null is also what an unresolvable
+     *         path gives: the flat API answers 0 for both and cannot tell them apart.
+     */
+    public MassifObject child(String path) {
+        return wrap(MassifApi.getObject(handle, path));
+    }
+
     // --- methods -------------------------------------------------------------------------------
 
     /**

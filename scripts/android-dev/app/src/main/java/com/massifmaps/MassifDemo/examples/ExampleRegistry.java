@@ -13,6 +13,7 @@ public final class ExampleRegistry {
         com.massifmaps.MassifDemo.examples.basics.DisplayMapExample.class,
         com.massifmaps.MassifDemo.examples.camera.FlyToExample.class,
         com.massifmaps.MassifDemo.examples.sources.GeoJsonLineExample.class,
+        com.massifmaps.MassifDemo.examples.sources.GdalOgrExample.class,
         com.massifmaps.MassifDemo.examples.styles.StyleParametersExample.class,
         com.massifmaps.MassifDemo.examples.terrain.Terrain3DExample.class,
         com.massifmaps.MassifDemo.examples.annotations.MarkersExample.class,

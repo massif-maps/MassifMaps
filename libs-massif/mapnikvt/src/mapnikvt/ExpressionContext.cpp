@@ -32,6 +32,9 @@ namespace massif::mvt {
             return Value();
         }
         else if (isMapnikVariable(name)) {
+            if (!_featureData) { // evaluated outside a tile, e.g. LayerConfigResolver
+                return Value();
+            }
             if (name == "mapnik::geometry_type") {
                 return Value(static_cast<long long>(_featureData->getGeometryType()));
             }

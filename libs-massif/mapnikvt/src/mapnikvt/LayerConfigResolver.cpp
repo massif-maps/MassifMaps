@@ -42,6 +42,15 @@ namespace massif::mvt {
                 continue;
             }
             for (const std::shared_ptr<const Rule>& rule : style->getZoomRules(exprContext.getAdjustedZoom())) {
+                // Skip a normal styling rule BEFORE its filter is evaluated: the same layer may
+                // carry line/text rules, and their filters read feature fields - there is no
+                // feature here.
+                bool isConfigRule = std::any_of(rule->getSymbolizers().begin(), rule->getSymbolizers().end(), [](const std::shared_ptr<const Symbolizer>& symbolizer) {
+                    return std::dynamic_pointer_cast<const LayerConfigSymbolizer>(symbolizer) != nullptr;
+                });
+                if (!isConfigRule) {
+                    continue;
+                }
                 // Apply the rule filter predicate (zoom / param::) if present.
                 if (const std::shared_ptr<const Filter>& filter = rule->getFilter()) {
                     if (filter->getType() == Filter::Type::FILTER && filter->getPredicate()) {

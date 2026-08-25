@@ -5,7 +5,12 @@
 namespace massif {
     
     TileData::TileData(const std::shared_ptr<BinaryData>& data) :
-        _data(data), _expirationTime(), _replaceWithParent(false), _overzoom(false), _metaData(), _mutex()
+        _data(data), _width(0), _height(0), _expirationTime(), _replaceWithParent(false), _overzoom(false), _metaData(), _mutex()
+    {
+    }
+
+    TileData::TileData(const std::shared_ptr<BinaryData>& pixels, int width, int height) :
+        _data(pixels), _width(width), _height(height), _expirationTime(), _replaceWithParent(false), _overzoom(false), _metaData(), _mutex()
     {
     }
 
@@ -55,6 +60,18 @@ namespace massif {
     
     const std::shared_ptr<BinaryData>& TileData::getData() const {
         return _data;
+    }
+
+    bool TileData::isRawPixels() const {
+        return _width > 0 && _height > 0;
+    }
+
+    int TileData::getWidth() const {
+        return _width;
+    }
+
+    int TileData::getHeight() const {
+        return _height;
     }
     
     std::shared_ptr<const std::map<std::string, Variant> > TileData::getMetaData() const {

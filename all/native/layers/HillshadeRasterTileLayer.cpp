@@ -9,6 +9,7 @@
 #include "core/BinaryData.h"
 #include "core/Variant.h"
 #include "datasources/components/TileData.h"
+#include "datasources/components/TileBitmap.h"
 #include "rastertiles/TerrariumElevationDataDecoder.h"
 #include "rastertiles/MapBoxElevationDataDecoder.h"
 #include "projections/EPSG3857.h"
@@ -522,13 +523,10 @@ namespace massif
     }
 
     std::shared_ptr<Bitmap> HillshadeRasterTileLayer::getTileDataBitmap(std::shared_ptr<TileData> tileData) const {
-        std::shared_ptr<BinaryData> binaryData = tileData->getData();
-        if (!binaryData) {
-            Log::Error("HillshadeRasterTileLayer::getTileDataBitmap: Null tile binary data");
-            return NULL;
+        std::shared_ptr<Bitmap> tileBitmap = DecodeTileBitmap(tileData);
+        if (!tileBitmap) {
+            Log::Error("HillshadeRasterTileLayer::getTileDataBitmap: No usable tile bitmap");
         }
-        int size = binaryData->size();
-        std::shared_ptr<Bitmap> tileBitmap = Bitmap::CreateFromCompressed(binaryData);
         return tileBitmap;
     }
 

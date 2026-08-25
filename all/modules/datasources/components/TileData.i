@@ -21,6 +21,11 @@
 %attribute(massif::TileData, long long, MaxAge, getMaxAge, setMaxAge)
 %attribute(massif::TileData, bool, ReplaceWithParent, isReplaceWithParent, setReplaceWithParent)
 %attributestring(massif::TileData, std::shared_ptr<massif::BinaryData>, Data, getData)
+// The raw-pixel constructor is reachable from a binding too, so a Java or Objective-C source that
+// already has pixels skips the PNG encode the SDK would immediately undo.
+%attribute(massif::TileData, bool, RawPixels, isRawPixels)
+%attribute(massif::TileData, int, Width, getWidth)
+%attribute(massif::TileData, int, Height, getHeight)
 
 // The meta data of the source that produced the tile - "dem_encoding" tells the consumer how to
 // decode a DEM tile, and behind a wrapper source only the tile knows which source answered.

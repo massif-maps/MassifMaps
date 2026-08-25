@@ -36,6 +36,10 @@ namespace massif::mvt {
             bindProperty("clip", &_clip);
             bindProperty("ignore-placement", &_ignorePlacement);
             bindProperty("transform", &_transform);
+            bindProperty("sdf", &_sdf);
+            bindProperty("halo-fill", &_haloFill);
+            bindProperty("halo-opacity", &_haloOpacity);
+            bindProperty("halo-radius", &_haloRadius);
         }
 
         virtual FeatureProcessor createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const override;
@@ -54,6 +58,12 @@ namespace massif::mvt {
         static std::shared_ptr<vt::BitmapImage> makeArrowBitmap(float width, float height, const vt::Color& color, float strokeWidth, const vt::Color& strokeColor);
 
         StringProperty _file;
+        // The image is a distance field rather than a picture - mapbox carries this per sprite
+        // entry ("sdf": true), which a bare file cannot, so the style says it.
+        BoolProperty _sdf = BoolProperty(false);
+        ColorFunctionProperty _haloFill = ColorFunctionProperty("#ffffff");
+        FloatFunctionProperty _haloOpacity = FloatFunctionProperty(1.0f);
+        FloatFunctionProperty _haloRadius = FloatFunctionProperty(0.0f);
         ValueProperty _featureId;
         LabelOrientationProperty _placement = LabelOrientationProperty("point");
         MarkerTypeProperty _markerType = MarkerTypeProperty("auto");
@@ -78,6 +88,7 @@ namespace massif::mvt {
 
         FloatFunctionBuilder _sizeFuncBuilder;
         ColorFunctionBuilder _fillFuncBuilder;
+        ColorFunctionBuilder _haloFuncBuilder;
     };
 }
 

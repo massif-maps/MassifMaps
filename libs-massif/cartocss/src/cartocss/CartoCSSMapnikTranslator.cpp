@@ -837,6 +837,10 @@ namespace massif::css {
         { "marker-placement-priority", "placement-priority" },
         { "marker-max-distance", "max-distance" },
         { "marker-transform", "transform" },
+        { "marker-sdf", "sdf" },
+        { "marker-halo-fill", "halo-fill" },
+        { "marker-halo-opacity", "halo-opacity" },
+        { "marker-halo-radius", "halo-radius" },
         { "marker-comp-op", "comp-op" },
         { "marker-clip", "clip" },
 

@@ -202,8 +202,15 @@ namespace massif::vt {
         // What this label keeps while its anchor is hidden by 3D content (mapbox's
         // text-occlusion-opacity). Unset = the layer's own default stands.
         std::optional<float> occlusionOpacity;
+        // The image is a SIGNED DISTANCE FIELD in its red channel, not a picture: it is then drawn
+        // by the same shader path as a glyph, so it stays sharp at any size and can take a halo.
+        // mapbox carries this per sprite entry ("sdf": true); a bare image file cannot, so the
+        // style has to say it.
+        bool sdfMode = false;
+        ColorFunction haloColorFunc; // sdfMode only - a bitmap has no field to grow a halo from
+        FloatFunction haloRadiusFunc;
 
-        explicit PointLabelStyle(LabelOrientation orientation, ColorFunction colorFunc, FloatFunction sizeFunc, bool autoflip, std::shared_ptr<const BitmapImage> image, const std::optional<Transform>& transform, float maxDistance = 0.0f) : orientation(orientation), colorFunc(std::move(colorFunc)), sizeFunc(std::move(sizeFunc)), autoflip(autoflip), image(std::move(image)), transform(transform), maxDistance(maxDistance) { }
+        explicit PointLabelStyle(LabelOrientation orientation, ColorFunction colorFunc, FloatFunction sizeFunc, bool autoflip, std::shared_ptr<const BitmapImage> image, const std::optional<Transform>& transform, float maxDistance = 0.0f, bool sdfMode = false, ColorFunction haloColorFunc = ColorFunction(), FloatFunction haloRadiusFunc = FloatFunction()) : orientation(orientation), colorFunc(std::move(colorFunc)), sizeFunc(std::move(sizeFunc)), autoflip(autoflip), image(std::move(image)), transform(transform), maxDistance(maxDistance), sdfMode(sdfMode), haloColorFunc(std::move(haloColorFunc)), haloRadiusFunc(std::move(haloRadiusFunc)) { }
     };
 
     struct TextLabelStyle final {

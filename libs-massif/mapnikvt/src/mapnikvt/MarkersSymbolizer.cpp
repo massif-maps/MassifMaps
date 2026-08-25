@@ -125,6 +125,13 @@ namespace massif::mvt {
         vt::FloatFunction normalizedSizeFunc = _sizeFuncBuilder.createScaledFloatFunction(sizeFunc, widthScale);
         vt::ColorFunction fillFunc = _fillFuncBuilder.createColorOpacityFunction(colorFunc, opacityFunc);
 
+        // A halo is grown from the distance field, so it only means anything in sdf mode.
+        bool sdfMode = _sdf.getValue(exprContext);
+        vt::ColorFunction haloFillFunc = sdfMode
+            ? _haloFuncBuilder.createColorOpacityFunction(_haloFill.getFunction(exprContext), _haloOpacity.getFunction(exprContext))
+            : vt::ColorFunction();
+        vt::FloatFunction haloRadiusFunc = sdfMode ? _haloRadius.getFunction(exprContext) : vt::FloatFunction();
+
         if (heightScale != widthScale) {
             transform = (transform ? *transform : vt::Transform()) * vt::Transform::fromMatrix2(cglib::scale2_matrix(cglib::vec2<float>(1.0f, heightScale / widthScale)));
         }
@@ -199,8 +206,8 @@ namespace massif::mvt {
             };
         }
 
-        return [compOp, fillFunc, normalizedSizeFunc, bitmapImage, transform, orientation, placement, placementPriority, spacing, bitmapSize, tileId, tileSize, glyphMap, groupId, labelIdOverride, allowOverlapSameFeatureId, sameFeatureIdDependent, hash, maxDistance, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
-            vt::PointLabelStyle style(orientation, fillFunc, normalizedSizeFunc, false, bitmapImage, transform, maxDistance);
+        return [compOp, fillFunc, normalizedSizeFunc, bitmapImage, transform, orientation, placement, placementPriority, spacing, bitmapSize, tileId, tileSize, glyphMap, groupId, labelIdOverride, allowOverlapSameFeatureId, sameFeatureIdDependent, hash, maxDistance, sdfMode, haloFillFunc, haloRadiusFunc, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
+            vt::PointLabelStyle style(orientation, fillFunc, normalizedSizeFunc, false, bitmapImage, transform, maxDistance, sdfMode, haloFillFunc, haloRadiusFunc);
             vt::TileLayerBuilder::PointLabelProcessor pointProcessor;
             for (std::size_t featureIndex = 0; featureIndex < featureCollection.size(); featureIndex++) {
                 if (!pointProcessor) {

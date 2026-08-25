@@ -5699,10 +5699,16 @@ export interface PropertyTypes {
     readonly "data": Handle<"massif::BinaryData">;
     /** (read-only) Returns the size of the data */
     readonly "data.size": number;
+    /** (read-only) The pixel height, or 0 when the data is an encoded file. */
+    readonly "height": number;
     /** Returns the maximum age of the tile data, tile data will expire after that point. */
     "maxAge": number;
+    /** (read-only) Returns true when getData() holds raw RGBA8 pixels rather than an encoded file. A consumer that turns tiles into bitmaps has to check this before decoding. */
+    readonly "rawPixels": boolean;
     /** Returns true if the tile should be replaced with parent tile. */
     "replaceWithParent": boolean;
+    /** (read-only) The pixel width, or 0 when the data is an encoded file. */
+    readonly "width": number;
   };
   "massif::TileDataSource": {
     /** Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. */

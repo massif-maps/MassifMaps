@@ -29,6 +29,26 @@ namespace massif {
          * @param data The source tile data.
          */
         TileData(const std::shared_ptr<BinaryData>& data);
+        /**
+         * Constructs a TileData object from RAW, already decoded pixels.
+         *
+         * For a source that produces pixels rather than a file - GDAL, a procedural tile, a
+         * decoder of a format the SDK does not know. The alternative is to encode a PNG the SDK
+         * then immediately decodes again, which is two codecs and three copies per tile.
+         *
+         * The layout is RGBA8, premultiplied, tightly packed: exactly width * height * 4 bytes,
+         * no row padding. One format on purpose - a second one would put a switch in every
+         * consumer for a case none of them has.
+         *
+         * Raster tiles only, and NOT persistently cached: the bytes carry no format, so a cache
+         * that stored them would read them back as a compressed file. See
+         * PersistentCacheTileDataSource::store.
+         *
+         * @param pixels width * height * 4 bytes of premultiplied RGBA.
+         * @param width The tile width in pixels.
+         * @param height The tile height in pixels.
+         */
+        TileData(const std::shared_ptr<BinaryData>& pixels, int width, int height);
         virtual ~TileData();
         
         /**
@@ -69,6 +89,23 @@ namespace massif {
          * @return Tile data as binary data.
          */
         const std::shared_ptr<BinaryData>& getData() const;
+
+        /**
+         * Returns true when getData() holds raw RGBA8 pixels rather than an encoded file.
+         * A consumer that turns tiles into bitmaps has to check this before decoding.
+         * @return True if the data is raw pixels.
+         */
+        bool isRawPixels() const;
+        /**
+         * The pixel width, or 0 when the data is an encoded file.
+         * @return The width in pixels.
+         */
+        int getWidth() const;
+        /**
+         * The pixel height, or 0 when the data is an encoded file.
+         * @return The height in pixels.
+         */
+        int getHeight() const;
         
         /**
          * Returns the meta data map carried by this tile - the meta data of the data source that
@@ -106,6 +143,9 @@ namespace massif {
 
     private:
         const std::shared_ptr<BinaryData> _data;
+        // 0 when _data is an encoded file, which is what isRawPixels() reads.
+        const int _width;
+        const int _height;
         std::shared_ptr<std::chrono::steady_clock::time_point> _expirationTime;
         bool _replaceWithParent;
         bool _overzoom;

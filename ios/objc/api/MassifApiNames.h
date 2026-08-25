@@ -623,6 +623,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyRangeStart;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyRank;
 /** Returns the raster tile event listener. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyRasterTileEventListener;
+/** Returns true when getData() holds raw RGBA8 pixels rather than an encoded file. A consumer that turns tiles into bitmaps has to check this before decoding. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyRawPixels;
 /** Returns raw result */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyRawResult;
 /** Returns what caused the movement. */

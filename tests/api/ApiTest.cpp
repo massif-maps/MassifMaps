@@ -50,6 +50,7 @@ void testNestedSpecProperties();
 void testCAbi();
 void testCAbiEvents();
 void testAdopt();
+void testCustomSource();
 void testBundleAssets();
 void testTileMetaData();
 void testElevationDecoderResolve();
@@ -405,6 +406,7 @@ int main() {
     testCAbi();
     testCAbiEvents();
     testAdopt();
+    testCustomSource();
     testBundleAssets();
     testTileMetaData();
     testElevationDecoderResolve();

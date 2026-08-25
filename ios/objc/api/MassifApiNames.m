@@ -314,6 +314,7 @@ MassifProperty const MassifPropertyRangeEnd = @"rangeEnd";
 MassifProperty const MassifPropertyRangeStart = @"rangeStart";
 MassifProperty const MassifPropertyRank = @"rank";
 MassifProperty const MassifPropertyRasterTileEventListener = @"rasterTileEventListener";
+MassifProperty const MassifPropertyRawPixels = @"rawPixels";
 MassifProperty const MassifPropertyRawResult = @"rawResult";
 MassifProperty const MassifPropertyReason = @"reason";
 MassifProperty const MassifPropertyRegexFilter = @"regexFilter";

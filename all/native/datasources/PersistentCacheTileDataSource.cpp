@@ -97,7 +97,11 @@ namespace massif {
         }
     
         if (tileData) {
-            if (tileData->getMaxAge() != 0 && !tileData->isReplaceWithParent() && tileData->getData()) {
+            // Raw pixels are never stored: the row keeps bytes and no format, so a reload would
+            // hand them back as an encoded file and decode to nothing. A source producing raw
+            // tiles is reading a local file anyway - there is no fetch to save.
+            if (tileData->getMaxAge() != 0 && !tileData->isReplaceWithParent() && tileData->getData()
+                    && !tileData->isRawPixels()) {
                 long long tileId = mapTile.getTileId();
                 std::size_t tileSize = tileData->getData()->size();
                 _cache.put(mapTile.getTileId(), createTileId(tileId), tileSize + EXTRA_TILE_FOOTPRINT);

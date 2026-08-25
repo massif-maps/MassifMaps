@@ -223,6 +223,29 @@ MapBox takes the first match. On topo-v4 that is 17 layers and **+24 attachments
 - `text-field` is exempt: the text is evaluated per feature inside the processor rather than through
   a `Property`, so it reads fields correctly.
 
+## An icon and its text are ONE label
+
+MapBox draws a symbol's icon and text as a single symbol that never collides with itself. Emitted as
+a `markers` symbolizer beside a `text` one they are **two** labels, they collide, and the marker
+wins: a city dot appeared with no name beside it, and removing the marker by hand brought "Annecy"
+straight back. `ShieldSymbolizer` is the one-label construct, so a symbol layer with both becomes a
+shield and every `text-*` declaration is renamed into it.
+
+Most names just take the prefix. The exceptions exist because `shield-dx/dy` move the **image**:
+the text's own offset is `shield-text-dx/dy`, and `text-opacity`/`text-transform` become
+`shield-text-*` for the same reason.
+
+Two things the shield cannot carry, both baked into the bitmap instead:
+
+- **No `sdf`.** The distance field is resolved and the style's `icon-color` painted in, so one
+  sprite drawn in two colours is two files (`circle-dot-000000.png`).
+- **No image size.** There is no shield equivalent of `marker-width`, so `icon-size` is resampled
+  into the PNG. A zoom ramp has no single answer and takes the mean of its stops (`-x65`).
+
+`shield-unlock-image` is always on, and the image is moved clear of the text by half its height —
+`text-anchor: bottom` anchors the text's bottom edge, so the name sits above and the dot below it,
+which is what MapBox's anchoring produces without ever needing the two to be separate labels.
+
 ## Road shields become a text plate
 
 A MapBox road shield is a sprite drawn BEHIND its ref, and the sprite is picked per feature —

@@ -2,19 +2,41 @@ import type { Coverage } from './coverage.js';
 import type { Json, MapboxLayer } from './types.js';
 
 /**
- * A property VALUE that reads a feature field does not work in this decoder.
+ * Two property kinds have to be split into per-branch attachments rather than left as one
+ * field-driven expression.
  *
- * `Symbolizer::createFeatureProcessor` runs once per rule with no feature bound, and
- * `ColorFunctionProperty::buildFunction` only defers to a per-frame function for view-state and
- * live-parameter expressions - a field expression is evaluated there and then, the field is null,
- * and a colour that collapses to null throws `Color parsing failed` and takes the whole rule with
- * it. A float quietly becomes 0 instead. Predicates are the supported mechanism, so a `case`/
- * `match` over a field becomes one attachment per branch, each with a constant value.
+ * **Colours**, because they break. Measured on MapTiler topo-v4 at z14 with a cleared cache: two
+ * `line-color` declarations reading `[class]` and `[paved]` produced `Color parsing failed` and
+ * lost their whole rule for that tile - no roads on some tiles, roads on others. Replacing only the
+ * field with a constant, nested ternary intact, brought it to 0. The mechanism is NOT established:
+ * `TileReader` does bind the feature before `createFeatureProcessor` and caches a processor per
+ * attribute set, and `Rule::calculateReferencedFields` gathers the fields property expressions use,
+ * so this ought to work. It does not, and a predicate does.
  *
- * `text-name` is exempt: the text is evaluated per feature inside the processor, not through a
+ * **`icon-image`**, because a sprite name is not a value the renderer can evaluate at all - it has
+ * to name one file. Splitting is what turns `match(subclass, 'international', 'airport', …)` into
+ * attachments that each have a real icon.
+ *
+ * The net is deliberately wide: narrowing it to colours alone, on the theory that a float merely
+ * evaluates to 0, put 49 `Color parsing failed` back on the same camera that had none. Whatever the
+ * mechanism is, it is not confined to the property that reads the field, so nothing that reads one
+ * is emitted.
+ *
+ * `text-field` is exempt: the text is evaluated per feature inside the processor, not through a
  * Property, so it reads fields correctly today.
  */
-const EXEMPT = new Set(['text-field', 'icon-image', 'visibility']);
+const EXEMPT = new Set([
+    'text-field',
+    'visibility',
+    // Placement priority only decides who wins a collision. Dropping it let a village label cull
+    // Annecy; keeping the field costs nothing if it does evaluate to 0, and
+    // docs/features/label-styling.md uses `text-placement-priority: [ele]` for exactly this.
+    'symbol-sort-key',
+]);
+
+function mustNotReadFeature(name: string): boolean {
+    return !EXEMPT.has(name);
+}
 
 /** A layer splitting into more than this many attachments is left whole - the compile cost is real. */
 const MAX_VARIANTS = 8;
@@ -134,7 +156,7 @@ function collapse(value: Json): Json | null {
  * the branch's condition added to the filter.
  */
 export function splitLayer(layer: MapboxLayer, coverage: Coverage): MapboxLayer[] {
-    let variants = [layer];
+    let variants = splitIconByZoom(layer);
 
     for (const name of splittableProperties(layer)) {
         const expanded: MapboxLayer[] = [];
@@ -154,10 +176,52 @@ export function splitLayer(layer: MapboxLayer, coverage: Coverage): MapboxLayer[
     return variants.map((variant) => resolveRemaining(variant, layer.id, coverage));
 }
 
-/** The paint/layout names that read the feature, in a stable order. */
+/**
+ * A sprite name that changes with ZOOM (`{stops: [[6, 'circle'], [12, ' ']]}`) cannot interpolate -
+ * it names one file per zoom band. Each band becomes its own attachment, which is what puts the
+ * dot back under a town name up to the zoom the style drops it at.
+ */
+function splitIconByZoom(layer: MapboxLayer): MapboxLayer[] {
+    const image = layer.layout?.['icon-image'];
+    const bands = zoomBandsOf(image as Json);
+    if (!bands) return [layer];
+
+    return bands
+        .map(({ from, to, value }) => ({
+            ...layer,
+            minzoom: Math.max(from, layer.minzoom ?? 0),
+            maxzoom: Math.min(to, layer.maxzoom ?? 24),
+            layout: { ...layer.layout, 'icon-image': value },
+        }))
+        .filter((variant) => variant.minzoom < variant.maxzoom);
+}
+
+interface ZoomBand { from: number; to: number; value: Json }
+
+/** The zoom bands of a step/stops expression, or null when it is not one. */
+function zoomBandsOf(value: Json): ZoomBand[] | null {
+    const stops: Array<[number, Json]> = [];
+
+    if (Array.isArray(value) && value[0] === 'step'
+        && Array.isArray(value[1]) && value[1][0] === 'zoom' && value.length >= 4) {
+        stops.push([0, value[2] as Json]);
+        for (let i = 3; i + 1 < value.length; i += 2) stops.push([value[i] as number, value[i + 1] as Json]);
+    } else if (value && typeof value === 'object' && !Array.isArray(value)) {
+        const legacy = value as { property?: unknown; stops?: Array<[number, Json]> };
+        if (typeof legacy.property === 'string' || !Array.isArray(legacy.stops)) return null;
+        stops.push(...legacy.stops.map(([z, v]) => [z, v] as [number, Json]));
+    } else {
+        return null;
+    }
+
+    if (!stops.every(([z, v]) => typeof z === 'number' && typeof v === 'string')) return null;
+    return stops.map(([from, value], i) => ({ from, to: stops[i + 1]?.[0] ?? 24, value }));
+}
+
+/** The paint/layout names that read the feature and may not, in a stable order. */
 function splittableProperties(layer: MapboxLayer): string[] {
     return Object.entries({ ...layer.layout, ...layer.paint })
-        .filter(([name, value]) => !EXEMPT.has(name) && readsFeature(value as Json))
+        .filter(([name, value]) => mustNotReadFeature(name) && readsFeature(value as Json))
         .map(([name]) => name);
 }
 
@@ -188,6 +252,9 @@ function resolveRemaining(layer: MapboxLayer, layerId: string, coverage: Coverag
     let changed = false;
 
     for (const name of splittableProperties(layer)) {
+        // An icon-image that did not split is left alone: markerDeclarations already drops an
+        // unresolvable sprite, and shield.ts needs to still see that the layer HAD one.
+        if (name === 'icon-image') continue;
         const target = layout[name] !== undefined ? layout : paint;
         const resolved = collapse(target[name] as Json);
         changed = true;

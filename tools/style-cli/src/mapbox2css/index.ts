@@ -4,8 +4,8 @@ import { Untranslatable, expandTokens, translateExpression } from './expression.
 import { translateFilter, zoomPredicates } from './filter.js';
 import { HANDLED_ELSEWHERE, followsLine, resolvePlacement } from './placement.js';
 import { KNOWN_GAPS, LAYER_SYMBOLIZER, PROPERTY_MAP, VALUE_MAP } from './properties.js';
-import { PLATE_MAP, isShieldLayer, plateRadius } from './shield.js';
-import { type SpriteSet, extractIcon } from './sprite.js';
+import { PLATE_MAP, asShieldDeclaration, isShieldLayer, plateRadius } from './shield.js';
+import { type ExtractedIcon, type SpriteSet, extractIcon } from './sprite.js';
 import { collapseBranches, splitLayer } from './split.js';
 import type { CartoProperty, Json, MapboxLayer, MapboxStyle, PropertyTable } from './types.js';
 
@@ -351,6 +351,16 @@ function layerDeclarations(
         }
         return iconDeclarations;
     }
+
+    // An icon AND text is ONE symbol in MapBox. Emitted as a marker beside a text label they are
+    // two labels that collide, and the marker wins - a city dot with no name beside it. The shield
+    // is the one-label construct, so the whole rule is renamed into it.
+    const shieldFile = iconDeclarations.find((d) => d.startsWith('shield-file:'));
+    if (shieldFile) {
+        const renamed = out.map(asShieldDeclaration).filter((d): d is string => d !== null);
+        return [...renamed, ...iconDeclarations];
+    }
+
     return [...out, ...iconDeclarations];
 }
 
@@ -371,6 +381,96 @@ function plateDeclarations(layer: MapboxLayer, coverage: Coverage): string[] {
     return out;
 }
 
+/**
+ * The image half of a shield. ShieldSymbolizer draws the bitmap at its own size - there is no
+ * equivalent of marker-width - so icon-size cannot be carried, and unlock-image is what lets the
+ * text move off the icon (a POI name sits below its pin).
+ */
+function shieldImageDeclarations(layer: MapboxLayer, icon: ExtractedIcon, coverage: Coverage): string[] {
+    // shield-placement comes from the renamed text-placement - one label, one placement.
+    const out = [`shield-file: url('${icon.file}');`, 'shield-unlock-image: true;'];
+    coverage.emit('shield-file');
+    coverage.emit('shield-unlock-image');
+
+    // Locked to the image, the text is centred ON it. MapBox anchors the TEXT and leaves the icon
+    // on the point, so the image is moved clear by half its height instead - a city name sits above
+    // its dot, a POI name below its pin, and neither is drawn over the other.
+    const clearance = iconClearance(layer, icon);
+    if (clearance !== 0) {
+        out.push(`shield-dy: ${clearance};`);
+        coverage.emit('shield-dy');
+    }
+    return out;
+}
+
+/** Which way, and how far, the image moves so the text does not land on it. */
+function iconClearance(layer: MapboxLayer, icon: ExtractedIcon): number {
+    const anchor = layer.layout?.['text-anchor'];
+    const offset = layer.layout?.['text-offset'];
+    const dy = Array.isArray(offset) && typeof offset[1] === 'number' ? offset[1] : 0;
+
+    // 'bottom' anchors the text's bottom edge, so the text is ABOVE and the icon goes below.
+    const below = anchor === 'bottom' || (anchor === undefined && dy < 0);
+    const above = anchor === 'top' || (anchor === undefined && dy > 0);
+    if (!below && !above) return 0;
+    return round((below ? 1 : -1) * icon.height / 2);
+}
+
+/**
+ * One number to bake an icon-size into the bitmap with. A zoom ramp has no single answer, so it
+ * takes the mean of its stops - the icon is then right in the middle of the range and a little off
+ * at both ends, which beats drawing every sprite at full size.
+ */
+function representativeScale(size: Json | undefined): number {
+    if (size === undefined) return 1;
+    if (typeof size === 'number') return size;
+
+    const numbers: number[] = [];
+    const walk = (value: Json): void => {
+        if (typeof value === 'number') numbers.push(value);
+        else if (Array.isArray(value)) value.forEach((item) => walk(item as Json));
+        else if (value && typeof value === 'object') Object.values(value).forEach((item) => walk(item as Json));
+    };
+    // Drop the zoom keys: in `interpolate(…, 6, 0.6, 14, 0.7)` only every second number is a size.
+    // interpolate(…, zoom, z0, v0, z1, v1) puts its values at 4, 6, …; step(zoom, v0, z1, v1) at 2, 4, …
+    if (Array.isArray(size) && (size[0] === 'interpolate' || size[0] === 'step')) {
+        for (let i = size[0] === 'step' ? 2 : 4; i < size.length; i += 2) walk(size[i] as Json);
+    } else {
+        walk(size);
+    }
+    const sizes = numbers.filter((n) => n > 0 && n <= 4);
+    return sizes.length === 0 ? 1 : sizes.reduce((a, b) => a + b, 0) / sizes.length;
+}
+
+/** A colour literal as 8-bit RGB, or undefined when it is not a constant this can bake. */
+function constantRgb(value: Json | undefined): [number, number, number] | undefined {
+    if (typeof value !== 'string') return undefined;
+
+    const hex = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(value.trim());
+    if (hex) {
+        const digits = hex[1].length === 3 ? [...hex[1]].map((c) => c + c).join('') : hex[1];
+        return [0, 2, 4].map((i) => parseInt(digits.slice(i, i + 2), 16)) as [number, number, number];
+    }
+
+    const hsl = /^hsla?\(\s*(-?[\d.]+)\s*,\s*([\d.]+)%\s*,\s*([\d.]+)%/i.exec(value.trim());
+    if (hsl) return hslToRgb(Number(hsl[1]), Number(hsl[2]) / 100, Number(hsl[3]) / 100);
+
+    const rgb = /^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i.exec(value.trim());
+    if (rgb) return [Number(rgb[1]), Number(rgb[2]), Number(rgb[3])];
+
+    return undefined;
+}
+
+function hslToRgb(h: number, s: number, l: number): [number, number, number] {
+    const c = (1 - Math.abs(2 * l - 1)) * s;
+    const hp = (((h % 360) + 360) % 360) / 60;
+    const x = c * (1 - Math.abs((hp % 2) - 1));
+    const [r, g, b] = hp < 1 ? [c, x, 0] : hp < 2 ? [x, c, 0] : hp < 3 ? [0, c, x]
+        : hp < 4 ? [0, x, c] : hp < 5 ? [x, 0, c] : [c, 0, x];
+    const m = l - c / 2;
+    return [r, g, b].map((v) => Math.round((v + m) * 255)) as [number, number, number];
+}
+
 /** MapBox's icon-* onto marker-*, once the sprite has been sliced into its own file. */
 function markerDeclarations(layer: MapboxLayer, coverage: Coverage, options: ConvertOptions): string[] {
     const image = layer.layout?.['icon-image'];
@@ -384,11 +484,19 @@ function markerDeclarations(layer: MapboxLayer, coverage: Coverage, options: Con
         return [];
     }
 
-    const icon = extractIcon(options.sprites.sheets, image, options.sprites.outDir, options.flattenSdf);
+    // With text beside it the icon becomes a SHIELD - one label, no collision with its own name.
+    // ShieldSymbolizer has no `sdf`, so the field is resolved and the style's icon-color baked in.
+    const asShield = layer.layout?.['text-field'] !== undefined;
+    const tint = asShield ? constantRgb(layer.paint?.['icon-color'] ?? layer.layout?.['icon-color']) : undefined;
+    // A shield has no marker-width, so icon-size is baked into the bitmap here.
+    const scale = asShield ? representativeScale(layer.layout?.['icon-size']) : 1;
+    const icon = extractIcon(options.sprites.sheets, image, options.sprites.outDir, options.flattenSdf, tint, scale);
     if (!icon) {
         coverage.drop('icon-image', `"${image}" is not in the sprite`, layer.id);
         return [];
     }
+
+    if (asShield) return shieldImageDeclarations(layer, icon, coverage);
 
     const out = [
         `marker-file: url('${icon.file}');`,

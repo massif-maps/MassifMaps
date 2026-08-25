@@ -63,6 +63,25 @@ test('a text-field branching per country keeps its fallback rather than losing t
     assert.ok(coverage.report().includes('kept only its fallback branch'));
 });
 
+test('an icon beside text becomes ONE shield, not a marker that culls the label', () => {
+    const sprites = new Map([['default', {
+        index: { circle: { x: 0, y: 0, width: 8, height: 8, pixelRatio: 1, sdf: true } },
+        image: { width: 8, height: 8, data: Buffer.alloc(8 * 8 * 4, 200) },
+    }]]);
+    const out = convert({ layers: [symbol(
+        { 'text-field': '{name}', 'icon-image': 'circle', 'text-anchor': 'bottom', 'text-size': 12 },
+        { 'icon-color': '#000000', 'text-color': '#333333' })] },
+    TABLE, { sprites: { sheets: sprites, outDir: '/tmp/massif-style-test' } }).mss;
+
+    assert.ok(!out.includes('marker-'), 'a marker beside the text would be a second, colliding label');
+    assert.match(out, /shield-file: url\('icons\/circle-000000.png'\);/);
+    assert.match(out, /shield-name: \[name\];/);
+    assert.match(out, /shield-fill: #333333;/);
+    assert.match(out, /shield-unlock-image: true;/);
+    // 'bottom' anchors the text's bottom edge, so the text is above and the icon drops below it.
+    assert.match(out, /shield-dy: 4;/);
+});
+
 test('an icon-overlap alone never builds a fileless marker', () => {
     // marker-allow-overlap on its own makes a MarkersSymbolizer with no file, whose default fill is
     // #0000ff - a blue ellipse over every airport whose sprite could not be resolved.

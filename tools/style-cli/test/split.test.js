@@ -42,28 +42,44 @@ test('later branches exclude the earlier ones, because MapBox takes the first ma
 });
 
 test('two field-driven properties give the product of their branches', () => {
+    // Not only the colour: narrowing this to colours alone put the decoder errors back, so
+    // anything that reads a field is split.
     const blocks = blocksOf({
         'line-color': ['match', ['get', 'class'], 'motorway', '#f00', '#fff'],
         'line-opacity': ['case', ['==', ['get', 'brunnel'], 'tunnel'], 0.5, 1],
     });
     assert.equal(blocks.length, 4);
+    assert.ok(!blocks.join('').includes('[brunnel]') || blocks.every((b) => !/line-opacity:.*\[/.test(b)));
 });
 
 test('past the variant cap the layer stays whole and keeps its fallback', () => {
     // 4 x 4 = 16 attachments for one layer is not worth the compile cost.
-    const many = (field) => ['match', ['get', field], 'a', 1, 'b', 2, 'c', 3, 4];
-    const { mss, coverage } = convert({ layers: [lineLayer({
-        'line-width': many('x'), 'line-opacity': many('y'),
-    })] }, TABLE);
+    const many = (field) => ['match', ['get', field], 'a', '#111', 'b', '#222', 'c', '#333', '#444'];
+    const { mss, coverage } = convert({ layers: [{
+        id: 'road', type: 'symbol', 'source-layer': 'transportation',
+        layout: { 'text-field': '{name}' },
+        paint: { 'text-color': many('x'), 'text-halo-color': many('y') },
+    }] }, TABLE);
     assert.equal(mss.split('\n').filter((l) => l.startsWith('#transportation')).length, 4);
     assert.ok(coverage.report().includes('kept only its fallback'));
 });
 
-test('a value with no fallback to fall back to is dropped, not emitted', () => {
-    // `["get", "width"]` would evaluate to null and take the whole rule down with it.
-    const { mss, coverage } = convert({ layers: [lineLayer({ 'line-width': ['get', 'width'], 'line-color': '#fff' })] }, TABLE);
-    assert.ok(!mss.includes('line-width'));
+test('a colour with no fallback to fall back to is dropped, not emitted', () => {
+    // `["get", "colour"]` would take the whole rule down with it.
+    const { mss, coverage } = convert({ layers: [lineLayer({ 'line-color': ['get', 'colour'], 'line-width': 2 })] }, TABLE);
+    assert.ok(!mss.includes('line-color'));
     assert.ok(coverage.report().includes('reads a feature field'));
+});
+
+test('a zoom-driven sprite name becomes one attachment per zoom band', () => {
+    // A town's circle: `{stops: [[6, 'circle'], [12, ' ']]}` names one file per band, never a blend.
+    const blocks = convert({ layers: [{
+        id: 'town', type: 'symbol', 'source-layer': 'town_label',
+        layout: { 'text-field': '{name}', 'icon-image': { stops: [[6, 'circle'], [12, ' ']] } },
+    }] }, TABLE).mss.split('\n').filter((l) => l.startsWith('#town_label'));
+    assert.equal(blocks.length, 2);
+    assert.match(blocks[0], /\[zoom >= 6\]\[zoom < 12\]/);
+    assert.match(blocks[1], /\[zoom >= 12\]/);
 });
 
 test('text-name still reads fields, because the text is evaluated per feature', () => {

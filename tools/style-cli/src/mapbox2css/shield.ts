@@ -45,3 +45,29 @@ export const PLATE_MAP: ReadonlyArray<readonly [string, string]> = [
 export function plateRadius(): string {
     return `text-background-radius: ${PLATE_RADIUS};`;
 }
+
+/**
+ * MapBox draws an icon and its text as ONE symbol; a `markers` plus a `text` symbolizer are two
+ * labels that then collide, and the marker wins - which is why a city dot appeared with no name
+ * next to it. `ShieldSymbolizer` is the one-label construct, so a symbol layer that has both
+ * becomes a shield and every `text-*` declaration is renamed into it.
+ *
+ * Most names just take the prefix. These do not: `shield-dx/dy` move the IMAGE, so the text's own
+ * offset is `shield-text-dx/dy`, and a few carry the word `text` for the same reason.
+ */
+const SHIELD_RENAMES: Record<string, string> = {
+    'text-dx': 'shield-text-dx',
+    'text-dy': 'shield-text-dy',
+    'text-opacity': 'shield-text-opacity',
+    'text-transform': 'shield-text-transform',
+    'text-name': 'shield-name',
+};
+
+/** A text declaration as the shield spells it, or null when the shield has no equivalent. */
+export function asShieldDeclaration(declaration: string): string | null {
+    const colon = declaration.indexOf(':');
+    const name = declaration.slice(0, colon);
+    if (!name.startsWith('text-')) return declaration;
+    const renamed = SHIELD_RENAMES[name] ?? `shield-${name.slice('text-'.length)}`;
+    return `${renamed}${declaration.slice(colon)}`;
+}

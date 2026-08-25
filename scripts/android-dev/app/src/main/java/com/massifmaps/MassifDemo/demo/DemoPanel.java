@@ -987,6 +987,16 @@ public final class DemoPanel {
         check(context, "sky", DemoConfig.SKY_ENABLED, new BoolSetting() {
             public void set(boolean value) { DemoConfig.SKY_ENABLED = value; demo.skyOptions.setEnabled(value); }
         });
+        // The scattering sky against the old two-colour gradient - the A/B for both look and cost.
+        check(context, "atmosphere (off = gradient)", !"gradient".equals(DemoConfig.SKY_TYPE), new BoolSetting() {
+            public void set(boolean value) { DemoConfig.SKY_TYPE = value ? "atmosphere" : "gradient"; demo.applySkyOptions(); }
+        });
+        slider(context, "atmosphere sun intensity", 0, 30, DemoConfig.SKY_ATMO_SUN, false, new FloatSetting() {
+            public void set(float value) { DemoConfig.SKY_ATMO_SUN = value; demo.skyOptions.setAtmosphereSunIntensity(value); }
+        });
+        slider(context, "atmosphere exposure (lower = brighter)", 0.1f, 4, DemoConfig.SKY_ATMO_LUMINANCE, false, new FloatSetting() {
+            public void set(float value) { DemoConfig.SKY_ATMO_LUMINANCE = value; demo.skyOptions.setAtmosphereLuminance(value); }
+        });
 
         // Buildings come from the STYLE, so the switch rebuilds the base layer. Only the inline
         // style is generated here, so it is the one this can turn on and off; a dir/zip/project style
@@ -1032,13 +1042,17 @@ public final class DemoPanel {
         slider(context, "fog range end (x camera)", 0, 20, DemoConfig.FOG_RANGE_END, false, new FloatSetting() {
             public void set(float value) { DemoConfig.FOG_RANGE_END = value; demo.fogOptions.setRangeEnd(value); }
         });
-        // How much of the SKY the same haze takes: the blend is the fade width, the angle is where
-        // it is still full (below 0 on the slider = follow the terrain skyline).
+        // How far up the SKY the same haze reaches. The ground takes the very same term, so the
+        // two meet at the skyline whatever this is set to.
         slider(context, "fog horizon blend (0..1)", 0, 1, DemoConfig.FOG_HORIZON_BLEND, false, new FloatSetting() {
             public void set(float value) { DemoConfig.FOG_HORIZON_BLEND = value; demo.fogOptions.setHorizonBlend(value); }
         });
-        slider(context, "fog horizon angle (deg, <0=auto)", -1, 30, DemoConfig.FOG_HORIZON_ANGLE, false, new FloatSetting() {
-            public void set(float value) { DemoConfig.FOG_HORIZON_ANGLE = value; demo.fogOptions.setHorizonAngle(value); }
+        // Peaks poking out of a valley haze (mapbox vertical-range). Equal values = off.
+        slider(context, "fog vertical start (m)", 0, 4000, DemoConfig.FOG_VERTICAL_START, false, new FloatSetting() {
+            public void set(float value) { DemoConfig.FOG_VERTICAL_START = value; demo.fogOptions.setVerticalRangeStart(value); }
+        });
+        slider(context, "fog vertical end (m)", 0, 4000, DemoConfig.FOG_VERTICAL_END, false, new FloatSetting() {
+            public void set(float value) { DemoConfig.FOG_VERTICAL_END = value; demo.fogOptions.setVerticalRangeEnd(value); }
         });
         slider(context, "fog stars (0..1)", 0, 1, DemoConfig.FOG_STAR_INTENSITY, false, new FloatSetting() {
             public void set(float value) { DemoConfig.FOG_STAR_INTENSITY = value; demo.fogOptions.setStarIntensity(value); }

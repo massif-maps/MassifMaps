@@ -58,12 +58,17 @@ public class GeoJsonLineExample extends MapExample {
         MassifMap map = host.map();
 
         map.addLayer("basemap", Spec.of("raster")
-            .set("source", Spec.of("http")
-                .set("url", "https://tile.openstreetmap.org/{z}/{x}/{y}.png")
-                .set("maxZoom", 19)
-                // OSM's tile policy REQUIRES an identifying User-Agent; without one the server
-                // answers 403 and every tile comes back as an error image.
-                .set("HTTPHeaders", Spec.object().set("User-Agent", UA))));
+            // Cached on disk in front of the server: OSM's tiles are a free service run on
+            // donations, and a demo that gets panned around re-fetches the same ones every run.
+            .set("source", Spec.of("persistent-cache")
+                .set("databasePath", host.cachePath("osm-raster.db"))
+                .set("capacity", 100 * 1024 * 1024)
+                .set("source", Spec.of("http")
+                    .set("url", "https://tile.openstreetmap.org/{z}/{x}/{y}.png")
+                    .set("maxZoom", 19)
+                    // OSM's tile policy REQUIRES an identifying User-Agent; without one the server
+                    // answers 403 and every tile comes back as an error image.
+                    .set("HTTPHeaders", Spec.object().set("User-Agent", UA)))));
 
         // The source re-tiles whatever it is given, so an update is one call rather than a rebuild.
         MassifSource tour = map.source("tour-data", Spec.of("geojson").set("maxZoom", 14));

@@ -71,11 +71,14 @@ public final class ExampleLive extends BroadcastReceiver {
         knob("fogRangeStart", "fog", "rangeStart");
         knob("fogRangeEnd", "fog", "rangeEnd");
         knob("fogBlend", "fog", "horizonBlend");
-        knob("fogHorizon", "fog", "horizonAngle");
+        knob("fogVertStart", "fog", "verticalRangeStart");
+        knob("fogVertEnd", "fog", "verticalRangeEnd");
         knob("fogStars", "fog", "starIntensity");
         // sky
         knob("sky", "sky", "enabled");
         knob("sunDisc", "sky", "sunDiscEnabled");
+        knob("skyAtmoSun", "sky", "atmosphereSunIntensity");
+        knob("skyAtmoLum", "sky", "atmosphereLuminance");
     }
 
     private static void knob(String key, String group, String property) {

@@ -12,7 +12,8 @@ namespace massif {
         _highColorARGB(Color(0, 0, 0, 0).getARGB()),
         _spaceColorARGB(Color(0, 0, 0, 0).getARGB()),
         _horizonBlend(12.0f / 90.0f),
-        _horizonAngle(-1.0f),
+        _verticalRangeStart(0.0f),
+        _verticalRangeEnd(0.0f),
         _starIntensity(0.0f),
         _shaderSource(),
         _shaderSourceMutex(),
@@ -97,14 +98,25 @@ namespace massif {
         }
     }
 
-    float FogOptions::getHorizonAngle() const {
-        return _horizonAngle.load();
+    float FogOptions::getVerticalRangeStart() const {
+        return _verticalRangeStart.load();
     }
 
-    void FogOptions::setHorizonAngle(float degrees) {
-        float clamped = std::min(90.0f, degrees);
-        if (_horizonAngle.exchange(clamped) != clamped) {
-            notifyOptionChanged("HorizonAngle");
+    void FogOptions::setVerticalRangeStart(float startMeters) {
+        float clamped = std::max(0.0f, startMeters);
+        if (_verticalRangeStart.exchange(clamped) != clamped) {
+            notifyOptionChanged("VerticalRangeStart");
+        }
+    }
+
+    float FogOptions::getVerticalRangeEnd() const {
+        return _verticalRangeEnd.load();
+    }
+
+    void FogOptions::setVerticalRangeEnd(float endMeters) {
+        float clamped = std::max(0.0f, endMeters);
+        if (_verticalRangeEnd.exchange(clamped) != clamped) {
+            notifyOptionChanged("VerticalRangeEnd");
         }
     }
 

@@ -31,12 +31,18 @@ static NSString * const kUserAgent =
     // constructor does not take is applied as a property, so "opacity" needs no special case.
     [map addLayer:@"basemap"
              spec:[[MSFSpec of:@"raster"]
-                     set:@"source" value:[[[[MSFSpec of:@"http"]
-                         set:@"url" value:@"https://tile.openstreetmap.org/{z}/{x}/{y}.png"]
-                         set:@"maxZoom" value:@19]
-                         // OSM's tile policy REQUIRES an identifying User-Agent; without one the
-                         // server answers 403 and every tile comes back as an error image.
-                         set:@"HTTPHeaders" value:[[MSFSpec object] set:@"User-Agent" value:kUserAgent]]]
+                     // Cached on disk in front of the server: OSM's tiles are a free service run
+                     // on donations, and a demo that gets panned around re-fetches the same ones
+                     // on every run.
+                     set:@"source" value:[[[[MSFSpec of:@"persistent-cache"]
+                         set:@"databasePath" value:[host cachePath:@"osm-raster.db"]]
+                         set:@"capacity" value:@(100 * 1024 * 1024)]
+                         set:@"source" value:[[[[MSFSpec of:@"http"]
+                             set:@"url" value:@"https://tile.openstreetmap.org/{z}/{x}/{y}.png"]
+                             set:@"maxZoom" value:@19]
+                             // OSM's tile policy REQUIRES an identifying User-Agent; without one
+                             // the server answers 403 and every tile is an error image.
+                             set:@"HTTPHeaders" value:[[MSFSpec object] set:@"User-Agent" value:kUserAgent]]]]
             error:nil];
 
     // The same property two ways. The string is the API; MassifProperty is the GENERATED typed

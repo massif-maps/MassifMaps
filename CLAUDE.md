@@ -217,9 +217,18 @@ adb shell am start -n com.massifmaps.MassifDemo/.BenchActivity --es ui false --e
 - Fog is `FogOptions`, independent of the terrain (it fogs a plain 2D map too). `--es fog <color>`
   or `--es fog false` is the master switch; `fogRangeStart fogRangeEnd` are in **multiples of the
   camera-to-focus distance**, not metres, so one pair holds at every zoom. `fogHigh fogSpace
-  fogStars fogBlend fogHorizon` are the mapbox atmosphere params. `--es fogSource style` takes every
-  value from the inline style's `Map` block instead (needs `--es style inline`) — that is the path
-  that can be zoom-dependent.
+  fogStars fogBlend` are the mapbox atmosphere params, and `fogVertStart fogVertEnd` (metres) are
+  the altitudes the haze fades out between, so summits stand clear of it. `--es fogSource style`
+  takes every value from the inline style's `Map` block instead (needs `--es style inline`) — that
+  is the path that can be zoom-dependent.
+  **`fogBlend` scales the GROUND as well as the sky** — one angular term for both is what makes the
+  two meet at the skyline with no seam, so there is no separate horizon angle to tune any more
+  ([`08-lighting-sky-fog.md`](docs/internals/rendering/08-lighting-sky-fog.md)).
+- The sky is a physical atmosphere by default (Rayleigh + Mie, per fragment).
+  `--es skyType gradient` gets the old two-colour ramp back, which is the A/B for both look and
+  cost; `--es skyQuality low|medium|high` is the sample count, `skyAtmoSun skyAtmoLum
+  skyAtmoColor skyAtmoHalo` the rest. The raymarch runs per fragment of VISIBLE SKY, so a low tilt
+  is what pays for it — measure there, not at tilt 85.
 - Relief / peak-finder look: `reliefSurface true` (shaded terrain surface, only visible where no
   tile layer paints - pair it with `--es map false --es hillshade false`), `peakfinder true` (the
   outline effect, `peakfinderDelay` ms), `reliefDark`, `reliefWidth reliefHorizonBoost
@@ -283,7 +292,7 @@ the host tests — seconds, and the only check that exercises behaviour rather t
 cd tests && ./run.sh
 ```
 
-New work ships its own tests; the rules are in [`.claude/CLAUDE.md`](.claude/CLAUDE.md#tests--every-change-ships-them).
+New work ships its own tests; the rules are in the [test](.claude/skills/test/SKILL.md) skill.
 
 The Android-family build scripts (`build-android.py`, `build-routing-android.py`,
 `build-xamarin.py`) pick **ninja** over make and prefix the compiler with **ccache**, both

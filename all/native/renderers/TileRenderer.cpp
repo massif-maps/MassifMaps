@@ -13,6 +13,7 @@
 #include "renderers/drawdatas/TileDrawData.h"
 #include "renderers/TerrainRenderer.h"
 #include "renderers/utils/ElevationTextureCache.h"
+#include "renderers/utils/FogShader.h"
 #include "renderers/utils/GLResourceManager.h"
 #include "renderers/utils/TerrainDrapeCache.h"
 #include "renderers/utils/VTRenderer.h"
@@ -930,9 +931,13 @@ namespace massif {
             // and this is what fogs a plain 2D map as well.
             ResolvedFog fog = resolveFog(options->getFogOptions(), _styleEnvironment, lighting, viewState.calculateCameraDistance());
             tileRenderer->setFog(vt::Color(fog.color.getR() / 255.0f, fog.color.getG() / 255.0f, fog.color.getB() / 255.0f, fog.color.getA() / 255.0f),
-                                 fog.startDistance, fog.distance, fog.rangeScale);
+                                 fog.startDistance, fog.distance, fog.rangeScale, fog.horizonBlend);
             tileRenderer->setFogColors(vt::Color(fog.highColor.getR() / 255.0f, fog.highColor.getG() / 255.0f, fog.highColor.getB() / 255.0f, fog.highColor.getA() / 255.0f),
                                        vt::Color(fog.spaceColor.getR() / 255.0f, fog.spaceColor.getG() / 255.0f, fog.spaceColor.getB() / 255.0f, fog.spaceColor.getA() / 255.0f));
+            float metersPerUnit = static_cast<float>(Const::EARTH_CIRCUMFERENCE / Const::WORLD_SIZE);
+            tileRenderer->setFogVertical(fog.verticalRangeStart, fog.verticalRangeEnd, metersPerUnit,
+                                         static_cast<float>(viewState.getCameraPos()(2)) * metersPerUnit);
+            tileRenderer->setFogRayBasis(FogShader::rayBasis(viewState));
             if (std::shared_ptr<FogOptions> fogOptions = options->getFogOptions()) {
                 tileRenderer->setFogShaderSource(fogOptions->getShaderSource());
             }

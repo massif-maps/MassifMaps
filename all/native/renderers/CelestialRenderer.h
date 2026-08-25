@@ -66,6 +66,7 @@ namespace massif {
         };
 
         bool initializeRenderer();
+        void setupFogUniforms(GLuint progId, const ViewState& viewState) const;
         bool resolveWorldPos(const std::shared_ptr<CelestialObject>& object, const ViewState& viewState, cglib::vec3<double>& worldPos, double& distance) const;
         void buildSprites(const ViewState& viewState, float opacity, std::vector<SpriteInstance>& instances) const;
         void drawSprites(const std::vector<SpriteInstance>& instances, const ViewState& viewState);
@@ -73,15 +74,19 @@ namespace massif {
         void calculateRayIntersectedArcs(const std::shared_ptr<CelestialLayer>& layer, const cglib::ray3<double>& ray, const cglib::vec3<double>& rayDir, const ViewState& viewState, std::vector<RayIntersectedElement>& results) const;
 
         static const std::string SPRITE_VERTEX_SHADER;
-        static const std::string SPRITE_FRAGMENT_SHADER;
+        static const std::string SPRITE_FRAGMENT_SHADER_PREFIX;
+        static const std::string SPRITE_FRAGMENT_SHADER_MAIN;
+        static const std::string CELESTIAL_FRAGMENT_SHADER_FOG;
         static const std::string ARC_VERTEX_SHADER;
-        static const std::string ARC_FRAGMENT_SHADER;
+        static const std::string ARC_FRAGMENT_SHADER_PREFIX;
+        static const std::string ARC_FRAGMENT_SHADER_MAIN;
 
         // How far inside the far plane an infinitely distant object is placed. Far enough that the
         // map is always in front of it, close enough that it never clips.
         static const double INFINITE_DISTANCE_FACTOR;
 
         std::shared_ptr<Shader> _spriteShader;
+        std::string _fogShaderSource;   // the fog block both programs were built with
         std::shared_ptr<Shader> _arcShader;
         std::weak_ptr<Options> _options;
         std::weak_ptr<MapRenderer> _mapRenderer;

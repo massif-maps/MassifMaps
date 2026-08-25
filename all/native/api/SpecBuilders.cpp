@@ -109,6 +109,22 @@ namespace massif { namespace api {
             }
         }
     }
+
+    /** One entry of an indexed property, from a "prefix.name" spec key. */
+    void applyIndexedSpecProperty(const ObjectRef& object, const PropertyEntry& entry,
+                                  const std::string& key, const std::string& name,
+                                  const Variant& value) {
+        PropertyValue item;
+        StructCodec::readEntry(value, item);
+        try {
+            if (!entry.indexed->setter(object.obj.get(), name, item)) {
+                Log::Warnf("Spec: %s.%s refused '%s', ignored",
+                           object.cppClass, key.c_str(), name.c_str());
+            }
+        } catch (const std::exception& ex) {
+            Log::Errorf("Spec: %s.%s refused: %s", object.cppClass, key.c_str(), ex.what());
+        }
+    }
     }
 
     void applySpecProperties(Context& context, const ObjectRef& object, const Variant& spec,
@@ -126,6 +142,21 @@ namespace massif { namespace api {
                 // A spec spells a property the same way a path does, aliases included.
                 if (const char* aliased = findAlias(classEntry, key.c_str())) {
                     entry = findProperty(classEntry, aliased);
+                }
+            }
+            // "metaData.dem_encoding": one entry of an indexed property, the same spelling a PATH
+            // uses. Context::lookup accepts it, so Spec::create accepted it at the TOP level while
+            // a nested spec - a layer's source, terrain's source - silently dropped it. That
+            // asymmetry cost a terrain its elevation decoder, which is not the kind of thing a
+            // warning in a log is enough for.
+            std::size_t dot = entry ? std::string::npos : key.find('.');
+            if (dot != std::string::npos) {
+                const PropertyEntry* indexedEntry = findProperty(classEntry, key.substr(0, dot).c_str());
+                if (indexedEntry && indexedEntry->indexed && indexedEntry->indexed->setter) {
+                    consumed.insert(key);
+                    applyIndexedSpecProperty(object, *indexedEntry, key, key.substr(dot + 1),
+                                             spec.getObjectElement(key));
+                    continue;
                 }
             }
             // A bag - a style's parameters - is written key by key from a JSON object.

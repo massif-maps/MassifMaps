@@ -50,7 +50,8 @@ namespace massif {
         static const float PLANE_TEX_COORDS[8];
     
         static const std::string SOLID_VERTEX_SHADER;
-        static const std::string SOLID_FRAGMENT_SHADER;
+        static const std::string SOLID_FRAGMENT_SHADER_PREFIX;
+        static const std::string SOLID_FRAGMENT_SHADER_MAIN;
 
         std::shared_ptr<Bitmap> _backgroundBitmap;
         std::shared_ptr<Texture> _backgroundTex;
@@ -70,6 +71,7 @@ namespace massif {
         float _bitmapScale;
 
         std::shared_ptr<Shader> _shader;
+        std::string _fogShaderSource;   // the fog block _shader was built with
         GLuint _a_coord;
         GLuint _a_normal;
         GLuint _a_texCoord;

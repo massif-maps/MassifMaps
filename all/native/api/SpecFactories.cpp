@@ -65,8 +65,8 @@ namespace massif { namespace api {
          *
          * One kind for the four because that is what they are - things Options points at. Build
          * one, then set it on the map's options; every value inside is an ordinary property, and
-         * terrain's elevation decoder comes from the source's own `encoding` rather than a
-         * spec argument.
+         * terrain's elevation decoder comes from the source's own `metaData.dem_encoding` rather
+         * than a spec argument.
          */
         Result buildOptions(Context& context, const Variant& spec, ObjectRef& object,
                             std::set<std::string>& consumed) {

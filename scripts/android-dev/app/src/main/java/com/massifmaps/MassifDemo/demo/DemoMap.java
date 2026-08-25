@@ -8,6 +8,8 @@ import android.util.Log;
 import com.massifmaps.components.LightOptions;
 import com.massifmaps.components.Options;
 import com.massifmaps.components.SkyOptions;
+import com.massifmaps.components.SkyQuality;
+import com.massifmaps.components.SkyType;
 import com.massifmaps.components.FogOptions;
 import com.massifmaps.components.TerrainOptions;
 import com.massifmaps.api.MassifApi;
@@ -373,7 +375,7 @@ public class DemoMap {
         if (compositeLayer == null) {
             return;
         }
-        // hillshade: the elevation decoder is resolved from the source 'encoding' metadata.
+        // hillshade: the elevation decoder is resolved from the source's 'dem_encoding' meta data.
         if (DemoConfig.COMPOSITE_HILLSHADE) {
             compositeLayer.addExternalDataSource("hillshade", demSource(), CompositeSourceType.COMPOSITE_SOURCE_TYPE_HILLSHADE);
             if (DemoConfig.COMPOSITE_HILLSHADE_ZOOM_BIAS != 0) {
@@ -1498,10 +1500,12 @@ public class DemoMap {
         fogOptions.setHighColor(new Color(fromStyle ? 0 : DemoConfig.FOG_HIGH_COLOR_ARGB));
         fogOptions.setSpaceColor(new Color(fromStyle ? 0 : DemoConfig.FOG_SPACE_COLOR_ARGB));
         fogOptions.setStarIntensity(fromStyle ? 0 : DemoConfig.FOG_STAR_INTENSITY);
-        // How much of the sky the haze takes: HorizonBlend is the fade width, HorizonAngle the
-        // angle it is still at full strength at (negative = from the terrain, 0 = from the horizon).
+        // How much of the sky the haze takes. The SAME term scales the ground, so the two meet at
+        // the skyline with no seam at any tilt - there is no angle to reconcile any more.
         fogOptions.setHorizonBlend(DemoConfig.FOG_HORIZON_BLEND);
-        fogOptions.setHorizonAngle(DemoConfig.FOG_HORIZON_ANGLE);
+        // Peaks poking out of a valley haze (mapbox vertical-range).
+        fogOptions.setVerticalRangeStart(DemoConfig.FOG_VERTICAL_START);
+        fogOptions.setVerticalRangeEnd(DemoConfig.FOG_VERTICAL_END);
         mapView.requestRender();
     }
 
@@ -1512,6 +1516,13 @@ public class DemoMap {
             mapView.getOptions().setSkyOptions(skyOptions);
         }
         skyOptions.setEnabled(DemoConfig.SKY_ENABLED);
+        skyOptions.setType("gradient".equals(DemoConfig.SKY_TYPE) ? SkyType.SKY_TYPE_GRADIENT : SkyType.SKY_TYPE_ATMOSPHERE);
+        skyOptions.setQuality("low".equals(DemoConfig.SKY_QUALITY) ? SkyQuality.SKY_QUALITY_LOW
+                : "high".equals(DemoConfig.SKY_QUALITY) ? SkyQuality.SKY_QUALITY_HIGH : SkyQuality.SKY_QUALITY_MEDIUM);
+        skyOptions.setAtmosphereSunIntensity(DemoConfig.SKY_ATMO_SUN);
+        skyOptions.setAtmosphereColor(new Color(DemoConfig.SKY_ATMO_COLOR_ARGB));
+        skyOptions.setHaloColor(new Color(DemoConfig.SKY_ATMO_HALO_ARGB));
+        skyOptions.setAtmosphereLuminance(DemoConfig.SKY_ATMO_LUMINANCE);
         // In the relief view the sky is part of the palette: a light one over the paper, a night
         // one over the ink. Alpha 0 makes it see-through, which is what an AR overlay wants.
         if (DemoConfig.RELIEF_SURFACE || DemoConfig.PEAK_FINDER) {

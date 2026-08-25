@@ -178,3 +178,23 @@ changed and the device numbers are in [02-tiles.md](02-tiles.md#geojson-tiles-th
 
 One thing they do that we also do now: properties live outside the tiler (`m_store->properties[id]`
 there, `MBVTLayerData::infos` here), so clipping never copies one.
+
+## Fog and sky: mapbox, not tangram
+
+Tangram has neither a distance fog nor a sky beyond a flat colour band, so this subsystem is
+modelled on mapbox-gl-js instead — the model and the property names, not their code (mapbox v2+ is
+under their own terms; the scattering comes from the public-domain `glsl-atmosphere` and Bruneton's
+paper). Full description in [08-lighting-sky-fog.md](08-lighting-sky-fog.md). Two places where we
+knowingly differ from mapbox:
+
+- **The fog colour's alpha is applied once, not twice.** Mapbox multiplies by `u_fog_color.a` inside
+  both `fog_opacity` and `fog_horizon_blending`, so their ground carries **a²** and their sky
+  carries **a**. That is invisible at their default `a = 1` and wrong for any translucent fog. Here
+  `fogHorizonBlend` returns the pure geometric factor.
+- **No pitch gating.** Mapbox fades its fog in over `smoothstep(45°, 65°, pitch)`, i.e. a top-down
+  map has no fog at all. A peak-finder camera in this SDK sits at tilt 25 and wants haze, so the
+  gate is deliberately not ported.
+
+One thing we do that mapbox does not: **the fog colour is lit by the sun** before it is used
+(`resolveFog`), so a haze tuned for daylight darkens through the night instead of floating bright
+white over a dark map.

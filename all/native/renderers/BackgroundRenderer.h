@@ -37,7 +37,7 @@ namespace massif {
 
     protected:
         bool updateShader();
-        void setupFogUniforms(const ResolvedFog& fog, bool enabled);
+        void setupFogUniforms(const ResolvedFog& fog, const ViewState& viewState, bool skyBand);
         void drawBackground(const ViewState& viewState, const ResolvedFog& fog);
         void drawSky(const ViewState& viewState, const ResolvedFog& fog);
         void drawContour(const ViewState& viewState);
@@ -60,7 +60,6 @@ namespace massif {
 
         static const std::string BACKGROUND_VERTEX_SHADER;
         static const std::string BACKGROUND_FRAGMENT_SHADER_PREFIX;
-        static const std::string BACKGROUND_FRAGMENT_SHADER_FOG_BUILTIN;
         static const std::string BACKGROUND_FRAGMENT_SHADER_MAIN;
 
         std::shared_ptr<Bitmap> _backgroundBitmap;
@@ -90,10 +89,7 @@ namespace massif {
         GLuint _u_tex;
         GLuint _u_lightDir;
         GLuint _u_mvpMat;
-        GLint _u_fogColor;
-        GLint _u_fogHighColor;
-        GLint _u_fogSpaceColor;
-        GLint _u_fogParams;
+        GLint _u_skyBand;
 
         std::shared_ptr<GLResourceManager> _glResourceManager;
     

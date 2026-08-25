@@ -301,7 +301,7 @@ static const DemoFeature LAYER_ORDER[] = {
     if (!_compositeLayer) {
         return;
     }
-    // hillshade: the elevation decoder is resolved from the source's own encoding.
+    // hillshade: the elevation decoder is resolved from the source's 'dem_encoding' meta data.
     if ([DemoConfig boolFor:@"hs"]) {
         [_compositeLayer addExternalDataSource:@"hillshade"
                                     dataSource:[self demSource]
@@ -886,10 +886,12 @@ static const DemoFeature LAYER_ORDER[] = {
     [_fogOptions setColor:[DemoMap colorFromHex:@"#b8c6d8"]];
     [_fogOptions setRangeStart:[DemoConfig floatFor:@"fogRangeStart"]];
     [_fogOptions setRangeEnd:[DemoConfig floatFor:@"fogRangeEnd"]];
-    // How much of the sky the haze takes: HorizonBlend is the fade width, HorizonAngle the angle
-    // it is still at full strength at (negative = from the terrain, 0 = from the horizon).
+    // How far up the sky the haze reaches. The SAME term scales the ground, so the two meet at
+    // the skyline with no seam at any tilt.
     [_fogOptions setHorizonBlend:[DemoConfig floatFor:@"fogBlend"]];
-    [_fogOptions setHorizonAngle:[DemoConfig floatFor:@"fogHorizon"]];
+    // Peaks poking out of a valley haze (mapbox vertical-range).
+    [_fogOptions setVerticalRangeStart:[DemoConfig floatFor:@"fogVertStart"]];
+    [_fogOptions setVerticalRangeEnd:[DemoConfig floatFor:@"fogVertEnd"]];
     [self requestRender];
 }
 
@@ -900,6 +902,13 @@ static const DemoFeature LAYER_ORDER[] = {
         [[self.mapView getOptions] setSkyOptions:_skyOptions];
     }
     [_skyOptions setEnabled:[DemoConfig boolFor:@"sky"]];
+    NSString* skyType = [DemoConfig stringFor:@"skyType"];
+    [_skyOptions setType:[skyType isEqualToString:@"gradient"] ? MSFSkyTypeSkyTypeGradient : MSFSkyTypeSkyTypeAtmosphere];
+    NSString* skyQuality = [DemoConfig stringFor:@"skyQuality"];
+    [_skyOptions setQuality:[skyQuality isEqualToString:@"low"] ? MSFSkyQualitySkyQualityLow
+                     : [skyQuality isEqualToString:@"high"] ? MSFSkyQualitySkyQualityHigh : MSFSkyQualitySkyQualityMedium];
+    [_skyOptions setAtmosphereSunIntensity:[DemoConfig floatFor:@"skyAtmoSun"]];
+    [_skyOptions setAtmosphereLuminance:[DemoConfig floatFor:@"skyAtmoLum"]];
     // In the relief view the sky is part of the palette: a light one over the paper, a night one
     // over the ink.
     if ([DemoConfig boolFor:@"reliefSurface"] || [DemoConfig boolFor:@"peakfinder"]) {

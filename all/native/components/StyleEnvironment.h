@@ -7,10 +7,12 @@
 #ifndef _MASSIF_STYLEENVIRONMENT_H_
 #define _MASSIF_STYLEENVIRONMENT_H_
 
+#include "components/SkyOptions.h"
 #include "graphics/Color.h"
 
 #include <memory>
 #include <optional>
+#include <string>
 
 #include <cglib/vec.h>
 
@@ -58,7 +60,14 @@ namespace massif {
         std::optional<Color> fogHighColor;
         std::optional<Color> fogSpaceColor;
         std::optional<float> fogHorizonBlend;
+        std::optional<float> fogVerticalRangeStart;
+        std::optional<float> fogVerticalRangeEnd;
         std::optional<float> fogStarIntensity;
+        std::optional<float> skyType;
+        std::optional<float> skyAtmosphereSunIntensity;
+        std::optional<Color> skyAtmosphereColor;
+        std::optional<Color> skyAtmosphereHaloColor;
+        std::optional<float> skyAtmosphereLuminance;
         std::optional<float> terrainMaxVisibleDistance;
 
         /**
@@ -132,8 +141,14 @@ namespace massif {
         float startDistance = 0.0f; // rangeStart * rangeScale, i.e. internal units
         float distance = 0.0f;
         float horizonBlend = 0.0f;
-        float horizonAngle = -1.0f;
+        // Metres. The fog fades out between the two, so a summit stands clear of a valley haze.
+        float verticalRangeStart = 0.0f;
+        float verticalRangeEnd = 0.0f;
         float starIntensity = 0.0f;
+        // FogOptions::getShaderSource, carried here so a renderer that compiles the fog into its
+        // own program does not have to reach for the options a second time. Set even when the fog
+        // is off, so switching it off does not force a shader rebuild.
+        std::string shaderSource;
 
         /**
          * True when there is a fog to draw at all: a visible colour over a positive range.
@@ -151,6 +166,20 @@ namespace massif {
      * measured in. It is a function of the zoom alone, so one range setting holds at every zoom.
      */
     ResolvedFog resolveFog(const std::shared_ptr<FogOptions>& fogOptions, const StyleEnvironment& env, const ResolvedLighting& lighting, double cameraDistance);
+
+    /**
+     * The sky to actually draw: SkyOptions, with every value the style defines substituted in.
+     * The gradient colours are not style-driven and stay on SkyOptions.
+     */
+    struct ResolvedSky {
+        SkyType::SkyType type = SkyType::SKY_TYPE_ATMOSPHERE;
+        float atmosphereSunIntensity = 10.0f;
+        Color atmosphereColor = Color(255, 255, 255, 255);
+        Color haloColor = Color(255, 255, 255, 255);
+        float atmosphereLuminance = 1.0f;
+    };
+
+    ResolvedSky resolveSky(const std::shared_ptr<SkyOptions>& skyOptions, const StyleEnvironment& env);
 
 }
 

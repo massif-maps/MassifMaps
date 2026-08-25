@@ -8,6 +8,7 @@
 #define _MASSIF_SKYRENDERER_H_
 
 #include "renderers/utils/GLContext.h"
+#include "components/SkyOptions.h"
 #include "components/StyleEnvironment.h"
 
 #include <chrono>
@@ -22,8 +23,8 @@ namespace massif {
 
     /**
      * Draws the sky as a single full-screen pass with a per-pixel world-space view ray.
-     * The fragment shader is either the built-in gradient + sun disc, or user GLSL supplied
-     * through SkyOptions::setShaderSource.
+     * The fragment shader is the scattering atmosphere, the older two-colour gradient, or user
+     * GLSL supplied through SkyOptions::setShaderSource.
      */
     class SkyRenderer {
     public:
@@ -36,17 +37,19 @@ namespace massif {
          * band must not be drawn on top of it. The fog is resolved by the owner and shared with
          * the ground, so the two meet at the horizon whether it came from the options or a style.
          */
-        bool onDrawFrame(const ViewState& viewState, const ResolvedFog& fog);
+        bool onDrawFrame(const ViewState& viewState, const ResolvedFog& fog, const ResolvedSky& sky);
         void onSurfaceDestroyed();
 
     protected:
-        bool updateShader();
+        bool updateShader(const ResolvedSky& sky);
 
         static const std::string SKY_VERTEX_SHADER;
         static const std::string SKY_FRAGMENT_SHADER_PREFIX;
+        static const std::string SKY_FRAGMENT_SHADER_COMMON;
         static const std::string SKY_FRAGMENT_SHADER_MAIN;
-        static const std::string SKY_FRAGMENT_SHADER_BUILTIN;
-        static const std::string SKY_FRAGMENT_SHADER_FOG_BUILTIN;
+        static const std::string SKY_FRAGMENT_SHADER_GRADIENT;
+        static const std::string SKY_FRAGMENT_SHADER_ATMOSPHERE;
+        static const std::string SKY_FRAGMENT_SHADER_SCATTERING;
 
         static const float QUAD_COORDS[8];
         // How far below the horizon the sky quad still reaches, in normalized device units: the sky
@@ -57,6 +60,8 @@ namespace massif {
         std::shared_ptr<Shader> _shader;
         std::string _shaderSource;      // the SkyOptions source the current shader was built from
         std::string _fogShaderSource;   // the FogOptions source it was built with
+        SkyType::SkyType _shaderType;   // ... and the type and quality, both compiled in
+        SkyQuality::SkyQuality _shaderQuality;
         bool _shaderFailed;             // custom source failed to compile; do not retry it
 
         // Uniform locations are queried directly, not through Shader::getUniformLoc: a custom
@@ -73,16 +78,13 @@ namespace massif {
         GLint _u_horizonBlend;
         GLint _u_sunIntensity;
         GLint _u_sunDisc;
+        GLint _u_atmosphere;
+        GLint _u_atmosphereColor;
+        GLint _u_haloColor;
         GLint _u_time;
         GLint _u_zoom;
         GLint _u_cameraHeight;
         GLint _u_resolution;
-        GLint _u_fogColor;
-        GLint _u_fogBlend;
-        GLint _u_fogHorizon;
-        GLint _u_fogHighColor;
-        GLint _u_fogSpaceColor;
-        GLint _u_fogParams;
         GLint _u_starIntensity;
 
         std::chrono::steady_clock::time_point _startTime;

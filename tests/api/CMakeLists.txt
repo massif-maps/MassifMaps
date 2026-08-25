@@ -3,6 +3,9 @@
 # of modules instead, which keeps the link to a handful of files - and exercises the generator.
 set(TEST_MODULES
   "${SDK_BASE_DIR}/all/modules/components/FogOptions.i"
+  # The sky carries the only WRITABLE enum in the reduced table (SkyType), which is what checks
+  # that a constant NAME is accepted and an unknown one is rejected rather than read as 0.
+  "${SDK_BASE_DIR}/all/modules/components/SkyOptions.i"
   "${SDK_BASE_DIR}/all/modules/geometry/Feature.i"
   "${SDK_BASE_DIR}/all/modules/geometry/Geometry.i"
   "${SDK_BASE_DIR}/all/modules/ui/VectorTileClickInfo.i"
@@ -97,6 +100,7 @@ set(TEST_SDK_SOURCES
   # StructCodec carries a screen rectangle now - fitBounds takes one (see CameraMethods.cpp).
   "${SDK_BASE_DIR}/all/native/core/ScreenBounds.cpp"
   "${SDK_BASE_DIR}/all/native/components/FogOptions.cpp"
+  "${SDK_BASE_DIR}/all/native/components/SkyOptions.cpp"
   "${SDK_BASE_DIR}/all/native/geometry/Feature.cpp"
   "${SDK_BASE_DIR}/all/native/geometry/VectorTileFeature.cpp"
   "${SDK_BASE_DIR}/all/native/geometry/VectorTileFeatureBuilder.cpp"
@@ -162,6 +166,8 @@ add_executable(api_tests
   CAbiTest.cpp
   MetaDataTest.cpp
   BagTest.cpp
+  FogSkyTest.cpp
+  SpecKeyTest.cpp
   "${TEST_TABLE_DIR}/PropertyTable.inc"
   "${TEST_TABLE_DIR}/MethodDecls.inc"
   ${TEST_SDK_SOURCES})

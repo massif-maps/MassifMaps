@@ -282,7 +282,6 @@ property. See [Sky, Sun & Shadows](/docs/features/sky-sun-shadows).
 | `terrainOptions.fogStartDistance` (metres) | `fogOptions.rangeStart` (**multiples of the camera-to-focus distance**) |
 | `terrainOptions.fogDistance` (metres) | `fogOptions.rangeEnd` (same unit) |
 | `skyOptions.fogBlend` (degrees) | `fogOptions.horizonBlend` (fraction of a quarter turn: `degrees / 90`) |
-| `skyOptions.fogHorizon` | `fogOptions.horizonAngle` (unchanged, degrees) |
 | style `fog-start-distance` / `fog-distance` | style `fog-range-start` / `fog-range-end` |
 
 **The range unit changed, so the numbers do not carry over.** Metres had to be retuned for every
@@ -292,6 +291,58 @@ everywhere. Start from the defaults (`0.8` to `8`) rather than converting.
 New with it: `enabled` (a real switch — no more toggling fog by driving a distance to `0`),
 `highColor`, `spaceColor`, `starIntensity` (Mapbox `high-color` / `space-color` / `star-intensity`),
 and `shaderSource` for a custom fog blend across map and sky.
+
+### The fog and the sky are one model now — and both are breaking
+
+The fog had four implementations that agreed only by luck, which is why haze on the ground could
+meet clean sky along the skyline. The ground now takes the **same** angular term the sky takes
+(Mapbox's `fog_horizon_blending`), so the two are continuous by construction at any tilt and any
+zoom. Details in
+[08-lighting-sky-fog.md](https://github.com/massif-maps/MassifMaps/blob/master/docs/internals/rendering/08-lighting-sky-fog.md).
+
+| Before | After |
+|---|---|
+| `fogOptions.horizonAngle` | **removed** — the shared horizon term is terrain-correct without it |
+| `fogOptions.horizonBlend` (fraction of a quarter turn, linear cubed falloff) | same range `0..1`, now `exp(-3 · (sin θ / blend)²)` — retune, do not convert |
+| distance ramp `clamp((d − start)/(end − start))` | `(1 − exp(−6t))³`, Mapbox's own — the same range reads softer at the near end |
+| — | `fogOptions.verticalRangeStart` / `verticalRangeEnd` (metres, Mapbox `vertical-range`): summits stand clear of a valley haze |
+| — | style `fog-vertical-range-start` / `fog-vertical-range-end` |
+
+**`SkyOptions` now defaults to a physical atmosphere.** `SkyOptions.type` is `SKY_TYPE_ATMOSPHERE`:
+Rayleigh and Mie scattering, so the sky reddens at a low sun on its own. Set
+`SKY_TYPE_GRADIENT` to get the previous two-colour ramp back, unchanged. New with it:
+`quality`, `atmosphereSunIntensity`, `atmosphereColor`, `haloColor`, `atmosphereLuminance`, and the
+style properties `sky-type`, `sky-atmosphere-sun-intensity`, `sky-atmosphere-color`,
+`sky-atmosphere-halo-color`, `sky-atmosphere-luminance`.
+
+**Every custom shader has to be rewritten.** `FogOptions.shaderSource` now replaces three entry
+points instead of one, and both `SkyOptions.shaderSource` and
+`TerrainOptions.surfaceShaderSource` changed with it:
+
+```glsl
+// before
+vec4 applyFog(vec4 color, float amount, float dist) {
+    return vec4(mix(color.rgb, uFogColor.rgb * color.a, amount), color.a);
+}
+
+// after - dir is the world-space view ray, heightM the fragment's altitude in metres.
+// fogOpacity / fogHorizonBlend / fogVertical are supplied; use them or ignore them.
+vec4 applyFog(vec4 color, vec3 dir, float dist, float heightM) {
+    float amount = fogOpacity(fogRange(dist)) * fogHorizonBlend(dir);
+    return vec4(mix(color.rgb, uFogColor.rgb * color.a, amount * (1.0 - fogVertical(heightM))), color.a);
+}
+vec4 skyFog(vec4 color, vec3 dir) {
+    return vec4(mix(color.rgb, uFogColor.rgb * color.a, uFogColor.a * fogHorizonBlend(dir)), color.a);
+}
+float fogLabelFade() { return 1.0; }   // 0 hides a label the fog has swallowed
+```
+
+- A **custom sky** shader must no longer call `fogAmount(rayDir)` or mix `u_fogColor` itself — the
+  SDK applies `skyFog` once to whatever `skyColor` returns, so a custom fog shader reaches a custom
+  sky too. `u_fogBlend` and `u_fogHorizon` are gone; the fog block's own uniforms are declared
+  instead.
+- A **custom terrain surface** shader must no longer call `fogAmount(v_dist)` or read `u_fogColor` /
+  `u_fogRange`, both removed. Return the unfogged colour; the SDK fogs it with everything else.
 
 ### 3D buildings are lit by the sun, whatever the terrain is doing
 

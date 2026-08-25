@@ -181,7 +181,7 @@ namespace massif {
         bool renderTiles(const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions, const std::shared_ptr<GLResourceManager>& glResourceManager, const std::shared_ptr<Shader>& shader, const std::function<void(const MapTile&)>& tileUniformsFn = std::function<void(const MapTile&)>(), int meshResolutionCap = 0, bool surfaceAttribs = false);
         // Compiles (and caches) the surface program for the current TerrainOptions shader source.
         // A source that failed once is not retried until it changes.
-        std::shared_ptr<Shader> updateSurfaceShader(const std::string& shaderSource, const std::shared_ptr<GLResourceManager>& glResourceManager);
+        std::shared_ptr<Shader> updateSurfaceShader(const std::string& shaderSource, const std::string& fogShaderSource, const std::shared_ptr<GLResourceManager>& glResourceManager);
         // Fills the mesh's per-vertex surface attributes (normal + elevation in metres) on first
         // use. Only the surface pass needs them, so the depth passes never pay for them.
         void ensureSurfaceAttribs(const MapTile& tile, const std::shared_ptr<ElevationManager>& elevationManager, TileMesh& mesh) const;
@@ -208,6 +208,7 @@ namespace massif {
         std::shared_ptr<Shader> _bitmapShader;
         std::shared_ptr<Shader> _surfaceShader;
         std::string _surfaceShaderSource;    // source _surfaceShader was built from
+        std::string _fogShaderSource;        // ... and the fog block compiled into it
         bool _surfaceShaderFailed = false;   // that source does not compile: do not retry every frame
         std::chrono::steady_clock::time_point _startTime = std::chrono::steady_clock::now(); // u_time origin
         // What the packed depth texture currently holds: it is reused while the camera, the

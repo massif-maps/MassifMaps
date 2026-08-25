@@ -3,6 +3,7 @@
 #include "graphics/ViewState.h"
 #include "layers/VectorLayer.h"
 #include "renderers/MapRenderer.h"
+#include "renderers/utils/FogShader.h"
 #include "renderers/utils/GLResourceManager.h"
 #include "renderers/utils/Shader.h"
 #include "renderers/utils/Texture.h"
@@ -342,14 +343,21 @@ namespace massif {
     }
 
     bool LineRenderer::initializeRenderer() {
-        if (_shader && _shader->isValid() && _textureCache && _textureCache->isValid()) {
+        // The custom fog shader is compiled into this program, so a change to it has to rebuild.
+        std::string fogSource;
+        if (auto mapRenderer = _mapRenderer.lock()) {
+            fogSource = FogShader::source(mapRenderer->getOptions());
+        }
+
+        if (_shader && _shader->isValid() && _fogShaderSource == fogSource && _textureCache && _textureCache->isValid()) {
             return true;
         }
+        _fogShaderSource = fogSource;
 
         if (auto mapRenderer = _mapRenderer.lock()) {
             _textureCache = mapRenderer->getGLResourceManager()->create<BitmapTextureCache>(TEXTURE_CACHE_SIZE);
 
-            _shader = mapRenderer->getGLResourceManager()->create<Shader>("line", LINE_VERTEX_SHADER, LINE_FRAGMENT_SHADER);
+            _shader = mapRenderer->getGLResourceManager()->create<Shader>("line", LINE_VERTEX_SHADER, LINE_FRAGMENT_SHADER_PREFIX + FogShader::buildBlock(fogSource) + LINE_FRAGMENT_SHADER_MAIN);
 
             // Get shader variables locations
             _a_color = _shader->getAttribLoc("a_color");
@@ -371,6 +379,11 @@ namespace massif {
     void LineRenderer::bind(const ViewState& viewState) {
         // Prepare for drawing
         glUseProgram(_shader->getProgId());
+        // This frame's fog, resolved once by the owner: markers, lines and overlays fade into the
+        // same haze as the map they sit on.
+        if (auto mapRenderer = _mapRenderer.lock()) {
+            FogShader::setUniforms(_shader->getProgId(), mapRenderer->getFrameFog(), viewState);
+        }
         // Coords, texCoords, colors
         glEnableVertexAttribArray(_a_color);
         glEnableVertexAttribArray(_a_coord);
@@ -463,7 +476,7 @@ namespace massif {
         }
     )GLSL";
 
-    const std::string LineRenderer::LINE_FRAGMENT_SHADER = R"GLSL(
+    const std::string LineRenderer::LINE_FRAGMENT_SHADER_PREFIX = R"GLSL(
         #version 100
         precision mediump float;
         uniform sampler2D u_tex;
@@ -477,9 +490,12 @@ namespace massif {
         varying mediump float v_dist;
         varying mediump float v_width;
         #endif
+)GLSL";
+
+    const std::string LineRenderer::LINE_FRAGMENT_SHADER_MAIN = R"GLSL(
         void main() {
             lowp float a = clamp(v_width - abs(v_dist), 0.0, 1.0);
-            gl_FragColor = texture2D(u_tex, v_texCoord) * v_color * a;
+            gl_FragColor = applyFog(texture2D(u_tex, v_texCoord) * v_color * a);
         }
     )GLSL";
 

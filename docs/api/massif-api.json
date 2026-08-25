@@ -8107,6 +8107,15 @@
           "doc": "Returns tile data as binary data."
         },
         {
+          "name": "height",
+          "type": "INT",
+          "readOnly": true,
+          "static": false,
+          "position": false,
+          "cppType": "int",
+          "doc": "The pixel height, or 0 when the data is an encoded file."
+        },
+        {
           "name": "maxAge",
           "type": "INT",
           "readOnly": false,
@@ -8116,6 +8125,15 @@
           "doc": "Returns the maximum age of the tile data, tile data will expire after that point."
         },
         {
+          "name": "rawPixels",
+          "type": "BOOL",
+          "readOnly": true,
+          "static": false,
+          "position": false,
+          "cppType": "bool",
+          "doc": "Returns true when getData() holds raw RGBA8 pixels rather than an encoded file. A consumer that turns tiles into bitmaps has to check this before decoding."
+        },
+        {
           "name": "replaceWithParent",
           "type": "BOOL",
           "readOnly": false,
@@ -8123,6 +8141,15 @@
           "position": false,
           "cppType": "bool",
           "doc": "Returns true if the tile should be replaced with parent tile."
+        },
+        {
+          "name": "width",
+          "type": "INT",
+          "readOnly": true,
+          "static": false,
+          "position": false,
+          "cppType": "int",
+          "doc": "The pixel width, or 0 when the data is an encoded file."
         }
       ],
       "aliases": {},

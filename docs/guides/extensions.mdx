@@ -77,15 +77,52 @@ class ShapefileSource(projection: Projection) : VectorDataSource(projection) {
 }
 ```
 
+## A tile source in C or C++
+
+An extension whose real work is native — GDAL, a proprietary decoder — does not have to bounce
+through the binding language. `mm_source_create_custom` registers a source implemented as a plain
+C function pointer:
+
+```c
+#include <MassifApiC.h>
+
+static int load_tile(void* user, int z, int x, int y, mm_tile_sink sink, void* sink_data) {
+    unsigned char rgba[256 * 256 * 4];
+    if (!render_tile(user, z, x, y, rgba)) {
+        return MM_OK;                    /* no such tile - a hole, not an error */
+    }
+    /* Copied inside this call, so the stack buffer above is fine and there is nothing to free. */
+    sink(sink_data, rgba, sizeof(rgba), MM_TILE_RGBA8, 256, 256);
+    return MM_OK;
+}
+
+mm_tile_source source = { 0, 14, load_tile, close_dataset, dataset };
+mm_handle handle;
+mm_source_create_custom(mm_context_default(), "dem", &source, &handle);
+```
+
+The id then works exactly as an adopted one does — `Spec.of("raster").set("source", "dem")`.
+
+`MM_TILE_RGBA8` hands over **decoded pixels**, which is the point: the Kotlin path above has to
+encode a PNG that `RasterTileLayer` immediately decodes again. Use `MM_TILE_ENCODED` when what you
+have really is a file, including vector tile protobuf for a `"vector"` layer.
+
+Link against `libmassif.so` for the `mm_*` symbols only — they are the exported surface, and the
+extension's own `.so` is otherwise independent of the SDK.
+
 ## What an extension cannot do
 
 - **Register a spec `type`.** The spec table is generated at build time, so `{"type": "geotiff"}`
-  in JSON is not available. Construct the source in Kotlin/Swift and adopt it; specs then reference
-  it by id or handle.
-- **Subclass from C++.** The SDK compiles into one library with `-fvisibility=hidden`, so another
-  native library cannot derive from `massif::TileDataSource` directly. The binding layer is the
-  seam — which is also what keeps an extension readable.
-- **Avoid thread safety.** Both overrides are called concurrently from tile and culling threads.
+  in JSON is not available. Construct the source and adopt it, or use
+  `mm_source_create_custom`; specs then reference it by id or handle.
+- **Subclass an SDK class from C++.** The SDK compiles into one library with `-fvisibility=hidden`
+  and an Android link that exports only `Java_*`, `CSharp_*`, `SWIG*` and `mm_*`, so another native
+  library cannot derive from `massif::TileDataSource` however many headers it has. That is what
+  `mm_source_create_custom` exists for — a function pointer instead of a vtable.
+- **Supply vector ELEMENTS from C.** The C ABI covers tile sources. A `VectorDataSource` producing
+  `VectorElement`s is a binding-language subclass, as above.
+- **Avoid thread safety.** Every one of these — the two overrides and the C loader — is called
+  concurrently from tile and culling threads.
 
 ## Why this rather than a build profile
 

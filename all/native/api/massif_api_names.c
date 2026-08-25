@@ -315,6 +315,7 @@ static const char* const kNames[] = {
     "rangeStart",
     "rank",
     "rasterTileEventListener",
+    "rawPixels",
     "rawResult",
     "reason",
     "regexFilter",

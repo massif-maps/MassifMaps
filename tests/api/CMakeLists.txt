@@ -24,6 +24,9 @@ set(TEST_MODULES
   "${SDK_BASE_DIR}/all/modules/geometry/GeoJSONGeometryWriter.i"
   # For call/getData: TileData is the lightest class with a BinaryData property.
   "${SDK_BASE_DIR}/all/modules/datasources/components/TileData.i"
+  # The class a custom source registers AS - getObject checks it against the table, so without
+  # this row mm_source_create_custom registers a source no layer spec could resolve.
+  "${SDK_BASE_DIR}/all/modules/datasources/TileDataSource.i"
   "${SDK_BASE_DIR}/all/modules/core/BinaryData.i"
   # For routing: a request, a result and the service base need only a projection. The concrete
   # Valhalla services need sqlite and the routing library and stay out - see ../README.md.
@@ -82,6 +85,8 @@ set(TEST_SDK_SOURCES
   "${SDK_BASE_DIR}/all/native/api/MassifApiEvents.cpp"
   "${SDK_BASE_DIR}/all/native/core/BinaryData.cpp"
   "${SDK_BASE_DIR}/all/native/datasources/components/TileData.cpp"
+  # What mm_source_create_custom builds. TileDataSource itself is already in the list below.
+  "${SDK_BASE_DIR}/all/native/api/CallbackTileDataSource.cpp"
   "${SDK_BASE_DIR}/all/native/projections/Projection.cpp"
   "${SDK_BASE_DIR}/all/native/projections/EPSG3857.cpp"
   "${SDK_BASE_DIR}/all/native/projections/EPSG4326.cpp"
@@ -162,6 +167,7 @@ add_executable(api_tests
   ProjectionTest.cpp
   MethodTest.cpp
   AdoptTest.cpp
+  CustomSourceTest.cpp
   BundleAssetsTest.cpp
   CAbiTest.cpp
   MetaDataTest.cpp

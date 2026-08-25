@@ -623,6 +623,8 @@ public final class ApiNames {
     public static final MassifObject.Key<Double> RANK = MassifObject.key("rank");
     /** Returns the raster tile event listener. */
     public static final MassifObject.Key<MassifObject> RASTER_TILE_EVENT_LISTENER = MassifObject.key("rasterTileEventListener");
+    /** Returns true when getData() holds raw RGBA8 pixels rather than an encoded file. A consumer that turns tiles into bitmaps has to check this before decoding. */
+    public static final MassifObject.Key<Boolean> RAW_PIXELS = MassifObject.key("rawPixels");
     /** Returns raw result */
     public static final MassifObject.Key<String> RAW_RESULT = MassifObject.key("rawResult");
     /** Returns what caused the movement. */

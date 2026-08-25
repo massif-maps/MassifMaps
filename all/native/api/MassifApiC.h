@@ -19,6 +19,10 @@
  * type is a spec factory, a new option is a row in the generated property table, a new event is a
  * bridge, a new method is a table row. The count below grows with TYPES, not with features.
  *
+ * The exception, and the only one: plumbing the caller's own CODE in. mm_on takes a handler,
+ * mm_set_ui_dispatcher takes a loop, mm_source_create_custom takes a tile loader. None of them is
+ * a feature - each is a seam a table cannot describe, because the implementation is the caller's.
+ *
  * See docs/internals/api-facade.md.
  */
 
@@ -302,6 +306,92 @@ MM_API int mm_cancel_call(mm_ctx ctx, mm_call_id call);
 
 /** Cancels every queued or running call on an object. @param count Set to how many. Optional. */
 MM_API int mm_cancel_calls(mm_ctx ctx, mm_handle handle, int* count);
+
+/* --- custom sources ------------------------------------------------------------------------ */
+
+/** The tile is an encoded file - PNG, JPEG, WEBP, or a vector tile's protobuf. */
+#define MM_TILE_ENCODED 0
+/**
+ * The tile is width * height * 4 bytes of premultiplied RGBA, already decoded.
+ *
+ * For a source that produces pixels rather than a file. The alternative is to encode a PNG the
+ * SDK immediately decodes again, which is two codecs and three copies per tile.
+ */
+#define MM_TILE_RGBA8   1
+
+/**
+ * Hands one tile's bytes to the SDK.
+ *
+ * Call it from inside an mm_tile_loader, at most once, WHILE THE BUFFER IS STILL ALIVE: the SDK
+ * copies during this call, which is what makes a stack buffer legal and leaves nothing to free.
+ * A loader that never calls it is saying "no such tile", which is not an error.
+ *
+ * @param sink_data The pointer handed to the loader. Not yours to interpret.
+ * @param format MM_TILE_ENCODED or MM_TILE_RGBA8.
+ * @param width, height Pixel dimensions. Required for MM_TILE_RGBA8, ignored otherwise.
+ */
+typedef void (*mm_tile_sink)(void* sink_data, const void* data, size_t size,
+                             int format, int width, int height);
+
+/**
+ * Produces one tile of the SDK's grid.
+ *
+ * Called on the SDK's tile threads, SEVERAL AT ONCE - it must be thread-safe. Nothing serialises
+ * it, because a source that can answer in parallel should.
+ *
+ * @param zoom, x, y The tile, in the usual XYZ scheme with y running south.
+ * @param sink Call it with the bytes; skip it for a tile that does not exist.
+ * @return MM_OK, or MM_FAILED when the tile should have existed and could not be produced.
+ */
+typedef int (*mm_tile_loader)(void* user_data, int zoom, int x, int y,
+                              mm_tile_sink sink, void* sink_data);
+
+/** What mm_source_create_custom needs to know. */
+typedef struct {
+    int min_zoom;
+    int max_zoom;
+    mm_tile_loader load_tile;
+    /** Called once when the source is destroyed, on whichever thread dropped it. Optional. */
+    void (*destroy)(void* user_data);
+    void* user_data;
+} mm_tile_source;
+
+/**
+ * Registers a tile source the CALLER implements, under an id, so a layer spec can name it.
+ *
+ * This is the one thing a spec factory cannot express: not a new source TYPE - those are
+ * generated - but a source whose implementation lives outside the SDK. It is the native
+ * counterpart of subclassing TileDataSource in Java, and the only one available to a second
+ * shared library, which cannot derive from a C++ class the SDK does not export.
+ *
+ * Both tile kinds work: return encoded images for a "raster" layer, or vector tile protobuf for a
+ * "vector" one - the layer decides how the bytes are read.
+ *
+ *   mm_tile_source source = {0, 14, load_tile, close_dataset, dataset};
+ *   mm_handle handle;
+ *   mm_source_create_custom(ctx, "dem", &source, &handle);
+ *   mm_create(ctx, "layer", "dem", "{\"type\":\"raster\",\"source\":\"dem\"}", NULL);
+ *
+ * On anything but MM_OK nothing was taken: `destroy` is NOT called, and user_data stays the
+ * caller's to retry or free.
+ *
+ * @param id The source id. Must be free, as for any other create.
+ * @param out The handle. Optional.
+ * @return MM_OK, MM_DUPLICATE_ID, or MM_BAD_SPEC when load_tile is null.
+ */
+MM_API int mm_source_create_custom(mm_ctx ctx, const char* id, const mm_tile_source* source,
+                                   mm_handle* out);
+
+/**
+ * Tells the layers reading a source that its tiles changed, so they reload.
+ *
+ * For a custom source whose underlying file was replaced. Not specific to custom sources, but
+ * this is the only kind whose content can change without the SDK doing the changing.
+ *
+ * @param remove_tiles Non-zero to drop the cached tiles first, rather than replacing each as its
+ *        reload finishes. Non-zero flashes; zero can show stale tiles for a moment.
+ */
+MM_API int mm_source_notify_changed(mm_ctx ctx, mm_handle handle, int remove_tiles);
 
 /* --- events -------------------------------------------------------------------------------- */
 

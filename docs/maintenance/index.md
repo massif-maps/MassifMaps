@@ -17,3 +17,4 @@ they were run with, what breaks when a step is skipped, and the dead ends.
 | [`angle.md`](angle.md) | Rebuilding the vendored MetalANGLE static slices, the strip settings that make them shippable, and the one fork patch to re-apply |
 | [`flatten-submodules.md`](flatten-submodules.md) | Moving `libs-external` / `libs-massif` in-tree while keeping the third-party forks as submodules — the history graft, the `.gitmodules` hoist, and what has to be fixed by hand |
 | [`api-typings-chain.md`](api-typings-chain.md) | From a `.i` declaration to an app's autocompletion: what generates what, the `--defines` trap, and how to tell which link is stale |
+| [`branding.md`](branding.md) | The one mark every logo, favicon, social card and launcher icon is generated from — and why the Android safe zone is smaller than it looks |

@@ -99,13 +99,23 @@ Its cost is that the build is **Node-only**: `NODERAWFS` replaces the emscripten
 Node's `fs`, so this artifact cannot run in a browser. A browser playground would need a second
 build with `MEMFS` and the assets pushed in from JavaScript.
 
-Size: the **native** `massif-style` measures 2.2 MB on macOS at `MinSizeRel`, from ~86 MB
-unoptimised — the bulk is `boost.spirit` and `vt` template code that `mapnikvt` and `vt` hand over
-as object libraries. The wasm has not been built and measured yet.
+Size, measured on the first CI build: **1.68 MB** of `.wasm` plus **73 KB** of `.mjs` loader — a
+little under the 2.2 MB native binary at `MinSizeRel`, and a long way under the ~86 MB unoptimised.
+The bulk is `boost.spirit` and `vt` template code that `mapnikvt` and `vt` hand over as object
+libraries.
 
 The link pulls in `cartocss mapnikvt vt pugixml tess2 brotli miniz mlt zlib freetype harfbuzz bidi`
-plus Boost headers. All are plain C/C++ and build under emcc; `mlt` is the one with the least
-history under it and is the first place to look if the build breaks.
+plus Boost headers. All of them build under emcc — but two needed fixing first, and both were
+latent portability bugs rather than anything to do with the tools:
+
+- `stdext`'s `unistring` was `basic_string<uint32_t>`, and `std::char_traits` has no primary
+  template on a libc++ new enough to have dropped that extension. Now `char32_t`.
+- harfbuzz's `hb.hh` promotes `-Wunused` to an error for its own CI, and a clang that counts
+  `-Wunused-template` in that group fails harfbuzz on harfbuzz's own templates.
+  `HB_NO_PRAGMA_GCC_DIAGNOSTIC_ERROR` is upstream's opt-out for packagers.
+
+Apple's libc++ and clang have neither behaviour, which is why every native build passed and the
+first emcc build did not.
 
 ## Releasing
 
@@ -160,8 +170,8 @@ Three traps the CartoCSS grammar sets, all of which the tests pin:
   compiles a style in the page, which is the natural home for a "does my style still work" check.
 - **`carto2css` does not exist.** The reverse direction (mapnik XML back to CartoCSS) has no
   generator; `MapGenerator` only goes one way.
-- **Nothing measures the wasm.** Startup time and peak memory for a large style project are unknown;
-  a slow load would push the design towards keeping the module warm across subcommands.
+- **Only the size is measured.** Startup time and peak memory for a large style project are still
+  unknown; a slow load would push the design towards keeping the module warm across subcommands.
 - **The sprite is not converted.** `icon-image` is dropped, so a symbol layer with an icon and no
   text produces nothing. Converting the sprite sheet into individual bitmaps plus `marker-file`
   paths is the next real chunk of `mapbox2css`.

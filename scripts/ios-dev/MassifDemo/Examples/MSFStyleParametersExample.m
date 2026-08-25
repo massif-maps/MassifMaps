@@ -35,12 +35,18 @@ static NSArray<NSString *> *waterColours(void) {
     // Registered under an id of its own rather than inlined in the layer spec, because the example
     // talks to it afterwards - a layer's style property cannot be read back as a handle. A spec key
     // that is a STRING is looked up in the registry, which is what "style": "alpine" below does.
+    //
+    // The parameters are part of the spec, so the style is built with them already applied rather
+    // than being corrected on the first frame.
     MSFMassifObject *style = [map style:@"alpine"
-                                   spec:[[MSFSpec of:@"mbvt"]
+                                   spec:[[[MSFSpec of:@"mbvt"]
                                            set:@"project" value:[[MSFSpec of:@"project"]
                                                set:@"assets" value:[[MSFSpec of:@"zip"]
                                                    set:@"data" value:[[MSFSpec of:@"url"]
                                                        set:@"url" value:@"assets://styles/alpine.zip"]]]]
+                                           set:@"params" value:[[[MSFSpec object]
+                                               set:@"water_color" value:waterColours()[0]]
+                                               set:@"show_buildings" value:@"true"]]
                                   error:nil];
 
     [map addLayer:@"basemap"
@@ -57,20 +63,21 @@ static NSArray<NSString *> *waterColours(void) {
 
     [host button:@"Water colour" action:^{
         self->_water = (self->_water + 1) % waterColours().count;
+        // A style parameter is a PROPERTY: the rest of the path is the parameter's name.
         // LIVE: the decoded tiles already point at this value, so it swaps and redraws.
-        [self setOn:style name:@"water_color" value:waterColours()[self->_water]];
+        [style set:@"params.water_color" value:waterColours()[self->_water]];
     }];
     [host toggle:@"Buildings" on:YES action:^(BOOL on) {
         // In a FILTER: this decides what the tile contains, so every tile decodes again.
-        [self setOn:style name:@"show_buildings" value:on ? @"true" : @"false"];
+        [style set:@"params.show_buildings" value:on ? @"true" : @"false"];
+    }];
+    [host button:@"Night" action:^{
+        // Several at once, in ONE crossing - which is what a theme swap is.
+        [style apply:[[MSFSpec object] set:@"params" value:[[[MSFSpec object]
+            set:@"water_color" value:@"#0b2b4a"]
+            set:@"show_buildings" value:@"false"]]];
     }];
     [host caption:@"Two parameters, two costs: a colour swaps live, a filter re-decodes."];
-}
-
-- (void)setOn:(MSFMassifObject *)style name:(NSString *)name value:(NSString *)value {
-    // The result is the CALLER's - setStyleParameter returns nothing useful, but a handle is a
-    // handle and leaking one per tap is still a leak.
-    [[style call:@"setStyleParameter" args:@[ name, value ] error:nil] destroy];
 }
 
 @end

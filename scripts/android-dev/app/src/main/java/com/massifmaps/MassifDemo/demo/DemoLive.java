@@ -105,6 +105,9 @@ public final class DemoLive extends BroadcastReceiver {
         if (extras.containsKey("apiSet")) {
             applyApiSet(extras.getString("apiSet"));
         }
+        if (extras.containsKey("apiSetAll")) {
+            applyApiSetAll(extras.getString("apiSetAll"));
+        }
         if (extras.containsKey("apiEvents")) {
             applyApiEvents("true".equals(extras.getString("apiEvents")));
         }
@@ -216,6 +219,41 @@ public final class DemoLive extends BroadcastReceiver {
                 + MassifApi.getFloat(handle, path, Double.NaN)
                 + " json=" + MassifApi.getString(handle, path, "-")
                 + " (handle=" + handle + ", result=" + result + ")");
+    }
+
+    /**
+     * Writes several properties in ONE crossing, and a bag from a JSON object:
+     *
+     *   --es apiSetAll '{"fog.rangeStart":2,"fog.rangeEnd":8}'      (aliases resolve here too)
+     *   --es apiSetAll 'style:demoStyle:{"params":{"water_color":"#0af"}}'
+     *
+     * One JNI call whatever the key count, which is what a binding's apply({...}) is made of.
+     */
+    private void applyApiSetAll(String assignment) {
+        int brace = assignment != null ? assignment.indexOf('{') : -1;
+        if (brace < 0) {
+            Log.w(TAG, "apiSetAll wants [kind:id:]{json}, got: " + assignment);
+            return;
+        }
+        String target = assignment.substring(0, brace);
+        String json = assignment.substring(brace);
+        String kind = "options";
+        String id = "demo";
+        String[] parts = target.split(":");
+        if (parts.length >= 2) {
+            kind = parts[0];
+            id = parts[1];
+        }
+        int handle = MassifApi.findObject(kind, id);
+        if (handle == 0 && "options".equals(kind) && "demo".equals(id)) {
+            handle = MassifInterop.adopt(kind, id, demo.mapView.getOptions());
+        }
+        if (handle == 0) {
+            Log.w(TAG, "apiSetAll: nothing registered as " + kind + ":" + id);
+            return;
+        }
+        Log.i(TAG, "apiSetAll " + kind + ":" + id + " " + json
+                + " (handle=" + handle + ", result=" + MassifApi.setAll(handle, json) + ")");
     }
 
     /**

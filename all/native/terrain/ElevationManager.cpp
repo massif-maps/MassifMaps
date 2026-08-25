@@ -497,8 +497,12 @@ namespace massif {
     }
 
     void ElevationManager::getDisplayHeightRange(double internalY, double& minZ, double& maxZ) const {
+        getDisplayHeightRange(internalY, _exaggeration.load(), minZ, maxZ);
+    }
+
+    void ElevationManager::getDisplayHeightRange(double internalY, float exaggeration, double& minZ, double& maxZ) const {
         double maxMeters = std::max(static_cast<double>(_maxSeenElevation.load()), DEFAULT_MAX_ELEVATION);
-        double scale = _exaggeration.load() * getDisplayScale(internalY);
+        double scale = exaggeration * getDisplayScale(internalY);
         minZ = DEFAULT_MIN_ELEVATION * scale;
         maxZ = maxMeters * scale;
     }

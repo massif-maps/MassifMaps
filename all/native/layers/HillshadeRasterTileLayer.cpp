@@ -318,7 +318,7 @@ namespace massif
         // what made turning the drape off cost 10 fps: the layer fell back to its own DEM tile set
         // - fetch, decode, normal map, upload, and ~5x the render tiles - to draw what the terrain
         // already had on the GPU.
-        if (!terrainOptions || !terrainOptions->isEnabled()) {
+        if (!terrainOptions || !terrainOptions->isActive()) {
             return false;
         }
         // The paint shades the TERRAIN's elevation texture. Shading it for a layer pointed at a

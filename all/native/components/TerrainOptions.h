@@ -85,6 +85,59 @@ namespace massif {
         void setEnabled(bool enabled);
 
         /**
+         * Returns whether the terrain is rendering flat right now because auto-flattening asked for it.
+         * @return True if the terrain is currently flattened. Always false when auto-flattening is off.
+         */
+        bool isFlattened() const;
+
+        /**
+         * Returns the screen parallax below which the terrain renders flat.
+         * @return The parallax in screen pixels. The default is 2. 0 never flattens.
+         */
+        float getAutoFlattenParallax() const;
+        /**
+         * Sets the terrain parallax, in SCREEN PIXELS, below which 3D stops being worth its cost and
+         * the map renders flat. The parallax is how far the highest ground in view moves on screen
+         * because it is displaced:
+         *
+         *     parallax = halfScreenDiagonal * heightRange * exaggeration / cameraDistance
+         *
+         * so it falls with the camera's height and rises with how mountainous the data is - a fixed
+         * zoom threshold is wrong for one of the two. Flattening is animated (see
+         * setAutoFlattenDuration) and then drops the terrain passes, the drape and the elevation
+         * fetches entirely; the state the app asked for with setEnabled is remembered and restored.
+         * Restores at 1.5x this value, so a camera sitting on the boundary does not oscillate.
+         * @param pixels The new parallax threshold in screen pixels, or 0 to never flatten. The default is 2.
+         */
+        void setAutoFlattenParallax(float pixels);
+
+        /**
+         * Returns the tilt at or above which the terrain renders flat.
+         * @return The tilt in degrees. The default is 88. 0 never flattens.
+         */
+        float getAutoFlattenTilt() const;
+        /**
+         * Sets the tilt, in degrees, at or above which the map renders flat whatever the parallax.
+         * 90 is straight down in this SDK, where the displacement is there but shows nothing worth
+         * its cost. Restores 2 degrees below the threshold, so a tilt gesture does not oscillate.
+         * @param tilt The new tilt threshold in degrees, or 0 to never flatten. The default is 88.
+         */
+        void setAutoFlattenTilt(float tilt);
+
+        /**
+         * Returns how long the flattening animation takes.
+         * @return The duration in seconds. The default is 0.3.
+         */
+        float getAutoFlattenDuration() const;
+        /**
+         * Sets how long the terrain takes to sink flat, and to rise again. The ramp scales the
+         * heights on the GPU, so it costs no tile re-decode; only when it reaches flat are the
+         * terrain passes themselves dropped, by which point the two render identically.
+         * @param duration The new duration in seconds. 0 switches instantly.
+         */
+        void setAutoFlattenDuration(float duration);
+
+        /**
          * Returns the terrain height exaggeration factor.
          * @return The exaggeration factor. The default is 1.0.
          */
@@ -209,10 +262,6 @@ namespace massif {
         void setNoDrapeLayerFilter(const std::string& filter);
 
         /**
-         * Returns the minimum tile zoom level with 3D terrain.
-         * @return The minimum zoom level. The default is 5.
-         */
-        /**
          * Returns the per-tile drape texture resolution, 0 when it follows the screen.
          * @return The drape texture resolution in pixels, 0 for automatic.
          */
@@ -230,6 +279,10 @@ namespace massif {
          */
         void setDrapeResolution(int resolution);
 
+        /**
+         * Returns the minimum tile zoom level with 3D terrain.
+         * @return The minimum zoom level. The default is 5.
+         */
         int getMinZoom() const;
         /**
          * Sets the minimum tile zoom level with 3D terrain. Tiles below this zoom level render flat
@@ -264,21 +317,24 @@ namespace massif {
         void setViewDistanceFactor(float factor);
 
         /**
-         * Returns the absolute view distance, in meters.
-         * @return The view distance in meters. 0 (the default) derives it from the factor above.
+         * Returns the minimum view distance, in meters.
+         * @return The view distance in meters. 0 (the default) leaves the factor rule alone.
          */
         float getViewDistance() const;
         /**
-         * Sets how far from the camera the map is drawn, in METERS, whatever the camera's height
-         * or pitch. Tangram's rule is proportional to the camera's height above the ground, so
+         * Sets a MINIMUM distance the map is drawn to, in METERS, whatever the camera's height or
+         * pitch. Tangram's rule is proportional to the camera's height above the ground, so
          * approaching the terrain shortens the view - which is right for a map seen from above and
          * wrong for a view along the ground, where the same landscape should stay visible as the
-         * camera descends into it. An absolute distance keeps the ground reaching the same distance
+         * camera descends into it. An absolute distance keeps the ground reaching at least this far
          * at any elevation and any tilt. The far plane follows it, which spends depth precision
          * (see setViewDistanceFactor), so this is an explicit trade - pair it with fog so the
          * ground fades out instead of ending.
-         * 0 (the default) leaves the factor rule in charge.
-         * @param distance The new view distance in meters, or 0 for the factor rule.
+         * It only ever EXTENDS the factor rule: metres are zoom-independent while the rule scales
+         * with the camera's height, so a distance that reaches the horizon up close would end the
+         * ground in a disc well inside a zoomed-out screen.
+         * 0 (the default) leaves the factor rule alone.
+         * @param distance The new minimum view distance in meters, or 0 for the factor rule alone.
          */
         void setViewDistance(float distance);
 
@@ -542,6 +598,27 @@ namespace massif {
         std::vector<double> getElevations(const std::vector<MapPos>& poses) const;
 
         /**
+         * Returns whether 3D terrain is being rendered right now: enabled by the app AND not
+         * flattened away. Every renderer, culler and decoder asks this; isEnabled() is what the app
+         * asked for and is what decides whether tiles have to be rebuilt. Internal method.
+         * @return True if the terrain is rendering in 3D.
+         */
+        bool isActive() const;
+
+        /**
+         * Returns how far the terrain has been flattened, 0 (full 3D) to 1 (flat). Internal method.
+         * @return The flatten ratio.
+         */
+        float getFlattenRatio() const;
+        /**
+         * Sets how far the terrain is flattened, 0 to 1. Scales the heights the elevation manager
+         * hands out, leaving the app's own exaggeration alone. Does NOT notify option listeners: it
+         * is driven per frame by the renderer, which asks for its own redraws. Internal method.
+         * @param ratio The new flatten ratio.
+         */
+        void setFlattenRatio(float ratio);
+
+        /**
          * Returns the elevation manager. Internal method.
          * @return The elevation manager.
          */
@@ -565,6 +642,13 @@ namespace massif {
         const std::shared_ptr<ElevationManager> _elevationManager;
 
         std::atomic<bool> _enabled;
+        // The app's own exaggeration. What the elevation manager holds is this scaled by the flatten
+        // ramp, so flattening never overwrites what the app asked for.
+        std::atomic<float> _exaggeration;
+        std::atomic<float> _flattenRatio;
+        std::atomic<float> _autoFlattenParallax;
+        std::atomic<float> _autoFlattenTilt;
+        std::atomic<float> _autoFlattenDuration;
         std::atomic<int> _meshResolution;
         std::atomic<bool> _tileEdgeStitchingEnabled;
         std::atomic<bool> _drapeFillsEnabled;

@@ -1392,10 +1392,14 @@ public class DemoMap {
         }
         terrainOptions.setEnabled(DemoConfig.TERRAIN_ENABLED);
         terrainOptions.setExaggeration(DemoConfig.TERRAIN_EXAGGERATION);
+        terrainOptions.setAutoFlattenParallax(DemoConfig.AUTO_FLATTEN_PARALLAX);
+        terrainOptions.setAutoFlattenTilt(DemoConfig.AUTO_FLATTEN_TILT);
+        terrainOptions.setAutoFlattenDuration(DemoConfig.AUTO_FLATTEN_MS / 1000f);
         terrainOptions.setMeshResolution(DemoConfig.TERRAIN_MESH_RESOLUTION);
         terrainOptions.setCameraClearance(DemoConfig.TERRAIN_CAMERA_CLEARANCE);
         terrainOptions.setDrapeFillsEnabled(DemoConfig.TERRAIN_DRAPE_FILLS);
         terrainOptions.setDrapeLinesEnabled(DemoConfig.TERRAIN_DRAPE_LINES);
+        terrainOptions.setNoDrapeLayerFilter(DemoConfig.TERRAIN_NO_DRAPE_FILTER);
         terrainOptions.setDrapeResolution(DemoConfig.TERRAIN_DRAPE_RESOLUTION);
         terrainOptions.setTileEdgeStitchingEnabled(DemoConfig.TERRAIN_TILE_EDGE_STITCHING);
         terrainOptions.setSeamlessTileEdgesEnabled(DemoConfig.TERRAIN_SEAMLESS_TILE_EDGES);

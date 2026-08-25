@@ -219,7 +219,7 @@ namespace massif {
         if (std::shared_ptr<Options> options = mapRenderer->getOptions()) {
             if (options->getRenderProjectionMode() == RenderProjectionMode::RENDER_PROJECTION_MODE_PLANAR) {
                 if (std::shared_ptr<TerrainOptions> terrainOptions = options->getTerrainOptions()) {
-                    if (terrainOptions->isEnabled() && terrainOptions->isBillboardOcclusionEnabled()) {
+                    if (terrainOptions->isActive() && terrainOptions->isBillboardOcclusionEnabled()) {
                         elevationManager = terrainOptions->getElevationManager();
                     }
                 }

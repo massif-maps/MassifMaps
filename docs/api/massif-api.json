@@ -7521,6 +7521,33 @@
       "base": null,
       "properties": [
         {
+          "name": "autoFlattenDuration",
+          "type": "FLOAT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns how long the flattening animation takes."
+        },
+        {
+          "name": "autoFlattenParallax",
+          "type": "FLOAT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns the screen parallax below which the terrain renders flat."
+        },
+        {
+          "name": "autoFlattenTilt",
+          "type": "FLOAT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns the tilt at or above which the terrain renders flat."
+        },
+        {
           "name": "backgroundColor",
           "type": "COLOR",
           "readOnly": false,
@@ -7629,6 +7656,15 @@
           "doc": "Returns the terrain height exaggeration factor."
         },
         {
+          "name": "flattened",
+          "type": "BOOL",
+          "readOnly": true,
+          "static": false,
+          "position": false,
+          "cppType": "bool",
+          "doc": "Returns whether the terrain is rendering flat right now because auto-flattening asked for it."
+        },
+        {
           "name": "maxTileZoomCoarsening",
           "type": "INT",
           "readOnly": false,
@@ -7661,7 +7697,8 @@
           "readOnly": false,
           "static": false,
           "position": false,
-          "cppType": "int"
+          "cppType": "int",
+          "doc": "Returns the minimum tile zoom level with 3D terrain."
         },
         {
           "name": "noDrapeLayerFilter",
@@ -7715,7 +7752,7 @@
           "static": false,
           "position": false,
           "cppType": "float",
-          "doc": "Returns the absolute view distance, in meters."
+          "doc": "Returns the minimum view distance, in meters."
         },
         {
           "name": "viewDistanceFactor",

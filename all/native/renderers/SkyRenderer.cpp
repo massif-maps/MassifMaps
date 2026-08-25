@@ -175,7 +175,7 @@ namespace massif {
         // in view, so the cheap horizon test is only used when the terrain is flat.
         if (!viewState.isSkyVisible()) {
             std::shared_ptr<TerrainOptions> terrainOptions = _options.getTerrainOptions();
-            if (!terrainOptions || !terrainOptions->isEnabled()) {
+            if (!terrainOptions || !terrainOptions->isActive()) {
                 return false;
             }
         }

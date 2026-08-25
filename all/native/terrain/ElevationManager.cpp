@@ -53,7 +53,7 @@ namespace massif {
 
     ElevationManager::ElevationManager(const std::shared_ptr<TileDataSource>& dataSource, const std::shared_ptr<ElevationDecoder>& elevationDecoder) :
         _dataSource(dataSource),
-        _elevationDecoder(ResolveDecoder(dataSource, elevationDecoder)),
+        _elevationDecoder(ElevationDecoder::Resolve(std::shared_ptr<TileData>(), dataSource, elevationDecoder)),
         _projection(dataSource->getProjection()),
         _dataSourceListener(),
         _instanceId(NextInstanceId()),
@@ -652,23 +652,6 @@ namespace massif {
         return true;
     }
 
-    std::shared_ptr<ElevationDecoder> ElevationManager::ResolveDecoder(const std::shared_ptr<TileDataSource>& dataSource, const std::shared_ptr<ElevationDecoder>& preferredDecoder) {
-        std::string encoding = dataSource ? dataSource->getEncoding() : std::string();
-        if (encoding == "terrarium") {
-            static std::shared_ptr<ElevationDecoder> terrariumDecoder = std::make_shared<TerrariumElevationDataDecoder>();
-            return terrariumDecoder;
-        }
-        if (encoding == "mapbox") {
-            static std::shared_ptr<ElevationDecoder> mapboxDecoder = std::make_shared<MapBoxElevationDataDecoder>();
-            return mapboxDecoder;
-        }
-        if (preferredDecoder) {
-            return preferredDecoder;
-        }
-        static std::shared_ptr<ElevationDecoder> defaultDecoder = std::make_shared<MapBoxElevationDataDecoder>();
-        return defaultDecoder;
-    }
-
     void ElevationManager::tilesChanged() {
         {
             std::lock_guard<std::mutex> lock(_mutex);
@@ -775,7 +758,10 @@ namespace massif {
         MapBounds internalBounds(MapPos(std::min(internalMin.getX(), internalMax.getX()), std::min(internalMin.getY(), internalMax.getY())),
                                  MapPos(std::max(internalMin.getX(), internalMax.getX()), std::max(internalMin.getY(), internalMax.getY())));
 
-        std::array<double, 4> coeffs = _elevationDecoder->getColorComponentCoefficients();
+        // Per TILE, not per source: two DEM sources of different encodings can sit behind one
+        // OrderedTileDataSource. ElevationTileGrid then carries these coefficients to the CPU
+        // sampler and to the GPU alike, so nothing downstream has to agree on one encoding.
+        std::array<double, 4> coeffs = ElevationDecoder::Resolve(tileData, _dataSource, _elevationDecoder)->getColorComponentCoefficients();
         std::shared_ptr<ElevationTileGrid> grid = ElevationTileGrid::DecodeBitmap(mapTile, internalBounds, tileBitmap, coeffs);
         if (grid && grid->getWidth() > 0) {
             _gridSizeHint.store(grid->getWidth()); // drives the elevation level cap in clampTileZoom

@@ -25,13 +25,13 @@ namespace massif {
         virtual MapBounds getDataExtent() const;
 
         /**
-         * Returns the encoding of this data source, falling back to the encoding
-         * of the wrapped data source when not explicitly set on the cache.
-         * @return The encoding type, or empty string if not set.
+         * The cache's own meta data if it has any, else the wrapped source's: a cache is
+         * transparent unless it is configured. Every public meta data accessor goes through it.
+         * @return The shared meta data map, or null.
          */
-        virtual std::string getEncoding() const;
+        virtual std::shared_ptr<const std::map<std::string, Variant> > getMetaDataPtr() const;
 
-        virtual std::string getMetaData(const std::string& key) const;
+        virtual std::string getContainerMetaData(const std::string& key) const;
 
         virtual void notifyTilesChanged(bool removeTiles);
 
@@ -71,17 +71,13 @@ namespace massif {
         CacheTileDataSource(const std::shared_ptr<TileDataSource>& dataSource);
 
         /**
-         * Applies the metadata of the wrapped data source to a tile, overridden by the metadata
-         * explicitly set on the cache itself. This mirrors getEncoding: a cache is transparent
-         * unless it is configured explicitly. Does nothing if the tile is null.
-         * Note: deliberately not implemented by overriding buildTileMetadata. A cache data source
-         * constructed from Java/C# is a SWIG director object whose generated buildTileMetadata
-         * stub calls TileDataSource::buildTileMetadata directly, so an override here would never
-         * run for the objects applications actually create.
-         * @param tileData The tile data to apply the metadata to.
-         * @param tile The tile for which the metadata should be built.
+         * Overlays the cache's OWN meta data entries onto a tile, leaving the map the tile already
+         * carries otherwise untouched - that map came from the leaf source that produced the tile,
+         * which through a wrapper like OrderedTileDataSource is the only place the tile's real
+         * settings are known. A no-op for the usual unconfigured cache, and for a null tile.
+         * @param tileData The tile data to overlay the meta data onto.
          */
-        void applyCacheTileMetadata(const std::shared_ptr<TileData>& tileData, const MapTile& tile) const;
+        void applyCacheTileMetaData(const std::shared_ptr<TileData>& tileData) const;
 
         const DirectorPtr<TileDataSource> _dataSource;
         

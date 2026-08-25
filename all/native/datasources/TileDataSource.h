@@ -78,26 +78,53 @@ namespace massif {
         bool isMaxOverzoomLevelSet() const;
 
         /**
-         * Sets the encoding type for tiles loaded from this data source.
-         * This metadata is used by HillshadeRasterTileLayer to determine how to decode elevation data.
-         * @param encoding The encoding ("terrarium" or "mapbox"). Empty string clears the metadata.
+         * Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source.
+         * The map is attached to every tile this source loads, and consumers read their settings
+         * from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance.
+         * A wrapper source with no map of its own answers with its wrapped source's.
+         * @return A copy of the data source meta data map.
          */
-        void setEncoding(const std::string& encoding);
+        std::map<std::string, Variant> getMetaData() const;
+        /**
+         * Sets a new meta data map for the data source. Old meta data values will be lost.
+         * Takes effect for tiles loaded after the call.
+         * @param metaData The new meta data map for this data source.
+         */
+        void setMetaData(const std::map<std::string, Variant>& metaData);
 
         /**
-         * Gets the current encoding type.
-         * @return The encoding type, or empty string if not set.
+         * Returns true if the specified key exists in the data source meta data map, or in the
+         * container's own metadata.
+         * @param key The key to check.
+         * @return True if the meta data element exists.
          */
-        virtual std::string getEncoding() const;
+        bool containsMetaDataKey(const std::string& key) const;
+        /**
+         * Returns a meta data element corresponding to the key. Falls back to the container's own
+         * metadata (see getContainerMetaData) when the key was not set on the source itself.
+         * If no value is found null variant is returned.
+         * @param key The key to use.
+         * @return The value corresponding to the key, or an empty variant.
+         */
+        Variant getMetaDataElement(const std::string& key) const;
+        /**
+         * Adds a new key-value pair to the meta data map. If the key already exists in the map,
+         * it's value will be replaced by the new value.
+         * Takes effect for tiles loaded after the call.
+         * @param key The new key.
+         * @param element The new value.
+         */
+        void setMetaDataElement(const std::string& key, const Variant& element);
 
         /**
          * Reads one entry of the source's own metadata, when it has any - the MBTiles or PMTiles
          * metadata table, for instance. Sources that carry none return an empty string, as do keys
-         * they do not define.
+         * they do not define. Unlike the meta data map above this is read-only and is NOT attached
+         * to the loaded tiles: a container's metadata can be tens of kilobytes.
          * @param key The metadata key, as named by the container's specification.
          * @return The value, or empty string if the source does not provide it.
          */
-        virtual std::string getMetaData(const std::string& key) const;
+        virtual std::string getContainerMetaData(const std::string& key) const;
 
         /**
          * Returns the extent of the tiles in this data source.
@@ -148,12 +175,12 @@ namespace massif {
         virtual std::map<std::string, std::string> buildTagValues(const MapTile& tile) const;
 
         /**
-         * Builds metadata map for the tile. Can be overridden by subclasses to provide tile-specific metadata.
-         * @param tile The tile for the metadata.
-         * @return The metadata map that will be attached to the tile data.
+         * The shared, immutable meta data map attached to every tile this source loads. Null when
+         * the source carries none. Wrapper sources hand their child's map through unchanged.
+         * @return The shared meta data map, or null.
          */
-        virtual std::map<std::string, std::shared_ptr<Variant> > buildTileMetadata(const MapTile& tile) const;
-    
+        virtual std::shared_ptr<const std::map<std::string, Variant> > getMetaDataPtr() const;
+
     protected:
         /**
          * Constructs an abstract TileDataSource object.
@@ -169,19 +196,20 @@ namespace massif {
         TileDataSource(int minZoom, int maxZoom);
         
         /**
-         * Applies metadata to a TileData object by calling buildTileMetadata.
-         * This should be called by subclasses after creating TileData in loadTile.
-         * @param tileData The TileData object to apply metadata to.
-         * @param tile The tile for which metadata should be built.
+         * Attaches this source's meta data map to a TileData object. Subclasses call it after
+         * creating TileData in loadTile. Costs one atomic increment - the map is shared, not copied.
+         * Does nothing if the tile is null.
+         * @param tileData The TileData object to attach the meta data to.
          */
-        void applyTileMetadata(const std::shared_ptr<TileData>& tileData, const MapTile& tile) const;
+        void applyTileMetaData(const std::shared_ptr<TileData>& tileData) const;
 
         std::atomic<int> _minZoom;
         std::atomic<int> _maxZoom;
         std::atomic<int> _maxOverzoomLevel;
         const std::shared_ptr<Projection> _projection;
-        std::string _encoding;
-    
+        // Immutable and shared with every tile loaded so far, so a setter copies before writing.
+        std::shared_ptr<const std::map<std::string, Variant> > _metaData;
+
     private:
         std::vector<std::shared_ptr<OnChangeListener> > _onChangeListeners;
         mutable std::mutex _mutex;

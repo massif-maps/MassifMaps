@@ -472,26 +472,7 @@ namespace massif
         std::array<float, 4> scales;
         std::array<float, 4> elevationCoeffs = { { 0.0f, 0.0f, 0.0f, 0.0f } };
         {
-            // Try to get decoder type from tile metadata first, fallback to layer's decoder
-            std::shared_ptr<ElevationDecoder> decoder = _elevationDecoder;
-            if (tileData) {
-                std::shared_ptr<Variant> decoderTypeVariant = tileData->getMetadata("encoding");
-                if (decoderTypeVariant && decoderTypeVariant->getType() == VariantType::VARIANT_TYPE_STRING) {
-                    std::string decoderType = decoderTypeVariant->getString();
-                    // Use static cached decoder instances to avoid repeated allocations
-                    if (decoderType == "terrarium") {
-                        static std::shared_ptr<ElevationDecoder> terrariumDecoder = std::make_shared<TerrariumElevationDataDecoder>();
-                        decoder = terrariumDecoder;
-                    } else if (!decoder) {
-                        static std::shared_ptr<ElevationDecoder> mapboxDecoder = std::make_shared<MapBoxElevationDataDecoder>();
-                        decoder = mapboxDecoder;
-                    }
-                }
-            }
-            if (!decoder) {
-                static std::shared_ptr<ElevationDecoder> mapboxDecoder = std::make_shared<MapBoxElevationDataDecoder>();
-                decoder = mapboxDecoder;
-            }
+            std::shared_ptr<ElevationDecoder> decoder = ElevationDecoder::Resolve(tileData, getDataSource(), _elevationDecoder);
             scales = decoder->getVectorTileScales();
             std::array<double, 4> rawCoeffs = decoder->getColorComponentCoefficients();
             elevationCoeffs = { { static_cast<float>(rawCoeffs[0]), static_cast<float>(rawCoeffs[1]), static_cast<float>(rawCoeffs[2]), static_cast<float>(rawCoeffs[3]) } };

@@ -120,8 +120,9 @@ namespace massif {
         // texels, so it can be copied bit-exactly by index.
         auto sameLevel = [this](const std::shared_ptr<ElevationTileGrid>& grid) {
             // The same grid standing in for a neighbour (both tiles resolved to one ancestor)
-            // must NOT be index-copied - that would wrap around to its opposite edge.
-            return grid && grid->_width == _width && grid->_height == _height && grid->_bytesPerTexel == _bytesPerTexel && grid->_tile.getZoom() == _tile.getZoom() && !(grid->_tile == _tile);
+            // must NOT be index-copied - that would wrap around to its opposite edge. Nor may a
+            // differently encoded one: its bytes mean different heights.
+            return grid && grid->_width == _width && grid->_height == _height && grid->_bytesPerTexel == _bytesPerTexel && grid->_coeffs == _coeffs && grid->_tile.getZoom() == _tile.getZoom() && !(grid->_tile == _tile);
         };
         // Different level (a coarser ancestor grid stands in for the neighbour): sample the
         // neighbour's height field at the geographic position of the border texel center.
@@ -181,7 +182,7 @@ namespace massif {
         // expensive part of it.
         return [this, neighbours, texelX, texelY, westEdge, eastEdge, southEdge, northEdge](int gx, int gy, std::uint8_t* dst) {
             auto sameLevel = [this](const std::shared_ptr<ElevationTileGrid>& grid) {
-                return grid && grid->_width == _width && grid->_height == _height && grid->_bytesPerTexel == _bytesPerTexel && grid->_tile.getZoom() == _tile.getZoom() && !(grid->_tile == _tile);
+                return grid && grid->_width == _width && grid->_height == _height && grid->_bytesPerTexel == _bytesPerTexel && grid->_coeffs == _coeffs && grid->_tile.getZoom() == _tile.getZoom() && !(grid->_tile == _tile);
             };
             static const std::array<std::pair<int, int>, 8> DIRS = { {
                 { -1, 0 }, { 1, 0 }, { 0, -1 }, { 0, 1 }, { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 }

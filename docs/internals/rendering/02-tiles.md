@@ -272,6 +272,34 @@ Standard sources (HTTP, MBTiles, PMTiles, assets) plus two of interest here:
 - **elevation sources** — decoded by `MapBoxElevationDataDecoder` / `TerrariumElevationDataDecoder`
   into `ElevationTileGrid`s held by `ElevationManager` ([04-terrain.md](04-terrain.md)).
 
+## Source meta data, and what a tile carries
+
+A `TileDataSource` holds a `std::map<std::string, Variant>` of settings — `getMetaData` /
+`setMetaDataElement`, the same shape `VectorElement` and `Layer` already use — and **attaches it to
+every `TileData` it loads**. That is how a consumer learns something about a tile it did not fetch
+itself: `dem_encoding` (`"mapbox"` / `"terrarium"`) is the one that matters today, read by
+`ElevationDecoder::Resolve` for the terrain, the hillshade and the contours alike.
+
+Three properties are load-bearing:
+
+- **Per TILE, not per source.** Two DEM sources of different encodings behind one
+  `OrderedTileDataSource` each stamp their own map, and only the tile knows which one answered. A
+  source-level lookup cannot: the wrapper has no encoding of its own.
+- **Shared, not copied.** The map is held as a `shared_ptr<const map>`, so attaching it is one
+  atomic increment; `setMetaDataElement` on a tile copies first. Cheaper than the per-tile map it
+  replaced, which allocated a node and a `Variant` for every tile loaded.
+- **Persisted with the blob.** `PersistentCacheTileDataSource` stores it as JSON in a `metaData`
+  column. Without that, a cache hit above a wrapper source would resolve the wrapper's (empty) map
+  and silently fall back to MapBox — the bug this column exists for. An older database is missing
+  the column and is dropped and recreated on open.
+
+Distinct from it, and deliberately so: **`getContainerMetaData(key)`** reads the *container's* own
+metadata — the MBTiles metadata table, the PMTiles header JSON — returns a plain string, and is
+**not** attached to tiles, because an MBTiles `json` field is tens of kilobytes. `getMetaDataElement`
+falls back to it, so a tileset that already declares `dem_encoding` or `format` in its own table
+needs no application code. The wrapper sources (`Cache`, `Contour`, `Ordered`, `Combined`) forward
+both: own entries first, then the first child that declares any.
+
 ## Two binary formats: MVT and MLT
 
 `MBVectorTileDecoder` reads either. `setTileFormat` takes `TILE_FORMAT_AUTO` (the default),
@@ -314,12 +342,11 @@ format explicitly when the source is known and none of that matters.
 MapLibre itself does not detect: its style spec puts `encoding: mvt|mlt` on the source, defaulting
 to `mvt`. `TILE_FORMAT_MVT`/`TILE_FORMAT_MLT` are the equivalent, for a source that declares.
 
-**A declaring source wins over detection.** `TileDataSource::getMetaData(key)` reads the container's
-own metadata — the MBTiles/PMTiles table — and returns empty for sources that carry none. The
-`VectorTileLayer` constructor asks the source for `encoding`, then `format`, runs them through
-`MBVectorTileDecoder::parseTileFormat`, and pins the decoder when either is conclusive; a decoder
-the app already set explicitly is left alone. The wrapper sources (`Cache`, `Contour`, `Ordered`,
-`Combined`) forward the lookup the way they forward `getEncoding`.
+**A declaring source wins over detection.** The `VectorTileLayer` constructor asks the source for
+`encoding`, then `format`, runs them through `MBVectorTileDecoder::parseTileFormat`, and pins the
+decoder when either is conclusive; a decoder the app already set explicitly is left alone. It asks
+through `getMetaDataElement`, so either the app or the container can declare it — see
+[the meta data section](#source-meta-data-and-what-a-tile-carries) for which is which.
 
 `parseTileFormat` matches case-insensitively by substring, because generators spell this
 differently. **`pbf` is deliberately inconclusive**: MapLibre's own demotiles declare

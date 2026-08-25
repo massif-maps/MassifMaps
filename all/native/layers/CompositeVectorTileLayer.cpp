@@ -292,14 +292,10 @@ namespace massif {
     }
 
     std::shared_ptr<ElevationDecoder> CompositeVectorTileLayer::resolveElevationDecoder(const std::shared_ptr<TileDataSource>& dataSource) {
-        std::string encoding = dataSource ? dataSource->getEncoding() : std::string();
-        if (encoding.empty()) {
+        if (!dataSource || !dataSource->containsMetaDataKey(ElevationDecoder::ENCODING_KEY)) {
             return std::shared_ptr<ElevationDecoder>(); // let HillshadeRasterTileLayer infer per tile
         }
-        if (encoding == "mapbox") {
-            return std::make_shared<MapBoxElevationDataDecoder>();
-        }
-        return std::make_shared<TerrariumElevationDataDecoder>();
+        return ElevationDecoder::Resolve(std::shared_ptr<TileData>(), dataSource, std::shared_ptr<ElevationDecoder>());
     }
 
     std::string CompositeVectorTileLayer::buildFilterString(const std::vector<std::string>& group, bool includeBackground) {

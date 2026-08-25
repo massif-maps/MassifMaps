@@ -21,7 +21,7 @@ CompositeVectorTileLayer layer = new CompositeVectorTileLayer(baseVectorSource, 
 // raster / hillshade: drawn as their own child layer at the '#name' slot
 layer.addExternalDataSource("satellite", rasterSource, CompositeSourceType.COMPOSITE_SOURCE_TYPE_RASTER);
 layer.addExternalDataSource("hillshade", demSource,   CompositeSourceType.COMPOSITE_SOURCE_TYPE_HILLSHADE);
-//   (hillshade decoder arg optional; if omitted it is resolved from demSource.getEncoding())
+//   (hillshade decoder arg optional; if omitted each tile resolves it from its "dem_encoding")
 
 // vector (incl. contour): its own child VectorTileLayer over its own source, master-styled,
 //   filtered to its layer name, overzooming independently via its MaxOverzoomLevel

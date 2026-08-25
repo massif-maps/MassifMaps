@@ -52,12 +52,12 @@ import com.massifmaps.datasources.MemoryCacheTileDataSource
 // 1. An RGB-elevation source (Terrarium or MapBox encoding).
 val demSource = MemoryCacheTileDataSource(
     HTTPTileDataSource(0, 12, "https://your.tiles/dem/{z}/{x}/{y}.png").apply {
-        // the "encoding" metadata selects the decoder: "terrarium" or "mapbox"
-        setMetaData("encoding", "terrarium")
+        // the "dem_encoding" meta data selects the decoder: "terrarium" or "mapbox"
+        setMetaDataElement("dem_encoding", Variant("terrarium"))
     }
 )
 
-// 2. Build terrain options. The decoder is resolved from the "encoding" metadata.
+// 2. Build terrain options. Each tile resolves its decoder from its own "dem_encoding".
 val terrain = TerrainOptions(demSource).apply {
     isEnabled = true
     isDrapeFillsEnabled = true        // render-to-texture fill draping (default on)
@@ -83,6 +83,35 @@ mapView.getOptions()?.setTerrainOptions(terrain)
 [`HillshadeRasterTileLayer`](/docs/features/hillshade). Wrap the source in a
 `MemoryCacheTileDataSource` so both features hit the same tiles instead of downloading twice.
 :::
+
+## Mixing two DEM sources of different encodings
+
+`dem_encoding` is resolved **per tile**, not per source, so an `OrderedTileDataSource` may combine
+a MapBox-encoded DEM with a Terrarium one. Every tile carries the meta data of the source that
+actually answered for it, and the terrain, the hillshade and the contours each decode it with that
+tile's own coefficients.
+
+```kotlin
+val mapboxDem = HTTPTileDataSource(0, 15, "https://a.tiles/dem/{z}/{x}/{y}.png").apply {
+    setMetaDataElement("dem_encoding", Variant("mapbox"))
+}
+val terrariumDem = HTTPTileDataSource(0, 12, "https://b.tiles/dem/{z}/{x}/{y}.png").apply {
+    setMetaDataElement("dem_encoding", Variant("terrarium"))
+}
+// mapboxDem answers first; terrariumDem fills what it does not cover.
+val demSource = OrderedTileDataSource(mapboxDem, terrariumDem)
+```
+
+Two rules make it work:
+
+- **Tag the leaves, not the wrapper.** A wrapper source has no encoding of its own; it forwards a
+  child's only as a fallback for consumers that ask before any tile has loaded.
+- **Cache each leaf, or cache above them — either is fine.** A `PersistentCacheTileDataSource`
+  stores the tile's meta data alongside the blob, so a cache hit resolves the same decoder a fresh
+  fetch would. A cache database written by an older SDK has no such column and is rebuilt on first open.
+
+Where the two coverages meet, the terrain's border backfill notices the encodings differ and
+resamples through metres instead of copying texels, so the seam is continuous.
 
 ## `TerrainOptions` reference
 

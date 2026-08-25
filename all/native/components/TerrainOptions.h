@@ -65,8 +65,10 @@ namespace massif {
          */
         std::shared_ptr<TileDataSource> getDataSource() const;
         /**
-         * Returns the elevation decoder.
-         * @return The elevation decoder.
+         * Returns the elevation decoder used as the source-level default. Each tile resolves its
+         * own decoder from its "dem_encoding" meta data, so two data sources of different
+         * encodings can be combined behind one OrderedTileDataSource.
+         * @return The default elevation decoder.
          */
         std::shared_ptr<ElevationDecoder> getElevationDecoder() const;
 

@@ -7,6 +7,8 @@
 #ifndef _MASSIF_TILEDATA_H_
 #define _MASSIF_TILEDATA_H_
 
+#include "core/Variant.h"
+
 #include <chrono>
 #include <memory>
 #include <mutex>
@@ -16,8 +18,7 @@
 
 namespace massif {
     class BinaryData;
-    class Variant;
-    
+
     /**
      * A wrapper class for tile data.
      */
@@ -70,25 +71,46 @@ namespace massif {
         const std::shared_ptr<BinaryData>& getData() const;
         
         /**
-         * Returns metadata associated with this tile.
-         * @param key The metadata key to retrieve.
-         * @return The metadata value, or null if the key doesn't exist.
+         * Returns the meta data map carried by this tile - the meta data of the data source that
+         * produced it. May be null when the source carries none.
+         * The map is immutable and shared by every tile of that source: attaching it costs one
+         * atomic increment, and setMetaDataElement copies before writing.
+         * @return The meta data map, or null.
          */
-        std::shared_ptr<Variant> getMetadata(const std::string& key) const;
+        std::shared_ptr<const std::map<std::string, Variant> > getMetaData() const;
         /**
-         * Sets metadata for this tile.
-         * @param key The metadata key.
-         * @param value The metadata value.
+         * Attaches a meta data map to this tile, replacing any previous one.
+         * @param metaData The meta data map. May be null.
          */
-        void setMetadata(const std::string& key, const std::shared_ptr<Variant>& value);
-        
+        void setMetaData(const std::shared_ptr<const std::map<std::string, Variant> >& metaData);
+
+        /**
+         * Returns true if the specified key exists in the tile meta data map.
+         * @param key The key to check.
+         * @return True if the meta data element exists.
+         */
+        bool containsMetaDataKey(const std::string& key) const;
+        /**
+         * Returns a meta data element corresponding to the key. If no value is found null variant is returned.
+         * @param key The key to use.
+         * @return The value corresponding to the key, or an empty variant.
+         */
+        Variant getMetaDataElement(const std::string& key) const;
+        /**
+         * Adds a new key-value pair to the meta data map, copying it first - the map is shared with
+         * every other tile of the same source.
+         * @param key The new key.
+         * @param element The new value.
+         */
+        void setMetaDataElement(const std::string& key, const Variant& element);
+
     private:
         const std::shared_ptr<BinaryData> _data;
         std::shared_ptr<std::chrono::steady_clock::time_point> _expirationTime;
         bool _replaceWithParent;
         bool _overzoom;
         // using > > without the space breaks swig
-        std::map<std::string, std::shared_ptr<Variant> > _metadata;
+        std::shared_ptr<const std::map<std::string, Variant> > _metaData;
         mutable std::mutex _mutex;
     };
 

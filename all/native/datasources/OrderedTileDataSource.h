@@ -31,7 +31,15 @@ namespace massif {
 
         virtual MapBounds getDataExtent() const;
 
-        virtual std::string getMetaData(const std::string& key) const;
+        /**
+         * This source's own meta data, else the first data source that declares any. Only a
+         * fallback: the two sources may differ, and a tile carries the map of the source that
+         * actually answered for it, which is what consumers read.
+         * @return The shared meta data map, or null.
+         */
+        virtual std::shared_ptr<const std::map<std::string, Variant> > getMetaDataPtr() const;
+
+        virtual std::string getContainerMetaData(const std::string& key) const;
         
         virtual std::shared_ptr<TileData> loadTile(const MapTile& tile);
         

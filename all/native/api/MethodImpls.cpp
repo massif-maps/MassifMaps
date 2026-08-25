@@ -14,6 +14,7 @@
 #include "api/StructCodec.h"
 #include "core/MapPos.h"
 #include "core/MapTile.h"
+#include "core/Variant.h"
 #include "components/Layers.h"
 #include "datasources/GeoJSONVectorTileDataSource.h"
 #include "datasources/LocalVectorDataSource.h"
@@ -57,6 +58,45 @@ namespace massif { namespace api {
                 return RESULT_FAILED;
             }
             return objectResult(context, data, "massif::TileData", result);
+        }
+
+        /**
+         * getMetaDataElement(key) -> the value, or null.
+         *
+         * Beside the whole-map 'metaData' property: a per-key read needs no round trip through
+         * JSON for the entries the caller does not want.
+         */
+        Result getMetaDataElement(Context&, void* obj, const CallArgs& args, PropertyValue& result) {
+            std::string key;
+            if (!args.getString(0, key)) {
+                return RESULT_BAD_SPEC;
+            }
+            Variant value = static_cast<TileDataSource*>(obj)->getMetaDataElement(key);
+            result = PropertyValue::ofString(StructCodec::encode(value));
+            result.type = PT_VARIANT;
+            return RESULT_OK;
+        }
+
+        /** setMetaDataElement(key, value) - one entry, without rewriting the whole map. */
+        Result setMetaDataElement(Context&, void* obj, const CallArgs& args, PropertyValue&) {
+            std::string key;
+            if (!args.getString(0, key) || args.count() < 2) {
+                return RESULT_BAD_SPEC;
+            }
+            static_cast<TileDataSource*>(obj)->setMetaDataElement(key, args.get(1));
+            return RESULT_OK;
+        }
+
+        /** The same read on a loaded tile: behind a wrapper source, only the tile knows. */
+        Result getTileMetaDataElement(Context&, void* obj, const CallArgs& args, PropertyValue& result) {
+            std::string key;
+            if (!args.getString(0, key)) {
+                return RESULT_BAD_SPEC;
+            }
+            Variant value = static_cast<TileData*>(obj)->getMetaDataElement(key);
+            result = PropertyValue::ofString(StructCodec::encode(value));
+            result.type = PT_VARIANT;
+            return RESULT_OK;
         }
 
         /** WGS84: HillshadeRasterTileLayer reprojects to the data source itself. */
@@ -475,6 +515,9 @@ namespace massif { namespace api {
 
     void Methods::registerBuiltins() {
         registerMethod("massif::TileDataSource", "loadTile", &loadTile);
+        registerMethod("massif::TileDataSource", "getMetaDataElement", &getMetaDataElement);
+        registerMethod("massif::TileDataSource", "setMetaDataElement", &setMetaDataElement);
+        registerMethod("massif::TileData", "getMetaDataElement", &getTileMetaDataElement);
         registerMethod("massif::HillshadeRasterTileLayer", "getElevation", &getElevation);
         registerMethod("massif::HillshadeRasterTileLayer", "getElevations", &getElevations);
         registerMethod("massif::MBVectorTileDecoder", "setStyleParameter", &setStyleParameter);

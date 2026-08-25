@@ -1,6 +1,7 @@
 #include "MergedMBVTTileDataSource.h"
 #include "core/BinaryData.h"
 #include "core/MapTile.h"
+#include "core/Variant.h"
 #include "components/Exceptions.h"
 #include "utils/Log.h"
 
@@ -142,17 +143,15 @@ namespace massif {
             auto mergedBinaryData = std::make_shared<BinaryData>(std::move(mergedData));
             auto mergedTileData = std::make_shared<TileData>(mergedBinaryData);
             
-            // Merge metadata from both sources. When keys conflict, source1 metadata 
-            // overwrites source2 metadata (applied last to take precedence).
-            std::map<std::string, std::shared_ptr<Variant>> metadata2 = _dataSource2->buildTileMetadata(mapTile);
-            for (const auto& entry : metadata2) {
-                mergedTileData->setMetadata(entry.first, entry.second);
+            // Merge the meta data of both sources. When keys conflict, source1 wins (applied last).
+            mergedTileData->setMetaData(_dataSource2->getMetaDataPtr());
+            if (std::shared_ptr<const std::map<std::string, Variant> > metaData1 = _dataSource1->getMetaDataPtr()) {
+                for (const auto& entry : *metaData1) {
+                    mergedTileData->setMetaDataElement(entry.first, entry.second);
+                }
             }
-            std::map<std::string, std::shared_ptr<Variant>> metadata1 = _dataSource1->buildTileMetadata(mapTile);
-            for (const auto& entry : metadata1) {
-                mergedTileData->setMetadata(entry.first, entry.second);
-            }
-            
+
+
             return mergedTileData;
         }
 

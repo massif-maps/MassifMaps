@@ -5,7 +5,7 @@
 namespace massif {
     
     TileData::TileData(const std::shared_ptr<BinaryData>& data) :
-        _data(data), _expirationTime(), _replaceWithParent(false), _overzoom(false), _metadata(), _mutex()
+        _data(data), _expirationTime(), _replaceWithParent(false), _overzoom(false), _metaData(), _mutex()
     {
     }
 
@@ -57,18 +57,37 @@ namespace massif {
         return _data;
     }
     
-    std::shared_ptr<Variant> TileData::getMetadata(const std::string& key) const {
+    std::shared_ptr<const std::map<std::string, Variant> > TileData::getMetaData() const {
         std::lock_guard<std::mutex> lock(_mutex);
-        auto it = _metadata.find(key);
-        if (it != _metadata.end()) {
-            return it->second;
-        }
-        return std::shared_ptr<Variant>();
+        return _metaData;
     }
-    
-    void TileData::setMetadata(const std::string& key, const std::shared_ptr<Variant>& value) {
+
+    void TileData::setMetaData(const std::shared_ptr<const std::map<std::string, Variant> >& metaData) {
         std::lock_guard<std::mutex> lock(_mutex);
-        _metadata[key] = value;
+        _metaData = metaData;
+    }
+
+    bool TileData::containsMetaDataKey(const std::string& key) const {
+        std::lock_guard<std::mutex> lock(_mutex);
+        return _metaData && _metaData->find(key) != _metaData->end();
+    }
+
+    Variant TileData::getMetaDataElement(const std::string& key) const {
+        std::lock_guard<std::mutex> lock(_mutex);
+        if (_metaData) {
+            auto it = _metaData->find(key);
+            if (it != _metaData->end()) {
+                return it->second;
+            }
+        }
+        return Variant();
+    }
+
+    void TileData::setMetaDataElement(const std::string& key, const Variant& element) {
+        std::lock_guard<std::mutex> lock(_mutex);
+        auto metaData = _metaData ? std::make_shared<std::map<std::string, Variant> >(*_metaData) : std::make_shared<std::map<std::string, Variant> >();
+        (*metaData)[key] = element;
+        _metaData = metaData;
     }
 
 }

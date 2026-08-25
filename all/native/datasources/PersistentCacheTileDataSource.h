@@ -34,7 +34,8 @@ namespace massif {
      * even after the application is closed.
      * The database contains table "persistent_cache" with the following fields:
      * "tileId" (tile id), "compressed" (compressed tile image),
-     * "time" (the time the tile was cached in milliseconds from epoch).
+     * "time" (the time the tile was cached in milliseconds from epoch),
+     * "metaData" (the tile's meta data map as JSON).
      * Default cache capacity is 50MB.
      */
     class PersistentCacheTileDataSource : public CacheTileDataSource {
@@ -126,6 +127,11 @@ namespace massif {
         std::shared_ptr<TileData> get(long long tileId);
         void store(long long tileId, const std::shared_ptr<TileData>& tileData);
         void remove(long long tileId);
+
+        // The tile's meta data map is stored with the blob, as JSON. A wrapper source above the
+        // cache does not know which leaf answered for a given tile, so it cannot rebuild it.
+        static std::string EncodeMetaData(const std::shared_ptr<const std::map<std::string, Variant> >& metaData);
+        static std::shared_ptr<const std::map<std::string, Variant> > DecodeMetaData(const std::string& json);
 
         std::shared_ptr<long long> createTileId(long long tileId);
         

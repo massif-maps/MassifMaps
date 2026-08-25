@@ -247,9 +247,8 @@ namespace massif {
         virtual int getMinZoom() const;
         virtual int getMaxZoom() const;
         virtual MapBounds getDataExtent() const;
-        virtual std::string getEncoding() const;
 
-        virtual std::string getMetaData(const std::string& key) const;
+        virtual std::string getContainerMetaData(const std::string& key) const;
 
         virtual std::shared_ptr<TileData> loadTile(const MapTile& tile);
 

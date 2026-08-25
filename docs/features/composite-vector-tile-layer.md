@@ -41,7 +41,8 @@ composite.addExternalDataSource(
 )
 
 // Hillshade placed at the style layer named "hillshade". The elevation decoder is
-// resolved from the DEM's "encoding" metadata (pass one explicitly to override).
+// resolved per tile from the DEM's "dem_encoding" meta data (pass one to override
+// the source-level default).
 composite.addExternalDataSource(
     "hillshade",
     demSource,

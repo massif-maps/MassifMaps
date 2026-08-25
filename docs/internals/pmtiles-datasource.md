@@ -20,7 +20,7 @@ Code: `all/native/datasources/PMTilesTileDataSource.{h,cpp}` and
 |---|---|---|
 | Header | 127 bytes | construction |
 | Root directory | ≤ 16 KB compressed | construction, kept in memory for the object's life |
-| Metadata (JSON) | small | first `getMetaData()`, then cached |
+| Metadata (JSON) | small | first `getContainerMetaData()`, then cached |
 | Leaf directories | optional, many | on demand, cached forever |
 | Tile data | the rest | per tile |
 

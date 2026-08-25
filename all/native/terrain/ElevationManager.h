@@ -68,6 +68,7 @@ namespace massif {
         virtual ~ElevationManager();
 
         std::shared_ptr<TileDataSource> getDataSource() const;
+        /** The source-level default. Each tile resolves its own decoder from its "dem_encoding". */
         std::shared_ptr<ElevationDecoder> getElevationDecoder() const;
 
         float getExaggeration() const;
@@ -212,12 +213,6 @@ namespace massif {
          * catches up on the next gesture.
          */
         void setDataChangedListener(const std::function<void()>& listener);
-
-        /**
-         * Resolves the effective elevation decoder: the data source "encoding" setting takes precedence,
-         * then the preferred decoder, then the MapBox decoder as the default.
-         */
-        static std::shared_ptr<ElevationDecoder> ResolveDecoder(const std::shared_ptr<TileDataSource>& dataSource, const std::shared_ptr<ElevationDecoder>& preferredDecoder);
 
     private:
         struct DataSourceListener;

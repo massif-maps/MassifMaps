@@ -53,14 +53,14 @@ namespace massif {
          * information such as name, description, attribution, vector layers, etc.
          * @return JSON string containing metadata, or empty string if no metadata exists.
          */
-        std::string getMetaData() const;
+        std::string getContainerMetaData() const;
         
         /**
          * Get a specific metadata value by key from the parsed JSON metadata.
          * @param key The metadata key to retrieve (e.g., "name", "description", "attribution").
          * @return The metadata value as a string, or empty string if not found.
          */
-        virtual std::string getMetaData(const std::string& key) const;
+        virtual std::string getContainerMetaData(const std::string& key) const;
 
         virtual int getMinZoom() const;
 

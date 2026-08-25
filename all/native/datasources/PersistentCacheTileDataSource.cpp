@@ -2,6 +2,8 @@
 
 #include "PersistentCacheTileDataSource.h"
 #include "core/BinaryData.h"
+#include "core/Variant.h"
+#include "datasources/components/TileData.h"
 #include "datasources/TileDownloadListener.h"
 #include "utils/Log.h"
 #include "utils/TileUtils.h"
@@ -77,28 +79,20 @@ namespace massif {
 
         std::shared_ptr<long long> tileIdPtr;
         if (_cache.read(mapTile.getTileId(), tileIdPtr)) {
-            tileData = get(mapTile.getTileId());
+            tileData = get(mapTile.getTileId()); // restores the stored meta data with the blob
             if (tileData) {
                 if (tileData->getMaxAge() != 0) {
-                    std::map<std::string, std::shared_ptr<Variant>> metadata = _dataSource->buildTileMetadata(mapTile);
-                    for (const auto& entry : metadata) {
-                        tileData->setMetadata(entry.first, entry.second);
-                    }
+                    applyCacheTileMetaData(tileData);
                     return tileData;
                 }
             }
             _cache.remove(mapTile.getTileId());
         }
-        
+
         if (!_cacheOnlyMode) {
             lock.unlock();
             tileData = _dataSource->loadTile(mapTile);
-            if (tileData) { // loading can fail (network errors), in which case there is nothing to annotate
-                std::map<std::string, std::shared_ptr<Variant>> metadata = _dataSource->buildTileMetadata(mapTile);
-                for (const auto& entry : metadata) {
-                    tileData->setMetadata(entry.first, entry.second);
-                }
-            }
+            applyCacheTileMetaData(tileData); // null-safe; loading can fail (network errors)
             lock.lock();
         }
     
@@ -166,7 +160,7 @@ namespace massif {
             try {
                 sqlite3pp::query query1(*_database, "SELECT name FROM sqlite_master WHERE type='table' AND name='persistent_cache'");
                 for (auto it1 = query1.begin(); it1 != query1.end(); ++it1) {
-                    sqlite3pp::query query2(*_database, "SELECT expirationTime FROM persistent_cache");
+                    sqlite3pp::query query2(*_database, "SELECT expirationTime, metaData FROM persistent_cache");
                     for (auto it2 = query2.begin(); it2 != query2.end(); ++it2);
                     query2.finish();
                 }
@@ -184,7 +178,8 @@ namespace massif {
                         tileId INTEGER NOT NULL PRIMARY KEY,
                         compressed BLOB,
                         time INTEGER,
-                        expirationTime INTEGER
+                        expirationTime INTEGER,
+                        metaData TEXT
                     ))SQL");
             command3.execute();
             command3.finish();
@@ -262,7 +257,7 @@ namespace massif {
     
         try {
             // Get the tile from the database
-            sqlite3pp::query query(*_database, "SELECT compressed, expirationTime FROM persistent_cache WHERE tileId=:tileId");
+            sqlite3pp::query query(*_database, "SELECT compressed, expirationTime, metaData FROM persistent_cache WHERE tileId=:tileId");
             query.bind(":tileId", static_cast<std::uint64_t>(tileId));
             auto qit = query.begin();
             if (qit == query.end()) {
@@ -270,19 +265,24 @@ namespace massif {
                 Log::Error("PersistentCacheTileDataSource::get: Inconsistency, tile data does not exist in the database");
                 return std::shared_ptr<TileData>();
             }
-            
+
             // Construct TileData from the blob returned from the database
             std::size_t dataSize = (*qit).column_bytes(0);
             const unsigned char* dataPtr = static_cast<const unsigned char*>((*qit).get<const void*>(0));
             long long expirationTime = (*qit).get<std::uint64_t>(1);
+            const char* metaDataJSON = (*qit).get<const char*>(2);
+            std::string metaDataText = metaDataJSON ? metaDataJSON : std::string();
             auto data = std::make_shared<BinaryData>(dataPtr, dataSize);
             query.finish();
-            
+
             auto tileData = std::make_shared<TileData>(data);
             if (expirationTime != 0) {
                 long long maxAge = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::time_point(std::chrono::milliseconds(expirationTime)) - std::chrono::system_clock::now()).count();
                 tileData->setMaxAge(maxAge > 0 ? maxAge : 0);
             }
+            // The tile's own map, not the wrapped source's: behind a wrapper like OrderedTileDataSource
+            // the encoding differs per tile and only the stored copy knows which leaf answered.
+            tileData->setMetaData(DecodeMetaData(metaDataText));
             return tileData;
         }
         catch (const std::exception& ex) {
@@ -302,18 +302,49 @@ namespace massif {
             expirationTime = std::chrono::duration_cast<std::chrono::milliseconds>((std::chrono::system_clock::now() + std::chrono::milliseconds(tileData->getMaxAge())).time_since_epoch()).count();
         }
 
+        std::string metaData = EncodeMetaData(tileData->getMetaData());
+
         // Add tile to the database
         try {
-            sqlite3pp::command command(*_database, "INSERT OR REPLACE INTO persistent_cache(tileId, compressed, time, expirationTime) VALUES (:tileId, :compressed, :time, :expirationTime)");
+            sqlite3pp::command command(*_database, "INSERT OR REPLACE INTO persistent_cache(tileId, compressed, time, expirationTime, metaData) VALUES (:tileId, :compressed, :time, :expirationTime, :metaData)");
             command.bind(":tileId", static_cast<std::uint64_t>(tileId));
             command.bind(":compressed", tileData->getData()->data(), static_cast<unsigned int>(tileData->getData()->size()));
             command.bind(":time", static_cast<std::uint64_t>(time));
             command.bind(":expirationTime", static_cast<std::uint64_t>(expirationTime));
+            command.bind(":metaData", metaData); // bound SQLITE_STATIC; 'metaData' outlives the execute
             command.execute();
             command.finish();
         }
         catch (const std::exception& ex) {
             Log::Errorf("PersistentCacheTileDataSource::store: Failed to store tile data in the database: %s", ex.what());
+        }
+    }
+
+    std::string PersistentCacheTileDataSource::EncodeMetaData(const std::shared_ptr<const std::map<std::string, Variant> >& metaData) {
+        if (!metaData || metaData->empty()) {
+            return std::string();
+        }
+        return Variant(*metaData).toString();
+    }
+
+    std::shared_ptr<const std::map<std::string, Variant> > PersistentCacheTileDataSource::DecodeMetaData(const std::string& json) {
+        if (json.empty()) {
+            return std::shared_ptr<const std::map<std::string, Variant> >();
+        }
+        try {
+            Variant value = Variant::FromString(json);
+            if (value.getType() != VariantType::VARIANT_TYPE_OBJECT) {
+                return std::shared_ptr<const std::map<std::string, Variant> >();
+            }
+            auto metaData = std::make_shared<std::map<std::string, Variant> >();
+            for (const std::string& key : value.getObjectKeys()) {
+                (*metaData)[key] = value.getObjectElement(key);
+            }
+            return metaData;
+        }
+        catch (const std::exception& ex) {
+            Log::Errorf("PersistentCacheTileDataSource::DecodeMetaData: Failed to parse stored meta data: %s", ex.what());
+            return std::shared_ptr<const std::map<std::string, Variant> >();
         }
     }
 

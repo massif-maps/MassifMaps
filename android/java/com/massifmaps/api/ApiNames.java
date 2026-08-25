@@ -265,8 +265,6 @@ public final class ApiNames {
     public static final MassifObject.Key<Boolean> ELEVATION_PREFETCH_ENABLED = MassifObject.key("elevationPrefetchEnabled");
     /** Returns whether the fog is drawn at all. */
     public static final MassifObject.Key<Boolean> ENABLED = MassifObject.key("enabled");
-    /** Gets the current encoding type. */
-    public static final MassifObject.Key<String> ENCODING = MassifObject.key("encoding");
     /** Returns the number of threads used by the envelope task pool. */
     public static final MassifObject.Key<Long> ENVELOPE_THREAD_POOL_SIZE = MassifObject.key("envelopeThreadPoolSize");
     /** Returns the normal vector tile should be exagerated based on the zoom level. */
@@ -331,6 +329,8 @@ public final class ApiNames {
     public static final MassifObject.Key<Double> FREE_ROAM_MOVE_SPEED = MassifObject.key("freeRoamMoveSpeed");
     /** Returns the green component of this map color. */
     public static final MassifObject.Key<Long> G = MassifObject.key("g");
+    /** Returns the geometry as a GeoJSON string, in its own coordinates. Here rather than only on Feature because serialising a shape otherwise means constructing a GeoJSONGeometryWriter, which no string-based binding can do. */
+    public static final MassifObject.Key<String> GEO_JSON = MassifObject.key("geoJSON");
     /** Returns the geometry object that defines the location of this billboard. */
     public static final MassifObject.Key<MassifObject> GEOMETRY = MassifObject.key("geometry");
     /** Returns the number of geometry objects in this multi geometry container. */
@@ -379,6 +379,8 @@ public final class ApiNames {
     public static final MassifObject.Key<Long> INSTRUCTION_COUNT = MassifObject.key("instructionCount");
     /** Returns the turn-by-turn instruction list. */
     public static final MassifObject.Key<String> INSTRUCTIONS = MassifObject.key("instructions");
+    /** Returns every turn-by-turn instruction as one JSON array. A maneuver is nine scalars, and reading them one instruction at a time costs a call per field: a mountain route has hundreds. The keys are the property names (`action`, `pointIndex`, `streetName`, `instruction`, `turnAngle`, `azimuth`, `distance`, `time`), and `action` is the enum's constant name. */
+    public static final MassifObject.Key<String> INSTRUCTIONS_JSON = MassifObject.key("instructionsJSON");
     /** Returns the interpolated color at the click position. */
     public static final MassifObject.Key<Integer> INTERPOLATED_COLOR = MassifObject.key("interpolatedColor");
     /** Returns the state of the kinetic panning flag. */
@@ -597,6 +599,8 @@ public final class ApiNames {
     public static final MassifObject.Key<MassifObject> RASTER_TILE_EVENT_LISTENER = MassifObject.key("rasterTileEventListener");
     /** Returns raw result */
     public static final MassifObject.Key<String> RAW_RESULT = MassifObject.key("rawResult");
+    /** Returns what caused the movement. */
+    public static final MassifObject.Key<String> REASON = MassifObject.key("reason");
     /** Returns the regular expression used to search all the fields. If empty, then the regular expression is not used. */
     public static final MassifObject.Key<String> REGEX_FILTER = MassifObject.key("regexFilter");
     /** Returns the region name included in the address. */
@@ -636,6 +640,8 @@ public final class ApiNames {
     public static final MassifObject.Key<Double> ROTATION_ANGLE = MassifObject.key("rotationAngle");
     /** Returns the rotation axis of this model. If rotation angle is 0, then the axis is irrelevant. */
     public static final MassifObject.Key<String> ROTATION_AXIS = MassifObject.key("rotationAxis");
+    /** Returns the state of rotation gestures. */
+    public static final MassifObject.Key<Boolean> ROTATION_GESTURES = MassifObject.key("rotationGestures");
     /** Returns the scale of this model. */
     public static final MassifObject.Key<Double> SCALE = MassifObject.key("scale");
     /** Returns the state of the scale with DPI flag. */
@@ -791,10 +797,14 @@ public final class ApiNames {
     public static final MassifObject.Key<Double> TEXT_OCCLUSION_OPACITY = MassifObject.key("textOcclusionOpacity");
     /** Returns the tile texture cache capacity. */
     public static final MassifObject.Key<Long> TEXTURE_CACHE_CAPACITY = MassifObject.key("textureCacheCapacity");
+    /** Returns the tile the event concerns, which is only meaningful for a failure. */
+    public static final MassifObject.Key<String> TILE = MassifObject.key("tile");
     /** Returns the current relative tile blending speed. */
     public static final MassifObject.Key<Double> TILE_BLENDING_SPEED = MassifObject.key("tileBlendingSpeed");
     /** Returns the tile cache capacity. */
     public static final MassifObject.Key<Long> TILE_CACHE_CAPACITY = MassifObject.key("tileCacheCapacity");
+    /** Returns the number of tiles the download will fetch. */
+    public static final MassifObject.Key<Long> TILE_COUNT = MassifObject.key("tileCount");
     /** Returns the tile decoder assigned to this layer. */
     public static final MassifObject.Key<MassifObject> TILE_DECODER = MassifObject.key("tileDecoder");
     /** Returns the tile size used for drawing map tiles. */
@@ -916,6 +926,9 @@ public final class ApiNames {
     // --- methods ---------------------------------------------------------
 
     public static final String METHOD_ADD = "add";
+    public static final String METHOD_ADD_FEATURE = "addFeature";
+    public static final String METHOD_ADD_LOCALE = "addLocale";
+    public static final String METHOD_CALCULATE_ADDRESSES = "calculateAddresses";
     public static final String METHOD_CALCULATE_ROUTE = "calculateRoute";
     public static final String METHOD_CLEAR = "clear";
     public static final String METHOD_CLEAR_TILE_CACHES = "clearTileCaches";
@@ -924,25 +937,41 @@ public final class ApiNames {
     public static final String METHOD_FIND_FEATURES = "findFeatures";
     public static final String METHOD_FIT_BOUNDS = "fitBounds";
     public static final String METHOD_FLY_TO = "flyTo";
+    public static final String METHOD_GET = "get";
     public static final String METHOD_GET_ELEVATION = "getElevation";
     public static final String METHOD_GET_ELEVATIONS = "getElevations";
     public static final String METHOD_GET_FEATURE = "getFeature";
     public static final String METHOD_GET_INSTRUCTION = "getInstruction";
+    public static final String METHOD_GET_META_DATA_ELEMENT = "getMetaDataElement";
     public static final String METHOD_GET_POINTS = "getPoints";
     public static final String METHOD_GET_STYLE_PARAMETER = "getStyleParameter";
+    public static final String METHOD_INSERT = "insert";
     public static final String METHOD_LOAD_TILE = "loadTile";
     public static final String METHOD_MAP_TO_SCREEN = "mapToScreen";
+    public static final String METHOD_MATCH_ROUTE = "matchRoute";
     public static final String METHOD_MOVE_TO = "moveTo";
     public static final String METHOD_REFRESH = "refresh";
     public static final String METHOD_REMOVE = "remove";
+    public static final String METHOD_REMOVE_FEATURE = "removeFeature";
     public static final String METHOD_SCREEN_TO_MAP = "screenToMap";
+    public static final String METHOD_SET = "set";
+    public static final String METHOD_SET_CONFIGURATION_PARAMETER = "setConfigurationParameter";
     public static final String METHOD_SET_CUSTOM_PARAMETER = "setCustomParameter";
     public static final String METHOD_SET_LAYER_GEO_JSON = "setLayerGeoJSON";
+    public static final String METHOD_SET_META_DATA_ELEMENT = "setMetaDataElement";
     public static final String METHOD_SET_STYLE_PARAMETER = "setStyleParameter";
+    public static final String METHOD_SET_STYLE_PARAMETERS = "setStyleParameters";
+    public static final String METHOD_START_DOWNLOAD_AREA = "startDownloadArea";
+    public static final String METHOD_STOP_ALL_DOWNLOADS = "stopAllDownloads";
     public static final String METHOD_STOP_FLIGHT = "stopFlight";
+    public static final String METHOD_UPDATE_FEATURE = "updateFeature";
 
     // --- events ----------------------------------------------------------
 
+    public static final String EVENT_DOWNLOAD_COMPLETED = "download.completed";
+    public static final String EVENT_DOWNLOAD_FAILED = "download.failed";
+    public static final String EVENT_DOWNLOAD_PROGRESS = "download.progress";
+    public static final String EVENT_DOWNLOAD_STARTED = "download.started";
     public static final String EVENT_MAP_CLICKED = "map.clicked";
     public static final String EVENT_MAP_IDLE = "map.idle";
     public static final String EVENT_MAP_INTERACTION = "map.interaction";
@@ -957,6 +986,7 @@ public final class ApiNames {
     public static final String KIND_ELEMENT = "element";
     public static final String KIND_ELEMENTSTYLE = "elementstyle";
     public static final String KIND_FEATURE = "feature";
+    public static final String KIND_GEOCODING = "geocoding";
     public static final String KIND_GEOMETRY = "geometry";
     public static final String KIND_LAYER = "layer";
     public static final String KIND_OPTIONS = "options";
@@ -969,11 +999,23 @@ public final class ApiNames {
     public static final String TYPE_ASSETS_DIR = "dir";
     public static final String TYPE_ASSETS_ZIP = "zip";
     public static final String TYPE_ELEMENT_BALLOON = "balloon";
+    public static final String TYPE_ELEMENT_LINE = "line";
     public static final String TYPE_ELEMENT_MARKER = "marker";
+    public static final String TYPE_ELEMENT_POINT = "point";
+    public static final String TYPE_ELEMENT_POLYGON = "polygon";
+    public static final String TYPE_ELEMENT_TEXT = "text";
     public static final String TYPE_ELEMENTSTYLE_BALLOON = "balloon";
+    public static final String TYPE_ELEMENTSTYLE_LINE = "line";
     public static final String TYPE_ELEMENTSTYLE_MARKER = "marker";
+    public static final String TYPE_ELEMENTSTYLE_POINT = "point";
+    public static final String TYPE_ELEMENTSTYLE_POLYGON = "polygon";
+    public static final String TYPE_ELEMENTSTYLE_TEXT = "text";
     public static final String TYPE_FEATURE_FEATURE = "feature";
+    public static final String TYPE_GEOCODING_MULTI_OSM_OFFLINE = "multi-osm-offline";
+    public static final String TYPE_GEOCODING_MULTI_OSM_OFFLINE_REVERSE = "multi-osm-offline-reverse";
+    public static final String TYPE_GEOMETRY_LINE = "line";
     public static final String TYPE_GEOMETRY_POINT = "point";
+    public static final String TYPE_GEOMETRY_POLYGON = "polygon";
     public static final String TYPE_LAYER_COMPOSITE_VECTOR = "composite-vector";
     public static final String TYPE_LAYER_ELEMENTS = "elements";
     public static final String TYPE_LAYER_HILLSHADE = "hillshade";
@@ -984,6 +1026,7 @@ public final class ApiNames {
     public static final String TYPE_OPTIONS_LIGHT = "light";
     public static final String TYPE_OPTIONS_SKY = "sky";
     public static final String TYPE_OPTIONS_TERRAIN = "terrain";
+    public static final String TYPE_ROUTING_MULTI_VALHALLA_OFFLINE = "multi-valhalla-offline";
     public static final String TYPE_ROUTING_VALHALLA_OFFLINE = "valhalla-offline";
     public static final String TYPE_ROUTING_VALHALLA_ONLINE = "valhalla-online";
     public static final String TYPE_SEARCH_REQUEST = "request";
@@ -993,8 +1036,10 @@ public final class ApiNames {
     public static final String TYPE_SOURCE_GEOJSON = "geojson";
     public static final String TYPE_SOURCE_HTTP = "http";
     public static final String TYPE_SOURCE_LOCAL = "local";
+    public static final String TYPE_SOURCE_MAPTILER = "maptiler";
     public static final String TYPE_SOURCE_MBTILES = "mbtiles";
     public static final String TYPE_SOURCE_MEMORY_CACHE = "memory-cache";
+    public static final String TYPE_SOURCE_MERGED_MBVT = "merged-mbvt";
     public static final String TYPE_SOURCE_MULTI = "multi";
     public static final String TYPE_SOURCE_ORDERED = "ordered";
     public static final String TYPE_SOURCE_PERSISTENT_CACHE = "persistent-cache";

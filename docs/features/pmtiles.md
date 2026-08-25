@@ -46,8 +46,8 @@ mapView.getLayers()?.add(layer)
 ## Metadata & extent
 
 ```kotlin
-val name = source.getMetaData("name")
-val attribution = source.getMetaData("attribution")
+val name = source.getContainerMetaData("name")
+val attribution = source.getContainerMetaData("attribution")
 val minZoom = source.minZoom
 val maxZoom = source.maxZoom
 val bounds = source.dataExtent

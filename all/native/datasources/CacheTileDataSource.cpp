@@ -38,29 +38,31 @@ namespace massif {
         return _dataSource->getDataExtent();
     }
 
-    std::string CacheTileDataSource::getEncoding() const {
-        std::string encoding = TileDataSource::getEncoding();
-        if (encoding.empty()) {
-            encoding = _dataSource->getEncoding();
-        }
-        return encoding;
+    std::shared_ptr<const std::map<std::string, Variant> > CacheTileDataSource::getMetaDataPtr() const {
+        std::shared_ptr<const std::map<std::string, Variant> > metaData = TileDataSource::getMetaDataPtr();
+        return metaData ? metaData : _dataSource->getMetaDataPtr();
     }
 
-    std::string CacheTileDataSource::getMetaData(const std::string& key) const {
-        return _dataSource->getMetaData(key);
+    std::string CacheTileDataSource::getContainerMetaData(const std::string& key) const {
+        return _dataSource->getContainerMetaData(key);
     }
 
-    void CacheTileDataSource::applyCacheTileMetadata(const std::shared_ptr<TileData>& tileData, const MapTile& tile) const {
+    void CacheTileDataSource::applyCacheTileMetaData(const std::shared_ptr<TileData>& tileData) const {
         if (!tileData) {
             return;
         }
 
-        std::map<std::string, std::shared_ptr<Variant> > metadata = _dataSource->buildTileMetadata(tile);
-        for (const auto& entry : TileDataSource::buildTileMetadata(tile)) {
-            metadata[entry.first] = entry.second; // the cache's own settings win, as in getEncoding
+        std::shared_ptr<const std::map<std::string, Variant> > own = TileDataSource::getMetaDataPtr();
+        if (!own) {
+            // Only fill in for a tile that carries nothing - a tile from a wrapped OrderedTileDataSource
+            // already carries the LEAF's map, which is the only place its real settings are known.
+            if (!tileData->getMetaData()) {
+                tileData->setMetaData(_dataSource->getMetaDataPtr());
+            }
+            return;
         }
-        for (const auto& entry : metadata) {
-            tileData->setMetadata(entry.first, entry.second);
+        for (const auto& entry : *own) {
+            tileData->setMetaDataElement(entry.first, entry.second);
         }
     }
 

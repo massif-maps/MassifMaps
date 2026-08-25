@@ -24,6 +24,7 @@ import com.massifmaps.datasources.HTTPTileDataSource;
 import com.massifmaps.datasources.LocalVectorDataSource;
 import com.massifmaps.datasources.MBTilesTileDataSource;
 import com.massifmaps.datasources.MultiTileDataSource;
+import com.massifmaps.datasources.OrderedTileDataSource;
 import com.massifmaps.datasources.PersistentCacheTileDataSource;
 import com.massifmaps.datasources.TileDataSource;
 import com.massifmaps.geometry.FeatureCollection;
@@ -45,9 +46,6 @@ import com.massifmaps.layers.VectorTileEventListener;
 import com.massifmaps.layers.VectorTileLayer;
 import com.massifmaps.layers.VectorTileRenderOrder;
 import com.massifmaps.projections.Projection;
-import com.massifmaps.rastertiles.MapBoxElevationDataDecoder;
-import com.massifmaps.rastertiles.TerrariumElevationDataDecoder;
-import com.massifmaps.rastertiles.ElevationDecoder;
 import com.massifmaps.renderers.MapRenderer;
 import com.massifmaps.renderers.PostProcessEffect;
 import com.massifmaps.styles.CartoCSSStyleSet;
@@ -626,7 +624,7 @@ public class DemoMap {
     // --- hillshade -------------------------------------------------------------------------------
 
     private Layer createHillshadeLayer() {
-        HillshadeRasterTileLayer layer = new HillshadeRasterTileLayer(demSource(), elevationDecoder());
+        HillshadeRasterTileLayer layer = new HillshadeRasterTileLayer(demSource());
         layer.setPreloading(true);
         layer.setTileSubstitutionPolicy(TileSubstitutionPolicy.TILE_SUBSTITUTION_POLICY_VISIBLE);
         layer.setTileFilterMode(RasterTileFilterMode.RASTER_TILE_FILTER_MODE_BILINEAR);
@@ -1260,13 +1258,27 @@ public class DemoMap {
      */
     public TileDataSource demSource() {
         if (cachedDem == null) {
-            HTTPTileDataSource source = new HTTPTileDataSource(DemoConfig.DEM_MIN_ZOOM, DemoConfig.DEM_MAX_ZOOM, DemoConfig.DEM_URL);
-            source.setEncoding(DemoConfig.DEM_ENCODING);
-            PersistentCacheTileDataSource cache = new PersistentCacheTileDataSource(source, cacheDbPath(DemoConfig.DEM_CACHE_DB));
-            cache.setCapacity(DemoConfig.DEM_PERSISTENT_CACHE_MB * 1024L * 1024L);
-            cachedDem = cache;
+            TileDataSource dem = cachedDemSource(DemoConfig.DEM_MIN_ZOOM, DemoConfig.DEM_MAX_ZOOM,
+                    DemoConfig.DEM_URL, DemoConfig.DEM_ENCODING, DemoConfig.DEM_CACHE_DB);
+            if (!DemoConfig.DEM2_URL.isEmpty()) {
+                // Two encodings behind one Ordered source: each tile carries the encoding of the
+                // source that answered for it, so terrain/hillshade/contours decode it per tile.
+                TileDataSource dem2 = cachedDemSource(DemoConfig.DEM2_MIN_ZOOM, DemoConfig.DEM2_MAX_ZOOM,
+                        DemoConfig.DEM2_URL, DemoConfig.DEM2_ENCODING, DemoConfig.DEM2_CACHE_DB);
+                dem = new OrderedTileDataSource(dem, dem2);
+            }
+            cachedDem = dem;
         }
         return cachedDem;
+    }
+
+    /** One HTTP DEM source, tagged with its encoding, behind its own persistent cache. */
+    private TileDataSource cachedDemSource(int minZoom, int maxZoom, String url, String encoding, String cacheDb) {
+        HTTPTileDataSource source = new HTTPTileDataSource(minZoom, maxZoom, url);
+        source.setMetaDataElement("dem_encoding", new Variant(encoding));
+        PersistentCacheTileDataSource cache = new PersistentCacheTileDataSource(source, cacheDbPath(cacheDb));
+        cache.setCapacity(DemoConfig.DEM_PERSISTENT_CACHE_MB * 1024L * 1024L);
+        return cache;
     }
 
     public TileDataSource rasterSource() {
@@ -1295,8 +1307,8 @@ public class DemoMap {
     /** Contours generated from the shared DEM; the same instance feeds layer and composite slot. */
     public ContourTileDataSource contourSource() {
         if (contourSource == null) {
+            // No encoding here: the contour source reads it off each DEM tile it decodes.
             contourSource = new ContourTileDataSource(demSource());
-            contourSource.setEncoding(DemoConfig.DEM_ENCODING);
             applyContourConfig();
         }
         return contourSource;
@@ -1354,12 +1366,6 @@ public class DemoMap {
         }
     }
 
-    private ElevationDecoder elevationDecoder() {
-        return "mapbox".equals(DemoConfig.DEM_ENCODING)
-                ? new MapBoxElevationDataDecoder()
-                : new TerrariumElevationDataDecoder();
-    }
-
     private StringMap userAgentHeaders() {
         StringMap headers = new StringMap();
         headers.set("User-Agent", DemoConfig.HTTP_USER_AGENT);
@@ -1379,7 +1385,7 @@ public class DemoMap {
         mapView.getOptions().setTileLODFactor(DemoConfig.TILE_LOD_FACTOR);
         mapView.getOptions().setTileLODForeshorteningLimit(DemoConfig.TILE_LOD_GRAZING);
         if (terrainOptions == null) {
-            terrainOptions = new TerrainOptions(demSource(), elevationDecoder());
+            terrainOptions = new TerrainOptions(demSource());
             mapView.getOptions().setTerrainOptions(terrainOptions);
         }
         terrainOptions.setEnabled(DemoConfig.TERRAIN_ENABLED);

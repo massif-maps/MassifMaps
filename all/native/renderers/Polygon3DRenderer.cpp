@@ -8,6 +8,7 @@
 #include "renderers/MapRenderer.h"
 #include "renderers/components/RayIntersectedElement.h"
 #include "renderers/utils/Shader.h"
+#include "renderers/utils/FogShader.h"
 #include "renderers/utils/GLResourceManager.h"
 #include "utils/Const.h"
 #include "utils/Log.h"
@@ -86,6 +87,11 @@ namespace massif {
         // Prepare for drawing
         glUseProgram(_shader->getProgId());
         // Colors, coords, normals
+        // This frame's fog, resolved once by the owner: markers, lines and overlays fade into the
+        // same haze as the map they sit on.
+        if (auto mapRenderer = _mapRenderer.lock()) {
+            FogShader::setUniforms(_shader->getProgId(), mapRenderer->getFrameFog(), viewState);
+        }
         glEnableVertexAttribArray(_a_color);
         glEnableVertexAttribArray(_a_attrib);
         glEnableVertexAttribArray(_a_coord);
@@ -275,12 +281,19 @@ namespace massif {
     }
         
     bool Polygon3DRenderer::initializeRenderer() {
-        if (_shader && _shader->isValid()) {
-            return true;
+        // The custom fog shader is compiled into this program, so a change to it has to rebuild.
+        std::string fogSource;
+        if (auto mapRenderer = _mapRenderer.lock()) {
+            fogSource = FogShader::source(mapRenderer->getOptions());
         }
 
+        if (_shader && _shader->isValid() && _fogShaderSource == fogSource) {
+            return true;
+        }
+        _fogShaderSource = fogSource;
+
         if (auto mapRenderer = _mapRenderer.lock()) {
-            _shader = mapRenderer->getGLResourceManager()->create<Shader>("polygon3d", POLYGON3D_VERTEX_SHADER, POLYGON3D_FRAGMENT_SHADER);
+            _shader = mapRenderer->getGLResourceManager()->create<Shader>("polygon3d", POLYGON3D_VERTEX_SHADER, POLYGON3D_FRAGMENT_SHADER_PREFIX + FogShader::buildBlock(fogSource) + POLYGON3D_FRAGMENT_SHADER_MAIN);
 
             // Get shader variables locations
             _a_color = _shader->getAttribLoc("a_color");
@@ -320,16 +333,19 @@ namespace massif {
         }
     )GLSL";
 
-    const std::string Polygon3DRenderer::POLYGON3D_FRAGMENT_SHADER = R"GLSL(
+    const std::string Polygon3DRenderer::POLYGON3D_FRAGMENT_SHADER_PREFIX = R"GLSL(
         #version 100
         precision mediump float;
         varying lowp vec4 v_color;
+)GLSL";
+
+    const std::string Polygon3DRenderer::POLYGON3D_FRAGMENT_SHADER_MAIN = R"GLSL(
         void main() {
             vec4 color = v_color;
             if (color.a == 0.0) {
                 discard;
             }
-            gl_FragColor = color;
+            gl_FragColor = applyFog(color);
         }
     )GLSL";
 }

@@ -60,7 +60,8 @@ namespace massif {
         void drawBatch(const ViewState& viewState);
         
         static const std::string POLYGON3D_VERTEX_SHADER;
-        static const std::string POLYGON3D_FRAGMENT_SHADER;
+        static const std::string POLYGON3D_FRAGMENT_SHADER_PREFIX;
+        static const std::string POLYGON3D_FRAGMENT_SHADER_MAIN;
     
         std::weak_ptr<Options> _options;
         std::weak_ptr<MapRenderer> _mapRenderer;
@@ -76,6 +77,7 @@ namespace massif {
         std::vector<float> _normalBuf;
     
         std::shared_ptr<Shader> _shader;
+        std::string _fogShaderSource;   // the fog block _shader was built with
         GLuint _a_color;
         GLuint _a_attrib;
         GLuint _a_coord;

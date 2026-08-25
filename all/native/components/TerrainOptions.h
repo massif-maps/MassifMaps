@@ -356,11 +356,13 @@ namespace massif {
          *     uniform vec4  u_sunColor;    // sun colour, rgba 0..1
          *     uniform float u_sunIntensity;
          *     uniform float u_ambientIntensity;
-         *     uniform vec4  u_fogColor;    // resolved (lit) fog colour, rgba 0..1
-         *     uniform vec2  u_fogRange;    // fog start and full-strength distance, metres
          *     uniform float u_time;        // seconds since the map view was created
          *     uniform float u_zoom;        // current fractional map zoom
          *     uniform vec2  u_resolution;  // viewport size in pixels
+         *
+         * The surface must NOT fog itself: the SDK applies the same fog the rest of the frame gets
+         * to whatever this returns. The fog uniforms and helpers documented on
+         * FogOptions::setShaderSource are declared here too, and must not be redeclared.
          *
          * plus every parameter set with setSurfaceParameter (float) and setSurfaceColorParameter
          * (vec4, rgba 0..1) as a uniform of that name. Redeclaring any of the above is a compile

@@ -153,6 +153,13 @@ namespace massif {
          */
         TerrainRenderer* getTerrainRenderer() const { return _terrainRenderer.get(); }
 
+        /**
+         * This frame's fog, resolved once from the options and the merged style opinion before
+         * anything draws. The vector element renderers read it from here rather than taking it
+         * through every onDrawFrame signature. GL thread only. Internal method.
+         */
+        const ResolvedFog& getFrameFog() const { return _frameFog; }
+
         std::vector<std::shared_ptr<BillboardDrawData> > getBillboardDrawDatas() const;
     
         AnimationHandler& getAnimationHandler();

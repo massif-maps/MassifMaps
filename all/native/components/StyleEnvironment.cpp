@@ -2,6 +2,7 @@
 #include "components/TerrainOptions.h"
 #include "components/LightOptions.h"
 #include "components/FogOptions.h"
+#include "components/SkyOptions.h"
 #include "utils/Const.h"
 
 #include <algorithm>
@@ -43,7 +44,14 @@ namespace massif {
         take(fogHighColor, other.fogHighColor);
         take(fogSpaceColor, other.fogSpaceColor);
         take(fogHorizonBlend, other.fogHorizonBlend);
+        take(fogVerticalRangeStart, other.fogVerticalRangeStart);
+        take(fogVerticalRangeEnd, other.fogVerticalRangeEnd);
         take(fogStarIntensity, other.fogStarIntensity);
+        take(skyType, other.skyType);
+        take(skyAtmosphereSunIntensity, other.skyAtmosphereSunIntensity);
+        take(skyAtmosphereColor, other.skyAtmosphereColor);
+        take(skyAtmosphereHaloColor, other.skyAtmosphereHaloColor);
+        take(skyAtmosphereLuminance, other.skyAtmosphereLuminance);
         take(terrainMaxVisibleDistance, other.terrainMaxVisibleDistance);
     }
 
@@ -51,7 +59,9 @@ namespace massif {
         return !(sunAzimuth || sunAltitude || sunColor || sunIntensity || ambientIntensity || ambientColor || buildingLightIntensity || buildingAmbient || buildingVerticalGradient || buildingRoofShade || buildingAoIntensity || textOcclusionOpacity || buildingAoGroundAttenuation || terrainLightingEnabled ||
                  shadowStrength || shadowBias || shadowSoftness || shadowDistance || shadowMapSize || shadowCascades ||
                  shadowCasterMargin || fogEnabled || fogColor || fogRangeStart || fogRangeEnd || fogHighColor || fogSpaceColor ||
-                 fogHorizonBlend || fogStarIntensity || terrainMaxVisibleDistance);
+                 fogHorizonBlend || fogVerticalRangeStart || fogVerticalRangeEnd || fogStarIntensity ||
+                 skyType || skyAtmosphereSunIntensity || skyAtmosphereColor || skyAtmosphereHaloColor || skyAtmosphereLuminance ||
+                 terrainMaxVisibleDistance);
     }
 
     ResolvedLighting resolveLighting(const std::shared_ptr<LightOptions>& lightOptions, const StyleEnvironment& env) {
@@ -163,20 +173,24 @@ namespace massif {
         if (!fogOptions) {
             return fog;
         }
-        // The switch comes first. Unlike every value below, it is ANDed rather than overridden:
-        // the style saying "fog" must not re-enable a fog the application switched off, which is
-        // what an app-side UI toggle means. A default-constructed ResolvedFog is not active(), so
-        // every consumer stops fogging together without any value being driven to zero.
-        if (!fogOptions->isEnabled() || (env.fogEnabled && !*env.fogEnabled)) {
-            return fog;
-        }
+        fog.shaderSource = fogOptions->getShaderSource();
+        // The switch is ANDed rather than overridden: the style saying "fog" must not re-enable a
+        // fog the application switched off, which is what an app-side UI toggle means.
+        //
+        // It stops the HAZE, and only the haze. The atmosphere colours and the star intensity live
+        // on FogOptions because Mapbox puts them there, but they are the SKY's - an app that turns
+        // the fog off does not expect its dusk sky and its stars to go with it. So everything is
+        // resolved either way and the switch drops the fog COLOUR and the range at the end, which
+        // is what active() and every shader's uFogColor.a read.
+        bool enabled = fogOptions->isEnabled() && !(env.fogEnabled && !*env.fogEnabled);
         float rangeStart = fogOptions->getRangeStart();
         float rangeEnd = fogOptions->getRangeEnd();
         fog.color = fogOptions->getColor();
         fog.highColor = fogOptions->getHighColor();
         fog.spaceColor = fogOptions->getSpaceColor();
         fog.horizonBlend = fogOptions->getHorizonBlend();
-        fog.horizonAngle = fogOptions->getHorizonAngle();
+        fog.verticalRangeStart = fogOptions->getVerticalRangeStart();
+        fog.verticalRangeEnd = fogOptions->getVerticalRangeEnd();
         fog.starIntensity = fogOptions->getStarIntensity();
         if (env.fogColor) {
             fog.color = *env.fogColor;
@@ -195,6 +209,12 @@ namespace massif {
         }
         if (env.fogHorizonBlend) {
             fog.horizonBlend = *env.fogHorizonBlend;
+        }
+        if (env.fogVerticalRangeStart) {
+            fog.verticalRangeStart = *env.fogVerticalRangeStart;
+        }
+        if (env.fogVerticalRangeEnd) {
+            fog.verticalRangeEnd = *env.fogVerticalRangeEnd;
         }
         if (env.fogStarIntensity) {
             fog.starIntensity = *env.fogStarIntensity;
@@ -226,7 +246,39 @@ namespace massif {
                               channel(fog.color.getB(), lighting.sunColor.getB()),
                               fog.color.getA());
         }
+        if (!enabled) {
+            fog.color = Color(0, 0, 0, 0);
+            fog.startDistance = 0.0f;
+            fog.distance = 0.0f;
+        }
         return fog;
+    }
+
+    ResolvedSky resolveSky(const std::shared_ptr<SkyOptions>& skyOptions, const StyleEnvironment& env) {
+        ResolvedSky sky;
+        if (skyOptions) {
+            sky.type = skyOptions->getType();
+            sky.atmosphereSunIntensity = skyOptions->getAtmosphereSunIntensity();
+            sky.atmosphereColor = skyOptions->getAtmosphereColor();
+            sky.haloColor = skyOptions->getHaloColor();
+            sky.atmosphereLuminance = skyOptions->getAtmosphereLuminance();
+        }
+        if (env.skyType) {
+            sky.type = *env.skyType != 0.0f ? SkyType::SKY_TYPE_ATMOSPHERE : SkyType::SKY_TYPE_GRADIENT;
+        }
+        if (env.skyAtmosphereSunIntensity) {
+            sky.atmosphereSunIntensity = *env.skyAtmosphereSunIntensity;
+        }
+        if (env.skyAtmosphereColor) {
+            sky.atmosphereColor = *env.skyAtmosphereColor;
+        }
+        if (env.skyAtmosphereHaloColor) {
+            sky.haloColor = *env.skyAtmosphereHaloColor;
+        }
+        if (env.skyAtmosphereLuminance) {
+            sky.atmosphereLuminance = *env.skyAtmosphereLuminance;
+        }
+        return sky;
     }
 
 }

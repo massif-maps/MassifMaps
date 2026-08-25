@@ -23,6 +23,12 @@
 !spec(massif::SkyOptions, options, sky)
 
 %attribute(massif::SkyOptions, bool, Enabled, isEnabled, setEnabled)
+%attribute(massif::SkyOptions, massif::SkyType::SkyType, Type, getType, setType)
+%attribute(massif::SkyOptions, massif::SkyQuality::SkyQuality, Quality, getQuality, setQuality)
+%attribute(massif::SkyOptions, float, AtmosphereSunIntensity, getAtmosphereSunIntensity, setAtmosphereSunIntensity)
+%attributeval(massif::SkyOptions, massif::Color, AtmosphereColor, getAtmosphereColor, setAtmosphereColor)
+%attributeval(massif::SkyOptions, massif::Color, HaloColor, getHaloColor, setHaloColor)
+%attribute(massif::SkyOptions, float, AtmosphereLuminance, getAtmosphereLuminance, setAtmosphereLuminance)
 %attributeval(massif::SkyOptions, massif::Color, SkyColor, getSkyColor, setSkyColor)
 %attributeval(massif::SkyOptions, massif::Color, HorizonColor, getHorizonColor, setHorizonColor)
 %attributeval(massif::SkyOptions, massif::Color, GroundColor, getGroundColor, setGroundColor)

@@ -69,6 +69,12 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyAspectRatio;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyAssetNames;
 /** Returns the style asset package. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyAssetPackage;
+/** Returns the tint applied to Rayleigh scattering. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyAtmosphereColor;
+/** Returns the exposure applied to the scattered light. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyAtmosphereLuminance;
+/** Returns the brightness of the sun driving the atmosphere. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyAtmosphereSunIntensity;
 /** Returns the horizontal attaching anchor point of the billoard. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyAttachAnchorPointX;
 /** Returns the vertical attaching anchor point of the billoard. */
@@ -343,6 +349,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyGeometrySimplifier;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyGeometryTag;
 /** Returns the ground color. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyGroundColor;
+/** Returns the tint applied to Mie scattering. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyHaloColor;
 /** Returns the height of the bitmap. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyHeight;
 /** Returns the height scale of the hillshade overlay. */
@@ -357,8 +365,6 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyHighlightColor;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyHillshadeMethod;
 /** Returns the list of map position lists defining the inner rings of the polygon (holes). */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyHoles;
-/** Returns the elevation angle the fog is still at full strength at. */
-FOUNDATION_EXPORT MassifProperty const MassifPropertyHorizonAngle;
 /** Returns how far up the sky the fog is blended in. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyHorizonBlend;
 /** Returns the horizon color. */
@@ -585,6 +591,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyProgress;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyProjection;
 /** Returns the properties of the feature. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyProperties;
+/** Returns how finely the atmosphere is integrated. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyQuality;
 /** Returns the text-based query of the request. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyQuery;
 /** Returns the red component of this map color. */
@@ -894,6 +902,10 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyVectorTileEventListener;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyVersion;
 /** Returns the vertical offset of the billboard. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyVerticalOffset;
+/** Returns the altitude the fog has fully faded out at. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyVerticalRangeEnd;
+/** Returns the altitude the fog starts fading out at. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyVerticalRangeStart;
 /** Returns the absolute view distance, in meters. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyViewDistance;
 /** Returns the factor applied to the view distance. */

@@ -5,6 +5,7 @@
 #include "graphics/Bitmap.h"
 #include "renderers/utils/FrameBuffer.h"
 #include "renderers/utils/GLContext.h"
+#include "renderers/utils/FogShader.h"
 #include "renderers/utils/GLResourceManager.h"
 #include "renderers/utils/Shader.h"
 #include "renderers/utils/TerrainDepthWorker.h"
@@ -218,7 +219,7 @@ namespace massif {
         if (shaderSource.empty()) {
             return false;
         }
-        std::shared_ptr<Shader> shader = updateSurfaceShader(shaderSource, glResourceManager);
+        std::shared_ptr<Shader> shader = updateSurfaceShader(shaderSource, fog.shaderSource, glResourceManager);
         if (!shader) {
             return false;
         }
@@ -253,14 +254,7 @@ namespace massif {
         if ((loc = glGetUniformLocation(progId, "u_ambientIntensity")) >= 0) {
             glUniform1f(loc, lighting.ambientIntensity);
         }
-        if ((loc = glGetUniformLocation(progId, "u_fogColor")) >= 0) {
-            glUniform4f(loc, fog.color.getR() / 255.0f, fog.color.getG() / 255.0f, fog.color.getB() / 255.0f, fog.color.getA() / 255.0f);
-        }
-        if ((loc = glGetUniformLocation(progId, "u_fogRange")) >= 0) {
-            // v_dist is in metres (u_metersPerUnit), the resolved fog is in internal units.
-            float metersPerUnit = static_cast<float>(Const::EARTH_CIRCUMFERENCE / Const::WORLD_SIZE);
-            glUniform2f(loc, fog.startDistance * metersPerUnit, fog.distance * metersPerUnit);
-        }
+        FogShader::setUniforms(progId, fog.active() ? fog : ResolvedFog(), viewState);
         if ((loc = glGetUniformLocation(progId, "u_time")) >= 0) {
             glUniform1f(loc, std::chrono::duration_cast<std::chrono::duration<float> >(std::chrono::steady_clock::now() - _startTime).count());
         }
@@ -308,17 +302,20 @@ namespace massif {
         return result;
     }
 
-    std::shared_ptr<Shader> TerrainRenderer::updateSurfaceShader(const std::string& shaderSource, const std::shared_ptr<GLResourceManager>& glResourceManager) {
-        if (_surfaceShader && _surfaceShader->isValid() && _surfaceShaderSource == shaderSource) {
+    std::shared_ptr<Shader> TerrainRenderer::updateSurfaceShader(const std::string& shaderSource, const std::string& fogShaderSource, const std::shared_ptr<GLResourceManager>& glResourceManager) {
+        bool same = _surfaceShaderSource == shaderSource && _fogShaderSource == fogShaderSource;
+        if (_surfaceShader && _surfaceShader->isValid() && same) {
             return _surfaceShader;
         }
-        if (_surfaceShaderFailed && _surfaceShaderSource == shaderSource) {
+        if (_surfaceShaderFailed && same) {
             return std::shared_ptr<Shader>();
         }
 
         _surfaceShaderSource = shaderSource;
+        _fogShaderSource = fogShaderSource;
         _surfaceShaderFailed = false;
-        std::shared_ptr<Shader> shader = glResourceManager->create<Shader>("terrainsurface", TERRAIN_SURFACE_VERTEX_SHADER, TERRAIN_SURFACE_FRAGMENT_SHADER_PREFIX + shaderSource + TERRAIN_SURFACE_FRAGMENT_SHADER_MAIN);
+        std::shared_ptr<Shader> shader = glResourceManager->create<Shader>("terrainsurface", TERRAIN_SURFACE_VERTEX_SHADER,
+                                                                           TERRAIN_SURFACE_FRAGMENT_SHADER_PREFIX + FogShader::buildBlock(fogShaderSource) + shaderSource + TERRAIN_SURFACE_FRAGMENT_SHADER_MAIN);
         if (!shader || shader->getProgId() == 0) {
             Log::Error("TerrainRenderer::updateSurfaceShader: Terrain surface shader failed to compile, falling back to the background bitmap/color");
             _surfaceShaderFailed = true;
@@ -1047,25 +1044,18 @@ namespace massif {
         uniform vec4 u_sunColor;
         uniform float u_sunIntensity;
         uniform float u_ambientIntensity;
-        uniform vec4 u_fogColor;
-        uniform vec2 u_fogRange;
         uniform float u_time;
         uniform float u_zoom;
         uniform vec2 u_resolution;
-
-        // How much of the fog colour a point at 'dist' metres takes, 0 when no fog is configured.
-        float fogAmount(float dist) {
-            if (u_fogColor.a <= 0.0 || u_fogRange.y <= u_fogRange.x) {
-                return 0.0;
-            }
-            return clamp((dist - u_fogRange.x) / (u_fogRange.y - u_fogRange.x), 0.0, 1.0) * u_fogColor.a;
-        }
     )GLSL";
 
     const std::string TerrainRenderer::TERRAIN_SURFACE_FRAGMENT_SHADER_MAIN = R"GLSL(
         void main() {
             vec4 color = surfaceColor();
-            gl_FragColor = vec4(color.rgb * color.a, color.a);
+            // The surface used to fog itself, through a private ramp in metres that agreed with
+            // nothing else in the frame. It now goes through the one shared block, so a custom fog
+            // shader reaches the relief surface too.
+            gl_FragColor = applyFog(vec4(color.rgb * color.a, color.a));
         }
     )GLSL";
 

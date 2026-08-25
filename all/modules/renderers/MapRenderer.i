@@ -32,6 +32,7 @@
 %ignore massif::MapRenderer::deinit;
 %ignore massif::MapRenderer::getLayers;
 %ignore massif::MapRenderer::getGLResourceManager;
+%ignore massif::MapRenderer::getFrameFog;
 %ignore massif::MapRenderer::getBillboardDrawDatas;
 %ignore massif::MapRenderer::getProjectionSurface;
 %ignore massif::MapRenderer::getAnimationHandler;

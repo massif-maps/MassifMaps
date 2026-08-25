@@ -6,6 +6,12 @@ namespace massif {
 
     SkyOptions::SkyOptions() :
         _enabled(true),
+        _type(SkyType::SKY_TYPE_ATMOSPHERE),
+        _quality(SkyQuality::SKY_QUALITY_MEDIUM),
+        _atmosphereSunIntensity(10.0f),
+        _atmosphereColorARGB(Color(255, 255, 255, 255).getARGB()),
+        _haloColorARGB(Color(255, 255, 255, 255).getARGB()),
+        _atmosphereLuminance(1.0f),
         _skyColorARGB(Color(58, 116, 196, 255).getARGB()),
         _horizonColorARGB(Color(171, 206, 236, 255).getARGB()),
         _groundColorARGB(Color(171, 206, 236, 255).getARGB()),
@@ -28,6 +34,68 @@ namespace massif {
     void SkyOptions::setEnabled(bool enabled) {
         if (_enabled.exchange(enabled) != enabled) {
             notifyOptionChanged("Enabled");
+        }
+    }
+
+    SkyType::SkyType SkyOptions::getType() const {
+        return static_cast<SkyType::SkyType>(_type.load());
+    }
+
+    void SkyOptions::setType(SkyType::SkyType type) {
+        if (_type.exchange(static_cast<int>(type)) != static_cast<int>(type)) {
+            notifyOptionChanged("Type");
+        }
+    }
+
+    SkyQuality::SkyQuality SkyOptions::getQuality() const {
+        return static_cast<SkyQuality::SkyQuality>(_quality.load());
+    }
+
+    void SkyOptions::setQuality(SkyQuality::SkyQuality quality) {
+        if (_quality.exchange(static_cast<int>(quality)) != static_cast<int>(quality)) {
+            notifyOptionChanged("Quality");
+        }
+    }
+
+    float SkyOptions::getAtmosphereSunIntensity() const {
+        return _atmosphereSunIntensity.load();
+    }
+
+    void SkyOptions::setAtmosphereSunIntensity(float intensity) {
+        float clamped = std::max(0.0f, intensity);
+        if (_atmosphereSunIntensity.exchange(clamped) != clamped) {
+            notifyOptionChanged("AtmosphereSunIntensity");
+        }
+    }
+
+    Color SkyOptions::getAtmosphereColor() const {
+        return Color(_atmosphereColorARGB.load());
+    }
+
+    void SkyOptions::setAtmosphereColor(const Color& color) {
+        if (_atmosphereColorARGB.exchange(color.getARGB()) != color.getARGB()) {
+            notifyOptionChanged("AtmosphereColor");
+        }
+    }
+
+    Color SkyOptions::getHaloColor() const {
+        return Color(_haloColorARGB.load());
+    }
+
+    void SkyOptions::setHaloColor(const Color& color) {
+        if (_haloColorARGB.exchange(color.getARGB()) != color.getARGB()) {
+            notifyOptionChanged("HaloColor");
+        }
+    }
+
+    float SkyOptions::getAtmosphereLuminance() const {
+        return _atmosphereLuminance.load();
+    }
+
+    void SkyOptions::setAtmosphereLuminance(float luminance) {
+        float clamped = std::max(0.01f, luminance);
+        if (_atmosphereLuminance.exchange(clamped) != clamped) {
+            notifyOptionChanged("AtmosphereLuminance");
         }
     }
 

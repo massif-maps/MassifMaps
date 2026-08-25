@@ -10,6 +10,7 @@
 #include "projections/ProjectionSurface.h"
 #include "renderers/MapRenderer.h"
 #include "renderers/components/RayIntersectedElement.h"
+#include "renderers/utils/FogShader.h"
 #include "renderers/utils/GLResourceManager.h"
 #include "renderers/utils/Shader.h"
 #include "renderers/utils/Texture.h"
@@ -54,20 +55,30 @@ namespace massif {
     }
 
     bool CelestialRenderer::initializeRenderer() {
-        if (_spriteShader && _arcShader) {
-            return true;
-        }
         std::shared_ptr<MapRenderer> mapRenderer = _mapRenderer.lock();
         if (!mapRenderer) {
             return false;
+        }
+        // The custom fog shader is compiled into both programs, so a change to it has to rebuild.
+        std::string fogSource = FogShader::source(mapRenderer->getOptions());
+        if (_spriteShader && _arcShader && _fogShaderSource == fogSource) {
+            return true;
         }
         std::shared_ptr<GLResourceManager> resourceManager = mapRenderer->getGLResourceManager();
         if (!resourceManager) {
             return false;
         }
-        _spriteShader = resourceManager->create<Shader>("celestial_sprite", SPRITE_VERTEX_SHADER, SPRITE_FRAGMENT_SHADER);
-        _arcShader = resourceManager->create<Shader>("celestial_arc", ARC_VERTEX_SHADER, ARC_FRAGMENT_SHADER);
+        _fogShaderSource = fogSource;
+        std::string fogBlock = FogShader::buildBlock(fogSource);
+        _spriteShader = resourceManager->create<Shader>("celestial_sprite", SPRITE_VERTEX_SHADER, SPRITE_FRAGMENT_SHADER_PREFIX + fogBlock + CELESTIAL_FRAGMENT_SHADER_FOG + SPRITE_FRAGMENT_SHADER_MAIN);
+        _arcShader = resourceManager->create<Shader>("celestial_arc", ARC_VERTEX_SHADER, ARC_FRAGMENT_SHADER_PREFIX + fogBlock + CELESTIAL_FRAGMENT_SHADER_FOG + ARC_FRAGMENT_SHADER_MAIN);
         return static_cast<bool>(_spriteShader) && static_cast<bool>(_arcShader);
+    }
+
+    void CelestialRenderer::setupFogUniforms(GLuint progId, const ViewState& viewState) const {
+        if (std::shared_ptr<MapRenderer> mapRenderer = _mapRenderer.lock()) {
+            FogShader::setUniforms(progId, mapRenderer->getFrameFog(), viewState);
+        }
     }
 
     bool CelestialRenderer::resolveWorldPos(const std::shared_ptr<CelestialObject>& object, const ViewState& viewState, cglib::vec3<double>& worldPos, double& distance) const {
@@ -185,6 +196,7 @@ namespace massif {
         GLuint a_texCoord = _spriteShader->getAttribLoc("a_texCoord");
         GLuint a_color = _spriteShader->getAttribLoc("a_color");
         glUniformMatrix4fv(_spriteShader->getUniformLoc("u_mvpMat"), 1, GL_FALSE, viewState.getRTEModelviewProjectionMat().data());
+        setupFogUniforms(_spriteShader->getProgId(), viewState);
         glUniform1i(_spriteShader->getUniformLoc("u_tex"), 0);
         glActiveTexture(GL_TEXTURE0);
         glEnableVertexAttribArray(a_coord);
@@ -298,6 +310,7 @@ namespace massif {
                 glUseProgram(_arcShader->getProgId());
                 a_coord = _arcShader->getAttribLoc("a_coord");
                 glUniformMatrix4fv(_arcShader->getUniformLoc("u_mvpMat"), 1, GL_FALSE, viewState.getRTEModelviewProjectionMat().data());
+                setupFogUniforms(_arcShader->getProgId(), viewState);
                 glEnableVertexAttribArray(a_coord);
                 bound = true;
             }
@@ -459,7 +472,7 @@ namespace massif {
         }
     )GLSL";
 
-    const std::string CelestialRenderer::SPRITE_FRAGMENT_SHADER = R"GLSL(
+    const std::string CelestialRenderer::SPRITE_FRAGMENT_SHADER_PREFIX = R"GLSL(
         #ifdef GL_FRAGMENT_PRECISION_HIGH
         precision highp float;
         #else
@@ -470,6 +483,20 @@ namespace massif {
         uniform float u_softness;
         varying vec2 v_texCoord;
         varying vec4 v_color;
+    )GLSL";
+
+    // A sky object is at infinity like the sky behind it, so it takes the ANGULAR haze - a setting
+    // sun dims into the band rather than staying crisp over a hazed horizon. These are drawn with
+    // straight alpha, not premultiplied, so the colour goes through the premultiplied contract and
+    // comes back out.
+    const std::string CelestialRenderer::CELESTIAL_FRAGMENT_SHADER_FOG = R"GLSL(
+        vec4 fogCelestial(vec4 color) {
+            vec4 premul = skyFog(vec4(color.rgb * color.a, color.a), normalize(fogRayVec()));
+            return vec4(premul.a > 0.0 ? premul.rgb / premul.a : premul.rgb, premul.a);
+        }
+    )GLSL";
+
+    const std::string CelestialRenderer::SPRITE_FRAGMENT_SHADER_MAIN = R"GLSL(
         void main() {
             vec4 color = v_color;
             if (u_hasTex > 0.5) {
@@ -480,7 +507,7 @@ namespace massif {
                 float d = length(v_texCoord - vec2(0.5)) * 2.0;
                 color.a *= 1.0 - smoothstep(1.0 - u_softness, 1.0, d);
             }
-            gl_FragColor = color;
+            gl_FragColor = fogCelestial(color);
         }
     )GLSL";
 
@@ -492,15 +519,18 @@ namespace massif {
         }
     )GLSL";
 
-    const std::string CelestialRenderer::ARC_FRAGMENT_SHADER = R"GLSL(
+    const std::string CelestialRenderer::ARC_FRAGMENT_SHADER_PREFIX = R"GLSL(
         #ifdef GL_FRAGMENT_PRECISION_HIGH
         precision highp float;
         #else
         precision mediump float;
         #endif
         uniform vec4 u_color;
+    )GLSL";
+
+    const std::string CelestialRenderer::ARC_FRAGMENT_SHADER_MAIN = R"GLSL(
         void main() {
-            gl_FragColor = u_color;
+            gl_FragColor = fogCelestial(u_color);
         }
     )GLSL";
 

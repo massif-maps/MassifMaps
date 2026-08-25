@@ -81,7 +81,8 @@ namespace massif {
         void drawBatch(const ViewState& viewState);
     
         static const std::string LINE_VERTEX_SHADER;
-        static const std::string LINE_FRAGMENT_SHADER;
+        static const std::string LINE_FRAGMENT_SHADER_PREFIX;
+        static const std::string LINE_FRAGMENT_SHADER_MAIN;
 
         static const unsigned int TEXTURE_CACHE_SIZE;
 
@@ -102,6 +103,7 @@ namespace massif {
     
         std::shared_ptr<BitmapTextureCache> _textureCache;
         std::shared_ptr<Shader> _shader;
+        std::string _fogShaderSource;   // the fog block _shader was built with
         GLuint _a_color;
         GLuint _a_coord;
         GLuint _a_normal;

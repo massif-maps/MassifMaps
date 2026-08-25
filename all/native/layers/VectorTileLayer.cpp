@@ -622,6 +622,13 @@ namespace massif {
         readColor(mapSettings->fogSpaceColor, env.fogSpaceColor);
         readFloat(mapSettings->fogHorizonBlend, env.fogHorizonBlend);
         readFloat(mapSettings->fogStarIntensity, env.fogStarIntensity);
+        readFloat(mapSettings->fogVerticalRangeStart, env.fogVerticalRangeStart);
+        readFloat(mapSettings->fogVerticalRangeEnd, env.fogVerticalRangeEnd);
+        readFloat(mapSettings->skyType, env.skyType);
+        readFloat(mapSettings->skyAtmosphereSunIntensity, env.skyAtmosphereSunIntensity);
+        readColor(mapSettings->skyAtmosphereColor, env.skyAtmosphereColor);
+        readColor(mapSettings->skyAtmosphereHaloColor, env.skyAtmosphereHaloColor);
+        readFloat(mapSettings->skyAtmosphereLuminance, env.skyAtmosphereLuminance);
         readFloat(mapSettings->terrainMaxVisibleDistance, env.terrainMaxVisibleDistance);
         if (mapSettings->terrainLighting.isDefined()) {
             env.terrainLightingEnabled = TileRenderer::evaluateFloatFunc(mapSettings->terrainLighting.getFunction(context), viewState) != 0.0f;

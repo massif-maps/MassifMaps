@@ -1410,8 +1410,14 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
             return false; // safety check, should never happen
         }
 
+        // Null once the surface is gone - a frame still in flight has nothing to create into (#178).
+        std::shared_ptr<GLResourceManager> glResourceManager = mapRenderer->getGLResourceManager();
+        if (!glResourceManager) {
+            return false;
+        }
+
         Log::Debug("TileRenderer: Initializing renderer");
-        _vtRenderer = mapRenderer->getGLResourceManager()->create<VTRenderer>(_tileTransformer);
+        _vtRenderer = glResourceManager->create<VTRenderer>(_tileTransformer);
 
         if (std::shared_ptr<vt::GLTileRenderer> tileRenderer = _vtRenderer->getTileRenderer()) {
             tileRenderer->setVisibleTiles(_tiles);

@@ -119,9 +119,14 @@ namespace massif {
         }
         _fogShaderSource = fogSource;
 
+        // Null once the surface is gone - a frame still in flight has nothing to create into (#178).
+        std::shared_ptr<GLResourceManager> glResourceManager;
         if (auto mapRenderer = _mapRenderer.lock()) {
+            glResourceManager = mapRenderer->getGLResourceManager();
+        }
+        if (glResourceManager) {
             // Shader and textures must be reloaded
-            _shader = mapRenderer->getGLResourceManager()->create<Shader>("solid", SOLID_VERTEX_SHADER, SOLID_FRAGMENT_SHADER_PREFIX + FogShader::buildBlock(fogSource) + SOLID_FRAGMENT_SHADER_MAIN);
+            _shader = glResourceManager->create<Shader>("solid", SOLID_VERTEX_SHADER, SOLID_FRAGMENT_SHADER_PREFIX + FogShader::buildBlock(fogSource) + SOLID_FRAGMENT_SHADER_MAIN);
         
             // Get shader variables locations
             _u_mvpMat = _shader->getUniformLoc("u_mvpMat");
@@ -133,10 +138,10 @@ namespace massif {
             _a_texCoord = _shader->getAttribLoc("a_texCoord");
 
             if (_bitmap) {
-                _bitmapTex = mapRenderer->getGLResourceManager()->create<Texture>(_bitmap, true, true);
+                _bitmapTex = glResourceManager->create<Texture>(_bitmap, true, true);
             } else {
                 auto defaultBitmap = std::make_shared<Bitmap>(DEFAULT_BITMAP, 1, 1, ColorFormat::COLOR_FORMAT_RGBA, 4);
-                _bitmapTex = mapRenderer->getGLResourceManager()->create<Texture>(defaultBitmap, true, true);
+                _bitmapTex = glResourceManager->create<Texture>(defaultBitmap, true, true);
             }
         }
 

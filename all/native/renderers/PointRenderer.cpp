@@ -282,10 +282,15 @@ namespace massif {
         }
         _fogShaderSource = fogSource;
 
+        // Null once the surface is gone - a frame still in flight has nothing to create into (#178).
+        std::shared_ptr<GLResourceManager> glResourceManager;
         if (auto mapRenderer = _mapRenderer.lock()) {
-            _textureCache = mapRenderer->getGLResourceManager()->create<BitmapTextureCache>(TEXTURE_CACHE_SIZE);
+            glResourceManager = mapRenderer->getGLResourceManager();
+        }
+        if (glResourceManager) {
+            _textureCache = glResourceManager->create<BitmapTextureCache>(TEXTURE_CACHE_SIZE);
 
-            _shader = mapRenderer->getGLResourceManager()->create<Shader>("point", POINT_VERTEX_SHADER, POINT_FRAGMENT_SHADER_PREFIX + FogShader::buildBlock(fogSource) + POINT_FRAGMENT_SHADER_MAIN);
+            _shader = glResourceManager->create<Shader>("point", POINT_VERTEX_SHADER, POINT_FRAGMENT_SHADER_PREFIX + FogShader::buildBlock(fogSource) + POINT_FRAGMENT_SHADER_MAIN);
     
             // Get shader variables locations
             _a_color = _shader->getAttribLoc("a_color");

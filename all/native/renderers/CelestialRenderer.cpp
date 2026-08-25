@@ -242,7 +242,11 @@ namespace massif {
 
             std::shared_ptr<Texture> texture;
             if (batchBitmap) {
-                texture = mapRenderer->getGLResourceManager()->create<Texture>(batchBitmap, false, false);
+                // Null once the surface is gone - a frame still in flight has nothing to create
+                // into (#178). The batch then draws untextured rather than crashing.
+                if (std::shared_ptr<GLResourceManager> glResourceManager = mapRenderer->getGLResourceManager()) {
+                    texture = glResourceManager->create<Texture>(batchBitmap, false, false);
+                }
             }
             glUniform1f(_spriteShader->getUniformLoc("u_hasTex"), texture ? 1.0f : 0.0f);
             glUniform1f(_spriteShader->getUniformLoc("u_softness"), std::max(0.001f, batchSoftness));

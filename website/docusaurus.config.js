@@ -5,8 +5,8 @@ import {themes as prismThemes} from 'prism-react-renderer';
 const config = {
   title: 'Massif Maps',
   tagline: 'Open, multi-platform maps & location services for Android and iOS — desktop and web next',
-  // ?v=2 busts the browser's favicon cache — it keys on the URL, not the bytes.
-  favicon: 'img/favicon.svg?v=2',
+  // ?v=3 busts the browser's favicon cache — it keys on the URL, not the bytes.
+  favicon: 'img/favicon.svg?v=3',
 
   url: 'https://massif-maps.github.io',
   baseUrl: '/MassifMaps/',
@@ -79,7 +79,8 @@ const config = {
   themeConfig:
     /** @type {import('@docusaurus/preset-classic').ThemeConfig} */
     ({
-      image: 'img/social-card.svg',
+      // PNG, not the SVG beside it: Twitter, Slack and LinkedIn do not rasterise an SVG og:image.
+      image: 'img/social-card.png',
       colorMode: {
         defaultMode: 'light',
         respectPrefersColorScheme: true,

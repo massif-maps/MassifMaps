@@ -11,3 +11,7 @@ boost*
 .gradle
 # Host test build tree
 /tests/build
+# scripts/gen-branding.mjs's only dependency, installed on demand
+/scripts/node_modules
+/scripts/package.json
+/scripts/package-lock.json

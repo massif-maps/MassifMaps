@@ -38,6 +38,9 @@
 // Read-only attributes: the camera is MOVED by the methods below, never by writing a property, so
 // that one flight is one command instead of four racing animations (see BaseMapView::moveTo).
 %attributeval(massif::BaseMapView, massif::MapPos, FocusPos, getFocusPos)
+// Where the camera IS, as opposed to what it looks at. At a low tilt the two are kilometres apart,
+// and a binding cannot derive one from the other without the projection surface.
+%attributeval(massif::BaseMapView, massif::MapPos, CameraPos, getCameraPos)
 %attribute(massif::BaseMapView, float, Zoom, getZoom)
 %attribute(massif::BaseMapView, float, Rotation, getRotation)
 %attribute(massif::BaseMapView, float, Tilt, getTilt)

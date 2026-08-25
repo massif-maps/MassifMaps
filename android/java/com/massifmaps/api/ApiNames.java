@@ -147,6 +147,8 @@ public final class ApiNames {
     public static final MassifObject.Key<Double> CAMERA_CLAMP_DURATION = MassifObject.key("cameraClampDuration");
     /** Returns the camera terrain clearance: the minimum height the camera is kept above the terrain surface, in meters. */
     public static final MassifObject.Key<Double> CAMERA_CLEARANCE = MassifObject.key("cameraClearance");
+    /** Returns the position the camera itself is above, which at a low tilt is nowhere near the focus - the focus is what the camera looks AT, kilometres out in front of it. This is the viewpoint: where a first-person camera stands, and where a top-down view has to be centred to come back to the same place. */
+    public static final MassifObject.Key<String> CAMERA_POS = MassifObject.key("cameraPos");
     public static final MassifObject.Key<Long> CAPACITY = MassifObject.key("capacity");
     /** Returns the CartoCSS string used for the style. */
     public static final MassifObject.Key<String> CARTO_CSS = MassifObject.key("cartoCSS");

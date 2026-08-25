@@ -107,6 +107,14 @@ namespace massif {
         return _options->getBaseProjection()->fromInternal(mapPosInternal);
     }
     
+    MapPos BaseMapView::getCameraPos() const {
+        MapPos mapPosInternal = _options->getProjectionSurface()->calculateMapPos(_mapRenderer->getViewState().getCameraPos());
+        // The GROUND under the camera. calculateMapPos carries the height through, and a focus
+        // position with a height in it moves the view - setFocusPos would frame somewhere else.
+        mapPosInternal.setZ(0);
+        return _options->getBaseProjection()->fromInternal(mapPosInternal);
+    }
+
     float BaseMapView::getRotation() const {
         return _mapRenderer->getViewState().getRotation();
     }

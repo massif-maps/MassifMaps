@@ -73,6 +73,7 @@ static const char* const kNames[] = {
     "cameraChanged",
     "cameraClampDuration",
     "cameraClearance",
+    "cameraPos",
     "capacity",
     "cartoCSS",
     "cartoCSSStyle",

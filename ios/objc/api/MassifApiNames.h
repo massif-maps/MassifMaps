@@ -147,6 +147,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyCameraChanged;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyCameraClampDuration;
 /** Returns the camera terrain clearance: the minimum height the camera is kept above the terrain surface, in meters. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyCameraClearance;
+/** Returns the position the camera itself is above, which at a low tilt is nowhere near the focus - the focus is what the camera looks AT, kilometres out in front of it. This is the viewpoint: where a first-person camera stands, and where a top-down view has to be centred to come back to the same place. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyCameraPos;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyCapacity;
 /** Returns the CartoCSS string used for the style. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyCartoCSS;

@@ -103,6 +103,14 @@ public final class MapCamera {
         return view.getPos("focusPos");
     }
 
+    /**
+     * Where the camera IS, not what it looks at. At a low tilt the focus is kilometres out in front
+     * of the viewpoint, so this is what a top-down view centres on to come back to the same place.
+     */
+    public Position eyePosition() {
+        return view.getPos("cameraPos");
+    }
+
     public float zoom() {
         return (float) view.getDouble("zoom", 0);
     }

@@ -19,6 +19,19 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
+    <!-- The map is attached and drawing before the example has run: onStart is on a worker thread,
+         and it builds layers before it frames the camera, so the default camera - the whole world
+         at zoom 0 - would show until then. Hidden with the spinner. -->
+    <View
+        android:id="@+id/mapCover"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="?android:attr/windowBackground"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
     <!-- Back and "view source", over the map. -->
     <LinearLayout
         android:id="@+id/exampleBar"
@@ -64,6 +77,17 @@
             app:icon="@drawable/ic_code" />
 
     </LinearLayout>
+
+    <!-- Sliders, in their own row ABOVE the scrolling one: a horizontal scroll container steals
+         the drag, so a slider inside it cannot be moved at all. -->
+    <LinearLayout
+        android:id="@+id/sliders"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp"
+        app:layout_constraintBottom_toTopOf="@id/controlScroll" />
 
     <!-- The example's own controls, added at runtime by ExampleActivity.button/toggle. -->
     <HorizontalScrollView

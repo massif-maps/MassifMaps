@@ -11,6 +11,7 @@ import com.massifmaps.components.SkyOptions;
 import com.massifmaps.components.SkyQuality;
 import com.massifmaps.components.SkyType;
 import com.massifmaps.components.FogOptions;
+import com.massifmaps.components.TerrainFlattenMode;
 import com.massifmaps.components.TerrainOptions;
 import com.massifmaps.api.MassifApi;
 import com.massifmaps.api.MassifInterop;
@@ -1395,6 +1396,9 @@ public class DemoMap {
         terrainOptions.setAutoFlattenParallax(DemoConfig.AUTO_FLATTEN_PARALLAX);
         terrainOptions.setAutoFlattenTilt(DemoConfig.AUTO_FLATTEN_TILT);
         terrainOptions.setAutoFlattenDuration(DemoConfig.AUTO_FLATTEN_MS / 1000f);
+        terrainOptions.setFlattenMode(DemoConfig.TERRAIN_FULL_SWITCH
+            ? TerrainFlattenMode.TERRAIN_FLATTEN_MODE_FULL
+            : TerrainFlattenMode.TERRAIN_FLATTEN_MODE_RENDER);
         terrainOptions.setMeshResolution(DemoConfig.TERRAIN_MESH_RESOLUTION);
         terrainOptions.setCameraClearance(DemoConfig.TERRAIN_CAMERA_CLEARANCE);
         terrainOptions.setDrapeFillsEnabled(DemoConfig.TERRAIN_DRAPE_FILLS);

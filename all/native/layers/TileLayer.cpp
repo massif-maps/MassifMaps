@@ -216,7 +216,21 @@ namespace massif {
     bool TileLayer::isUpdateInProgress() const {
         return !_fetchingTileTasks.getAll().empty();
     }
-    
+
+    bool TileLayer::isTerrainDecodeSettled() {
+        if (_terrainDecodeSettled) {
+            return true;
+        }
+        // A cull is running, or a visible tile is still being fetched. The invalidation happens
+        // inside loadData, with _calculatingTiles already set, so this never reads settled in the
+        // window before the fetch list exists.
+        if (_calculatingTiles || _fetchingTileTasks.getVisibleCount() != 0) {
+            return false;
+        }
+        _terrainDecodeSettled = true;
+        return true;
+    }
+
     TileLayer::DataSourceListener::DataSourceListener(const std::shared_ptr<TileLayer>& layer) :
         _layer(layer)
     {
@@ -310,7 +324,9 @@ namespace massif {
             if (auto options = getOptions()) {
                 terrainOptions = options->getTerrainOptions();
             }
-            bool terrainEnabled = terrainOptions && terrainOptions->isEnabled();
+            // The DECODE state, not isEnabled(): with TerrainFlattenMode FULL a flat map decodes as
+            // a plain 2D one, and the switch only ever moves this while the map IS flat.
+            bool terrainEnabled = terrainOptions && terrainOptions->isDecodeActive();
             int terrainMeshResolution = terrainOptions ? terrainOptions->getMeshResolution() : 0;
             int terrainMinZoom = terrainOptions ? terrainOptions->getMinZoom() : 0;
             // Fills stay subdivided even under draping, because draping is decided per tile at
@@ -323,7 +339,12 @@ namespace massif {
             // NOT the exaggeration: only the GPU reads it (via the elevation texture's
             // metersToInternal), so comparing it here re-decoded the whole map on every 'expand' frame.
             if (_terrainOptions.lock() != terrainOptions || _terrainEnabled != terrainEnabled || _terrainMeshResolution != terrainMeshResolution || _terrainMinZoom != terrainMinZoom || _terrainSourceDensity != terrainSourceDensity || _terrainSourceDensityLines != terrainSourceDensityLines) {
-                clearTileCaches(true);
+                // Keep the visible tiles ON SCREEN and re-fetch them, rather than clear them: the
+                // 2D/3D switch only changes this while the map is flat, where the old tesselation
+                // draws exactly the same picture. Clearing them blanks the map for a whole decode.
+                invalidateTiles(false);
+                clearTiles(true);
+                _terrainDecodeSettled = false;
                 resetTileTransformer();
                 _terrainOptions = terrainOptions;
                 _terrainEnabled = terrainEnabled;
@@ -367,15 +388,17 @@ namespace massif {
             float viewDistanceFactor = 0.0f;
             float lodFactor = 0.0f;
             int coarsening = 0;
-            // Auto-flattening switches the terrain LOD and the overzoom targets off without touching
-            // the decoded tiles, so it belongs here and not in the cache check above.
+            // The DECODE state, not the render one: the tile set is what 3D is PREPARED with, and
+            // the 2D/3D switch waits for it before the terrain rises. Following the render state
+            // instead re-culls at the instant the terrain appears, which is the tile set arriving
+            // late over a map that is already 3D.
             bool terrainActive = false;
             if (auto options = getOptions()) {
                 lodFactor = options->getTileLODFactor();
                 if (auto terrainOptions = options->getTerrainOptions()) {
                     viewDistanceFactor = terrainOptions->getViewDistanceFactor();
                     coarsening = terrainOptions->getMaxTileZoomCoarsening();
-                    terrainActive = terrainOptions->isActive();
+                    terrainActive = terrainOptions->isDecodeActive();
                 }
             }
             if (_terrainViewDistanceFactor != viewDistanceFactor || _tileLODFactor != lodFactor || _terrainCoarsening != coarsening || _terrainActive != terrainActive) {
@@ -612,7 +635,7 @@ namespace massif {
         _terrainOverzoomTargets = false;
         if (auto options = getOptions()) {
             if (auto terrainOptions = options->getTerrainOptions()) {
-                if (terrainOptions->isActive()) {
+                if (terrainOptions->isDecodeActive()) {
                     // Terrain mode: allow target tiles BEYOND the data source maximum
                     // zoom (fed from ancestor tiles by the regular overzoom machinery).
                     // The tile surfaces are the terrain depth occluders and their
@@ -671,7 +694,7 @@ namespace massif {
         _lodElevationManager.reset();
         if (auto options = getOptions()) {
             if (auto terrainOptions = options->getTerrainOptions()) {
-                if (terrainOptions->isActive()) {
+                if (terrainOptions->isDecodeActive()) {
                     if (auto elevationManager = terrainOptions->getElevationManager()) {
                         _lodElevationManager = elevationManager;
                         const cglib::vec3<double>& focusPos = cullState->getViewState().getFocusPos();
@@ -1160,7 +1183,7 @@ namespace massif {
                 tileTransformer = std::make_shared<vt::SphericalTileTransformer>(static_cast<float>(Const::WORLD_SIZE / Const::PI));
             }
             else if (auto terrainOptions = options->getTerrainOptions()) {
-                if (terrainOptions->isEnabled()) {
+                if (terrainOptions->isDecodeActive()) {
                     // The source-density flags must match the ones calculateDrawData compares
                     // against: they decide the tesselation the tiles in the cache were built with,
                     // so a mismatch leaves tiles decoded for the other mode in place forever

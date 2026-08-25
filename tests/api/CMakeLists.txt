@@ -172,6 +172,8 @@ add_executable(api_tests
   AutoFlattenTest.cpp
   # Same: DrapeStackCuts.h is the ordering rule and nothing else.
   DrapeStackCutsTest.cpp
+  # Same: FlattenSwitch.h is the 2D/3D switch's phases and nothing else.
+  FlattenSwitchTest.cpp
   "${TEST_TABLE_DIR}/PropertyTable.inc"
   "${TEST_TABLE_DIR}/MethodDecls.inc"
   ${TEST_SDK_SOURCES})

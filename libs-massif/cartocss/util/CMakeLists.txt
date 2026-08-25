@@ -22,7 +22,12 @@ option(STATIC_LIBRARIES "Build the massif libraries as static archives" ON)
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   set(CMAKE_BUILD_TYPE MinSizeRel CACHE STRING "" FORCE)
 endif()
-if(NOT MSVC)
+# emcc reports itself as Clang but takes neither host linker dialect: -Wl,-dead_strip is Apple's,
+# and wasm-ld has no -s. It strips and dead-codes on its own, so -Oz is the whole knob here.
+if(EMSCRIPTEN)
+  add_compile_options(-Oz)
+  add_link_options(-Oz)
+elseif(NOT MSVC)
   add_compile_options(-ffunction-sections -fdata-sections)
   if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     add_compile_options(-flto=thin)
@@ -90,7 +95,28 @@ add_subdirectory("${LIBS_DIR}/pugixml" pugixml)
 add_subdirectory("${LIBS_DIR}/tess2" tess2)
 add_subdirectory("${LIBS_DIR}/zlib" zlib)
 
-add_executable(css2xml css2xml.cpp)
+set(TOOL_LIBRARIES cartocss mapnikvt vt pugixml tess2 brotli miniz mlt zlib freetype harfbuzz bidi)
+
+# The tool the npm package (@massif-maps/style-tools) wraps: one binary, one wasm module.
+add_executable(massif-style massif-style.cpp css2xml.cpp)
+target_link_libraries(massif-style ${TOOL_LIBRARIES})
+
+add_executable(css2xml css2xml_main.cpp css2xml.cpp)
+target_link_libraries(css2xml ${TOOL_LIBRARIES})
+
 add_executable(mvt2xml mvt2xml.cpp)
-target_link_libraries(css2xml cartocss mapnikvt vt pugixml tess2 brotli miniz mlt zlib freetype harfbuzz bidi)
-target_link_libraries(mvt2xml cartocss mapnikvt vt pugixml tess2 brotli miniz mlt zlib freetype harfbuzz bidi)
+target_link_libraries(mvt2xml ${TOOL_LIBRARIES})
+
+if(EMSCRIPTEN)
+  # NODERAWFS gives the C++ the real filesystem, so AssetLoader's fopen and pugixml's save_file
+  # work unchanged - at the price of a Node-only module, with no browser build.
+  target_link_options(massif-style PRIVATE
+    -sNODERAWFS=1
+    -sEXIT_RUNTIME=1
+    -sALLOW_MEMORY_GROWTH=1
+    -sMODULARIZE=1
+    -sEXPORT_ES6=1
+    -sINVOKE_RUN=0
+    -sEXPORTED_RUNTIME_METHODS=callMain)
+  set_target_properties(massif-style PROPERTIES SUFFIX ".mjs")
+endif()

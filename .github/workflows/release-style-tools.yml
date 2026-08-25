@@ -4,6 +4,14 @@ name: Release style tools CLI
 # See docs/contributing/style-tools.md for why the tool is split TypeScript + wasm.
 
 on:
+  # CI for the package: builds the wasm and runs the full smoke test. `publish` has no value on a
+  # pull_request event, so the publish job below cannot fire from here.
+  pull_request:
+    paths:
+      - 'tools/style-cli/**'
+      - 'scripts/gen-cartocss-properties.py'
+      - 'libs-massif'
+      - '.github/workflows/release-style-tools.yml'
   workflow_dispatch:
     inputs:
       version:
@@ -115,7 +123,7 @@ jobs:
         id: pack
         working-directory: ${{ env.PACKAGE_DIR }}
         run: |
-          npm version "${{ inputs.version }}" --no-git-tag-version --allow-same-version
+          npm version "${{ inputs.version || '0.0.0' }}" --no-git-tag-version --allow-same-version
           TARBALL=$(npm pack --silent)
           echo "tarball=${TARBALL}" >> "$GITHUB_OUTPUT"
 

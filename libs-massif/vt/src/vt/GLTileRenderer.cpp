@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <limits>
 
 namespace {
     const GLvoid* bufferGLOffset(int offset) {
@@ -1217,6 +1218,9 @@ namespace massif::vt {
         _drapeTexturePool.clear();
         _drapeTilesThisFrame.clear();
         _externalDrapeTiles.clear();
+        _drapeCoverageMasks.clear();
+        _drapeCoverageLayerMasks.clear();
+        _drapeMaskTexture = 0;
         _drapeFBO = 0;
     }
         
@@ -1968,6 +1972,14 @@ namespace massif::vt {
         // Fully transparent fog, or a zero range, means the style/app did not ask for any: the
         // programs are then built without it and cost nothing.
         return (_fogColor[3] > 0.0f && _fogDistance > _fogStartDistance ? FOG_FLAG : 0);
+    }
+
+    unsigned int GLTileRenderer::coverageFlag() const {
+        return _drapeCoveragePass ? COVERAGE_FLAG : 0;
+    }
+
+    unsigned int GLTileRenderer::drapeMaskFlag() const {
+        return _drapeMaskTexture != 0 ? DRAPE_MASK_FLAG : 0;
     }
 
     unsigned int GLTileRenderer::shadowReceiverFlags() const {
@@ -3104,6 +3116,16 @@ namespace massif::vt {
                     }
                 }
 
+                // A no-drape layer is drawn after the WHOLE drape composite, so without this it can
+                // only land on top of it. The mask is the coverage of the draped layers that come
+                // after it in the style order; where they paint, they win (#175).
+                _drapeMaskTexture = 0;
+                if (drapedTile && !isLayerDraped(renderLayer->layer)) {
+                    if (!resolveDrapeCoverageMask(renderLayer->targetTileId, renderLayer->layer->getLayerIndex(), _drapeMaskTexture, _drapeMaskUVTransform)) {
+                        _drapeMaskTexture = 0;
+                    }
+                }
+
                 for (const std::shared_ptr<TileGeometry>& geometry : renderLayer->layer->getGeometries()) {
                     // Draped fills/lines are baked into the drape texture already - unless the
                     // layer opted out of the bake (setNoDrapeLayerFilter), in which case this pass
@@ -3149,6 +3171,8 @@ namespace massif::vt {
                         }
                     }
                 }
+
+                _drapeMaskTexture = 0;
 
                 if (_terrainMode) {
                     if (contentDepthWrite) {
@@ -4206,9 +4230,31 @@ namespace massif::vt {
         if (_terrainPaint.enabled) {
             return renderTerrainPaint(targetTileId);
         }
+        return bakeDrapeUnits(targetTileId, std::numeric_limits<int>::min());
+    }
+
+    int GLTileRenderer::bakeDrapeCoverage(const TileId& targetTileId, int fromStyleLayerIdx) {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        resetProgramState();
+
+        if (_terrainPaint.enabled) {
+            // A paint SHADES the ground the other layers put in the drape; treating it as an
+            // occluder would hide every live layer under it outright. It contributes no coverage,
+            // so a contour below a paint stays visible - which is what it did before #175.
+            return 0;
+        }
+        _drapeCoveragePass = true;
+        int baked = bakeDrapeUnits(targetTileId, fromStyleLayerIdx);
+        _drapeCoveragePass = false;
+        return baked;
+    }
+
+    int GLTileRenderer::bakeDrapeUnits(const TileId& targetTileId, int fromStyleLayerIdx) {
         if (!_visibleRenderTiles) {
             return 0;
         }
+        _drapeMaskTexture = 0; // nothing baked is ever masked - the mask is what the bake produces
         int bakedPrimitives = 0;
         cglib::mat4x4<float> drapeOrtho;
         _drapeMVPOverride = &drapeOrtho;
@@ -4250,6 +4296,11 @@ namespace massif::vt {
                 if (!hasDrapeableContent(renderLayer)) {
                     continue;
                 }
+                // A coverage bake starts part-way up the style stack: only the units ABOVE the live
+                // layer being masked occlude it.
+                if (renderLayer.layer->getLayerIndex() < fromStyleLayerIdx) {
+                    continue;
+                }
                 // A render layer can be finer than the render tile that holds it (retained
                 // children blending out). Such a layer may sit entirely OUTSIDE this terrain tile
                 // - baking it anyway painted a neighbouring tile's content over this one - and
@@ -4285,6 +4336,68 @@ namespace massif::vt {
         _drapeMVPOverride = nullptr;
         checkGLError();
         return bakedPrimitives;
+    }
+
+    void GLTileRenderer::collectDrapeStackOrder(std::vector<std::pair<int, bool> >& units) const {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        if (_terrainPaint.enabled || !_visibleRenderTiles) {
+            return; // a paint has no style layers of its own; see bakeDrapeCoverage
+        }
+        // Layer INDEX order, which is the order the live pass and the bake both draw in. One entry
+        // per style layer, whatever how many tiles carry it: the cut is a property of the stack.
+        std::map<int, bool> drapedByLayer;
+        for (const RenderTile& renderTile : *_visibleRenderTiles) {
+            if (!renderTile.visible) {
+                continue;
+            }
+            for (auto it = renderTile.renderLayers.begin(); it != renderTile.renderLayers.end(); it++) {
+                const RenderTileLayer& renderLayer = it->second;
+                if (!renderLayer.layer) {
+                    continue;
+                }
+                bool draped = isLayerDraped(renderLayer.layer);
+                bool drapeable = !renderLayer.layer->getBackgrounds().empty() || !renderLayer.layer->getBitmaps().empty();
+                for (const std::shared_ptr<TileGeometry>& geometry : renderLayer.layer->getGeometries()) {
+                    drapeable = drapeable || isDrapeableGeometry(geometry->getType());
+                }
+                if (drapeable) {
+                    drapedByLayer[renderLayer.layer->getLayerIndex()] = draped;
+                }
+            }
+        }
+        units.insert(units.end(), drapedByLayer.begin(), drapedByLayer.end());
+    }
+
+    void GLTileRenderer::setDrapeCoverageMasks(const std::vector<std::map<TileId, GLuint> >& maskTextures, const std::map<int, int>& styleLayerMasks) {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        _drapeCoverageMasks = maskTextures;
+        _drapeCoverageLayerMasks = styleLayerMasks;
+    }
+
+    bool GLTileRenderer::resolveDrapeCoverageMask(const TileId& targetTileId, int styleLayerIdx, GLuint& texture, cglib::vec4<float>& uvTransform) const {
+        auto maskIt = _drapeCoverageLayerMasks.find(styleLayerIdx);
+        if (maskIt == _drapeCoverageLayerMasks.end() || maskIt->second < 0 || maskIt->second >= static_cast<int>(_drapeCoverageMasks.size())) {
+            return false;
+        }
+        const std::map<TileId, GLuint>& masks = _drapeCoverageMasks[maskIt->second];
+        for (auto it = masks.begin(); it != masks.end(); it++) {
+            // COARSER or equal only: a mask finer than the tile being drawn would need several
+            // textures in one draw. That draw keeps the pre-#175 behaviour and is drawn on top.
+            if (it->second == 0 || !tileCovers(it->first, targetTileId)) {
+                continue;
+            }
+            int deltaZoom = targetTileId.zoom - it->first.zoom;
+            float span = static_cast<float>(1 << deltaZoom);
+            float ix = static_cast<float>(targetTileId.x - (it->first.x << deltaZoom));
+            float iy = static_cast<float>(targetTileId.y - (it->first.y << deltaZoom));
+            // Mirrored y, as in the drape seed: texture v runs north, the XYZ tile y runs south.
+            texture = it->second;
+            uvTransform = cglib::vec4<float>(ix / span, (span - 1.0f - iy) / span, 1.0f / span, 1.0f / span);
+            return true;
+        }
+        return false;
     }
 
     void GLTileRenderer::setLabelOcclusionDepth(GLuint depthTexture, float occluderSize) {
@@ -4505,6 +4618,9 @@ namespace massif::vt {
         _drapeStaleTextures.clear();
         _drapeTilesThisFrame.clear();
         _externalDrapeTiles.clear();
+        _drapeCoverageMasks.clear();
+        _drapeCoverageLayerMasks.clear();
+        _drapeMaskTexture = 0;
         if (_drapeFBO != 0) {
             glDeleteFramebuffers(1, &_drapeFBO);
             _drapeFBO = 0;
@@ -5227,7 +5343,7 @@ namespace massif::vt {
 
             // Flat drape pass: bake the background onto the flat [0,1] grid (no displacement).
             unsigned int terrainFlag = flatDrape ? 0 : (terrainVTF ? TERRAIN_FLAG | TERRAIN_VTF_FLAG : (_terrainMode && !_terrainDepthWrite ? TERRAIN_FLAG : 0));
-            const ShaderProgram& shaderProgram = buildShaderProgram("tilebackground", backgroundVsh, backgroundFsh, LightingMode::GEOMETRY2D, RasterFilterMode::NONE, (background->getPattern() ? PATTERN_FLAG : 0) | terrainFlag | fogFlag());
+            const ShaderProgram& shaderProgram = buildShaderProgram("tilebackground", backgroundVsh, backgroundFsh, LightingMode::GEOMETRY2D, RasterFilterMode::NONE, (background->getPattern() ? PATTERN_FLAG : 0) | terrainFlag | fogFlag() | coverageFlag());
             useProgram(shaderProgram);
             setupFogUniforms(shaderProgram);
             if ((terrainFlag & TERRAIN_FLAG) != 0) {
@@ -5330,10 +5446,10 @@ namespace massif::vt {
             const ShaderProgram* shaderProgramPtr = nullptr;
             switch (bitmap->getType()) {
             case TileBitmap::Type::COLORMAP:
-                shaderProgramPtr = &buildShaderProgram("tilecolormap", colormapVsh, colormapFsh, LightingMode::GEOMETRY2D, _rasterFilterMode, PATTERN_FLAG | terrainFlag | lightFlags | fogFlag());
+                shaderProgramPtr = &buildShaderProgram("tilecolormap", colormapVsh, colormapFsh, LightingMode::GEOMETRY2D, _rasterFilterMode, PATTERN_FLAG | terrainFlag | lightFlags | fogFlag() | coverageFlag());
                 break;
             case TileBitmap::Type::NORMALMAP:
-                shaderProgramPtr = &buildShaderProgram("tilenormalmap", normalmapVsh, normalmapFsh, LightingMode::NORMALMAP, _rasterFilterMode, PATTERN_FLAG | terrainFlag | fogFlag());
+                shaderProgramPtr = &buildShaderProgram("tilenormalmap", normalmapVsh, normalmapFsh, LightingMode::NORMALMAP, _rasterFilterMode, PATTERN_FLAG | terrainFlag | fogFlag() | coverageFlag());
                 break;
             default:
                 return;
@@ -5462,10 +5578,10 @@ namespace massif::vt {
             shaderProgramPtr = &buildShaderProgram("point", pointVsh, pointFsh, LightingMode::GEOMETRY2D, RasterFilterMode::NONE, (styleParams.pattern ? PATTERN_FLAG : 0) | (styleParams.translate ? TRANSFORM_FLAG : 0) | (styleOffsetting ? OFFSET_FLAG : 0) | terrainFlag | (shadowReceiver ? shadowReceiverFlags() : 0) | lightFlag | fogFlag());
             break;
         case TileGeometry::Type::LINE:
-            shaderProgramPtr = &buildShaderProgram("line", lineVsh, lineFsh, LightingMode::GEOMETRY2D, RasterFilterMode::NONE, (styleParams.pattern ? PATTERN_FLAG : 0) | (styleParams.translate ? TRANSFORM_FLAG : 0) | (styleOffsetting ? OFFSET_FLAG : 0) | terrainFlag | (shadowReceiver ? shadowReceiverFlags() : 0) | lightFlag | fogFlag());
+            shaderProgramPtr = &buildShaderProgram("line", lineVsh, lineFsh, LightingMode::GEOMETRY2D, RasterFilterMode::NONE, (styleParams.pattern ? PATTERN_FLAG : 0) | (styleParams.translate ? TRANSFORM_FLAG : 0) | (styleOffsetting ? OFFSET_FLAG : 0) | terrainFlag | (shadowReceiver ? shadowReceiverFlags() : 0) | lightFlag | fogFlag() | coverageFlag() | drapeMaskFlag());
             break;
         case TileGeometry::Type::POLYGON:
-            shaderProgramPtr = &buildShaderProgram("polygon", polygonVsh, polygonFsh, LightingMode::GEOMETRY2D, RasterFilterMode::NONE, (styleParams.pattern ? PATTERN_FLAG : 0) | (styleParams.translate ? TRANSFORM_FLAG : 0) | terrainFlag | (shadowReceiver ? shadowReceiverFlags() : 0) | lightFlag | fogFlag());
+            shaderProgramPtr = &buildShaderProgram("polygon", polygonVsh, polygonFsh, LightingMode::GEOMETRY2D, RasterFilterMode::NONE, (styleParams.pattern ? PATTERN_FLAG : 0) | (styleParams.translate ? TRANSFORM_FLAG : 0) | terrainFlag | (shadowReceiver ? shadowReceiverFlags() : 0) | lightFlag | fogFlag() | coverageFlag() | drapeMaskFlag());
             break;
         case TileGeometry::Type::POLYGON3DGROUND:
             // Flat on the ground, so it takes the terrain displacement and the same clearance a
@@ -5722,6 +5838,16 @@ namespace massif::vt {
             glActiveTexture(GL_TEXTURE0);
             glUniform4f(shaderProgram.uniforms[U_SHADOWPARAMS], 1.0f / std::max(1, _terrainShadowMapSize), _terrainShadowStrength, _terrainShadowSoftness, 1.0f / _terrainShadowCascades);
             glUniform4f(shaderProgram.uniforms[U_SHADOWBIAS], _terrainShadowBiases[0], _terrainShadowBiases[1], _terrainShadowBiases[2], _terrainShadowBiases[3]);
+        }
+        // The location is -1 on a program built without DRAPE_MASK - a point, or any geometry the
+        // mask does not apply to - and binding a texture for it is pure waste.
+        if (_drapeMaskTexture != 0 && shaderProgram.uniforms[U_DRAPEMASKTEXTURE] >= 0) {
+            // Unit 3: 0 is the pattern, 1 the elevation texture, 2 the shadow map.
+            glActiveTexture(GL_TEXTURE3);
+            glBindTexture(GL_TEXTURE_2D, _drapeMaskTexture);
+            glUniform1i(shaderProgram.uniforms[U_DRAPEMASKTEXTURE], 3);
+            glActiveTexture(GL_TEXTURE0);
+            glUniform4f(shaderProgram.uniforms[U_DRAPEMASKUVTRANSFORM], _drapeMaskUVTransform(0), _drapeMaskUVTransform(1), _drapeMaskUVTransform(2), _drapeMaskUVTransform(3));
         }
         if (mode.shadowReceiver || mode.terrainLit) {
             // Undraped 2D content takes its N.L from the TERRAIN, not from its own (meaningless)

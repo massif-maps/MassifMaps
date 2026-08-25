@@ -86,7 +86,9 @@ namespace massif::vt {
         U_PAINTPARAMS,
         U_GROUNDCOLOR,
         U_LABELOCCLUSIONTEX,
-        U_LABELOCCLUSIONPARAMS
+        U_LABELOCCLUSIONPARAMS,
+        U_DRAPEMASKTEXTURE,
+        U_DRAPEMASKUVTRANSFORM
     };
 
     enum : unsigned int {
@@ -136,7 +138,14 @@ namespace massif::vt {
         GEOMETRY_LIGHT_FLAG = 4194304,
         // A label asks a screen depth texture of the 3D occluders whether its ANCHOR is behind
         // one, and fades the whole label out if it is (mapbox's model - see labelVsh).
-        LABEL_OCCLUSION_FLAG = 8388608
+        LABEL_OCCLUSION_FLAG = 8388608,
+        // The fragment writes its COVERAGE (alpha, replicated) instead of its colour. Used to
+        // accumulate the alpha of the draped units above a no-drape layer into its occlusion mask
+        // (docs/internals/rendering/04-terrain.md).
+        COVERAGE_FLAG = 16777216,
+        // ... and the other end: a live no-drape layer scales its alpha by 1 - mask, so the draped
+        // layers that come AFTER it in the style order win where they paint.
+        DRAPE_MASK_FLAG = 33554432
     };
 
     static const std::map<std::string, int> attribMap = {
@@ -217,7 +226,9 @@ namespace massif::vt {
         { "uPaintParams",       U_PAINTPARAMS },
         { "uGroundColor",       U_GROUNDCOLOR },
         { "uLabelOcclusionTex",    U_LABELOCCLUSIONTEX },
-        { "uLabelOcclusionParams", U_LABELOCCLUSIONPARAMS }
+        { "uLabelOcclusionParams", U_LABELOCCLUSIONPARAMS },
+        { "uDrapeMask",            U_DRAPEMASKTEXTURE },
+        { "uDrapeMaskUVTransform", U_DRAPEMASKUVTRANSFORM }
     };
 
     static const std::map<unsigned int, std::string> flagDefineMap = {
@@ -244,7 +255,9 @@ namespace massif::vt {
         { SHADOW_DEPTH_TEXTURE_FLAG, "SHADOW_DEPTH_TEXTURE" },
         { ESSL3_FLAG, "ESSL3" },
         { SHADOW_HW_FLAG, "SHADOW_HW" },
-        { GEOMETRY_LIGHT_FLAG, "GEOMETRY_LIGHT" }
+        { GEOMETRY_LIGHT_FLAG, "GEOMETRY_LIGHT" },
+        { COVERAGE_FLAG, "COVERAGE" },
+        { DRAPE_MASK_FLAG, "DRAPE_MASK" }
     };
 
     static const std::string textureFiltersFsh = R"GLSL(
@@ -931,6 +944,22 @@ namespace massif::vt {
             return color;
         }
         #endif
+        // The whole drape composite is drawn before any live geometry, so a layer left out of the
+        // bake can only land on top of it. This is what puts it back in its style position: the
+        // accumulated coverage of the DRAPED layers that come after it, sampled in drape-tile uv
+        // (docs/internals/rendering/04-terrain.md).
+        #ifdef DRAPE_MASK
+        uniform lowp sampler2D uDrapeMask;
+        uniform highp vec4 uDrapeMaskUVTransform; // target-tile units -> mask-tile units
+        lowp vec4 applyDrapeMask(lowp vec4 color, mediump vec2 tileUnit) {
+            // Premultiplied, so one scale covers rgb and a.
+            return color * (1.0 - texture2D(uDrapeMask, uDrapeMaskUVTransform.xy + tileUnit * uDrapeMaskUVTransform.zw).r);
+        }
+        #else
+        lowp vec4 applyDrapeMask(lowp vec4 color, mediump vec2 tileUnit) {
+            return color;
+        }
+        #endif
     )GLSL";
 
     // Per-fragment terrain lighting needs the elevation uv of the fragment and the local mercator
@@ -1089,6 +1118,10 @@ namespace massif::vt {
         #else
             lowp vec4 color = uColor;
         #endif
+        #ifdef COVERAGE
+            glFragColor = vec4(color.a * uOpacity);
+            return;
+        #endif
         #if defined(TERRAIN_LIGHT) && defined(TERRAIN)
             // The draped colour is premultiplied, so scaling rgb alone is a valid tint; clamp
             // back to alpha so an intensity above 1 cannot break premultiplication.
@@ -1173,6 +1206,10 @@ namespace massif::vt {
             lowp vec4 color = texture2D_bicubic(uBitmap, vUV, uUVScale);
         #else
             lowp vec4 color = texture2D_bilinear(uBitmap, vUV, uUVScale);
+        #endif
+        #ifdef COVERAGE
+            glFragColor = vec4(color.a * uOpacity);
+            return;
         #endif
         #if defined(TERRAIN_LIGHT) && defined(TERRAIN)
             // The draped colour is premultiplied, so scaling rgb alone is a valid tint; clamp
@@ -1284,6 +1321,11 @@ namespace massif::vt {
             lowp vec4 packedNormalAlpha = texture2D_bilinear(uBitmap, vUV, uUVScale);
         #endif
             lowp vec4 color = vec4(packedNormalAlpha.a);
+        #ifdef COVERAGE
+            // A hillshade covers its whole tile whatever the shading resolves to.
+            glFragColor = vec4(uOpacity);
+            return;
+        #endif
         #if defined(LIGHTING_FSH)
             mediump vec3 tspaceNormal;
             if (u_elevationEncoded > 0.5) {
@@ -1915,17 +1957,22 @@ namespace massif::vt {
         #else
             lowp vec4 color = vColor * a;
         #endif
+            color = applyDrapeMask(color, vTileUnit);
         #ifdef TERRAIN
             // depth-writing terrain content: fully transparent fragments (AA aprons,
             // dash gaps) must not write depth or they block later style layers
             if (color.a < 0.004) discard;
         #endif
+        #ifdef COVERAGE
+            glFragColor = vec4(color.a);
+        #else
             // Sun and shadow of the ground this lies on (see pointFsh).
             color = applyTerrainShading(color);
         #ifdef LIGHTING_FSH
             glFragColor = applyFog(applyLighting(color, normalize(vNormal)));
         #else
             glFragColor = applyFog(color);
+        #endif
         #endif
         }
     )GLSL";
@@ -1955,12 +2002,20 @@ namespace massif::vt {
         #ifdef LIGHTING_FSH
         varying mediump vec3 vNormal;
         #endif
+        #ifdef DRAPE_MASK
+        // Where this fragment sits in the TARGET tile - lineVsh carries it for the tile clip, a
+        // polygon only needs it to look the drape mask up. uTileUnit* come from commonVsh.
+        varying mediump vec2 vTileUnit;
+        #endif
 
         void main(void) {
             int styleIndex = int(aVertexAttribs[0]);
             vec3 pos = aVertexPosition;
         #ifdef TRANSFORM
             pos = vec3(uTransformMatrix * vec4(pos, 1.0));
+        #endif
+        #ifdef DRAPE_MASK
+            vTileUnit = pos.xy * uTileUnitScale + uTileUnitOffset;
         #endif
             vec4 color = uColorTable[styleIndex];
         #ifdef PATTERN
@@ -1991,6 +2046,9 @@ namespace massif::vt {
         #ifdef LIGHTING_FSH
         varying mediump vec3 vNormal;
         #endif
+        #ifdef DRAPE_MASK
+        varying mediump vec2 vTileUnit;
+        #endif
 
         void main(void) {
         #ifdef PATTERN
@@ -1999,17 +2057,24 @@ namespace massif::vt {
         #else
             lowp vec4 color = vColor;
         #endif
+        #ifdef DRAPE_MASK
+            color = applyDrapeMask(color, vTileUnit);
+        #endif
         #ifdef TERRAIN
             // depth-writing terrain content: fully transparent fragments (pattern
             // gaps) must not write depth or they block later style layers
             if (color.a < 0.004) discard;
         #endif
+        #ifdef COVERAGE
+            glFragColor = vec4(color.a);
+        #else
             // Sun and shadow of the ground this lies on (see pointFsh).
             color = applyTerrainShading(color);
         #ifdef LIGHTING_FSH
             glFragColor = applyFog(applyLighting(color, normalize(vNormal)));
         #else
             glFragColor = applyFog(color);
+        #endif
         #endif
         }
     )GLSL";

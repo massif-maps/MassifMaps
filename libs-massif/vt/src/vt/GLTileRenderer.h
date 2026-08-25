@@ -318,6 +318,21 @@ namespace massif::vt {
         // first renderer bakes, so later layers composite over earlier ones. Returns the number
         // of primitives drawn, so the owner can tell "nothing to bake" from "bake did nothing".
         int bakeDrapeTile(const TileId& targetTileId);
+        // This renderer's style layers with drapeable content in the visible set, in draw order,
+        // each flagged draped (goes in the bake) or live (matched setNoDrapeLayerFilter). The owner
+        // concatenates these across layers into one ordered stack, which is where a live layer's
+        // position - and so its occlusion mask - is decided.
+        void collectDrapeStackOrder(std::vector<std::pair<int, bool> >& units) const;
+        // Bakes the COVERAGE - accumulated alpha, not colour - of the draped style layers at or
+        // after fromStyleLayerIdx into the currently bound framebuffer. Same geometry, transforms
+        // and tile selection as bakeDrapeTile; only the fragment output differs. This is the mask a
+        // live layer below the cut is then drawn through.
+        int bakeDrapeCoverage(const TileId& targetTileId, int fromStyleLayerIdx);
+        // maskTextures[k] is the k-th mask's texture per drape tile; styleLayerMasks maps a live
+        // style layer to the mask index it is occluded by. A layer absent from the map draws
+        // unmasked, which is the pre-#175 behaviour and also the correct one when nothing draped
+        // comes after it.
+        void setDrapeCoverageMasks(const std::vector<std::map<TileId, GLuint> >& maskTextures, const std::map<int, int>& styleLayerMasks);
         // Draws the terrain surface for one target tile, textured with an externally owned drape
         // texture. Writes depth: the surface is the only depth-writing terrain geometry.
         // Returns the number of surface draws issued, or a negative reason code when nothing
@@ -547,6 +562,10 @@ namespace massif::vt {
         bool isEmptyBlendRequired(CompOp compOp) const;
 
         unsigned int fogFlag() const;
+        // COVERAGE while a mask is being baked: the fragment stage writes alpha, not colour.
+        unsigned int coverageFlag() const;
+        // DRAPE_MASK while a live no-drape layer is drawn under a mask resolved for its tile.
+        unsigned int drapeMaskFlag() const;
         // TERRAIN_SHADOW plus the cascade count the receiver lookup is compiled for.
         unsigned int shadowReceiverFlags() const;
         // Same, for the terrain surface: reads the screen-space mask, or produces it.
@@ -566,6 +585,15 @@ namespace massif::vt {
 
         bool testLayerFilter(const std::string& layerName, const std::optional<std::regex>& filter) const;
         bool isLayerDraped(const std::shared_ptr<const TileLayer>& layer) const;
+        // The body shared by bakeDrapeTile and bakeDrapeCoverage: the same covering tiles, the same
+        // transforms, restricted to the style layers at or after fromStyleLayerIdx. Caller holds the
+        // mutex and has already handled the terrain-paint case.
+        int bakeDrapeUnits(const TileId& targetTileId, int fromStyleLayerIdx);
+        // The mask a live style layer is occluded by over one target tile, and the transform taking
+        // target-tile units to that mask tile's. False when there is no mask, or when the drape tile
+        // is FINER than the target tile - one draw cannot sample several masks, so it draws as it
+        // did before #175.
+        bool resolveDrapeCoverageMask(const TileId& targetTileId, int styleLayerIdx, GLuint& texture, cglib::vec4<float>& uvTransform) const;
         bool testIntersectionOpacity(const std::shared_ptr<const BitmapPattern>& pattern, const cglib::vec2<float>& uvp, const cglib::vec2<float>& uv0, const cglib::vec2<float>& uv1) const;
 
         void buildTileSurfaces(const std::set<TileId>& tileIds);
@@ -770,6 +798,12 @@ namespace massif::vt {
         bool _externalDrapeTarget = false;       // drape textures are owned by the caller (cross-layer stacks)
         std::set<TileId> _drapeTilesThisFrame;   // target tiles that have a valid drape texture this frame
         std::vector<TileId> _externalDrapeTiles; // terrain tiles the owner drapes this frame
+        bool _drapeCoveragePass = false;         // set only while a coverage mask is being baked
+        int _drapeCoverageFromLayerIdx = 0;      // ... and the style layer that bake starts at
+        std::vector<std::map<TileId, GLuint> > _drapeCoverageMasks; // per mask index, per drape tile
+        std::map<int, int> _drapeCoverageLayerMasks;                // live style layer -> mask index
+        GLuint _drapeMaskTexture = 0;            // the mask the geometry being drawn is occluded by
+        cglib::vec4<float> _drapeMaskUVTransform; // ... and target-tile units -> that mask's units
         const cglib::mat4x4<double>* _shadowCasterViewProj = nullptr; // set during the shadow caster pass
         const cglib::mat4x4<float>* _drapeMVPOverride = nullptr; // when set, renderTileGeometry draws flat into the drape FBO
         bool _debugWireframe = false;

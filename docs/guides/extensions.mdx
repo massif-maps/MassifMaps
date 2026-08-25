@@ -1,0 +1,98 @@
+---
+title: Writing an extension
+description: "Adding a data source the SDK has no factory for — GDAL, a proprietary format, anything with its own native library — without changing the SDK."
+sidebar_position: 13
+---
+
+# Writing an extension
+
+The SDK does not need to contain every format. A **data source** it has no factory for can live in
+its own library, be written in Kotlin or Swift, and still be a first-class facade object that specs
+and layers point at.
+
+That is deliberate. GDAL is the example everyone reaches for — it would add tens of megabytes, a
+`proj.db`, four Android cross-builds and five iOS slices to a map SDK that most apps use for tiles.
+As an extension it costs the SDK nothing and costs an app only what it asks for.
+
+:::info The reference extension
+[massif-maps/gdal-extension](https://github.com/massif-maps/gdal-extension) reads GeoTIFF and OGR
+vector files this way, and doubles as a worked example of cross-building a minimal GDAL.
+:::
+
+## How it works
+
+Three SDK pieces, all of which already exist:
+
+| | |
+|---|---|
+| `TileDataSource` and `VectorDataSource` are **SWIG directors** | so a binding can subclass them and override `loadTile` / `loadElements` |
+| `TileData` takes a `BinaryData` | so an override can return bytes it decoded itself |
+| `MassifInterop.adopt(kind, id, source)` | registers the instance under a facade id, so specs and layers can reach it |
+
+An extension is therefore an ordinary Android or iOS library. It ships whatever native code it
+needs, and the SDK never links against it.
+
+## A tile source, in Kotlin
+
+```kotlin
+class GeoTiffSource(private val path: String) : TileDataSource(0, 18) {
+
+    override fun loadTile(tile: MapTile): TileData? {
+        // Your own decode. The SDK asked for one tile of its grid; hand back an image.
+        val png = NativeGdal.renderTile(path, tile.zoom, tile.x, tile.y) ?: return null
+        return TileData(BinaryData(png))
+    }
+}
+```
+
+`loadTile` runs on the SDK's **tile threads**, not the UI thread, and several at once — it has to
+be thread-safe. Each call crosses JNI, which is irrelevant next to a decode but would not be next
+to a memory lookup.
+
+Then register it and use it like any other source:
+
+```kotlin
+val source = GeoTiffSource("/sdcard/dem.tif")
+MassifInterop.adopt("source", "dem", source)
+
+map.addLayer("dem", Spec.of("raster").set("source", map.source("dem")))
+```
+
+## A vector source
+
+`VectorDataSource` is the same shape — override `loadElements(cullState)` and return a
+`VectorData` of `VectorElement`s you built. Because the elements are yours, so is the styling:
+pick a `MarkerStyle` or `LineStyle` per feature in Kotlin, where the rules are easier to read than
+in any expression language.
+
+```kotlin
+class ShapefileSource(projection: Projection) : VectorDataSource(projection) {
+    override fun loadElements(cullState: CullState): VectorData {
+        val elements = VectorElementVector()
+        for (feature in readFeatures(cullState.viewState)) {
+            elements.add(Marker(feature.pos, if (feature.big) bigStyle else smallStyle))
+        }
+        return VectorData(elements)
+    }
+}
+```
+
+## What an extension cannot do
+
+- **Register a spec `type`.** The spec table is generated at build time, so `{"type": "geotiff"}`
+  in JSON is not available. Construct the source in Kotlin/Swift and adopt it; specs then reference
+  it by id or handle.
+- **Subclass from C++.** The SDK compiles into one library with `-fvisibility=hidden`, so another
+  native library cannot derive from `massif::TileDataSource` directly. The binding layer is the
+  seam — which is also what keeps an extension readable.
+- **Avoid thread safety.** Both overrides are called concurrently from tile and culling threads.
+
+## Why this rather than a build profile
+
+An earlier attempt put GDAL *in* the SDK: a `gdal` build profile, a `full+gdal` published variant,
+a CI job cross-building GDAL for four ABIs, and a plan to vendor GDAL and PROJ into
+`libs-external`. It worked on paper and made every SDK build carry a GIS dependency's problems —
+`proj.db`'s nine megabytes, five iOS slices, a driver set nobody agreed on.
+
+The extension does the same job with no SDK change at all. That is the pattern for anything with a
+heavy native dependency: **if the SDK does not need it to draw a map, it belongs in an extension.**

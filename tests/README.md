@@ -8,13 +8,21 @@ a host-native binary over the parts that can be linked without the renderer, plu
 cd tests && ./run.sh
 ```
 
-Needs `cmake`, `python3` and a host compiler. Nothing Android or iOS.
+Needs `cmake`, `python3` and a host compiler. Nothing Android or iOS. `libs-external` has to be
+checked out with its nested submodules (`git submodule update --init --recursive libs-external`) —
+`rapidjson` and `utf8` are both on the link — and `libs-external/boost` symlinked as in
+[`BUILDING.md`](../BUILDING.md).
 
 ## What is covered, and what is not
 
 `api/` covers the facade's [property table, handle table and registry](../docs/internals/api-facade.md):
 generated-table lookups, the base-class chain, handle generations and the stale-handle rule,
 `set`/`get` per value type, and dotted path resolution.
+
+`style/` covers the mapnikvt style MODEL without the renderer: what `resolveLayerConfig` reads out
+of a style layer that also carries ordinary line/text rules, which is what a converted MapBox style
+produces. Only the TUs the model needs are linked — the symbolizer implementations pull vt's tile
+builders in, so a case that needs one belongs behind a device check instead.
 
 It does **not** cover anything that needs a real map. Two things make that a hard boundary rather
 than a choice:
@@ -33,8 +41,8 @@ type, so they are device-verified rather than covered here.
 ## The style XML round-trip — outside this suite
 
 Whether the Mapnik XML parser can read back everything `css2xml` writes is checked by `css2xml`
-itself, not here: linking `mapnikvt` drags `vt`, freetype and harfbuzz in, which is exactly the
-weight this suite avoids.
+itself, not here: the parser needs the symbolizers, and those drag `vt`, freetype and harfbuzz in —
+the weight `style/` stays under by linking the style model alone.
 
 ```sh
 cmake -S libs-massif/cartocss/util -B build/css2xml && cmake --build build/css2xml --target css2xml
@@ -53,3 +61,6 @@ parser, generator or expression grammar**, and add the construct to
 line and the binary exits non-zero, which is all `ctest` needs. If a new case needs another class,
 add its `.i` to `TEST_MODULES` in `api/CMakeLists.txt` and its `.cpp` to `TEST_SDK_SOURCES` — if
 that turns into a long list, the class probably belongs behind a device check instead.
+
+`style/StyleTest.cpp` is the same `main` for the style side; a new case is a function there plus
+its `.cpp` in `style/CMakeLists.txt`. Keep `STYLE_SOURCES` short for the same reason.

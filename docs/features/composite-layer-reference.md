@@ -105,6 +105,12 @@ per frame — they regenerate tiles):
 | `contour-min-visible-zoom` | `setMinVisibleZoom` |
 | `contour-simplify-tolerance` | `setSimplifyTolerance` |
 
+All of them are optional: a `#contour` block that only styles the lines (no `contour-*`
+property) leaves the source on its own defaults. Ordinary styling rules in the block are
+ignored when the config is read, filters included — a converted MapBox style writes
+`[$type] = 'line'` on every line rule, and that filter reads a feature the config pass does
+not have.
+
 Contours render past the DEM's max zoom via the child layer's `MaxOverzoomLevel` (from the
 source) — no need to download the DEM at the target zoom. Set
 `contourSource.setMaxOverzoomLevel(n)`.

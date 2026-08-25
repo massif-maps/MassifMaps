@@ -4,6 +4,6 @@
   "link": {
     "type": "generated-index",
     "title": "Contributing",
-    "description": "How to build the documentation site, and how a release is cut and published."
+    "description": "How to build the documentation site, add an example, ship the style tools CLI, and cut a release."
   }
 }

@@ -1,0 +1,43 @@
+{
+  "name": "@massif-maps/style-tools",
+  "version": "0.0.0",
+  "description": "Style conversion tools for Massif Maps — CartoCSS compilation and MapBox style translation",
+  "license": "BSD-3-Clause",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "massif-style": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "wasm",
+    "README.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/massif-maps/MassifMaps.git",
+    "directory": "tools/style-cli"
+  },
+  "homepage": "https://massif-maps.github.io/MassifMaps/docs/contributing/style-tools",
+  "keywords": [
+    "cartocss",
+    "mapbox",
+    "maplibre",
+    "vector-tiles",
+    "map-style"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node -e \"require('node:fs').cpSync('src/generated','dist/generated',{recursive:true})\"",
+    "test": "npm run build && node --test \"test/*.test.js\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

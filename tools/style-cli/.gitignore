@@ -1,0 +1,6 @@
+dist/
+node_modules/
+*.tgz
+
+# Built from the libs-massif submodule by release-style-tools.yml, or fetched from a release.
+wasm/

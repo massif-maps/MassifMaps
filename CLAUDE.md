@@ -16,6 +16,7 @@ Valhalla routing, custom label rules, PMTiles, ...).
 | `libs-external/` | **git submodule** (massif-maps/massif-external-libs): third-party deps (cglib, freetype, harfbuzz, `mlt` = maplibre-tile-spec, decoder only, ...). `boost` is expected as a symlink here (see BUILDING.md) |
 | `android/`, `ios/`, `dotnet/`, `winphone/` | Platform glue code |
 | `scripts/` | Build scripts (`build-android.py`, `build-ios.py`, `swigpp-*.py`, CMake in `scripts/build/`) |
+| `tools/style-cli/` | `@massif-maps/style-tools` — the `massif-style` CLI (`css2xml`, `mvt2xml`, `mapbox2css`). C++ from `libs-massif` compiled to wasm, wrapped in TypeScript; [spec](docs/contributing/style-tools.md) |
 | `docs/` | **All documentation, one tree** — also published as-is at massif-maps.github.io/MassifMaps |
 | `website/` | The Docusaurus shell only (config, theme, React pages). It reads `../docs`; no content lives here |
 

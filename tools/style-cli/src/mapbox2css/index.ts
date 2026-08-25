@@ -5,6 +5,7 @@ import { translateFilter, zoomPredicates } from './filter.js';
 import { HANDLED_ELSEWHERE, followsLine, resolvePlacement } from './placement.js';
 import { KNOWN_GAPS, LAYER_SYMBOLIZER, PROPERTY_MAP, VALUE_MAP } from './properties.js';
 import { type SpriteSet, extractIcon } from './sprite.js';
+import { splitLayer } from './split.js';
 import type { CartoProperty, Json, MapboxLayer, MapboxStyle, PropertyTable } from './types.js';
 
 export interface ConvertResult {
@@ -69,6 +70,15 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
         }
         if (!order.has(sourceLayer)) order.set(sourceLayer, index);
 
+        // A field-driven paint value becomes one attachment per branch - see split.ts.
+        const variants = splitLayer(layer, coverage);
+        variants.forEach((variant, branch) => {
+            const suffix = variants.length > 1 ? `_b${branch + 1}` : '';
+            emitLayer(variant, `${attachmentName(layer.id)}${suffix}`, sourceLayer, symbolizer);
+        });
+    });
+
+    function emitLayer(layer: MapboxLayer, attachment: string, sourceLayer: string, symbolizer: string): void {
         const declarations = layerDeclarations(layer, symbolizer, allowed, coverage, options);
         if (declarations.length === 0) return;
 
@@ -88,7 +98,7 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
                 ...zoomPredicates(layer.minzoom, layer.maxzoom),
                 ...translateFilter(filter),
             ].map((p) => (p.startsWith('when(') ? ` ${p}` : p));
-            selector = `#${sourceLayer}${predicates.join('')}::${attachmentName(layer.id)}`;
+            selector = `#${sourceLayer}${predicates.join('')}::${attachment}`;
         } catch (error) {
             const why = error instanceof Untranslatable ? error.what : String(error);
             coverage.drop(`filter on "${layer.id}"`, `untranslatable filter: ${why}`, layer.id);
@@ -96,7 +106,7 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
         }
 
         blocks.push(`${selector} {\n${declarations.map((d) => `  ${d}`).join('\n')}\n}`);
-    });
+    }
 
     reportInterleaving(layers, order, coverage);
 

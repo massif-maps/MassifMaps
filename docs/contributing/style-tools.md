@@ -196,6 +196,33 @@ Two more that only look like gaps: `text-overlap` is the modern spelling of `tex
 `text-placement-priority` **negated** — MapBox places the lowest key first, the culler takes the
 highest priority.
 
+## A field belongs in a predicate, never in a value
+
+`Symbolizer::createFeatureProcessor` runs **once per rule, with no feature bound**, and
+`ColorFunctionProperty::buildFunction` only defers to a per-frame function for view-state and
+live-parameter expressions. A `[class]` in a property *value* is therefore evaluated there and then
+against nothing: the colour collapses to null, `parseColor("")` throws, and **the whole rule is
+lost for that tile** — which is what "some tiles have no roads, others do" looks like. A float
+quietly becomes 0 instead of throwing.
+
+Measured on MapTiler topo-v4, cleared cache, z14: two `line-color` declarations reading `[class]`
+and `[paved]` produced 3 `Color parsing failed`; replacing just the field with a constant — keeping
+the nested ternary — brought it to 0. The ternary is fine, the field is not.
+
+So [`split.ts`](https://github.com/massif-maps/MassifMaps/blob/master/tools/style-cli/src/mapbox2css/split.ts)
+turns a `case`/`match` over a field into **one attachment per branch**, each with a constant value
+and the branch's condition added to the filter. Later branches exclude the earlier ones, because
+MapBox takes the first match. On topo-v4 that is 17 layers and **+24 attachments**.
+
+- A `match` over a plain `["get", f]` uses the **legacy** filter spelling, which lands in brackets
+  (`[class = 'motorway']`) instead of a `when()`.
+- Past 8 variants a layer is left whole and its field-driven values keep only their **fallback** —
+  the same thing the decoder would have evaluated, minus the broken rule. It is counted as an
+  approximation.
+- A value with no fallback (`["get", "width"]`) is **dropped** with that reason, not emitted.
+- `text-field` is exempt: the text is evaluated per feature inside the processor rather than through
+  a `Property`, so it reads fields correctly.
+
 ## Contours: `--contour-schema div`
 
 MapTiler's contour layers say "every 5th or 10th line" (`nth_line`); tiles built with the gdal

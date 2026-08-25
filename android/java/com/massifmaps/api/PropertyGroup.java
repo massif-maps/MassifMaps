@@ -26,6 +26,16 @@ public final class PropertyGroup {
         return this;
     }
 
+    /** Several at once, prefixed - so the object writes them in ONE crossing. */
+    public PropertyGroup apply(Spec values) {
+        Spec prefixed = Spec.object();
+        for (String name : values.keys()) {
+            prefixed.set(prefix + name, values.get(name));
+        }
+        target.apply(prefixed);
+        return this;
+    }
+
     /** The typed form, so a group reads as `map.fog().set(RANGE_START, 2.5)`. */
     public PropertyGroup set(MassifObject.Key<Boolean> property, boolean value) {
         target.set(prefix + property.path(), Boolean.valueOf(value));

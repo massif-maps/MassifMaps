@@ -145,7 +145,9 @@ MM_API int mm_valid(mm_ctx ctx, mm_handle handle);
 
 /*
  * The path may walk object properties: "fogOptions.rangeStart", and it may continue INSIDE a
- * JSON value: "feature.properties.name", or index an array: "feature.properties.tags.1".
+ * JSON value: "feature.properties.name", or index an array: "feature.properties.tags.1". A last
+ * segment may also be the KEY of a bag property: "params.water_color" on a style. A bag takes a
+ * JSON object too, which writes every key in ONE crossing.
  *
  * Types coerce both ways - a bool read as a double is 1 or 0, a double written to a bool is its
  * truthiness - so a binding with one numeric type does not need to know which it is dealing with.
@@ -156,6 +158,31 @@ MM_API int mm_set_long(mm_ctx ctx, mm_handle handle, const char* path, int64_t v
 MM_API int mm_set_double(mm_ctx ctx, mm_handle handle, const char* path, double value);
 /** Also how a struct is written: a position is "[x,y]" or "[x,y,z]", a range "[min,max]". */
 MM_API int mm_set_string(mm_ctx ctx, mm_handle handle, const char* path, const char* value);
+
+/**
+ * Writes several properties at once, from a JSON object of PATH to value.
+ *
+ * One crossing rather than one per key: a binding's `apply({...})` over a dozen options was a
+ * dozen FFI calls, and the JSON it already had to build for a spec is the same shape.
+ *
+ * Every key is attempted; the FIRST failure is returned, so one unknown name does not hide what
+ * did apply. @param projection applies to the positions among them, as in mm_set_position.
+ */
+MM_API int mm_set_json(mm_ctx ctx, mm_handle handle, const char* json, const char* projection);
+
+/**
+ * Writes a position, or bounds, from doubles - the write counterpart of mm_get_position.
+ *
+ * mm_set_string takes a position in the projection the running handler asked for, and in WGS84
+ * outside one. That is right until an app holds coordinates in another system: those had to be
+ * converted by hand, and a mistake reads as a plausible position somewhere else entirely.
+ *
+ * @param projection A well-known name the values are IN, e.g. "EPSG:3857". Null or empty behaves
+ *                   like mm_set_string.
+ * @param count 2 or 3 numbers are a position; 4 or 6 are BOUNDS, as a pair of positions.
+ */
+MM_API int mm_set_position(mm_ctx ctx, mm_handle handle, const char* path, const char* projection,
+                           const double* values, size_t count);
 
 /**
  * Points an object property at another registered object - a layer's data source, a decoder's

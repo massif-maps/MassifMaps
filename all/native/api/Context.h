@@ -192,8 +192,31 @@ namespace massif {
         /**
          * Writes a property of a registered object. The underlying setter is called, so the
          * change reaches the renderer exactly as a direct call would.
+         *
+         * The path may end in a bag KEY - "params.water_color", "httpHeaders.User-Agent" - and a
+         * bag with no whole-value setter takes a JSON object to write several keys in one call.
+         *
+         * @param projection The well-known name of the projection the value is IN, for a position.
+         *                   Empty falls back to the running handler's, then to WGS84, which is
+         *                   what a read returns - so a read and a write back land in the same
+         *                   place. Ignored for anything that is not a coordinate.
          */
-        Result setProperty(Handle handle, const std::string& path, const PropertyValue& value);
+        Result setProperty(Handle handle, const std::string& path, const PropertyValue& value,
+                           const std::string& projection = std::string());
+
+        /**
+         * Writes several properties from one JSON object of path to value.
+         *
+         * A binding's `apply({...})` was one crossing per key - JNI, JSI or dart:ffi, per option -
+         * and an app configuring a layer writes a dozen at once. Keys are PATHS, so
+         * `{"fog.rangeStart": 2, "visible": false}` is one call.
+         *
+         * Every key is attempted; the FIRST failure is returned, so a caller learns something went
+         * wrong without one bad key hiding the rest of the writes.
+         * @param projection Applies to every position among them, as in setProperty.
+         */
+        Result setProperties(Handle handle, const std::string& json,
+                             const std::string& projection = std::string());
 
         /**
          * Points an object property at another registered object - a layer's data source, a
@@ -439,10 +462,12 @@ namespace massif {
 
     private:
         // Walks a dotted path, leaving the object owning the final segment in target. When the
-        // path runs into a Variant, variantRest is set to where the JSON part of it starts.
+        // path runs into a Variant, variantRest is set to where the JSON part of it starts; when
+        // it runs into a bag property, indexKey is set to the rest of the path.
         const PropertyEntry* lookup(Handle handle, const std::string& path,
                                     ObjectRef& target, Result& result,
-                                    std::size_t* variantRest = nullptr) const;
+                                    std::size_t* variantRest = nullptr,
+                                    std::string* indexKey = nullptr) const;
 
         // What coordinate system target's positions are in: what its class declares, else what
         // was attached to the handle the walk started from.

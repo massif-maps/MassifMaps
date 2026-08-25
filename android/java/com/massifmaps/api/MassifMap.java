@@ -114,6 +114,48 @@ public final class MassifMap implements AutoCloseable {
         return camera;
     }
 
+    // --- options, by path ----------------------------------------------------------------------
+
+    /*
+     * The map IS its Options as far as the facade is concerned, so a path reads off it directly -
+     * the same shape a layer and a source already had. The readable spellings come from the alias
+     * table: "fog.rangeStart" is "fogOptions.rangeStart".
+     */
+
+    /** <pre>map.set("fog.rangeStart", 2.5).set("zoomRange", new double[] { 3, 17 });</pre> */
+    public MassifMap set(String path, Object value) {
+        options.set(path, value);
+        return this;
+    }
+
+    /** Several at once, in one crossing. @see MassifObject#apply */
+    public MassifMap apply(Spec values) {
+        options.apply(values);
+        return this;
+    }
+
+    public double getDouble(String path, double defaultValue) {
+        return options.getDouble(path, defaultValue);
+    }
+
+    public long getLong(String path, long defaultValue) {
+        return options.getLong(path, defaultValue);
+    }
+
+    public boolean getBool(String path, boolean defaultValue) {
+        return options.getBool(path, defaultValue);
+    }
+
+    /** @param defaultValue May be null. */
+    public String getString(String path, String defaultValue) {
+        return options.getString(path, defaultValue);
+    }
+
+    /** A view scoped to a path prefix - what {@link #fog()} and its siblings are made of. */
+    public PropertyGroup group(String prefix) {
+        return options.group(prefix);
+    }
+
     // --- option groups -------------------------------------------------------------------------
 
     /*

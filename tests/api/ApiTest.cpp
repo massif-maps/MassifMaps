@@ -53,6 +53,11 @@ void testAdopt();
 void testBundleAssets();
 void testTileMetaData();
 void testElevationDecoderResolve();
+void testBagProperties();
+void testBagBatch();
+void testSetAll();
+void testAliases();
+void testWriteProjection();
 
 namespace {
 
@@ -396,6 +401,11 @@ int main() {
     testBundleAssets();
     testTileMetaData();
     testElevationDecoderResolve();
+    testBagProperties();
+    testBagBatch();
+    testSetAll();
+    testAliases();
+    testWriteProjection();
 
     std::printf("\n%d failure(s)\n", failures);
     return failures ? 1 : 0;

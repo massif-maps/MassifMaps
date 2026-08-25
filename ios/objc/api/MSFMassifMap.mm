@@ -231,6 +231,34 @@ static void MSFInstallUiDispatcher(void) {
     return _camera;
 }
 
+- (BOOL)set:(NSString *)path value:(id)value {
+    return [_options set:path value:value];
+}
+
+- (BOOL)apply:(MSFSpec *)values {
+    return [_options apply:values];
+}
+
+- (double)getDouble:(NSString *)path defaultValue:(double)defaultValue {
+    return [_options getDouble:path defaultValue:defaultValue];
+}
+
+- (long long)getLong:(NSString *)path defaultValue:(long long)defaultValue {
+    return [_options getLong:path defaultValue:defaultValue];
+}
+
+- (BOOL)getBool:(NSString *)path defaultValue:(BOOL)defaultValue {
+    return [_options getBool:path defaultValue:defaultValue];
+}
+
+- (NSString *)getString:(NSString *)path defaultValue:(NSString *)defaultValue {
+    return [_options getString:path defaultValue:defaultValue];
+}
+
+- (MSFPropertyGroup *)group:(NSString *)prefix {
+    return [_options group:prefix];
+}
+
 - (MSFPropertyGroup *)fog {
     return [_options group:@"fogOptions"];
 }

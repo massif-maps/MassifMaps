@@ -6,6 +6,7 @@
 #include "core/Variant.h"
 
 #include <cstring>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -69,12 +70,13 @@ namespace {
         return context->getProperty(handle, text(path), value, text(projection));
     }
 
-    int write(mm_ctx ctx, mm_handle handle, const char* path, const PropertyValue& value) {
+    int write(mm_ctx ctx, mm_handle handle, const char* path, const PropertyValue& value,
+              const char* projection = nullptr) {
         Context* context = resolve(ctx);
         if (!context) {
             return MM_BAD_CONTEXT;
         }
-        return context->setProperty(handle, text(path), value);
+        return context->setProperty(handle, text(path), value, text(projection));
     }
 
 }
@@ -175,6 +177,39 @@ int mm_set_double(mm_ctx ctx, mm_handle handle, const char* path, double value) 
 
 int mm_set_string(mm_ctx ctx, mm_handle handle, const char* path, const char* value) {
     return write(ctx, handle, path, PropertyValue::ofString(text(value)));
+}
+
+int mm_set_json(mm_ctx ctx, mm_handle handle, const char* json, const char* projection) {
+    Context* context = resolve(ctx);
+    if (!context) {
+        return MM_BAD_CONTEXT;
+    }
+    return context->setProperties(handle, text(json), text(projection));
+}
+
+int mm_set_position(mm_ctx ctx, mm_handle handle, const char* path, const char* projection,
+                    const double* values, size_t count) {
+    if (!values || count < 2) {
+        return MM_UNSUPPORTED_TYPE;
+    }
+    // Built as the same JSON every struct crosses as, so this adds no second wire format: it saves
+    // the CALLER the formatting, exactly as mm_get_position saves it the parse. 4 or 6 numbers are
+    // BOUNDS - a pair of positions - which is the shape the codec reads them back in.
+    bool bounds = count == 4 || count == 6;
+    size_t stride = bounds ? count / 2 : count;
+    std::ostringstream json;
+    json.precision(17);
+    const char* separator = "";
+    for (size_t index = 0; index < count; index += stride) {
+        json << separator << "[";
+        for (size_t item = 0; item < stride; item++) {
+            json << (item ? "," : "") << values[index + item];
+        }
+        json << "]";
+        separator = ",";
+    }
+    std::string value = bounds ? "[" + json.str() + "]" : json.str();
+    return write(ctx, handle, path, PropertyValue::ofString(value), projection);
 }
 
 int mm_set_object(mm_ctx ctx, mm_handle handle, const char* path, mm_handle value) {

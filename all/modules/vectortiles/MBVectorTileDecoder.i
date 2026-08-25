@@ -30,6 +30,10 @@
 !method(massif::MBVectorTileDecoder, getStyleParameter, arg(name, string), returns(string))
 // Several at once. The `styleParameters` property is the list of NAMES the style declares.
 !method(massif::MBVectorTileDecoder, setStyleParameters, arg(params, json), returns(void))
+// And as a property bag, which is what an app writes: set(style, "params.water_color", "#0af").
+// setStyleParameter answers whether the style declares the parameter, so an undeclared one is
+// refused rather than dropped.
+!indexed(massif::MBVectorTileDecoder, params, getStyleParameter, setStyleParameter, returns(bool))
 !spec(massif::MBVectorTileDecoder, style, mbvt, alias(cartocss, cartoCSSStyleSet), alias(project, compiledStyleSet))
 %attributeval(massif::MBVectorTileDecoder, std::vector<std::string>, StyleParameters, getStyleParameters)
 %attributeval(massif::MBVectorTileDecoder, std::vector<std::string>, StyleLayerNames, getStyleLayerNames)

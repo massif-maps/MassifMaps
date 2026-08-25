@@ -312,4 +312,48 @@ namespace massif { namespace api { namespace StructCodec {
         return true;
     }
 
+    bool readEntry(const std::string& entry, PropertyValue& value) {
+        value = PropertyValue::ofString(entry);
+        return true;
+    }
+
+    bool readEntry(const Variant& entry, PropertyValue& value) {
+        switch (entry.getType()) {
+        case VariantType::VARIANT_TYPE_NULL:    return false;
+        case VariantType::VARIANT_TYPE_BOOL:    value = PropertyValue::ofBool(entry.getBool()); break;
+        case VariantType::VARIANT_TYPE_INTEGER: value = PropertyValue::ofLong(entry.getLong()); break;
+        case VariantType::VARIANT_TYPE_DOUBLE:  value = PropertyValue::ofDouble(entry.getDouble()); break;
+        case VariantType::VARIANT_TYPE_STRING:  value = PropertyValue::ofString(entry.getString()); break;
+        default:
+            // An object or an array reads as its JSON, the same as a Variant property does.
+            value = PropertyValue::ofString(entry.toString());
+            value.type = PT_VARIANT;
+            break;
+        }
+        return true;
+    }
+
+    void writeEntry(const PropertyValue& value, std::string& entry) {
+        entry = value.asString();
+    }
+
+    void writeEntry(const PropertyValue& value, Variant& entry) {
+        switch (value.type) {
+        case PT_BOOL:  entry = Variant(value.asBool()); break;
+        case PT_INT:
+        case PT_COLOR:
+        case PT_ENUM:  entry = Variant(value.asLong()); break;
+        case PT_FLOAT: entry = Variant(value.asDouble()); break;
+        case PT_VARIANT:
+            // Already JSON. A string that does not parse is kept as the string it is.
+            try {
+                entry = Variant::FromString(value.stringValue);
+            } catch (const std::exception&) {
+                entry = Variant(value.stringValue);
+            }
+            break;
+        default:       entry = Variant(value.asString()); break;
+        }
+    }
+
 } } }

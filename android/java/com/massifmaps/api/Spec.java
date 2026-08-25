@@ -60,6 +60,21 @@ public final class Spec {
         return this;
     }
 
+    /** The keys written so far, in insertion order. For a group that has to prefix them. */
+    java.util.List<String> keys() {
+        java.util.List<String> names = new java.util.ArrayList<String>();
+        java.util.Iterator<String> it = json.keys();
+        while (it.hasNext()) {
+            names.add(it.next());
+        }
+        return names;
+    }
+
+    /** The raw value under a key, as it was stored. */
+    Object get(String key) {
+        return json.opt(key);
+    }
+
     /** The spec as JSON, which is what the facade actually takes. */
     public String toJson() {
         return json.toString();

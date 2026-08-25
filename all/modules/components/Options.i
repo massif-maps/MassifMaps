@@ -48,6 +48,13 @@
 %attributestring(massif::Options, std::shared_ptr<massif::SkyOptions>, SkyOptions, getSkyOptions, setSkyOptions)
 %attributestring(massif::Options, std::shared_ptr<massif::FogOptions>, FogOptions, getFogOptions, setFogOptions)
 %attributestring(massif::Options, std::shared_ptr<massif::LightOptions>, LightOptions, getLightOptions, setLightOptions)
+// Readable spellings for the facade. A segment alias, so "fog.rangeStart" walks on from here.
+!alias(massif::Options, fog, fogOptions)
+!alias(massif::Options, sky, skyOptions)
+!alias(massif::Options, terrain, terrainOptions)
+!alias(massif::Options, light, lightOptions)
+!alias(massif::Options, projection, baseProjection)
+!alias(massif::Options, background, backgroundBitmap)
 %attribute(massif::Options, int, FieldOfViewY, getFieldOfViewY, setFieldOfViewY)
 %attribute(massif::Options, bool, KineticZoom, isKineticZoom, setKineticZoom)
 %attribute(massif::Options, bool, Rotatable, isRotatable, setRotatable)

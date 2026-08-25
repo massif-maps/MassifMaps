@@ -54,6 +54,10 @@ CODEC_TYPES = {'massif::MapPos', 'massif::MapVec', 'massif::ScreenPos', 'massif:
                'std::vector<std::string>',
                'std::map<std::string, std::string>', 'std::map<std::string, massif::Variant>'}
 
+# A string-keyed map is a BAG: the rest of the path is the key, so httpHeaders.User-Agent is a
+# property write rather than a whole-map read, edit and write back by the app.
+MAP_TYPES = {'std::map<std::string, std::string>', 'std::map<std::string, massif::Variant>'}
+
 FLAG_READONLY = 1
 FLAG_STATIC = 2
 FLAG_POSITION = 4
@@ -137,6 +141,8 @@ def decapitalize(name):
 SPEC_MACRO = re.compile(r'^\s*!spec\s*\((.*)\)\s*$')
 METHOD_MACRO = re.compile(r'^\s*!method\s*\((.*)\)\s*$')
 EVENT_MACRO = re.compile(r'^\s*!event\s*\((.*)\)\s*$')
+INDEXED_MACRO = re.compile(r'^\s*!indexed\s*\((.*)\)\s*$')
+ALIAS_MACRO = re.compile(r'^\s*!alias\s*\((.*)\)\s*$')
 
 # What a `call` argument or result can be. These are the shapes CallArgs can decode and
 # PropertyValue can carry - nothing here is a new capability, it is a NAME for one that exists.
@@ -191,6 +197,50 @@ def parseMethod(args):
   return entry
 
 
+def parseIndexed(args):
+  """!indexed(cppClass, name, getter, setter[, returns(bool)]).
+
+  A name-keyed getter/setter PAIR, exposed as one bag property. `returns(bool)` says the setter
+  answers whether the key exists - setStyleParameter does, and a style parameter the sheet never
+  declared has to be refused rather than dropped.
+  """
+  if len(args) < 4:
+    print('warning: cannot parse !indexed(%s)' % ', '.join(args))
+    return None
+  entry = {
+    'cppClass': args[0],
+    'path': args[1],
+    'cppType': 'std::string',
+    'type': 'STRING',
+    'flags': 0,
+    'getter': args[2],
+    'setter': args[3],
+    'indexed': 'bag',
+    'bagType': 'string',
+    'checked': False,
+  }
+  for extra in args[4:]:
+    extra = extra.strip()
+    if re.match(r'^returns\s*\(\s*bool\s*\)$', extra):
+      entry['checked'] = True
+    elif re.match(r'^values\s*\(\s*json\s*\)$', extra):
+      # What one entry holds, for the bindings' typings only - the C++ thunk reads it from the
+      # getter's own return type.
+      entry['bagType'] = 'json'
+      entry['cppType'] = 'massif::Variant'
+    else:
+      print('warning: cannot parse indexed option %s' % extra)
+  return entry
+
+
+def parseAlias(args):
+  """!alias(cppClass, alias, path) - a second spelling of one property segment."""
+  if len(args) != 3:
+    print('warning: cannot parse !alias(%s)' % ', '.join(args))
+    return None
+  return {'cppClass': args[0], 'alias': args[1], 'path': args[2]}
+
+
 def parseEvent(args):
   """!event(cppClass, name, payload(class), consumable)."""
   if len(args) < 2:
@@ -210,8 +260,9 @@ def parseEvent(args):
 
 
 def parseModule(sourcePath, defines, pattern):
-  """Returns (headers, entries, specs, methods, events), or all None when out of profile."""
+  """Returns the module's declarations as a dict, or None when it is out of profile."""
   headers, entries, specs, methods, events, inCode = [], [], [], [], [], False
+  aliases = []
   with open(sourcePath) as f:
     for line in f:
       line = line.rstrip('\n')
@@ -220,7 +271,7 @@ def parseModule(sourcePath, defines, pattern):
       if match:
         define = match.group(1) or match.group(2)
         if define not in defines:
-          return None, None, None, None, None
+          return None
 
       if line.strip() == '%{':
         inCode = True
@@ -256,6 +307,20 @@ def parseModule(sourcePath, defines, pattern):
           events.append(entry)
         continue
 
+      match = INDEXED_MACRO.match(line)
+      if match:
+        entry = parseIndexed(splitArgs(match.group(1)))
+        if entry:
+          entries.append(entry)
+        continue
+
+      match = ALIAS_MACRO.match(line)
+      if match:
+        entry = parseAlias(splitArgs(match.group(1)))
+        if entry:
+          aliases.append(entry)
+        continue
+
       match = pattern.match(line)
       if not match:
         continue
@@ -285,11 +350,16 @@ def parseModule(sourcePath, defines, pattern):
       # finds out what coordinate system its positions are in, without the facade naming classes.
       if objectClassOf(entry) == PROJECTION_CLASS:
         entry['flags'] |= FLAG_PROJECTION
+      # A string-keyed map is indexable by key, whatever declared it - no per-class branch.
+      if entry['cppType'] in MAP_TYPES:
+        entry['indexed'] = 'map'
+        entry['bagType'] = 'string' if 'Variant' not in entry['cppType'] else 'json'
       entries.append(entry)
   # The spec entries share this module's header list, which is where its constructors are.
   for entry in specs:
     entry['headers'] = headers
-  return headers, entries, specs, methods, events
+  return {'headers': headers, 'entries': entries, 'specs': specs, 'methods': methods,
+          'events': events, 'aliases': aliases}
 
 
 
@@ -533,21 +603,18 @@ def collectModulePaths(sourceDirs, modules):
 def parseModules(sourceDirs, defines, modules=None):
   pattern = re.compile(r'^\s*[%!](' + '|'.join(sorted(ATTRIBUTE_MACROS, key=len, reverse=True)) +
                        r')\s*\((.*)\)\s*$')
-  headers, entries, specs, methods, events, skipped = [], [], [], [], [], 0
+  all = {'headers': [], 'entries': [], 'specs': [], 'methods': [], 'events': [], 'aliases': []}
+  skipped = 0
   for sourcePath in collectModulePaths(sourceDirs, modules):
-    moduleHeaders, moduleEntries, moduleSpecs, moduleMethods, moduleEvents = parseModule(
-        sourcePath, defines, pattern)
-    if moduleHeaders is None:
+    module = parseModule(sourcePath, defines, pattern)
+    if module is None:
       skipped += 1
       continue
-    specs += moduleSpecs
-    methods += moduleMethods
-    events += moduleEvents
     # Headers come from every in-profile module, attributes or not: a class with no properties
     # of its own still needs its base recorded.
-    headers += moduleHeaders
-    entries += moduleEntries
-  return headers, entries, specs, methods, events, skipped
+    for key in all:
+      all[key] += module[key]
+  return all, skipped
 
 
 def symbolOf(entry, prefix):
@@ -555,6 +622,9 @@ def symbolOf(entry, prefix):
 
 
 def accessible(entry):
+  # A bag declared by !indexed has no whole-value accessor: its getter and setter take a key.
+  if entry.get('indexed') == 'bag':
+    return False
   if entry['type'] in ACCESSIBLE_TYPES:
     return True
   if entry['type'] == 'VARIANT':
@@ -625,6 +695,45 @@ def writeExpr(entry):
   return '%s(static_cast<%s>(value.asLong()));' % (setter, entry['cppType'])
 
 
+def indexedThunks(entry):
+  """The key-addressed thunks of one bag property, plus the IndexedAccess that pairs them.
+
+  Two shapes reach here and both end up as the same two function pointers: a name-keyed
+  getter/setter pair declared with !indexed, and any string-keyed map property, which is read,
+  edited and written back.
+  """
+  cppClass, lines = entry['cppClass'], []
+  self = '    auto self = static_cast<%s*>(obj);\n' % cppClass
+  getSymbol, setSymbol = symbolOf(entry, 'getidx'), symbolOf(entry, 'setidx')
+  if entry['indexed'] == 'bag':
+    lines.append('inline bool %s(void* obj, const std::string& key, PropertyValue& value) {\n'
+                 '%s    return StructCodec::readEntry(self->%s(key), value);\n}\n'
+                 % (getSymbol, self, entry['getter']))
+    # The entry type is the getter's, not spelled here: a style parameter is a string and a
+    # routing parameter a Variant, and readEntry/writeEntry are overloaded for both.
+    call = 'self->%s(key, item)' % entry['setter']
+    lines.append('inline bool %s(void* obj, const std::string& key, const PropertyValue& value) {\n'
+                 '%s    std::decay_t<decltype(self->%s(key))> item{};\n'
+                 '    StructCodec::writeEntry(value, item);\n    %s\n}\n'
+                 % (setSymbol, self, entry['getter'],
+                    ('return %s;' % call) if entry['checked'] else ('%s;\n    return true;' % call)))
+  else:
+    lines.append('inline bool %s(void* obj, const std::string& key, PropertyValue& value) {\n'
+                 '%s    auto bag = self->%s();\n    auto it = bag.find(key);\n'
+                 '    if (it == bag.end()) {\n        return false;\n    }\n'
+                 '    StructCodec::readEntry(it->second, value);\n    return true;\n}\n'
+                 % (getSymbol, self, entry['getter']))
+    if entry['setter']:
+      lines.append('inline bool %s(void* obj, const std::string& key, const PropertyValue& value) {\n'
+                   '%s    auto bag = self->%s();\n'
+                   '    StructCodec::writeEntry(value, bag[key]);\n    self->%s(bag);\n'
+                   '    return true;\n}\n'
+                   % (setSymbol, self, entry['getter'], entry['setter']))
+  lines.append('static const IndexedAccess %s = { %s, %s };\n'
+               % (symbolOf(entry, 'idx'), getSymbol, setSymbol if entry['setter'] else 'nullptr'))
+  return lines
+
+
 def emitAccessors(headers, entries, outPath):
   lines = [
     '// Generated by scripts/gen-api-tables.py. Do not edit.\n',
@@ -635,11 +744,14 @@ def emitAccessors(headers, entries, outPath):
     lines.append('#include "%s"\n' % header)
   lines.append('#include "api/StructCodec.h"\n')
   lines.append('#include <memory>\n')
+  lines.append('#include <type_traits>\n')
   lines.append('\nnamespace massif { namespace api { namespace accessors {\n\n')
   # typeid needs a COMPLETE type, and an object property can point at a class this profile only
   # forward-declares (VectorTileClickInfo.layer without Layer.i). Those keep the declared name.
   complete = set(entry['cppClass'] for entry in entries)
   for entry in entries:
+    if entry.get('indexed'):
+      lines += indexedThunks(entry)
     objectClass = objectClassOf(entry)
     if objectClass:
       # The CONCRETE class, not the declared one: a tileDecoder declared as VectorTileDecoder is
@@ -877,14 +989,29 @@ def emitSpecs(specs, bases, headerDirs, outPath):
   return dispatch, unbuildable
 
 
-def emitTable(entries, bases, enums, outPath):
+def emitTable(entries, aliases, bases, enums, outPath):
   byClass = {}
   for entry in entries:
     byClass.setdefault(entry['cppClass'], {})[entry['path']] = entry
 
+  aliasByClass = {}
+  for alias in aliases:
+    aliasByClass.setdefault(alias['cppClass'], {})[alias['alias']] = alias['path']
+
+  # An alias pointing at nothing resolves to UNKNOWN_PROPERTY at runtime, with the alias in the
+  # message and no hint that the alias itself is the fault.
+  for cppClass in sorted(aliasByClass):
+    for alias, path in sorted(aliasByClass[cppClass].items()):
+      target = cppClass
+      while target and path not in byClass.get(target, {}):
+        target = bases.get(target)
+      if not target:
+        print('warning: alias %s.%s points at %s, which no class in the chain declares'
+              % (cppClass, alias, path))
+
   # Every class the headers declare gets an entry, with or without properties of its own: a
   # registration target with none still has to resolve so its base chain can be walked.
-  allClasses = set(byClass) | set(bases)
+  allClasses = set(byClass) | set(bases) | set(aliasByClass)
 
   lines = [
     '// Generated by scripts/gen-api-tables.py. Do not edit.\n',
@@ -903,21 +1030,32 @@ def emitTable(entries, bases, enums, outPath):
       objFn = 'accessors::%s' % symbolOf(entry, 'getobj') if objectClass else 'nullptr'
       objSetFn = ('accessors::%s' % symbolOf(entry, 'setobj')
                   if objectClass and not (entry['flags'] & FLAG_READONLY) else 'nullptr')
-      lines.append('    { "%s", PT_%s, %d, %s, %s, %s, %s, %s },\n' %
+      idxFn = '&accessors::%s' % symbolOf(entry, 'idx') if entry.get('indexed') else 'nullptr'
+      lines.append('    { "%s", PT_%s, %d, %s, %s, %s, %s, %s, %s },\n' %
                    (path, entry['type'], entry['flags'], getFn, setFn, objFn, objSetFn,
-                    '"%s"' % objectClass if objectClass else 'nullptr'))
+                    '"%s"' % objectClass if objectClass else 'nullptr', idxFn))
+    lines.append('};\n\n')
+
+  for cppClass in sorted(aliasByClass):
+    symbol = re.sub(r'\W', '_', cppClass)
+    lines.append('static const AliasEntry kAliases_%s[] = {\n' % symbol)
+    for alias in sorted(aliasByClass[cppClass]):
+      lines.append('    { "%s", "%s" },\n' % (alias, aliasByClass[cppClass][alias]))
     lines.append('};\n\n')
 
   lines.append('static const ClassEntry kClasses[] = {\n')
   for cppClass in sorted(allClasses):
     props = byClass.get(cppClass)
+    classAliases = aliasByClass.get(cppClass)
     symbol = re.sub(r'\W', '_', cppClass)
     base = bases.get(cppClass)
-    lines.append('    { "%s", %s, %d, %s },\n' % (
+    lines.append('    { "%s", %s, %d, %s, %s, %d },\n' % (
         cppClass,
         'kProps_%s' % symbol if props else 'nullptr',
         len(props) if props else 0,
-        '"%s"' % base if base else 'nullptr'))
+        '"%s"' % base if base else 'nullptr',
+        'kAliases_%s' % symbol if classAliases else 'nullptr',
+        len(classAliases) if classAliases else 0))
   lines.append('};\n')
 
   # Every enum constant by name. A spec is JSON, so an enum written as its constant name arrives
@@ -946,7 +1084,7 @@ def emitTable(entries, bases, enums, outPath):
   return byClass
 
 
-def emitSchema(entries, bases, specs, methods, events, enums, docs, dispatch, outPath):
+def emitSchema(entries, aliases, bases, specs, methods, events, enums, docs, dispatch, outPath):
   """
   Everything the facade knows about itself, as one JSON document.
 
@@ -964,6 +1102,10 @@ def emitSchema(entries, bases, specs, methods, events, enums, docs, dispatch, ou
       'position': bool(entry['flags'] & FLAG_POSITION),
       'cppType': entry['cppType'],
     }
+    if entry.get('indexed'):
+      # A bag: the rest of the path is a key, so a binding completes `params.<anything>`. The
+      # value is what ONE entry holds - the whole property takes an object of them.
+      prop['indexed'] = entry['bagType']
     objectClass = objectClassOf(entry)
     if objectClass:
       prop['objectClass'] = objectClass
@@ -974,12 +1116,17 @@ def emitSchema(entries, bases, specs, methods, events, enums, docs, dispatch, ou
       prop['doc'] = doc
     byClass.setdefault(entry['cppClass'], []).append(prop)
 
+  aliasByClass = {}
+  for alias in aliases:
+    aliasByClass.setdefault(alias['cppClass'], {})[alias['alias']] = alias['path']
+
   # A class with no properties of its own still belongs: the chain runs through it.
   classes = {}
-  for cppClass in sorted(set(byClass) | set(bases)):
+  for cppClass in sorted(set(byClass) | set(bases) | set(aliasByClass)):
     classes[cppClass] = {
       'base': bases.get(cppClass),
       'properties': sorted(byClass.get(cppClass, []), key=lambda p: p['name']),
+      'aliases': dict(sorted(aliasByClass.get(cppClass, {}).items())),
       'methods': sorted([m for m in methods if m['cppClass'] == cppClass],
                         key=lambda m: m['name']),
       'events': sorted([e for e in events if e['cppClass'] == cppClass], key=lambda e: e['name']),
@@ -1060,9 +1207,11 @@ args = parser.parse_args()
 source = args.defines if args.defines else getProfile(args.profile).get('defines', '')
 defines = set(d.strip() for d in re.split(r'[;,]', source) if d.strip())
 
-headers, entries, specs, methods, events, skipped = parseModules(
+parsed, skipped = parseModules(
     re.split(r'[;,]', args.sourceDir), defines,
     re.split(r'[;,]', args.modules) if args.modules else None)
+headers, entries, specs = parsed['headers'], parsed['entries'], parsed['specs']
+methods, events, aliases = parsed['methods'], parsed['events'], parsed['aliases']
 if not entries:
   print('No attribute macros found - is --sourcedir right?')
   sys.exit(-1)
@@ -1073,12 +1222,12 @@ bases = parseBases(headers, re.split(r'[;,]', args.cppDir))
 cppDirs = re.split(r'[;,]', args.cppDir)
 # Before emitTable: the property table carries the enum constants, so a spec can spell one.
 enums, docs = parseHeaderExtras(headers, cppDirs)
-byClass = emitTable(entries, bases, enums, os.path.join(args.outDir, 'PropertyTable.inc'))
+byClass = emitTable(entries, aliases, bases, enums, os.path.join(args.outDir, 'PropertyTable.inc'))
 built, unbuildable = emitSpecs(specs, bases, re.split(r'[;,]', args.cppDir),
                                os.path.join(args.outDir, 'SpecConstructors.inc'))
 emitDeclarations(methods, events, os.path.join(args.outDir, 'MethodDecls.inc'))
 if args.schema:
-  emitSchema(entries, bases, specs, methods, events, enums, docs, built, args.schema)
+  emitSchema(entries, aliases, bases, specs, methods, events, enums, docs, built, args.schema)
 
 counts = {}
 for entry in entries:
@@ -1090,13 +1239,15 @@ print('%d properties over %d classes, %d classes in the chain (%d value, %d obje
 print('  ' + '  '.join('%s=%d' % (name, counts[name]) for name in TYPE_NAMES if name in counts))
 print('  %d methods, %d events declared, %d enums with %d constants'
       % (len(methods), len(events), len(enums), sum(len(v) for v in enums.values())))
+print('  %d bag properties (key-addressed), %d aliases'
+      % (sum(1 for e in entries if e.get('indexed')), len(aliases)))
 
 # A property with no accessor is silently unreadable - the failure mode that hid
 # RoutingInstruction.action and PackageInfo.size. Name what is still out of reach, by type, so the
 # next gap costs a glance instead of a device session.
 unreachable = {}
 for entry in entries:
-  if accessible(entry) or objectClassOf(entry):
+  if accessible(entry) or objectClassOf(entry) or entry.get('indexed'):
     continue
   unreachable.setdefault(entry['cppType'], []).append(entry['cppClass'] + '.' + entry['path'])
 if unreachable:

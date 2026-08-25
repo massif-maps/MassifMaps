@@ -82,6 +82,35 @@ namespace massif { namespace api {
         return true;
     }
 
+    namespace {
+    /**
+     * A bag property written from a JSON object: {"params": {"water_color": "#0af"}}.
+     *
+     * Tolerant like the rest of the spec path - a key the bag refuses is logged, and the others
+     * still apply, because a style parameter dropped from a newer sheet must not fail the layer.
+     */
+    void applyBagSpecProperty(const ObjectRef& object, const PropertyEntry& entry,
+                              const std::string& key, const Variant& value) {
+        if (value.getType() != VariantType::VARIANT_TYPE_OBJECT) {
+            Log::Warnf("Spec: %s.%s takes an object of names to values", object.cppClass, key.c_str());
+            return;
+        }
+        for (const std::string& name : value.getObjectKeys()) {
+            PropertyValue item;
+            StructCodec::readEntry(value.getObjectElement(name), item);
+            try {
+                if (!entry.indexed->setter(object.obj.get(), name, item)) {
+                    Log::Warnf("Spec: %s.%s has no '%s', ignored",
+                               object.cppClass, key.c_str(), name.c_str());
+                }
+            } catch (const std::exception& ex) {
+                Log::Errorf("Spec: %s.%s.%s refused: %s",
+                            object.cppClass, key.c_str(), name.c_str(), ex.what());
+            }
+        }
+    }
+    }
+
     void applySpecProperties(Context& context, const ObjectRef& object, const Variant& spec,
                              std::set<std::string>& consumed) {
         const ClassEntry* classEntry = findClass(object.cppClass);
@@ -93,13 +122,25 @@ namespace massif { namespace api {
                 continue;
             }
             const PropertyEntry* entry = findProperty(classEntry, key.c_str());
-            if (!entry || !(entry->setter || entry->objectSetter)) {
+            if (!entry) {
+                // A spec spells a property the same way a path does, aliases included.
+                if (const char* aliased = findAlias(classEntry, key.c_str())) {
+                    entry = findProperty(classEntry, aliased);
+                }
+            }
+            // A bag - a style's parameters - is written key by key from a JSON object.
+            bool bag = entry && entry->indexed && entry->indexed->setter && !entry->setter;
+            if (!entry || !(entry->setter || entry->objectSetter || bag)) {
                 Log::Warnf("Spec: %s has no writable '%s', ignored", object.cppClass, key.c_str());
                 continue;
             }
             // Marked either way: the caller's object is not the one Spec::create registers, and an
             // immutable style would warn about every key it was built from.
             consumed.insert(key);
+            if (bag) {
+                applyBagSpecProperty(object, *entry, key, spec.getObjectElement(key));
+                continue;
+            }
             if (applyObjectSpecProperty(context, object, spec, key)) {
                 continue;
             }

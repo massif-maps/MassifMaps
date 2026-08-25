@@ -38,6 +38,8 @@ set(TEST_MODULES
   # An ENUM property on a class with no dependencies at all - the map events' reason, and the only
   # enum in the reduced table.
   "${SDK_BASE_DIR}/all/modules/ui/MapMoveInfo.i"
+  # Aliases the reduced table can carry - the production ones are on classes the host cannot link.
+  "${CMAKE_CURRENT_SOURCE_DIR}/modules/TestFacade.i"
   # For adopt: an abstract base an app SUBCLASSES, which is what a spec's `assets` id resolves to.
   # The base only - DirAssetPackage's !spec would pull FileUtils, and with it the platform
   # AssetUtils, which does not exist on the host.
@@ -159,6 +161,7 @@ add_executable(api_tests
   BundleAssetsTest.cpp
   CAbiTest.cpp
   MetaDataTest.cpp
+  BagTest.cpp
   "${TEST_TABLE_DIR}/PropertyTable.inc"
   "${TEST_TABLE_DIR}/MethodDecls.inc"
   ${TEST_SDK_SOURCES})

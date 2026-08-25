@@ -35,6 +35,8 @@
 %attributestring(massif::VectorTileLayer, std::string, RendererLayerFilter, getRendererLayerFilter, setRendererLayerFilter)
 %attributestring(massif::VectorTileLayer, std::string, ClickHandlerLayerFilter, getClickHandlerLayerFilter, setClickHandlerLayerFilter)
 !attributestring_polymorphic(massif::VectorTileLayer, vectortiles.VectorTileDecoder, TileDecoder, getTileDecoder)
+// So a style parameter reads as one path from the layer: "style.params.water_color".
+!alias(massif::VectorTileLayer, style, tileDecoder)
 !attributestring_polymorphic(massif::VectorTileLayer, layers.VectorTileEventListener, VectorTileEventListener, getVectorTileEventListener, setVectorTileEventListener)
 %std_exceptions(massif::VectorTileLayer::VectorTileLayer)
 %ignore massif::VectorTileLayer::FetchTask;

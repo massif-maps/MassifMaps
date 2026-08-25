@@ -130,7 +130,11 @@ namespace massif { namespace api {
         static bool isValid(int handle);
 
         /**
-         * Writes a property. The path may walk object properties: "fogOptions.rangeStart".
+         * Writes a property. The path may walk object properties: "fogOptions.rangeStart", and it
+         * may end in the KEY of a bag: "params.water_color" on a style.
+         *
+         * A bag also takes every key at once, as a JSON object - one crossing rather than one per
+         * parameter: setString(style, "params", "{\"water_color\":\"#0af\"}").
          * @return 0 on success, see the Result enum otherwise.
          */
         static int setFloat(int handle, const std::string& path, double value);
@@ -146,6 +150,30 @@ namespace massif { namespace api {
          * @copydoc MassifApi::setFloat
          */
         static int setString(int handle, const std::string& path, const std::string& value);
+
+        /**
+         * Writes several properties from one JSON object of PATH to value.
+         *
+         * `{"fogOptions.rangeStart": 2, "visible": false}` is one crossing rather than one per
+         * key, which is what a binding's `apply({...})` used to cost. Every key is attempted and
+         * the first failure is returned, so one bad name does not hide the other writes.
+         * @return 0 when every key applied, see the Result enum otherwise.
+         */
+        static int setAll(int handle, const std::string& json,
+                          const std::string& projection = std::string());
+
+        /**
+         * Writes a position property in a named projection - the write counterpart of getPos.
+         *
+         * setString takes a position in the projection the running handler asked for, and in WGS84
+         * outside one, which is right until an app holds coordinates in another system: those had
+         * to be converted by hand, and a mistake showed up as a plausible position somewhere else.
+         * @param json The position as `[x, y]` or `[x, y, z]`, bounds as a pair of them.
+         * @param projection The well-known name the value is IN, e.g. "EPSG:3857". Empty behaves
+         *        exactly like setString.
+         */
+        static int setPos(int handle, const std::string& path, const std::string& json,
+                          const std::string& projection = std::string());
 
         /**
          * Points an object property at another registered object - a layer's data source, a

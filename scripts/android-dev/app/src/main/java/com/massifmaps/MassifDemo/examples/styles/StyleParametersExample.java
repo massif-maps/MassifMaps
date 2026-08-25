@@ -15,8 +15,9 @@ import com.massifmaps.api.Position;
 @ExampleInfo(
     id = "style-parameters",
     title = "Change a style at runtime",
-    description = "A style project declares `param::` values the app sets while the map runs. "
-                + "A colour swaps live; a parameter used in a filter re-decodes the tiles.",
+    description = "A style project declares `param::` values the app sets while the map runs, as "
+                + "properties: `params.<name>`. A colour swaps live; one used in a filter "
+                + "re-decodes the tiles.",
     section = Sections.STYLES,
     order = 10)
 public class StyleParametersExample extends MapExample {
@@ -36,10 +37,16 @@ public class StyleParametersExample extends MapExample {
         // example talks to it afterwards - a layer's style property cannot be read back as a
         // handle. A spec key that is a STRING is looked up in the registry, which is what
         // "style": "alpine" below does.
+        //
+        // The parameters are part of the spec, so the style is built with them already applied
+        // rather than being corrected on the first frame.
         final MassifObject style = map.style("alpine", Spec.of("mbvt")
             .set("project", Spec.of("project")
                 .set("assets", Spec.of("zip")
-                    .set("data", Spec.of("url").set("url", "assets://styles/alpine.zip")))));
+                    .set("data", Spec.of("url").set("url", "assets://styles/alpine.zip"))))
+            .set("params", Spec.object()
+                .set("water_color", WATER[0])
+                .set("show_buildings", "true")));
 
         map.addLayer("basemap", Spec.of("vector")
             .set("source", Spec.of("http")
@@ -54,24 +61,27 @@ public class StyleParametersExample extends MapExample {
             @Override
             public void run() {
                 water = (water + 1) % WATER.length;
+                // A style parameter is a PROPERTY: the rest of the path is the parameter's name.
                 // LIVE: the decoded tiles already point at this value, so it swaps and redraws.
-                set(style, "water_color", WATER[water]);
+                style.set("params.water_color", WATER[water]);
             }
         });
         host.toggle("Buildings", true, new ExampleHost.OnToggle() {
             @Override
             public void onToggle(boolean on) {
                 // In a FILTER: this decides what the tile contains, so every tile decodes again.
-                set(style, "show_buildings", String.valueOf(on));
+                style.set("params.show_buildings", String.valueOf(on));
+            }
+        });
+        host.button("Night", new Runnable() {
+            @Override
+            public void run() {
+                // Several at once, in ONE crossing - which is what a theme swap is.
+                style.apply(Spec.object().set("params", Spec.object()
+                    .set("water_color", "#0b2b4a")
+                    .set("show_buildings", "false")));
             }
         });
         host.caption("Two parameters, two costs: a colour swaps live, a filter re-decodes.");
-    }
-
-    private static void set(MassifObject style, String name, String value) {
-        MassifObject result = style.call("setStyleParameter", name, value);
-        if (result != null) {
-            result.close();
-        }
     }
 }

@@ -271,6 +271,7 @@ static const char* const kNames[] = {
     "panBounds",
     "panningMode",
     "panningSpeedMode",
+    "params",
     "paused",
     "phaseInDuration",
     "phaseOutDuration",

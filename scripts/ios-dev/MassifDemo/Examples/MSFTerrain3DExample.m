@@ -68,13 +68,16 @@ static MSFSpec *dem(void) {
 
     MSFPropertyGroup *terrain =
         [map terrainWithSpec:[[MSFSpec of:@"terrain"] set:@"source" value:dem()] error:nil];
-    [terrain set:@"exaggeration" value:@1.25];
-    // How far the ground goes on: multiples of the camera-to-focus distance, so one value holds at
-    // every zoom. Pair a short one with fog or the ground ends on a hard edge.
-    [terrain set:@"viewDistanceFactor" value:@1.6];
-    // The terrain normally holds the camera 200 m above the ground, which swings a close view into
-    // the nearest hillside. Lowered so the camera can sit among the peaks.
-    [terrain set:@"cameraClearance" value:@40];
+    // apply, not three sets: one crossing for the whole group.
+    //
+    // viewDistanceFactor is how far the ground goes on, in multiples of the camera-to-focus
+    // distance, so one value holds at every zoom - pair a short one with fog or the ground ends on
+    // a hard edge. cameraClearance is normally 200 m, which swings a close view into the nearest
+    // hillside; lowered so the camera can sit among the peaks.
+    [terrain apply:[[[[MSFSpec object]
+        set:@"exaggeration" value:@1.25]
+        set:@"viewDistanceFactor" value:@1.6]
+        set:@"cameraClearance" value:@40]];
 
     // Options starts with these EMPTY, so they are BUILT here rather than written through.
     [map skyWithSpec:[MSFSpec of:@"sky"] error:nil];
@@ -96,7 +99,9 @@ static MSFSpec *dem(void) {
                   zoom:11.5 rotation:180 tilt:33];
 
     [host toggle:@"Terrain" on:YES action:^(BOOL on) {
-        [map.terrain set:@"enabled" value:@(on)];
+        // A path off the map itself, with the readable spelling: "terrain" is an alias for
+        // "terrainOptions", so this is map.options set:@"terrainOptions.enabled".
+        [map set:@"terrain.enabled" value:@(on)];
     }];
     [host toggle:@"Labels" on:YES action:^(BOOL on) {
         [[map layer:@"labels"] visible:on];

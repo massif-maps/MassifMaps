@@ -705,6 +705,8 @@ export interface PropertyTypes {
     readonly "assetNames": string[];
   };
   "massif::AssetTileDataSource": {
+    /** Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. */
+    [key: `metaData.${string}`]: Json;
     /** (read-only) Returns the extent of the tiles in this data source. The bounds are in coordinate system of the projection of the data source. */
     readonly "dataExtent": Bounds;
     /** Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" */
@@ -722,6 +724,10 @@ export interface PropertyTypes {
     readonly "projection.name": string;
   };
   "massif::BalloonPopup": {
+    /** Returns a copy of the vector element meta data map. The changes you make to this map are NOT reflected in the actual meta data of the element. */
+    [key: `baseBillboard.metaData.${string}`]: Json;
+    /** Returns a copy of the vector element meta data map. The changes you make to this map are NOT reflected in the actual meta data of the element. */
+    [key: `metaData.${string}`]: Json;
     /** Returns the horizontal anchor point of this popup. */
     "anchorPointX": number;
     /** Returns the vertical anchor point of this popup. */
@@ -916,6 +922,8 @@ export interface PropertyTypes {
     readonly "text": string;
   };
   "massif::BalloonPopupButtonClickInfo": {
+    /** Returns a copy of the vector element meta data map. The changes you make to this map are NOT reflected in the actual meta data of the element. */
+    [key: `vectorElement.metaData.${string}`]: Json;
     /** (read-only) Returns the clicked button. */
     readonly "button": Handle<"massif::BalloonPopupButton">;
     /** (read-only) Returns the style of this button. */
@@ -1226,6 +1234,8 @@ export interface PropertyTypes {
     readonly "zoom": number;
   };
   "massif::Billboard": {
+    /** Returns a copy of the vector element meta data map. The changes you make to this map are NOT reflected in the actual meta data of the element. */
+    [key: `metaData.${string}`]: Json;
     /** Returns the base billboard this billboard is attached to. */
     "baseBillboard": Handle<"massif::Billboard">;
     /** (read-only) Returns the bounds of this billboard or the base billboard, if there is one. */
@@ -1334,6 +1344,8 @@ export interface PropertyTypes {
     readonly "width": number;
   };
   "massif::BitmapOverlayRasterTileDataSource": {
+    /** Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. */
+    [key: `metaData.${string}`]: Json;
     /** (read-only) Returns the extent of the tiles in this data source. The bounds are in coordinate system of the projection of the data source. */
     readonly "dataExtent": Bounds;
     /** Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" */
@@ -1358,6 +1370,10 @@ export interface PropertyTypes {
     readonly "localAssetNames": string[];
   };
   "massif::CacheTileDataSource": {
+    /** Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. */
+    [key: `dataSource.metaData.${string}`]: Json;
+    /** Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. */
+    [key: `metaData.${string}`]: Json;
     "capacity": number;
     /** (read-only) Returns the extent of the tiles in this data source. The bounds are in coordinate system of the projection of the data source. */
     readonly "dataExtent": Bounds;
@@ -1430,6 +1446,8 @@ export interface PropertyTypes {
   "massif::CelestialEventListener": {
   };
   "massif::CelestialLayer": {
+    /** Returns a copy of the layer meta data map. The changes you make to this map are NOT reflected in the actual meta data of the layer. */
+    [key: `metaData.${string}`]: Json;
     /** Returns the object event listener. */
     "celestialEventListener": Handle<"massif::CelestialEventListener">;
     /** Returns the culling delay of the layer in milliseconds. */
@@ -1514,6 +1532,8 @@ export interface PropertyTypes {
   "massif::ClusteredVectorLayer": {
     /** Returns true if Z-buffering is enabled for 2D geometry. By default it is disabled and used only for billboards. */
     "ZBuffering": boolean;
+    /** Returns a copy of the layer meta data map. The changes you make to this map are NOT reflected in the actual meta data of the layer. */
+    [key: `metaData.${string}`]: Json;
     /** Returns the cluster animation flag value. */
     "animatedClusters": boolean;
     /** (read-only) Returns the current callback used for creating cluster elements. */
@@ -1561,6 +1581,8 @@ export interface PropertyTypes {
     readonly "r": number;
   };
   "massif::CombinedTileDataSource": {
+    /** Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. */
+    [key: `metaData.${string}`]: Json;
     /** (read-only) Returns the extent of the tiles in this data source. The bounds are in coordinate system of the projection of the data source. */
     readonly "dataExtent": Bounds;
     /** Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" */
@@ -1606,6 +1628,14 @@ export interface PropertyTypes {
     readonly "UTFGridDataSource.projection.name": string;
     /** Returns the UTF grid event listener. */
     "UTFGridEventListener": Handle<"massif::UTFGridEventListener">;
+    /** Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. */
+    [key: `UTFGridDataSource.metaData.${string}`]: Json;
+    /** Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. */
+    [key: `dataSource.metaData.${string}`]: Json;
+    /** Returns a copy of the layer meta data map. The changes you make to this map are NOT reflected in the actual meta data of the layer. */
+    [key: `metaData.${string}`]: Json;
+    /** Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. */
+    [key: `source.metaData.${string}`]: Json;
     /** Returns the current display order of the buildings. */
     "buildingRenderOrder": "VECTOR_TILE_RENDER_ORDER_HIDDEN" | "VECTOR_TILE_RENDER_ORDER_LAYER" | "VECTOR_TILE_RENDER_ORDER_LAST";
     /** Returns the click handler layer filter. The filter is given as ECMA regular expression that is applied to qualified layer names. */
@@ -1660,6 +1690,27 @@ export interface PropertyTypes {
     "rendererLayerFilter": string;
     /** Returns whether single-pass segmented rendering is enabled (Milestone 6, optional). */
     "singlePassRenderingEnabled": boolean;
+    /** (read-only) Returns the data source assigned to this layer. */
+    readonly "source": Handle<"massif::TileDataSource">;
+    /** (read-only) Returns the extent of the tiles in this data source. The bounds are in coordinate system of the projection of the data source. */
+    readonly "source.dataExtent": Bounds;
+    /** Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" */
+    "source.maxOverzoomLevel": number;
+    /** (read-only) Returns the maximum zoom level supported by this data source. */
+    readonly "source.maxZoom": number;
+    /** Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. */
+    "source.metaData": Record<string, Json>;
+    /** (read-only) Returns the minimum zoom level supported by this data source. */
+    readonly "source.minZoom": number;
+    /** (read-only) Returns the projection of this tile source. */
+    readonly "source.projection": Handle<"massif::Projection">;
+    /** (read-only) Returns the bounds of this projection. */
+    readonly "source.projection.bounds": Bounds;
+    readonly "source.projection.name": string;
+    /** (read-only) Returns the tile decoder assigned to this layer. */
+    readonly "style": Handle<"massif::VectorTileDecoder">;
+    readonly "style.maxZoom": number;
+    readonly "style.minZoom": number;
     /** Returns the state of the synchronized refresh flag. */
     "synchronizedRefresh": boolean;
     /** Returns the tile cache capacity. */
@@ -1684,6 +1735,8 @@ export interface PropertyTypes {
     "zoomLevelBias": number;
   };
   "massif::ContourTileDataSource": {
+    /** Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. */
+    [key: `metaData.${string}`]: Json;
     /** Returns the base contour interval in meters. */
     "baseInterval": number;
     /** (read-only) Returns the extent of the tiles in this data source. The bounds are in coordinate system of the projection of the data source. */
@@ -1768,6 +1821,10 @@ export interface PropertyTypes {
     readonly "viewState": Json;
   };
   "massif::CustomPopup": {
+    /** Returns a copy of the vector element meta data map. The changes you make to this map are NOT reflected in the actual meta data of the element. */
+    [key: `baseBillboard.metaData.${string}`]: Json;
+    /** Returns a copy of the vector element meta data map. The changes you make to this map are NOT reflected in the actual meta data of the element. */
+    [key: `metaData.${string}`]: Json;
     /** Returns the horizontal anchor point of this popup. */
     "anchorPointX": number;
     /** Returns the vertical anchor point of this popup. */
@@ -1885,6 +1942,14 @@ export interface PropertyTypes {
     readonly "UTFGridDataSource.projection.name": string;
     /** Returns the UTF grid event listener. */
     "UTFGridEventListener": Handle<"massif::UTFGridEventListener">;
+    /** Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. */
+    [key: `UTFGridDataSource.metaData.${string}`]: Json;
+    /** Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. */
+    [key: `dataSource.metaData.${string}`]: Json;
+    /** Returns a copy of the layer meta data map. The changes you make to this map are NOT reflected in the actual meta data of the layer. */
+    [key: `metaData.${string}`]: Json;
+    /** Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. */
+    [key: `source.metaData.${string}`]: Json;
     /** Returns the culling delay of the layer in milliseconds. */
     "cullDelay": number;
     /** (read-only) Returns the data source assigned to this layer. */
@@ -1927,6 +1992,23 @@ export interface PropertyTypes {
     "rasterTileEventListener": Handle<"massif::RasterTileEventListener">;
     /** Returns the custom fragment shader source. */
     "shaderSource": string;
+    /** (read-only) Returns the data source assigned to this layer. */
+    readonly "source": Handle<"massif::TileDataSource">;
+    /** (read-only) Returns the extent of the tiles in this data source. The bounds are in coordinate system of the projection of the data source. */
+    readonly "source.dataExtent": Bounds;
+    /** Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" */
+    "source.maxOverzoomLevel": number;
+    /** (read-only) Returns the maximum zoom level supported by this data source. */
+    readonly "source.maxZoom": number;
+    /** Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. */
+    "source.metaData": Record<string, Json>;
+    /** (read-only) Returns the minimum zoom level supported by this data source. */
+    readonly "source.minZoom": number;
+    /** (read-only) Returns the projection of this tile source. */
+    readonly "source.projection": Handle<"massif::Projection">;
+    /** (read-only) Returns the bounds of this projection. */
+    readonly "source.projection.bounds": Bounds;
+    readonly "source.projection.name": string;
     /** Returns the state of the synchronized refresh flag. */
     "synchronizedRefresh": boolean;
     /** Returns the tile texture cache capacity. */
@@ -1974,6 +2056,10 @@ export interface PropertyTypes {
   "massif::EditableVectorLayer": {
     /** Returns true if Z-buffering is enabled for 2D geometry. By default it is disabled and used only for billboards. */
     "ZBuffering": boolean;
+    /** Returns a copy of the layer meta data map. The changes you make to this map are NOT reflected in the actual meta data of the layer. */
+    [key: `metaData.${string}`]: Json;
+    /** Returns a copy of the vector element meta data map. The changes you make to this map are NOT reflected in the actual meta data of the element. */
+    [key: `selectedVectorElement.metaData.${string}`]: Json;
     /** Returns the culling delay of the layer in milliseconds. */
     "cullDelay": number;
     /** (read-only) Returns the vector data source of this vector layer. */
@@ -2112,6 +2198,8 @@ export interface PropertyTypes {
     "z": boolean;
   };
   "massif::GeoJSONVectorTileDataSource": {
+    /** Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. */
+    [key: `metaData.${string}`]: Json;
     /** (read-only) Returns the extent of the tiles in this data source. The bounds are in coordinate system of the projection of the data source. */
     readonly "dataExtent": Bounds;
     /** Returns the default layer buffer in tile pixels. */
@@ -2196,6 +2284,8 @@ export interface PropertyTypes {
     readonly "type": "GEOMETRY_TYPE_POINT" | "GEOMETRY_TYPE_LINE" | "GEOMETRY_TYPE_POLYGON" | "GEOMETRY_TYPE_MULTIPOINT" | "GEOMETRY_TYPE_MULTILINE" | "GEOMETRY_TYPE_MULTIPOLYGON" | "GEOMETRY_TYPE_COLLECTION";
   };
   "massif::GeometryCollection": {
+    /** Returns a copy of the vector element meta data map. The changes you make to this map are NOT reflected in the actual meta data of the element. */
+    [key: `metaData.${string}`]: Json;
     /** (read-only) Returns the bounds of this vector element. */
     readonly "bounds": Bounds;
     "geometry": Handle<"massif::MultiGeometry">;
@@ -2389,6 +2479,10 @@ export interface PropertyTypes {
     "HTTPHeaders": Record<string, string>;
     /** Returns true/false based whether the TMS tiling scheme is used. */
     "TMSScheme": boolean;
+    /** Returns the current set of HTTP headers used. Initially this set is empty and can be changed with setHTTPHeaders. */
+    [key: `HTTPHeaders.${string}`]: string;
+    /** Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. */
+    [key: `metaData.${string}`]: Json;
     /** Returns the base URL template containing tags. */
     "baseURL": string;
     /** (read-only) Returns the extent of the tiles in this data source. The bounds are in coordinate system of the projection of the data source. */
@@ -2433,6 +2527,14 @@ export interface PropertyTypes {
     readonly "UTFGridDataSource.projection.name": string;
     /** Returns the UTF grid event listener. */
     "UTFGridEventListener": Handle<"massif::UTFGridEventListener">;
+    /** Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. */
+    [key: `UTFGridDataSource.metaData.${string}`]: Json;
+    /** Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. */
+    [key: `dataSource.metaData.${string}`]: Json;
+    /** Returns a copy of the layer meta data map. The changes you make to this map are NOT reflected in the actual meta data of the layer. */
+    [key: `metaData.${string}`]: Json;
+    /** Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. */
+    [key: `source.metaData.${string}`]: Json;
     /** Returns the shading color used to accentuate rugged terrain like sharp cliffs and gorges. */
     "accentColor": number;
     /** Returns the contour line color. */
@@ -2508,6 +2610,23 @@ export interface PropertyTypes {
     "shaderSource": string;
     /** Returns the shading color of areas that face away from the light source. */
     "shadowColor": number;
+    /** (read-only) Returns the data source assigned to this layer. */
+    readonly "source": Handle<"massif::TileDataSource">;
+    /** (read-only) Returns the extent of the tiles in this data source. The bounds are in coordinate system of the projection of the data source. */
+    readonly "source.dataExtent": Bounds;
+    /** Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" */
+    "source.maxOverzoomLevel": number;
+    /** (read-only) Returns the maximum zoom level supported by this data source. */
+    readonly "source.maxZoom": number;
+    /** Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. */
+    "source.metaData": Record<string, Json>;
+    /** (read-only) Returns the minimum zoom level supported by this data source. */
+    readonly "source.minZoom": number;
+    /** (read-only) Returns the projection of this tile source. */
+    readonly "source.projection": Handle<"massif::Projection">;
+    /** (read-only) Returns the bounds of this projection. */
+    readonly "source.projection.bounds": Bounds;
+    readonly "source.projection.name": string;
     /** Returns the state of the synchronized refresh flag. */
     "synchronizedRefresh": boolean;
     /** Returns whether the layer may shade the 3D terrain's own elevation texture instead of loading a DEM tile set of its own. */
@@ -2534,6 +2653,10 @@ export interface PropertyTypes {
     "zoomLevelBias": number;
   };
   "massif::Label": {
+    /** Returns a copy of the vector element meta data map. The changes you make to this map are NOT reflected in the actual meta data of the element. */
+    [key: `baseBillboard.metaData.${string}`]: Json;
+    /** Returns a copy of the vector element meta data map. The changes you make to this map are NOT reflected in the actual meta data of the element. */
+    [key: `metaData.${string}`]: Json;
     /** Returns the base billboard this billboard is attached to. */
     "baseBillboard": Handle<"massif::Billboard">;
     /** Returns the base billboard this billboard is attached to. */
@@ -2724,6 +2847,8 @@ export interface PropertyTypes {
     "verticalOffset": number;
   };
   "massif::Layer": {
+    /** Returns a copy of the layer meta data map. The changes you make to this map are NOT reflected in the actual meta data of the layer. */
+    [key: `metaData.${string}`]: Json;
     /** Returns the culling delay of the layer in milliseconds. */
     "cullDelay": number;
     /** Returns a copy of the layer meta data map. The changes you make to this map are NOT reflected in the actual meta data of the layer. */
@@ -2776,6 +2901,8 @@ export interface PropertyTypes {
     "terrainLightingEnabled": boolean;
   };
   "massif::Line": {
+    /** Returns a copy of the vector element meta data map. The changes you make to this map are NOT reflected in the actual meta data of the element. */
+    [key: `metaData.${string}`]: Json;
     /** (read-only) Returns the bounds of this vector element. */
     readonly "bounds": Bounds;
     "geometry": Handle<"massif::LineGeometry">;
@@ -2904,6 +3031,8 @@ export interface PropertyTypes {
   "massif::LogEventListener": {
   };
   "massif::MBTilesTileDataSource": {
+    /** Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. */
+    [key: `metaData.${string}`]: Json;
     /** (read-only) Returns the extent of the tiles in this data source. The bounds are in coordinate system of the projection of the data source. */
     readonly "dataExtent": Bounds;
     /** Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" */
@@ -2921,6 +3050,8 @@ export interface PropertyTypes {
     readonly "projection.name": string;
   };
   "massif::MBVectorTileDecoder": {
+    /** Returns the value of the specified style parameter. The style parameter must be declared in the current style. */
+    [key: `params.${string}`]: string;
     /** Returns the current CartoCSS style set used by the decoder. If decoder uses non-CartoCSS style set, null is returned. */
     "cartoCSSStyle": Handle<"massif::CartoCSSStyleSet">;
     /** (read-only) Returns the style asset package. */
@@ -2941,6 +3072,8 @@ export interface PropertyTypes {
     "featureIdOverride": boolean;
     readonly "maxZoom": number;
     readonly "minZoom": number;
+    /** Returns the value of the specified style parameter. The style parameter must be declared in the current style. */
+    "params": Record<string, string>;
     /** (read-only) Returns the ordered list of style layer names as declared by the style (the project JSON "layers" array, or the Layer elements of a Mapnik XML style). This defines both the draw order and which layers exist. CompositeVectorTileLayer uses it to place external data sources in the layer order: a source whose name is not in this list has no slot in the style and is not drawn, so this is the way to check a style before wiring sources into it. */
     readonly "styleLayerNames": string[];
     /** (read-only) Returns the list of all available style parameters. */
@@ -3047,6 +3180,8 @@ export interface PropertyTypes {
     readonly "zoom": number;
   };
   "massif::MapTilerOnlineTileDataSource": {
+    /** Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. */
+    [key: `metaData.${string}`]: Json;
     /** Returns the custom backend service URL. */
     "customServiceURL": string;
     /** (read-only) Returns the extent of the tiles in this data source. The bounds are in coordinate system of the projection of the data source. */
@@ -3080,6 +3215,10 @@ export interface PropertyTypes {
     readonly "z": number;
   };
   "massif::Marker": {
+    /** Returns a copy of the vector element meta data map. The changes you make to this map are NOT reflected in the actual meta data of the element. */
+    [key: `baseBillboard.metaData.${string}`]: Json;
+    /** Returns a copy of the vector element meta data map. The changes you make to this map are NOT reflected in the actual meta data of the element. */
+    [key: `metaData.${string}`]: Json;
     /** Returns the base billboard this billboard is attached to. */
     "baseBillboard": Handle<"massif::Billboard">;
     /** Returns the base billboard this billboard is attached to. */
@@ -3304,6 +3443,10 @@ export interface PropertyTypes {
   "massif::MassifInterop": {
   };
   "massif::MemoryCacheTileDataSource": {
+    /** Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. */
+    [key: `dataSource.metaData.${string}`]: Json;
+    /** Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. */
+    [key: `metaData.${string}`]: Json;
     "capacity": number;
     /** (read-only) Returns the extent of the tiles in this data source. The bounds are in coordinate system of the projection of the data source. */
     readonly "dataExtent": Bounds;
@@ -3339,6 +3482,8 @@ export interface PropertyTypes {
     readonly "projection.name": string;
   };
   "massif::MergedMBVTTileDataSource": {
+    /** Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. */
+    [key: `metaData.${string}`]: Json;
     /** (read-only) Returns the extent of the tiles in this data source. The bounds are in coordinate system of the projection of the data source. */
     readonly "dataExtent": Bounds;
     /** Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" */
@@ -3404,6 +3549,8 @@ export interface PropertyTypes {
     readonly "type": "GEOMETRY_TYPE_POINT" | "GEOMETRY_TYPE_LINE" | "GEOMETRY_TYPE_POLYGON" | "GEOMETRY_TYPE_MULTIPOINT" | "GEOMETRY_TYPE_MULTILINE" | "GEOMETRY_TYPE_MULTIPOLYGON" | "GEOMETRY_TYPE_COLLECTION";
   };
   "massif::MultiTileDataSource": {
+    /** Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. */
+    [key: `metaData.${string}`]: Json;
     /** (read-only) Returns the extent of the tiles in this data source. The bounds are in coordinate system of the projection of the data source. */
     readonly "dataExtent": Bounds;
     /** Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" */
@@ -3424,6 +3571,10 @@ export interface PropertyTypes {
     "profile": string;
   };
   "massif::NMLModel": {
+    /** Returns a copy of the vector element meta data map. The changes you make to this map are NOT reflected in the actual meta data of the element. */
+    [key: `baseBillboard.metaData.${string}`]: Json;
+    /** Returns a copy of the vector element meta data map. The changes you make to this map are NOT reflected in the actual meta data of the element. */
+    [key: `metaData.${string}`]: Json;
     /** Returns the base billboard this billboard is attached to. */
     "baseBillboard": Handle<"massif::Billboard">;
     /** Returns the base billboard this billboard is attached to. */
@@ -3626,6 +3777,16 @@ export interface PropertyTypes {
     /** Returns the color of the ambient light. */
     "ambientLightColor": number;
     /** Returns the background bitmap. May be null. */
+    "background": Handle<"massif::Bitmap">;
+    /** (read-only) Returns the bytes per pixel parameter of this bitmap. Valid values are 1, 2, 3 and 4. */
+    readonly "background.bytesPerPixel": number;
+    /** (read-only) Returns the color format of this bitmap. */
+    readonly "background.colorFormat": "COLOR_FORMAT_UNSUPPORTED" | "COLOR_FORMAT_BGRA" | "COLOR_FORMAT_RGBA_4444" | "COLOR_FORMAT_RGB_565";
+    /** (read-only) Returns the height of the bitmap. */
+    readonly "background.height": number;
+    /** (read-only) Returns the width of the bitmap. */
+    readonly "background.width": number;
+    /** Returns the background bitmap. May be null. */
     "backgroundBitmap": Handle<"massif::Bitmap">;
     /** (read-only) Returns the bytes per pixel parameter of this bitmap. Valid values are 1, 2, 3 and 4. */
     readonly "backgroundBitmap.bytesPerPixel": number;
@@ -3658,6 +3819,28 @@ export interface PropertyTypes {
     "fieldOfViewY": number;
     /** Returns the focus point offset (from screen center) in pixels. */
     "focusPointOffset": [number, number];
+    /** Returns the fog (atmosphere) options. May be null. */
+    "fog": Handle<"massif::FogOptions">;
+    /** Returns the fog color. */
+    "fog.color": number;
+    /** Returns whether the fog is drawn at all. */
+    "fog.enabled": boolean;
+    /** Returns the color of the upper atmosphere. */
+    "fog.highColor": number;
+    /** Returns the elevation angle the fog is still at full strength at. */
+    "fog.horizonAngle": number;
+    /** Returns how far up the sky the fog is blended in. */
+    "fog.horizonBlend": number;
+    /** Returns where the fog reaches full strength. */
+    "fog.rangeEnd": number;
+    /** Returns where the fog starts. */
+    "fog.rangeStart": number;
+    /** Returns the custom fog fragment shader source, or an empty string if the built-in blend is used. */
+    "fog.shaderSource": string;
+    /** Returns the color of the sky at the zenith, beyond the atmosphere. */
+    "fog.spaceColor": number;
+    /** Returns how brightly stars are drawn beyond the atmosphere. */
+    "fog.starIntensity": number;
     /** Returns the fog (atmosphere) options. May be null. */
     "fogOptions": Handle<"massif::FogOptions">;
     /** Returns the fog color. */
@@ -3694,6 +3877,38 @@ export interface PropertyTypes {
     "kineticZoom": boolean;
     /** Returns wether layers are processed in reversed order to process labels. */
     "layersLabelsProcessedInReverseOrder": boolean;
+    /** Returns the light (sun) options. May be null. */
+    "light": Handle<"massif::LightOptions">;
+    /** Returns the ambient light color. */
+    "light.ambientColor": number;
+    /** Returns the ambient light intensity. */
+    "light.ambientIntensity": number;
+    /** Returns the shadow depth bias. */
+    "light.shadowBias": number;
+    /** Returns the number of shadow cascades. */
+    "light.shadowCascades": number;
+    /** Returns the shadow caster margin in tiles. */
+    "light.shadowCasterMargin": number;
+    /** Returns the shadow distance. */
+    "light.shadowDistance": number;
+    /** Returns the shadow map resolution. */
+    "light.shadowMapSize": number;
+    /** Returns the shadow normal offset. */
+    "light.shadowNormalOffset": number;
+    /** Returns the shadow softness. */
+    "light.shadowSoftness": number;
+    /** Returns the shadow strength. */
+    "light.shadowStrength": number;
+    /** Returns the sun altitude in degrees above the horizon. */
+    "light.sunAltitude": number;
+    /** Returns the sun azimuth in degrees. */
+    "light.sunAzimuth": number;
+    /** Returns the sun (directional light) color. */
+    "light.sunColor": number;
+    /** Returns the sun light intensity. */
+    "light.sunIntensity": number;
+    /** Returns whether the sun lights the 3D terrain surface. */
+    "light.terrainLightingEnabled": boolean;
     /** Returns the light (sun) options. May be null. */
     "lightOptions": Handle<"massif::LightOptions">;
     /** Returns the ambient light color. */
@@ -3740,6 +3955,11 @@ export interface PropertyTypes {
     "panningSpeedMode": "PANNING_SPEED_MODE_MAP" | "PANNING_SPEED_MODE_ANCHORED" | "PANNING_SPEED_MODE_CONSTANT";
     /** Returns the pivot mode. */
     "pivotMode": "PIVOT_MODE_TOUCHPOINT" | "PIVOT_MODE_CENTERPOINT";
+    /** Returns the base projection. */
+    "projection": Handle<"massif::Projection">;
+    /** (read-only) Returns the bounds of this projection. */
+    readonly "projection.bounds": Bounds;
+    readonly "projection.name": string;
     /** Returns the render projection mode. */
     "renderProjectionMode": "RENDER_PROJECTION_MODE_PLANAR" | "RENDER_PROJECTION_MODE_SPHERICAL";
     /** Returns the state of the restricted panning flag. */
@@ -3750,6 +3970,22 @@ export interface PropertyTypes {
     "rotationGestures": boolean;
     /** Returns the state of seamless horizontal panning flag. */
     "seamlessPanning": boolean;
+    /** Returns the sky options. May be null. */
+    "sky": Handle<"massif::SkyOptions">;
+    /** Returns whether the shader sky is enabled. */
+    "sky.enabled": boolean;
+    /** Returns the ground color. */
+    "sky.groundColor": number;
+    /** Returns the angular blend width between the horizon color and the sky color. */
+    "sky.horizonBlend": number;
+    /** Returns the horizon color. */
+    "sky.horizonColor": number;
+    /** Returns the custom sky fragment shader source, or an empty string if the built-in shader is used. */
+    "sky.shaderSource": string;
+    /** Returns the zenith sky color. */
+    "sky.skyColor": number;
+    /** Returns whether the built-in shader draws a sun disc. */
+    "sky.sunDiscEnabled": boolean;
     /** Returns the sky color. */
     "skyColor": number;
     /** Returns the sky options. May be null. */
@@ -3768,6 +4004,53 @@ export interface PropertyTypes {
     "skyOptions.skyColor": number;
     /** Returns whether the built-in shader draws a sun disc. */
     "skyOptions.sunDiscEnabled": boolean;
+    /** Returns the terrain options. May be null if no terrain is configured. */
+    "terrain": Handle<"massif::TerrainOptions">;
+    /** Returns the terrain background color. */
+    "terrain.backgroundColor": number;
+    /** Returns the billboard/label terrain occlusion state. */
+    "terrain.billboardOcclusionEnabled": boolean;
+    /** Returns the billboard/label terrain occlusion tolerance. */
+    "terrain.billboardOcclusionTolerance": number;
+    /** Returns the duration of the camera terrain-following correction animation. */
+    "terrain.cameraClampDuration": number;
+    /** Returns the camera terrain clearance: the minimum height the camera is kept above the terrain surface, in meters. */
+    "terrain.cameraClearance": number;
+    /** Returns the clip-space depth bias used when depth-testing draped 2D geometry against the terrain. */
+    "terrain.depthBias": number;
+    /** Returns whether polygon fills are draped as a render-to-texture surface. */
+    "terrain.drapeFillsEnabled": boolean;
+    /** Returns whether vt tile lines are also draped (in addition to fills). */
+    "terrain.drapeLinesEnabled": boolean;
+    /** Returns the per-tile drape texture resolution, 0 when it follows the screen. */
+    "terrain.drapeResolution": number;
+    /** Returns whether elevation tile prefetching is enabled. */
+    "terrain.elevationPrefetchEnabled": boolean;
+    /** Returns the enabled state of the terrain. */
+    "terrain.enabled": boolean;
+    /** Returns the terrain height exaggeration factor. */
+    "terrain.exaggeration": number;
+    /** Returns how many zoom levels below the camera a tile may coarsen to. */
+    "terrain.maxTileZoomCoarsening": number;
+    /** Returns the maximum visible tile zoom offset, relative to the camera zoom level. */
+    "terrain.maxTileZoomOffset": number;
+    /** Returns the terrain mesh resolution. */
+    "terrain.meshResolution": number;
+    "terrain.minZoom": number;
+    /** Returns the style layers that are kept out of the terrain drape bake. */
+    "terrain.noDrapeLayerFilter": string;
+    /** Returns whether seamless tile edge handling is enabled. */
+    "terrain.seamlessTileEdgesEnabled": boolean;
+    /** Returns the custom terrain surface fragment shader source, or an empty string if no shaded surface is drawn. */
+    "terrain.surfaceShaderSource": string;
+    /** Returns the opacity a label keeps while its anchor is behind 3D content. */
+    "terrain.textOcclusionOpacity": number;
+    /** Returns whether cross-LOD tile edge stitching is enabled. */
+    "terrain.tileEdgeStitchingEnabled": boolean;
+    /** Returns the absolute view distance, in meters. */
+    "terrain.viewDistance": number;
+    /** Returns the factor applied to the view distance. */
+    "terrain.viewDistanceFactor": number;
     /** Returns the terrain options. May be null if no terrain is configured. */
     "terrainOptions": Handle<"massif::TerrainOptions">;
     /** Returns the terrain background color. */
@@ -3837,6 +4120,8 @@ export interface PropertyTypes {
   "massif::OptionsListener": {
   };
   "massif::OrderedTileDataSource": {
+    /** Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. */
+    [key: `metaData.${string}`]: Json;
     /** (read-only) Returns the extent of the tiles in this data source. The bounds are in coordinate system of the projection of the data source. */
     readonly "dataExtent": Bounds;
     /** Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" */
@@ -3854,6 +4139,8 @@ export interface PropertyTypes {
     readonly "projection.name": string;
   };
   "massif::PMTilesTileDataSource": {
+    /** Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. */
+    [key: `metaData.${string}`]: Json;
     /** (read-only) Returns the extent of the tiles in this data source. The bounds are in coordinate system of the projection of the data source. */
     readonly "dataExtent": Bounds;
     /** Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" */
@@ -3915,6 +4202,8 @@ export interface PropertyTypes {
     "profile": string;
   };
   "massif::PackageManagerTileDataSource": {
+    /** Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. */
+    [key: `metaData.${string}`]: Json;
     /** (read-only) Returns the extent of the tiles in this data source. The bounds are in coordinate system of the projection of the data source. */
     readonly "dataExtent": Bounds;
     /** Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" */
@@ -3974,6 +4263,10 @@ export interface PropertyTypes {
     "language": string;
   };
   "massif::PersistentCacheTileDataSource": {
+    /** Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. */
+    [key: `dataSource.metaData.${string}`]: Json;
+    /** Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. */
+    [key: `metaData.${string}`]: Json;
     /** Returns the state of cache only mode. */
     "cacheOnlyMode": boolean;
     "capacity": number;
@@ -4015,6 +4308,8 @@ export interface PropertyTypes {
   "massif::PersistentTaskQueue": {
   };
   "massif::Point": {
+    /** Returns a copy of the vector element meta data map. The changes you make to this map are NOT reflected in the actual meta data of the element. */
+    [key: `metaData.${string}`]: Json;
     /** (read-only) Returns the bounds of this vector element. */
     readonly "bounds": Bounds;
     "geometry": Handle<"massif::PointGeometry">;
@@ -4098,6 +4393,8 @@ export interface PropertyTypes {
     "size": number;
   };
   "massif::Polygon": {
+    /** Returns a copy of the vector element meta data map. The changes you make to this map are NOT reflected in the actual meta data of the element. */
+    [key: `metaData.${string}`]: Json;
     /** (read-only) Returns the bounds of this vector element. */
     readonly "bounds": Bounds;
     "geometry": Handle<"massif::PolygonGeometry">;
@@ -4141,6 +4438,8 @@ export interface PropertyTypes {
     "visible": boolean;
   };
   "massif::Polygon3D": {
+    /** Returns a copy of the vector element meta data map. The changes you make to this map are NOT reflected in the actual meta data of the element. */
+    [key: `metaData.${string}`]: Json;
     /** (read-only) Returns the bounds of this vector element. */
     readonly "bounds": Bounds;
     "geometry": Handle<"massif::PolygonGeometry">;
@@ -4254,6 +4553,10 @@ export interface PropertyTypes {
     readonly "lineStyle.width": number;
   };
   "massif::Popup": {
+    /** Returns a copy of the vector element meta data map. The changes you make to this map are NOT reflected in the actual meta data of the element. */
+    [key: `baseBillboard.metaData.${string}`]: Json;
+    /** Returns a copy of the vector element meta data map. The changes you make to this map are NOT reflected in the actual meta data of the element. */
+    [key: `metaData.${string}`]: Json;
     /** Returns the horizontal anchor point of this popup. */
     "anchorPointX": number;
     /** Returns the vertical anchor point of this popup. */
@@ -4348,6 +4651,10 @@ export interface PropertyTypes {
     "visible": boolean;
   };
   "massif::PopupClickInfo": {
+    /** Returns a copy of the vector element meta data map. The changes you make to this map are NOT reflected in the actual meta data of the element. */
+    [key: `popup.baseBillboard.metaData.${string}`]: Json;
+    /** Returns a copy of the vector element meta data map. The changes you make to this map are NOT reflected in the actual meta data of the element. */
+    [key: `popup.metaData.${string}`]: Json;
     /** (read-only) Returns the click info. */
     readonly "clickInfo": ClickInfo;
     /** (read-only) Returns the click position. */
@@ -4432,6 +4739,10 @@ export interface PropertyTypes {
   "massif::PopupDrawInfo": {
     /** (read-only) Returns the value used for converting display independent pixels (dp) to pixels (px). */
     readonly "DPToPX": number;
+    /** Returns a copy of the vector element meta data map. The changes you make to this map are NOT reflected in the actual meta data of the element. */
+    [key: `popup.baseBillboard.metaData.${string}`]: Json;
+    /** Returns a copy of the vector element meta data map. The changes you make to this map are NOT reflected in the actual meta data of the element. */
+    [key: `popup.metaData.${string}`]: Json;
     /** (read-only) Returns the screen position of the anchor point of this popup in pixels. */
     readonly "anchorScreenPos": [number, number];
     /** (read-only) Returns the popup to draw. */
@@ -4587,6 +4898,8 @@ export interface PropertyTypes {
     readonly "name": string;
   };
   "massif::RasterTileClickInfo": {
+    /** Returns a copy of the layer meta data map. The changes you make to this map are NOT reflected in the actual meta data of the layer. */
+    [key: `layer.metaData.${string}`]: Json;
     /** (read-only) Returns the click info. */
     readonly "clickInfo": ClickInfo;
     /** (read-only) Returns the click position. */
@@ -4638,6 +4951,14 @@ export interface PropertyTypes {
     readonly "UTFGridDataSource.projection.name": string;
     /** Returns the UTF grid event listener. */
     "UTFGridEventListener": Handle<"massif::UTFGridEventListener">;
+    /** Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. */
+    [key: `UTFGridDataSource.metaData.${string}`]: Json;
+    /** Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. */
+    [key: `dataSource.metaData.${string}`]: Json;
+    /** Returns a copy of the layer meta data map. The changes you make to this map are NOT reflected in the actual meta data of the layer. */
+    [key: `metaData.${string}`]: Json;
+    /** Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. */
+    [key: `source.metaData.${string}`]: Json;
     /** Returns the culling delay of the layer in milliseconds. */
     "cullDelay": number;
     /** (read-only) Returns the data source assigned to this layer. */
@@ -4678,6 +4999,23 @@ export interface PropertyTypes {
     readonly "projection.name": string;
     /** Returns the raster tile event listener. */
     "rasterTileEventListener": Handle<"massif::RasterTileEventListener">;
+    /** (read-only) Returns the data source assigned to this layer. */
+    readonly "source": Handle<"massif::TileDataSource">;
+    /** (read-only) Returns the extent of the tiles in this data source. The bounds are in coordinate system of the projection of the data source. */
+    readonly "source.dataExtent": Bounds;
+    /** Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" */
+    "source.maxOverzoomLevel": number;
+    /** (read-only) Returns the maximum zoom level supported by this data source. */
+    readonly "source.maxZoom": number;
+    /** Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. */
+    "source.metaData": Record<string, Json>;
+    /** (read-only) Returns the minimum zoom level supported by this data source. */
+    readonly "source.minZoom": number;
+    /** (read-only) Returns the projection of this tile source. */
+    readonly "source.projection": Handle<"massif::Projection">;
+    /** (read-only) Returns the bounds of this projection. */
+    readonly "source.projection.bounds": Bounds;
+    readonly "source.projection.name": string;
     /** Returns the state of the synchronized refresh flag. */
     "synchronizedRefresh": boolean;
     /** Returns the tile texture cache capacity. */
@@ -4774,6 +5112,10 @@ export interface PropertyTypes {
     readonly "turnAngle": number;
   };
   "massif::RoutingRequest": {
+    /** Returns the custom parameter value of the request. */
+    [key: `params.${string}`]: Json;
+    /** Returns the custom parameter value of the request. */
+    "params": Record<string, Json>;
     /** (read-only) Returns the point list of the request. */
     readonly "points": Json;
     /** (read-only) Returns the projection of the points in the request. */
@@ -4863,6 +5205,8 @@ export interface PropertyTypes {
     "sunDiscEnabled": boolean;
   };
   "massif::SolidLayer": {
+    /** Returns a copy of the layer meta data map. The changes you make to this map are NOT reflected in the actual meta data of the layer. */
+    [key: `metaData.${string}`]: Json;
     /** Returns the bitmap of this layer. */
     "bitmap": Handle<"massif::Bitmap">;
     /** (read-only) Returns the bytes per pixel parameter of this bitmap. Valid values are 1, 2, 3 and 4. */
@@ -4950,6 +5294,10 @@ export interface PropertyTypes {
   "massif::TerrariumElevationDataDecoder": {
   };
   "massif::Text": {
+    /** Returns a copy of the vector element meta data map. The changes you make to this map are NOT reflected in the actual meta data of the element. */
+    [key: `baseBillboard.metaData.${string}`]: Json;
+    /** Returns a copy of the vector element meta data map. The changes you make to this map are NOT reflected in the actual meta data of the element. */
+    [key: `metaData.${string}`]: Json;
     /** Returns the base billboard this billboard is attached to. */
     "baseBillboard": Handle<"massif::Billboard">;
     /** Returns the base billboard this billboard is attached to. */
@@ -5222,6 +5570,8 @@ export interface PropertyTypes {
     "replaceWithParent": boolean;
   };
   "massif::TileDataSource": {
+    /** Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. */
+    [key: `metaData.${string}`]: Json;
     /** (read-only) Returns the extent of the tiles in this data source. The bounds are in coordinate system of the projection of the data source. */
     readonly "dataExtent": Bounds;
     /** Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" */
@@ -5272,6 +5622,14 @@ export interface PropertyTypes {
     readonly "UTFGridDataSource.projection.name": string;
     /** Returns the UTF grid event listener. */
     "UTFGridEventListener": Handle<"massif::UTFGridEventListener">;
+    /** Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. */
+    [key: `UTFGridDataSource.metaData.${string}`]: Json;
+    /** Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. */
+    [key: `dataSource.metaData.${string}`]: Json;
+    /** Returns a copy of the layer meta data map. The changes you make to this map are NOT reflected in the actual meta data of the layer. */
+    [key: `metaData.${string}`]: Json;
+    /** Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. */
+    [key: `source.metaData.${string}`]: Json;
     /** Returns the culling delay of the layer in milliseconds. */
     "cullDelay": number;
     /** (read-only) Returns the data source assigned to this layer. */
@@ -5310,6 +5668,23 @@ export interface PropertyTypes {
     /** (read-only) Returns the bounds of this projection. */
     readonly "projection.bounds": Bounds;
     readonly "projection.name": string;
+    /** (read-only) Returns the data source assigned to this layer. */
+    readonly "source": Handle<"massif::TileDataSource">;
+    /** (read-only) Returns the extent of the tiles in this data source. The bounds are in coordinate system of the projection of the data source. */
+    readonly "source.dataExtent": Bounds;
+    /** Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" */
+    "source.maxOverzoomLevel": number;
+    /** (read-only) Returns the maximum zoom level supported by this data source. */
+    readonly "source.maxZoom": number;
+    /** Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. */
+    "source.metaData": Record<string, Json>;
+    /** (read-only) Returns the minimum zoom level supported by this data source. */
+    readonly "source.minZoom": number;
+    /** (read-only) Returns the projection of this tile source. */
+    readonly "source.projection": Handle<"massif::Projection">;
+    /** (read-only) Returns the bounds of this projection. */
+    readonly "source.projection.bounds": Bounds;
+    readonly "source.projection.name": string;
     /** Returns the state of the synchronized refresh flag. */
     "synchronizedRefresh": boolean;
     /** Returns the tile load listener. */
@@ -5378,6 +5753,14 @@ export interface PropertyTypes {
     readonly "UTFGridDataSource.projection.name": string;
     /** Returns the UTF grid event listener. */
     "UTFGridEventListener": Handle<"massif::UTFGridEventListener">;
+    /** Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. */
+    [key: `UTFGridDataSource.metaData.${string}`]: Json;
+    /** Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. */
+    [key: `dataSource.metaData.${string}`]: Json;
+    /** Returns a copy of the layer meta data map. The changes you make to this map are NOT reflected in the actual meta data of the layer. */
+    [key: `metaData.${string}`]: Json;
+    /** Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. */
+    [key: `source.metaData.${string}`]: Json;
     /** Returns the current display order of the buildings. */
     "buildingRenderOrder": "VECTOR_TILE_RENDER_ORDER_HIDDEN" | "VECTOR_TILE_RENDER_ORDER_LAYER" | "VECTOR_TILE_RENDER_ORDER_LAST";
     /** Returns the click handler layer filter. The filter is given as ECMA regular expression that is applied to qualified layer names. */
@@ -5430,6 +5813,27 @@ export interface PropertyTypes {
     readonly "projection.name": string;
     /** Returns the renderer layer filter. The filter is given as ECMA regular expression that is applied to qualified layer names. */
     "rendererLayerFilter": string;
+    /** (read-only) Returns the data source assigned to this layer. */
+    readonly "source": Handle<"massif::TileDataSource">;
+    /** (read-only) Returns the extent of the tiles in this data source. The bounds are in coordinate system of the projection of the data source. */
+    readonly "source.dataExtent": Bounds;
+    /** Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" */
+    "source.maxOverzoomLevel": number;
+    /** (read-only) Returns the maximum zoom level supported by this data source. */
+    readonly "source.maxZoom": number;
+    /** Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. */
+    "source.metaData": Record<string, Json>;
+    /** (read-only) Returns the minimum zoom level supported by this data source. */
+    readonly "source.minZoom": number;
+    /** (read-only) Returns the projection of this tile source. */
+    readonly "source.projection": Handle<"massif::Projection">;
+    /** (read-only) Returns the bounds of this projection. */
+    readonly "source.projection.bounds": Bounds;
+    readonly "source.projection.name": string;
+    /** (read-only) Returns the tile decoder assigned to this layer. */
+    readonly "style": Handle<"massif::VectorTileDecoder">;
+    readonly "style.maxZoom": number;
+    readonly "style.minZoom": number;
     /** Returns the state of the synchronized refresh flag. */
     "synchronizedRefresh": boolean;
     /** Returns the tile cache capacity. */
@@ -5456,6 +5860,8 @@ export interface PropertyTypes {
   "massif::TouchHandlerListener": {
   };
   "massif::UTFGridClickInfo": {
+    /** Returns a copy of the layer meta data map. The changes you make to this map are NOT reflected in the actual meta data of the layer. */
+    [key: `layer.metaData.${string}`]: Json;
     /** (read-only) Returns the click info. */
     readonly "clickInfo": ClickInfo;
     /** (read-only) Returns the click position. */
@@ -5491,6 +5897,8 @@ export interface PropertyTypes {
   "massif::ValhallaOnlineRoutingService": {
     /** Returns the current set of HTTP headers used. Initially this set is empty and can be changed with setHTTPHeaders. */
     "HTTPHeaders": Record<string, string>;
+    /** Returns the current set of HTTP headers used. Initially this set is empty and can be changed with setHTTPHeaders. */
+    [key: `HTTPHeaders.${string}`]: string;
     /** Returns the custom backend service URL. */
     "customServiceURL": string;
     "profile": string;
@@ -5533,6 +5941,8 @@ export interface PropertyTypes {
   "massif::VectorEditEventListener": {
   };
   "massif::VectorElement": {
+    /** Returns a copy of the vector element meta data map. The changes you make to this map are NOT reflected in the actual meta data of the element. */
+    [key: `metaData.${string}`]: Json;
     /** (read-only) Returns the bounds of this vector element. */
     readonly "bounds": Bounds;
     /** (read-only) Returns the geometry object that defines the location of this vector element. */
@@ -5551,6 +5961,10 @@ export interface PropertyTypes {
     "visible": boolean;
   };
   "massif::VectorElementClickInfo": {
+    /** Returns a copy of the layer meta data map. The changes you make to this map are NOT reflected in the actual meta data of the layer. */
+    [key: `layer.metaData.${string}`]: Json;
+    /** Returns a copy of the vector element meta data map. The changes you make to this map are NOT reflected in the actual meta data of the element. */
+    [key: `vectorElement.metaData.${string}`]: Json;
     /** (read-only) Returns the click info. */
     readonly "clickInfo": ClickInfo;
     /** (read-only) Returns the click position. */
@@ -5595,6 +6009,8 @@ export interface PropertyTypes {
     "vectorElement.visible": boolean;
   };
   "massif::VectorElementDragInfo": {
+    /** Returns a copy of the vector element meta data map. The changes you make to this map are NOT reflected in the actual meta data of the element. */
+    [key: `vectorElement.metaData.${string}`]: Json;
     /** (read-only) Returns the drag position in projection coordinate system of the layer. */
     readonly "mapPos": Position;
     /** (read-only) Returns the drag position in screen coordinates. */
@@ -5638,6 +6054,8 @@ export interface PropertyTypes {
   "massif::VectorLayer": {
     /** Returns true if Z-buffering is enabled for 2D geometry. By default it is disabled and used only for billboards. */
     "ZBuffering": boolean;
+    /** Returns a copy of the layer meta data map. The changes you make to this map are NOT reflected in the actual meta data of the layer. */
+    [key: `metaData.${string}`]: Json;
     /** Returns the culling delay of the layer in milliseconds. */
     "cullDelay": number;
     /** (read-only) Returns the vector data source of this vector layer. */
@@ -5665,6 +6083,8 @@ export interface PropertyTypes {
     "visibleZoomRange": [number, number];
   };
   "massif::VectorTileClickInfo": {
+    /** Returns a copy of the layer meta data map. The changes you make to this map are NOT reflected in the actual meta data of the layer. */
+    [key: `layer.metaData.${string}`]: Json;
     /** (read-only) Returns the click info. */
     readonly "clickInfo": ClickInfo;
     /** (read-only) Returns the click position. */
@@ -5788,6 +6208,14 @@ export interface PropertyTypes {
     readonly "UTFGridDataSource.projection.name": string;
     /** Returns the UTF grid event listener. */
     "UTFGridEventListener": Handle<"massif::UTFGridEventListener">;
+    /** Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. */
+    [key: `UTFGridDataSource.metaData.${string}`]: Json;
+    /** Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. */
+    [key: `dataSource.metaData.${string}`]: Json;
+    /** Returns a copy of the layer meta data map. The changes you make to this map are NOT reflected in the actual meta data of the layer. */
+    [key: `metaData.${string}`]: Json;
+    /** Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. */
+    [key: `source.metaData.${string}`]: Json;
     /** Returns the current display order of the buildings. */
     "buildingRenderOrder": "VECTOR_TILE_RENDER_ORDER_HIDDEN" | "VECTOR_TILE_RENDER_ORDER_LAYER" | "VECTOR_TILE_RENDER_ORDER_LAST";
     /** Returns the click handler layer filter. The filter is given as ECMA regular expression that is applied to qualified layer names. */
@@ -5840,6 +6268,27 @@ export interface PropertyTypes {
     readonly "projection.name": string;
     /** Returns the renderer layer filter. The filter is given as ECMA regular expression that is applied to qualified layer names. */
     "rendererLayerFilter": string;
+    /** (read-only) Returns the data source assigned to this layer. */
+    readonly "source": Handle<"massif::TileDataSource">;
+    /** (read-only) Returns the extent of the tiles in this data source. The bounds are in coordinate system of the projection of the data source. */
+    readonly "source.dataExtent": Bounds;
+    /** Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" */
+    "source.maxOverzoomLevel": number;
+    /** (read-only) Returns the maximum zoom level supported by this data source. */
+    readonly "source.maxZoom": number;
+    /** Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. */
+    "source.metaData": Record<string, Json>;
+    /** (read-only) Returns the minimum zoom level supported by this data source. */
+    readonly "source.minZoom": number;
+    /** (read-only) Returns the projection of this tile source. */
+    readonly "source.projection": Handle<"massif::Projection">;
+    /** (read-only) Returns the bounds of this projection. */
+    readonly "source.projection.bounds": Bounds;
+    readonly "source.projection.name": string;
+    /** (read-only) Returns the tile decoder assigned to this layer. */
+    readonly "style": Handle<"massif::VectorTileDecoder">;
+    readonly "style.maxZoom": number;
+    readonly "style.minZoom": number;
     /** Returns the state of the synchronized refresh flag. */
     "synchronizedRefresh": boolean;
     /** Returns the tile cache capacity. */
@@ -5864,6 +6313,8 @@ export interface PropertyTypes {
     "zoomLevelBias": number;
   };
   "massif::VectorTileSearchService": {
+    /** Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. */
+    [key: `dataSource.metaData.${string}`]: Json;
     /** (read-only) Returns the tile data source of the search service. */
     readonly "dataSource": Handle<"massif::TileDataSource">;
     /** (read-only) Returns the extent of the tiles in this data source. The bounds are in coordinate system of the projection of the data source. */
@@ -7007,6 +7458,8 @@ export interface StyleSpec_mbvt {
   compiledStyle?: Handle<"massif::CompiledStyleSet">;
   /** Returns the value of feature id override flag. This is intended for cases when feature ids in tile are not globally unique. */
   featureIdOverride?: boolean;
+  /** Returns the value of the specified style parameter. The style parameter must be declared in the current style. */
+  params?: Record<string, string>;
   project?: StylesetSpec | string;
   /** Returns the binary format the tiles are decoded as. */
   tileFormat?: "TILE_FORMAT_AUTO" | "TILE_FORMAT_MVT" | "TILE_FORMAT_MLT";

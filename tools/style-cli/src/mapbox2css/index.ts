@@ -1,5 +1,5 @@
 import { Coverage } from './coverage.js';
-import { Untranslatable, translateExpression } from './expression.js';
+import { Untranslatable, expandTokens, translateExpression } from './expression.js';
 import { translateFilter, zoomPredicates } from './filter.js';
 import { KNOWN_GAPS, LAYER_SYMBOLIZER, PROPERTY_MAP, VALUE_MAP } from './properties.js';
 import type { CartoProperty, Json, MapboxLayer, MapboxStyle, PropertyTable } from './types.js';
@@ -9,6 +9,19 @@ export interface ConvertResult {
     project: string;
     coverage: Coverage;
 }
+
+/** MapBox text-anchor -> the CartoCSS (horizontal, vertical) alignment pair. */
+const TEXT_ANCHOR: Record<string, readonly [string, string]> = {
+    center: ['middle', 'middle'],
+    left: ['left', 'middle'],
+    right: ['right', 'middle'],
+    top: ['middle', 'top'],
+    bottom: ['middle', 'bottom'],
+    'top-left': ['left', 'top'],
+    'top-right': ['right', 'top'],
+    'bottom-left': ['left', 'bottom'],
+    'bottom-right': ['right', 'bottom'],
+};
 
 /** Attachment names are identifiers in the CartoCSS grammar. */
 function attachmentName(layerId: string): string {
@@ -50,12 +63,13 @@ export function convert(style: MapboxStyle, table: PropertyTable): ConvertResult
 
         let selector: string;
         try {
-            selector = [
-                `#${sourceLayer}`,
+            // `selector = *predicate` with a skipper, so bracketed tests can abut the layer name -
+            // but `when(...)` is a bare word and would glue onto it (`#aviationwhen(...)`).
+            const predicates = [
                 ...zoomPredicates(layer.minzoom, layer.maxzoom),
                 ...translateFilter(layer.filter ?? null),
-                `::${attachmentName(layer.id)}`,
-            ].join('');
+            ].map((p) => (p.startsWith('when(') ? ` ${p}` : p));
+            selector = `#${sourceLayer}${predicates.join('')}::${attachmentName(layer.id)}`;
         } catch (error) {
             const why = error instanceof Untranslatable ? error.what : String(error);
             coverage.drop(`filter on "${layer.id}"`, `untranslatable filter: ${why}`, layer.id);
@@ -97,11 +111,10 @@ function backgroundProperties(layer: MapboxLayer, coverage: Coverage): string[] 
             coverage.drop(name, KNOWN_GAPS[name] ?? 'not mapped', layer.id);
             continue;
         }
-        try {
-            out.push(`${target}: ${translateExpression(value)};`);
+        const translated = tryTranslate(value, name, layer.id, coverage);
+        if (translated !== null) {
+            out.push(`${target}: ${translated};`);
             coverage.emit(target);
-        } catch (error) {
-            coverage.drop(name, describe(error), layer.id);
         }
     }
     return out;
@@ -121,6 +134,54 @@ function layerDeclarations(
             if (value === 'none') return []; // the whole layer is off
             continue;
         }
+        // text-field may be the legacy "{field}" token form rather than an expression.
+        if (name === 'text-field' && typeof value === 'string' && value.includes('{')) {
+            out.push(`text-name: ${expandTokens(value)};`);
+            coverage.emit('text-name');
+            continue;
+        }
+
+        // MapBox names one anchor; CartoCSS splits it into a horizontal and a vertical alignment.
+        // The senses agree - see the default derivation in TextSymbolizer.cpp, where a text pushed
+        // right (dx > 0) defaults to alignment 'left', i.e. the edge nearest the anchor.
+        if (name === 'text-anchor' && typeof value === 'string') {
+            const anchor = TEXT_ANCHOR[value];
+            if (!anchor) {
+                coverage.drop(name, `unknown anchor "${value}"`, layer.id);
+                continue;
+            }
+            out.push(`text-horizontal-alignment: '${anchor[0]}';`, `text-vertical-alignment: '${anchor[1]}';`);
+            coverage.emit('text-horizontal-alignment');
+            coverage.emit('text-vertical-alignment');
+            continue;
+        }
+
+        // MapBox offsets in ems of the text size; CartoCSS dx/dy are pixels. Only resolvable when
+        // the size is a plain number, which is why this is not a VALUE_MAP entry.
+        if (name === 'text-offset' && Array.isArray(value) && value.length === 2) {
+            const size = layer.layout?.['text-size'];
+            if (typeof size !== 'number' || typeof value[0] !== 'number' || typeof value[1] !== 'number') {
+                coverage.drop(name, 'offset in ems needs a constant text-size to become pixels', layer.id);
+                continue;
+            }
+            out.push(`text-dx: ${value[0] * size};`, `text-dy: ${value[1] * size};`);
+            coverage.emit('text-dx');
+            coverage.emit('text-dy');
+            continue;
+        }
+
+        // MapBox dash lengths are multiples of the line width; CartoCSS's are pixels.
+        if (name === 'line-dasharray' && Array.isArray(value) && value.every((v) => typeof v === 'number')) {
+            const width = layer.paint?.['line-width'];
+            const scale = typeof width === 'number' ? width : 1;
+            if (typeof width !== 'number') {
+                coverage.approximate('line-dasharray scaled by width 1: line-width is not constant');
+            }
+            out.push(`line-dasharray: ${(value as number[]).map((v) => v * scale).join(',')};`);
+            coverage.emit('line-dasharray');
+            continue;
+        }
+
         // A fill's outline is a second symbolizer on the same rule, not a polygon property.
         if (name === 'fill-outline-color') {
             const translated = tryTranslate(value, name, layer.id, coverage);
@@ -161,12 +222,14 @@ function layerDeclarations(
 }
 
 function tryTranslate(value: Json, name: string, layerId: string, coverage: Coverage): string | null {
+    const notes: string[] = [];
     try {
         // text-font is a list; CartoCSS takes the first face name.
-        if (Array.isArray(value) && name === 'text-font' && typeof value[0] === 'string') {
-            return translateExpression(value[0]);
-        }
-        return translateExpression(value);
+        const translated = Array.isArray(value) && name === 'text-font' && typeof value[0] === 'string'
+            ? translateExpression(value[0], notes)
+            : translateExpression(value, notes);
+        notes.forEach((note) => coverage.approximate(note));
+        return translated;
     } catch (error) {
         coverage.drop(name, describe(error), layerId);
         return null;

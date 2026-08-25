@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { Untranslatable, translateExpression } from '../dist/mapbox2css/expression.js';
+import { Untranslatable, expandTokens, translateExpression } from '../dist/mapbox2css/expression.js';
 import { translateFilter, zoomPredicates } from '../dist/mapbox2css/filter.js';
 
 test('literals', () => {
@@ -69,11 +69,52 @@ test('concat folds into the binary CartoCSS concat', () => {
     );
 });
 
-test("CartoCSS booleans are && and ||, not 'and'/'or'", () => {
+test('or is ||, but and CANNOT be && - the grammar makes it unparseable', () => {
+    assert.equal(
+        translateExpression(['any', ['==', ['get', 'a'], 1], ['==', ['get', 'b'], 2]]),
+        '(([a] = 1) || ([b] = 2))',
+    );
+    // CartoCSSParser term3 has `qi::lit("&") > unary` for bitwise and, and `>` is an expectation:
+    // on '&&' it eats the first '&', demands a unary, meets the second and fails with no backtrack.
     assert.equal(
         translateExpression(['all', ['==', ['get', 'a'], 1], ['==', ['get', 'b'], 2]]),
-        '(([a] = 1) && ([b] = 2))',
+        '(([a] = 1) ? ([b] = 2) : false)',
     );
+});
+
+test('legacy stop functions become per-frame interpolation', () => {
+    assert.equal(
+        translateExpression({ stops: [[7, '#d0d0d0'], [11, '#dddddd']] }),
+        'linear([view::zoom], (7, #d0d0d0), (11, #dddddd))',
+    );
+    assert.equal(
+        translateExpression({ type: 'interval', stops: [[5, 1], [9, 2]] }),
+        'step([view::zoom], (5, 1), (9, 2))',
+    );
+});
+
+test('a stop function over a feature property is a lookup, never an interpolation', () => {
+    assert.equal(
+        translateExpression({ property: 'class', type: 'categorical', stops: [['a', 1], ['b', 2]], default: 0 }),
+        "([class] = 'a' ? 1 : ([class] = 'b' ? 2 : 0))",
+    );
+    assert.throws(
+        () => translateExpression({ property: 'w', stops: [[0, 1], [1, 2]] }),
+        Untranslatable,
+    );
+});
+
+test('geometry-type compares against the decoder number, not the MapBox name', () => {
+    assert.equal(
+        translateExpression(['==', ['geometry-type'], 'Polygon']),
+        '([mapnik::geometry_type] = 3)',
+    );
+});
+
+test('the legacy {token} text-field form becomes field references', () => {
+    assert.equal(expandTokens('{height}'), '[height]');
+    assert.equal(expandTokens('{ref} {name}'), "concat(concat([ref], ' '), [name])");
+    assert.equal(expandTokens('plain'), "'plain'");
 });
 
 test('unsupported operators are refused, not guessed', () => {

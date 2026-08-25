@@ -6,6 +6,8 @@ export class Coverage {
     readonly emitted = new Map<string, number>();
     readonly dropped = new Map<string, { count: number; reason: string; layers: Set<string> }>();
     readonly notes: string[] = [];
+    /** Translations that carried the property but not exactly. Counted, never silent. */
+    readonly approximations = new Map<string, number>();
 
     emit(property: string): void {
         this.emitted.set(property, (this.emitted.get(property) ?? 0) + 1);
@@ -20,6 +22,10 @@ export class Coverage {
 
     note(message: string): void {
         this.notes.push(message);
+    }
+
+    approximate(what: string): void {
+        this.approximations.set(what, (this.approximations.get(what) ?? 0) + 1);
     }
 
     get emittedCount(): number {
@@ -41,6 +47,12 @@ export class Coverage {
             for (const [property, { count, reason, layers }] of ranked) {
                 const where = layers.size <= 3 ? [...layers].join(', ') : `${layers.size} layers`;
                 lines.push(`  ${String(count).padStart(4)}x  ${property.padEnd(34)} ${reason}  (${where})`);
+            }
+        }
+        if (this.approximations.size > 0) {
+            lines.push('', 'Approximated:');
+            for (const [what, count] of [...this.approximations.entries()].sort((a, b) => b[1] - a[1])) {
+                lines.push(`  ${String(count).padStart(4)}x  ${what}`);
             }
         }
         if (this.notes.length > 0) {

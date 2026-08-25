@@ -1,4 +1,4 @@
-import { Untranslatable, translateExpression } from './expression.js';
+import { Untranslatable, conjunction, translateExpression } from './expression.js';
 import type { Json } from './types.js';
 
 const LEGACY_COMPARISON: Record<string, string> = {
@@ -43,9 +43,9 @@ function filterExpression(filter: Json[]): string {
     const [head, ...args] = filter;
 
     if (head === 'all' || head === 'any') {
-        // Expression-level booleans are && and ||; 'and'/'or' are predicate syntax only.
-        const join = head === 'all' ? ' && ' : ' || ';
-        return `(${args.map((a) => filterExpression(a as Json[])).join(join)})`;
+        const parts = args.map((a) => filterExpression(a as Json[]));
+        // '&&' is unparseable here - see conjunction() in expression.ts.
+        return head === 'any' ? `(${parts.join(' || ')})` : conjunction(parts);
     }
     if (head === '!' && args.length === 1) {
         return `(!${filterExpression(args[0] as Json[])})`;
@@ -60,9 +60,8 @@ function filterExpression(filter: Json[]): string {
         if (head === '!has') return `(${field} = null)`;
         if (head === 'in' || head === '!in') {
             const op = head === 'in' ? '=' : '!=';
-            const join = head === 'in' ? ' || ' : ' && ';
             const tests = args.slice(1).map((v) => `${field} ${op} ${literalFor(args[0] as string, v as Json)}`);
-            return `(${tests.join(join)})`;
+            return head === 'in' ? `(${tests.join(' || ')})` : conjunction(tests);
         }
         return `(${field} ${LEGACY_COMPARISON[head as string]} ${literalFor(args[0] as string, args[1] as Json)})`;
     }

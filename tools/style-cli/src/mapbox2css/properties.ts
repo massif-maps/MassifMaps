@@ -48,10 +48,8 @@ export const PROPERTY_MAP: Record<string, Record<string, string>> = {
         'text-halo-color': 'text-halo-fill',
         'text-halo-width': 'text-halo-radius',
         'text-transform': 'text-transform',
-        'text-letter-spacing': 'text-character-spacing',
-        'text-line-height': 'text-line-spacing',
-        'text-max-width': 'text-wrap-width',
-        'symbol-placement': 'text-placement',
+        // text-letter-spacing / text-line-height / text-max-width are in ems and are converted to
+        // pixels in index.ts; symbol-placement is one third of the placement, see placement.ts.
         'text-allow-overlap': 'text-allow-overlap',
         'symbol-spacing': 'text-spacing',
     },
@@ -77,9 +75,6 @@ export const PROPERTY_MAP: Record<string, Record<string, string>> = {
  * through: most enums (round/butt/square, left/right/center) already agree.
  */
 export const VALUE_MAP: Record<string, Record<string, string>> = {
-    // symbol-placement, not text-rotation-alignment: 'line-center' has no CartoCSS spelling and
-    // behaves closest to a line placement.
-    'text-placement': { point: 'point', line: 'line', 'line-center': 'line' },
     'raster-filter-mode': { linear: 'bilinear', nearest: 'nearest' },
     'text-transform': { uppercase: 'uppercase', lowercase: 'lowercase', none: 'none' },
 };
@@ -102,25 +97,18 @@ export const KNOWN_GAPS: Record<string, string> = {
     'fill-extrusion-vertical-gradient': 'always on in the 3D lighting shader',
     'fill-extrusion-translate': 'screen-space translate has no equivalent',
     'text-max-angle': 'no CartoCSS equivalent',
-    'icon-image': 'sprite atlas not converted yet',
-    'icon-size': 'needs the sprite atlas',
-    'icon-offset': 'needs the sprite atlas',
-    'icon-anchor': 'needs the sprite atlas',
-    'icon-opacity': 'needs the sprite atlas',
-    'icon-color': 'needs the sprite atlas',
-    'icon-allow-overlap': 'needs the sprite atlas',
-    'icon-ignore-placement': 'needs the sprite atlas',
-    'icon-optional': 'needs the sprite atlas',
-    'icon-padding': 'needs the sprite atlas',
-    'icon-keep-upright': 'needs the sprite atlas',
-    'icon-rotate': 'needs the sprite atlas',
+    'text-rotate': 'text-orientation would force the flat point placement (TextSymbolizer::getPlacement)',
+    'text-line-height': 'a data-driven line height has no CartoCSS equivalent',
+    'icon-offset': 'no CartoCSS equivalent',
+    'icon-anchor': 'no CartoCSS equivalent',
+    'icon-ignore-placement': 'no CartoCSS equivalent',
+    'icon-optional': 'no CartoCSS equivalent',
+    'icon-padding': 'collision padding has no CartoCSS equivalent',
+    'icon-keep-upright': 'no CartoCSS equivalent',
+    'icon-rotate': 'no CartoCSS equivalent',
     'icon-text-fit': 'no CartoCSS equivalent',
     'icon-text-fit-padding': 'no CartoCSS equivalent',
-    'icon-halo-color': 'no CartoCSS equivalent',
-    'icon-halo-width': 'no CartoCSS equivalent',
     'icon-halo-blur': 'no CartoCSS equivalent',
-    'icon-rotation-alignment': 'no CartoCSS equivalent',
-    'icon-pitch-alignment': 'no CartoCSS equivalent',
     'icon-translate': 'screen-space translate has no equivalent',
     'icon-translate-anchor': 'screen-space translate has no equivalent',
     'text-translate': 'screen-space translate has no equivalent',

@@ -147,7 +147,7 @@ different job from shipping the tool.
 Every skipped property is counted and named — `mapbox2css` prints a coverage report, and `--strict`
 turns any drop into a non-zero exit. What it refuses, and why:
 
-- **Layer types** with no symbolizer: `heatmap`, and `symbol` layers that have only an icon.
+- **Layer types** with no symbolizer: `heatmap`.
 - **The gap list** — `line-blur`, `line-gap-width`, `line-gradient`, `fill-extrusion-pattern`,
   every `*-translate`, most `raster-*` adjustments. These are the CartoCSS gaps, not converter bugs.
 - **Expressions with no CartoCSS form**: `feature-state`, `within`, `let`/`var`, `number-format`,
@@ -163,6 +163,38 @@ Three traps the CartoCSS grammar sets, all of which the tests pin:
 - `^` is **XOR**, so MapBox's exponent has to become `pow()`;
 - a namespaced field is quoted in a *predicate* (`['mapnik::geometry_type' = 2]`) and bare in an
   *expression* (`[view::zoom]`).
+
+## Labels: three MapBox properties, one CartoCSS placement
+
+MapBox splits the label's orientation over `symbol-placement` and the two `*-rotation-alignment` /
+`*-pitch-alignment` pairs, both defaulting to `auto`. The spec resolves `auto` rotation as `map` for
+a line placement and `viewport` otherwise, and `auto` pitch as whatever the rotation is — so a plain
+point label is **screen-facing**, which CartoCSS spells `billboard`, not `point` (flat in the ground
+plane, only swivelling). [`placement.ts`](https://github.com/massif-maps/MassifMaps/blob/master/tools/style-cli/src/mapbox2css/placement.ts)
+resolves the triple once, for the text and the icon separately:
+
+| `symbol-placement` | pitch | rotation | CartoCSS |
+|---|---|---|---|
+| point (or unset) | viewport | — | `billboard` |
+| point (or unset) | map | — | `point` |
+| line / line-center | map | map | `line` |
+| line / line-center | viewport | map | `billboard-line` |
+| line / line-center | — | viewport | `billboard-line-repeat` |
+
+MapTiler's topo-v4 sets `text-pitch-alignment: viewport` on all 17 of its line-placed layers, so
+dropping the alignments left every road name lying flat on the terrain.
+
+**Everything MapBox measures in ems** — `text-max-width` (10 by default), `text-offset`,
+`text-letter-spacing`, `text-line-height` — is pixels in CartoCSS, so each is multiplied by
+`text-size` (16 when the layer states none). Taken literally, that 10-em default wrapped every name
+at 10 **pixels**, one word per line, and the lines then overlapped. A zoom-driven `text-size` stays
+an expression (`(10 * linear([view::zoom], …))`) rather than being pinned to one zoom. A line-placed
+label is laid out along its line and never wrapped, matching MapLibre.
+
+Two more that only look like gaps: `text-overlap` is the modern spelling of `text-allow-overlap`
+(`cooperative` has no equivalent and is taken as `never`), and `symbol-sort-key` is
+`text-placement-priority` **negated** — MapBox places the lowest key first, the culler takes the
+highest priority.
 
 ## Contours: `--contour-schema div`
 
@@ -192,13 +224,10 @@ to one threshold is a real loss and is reported as such.
   generator; `MapGenerator` only goes one way.
 - **Only the size is measured.** Startup time and peak memory for a large style project are still
   unknown; a slow load would push the design towards keeping the module warm across subcommands.
-- **The sprite is not converted.** `icon-image` is dropped, so a symbol layer with an icon and no
-  text produces nothing. Converting the sprite sheet into individual bitmaps plus `marker-file`
-  paths is the next real chunk of `mapbox2css`.
-- **The sprite is the last big block.** On real styles the icon group (`icon-image` and its ~10
-  companions) is most of what is still dropped.
-- **A large style project compiles very slowly.** Three MapTiler styles compile in well under a
-  second; a 212-layer OpenMapTiles one had not finished after 25 minutes, natively as well as under
-  wasm. `buildMap` runs `compileLayer` over the full zoom range per layer, so something there is
-  super-linear in attachment count. It affects any app loading a large style project, not just this
-  tool.
+- **A large style project compiles very slowly, then stops compiling at all.** Three MapTiler styles
+  compile in well under a second; a 212-layer OpenMapTiles one had not finished after 25 minutes,
+  natively as well as under wasm. Streets-v4 (140 attachments) aborts the wasm with `memory access
+  out of bounds`, and bisecting the attachment list puts the threshold at 105 — no single rule
+  fails, so the cost is in the total. `buildMap` runs `compileLayer` over the full zoom range per
+  layer, so something there is super-linear in attachment count. It affects any app loading a large
+  style project, not just this tool.

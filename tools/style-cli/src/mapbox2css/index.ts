@@ -2,6 +2,7 @@ import { type ContourOptions, isContourLayer, rewriteContourFilter } from './con
 import { Coverage } from './coverage.js';
 import { Untranslatable, expandTokens, translateExpression } from './expression.js';
 import { translateFilter, zoomPredicates } from './filter.js';
+import { HANDLED_ELSEWHERE, followsLine, resolvePlacement } from './placement.js';
 import { KNOWN_GAPS, LAYER_SYMBOLIZER, PROPERTY_MAP, VALUE_MAP } from './properties.js';
 import { type SpriteSet, extractIcon } from './sprite.js';
 import type { CartoProperty, Json, MapboxLayer, MapboxStyle, PropertyTable } from './types.js';
@@ -151,11 +152,17 @@ function layerDeclarations(
     // beside the text-* ones rather than replacing them.
     const iconDeclarations = layer.type === 'symbol' ? markerDeclarations(layer, coverage, options) : [];
 
+    if (symbolizer === 'text') {
+        out.push(`text-placement: '${resolvePlacement(layer, 'text')}';`);
+        coverage.emit('text-placement');
+    }
+
     for (const [name, value] of Object.entries({ ...layer.layout, ...layer.paint })) {
         if (name === 'visibility') {
             if (value === 'none') return []; // the whole layer is off
             continue;
         }
+        if (HANDLED_ELSEWHERE.has(name)) continue;
         // text-field may be the legacy "{field}" token form rather than an expression.
         if (name === 'text-field' && typeof value === 'string' && value.includes('{')) {
             out.push(`text-name: ${expandTokens(value)};`);
@@ -178,17 +185,67 @@ function layerDeclarations(
             continue;
         }
 
-        // MapBox offsets in ems of the text size; CartoCSS dx/dy are pixels. Only resolvable when
-        // the size is a plain number, which is why this is not a VALUE_MAP entry.
+        // Everything MapBox measures in ems of the text size. CartoCSS takes pixels, so each one
+        // is multiplied by text-size - the expression form included, or a zoom-driven size would
+        // silently pin the value to one zoom.
         if (name === 'text-offset' && Array.isArray(value) && value.length === 2) {
-            const size = layer.layout?.['text-size'];
-            if (typeof size !== 'number' || typeof value[0] !== 'number' || typeof value[1] !== 'number') {
-                coverage.drop(name, 'offset in ems needs a constant text-size to become pixels', layer.id);
-                continue;
-            }
-            out.push(`text-dx: ${value[0] * size};`, `text-dy: ${value[1] * size};`);
+            const dx = ems(value[0], layer, coverage, name);
+            const dy = ems(value[1], layer, coverage, name);
+            if (dx === null || dy === null) continue;
+            out.push(`text-dx: ${dx};`, `text-dy: ${dy};`);
             coverage.emit('text-dx');
             coverage.emit('text-dy');
+            continue;
+        }
+
+        // text-max-width is 10 ems by default; taken as pixels it wrapped every name onto one word
+        // per line. A line-placed label is laid out along the line and MapLibre never wraps it.
+        if (name === 'text-max-width') {
+            if (followsLine(layer)) {
+                out.push('text-wrap-width: 0;');
+                coverage.emit('text-wrap-width');
+                continue;
+            }
+            const width = ems(value, layer, coverage, name);
+            if (width === null) continue;
+            out.push(`text-wrap-width: ${width};`);
+            coverage.emit('text-wrap-width');
+            continue;
+        }
+
+        // The modern spelling of *-allow-overlap. 'cooperative' has no equivalent and is the
+        // conservative 'never' here.
+        if (name === 'text-overlap' || name === 'icon-overlap') {
+            const target = name === 'text-overlap' ? 'text-allow-overlap' : 'marker-allow-overlap';
+            out.push(`${target}: ${value === 'always'};`);
+            coverage.emit(target);
+            continue;
+        }
+
+        // MapBox places the LOWEST sort key first; CartoCSS's culler takes the highest priority.
+        if (name === 'symbol-sort-key') {
+            const translated = tryTranslate(value, name, layer.id, coverage);
+            if (translated === null) continue;
+            out.push(`text-placement-priority: (0 - ${translated});`);
+            coverage.emit('text-placement-priority');
+            continue;
+        }
+
+        if (name === 'text-letter-spacing') {
+            const spacing = ems(value, layer, coverage, name);
+            if (spacing === null) continue;
+            out.push(`text-character-spacing: ${spacing};`);
+            coverage.emit('text-character-spacing');
+            continue;
+        }
+
+        // text-line-height is a TOTAL line height in ems; text-line-spacing is what is added on top
+        // of the font's own, which already is MapBox's 1.2 default.
+        if (name === 'text-line-height' && typeof value === 'number') {
+            const spacing = ems(value - 1.2, layer, coverage, name);
+            if (spacing === null) continue;
+            out.push(`text-line-spacing: ${spacing};`);
+            coverage.emit('text-line-spacing');
             continue;
         }
 
@@ -232,6 +289,16 @@ function layerDeclarations(
         coverage.emit(target);
     }
 
+    // MapBox wraps at 10 ems whether or not the layer says so; CartoCSS's wrap-width defaults to 0,
+    // which is no wrapping at all - so an unstated max-width has to be written out.
+    if (symbolizer === 'text' && !followsLine(layer) && !out.some((d) => d.startsWith('text-wrap-width:'))) {
+        const width = ems(DEFAULT_TEXT_MAX_WIDTH, layer, coverage, 'text-max-width');
+        if (width !== null) {
+            out.push(`text-wrap-width: ${width};`);
+            coverage.emit('text-wrap-width');
+        }
+    }
+
     // text-name is what makes a text symbolizer exist at all; without it every other text property
     // is dropped with the rule - but an icon-only layer still has its marker to draw.
     if (symbolizer === 'text' && !out.some((d) => d.startsWith('text-name:'))) {
@@ -262,8 +329,12 @@ function markerDeclarations(layer: MapboxLayer, coverage: Coverage, options: Con
         return [];
     }
 
-    const out = [`marker-file: url('${icon.file}');`];
+    const out = [
+        `marker-file: url('${icon.file}');`,
+        `marker-placement: '${resolvePlacement(layer, 'icon')}';`,
+    ];
     coverage.emit('marker-file');
+    coverage.emit('marker-placement');
 
     const sdf = icon.sdf && !options.flattenSdf;
     if (sdf) {
@@ -308,6 +379,20 @@ function markerDeclarations(layer: MapboxLayer, coverage: Coverage, options: Con
 
 function round(value: number): number {
     return Math.round(value * 100) / 100;
+}
+
+/** MapBox defaults for a layer that never states them. */
+const DEFAULT_TEXT_SIZE = 16;
+const DEFAULT_TEXT_MAX_WIDTH = 10;
+
+/** A value in ems of the layer's own text-size, as the pixels CartoCSS wants. */
+function ems(value: Json, layer: MapboxLayer, coverage: Coverage, from: string): string | null {
+    const size = layer.layout?.['text-size'] ?? DEFAULT_TEXT_SIZE;
+    if (typeof value === 'number' && typeof size === 'number') return String(round(value * size));
+
+    const valueExpr = typeof value === 'number' ? String(round(value)) : tryTranslate(value, from, layer.id, coverage);
+    const sizeExpr = typeof size === 'number' ? String(size) : tryTranslate(size, 'text-size', layer.id, coverage);
+    return valueExpr === null || sizeExpr === null ? null : `(${valueExpr} * ${sizeExpr})`;
 }
 
 /** icon-size is a multiplier on the sprite's own width. */

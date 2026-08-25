@@ -329,7 +329,7 @@ def transformSwigFile(sourcePath, outPath, headerDirs, packageName):
 
     # Facade declarations: read by scripts/gen-api-tables.py, meaningless to Swig.
     match = re.search(r'^\s*![a-z]+\s*[(].*$', line)
-    if match and re.search(r'^\s*!(spec|method|event)\s*[(]', line):
+    if match and re.search(r'^\s*!(spec|method|event|indexed|alias)\s*[(]', line):
       continue
 
     # Detect enum directive

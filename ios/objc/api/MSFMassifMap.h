@@ -121,6 +121,24 @@ NS_SWIFT_NAME(MassifMap)
 
 @property (nonatomic, readonly) MSFMapCamera *camera;
 
+// --- options, by path ---------------------------------------------------------------------------
+
+/*
+ * The map IS its Options as far as the facade is concerned, so a path reads off it directly - the
+ * same shape a layer and a source already had. The readable spellings come from the alias table:
+ * "fog.rangeStart" is "fogOptions.rangeStart".
+ */
+
+- (BOOL)set:(NSString *)path value:(id)value;
+/** Several at once, in one crossing. @see MSFMassifObject.apply: */
+- (BOOL)apply:(MSFSpec *)values;
+- (double)getDouble:(NSString *)path defaultValue:(double)defaultValue;
+- (long long)getLong:(NSString *)path defaultValue:(long long)defaultValue;
+- (BOOL)getBool:(NSString *)path defaultValue:(BOOL)defaultValue;
+- (nullable NSString *)getString:(NSString *)path defaultValue:(nullable NSString *)defaultValue;
+/** A view scoped to a path prefix - what `fog` and its siblings are made of. */
+- (MSFPropertyGroup *)group:(NSString *)prefix;
+
 // --- option groups ----------------------------------------------------------------------------
 
 /*

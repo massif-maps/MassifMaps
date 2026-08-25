@@ -56,6 +56,17 @@ namespace massif { namespace api {
         return Context::GetDefault()->setProperty(static_cast<Handle>(handle), path, propertyValue);
     }
 
+    int MassifApi::setAll(int handle, const std::string& json, const std::string& projection) {
+        return Context::GetDefault()->setProperties(static_cast<Handle>(handle), json, projection);
+    }
+
+    int MassifApi::setPos(int handle, const std::string& path, const std::string& json,
+                          const std::string& projection) {
+        PropertyValue propertyValue = PropertyValue::ofString(json);
+        return Context::GetDefault()->setProperty(static_cast<Handle>(handle), path, propertyValue,
+                                                  projection);
+    }
+
     int MassifApi::setObject(int handle, const std::string& path, int value) {
         return Context::GetDefault()->setObjectProperty(static_cast<Handle>(handle), path,
                                                         static_cast<Handle>(value));

@@ -14,9 +14,10 @@ describe it.
 Design discussion and the full plan live in
 [issue #146](https://github.com/massif-maps/MassifMaps/issues/146). **Built so far: the property
 table with its base-class chain, the handle table, the registry, `set`/`get`, dotted path
-traversal, `create`/`destroy` from JSON specs, events with a chosen delivery thread and real map
-payloads, per-read and per-subscription projections, `call`/`callAsync` with binary and bulk
-results, the flat C ABI, and an idiomatic hand-written sugar layer for Java and Objective-C.**
+traversal, bag properties and aliases, `create`/`destroy` from JSON specs, events with a chosen
+delivery thread and real map payloads, projections on both the read and the write, batch writes,
+`call`/`callAsync` with binary and bulk results, the flat C ABI, and an idiomatic hand-written
+sugar layer for Java and Objective-C.**
 See [Known gaps](#known-gaps).
 
 ## Why a facade at all
@@ -100,8 +101,8 @@ becomes a new path on the next build.
 
 `scripts/gen-api-tables.py` walks `all/modules` and emits
 `generated/api/PropertyTable.inc`; `all/native/api/PropertyTable.{h,cpp}` define the structures and
-the lookups. Current output for the full profile: **724 properties over 159 classes**, 234 classes
-in the chain — 546 with a value accessor, 113 with an object accessor.
+the lookups. Current output for the full profile: **748 properties over 163 classes**, 239 classes
+in the chain — 598 with a value accessor, 116 with an object accessor, 6 of them bags.
 
 Six macro forms carry the declarations, and they do not all mean the same thing — the table records
 a value type per row, not just an accessor. Counts below are every declaration in the tree; a build
@@ -115,9 +116,9 @@ sees fewer, because modules behind a support define it does not set are skipped:
 | `!attributestring_polymorphic` | 49 | an object reference, addressed by registry id |
 | `%staticattribute` and friends | 6 | static, flagged and otherwise the same |
 
-Resulting distribution for the full profile: `FLOAT` 152, `OBJECT` 114, `INT` 103, `STRUCT` 101,
-`BOOL` 85, `STRING` 71, `COLOR` 48, `ENUM` 45, `VARIANT` 5. A `lite` build skips 56 modules and
-lands at 613; the default profile skips 45 and lands at 639.
+Resulting distribution for the full profile: `FLOAT` 159, `OBJECT` 116, `INT` 107, `STRUCT` 101,
+`BOOL` 87, `STRING` 77, `ENUM` 48, `COLOR` 48, `VARIANT` 5. A `lite` build skips 56 modules and
+lands at 632; the default profile skips 45 and lands at 659.
 
 Both tables are emitted sorted, so a lookup is a binary search over static data — no `std::map`, no
 allocation, nothing built at load time.
@@ -308,9 +309,22 @@ another event nests), which means it lives **for the duration of the call only**
 and read later falls back to the WGS84 default — so the per-read form is the reliable one, and the
 per-subscription one is the convenience. A per-read name always wins over it.
 
-**Known gap:** a read names its projection per call, a write cannot — `setString` has no projection
-argument, so a write outside a handler is always taken as WGS84. Writing 3857 metres directly means
-subscribing with `"EPSG:3857"`, or converting first.
+**A write names its projection too**, which it could not before: `setString` has no place for one,
+so a write outside a handler was always taken as WGS84 and an app holding metres had to convert by
+hand — a mistake that reads as a plausible position somewhere else entirely, never as an error.
+The write side is the same resolution as the read (per call, then the running handler's, then
+WGS84), through two additions rather than a changed signature:
+
+```java
+MassifApi.setPos(handle, "location", "[641200,5659384]", "EPSG:3857");
+```
+```c
+mm_set_position(ctx, handle, "location", "EPSG:3857", values, 2);   /* 4 or 6 are bounds */
+```
+
+`mm_set_position` is the write counterpart of `mm_get_position` — doubles in, no JSON for the
+caller to format — and an unknown projection name is `RESULT_UNKNOWN_TYPE` at the write, never a
+silent pass-through.
 
 **An enum in a spec is resolved by NAME, in C++.** JSON has no enums, so `labelRenderOrder:
 "VECTOR_TILE_RENDER_ORDER_LAST"` arrives as a string — and `PropertyValue::asLong` ran it through
@@ -351,11 +365,102 @@ One real edge: Mercator sends the poles to infinity, and `inf` is not JSON. A co
 out non-finite fails with `RESULT_UNSUPPORTED_TYPE` rather than handing over a string that will not
 parse. Reading WGS84 world bounds as EPSG:3857 is exactly that case.
 
+### Bags: a property whose keys are the app's
+
+A CartoCSS `param::`, an HTTP header, a routing parameter and a layer's metadata are all *named
+entries*, not properties the SDK declares. They were reachable only as METHODS
+(`call(style, "setStyleParameter", …)`), which is the one place the facade stopped looking like a
+property surface — and the thing an app touches most often.
+
+The last segment of the path is the KEY:
+
+```java
+map.set("base.style.params.water_color", "#0af");        // one entry
+map.set("base.style.params", "{\"water_color\":\"#0af\"}");  // every entry, one crossing
+osm.set("HTTPHeaders.User-Agent", "massif/6");
+```
+
+Two shapes reach it, and neither is a special case in `Context`:
+
+- **any string-keyed map property** — `HTTPHeaders`, `Layer.metaData`, `VectorElement.metaData` —
+  is indexable because the generator sees `std::map<std::string, …>` and emits read-modify-write
+  thunks. No `.i` change, no class named anywhere.
+- **a name-keyed getter/setter PAIR**, declared with one line beside the attributes:
+
+```
+!indexed(massif::MBVectorTileDecoder, params, getStyleParameter, setStyleParameter, returns(bool))
+!indexed(massif::RoutingRequest, params, getCustomParameter, setCustomParameter, values(json))
+```
+
+`returns(bool)` says the setter answers whether the key exists — `setStyleParameter` does, and a
+parameter the sheet never declared is refused rather than dropped. `values(json)` is for the
+bindings' typings only; the C++ thunk reads the entry type off the getter's own return type, so a
+string bag and a `Variant` bag generate the same two lines.
+
+**A key the bag does not hold is `RESULT_UNKNOWN_PROPERTY`, never an empty value** — that is the
+whole point of the flag, since a blank is exactly how a mistyped style parameter used to hide. A
+`Variant` bag answers null for an absent key, so a JSON null in one is the same thing as missing.
+
+The entry keeps its type (`{"level":3}` reads back a number, not `"3"`), and the whole-bag write
+takes a JSON object — which is what makes `params` settable **in a spec**:
+
+```json
+{"type":"mbvt","project":{…},"params":{"water_color":"#0af","land_color":"#eee"}}
+```
+
+The table cost is one pointer per row, null for all but the six that have one; the thunks live
+beside the others in `PropertyAccessors.inc`.
+
+### Aliases: a second spelling of one segment
+
+The mechanical spelling is what the table carries; the readable one is an alias, declared in the
+`.i` next to the property and resolved during the walk:
+
+```
+!alias(massif::Options, fog, fogOptions)
+!alias(massif::TileLayer, source, dataSource)
+!alias(massif::VectorTileLayer, style, tileDecoder)
+```
+
+```java
+map.set("fog.rangeStart", 2.5);          // Options -> FogOptions -> setRangeStart
+layer.set("style.params.water_color", "#0af");
+```
+
+One segment to one segment, so a prefix alias falls out of the walk rather than needing a second
+mechanism, and the base chain is walked exactly as `findProperty` does — an alias on `Feature` is
+reachable from `VectorTileFeature`. A spec key resolves through the same table, so
+`{"type":"vector","source":"osm"}` and the property path agree on the word.
+
+The generator warns when an alias points at a property no class in the chain declares; without it,
+a typo would surface at runtime as `UNKNOWN_PROPERTY` naming the alias, with nothing to say the
+alias itself was the fault. Every binding gains them for free — the TypeScript typings list the
+aliased paths beside the real ones.
+
+### Writing many properties at once
+
+`setAll(handle, json)` (`mm_set_json`) writes a JSON object of **path to value**:
+
+```java
+layer.apply(Spec.object().set("opacity", 0.5).set("visible", true).set("fog.rangeStart", 2));
+```
+
+One crossing rather than one per key, which is what a binding's `apply({…})` used to cost — JNI or
+JSI, per option. Every key is attempted and the FIRST failure returned, so a spec written against a
+slightly older SDK does not lose eleven good writes to one unknown name; the log names the ones
+that failed. Object-valued properties are not in it: those need a handle, and the caller writes
+them one by one.
+
+`setProperty` also resolves an ENUM written as its constant NAME now, for the same reason
+`applySpecProperties` does: every text-only caller — the C ABI, a URL query, `setAll`'s JSON — was
+sending `"VECTOR_TILE_RENDER_ORDER_LAST"` into `strtoll` and writing 0. A name nothing goes by is
+left alone, so a numeric string still parses.
+
 ### Path spelling
 
 An attribute's name is decapitalised with the `java.beans.Introspector` rule: an acronym keeps its
 case, so `RangeStart` becomes `rangeStart` while `HTTPHeaders` and `TMSScheme` are unchanged.
-Predictability matters more than beauty here — readable aliases are a separate table.
+Predictability matters more than beauty here — the readable spellings are the aliases above.
 
 ### Why this satisfies "the API must not know about style properties"
 
@@ -433,9 +538,10 @@ MassifApi.setBool (h, "visible", false);
 A method is `call` — `loadTile` on a source, `getElevations` on a hillshade layer — and an event is
 `on`. See [Calls](#calls) and [Events](#events).
 
-One thing a handle is **not** yet usable for: **replacing an object-valued property**, a layer's
-style or a cache's inner source. Writing an `OBJECT` property needs a registry id and a checked
-downcast, and only reading one is implemented — which is what traversal needs.
+A handle is also what **replaces an object-valued property** — a layer's style, a cache's inner
+source — through `setObject`/`mm_set_object`. The value's registered class is checked against the
+property's before anything is cast, because the thunk casts from a type-erased pointer; a class the
+table does not know is not a subclass of anything, so it fails closed.
 
 ### Dotted paths
 
@@ -452,11 +558,8 @@ table like any other property. That is not a breaking change: `%attributestring`
 Java getter and setter in place — verified against `getBackgroundBitmap`, which has been declared
 that way all along.
 
-Writing an `OBJECT` property is not supported yet: assigning one means resolving a registry id and
-downcasting it, which lands with the spec factories.
-
-The spellings are the mechanical ones — `fogOptions.rangeStart`, not `fog.rangeStart`. Shortening
-them is the alias table's job.
+The spellings are the mechanical ones, and the readable ones are aliases resolved in the same walk:
+`fog.rangeStart` is `fogOptions.rangeStart`.
 
 ## Specs and `create`
 
@@ -693,7 +796,7 @@ mm_data_copy(ctx, tile, "data", buffer, size, NULL);
 mm_destroy_handle(ctx, tile);
 ```
 
-**30 entry points, six concepts.** The count grows with *types* — a scalar setter per C type, a
+**33 entry points, six concepts.** The count grows with *types* — a scalar setter per C type, a
 size/copy pair per bulk shape — never with features. A new source type is a spec factory, a new
 option a table row, a new event a bridge, a new method a table row. None of them touches this
 header, which is what makes an ABI version worth having.
@@ -798,6 +901,13 @@ Four rules make that work:
   with the SDK, which is the maintenance the facade exists to remove.
 - **`PropertyGroup`** scopes a path prefix, so `map.fog().set("rangeStart", …)` is short without 700
   hand-written methods. Named accessors per property stay a non-goal.
+- **`apply` is one crossing**, not a loop over `set`: it hands the whole object to `setAll`. A
+  group prefixes its keys and delegates, so `map.fog().apply(…)` is still one call. NativeScript
+  falls back to per-key writes against an SDK built before `setAll`, and after a failed batch, so
+  the error names the key rather than the object.
+- **The map takes a path directly** — `map.set("fog.rangeStart", 2.5)`, `map.getDouble(…)`,
+  `map.group(…)` — delegating to its `Options`. A map, a layer and a source now read the same way;
+  before, only the map needed `map.options().set(…)`.
 - **Subscriptions are the language's own idiom** — `AutoCloseable` in Java, self-invalidating on
   `dealloc` in Objective-C — so removal is not a call an app has to remember.
 
@@ -966,6 +1076,9 @@ exercise is unverified:
 
 ```sh
 --es apiSet fogOptions.rangeStart=2.5              # set/get, dotted
+--es apiSet fog.rangeStart=2.5                     # the same, through the alias
+--es apiSet 'style:demoStyle:params.water_color=#0af'        # one bag entry
+--es apiSetAll '{"fog.rangeStart":2,"fog.rangeEnd":8}'       # several, in ONE crossing
 --es apiEvents true                                # subscribe, and log a click payload
 --es apiCall 'source:osm:loadTile:[[8467,5852,14]]'          # call, synchronous
 --es apiCall 'source:osm:loadTile:[[8467,5852,14]]' --es apiAsync true
@@ -1800,12 +1913,11 @@ is the one piece of new API this path would want.
   finishes.
 - **The worker pool is capped at four and not configurable.** No app has asked for a different
   number; if one does it is a property on the context, not a new verb.
-- **178 of the 724 rows have no value accessor** — every `OBJECT` (114, all of which are readable
-  as a traversal step instead) and the 59 `STRUCT` types `StructCodec` does not know: vectors, maps,
-  `BalloonPopupMargins`, `ClickInfo`. 65 rows have neither, and `set`/`get` on one returns
-  `RESULT_UNSUPPORTED_TYPE`. Adding a struct type is a line in `CODEC_TYPES`.
-- **Writing an `OBJECT` property** is unsupported: it needs a registry id and a checked downcast.
-  Reading one works, which is what traversal needs.
+- **150 of the 748 rows have no value accessor** — every `OBJECT` (116, all of which are readable
+  as a traversal step instead), the `STRUCT` types `StructCodec` does not know (vectors,
+  `BalloonPopupMargins`), and the bags, whose accessors take a key. 32 rows have neither, and
+  `set`/`get` on one returns `RESULT_UNSUPPORTED_TYPE`. Adding a struct type is a line in
+  `CODEC_TYPES`.
 - **`Options` cannot be linked into a standalone harness** — it pulls the renderer,
   `ElevationManager`, `Bitmap` codecs and more — so the native harness covers `FogOptions` and the
   path-walking failure modes only. The `Options -> FogOptions` happy path is checked on a device
@@ -1814,8 +1926,14 @@ is the one piece of new API this path would want.
   is a verification surface and will be replaced by the six verbs and their closed sugar.
 - **The 6 static attributes are flagged but have no resolution path**, since a static has no target
   object.
-- **No alias table.** Every path is the mechanical spelling; mapbox-familiar aliases
-  (`fog-range` for the `rangeStart`/`rangeEnd` pair) are not implemented.
+- **The alias table is small on purpose.** Eight aliases (`fog`, `sky`, `terrain`, `light`,
+  `projection`, `background`, `source`, `style`); a mapbox-shaped one that merges two properties
+  into one (`fog-range` for the `rangeStart`/`rangeEnd` pair) is not a segment alias and has no
+  mechanism.
+- **A bag is invisible to the typings through a BASE-declared property.** `style.params.*` resolves
+  at runtime, because the walk reports the concrete `MBVectorTileDecoder`; the TypeScript closure
+  only knows the declared `VectorTileDecoder` and completes nothing past it. Same limitation as
+  every other concrete-vs-declared path.
 - **One translation unit includes 220 class headers**, which is a heavy compile and couples
   `PropertyTable.cpp` to most of the SDK. Splitting the accessors per module directory is the
   obvious fix if build time becomes a problem; it has not been measured.

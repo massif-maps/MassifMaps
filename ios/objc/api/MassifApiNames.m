@@ -270,6 +270,7 @@ MassifProperty const MassifPropertyPanAction = @"panAction";
 MassifProperty const MassifPropertyPanBounds = @"panBounds";
 MassifProperty const MassifPropertyPanningMode = @"panningMode";
 MassifProperty const MassifPropertyPanningSpeedMode = @"panningSpeedMode";
+MassifProperty const MassifPropertyParams = @"params";
 MassifProperty const MassifPropertyPaused = @"paused";
 MassifProperty const MassifPropertyPhaseInDuration = @"phaseInDuration";
 MassifProperty const MassifPropertyPhaseOutDuration = @"phaseOutDuration";

@@ -79,6 +79,22 @@ namespace massif { namespace api {
         const char* cppClass = nullptr;
     };
 
+    /**
+     * A property whose value is a BAG of named entries - a style's CartoCSS parameters, an HTTP
+     * header set, a layer's metadata.
+     *
+     * The rest of the path after the property is the KEY: `params.water_color`. Without this a
+     * name-keyed setter is only reachable as a method (`call("setStyleParameter", …)`), which is
+     * the one place the facade stopped looking like a property surface.
+     *
+     * Both thunks answer whether the key EXISTS: a style parameter the sheet does not declare
+     * cannot be written, and a bag read that quietly returned an empty string would hide it.
+     */
+    struct IndexedAccess {
+        bool (*getter)(void* obj, const std::string& key, PropertyValue& value);
+        bool (*setter)(void* obj, const std::string& key, const PropertyValue& value);
+    };
+
     struct PropertyEntry {
         const char* path;
         PropertyType type;
@@ -94,6 +110,19 @@ namespace massif { namespace api {
         void (*objectSetter)(void* obj, const ObjectRef& value);
         // The class an OBJECT property points at, e.g. "massif::Projection". Null otherwise.
         const char* objectClass;
+        // Null for all but the handful of bag properties - see IndexedAccess.
+        const IndexedAccess* indexed;
+    };
+
+    /**
+     * A second, readable spelling of one property - `fog` for `fogOptions`.
+     *
+     * One segment to one segment, so a prefix alias falls out of the walk: `fog.rangeStart`
+     * resolves `fog`, then carries on inside FogOptions as usual.
+     */
+    struct AliasEntry {
+        const char* alias;
+        const char* path;
     };
 
     struct ClassEntry {
@@ -103,6 +132,8 @@ namespace massif { namespace api {
         // A property declared on a base is reachable from every class below it, so lookups walk
         // this chain rather than the table being flattened.
         const char* base;
+        const AliasEntry* aliases;    // null for a class that declares none
+        std::uint16_t aliasCount;
     };
 
     /** One enum constant, by the name a spec spells it with. */
@@ -152,6 +183,12 @@ namespace massif { namespace api {
      * @return The property, or null when neither the class nor any base declares it.
      */
     const PropertyEntry* findProperty(const ClassEntry* classEntry, const char* path);
+
+    /**
+     * The property an alias stands for, walking up the class' base chain.
+     * @return The real path, or null when nothing goes by that alias.
+     */
+    const char* findAlias(const ClassEntry* classEntry, const char* alias);
 
     /**
      * Finds the class' PF_PROJECTION property, walking up its base chain.

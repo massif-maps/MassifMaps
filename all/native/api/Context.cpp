@@ -37,6 +37,22 @@ namespace massif { namespace api {
         const PropertyEntry VARIANT_ROOT = { "", PT_VARIANT, PF_READONLY, &readVariantRoot,
                                              nullptr, nullptr };
 
+        /** The other direction: one JSON value as a stamped PropertyValue. */
+        PropertyValue valueOf(const Variant& value) {
+            switch (value.getType()) {
+            case VariantType::VARIANT_TYPE_BOOL:    return PropertyValue::ofBool(value.getBool());
+            case VariantType::VARIANT_TYPE_INTEGER: return PropertyValue::ofLong(value.getLong());
+            case VariantType::VARIANT_TYPE_DOUBLE:  return PropertyValue::ofDouble(value.getDouble());
+            case VariantType::VARIANT_TYPE_STRING:  return PropertyValue::ofString(value.getString());
+            default: {
+                // An array or an object is JSON in the string - a position, a range, a whole bag.
+                PropertyValue property = PropertyValue::ofString(value.toString());
+                property.type = PT_STRUCT;
+                return property;
+            }
+            }
+        }
+
         /** A call result with no object of its own, as the Variant an async payload carries. */
         Variant toVariant(const PropertyValue& value) {
             switch (value.type) {
@@ -101,6 +117,45 @@ namespace massif { namespace api {
         const std::string& defaultProjection() {
             static const std::string name = "EPSG:4326";
             return name;
+        }
+
+        /**
+         * One entry of a bag property - a style parameter, an HTTP header.
+         *
+         * A key the bag does not hold is UNKNOWN_PROPERTY, never an empty value: an undeclared
+         * style parameter is a mistake, and a blank is what used to hide it. getStyleParameter
+         * throws for one, so the exception means the same thing as a false return.
+         */
+        Result readBagEntry(const PropertyEntry& entry, const ObjectRef& target,
+                            const std::string& key, PropertyValue& value) {
+            if (!entry.indexed || !entry.indexed->getter) {
+                return RESULT_UNSUPPORTED_TYPE;
+            }
+            try {
+                if (!entry.indexed->getter(target.obj.get(), key, value)) {
+                    return RESULT_UNKNOWN_PROPERTY;
+                }
+            } catch (const std::exception&) {
+                return RESULT_UNKNOWN_PROPERTY;
+            }
+            return RESULT_OK;
+        }
+
+        /** The write side. Called UNLOCKED - a style parameter write re-decodes the tiles. */
+        Result writeBagEntry(const PropertyEntry& entry, const ObjectRef& target,
+                             const std::string& key, const PropertyValue& value) {
+            if (!entry.indexed || !entry.indexed->setter) {
+                return RESULT_READONLY;
+            }
+            try {
+                if (!entry.indexed->setter(target.obj.get(), key, value)) {
+                    return RESULT_UNKNOWN_PROPERTY;
+                }
+            } catch (const std::exception& ex) {
+                Log::Errorf("Context::setProperty: '%s' rejected: %s", key.c_str(), ex.what());
+                return RESULT_REJECTED;
+            }
+            return RESULT_OK;
         }
 
         /** The per-read name, then the running handler's, then WGS84. */
@@ -1003,9 +1058,13 @@ namespace massif { namespace api {
         ObjectRef target;
         Result result = RESULT_OK;
         std::size_t variantRest = std::string::npos;
-        const PropertyEntry* entry = lookup(handle, path, target, result, &variantRest);
+        std::string indexKey;
+        const PropertyEntry* entry = lookup(handle, path, target, result, &variantRest, &indexKey);
         if (!entry) {
             return result;
+        }
+        if (!indexKey.empty()) {
+            return readBagEntry(*entry, target, indexKey, value);
         }
         if (!entry->getter) {
             return RESULT_UNSUPPORTED_TYPE;
@@ -1046,31 +1105,48 @@ namespace massif { namespace api {
         return RESULT_OK;
     }
 
-    Result Context::setProperty(Handle handle, const std::string& path, const PropertyValue& value) {
+    Result Context::setProperty(Handle handle, const std::string& path, const PropertyValue& value,
+                                const std::string& projection) {
         ObjectRef target;
         const PropertyEntry* entry = nullptr;
+        std::string indexKey;
         PropertyValue converted;
         const PropertyValue* effective = &value;
         {
             std::lock_guard<std::mutex> lock(_mutex);
             Result result = RESULT_OK;
-            entry = lookup(handle, path, target, result);
+            entry = lookup(handle, path, target, result, nullptr, &indexKey);
             if (!entry) {
                 return result;
             }
             if (entry->flags & PF_READONLY) {
                 return RESULT_READONLY;
             }
-            if (!entry->setter) {
+            if (!entry->setter && !(entry->indexed && entry->indexed->setter)) {
                 return RESULT_UNSUPPORTED_TYPE;
             }
-            // A position is WRITTEN in the same projection it is read in, or a value read and
-            // written back would land somewhere else entirely - the one failure that change could
-            // produce, and it would be silent.
-            if ((entry->flags & PF_POSITION) && value.type == PT_STRING) {
-                std::shared_ptr<Projection> from = Projections::find(wantedProjection(std::string()));
+            // An enum written as its constant name. JSON has no enums, so a spec, a URL query and
+            // a scripting binding all send text - and asLong ran it through strtoll, which yields
+            // 0: a real value for nearly every enum here, applied without a word. A name nothing
+            // goes by is left alone, so a numeric string still parses.
+            if (entry->type == PT_ENUM && value.type == PT_STRING) {
+                long long constant = 0;
+                if (enumValueOf(value.stringValue.c_str(), constant)) {
+                    converted = PropertyValue::ofLong(constant);
+                    effective = &converted;
+                }
+            }
+            // A position is WRITTEN in the projection the caller names, which is the one a read
+            // returns it in - or a value read and written back would land somewhere else
+            // entirely, silently. Reading names it per call; this is the write's half of it.
+            if ((entry->flags & PF_POSITION) &&
+                (value.type == PT_STRING || value.type == PT_STRUCT)) {
+                std::shared_ptr<Projection> from = Projections::find(wantedProjection(projection));
                 std::shared_ptr<Projection> to = sourceProjection(target, handle);
-                if (from && to && from->getName() != to->getName()) {
+                if (!from) {
+                    return RESULT_UNKNOWN_TYPE;
+                }
+                if (to && from->getName() != to->getName()) {
                     converted = value;
                     if (!reproject(converted.stringValue, *from, *to)) {
                         return RESULT_UNSUPPORTED_TYPE;
@@ -1078,6 +1154,34 @@ namespace massif { namespace api {
                     effective = &converted;
                 }
             }
+        }
+        // One entry of a bag - the rest of the path was its key.
+        if (!indexKey.empty()) {
+            return writeBagEntry(*entry, target, indexKey, *effective);
+        }
+        // The whole bag at once, from a JSON object - which is how a binding writes several style
+        // parameters in ONE crossing instead of one call per key. A map property has a real setter
+        // and goes through the struct codec below instead.
+        if (entry->indexed && !entry->setter) {
+            Variant object;
+            try {
+                object = Variant::FromString(effective->asString());
+            } catch (const std::exception&) {
+                return RESULT_BAD_SPEC;
+            }
+            if (object.getType() != VariantType::VARIANT_TYPE_OBJECT) {
+                return RESULT_BAD_SPEC;
+            }
+            Result first = RESULT_OK;
+            for (const std::string& key : object.getObjectKeys()) {
+                PropertyValue entryValue;
+                StructCodec::readEntry(object.getObjectElement(key), entryValue);
+                Result written = writeBagEntry(*entry, target, key, entryValue);
+                if (written != RESULT_OK && first == RESULT_OK) {
+                    first = written;   // every key is applied; the first failure is reported
+                }
+            }
+            return first;
         }
         // UNLOCKED, for the same reason call() is: the setter notifies its listeners
         // SYNCHRONOUSLY, and that notification reaches back into this context. Options::
@@ -1099,6 +1203,32 @@ namespace massif { namespace api {
             return RESULT_REJECTED;
         }
         return RESULT_OK;
+    }
+
+    Result Context::setProperties(Handle handle, const std::string& json,
+                                  const std::string& projection) {
+        Variant object;
+        try {
+            object = Variant::FromString(json);
+        } catch (const std::exception&) {
+            return RESULT_BAD_SPEC;
+        }
+        if (object.getType() != VariantType::VARIANT_TYPE_OBJECT) {
+            return RESULT_BAD_SPEC;
+        }
+        Result first = RESULT_OK;
+        for (const std::string& path : object.getObjectKeys()) {
+            PropertyValue value = valueOf(object.getObjectElement(path));
+            Result written = setProperty(handle, path, value, projection);
+            if (written != RESULT_OK) {
+                Log::Warnf("Context::setProperties: '%s' failed: %s", path.c_str(),
+                           resultName(written));
+                if (first == RESULT_OK) {
+                    first = written;
+                }
+            }
+        }
+        return first;
     }
 
     Handle Context::handleOf(const void* obj) const {
@@ -1207,7 +1337,7 @@ namespace massif { namespace api {
 
     const PropertyEntry* Context::lookup(Handle handle, const std::string& path,
                                          ObjectRef& target, Result& result,
-                                         std::size_t* variantRest) const {
+                                         std::size_t* variantRest, std::string* indexKey) const {
         const Slot* slot = resolve(handle);
         if (!slot) {
             result = RESULT_BAD_HANDLE;
@@ -1238,6 +1368,13 @@ namespace massif { namespace api {
             }
             const PropertyEntry* entry = findProperty(classEntry, segment.c_str());
             if (!entry) {
+                // A readable spelling - "fog" for "fogOptions" - resolves to the real property
+                // here, so nothing downstream has to know an alias was used.
+                if (const char* aliased = findAlias(classEntry, segment.c_str())) {
+                    entry = findProperty(classEntry, aliased);
+                }
+            }
+            if (!entry) {
                 result = RESULT_UNKNOWN_PROPERTY;
                 return nullptr;
             }
@@ -1249,6 +1386,12 @@ namespace massif { namespace api {
             // JSON too, so clickInfo.clickType and bounds.0 walk the same way.
             if ((entry->type == PT_VARIANT || entry->type == PT_STRUCT) && variantRest) {
                 *variantRest = dot + 1;
+                return entry;
+            }
+            // A bag is where the walk stops too: the rest of the path is the KEY, not another
+            // object. "params.water_color", "httpHeaders.User-Agent".
+            if (entry->indexed && indexKey) {
+                *indexKey = path.substr(dot + 1);
                 return entry;
             }
             if (!entry->objectGetter) {

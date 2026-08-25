@@ -13,6 +13,7 @@
 #import "MSFMapEvents.h"
 
 @class MSFPropertyGroup;
+@class MSFSpec;
 @class MSFSubscription;
 @class MSFMassifMap;
 @class MSFLayer;
@@ -46,6 +47,23 @@ NS_SWIFT_NAME(MassifObject)
  * @return NO when the path does not resolve or the property is read-only.
  */
 - (BOOL)set:(NSString *)path value:(id)value;
+
+/**
+ * Writes several properties in ONE crossing, from a spec of path to value.
+ *
+ * `set:value:` per key is one bridge call each, and configuring a layer writes a dozen. An
+ * object-valued property is not carried here - that needs a handle, so write it with set:value:.
+ * @return NO when a key did not resolve. The others still applied, and the log names them.
+ */
+- (BOOL)apply:(MSFSpec *)values;
+
+/**
+ * Writes a position in a named projection - the write counterpart of getPos:projection:.
+ *
+ * set:value: takes one in WGS84, which is what a read returns; this is for an app that already
+ * holds map coordinates.
+ */
+- (BOOL)set:(NSString *)path position:(MSFPosition *)value projection:(NSString *)projection;
 
 - (double)getDouble:(NSString *)path defaultValue:(double)defaultValue;
 - (long long)getLong:(NSString *)path defaultValue:(long long)defaultValue;
@@ -130,6 +148,8 @@ NS_SWIFT_NAME(PropertyGroup)
 @interface MSFPropertyGroup : NSObject
 
 - (BOOL)set:(NSString *)name value:(id)value;
+/** Several at once, prefixed - so the object writes them in one crossing. */
+- (BOOL)apply:(MSFSpec *)values;
 - (double)getDouble:(NSString *)name defaultValue:(double)defaultValue;
 - (long long)getLong:(NSString *)name defaultValue:(long long)defaultValue;
 - (BOOL)getBool:(NSString *)name defaultValue:(BOOL)defaultValue;

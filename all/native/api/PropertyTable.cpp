@@ -131,6 +131,23 @@ namespace massif { namespace api {
         return nullptr;
     }
 
+    const char* findAlias(const ClassEntry* classEntry, const char* alias) {
+        if (!alias) {
+            return nullptr;
+        }
+        for (; classEntry; classEntry = classEntry->base ? findClass(classEntry->base) : nullptr) {
+            if (!classEntry->aliases) {
+                continue;
+            }
+            const AliasEntry* entry = findSorted(classEntry->aliases, classEntry->aliasCount, alias,
+                                                 [](const AliasEntry& e) { return e.alias; });
+            if (entry) {
+                return entry->path;
+            }
+        }
+        return nullptr;
+    }
+
     const PropertyEntry* findProjectionProperty(const ClassEntry* classEntry) {
         for (; classEntry; classEntry = classEntry->base ? findClass(classEntry->base) : nullptr) {
             for (std::size_t index = 0; index < classEntry->count; index++) {

@@ -536,6 +536,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyPanBounds;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyPanningMode;
 /** Returns the panning speed mode. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyPanningSpeedMode;
+/** Returns the value of the specified style parameter. The style parameter must be declared in the current style. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyParams;
 /** Returns the paused state of the action. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyPaused;
 /** Returns the phase-in duration of the animation. */

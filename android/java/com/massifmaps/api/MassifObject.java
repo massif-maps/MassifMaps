@@ -93,6 +93,34 @@ public class MassifObject implements AutoCloseable {
     }
 
     /**
+     * Writes several properties in ONE crossing, from a spec of path to value.
+     *
+     * <pre>layer.apply(Spec.object().set("opacity", 0.5).set("visible", true));</pre>
+     *
+     * `set` per key is one JNI call each, and configuring a layer writes a dozen. Object-valued
+     * properties are not in it - those need a handle, so write them with {@link #set}.
+     *
+     * @throws MassifException When a key does not resolve. Every other key still applied, and the
+     *         log names the ones that failed.
+     */
+    public MassifObject apply(Spec values) {
+        MassifException.check(MassifApi.setAll(handle, values.toJson()), "apply", id);
+        return this;
+    }
+
+    /**
+     * Writes a position in a named projection - the write counterpart of {@link #getPos}.
+     *
+     * {@link #set} takes one in WGS84, which is what a read returns; this is for an app holding
+     * map coordinates already.
+     */
+    public MassifObject set(String path, Position value, String projection) {
+        MassifException.check(MassifApi.setPos(handle, path, Values.fromPos(value), projection),
+                              "set", path);
+        return this;
+    }
+
+    /**
      * A property name that carries its VALUE type.
      *
      * Java has no literal string types, so a plain constant would complete and then let a colour

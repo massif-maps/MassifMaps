@@ -38,6 +38,8 @@
 %attribute(massif::TileLayer, int, MaxOverzoomLevel, getMaxOverzoomLevel, setMaxOverzoomLevel)
 %attribute(massif::TileLayer, int, MaxUnderzoomLevel, getMaxUnderzoomLevel, setMaxUnderzoomLevel)
 !attributestring_polymorphic(massif::TileLayer, datasources.TileDataSource, DataSource, getDataSource)
+// The spec key is "source"; the property path is the same word.
+!alias(massif::TileLayer, source, dataSource)
 !attributestring_polymorphic(massif::TileLayer, datasources.TileDataSource, UTFGridDataSource, getUTFGridDataSource, setUTFGridDataSource)
 !attributestring_polymorphic(massif::TileLayer, layers.TileLoadListener, TileLoadListener, getTileLoadListener, setTileLoadListener)
 !attributestring_polymorphic(massif::TileLayer, layers.UTFGridEventListener, UTFGridEventListener, getUTFGridEventListener, setUTFGridEventListener)

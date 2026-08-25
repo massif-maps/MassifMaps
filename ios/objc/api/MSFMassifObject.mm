@@ -120,6 +120,15 @@
     return result == 0;
 }
 
+- (BOOL)apply:(MSFSpec *)values {
+    return [MSFMassifApi setAll:_handle json:values.json projection:@""] == 0;
+}
+
+- (BOOL)set:(NSString *)path position:(MSFPosition *)value projection:(NSString *)projection {
+    return [MSFMassifApi setPos:_handle path:path json:[MSFValues jsonFromPos:value]
+                     projection:projection ?: @""] == 0;
+}
+
 - (double)getDouble:(NSString *)path defaultValue:(double)defaultValue {
     return [MSFMassifApi getFloat:_handle path:path defaultValue:defaultValue];
 }
@@ -319,6 +328,14 @@
 
 - (BOOL)set:(NSString *)name value:(id)value {
     return [_target set:[_prefix stringByAppendingString:name] value:value];
+}
+
+- (BOOL)apply:(MSFSpec *)values {
+    MSFSpec *prefixed = [MSFSpec object];
+    for (NSString *name in values.values) {
+        [prefixed set:[_prefix stringByAppendingString:name] value:values.values[name]];
+    }
+    return [_target apply:prefixed];
 }
 
 - (double)getDouble:(NSString *)name defaultValue:(double)defaultValue {

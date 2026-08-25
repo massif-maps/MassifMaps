@@ -89,6 +89,9 @@ def enumType(name, enums):
 
 
 def valueType(prop, enums):
+  # A bag takes an object of entries, whether it is written as a property or as a spec key.
+  if prop.get('indexed'):
+    return 'Record<string, %s>' % ('string' if prop['indexed'] == 'string' else 'Json')
   if prop['type'] in SCALARS:
     return SCALARS[prop['type']]
   if prop['type'] == 'ENUM':
@@ -103,8 +106,12 @@ def valueType(prop, enums):
 
 
 def ownProperties(cppClass, classes):
-  """A class' properties plus every base's, nearest first."""
-  out, seen = [], set()
+  """A class' properties plus every base's, nearest first - aliases included.
+
+  An alias is a second spelling of one segment, so it completes exactly like the property it
+  stands for, and a dotted path carries on through it.
+  """
+  out, seen, aliases = [], set(), {}
   while cppClass:
     entry = classes.get(cppClass)
     if not entry:
@@ -113,7 +120,14 @@ def ownProperties(cppClass, classes):
       if prop['name'] not in seen:
         seen.add(prop['name'])
         out.append(prop)
+    for alias, path in entry.get('aliases', {}).items():
+      aliases.setdefault(alias, path)
     cppClass = entry['base']
+  byName = {prop['name']: prop for prop in out}
+  for alias, path in sorted(aliases.items()):
+    target = byName.get(path)
+    if target and alias not in seen:
+      out.append(dict(target, name=alias))
   return out
 
 
@@ -125,6 +139,12 @@ def closure(cppClass, classes, enums, depth=MAX_DEPTH, prefix='', stack=()):
   for prop in ownProperties(cppClass, classes):
     path = prefix + prop['name']
     paths[path] = (valueType(prop, enums), prop.get('doc'), prop['readOnly'])
+    if prop.get('indexed'):
+      # A bag: the property itself takes every key at once, and `path.<anything>` is one entry.
+      # The pattern key is what completes `params.water_color` without the SDK knowing the name.
+      entry = 'string' if prop['indexed'] == 'string' else 'Json'
+      paths[path] = (valueType(prop, enums), prop.get('doc'), False)
+      paths['`%s.${string}`' % path] = (entry, prop.get('doc'), False)
     if prop['type'] == 'OBJECT':
       paths.update(closure(prop['objectClass'], classes, enums, depth - 1,
                            path + '.', stack + (cppClass,)))
@@ -185,7 +205,12 @@ def emit(schema, outPath):
       valueTypeName, doc, readOnly = paths[path]
       if doc:
         lines.append('    /** %s%s */\n' % ('(read-only) ' if readOnly else '', doc))
-      lines.append('    %s"%s": %s;\n' % ('readonly ' if readOnly else '', path, valueTypeName))
+      if path.startswith('`'):
+        # A bag's keys are the app's, not the SDK's, so they are an index signature over a
+        # template literal rather than a list.
+        lines.append('    [key: %s]: %s;\n' % (path, valueTypeName))
+      else:
+        lines.append('    %s"%s": %s;\n' % ('readonly ' if readOnly else '', path, valueTypeName))
     lines.append('  };\n')
   lines.append('}\n\n')
 

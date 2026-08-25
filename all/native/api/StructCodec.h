@@ -7,6 +7,7 @@
 #ifndef _MASSIF_API_STRUCTCODEC_H_
 #define _MASSIF_API_STRUCTCODEC_H_
 
+#include "api/PropertyTable.h"
 #include "core/MapBounds.h"
 #include "core/MapPos.h"
 #include "core/MapTile.h"
@@ -79,6 +80,19 @@ namespace massif { namespace api {
         bool decode(const std::string& json, std::vector<std::vector<MapPos> >& value);
         bool decode(const std::string& json, std::map<std::string, std::string>& value);
         bool decode(const std::string& json, std::map<std::string, Variant>& value);
+
+        /**
+         * One entry of a bag property - see IndexedAccess. Overloaded rather than templated so the
+         * generated thunk is the same line whatever the bag holds.
+         *
+         * A Variant entry keeps its own type, so {"level":3} reads back as a number. It answers
+         * false for a NULL one, which is what a Variant bag returns for a key it does not hold -
+         * so a JSON null in a bag and a missing key are the same thing here.
+         */
+        bool readEntry(const std::string& entry, PropertyValue& value);
+        bool readEntry(const Variant& entry, PropertyValue& value);
+        void writeEntry(const PropertyValue& value, std::string& entry);
+        void writeEntry(const PropertyValue& value, Variant& entry);
 
     }
 

@@ -95,6 +95,7 @@
           "doc": "Returns the street name included in the address."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -149,6 +150,7 @@
           "doc": "Returns the size-related animation type."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -203,6 +205,7 @@
           "doc": "Returns the size-related animation type."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -218,12 +221,14 @@
           "cppType": "std::vector<std::string>"
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
     "massif::AssetTileDataSource": {
       "base": "massif::TileDataSource",
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -269,6 +274,7 @@
           "doc": "Returns the title of this balloon popup."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -304,6 +310,7 @@
           "doc": "Returns the text of this button."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -350,6 +357,7 @@
           "doc": "Returns the clicked vector element."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -438,6 +446,7 @@
           "doc": "Returns the margins of the text."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -517,12 +526,14 @@
           "doc": "Returns the margins of the text."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
     "massif::BalloonPopupEventListener": {
       "base": null,
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -562,6 +573,7 @@
           "cppType": "int"
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -796,6 +808,7 @@
           "doc": "Returns the width of the triangle at the bottom of the popup."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -1021,6 +1034,7 @@
           "doc": "Returns the width of the triangle at the bottom of the popup."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -1082,6 +1096,7 @@
           "doc": "Returns the zoom level. The value returned is never negative, 0 means absolutely zoomed out and all other values describe some level of zoom."
         }
       ],
+      "aliases": {},
       "methods": [
         {
           "cppClass": "massif::BaseMapView",
@@ -1261,6 +1276,7 @@
           "doc": "Returns the rotation angle of this billboard."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -1350,6 +1366,7 @@
           "doc": "Returns the vertical offset of the billboard."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -1439,6 +1456,7 @@
           "doc": "Returns the vertical offset of the billboard."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -1455,6 +1473,7 @@
           "doc": "Returns the size of the data"
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -1499,12 +1518,14 @@
           "doc": "Returns the width of the bitmap."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
     "massif::BitmapOverlayRasterTileDataSource": {
       "base": "massif::TileDataSource",
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -1530,6 +1551,7 @@
           "doc": "Returns the list of assets found in the bundle, ignoring the base asset package."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -1555,6 +1577,7 @@
           "doc": "Returns the original data source that the cache uses."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -1581,6 +1604,7 @@
           "doc": "Returns the CartoCSS string used for the style."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -1633,12 +1657,14 @@
           "doc": "Returns the line width."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
     "massif::CelestialEventListener": {
       "base": null,
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -1656,6 +1682,7 @@
           "doc": "Returns the object event listener."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -1735,6 +1762,7 @@
           "doc": "Returns the visibility of the object."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -1788,6 +1816,7 @@
           "doc": "Returns the edge softness of a disc sprite."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -1814,18 +1843,21 @@
           "doc": "Returns the click duration in seconds."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
     "massif::ClusterElementBuilder": {
       "base": null,
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
     "massif::ClusterFetchTask": {
       "base": null,
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -1870,6 +1902,7 @@
           "doc": "Returns the current minimum distance between clusters (in device-independent pixels)."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -1922,12 +1955,14 @@
           "doc": "Returns the red component of this map color."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
     "massif::CombinedTileDataSource": {
       "base": "massif::TileDataSource",
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -1963,6 +1998,7 @@
           "doc": "Returns the current style name."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -1979,6 +2015,7 @@
           "doc": "Returns whether single-pass segmented rendering is enabled (Milestone 6, optional)."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -2068,6 +2105,7 @@
           "doc": "Returns the terrain options whose elevation manager the label stubs read."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -2084,6 +2122,7 @@
           "doc": "Returns a view state."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -2101,12 +2140,14 @@
           "doc": "Returns the handler used for the popup."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
     "massif::CustomPopupHandler": {
       "base": null,
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -2123,12 +2164,14 @@
           "doc": "Returns the custom fragment shader source."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
     "massif::DataSourceListener": {
       "base": null,
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -2154,30 +2197,35 @@
           "doc": "Returns the list of assets stored in the directory, ignoring the base asset package."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
     "massif::DouglasPeuckerGeometrySimplifier": {
       "base": "massif::GeometrySimplifier",
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
     "massif::DownloadTask": {
       "base": "massif::CancelableTask",
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
     "massif::EPSG3857": {
       "base": "massif::Projection",
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
     "massif::EPSG4326": {
       "base": "massif::Projection",
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -2205,18 +2253,21 @@
           "doc": "Returns the current edit event listener for the layer."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
     "massif::ElevationDecoder": {
       "base": null,
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
     "massif::EventListener": {
       "base": null,
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -2252,6 +2303,7 @@
           "doc": "Returns the properties of the feature."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -2269,6 +2321,7 @@
           "doc": "Returns the geometry of the builder."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -2285,6 +2338,7 @@
           "doc": "Returns the number of features in this container."
         }
       ],
+      "aliases": {},
       "methods": [
         {
           "cppClass": "massif::FeatureCollection",
@@ -2334,6 +2388,7 @@
           "doc": "Returns the projection of the feature collection of the search service."
         }
       ],
+      "aliases": {},
       "methods": [
         {
           "cppClass": "massif::FeatureCollectionSearchService",
@@ -2353,24 +2408,28 @@
     "massif::FetchTask": {
       "base": "massif::CancelableTask",
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
     "massif::FetchTaskBase": {
       "base": "massif::CancelableTask",
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
     "massif::FetchingTasks": {
       "base": null,
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
     "massif::FetchingTileTasks": {
       "base": null,
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -2468,6 +2527,7 @@
           "doc": "Returns how brightly stars are drawn beyond the atmosphere."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -2485,6 +2545,7 @@
           "doc": "Returns the current target projection. If target projection is set, all geometry coordinates will be converted from WGS84 to target projection coordinate system."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -2511,6 +2572,7 @@
           "doc": "Returns the state of Z coordinate serialization."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -2536,6 +2598,7 @@
           "doc": "Returns the simplification tolerance in tile pixels."
         }
       ],
+      "aliases": {},
       "methods": [
         {
           "cppClass": "massif::GeoJSONVectorTileDataSource",
@@ -2631,6 +2694,7 @@
     "massif::GeocodingAddress": {
       "base": "massif::Address",
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -2675,6 +2739,7 @@
           "doc": "Returns the text-based query of the request."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -2720,6 +2785,7 @@
           "doc": "Returns the rank of the result. The rank is a normalized number between 0 and 1, 1 meaning a perfect match."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -2751,6 +2817,7 @@
           "cppType": "int"
         }
       ],
+      "aliases": {},
       "methods": [
         {
           "cppClass": "massif::GeocodingService",
@@ -2806,6 +2873,7 @@
           "enum": "massif::GeometryType::GeometryType"
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -2832,6 +2900,7 @@
           "doc": "Returns the style of this geometry collection."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -2869,6 +2938,7 @@
           "doc": "Returns the polygon style."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -2906,12 +2976,14 @@
           "doc": "Returns the polygon style."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
     "massif::GeometrySimplifier": {
       "base": null,
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -2925,6 +2997,7 @@
           "static": false,
           "position": false,
           "cppType": "std::map<std::string, std::string>",
+          "indexed": "string",
           "doc": "Returns the current set of HTTP headers used. Initially this set is empty and can be changed with setHTTPHeaders."
         },
         {
@@ -2973,6 +3046,7 @@
           "doc": "Returns the current timeout value."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -3151,6 +3225,7 @@
           "doc": "Returns whether the terrain paint shades from the elevation source's own maximum zoom."
         }
       ],
+      "aliases": {},
       "methods": [
         {
           "cppClass": "massif::HillshadeRasterTileLayer",
@@ -3193,6 +3268,7 @@
           "doc": "Returns the style of this label."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -3256,6 +3332,7 @@
           "doc": "Returns the scaling mode of the label."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -3319,6 +3396,7 @@
           "doc": "Returns the scaling mode of the label."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -3341,6 +3419,7 @@
           "static": false,
           "position": false,
           "cppType": "std::map<std::string, massif::Variant>",
+          "indexed": "json",
           "doc": "Returns a copy of the layer meta data map. The changes you make to this map are NOT reflected in the actual meta data of the layer."
         },
         {
@@ -3389,6 +3468,7 @@
           "doc": "Returns the visible zoom range of this layer."
         }
       ],
+      "aliases": {},
       "methods": [
         {
           "cppClass": "massif::Layer",
@@ -3413,6 +3493,7 @@
           "doc": "Returns the current layer count."
         }
       ],
+      "aliases": {},
       "methods": [
         {
           "cppClass": "massif::Layers",
@@ -3631,6 +3712,7 @@
           "doc": "Returns whether the sun lights the 3D terrain surface."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -3657,6 +3739,7 @@
           "doc": "Returns the style of this line."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -3673,6 +3756,7 @@
           "doc": "Returns the list of of map positions defining the line."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -3737,6 +3821,7 @@
           "doc": "Returns the width of the line."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -3801,6 +3886,7 @@
           "doc": "Returns the width of the line."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -3818,6 +3904,7 @@
           "doc": "Returns the active geometry simplifier of the data source."
         }
       ],
+      "aliases": {},
       "methods": [
         {
           "cppClass": "massif::LocalVectorDataSource",
@@ -3912,18 +3999,21 @@
           "doc": "Returns the tag for the log events."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
     "massif::LogEventListener": {
       "base": null,
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
     "massif::MBTilesTileDataSource": {
       "base": "massif::TileDataSource",
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -3960,6 +4050,16 @@
           "doc": "Returns the value of feature id override flag. This is intended for cases when feature ids in tile are not globally unique."
         },
         {
+          "name": "params",
+          "type": "STRING",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "std::string",
+          "indexed": "string",
+          "doc": "Returns the value of the specified style parameter. The style parameter must be declared in the current style."
+        },
+        {
           "name": "styleLayerNames",
           "type": "STRUCT",
           "readOnly": true,
@@ -3988,6 +4088,7 @@
           "doc": "Returns the binary format the tiles are decoded as."
         }
       ],
+      "aliases": {},
       "methods": [
         {
           "cppClass": "massif::MBVectorTileDecoder",
@@ -4054,6 +4155,7 @@
           "doc": "Returns the length of the arrow before the maneuver point."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -4097,12 +4199,14 @@
           "doc": "Returns the minimum (south west) map position of this map envelope object."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
     "massif::MapBoxElevationDataDecoder": {
       "base": "massif::ElevationDecoder",
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -4119,6 +4223,7 @@
           "doc": "Returns the custom backend service URL."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -4135,6 +4240,7 @@
           "doc": "Returns the custom backend service URL."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -4170,6 +4276,7 @@
           "doc": "Returns the click type."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -4195,12 +4302,14 @@
           "doc": "Returns the convex hull of this map envelope."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
     "massif::MapEventListener": {
       "base": null,
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -4253,6 +4362,7 @@
           "doc": "Returns true if the interaction included a zoom action."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -4270,6 +4380,7 @@
           "doc": "Returns what caused the movement."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -4304,6 +4415,7 @@
           "doc": "Returns the z coordinate of this map position."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -4347,6 +4459,7 @@
           "doc": "Returns the min value of this map range."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -4364,12 +4477,14 @@
           "doc": "Returns the map renderer listener. Can be null."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
     "massif::MapRendererListener": {
       "base": null,
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -4422,6 +4537,7 @@
           "doc": "Returns the zoom level of this map tile."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -4447,6 +4563,7 @@
           "doc": "Returns the current timeout value."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -4499,6 +4616,7 @@
           "doc": "Returns the z coordinate of this map vector."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -4516,6 +4634,7 @@
           "doc": "Returns the style of this marker."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -4589,6 +4708,7 @@
           "doc": "Returns the size of the marker."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -4662,30 +4782,35 @@
           "doc": "Returns the size of the marker."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
     "massif::MassifApi": {
       "base": null,
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
     "massif::MassifInterop": {
       "base": null,
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
     "massif::MemoryCacheTileDataSource": {
       "base": "massif::CacheTileDataSource",
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
     "massif::MergedMBVTTileDataSource": {
       "base": "massif::TileDataSource",
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -4702,18 +4827,21 @@
           "doc": "Returns the number of geometry objects in this multi geometry container."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
     "massif::MultiLineGeometry": {
       "base": "massif::MultiGeometry",
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
     "massif::MultiOSMOfflineGeocodingService": {
       "base": "massif::GeocodingService",
       "properties": [],
+      "aliases": {},
       "methods": [
         {
           "cppClass": "massif::MultiOSMOfflineGeocodingService",
@@ -4745,6 +4873,7 @@
     "massif::MultiOSMOfflineReverseGeocodingService": {
       "base": "massif::ReverseGeocodingService",
       "properties": [],
+      "aliases": {},
       "methods": [
         {
           "cppClass": "massif::MultiOSMOfflineReverseGeocodingService",
@@ -4776,18 +4905,21 @@
     "massif::MultiPointGeometry": {
       "base": "massif::MultiGeometry",
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
     "massif::MultiPolygonGeometry": {
       "base": "massif::MultiGeometry",
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
     "massif::MultiTileDataSource": {
       "base": "massif::TileDataSource",
       "properties": [],
+      "aliases": {},
       "methods": [
         {
           "cppClass": "massif::MultiTileDataSource",
@@ -4823,6 +4955,7 @@
     "massif::MultiValhallaOfflineRoutingService": {
       "base": "massif::RoutingService",
       "properties": [],
+      "aliases": {},
       "methods": [
         {
           "cppClass": "massif::MultiValhallaOfflineRoutingService",
@@ -4924,6 +5057,7 @@
           "doc": "Returns the style of this object."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -4961,6 +5095,7 @@
           "doc": "Returns the scaling mode of the model."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -4998,30 +5133,35 @@
           "doc": "Returns the scaling mode of the model."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
     "massif::OSMOfflineGeocodingService": {
       "base": "massif::GeocodingService",
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
     "massif::OSMOfflineReverseGeocodingService": {
       "base": "massif::ReverseGeocodingService",
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
     "massif::OSRMOfflineRoutingService": {
       "base": "massif::RoutingService",
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
     "massif::OnChangeListener": {
       "base": null,
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -5454,6 +5594,14 @@
           "doc": "Returns the zoom range constraint."
         }
       ],
+      "aliases": {
+        "background": "backgroundBitmap",
+        "fog": "fogOptions",
+        "light": "lightOptions",
+        "projection": "baseProjection",
+        "sky": "skyOptions",
+        "terrain": "terrainOptions"
+      },
       "methods": [],
       "events": [
         {
@@ -5491,18 +5639,21 @@
     "massif::OptionsListener": {
       "base": null,
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
     "massif::OrderedTileDataSource": {
       "base": "massif::TileDataSource",
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
     "massif::PMTilesTileDataSource": {
       "base": "massif::TileDataSource",
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -5576,6 +5727,7 @@
           "doc": "Returns the package version. This should not be displayed to the user."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -5625,30 +5777,35 @@
           "cppType": "std::vector<std::shared_ptr<massif::PackageInfo> >"
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
     "massif::PackageManagerGeocodingService": {
       "base": "massif::GeocodingService",
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
     "massif::PackageManagerListener": {
       "base": null,
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
     "massif::PackageManagerReverseGeocodingService": {
       "base": "massif::ReverseGeocodingService",
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
     "massif::PackageManagerRoutingService": {
       "base": "massif::RoutingService",
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -5666,12 +5823,14 @@
           "doc": "Returns the package manager instance used by the data source."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
     "massif::PackageManagerValhallaRoutingService": {
       "base": "massif::RoutingService",
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -5688,6 +5847,7 @@
           "doc": "Returns the underlying variant."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -5723,6 +5883,7 @@
           "doc": "Returns the progress of the action."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -5748,6 +5909,7 @@
           "doc": "Returns the encoded tile mask value. This should not be displayed to the user."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -5764,6 +5926,7 @@
           "doc": "Returns the custom backend service URL."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -5780,6 +5943,7 @@
           "doc": "Returns the custom backend service URL."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -5805,6 +5969,7 @@
           "doc": "Returns the status of the cache database."
         }
       ],
+      "aliases": {},
       "methods": [
         {
           "cppClass": "massif::PersistentCacheTileDataSource",
@@ -5875,6 +6040,7 @@
     "massif::PersistentTaskQueue": {
       "base": null,
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -5901,6 +6067,7 @@
           "doc": "Returns the style of this point."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -5917,6 +6084,7 @@
           "doc": "Returns the position of the point."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -5952,6 +6120,7 @@
           "doc": "Returns the size of the point."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -5987,6 +6156,7 @@
           "doc": "Returns the size of the point."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -6013,6 +6183,7 @@
           "doc": "Returns the style of this polygon."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -6048,6 +6219,7 @@
           "doc": "Returns the style of this 3d polygon."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -6064,6 +6236,7 @@
           "doc": "Returns the color for sides of the 3d polygon."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -6080,6 +6253,7 @@
           "doc": "Returns the color of the 3d polygon sides."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -6114,6 +6288,7 @@
           "doc": "Returns the list of map position lists defining the rings of the polygon."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -6131,6 +6306,7 @@
           "doc": "Returns the style of the edges of the polygon."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -6148,6 +6324,7 @@
           "doc": "Returns the line style of the edges of the polygon."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -6183,6 +6360,7 @@
           "doc": "Returns the style of this Popup."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -6237,6 +6415,7 @@
           "doc": "Returns the clicked popup."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -6281,18 +6460,21 @@
           "doc": "Returns the screen bounds, so that the popup can be clipped if neccessary."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
     "massif::PopupStyle": {
       "base": "massif::BillboardStyle",
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
     "massif::PopupStyleBuilder": {
       "base": "massif::BillboardStyleBuilder",
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -6327,6 +6509,7 @@
           "doc": "Returns true if the effect needs the terrain depth pre-pass (uTerrainDepthTex)."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -6351,6 +6534,7 @@
           "cppType": "std::string"
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -6423,12 +6607,14 @@
           "doc": "Returns the color of the nearest pixel to the click position."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
     "massif::RasterTileEventListener": {
       "base": null,
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -6474,18 +6660,21 @@
           "doc": "Returns the current tile filter mode."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
     "massif::RedrawRequestListener": {
       "base": null,
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
     "massif::RendererCaptureListener": {
       "base": null,
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -6521,6 +6710,7 @@
           "doc": "Returns the search radius (in meters)."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -6536,6 +6726,7 @@
           "cppType": "std::string"
         }
       ],
+      "aliases": {},
       "methods": [
         {
           "cppClass": "massif::ReverseGeocodingService",
@@ -6555,6 +6746,7 @@
     "massif::RouteMatchingEdge": {
       "base": null,
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -6590,6 +6782,7 @@
           "doc": "Returns the type of the matching point."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -6625,6 +6818,7 @@
           "doc": "Returns the projection of the points in the request."
         }
       ],
+      "aliases": {},
       "methods": [
         {
           "cppClass": "massif::RouteMatchingRequest",
@@ -6695,6 +6889,7 @@
           "doc": "Returns raw result"
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -6784,12 +6979,23 @@
           "doc": "Returns the turn angle of the action."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
     "massif::RoutingRequest": {
       "base": null,
       "properties": [
+        {
+          "name": "params",
+          "type": "STRING",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "massif::Variant",
+          "indexed": "json",
+          "doc": "Returns the custom parameter value of the request."
+        },
         {
           "name": "points",
           "type": "STRUCT",
@@ -6810,6 +7016,7 @@
           "doc": "Returns the projection of the points in the request."
         }
       ],
+      "aliases": {},
       "methods": [
         {
           "cppClass": "massif::RoutingRequest",
@@ -6916,6 +7123,7 @@
           "doc": "Returns the approximate total duration of the path."
         }
       ],
+      "aliases": {},
       "methods": [
         {
           "cppClass": "massif::RoutingResult",
@@ -6951,6 +7159,7 @@
           "cppType": "std::string"
         }
       ],
+      "aliases": {},
       "methods": [
         {
           "cppClass": "massif::RoutingService",
@@ -6982,6 +7191,7 @@
     "massif::SGREOfflineRoutingService": {
       "base": "massif::RoutingService",
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -7016,6 +7226,7 @@
           "doc": "Returns the minimum screen position."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -7041,6 +7252,7 @@
           "doc": "Returns the y coordinate of this position."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -7095,6 +7307,7 @@
           "doc": "Returns the search radius for proximity search (in meters). The default is 0."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -7165,6 +7378,7 @@
           "doc": "Returns whether the built-in shader draws a sun disc."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -7200,6 +7414,7 @@
           "doc": "Returns the color of this layer."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -7216,6 +7431,7 @@
           "doc": "Returns the color of the vector element."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -7232,6 +7448,7 @@
           "doc": "Returns the color of the vector element."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -7445,12 +7662,14 @@
           "doc": "Returns the factor applied to the view distance."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
     "massif::TerrariumElevationDataDecoder": {
       "base": "massif::ElevationDecoder",
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -7477,6 +7696,7 @@
           "doc": "Returns the display text."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -7516,6 +7736,7 @@
           "cppType": "int"
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -7622,6 +7843,7 @@
           "doc": "Returns the margins for the text."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -7719,6 +7941,7 @@
           "doc": "Returns the margins for the text."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -7754,6 +7977,7 @@
           "doc": "Returns true if the tile should be replaced with parent tile."
         }
       ],
+      "aliases": {},
       "methods": [
         {
           "cppClass": "massif::TileData",
@@ -7807,6 +8031,7 @@
           "static": false,
           "position": false,
           "cppType": "std::map<std::string, massif::Variant>",
+          "indexed": "json",
           "doc": "Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - \"dem_encoding\" (\"mapbox\" or \"terrarium\") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's."
         },
         {
@@ -7829,6 +8054,7 @@
           "doc": "Returns the projection of this tile source."
         }
       ],
+      "aliases": {},
       "methods": [
         {
           "cppClass": "massif::TileDataSource",
@@ -7876,6 +8102,7 @@
     "massif::TileDecoderListener": {
       "base": null,
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -7910,18 +8137,21 @@
           "doc": "Returns the number of tiles the download will fetch."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
     "massif::TileDownloadListener": {
       "base": null,
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
     "massif::TileInfo": {
       "base": null,
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -8043,6 +8273,9 @@
           "doc": "Gets the current zoom level bias for this layer."
         }
       ],
+      "aliases": {
+        "source": "dataSource"
+      },
       "methods": [
         {
           "cppClass": "massif::TileLayer",
@@ -8062,12 +8295,14 @@
     "massif::TileLoadListener": {
       "base": null,
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
     "massif::TileUtils": {
       "base": null,
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -8084,6 +8319,7 @@
           "doc": "Returns the custom backend service URL."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -8100,6 +8336,7 @@
           "doc": "Returns the custom backend service URL."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -8144,18 +8381,21 @@
           "doc": "Returns the current style set used by the decoder."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
     "massif::TorqueTileLayer": {
       "base": "massif::VectorTileLayer",
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
     "massif::TouchHandlerListener": {
       "base": null,
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -8210,24 +8450,28 @@
           "doc": "Returns the clicked layer."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
     "massif::UTFGridEventListener": {
       "base": null,
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
     "massif::UiDispatcher": {
       "base": null,
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
     "massif::ValhallaOfflineRoutingService": {
       "base": "massif::RoutingService",
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -8241,6 +8485,7 @@
           "static": false,
           "position": false,
           "cppType": "std::map<std::string, std::string>",
+          "indexed": "string",
           "doc": "Returns the current set of HTTP headers used. Initially this set is empty and can be changed with setHTTPHeaders."
         },
         {
@@ -8262,6 +8507,7 @@
           "doc": "Returns the current timeout value."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -8333,18 +8579,21 @@
           "doc": "Returns the type of this variant."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
     "massif::VariantArrayBuilder": {
       "base": null,
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
     "massif::VariantObjectBuilder": {
       "base": null,
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -8361,6 +8610,7 @@
           "doc": "Returns the list of vector elements."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -8387,12 +8637,14 @@
           "doc": "Returns the projection used by this data source."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
     "massif::VectorEditEventListener": {
       "base": null,
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -8434,6 +8686,7 @@
           "static": false,
           "position": false,
           "cppType": "std::map<std::string, massif::Variant>",
+          "indexed": "json",
           "doc": "Returns a copy of the vector element meta data map. The changes you make to this map are NOT reflected in the actual meta data of the element."
         },
         {
@@ -8446,6 +8699,7 @@
           "doc": "Returns the state of the visibility flag of this vector element."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -8510,6 +8764,7 @@
           "doc": "Returns the clicked vector element."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -8555,12 +8810,14 @@
           "doc": "Returns the drag mode."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
     "massif::VectorElementEventListener": {
       "base": null,
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -8587,6 +8844,7 @@
           "doc": "Returns the maximum number of results the search service returns."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -8623,6 +8881,7 @@
           "doc": "Returns the vector element event listener."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": [
         {
@@ -8739,6 +8998,7 @@
           "doc": "Returns the tile id of the clicked feature."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -8762,12 +9022,14 @@
           "cppType": "int"
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
     "massif::VectorTileEventListener": {
       "base": null,
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -8810,6 +9072,7 @@
           "doc": "Returns the map tile of the feature."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -8844,12 +9107,14 @@
           "doc": "Returns the map tile of the builder."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
     "massif::VectorTileFeatureCollection": {
       "base": "massif::FeatureCollection",
       "properties": [],
+      "aliases": {},
       "methods": [
         {
           "cppClass": "massif::VectorTileFeatureCollection",
@@ -8964,6 +9229,9 @@
           "doc": "Returns the vector tile event listener."
         }
       ],
+      "aliases": {
+        "style": "tileDecoder"
+      },
       "methods": [],
       "events": [
         {
@@ -9062,6 +9330,7 @@
           "doc": "Returns the tile decoder used by the search service."
         }
       ],
+      "aliases": {},
       "methods": [
         {
           "cppClass": "massif::VectorTileSearchService",
@@ -9235,12 +9504,14 @@
           "doc": "Returns the distance between the focus and the camera position, when the zoom level is set to 0. This parameter depends on the screen size, DPI, tile draw size and field of view settings."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
     "massif::WKBGeometryReader": {
       "base": null,
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -9266,12 +9537,14 @@
           "doc": "Returns the state of Z coordinate serialization."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
     "massif::WKTGeometryReader": {
       "base": null,
       "properties": [],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -9288,6 +9561,7 @@
           "doc": "Returns the state of Z coordinate serialization."
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     },
@@ -9303,6 +9577,7 @@
           "cppType": "std::vector<std::string>"
         }
       ],
+      "aliases": {},
       "methods": [],
       "events": []
     }

@@ -1,0 +1,188 @@
+name: Release style tools CLI
+
+# Builds massif-style to WebAssembly, wraps it in @massif-maps/style-tools and publishes.
+# See docs/contributing/style-tools.md for why the tool is split TypeScript + wasm.
+
+on:
+  # CI for the package: builds the wasm and runs the full smoke test. `publish` has no value on a
+  # pull_request event, so the publish job below cannot fire from here.
+  pull_request:
+    paths:
+      - 'tools/style-cli/**'
+      - 'scripts/gen-cartocss-properties.py'
+      - 'libs-massif'
+      - '.github/workflows/release-style-tools.yml'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'version number (no leading v)'
+        required: true
+      publish:
+        description: "Publish to npm and attach to a GitHub Release?"
+        default: false
+        required: true
+        type: boolean
+
+env:
+  BOOST_VERSION: 1.85.0
+  PACKAGE_DIR: tools/style-cli
+
+jobs:
+  build-wasm:
+    name: Build massif-style.wasm
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+          fetch-depth: 1
+
+      - uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: latest
+          actions-cache-folder: emsdk-cache
+
+      # Headers only - the tools use boost.spirit and boost::math constants, nothing compiled.
+      # Boost retired boostorg.jfrog.io; archives.boost.io is the current host.
+      - name: Fetch Boost headers
+        run: |
+          BOOST_UNDERSCORE="boost_$(echo "${BOOST_VERSION}" | tr . _)"
+          curl -sSL -o boost.tar.gz \
+            "https://archives.boost.io/release/${BOOST_VERSION}/source/${BOOST_UNDERSCORE}.tar.gz"
+          tar xzf boost.tar.gz
+          ln -s "../${BOOST_UNDERSCORE}" libs-external/boost
+          (cd "${BOOST_UNDERSCORE}" && ./bootstrap.sh && ./b2 headers)
+
+      - name: Build wasm
+        working-directory: libs-massif/cartocss/util
+        run: |
+          emcmake cmake -B build-wasm -DCMAKE_BUILD_TYPE=MinSizeRel
+          emmake make -C build-wasm -j"$(nproc)" massif-style
+          ls -la build-wasm/massif-style.*
+
+      - name: Report size
+        run: |
+          cd libs-massif/cartocss/util/build-wasm
+          echo "### wasm artifact" >> "$GITHUB_STEP_SUMMARY"
+          { echo '```'; ls -lh massif-style.wasm massif-style.mjs; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: massif-style-wasm
+          path: |
+            libs-massif/cartocss/util/build-wasm/massif-style.wasm
+            libs-massif/cartocss/util/build-wasm/massif-style.mjs
+          if-no-files-found: error
+
+  package:
+    name: Build and test the npm package
+    needs: [build-wasm]
+    runs-on: ubuntu-latest
+    outputs:
+      TARBALL: ${{ steps.pack.outputs.tarball }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+
+      # mapbox2css translates onto this list; publishing it stale would silently drop properties
+      # the decoder has since gained.
+      - name: Check the CartoCSS property allowlist is current
+        run: python3 scripts/gen-cartocss-properties.py --check
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: massif-style-wasm
+          path: ${{ env.PACKAGE_DIR }}/wasm
+
+      - name: Build and test
+        working-directory: ${{ env.PACKAGE_DIR }}
+        run: |
+          npm ci
+          npm run build
+          npm test
+
+      # Runs the packaged CLI end to end through the wasm. A module that loads but cannot reach the
+      # filesystem (a NODERAWFS regression) fails here rather than on a user's machine, and
+      # --validate compiles mapbox2css's own output with the real CartoCSS compiler.
+      - name: Smoke test the wasm subcommand
+        working-directory: ${{ env.PACKAGE_DIR }}
+        run: |
+          node dist/cli.js css2xml \
+            ../../libs-massif/cartocss/util/fixtures/roundtrip/project.json \
+            /tmp/roundtrip.xml
+          test -s /tmp/roundtrip.xml
+          node dist/cli.js mapbox2css test/fixtures/style.json /tmp/mapbox2css --validate
+
+      - name: Set version and pack
+        id: pack
+        working-directory: ${{ env.PACKAGE_DIR }}
+        run: |
+          npm version "${{ inputs.version || '0.0.0' }}" --no-git-tag-version --allow-same-version
+          TARBALL=$(npm pack --silent)
+          echo "tarball=${TARBALL}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: style-tools-tarball
+          path: ${{ env.PACKAGE_DIR }}/*.tgz
+          if-no-files-found: error
+
+  publish:
+    name: Publish
+    needs: [build-wasm, package]
+    if: inputs.publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # create the release, upload the asset
+      id-token: write   # npm provenance
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+          registry-url: 'https://registry.npmjs.org'
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: massif-style-wasm
+          path: ${{ env.PACKAGE_DIR }}/wasm
+
+      - name: Build
+        working-directory: ${{ env.PACKAGE_DIR }}
+        run: |
+          npm ci
+          npm run build
+          npm version "${{ inputs.version }}" --no-git-tag-version --allow-same-version
+
+      - name: Publish to npm
+        working-directory: ${{ env.PACKAGE_DIR }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --provenance --access public
+
+      # Separate tag namespace from the SDK's own vX.Y.Z, so a tool release never looks like an SDK one.
+      - name: Create release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: style-tools-v${{ inputs.version }}
+          name: style-tools v${{ inputs.version }}
+          draft: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Attach the wasm
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "style-tools-v${{ inputs.version }}" \
+            "${PACKAGE_DIR}/wasm/massif-style.wasm" \
+            "${PACKAGE_DIR}/wasm/massif-style.mjs" \
+            --clobber

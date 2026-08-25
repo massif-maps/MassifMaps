@@ -101,6 +101,11 @@ per tile), decided per parameter when the style loads:
 So a colour an app exposes as a setting (`"water_color"`) is free to change, while a table read per
 feature class still costs a decode.
 
+Which side a given property falls on is in the
+[CartoCSS property reference](cartocss-properties.md), one **live** / **baked** column per property.
+The decision is made **per parameter across the whole style**, not per use: one baked use anywhere
+makes the parameter baked everywhere it appears.
+
 ## Selecting one feature without a decode
 
 Highlighting the tapped road is "a parameter compared with a feature field", which is normally the

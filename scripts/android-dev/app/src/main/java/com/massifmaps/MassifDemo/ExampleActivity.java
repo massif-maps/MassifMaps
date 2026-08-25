@@ -10,6 +10,7 @@ import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
+import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -53,6 +54,7 @@ public class ExampleActivity extends AppCompatActivity implements ExampleHost {
     private MapExample example;
     private Examples.Entry entry;
     private LinearLayout controls;
+    private LinearLayout sliders;
     private TextView caption;
     private View busy;
     private boolean chromeHidden;
@@ -81,6 +83,7 @@ public class ExampleActivity extends AppCompatActivity implements ExampleHost {
 
         mapView = findViewById(R.id.mapView);
         controls = findViewById(R.id.controls);
+        sliders = findViewById(R.id.sliders);
         caption = findViewById(R.id.caption);
         busy = findViewById(R.id.busy);
         ((TextView) findViewById(R.id.exampleTitle)).setText(entry.title());
@@ -116,6 +119,7 @@ public class ExampleActivity extends AppCompatActivity implements ExampleHost {
         if ("false".equals(getIntent().getStringExtra("ui"))) {
             findViewById(R.id.exampleBar).setVisibility(View.GONE);
             findViewById(R.id.controlScroll).setVisibility(View.GONE);
+            findViewById(R.id.sliders).setVisibility(View.GONE);
             caption.setVisibility(View.GONE);
             chromeHidden = true;
         }
@@ -150,6 +154,7 @@ public class ExampleActivity extends AppCompatActivity implements ExampleHost {
                     @Override
                     public void run() {
                         busy.setVisibility(View.GONE);
+                        findViewById(R.id.mapCover).setVisibility(View.GONE);
                     }
                 });
             }
@@ -307,6 +312,57 @@ public class ExampleActivity extends AppCompatActivity implements ExampleHost {
                 controls.addView(button, controlParams());
             }
         });
+    }
+
+    @Override
+    public void slider(final String label, final float min, final float max, final float value,
+                       final OnValue action) {
+        ui.post(new Runnable() {
+            @Override
+            public void run() {
+                if (chromeHidden) {
+                    return;
+                }
+                LinearLayout box = new LinearLayout(ExampleActivity.this);
+                box.setOrientation(LinearLayout.VERTICAL);
+                box.setBackgroundColor(0xF2FFFFFF);
+                box.setPadding(16, 4, 16, 4);
+                final TextView text = new TextView(ExampleActivity.this);
+                text.setTextColor(ContextCompat.getColor(ExampleActivity.this, R.color.massif_on_surface));
+                text.setTextSize(11);
+                text.setText(sliderLabel(label, value));
+                final SeekBar bar = new SeekBar(ExampleActivity.this);
+                bar.setMax(SLIDER_STEPS);
+                bar.setProgress(Math.round((value - min) / (max - min) * SLIDER_STEPS));
+                bar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+                    @Override
+                    public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                        float v = min + (max - min) * progress / SLIDER_STEPS;
+                        text.setText(sliderLabel(label, v));
+                        if (fromUser) {
+                            action.onValue(v);
+                        }
+                    }
+                    @Override public void onStartTrackingTouch(SeekBar seekBar) { }
+                    @Override public void onStopTrackingTouch(SeekBar seekBar) { }
+                });
+                box.addView(text);
+                box.addView(bar, new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+                // Share the row rather than take a fixed width: the thumb needs a travel a finger
+                // can actually aim at.
+                LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                    0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+                params.rightMargin = 8;
+                sliders.addView(box, params);
+            }
+        });
+    }
+
+    private static final int SLIDER_STEPS = 100;
+
+    private static String sliderLabel(String label, float value) {
+        return label + "  " + String.format(java.util.Locale.US, "%.2f", value);
     }
 
     @Override

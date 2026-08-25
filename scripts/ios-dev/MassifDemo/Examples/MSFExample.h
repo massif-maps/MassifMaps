@@ -41,6 +41,13 @@ NS_ASSUME_NONNULL_BEGIN
 /** An on/off button in the control row, starting in the given state. */
 - (void)toggle:(NSString *)label on:(BOOL)on action:(void (^)(BOOL on))action;
 
+/**
+ * A slider in the control row, for a value worth sweeping rather than picking - a duration, an
+ * exaggeration. The label is shown with the current value appended.
+ */
+- (void)slider:(NSString *)label min:(float)min max:(float)max value:(float)value
+        action:(void (^)(float value))action;
+
 /** A short message. Use sparingly - a caption is usually the better place. */
 - (void)toast:(NSString *)text;
 

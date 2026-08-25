@@ -37,7 +37,7 @@ public final class DemoLive extends BroadcastReceiver {
     };
     private static final String[] TERRAIN_KEYS = {
         "terrain", "drape", "drapeLines", "drapeResolution", "noDrape", "meshResolution", "exaggeration",
-        "autoFlatten", "autoFlattenTilt", "autoFlattenMs",
+        "autoFlatten", "autoFlattenTilt", "autoFlattenMs", "fullSwitch",
         "viewDistance", "viewDistanceMeters", "coarsening", "stitch", "textOcclusion", "lodFactor", "lodGrazing"
     };
     private static final String[] LIGHT_KEYS = {

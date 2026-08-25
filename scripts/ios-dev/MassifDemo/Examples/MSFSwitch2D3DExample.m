@@ -5,8 +5,8 @@
 #import "api/MSFMassifObject.h"
 
 /**
- * Switching between a flat map and a 3D view as ONE animation: the camera flies while the terrain
- * rises under it.
+ * The 2D/3D switch, and every way of driving it: the SDK's own animation, a tilt gesture, and the
+ * app's own clock for an exact match to a camera flight.
  *
  * The Objective-C twin of the Android example with the same id - see
  * scripts/android-dev/.../examples/terrain/Switch2D3DExample.java.
@@ -18,7 +18,9 @@
     __weak id<MSFExampleHost> _host;
     MSFMassifMap *_map;
     BOOL _in3D;
-    BOOL _animating;
+    BOOL _autoByTilt;
+    BOOL _matchFlight;
+    float _seconds;
 }
 
 + (NSString *)exampleId {
@@ -37,8 +39,9 @@ static const float kRotation = 0.0f;
 /** tilt 90 is straight down in this SDK, so 2D is 90 and a landscape view is a LOW tilt. */
 static const float kTilt2D = 90.0f;
 static const float kTilt3D = 20.0f;
-static const float kFlightSeconds = 2.5f;
-/** How often the terrain height is stepped to follow the flight. */
+/** The tilt the auto rule switches at, and its default. */
+static const float kAutoTilt = 88.0f;
+/** How often the matched ramp samples the flight. */
 static const NSTimeInterval kTick = 0.032;
 
 static MSFSpec *dem(id<MSFExampleHost> host) {
@@ -59,7 +62,9 @@ static MSFSpec *dem(id<MSFExampleHost> host) {
     _host = host;
     _map = host.map;
     _in3D = NO;
-    _animating = NO;
+    _autoByTilt = NO;
+    _matchFlight = NO;
+    _seconds = 2.5f;
 
     [_map addLayer:@"basemap"
               spec:[[MSFSpec of:@"raster"]
@@ -77,15 +82,18 @@ static MSFSpec *dem(id<MSFExampleHost> host) {
 
     MSFPropertyGroup *terrain =
         [_map terrainWithSpec:[[MSFSpec of:@"terrain"] set:@"source" value:dem(host)] error:nil];
-    // Built flat: terrain off, and the height at 0 so the first rise starts from nothing. The
-    // automatic flattening has to be out of the way, or it flattens the map again the moment the
-    // tilt passes 88.
-    [terrain apply:[[[[[[MSFSpec object]
-        set:@"enabled" value:@NO]
-        set:@"exaggeration" value:@0]
+    // Configured and left on. The switch is `flattened`, and it opens flat - set BEFORE any layer
+    // decodes, so not one tile is built for a 3D the map has not shown. `flattenMode` FULL is the
+    // whole way: a flat map decodes and culls as if no terrain were attached. The auto rule is off
+    // to start with, so the button below is the only thing switching.
+    [terrain apply:[[[[[[[MSFSpec object]
+        set:@"enabled" value:@YES]
+        set:@"flattened" value:@YES]
+        set:@"flattenMode" value:@"TERRAIN_FLATTEN_MODE_FULL"]
         set:@"autoFlattenTilt" value:@0]
         set:@"autoFlattenParallax" value:@0]
         set:@"cameraClearance" value:@40]];
+    [self applySeconds:_seconds];
 
     [_map skyWithSpec:[MSFSpec of:@"sky"] error:nil];
     [_map fogWithSpec:[[[MSFSpec of:@"fog"] set:@"rangeStart" value:@2.2]
@@ -103,7 +111,44 @@ static MSFSpec *dem(id<MSFExampleHost> host) {
     [host button:@"2D / 3D" action:^{
         [weakSelf toggle];
     }];
-    [host caption:@"Flat, top-down. Tap to rise into the terrain."];
+    [host slider:@"seconds" min:0 max:6 value:_seconds action:^(float value) {
+        __typeof(self) self_ = weakSelf;
+        self_->_seconds = value;
+        [self_ applySeconds:value];
+    }];
+    [host toggle:@"Match flight" on:NO action:^(BOOL on) {
+        __typeof(self) self_ = weakSelf;
+        self_->_matchFlight = on;
+        [self_->_host caption:on
+            ? @"Matched: the terrain reads the flight's own progress, so the two cannot drift."
+            : @"Timed: two clocks of the same length. Close, but not the same clock."];
+    }];
+    [host toggle:@"Full switch" on:YES action:^(BOOL on) {
+        __typeof(self) self_ = weakSelf;
+        [self_->_map.terrain set:@"flattenMode"
+                            value:on ? @"TERRAIN_FLATTEN_MODE_FULL" : @"TERRAIN_FLATTEN_MODE_RENDER"];
+        [self_->_host caption:on
+            ? @"FULL: flat costs nothing, each switch re-decodes the visible tiles."
+            : @"RENDER: switching is free, but flat still carries 3D's triangles."];
+    }];
+    [host toggle:@"Auto by tilt" on:NO action:^(BOOL on) {
+        __typeof(self) self_ = weakSelf;
+        self_->_autoByTilt = on;
+        [self_->_map.terrain set:@"autoFlattenTilt" value:@(on ? kAutoTilt : 0.0f)];
+        [self_->_host caption:on
+            ? @"Auto on: tilt with two fingers and it switches itself. The button still leads - "
+               "the rule only fires when the tilt CROSSES 88."
+            : @"Auto off: only the button switches."];
+    }];
+    [host caption:[self flatCaption]];
+}
+
+/** One number for both animations, which is what makes them the same length. */
+- (void)applySeconds:(float)value {
+    [_map.terrain apply:[[[MSFSpec object]
+        set:@"autoFlattenDuration" value:@(value)]
+        // Timed apart from the sinking one: this is the direction that waited for its tiles.
+        set:@"autoFlattenRiseDuration" value:@(value)]];
 }
 
 /**
@@ -121,48 +166,81 @@ static MSFSpec *dem(id<MSFExampleHost> host) {
 }
 
 - (void)toggle {
-    if (_animating) {
+    if (_map.camera.isMoving) {
+        [_host caption:@"Still flying - let it land first."];
         return;
     }
-    _animating = YES;
-    if (_in3D) {
-        [self flattenTo2D];
+    // Read the SDK's state rather than count button presses. With auto by tilt on, the RULE owns
+    // the state and a local flag drifts out of step with it - and then the button flies to the tilt
+    // the map is already at, the rule never crosses its threshold, and nothing moves.
+    _in3D = [_map.terrain getBool:@"flattened" defaultValue:YES];
+    if (_matchFlight) {
+        [self matched];
     } else {
-        [self riseTo3D];
+        [self timed];
     }
 }
 
-- (void)riseTo3D {
-    // The flight goes FIRST. Turning the terrain on clears every tile cache, and that re-decode
-    // landing on the flight's frame zero starved it of frames - the first switch jumped while every
-    // later one animated, because only the first one is cold. Started a tick later it lands during
-    // the rise instead, where the exaggeration is still near 0 and a flat-decoded tile renders
-    // exactly like the 2D map. The flight is never made to wait
-    // (https://github.com/massif-maps/MassifMaps/issues/177 removes the re-decode entirely).
-    [[_map.camera animate:kFlightSeconds]
-        moveTo:[MSFPosition positionWithLng:kSummitLng lat:kSummitLat]
-          zoom:kZoom rotation:kRotation tilt:kTilt3D];
-    __weak __typeof(self) enableSelf = self;
+/**
+ * The SDK's own animation: ask for the state, and it ramps over autoFlattenDuration. Two timers of
+ * the same length - which is close, and is all most apps need.
+ */
+- (void)timed {
+    [self fly];
+    // Written even with auto by tilt on: the rule fires on a THRESHOLD CROSSING, not every frame, so
+    // it leaves an explicit ask alone and the terrain moves with the flight instead of waiting for
+    // the tilt to reach 88.
+    [_map.terrain set:@"flattened" value:@(!_in3D)];
+    [_host caption:_in3D ? [self riseCaption] : [self flatCaption]];
+}
+
+/**
+ * The app's own clock: feed the terrain the FLIGHT's progress, so the two cannot drift apart even if
+ * the frame rate drops or the flight is interrupted.
+ */
+- (void)matched {
+    if (!_in3D) {
+        [self fly];             // sinking has nothing to wait for
+        [self rampWithFlight];
+        [_host caption:@"Sinking on the flight's own clock."];
+        return;
+    }
+    // Rising does. Ask for 3D so its tiles start loading, and let the flight go only once the switch
+    // stops holding the ground flat - driving the ratio up before then would be held anyway, and the
+    // animation would start with a jump.
+    [_map.terrain set:@"flattened" value:@NO];
+    [_host caption:@"Loading the tiles 3D needs before the flight starts."];
+    [self waitForTiles];
+}
+
+- (void)waitForTiles {
+    __weak __typeof(self) weakSelf = self;
     [_host after:kTick run:^{
-        [enableSelf->_map.terrain set:@"enabled" value:@YES];
+        __typeof(self) self_ = weakSelf;
+        if (!self_) {
+            return;
+        }
+        if ([self_->_map.terrain getBool:@"switching" defaultValue:NO]) {
+            [self_ waitForTiles];
+            return;
+        }
+        [self_ fly];
+        [self_ rampWithFlight];
+        [self_->_host caption:@"Rising on the flight's own clock."];
     }];
-    // The terrain follows the FLIGHT rather than a clock of its own, so the two cannot drift apart
-    // if the flight is interrupted or the frame rate drops.
-    [self ramp:YES];
-    [_host caption:@"Rising. The terrain follows the flight, not a separate clock."];
 }
 
-- (void)flattenTo2D {
+- (void)fly {
     // Where the camera IS, not what it is looking at: at tilt 20 the focus is kilometres out in
-    // front, so re-centring on it would jump the map forward. This is the viewpoint.
-    MSFPosition *eye = _map.camera.currentEyePosition;
-    [[_map.camera animate:kFlightSeconds] moveTo:eye zoom:kZoom rotation:kRotation tilt:kTilt2D];
-    [self ramp:NO];
-    [_host caption:@"Back down, centred on where the camera was standing."];
+    // front, so re-centring on it would jump the map forward.
+    MSFPosition *target = _in3D ? [MSFPosition positionWithLng:kSummitLng lat:kSummitLat]
+                                : _map.camera.currentEyePosition;
+    [[_map.camera animate:_seconds]
+        moveTo:target zoom:kZoom rotation:kRotation tilt:_in3D ? kTilt3D : kTilt2D];
 }
 
-/** Steps the terrain height with the flight's own progress, and settles when it lands. */
-- (void)ramp:(BOOL)rising {
+/** Writing flattenRatio takes the ramp off the SDK's timer and puts it on the flight's. */
+- (void)rampWithFlight {
     __weak __typeof(self) weakSelf = self;
     [_host after:kTick run:^{
         __typeof(self) self_ = weakSelf;
@@ -171,21 +249,26 @@ static MSFSpec *dem(id<MSFExampleHost> host) {
         }
         if (self_->_map.camera.isMoving) {
             float progress = self_->_map.camera.progress;
-            [self_->_map.terrain set:@"exaggeration" value:@(rising ? progress : 1 - progress)];
-            [self_ ramp:rising];
+            [self_->_map.terrain set:@"flattenRatio" value:@(self_->_in3D ? 1 - progress : progress)];
+            [self_ rampWithFlight];
             return;
         }
-        [self_->_map.terrain set:@"exaggeration" value:@(rising ? 1 : 0)];
-        if (!rising) {
-            // Only now, with the map already flat: flipping the flag re-decodes every tile, and at
-            // exaggeration 0 there is nothing of that to see.
-            [self_->_map.terrain set:@"enabled" value:@NO];
-        }
-        self_->_in3D = rising;
-        self_->_animating = NO;
-        [self_->_host caption:rising ? @"3D. Tap to go back to the flat map."
-                                     : @"Flat, top-down. Tap to rise into the terrain."];
+        [self_->_map.terrain set:@"flattenRatio" value:@(self_->_in3D ? 0 : 1)];
+        // Hand the ratio back, or the switch stays MANUAL - which also keeps auto-flattening
+        // suspended, and a tilt gesture would then do nothing.
+        [self_->_map.terrain set:@"flattened" value:@(!self_->_in3D)];
+        [self_->_host caption:self_->_in3D ? [self_ riseCaption] : [self_ flatCaption]];
     }];
+}
+
+- (NSString *)flatCaption {
+    return _autoByTilt ? @"Flat. Tilt, or tap, to rise into the terrain."
+                       : @"Flat, top-down. Tap to rise into the terrain.";
+}
+
+- (NSString *)riseCaption {
+    return _autoByTilt ? @"3D - the tilt asked for it, not the button."
+                       : @"3D. The SDK waited for its tiles before lifting the ground.";
 }
 
 @end

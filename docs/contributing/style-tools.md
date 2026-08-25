@@ -258,6 +258,27 @@ Two consequences worth knowing:
 
 MapTiler streets-v4 yields 10 plates across its four shield layers; topo-v4 has no shields at all.
 
+## Three traps that only show on a device
+
+None of these fail a compile, and each looked like an SDK bug until the style was read.
+
+**An SDF sprite has to be re-encoded, not copied.** MapBox's distance field (tiny-sdf: cutoff
+0.25, radius 8) puts the edge at **0.75** with 1/8 per texel; the SDK's `BitmapCanvas::drawSDFPixel`
+puts it at **0.5** with 1/16. Copied straight across, the SDK reads MapBox's edge as four texels
+*inside* the shape: the hole in `circle-dot` fills in, every icon comes out fat and solid, and the
+halo is squeezed to a quarter of its width. `(v - 0.75) * 8 * 16 + 127.5` is the whole fix.
+
+**`text-opacity` fades the halo too — in MapBox.** In CartoCSS it fades only the fill and the halo
+keeps `text-halo-opacity`. MapTiler hides a label with `step(zoom, 0, …, 13, 1)`, so the fill went
+to 0 and the halo stayed at 1: a solid white ghost of the name at every zoom it should have been
+absent from. Both are now emitted from the one MapBox value, and `icon-opacity` likewise reaches
+`marker-halo-opacity`.
+
+**A lone `marker-*` declaration builds a marker with no file**, and `MarkersSymbolizer`'s default
+fill is `#0000ff`. Emitting `marker-allow-overlap` from `icon-overlap` while the sprite itself had
+been dropped put a **blue ellipse on every airport**. Anything `marker-*` belongs inside the block
+that emits `marker-file`, never in the property loop.
+
 ## Contours: `--contour-schema div`
 
 MapTiler's contour layers say "every 5th or 10th line" (`nth_line`); tiles built with the gdal

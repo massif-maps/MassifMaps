@@ -23,16 +23,37 @@ export type SpriteSet = Map<string, SpriteSheet>;
 
 /**
  * MapBox stores an SDF sprite's distance field in the ALPHA channel; the SDK's label shader reads
- * it from RED (`color.r - offset`). Same field, different channel, so the icon is copied across
- * rather than resolved - the SDK then scales it like a glyph, which is what keeps a zoom-driven
- * size crisp and lets marker-halo-radius grow a halo from it.
+ * it from RED. Same field, different channel AND a different encoding, so it is re-encoded rather
+ * than copied - the SDK then scales it like a glyph, which is what keeps a zoom-driven size crisp
+ * and lets marker-halo-radius grow a halo from it.
  *
- * Flattening it here instead (--sdf-flatten) is the fallback for an SDK without marker-sdf: a
- * smoothstep around the 0.75 edge, written WHITE so marker-color still tints it. That loses the
- * scaling and the halo, which is the whole reason not to do it by default.
+ * The two conventions:
+ *
+ * | | edge at | per texel |
+ * |---|---|---|
+ * | MapBox (tiny-sdf, cutoff 0.25, radius 8) | 0.75 | 1/8 |
+ * | Massif (`BitmapCanvas::drawSDFPixel`, `128 / BITMAP_SDF_SCALE`) | 0.5 | 1/16 |
+ *
+ * Copied straight across, the SDK read MapBox's 0.75 edge as four texels INSIDE the shape: the
+ * hole in `circle-dot` filled in and every icon came out fat and solid, with a halo squeezed to a
+ * quarter of its width. Signed distance in texels is `(v - 0.75) * 8` and the SDK wants
+ * `d * 16 + 127.5`, which is the one line below.
+ *
+ * Flattening instead (--sdf-flatten) is the fallback for an SDK without marker-sdf: a smoothstep
+ * around the same edge, written WHITE so marker-color still tints it. That loses the scaling and
+ * the halo, which is the whole reason not to do it by default.
  */
 const SDF_EDGE = 0.75;
 const SDF_GAMMA = 0.08;
+const MAPBOX_SDF_RADIUS = 8;
+const MASSIF_SDF_UNIT = 128 / 8; // BITMAP_SDF_SCALE
+const MASSIF_SDF_EDGE = 127.5;
+
+/** One MapBox distance-field byte in the SDK's own encoding. */
+function reencodeSdf(alpha: number): number {
+    const texels = (alpha / 255 - SDF_EDGE) * MAPBOX_SDF_RADIUS;
+    return Math.max(0, Math.min(255, Math.round(texels * MASSIF_SDF_UNIT + MASSIF_SDF_EDGE)));
+}
 
 function resolveSpriteUrls(style: MapboxStyle): Map<string, string> {
     const out = new Map<string, string>();
@@ -110,8 +131,8 @@ export function extractIcon(sprites: SpriteSet, name: string, outDir: string, fl
                 icon.data[dst + 2] = 255;
                 icon.data[dst + 3] = Math.round(coverage * 255);
             } else if (entry.sdf) {
-                // Alpha -> red, and opaque, so the shader's `color.r` is the field itself.
-                const distance = sheet.image.data[src + 3];
+                // Alpha -> red, re-encoded, and opaque: the shader's `color.r` IS the field.
+                const distance = reencodeSdf(sheet.image.data[src + 3]);
                 icon.data[dst] = distance;
                 icon.data[dst + 1] = distance;
                 icon.data[dst + 2] = distance;

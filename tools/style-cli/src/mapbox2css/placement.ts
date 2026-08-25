@@ -39,6 +39,7 @@ export const HANDLED_ELSEWHERE = new Set([
     'icon-halo-color',
     'icon-halo-width',
     'icon-allow-overlap',
+    'icon-overlap',
     'icon-rotation-alignment',
     'icon-pitch-alignment',
 ]);

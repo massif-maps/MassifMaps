@@ -239,12 +239,13 @@ function layerDeclarations(
             continue;
         }
 
-        // The modern spelling of *-allow-overlap. 'cooperative' has no equivalent and is the
-        // conservative 'never' here.
-        if (name === 'text-overlap' || name === 'icon-overlap') {
-            const target = name === 'text-overlap' ? 'text-allow-overlap' : 'marker-allow-overlap';
-            out.push(`${target}: ${value === 'always'};`);
-            coverage.emit(target);
+        // The modern spelling of text-allow-overlap. 'cooperative' has no equivalent and is the
+        // conservative 'never' here. icon-overlap belongs to the marker and is handled with it -
+        // a lone marker-* declaration builds a marker with no file, which draws the default blue
+        // ellipse over every feature of the layer.
+        if (name === 'text-overlap') {
+            out.push(`text-allow-overlap: ${value === 'always'};`);
+            coverage.emit('text-allow-overlap');
             continue;
         }
 
@@ -254,6 +255,18 @@ function layerDeclarations(
             if (translated === null) continue;
             out.push(`text-placement-priority: (0 - ${translated});`);
             coverage.emit('text-placement-priority');
+            continue;
+        }
+
+        // MapBox's text-opacity fades the WHOLE label; CartoCSS's fades only the fill, and the halo
+        // keeps its own. A style that hides a label with `step(zoom, 0, …, 13, 1)` was leaving the
+        // halo at full opacity - a white ghost of the name at every zoom it should not be at.
+        if (name === 'text-opacity') {
+            const translated = tryTranslate(value, name, layer.id, coverage);
+            if (translated === null) continue;
+            out.push(`text-opacity: ${translated};`, `text-halo-opacity: ${translated};`);
+            coverage.emit('text-opacity');
+            coverage.emit('text-halo-opacity');
             continue;
         }
 
@@ -413,13 +426,16 @@ function markerDeclarations(layer: MapboxLayer, coverage: Coverage, options: Con
     }
     emitTranslated(out, coverage, layer, 'icon-opacity', 'marker-opacity', undefined, !sdf);
 
-    // Halos are grown from the field, so they only exist in SDF mode.
+    // Halos are grown from the field, so they only exist in SDF mode. The halo carries its own
+    // opacity, so icon-opacity has to reach it too or a faded-out icon keeps a solid outline.
     if (sdf) {
         emitTranslated(out, coverage, layer, 'icon-halo-color', 'marker-halo-fill', undefined, false);
         emitTranslated(out, coverage, layer, 'icon-halo-width', 'marker-halo-radius', undefined, false);
+        emitTranslated(out, coverage, layer, 'icon-opacity', 'marker-halo-opacity', undefined, false);
     }
-    if (layer.layout?.['icon-allow-overlap'] === true) {
-        out.push('marker-allow-overlap: true;');
+    const overlap = layer.layout?.['icon-overlap'];
+    if (layer.layout?.['icon-allow-overlap'] === true || overlap !== undefined) {
+        out.push(`marker-allow-overlap: ${layer.layout?.['icon-allow-overlap'] === true || overlap === 'always'};`);
         coverage.emit('marker-allow-overlap');
     }
     return out;

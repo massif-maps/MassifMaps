@@ -83,6 +83,14 @@ test('a text-offset no longer needs a constant text-size', () => {
     assert.match(mss({ 'text-offset': [0, 1.5], 'text-size': size }), /text-dy: \(1.5 \* linear\(.*\)\);/);
 });
 
+test('text-opacity fades the halo too, or a hidden label leaves a white ghost', () => {
+    // MapTiler hides a label with step(zoom, 0, ..., 13, 1); CartoCSS's text-opacity is the FILL
+    // only, so the halo stayed at 1 and drew the name in white at every zoom it should not be at.
+    const out = mss({ 'text-opacity': ['step', ['zoom'], 0, 13, 1] });
+    assert.match(out, /text-opacity: step\(\[view::zoom\], \(0, 0\), \(13, 1\)\);/);
+    assert.match(out, /text-halo-opacity: step\(\[view::zoom\], \(0, 0\), \(13, 1\)\);/);
+});
+
 test('the modern overlap spelling and the sort key reach the culler', () => {
     assert.match(mss({ 'text-overlap': 'always' }), /text-allow-overlap: true;/);
     assert.match(mss({ 'text-overlap': 'cooperative' }), /text-allow-overlap: false;/);

@@ -63,6 +63,16 @@ test('a text-field branching per country keeps its fallback rather than losing t
     assert.ok(coverage.report().includes('kept only its fallback branch'));
 });
 
+test('an icon-overlap alone never builds a fileless marker', () => {
+    // marker-allow-overlap on its own makes a MarkersSymbolizer with no file, whose default fill is
+    // #0000ff - a blue ellipse over every airport whose sprite could not be resolved.
+    const { mss: out } = convert({ layers: [symbol(
+        { 'text-field': '{name}', 'icon-image': ['get', 'subclass'], 'icon-overlap': 'never',
+            'text-anchor': 'top', 'text-offset': [0, 1] }, { 'icon-color': '#333' })] }, TABLE);
+    assert.ok(!out.includes('marker-'));
+    assert.match(out, /text-name: \[name\];/);
+});
+
 test('a shield whose text cannot be translated draws nothing, not an empty box', () => {
     const { mss: out, coverage } = convert({ layers: [symbol(
         { 'text-field': ['slice', ['get', 'ref'], 3], 'icon-image': SHIELD_IMAGE }, { 'icon-color': '#1a73e8' })] }, TABLE);

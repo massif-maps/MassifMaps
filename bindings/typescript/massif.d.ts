@@ -559,6 +559,22 @@ export type RoutingActionRoutingAction =
   | "ROUTING_ACTION_LEAVE_FERRY"
   ;
 
+export type SkyQualitySkyQuality =
+  /** 5 samples along the view ray, 3 towards the sun. */
+  | "SKY_QUALITY_LOW"
+  /** 8 and 4. The default. */
+  | "SKY_QUALITY_MEDIUM"
+  /** 12 and 5. */
+  | "SKY_QUALITY_HIGH"
+  ;
+
+export type SkyTypeSkyType =
+  /** A gradient between HorizonColor and SkyColor. What the SDK drew before the atmosphere existed; pick it for a flat, stylised or brand-coloured sky. */
+  | "SKY_TYPE_GRADIENT"
+  /** Rayleigh and Mie single scattering, integrated along the view ray. The blue zenith, the reddening at a low sun and the halo around it all come out of the model rather than out of a colour ramp, so the sky follows the time of day on its own. */
+  | "SKY_TYPE_ATMOSPHERE"
+  ;
+
 export type TileFormatTileFormat =
   /** Detect the format from the tile data. The two are unambiguous in practice, but set the format explicitly when the source is known - it skips the check and cannot be fooled. */
   | "TILE_FORMAT_AUTO"
@@ -2166,8 +2182,6 @@ export interface PropertyTypes {
     "enabled": boolean;
     /** Returns the color of the upper atmosphere. */
     "highColor": number;
-    /** Returns the elevation angle the fog is still at full strength at. */
-    "horizonAngle": number;
     /** Returns how far up the sky the fog is blended in. */
     "horizonBlend": number;
     /** Returns where the fog reaches full strength. */
@@ -2180,6 +2194,10 @@ export interface PropertyTypes {
     "spaceColor": number;
     /** Returns how brightly stars are drawn beyond the atmosphere. */
     "starIntensity": number;
+    /** Returns the altitude the fog has fully faded out at. */
+    "verticalRangeEnd": number;
+    /** Returns the altitude the fog starts fading out at. */
+    "verticalRangeStart": number;
   };
   "massif::GeoJSONGeometryReader": {
     /** Returns the current target projection. If target projection is set, all geometry coordinates will be converted from WGS84 to target projection coordinate system. */
@@ -3827,8 +3845,6 @@ export interface PropertyTypes {
     "fog.enabled": boolean;
     /** Returns the color of the upper atmosphere. */
     "fog.highColor": number;
-    /** Returns the elevation angle the fog is still at full strength at. */
-    "fog.horizonAngle": number;
     /** Returns how far up the sky the fog is blended in. */
     "fog.horizonBlend": number;
     /** Returns where the fog reaches full strength. */
@@ -3841,6 +3857,10 @@ export interface PropertyTypes {
     "fog.spaceColor": number;
     /** Returns how brightly stars are drawn beyond the atmosphere. */
     "fog.starIntensity": number;
+    /** Returns the altitude the fog has fully faded out at. */
+    "fog.verticalRangeEnd": number;
+    /** Returns the altitude the fog starts fading out at. */
+    "fog.verticalRangeStart": number;
     /** Returns the fog (atmosphere) options. May be null. */
     "fogOptions": Handle<"massif::FogOptions">;
     /** Returns the fog color. */
@@ -3849,8 +3869,6 @@ export interface PropertyTypes {
     "fogOptions.enabled": boolean;
     /** Returns the color of the upper atmosphere. */
     "fogOptions.highColor": number;
-    /** Returns the elevation angle the fog is still at full strength at. */
-    "fogOptions.horizonAngle": number;
     /** Returns how far up the sky the fog is blended in. */
     "fogOptions.horizonBlend": number;
     /** Returns where the fog reaches full strength. */
@@ -3863,6 +3881,10 @@ export interface PropertyTypes {
     "fogOptions.spaceColor": number;
     /** Returns how brightly stars are drawn beyond the atmosphere. */
     "fogOptions.starIntensity": number;
+    /** Returns the altitude the fog has fully faded out at. */
+    "fogOptions.verticalRangeEnd": number;
+    /** Returns the altitude the fog starts fading out at. */
+    "fogOptions.verticalRangeStart": number;
     /** Returns how fast a free roam drag turns the view. */
     "freeRoamLookSensitivity": number;
     /** Returns the free roam mode. */
@@ -3972,38 +3994,62 @@ export interface PropertyTypes {
     "seamlessPanning": boolean;
     /** Returns the sky options. May be null. */
     "sky": Handle<"massif::SkyOptions">;
+    /** Returns the tint applied to Rayleigh scattering. */
+    "sky.atmosphereColor": number;
+    /** Returns the exposure applied to the scattered light. */
+    "sky.atmosphereLuminance": number;
+    /** Returns the brightness of the sun driving the atmosphere. */
+    "sky.atmosphereSunIntensity": number;
     /** Returns whether the shader sky is enabled. */
     "sky.enabled": boolean;
     /** Returns the ground color. */
     "sky.groundColor": number;
+    /** Returns the tint applied to Mie scattering. */
+    "sky.haloColor": number;
     /** Returns the angular blend width between the horizon color and the sky color. */
     "sky.horizonBlend": number;
     /** Returns the horizon color. */
     "sky.horizonColor": number;
+    /** Returns how finely the atmosphere is integrated. */
+    "sky.quality": "SKY_QUALITY_LOW" | "SKY_QUALITY_MEDIUM" | "SKY_QUALITY_HIGH";
     /** Returns the custom sky fragment shader source, or an empty string if the built-in shader is used. */
     "sky.shaderSource": string;
     /** Returns the zenith sky color. */
     "sky.skyColor": number;
     /** Returns whether the built-in shader draws a sun disc. */
     "sky.sunDiscEnabled": boolean;
+    /** Returns what the sky pass draws. */
+    "sky.type": "SKY_TYPE_GRADIENT" | "SKY_TYPE_ATMOSPHERE";
     /** Returns the sky color. */
     "skyColor": number;
     /** Returns the sky options. May be null. */
     "skyOptions": Handle<"massif::SkyOptions">;
+    /** Returns the tint applied to Rayleigh scattering. */
+    "skyOptions.atmosphereColor": number;
+    /** Returns the exposure applied to the scattered light. */
+    "skyOptions.atmosphereLuminance": number;
+    /** Returns the brightness of the sun driving the atmosphere. */
+    "skyOptions.atmosphereSunIntensity": number;
     /** Returns whether the shader sky is enabled. */
     "skyOptions.enabled": boolean;
     /** Returns the ground color. */
     "skyOptions.groundColor": number;
+    /** Returns the tint applied to Mie scattering. */
+    "skyOptions.haloColor": number;
     /** Returns the angular blend width between the horizon color and the sky color. */
     "skyOptions.horizonBlend": number;
     /** Returns the horizon color. */
     "skyOptions.horizonColor": number;
+    /** Returns how finely the atmosphere is integrated. */
+    "skyOptions.quality": "SKY_QUALITY_LOW" | "SKY_QUALITY_MEDIUM" | "SKY_QUALITY_HIGH";
     /** Returns the custom sky fragment shader source, or an empty string if the built-in shader is used. */
     "skyOptions.shaderSource": string;
     /** Returns the zenith sky color. */
     "skyOptions.skyColor": number;
     /** Returns whether the built-in shader draws a sun disc. */
     "skyOptions.sunDiscEnabled": boolean;
+    /** Returns what the sky pass draws. */
+    "skyOptions.type": "SKY_TYPE_GRADIENT" | "SKY_TYPE_ATMOSPHERE";
     /** Returns the terrain options. May be null if no terrain is configured. */
     "terrain": Handle<"massif::TerrainOptions">;
     /** Returns the terrain background color. */
@@ -5189,20 +5235,32 @@ export interface PropertyTypes {
     "searchRadius": number;
   };
   "massif::SkyOptions": {
+    /** Returns the tint applied to Rayleigh scattering. */
+    "atmosphereColor": number;
+    /** Returns the exposure applied to the scattered light. */
+    "atmosphereLuminance": number;
+    /** Returns the brightness of the sun driving the atmosphere. */
+    "atmosphereSunIntensity": number;
     /** Returns whether the shader sky is enabled. */
     "enabled": boolean;
     /** Returns the ground color. */
     "groundColor": number;
+    /** Returns the tint applied to Mie scattering. */
+    "haloColor": number;
     /** Returns the angular blend width between the horizon color and the sky color. */
     "horizonBlend": number;
     /** Returns the horizon color. */
     "horizonColor": number;
+    /** Returns how finely the atmosphere is integrated. */
+    "quality": "SKY_QUALITY_LOW" | "SKY_QUALITY_MEDIUM" | "SKY_QUALITY_HIGH";
     /** Returns the custom sky fragment shader source, or an empty string if the built-in shader is used. */
     "shaderSource": string;
     /** Returns the zenith sky color. */
     "skyColor": number;
     /** Returns whether the built-in shader draws a sun disc. */
     "sunDiscEnabled": boolean;
+    /** Returns what the sky pass draws. */
+    "type": "SKY_TYPE_GRADIENT" | "SKY_TYPE_ATMOSPHERE";
   };
   "massif::SolidLayer": {
     /** Returns a copy of the layer meta data map. The changes you make to this map are NOT reflected in the actual meta data of the layer. */
@@ -7125,8 +7183,6 @@ export interface OptionsSpec_fog {
   enabled?: boolean;
   /** Returns the color of the upper atmosphere. */
   highColor?: number;
-  /** Returns the elevation angle the fog is still at full strength at. */
-  horizonAngle?: number;
   /** Returns how far up the sky the fog is blended in. */
   horizonBlend?: number;
   /** Returns where the fog reaches full strength. */
@@ -7139,6 +7195,10 @@ export interface OptionsSpec_fog {
   spaceColor?: number;
   /** Returns how brightly stars are drawn beyond the atmosphere. */
   starIntensity?: number;
+  /** Returns the altitude the fog has fully faded out at. */
+  verticalRangeEnd?: number;
+  /** Returns the altitude the fog starts fading out at. */
+  verticalRangeStart?: number;
 }
 
 export interface OptionsSpec_light {
@@ -7177,20 +7237,32 @@ export interface OptionsSpec_light {
 
 export interface OptionsSpec_sky {
   type: "sky";
+  /** Returns the tint applied to Rayleigh scattering. */
+  atmosphereColor?: number;
+  /** Returns the exposure applied to the scattered light. */
+  atmosphereLuminance?: number;
+  /** Returns the brightness of the sun driving the atmosphere. */
+  atmosphereSunIntensity?: number;
   /** Returns whether the shader sky is enabled. */
   enabled?: boolean;
   /** Returns the ground color. */
   groundColor?: number;
+  /** Returns the tint applied to Mie scattering. */
+  haloColor?: number;
   /** Returns the angular blend width between the horizon color and the sky color. */
   horizonBlend?: number;
   /** Returns the horizon color. */
   horizonColor?: number;
+  /** Returns how finely the atmosphere is integrated. */
+  quality?: "SKY_QUALITY_LOW" | "SKY_QUALITY_MEDIUM" | "SKY_QUALITY_HIGH";
   /** Returns the custom sky fragment shader source, or an empty string if the built-in shader is used. */
   shaderSource?: string;
   /** Returns the zenith sky color. */
   skyColor?: number;
   /** Returns whether the built-in shader draws a sun disc. */
   sunDiscEnabled?: boolean;
+  /** Returns what the sky pass draws. */
+  type?: "SKY_TYPE_GRADIENT" | "SKY_TYPE_ATMOSPHERE";
 }
 
 export interface OptionsSpec_terrain {

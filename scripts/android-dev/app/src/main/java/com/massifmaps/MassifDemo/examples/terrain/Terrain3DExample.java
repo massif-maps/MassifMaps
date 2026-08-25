@@ -35,15 +35,27 @@ public class Terrain3DExample extends MapExample {
      */
     private static final Position VIEW = new Position(7.6586, 45.9763);
 
-    /** Open DEM tiles, terrarium-encoded. */
-    private static Spec dem() {
-        return Spec.of("http")
-            .set("url", "https://tiles.mapterhorn.com/{z}/{x}/{y}.webp")
-            .set("minZoom", 1)
-            .set("maxZoom", 16)
-            // What picks the elevation decoder. Without it the SDK assumes mapbox encoding and
-            // every height is wrong.
-            .set("encoding", "terrarium");
+    /** Open DEM tiles, terrarium-encoded, cached on disk in front of the server. */
+    private static Spec dem(ExampleHost host) {
+        return Spec.of("persistent-cache")
+            .set("databasePath", host.cachePath("mapterhorn-dem.db"))
+            .set("capacity", 200 * 1024 * 1024)
+            .set("source", Spec.of("http")
+                .set("url", "https://tiles.mapterhorn.com/{z}/{x}/{y}.webp")
+                .set("minZoom", 1)
+                .set("maxZoom", 16)
+                // What picks the elevation decoder, per TILE: the source stamps its meta data
+                // on every tile it loads. Without it the SDK assumes mapbox encoding, and
+                // mapbox-decoding terrarium tiles gives heights in the hundreds of kilometres -
+                // the terrain inflates and the camera ends up inside it.
+                //
+                // Written as the whole map, not as a "metaData.dem_encoding" path: a NESTED spec
+                // is applied by applySpecProperties, which matches a property by its full name
+                // and has no indexed-path handling, so a dotted key there is dropped.
+                //
+                // It stays on the HTTP source, not on the cache in front of it: a wrapper source
+                // with no map of its own answers with its wrapped source's.
+                .set("metaData", Spec.object().set("dem_encoding", "terrarium")));
     }
 
     @Override
@@ -53,11 +65,16 @@ public class Terrain3DExample extends MapExample {
         // Imagery underneath. The {y}/{x} order is this server's, and the template substitutes by
         // name, so any order works.
         map.addLayer("satellite", Spec.of("raster")
-            .set("source", Spec.of("http")
-                .set("url", "https://server.arcgisonline.com/ArcGIS/rest/services/"
-                          + "World_Imagery/MapServer/tile/{z}/{y}/{x}")
-                .set("maxZoom", 18)
-                .set("HTTPHeaders", Spec.object().set("User-Agent", UA))));
+            // Cached on disk in front of the server: imagery tiles are big, and a demo that gets
+            // panned around re-fetches the same ones on every run.
+            .set("source", Spec.of("persistent-cache")
+                .set("databasePath", host.cachePath("world-imagery.db"))
+                .set("capacity", 200 * 1024 * 1024)
+                .set("source", Spec.of("http")
+                    .set("url", "https://server.arcgisonline.com/ArcGIS/rest/services/"
+                              + "World_Imagery/MapServer/tile/{z}/{y}/{x}")
+                    .set("maxZoom", 18)
+                    .set("HTTPHeaders", Spec.object().set("User-Agent", UA)))));
 
         // Roads, place names and summits ON TOP, from a style project with no background of its
         // own - see app/src/main/style-projects/hybrid.
@@ -66,16 +83,19 @@ public class Terrain3DExample extends MapExample {
                 .set("assets", Spec.of("zip")
                     .set("data", Spec.of("url").set("url", "assets://styles/hybrid.zip")))));
         map.addLayer("labels", Spec.of("vector")
-            .set("source", Spec.of("http")
-                .set("url", "https://tiles.openfreemap.org/planet/latest/{z}/{x}/{y}.pbf")
-                .set("maxZoom", 14)
-                .set("HTTPHeaders", Spec.object().set("User-Agent", UA)))
+            .set("source", Spec.of("persistent-cache")
+                .set("databasePath", host.cachePath("openfreemap.db"))
+                .set("capacity", 100 * 1024 * 1024)
+                .set("source", Spec.of("http")
+                    .set("url", "https://tiles.openfreemap.org/planet/latest/{z}/{x}/{y}.pbf")
+                    .set("maxZoom", 14)
+                    .set("HTTPHeaders", Spec.object().set("User-Agent", UA))))
             .set("style", "hybrid"));
 
         // apply, not three sets: one crossing for the whole group.
-        map.terrain(Spec.of("terrain").set("source", dem()))
+        map.terrain(Spec.of("terrain").set("source", dem(host)))
            .apply(Spec.object()
-               .set("exaggeration", 1.25)
+               .set("exaggeration", 1)
                // How far the ground goes on: multiples of the camera-to-focus distance, so one
                // value holds at every zoom. Pair a short one with fog or the ground ends on a
                // hard edge.

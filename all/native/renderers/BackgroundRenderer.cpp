@@ -8,6 +8,7 @@
 #include "graphics/Bitmap.h"
 #include "graphics/ViewState.h"
 #include "layers/Layer.h"
+#include "renderers/utils/FogShader.h"
 #include "renderers/utils/GLResourceManager.h"
 #include "renderers/utils/Shader.h"
 #include "renderers/utils/Texture.h"
@@ -44,10 +45,7 @@ namespace massif {
         _u_tex(0),
         _u_lightDir(0),
         _u_mvpMat(0),
-        _u_fogColor(-1),
-        _u_fogHighColor(-1),
-        _u_fogSpaceColor(-1),
-        _u_fogParams(-1),
+        _u_skyBand(-1),
         _glResourceManager(),
         _options(options),
         _layers(layers)
@@ -86,12 +84,11 @@ namespace massif {
         _fogShaderSource = source;
         _fogShaderFailed = false;
 
-        std::string body = source.empty() ? BACKGROUND_FRAGMENT_SHADER_FOG_BUILTIN : source;
-        std::shared_ptr<Shader> shader = _glResourceManager->create<Shader>("background", BACKGROUND_VERTEX_SHADER, BACKGROUND_FRAGMENT_SHADER_PREFIX + body + BACKGROUND_FRAGMENT_SHADER_MAIN);
+        std::shared_ptr<Shader> shader = _glResourceManager->create<Shader>("background", BACKGROUND_VERTEX_SHADER, BACKGROUND_FRAGMENT_SHADER_PREFIX + FogShader::buildBlock(source) + BACKGROUND_FRAGMENT_SHADER_MAIN);
         if (shader->getProgId() == 0 && !source.empty()) {
             Log::Error("BackgroundRenderer::updateShader: Custom fog shader failed to compile, falling back to the built-in fog");
             _fogShaderFailed = true;
-            shader = _glResourceManager->create<Shader>("background", BACKGROUND_VERTEX_SHADER, BACKGROUND_FRAGMENT_SHADER_PREFIX + BACKGROUND_FRAGMENT_SHADER_FOG_BUILTIN + BACKGROUND_FRAGMENT_SHADER_MAIN);
+            shader = _glResourceManager->create<Shader>("background", BACKGROUND_VERTEX_SHADER, BACKGROUND_FRAGMENT_SHADER_PREFIX + FogShader::buildBlock(std::string()) + BACKGROUND_FRAGMENT_SHADER_MAIN);
         }
         if (shader->getProgId() == 0) {
             _shader.reset();
@@ -103,12 +100,9 @@ namespace massif {
         _u_tex = _shader->getUniformLoc("u_tex");
         _u_lightDir = _shader->getUniformLoc("u_lightDir");
         _u_mvpMat = _shader->getUniformLoc("u_mvpMat");
-        // >= 0 guards, not getUniformLoc: a fog shader that ignores a colour drops that uniform,
-        // and getUniformLoc returns 0 for a dropped one - a valid location belonging to something else.
-        _u_fogColor = glGetUniformLocation(progId, "uFogColor");
-        _u_fogHighColor = glGetUniformLocation(progId, "uFogHighColor");
-        _u_fogSpaceColor = glGetUniformLocation(progId, "uFogSpaceColor");
-        _u_fogParams = glGetUniformLocation(progId, "uFogParams");
+        // >= 0 guard, not getUniformLoc: getUniformLoc returns 0 for a uniform the compiler dropped,
+        // and 0 is a valid location belonging to something else.
+        _u_skyBand = glGetUniformLocation(progId, "u_skyBand");
         _a_coord = _shader->getAttribLoc("a_coord");
         _a_normal = _shader->getAttribLoc("a_normal");
         _a_texCoord = _shader->getAttribLoc("a_texCoord");
@@ -224,40 +218,16 @@ namespace massif {
         _glResourceManager.reset();
     }
     
-    void BackgroundRenderer::setupFogUniforms(const ResolvedFog& fog, bool enabled) {
+    void BackgroundRenderer::setupFogUniforms(const ResolvedFog& fog, const ViewState& viewState, bool skyBand) {
         // The fog comes from the owner, resolved once for the frame from FogOptions AND the style,
         // so this plane matches the tile content and the sky. It does NOT depend on the terrain:
         // the plane is what fills the view past the loaded tiles at any tilt, so gating it on 3D
-        // terrain left a plain 2D map fogging its content and not its background. Passing a zero
-        // range disables it, which is what the sky band uses - the sky is the horizon, not ground
-        // at an enormous distance, and fogging it would paint the fog colour over the whole sky.
-        float rangeStart = 0.0f;
-        float invRange = 0.0f;
-        float invRangeScale = 1.0f;
-        float rangeEnd = 0.0f;
-        Color fogColor(0, 0, 0, 0);
-        Color highColor(0, 0, 0, 0);
-        Color spaceColor(0, 0, 0, 0);
-        if (enabled && fog.active()) {
-            fogColor = fog.color;
-            highColor = fog.highColor;
-            spaceColor = fog.spaceColor;
-            rangeStart = fog.rangeStart;
-            rangeEnd = fog.rangeEnd;
-            invRange = 1.0f / std::max(1.0e-9f, fog.rangeEnd - fog.rangeStart);
-            invRangeScale = 1.0f / fog.rangeScale;
-        }
-        if (_u_fogColor >= 0) {
-            glUniform4f(_u_fogColor, fogColor.getR() / 255.0f, fogColor.getG() / 255.0f, fogColor.getB() / 255.0f, fogColor.getA() / 255.0f);
-        }
-        if (_u_fogHighColor >= 0) {
-            glUniform4f(_u_fogHighColor, highColor.getR() / 255.0f, highColor.getG() / 255.0f, highColor.getB() / 255.0f, highColor.getA() / 255.0f);
-        }
-        if (_u_fogSpaceColor >= 0) {
-            glUniform4f(_u_fogSpaceColor, spaceColor.getR() / 255.0f, spaceColor.getG() / 255.0f, spaceColor.getB() / 255.0f, spaceColor.getA() / 255.0f);
-        }
-        if (_u_fogParams >= 0) {
-            glUniform4f(_u_fogParams, rangeStart, invRange, invRangeScale, rangeEnd);
+        // terrain left a plain 2D map fogging its content and not its background.
+        FogShader::setUniforms(_shader->getProgId(), fog.active() ? fog : ResolvedFog(), viewState);
+        // The legacy sky band is at the horizon, not ground at an enormous distance, so it takes
+        // the angular term alone - the same one the shader sky takes.
+        if (_u_skyBand >= 0) {
+            glUniform1f(_u_skyBand, skyBand ? 1.0f : 0.0f);
         }
     }
 
@@ -266,7 +236,7 @@ namespace massif {
             return;
         }
 
-        setupFogUniforms(fog, true);
+        setupFogUniforms(fog, viewState, false);
 
         double intTwoPowZoom = 1 << static_cast<int>(viewState.getZoom());
         const cglib::vec3<double>& focusPos = viewState.getFocusPos();
@@ -355,7 +325,7 @@ namespace massif {
             return;
         }
 
-        setupFogUniforms(fog, false);
+        setupFogUniforms(fog, viewState, true);
 
         // Texture
         glBindTexture(GL_TEXTURE_2D, _skyTex->getTexId());
@@ -550,10 +520,7 @@ namespace massif {
         #version 100
         precision mediump float;
         uniform sampler2D u_tex;
-        uniform lowp vec4 uFogColor;      // rgb = fog colour, a = how opaque the fog gets at full distance
-        uniform lowp vec4 uFogHighColor;
-        uniform lowp vec4 uFogSpaceColor;
-        uniform highp vec4 uFogParams;    // range start, 1 / (end - start), internal -> range units, range end
+        uniform lowp float u_skyBand; // 1 while the legacy sky band is drawn
         varying lowp vec4 v_color;
         #ifdef GL_FRAGMENT_PRECISION_HIGH
         varying highp vec2 v_texCoord;
@@ -562,25 +529,22 @@ namespace massif {
         #endif
     )GLSL";
 
-    const std::string BackgroundRenderer::BACKGROUND_FRAGMENT_SHADER_FOG_BUILTIN = R"GLSL(
-        vec4 applyFog(vec4 color, float amount, float dist) {
-            return vec4(mix(color.rgb, uFogColor.rgb, amount), color.a);
-        }
-    )GLSL";
-
     const std::string BackgroundRenderer::BACKGROUND_FRAGMENT_SHADER_MAIN = R"GLSL(
         void main() {
             vec4 color = texture2D(u_tex, v_texCoord) * v_color;
             if (color.a == 0.0) {
                 discard;
             }
-            // Same fog as the tile content (vt applyFog): eye distance is 1/gl_FragCoord.w, in
-            // range units. The background plane is what fills the view past the loaded tiles and
-            // past the terrain view distance, so it has to fade into the fog as well - otherwise
-            // the ground ends on a hard band of background colour instead of reaching the sky.
-            highp float dist = uFogParams.z / max(1.0e-9, gl_FragCoord.w);
-            lowp float amount = clamp((dist - uFogParams.x) * uFogParams.y, 0.0, 1.0) * uFogColor.a;
-            gl_FragColor = applyFog(color, amount, dist);
+            // The plane is what fills the view past the loaded tiles and past the terrain view
+            // distance, so it has to fade into the fog as well - otherwise the ground ends on a
+            // hard band of background colour instead of reaching the sky. The sky band is at the
+            // horizon rather than at a distance, so it takes the angular term alone.
+            if (u_skyBand > 0.5) {
+                highp vec3 rayVec = uFogRay * vec3(gl_FragCoord.x, gl_FragCoord.y, 1.0);
+                gl_FragColor = skyFog(color, normalize(rayVec));
+            } else {
+                gl_FragColor = applyFog(color);
+            }
         }
     )GLSL";
 }

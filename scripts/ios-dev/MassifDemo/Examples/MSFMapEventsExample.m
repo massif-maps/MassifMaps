@@ -40,11 +40,16 @@
 
     [map addLayer:@"basemap"
              spec:[[[MSFSpec of:@"vector"]
-                     set:@"source" value:[[[[MSFSpec of:@"http"]
-                         set:@"url" value:@"https://tiles.openfreemap.org/planet/latest/{z}/{x}/{y}.pbf"]
-                         set:@"maxZoom" value:@14]
-                         set:@"HTTPHeaders" value:[[MSFSpec object]
-                             set:@"User-Agent" value:@"MassifMapsExamples/1.0"]]]
+                     // Cached on disk in front of the server: openfreemap is a free service, and
+                     // a demo that gets panned around re-fetches the same tiles on every run.
+                     set:@"source" value:[[[[MSFSpec of:@"persistent-cache"]
+                         set:@"databasePath" value:[host cachePath:@"openfreemap.db"]]
+                         set:@"capacity" value:@(100 * 1024 * 1024)]
+                         set:@"source" value:[[[[MSFSpec of:@"http"]
+                             set:@"url" value:@"https://tiles.openfreemap.org/planet/latest/{z}/{x}/{y}.pbf"]
+                             set:@"maxZoom" value:@14]
+                             set:@"HTTPHeaders" value:[[MSFSpec object]
+                                 set:@"User-Agent" value:@"MassifMapsExamples/1.0"]]]]
                      set:@"style" value:@"alpine"]
             error:nil];
 

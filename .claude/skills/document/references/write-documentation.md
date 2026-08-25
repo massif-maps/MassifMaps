@@ -45,6 +45,27 @@ The root `CLAUDE.md` is the maintainer-facing map: repository layout, the demo-a
 
 Keep it additive and terse, in the existing voice. A measurement log goes in `docs/internals/performance-log.md`; a superseded plan goes to `docs/_archive/`.
 
+## Pick the home first
+
+| What you learned | Where it goes |
+|---|---|
+| why this code is weird / non-obvious | one-line comment next to the code |
+| what a public API does, its unit, default, when it takes effect | doc comment in `all/modules/*.i` |
+| an app-facing capability | `docs/features/<feature>.md` |
+| how a subsystem works, for the next maintainer | `docs/internals/rendering/<subsystem>.md` |
+| how the *whole* thing fits together | `docs/internals/index.mdx` |
+| a number that came from a bench | `docs/internals/performance-log.md`, with camera and method |
+| a procedure that had to be rediscovered | `docs/maintenance/<topic>.md` |
+| a rename, a removal, a breaking change | `docs/migration.md` |
+| a design that was tried and dropped | move the page to `docs/_archive/`, never leave two live versions |
+| a debugging technique or invariant an agent needs | root `CLAUDE.md` |
+| a behaviour difference from tangram or maplibre | `docs/internals/rendering/11-tangram-diff.md`, plus whichever page also changed |
+
+`docs/` is **one tree**: the source of truth, browsable on GitHub, and published verbatim at
+<https://massif-maps.github.io/MassifMaps/> (Docusaurus reads `path: '../docs'`). There is no second
+copy to sync. `docs/_archive/**` is excluded from the site and is not maintained — never cite it as
+current.
+
 ## Technical docs — `docs/internals/`, `docs/maintenance/`
 
 One page per subsystem, scope stated at the top, cross-links instead of repetition — a reader must be able to open one page and stop.

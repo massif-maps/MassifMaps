@@ -46,10 +46,16 @@ static NSArray *summits(void) {
 
     [map addLayer:@"basemap"
              spec:[[MSFSpec of:@"raster"]
-                     set:@"source" value:[[[[MSFSpec of:@"http"]
-                         set:@"url" value:@"https://tile.openstreetmap.org/{z}/{x}/{y}.png"]
-                         set:@"maxZoom" value:@19]
-                         set:@"HTTPHeaders" value:[[MSFSpec object] set:@"User-Agent" value:kUserAgent]]]
+                     // Cached on disk in front of the server: OSM's tiles are a free service run
+                     // on donations, and a demo that gets panned around re-fetches the same ones
+                     // on every run.
+                     set:@"source" value:[[[[MSFSpec of:@"persistent-cache"]
+                         set:@"databasePath" value:[host cachePath:@"osm-raster.db"]]
+                         set:@"capacity" value:@(100 * 1024 * 1024)]
+                         set:@"source" value:[[[[MSFSpec of:@"http"]
+                             set:@"url" value:@"https://tile.openstreetmap.org/{z}/{x}/{y}.png"]
+                             set:@"maxZoom" value:@19]
+                             set:@"HTTPHeaders" value:[[MSFSpec object] set:@"User-Agent" value:kUserAgent]]]]
             error:nil];
 
     // One style object shared by every marker - what matters once there are thousands of them.

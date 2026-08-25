@@ -29,7 +29,8 @@
 %attributeval(massif::FogOptions, massif::Color, HighColor, getHighColor, setHighColor)
 %attributeval(massif::FogOptions, massif::Color, SpaceColor, getSpaceColor, setSpaceColor)
 %attribute(massif::FogOptions, float, HorizonBlend, getHorizonBlend, setHorizonBlend)
-%attribute(massif::FogOptions, float, HorizonAngle, getHorizonAngle, setHorizonAngle)
+%attribute(massif::FogOptions, float, VerticalRangeStart, getVerticalRangeStart, setVerticalRangeStart)
+%attribute(massif::FogOptions, float, VerticalRangeEnd, getVerticalRangeEnd, setVerticalRangeEnd)
 %attribute(massif::FogOptions, float, StarIntensity, getStarIntensity, setStarIntensity)
 %attributestring(massif::FogOptions, std::string, ShaderSource, getShaderSource, setShaderSource)
 

@@ -3,6 +3,7 @@
 #include "graphics/Bitmap.h"
 #include "graphics/ViewState.h"
 #include "renderers/MapRenderer.h"
+#include "renderers/utils/FogShader.h"
 #include "renderers/utils/GLResourceManager.h"
 #include "renderers/utils/Shader.h"
 #include "renderers/utils/Texture.h"
@@ -72,6 +73,11 @@ namespace massif {
         glUseProgram(_shader->getProgId());
 
         // Texture, color
+        // This frame's fog, resolved once by the owner: markers, lines and overlays fade into the
+        // same haze as the map they sit on.
+        if (auto mapRenderer = _mapRenderer.lock()) {
+            FogShader::setUniforms(_shader->getProgId(), mapRenderer->getFrameFog(), viewState);
+        }
         glUniform1i(_u_tex, 0);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, _bitmapTex->getTexId());
@@ -102,13 +108,20 @@ namespace massif {
     }
     
     bool SolidRenderer::initializeRenderer() {
-        if (_shader && _shader->isValid() && _bitmapTex && _bitmapTex->isValid()) {
+        // The custom fog shader is compiled into this program, so a change to it has to rebuild.
+        std::string fogSource;
+        if (auto mapRenderer = _mapRenderer.lock()) {
+            fogSource = FogShader::source(mapRenderer->getOptions());
+        }
+
+        if (_shader && _shader->isValid() && _fogShaderSource == fogSource && _bitmapTex && _bitmapTex->isValid()) {
             return true;
         }
+        _fogShaderSource = fogSource;
 
         if (auto mapRenderer = _mapRenderer.lock()) {
             // Shader and textures must be reloaded
-            _shader = mapRenderer->getGLResourceManager()->create<Shader>("solid", SOLID_VERTEX_SHADER, SOLID_FRAGMENT_SHADER);
+            _shader = mapRenderer->getGLResourceManager()->create<Shader>("solid", SOLID_VERTEX_SHADER, SOLID_FRAGMENT_SHADER_PREFIX + FogShader::buildBlock(fogSource) + SOLID_FRAGMENT_SHADER_MAIN);
         
             // Get shader variables locations
             _u_mvpMat = _shader->getUniformLoc("u_mvpMat");
@@ -290,14 +303,17 @@ namespace massif {
         }
     )GLSL";
 
-    const std::string SolidRenderer::SOLID_FRAGMENT_SHADER = R"GLSL(
+    const std::string SolidRenderer::SOLID_FRAGMENT_SHADER_PREFIX = R"GLSL(
         #version 100
         precision mediump float;
         varying lowp vec4 v_color;
         varying mediump vec2 v_texCoord;
         uniform sampler2D u_tex;
+)GLSL";
+
+    const std::string SolidRenderer::SOLID_FRAGMENT_SHADER_MAIN = R"GLSL(
         void main() {
-            gl_FragColor = texture2D(u_tex, v_texCoord) * v_color;
+            gl_FragColor = applyFog(texture2D(u_tex, v_texCoord) * v_color);
         }
     )GLSL";
 

@@ -17,12 +17,54 @@
 
 namespace massif {
 
+    namespace SkyType {
+        /**
+         * Possible sky appearances.
+         */
+        enum SkyType {
+            /**
+             * A gradient between HorizonColor and SkyColor. What the SDK drew before the
+             * atmosphere existed; pick it for a flat, stylised or brand-coloured sky.
+             */
+            SKY_TYPE_GRADIENT,
+            /**
+             * Rayleigh and Mie single scattering, integrated along the view ray. The blue zenith,
+             * the reddening at a low sun and the halo around it all come out of the model rather
+             * than out of a colour ramp, so the sky follows the time of day on its own.
+             */
+            SKY_TYPE_ATMOSPHERE
+        };
+    }
+
+    namespace SkyQuality {
+        /**
+         * How finely the atmosphere is integrated. The cost is per fragment of visible sky, so
+         * this is the knob to turn when a low-tilt camera fills the screen with sky.
+         */
+        enum SkyQuality {
+            /**
+             * 5 samples along the view ray, 3 towards the sun.
+             */
+            SKY_QUALITY_LOW,
+            /**
+             * 8 and 4. The default.
+             */
+            SKY_QUALITY_MEDIUM,
+            /**
+             * 12 and 5.
+             */
+            SKY_QUALITY_HIGH
+        };
+    }
+
     /**
      * Shader-based sky configuration, attached to the map via Options::setSkyOptions.
      *
      * The sky is drawn as a single full-screen pass before everything else, so it costs one
-     * quad regardless of the camera. The built-in shader draws a two-colour gradient around
-     * the horizon plus a sun disc and glow, using the sun direction from Options::getLightOptions.
+     * quad regardless of the camera. Type picks what that pass draws: a physical atmosphere
+     * (the default) or the older two-colour gradient. Either way the sun direction comes from
+     * Options::getLightOptions and the fog comes from Options::getFogOptions, so the sky is
+     * hazed by exactly what the ground is hazed by.
      *
      * The whole appearance can be replaced with setShaderSource. The supplied GLSL must define
      *
@@ -35,11 +77,21 @@ namespace massif {
      *     uniform vec4  u_sunColor;      // sun colour, rgba 0..1
      *     uniform vec4  u_skyColor;      // configured sky colour (zenith), rgba 0..1
      *     uniform vec4  u_horizonColor;  // configured horizon colour, rgba 0..1
+     *     uniform vec4  u_groundColor;   // configured colour below the horizon, rgba 0..1
+     *     uniform float u_horizonBlend;  // gradient width in radians
      *     uniform float u_sunIntensity;  // LightOptions sun intensity
+     *     uniform float u_sunDisc;       // 1 when the sun disc is enabled
+     *     uniform vec4  u_atmosphere;    // sun intensity, luminance, unused, unused
+     *     uniform vec4  u_atmosphereColor; // Rayleigh tint, a = strength
+     *     uniform vec4  u_haloColor;     // Mie tint, a = strength
+     *     uniform float u_starIntensity; // FogOptions star intensity
      *     uniform float u_time;          // seconds since the map view was created
      *     uniform float u_zoom;          // current fractional map zoom
      *     uniform float u_cameraHeight;  // camera height above the map plane, in metres
      *     uniform vec2  u_resolution;    // viewport size in pixels
+     *
+     * plus the fog block documented on FogOptions::setShaderSource. Redeclaring any of them is a
+     * compile error, and the renderer then falls back to the built-in sky.
      *
      * Note: this class is experimental and may change or even be removed in future SDK versions.
      */
@@ -75,6 +127,86 @@ namespace massif {
          * @param enabled True to draw the shader sky.
          */
         void setEnabled(bool enabled);
+
+        /**
+         * Returns what the sky pass draws.
+         * @return The sky type. The default is SKY_TYPE_ATMOSPHERE.
+         */
+        SkyType::SkyType getType() const;
+        /**
+         * Sets what the sky pass draws - a physical atmosphere or the two-colour gradient.
+         * SKY_TYPE_GRADIENT is what the SDK drew before the atmosphere existed and is the one to
+         * pick for a flat or stylised sky; it ignores every Atmosphere* property.
+         * Style property: "sky-type" ("gradient" or "atmosphere").
+         * @param type The new sky type.
+         */
+        void setType(SkyType::SkyType type);
+
+        /**
+         * Returns how finely the atmosphere is integrated.
+         * @return The quality. The default is SKY_QUALITY_MEDIUM.
+         */
+        SkyQuality::SkyQuality getQuality() const;
+        /**
+         * Sets how finely the atmosphere is integrated. The cost is per fragment of visible sky,
+         * so a low-tilt camera that fills the screen with sky is what this pays for. Ignored by
+         * SKY_TYPE_GRADIENT.
+         * @param quality The new quality.
+         */
+        void setQuality(SkyQuality::SkyQuality quality);
+
+        /**
+         * Returns the brightness of the sun driving the atmosphere.
+         * @return The sun intensity. The default is 10.
+         */
+        float getAtmosphereSunIntensity() const;
+        /**
+         * Sets how bright the sun that lights the atmosphere is - Mapbox sky-atmosphere-sun-intensity.
+         * This is the scattering model's own sun, not LightOptions' ground light; raising it
+         * brightens the whole sky rather than only the disc.
+         * Style property: "sky-atmosphere-sun-intensity".
+         * @param intensity The new sun intensity (clamped to 0 and above).
+         */
+        void setAtmosphereSunIntensity(float intensity);
+
+        /**
+         * Returns the tint applied to Rayleigh scattering.
+         * @return The atmosphere color. The default is opaque white, i.e. no tint.
+         */
+        Color getAtmosphereColor() const;
+        /**
+         * Sets the tint of the Rayleigh term - the blue of the sky - as Mapbox sky-atmosphere-color.
+         * The alpha channel scales how much of it there is, so a lower alpha thins the atmosphere.
+         * Style property: "sky-atmosphere-color".
+         * @param color The new atmosphere color.
+         */
+        void setAtmosphereColor(const Color& color);
+
+        /**
+         * Returns the tint applied to Mie scattering.
+         * @return The halo color. The default is opaque white, i.e. no tint.
+         */
+        Color getHaloColor() const;
+        /**
+         * Sets the tint of the Mie term - the halo around the sun and the whiteness near the
+         * horizon - as Mapbox sky-atmosphere-halo-color. The alpha channel scales its strength.
+         * Style property: "sky-atmosphere-halo-color".
+         * @param color The new halo color.
+         */
+        void setHaloColor(const Color& color);
+
+        /**
+         * Returns the exposure applied to the scattered light.
+         * @return The luminance. The default is 1.
+         */
+        float getAtmosphereLuminance() const;
+        /**
+         * Sets the exposure the scattered light is tonemapped with. Lower values brighten the sky,
+         * which is what a night or a heavily tinted atmosphere needs to stay readable.
+         * Style property: "sky-atmosphere-luminance".
+         * @param luminance The new luminance (clamped to 0.01 and above).
+         */
+        void setAtmosphereLuminance(float luminance);
 
         /**
          * Returns the zenith sky color.
@@ -164,6 +296,12 @@ namespace massif {
         void notifyOptionChanged(const std::string& optionName);
 
         std::atomic<bool> _enabled;
+        std::atomic<int> _type;
+        std::atomic<int> _quality;
+        std::atomic<float> _atmosphereSunIntensity;
+        std::atomic<int> _atmosphereColorARGB;
+        std::atomic<int> _haloColorARGB;
+        std::atomic<float> _atmosphereLuminance;
         std::atomic<int> _skyColorARGB;
         std::atomic<int> _horizonColorARGB;
         std::atomic<int> _groundColorARGB;

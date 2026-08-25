@@ -23,7 +23,8 @@ namespace massif {
      *
      * Modelled on the Mapbox "fog" style property, so a value tuned for a Mapbox style transfers
      * directly: Range is RangeStart/RangeEnd, Color is color, HighColor is high-color, SpaceColor
-     * is space-color, HorizonBlend is horizon-blend and StarIntensity is star-intensity.
+     * is space-color, HorizonBlend is horizon-blend, VerticalRange is vertical-range and
+     * StarIntensity is star-intensity.
      *
      * Enabled is the switch: turning it off keeps every value configured, so a UI toggle does not
      * have to drive a colour or a range through zero and back. With it on, the fog still needs a
@@ -68,8 +69,12 @@ namespace massif {
         bool isEnabled() const;
         /**
          * Enables or disables the fog without touching any of its values, so a toggle does not
-         * have to drive the color or the range through zero. Off means no fog anywhere - the tile
-         * content, the background plane and the sky all stop fogging together.
+         * have to drive the color or the range through zero. Off means no haze anywhere - the tile
+         * content, the background plane, the terrain surface and the sky all stop fogging together.
+         *
+         * It stops the HAZE only. HighColor, SpaceColor and StarIntensity ride on this class
+         * because Mapbox puts them on its fog property, but they are the sky's: turning the fog off
+         * leaves the dusk sky and the stars exactly as they were.
          * Unlike every other property, this one is ANDed with the style rather than overridden by
          * it: a style cannot re-enable a fog the application switched off.
          * Style property: "fog-enabled" (0 or 1).
@@ -152,33 +157,47 @@ namespace massif {
          */
         float getHorizonBlend() const;
         /**
-         * Sets how far above the horizon the fog color fades out of the sky, as a fraction of a
-         * quarter turn (1 = the whole sky, Mapbox horizon-blend). The fog is strongest at the
-         * horizon and gone by this angle, so the haze the ground fades into carries on into the
-         * sky instead of ending in a band at the skyline. Zero leaves the sky alone.
+         * Sets how far above the horizon the fog fades out, as a Mapbox horizon-blend: the fog is
+         * scaled by exp(-3 * (sin(elevation) / blend)^2), so it is full at the horizon and
+         * essentially gone one blend above it. 1 hazes the whole sky, 0 confines the fog to the
+         * horizon itself.
+         *
+         * The SAME factor scales the ground, where the elevation angle is negative and the factor
+         * is therefore 1 - so distant ground is fogged by distance alone, a ridge standing above
+         * the horizon takes exactly what the sky just above it takes, and the two meet with no
+         * seam at any tilt or zoom.
          * Style property: "fog-horizon-blend".
          * @param horizonBlend The new blend (clamped to 0..1).
          */
         void setHorizonBlend(float horizonBlend);
 
         /**
-         * Returns the elevation angle the fog is still at full strength at.
-         * @return The angle in degrees, or a negative value when it follows the terrain. The default is -1.
+         * Returns the altitude the fog starts fading out at.
+         * @return The altitude in meters. The default is 0.
          */
-        float getHorizonAngle() const;
+        float getVerticalRangeStart() const;
         /**
-         * Sets the elevation angle, in degrees, that the fog is still at FULL strength at, with
-         * HorizonBlend measured from there. Zero is the mathematical horizon, which is right on a
-         * flat map, where the skyline IS the horizon. In the mountains the skyline is a ridge and a
-         * ridge stands well above the horizon once the camera is near it, so the haze is spent by
-         * the time the ray clears the silhouette and hazy ground meets clean sky along it.
-         * A negative value (the default) takes the angle from the terrain instead - the highest
-         * ground the view can hold, seen at the distance the fog saturates at - capped at half the
-         * blend so the full-strength band can never swamp the sky. Set 0 to fade from the horizon,
-         * or a positive angle to pin it. This one has no Mapbox equivalent.
-         * @param degrees The new angle in degrees (clamped to 90), or negative to follow the terrain.
+         * Sets the altitude, in meters above sea level, that the fog starts to fade out at - Mapbox
+         * vertical-range[0]. Below it the fog is at full strength. Together with VerticalRangeEnd
+         * this is what lets a summit stand clear of a haze filling the valley. Leaving both at 0
+         * (the default) fogs every altitude equally.
+         * Style property: "fog-vertical-range-start".
+         * @param startMeters The new altitude in meters (clamped to 0 and above).
          */
-        void setHorizonAngle(float degrees);
+        void setVerticalRangeStart(float startMeters);
+
+        /**
+         * Returns the altitude the fog has fully faded out at.
+         * @return The altitude in meters. The default is 0.
+         */
+        float getVerticalRangeEnd() const;
+        /**
+         * Sets the altitude, in meters above sea level, that the fog has completely faded out at -
+         * Mapbox vertical-range[1]. A value at or below VerticalRangeStart disables the fade.
+         * Style property: "fog-vertical-range-end".
+         * @param endMeters The new altitude in meters (clamped to 0 and above).
+         */
+        void setVerticalRangeEnd(float endMeters);
 
         /**
          * Returns how brightly stars are drawn beyond the atmosphere.
@@ -201,21 +220,38 @@ namespace massif {
          */
         std::string getShaderSource() const;
         /**
-         * Sets a custom fog fragment shader, used by the tile content, the background plane and
-         * the sky alike, in 2D and in 3D. The source must define
+         * Replaces the WHOLE fog block - every function the SDK would have supplied - for the tile
+         * content, the background plane, the terrain surface, the vector elements and the sky
+         * alike, in 2D and in 3D. The source must define all three entry points:
          *
-         *     vec4 applyFog(vec4 color, float amount, float dist);
+         *     vec4  applyFog(vec4 color, vec3 dir, float dist, float heightM);
+         *     vec4  skyFog(vec4 color, vec3 dir);
+         *     float fogLabelFade();
          *
-         * where color is the fragment's PREMULTIPLIED color, amount is the built-in fog factor for
-         * it (0 in front of the range, 1 past it, already scaled by the fog color's alpha) and dist
-         * is the distance from the camera in multiples of the camera-to-focus distance - the unit
-         * the range is in. The sky calls it too, with its angular haze as amount and the range end
-         * as dist. These are available to it:
+         * where color is the fragment's PREMULTIPLIED color, dir is the normalized world-space view
+         * ray through it (x east, y north, z up), dist is the true distance from the camera in
+         * multiples of the camera-to-focus distance - the unit the range is in - and heightM is the
+         * fragment's altitude in meters. skyFog is the sky's case: at infinity, so only the
+         * direction varies. fogLabelFade is what a label's alpha is multiplied by, so a label does
+         * not go on floating over a map the fog has already swallowed.
          *
-         *     uniform vec4  uFogColor;      // the resolved and lit fog color, rgba 0..1
-         *     uniform vec4  uFogHighColor;  // the upper atmosphere color, rgba 0..1
-         *     uniform vec4  uFogSpaceColor; // the zenith color, rgba 0..1
-         *     uniform vec4  uFogParams;     // range start, 1 / (end - start), internal -> range units, range end
+         * The uniform block below is always declared by the SDK and must NOT be redeclared:
+         *
+         *     uniform vec4 uFogColor;      // the resolved and lit fog color, rgba 0..1
+         *     uniform vec4 uFogHighColor;  // the upper atmosphere color, rgba 0..1
+         *     uniform vec4 uFogSpaceColor; // the zenith color, rgba 0..1
+         *     uniform vec4 uFogParams;     // range start, 1 / (end - start), internal -> range units, horizon blend
+         *     uniform vec4 uFogVertical;   // vertical range start and end in meters, meters per unit, camera height
+         *     uniform mat3 uFogRay;        // view ray basis, used by the SDK's own call site
+         *
+         * These helpers are always declared too, so a custom shader can build on the SDK's model
+         * instead of restating it - or ignore them and compute its own:
+         *
+         *     vec3  fogRayVec();                 // unnormalized world-space ray through the fragment
+         *     float fogRange(float dist);        // distance remapped to 0 at the start, 1 at the end
+         *     float fogOpacity(float t);         // the distance ramp, already scaled by the color's alpha
+         *     float fogHorizonBlend(vec3 dir);   // the angular term, 1 below the horizon
+         *     float fogVertical(float heightM);  // how much of the fog this altitude escapes
          *
          * Pass an empty string to go back to the built-in blend. If the shader fails to compile,
          * the built-in blend is used and the error is logged.
@@ -244,7 +280,8 @@ namespace massif {
         std::atomic<int> _highColorARGB;
         std::atomic<int> _spaceColorARGB;
         std::atomic<float> _horizonBlend;
-        std::atomic<float> _horizonAngle;
+        std::atomic<float> _verticalRangeStart;
+        std::atomic<float> _verticalRangeEnd;
         std::atomic<float> _starIntensity;
 
         std::string _shaderSource;

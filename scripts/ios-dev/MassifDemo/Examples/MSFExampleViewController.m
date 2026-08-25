@@ -236,6 +236,11 @@
     return self;
 }
 
+- (NSString *)cachePath:(NSString *)name {
+    NSString *dir = NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES).firstObject;
+    return [dir stringByAppendingPathComponent:name];
+}
+
 - (void)caption:(NSString *)text {
     dispatch_async(dispatch_get_main_queue(), ^{
         self.captionLabel.text = text;

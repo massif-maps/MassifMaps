@@ -80,10 +80,15 @@ static NSMutableDictionary *sValues = nil;
         @"fogRangeStart":       @0.8f,
         @"fogRangeEnd":         @8.0f,
         @"fogBlend":            @(12.0f / 90.0f),
-        @"fogHorizon":          @(-1.0f),
+        @"fogVertStart":        @(0.0f),
+        @"fogVertEnd":          @(0.0f),
         @"viewDistance":        @1.0f,
         @"viewDistanceMeters":  @170000.0f,
         @"sky":                 @YES,
+        @"skyType":             @"atmosphere",
+        @"skyQuality":          @"medium",
+        @"skyAtmoSun":          @(10.0f),
+        @"skyAtmoLum":          @(1.0f),
 
         // --- lighting / shadows ---
         @"terrainLight":        @NO,

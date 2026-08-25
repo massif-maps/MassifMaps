@@ -1035,7 +1035,7 @@ namespace massif {
         FRAME_PROF_GPU_BEGIN(SECTION_SKY);
         initializeRenderState();
         // The shader sky replaces the legacy sky band when it draws.
-        bool skyDrawn = _skyRenderer.onDrawFrame(viewState, _frameFog);
+        bool skyDrawn = _skyRenderer.onDrawFrame(viewState, _frameFog, resolveSky(_options->getSkyOptions(), _frameStyleEnvironment));
         // Timed apart from the sky: both are full-screen-ish draws at the START of the frame, and
         // the first section of a frame also absorbs whatever the GPU idled waiting for the CPU
         // (see GpuFrameProfiler), so one number for the two says nothing about either.

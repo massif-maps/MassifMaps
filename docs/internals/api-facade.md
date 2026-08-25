@@ -397,6 +397,26 @@ parameter the sheet never declared is refused rather than dropped. `values(json)
 bindings' typings only; the C++ thunk reads the entry type off the getter's own return type, so a
 string bag and a `Variant` bag generate the same two lines.
 
+**An indexed key works in a NESTED spec too, and used not to.** A spec's leftover keys are applied
+by two different functions: `Spec::create`'s own loop, which calls `Context::setProperty` and is
+therefore path-aware, and `applySpecProperties`, which a spec built as a CHILD goes through — a
+layer's `source`, terrain's `source`, a style's `project`. `applySpecProperties` matched a property
+by its full name only, so this:
+
+```js
+map.terrain({ type: 'terrain', source: { type: 'http', url: '…', 'metaData.dem_encoding': 'terrarium' } })
+```
+
+set the encoding at the top level and dropped it one level down — with a warning in the log and
+nothing else. The DEM then fell back to the MapBox decoder on terrarium tiles, which puts the
+terrain hundreds of kilometres up and the camera inside it. `applySpecProperties` now splits at the
+first dot and uses the indexed setter, like `Context::lookup` does; `tests/api/FogSkyTest.cpp`
+holds the regression. The whole-map form works in both and is what the generated typings declare:
+
+```js
+source: { type: 'http', url: '…', metaData: { dem_encoding: 'terrarium' } }
+```
+
 **A key the bag does not hold is `RESULT_UNKNOWN_PROPERTY`, never an empty value** — that is the
 whole point of the flag, since a blank is exactly how a mistyped style parameter used to hide. A
 `Variant` bag answers null for an absent key, so a JSON null in one is the same thing as missing.

@@ -2464,15 +2464,6 @@
           "doc": "Returns the color of the upper atmosphere."
         },
         {
-          "name": "horizonAngle",
-          "type": "FLOAT",
-          "readOnly": false,
-          "static": false,
-          "position": false,
-          "cppType": "float",
-          "doc": "Returns the elevation angle the fog is still at full strength at."
-        },
-        {
           "name": "horizonBlend",
           "type": "FLOAT",
           "readOnly": false,
@@ -2525,6 +2516,24 @@
           "position": false,
           "cppType": "float",
           "doc": "Returns how brightly stars are drawn beyond the atmosphere."
+        },
+        {
+          "name": "verticalRangeEnd",
+          "type": "FLOAT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns the altitude the fog has fully faded out at."
+        },
+        {
+          "name": "verticalRangeStart",
+          "type": "FLOAT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns the altitude the fog starts fading out at."
         }
       ],
       "aliases": {},
@@ -7315,6 +7324,33 @@
       "base": null,
       "properties": [
         {
+          "name": "atmosphereColor",
+          "type": "COLOR",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "massif::Color",
+          "doc": "Returns the tint applied to Rayleigh scattering."
+        },
+        {
+          "name": "atmosphereLuminance",
+          "type": "FLOAT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns the exposure applied to the scattered light."
+        },
+        {
+          "name": "atmosphereSunIntensity",
+          "type": "FLOAT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns the brightness of the sun driving the atmosphere."
+        },
+        {
           "name": "enabled",
           "type": "BOOL",
           "readOnly": false,
@@ -7333,6 +7369,15 @@
           "doc": "Returns the ground color."
         },
         {
+          "name": "haloColor",
+          "type": "COLOR",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "massif::Color",
+          "doc": "Returns the tint applied to Mie scattering."
+        },
+        {
           "name": "horizonBlend",
           "type": "FLOAT",
           "readOnly": false,
@@ -7349,6 +7394,16 @@
           "position": false,
           "cppType": "massif::Color",
           "doc": "Returns the horizon color."
+        },
+        {
+          "name": "quality",
+          "type": "ENUM",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "massif::SkyQuality::SkyQuality",
+          "enum": "massif::SkyQuality::SkyQuality",
+          "doc": "Returns how finely the atmosphere is integrated."
         },
         {
           "name": "shaderSource",
@@ -7376,6 +7431,16 @@
           "position": false,
           "cppType": "bool",
           "doc": "Returns whether the built-in shader draws a sun disc."
+        },
+        {
+          "name": "type",
+          "type": "ENUM",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "massif::SkyType::SkyType",
+          "enum": "massif::SkyType::SkyType",
+          "doc": "Returns what the sky pass draws."
         }
       ],
       "aliases": {},
@@ -13663,6 +13728,35 @@
         "name": "ROUTING_ACTION_LEAVE_FERRY",
         "value": 18,
         "doc": "Leave ferry. Only used by Valhalla."
+      }
+    ],
+    "massif::SkyQuality::SkyQuality": [
+      {
+        "name": "SKY_QUALITY_LOW",
+        "value": 0,
+        "doc": "5 samples along the view ray, 3 towards the sun."
+      },
+      {
+        "name": "SKY_QUALITY_MEDIUM",
+        "value": 1,
+        "doc": "8 and 4. The default."
+      },
+      {
+        "name": "SKY_QUALITY_HIGH",
+        "value": 2,
+        "doc": "12 and 5."
+      }
+    ],
+    "massif::SkyType::SkyType": [
+      {
+        "name": "SKY_TYPE_GRADIENT",
+        "value": 0,
+        "doc": "A gradient between HorizonColor and SkyColor. What the SDK drew before the atmosphere existed; pick it for a flat, stylised or brand-coloured sky."
+      },
+      {
+        "name": "SKY_TYPE_ATMOSPHERE",
+        "value": 1,
+        "doc": "Rayleigh and Mie single scattering, integrated along the view ray. The blue zenith, the reddening at a low sun and the halo around it all come out of the model rather than out of a colour ramp, so the sky follows the time of day on its own."
       }
     ],
     "massif::TileFormat::TileFormat": [

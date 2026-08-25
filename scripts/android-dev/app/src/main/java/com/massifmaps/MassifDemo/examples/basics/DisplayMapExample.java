@@ -31,12 +31,17 @@ public class DisplayMapExample extends MapExample {
         // A spec describes the whole stack: the layer, and the source underneath it. Anything the
         // constructor does not take is applied as a property, so "opacity" needs no special case.
         map.addLayer("basemap", Spec.of("raster")
-            .set("source", Spec.of("http")
-                .set("url", "https://tile.openstreetmap.org/{z}/{x}/{y}.png")
-                .set("maxZoom", 19)
-                // OSM's tile policy REQUIRES an identifying User-Agent; without one the server
-                // answers 403 and every tile comes back as an error image.
-                .set("HTTPHeaders", Spec.object().set("User-Agent", UA))));
+            // Cached on disk in front of the server: OSM's tiles are a free service run on
+            // donations, and a demo that gets panned around re-fetches the same ones every run.
+            .set("source", Spec.of("persistent-cache")
+                .set("databasePath", host.cachePath("osm-raster.db"))
+                .set("capacity", 100 * 1024 * 1024)
+                .set("source", Spec.of("http")
+                    .set("url", "https://tile.openstreetmap.org/{z}/{x}/{y}.png")
+                    .set("maxZoom", 19)
+                    // OSM's tile policy REQUIRES an identifying User-Agent; without one the server
+                    // answers 403 and every tile comes back as an error image.
+                    .set("HTTPHeaders", Spec.object().set("User-Agent", UA)))));
 
         // The same property two ways. The string is the API; ApiNames is the GENERATED constant
         // set, which completes in an editor and carries the value's type - passing a boolean to

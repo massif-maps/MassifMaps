@@ -17,8 +17,8 @@ namespace massif::mvt {
             unbindProperty("geometry-transform"); // not supported for now
             bindProperty("file", &_file);
             bindProperty("opacity", &_opacity);
-            bindProperty("allow-overlap", &_allowOverlap);
-            bindProperty("ignore-placement", &_ignorePlacement);
+            bindProperty("allow-overlap", nullptr); // a point is not placed, so nothing to allow
+            bindProperty("ignore-placement", nullptr);
             bindProperty("transform", &_transform);
         }
 
@@ -31,8 +31,6 @@ namespace massif::mvt {
 
         StringProperty _file;
         FloatFunctionProperty _opacity = FloatFunctionProperty(1.0f);
-        BoolProperty _allowOverlap = BoolProperty(false);
-        BoolProperty _ignorePlacement = BoolProperty(false);
         TransformProperty _transform;
 
         FloatFunctionBuilder _sizeFuncBuilder;

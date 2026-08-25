@@ -690,11 +690,9 @@ namespace massif::css {
         { "polygon-pattern-geometry-transform", "geometry-transform" },
         { "polygon-pattern-comp-op", "comp-op" },
 
+        // a point is plain geometry, never a label - no placement, so no overlap or priority
         { "point-file", "file" },
         { "point-opacity", "opacity" },
-        { "point-allow-overlap", "allow-overlap" },
-        { "point-ignore-placement", "ignore-placement" },
-        { "point-placement-priority", "placement-priority" },
         { "point-transform", "transform" },
         { "point-comp-op", "comp-op" },
 

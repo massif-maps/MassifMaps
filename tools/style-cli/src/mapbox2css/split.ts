@@ -95,28 +95,37 @@ function exclusive(earlier: Json[], own: Json | null): Json | null {
 }
 
 /**
- * Rewrites what could not be split: a case/match over the feature becomes its fallback, which is
- * what the decoder evaluates to anyway. Returns null when a field reference survives - a bare
- * `["get", "width"]` has no fallback to fall back to.
+ * Every case/match over the feature replaced by its fallback - the branch the decoder evaluates to
+ * anyway with no feature bound. Field reads themselves are left alone, which is what makes this
+ * usable for `text-field` too, where reading a field is the whole point.
  */
-function collapse(value: Json): Json | null {
+export function collapseBranches(value: Json): Json {
     if (!readsFeature(value)) return value;
 
     if (Array.isArray(value)) {
         const head = value[0];
-        if (head === 'get' || head === 'has' || head === 'id' || head === 'geometry-type') return null;
-        if ((head === 'case' || head === 'match') && value.length >= 4) return collapse(value[value.length - 1] as Json);
-        const items = value.map((item) => collapse(item as Json));
-        return items.some((item) => item === null) ? null : (items as unknown as Json);
+        if ((head === 'case' || head === 'match') && value.length >= 4) {
+            return collapseBranches(value[value.length - 1] as Json);
+        }
+        return value.map((item) => collapseBranches(item as Json)) as unknown as Json;
     }
 
     const stops = value as { property?: unknown; default?: Json; stops?: Json[] };
     if (typeof stops.property === 'string') {
         if (stops.default !== undefined) return stops.default;
         const first = stops.stops?.[0];
-        return Array.isArray(first) ? (first[1] as Json) : null;
+        return Array.isArray(first) ? (first[1] as Json) : (null as unknown as Json);
     }
-    return null;
+    return value;
+}
+
+/**
+ * The same, for a property VALUE: null when a field read survives the collapse, because a bare
+ * `["get", "width"]` has no fallback to fall back to and would take the rule down.
+ */
+function collapse(value: Json): Json | null {
+    const collapsed = collapseBranches(value);
+    return readsFeature(collapsed) ? null : collapsed;
 }
 
 /**

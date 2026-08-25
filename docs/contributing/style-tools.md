@@ -223,6 +223,41 @@ MapBox takes the first match. On topo-v4 that is 17 layers and **+24 attachments
 - `text-field` is exempt: the text is evaluated per feature inside the processor rather than through
   a `Property`, so it reads fields correctly.
 
+## Road shields become a text plate
+
+A MapBox road shield is a sprite drawn BEHIND its ref, and the sprite is picked per feature —
+`concat('transportation:', concat('road_', to-string([ref_length])))` — so there is no single image
+to slice out, and `icon-image` used to be dropped with the whole shield. But the sprite is an SDF
+**tinted by `icon-color`** and outlined by `icon-halo-*`, and CartoCSS draws exactly that shape
+without any image:
+
+| MapBox | CartoCSS |
+|---|---|
+| `icon-color` | `text-background-fill` |
+| `icon-opacity` | `text-background-opacity` |
+| `icon-halo-color` | `text-background-border-fill` |
+| `icon-halo-width` | `text-background-border-width` |
+| the sprite's rounding | `text-background-radius: 2` |
+
+The country artwork is lost; the ref stays readable, and every note says so.
+
+What makes a layer a shield rather than a POI ([`shield.ts`](https://github.com/massif-maps/MassifMaps/blob/master/tools/style-cli/src/mapbox2css/shield.ts)):
+the sprite name reads the **feature**, and the text sits **on** the icon. A POI icon is per-feature
+too but its text is pushed below it (`text-anchor: top`, `text-offset: [0, 0.8]`); a town's circle
+is centred but picked by **zoom**, not by the feature. Both stay markers. An `icon-color` is
+required — without a fill there is only a border round nothing.
+
+Two consequences worth knowing:
+
+- The plate colours are usually a `case` over `iso_a2`/`network` with dozens of branches, so they
+  pass the split cap and keep their **fallback** — one plate colour for the world.
+- A shield whose `text-field` cannot be translated draws **nothing**. A plate is a background *for*
+  text; on its own it is a floating box. MapBox's own shields `slice` the ref per country and
+  CartoCSS has no `slice`, so a text-field that branches is retried with its fallback branch —
+  `[ref]` for everything outside Brazil — rather than losing the label.
+
+MapTiler streets-v4 yields 10 plates across its four shield layers; topo-v4 has no shields at all.
+
 ## Contours: `--contour-schema div`
 
 MapTiler's contour layers say "every 5th or 10th line" (`nth_line`); tiles built with the gdal

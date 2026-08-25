@@ -4,8 +4,9 @@ import { Untranslatable, expandTokens, translateExpression } from './expression.
 import { translateFilter, zoomPredicates } from './filter.js';
 import { HANDLED_ELSEWHERE, followsLine, resolvePlacement } from './placement.js';
 import { KNOWN_GAPS, LAYER_SYMBOLIZER, PROPERTY_MAP, VALUE_MAP } from './properties.js';
+import { PLATE_MAP, isShieldLayer, plateRadius } from './shield.js';
 import { type SpriteSet, extractIcon } from './sprite.js';
-import { splitLayer } from './split.js';
+import { collapseBranches, splitLayer } from './split.js';
 import type { CartoProperty, Json, MapboxLayer, MapboxStyle, PropertyTable } from './types.js';
 
 export interface ConvertResult {
@@ -159,8 +160,14 @@ function layerDeclarations(
     const table = PROPERTY_MAP[layer.type] ?? {};
     const out: string[] = [];
     // A symbol layer's icon is a SECOND symbolizer in the same rule, so marker-* declarations sit
-    // beside the text-* ones rather than replacing them.
-    const iconDeclarations = layer.type === 'symbol' ? markerDeclarations(layer, coverage, options) : [];
+    // beside the text-* ones rather than replacing them - unless the icon is a road shield, whose
+    // sprite is picked per feature and is drawn as a plate behind the text instead.
+    const isShield = layer.type === 'symbol' && isShieldLayer(layer);
+    const iconDeclarations = layer.type !== 'symbol'
+        ? []
+        : isShield
+            ? plateDeclarations(layer, coverage)
+            : markerDeclarations(layer, coverage, options);
 
     if (symbolizer === 'text') {
         out.push(`text-placement: '${resolvePlacement(layer, 'text')}';`);
@@ -176,6 +183,15 @@ function layerDeclarations(
         // text-field may be the legacy "{field}" token form rather than an expression.
         if (name === 'text-field' && typeof value === 'string' && value.includes('{')) {
             out.push(`text-name: ${expandTokens(value)};`);
+            coverage.emit('text-name');
+            continue;
+        }
+        // A text-field that branches per country (MapBox's shields slice the ref) is worth keeping
+        // as its fallback rather than losing the label: the fallback IS the name for most features.
+        if (name === 'text-field') {
+            const text = tryTranslate(value, name, layer.id, coverage) ?? retryCollapsed(value, layer, coverage);
+            if (text === null) continue;
+            out.push(`text-name: ${text};`);
             coverage.emit('text-name');
             continue;
         }
@@ -312,12 +328,34 @@ function layerDeclarations(
     // text-name is what makes a text symbolizer exist at all; without it every other text property
     // is dropped with the rule - but an icon-only layer still has its marker to draw.
     if (symbolizer === 'text' && !out.some((d) => d.startsWith('text-name:'))) {
+        // An icon stands on its own; a plate is a background FOR text and would be a floating box.
+        if (isShield) {
+            coverage.drop(`layer "${layer.id}"`, 'shield with no usable text-field, so no plate either', layer.id);
+            return [];
+        }
         if (out.length > 0 && iconDeclarations.length === 0) {
             coverage.drop(`layer "${layer.id}"`, 'symbol layer with neither text-field nor a usable icon', layer.id);
         }
         return iconDeclarations;
     }
     return [...out, ...iconDeclarations];
+}
+
+/**
+ * A road shield as the plate CartoCSS draws behind a label: the sprite is tinted by icon-color and
+ * outlined by its halo, and `text-background-*` is exactly that without needing the image. See
+ * shield.ts for what makes a layer one.
+ */
+function plateDeclarations(layer: MapboxLayer, coverage: Coverage): string[] {
+    const out: string[] = [];
+    for (const [from, to] of PLATE_MAP) {
+        emitTranslated(out, coverage, layer, from, to, undefined, false);
+    }
+    out.push(plateRadius());
+    coverage.emit('text-background-radius');
+    coverage.note(`"${layer.id}": shield sprite drawn as a text background plate, so the ` +
+        'country-specific artwork is lost but the ref stays readable');
+    return out;
 }
 
 /** MapBox's icon-* onto marker-*, once the sprite has been sliced into its own file. */
@@ -445,6 +483,18 @@ function name(property: string, layer: MapboxLayer, coverage: Coverage): string 
     const value = layer.paint?.[property] ?? layer.layout?.[property];
     if (value === undefined) return null;
     return tryTranslate(value, property, layer.id, coverage);
+}
+
+/** Second chance for a value one of whose branches has no CartoCSS form: keep the fallback branch. */
+function retryCollapsed(value: Json, layer: MapboxLayer, coverage: Coverage): string | null {
+    const collapsed = collapseBranches(value);
+    if (JSON.stringify(collapsed) === JSON.stringify(value)) return null;
+    const translated = tryTranslate(collapsed, 'text-field', layer.id, coverage);
+    if (translated !== null) {
+        coverage.approximate(`text-field on "${layer.id}" kept only its fallback branch: another ` +
+            'branch has no CartoCSS form, and no label at all is worse than the common one');
+    }
+    return translated;
 }
 
 function tryTranslate(value: Json, name: string, layerId: string, coverage: Coverage): string | null {

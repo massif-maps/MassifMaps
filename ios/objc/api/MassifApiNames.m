@@ -72,6 +72,7 @@ MassifProperty const MassifPropertyCacheOnlyMode = @"cacheOnlyMode";
 MassifProperty const MassifPropertyCameraChanged = @"cameraChanged";
 MassifProperty const MassifPropertyCameraClampDuration = @"cameraClampDuration";
 MassifProperty const MassifPropertyCameraClearance = @"cameraClearance";
+MassifProperty const MassifPropertyCameraPos = @"cameraPos";
 MassifProperty const MassifPropertyCapacity = @"capacity";
 MassifProperty const MassifPropertyCartoCSS = @"cartoCSS";
 MassifProperty const MassifPropertyCartoCSSStyle = @"cartoCSSStyle";

@@ -107,6 +107,14 @@ namespace massif {
          */
         MapPos getFocusPos() const;
         /**
+         * Returns the position the camera itself is above, which at a low tilt is nowhere near the
+         * focus - the focus is what the camera looks AT, kilometres out in front of it. This is the
+         * viewpoint: where a first-person camera stands, and where a top-down view has to be centred
+         * to come back to the same place.
+         * @return The camera's ground position in the coordinate system of the base projection.
+         */
+        MapPos getCameraPos() const;
+        /**
          * Returns the map rotation in degrees. 0 means looking north, 90 means west, -90 means east and 180 means south.
          * @return The map rotation in degrees in range of (-180 .. 180].
          */

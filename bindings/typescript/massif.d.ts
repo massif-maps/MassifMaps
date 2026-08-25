@@ -1236,6 +1236,8 @@ export interface PropertyTypes {
     "verticalOffset": number;
   };
   "massif::BaseMapView": {
+    /** (read-only) Returns the position the camera itself is above, which at a low tilt is nowhere near the focus - the focus is what the camera looks AT, kilometres out in front of it. This is the viewpoint: where a first-person camera stands, and where a top-down view has to be centred to come back to the same place. */
+    readonly "cameraPos": Position;
     /** (read-only) Returns true while a flyTo animation is running. */
     readonly "flightActive": boolean;
     /** (read-only) How far along a flyTo animation is, from 0 to 1, or -1 when none is running. It is the value the camera is actually at, so an app animating its own state alongside the move (a layer fading in, a mode switching over) reads it rather than running its own clock. */

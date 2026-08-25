@@ -35,6 +35,8 @@ export interface ConvertOptions {
     contour?: ContourOptions;
     /** Loaded sprite sheets and where to write the sliced icons. Icons are dropped without them. */
     sprites?: { sheets: SpriteSet; outDir: string };
+    /** Resolve SDF sprites to plain bitmaps, for an SDK without marker-sdf. Loses size and halo. */
+    flattenSdf?: boolean;
 }
 
 export function convert(style: MapboxStyle, table: PropertyTable, options: ConvertOptions = {}): ConvertResult {
@@ -254,7 +256,7 @@ function markerDeclarations(layer: MapboxLayer, coverage: Coverage, options: Con
         return [];
     }
 
-    const icon = extractIcon(options.sprites.sheets, image, options.sprites.outDir);
+    const icon = extractIcon(options.sprites.sheets, image, options.sprites.outDir, options.flattenSdf);
     if (!icon) {
         coverage.drop('icon-image', `"${image}" is not in the sprite`, layer.id);
         return [];
@@ -263,35 +265,39 @@ function markerDeclarations(layer: MapboxLayer, coverage: Coverage, options: Con
     const out = [`marker-file: url('${icon.file}');`];
     coverage.emit('marker-file');
 
-    // icon-size scales the sprite's own size; CartoCSS wants the result in pixels.
+    const sdf = icon.sdf && !options.flattenSdf;
+    if (sdf) {
+        out.push('marker-sdf: true;');
+        coverage.emit('marker-sdf');
+    }
+
+    // icon-size scales the sprite's own size. A distance field is SCALED rather than resampled, so
+    // a zoom-driven size survives; a flattened bitmap can only take a constant.
     const size = layer.layout?.['icon-size'];
-    const scale = typeof size === 'number' ? size : 1;
-    if (size !== undefined && typeof size !== 'number') {
-        coverage.drop('icon-size', 'non-constant icon-size cannot become marker-width', layer.id);
+    const sizeExpr = size === undefined
+        ? String(round(icon.width))
+        : sdf
+            ? scaledSize(size, icon.width, name('icon-size', layer, coverage))
+            : typeof size === 'number' ? String(round(icon.width * size)) : null;
+    if (sizeExpr === null) {
+        coverage.drop('icon-size', 'a flattened bitmap cannot take a zoom-driven size (drop --sdf-flatten)', layer.id);
+        out.push(`marker-width: ${round(icon.width)};`);
+    } else {
+        out.push(`marker-width: ${sizeExpr};`);
     }
-    out.push(`marker-width: ${round(icon.width * scale)};`, `marker-height: ${round(icon.height * scale)};`);
     coverage.emit('marker-width');
-    coverage.emit('marker-height');
 
-    // An SDF sprite was rasterised to white, so marker-color IS the icon colour; MapBox defaults it
-    // to black. A plain sprite already carries its colours and must not be tinted.
+    // An SDF icon carries no colour of its own, so marker-color IS the icon colour and MapBox
+    // defaults it to black. A plain sprite already has its colours and must not be tinted.
     if (icon.sdf) {
-        const color = layer.paint?.['icon-color'];
-        const translated = typeof color === 'string' || color === undefined
-            ? (color ?? '#000000')
-            : null;
-        if (translated === null) {
-            coverage.drop('icon-color', 'non-constant icon-color cannot tint a marker', layer.id);
-        } else {
-            out.push(`marker-color: ${translated};`);
-            coverage.emit('marker-color');
-        }
+        emitTranslated(out, coverage, layer, 'icon-color', 'marker-color', '#000000', !sdf);
     }
+    emitTranslated(out, coverage, layer, 'icon-opacity', 'marker-opacity', undefined, !sdf);
 
-    const opacity = layer.paint?.['icon-opacity'];
-    if (typeof opacity === 'number') {
-        out.push(`marker-opacity: ${opacity};`);
-        coverage.emit('marker-opacity');
+    // Halos are grown from the field, so they only exist in SDF mode.
+    if (sdf) {
+        emitTranslated(out, coverage, layer, 'icon-halo-color', 'marker-halo-fill', undefined, false);
+        emitTranslated(out, coverage, layer, 'icon-halo-width', 'marker-halo-radius', undefined, false);
     }
     if (layer.layout?.['icon-allow-overlap'] === true) {
         out.push('marker-allow-overlap: true;');
@@ -302,6 +308,48 @@ function markerDeclarations(layer: MapboxLayer, coverage: Coverage, options: Con
 
 function round(value: number): number {
     return Math.round(value * 100) / 100;
+}
+
+/** icon-size is a multiplier on the sprite's own width. */
+function scaledSize(size: Json, width: number, translated: string | null): string {
+    if (typeof size === 'number') return String(round(width * size));
+    return translated === null ? String(round(width)) : `(${translated} * ${round(width)})`;
+}
+
+/** Translates a MapBox paint/layout value onto a CartoCSS property, or reports why it could not. */
+function emitTranslated(
+    out: string[],
+    coverage: Coverage,
+    layer: MapboxLayer,
+    from: string,
+    to: string,
+    fallback: string | undefined,
+    constantOnly: boolean,
+): void {
+    const value = layer.paint?.[from] ?? layer.layout?.[from];
+    if (value === undefined) {
+        if (fallback !== undefined) {
+            out.push(`${to}: ${fallback};`);
+            coverage.emit(to);
+        }
+        return;
+    }
+    if (constantOnly && typeof value !== 'string' && typeof value !== 'number') {
+        coverage.drop(from, `a flattened bitmap needs a constant ${from}`, layer.id);
+        return;
+    }
+    const translated = name(from, layer, coverage);
+    if (translated !== null) {
+        out.push(`${to}: ${translated};`);
+        coverage.emit(to);
+    }
+}
+
+/** The translated form of a layer property, counting the drop itself when it has none. */
+function name(property: string, layer: MapboxLayer, coverage: Coverage): string | null {
+    const value = layer.paint?.[property] ?? layer.layout?.[property];
+    if (value === undefined) return null;
+    return tryTranslate(value, property, layer.id, coverage);
 }
 
 function tryTranslate(value: Json, name: string, layerId: string, coverage: Coverage): string | null {

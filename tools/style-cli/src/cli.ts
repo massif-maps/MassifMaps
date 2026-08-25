@@ -20,6 +20,8 @@ const USAGE = `Usage: massif-style <command> [options] [args]
       --sprite-key          query string appended to the style's sprite URLs, for a
                             provider that needs a key
       --no-sprite           skip the sprite; every icon-image is then dropped
+      --sdf-flatten         resolve SDF icons to plain bitmaps, for an SDK without
+                            marker-sdf; loses the zoom-driven size and the halo
       --contour-schema div  rewrite contour-layer nth_line tests onto a div (interval in
                             metres) attribute; --contour-major-div is the major threshold,
                             default 100
@@ -92,6 +94,7 @@ async function mapbox2css(args: string[]): Promise<number> {
 
     const { mss, project, coverage } = convert(style, loadPropertyTable(), {
         sprites,
+        flattenSdf: flags.has('sdf-flatten'),
         contour: contourSchema === 'div'
             ? { schema: 'div', majorDiv: Number(flags.get('contour-major-div') ?? 100) }
             : undefined,

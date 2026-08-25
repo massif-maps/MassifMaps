@@ -22,14 +22,14 @@ interface SpriteSheet {
 export type SpriteSet = Map<string, SpriteSheet>;
 
 /**
- * MapBox's SDF sprites store a distance field in the alpha channel with the edge at 0.75; the
- * renderer recovers coverage with a smoothstep around it (symbol_sdf.fragment.glsl). The SDK has no
- * SDF path for marker bitmaps - GlyphMode::SDF is font glyphs only - so the field has to be
- * resolved here.
+ * MapBox stores an SDF sprite's distance field in the ALPHA channel; the SDK's label shader reads
+ * it from RED (`color.r - offset`). Same field, different channel, so the icon is copied across
+ * rather than resolved - the SDK then scales it like a glyph, which is what keeps a zoom-driven
+ * size crisp and lets marker-halo-radius grow a halo from it.
  *
- * The result is WHITE with that coverage as alpha, because MarkersSymbolizer multiplies the bitmap
- * by marker-color (see createColorOpacityFunction). One file per icon then serves every colour the
- * style asks for, instead of one per icon-colour pair.
+ * Flattening it here instead (--sdf-flatten) is the fallback for an SDK without marker-sdf: a
+ * smoothstep around the 0.75 edge, written WHITE so marker-color still tints it. That loses the
+ * scaling and the halo, which is the whole reason not to do it by default.
  */
 const SDF_EDGE = 0.75;
 const SDF_GAMMA = 0.08;
@@ -91,7 +91,7 @@ export interface ExtractedIcon {
  * Cuts one icon out of its sheet and writes it as its own PNG. Returns null when the sheet has no
  * such icon, which a style referencing an image it never ships does produce.
  */
-export function extractIcon(sprites: SpriteSet, name: string, outDir: string): ExtractedIcon | null {
+export function extractIcon(sprites: SpriteSet, name: string, outDir: string, flattenSdf = false): ExtractedIcon | null {
     const [sheetId, iconName] = splitIconName(name);
     const sheet = sprites.get(sheetId);
     const entry = sheet?.index[iconName];
@@ -102,13 +102,20 @@ export function extractIcon(sprites: SpriteSet, name: string, outDir: string): E
         for (let x = 0; x < entry.width; x++) {
             const src = ((entry.y + y) * sheet.image.width + (entry.x + x)) * 4;
             const dst = (y * entry.width + x) * 4;
-            if (entry.sdf) {
+            if (entry.sdf && flattenSdf) {
                 const distance = sheet.image.data[src + 3] / 255;
                 const coverage = smoothstep(SDF_EDGE - SDF_GAMMA, SDF_EDGE + SDF_GAMMA, distance);
                 icon.data[dst] = 255;
                 icon.data[dst + 1] = 255;
                 icon.data[dst + 2] = 255;
                 icon.data[dst + 3] = Math.round(coverage * 255);
+            } else if (entry.sdf) {
+                // Alpha -> red, and opaque, so the shader's `color.r` is the field itself.
+                const distance = sheet.image.data[src + 3];
+                icon.data[dst] = distance;
+                icon.data[dst + 1] = distance;
+                icon.data[dst + 2] = distance;
+                icon.data[dst + 3] = 255;
             } else {
                 icon.data.set(sheet.image.data.subarray(src, src + 4), dst);
             }

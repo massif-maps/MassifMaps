@@ -1049,6 +1049,18 @@ namespace massif {
         return _tileRenderer->bakeDrapeTile(tileId);
     }
 
+    void TileLayer::collectDrapeStackOrder(std::vector<std::pair<int, bool> >& units) const {
+        _tileRenderer->collectDrapeStackOrder(units);
+    }
+
+    int TileLayer::bakeDrapeCoverage(const vt::TileId& tileId, int fromStyleLayerIdx) {
+        return _tileRenderer->bakeDrapeCoverage(tileId, fromStyleLayerIdx);
+    }
+
+    void TileLayer::setDrapeCoverageMasks(const std::vector<std::map<vt::TileId, unsigned int> >& maskTextures, const std::map<int, int>& styleLayerMasks) {
+        _tileRenderer->setDrapeCoverageMasks(maskTextures, styleLayerMasks);
+    }
+
     int TileLayer::renderDrapedSurface(const vt::TileId& tileId, unsigned int drapeTexture, float uvOffsetX, float uvOffsetY, float uvScale) {
         return _tileRenderer->renderDrapedSurface(tileId, drapeTexture, uvOffsetX, uvOffsetY, uvScale);
     }

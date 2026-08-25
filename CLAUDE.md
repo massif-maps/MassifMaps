@@ -323,6 +323,19 @@ if `libs-external/boost` is not set up.
 Useful cglib semantics (libs-external/cglib): `bbox::inside(bbox)` = *intersects* (not
 containment); `frustum3::inside(bbox)` = *intersects frustum*.
 
+## OpenGL ES 3 is a hard requirement
+
+Both platforms create an ES3 context and nothing falls back to ES2:
+`android/java/com/massifmaps/ui/ConfigChooser.java` asks for `EGL_OPENGL_ES3_BIT` in **every** EGL
+config, and `ios/objc/ui/MapView.mm` uses `kEAGLRenderingAPIOpenGLES3`. `GLES3/gl3.h` is included
+directly (`renderers/utils/GLContext.h`).
+
+So an ES3-only format or entry point needs no extension check and no ES2 path — `GL_R8`,
+`glInvalidateFramebuffer`, MRT, `sampler2DShadow`. What is still version-dependent is the **shader
+language**: programs are built at `#version 100` unless they ask for `ESSL3_FLAG`, and a driver
+that refuses the 3.00 variant falls back to 1.00 (`GLTileRenderer::hasShaderVersionFallback`), so a
+shader written for ESSL 3.00 must still have a 1.00 form.
+
 ## Rendering architecture (vector tiles + labels)
 
 **Full technical documentation lives in [`docs/internals/rendering/`](docs/internals/rendering/index.mdx)**, split by

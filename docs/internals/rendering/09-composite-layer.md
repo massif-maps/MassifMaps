@@ -62,6 +62,10 @@ For depth, the children's style layers are part of the stack's ordinal numbering
 layer's ([05-depth-model.md](05-depth-model.md#ordinals-and-the-budget)) — which is why the ordinals
 are handed out per layer in draw order rather than per renderer.
 
+Under 3D terrain the same list decides the **drape order**, and a slot kept out of the drape bake
+(`TerrainOptions::NoDrapeLayerFilter` — contours) has to be occluded by the layers above it rather
+than drawn over them: [04-terrain.md](04-terrain.md#putting-the-live-layer-back-in-its-style-position).
+
 ## Why this exists at all
 
 Tangram has one ordered style list, so "hillshade under the roads but over the landcover" is just an

@@ -68,6 +68,11 @@ const std::size_t TerrainDrapeCache::MAX_ENTRIES = 160;
             glDeleteTextures(1, &tex);
         }
         _texturePool.clear();
+        for (unsigned int texture : _maskTexturePool) {
+            GLuint tex = texture;
+            glDeleteTextures(1, &tex);
+        }
+        _maskTexturePool.clear();
     }
 
     void TerrainDrapeCache::setStackSignature(std::size_t signature) {
@@ -115,16 +120,23 @@ const std::size_t TerrainDrapeCache::MAX_ENTRIES = 160;
     }
 #endif
 
-    unsigned int TerrainDrapeCache::createTexture() {
-        if (!_texturePool.empty()) {
-            unsigned int texture = _texturePool.back();
-            _texturePool.pop_back();
+    unsigned int TerrainDrapeCache::createTexture(bool mask) {
+        std::vector<unsigned int>& pool = (mask ? _maskTexturePool : _texturePool);
+        if (!pool.empty()) {
+            unsigned int texture = pool.back();
+            pool.pop_back();
             return texture;
         }
         GLuint texture = 0;
         glGenTextures(1, &texture);
         glBindTexture(GL_TEXTURE_2D, texture);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, _resolution, _resolution, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+        // A coverage mask is one channel: R8 (core in ES3, which both platforms require - see
+        // CLAUDE.md) rather than a quarter-used RGBA, so a mask costs a quarter of a drape.
+        if (mask) {
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, _resolution, _resolution, 0, GL_RED, GL_UNSIGNED_BYTE, NULL);
+        } else {
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, _resolution, _resolution, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+        }
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         // Mipmapped, because a drape texture is almost always MINIFIED: the bake resolution is
         // sized for the widest a tile can ever get on screen (see TileRenderer::
@@ -155,7 +167,8 @@ const std::size_t TerrainDrapeCache::MAX_ENTRIES = 160;
         Key key { tileId, stack };
         Entry& entry = _entries[key];
         if (entry.texture == 0) {
-            entry.texture = createTexture();
+            entry.texture = createTexture(stack > 0);
+            entry.bytes = static_cast<std::size_t>(_resolution) * _resolution * (stack > 0 ? 1 : 4);
             entry.baked = false;
             entry.seeded = false;
             entry.stale = false;
@@ -256,6 +269,20 @@ const std::size_t TerrainDrapeCache::MAX_ENTRIES = 160;
     }
 #endif
 
+#ifdef __ANDROID__
+    bool TerrainDrapeCache::isCoverageMaskEnabled() {
+        static const bool enabled = [] {
+            char property[PROP_VALUE_MAX] = { 0 };
+            return !(__system_property_get("debug.massif.drapemask", property) > 0 && property[0] == '0');
+        }();
+        return enabled;
+    }
+#else
+    bool TerrainDrapeCache::isCoverageMaskEnabled() {
+        return true;
+    }
+#endif
+
     std::size_t TerrainDrapeCache::maxEntries() const {
         if (!isBudgetEnabled()) {
             return MAX_ENTRIES;
@@ -268,9 +295,23 @@ const std::size_t TerrainDrapeCache::MAX_ENTRIES = 160;
         return std::min(MAX_ENTRIES, std::max(MIN_ENTRIES, entries));
     }
 
+    std::size_t TerrainDrapeCache::cachedBytes() const {
+        std::size_t bytes = 0;
+        for (auto it = _entries.begin(); it != _entries.end(); it++) {
+            bytes += it->second.bytes;
+        }
+        return bytes;
+    }
+
     void TerrainDrapeCache::endFrame() {
+        // BYTES, not a count: a coverage mask entry (#175) is R8 and costs a quarter of a colour
+        // drape, so a count would let the masks eat a quarter of the cache's tiles for nothing.
+        // MIN_ENTRIES stays the floor, in colour-drape equivalents.
         std::size_t maxCount = maxEntries();
-        if (_entries.size() <= maxCount) {
+        std::size_t colourBytes = static_cast<std::size_t>(_resolution) * _resolution * 4;
+        std::size_t maxBytes = (isBudgetEnabled() ? std::max(MAX_BYTES, MIN_ENTRIES * colourBytes) : MAX_ENTRIES * colourBytes);
+        std::size_t bytes = cachedBytes();
+        if (_entries.size() <= maxCount && bytes <= maxBytes) {
             return; // keep unused tiles cached; they come back constantly while panning/zooming
         }
         // Over budget: evict the least recently used entries, never one used this frame.
@@ -284,18 +325,22 @@ const std::size_t TerrainDrapeCache::MAX_ENTRIES = 160;
         std::sort(candidates.begin(), candidates.end(), [](const std::pair<unsigned int, Key>& a, const std::pair<unsigned int, Key>& b) {
             return a.first < b.first;
         });
-        std::size_t evictCount = _entries.size() - maxCount;
-        for (std::size_t i = 0; i < candidates.size() && i < evictCount; i++) {
+        for (std::size_t i = 0; i < candidates.size(); i++) {
+            if (_entries.size() <= maxCount && bytes <= maxBytes) {
+                break;
+            }
             auto it = _entries.find(candidates[i].second);
             if (it == _entries.end()) {
                 continue;
             }
-            if (_texturePool.size() < MAX_POOLED_TEXTURES) {
-                _texturePool.push_back(it->second.texture);
+            std::vector<unsigned int>& pool = (candidates[i].second.stack > 0 ? _maskTexturePool : _texturePool);
+            if (pool.size() < MAX_POOLED_TEXTURES) {
+                pool.push_back(it->second.texture);
             } else {
                 GLuint texture = it->second.texture;
                 glDeleteTextures(1, &texture);
             }
+            bytes -= std::min(bytes, it->second.bytes);
             _entries.erase(it);
         }
     }
@@ -311,6 +356,11 @@ const std::size_t TerrainDrapeCache::MAX_ENTRIES = 160;
             glDeleteTextures(1, &tex);
         }
         _texturePool.clear();
+        for (unsigned int texture : _maskTexturePool) {
+            GLuint tex = texture;
+            glDeleteTextures(1, &tex);
+        }
+        _maskTexturePool.clear();
         if (_frameBuffer != 0) {
             GLuint fbo = _frameBuffer;
             glDeleteFramebuffers(1, &fbo);

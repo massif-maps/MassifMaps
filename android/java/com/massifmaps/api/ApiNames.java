@@ -69,6 +69,12 @@ public final class ApiNames {
     public static final MassifObject.Key<String> ASSET_NAMES = MassifObject.key("assetNames");
     /** Returns the style asset package. */
     public static final MassifObject.Key<MassifObject> ASSET_PACKAGE = MassifObject.key("assetPackage");
+    /** Returns the tint applied to Rayleigh scattering. */
+    public static final MassifObject.Key<Integer> ATMOSPHERE_COLOR = MassifObject.key("atmosphereColor");
+    /** Returns the exposure applied to the scattered light. */
+    public static final MassifObject.Key<Double> ATMOSPHERE_LUMINANCE = MassifObject.key("atmosphereLuminance");
+    /** Returns the brightness of the sun driving the atmosphere. */
+    public static final MassifObject.Key<Double> ATMOSPHERE_SUN_INTENSITY = MassifObject.key("atmosphereSunIntensity");
     /** Returns the horizontal attaching anchor point of the billoard. */
     public static final MassifObject.Key<Double> ATTACH_ANCHOR_POINT_X = MassifObject.key("attachAnchorPointX");
     /** Returns the vertical attaching anchor point of the billoard. */
@@ -343,6 +349,8 @@ public final class ApiNames {
     public static final MassifObject.Key<String> GEOMETRY_TAG = MassifObject.key("geometryTag");
     /** Returns the ground color. */
     public static final MassifObject.Key<Integer> GROUND_COLOR = MassifObject.key("groundColor");
+    /** Returns the tint applied to Mie scattering. */
+    public static final MassifObject.Key<Integer> HALO_COLOR = MassifObject.key("haloColor");
     /** Returns the height of the bitmap. */
     public static final MassifObject.Key<String> HEIGHT = MassifObject.key("height");
     /** Returns the height scale of the hillshade overlay. */
@@ -357,8 +365,6 @@ public final class ApiNames {
     public static final MassifObject.Key<String> HILLSHADE_METHOD = MassifObject.key("hillshadeMethod");
     /** Returns the list of map position lists defining the inner rings of the polygon (holes). */
     public static final MassifObject.Key<String> HOLES = MassifObject.key("holes");
-    /** Returns the elevation angle the fog is still at full strength at. */
-    public static final MassifObject.Key<Double> HORIZON_ANGLE = MassifObject.key("horizonAngle");
     /** Returns how far up the sky the fog is blended in. */
     public static final MassifObject.Key<Double> HORIZON_BLEND = MassifObject.key("horizonBlend");
     /** Returns the horizon color. */
@@ -585,6 +591,8 @@ public final class ApiNames {
     public static final MassifObject.Key<MassifObject> PROJECTION = MassifObject.key("projection");
     /** Returns the properties of the feature. */
     public static final MassifObject.Key<String> PROPERTIES = MassifObject.key("properties");
+    /** Returns how finely the atmosphere is integrated. */
+    public static final MassifObject.Key<String> QUALITY = MassifObject.key("quality");
     /** Returns the text-based query of the request. */
     public static final MassifObject.Key<String> QUERY = MassifObject.key("query");
     /** Returns the red component of this map color. */
@@ -894,6 +902,10 @@ public final class ApiNames {
     public static final MassifObject.Key<Long> VERSION = MassifObject.key("version");
     /** Returns the vertical offset of the billboard. */
     public static final MassifObject.Key<Double> VERTICAL_OFFSET = MassifObject.key("verticalOffset");
+    /** Returns the altitude the fog has fully faded out at. */
+    public static final MassifObject.Key<Double> VERTICAL_RANGE_END = MassifObject.key("verticalRangeEnd");
+    /** Returns the altitude the fog starts fading out at. */
+    public static final MassifObject.Key<Double> VERTICAL_RANGE_START = MassifObject.key("verticalRangeStart");
     /** Returns the absolute view distance, in meters. */
     public static final MassifObject.Key<Double> VIEW_DISTANCE = MassifObject.key("viewDistance");
     /** Returns the factor applied to the view distance. */

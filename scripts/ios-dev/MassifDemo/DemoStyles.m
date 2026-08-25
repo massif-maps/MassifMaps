@@ -200,7 +200,7 @@
         @"    float light = mix(uAmbient, 1.0, lambert);",
         @"    vec3 color = mix(uShadeColor.rgb, uPaperColor.rgb, clamp(1.0 - uShadeStrength * (1.0 - light), 0.0, 1.0));",
         @"    color = mix(color, uPaperColor.rgb, clamp(v_dist / max(uHazeDistance, 1.0), 0.0, 1.0) * uHaze);",
-        @"    color = mix(color, u_fogColor.rgb, fogAmount(v_dist));",
+        // No fog here: the SDK applies the frame's own fog to whatever surfaceColor returns.
         @"    return vec4(color, 1.0);",
         @"}"]];
 }

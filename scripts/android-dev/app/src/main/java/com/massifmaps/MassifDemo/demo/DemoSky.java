@@ -87,8 +87,8 @@ public final class DemoSky {
         float seed = (hourUtc * 7.13f) % 10.0f;
         float cover = 0.35f + 0.25f * (float) Math.sin(hourUtc * 0.7f);
         // The sky shader wrapper already declares u_sunDir/u_sunColor/u_skyColor/u_horizonColor/
-        // u_groundColor/u_fogColor/u_time - redeclaring any of them is a compile error and the
-        // renderer silently falls back to the built-in sky.
+        // u_groundColor/u_time and the whole fog block - redeclaring any of them is a compile error
+        // and the renderer silently falls back to the built-in sky.
         return String.join("\n",
             "const vec3 ARC_N = " + formatVec(arcNormal) + ";",
             "const vec3 MOON_DIR = " + formatVec(moonDir) + ";",
@@ -144,9 +144,8 @@ public final class DemoSky {
             "",
             "  col = mix(col, vec3(1.0, 1.0, 0.98), clouds(dir) * (0.35 + 0.5 * DAY));",
             "",
-            "  // The terrain fog, blended up from the horizon (fogAmount comes from the sky",
-            "  // shader wrapper): the haze the ground fades into continues into the sky.",
-            "  col = mix(col, u_fogColor.rgb, fogAmount(dir));",
+            "  // No fog here: the SDK applies the SAME haze to the sky as to the ground, once,",
+            "  // after skyColor returns - see FogOptions.",
             "",
             "  // Sun: disc, then glow, tinted toward the sun colour rather than added, so a bright",
             "  // sky does not saturate to white far from it.",

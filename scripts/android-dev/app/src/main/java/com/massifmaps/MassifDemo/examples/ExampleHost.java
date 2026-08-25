@@ -22,6 +22,15 @@ public interface ExampleHost {
     /** For anything that genuinely needs a Context: an asset, a density, a dialog. */
     Context context();
 
+    /**
+     * An absolute path under the app's cache directory, for a tile cache database.
+     *
+     * Every example that reads from a remote server puts a PersistentCacheTileDataSource in front
+     * of it: a demo the user pans around otherwise re-fetches the same tiles from somebody else's
+     * free service on every run.
+     */
+    String cachePath(String name);
+
     /** A line of text along the bottom telling the user what to do. Null or empty hides it. */
     void caption(String text);
 

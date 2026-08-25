@@ -49,10 +49,15 @@ public class StyleParametersExample extends MapExample {
                 .set("show_buildings", "true")));
 
         map.addLayer("basemap", Spec.of("vector")
-            .set("source", Spec.of("http")
-                .set("url", "https://tiles.openfreemap.org/planet/latest/{z}/{x}/{y}.pbf")
-                .set("maxZoom", 14)
-                .set("HTTPHeaders", Spec.object().set("User-Agent", "MassifMapsExamples/1.0")))
+            // Cached on disk in front of the server: openfreemap is a free service, and a demo
+            // that gets panned around re-fetches the same tiles on every run.
+            .set("source", Spec.of("persistent-cache")
+                .set("databasePath", host.cachePath("openfreemap.db"))
+                .set("capacity", 100 * 1024 * 1024)
+                .set("source", Spec.of("http")
+                    .set("url", "https://tiles.openfreemap.org/planet/latest/{z}/{x}/{y}.pbf")
+                    .set("maxZoom", 14)
+                    .set("HTTPHeaders", Spec.object().set("User-Agent", "MassifMapsExamples/1.0"))))
             .set("style", "alpine"));
 
         map.camera().moveTo(new Position(5.7245, 45.1885), 13.5f);

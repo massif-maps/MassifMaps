@@ -23,6 +23,15 @@ NS_ASSUME_NONNULL_BEGIN
 /** For anything that genuinely needs one: an asset, a scale, an alert. */
 @property (nonatomic, readonly) UIViewController *viewController;
 
+/**
+ * An absolute path under the app's caches directory, for a tile cache database.
+ *
+ * Every example that reads from a remote server puts a persistent cache in front of it: a demo the
+ * user pans around otherwise re-fetches the same tiles from somebody else's free service on every
+ * run.
+ */
+- (NSString *)cachePath:(NSString *)name;
+
 /** A line of text along the bottom telling the user what to do. nil or empty hides it. */
 - (void)caption:(nullable NSString *)text;
 

@@ -33,7 +33,7 @@ public final class DemoLive extends BroadcastReceiver {
 
     private static final String[] FOG_KEYS = {
         "fog", "fogPreset", "fogSource", "fogRangeStart", "fogRangeEnd",
-        "fogHigh", "fogSpace", "fogStars", "fogBlend", "fogHorizon"
+        "fogHigh", "fogSpace", "fogStars", "fogBlend", "fogVertStart", "fogVertEnd"
     };
     private static final String[] TERRAIN_KEYS = {
         "terrain", "drape", "drapeLines", "drapeResolution", "meshResolution", "exaggeration",
@@ -50,7 +50,10 @@ public final class DemoLive extends BroadcastReceiver {
         "bldAoRadius", "bldAoIntensity", "bldAoAttenuation", "bldAoStep", "bldEdgeRadius", "bldRoofShade", "bldRoundedRoof",
         "roadLabelOcclusion"
     };
-    private static final String[] SKY_KEYS = { "sky", "skyColor", "horizonColor", "sunDisc" };
+    private static final String[] SKY_KEYS = {
+        "sky", "skyColor", "horizonColor", "sunDisc",
+        "skyType", "skyQuality", "skyAtmoSun", "skyAtmoColor", "skyAtmoHalo", "skyAtmoLum"
+    };
     private static final String[] CAMERA_KEYS = { "lon", "lat", "zoom", "tilt", "rotation" };
 
     private final DemoMap demo;

@@ -277,9 +277,11 @@ public final class DemoConfig {
     /** Fraction of a quarter turn the sky haze fades out over - mapbox horizon-blend
      *  ('--es fogBlend 0.133'). */
     public static float FOG_HORIZON_BLEND = 12f / 90f;
-    /** Elevation angle the sky haze is still full at: -1 = from the terrain skyline (capped at half
-     *  the blend), 0 = from the mathematical horizon, >0 = pinned. '--es fogHorizon 0'. */
-    public static float FOG_HORIZON_ANGLE = -1f;
+    /** Altitudes, in metres, the fog fades out between - mapbox vertical-range. Equal values (the
+     *  default) fog every altitude alike; '--es fogVertStart 1200 --es fogVertEnd 2400' leaves the
+     *  summits clear of a haze filling the valley. */
+    public static float FOG_VERTICAL_START = 0f;
+    public static float FOG_VERTICAL_END = 0f;
 
     /** Named looks, '--es fogPreset mapbox'. Each one sets every FOG_* field below, so a preset is
      *  a starting point the sliders then move - not a mode. HAZE is the plain neutral distance fog
@@ -371,6 +373,19 @@ public final class DemoConfig {
     // =============================================================================================
 
     public static boolean SKY_ENABLED = true;
+    /** What the sky pass draws: "atmosphere" (Rayleigh/Mie scattering, the default) or "gradient"
+     *  (the two-colour ramp). '--es skyType gradient'. */
+    public static String SKY_TYPE = "atmosphere";
+    /** Scattering sample counts: "low" (5x3), "medium" (8x4) or "high" (12x5). The cost is per
+     *  fragment of visible sky, so this is what a low-tilt camera pays. '--es skyQuality low'. */
+    public static String SKY_QUALITY = "medium";
+    /** Brightness of the sun that lights the atmosphere - mapbox sky-atmosphere-sun-intensity. */
+    public static float SKY_ATMO_SUN = 10f;
+    /** Tints on the two scattering terms, alpha = strength: the Rayleigh blue and the Mie halo. */
+    public static int SKY_ATMO_COLOR_ARGB = 0xffffffff;
+    public static int SKY_ATMO_HALO_ARGB = 0xffffffff;
+    /** Exposure the scattered light is tonemapped with; lower brightens the sky. */
+    public static float SKY_ATMO_LUMINANCE = 1f;
     /** Celestial objects: sun, moon and the sun's daily path, drawn by a CelestialLayer and
      *  placed by direction, so they stay in the sky while the map pans under them. The demo
      *  builds them in DemoCelestial - the SDK API knows nothing about suns or moons. */
@@ -1148,7 +1163,8 @@ public final class DemoConfig {
         FOG_SPACE_COLOR_ARGB = DemoCfg.cfgColorInt("fogSpace", FOG_SPACE_COLOR_ARGB);
         FOG_STAR_INTENSITY = DemoCfg.cfgFloat("fogStars", FOG_STAR_INTENSITY);
         FOG_HORIZON_BLEND = DemoCfg.cfgFloat("fogBlend", FOG_HORIZON_BLEND);
-        FOG_HORIZON_ANGLE = DemoCfg.cfgFloat("fogHorizon", FOG_HORIZON_ANGLE);
+        FOG_VERTICAL_START = DemoCfg.cfgFloat("fogVertStart", FOG_VERTICAL_START);
+        FOG_VERTICAL_END = DemoCfg.cfgFloat("fogVertEnd", FOG_VERTICAL_END);
         VIEW_DISTANCE_FACTOR = DemoCfg.cfgFloat("viewDistance", VIEW_DISTANCE_FACTOR);
         VIEW_DISTANCE_METERS = DemoCfg.cfgFloat("viewDistanceMeters", VIEW_DISTANCE_METERS);
         TERRAIN_MAX_TILE_ZOOM_COARSENING = DemoCfg.cfgInt("coarsening", TERRAIN_MAX_TILE_ZOOM_COARSENING);
@@ -1186,6 +1202,12 @@ public final class DemoConfig {
         STARS_LABELS = DemoCfg.cfgBool("starsLabels", STARS_LABELS);
         STARS_LABEL_SCALE = DemoCfg.cfgFloat("starsLabelScale", STARS_LABEL_SCALE);
         STAR_SKY = DemoCfg.cfgBool("starSky", STAR_SKY);
+        SKY_TYPE = DemoCfg.cfgStr("skyType", SKY_TYPE);
+        SKY_QUALITY = DemoCfg.cfgStr("skyQuality", SKY_QUALITY);
+        SKY_ATMO_SUN = DemoCfg.cfgFloat("skyAtmoSun", SKY_ATMO_SUN);
+        SKY_ATMO_COLOR_ARGB = DemoCfg.cfgColorInt("skyAtmoColor", SKY_ATMO_COLOR_ARGB);
+        SKY_ATMO_HALO_ARGB = DemoCfg.cfgColorInt("skyAtmoHalo", SKY_ATMO_HALO_ARGB);
+        SKY_ATMO_LUMINANCE = DemoCfg.cfgFloat("skyAtmoLum", SKY_ATMO_LUMINANCE);
         STAR_SKY_FADE_MS = DemoCfg.cfgFloat("starSkyFade", STAR_SKY_FADE_MS);
         STAR_SKY_ORIENTATION = DemoCfg.cfgBool("starSkyOrientation", STAR_SKY_ORIENTATION);
         STAR_SKY_TRANSLUCENT = DemoCfg.cfgBool("starSkyTranslucent", STAR_SKY_TRANSLUCENT);

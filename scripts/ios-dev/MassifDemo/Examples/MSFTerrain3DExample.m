@@ -23,15 +23,27 @@
 static NSString * const kUserAgent =
     @"MassifMapsExamples/1.0 (+https://github.com/massif-maps/MassifMaps)";
 
-/** Open DEM tiles, terrarium-encoded. */
-static MSFSpec *dem(void) {
-    return [[[[[MSFSpec of:@"http"]
-        set:@"url" value:@"https://tiles.mapterhorn.com/{z}/{x}/{y}.webp"]
-        set:@"minZoom" value:@1]
-        set:@"maxZoom" value:@16]
-        // What picks the elevation decoder. Without it the SDK assumes mapbox encoding and every
-        // height is wrong.
-        set:@"encoding" value:@"terrarium"];
+/** Open DEM tiles, terrarium-encoded, cached on disk in front of the server. */
+static MSFSpec *dem(id<MSFExampleHost> host) {
+    return [[[[MSFSpec of:@"persistent-cache"]
+        set:@"databasePath" value:[host cachePath:@"mapterhorn-dem.db"]]
+        set:@"capacity" value:@(200 * 1024 * 1024)]
+        set:@"source" value:[[[[[MSFSpec of:@"http"]
+            set:@"url" value:@"https://tiles.mapterhorn.com/{z}/{x}/{y}.webp"]
+            set:@"minZoom" value:@1]
+            set:@"maxZoom" value:@16]
+            // What picks the elevation decoder, per TILE: the source stamps its meta data on
+            // every tile it loads. Without it the SDK assumes mapbox encoding, and mapbox-decoding
+            // terrarium tiles gives heights in the hundreds of kilometres - the terrain inflates
+            // and the camera ends up inside it.
+            //
+            // Written as the whole map, not as a "metaData.dem_encoding" path: a NESTED spec is
+            // applied by applySpecProperties, which matches a property by its full name and has
+            // no indexed-path handling, so a dotted key there is dropped.
+            //
+            // It stays on the HTTP source, not on the cache in front of it: a wrapper source with
+            // no map of its own answers with its wrapped source's.
+            set:@"metaData" value:[[MSFSpec object] set:@"dem_encoding" value:@"terrarium"]]];
 }
 
 - (void)startWithHost:(id<MSFExampleHost>)host {
@@ -41,11 +53,16 @@ static MSFSpec *dem(void) {
     // name, so any order works.
     [map addLayer:@"satellite"
              spec:[[MSFSpec of:@"raster"]
-                     set:@"source" value:[[[[MSFSpec of:@"http"]
-                         set:@"url" value:@"https://server.arcgisonline.com/ArcGIS/rest/services/"
-                                           @"World_Imagery/MapServer/tile/{z}/{y}/{x}"]
-                         set:@"maxZoom" value:@18]
-                         set:@"HTTPHeaders" value:[[MSFSpec object] set:@"User-Agent" value:kUserAgent]]]
+                     // Cached on disk in front of the server: imagery tiles are big, and a demo
+                     // that gets panned around re-fetches the same ones on every run.
+                     set:@"source" value:[[[[MSFSpec of:@"persistent-cache"]
+                         set:@"databasePath" value:[host cachePath:@"world-imagery.db"]]
+                         set:@"capacity" value:@(200 * 1024 * 1024)]
+                         set:@"source" value:[[[[MSFSpec of:@"http"]
+                             set:@"url" value:@"https://server.arcgisonline.com/ArcGIS/rest/services/"
+                                               @"World_Imagery/MapServer/tile/{z}/{y}/{x}"]
+                             set:@"maxZoom" value:@18]
+                             set:@"HTTPHeaders" value:[[MSFSpec object] set:@"User-Agent" value:kUserAgent]]]]
             error:nil];
 
     // Roads, place names and summits ON TOP, from a style project with no background of its own -
@@ -59,15 +76,18 @@ static MSFSpec *dem(void) {
          error:nil];
     [map addLayer:@"labels"
              spec:[[[MSFSpec of:@"vector"]
-                     set:@"source" value:[[[[MSFSpec of:@"http"]
-                         set:@"url" value:@"https://tiles.openfreemap.org/planet/latest/{z}/{x}/{y}.pbf"]
-                         set:@"maxZoom" value:@14]
-                         set:@"HTTPHeaders" value:[[MSFSpec object] set:@"User-Agent" value:kUserAgent]]]
+                     set:@"source" value:[[[[MSFSpec of:@"persistent-cache"]
+                         set:@"databasePath" value:[host cachePath:@"openfreemap.db"]]
+                         set:@"capacity" value:@(100 * 1024 * 1024)]
+                         set:@"source" value:[[[[MSFSpec of:@"http"]
+                             set:@"url" value:@"https://tiles.openfreemap.org/planet/latest/{z}/{x}/{y}.pbf"]
+                             set:@"maxZoom" value:@14]
+                             set:@"HTTPHeaders" value:[[MSFSpec object] set:@"User-Agent" value:kUserAgent]]]]
                      set:@"style" value:@"hybrid"]
             error:nil];
 
     MSFPropertyGroup *terrain =
-        [map terrainWithSpec:[[MSFSpec of:@"terrain"] set:@"source" value:dem()] error:nil];
+        [map terrainWithSpec:[[MSFSpec of:@"terrain"] set:@"source" value:dem(host)] error:nil];
     // apply, not three sets: one crossing for the whole group.
     //
     // viewDistanceFactor is how far the ground goes on, in multiples of the camera-to-focus

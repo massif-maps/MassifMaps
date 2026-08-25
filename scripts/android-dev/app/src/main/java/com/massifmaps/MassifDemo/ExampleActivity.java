@@ -241,6 +241,11 @@ public class ExampleActivity extends AppCompatActivity implements ExampleHost {
     }
 
     @Override
+    public String cachePath(String name) {
+        return new java.io.File(getCacheDir(), name).getAbsolutePath();
+    }
+
+    @Override
     public void caption(final String text) {
         ui.post(new Runnable() {
             @Override

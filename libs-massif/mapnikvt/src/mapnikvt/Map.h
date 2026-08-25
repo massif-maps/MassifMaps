@@ -89,6 +89,16 @@ namespace massif::mvt {
             ColorFunctionProperty fogSpaceColor = ColorFunctionProperty("transparent"); // the zenith
             FloatFunctionProperty fogHorizonBlend = FloatFunctionProperty(12.0f / 90.0f); // fraction of a quarter turn
             FloatFunctionProperty fogStarIntensity = FloatFunctionProperty(0.0f);
+            // Mapbox vertical-range: the fog fades out between these two altitudes, so a summit
+            // stands clear of a haze filling the valley. Equal values disable the fade.
+            FloatFunctionProperty fogVerticalRangeStart = FloatFunctionProperty(0.0f); // metres
+            FloatFunctionProperty fogVerticalRangeEnd = FloatFunctionProperty(0.0f);
+            // The sky: 0 = the two-colour gradient, 1 = Rayleigh/Mie scattering.
+            FloatFunctionProperty skyType = FloatFunctionProperty(1.0f);
+            FloatFunctionProperty skyAtmosphereSunIntensity = FloatFunctionProperty(10.0f);
+            ColorFunctionProperty skyAtmosphereColor = ColorFunctionProperty("white"); // Rayleigh tint
+            ColorFunctionProperty skyAtmosphereHaloColor = ColorFunctionProperty("white"); // Mie tint
+            FloatFunctionProperty skyAtmosphereLuminance = FloatFunctionProperty(1.0f);
             FloatFunctionProperty terrainMaxVisibleDistance = FloatFunctionProperty(0.0f); // meters, 0 = unlimited
         };
         

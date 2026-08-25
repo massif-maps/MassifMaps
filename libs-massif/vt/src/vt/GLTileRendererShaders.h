@@ -76,6 +76,8 @@ namespace massif::vt {
         U_FOGHIGHCOLOR,
         U_FOGSPACECOLOR,
         U_FOGPARAMS,
+        U_FOGVERTICAL,
+        U_FOGRAY,
         U_DRAPEUVTRANSFORM,
         U_SCREENSCALE,
         U_LABELAXISX,
@@ -205,6 +207,8 @@ namespace massif::vt {
         { "uFogHighColor",      U_FOGHIGHCOLOR },
         { "uFogSpaceColor",     U_FOGSPACECOLOR },
         { "uFogParams",         U_FOGPARAMS },
+        { "uFogVertical",       U_FOGVERTICAL },
+        { "uFogRay",            U_FOGRAY },
         { "uDrapeUVTransform",  U_DRAPEUVTRANSFORM },
         { "uScreenScale",       U_SCREENSCALE },
         { "uLabelAxisX",        U_LABELAXISX },
@@ -545,18 +549,65 @@ namespace massif::vt {
         #endif
     )GLSL";
 
-    // The default fog blend, substituted into commonFsh at $FOG_BLEND$ unless the application
-    // supplied its own (GLTileRenderer::setFogShaderSource). Colours here are PREMULTIPLIED, so
-    // the fog colour has to be premultiplied by this fragment's own alpha; and the fog tints what
-    // is there rather than adding coverage, so alpha is left alone.
+    // The model itself: pure functions of the fog uniforms, always the SDK's, so the tile content,
+    // the sky, the background plane and the terrain surface share ONE definition of it.
+    //
+    // VERBATIM COPY of FogShader::HELPERS in all/native/renderers/utils/FogShader.cpp in the SDK
+    // repository, which is the master. A difference between the two is a bug.
+    static const std::string fogHelpersFsh = R"GLSL(
+        highp vec3 fogRayVec() {
+            return uFogRay * vec3(gl_FragCoord.x, gl_FragCoord.y, 1.0);
+        }
+
+        highp float fogRange(highp float dist) {
+            return (dist - uFogParams.x) * uFogParams.y;
+        }
+
+        lowp float fogOpacity(highp float t) {
+            lowp float falloff = 1.0 - min(1.0, exp(-6.0 * t));
+            falloff *= falloff * falloff;
+            return uFogColor.a * min(1.0, 1.00747 * falloff);
+        }
+
+        lowp float fogHorizonBlend(highp vec3 dir) {
+            highp float t = max(0.0, dir.z / uFogParams.w);
+            // Factor 3 matches a smoothstep over the same width.
+            return exp(-3.0 * t * t);
+        }
+
+        lowp float fogVertical(highp float heightM) {
+            return uFogVertical.y > uFogVertical.x ? smoothstep(uFogVertical.x, uFogVertical.y, heightM) : 0.0;
+        }
+    )GLSL";
+
+    // The blends, substituted into commonFsh at $FOG_BLEND$ unless the application supplied its own
+    // (GLTileRenderer::setFogShaderSource) - a custom source replaces all three.
+    //
+    // VERBATIM COPY of FogShader::BUILTIN, same master as above. Colours are PREMULTIPLIED, so the
+    // fog colour is premultiplied by this fragment's own alpha; the fog tints what is there rather
+    // than adding coverage, so alpha is left alone.
     static const std::string fogBlendFsh = R"GLSL(
-        lowp vec4 applyFog(lowp vec4 color, lowp float amount, highp float dist) {
+        lowp vec4 applyFog(lowp vec4 color, highp vec3 dir, highp float dist, highp float heightM) {
+            lowp float amount = fogOpacity(fogRange(dist)) * fogHorizonBlend(dir);
+            amount *= 1.0 - fogVertical(heightM);
             return vec4(mix(color.rgb, uFogColor.rgb * color.a, amount), color.a);
+        }
+
+        lowp vec4 skyFog(lowp vec4 color, highp vec3 dir) {
+            lowp float amount = uFogColor.a * fogHorizonBlend(dir);
+            return vec4(mix(color.rgb, uFogColor.rgb * color.a, amount), color.a);
+        }
+
+        lowp float fogLabelFade() {
+            highp vec3 rayVec = fogRayVec();
+            highp float dist = length(rayVec) / max(1.0e-9, gl_FragCoord.w) * uFogParams.z;
+            return 1.0 - smoothstep(0.9, 1.0, fogOpacity(fogRange(dist)));
         }
     )GLSL";
 
     // Marks where fogBlendFsh (or the application's own) goes in commonFsh - it has to come after
-    // the uniform declarations it reads and before the applyFog(color) that calls it.
+    // the helpers it may call and before the applyFog(color) that calls it.
+    static const std::string FOG_HELPERS_PLACEHOLDER = "$FOG_HELPERS$";
     static const std::string FOG_BLEND_PLACEHOLDER = "$FOG_BLEND$";
 
     static const std::string commonFsh = R"GLSL(
@@ -574,25 +625,34 @@ namespace massif::vt {
         uniform lowp vec4 uFogColor;      // rgb = fog colour, a = how opaque the fog gets at full distance
         uniform lowp vec4 uFogHighColor;  // the upper atmosphere, for a custom fog shader
         uniform lowp vec4 uFogSpaceColor; // the zenith, for a custom fog shader
-        uniform highp vec4 uFogParams;    // range start, 1 / (end - start), internal -> range units, range end
+        uniform highp vec4 uFogParams;    // range start, 1 / (end - start), internal -> range units, horizon blend
+        uniform highp vec4 uFogVertical;  // fade-out start and end in metres, metres per internal unit, camera height in metres
+        uniform highp mat3 uFogRay;       // view ray basis, see FogShader::rayBasis
 
-        // fogBlend is either the built-in blend or FogOptions::setShaderSource, substituted here
-        // so one custom function covers the tile content, the background plane and the sky.
+        $FOG_HELPERS$
+
+        // fogBlend is either the built-in blends or FogOptions::setShaderSource, substituted here
+        // so one custom block covers the tile content, the background plane and the sky.
         $FOG_BLEND$
 
-        // Distance from the eye WITHOUT a varying: gl_FragCoord.w is 1/w_clip, and w_clip of a
-        // perspective projection is the eye-space depth. An orthographic pass - the drape bake -
-        // has w = 1, which is a whole world in internal units, so it never fogs: exactly right,
-        // since the bake is flat content that gets fogged later as part of the terrain surface.
-        // The range is camera-relative, so the distance is scaled into range units first.
+        // Direction and distance WITHOUT a varying - see fogRayVec. An orthographic pass, the drape
+        // bake, has gl_FragCoord.w = 1, which is a whole world in internal units, so it never fogs:
+        // exactly right, since the bake is flat content that gets fogged later as part of the
+        // terrain surface it is painted on.
         lowp vec4 applyFog(lowp vec4 color) {
-            highp float dist = uFogParams.z / max(1.0e-9, gl_FragCoord.w);
-            lowp float amount = clamp((dist - uFogParams.x) * uFogParams.y, 0.0, 1.0) * uFogColor.a;
-            return applyFog(color, amount, dist);
+            highp vec3 rayVec = fogRayVec();
+            highp float rayLen = length(rayVec);
+            highp vec3 dir = rayVec / rayLen;
+            highp float dist = rayLen / max(1.0e-9, gl_FragCoord.w);
+            highp float heightM = uFogVertical.w + dist * dir.z * uFogVertical.z;
+            return applyFog(color, dir, dist * uFogParams.z, heightM);
         }
         #else
         lowp vec4 applyFog(lowp vec4 color) {
             return color;
+        }
+        lowp float fogLabelFade() {
+            return 1.0;
         }
         #endif
         // The terrain normal at this fragment, for 2D content that is lit or shadowed by the
@@ -1586,10 +1646,12 @@ namespace massif::vt {
                 color = clamp((color.r - offset) / size, 0.0, 1.0) * vColor;
             }
         #ifdef LIGHTING_FSH
-            glFragColor = applyLighting(color, normalize(vNormal));
-        #else
-            glFragColor = color;
+            color = applyLighting(color, normalize(vNormal));
         #endif
+            // Fogged like everything else, and then faded OUT once the haze is solid: a label with
+            // no map left under it reads as floating text (mapbox clips its symbols at the same
+            // 0.9). fogLabelFade is 1 without fog.
+            glFragColor = applyFog(color) * fogLabelFade();
         }
     )GLSL";
 

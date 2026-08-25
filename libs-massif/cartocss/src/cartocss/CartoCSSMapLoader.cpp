@@ -321,6 +321,11 @@ namespace massif::css {
             { "fog-range-end", &mvt::Map::Settings::fogRangeEnd },
             { "fog-horizon-blend", &mvt::Map::Settings::fogHorizonBlend },
             { "fog-star-intensity", &mvt::Map::Settings::fogStarIntensity },
+            { "fog-vertical-range-start", &mvt::Map::Settings::fogVerticalRangeStart },
+            { "fog-vertical-range-end", &mvt::Map::Settings::fogVerticalRangeEnd },
+            { "sky-type", &mvt::Map::Settings::skyType },
+            { "sky-atmosphere-sun-intensity", &mvt::Map::Settings::skyAtmosphereSunIntensity },
+            { "sky-atmosphere-luminance", &mvt::Map::Settings::skyAtmosphereLuminance },
             { "terrain-max-visible-distance", &mvt::Map::Settings::terrainMaxVisibleDistance }
         };
         for (const auto& floatProperty : floatProperties) {
@@ -334,7 +339,9 @@ namespace massif::css {
             { "ambient-color", &mvt::Map::Settings::ambientColor },
             { "fog-color", &mvt::Map::Settings::fogColor },
             { "fog-high-color", &mvt::Map::Settings::fogHighColor },
-            { "fog-space-color", &mvt::Map::Settings::fogSpaceColor }
+            { "fog-space-color", &mvt::Map::Settings::fogSpaceColor },
+            { "sky-atmosphere-color", &mvt::Map::Settings::skyAtmosphereColor },
+            { "sky-atmosphere-halo-color", &mvt::Map::Settings::skyAtmosphereHaloColor }
         };
         for (const auto& colorProperty : colorProperties) {
             Expression expr;

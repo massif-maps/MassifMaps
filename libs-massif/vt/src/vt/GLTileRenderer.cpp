@@ -249,13 +249,31 @@ namespace massif::vt {
         // never sampled - which is what keeps CLAMP_TO_EDGE from reading a neighbouring page.
     }
 
-    void GLTileRenderer::setFog(const Color& color, float startDistance, float distance, float rangeScale) {
+    void GLTileRenderer::setFog(const Color& color, float startDistance, float distance, float rangeScale, float horizonBlend) {
         std::lock_guard<std::mutex> lock(_mutex);
 
         _fogColor = color;
         _fogRangeScale = std::max(1.0e-9f, rangeScale);
         _fogStartDistance = startDistance / _fogRangeScale;
         _fogDistance = distance / _fogRangeScale;
+        // The term divides by it, and 0 would mean "no fog in the sky at all" rather than a sharp
+        // edge at the horizon - mapbox's own floor.
+        _fogHorizonBlend = std::max(0.0005f, horizonBlend);
+    }
+
+    void GLTileRenderer::setFogVertical(float startMeters, float endMeters, float metersPerUnit, float cameraHeightMeters) {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        _fogVerticalStart = startMeters;
+        _fogVerticalEnd = endMeters;
+        _fogMetersPerUnit = metersPerUnit;
+        _fogCameraHeight = cameraHeightMeters;
+    }
+
+    void GLTileRenderer::setFogRayBasis(const cglib::mat3x3<float>& rayBasis) {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        _fogRayBasis = rayBasis;
     }
 
     void GLTileRenderer::setFogColors(const Color& highColor, const Color& spaceColor) {
@@ -2117,7 +2135,9 @@ namespace massif::vt {
         glUniform4f(shaderProgram.uniforms[U_FOGCOLOR], _fogColor[0], _fogColor[1], _fogColor[2], _fogColor[3]);
         glUniform4f(shaderProgram.uniforms[U_FOGHIGHCOLOR], _fogHighColor[0], _fogHighColor[1], _fogHighColor[2], _fogHighColor[3]);
         glUniform4f(shaderProgram.uniforms[U_FOGSPACECOLOR], _fogSpaceColor[0], _fogSpaceColor[1], _fogSpaceColor[2], _fogSpaceColor[3]);
-        glUniform4f(shaderProgram.uniforms[U_FOGPARAMS], _fogStartDistance, 1.0f / std::max(1.0e-9f, _fogDistance - _fogStartDistance), 1.0f / _fogRangeScale, _fogDistance);
+        glUniform4f(shaderProgram.uniforms[U_FOGPARAMS], _fogStartDistance, 1.0f / std::max(1.0e-9f, _fogDistance - _fogStartDistance), 1.0f / _fogRangeScale, _fogHorizonBlend);
+        glUniform4f(shaderProgram.uniforms[U_FOGVERTICAL], _fogVerticalStart, _fogVerticalEnd, _fogMetersPerUnit, _fogCameraHeight);
+        glUniformMatrix3fv(shaderProgram.uniforms[U_FOGRAY], 1, GL_FALSE, _fogRayBasis.data());
     }
 
     cglib::mat4x4<double> GLTileRenderer::calculateTileMatrix(const TileId& tileId, float coordScale) const {
@@ -5821,8 +5841,9 @@ namespace massif::vt {
 
         const CompiledBitmap& compiledBitmap = buildCompiledBitmap(bitmap, false);
         unsigned int occlusionFlag = (_labelOcclusionTexture != 0 && labelBatchParams.occlusionOpacity < 1.0f ? LABEL_OCCLUSION_FLAG : 0);
-        const ShaderProgram& shaderProgram = buildShaderProgram("labels", labelVsh, labelFsh, LightingMode::GEOMETRY2D, RasterFilterMode::NONE, (useDerivatives ? DERIVATIVES_FLAG : 0) | occlusionFlag);
+        const ShaderProgram& shaderProgram = buildShaderProgram("labels", labelVsh, labelFsh, LightingMode::GEOMETRY2D, RasterFilterMode::NONE, (useDerivatives ? DERIVATIVES_FLAG : 0) | occlusionFlag | fogFlag());
         useProgram(shaderProgram);
+        setupFogUniforms(shaderProgram);
         if (occlusionFlag) {
             // Unit 1: unit 0 is the glyph atlas, bound per batch below.
             glActiveTexture(GL_TEXTURE1);
@@ -6119,6 +6140,7 @@ namespace massif::vt {
             }
 
             std::string fogCommonFsh = commonFsh;
+            fogCommonFsh.replace(fogCommonFsh.find(FOG_HELPERS_PLACEHOLDER), FOG_HELPERS_PLACEHOLDER.size(), fogHelpersFsh);
             fogCommonFsh.replace(fogCommonFsh.find(FOG_BLEND_PLACEHOLDER), FOG_BLEND_PLACEHOLDER.size(), _fogShaderSource.empty() ? fogBlendFsh : _fogShaderSource);
 
             ShaderProgram shaderProgram;

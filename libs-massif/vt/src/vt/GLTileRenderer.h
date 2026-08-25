@@ -244,13 +244,22 @@ namespace massif::vt {
         // rangeScale is how many world units one range unit is (the camera-to-focus distance):
         // the shaders work in range units so a custom fog shader sees the same numbers the API
         // and the style are written in.
-        void setFog(const Color& color, float startDistance, float distance, float rangeScale);
+        // horizonBlend is the angular term (Mapbox horizon-blend) the SKY takes too, so the ground
+        // and the sky meet without a seam - see FogShader in the SDK repository.
+        void setFog(const Color& color, float startDistance, float distance, float rangeScale, float horizonBlend);
         // The atmosphere colours a custom fog shader can reach (Mapbox high-color / space-color).
         // The built-in blend ignores them; they are here so one shader source works everywhere.
         void setFogColors(const Color& highColor, const Color& spaceColor);
-        // Replaces the fog blend with application GLSL defining
-        // "vec4 applyFog(vec4 color, float amount, float dist)". Rebuilds every program, so it is
-        // only for a real change - callers pass the current source every frame.
+        // Mapbox vertical-range: the fog fades out between two altitudes in metres, so a summit
+        // stands clear of a haze filling the valley. Equal values disable the fade.
+        void setFogVertical(float startMeters, float endMeters, float metersPerUnit, float cameraHeightMeters);
+        // The view ray basis (FogShader::rayBasis): rayVec = uFogRay * vec3(gl_FragCoord.xy, 1).
+        // Changes with the camera, so the owner sets it every frame.
+        void setFogRayBasis(const cglib::mat3x3<float>& rayBasis);
+        // Replaces the WHOLE fog block with application GLSL defining
+        // "vec4 applyFog(vec4 color, vec3 dir, float dist, float heightM)" and
+        // "vec4 skyFog(vec4 color, vec3 dir)". Rebuilds every program, so it is only for a real
+        // change - callers pass the current source every frame.
         void setFogShaderSource(const std::string& shaderSource);
         // Directional shadows. The owner renders the caster pass (renderShadowCasters) into its
         // own framebuffer from the light, then hands the packed-depth texture and the same
@@ -813,6 +822,12 @@ namespace massif::vt {
         float _fogStartDistance = 0.0f; // range units, i.e. multiples of _fogRangeScale
         float _fogDistance = 0.0f;
         float _fogRangeScale = 1.0f;    // world units per range unit
+        float _fogHorizonBlend = 0.0005f;
+        float _fogVerticalStart = 0.0f; // metres
+        float _fogVerticalEnd = 0.0f;
+        float _fogMetersPerUnit = 1.0f;
+        float _fogCameraHeight = 0.0f;  // metres
+        cglib::mat3x3<float> _fogRayBasis = cglib::mat3x3<float>::identity();
         std::string _fogShaderSource;
         std::array<cglib::mat4x4<double>, MAX_SHADOW_CASCADES> _terrainShadowViewProjs;
         Color _terrainBackgroundColor; // opaque terrain base fill + depth pre-pass color; transparent = depth-only

@@ -37,6 +37,7 @@
 #include <set>
 #include "core/MapTile.h"
 #include "terrain/AutoFlatten.h"
+#include "terrain/DrapeStackCuts.h"
 #include "terrain/ElevationManager.h"
 #include "renderers/utils/Shader.h"
 #include "renderers/utils/Texture.h"
@@ -2754,6 +2755,43 @@ namespace massif {
                         // startFrame runs between the two and resets frame state.
                         tileLayer->setExternalDrapeTiles(drapeActive ? drapeTileIds : std::vector<vt::TileId>());
                     }
+                    // WHERE THE LIVE LAYERS SIT IN THE STACK (#175). The drape composite is drawn
+                    // before any live geometry, so a layer kept out of the bake
+                    // (TerrainOptions::NoDrapeLayerFilter) can only land on TOP of all of it -
+                    // contours over roads in 3D, roads over contours in 2D. Flatten the whole stack
+                    // into ordered units, one per style layer of each drape layer, and mark every
+                    // LIVE unit that has a DRAPED unit after it: that unit is drawn through a mask
+                    // holding the accumulated coverage of everything draped above it.
+                    //
+                    // Units sharing the same nearest draped unit share a mask, so the count is the
+                    // number of live->draped transitions - 0 or 1 for every ordinary style.
+                    //
+                    // Capped: each mask is an R8 texture per drape tile and one more rasterisation
+                    // of the units above it. A style needing more than this is pathological, and
+                    // the cuts left out simply keep the pre-#175 behaviour. The rule itself is in
+                    // terrain/DrapeStackCuts.h, where the host tests can reach it.
+                    static const std::size_t MAX_DRAPE_COVERAGE_MASKS = 2;
+                    std::vector<DrapeStackCuts::Cut> drapeCuts;
+                    std::vector<std::map<int, int> > drapeLayerMasks(drapeLayers.size());
+                    if (drapeActive && TerrainDrapeCache::isCoverageMaskEnabled()) {
+                        std::vector<DrapeStackCuts::Unit> units;
+                        for (std::size_t i = 0; i < drapeLayers.size(); i++) {
+                            std::vector<std::pair<int, bool> > layerUnits;
+                            drapeLayers[i]->collectDrapeStackOrder(layerUnits);
+                            for (const std::pair<int, bool>& unit : layerUnits) {
+                                units.push_back(DrapeStackCuts::Unit { i, unit.first, unit.second });
+                            }
+                        }
+                        if (DrapeStackCuts::compute(units, MAX_DRAPE_COVERAGE_MASKS, drapeCuts, drapeLayerMasks)) {
+                            static bool cutCapLogged = false;
+                            if (!cutCapLogged) {
+                                cutCapLogged = true;
+                                Log::Warnf("MapRenderer: more than %d no-drape cuts in the style stack - the deepest are drawn on top, as before", static_cast<int>(MAX_DRAPE_COVERAGE_MASKS));
+                            }
+                        }
+                    }
+                    std::size_t drapeCutSignature = DrapeStackCuts::signature(drapeCuts);
+
                     if (!drapeActive) {
                         static bool emptyDrapeLogged = false;
                         if (!emptyDrapeLogged) {
@@ -3021,6 +3059,12 @@ namespace massif {
                             };
                             drawBakedDescendants(it->first, 2);
                         }
+                        // A mask evicted on its own - it is a separate cache entry - would leave the
+                        // tile's live layers unmasked for as long as the colour drape stays current,
+                        // which is for ever. Re-bake the tile so its masks come back with it.
+                        for (std::size_t k = 0; k < drapeCuts.size() && !needsBake; k++) {
+                            needsBake = !_terrainDrapeCache->isBaked(it->first, static_cast<int>(k) + 1);
+                        }
                         if (!needsBake) {
                             continue;
                         }
@@ -3119,6 +3163,28 @@ namespace massif {
                         }
                         _terrainDrapeCache->markBaked(request.tileId, 0, bakedFingerprint, bakedMask);
                         TerrainDrapeCache::generateMipmaps(texture);
+                        // The occlusion masks of this tile (#175), in the same pass and off the same
+                        // fingerprint, so a mask can never describe a different generation of the
+                        // map than the drape it is read beside. Stack 1+k, R8.
+                        for (std::size_t k = 0; k < drapeCuts.size(); k++) {
+                            std::size_t maskFingerprint = bakedFingerprint ^ (drapeCutSignature + k * 0x9e3779b9);
+                            bool maskNeedsBake = false, maskHasContent = false;
+                            unsigned int maskTexture = _terrainDrapeCache->acquire(request.tileId, static_cast<int>(k) + 1, maskFingerprint, maskNeedsBake, maskHasContent);
+                            if (maskTexture == 0) {
+                                continue;
+                            }
+                            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, maskTexture, 0);
+                            glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+                            glClear(GL_COLOR_BUFFER_BIT);
+                            for (std::size_t i = drapeCuts[k].layerIndex; i < drapeLayers.size(); i++) {
+                                // The cut's own layer starts at the cut; every later layer is wholly
+                                // above it.
+                                int fromStyleLayerIdx = (i == drapeCuts[k].layerIndex ? drapeCuts[k].styleLayerIdx : std::numeric_limits<int>::min());
+                                drapeLayers[i]->bakeDrapeCoverage(request.tileId, fromStyleLayerIdx);
+                            }
+                            _terrainDrapeCache->markBaked(request.tileId, static_cast<int>(k) + 1, maskFingerprint, 0);
+                            TerrainDrapeCache::generateMipmaps(maskTexture);
+                        }
                         bakedTiles++;
                         bakedThisFrame++;
                         VT_STAT_INC(drapeBakes);
@@ -3194,6 +3260,23 @@ namespace massif {
                         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, 0, 0);
                         glBindFramebuffer(GL_FRAMEBUFFER, prevFBO);
                         glViewport(0, 0, viewState.getWidth(), viewState.getHeight());
+                    }
+
+                    // Hand the masks to the layers BEFORE they draw, the same explicit per-frame
+                    // hand-off setExternalDrapeTiles is. A tile whose mask has not been baked yet -
+                    // budgeted out, or its drape only just seeded - is absent from the map, and its
+                    // live layers draw unmasked for those frames, as they did before #175.
+                    std::vector<std::map<vt::TileId, unsigned int> > drapeCoverageMasks(drapeCuts.size());
+                    for (std::size_t k = 0; k < drapeCuts.size(); k++) {
+                        for (const vt::TileId& tileId : drapeTileIds) {
+                            unsigned int maskTexture = _terrainDrapeCache->findBaked(tileId, static_cast<int>(k) + 1);
+                            if (maskTexture != 0) {
+                                drapeCoverageMasks[k][tileId] = maskTexture;
+                            }
+                        }
+                    }
+                    for (std::size_t i = 0; i < drapeLayers.size(); i++) {
+                        drapeLayers[i]->setDrapeCoverageMasks(drapeCoverageMasks, drapeLayerMasks[i]);
                     }
 
                     // Directional shadows over the drape cover.

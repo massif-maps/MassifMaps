@@ -371,6 +371,31 @@ namespace massif {
         return 0;
     }
 
+    void TileRenderer::collectDrapeStackOrder(std::vector<std::pair<int, bool> >& units) const {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        if (std::shared_ptr<vt::GLTileRenderer> tileRenderer = (_vtRenderer ? _vtRenderer->getTileRenderer() : std::shared_ptr<vt::GLTileRenderer>())) {
+            tileRenderer->collectDrapeStackOrder(units);
+        }
+    }
+
+    int TileRenderer::bakeDrapeCoverage(const vt::TileId& tileId, int fromStyleLayerIdx) {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        if (std::shared_ptr<vt::GLTileRenderer> tileRenderer = (_vtRenderer ? _vtRenderer->getTileRenderer() : std::shared_ptr<vt::GLTileRenderer>())) {
+            return tileRenderer->bakeDrapeCoverage(tileId, fromStyleLayerIdx);
+        }
+        return 0;
+    }
+
+    void TileRenderer::setDrapeCoverageMasks(const std::vector<std::map<vt::TileId, unsigned int> >& maskTextures, const std::map<int, int>& styleLayerMasks) {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        if (std::shared_ptr<vt::GLTileRenderer> tileRenderer = (_vtRenderer ? _vtRenderer->getTileRenderer() : std::shared_ptr<vt::GLTileRenderer>())) {
+            tileRenderer->setDrapeCoverageMasks(maskTextures, styleLayerMasks);
+        }
+    }
+
     int TileRenderer::renderDrapedSurface(const vt::TileId& tileId, unsigned int drapeTexture, float uvOffsetX, float uvOffsetY, float uvScale) {
         std::lock_guard<std::mutex> lock(_mutex);
 

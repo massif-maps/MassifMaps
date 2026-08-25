@@ -810,3 +810,66 @@ nothing draped.
 
 Note the filter matches the **vt layer name**, which comes from the style's own rule names — a style
 that calls its contour rules something else needs its own pattern.
+
+### Putting the live layer back in its style position
+
+Keeping a layer out of the bake also takes it out of the **order**. The drape composite for every
+visible tile is baked and drawn before any live geometry, and the per-layer pass then skips whatever
+went into the bake (`GLTileRenderer.cpp`, the `drapedTile && isDrapeableGeometry && isLayerDraped`
+skip), so a no-drape layer can only land on top of *everything* draped. With the defaults — filter
+`^contour|maneuver.*`, `DrapeLinesEnabled` true — roads are baked and contours are drawn live over
+them, while 2D draws them the other way round. That is [#175](https://github.com/massif-maps/MassifMaps/issues/175).
+
+Three fixes do not work. **Draping the contours too**: the drape is parameterised by the tile's XY,
+so its ground resolution degrades as `1/cos(slope)` and contours run *along* the slope, where the
+stretch is worst — no `DrapeResolution` fixes a parameterisation. **Cutting the drape** at the
+topmost no-drape layer: correct order, but roads stop being draped, and that is the 13.4 → 27 fps
+win in the table above. **Splitting the drape into two RGBA textures**: exact, but +4 MB per tile at
+1024 against a 96 MB cache.
+
+So: do not reorder the passes, **occlude**. The whole stack flattens into ordered units, one per
+style layer of each drape layer, each draped (**D**) or live (**L**). What the frame produces today
+is all D then all L, which is wrong at exactly one kind of position — a D after an L. Each L is
+therefore drawn through a **coverage mask**: the accumulated alpha of every D after it, sampled in
+drape-tile uv, `alpha *= 1.0 - mask`.
+
+| where | what |
+|---|---|
+| `terrain/DrapeStackCuts.h` | the ordering rule — flatten, walk backwards, one mask per L→D transition. Header-only, covered by `tests/api/DrapeStackCutsTest.cpp` |
+| `MapRenderer::onDrawFrame` | asks each drape layer for its D/L runs, stitches them into one sequence, bakes the masks inside `bakeTile` and hands them back before the layers draw |
+| `GLTileRenderer::bakeDrapeCoverage` | the bake — the same covering tiles and transforms as `bakeDrapeTile`, restricted to the style layers at or after the cut, with the fragment stage writing alpha (`COVERAGE`) instead of colour |
+| `GLTileRenderer::resolveDrapeCoverageMask` | which mask a live layer takes over a given tile, and the target-tile → mask-tile uv sub-rect |
+| `TerrainDrapeCache` | stack 0 is the RGBA drape, stacks 1..K the **R8** masks — baked off the same fingerprint, so a mask can never describe a different generation of the map than the drape beside it |
+
+Two properties make it cheap. Coverage accumulation is **order-independent** (`1-(1-a1)(1-a2)`
+commutes), so the extra pass need not preserve style order internally; and consecutive L units with
+no D between them **share** a mask, so K is the number of L→D transitions — 0 or 1 for every
+ordinary style. The rule is derived per frame from `isLayerDraped` plus the existing drape-layer
+order, so a style that puts its contours above the roads still renders that way, at zero cost.
+
+| style order | K | result |
+|---|---|---|
+| landcover, hillshade, **contours**, roads | 1 | contours under roads, over hillshade |
+| roads, hillshade, **contours** | 0 | contours on top — already correct, and free |
+| landcover, **contours**, roads, **maneuver** | 1 | both correct; the maneuver layer has nothing draped after it |
+
+Costs and known limits:
+
+- **K × 1 MB per drape tile** at resolution 1024 (R8 — [ES3 is a hard requirement](../../../CLAUDE.md)
+  on both platforms), against the 4 MB of the colour drape. `TerrainDrapeCache` budgets in **bytes**
+  rather than entries for this reason: a count would let the masks eat a quarter of the cache's
+  tiles for nothing.
+- **One extra rasterisation** of the above-cut units per mask, inside the existing bake budget.
+- **Exact for opaque above-layers, approximate for translucent ones** — a 50 %-alpha road gets the
+  contour tinting it rather than the other way round. The exact fix is the 2×RGBA split.
+- **A terrain paint contributes no coverage.** It shades the ground the other layers put in the
+  drape; treating it as an occluder would hide every live layer under it outright.
+- **A drape tile finer than the geometry's render tile** would need several masks in one draw. That
+  draw keeps the pre-#175 behaviour and is drawn on top.
+- **Capped at 2 masks** (`MAX_DRAPE_COVERAGE_MASKS`); a deeper cut is dropped, logged once, and its
+  layer draws on top as before.
+- **A style with an opaque layer above the contours hides them completely.** Correct, and what 2D
+  already does, but it reads as a bug the first time.
+
+A/B: `adb shell setprop debug.massif.drapemask 0` and relaunch puts the live layers back on top of
+the whole drape.

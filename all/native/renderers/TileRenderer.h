@@ -121,6 +121,12 @@ namespace massif {
         int renderTerrainGround(const Color& color);
         void collectDrapeTiles(std::map<vt::TileId, std::size_t>& drapeTiles) const;
         int bakeDrapeTile(const vt::TileId& tileId);
+        // This layer's style layers with drapeable content, in draw order, each flagged draped or
+        // live. The owner concatenates them across layers to place a live layer in the whole stack
+        // (see GLTileRenderer::collectDrapeStackOrder).
+        void collectDrapeStackOrder(std::vector<std::pair<int, bool> >& units) const;
+        int bakeDrapeCoverage(const vt::TileId& tileId, int fromStyleLayerIdx);
+        void setDrapeCoverageMasks(const std::vector<std::map<vt::TileId, unsigned int> >& maskTextures, const std::map<int, int>& styleLayerMasks);
         int renderDrapedSurface(const vt::TileId& tileId, unsigned int drapeTexture, float uvOffsetX, float uvOffsetY, float uvScale);
         int renderDrapedSurfaceFill(const vt::TileId& tileId, const Color& color);
         int blitDrapeTexture(unsigned int srcTexture, float dstOffsetX, float dstOffsetY, float dstScale, float uvOffsetX, float uvOffsetY, float uvScale);

@@ -23,9 +23,11 @@ namespace massif {
      * given tile, in layer order, so a hillshade layer and a vector tile layer share one drape,
      * one terrain surface draw and one depth domain instead of each keeping their own.
      *
-     * Textures are keyed by (tile, stack). A stack is a run of contiguous drapeable layers; a
-     * non-drapeable layer between drapeable ones starts a new stack, which needs its own texture
-     * and its own surface draw over the previous one.
+     * Textures are keyed by (tile, stack). Stack 0 is the RGBA colour drape - the only one the
+     * stack index was originally meant to have, a second one being reserved for a run of drapeable
+     * layers split by a non-drapeable one, which nothing produces. Stacks 1..K are now the R8
+     * COVERAGE MASKS a live no-drape layer is occluded by (#175) - one per cut in the style order,
+     * baked and invalidated with the colour drape they belong to.
      *
      * GL thread only.
      */
@@ -82,6 +84,9 @@ namespace massif {
         // debug.massif.drapebudget 0 restores the pre-budget behaviour - a tile COUNT cap and an
         // uncapped bake resolution - so the two can be measured against each other in one build.
         static bool isBudgetEnabled();
+        // debug.massif.drapemask 0 turns the no-drape occlusion masks off (#175), so a run with a
+        // live layer back on top of the whole drape is one relaunch away. Read once (Android only).
+        static bool isCoverageMaskEnabled();
 
         /**
          * Rebuilds the mipmap chain of a drape texture. Must follow every write to its level 0,
@@ -143,6 +148,7 @@ namespace massif {
 
         struct Entry {
             unsigned int texture = 0;
+            std::size_t bytes = 0; // 4 bytes/texel for a colour drape, 1 for an R8 coverage mask
             std::size_t fingerprint = 0;
             std::size_t layerMask = 0;
             bool baked = false;
@@ -152,7 +158,9 @@ namespace massif {
             unsigned int lastUsedFrame = 0;
         };
 
-        unsigned int createTexture();
+        // mask: a one-channel R8 coverage mask (stack > 0) rather than the RGBA colour drape.
+        unsigned int createTexture(bool mask);
+        std::size_t cachedBytes() const;
 
         static const int MAX_ANISOTROPY;
         static const std::size_t MAX_POOLED_TEXTURES; // recycled textures kept between frames
@@ -165,6 +173,7 @@ namespace massif {
         unsigned int _frameBuffer;
         std::map<Key, Entry> _entries;
         std::vector<unsigned int> _texturePool;
+        std::vector<unsigned int> _maskTexturePool; // R8, kept apart: a pooled texture keeps its format
         unsigned int _frameCounter;
     };
 

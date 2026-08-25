@@ -3,6 +3,7 @@ import { Coverage } from './coverage.js';
 import { Untranslatable, expandTokens, translateExpression } from './expression.js';
 import { translateFilter, zoomPredicates } from './filter.js';
 import { KNOWN_GAPS, LAYER_SYMBOLIZER, PROPERTY_MAP, VALUE_MAP } from './properties.js';
+import { type SpriteSet, extractIcon } from './sprite.js';
 import type { CartoProperty, Json, MapboxLayer, MapboxStyle, PropertyTable } from './types.js';
 
 export interface ConvertResult {
@@ -32,6 +33,8 @@ function attachmentName(layerId: string): string {
 
 export interface ConvertOptions {
     contour?: ContourOptions;
+    /** Loaded sprite sheets and where to write the sliced icons. Icons are dropped without them. */
+    sprites?: { sheets: SpriteSet; outDir: string };
 }
 
 export function convert(style: MapboxStyle, table: PropertyTable, options: ConvertOptions = {}): ConvertResult {
@@ -63,7 +66,7 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
         }
         if (!order.has(sourceLayer)) order.set(sourceLayer, index);
 
-        const declarations = layerDeclarations(layer, symbolizer, allowed, coverage);
+        const declarations = layerDeclarations(layer, symbolizer, allowed, coverage, options);
         if (declarations.length === 0) return;
 
         let selector: string;
@@ -138,9 +141,13 @@ function layerDeclarations(
     symbolizer: string,
     allowed: Map<string, CartoProperty>,
     coverage: Coverage,
+    options: ConvertOptions,
 ): string[] {
     const table = PROPERTY_MAP[layer.type] ?? {};
     const out: string[] = [];
+    // A symbol layer's icon is a SECOND symbolizer in the same rule, so marker-* declarations sit
+    // beside the text-* ones rather than replacing them.
+    const iconDeclarations = layer.type === 'symbol' ? markerDeclarations(layer, coverage, options) : [];
 
     for (const [name, value] of Object.entries({ ...layer.layout, ...layer.paint })) {
         if (name === 'visibility') {
@@ -223,15 +230,78 @@ function layerDeclarations(
         coverage.emit(target);
     }
 
-    // text-name is what makes a text symbolizer exist at all; without it the translator drops the
-    // rule and every other text property with it.
+    // text-name is what makes a text symbolizer exist at all; without it every other text property
+    // is dropped with the rule - but an icon-only layer still has its marker to draw.
     if (symbolizer === 'text' && !out.some((d) => d.startsWith('text-name:'))) {
-        if (out.length > 0) {
-            coverage.drop(`layer "${layer.id}"`, 'symbol layer with no text-field (icon-only)', layer.id);
+        if (out.length > 0 && iconDeclarations.length === 0) {
+            coverage.drop(`layer "${layer.id}"`, 'symbol layer with neither text-field nor a usable icon', layer.id);
         }
+        return iconDeclarations;
+    }
+    return [...out, ...iconDeclarations];
+}
+
+/** MapBox's icon-* onto marker-*, once the sprite has been sliced into its own file. */
+function markerDeclarations(layer: MapboxLayer, coverage: Coverage, options: ConvertOptions): string[] {
+    const image = layer.layout?.['icon-image'];
+    if (image === undefined) return [];
+    if (typeof image !== 'string') {
+        coverage.drop('icon-image', 'data-driven icon name', layer.id);
         return [];
     }
+    if (!options.sprites) {
+        coverage.drop('icon-image', 'no sprite loaded (pass --sprite or let the style provide one)', layer.id);
+        return [];
+    }
+
+    const icon = extractIcon(options.sprites.sheets, image, options.sprites.outDir);
+    if (!icon) {
+        coverage.drop('icon-image', `"${image}" is not in the sprite`, layer.id);
+        return [];
+    }
+
+    const out = [`marker-file: url('${icon.file}');`];
+    coverage.emit('marker-file');
+
+    // icon-size scales the sprite's own size; CartoCSS wants the result in pixels.
+    const size = layer.layout?.['icon-size'];
+    const scale = typeof size === 'number' ? size : 1;
+    if (size !== undefined && typeof size !== 'number') {
+        coverage.drop('icon-size', 'non-constant icon-size cannot become marker-width', layer.id);
+    }
+    out.push(`marker-width: ${round(icon.width * scale)};`, `marker-height: ${round(icon.height * scale)};`);
+    coverage.emit('marker-width');
+    coverage.emit('marker-height');
+
+    // An SDF sprite was rasterised to white, so marker-color IS the icon colour; MapBox defaults it
+    // to black. A plain sprite already carries its colours and must not be tinted.
+    if (icon.sdf) {
+        const color = layer.paint?.['icon-color'];
+        const translated = typeof color === 'string' || color === undefined
+            ? (color ?? '#000000')
+            : null;
+        if (translated === null) {
+            coverage.drop('icon-color', 'non-constant icon-color cannot tint a marker', layer.id);
+        } else {
+            out.push(`marker-color: ${translated};`);
+            coverage.emit('marker-color');
+        }
+    }
+
+    const opacity = layer.paint?.['icon-opacity'];
+    if (typeof opacity === 'number') {
+        out.push(`marker-opacity: ${opacity};`);
+        coverage.emit('marker-opacity');
+    }
+    if (layer.layout?.['icon-allow-overlap'] === true) {
+        out.push('marker-allow-overlap: true;');
+        coverage.emit('marker-allow-overlap');
+    }
     return out;
+}
+
+function round(value: number): number {
+    return Math.round(value * 100) / 100;
 }
 
 function tryTranslate(value: Json, name: string, layerId: string, coverage: Coverage): string | null {

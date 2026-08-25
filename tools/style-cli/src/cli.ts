@@ -4,6 +4,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { convert } from './mapbox2css/index.js';
+import { loadSprites } from './mapbox2css/sprite.js';
 import type { MapboxStyle, PropertyTable } from './mapbox2css/types.js';
 import { WasmMissing, runWasm, wasmAvailable } from './wasm.js';
 
@@ -11,10 +12,14 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 
 const USAGE = `Usage: massif-style <command> [options] [args]
 
-  mapbox2css <style.json> <out-dir> [--validate] [--strict]
+  mapbox2css <style.json> <out-dir> [--validate] [--strict] [--no-sprite]
+                                    [--sprite-key '?key=...']
                                     [--contour-schema div] [--contour-major-div N]
       translate a MapBox/MapLibre style to a CartoCSS project
 
+      --sprite-key          query string appended to the style's sprite URLs, for a
+                            provider that needs a key
+      --no-sprite           skip the sprite; every icon-image is then dropped
       --contour-schema div  rewrite contour-layer nth_line tests onto a div (interval in
                             metres) attribute; --contour-major-div is the major threshold,
                             default 100
@@ -50,7 +55,7 @@ function parseFlags(args: string[]): { flags: Map<string, string>; positional: s
     return { flags, positional };
 }
 
-const VALUE_FLAGS = new Set(['contour-schema', 'contour-major-div']);
+const VALUE_FLAGS = new Set(['contour-schema', 'contour-major-div', 'sprite-key']);
 
 async function mapbox2css(args: string[]): Promise<number> {
     const { flags, positional } = parseFlags(args);
@@ -67,7 +72,26 @@ async function mapbox2css(args: string[]): Promise<number> {
     }
 
     const style = JSON.parse(readFileSync(input, 'utf8')) as MapboxStyle;
+
+    // Icons need the sprite sheet, which the style only points at - so this is opt-in and says
+    // what it fetches rather than reaching out silently.
+    let sprites;
+    if (!flags.has('no-sprite')) {
+        try {
+            const sheets = await loadSprites(style, flags.get('sprite-key') ?? '');
+            if (sheets.size > 0) {
+                process.stdout.write(`Loaded ${sheets.size} sprite sheet(s).\n`);
+                sprites = { sheets, outDir };
+            }
+        } catch (error) {
+            process.stderr.write(
+                `Sprite not loaded (${error instanceof Error ? error.message : String(error)}); icons will be dropped.\n`,
+            );
+        }
+    }
+
     const { mss, project, coverage } = convert(style, loadPropertyTable(), {
+        sprites,
         contour: contourSchema === 'div'
             ? { schema: 'div', majorDiv: Number(flags.get('contour-major-div') ?? 100) }
             : undefined,

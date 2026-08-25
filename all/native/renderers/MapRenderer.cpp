@@ -36,6 +36,7 @@
 #include <chrono>
 #include <set>
 #include "core/MapTile.h"
+#include "terrain/AutoFlatten.h"
 #include "terrain/ElevationManager.h"
 #include "renderers/utils/Shader.h"
 #include "renderers/utils/Texture.h"
@@ -961,8 +962,11 @@ namespace massif {
 
         // Calculate camera params and make a synchronized copy of the view state
         ViewState viewState;
+        bool terrainActivityChanged = false;
         {
             std::lock_guard<std::recursive_mutex> lock(_mutex);
+
+            terrainActivityChanged = updateTerrainFlatten(deltaSeconds);
 
             // Terrain: extend view distances by the terrain height range and keep
             // the camera above the terrain surface.
@@ -1008,6 +1012,13 @@ namespace massif {
             _viewState.calculateViewState(*_options);
             viewState = _viewState;
             _viewState.setHorizontalLayerOffsetDir(0);
+        }
+
+        if (terrainActivityChanged) {
+            // The terrain LOD, the overzoom targets and the view distance all differ between the
+            // two modes, so the visible tile set has to be recomputed - the camera has not moved,
+            // and nothing else would ask.
+            viewChanged(false, MapMoveReason::MAP_MOVE_REASON_API);
         }
 
         // Calculate map moving animations and kinetic events
@@ -1215,7 +1226,7 @@ namespace massif {
             if (_options->getRenderProjectionMode() == RenderProjectionMode::RENDER_PROJECTION_MODE_PLANAR) {
                 terrainOptions = _options->getTerrainOptions();
             }
-            if (terrainOptions && terrainOptions->isEnabled()) {
+            if (terrainOptions && terrainOptions->isActive()) {
                 if (!_terrainRenderer) {
                     _terrainRenderer = std::make_unique<TerrainRenderer>();
                 }
@@ -1474,6 +1485,44 @@ namespace massif {
      
     void MapRenderer::billboardsChanged() {
         _billboardsChanged = true;
+    }
+
+    double MapRenderer::calculateTerrainParallax(const std::shared_ptr<TerrainOptions>& terrainOptions) const {
+        std::shared_ptr<ElevationManager> elevationManager = terrainOptions->getElevationManager();
+        if (!elevationManager) {
+            return 0;
+        }
+        // At the APP's exaggeration, not the ramped one: the ramp is what this decides.
+        double minZ = 0, maxZ = 0;
+        elevationManager->getDisplayHeightRange(_viewState.getCameraPos()(1), terrainOptions->getExaggeration(), minZ, maxZ);
+        double halfWidth = _viewState.getHalfWidth(), halfHeight = _viewState.getHalfHeight();
+        return AutoFlatten::parallax(std::sqrt(halfWidth * halfWidth + halfHeight * halfHeight), maxZ - minZ, _viewState.calculateCameraDistance());
+    }
+
+    bool MapRenderer::updateTerrainFlatten(float deltaSeconds) {
+        std::shared_ptr<TerrainOptions> terrainOptions;
+        if (_options->getRenderProjectionMode() == RenderProjectionMode::RENDER_PROJECTION_MODE_PLANAR) {
+            terrainOptions = _options->getTerrainOptions();
+        }
+        if (!terrainOptions || !terrainOptions->isEnabled()) {
+            return false;
+        }
+
+        float parallaxThreshold = terrainOptions->getAutoFlattenParallax();
+        float tiltThreshold = terrainOptions->getAutoFlattenTilt();
+        float ratio = terrainOptions->getFlattenRatio();
+        // The parallax costs a height-range lookup, so only pay for it when it is part of the rule.
+        double parallax = parallaxThreshold > 0 ? calculateTerrainParallax(terrainOptions) : 0;
+        bool flatten = AutoFlatten::shouldFlatten(parallax, parallaxThreshold, _viewState.getTilt(), tiltThreshold, ratio > 0);
+
+        float target = AutoFlatten::step(ratio, flatten, deltaSeconds, terrainOptions->getAutoFlattenDuration());
+        if (target == ratio) {
+            return false;
+        }
+        bool wasActive = terrainOptions->isActive();
+        terrainOptions->setFlattenRatio(target);
+        requestRedraw();
+        return wasActive != terrainOptions->isActive();
     }
 
     void MapRenderer::vtLabelsChanged(const std::shared_ptr<Layer>& layer, bool delay) {
@@ -2200,7 +2249,7 @@ namespace massif {
         bool terrainMode = false;
         if (_options->getRenderProjectionMode() == RenderProjectionMode::RENDER_PROJECTION_MODE_PLANAR) {
             if (auto terrainOptions = _options->getTerrainOptions()) {
-                if (terrainOptions->isEnabled()) {
+                if (terrainOptions->isActive()) {
                     terrainMode = true;
                     // Elevation arrives on a loading thread and every consumer reads it from
                     // inside a frame, so the tiles that land after the last one are never

@@ -1236,6 +1236,8 @@ export interface PropertyTypes {
     "verticalOffset": number;
   };
   "massif::BaseMapView": {
+    /** (read-only) Returns the position the camera itself is above, which at a low tilt is nowhere near the focus - the focus is what the camera looks AT, kilometres out in front of it. This is the viewpoint: where a first-person camera stands, and where a top-down view has to be centred to come back to the same place. */
+    readonly "cameraPos": Position;
     /** (read-only) Returns true while a flyTo animation is running. */
     readonly "flightActive": boolean;
     /** (read-only) How far along a flyTo animation is, from 0 to 1, or -1 when none is running. It is the value the camera is actually at, so an app animating its own state alongside the move (a layer fading in, a mode switching over) reads it rather than running its own clock. */
@@ -1786,6 +1788,12 @@ export interface PropertyTypes {
     "simplifyTolerance": number;
     /** Returns the terrain options whose elevation manager the label stubs read. */
     "terrainOptions": Handle<"massif::TerrainOptions">;
+    /** Returns how long the flattening animation takes. */
+    "terrainOptions.autoFlattenDuration": number;
+    /** Returns the screen parallax below which the terrain renders flat. */
+    "terrainOptions.autoFlattenParallax": number;
+    /** Returns the tilt at or above which the terrain renders flat. */
+    "terrainOptions.autoFlattenTilt": number;
     /** Returns the terrain background color. */
     "terrainOptions.backgroundColor": number;
     /** Returns the billboard/label terrain occlusion state. */
@@ -1810,12 +1818,15 @@ export interface PropertyTypes {
     "terrainOptions.enabled": boolean;
     /** Returns the terrain height exaggeration factor. */
     "terrainOptions.exaggeration": number;
+    /** (read-only) Returns whether the terrain is rendering flat right now because auto-flattening asked for it. */
+    readonly "terrainOptions.flattened": boolean;
     /** Returns how many zoom levels below the camera a tile may coarsen to. */
     "terrainOptions.maxTileZoomCoarsening": number;
     /** Returns the maximum visible tile zoom offset, relative to the camera zoom level. */
     "terrainOptions.maxTileZoomOffset": number;
     /** Returns the terrain mesh resolution. */
     "terrainOptions.meshResolution": number;
+    /** Returns the minimum tile zoom level with 3D terrain. */
     "terrainOptions.minZoom": number;
     /** Returns the style layers that are kept out of the terrain drape bake. */
     "terrainOptions.noDrapeLayerFilter": string;
@@ -1827,7 +1838,7 @@ export interface PropertyTypes {
     "terrainOptions.textOcclusionOpacity": number;
     /** Returns whether cross-LOD tile edge stitching is enabled. */
     "terrainOptions.tileEdgeStitchingEnabled": boolean;
-    /** Returns the absolute view distance, in meters. */
+    /** Returns the minimum view distance, in meters. */
     "terrainOptions.viewDistance": number;
     /** Returns the factor applied to the view distance. */
     "terrainOptions.viewDistanceFactor": number;
@@ -4052,6 +4063,12 @@ export interface PropertyTypes {
     "skyOptions.type": "SKY_TYPE_GRADIENT" | "SKY_TYPE_ATMOSPHERE";
     /** Returns the terrain options. May be null if no terrain is configured. */
     "terrain": Handle<"massif::TerrainOptions">;
+    /** Returns how long the flattening animation takes. */
+    "terrain.autoFlattenDuration": number;
+    /** Returns the screen parallax below which the terrain renders flat. */
+    "terrain.autoFlattenParallax": number;
+    /** Returns the tilt at or above which the terrain renders flat. */
+    "terrain.autoFlattenTilt": number;
     /** Returns the terrain background color. */
     "terrain.backgroundColor": number;
     /** Returns the billboard/label terrain occlusion state. */
@@ -4076,12 +4093,15 @@ export interface PropertyTypes {
     "terrain.enabled": boolean;
     /** Returns the terrain height exaggeration factor. */
     "terrain.exaggeration": number;
+    /** (read-only) Returns whether the terrain is rendering flat right now because auto-flattening asked for it. */
+    readonly "terrain.flattened": boolean;
     /** Returns how many zoom levels below the camera a tile may coarsen to. */
     "terrain.maxTileZoomCoarsening": number;
     /** Returns the maximum visible tile zoom offset, relative to the camera zoom level. */
     "terrain.maxTileZoomOffset": number;
     /** Returns the terrain mesh resolution. */
     "terrain.meshResolution": number;
+    /** Returns the minimum tile zoom level with 3D terrain. */
     "terrain.minZoom": number;
     /** Returns the style layers that are kept out of the terrain drape bake. */
     "terrain.noDrapeLayerFilter": string;
@@ -4093,12 +4113,18 @@ export interface PropertyTypes {
     "terrain.textOcclusionOpacity": number;
     /** Returns whether cross-LOD tile edge stitching is enabled. */
     "terrain.tileEdgeStitchingEnabled": boolean;
-    /** Returns the absolute view distance, in meters. */
+    /** Returns the minimum view distance, in meters. */
     "terrain.viewDistance": number;
     /** Returns the factor applied to the view distance. */
     "terrain.viewDistanceFactor": number;
     /** Returns the terrain options. May be null if no terrain is configured. */
     "terrainOptions": Handle<"massif::TerrainOptions">;
+    /** Returns how long the flattening animation takes. */
+    "terrainOptions.autoFlattenDuration": number;
+    /** Returns the screen parallax below which the terrain renders flat. */
+    "terrainOptions.autoFlattenParallax": number;
+    /** Returns the tilt at or above which the terrain renders flat. */
+    "terrainOptions.autoFlattenTilt": number;
     /** Returns the terrain background color. */
     "terrainOptions.backgroundColor": number;
     /** Returns the billboard/label terrain occlusion state. */
@@ -4123,12 +4149,15 @@ export interface PropertyTypes {
     "terrainOptions.enabled": boolean;
     /** Returns the terrain height exaggeration factor. */
     "terrainOptions.exaggeration": number;
+    /** (read-only) Returns whether the terrain is rendering flat right now because auto-flattening asked for it. */
+    readonly "terrainOptions.flattened": boolean;
     /** Returns how many zoom levels below the camera a tile may coarsen to. */
     "terrainOptions.maxTileZoomCoarsening": number;
     /** Returns the maximum visible tile zoom offset, relative to the camera zoom level. */
     "terrainOptions.maxTileZoomOffset": number;
     /** Returns the terrain mesh resolution. */
     "terrainOptions.meshResolution": number;
+    /** Returns the minimum tile zoom level with 3D terrain. */
     "terrainOptions.minZoom": number;
     /** Returns the style layers that are kept out of the terrain drape bake. */
     "terrainOptions.noDrapeLayerFilter": string;
@@ -4140,7 +4169,7 @@ export interface PropertyTypes {
     "terrainOptions.textOcclusionOpacity": number;
     /** Returns whether cross-LOD tile edge stitching is enabled. */
     "terrainOptions.tileEdgeStitchingEnabled": boolean;
-    /** Returns the absolute view distance, in meters. */
+    /** Returns the minimum view distance, in meters. */
     "terrainOptions.viewDistance": number;
     /** Returns the factor applied to the view distance. */
     "terrainOptions.viewDistanceFactor": number;
@@ -5303,6 +5332,12 @@ export interface PropertyTypes {
     "color": number;
   };
   "massif::TerrainOptions": {
+    /** Returns how long the flattening animation takes. */
+    "autoFlattenDuration": number;
+    /** Returns the screen parallax below which the terrain renders flat. */
+    "autoFlattenParallax": number;
+    /** Returns the tilt at or above which the terrain renders flat. */
+    "autoFlattenTilt": number;
     /** Returns the terrain background color. */
     "backgroundColor": number;
     /** Returns the billboard/label terrain occlusion state. */
@@ -5327,12 +5362,15 @@ export interface PropertyTypes {
     "enabled": boolean;
     /** Returns the terrain height exaggeration factor. */
     "exaggeration": number;
+    /** (read-only) Returns whether the terrain is rendering flat right now because auto-flattening asked for it. */
+    readonly "flattened": boolean;
     /** Returns how many zoom levels below the camera a tile may coarsen to. */
     "maxTileZoomCoarsening": number;
     /** Returns the maximum visible tile zoom offset, relative to the camera zoom level. */
     "maxTileZoomOffset": number;
     /** Returns the terrain mesh resolution. */
     "meshResolution": number;
+    /** Returns the minimum tile zoom level with 3D terrain. */
     "minZoom": number;
     /** Returns the style layers that are kept out of the terrain drape bake. */
     "noDrapeLayerFilter": string;
@@ -5344,7 +5382,7 @@ export interface PropertyTypes {
     "textOcclusionOpacity": number;
     /** Returns whether cross-LOD tile edge stitching is enabled. */
     "tileEdgeStitchingEnabled": boolean;
-    /** Returns the absolute view distance, in meters. */
+    /** Returns the minimum view distance, in meters. */
     "viewDistance": number;
     /** Returns the factor applied to the view distance. */
     "viewDistanceFactor": number;
@@ -7267,6 +7305,12 @@ export interface OptionsSpec_sky {
 
 export interface OptionsSpec_terrain {
   type: "terrain";
+  /** Returns how long the flattening animation takes. */
+  autoFlattenDuration?: number;
+  /** Returns the screen parallax below which the terrain renders flat. */
+  autoFlattenParallax?: number;
+  /** Returns the tilt at or above which the terrain renders flat. */
+  autoFlattenTilt?: number;
   /** Returns the terrain background color. */
   backgroundColor?: number;
   /** Returns the billboard/label terrain occlusion state. */
@@ -7297,6 +7341,7 @@ export interface OptionsSpec_terrain {
   maxTileZoomOffset?: number;
   /** Returns the terrain mesh resolution. */
   meshResolution?: number;
+  /** Returns the minimum tile zoom level with 3D terrain. */
   minZoom?: number;
   /** Returns the style layers that are kept out of the terrain drape bake. */
   noDrapeLayerFilter?: string;
@@ -7309,7 +7354,7 @@ export interface OptionsSpec_terrain {
   textOcclusionOpacity?: number;
   /** Returns whether cross-LOD tile edge stitching is enabled. */
   tileEdgeStitchingEnabled?: boolean;
-  /** Returns the absolute view distance, in meters. */
+  /** Returns the minimum view distance, in meters. */
   viewDistance?: number;
   /** Returns the factor applied to the view distance. */
   viewDistanceFactor?: number;

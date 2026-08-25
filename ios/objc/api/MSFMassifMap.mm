@@ -109,6 +109,10 @@ static NSString * const kViewKind = @"view";
     return [_view getPos:@"focusPos"];
 }
 
+- (MSFPosition *)currentEyePosition {
+    return [_view getPos:@"cameraPos"];
+}
+
 - (float)currentZoom {
     return (float)[_view getDouble:@"zoom" defaultValue:0];
 }

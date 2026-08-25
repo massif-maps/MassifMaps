@@ -78,6 +78,8 @@ NS_SWIFT_NAME(MapCamera)
 - (instancetype)fitBounds:(MSFBounds *)bounds width:(float)width height:(float)height;
 
 @property (nonatomic, readonly, nullable) MSFPosition *currentPosition;
+/** Where the camera IS, not what it looks at - kilometres apart at a low tilt. */
+@property (nonatomic, readonly, nullable) MSFPosition *currentEyePosition;
 @property (nonatomic, readonly) float currentZoom;
 @property (nonatomic, readonly) float currentRotation;
 @property (nonatomic, readonly) float currentTilt;

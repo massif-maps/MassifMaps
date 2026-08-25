@@ -816,7 +816,10 @@ namespace massif {
             bool absoluteViewDistance = false;
             if (std::shared_ptr<TerrainOptions> terrainOptions = options.getTerrainOptions()) {
                 viewDistanceFactor = terrainOptions->getViewDistanceFactor();
-                absoluteViewDistance = terrainOptions->getViewDistance() > 0;
+                // Only when the absolute distance is the one that WON: it merely extends the rule
+                // now, and where the rule is longer this is the plain factor case.
+                double absolute = terrainOptions->getViewDistance() * static_cast<double>(Const::WORLD_SIZE) / Const::EARTH_CIRCUMFERENCE;
+                absoluteViewDistance = absolute > 0 && absolute >= viewDistance;
             }
             if (absoluteViewDistance || viewDistanceFactor > 1.0f) {
                 // The app has asked for MORE ground than tangram's rule gives. The far plane has
@@ -865,17 +868,13 @@ namespace massif {
         // cap is what bounds a near-horizontal view. The factor scales it: 1 is their rule, 0 falls
         // back to the ground-derived view distance.
         float factor = 1.0f;
+        double absoluteDistance = 0;
         if (std::shared_ptr<TerrainOptions> terrainOptions = options.getTerrainOptions()) {
-            // An absolute distance takes over completely: the point of it is that the ground
-            // reaches the same distance whatever the camera's height and pitch.
-            float absolute = terrainOptions->getViewDistance();
-            if (absolute > 0) {
-                return absolute * static_cast<double>(Const::WORLD_SIZE) / Const::EARTH_CIRCUMFERENCE;
-            }
+            absoluteDistance = terrainOptions->getViewDistance() * static_cast<double>(Const::WORLD_SIZE) / Const::EARTH_CIRCUMFERENCE;
             factor = terrainOptions->getViewDistanceFactor();
         }
         if (!(factor > 0.0f)) {
-            return 0;
+            return absoluteDistance;
         }
         // Tangram's m_pos.z is the camera's height above the ground PLANE, which for their camera
         // is also the zoom-derived distance to the focus. With 3D terrain and a free camera the two
@@ -897,7 +896,10 @@ namespace massif {
         // 127 tile widths at this zoom, in internal units.
         double worldTileSize = Const::WORLD_SIZE * std::pow(2.0, -_zoom);
         distance = std::min(distance, worldTileSize * (std::pow(2.0, MAX_TILE_LOD + 1) - 1.0));
-        return distance * factor;
+        // An absolute distance only ever EXTENDS the rule. Metres are zoom-independent while the
+        // rule scales with 2^-zoom, so letting metres win outright ends the ground in a disc well
+        // inside a zoomed-out screen (MassifMaps#156).
+        return std::max(distance * factor, absoluteDistance);
     }
     
     float ViewState::calculateMinZoom(const Options& options) const {

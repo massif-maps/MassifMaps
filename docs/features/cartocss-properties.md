@@ -12,7 +12,7 @@ sidebar_position: 20
 `CartoCSSMapnikTranslator.cpp`. Edit those, then re-run the script — never this page.
 :::
 
-207 properties across 12 symbolizers.
+205 properties across 12 symbolizers.
 
 ## Reading the table
 
@@ -25,7 +25,7 @@ sidebar_position: 20
 - Liveness is decided **per parameter across the whole style**, not per use: one baked use
   anywhere makes the parameter baked everywhere.
 
-Live-capable properties: 38 of 207.
+Live-capable properties: 38 of 205.
 
 ## `building`
 
@@ -131,10 +131,8 @@ Live-capable properties: 38 of 207.
 
 | CartoCSS | mapnik | Value | Default | Live | Baked |
 |---|---|---|---|---|---|
-| `point-allow-overlap` | `allow-overlap` | bool | `false` |  |  |
 | `point-comp-op` | `comp-op` | comp-op | `src-over` |  |  |
 | `point-file` | `file` | string |  |  |  |
-| `point-ignore-placement` | `ignore-placement` | bool | `false` |  |  |
 | `point-opacity` | `opacity` | float | `1.0` | yes |  |
 | `point-transform` | `transform` | transform |  |  |  |
 
@@ -293,12 +291,3 @@ Live-capable properties: 38 of 207.
 | `text-wrap-before` | `wrap-before` | bool | `false` |  |  |
 | `text-wrap-character` | `wrap-character` | string |  |  |  |
 | `text-wrap-width` | `wrap-width` | float | `0.0` |  |  |
-
-## Not resolved
-
-Names the translator maps but this generator could not tie to a bound property — a bug
-in either the map or the script, and worth looking at before trusting the table above.
-
-| CartoCSS | mapnik | Why |
-|---|---|---|
-| `point-placement-priority` | `placement-priority` | not bound by PointSymbolizer |

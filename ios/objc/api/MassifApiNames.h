@@ -79,6 +79,12 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyAtmosphereSunIntensity;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyAttachAnchorPointX;
 /** Returns the vertical attaching anchor point of the billoard. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyAttachAnchorPointY;
+/** Returns how long the flattening animation takes. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyAutoFlattenDuration;
+/** Returns the screen parallax below which the terrain renders flat. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyAutoFlattenParallax;
+/** Returns the tilt at or above which the terrain renders flat. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyAutoFlattenTilt;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyAutocomplete;
 /** Returns the azimuth of a direction-anchored object. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyAzimuth;
@@ -141,6 +147,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyCameraChanged;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyCameraClampDuration;
 /** Returns the camera terrain clearance: the minimum height the camera is kept above the terrain surface, in meters. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyCameraClearance;
+/** Returns the position the camera itself is above, which at a low tilt is nowhere near the focus - the focus is what the camera looks AT, kilometres out in front of it. This is the viewpoint: where a first-person camera stands, and where a top-down view has to be centred to come back to the same place. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyCameraPos;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyCapacity;
 /** Returns the CartoCSS string used for the style. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyCartoCSS;
@@ -303,6 +311,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyFeaturePosIndex;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyFieldOfViewY;
 /** Returns the string based search expression. If empty, then search expression is not used. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyFilterExpression;
+/** Returns whether the terrain is rendering flat right now because auto-flattening asked for it. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyFlattened;
 /** Returns true while a flyTo animation is running. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyFlightActive;
 /** How far along a flyTo animation is, from 0 to 1, or -1 when none is running. It is the value the camera is actually at, so an app animating its own state alongside the move (a layer fading in, a mode switching over) reads it rather than running its own clock. */
@@ -500,7 +510,7 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyMidrange;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyMin;
 /** Returns the minimum zoom at which contour geometry is generated. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyMinVisibleZoom;
-/** Returns the minimum zoom level supported by this data source. */
+/** Returns the minimum tile zoom level with 3D terrain. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyMinZoom;
 /** Returns the current minimum distance between clusters (in device-independent pixels). */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyMinimumClusterDistance;
@@ -906,7 +916,7 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyVerticalOffset;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyVerticalRangeEnd;
 /** Returns the altitude the fog starts fading out at. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyVerticalRangeStart;
-/** Returns the absolute view distance, in meters. */
+/** Returns the minimum view distance, in meters. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyViewDistance;
 /** Returns the factor applied to the view distance. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyViewDistanceFactor;

@@ -715,16 +715,6 @@
       "baked": true
     },
     {
-      "cartocss": "point-allow-overlap",
-      "mapnik": "allow-overlap",
-      "symbolizer": "point",
-      "kind": "bool",
-      "type": "BoolProperty",
-      "default": "false",
-      "live": false,
-      "baked": false
-    },
-    {
       "cartocss": "point-comp-op",
       "mapnik": "comp-op",
       "symbolizer": "point",
@@ -741,16 +731,6 @@
       "kind": "string",
       "type": "StringProperty",
       "default": "",
-      "live": false,
-      "baked": false
-    },
-    {
-      "cartocss": "point-ignore-placement",
-      "mapnik": "ignore-placement",
-      "symbolizer": "point",
-      "kind": "bool",
-      "type": "BoolProperty",
-      "default": "false",
       "live": false,
       "baked": false
     },

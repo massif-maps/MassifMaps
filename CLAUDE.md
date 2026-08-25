@@ -183,7 +183,9 @@ adb shell am start -n com.massifmaps.MassifDemo/.BenchActivity --es ui false --e
 - `--es demo terrain|project|composite` picks the configuration (default `composite`).
   Every knob in `applyTerrainConfig`/`applyCameraConfig`/`applySkyAndLightConfig` is an intent
   extra, so most experiments need no rebuild: `lon lat zoom tilt rotation`, `drape drapeLines
-  drapeResolution meshResolution exaggeration`, `viewDistance`,
+  drapeResolution meshResolution exaggeration`, `viewDistance viewDistanceMeters`,
+  `autoFlatten autoFlattenTilt autoFlattenMs` (render flat once the terrain's on-screen parallax
+  drops below N px, or past a tilt — `--es autoFlatten 0 --es autoFlattenTilt 0` is the A/B),
   `hs sat satZoom contour bld3d stitch`, `daycycle sunHour sunAzimuth sunAltitude shadow`,
   `textOcclusion` (labels behind buildings fade to this opacity, 1 = off) and
   `roadLabelOcclusion` (the same for the road-name style layer alone, a re-decode),

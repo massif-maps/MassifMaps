@@ -177,7 +177,7 @@ namespace massif {
             if (auto options = getOptions()) {
                 if (options->getRenderProjectionMode() == RenderProjectionMode::RENDER_PROJECTION_MODE_PLANAR) {
                     if (auto terrainOptions = options->getTerrainOptions()) {
-                        terrainPainterOrder = terrainOptions->isEnabled();
+                        terrainPainterOrder = terrainOptions->isActive();
                     }
                 }
             }

@@ -263,6 +263,12 @@ namespace massif {
 
         void handleRendererCaptureCallbacks();
 
+        // How far the highest ground in view moves on screen because it is displaced, in pixels.
+        double calculateTerrainParallax(const std::shared_ptr<TerrainOptions>& terrainOptions) const;
+        // Steps the auto-flatten ramp. Returns true when the terrain became active or inactive this
+        // frame, which is the only moment the visible tile set has to be recomputed.
+        bool updateTerrainFlatten(float deltaSeconds);
+
         static const int BILLBOARD_PLACEMENT_TASK_DELAY;
         static const int VT_LABEL_PLACEMENT_TASK_DELAY;
         // Zoom change that asks for a label placement pass of its own, and how long after the last

@@ -367,17 +367,22 @@ namespace massif {
             float viewDistanceFactor = 0.0f;
             float lodFactor = 0.0f;
             int coarsening = 0;
+            // Auto-flattening switches the terrain LOD and the overzoom targets off without touching
+            // the decoded tiles, so it belongs here and not in the cache check above.
+            bool terrainActive = false;
             if (auto options = getOptions()) {
                 lodFactor = options->getTileLODFactor();
                 if (auto terrainOptions = options->getTerrainOptions()) {
                     viewDistanceFactor = terrainOptions->getViewDistanceFactor();
                     coarsening = terrainOptions->getMaxTileZoomCoarsening();
+                    terrainActive = terrainOptions->isActive();
                 }
             }
-            if (_terrainViewDistanceFactor != viewDistanceFactor || _tileLODFactor != lodFactor || _terrainCoarsening != coarsening) {
+            if (_terrainViewDistanceFactor != viewDistanceFactor || _tileLODFactor != lodFactor || _terrainCoarsening != coarsening || _terrainActive != terrainActive) {
                 _terrainViewDistanceFactor = viewDistanceFactor;
                 _tileLODFactor = lodFactor;
                 _terrainCoarsening = coarsening;
+                _terrainActive = terrainActive;
                 _tileCullState.reset(); // re-cull with the new rule, tiles themselves stay valid
             }
         }
@@ -607,7 +612,7 @@ namespace massif {
         _terrainOverzoomTargets = false;
         if (auto options = getOptions()) {
             if (auto terrainOptions = options->getTerrainOptions()) {
-                if (terrainOptions->isEnabled()) {
+                if (terrainOptions->isActive()) {
                     // Terrain mode: allow target tiles BEYOND the data source maximum
                     // zoom (fed from ancestor tiles by the regular overzoom machinery).
                     // The tile surfaces are the terrain depth occluders and their
@@ -627,18 +632,19 @@ namespace massif {
             }
         }
 
-        // How far the map is drawn: tangram's view distance (ViewState::calculateViewDistance),
-        // unless the style pins an absolute one (and it may make it depend on the zoom). Looking
-        // along the ground the camera sees to the horizon, which is hundreds of tiles, almost all
-        // of them a few pixels tall and each carrying its own labels; this is what keeps that view
+        // How far the map is drawn: tangram's view distance (ViewState::calculateViewDistance), which
+        // the style may EXTEND with an absolute one in metres (and may make it depend on the zoom).
+        // Looking along the ground the camera sees to the horizon, which is hundreds of tiles, almost
+        // all of them a few pixels tall and each carrying its own labels; this is what keeps that view
         // affordable. Pair a short one with fog, or the ground simply ends.
         _maxVisibleDistance = 0;
         {
             StyleEnvironment env;
-            if (getStyleEnvironment(cullState->getViewState(), env) && env.terrainMaxVisibleDistance && *env.terrainMaxVisibleDistance > 0) {
-                _maxVisibleDistance = *env.terrainMaxVisibleDistance * static_cast<double>(Const::WORLD_SIZE) / Const::EARTH_CIRCUMFERENCE;
-            } else if (auto options = getOptions()) {
+            if (auto options = getOptions()) {
                 _maxVisibleDistance = cullState->getViewState().calculateViewDistance(*options);
+            }
+            if (getStyleEnvironment(cullState->getViewState(), env) && env.terrainMaxVisibleDistance && *env.terrainMaxVisibleDistance > 0) {
+                _maxVisibleDistance = std::max(_maxVisibleDistance, *env.terrainMaxVisibleDistance * static_cast<double>(Const::WORLD_SIZE) / Const::EARTH_CIRCUMFERENCE);
             }
         }
 
@@ -665,7 +671,7 @@ namespace massif {
         _lodElevationManager.reset();
         if (auto options = getOptions()) {
             if (auto terrainOptions = options->getTerrainOptions()) {
-                if (terrainOptions->isEnabled()) {
+                if (terrainOptions->isActive()) {
                     if (auto elevationManager = terrainOptions->getElevationManager()) {
                         _lodElevationManager = elevationManager;
                         const cglib::vec3<double>& focusPos = cullState->getViewState().getFocusPos();

@@ -719,7 +719,7 @@ namespace massif {
         if (auto options = _options.lock()) {
             if (options->getRenderProjectionMode() == RenderProjectionMode::RENDER_PROJECTION_MODE_PLANAR) {
                 if (auto terrainOptions = options->getTerrainOptions()) {
-                    if (terrainOptions->isEnabled()) {
+                    if (terrainOptions->isActive()) {
                         terrainMode = true;
                         // Tile geometry lies exactly on the terrain surfaces (same transformer and
                         // tesselation), so it only needs a small equality slack - the slope-scaled
@@ -1146,7 +1146,7 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
         if (auto options = _options.lock()) {
             if (options->getRenderProjectionMode() == RenderProjectionMode::RENDER_PROJECTION_MODE_PLANAR) {
                 if (auto terrainOptions = options->getTerrainOptions()) {
-                    if (terrainOptions->isEnabled()) {
+                    if (terrainOptions->isActive()) {
                         double t = 0;
                         if (terrainOptions->getElevationManager()->intersectRay(ray, t)) {
                             cglib::vec3<double> hitPos = ray(t);
@@ -1410,8 +1410,14 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
             return false; // safety check, should never happen
         }
 
+        // Null once the surface is gone - a frame still in flight has nothing to create into (#178).
+        std::shared_ptr<GLResourceManager> glResourceManager = mapRenderer->getGLResourceManager();
+        if (!glResourceManager) {
+            return false;
+        }
+
         Log::Debug("TileRenderer: Initializing renderer");
-        _vtRenderer = mapRenderer->getGLResourceManager()->create<VTRenderer>(_tileTransformer);
+        _vtRenderer = glResourceManager->create<VTRenderer>(_tileTransformer);
 
         if (std::shared_ptr<vt::GLTileRenderer> tileRenderer = _vtRenderer->getTileRenderer()) {
             tileRenderer->setVisibleTiles(_tiles);

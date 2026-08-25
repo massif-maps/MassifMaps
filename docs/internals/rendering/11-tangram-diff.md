@@ -147,6 +147,20 @@ and the two coincident walls z-fight into a stipple that reads as shadow acne. W
 range at tesselation instead. Mechanism, discriminating test and known gaps in
 [08-lighting-sky-fog.md](08-lighting-sky-fog.md#coincident-walls).
 
+### The view distance can be pinned in metres, and the terrain flattens itself
+
+Tangram has no absolute view distance at all: `view.cpp` computes `far` from `m_pos.z` alone, so
+their drawn ground is scale-invariant and a zoomed-out view can never end short. Ours can be pinned
+in metres (`TerrainOptions::ViewDistance`), which a panorama along the ground wants and a zoomed-out
+map does not — hence the `max()` in
+[04-terrain.md](04-terrain.md#an-absolute-view-distance-only-extends-the-rule).
+
+Their zoom-dependent lever is `View::setMaxPitchStops` — a max-pitch ramp over zoom, the mapbox
+arrangement, and unused by any scene in the tree. We took the other route and flatten the terrain
+instead of forbidding the camera, on a parallax criterion rather than a zoom one
+([04-terrain.md](04-terrain.md#auto-flattening-when-3d-stops-earning-its-cost)). Tangram has nothing
+equivalent: their terrain is on or off for the whole session.
+
 ## Measuring against them
 
 `PROF` is ours only and is **not comparable** to anything they report — it read 20–27 fps for a

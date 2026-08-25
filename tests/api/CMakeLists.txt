@@ -167,6 +167,7 @@ add_executable(api_tests
   MetaDataTest.cpp
   BagTest.cpp
   FogSkyTest.cpp
+  SpecKeyTest.cpp
   "${TEST_TABLE_DIR}/PropertyTable.inc"
   "${TEST_TABLE_DIR}/MethodDecls.inc"
   ${TEST_SDK_SOURCES})

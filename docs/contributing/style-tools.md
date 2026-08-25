@@ -164,6 +164,26 @@ Three traps the CartoCSS grammar sets, all of which the tests pin:
 - a namespaced field is quoted in a *predicate* (`['mapnik::geometry_type' = 2]`) and bare in an
   *expression* (`[view::zoom]`).
 
+## Contours: `--contour-schema div`
+
+MapTiler's contour layers say "every 5th or 10th line" (`nth_line`); tiles built with the gdal
+ladder say "this line is a multiple of N metres" (`div`). **Neither style states the other's unit** -
+the base interval is nowhere in the style - so the schemas cannot be mapped exactly, and only the
+major/minor split survives:
+
+```sh
+massif-style mapbox2css topo-v4.json out/ --contour-schema div --contour-major-div 100
+```
+
+```
+#contour[zoom >= 10][nth_line ...]   ->   #contour[zoom >= 10][div >= 100]
+#contour[zoom >= 11][!nth_line ...]  ->   #contour[zoom >= 11][div < 100]
+```
+
+Only the predicates change. Colours, widths and zoom ranges stay whatever the source style asked
+for, and every rewrite is counted in the coverage report — MapTiler's 5-vs-10 distinction collapsing
+to one threshold is a real loss and is reported as such.
+
 ## What could be better
 
 - **No browser build.** `NODERAWFS` rules it out. A `MEMFS` variant would give a web playground that
@@ -175,5 +195,10 @@ Three traps the CartoCSS grammar sets, all of which the tests pin:
 - **The sprite is not converted.** `icon-image` is dropped, so a symbol layer with an icon and no
   text produces nothing. Converting the sprite sheet into individual bitmaps plus `marker-file`
   paths is the next real chunk of `mapbox2css`.
-- **No real-style coverage numbers yet.** The report exists; running it over a set of public styles
-  is what should decide which SDK gap to close first.
+- **The sprite is the last big block.** On real styles the icon group (`icon-image` and its ~10
+  companions) is most of what is still dropped.
+- **A large style project compiles very slowly.** Three MapTiler styles compile in well under a
+  second; a 212-layer OpenMapTiles one had not finished after 25 minutes, natively as well as under
+  wasm. `buildMap` runs `compileLayer` over the full zoom range per layer, so something there is
+  super-linear in attachment count. It affects any app loading a large style project, not just this
+  tool.

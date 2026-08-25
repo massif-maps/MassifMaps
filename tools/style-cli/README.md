@@ -20,7 +20,13 @@ runtime, so what compiles here renders there. `mapbox2css` is TypeScript.
 ```sh
 massif-style css2xml --roundtrip project.json out.xml   # also parse the XML back and diff
 massif-style mapbox2css style.json out/ --validate      # compile the result before writing it
+massif-style mapbox2css topo.json out/ --contour-schema div   # nth_line -> div contour attributes
 ```
+
+`--contour-schema div` rewrites contour-layer `nth_line` tests onto a `div` (interval in metres)
+attribute, for tiles built with the gdal ladder rather than MapTiler's schema. Only the major/minor
+split survives — the base interval is not in the style — and `--contour-major-div` (default 100)
+sets the threshold. Colours and widths are untouched.
 
 `mapbox2css` skips MapBox properties CartoCSS has no equivalent for and prints a coverage report
 naming each one and how often it appeared. `--strict` turns any skipped property into a non-zero

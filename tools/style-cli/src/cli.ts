@@ -12,7 +12,12 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const USAGE = `Usage: massif-style <command> [options] [args]
 
   mapbox2css <style.json> <out-dir> [--validate] [--strict]
+                                    [--contour-schema div] [--contour-major-div N]
       translate a MapBox/MapLibre style to a CartoCSS project
+
+      --contour-schema div  rewrite contour-layer nth_line tests onto a div (interval in
+                            metres) attribute; --contour-major-div is the major threshold,
+                            default 100
 
   css2xml [--roundtrip] <project.json> <out.xml>
       compile a CartoCSS style project to mapnik XML
@@ -23,23 +28,57 @@ function loadPropertyTable(): PropertyTable {
     return JSON.parse(readFileSync(join(HERE, 'generated', 'properties.json'), 'utf8')) as PropertyTable;
 }
 
+/** `--flag`, `--key value` and `--key=value`, which is as much as this CLI needs. */
+function parseFlags(args: string[]): { flags: Map<string, string>; positional: string[] } {
+    const flags = new Map<string, string>();
+    const positional: string[] = [];
+    for (let i = 0; i < args.length; i++) {
+        const arg = args[i];
+        if (!arg.startsWith('--')) {
+            positional.push(arg);
+            continue;
+        }
+        const eq = arg.indexOf('=');
+        if (eq !== -1) {
+            flags.set(arg.slice(2, eq), arg.slice(eq + 1));
+        } else if (i + 1 < args.length && !args[i + 1].startsWith('--') && VALUE_FLAGS.has(arg.slice(2))) {
+            flags.set(arg.slice(2), args[++i]);
+        } else {
+            flags.set(arg.slice(2), '');
+        }
+    }
+    return { flags, positional };
+}
+
+const VALUE_FLAGS = new Set(['contour-schema', 'contour-major-div']);
+
 async function mapbox2css(args: string[]): Promise<number> {
-    const flags = new Set(args.filter((a) => a.startsWith('--')));
-    const [input, outDir] = args.filter((a) => !a.startsWith('--'));
+    const { flags, positional } = parseFlags(args);
+    const [input, outDir] = positional;
     if (!input || !outDir) {
         process.stderr.write(USAGE);
         return 2;
     }
 
+    const contourSchema = flags.get('contour-schema');
+    if (contourSchema !== undefined && contourSchema !== 'div') {
+        process.stderr.write(`Unknown --contour-schema "${contourSchema}"; only "div" is supported.\n`);
+        return 2;
+    }
+
     const style = JSON.parse(readFileSync(input, 'utf8')) as MapboxStyle;
-    const { mss, project, coverage } = convert(style, loadPropertyTable());
+    const { mss, project, coverage } = convert(style, loadPropertyTable(), {
+        contour: contourSchema === 'div'
+            ? { schema: 'div', majorDiv: Number(flags.get('contour-major-div') ?? 100) }
+            : undefined,
+    });
 
     mkdirSync(outDir, { recursive: true });
     writeFileSync(join(outDir, 'style.mss'), mss);
     writeFileSync(join(outDir, 'project.json'), project);
     process.stdout.write(`${coverage.report()}\n`);
 
-    if (flags.has('--validate')) {
+    if (flags.has('validate')) {
         if (!wasmAvailable()) {
             process.stderr.write('--validate needs massif-style.mjs; skipping validation.\n');
             return 1;
@@ -52,7 +91,7 @@ async function mapbox2css(args: string[]): Promise<number> {
         process.stdout.write('Validated: the generated CartoCSS compiles.\n');
     }
 
-    if (flags.has('--strict') && coverage.droppedCount > 0) {
+    if (flags.has('strict') && coverage.droppedCount > 0) {
         process.stderr.write(`--strict: ${coverage.droppedCount} properties dropped.\n`);
         return 1;
     }

@@ -1,3 +1,4 @@
+import { type ContourOptions, isContourLayer, rewriteContourFilter } from './contour.js';
 import { Coverage } from './coverage.js';
 import { Untranslatable, expandTokens, translateExpression } from './expression.js';
 import { translateFilter, zoomPredicates } from './filter.js';
@@ -29,7 +30,11 @@ function attachmentName(layerId: string): string {
     return /^[0-9]/.test(cleaned) ? `_${cleaned}` : cleaned;
 }
 
-export function convert(style: MapboxStyle, table: PropertyTable): ConvertResult {
+export interface ConvertOptions {
+    contour?: ContourOptions;
+}
+
+export function convert(style: MapboxStyle, table: PropertyTable, options: ConvertOptions = {}): ConvertResult {
     const coverage = new Coverage();
     const allowed = new Map<string, CartoProperty>(table.properties.map((p) => [p.cartocss, p]));
     const layers = style.layers ?? [];
@@ -65,9 +70,17 @@ export function convert(style: MapboxStyle, table: PropertyTable): ConvertResult
         try {
             // `selector = *predicate` with a skipper, so bracketed tests can abut the layer name -
             // but `when(...)` is a bare word and would glue onto it (`#aviationwhen(...)`).
+            let filter = layer.filter ?? null;
+            if (options.contour && isContourLayer(layer)) {
+                filter = rewriteContourFilter(filter, options.contour, () =>
+                    coverage.approximate(
+                        `contour nth_line test rewritten as div >= ${options.contour!.majorDiv}: ` +
+                        'only the major/minor split survives, the base interval is not in the style',
+                    ));
+            }
             const predicates = [
                 ...zoomPredicates(layer.minzoom, layer.maxzoom),
-                ...translateFilter(layer.filter ?? null),
+                ...translateFilter(filter),
             ].map((p) => (p.startsWith('when(') ? ` ${p}` : p));
             selector = `#${sourceLayer}${predicates.join('')}::${attachmentName(layer.id)}`;
         } catch (error) {

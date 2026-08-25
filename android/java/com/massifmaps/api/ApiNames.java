@@ -79,6 +79,12 @@ public final class ApiNames {
     public static final MassifObject.Key<Double> ATTACH_ANCHOR_POINT_X = MassifObject.key("attachAnchorPointX");
     /** Returns the vertical attaching anchor point of the billoard. */
     public static final MassifObject.Key<Double> ATTACH_ANCHOR_POINT_Y = MassifObject.key("attachAnchorPointY");
+    /** Returns how long the flattening animation takes. */
+    public static final MassifObject.Key<Double> AUTO_FLATTEN_DURATION = MassifObject.key("autoFlattenDuration");
+    /** Returns the screen parallax below which the terrain renders flat. */
+    public static final MassifObject.Key<Double> AUTO_FLATTEN_PARALLAX = MassifObject.key("autoFlattenParallax");
+    /** Returns the tilt at or above which the terrain renders flat. */
+    public static final MassifObject.Key<Double> AUTO_FLATTEN_TILT = MassifObject.key("autoFlattenTilt");
     public static final MassifObject.Key<Boolean> AUTOCOMPLETE = MassifObject.key("autocomplete");
     /** Returns the azimuth of a direction-anchored object. */
     public static final MassifObject.Key<Double> AZIMUTH = MassifObject.key("azimuth");
@@ -303,6 +309,8 @@ public final class ApiNames {
     public static final MassifObject.Key<Long> FIELD_OF_VIEW_Y = MassifObject.key("fieldOfViewY");
     /** Returns the string based search expression. If empty, then search expression is not used. */
     public static final MassifObject.Key<String> FILTER_EXPRESSION = MassifObject.key("filterExpression");
+    /** Returns whether the terrain is rendering flat right now because auto-flattening asked for it. */
+    public static final MassifObject.Key<Boolean> FLATTENED = MassifObject.key("flattened");
     /** Returns true while a flyTo animation is running. */
     public static final MassifObject.Key<Boolean> FLIGHT_ACTIVE = MassifObject.key("flightActive");
     /** How far along a flyTo animation is, from 0 to 1, or -1 when none is running. It is the value the camera is actually at, so an app animating its own state alongside the move (a layer fading in, a mode switching over) reads it rather than running its own clock. */
@@ -500,7 +508,7 @@ public final class ApiNames {
     public static final MassifObject.Key<String> MIN = MassifObject.key("min");
     /** Returns the minimum zoom at which contour geometry is generated. */
     public static final MassifObject.Key<Long> MIN_VISIBLE_ZOOM = MassifObject.key("minVisibleZoom");
-    /** Returns the minimum zoom level supported by this data source. */
+    /** Returns the minimum tile zoom level with 3D terrain. */
     public static final MassifObject.Key<Long> MIN_ZOOM = MassifObject.key("minZoom");
     /** Returns the current minimum distance between clusters (in device-independent pixels). */
     public static final MassifObject.Key<Double> MINIMUM_CLUSTER_DISTANCE = MassifObject.key("minimumClusterDistance");
@@ -906,7 +914,7 @@ public final class ApiNames {
     public static final MassifObject.Key<Double> VERTICAL_RANGE_END = MassifObject.key("verticalRangeEnd");
     /** Returns the altitude the fog starts fading out at. */
     public static final MassifObject.Key<Double> VERTICAL_RANGE_START = MassifObject.key("verticalRangeStart");
-    /** Returns the absolute view distance, in meters. */
+    /** Returns the minimum view distance, in meters. */
     public static final MassifObject.Key<Double> VIEW_DISTANCE = MassifObject.key("viewDistance");
     /** Returns the factor applied to the view distance. */
     public static final MassifObject.Key<Double> VIEW_DISTANCE_FACTOR = MassifObject.key("viewDistanceFactor");

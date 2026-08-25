@@ -555,6 +555,7 @@ class ProjectionSurface;
         float _terrainViewDistanceFactor = 0.0f; // last TerrainOptions view distance factor a cull ran with
         float _tileLODFactor = 0.0f; // last Options tile LOD factor a cull ran with
         int _terrainCoarsening = -1; // last TerrainOptions coarsening bound a cull ran with
+        bool _terrainActive = false; // last TerrainOptions active state a cull ran with
     };
     
 }

@@ -177,6 +177,11 @@ namespace massif {
          * the latitude scale at the given internal y coordinate.
          */
         void getDisplayHeightRange(double internalY, double& minZ, double& maxZ) const;
+        /**
+         * The same range at an explicit exaggeration rather than the current one. The auto-flatten
+         * criterion needs the range the terrain WOULD have, which the flatten ramp has scaled away.
+         */
+        void getDisplayHeightRange(double internalY, float exaggeration, double& minZ, double& maxZ) const;
 
         virtual double getDisplayHeight(double internalX, double internalY) const override;
         virtual bool intersectRay(const cglib::ray3<double>& ray, double& t) const override;

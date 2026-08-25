@@ -1067,10 +1067,16 @@ public final class DemoPanel {
         slider(context, "view distance (x tangram, 0=all)", 0, 4, DemoConfig.VIEW_DISTANCE_FACTOR, true, new FloatSetting() {
             public void set(float value) { DemoConfig.VIEW_DISTANCE_FACTOR = value < 0.05f ? 0 : value; demo.terrainOptions.setViewDistanceFactor(DemoConfig.VIEW_DISTANCE_FACTOR); }
         });
-        // Absolute distance wins over the factor above: the ground reaches the same distance
+        // Absolute distance only EXTENDS the factor above: the ground reaches at least this far
         // whatever the camera's height and pitch, which is what a view along the ground wants.
         slider(context, "view distance (km, 0=factor)", 0, 300, DemoConfig.VIEW_DISTANCE_METERS / 1000.0f, true, new FloatSetting() {
             public void set(float value) { DemoConfig.VIEW_DISTANCE_METERS = value < 0.5f ? 0 : value * 1000.0f; demo.terrainOptions.setViewDistance(DemoConfig.VIEW_DISTANCE_METERS); }
+        });
+        slider(context, "auto-flatten (px parallax, 0=off)", 0, 20, DemoConfig.AUTO_FLATTEN_PARALLAX, true, new FloatSetting() {
+            public void set(float value) { DemoConfig.AUTO_FLATTEN_PARALLAX = value; demo.terrainOptions.setAutoFlattenParallax(value); }
+        });
+        slider(context, "auto-flatten tilt (deg, 0=off)", 0, 90, DemoConfig.AUTO_FLATTEN_TILT, true, new FloatSetting() {
+            public void set(float value) { DemoConfig.AUTO_FLATTEN_TILT = value; demo.terrainOptions.setAutoFlattenTilt(value); }
         });
     }
 

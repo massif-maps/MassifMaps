@@ -200,6 +200,13 @@ public final class DemoConfig {
 
     public static boolean TERRAIN_ENABLED = true;
     public static float TERRAIN_EXAGGERATION = 1.0f;
+    /** Auto-flatten: render flat once the terrain's on-screen parallax drops below this many
+     *  pixels, and once the tilt reaches AUTO_FLATTEN_TILT. Same values as the SDK defaults, so
+     *  '--es autoFlatten 0 --es autoFlattenTilt 0' is the A/B.
+     *  '--es autoFlatten 2 --es autoFlattenTilt 88 --es autoFlattenMs 300'. */
+    public static float AUTO_FLATTEN_PARALLAX = 2.0f;
+    public static float AUTO_FLATTEN_TILT = 88.0f;
+    public static long AUTO_FLATTEN_MS = 300;
     /** Terrain toggle 'expand' animation, ms (0 = pop, the old behaviour). */
     public static long TERRAIN_ANIM_MS = 700;
     /** How long the expand animation waits for terrain-decoded tiles before ramping anyway, ms. */
@@ -229,6 +236,10 @@ public final class DemoConfig {
      *  explicitly, so the extrusions' contact shadow baked into the drape is more than a texel
      *  wide: at 512 a drape texel is ~1.7 m on the ground and the shadow reaches under 1 m. */
     public static int TERRAIN_DRAPE_RESOLUTION = 1024;
+    /** Style layers kept OUT of the drape bake and drawn live instead. They land on top of every
+     *  draped layer whatever the style order, which is why an empty filter is the A/B for the
+     *  contours-over-roads ordering. '--es noDrape ""' drapes everything. */
+    public static String TERRAIN_NO_DRAPE_FILTER = "^contour|maneuver.*";
     /** Stitch neighbouring DEM tiles so ridges do not appear at tile borders. */
     public static boolean TERRAIN_TILE_EDGE_STITCHING = true;
     public static boolean TERRAIN_SEAMLESS_TILE_EDGES = true;
@@ -1128,11 +1139,15 @@ public final class DemoConfig {
         TERRAIN_ENABLED = DemoCfg.cfgBool("terrain", TERRAIN_ENABLED);
         TERRAIN_CAMERA_CLEARANCE = DemoCfg.cfgFloat("clearance", TERRAIN_CAMERA_CLEARANCE);
         TERRAIN_EXAGGERATION = DemoCfg.cfgFloat("exaggeration", TERRAIN_EXAGGERATION);
+        AUTO_FLATTEN_PARALLAX = DemoCfg.cfgFloat("autoFlatten", AUTO_FLATTEN_PARALLAX);
+        AUTO_FLATTEN_TILT = DemoCfg.cfgFloat("autoFlattenTilt", AUTO_FLATTEN_TILT);
+        AUTO_FLATTEN_MS = (long) DemoCfg.cfgFloat("autoFlattenMs", AUTO_FLATTEN_MS);
         TERRAIN_ANIM_MS = (long) DemoCfg.cfgFloat("terrainAnimMs", TERRAIN_ANIM_MS);
         TERRAIN_MESH_RESOLUTION = DemoCfg.cfgInt("meshResolution", TERRAIN_MESH_RESOLUTION);
         TERRAIN_DRAPE_FILLS = DemoCfg.cfgBool("drape", TERRAIN_DRAPE_FILLS);
         TERRAIN_DRAPE_LINES = DemoCfg.cfgBool("drapeLines", TERRAIN_DRAPE_LINES);
         TERRAIN_DRAPE_RESOLUTION = DemoCfg.cfgInt("drapeResolution", TERRAIN_DRAPE_RESOLUTION);
+        TERRAIN_NO_DRAPE_FILTER = DemoCfg.cfgStr("noDrape", TERRAIN_NO_DRAPE_FILTER);
         TERRAIN_TILE_EDGE_STITCHING = DemoCfg.cfgBool("stitch", TERRAIN_TILE_EDGE_STITCHING);
         TERRAIN_SEAMLESS_TILE_EDGES = DemoCfg.cfgBool("seamlessEdges", TERRAIN_SEAMLESS_TILE_EDGES);
         TERRAIN_ELEVATION_PREFETCH = DemoCfg.cfgBool("prefetch", TERRAIN_ELEVATION_PREFETCH);

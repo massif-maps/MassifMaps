@@ -62,6 +62,7 @@ void testBagBatch();
 void testSetAll();
 void testAliases();
 void testWriteProjection();
+void testAutoFlatten();
 
 namespace {
 
@@ -414,6 +415,7 @@ int main() {
     testSetAll();
     testAliases();
     testWriteProjection();
+    testAutoFlatten();
 
     std::printf("\n%d failure(s)\n", failures);
     return failures ? 1 : 0;

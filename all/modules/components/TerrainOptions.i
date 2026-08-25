@@ -28,6 +28,12 @@
 !spec(massif::TerrainOptions, options, terrain, alias(source, dataSource))
 
 %attribute(massif::TerrainOptions, bool, Enabled, isEnabled, setEnabled)
+// Auto-flattening: the terrain renders flat once 3D stops earning its cost, and the state the app
+// asked for with Enabled is remembered. Read-only Flattened is what it is doing right now.
+%attribute(massif::TerrainOptions, bool, Flattened, isFlattened)
+%attribute(massif::TerrainOptions, float, AutoFlattenParallax, getAutoFlattenParallax, setAutoFlattenParallax)
+%attribute(massif::TerrainOptions, float, AutoFlattenTilt, getAutoFlattenTilt, setAutoFlattenTilt)
+%attribute(massif::TerrainOptions, float, AutoFlattenDuration, getAutoFlattenDuration, setAutoFlattenDuration)
 %attribute(massif::TerrainOptions, float, Exaggeration, getExaggeration, setExaggeration)
 %attribute(massif::TerrainOptions, bool, SeamlessTileEdgesEnabled, isSeamlessTileEdgesEnabled, setSeamlessTileEdgesEnabled)
 %attribute(massif::TerrainOptions, bool, ElevationPrefetchEnabled, isElevationPrefetchEnabled, setElevationPrefetchEnabled)
@@ -61,6 +67,9 @@
 %ignore massif::TerrainOptions::OnChangeListener;
 %ignore massif::TerrainOptions::registerOnChangeListener;
 %ignore massif::TerrainOptions::unregisterOnChangeListener;
+%ignore massif::TerrainOptions::isActive;
+%ignore massif::TerrainOptions::getFlattenRatio;
+%ignore massif::TerrainOptions::setFlattenRatio;
 %ignore massif::TerrainOptions::getElevationManager;
 %ignore massif::TerrainOptions::getElevationCacheCapacity;
 %ignore massif::TerrainOptions::setElevationCacheCapacity;

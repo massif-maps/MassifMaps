@@ -168,6 +168,8 @@ add_executable(api_tests
   BagTest.cpp
   FogSkyTest.cpp
   SpecKeyTest.cpp
+  # Header-only: AutoFlatten.h has no dependencies at all, so this costs the link nothing.
+  AutoFlattenTest.cpp
   "${TEST_TABLE_DIR}/PropertyTable.inc"
   "${TEST_TABLE_DIR}/MethodDecls.inc"
   ${TEST_SDK_SOURCES})

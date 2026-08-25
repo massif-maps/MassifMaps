@@ -129,7 +129,9 @@ resamples through metres instead of copying texels, so the seam is continuous.
 | `TileEdgeStitchingEnabled` | `true` | Stitch the mesh across tiles of different levels. |
 | `BackgroundColor` | transparent | Fill color drawn before tiles (works even with zero tile layers). |
 | `BackgroundBitmapEnabled` | `false` | Drape `Options.getBackgroundBitmap()` over the terrain (world-anchored, repeats). |
-| `ViewDistanceFactor` / `ViewDistance` | `1.0` / `0` | Where the ground ends; `ViewDistance` overrides in metres. Pair it with fog ([FogOptions](/docs/features/sky-sun-shadows)). |
+| `ViewDistanceFactor` / `ViewDistance` | `1.0` / `0` | Where the ground ends; `ViewDistance` is a **minimum** in metres and only extends the factor rule. Pair it with fog ([FogOptions](/docs/features/sky-sun-shadows)). |
+| `AutoFlattenParallax` / `AutoFlattenTilt` | `2` / `88` | Render flat once 3D stops earning its cost — see below. `0` disables each half. |
+| `AutoFlattenDuration` / `Flattened` | `0.3` / — | Length of the flattening animation, and a read-only "is it flat right now". |
 | `MaxTileZoomCoarsening` | `3` | How much coarser far tiles may get. |
 | `BillboardOcclusionEnabled` / `…Tolerance` | `true` / `0.02` | Hide markers and popups behind a ridge. |
 | `SurfaceShaderSource` | — | Replace the terrain surface shader ([post-processing](/docs/features/post-processing)). |
@@ -140,6 +142,23 @@ Recommended configuration:
 ```java
 terrainOptions.setMeshResolution(64);   // the defaults already drape fills and lines
 ```
+
+## Rendering flat when 3D buys nothing
+
+Zoomed far out, the displacement is smaller than a pixel; straight down, it shows nothing. Both
+still pay for the drape pass, the terrain draw and the elevation fetches, so the map handles it
+itself — **on by default**, at 2 px and 88°. Change or disable either half:
+
+```java
+terrainOptions.setAutoFlattenParallax(4);   // flatten sooner
+terrainOptions.setAutoFlattenTilt(0);       // never flatten on tilt alone
+```
+
+The threshold is **screen parallax, not a zoom level**: how far the highest ground in view moves
+because it is displaced. It therefore adapts to how mountainous the data is and to your
+`Exaggeration` — over the Alps, 2 px lands around zoom 8, and flat country flattens earlier. The
+transition is animated (`AutoFlattenDuration`), `isFlattened()` tells you what the map is doing, and
+`isEnabled()` keeps returning whatever you set, so your own terrain toggle still works.
 
 ## Querying elevation
 

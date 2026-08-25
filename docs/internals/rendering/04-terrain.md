@@ -422,6 +422,73 @@ Their far plane (`2·height/cos(pitch + fovy/2)`) is available as
 `TerrainOptions::ViewDistanceFactor` but changes nothing at the cameras tested: the ground-derived far is
 already inside the bound it gives.
 
+### An absolute view distance only extends the rule
+
+`TerrainOptions::ViewDistance` pins the distance in **metres** instead, and
+`StyleEnvironment::terrainMaxVisibleDistance` (`terrain-max-visible-distance`) does the same from a
+style. Both used to take over `ViewState::calculateViewDistance` outright, and that is wrong in one
+direction: tangram's rule is **scale-invariant** — `cameraDistance ∝ 2⁻ᶻᵒᵒᵐ`, so the drawn ground
+keeps the same size on screen at every zoom — while metres do not. Zoom out and the fixed distance
+becomes the binding one, and the ground ends in a disc well inside the screen.
+
+Derived, 1080×2400, fovy 60, tilt 90, z8: camera height ≈ 1270 km, the factor rule ≈ 2500 km,
+against a 170 km pin — 15× short. Both are now a `max()`: the absolute distance is a **minimum**,
+which is what "keep the panorama as the camera descends into it" actually asks for, and it never
+shortens the zoomed-out view ([#156](https://github.com/massif-maps/MassifMaps/issues/156)). The far
+plane still follows the absolute distance only when the absolute one won; where the rule is longer
+this is the plain factor case and the depth budget is untouched.
+
+## Auto-flattening: when 3D stops earning its cost
+
+Zoomed far out the displacement is sub-pixel, and straight down it shows nothing — but the drape
+RTT, the terrain passes and the elevation fetches are all still paid. `TerrainOptions` flattens the
+map itself in those two cases and remembers what the app asked for, so `Enabled` still reads back
+what was set and `Flattened` reads what is happening.
+
+The criterion is **parallax in screen pixels**, not a zoom threshold — a fixed zoom is wrong for
+flat country or for a high exaggeration:
+
+```
+parallax = halfScreenDiagonal · heightRange · exaggeration / cameraDistance
+```
+
+Derived over the Alps (4 km range, 1300 px half-diagonal): **z8 → ~4 px, z13 → ~130 px**.
+`AutoFlattenParallax` is the threshold, `AutoFlattenTilt` the separate top-down one (at z13 the
+parallax is still large and 3D still buys nothing). They default to **2 px and 88°** — device-checked
+on the Crosscall, where below 2 px the displacement is under the antialias ramp — and 0 disables
+either half. The rule, its
+hysteresis and the ramp are `all/native/terrain/AutoFlatten.h`, kept free of the renderer so
+`tests/api/AutoFlattenTest.cpp` can check them on the host.
+
+**Hysteresis is not optional**: 3D returns at 1.5× the parallax threshold and 2° below the tilt one.
+Without it a camera parked on a threshold flips modes every frame.
+
+Two levers, and the order between them is the whole design:
+
+| | What it does | Cost |
+|---|---|---|
+| **ramp** `FlattenRatio` 0→1 | scales the heights the `ElevationManager` hands out | none — `setExaggeration` bumps only the *global* version, so heights are GPU-side and nothing re-decodes |
+| **flip** `isActive()` false | drops the terrain passes, the drape, the terrain LOD, the elevation fetches | a re-cull, nothing more |
+
+`MapRenderer::updateTerrainFlatten` runs the ramp first and flips only at ratio 1 — by which point
+the two modes render identically, so the flip has nothing to show. What makes the flip cheap is that
+**`isEnabled()` and `isActive()` are different questions**: everything that decides how a tile is
+*decoded* (`TileLayer::loadData`'s cache compare, `resetTileTransformer`, the fetch task's elevation
+wait) keeps reading `isEnabled()`, so the transformer and every decoded tile stay put. Only the
+render and cull consumers read `isActive()`. Terrain-decoded tiles render correctly flat: the
+displacement is GPU-side and the only decode-time difference is subdivision density — extra
+triangles, harmless.
+
+Two consequences worth knowing:
+
+- The ramp bumps the elevation version every frame, so `TileRenderer`'s `scaleOnly` path re-anchors
+  labels on each of them, and `VectorLayer`'s terrain projection surface is rebuilt (debounced by
+  `ELEVATION_REFRESH_DELAY`). Unmeasured; if a ramp ever stutters, this is where to look.
+- `HillshadeRasterTileLayer::isTerrainPaintActive` reads `isActive()`, so flattening drops the layer
+  back to its own DEM tile set rather than the terrain's elevation texture. That is a tile-set swap
+  on the flip — the alternative is the hillshade vanishing, so it is the right trade, not an
+  oversight.
+
 ## The camera against the terrain
 
 `TerrainOptions::CameraClearance` keeps the camera a height above the ground under it. It is a

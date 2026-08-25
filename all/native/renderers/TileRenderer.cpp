@@ -719,7 +719,7 @@ namespace massif {
         if (auto options = _options.lock()) {
             if (options->getRenderProjectionMode() == RenderProjectionMode::RENDER_PROJECTION_MODE_PLANAR) {
                 if (auto terrainOptions = options->getTerrainOptions()) {
-                    if (terrainOptions->isEnabled()) {
+                    if (terrainOptions->isActive()) {
                         terrainMode = true;
                         // Tile geometry lies exactly on the terrain surfaces (same transformer and
                         // tesselation), so it only needs a small equality slack - the slope-scaled
@@ -1146,7 +1146,7 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
         if (auto options = _options.lock()) {
             if (options->getRenderProjectionMode() == RenderProjectionMode::RENDER_PROJECTION_MODE_PLANAR) {
                 if (auto terrainOptions = options->getTerrainOptions()) {
-                    if (terrainOptions->isEnabled()) {
+                    if (terrainOptions->isActive()) {
                         double t = 0;
                         if (terrainOptions->getElevationManager()->intersectRay(ray, t)) {
                             cglib::vec3<double> hitPos = ray(t);

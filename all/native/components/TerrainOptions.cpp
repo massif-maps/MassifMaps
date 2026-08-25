@@ -18,6 +18,13 @@ namespace massif {
         _dataSource(dataSource),
         _elevationManager(dataSource ? std::make_shared<ElevationManager>(dataSource, elevationDecoder) : std::shared_ptr<ElevationManager>()),
         _enabled(true),
+        _exaggeration(1.0f),
+        _flattenRatio(0.0f),
+        // 2 px and 88 degrees, device-checked on the Crosscall: below 2 px the displacement is
+        // under the antialias ramp, and 88 is far enough past a usable oblique view.
+        _autoFlattenParallax(2.0f),
+        _autoFlattenTilt(88.0f),
+        _autoFlattenDuration(0.3f),
         // 64 triangles per tile side, which is what tangram uses (RasterStyle::build) and what every
         // bench here was run at. 32 leaves draped content visibly floating over the ground; 128
         // measured 8.5 fps against 15.2 at 64 on the Crosscall.
@@ -79,13 +86,65 @@ namespace massif {
         }
     }
 
+    bool TerrainOptions::isActive() const {
+        return _enabled.load() && !isFlattened();
+    }
+
+    bool TerrainOptions::isFlattened() const {
+        return _flattenRatio.load() >= 1.0f;
+    }
+
+    float TerrainOptions::getFlattenRatio() const {
+        return _flattenRatio.load();
+    }
+
+    void TerrainOptions::setFlattenRatio(float ratio) {
+        float value = std::min(1.0f, std::max(0.0f, ratio));
+        if (_flattenRatio.exchange(value) != value) {
+            _elevationManager->setExaggeration(_exaggeration.load() * (1.0f - value));
+        }
+    }
+
+    float TerrainOptions::getAutoFlattenParallax() const {
+        return _autoFlattenParallax.load();
+    }
+
+    void TerrainOptions::setAutoFlattenParallax(float pixels) {
+        float value = std::max(0.0f, pixels);
+        if (_autoFlattenParallax.exchange(value) != value) {
+            notifyOptionChanged("AutoFlattenParallax");
+        }
+    }
+
+    float TerrainOptions::getAutoFlattenTilt() const {
+        return _autoFlattenTilt.load();
+    }
+
+    void TerrainOptions::setAutoFlattenTilt(float tilt) {
+        float value = std::min(90.0f, std::max(0.0f, tilt));
+        if (_autoFlattenTilt.exchange(value) != value) {
+            notifyOptionChanged("AutoFlattenTilt");
+        }
+    }
+
+    float TerrainOptions::getAutoFlattenDuration() const {
+        return _autoFlattenDuration.load();
+    }
+
+    void TerrainOptions::setAutoFlattenDuration(float duration) {
+        float value = std::max(0.0f, duration);
+        if (_autoFlattenDuration.exchange(value) != value) {
+            notifyOptionChanged("AutoFlattenDuration");
+        }
+    }
+
     float TerrainOptions::getExaggeration() const {
-        return _elevationManager->getExaggeration();
+        return _exaggeration.load();
     }
 
     void TerrainOptions::setExaggeration(float exaggeration) {
-        if (_elevationManager->getExaggeration() != exaggeration) {
-            _elevationManager->setExaggeration(exaggeration);
+        if (_exaggeration.exchange(exaggeration) != exaggeration) {
+            _elevationManager->setExaggeration(exaggeration * (1.0f - _flattenRatio.load()));
             notifyOptionChanged("Exaggeration");
         }
     }

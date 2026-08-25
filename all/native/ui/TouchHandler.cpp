@@ -985,7 +985,7 @@ namespace massif {
             return 0;
         }
         std::shared_ptr<TerrainOptions> terrainOptions = _options->getTerrainOptions();
-        if (!terrainOptions || !terrainOptions->isEnabled()) {
+        if (!terrainOptions || !terrainOptions->isActive()) {
             return 0;
         }
 

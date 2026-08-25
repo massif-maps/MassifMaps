@@ -64,6 +64,7 @@ void testAliases();
 void testWriteProjection();
 void testAutoFlatten();
 void testDrapeStackCuts();
+void testFlattenSwitch();
 
 namespace {
 
@@ -418,6 +419,7 @@ int main() {
     testWriteProjection();
     testAutoFlatten();
     testDrapeStackCuts();
+    testFlattenSwitch();
 
     std::printf("\n%d failure(s)\n", failures);
     return failures ? 1 : 0;

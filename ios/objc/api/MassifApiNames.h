@@ -79,10 +79,12 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyAtmosphereSunIntensity;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyAttachAnchorPointX;
 /** Returns the vertical attaching anchor point of the billoard. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyAttachAnchorPointY;
-/** Returns how long the flattening animation takes. */
+/** Returns how long the terrain takes to sink flat. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyAutoFlattenDuration;
 /** Returns the screen parallax below which the terrain renders flat. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyAutoFlattenParallax;
+/** Returns how long the terrain takes to rise back into 3D. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyAutoFlattenRiseDuration;
 /** Returns the tilt at or above which the terrain renders flat. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyAutoFlattenTilt;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyAutocomplete;
@@ -311,7 +313,11 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertyFeaturePosIndex;
 FOUNDATION_EXPORT MassifProperty const MassifPropertyFieldOfViewY;
 /** Returns the string based search expression. If empty, then search expression is not used. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyFilterExpression;
-/** Returns whether the terrain is rendering flat right now because auto-flattening asked for it. */
+/** Returns how far a flattened terrain goes back towards a plain 2D map. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyFlattenMode;
+/** Returns how far the terrain is flattened right now, 0 (full 3D) to 1 (flat). */
+FOUNDATION_EXPORT MassifProperty const MassifPropertyFlattenRatio;
+/** Returns whether the map is asked to render flat. This is the 2D/3D state, whether it was set by the app or by auto-flattening; the switch itself is animated, so for a moment after a change the map is still on its way there. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyFlattened;
 /** Returns true while a flyTo animation is running. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertyFlightActive;
@@ -785,6 +791,8 @@ FOUNDATION_EXPORT MassifProperty const MassifPropertySunDiscEnabled;
 FOUNDATION_EXPORT MassifProperty const MassifPropertySunIntensity;
 /** Returns the custom terrain surface fragment shader source, or an empty string if no shaded surface is drawn. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertySurfaceShaderSource;
+/** Returns whether the switch is holding the ground flat while the tiles 3D needs load. */
+FOUNDATION_EXPORT MassifProperty const MassifPropertySwitching;
 /** Returns the state of the synchronized refresh flag. */
 FOUNDATION_EXPORT MassifProperty const MassifPropertySynchronizedRefresh;
 /** Returns the user-defined tag associated with the button. */

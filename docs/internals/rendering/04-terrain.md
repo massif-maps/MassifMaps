@@ -442,8 +442,8 @@ this is the plain factor case and the depth budget is untouched.
 
 Zoomed far out the displacement is sub-pixel, and straight down it shows nothing — but the drape
 RTT, the terrain passes and the elevation fetches are all still paid. `TerrainOptions` flattens the
-map itself in those two cases and remembers what the app asked for, so `Enabled` still reads back
-what was set and `Flattened` reads what is happening.
+map itself in those two cases, without touching `Enabled`: the rule writes `Flattened`, and what the
+switch then does with it is the section below.
 
 The criterion is **parallax in screen pixels**, not a zoom threshold — a fixed zoom is wrong for
 flat country or for a high exaggeration:
@@ -463,21 +463,92 @@ hysteresis and the ramp are `all/native/terrain/AutoFlatten.h`, kept free of the
 **Hysteresis is not optional**: 3D returns at 1.5× the parallax threshold and 2° below the tilt one.
 Without it a camera parked on a threshold flips modes every frame.
 
-Two levers, and the order between them is the whole design:
+## The 2D/3D switch
 
-| | What it does | Cost |
+`Flattened` is the state — writable, so an app can drive its own 2D/3D switch, and the auto rule
+above writes the same field. `FlattenMode` is **how far the switch goes**, and it is the whole
+design:
+
+| `FlattenMode` | Flat costs | Switching costs |
 |---|---|---|
-| **ramp** `FlattenRatio` 0→1 | scales the heights the `ElevationManager` hands out | none — `setExaggeration` bumps only the *global* version, so heights are GPU-side and nothing re-decodes |
-| **flip** `isActive()` false | drops the terrain passes, the drape, the terrain LOD, the elevation fetches | a re-cull, nothing more |
+| `RENDER` (default) | the terrain passes, the drape and the elevation fetches are gone, but the tiles keep the terrain subdivision and the terrain tile set | nothing — one ramp, no re-cull, no re-decode |
+| `FULL` | nothing: the map decodes, culls and draws as if no `TerrainOptions` were attached | a re-decode of the visible tiles, each way |
 
-`MapRenderer::updateTerrainFlatten` runs the ramp first and flips only at ratio 1 — by which point
-the two modes render identically, so the flip has nothing to show. What makes the flip cheap is that
-**`isEnabled()` and `isActive()` are different questions**: everything that decides how a tile is
-*decoded* (`TileLayer::loadData`'s cache compare, `resetTileTransformer`, the fetch task's elevation
-wait) keeps reading `isEnabled()`, so the transformer and every decoded tile stay put. Only the
-render and cull consumers read `isActive()`. Terrain-decoded tiles render correctly flat: the
-displacement is GPU-side and the only decode-time difference is subdivision density — extra
-triangles, harmless.
+Three pieces of state, and which question each answers:
+
+| | Question | Read by |
+|---|---|---|
+| `isEnabled()` | is terrain configured at all | the app; gates the other two |
+| `isActive()` (`FlattenRatio < 1`) | is 3D being **rendered** | every renderer, the touch handler, the sky, the hillshade paint |
+| `isDecodeActive()` | are tiles being **prepared** for 3D | `TileLayer::loadData`'s cache compare, `resetTileTransformer`, `calculateVisibleTiles` |
+
+The one fact everything rests on, and it is asymmetric:
+
+- **terrain-decoded tiles render correctly flat** — the displacement is GPU-side and the only
+  decode-time difference is subdivision density, so it is extra triangles and nothing else;
+- **flat-decoded tiles do not render correctly in 3D** — with no subdivision a road chords straight
+  between its endpoints, which over a valley rides well above the ground.
+
+So the decode is only ever moved **while the map is flat**, where the two densities draw the same
+picture, and 3D is never entered before the tiles for it exist. `all/native/terrain/FlattenSwitch.h`
+is that rule alone — four phases, free of the renderer, so `tests/api/FlattenSwitchTest.cpp` checks
+it on the host:
+
+```
+FLAT ──ask 3D──▶ WARMING ──tiles ready──▶ RAMPING ──▶ TERRAIN
+ ▲                (renders 2D)                          │
+ └──────────────── RAMPING ◀────────── ask flat ────────┘
+      (drops the decode one frame AFTER it settles)
+```
+
+`WARMING` is deliberately **not** `isActive()`: it renders as plain 2D, so the wait costs 2D and
+shows no half-built terrain. It ends on `TileLayer::isTerrainDecodeSettled()` for every tile layer,
+or on `MapRenderer::TERRAIN_SWITCH_WARM_TIMEOUT` (2.5 s — late 3D beats a map pinned flat by one
+tile that never loads). Going the other way there is nothing to wait for, so it ramps at once.
+
+### Who drives the ratio
+
+Three ways, in increasing order of control:
+
+| | What the app writes | The clock |
+|---|---|---|
+| automatic | `Flattened` | `AutoFlattenDuration`, and `AutoFlattenRiseDuration` for the way up (negative = the same) |
+| by gesture | `AutoFlattenTilt` / `AutoFlattenParallax` | the same |
+| by hand | `FlattenRatio` | the app's own |
+
+The two durations are split because the directions are not alike: the rise is the one an app matches
+to a camera flight, and the one that waited for its tiles first.
+
+`FlattenRatio` is writable, and that is the only way two animations can be made to match **exactly** —
+a duration is a second timer, and two timers of the same length still drift when a frame is dropped.
+Writing it puts the switch in `MANUAL`, which suspends both its own ramp and auto-flattening, and
+**keeps them suspended** until `Flattened` is written. An app driving an animation therefore writes
+`Flattened` once when it ends; forget it and a later tilt gesture silently does nothing. `MANUAL` is
+deliberately not auto-released at a settled ratio: a rise starts by writing exactly 1.0, so releasing
+on the endpoints would hand control back on the animation's first frame. `MANUAL` keeps the tile gate: a ratio below 1 asks for
+3D's tiles and the ground is **held** flat until they arrive, with `isSwitching()` as the observable
+so an app can start its flight when the hold ends rather than watch its animation jump.
+
+A tilt threshold is asymmetric by construction, and it shows: the rule fires *at* 88°, so a flight
+from a landscape view to top-down flattens at the very END of it, while the reverse fires almost
+immediately. That is what a threshold means, not a bug — an app that wants the switch to lead the
+camera drives `Flattened` or `FlattenRatio` itself and leaves the thresholds at 0.
+
+Two mechanics that make the switch invisible:
+
+- **The tile set follows `isDecodeActive()`, not `isActive()`.** The terrain LOD asks for tiles flat
+  rendering never wanted (overzoom targets, the coarsening floor), so culling on the render state
+  re-culls at the instant the terrain appears — which is the tile set arriving *after* the map is
+  already 3D. That was the flash.
+- **The decode change invalidates, it does not clear.** `TileLayer::loadData` calls
+  `invalidateTiles(false)` rather than `clearTileCaches(true)`: the old tiles stay on screen and are
+  re-fetched one by one. Clearing them blanks the map for a whole decode.
+- **Shadows stand down for the ramp.** A cascade is only re-cast when its light box or its caster
+  list changes, and neither does while the ratio moves — but the ground *receiving* the shadow is
+  displaced every frame, so the map wears the shadow of a terrain it no longer has. `applyTerrainShadows`
+  drops the pass while `FlattenRatio > 0` rather than re-casting each frame, which would be a full
+  caster pass on the frames least able to afford one. The `!shadowsWanted` path already invalidates
+  the atlas, so coming back out of the ramp re-casts every page.
 
 Two consequences worth knowing:
 
@@ -488,6 +559,13 @@ Two consequences worth knowing:
   back to its own DEM tile set rather than the terrain's elevation texture. That is a tile-set swap
   on the flip — the alternative is the hillshade vanishing, so it is the right trade, not an
   oversight.
+
+**Not measured:** what `FULL` actually buys in 2D frame time against `RENDER`, and how long the
+`WARMING` wait really is on a device. Both need the `-PprofileRender` bench of
+[10-performance.md](10-performance.md) at a mountain camera and a city one. See
+[#177](https://github.com/massif-maps/MassifMaps/issues/177), which asked the opposite question —
+always decode for terrain so `setEnabled` never invalidates — and which this answers the other way,
+without its permanent cost.
 
 ## The camera against the terrain
 

@@ -19,12 +19,21 @@ namespace massif {
         _elevationManager(dataSource ? std::make_shared<ElevationManager>(dataSource, elevationDecoder) : std::shared_ptr<ElevationManager>()),
         _enabled(true),
         _exaggeration(1.0f),
+        _flattened(false),
+        _flattenMode(TerrainFlattenMode::TERRAIN_FLATTEN_MODE_RENDER),
+        _decodeActive(true),
+        _flattenSwitchStarted(false),
+        _flattenManual(false),
+        _flattenManualRatio(0.0f),
+        _switching(false),
         _flattenRatio(0.0f),
         // 2 px and 88 degrees, device-checked on the Crosscall: below 2 px the displacement is
         // under the antialias ramp, and 88 is far enough past a usable oblique view.
         _autoFlattenParallax(2.0f),
         _autoFlattenTilt(88.0f),
         _autoFlattenDuration(0.3f),
+        _autoFlattenRiseDuration(-1.0f), // negative: the same as the flattening one
+
         // 64 triangles per tile side, which is what tangram uses (RasterStyle::build) and what every
         // bench here was run at. 32 leaves draped content visibly floating over the ground; 128
         // measured 8.5 fps against 15.2 at 64 on the Crosscall.
@@ -87,11 +96,51 @@ namespace massif {
     }
 
     bool TerrainOptions::isActive() const {
-        return _enabled.load() && !isFlattened();
+        return _enabled.load() && _flattenRatio.load() < 1.0f;
     }
 
     bool TerrainOptions::isFlattened() const {
-        return _flattenRatio.load() >= 1.0f;
+        return _flattened.load();
+    }
+
+    void TerrainOptions::setFlattened(bool flattened) {
+        bool wasManual = _flattenManual.exchange(false); // asking for a state hands the ratio back
+        if (_flattened.exchange(flattened) != flattened || wasManual) {
+            // Before the renderer's switch has ever run, this IS the state: an app that starts in 2D
+            // sets it before its layers exist and must not decode a single tile for 3D first, nor
+            // animate down from a 3D it never showed. From the first frame on the switch owns both,
+            // and moves the decode only while the map is flat.
+            if (!_flattenSwitchStarted.load()) {
+                writeFlattenRatio(flattened ? 1.0f : 0.0f);
+                if (_flattenMode.load() == TerrainFlattenMode::TERRAIN_FLATTEN_MODE_FULL) {
+                    _decodeActive.store(!flattened);
+                }
+            }
+            notifyOptionChanged("Flattened");
+        }
+    }
+
+    TerrainFlattenMode::TerrainFlattenMode TerrainOptions::getFlattenMode() const {
+        return _flattenMode.load();
+    }
+
+    void TerrainOptions::setFlattenMode(TerrainFlattenMode::TerrainFlattenMode mode) {
+        if (_flattenMode.exchange(mode) != mode) {
+            if (mode == TerrainFlattenMode::TERRAIN_FLATTEN_MODE_RENDER) {
+                _decodeActive.store(true); // RENDER decodes for 3D whatever the flatten state
+            }
+            notifyOptionChanged("FlattenMode");
+        }
+    }
+
+    bool TerrainOptions::isDecodeActive() const {
+        return _enabled.load() && _decodeActive.load();
+    }
+
+    void TerrainOptions::setDecodeActive(bool active) {
+        if (_decodeActive.exchange(active) != active) {
+            notifyOptionChanged("DecodeActive");
+        }
     }
 
     float TerrainOptions::getFlattenRatio() const {
@@ -100,8 +149,51 @@ namespace massif {
 
     void TerrainOptions::setFlattenRatio(float ratio) {
         float value = std::min(1.0f, std::max(0.0f, ratio));
+        _flattenManualRatio.store(value);
+        _flattenManual.store(true);
+        // Flattened is the state the app can read back, so keep it honest while the app drives.
+        _flattened.store(value >= 1.0f);
+        if (!_flattenSwitchStarted.load()) {
+            writeFlattenRatio(value); // no frame has run yet; the switch seeds itself from this
+        }
+        notifyOptionChanged("FlattenRatio");
+    }
+
+    bool TerrainOptions::isManualFlatten() const {
+        return _flattenManual.load();
+    }
+
+    float TerrainOptions::getManualFlattenRatio() const {
+        return _flattenManualRatio.load();
+    }
+
+    bool TerrainOptions::isSwitching() const {
+        return _switching.load();
+    }
+
+    void TerrainOptions::setSwitching(bool switching) {
+        _switching.store(switching);
+    }
+
+    void TerrainOptions::applyFlattenRatio(float ratio) {
+        _flattenSwitchStarted.store(true); // only the renderer's switch calls this
+        writeFlattenRatio(ratio);
+    }
+
+    void TerrainOptions::writeFlattenRatio(float ratio) {
+        float value = std::min(1.0f, std::max(0.0f, ratio));
         if (_flattenRatio.exchange(value) != value) {
             _elevationManager->setExaggeration(_exaggeration.load() * (1.0f - value));
+        }
+    }
+
+    float TerrainOptions::getAutoFlattenRiseDuration() const {
+        return _autoFlattenRiseDuration.load();
+    }
+
+    void TerrainOptions::setAutoFlattenRiseDuration(float duration) {
+        if (_autoFlattenRiseDuration.exchange(duration) != duration) {
+            notifyOptionChanged("AutoFlattenRiseDuration");
         }
     }
 

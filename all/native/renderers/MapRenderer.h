@@ -18,6 +18,8 @@
 #include "renderers/components/AnimationHandler.h"
 #include "renderers/components/KineticEventHandler.h"
 #include "components/StyleEnvironment.h"
+#include "terrain/AutoFlatten.h"
+#include "terrain/FlattenSwitch.h"
 #include "ui/MapMoveReason.h"
 
 #include <cglib/mat.h>
@@ -265,8 +267,9 @@ namespace massif {
 
         // How far the highest ground in view moves on screen because it is displaced, in pixels.
         double calculateTerrainParallax(const std::shared_ptr<TerrainOptions>& terrainOptions) const;
-        // Steps the auto-flatten ramp. Returns true when the terrain became active or inactive this
-        // frame, which is the only moment the visible tile set has to be recomputed.
+        // Runs the auto-flatten rule and steps the 2D/3D switch. Returns true when the terrain
+        // DECODE state changed this frame, which is the only moment the visible tile set has to be
+        // recomputed.
         bool updateTerrainFlatten(float deltaSeconds);
 
         static const int BILLBOARD_PLACEMENT_TASK_DELAY;
@@ -277,6 +280,7 @@ namespace massif {
         static const int LABEL_PLACEMENT_ZOOM_DELAY;
 
         static const int ELEVATION_REFRESH_DELAY; // milliseconds between vector layer refreshes caused by elevation data changes
+        static const float TERRAIN_SWITCH_WARM_TIMEOUT; // seconds the 2D/3D switch waits for the tiles 3D needs
 
         static const std::string BLEND_VERTEX_SHADER;
         static const std::string BLEND_FRAGMENT_SHADER;
@@ -286,6 +290,12 @@ namespace massif {
     
         ViewState _viewState;
         float _lastLabelPlacementZoom = 0.0f;
+
+        // The 2D/3D switch. The ratio and the decode state live on TerrainOptions, where everything
+        // reads them; what is kept here is the phase the switch is in.
+        FlattenSwitch::State _flattenSwitchState;
+        AutoFlatten::Trigger _autoFlattenTrigger;
+        std::weak_ptr<TerrainOptions> _flattenSwitchOptions;
 
         std::shared_ptr<GLResourceManager> _glResourceManager;
 

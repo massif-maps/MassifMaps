@@ -963,11 +963,11 @@ namespace massif {
 
         // Calculate camera params and make a synchronized copy of the view state
         ViewState viewState;
-        bool terrainActivityChanged = false;
+        bool terrainDecodeChanged = false;
         {
             std::lock_guard<std::recursive_mutex> lock(_mutex);
 
-            terrainActivityChanged = updateTerrainFlatten(deltaSeconds);
+            terrainDecodeChanged = updateTerrainFlatten(deltaSeconds);
 
             // Terrain: extend view distances by the terrain height range and keep
             // the camera above the terrain surface.
@@ -1015,10 +1015,10 @@ namespace massif {
             _viewState.setHorizontalLayerOffsetDir(0);
         }
 
-        if (terrainActivityChanged) {
+        if (terrainDecodeChanged) {
             // The terrain LOD, the overzoom targets and the view distance all differ between the
-            // two modes, so the visible tile set has to be recomputed - the camera has not moved,
-            // and nothing else would ask.
+            // two decode states, so the visible tile set has to be recomputed - the camera has not
+            // moved, and nothing else would ask.
             viewChanged(false, MapMoveReason::MAP_MOVE_REASON_API);
         }
 
@@ -1509,21 +1509,76 @@ namespace massif {
             return false;
         }
 
+        // Not while the app is driving the ratio itself: the rule would take it straight back.
+        bool manual = terrainOptions->isManualFlatten();
         float parallaxThreshold = terrainOptions->getAutoFlattenParallax();
         float tiltThreshold = terrainOptions->getAutoFlattenTilt();
-        float ratio = terrainOptions->getFlattenRatio();
-        // The parallax costs a height-range lookup, so only pay for it when it is part of the rule.
-        double parallax = parallaxThreshold > 0 ? calculateTerrainParallax(terrainOptions) : 0;
-        bool flatten = AutoFlatten::shouldFlatten(parallax, parallaxThreshold, _viewState.getTilt(), tiltThreshold, ratio > 0);
+        if (!manual && (parallaxThreshold > 0 || tiltThreshold > 0)) {
+            // The parallax costs a height-range lookup, so only pay for it when it is part of the rule.
+            double parallax = parallaxThreshold > 0 ? calculateTerrainParallax(terrainOptions) : 0;
+            bool flatten = AutoFlatten::shouldFlatten(parallax, parallaxThreshold, _viewState.getTilt(), tiltThreshold, terrainOptions->isFlattened());
+            // Only on a CHANGE of the rule's own answer - see AutoFlatten::Trigger.
+            if (_autoFlattenTrigger.changed(flatten)) {
+                terrainOptions->setFlattened(flatten);
+                manual = terrainOptions->isManualFlatten(); // setFlattened hands the ratio back
+            }
+        } else {
+            _autoFlattenTrigger = AutoFlatten::Trigger(); // re-arm: the next answer is an edge again
+        }
 
-        float target = AutoFlatten::step(ratio, flatten, deltaSeconds, terrainOptions->getAutoFlattenDuration());
-        if (target == ratio) {
+        // Seed from what the app (or the rule just above, on the very first frame) asked for, so a
+        // map starting in 2D neither animates down from a 3D it never showed nor decodes for it.
+        if (_flattenSwitchOptions.lock() != terrainOptions) {
+            _flattenSwitchOptions = terrainOptions;
+            _autoFlattenTrigger = AutoFlatten::Trigger();
+            _flattenSwitchState = FlattenSwitch::State();
+            _flattenSwitchState.ratio = terrainOptions->getFlattenRatio();
+            _flattenSwitchState.decode3D = terrainOptions->isDecodeActive();
+            _flattenSwitchState.phase = _flattenSwitchState.ratio >= 1.0f ? FlattenSwitch::Phase::FLAT
+                                      : _flattenSwitchState.ratio <= 0.0f ? FlattenSwitch::Phase::TERRAIN
+                                                                          : FlattenSwitch::Phase::RAMPING;
+            terrainOptions->applyFlattenRatio(_flattenSwitchState.ratio); // hands the state over: from here setFlattened only asks
+        }
+
+        FlattenSwitch::Input input;
+        input.flatten = terrainOptions->isFlattened();
+        input.manual = manual;
+        input.manualRatio = terrainOptions->getManualFlattenRatio();
+        input.fullSwitch = terrainOptions->getFlattenMode() == TerrainFlattenMode::TERRAIN_FLATTEN_MODE_FULL;
+        input.deltaSeconds = deltaSeconds;
+        input.flattenDuration = terrainOptions->getAutoFlattenDuration();
+        float riseDuration = terrainOptions->getAutoFlattenRiseDuration();
+        input.riseDuration = riseDuration < 0 ? input.flattenDuration : riseDuration;
+        input.warmTimeout = TERRAIN_SWITCH_WARM_TIMEOUT;
+        // The tile gate, for both the automatic wait and an app-driven rise.
+        if (FlattenSwitch::isWaitingForTiles(_flattenSwitchState, input)) {
+            input.tilesReady = true;
+            for (const std::shared_ptr<Layer>& layer : _layers->getAll()) {
+                if (auto tileLayer = std::dynamic_pointer_cast<TileLayer>(layer)) {
+                    input.tilesReady = tileLayer->isTerrainDecodeSettled() && input.tilesReady;
+                }
+            }
+            requestRedraw(); // nothing else asks for the frame the wait ends on
+        }
+
+        FlattenSwitch::State next = FlattenSwitch::step(_flattenSwitchState, input);
+        bool decodeChanged = next.decode3D != _flattenSwitchState.decode3D;
+        bool ratioChanged = next.ratio != _flattenSwitchState.ratio;
+        _flattenSwitchState = next;
+        terrainOptions->setSwitching(FlattenSwitch::isWaitingForTiles(next, input));
+        if (!decodeChanged && !ratioChanged) {
             return false;
         }
-        bool wasActive = terrainOptions->isActive();
-        terrainOptions->setFlattenRatio(target);
+        if (ratioChanged) {
+            terrainOptions->applyFlattenRatio(next.ratio);
+        }
+        if (decodeChanged) {
+            terrainOptions->setDecodeActive(next.decode3D);
+        }
         requestRedraw();
-        return wasActive != terrainOptions->isActive();
+        // The tile set differs between the two decode states (the terrain LOD, the overzoom
+        // targets, the view distance), and the camera has not moved, so nothing else would ask.
+        return decodeChanged;
     }
 
     void MapRenderer::vtLabelsChanged(const std::shared_ptr<Layer>& layer, bool delay) {
@@ -1685,7 +1740,13 @@ namespace massif {
         }
         bool shadowsWanted = false;
         {
-            shadowsWanted = castShadows && lighting.terrainLightingEnabled && lighting.shadowStrength > 0.0f && !coverTileIds.empty();
+            // Not while the 2D/3D switch is ramping. A cascade is only redrawn when its light box
+            // or its caster list changes (below), and neither does during the ramp - while the
+            // ground RECEIVING the shadow is displaced every frame, so the map wears a shadow of a
+            // terrain it no longer has. Dropped for the ramp rather than re-cast every frame: that
+            // is a full caster pass on the frames least able to afford one.
+            bool switching = terrainOptions->getFlattenRatio() > 0.0f;
+            shadowsWanted = castShadows && !switching && lighting.terrainLightingEnabled && lighting.shadowStrength > 0.0f && !coverTileIds.empty();
             if (shadowsWanted) {
                 if (!_terrainShadowMap) {
                     _terrainShadowMap = std::make_unique<TerrainShadowMap>();
@@ -3751,6 +3812,10 @@ namespace massif {
     const int MapRenderer::LABEL_PLACEMENT_ZOOM_DELAY = 250;
 
     const int MapRenderer::ELEVATION_REFRESH_DELAY = 500;
+
+// 2.5 s, the value the android-dev demo settled on while it did this wait itself
+// (DemoMap.TERRAIN_ANIM_TILE_TIMEOUT_MS). Late 3D beats a map pinned flat by one tile that never loads.
+const float MapRenderer::TERRAIN_SWITCH_WARM_TIMEOUT = 2.5f;
 
     const std::string MapRenderer::BLEND_VERTEX_SHADER = R"GLSL(
         #version 100

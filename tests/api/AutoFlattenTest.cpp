@@ -108,9 +108,48 @@ namespace {
         TEST_CHECK(AutoFlatten::step(0.5f, true, -1.0f, 0.3f) == 0.5f, "and a negative delta does not move it");
     }
 
+
+    void testTriggerFiresOnEdges() {
+        // The rule is evaluated every frame; writing it every frame would overwrite an app that
+        // asked for the other state, so only a CHANGE of its own answer is written.
+        AutoFlatten::Trigger trigger;
+        TEST_CHECK(trigger.changed(false), "the first answer is always an edge");
+        TEST_CHECK(!trigger.changed(false), "and repeating it is not");
+        TEST_CHECK(!trigger.changed(false), "however long it repeats");
+        TEST_CHECK(trigger.changed(true), "the answer flipping is");
+        TEST_CHECK(!trigger.changed(true), "once");
+        TEST_CHECK(trigger.changed(false), "and back again");
+    }
+
+    void testAppCanLeadTheCamera() {
+        // The case this exists for: a button asks for flat while the camera is still at a low tilt
+        // and only flies to top-down afterwards. Level-triggered, the rule would answer 'not flat'
+        // on the next frame and undo the button; edge-triggered it stays quiet until the tilt
+        // actually crosses.
+        AutoFlatten::Trigger trigger;
+        const float tiltThreshold = 88.0f;
+
+        // Sitting in 3D at tilt 20: the rule's standing answer is 'not flat'.
+        TEST_CHECK(trigger.changed(AutoFlatten::shouldFlatten(0, 0, 20, tiltThreshold, false)),
+                   "the first evaluation is written");
+        TEST_CHECK(trigger.last == 0, "and it says 3D");
+
+        // The app now asks for flat. The map is flattening, so the rule reads the wider threshold.
+        for (float tilt = 20; tilt < 86; tilt += 5) {
+            TEST_CHECK(!trigger.changed(AutoFlatten::shouldFlatten(0, 0, tilt, tiltThreshold, true)),
+                       "and it stays quiet all the way up, leaving the app's ask alone");
+        }
+        // Only when the tilt really crosses does it speak, and then it agrees.
+        TEST_CHECK(trigger.changed(AutoFlatten::shouldFlatten(0, 0, 90, tiltThreshold, true)),
+                   "the crossing is an edge");
+        TEST_CHECK(trigger.last == 1, "and it says flat, which is what the app already asked for");
+    }
+
 }
 
 void testAutoFlatten() {
+    testTriggerFiresOnEdges();
+    testAppCanLeadTheCamera();
     testParallax();
     testThresholdsOff();
     testParallaxThreshold();

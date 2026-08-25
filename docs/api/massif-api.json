@@ -7536,7 +7536,7 @@
           "static": false,
           "position": false,
           "cppType": "float",
-          "doc": "Returns how long the flattening animation takes."
+          "doc": "Returns how long the terrain takes to sink flat."
         },
         {
           "name": "autoFlattenParallax",
@@ -7546,6 +7546,15 @@
           "position": false,
           "cppType": "float",
           "doc": "Returns the screen parallax below which the terrain renders flat."
+        },
+        {
+          "name": "autoFlattenRiseDuration",
+          "type": "FLOAT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns how long the terrain takes to rise back into 3D."
         },
         {
           "name": "autoFlattenTilt",
@@ -7665,13 +7674,32 @@
           "doc": "Returns the terrain height exaggeration factor."
         },
         {
+          "name": "flattenMode",
+          "type": "ENUM",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "massif::TerrainFlattenMode::TerrainFlattenMode",
+          "enum": "massif::TerrainFlattenMode::TerrainFlattenMode",
+          "doc": "Returns how far a flattened terrain goes back towards a plain 2D map."
+        },
+        {
+          "name": "flattenRatio",
+          "type": "FLOAT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns how far the terrain is flattened right now, 0 (full 3D) to 1 (flat)."
+        },
+        {
           "name": "flattened",
           "type": "BOOL",
-          "readOnly": true,
+          "readOnly": false,
           "static": false,
           "position": false,
           "cppType": "bool",
-          "doc": "Returns whether the terrain is rendering flat right now because auto-flattening asked for it."
+          "doc": "Returns whether the map is asked to render flat. This is the 2D/3D state, whether it was set by the app or by auto-flattening; the switch itself is animated, so for a moment after a change the map is still on its way there."
         },
         {
           "name": "maxTileZoomCoarsening",
@@ -7735,6 +7763,15 @@
           "position": false,
           "cppType": "std::string",
           "doc": "Returns the custom terrain surface fragment shader source, or an empty string if no shaded surface is drawn."
+        },
+        {
+          "name": "switching",
+          "type": "BOOL",
+          "readOnly": true,
+          "static": false,
+          "position": false,
+          "cppType": "bool",
+          "doc": "Returns whether the switch is holding the ground flat while the tiles 3D needs load."
         },
         {
           "name": "textOcclusionOpacity",
@@ -13803,6 +13840,18 @@
         "name": "SKY_TYPE_ATMOSPHERE",
         "value": 1,
         "doc": "Rayleigh and Mie single scattering, integrated along the view ray. The blue zenith, the reddening at a low sun and the halo around it all come out of the model rather than out of a colour ramp, so the sky follows the time of day on its own."
+      }
+    ],
+    "massif::TerrainFlattenMode::TerrainFlattenMode": [
+      {
+        "name": "TERRAIN_FLATTEN_MODE_RENDER",
+        "value": 0,
+        "doc": "Rendering only: the terrain passes, the drape and the elevation fetches are dropped, but the tiles keep the terrain subdivision they were decoded with. Switching costs nothing and is instant, and a flat map still carries a 3D map's triangles."
+      },
+      {
+        "name": "TERRAIN_FLATTEN_MODE_FULL",
+        "value": 1,
+        "doc": "The whole way: a flat map decodes, culls and draws as if no terrain were configured. The price is a re-decode at each switch, paid while the map is already flat."
       }
     ],
     "massif::TileFormat::TileFormat": [

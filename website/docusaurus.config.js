@@ -99,26 +99,28 @@ const config = {
             label: 'Documentation',
           },
           {to: '/examples', label: 'Examples', position: 'left'},
-          {to: '/docs/features/3d-terrain', label: 'Features', position: 'left'},
-          {to: '/docs/internals/', label: 'Internals', position: 'left'},
-          {to: '/platforms', label: 'Platforms', position: 'left'},
-          {to: '/roadmap', label: 'Roadmap', position: 'left'},
+          {
+            label: 'Tools',
+            position: 'left',
+            items: [
+              {to: '/docs/tools/style-cli', label: 'Style CLI'},
+              {to: '/docs/api/', label: 'Surface API'},
+              {to: '/docs/api/reference/', label: 'API reference'},
+              {label: 'Android (Javadoc)', href: 'pathname:///MassifMaps/api/android/'},
+              {label: 'iOS (Jazzy)', href: 'pathname:///MassifMaps/api/ios/'},
+            ],
+          },
           {
             label: 'Project',
             position: 'left',
             items: [
-              {to: '/changelog', label: 'Changelog'},
+              {to: '/platforms', label: 'Platforms'},
+              {to: '/compare', label: 'Compare'},
+              {to: '/roadmap', label: 'Roadmap'},
               {to: '/integrations', label: 'Integrations'},
+              {to: '/changelog', label: 'Changelog'},
               {to: '/community', label: 'Community'},
               {to: '/sponsors', label: 'Sponsors'},
-            ],
-          },
-          {
-            label: 'API Reference',
-            position: 'left',
-            items: [
-              {label: 'Android (Javadoc)', href: 'pathname:///MassifMaps/api/android/'},
-              {label: 'iOS (Jazzy)', href: 'pathname:///MassifMaps/api/ios/'},
             ],
           },
           {
@@ -140,7 +142,7 @@ const config = {
             title: 'Docs',
             items: [
               {label: 'Getting Started', to: '/docs/getting-started/installation'},
-              {label: 'Guides', to: '/docs/guides/map-view'},
+              {label: 'Guides', to: '/docs/category/guides'},
               {label: 'Examples', to: '/examples'},
               {label: 'Features', to: '/docs/features/3d-terrain'},
               {label: 'Internals', to: '/docs/internals/'},
@@ -149,8 +151,11 @@ const config = {
             ],
           },
           {
-            title: 'API',
+            title: 'Tools & API',
             items: [
+              {label: 'Style CLI', to: '/docs/tools/style-cli'},
+              {label: 'Surface API', to: '/docs/api/'},
+              {label: 'API reference', to: '/docs/api/reference/'},
               {label: 'Android API', href: 'pathname:///MassifMaps/api/android/'},
               {label: 'iOS API', href: 'pathname:///MassifMaps/api/ios/'},
             ],
@@ -159,6 +164,7 @@ const config = {
             title: 'Project',
             items: [
               {label: 'Platforms', to: '/platforms'},
+              {label: 'Compare', to: '/compare'},
               {label: 'Roadmap', to: '/roadmap'},
               {label: 'Integrations', to: '/integrations'},
               {label: 'Sponsors', to: '/sponsors'},
@@ -180,7 +186,7 @@ const config = {
       prism: {
         theme: prismThemes.github,
         darkTheme: prismThemes.dracula,
-        additionalLanguages: ['java', 'kotlin', 'swift', 'objectivec', 'csharp', 'groovy', 'json', 'css', 'bash'],
+        additionalLanguages: ['java', 'kotlin', 'swift', 'objectivec', 'csharp', 'groovy', 'json', 'css', 'bash', 'typescript'],
       },
     }),
 };

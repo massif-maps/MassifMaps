@@ -16,15 +16,28 @@ repo root** — one tree, readable on GitHub and published as-is. `website/` hol
 ```
 docs/
 ├─ intro.md               getting-started/   guides/      features/   ← app developers
+├─ api/                   the surface API: index.mdx authored, reference/ GENERATED
+├─ tools/                 the massif-style CLI
+├─ examples/              examples.json + screenshots, GENERATED, read by /examples
 ├─ internals/             rendering/ · build-and-size · performance-log
 ├─ maintenance/           dependency upgrades, platform quirks
 ├─ contributing/          this page, release workflow
 ├─ migration.md
 └─ _archive/              superseded, EXCLUDED from the site, not maintained
 
-scripts/docs/vendor-guides/   the legacy CARTO Jekyll sources for guides/ (input, not content)
 website/                      Docusaurus shell — config, theme, React pages, static assets
 ```
+
+Two directories are **generated** and must not be hand-edited:
+
+```bash
+python3 scripts/gen-api-docs.py    # docs/api/reference/ from docs/api/massif-api.json
+python3 scripts/gen-examples.py    # docs/examples/examples.json from the demo apps
+```
+
+`massif-api.json` itself comes from `scripts/gen-api-tables.py --schema`, which runs off
+`all/modules/*.i` — so a new SDK property reaches the published reference on the next SDK build,
+with nothing to write by hand.
 
 Every published page carries front matter (`title`, `description`, `sidebar_position`); the sidebar
 is generated from the folder structure plus each folder's `_category_.json`.
@@ -83,6 +96,11 @@ A good run ends with `[SUCCESS] Generated static files in "build"` and **no**
 `Exhaustive list of all broken links found` block. Then `npm run serve` and search for a phrase from
 the page you changed, to confirm it made it into the index.
 
+**One block of broken-*anchor* warnings is expected**, and only that one: every
+`/examples#<example-id>` link. Docusaurus collects anchors from MDX headings, and `/examples` is a
+React page whose sections come from `examples.json` — the ids are in the HTML and the links work,
+but the checker cannot see them. Any other broken anchor is real.
+
 ## Four things that silently bite
 
 - **Mermaid renders only in `.mdx`.** `markdown.format` is `'detect'`, so a `.md` page is parsed as
@@ -138,19 +156,16 @@ Repo, label and column mapping are plugin options — override them in `docusaur
 ['./plugins/roadmap-issues', {owner: 'massif-maps', repo: 'MassifMaps', label: 'roadmap'}],
 ```
 
-## Migrated guides
+## The guides are authored now
 
-`docs/guides/*.mdx` are **generated**, not authored. The originals are the CARTO Jekyll sources
-vendored under `scripts/docs/vendor-guides/guides/`, converted (Liquid → MDX, language tab groups →
-`<Tabs>`) by
-[`scripts/docs/convert-guides.py`](https://github.com/massif-maps/MassifMaps/blob/master/scripts/docs/convert-guides.py):
+`docs/guides/*.mdx` used to be **generated** from the CARTO Jekyll sources by
+`scripts/docs/convert-guides.py`. They are not any more: the four guides that only described CARTO
+services were dropped, the rest were rewritten against this SDK, and the converter and its vendored
+inputs were deleted with them. Edit the `.mdx` directly.
 
-```bash
-python3 scripts/docs/convert-guides.py
-```
-
-Edit the generated `.mdx` for new content — but know that re-running the converter overwrites it.
-Fix the vendored source instead when the change belongs to the original text.
+The [Examples gallery](https://massif-maps.github.io/MassifMaps/examples) is the reference for
+runnable code — a guide explains a concept and links the example rather than carrying a fifth copy
+of the same snippet in five languages.
 
 ## API reference (Javadoc + Jazzy) {#api}
 

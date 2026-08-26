@@ -195,7 +195,26 @@ def iosExampleIds(iosDir):
     return found
 
 
-def emitManifest(ordered, sections, path, screenshotDir, sourceRoot, exampleDir, iosDir=None):
+def nativeScriptExampleIds(nsDir):
+  """Every id the NativeScript demo declares, keyed to its .svelte file."""
+  found = {}
+  if not nsDir or not os.path.isdir(nsDir):
+    return found
+  for dirPath, _, fileNames in os.walk(nsDir):
+    for fileName in sorted(fileNames):
+      if not fileName.endswith('.svelte'):
+        continue
+      full = os.path.join(dirPath, fileName)
+      with open(full, errors='ignore') as f:
+        # The id is on the <ExampleShell> tag, the one thing all three platforms agree on.
+        match = re.search(r'<ExampleShell[^>]*\bid="([^"]+)"', f.read())
+      if match:
+        found[match.group(1)] = full
+  return found
+
+
+def emitManifest(ordered, sections, path, screenshotDir, sourceRoot, exampleDir, iosDir=None,
+                 nsDir=None, repoRoot=None):
   """
   The website's copy of the same list, with each example's source and screenshot.
 
@@ -205,11 +224,24 @@ def emitManifest(ordered, sections, path, screenshotDir, sourceRoot, exampleDir,
   """
   bySection = {section['id']: [] for section in sections}
   missing = []
+  nsById = nativeScriptExampleIds(nsDir)
+
+  def repoPath(full):
+    """Repo-relative, so the website can link the file on GitHub."""
+    return os.path.relpath(os.path.abspath(full), repoRoot).replace(os.sep, '/') \
+        if repoRoot else None
+
   for _, fields in ordered:
     code = {'java': open(os.path.join(exampleDir, fields['file'])).read()}
+    sources = {'java': sourceRoot + '/' + fields['file']}
     iosSource = findIosSource(iosDir, fields['id'])
     if iosSource:
       code['objc'] = open(iosSource).read()
+      sources['objc'] = repoPath(iosSource)
+    nsSource = nsById.get(fields['id'])
+    if nsSource:
+      code['ts'] = open(nsSource).read()
+      sources['ts'] = repoPath(nsSource)
     shot = os.path.join(screenshotDir, fields['id'] + '.png')
     if not os.path.exists(shot):
       missing.append(fields['id'])
@@ -219,11 +251,13 @@ def emitManifest(ordered, sections, path, screenshotDir, sourceRoot, exampleDir,
       'description': fields['description'],
       'class': fields['class'],
       # Repo-relative, so the website can read the file and link to it on GitHub.
-      'source': sourceRoot + '/' + fields['file'],
+      'source': sources['java'],
+      'sources': {key: value for key, value in sources.items() if value},
       'screenshot': 'screenshots/' + fields['id'] + '.png',
       'hasScreenshot': os.path.exists(shot),
       # One entry per language, so the website can offer a tab per binding. Java is the
-      # reference; Objective-C appears for an example the iOS demo has ported.
+      # reference; Objective-C and the NativeScript/Svelte source appear for an example
+      # those demos have ported.
       'code': code,
     })
   manifest = {
@@ -256,6 +290,9 @@ parser.add_argument('--docs', default=os.path.join(here, '../docs/examples'),
                     help='where examples.json and screenshots/ live')
 parser.add_argument('--ios', default=os.path.join(here, 'ios-dev/MassifDemo/Examples'),
                     help='the iOS demo\'s examples, matched to the Android ones by id')
+parser.add_argument('--nativescript', default=os.path.join(
+    here, '../integrations/nativescript/demo-snippets/svelte/examples'),
+    help='the NativeScript demo\'s examples, matched to the Android ones by id')
 parser.add_argument('--strict', action='store_true',
                     help='exit non-zero when an example is malformed, for CI')
 args = parser.parse_args()
@@ -276,16 +313,23 @@ missing = emitManifest(ordered, sections, os.path.join(args.docs, 'examples.json
                        os.path.join(args.docs, 'screenshots'),
                        'scripts/android-dev/app/src/main/java/'
                        + args.package.replace('.', '/'),
-                       args.examples, args.ios)
+                       args.examples, args.ios, args.nativescript,
+                       os.path.abspath(os.path.join(here, '..')))
 
 ported = iosExampleIds(args.ios)
-orphans = sorted(set(ported) - set(f['id'] for _, f in examples))
+nsPorted = nativeScriptExampleIds(args.nativescript)
+ids = set(f['id'] for _, f in examples)
+orphans = sorted((set(ported) | set(nsPorted)) - ids)
 
 print('%d examples over %d sections' % (len(ordered), len(set(f['section'] for _, f in examples))))
 if ported:
-  print('  %d of them ported to iOS' % len(set(ported) & set(f['id'] for _, f in examples)))
+  print('  %d of them ported to iOS' % len(set(ported) & ids))
+if nsPorted:
+  print('  %d of them ported to NativeScript' % len(set(nsPorted) & ids))
 for orphan in orphans:
-  problems.append('%s declares id "%s", which no Android example has' % (ported[orphan], orphan))
+  where = ported.get(orphan) or os.path.basename(nsPorted[orphan])
+  problems.append('%s declares id "%s", which no Android example has'
+                  % (os.path.basename(where), orphan))
 if missing:
   # Not an error: a new example has no screenshot until scripts/capture-examples.py has run.
   print('  %d without a screenshot: %s' % (len(missing), ', '.join(missing)))

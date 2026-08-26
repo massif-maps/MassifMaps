@@ -218,7 +218,7 @@ The line shader learned the same lesson earlier, on a route casing breaking up o
 
 That path shares the SDF encoding with labels and has to be kept in step with it: its antialias ramp
 is `2 · GLYPH_SDF_UNIT · (glyphRenderSize − GLYPH_RENDER_SPREAD) / _fullResolution`, the same rule
-`renderLabelBatch` uses, and its halo is converted with `HALO_PIXELS_PER_UNIT` like a label's. The
+`renderLabelBatch` uses, and its halo reaches it in screen pixels like a label's. The
 form written for the single 27-texel raster and a spread of 4 survived the raster ladder and the
 spread change (4 → 8) and ended up measuring a ramp up to **six screen pixels**, which is a glyph
 dissolving into its own halo.
@@ -665,15 +665,24 @@ on Android instead of rendering as plain Roboto Regular.
   so "targeted" still means most of the screen.
 - **Halo width is measured in antialias ramps, not in glyph texels.** `labelFsh` shifts the
   coverage ramp outward by the halo, and the ramp is one screen pixel of signed distance, so a halo
-  reaching the renderer in screen pixels (`HALO_PIXELS_PER_UNIT`) is as wide as the style asks
-  whatever raster the label landed on. It used to be converted with the glyph's RENDER size
-  instead — harmless while every glyph was rastered at 27 texels, wrong the moment the raster ladder
+  reaching the renderer in screen pixels is as wide as the style asks whatever raster the label
+  landed on. It used to be converted with the glyph's RENDER size instead — harmless while every
+  glyph was rastered at 27 texels, wrong the moment the raster ladder
   (16/28/40, see [10-performance.md](10-performance.md)) made that size depend on the label. The
   factor is `renderSize / (renderSize - spread)`: **3.0** on the smallest raster against **1.2** on
   the largest, so one `text-halo-radius` drew a halo two and a half times wider on a small label
   than on a large one, and up to **five times** what the single-raster build drew — a soft white
   glow instead of an outline, reported as "halo huge at radius 2, fine at 1". If halos ever look
   wrong again, check that term before the style.
+- **`text-halo-radius` is a STYLE pixel, like `text-size`** — the symbolizer multiplies it by the
+  pixel scale, and only `MAX_HALO_PIXELS` (where the encoded field runs out) caps it. It did not
+  used to be: a back-compat factor of `HALO_RADIUS_SCALE · HALO_PIXELS_PER_UNIT` = 1.4725 handed the
+  renderer device pixels, so a halo kept its absolute width as the dpi rose while its text grew, and
+  shrank against its own glyphs. `text-size`, `text-dx` and `text-dy` never had the problem — they
+  reach the renderer in **ems**, which scale with the label. Measured at La Clusaz on a 2.625x
+  screen, `text-halo-radius: 1.2`: **1.8 px before, 3.1 px after**, against the 3.2 px MapBox draws
+  for `text-halo-width: 1.2`. `text-min-distance` carried the same defect and was fixed with it.
+  **This widens every existing style's halos on a hi-dpi screen** (×1.8 at 2.625, ×2.0 at 3).
 - **A style `transform` no longer ends the batch.** The translate was a factor of the batch's
   `labelMatrix`, and the batch broke both when a label carried one and when the previous label did —
   so every transformed label was a draw of its own, **30 of a city frame's 68 label draws**.

@@ -151,6 +151,7 @@ export function extractIcon(
     // A shield draws its image at the bitmap's own size, so icon-size is baked in here instead.
     const scaled = scale === 1 ? icon : resample(icon, scale);
 
+    let out = scaled;
     if (entry.sdf) {
         for (let i = 0; i < scaled.data.length; i += 4) {
             const distance = scaled.data[i + 3];
@@ -165,6 +166,7 @@ export function extractIcon(
                 scaled.data[i + 3] = 255;
             }
         }
+        if (!flatten) out = padField(scaled);
     }
 
     const iconsDir = join(outDir, 'icons');
@@ -175,15 +177,53 @@ export function extractIcon(
         scale === 1 ? '' : `x${Math.round(scale * 100)}`,
     ].filter(Boolean).join('-');
     const file = `${safeFileName(name)}${suffix ? `-${suffix}` : ''}.png`;
-    writeFileSync(join(iconsDir, file), PNG.sync.write(scaled));
+    writeFileSync(join(iconsDir, file), PNG.sync.write(out));
 
     const ratio = entry.pixelRatio && entry.pixelRatio > 0 ? entry.pixelRatio : 1;
     return {
         file: `icons/${file}`,
-        width: scaled.width / ratio,
-        height: scaled.height / ratio,
+        width: out.width / ratio,
+        height: out.height / ratio,
         sdf: !!entry.sdf && !flatten,
     };
+}
+
+/**
+ * Room for the halo to fade in, outside the shape.
+ *
+ * MapBox's field only describes what its tiny-sdf radius reached - 2 texels outside the ink at
+ * cutoff 0.25 - and a MapTiler sprite cell is cut tight around its artwork, so the field is still
+ * well above "fully outside" where the bitmap ends. The renderer draws a halo wherever the field is
+ * within the halo width of the edge, so it drew one along the QUAD BORDER: a white rectangle round
+ * every POI icon, and a white outline round every tree.
+ *
+ * The padding continues the ramp outward at the field's own rate (one texel = MASSIF_SDF_UNIT)
+ * from the nearest border pixel, rather than filling a constant - a constant just moves the same
+ * step outward and the halo follows it there.
+ *
+ * It grows the quad, and with it the label's collision box, so it is kept to what a typical
+ * `icon-halo-width` of 2 needs rather than the widest a style could ask for.
+ */
+const SDF_PADDING = 4;
+
+function padField(source: PNG): PNG {
+    const p = SDF_PADDING;
+    const out = new PNG({ width: source.width + 2 * p, height: source.height + 2 * p });
+    for (let y = 0; y < out.height; y++) {
+        for (let x = 0; x < out.width; x++) {
+            const sx = Math.min(source.width - 1, Math.max(0, x - p));
+            const sy = Math.min(source.height - 1, Math.max(0, y - p));
+            const value = source.data[(sy * source.width + sx) * 4];
+            const dx = (x - p) - sx;
+            const dy = (y - p) - sy;
+            const away = Math.sqrt(dx * dx + dy * dy);
+            const faded = Math.max(0, Math.round(value - away * MASSIF_SDF_UNIT));
+            const dst = (y * out.width + x) * 4;
+            out.data[dst] = out.data[dst + 1] = out.data[dst + 2] = faded;
+            out.data[dst + 3] = 255;
+        }
+    }
+    return out;
 }
 
 /** Bilinear resample. Sprites are tens of pixels, so the simplest correct thing is fast enough. */

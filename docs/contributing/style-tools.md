@@ -252,6 +252,21 @@ to load, and the app throws `CartoCSS style loading failed: Syntax error` with a
 nothing else. `mapbox2css --validate` exists to catch exactly this by compiling its own output, and
 it could not run here because `css2xml` overflows the wasm stack on a style this size.
 
+## Room for an icon's halo
+
+MapBox's distance field only describes what its tiny-sdf radius reached — **2 texels outside the
+ink** at cutoff 0.25 — and a MapTiler sprite cell is cut tight around its artwork, so the field is
+still well above "fully outside" where the bitmap ends. The renderer draws a halo wherever the field
+is within the halo width of the edge, so it drew one along the **quad border**: a white rectangle
+round every POI icon and a white outline round every tree.
+
+An SDF icon is therefore padded by `SDF_PADDING` texels, with the ramp **continued outward** at the
+field's own rate from the nearest border pixel. Filling a constant does not work — that just moves
+the same step outward and the halo follows it there.
+
+It grows the quad, and with it the label's collision box, so the padding is kept to what a typical
+`icon-halo-width: 2` needs rather than the widest a style could ask for.
+
 ## Where an icon sits relative to its label
 
 The image is moved clear of the text by half its height, but **only when the style says nothing

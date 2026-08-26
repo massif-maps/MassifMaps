@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
+import { PNG } from 'pngjs';
+
 import { convert } from '../dist/mapbox2css/index.js';
 import { isShieldLayer } from '../dist/mapbox2css/shield.js';
 
@@ -81,8 +83,26 @@ test('an icon beside text becomes ONE shield, not a marker that culls the label'
     assert.match(out, /shield-name: \[name\];/);
     assert.match(out, /shield-fill: #333333;/);
     assert.match(out, /shield-unlock-image: true;/);
-    // 'bottom' anchors the text's bottom edge, so the text is above and the icon drops below it.
-    assert.match(out, /shield-dy: 4;/);
+    // 'bottom' anchors the text's bottom edge, so the text is above and the icon drops below it -
+    // by half the bitmap, which an SDF icon carries SDF_PADDING of field around (8 + 2*4 = 16).
+    assert.match(out, /shield-dy: 8;/);
+});
+
+test('an SDF icon carries field around it, so the halo has room to fade before the quad ends', () => {
+    // MapBox's field only describes ~2 texels outside the ink and a sprite cell is cut tight, so
+    // the renderer drew the halo along the QUAD BORDER: a white rectangle round every POI icon.
+    const sprites = new Map([['default', {
+        index: { circle: { x: 0, y: 0, width: 8, height: 8, pixelRatio: 1, sdf: true } },
+        image: { width: 8, height: 8, data: Buffer.alloc(8 * 8 * 4, 200) },
+    }]]);
+    convert({ layers: [symbol({ 'text-field': '{name}', 'icon-image': 'circle' }, { 'icon-color': '#000' })] },
+        TABLE, { sprites: { sheets: sprites, outDir: '/tmp/massif-style-test' } });
+
+    const png = PNG.sync.read(readFileSync('/tmp/massif-style-test/icons/circle.png'));
+    assert.equal(png.width, 16, 'padded on both sides');
+    assert.equal(png.height, 16);
+    // The corner is the furthest from the ink, so it is the closest to "fully outside" (0).
+    assert.ok(png.data[0] < png.data[(8 * 16 + 8) * 4], 'the field falls off towards the border');
 });
 
 test('an icon-overlap alone never builds a fileless marker', () => {

@@ -5,7 +5,7 @@ import { translateFilter, zoomPredicates } from './filter.js';
 import { HANDLED_ELSEWHERE, followsLine, repeatsAlongLine, resolvePlacement } from './placement.js';
 import { KNOWN_GAPS, LAYER_SYMBOLIZER, PROPERTY_MAP, VALUE_MAP } from './properties.js';
 import { PLATE_MAP, asShieldDeclaration, isShieldLayer, plateRadius } from './shield.js';
-import { type ExtractedIcon, type SpriteSet, extractIcon } from './sprite.js';
+import { type ExtractedIcon, type SpriteSet, extractAllIcons, extractIcon } from './sprite.js';
 import { type Schema, dropMissingFieldTests, mapSourceLayer, withMappingFilter } from './schema.js';
 import { collapseBranches, splitLayer } from './split.js';
 import type { CartoProperty, Json, MapboxLayer, MapboxStyle, PropertyTable } from './types.js';
@@ -45,9 +45,14 @@ export interface ConvertOptions {
     labelSpacing?: number;
     /** Retarget the style's source layers at another tile schema - see schema.ts. */
     schema?: Schema;
+    /** Filled in during conversion: one style parameter per sprite name (see ICON_PARAM_PREFIX). */
+    iconParams?: Map<string, string>;
+    /** Filled in during conversion: any icon, for the size and offset a per-feature name has none of. */
+    iconSample?: ExtractedIcon | null;
 }
 
 export function convert(style: MapboxStyle, table: PropertyTable, options: ConvertOptions = {}): ConvertResult {
+    options = { ...options, iconParams: options.iconParams ?? new Map() };
     const coverage = new Coverage();
     const allowed = new Map<string, CartoProperty>(table.properties.map((p) => [p.cartocss, p]));
     const layers = style.layers ?? [];
@@ -166,7 +171,11 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
     // loadMapProject REVERSES this array (layerNames.insert(begin)), and MapBox layers run
     // bottom-to-top, so the project list is the draw order reversed.
     const projectLayers = [...order.entries()].sort((a, b) => a[1] - b[1]).map(([name]) => name).reverse();
-    const project = JSON.stringify({ styles: ['style.mss'], layers: projectLayers }, null, 2) + '\n';
+    const project = JSON.stringify(
+        options.iconParams!.size > 0
+            ? { styles: ['style.mss'], layers: projectLayers, styleparameters: Object.fromEntries([...options.iconParams!].sort()) }
+            : { styles: ['style.mss'], layers: projectLayers },
+        null, 2) + '\n';
 
     return { mss, project, coverage };
 }
@@ -483,11 +492,18 @@ function plateDeclarations(layer: MapboxLayer, coverage: Coverage): string[] {
  */
 function shieldImageDeclarations(layer: MapboxLayer, icon: ExtractedIcon, scale: number, coverage: Coverage): string[] {
     // shield-placement comes from the renamed text-placement - one label, one placement.
-    const out = [`shield-file: url('${icon.file}');`, 'shield-unlock-image: true;'];
+    // A per-feature name arrives as a whole expression (see dynamicIconDeclarations); a constant
+    // one is just a path and takes the url() around it here.
+    const fileValue = icon.file.startsWith('@@EXPR@@')
+        ? icon.file.slice('@@EXPR@@'.length) : `url('${icon.file}')`;
+    const out = [`shield-file: ${fileValue};`, 'shield-unlock-image: true;'];
     coverage.emit('shield-file');
     coverage.emit('shield-unlock-image');
-    if (scale !== 1) {
-        out.push(`shield-image-scale: ${round(scale)};`);
+    // The file is in the SHEET's texels, so a 2x sheet has to be drawn at half scale to come out
+    // the size the style asked for.
+    const drawScale = scale / icon.pixelRatio;
+    if (drawScale !== 1) {
+        out.push(`shield-image-scale: ${round(drawScale)};`);
         coverage.emit('shield-image-scale');
     }
 
@@ -569,16 +585,192 @@ function representativeScale(size: Json | undefined, fallback = 1): number {
     return sizes.length === 0 ? fallback : sizes.reduce((a, b) => a + b, 0) / sizes.length;
 }
 
+
+/**
+ * The field a data-driven `icon-image` names its sprite from, or null when it names a constant.
+ *
+ * MapTiler writes `coalesce(image(subclass), image(class), image('dot'))`: the first name that IS
+ * in the sprite wins. CartoCSS has no coalesce, so only the FIRST field is used - a POI whose
+ * subclass has no sprite gets its label without an icon, where MapTiler falls back to the dot.
+ */
+function dynamicIconField(image: Json): { fields: string[]; fallback: string | null } | null {
+    const fieldOf = (node: Json): string | null => {
+        if (!Array.isArray(node) || node[0] !== 'image') return null;
+        const arg = node[1];
+        return Array.isArray(arg) && arg[0] === 'get' && typeof arg[1] === 'string' ? arg[1] : null;
+    };
+    const constantOf = (node: Json): string | null => {
+        if (Array.isArray(node) && node[0] === 'image' && typeof node[1] === 'string') return node[1];
+        return typeof node === 'string' ? node : null;
+    };
+    if (Array.isArray(image) && image[0] === 'coalesce') {
+        const fields: string[] = [];
+        let fallback: string | null = null;
+        for (const branch of image.slice(1)) {
+            const field = fieldOf(branch as Json);
+            if (field) fields.push(field);
+            else fallback = constantOf(branch as Json) ?? fallback;
+        }
+        return fields.length ? { fields, fallback } : null;
+    }
+    const field = fieldOf(image);
+    return field ? { fields: [field], fallback: null } : null;
+}
+
+
+/**
+ * An `icon-image` that names its sprite from the feature, as a chain of parameter lookups.
+ *
+ * MapTiler writes these three ways, and all three are lookups on ONE field:
+ *   coalesce(image(subclass), image(class), image('dot'))
+ *   match(get(class), ['bed_and_breakfast', …], get(class), 'apartment', 'lodging', 'lodging')
+ *   case(get(cuisine) == 'turkish', 'kebab', …, match(get(class), …))
+ *
+ * A style parameter per label IS that lookup - `[param::t-<label>]` is null when the label has no
+ * entry, so `??` falls through exactly as coalesce and the fallback branch do. The alternative was
+ * one attachment per branch, which cost a rule each and ran into MAX_VARIANTS: MapTiler's
+ * accommodation table has nine branches, so it did not split at all and every hotel lost its icon.
+ */
+function iconExpression(image: Json, layer: MapboxLayer, coverage: Coverage, options: ConvertOptions): string | null {
+    const sprites = options.sprites!;
+    const slug = safeParamName(layer.id);
+    let sample: ExtractedIcon | null = null;
+    let tableIndex = 0;
+
+    const named = (name: string): string | null => {
+        const icon = extractIcon(sprites.sheets, name, sprites.outDir, options.flattenSdf, undefined, 1);
+        if (!icon) return null;
+        if (!sample) sample = icon;
+        return icon.file;
+    };
+
+    // The labels a condition accepts for one field, or null when it tests something else.
+    const labelsOf = (condition: Json, field: string): string[] | null => {
+        if (!Array.isArray(condition)) return null;
+        const [op, a, b] = condition as Json[];
+        if (op === '==' && Array.isArray(a) && a[0] === 'get' && a[1] === field && typeof b === 'string') return [b];
+        if (op === 'in' && Array.isArray(a) && a[0] === 'get' && a[1] === field
+            && Array.isArray(b) && b[0] === 'literal' && Array.isArray(b[1])) {
+            return (b[1] as Json[]).every((l) => typeof l === 'string') ? b[1] as string[] : null;
+        }
+        if (op === 'any' || op === 'all') {
+            const parts = (condition as Json[]).slice(1).map((c) => labelsOf(c as Json, field));
+            if (op === 'any' && parts.every((x) => x !== null)) return parts.flat() as string[];
+        }
+        return null;
+    };
+
+    // The field a case's first condition tests, so the rest can be checked against it.
+    const fieldOfCase = (condition: Json): string | null => {
+        const walk = (node: Json): string | null => {
+            if (!Array.isArray(node)) return null;
+            if (node[0] === 'get' && typeof node[1] === 'string') return node[1];
+            for (const child of node.slice(1)) {
+                const found = walk(child as Json);
+                if (found) return found;
+            }
+            return null;
+        };
+        return walk(condition);
+    };
+
+    const build = (node: Json): string | null => {
+        if (typeof node === 'string') {
+            const file = named(node);
+            return file ? `'${file}'` : `''`;
+        }
+        if (Array.isArray(node) && node[0] === 'image') return build(node[1] as Json);
+        if (Array.isArray(node) && node[0] === 'get' && typeof node[1] === 'string') {
+            // Named after the value itself - the global one-parameter-per-sprite table covers it.
+            const all = extractAllIcons(sprites.sheets, sprites.outDir, options.flattenSdf);
+            for (const name of all.names) options.iconParams!.set(`${ICON_PARAM_PREFIX}${name}`, `icons/${name}.png`);
+            if (!sample) sample = all.sample;
+            return `[param::${ICON_PARAM_PREFIX}[${node[1]}]]`;
+        }
+        if (Array.isArray(node) && node[0] === 'coalesce') {
+            const parts = (node as Json[]).slice(1).map((b) => build(b as Json)).filter((x): x is string => x !== null);
+            return parts.length ? parts.join(' ?? ') : null;
+        }
+
+        // match / case both become one table on one field, plus whatever their fallback is.
+        let field: string | null = null;
+        const branches: { labels: string[]; value: Json }[] = [];
+        let fallback: Json | null = null;
+        if (Array.isArray(node) && node[0] === 'match' && node.length >= 5 && node.length % 2 === 1) {
+            const input = node[1];
+            if (!Array.isArray(input) || input[0] !== 'get' || typeof input[1] !== 'string') return null;
+            field = input[1];
+            for (let i = 2; i + 1 < node.length; i += 2) {
+                const raw = Array.isArray(node[i]) ? node[i] as Json[] : [node[i] as Json];
+                if (!raw.every((l) => typeof l === 'string' || typeof l === 'number')) return null;
+                branches.push({ labels: raw.map(String), value: node[i + 1] as Json });
+            }
+            fallback = node[node.length - 1] as Json;
+        } else if (Array.isArray(node) && node[0] === 'case' && node.length >= 4 && node.length % 2 === 0) {
+            field = fieldOfCase(node[1] as Json);
+            if (!field) return null;
+            for (let i = 1; i + 1 < node.length; i += 2) {
+                const labels = labelsOf(node[i] as Json, field);
+                if (!labels) return null;
+                branches.push({ labels, value: node[i + 1] as Json });
+            }
+            fallback = node[node.length - 1] as Json;
+        } else {
+            return null;
+        }
+
+        const table = `${slug}-t${tableIndex++}`;
+        let wrote = 0;
+        for (const { labels, value } of branches) {
+            for (const label of labels) {
+                const selfNamed = Array.isArray(value) && value[0] === 'get' && value[1] === field;
+                const name = selfNamed ? label : (typeof value === 'string' ? value : null);
+                if (name === null) continue;
+                const file = named(name);
+                if (!file) continue;
+                options.iconParams!.set(`${table}-${label}`, file);
+                wrote++;
+            }
+        }
+        const rest = fallback === null ? null : build(fallback);
+        const tail = rest && rest !== `''` ? ` ?? ${rest}` : '';
+        if (wrote === 0) return rest;
+        return `[param::${table}-[${field}]]${tail}`;
+    };
+
+    const expr = build(image);
+    if (!expr || !sample) return null;
+    options.iconSample = sample;
+    coverage.note(`"${layer.id}": icon named per feature, resolved through style parameters`);
+    return `(${expr})`;
+}
+
+/** A style parameter name is a bare identifier - a layer id is not. */
+function safeParamName(id: string): string {
+    return id.replace(/[^A-Za-z0-9]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase();
+}
+
 /** MapBox's icon-* onto marker-*, once the sprite has been sliced into its own file. */
 function markerDeclarations(layer: MapboxLayer, coverage: Coverage, options: ConvertOptions): string[] {
     const image = layer.layout?.['icon-image'];
     if (image === undefined) return [];
-    if (typeof image !== 'string') {
-        coverage.drop('icon-image', 'data-driven icon name', layer.id);
-        return [];
-    }
     if (!options.sprites) {
         coverage.drop('icon-image', 'no sprite loaded (pass --sprite or let the style provide one)', layer.id);
+        return [];
+    }
+    // MapTiler names a POI's icon from the feature. The SDK resolves shield-file per feature and
+    // mapnik interpolates [field] inside a string, so the whole sheet is written out and the field
+    // goes in the file name - see dynamicIconField.
+    if (typeof image !== 'string') {
+        const expr = iconExpression(image, layer, coverage, options);
+        if (expr && options.iconSample) {
+            const scale = layer.layout?.['text-field'] !== undefined
+                ? representativeScale(layer.layout?.['icon-size']) : 1;
+            return shieldImageDeclarations(layer, { ...options.iconSample, file: `@@EXPR@@${expr}` }, scale, coverage);
+        }
+    }
+    if (typeof image !== 'string') {
+        coverage.drop('icon-image', 'data-driven icon name', layer.id);
         return [];
     }
 
@@ -700,6 +892,8 @@ const DEFAULT_SYMBOL_SPACING = 250;
  * from 2x up, which is every phone.
  */
 const FILL_OUTLINE_WIDTH = 0.4;
+/** One style parameter per sprite name, so a per-feature lookup can fall through when it misses. */
+const ICON_PARAM_PREFIX = 'icon-';
 
 /** A value in ems of the layer's own text-size, as the pixels CartoCSS wants. */
 function ems(value: Json, layer: MapboxLayer, coverage: Coverage, from: string): string | null {

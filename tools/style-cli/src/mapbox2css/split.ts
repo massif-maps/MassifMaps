@@ -222,10 +222,21 @@ function zoomBandsOf(value: Json, requireString: boolean): ZoomBand[] | null {
     return stops.map(([from, value], i) => ({ from, to: stops[i + 1]?.[0] ?? 24, value }));
 }
 
+/**
+ * A feature-driven icon name is resolved as a chain of style-parameter lookups instead (see
+ * iconExpression), which is one rule rather than one attachment per branch and has no MAX_VARIANTS:
+ * MapTiler's accommodation table has nine branches, so it did not split at all and every hotel lost
+ * its icon, and its food table nests a second lookup inside its own fallback.
+ */
+function isLookupTable(value: Json): boolean {
+    return Array.isArray(value) && (value[0] === 'match' || value[0] === 'case' || value[0] === 'coalesce');
+}
+
 /** The paint/layout names that read the feature and may not, in a stable order. */
 function splittableProperties(layer: MapboxLayer): string[] {
     return Object.entries({ ...layer.layout, ...layer.paint })
         .filter(([name, value]) => mustNotReadFeature(name) && readsFeature(value as Json))
+        .filter(([name, value]) => !(name === 'icon-image' && isLookupTable(value as Json)))
         .map(([name]) => name);
 }
 

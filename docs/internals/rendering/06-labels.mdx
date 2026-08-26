@@ -60,7 +60,11 @@ tile set — and a placement rebuilt from a differently clipped copy of a line c
 `LabelCuller`.
 
 **Draw order is one list per pass**, sorted by priority → layer index → global id, and the batch
-changes glyph atlas mid-list. Grouping the labels by atlas first — which is what a
+changes glyph atlas mid-list. It runs **bottom to top** — what is drawn last is on top — which is the
+OPPOSITE of the culler's order, where the most important label is placed FIRST so it claims its slot
+(`LabelCuller::process`). The draw list used to copy the culler's direction, so of two labels that
+overlap the LESS important one was drawn over the other: a road name covering the town name it
+crossed. The `layerIndex` tie-break had always run bottom-to-top, which is what gave it away. Grouping the labels by atlas first — which is what a
 `unordered_map<Bitmap, ...>` did — put two labels from different atlases in **pointer-hash order**,
 so an icon and the small label meant to sit on it were drawn in whichever order the allocator
 happened to give. It only showed below the raster-ladder boundary, where the smaller label lands in

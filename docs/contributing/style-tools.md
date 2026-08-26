@@ -238,6 +238,22 @@ at the label's own size, which is what stops a repeat of the same name being dra
 tiles cut the same road (`TextSymbolizer`, next section); writing 4 px there disabled the floor. An
 explicit `text-padding` still wins.
 
+## Bracketed predicates, not `when()`
+
+A CartoCSS selector is `*predicate`, and the two spellings cost different things: `[class = 'x']`
+is a plain filter the decoder decides per rule, while `when(...)` carries a whole expression it
+evaluates **per feature**. The converter used to bracket only the LEGACY filter forms
+(`["==", "class", "x"]`), so a style written in expressions — which is every modern one — paid for a
+`when()` on tests that are ordinary comparisons. The expression spelling now brackets too:
+`["==", ["get", "class"], "x"]`, `["geometry-type"]` and `["id"]`, for every comparison operator.
+
+`["match", input, [...], true, false]` is how MapTiler spells "input is one of these". The generic
+match translation wrapped it in `? true : false`, which the decoder re-evaluates for every feature;
+as a filter it is just the or-chain, and a one-label match is an equality that brackets.
+
+Measured on MapTiler topo-v4: **389 `when()` down to 191**, all 91 `? true : false` wrappers gone,
+declarations byte-identical, and 0.06% of pixels different at La Clusaz z14.5 (label jitter).
+
 ## A fill's outline
 
 `fill-outline-color` has no polygon property to land on, so it becomes a second symbolizer — a line

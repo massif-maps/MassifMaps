@@ -6,7 +6,9 @@ const LEGACY_COMPARISON: Record<string, string> = {
 };
 
 // MapBox's $type names against mapnik::geometry_type, which is what the decoder exposes.
-const GEOMETRY_TYPE: Record<string, number> = { Point: 1, LineString: 2, Polygon: 3 };
+const GEOMETRY_TYPE: Record<string, number> = {
+    Point: 1, MultiPoint: 1, LineString: 2, MultiLineString: 2, Polygon: 3, MultiPolygon: 3,
+};
 
 /**
  * A MapBox filter -> CartoCSS selector fragments, already complete: either a bracketed test
@@ -66,7 +68,29 @@ function filterExpression(filter: Json[]): string {
         return `(${field} ${LEGACY_COMPARISON[head as string]} ${literalFor(args[0] as string, args[1] as Json)})`;
     }
 
+    const orChain = booleanMatchChain(filter);
+    if (orChain !== null) return orChain;
+
     return translateExpression(filter);
+}
+
+/**
+ * `["match", input, labels, true, false]` is how MapTiler spells "input is one of these", and the
+ * generic match translation wraps it in `? true : false` - noise the decoder re-evaluates for every
+ * feature. As a filter it is just the or-chain.
+ */
+function booleanMatchChain(filter: Json[]): string | null {
+    const labels = booleanMatchLabels(filter);
+    if (labels === null) return null;
+    const input = translateExpression(filter[1] as Json);
+    return `(${labels.map((l) => `${input} = ${translateExpression(l)}`).join(' || ')})`;
+}
+
+/** The label list of a `match` used as a boolean, or null when it is not one. */
+function booleanMatchLabels(filter: Json[]): Json[] | null {
+    if (filter[0] !== 'match' || filter.length !== 5) return null;
+    if (filter[3] !== true || filter[4] !== false) return null;
+    return Array.isArray(filter[2]) ? (filter[2] as Json[]) : [filter[2] as Json];
 }
 
 /** MapBox's own test: a legacy filter names its field as a bare string. */
@@ -105,6 +129,43 @@ function translateBracketed(filter: Json[]): string | null {
         return key !== null && value !== null ? `[${predicateKey(key)} = ${value}]` : null;
     }
 
+    // The EXPRESSION spelling of the same tests. A bracketed predicate is a plain filter the
+    // decoder can decide per rule; when() carries a whole expression it has to evaluate per
+    // feature, so a style written in expressions - which is every modern one - was paying for a
+    // when() on tests that are ordinary comparisons.
+    if (typeof head === 'string' && LEGACY_COMPARISON[head] && args.length === 2) {
+        const key = expressionKey(args[0] as Json);
+        const value = key === null ? null : expressionConstant(key, args[1] as Json);
+        return key !== null && value !== null ? `[${predicateKey(key)} ${LEGACY_COMPARISON[head]} ${value}]` : null;
+    }
+
+    // A one-label boolean match is an equality test.
+    const labels = booleanMatchLabels(filter);
+    if (labels !== null && labels.length === 1) {
+        const key = expressionKey(filter[1] as Json);
+        const value = key === null ? null : expressionConstant(key, labels[0]);
+        return key !== null && value !== null ? `[${predicateKey(key)} = ${value}]` : null;
+    }
+
+    return null;
+}
+
+/** `["get", k]`, `["geometry-type"]` and `["id"]` as the field a bracketed predicate names. */
+function expressionKey(node: Json): string | null {
+    if (!Array.isArray(node)) return null;
+    if (node[0] === 'get' && node.length === 2 && typeof node[1] === 'string') return node[1];
+    if (node[0] === 'geometry-type' && node.length === 1) return 'mapnik::geometry_type';
+    if (node[0] === 'id' && node.length === 1) return 'mapnik::feature_id';
+    return null;
+}
+
+/** The right-hand side of one of those, as a constant. geometry-type compares against a number. */
+function expressionConstant(key: string, value: Json): string | null {
+    if (key === 'mapnik::geometry_type') {
+        return typeof value === 'string' && value in GEOMETRY_TYPE ? String(GEOMETRY_TYPE[value]) : null;
+    }
+    if (value === null || typeof value === 'boolean' || typeof value === 'number') return String(value);
+    if (typeof value === 'string') return `'${value.replace(/'/g, "\\'")}'`;
     return null;
 }
 

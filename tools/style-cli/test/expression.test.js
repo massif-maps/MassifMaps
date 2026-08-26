@@ -143,6 +143,34 @@ test('an or-filter falls back to when(), which is a top-level predicate', () => 
     ]);
 });
 
+test('the expression spelling of a comparison is bracketed too, not wrapped in when()', () => {
+    // A bracketed predicate is a plain filter the decoder decides per rule; when() carries an
+    // expression it evaluates per FEATURE. Every modern style is written in expressions, so
+    // leaving these to when() taxed the whole style: 389 when()s on MapTiler topo-v4, 191 after.
+    assert.deepEqual(translateFilter(['==', ['get', 'class'], 'motorway']), ["[class = 'motorway']"]);
+    assert.deepEqual(translateFilter(['!=', ['get', 'rank'], 3]), ['[rank != 3]']);
+    assert.deepEqual(translateFilter(['==', ['geometry-type'], 'LineString']), ["['mapnik::geometry_type' = 2]"]);
+    assert.deepEqual(translateFilter(['>=', ['get', 'rank'], 2]), ['[rank >= 2]']);
+    // Two fields compared to each other has no bracketed form and still needs when().
+    assert.match(translateFilter(['==', ['get', 'a'], ['get', 'b']])[0], /^when\(/);
+});
+
+test('a match used as a boolean is an or-chain, not a ternary', () => {
+    // MapTiler spells "class is one of these" as ["match", input, [...], true, false]; the generic
+    // match translation wrapped it in `? true : false`, which the decoder re-evaluates per feature.
+    assert.deepEqual(
+        translateFilter(['match', ['get', 'class'], ['minor', 'service'], true, false]),
+        ["when(([class] = 'minor' || [class] = 'service'))"],
+    );
+    // One label is just an equality, so it brackets.
+    assert.deepEqual(
+        translateFilter(['match', ['get', 'class'], ['minor'], true, false]),
+        ["[class = 'minor']"],
+    );
+    // A match that yields anything other than true/false is still a ternary - it is a real match.
+    assert.match(translateFilter(['match', ['get', 'class'], ['minor'], 1, 0])[0], /\? 1 : 0/);
+});
+
 test('maxzoom is exclusive', () => {
     assert.deepEqual(zoomPredicates(6, 20), ['[zoom >= 6]', '[zoom < 20]']);
     assert.deepEqual(zoomPredicates(undefined, undefined), []);

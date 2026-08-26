@@ -37,6 +37,18 @@ val effect = PostProcessEffect("relief-outline", myFragmentShaderSource).apply {
 mapView.mapRenderer.postProcessEffect = effect
 ```
 
+:::note Surface API
+`PostProcessEffect` has no spec type and is attached to the `MapRenderer` rather than to a
+registry object, so this stays object-API for now — see
+[value types](/docs/api/reference/types#postprocesseffect) for what is readable through the
+table. What every layer *does* expose is `postProcessed`, so keeping a layer out of the effect is
+one path:
+
+```java
+map.layer("labels").set("postProcessed", false);
+```
+:::
+
 With an effect attached, the sky, background and all layers render into an offscreen colour texture
 with a real depth buffer; the effect then draws one full-screen quad. Nothing of this path runs when
 no effect is set.

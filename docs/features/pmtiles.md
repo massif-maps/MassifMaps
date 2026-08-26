@@ -43,11 +43,10 @@ let layer = MSFVectorTileLayer(dataSource: source, decoder: decoder)
 mapView.getLayers()?.add(layer)
 ```
 
-## From JSON
+### With the surface API
 
-`pmtiles` is a `source` spec type of the [facade API](/docs/internals/api-facade), so a
-NativeScript / React Native / C ABI caller builds one from JSON, with no native construction and
-no `adopt` step:
+`pmtiles` is a [`source` spec type](/docs/api/reference/source), so a NativeScript / React Native /
+C ABI caller builds one from JSON, with no native construction and no `adopt` step:
 
 ```json
 {"type":"vector",
@@ -88,4 +87,4 @@ directories and the tile data.
 ## See also
 
 - [Offline Maps](/docs/guides/offline-maps) — MBTiles and offline packages.
-- [Layers & Data Sources](/docs/guides/layers-and-data-sources) — how sources feed layers.
+- [Source reference](/docs/api/reference/source) — every source type and how they nest.

@@ -44,6 +44,20 @@ layer.setShaderSource("""
 mapView.layers.add(layer)
 ```
 
+### With the surface API
+
+There is no `{"type": "custom-raster"}` — the layer carries no `!spec` declaration. Construct it
+and [adopt](/docs/api/#bringing-an-existing-app-across) it; `shaderSource` is an ordinary property
+afterwards, so the shader can be swapped at runtime by one write:
+
+```java
+MassifLayer tinted = Massif.adopt("tinted", new CustomRasterTileLayer(source));
+tinted.set("shaderSource", grayscaleFilter);
+```
+
+`shaderSource` is also inherited by the [`hillshade`](/docs/api/reference/layer) layer, which
+*does* have a spec — so a shaded-relief layer with a custom filter needs no adoption at all.
+
 | Member | Purpose |
 |---|---|
 | `setShaderSource(String)` | Install the GLSL filter shader. |

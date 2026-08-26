@@ -10,6 +10,14 @@ The SDK exposes the **same class model** on every platform — the C++ core is w
 [SWIG](https://www.swig.org/) into native Java, Objective-C/Swift and C# bindings, so classes and
 methods map 1:1 with a per-platform naming convention.
 
+:::tip Two surfaces
+This page documents the **object API** — the classes an app constructs and wires by hand. New
+work targets the [surface API](/docs/api/) instead: ids, JSON specs and dotted paths, the same
+in every language, with its own [generated reference](/docs/api/reference/). Both are supported,
+and [`adopt`](/docs/api/#bringing-an-existing-app-across) moves an app from one to the other a
+piece at a time.
+:::
+
 ## Generated reference
 
 | Platform | Reference | Naming |

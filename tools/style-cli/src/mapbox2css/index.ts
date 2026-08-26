@@ -56,6 +56,9 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
     const blocks: string[] = [];
     // Source-layer name -> the index of the first MapBox layer that draws it.
     const order = new Map<string, number>();
+    // The TARGET source layer of every layer that made it through, in style order. Kept separately
+    // because --schema renames them, and the interleaving check has to see what was emitted.
+    const emitted: string[] = [];
 
     layers.forEach((layer, index) => {
         if (layer.type === 'background') {
@@ -97,6 +100,7 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
             schemaLayer = { ...layer, filter: (merged ?? undefined) as MapboxLayer['filter'] };
         }
         if (!order.has(target)) order.set(target, index);
+        emitted.push(target);
 
         // The contour schemas name the elevation differently; renaming it here means the filter,
         // the label and every paint expression all see the field the tiles actually carry.
@@ -142,7 +146,7 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
         blocks.push(`${selector} {\n${declarations.map((d) => `  ${d}`).join('\n')}\n}`);
     }
 
-    reportInterleaving(layers, order, coverage);
+    reportInterleaving(emitted, order, coverage);
     reportSources(style, layers, coverage);
 
     const header = [
@@ -794,13 +798,12 @@ function reportSources(style: MapboxStyle, layers: MapboxLayer[], coverage: Cove
  * different source-layers cannot be interleaved. Report each inversion rather than let the style
  * quietly draw in the wrong order.
  */
-function reportInterleaving(layers: MapboxLayer[], order: Map<string, number>, coverage: Coverage): void {
+function reportInterleaving(emitted: string[], order: Map<string, number>, coverage: Coverage): void {
     let inversions = 0;
     let previous = -1;
-    for (const layer of layers) {
-        const sourceLayer = layer['source-layer'];
-        if (!sourceLayer || !order.has(sourceLayer)) continue;
-        const position = order.get(sourceLayer)!;
+    for (const sourceLayer of emitted) {
+        const position = order.get(sourceLayer);
+        if (position === undefined) continue;
         if (position < previous) inversions++;
         previous = position;
     }

@@ -69,6 +69,21 @@ test('the whole style is retargeted, project list included', () => {
     assert.deepEqual(JSON.parse(project).layers, ['landcover']);
 });
 
+test('the interleaving report still sees the layers after they are renamed', () => {
+    // The report walks the emitted TARGET layers; keyed on the original source-layer it found
+    // nothing to look up once --schema renamed them, and went silent instead of reporting more.
+    const style = {
+        layers: [
+            { id: 'a', type: 'fill', source: 's', 'source-layer': 'forest', paint: { 'fill-color': '#0f0' } },
+            { id: 'b', type: 'fill', source: 's', 'source-layer': 'water', paint: { 'fill-color': '#00f' } },
+            { id: 'c', type: 'fill', source: 's', 'source-layer': 'grass', paint: { 'fill-color': '#8f8' } },
+        ],
+    };
+    // forest and grass both become landcover, with water drawn between them - which a CartoCSS
+    // project cannot express, since its landcover entry pulls both attachments together.
+    assert.match(convert(style, TABLE, { schema: 'openmaptiles' }).coverage.report(), /draw out of order/);
+});
+
 test('without the option nothing is retargeted', () => {
     const style = { layers: [{ id: 'w', type: 'fill', source: 's', 'source-layer': 'forest', paint: { 'fill-color': '#0f0' } }] };
     assert.match(convert(style, TABLE).mss, /#forest::w/);

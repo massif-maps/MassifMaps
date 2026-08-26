@@ -124,7 +124,16 @@ namespace massif::mvt {
                     | (karma::lit("skewy")  << '(' << expression << ')') [_pass = phoenix::bind(&getSkewYTransformExpression, _val, _1)]
                     | (karma::string << '(' <<  (expression % ',') << ')') [_pass = phoenix::bind(&getFunctionExpression, _val, _1, _2)]
                     // | (karma::lit("skewx") >> ('(' > (expression % ',') > ')')) [_val = phoenix::bind(&getFunctionExpression, _val, _1, _2)]
-                    | predicate                         [_pass = phoenix::bind(&getExpressionPredicate, _val, _1)]
+                    // Parenthesised, and that is load-bearing. What reaches a factor as a predicate
+                    // is an 'and'/'or', which term0 writes WITHOUT them - and the parser gives the
+                    // two the same precedence, left to right, so `a and (b or c)` came back out as
+                    // `a and b or c` and reparsed as `(a and b) or c`. Unparenthesised, this
+                    // alternative only produced that when it was chosen over the `('(' expression
+                    // ')')` fallback below, which is a choice boost.spirit.karma makes differently
+                    // under emcc than under clang: every native build looked right and only the
+                    // WASM one corrupted the filters. A comparison or a '!' never gets here - term1
+                    // and unary take those first.
+                    | ('(' << predicate << ')')         [_pass = phoenix::bind(&getExpressionPredicate, _val, _1)]
                     | ('[' << stringExpression << ']')  [_pass = phoenix::bind(&getVariableExpression, _val, _1)]
                     | ('(' << expression << ')')        [_1 = _val]
                     ;

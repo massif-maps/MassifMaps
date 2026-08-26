@@ -1,4 +1,4 @@
-import { type ContourOptions, isContourLayer, rewriteContourFilter } from './contour.js';
+import { type ContourOptions, isContourLayer, rewriteContourFields, rewriteContourFilter } from './contour.js';
 import { Coverage } from './coverage.js';
 import { Untranslatable, expandTokens, translateExpression } from './expression.js';
 import { translateFilter, zoomPredicates } from './filter.js';
@@ -73,8 +73,14 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
         }
         if (!order.has(sourceLayer)) order.set(sourceLayer, index);
 
+        // The contour schemas name the elevation differently; renaming it here means the filter,
+        // the label and every paint expression all see the field the tiles actually carry.
+        const retargeted = options.contour
+            ? (rewriteContourFields(layer as unknown as Json, options.contour) as unknown as MapboxLayer)
+            : layer;
+
         // A field-driven paint value becomes one attachment per branch - see split.ts.
-        const variants = splitLayer(layer, coverage);
+        const variants = splitLayer(isContourLayer(layer) ? retargeted : layer, coverage);
         variants.forEach((variant, branch) => {
             const suffix = variants.length > 1 ? `_b${branch + 1}` : '';
             emitLayer(variant, `${attachmentName(layer.id)}${suffix}`, sourceLayer, symbolizer, index);

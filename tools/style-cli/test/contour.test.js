@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { isContourLayer, rewriteContourFilter } from '../dist/mapbox2css/contour.js';
+import { isContourLayer, rewriteContourFields, rewriteContourFilter } from '../dist/mapbox2css/contour.js';
 
 const OPTIONS = { schema: 'div', majorDiv: 100 };
 
@@ -42,6 +42,22 @@ test('an nth_line value that is not an index line is left alone', () => {
     const { out, rewrites } = rewrite(['==', 'nth_line', 2]);
     assert.deepEqual(out, ['==', 'nth_line', 2]);
     assert.equal(rewrites, 0);
+});
+
+test('the elevation field is renamed, because the two schemas spell it differently', () => {
+    // MapTiler's contour tiles call it `height`; the gdal ladder and ContourTileDataSource call it
+    // `ele`. Same quantity, same unit - but a label reading the wrong name draws nothing.
+    assert.deepEqual(rewriteContourFields(['>', 'height', 0], OPTIONS), ['>', 'ele', 0]);
+    assert.deepEqual(rewriteContourFields(['get', 'height'], OPTIONS), ['get', 'ele']);
+    assert.equal(rewriteContourFields('{height} m', OPTIONS), '{ele} m');
+    // It reaches inside a layer, so the filter, the label and the paint all agree.
+    assert.deepEqual(
+        rewriteContourFields({ layout: { 'text-field': ['get', 'height'] } }, OPTIONS),
+        { layout: { 'text-field': ['get', 'ele'] } });
+});
+
+test('the field rename needs the option too', () => {
+    assert.deepEqual(rewriteContourFields(['get', 'height'], { majorDiv: 100 }), ['get', 'height']);
 });
 
 test('nothing is rewritten without the option', () => {

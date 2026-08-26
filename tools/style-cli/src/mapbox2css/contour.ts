@@ -55,3 +55,36 @@ function namesNthLine(key: Json): boolean {
     if (key === 'nth_line') return true;
     return Array.isArray(key) && key[0] === 'get' && key[1] === 'nth_line';
 }
+
+/**
+ * The elevation carries a different name in each schema: MapTiler's contour tiles call it `height`,
+ * the gdal ladder and `ContourTileDataSource` call it `ele`. Unlike the nth_line/div pair this is
+ * the SAME quantity in the same unit, so it is a plain rename - and without it a converted contour
+ * label reads a field that is not there and draws nothing.
+ */
+const ELEVATION_FIELD = { from: 'height', to: 'ele' };
+
+export function rewriteContourFields(value: Json, options: ContourOptions): Json {
+    if (options.schema !== 'div') return value;
+
+    if (Array.isArray(value)) {
+        // The legacy spelling names the field as a bare string in argument 1.
+        if (typeof value[0] === 'string' && value[1] === ELEVATION_FIELD.from && value[0] !== 'get') {
+            return [value[0], ELEVATION_FIELD.to, ...value.slice(2)] as unknown as Json;
+        }
+        if (value[0] === 'get' && value[1] === ELEVATION_FIELD.from) {
+            return ['get', ELEVATION_FIELD.to] as unknown as Json;
+        }
+        return value.map((item) => rewriteContourFields(item as Json, options)) as unknown as Json;
+    }
+    // The token form a text-field uses: "{height}".
+    if (typeof value === 'string' && value.includes(`{${ELEVATION_FIELD.from}}`)) {
+        return value.split(`{${ELEVATION_FIELD.from}}`).join(`{${ELEVATION_FIELD.to}}`);
+    }
+    if (value && typeof value === 'object') {
+        return Object.fromEntries(
+            Object.entries(value).map(([key, item]) => [key, rewriteContourFields(item as Json, options)]),
+        ) as unknown as Json;
+    }
+    return value;
+}

@@ -307,6 +307,15 @@ function layerDeclarations(
         // at least twice that apart; the culler's minimum-distance is one buffer between the pair.
         // Dropping it was why a converted style drew far more labels than MapTiler does.
         if (name === 'text-padding') {
+            // Not on a line-placed label, for the same reason the default below skips one: an
+            // unstated minimum lets the decoder floor it at the label's own size, which is what
+            // stops one road shield being drawn twice where two tiles cut the same road. MapBox's
+            // 2 px is a collision pad, not a repeat distance, and writing it here disabled that
+            // floor - two D 1508 shields a few pixels apart.
+            if (followsLine(layer)) {
+                coverage.drop('text-padding', 'a line-placed label keeps the decoder\'s own repeat floor', layer.id);
+                continue;
+            }
             const translated = tryTranslate(value, name, layer.id, coverage);
             if (translated === null) continue;
             out.push(`text-min-distance: (${labelGap(options)} * ${translated});`);
@@ -402,6 +411,16 @@ function layerDeclarations(
     if (symbolizer === 'text' && repeatsAlongLine(layer) && !out.some((d) => d.startsWith('text-spacing:'))) {
         out.push(`text-spacing: ${DEFAULT_SYMBOL_SPACING};`);
         coverage.emit('text-spacing');
+    }
+
+    // MapBox's spacing is a SCREEN distance it keeps over the whole line; the decoder walks it in
+    // tile units and restarts per FEATURE, so a road cut into many short ways got a shield on each
+    // one - six "D 41" where MapTiler draws two. The culler is what measures across tiles and
+    // features, so the same distance is handed to it as the floor between two labels of the group.
+    const spacingDecl = out.find((d) => d.startsWith('text-spacing:'));
+    if (symbolizer === 'text' && spacingDecl && !out.some((d) => d.startsWith('text-min-distance:'))) {
+        out.push(`text-min-distance: ${spacingDecl.slice('text-spacing:'.length).trim().replace(/;$/, '')};`);
+        coverage.emit('text-min-distance');
     }
 
     // MapBox wraps at 10 ems whether or not the layer says so; CartoCSS's wrap-width defaults to 0,

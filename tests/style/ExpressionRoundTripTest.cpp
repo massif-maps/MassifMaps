@@ -55,6 +55,18 @@ namespace {
     }
 
     const std::vector<std::string> ABCD = { "a", "b", "c", "d" };
+
+    // The truth table cannot see WHICH alternative the generator picked, and that is the whole
+    // hazard: two of them spell the same tree differently and boost.spirit.karma chose between
+    // them differently under emcc than under clang, so every native build looked right while the
+    // WASM one corrupted filters. Pinning the exact string is what catches that.
+    void checkGenerates(const std::string& source, const std::string& expected, const char* what) {
+        std::string out = mvt::generateExpressionString(mvt::parseExpression(source, false), false);
+        if (out != expected) {
+            std::printf("      %s\n        got      %s\n        expected %s\n", source.c_str(), out.c_str(), expected.c_str());
+        }
+        TEST_CHECK(out == expected, what);
+    }
 }
 
 void testExpressionRoundTrip() {
@@ -87,4 +99,13 @@ void testExpressionRoundTrip() {
         differs = differs || evaluate(grouped, ABCD, bits) != evaluate(flat, ABCD, bits);
     }
     TEST_CHECK(differs, "dropping the parentheses would change the meaning");
+
+    // And the parentheses have to be written by the grammar, not left to whichever alternative
+    // karma happens to take.
+    checkGenerates("[t] = 2 and (([b] = 1) || (!([b] != null)))",
+                   "[{'t'}]=2 and ([{'b'}]=1 or !([{'b'}]<>null))",
+                   "an or inside an and is parenthesised, and so is a negated comparison");
+    checkGenerates("[a] = 1 and ([b] = 1 || [c] = 1 || [d] = 1)",
+                   "[{'a'}]=1 and ([{'b'}]=1 or [{'c'}]=1 or [{'d'}]=1)",
+                   "a multi-way or keeps one pair of parentheses, not none and not nested ones");
 }

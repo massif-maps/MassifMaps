@@ -322,8 +322,12 @@ function layerDeclarations(
         if (name === 'fill-outline-color') {
             const translated = tryTranslate(value, name, layer.id, coverage);
             if (translated !== null) {
-                out.push(`line-color: ${translated};`, 'line-width: 1;');
+                out.push(`line-color: ${translated};`, `line-width: ${FILL_OUTLINE_WIDTH};`);
                 coverage.emit('line-color');
+                coverage.approximate(
+                    `fill-outline-color drawn as a line of width ${FILL_OUTLINE_WIDTH}: MapBox's is a ` +
+                    '1-DEVICE-pixel hairline (gl.LINES) and a CartoCSS width scales with the display, ' +
+                    'so no constant is right at every dpi');
             }
             continue;
         }
@@ -616,6 +620,14 @@ const DEFAULT_TEXT_SIZE = 16;
 const DEFAULT_TEXT_MAX_WIDTH = 10;
 const DEFAULT_TEXT_PADDING = 2;
 const DEFAULT_SYMBOL_SPACING = 250;
+/**
+ * Width of the line that stands in for `fill-outline-color`. MapBox draws that outline with
+ * `gl.LINES`, so it is one DEVICE pixel whatever the display; a CartoCSS width is multiplied by the
+ * pixel scale, so `1` came out ~3 px on a 2.75x phone and small buildings were solid outline
+ * (measured at La Clusaz z14.5: 7456 outline pixels against 1747 of fill). This reads as a hairline
+ * from 2x up, which is every phone.
+ */
+const FILL_OUTLINE_WIDTH = 0.4;
 
 /** A value in ems of the layer's own text-size, as the pixels CartoCSS wants. */
 function ems(value: Json, layer: MapboxLayer, coverage: Coverage, from: string): string | null {

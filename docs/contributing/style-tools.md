@@ -238,6 +238,17 @@ at the label's own size, which is what stops a repeat of the same name being dra
 tiles cut the same road (`TextSymbolizer`, next section); writing 4 px there disabled the floor. An
 explicit `text-padding` still wins.
 
+## A fill's outline
+
+`fill-outline-color` has no polygon property to land on, so it becomes a second symbolizer — a line
+on the same rule. The width is the trap: MapBox draws that outline with `gl.LINES`, which is **one
+DEVICE pixel** whatever the display, while a CartoCSS width is multiplied by the pixel scale. `1`
+therefore came out ~3 px on a 2.75x phone, and at z14.5 a village building is 10-25 px across, so the
+outline covered it: measured at La Clusaz, **7456 outline pixels against 1747 of fill** — buildings
+read as solid dark grey instead of the light fill the style asks for. The converter emits `0.4`,
+which reads as a hairline from 2x up, and reports it as an approximation because no constant is right
+at every dpi.
+
 ## How often a line label repeats
 
 `symbol-spacing` is `text-spacing`, and the two defaults are opposites: MapBox repeats a line label

@@ -2,7 +2,7 @@ import { type ContourOptions, isContourLayer, rewriteContourFields, rewriteConto
 import { Coverage } from './coverage.js';
 import { Untranslatable, expandTokens, translateExpression } from './expression.js';
 import { translateFilter, zoomPredicates } from './filter.js';
-import { HANDLED_ELSEWHERE, followsLine, resolvePlacement } from './placement.js';
+import { HANDLED_ELSEWHERE, followsLine, repeatsAlongLine, resolvePlacement } from './placement.js';
 import { KNOWN_GAPS, LAYER_SYMBOLIZER, PROPERTY_MAP, VALUE_MAP } from './properties.js';
 import { PLATE_MAP, asShieldDeclaration, isShieldLayer, plateRadius } from './shield.js';
 import { type ExtractedIcon, type SpriteSet, extractIcon } from './sprite.js';
@@ -354,10 +354,21 @@ function layerDeclarations(
         }
     }
 
-    // text-padding is 2 px on every layer that states nothing, and the culler's default is 0.
-    if (symbolizer === 'text' && !out.some((d) => d.startsWith('text-min-distance:'))) {
+    // text-padding is 2 px on every layer that states nothing, and the culler's default is 0. A
+    // line-placed label is left out: when no minimum distance is stated the decoder floors it at
+    // the label's own size, which is what stops a repeat of the same name being drawn twice where
+    // two tiles cut the same road (TextSymbolizer, text-spacing). Writing 4 px there disabled that.
+    if (symbolizer === 'text' && !followsLine(layer) && !out.some((d) => d.startsWith('text-min-distance:'))) {
         out.push(`text-min-distance: ${labelGap(options) * DEFAULT_TEXT_PADDING};`);
         coverage.emit('text-min-distance');
+    }
+
+    // MapBox repeats a line label every 250 px whether or not the layer says so; CartoCSS's spacing
+    // defaults to 0, which is ONE label for the whole line - so a long road got its name once and a
+    // contour ring got it once, where MapTiler writes it the length of both.
+    if (symbolizer === 'text' && repeatsAlongLine(layer) && !out.some((d) => d.startsWith('text-spacing:'))) {
+        out.push(`text-spacing: ${DEFAULT_SYMBOL_SPACING};`);
+        coverage.emit('text-spacing');
     }
 
     // MapBox wraps at 10 ems whether or not the layer says so; CartoCSS's wrap-width defaults to 0,
@@ -604,6 +615,7 @@ function labelGap(options: ConvertOptions): number {
 const DEFAULT_TEXT_SIZE = 16;
 const DEFAULT_TEXT_MAX_WIDTH = 10;
 const DEFAULT_TEXT_PADDING = 2;
+const DEFAULT_SYMBOL_SPACING = 250;
 
 /** A value in ems of the layer's own text-size, as the pixels CartoCSS wants. */
 function ems(value: Json, layer: MapboxLayer, coverage: Coverage, from: string): string | null {

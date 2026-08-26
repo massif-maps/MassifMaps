@@ -233,7 +233,22 @@ equivalent", which it is not.
 `--label-spacing N` scales that gap for a map that wants thinning beyond what the style asks;
 1 is the style's own value.
 
-**Honest limits.** Porting the padding changed placement only slightly. A deliberate A/B at
+A **line-placed** label is left out of that default. When no minimum is stated the decoder floors it
+at the label's own size, which is what stops a repeat of the same name being drawn twice where two
+tiles cut the same road (`TextSymbolizer`, next section); writing 4 px there disabled the floor. An
+explicit `text-padding` still wins.
+
+## How often a line label repeats
+
+`symbol-spacing` is `text-spacing`, and the two defaults are opposites: MapBox repeats a line label
+every **250 px**, CartoCSS's 0 means **one label for the whole line**. So the default has to be
+written out, like `text-max-width` — without it a long road got its name once and a contour ring got
+it once. Measured at La Clusaz, z14.5: one contour label on screen before, ten after.
+
+`symbol-placement: line-center` is excluded — it draws one label at the middle whatever the spacing
+says, and 0 is how CartoCSS spells that.
+
+**Honest limits.** Porting `text-padding` changed placement only slightly. A deliberate A/B at
 `text-min-distance: 24` removed roughly a third of the labels, so the lever works and its unit is
 device pixels — but a converted style at z10 still shows far more places than MapTiler's own render
 of the same style at the same zoom, and the padding is not what accounts for that. The cause is not

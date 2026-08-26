@@ -27,6 +27,11 @@ export function followsLine(layer: MapboxLayer): boolean {
     return placement === 'line' || placement === 'line-center';
 }
 
+/** `line-center` is the one line placement that draws ONE label, at the middle, whatever the spacing. */
+export function repeatsAlongLine(layer: MapboxLayer): boolean {
+    return enumOf(layer.layout?.['symbol-placement']) === 'line';
+}
+
 /** The properties resolvePlacement/markerDeclarations consume, so the loop must not re-report them. */
 export const HANDLED_ELSEWHERE = new Set([
     'symbol-placement',

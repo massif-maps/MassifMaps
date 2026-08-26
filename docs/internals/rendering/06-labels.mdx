@@ -136,6 +136,12 @@ Consequences of the split, all keyed on `isLineRun()` / `isScreenLineRun()`:
   which is the camera basis for one and the tangent frame for the other.
 - Anchor pixel-snapping is skipped for both: it snaps the anchor to a quarter-pixel grid, which is
   meaningless once the glyphs are laid out along a line rather than in a box.
+- **How far the run sits off the line comes from the CR pseudo-glyph**, like it does for a point
+  label: `TextFormatter::layoutLines` puts the block's vertical alignment and its `text-dy` in that
+  glyph's `advance(1)`, and `buildLineVertexData` applies it perpendicular to the run. Ignoring it —
+  which it did until 2026-08 — laid every line label on its **baseline**, so the text floated above
+  its road by about an ascender and `text-dy` did nothing at all on a line. The culler saw the
+  centred box all along: its box comes from the point pen walk (`walkGlyphs`), which never dropped it.
 - `TextSymbolizer` feeds all three the same anchors, `text-spacing` and measured run length
   (`repeatAlongLine`), and hands the line itself only to the two that lay a run out (`lineRun`). The
   bare vertex with an empty vertex list — why `billboard-line` could not follow anything before the

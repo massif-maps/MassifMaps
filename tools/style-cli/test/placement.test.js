@@ -133,6 +133,26 @@ test('text-padding becomes a collision gap, and --label-spacing scales it', () =
     assert.match(thinned, /text-min-distance: \(6 \* 3\);/);
 });
 
+test('a line label repeats every 250 px, because that is MapBox\'s default and CartoCSS\'s is one', () => {
+    // text-spacing 0 is ONE label for the whole line, so a long road got its name once where
+    // MapTiler writes it the length of the road.
+    assert.match(mss({ 'symbol-placement': 'line' }), /text-spacing: 250;/);
+    assert.match(mss({ 'symbol-placement': 'line', 'symbol-spacing': 600 }), /text-spacing: 600;/);
+    // line-center draws one label at the middle whatever the spacing says, and 0 is how CartoCSS
+    // spells that.
+    assert.ok(!mss({ 'symbol-placement': 'line-center' }).includes('text-spacing:'));
+    assert.ok(!mss({}).includes('text-spacing:'));
+});
+
+test('a line label gets no default gap, or the decoder stops de-duplicating its repeats', () => {
+    // With no minimum stated the decoder floors it at the label's own size, which is what keeps a
+    // repeat of the same name from being drawn twice where two tiles cut the same road. Writing
+    // the 4 px default there disabled that floor and the name came out doubled at tile borders.
+    assert.ok(!mss({ 'symbol-placement': 'line' }).includes('text-min-distance:'));
+    // A stated padding still wins - it is what the style asked for.
+    assert.match(mss({ 'symbol-placement': 'line', 'text-padding': 10 }), /text-min-distance: \(2 \* 10\);/);
+});
+
 test('a layer with no sort key still carries its order', () => {
     assert.match(mss({}), /text-placement-priority: 0;/);
 });

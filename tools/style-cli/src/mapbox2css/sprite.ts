@@ -287,3 +287,38 @@ function smoothstep(edge0: number, edge1: number, x: number): number {
 function safeFileName(name: string): string {
     return name.replace(/[^A-Za-z0-9_.-]/g, '_');
 }
+
+/**
+ * Every icon of every sheet, written out under its own name.
+ *
+ * MapTiler picks a POI's icon from the FEATURE - `coalesce(image(subclass), image(class),
+ * image('dot'))` - so there is no one name to slice out. The SDK resolves `shield-file` per feature
+ * and mapnik interpolates `[field]` inside a string, so the whole set is written and the style
+ * names the file with the field in it. Only names that survive a file name unchanged are written,
+ * because the interpolation has to land on the file exactly.
+ */
+export function extractAllIcons(
+    sprites: SpriteSet,
+    outDir: string,
+    flattenSdf = false,
+): { names: string[]; skipped: string[]; sample: ExtractedIcon | null } {
+    const names: string[] = [];
+    const skipped: string[] = [];
+    let sample: ExtractedIcon | null = null;
+    for (const [sheetId, sheet] of sprites) {
+        for (const name of Object.keys(sheet.index)) {
+            if (!/^[A-Za-z0-9_-]+$/.test(name)) {
+                skipped.push(name);
+                continue;
+            }
+            // Only the default sheet: a qualified name writes 'misc_foo.png', which no
+            // interpolation of a bare field value can ever land on.
+            if (sheetId !== 'default') continue;
+            const icon = extractIcon(sprites, name, outDir, flattenSdf, undefined, 1);
+            if (!icon) continue;
+            names.push(name);
+            if (!sample || name === 'dot') sample = icon;
+        }
+    }
+    return { names, skipped, sample };
+}

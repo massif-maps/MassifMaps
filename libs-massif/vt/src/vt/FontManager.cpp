@@ -17,6 +17,8 @@
 #include <freetype/ftrender.h>
 #include <freetype/ftstroke.h>
 #include <freetype/ftmodapi.h>
+#include <freetype/ftmm.h>
+#include <freetype/ftoutln.h>
 
 #include <hb.h>
 #include <hb-ft.h>
@@ -59,6 +61,94 @@ namespace massif::vt {
 
     std::recursive_mutex FontManagerLibrary::_mutex;
 
+    // The weight and slant a font NAME asks for. Android ships one Roboto-Regular.ttf and reaches
+    // its bold and italic through variable-font axes (see /system/etc/fonts.xml), so a face matched
+    // by family alone still has to be told which instance of itself to be - otherwise every style
+    // asking for 'Roboto Medium' or 'Roboto Italic' drew the regular upright face.
+    struct FontStyle {
+        int weight = 0;   // 0 = the face's own default
+        int width = 0;
+        bool italic = false;
+
+        bool isDefault() const { return weight == 0 && width == 0 && !italic; }
+    };
+
+    FontStyle parseFontStyle(const std::string& name) {
+        static const std::pair<const char*, int> WEIGHTS[] = {
+            { "thin", 100 }, { "extralight", 200 }, { "ultralight", 200 }, { "light", 300 },
+            { "regular", 400 }, { "book", 400 }, { "normal", 400 }, { "medium", 500 },
+            { "semibold", 600 }, { "demibold", 600 }, { "extrabold", 800 }, { "ultrabold", 800 },
+            { "bold", 700 }, { "black", 900 }, { "heavy", 900 }
+        };
+
+        std::string normalized;
+        for (char c : name) {
+            if (std::isalnum(static_cast<unsigned char>(c))) {
+                normalized.append(1, static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
+            }
+        }
+
+        FontStyle style;
+        for (const auto& weight : WEIGHTS) {
+            if (normalized.find(weight.first) != std::string::npos) {
+                // 'extrabold' also contains 'bold'; the longest match wins, and the table is
+                // ordered so that the more specific spellings are seen first.
+                style.weight = weight.second;
+                break;
+            }
+        }
+        if (normalized.find("italic") != std::string::npos || normalized.find("oblique") != std::string::npos) {
+            style.italic = true;
+        }
+        if (normalized.find("condensed") != std::string::npos) {
+            style.width = 75;
+        }
+        return style;
+    }
+
+    /**
+     * Sets the variable-font axes a style name asks for. Returns what could NOT be set, so the
+     * caller can synthesise the rest: a static face has no axes to move, and emboldening its
+     * outlines is the only bold there is.
+     */
+    FontStyle applyVariationAxes(FT_Library library, FT_Face face, const FontStyle& style) {
+        FontStyle remaining = style;
+        if (style.isDefault() || !(face->face_flags & FT_FACE_FLAG_MULTIPLE_MASTERS)) {
+            return remaining;
+        }
+
+        FT_MM_Var* mmVar = nullptr;
+        if (FT_Get_MM_Var(face, &mmVar) != 0 || !mmVar) {
+            return remaining;
+        }
+
+        std::vector<FT_Fixed> coords(mmVar->num_axis);
+        FT_Get_Var_Design_Coordinates(face, mmVar->num_axis, coords.data());
+        for (FT_UInt i = 0; i < mmVar->num_axis; i++) {
+            FT_ULong tag = mmVar->axis[i].tag;
+            auto set = [&](int value) {
+                FT_Fixed wanted = static_cast<FT_Fixed>(value) * 65536;
+                coords[i] = std::max(mmVar->axis[i].minimum, std::min(mmVar->axis[i].maximum, wanted));
+            };
+            if (tag == FT_MAKE_TAG('w', 'g', 'h', 't') && style.weight != 0) {
+                set(style.weight);
+                remaining.weight = 0;
+            } else if (tag == FT_MAKE_TAG('w', 'd', 't', 'h') && style.width != 0) {
+                set(style.width);
+                remaining.width = 0;
+            } else if (tag == FT_MAKE_TAG('i', 't', 'a', 'l') && style.italic) {
+                set(1);
+                remaining.italic = false;
+            } else if (tag == FT_MAKE_TAG('s', 'l', 'n', 't') && style.italic) {
+                set(-10);
+                remaining.italic = false;
+            }
+        }
+        FT_Set_Var_Design_Coordinates(face, mmVar->num_axis, coords.data());
+        FT_Done_MM_Var(library, mmVar);
+        return remaining;
+    }
+
     class FontManagerFont : public Font {
     public:
         explicit FontManagerFont(const std::shared_ptr<FontManagerLibrary>& library, const std::string& name, const std::shared_ptr<GlyphMap>& glyphMap, const std::vector<unsigned char>* data, const std::shared_ptr<const Font>& baseFont, int glyphRenderSize) : _library(library), _name(name), _baseFont(baseFont), _glyphMap(glyphMap), _glyphRenderSize(glyphRenderSize), _face(nullptr), _font(nullptr) {
@@ -70,6 +160,8 @@ namespace massif::vt {
                 if (error == 0) {
                     int renderSize = _glyphRenderSize - GLYPH_RENDER_SPREAD;
                     error = FT_Set_Char_Size(_face, 0, static_cast<int>(renderSize * 64.0f), 0, 0);
+                    // Whatever the face has no axis for is synthesised per glyph.
+                    _synthesized = applyVariationAxes(_library->getLibrary(), _face, parseFontStyle(name));
                 }
             }
 
@@ -209,6 +301,20 @@ namespace massif::vt {
             if (error != 0) {
                 return 0;
             }
+            // A static face has no axis to move, so the style is drawn onto the outline instead:
+            // FreeType's own fallback for a family that ships no bold or italic file.
+            if (!_synthesized.isDefault() && face->glyph->format == FT_GLYPH_FORMAT_OUTLINE) {
+                if (_synthesized.italic) {
+                    FT_Matrix slant = { 1 << 16, static_cast<FT_Fixed>(0.25 * (1 << 16)), 0, 1 << 16 };
+                    FT_Outline_Transform(&face->glyph->outline, &slant);
+                }
+                if (_synthesized.weight > 400) {
+                    // Roughly what FreeType's own emboldener uses: a fraction of the em per
+                    // 100 units of weight over regular.
+                    FT_Pos strength = face->size->metrics.y_ppem * 64 * (_synthesized.weight - 400) / 100 / 24;
+                    FT_Outline_Embolden(&face->glyph->outline, strength);
+                }
+            }
             // Rasterize coverage first, then let FreeType's 'bsdf' module build the field from
             // that bitmap - the same thing tangram does (fontContext.cpp rasterizes, then
             // sdfBuildDistanceFieldNoAlloc). FreeType's outline SDF ('sdf' module, which is what
@@ -253,6 +359,7 @@ namespace massif::vt {
         std::shared_ptr<GlyphMap> _glyphMap;
         const int _glyphRenderSize;
         mutable std::unordered_map<CodePoint, GlyphMap::GlyphId> _codePointGlyphMap;
+        FontStyle _synthesized;
         FT_Face _face;
         hb_font_t* _font;
         hb_buffer_t* _buffer;

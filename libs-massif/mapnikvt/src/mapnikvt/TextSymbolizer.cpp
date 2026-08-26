@@ -50,7 +50,10 @@ namespace massif::mvt {
 
         float tileSize = symbolizerContext.getSettings().getTileSize();
         float fontScale = symbolizerContext.getSettings().getFontScale();
-        float minimumDistance = _minimumDistance.getValue(exprContext);
+        // Screen pixels, like dx/dy and halo-radius beside it, so it scales with the display the
+        // same way they do - the culler measures in device pixels. Left unscaled, a style's
+        // separation shrank to a third of what it asked for on a hi-dpi screen.
+        float minimumDistance = _minimumDistance.getValue(exprContext) * fontScale;
         float maxDistance = _maxDistance.getValue(exprContext);
         float occlusionOpacity = _occlusionOpacity.getValue(exprContext);
         float placementPriority = _placementPriority.getValue(exprContext);

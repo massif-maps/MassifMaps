@@ -128,6 +128,7 @@ namespace massif::vt {
         float backgroundScale;
         cglib::vec2<float> backgroundOffset;
         std::shared_ptr<const BitmapImage> backgroundImage;
+        bool backgroundSdf = false; // see TextLabelStyle
 
         explicit TextStyle(CompOp compOp, ColorFunction colorFunc, FloatFunction sizeFunc, ColorFunction haloColorFunc, FloatFunction haloRadiusFunc, float angle, float backgroundScale, const cglib::vec2<float>& backgroundOffset, std::shared_ptr<const BitmapImage> backgroundImage) : compOp(compOp), colorFunc(std::move(colorFunc)), sizeFunc(std::move(sizeFunc)), haloColorFunc(std::move(haloColorFunc)), haloRadiusFunc(std::move(haloRadiusFunc)), angle(angle), backgroundScale(backgroundScale), backgroundOffset(backgroundOffset), backgroundImage(std::move(backgroundImage)) { }
     };
@@ -224,6 +225,10 @@ namespace massif::vt {
         float backgroundScale;
         cglib::vec2<float> backgroundOffset;
         std::shared_ptr<const BitmapImage> backgroundImage;
+        // The background image is a distance field, not pixels: it goes down the same glyph path a
+        // font does, so it stays crisp at any size and takes iconColorFunc as its colour. Set
+        // separately from the constructor, which already takes more arguments than it should.
+        bool backgroundSdf = false;
         float maxDistance; // meters from the camera beyond which the label is not placed; 0 = no limit
         // What this label keeps while its anchor is hidden by 3D content (mapbox's
         // text-occlusion-opacity). Unset = the layer's own default stands.

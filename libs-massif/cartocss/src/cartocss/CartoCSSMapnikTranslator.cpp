@@ -758,6 +758,7 @@ namespace massif::css {
         { "shield-feature-id", "feature-id" },
         { "shield-face-name", "" },
         { "shield-file", "file" },
+        { "shield-sdf", "sdf" },
         { "shield-dx", "shield-dx" },
         { "shield-dy", "shield-dy" },
         { "shield-unlock-image", "unlock-image" },

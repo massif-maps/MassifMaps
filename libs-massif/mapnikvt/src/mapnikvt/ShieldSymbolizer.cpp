@@ -143,6 +143,7 @@ namespace massif::mvt {
         }
 
         std::string file = _file.getValue(exprContext);
+        bool sdfMode = _sdf.getValue(exprContext);
         std::shared_ptr<const vt::BitmapImage> backgroundImage;
         if (!file.empty()) {
             backgroundImage = symbolizerContext.getBitmapManager()->loadBitmapImage(file, IMAGE_UPSAMPLING_SCALE);
@@ -242,8 +243,9 @@ namespace massif::mvt {
         }
 
         if (clip) {
-            return [compOp, fillFunc, haloFillFunc, sizeFunc, haloRadiusFunc, fontScale, repeatAlongLine, billboardRepeat, text, orientationAngle, formatter, backgroundOffset, backgroundImage, spacing, textSize, tileSize, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
+            return [compOp, fillFunc, haloFillFunc, sizeFunc, haloRadiusFunc, fontScale, repeatAlongLine, billboardRepeat, text, orientationAngle, formatter, backgroundOffset, backgroundImage, sdfMode, spacing, textSize, tileSize, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
                 vt::TextStyle style(compOp, fillFunc, sizeFunc, haloFillFunc, haloRadiusFunc, orientationAngle, fontScale, backgroundOffset, backgroundImage);
+            style.backgroundSdf = sdfMode;
                 vt::TileLayerBuilder::TextProcessor textProcessor;
                 for (std::size_t featureIndex = 0; featureIndex < featureCollection.size(); featureIndex++) {
                     if (!textProcessor) {
@@ -301,8 +303,9 @@ namespace massif::mvt {
             };
         }
 
-        return [compOp, fillFunc, haloFillFunc, sizeFunc, haloRadiusFunc, fontScale, repeatAlongLine, billboardRepeat, orientation, text, hash, orientationAngle, formatter, backgroundOffset, backgroundImage, spacing, textSize, tileId, tileSize, labelIdOverride, groupId, placementPriority, minimumDistance, maxDistance, anchors, textOptional, iconGlyphs, iconColorFunc, textLineAlign, textPlate, iconPlate, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
+        return [compOp, fillFunc, haloFillFunc, sizeFunc, haloRadiusFunc, fontScale, repeatAlongLine, billboardRepeat, orientation, text, hash, orientationAngle, formatter, backgroundOffset, backgroundImage, sdfMode, spacing, textSize, tileId, tileSize, labelIdOverride, groupId, placementPriority, minimumDistance, maxDistance, anchors, textOptional, iconGlyphs, iconColorFunc, textLineAlign, textPlate, iconPlate, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
             vt::TextLabelStyle style(orientation, fillFunc, sizeFunc, haloFillFunc, haloRadiusFunc, true, orientationAngle, fontScale, backgroundOffset, backgroundImage, maxDistance);
+            style.backgroundSdf = sdfMode;
             style.anchors = anchors;
             style.textOptional = textOptional;
             style.iconGlyphs = iconGlyphs;

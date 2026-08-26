@@ -343,7 +343,11 @@ namespace massif::vt {
             std::vector<Font::Glyph> glyphs = formatter.format(text, 1.0f);
             Font::Metrics metrics = font->getMetrics(1.0f);
             if (style.backgroundImage) {
-                const GlyphMap::Glyph* baseGlyph = font->getGlyphMap()->getGlyph(font->getGlyphMap()->loadBitmapGlyph(style.backgroundImage->bitmap, GlyphMap::GlyphMode::BACKGROUND));
+                // SDF mode hands the image to the glyph path a font uses - crisp at any size, and
+            // coloured by iconColorFunc like the rest of the icon run.
+            GlyphMap::GlyphMode backgroundMode = style.backgroundSdf
+                ? GlyphMap::GlyphMode::SDF : GlyphMap::GlyphMode::BACKGROUND;
+            const GlyphMap::Glyph* baseGlyph = font->getGlyphMap()->getGlyph(font->getGlyphMap()->loadBitmapGlyph(style.backgroundImage->bitmap, backgroundMode));
                 if (baseGlyph) {
                     float scale = style.backgroundImage->scale / formatter.getFontSize();
                     Font::Glyph glyph(0, Font::NULL_CODEPOINT, *baseGlyph, cglib::vec2<float>(baseGlyph->width, baseGlyph->height) * (style.backgroundScale * scale), style.backgroundOffset * scale, cglib::vec2<float>(0, 0));
@@ -700,7 +704,11 @@ namespace massif::vt {
         // rather than per label - neither depends on the feature's text.
         std::vector<Font::Glyph> iconGlyphs;
         if (style.backgroundImage) {
-            const GlyphMap::Glyph* baseGlyph = font->getGlyphMap()->getGlyph(font->getGlyphMap()->loadBitmapGlyph(style.backgroundImage->bitmap, GlyphMap::GlyphMode::BACKGROUND));
+            // SDF mode hands the image to the glyph path a font uses - crisp at any size, and
+            // coloured by iconColorFunc like the rest of the icon run.
+            GlyphMap::GlyphMode backgroundMode = style.backgroundSdf
+                ? GlyphMap::GlyphMode::SDF : GlyphMap::GlyphMode::BACKGROUND;
+            const GlyphMap::Glyph* baseGlyph = font->getGlyphMap()->getGlyph(font->getGlyphMap()->loadBitmapGlyph(style.backgroundImage->bitmap, backgroundMode));
             if (baseGlyph) {
                 float imageScale = style.backgroundImage->scale / formatter.getFontSize();
                 iconGlyphs.emplace_back(0, Font::NULL_CODEPOINT, *baseGlyph, cglib::vec2<float>(baseGlyph->width, baseGlyph->height) * (style.backgroundScale * imageScale), style.backgroundOffset * imageScale, cglib::vec2<float>(baseGlyph->width, 0) * imageScale);

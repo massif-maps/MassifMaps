@@ -17,6 +17,7 @@ namespace massif::mvt {
             // what every style had to spell out by hand. 'point' is still there for the old default.
             _placement = LabelOrientationProperty("billboard-line-repeat");
             bindProperty("file", &_file);
+            bindProperty("sdf", &_sdf);
             bindProperty("shield-dx", &_shieldDx);
             bindProperty("shield-dy", &_shieldDy);
             bindProperty("unlock-image", &_unlockImage);
@@ -78,6 +79,8 @@ namespace massif::mvt {
         // which is what a label did before the property existed.
         StringProperty _textHorizontalAlignment = StringProperty("");
         // The plate behind the ICON, mirroring 'background-*' (which is the one behind the text).
+        // The shield image is a distance field, drawn like a glyph rather than blitted.
+        BoolProperty _sdf = BoolProperty(false);
         ColorProperty _iconBackgroundFill = ColorProperty("transparent");
         FloatProperty _iconBackgroundOpacity = FloatProperty(1.0f);
         FloatProperty _iconBackgroundRadius = FloatProperty(0.0f);

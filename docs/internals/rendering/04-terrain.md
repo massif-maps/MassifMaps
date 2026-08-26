@@ -933,7 +933,7 @@ order, so a style that puts its contours above the roads still renders that way,
 
 Costs and known limits:
 
-- **K × 1 MB per drape tile** at resolution 1024 (R8 — [ES3 is a hard requirement](../../../CLAUDE.md)
+- **K × 1 MB per drape tile** at resolution 1024 (R8 — [ES3 is a hard requirement](https://github.com/massif-maps/MassifMaps/blob/master/CLAUDE.md#opengl-es-3-is-a-hard-requirement)
   on both platforms), against the 4 MB of the colour drape. `TerrainDrapeCache` budgets in **bytes**
   rather than entries for this reason: a count would let the masks eat a quarter of the cache's
   tiles for nothing.

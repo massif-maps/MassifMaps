@@ -161,8 +161,8 @@ export const Capabilities = [
     values: {android: true, ios: true, uwp: 'unverified', xamarin: 'unverified'},
   },
   {
-    name: 'Offline packages (Package Manager)',
-    to: '/docs/guides/package-manager',
+    name: 'Offline tiles (MBTiles, PMTiles, cache)',
+    to: '/docs/guides/offline-maps',
     values: {android: true, ios: true, uwp: 'unverified', xamarin: 'unverified'},
   },
   {

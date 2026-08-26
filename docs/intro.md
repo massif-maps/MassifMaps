@@ -52,16 +52,21 @@ existing code keeps working. Highlights added by the fork:
 |---|---|
 | Add the SDK to my app | **[Installation](/docs/getting-started/installation)** |
 | Show my first map | **[Your first map](/docs/getting-started/your-first-map)** |
-| Learn the core concepts | **[Guides](/docs/guides/map-view)** |
+| Learn the core concepts | **[Guides](/docs/category/guides)** |
 | Use a new fork feature | **[Features](/docs/features/3d-terrain)** |
+| Write against the id/JSON API | **[Surface API](/docs/api/)** |
 | Browse the classes | **[API Reference](/docs/api-reference)** |
+| Convert a MapBox or CartoCSS style | **[Style CLI](/docs/tools/style-cli)** |
+| See how it compares to other engines | **[Compare](/compare)** |
 | Move an app off the CARTO SDK | **[Migration](/docs/migration)** |
 | Understand or change how it works inside | **[Internals](/docs/internals/)** |
 | Upgrade a vendored dependency | **[Maintenance](/docs/maintenance/)** |
 | Contribute | **[Contributing](/docs/contributing-docs)** |
 
-:::info Original documentation
-This site mirrors the structure of the [original CARTO Mobile SDK docs](https://cartodb.github.io/developers/mobile-sdk/).
-Conceptual guides carried over from there still apply — only installation and the fork-specific
-features differ.
+:::info Coming from the CARTO SDK?
+The CARTO online services — hosted basemaps, the offline package server, the routing and geocoding
+endpoints and the license key — are **not** part of this fork, and the guides that described them
+have been dropped rather than left to mislead. What replaced each of them is in
+[Migrating to Massif Maps](/docs/migration). The [original docs](https://cartodb.github.io/developers/mobile-sdk/)
+are still online for reference.
 :::

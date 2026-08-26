@@ -1,5 +1,6 @@
 ---
 title: Performance
+description: "What actually costs frames — data volume, label layout, terrain and tile caching — and the knob for each."
 sidebar_position: 12
 slug: /guides/performance
 ---
@@ -7,127 +8,132 @@ slug: /guides/performance
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-## Performance enhancements
+# Performance
 
-Here are some hints how to make your map faster. It is useful if you have bigger datasets.
+Most slow maps are slow for one of four reasons: too many vector elements, too much geometry per
+element, a style that lays out more labels than it draws, or terrain settings that ask for more
+mesh than the view needs. Each has its own knob.
 
-### LocalVectorDataSource Performance
+:::tip Measure first
+Numbers, methods and dead ends from this SDK's own optimisation work are in
+[the performance log](/docs/internals/performance-log) and
+[rendering / performance](/docs/internals/rendering/performance). A change that is not
+measured on a device is a guess.
+:::
 
-You can define the `spatialIndexType` of the `LocalVectorDataSource` to improve the performance of how a 3D model loads, by defining a spatial index to the DataSource. By default, no spatial index is defined. The following rules apply:
+## Many elements: index them, or tile them
 
--  Do not define a spatial index if the number of elements is small, below ~1000 points or markers (or even less if you have complex lines and polygons). _This is the default option_
+A `LocalVectorDataSource` walks its elements on every cull pass. Below roughly a thousand simple
+markers that is free; above it, give it a spatial index:
 
--  Apply `NT_LOCAL_SPATIAL_INDEX_TYPE_KDTREE` as the index type if there are a larger number of elements 
-
-The advantage of defining a spatial index is that CPU usage decreases for large number of objects, improving the map performance of panning and zooming. However, displaying overlays may slightly delay the map response, as the spatial index is not loaded immediately when your move the map, it only moves after some hundred milliseconds. 
-
-The overall maximum number of objects on map is limited to the RAM available for the app. Systems define several hundred MB for iOS apps, and closer to tens of MB for Android apps, but it depends on the device and app settings (as well as the density of the data). It is recommended to test your app with the targeted mobile platform and full dataset for the actual performance. 
-
-The following code describes how to adjust the `LocalVectorDataSource` performance by defining a spatial index:
-
-<Tabs groupId="language">
-
+<Tabs groupId="lang">
 <TabItem value="java" label="Java">
 
 ```java
-LocalVectorDataSource vectorDataSource2 = new LocalVectorDataSource(proj, LocalSpatialIndexType.LOCAL_SPATIAL_INDEX_TYPE_KDTREE);
+LocalVectorDataSource source =
+    new LocalVectorDataSource(proj, LocalSpatialIndexType.LOCAL_SPATIAL_INDEX_TYPE_KDTREE);
 ```
 
 </TabItem>
-
-<TabItem value="csharp" label="C#">
-
-```csharp
-var vectorDataSource2 = new LocalVectorDataSource(proj, LocalSpatialIndexType.LocalSpatialIndexTypeKdtree);
-```
-
-</TabItem>
-
-<TabItem value="objectivec" label="Objective-C">
-
-```objectivec
-MSFLocalVectorDataSource* vectorDataSource2 =
-    [[MSFLocalVectorDataSource alloc] initWithProjection:proj
-                                     spatialIndexType: MSFLocalSpatialIndexType::NT_LOCAL_SPATIAL_INDEX_TYPE_KDTREE];
-```
-
-</TabItem>
-
 <TabItem value="swift" label="Swift">
 
 ```swift
-let vectorDataSource2 = MSFLocalVectorDataSource(projection: projection, spatialIndexType: MSFLocalSpatialIndexType.LOCAL_SPATIAL_INDEX_TYPE_KDTREE)
+let source = MSFLocalVectorDataSource(
+    projection: proj, spatialIndexType: .LOCAL_SPATIAL_INDEX_TYPE_KDTREE)
 ```
 
 </TabItem>
-
-<TabItem value="kotlin" label="Kotlin">
-
-```kotlin
-val vectorDataSource2 = LocalVectorDataSource(projection, LocalSpatialIndexType.LOCAL_SPATIAL_INDEX_TYPE_KDTREE)
-```
-
-</TabItem>
-
 </Tabs>
 
-&lt;br/>&lt;br/>**Note:** If you have **very complex lines or polygons**, this creates objects with high numbers (more than hundreds of points per object) of vertexes. For example, the GPS traces for long periods of time, recording a point every second or so. 
+The index trades a little latency for a lot of CPU: it is not rebuilt while the map moves, so an
+overlay appears a few hundred milliseconds after a pan rather than during it.
 
-Spatial indexing will not help in this case, as you need to show the whole track on the screen. In this case, apply the **automatic line simplification** parameter for the `LocalVectorDataSource`. This reduces the number of polygon and line points, while maintaining the original object shape. 
+**Past tens of thousands of features, stop using vector elements.** Feed the data through the
+[GeoJSON vector tiling pyramid](/docs/features/geojson-vector-tiles) instead — it tiles once and
+styles with CartoCSS, and it was measured 3.3× faster than elements on long lines. That is the
+right answer for tracks, route networks and any dataset the user zooms around in.
 
-**Tip:** Automatic simplification is zoom-dependent. When a map is zoomed out, more aggressive simplification is used. When you zoom in, less simplification is applied until you see the original details.
+## Complex geometry: simplify it
 
-There are several ways to simplify geometries for automatic simplification by using the following code. Note that simplification is applied in two passes:
+A GPS trace recording a point per second is one element with a hundred thousand vertices, and no
+spatial index helps — the whole thing is on screen. Simplify it instead:
 
-- First pass applies fast Radial Distance vertex rejection
-- Second pass applies Ramer-Douglas-Peuckerworst algorithm (with the worst case quadratic complexity)
-
-All this is can be applied with just one line of code - as shown in the following example (under iOS) for minimal 1-pixel simplification, the result is invisible but effects are significant, depending on your DataSource:
-
-<Tabs groupId="language">
-
+<Tabs groupId="lang">
 <TabItem value="java" label="Java">
 
 ```java
-vectorDataSource2.setGeometrySimplifier(new DouglasPeuckerGeometrySimplifier(1.0f / 320.0f));
+source.setGeometrySimplifier(new DouglasPeuckerGeometrySimplifier(1.0f / 320.0f));
 ```
 
 </TabItem>
-
-<TabItem value="csharp" label="C#">
-
-```csharp
-vectorDataSource2.GeometrySimplifier = new DouglasPeuckerGeometrySimplifier(1.0f / 320.0f);
-```
-
-</TabItem>
-
-<TabItem value="objectivec" label="Objective-C">
-
-```objectivec
-[vectorDataSource2 setGeometrySimplifier:
-    [[MSFDouglasPeuckerGeometrySimplifier alloc] initWithTolerance: 1.0f / 320.0f]
-];
-```
-
-</TabItem>
-
 <TabItem value="swift" label="Swift">
 
 ```swift
-vectorDataSource2?.setGeometrySimplifier(MSFDouglasPeuckerGeometrySimplifier(tolerance: 1.0 / 320.0))
+source?.setGeometrySimplifier(MSFDouglasPeuckerGeometrySimplifier(tolerance: 1.0 / 320.0))
 ```
 
 </TabItem>
-
-<TabItem value="kotlin" label="Kotlin">
-
-```kotlin
-vectorDataSource2.geometrySimplifier = DouglasPeuckerGeometrySimplifier(1.0f / 320.0f)
-```
-
-</TabItem>
-
 </Tabs>
 
-The automatic simplification makes rendering faster with some additional computation on the CPU.
+Simplification is **zoom-dependent** — aggressive when zoomed out, absent when zoomed in — and runs
+in two passes: radial-distance rejection, then Ramer–Douglas–Peucker. A one-pixel tolerance is
+invisible and often halves the vertex count.
+
+## Cache tiles on disk
+
+Every network tile fetched twice is a frame's worth of work and a user's data. Put a persistent
+cache in front of any HTTP source:
+
+```json
+{"type": "persistent-cache",
+ "databasePath": "…/osm-cache.db",
+ "capacity": 268435456,
+ "source": {"type": "http", "url": "https://…/{z}/{x}/{y}.pbf", "maxZoom": 14}}
+```
+
+`capacity` is bytes. This is what every [example](/examples) does, and the reason a demo re-run
+starts instantly.
+
+## Labels
+
+Label layout, not label drawing, is the cost. A style that attaches text to every feature of a
+dense layer pays for placement on each tile-set change even when almost nothing is visible.
+
+- Give labels a **minimum zoom** in the style rather than relying on collision to hide them.
+- Prefer one text attachment per feature. Two attachments on the same feature double the
+  placement work — see [label styling](/docs/features/label-styling).
+- `allow-overlap` skips collision for that layer, which is faster but only correct for sparse
+  data.
+
+The mechanism, and which part of it is expensive, is documented in
+[rendering / labels](/docs/internals/rendering/labels).
+
+## Terrain
+
+3D terrain builds a mesh per tile and re-drapes what is painted onto it. Three knobs matter, all
+on `TerrainOptions`:
+
+| | |
+|---|---|
+| `meshResolution` | vertices per tile. The single biggest terrain cost. |
+| `viewDistanceFactor` | how far the ground is drawn. Pair a short one with fog or it ends on a hard edge. |
+| `autoFlattenParallax` | renders flat once the on-screen relief is below N pixels — free at low zoom, invisible to the user. |
+
+```java
+map.set("terrain.meshResolution", 32);
+map.set("terrain.autoFlattenParallax", 1.5);
+```
+
+Draping lines onto the terrain is separately expensive; `drapeLines` is the A/B.
+
+## What the SDK already does for you
+
+Worth knowing, so you do not re-implement it:
+
+- **Tiles are decoded on background threads** and cached in memory and on disk.
+- **Labels are placed on their own worker**, not on the render thread.
+- **A style parameter change repaints without re-decoding tiles** — use
+  [live style parameters](/docs/features/style-parameters) instead of rebuilding a layer to change
+  a colour or a selection.
+- **Nothing is redrawn unless something changed.** The surface is drawn on demand, so an idle map
+  costs nothing.

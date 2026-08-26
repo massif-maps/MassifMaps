@@ -4,6 +4,6 @@
   "link": {
     "type": "generated-index",
     "title": "Guides",
-    "description": "Core concepts of the SDK: the map view, layers & data sources, vector objects, offline maps, routing, geocoding and more. Carried over from the original CARTO documentation — the concepts hold, but guides marked with a warning use CARTO service classes that are not part of Massif Maps."
+    "description": "The concepts behind the map: vector objects, offline maps, routing, geocoding, clustering, ground overlays, performance and extensions. For runnable code, the Examples gallery is the reference."
   }
 }

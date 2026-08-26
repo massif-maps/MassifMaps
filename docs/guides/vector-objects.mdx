@@ -1,5 +1,6 @@
 ---
 title: Vector Objects on the Map
+description: "Markers, points, lines, polygons, labels, popups and 3D models the app puts on the map — as JSON specs, or with the object API."
 sidebar_position: 4
 slug: /guides/vector-objects
 ---
@@ -7,1119 +8,206 @@ slug: /guides/vector-objects
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-## Vector Objects on Map
+# Vector objects on the map
 
-In following examples, **Vector Elements**  - Markers, Points, Lines, Polygons, Texts, BalloonPopups and a 3D model  - are added by the application.
-For each object, the styling is defined and objects are created based on given coordinates.
+A **vector element** is something the app puts on the map itself, as opposed to something a tile
+brought: a marker, a point, a line, a polygon, a text label, a popup, a 3D model. Every one is a
+**geometry** plus a **style**, held by an elements layer.
 
-In the first example there is creatio of `LocalVectorVectorDataSource` object named 'vectorDataSource1' that is attached to a `VectorLayer` which is added to a `MapView`. Other samples do not repeat this.
+:::tip Worth deciding first
+Elements are for app data the user interacts with — a handful to a few thousand. For a large
+dataset, tile it through [GeoJSON vector tiling](/docs/features/geojson-vector-tiles) and style it
+with CartoCSS instead. See [performance](/docs/guides/performance#many-elements-index-them-or-tile-them).
+:::
 
-**Note:** A popup (callout, bubble) which appears when you click on map is a vector element of its own, and should be added using **map click listener**. 
+## The layer
 
-### Marker
+The surface API gives you one for free — `map.elements()` builds the source and the layer on first
+use. Working examples: [markers and popups](/examples#markers),
+[a GeoJSON line](/examples#geojson-line).
 
-Add a marker and apply marker styling using the following code:
-
-<Tabs groupId="language">
-
+<Tabs groupId="lang">
 <TabItem value="java" label="Java">
 
 ```java
-
-// Preparation - create layer and datasource
-// this will be used later in several places
-Projection proj = mapView.getOptions().getBaseProjection();
-
-// 1. Initialize an vector data source where to put the elements
-LocalVectorDataSource vectorDataSource1 = new LocalVectorDataSource(proj);
-
-// 2. Initialize a vector layer with the previous data source
-VectorLayer vectorLayer1 = new VectorLayer(vectorDataSource1);
-
-// 3. Add the previous vector layer to the map
-mapView.getLayers().add(vectorLayer1);
-
-// Now real adding objects
-
-// 1. Create marker style
-MarkerStyleBuilder markerStyleBuilder = new MarkerStyleBuilder();
-markerStyleBuilder.setSize(30);
-markerStyleBuilder.setColor(new Color(0xFF00FF00)); // green
-
-MarkerStyle markerStyle1 = markerStyleBuilder.buildStyle();
-
-// 2. Add marker
-MapPos pos1 = proj.fromWgs84(new MapPos(24.646469, 59.426939)); // Tallinn
-Marker marker1 = new Marker(pos1, markerStyle1);
-
-// 3. Add the marker to the datasource
-vectorDataSource1.add(marker1);
+MassifElements elements = map.elements();
 ```
 
 </TabItem>
+<TabItem value="ts" label="TypeScript (NativeScript)">
 
-<TabItem value="csharp" label="C#">
-
-```csharp
-
-// Preparation - create layer and datasource
-
-// projection will be needed later
-Projection proj = MapView.Options.BaseProjection;
-
-// 1. Initialize an local data source - a bucket for your objects created in code
-LocalVectorDataSource vectorDataSource1 = new LocalVectorDataSource(proj);
-
-// 2. Initialize a vector layer with the previous data source
-VectorLayer vectorLayer1 = new VectorLayer(vectorDataSource1);
-
-// 3. Add the previous vector layer to the map
-MapView.Layers.Add(vectorLayer1);
-
-// Now real adding objects
-
-// 1. Create marker style
-MarkerStyleBuilder markerStyleBuilder = new MarkerStyleBuilder();
-markerStyleBuilder.Size = 30;
-markerStyleBuilder.Color = new Color(0, 255, 0, 255); // green
-MarkerStyle markerStyle1 = markerStyleBuilder.BuildStyle();
-
-// 2. Define marker position and create the marker
-MapPos pos1 = proj.FromWgs84(new MapPos(24.646469, 59.426939)); // Tallinn
-Marker marker1 = new Marker(pos1, markerStyle1);
-
-// 3. Add the marker to the datasource
-vectorDataSource1.Add(marker1);
+```ts
+const elements = map.elements();
 ```
 
 </TabItem>
+<TabItem value="objects" label="Object API">
 
-<TabItem value="objectivec" label="Objective-C">
-
-```objectivec
-// Preparation - create layer and datasource
-
-// we'll need projection later
-MSFEPSG3857* proj = [[MSFEPSG3857 alloc] init];
-
-// 1. Create a vector data source, bucket where we'll put objects
-MSFLocalVectorDataSource* vectorDataSource1 = [[MSFLocalVectorDataSource alloc] initWithProjection:proj];
-
-// 2. Initialize a vector layer with the previous data source
-MSFVectorLayer* vectorLayer1 = [[MSFVectorLayer alloc] initWithDataSource:vectorDataSource1];
-
-// 3. Add the previous vector layer to the map
-[[self getLayers] add:vectorLayer1];
-
-// Now real adding objects
-// 1. Create a marker style, using default marker bitmap here
-MSFMarkerStyleBuilder* markerStyleBuilder = [[MSFMarkerStyleBuilder alloc] init];
-[markerStyleBuilder setSize:30];
-[markerStyleBuilder setColor:[[MSFColor alloc] initWithColor:0xFF00FF00]]; // green
-MSFMarkerStyle* markerStyle1 = [markerStyleBuilder buildStyle];
-
-// 2. Define marker position and create the marker
-MSFMapPos* pos1 = [proj fromWgs84:[[MSFMapPos alloc] initWithX:24.651488 y:59.423581]]; // Tallinn
-MSFMarker* marker1 = [[MSFMarker alloc] initWithPos:pos1 style:markerStyle1];
-
-// 3. Add the marker to the data source
-[vectorDataSource1 add:marker1];
+```java
+LocalVectorDataSource source = new LocalVectorDataSource(mapView.getOptions().getBaseProjection());
+VectorLayer layer = new VectorLayer(source);
+mapView.getLayers().add(layer);
 ```
 
 </TabItem>
-
-<TabItem value="swift" label="Swift">
-
- ```swift
-
-  // Preparation - create layer and datasource
- 
- // Get base projection from mapView
- let projection = mapView?.getOptions().getBaseProjection();
- 
-// Create a vector data source, bucket where we'll put objects
- let source = MSFLocalVectorDataSource(projection: projection);
- 
- // Initialize layer
- let layer = MSFVectorLayer(dataSource: source);
- 
- // Add layer
- mapView?.getLayers().add(layer);    
- 
- // Now real adding objects
- 
- // 1. Create a marker style, using default marker bitmap here
- let markerStyleBuilder = MSFMarkerStyleBuilder();
- markerStyleBuilder?.setSize(30);
- markerStyleBuilder?.setColor(MSFColor.init(r: 0, g: 255, b: 0, a: 255)); // green
- let markerStyle1 = markerStyleBuilder?.buildStyle();
-
- // 2. Define marker position and create the marker
- let pos1 = projection?.fromWgs84(MSFMapPos(x: 24.651488, y: 59.423581)); // Tallinn
- let marker1 = MSFMarker(pos: pos1, style: markerStyle1);
-
- // 3. Add the marker to the data source
- vectorDataSource1?.add(marker1);
- ```
-
-</TabItem>
-
-<TabItem value="kotlin" label="Kotlin">
-
-```kotlin
-
-// Preparation - create layer and datasource
-
-// Get base projection from mapView, we'll need it later
-val projection = mapView?.options?.baseProjection
-
-//1. Create a vector data source where to put the elements
-val source = LocalVectorDataSource(projection)
-
-// 2. Initialize layer, add to MapView
-val layer = VectorLayer(source)
-mapView?.layers?.add(layer)
-
-// Now real adding objects 
-
-// 1. Create a marker style, using default marker bitmap here
-val markerStyleBuilder = MarkerStyleBuilder()
-markerStyleBuilder.size = 30F
-markerStyleBuilder.color = Color(0, 255, 0, 255) // green
-val markerStyle1 = builder.buildStyle()
-
-// 2. Define marker position and create the marker
-val pos1 = projection?.fromWgs84(MapPos(24.651488, 59.423581)) // Tallinn
-val marker1 = Marker(pos1, markerStyle1)
-
-// 3. Add the marker to the data source
-vectorDataSource1.add(marker1)
-```
-
-</TabItem>
-
 </Tabs>
 
-![pin](https://raw.githubusercontent.com/CartoDB/mobile-dotnet-samples/master/images/pin.png)
+## Share the style
 
-### Point
+A style is an object, not a per-element setting. Build it **once** and point every element at it by
+id — that is what matters as soon as there are more than a few dozen:
 
-Points are used to indicating specific location points on a map, similar to Markers. However, Points do not have overlapping controls and cannot be use with billboard style version 2.5D. If you have a lot of data (thousands of points) and are not using 2.5D views, use Points as an alternative to Markers. Your rendering time will be significantly faster.
-
-You can add any type of vector objects to the same Layer and `LocalVectorDataSource`. This enables you to reuse settings for a defined Marker. It is recommended to define different Layers and DataSources for managing your objects, as it allows you to:
-
--  Select and delete all objects of DataSource
--  Specify the drawing order of layers. The drawing order within a single Layer is undefined. For multiple layers, layers that are added are drawn underneath the initial map layer
-
-Add a point and apply point styling using the following code:
-
-<Tabs groupId="language">
-
+<Tabs groupId="lang">
 <TabItem value="java" label="Java">
 
 ```java
-// 1. Set marker position
-MapPos tallinn = proj.FromWgs84(new MapPos(24.646469, 59.426939));
+map.elements().style("pin", Spec.of("marker")
+    .set("size", 26)
+    .set("color", 0xffe5484d)
+    .set("clickSize", 40));
 
-// 2. Create style and position for the Point
-PointStyleBuilder pointStyleBuilder = new PointStyleBuilder();
-pointStyleBuilder.setColor(new Color(0xFF00FF00));
-pointStyleBuilder.setSize(16);
-
-// 3. Create Point, add to datasource with metadata
-Point point1 = new Point(tallinn, pointStyleBuilder.buildStyle());
-point1.setMetaDataElement("ClickText", "Point nr 1");
-
-vectorDataSource1.add(point1);
+for (Summit summit : summits) {
+    map.addMarker(Spec.of("marker")
+        .set("position", new double[] {summit.lon, summit.lat})
+        .set("style", "pin"));
+}
 ```
 
 </TabItem>
+<TabItem value="ts" label="TypeScript (NativeScript)">
 
-<TabItem value="csharp" label="C#">
+```ts
+const pin = map.elements().style('pin', { type: 'marker', size: 26, color: 0xffe5484d, clickSize: 40 });
 
-```csharp
-// 1. Set point position
-MapPos tallinn = proj.FromWgs84(new MapPos(24.646469, 59.426939));
-
-// 2. Create style and position for the Point
-var pointStyleBuilder = new PointStyleBuilder();
-pointStyleBuilder.Color = new Color(0, 255, 0, 255);
-pointStyleBuilder.Size = 16;
-
-// 3. Create Point, add to datasource with metadata
-Point point1 = new Point(tallinn, pointStyleBuilder.BuildStyle());
-point1.SetMetaDataElement("ClickText", new Variant("Point nr 1"));
-
-vectorDataSource1.Add(point1);
+for (const summit of summits) {
+    map.addMarker({ type: 'marker', position: summit.at, style: pin.id });
+}
 ```
 
 </TabItem>
-
-<TabItem value="objectivec" label="Objective-C">
-
-```objectivec
-// 1. Set point position
-MSFMapPos* tallinn = [proj fromWgs84:[[MSFMapPos alloc] initWithX:24.646469 y:59.426939]];
-
-// 2. Create style and position for the Point
-MSFPointStyleBuilder* pointStyleBuilder = [[MSFPointStyleBuilder alloc] init];
-[pointStyleBuilder setColor:[[MSFColor alloc] initWithColor:0xFF00FF00]];
-[pointStyleBuilder setSize:16];
-
-// 3. Create Point, add to datasource with metadata
-MSFPoint* point1 = [[MSFPoint alloc] initWithPos:tallinn style:[pointStyleBuilder buildStyle]];
-[point1 setMetaDataElement:@"ClickText" element:[[MSFVariant alloc] initWithString:@"Point 1"]];
-
-[vectorDataSource1 add:point1];
-```
-
-</TabItem>
-
-<TabItem value="swift" label="Swift">
-
-```swift
-// 1. Set marker position
-let tallinn = projection?.fromWgs84(MSFMapPos(x: 24.646469, y: 59.426939))
-
-// 2. Create style and position for the Point
-let pointStyleBuilder = MSFPointStyleBuilder()
-pointStyleBuilder?.setColor(MSFColor(r: 0, g: 255, b: 0, a: 255))
-pointStyleBuilder?.setSize(16)
-
-// 3. Create Point, add to datasource with metadata
-let point1 = MSFPoint(pos: tallinn, style: pointStyleBuilder?.buildStyle())
-point1?.setMetaData("ClickText", element: MSFVariant(string: "Point nr 1"));
-
-vectorDataSource1?.add(point1)
-```
-
-</TabItem>
-
-<TabItem value="kotlin" label="Kotlin">
-
-```kotlin
-// 1. Set marker position
-val tallinn = projection?.fromWgs84(MapPos(24.646469, 59.426939))
-
-// 2. Create style and position for the Point
-val pointStyleBuilder = PointStyleBuilder()
-pointStyleBuilder.color = Color(0, 255, 0, 255)
-pointStyleBuilder.size = 16F
-
-// 3. Create Point, add to datasource with metadata
-val point1 = Point(tallinn, pointStyleBuilder.buildStyle())
-point1.setMetaDataElement("ClickText", Variant("Point nr 1"))
-
-vectorDataSource1.add(point1)
-```
-
-</TabItem>
-
 </Tabs>
 
-### Line or Polyline
+A `style` key that is a **string** is looked up by id; an object there is built inline. Colours are
+`0xAARRGGBB`.
 
-Lines can be added to the same VectorDataSource, it is defined by an array of MapPos locations, which goes to *MapPosVector* object:
+## The elements
 
-<Tabs groupId="language">
+Every element takes a `style` and a position or geometry. `position` is the shorthand for a point;
+`geometry` takes anything from the [`geometry` kind](/docs/api/reference/geometry), including
+GeoJSON.
 
-<TabItem value="java" label="Java">
+| Element | Position from | Style keys that matter |
+|---|---|---|
+| `marker` | `position` / `geometry` / `baseBillboard` | `size`, `color`, `bitmap`, `anchorPointX/Y`, `clickSize` |
+| `point` | `position` / `geometry` | `size`, `color`, `clickSize` |
+| `line` | `poses` or a `line` / GeoJSON geometry | `width`, `color`, `clickWidth`, `stretchFactor` |
+| `polygon` | `poses` + optional `holes`, or `rings` | `color`, plus `lineStyle` for the border |
+| `text` | `position` / `geometry` | `fontName`, `fontSize`, `color`, `strokeWidth`, `breakLines` |
+| `balloon` | `position`, plus `title` and `description` | `cornerRadius`, `leftColor`, `titleFontSize`, `triangleWidth` |
+
+```json
+{"type": "line",
+ "poses": [[6.86, 45.83], [6.92, 45.86], [6.98, 45.87]],
+ "style": {"type": "line", "width": 6, "color": 4285887861}}
+```
+
+A polygon's border is a nested style rather than a second registered object:
+
+```json
+{"type": "polygon",
+ "poses": [[6.8, 45.8], [7.0, 45.8], [7.0, 45.9], [6.8, 45.9]],
+ "style": {"type": "polygon", "color": 2164195328,
+           "lineStyle": {"type": "line", "width": 2, "color": 4278190080}}}
+```
+
+Every key of every style: [element styles reference](/docs/api/reference/elementstyle).
+
+## Popups
+
+A popup is an element like any other, added when a click happens and removed when the next one
+does. Nothing pops up by itself:
 
 ```java
-// 1. Create line style, and line poses
-LineStyleBuilder lineStyleBuilder = new LineStyleBuilder();
-lineStyleBuilder.setColor(new Color(0xFFFF0000));
-lineStyleBuilder.setLineJointType(LineJointType.LINE_JOINT_TYPE_ROUND);
-lineStyleBuilder.setWidth(8);
-
-// 2. Special MapPosVector must be used for coordinates
-MapPosVector linePoses = new MapPosVector();
-MapPos initial = proj.fromWgs84(new MapPos(24.645565, 59.422074));
-
-// 3. Add positions
-linePoses.add(initial);
-linePoses.add(proj.fromWgs84(new MapPos(24.643076, 59.420502)));
-linePoses.add(proj.fromWgs84(new MapPos(24.645351, 59.419149)));
-linePoses.add(proj.fromWgs84(new MapPos(24.648956, 59.420393)));
-linePoses.add(proj.fromWgs84(new MapPos(24.650887, 59.422707)));
-
-// 4. Add a line
-Line line1 = new Line(linePoses, lineStyleBuilder.buildStyle());
-line1.setMetaDataElement("ClickText", new Variant("Line nr 1"));
-vectorDataSource1.add(line1);
+// consumeClick claims the tap. With plain onClick, the map's own onClick fires for the SAME
+// tap and dismisses the popup as it opens.
+map.elements().consumeClick(e -> {
+    show(e.position());
+    return true;
+});
+map.onClick(e -> dismiss());
 ```
-
-</TabItem>
-
-<TabItem value="csharp" label="C#">
-
-```csharp
-// 1. Create line style, and line poses
-var lineStyleBuilder = new LineStyleBuilder();
-lineStyleBuilder.Color = new Color(255, 0, 0, 255); // Red
-lineStyleBuilder.LineJoinType = LineJoinType.LineJoinTypeRound;
-lineStyleBuilder.Width = 8;
-
-var positions = new MapPosVector();
-MapPos initial = proj.FromWgs84(new MapPos(24.645565, 59.422074));
-
-// 2. Add positions
-positions.Add(initial);
-positions.Add(proj.FromWgs84(new MapPos(24.643076, 59.420502)));
-positions.Add(proj.FromWgs84(new MapPos(24.645351, 59.419149)));
-positions.Add(proj.FromWgs84(new MapPos(24.648956, 59.420393)));
-positions.Add(proj.FromWgs84(new MapPos(24.650887, 59.422707)));
-
-// 3. Add line to source
-var line = new Line(positions, lineStyleBuilder.BuildStyle());
-vectorDataSource1.Add(line);
-```
-
-</TabItem>
-
-<TabItem value="objectivec" label="Objective-C">
-
-```objectivec
-// 1. Define line style
-MSFLineStyleBuilder* lineStyleBuilder = [[MSFLineStyleBuilder alloc] init];
-[lineStyleBuilder setColor:[[MSFColor alloc] initWithColor:0xFFFF0000]];
-[lineStyleBuilder setLineJointType:NT_LINE_JOINT_TYPE_ROUND];
-[lineStyleBuilder setWidth:8];
-
-// 2. Define line positions, here as fixed locations
-MapPosVector* linePoses = [[MapPosVector alloc] init];
-MSFMapPos* initial = [proj fromWgs84:[[MSFMapPos alloc] initWithX:24.645565 y:59.422074]]
-
-[linePoses add:initial];
-[linePoses add:[proj fromWgs84:[[MSFMapPos alloc] initWithX:24.643076 y:59.420502]]];
-[linePoses add:[proj fromWgs84:[[MSFMapPos alloc] initWithX:24.645351 y:59.419149]]];
-[linePoses add:[proj fromWgs84:[[MSFMapPos alloc] initWithX:24.648956 y:59.420393]]];
-[linePoses add:[proj fromWgs84:[[MSFMapPos alloc] initWithX:24.650887 y:59.422707]]];
-
-// 3. Create line, add metadata and add to the datasource
-MSFLine* line1 = [[MSFLine alloc] initWithGeometry:[[MSFLineGeometry alloc] initWithPoses:linePoses] style:[lineStyleBuilder buildStyle]];
-[line1 setMetaDataElement:@"ClickText" element:[[MSFVariant alloc] initWithString:@"Line 1"]];
-
-[vectorDataSource1 add:line1];
-```
-
-</TabItem>
-
-<TabItem value="swift" label="Swift">
-
-```swift
-// 1. Create line style, and line poses
-let lineStyleBuilder = MSFLineStyleBuilder()
-lineStyleBuilder?.setColor(MSFColor(r: 255, g: 0, b: 0, a: 255))
-lineStyleBuilder?.setLineJoinType(MSFLineJoinType.LINE_JOIN_TYPE_ROUND)
-lineStyleBuilder?.setWidth(8)
-
-// 2. Special MapPosVector must be used for coordinates
-let linePoses = MSFMapPosVector()
-let initial = projection?.fromWgs84(MSFMapPos(x: 24.645565, y: 59.422074))
-
-// 3. Add positions
-linePoses?.add(initial)
-linePoses?.add(projection?.fromWgs84(MSFMapPos(x: 24.643076, y: 59.420502)));
-linePoses?.add(projection?.fromWgs84(MSFMapPos(x: 24.645351, y: 59.419149)));
-linePoses?.add(projection?.fromWgs84(MSFMapPos(x: 24.648956, y: 59.420393)));
-linePoses?.add(projection?.fromWgs84(MSFMapPos(x: 24.650887, y: 59.422707)));
-
-// 4. Add a line
-let line1 = MSFLine(poses: linePoses, style: lineStyleBuilder?.buildStyle());
-line1?.setMetaData("ClickText", element: MSFVariant(string: "Line nr 1"))
-
-vectorDataSource1?.add(line1)
-```
-
-</TabItem>
-
-<TabItem value="kotlin" label="Kotlin">
-
-```kotlin
-// 1. Create line style, and line poses
-val lineStyleBuilder = LineStyleBuilder()
-lineStyleBuilder.color = Color(255, 0, 0, 255)
-// Define how lines are joined
-lineStyleBuilder.lineJoinType = LineJoinType.LINE_JOIN_TYPE_ROUND
-lineStyleBuilder.width = 8F
-
-// 2. Special MapPosVector must be used for coordinates
-val linePoses = MapPosVector()
-val initial = projection?.fromWgs84(MapPos(24.645565, 59.422074))
-
-// 3. Add positions
-linePoses.add(initial)
-linePoses.add(projection?.fromWgs84(MapPos(24.643076, 59.420502)));
-linePoses.add(projection?.fromWgs84(MapPos(24.645351, 59.419149)));
-linePoses.add(projection?.fromWgs84(MapPos(24.648956, 59.420393)));
-linePoses.add(projection?.fromWgs84(MapPos(24.650887, 59.422707)));
-
-// 4. Add a line
-val line1 = Line(linePoses, lineStyleBuilder.buildStyle());
-line1.setMetaDataElement("ClickText", Variant("Line nr 1"))
-
-vectorDataSource1.add(line1)
-```
-
-</TabItem>
-
-</Tabs>
-
-![line](https://raw.githubusercontent.com/CartoDB/mobile-dotnet-samples/master/images/line.png)
-
-### Polygon or Multi-Polygon
-
-Add a polygon and apply polygon styling using the following code. The following examples add a polygon with polygon holes, note that you need to use `MapPosVector` object for polygon coordinate arrays :
-
-<Tabs groupId="language">
-
-<TabItem value="java" label="Java">
 
 ```java
-// 1. Create polygon style and poses
-PolygonStyleBuilder polygonStyleBuilder = new PolygonStyleBuilder();
-polygonStyleBuilder.setColor(new Color(0xFFFF0000)); // red
-lineStyleBuilder = new LineStyleBuilder();
-lineStyleBuilder.setColor(new Color(0xFF000000)); // black
-lineStyleBuilder.setWidth(1.0f);
-polygonStyleBuilder.setLineStyle(lineStyleBuilder.buildStyle());
-
-// 2. Define coordinates of outer ring
-MapPosVector polygonPoses = new MapPosVector();
-MapPos initial = proj.fromWgs84(new MapPos(24.650930, 59.421659));
-polygonPoses.add(initial);
-polygonPoses.add(proj.fromWgs84(new MapPos(24.657453, 59.416354)));
-polygonPoses.add(proj.fromWgs84(new MapPos(24.661187, 59.414607)));
-polygonPoses.add(proj.fromWgs84(new MapPos(24.667667, 59.418123)));
-polygonPoses.add(proj.fromWgs84(new MapPos(24.665736, 59.421703)));
-polygonPoses.add(proj.fromWgs84(new MapPos(24.661444, 59.421245)));
-polygonPoses.add(proj.fromWgs84(new MapPos(24.660199, 59.420677)));
-polygonPoses.add(proj.fromWgs84(new MapPos(24.656552, 59.420175)));
-polygonPoses.add(proj.fromWgs84(new MapPos(24.654010, 59.421472)));
-
-// 3. Create 2 polygon holes
-MapPosVector holePoses1 = new MapPosVector();
-holePoses1.add(proj.fromWgs84(new MapPos(24.658409, 59.420522)));
-holePoses1.add(proj.fromWgs84(new MapPos(24.662207, 59.418896)));
-holePoses1.add(proj.fromWgs84(new MapPos(24.662207, 59.417411)));
-holePoses1.add(proj.fromWgs84(new MapPos(24.659524, 59.417171)));
-holePoses1.add(proj.fromWgs84(new MapPos(24.657615, 59.419834)));
-MapPosVector holePoses2 = new MapPosVector();
-holePoses2.add(proj.fromWgs84(new MapPos(24.665640, 59.421243)));
-holePoses2.add(proj.fromWgs84(new MapPos(24.668923, 59.419463)));
-holePoses2.add(proj.fromWgs84(new MapPos(24.662893, 59.419365)));
-
-MapPosVectorVector polygonHoles = new MapPosVectorVector();
-polygonHoles.add(holePoses1);
-polygonHoles.add(holePoses2);
-
-// 3. Add polygon
-Polygon polygon = new Polygon(polygonPoses, polygonHoles, polygonStyleBuilder.buildStyle());
-polygon.setMetaDataElement("ClickText", new Variant("Polygon"));
-
-vectorDataSource1.add(polygon);
+popup = map.addPopup(Spec.of("balloon")
+    .set("position", at)
+    .set("title", summit.name)
+    .set("description", summit.metres + " m")
+    .set("style", Spec.of("balloon")
+        .set("cornerRadius", 6)
+        .set("leftColor", 0xffe5484d)
+        .set("titleFontSize", 14)));
 ```
 
-</TabItem>
+`titleField` and `descriptionField` read the text out of the element's `metaData` instead, which is
+what a popup over tile features wants.
 
-<TabItem value="csharp" label="C#">
+## Attaching to another element
 
-```csharp
-// 1. Create polygon style and poses
-PolygonStyleBuilder polygonStyleBuilder = new PolygonStyleBuilder();
-polygonStyleBuilder.Color = new Color(255, 0, 0, 255); // red
-var lineStyleBuilder = new LineStyleBuilder();
-lineStyleBuilder.Color = new Color(0, 0, 0, 255); // black
-lineStyleBuilder.Width = 1.0f;
-polygonStyleBuilder.LineStyle = lineStyleBuilder.BuildStyle();
+A billboard can hang off another one — that is how a label sits above its marker and moves with it:
 
-// 2. Define coordinates of outer ring
-MapPosVector polygonPoses = new MapPosVector();
-MapPos initial = proj.FromWgs84(new MapPos(24.650930, 59.421659));
-polygonPoses.Add(initial);
-polygonPoses.Add(proj.FromWgs84(new MapPos(24.657453, 59.416354)));
-polygonPoses.Add(proj.FromWgs84(new MapPos(24.661187, 59.414607)));
-polygonPoses.Add(proj.FromWgs84(new MapPos(24.667667, 59.418123)));
-polygonPoses.Add(proj.FromWgs84(new MapPos(24.665736, 59.421703)));
-polygonPoses.Add(proj.FromWgs84(new MapPos(24.661444, 59.421245)));
-polygonPoses.Add(proj.FromWgs84(new MapPos(24.660199, 59.420677)));
-polygonPoses.Add(proj.FromWgs84(new MapPos(24.656552, 59.420175)));
-polygonPoses.Add(proj.FromWgs84(new MapPos(24.654010, 59.421472)));
-
-// 3. Create polygon holes poses, note that special MapPosVectorVector must be used
-MapPosVector holePoses1 = new MapPosVector();
-holePoses1.Add(proj.FromWgs84(new MapPos(24.658409, 59.420522)));
-holePoses1.Add(proj.FromWgs84(new MapPos(24.658409, 59.420522)));
-holePoses1.Add(proj.FromWgs84(new MapPos(24.662207, 59.418896)));
-holePoses1.Add(proj.FromWgs84(new MapPos(24.662207, 59.417411)));
-holePoses1.Add(proj.FromWgs84(new MapPos(24.659524, 59.417171)));
-holePoses1.Add(proj.FromWgs84(new MapPos(24.657615, 59.419834)));
-
-MapPosVector holePoses2 = new MapPosVector();
-holePoses2.Add(proj.FromWgs84(new MapPos(24.665640, 59.421243)));
-holePoses2.Add(proj.FromWgs84(new MapPos(24.668923, 59.419463)));
-holePoses2.Add(proj.FromWgs84(new MapPos(24.662893, 59.419365)));
-
-MapPosVectorVector polygonHoles = new MapPosVectorVector();
-polygonHoles.Add(holePoses1);
-polygonHoles.Add(holePoses2);
-
-// 4. Add polygon
-Polygon polygon = new Polygon(polygonPoses, polygonHoles, polygonStyleBuilder.BuildStyle());
-polygon.SetMetaDataElement("ClickText", new Variant("Polygon"));
-
-vectorDataSource1.Add(polygon);
+```json
+{"type": "text", "baseBillboard": "pin-42", "text": "Mont Blanc",
+ "style": {"type": "text", "fontSize": 13, "verticalOffset": 18}}
 ```
 
-</TabItem>
+`hideIfOverlapped`, `placementPriority` and `causesOverlap` decide what happens when two of them
+collide.
 
-<TabItem value="objectivec" label="Objective-C">
+## 3D models
 
-```objectivec
-// 1. Create polygon style
-MSFPolygonStyleBuilder* polygonStyleBuilder = [[MSFPolygonStyleBuilder alloc] init];
-[polygonStyleBuilder setColor:[[MSFColor alloc] initWithColor:0xFFFF0000]];
-lineStyleBuilder = [[MSFLineStyleBuilder alloc] init];
-[lineStyleBuilder setColor:[[MSFColor alloc] initWithColor:0xFF000000]];
-[lineStyleBuilder setWidth:1.0f];
-[polygonStyleBuilder setLineStyle:[lineStyleBuilder buildStyle]];
-
-// 2. Define coordinates of outer ring
-MSFMapPosVector* polygonPoses = [[MapPosVector alloc] init];
-MSFMapPos* initial = [proj fromWgs84:[[MSFMapPos alloc] initWithX:24.650930 y:59.421659]];
-[polygonPoses add:initial];
-[polygonPoses add:[proj fromWgs84:[[MSFMapPos alloc] initWithX:24.657453 y:59.416354]]];
-[polygonPoses add:[proj fromWgs84:[[MSFMapPos alloc] initWithX:24.661187 y:59.414607]]];
-[polygonPoses add:[proj fromWgs84:[[MSFMapPos alloc] initWithX:24.667667 y:59.418123]]];
-[polygonPoses add:[proj fromWgs84:[[MSFMapPos alloc] initWithX:24.665736 y:59.421703]]];
-[polygonPoses add:[proj fromWgs84:[[MSFMapPos alloc] initWithX:24.661444 y:59.421245]]];
-[polygonPoses add:[proj fromWgs84:[[MSFMapPos alloc] initWithX:24.660199 y:59.420677]]];
-[polygonPoses add:[proj fromWgs84:[[MSFMapPos alloc] initWithX:24.656552 y:59.420175]]];
-[polygonPoses add:[proj fromWgs84:[[MSFMapPos alloc] initWithX:24.654010 y:59.421472]]];
-
-// 3. Define polygon holes. This is two-dimensional array (MapPosVectorVector)
-// because Polygon can have several holes. In this sample there are two
-MSFMapPosVector* holePoses1 = [[MapPosVector alloc] init];
-[holePoses1 add:[proj fromWgs84:[[MSFMapPos alloc] initWithX:24.658409 y:59.420522]]];
-[holePoses1 add:[proj fromWgs84:[[MSFMapPos alloc] initWithX:24.662207 y:59.418896]]];
-[holePoses1 add:[proj fromWgs84:[[MSFMapPos alloc] initWithX:24.662207 y:59.417411]]];
-[holePoses1 add:[proj fromWgs84:[[MSFMapPos alloc] initWithX:24.659524 y:59.417171]]];
-[holePoses1 add:[proj fromWgs84:[[MSFMapPos alloc] initWithX:24.657615 y:59.419834]]];
-
-MSFMapPosVector* holePoses2 = [[MapPosVector alloc] init];
-[holePoses2 add:[proj fromWgs84:[[MSFMapPos alloc] initWithX:24.665640 y:59.421243]]];
-[holePoses2 add:[proj fromWgs84:[[MSFMapPos alloc] initWithX:24.668923 y:59.419463]]];
-[holePoses2 add:[proj fromWgs84:[[MSFMapPos alloc] initWithX:24.662893 y:59.419365]]];
-
-MSFMapPosVectorVector* polygonHoles = [[MapPosVectorVector alloc] init];
-[holes add:holePoses1];
-[holes add:holePoses2];
-
-// 4. Create polygon, define metadata and add to datasource
-MSFPolygon* polygon = [[MSFPolygon alloc] initWithGeometry:[[MSFPolygonGeometry alloc] initWithPoses:polygonPoses holes:polygonHoles] style:[polygonStyleBuilder buildStyle]];
-[polygon setMetaDataElement:@"ClickText" element:[[MSFVariant alloc] initWithString:@"Polygon"]];
-
-[vectorDataSource1 add:polygon];
-```
-
-</TabItem>
-
-<TabItem value="swift" label="Swift">
-
-```swift
-// 1. Create polygon style and poses
-let polygonStyleBuilder = MSFPolygonStyleBuilder()
-polygonStyleBuilder?.setColor(MSFColor(r: 255, g: 0, b: 0, a: 255))
-let lineStyleBuilder = MSFLineStyleBuilder()
-lineStyleBuilder?.setColor(MSFColor(r: 0, g: 0, b: 255, a: 255))
-lineStyleBuilder?.setWidth(1)
-polygonStyleBuilder?.setLineStyle(lineStyleBuilder?.buildStyle())
-
-// 2. Define coordinates of outer ring
-let polygonPoses = MSFMapPosVector()
-let initial = projection?.fromWgs84(MSFMapPos(x: 24.650930, y: 59.421659))
-polygonPoses?.add(initial)
-polygonPoses?.add(projection?.fromWgs84(MSFMapPos(x: 24.657453, y: 59.416354)))
-polygonPoses?.add(projection?.fromWgs84(MSFMapPos(x: 24.661187, y: 59.414607)))
-polygonPoses?.add(projection?.fromWgs84(MSFMapPos(x: 24.667667, y: 59.418123)))
-polygonPoses?.add(projection?.fromWgs84(MSFMapPos(x: 24.665736, y: 59.421703)))
-polygonPoses?.add(projection?.fromWgs84(MSFMapPos(x: 24.661444, y: 59.421245)))
-polygonPoses?.add(projection?.fromWgs84(MSFMapPos(x: 24.660199, y: 59.420677)))
-polygonPoses?.add(projection?.fromWgs84(MSFMapPos(x: 24.656552, y: 59.420175)))
-polygonPoses?.add(projection?.fromWgs84(MSFMapPos(x: 24.654010, y: 59.421472)))
-
-// 3. Create 2 polygon holes
-let holePoses1 = MSFMapPosVector()
-holePoses1?.add(projection?.fromWgs84(MSFMapPos(x: 24.658409, y: 59.420522)))
-holePoses1?.add(projection?.fromWgs84(MSFMapPos(x: 24.662207, y: 59.418896)))
-holePoses1?.add(projection?.fromWgs84(MSFMapPos(x: 24.662207, y: 59.417411)))
-holePoses1?.add(projection?.fromWgs84(MSFMapPos(x: 24.659524, y: 59.417171)))
-holePoses1?.add(projection?.fromWgs84(MSFMapPos(x: 24.657615, y: 59.419834)))
-
-let holePoses2 = MSFMapPosVector()
-holePoses2?.add(projection?.fromWgs84(MSFMapPos(x: 24.665640, y: 59.421243)))
-holePoses2?.add(projection?.fromWgs84(MSFMapPos(x: 24.668923, y: 59.419463)))
-holePoses2?.add(projection?.fromWgs84(MSFMapPos(x: 24.662893, y: 59.419365)))
-
-let polygonHoles = MSFMapPosVectorVector()
-polygonHoles?.add(holePoses1)
-polygonHoles?.add(holePoses2)
-
-// 4. Add polygon
-let polygonStyle = polygonStyleBuilder?.buildStyle()
-let polygon = MSFPolygon(poses: polygonPoses, holes: polygonHoles, style: polygonStyle)
-polygon?.setMetaData("ClickText", element: MSFVariant(string: "Polygon"))
-
-vectorDataSource1?.add(polygon)
-```
-
-</TabItem>
-
-<TabItem value="kotlin" label="Kotlin">
-
-```kotlin
-// 1. Create polygon style and poses
-val polygonStyleBuilder = PolygonStyleBuilder()
-polygonStyleBuilder.color = Color(0xFFFF0000.toInt())
-val lineStyleBuilder = LineStyleBuilder()
-lineStyleBuilder.color = Color(0, 0, 255, 255)
-lineStyleBuilder.width = 1F
-polygonStyleBuilder.lineStyle = lineStyleBuilder.buildStyle()
-
-// 2. Define coordinates of outer ring
-val polygonPoses = MapPosVector()
-val initial = projection?.fromWgs84(MapPos(24.650930, 59.421659))
-polygonPoses.add(initial)
-polygonPoses.add(projection?.fromWgs84(MapPos(24.657453, 59.416354)))
-polygonPoses.add(projection?.fromWgs84(MapPos(24.661187, 59.414607)))
-polygonPoses.add(projection?.fromWgs84(MapPos(24.667667, 59.418123)))
-polygonPoses.add(projection?.fromWgs84(MapPos(24.665736, 59.421703)))
-polygonPoses.add(projection?.fromWgs84(MapPos(24.661444, 59.421245)))
-polygonPoses.add(projection?.fromWgs84(MapPos(24.660199, 59.420677)))
-polygonPoses.add(projection?.fromWgs84(MapPos(24.656552, 59.420175)))
-polygonPoses.add(projection?.fromWgs84(MapPos(24.654010, 59.421472)))
-
-// 3. Create 2 polygon holes
-val holePoses1 = MapPosVector()
-holePoses1.add(projection?.fromWgs84(MapPos(24.658409, 59.420522)))
-holePoses1.add(projection?.fromWgs84(MapPos(24.662207, 59.418896)))
-holePoses1.add(projection?.fromWgs84(MapPos(24.662207, 59.417411)))
-holePoses1.add(projection?.fromWgs84(MapPos(24.659524, 59.417171)))
-holePoses1.add(projection?.fromWgs84(MapPos(24.657615, 59.419834)))
-
-val holePoses2 = MapPosVector()
-holePoses2.add(projection?.fromWgs84(MapPos(24.665640, 59.421243)))
-holePoses2.add(projection?.fromWgs84(MapPos(24.668923, 59.419463)))
-holePoses2.add(projection?.fromWgs84(MapPos(24.662893, 59.419365)))
-
-val polygonHoles = MapPosVectorVector()
-polygonHoles.add(holePoses1)
-polygonHoles.add(holePoses2)
-
-// 4. Add polygon
-val polygon = Polygon(polygonPoses, polygonHoles, polygonStyleBuilder.buildStyle())
-polygon.setMetaDataElement("ClickText", Variant("Polygon"))
-vectorDataSource1?.add(polygon)
-```
-
-</TabItem>
-
-</Tabs>
-
-![polygon](https://raw.githubusercontent.com/CartoDB/mobile-dotnet-samples/master/images/polygon.png)
-
-### Text
-
-Text style parameters are similar to Markers, as both are Billboards - which are MapView objects that contain the following features:
-
-- Control and prohibit text overlapping, based on priority and the location of where the text appears
-- Display text as billboards in 2.5D (tilted) view by defining the `OrientationMode` parameter. There are 3 options: show on ground, and rotate with map (like street names), show on ground (do not rotate with map), or show as billboard (no rotation).
-
-Add text and apply text styling using the following code.
-
-<Tabs groupId="language">
-
-<TabItem value="java" label="Java">
+`NMLModel` draws a model in NML format at a position, with a scale and a rotation. Converting from
+COLLADA or glTF is done ahead of time; the SDK reads NML only.
 
 ```java
-// 1. Create text style
-TextStyleBuilder textStyleBuilder = new TextStyleBuilder();
-textStyleBuilder.setColor(new Color(0xFFFF0000));
-textStyleBuilder.setOrientationMode(BillboardOrientation.BILLBOARD_ORIENTATION_FACE_CAMERA);
-// This enables higher resolution texts for retina devices, but consumes more memory and is slower
-textStyleBuilder.setScaleWithDPI(false);
-
-// 2. Add text
-MapPos position = proj.fromWgs84(new MapPos(24.653302, 59.422269));
-Text textpopup1 = new Text(position, textStyleBuilder.buildStyle(), "Face camera text");
-textpopup1.setMetaDataElement("ClickText", new Variant("Text nr 1"));
-
-vectorDataSource1.add(textpopup1);
-```
-
-</TabItem>
-
-<TabItem value="csharp" label="C#">
-
-```csharp
-// 1. Create text style
-TextStyleBuilder textStyleBuilder = new TextStyleBuilder();
-textStyleBuilder.setColor(new Color(0xFFFF0000));
-textStyleBuilder.setOrientationMode(BillboardOrientation.BILLBOARD_ORIENTATION_FACE_CAMERA);
-
-// This enables higher resolution texts for retina devices, but consumes more memory and is slower
-textStyleBuilder.setScaleWithDPI(false);
-
-// 2. Add text
-MapPos position = proj.fromWgs84(new MapPos(24.653302, 59.422269));
-Text textpopup1 = new Text(position, textStyleBuilder.buildStyle(), "Face camera text");
-textpopup1.setMetaDataElement("ClickText", new Variant("Text nr 1"));
-
-vectorDataSource1.add(textpopup1);
-```
-
-</TabItem>
-
-<TabItem value="objectivec" label="Objective-C">
-
-```objectivec
-// 1. Create text style
-MSFTextStyleBuilder* textStyleBuilder = [[MSFTextStyleBuilder alloc] init];
-[textStyleBuilder setColor:[[MSFColor alloc] initWithColor:0xFFFF0000]];
-[textStyleBuilder setOrientationMode:NT_BILLBOARD_ORIENTATION_FACE_CAMERA];
-// setScaleWithDPI enables higher resolution texts for retina devices,
-// but consumes more memory and is slower if you have many texts on map
-[textStyleBuilder setScaleWithDPI:false];
-
-// 2. Define text location and add to datasource
-MSFMapPos* position = [proj fromWgs84:[[MSFMapPos alloc] initWithX:24.653302 y:59.422269]];
-MSFText* textpopup1 = [[MSFText alloc] initWithPos:position style:[textStyleBuilder buildStyle] text:@"Face camera text"];  
-[textpopup1 setMetaDataElement:@"ClickText" element:[[MSFVariant alloc] initWithString:@"Text 1"]];
-
-[vectorDataSource1 add:textpopup1];
-```
-
-</TabItem>
-
-<TabItem value="swift" label="Swift">
-
-```swift
-// 1. Create text style
-let textStyleBuilder = MSFTextStyleBuilder()
-textStyleBuilder?.setColor(MSFColor(r: 255, g: 0, b: 0, a: 255))
-textStyleBuilder?.setOrientationMode(MSFBillboardOrientation.BILLBOARD_ORIENTATION_FACE_CAMERA)
-// This enables higher resolution texts for retina devices, but consumes more memory and is slower
-textStyleBuilder?.setScaleWithDPI(false)
-
-// 2. Add text
-let position = projection?.fromWgs84(MSFMapPos(x: 24.653302, y: 59.422269))
-let textpopup1 = MSFText(pos: position, style: textStyleBuilder?.buildStyle(), text: "Face camera text")
-textpopup1?.setMetaData("ClickText", element: MSFVariant(string: "Text nr 1"))
-
-vectorDataSource1.add(textpopup1)
-```
-
-</TabItem>
-
-<TabItem value="kotlin" label="Kotlin">
-
-```kotlin
-// 1. Create text style
-val textStyleBuilder = TextStyleBuilder()
-textStyleBuilder.color = Color(0xFFFF0000.toInt())
-textStyleBuilder.orientationMode = BillboardOrientation.BILLBOARD_ORIENTATION_FACE_CAMERA
-// This enables higher resolution texts for retina devices, but consumes more memory and is slower
-textStyleBuilder.isScaleWithDPI = false
-
-// 2. Add text
-val position = projection?.fromWgs84(MapPos(24.653302, 59.422269))
-val textpopup1 = Text(position, textStyleBuilder.buildStyle(), "Face camera text")
-textpopup1.setMetaDataElement("ClickText", Variant("Text nr 1"))
-
-vectorDataSource1.add(textpopup1)
-```
-
-</TabItem>
-
-</Tabs>
-
-![text](https://raw.githubusercontent.com/CartoDB/mobile-dotnet-samples/master/images/text.png)
-
-### BalloonPopup
-
-A BalloonPopup appears often based on click event of an object, but you can use it also as stand-alone visual object instead of Marker, as you can define always-on text on it. Note that these examples contain several special styling elements, such as:
-
-- Image (_info.png_) as the "Left Image"
-- Arrow (_arrow.png_)  as the "Right Image"
-- Styled appearance of tuned radius values
-
-**Tip:** To use these styling elements as part of your own project, copy the above .png files, to your local map application project. These are in our [sample apps in github](https://github.com/CartoDB/mobile-sdk-samples/).
-
-<Tabs groupId="language">
-
-<TabItem value="java" label="Java">
-
-```java
-// 1. Load bitmaps to show on the label
-Bitmap infoImage = BitmapFactory.decodeResource(getResources(), R.drawable.info);
-Bitmap arrowImage = BitmapFactory.decodeResource(getResources(), R.drawable.arrow);
-
-// 2. Add popup
-BalloonPopupStyleBuilder builder = new BalloonPopupStyleBuilder();
-builder.setCornerRadius(20);
-builder.setLeftMargins(new BalloonPopupMargins(6, 6, 6, 6));
-builder.setLeftImage(BitmapUtils.createBitmapFromAndroidBitmap(infoImage));
-builder.setRightImage(BitmapUtils.createBitmapFromAndroidBitmap(arrowImage));
-builder.setRightMargins(new BalloonPopupMargins(2, 6, 12, 6));
-builder.setPlacementPriority(1);
-
-MapPos position = proj.fromWgs84(new MapPos(24.655662, 59.425521));
-BalloonPopup popup = new BalloonPopup(position, builder.buildStyle(), "Popup with pos", "Images, round");
-popup.setMetaDataElement("ClickText", new Variant("Popup caption nr 1"));
-
-vectorDataSource1.add(popup);
-```
-
-</TabItem>
-
-<TabItem value="csharp" label="C#">
-
-```csharp
-// 1. Load bitmaps to show on the label
-
-// Android code
-Bitmap androidInfoBitmap = BitmapFactory.DecodeResource(Resources, HelloMap.Resource.Drawable.info);
-Carto.Graphics.Bitmap infoBitmap = BitmapUtils.CreateBitmapFromAndroidBitmap(androidInfoBitmap);
-
-Bitmap androidArrowBitmap = BitmapFactory.DecodeResource(Resources, HelloMap.Resource.Drawable.arrow);
-Carto.Graphics.Bitmap arrowBitmap = BitmapUtils.CreateBitmapFromAndroidBitmap(androidArrowBitmap);
-
-// iOS code
-var infoBitmap = BitmapUtils.CreateBitmapFromUIImage(UIImage.FromFile("info.png"));
-var arrowBitmap = BitmapUtils.CreateBitmapFromUIImage(UIImage.FromFile("arrow.png"));
-
-// 2. Add popup
-
-// Shared code
-var builder = new BalloonPopupStyleBuilder();
-builder.LeftImage = infoBitmap;
-builder.RightImage = arrowBitmap;
-builder.LeftMargins = new BalloonPopupMargins(6, 6, 6, 6);
-builder.RightMargins = new BalloonPopupMargins(2, 6, 12, 6);
-builder.CornerRadius = 20;
-builder.TitleFontName = "Helvetica";
-builder.TitleFontSize = 16;
-builder.TitleColor = new Color(200, 0, 0, 255);
-builder.StrokeColor = new Color(200, 120, 0, 255);
-builder.StrokeWidth = 1;
-builder.PlacementPriority = 1;
-
-MapPos position = proj.FromWgs84(new MapPos(0, 20));
-var popup = new BalloonPopup(position, builder.BuildStyle(), "Popup Title", "Description");
-popup.setMetaDataElement("ClickText", new Variant("Popup caption nr 1"));
-
-vectorDataSource1.Add(popup);
-```
-
-</TabItem>
-
-<TabItem value="objectivec" label="Objective-C">
-
-```objectivec
-// 1. Load bitmaps to show on the label
-UIImage* infoImage = [UIImage imageNamed:@"info.png"];
-UIImage* arrowImage = [UIImage imageNamed:@"arrow.png"];
-
-// 2. Add popup
-MSFBalloonPopupStyleBuilder* balloonPopupStyleBuilder = [[MSFBalloonPopupStyleBuilder alloc] init];
-[balloonPopupStyleBuilder setCornerRadius:20];
-[balloonPopupStyleBuilder setLeftMargins:[[MSFBalloonPopupMargins alloc] initWithLeft:6 top:6 right:6 bottom:6]];
-[balloonPopupStyleBuilder setLeftImage:infoImage];
-[balloonPopupStyleBuilder setRightImage:arrowImage];
-[balloonPopupStyleBuilder setRightMargins:[[MSFBalloonPopupMargins alloc] initWithLeft:2 top:6 right:12 bottom:6]];
-[balloonPopupStyleBuilder setPlacementPriority:1];
-
-MSFMapPos* position = [proj fromWgs84:[[MSFMapPos alloc] initWithX:24.655662 y:59.425521]];
-MSFBalloonPopup* popup = [[MSFBalloonPopup alloc] initWithPos:position
-                           style:[balloonPopupStyleBuilder buildStyle]
-                           title:@"Popup with pos"
-                           desc:@"Images, round"];
-[popup setMetaDataElement:@"ClickText" element:[[MSFVariant alloc] initWithString:@"Popup caption 1"]];
-
-[vectorDataSource1 add:popup];
-```
-
-</TabItem>
-
-<TabItem value="swift" label="Swift">
-
-```swift
-// 1. Load bitmaps to show on the label
-let infoImage = MSFBitmapUtils.createBitmap(from: UIImage(named: "info.png"));
-let arrowImage = MSFBitmapUtils.createBitmap(from: UIImage(named: "arrow.png"));
-
-// 2. Add popup
-let builder = MSFBalloonPopupStyleBuilder()
-builder?.setCornerRadius(20)
-builder?.setLeftMargins(MSFBalloonPopupMargins(left: 6, top: 6, right: 6, bottom: 6))
-builder?.setLeftImage(infoImage)
-builder?.setRightImage(arrowImage)
-builder?.setRightMargins(MSFBalloonPopupMargins(left: 2, top: 6, right: 12, bottom: 6))
-builder?.setPlacementPriority(1)
-
-let position = projection?.fromWgs84(MSFMapPos(x: 24.655662, y: 59.425521))
-let popup = MSFBalloonPopup(pos: position, style: builder?.buildStyle(), title: "Popup with pos", desc: "Images, round")
-popup?.setMetaData("ClickText", element: MSFVariant(string: "Popup caption nr 1"))
-
-vectorDataSource1.add(popup)
-```
-
-</TabItem>
-
-<TabItem value="kotlin" label="Kotlin">
-
-```kotlin
-// 1. Load bitmaps to show on the label
-val infoImage = BitmapFactory.decodeResource(resources, R.drawable.info)
-val arrowImage = BitmapFactory.decodeResource(resources, R.drawable.arrow)
-
-// 2. Add popup
-val builder = BalloonPopupStyleBuilder()
-builder.cornerRadius = 20
-builder.leftMargins = BalloonPopupMargins(6, 6, 6, 6)
-builder.leftImage = BitmapUtils.createBitmapFromAndroidBitmap(infoImage)
-builder.rightImage = BitmapUtils.createBitmapFromAndroidBitmap(arrowImage)
-builder.rightMargins = BalloonPopupMargins(2, 6, 12, 6)
-builder.placementPriority = 1
-
-val position = projection?.fromWgs84(MapPos(24.655662, 59.425521))
-val popup = BalloonPopup(position, builder.buildStyle(), "Popup with pos", "Images, round")
-popup.setMetaDataElement("ClickText", Variant("Popup caption nr 1"))
-
-vectorDataSource1.add(popup)
-```
-
-</TabItem>
-
-</Tabs>
-
-![popup](https://raw.githubusercontent.com/CartoDB/mobile-dotnet-samples/master/images/popup.png)
-
-### 3D Model Objects
-
-One special feature of the Mobile SDK is that you can add 3D objects (3D models) to a mobile map. For example, you can add small moving car or other decorative or informative elements.
-
-**Note:** 3D objects are added to the same `LocalVectorDataSource` as 2D objects. However, 3D objects are only supported using the *Nutiteq 3D Model* (**NML**) format. This custom format is optimized for the multi-resolution of 3D files on mobile apps.
-
-The following procedure describes how to setup and add a 3D object to your mobile MapView:
-
-- Select a _NML file_. You can retrieve some free samples from [Nutiteq's NML sample page](https://github.com/nutiteq/hellomap3d/wiki/NML-model-samples). If you have own model as Collada DAE (or KMZ) format, then you would need [CARTO Mobile 3D converter](https://github.com/CartoDB/mobile-sdk/wiki/NML-converter) to convert it to NML, so it can be used in mobile. 
-- Adjust the file size of the 3D object for rendering. Typically, NML files are smaller than 100K. Anything larger than that takes too long to render. Consider applying lower detail models for your 3D objects, before you convert it to NML. You can then add these models to the **res/raw** folder of your Android app, or as a **resource file** in your iOS project.
-- Load the model file in the code to add it to your map application by using the following code:
-
-<Tabs groupId="language">
-
-<TabItem value="java" label="Java">
-
-```java
-// 1. Load NML model from a file
-BinaryData modelData = AssetUtils.loadAsset("fcd_auto.nml");
-
-// 2. Set location for model, and create NMLModel object with this
-MapPos position = baseProjection.fromWgs84(new MapPos(24.646469, 59.423939));
-NMLModel model = new NMLModel(position, modelData);
-model.setMetaDataElement("ClickText", new Variant("Single model"));
-
-// 3. Adjust the size- oversize it by 20*, just to make it more visible (optional)
+BinaryData data = AssetUtils.loadAsset("fcd_auto.nml");
+NMLModel model = new NMLModel(pos, data);
 model.setScale(20);
-
-// 4. Add it to normal datasource
-vectorDataSource1.add(model);
+source.add(model);
 ```
 
-</TabItem>
+For a whole city of buildings, use the style's 3D extrusion instead of models — it is one draw
+call per tile rather than one per building.
 
-<TabItem value="csharp" label="C#">
+## Reading a click
 
-```csharp
-// 1. Load NML model from a file
-var modelData = AssetUtils.LoadAsset("fcd_auto.nml");
+An element click carries where the element was hit, where the finger was, and the click type:
 
-// 2. Set location for model, and create NMLModel object with this
-var position = proj.FromWgs84(new MapPos(24.646469, 59.423939));
-var model = new NMLModel(position, modelData);
-model.SetMetaDataElement("ClickText", new Variant("Single model"));
-
-// 3. Adjust the size- oversize it by 20x, just to make it more visible (optional)
-model.Scale = 20;
-
-// 4. Add it to normal datasource
-vectorDataSource1.Add(model);
+```java
+map.elements().onClick(e -> {
+    Position at = e.position();          // the element's position
+    Position finger = e.clickPosition(); // where the tap landed
+    String name = e.get("vectorElement.metaData.name");
+});
 ```
 
-</TabItem>
+Clicks on **tile** features are a different event — see the
+[feature click example](/examples#feature-click).
 
-<TabItem value="objectivec" label="Objective-C">
+## The object API version
 
-```objectivec
-// 1. Load NML model from a file
-MSFBinaryData* modelData = [MSFAssetUtils loadAsset:@"fcd_auto.nml"];
+Elements predate the surface API and the classes are unchanged: `Marker`, `Line`, `Polygon`,
+`Text`, `BalloonPopup`, `NMLModel`, each with a `*StyleBuilder`.
 
-// 2. Set location for model, and create NMLModel object with this
-MSFMapPos* pos = [proj fromWgs84:[[MSFMapPos alloc] initWithX:24.646469 y:59.424939]];
-MSFNMLModel* model = [[MSFNMLModel alloc] initWithPos:pos sourceModelData:modelData];
-[model setMetaDataElement:@"ClickText" element:[[MSFVariant alloc] initWithString:@"My nice car"]];    
+```java
+MarkerStyleBuilder builder = new MarkerStyleBuilder();
+builder.setSize(30);
+builder.setColor(new Color(0xFF00FF00));
+MarkerStyle style = builder.buildStyle();
 
-// 3. Adjust the size- oversize it by 20*, just to make it more visible (optional)
-[model setScale:20];
-
-// 4. Add it to normal datasource
-[vectorDataSource1 add:model];
+MapPos pos = proj.fromWgs84(new MapPos(24.646469, 59.426939));
+source.add(new Marker(pos, style));
 ```
 
-</TabItem>
-
-<TabItem value="swift" label="Swift">
-
-```swift
-// 1. Load NML model from a file (be sure it's targeted by your application)
-let modelData = MSFAssetUtils.loadAsset("fcd_auto.nml")
-
-// 2. Set location for model, and create NMLModel object with this
-let position = projection?.fromWgs84(MSFMapPos(x: 24.646469, y: 59.423939))
-let model = MSFNMLModel(pos: position, sourceModelData: modelData)
-model?.setMetaData("ClickText", element: MSFVariant(string: "Single model"))
-
-// 3. Adjust the size- oversize it by 20*, just to make it more visible (optional)
-model?.setScale(20)
-
-// 4. Add it to normal datasource
-vectorDataSource1.add(model)
-```
-
-</TabItem>
-
-<TabItem value="kotlin" label="Kotlin">
-
-```kotlin
-// 1. Load NML model from a file
-val modelData = AssetUtils.loadAsset("fcd_auto.nml")
-
-// 2. Set location for model, and create NMLModel object with this
-val position = projection?.fromWgs84(MapPos(24.646469, 59.423939))
-val model = NMLModel(position, modelData);
-model.setMetaDataElement("ClickText", Variant("Single model"))
-
-// 3. Adjust the size- oversize it by 20*, just to make it more visible (optional)
-model.scale = 20F
-
-// 4. Add it to normal datasource
-vectorDataSource1.add(model)
-```
-
-</TabItem>
-
-</Tabs>
-
-![3d animated](https://github.com/CartoDB/mobile-ios-samples/blob/gh-pages/carto-mobile-sdk-animated.gif?raw=true)
+Two differences worth knowing: positions are in the **layer's projection**, so they need
+`fromWgs84`, and a style is built by a builder rather than described. The surface API takes
+degrees and JSON for exactly those reasons.

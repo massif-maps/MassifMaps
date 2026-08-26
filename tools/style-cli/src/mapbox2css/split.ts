@@ -2,40 +2,33 @@ import type { Coverage } from './coverage.js';
 import type { Json, MapboxLayer } from './types.js';
 
 /**
- * Two property kinds have to be split into per-branch attachments rather than left as one
- * field-driven expression.
+ * Two properties have to be split into per-branch attachments rather than left as a field-driven
+ * expression, and both for the same reason: they name a RESOURCE, not a value.
  *
- * **Colours**, because they break. Measured on MapTiler topo-v4 at z14 with a cleared cache: two
- * `line-color` declarations reading `[class]` and `[paved]` produced `Color parsing failed` and
- * lost their whole rule for that tile - no roads on some tiles, roads on others. Replacing only the
- * field with a constant, nested ternary intact, brought it to 0. The mechanism is NOT established:
- * `TileReader` does bind the feature before `createFeatureProcessor` and caches a processor per
- * attribute set, and `Rule::calculateReferencedFields` gathers the fields property expressions use,
- * so this ought to work. It does not, and a predicate does.
+ * **`icon-image`** has to name one file, so splitting is what turns
+ * `match(subclass, 'international', 'airport', …)` into attachments that each have a real icon.
+ * **`text-font`** has to name one face: the symbolizer resolves it to a loaded `vt::Font` when it
+ * builds the formatter for the rule, so an unsplit `match` left the face literally named `match`
+ * and every label fell back to the default font.
  *
- * **`icon-image`**, because a sprite name is not a value the renderer can evaluate at all - it has
- * to name one file. Splitting is what turns `match(subclass, 'international', 'airport', …)` into
- * attachments that each have a real icon.
+ * **Nothing else does.** A property value that reads a feature field is evaluated per feature:
+ * `GenericFunctionProperty::getFunction` rebuilds the function from the bound context whenever the
+ * expression has context variables, and only memoises when it does not.
  *
- * The net is deliberately wide: narrowing it to colours alone, on the theory that a float merely
- * evaluates to 0, put 49 `Color parsing failed` back on the same camera that had none. Whatever the
- * mechanism is, it is not confined to the property that reads the field, so nothing that reads one
- * is emitted.
- *
- * `text-field` is exempt: the text is evaluated per feature inside the processor, not through a
- * Property, so it reads fields correctly today.
+ * This used to cast a much wider net, on the strength of a measurement: two `line-color`
+ * declarations reading `[class]` and `[paved]` produced `Color parsing failed` and lost their whole
+ * rule for that tile. Re-measured on the same style at the same camera with a cold cache, it is
+ * **0** - and a plate colour reading `[iso_a2]` and a regex on `[ref]` picks the right country's
+ * shield colour per feature. Which of this converter's later fixes cured it is not established
+ * (`InterpolateExpression` reading string keyframes as colours is the likeliest), but the
+ * observation that justified the workaround no longer reproduces, and the workaround cost real
+ * fidelity: a 28-branch country `case` exceeded the variant cap, so every road shield fell back to
+ * white, and a track's width kept a fallback that made it half again too wide.
  */
-const EXEMPT = new Set([
-    'text-field',
-    'visibility',
-    // Placement priority only decides who wins a collision. Dropping it let a village label cull
-    // Annecy; keeping the field costs nothing if it does evaluate to 0, and
-    // docs/features/label-styling.md uses `text-placement-priority: [ele]` for exactly this.
-    'symbol-sort-key',
-]);
+const MUST_BE_CONSTANT = new Set(['icon-image', 'text-font']);
 
 function mustNotReadFeature(name: string): boolean {
-    return !EXEMPT.has(name);
+    return MUST_BE_CONSTANT.has(name);
 }
 
 /** A layer splitting into more than this many attachments is left whole - the compile cost is real. */

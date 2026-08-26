@@ -22,53 +22,43 @@ test('a zoom-driven value is not a feature read', () => {
     assert.ok(readsFeature({ property: 'class', stops: [['motorway', 1]] }));
 });
 
-test('a match over a field becomes one attachment per branch, with constant colours', () => {
+test('a field-driven colour stays one expression - only a sprite NAME has to be split', () => {
+    // A property value that reads a field is evaluated per feature
+    // (GenericFunctionProperty::getFunction rebuilds from the bound context), so a match becomes a
+    // nested ternary and the layer stays ONE attachment. Splitting it was a workaround for
+    // `Color parsing failed` that no longer reproduces, and it cost real fidelity: a 28-branch
+    // country case blew the variant cap, so every road shield fell back to white.
     const mss = convert({ layers: [lineLayer({
         'line-color': ['match', ['get', 'class'], 'motorway', '#ff8000', ['trunk', 'primary'], '#ffc000', '#ffffff'],
     })] }, TABLE).mss;
-    // A field in a property VALUE kills the rule in the decoder; a predicate is the way to say it.
-    assert.ok(!/line-color:.*\[class\]/.test(mss));
-    assert.match(mss, /#transportation\[class = 'motorway'\]::road_b1 \{\n  line-color: #ff8000;/);
-    assert.match(mss, /line-color: #ffc000;/);
-    assert.match(mss, /line-color: #ffffff;/);
+    assert.equal(mss.split('\n').filter((l) => l.startsWith('#transportation')).length, 1);
+    assert.match(mss, /line-color: \(\(\[class\] = 'motorway'\) \? #ff8000 : /);
+    assert.ok(mss.includes('#ffc000') && mss.includes('#ffffff'));
 });
 
-test('later branches exclude the earlier ones, because MapBox takes the first match', () => {
-    const blocks = blocksOf({ 'line-color': ['case', ['==', ['get', 'a'], 1], '#111', ['==', ['get', 'b'], 2], '#222', '#333'] });
+test('two field-driven colours no longer multiply into a cartesian product', () => {
+    const blocks = blocksOf({
+        'line-color': ['match', ['get', 'class'], 'motorway', '#f00', '#fff'],
+        'line-opacity': ['case', ['==', ['get', 'brunnel'], 'tunnel'], 0.5, 1],
+    });
+    assert.equal(blocks.length, 1);
+});
+
+test('a sprite name still becomes one attachment per branch, and excludes the earlier ones', () => {
+    // An icon-image is not a value the renderer can evaluate - it has to name one file.
+    const blocks = convert({ layers: [{
+        id: 'p', type: 'symbol', 'source-layer': 'poi',
+        layout: { 'text-field': '{name}', 'icon-image': ['case', ['==', ['get', 'a'], 1], 'one', ['==', ['get', 'b'], 2], 'two', 'other'] },
+    }] }, TABLE).mss.split('\n').filter((l) => l.startsWith('#poi'));
     assert.equal(blocks.length, 3);
     assert.ok(!blocks[0].includes('!'));
     assert.match(blocks[1], /!\(\[a\] = 1\)/);
     assert.match(blocks[2], /!\(\[a\] = 1\).*!\(\[b\] = 2\)/);
 });
 
-test('two field-driven properties give the product of their branches', () => {
-    // Not only the colour: narrowing this to colours alone put the decoder errors back, so
-    // anything that reads a field is split.
-    const blocks = blocksOf({
-        'line-color': ['match', ['get', 'class'], 'motorway', '#f00', '#fff'],
-        'line-opacity': ['case', ['==', ['get', 'brunnel'], 'tunnel'], 0.5, 1],
-    });
-    assert.equal(blocks.length, 4);
-    assert.ok(!blocks.join('').includes('[brunnel]') || blocks.every((b) => !/line-opacity:.*\[/.test(b)));
-});
-
-test('past the variant cap the layer stays whole and keeps its fallback', () => {
-    // 4 x 4 = 16 attachments for one layer is not worth the compile cost.
-    const many = (field) => ['match', ['get', field], 'a', '#111', 'b', '#222', 'c', '#333', '#444'];
-    const { mss, coverage } = convert({ layers: [{
-        id: 'road', type: 'symbol', 'source-layer': 'transportation',
-        layout: { 'text-field': '{name}' },
-        paint: { 'text-color': many('x'), 'text-halo-color': many('y') },
-    }] }, TABLE);
-    assert.equal(mss.split('\n').filter((l) => l.startsWith('#transportation')).length, 4);
-    assert.ok(coverage.report().includes('kept only its fallback'));
-});
-
-test('a colour with no fallback to fall back to is dropped, not emitted', () => {
-    // `["get", "colour"]` would take the whole rule down with it.
-    const { mss, coverage } = convert({ layers: [lineLayer({ 'line-color': ['get', 'colour'], 'line-width': 2 })] }, TABLE);
-    assert.ok(!mss.includes('line-color'));
-    assert.ok(coverage.report().includes('reads a feature field'));
+test('a colour reading a bare field is kept, because the decoder evaluates it per feature', () => {
+    const { mss } = convert({ layers: [lineLayer({ 'line-color': ['get', 'colour'], 'line-width': 2 })] }, TABLE);
+    assert.match(mss, /line-color: \[colour\];/);
 });
 
 test('a zoom-driven TEXT becomes zoom bands, because a string keyframe reads as a colour', () => {

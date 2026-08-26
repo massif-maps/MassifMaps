@@ -238,6 +238,28 @@ at the label's own size, which is what stops a repeat of the same name being dra
 tiles cut the same road (`TextSymbolizer`, next section); writing 4 px there disabled the floor. An
 explicit `text-padding` still wins.
 
+## What actually has to be split into attachments
+
+Only what names a **resource**: `icon-image` (one file) and `text-font` (one loaded face, resolved
+when the symbolizer builds its formatter — an unsplit `match` left the face literally named
+`match`). Everything else stays one expression, because a property value that reads a feature field
+is evaluated **per feature**: `GenericFunctionProperty::getFunction` rebuilds the function from the
+bound context whenever the expression has context variables, and only memoises when it does not.
+
+This net used to be far wider, on the strength of a measurement: two `line-color` declarations
+reading `[class]` and `[paved]` produced `Color parsing failed` and lost their whole rule for that
+tile. **Re-measured on the same style at the same camera with a cold cache, it is 0** — and a plate
+colour reading `[iso_a2]` plus a regex on `[ref]` picks the right country's shield colour per
+feature. Which of this converter's later fixes cured it is not established (`InterpolateExpression`
+reading string keyframes as colours is the likeliest); what is established is that the observation
+justifying the workaround no longer reproduces.
+
+The workaround cost real fidelity, because splitting is a **cartesian product** over every
+field-driven property. MapTiler streets-v4's `Road shields` has `icon-color` (28 branches),
+`text-color` (27), `icon-halo-color` (10) and `text-font` (2) — 15,120 attachments against a cap of
+8, so every one fell back and every road shield drew white. Narrowing it took topo-v4 from 43 branch
+attachments to 18 and its "kept only its fallback" count from 8 to **0**.
+
 ## A prefix test, and the two spellings of a regex
 
 `["==", ["slice", ["get","ref"], 0, 1], "D"]` is how a style tests a **prefix**, and every

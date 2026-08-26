@@ -24,8 +24,9 @@ test('background becomes the Map block', () => {
 test('each MapBox layer becomes an attachment on its source-layer', () => {
     const { mss } = run();
     assert.match(mss, /#transportation\[zoom >= 6\]\[zoom < 20\].*::road_casing \{/);
-    // road-fill's colour and opacity both read a field, so it splits - see split.test.js.
-    assert.match(mss, /#transportation\[class = 'motorway'\].*::road_fill_b1 \{/);
+    // road-fill's colour and opacity read a field, and both stay one expression - the decoder
+    // evaluates them per feature, so there is nothing to split. See split.test.js.
+    assert.match(mss, /#transportation.*::road_fill \{/);
     assert.match(mss, /#landcover\[class = 'wood'\]::landcover \{/);
 });
 

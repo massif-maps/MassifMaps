@@ -306,11 +306,14 @@ function layerDeclarations(
         // MapBox dash lengths are multiples of the line width; CartoCSS's are pixels.
         if (name === 'line-dasharray' && Array.isArray(value) && value.every((v) => typeof v === 'number')) {
             const width = layer.paint?.['line-width'];
-            const scale = typeof width === 'number' ? width : 1;
+            const scale = representativeScale(width, 1);
             if (typeof width !== 'number') {
-                coverage.approximate('line-dasharray scaled by width 1: line-width is not constant');
+                // Taking 1 here made a lift's `[0.05, 4]` a 0.05-PIXEL dash, which is nothing at
+                // all; the widths it ramps between are 3 and 4, so their mean is far closer.
+                coverage.approximate(`line-dasharray scaled by ${round(scale)}, the mean of a ` +
+                    'zoom-driven line-width: CartoCSS takes one dash pattern, not a ramp');
             }
-            out.push(`line-dasharray: ${(value as number[]).map((v) => v * scale).join(',')};`);
+            out.push(`line-dasharray: ${(value as number[]).map((v) => round(v * scale)).join(',')};`);
             coverage.emit('line-dasharray');
             continue;
         }
@@ -459,8 +462,8 @@ function iconClearance(layer: MapboxLayer, icon: ExtractedIcon): number {
  * takes the mean of its stops - the icon is then right in the middle of the range and a little off
  * at both ends, which beats drawing every sprite at full size.
  */
-function representativeScale(size: Json | undefined): number {
-    if (size === undefined) return 1;
+function representativeScale(size: Json | undefined, fallback = 1): number {
+    if (size === undefined) return fallback;
     if (typeof size === 'number') return size;
 
     const numbers: number[] = [];
@@ -476,8 +479,8 @@ function representativeScale(size: Json | undefined): number {
     } else {
         walk(size);
     }
-    const sizes = numbers.filter((n) => n > 0 && n <= 4);
-    return sizes.length === 0 ? 1 : sizes.reduce((a, b) => a + b, 0) / sizes.length;
+    const sizes = numbers.filter((n) => n > 0);
+    return sizes.length === 0 ? fallback : sizes.reduce((a, b) => a + b, 0) / sizes.length;
 }
 
 /** MapBox's icon-* onto marker-*, once the sprite has been sliced into its own file. */

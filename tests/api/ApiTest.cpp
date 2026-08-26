@@ -59,6 +59,7 @@ void testFogOptions();
 void testSkyOptions();
 void testFogSkyPaths();
 void testNestedSpecIndexedKey();
+void testSourceSpecSchema();
 void testBagBatch();
 void testSetAll();
 void testAliases();
@@ -415,6 +416,7 @@ int main() {
     testSkyOptions();
     testFogSkyPaths();
     testNestedSpecIndexedKey();
+    testSourceSpecSchema();
     testBagBatch();
     testSetAll();
     testAliases();

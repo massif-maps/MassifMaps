@@ -160,6 +160,30 @@ add_custom_command(
   COMMENT "Generating the reduced API property table for tests"
   VERBATIM)
 
+# A SECOND, schema-only run over the archive sources. Their classes cannot be linked here - PMTiles
+# needs zlib, brotli and zstd - but the schema is JSON, so SpecSchemaTest reads it without any of
+# that. Separate outdir: these .inc files are deliberately not compiled.
+set(TEST_SCHEMA_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated/schema")
+set(TEST_SCHEMA_MODULES
+  "${SDK_BASE_DIR}/all/modules/datasources/PMTilesTileDataSource.i"
+  "${SDK_BASE_DIR}/all/modules/datasources/MBTilesTileDataSource.i"
+  "${SDK_BASE_DIR}/all/modules/datasources/TileDataSource.i"
+)
+list(JOIN TEST_SCHEMA_MODULES "," TEST_SCHEMA_MODULE_LIST)
+
+add_custom_command(
+  OUTPUT "${TEST_SCHEMA_DIR}/massif-api.json"
+  COMMAND "${TEST_PYTHON}" "${SDK_BASE_DIR}/scripts/gen-api-tables.py"
+          "--modules" "${TEST_SCHEMA_MODULE_LIST}"
+          "--defines" "_MASSIF_OFFLINE_SUPPORT"
+          "--cppdir" "${SDK_BASE_DIR}/all/native"
+          "--outdir" "${TEST_SCHEMA_DIR}"
+          "--schema" "${TEST_SCHEMA_DIR}/massif-api.json"
+  DEPENDS ${TEST_SCHEMA_MODULES} "${SDK_BASE_DIR}/scripts/gen-api-tables.py"
+  WORKING_DIRECTORY "${SDK_BASE_DIR}/scripts"
+  COMMENT "Generating the source spec schema for tests"
+  VERBATIM)
+
 add_executable(api_tests
   ApiTest.cpp
   EventTest.cpp
@@ -174,6 +198,8 @@ add_executable(api_tests
   BagTest.cpp
   FogSkyTest.cpp
   SpecKeyTest.cpp
+  # Reads the two schemas below, links nothing of its own.
+  SpecSchemaTest.cpp
   # Header-only: AutoFlatten.h has no dependencies at all, so this costs the link nothing.
   AutoFlattenTest.cpp
   # Same: DrapeStackCuts.h is the ordering rule and nothing else.
@@ -182,11 +208,15 @@ add_executable(api_tests
   FlattenSwitchTest.cpp
   "${TEST_TABLE_DIR}/PropertyTable.inc"
   "${TEST_TABLE_DIR}/MethodDecls.inc"
+  "${TEST_SCHEMA_DIR}/massif-api.json"
   ${TEST_SDK_SOURCES})
 
 set_source_files_properties("${TEST_TABLE_DIR}/PropertyTable.inc" PROPERTIES HEADER_FILE_ONLY TRUE)
+set_source_files_properties("${TEST_SCHEMA_DIR}/massif-api.json" PROPERTIES HEADER_FILE_ONLY TRUE)
 
-target_compile_definitions(api_tests PRIVATE ${TEST_DEFINES})
+target_compile_definitions(api_tests PRIVATE ${TEST_DEFINES}
+  "TEST_SCHEMA_PATH=\"${TEST_SCHEMA_DIR}/massif-api.json\""
+  "SDK_SCHEMA_PATH=\"${SDK_BASE_DIR}/docs/api/massif-api.json\"")
 
 target_include_directories(api_tests PRIVATE
   "${SDK_BASE_DIR}/all/native"

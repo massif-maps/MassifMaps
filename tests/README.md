@@ -36,7 +36,10 @@ than a choice:
   the generator on the way.
 
 Spec factories (`create`) are in the same position: they reference the constructors of every source
-type, so they are device-verified rather than covered here.
+type, so they are device-verified rather than covered here. What is covered is the **schema** those
+factories are generated from (`SpecSchemaTest.cpp`): a second, schema-only generator run over the
+archive sources, read as JSON, so a class whose `!spec` is missing or whose constructors stopped
+resolving fails here rather than in an integration two repos away.
 
 ## The style XML round-trip — outside this suite
 

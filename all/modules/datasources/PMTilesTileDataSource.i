@@ -23,6 +23,7 @@
 
 !polymorphic_shared_ptr(massif::PMTilesTileDataSource, datasources.PMTilesTileDataSource)
 
+!spec(massif::PMTilesTileDataSource, source, pmtiles, default(minZoom, 0), default(maxZoom, 24))
 %std_io_exceptions(massif::PMTilesTileDataSource::PMTilesTileDataSource)
 
 %feature("director") massif::PMTilesTileDataSource;

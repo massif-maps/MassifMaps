@@ -49,9 +49,16 @@ const MAPBOX_SDF_RADIUS = 8;
 const MASSIF_SDF_UNIT = 128 / 8; // BITMAP_SDF_SCALE
 const MASSIF_SDF_EDGE = 127.5;
 
-/** One MapBox distance-field byte in the SDK's own encoding. */
-function reencodeSdf(alpha: number): number {
-    const texels = (alpha / 255 - SDF_EDGE) * MAPBOX_SDF_RADIUS;
+/**
+ * One MapBox distance-field byte in the SDK's own encoding.
+ *
+ * `scale` is the resample the icon has already been through: MAPBOX_SDF_RADIUS counts texels of the
+ * ORIGINAL sprite, and one texel of a 0.4-scaled icon covers 2.5 of them. Left out, the field
+ * claimed a spread 1/scale times wider than it had, so the smaller the icon the shallower its
+ * gradient - blurred edges, and a halo that ran past the field into a square patch.
+ */
+function reencodeSdf(alpha: number, scale: number): number {
+    const texels = (alpha / 255 - SDF_EDGE) * MAPBOX_SDF_RADIUS * scale;
     return Math.max(0, Math.min(255, Math.round(texels * MASSIF_SDF_UNIT + MASSIF_SDF_EDGE)));
 }
 
@@ -161,7 +168,7 @@ export function extractIcon(
                 scaled.data[i + 3] = Math.round(coverage * 255);
             } else {
                 // Alpha -> red, re-encoded, and opaque: the shader's `color.r` IS the field.
-                const value = reencodeSdf(distance);
+                const value = reencodeSdf(distance, scale);
                 scaled.data[i] = scaled.data[i + 1] = scaled.data[i + 2] = value;
                 scaled.data[i + 3] = 255;
             }

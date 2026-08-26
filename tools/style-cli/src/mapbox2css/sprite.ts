@@ -95,8 +95,23 @@ export async function loadSprites(style: MapboxStyle, keySuffix: string): Promis
     const sheets: SpriteSet = new Map();
     for (const [id, base] of resolveSpriteUrls(style)) {
         const url = base + keySuffix;
-        const index = JSON.parse((await fetchBuffer(withQuery(url, '.json'))).toString('utf8'));
-        const image = PNG.sync.read(await fetchBuffer(withQuery(url, '.png')));
+        // The @2x sheet first. A 1x sprite is upscaled by the display's pixel ratio before it
+        // reaches the screen - about 2.6x on the device this was measured on - and a traffic light
+        // drawn from 19 texels reads as a smudge. pixelRatio in the index is what puts it back to
+        // its logical size, so the only cost is the download.
+        let index: Record<string, SpriteEntry> | undefined;
+        let image: PNG | undefined;
+        for (const variant of ['@2x', '']) {
+            try {
+                index = JSON.parse((await fetchBuffer(withQuery(url + variant, '.json'))).toString('utf8'));
+                image = PNG.sync.read(await fetchBuffer(withQuery(url + variant, '.png')));
+                break;
+            } catch {
+                index = undefined;
+                image = undefined;
+            }
+        }
+        if (!index || !image) throw new Error(`no sprite sheet at ${url}`);
         sheets.set(id, { index, image });
     }
     return sheets;
@@ -110,9 +125,12 @@ function splitIconName(name: string): [string, string] {
 
 export interface ExtractedIcon {
     file: string;
+    /** Logical pixels - the sheet's own texels divided by its pixelRatio. */
     width: number;
     height: number;
     sdf: boolean;
+    /** Texels per logical pixel in the written file, so a drawn size can divide it back out. */
+    pixelRatio: number;
 }
 
 /**
@@ -173,7 +191,7 @@ export function extractIcon(
                 scaled.data[i + 3] = 255;
             }
         }
-        if (!flatten) out = padField(scaled);
+        if (!flatten) out = padField(scaled, entry.pixelRatio && entry.pixelRatio > 0 ? entry.pixelRatio : 1);
     }
 
     const iconsDir = join(outDir, 'icons');
@@ -192,6 +210,7 @@ export function extractIcon(
         width: out.width / ratio,
         height: out.height / ratio,
         sdf: !!entry.sdf && !flatten,
+        pixelRatio: ratio,
     };
 }
 
@@ -213,8 +232,8 @@ export function extractIcon(
  */
 const SDF_PADDING = 4;
 
-function padField(source: PNG): PNG {
-    const p = SDF_PADDING;
+function padField(source: PNG, pixelRatio: number): PNG {
+    const p = Math.round(SDF_PADDING * pixelRatio);
     const out = new PNG({ width: source.width + 2 * p, height: source.height + 2 * p });
     for (let y = 0; y < out.height; y++) {
         for (let x = 0; x < out.width; x++) {

@@ -112,6 +112,18 @@ test('a sort key orders labels inside its layer, never across layers', () => {
     assert.match(out, /text-placement-priority: \(\d+ - \[rank\]\);/);
 });
 
+test('a font list wrapped in literal keeps its face name', () => {
+    // A match over the feature wraps each list in ["literal", [...]]; after the split collapses the
+    // branch, reading element 0 emitted the face name `literal`, which resolves to nothing.
+    const font = ['match', ['get', 'class'],
+        'hamlet', ['literal', ['Roboto Condensed Italic', 'Noto Sans Italic']],
+        ['literal', ['Roboto Condensed Regular', 'Noto Sans Regular']]];
+    const out = mss({ 'text-font': font });
+    assert.ok(!out.includes("text-face-name: 'literal'"));
+    assert.match(out, /text-face-name: 'Roboto Condensed Italic';/);
+    assert.match(out, /text-face-name: 'Roboto Condensed Regular';/);
+});
+
 test('a layer with no sort key still carries its order', () => {
     assert.match(mss({}), /text-placement-priority: 0;/);
 });

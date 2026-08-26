@@ -629,12 +629,25 @@ function retryCollapsed(value: Json, layer: MapboxLayer, coverage: Coverage): st
     return translated;
 }
 
+/**
+ * text-font is a LIST of faces in preference order and CartoCSS takes one name. A `match` over the
+ * feature wraps each list in `["literal", [...]]`, and after the split collapses that branch the
+ * value is the literal itself - reading element 0 then emitted the face name `literal`, which
+ * resolves to nothing and drew eight layers in the fallback font.
+ */
+function firstFontName(value: Json): Json | undefined {
+    if (Array.isArray(value) && value[0] === 'literal' && Array.isArray(value[1])) {
+        return firstFontName(value[1] as Json);
+    }
+    return Array.isArray(value) && typeof value[0] === 'string' ? value[0] : undefined;
+}
+
 function tryTranslate(value: Json, name: string, layerId: string, coverage: Coverage): string | null {
     const notes: string[] = [];
     try {
-        // text-font is a list; CartoCSS takes the first face name.
-        const translated = Array.isArray(value) && name === 'text-font' && typeof value[0] === 'string'
-            ? translateExpression(value[0], notes)
+        const fontList = name === 'text-font' ? firstFontName(value) : undefined;
+        const translated = fontList !== undefined
+            ? translateExpression(fontList, notes)
             : translateExpression(value, notes);
         notes.forEach((note) => coverage.approximate(note));
         return translated;

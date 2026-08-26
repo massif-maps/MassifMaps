@@ -114,6 +114,14 @@ if(EMSCRIPTEN)
     -sNODERAWFS=1
     -sEXIT_RUNTIME=1
     -sALLOW_MEMORY_GROWTH=1
+    # The same 8 MB a native build gets. Emscripten's default is 64 KB, and the CartoCSS compiler
+    # recurses with the size of the stylesheet, so a real style overflowed it: MapTiler streets-v4
+    # died at ~68 KB of .mss (~138 rules) with "memory access out of bounds", while every native
+    # build compiled it. ALLOW_MEMORY_GROWTH does not help - it grows the HEAP, and the stack is a
+    # fixed region. STACK_OVERFLOW_CHECK turns that message into one that names the cause; it is a
+    # canary test at the guard page, which a developer tool can afford.
+    -sSTACK_SIZE=8MB
+    -sSTACK_OVERFLOW_CHECK=1
     -sMODULARIZE=1
     -sEXPORT_ES6=1
     -sINVOKE_RUN=0

@@ -575,6 +575,36 @@
       "baked": false
     },
     {
+      "cartocss": "marker-halo-fill",
+      "mapnik": "halo-fill",
+      "symbolizer": "marker",
+      "kind": "color",
+      "type": "ColorFunctionProperty",
+      "default": "#ffffff",
+      "live": true,
+      "baked": false
+    },
+    {
+      "cartocss": "marker-halo-opacity",
+      "mapnik": "halo-opacity",
+      "symbolizer": "marker",
+      "kind": "float",
+      "type": "FloatFunctionProperty",
+      "default": "1.0",
+      "live": true,
+      "baked": false
+    },
+    {
+      "cartocss": "marker-halo-radius",
+      "mapnik": "halo-radius",
+      "symbolizer": "marker",
+      "kind": "float",
+      "type": "FloatFunctionProperty",
+      "default": "0.0",
+      "live": true,
+      "baked": false
+    },
+    {
       "cartocss": "marker-height",
       "mapnik": "height",
       "symbolizer": "marker",
@@ -667,6 +697,16 @@
     {
       "cartocss": "marker-same-feature-id-dependent",
       "mapnik": "same-feature-id-dependent",
+      "symbolizer": "marker",
+      "kind": "bool",
+      "type": "BoolProperty",
+      "default": "false",
+      "live": false,
+      "baked": false
+    },
+    {
+      "cartocss": "marker-sdf",
+      "mapnik": "sdf",
       "symbolizer": "marker",
       "kind": "bool",
       "type": "BoolProperty",
@@ -1361,6 +1401,16 @@
       "kind": "float",
       "type": "FloatProperty",
       "default": "0.0",
+      "live": false,
+      "baked": false
+    },
+    {
+      "cartocss": "shield-sdf",
+      "mapnik": "sdf",
+      "symbolizer": "shield",
+      "kind": "bool",
+      "type": "BoolProperty",
+      "default": "false",
       "live": false,
       "baked": false
     },

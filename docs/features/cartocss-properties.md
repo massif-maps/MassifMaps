@@ -12,7 +12,7 @@ sidebar_position: 20
 `CartoCSSMapnikTranslator.cpp`. Edit those, then re-run the script — never this page.
 :::
 
-205 properties across 12 symbolizers.
+210 properties across 12 symbolizers.
 
 ## Reading the table
 
@@ -25,7 +25,7 @@ sidebar_position: 20
 - Liveness is decided **per parameter across the whole style**, not per use: one baked use
   anywhere makes the parameter baked everywhere.
 
-Live-capable properties: 38 of 205.
+Live-capable properties: 41 of 210.
 
 ## `building`
 
@@ -112,6 +112,9 @@ Live-capable properties: 38 of 205.
 | `marker-file` | `file` | string |  |  |  |
 | `marker-fill` | `fill` | color | `#0000ff` |  |  |
 | `marker-fill-opacity` | `fill-opacity` | float | `1.0` |  |  |
+| `marker-halo-fill` | `halo-fill` | color | `#ffffff` | yes |  |
+| `marker-halo-opacity` | `halo-opacity` | float | `1.0` | yes |  |
+| `marker-halo-radius` | `halo-radius` | float | `0.0` | yes |  |
 | `marker-height` | `height` | float | `0.0` |  | yes |
 | `marker-ignore-placement` | `ignore-placement` | bool | `false` |  |  |
 | `marker-line-color` | `stroke` | color | `#000000` |  |  |
@@ -122,6 +125,7 @@ Live-capable properties: 38 of 205.
 | `marker-placement` | `placement` | value | `point` |  |  |
 | `marker-placement-priority` | `placement-priority` | float | `0.0` |  |  |
 | `marker-same-feature-id-dependent` | `same-feature-id-dependent` | bool | `false` |  |  |
+| `marker-sdf` | `sdf` | bool | `false` |  |  |
 | `marker-spacing` | `spacing` | float | `100.0` |  |  |
 | `marker-transform` | `transform` | transform |  |  |  |
 | `marker-type` | `marker-type` | value | `auto` |  |  |
@@ -216,6 +220,7 @@ Live-capable properties: 38 of 205.
 | `shield-orientation` | `orientation` | float | `0.0` |  |  |
 | `shield-placement` | `placement` | value | `point` |  |  |
 | `shield-placement-priority` | `placement-priority` | float | `0.0` |  |  |
+| `shield-sdf` | `sdf` | bool | `false` |  |  |
 | `shield-size` | `size` | float | `10.0` |  | yes |
 | `shield-spacing` | `spacing` | float | `0.0` |  |  |
 | `shield-text-dx` | `dx` | float | `0.0` |  |  |

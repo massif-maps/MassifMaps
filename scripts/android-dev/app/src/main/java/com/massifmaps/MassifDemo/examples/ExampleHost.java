@@ -40,6 +40,12 @@ public interface ExampleHost {
     /** An on/off button in the control row, starting in the given state. */
     void toggle(String label, boolean on, OnToggle action);
 
+    /**
+     * A slider in the control row, for a value worth sweeping rather than picking - a duration, an
+     * exaggeration. The label is shown with the current value appended.
+     */
+    void slider(String label, float min, float max, float value, OnValue action);
+
     /** A short message. Use sparingly - a caption is usually the better place. */
     void toast(String text);
 
@@ -48,5 +54,9 @@ public interface ExampleHost {
 
     interface OnToggle {
         void onToggle(boolean on);
+    }
+
+    interface OnValue {
+        void onValue(float value);
     }
 }

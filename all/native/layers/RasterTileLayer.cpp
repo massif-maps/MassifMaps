@@ -3,6 +3,7 @@
 #include "components/Exceptions.h"
 #include "components/CancelableThreadPool.h"
 #include "datasources/TileDataSource.h"
+#include "datasources/components/TileBitmap.h"
 #include "layers/RasterTileEventListener.h"
 #include "projections/Projection.h"
 #include "projections/ProjectionSurface.h"
@@ -461,13 +462,7 @@ namespace massif {
 
             vt::TileId vtTile(_tile.getZoom(), _tile.getX(), _tile.getY());
             vt::TileId vtDataSourceTile(dataSourceTile.getZoom(), dataSourceTile.getX(), dataSourceTile.getY());
-            std::shared_ptr<Bitmap> bitmap;
-            if (std::shared_ptr<BinaryData> data = tileData->getData()) {
-                bitmap = Bitmap::CreateFromCompressed(data);
-                if (!bitmap && !data->empty()) {
-                    Log::Error("RasterTileLayer::FetchTask: Failed to decode tile");
-                }
-            }
+            std::shared_ptr<Bitmap> bitmap = DecodeTileBitmap(tileData);
 
             // Build vector tile from the bitmap
             std::shared_ptr<vt::TileTransformer> tileTransformer = layer->getTileTransformer();

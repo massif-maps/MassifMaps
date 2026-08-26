@@ -5,6 +5,7 @@
 #include "components/Layers.h"
 #include "components/Options.h"
 #include "datasources/TileDataSource.h"
+#include "datasources/VectorDataSource.h"
 #include "layers/Layer.h"
 #include "projections/Projection.h"
 #include "ui/BaseMapView.h"
@@ -84,6 +85,20 @@ namespace massif { namespace api {
         Handle handle = NULL_HANDLE;
         if (Context::GetDefault()->registerObject(kind, objectId, source,
                 internedClassName(typeid(concrete), "massif::TileDataSource"), handle) != RESULT_OK) {
+            return NULL_HANDLE;
+        }
+        return static_cast<int>(handle);
+    }
+
+    int MassifInterop::adopt(const std::string& kind, const std::string& objectId,
+                             const std::shared_ptr<VectorDataSource>& source) {
+        if (!source) {
+            return NULL_HANDLE;
+        }
+        const VectorDataSource& concrete = *source;
+        Handle handle = NULL_HANDLE;
+        if (Context::GetDefault()->registerObject(kind, objectId, source,
+                internedClassName(typeid(concrete), "massif::VectorDataSource"), handle) != RESULT_OK) {
             return NULL_HANDLE;
         }
         return static_cast<int>(handle);

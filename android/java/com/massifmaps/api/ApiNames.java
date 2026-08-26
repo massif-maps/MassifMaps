@@ -79,10 +79,12 @@ public final class ApiNames {
     public static final MassifObject.Key<Double> ATTACH_ANCHOR_POINT_X = MassifObject.key("attachAnchorPointX");
     /** Returns the vertical attaching anchor point of the billoard. */
     public static final MassifObject.Key<Double> ATTACH_ANCHOR_POINT_Y = MassifObject.key("attachAnchorPointY");
-    /** Returns how long the flattening animation takes. */
+    /** Returns how long the terrain takes to sink flat. */
     public static final MassifObject.Key<Double> AUTO_FLATTEN_DURATION = MassifObject.key("autoFlattenDuration");
     /** Returns the screen parallax below which the terrain renders flat. */
     public static final MassifObject.Key<Double> AUTO_FLATTEN_PARALLAX = MassifObject.key("autoFlattenParallax");
+    /** Returns how long the terrain takes to rise back into 3D. */
+    public static final MassifObject.Key<Double> AUTO_FLATTEN_RISE_DURATION = MassifObject.key("autoFlattenRiseDuration");
     /** Returns the tilt at or above which the terrain renders flat. */
     public static final MassifObject.Key<Double> AUTO_FLATTEN_TILT = MassifObject.key("autoFlattenTilt");
     public static final MassifObject.Key<Boolean> AUTOCOMPLETE = MassifObject.key("autocomplete");
@@ -311,7 +313,11 @@ public final class ApiNames {
     public static final MassifObject.Key<Long> FIELD_OF_VIEW_Y = MassifObject.key("fieldOfViewY");
     /** Returns the string based search expression. If empty, then search expression is not used. */
     public static final MassifObject.Key<String> FILTER_EXPRESSION = MassifObject.key("filterExpression");
-    /** Returns whether the terrain is rendering flat right now because auto-flattening asked for it. */
+    /** Returns how far a flattened terrain goes back towards a plain 2D map. */
+    public static final MassifObject.Key<String> FLATTEN_MODE = MassifObject.key("flattenMode");
+    /** Returns how far the terrain is flattened right now, 0 (full 3D) to 1 (flat). */
+    public static final MassifObject.Key<Double> FLATTEN_RATIO = MassifObject.key("flattenRatio");
+    /** Returns whether the map is asked to render flat. This is the 2D/3D state, whether it was set by the app or by auto-flattening; the switch itself is animated, so for a moment after a change the map is still on its way there. */
     public static final MassifObject.Key<Boolean> FLATTENED = MassifObject.key("flattened");
     /** Returns true while a flyTo animation is running. */
     public static final MassifObject.Key<Boolean> FLIGHT_ACTIVE = MassifObject.key("flightActive");
@@ -617,6 +623,8 @@ public final class ApiNames {
     public static final MassifObject.Key<Double> RANK = MassifObject.key("rank");
     /** Returns the raster tile event listener. */
     public static final MassifObject.Key<MassifObject> RASTER_TILE_EVENT_LISTENER = MassifObject.key("rasterTileEventListener");
+    /** Returns true when getData() holds raw RGBA8 pixels rather than an encoded file. A consumer that turns tiles into bitmaps has to check this before decoding. */
+    public static final MassifObject.Key<Boolean> RAW_PIXELS = MassifObject.key("rawPixels");
     /** Returns raw result */
     public static final MassifObject.Key<String> RAW_RESULT = MassifObject.key("rawResult");
     /** Returns what caused the movement. */
@@ -785,6 +793,8 @@ public final class ApiNames {
     public static final MassifObject.Key<Double> SUN_INTENSITY = MassifObject.key("sunIntensity");
     /** Returns the custom terrain surface fragment shader source, or an empty string if no shaded surface is drawn. */
     public static final MassifObject.Key<String> SURFACE_SHADER_SOURCE = MassifObject.key("surfaceShaderSource");
+    /** Returns whether the switch is holding the ground flat while the tiles 3D needs load. */
+    public static final MassifObject.Key<Boolean> SWITCHING = MassifObject.key("switching");
     /** Returns the state of the synchronized refresh flag. */
     public static final MassifObject.Key<Boolean> SYNCHRONIZED_REFRESH = MassifObject.key("synchronizedRefresh");
     /** Returns the user-defined tag associated with the button. */

@@ -6,6 +6,7 @@
 #include "core/Variant.h"
 #include "components/Exceptions.h"
 #include "graphics/Bitmap.h"
+#include "datasources/components/TileBitmap.h"
 #include "projections/Projection.h"
 #include "components/TerrainOptions.h"
 #include "rastertiles/ElevationDecoder.h"
@@ -539,7 +540,7 @@ namespace massif {
         if (!tileData || !tileData->getData() || tileData->isReplaceWithParent()) {
             return std::shared_ptr<Bitmap>();
         }
-        std::shared_ptr<Bitmap> bitmap = Bitmap::CreateFromCompressed(tileData->getData());
+        std::shared_ptr<Bitmap> bitmap = DecodeTileBitmap(tileData);
         if (bitmap) {
             cacheBitmap(tile, bitmap);
         }

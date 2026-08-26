@@ -207,6 +207,9 @@ public final class DemoConfig {
     public static float AUTO_FLATTEN_PARALLAX = 2.0f;
     public static float AUTO_FLATTEN_TILT = 88.0f;
     public static long AUTO_FLATTEN_MS = 300;
+    /** How far flattening goes: false = RENDER (terrain passes only), true = FULL (a flat map
+     *  decodes and culls as a plain 2D one, for a re-decode at each switch). '--es fullSwitch true'. */
+    public static boolean TERRAIN_FULL_SWITCH = false;
     /** Terrain toggle 'expand' animation, ms (0 = pop, the old behaviour). */
     public static long TERRAIN_ANIM_MS = 700;
     /** How long the expand animation waits for terrain-decoded tiles before ramping anyway, ms. */
@@ -1142,6 +1145,7 @@ public final class DemoConfig {
         AUTO_FLATTEN_PARALLAX = DemoCfg.cfgFloat("autoFlatten", AUTO_FLATTEN_PARALLAX);
         AUTO_FLATTEN_TILT = DemoCfg.cfgFloat("autoFlattenTilt", AUTO_FLATTEN_TILT);
         AUTO_FLATTEN_MS = (long) DemoCfg.cfgFloat("autoFlattenMs", AUTO_FLATTEN_MS);
+        TERRAIN_FULL_SWITCH = DemoCfg.cfgBool("fullSwitch", TERRAIN_FULL_SWITCH);
         TERRAIN_ANIM_MS = (long) DemoCfg.cfgFloat("terrainAnimMs", TERRAIN_ANIM_MS);
         TERRAIN_MESH_RESOLUTION = DemoCfg.cfgInt("meshResolution", TERRAIN_MESH_RESOLUTION);
         TERRAIN_DRAPE_FILLS = DemoCfg.cfgBool("drape", TERRAIN_DRAPE_FILLS);

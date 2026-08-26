@@ -52,6 +52,27 @@ namespace massif {
         }
 
         /**
+         * The rule fires on an EDGE, not a level: it writes only when its own answer changes.
+         * Evaluated every frame and written every frame, it would overwrite an app that asked for
+         * the other state on the next frame - so a button could never lead the camera, and a switch
+         * flown towards top-down would flatten only when the tilt finally reached the threshold, at
+         * the very end of the flight. Holding the last answer instead leaves an explicit
+         * setFlattened alone until the camera actually crosses a threshold.
+         */
+        struct Trigger {
+            int last = -1; // -1 until the rule has answered once
+
+            bool changed(bool decision) {
+                int value = decision ? 1 : 0;
+                if (last == value) {
+                    return false;
+                }
+                last = value;
+                return true;
+            }
+        };
+
+        /**
          * One frame of the ramp, 0 (full 3D) to 1 (flat). A duration of 0 switches instantly.
          */
         static float step(float ratio, bool flatten, float deltaSeconds, float duration) {

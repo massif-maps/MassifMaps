@@ -23,17 +23,27 @@
 
 !shared_ptr(massif::TerrainOptions, components.TerrainOptions)
 
+!enum(massif::TerrainFlattenMode::TerrainFlattenMode)
+
 // 3D terrain from an elevation source. Only the source is a constructor argument: the elevation
 // decoder is picked from the source's own `encoding`, so a spec never names one.
 !spec(massif::TerrainOptions, options, terrain, alias(source, dataSource))
 
 %attribute(massif::TerrainOptions, bool, Enabled, isEnabled, setEnabled)
-// Auto-flattening: the terrain renders flat once 3D stops earning its cost, and the state the app
-// asked for with Enabled is remembered. Read-only Flattened is what it is doing right now.
-%attribute(massif::TerrainOptions, bool, Flattened, isFlattened)
+// The 2D/3D switch. Flattened is the state, written by the app or by the auto-flatten rule;
+// FlattenMode is how far it goes - RENDER stops the terrain passes only, FULL decodes and culls as
+// a plain 2D map too, for a re-decode paid while the map is already flat.
+%attribute(massif::TerrainOptions, bool, Flattened, isFlattened, setFlattened)
+%attribute(massif::TerrainOptions, massif::TerrainFlattenMode::TerrainFlattenMode, FlattenMode, getFlattenMode, setFlattenMode)
+// The ratio is writable so an app can drive the switch off its OWN clock - a camera flight's
+// progress - which is the only way two animations match exactly. Switching is the tile wait it
+// still has to respect on the way up.
+%attribute(massif::TerrainOptions, float, FlattenRatio, getFlattenRatio, setFlattenRatio)
+%attribute(massif::TerrainOptions, bool, Switching, isSwitching)
 %attribute(massif::TerrainOptions, float, AutoFlattenParallax, getAutoFlattenParallax, setAutoFlattenParallax)
 %attribute(massif::TerrainOptions, float, AutoFlattenTilt, getAutoFlattenTilt, setAutoFlattenTilt)
 %attribute(massif::TerrainOptions, float, AutoFlattenDuration, getAutoFlattenDuration, setAutoFlattenDuration)
+%attribute(massif::TerrainOptions, float, AutoFlattenRiseDuration, getAutoFlattenRiseDuration, setAutoFlattenRiseDuration)
 %attribute(massif::TerrainOptions, float, Exaggeration, getExaggeration, setExaggeration)
 %attribute(massif::TerrainOptions, bool, SeamlessTileEdgesEnabled, isSeamlessTileEdgesEnabled, setSeamlessTileEdgesEnabled)
 %attribute(massif::TerrainOptions, bool, ElevationPrefetchEnabled, isElevationPrefetchEnabled, setElevationPrefetchEnabled)
@@ -68,8 +78,12 @@
 %ignore massif::TerrainOptions::registerOnChangeListener;
 %ignore massif::TerrainOptions::unregisterOnChangeListener;
 %ignore massif::TerrainOptions::isActive;
-%ignore massif::TerrainOptions::getFlattenRatio;
-%ignore massif::TerrainOptions::setFlattenRatio;
+%ignore massif::TerrainOptions::isDecodeActive;
+%ignore massif::TerrainOptions::setDecodeActive;
+%ignore massif::TerrainOptions::applyFlattenRatio;
+%ignore massif::TerrainOptions::isManualFlatten;
+%ignore massif::TerrainOptions::getManualFlattenRatio;
+%ignore massif::TerrainOptions::setSwitching;
 %ignore massif::TerrainOptions::getElevationManager;
 %ignore massif::TerrainOptions::getElevationCacheCapacity;
 %ignore massif::TerrainOptions::setElevationCacheCapacity;

@@ -575,6 +575,13 @@ export type SkyTypeSkyType =
   | "SKY_TYPE_ATMOSPHERE"
   ;
 
+export type TerrainFlattenModeTerrainFlattenMode =
+  /** Rendering only: the terrain passes, the drape and the elevation fetches are dropped, but the tiles keep the terrain subdivision they were decoded with. Switching costs nothing and is instant, and a flat map still carries a 3D map's triangles. */
+  | "TERRAIN_FLATTEN_MODE_RENDER"
+  /** The whole way: a flat map decodes, culls and draws as if no terrain were configured. The price is a re-decode at each switch, paid while the map is already flat. */
+  | "TERRAIN_FLATTEN_MODE_FULL"
+  ;
+
 export type TileFormatTileFormat =
   /** Detect the format from the tile data. The two are unambiguous in practice, but set the format explicitly when the source is known - it skips the check and cannot be fooled. */
   | "TILE_FORMAT_AUTO"
@@ -1788,10 +1795,12 @@ export interface PropertyTypes {
     "simplifyTolerance": number;
     /** Returns the terrain options whose elevation manager the label stubs read. */
     "terrainOptions": Handle<"massif::TerrainOptions">;
-    /** Returns how long the flattening animation takes. */
+    /** Returns how long the terrain takes to sink flat. */
     "terrainOptions.autoFlattenDuration": number;
     /** Returns the screen parallax below which the terrain renders flat. */
     "terrainOptions.autoFlattenParallax": number;
+    /** Returns how long the terrain takes to rise back into 3D. */
+    "terrainOptions.autoFlattenRiseDuration": number;
     /** Returns the tilt at or above which the terrain renders flat. */
     "terrainOptions.autoFlattenTilt": number;
     /** Returns the terrain background color. */
@@ -1818,8 +1827,12 @@ export interface PropertyTypes {
     "terrainOptions.enabled": boolean;
     /** Returns the terrain height exaggeration factor. */
     "terrainOptions.exaggeration": number;
-    /** (read-only) Returns whether the terrain is rendering flat right now because auto-flattening asked for it. */
-    readonly "terrainOptions.flattened": boolean;
+    /** Returns how far a flattened terrain goes back towards a plain 2D map. */
+    "terrainOptions.flattenMode": "TERRAIN_FLATTEN_MODE_RENDER" | "TERRAIN_FLATTEN_MODE_FULL";
+    /** Returns how far the terrain is flattened right now, 0 (full 3D) to 1 (flat). */
+    "terrainOptions.flattenRatio": number;
+    /** Returns whether the map is asked to render flat. This is the 2D/3D state, whether it was set by the app or by auto-flattening; the switch itself is animated, so for a moment after a change the map is still on its way there. */
+    "terrainOptions.flattened": boolean;
     /** Returns how many zoom levels below the camera a tile may coarsen to. */
     "terrainOptions.maxTileZoomCoarsening": number;
     /** Returns the maximum visible tile zoom offset, relative to the camera zoom level. */
@@ -1834,6 +1847,8 @@ export interface PropertyTypes {
     "terrainOptions.seamlessTileEdgesEnabled": boolean;
     /** Returns the custom terrain surface fragment shader source, or an empty string if no shaded surface is drawn. */
     "terrainOptions.surfaceShaderSource": string;
+    /** (read-only) Returns whether the switch is holding the ground flat while the tiles 3D needs load. */
+    readonly "terrainOptions.switching": boolean;
     /** Returns the opacity a label keeps while its anchor is behind 3D content. */
     "terrainOptions.textOcclusionOpacity": number;
     /** Returns whether cross-LOD tile edge stitching is enabled. */
@@ -4063,10 +4078,12 @@ export interface PropertyTypes {
     "skyOptions.type": "SKY_TYPE_GRADIENT" | "SKY_TYPE_ATMOSPHERE";
     /** Returns the terrain options. May be null if no terrain is configured. */
     "terrain": Handle<"massif::TerrainOptions">;
-    /** Returns how long the flattening animation takes. */
+    /** Returns how long the terrain takes to sink flat. */
     "terrain.autoFlattenDuration": number;
     /** Returns the screen parallax below which the terrain renders flat. */
     "terrain.autoFlattenParallax": number;
+    /** Returns how long the terrain takes to rise back into 3D. */
+    "terrain.autoFlattenRiseDuration": number;
     /** Returns the tilt at or above which the terrain renders flat. */
     "terrain.autoFlattenTilt": number;
     /** Returns the terrain background color. */
@@ -4093,8 +4110,12 @@ export interface PropertyTypes {
     "terrain.enabled": boolean;
     /** Returns the terrain height exaggeration factor. */
     "terrain.exaggeration": number;
-    /** (read-only) Returns whether the terrain is rendering flat right now because auto-flattening asked for it. */
-    readonly "terrain.flattened": boolean;
+    /** Returns how far a flattened terrain goes back towards a plain 2D map. */
+    "terrain.flattenMode": "TERRAIN_FLATTEN_MODE_RENDER" | "TERRAIN_FLATTEN_MODE_FULL";
+    /** Returns how far the terrain is flattened right now, 0 (full 3D) to 1 (flat). */
+    "terrain.flattenRatio": number;
+    /** Returns whether the map is asked to render flat. This is the 2D/3D state, whether it was set by the app or by auto-flattening; the switch itself is animated, so for a moment after a change the map is still on its way there. */
+    "terrain.flattened": boolean;
     /** Returns how many zoom levels below the camera a tile may coarsen to. */
     "terrain.maxTileZoomCoarsening": number;
     /** Returns the maximum visible tile zoom offset, relative to the camera zoom level. */
@@ -4109,6 +4130,8 @@ export interface PropertyTypes {
     "terrain.seamlessTileEdgesEnabled": boolean;
     /** Returns the custom terrain surface fragment shader source, or an empty string if no shaded surface is drawn. */
     "terrain.surfaceShaderSource": string;
+    /** (read-only) Returns whether the switch is holding the ground flat while the tiles 3D needs load. */
+    readonly "terrain.switching": boolean;
     /** Returns the opacity a label keeps while its anchor is behind 3D content. */
     "terrain.textOcclusionOpacity": number;
     /** Returns whether cross-LOD tile edge stitching is enabled. */
@@ -4119,10 +4142,12 @@ export interface PropertyTypes {
     "terrain.viewDistanceFactor": number;
     /** Returns the terrain options. May be null if no terrain is configured. */
     "terrainOptions": Handle<"massif::TerrainOptions">;
-    /** Returns how long the flattening animation takes. */
+    /** Returns how long the terrain takes to sink flat. */
     "terrainOptions.autoFlattenDuration": number;
     /** Returns the screen parallax below which the terrain renders flat. */
     "terrainOptions.autoFlattenParallax": number;
+    /** Returns how long the terrain takes to rise back into 3D. */
+    "terrainOptions.autoFlattenRiseDuration": number;
     /** Returns the tilt at or above which the terrain renders flat. */
     "terrainOptions.autoFlattenTilt": number;
     /** Returns the terrain background color. */
@@ -4149,8 +4174,12 @@ export interface PropertyTypes {
     "terrainOptions.enabled": boolean;
     /** Returns the terrain height exaggeration factor. */
     "terrainOptions.exaggeration": number;
-    /** (read-only) Returns whether the terrain is rendering flat right now because auto-flattening asked for it. */
-    readonly "terrainOptions.flattened": boolean;
+    /** Returns how far a flattened terrain goes back towards a plain 2D map. */
+    "terrainOptions.flattenMode": "TERRAIN_FLATTEN_MODE_RENDER" | "TERRAIN_FLATTEN_MODE_FULL";
+    /** Returns how far the terrain is flattened right now, 0 (full 3D) to 1 (flat). */
+    "terrainOptions.flattenRatio": number;
+    /** Returns whether the map is asked to render flat. This is the 2D/3D state, whether it was set by the app or by auto-flattening; the switch itself is animated, so for a moment after a change the map is still on its way there. */
+    "terrainOptions.flattened": boolean;
     /** Returns how many zoom levels below the camera a tile may coarsen to. */
     "terrainOptions.maxTileZoomCoarsening": number;
     /** Returns the maximum visible tile zoom offset, relative to the camera zoom level. */
@@ -4165,6 +4194,8 @@ export interface PropertyTypes {
     "terrainOptions.seamlessTileEdgesEnabled": boolean;
     /** Returns the custom terrain surface fragment shader source, or an empty string if no shaded surface is drawn. */
     "terrainOptions.surfaceShaderSource": string;
+    /** (read-only) Returns whether the switch is holding the ground flat while the tiles 3D needs load. */
+    readonly "terrainOptions.switching": boolean;
     /** Returns the opacity a label keeps while its anchor is behind 3D content. */
     "terrainOptions.textOcclusionOpacity": number;
     /** Returns whether cross-LOD tile edge stitching is enabled. */
@@ -5332,10 +5363,12 @@ export interface PropertyTypes {
     "color": number;
   };
   "massif::TerrainOptions": {
-    /** Returns how long the flattening animation takes. */
+    /** Returns how long the terrain takes to sink flat. */
     "autoFlattenDuration": number;
     /** Returns the screen parallax below which the terrain renders flat. */
     "autoFlattenParallax": number;
+    /** Returns how long the terrain takes to rise back into 3D. */
+    "autoFlattenRiseDuration": number;
     /** Returns the tilt at or above which the terrain renders flat. */
     "autoFlattenTilt": number;
     /** Returns the terrain background color. */
@@ -5362,8 +5395,12 @@ export interface PropertyTypes {
     "enabled": boolean;
     /** Returns the terrain height exaggeration factor. */
     "exaggeration": number;
-    /** (read-only) Returns whether the terrain is rendering flat right now because auto-flattening asked for it. */
-    readonly "flattened": boolean;
+    /** Returns how far a flattened terrain goes back towards a plain 2D map. */
+    "flattenMode": "TERRAIN_FLATTEN_MODE_RENDER" | "TERRAIN_FLATTEN_MODE_FULL";
+    /** Returns how far the terrain is flattened right now, 0 (full 3D) to 1 (flat). */
+    "flattenRatio": number;
+    /** Returns whether the map is asked to render flat. This is the 2D/3D state, whether it was set by the app or by auto-flattening; the switch itself is animated, so for a moment after a change the map is still on its way there. */
+    "flattened": boolean;
     /** Returns how many zoom levels below the camera a tile may coarsen to. */
     "maxTileZoomCoarsening": number;
     /** Returns the maximum visible tile zoom offset, relative to the camera zoom level. */
@@ -5378,6 +5415,8 @@ export interface PropertyTypes {
     "seamlessTileEdgesEnabled": boolean;
     /** Returns the custom terrain surface fragment shader source, or an empty string if no shaded surface is drawn. */
     "surfaceShaderSource": string;
+    /** (read-only) Returns whether the switch is holding the ground flat while the tiles 3D needs load. */
+    readonly "switching": boolean;
     /** Returns the opacity a label keeps while its anchor is behind 3D content. */
     "textOcclusionOpacity": number;
     /** Returns whether cross-LOD tile edge stitching is enabled. */
@@ -5660,10 +5699,16 @@ export interface PropertyTypes {
     readonly "data": Handle<"massif::BinaryData">;
     /** (read-only) Returns the size of the data */
     readonly "data.size": number;
+    /** (read-only) The pixel height, or 0 when the data is an encoded file. */
+    readonly "height": number;
     /** Returns the maximum age of the tile data, tile data will expire after that point. */
     "maxAge": number;
+    /** (read-only) Returns true when getData() holds raw RGBA8 pixels rather than an encoded file. A consumer that turns tiles into bitmaps has to check this before decoding. */
+    readonly "rawPixels": boolean;
     /** Returns true if the tile should be replaced with parent tile. */
     "replaceWithParent": boolean;
+    /** (read-only) The pixel width, or 0 when the data is an encoded file. */
+    readonly "width": number;
   };
   "massif::TileDataSource": {
     /** Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. */
@@ -7305,10 +7350,12 @@ export interface OptionsSpec_sky {
 
 export interface OptionsSpec_terrain {
   type: "terrain";
-  /** Returns how long the flattening animation takes. */
+  /** Returns how long the terrain takes to sink flat. */
   autoFlattenDuration?: number;
   /** Returns the screen parallax below which the terrain renders flat. */
   autoFlattenParallax?: number;
+  /** Returns how long the terrain takes to rise back into 3D. */
+  autoFlattenRiseDuration?: number;
   /** Returns the tilt at or above which the terrain renders flat. */
   autoFlattenTilt?: number;
   /** Returns the terrain background color. */
@@ -7335,6 +7382,12 @@ export interface OptionsSpec_terrain {
   enabled?: boolean;
   /** Returns the terrain height exaggeration factor. */
   exaggeration?: number;
+  /** Returns how far a flattened terrain goes back towards a plain 2D map. */
+  flattenMode?: "TERRAIN_FLATTEN_MODE_RENDER" | "TERRAIN_FLATTEN_MODE_FULL";
+  /** Returns how far the terrain is flattened right now, 0 (full 3D) to 1 (flat). */
+  flattenRatio?: number;
+  /** Returns whether the map is asked to render flat. This is the 2D/3D state, whether it was set by the app or by auto-flattening; the switch itself is animated, so for a moment after a change the map is still on its way there. */
+  flattened?: boolean;
   /** Returns how many zoom levels below the camera a tile may coarsen to. */
   maxTileZoomCoarsening?: number;
   /** Returns the maximum visible tile zoom offset, relative to the camera zoom level. */

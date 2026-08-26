@@ -22,6 +22,25 @@ namespace massif {
     class ElevationDecoder;
     class ElevationManager;
 
+    namespace TerrainFlattenMode {
+        /**
+         * How far a flattened terrain goes back towards a plain 2D map.
+         */
+        enum TerrainFlattenMode {
+            /**
+             * Rendering only: the terrain passes, the drape and the elevation fetches are dropped,
+             * but the tiles keep the terrain subdivision they were decoded with. Switching costs
+             * nothing and is instant, and a flat map still carries a 3D map's triangles.
+             */
+            TERRAIN_FLATTEN_MODE_RENDER,
+            /**
+             * The whole way: a flat map decodes, culls and draws as if no terrain were configured.
+             * The price is a re-decode at each switch, paid while the map is already flat.
+             */
+            TERRAIN_FLATTEN_MODE_FULL
+        };
+    }
+
     /**
      * 3D terrain configuration, attached to the map via Options::setTerrainOptions.
      * The elevation data source can be shared with a HillshadeRasterTileLayer, in which case
@@ -85,10 +104,67 @@ namespace massif {
         void setEnabled(bool enabled);
 
         /**
-         * Returns whether the terrain is rendering flat right now because auto-flattening asked for it.
-         * @return True if the terrain is currently flattened. Always false when auto-flattening is off.
+         * Returns whether the map is asked to render flat. This is the 2D/3D state, whether it was
+         * set by the app or by auto-flattening; the switch itself is animated, so for a moment after
+         * a change the map is still on its way there.
+         * @return True if the map is flat, or on its way to flat. The default is false.
          */
         bool isFlattened() const;
+        /**
+         * Switches the map between flat and 3D terrain, without detaching the elevation data the way
+         * setEnabled does. Auto-flattening writes the same state, so an app driving this itself
+         * normally turns auto off (setAutoFlattenParallax(0) and setAutoFlattenTilt(0)). What the
+         * switch costs, and whether a flat map goes on paying for 3D, is setFlattenMode.
+         * An app that starts in 2D sets this before it adds its layers, so nothing decodes for 3D.
+         * @param flattened True to render flat.
+         */
+        void setFlattened(bool flattened);
+
+        /**
+         * Returns how far a flattened terrain goes back towards a plain 2D map.
+         * @return The flatten mode. The default is TERRAIN_FLATTEN_MODE_RENDER.
+         */
+        TerrainFlattenMode::TerrainFlattenMode getFlattenMode() const;
+        /**
+         * Sets how far a flattened terrain goes back towards a plain 2D map. RENDER is the cheap
+         * switch: the terrain passes stop, but the tiles keep the subdivision 3D needed, so a flat
+         * map still draws a 3D map's triangles. FULL drops that too - a flat map decodes, culls and
+         * draws as if no terrain were configured - at the price of re-decoding the visible tiles at
+         * every switch.
+         *
+         * That re-decode is not visible: it is made while the map is already flat, where the two
+         * densities draw the same picture, and the tiles being replaced stay on screen until their
+         * replacement arrives. Going back to 3D waits for the tiles it needs before it starts to
+         * rise, so the wait shows as 3D arriving late rather than as a half-built map.
+         * @param mode The new flatten mode.
+         */
+        void setFlattenMode(TerrainFlattenMode::TerrainFlattenMode mode);
+
+        /**
+         * Returns how far the terrain is flattened right now, 0 (full 3D) to 1 (flat).
+         * @return The flatten ratio.
+         */
+        float getFlattenRatio() const;
+        /**
+         * Drives the 2D/3D switch by hand, off the app's own clock: 0 is full 3D, 1 is flat. Writing
+         * this takes the ratio away from setFlattened's animation, which is what an app does to make
+         * the terrain match a camera flight EXACTLY - feed it the flight's own progress rather than
+         * hope two timers agree. Auto-flattening is suspended while the app drives, and STAYS
+         * suspended until setFlattened hands the ratio back - so an app that drives an animation
+         * writes setFlattened once at the end of it, or a later tilt gesture does nothing.
+         *
+         * Rising is still gated on the tiles 3D needs: a ratio below 1 asks for them and the ground
+         * is HELD flat until they arrive, because unsubdivided geometry displaced over relief is a
+         * road in the sky. isSwitching() is that hold - wait on it before starting the animation.
+         * @param ratio The new flatten ratio, 0 to 1.
+         */
+        void setFlattenRatio(float ratio);
+
+        /**
+         * Returns whether the switch is holding the ground flat while the tiles 3D needs load.
+         * @return True while the switch is waiting for tiles.
+         */
+        bool isSwitching() const;
 
         /**
          * Returns the screen parallax below which the terrain renders flat.
@@ -103,9 +179,8 @@ namespace massif {
          *     parallax = halfScreenDiagonal * heightRange * exaggeration / cameraDistance
          *
          * so it falls with the camera's height and rises with how mountainous the data is - a fixed
-         * zoom threshold is wrong for one of the two. Flattening is animated (see
-         * setAutoFlattenDuration) and then drops the terrain passes, the drape and the elevation
-         * fetches entirely; the state the app asked for with setEnabled is remembered and restored.
+         * zoom threshold is wrong for one of the two. The rule writes the same state setFlattened
+         * does, without touching setEnabled; how far flattening then goes is setFlattenMode.
          * Restores at 1.5x this value, so a camera sitting on the boundary does not oscillate.
          * @param pixels The new parallax threshold in screen pixels, or 0 to never flatten. The default is 2.
          */
@@ -125,17 +200,33 @@ namespace massif {
         void setAutoFlattenTilt(float tilt);
 
         /**
-         * Returns how long the flattening animation takes.
+         * Returns how long the terrain takes to sink flat.
          * @return The duration in seconds. The default is 0.3.
          */
         float getAutoFlattenDuration() const;
         /**
-         * Sets how long the terrain takes to sink flat, and to rise again. The ramp scales the
-         * heights on the GPU, so it costs no tile re-decode; only when it reaches flat are the
-         * terrain passes themselves dropped, by which point the two render identically.
+         * Sets how long the terrain takes to sink flat, and - unless setAutoFlattenRiseDuration
+         * overrides it - to rise again. The ramp scales the heights on the GPU, so it costs no tile
+         * re-decode; only when it reaches flat are the terrain passes themselves dropped, by which
+         * point the two render identically. Does not cover the wait for the tiles 3D needs (see
+         * setFlattenMode) - that is not the animation.
          * @param duration The new duration in seconds. 0 switches instantly.
          */
         void setAutoFlattenDuration(float duration);
+
+        /**
+         * Returns how long the terrain takes to rise back into 3D.
+         * @return The duration in seconds, or a negative value to follow getAutoFlattenDuration.
+         */
+        float getAutoFlattenRiseDuration() const;
+        /**
+         * Sets how long the terrain takes to RISE, separately from how long it takes to sink. The
+         * two are rarely worth the same: the rise is the one an app matches to a camera flight, and
+         * the one that waited for its tiles first. For an exact match to a flight, drive
+         * setFlattenRatio instead - a duration is a second timer, not the same clock.
+         * @param duration The new duration in seconds, or a negative value to use setAutoFlattenDuration.
+         */
+        void setAutoFlattenRiseDuration(float duration);
 
         /**
          * Returns the terrain height exaggeration factor.
@@ -599,24 +690,52 @@ namespace massif {
 
         /**
          * Returns whether 3D terrain is being rendered right now: enabled by the app AND not
-         * flattened away. Every renderer, culler and decoder asks this; isEnabled() is what the app
-         * asked for and is what decides whether tiles have to be rebuilt. Internal method.
+         * flattened away. Every renderer and culler asks this; what the TILES were decoded for is
+         * isDecodeActive(), which lags this by a switch. Internal method.
          * @return True if the terrain is rendering in 3D.
          */
         bool isActive() const;
 
         /**
-         * Returns how far the terrain has been flattened, 0 (full 3D) to 1 (flat). Internal method.
-         * @return The flatten ratio.
+         * Returns whether tiles are being decoded for 3D terrain - subdivided, so that displacing
+         * them follows the ground. Only ever changed while the map is flat, where both densities
+         * draw the same picture. In RENDER mode this is isEnabled(). Internal method.
+         * @return True if tiles carry the terrain subdivision.
          */
-        float getFlattenRatio() const;
+        bool isDecodeActive() const;
         /**
-         * Sets how far the terrain is flattened, 0 to 1. Scales the heights the elevation manager
-         * hands out, leaving the app's own exaggeration alone. Does NOT notify option listeners: it
-         * is driven per frame by the renderer, which asks for its own redraws. Internal method.
+         * Sets whether tiles are decoded for 3D terrain. Driven by the renderer's 2D/3D switch, and
+         * only while the map is flat. Internal method.
+         * @param active True to decode tiles with the terrain subdivision.
+         */
+        void setDecodeActive(bool active);
+
+        /**
+         * Applies the switch's own ratio, 0 to 1. Scales the heights the elevation manager hands
+         * out, leaving the app's own exaggeration alone. Does NOT notify option listeners or clear
+         * the manual flag: it is driven per frame by the renderer, which asks for its own redraws.
+         * Internal method.
          * @param ratio The new flatten ratio.
          */
-        void setFlattenRatio(float ratio);
+        void applyFlattenRatio(float ratio);
+
+        /**
+         * Returns whether the app is driving the ratio itself (setFlattenRatio), which suspends
+         * both the switch's animation and auto-flattening. Internal method.
+         * @return True if the app owns the ratio.
+         */
+        bool isManualFlatten() const;
+        /**
+         * Returns the ratio the app last asked for with setFlattenRatio. Internal method.
+         * @return The requested flatten ratio.
+         */
+        float getManualFlattenRatio() const;
+        /**
+         * Records whether the switch is holding the ground flat while tiles load, for isSwitching().
+         * Internal method.
+         * @param switching True while the switch is waiting for tiles.
+         */
+        void setSwitching(bool switching);
 
         /**
          * Returns the elevation manager. Internal method.
@@ -637,6 +756,7 @@ namespace massif {
 
     private:
         void notifyOptionChanged(const std::string& optionName);
+        void writeFlattenRatio(float ratio);
 
         const std::shared_ptr<TileDataSource> _dataSource;
         const std::shared_ptr<ElevationManager> _elevationManager;
@@ -645,10 +765,20 @@ namespace massif {
         // The app's own exaggeration. What the elevation manager holds is this scaled by the flatten
         // ramp, so flattening never overwrites what the app asked for.
         std::atomic<float> _exaggeration;
+        std::atomic<bool> _flattened;
+        std::atomic<TerrainFlattenMode::TerrainFlattenMode> _flattenMode;
+        std::atomic<bool> _decodeActive;
+        // Whether the renderer's 2D/3D switch has taken over. Until it has, setFlattened is the
+        // whole state - see the comment there.
+        std::atomic<bool> _flattenSwitchStarted;
+        std::atomic<bool> _flattenManual;
+        std::atomic<float> _flattenManualRatio;
+        std::atomic<bool> _switching;
         std::atomic<float> _flattenRatio;
         std::atomic<float> _autoFlattenParallax;
         std::atomic<float> _autoFlattenTilt;
         std::atomic<float> _autoFlattenDuration;
+        std::atomic<float> _autoFlattenRiseDuration;
         std::atomic<int> _meshResolution;
         std::atomic<bool> _tileEdgeStitchingEnabled;
         std::atomic<bool> _drapeFillsEnabled;

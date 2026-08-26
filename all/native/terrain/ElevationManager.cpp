@@ -3,6 +3,7 @@
 #include "core/BinaryData.h"
 #include "datasources/TileDataSource.h"
 #include "datasources/components/TileData.h"
+#include "datasources/components/TileBitmap.h"
 #include "graphics/Bitmap.h"
 #include "projections/Projection.h"
 #include "rastertiles/ElevationDecoder.h"
@@ -750,7 +751,7 @@ namespace massif {
             return std::shared_ptr<ElevationTileGrid>();
         }
 
-        std::shared_ptr<Bitmap> tileBitmap = Bitmap::CreateFromCompressed(tileData->getData());
+        std::shared_ptr<Bitmap> tileBitmap = DecodeTileBitmap(tileData);
         if (!tileBitmap) {
             Log::Error("ElevationManager::loadTileGrid: Failed to decode elevation tile bitmap");
             return std::shared_ptr<ElevationTileGrid>();

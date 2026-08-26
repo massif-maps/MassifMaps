@@ -15,6 +15,7 @@ namespace massif {
     class BaseMapView;
     class Options;
     class TileDataSource;
+    class VectorDataSource;
     class Layer;
     class Layers;
     class MapEventListener;
@@ -83,6 +84,19 @@ namespace massif {
          */
         static int adopt(const std::string& kind, const std::string& objectId,
                          const std::shared_ptr<TileDataSource>& source);
+
+        /**
+         * The same for a vector data source, which is what an EXTENSION adopts.
+         *
+         * Both data source bases are SWIG directors, so a source the SDK has no factory for -
+         * GDAL/OGR, a proprietary format, anything with its own native library - is subclassed in
+         * Java, Objective-C or TypeScript and adopted here. That is the whole extension mechanism:
+         * the SDK ships no dependency, and the source is a facade object like any other.
+         *
+         * TileDataSource has had this since the facade landed; this is its vector counterpart.
+         */
+        static int adopt(const std::string& kind, const std::string& objectId,
+                         const std::shared_ptr<VectorDataSource>& source);
 
         /**
          * The same for an asset package, which is the one a binding cannot express as a spec.

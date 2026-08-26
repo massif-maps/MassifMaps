@@ -254,7 +254,15 @@ class ProjectionSurface;
         void setUTFGridEventListener(const std::shared_ptr<UTFGridEventListener>& utfGridEventListener);
     
         virtual bool isUpdateInProgress() const;
-        
+
+        /**
+         * Whether the visible tiles are all decoded for the terrain state the layer is now in. False
+         * from the moment a 2D/3D switch invalidates them until their replacements have arrived; the
+         * switch waits on it before it lets the terrain rise. Internal method.
+         * @return True if no tile is still waiting for the current terrain decode state.
+         */
+        bool isTerrainDecodeSettled();
+
     protected:
         class DataSourceListener : public TileDataSource::OnChangeListener {
         public:
@@ -560,6 +568,7 @@ class ProjectionSurface;
         float _tileLODFactor = 0.0f; // last Options tile LOD factor a cull ran with
         int _terrainCoarsening = -1; // last TerrainOptions coarsening bound a cull ran with
         bool _terrainActive = false; // last TerrainOptions active state a cull ran with
+        std::atomic<bool> _terrainDecodeSettled { true }; // false while a 2D/3D switch's tiles are on their way
     };
     
 }

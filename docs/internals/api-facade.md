@@ -816,10 +816,50 @@ mm_data_copy(ctx, tile, "data", buffer, size, NULL);
 mm_destroy_handle(ctx, tile);
 ```
 
-**33 entry points, six concepts.** The count grows with *types* — a scalar setter per C type, a
+**35 entry points, seven concepts.** The count grows with *types* — a scalar setter per C type, a
 size/copy pair per bulk shape — never with features. A new source type is a spec factory, a new
 option a table row, a new event a bridge, a new method a table row. None of them touches this
 header, which is what makes an ABI version worth having.
+
+The one exception is **plumbing the caller's own code in**, which no table can describe because the
+implementation is theirs: `mm_on` takes a handler, `mm_set_ui_dispatcher` takes a loop, and
+`mm_source_create_custom` takes a tile loader.
+
+### A source the caller implements
+
+`mm_source_create_custom` registers a `TileDataSource` whose tiles come from a function pointer.
+This is the extension seam for **native** code, and the only one available to it: Android's
+`libmassif.so` exports `Java_*`, `CSharp_*`, `SWIG*` and `mm_*` and nothing else
+(`scripts/android/version-script`), so a second shared library cannot derive from
+`massif::TileDataSource` however many headers it has. A managed language subclasses the SWIG
+director instead; C, C++, Rust and Swift come through here.
+
+```c
+static int load_tile(void* user, int z, int x, int y, mm_tile_sink sink, void* sink_data) {
+    unsigned char rgba[256 * 256 * 4];
+    if (!render_from_gdal(user, z, x, y, rgba)) {
+        return MM_OK;                       /* no such tile - a hole, not an error */
+    }
+    sink(sink_data, rgba, sizeof(rgba), MM_TILE_RGBA8, 256, 256);
+    return MM_OK;
+}
+
+mm_tile_source source = { 0, 14, load_tile, close_dataset, dataset };
+mm_handle handle;
+mm_source_create_custom(ctx, "dem", &source, &handle);
+mm_create(ctx, "layer", "dem", "{\"type\":\"raster\",\"source\":\"dem\"}", NULL);
+```
+
+The **sink** is why the callback does not simply fill a struct and return: the SDK copies inside
+that call, so the loader's stack buffer is legal and the ABI needs no ownership rule and no free
+callback. Filling an out-parameter would have handed the SDK a pointer to a dead frame — which is
+exactly the bug the first draft of this had, caught by `tests/api/CustomSourceTest.cpp`.
+
+The loader runs on the **tile threads, several at once**, and nothing serialises it. A failed
+`mm_source_create_custom` takes nothing: `destroy` is not called and `user_data` stays the
+caller's.
+
+`MM_TILE_RGBA8` is the other half of this — see [raw tiles](#raw-tiles) below.
 
 Conventions, each chosen because a binding author would otherwise get it wrong:
 
@@ -839,6 +879,24 @@ Conventions, each chosen because a binding author would otherwise get it wrong:
   projection. That is the invariant applied to the ABI's own shape: a new option never changes a
   signature. Each key is read only when present; `getObjectElement` on a missing key returns
   `"null"`, which would otherwise look like a projection nobody has heard of.
+
+### Raw tiles
+
+A source that produces *pixels* rather than a file used to have to encode a PNG, which
+`RasterTileLayer` then immediately decoded again: two codecs and three copies of 256 KB per tile,
+for nothing. `TileData` now has a raw-pixel constructor — premultiplied RGBA8, tightly packed, one
+format on purpose — and `DecodeTileBitmap` is the single place that turns a tile into a bitmap,
+whichever way it arrived. The four consumers (`RasterTileLayer`, `HillshadeRasterTileLayer`,
+`ContourTileDataSource`, `ElevationManager`) go through it; one that called
+`Bitmap::CreateFromCompressed` itself would read a raw tile as a corrupt PNG and draw nothing.
+
+It is reachable from every surface: the raw-pixel constructor is in `TileData.i`, so a Java or
+Objective-C source skips the encode too, not just a C one.
+
+**Raw tiles are never persistently cached.** The cache row holds bytes and no format, so a stored
+raw tile would come back as an encoded file and decode to nothing —
+`PersistentCacheTileDataSource::store` skips them. A source producing raw tiles is reading a local
+file anyway, so there is no fetch to save.
 
 Two things that had to change underneath it:
 

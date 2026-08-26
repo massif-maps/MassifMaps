@@ -9,15 +9,15 @@ import com.massifmaps.api.Position;
 import com.massifmaps.api.Spec;
 
 /**
- * Switching between a flat map and a 3D view as ONE animation: the camera flies while the terrain
- * rises under it.
+ * The 2D/3D switch, and every way of driving it: the SDK's own animation, a tilt gesture, and the
+ * app's own clock for an exact match to a camera flight.
  */
 @ExampleInfo(
     id = "terrain-2d-3d",
     title = "2D / 3D switch",
-    description = "One animation moves the camera and raises the terrain together. Going back, the "
-                + "top-down view re-centres on where the camera was standing, not on what it was "
-                + "looking at.",
+    description = "One flag switches the map between flat and 3D terrain. Full switch decides "
+                + "whether a flat map still pays for 3D, auto by tilt lets a tilt gesture do the "
+                + "switching, and match flight drives the terrain off the camera's own clock.",
     section = Sections.TERRAIN,
     order = 15)
 public class Switch2D3DExample extends MapExample {
@@ -35,8 +35,9 @@ public class Switch2D3DExample extends MapExample {
     /** tilt 90 is straight down in this SDK, so 2D is 90 and a landscape view is a LOW tilt. */
     private static final float TILT_2D = 90f;
     private static final float TILT_3D = 20f;
-    private static final float FLIGHT_SECONDS = 2.5f;
-    /** How often the terrain height is stepped to follow the flight. */
+    /** The tilt the auto rule switches at, and its default. */
+    private static final float AUTO_TILT = 88f;
+    /** How often the matched ramp samples the flight. */
     private static final long TICK_MS = 32;
 
     private static Spec dem(ExampleHost host) {
@@ -56,7 +57,9 @@ public class Switch2D3DExample extends MapExample {
     private ExampleHost host;
     private MassifMap map;
     private boolean in3D = false;
-    private boolean animating = false;
+    private boolean autoByTilt = false;
+    private boolean matchFlight = false;
+    private float seconds = 2.5f;
 
     @Override
     public void onStart(ExampleHost host) {
@@ -73,16 +76,20 @@ public class Switch2D3DExample extends MapExample {
                     // OSM's tile policy REQUIRES an identifying User-Agent, or every tile is a 403.
                     .set("HTTPHeaders", Spec.object().set("User-Agent", UA)))));
 
-        // Built flat: terrain off, and the height at 0 so the first rise starts from nothing.
         map.terrain(Spec.of("terrain").set("source", dem(host)))
            .apply(Spec.object()
-               .set("enabled", false)
-               .set("exaggeration", 0)
-               // This example drives the switch itself, so the automatic one has to be out of the
-               // way - otherwise it flattens the map again the moment the tilt passes 88.
+               // Configured and left on. The switch is `flattened`, and it opens flat - set BEFORE
+               // any layer decodes, so not one tile is built for a 3D the map has not shown.
+               .set("enabled", true)
+               .set("flattened", true)
+               // The whole way: a flat map decodes and culls as if no terrain were attached. RENDER
+               // (the default) only stops the terrain passes and keeps 3D's triangles.
+               .set("flattenMode", "TERRAIN_FLATTEN_MODE_FULL")
+               // Off to start with, so the button below is the only thing switching.
                .set("autoFlattenTilt", 0)
                .set("autoFlattenParallax", 0)
                .set("cameraClearance", 40));
+        applySeconds(seconds);
         map.sky(Spec.of("sky"));
         map.fog(Spec.of("fog").set("rangeStart", 2.2).set("rangeEnd", 8));
         // The sun comes from BEHIND the camera or the face being looked at is the one in shadow.
@@ -98,7 +105,50 @@ public class Switch2D3DExample extends MapExample {
                 toggle();
             }
         });
-        host.caption("Flat, top-down. Tap to rise into the terrain.");
+        host.slider("seconds", 0f, 6f, seconds, new ExampleHost.OnValue() {
+            @Override
+            public void onValue(float value) {
+                seconds = value;
+                applySeconds(value);
+            }
+        });
+        host.toggle("Match flight", false, new ExampleHost.OnToggle() {
+            @Override
+            public void onToggle(boolean on) {
+                matchFlight = on;
+                host.caption(on
+                    ? "Matched: the terrain reads the flight's own progress, so the two cannot drift."
+                    : "Timed: two clocks of the same length. Close, but not the same clock.");
+            }
+        });
+        host.toggle("Full switch", true, new ExampleHost.OnToggle() {
+            @Override
+            public void onToggle(boolean on) {
+                map.terrain().set("flattenMode",
+                    on ? "TERRAIN_FLATTEN_MODE_FULL" : "TERRAIN_FLATTEN_MODE_RENDER");
+                host.caption(on ? "FULL: flat costs nothing, each switch re-decodes the visible tiles."
+                                : "RENDER: switching is free, but flat still carries 3D's triangles.");
+            }
+        });
+        host.toggle("Auto by tilt", false, new ExampleHost.OnToggle() {
+            @Override
+            public void onToggle(boolean on) {
+                autoByTilt = on;
+                map.terrain().set("autoFlattenTilt", on ? AUTO_TILT : 0);
+                host.caption(on ? "Auto on: tilt with two fingers and it switches itself. The button "
+                                + "still leads - the rule only fires when the tilt CROSSES 88."
+                                : "Auto off: only the button switches.");
+            }
+        });
+        host.caption(flatCaption());
+    }
+
+    /** One number for both animations, which is what makes them the same length. */
+    private void applySeconds(float value) {
+        map.terrain().apply(Spec.object()
+            .set("autoFlattenDuration", value)
+            // Timed apart from the sinking one: this is the direction that waited for its tiles.
+            .set("autoFlattenRiseDuration", value));
     }
 
     /**
@@ -115,68 +165,102 @@ public class Switch2D3DExample extends MapExample {
     }
 
     private void toggle() {
-        if (animating) {
+        if (map.camera().isMoving()) {
+            host.caption("Still flying - let it land first.");
             return;
         }
-        animating = true;
-        if (in3D) {
-            flattenTo2D();
+        // Read the SDK's state rather than count button presses. With auto by tilt on, the RULE
+        // owns the state and a local flag drifts out of step with it - and then the button flies to
+        // the tilt the map is already at, the rule never crosses its threshold, and nothing moves.
+        in3D = map.terrain().getBool("flattened", true);
+        if (matchFlight) {
+            matched();
         } else {
-            riseTo3D();
+            timed();
         }
     }
 
-    private void riseTo3D() {
-        // The flight goes FIRST. Turning the terrain on clears every tile cache, and that re-decode
-        // landing on the flight's frame zero starved it of frames - the first switch jumped while
-        // every later one animated, because only the first one is cold. Started a tick later it
-        // lands during the rise instead, where the exaggeration is still near 0 and a flat-decoded
-        // tile renders exactly like the 2D map. The flight is never made to wait
-        // (https://github.com/massif-maps/MassifMaps/issues/177 removes the re-decode entirely).
-        map.camera().animate(FLIGHT_SECONDS).moveTo(SUMMIT, ZOOM, ROTATION, TILT_3D);
+    /**
+     * The SDK's own animation: ask for the state, and it ramps over autoFlattenDuration. Two timers
+     * of the same length - which is close, and is all most apps need.
+     */
+    private void timed() {
+        fly();
+        // Written even with auto by tilt on: the rule fires on a THRESHOLD CROSSING, not every
+        // frame, so it leaves an explicit ask alone and the terrain moves with the flight instead
+        // of waiting for the tilt to reach 88.
+        map.terrain().set("flattened", !in3D);
+        host.caption(in3D ? riseCaption() : flatCaption());
+    }
+
+    /**
+     * The app's own clock: feed the terrain the FLIGHT's progress, so the two cannot drift apart
+     * even if the frame rate drops or the flight is interrupted.
+     */
+    private void matched() {
+        if (!in3D) {
+            fly();          // sinking has nothing to wait for
+            rampWithFlight();
+            host.caption("Sinking on the flight's own clock.");
+            return;
+        }
+        // Rising does. Ask for 3D so its tiles start loading, and let the flight go only once the
+        // switch stops holding the ground flat - driving the ratio up before then would be held
+        // anyway, and the animation would start with a jump.
+        map.terrain().set("flattened", false);
+        host.caption("Loading the tiles 3D needs before the flight starts.");
+        waitForTiles();
+    }
+
+    private void waitForTiles() {
         host.postDelayed(new Runnable() {
             @Override
             public void run() {
-                map.terrain().set("enabled", true);
+                if (map.terrain().getBool("switching", false)) {
+                    waitForTiles();
+                    return;
+                }
+                fly();
+                rampWithFlight();
+                host.caption("Rising on the flight's own clock.");
             }
         }, TICK_MS);
-        // The terrain follows the FLIGHT rather than a clock of its own, so the two cannot drift
-        // apart if the flight is interrupted or the frame rate drops.
-        ramp(true);
-        host.caption("Rising. The terrain follows the flight, not a separate clock.");
     }
 
-    private void flattenTo2D() {
+    private void fly() {
         // Where the camera IS, not what it is looking at: at tilt 20 the focus is kilometres out in
-        // front, so re-centring on it would jump the map forward. This is the viewpoint.
-        Position eye = map.camera().eyePosition();
-        map.camera().animate(FLIGHT_SECONDS).moveTo(eye, ZOOM, ROTATION, TILT_2D);
-        ramp(false);
-        host.caption("Back down, centred on where the camera was standing.");
+        // front, so re-centring on it would jump the map forward.
+        Position target = in3D ? SUMMIT : map.camera().eyePosition();
+        map.camera().animate(seconds).moveTo(target, ZOOM, ROTATION, in3D ? TILT_3D : TILT_2D);
     }
 
-    /** Steps the terrain height with the flight's own progress, and settles when it lands. */
-    private void ramp(final boolean rising) {
+    /** Writing flattenRatio takes the ramp off the SDK's timer and puts it on the flight's. */
+    private void rampWithFlight() {
         host.postDelayed(new Runnable() {
             @Override
             public void run() {
                 if (map.camera().isMoving()) {
                     float progress = map.camera().progress();
-                    map.terrain().set("exaggeration", rising ? progress : 1 - progress);
-                    ramp(rising);
+                    map.terrain().set("flattenRatio", in3D ? 1 - progress : progress);
+                    rampWithFlight();
                     return;
                 }
-                map.terrain().set("exaggeration", rising ? 1 : 0);
-                if (!rising) {
-                    // Only now, with the map already flat: flipping the flag re-decodes every tile,
-                    // and at exaggeration 0 there is nothing of that to see.
-                    map.terrain().set("enabled", false);
-                }
-                in3D = rising;
-                animating = false;
-                host.caption(rising ? "3D. Tap to go back to the flat map."
-                                    : "Flat, top-down. Tap to rise into the terrain.");
+                map.terrain().set("flattenRatio", in3D ? 0 : 1);
+                // Hand the ratio back, or the switch stays MANUAL - which also keeps auto-flattening
+                // suspended, and a tilt gesture would then do nothing.
+                map.terrain().set("flattened", !in3D);
+                host.caption(in3D ? riseCaption() : flatCaption());
             }
         }, TICK_MS);
+    }
+
+    private String flatCaption() {
+        return autoByTilt ? "Flat. Tilt, or tap, to rise into the terrain."
+                          : "Flat, top-down. Tap to rise into the terrain.";
+    }
+
+    private String riseCaption() {
+        return autoByTilt ? "3D - the tilt asked for it, not the button."
+                          : "3D. The SDK waited for its tiles before lifting the ground.";
     }
 }

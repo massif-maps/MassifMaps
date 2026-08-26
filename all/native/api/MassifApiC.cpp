@@ -1,9 +1,11 @@
 #include "api/MassifApiC.h"
 #include "api/Builtins.h"
+#include "api/CallbackTileDataSource.h"
 #include "api/Context.h"
 #include "api/Spec.h"
 #include "core/BinaryData.h"
 #include "core/Variant.h"
+#include "datasources/TileDataSource.h"
 
 #include <cstring>
 #include <sstream>
@@ -429,6 +431,51 @@ int mm_cancel_calls(mm_ctx ctx, mm_handle handle, int* count) {
     if (count) {
         *count = cancelled;
     }
+    return MM_OK;
+}
+
+int mm_source_create_custom(mm_ctx ctx, const char* id, const mm_tile_source* source,
+                            mm_handle* out) {
+    Context* context = resolve(ctx);
+    if (!context) {
+        return MM_BAD_CONTEXT;
+    }
+    if (out) {
+        *out = MM_NULL_HANDLE;
+    }
+    if (!source || !source->load_tile) {
+        return MM_BAD_SPEC;
+    }
+
+    auto tileSource = std::make_shared<CallbackTileDataSource>(source->min_zoom, source->max_zoom,
+                                                               *source);
+    Handle handle = NULL_HANDLE;
+    // Registered as the BASE class: a layer spec's `source` argument wants a TileDataSource, and
+    // the concrete one is an api-internal type no property table knows.
+    Result result = context->registerObject("source", text(id), tileSource,
+                                            "massif::TileDataSource", handle);
+    if (result != RESULT_OK) {
+        // Nothing was taken, so the caller's user_data is still theirs - see the header.
+        tileSource->disown();
+        return result;
+    }
+    if (out) {
+        *out = handle;
+    }
+    return MM_OK;
+}
+
+int mm_source_notify_changed(mm_ctx ctx, mm_handle handle, int remove_tiles) {
+    Context* context = resolve(ctx);
+    if (!context) {
+        return MM_BAD_CONTEXT;
+    }
+    auto source = std::static_pointer_cast<TileDataSource>(
+        context->getObject(handle, "massif::TileDataSource"));
+    if (!source) {
+        return MM_BAD_HANDLE;
+    }
+    source->notifyTilesChanged(remove_tiles != 0);
     return MM_OK;
 }
 

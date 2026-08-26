@@ -50,6 +50,7 @@ void testNestedSpecProperties();
 void testCAbi();
 void testCAbiEvents();
 void testAdopt();
+void testCustomSource();
 void testBundleAssets();
 void testTileMetaData();
 void testElevationDecoderResolve();
@@ -64,6 +65,7 @@ void testAliases();
 void testWriteProjection();
 void testAutoFlatten();
 void testDrapeStackCuts();
+void testFlattenSwitch();
 
 namespace {
 
@@ -404,6 +406,7 @@ int main() {
     testCAbi();
     testCAbiEvents();
     testAdopt();
+    testCustomSource();
     testBundleAssets();
     testTileMetaData();
     testElevationDecoderResolve();
@@ -418,6 +421,7 @@ int main() {
     testWriteProjection();
     testAutoFlatten();
     testDrapeStackCuts();
+    testFlattenSwitch();
 
     std::printf("\n%d failure(s)\n", failures);
     return failures ? 1 : 0;

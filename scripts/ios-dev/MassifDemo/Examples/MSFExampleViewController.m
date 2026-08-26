@@ -13,6 +13,7 @@
 @property (nonatomic, strong) MSFMapView *mapView;
 @property (nonatomic, strong) MSFMassifMap *massifMap;
 @property (nonatomic, strong) UIStackView *controls;
+@property (nonatomic, strong) UIStackView *sliders;
 @property (nonatomic, strong) UILabel *captionLabel;
 @property (nonatomic, strong) UIView *captionBar;
 @property (nonatomic, strong) UIView *topBar;
@@ -162,6 +163,14 @@
     [controlScroll addSubview:_controls];
     [self.view addSubview:controlScroll];
 
+    // Sliders go in their own row ABOVE the scrolling one: a horizontal scroll view claims the pan
+    // gesture, so a slider inside it cannot be dragged at all.
+    _sliders = [[UIStackView alloc] init];
+    _sliders.spacing = 8;
+    _sliders.distribution = UIStackViewDistributionFillEqually;
+    _sliders.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.view addSubview:_sliders];
+
     // The bar runs edge to edge under the home indicator, the TEXT inside it does not: a caption
     // pinned straight to the view's bottom puts its last line under the indicator, and one pinned
     // to the safe area leaves a bright strip of map below it.
@@ -200,6 +209,10 @@
         [_controls.leadingAnchor constraintEqualToAnchor:controlScroll.leadingAnchor],
         [_controls.trailingAnchor constraintEqualToAnchor:controlScroll.trailingAnchor],
         [_controls.heightAnchor constraintEqualToAnchor:controlScroll.heightAnchor],
+
+        [_sliders.leadingAnchor constraintEqualToAnchor:safe.leadingAnchor constant:12],
+        [_sliders.trailingAnchor constraintEqualToAnchor:safe.trailingAnchor constant:-12],
+        [_sliders.bottomAnchor constraintEqualToAnchor:controlScroll.topAnchor constant:-8],
 
         [_captionBar.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [_captionBar.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
@@ -270,6 +283,37 @@
     });
 }
 
+- (void)slider:(NSString *)label min:(float)min max:(float)max value:(float)value
+        action:(void (^)(float))action {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        UIStackView *box = [[UIStackView alloc] init];
+        box.axis = UILayoutConstraintAxisVertical;
+        box.backgroundColor = [UIColor colorWithWhite:1 alpha:0.92];
+        box.layer.cornerRadius = 12;
+        box.clipsToBounds = YES;
+        box.layoutMargins = UIEdgeInsetsMake(2, 10, 2, 10);
+        box.layoutMarginsRelativeArrangement = YES;
+
+        UILabel *text = [[UILabel alloc] init];
+        text.font = [UIFont systemFontOfSize:11 weight:UIFontWeightMedium];
+        text.textColor = UIColor.blackColor;
+        text.text = [NSString stringWithFormat:@"%@  %.2f", label, value];
+
+        UISlider *slider = [[UISlider alloc] init];
+        slider.minimumValue = min;
+        slider.maximumValue = max;
+        slider.value = value;
+        [self onSlide:slider run:^(UISlider *moved) {
+            text.text = [NSString stringWithFormat:@"%@  %.2f", label, moved.value];
+            action(moved.value);
+        }];
+
+        [box addArrangedSubview:text];
+        [box addArrangedSubview:slider];
+        [self.sliders addArrangedSubview:box];
+    });
+}
+
 - (void)toast:(NSString *)text {
     dispatch_async(dispatch_get_main_queue(), ^{
         [self caption:text];
@@ -311,6 +355,20 @@
     void (^block)(UIButton *) = objc_getAssociatedObject(button, @selector(onTap:run:));
     if (block) {
         block(button);
+    }
+}
+
+/** The same block trick for a slider's continuous value changes. */
+- (void)onSlide:(UISlider *)slider run:(void (^)(UISlider *))block {
+    objc_setAssociatedObject(slider, @selector(onSlide:run:), [block copy],
+                             OBJC_ASSOCIATION_COPY_NONATOMIC);
+    [slider addTarget:self action:@selector(handleSlide:) forControlEvents:UIControlEventValueChanged];
+}
+
+- (void)handleSlide:(UISlider *)slider {
+    void (^block)(UISlider *) = objc_getAssociatedObject(slider, @selector(onSlide:run:));
+    if (block) {
+        block(slider);
     }
 }
 

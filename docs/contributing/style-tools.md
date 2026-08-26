@@ -238,6 +238,24 @@ at the label's own size, which is what stops a repeat of the same name being dra
 tiles cut the same road (`TextSymbolizer`, next section); writing 4 px there disabled the floor. An
 explicit `text-padding` still wins.
 
+## Two operators that cost whole layers
+
+Both were found rendering MapTiler streets-v4 and both failed silently — the coverage report named
+them, the map just looked wrong.
+
+**`["in", needle, ["literal", [...]]]`** is the expression *operator*, a different thing from the
+legacy `["in", key, v1, v2]` *filter*, and only the second was handled. It is how a modern style
+says "class is one of these", so a layer whose filter used it was dropped **whole**: streets-v4 lost
+every minor-road FILL and drew its outline alone, which reads as grey roads. It becomes the or-chain
+it is.
+
+**`["interpolate", ["exponential", b], …]`** had no CartoCSS form, so the property was dropped and
+the line fell back to its default width — a pathway drew as a fat solid grey line instead of a thin
+one. CartoCSS has `linear` and `cubic` and no base, so the curve is **resampled** into extra linear
+stops (4 per stop interval): it agrees at every original stop and stays close between them, where
+substituting a plain linear is out by about a third at the midpoint at base 2. A stop that is not a
+plain number has no curve to sample and still falls back to linear, reported.
+
 ## Retargeting at another tile schema (`--schema`)
 
 MapTiler's `planet_v4` splits by **source layer** what OpenMapTiles splits by a **`class` field**: it

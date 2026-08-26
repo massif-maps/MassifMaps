@@ -143,6 +143,23 @@ export function translateExpression(expr: Json, notes?: string[]): string {
             return head === 'any' ? `(${parts.join(' || ')})` : conjunction(parts);
         }
 
+        // ["in", needle, haystack] - the EXPRESSION operator, which is a different thing from the
+        // legacy ["in", key, v1, v2, ...] filter and was reaching here as an unknown operator. It
+        // is how a modern style says "class is one of these", so a layer using it was dropped
+        // whole: MapTiler streets-v4 lost every minor-road FILL that way and drew its outline
+        // alone, which reads as grey roads.
+        case 'in': {
+            if (args.length !== 2) throw new Untranslatable('in with the wrong argument count');
+            const haystack = literalList(args[1] as Json);
+            if (haystack === null) {
+                // A string haystack is a substring test, which CartoCSS has no form for.
+                throw new Untranslatable('in over a string or a computed haystack');
+            }
+            if (haystack.length === 0) return 'false';
+            const needle = translateExpression(args[0] as Json, notes);
+            return `(${haystack.map((v) => `${needle} = ${literal(v)}`).join(' || ')})`;
+        }
+
         case 'case':
             return translateCase(args as Json[]);
 
@@ -153,7 +170,7 @@ export function translateExpression(expr: Json, notes?: string[]): string {
             return translateStep(args as Json[]);
 
         case 'interpolate':
-            return translateInterpolate(args as Json[]);
+            return translateInterpolate(args as Json[], notes);
 
         case 'min':
         case 'max': {
@@ -186,6 +203,15 @@ export function translateExpression(expr: Json, notes?: string[]): string {
 }
 
 /** ["case", cond, val, ..., fallback] -> nested ternaries, which is what CartoCSS has. */
+/**
+ * The elements of an `in` haystack, or null when it is not a literal array. Only the spec form
+ * counts: a bare array would swallow `["get", "class"]`, whose elements are strings too.
+ */
+function literalList(node: Json): Json[] | null {
+    if (Array.isArray(node) && node[0] === 'literal' && Array.isArray(node[1])) return node[1] as Json[];
+    return null;
+}
+
 function translateCase(args: Json[]): string {
     if (args.length < 3 || args.length % 2 === 0) throw new Untranslatable('malformed case');
     const fallback = translateExpression(args[args.length - 1]);
@@ -233,23 +259,77 @@ function translateStep(args: Json[]): string {
  * ["interpolate", ["linear"], ["zoom"], z, v, ...] -> linear([view::zoom], (z, v), ...).
  * ["exponential", 1] is linear, so it is accepted; any other base is not.
  */
-function translateInterpolate(args: Json[]): string {
+function translateInterpolate(args: Json[], notes?: string[]): string {
     if (args.length < 4) throw new Untranslatable('malformed interpolate');
     const [kind, ...rest] = args;
     if (!Array.isArray(kind) || kind.length === 0) throw new Untranslatable('malformed interpolate type');
 
     let fn: string;
+    let base: number | null = null;
     if (kind[0] === 'linear') fn = 'linear';
     else if (kind[0] === 'cubic-bezier') fn = 'cubic';
-    else if (kind[0] === 'exponential' && kind[1] === 1) fn = 'linear';
-    else throw new Untranslatable(`interpolate ["${String(kind[0])}"${kind[1] !== undefined ? `, ${String(kind[1])}` : ''}]`);
+    else if (kind[0] === 'exponential' && typeof kind[1] === 'number') {
+        fn = 'linear';
+        if (kind[1] !== 1) base = kind[1];
+    } else {
+        throw new Untranslatable(`interpolate ["${String(kind[0])}"${kind[1] !== undefined ? `, ${String(kind[1])}` : ''}]`);
+    }
 
     const input = requireZoom(rest[0], 'interpolate');
-    const stops: string[] = [];
+    const pairs: Array<readonly [Json, Json]> = [];
     for (let i = 1; i < rest.length; i += 2) {
-        stops.push(`(${translateExpression(rest[i])}, ${translateExpression(rest[i + 1])})`);
+        pairs.push([rest[i] as Json, rest[i + 1] as Json] as const);
     }
+
+    if (base !== null) {
+        const resampled = resampleExponential(pairs, base);
+        if (resampled) {
+            notes?.push(`exponential interpolation with base ${base} resampled into ${EXPONENTIAL_SUBDIVISIONS} linear steps per stop interval`);
+            return `linear(${input}, ${resampled.map(([k, v]) => `(${k}, ${v})`).join(', ')})`;
+        }
+        notes?.push(`exponential interpolation with base ${base} approximated as linear: its stops are not plain numbers`);
+    }
+
+    const stops = pairs.map(([k, v]) => `(${translateExpression(k)}, ${translateExpression(v)})`);
     return `${fn}(${input}, ${stops.join(', ')})`;
+}
+
+/**
+ * MapBox interpolates an exponential ramp per segment as `t = (b^(x-x0) - 1) / (b^(x1-x0) - 1)`;
+ * CartoCSS has `linear` and `cubic` and no base at all. Resampling the curve into extra linear
+ * stops agrees at every original stop and stays close between them, where substituting a plain
+ * linear does not - at base 2 over four zoom levels it is out by about a third at the midpoint.
+ *
+ * Returns null when a stop is not a plain number, which is when there is no curve to sample.
+ */
+const EXPONENTIAL_SUBDIVISIONS = 4;
+
+function resampleExponential(pairs: ReadonlyArray<readonly [Json, Json]>, base: number): Array<readonly [number, number]> | null {
+    const numeric: Array<readonly [number, number]> = [];
+    for (const [k, v] of pairs) {
+        if (typeof k !== 'number' || typeof v !== 'number') return null;
+        numeric.push([k, v] as const);
+    }
+    if (numeric.length < 2) return null;
+
+    const round = (n: number) => Math.round(n * 1e4) / 1e4;
+    const out: Array<readonly [number, number]> = [];
+    for (let i = 0; i + 1 < numeric.length; i++) {
+        const [x0, y0] = numeric[i];
+        const [x1, y1] = numeric[i + 1];
+        out.push([round(x0), round(y0)] as const);
+        const span = x1 - x0;
+        const denom = Math.pow(base, span) - 1;
+        if (!(span > 0) || denom === 0) continue;
+        for (let j = 1; j < EXPONENTIAL_SUBDIVISIONS; j++) {
+            const x = x0 + (span * j) / EXPONENTIAL_SUBDIVISIONS;
+            const t = (Math.pow(base, x - x0) - 1) / denom;
+            out.push([round(x), round(y0 + (y1 - y0) * t)] as const);
+        }
+    }
+    const last = numeric[numeric.length - 1];
+    out.push([round(last[0]), round(last[1])] as const);
+    return out;
 }
 
 /**

@@ -34,10 +34,22 @@ test('interpolate over anything but zoom is refused', () => {
         () => translateExpression(['interpolate', ['linear'], ['get', 'w'], 0, 0, 1, 1]),
         Untranslatable,
     );
-    assert.throws(
-        () => translateExpression(['interpolate', ['exponential', 2], ['zoom'], 0, 0, 1, 1]),
-        Untranslatable,
-    );
+
+});
+
+test('an exponential ramp is resampled, not dropped and not flattened to linear', () => {
+    // CartoCSS has linear and cubic and no base. Dropping the property left the line at its
+    // default width - a MapTiler pathway drew as a fat solid grey line instead of a thin dashed
+    // one - and substituting a plain linear is out by about a third at the midpoint at base 2.
+    const out = translateExpression(['interpolate', ['exponential', 2], ['zoom'], 10, 0, 14, 8]);
+    assert.match(out, /^linear\(\[view::zoom\], /);
+    // Agrees at the stops...
+    assert.ok(out.includes('(10, 0)') && out.includes('(14, 8)'));
+    // ...and the midpoint follows the curve, not the chord: (2^2-1)/(2^4-1) = 0.2 -> 1.6, not 4.
+    assert.ok(out.includes('(12, 1.6)'), out);
+    // base 1 IS linear, so it stays exact with no extra stops.
+    assert.equal(translateExpression(['interpolate', ['exponential', 1], ['zoom'], 10, 0, 14, 8]),
+        'linear([view::zoom], (10, 0), (14, 8))');
 });
 
 test('step keeps its stops', () => {
@@ -169,6 +181,26 @@ test('a match used as a boolean is an or-chain, not a ternary', () => {
     );
     // A match that yields anything other than true/false is still a ternary - it is a real match.
     assert.match(translateFilter(['match', ['get', 'class'], ['minor'], 1, 0])[0], /\? 1 : 0/);
+});
+
+test('the in OPERATOR is not the in FILTER, and a style using it must not be dropped', () => {
+    // ["in", needle, ["literal", [...]]] is the expression operator; ["in", key, v1, v2] is the
+    // legacy filter. Only the second was handled, so a layer whose filter used the first was
+    // dropped whole - MapTiler streets-v4 lost every minor-road FILL that way and drew the outline
+    // alone, which reads as grey roads.
+    assert.deepEqual(
+        translateFilter(['in', ['get', 'class'], ['literal', ['track', 'service']]]),
+        ["when(([class] = 'track' || [class] = 'service'))"]);
+    // A one-element haystack is an equality, so it brackets like any other.
+    assert.deepEqual(translateFilter(['in', ['get', 'class'], ['literal', ['track']]]),
+        ["when(([class] = 'track'))"]);
+    assert.match(translateExpression(['case', ['in', ['get', 'class'], ['literal', ['a', 'b']]], '#f00', '#00f']),
+        /\(\[class\] = 'a' \|\| \[class\] = 'b'\)/);
+    assert.equal(translateExpression(['in', ['get', 'class'], ['literal', []]]), 'false');
+    // A haystack that is not a literal array has no CartoCSS form and is still refused - a bare
+    // array would swallow ["get", "class"], whose elements are strings too.
+    assert.throws(() => translateExpression(['in', ['get', 'a'], ['get', 'b']]));
+    assert.throws(() => translateExpression(['in', ['get', 'a'], 'substring']));
 });
 
 test('maxzoom is exclusive', () => {

@@ -156,6 +156,14 @@ export function translateExpression(expr: Json, notes?: string[]): string {
                 throw new Untranslatable('in over a string or a computed haystack');
             }
             if (haystack.length === 0) return 'false';
+            const sliced = sliceSource(args[0] as Json);
+            if (sliced !== null) {
+                const alternatives = haystack.map((v) => (typeof v === 'string' ? v : null));
+                if (alternatives.every((v): v is string => v !== null && v.length === sliced.length)) {
+                    notes?.push(`slice(${sliced.of}, 0, ${sliced.length}) compared as a regex prefix`);
+                    return `(${sliced.of} =~ '(${alternatives.map(escapeRegex).join('|')}).*')`;
+                }
+            }
             const needle = translateExpression(args[0] as Json, notes);
             return `(${haystack.map((v) => `${needle} = ${literal(v)}`).join(' || ')})`;
         }
@@ -180,6 +188,17 @@ export function translateExpression(expr: Json, notes?: string[]): string {
         }
 
         default: {
+            // `slice(x, 0, n) == 'D'` is how a style tests a PREFIX, and it is the only use of
+            // slice that survives: CartoCSS has no substring, but `=~` is a FULL std::regex_match
+            // (Predicate::applyOp, StringUtils::regexMatch), and a prefix is `D.*`. Without this every country-specific road shield fell through
+            // to the style's fallback colour - French D-roads drew on a white plate, not a yellow
+            // one - because the branch that picks the colour could not be translated at all.
+            if ((head === '==' || head === '!=') && args.length === 2) {
+                const prefix = prefixTest(args[0] as Json, args[1] as Json, notes)
+                    ?? prefixTest(args[1] as Json, args[0] as Json, notes);
+                if (prefix !== null) return head === '==' ? prefix : `(!${prefix})`;
+            }
+
             if (BINARY[head] && args.length === 2) {
                 let [a, b] = args.map((x) => translateExpression(x as Json, notes));
                 if (a === GEOMETRY_TYPE_FIELD || b === GEOMETRY_TYPE_FIELD) {
@@ -203,6 +222,31 @@ export function translateExpression(expr: Json, notes?: string[]): string {
 }
 
 /** ["case", cond, val, ..., fallback] -> nested ternaries, which is what CartoCSS has. */
+/**
+ * `["slice", x, 0, n]` - the prefix form. Any other slice (a non-zero start, a computed bound) has
+ * no regex equivalent and is left to be refused.
+ */
+function sliceSource(node: Json): { of: string; length: number } | null {
+    if (!Array.isArray(node) || node[0] !== 'slice' || node.length !== 4) return null;
+    if (node[2] !== 0 || typeof node[3] !== 'number') return null;
+    return { of: translateExpression(node[1] as Json), length: node[3] };
+}
+
+/** `slice(x, 0, n) == 'PREFIX'` as a full-regex match, or null when it is not that shape. */
+function prefixTest(maybeSlice: Json, maybeLiteral: Json, notes?: string[]): string | null {
+    const sliced = sliceSource(maybeSlice);
+    if (sliced === null || typeof maybeLiteral !== 'string') return null;
+    // A prefix of a different length than the slice can never equal it.
+    if (maybeLiteral.length !== sliced.length) return 'false';
+    notes?.push(`slice(${sliced.of}, 0, ${sliced.length}) compared as a regex prefix`);
+    return `(${sliced.of} =~ '${escapeRegex(maybeLiteral)}.*')`;
+}
+
+/** The literal is style data, so anything with meaning in a regex has to lose it. */
+function escapeRegex(value: string): string {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 /**
  * The elements of an `in` haystack, or null when it is not a literal array. Only the spec form
  * counts: a bare array would swallow `["get", "class"]`, whose elements are strings too.

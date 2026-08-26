@@ -488,15 +488,23 @@ function shieldImageDeclarations(layer: MapboxLayer, icon: ExtractedIcon, covera
     return out;
 }
 
-/** Which way, and how far, the image moves so the text does not land on it. */
+/**
+ * Which way, and how far, the image moves so the text does not land on it.
+ *
+ * Only when the style says nothing about where the text goes. A stated `text-offset` IS the
+ * style's own answer, and the alignment beside it already puts the text clear - adding half an
+ * icon on top of that doubled the gap, so a POI name floated well below its pin where MapTiler
+ * draws the two nearly touching.
+ */
 function iconClearance(layer: MapboxLayer, icon: ExtractedIcon): number {
     const anchor = layer.layout?.['text-anchor'];
     const offset = layer.layout?.['text-offset'];
     const dy = Array.isArray(offset) && typeof offset[1] === 'number' ? offset[1] : 0;
+    if (dy !== 0 || layer.layout?.['text-radial-offset'] !== undefined) return 0;
 
     // 'bottom' anchors the text's bottom edge, so the text is ABOVE and the icon goes below.
-    const below = anchor === 'bottom' || (anchor === undefined && dy < 0);
-    const above = anchor === 'top' || (anchor === undefined && dy > 0);
+    const below = anchor === 'bottom';
+    const above = anchor === 'top';
     if (!below && !above) return 0;
     return round((below ? 1 : -1) * icon.height / 2);
 }

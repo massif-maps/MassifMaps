@@ -238,6 +238,27 @@ at the label's own size, which is what stops a repeat of the same name being dra
 tiles cut the same road (`TextSymbolizer`, next section); writing 4 px there disabled the floor. An
 explicit `text-padding` still wins.
 
+## A prefix test, and the two spellings of a regex
+
+`["==", ["slice", ["get","ref"], 0, 1], "D"]` is how a style tests a **prefix**, and every
+country-specific road shield in MapTiler streets-v4 is gated on one. CartoCSS has no substring, but
+it has a full regex match, so a prefix is `D.*` — and a slice from 0 is the only use of `slice` that
+survives; anything else is still refused.
+
+The trap is that the **same operator has two spellings**. CartoCSS writes it `=~`
+(`CartoCSSParser`), and the mapnik XML the compiler emits writes it `.match(...)`
+(`ExpressionGenerator`). Emitting the XML form into a `.mss` does not warn — the whole style fails
+to load, and the app throws `CartoCSS style loading failed: Syntax error` with a line number and
+nothing else. `mapbox2css --validate` exists to catch exactly this by compiling its own output, and
+it could not run here because `css2xml` overflows the wasm stack on a style this size.
+
+## Where an icon sits relative to its label
+
+The image is moved clear of the text by half its height, but **only when the style says nothing
+about where the text goes**. A stated `text-offset` IS the style's own answer, and the vertical
+alignment beside it already puts the text clear; adding half an icon on top doubled the gap, so a
+POI name floated well below its pin where MapTiler draws the two nearly touching.
+
 ## Two operators that cost whole layers
 
 Both were found rendering MapTiler streets-v4 and both failed silently — the coverage report named

@@ -52,6 +52,24 @@ test('an exponential ramp is resampled, not dropped and not flattened to linear'
         'linear([view::zoom], (10, 0), (14, 8))');
 });
 
+test('a slice compared to a literal is a prefix test, which CartoCSS spells as a regex', () => {
+    // CartoCSS has no substring, but `=~` is a FULL std::regex_match, so a prefix is `D.*`.
+    // It has to be the OPERATOR: `.match(...)` parses in mapnikvt's expression grammar but not in
+    // the CartoCSS one, and the style then fails to load at all. Every country-specific road shield in MapTiler streets-v4 is gated on one
+    // of these, and without it they all fell through to the fallback colour: French D-roads drew
+    // on a white plate where MapTiler draws yellow.
+    assert.equal(translateExpression(['==', ['slice', ['get', 'ref'], 0, 1], 'D']), "([ref] =~ 'D.*')");
+    assert.equal(translateExpression(['in', ['slice', ['get', 'ref'], 0, 1], ['literal', ['N', 'M']]]),
+        "([ref] =~ '(N|M).*')");
+    assert.equal(translateExpression(['!=', ['slice', ['get', 'ref'], 0, 3], 'BR-']), "(!([ref] =~ 'BR-.*'))");
+    // A literal that cannot equal a slice of that length is simply false.
+    assert.equal(translateExpression(['==', ['slice', ['get', 'ref'], 0, 1], 'AB']), 'false');
+    // Regex metacharacters in style data must lose their meaning.
+    assert.equal(translateExpression(['==', ['slice', ['get', 'ref'], 0, 1], '.']), "([ref] =~ '\\..*')");
+    // A slice that is not a prefix has no regex form and is still refused.
+    assert.throws(() => translateExpression(['==', ['slice', ['get', 'ref'], 1, 3], 'x']));
+});
+
 test('step keeps its stops', () => {
     assert.equal(
         translateExpression(['step', ['zoom'], 1, 10, 2, 14, 6]),

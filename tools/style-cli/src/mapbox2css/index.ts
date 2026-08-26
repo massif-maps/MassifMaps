@@ -75,12 +75,12 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
         const variants = splitLayer(layer, coverage);
         variants.forEach((variant, branch) => {
             const suffix = variants.length > 1 ? `_b${branch + 1}` : '';
-            emitLayer(variant, `${attachmentName(layer.id)}${suffix}`, sourceLayer, symbolizer);
+            emitLayer(variant, `${attachmentName(layer.id)}${suffix}`, sourceLayer, symbolizer, index);
         });
     });
 
-    function emitLayer(layer: MapboxLayer, attachment: string, sourceLayer: string, symbolizer: string): void {
-        const declarations = layerDeclarations(layer, symbolizer, allowed, coverage, options);
+    function emitLayer(layer: MapboxLayer, attachment: string, sourceLayer: string, symbolizer: string, layerIndex: number): void {
+        const declarations = layerDeclarations(layer, symbolizer, allowed, coverage, options, layerIndex);
         if (declarations.length === 0) return;
 
         let selector: string;
@@ -156,6 +156,7 @@ function layerDeclarations(
     allowed: Map<string, CartoProperty>,
     coverage: Coverage,
     options: ConvertOptions,
+    layerIndex = 0,
 ): string[] {
     const table = PROPERTY_MAP[layer.type] ?? {};
     const out: string[] = [];
@@ -250,13 +251,7 @@ function layerDeclarations(
         }
 
         // MapBox places the LOWEST sort key first; CartoCSS's culler takes the highest priority.
-        if (name === 'symbol-sort-key') {
-            const translated = tryTranslate(value, name, layer.id, coverage);
-            if (translated === null) continue;
-            out.push(`text-placement-priority: (0 - ${translated});`);
-            coverage.emit('text-placement-priority');
-            continue;
-        }
+        if (name === 'symbol-sort-key') continue; // folded into the layer's priority below
 
         // MapBox's text-opacity fades the WHOLE label; CartoCSS's fades only the fill, and the halo
         // keeps its own. A style that hides a label with `step(zoom, 0, …, 13, 1)` was leaving the
@@ -326,6 +321,14 @@ function layerDeclarations(
         if (translated === null) continue;
         out.push(`${target}: ${remapValue(target, translated)};`);
         coverage.emit(target);
+    }
+
+    if (symbolizer === 'text') {
+        const priority = placementPriority(layer, layerIndex, coverage);
+        if (priority !== null) {
+            out.push(`text-placement-priority: ${priority};`);
+            coverage.emit('text-placement-priority');
+        }
     }
 
     // MapBox wraps at 10 ems whether or not the layer says so; CartoCSS's wrap-width defaults to 0,
@@ -532,6 +535,30 @@ function markerDeclarations(layer: MapboxLayer, coverage: Coverage, options: Con
 
 function round(value: number): number {
     return Math.round(value * 100) / 100;
+}
+
+/**
+ * What decides which of two colliding labels survives.
+ *
+ * MapBox's `symbol-sort-key` orders symbols only WITHIN a layer - between layers the style's own
+ * order decides, later winning. The culler here compares one priority across every layer at once
+ * and only falls back to the layer index, so a village with `rank 1` (priority -1) beat a town with
+ * `rank 12` (-12) whatever layer each came from: Annecy's neighbours were drawn and Rumilly was not.
+ *
+ * Folding the layer's position in as the leading term restores MapBox's meaning - the sort key
+ * still separates labels inside a layer, and it can no longer reach across one. The stride only has
+ * to exceed the range a sort key spans (MapTiler's widest is the capital's -1000).
+ */
+const LAYER_PRIORITY_STRIDE = 100000;
+
+function placementPriority(layer: MapboxLayer, layerIndex: number, coverage: Coverage): string | null {
+    const base = layerIndex * LAYER_PRIORITY_STRIDE;
+    const sortKey = layer.layout?.['symbol-sort-key'];
+    if (sortKey === undefined) return String(base);
+
+    const translated = tryTranslate(sortKey, 'symbol-sort-key', layer.id, coverage);
+    // MapBox places the LOWEST key first, and the culler takes the highest priority.
+    return translated === null ? String(base) : `(${base} - ${translated})`;
 }
 
 /** MapBox defaults for a layer that never states them. */

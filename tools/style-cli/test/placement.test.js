@@ -91,9 +91,27 @@ test('text-opacity fades the halo too, or a hidden label leaves a white ghost', 
     assert.match(out, /text-halo-opacity: step\(\[view::zoom\], \(0, 0\), \(13, 1\)\);/);
 });
 
-test('the modern overlap spelling and the sort key reach the culler', () => {
+test('the modern overlap spelling reaches the culler', () => {
     assert.match(mss({ 'text-overlap': 'always' }), /text-allow-overlap: true;/);
     assert.match(mss({ 'text-overlap': 'cooperative' }), /text-allow-overlap: false;/);
-    // MapBox places the LOWEST sort key first; the culler takes the highest priority.
-    assert.match(mss({ 'symbol-sort-key': 3 }), /text-placement-priority: \(0 - 3\);/);
+});
+
+test('a sort key orders labels inside its layer, never across layers', () => {
+    // MapBox's symbol-sort-key is per layer and the style's order decides between layers; the
+    // culler here compares one priority globally. Without the layer term a village with rank 1
+    // outranked a town with rank 12 and Rumilly was culled by its own neighbours.
+    const town = { id: 't', type: 'symbol', 'source-layer': 'town_label',
+        layout: { 'text-field': '{name}', 'symbol-sort-key': ['get', 'rank'] } };
+    const city = { ...town, id: 'c', 'source-layer': 'city_label' };
+    const out = convert({ layers: [town, city] }, TABLE).mss;
+
+    const priorities = [...out.matchAll(/text-placement-priority: \((\d+) - /g)].map((m) => Number(m[1]));
+    assert.equal(priorities.length, 2);
+    assert.ok(priorities[1] > priorities[0], 'the later layer outranks the earlier one');
+    // The sort key still separates labels within the layer.
+    assert.match(out, /text-placement-priority: \(\d+ - \[rank\]\);/);
+});
+
+test('a layer with no sort key still carries its order', () => {
+    assert.match(mss({}), /text-placement-priority: 0;/);
 });

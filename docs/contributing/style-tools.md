@@ -223,6 +223,24 @@ MapBox takes the first match. On topo-v4 that is 17 layers and **+24 attachments
 - `text-field` is exempt: the text is evaluated per feature inside the processor rather than through
   a `Property`, so it reads fields correctly.
 
+## Which label wins a collision
+
+`symbol-sort-key` orders symbols **within** a MapBox layer; between layers the style's own order
+decides, later winning. The SDK's culler compares one `*-placement-priority` across every layer at
+once and only falls back to the layer index — so translating the sort key literally let a village
+with `rank 1` (priority −1) beat a town with `rank 12` (−12) whatever layer each came from. Annecy's
+neighbours were drawn and Rumilly was not.
+
+The layer's position is therefore the leading term:
+
+```
+text-placement-priority: (11200000 - (0 + [rank]));
+```
+
+`layerIndex × 100000`, minus the sort key (MapBox places the lowest first, the culler takes the
+highest). The stride only has to exceed the range a sort key spans — MapTiler's widest is the
+capital's `-1000`. A layer with no sort key still gets its base, so layer order alone is honoured.
+
 ## An icon and its text are ONE label
 
 MapBox draws a symbol's icon and text as a single symbol that never collides with itself. Emitted as

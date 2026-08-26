@@ -11,6 +11,8 @@ export interface ContourOptions {
     schema?: 'div';
     /** div value at or above which a contour counts as major. */
     majorDiv: number;
+    /** What the TARGET tiles call the elevation. MapTiler's own say `height`. */
+    elevationField?: string;
 }
 
 export function isContourLayer(layer: MapboxLayer): boolean {
@@ -62,28 +64,34 @@ function namesNthLine(key: Json): boolean {
  * the SAME quantity in the same unit, so it is a plain rename - and without it a converted contour
  * label reads a field that is not there and draws nothing.
  */
-const ELEVATION_FIELD = { from: 'height', to: 'ele' };
+const MAPBOX_ELEVATION_FIELD = 'height';
+export const DEFAULT_ELEVATION_FIELD = 'ele';
 
 export function rewriteContourFields(value: Json, options: ContourOptions): Json {
-    if (options.schema !== 'div') return value;
+    const to = options.elevationField ?? DEFAULT_ELEVATION_FIELD;
+    if (options.schema !== 'div' || to === MAPBOX_ELEVATION_FIELD) return value;
+    return renameField(value, MAPBOX_ELEVATION_FIELD, to);
+}
+
+function renameField(value: Json, from: string, to: string): Json {
 
     if (Array.isArray(value)) {
         // The legacy spelling names the field as a bare string in argument 1.
-        if (typeof value[0] === 'string' && value[1] === ELEVATION_FIELD.from && value[0] !== 'get') {
-            return [value[0], ELEVATION_FIELD.to, ...value.slice(2)] as unknown as Json;
+        if (typeof value[0] === 'string' && value[1] === from && value[0] !== 'get') {
+            return [value[0], to, ...value.slice(2)] as unknown as Json;
         }
-        if (value[0] === 'get' && value[1] === ELEVATION_FIELD.from) {
-            return ['get', ELEVATION_FIELD.to] as unknown as Json;
+        if (value[0] === 'get' && value[1] === from) {
+            return ['get', to] as unknown as Json;
         }
-        return value.map((item) => rewriteContourFields(item as Json, options)) as unknown as Json;
+        return value.map((item) => renameField(item as Json, from, to)) as unknown as Json;
     }
     // The token form a text-field uses: "{height}".
-    if (typeof value === 'string' && value.includes(`{${ELEVATION_FIELD.from}}`)) {
-        return value.split(`{${ELEVATION_FIELD.from}}`).join(`{${ELEVATION_FIELD.to}}`);
+    if (typeof value === 'string' && value.includes(`{${from}}`)) {
+        return value.split(`{${from}}`).join(`{${to}}`);
     }
     if (value && typeof value === 'object') {
         return Object.fromEntries(
-            Object.entries(value).map(([key, item]) => [key, rewriteContourFields(item as Json, options)]),
+            Object.entries(value).map(([key, item]) => [key, renameField(item as Json, from, to)]),
         ) as unknown as Json;
     }
     return value;

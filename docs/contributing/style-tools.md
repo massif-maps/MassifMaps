@@ -336,6 +336,27 @@ fill is `#0000ff`. Emitting `marker-allow-overlap` from `icon-overlap` while the
 been dropped put a **blue ellipse on every airport**. Anything `marker-*` belongs inside the block
 that emits `marker-file`, never in the property loop.
 
+## One project, one datasource — and a style may use several
+
+A CartoCSS project has ONE datasource; a MapBox style says per layer which tileset it draws from.
+Flattened into one project that difference disappears, and every source-layer belonging to another
+tileset silently draws nothing. MapTiler topo-v4 uses three vector sources:
+
+| source | source-layers |
+|---|---|
+| `maptiler_planet_v4` | roads, places, water, buildings … |
+| `contours` (contours-v2) | `contour` |
+| `landform` | `peak`, `volcano` |
+
+This is why **peaks never appeared** at any zoom — not a filter and not placement: a z13 planet tile
+carries no `peak` layer at all. The conversion is right; the wiring is the missing half. The
+coverage report now names each extra tileset, its layers and its URL, so the app can point a layer
+or a composite slot at each one.
+
+Contours are the worked example: the demo puts a `ContourTileDataSource` over the DEM into the
+style's `contour` slot (`--es base composite --es contour true`), so the converted `#contour` rules
+draw contours traced live from elevation instead of from MapTiler's contour tileset.
+
 ## Contours: `--contour-schema div`
 
 MapTiler's contour layers say "every 5th or 10th line" (`nth_line`); tiles built with the gdal

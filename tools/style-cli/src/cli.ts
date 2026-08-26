@@ -27,6 +27,8 @@ const USAGE = `Usage: massif-style <command> [options] [args]
                             marker-sdf; loses the zoom-driven size and the halo
       --contour-schema div  rewrite contour-layer nth_line tests onto a div (interval in
                             metres) attribute; --contour-major-div is the major threshold,
+                            and --contour-elevation is what the target tiles call the
+                            elevation (default ele; MapTiler's own say height),
                             default 100
 
   css2xml [--roundtrip] <project.json> <out.xml>
@@ -60,7 +62,7 @@ function parseFlags(args: string[]): { flags: Map<string, string>; positional: s
     return { flags, positional };
 }
 
-const VALUE_FLAGS = new Set(['contour-schema', 'contour-major-div', 'sprite-key', 'label-spacing']);
+const VALUE_FLAGS = new Set(['contour-schema', 'contour-major-div', 'sprite-key', 'label-spacing', 'contour-elevation']);
 
 async function mapbox2css(args: string[]): Promise<number> {
     const { flags, positional } = parseFlags(args);
@@ -100,7 +102,11 @@ async function mapbox2css(args: string[]): Promise<number> {
         flattenSdf: flags.has('sdf-flatten'),
         labelSpacing: Number(flags.get('label-spacing') ?? 1),
         contour: contourSchema === 'div'
-            ? { schema: 'div', majorDiv: Number(flags.get('contour-major-div') ?? 100) }
+            ? {
+                schema: 'div',
+                majorDiv: Number(flags.get('contour-major-div') ?? 100),
+                elevationField: flags.get('contour-elevation') ?? undefined,
+            }
             : undefined,
     });
 

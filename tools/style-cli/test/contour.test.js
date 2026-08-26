@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
+import { readFileSync } from 'node:fs';
+
+import { convert } from '../dist/mapbox2css/index.js';
 import { isContourLayer, rewriteContourFields, rewriteContourFilter } from '../dist/mapbox2css/contour.js';
+
+const TABLE = JSON.parse(readFileSync(new URL('../dist/generated/properties.json', import.meta.url), 'utf8'));
 
 const OPTIONS = { schema: 'div', majorDiv: 100 };
 
@@ -65,4 +70,23 @@ test('nothing is rewritten without the option', () => {
     assert.deepEqual(rewriteContourFilter(filter, { majorDiv: 100 }, () => {
         throw new Error('should not rewrite');
     }), filter);
+});
+
+test('a style drawing from several tilesets says which layers need their own source', () => {
+    // A CartoCSS project is ONE datasource. MapTiler topo-v4 keeps its peaks in a separate
+    // `landform` tileset, so they silently drew nothing until the report named them.
+    const style = {
+        sources: {
+            planet: { url: 'https://example.invalid/planet.json' },
+            landform: { url: 'https://example.invalid/landform.json' },
+        },
+        layers: [
+            { id: 'r', type: 'line', source: 'planet', 'source-layer': 'road', paint: { 'line-color': '#000' } },
+            { id: 'p', type: 'symbol', source: 'landform', 'source-layer': 'peak', layout: { 'text-field': '{name}' } },
+        ],
+    };
+    const report = convert(style, TABLE).coverage.report();
+    assert.match(report, /2 tilesets/);
+    assert.match(report, /"landform" \(peak\)/);
+    assert.match(report, /landform.json/);
 });

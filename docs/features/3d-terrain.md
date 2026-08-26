@@ -78,6 +78,30 @@ terrain?.setMeshResolution(64)
 mapView.getOptions()?.setTerrainOptions(terrain)
 ```
 
+### With the surface API
+
+The same three steps are one spec and one property path — and the knobs stay reachable as
+`terrain.*` on the map afterwards:
+
+```java
+map.terrain(Spec.of("terrain")
+    .set("source", Spec.of("memory-cache")
+        .set("source", Spec.of("http")
+            .set("url", "https://your.tiles/dem/{z}/{x}/{y}.png")
+            .set("maxZoom", 12)
+            .set("metaData", Spec.object().set("dem_encoding", "terrarium"))))
+    .set("enabled", true)
+    .set("meshResolution", 64)
+    .set("exaggeration", 1.0));
+
+map.set("terrain.drapeLinesEnabled", true);
+map.set("terrain.autoFlattenParallax", 1.5);
+```
+
+Every terrain property: [`terrain` in the options reference](/docs/api/reference/options).
+Runnable, on three platforms: [the 3D terrain example](/examples#terrain-3d) and
+[2D ↔ 3D switching](/examples#terrain-2d-3d).
+
 :::tip Share the DEM with hillshade
 `TerrainOptions` can share its elevation `TileDataSource` with a
 [`HillshadeRasterTileLayer`](/docs/features/hillshade). Wrap the source in a

@@ -1,5 +1,6 @@
 ---
 title: Ground Overlays
+description: "Pin a bitmap — a floorplan, a scan, an old map sheet — to real coordinates and draw it as a layer."
 sidebar_position: 11
 slug: /guides/ground-overlays
 ---
@@ -7,183 +8,76 @@ slug: /guides/ground-overlays
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-### Ground Overlays
+# Ground overlays
 
-Ground overlays project a bitmap (PNG, JPG) image of a defined coordinate over a basemap. For example, a ground overlay bitmap may be used to show an indoor floorplan over a building map.
+A ground overlay pins a bitmap (PNG, JPG) to real-world coordinates and draws it as a raster
+layer — an indoor floorplan over a building, a scanned map sheet, a site plan.
 
-&lt;span class="wrap-border">&lt;img src="../img//ground_overlay.jpg" alt="Example of mobile ground overlays" />&lt;/span>
+![A floorplan pinned over the basemap](/img/ground_overlay.jpg)
 
-**Note:** Your bitmap must define **geographical map coordinates** with `Ground Control Points`. Currently, Mobile SDK supports three or four points on a bitmap image.
+The pinning is done with **ground control points**: pixel positions in the bitmap paired with map
+positions. Three points give a linear affine transform (position, size, rotation); four give a
+perspective one. More than four is not supported — pick the four best.
 
-#### Ground Overlay Requirements
+:::note The SDK does not read georeferencing metadata
+Control points come from your code. A GeoTIFF, ESRI World File, MapInfo TAB or geospatial PDF
+carries its own referencing, but reading it means a GIS library — that belongs in an
+[extension](/docs/guides/extensions), not in the SDK.
+:::
 
-The following requirements allow you to ground overlays with the Mobile SDK.
+**The whole bitmap has to fit in RAM.** Around 2000×2000 pixels is a realistic ceiling on a phone.
+For anything larger, tile it — [PMTiles](/docs/features/pmtiles) or MBTiles built once beats a
+giant bitmap loaded every launch.
 
-- `linear affine transformation` enables you to set three control points to set the location, size, and rotation of the bitmap
+## Pinning a floorplan
 
-- `perspective transformation` enables you to control four control points for the bitmap
+The building below is known to be 220 m north–south and 200 m east–west and to face north, so one
+coordinate plus the size gives all four corners.
 
--  If you have more control points in your data, it is suggested to choose three or four of your best ones, and select those as your ground control settings
-
-- Control points must be defined in the app code. Mobile SDK does not automatically gather control points from the source file metadata
-
-  For example, if you need GeoTIFF, ESRI World File, MapInfo TAB, Geospatial PDF, or other referenced data, you will get this from the GIS Extension (see below).
-
-- The **entire bitmap must fit to device memory** (RAM). Depending on the target device, the maximum size could vary. For example, the target device maximum size might be 2000x2000 pixels. 
-
-  **Tip:** For larger rasters, the SDK Extensions allow you to display any size bitmap, up to hundreds of megabytes. These bitmaps are read directly from common GIS raster formats (such as GeoTIFF, BSB, ECW, MrSID, JPEG2000, and so on). Additionally, the source data can be entered using different coordinate systems. Please [contact us](mailto:sales@carto.com) if you are interested in enabling SDK Extensions as part of your account.
-
-#### Code Samples
-
-This example uses only one geographical coordinate. The building size is known, and the building direction is facing north. This allows us to calculate other ground points with the code. Four ground control points are set to the corners of the bitmap, which typically returns the most accurate result. 
-
-**Tip:** The following sample code assumes that you have the **jefferson-building-ground-floor.jpg** bitmap file as part of your application project.
-
-- For Android, this image is located under *assets*
-- In iOS, it can be located anywhere in your project
-
-<Tabs groupId="language">
-
+<Tabs groupId="lang">
 <TabItem value="java" label="Java">
 
 ```java
+Bitmap overlay = BitmapUtils.loadBitmapFromAssets("ground-floor.jpg");
 
-com.massifmaps.graphics.Bitmap overlayBitmap = BitmapUtils.loadBitmapFromAssets("jefferson-building-ground-floor.jpg");
-
-// 1. Create two vector containing geographical positions and corresponding raster image pixel coordinates
+// Corners of the building, in the layer's projection.
 MapPos pos = proj.fromWgs84(new MapPos(-77.004590, 38.888702));
 double sizeNS = 110, sizeWE = 100;
 
 MapPosVector mapPoses = new MapPosVector();
-mapPoses.add(new MapPos(pos.getX()-sizeWE, pos.getY()+sizeNS));
-mapPoses.add(new MapPos(pos.getX()+sizeWE, pos.getY()+sizeNS));
-mapPoses.add(new MapPos(pos.getX()+sizeWE, pos.getY()-sizeNS));
-mapPoses.add(new MapPos(pos.getX()-sizeWE, pos.getY()-sizeNS));
+mapPoses.add(new MapPos(pos.getX() - sizeWE, pos.getY() + sizeNS));
+mapPoses.add(new MapPos(pos.getX() + sizeWE, pos.getY() + sizeNS));
+mapPoses.add(new MapPos(pos.getX() + sizeWE, pos.getY() - sizeNS));
+mapPoses.add(new MapPos(pos.getX() - sizeWE, pos.getY() - sizeNS));
 
+// The same four corners, in bitmap pixels — same order, or the image comes out mirrored.
 ScreenPosVector bitmapPoses = new ScreenPosVector();
 bitmapPoses.add(new ScreenPos(0, 0));
-bitmapPoses.add(new ScreenPos(0, overlayBitmap.getHeight()));
-bitmapPoses.add(new ScreenPos(overlayBitmap.getWidth(), overlayBitmap.getHeight()));
-bitmapPoses.add(new ScreenPos(overlayBitmap.getWidth(), 0));
+bitmapPoses.add(new ScreenPos(0, overlay.getHeight()));
+bitmapPoses.add(new ScreenPos(overlay.getWidth(), overlay.getHeight()));
+bitmapPoses.add(new ScreenPos(overlay.getWidth(), 0));
 
-// 2. Create bitmap overlay raster tile data source
-BitmapOverlayRasterTileDataSource rasterDataSource = new BitmapOverlayRasterTileDataSource(0, 20, overlayBitmap, proj, mapPoses, bitmapPoses);
-RasterTileLayer rasterLayer = new RasterTileLayer(rasterDataSource);
-mapView.getLayers().add(rasterLayer);
+BitmapOverlayRasterTileDataSource source =
+    new BitmapOverlayRasterTileDataSource(0, 20, overlay, proj, mapPoses, bitmapPoses);
+RasterTileLayer layer = new RasterTileLayer(source);
+mapView.getLayers().add(layer);
 
-// 3. Apply zoom level bias to the raster layer
-// - By default, bitmaps are upsampled on high-DPI screens
-
-// 4. Correct this by applying appropriate bias
-float zoomLevelBias = (float) (Math.log(mapView.getOptions().getDPI() / 160.0f) / Math.log(2));
-rasterLayer.setZoomLevelBias(zoomLevelBias * 0.75f);
-rasterLayer.setTileSubstitutionPolicy(TileSubstitutionPolicy.TILE_SUBSTITUTION_POLICY_VISIBLE);
-
-mapView.setFocusPos(pos, 0);
-mapView.setZoom(16f, 0);
-
+// Bitmaps are upsampled on a high-DPI screen; bias the zoom back down or the image goes soft.
+float bias = (float) (Math.log(mapView.getOptions().getDPI() / 160.0f) / Math.log(2));
+layer.setZoomLevelBias(bias * 0.75f);
+layer.setTileSubstitutionPolicy(TileSubstitutionPolicy.TILE_SUBSTITUTION_POLICY_VISIBLE);
 ```
 
 </TabItem>
-
-<TabItem value="csharp" label="C#">
-
-```csharp
-
-var overlayBitmap = BitmapUtils.LoadBitmapFromAssets("jefferson-building-ground-floor.jpg");
-
-// 1. Create two vector geographical positions, and corresponding raster image pixel coordinates
-var pos = proj.FromWgs84(new MapPos(-77.004590, 38.888702));
-var sizeNS = 110;
-var sizeWE = 100;
-
-var mapPoses = new MapPosVector();
-mapPoses.Add(new MapPos(pos.X - sizeWE, pos.Y + sizeNS));
-mapPoses.Add(new MapPos(pos.X + sizeWE, pos.Y + sizeNS));
-mapPoses.Add(new MapPos(pos.X + sizeWE, pos.Y - sizeNS));
-mapPoses.Add(new MapPos(pos.X - sizeWE, pos.Y - sizeNS));
-
-var bitmapPoses = new ScreenPosVector();
-bitmapPoses.Add(new ScreenPos(0, 0));
-bitmapPoses.Add(new ScreenPos(0, overlayBitmap.Height));
-bitmapPoses.Add(new ScreenPos(overlayBitmap.Width, overlayBitmap.Height));
-bitmapPoses.Add(new ScreenPos(overlayBitmap.Width, 0));
-
-// 2. Create bitmap overlay raster tile data source
-var rasterDataSource = new BitmapOverlayRasterTileDataSource(0, 20, overlayBitmap, proj, mapPoses, bitmapPoses);
-var rasterLayer = new RasterTileLayer(rasterDataSource);
-MapView.Layers.Add(rasterLayer);
-
-// 3. Apply zoom level bias to the raster layer
-// - By default, bitmaps are upsampled on high-DPI screens
-
-// 4. Correct this by applying appropriate bias
-float zoomLevelBias = (float)(Math.Log(MapView.Options.DPI / 160.0f) / Math.Log(2));
-rasterLayer.ZoomLevelBias = zoomLevelBias * 0.75f;
-rasterLayer.TileSubstitutionPolicy = TileSubstitutionPolicy.TileSubstitutionPolicyVisible;
-
-MapView.SetFocusPos(pos, 0);
-MapView.SetZoom(16f, 0);
-
-```
-
-</TabItem>
-
-<TabItem value="objectivec" label="Objective-C">
-
-```objectivec
-
-  // 1. Load ground overlay bitmap
-  MSFBitmap* overlayBitmap = [MSFBitmapUtils loadBitmapFromAssets:@"jefferson-building-ground-floor.jpg"];
-
-  // 2. Create two vector geographical positions, and corresponding raster image pixel coordinates
-  MSFMapPos* pos = [proj fromWgs84:[[MSFMapPos alloc] initWithX:-77.004590 y:38.888702]];
-  double sizeNS = 110, sizeWE = 100;
-
-  MSFMapPosVector* mapPoses = [[MSFMapPosVector alloc] init];
-  [mapPoses add:[[MSFMapPos alloc] initWithX:[pos getX]-sizeWE y:[pos getY]+sizeNS]];
-  [mapPoses add:[[MSFMapPos alloc] initWithX:[pos getX]+sizeWE y:[pos getY]+sizeNS]];
-  [mapPoses add:[[MSFMapPos alloc] initWithX:[pos getX]+sizeWE y:[pos getY]-sizeNS]];
-  [mapPoses add:[[MSFMapPos alloc] initWithX:[pos getX]-sizeWE y:[pos getY]-sizeNS]];
-
-  MSFScreenPosVector* bitmapPoses = [[MSFScreenPosVector alloc] init];
-  [bitmapPoses add:[[MSFScreenPos alloc] initWithX:0 y:0]];
-  [bitmapPoses add:[[MSFScreenPos alloc] initWithX:0 y:[overlayBitmap getHeight]]];
-  [bitmapPoses add:[[MSFScreenPos alloc] initWithX:[overlayBitmap getWidth] y:[overlayBitmap getHeight]]];
-  [bitmapPoses add:[[MSFScreenPos alloc] initWithX:[overlayBitmap getWidth] y:0]];
-
-  // 3. Create bitmap overlay raster tile data source
-  MSFBitmapOverlayRasterTileDataSource* rasterDataSource = [[MSFBitmapOverlayRasterTileDataSource alloc] initWithMinZoom:0 maxZoom:20 bitmap:overlayBitmap projection:proj mapPoses:mapPoses bitmapPoses:bitmapPoses];
-  MSFRasterTileLayer* rasterLayer = [[MSFRasterTileLayer alloc] initWithDataSource:rasterDataSource];
-  [[mapView getLayers] add:rasterLayer];
-
-  // 4. Apply zoom level bias to the raster layer
-  // - By default, bitmaps are upsampled on high-DPI screens
-
-  // 5. Correct this by applying appropriate bias
-  float zoomLevelBias = log([[mapView getOptions] getDPI] / 160.0f) / log(2);
-  [rasterLayer setZoomLevelBias:zoomLevelBias * 0.75f];
-  [rasterLayer setTileSubstitutionPolicy:NT_TILE_SUBSTITUTION_POLICY_VISIBLE];
-
-  [mapView setFocusPos:pos durationSeconds:0];
-  [mapView setZoom:16f durationSeconds:0];
-
-  ```
-
-</TabItem>
-
 <TabItem value="swift" label="Swift">
 
 ```swift
+let overlay = MSFBitmapUtils.createBitmap(from: UIImage(named: "ground-floor.jpg"))
 
-let overlayBitmap = MSFBitmapUtils.createBitmap(from: UIImage(named: "jefferson-building-ground-floor.jpg"))
-
-// 1. Create two vector containing geographical positions and corresponding raster image pixel coordinates
 let pos = projection!.fromWgs84(MSFMapPos(x: -77.004590, y: 38.888702))!
-let sizeNS = 110.0
-let sizeWE = 100.0
+let sizeNS = 110.0, sizeWE = 100.0
 
-let mapPoses = MSFMapPosVector();
+let mapPoses = MSFMapPosVector()
 mapPoses?.add(MSFMapPos(x: pos.getX() - sizeWE, y: pos.getY() + sizeNS))
 mapPoses?.add(MSFMapPos(x: pos.getX() + sizeWE, y: pos.getY() + sizeNS))
 mapPoses?.add(MSFMapPos(x: pos.getX() + sizeWE, y: pos.getY() - sizeNS))
@@ -191,72 +85,43 @@ mapPoses?.add(MSFMapPos(x: pos.getX() - sizeWE, y: pos.getY() - sizeNS))
 
 let bitmapPoses = MSFScreenPosVector()
 bitmapPoses?.add(MSFScreenPos(x: 0, y: 0))
-bitmapPoses?.add(MSFScreenPos(x: 0, y: Float(overlayBitmap!.getHeight())))
-bitmapPoses?.add(MSFScreenPos(x: Float(overlayBitmap!.getWidth()), y: Float(overlayBitmap!.getHeight())))
-bitmapPoses?.add(MSFScreenPos(x: Float(overlayBitmap!.getWidth()), y: 0))
+bitmapPoses?.add(MSFScreenPos(x: 0, y: Float(overlay!.getHeight())))
+bitmapPoses?.add(MSFScreenPos(x: Float(overlay!.getWidth()), y: Float(overlay!.getHeight())))
+bitmapPoses?.add(MSFScreenPos(x: Float(overlay!.getWidth()), y: 0))
 
-// 2. Create bitmap overlay raster tile data source
-let rasterDataSource = MSFBitmapOverlayRasterTileDataSource(minZoom: 0, maxZoom: 20, bitmap: overlayBitmap, projection: projection, mapPoses: mapPoses, bitmapPoses: bitmapPoses)
-let rasterLayer = MSFRasterTileLayer(dataSource: rasterDataSource);
-mapView?.getLayers()?.add(rasterLayer)
+let source = MSFBitmapOverlayRasterTileDataSource(
+    minZoom: 0, maxZoom: 20, bitmap: overlay, projection: projection,
+    mapPoses: mapPoses, bitmapPoses: bitmapPoses)
+let layer = MSFRasterTileLayer(dataSource: source)
+mapView?.getLayers()?.add(layer)
 
-// 3. Apply zoom level bias to the raster layer
-// - By default, bitmaps are upsampled on high-DPI screens
-
-// 4. Correct this by applying appropriate bias
-
-let zoomLevelBias = UIKit.log(mapView!.getOptions().getDPI() / 160.0) / UIKit.log(2.0)
-rasterLayer?.setZoomLevelBias(zoomLevelBias * 0.75)
-rasterLayer?.setTileSubstitutionPolicy(MSFTileSubstitutionPolicy.TILE_SUBSTITUTION_POLICY_VISIBLE)
-
-mapView?.setFocus(pos, durationSeconds: 0)
-mapView?.setZoom(16, durationSeconds: 0)
-
+let bias = log(mapView!.getOptions().getDPI() / 160.0) / log(2.0)
+layer?.setZoomLevelBias(bias * 0.75)
+layer?.setTileSubstitutionPolicy(.TILE_SUBSTITUTION_POLICY_VISIBLE)
 ```
 
 </TabItem>
-
-<TabItem value="kotlin" label="Kotlin">
-
-```kotlin
-  
-val overlayBitmap = BitmapUtils.loadBitmapFromAssets("jefferson-building-ground-floor.jpg");
-
-// 1. Create two vector containing geographical positions and corresponding raster image pixel coordinates
-val pos = projection!!.fromWgs84(MapPos(-77.004590, 38.888702))
-val sizeNS = 110
-val sizeWE = 100
-
-val mapPoses = MapPosVector();
-mapPoses.add(MapPos(pos.x - sizeWE, pos.y + sizeNS))
-mapPoses.add(MapPos(pos.x + sizeWE, pos.y + sizeNS))
-mapPoses.add(MapPos(pos.x + sizeWE, pos.y - sizeNS))
-mapPoses.add(MapPos(pos.x - sizeWE, pos.y - sizeNS))
-
-val bitmapPoses = ScreenPosVector()
-bitmapPoses.add(ScreenPos(0F, 0F))
-bitmapPoses.add(ScreenPos(0F, overlayBitmap.height.toFloat()))
-bitmapPoses.add(ScreenPos(overlayBitmap.width.toFloat(), overlayBitmap.height.toFloat()))
-bitmapPoses.add(ScreenPos(overlayBitmap.width.toFloat(), 0F))
-
-// 2. Create bitmap overlay raster tile data source
-val rasterDataSource = BitmapOverlayRasterTileDataSource(0, 20, overlayBitmap, projection, mapPoses, bitmapPoses)
-val rasterLayer = RasterTileLayer(rasterDataSource);
-mapView?.layers?.add(rasterLayer)
-
-// 3. Apply zoom level bias to the raster layer
-// - By default, bitmaps are upsampled on high-DPI screens
-
-// 4. Correct this by applying appropriate bias
-val zoomLevelBias = (Math.log(mapView!!.options.dpi / 160.0) / Math.log(2.0)).toFloat()
-rasterLayer.zoomLevelBias = zoomLevelBias * 0.75f
-rasterLayer.tileSubstitutionPolicy = TileSubstitutionPolicy.TILE_SUBSTITUTION_POLICY_VISIBLE
-
-mapView?.setFocusPos(pos, 0F)
-mapView?.setZoom(16f, 0F)
-
-```
-
-</TabItem>
-
 </Tabs>
+
+:::caution No spec factory yet
+`BitmapOverlayRasterTileDataSource` is object-API only — it takes two parallel position lists,
+which a JSON spec has no form for. Build it, then
+[`adopt`](/docs/api/#bringing-an-existing-app-across) it under an id to reach it from the
+[surface API](/docs/api/):
+
+```java
+Massif.adopt("source", "floorplan", source);
+map.addLayer("floorplan", Spec.of("raster").set("source", "floorplan"));
+```
+:::
+
+## Getting it right
+
+- **Point order must match** between the two lists — corner *n* in map space is corner *n* in
+  pixels. A mirrored overlay is almost always this.
+- **`zoomLevelBias`** compensates for the upsampling a high-DPI screen applies. Without it a
+  floorplan looks blurry at every zoom.
+- **`TILE_SUBSTITUTION_POLICY_VISIBLE`** stops the layer standing in with a stretched neighbouring
+  tile outside the overlay's own extent.
+- The overlay is an ordinary raster layer, so `opacity` and layer order work as usual — and it
+  drapes onto [3D terrain](/docs/features/3d-terrain) like any other raster.

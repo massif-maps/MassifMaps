@@ -1,5 +1,6 @@
 ---
 title: Clustering
+description: "Collapse thousands of nearby markers into one, per zoom level, with a style you generate."
 sidebar_position: 10
 slug: /guides/clustering
 ---
@@ -7,437 +8,148 @@ slug: /guides/clustering
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-## Clustering
+# Clustering
 
-Massif Maps can dynamically cluster point data if large amounts of points need to be shown without cluttering the MapView. Clusters are formed based on the map zoom level and spatially close points are placed into the same cluster.
+Point data dense enough to clutter the map can be **clustered**: spatially close points collapse
+into a single marker, per zoom level, usually labelled with how many it stands for. Clustering
+100,000 points takes well under a second on a mid-range phone.
 
-Clusters are usually markers which display a location of several objects, and typically indicate the number of markers within each object.
+You control:
 
-![Cluster sample](http://share.gifyoutube.com/vMPDzX.gif)
+- the style of the cluster object — including generating it from the count;
+- the minimum distance, in pixels, before two objects merge;
+- the minimum zoom clusters form at;
+- what a tap does — zoom in, or expand the cluster in place (useful up to about four objects).
 
-Massif Maps has built-in cluster feature, which is highly customizable. You can define the following options in your app code:
+## The layer
 
-- Styling the cluster objects
-- Dynamically generate cluster object styles. For example, automatically display the number of objects in each cluster
-- Define the minimum zoom level for clusters
-- Set the minimum distance between objects, before it becomes a cluster
-- Indicate the action when clicking on marker. For example, zoom in, or expand the cluster without zooming
+`ClusteredVectorLayer` wraps a `VectorDataSource` and a **cluster element builder**. The source
+must hold *all* the elements, not just those in the current view — clustering is done over the
+whole set, not the visible one.
 
-**Tip:** The cluster expand feature is useful for small clusters (containing up to four objects inside)
-
-Depending on the device, the Mobile SDK can cluster 100,000 points in less than a second.
-
-### Implementing clustering
-
-Clusters are generated dynamically, based on `VectorDataSource` data that loads the map layer. If using an API, it works as a unique layer with the `ClusteredVectorLayer` method, and includes the following parameters in the a hierarchal order:
-
-1. Select the layer `DataSource`  In most cases,  the `LocalVectorDataSource` function contains all the elements to request the data. It is important that the DataSource displays all elements in a layer, and does not limit it to the current map visualization bbox (bounding box)
-2. `ClusterElementBuilder` defines a single method `buildClusterElement`
-
-<Tabs groupId="language">
-
+<Tabs groupId="lang">
 <TabItem value="java" label="Java">
 
 ```java
+LocalVectorDataSource source = new LocalVectorDataSource(mapView.getOptions().getBaseProjection());
+// … add every Marker to `source` …
 
-// 1. Initialize a local vector data source
-LocalVectorDataSource vectorDataSource1 = new LocalVectorDataSource(mapView.getOptions().getBaseProjection());
-
-// 2. Create Marker objects and add them to vectorDataSource
-// **Note:** This depends on the _app type_ of your mobile app settings. See AdvancedMap for samples with JSON loading and random point generation
-
-// 3. Initialize a vector layer with the previous data source
-ClusteredVectorLayer vectorLayer1 = new ClusteredVectorLayer(vectorDataSource1, new MyClusterElementBuilder(this.getApplication()));
-vectorLayer1.setMinimumClusterDistance(20);
-
-// 4. Add the previous vector layer to the map
-mapView.getLayers().add(vectorLayer1);
-
+ClusteredVectorLayer layer = new ClusteredVectorLayer(source, new CountClusterBuilder());
+layer.setMinimumClusterDistance(20);   // screen pixels
+mapView.getLayers().add(layer);
 ```
 
 </TabItem>
-
-<TabItem value="csharp" label="C#">
-
-```csharp
-
-// 1. Create overlay layer for markers
-var dataSource = new LocalVectorDataSource(MapView.Options.BaseProjection);
-
-// 2. Create Marker objects and add them to vectorDataSource.
-// **Note:** This depends on the _app type_ of your mobile app settings. See samples with JSON loading
-
-// 3. Initialize a vector layer with the previous data source
-var layer = new ClusteredVectorLayer(dataSource, new MyClusterElementBuilder());
-layer.MinimumClusterDistance = 20; // in pixels
-
-MapView.Layers.Add(layer);
-
-```
-
-</TabItem>
-
-<TabItem value="objectivec" label="Objective-C">
-
-```objectivec
-
-// 1. Initialize a local vector data source
-MSFProjection* proj = [[mapView getOptions] getBaseProjection];
-MSFLocalVectorDataSource* vectorDataSource = [[MSFLocalVectorDataSource alloc] initWithProjection:proj];
-
-// 2. Create Marker objects and add them to vectorDataSource.
-// **Note:** This depends on the _app type_ of your mobile app settings. See AdvancedMap for samples with JSON loading and random point generation
-
-// 3. Create element builder
-MyMarkerClusterElementBuilder* clusterElementBuilder = [[MyMarkerClusterElementBuilder alloc] init];
-
-// 4. Initialize a vector layer with the previous data source
-MSFClusteredVectorLayer* vectorLayer = [[MSFClusteredVectorLayer alloc] initWithDataSource:vectorDataSource clusterElementBuilder:clusterElementBuilder];
-
-[[mapView getLayers] add:vectorLayer];
-
-```
-
-</TabItem>
-
 <TabItem value="swift" label="Swift">
 
 ```swift
-  
-// 1. Initialize a local vector data source
-let vectorDataSource1 = MSFLocalVectorDataSource(projection: mapView?.getOptions().getBaseProjection())
+let source = MSFLocalVectorDataSource(projection: mapView.getOptions().getBaseProjection())
+// … add every MSFMarker to `source` …
 
-// 2. Create Marker objects and add them to vectorDataSource
-// **Note:** This depends on the _app type_ of your mobile app settings.
-// See AdvancedMap for samples with JSON loading and random point generation
-
-// 3. Initialize a vector layer with the previous data source
-let builder = MyClusterElementBuilder(imageUrl: "marker_black.png")
-let vectorLayer1 = MSFClusteredVectorLayer(dataSource: vectorDataSource1, clusterElementBuilder: builder)
-vectorLayer1?.setMinimumClusterDistance(20)
-
-// 4. Add the previous vector layer to the map
-mapView?.getLayers()?.add(vectorLayer1)
-
+let layer = MSFClusteredVectorLayer(dataSource: source, clusterElementBuilder: CountClusterBuilder())
+layer?.setMinimumClusterDistance(20)
+mapView.getLayers()?.add(layer)
 ```
 
 </TabItem>
-
-<TabItem value="kotlin" label="Kotlin">
-
-```kotlin
-
-// 1. Initialize a local vector data source
-val vectorDataSource1 = LocalVectorDataSource(mapView?.options?.baseProjection)
-
-// 2. Create Marker objects and add them to vectorDataSource
-// **Note:** This depends on the _app type_ of your mobile app settings.
-// See AdvancedMap for samples with JSON loading and random point generation
-
-// 3. Initialize a vector layer with the previous data source
-val vectorLayer1 = ClusteredVectorLayer(vectorDataSource1, MyClusterElementBuilder(this.application))
-vectorLayer1.minimumClusterDistance = 20f
-
-// 4. Add the previous vector layer to the map
-mapView?.layers?.add(vectorLayer1)
-
-```
-
-</TabItem>
-
 </Tabs>
 
-#### Define ClusterElementBuilder
+## The builder
 
-The Cluster Element Builder takes set of original markers (map objects) as input, and returns one object (or another `VectorElement`, such as a Point or BalloonPopup) which dynamically replaces the original marker.
+`buildClusterElement` is handed the cluster's position and the elements inside it, and returns the
+one element that replaces them — a `Marker`, a `Point`, a `BalloonPopup`, anything.
 
-**Note:** It is highly recommended to reuse and cache styles to reduce memory usage. For example, a marker style with a specific number is only created once. Android and iOS samples use platform-specific graphic APIs to generate the bitmap for the marker. .NET example only uses BalloonPopup, which is slower but works the same across all platforms.
+**Cache the styles.** The builder is called for every cluster on every zoom change; rendering a
+bitmap per call is what makes clustering feel slow. One style per *count* is enough:
 
-<Tabs groupId="language">
-
+<Tabs groupId="lang">
 <TabItem value="java" label="Java">
 
 ```java
-  
-private class MyClusterElementBuilder extends ClusterElementBuilder {
+class CountClusterBuilder extends ClusterElementBuilder {
 
-    @SuppressLint("UseSparseArrays")
-    private Map< Integer, MarkerStyle > markerStyles = new HashMap< Integer, MarkerStyle >();
-    private android.graphics.Bitmap markerBitmap;
-
-    MyClusterElementBuilder(Application context) {
-        markerBitmap = android.graphics.Bitmap.createBitmap(BitmapFactory.decodeResource(context.getResources(), R.drawable.marker_black));
-    }
+    private final Map<Integer, MarkerStyle> styles = new HashMap<>();
+    private final android.graphics.Bitmap base;
 
     @Override
     public VectorElement buildClusterElement(MapPos pos, VectorElementVector elements) {
-        // 1. Reuse existing marker styles
-        MarkerStyle style = markerStyles.get((int) elements.size());
-        
-        if (elements.size() == 1) {
-            style = ((Marker) elements.get(0)).getStyle();
+        int count = (int) elements.size();
+        // A cluster of one is the original marker, with the original style.
+        if (count == 1) {
+            return new Marker(pos, ((Marker) elements.get(0)).getStyle());
         }
 
+        MarkerStyle style = styles.get(count);
         if (style == null) {
-            android.graphics.Bitmap canvasBitmap = markerBitmap.copy(android.graphics.Bitmap.Config.ARGB_8888, true);
+            android.graphics.Bitmap canvasBitmap =
+                base.copy(android.graphics.Bitmap.Config.ARGB_8888, true);
             android.graphics.Canvas canvas = new android.graphics.Canvas(canvasBitmap);
-            android.graphics.Paint paint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
-            
+            Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
             paint.setTextAlign(Paint.Align.CENTER);
             paint.setTextSize(12);
-            paint.setColor(android.graphics.Color.argb(255, 0, 0, 0));
-            
-            canvas.drawText(Integer.toString((int) elements.size()), markerBitmap.getWidth() / 2, markerBitmap.getHeight() / 2 - 5, paint);
-            
-            MarkerStyleBuilder styleBuilder = new MarkerStyleBuilder();
-            styleBuilder.setBitmap(BitmapUtils.createBitmapFromAndroidBitmap(canvasBitmap));
-            styleBuilder.setSize(30);
-            styleBuilder.setPlacementPriority((int)-elements.size());
-            
-            style = styleBuilder.buildStyle();
-            
-            markerStyles.put((int) elements.size(), style);
+            canvas.drawText(Integer.toString(count), base.getWidth() / 2, base.getHeight() / 2 - 5, paint);
+
+            MarkerStyleBuilder builder = new MarkerStyleBuilder();
+            builder.setBitmap(BitmapUtils.createBitmapFromAndroidBitmap(canvasBitmap));
+            builder.setSize(30);
+            // Bigger clusters win a placement contest against smaller ones.
+            builder.setPlacementPriority(-count);
+            style = builder.buildStyle();
+            styles.put(count, style);
         }
-
-        // 2. Create marker for the cluster
-        Marker marker = new Marker(pos, style);
-        return marker;
+        return new Marker(pos, style);
     }
 }
-
 ```
 
 </TabItem>
-
-<TabItem value="csharp" label="C#">
-
-```csharp
-public class MyClusterElementBuilder : ClusterElementBuilder
-{
-    BalloonPopupStyleBuilder balloonPopupStyleBuilder;
-
-    public MyClusterElementBuilder()
-    {
-        balloonPopupStyleBuilder = new BalloonPopupStyleBuilder();
-        balloonPopupStyleBuilder.CornerRadius = 3;
-        balloonPopupStyleBuilder.TitleMargins = new BalloonPopupMargins(6, 6, 6, 6);
-        balloonPopupStyleBuilder.LeftColor = new Color(240, 230, 140, 255);
-    }
-
-    public override VectorElement BuildClusterElement(MapPos pos, VectorElementVector elements)
-    {
-        BalloonPopupStyle style = balloonPopupStyleBuilder.BuildStyle();
-        var popup = new BalloonPopup(pos, style, elements.Count.ToString(), "");
-
-        return popup;
-    }
-}
-
-```
-
-</TabItem>
-
-<TabItem value="objectivec" label="Objective-C">
-
-```objectivec
-
-// .h
-
-@interface MyMarkerClusterElementBuilder : MSFClusterElementBuilder
-
-@property NSMutableDictionary* markerStyles;
-
-@end
-
-// .m
-
-@implementation MyMarkerClusterElementBuilder
-
--(MSFVectorElement*) buildClusterElement:(MSFMapPos*)mapPos elements:(MSFVectorElementVector*)elements
-{
-    if (!self.markerStyles) {
-        self.markerStyles = [NSMutableDictionary new];
-    }
-    
-    NSString* styleKey = [NSString stringWithFormat:@"%d",(int)[elements size]];
-    
-    if ([elements size] > 1000) {
-        styleKey = @">1K";
-    }
-    
-    MSFMarkerStyle* markerStyle = [self.markerStyles valueForKey:styleKey];
-    
-    if ([elements size] == 1) {
-        markerStyle = [(MSFMarker*)[elements get:0] getStyle];
-    }
-    
-    if (!markerStyle) {
-        
-        UIImage* image = [UIImage imageNamed:@"marker_black.png"];
-        UIGraphicsBeginImageContext(image.size);
-        [image drawAtPoint:CGPointMake(0, 0)];
-        
-        CGRect rect = CGRectMake(0, 15, image.size.width, image.size.height);
-        [[UIColor blackColor] set];
-       
-        NSMutableParagraphStyle* style = [[NSParagraphStyle defaultParagraphStyle] mutableCopy];
-        [style setAlignment:NSTextAlignmentCenter];
-        
-        NSDictionary* attr = [NSDictionary dictionaryWithObject:style forKey:NSParagraphStyleAttributeName];
-        [styleKey drawInRect:CGRectIntegral(rect) withAttributes:attr];
-        UIImage* newImage = UIGraphicsGetImageFromCurrentImageContext();
-        
-        UIGraphicsEndImageContext();
-        
-        MSFBitmap* markerBitmap = [MSFBitmapUtils createBitmapFromUIImage:newImage];
-        
-        MSFMarkerStyleBuilder* markerStyleBuilder = [[MSFMarkerStyleBuilder alloc] init];
-        [markerStyleBuilder setBitmap:markerBitmap];
-        [markerStyleBuilder setSize:30];
-        
-        [markerStyleBuilder setPlacementPriority:-(int)[elements size]];
-        markerStyle = [markerStyleBuilder buildStyle];
-        
-        [self.markerStyles setValue:markerStyle forKey:styleKey];
-    }
-    
-    MSFMarker* marker = [[MSFMarker alloc] initWithPos:mapPos style:markerStyle];
-    
-    MSFVariant* variant = [[MSFVariant alloc] initWithString:[@([elements size]) stringValue]];
-    [marker setMetaDataElement:@"elements" element:variant];
-    
-    return marker;
-}
-
-```
-
-</TabItem>
-
 <TabItem value="swift" label="Swift">
 
 ```swift
-  
-public class MyClusterElementBuilder : MSFClusterElementBuilder {
-    
-    let markerStyles = NSMutableDictionary()
-    
-    var imageUrl: String?
-    
-    convenience init(imageUrl: String) {
-        
-        self.init()
-        self.imageUrl = imageUrl
-    }
-    
-    override public func buildClusterElement(_ mapPos: MSFMapPos!, elements: MSFVectorElementVector!) -> MSFVectorElement! {
-        
-        var styleKey = String(elements.size())
-        
-        if (elements.size() > 1000) {
-            styleKey = ">1K"
-        }
-        
-        var markerStyle = self.markerStyles.value(forKeyPath: styleKey)
-        
-        if (elements.size() == 1) {
-            markerStyle = (elements.get(0) as! MSFMarker).getStyle()
-        }
-        
-        if (markerStyle == nil) {
-            
-            let image = UIImage(named: imageUrl!)
-            UIGraphicsBeginImageContext((image?.size)!)
-            
-            image?.draw(at: CGPoint(x: 0, y: 0));
-            
-            let rect = CGRect(x: 0, y: 15, width: (image?.size.width)!, height: (image?.size.height)!)
-            UIColor.black.set()
+class CountClusterBuilder: MSFClusterElementBuilder {
 
-            image?.draw(in: rect.integral, blendMode: CGBlendMode.color, alpha: 1.0)
-            let newImage = UIGraphicsGetImageFromCurrentImageContext()
-            
-            UIGraphicsEndImageContext()
-            
-            let marker = MSFBitmapUtils.createBitmap(from: newImage)
+    private var styles: [Int: MSFMarkerStyle] = [:]
+
+    override func buildClusterElement(_ pos: MSFMapPos, elements: MSFVectorElementVector) -> MSFVectorElement {
+        let count = Int(elements.size())
+        if count == 1, let marker = elements.get(0) as? MSFMarker {
+            return MSFMarker(pos: pos, style: marker.getStyle())
+        }
+
+        if styles[count] == nil {
             let builder = MSFMarkerStyleBuilder()
-            builder?.setBitmap(marker)
+            builder?.setBitmap(renderCountBitmap(count))   // your own drawing
             builder?.setSize(30)
-            
-            builder?.setPlacementPriority(-(Int32(elements.size() as UInt32)))
-            markerStyle = builder?.buildStyle()
-            
-            self.markerStyles.setValue(markerStyle, forKey: styleKey)
+            builder?.setPlacementPriority(Int32(-count))
+            styles[count] = builder?.buildStyle()
         }
-        
-        let marker = MSFMarker(pos: mapPos, style: markerStyle as! MSFMarkerStyle!)
-        
-        let variant = MSFVariant(string: String(elements.size()))
-        marker?.setMetaData("elements", element: variant)
-        
-        return marker
+        return MSFMarker(pos: pos, style: styles[count])
     }
 }
-
 ```
 
 </TabItem>
-
-<TabItem value="kotlin" label="Kotlin">
-
-```kotlin
-  
-private inner class MyClusterElementBuilder internal constructor(context: Context) : ClusterElementBuilder() {
-
-    val markerStyles = HashMap<Int, MarkerStyle>()
-    val markerBitmap: android.graphics.Bitmap
-
-    init {
-        val resource = BitmapFactory.decodeResource(context.resources, R.drawable.marker_black)
-        markerBitmap = android.graphics.Bitmap.createBitmap(resource)
-    }
-
-    override fun buildClusterElement(pos: MapPos, elements: VectorElementVector): VectorElement {
-
-        // 1. Reuse existing marker styles
-        var style: MarkerStyle? = markerStyles[elements.size().toInt()]
-
-        if (elements.size().toInt() == 1) {
-            style = (elements.get(0) as Marker).style
-        }
-
-        if (style == null) {
-            val canvasBitmap = markerBitmap.copy(android.graphics.Bitmap.Config.ARGB_8888, true)
-            val canvas = android.graphics.Canvas(canvasBitmap)
-            val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
-
-            paint.textAlign = Paint.Align.CENTER
-            paint.textSize = 12f
-            paint.color = android.graphics.Color.argb(255, 0, 0, 0)
-
-            val text = Integer.toString(elements.size().toInt())
-            val x = (markerBitmap.width / 2).toFloat()
-            val y = (markerBitmap.height / 2 - 5).toFloat()
-
-            canvas.drawText(text, x, y, paint)
-
-            val styleBuilder = MarkerStyleBuilder()
-            styleBuilder.bitmap = BitmapUtils.createBitmapFromAndroidBitmap(canvasBitmap)
-            styleBuilder.size = 30f
-            styleBuilder.placementPriority = (-elements.size()).toInt()
-
-            style = styleBuilder.buildStyle()
-
-            markerStyles.put(elements.size().toInt(), style)
-        }
-
-        // 2. Create marker for the cluster
-        val marker = Marker(pos, style)
-        return marker
-    }
-}
-
-```
-
-</TabItem>
-
 </Tabs>
+
+The builder runs on a background thread, so it must not touch UI state directly.
+
+:::note Surface API
+`ClusteredVectorLayer` takes a builder callback, which a JSON spec cannot express. Construct it
+with the object API and [`adopt`](/docs/api/#bringing-an-existing-app-across) it:
+
+```java
+MassifLayer clustered = Massif.adopt("layer", "sites", layer);
+clustered.set("opacity", 0.9);
+```
+:::
+
+## When not to cluster
+
+Clustering exists to keep *markers* readable. For a large dataset that is really map **data** —
+tracks, a POI database, a route network — tile it through the
+[GeoJSON vector tiling pyramid](/docs/features/geojson-vector-tiles) and style it with CartoCSS
+instead. That gets zoom-dependent filtering, label collision and the renderer's own batching, none
+of which a marker layer has.
+
+Related: [vector objects](/docs/guides/vector-objects) for the elements themselves, and
+[performance](/docs/guides/performance) for the spatial-index and simplification knobs.

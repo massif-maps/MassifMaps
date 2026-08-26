@@ -80,7 +80,10 @@ One page per subsystem, scope stated at the top, cross-links instead of repetiti
 
 - Show the app-facing call, not the C++ internals: the option, its default, its unit, and a short snippet. Link to the internals page for the mechanism.
 - Screenshots come from the demo app via `scripts/docs/capture-screenshots.sh` into `website/static/img/features/` — reference existing images rather than inventing paths.
-- `docs/guides/*.mdx` are **generated** from the legacy CARTO sources in `scripts/docs/vendor-guides/guides/` by `scripts/docs/convert-guides.py`. Edit the generated output for new content; re-running the converter overwrites it.
+- `docs/guides/*.mdx` are **authored**. They used to be converted from the legacy CARTO sources; the converter and its inputs are gone, and the CARTO-service-only guides with them.
+- **A feature page shows the surface API too.** The object-API snippet is not enough — add the `Spec`/property-path form, and link the generated [`docs/api/reference/`](../../../../docs/api/reference/) page for the full key list. When the class has no spec factory, say so and show `adopt` rather than inventing a `type`.
+- `docs/api/reference/` and `docs/examples/examples.json` are **generated** (`scripts/gen-api-docs.py`, `scripts/gen-examples.py`). Never hand-edit either; fix the generator or the `.i` declaration.
+- Screenshots in `docs/` are height-capped by CSS (`24rem`); an image alone in its paragraph is framed and centred automatically, so no `<figure>` wrapper is needed for that alone.
 
 ## Mechanics that fail the build
 

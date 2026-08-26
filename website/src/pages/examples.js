@@ -27,6 +27,9 @@ function shotFor(id) {
 const LANGUAGES = [
   {key: 'java', label: 'Java (Android)', prism: 'java'},
   {key: 'objc', label: 'Objective-C (iOS)', prism: 'objectivec'},
+  // The NativeScript examples are Svelte files; prismjs has no svelte grammar in this bundle and
+  // the body is a TypeScript <script>, which highlights close enough.
+  {key: 'ts', label: 'TypeScript (NativeScript)', prism: 'typescript'},
 ];
 
 const REPO = 'https://github.com/massif-maps/MassifMaps/blob/master/';
@@ -34,7 +37,9 @@ const REPO = 'https://github.com/massif-maps/MassifMaps/blob/master/';
 function Card({example, onOpen}) {
   const shot = shotFor(example.id);
   return (
-    <div className="col col--4" style={{marginBottom: '1.75rem'}}>
+    // The id on the card is what makes /examples#<id> a real anchor: the detail view is driven by
+    // the hash, so without it every deep link into the gallery reads as broken.
+    <div className="col col--4" id={example.id} style={{marginBottom: '1.75rem'}}>
       <div className="exampleCard" onClick={() => onOpen(example.id)}>
         <div className="exampleShot">
           {shot ? (
@@ -63,6 +68,10 @@ function Detail({example, onClose}) {
     }
   }, [example.id]);
 
+  // The code is what the reader came for, so on desktop it takes the wide column and the
+  // screenshot sits beside it instead of pushing it below the fold.
+  const sourcePath = example.sources?.[language] ?? example.source;
+
   return (
     <div className="exampleDetail">
       <button className="exampleBack" onClick={onClose}>
@@ -71,38 +80,41 @@ function Detail({example, onClose}) {
       <h1>{example.title}</h1>
       <p className="exampleLead">{example.description}</p>
 
-      {shot && (
-        <img className="exampleDetailShot" src={shot} alt={example.title} />
-      )}
+      <div className="exampleDetailGrid">
+        <div className="exampleDetailMedia">
+          {shot && <img className="exampleDetailShot" src={shot} alt={example.title} />}
+          <p className="exampleDetailSource">
+            <a href={REPO + sourcePath}>This example on GitHub →</a>
+          </p>
+        </div>
 
-      <div className="exampleTabs">
-        {available.map((entry) => (
-          <button
-            key={entry.key}
-            className={entry.key === language ? 'exampleTab exampleTabOn' : 'exampleTab'}
-            onClick={() => setLanguage(entry.key)}>
-            {entry.label}
-          </button>
-        ))}
-        {available.length < LANGUAGES.length && (
-          <span className="exampleTabNote">
-            {LANGUAGES.filter((entry) => !example.code[entry.key])
-              .map((entry) => entry.label)
-              .join(', ')}{' '}
-            not ported yet
-          </span>
-        )}
+        <div className="exampleDetailCode">
+          <div className="exampleTabs">
+            {available.map((entry) => (
+              <button
+                key={entry.key}
+                className={entry.key === language ? 'exampleTab exampleTabOn' : 'exampleTab'}
+                onClick={() => setLanguage(entry.key)}>
+                {entry.label}
+              </button>
+            ))}
+            {available.length < LANGUAGES.length && (
+              <span className="exampleTabNote">
+                {LANGUAGES.filter((entry) => !example.code[entry.key])
+                  .map((entry) => entry.label)
+                  .join(', ')}{' '}
+                not ported yet
+              </span>
+            )}
+          </div>
+
+          <CodeBlock
+            language={LANGUAGES.find((entry) => entry.key === language)?.prism ?? 'java'}
+            showLineNumbers>
+            {example.code[language] ?? ''}
+          </CodeBlock>
+        </div>
       </div>
-
-      <CodeBlock
-        language={LANGUAGES.find((entry) => entry.key === language)?.prism ?? 'java'}
-        showLineNumbers>
-        {example.code[language] ?? ''}
-      </CodeBlock>
-
-      <p>
-        <a href={REPO + example.source}>This example on GitHub</a>
-      </p>
     </div>
   );
 }

@@ -38,6 +38,27 @@ mapView.layers.add(hillshade)
 
 The illumination is also influenced by the main light source configured on `Options`.
 
+### With the surface API
+
+Every setter below is a property, so the whole layer is one spec:
+
+```java
+map.addLayer("hillshade", Spec.of("hillshade")
+    .set("source", Spec.of("http")
+        .set("url", "https://your.tiles/dem/{z}/{x}/{y}.png")
+        .set("maxZoom", 12)
+        // Attached to every tile the source loads; it is what picks the elevation decoder.
+        .set("metaData", Spec.object().set("dem_encoding", "terrarium")))
+    .set("hillshadeMethod", "HILLSHADE_METHOD_MULTIDIRECTIONAL")
+    .set("exaggeration", 1.3)
+    .set("contrast", 0.6));
+
+// Animatable afterwards — a shader uniform, no re-decode.
+map.layer("hillshade").set("exaggeration", 1.8);
+```
+
+Every property and its enum values: [`hillshade` in the layer reference](/docs/api/reference/layer).
+
 ## Hillshade methods
 
 `setHillshadeMethod(...)` selects the algorithm:

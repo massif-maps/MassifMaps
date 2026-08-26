@@ -6,9 +6,19 @@ sidebar_position: 3
 
 # Adding an example
 
-An example is **one Java file** in the Android demo app. Adding it puts it in the app's gallery
-*and* on [the website's examples page](https://massif-maps.github.io/MassifMaps/examples) — nothing
-else has a list to update.
+An example is **one file per platform**, sharing one id. The Android file is the reference and the
+only one that carries the metadata; adding it puts the example in the app's gallery *and* on
+[the website's examples page](https://massif-maps.github.io/MassifMaps/examples) — nothing else has
+a list to update.
+
+| Platform | File | Matched by |
+|---|---|---|
+| Android | `.../examples/<section>/XxxExample.java` | `@ExampleInfo(id = …)` |
+| iOS | `scripts/ios-dev/MassifDemo/Examples/MSFXxxExample.m` | `+ (NSString *)exampleId` |
+| NativeScript | `integrations/nativescript/demo-snippets/svelte/examples/Xxx.svelte` | `<ExampleShell id="…">` |
+
+The website shows one code tab per platform that has ported the id, and `gen-examples.py` reports
+how many of each there are.
 
 Examples are written against the **facade API** (`com.massifmaps.api`), never the object API. That
 is the point of them: they are the reference for what an app should look like, and the facade is
@@ -115,11 +125,12 @@ clearance above the ground.
 | `docs/examples/screenshots/` | the captures, shared by the app and the site |
 | `app/src/main/style-projects/<name>/` | CartoCSS style projects, zipped into the APK by gradle **and into the iOS bundle by `scripts/ios-dev/project.yml`** — one source, two demos |
 | `scripts/ios-dev/MassifDemo/Examples/MSFXxxExample.m` | the Objective-C twin, matched to its Java one by `+exampleId` |
+| `integrations/nativescript/demo-snippets/svelte/examples/Xxx.svelte` | the NativeScript twin, matched by `<ExampleShell id>` |
 | `website/src/pages/examples.js` | the published gallery |
 
-An example exists on both platforms or it is half an example: `gen-examples.py` reports how many of
-the manifest's ids iOS has ported, the iOS gallery dims the ones it has not, and the website simply
-has no Objective-C tab for them.
+An example exists on all three platforms or it is a fraction of an example: `gen-examples.py`
+reports how many of the manifest's ids iOS and NativeScript have ported, the iOS gallery dims the
+ones it has not, and the website simply has no tab for them.
 
 ## Known gaps
 

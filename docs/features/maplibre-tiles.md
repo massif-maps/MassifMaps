@@ -37,6 +37,20 @@ decoder.tileFormat = TileFormat.TILE_FORMAT_MLT   // or TILE_FORMAT_MVT / TILE_F
 | `TILE_FORMAT_MVT` | MapBox Vector Tile (protobuf) |
 | `TILE_FORMAT_MLT` | MapLibre Tile (columnar) |
 
+### With the surface API
+
+`tileFormat` is a property of the `mbvt` style, so pinning it is one key in the spec:
+
+```java
+map.addLayer("basemap", Spec.of("vector")
+    .set("source", Spec.of("http")
+        .set("url", "https://your.tiles/{z}/{x}/{y}.mlt")
+        .set("maxZoom", 14))
+    .set("style", Spec.of("mbvt")
+        .set("project", "outdoor-project")
+        .set("tileFormat", "TILE_FORMAT_MLT")));
+```
+
 :::caution One format per decoder
 `setTileFormat` pins the decoder, not the layer. A decoder shared between layers whose sources
 differ in format must stay on `TILE_FORMAT_AUTO` — the check costs 1–19 ns per tile.

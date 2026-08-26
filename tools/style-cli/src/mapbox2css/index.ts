@@ -462,11 +462,15 @@ function plateDeclarations(layer: MapboxLayer, coverage: Coverage): string[] {
  * equivalent of marker-width - so icon-size cannot be carried, and unlock-image is what lets the
  * text move off the icon (a POI name sits below its pin).
  */
-function shieldImageDeclarations(layer: MapboxLayer, icon: ExtractedIcon, coverage: Coverage): string[] {
+function shieldImageDeclarations(layer: MapboxLayer, icon: ExtractedIcon, scale: number, coverage: Coverage): string[] {
     // shield-placement comes from the renamed text-placement - one label, one placement.
     const out = [`shield-file: url('${icon.file}');`, 'shield-unlock-image: true;'];
     coverage.emit('shield-file');
     coverage.emit('shield-unlock-image');
+    if (scale !== 1) {
+        out.push(`shield-image-scale: ${round(scale)};`);
+        coverage.emit('shield-image-scale');
+    }
 
     // A distance field stays crisp at any size and takes its colour from the style, so an SDF
     // sprite goes in as one rather than being resolved to pixels and tinted here.
@@ -475,12 +479,17 @@ function shieldImageDeclarations(layer: MapboxLayer, icon: ExtractedIcon, covera
         coverage.emit('shield-sdf');
         emitTranslated(out, coverage, layer, 'icon-color', 'shield-icon-fill', undefined, false);
         emitTranslated(out, coverage, layer, 'icon-opacity', 'shield-icon-opacity', undefined, false);
+        // The icon's own outline. It is what draws the dark ring round a white city dot and the
+        // white one round a POI glyph, and it is NOT the text halo - the two are separate in
+        // mapbox and now separate here.
+        emitTranslated(out, coverage, layer, 'icon-halo-color', 'shield-icon-halo-fill', undefined, false);
+        emitTranslated(out, coverage, layer, 'icon-halo-width', 'shield-icon-halo-radius', undefined, false);
     }
 
     // Locked to the image, the text is centred ON it. MapBox anchors the TEXT and leaves the icon
     // on the point, so the image is moved clear by half its height instead - a city name sits above
     // its dot, a POI name below its pin, and neither is drawn over the other.
-    const clearance = iconClearance(layer, icon);
+    const clearance = iconClearance(layer, icon, scale);
     if (clearance !== 0) {
         out.push(`shield-dy: ${clearance};`);
         coverage.emit('shield-dy');
@@ -551,17 +560,18 @@ function markerDeclarations(layer: MapboxLayer, coverage: Coverage, options: Con
     // With text beside it the icon becomes a SHIELD - one label, no collision with its own name.
     // ShieldSymbolizer has no `sdf`, so the field is resolved and the style's icon-color baked in.
     const asShield = layer.layout?.['text-field'] !== undefined;
-    // A shield has no image-size property, so icon-size is resampled into the bitmap. The COLOUR
-    // is not baked: shield-sdf keeps the distance field, and shield-icon-fill tints it.
+    // A shield is SHIPPED at the sprite's own resolution and shrunk by shield-image-scale. Baking
+    // icon-size into the bitmap instead resampled the distance field into fewer texels than it
+    // needs, so the smaller the icon the blockier and softer it drew.
     const scale = asShield ? representativeScale(layer.layout?.['icon-size']) : 1;
     const icon = extractIcon(options.sprites.sheets, image, options.sprites.outDir, options.flattenSdf,
-        undefined, scale);
+        undefined, 1);
     if (!icon) {
         coverage.drop('icon-image', `"${image}" is not in the sprite`, layer.id);
         return [];
     }
 
-    if (asShield) return shieldImageDeclarations(layer, icon, coverage);
+    if (asShield) return shieldImageDeclarations(layer, icon, scale, coverage);
 
     const out = [
         `marker-file: url('${icon.file}');`,

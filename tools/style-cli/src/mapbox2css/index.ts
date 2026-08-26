@@ -392,6 +392,15 @@ function shieldImageDeclarations(layer: MapboxLayer, icon: ExtractedIcon, covera
     coverage.emit('shield-file');
     coverage.emit('shield-unlock-image');
 
+    // A distance field stays crisp at any size and takes its colour from the style, so an SDF
+    // sprite goes in as one rather than being resolved to pixels and tinted here.
+    if (icon.sdf) {
+        out.push('shield-sdf: true;');
+        coverage.emit('shield-sdf');
+        emitTranslated(out, coverage, layer, 'icon-color', 'shield-icon-fill', undefined, false);
+        emitTranslated(out, coverage, layer, 'icon-opacity', 'shield-icon-opacity', undefined, false);
+    }
+
     // Locked to the image, the text is centred ON it. MapBox anchors the TEXT and leaves the icon
     // on the point, so the image is moved clear by half its height instead - a city name sits above
     // its dot, a POI name below its pin, and neither is drawn over the other.
@@ -442,35 +451,6 @@ function representativeScale(size: Json | undefined): number {
     return sizes.length === 0 ? 1 : sizes.reduce((a, b) => a + b, 0) / sizes.length;
 }
 
-/** A colour literal as 8-bit RGB, or undefined when it is not a constant this can bake. */
-function constantRgb(value: Json | undefined): [number, number, number] | undefined {
-    if (typeof value !== 'string') return undefined;
-
-    const hex = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(value.trim());
-    if (hex) {
-        const digits = hex[1].length === 3 ? [...hex[1]].map((c) => c + c).join('') : hex[1];
-        return [0, 2, 4].map((i) => parseInt(digits.slice(i, i + 2), 16)) as [number, number, number];
-    }
-
-    const hsl = /^hsla?\(\s*(-?[\d.]+)\s*,\s*([\d.]+)%\s*,\s*([\d.]+)%/i.exec(value.trim());
-    if (hsl) return hslToRgb(Number(hsl[1]), Number(hsl[2]) / 100, Number(hsl[3]) / 100);
-
-    const rgb = /^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i.exec(value.trim());
-    if (rgb) return [Number(rgb[1]), Number(rgb[2]), Number(rgb[3])];
-
-    return undefined;
-}
-
-function hslToRgb(h: number, s: number, l: number): [number, number, number] {
-    const c = (1 - Math.abs(2 * l - 1)) * s;
-    const hp = (((h % 360) + 360) % 360) / 60;
-    const x = c * (1 - Math.abs((hp % 2) - 1));
-    const [r, g, b] = hp < 1 ? [c, x, 0] : hp < 2 ? [x, c, 0] : hp < 3 ? [0, c, x]
-        : hp < 4 ? [0, x, c] : hp < 5 ? [x, 0, c] : [c, 0, x];
-    const m = l - c / 2;
-    return [r, g, b].map((v) => Math.round((v + m) * 255)) as [number, number, number];
-}
-
 /** MapBox's icon-* onto marker-*, once the sprite has been sliced into its own file. */
 function markerDeclarations(layer: MapboxLayer, coverage: Coverage, options: ConvertOptions): string[] {
     const image = layer.layout?.['icon-image'];
@@ -487,10 +467,11 @@ function markerDeclarations(layer: MapboxLayer, coverage: Coverage, options: Con
     // With text beside it the icon becomes a SHIELD - one label, no collision with its own name.
     // ShieldSymbolizer has no `sdf`, so the field is resolved and the style's icon-color baked in.
     const asShield = layer.layout?.['text-field'] !== undefined;
-    const tint = asShield ? constantRgb(layer.paint?.['icon-color'] ?? layer.layout?.['icon-color']) : undefined;
-    // A shield has no marker-width, so icon-size is baked into the bitmap here.
+    // A shield has no image-size property, so icon-size is resampled into the bitmap. The COLOUR
+    // is not baked: shield-sdf keeps the distance field, and shield-icon-fill tints it.
     const scale = asShield ? representativeScale(layer.layout?.['icon-size']) : 1;
-    const icon = extractIcon(options.sprites.sheets, image, options.sprites.outDir, options.flattenSdf, tint, scale);
+    const icon = extractIcon(options.sprites.sheets, image, options.sprites.outDir, options.flattenSdf,
+        undefined, scale);
     if (!icon) {
         coverage.drop('icon-image', `"${image}" is not in the sprite`, layer.id);
         return [];

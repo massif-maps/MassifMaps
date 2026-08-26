@@ -12,7 +12,7 @@ sidebar_position: 20
 `CartoCSSMapnikTranslator.cpp`. Edit those, then re-run the script — never this page.
 :::
 
-209 properties across 12 symbolizers.
+210 properties across 12 symbolizers.
 
 ## Reading the table
 
@@ -25,7 +25,7 @@ sidebar_position: 20
 - Liveness is decided **per parameter across the whole style**, not per use: one baked use
   anywhere makes the parameter baked everywhere.
 
-Live-capable properties: 41 of 209.
+Live-capable properties: 41 of 210.
 
 ## `building`
 
@@ -220,6 +220,7 @@ Live-capable properties: 41 of 209.
 | `shield-orientation` | `orientation` | float | `0.0` |  |  |
 | `shield-placement` | `placement` | value | `point` |  |  |
 | `shield-placement-priority` | `placement-priority` | float | `0.0` |  |  |
+| `shield-sdf` | `sdf` | bool | `false` |  |  |
 | `shield-size` | `size` | float | `10.0` |  | yes |
 | `shield-spacing` | `spacing` | float | `0.0` |  |  |
 | `shield-text-dx` | `dx` | float | `0.0` |  |  |

@@ -74,7 +74,10 @@ test('an icon beside text becomes ONE shield, not a marker that culls the label'
     TABLE, { sprites: { sheets: sprites, outDir: '/tmp/massif-style-test' } }).mss;
 
     assert.ok(!out.includes('marker-'), 'a marker beside the text would be a second, colliding label');
-    assert.match(out, /shield-file: url\('icons\/circle-000000.png'\);/);
+    // The field is kept and tinted by the style, not resolved to pixels here.
+    assert.match(out, /shield-file: url\('icons\/circle.png'\);/);
+    assert.match(out, /shield-sdf: true;/);
+    assert.match(out, /shield-icon-fill: #000000;/);
     assert.match(out, /shield-name: \[name\];/);
     assert.match(out, /shield-fill: #333333;/);
     assert.match(out, /shield-unlock-image: true;/);

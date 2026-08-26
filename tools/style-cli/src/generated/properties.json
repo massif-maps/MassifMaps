@@ -1405,6 +1405,16 @@
       "baked": false
     },
     {
+      "cartocss": "shield-sdf",
+      "mapnik": "sdf",
+      "symbolizer": "shield",
+      "kind": "bool",
+      "type": "BoolProperty",
+      "default": "false",
+      "live": false,
+      "baked": false
+    },
+    {
       "cartocss": "shield-size",
       "mapnik": "size",
       "symbolizer": "shield",

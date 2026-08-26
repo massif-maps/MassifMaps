@@ -43,6 +43,22 @@ let layer = MSFVectorTileLayer(dataSource: source, decoder: decoder)
 mapView.getLayers()?.add(layer)
 ```
 
+## From JSON
+
+`pmtiles` is a `source` spec type of the [facade API](/docs/internals/api-facade), so a
+NativeScript / React Native / C ABI caller builds one from JSON, with no native construction and
+no `adopt` step:
+
+```json
+{"type":"vector",
+ "source":{"type":"pmtiles","path":"/sdcard/maps/basemap.pmtiles"},
+ "style":{"type":"mbvt","project":{"type":"project",
+          "assets":{"type":"dir","path":"/sdcard/massif_style"},"name":"osm"}}}
+```
+
+`minZoom` / `maxZoom` are accepted like every other source, but `getMinZoom()`/`getMaxZoom()` read
+the archive header either way, so leaving them out is the normal case.
+
 ## Metadata & extent
 
 ```kotlin

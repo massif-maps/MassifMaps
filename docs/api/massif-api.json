@@ -11460,6 +11460,60 @@
             ]
           ]
         ]
+      ],
+      [
+        "pmtiles",
+        "massif__PMTilesTileDataSource",
+        [
+          [
+            0,
+            [
+              [
+                "VALUE",
+                "minZoom",
+                "static_cast<int>(intAt(spec, \"minZoom\", 0))",
+                null
+              ],
+              [
+                "VALUE",
+                "maxZoom",
+                "static_cast<int>(intAt(spec, \"maxZoom\", 24))",
+                null
+              ],
+              [
+                "VALUE",
+                "path",
+                "stringAt(spec, \"path\", \"\")",
+                null
+              ]
+            ],
+            [
+              "path"
+            ],
+            [
+              "minZoom",
+              "maxZoom",
+              "path"
+            ]
+          ],
+          [
+            1,
+            [
+              [
+                "VALUE",
+                "path",
+                "stringAt(spec, \"path\", \"\")",
+                null
+              ]
+            ],
+            [
+              "path"
+            ],
+            [
+              "path"
+            ]
+          ]
+        ]
       ]
     ],
     "style": [
@@ -11653,6 +11707,7 @@
     "massif::MultiTileDataSource": "source",
     "massif::MultiValhallaOfflineRoutingService": "routing",
     "massif::OrderedTileDataSource": "source",
+    "massif::PMTilesTileDataSource": "source",
     "massif::PersistentCacheTileDataSource": "source",
     "massif::Point": "element",
     "massif::PointGeometry": "geometry",
@@ -13140,6 +13195,54 @@
           },
           {
             "key": "databasePath",
+            "type": "STRING",
+            "cppType": "std::string",
+            "childKind": null,
+            "childClass": null,
+            "required": true
+          }
+        ]
+      ]
+    },
+    {
+      "cppClass": "massif::PMTilesTileDataSource",
+      "kind": "source",
+      "type": "pmtiles",
+      "aliases": {},
+      "defaults": {
+        "minZoom": "0",
+        "maxZoom": "24"
+      },
+      "constructors": [
+        [
+          {
+            "key": "minZoom",
+            "type": "INT",
+            "cppType": "int",
+            "childKind": null,
+            "childClass": null,
+            "required": false
+          },
+          {
+            "key": "maxZoom",
+            "type": "INT",
+            "cppType": "int",
+            "childKind": null,
+            "childClass": null,
+            "required": false
+          },
+          {
+            "key": "path",
+            "type": "STRING",
+            "cppType": "std::string",
+            "childKind": null,
+            "childClass": null,
+            "required": true
+          }
+        ],
+        [
+          {
+            "key": "path",
             "type": "STRING",
             "cppType": "std::string",
             "childKind": null,

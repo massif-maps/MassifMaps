@@ -7617,7 +7617,18 @@ export interface SourceSpec_persistent_cache {
   source?: SourceSpec | string;
 }
 
-export type SourceSpec = SourceSpec_assets | SourceSpec_combined | SourceSpec_geojson | SourceSpec_http | SourceSpec_local | SourceSpec_maptiler | SourceSpec_mbtiles | SourceSpec_memory_cache | SourceSpec_merged_mbvt | SourceSpec_multi | SourceSpec_ordered | SourceSpec_persistent_cache;
+export interface SourceSpec_pmtiles {
+  type: "pmtiles";
+  /** Gets the current maximum overzoom level for this datasource. Over it the datasource will not be "drawn" */
+  maxOverzoomLevel?: number;
+  maxZoom?: number;
+  /** Returns a copy of the data source meta data map. The changes you make to this map are NOT reflected in the actual meta data of the source. The map is attached to every tile this source loads, and consumers read their settings from it - "dem_encoding" ("mapbox" or "terrarium") selects the elevation decoder, for instance. A wrapper source with no map of its own answers with its wrapped source's. */
+  metaData?: Record<string, Json>;
+  minZoom?: number;
+  path?: string;
+}
+
+export type SourceSpec = SourceSpec_assets | SourceSpec_combined | SourceSpec_geojson | SourceSpec_http | SourceSpec_local | SourceSpec_maptiler | SourceSpec_mbtiles | SourceSpec_memory_cache | SourceSpec_merged_mbvt | SourceSpec_multi | SourceSpec_ordered | SourceSpec_persistent_cache | SourceSpec_pmtiles;
 
 export interface StyleSpec_mbvt {
   type: "mbvt";

@@ -602,7 +602,7 @@ inline spec of that kind, and it is checked against the class the caller is abou
 
 | kind | types |
 |---|---|
-| `source` | `http` `assets` `mbtiles` `maptiler` `memory-cache` `persistent-cache` `ordered` `combined` `merged-mbvt` `multi` `geojson` `local` |
+| `source` | `http` `assets` `mbtiles` `pmtiles` `maptiler` `memory-cache` `persistent-cache` `ordered` `combined` `merged-mbvt` `multi` `geojson` `local` |
 | `data` | `url` — bytes from `file://`, `assets://` or `http(s)://` |
 | `assets` | `dir` (a directory), `bundle` (the app's own bundled assets), `zip` (a `data` archive) |
 | `geometry` | `geojson` — a JSON string or the document inline, optional target `projection` — plus `point` (`pos`), `line` (`poses`) and `polygon` (`poses`, optional `holes`, or `rings`) |
@@ -669,7 +669,7 @@ One line per class in its `.i` says what to call it and how to spell the awkward
   defaults and `scheme` does not — and passing `scheme` now reaches the 4-argument one, which no
   hand-written factory ever exposed. Same for `HillshadeRasterTileLayer`'s `elevationDecoder`.
 
-Fifty-one classes over thirteen kinds build this way, and everything left hand-written in
+Fifty-two classes over thirteen kinds build this way, and everything left hand-written in
 `SpecFactories.cpp` is genuinely adaptive rather than boilerplate:
 
 | still hand-written | why the signature cannot say it |

@@ -1077,6 +1077,7 @@ public final class ApiNames {
     public static final String TYPE_SOURCE_MULTI = "multi";
     public static final String TYPE_SOURCE_ORDERED = "ordered";
     public static final String TYPE_SOURCE_PERSISTENT_CACHE = "persistent-cache";
+    public static final String TYPE_SOURCE_PMTILES = "pmtiles";
     public static final String TYPE_STYLE_MBVT = "mbvt";
     public static final String TYPE_STYLESET_CARTOCSS = "cartocss";
     public static final String TYPE_STYLESET_PROJECT = "project";

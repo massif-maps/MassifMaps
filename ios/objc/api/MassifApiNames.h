@@ -1084,6 +1084,7 @@ FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeSourceMergedMbvt;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeSourceMulti;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeSourceOrdered;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeSourcePersistentCache;
+FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeSourcePmtiles;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeStyleMbvt;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeStylesetCartocss;
 FOUNDATION_EXPORT MassifSpecType const MassifSpecTypeStylesetProject;

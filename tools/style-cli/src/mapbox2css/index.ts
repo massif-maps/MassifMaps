@@ -500,22 +500,28 @@ function shieldImageDeclarations(layer: MapboxLayer, icon: ExtractedIcon, scale:
 /**
  * Which way, and how far, the image moves so the text does not land on it.
  *
- * Only when the style says nothing about where the text goes. A stated `text-offset` IS the
- * style's own answer, and the alignment beside it already puts the text clear - adding half an
- * icon on top of that doubled the gap, so a POI name floated well below its pin where MapTiler
- * draws the two nearly touching.
+ * MapBox measures `text-offset` from the anchor the ICON also sits on, so an offset smaller than
+ * half the icon leaves the two overlapping - a city dot at 0.15 em landed on its own name's
+ * descender. The SDK centres the text on the IMAGE instead, so what it needs is the offset TOPPED
+ * UP to half the icon, never the two added: a POI states 0.8 em, already clear of its pin, and
+ * adding half an icon on top of that floated the name well below it.
  */
-function iconClearance(layer: MapboxLayer, icon: ExtractedIcon): number {
+function iconClearance(layer: MapboxLayer, icon: ExtractedIcon, scale: number): number {
     const anchor = layer.layout?.['text-anchor'];
     const offset = layer.layout?.['text-offset'];
     const dy = Array.isArray(offset) && typeof offset[1] === 'number' ? offset[1] : 0;
-    if (dy !== 0 || layer.layout?.['text-radial-offset'] !== undefined) return 0;
+    if (layer.layout?.['text-radial-offset'] !== undefined) return 0;
+    // The offset is in ems of the text size, the icon in pixels, so they meet at a representative
+    // size - the same approximation representativeScale makes for a zoom-driven icon-size.
+    const emPixels = Math.abs(dy) * representativeScale(layer.layout?.['text-size'], 16);
 
     // 'bottom' anchors the text's bottom edge, so the text is ABOVE and the icon goes below.
     const below = anchor === 'bottom';
     const above = anchor === 'top';
     if (!below && !above) return 0;
-    return round((below ? 1 : -1) * icon.height / 2);
+    const shortfall = icon.height * scale / 2 - emPixels;
+    if (shortfall <= 0) return 0;
+    return round((below ? 1 : -1) * shortfall);
 }
 
 /**

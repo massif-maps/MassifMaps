@@ -124,6 +124,15 @@ test('a font list wrapped in literal keeps its face name', () => {
     assert.match(out, /text-face-name: 'Roboto Condensed Regular';/);
 });
 
+test('text-padding becomes a collision gap, and --label-spacing scales it', () => {
+    // MapBox pads the box on every side, so a pair ends up 2x apart; minimum-distance is the one
+    // buffer between them. Dropping it entirely was why a converted style drew far more labels.
+    assert.match(mss({ 'text-padding': 3 }), /text-min-distance: \(2 \* 3\);/);
+    assert.match(mss({}), /text-min-distance: 4;/); // MapBox's default padding is 2
+    const thinned = convert({ layers: [symbolLayer({ 'text-padding': 3 })] }, TABLE, { labelSpacing: 3 }).mss;
+    assert.match(thinned, /text-min-distance: \(6 \* 3\);/);
+});
+
 test('a layer with no sort key still carries its order', () => {
     assert.match(mss({}), /text-placement-priority: 0;/);
 });

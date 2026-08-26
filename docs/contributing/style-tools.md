@@ -223,6 +223,22 @@ MapBox takes the first match. On topo-v4 that is 17 layers and **+24 attachments
 - `text-field` is exempt: the text is evaluated per feature inside the processor rather than through
   a `Property`, so it reads fields correctly.
 
+## How far apart labels stay
+
+MapBox pads a label's collision box by `text-padding` on **every side** — 2 px on any layer that
+states nothing — so two labels end up at least twice that apart. The culler's `minimum-distance` is
+the single buffer between a pair, hence `2 ×` the padding. It used to be dropped as "no CartoCSS
+equivalent", which it is not.
+
+`--label-spacing N` scales that gap for a map that wants thinning beyond what the style asks;
+1 is the style's own value.
+
+**Honest limits.** Porting the padding changed placement only slightly. A deliberate A/B at
+`text-min-distance: 24` removed roughly a third of the labels, so the lever works and its unit is
+device pixels — but a converted style at z10 still shows far more places than MapTiler's own render
+of the same style at the same zoom, and the padding is not what accounts for that. The cause is not
+yet found; `--label-spacing` is a knob, not the answer.
+
 ## Which label wins a collision
 
 `symbol-sort-key` orders symbols **within** a MapBox layer; between layers the style's own order

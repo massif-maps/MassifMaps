@@ -15,10 +15,13 @@ const USAGE = `Usage: massif-style <command> [options] [args]
   mapbox2css <style.json> <out-dir> [--validate] [--strict] [--no-sprite]
                                     [--sprite-key '?key=...']
                                     [--contour-schema div] [--contour-major-div N]
+                                    [--label-spacing N]
       translate a MapBox/MapLibre style to a CartoCSS project
 
       --sprite-key          query string appended to the style's sprite URLs, for a
                             provider that needs a key
+      --label-spacing N     multiply the collision gap between labels; 1 is what the
+                            style asks for, higher thins the map out
       --no-sprite           skip the sprite; every icon-image is then dropped
       --sdf-flatten         resolve SDF icons to plain bitmaps, for an SDK without
                             marker-sdf; loses the zoom-driven size and the halo
@@ -57,7 +60,7 @@ function parseFlags(args: string[]): { flags: Map<string, string>; positional: s
     return { flags, positional };
 }
 
-const VALUE_FLAGS = new Set(['contour-schema', 'contour-major-div', 'sprite-key']);
+const VALUE_FLAGS = new Set(['contour-schema', 'contour-major-div', 'sprite-key', 'label-spacing']);
 
 async function mapbox2css(args: string[]): Promise<number> {
     const { flags, positional } = parseFlags(args);
@@ -95,6 +98,7 @@ async function mapbox2css(args: string[]): Promise<number> {
     const { mss, project, coverage } = convert(style, loadPropertyTable(), {
         sprites,
         flattenSdf: flags.has('sdf-flatten'),
+        labelSpacing: Number(flags.get('label-spacing') ?? 1),
         contour: contourSchema === 'div'
             ? { schema: 'div', majorDiv: Number(flags.get('contour-major-div') ?? 100) }
             : undefined,

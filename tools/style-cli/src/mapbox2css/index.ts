@@ -40,6 +40,8 @@ export interface ConvertOptions {
     sprites?: { sheets: SpriteSet; outDir: string };
     /** Resolve SDF sprites to plain bitmaps, for an SDK without marker-sdf. Loses size and halo. */
     flattenSdf?: boolean;
+    /** Multiplies the collision gap MapBox's text-padding asks for. 1 keeps the style's own. */
+    labelSpacing?: number;
 }
 
 export function convert(style: MapboxStyle, table: PropertyTable, options: ConvertOptions = {}): ConvertResult {
@@ -265,6 +267,17 @@ function layerDeclarations(
             continue;
         }
 
+        // MapBox pads a label's collision box by text-padding on EVERY side, so two labels end up
+        // at least twice that apart; the culler's minimum-distance is one buffer between the pair.
+        // Dropping it was why a converted style drew far more labels than MapTiler does.
+        if (name === 'text-padding') {
+            const translated = tryTranslate(value, name, layer.id, coverage);
+            if (translated === null) continue;
+            out.push(`text-min-distance: (${labelGap(options)} * ${translated});`);
+            coverage.emit('text-min-distance');
+            continue;
+        }
+
         if (name === 'text-letter-spacing') {
             const spacing = ems(value, layer, coverage, name);
             if (spacing === null) continue;
@@ -329,6 +342,12 @@ function layerDeclarations(
             out.push(`text-placement-priority: ${priority};`);
             coverage.emit('text-placement-priority');
         }
+    }
+
+    // text-padding is 2 px on every layer that states nothing, and the culler's default is 0.
+    if (symbolizer === 'text' && !out.some((d) => d.startsWith('text-min-distance:'))) {
+        out.push(`text-min-distance: ${labelGap(options) * DEFAULT_TEXT_PADDING};`);
+        coverage.emit('text-min-distance');
     }
 
     // MapBox wraps at 10 ems whether or not the layer says so; CartoCSS's wrap-width defaults to 0,
@@ -561,9 +580,20 @@ function placementPriority(layer: MapboxLayer, layerIndex: number, coverage: Cov
     return translated === null ? String(base) : `(${base} - ${translated})`;
 }
 
+/**
+ * What one unit of MapBox's text-padding is worth as a minimum-distance. MapBox pads a label's
+ * collision box on EVERY side, so two labels end up at least twice the padding apart, while
+ * minimum-distance is the one buffer between the pair - hence the 2. --label-spacing scales it for
+ * a map that wants thinning beyond what the style asks for.
+ */
+function labelGap(options: ConvertOptions): number {
+    return 2 * (options.labelSpacing ?? 1);
+}
+
 /** MapBox defaults for a layer that never states them. */
 const DEFAULT_TEXT_SIZE = 16;
 const DEFAULT_TEXT_MAX_WIDTH = 10;
+const DEFAULT_TEXT_PADDING = 2;
 
 /** A value in ems of the layer's own text-size, as the pixels CartoCSS wants. */
 function ems(value: Json, layer: MapboxLayer, coverage: Coverage, from: string): string | null {

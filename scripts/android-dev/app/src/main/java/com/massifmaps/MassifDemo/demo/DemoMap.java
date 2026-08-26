@@ -150,6 +150,7 @@ public class DemoMap {
     private TileDataSource cachedVector;
     private TileDataSource cachedRaster;
     private TileDataSource cachedContourTiles;
+    private TileDataSource cachedLandform;
     private GeoJSONVectorTileDataSource cachedManeuvers;
     private int maneuverLayerIndex = -1;
     private final ManeuverArrowBuilder maneuverBuilder = new ManeuverArrowBuilder();
@@ -396,6 +397,12 @@ public class DemoMap {
             compositeLayer.addVectorDataSource("contour", contourSource());
         } else {
             compositeLayer.removeExternalDataSource("contour");
+        }
+        // landform: a SECOND tileset merged in, for a style whose layers do not all come from one.
+        if (!DemoConfig.LANDFORM_URL.isEmpty()) {
+            compositeLayer.addVectorDataSource(DemoConfig.LANDFORM_SLOT, landformSource());
+        } else if (cachedLandform != null) {
+            compositeLayer.removeExternalDataSource(DemoConfig.LANDFORM_SLOT);
         }
         checkCompositeSlots();
         mapView.requestRender();
@@ -1242,6 +1249,22 @@ public class DemoMap {
     // =============================================================================================
     // SHARED TILE SOURCES (created once, used by several layers)
     // =============================================================================================
+
+    /**
+     * The extra tileset a multi-source style needs. MapTiler's topo draws peaks and volcanoes from
+     * a 'landform' tileset while everything else comes from the planet one, and a z13 planet tile
+     * carries no peak layer at all - which is why they drew nothing until this existed.
+     */
+    public TileDataSource landformSource() {
+        if (cachedLandform == null) {
+            HTTPTileDataSource source = new HTTPTileDataSource(DemoConfig.LANDFORM_MIN_ZOOM, DemoConfig.LANDFORM_MAX_ZOOM, DemoConfig.LANDFORM_URL);
+            source.setHTTPHeaders(userAgentHeaders());
+            PersistentCacheTileDataSource cache = new PersistentCacheTileDataSource(source, cacheDbPath(DemoConfig.LANDFORM_CACHE_DB));
+            cache.setCapacity(DemoConfig.PERSISTENT_CACHE_MB * 1024L * 1024L);
+            cachedLandform = cache;
+        }
+        return cachedLandform;
+    }
 
     /** Master vector tiles of the base map, persistently cached. */
     public TileDataSource vectorSource() {

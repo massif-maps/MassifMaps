@@ -15,13 +15,19 @@ const USAGE = `Usage: massif-style <command> [options] [args]
   mapbox2css <style.json> <out-dir> [--validate] [--strict] [--no-sprite]
                                     [--sprite-key '?key=...']
                                     [--contour-schema div] [--contour-major-div N]
-                                    [--label-spacing N]
+                                    [--label-spacing N] [--schema openmaptiles]
       translate a MapBox/MapLibre style to a CartoCSS project
 
       --sprite-key          query string appended to the style's sprite URLs, for a
                             provider that needs a key
       --label-spacing N     multiply the collision gap between labels; 1 is what the
                             style asks for, higher thins the map out
+      --schema NAME         retarget the style's source layers at another tile schema.
+                            'openmaptiles' rewrites MapTiler planet_v4's per-feature-type
+                            layers (forest, grass, city_label, peak, ...) onto the
+                            OpenMapTiles layer plus the class filter that stands in for
+                            the split. A layer with no equivalent is dropped and named in
+                            the coverage report
       --no-sprite           skip the sprite; every icon-image is then dropped
       --sdf-flatten         resolve SDF icons to plain bitmaps, for an SDK without
                             marker-sdf; loses the zoom-driven size and the halo
@@ -62,7 +68,7 @@ function parseFlags(args: string[]): { flags: Map<string, string>; positional: s
     return { flags, positional };
 }
 
-const VALUE_FLAGS = new Set(['contour-schema', 'contour-major-div', 'sprite-key', 'label-spacing', 'contour-elevation']);
+const VALUE_FLAGS = new Set(['contour-schema', 'contour-major-div', 'sprite-key', 'label-spacing', 'contour-elevation', 'schema']);
 
 async function mapbox2css(args: string[]): Promise<number> {
     const { flags, positional } = parseFlags(args);
@@ -75,6 +81,12 @@ async function mapbox2css(args: string[]): Promise<number> {
     const contourSchema = flags.get('contour-schema');
     if (contourSchema !== undefined && contourSchema !== 'div') {
         process.stderr.write(`Unknown --contour-schema "${contourSchema}"; only "div" is supported.\n`);
+        return 2;
+    }
+
+    const schema = flags.get('schema');
+    if (schema !== undefined && schema !== 'openmaptiles') {
+        process.stderr.write(`Unknown --schema "${schema}"; only "openmaptiles" is supported.\n`);
         return 2;
     }
 
@@ -101,6 +113,7 @@ async function mapbox2css(args: string[]): Promise<number> {
         sprites,
         flattenSdf: flags.has('sdf-flatten'),
         labelSpacing: Number(flags.get('label-spacing') ?? 1),
+        schema: schema === 'openmaptiles' ? 'openmaptiles' : undefined,
         contour: contourSchema === 'div'
             ? {
                 schema: 'div',

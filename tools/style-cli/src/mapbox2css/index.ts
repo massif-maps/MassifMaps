@@ -6,6 +6,7 @@ import { HANDLED_ELSEWHERE, followsLine, repeatsAlongLine, resolvePlacement } fr
 import { KNOWN_GAPS, LAYER_SYMBOLIZER, PROPERTY_MAP, VALUE_MAP } from './properties.js';
 import { PLATE_MAP, asShieldDeclaration, isShieldLayer, plateRadius } from './shield.js';
 import { type ExtractedIcon, type SpriteSet, extractIcon } from './sprite.js';
+import { type Schema, dropMissingFieldTests, mapSourceLayer, withMappingFilter } from './schema.js';
 import { collapseBranches, splitLayer } from './split.js';
 import type { CartoProperty, Json, MapboxLayer, MapboxStyle, PropertyTable } from './types.js';
 
@@ -42,6 +43,8 @@ export interface ConvertOptions {
     flattenSdf?: boolean;
     /** Multiplies the collision gap MapBox's text-padding asks for. 1 keeps the style's own. */
     labelSpacing?: number;
+    /** Retarget the style's source layers at another tile schema - see schema.ts. */
+    schema?: Schema;
 }
 
 export function convert(style: MapboxStyle, table: PropertyTable, options: ConvertOptions = {}): ConvertResult {
@@ -71,19 +74,41 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
             coverage.drop(`layer "${layer.id}"`, 'no source-layer', layer.id);
             return;
         }
-        if (!order.has(sourceLayer)) order.set(sourceLayer, index);
+
+        // Retargeting at another tile schema is a rename plus a filter clause - what the source
+        // schema said by splitting into layers, the target says with a `class` field.
+        let target = sourceLayer;
+        let schemaLayer = layer;
+        if (options.schema) {
+            const { mapping, why } = mapSourceLayer(sourceLayer, options.schema);
+            if (!mapping) {
+                coverage.drop(`source-layer "${sourceLayer}"`, why ?? 'no equivalent', layer.id);
+                return;
+            }
+            target = mapping.layer;
+            const merged = dropMissingFieldTests(withMappingFilter(layer, mapping), mapping.layer, (field) =>
+                coverage.approximate(
+                    `"${field}" test dropped on "${layer.id}": the target schema has no such field, ` +
+                    'and a test on it can only fail, which would draw nothing at all'));
+            if (merged === false) {
+                coverage.drop(`layer "${layer.id}"`, 'its filter can never match the target schema', layer.id);
+                return;
+            }
+            schemaLayer = { ...layer, filter: (merged ?? undefined) as MapboxLayer['filter'] };
+        }
+        if (!order.has(target)) order.set(target, index);
 
         // The contour schemas name the elevation differently; renaming it here means the filter,
         // the label and every paint expression all see the field the tiles actually carry.
         const retargeted = options.contour
-            ? (rewriteContourFields(layer as unknown as Json, options.contour) as unknown as MapboxLayer)
-            : layer;
+            ? (rewriteContourFields(schemaLayer as unknown as Json, options.contour) as unknown as MapboxLayer)
+            : schemaLayer;
 
         // A field-driven paint value becomes one attachment per branch - see split.ts.
-        const variants = splitLayer(isContourLayer(layer) ? retargeted : layer, coverage);
+        const variants = splitLayer(isContourLayer(layer) ? retargeted : schemaLayer, coverage);
         variants.forEach((variant, branch) => {
             const suffix = variants.length > 1 ? `_b${branch + 1}` : '';
-            emitLayer(variant, `${attachmentName(layer.id)}${suffix}`, sourceLayer, symbolizer, index);
+            emitLayer(variant, `${attachmentName(layer.id)}${suffix}`, target, symbolizer, index);
         });
     });
 

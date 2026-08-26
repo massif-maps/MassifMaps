@@ -238,6 +238,37 @@ at the label's own size, which is what stops a repeat of the same name being dra
 tiles cut the same road (`TextSymbolizer`, next section); writing 4 px there disabled the floor. An
 explicit `text-padding` still wins.
 
+## Retargeting at another tile schema (`--schema`)
+
+MapTiler's `planet_v4` splits by **source layer** what OpenMapTiles splits by a **`class` field**: it
+has a `forest` layer and a `grass` layer where OpenMapTiles has one `landcover` with
+`class = 'wood' | 'grass'`. So `--schema openmaptiles` is a rename plus an extra filter clause, per
+layer — the table is in [`schema.ts`](https://github.com/massif-maps/MassifMaps/blob/master/tools/style-cli/src/mapbox2css/schema.ts).
+
+Only what is actually equivalent is listed. A source layer with no entry is **dropped and named in
+the coverage report** rather than guessed at: a wrong guess draws the wrong features, which is worse
+than drawing none and much harder to notice. On MapTiler topo-v4 that leaves two — `archipelago_label`
+and `country_disputed_label`, both of which depend on fields OpenMapTiles has no equivalent for.
+
+**Fields are the second half of the problem, and the harder one.** MapTiler gates every place label
+on `iso_a2`; OpenMapTiles `place` carries `class`, `name` and `rank` and nothing else, so the test
+can only fail and the layer draws nothing at all — strictly worse than not testing. `MISSING_FIELDS`
+lists those per target layer and an existence test on one is dropped and reported. Substituting a
+bare `true` is not enough: `["all", true, …]` is not a filter and the whole layer is then dropped as
+malformed, so the constant is folded into its parent instead, and a filter that collapses to `false`
+drops the layer with that reason.
+
+Verified at La Clusaz z14.5 against an OpenMapTiles tileset: landcover, roads, buildings, water,
+water names, road names, and village *and* hamlet labels all render.
+
+**Draw order is the part that cannot be preserved, and it is separate from placement.** A CartoCSS
+project entry pulls **every attachment of its source-layer** together, so MapBox layers of different
+source-layers that interleave collapse into one block — the converter counts and names them ("N
+layer(s) draw out of order"). `--schema` makes that worse by construction, since many MapBox layers
+now share one target source-layer. Label **placement** does not go through that: the priority is
+computed straight from the MapBox layer index (see below), so which label wins a collision is exact
+even where draw order is approximate.
+
 ## Bracketed predicates, not `when()`
 
 A CartoCSS selector is `*predicate`, and the two spellings cost different things: `[class = 'x']`

@@ -24,7 +24,6 @@ on:
         type: boolean
 
 env:
-  BOOST_VERSION: 1.85.0
   PACKAGE_DIR: tools/style-cli
 
 jobs:
@@ -42,16 +41,13 @@ jobs:
           version: latest
           actions-cache-folder: emsdk-cache
 
-      # Headers only - the tools use boost.spirit and boost::math constants, nothing compiled.
-      # Boost retired boostorg.jfrog.io; archives.boost.io is the current host.
-      - name: Fetch Boost headers
-        run: |
-          BOOST_UNDERSCORE="boost_$(echo "${BOOST_VERSION}" | tr . _)"
-          curl -sSL -o boost.tar.gz \
-            "https://archives.boost.io/release/${BOOST_VERSION}/source/${BOOST_UNDERSCORE}.tar.gz"
-          tar xzf boost.tar.gz
-          ln -s "../${BOOST_UNDERSCORE}" libs-external/boost
-          (cd "${BOOST_UNDERSCORE}" && ./bootstrap.sh && ./b2 headers)
+      # The SAME Boost the SDK builds against (BUILDING.md, build.yml). It has to be: the wasm
+      # compiles the style compiler, and boost.spirit.karma resolves an ambiguous grammar
+      # differently between versions and between compilers - a generator that wrote a nested `or`
+      # without parentheses under emcc, and with them under clang, silently corrupted every
+      # converted style's filters while every native check passed.
+      - name: Prepare Boost
+        uses: ./.github/actions/prepare-boost
 
       - name: Build wasm
         working-directory: libs-massif/cartocss/util

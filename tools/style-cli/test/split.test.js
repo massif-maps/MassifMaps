@@ -71,6 +71,20 @@ test('a colour with no fallback to fall back to is dropped, not emitted', () => 
     assert.ok(coverage.report().includes('reads a feature field'));
 });
 
+test('a zoom-driven TEXT becomes zoom bands, because a string keyframe reads as a colour', () => {
+    // InterpolateExpression treats any string keyframe as a colour, so MapTiler's
+    // `step(zoom, [name], 15, concat(...))` had the decoder parsing "Beauregard" as one and losing
+    // the whole rule - every lift station and peak label with it.
+    const layer = { id: 's', type: 'symbol', 'source-layer': 'poi_station', layout: {
+        'text-field': ['step', ['zoom'], ['get', 'name'], 15, ['concat', ['get', 'name'], ' m']] } };
+    const out = convert({ layers: [layer] }, TABLE).mss;
+    assert.ok(!/text-name: step\(/.test(out), 'a text ramp must not survive as an interpolation');
+    assert.match(out, /#poi_station\[zoom >= 0\]\[zoom < 15\]/);
+    assert.match(out, /#poi_station\[zoom >= 15\]/);
+    assert.match(out, /text-name: \[name\];/);
+    assert.match(out, /text-name: concat\(\[name\], ' m'\);/);
+});
+
 test('a zoom-driven sprite name becomes one attachment per zoom band', () => {
     // A town's circle: `{stops: [[6, 'circle'], [12, ' ']]}` names one file per band, never a blend.
     const blocks = convert({ layers: [{

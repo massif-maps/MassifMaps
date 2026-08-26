@@ -182,24 +182,34 @@ export function splitLayer(layer: MapboxLayer, coverage: Coverage): MapboxLayer[
  * dot back under a town name up to the zoom the style drops it at.
  */
 function splitIconByZoom(layer: MapboxLayer): MapboxLayer[] {
-    const image = layer.layout?.['icon-image'];
-    const bands = zoomBandsOf(image as Json);
-    if (!bands) return [layer];
-
-    return bands
-        .map(({ from, to, value }) => ({
-            ...layer,
-            minzoom: Math.max(from, layer.minzoom ?? 0),
-            maxzoom: Math.min(to, layer.maxzoom ?? 24),
-            layout: { ...layer.layout, 'icon-image': value },
-        }))
-        .filter((variant) => variant.minzoom < variant.maxzoom);
+    for (const name of ZOOM_BANDED) {
+        const bands = zoomBandsOf(layer.layout?.[name] as Json, name === 'icon-image');
+        if (!bands) continue;
+        return bands
+            .map(({ from, to, value }) => ({
+                ...layer,
+                minzoom: Math.max(from, layer.minzoom ?? 0),
+                maxzoom: Math.min(to, layer.maxzoom ?? 24),
+                layout: { ...layer.layout, [name]: value },
+            }))
+            .filter((variant) => variant.minzoom < variant.maxzoom);
+    }
+    return [layer];
 }
+
+/**
+ * Properties whose value is a NAME or a TEXT rather than a number, and which a style may still
+ * ramp over zoom. Neither can interpolate, and `InterpolateExpression` reads a string keyframe as
+ * a COLOUR - so `step(zoom, [name], 15, concat(...))` had the decoder trying to parse "Beauregard"
+ * as a colour and losing the whole rule. One attachment per band says the same thing in a form the
+ * renderer has.
+ */
+const ZOOM_BANDED = ['icon-image', 'text-field'];
 
 interface ZoomBand { from: number; to: number; value: Json }
 
 /** The zoom bands of a step/stops expression, or null when it is not one. */
-function zoomBandsOf(value: Json): ZoomBand[] | null {
+function zoomBandsOf(value: Json, requireString: boolean): ZoomBand[] | null {
     const stops: Array<[number, Json]> = [];
 
     if (Array.isArray(value) && value[0] === 'step'
@@ -214,7 +224,8 @@ function zoomBandsOf(value: Json): ZoomBand[] | null {
         return null;
     }
 
-    if (!stops.every(([z, v]) => typeof z === 'number' && typeof v === 'string')) return null;
+    if (!stops.every(([z]) => typeof z === 'number')) return null;
+    if (requireString && !stops.every(([, v]) => typeof v === 'string')) return null;
     return stops.map(([from, value], i) => ({ from, to: stops[i + 1]?.[0] ?? 24, value }));
 }
 

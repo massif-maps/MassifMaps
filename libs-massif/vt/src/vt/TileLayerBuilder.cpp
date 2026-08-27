@@ -584,8 +584,8 @@ namespace massif::vt {
             transform = Transform::fromMatrix2Translate(matrix, translate);
         }
 
-        if (!_labelStyle || _labelStyle->orientation != style.orientation || _labelStyle->colorFunc != style.colorFunc || _labelStyle->sizeFunc != style.sizeFunc || _labelStyle->haloColorFunc != style.haloColorFunc || _labelStyle->haloRadiusFunc != style.haloRadiusFunc || _labelStyle->autoflip != style.autoflip || _labelStyle->scale != scale || _labelStyle->ascent != 0.0f || _labelStyle->descent != 0.0f || _labelStyle->transform != transform || _labelStyle->glyphMap != glyphMap || _labelStyle->maxDistance != style.maxDistance || _labelStyle->occlusionOpacity != style.occlusionOpacity) {
-            auto labelStyle = std::make_shared<TileLabel::Style>(style.orientation, style.colorFunc, style.sizeFunc, style.haloColorFunc, style.haloRadiusFunc, style.autoflip, scale, 0.0f, 0.0f, transform, glyphMap, 27, style.maxDistance);
+        if (!_labelStyle || _labelStyle->orientation != style.orientation || _labelStyle->colorFunc != style.colorFunc || _labelStyle->sizeFunc != style.sizeFunc || _labelStyle->haloColorFunc != style.haloColorFunc || _labelStyle->haloRadiusFunc != style.haloRadiusFunc || _labelStyle->autoflip != style.autoflip || _labelStyle->scale != scale || _labelStyle->ascent != 0.0f || _labelStyle->descent != 0.0f || _labelStyle->transform != transform || _labelStyle->glyphMap != glyphMap || _labelStyle->maxDistance != style.maxDistance || _labelStyle->occlusionOpacity != style.occlusionOpacity || _labelStyle->rankFunc != style.rankFunc) {
+            auto labelStyle = std::make_shared<TileLabel::Style>(style.orientation, style.colorFunc, style.sizeFunc, style.haloColorFunc, style.haloRadiusFunc, style.autoflip, scale, 0.0f, 0.0f, transform, glyphMap, 27, style.maxDistance, std::optional<ColorFunction>(), style.rankFunc);
             labelStyle->occlusionOpacity = style.occlusionOpacity; // not in the ctor: its signature is long enough
             _labelStyle = labelStyle;
         }

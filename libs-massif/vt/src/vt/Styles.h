@@ -210,6 +210,9 @@ namespace massif::vt {
         bool sdfMode = false;
         ColorFunction haloColorFunc; // sdfMode only - a bitmap has no field to grow a halo from
         FloatFunction haloRadiusFunc;
+        // Added to the placement priority by the culler, once per label and per pass - see
+        // TextLabelStyle::rankFunc.
+        FloatFunction rankFunc = FloatFunction(0.0f);
 
         explicit PointLabelStyle(LabelOrientation orientation, ColorFunction colorFunc, FloatFunction sizeFunc, bool autoflip, std::shared_ptr<const BitmapImage> image, const std::optional<Transform>& transform, float maxDistance = 0.0f, bool sdfMode = false, ColorFunction haloColorFunc = ColorFunction(), FloatFunction haloRadiusFunc = FloatFunction()) : orientation(orientation), colorFunc(std::move(colorFunc)), sizeFunc(std::move(sizeFunc)), autoflip(autoflip), image(std::move(image)), transform(transform), maxDistance(maxDistance), sdfMode(sdfMode), haloColorFunc(std::move(haloColorFunc)), haloRadiusFunc(std::move(haloRadiusFunc)) { }
     };

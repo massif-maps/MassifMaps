@@ -29,6 +29,7 @@ namespace massif::mvt {
             bindProperty("stroke-width", &_strokeWidth, true); // drawn into the generated bitmap
             bindProperty("spacing", &_spacing);
             bindProperty("placement-priority", &_placementPriority);
+            bindProperty("rank", &_rank);
             bindProperty("max-distance", &_maxDistance);
             bindProperty("allow-overlap", &_allowOverlap);
             bindProperty("allow-overlap-same-feature-id", &_allowOverlapSameFeatureId);
@@ -78,6 +79,9 @@ namespace massif::mvt {
         FloatFunctionProperty _strokeWidth = FloatFunctionProperty(0.5f);
         FloatProperty _spacing = FloatProperty(100.0f);
         FloatProperty _placementPriority = FloatProperty(0.0f);
+        // Added to placement-priority by the culler, once per label and per placement pass, so the
+        // expression can read view::distance - see TextSymbolizer::_rank.
+        FloatFunctionProperty _rank = FloatFunctionProperty(0.0f);
         FloatProperty _maxDistance = FloatProperty(0.0f); // meters from the camera; 0 = no limit
         BoolProperty _allowOverlap = BoolProperty(false);
         BoolProperty _clip = BoolProperty(false);

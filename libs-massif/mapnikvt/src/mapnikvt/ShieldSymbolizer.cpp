@@ -169,6 +169,7 @@ namespace massif::mvt {
         float minimumDistance = _minimumDistance.getValue(exprContext);
         float maxDistance = _maxDistance.getValue(exprContext);
         float placementPriority = _placementPriority.getValue(exprContext);
+        vt::FloatFunction rankFunc = _rank.getFunction(exprContext);
         float orientationAngle = _orientationAngle.getValue(exprContext);
         float sizeStatic = _size.getStaticValue(exprContext);
         bool unlockImage = _unlockImage.getValue(exprContext);
@@ -303,8 +304,8 @@ namespace massif::mvt {
             };
         }
 
-        return [compOp, fillFunc, haloFillFunc, sizeFunc, haloRadiusFunc, fontScale, repeatAlongLine, billboardRepeat, orientation, text, hash, orientationAngle, formatter, backgroundOffset, backgroundImage, sdfMode, spacing, textSize, tileId, tileSize, labelIdOverride, groupId, placementPriority, minimumDistance, maxDistance, anchors, textOptional, iconGlyphs, iconColorFunc, textLineAlign, textPlate, iconPlate, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
-            vt::TextLabelStyle style(orientation, fillFunc, sizeFunc, haloFillFunc, haloRadiusFunc, true, orientationAngle, fontScale, backgroundOffset, backgroundImage, maxDistance);
+        return [compOp, fillFunc, haloFillFunc, sizeFunc, haloRadiusFunc, fontScale, repeatAlongLine, billboardRepeat, orientation, text, hash, orientationAngle, formatter, backgroundOffset, backgroundImage, sdfMode, spacing, textSize, tileId, tileSize, labelIdOverride, groupId, placementPriority, rankFunc, minimumDistance, maxDistance, anchors, textOptional, iconGlyphs, iconColorFunc, textLineAlign, textPlate, iconPlate, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
+            vt::TextLabelStyle style(orientation, fillFunc, sizeFunc, haloFillFunc, haloRadiusFunc, true, orientationAngle, fontScale, backgroundOffset, backgroundImage, maxDistance, std::optional<vt::ColorFunction>(), rankFunc);
             style.backgroundSdf = sdfMode;
             style.anchors = anchors;
             style.textOptional = textOptional;

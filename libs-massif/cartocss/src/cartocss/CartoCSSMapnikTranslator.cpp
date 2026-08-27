@@ -814,6 +814,7 @@ namespace massif::css {
         { "shield-horizontal-alignment", "horizontal-alignment" },
         { "shield-vertical-alignment", "vertical-alignment" },
         { "shield-placement-priority", "placement-priority" },
+        { "shield-rank", "rank" },
         { "shield-comp-op", "comp-op" },
         { "shield-clip", "clip" },
 
@@ -836,6 +837,7 @@ namespace massif::css {
         { "marker-same-feature-id-dependent", "same-feature-id-dependent" },
         { "marker-ignore-placement", "ignore-placement" },
         { "marker-placement-priority", "placement-priority" },
+        { "marker-rank", "rank" },
         { "marker-max-distance", "max-distance" },
         { "marker-transform", "transform" },
         { "marker-sdf", "sdf" },

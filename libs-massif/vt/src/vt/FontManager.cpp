@@ -19,6 +19,7 @@
 #include <freetype/ftmodapi.h>
 #include <freetype/ftmm.h>
 #include <freetype/ftoutln.h>
+#include <freetype/tttables.h>
 
 #include <hb.h>
 #include <hb-ft.h>
@@ -149,6 +150,30 @@ namespace massif::vt {
         return remaining;
     }
 
+    /**
+     * What the loaded FACE already is, taken off what the NAME asked for, so only the shortfall is
+     * synthesised. A family shipping a real DINPro-Bold.woff2 was emboldened on top of it: the name
+     * "DIN Pro Bold" parses to weight 700, a static face has no axis to satisfy that, and every
+     * glyph then went through FT_Outline_Embolden anyway - double bold, and a real italic file
+     * sheared a second time on top of its own slant.
+     */
+    FontStyle subtractFaceStyle(FT_Face face, const FontStyle& style) {
+        FontStyle remaining = style;
+        if (remaining.italic && (face->style_flags & FT_STYLE_FLAG_ITALIC)) {
+            remaining.italic = false;
+        }
+        // OS/2 carries the real weight (500 for a Medium file); the style flag only knows bold.
+        int faceWeight = (face->style_flags & FT_STYLE_FLAG_BOLD) ? 700 : 400;
+        if (const TT_OS2* os2 = static_cast<const TT_OS2*>(FT_Get_Sfnt_Table(face, FT_SFNT_OS2))) {
+            if (os2->version != 0xffff && os2->usWeightClass >= 100 && os2->usWeightClass <= 1000) {
+                faceWeight = os2->usWeightClass;
+            }
+        }
+        // Only the difference is drawn on, and only upwards - there is no way to thin an outline.
+        remaining.weight = remaining.weight > faceWeight ? 400 + (remaining.weight - faceWeight) : 0;
+        return remaining;
+    }
+
     class FontManagerFont : public Font {
     public:
         explicit FontManagerFont(const std::shared_ptr<FontManagerLibrary>& library, const std::string& name, const std::shared_ptr<GlyphMap>& glyphMap, const std::vector<unsigned char>* data, const std::shared_ptr<const Font>& baseFont, int glyphRenderSize) : _library(library), _name(name), _baseFont(baseFont), _glyphMap(glyphMap), _glyphRenderSize(glyphRenderSize), _face(nullptr), _font(nullptr) {
@@ -161,7 +186,7 @@ namespace massif::vt {
                     int renderSize = _glyphRenderSize - GLYPH_RENDER_SPREAD;
                     error = FT_Set_Char_Size(_face, 0, static_cast<int>(renderSize * 64.0f), 0, 0);
                     // Whatever the face has no axis for is synthesised per glyph.
-                    _synthesized = applyVariationAxes(_library->getLibrary(), _face, parseFontStyle(name));
+                    _synthesized = subtractFaceStyle(_face, applyVariationAxes(_library->getLibrary(), _face, parseFontStyle(name)));
                 }
             }
 

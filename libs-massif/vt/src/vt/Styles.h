@@ -274,6 +274,16 @@ namespace massif::vt {
         std::vector<Font::Glyph> iconGlyphs;
         // Own colour for the icon run; unset leaves it the label's fill.
         std::optional<ColorFunction> iconColorFunc;
+        // The icon run's OWN halo - mapbox's icon-halo-*. Set after construction, like
+        // occlusionOpacity: the constructor's signature is long enough. Unset draws no icon halo;
+        // the text's halo is never borrowed for it, because an icon's distance field carries only
+        // a few texels outside the ink and a text-sized halo runs straight past them.
+        std::optional<ColorFunction> iconHaloColorFunc;
+        std::optional<FloatFunction> iconHaloRadiusFunc;
+        // The icon's own size ramp, and the value it was BAKED at. mapbox animates icon-size
+        // independently of text-size, so the draw re-scales by the ratio of the two.
+        std::optional<FloatFunction> iconScaleFunc;
+        float iconRefScale = 0.0f;
 
         explicit TextLabelStyle(LabelOrientation orientation, ColorFunction colorFunc, FloatFunction sizeFunc, ColorFunction haloColorFunc, FloatFunction haloRadiusFunc, bool autoflip, float angle, float backgroundScale, const cglib::vec2<float>& backgroundOffset, std::shared_ptr<const BitmapImage> backgroundImage, float maxDistance = 0.0f, const std::optional<ColorFunction>& secondaryColorFunc = std::optional<ColorFunction>(), FloatFunction rankFunc = FloatFunction(0.0f), float calloutScreenAnchor = -1.0f, float calloutOffset = 0.0f, float calloutStep = 0.0f, int calloutMaxRows = 8, int calloutPersistPasses = 0, float calloutLineWidth = 1.0f, const std::optional<cglib::vec2<float>>& calloutLineAnchor = std::optional<cglib::vec2<float>>(), const std::optional<cglib::vec2<float>>& calloutBandAnchor = std::optional<cglib::vec2<float>>(), const LabelPlateStyle& textPlate = LabelPlateStyle(), const LabelPlateStyle& iconPlate = LabelPlateStyle(), LabelLineAlign textLineAlign = LabelLineAlign::CENTER, std::vector<LabelAnchor> anchors = std::vector<LabelAnchor>(), bool textOptional = false, std::vector<Font::Glyph> iconGlyphs = std::vector<Font::Glyph>(), const std::optional<ColorFunction>& iconColorFunc = std::optional<ColorFunction>()) : orientation(orientation), colorFunc(std::move(colorFunc)), sizeFunc(std::move(sizeFunc)), haloColorFunc(std::move(haloColorFunc)), haloRadiusFunc(std::move(haloRadiusFunc)), autoflip(autoflip), angle(angle), backgroundScale(backgroundScale), backgroundOffset(backgroundOffset), backgroundImage(std::move(backgroundImage)), maxDistance(maxDistance), secondaryColorFunc(secondaryColorFunc), rankFunc(std::move(rankFunc)), calloutScreenAnchor(calloutScreenAnchor), calloutOffset(calloutOffset), calloutStep(calloutStep), calloutMaxRows(calloutMaxRows), calloutPersistPasses(calloutPersistPasses), calloutLineWidth(calloutLineWidth), calloutLineAnchor(calloutLineAnchor), calloutBandAnchor(calloutBandAnchor), textPlate(textPlate), iconPlate(iconPlate), textLineAlign(textLineAlign), anchors(std::move(anchors)), textOptional(textOptional), iconGlyphs(std::move(iconGlyphs)), iconColorFunc(iconColorFunc) { }
     };

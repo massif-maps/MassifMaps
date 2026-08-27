@@ -65,13 +65,17 @@ namespace {
     // derived from the sign of dx, which means nothing once dx is a gap.
     static std::vector<massif::vt::TileLabel::Variant> buildLabelVariants(const std::vector<massif::vt::LabelAnchor>& anchors, massif::vt::LabelLineAlign lineAlign, bool textOptional, bool hasIcon, const std::vector<massif::vt::Font::Glyph>& glyphs, const cglib::vec2<float>& iconExtent, const cglib::vec2<float>& styleOffset) {
         std::vector<massif::vt::TileLabel::Variant> variants;
-        if (anchors.empty()) {
+        // 'text-optional' is a layout list on its own: no side to try, but still the icon alone as
+        // a last resort. Most mapbox styles set it WITHOUT a variable anchor, and returning here on
+        // an empty anchor list dropped their POI icons with the names the culler could not fit.
+        bool iconAlone = textOptional && hasIcon;
+        if (anchors.empty() && !iconAlone) {
             return variants;
         }
 
         cglib::bbox2<float> textBBox = measureGlyphRun(glyphs, true);
         if (textBBox.min(0) > textBBox.max(0)) {
-            return variants; // no text to move
+            return variants; // no text to move, and none to make optional either
         }
         // The box as it would be with no dx/dy, so that the offset can be re-applied per side.
         cglib::vec2<float> boxMin = textBBox.min - styleOffset;
@@ -95,7 +99,11 @@ namespace {
             }
             variants.emplace_back(desired - styleOffset, true, resolveLineAlign(lineAlign, dir));
         }
-        if (textOptional && hasIcon) {
+        if (anchors.empty()) {
+            // The style's own layout, spelled as a variant so the icon-only one can follow it.
+            variants.emplace_back(cglib::vec2<float>(0, 0), true, resolveLineAlign(lineAlign, cglib::vec2<float>(0, 0)));
+        }
+        if (iconAlone) {
             variants.emplace_back(cglib::vec2<float>(0, 0), false);
         }
         return variants;
@@ -167,17 +175,29 @@ namespace {
             return it->second;
         }
 
-        int size = std::max(4, radius * 2 + 2) + 2;
+        // The cell is drawn at SUPERSAMPLE texels per style pixel. At one texel per pixel a plate is
+        // upscaled by the display's pixel ratio before it reaches the screen, and linear filtering
+        // turned a 1 px border into a soft 3 px smear and rounded off the corner arcs. The margin
+        // stays ONE texel wide either way - appendPlate insets by exactly one.
+        const int SUPERSAMPLE = 4;
+        int shape = std::max(4, radius * 2 + 2) * SUPERSAMPLE;
+        int size = shape + 2;
         std::vector<std::uint32_t> data(static_cast<std::size_t>(size) * size);
-        float r = static_cast<float>(radius);
-        float b = static_cast<float>(borderWidth);
+        float r = static_cast<float>(radius * SUPERSAMPLE);
+        float b = static_cast<float>(borderWidth * SUPERSAMPLE);
         float hi = static_cast<float>(size - 2); // the shape spans [1, size - 2]
         for (int y = 0; y < size; y++) {
             for (int x = 0; x < size; x++) {
                 float fx = static_cast<float>(x), fy = static_cast<float>(y);
                 float alpha = roundedRectCoverage(fx, fy, 1.0f, 1.0f, hi, hi, r);
                 if (borderWidth > 0) {
-                    alpha = std::max(0.0f, alpha - roundedRectCoverage(fx, fy, 1.0f + b, 1.0f + b, hi - b, hi - b, std::max(0.0f, r - b)));
+                    // The ring reaches half a pixel FURTHER IN than the fill it frames. Ending it
+                    // exactly on the fill's edge left the two antialiased ramps to sum to less than
+                    // opaque, which read as a hole between plate and border; the overlap is hidden
+                    // under the fill.
+                    float overlap = SUPERSAMPLE * 0.5f;
+                    float inset = b + overlap;
+                    alpha = std::max(0.0f, alpha - roundedRectCoverage(fx, fy, 1.0f + inset, 1.0f + inset, hi - inset, hi - inset, std::max(0.0f, r - inset)));
                 }
                 std::uint32_t a = static_cast<std::uint32_t>(alpha * 255.0f + 0.5f);
                 data[static_cast<std::size_t>(y) * size + x] = (a << 24) | (a << 16) | (a << 8) | a; // premultiplied white
@@ -696,6 +716,11 @@ namespace massif::vt {
             TileLabel::Style::Plate iconPlate = resolvePlate(style.iconPlate);
             auto labelStyle = std::make_shared<TileLabel::Style>(style.orientation, style.colorFunc, style.sizeFunc, style.haloColorFunc, style.haloRadiusFunc, style.autoflip, scale, metrics.ascent, metrics.descent, transform, font->getGlyphMap(), glyphRenderSize, style.maxDistance, style.secondaryColorFunc, style.rankFunc, style.calloutScreenAnchor, style.calloutOffset, style.calloutStep, style.calloutMaxRows, style.calloutPersistPasses, style.calloutLineWidth, style.calloutLineAnchor, style.calloutBandAnchor, calloutLineGlyph, textPlate, iconPlate, resolveLineAlign(style.textLineAlign, cglib::vec2<float>(0, 0)), style.iconColorFunc);
             labelStyle->occlusionOpacity = style.occlusionOpacity; // not in the ctor: its signature is long enough
+            labelStyle->iconHaloColorFunc = style.iconHaloColorFunc;
+            labelStyle->iconHaloRadiusFunc = style.iconHaloRadiusFunc;
+            labelStyle->iconRefSize = formatter.getFontSize();
+            labelStyle->iconScaleFunc = style.iconScaleFunc;
+            labelStyle->iconRefScale = style.iconRefScale;
             _labelStyle = labelStyle;
         }
 
@@ -712,6 +737,9 @@ namespace massif::vt {
             if (baseGlyph) {
                 float imageScale = style.backgroundImage->scale / formatter.getFontSize();
                 iconGlyphs.emplace_back(0, Font::NULL_CODEPOINT, *baseGlyph, cglib::vec2<float>(baseGlyph->width, baseGlyph->height) * (style.backgroundScale * imageScale), style.backgroundOffset * imageScale, cglib::vec2<float>(baseGlyph->width, 0) * imageScale);
+                // Marks it as the icon run so it takes iconColorFunc. Left off, an SDF image was
+                // tinted with the TEXT fill: a white city dot drew near-black over its own name.
+                iconGlyphs.back().icon = true;
             }
         }
         iconGlyphs.insert(iconGlyphs.end(), style.iconGlyphs.begin(), style.iconGlyphs.end());
@@ -1277,10 +1305,21 @@ namespace massif::vt {
         float u0 = 0.0f, v0 = 0.0f;
         float du_dx = 0.0f, dv_dy = 0.0f;
         if (style.pattern) {
-            u0 = static_cast<float>(std::fmod((_tileId.x + 0.5) * _tileSize, style.pattern->bitmap->width))  / style.pattern->widthScale;
-            v0 = static_cast<float>(std::fmod((_tileId.y + 0.5) * _tileSize, style.pattern->bitmap->height)) / style.pattern->heightScale;
             du_dx = _tileSize / style.pattern->widthScale;
             dv_dy = _tileSize / style.pattern->heightScale;
+            // The tile's own phase, so the pattern runs on across a tile border. Wrapped at ONE
+            // PERIOD, which is bitmap->width * widthScale in these texcoord units: the fragment
+            // stage samples uPattern at texCoord / (texCoordScale * widthScale), and texCoordScale
+            // - only the int16 packing scale - cancels. Wrapping at the BITMAP WIDTH instead left a
+            // fraction of a period at every border, and MapTiler's construction hatch spans 18.2
+            // periods per tile, so a fifth of one was dropped each time. Accumulated in DOUBLE: a
+            // z21 tile index reaches 2^21 and a float step loses the remainder well before that.
+            // Only visible at high overzoom, where a tile is a few hundred pixels and those borders
+            // fall all over a single polygon.
+            double uPeriod = static_cast<double>(style.pattern->bitmap->width) * style.pattern->widthScale;
+            double vPeriod = static_cast<double>(style.pattern->bitmap->height) * style.pattern->heightScale;
+            u0 = static_cast<float>(std::fmod((_tileId.x + 0.5) * static_cast<double>(du_dx), uPeriod));
+            v0 = static_cast<float>(std::fmod((_tileId.y + 0.5) * static_cast<double>(dv_dy), vPeriod));
         }
 
         std::size_t offset = _coords.size();

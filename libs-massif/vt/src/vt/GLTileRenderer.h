@@ -532,15 +532,16 @@ namespace massif::vt {
         // ~800 entries and 0.5-0.9 ms a frame - and all it buys is releasing a VBO a few
         // frames earlier.
         static constexpr int RESOURCE_SWEEP_INTERVAL_FRAMES = 8;
-        static constexpr float HALO_RADIUS_SCALE = 2.5f; // the scaling factor for halo radius
-        // Screen pixels per halo unit. The halo used to be converted with the glyph's RENDER size,
-        // which was one constant when every glyph was rastered at 27 texels; the raster ladder made
-        // it 24, 36 or 48, so the same style drew a halo twice as wide on a small label as on a
-        // large one and up to five times what it drew before (docs/rendering/06-labels.md). The
-        // conversion belongs to the antialias ramp - one screen pixel - and this is the width the
-        // single-raster build gave: 27 / (32 * GLYPH_SDF_UNIT_then * 23), with the spread of 4 it
-        // had. Kept so no style has to be retouched.
-        static constexpr float HALO_PIXELS_PER_UNIT = 0.589f;
+        // Widest halo the encoded field can describe, in screen pixels. Past this the field has
+        // run out and the halo stops growing whatever the style asks - it is the old
+        // GLYPH_RENDER_SPREAD cap, carried over unchanged.
+        static constexpr float MAX_HALO_PIXELS = 4.7f;
+        // An ICON carries a padded field (the converter continues the ramp outward past the ink), so
+        // its halo can run further than a font glyph's - mapbox's icon-halo-width 3 is 7.8 device
+        // pixels on a 2.6x screen and the glyph cap clipped it. Not much further, though: the
+        // encoding runs out at 127.5/16 ~ 8 texels, and past that the quad's own edge reads as
+        // inside and draws as straight white lines across it.
+        static constexpr float MAX_ICON_HALO_PIXELS = 8.0f;
         static constexpr float STROKE_UV_SCALE = 2.857f; // stroked line UV scale factor
         static constexpr float TERRAIN_LAYER_DEPTH_DELTA = 1.0f / 524288.0f; // 2^-19: NDC depth separation per draped layer bias unit (GPU terrain draping mode)
         // The FLOOR of a proxy tile's depth, tangram's `1` in
@@ -715,7 +716,7 @@ namespace massif::vt {
 
         const CompiledBitmap& buildCompiledBitmap(const std::shared_ptr<const Bitmap>& bitmap, bool genMipmaps);
         const CompiledBitmap& buildCompiledTileBitmap(const std::shared_ptr<TileBitmap>& tileBitmap);
-        const CompiledGeometry& buildCompiledTileGeometry(const std::shared_ptr<TileGeometry>& tileGeometry);
+        const CompiledGeometry* buildCompiledTileGeometry(const std::shared_ptr<TileGeometry>& tileGeometry);
         // id must be a string LITERAL: its address is the identity in the front cache below.
         const ShaderProgram& buildShaderProgram(const char* id, const std::string& vsh, const std::string& fsh, LightingMode lightingMode, RasterFilterMode filterMode, unsigned int flags);
         const std::vector<std::shared_ptr<TileSurface>>& buildCompiledTerrainGridSurfaces();

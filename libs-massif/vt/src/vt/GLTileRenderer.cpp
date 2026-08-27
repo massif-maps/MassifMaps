@@ -2595,9 +2595,14 @@ namespace massif::vt {
             }
         }
         for (int pass = 0; pass < 2; pass++) {
+            // DRAW order, so the list runs bottom to top: what is drawn last is on top. The
+            // culler's order is the opposite - it places the most important label FIRST, to claim
+            // its slot (LabelCuller::process) - and this list used to copy it, which put the LEAST
+            // important of an overlapping pair on top. A road name covering the town name it
+            // crosses was that, and the layerIndex tie-break right below already ran this way.
             std::stable_sort(passLabels[pass]->begin(), passLabels[pass]->end(), [](const std::shared_ptr<Label>& label1, const std::shared_ptr<Label>& label2) {
                 if (label1->getPriority() != label2->getPriority()) {
-                    return label1->getPriority() > label2->getPriority();
+                    return label1->getPriority() < label2->getPriority();
                 }
                 if (label1->getLayerIndex() != label2->getLayerIndex()) {
                     return label1->getLayerIndex() < label2->getLayerIndex();
@@ -3440,6 +3445,7 @@ namespace massif::vt {
         LabelPlateIndices plateIndices;
         int secondaryStyleIndex = -1;
         int iconStyleIndex = -1;
+        int iconHaloStyleIndex = -1;
         for (const std::shared_ptr<Label>& label : labels) {
             if (!label->isValid()) {
                 continue;
@@ -3460,13 +3466,10 @@ namespace massif::vt {
                 cglib::vec4<float> color = cglib::vec4<float>(evaluateColorFunc(labelStyle->colorFunc).rgba());
                 float size = evaluateFloatFunc(labelStyle->sizeFunc);
                 cglib::vec4<float> haloColor = cglib::vec4<float>(evaluateColorFunc(labelStyle->haloColorFunc).rgba());
-                float haloRadius = evaluateFloatFunc(labelStyle->haloRadiusFunc) * HALO_RADIUS_SCALE;
-                haloRadius = std::min(haloRadius, static_cast<float>(GLYPH_RENDER_SPREAD));
-                // In SCREEN PIXELS from here on: labelFsh measures the halo against the same one
-                // screen pixel the antialias ramp is, so it no longer depends on which raster size
-                // the label landed on. The clamp above stays where it was - it is the point past
-                // which the encoded field runs out, and it is what a style's widest halo met before.
-                haloRadius *= HALO_PIXELS_PER_UNIT;
+                // Already in SCREEN PIXELS: the symbolizer scaled the style's radius by the pixel
+                // scale, and labelFsh measures the halo against the same one screen pixel the
+                // antialias ramp is. The cap is where the encoded field runs out.
+                float haloRadius = std::min(evaluateFloatFunc(labelStyle->haloRadiusFunc), MAX_HALO_PIXELS);
 
                 // Up to four plates: a fill and a border behind the text, and the same behind the
                 // icon. Each colour is one more slot in the batch, exactly like the halo.
@@ -3485,10 +3488,14 @@ namespace massif::vt {
                 // And so may the icon run - a font icon in its own colour next to the name.
                 bool hasIconColor = static_cast<bool>(labelStyle->iconColorFunc);
                 cglib::vec4<float> iconColor = hasIconColor ? cglib::vec4<float>(evaluateColorFunc(*labelStyle->iconColorFunc).rgba()) : color;
+                // And its own halo - an icon never takes the text's (see Label::appendLabelPlates).
+                float iconHaloRadius = labelStyle->iconHaloRadiusFunc ? std::min(evaluateFloatFunc(*labelStyle->iconHaloRadiusFunc), MAX_ICON_HALO_PIXELS) : 0.0f;
+                bool hasIconHalo = iconHaloRadius > 0.0f && labelStyle->iconHaloColorFunc;
+                cglib::vec4<float> iconHaloColor = hasIconHalo ? cglib::vec4<float>(evaluateColorFunc(*labelStyle->iconHaloColorFunc).rgba()) : color;
                 // The style layer's own occluded opacity, or this layer's default where it sets
                 // none - and a batch carries one, so a change ends it like a change of atlas does.
                 float labelOcclusionOpacity = labelStyle->occlusionOpacity.value_or(_labelOcclusionOpacity);
-                if (bitmap != labelBitmap || labelBatchParams.occlusionOpacity != labelOcclusionOpacity || labelBatchParams.scale != labelStyle->scale || labelBatchParams.glyphRenderSize != labelStyle->glyphRenderSize || labelBatchParams.parameterCount + 2 + plateCount + (hasSecondaryColor ? 1 : 0) + (hasIconColor ? 1 : 0) > LabelBatchParameters::MAX_PARAMETERS) {
+                if (bitmap != labelBitmap || labelBatchParams.occlusionOpacity != labelOcclusionOpacity || labelBatchParams.scale != labelStyle->scale || labelBatchParams.glyphRenderSize != labelStyle->glyphRenderSize || labelBatchParams.parameterCount + 2 + plateCount + (hasSecondaryColor ? 1 : 0) + (hasIconColor ? 1 : 0) + (hasIconHalo ? 1 : 0) > LabelBatchParameters::MAX_PARAMETERS) {
                     renderLabelBatch(labelBatchParams, bitmap);
                     bitmap = labelBitmap;
                     labelBatchParams.labelCount = 0;
@@ -3503,6 +3510,7 @@ namespace massif::vt {
                     plateIndices = LabelPlateIndices();
                     secondaryStyleIndex = -1;
                     iconStyleIndex = -1;
+                    iconHaloStyleIndex = -1;
                 } else {
                     for (styleIndex = labelBatchParams.parameterCount; --styleIndex >= 0; ) {
                         if (labelBatchParams.colorTable[styleIndex] == color && labelBatchParams.widthTable[styleIndex] == size && labelBatchParams.strokeWidthTable[styleIndex] == 0) {
@@ -3567,6 +3575,21 @@ namespace massif::vt {
                     }
                 }
 
+                iconHaloStyleIndex = -1;
+                if (hasIconHalo) {
+                    for (iconHaloStyleIndex = labelBatchParams.parameterCount; --iconHaloStyleIndex >= 0; ) {
+                        if (labelBatchParams.colorTable[iconHaloStyleIndex] == iconHaloColor && labelBatchParams.widthTable[iconHaloStyleIndex] == size && labelBatchParams.strokeWidthTable[iconHaloStyleIndex] == iconHaloRadius) {
+                            break;
+                        }
+                    }
+                    if (iconHaloStyleIndex < 0) {
+                        iconHaloStyleIndex = labelBatchParams.parameterCount++;
+                        labelBatchParams.colorTable[iconHaloStyleIndex] = iconHaloColor;
+                        labelBatchParams.widthTable[iconHaloStyleIndex] = size;
+                        labelBatchParams.strokeWidthTable[iconHaloStyleIndex] = iconHaloRadius;
+                    }
+                }
+
                 iconStyleIndex = -1;
                 if (hasIconColor) {
                     for (iconStyleIndex = labelBatchParams.parameterCount; --iconStyleIndex >= 0; ) {
@@ -3587,7 +3610,7 @@ namespace massif::vt {
 
             VT_STAT_CLOCK(statClock);
             std::size_t labelVertexOffset = _labelVertices.size();
-            label->calculateVertexData(labelBatchParams.widthTable[styleIndex], _viewState, styleIndex, haloStyleIndex, _labelVertices, _labelOffsets, _labelNormals, _labelTexCoords, _labelAttribs, _labelIndices, pass, pass == Label::DrawPass::CALLOUT_LINE ? LabelPlateIndices() : plateIndices, pass == Label::DrawPass::CALLOUT_LINE ? -1 : secondaryStyleIndex, pass == Label::DrawPass::CALLOUT_LINE ? -1 : iconStyleIndex);
+            label->calculateVertexData(labelBatchParams.widthTable[styleIndex], _viewState, styleIndex, haloStyleIndex, _labelVertices, _labelOffsets, _labelNormals, _labelTexCoords, _labelAttribs, _labelIndices, pass, pass == Label::DrawPass::CALLOUT_LINE ? LabelPlateIndices() : plateIndices, pass == Label::DrawPass::CALLOUT_LINE ? -1 : secondaryStyleIndex, pass == Label::DrawPass::CALLOUT_LINE ? -1 : iconStyleIndex, pass == Label::DrawPass::CALLOUT_LINE ? -1 : iconHaloStyleIndex);
             if (labelStyle->transform) {
                 // Conjugated by the tile matrix the style's translate is a pure world translation, so
                 // it rides on the vertices - as a BATCH matrix it made every such label its own draw.
@@ -5641,8 +5664,7 @@ namespace massif::vt {
                 // Text drawn as geometry (text-clip) takes the same halo units as a label: measured
                 // in antialias ramps, and pointVsh pushes the ramp centre out by twice its width in
                 // screen pixels, exactly like labelFsh.
-                float haloRadius = std::min(evaluateFloatFunc(styleParams.offsetFuncs[i]) * HALO_RADIUS_SCALE, static_cast<float>(GLYPH_RENDER_SPREAD));
-                strokeWidths[i] = 2.0f * haloRadius * HALO_PIXELS_PER_UNIT;
+                strokeWidths[i] = 2.0f * std::min(evaluateFloatFunc(styleParams.offsetFuncs[i]), MAX_HALO_PIXELS);
             }
             VT_STAT_SPLIT(geomStyleEvalNs, statClock);
 
@@ -5770,7 +5792,14 @@ namespace massif::vt {
         }
         VT_STAT_SPLIT(geomStyleNs, statClock);
 
-        const CompiledGeometry& compiledGeometry = buildCompiledTileGeometry(geometry);
+        const CompiledGeometry* compiledGeometryPtr = buildCompiledTileGeometry(geometry);
+        if (!compiledGeometryPtr) {
+            if (styleParams.pattern) {
+                glBindTexture(GL_TEXTURE_2D, 0);
+            }
+            return;
+        }
+        const CompiledGeometry& compiledGeometry = *compiledGeometryPtr;
         VT_STAT_SPLIT(geomCompileNs, statClock);
         bindGeometryVertexLayout(shaderProgram, geometry, compiledGeometry);
 
@@ -6128,7 +6157,7 @@ namespace massif::vt {
         return it->second;
     }
 
-    const GLTileRenderer::CompiledGeometry& GLTileRenderer::buildCompiledTileGeometry(const std::shared_ptr<TileGeometry>& tileGeometry) {
+    const GLTileRenderer::CompiledGeometry* GLTileRenderer::buildCompiledTileGeometry(const std::shared_ptr<TileGeometry>& tileGeometry) {
         // The style parameter that picks a feature out may have changed since this geometry was
         // built: repointing its features at their other style slot is a byte rewrite here, not a
         // tile decode. Done before the buffers are looked at, so a geometry compiled for the first
@@ -6149,6 +6178,17 @@ namespace massif::vt {
             it = _compiledTileGeometryMap.end();
         }
         if (it == _compiledTileGeometryMap.end()) {
+            // Nothing left to upload. releaseVertexArrays() frees the CPU copy once a geometry is
+            // in a VBO, which assumes ONE renderer per geometry - and a renderer is rebuilt from
+            // scratch whenever the tile transformer changes (TileRenderer::setTileTransformer, i.e.
+            // every terrain toggle), while the tiles themselves are handed straight to it. Uploading
+            // the empty arrays gave a buffer with NO data store and a draw of 65535 indices into it:
+            // undefined on a device, a null dereference inside the emulator's GL encoder. The tiles
+            // are re-decoded for the new transformer anyway, so skipping is a frame or two of
+            // missing geometry rather than a crash.
+            if (tileGeometry->getIndicesCount() > 0 && tileGeometry->getIndices().empty()) {
+                return nullptr;
+            }
             VT_STAT_INC(geomCompileMisses);
             CompiledGeometry compiledGeometry;
             createCompiledGeometry(compiledGeometry);
@@ -6173,7 +6213,7 @@ namespace massif::vt {
             glBufferSubData(GL_ARRAY_BUFFER, dirtyBytes->first, dirtyBytes->second - dirtyBytes->first, tileGeometry->getVertexGeometry().data() + dirtyBytes->first);
             tileGeometry->clearDirtyVertexBytes();
         }
-        return it->second.geometry;
+        return &it->second.geometry;
     }
 
     const GLTileRenderer::ShaderProgram& GLTileRenderer::buildShaderProgram(const char* id, const std::string& vsh, const std::string& fsh, LightingMode lightingMode, RasterFilterMode filterMode, unsigned int flags) {

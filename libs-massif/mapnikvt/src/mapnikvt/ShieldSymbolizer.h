@@ -18,6 +18,7 @@ namespace massif::mvt {
             _placement = LabelOrientationProperty("billboard-line-repeat");
             bindProperty("file", &_file);
             bindProperty("sdf", &_sdf);
+            bindProperty("image-scale", &_imageScale);
             bindProperty("shield-dx", &_shieldDx);
             bindProperty("shield-dy", &_shieldDy);
             bindProperty("unlock-image", &_unlockImage);
@@ -28,6 +29,8 @@ namespace massif::mvt {
             bindProperty("icon-size", &_iconSize);
             bindProperty("icon-fill", &_iconFill);
             bindProperty("icon-opacity", &_iconOpacity);
+            bindProperty("icon-halo-fill", &_iconHaloFill);
+            bindProperty("icon-halo-radius", &_iconHaloRadius);
             bindProperty("icon-dx", &_iconDx);
             bindProperty("icon-dy", &_iconDy);
             bindProperty("text-horizontal-alignment", &_textHorizontalAlignment);
@@ -60,6 +63,10 @@ namespace massif::mvt {
         std::vector<vt::Font::Glyph> buildIconGlyphs(const std::shared_ptr<const vt::Font>& font, const SymbolizerContext& symbolizerContext, const ExpressionContext& exprContext, float fontSize) const;
 
         StringProperty _file;
+        // Scales the shield IMAGE without touching the text. An SDF sprite has to ship at its own
+        // resolution and be shrunk here: resampling the field into a smaller bitmap loses exactly
+        // the resolution the field needs, and the smaller the icon the blockier it came out.
+        FloatFunctionProperty _imageScale = FloatFunctionProperty(1.0f);
         BoolProperty _unlockImage = BoolProperty(false);
         FloatProperty _shieldDx = FloatProperty(0.0f);
         FloatProperty _shieldDy = FloatProperty(0.0f);
@@ -70,6 +77,10 @@ namespace massif::mvt {
         FloatProperty _iconSize = FloatProperty(0.0f); // pixels; 0 = the label's own size
         ColorFunctionProperty _iconFill = ColorFunctionProperty("#000000");
         FloatFunctionProperty _iconOpacity = FloatFunctionProperty(1.0f);
+        // The icon's own outline - mapbox icon-halo-*. Radius 0 draws none, which is the default:
+        // an icon never borrows the TEXT halo (see Label::calculateVertexData).
+        ColorFunctionProperty _iconHaloFill = ColorFunctionProperty("#000000");
+        FloatFunctionProperty _iconHaloRadius = FloatFunctionProperty(0.0f);
         FloatProperty _iconDx = FloatProperty(0.0f);
         FloatProperty _iconDy = FloatProperty(0.0f);
         // How the LINES of a wrapped name are justified inside the text block - 'left', 'middle',
@@ -91,6 +102,9 @@ namespace massif::mvt {
         FloatProperty _iconBackgroundBorderWidth = FloatProperty(0.0f);
 
         ColorFunctionBuilder _iconFillFuncBuilder;
+        FloatFunctionBuilder _imageScaleFuncBuilder;
+        ColorFunctionBuilder _iconHaloFillFuncBuilder;
+        FloatFunctionBuilder _iconHaloRadiusFuncBuilder;
     };
 }
 

@@ -729,7 +729,7 @@ namespace massif::vt {
         return cglib::dot_product(viewState.orientation[2], placement.normal) > MIN_BILLBOARD_VIEW_NORMAL_DOTPRODUCT;
     }
 
-    bool Label::calculateVertexData(float size, const ViewState& viewState, int styleIndex, int haloStyleIndex, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& offsets, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices, DrawPass pass, const LabelPlateIndices& plates, int secondaryStyleIndex, int iconStyleIndex) const {
+    bool Label::calculateVertexData(float size, const ViewState& viewState, int styleIndex, int haloStyleIndex, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& offsets, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices, DrawPass pass, const LabelPlateIndices& plates, int secondaryStyleIndex, int iconStyleIndex, int iconHaloStyleIndex) const {
         VT_STAT_CLOCK(labelClock);
         std::shared_ptr<const Placement> placement = getPlacement(viewState);
         VT_STAT_SPLIT(labelPlacementNs, labelClock);
@@ -737,6 +737,25 @@ namespace massif::vt {
         if (!placement || scale <= 0) {
             return false;
         }
+
+        // The icon run keeps a fixed PIXEL size: it was laid out in ems of iconRefSize, so undoing
+        // that and re-applying the screen scale leaves it independent of what the text size does.
+        // A MapTiler bus stop ramps text-size 0 -> 12 between z15 and z17 while its icon-size is
+        // constant, and riding the text made the icon grow across each tile level and snap back at
+        // the next - and vanish entirely where the ramp reached 0.
+        float iconScale = scale;
+        if (_style->iconRefSize > 0 && size > 0) {
+            iconScale = scale * (_style->iconRefSize / size);
+            // ...and then follows its OWN ramp. The glyph carries one baked size, so the live value
+            // is applied as a ratio to it - mapbox's bus stop grows 0 -> 1.2 over z15..z22 on a
+            // curve that has nothing to do with the name's.
+            if (_style->iconScaleFunc && _style->iconRefScale > 0) {
+                iconScale *= (*_style->iconScaleFunc)(viewState) / _style->iconRefScale;
+            }
+        }
+        auto vertexScale = [&](std::size_t i) {
+            return (i < _cachedAttribs.size() && _cachedAttribs[i](0) == 2) ? iconScale : scale;
+        };
 
         // Build vertex data cache
         bool valid = isSurfaceFacingView(viewState, *placement);
@@ -761,16 +780,18 @@ namespace massif::vt {
             if (isScreenLineRun()) {
                 // Laid out on the camera axes, so the shader can span it from them: emit the
                 // anchor and the run-local offset and let uLabelAxisX/Y do the rest.
-                for (const cglib::vec3<float>& vertex : _cachedVertices) {
-                    offsets.append(cglib::vec3<float>(vertex(0) * scale, vertex(1) * scale, 0));
+                for (std::size_t i = 0; i < _cachedVertices.size(); i++) {
+                    float s = vertexScale(i);
+                    offsets.append(cglib::vec3<float>(_cachedVertices[i](0) * s, _cachedVertices[i](1) * s, 0));
                 }
             }
             else {
                 // Flat on the surface: the run was laid out on the placement's own tangent frame,
                 // so span it here and hand the shader a world offset.
                 billboardMode = WORLD_OFFSET;
-                for (const cglib::vec3<float>& vertex : _cachedVertices) {
-                    offsets.append(xAxis * (vertex(0) * scale) + yAxis * (vertex(1) * scale));
+                for (std::size_t i = 0; i < _cachedVertices.size(); i++) {
+                    float s = vertexScale(i);
+                    offsets.append(xAxis * (_cachedVertices[i](0) * s) + yAxis * (_cachedVertices[i](1) * s));
                 }
             }
 
@@ -807,15 +828,17 @@ namespace massif::vt {
                 // lifted along the camera up axis by what the culler decided (see
                 // setCalloutOffset) and slid sideways so that the style's line anchor sits over
                 // the feature; the anchor itself stays put, which is where its leader line starts.
-                for (const cglib::vec3<float>& vertex : _cachedVertices) {
-                    offsets.append(cglib::vec3<float>(vertex(0) * scale + calloutShift(0), vertex(1) * scale + calloutShift(1), 0));
+                for (std::size_t i = 0; i < _cachedVertices.size(); i++) {
+                    float s = vertexScale(i);
+                    offsets.append(cglib::vec3<float>(_cachedVertices[i](0) * s + calloutShift(0), _cachedVertices[i](1) * s + calloutShift(1), 0));
                 }
             } else {
                 // Axes come from the placement (or from the placement normal and the camera
                 // up vector) - span the offset here and hand the shader a world offset.
                 billboardMode = WORLD_OFFSET;
-                for (const cglib::vec3<float>& vertex : _cachedVertices) {
-                    offsets.append(xAxis * (vertex(0) * scale) + yAxis * (vertex(1) * scale));
+                for (std::size_t i = 0; i < _cachedVertices.size(); i++) {
+                    float s = vertexScale(i);
+                    offsets.append(xAxis * (_cachedVertices[i](0) * s) + yAxis * (_cachedVertices[i](1) * s));
                 }
             }
         }
@@ -824,13 +847,24 @@ namespace massif::vt {
         normals.fill(placement->normal, _cachedVertices.size());
         texCoords.copy(_cachedTexCoords, 0, _cachedTexCoords.size());
 
-        if (haloStyleIndex >= 0) {
+        // The icon's halo lives in this pass too, so an icon keeps its outline on a label whose
+        // TEXT has none - a cycleway's bicycle sets icon-halo-width 3 and text-halo-width 0, and
+        // gating the whole pass on the text left it bare.
+        if (haloStyleIndex >= 0 || iconHaloStyleIndex >= 0) {
             for (const cglib::vec4<std::int8_t>& attrib : _cachedAttribs) {
-                attribs.append(cglib::vec4<std::int8_t>(static_cast<std::int8_t>(haloStyleIndex), attrib(1), static_cast<std::int8_t>(_opacity * 127.0f), billboardMode));
+                int glyphHaloIndex = (attrib(0) == 2 ? iconHaloStyleIndex : haloStyleIndex);
+                attribs.append(cglib::vec4<std::int8_t>(static_cast<std::int8_t>(glyphHaloIndex < 0 ? 0 : glyphHaloIndex), attrib(1), static_cast<std::int8_t>(_opacity * 127.0f), billboardMode));
             }
             
             std::uint16_t offset = static_cast<std::uint16_t>(vertices.size() - _cachedVertices.size());
             for (std::uint16_t idx : _cachedIndices) {
+                // Each run takes its OWN halo, and is left out when it has none. An icon never
+                // borrows the text's: that dilated its distance field past the few texels it
+                // carries outside the ink, so the whole quad read as inside - a white square behind
+                // a city dot - and it kept drawing after icon-opacity had faded the icon out.
+                if ((_cachedAttribs[idx](0) == 2 ? iconHaloStyleIndex : haloStyleIndex) < 0) {
+                    continue;
+                }
                 indices.append(idx + offset);
             }
 
@@ -938,60 +972,75 @@ namespace massif::vt {
     // scale), like the glyph offsets around them.
     void Label::appendPlate(const cglib::bbox2<float>& box, const GlyphMap::Glyph& glyph, float radius, const cglib::vec2<float>& grow, float scale, int styleIndex, bool cameraAxes, const cglib::vec2<float>& calloutShift, const cglib::vec3<float>& origin, const cglib::vec3<float>& xAxis, const cglib::vec3<float>& yAxis, const std::shared_ptr<const Placement>& placement, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& offsets, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const {
         // The plate covers the box plus what it is grown by, both in glyph units (1 unit = the
-        // font size), and is cut into three columns: the two caps keep the cell's corner radius,
-        // the middle is stretched. That is what keeps a corner round on a long name.
+        // font size). The cell is a square barely wider than its corner radius, so it is cut into
+        // nine: the four corner cells keep the radius, the edges stretch along one axis only and
+        // the centre fills. Stretching the whole cell instead - which is what a three-column slice
+        // does vertically - flattened every corner arc into an ellipse on a label taller than the
+        // cell, and a road shield is always taller than one.
         float x0 = box.min(0) * scale - grow(0), x1 = box.max(0) * scale + grow(0);
         float y0 = box.min(1) * scale - grow(1), y1 = box.max(1) * scale + grow(1);
-        float height = y1 - y0;
-        float cap = std::max(0.0f, std::min(radius, (x1 - x0) * 0.5f));
+        float capX = std::max(0.0f, std::min(radius, (x1 - x0) * 0.5f));
+        float capY = std::max(0.0f, std::min(radius, (y1 - y0) * 0.5f));
 
-        // Atlas coordinates of the cell's left cap, middle column and right cap. Sampled one texel
-        // INSIDE the cell on EVERY side: the outer texels blend into the transparent padding around
-        // it under linear filtering, which is what made the plate's edges look soft. The cell keeps
-        // a transparent margin of its own for this, so the inset lands on the shape's own edge
-        // (see buildRoundedRectBitmap) rather than one column into it.
+        // Atlas coordinates of the cell. Sampled one texel INSIDE the cell on EVERY side: the outer
+        // texels blend into the transparent padding around it under linear filtering, which is what
+        // made the plate's edges look soft. The cell keeps a transparent margin of its own for this,
+        // so the inset lands on the shape's own edge (see buildRoundedRectBitmap) rather than one
+        // column into it.
         float u0 = static_cast<float>(glyph.x + 1);
         float u1 = static_cast<float>(glyph.x + glyph.width - 2);
         float uMid = (u0 + u1) * 0.5f;
         float v0 = static_cast<float>(glyph.y + 1);
         float v1 = static_cast<float>(glyph.y + glyph.height - 2);
+        float vMid = (v0 + v1) * 0.5f;
 
-        struct Slice { float x0, x1, u0, u1; };
-        const Slice slices[3] = {
-            { x0, x0 + cap, u0, uMid },
-            { x0 + cap, x1 - cap, uMid - 0.5f, uMid + 0.5f },
-            { x1 - cap, x1, uMid, u1 }
+        // A span's t0 belongs to its p0. y grows downward against v, so a row's texture range runs
+        // from v1 back to v0.
+        struct Span { float p0, p1, t0, t1; };
+        const Span cols[3] = {
+            { x0, x0 + capX, u0, uMid },
+            { x0 + capX, x1 - capX, uMid, uMid },
+            { x1 - capX, x1, uMid, u1 }
+        };
+        const Span rows[3] = {
+            { y0, y0 + capY, v1, vMid },
+            { y0 + capY, y1 - capY, vMid, vMid },
+            { y1 - capY, y1, vMid, v0 }
         };
 
         cglib::mat2x2<float> transform = (_style->transform ? _style->transform->matrix2() : cglib::mat2x2<float>::identity());
-        for (int i = 0; i < 3; i++) {
-            const Slice& slice = slices[i];
-            if (!(slice.x1 > slice.x0)) {
+        for (const Span& row : rows) {
+            if (!(row.p1 > row.p0)) {
                 continue;
             }
-            std::uint16_t i0 = static_cast<std::uint16_t>(vertices.size());
-            indices.append(i0 + 0, i0 + 1, i0 + 2);
-            indices.append(i0 + 0, i0 + 2, i0 + 3);
+            for (const Span& col : cols) {
+                if (!(col.p1 > col.p0)) {
+                    continue;
+                }
+                std::uint16_t i0 = static_cast<std::uint16_t>(vertices.size());
+                indices.append(i0 + 0, i0 + 1, i0 + 2);
+                indices.append(i0 + 0, i0 + 2, i0 + 3);
 
-            std::int16_t su0 = static_cast<std::int16_t>(slice.u0), su1 = static_cast<std::int16_t>(slice.u1);
-            std::int16_t sv0 = static_cast<std::int16_t>(v0), sv1 = static_cast<std::int16_t>(v1);
-            texCoords.append(cglib::vec2<std::int16_t>(su0, sv1), cglib::vec2<std::int16_t>(su1, sv1), cglib::vec2<std::int16_t>(su1, sv0), cglib::vec2<std::int16_t>(su0, sv0));
+                std::int16_t su0 = static_cast<std::int16_t>(col.t0), su1 = static_cast<std::int16_t>(col.t1);
+                std::int16_t sv0 = static_cast<std::int16_t>(row.t0), sv1 = static_cast<std::int16_t>(row.t1);
+                texCoords.append(cglib::vec2<std::int16_t>(su0, sv0), cglib::vec2<std::int16_t>(su1, sv0), cglib::vec2<std::int16_t>(su1, sv1), cglib::vec2<std::int16_t>(su0, sv1));
 
-            cglib::vec4<std::int8_t> attrib(static_cast<std::int8_t>(styleIndex), static_cast<std::int8_t>(GlyphMap::GlyphMode::BITMAP), static_cast<std::int8_t>(_opacity * 127.0f), cameraAxes ? CAMERA_AXIS_OFFSET : WORLD_OFFSET);
-            attribs.append(attrib, attrib, attrib, attrib);
+                cglib::vec4<std::int8_t> attrib(static_cast<std::int8_t>(styleIndex), static_cast<std::int8_t>(GlyphMap::GlyphMode::BITMAP), static_cast<std::int8_t>(_opacity * 127.0f), cameraAxes ? CAMERA_AXIS_OFFSET : WORLD_OFFSET);
+                attribs.append(attrib, attrib, attrib, attrib);
 
-            const cglib::vec2<float> corners[4] = {
-                cglib::vec2<float>(slice.x0, y0), cglib::vec2<float>(slice.x1, y0),
-                cglib::vec2<float>(slice.x1, y0 + height), cglib::vec2<float>(slice.x0, y0 + height)
-            };
-            vertices.fill(origin, 4);
-            normals.fill(placement->normal, 4);
-            for (int c = 0; c < 4; c++) {
-                cglib::vec2<float> p = cglib::transform(corners[c], transform);
-                if (cameraAxes) {
-                    offsets.append(cglib::vec3<float>(p(0) + calloutShift(0), p(1) + calloutShift(1), 0));
-                } else {
-                    offsets.append(xAxis * p(0) + yAxis * p(1));
+                const cglib::vec2<float> corners[4] = {
+                    cglib::vec2<float>(col.p0, row.p0), cglib::vec2<float>(col.p1, row.p0),
+                    cglib::vec2<float>(col.p1, row.p1), cglib::vec2<float>(col.p0, row.p1)
+                };
+                vertices.fill(origin, 4);
+                normals.fill(placement->normal, 4);
+                for (int c = 0; c < 4; c++) {
+                    cglib::vec2<float> p = cglib::transform(corners[c], transform);
+                    if (cameraAxes) {
+                        offsets.append(cglib::vec3<float>(p(0) + calloutShift(0), p(1) + calloutShift(1), 0));
+                    } else {
+                        offsets.append(xAxis * p(0) + yAxis * p(1));
+                    }
                 }
             }
         }
@@ -1394,9 +1443,15 @@ namespace massif::vt {
         bool readable = true;
         cglib::vec2<float> prevDir(0, 0);
         float turnAngle = 0, minAngle = 0, maxAngle = 0;
+        // How far off the line the run sits, perpendicular to it. The CR pseudo-glyph's advance
+        // carries the block's vertical alignment and its dy (TextFormatter::layoutLines), so
+        // ignoring it laid every line label on its BASELINE rather than centred on the line - and
+        // the culler tests the box the point walk builds, which does apply it.
+        float penY = 0;
         for (const Font::Glyph& glyph : _glyphs) {
             if (glyph.codePoint == Font::CR_CODEPOINT) {
                 offset = penStart;
+                penY = glyph.advance(1);
                 prevDir = cglib::vec2<float>(0, 0);
                 turnAngle = 0;
                 continue;
@@ -1436,7 +1491,7 @@ namespace massif::vt {
             prevDir = xAxis;
 
             if (glyph.codePoint != Font::SPACE_CODEPOINT) {
-                cglib::vec2<float> base = pen + xAxis * glyph.offset(0) + yAxis * glyph.offset(1);
+                cglib::vec2<float> base = pen + xAxis * glyph.offset(0) + yAxis * (glyph.offset(1) + penY);
                 cglib::vec2<float> p0 = base;
                 cglib::vec2<float> p1 = base + xAxis * glyph.size(0);
                 cglib::vec2<float> p2 = base + xAxis * glyph.size(0) + yAxis * glyph.size(1);

@@ -50,10 +50,12 @@ namespace massif::mvt {
 
         float tileSize = symbolizerContext.getSettings().getTileSize();
         float fontScale = symbolizerContext.getSettings().getFontScale();
-        // Screen pixels, like dx/dy and halo-radius beside it, so it scales with the display the
-        // same way they do - the culler measures in device pixels. Left unscaled, a style's
-        // separation shrank to a third of what it asked for on a hi-dpi screen.
-        float minimumDistance = _minimumDistance.getValue(exprContext) * fontScale;
+        float pixelScale = symbolizerContext.getSettings().getPixelScale();
+        // The culler measures in DEVICE pixels, so this takes the pixel scale the way emSizePixels
+        // and iconSizePixels do. dx/dy, halo-radius and wrap-width beside it take fontScale alone
+        // because they are in GLYPH units - the formatter divides them by the font size. Left
+        // unscaled, a style's separation shrank to a third of what it asked for on a hi-dpi screen.
+        float minimumDistance = _minimumDistance.getValue(exprContext) * fontScale * pixelScale;
         float maxDistance = _maxDistance.getValue(exprContext);
         float occlusionOpacity = _occlusionOpacity.getValue(exprContext);
         float placementPriority = _placementPriority.getValue(exprContext);
@@ -84,7 +86,11 @@ namespace massif::mvt {
         vt::ColorFunction fillFunc = _fillFuncBuilder.createColorOpacityFunction(_fill.getFunction(exprContext), _opacity.getFunction(exprContext));
         vt::FloatFunction sizeFunc = _sizeFuncBuilder.createScaledFloatFunction(_size.getFunction(exprContext), fontScale);
         vt::ColorFunction haloFillFunc = _haloFillFuncBuilder.createColorOpacityFunction(_haloFill.getFunction(exprContext), _haloOpacity.getFunction(exprContext));
-        vt::FloatFunction haloRadiusFunc = _haloRadiusFuncBuilder.createScaledFloatFunction(_haloRadius.getFunction(exprContext), fontScale);
+        // Style pixels, like the text size beside it: the halo has to keep its width RELATIVE to the
+        // glyphs on every display, and the renderer measures it in device pixels. Left unscaled it
+        // shrank against its own text as the dpi rose (1.2 drew 1.8 px where mapbox draws 3.2 on a
+        // 2.6x screen).
+        vt::FloatFunction haloRadiusFunc = _haloRadiusFuncBuilder.createScaledFloatFunction(_haloRadius.getFunction(exprContext), fontScale * pixelScale);
 
         vt::TileId tileId = exprContext.getTileId();
         std::string text = getTransformedText(exprContext);
@@ -500,6 +506,10 @@ namespace massif::mvt {
         float secondaryScale = _secondaryScale.getValue(exprContext);
         float secondaryGap = _secondaryDx.getValue(exprContext) * fontScale;
         float secondaryOffset = -_secondaryDy.getValue(exprContext) * fontScale;
-        return vt::TextFormatter::Options(alignment, offset, wrapCharacter, wrapBefore, wrapWidth * fontScale, characterSpacing, lineSpacing, secondaryText, secondaryScale, secondaryGap, secondaryOffset);
+        // NOT scaled by fontScale, unlike the offsets above: splitLines accumulates a word's width
+        // from advances taken at the STYLE size (glyph.advance * _fontSize), so a threshold in
+        // device pixels made every label wrap fontScale times too late - on a 2.6x screen, never.
+        // Where a label wraps is a property of the style, not of the display.
+        return vt::TextFormatter::Options(alignment, offset, wrapCharacter, wrapBefore, wrapWidth, characterSpacing, lineSpacing, secondaryText, secondaryScale, secondaryGap, secondaryOffset);
     }
 }

@@ -12,7 +12,7 @@ sidebar_position: 20
 `CartoCSSMapnikTranslator.cpp`. Edit those, then re-run the script — never this page.
 :::
 
-213 properties across 12 symbolizers.
+217 properties across 12 symbolizers.
 
 ## Reading the table
 
@@ -29,7 +29,7 @@ sidebar_position: 20
   than failing. Write an explicit guard — `[color] <> null ? [color] : '#0000ff'` — when the
   fallback should be something else.
 
-Live-capable properties: 44 of 213.
+Live-capable properties: 48 of 217.
 
 ## `building`
 
@@ -80,11 +80,13 @@ Live-capable properties: 44 of 213.
 | `line-arrow-rotation` | `arrow-rotation` | float | `0.0` |  |  |
 | `line-arrow-scale` | `arrow-scale` | float | `1.0` |  |  |
 | `line-arrow-width` | `arrow-width` | float | `3.0` |  |  |
+| `line-blur` | `blur` | float | `0.0` | yes |  |
 | `line-cap` | `stroke-linecap` | enum | `butt` |  |  |
 | `line-color` | `stroke` | color | `#000000` | yes |  |
 | `line-comp-op` | `comp-op` | comp-op | `src-over` |  |  |
 | `line-dasharray` | `stroke-dasharray` | string |  |  |  |
 | `line-end-arrow` | `end-arrow` | bool | `false` |  |  |
+| `line-gap-width` | `gap-width` | float | `0.0` | yes |  |
 | `line-geometry-transform` | `geometry-transform` | transform |  |  |  |
 | `line-join` | `stroke-linejoin` | enum | `miter` |  |  |
 | `line-miterlimit` | `stroke-miterlimit` | float | `4.0` |  | yes |
@@ -128,6 +130,7 @@ Live-capable properties: 44 of 213.
 | `marker-opacity` | `opacity` | float | `1.0` | yes |  |
 | `marker-placement` | `placement` | value | `point` |  |  |
 | `marker-placement-priority` | `placement-priority` | float | `0.0` |  |  |
+| `marker-rank` | `rank` | float | `0.0` | yes |  |
 | `marker-same-feature-id-dependent` | `same-feature-id-dependent` | bool | `false` |  |  |
 | `marker-sdf` | `sdf` | bool | `false` |  |  |
 | `marker-spacing` | `spacing` | float | `100.0` |  |  |
@@ -227,6 +230,7 @@ Live-capable properties: 44 of 213.
 | `shield-orientation` | `orientation` | float | `0.0` |  |  |
 | `shield-placement` | `placement` | value | `point` |  |  |
 | `shield-placement-priority` | `placement-priority` | float | `0.0` |  |  |
+| `shield-rank` | `rank` | float | `0.0` | yes |  |
 | `shield-sdf` | `sdf` | bool | `false` |  |  |
 | `shield-size` | `size` | float | `10.0` |  | yes |
 | `shield-spacing` | `spacing` | float | `0.0` |  |  |

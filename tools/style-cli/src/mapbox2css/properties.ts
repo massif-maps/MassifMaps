@@ -21,6 +21,8 @@ export const PROPERTY_MAP: Record<string, Record<string, string>> = {
         'line-opacity': 'line-opacity',
         'line-width': 'line-width',
         'line-offset': 'line-offset',
+        'line-gap-width': 'line-gap-width',
+        'line-blur': 'line-blur',
         'line-dasharray': 'line-dasharray',
         'line-join': 'line-join',
         'line-cap': 'line-cap',

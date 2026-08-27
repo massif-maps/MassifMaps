@@ -365,13 +365,14 @@ function translateInterpolate(args: Json[], notes?: string[]): string {
         pairs.push([rest[i] as Json, rest[i + 1] as Json] as const);
     }
 
+    // The SDK interpolates an exponential ramp itself, so the curve is carried rather than
+    // approximated. Resampling only ever worked when the stops were plain numbers, and mapbox
+    // writes a road width as an exponential over PER-CLASS values - the fallback to plain linear
+    // made those nearly three times too wide in the middle of a span, which is every road in
+    // Mapbox Standard between its stop zooms.
     if (base !== null) {
-        const resampled = resampleExponential(pairs, base);
-        if (resampled) {
-            notes?.push(`exponential interpolation with base ${base} resampled into ${EXPONENTIAL_SUBDIVISIONS} linear steps per stop interval`);
-            return `linear(${input}, ${resampled.map(([k, v]) => `(${k}, ${v})`).join(', ')})`;
-        }
-        notes?.push(`exponential interpolation with base ${base} approximated as linear: its stops are not plain numbers`);
+        const stops = pairs.map(([k, v]) => `(${translateExpression(k)}, ${translateExpression(v)})`);
+        return `exponential(${base}, ${input}, ${stops.join(', ')})`;
     }
 
     const stops = pairs.map(([k, v]) => `(${translateExpression(k)}, ${translateExpression(v)})`);

@@ -275,28 +275,54 @@ Folding is **conservative by construction**: a node is simplified only where a s
 happened. Without that rule it rewrote expressions in styles that have no config at all, and quietly
 removed four layers from a MapTiler style whose render was already verified.
 
+### A MapBox zoom is not an SDK zoom
+
+Both span `2^z` tiles, but a MapBox tile is **512** style pixels and the SDK's `tileDrawSize` is
+**256**, so the same ground scale is one level higher here:
+
+```
+m/CSSpx = WORLD_SIZE / (2^z * tileDrawSize)
+```
+
+Measured on the emulator by shifting the camera 0.01 deg and cross-correlating the two frames:
+SDK z15 = **3.144** m/CSS px, mapbox-gl z15 = **1.573**. Exactly 2.
+
+So every zoom the style names is shifted a level on the way in — `[view::zoom] - 1` as the input to
+every ramp (one constant, `ZOOM_INPUT`), and `+1` on `minzoom`/`maxzoom`. Read straight, a road at
+z15 is drawn with z15's width on a z14 view: a `street` comes out 1.74x too wide, while a service
+road on a flat ramp moves under a pixel, so the symptom is "only the big roads are too fat".
+
+Going the other way — `tileDrawSize` 512 — fixes the zoom and breaks the widths, because
+`normalizedResolution = 2 * tileDrawSize * dpToPX` doubles with it and halves every line. The style
+unit as it stands already equals a CSS pixel, DPI-independent, which is what MapBox means by one.
+
+### `line-offset` runs the other way
+
+MapBox offsets a line to the **right** of its direction of travel, mapnik to the **left**, so the
+value is negated. Left alone, a cycleway drawn beside its road sits on the wrong side of it. Emitted
+as `0 - x`, not `-x`: the grammar has no unary minus before a parenthesised value.
+
 ### A casing is not a line: `line-gap-width`
 
 A `*-case` layer draws TWO strips either side of a gap, and **the gap is not drawn**: the gap is the
-road the casing runs along, `line-width` is the strip on **one** side. Each side becomes a rule of
-its own, offset by half the gap plus half its own width — the geometry mapbox draws:
+road the casing runs along, `line-width` is the strip on **one** side.
 
-```
-::road_case_left  { line-width: <width>; line-offset: ((<gap>) + (<width>)) / 2; }
-::road_case_right { line-width: <width>; line-offset: (0 - (((<gap>) + (<width>)) / 2)); }
-```
+The SDK draws this itself now (`line-gap-width`, and `line-blur` with it), so the property passes
+straight through and one rule stays one rule: the quad is extruded to the outer edge and the middle
+is cut in the fragment shader, which costs no extra geometry and keeps the line's own joins and
+caps. It replaced a two-rule form that offset one strip per side — 142 rules on Standard against
+114 now, and twice the line geometry for those layers.
 
-Arithmetic over two zoom ramps stays a per-frame function, so nothing is baked. `0 - x` rather than
-`-x`: the grammar has no unary minus before a parenthesised value.
+Its arithmetic is worth stating once, because getting it wrong is invisible on a straight road and
+nowhere else: the strip is a **full** `line-width` beyond the **half** gap on each side, so the
+outer edge is `gap/2 + width`. Adding the half-gap to the *half* width instead drew every casing at
+half thickness, which reads as the road having no outline rather than as a bug.
 
-Dropped entirely, the casing drew as a solid band the full width of the road — 28 layers of
-Standard, and the reason ours came out as lavender slabs where the browser draws a white road with a
-thin edge. Folding both into ONE band of `gap + 2*width` fixes that only where an opaque fill covers
-the middle; **12 of the 28 have no such cover** (Standard's bridge shadows have no fill layer at
-all, and several road fills fade in over zoom), and there a band paints straight across the road.
-The cost of doing it properly is one extra rule per casing — 114 rules to 142 on Standard — and
-twice the line geometry for those layers. Measured at Paris z15 the two forms differ in 0.68% of
-pixels, because that view happens to be all opaque fills; the difference is what the other 12 do.
+`line-blur` widens the antialias ramp rather than moving either edge, and its inner ramp fades INTO
+the gap — opaque at the gap edge, gone one ramp inside it. Fading the other way eats a whole ramp
+off the strip, which at Standard's `line-blur: 10` bridge shadows is a 27-device-pixel bite and
+turns a soft shadow into nothing. Dropped entirely, that same shadow is a hard dark bar with a
+visible butt cap at each end, which is what "the outlines do not join" turned out to be.
 
 ### `*-emissive-strength`, approximated by the colour
 
@@ -355,8 +381,8 @@ Its sprite is named `mapbox://sprites/mapbox/standard/<hash>`, which is not a UR
 fetch — it resolves to `https://api.mapbox.com/styles/v1/<user>/<style>/sprite`, and the hash is a
 cache token the path does not need.
 
-Measured with sprites: **standard 65%** (621/958). Every preset project compiles with `css2xml`.
-What is left is mostly genuine: `*-emissive-strength`, `line-gap-width`, `line-blur`, and
+Measured with sprites: **standard 69%** (660/958). Every preset project compiles with `css2xml`.
+What is left is mostly genuine: `*-emissive-strength` (approximated, not carried) and
 `feature-state` (runtime interaction state, which the SDK has no notion of).
 
 **Its tiles are a separate problem.** Standard reads `mapbox-streets-v8`, whose layer names are not

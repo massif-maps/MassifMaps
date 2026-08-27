@@ -392,29 +392,6 @@ function buildingPredicate(symbolizer: string, sourceLayer: string): string | nu
     return BUILDING_LAYER.test(sourceLayer) ? `['param::${BUILDINGS_PARAM}'>0]` : null;
 }
 
-/**
- * The two strips a `line-gap-width` stands for, or null when the layer is a plain line.
- *
- * Each strip is `line-width` thick with its INNER edge half a gap from the centre, so its centre
- * line sits at (gap + width) / 2. Both stay expressions - a casing ramps its gap and its width over
- * zoom independently, and CartoCSS evaluates the arithmetic per frame.
- */
-function casingSides(layer: MapboxLayer, coverage: Coverage): Array<[string, string[]]> | null {
-    const gapValue = layer.paint?.['line-gap-width'];
-    if (gapValue === undefined) return null;
-    const gap = tryTranslate(gapValue, 'line-gap-width', layer.id, coverage);
-    const width = tryTranslate(layer.paint?.['line-width'] ?? 1, 'line-width', layer.id, coverage);
-    if (gap === null || width === null) return null;
-    coverage.emit('line-width');
-    coverage.emit('line-offset');
-    const centre = `((${gap}) + (${width})) / 2`;
-    return [
-        ['left', [`line-width: ${width};`, `line-offset: ${centre};`]],
-        // `0 - x`, not `-x`: the grammar has no unary minus before a parenthesised value.
-        ['right', [`line-width: ${width};`, `line-offset: (0 - (${centre}));`]],
-    ];
-}
-
 function backgroundProperties(layer: MapboxLayer, coverage: Coverage): string[] {
     const out: string[] = [];
     for (const [name, value] of Object.entries(layer.paint ?? {})) {
@@ -464,9 +441,6 @@ function layerDeclarations(
         // CartoCSS. Dropped, the casing drew as a solid band the full width of the road - which
         // is every road in Mapbox Standard, 28 layers of them, and the reason ours came out as
         // lavender slabs where the browser draws a white road with a thin edge.
-        // Both are supplied by emitLayer, which turns the pair into the two strips it stands for.
-        if (name === 'line-gap-width') continue;
-        if (name === 'line-width' && layer.paint?.['line-gap-width'] !== undefined) continue;
         if (name === 'visibility') {
             if (value === 'none') return []; // the whole layer is off
             continue;

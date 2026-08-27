@@ -315,6 +315,16 @@
       "baked": false
     },
     {
+      "cartocss": "line-blur",
+      "mapnik": "blur",
+      "symbolizer": "line",
+      "kind": "float",
+      "type": "FloatFunctionProperty",
+      "default": "0.0",
+      "live": true,
+      "baked": false
+    },
+    {
       "cartocss": "line-cap",
       "mapnik": "stroke-linecap",
       "symbolizer": "line",
@@ -362,6 +372,16 @@
       "type": "BoolProperty",
       "default": "false",
       "live": false,
+      "baked": false
+    },
+    {
+      "cartocss": "line-gap-width",
+      "mapnik": "gap-width",
+      "symbolizer": "line",
+      "kind": "float",
+      "type": "FloatFunctionProperty",
+      "default": "0.0",
+      "live": true,
       "baked": false
     },
     {
@@ -692,6 +712,16 @@
       "type": "FloatProperty",
       "default": "0.0",
       "live": false,
+      "baked": false
+    },
+    {
+      "cartocss": "marker-rank",
+      "mapnik": "rank",
+      "symbolizer": "marker",
+      "kind": "float",
+      "type": "FloatFunctionProperty",
+      "default": "0.0",
+      "live": true,
       "baked": false
     },
     {
@@ -1432,6 +1462,16 @@
       "type": "FloatProperty",
       "default": "0.0",
       "live": false,
+      "baked": false
+    },
+    {
+      "cartocss": "shield-rank",
+      "mapnik": "rank",
+      "symbolizer": "shield",
+      "kind": "float",
+      "type": "FloatFunctionProperty",
+      "default": "0.0",
+      "live": true,
       "baked": false
     },
     {

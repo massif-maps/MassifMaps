@@ -88,3 +88,32 @@ test('the generated CartoCSS compiles with massif-style', (t) => {
     assert.match(xml, /<Map/);
     assert.match(xml, /LineSymbolizer/);
 });
+
+test('a dash ramped over zoom still dashes, at the stop that actually dashes', () => {
+    // CartoCSS takes ONE dash pattern. MapTiler ramps its footway dash with `step`, and taking
+    // nothing left every path drawn solid; its disputed border ramps FROM a solid `[1, 0]`, so the
+    // base is not the answer either.
+    const line = (dash) => ({ id: 'l', type: 'line', 'source-layer': 'pathway',
+        paint: { 'line-dasharray': dash, 'line-width': 2 } });
+    const mss = (dash) => convert({ layers: [line(dash)] }, table).mss;
+
+    assert.match(mss(['step', ['zoom'], ['literal', [1, 1]], 22, ['literal', [1, 1.5]]]),
+        /line-dasharray: 2,2;/);
+    assert.match(mss({ stops: [[14, [0.5, 0.5]], [18, [0.3, 0.1]]] }), /line-dasharray: 1,1;/);
+    // [1, 0] has no gap - it IS a solid line - so the pattern below it is the one to draw.
+    assert.match(mss(['step', ['zoom'], ['literal', [1, 0]], 5, ['literal', [3, 2, 0.1, 2]]]),
+        /line-dasharray: 6,4,0.2,4;/);
+});
+
+test('a fill pattern names a FILE, not the sheet-qualified sprite', () => {
+    // 'misc:construction_pattern' reached the decoder verbatim and no such file has ever existed,
+    // so every construction area drew as a bare outline. The sheet only says where to look.
+    const sprites = new Map([['misc', {
+        index: { construction_pattern: { x: 0, y: 0, width: 8, height: 8, pixelRatio: 1, sdf: false } },
+        image: { width: 8, height: 8, data: Buffer.alloc(8 * 8 * 4, 200) },
+    }]]);
+    const out = convert({ layers: [{ id: 'c', type: 'fill', 'source-layer': 'construction',
+        paint: { 'fill-pattern': 'misc:construction_pattern' } }] },
+    table, { sprites: { sheets: sprites, outDir: '/tmp/massif-style-test' } }).mss;
+    assert.match(out, /polygon-pattern-file: url\('icons\/construction_pattern.png'\);/);
+});

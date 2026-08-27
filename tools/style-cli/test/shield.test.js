@@ -142,3 +142,48 @@ test('a shield whose text cannot be translated draws nothing, not an empty box',
     assert.ok(!out.includes('text-background-fill'));
     assert.ok(coverage.report().includes('no usable text-field'));
 });
+
+test('a variable anchor becomes the shield anchor list, with its gap and its fallback', () => {
+    // MapBox tries each side until the label fits and keeps the icon alone when none does.
+    // ShieldSymbolizer takes the same list, so the four properties describing it map straight over.
+    const index = { pin: { x: 0, y: 0, width: 8, height: 8, pixelRatio: 1, sdf: true } };
+    const sprites = new Map([['default', { index, image: { width: 8, height: 8, data: Buffer.alloc(8 * 8 * 4, 200) } }]]);
+    const { mss: out, coverage } = convert({ layers: [symbol({
+        'text-field': '{name}', 'icon-image': 'pin', 'text-size': 12,
+        'text-variable-anchor': ['right', 'left', 'top', 'bottom'],
+        'text-optional': true, 'text-radial-offset': 0.5, 'text-justify': 'auto',
+    })] }, TABLE, { sprites: { sheets: sprites, outDir: '/tmp/massif-style-test' } });
+
+    assert.match(out, /shield-anchors: 'right,left,top,bottom';/);
+    assert.match(out, /shield-text-optional: true;/);
+    // The gap is stated once as dx - the SDK mirrors it onto whichever side wins - in pixels of
+    // the text size, not ems.
+    assert.match(out, /shield-text-dx: 6;/);
+    assert.match(out, /shield-text-horizontal-alignment: 'auto';/);
+    assert.ok(!/text-justify|text-optional +[^:]/.test(coverage.report()));
+});
+
+test('a corner anchor loses its hyphen, which is how the SDK spells it', () => {
+    const index = { pin: { x: 0, y: 0, width: 8, height: 8, pixelRatio: 1, sdf: true } };
+    const sprites = new Map([['default', { index, image: { width: 8, height: 8, data: Buffer.alloc(8 * 8 * 4, 200) } }]]);
+    const out = convert({ layers: [symbol({
+        'text-field': '{name}', 'icon-image': 'pin',
+        'text-variable-anchor': ['top-left', 'bottom-right'],
+    })] }, TABLE, { sprites: { sheets: sprites, outDir: '/tmp/massif-style-test' } }).mss;
+    assert.match(out, /shield-anchors: 'topleft,bottomright';/);
+});
+
+test('an anchor property on a layer with no icon says so, rather than reading as unmapped', () => {
+    const { coverage } = convert({ layers: [symbol({ 'text-field': '{name}', 'text-justify': 'center' })] }, TABLE);
+    assert.ok(coverage.report().includes('positions the text against an icon'));
+});
+
+test('an icon-size of 1 over a 2x sheet is half, not zero', () => {
+    // `/` between two INTEGERS truncates in the decoder, so `((1) / 2)` came out 0 and every icon
+    // of thirteen POI layers drew at zero size. The divisor is written as a float for that reason.
+    const index = { pin: { x: 0, y: 0, width: 16, height: 16, pixelRatio: 2, sdf: true } };
+    const sprites = new Map([['default', { index, image: { width: 16, height: 16, data: Buffer.alloc(16 * 16 * 4, 200) } }]]);
+    const out = convert({ layers: [symbol({ 'text-field': '{name}', 'icon-image': 'pin' })] },
+        TABLE, { sprites: { sheets: sprites, outDir: '/tmp/massif-style-test' } }).mss;
+    assert.match(out, /shield-image-scale: \(\(1\) \/ 2\.0\);/);
+});

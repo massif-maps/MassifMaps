@@ -313,6 +313,23 @@ the same step outward and the halo follows it there.
 It grows the quad, and with it the label's collision box, so the padding is kept to what a typical
 `icon-halo-width: 2` needs rather than the widest a style could ask for.
 
+## Trying each side: `text-variable-anchor`
+
+MapBox tries each anchor in `text-variable-anchor` until the label fits on one, and falls back to
+drawing the icon alone when `text-optional` allows it. `ShieldSymbolizer` does the same from the
+same list, so the four properties that describe it map straight across — all of them shield-only,
+because a side to place the text on presupposes an icon to place it beside:
+
+| MapBox | CartoCSS |
+|---|---|
+| `text-variable-anchor: ["right", "left", …]` | `shield-anchors: 'right,left,…'` (corners lose the hyphen) |
+| `text-optional: true` | `shield-text-optional: true` |
+| `text-radial-offset` | `shield-text-dx` — stated once, MIRRORED onto whichever side wins |
+| `text-justify` | `shield-text-horizontal-alignment` (`center` is `middle`; `auto` follows the side) |
+
+No MapTiler style uses a variable anchor today; `text-optional` alone covers 19 layers of
+streets-v4 and 26 of outdoor-v4.
+
 ## Where an icon sits relative to its label
 
 The image is moved clear of the text by half its height, but **only when the style says nothing
@@ -511,6 +528,11 @@ MapTiler streets-v4 draws its shields from 486 extracted icons; topo-v4 has no s
 
 None of these fail a compile, and each looked like an SDK bug until the style was read.
 
+**`/` between two INTEGERS truncates.** `Expression.cpp`'s `DivOperator` has a `long long` overload,
+so a shield's `((1) / 2)` — the default `icon-size` over a 2x sheet — evaluated to **0** and every
+icon of thirteen POI layers drew at zero size. The divisor is written `2.0`. CartoCSS numbers look
+like JavaScript's and are not; a hand-written style hits this too.
+
 **An SDF sprite has to be re-encoded, not copied.** MapBox's distance field (tiny-sdf: cutoff
 0.25, radius 8) puts the edge at **0.75** with 1/8 per texel; the SDK's `BitmapCanvas::drawSDFPixel`
 puts it at **0.5** with 1/16. Copied straight across, the SDK reads MapBox's edge as four texels
@@ -522,6 +544,16 @@ keeps `text-halo-opacity`. MapTiler hides a label with `step(zoom, 0, …, 13, 1
 to 0 and the halo stayed at 1: a solid white ghost of the name at every zoom it should have been
 absent from. Both are now emitted from the one MapBox value, and `icon-opacity` likewise reaches
 `marker-halo-opacity`.
+
+**A pattern is a FILE, and a sprite name is not one.** `fill-pattern: "misc:construction_pattern"`
+reached the decoder verbatim, and no such file has ever existed — the `misc:` only said which sheet
+to look in. Every construction area drew as a bare outline. Patterns now go through the same
+extraction a marker's sprite does and come out as `url('icons/construction_pattern.png')`.
+
+**A dash ramped over zoom is not a dash the decoder can read.** CartoCSS takes ONE pattern, and the
+converter only understood a literal array — so MapTiler's `step(zoom, [1, 1], 22, [1, 1.5])` was
+dropped and every footway drew solid. It now takes the first stop that actually *dashes*: the base
+is not always it, since the disputed border ramps from `[1, 0]`, which IS a solid line.
 
 **A lone `marker-*` declaration builds a marker with no file**, and `MarkersSymbolizer`'s default
 fill is `#0000ff`. Emitting `marker-allow-overlap` from `icon-overlap` while the sprite itself had

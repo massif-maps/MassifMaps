@@ -366,8 +366,27 @@ function layerDeclarations(
             continue;
         }
 
+        // A pattern names a SPRITE, and the raw name reached the decoder as a file name that
+        // never existed (`misc:construction_pattern`): the sheet qualifier only says where to LOOK.
+        if (name === 'fill-pattern' || name === 'line-pattern') {
+            out.push(...patternDeclarations(name, value as Json, table[name], layer, coverage, options));
+            continue;
+        }
+
         // MapBox dash lengths are multiples of the line width; CartoCSS's are pixels.
-        if (name === 'line-dasharray' && Array.isArray(value) && value.every((v) => typeof v === 'number')) {
+        if (name === 'line-dasharray') {
+            const pattern = dashPattern(value as Json);
+            if (pattern === null) {
+                coverage.drop(name, 'no literal dash pattern to take', layer.id);
+                continue;
+            }
+            if (pattern !== value) {
+                // MapTiler ramps its path dashes over zoom and CartoCSS takes ONE pattern. The
+                // base (the widest band, and every stop below the first) is what is on screen at
+                // nearly every zoom; taking nothing left every footway drawn solid.
+                coverage.approximate(`line-dasharray taken at one stop, ${pattern.join(',')}: ` +
+                    'CartoCSS takes one dash pattern, not a ramp');
+            }
             const width = layer.paint?.['line-width'];
             const scale = representativeScale(width, 1);
             if (typeof width !== 'number') {
@@ -376,7 +395,7 @@ function layerDeclarations(
                 coverage.approximate(`line-dasharray scaled by ${round(scale)}, the mean of a ` +
                     'zoom-driven line-width: CartoCSS takes one dash pattern, not a ramp');
             }
-            out.push(`line-dasharray: ${(value as number[]).map((v) => round(v * scale)).join(',')};`);
+            out.push(`line-dasharray: ${pattern.map((v) => round(v * scale)).join(',')};`);
             coverage.emit('line-dasharray');
             continue;
         }
@@ -391,6 +410,15 @@ function layerDeclarations(
                     `fill-outline-color drawn as a line of width ${FILL_OUTLINE_WIDTH}: MapBox's is a ` +
                     '1-DEVICE-pixel hairline (gl.LINES) and a CartoCSS width scales with the display, ' +
                     'so no constant is right at every dpi');
+            }
+            continue;
+        }
+
+        // Placed with the icon instead (variableAnchorDeclarations): each says where the text goes
+        // relative to one, so on a layer with no icon there is nothing for them to describe.
+        if (VARIABLE_ANCHOR_LAYOUT.has(name)) {
+            if (layer.layout?.['icon-image'] === undefined) {
+                coverage.drop(name, 'positions the text against an icon, and this layer has none', layer.id);
             }
             continue;
         }
@@ -520,7 +548,10 @@ function shieldImageDeclarations(layer: MapboxLayer, icon: ExtractedIcon, scale:
     // a mean. Divided by the sheet's pixelRatio: a 2x sheet is drawn at half scale to come out the
     // size the style asked for.
     const sized = translateExpression(layer.layout?.['icon-size'] ?? 1);
-    const drawScale = `((${sized}) / ${icon.pixelRatio})`;
+    // The divisor is spelled as a float on purpose: `/` between two INTEGERS truncates
+    // (Expression.cpp's DivOperator), so a default icon-size of 1 over a 2x sheet came out `(1) / 2`
+    // = 0 and every icon of thirteen POI layers drew at zero size.
+    const drawScale = `((${sized}) / ${icon.pixelRatio.toFixed(1)})`;
     out.push(`shield-image-scale: ${drawScale};`);
     coverage.emit('shield-image-scale');
 
@@ -538,6 +569,8 @@ function shieldImageDeclarations(layer: MapboxLayer, icon: ExtractedIcon, scale:
         emitTranslated(out, coverage, layer, 'icon-halo-width', 'shield-icon-halo-radius', undefined, false);
     }
 
+    out.push(...variableAnchorDeclarations(layer, coverage));
+
     // Locked to the image, the text is centred ON it. MapBox anchors the TEXT and leaves the icon
     // on the point, so the image is moved clear by half its height instead - a city name sits above
     // its dot, a POI name below its pin, and neither is drawn over the other.
@@ -546,6 +579,101 @@ function shieldImageDeclarations(layer: MapboxLayer, icon: ExtractedIcon, scale:
         out.push(`shield-dy: ${clearance};`);
         coverage.emit('shield-dy');
     }
+    return out;
+}
+
+/** Every literal dash pattern inside a value, in the order MapBox states them. */
+function dashPatterns(value: Json): number[][] {
+    if (Array.isArray(value) && value.length > 0 && value.every((v) => typeof v === 'number')) {
+        return [value as number[]];
+    }
+    if (Array.isArray(value)) {
+        return value.flatMap((part) => dashPatterns(part as Json));
+    }
+    if (value && typeof value === 'object') {
+        const stops = (value as { stops?: unknown }).stops;
+        if (Array.isArray(stops)) return stops.flatMap((s) => dashPatterns((s as Json[])[1]));
+    }
+    return [];
+}
+
+/**
+ * The one dash pattern to draw, out of whatever MapBox states - CartoCSS takes a pattern, not a
+ * ramp. The first one that actually dashes: MapTiler's disputed border ramps from `[1, 0]` (a
+ * SOLID line, below z5) to `[3, 2, 0.1, 2]`, and taking the base there would draw it solid at every
+ * zoom anyone looks at. Null when no literal pattern is reachable at all.
+ */
+function dashPattern(value: Json): number[] | null {
+    const patterns = dashPatterns(value);
+    if (!patterns.length) return null;
+    const dashes = (p: number[]) => p.length > 1 && p.some((v, i) => i % 2 === 1 && v > 0);
+    return patterns.find(dashes) ?? patterns[0];
+}
+
+/** The layout properties variableAnchorDeclarations owns, so the generic loop leaves them alone. */
+const VARIABLE_ANCHOR_LAYOUT = new Set([
+    'text-variable-anchor', 'text-optional', 'text-radial-offset', 'text-justify',
+]);
+
+/** MapBox's variable anchor -> the SDK's, which spells the corners without the hyphen. */
+const VARIABLE_ANCHORS = new Set([
+    'center', 'left', 'right', 'top', 'bottom',
+    'top-left', 'top-right', 'bottom-left', 'bottom-right',
+]);
+
+/**
+ * MapBox tries each of `text-variable-anchor` in turn and keeps the first side the label fits on,
+ * falling back to the icon alone when `text-optional` allows it. `ShieldSymbolizer` does the same
+ * thing from the same list, so the four properties that describe it map straight across - all of
+ * them shield-only, because a side to place the text on presupposes an icon to place it beside.
+ */
+function variableAnchorDeclarations(layer: MapboxLayer, coverage: Coverage): string[] {
+    const layout = layer.layout ?? {};
+    const out: string[] = [];
+
+    const variable = layout['text-variable-anchor'];
+    if (Array.isArray(variable)) {
+        const anchors = variable.filter((a): a is string => typeof a === 'string' && VARIABLE_ANCHORS.has(a));
+        if (anchors.length < variable.length) {
+            coverage.drop('text-variable-anchor', 'unknown anchor in the list', layer.id);
+        }
+        if (anchors.length) {
+            out.push(`shield-anchors: '${anchors.map((a) => a.replace('-', '')).join(',')}';`);
+            coverage.emit('shield-anchors');
+        }
+    }
+
+    // Without this a label that fits on no side is dropped WITH its icon.
+    if (layout['text-optional'] === true) {
+        out.push('shield-text-optional: true;');
+        coverage.emit('shield-text-optional');
+    } else if (layout['text-optional'] !== undefined && layout['text-optional'] !== false) {
+        coverage.drop('text-optional', 'only a literal true is carried', layer.id);
+    }
+
+    // The gap between icon and text, which the SDK mirrors per side - so it is stated once, as dx,
+    // whichever side wins. Only read when no text-offset states it, as MapBox does.
+    const radial = layout['text-radial-offset'];
+    if (typeof radial === 'number' && radial !== 0 && layout['text-offset'] === undefined) {
+        const gap = ems(radial, layer, coverage, 'text-radial-offset');
+        if (gap !== null) {
+            out.push(`shield-text-dx: ${gap};`);
+            coverage.emit('shield-text-dx');
+        }
+    } else if (radial !== undefined && typeof radial !== 'number') {
+        coverage.drop('text-radial-offset', 'only a literal offset is carried', layer.id);
+    }
+
+    // How a WRAPPED label justifies itself once a side is chosen; 'auto' follows that side.
+    const justify = layout['text-justify'];
+    if (typeof justify === 'string') {
+        const align = justify === 'center' ? 'middle' : justify;
+        out.push(`shield-text-horizontal-alignment: '${align}';`);
+        coverage.emit('shield-text-horizontal-alignment');
+    } else if (justify !== undefined) {
+        coverage.drop('text-justify', 'only a literal justification is carried', layer.id);
+    }
+
     return out;
 }
 
@@ -986,6 +1114,36 @@ function paramiseValues(layer: MapboxLayer, options: ConvertOptions, coverage: C
 
 function safeParamName(id: string): string {
     return id.replace(/[^A-Za-z0-9]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase();
+}
+
+/**
+ * A fill or line pattern: a sprite sliced out to its own file, like a marker's. MapBox may qualify
+ * the name with the sheet it lives in and CartoCSS wants a path, so the qualifier is dropped and
+ * the sprite written under its bare name - which is also where every other sheet's icons land.
+ */
+function patternDeclarations(
+    name: string, value: Json, target: string | undefined,
+    layer: MapboxLayer, coverage: Coverage, options: ConvertOptions,
+): string[] {
+    if (!target) return [];
+    if (typeof value !== 'string') {
+        coverage.drop(name, 'a data-driven pattern names no one sprite', layer.id);
+        return [];
+    }
+    if (!options.sprites) {
+        coverage.drop(name, 'no sprite loaded (pass --sprite or let the style provide one)', layer.id);
+        return [];
+    }
+    const bare = value.includes(':') ? value.slice(value.indexOf(':') + 1) : value;
+    // Flattened: a pattern is painted as it stands, and there is no pattern-sdf to tint one with.
+    const icon = extractIcon(options.sprites.sheets, value, options.sprites.outDir, true,
+        undefined, 1, bare);
+    if (!icon) {
+        coverage.drop(name, `"${value}" is not in the sprite`, layer.id);
+        return [];
+    }
+    coverage.emit(target);
+    return [`${target}: url('${icon.file}');`];
 }
 
 /** MapBox's icon-* onto marker-*, once the sprite has been sliced into its own file. */

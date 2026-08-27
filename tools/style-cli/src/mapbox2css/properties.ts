@@ -114,7 +114,6 @@ export const KNOWN_GAPS: Record<string, string> = {
     'text-translate': 'screen-space translate has no equivalent',
     'text-translate-anchor': 'screen-space translate has no equivalent',
     'text-halo-blur': 'no CartoCSS equivalent',
-    'text-optional': 'no CartoCSS equivalent',
     'text-ignore-placement': 'no CartoCSS equivalent (text-clip and text-allow-overlap are the near ones)',
     'symbol-avoid-edges': 'no CartoCSS equivalent',
     'symbol-z-order': 'no CartoCSS equivalent',

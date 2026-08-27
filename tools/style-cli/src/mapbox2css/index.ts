@@ -145,8 +145,9 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
     // Kept as selector + declarations rather than joined text: the palette pass rewrites the
     // declarations after every layer is in, when it can tell a shared colour from a layer's own.
     const blocks: Array<{ selector: string; owner: string; declarations: string[] }> = [];
-    // Source-layer name -> the index of the first MapBox layer that draws it.
-    const order = new Map<string, number>();
+    // Source-layer name -> every MapBox layer index that draws it. One project entry pulls ALL of
+    // them, so the whole source-layer has to sit at one depth and the question is which.
+    const positions = new Map<string, number[]>();
     // The TARGET source layer of every layer that made it through, in style order. Kept separately
     // because --schema renames them, and the interleaving check has to see what was emitted.
     const emitted: string[] = [];
@@ -190,7 +191,7 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
             }
             schemaLayer = { ...layer, filter: (merged ?? undefined) as MapboxLayer['filter'] };
         }
-        if (!order.has(target)) order.set(target, index);
+        (positions.get(target) ?? positions.set(target, []).get(target)!).push(index);
         emitted.push(target);
 
         // The contour schemas name the elevation differently; renaming it here means the filter,
@@ -272,28 +273,18 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
             return;
         }
 
-        const lit = light(layer, declarations);
-        // A CASING is two strips either side of a gap, and the gap is NOT DRAWN - `line-gap-width`
-        // is the road it runs along, `line-width` the strip on one side. Drawn as one band of
-        // gap + 2*width instead, it only looks right where an opaque fill covers the middle: 12 of
-        // Mapbox Standard's 28 casings have no such cover (its bridge shadows have no fill at all),
-        // and there the band paints straight across the road. So each side is its own rule, offset
-        // by half the gap plus half its own width, which is the geometry mapbox draws.
-        const sides = casingSides(layer, coverage);
-        if (!sides) {
-            blocks.push({ selector, owner: layer.id, declarations: lit });
-            return;
-        }
-        for (const [side, offset] of sides) {
-            blocks.push({
-                selector: selector.replace(`::${attachment}`, `::${attachment}_${side}`),
-                owner: layer.id,
-                declarations: [...lit, ...offset],
-            });
-        }
+        blocks.push({ selector, owner: layer.id, declarations: light(layer, declarations) });
     }
 
     if (usesBuildings) options.styleParams!.set(BUILDINGS_PARAM, BUILDINGS_3D);
+    // The MEDIAN index, not the first. `road` has 82 layers spanning indices 3 to 130 in Mapbox
+    // Standard, and its FIRST is one early tunnel layer - ordering by that sank all 82 beneath
+    // landuse, so the landuse polygons painted over every road. The median puts a source-layer
+    // where most of its layers actually are, which is the depth that misorders the fewest.
+    const order = new Map<string, number>([...positions].map(([name, at]) => {
+        const sorted = [...at].sort((a, b) => a - b);
+        return [name, sorted[sorted.length >> 1]];
+    }));
     reportInterleaving(emitted, order, coverage);
     reportSources(style, layers, coverage);
     return { mapBlock, blocks, order, brightness };

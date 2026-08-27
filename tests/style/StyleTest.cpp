@@ -7,9 +7,11 @@
 int failures = 0;
 
 void testLayerConfig();
+void testCartoCSSParse();
 
 int main() {
     testLayerConfig();
+    testCartoCSSParse();
 
     std::printf("\n%d failure(s)\n", failures);
     return failures ? 1 : 0;

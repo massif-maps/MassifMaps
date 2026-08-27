@@ -48,6 +48,8 @@ const SDF_GAMMA = 0.08;
 const MAPBOX_SDF_RADIUS = 8;
 const MASSIF_SDF_UNIT = 128 / 8; // BITMAP_SDF_SCALE
 const MASSIF_SDF_EDGE = 127.5;
+// What the SDK's own encoding can hold: 127.5 / 16 texels either side of the edge.
+const FIELD_LIMIT = 127.5 / 16;
 
 /**
  * One MapBox distance-field byte in the SDK's own encoding.
@@ -234,18 +236,58 @@ const SDF_PADDING = 6;
 
 function padField(source: PNG, pixelRatio: number): PNG {
     const p = Math.round(SDF_PADDING * pixelRatio);
-    const out = new PNG({ width: source.width + 2 * p, height: source.height + 2 * p });
-    for (let y = 0; y < out.height; y++) {
-        for (let x = 0; x < out.width; x++) {
-            const sx = Math.min(source.width - 1, Math.max(0, x - p));
-            const sy = Math.min(source.height - 1, Math.max(0, y - p));
-            const value = source.data[(sy * source.width + sx) * 4];
-            const dx = (x - p) - sx;
-            const dy = (y - p) - sy;
-            const away = Math.sqrt(dx * dx + dy * dy);
-            const faded = Math.max(0, Math.round(value - away * MASSIF_SDF_UNIT));
-            const dst = (y * out.width + x) * 4;
-            out.data[dst] = out.data[dst + 1] = out.data[dst + 2] = faded;
+    const width = source.width + 2 * p;
+    const height = source.height + 2 * p;
+    const out = new PNG({ width, height });
+
+    // The distance is re-derived from the INK by the same exact Euclidean transform MapBox's own
+    // tiny-sdf uses (Felzenszwalb & Huttenlocher). Two reasons it cannot just be read back:
+    // MapBox's field spans only -6..+2 texels around the shape, so everything further out carries
+    // one saturated value and a wider halo lit the whole sprite square; and a cheap chamfer sweep
+    // is ~7% out along the diagonals, which showed as a scalloped halo edge and patchy holes.
+    //
+    // SIGNED - outward from the ink and inward from its complement. One-sided leaves a step where
+    // the kept MapBox value meets the derived one, and the halo threshold crosses it twice.
+    const INF = 1e20;
+    const at = (x: number, y: number): number | null => {
+        const sx = x - p;
+        const sy = y - p;
+        if (sx < 0 || sy < 0 || sx >= source.width || sy >= source.height) return null;
+        return source.data[(sy * source.width + sx) * 4];
+    };
+
+    const outward = new Float64Array(width * height);
+    const inward = new Float64Array(width * height);
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            const i = y * width + x;
+            const value = at(x, y);
+            const ink = value !== null && value >= MASSIF_SDF_EDGE;
+            outward[i] = ink ? 0 : INF;
+            inward[i] = ink ? INF : 0;
+        }
+    }
+    edt(outward, width, height);
+    edt(inward, width, height);
+
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            const i = y * width + x;
+            // Signed distance in texels, positive inside. MapBox's own value is kept within a texel
+            // and a half of the edge - it carries sub-texel coverage a thresholded mask cannot -
+            // and the two agree there, so the field stays continuous across the handover.
+            //
+            // NOT clamped to tiny-sdf's -6..+2: MapBox can afford that span because it draws a
+            // sprite at about one texel per screen pixel, where the SDK draws the same sprite at
+            // ~1.4 and six texels would fund barely three pixels of halo.
+            const derived = Math.sqrt(inward[i]) - Math.sqrt(outward[i]);
+            const own = at(x, y);
+            const ownTexels = own === null ? null : (own - MASSIF_SDF_EDGE) / MASSIF_SDF_UNIT;
+            const signed = ownTexels !== null && Math.abs(derived) <= 1.5 ? ownTexels : derived;
+            const texels = Math.max(-FIELD_LIMIT, Math.min(FIELD_LIMIT, signed));
+            const value = Math.max(0, Math.min(255, Math.round(MASSIF_SDF_EDGE + texels * MASSIF_SDF_UNIT)));
+            const dst = i * 4;
+            out.data[dst] = out.data[dst + 1] = out.data[dst + 2] = value;
             out.data[dst + 3] = 255;
         }
     }
@@ -321,4 +363,55 @@ export function extractAllIcons(
         }
     }
     return { names, skipped, sample };
+}
+
+/**
+ * Exact Euclidean distance transform, Felzenszwalb & Huttenlocher - the one MapBox's tiny-sdf uses.
+ * `grid` holds SQUARED distances in place: 0 on the shape, a large number off it.
+ *
+ * Each pass is the lower envelope of the parabolas rooted at every cell of one row or column, which
+ * is what makes it exact and linear where a chamfer sweep is neither.
+ */
+function edt(grid: Float64Array, width: number, height: number): void {
+    const size = Math.max(width, height);
+    const f = new Float64Array(size);
+    const d = new Float64Array(size);
+    const v = new Int32Array(size);
+    const z = new Float64Array(size + 1);
+    const FAR = 1e20;
+
+    const pass = (n: number, read: (i: number) => number, write: (i: number, value: number) => void) => {
+        for (let i = 0; i < n; i++) f[i] = read(i);
+        let k = 0;
+        v[0] = 0;
+        z[0] = -FAR;
+        z[1] = FAR;
+        for (let q = 1; q < n; q++) {
+            let s = 0;
+            while (k >= 0) {
+                s = ((f[q] + q * q) - (f[v[k]] + v[k] * v[k])) / (2 * q - 2 * v[k]);
+                if (s > z[k]) break;
+                k--;
+            }
+            k++;
+            v[k] = q;
+            z[k] = s;
+            z[k + 1] = FAR;
+        }
+        k = 0;
+        for (let q = 0; q < n; q++) {
+            while (z[k + 1] < q) k++;
+            const dx = q - v[k];
+            d[q] = dx * dx + f[v[k]];
+        }
+        for (let i = 0; i < n; i++) write(i, d[i]);
+    };
+
+    for (let x = 0; x < width; x++) {
+        pass(height, (y) => grid[y * width + x], (y, value) => { grid[y * width + x] = value; });
+    }
+    for (let y = 0; y < height; y++) {
+        const row = y * width;
+        pass(width, (x) => grid[row + x], (x, value) => { grid[row + x] = value; });
+    }
 }

@@ -1295,6 +1295,26 @@
       "baked": false
     },
     {
+      "cartocss": "shield-icon-halo-fill",
+      "mapnik": "icon-halo-fill",
+      "symbolizer": "shield",
+      "kind": "color",
+      "type": "ColorFunctionProperty",
+      "default": "#000000",
+      "live": true,
+      "baked": false
+    },
+    {
+      "cartocss": "shield-icon-halo-radius",
+      "mapnik": "icon-halo-radius",
+      "symbolizer": "shield",
+      "kind": "float",
+      "type": "FloatFunctionProperty",
+      "default": "0.0",
+      "live": true,
+      "baked": false
+    },
+    {
       "cartocss": "shield-icon-name",
       "mapnik": "icon-name",
       "symbolizer": "shield",
@@ -1322,6 +1342,16 @@
       "type": "FloatProperty",
       "default": "0.0",
       "live": false,
+      "baked": false
+    },
+    {
+      "cartocss": "shield-image-scale",
+      "mapnik": "image-scale",
+      "symbolizer": "shield",
+      "kind": "float",
+      "type": "FloatFunctionProperty",
+      "default": "1.0",
+      "live": true,
       "baked": false
     },
     {

@@ -12,7 +12,7 @@ sidebar_position: 20
 `CartoCSSMapnikTranslator.cpp`. Edit those, then re-run the script — never this page.
 :::
 
-210 properties across 12 symbolizers.
+213 properties across 12 symbolizers.
 
 ## Reading the table
 
@@ -25,7 +25,7 @@ sidebar_position: 20
 - Liveness is decided **per parameter across the whole style**, not per use: one baked use
   anywhere makes the parameter baked everywhere.
 
-Live-capable properties: 41 of 210.
+Live-capable properties: 44 of 213.
 
 ## `building`
 
@@ -209,9 +209,12 @@ Live-capable properties: 41 of 210.
 | `shield-icon-dy` | `icon-dy` | float | `0.0` |  |  |
 | `shield-icon-face-name` | `icon-face-name` | string |  |  |  |
 | `shield-icon-fill` | `icon-fill` | color | `#000000` | yes |  |
+| `shield-icon-halo-fill` | `icon-halo-fill` | color | `#000000` | yes |  |
+| `shield-icon-halo-radius` | `icon-halo-radius` | float | `0.0` | yes |  |
 | `shield-icon-name` | `icon-name` | string |  |  |  |
 | `shield-icon-opacity` | `icon-opacity` | float | `1.0` | yes |  |
 | `shield-icon-size` | `icon-size` | float | `0.0` |  |  |
+| `shield-image-scale` | `image-scale` | float | `1.0` | yes |  |
 | `shield-line-spacing` | `line-spacing` | float | `0.0` |  |  |
 | `shield-max-distance` | `max-distance` | float | `0.0` |  |  |
 | `shield-min-distance` | `minimum-distance` | float | `0.0` |  |  |

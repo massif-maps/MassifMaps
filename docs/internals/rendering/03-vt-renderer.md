@@ -329,6 +329,35 @@ code — check by forcing `a = 0` in that branch and seeing whether the line sti
 > `centerClip.w + deltaClip.w`: that is a second perspective divide by something that is not a
 > position's w, and it explodes when the offset is large in world units.
 
+## Polygon patterns keep their phase across a tile border
+
+A `polygon-pattern` is a repeating texture sampled with `GL_REPEAT`, and the texcoord a vertex
+carries is tile-local: `TileLayerBuilder::tesselatePolygon` gives the tile a phase `u0` and a step
+`du_dx` across it. The fragment stage samples `uPattern` at
+`texCoord / (texCoordScale * widthScale)`, and `texCoordScale` is only the int16 packing scale, so
+it cancels — **one pattern period is `bitmap->width * widthScale` in texcoord units.**
+
+`u0` has to wrap at exactly that. It used to wrap at the **bitmap's width**, which is the same
+number of texels but not the same units, so a fraction of a period was dropped at every tile
+border and the pattern stepped across it. MapTiler's 25 px construction hatch spans 18.2 periods
+per tile — a fifth of a period lost each time. The accumulation is done in `double`: a z21 tile
+index reaches 2^21, and a float step loses the remainder long before that.
+
+Wrapping at a period leaves the pattern's **size** untouched, which matters — the shipped eink
+style spans 0.9 (a 512 px scrub) to 14.2 (a 32 px vineyard) periods per tile, and rounding the
+step to a whole number of periods instead would have redrawn the big ones 11% smaller.
+
+It only shows at high overzoom. At z17 a drawn tile is most of the polygon and the few borders fall
+outside it; at z21 a tile is a few hundred pixels and the borders are all over a single polygon,
+which is why a hatch looked fine zoomed out and broke up zoomed in.
+
+Measuring it: a diagonal hatch is invariant under a 1 px diagonal translation, so
+`|px(x, y) - px(x+1, y-1)|` averaged down a column is ~2 everywhere and spikes at a discontinuity.
+Before, the two tile borders on screen scored 279 and 144 (140x and 72x the median); after, nothing
+exceeds 8 — the pattern's own stripe edges. Estimating the stripe period per window and comparing
+phases does NOT work: a fractional error in the period accumulates across the gap and reads as a
+jump that is not there.
+
 ## Style evaluation
 
 CartoCSS values may be functions of view state (zoom, style parameters), so colours, widths and

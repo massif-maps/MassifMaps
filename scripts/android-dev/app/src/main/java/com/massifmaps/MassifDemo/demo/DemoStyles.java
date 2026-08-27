@@ -63,7 +63,7 @@ public final class DemoStyles {
             case ASSETS: {
                 AssetPackage pack = openAppAssets();
                 if (pack != null) {
-                    return new MBVectorTileDecoder(new CompiledStyleSet(pack, "osm"));
+                    return new MBVectorTileDecoder(new CompiledStyleSet(pack, DemoConfig.STYLE_ASSETS_NAME));
                 }
                 break;
             }

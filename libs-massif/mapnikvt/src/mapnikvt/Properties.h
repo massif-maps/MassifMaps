@@ -454,6 +454,15 @@ namespace massif::mvt {
             return _styleParamVars && !(_selectionFoldable && context.hasStyleParameterOverride());
         }
 
+        // Whether the parameters have to stay behind the store, or can be resolved now. An
+        // expression that also reads a feature field is not live-capable (isLiveCapable), so
+        // changing such a parameter decodes the tiles again anyway - keeping a closure there would
+        // only re-run the interpreter per feature at render time, and hand every feature its own
+        // function object, which splits the batches.
+        bool foldsStyleParams(const ExpressionContext& context) const {
+            return !(readsLiveStyleParams(context) && !_contextVars);
+        }
+
         GenericFunctionProperty() = default;
         template <typename S> explicit GenericFunctionProperty(const S& defaultValue) : _func(defaultValue), _expr(Value(defaultValue)) { _defaultValue = Value(defaultValue); }
 
@@ -483,7 +492,7 @@ namespace massif::mvt {
 
     protected:
         virtual vt::FloatFunction buildFunction(const ExpressionContext& context) const override {
-            if (_viewStateVars || readsLiveStyleParams(context)) {
+            if (_viewStateVars || !foldsStyleParams(context)) {
                 Expression expr = _expr;
                 // By value: this function outlives the property that built it.
                 Value defaultValue = _defaultValue;
@@ -510,7 +519,7 @@ namespace massif::mvt {
 
     protected:
         virtual vt::ColorFunction buildFunction(const ExpressionContext& context) const override {
-            if (_viewStateVars || readsLiveStyleParams(context)) {
+            if (_viewStateVars || !foldsStyleParams(context)) {
                 Expression expr = _expr;
                 // By value: this function outlives the property that built it.
                 Value defaultValue = _defaultValue;

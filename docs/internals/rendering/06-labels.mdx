@@ -361,7 +361,13 @@ Two notes for style authors:
 
 - Prefer an expression that reads **only** the view state. It has no feature dependency, so
   `FloatFunctionProperty::getFunction` hands every feature the same function object and the label
-  style is not rebuilt per feature.
+  style is not rebuilt per feature. An expression that reads no view state at all is as good: it
+  folds to a constant at decode, and two features answering alike share one function object — that
+  holds for a style parameter read together with a field
+  (`text-rank: get([param::poi_rank], [class], 100)`), which the property resolves at decode rather
+  than keeping behind the store, since such a parameter can never be live anyway
+  (`GenericFunctionProperty::foldsStyleParams`). Mixing the two — a field *and* `view::distance` —
+  is what costs a closure and a label style per feature.
 - `0 - x`, not `-x`: CartoCSS's `literal` rule accepts `-` as a first character, so a leading minus
   in front of a field is read as the literal string `"-"` and the declaration fails to parse.
 

@@ -86,7 +86,6 @@ export const VALUE_MAP: Record<string, Record<string, string>> = {
  */
 export const KNOWN_GAPS: Record<string, string> = {
     'line-blur': 'no CartoCSS equivalent',
-    'line-gap-width': 'no CartoCSS equivalent',
     'line-gradient': 'no CartoCSS equivalent',
     'line-translate': 'screen-space translate has no equivalent',
     'line-translate-anchor': 'screen-space translate has no equivalent',

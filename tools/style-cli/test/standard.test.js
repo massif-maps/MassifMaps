@@ -230,3 +230,63 @@ test('a style with no buildings declares no such parameter', () => {
     TABLE, { variables: false });
     assert.equal(JSON.parse(project).styleparameters, undefined);
 });
+
+test('line-gap-width becomes the casing width it stands for', () => {
+    // A *-case layer is TWO strips either side of a gap: the gap is the road, line-width is the
+    // casing on ONE side. Dropped, the casing drew as a solid band the full width of the road -
+    // 28 layers of Mapbox Standard, and why ours came out as slabs where the browser draws a
+    // white road with a thin edge.
+    const cased = { id: 'road-case', type: 'line', 'source-layer': 'road',
+        paint: { 'line-color': '#888', 'line-gap-width': 6, 'line-width': 1.5 } };
+    const { mss } = convert({ layers: [cased] }, TABLE, { variables: false });
+    assert.match(mss, /line-width: \(\(6\) \+ 2 \* \(1\.5\)\);/);
+    assert.ok(!/line-width: 1\.5;/.test(mss), 'the casing width alone is not the width to draw');
+});
+
+test('a gap and a width that ramp over zoom stay per-frame functions', () => {
+    const cased = { id: 'road-case', type: 'line', 'source-layer': 'road', paint: {
+        'line-color': '#888',
+        'line-gap-width': ['interpolate', ['linear'], ['zoom'], 12, 3, 18, 12],
+        'line-width': ['interpolate', ['linear'], ['zoom'], 14, 0.5, 18, 1] } };
+    const { mss } = convert({ layers: [cased] }, TABLE, { variables: false });
+    assert.match(mss, /line-width: \(\(linear\(\[view::zoom\], \(12, 3\), \(18, 12\)\)\) \+ 2 \* \(linear\(/);
+});
+
+/** A style whose lights differ per preset, which is how emissive-strength becomes visible. */
+const LIT = {
+    schema: { lightPreset: { default: 'day', values: ['day', 'night'] } },
+    lights: [{ id: 'ambient', type: 'ambient', properties: {
+        color: ['match', ['config', 'lightPreset'], 'night', 'hsl(0, 0%, 10%)', 'hsl(0, 0%, 100%)'],
+        intensity: 1 } }],
+    layers: [
+        { id: 'ground', type: 'fill', 'source-layer': 'land',
+            paint: { 'fill-color': 'hsl(20, 20%, 90%)', 'fill-emissive-strength': 0 } },
+        { id: 'sign', type: 'fill', 'source-layer': 'sign',
+            paint: { 'fill-color': 'hsl(20, 20%, 90%)', 'fill-emissive-strength': 1 } },
+    ],
+};
+
+test('the default preset is drawn unlit, so it matches the source style', () => {
+    // sceneBrightness is an ambient-only proxy; only the RATIO between two presets of one style
+    // means anything, so the default preset has to come out at factor 1 or every converted day
+    // render would be darker than the style it came from.
+    // Both layers share the colour by day, so it hoists to ONE variable - the value is the point.
+    const { variables } = convert(LIT, TABLE, { presets: [] });
+    assert.match(variables, /^@\w+: hsl\(20, 20%, 90%\);$/m);
+    assert.ok(!/hsl\(20, 20%, (?!90%)/.test(variables), 'nothing else was darkened either');
+});
+
+test('a non-emissive layer follows the light down; a fully emissive one does not', () => {
+    const { presets } = convert(LIT, TABLE);
+    const night = presets.get('night');
+    // ambient 10% of the day's 100%, so a fully lit surface keeps a tenth of its lightness.
+    assert.match(night, /@ground_fill: hsl\(20, 20%, 9%\);/);
+    assert.match(night, /@sign_fill: hsl\(20, 20%, 90%\);/, 'self-lit, so night does not touch it');
+});
+
+test('a layer that states no emissive strength is left as authored', () => {
+    const plain = { ...LIT, layers: [{ id: 'ground', type: 'fill', 'source-layer': 'land',
+        paint: { 'fill-color': 'hsl(20, 20%, 90%)' } }] };
+    const { presets } = convert(plain, TABLE);
+    assert.match(presets.get('night'), /@ground_fill: hsl\(20, 20%, 90%\);/);
+});

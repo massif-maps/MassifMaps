@@ -53,7 +53,7 @@ function numbersOf(args: Json[]): number[] | null {
 const CSS_COLOUR = /^(hsla?|rgba?)\(([^()]*)\)$/i;
 
 /** Mapbox's channel ranges: hue 0-360, saturation and lightness 0-100, alpha 0-1. */
-function toHsla(value: Json): [number, number, number, number] | null {
+export function toHsla(value: Json): [number, number, number, number] | null {
     if (typeof value !== 'string') return null;
     const text = value.trim();
 
@@ -96,7 +96,7 @@ function rgbToHsl(r: number, g: number, b: number, a: number): [number, number, 
 }
 
 /** Back out as CSS, which is what the CartoCSS grammar reads and what the palette shows. */
-function fromHsla(h: number, s: number, l: number, a: number): string {
+export function fromHsla(h: number, s: number, l: number, a: number): string {
     const round = (n: number): number => Math.round(n * 100) / 100;
     return a >= 1
         ? `hsl(${round(h)}, ${round(s)}%, ${round(l)}%)`

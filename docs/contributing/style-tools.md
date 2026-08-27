@@ -275,6 +275,49 @@ Folding is **conservative by construction**: a node is simplified only where a s
 happened. Without that rule it rewrote expressions in styles that have no config at all, and quietly
 removed four layers from a MapTiler style whose render was already verified.
 
+### A casing is not a line: `line-gap-width`
+
+A `*-case` layer draws TWO strips either side of a gap — the gap is the road, `line-width` is the
+casing on **one** side. CartoCSS has no gap, so both fold into the width and the fill layer above
+covers the middle, which is how a casing has always been drawn here:
+
+```
+line-width: ((<gap>) + 2 * (<width>));
+```
+
+Arithmetic over two zoom ramps stays a per-frame function — it compiles to
+`linear(…)+2*linear(…)` and the decoder evaluates it per frame, so nothing is baked. Dropped, the
+casing drew as a solid band the full width of the road: 28 layers of Standard, and the reason ours
+came out as lavender slabs where the browser draws a white road with a thin edge.
+
+### `*-emissive-strength`, approximated by the colour
+
+Mapbox lights its 2D layers with the same scene lights as its 3D ones. `emissive-strength` is how
+much of a colour is EMITTED rather than lit: at 1 it is drawn as authored, at 0 it is at the mercy
+of the ambient light and goes dark at night. Standard sets it on 103 properties, and **that**, not
+different colours, is how its night preset gets dark.
+
+Our renderer draws every 2D colour as authored — emissive-strength 1 everywhere. So it is folded
+into the colour at conversion time:
+
+```
+shown = authored x (emissive + (1 - emissive) x lit)
+```
+
+`lit` is the preset's brightness over the DEFAULT preset's. That ratio is the load-bearing part:
+`sceneBrightness` is an ambient-only proxy whose absolute value is not a light level, but the ratio
+between two presets of one style is meaningful — and normalising this way is what keeps the default
+preset at factor 1, so a converted day render still matches the style it came from.
+
+Measured on the Paris z15 bench, mean screen brightness went **225/255 by day to 56/255 by night**,
+with labels staying bright because Standard marks them fully emissive.
+
+:::caution This is an approximation
+No directional term, no per-vertex normal, no colour cast from the light: only lightness moves. It
+is applied only where the style STATES an emissive strength — an unstated one is left as authored
+rather than assuming a default. A zoom-ramped strength takes the mean of its stops.
+:::
+
 :::caution What does not survive
 Standard does most of its day/night with the **3D lighting**, not with different colours: 103
 `*-emissive-strength` properties, which have no CartoCSS equivalent and are dropped. The converted
@@ -355,7 +398,7 @@ Every skipped property is counted and named — `mapbox2css` prints a coverage r
 turns any drop into a non-zero exit. What it refuses, and why:
 
 - **Layer types** with no symbolizer: `heatmap`.
-- **The gap list** — `line-blur`, `line-gap-width`, `line-gradient`, `fill-extrusion-pattern`,
+- **The gap list** — `line-blur`, `line-gradient`, `fill-extrusion-pattern`,
   every `*-translate`, most `raster-*` adjustments. These are the CartoCSS gaps, not converter bugs.
 - **Expressions with no CartoCSS form**: `feature-state`, `within`, `number-format`,
   `image`, `%` (absent from the grammar), `abs`/`floor`/`ceil` (absent from `_basicFuncMap`), and

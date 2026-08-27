@@ -11,6 +11,7 @@ import { collapseBranches, splitLayer } from './split.js';
 import { type HoistBlock, hoistVariables, paletteHeader } from './variables.js';
 import { LIGHT_PRESET, importOnly, presetsOf, resolveConfig, sceneBrightness } from './config.js';
 import { foldConfig, foldLayer } from './fold.js';
+import { applyLighting, emissiveProperty, lightingFactor } from './emissive.js';
 import type { CartoProperty, Json, MapboxLayer, MapboxStyle, PropertyTable } from './types.js';
 
 export interface ConvertResult {
@@ -122,6 +123,14 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
     // Set while emitting, so the parameter is only declared when there is a building to gate.
     let usesBuildings = false;
 
+    // The brightness of the style's OWN default preset, which the emissive fold measures against.
+    // sceneBrightness is an ambient-only proxy, so its absolute value is not a light level - but
+    // the RATIO between two presets of the same style is meaningful, and that is all this needs:
+    // the default preset comes out unlit (factor 1) and every darker one follows it down.
+    const defaultBrightness = lights === undefined ? null
+        : sceneBrightness(lights, (node) => foldConfig(node, new Map(
+            [...parameters].map(([name, spec]) => [name, spec.default]))));
+
     // Emitting is a function of the config, because a configurable style is converted ONCE PER
     // PRESET: folding preserves structure (see fold.ts), so the runs line up block for block and
     // only their literals differ - which is what lets one style.mss carry a palette per preset.
@@ -144,7 +153,7 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
 
     layers.forEach((layer, index) => {
         if (layer.type === 'background') {
-            mapBlock.push(...backgroundProperties(layer, coverage));
+            mapBlock.push(...light(layer, backgroundProperties(layer, coverage)));
             return;
         }
 
@@ -198,6 +207,34 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
         });
     });
 
+    /**
+     * Mapbox lights its 2D layers; we draw their colours as authored. Folding the layer's own
+     * emissive-strength into the colour is what makes a night preset read as night - see
+     * emissive.ts, which is also where the limits of the approximation are written down.
+     */
+    function light(layer: MapboxLayer, declarations: string[]): string[] {
+        if (brightness === null || !defaultBrightness) return declarations;
+        const litFraction = Math.max(0, Math.min(1, brightness / defaultBrightness));
+        return declarations.map((declaration) => {
+            const colon = declaration.indexOf(':');
+            const property = declaration.slice(0, colon);
+            // Map settings are not symbolizer properties, so they are not in the table.
+            const known = allowed.get(property);
+            if (known ? known.kind !== 'color' : !property.endsWith('-color')) return declaration;
+            const source = emissiveProperty(property);
+            const stated = source ? layer.paint?.[source] : undefined;
+            // Only where the style STATES one. A zoom ramp has no single answer, so it takes the
+            // mean of its stops, as every other zoom-driven value baked in here does.
+            const emissive = stated === undefined ? null
+                : typeof stated === 'number' ? stated : representativeScale(stated, 1);
+            const factor = lightingFactor(emissive, litFraction);
+            if (factor === null) return declaration;
+            const value = declaration.slice(colon + 1, declaration.lastIndexOf(';')).trim();
+            const lit = applyLighting(value, factor);
+            return lit === value ? declaration : `${property}: ${lit};`;
+        });
+    }
+
     function emitLayer(layer: MapboxLayer, attachment: string, sourceLayer: string, symbolizer: string, layerIndex: number): void {
         const paramised = paramiseValues(layer, options, coverage);
         let declarations = layerDeclarations(paramised.layer, symbolizer, allowed, coverage, options, layerIndex);
@@ -235,7 +272,7 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
             return;
         }
 
-        blocks.push({ selector, owner: layer.id, declarations });
+        blocks.push({ selector, owner: layer.id, declarations: light(layer, declarations) });
     }
 
     if (usesBuildings) options.styleParams!.set(BUILDINGS_PARAM, BUILDINGS_3D);
@@ -389,6 +426,22 @@ function layerDeclarations(
     }
 
     for (const [name, value] of Object.entries({ ...layer.layout, ...layer.paint })) {
+        // A CASING, not a line: `line-gap-width` is the road it runs either side of, and
+        // `line-width` is the casing on ONE side. Both are folded into the width here and the
+        // fill layer above covers the middle, which is how a casing has always been drawn in
+        // CartoCSS. Dropped, the casing drew as a solid band the full width of the road - which
+        // is every road in Mapbox Standard, 28 layers of them, and the reason ours came out as
+        // lavender slabs where the browser draws a white road with a thin edge.
+        if (name === 'line-gap-width') {
+            const gap = tryTranslate(value, name, layer.id, coverage);
+            const side = tryTranslate(layer.paint?.['line-width'] ?? 1, 'line-width', layer.id, coverage);
+            if (gap === null || side === null) continue;
+            out.push(`line-width: ((${gap}) + 2 * (${side}));`);
+            coverage.emit('line-width');
+            continue;
+        }
+        // Already folded into the width above.
+        if (name === 'line-width' && layer.paint?.['line-gap-width'] !== undefined) continue;
         if (name === 'visibility') {
             if (value === 'none') return []; // the whole layer is off
             continue;

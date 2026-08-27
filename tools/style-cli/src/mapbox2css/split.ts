@@ -110,9 +110,12 @@ function exclusive(earlier: Json[], own: Json | null): Json | null {
 }
 
 /**
- * Every case/match over the feature replaced by its fallback - the branch the decoder evaluates to
- * anyway with no feature bound. Field reads themselves are left alone, which is what makes this
- * usable for `text-field` too, where reading a field is the whole point.
+ * Every case/match over the feature replaced by its fallback. Field reads themselves are left alone,
+ * which is what makes this usable for `text-field` too, where reading a field is the whole point.
+ *
+ * This is an APPROXIMATION, not an equivalence: the decoder does bind the feature and would have
+ * evaluated the branches per feature (docs/contributing/style-tools.md, "A field in a value needs a
+ * null guard"). Kept as the past-8-variants fallback until the guarded alternative is measured.
  */
 export function collapseBranches(value: Json): Json {
     if (!readsFeature(value)) return value;

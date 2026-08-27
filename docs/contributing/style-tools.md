@@ -196,30 +196,54 @@ Two more that only look like gaps: `text-overlap` is the modern spelling of `tex
 `text-placement-priority` **negated** — MapBox places the lowest key first, the culler takes the
 highest priority.
 
-## A field belongs in a predicate, never in a value
+## A field in a value reads the feature, and an unset one takes the default
 
-`Symbolizer::createFeatureProcessor` runs **once per rule, with no feature bound**, and
-`ColorFunctionProperty::buildFunction` only defers to a per-frame function for view-state and
-live-parameter expressions. A `[class]` in a property *value* is therefore evaluated there and then
-against nothing: the colour collapses to null, `parseColor("")` throws, and **the whole rule is
-lost for that tile** — which is what "some tiles have no roads, others do" looks like. A float
-quietly becomes 0 instead of throwing.
+**Corrected 2026-08-27.** This section used to say a property value cannot read a feature field at
+all, and `split.ts` exists because of it. It can. The decoder binds the feature before it builds the
+processor ([`TileReader::processLayer`](https://github.com/massif-maps/massif-maps-libs/blob/develop/mapnikvt/src/mapnikvt/TileReader.cpp)
+calls `exprContext.setFeatureData(symbolizerFeatureData)`), and `Rule::calculateReferencedFields`
+gathers the fields a symbolizer property references so they are in that data. Pinned by
+`tests/style/DataDrivenPropertyTest.cpp`.
+
+What actually failed was the **unset** field, and the two halves failed differently:
+
+| the value | before | now |
+|---|---|---|
+| a colour, field absent | `parseColor("")` throws `Color parsing failed`; `TileReader` catches it and caches a **null** processor, so the *geometry* goes with the colour | the property's declared default |
+| a width, field absent | silently **0**, which drops the line just as effectively and is harder to see | the property's declared default |
+| a malformed non-empty value | throws | still throws — a style bug worth reporting |
+
+`Property::evalExpression` is the one place that decides it: an evaluation yielding **unset** falls
+back to the value the property was constructed with, which is what the style would have got had it
+never set the property at all. An explicit guard — `[color] <> null ? [color] : '#0000ff'` — still
+wins, and is still the clearer thing to write when the fallback is not the default.
 
 Measured on MapTiler topo-v4, cleared cache, z14: two `line-color` declarations reading `[class]`
-and `[paved]` produced 3 `Color parsing failed`; replacing just the field with a constant — keeping
-the nested ternary — brought it to 0. The ternary is fine, the field is not.
+and `[paved]` produced 3 `Color parsing failed`. Not every feature carries every field, which is why
+it looked like "some tiles have no roads, others do".
 
-So [`split.ts`](https://github.com/massif-maps/MassifMaps/blob/master/tools/style-cli/src/mapbox2css/split.ts)
+Worth knowing for anything built on this: a field-driven value folds to a **constant per feature**,
+so two features answering alike hand back equal `ColorFunction`s and
+[`TileLayerBuilder`](https://github.com/massif-maps/massif-maps-libs/blob/develop/vt/src/vt/TileLayerBuilder.cpp)
+dedups them into one of the geometry's 16 style slots. A field-driven colour costs slots, not
+batches.
+
+[`split.ts`](https://github.com/massif-maps/MassifMaps/blob/master/tools/style-cli/src/mapbox2css/split.ts)
 turns a `case`/`match` over a field into **one attachment per branch**, each with a constant value
 and the branch's condition added to the filter. Later branches exclude the earlier ones, because
 MapBox takes the first match. On topo-v4 that is 17 layers and **+24 attachments**.
 
+It was written for the wrong reason above and **the decoder no longer requires it** — a field-driven
+value renders, and a missing field takes the default instead of losing the feature. It has not been
+removed: whether emitting the field expression beats 24 extra attachments is unmeasured, and the
+branch cap below is what a review of that should start from.
+
 - A `match` over a plain `["get", f]` uses the **legacy** filter spelling, which lands in brackets
   (`[class = 'motorway']`) instead of a `when()`.
-- Past 8 variants a layer is left whole and its field-driven values keep only their **fallback** —
-  the same thing the decoder would have evaluated, minus the broken rule. It is counted as an
-  approximation.
-- A value with no fallback (`["get", "width"]`) is **dropped** with that reason, not emitted.
+- Past 8 variants a layer is left whole and its field-driven values keep only their **fallback**.
+  Now an over-approximation: the decoder would have evaluated the branches per feature.
+- A value with no fallback (`["get", "width"]`) is **dropped** with that reason, not emitted. This is
+  the one to revisit first — a guarded emission renders, a drop cannot.
 - `text-field` is exempt: the text is evaluated per feature inside the processor rather than through
   a `Property`, so it reads fields correctly.
 

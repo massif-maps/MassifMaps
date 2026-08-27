@@ -24,6 +24,10 @@ sidebar_position: 20
   tile**, however live its type is.
 - Liveness is decided **per parameter across the whole style**, not per use: one baked use
   anywhere makes the parameter baked everywhere.
+- **Default** is also the fallback: a value reading a field the feature does not carry (or a
+  parameter with no value) evaluates to unset, and an unset value takes the default rather
+  than failing. Write an explicit guard — `[color] <> null ? [color] : '#0000ff'` — when the
+  fallback should be something else.
 
 Live-capable properties: 44 of 213.
 

@@ -8,10 +8,12 @@ int failures = 0;
 
 void testLayerConfig();
 void testExpressionRoundTrip();
+void testDataDrivenProperty();
 
 int main() {
     testLayerConfig();
     testExpressionRoundTrip();
+    testDataDrivenProperty();
 
     std::printf("\n%d failure(s)\n", failures);
     return failures ? 1 : 0;

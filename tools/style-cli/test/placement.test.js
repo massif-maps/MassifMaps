@@ -144,13 +144,14 @@ test('a line label repeats every 250 px, because that is MapBox\'s default and C
     assert.ok(!mss({}).includes('text-spacing:'));
 });
 
-test('a line label gets no default gap, or the decoder stops de-duplicating its repeats', () => {
-    // With no minimum stated the decoder floors it at the label's own size, which is what keeps a
-    // repeat of the same name from being drawn twice where two tiles cut the same road. Writing
-    // the 4 px default there disabled that floor and the name came out doubled at tile borders.
-    assert.ok(!mss({ 'symbol-placement': 'line' }).includes('text-min-distance:'));
-    // A stated padding still wins - it is what the style asked for.
-    assert.match(mss({ 'symbol-placement': 'line', 'text-padding': 10 }), /text-min-distance: \(2 \* 10\);/);
+test('a line label repeats at symbol-spacing, not at its text-padding', () => {
+    // text-padding is the culler's collision margin in MapBox, symbol-spacing the gap between one
+    // repeat and the next. Feeding the padding to min-distance let the same name be drawn twice
+    // where two tiles cut the same road; the spacing is the distance that actually governs it.
+    assert.match(mss({ 'symbol-placement': 'line' }), /text-min-distance: 250;/);
+    assert.match(mss({ 'symbol-placement': 'line', 'symbol-spacing': 600 }), /text-min-distance: 600;/);
+    // A padding no longer reaches it at all.
+    assert.match(mss({ 'symbol-placement': 'line', 'text-padding': 10 }), /text-min-distance: 250;/);
 });
 
 test('a layer with no sort key still carries its order', () => {

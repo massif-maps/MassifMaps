@@ -3,9 +3,11 @@ import type { Json, MapboxLayer } from './types.js';
 
 /**
  * A road shield is a sprite BEHIND its text, tinted by icon-color, with icon-halo-* as its border -
- * and the sprite is picked per feature (`concat('road_', to-string([ref_length]))`), so there is no
- * one image to slice out. CartoCSS draws the same thing without any sprite: `text-background-*` is
- * a rounded plate behind the label, so icon-color becomes the plate and the icon halo its border.
+ * and the sprite is picked per feature (`concat('road_', to-string([ref_length]))`). Where that
+ * name can be spelled as a path mapnik interpolates, the real artwork is drawn and none of this
+ * applies. What is left here is the FALLBACK, for a name CartoCSS cannot assemble (`slice`, say):
+ * `text-background-*` is a rounded plate behind the label, so icon-color becomes the plate and the
+ * icon halo its border.
  *
  * The signal is the sprite name reading the FEATURE. A POI icon does that too, but its text sits
  * below the icon (`text-anchor: top`, `text-offset: [0, 0.8]`) rather than on it, and a town's
@@ -52,10 +54,8 @@ export function isShieldLayer(layer: MapboxLayer): boolean {
     const layout = layer.layout ?? {};
     if (layer.type !== 'symbol' || layout['text-field'] === undefined) return false;
     if (!readsFeature(layout['icon-image'] as Json)) return false;
-    // A plate, still. canSpellIconName says the NAME can be assembled, and it can - but MapTiler
-    // builds a shield's name out of `ref_length`, and a NUMERIC field interpolated into a string
-    // comes out empty (`icons/road_.png`), where a string field interpolates in full
-    // (`icons/road_A 430.png`). Until that is fixed in the SDK the plate is what stays readable.
+    // A name that can be spelled reaches the real sprite, so there is nothing to fake.
+    if (canSpellIconName(layout['icon-image'] as Json)) return false;
     // Without a colour there is no plate to draw, only a border round nothing.
     if ((layer.paint?.['icon-color'] ?? layout['icon-color']) === undefined) return false;
     return textSitsOnIcon(layer);

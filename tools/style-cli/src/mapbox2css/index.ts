@@ -276,6 +276,15 @@ function layerDeclarations(
             out.push(`text-dx: ${dx};`, `text-dy: ${dy};`);
             coverage.emit('text-dx');
             coverage.emit('text-dy');
+            // An offset TRANSLATES the text in MapBox, but with no alignment given the SDK reads a
+            // non-zero dx/dy as the anchor instead (TextSymbolizer::getFormatterOptions), so
+            // MapTiler's text-offset [0, 0.05] hung every road ref off its shield's bottom edge.
+            // Pin the anchor the offset moves - MapBox's default, centre.
+            if (layer.layout?.['text-anchor'] === undefined) {
+                out.push(`text-horizontal-alignment: 'middle';`, `text-vertical-alignment: 'middle';`);
+                coverage.emit('text-horizontal-alignment');
+                coverage.emit('text-vertical-alignment');
+            }
             continue;
         }
 

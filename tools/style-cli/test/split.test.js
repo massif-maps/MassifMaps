@@ -44,16 +44,18 @@ test('two field-driven colours no longer multiply into a cartesian product', () 
     assert.equal(blocks.length, 1);
 });
 
-test('a sprite name still becomes one attachment per branch, and excludes the earlier ones', () => {
-    // An icon-image is not a value the renderer can evaluate - it has to name one file.
-    const blocks = convert({ layers: [{
+test('a sprite name branching on fields becomes ONE ternary, not an attachment per branch', () => {
+    // Every branch names a file CartoCSS can spell, so the choice is one the decoder makes per
+    // feature - the attachment split this used to need is gone, and with it the excluding filters.
+    const index = {};
+    for (const n of ['one', 'two', 'other']) index[n] = { x: 0, y: 0, width: 8, height: 8, pixelRatio: 1, sdf: true };
+    const sprites = new Map([['default', { index, image: { width: 8, height: 8, data: Buffer.alloc(8 * 8 * 4, 200) } }]]);
+    const out = convert({ layers: [{
         id: 'p', type: 'symbol', 'source-layer': 'poi',
         layout: { 'text-field': '{name}', 'icon-image': ['case', ['==', ['get', 'a'], 1], 'one', ['==', ['get', 'b'], 2], 'two', 'other'] },
-    }] }, TABLE).mss.split('\n').filter((l) => l.startsWith('#poi'));
-    assert.equal(blocks.length, 3);
-    assert.ok(!blocks[0].includes('!'));
-    assert.match(blocks[1], /!\(\[a\] = 1\)/);
-    assert.match(blocks[2], /!\(\[a\] = 1\).*!\(\[b\] = 2\)/);
+    }] }, TABLE, { sprites: { sheets: sprites, outDir: '/tmp/massif-style-test' } }).mss;
+    assert.equal(out.split('\n').filter((l) => l.startsWith('#poi')).length, 1);
+    assert.match(out, /shield-file: .*\[a\] = 1.*icons\/one.png.*icons\/two.png.*icons\/other.png/);
 });
 
 test('a colour reading a bare field is kept, because the decoder evaluates it per feature', () => {

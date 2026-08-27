@@ -446,20 +446,38 @@ Two things the shield cannot carry, both baked into the bitmap instead:
 
 - **No `sdf`.** The distance field is resolved and the style's `icon-color` painted in, so one
   sprite drawn in two colours is two files (`circle-dot-000000.png`).
-- **No image size.** There is no shield equivalent of `marker-width`, so `icon-size` is resampled
-  into the PNG. A zoom ramp has no single answer and takes the mean of its stops (`-x65`).
+- **No image size.** There is no shield equivalent of `marker-width`, so a static `icon-size` is
+  resampled into the PNG. A zoom ramp is carried live by `shield-image-scale` instead.
 
 `shield-unlock-image` is always on, and the image is moved clear of the text by half its height —
 `text-anchor: bottom` anchors the text's bottom edge, so the name sits above and the dot below it,
 which is what MapBox's anchoring produces without ever needing the two to be separate labels.
 
-## Road shields become a text plate
+**A `text-offset` always ships its alignment.** MapBox's offset is a pure translation, but with no
+alignment stated `TextSymbolizer::getFormatterOptions` reads a non-zero `dx`/`dy` as the anchor
+itself — so MapTiler's `text-offset: [0, 0.05]` hung every road ref off the bottom edge of its
+shield. A layer with no `text-anchor` now emits MapBox's default, `middle`/`middle`, beside the
+offset.
+
+## Road shields draw the real artwork
 
 A MapBox road shield is a sprite drawn BEHIND its ref, and the sprite is picked per feature —
-`concat('transportation:', concat('road_', to-string([ref_length])))` — so there is no single image
-to slice out, and `icon-image` used to be dropped with the whole shield. But the sprite is an SDF
-**tinted by `icon-color`** and outlined by `icon-halo-*`, and CartoCSS draws exactly that shape
-without any image:
+`concat('transportation:', concat('road_', to-string([ref_length])))`. Two things make that name
+reachable, and together they get the country artwork itself rather than an imitation of it:
+
+- **Every sheet is extracted under bare names**, not just the default one — MapTiler keeps its 70
+  shield shapes in a separate `transportation` sheet, and a qualified `transportation_road_3.png`
+  is a file no interpolation can land on. The default sheet still wins a collision.
+- **The name becomes a path**, because mapnik interpolates every `[field]` in a string:
+  `icons/[iso_a2]-highway_[ref_length].png`. A **numeric** field interpolates as readily as a string
+  one, so `ref_length` reaches `road_5.png`. Where the name branches on several fields at once, each
+  branch spells its own path and the case becomes a ternary. The `transportation:` prefix only chose
+  a sheet and is dropped.
+
+What is left below is the **fallback**, for a name CartoCSS cannot assemble at all — MapBox's own
+shields `slice` the ref for some countries, and there is no `slice` here. The sprite is an SDF
+**tinted by `icon-color`** and outlined by `icon-halo-*`, and CartoCSS draws that shape with no
+image:
 
 | MapBox | CartoCSS |
 |---|---|
@@ -469,13 +487,14 @@ without any image:
 | `icon-halo-width` | `text-background-border-width` |
 | the sprite's rounding | `text-background-radius: 2` |
 
-The country artwork is lost; the ref stays readable, and every note says so.
+The artwork is lost in that case; the ref stays readable, and every note says so.
 
-What makes a layer a shield rather than a POI ([`shield.ts`](https://github.com/massif-maps/MassifMaps/blob/master/tools/style-cli/src/mapbox2css/shield.ts)):
-the sprite name reads the **feature**, and the text sits **on** the icon. A POI icon is per-feature
-too but its text is pushed below it (`text-anchor: top`, `text-offset: [0, 0.8]`); a town's circle
-is centred but picked by **zoom**, not by the feature. Both stay markers. An `icon-color` is
-required — without a fill there is only a border round nothing.
+What makes a layer take the plate ([`shield.ts`](https://github.com/massif-maps/MassifMaps/blob/master/tools/style-cli/src/mapbox2css/shield.ts)):
+the sprite name reads the **feature**, cannot be spelled as a path, and the text sits **on** the
+icon. A POI icon is per-feature too but its text is pushed below it (`text-anchor: top`,
+`text-offset: [0, 0.8]`); a town's circle is centred but picked by **zoom**, not by the feature.
+Both stay markers. An `icon-color` is required — without a fill there is only a border round
+nothing.
 
 Two consequences worth knowing:
 
@@ -486,7 +505,7 @@ Two consequences worth knowing:
   CartoCSS has no `slice`, so a text-field that branches is retried with its fallback branch —
   `[ref]` for everything outside Brazil — rather than losing the label.
 
-MapTiler streets-v4 yields 10 plates across its four shield layers; topo-v4 has no shields at all.
+MapTiler streets-v4 draws its shields from 486 extracted icons; topo-v4 has no shields at all.
 
 ## Three traps that only show on a device
 

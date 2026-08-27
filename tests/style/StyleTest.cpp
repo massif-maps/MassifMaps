@@ -8,10 +8,12 @@ int failures = 0;
 
 void testLayerConfig();
 void testCartoCSSParse();
+void testStyleParameterFold();
 
 int main() {
     testLayerConfig();
     testCartoCSSParse();
+    testStyleParameterFold();
 
     std::printf("\n%d failure(s)\n", failures);
     return failures ? 1 : 0;

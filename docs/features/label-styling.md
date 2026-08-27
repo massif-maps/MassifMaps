@@ -138,12 +138,21 @@ builder.setTitleFontName("Roboto, Helvetica Neue, sans-serif");
 ```
 
 The same properties exist as `shield-background-*` (behind the text) and `shield-icon-background-*`
-(behind the icon run). A plate is 3-sliced from one cached atlas cell, and the border is the same
-cell drawn one width larger behind the fill — no shader, no second texture. Plates are part of what
+(behind the icon run). A plate is nine-sliced from one cached atlas cell that carries both the fill
+and the border, drawn as a single quad: the border never shows through the fill, so a plate keeps
+its colour while the label fades in and at any `text-background-opacity`. Plates are part of what
 the label covers, so the culler tests the plated box.
 
 Measured with a plate behind name **and** icon on ~2100 labels: about **+1 ms per frame**, no change
 in draw-call count. A screen of road shields — tens, not thousands — is far below the noise.
+
+## Halos are outlines
+
+`text-halo-*`, `shield-halo-*` and `shield-icon-halo-*` draw **around** the glyph, not behind it —
+the glyph's own shape is cut out of the halo. So a label keeps its colour while it fades in, and a
+translucent `text-fill` (or `text-opacity`) shows the map through it rather than the halo. A style
+that relied on an opaque halo filling in behind a transparent fill now gets a hollow outline; give
+the fill its own colour instead.
 
 ## Callout labels
 

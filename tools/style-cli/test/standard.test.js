@@ -208,3 +208,25 @@ test('a format run keeps its text and drops the per-section styling', () => {
     assert.match(label(['format', ['get', 'a'], {}, ' ', {}, ['get', 'b'], {}]),
         /text-name: concat\(concat\(\[a\], ' '\), \[b\]\);/);
 });
+
+test('buildings get a style parameter, so an app can drop the 3D pass', () => {
+    // The same three states the hand-written styles under assets/style use: 0 off, 1 flat, 2 with
+    // extrusions. `['param::buildings'>0]` gates the footprint and `>1` the extrusion, so a device
+    // that cannot afford the 3D pass turns it off without anyone editing the CartoCSS.
+    const style = { layers: [
+        { id: 'b2d', type: 'fill', 'source-layer': 'building', paint: { 'fill-color': '#eee' } },
+        { id: 'b3d', type: 'fill-extrusion', 'source-layer': 'building',
+            paint: { 'fill-extrusion-color': '#ddd', 'fill-extrusion-height': 10 } },
+    ] };
+    const { mss, project } = convert(style, TABLE, { variables: false });
+    assert.match(mss, /#building\['param::buildings'>0\]::b2d \{/);
+    assert.match(mss, /#building\['param::buildings'>1\]::b3d \{/);
+    assert.equal(JSON.parse(project).styleparameters.buildings, 2, 'defaults to what the source drew');
+});
+
+test('a style with no buildings declares no such parameter', () => {
+    const { project } = convert({ layers: [
+        { id: 'w', type: 'fill', 'source-layer': 'water', paint: { 'fill-color': '#a0c8f0' } }] },
+    TABLE, { variables: false });
+    assert.equal(JSON.parse(project).styleparameters, undefined);
+});

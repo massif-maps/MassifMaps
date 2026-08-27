@@ -328,6 +328,27 @@ compiles, and it is a `DemoLive` key, so `am broadcast … --es lightPreset day`
 a relaunch. The package needs a `fonts/` folder: Standard asks for DIN Pro, which
 `assets/style/fonts` already carries.
 
+## Buildings get a switch
+
+Every converted style that draws buildings declares a `buildings` style parameter and gates its
+rules on it, in the three states the hand-written styles under `assets/style` already use:
+
+| value | draws |
+|---|---|
+| `0` | nothing |
+| `1` | the footprint only |
+| `2` | the footprint and its extrusion (the default) |
+
+```
+#building['param::buildings'>0]::footprint { polygon-fill: @building_fill; }
+#building['param::buildings'>1]::extrusion { building-height: [height]; }
+```
+
+A `fill-extrusion` layer takes `>1`; a plain fill on a source layer named like buildings takes `>0`.
+It defaults to `2`, so a converted style keeps drawing what its source drew until an app says
+otherwise — and an app that cannot afford the 3D pass on a given device turns it off with one
+parameter instead of editing the CartoCSS. A style with no buildings declares nothing.
+
 ## What mapbox2css does not carry
 
 Every skipped property is counted and named — `mapbox2css` prints a coverage report, and `--strict`

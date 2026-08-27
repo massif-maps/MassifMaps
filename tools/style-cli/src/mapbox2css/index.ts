@@ -119,6 +119,9 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
     // The scene's brightness is a style value here, not a runtime one - see config.ts.
     const lights = (style as unknown as Record<string, Json>).lights;
 
+    // Set while emitting, so the parameter is only declared when there is a building to gate.
+    let usesBuildings = false;
+
     // Emitting is a function of the config, because a configurable style is converted ONCE PER
     // PRESET: folding preserves structure (see fold.ts), so the runs line up block for block and
     // only their literals differ - which is what lets one style.mss carry a palette per preset.
@@ -218,8 +221,11 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
                         'only the major/minor split survives, the base interval is not in the style',
                     ));
             }
+            const buildings = buildingPredicate(symbolizer, sourceLayer);
+            if (buildings) usesBuildings = true;
             const predicates = [
                 ...zoomPredicates(layer.minzoom, layer.maxzoom),
+                ...(buildings ? [buildings] : []),
                 ...translateFilter(filter),
             ].map((p) => (p.startsWith('when(') ? ` ${p}` : p));
             selector = `#${sourceLayer}${predicates.join('')}::${attachment}`;
@@ -232,6 +238,7 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
         blocks.push({ selector, owner: layer.id, declarations });
     }
 
+    if (usesBuildings) options.styleParams!.set(BUILDINGS_PARAM, BUILDINGS_3D);
     reportInterleaving(emitted, order, coverage);
     reportSources(style, layers, coverage);
     return { mapBlock, blocks, order, brightness };
@@ -318,6 +325,25 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
         null, 2) + '\n';
 
     return { mss, project, coverage, variables, presets: presetPalettes, defaultPreset };
+}
+
+/**
+ * The style parameter that turns buildings off, flat, or 3D - the same three states, spelled the
+ * same way, as the hand-written styles under `assets/style`: `['param::buildings'>0]` gates the
+ * footprint and `>1` the extrusion. An app then has one knob for every converted style, and can
+ * drop the 3D pass on a device that cannot afford it without editing the CartoCSS.
+ *
+ * It defaults to 3D, so a converted style draws what its source drew until an app says otherwise.
+ */
+const BUILDINGS_PARAM = 'buildings';
+const BUILDINGS_3D = 2;
+
+/** A source layer of footprints, whatever the schema calls it. */
+const BUILDING_LAYER = /building/i;
+
+function buildingPredicate(symbolizer: string, sourceLayer: string): string | null {
+    if (symbolizer === 'building') return `['param::${BUILDINGS_PARAM}'>1]`;
+    return BUILDING_LAYER.test(sourceLayer) ? `['param::${BUILDINGS_PARAM}'>0]` : null;
 }
 
 function backgroundProperties(layer: MapboxLayer, coverage: Coverage): string[] {

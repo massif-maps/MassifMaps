@@ -45,14 +45,14 @@ export interface ConvertOptions {
     labelSpacing?: number;
     /** Retarget the style's source layers at another tile schema - see schema.ts. */
     schema?: Schema;
-    /** Filled in during conversion: one style parameter per sprite name (see ICON_PARAM_PREFIX). */
-    iconParams?: Map<string, string>;
+    /** Filled in during conversion: the style parameters the output declares (icons, colour tables). */
+    styleParams?: Map<string, Json>;
     /** Filled in during conversion: any icon, for the size and offset a per-feature name has none of. */
     iconSample?: ExtractedIcon | null;
 }
 
 export function convert(style: MapboxStyle, table: PropertyTable, options: ConvertOptions = {}): ConvertResult {
-    options = { ...options, iconParams: options.iconParams ?? new Map() };
+    options = { ...options, styleParams: options.styleParams ?? new Map() };
     const coverage = new Coverage();
     const allowed = new Map<string, CartoProperty>(table.properties.map((p) => [p.cartocss, p]));
     const layers = style.layers ?? [];
@@ -122,7 +122,14 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
     });
 
     function emitLayer(layer: MapboxLayer, attachment: string, sourceLayer: string, symbolizer: string, layerIndex: number): void {
-        const declarations = layerDeclarations(layer, symbolizer, allowed, coverage, options, layerIndex);
+        const paramised = paramiseValues(layer, options, coverage);
+        let declarations = layerDeclarations(paramised.layer, symbolizer, allowed, coverage, options, layerIndex);
+        if (paramised.subs.size > 0) {
+            declarations = declarations.map((declaration) => {
+                for (const [sentinel, lookup] of paramised.subs) declaration = declaration.split(sentinel).join(lookup);
+                return declaration;
+            });
+        }
         if (declarations.length === 0) return;
 
         let selector: string;
@@ -172,8 +179,8 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
     // bottom-to-top, so the project list is the draw order reversed.
     const projectLayers = [...order.entries()].sort((a, b) => a[1] - b[1]).map(([name]) => name).reverse();
     const project = JSON.stringify(
-        options.iconParams!.size > 0
-            ? { styles: ['style.mss'], layers: projectLayers, styleparameters: Object.fromEntries([...options.iconParams!].sort()) }
+        options.styleParams!.size > 0
+            ? { styles: ['style.mss'], layers: projectLayers, styleparameters: Object.fromEntries([...options.styleParams!].sort()) }
             : { styles: ['style.mss'], layers: projectLayers },
         null, 2) + '\n';
 
@@ -682,7 +689,7 @@ function iconExpression(image: Json, layer: MapboxLayer, coverage: Coverage, opt
         const all = extractAllIcons(sprites.sheets, sprites.outDir, options.flattenSdf);
         const matching = all.names.filter((n) => n.startsWith(prefix));
         if (matching.length === 0) return null;
-        for (const name of matching) options.iconParams!.set(`${ICON_PARAM_PREFIX}${name}`, `icons/${name}.png`);
+        for (const name of matching) options.styleParams!.set(`${ICON_PARAM_PREFIX}${name}`, `icons/${name}.png`);
         if (!sample) sample = all.sample;
         return `[param::${ICON_PARAM_PREFIX}${prefix}[${field}]]`;
     };
@@ -707,7 +714,7 @@ function iconExpression(image: Json, layer: MapboxLayer, coverage: Coverage, opt
         if (Array.isArray(node) && node[0] === 'get' && typeof node[1] === 'string') {
             // Named after the value itself - the global one-parameter-per-sprite table covers it.
             const all = extractAllIcons(sprites.sheets, sprites.outDir, options.flattenSdf);
-            for (const name of all.names) options.iconParams!.set(`${ICON_PARAM_PREFIX}${name}`, `icons/${name}.png`);
+            for (const name of all.names) options.styleParams!.set(`${ICON_PARAM_PREFIX}${name}`, `icons/${name}.png`);
             if (!sample) sample = all.sample;
             return `[param::${ICON_PARAM_PREFIX}[${node[1]}]]`;
         }
@@ -752,7 +759,7 @@ function iconExpression(image: Json, layer: MapboxLayer, coverage: Coverage, opt
                 if (name === null) continue;
                 const file = named(name);
                 if (!file) continue;
-                options.iconParams!.set(`${table}-${label}`, file);
+                options.styleParams!.set(`${table}-${label}`, file);
                 wrote++;
             }
         }
@@ -770,6 +777,130 @@ function iconExpression(image: Json, layer: MapboxLayer, coverage: Coverage, opt
 }
 
 /** A style parameter name is a bare identifier - a layer id is not. */
+/**
+ * A colour as a hex literal, or null when it is not one this understands.
+ *
+ * A style parameter carries a plain VALUE, and the SDK parses it back with parseColor - which does
+ * not take `hsl(...)`. Left as MapTiler writes them, every parameter failed to parse and took its
+ * whole rule down with it (the water in a probe style simply stopped drawing). Hex is the form that
+ * survives the round trip.
+ */
+function colourToHex(value: Json): string | null {
+    if (typeof value !== 'string') return null;
+    const text = value.trim();
+    if (/^#[0-9a-fA-F]{6}$/.test(text)) return text.toLowerCase();
+    if (/^#[0-9a-fA-F]{3}$/.test(text)) {
+        return `#${text.slice(1).split('').map((c) => c + c).join('')}`.toLowerCase();
+    }
+    const hex = (r: number, g: number, b: number) =>
+        `#${[r, g, b].map((v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('')}`;
+
+    const rgb = text.match(/^rgba?\(([^)]+)\)$/i);
+    if (rgb) {
+        const parts = rgb[1].split(',').map((v) => parseFloat(v));
+        if (parts.length < 3 || parts.some((v) => Number.isNaN(v))) return null;
+        if (parts.length > 3 && parts[3] !== 1) return null; // alpha has no hex form parseColor takes
+        return hex(parts[0], parts[1], parts[2]);
+    }
+
+    const hsl = text.match(/^hsla?\(([^)]+)\)$/i);
+    if (hsl) {
+        const parts = hsl[1].split(',').map((v) => parseFloat(v));
+        if (parts.length < 3 || parts.some((v) => Number.isNaN(v))) return null;
+        if (parts.length > 3 && parts[3] !== 1) return null;
+        const [h, sPct, lPct] = parts;
+        const sat = sPct / 100, light = lPct / 100;
+        const c = (1 - Math.abs(2 * light - 1)) * sat;
+        const hp = (((h % 360) + 360) % 360) / 60;
+        const x = c * (1 - Math.abs((hp % 2) - 1));
+        const m = light - c / 2;
+        const [r, g, b] = hp < 1 ? [c, x, 0] : hp < 2 ? [x, c, 0] : hp < 3 ? [0, c, x]
+            : hp < 4 ? [0, x, c] : hp < 5 ? [x, 0, c] : [c, 0, x];
+        return hex((r + m) * 255, (g + m) * 255, (b + m) * 255);
+    }
+    return null;
+}
+
+/** Below this a nested ternary is smaller and easier to read than a table of parameters. */
+const MIN_PARAM_CASES = 8;
+
+/**
+ * A `match` over ONE field whose results are all constants, or null for any other shape.
+ *
+ * MapTiler keys a road shield's colour off `iso_a2` this way - 54 countries on `Highway shields`
+ * alone, and the same again for its halo. As a ternary that is the largest expression in the style
+ * and the decoder walks it per feature; as a style parameter per country it is one lookup.
+ */
+function constantMatchOnField(node: Json): { field: string; cases: Array<[string[], Json]>; fallback: Json } | null {
+    if (!Array.isArray(node) || node[0] !== 'match') return null;
+    const input = node[1];
+    if (!(Array.isArray(input) && input[0] === 'get' && typeof input[1] === 'string')) return null;
+    const cases: Array<[string[], Json]> = [];
+    for (let i = 2; i + 1 < node.length; i += 2) {
+        const raw = node[i];
+        const labels = Array.isArray(raw) ? raw : [raw];
+        if (!labels.every((l) => typeof l === 'string')) return null;
+        const result = node[i + 1];
+        if (typeof result !== 'string' && typeof result !== 'number') return null;
+        cases.push([labels as string[], result as Json]);
+    }
+    if (cases.length < MIN_PARAM_CASES) return null;
+    return { field: input[1], cases, fallback: node[node.length - 1] as Json };
+}
+
+/**
+ * Turns the single-field `match` in a property value into a style-parameter lookup, in place.
+ *
+ * The rewritten value carries a SENTINEL string where the match was, so the whole expression can go
+ * through the normal translation - conditions, nesting and all - and the lookup is substituted into
+ * the finished declaration afterwards. That keeps this out of every emitter's signature.
+ */
+function paramiseValues(layer: MapboxLayer, options: ConvertOptions, coverage: Coverage):
+        { layer: MapboxLayer; subs: Map<string, string> } {
+    const subs = new Map<string, string>();
+    const paint: Record<string, Json> = { ...(layer.paint ?? {}) } as Record<string, Json>;
+    let changed = false;
+
+    for (const [property, value] of Object.entries(paint)) {
+        // The whole value, or the FALLBACK of a case whose own conditions read several fields -
+        // which is exactly how MapTiler writes it: a handful of network special cases over a long
+        // per-country table.
+        const whole = constantMatchOnField(value);
+        const isCase = Array.isArray(value) && value[0] === 'case' && value.length >= 4;
+        const tail = isCase ? constantMatchOnField((value as Json[])[value.length - 1] as Json) : null;
+        const found = whole ?? tail;
+        if (!found) continue;
+
+        // Only when every result survives as hex - a value the SDK cannot parse back takes its
+        // whole rule down, so a table with one bad entry is not worth the trade.
+        const asHex = found.cases.map(([labels, result]) =>
+            [labels, typeof result === 'number' ? result : colourToHex(result)] as const);
+        if (asHex.some(([, result]) => result === null)) continue;
+
+        const prefix = `${safeParamName(layer.id)}-${safeParamName(property)}`;
+        for (const [labels, result] of asHex) {
+            for (const label of labels) options.styleParams!.set(`${prefix}-${label}`, result as Json);
+        }
+        const fallback = tryTranslate(found.fallback, property, layer.id, coverage);
+        if (fallback === null) continue;
+        const sentinel = `@@param${subs.size}@@`;
+        subs.set(`'${sentinel}'`, `([param::${prefix}-[${found.field}]] ?? ${fallback})`);
+
+        if (whole) {
+            paint[property] = sentinel as unknown as Json;
+        } else {
+            const rewritten = [...(value as Json[])];
+            rewritten[rewritten.length - 1] = sentinel as unknown as Json;
+            paint[property] = rewritten as unknown as Json;
+        }
+        changed = true;
+        coverage.approximate(`${property} on "${layer.id}" reads ${found.cases.length} cases of ` +
+            `[${found.field}] from style parameters instead of a nested ternary`);
+    }
+
+    return { layer: changed ? { ...layer, paint } as MapboxLayer : layer, subs };
+}
+
 function safeParamName(id: string): string {
     return id.replace(/[^A-Za-z0-9]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase();
 }

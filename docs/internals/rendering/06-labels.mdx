@@ -44,6 +44,18 @@ Two invariants live in this picture and both have caused visible bugs: `LabelCul
 **not** clear the grid (layers must collide with each other), and `snapPlacement` must prefer the
 same `(tileId, localId)` copy. Details below.
 
+## Where a label wraps
+
+`text-wrap-width` is in **style pixels**, and is the one length in `TextSymbolizer::getFormatterOptions`
+that is NOT multiplied by `fontScale`. `TextFormatter::splitLines` accumulates a word's width from
+`glyph.advance * _fontSize`, where `_fontSize` is the style size — so a threshold in device pixels
+was compared against a width in style pixels and every label wrapped `fontScale` times too late. On
+a 2.6x screen a 8-em maximum became a 21-em one, which is to say nothing wrapped at all: MapTiler's
+"Médiathèque Annecy - Bonlieu" stayed on one line where the same style wraps it to two in a browser.
+
+Where a label breaks is a property of the style, not of the display, so the offsets beside it
+(`dx`/`dy`, the secondary run's) scale and this one does not.
+
 ## Building the label set
 
 On **every tile-set change**, `buildLabelMaps` recreates all `vt::Label` objects from the current

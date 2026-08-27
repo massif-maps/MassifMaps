@@ -5585,6 +5585,8 @@ namespace massif::vt {
         VT_STAT_CLOCK(statClock);
         VT_STAT_SPLIT(geomProbeNs, statClock);
         bool styleOffsetting = std::count(styleParams.offsetFuncs.begin(), styleParams.offsetFuncs.begin() + styleParams.parameterCount, FloatFunction(0)) != styleParams.parameterCount;
+        bool styleGapWidth = std::count(styleParams.gapWidthFuncs.begin(), styleParams.gapWidthFuncs.begin() + styleParams.parameterCount, FloatFunction(0)) != styleParams.parameterCount;
+        bool styleBlur = std::count(styleParams.blurFuncs.begin(), styleParams.blurFuncs.begin() + styleParams.parameterCount, FloatFunction(0)) != styleParams.parameterCount;
 
         // Flat drape pass: draw the fill into the per-tile drape texture with NO terrain
         // displacement, NO depth bias, and a tile-local orthographic MVP (set by the caller).
@@ -5608,7 +5610,7 @@ namespace massif::vt {
             shaderProgramPtr = &buildShaderProgram("point", pointVsh, pointFsh, LightingMode::GEOMETRY2D, RasterFilterMode::NONE, (styleParams.pattern ? PATTERN_FLAG : 0) | (styleParams.translate ? TRANSFORM_FLAG : 0) | (styleOffsetting ? OFFSET_FLAG : 0) | terrainFlag | (shadowReceiver ? shadowReceiverFlags() : 0) | lightFlag | fogFlag());
             break;
         case TileGeometry::Type::LINE:
-            shaderProgramPtr = &buildShaderProgram("line", lineVsh, lineFsh, LightingMode::GEOMETRY2D, RasterFilterMode::NONE, (styleParams.pattern ? PATTERN_FLAG : 0) | (styleParams.translate ? TRANSFORM_FLAG : 0) | (styleOffsetting ? OFFSET_FLAG : 0) | terrainFlag | (shadowReceiver ? shadowReceiverFlags() : 0) | lightFlag | fogFlag() | coverageFlag() | drapeMaskFlag());
+            shaderProgramPtr = &buildShaderProgram("line", lineVsh, lineFsh, LightingMode::GEOMETRY2D, RasterFilterMode::NONE, (styleParams.pattern ? PATTERN_FLAG : 0) | (styleParams.translate ? TRANSFORM_FLAG : 0) | (styleOffsetting ? OFFSET_FLAG : 0) | (styleGapWidth ? GAPWIDTH_FLAG : 0) | (styleBlur ? BLUR_FLAG : 0) | terrainFlag | (shadowReceiver ? shadowReceiverFlags() : 0) | lightFlag | fogFlag() | coverageFlag() | drapeMaskFlag());
             break;
         case TileGeometry::Type::POLYGON:
             shaderProgramPtr = &buildShaderProgram("polygon", polygonVsh, polygonFsh, LightingMode::GEOMETRY2D, RasterFilterMode::NONE, (styleParams.pattern ? PATTERN_FLAG : 0) | (styleParams.translate ? TRANSFORM_FLAG : 0) | terrainFlag | (shadowReceiver ? shadowReceiverFlags() : 0) | lightFlag | fogFlag() | coverageFlag() | drapeMaskFlag());
@@ -5695,10 +5697,15 @@ namespace massif::vt {
                 glUniform1fv(shaderProgram.uniforms[U_STROKEWIDTHTABLE], styleParams.parameterCount, strokeWidths.data());
             }
         } else if (geometry->getType() == TileGeometry::Type::LINE) {
-            std::array<float, TileGeometry::StyleParameters::MAX_PARAMETERS> widths, offsets;
+            std::array<float, TileGeometry::StyleParameters::MAX_PARAMETERS> widths, offsets, gapWidths, blurs;
             for (int i = 0; i < styleParams.parameterCount; i++) {
                 float offset = 0.5f * _fullResolution * evaluateFloatFunc(styleParams.offsetFuncs[i]) * geometry->getGeometryScale() / tileSize;
                 offsets[i] = offset;
+                // Half the gap, in the same units as the half-widths below: the fragment shader
+                // cuts everything inside it.
+                gapWidths[i] = 0.5f * (0.5f * _fullResolution * std::abs(evaluateFloatFunc(styleParams.gapWidthFuncs[i])) * geometry->getGeometryScale() / tileSize);
+                // A LENGTH, not a half-width: the ramp spans it whole, so no halving here.
+                blurs[i] = 0.5f * _fullResolution * std::abs(evaluateFloatFunc(styleParams.blurFuncs[i])) * geometry->getGeometryScale() / tileSize;
 
                 // Check for 0-width function. This is used only for polygons.
                 if (styleParams.widthFuncs[i] == FloatFunction(0)) {
@@ -5710,7 +5717,10 @@ namespace massif::vt {
                         colors[i] = colors[i] * width; // should do gamma correction here, but simple implementation gives closer results to Mapnik
                         width = (width > 0.0f ? 1.0f : 0.0f); // normalize width
                     }
-                    widths[i] = width * 0.5f;
+                    // A gapped line is mapbox's casing: a FULL line-width beyond the half-gap on
+                    // each side, not a half-width, or the casing comes out half as thick as the
+                    // browser draws it and reads as an edge of the road itself.
+                    widths[i] = gapWidths[i] > 0.0f ? gapWidths[i] + width : width * 0.5f;
                 }
             }
             VT_STAT_SPLIT(geomStyleEvalNs, statClock);
@@ -5738,6 +5748,12 @@ namespace massif::vt {
             glUniform1fv(shaderProgram.uniforms[U_WIDTHTABLE], styleParams.parameterCount, widths.data());
             if (styleOffsetting) {
                 glUniform1fv(shaderProgram.uniforms[U_OFFSETTABLE], styleParams.parameterCount, offsets.data());
+            }
+            if (styleGapWidth) {
+                glUniform1fv(shaderProgram.uniforms[U_GAPWIDTHTABLE], styleParams.parameterCount, gapWidths.data());
+            }
+            if (styleBlur) {
+                glUniform1fv(shaderProgram.uniforms[U_BLURTABLE], styleParams.parameterCount, blurs.data());
             }
 
             if (styleParams.pattern) {

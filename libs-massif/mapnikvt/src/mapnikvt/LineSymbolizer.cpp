@@ -19,6 +19,8 @@ namespace massif::mvt {
             return FeatureProcessor();
         }
         vt::FloatFunction offsetFunc = _offset.getFunction(exprContext);
+        vt::FloatFunction gapWidthFunc = _gapWidth.getFunction(exprContext);
+        vt::FloatFunction blurFunc = _blur.getFunction(exprContext);
 
         vt::CompOp compOp = _compOp.getValue(exprContext);
         vt::LineJoinMode strokeLinejoin = _strokeLinejoin.getValue(exprContext);
@@ -92,7 +94,7 @@ namespace massif::mvt {
             }
         }
 
-        vt::LineStyle style(compOp, strokeLinejoin, strokeLinecap, strokeFunc, strokeWidthFunc, offsetFunc, splitDotLimit, miterDotLimit, strokePattern, geometryTransform, arrowWidth, arrowLength, arrowOnly, arrowShape);
+        vt::LineStyle style(compOp, strokeLinejoin, strokeLinecap, strokeFunc, strokeWidthFunc, offsetFunc, splitDotLimit, miterDotLimit, strokePattern, geometryTransform, arrowWidth, arrowLength, arrowOnly, arrowShape, gapWidthFunc, blurFunc);
         
         std::shared_ptr<vt::StrokeMap> strokeMap = symbolizerContext.getStrokeMap();
 

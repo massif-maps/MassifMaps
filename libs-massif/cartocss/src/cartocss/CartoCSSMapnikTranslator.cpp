@@ -249,11 +249,29 @@ namespace massif::css {
                 throw TranslatorException("Expecting at least two arguments for interpolation function");
             }
 
-            mvt::Expression mapnikTimeExpr = buildExpression(funcExpr.getArgs()[0]);
+            // `exponential` takes its BASE first: exponential(1.5, [view::zoom], (12, 3), (18, 12)).
+            // Every other method reads its input first, so the key frames start one later here.
+            bool exponential = funcIt->second == mvt::InterpolateExpression::Method::EXPONENTIAL;
+            float base = 1.0f;
+            std::size_t firstKeyFrame = 1;
+            if (exponential) {
+                if (argCount < 3) {
+                    throw TranslatorException("Expecting a base, an input and at least one key frame for exponential");
+                }
+                auto baseExpr = buildExpression(funcExpr.getArgs()[0]);
+                auto baseVal = std::get_if<mvt::Value>(&baseExpr);
+                if (!baseVal) {
+                    throw TranslatorException("Expecting a constant base for exponential");
+                }
+                base = mvt::ValueConverter<float>::convert(*baseVal);
+                firstKeyFrame = 2;
+            }
+
+            mvt::Expression mapnikTimeExpr = buildExpression(funcExpr.getArgs()[exponential ? 1 : 0]);
 
             std::vector<mvt::Expression> mapnikKeyFrames;
-            mapnikKeyFrames.reserve((argCount - 1) * 2);
-            for (std::size_t i = 1; i < argCount; i++) {
+            mapnikKeyFrames.reserve((argCount - firstKeyFrame) * 2);
+            for (std::size_t i = firstKeyFrame; i < argCount; i++) {
                 auto listExpr = std::get_if<std::shared_ptr<ListExpression>>(&funcExpr.getArgs()[i]);
                 if (!listExpr) {
                     throw TranslatorException("Expecting element list for interpolation function");
@@ -274,7 +292,7 @@ namespace massif::css {
                 mapnikKeyFrames.push_back(mapnikKeyExpr);
                 mapnikKeyFrames.push_back(mapnikValueExpr);
             }
-            return std::make_shared<mvt::InterpolateExpression>(funcIt->second, std::move(mapnikTimeExpr), std::move(mapnikKeyFrames));
+            return std::make_shared<mvt::InterpolateExpression>(funcIt->second, std::move(mapnikTimeExpr), std::move(mapnikKeyFrames), base);
         }
         else if (auto funcIt = _transformFuncMap.find(funcExpr.getFunc()); funcIt != _transformFuncMap.end()) {
             // Transform function. Variable arity, special case.
@@ -601,7 +619,8 @@ namespace massif::css {
     const std::unordered_map<std::string, mvt::InterpolateExpression::Method> CartoCSSMapnikTranslator::_interpolationFuncMap = {
         { "step",   mvt::InterpolateExpression::Method::STEP },
         { "linear", mvt::InterpolateExpression::Method::LINEAR },
-        { "cubic",  mvt::InterpolateExpression::Method::CUBIC }
+        { "cubic",  mvt::InterpolateExpression::Method::CUBIC },
+        { "exponential", mvt::InterpolateExpression::Method::EXPONENTIAL }
     };
 
     const std::unordered_map<std::string, std::type_index> CartoCSSMapnikTranslator::_transformFuncMap = {
@@ -662,6 +681,8 @@ namespace massif::css {
         { "line-cap", "stroke-linecap" },
         { "line-miterlimit", "stroke-miterlimit" },
         { "line-offset", "offset" },
+        { "line-gap-width", "gap-width" },
+        { "line-blur", "blur" },
         { "line-end-arrow", "end-arrow" },
         { "line-arrow-width", "arrow-width" },
         { "line-arrow-length", "arrow-length" },

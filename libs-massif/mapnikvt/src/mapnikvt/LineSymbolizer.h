@@ -22,6 +22,8 @@ namespace massif::mvt {
             bindProperty("stroke-dasharray", &_strokeDashArray);
             bindProperty("stroke-miterlimit", &_strokeMiterLimit, true); // shapes the joins at decode
             bindProperty("offset", &_offset);
+            bindProperty("gap-width", &_gapWidth);
+            bindProperty("blur", &_blur);
             bindProperty("end-arrow", &_endArrow);
             bindProperty("arrow-width", &_arrowWidth);
             bindProperty("arrow-length", &_arrowLength);
@@ -52,6 +54,12 @@ namespace massif::mvt {
         StringProperty _strokeDashArray = StringProperty("");
         FloatFunctionProperty _strokeMiterLimit = FloatFunctionProperty(4.0f);
         FloatFunctionProperty _offset = FloatFunctionProperty(0.0f);
+        // mapbox's `line-gap-width`: an undrawn gap down the middle, so ONE rule draws the two
+        // strips of a road casing. The stroke width is then the strip on each side of it.
+        FloatFunctionProperty _gapWidth = FloatFunctionProperty(0.0f);
+        // mapbox's `line-blur`: widens the antialias ramp on both edges, in pixels. A soft shadow
+        // under a bridge is drawn this way, and without it the shadow reads as a hard bar.
+        FloatFunctionProperty _blur = FloatFunctionProperty(0.0f);
         // An arrow head at the last vertex, sized in multiples of the line width. A casing rule
         // repeats the same three properties with its own width and gets an even border for free.
         BoolProperty _endArrow = BoolProperty(false);

@@ -72,6 +72,7 @@ namespace massif::mvt {
                 step_kw = repository::qi::distinct(qi::char_("a-zA-Z0-9_"))[qi::no_case["step"]];
                 linear_kw = repository::qi::distinct(qi::char_("a-zA-Z0-9_"))[qi::no_case["linear"]];
                 cubic_kw = repository::qi::distinct(qi::char_("a-zA-Z0-9_"))[qi::no_case["cubic"]];
+            exponential_kw = repository::qi::distinct(qi::char_("a-zA-Z0-9_"))[qi::no_case["exponential"]];
 
                 matrix_kw = repository::qi::distinct(qi::char_("a-zA-Z0-9_"))[qi::no_case["matrix"]];
                 translate_kw = repository::qi::distinct(qi::char_("a-zA-Z0-9_"))[qi::no_case["translate"]];
@@ -170,6 +171,8 @@ namespace massif::mvt {
                     | (step_kw      >> '(' > expression > ',' > (expression % ',') > ')') [_val = phoenix::bind(&makeInterpolateExpression, InterpolateExpression::Method::STEP, _1, _2)]
                     | (linear_kw    >> '(' > expression > ',' > (expression % ',') > ')') [_val = phoenix::bind(&makeInterpolateExpression, InterpolateExpression::Method::LINEAR, _1, _2)]
                     | (cubic_kw     >> '(' > expression > ',' > (expression % ',') > ')') [_val = phoenix::bind(&makeInterpolateExpression, InterpolateExpression::Method::CUBIC, _1, _2)]
+                    // The BASE comes first: exponential(1.5, [view::zoom], (12, 3), (18, 12)).
+                    | (exponential_kw >> '(' > expression > ',' > expression > ',' > (expression % ',') > ')') [_val = phoenix::bind(&makeExponentialExpression, _1, _2, _3)]
                     | (matrix_kw    >> '(' > expression >> ',' > expression > ',' > expression > ',' > expression > ',' > expression > ',' > expression > ')') [_val = phoenix::bind(&makeMatrixTransformExpression, _1, _2, _3, _4, _5, _6)]
                     | (translate_kw >> '(' > expression > ',' > expression > ')') [_val = phoenix::bind(&makeTranslateTransformExpression, _1, _2)]
                     | (rotate_kw    >> '(' >> expression >> ')')        [_val = phoenix::bind(&makeRotateTransformExpression, Expression(Value(0.0)), Expression(Value(0.0)), _1)]
@@ -194,7 +197,7 @@ namespace massif::mvt {
             boost::spirit::qi::rule<Iterator, std::string()> funcid;
             boost::spirit::qi::rule<Iterator, boost::spirit::qi::unused_type()> le_kw, ge_kw, lt_kw, gt_kw, eq_kw, neq_kw, or_kw, and_kw, not_kw;
             boost::spirit::qi::rule<Iterator, boost::spirit::qi::unused_type()> exp_kw, log_kw, pow_kw, length_kw, uppercase_kw, lowercase_kw, capitalize_kw, concat_kw, ntime_kw, min_kw, max_kw, match_kw, replace_kw;
-            boost::spirit::qi::rule<Iterator, boost::spirit::qi::unused_type()> step_kw, linear_kw, cubic_kw;
+            boost::spirit::qi::rule<Iterator, boost::spirit::qi::unused_type()> exponential_kw, step_kw, linear_kw, cubic_kw;
             boost::spirit::qi::rule<Iterator, boost::spirit::qi::unused_type()> matrix_kw, translate_kw, rotate_kw, scale_kw, skewx_kw, skewy_kw;
             boost::spirit::qi::rule<Iterator, Expression()> stringExpression, genericExpression;
             boost::spirit::qi::rule<Iterator, Expression(), Skipper> expression, term0, term1, term2, term3, unary, postfix, factor;
@@ -278,6 +281,14 @@ namespace massif::mvt {
 
             static Expression makeInterpolateExpression(InterpolateExpression::Method method, const Expression& timeExpr, const std::vector<Expression>& keyFrames) {
                 return std::make_shared<InterpolateExpression>(method, timeExpr, keyFrames);
+            }
+
+            static Expression makeExponentialExpression(const Expression& baseExpr, const Expression& timeExpr, const std::vector<Expression>& keyFrames) {
+                float base = 1.0f;
+                if (auto val = std::get_if<Value>(&baseExpr)) {
+                    base = ValueConverter<float>::convert(*val);
+                }
+                return std::make_shared<InterpolateExpression>(InterpolateExpression::Method::EXPONENTIAL, timeExpr, keyFrames, base);
             }
 
             static bool checkFunction(const std::string& func) {

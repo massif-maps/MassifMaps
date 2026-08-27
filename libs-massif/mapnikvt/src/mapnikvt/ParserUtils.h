@@ -36,6 +36,8 @@ namespace massif::mvt {
     vt::CompOp parseCompOp(const std::string& str);
     vt::LabelOrientation parseLabelOrientation(const std::string& str);
     vt::Color parseColor(const std::string& str);
+    /** The same, for a string that may legitimately not be a colour - a step's 'miter'/'round'. */
+    bool tryParseColor(const std::string& str, vt::Color& color);
     Value parseValue(const std::string& str);
     Expression parseExpression(const std::string& str, bool stringExpr);
 }

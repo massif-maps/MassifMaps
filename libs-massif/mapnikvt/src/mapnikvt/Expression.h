@@ -119,24 +119,40 @@ namespace massif::mvt {
         enum class Method {
             STEP,
             LINEAR,
-            CUBIC
+            CUBIC,
+            // mapbox's `["interpolate", ["exponential", b], ...]`: the same key frames as LINEAR,
+            // but the fraction between two of them grows as (b^(x-x0) - 1) / (b^(x1-x0) - 1)
+            // rather than linearly. A road width written that way and read linearly is nearly
+            // three times too wide in the middle of a six-zoom span.
+            EXPONENTIAL
         };
         
-        explicit InterpolateExpression(Method method, Expression timeExpr, std::vector<Expression> keyFrames) : _method(method), _timeExpr(std::move(timeExpr)), _keyFrames(std::move(keyFrames)), _fcurve(buildConstantFCurve(method, _keyFrames)) { }
+        explicit InterpolateExpression(Method method, Expression timeExpr, std::vector<Expression> keyFrames, float base = 1.0f) : _method(method), _base(base), _timeExpr(std::move(timeExpr)), _keyFrames(std::move(keyFrames)), _discrete(discreteKeyFrames(method, _keyFrames)), _fcurve(_discrete ? std::nullopt : buildConstantFCurve(method, _keyFrames)) { }
 
         Method getMethod() const { return _method; }
+        float getBase() const { return _base; }
         const Expression& getTimeExpression() const { return _timeExpr; }
         const std::vector<Expression>& getKeyFrames() const { return _keyFrames; }
 
         Value evaluate(float t, const ExpressionContext& context) const;
 
     private:
+        float remapExponential(float t) const;
+        Value evaluateDiscrete(float t, const ExpressionContext& context) const;
+
         static std::variant<cglib::fcurve2<float>, cglib::fcurve5<float>> buildFCurve(Method method, const std::vector<Expression>& , const ExpressionContext& context);
         static std::optional<std::variant<cglib::fcurve2<float>, cglib::fcurve5<float>>> buildConstantFCurve(Method method, const std::vector<Expression>&);
+        static bool discreteKeyFrames(Method method, const std::vector<Expression>&);
 
         const Method _method;
+        // Only meaningful for EXPONENTIAL; 1 is the linear case and is what every other method
+        // carries, so the remap below is a no-op for them.
+        const float _base;
         const Expression _timeExpr;
         const std::vector<Expression> _keyFrames;
+        // A STEP over values that are neither numbers nor colours - mapbox writes line-join and
+        // line-cap that way. There is no curve for those: see evaluateDiscrete.
+        const bool _discrete;
         const std::optional<std::variant<cglib::fcurve2<float>, cglib::fcurve5<float>>> _fcurve;
     };
 

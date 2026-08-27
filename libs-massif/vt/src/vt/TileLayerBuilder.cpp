@@ -232,6 +232,8 @@ namespace massif::vt {
             _builderParameters.colorFuncs[styleIndex] = style.colorFunc;
             _builderParameters.widthFuncs[styleIndex] = style.sizeFunc;
             _builderParameters.offsetFuncs[styleIndex] = FloatFunction(0);
+            _builderParameters.gapWidthFuncs[styleIndex] = FloatFunction(0);
+            _builderParameters.blurFuncs[styleIndex] = FloatFunction(0);
         }
 
         return [style, transform, styleIndex, glyphMap, glyphId, this](long long id, const Vertex& vertex) {
@@ -293,6 +295,8 @@ namespace massif::vt {
             _builderParameters.colorFuncs[styleIndex] = style.colorFunc;
             _builderParameters.widthFuncs[styleIndex] = style.sizeFunc;
             _builderParameters.offsetFuncs[styleIndex] = FloatFunction(0);
+            _builderParameters.gapWidthFuncs[styleIndex] = FloatFunction(0);
+            _builderParameters.blurFuncs[styleIndex] = FloatFunction(0);
         }
 
         int haloStyleIndex = -1;
@@ -381,7 +385,7 @@ namespace massif::vt {
         const StrokeMap::Stroke* stroke = (strokeId != 0 ? strokeMap->getStroke(strokeId) : nullptr);
         int styleIndex = _builderParameters.parameterCount;
         while (--styleIndex >= 0) {
-            if (_builderParameters.colorFuncs[styleIndex] == style.colorFunc && _builderParameters.widthFuncs[styleIndex] == style.widthFunc && _builderParameters.offsetFuncs[styleIndex] == style.offsetFunc && _builderParameters.lineStrokeIds[styleIndex] == strokeId) {
+            if (_builderParameters.colorFuncs[styleIndex] == style.colorFunc && _builderParameters.widthFuncs[styleIndex] == style.widthFunc && _builderParameters.offsetFuncs[styleIndex] == style.offsetFunc && _builderParameters.gapWidthFuncs[styleIndex] == style.gapWidthFunc && _builderParameters.blurFuncs[styleIndex] == style.blurFunc && _builderParameters.lineStrokeIds[styleIndex] == strokeId) {
                 break;
             }
         }
@@ -390,6 +394,8 @@ namespace massif::vt {
             _builderParameters.colorFuncs[styleIndex] = style.colorFunc;
             _builderParameters.widthFuncs[styleIndex] = style.widthFunc;
             _builderParameters.offsetFuncs[styleIndex] = style.offsetFunc;
+            _builderParameters.gapWidthFuncs[styleIndex] = style.gapWidthFunc;
+            _builderParameters.blurFuncs[styleIndex] = style.blurFunc;
             _builderParameters.lineStrokeIds[styleIndex] = strokeId;
         }
         registerStyleVariantSlot(styleIndex);
@@ -455,6 +461,8 @@ namespace massif::vt {
             _builderParameters.colorFuncs[styleIndex] = style.colorFunc;
             _builderParameters.widthFuncs[styleIndex] = FloatFunction(0); // fill width information when we need to use line shader with polygons
             _builderParameters.offsetFuncs[styleIndex] = FloatFunction(0); // fill offset information when we need to use line shader with polygons
+            _builderParameters.gapWidthFuncs[styleIndex] = FloatFunction(0);
+            _builderParameters.blurFuncs[styleIndex] = FloatFunction(0);
             _builderParameters.lineStrokeIds[styleIndex] = 0; // fill stroke information when we need to use line shader with polygons
             _builderParameters.patternUsed[styleIndex] = patternUsed;
         }
@@ -902,6 +910,8 @@ namespace massif::vt {
             styleParameters.colorFuncs[i] = _builderParameters.colorFuncs[i];
             styleParameters.widthFuncs[i] = _builderParameters.widthFuncs[i];
             styleParameters.offsetFuncs[i] = _builderParameters.offsetFuncs[i];
+            styleParameters.gapWidthFuncs[i] = _builderParameters.gapWidthFuncs[i];
+            styleParameters.blurFuncs[i] = _builderParameters.blurFuncs[i];
             const StrokeMap::Stroke* stroke = nullptr;
             if (_builderParameters.strokeMap && _builderParameters.lineStrokeIds[i] != 0) {
                 stroke = _builderParameters.strokeMap->getStroke(_builderParameters.lineStrokeIds[i]);

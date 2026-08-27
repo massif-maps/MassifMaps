@@ -67,6 +67,26 @@ namespace massif::mvt {
         return vt::Color::fromValue(value);
     }
 
+    bool tryParseColor(const std::string& str, vt::Color& color) {
+        std::string::const_iterator it = str.begin();
+        std::string::const_iterator end = str.end();
+        unsigned int value = 0;
+        bool result = false;
+        try {
+            static const ColorParserGrammar<std::string::const_iterator> parser;
+            static const colorparserimpl::Skipper skipper;
+            result = boost::spirit::qi::phrase_parse(it, end, parser, skipper, value);
+        }
+        catch (const boost::spirit::qi::expectation_failure<std::string::const_iterator>&) {
+            return false;
+        }
+        if (!result || it != str.end()) {
+            return false;
+        }
+        color = vt::Color::fromValue(value);
+        return true;
+    }
+
     Value parseValue(const std::string& str) {
         std::string::const_iterator it = str.begin();
         std::string::const_iterator end = str.end();

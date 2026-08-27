@@ -180,6 +180,40 @@ namespace massif::mvt {
         throw std::invalid_argument("Illegal operator");
     }
 
+    /**
+     * Where a LINEAR curve has to be sampled to give mapbox's exponential result.
+     *
+     * Between two key frames mapbox uses `s = (b^(x-x0) - 1) / (b^(x1-x0) - 1)` where a linear
+     * curve uses `(x-x0) / (x1-x0)`. Feeding the linear curve `x0 + s * (x1 - x0)` therefore
+     * yields the exponential value exactly, with no second curve type to implement and no change
+     * to cglib. Outside the key range, and for a base of 1, this is the identity.
+     *
+     * The key POSITIONS have to be constants for this, which every zoom ramp's are; a computed one
+     * falls through and interpolates linearly, as it did before.
+     */
+    float InterpolateExpression::remapExponential(float t) const {
+        if (!(_base > 0) || _base == 1.0f) {
+            return t;
+        }
+        float prevKey = 0;
+        bool havePrev = false;
+        for (std::size_t i = 0; i + 1 < _keyFrames.size(); i += 2) {
+            auto keyVal = std::get_if<mvt::Value>(&_keyFrames[i]);
+            if (!keyVal) {
+                return t;
+            }
+            float key = ValueConverter<float>::convert(*keyVal);
+            if (havePrev && t >= prevKey && t <= key && key > prevKey) {
+                float span = key - prevKey;
+                float s = (std::pow(_base, t - prevKey) - 1.0f) / (std::pow(_base, span) - 1.0f);
+                return prevKey + s * span;
+            }
+            prevKey = key;
+            havePrev = true;
+        }
+        return t;
+    }
+
     Value InterpolateExpression::evaluate(float t, const ExpressionContext& context) const {
         struct Evaluator {
             explicit Evaluator(float t) : _time(t) { }
@@ -197,10 +231,52 @@ namespace massif::mvt {
         // The constant curve is evaluated in place: it owns a vector of key frames, so
         // taking it by value copied (and heap-allocated) that vector on every evaluation -
         // and this runs per style parameter per draw call.
-        if (_fcurve) {
-            return std::visit(Evaluator(t), *_fcurve);
+        if (_discrete) {
+            return evaluateDiscrete(t, context);
         }
-        return std::visit(Evaluator(t), buildFCurve(_method, _keyFrames, context));
+        float time = (_method == Method::EXPONENTIAL ? remapExponential(t) : t);
+        if (_fcurve) {
+            return std::visit(Evaluator(time), *_fcurve);
+        }
+        return std::visit(Evaluator(time), buildFCurve(_method, _keyFrames, context));
+    }
+
+    /**
+     * A step whose values are not interpolatable: the key frame is returned verbatim, which is all
+     * a step ever meant. Below the first key it is the first value, as mapbox's own base is.
+     */
+    Value InterpolateExpression::evaluateDiscrete(float t, const ExpressionContext& context) const {
+        if (_keyFrames.size() < 2) {
+            return Value();
+        }
+        Value result = std::visit(ExpressionEvaluator(context, nullptr), _keyFrames[1]);
+        for (std::size_t i = 2; i + 1 < _keyFrames.size(); i += 2) {
+            auto keyVal = std::get_if<mvt::Value>(&_keyFrames[i]);
+            if (!keyVal || ValueConverter<float>::convert(*keyVal) > t) {
+                break;
+            }
+            result = std::visit(ExpressionEvaluator(context, nullptr), _keyFrames[i + 1]);
+        }
+        return result;
+    }
+
+    bool InterpolateExpression::discreteKeyFrames(Method method, const std::vector<Expression>& keyFrames) {
+        if (method != Method::STEP) {
+            return false; // linear/cubic/exponential over such values has no meaning to fall back to
+        }
+        for (std::size_t i = 0; i + 1 < keyFrames.size(); i += 2) {
+            auto val = std::get_if<mvt::Value>(&keyFrames[i + 1]);
+            if (!val) {
+                continue;
+            }
+            if (auto str = std::get_if<std::string>(val)) {
+                vt::Color color;
+                if (!tryParseColor(*str, color)) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     std::optional<std::variant<cglib::fcurve2<float>, cglib::fcurve5<float>>> InterpolateExpression::buildConstantFCurve(Method method, const std::vector<Expression>& keyFrames) {
@@ -222,6 +298,11 @@ namespace massif::mvt {
                     break;
                 case Method::CUBIC:
                     type = cglib::fcurve_type::cubic;
+                    break;
+                case Method::EXPONENTIAL:
+                    // Same key frames as a linear curve; the CURVE is linear and the INPUT is
+                    // remapped before it (see evaluate), which is exactly mapbox's definition.
+                    type = cglib::fcurve_type::linear;
                     break;
             }
 
@@ -260,6 +341,9 @@ namespace massif::mvt {
             break;
         case Method::CUBIC:
             type = cglib::fcurve_type::cubic;
+            break;
+        case Method::EXPONENTIAL:
+            type = cglib::fcurve_type::linear; // the input is remapped instead - see remapExponential
             break;
         }
 

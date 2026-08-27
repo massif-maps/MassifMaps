@@ -116,6 +116,7 @@ namespace massif::mvt {
                     | (karma::lit("step")   << '(' << expression << ',' << (expression % ',') << ')') [_pass = phoenix::bind(&getInterpolateExpression, InterpolateExpression::Method::STEP, _val, _1, _2)]
                     | (karma::lit("linear") << '(' << expression << ',' << (expression % ',') << ')') [_pass = phoenix::bind(&getInterpolateExpression, InterpolateExpression::Method::LINEAR, _val, _1, _2)]
                     | (karma::lit("cubic")  << '(' << expression << ',' << (expression % ',') << ')') [_pass = phoenix::bind(&getInterpolateExpression, InterpolateExpression::Method::CUBIC, _val, _1, _2)]
+                    | (karma::lit("exponential") << '(' << karma::double_ << ',' << expression << ',' << (expression % ',') << ')') [_pass = phoenix::bind(&getExponentialExpression, _val, _1, _2, _3)]
                     | (karma::lit("matrix") << '(' << expression << ',' << expression << ',' << expression << ',' << expression << ',' << expression << ',' << expression << ')') [_pass = phoenix::bind(&getMatrixTransformExpression, _val, _1, _2, _3, _4, _5, _6)]
                     | (karma::lit("translate") << '(' << expression << ',' << expression << ')') [_pass = phoenix::bind(&getTranslateTransformExpression, _val, _1, _2)]
                     | (karma::lit("rotate") << '(' << expression << ',' << expression << ',' << expression << ')') [_pass = phoenix::bind(&getRotateTransformExpression, _val, _2, _3, _1)]
@@ -283,6 +284,18 @@ namespace massif::mvt {
                 }
                 return false;
             }
+            static bool getExponentialExpression(const Expression& expr, double& base, Expression& timeExpr, std::vector<Expression>& keyFrames) {
+                if (auto interpolateExpr = std::get_if<std::shared_ptr<InterpolateExpression>>(&expr)) {
+                    if ((*interpolateExpr)->getMethod() == InterpolateExpression::Method::EXPONENTIAL) {
+                        base = (*interpolateExpr)->getBase();
+                        timeExpr = (*interpolateExpr)->getTimeExpression();
+                        keyFrames = (*interpolateExpr)->getKeyFrames();
+                        return true;
+                    }
+                }
+                return false;
+            }
+
             static bool checkFunction(const std::string& func) {
                 return func != "url" && func != "rgb" && func != "rgba"; // ignore special-built in constructors
             }

@@ -34,6 +34,8 @@ namespace massif::vt {
         U_COLORTABLE,
         U_WIDTHTABLE,
         U_OFFSETTABLE,
+        U_GAPWIDTHTABLE,
+        U_BLURTABLE,
         U_STROKEWIDTHTABLE,
         U_STROKESCALETABLE,
         U_PATTERNTABLE,
@@ -145,7 +147,12 @@ namespace massif::vt {
         COVERAGE_FLAG = 16777216,
         // ... and the other end: a live no-drape layer scales its alpha by 1 - mask, so the draped
         // layers that come AFTER it in the style order win where they paint.
-        DRAPE_MASK_FLAG = 33554432
+        DRAPE_MASK_FLAG = 33554432,
+        // A line with an undrawn gap down its middle (mapbox's `line-gap-width`), which is how one
+        // rule draws the two strips of a road casing. Compiled in only where a style asks for it.
+        GAPWIDTH_FLAG = 67108864,
+        // mapbox's `line-blur`: a widened antialias ramp. Same deal - only where a style asks.
+        BLUR_FLAG = 134217728
     };
 
     static const std::map<std::string, int> attribMap = {
@@ -174,6 +181,8 @@ namespace massif::vt {
         { "uColorTable",       U_COLORTABLE },
         { "uWidthTable",       U_WIDTHTABLE },
         { "uOffsetTable",      U_OFFSETTABLE },
+        { "uGapWidthTable",    U_GAPWIDTHTABLE },
+        { "uBlurTable",        U_BLURTABLE },
         { "uStrokeWidthTable", U_STROKEWIDTHTABLE },
         { "uStrokeScaleTable", U_STROKESCALETABLE },
         { "uPatternTable",     U_PATTERNTABLE },
@@ -234,6 +243,8 @@ namespace massif::vt {
     static const std::map<unsigned int, std::string> flagDefineMap = {
         { TRANSFORM_FLAG,   "TRANSFORM" },
         { OFFSET_FLAG,      "OFFSET" },
+        { GAPWIDTH_FLAG,    "GAPWIDTH" },
+        { BLUR_FLAG,        "BLUR" },
         { PATTERN_FLAG,     "PATTERN" },
         { DERIVATIVES_FLAG, "DERIVATIVES" },
         { TERRAIN_FLAG,     "TERRAIN_DEPTH_BIAS" },
@@ -1875,12 +1886,20 @@ namespace massif::vt {
         #ifdef OFFSET
         uniform float uOffsetTable[16];
         #endif
+        #ifdef GAPWIDTH
+        uniform float uGapWidthTable[16];
+        #endif
+        #ifdef BLUR
+        uniform float uBlurTable[16];
+        #endif
         #ifdef PATTERN
         varying highp_opt vec2 vUV;
         #endif
         varying lowp vec4 vColor;
         varying highp_opt vec2 vDist;
         varying highp_opt float vWidth;
+        varying highp_opt float vInnerWidth;
+        varying highp_opt float vBlur;
         #ifdef LIGHTING_FSH
         varying mediump vec3 vNormal;
         #endif
@@ -1888,6 +1907,14 @@ namespace massif::vt {
         void main(void) {
             int styleIndex = int(aVertexAttribs[0]);
             float width = uWidthTable[styleIndex];
+        #ifdef GAPWIDTH
+            // mapbox's `line-gap-width`: one rule draws the two strips of a casing. uWidthTable
+            // already reaches the OUTER edge and the middle is cut in the fragment shader, so a
+            // gap costs no extra geometry and the joins and caps are the line's own.
+            float innerWidth = uGapWidthTable[styleIndex];
+        #else
+            float innerWidth = 0.0;
+        #endif
             float roundedWidth = width > 0.0 ? width + 1.0 : 0.0;
             float gamma = 0.5;
             vec3 pos = aVertexPosition;
@@ -1905,6 +1932,17 @@ namespace massif::vt {
         #endif
             vDist = vec2(aVertexAttribs[1], aVertexAttribs[2]) * (roundedWidth * gamma); // will be 0,0 for polygons
             vWidth = width > 0.0 ? (width - 1.0) * gamma + 1.0 : 1.0; // will be 1 for polygons
+            // The inner edge in the same units vDist is measured in. vDist is scaled by
+            // roundedWidth, not by the width, so the cut is a FRACTION of the outer edge - taking
+            // innerWidth directly put the gap (width + 1) / width too far in, which is a third off
+            // on a three-unit line. 0 leaves a plain line untouched.
+            vInnerWidth = width > 0.0 ? vWidth * (innerWidth / width) : 0.0;
+        #ifdef BLUR
+            // In the same units vDist is measured in, so the ramp below stays one expression.
+            vBlur = uBlurTable[styleIndex] * gamma;
+        #else
+            vBlur = 0.0;
+        #endif
         #ifdef LIGHTING_VSH
             vColor = applyLighting(color, aVertexNormal);
         #else
@@ -1973,6 +2011,8 @@ namespace massif::vt {
         varying lowp vec4 vColor;
         varying highp_opt vec2 vDist;
         varying highp_opt float vWidth;
+        varying highp_opt float vInnerWidth;
+        varying highp_opt float vBlur;
         #ifdef LIGHTING_FSH
         varying mediump vec3 vNormal;
         #endif
@@ -1988,13 +2028,22 @@ namespace massif::vt {
                     discard;
                 }
             }
-            float dist = vWidth - length(vDist);
-            // The antialias ramp is one unit of the quad, and a unit is NOT a pixel: line widths
-            // are given in unscaled-DPI units, so on a 2.6x display one unit covers about 1.8
-            // device pixels (uAntialiasScale is exactly that ratio, screen height over the
-            // normalized resolution). A contour a pixel wide was therefore mostly ramp - the blur.
-            // Ramping over one DEVICE pixel keeps a thin line a thin line at any density.
-            lowp float a = clamp(dist * uAntialiasScale, 0.0, 1.0);
+            // The antialias ramp, in DEVICE pixels: line widths are given in unscaled-DPI units and
+            // a unit is not a pixel, so uAntialiasScale (screen height over the normalized
+            // resolution) converts. A contour a pixel wide was otherwise mostly ramp - the blur.
+            // mapbox's `line-blur` widens this ramp rather than moving the edges (line.fragment.glsl).
+            lowp float ramp = 1.0 + vBlur * uAntialiasScale;
+            // Distance from the OUTER edge, and - for a gapped line - from the inner one too, so
+            // the middle is cut with the same ramp that antialiases the outside. The inner ramp
+            // fades INTO the gap, as mapbox's does: opaque at the gap edge, gone one ramp inside
+            // it. Fading the other way instead ate a whole ramp off the strip, which is a 27 px
+            // bite out of a bridge shadow at blur 10.
+            float d = length(vDist);
+            float dist = (vWidth - d) * uAntialiasScale;
+            if (vInnerWidth > 0.0) {
+                dist = min(dist, (d - vInnerWidth) * uAntialiasScale + ramp);
+            }
+            lowp float a = clamp(dist / ramp, 0.0, 1.0);
         #ifdef PATTERN
             lowp vec4 color = texture2D(uPattern, vUV) * vColor * a;
         #else

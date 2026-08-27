@@ -12,7 +12,7 @@ sidebar_position: 20
 `CartoCSSMapnikTranslator.cpp`. Edit those, then re-run the script — never this page.
 :::
 
-210 properties across 12 symbolizers.
+212 properties across 12 symbolizers.
 
 ## Reading the table
 
@@ -25,7 +25,7 @@ sidebar_position: 20
 - Liveness is decided **per parameter across the whole style**, not per use: one baked use
   anywhere makes the parameter baked everywhere.
 
-Live-capable properties: 41 of 210.
+Live-capable properties: 43 of 212.
 
 ## `building`
 
@@ -124,6 +124,7 @@ Live-capable properties: 41 of 210.
 | `marker-opacity` | `opacity` | float | `1.0` | yes |  |
 | `marker-placement` | `placement` | value | `point` |  |  |
 | `marker-placement-priority` | `placement-priority` | float | `0.0` |  |  |
+| `marker-rank` | `rank` | float | `0.0` | yes |  |
 | `marker-same-feature-id-dependent` | `same-feature-id-dependent` | bool | `false` |  |  |
 | `marker-sdf` | `sdf` | bool | `false` |  |  |
 | `marker-spacing` | `spacing` | float | `100.0` |  |  |
@@ -220,6 +221,7 @@ Live-capable properties: 41 of 210.
 | `shield-orientation` | `orientation` | float | `0.0` |  |  |
 | `shield-placement` | `placement` | value | `point` |  |  |
 | `shield-placement-priority` | `placement-priority` | float | `0.0` |  |  |
+| `shield-rank` | `rank` | float | `0.0` | yes |  |
 | `shield-sdf` | `sdf` | bool | `false` |  |  |
 | `shield-size` | `size` | float | `10.0` |  | yes |
 | `shield-spacing` | `spacing` | float | `0.0` |  |  |

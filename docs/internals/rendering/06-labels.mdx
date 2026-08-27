@@ -351,6 +351,10 @@ priority**:
 }
 ```
 
+All three label symbolizers carry it — `text-rank`, `shield-rank`, `marker-rank`. Shields inherit the
+property from `TextSymbolizer` and markers declare their own; both end up as `TileLabel::Style::rankFunc`,
+so the culler reads one field whatever built the label (`PointLabelStyle::rankFunc` for a marker).
+
 `view::distance` is metres from the camera to the label being ranked. It is defined **only** in this
 evaluation: `ViewState::labelDistance` is 0 everywhere else, because the renderer evaluates a style
 function once per batch (`GLTileRenderer::renderLabelPass` packs colour and size into a 16-slot

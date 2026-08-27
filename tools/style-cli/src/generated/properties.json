@@ -695,6 +695,16 @@
       "baked": false
     },
     {
+      "cartocss": "marker-rank",
+      "mapnik": "rank",
+      "symbolizer": "marker",
+      "kind": "float",
+      "type": "FloatFunctionProperty",
+      "default": "0.0",
+      "live": true,
+      "baked": false
+    },
+    {
       "cartocss": "marker-same-feature-id-dependent",
       "mapnik": "same-feature-id-dependent",
       "symbolizer": "marker",
@@ -1402,6 +1412,16 @@
       "type": "FloatProperty",
       "default": "0.0",
       "live": false,
+      "baked": false
+    },
+    {
+      "cartocss": "shield-rank",
+      "mapnik": "rank",
+      "symbolizer": "shield",
+      "kind": "float",
+      "type": "FloatFunctionProperty",
+      "default": "0.0",
+      "live": true,
       "baked": false
     },
     {

@@ -26,6 +26,7 @@ add_executable(style_tests
   StyleTest.cpp
   LayerConfigTest.cpp
   ExpressionRoundTripTest.cpp
+  InterpolateExpressionTest.cpp
   DataDrivenPropertyTest.cpp
   ${STYLE_SOURCES})
 

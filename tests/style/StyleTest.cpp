@@ -9,11 +9,13 @@ int failures = 0;
 void testLayerConfig();
 void testExpressionRoundTrip();
 void testDataDrivenProperty();
+void testInterpolateExpression();
 
 int main() {
     testLayerConfig();
     testExpressionRoundTrip();
     testDataDrivenProperty();
+    testInterpolateExpression();
 
     std::printf("\n%d failure(s)\n", failures);
     return failures ? 1 : 0;

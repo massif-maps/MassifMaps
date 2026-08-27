@@ -24,7 +24,10 @@ namespace massif::vt {
         enum class GlyphMode {
             SDF        = 0,
             BITMAP     = 1,
-            BACKGROUND = 2
+            BACKGROUND = 2,
+            // A label plate: two colours out of one cell (see TileLabel::Style::Plate). A DRAW
+            // mode only - the cell itself is loaded as a BITMAP.
+            PLATE      = 3
         };
 
         struct Glyph {

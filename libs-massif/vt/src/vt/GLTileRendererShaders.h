@@ -1601,6 +1601,9 @@ namespace massif::vt {
         uniform float uWidthTable[16];
         uniform float uStrokeWidthTable[16];
         varying lowp vec4 vColor;
+        // A label plate's BORDER colour (mode 3), which the fragment mixes with vColor out of one
+        // cell - see labelFsh. Unused, and left at zero, by every other mode.
+        varying lowp vec4 vBorderColor;
         varying highp_opt vec2 vUV;
         varying mediump vec4 vAttribs;
         #ifdef LIGHTING_FSH
@@ -1611,7 +1614,13 @@ namespace massif::vt {
             int styleIndex = int(aVertexAttribs[0]);
             float size = uWidthTable[styleIndex];
             float opacity = aVertexAttribs[2] * (1.0 / 127.0);
-            vec4 color = aVertexAttribs[1] > 1.0 ? vec4(1.0, 1.0, 1.0, 1.0) : uColorTable[styleIndex];
+            bool plate = aVertexAttribs[1] > 2.5;
+            vec4 color = (aVertexAttribs[1] > 1.0 && !plate) ? vec4(1.0, 1.0, 1.0, 1.0) : uColorTable[styleIndex];
+            // A plate's border colour sits in the slot after its fill's (see LabelPlateIndices).
+            // The index stays put when there is no border: the table has 16 slots and a driver is
+            // free to evaluate both sides of the select, so styleIndex + 1 could read past it.
+            int borderIndex = plate ? styleIndex + 1 : styleIndex;
+            vec4 borderColor = plate ? uColorTable[borderIndex] : vec4(0.0, 0.0, 0.0, 0.0);
             vUV = aVertexUV * uUVScale;
             // [1] is the halo width in SCREEN PIXELS, [3] the antialias ramp - one screen pixel of
             // signed distance. The fragment shader measures the halo in ramps, so both are the
@@ -1620,8 +1629,10 @@ namespace massif::vt {
             vAttribs = vec4(aVertexAttribs[1], uStrokeWidthTable[styleIndex], 0.0, uSDFRamp / size);
         #ifdef LIGHTING_VSH
             vColor = applyLighting(color, aVertexNormal) * opacity;
+            vBorderColor = applyLighting(borderColor, aVertexNormal) * opacity;
         #else
             vColor = color * opacity;
+            vBorderColor = borderColor * opacity;
         #endif
         #ifdef LIGHTING_FSH
             vNormal = aVertexNormal;
@@ -1649,7 +1660,9 @@ namespace massif::vt {
                     dot(texture2D(uLabelOcclusionTex, anchorUV + vec2( d.x, -d.y)).rgb, unpack),
                     dot(texture2D(uLabelOcclusionTex, anchorUV + vec2(-d.x, -d.y)).rgb, unpack));
                 lowp float visible = dot(vec4(0.25), clamp((taps - vec4(anchorDepth)) * uLabelOcclusionParams.w, 0.0, 1.0));
-                vColor *= mix(uLabelOcclusionParams.z, 1.0, visible); // premultiplied, so one scalar is enough
+                lowp float occlusion = mix(uLabelOcclusionParams.z, 1.0, visible); // premultiplied, so one scalar is enough
+                vColor *= occlusion;
+                vBorderColor *= occlusion;
             }
         #endif
             gl_Position = uMVPMatrix * vec4(aVertexPosition + offset, 1.0);
@@ -1659,6 +1672,7 @@ namespace massif::vt {
     static const std::string labelFsh = R"GLSL(
         uniform sampler2D uBitmap;
         varying lowp vec4 vColor;
+        varying lowp vec4 vBorderColor;
         varying highp_opt vec2 vUV;
         varying mediump vec4 vAttribs;
         #ifdef LIGHTING_FSH
@@ -1670,7 +1684,12 @@ namespace massif::vt {
             // quantized coarser than the one-pixel ramp below, which shows up as banded glyph
             // edges - and the derivative taken from it would be noise.
             mediump vec4 color = texture2D(uBitmap, vUV);
-            if (vAttribs[0] > 0.0) {
+            if (vAttribs[0] > 2.5) {
+                // A label plate: r is the fill's coverage, a the whole plate's, so the border is
+                // what is left between them. Mixed HERE and blended once - as two quads the fill
+                // could not hide the border under it while either was translucent.
+                color = vColor * color.r + vBorderColor * (color.a - color.r);
+            } else if (vAttribs[0] > 0.0) {
                 color = color * vColor;
             } else {
         #ifdef DERIVATIVES
@@ -1685,7 +1704,20 @@ namespace massif::vt {
                 // The ramp is centred on the outline, and the halo pushes that centre outward by
                 // its own width in screen pixels - 'size' being exactly one of those.
                 float offset = 0.5 * (1.0 - size * (1.0 + 2.0 * vAttribs[1]));
-                color = clamp((color.r - offset) / size, 0.0, 1.0) * vColor;
+                mediump float ink = clamp((color.r - 0.5 * (1.0 - size)) / size, 0.0, 1.0);
+                // A halo is its own quad, drawn under ALL of the label's ink (so that no glyph's
+                // halo covers its neighbour). It paints the RING only - the glyph's own shape is
+                // punched out of it - because ink over a SOLID halo leaves halo * a * (1 - a)
+                // showing through at any alpha below one: a shield went dark for the length of its
+                // fade-in, and a translucent fill stayed dark. Same rule as a plate's border.
+                // What is punched out reaches half a pixel FURTHER IN than the ink's own edge
+                // (threshold 0.5 against the ink's 0.5 - size/2), so the ink's antialiased edge
+                // still has solid halo under it - ending the ring on that edge leaves the two ramps
+                // summing to less than opaque, which reads as a hole around every glyph.
+                mediump float alpha = vAttribs[1] > 0.0
+                    ? clamp((color.r - offset) / size, 0.0, 1.0) - clamp((color.r - 0.5) / size, 0.0, 1.0)
+                    : ink;
+                color = max(alpha, 0.0) * vColor;
             }
         #ifdef LIGHTING_FSH
             color = applyLighting(color, normalize(vNormal));
@@ -1741,11 +1773,16 @@ namespace massif::vt {
             vUV = uUVScale * aVertexUV;
         #endif
         #ifdef OFFSET
-            float offset = 0.5 - 0.5 * uSDFScale / size * (1.0 + uStrokeWidthTable[styleIndex]);
+            float halo = uStrokeWidthTable[styleIndex];
+            float offset = 0.5 - 0.5 * uSDFScale / size * (1.0 + halo);
         #else
+            float halo = 0.0;
             float offset = 0.5 - 0.5 * uSDFScale / size;
         #endif
-            vAttribs = vec4(aVertexAttribs[1], 0.0, offset, size / uSDFScale);
+            // [1] is the halo width, and 0 for the glyph itself: text drawn as geometry lays the
+            // halo down as its own pass too (TileLayerBuilder, pass 0), so the fragment has to
+            // punch the ink out of it exactly as labelFsh does.
+            vAttribs = vec4(aVertexAttribs[1], halo, offset, size / uSDFScale);
         #ifdef LIGHTING_VSH
             vColor = applyLighting(color, aVertexNormal);
         #else
@@ -1783,7 +1820,13 @@ namespace massif::vt {
             if (vAttribs[0] > 0.0) {
                 color = color * vColor;
             } else {
-                color = clamp((color.r - vAttribs[2]) * vAttribs[3], 0.0, 1.0) * vColor;
+                mediump float alpha = clamp((color.r - vAttribs[2]) * vAttribs[3], 0.0, 1.0);
+                if (vAttribs[1] > 0.0) {
+                    // The ring only, ending half a pixel inside the ink's own edge - see labelFsh
+                    // for why the halo may neither sit under the ink nor stop short of it.
+                    alpha -= clamp((color.r - 0.5) * vAttribs[3], 0.0, 1.0);
+                }
+                color = max(alpha, 0.0) * vColor;
             }
         #else
             lowp vec4 color = vColor;

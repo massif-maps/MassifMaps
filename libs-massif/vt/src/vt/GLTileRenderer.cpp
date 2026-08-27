@@ -3471,15 +3471,13 @@ namespace massif::vt {
                 // antialias ramp is. The cap is where the encoded field runs out.
                 float haloRadius = std::min(evaluateFloatFunc(labelStyle->haloRadiusFunc), MAX_HALO_PIXELS);
 
-                // Up to four plates: a fill and a border behind the text, and the same behind the
-                // icon. Each colour is one more slot in the batch, exactly like the halo.
-                const TileLabel::Style::Plate* plateList[4] = { &labelStyle->textPlate, &labelStyle->textPlate, &labelStyle->iconPlate, &labelStyle->iconPlate };
-                const bool plateIsBorder[4] = { false, true, false, true };
+                // Two plates - one behind the text, one behind the icon - and each colour is one
+                // more slot in the batch, exactly like the halo. A plate with a border needs two,
+                // and they must be CONSECUTIVE: one quad draws both (see LabelPlateIndices).
+                const TileLabel::Style::Plate* plateList[2] = { &labelStyle->textPlate, &labelStyle->iconPlate };
                 int plateCount = 0;
-                for (int i = 0; i < 4; i++) {
-                    if (plateIsBorder[i] ? plateList[i]->drawsBorder() : plateList[i]->drawsFill()) {
-                        plateCount++;
-                    }
+                for (int i = 0; i < 2; i++) {
+                    plateCount += (plateList[i]->draws() ? (plateList[i]->drawsBorder() ? 2 : 1) : 0);
                 }
                 // The second run of text may have its own colour, which is one more slot in the
                 // batch - exactly like the halo and the plate.
@@ -3538,24 +3536,33 @@ namespace massif::vt {
                 }
                 // Every plate colour needs its own slot in the batch - exactly like the halo.
                 plateIndices = LabelPlateIndices();
-                int* plateTargets[4] = { &plateIndices.textFill, &plateIndices.textBorder, &plateIndices.iconFill, &plateIndices.iconBorder };
-                for (int i = 0; i < 4; i++) {
+                int* plateTargets[2] = { &plateIndices.text, &plateIndices.icon };
+                for (int i = 0; i < 2; i++) {
                     const TileLabel::Style::Plate& plate = *plateList[i];
-                    if (!(plateIsBorder[i] ? plate.drawsBorder() : plate.drawsFill())) {
+                    if (!plate.draws()) {
                         continue;
                     }
-                    cglib::vec4<float> plateColor = cglib::vec4<float>((plateIsBorder[i] ? plate.style.borderColor : plate.style.color).rgba());
-                    int index = labelBatchParams.parameterCount;
-                    for (--index; index >= 0; index--) {
-                        if (labelBatchParams.colorTable[index] == plateColor && labelBatchParams.widthTable[index] == size && labelBatchParams.strokeWidthTable[index] == 0) {
+                    // The fill's slot, and the border's right after it - the quad reads that one
+                    // as styleIndex + 1, so a REUSED pair has to be consecutive as well.
+                    bool border = plate.drawsBorder();
+                    int slots = (border ? 2 : 1);
+                    cglib::vec4<float> fillColor = cglib::vec4<float>(plate.style.color.rgba());
+                    cglib::vec4<float> borderColor = cglib::vec4<float>(plate.style.borderColor.rgba());
+                    int index = labelBatchParams.parameterCount - slots;
+                    for (; index >= 0; index--) {
+                        if (labelBatchParams.colorTable[index] == fillColor && labelBatchParams.widthTable[index] == size && labelBatchParams.strokeWidthTable[index] == 0
+                            && (!border || labelBatchParams.colorTable[index + 1] == borderColor)) {
                             break;
                         }
                     }
-                    if (index < 0 && labelBatchParams.parameterCount < LabelBatchParameters::MAX_PARAMETERS) {
-                        index = labelBatchParams.parameterCount++;
-                        labelBatchParams.colorTable[index] = plateColor;
-                        labelBatchParams.widthTable[index] = size;
-                        labelBatchParams.strokeWidthTable[index] = 0;
+                    if (index < 0 && labelBatchParams.parameterCount + slots <= LabelBatchParameters::MAX_PARAMETERS) {
+                        index = labelBatchParams.parameterCount;
+                        for (int j = 0; j < slots; j++) {
+                            int slot = labelBatchParams.parameterCount++;
+                            labelBatchParams.colorTable[slot] = (j == 0 ? fillColor : borderColor);
+                            labelBatchParams.widthTable[slot] = size;
+                            labelBatchParams.strokeWidthTable[slot] = 0;
+                        }
                     }
                     *plateTargets[i] = index;
                 }

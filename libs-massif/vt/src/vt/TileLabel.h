@@ -81,17 +81,24 @@ namespace massif::vt {
             std::optional<cglib::vec2<float>> calloutBandAnchor;
             std::optional<GlyphMap::Glyph> calloutLineGlyph;
             // A plate drawn behind part of the label (see LabelPlateStyle). 'glyph' is the atlas
-            // cell it is 3-sliced from, so the corners keep their radius however wide the text is;
-            // 'borderGlyph' is the same at radius + borderWidth, drawn behind the fill and one
-            // border width larger on every side - which is what makes the border.
+            // cell it is nine-sliced from, so the corners keep their radius however wide the text is.
+            // Fill AND border come from that ONE cell - r is the fill's coverage, a the whole
+            // plate's - so both are drawn by one quad in one blend: two quads leave the border
+            // showing through the fill wherever the label is mid-fade or the fill translucent.
+            // 'radius'/'borderWidth' are what the cell was actually built at (quarter pixels), and
+            // the geometry has to use them rather than the style's own values.
             struct Plate {
                 LabelPlateStyle style;
                 std::optional<GlyphMap::Glyph> glyph;
-                std::optional<GlyphMap::Glyph> borderGlyph;
+                float radius;
+                float borderWidth;
 
-                bool drawsFill() const { return style.hasFill() && glyph.has_value(); }
-                bool drawsBorder() const { return style.hasBorder() && borderGlyph.has_value(); }
-                bool draws() const { return drawsFill() || drawsBorder(); }
+                // Written out rather than defaulted per member: Style's constructor takes a Plate
+                // by default argument, and a member initializer cannot be evaluated there.
+                Plate() : style(), glyph(), radius(0.0f), borderWidth(0.0f) { }
+
+                bool draws() const { return style.enabled() && glyph.has_value(); }
+                bool drawsBorder() const { return style.hasBorder() && glyph.has_value(); }
                 bool operator == (const Plate& other) const { return style == other.style; }
                 bool operator != (const Plate& other) const { return !(*this == other); }
             };

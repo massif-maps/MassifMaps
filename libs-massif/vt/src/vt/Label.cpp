@@ -150,11 +150,9 @@ namespace massif::vt {
             if (!plate.draws() || part.min(0) > part.max(0)) {
                 return;
             }
-            cglib::vec2<float> grow = plate.style.padding;
-            if (plate.drawsBorder()) {
-                grow += cglib::vec2<float>(plate.style.borderWidth, plate.style.borderWidth);
-            }
-            grow *= glyphScale;
+            // borderWidth is the plate's own, snapped to the cell it was built from, and 0 when
+            // there is no border - the same value the quad is grown by.
+            cglib::vec2<float> grow = (plate.style.padding + cglib::vec2<float>(plate.borderWidth, plate.borderWidth)) * glyphScale;
             bbox.add(part.min - grow);
             bbox.add(part.max + grow);
         };
@@ -943,34 +941,32 @@ namespace massif::vt {
         float pixelScale = scale / size;
         bool cameraAxes = (_style->orientation == LabelOrientation::BILLBOARD_3D || _style->orientation == LabelOrientation::LINE_BILLBOARD_3D || _style->orientation == LabelOrientation::CALLOUT);
 
-        // Border first, then fill on top of it, and the icon's plate before the text's: within one
-        // label the draw order is the index order, so anything appended later covers what came
-        // before - and all of this has to end up under the glyphs.
-        struct Layer { const cglib::bbox2<float>* box; const TileLabel::Style::Plate* plate; int styleIndex; bool border; };
-        const Layer layers[4] = {
-            { &_iconBBox, &_style->iconPlate, plates.iconBorder, true },
-            { &_iconBBox, &_style->iconPlate, plates.iconFill,   false },
-            { &_textBBox, &_style->textPlate, plates.textBorder, true },
-            { &_textBBox, &_style->textPlate, plates.textFill,   false }
+        // The icon's plate before the text's: within one label the draw order is the index order,
+        // so anything appended later covers what came before - and all of this has to end up under
+        // the glyphs. Fill and border are ONE quad (see TileLabel::Style::Plate).
+        struct Layer { const cglib::bbox2<float>* box; const TileLabel::Style::Plate* plate; int styleIndex; };
+        const Layer layers[2] = {
+            { &_iconBBox, &_style->iconPlate, plates.icon },
+            { &_textBBox, &_style->textPlate, plates.text }
         };
         for (const Layer& layer : layers) {
             if (layer.styleIndex < 0 || layer.box->min(0) > layer.box->max(0)) {
                 continue;
             }
             const TileLabel::Style::Plate& plate = *layer.plate;
-            const std::optional<GlyphMap::Glyph>& glyph = (layer.border ? plate.borderGlyph : plate.glyph);
-            if (!glyph || (layer.border ? !plate.drawsBorder() : !plate.drawsFill())) {
+            if (!plate.draws()) {
                 continue;
             }
-            float grow = plate.style.borderWidth * (layer.border ? 1.0f : 0.0f);
-            cglib::vec2<float> padding = (plate.style.padding + cglib::vec2<float>(grow, grow)) * pixelScale;
-            appendPlate(*layer.box, *glyph, (plate.style.radius + grow) * pixelScale, padding, scale, layer.styleIndex, cameraAxes, calloutShift, origin, xAxis, yAxis, placement, vertices, offsets, normals, texCoords, attribs, indices);
+            // The quad is the plate's outer shape, border included - the cell was built that way.
+            cglib::vec2<float> grow = (plate.style.padding + cglib::vec2<float>(plate.borderWidth, plate.borderWidth)) * pixelScale;
+            std::int8_t mode = static_cast<std::int8_t>(plate.drawsBorder() ? GlyphMap::GlyphMode::PLATE : GlyphMap::GlyphMode::BITMAP);
+            appendPlate(*layer.box, *plate.glyph, plate.radius * pixelScale, grow, scale, layer.styleIndex, mode, cameraAxes, calloutShift, origin, xAxis, yAxis, placement, vertices, offsets, normals, texCoords, attribs, indices);
         }
     }
 
     // 'radius' and 'grow' are already in the label's own units (screen pixels times the label
     // scale), like the glyph offsets around them.
-    void Label::appendPlate(const cglib::bbox2<float>& box, const GlyphMap::Glyph& glyph, float radius, const cglib::vec2<float>& grow, float scale, int styleIndex, bool cameraAxes, const cglib::vec2<float>& calloutShift, const cglib::vec3<float>& origin, const cglib::vec3<float>& xAxis, const cglib::vec3<float>& yAxis, const std::shared_ptr<const Placement>& placement, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& offsets, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const {
+    void Label::appendPlate(const cglib::bbox2<float>& box, const GlyphMap::Glyph& glyph, float radius, const cglib::vec2<float>& grow, float scale, int styleIndex, std::int8_t glyphMode, bool cameraAxes, const cglib::vec2<float>& calloutShift, const cglib::vec3<float>& origin, const cglib::vec3<float>& xAxis, const cglib::vec3<float>& yAxis, const std::shared_ptr<const Placement>& placement, VertexArray<cglib::vec3<float>>& vertices, VertexArray<cglib::vec3<float>>& offsets, VertexArray<cglib::vec3<float>>& normals, VertexArray<cglib::vec2<std::int16_t>>& texCoords, VertexArray<cglib::vec4<std::int8_t>>& attribs, VertexArray<std::uint16_t>& indices) const {
         // The plate covers the box plus what it is grown by, both in glyph units (1 unit = the
         // font size). The cell is a square barely wider than its corner radius, so it is cut into
         // nine: the four corner cells keep the radius, the edges stretch along one axis only and
@@ -1025,7 +1021,7 @@ namespace massif::vt {
                 std::int16_t sv0 = static_cast<std::int16_t>(row.t0), sv1 = static_cast<std::int16_t>(row.t1);
                 texCoords.append(cglib::vec2<std::int16_t>(su0, sv0), cglib::vec2<std::int16_t>(su1, sv0), cglib::vec2<std::int16_t>(su1, sv1), cglib::vec2<std::int16_t>(su0, sv1));
 
-                cglib::vec4<std::int8_t> attrib(static_cast<std::int8_t>(styleIndex), static_cast<std::int8_t>(GlyphMap::GlyphMode::BITMAP), static_cast<std::int8_t>(_opacity * 127.0f), cameraAxes ? CAMERA_AXIS_OFFSET : WORLD_OFFSET);
+                cglib::vec4<std::int8_t> attrib(static_cast<std::int8_t>(styleIndex), glyphMode, static_cast<std::int8_t>(_opacity * 127.0f), cameraAxes ? CAMERA_AXIS_OFFSET : WORLD_OFFSET);
                 attribs.append(attrib, attrib, attrib, attrib);
 
                 const cglib::vec2<float> corners[4] = {

@@ -24,6 +24,11 @@ of a style layer that also carries ordinary line/text rules, which is what a con
 produces. Only the TUs the model needs are linked — the symbolizer implementations pull vt's tile
 builders in, so a case that needs one belongs behind a device check instead.
 
+`vt/` covers the renderer's HEADER-ONLY maths — today the label plate cell (`LabelPlateBitmap.h`):
+what the fill and border shapes in one atlas cell have to satisfy for one quad to draw both. No
+object of `vt` is linked; anything reached through a `.cpp` of `vt` drags the tile builders,
+freetype and harfbuzz in, and belongs behind a device check instead.
+
 It does **not** cover anything that needs a real map. Two things make that a hard boundary rather
 than a choice:
 
@@ -67,3 +72,7 @@ that turns into a long list, the class probably belongs behind a device check in
 
 `style/StyleTest.cpp` is the same `main` for the style side; a new case is a function there plus
 its `.cpp` in `style/CMakeLists.txt`. Keep `STYLE_SOURCES` short for the same reason.
+
+`vt/VtTest.cpp` is that `main` for the vt side. It links no source of `vt` at all, so a new case
+there has to reach its subject through a header — extracting one is usually the right move, and
+adding a `.cpp` is the signal that it is not.

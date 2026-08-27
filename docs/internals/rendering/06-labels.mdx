@@ -421,7 +421,8 @@ Everything below rests on that split — the icon stays on the feature, only the
   flag. No extra glyph run, no extra formatting: the block is placed against the icon's edge, so the
   style's own `horizontal-alignment` does not have to be mirrored, and `dx`/`dy` are re-applied as a
   gap along the anchor direction (a name pushed 2 px right of the icon is pushed 2 px LEFT on the
-  left side). A style with no `shield-anchors` builds no variants and takes exactly the old path.
+  left side). A style with neither `shield-anchors` nor `shield-text-optional` builds no variants
+  and takes exactly the old path.
 - **`LabelCuller::placeAnchoredLabel`** tries the side the label already holds first and then the
   style's order, taking the first free one — tangram's
   `do { … } while (isOccluded() && nextAnchor())` (`labelManager.cpp`), with their anchor set and
@@ -434,7 +435,11 @@ Everything below rests on that split — the icon stays on the feature, only the
   icon has to sit over it, and the formatter's own alignment is derived from the sign of `dx`, which
   means nothing once `dx` is a gap.
 - `shield-text-optional` appends a last variant that draws the icon alone. That is mapbox's
-  `text-optional`; here it costs one more variant, not a second label.
+  `text-optional`; here it costs one more variant, not a second label. It does **not** need
+  `shield-anchors` — a list of one placement plus the icon-only fallback is a valid list, and it is
+  the common case: no MapTiler style states a variable anchor, but 25 layers of outdoor-v4 state
+  `text-optional`. `buildLabelVariants` used to return early on an empty anchor list and never
+  reached the fallback, so those layers drew nothing where MapTiler drops the name and keeps the pin.
 - The side is carried across rebuilds by `snapPlacement`, so a label recreated by a tile-set change
   does not start at side 0 for one frame before the next pass moves it back.
 - **Placement is re-run when the camera zooms** (`MapRenderer::viewChanged`, ¼ of a zoom level). A
@@ -524,12 +529,25 @@ rectangle with its own colour, corner radius, padding and border:
 }
 ```
 
-- A plate is **3-sliced from one atlas cell** (`buildRoundedRectBitmap`, cached by radius, the glyph
-  map dedupes by pointer): left cap, stretched middle, right cap — which is what keeps the corners
-  round at any name width.
-- The **border is a second plate behind the fill**, one border width larger on every side and with
-  its corner radius grown to match. That is why it needs no shader and no second texture: it is the
-  same cell drawn bigger in another colour.
+- A plate is **nine-sliced from one atlas cell** (`LabelPlateBitmap.h`, cached by radius and border
+  width, the glyph map dedupes by pointer): four corner cells keep the radius, the edges stretch
+  along one axis and the centre fills — which is what keeps the corners round at any name width.
+- **Fill and border come out of that one cell, in one quad**: the cell's `r` channel is the fill's
+  coverage and its `a` the whole plate's, so the ring between them is the border, and `labelFsh`
+  (draw mode `PLATE`) mixes the two colours *before* the single blend —
+  `vColor * r + vBorderColor * (a - r)`. The border's colour is the batch slot right after the
+  fill's (`LabelPlateIndices`), which is why a reused pair has to be consecutive.
+  Drawing the border as a **second quad behind the fill** is what this replaced: both quads carry
+  the label's own alpha, so fill-over-border leaves `border * a * (1 - a)` showing through wherever
+  `alpha < 1` — a yellow shield with a black border went dark for the length of its fade-in, and a
+  translucent `text-background-opacity` stayed dark for good. Punching the fill's shape out of the
+  border cell (the ring) fixes the middle of the plate but not the seam where the two meet: any
+  overlap darkens, and ending the ring exactly on the fill's edge leaves an antialiasing hole
+  instead. One quad is the only form with neither.
+- The cell is drawn at **4 texels per style pixel** (`PLATE_SUPERSAMPLE`) and the quad is snapped to
+  that same grid (`PlateCell::radius/borderWidth`, carried on the plate). A border thinner than a
+  quarter pixel keeps a texel rather than rounding to none — rounded away it left a cell with no
+  ring at all, i.e. a filled plate behind the fill, which is the darkening above.
 - Both plates are part of what the label covers, so `calculatePlatedBBox` grows the envelope by
   their padding and border — the culler tests what is actually drawn, and a callout's leader line
   ends outside the plate rather than inside it. The box is in **glyph units**, so the padding is
@@ -541,13 +559,16 @@ rectangle with its own colour, corner radius, padding and border:
   that same amount.
 - Each colour is one slot in the label batch, like the halo (`LabelBatchParameters::MAX_PARAMETERS`
   is 16; a style using both plates with borders takes 4 of them plus text, halo, secondary and icon).
+  The quad count halved with the single-quad form: a bordered plate is one nine-slice, not two.
 
 **Cost**, measured on the emulator with a plate behind the name AND behind the icon on ~2100 labels:
 vertex build **4.6 → 5.2 µs per label per frame** (+13%) and batch time **12.8 → 17.8 µs per label**
 (+39%), i.e. about **+1 ms per frame at 2100 plated labels**, and no change in draw-call count
-(≈60/s either way). It is proportional to the plated labels on screen: each plate is 3 quads built
-in the same loop as the glyph quads, so a screen of road shields — tens, not thousands — is far
-below what the frame-time noise on this emulator can even resolve.
+(≈60/s either way). It is proportional to the plated labels on screen: each plate is a handful of
+quads built in the same loop as the glyph quads, so a screen of road shields — tens, not thousands —
+is far below what the frame-time noise on this emulator can even resolve. (Measured when a plate was
+three quads and a border was a second plate; it is a nine-slice and one quad now, so read it as an
+order of magnitude, not a current number.)
 
 
 ### Max distance (fork-specific)
@@ -667,6 +688,18 @@ on Android instead of rendering as plain Roboto Regular.
   laid along a line the whole way — still track their line at the ridge camera.
   What remains is genuine volume: a changed DEM tile at z12 intersects every label tile beneath it,
   so "targeted" still means most of the screen.
+- **A halo is an OUTLINE, not a backdrop: the glyph's own coverage is punched out of it.** The halo
+  is still its own quad, drawn before all of the label's ink (that order is what stops one glyph's
+  halo covering its neighbour — tangram's `u_pass` does the same), but `labelFsh` subtracts the
+  glyph's coverage from the halo's, so the two are disjoint and the ink never composites over a
+  second copy of itself. With a solid halo underneath, ink-over-halo leaves `halo * a * (1 - a)`
+  wherever `alpha < 1`: a yellow road shield with a dark `shield-icon-halo-fill` went dark for the
+  length of its fade-in, and a translucent `text-fill` stayed dark for good. Same rule, and the same
+  reason, as a plate's border above; mapbox and tangram both carry the artifact.
+  Consequence worth knowing: a style that set a transparent fill and an opaque halo used to get a
+  SOLID blob and now gets a hollow outline — which is what "halo" means.
+  Text drawn as geometry (`text-clip`) lays its halo down as a separate pass too
+  (`TileLayerBuilder`, pass 0 of `tesselateGlyph`), and `pointFsh` punches the ink out the same way.
 - **Halo width is measured in antialias ramps, not in glyph texels.** `labelFsh` shifts the
   coverage ramp outward by the halo, and the ramp is one screen pixel of signed distance, so a halo
   reaching the renderer in screen pixels (`HALO_PIXELS_PER_UNIT`) is as wide as the style asks

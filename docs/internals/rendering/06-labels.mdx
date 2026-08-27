@@ -383,7 +383,13 @@ Two notes for style authors:
 
 - Prefer an expression that reads **only** the view state. It has no feature dependency, so
   `FloatFunctionProperty::getFunction` hands every feature the same function object and the label
-  style is not rebuilt per feature.
+  style is not rebuilt per feature. An expression that reads no view state at all is as good: it
+  folds to a constant at decode, and two features answering alike share one function object — that
+  holds for a style parameter read together with a field
+  (`text-rank: get([param::poi_rank], [class], 100)`), which the property resolves at decode rather
+  than keeping behind the store, since such a parameter can never be live anyway
+  (`GenericFunctionProperty::foldsStyleParams`). Mixing the two — a field *and* `view::distance` —
+  is what costs a closure and a label style per feature.
 - `0 - x`, not `-x`: CartoCSS's `literal` rule accepts `-` as a first character, so a leading minus
   in front of a field is read as the literal string `"-"` and the declaration fails to parse.
 
@@ -633,6 +639,25 @@ once (cached) to what the platform accepts:
 
 One visible consequence: the default popup face `HelveticaNeue-Light` now maps to `sans-serif-light`
 on Android instead of rendering as plain Roboto Regular.
+
+### Bold and italic are asked for by NAME, and only the shortfall is drawn on
+
+`parseFontStyle` reads the weight and the slant out of the face NAME (`"DIN Pro Bold"` → 700,
+`"… Medium Italic"` → 500 + italic), because Android reaches Roboto's bold and italic through
+variable-font axes rather than separate files. `applyVariationAxes` sets whatever axis the face has
+(`wght`, `wdth`, `ital`, `slnt`), and **whatever is left is synthesised per glyph** —
+`FT_Outline_Embolden` and a shear matrix in `addFreeTypeGlyph`.
+
+A static face that is ALREADY the style asked for has no axis to satisfy the request, so the request
+survived to the synthesis step and was drawn on top of it. A style shipping real
+`DINPro-Bold.woff2` and `DINPro-MediumItalic.woff2` files — which the bundled one does, matched by
+`normalizeFontName` turning both `"DIN Pro Bold"` and `DINPro-Bold` into `dinprobold` — got **double
+bold** and a real italic sheared a second time over its own slant. Measured on the eink style: 32-38%
+more ink in a label than it should have had.
+
+`subtractFaceStyle` takes the face's own style off the request first. The weight comes from OS/2
+`usWeightClass`, not from `FT_STYLE_FLAG_BOLD`, because the flag only knows bold and a Medium file
+is 500; only the difference is emboldened, and only upwards, since an outline cannot be thinned.
 
 ## On the GL thread
 

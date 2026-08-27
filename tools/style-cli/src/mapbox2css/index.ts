@@ -1644,6 +1644,11 @@ function tryTranslate(value: Json, name: string, layerId: string, coverage: Cove
 }
 
 function remapValue(target: string, translated: string): string {
+    // The two disagree on which side is positive: mapbox offsets a line to the RIGHT of its
+    // direction of travel, mapnik to the LEFT. Left as-is, a cycleway drawn beside its road lands
+    // on the wrong side of it. CartoCSS has no unary minus before a parenthesised value, hence
+    // `0 - x` rather than `-x`.
+    if (target === 'line-offset') return `(0 - (${translated}))`;
     const map = VALUE_MAP[target];
     if (!map) return translated;
     const bare = translated.replace(/^'|'$/g, '');

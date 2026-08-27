@@ -75,9 +75,18 @@ const GEOMETRY_TYPE_VALUE: Record<string, number> = {
 };
 
 /**
+ * MapBox's zoom, expressed in the SDK's. Both span 2^z tiles, but a MapBox tile is 512 style px
+ * and the SDK's tileDrawSize is 256, so the same ground scale is one level higher here
+ * (WORLD_SIZE / (2^z * tileDrawSize) either way). A stop authored at MapBox z14 must therefore
+ * fire at SDK z15. Measured: SDK z15 = 3.144 m/CSS px, mapbox-gl z15 = 1.573.
+ */
+export const ZOOM_OFFSET = 1;
+export const ZOOM_INPUT = `([view::zoom] - ${ZOOM_OFFSET})`;
+
+/**
  * MapBox expression -> a CartoCSS expression string.
  *
- * Zoom-driven `interpolate`/`step` become CartoCSS `linear()`/`step()` over `[view::zoom]`, which
+ * Zoom-driven `interpolate`/`step` become CartoCSS `linear()`/`step()` over the view zoom, which
  * is what keeps them re-evaluated per frame instead of frozen into the tile. An interpolation over
  * anything other than zoom has no such form and is refused.
  */
@@ -110,7 +119,7 @@ export function translateExpression(expr: Json, notes?: string[]): string {
         }
 
         case 'zoom':
-            return '[view::zoom]';
+            return ZOOM_INPUT;
 
         // Mapbox Standard's runtime knobs - lightPreset, theme, showPointOfInterestLabels. A style
         // parameter is the same idea: named, defaulted in the project, and set without a reload, so
@@ -321,7 +330,7 @@ function translateStep(args: Json[]): string {
     // per-feature decision, which is a chain of ternaries. Unlike `interpolate` there is nothing to
     // unroll - a step has finitely many outcomes, one per stop. Mapbox Standard sizes 10 label
     // layers by `["step", ["get", "sizerank"], …]`, which was 35 text-sizes dropped.
-    if (translateExpression(args[0]) !== '[view::zoom]') return stepOnField(args);
+    if (translateExpression(args[0]) !== ZOOM_INPUT) return stepOnField(args);
     const input = requireZoom(args[0], 'step');
     const stops = [`(0, ${translateExpression(args[1])})`];
     for (let i = 2; i < args.length; i += 2) {
@@ -425,7 +434,7 @@ function stepOnField(args: Json[]): string {
  */
 function requireZoom(input: Json, where: string): string {
     const translated = translateExpression(input);
-    if (translated !== '[view::zoom]') {
+    if (translated !== ZOOM_INPUT) {
         throw new Untranslatable(`${where} over ${translated} rather than zoom`);
     }
     return translated;
@@ -441,7 +450,7 @@ function requireZoom(input: Json, where: string): string {
 function translateStopFunction(fn: Record<string, Json>, notes?: string[]): string {
     const type = typeof fn.type === 'string' ? fn.type : undefined;
     const property = typeof fn.property === 'string' ? fn.property : undefined;
-    const input = property !== undefined ? `[${property}]` : '[view::zoom]';
+    const input = property !== undefined ? `[${property}]` : ZOOM_INPUT;
 
     if (type === 'identity') {
         return input;

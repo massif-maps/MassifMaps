@@ -1,4 +1,4 @@
-import { Untranslatable, conjunction, translateExpression } from './expression.js';
+import { Untranslatable, ZOOM_OFFSET, conjunction, translateExpression } from './expression.js';
 import type { Json } from './types.js';
 
 const LEGACY_COMPARISON: Record<string, string> = {
@@ -196,10 +196,13 @@ function constant(key: string, value: Json): string | null {
     return null;
 }
 
-/** minzoom/maxzoom -> the zoom predicates CartoCSS understands natively. maxzoom is exclusive. */
+/**
+ * minzoom/maxzoom -> the zoom predicates CartoCSS understands natively. maxzoom is exclusive.
+ * Shifted by a level for the same reason the ramps are - see ZOOM_INPUT.
+ */
 export function zoomPredicates(minzoom?: number, maxzoom?: number): string[] {
     const out: string[] = [];
-    if (typeof minzoom === 'number') out.push(`[zoom >= ${Math.floor(minzoom)}]`);
-    if (typeof maxzoom === 'number') out.push(`[zoom < ${Math.ceil(maxzoom)}]`);
+    if (typeof minzoom === 'number') out.push(`[zoom >= ${Math.floor(minzoom) + ZOOM_OFFSET}]`);
+    if (typeof maxzoom === 'number') out.push(`[zoom < ${Math.ceil(maxzoom) + ZOOM_OFFSET}]`);
     return out;
 }

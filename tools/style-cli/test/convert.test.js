@@ -117,3 +117,19 @@ test('a fill pattern names a FILE, not the sheet-qualified sprite', () => {
     table, { sprites: { sheets: sprites, outDir: '/tmp/massif-style-test' } }).mss;
     assert.match(out, /polygon-pattern-file: url\('icons\/construction_pattern.png'\);/);
 });
+
+test('a pattern takes the fill opacity, and the fill colour under it is dropped', () => {
+    // MapBox disables fill-color under a fill-pattern and fades the PATTERN with fill-opacity.
+    // polygon-* is a different symbolizer from polygon-pattern-*, so those went to a solid layer
+    // under the hatch instead: MapTiler's 0.15 construction areas drew fully saturated.
+    const sprites = new Map([['misc', {
+        index: { construction_pattern: { x: 0, y: 0, width: 8, height: 8, pixelRatio: 1, sdf: false } },
+        image: { width: 8, height: 8, data: Buffer.alloc(8 * 8 * 4, 200) },
+    }]]);
+    const out = convert({ layers: [{ id: 'c', type: 'fill', 'source-layer': 'construction',
+        paint: { 'fill-color': '#ffffff', 'fill-opacity': 0.15, 'fill-pattern': 'misc:construction_pattern' } }] },
+    table, { sprites: { sheets: sprites, outDir: '/tmp/massif-style-test' } }).mss;
+    assert.match(out, /polygon-pattern-opacity: 0.15;/);
+    assert.ok(!out.includes('polygon-fill'), 'a solid fill under the hatch is not what MapBox draws');
+    assert.ok(!out.includes('polygon-opacity'), 'and polygon-opacity would fade only that fill');
+});

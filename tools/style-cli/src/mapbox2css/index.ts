@@ -373,6 +373,19 @@ function layerDeclarations(
             continue;
         }
 
+        // MapBox DISABLES fill-color under a fill-pattern and fades the pattern with fill-opacity;
+        // the pattern is its own symbolizer here, with its own fill and opacity, so a polygon-fill
+        // beside it would paint a solid layer under the hatch and polygon-opacity would fade only
+        // that. MapTiler's construction areas are a 0.15 hatch and drew fully saturated.
+        if (layer.paint?.['fill-pattern'] !== undefined && (name === 'fill-color' || name === 'fill-opacity')) {
+            if (name === 'fill-color') {
+                coverage.drop(name, 'MapBox disables fill-color under a fill-pattern', layer.id);
+                continue;
+            }
+            emitTranslated(out, coverage, layer, 'fill-opacity', 'polygon-pattern-opacity', undefined, false);
+            continue;
+        }
+
         // MapBox dash lengths are multiples of the line width; CartoCSS's are pixels.
         if (name === 'line-dasharray') {
             const pattern = dashPattern(value as Json);

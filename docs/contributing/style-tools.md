@@ -550,6 +550,12 @@ reached the decoder verbatim, and no such file has ever existed — the `misc:` 
 to look in. Every construction area drew as a bare outline. Patterns now go through the same
 extraction a marker's sprite does and come out as `url('icons/construction_pattern.png')`.
 
+**And a pattern has its own opacity.** `polygon-pattern-*` is a different symbolizer from
+`polygon-*`, so MapBox's `fill-opacity` sent to `polygon-opacity` faded a solid layer *under* the
+hatch and left the hatch itself at full strength — MapTiler's 0.15 construction areas drew
+saturated orange. It goes to `polygon-pattern-opacity`, and `fill-color` is dropped, because MapBox
+disables it under a pattern.
+
 **A dash ramped over zoom is not a dash the decoder can read.** CartoCSS takes ONE pattern, and the
 converter only understood a literal array — so MapTiler's `step(zoom, [1, 1], 22, [1, 1.5])` was
 dropped and every footway drew solid. It now takes the first stop that actually *dashes*: the base

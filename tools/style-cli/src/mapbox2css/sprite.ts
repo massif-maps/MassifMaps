@@ -146,6 +146,8 @@ export function extractIcon(
     flattenSdf = false,
     tint?: [number, number, number],
     scale = 1,
+    /** The file name to write under, when it is not the icon's own qualified one. */
+    writeAs?: string,
 ): ExtractedIcon | null {
     const [sheetId, iconName] = splitIconName(name);
     const sheet = sprites.get(sheetId);
@@ -203,7 +205,7 @@ export function extractIcon(
         tint ? tint.map((c) => c.toString(16).padStart(2, '0')).join('') : '',
         scale === 1 ? '' : `x${Math.round(scale * 100)}`,
     ].filter(Boolean).join('-');
-    const file = `${safeFileName(name)}${suffix ? `-${suffix}` : ''}.png`;
+    const file = `${safeFileName(writeAs ?? name)}${suffix ? `-${suffix}` : ''}.png`;
     writeFileSync(join(iconsDir, file), PNG.sync.write(out));
 
     const ratio = entry.pixelRatio && entry.pixelRatio > 0 ? entry.pixelRatio : 1;
@@ -353,10 +355,13 @@ export function extractAllIcons(
                 skipped.push(name);
                 continue;
             }
-            // Only the default sheet: a qualified name writes 'misc_foo.png', which no
-            // interpolation of a bare field value can ever land on.
-            if (sheetId !== 'default') continue;
-            const icon = extractIcon(sprites, name, outDir, flattenSdf, undefined, 1);
+            // EVERY sheet, written under its bare name: a style names a sprite per feature and
+            // the file has to be the one a `[field]` interpolation lands on, which a qualified
+            // 'transportation_road_3.png' never is. The default sheet wins a collision, since a
+            // bare icon-image refers to it.
+            if (names.includes(name)) continue;
+            const icon = extractIcon(sprites, sheetId === 'default' ? name : `${sheetId}:${name}`,
+                outDir, flattenSdf, undefined, 1, name);
             if (!icon) continue;
             names.push(name);
             if (!sample || name === 'dot') sample = icon;

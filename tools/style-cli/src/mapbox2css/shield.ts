@@ -16,10 +16,46 @@ const CENTRED_OFFSET_EMS = 0.3;
 /** The plate's corner rounding. MapBox carries it in the sprite, so there is nothing to read. */
 const PLATE_RADIUS = 2;
 
+/**
+ * Can the sprite NAME be spelled out per feature? Mirrors what iconExpression builds: a file path
+ * carries every `[field]` mapnik interpolates, so a name assembled from literals and fields is
+ * resolvable however many fields it reads, and a case only needs each of its branches to be.
+ */
+export function canSpellIconName(image: Json): boolean {
+    if (typeof image === 'string') return true;
+    if (!Array.isArray(image)) return false;
+    const head = image[0];
+    if (head === 'image' || head === 'to-string') return canSpellIconName(image[1] as Json);
+    if (head === 'get') return typeof image[1] === 'string';
+    if (head === 'coalesce') return image.slice(1).some((b) => canSpellIconName(b as Json));
+    if (head === 'concat') {
+        return image.slice(1).every((part) => {
+            let piece = part as Json;
+            while (Array.isArray(piece) && piece[0] === 'to-string') piece = piece[1] as Json;
+            if (typeof piece === 'string' || typeof piece === 'number') return true;
+            return Array.isArray(piece) && piece[0] === 'get' && typeof piece[1] === 'string';
+        }) || (typeof image[1] === 'string' && /:$/.test(image[1] as string) && image.length === 3
+            && canSpellIconName(image[2] as Json));
+    }
+    if (head === 'case' && image.length >= 4 && image.length % 2 === 0) {
+        for (let i = 2; i < image.length; i += 2) if (!canSpellIconName(image[i] as Json)) return false;
+        return canSpellIconName(image[image.length - 1] as Json);
+    }
+    if (head === 'match' && image.length >= 5 && image.length % 2 === 1) {
+        for (let i = 3; i < image.length; i += 2) if (!canSpellIconName(image[i] as Json)) return false;
+        return canSpellIconName(image[image.length - 1] as Json);
+    }
+    return false;
+}
+
 export function isShieldLayer(layer: MapboxLayer): boolean {
     const layout = layer.layout ?? {};
     if (layer.type !== 'symbol' || layout['text-field'] === undefined) return false;
     if (!readsFeature(layout['icon-image'] as Json)) return false;
+    // A plate, still. canSpellIconName says the NAME can be assembled, and it can - but MapTiler
+    // builds a shield's name out of `ref_length`, and a NUMERIC field interpolated into a string
+    // comes out empty (`icons/road_.png`), where a string field interpolates in full
+    // (`icons/road_A 430.png`). Until that is fixed in the SDK the plate is what stays readable.
     // Without a colour there is no plate to draw, only a border round nothing.
     if ((layer.paint?.['icon-color'] ?? layout['icon-color']) === undefined) return false;
     return textSitsOnIcon(layer);

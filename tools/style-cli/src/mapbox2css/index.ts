@@ -694,6 +694,67 @@ function iconExpression(image: Json, layer: MapboxLayer, coverage: Coverage, opt
         return `[param::${ICON_PARAM_PREFIX}${prefix}[${field}]]`;
     };
 
+    let everySprite: ReturnType<typeof extractAllIcons> | null = null;
+    const ensureEverySprite = () => {
+        if (!everySprite) {
+            everySprite = extractAllIcons(sprites.sheets, sprites.outDir, options.flattenSdf);
+            if (!sample) sample = everySprite.sample;
+        }
+        return everySprite;
+    };
+
+    /**
+     * A case or match no ONE-field table can carry, written out as a ternary instead.
+     *
+     * MapTiler picks a shield's artwork on `class` AND `iso_a2` AND the route network at once, so
+     * the branch conditions read several fields - which a ternary handles and a parameter name
+     * cannot. Only the NAMES need the table treatment, and each branch spells its own.
+     */
+    const asTernary = (node: Json): string | null => {
+        if (!Array.isArray(node)) return null;
+        const pairs: Array<[Json, Json]> = [];
+        let tail: Json;
+        if (node[0] === 'case' && node.length >= 4 && node.length % 2 === 0) {
+            for (let i = 1; i + 1 < node.length; i += 2) pairs.push([node[i] as Json, node[i + 1] as Json]);
+            tail = node[node.length - 1] as Json;
+        } else if (node[0] === 'match' && node.length >= 5 && node.length % 2 === 1) {
+            const input = node[1] as Json;
+            for (let i = 2; i + 1 < node.length; i += 2) {
+                const labels = Array.isArray(node[i]) ? node[i] as Json[] : [node[i] as Json];
+                const test = labels.length === 1
+                    ? ['==', input, labels[0]]
+                    : ['any', ...labels.map((l) => ['==', input, l])];
+                pairs.push([test as unknown as Json, node[i + 1] as Json]);
+            }
+            tail = node[node.length - 1] as Json;
+        } else {
+            return null;
+        }
+
+        let expr = build(tail);
+        if (expr === null) return null;
+        for (const [condition, value] of [...pairs].reverse()) {
+            // A branch that cannot be spelled is SKIPPED, not fatal. One of MapTiler's shield
+            // branches tests `slice(ref, 2, 3)`, which is not a prefix and has no CartoCSS form -
+            // and dropping the whole expression for it cost every shield its artwork, where
+            // dropping the branch costs one country its variant.
+            const name = build(value);
+            let test: string | null = null;
+            try {
+                test = name === null ? null : translateExpression(condition);
+            } catch {
+                test = null;
+            }
+            if (test === null) {
+                coverage.approximate(`one icon-image branch on "${layer.id}" has no CartoCSS form ` +
+                    'and is skipped: those features take the next branch that matches');
+                continue;
+            }
+            expr = `((${test}) ? ${name} : ${expr})`;
+        }
+        return expr;
+    };
+
     const build = (node: Json): string | null => {
         if (typeof node === 'string') {
             const token = node.match(/^([^{}]*)\{([A-Za-z0-9_:-]+)\}$/);
@@ -701,21 +762,34 @@ function iconExpression(image: Json, layer: MapboxLayer, coverage: Coverage, opt
             const file = named(node);
             return file ? `'${file}'` : `''`;
         }
-        if (Array.isArray(node) && node[0] === 'concat' && node.length === 3 && typeof node[1] === 'string') {
-            // concat(literal, get(f)); a to-string around the field changes nothing here.
-            let tail = node[2] as Json;
-            while (Array.isArray(tail) && tail[0] === 'to-string') tail = tail[1] as Json;
-            if (Array.isArray(tail) && tail[0] === 'get' && typeof tail[1] === 'string') {
-                return prefixed(node[1], tail[1]);
+        if (Array.isArray(node) && node[0] === 'concat') {
+            const parts = (node as Json[]).slice(1);
+            // A leading 'sheet:' only chose a sprite sheet. Every sheet is written out under bare
+            // names now (see extractAllIcons), so the prefix is dropped and the rest resolved.
+            if (typeof parts[0] === 'string' && /:$/.test(parts[0] as string) && parts.length === 2) {
+                return build(parts[1] as Json);
             }
-            return null;
+            // Otherwise the pieces spell a file NAME. mapnik interpolates every [field] in a
+            // string, so the path carries them directly - which is what lets a name read two
+            // fields (`AL-highway_2` is iso_a2 and ref_length) where a parameter lookup, holding
+            // one, cannot.
+            const spelled = parts.map((part) => {
+                let piece = part as Json;
+                while (Array.isArray(piece) && piece[0] === 'to-string') piece = piece[1] as Json;
+                if (typeof piece === 'string' || typeof piece === 'number') return String(piece);
+                if (Array.isArray(piece) && piece[0] === 'get' && typeof piece[1] === 'string') return `[${piece[1]}]`;
+                return null;
+            });
+            if (spelled.some((piece) => piece === null)) return null;
+            ensureEverySprite();
+            return `url('icons/${spelled.join('')}.png')`;
         }
         if (Array.isArray(node) && node[0] === 'image') return build(node[1] as Json);
         if (Array.isArray(node) && node[0] === 'get' && typeof node[1] === 'string') {
-            // Named after the value itself - the global one-parameter-per-sprite table covers it.
-            const all = extractAllIcons(sprites.sheets, sprites.outDir, options.flattenSdf);
+            // Named after the value itself - the global one-parameter-per-sprite table covers it,
+            // and the table is what gives `??` a miss to fall through on.
+            const all = ensureEverySprite();
             for (const name of all.names) options.styleParams!.set(`${ICON_PARAM_PREFIX}${name}`, `icons/${name}.png`);
-            if (!sample) sample = all.sample;
             return `[param::${ICON_PARAM_PREFIX}[${node[1]}]]`;
         }
         if (Array.isArray(node) && node[0] === 'coalesce') {
@@ -729,25 +803,25 @@ function iconExpression(image: Json, layer: MapboxLayer, coverage: Coverage, opt
         let fallback: Json | null = null;
         if (Array.isArray(node) && node[0] === 'match' && node.length >= 5 && node.length % 2 === 1) {
             const input = node[1];
-            if (!Array.isArray(input) || input[0] !== 'get' || typeof input[1] !== 'string') return null;
+            if (!Array.isArray(input) || input[0] !== 'get' || typeof input[1] !== 'string') return asTernary(node);
             field = input[1];
             for (let i = 2; i + 1 < node.length; i += 2) {
                 const raw = Array.isArray(node[i]) ? node[i] as Json[] : [node[i] as Json];
-                if (!raw.every((l) => typeof l === 'string' || typeof l === 'number')) return null;
+                if (!raw.every((l) => typeof l === 'string' || typeof l === 'number')) return asTernary(node);
                 branches.push({ labels: raw.map(String), value: node[i + 1] as Json });
             }
             fallback = node[node.length - 1] as Json;
         } else if (Array.isArray(node) && node[0] === 'case' && node.length >= 4 && node.length % 2 === 0) {
             field = fieldOfCase(node[1] as Json);
-            if (!field) return null;
+            if (!field) return asTernary(node);
             for (let i = 1; i + 1 < node.length; i += 2) {
                 const labels = labelsOf(node[i] as Json, field);
-                if (!labels) return null;
+                if (!labels) return asTernary(node);
                 branches.push({ labels, value: node[i + 1] as Json });
             }
             fallback = node[node.length - 1] as Json;
         } else {
-            return null;
+            return asTernary(node);
         }
 
         const table = `${slug}-t${tableIndex++}`;

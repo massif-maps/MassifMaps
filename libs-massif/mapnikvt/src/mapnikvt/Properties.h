@@ -59,8 +59,29 @@ namespace massif::mvt {
         void setSelectionFoldable(bool selectionFoldable) { _selectionFoldable = selectionFoldable; }
 
     protected:
+        /**
+         * An expression reading a field the feature does not carry - or a parameter the store has
+         * not got - evaluates to UNSET, and every converter below reads that as "" or 0. So an
+         * unset value falls back to the property's declared default, which is what the style would
+         * have got had it never set the property at all.
+         *
+         * Without it the two halves failed differently and both lost the feature: parseColor("")
+         * throws, and TileReader::processLayer catches it around createFeatureProcessor and caches
+         * a NULL processor - so the geometry goes, not just its colour - while a width quietly
+         * became 0 and dropped the line just as effectively. A malformed non-empty value still
+         * throws; that is a style bug worth reporting.
+         */
+        static Value evalExpression(const Expression& expr, const ExpressionContext& context, const vt::ViewState* viewState, const Value& defaultValue) {
+            Value val = std::visit(ExpressionEvaluator(context, viewState), expr);
+            if (std::holds_alternative<std::monostate>(val)) {
+                return defaultValue;
+            }
+            return val;
+        }
+
         bool _bakedAtDecode = false;
         bool _selectionFoldable = false;
+        Value _defaultValue; // what an unset evaluation falls back to; see evalExpression
 
         struct DependencyChecker {
             DependencyChecker() = delete;
@@ -125,10 +146,11 @@ namespace massif::mvt {
 
     protected:
         GenericValueProperty() = default;
-        explicit GenericValueProperty(const T& defaultValue) : _value(defaultValue), _expr(Value(defaultValue)) { }
+        explicit GenericValueProperty(const T& defaultValue) : _value(defaultValue), _expr(Value(defaultValue)) { _defaultValue = Value(defaultValue); }
 
+        // _defaultValue before buildValue: the build reads it.
         template <typename S>
-        void initialize(const S& defaultValue) { _expr = Value(defaultValue); _value = buildValue(ExpressionContext()); }
+        void initialize(const S& defaultValue) { _expr = Value(defaultValue); _defaultValue = Value(defaultValue); _value = buildValue(ExpressionContext()); }
 
         virtual T buildValue(const ExpressionContext& context) const = 0;
 
@@ -146,7 +168,7 @@ namespace massif::mvt {
 
     protected:
         virtual Value buildValue(const ExpressionContext& context) const override {
-            return std::visit(ExpressionEvaluator(context, nullptr), _expr);
+            return evalExpression(_expr, context, nullptr, _defaultValue);
         }
     };
 
@@ -156,7 +178,7 @@ namespace massif::mvt {
 
     protected:
         virtual bool buildValue(const ExpressionContext& context) const override {
-            Value val = std::visit(ExpressionEvaluator(context, nullptr), _expr);
+            Value val = evalExpression(_expr, context, nullptr, _defaultValue);
             return ValueConverter<bool>::convert(val);
         }
     };
@@ -167,7 +189,7 @@ namespace massif::mvt {
 
     protected:
         virtual float buildValue(const ExpressionContext& context) const override {
-            Value val = std::visit(ExpressionEvaluator(context, nullptr), _expr);
+            Value val = evalExpression(_expr, context, nullptr, _defaultValue);
             return ValueConverter<float>::convert(val);
         }
     };
@@ -178,7 +200,7 @@ namespace massif::mvt {
 
     protected:
         virtual vt::Color buildValue(const ExpressionContext& context) const override {
-            Value val = std::visit(ExpressionEvaluator(context, nullptr), _expr);
+            Value val = evalExpression(_expr, context, nullptr, _defaultValue);
             return convertColor(val);
         }
     };
@@ -189,7 +211,7 @@ namespace massif::mvt {
 
     protected:
         virtual std::string buildValue(const ExpressionContext& context) const override {
-            Value val = std::visit(ExpressionEvaluator(context, nullptr), _expr);
+            Value val = evalExpression(_expr, context, nullptr, _defaultValue);
             return ValueConverter<std::string>::convert(val);
         }
     };
@@ -213,7 +235,7 @@ namespace massif::mvt {
 
     protected:
         virtual vt::CompOp buildValue(const ExpressionContext& context) const override {
-            Value val = std::visit(ExpressionEvaluator(context, nullptr), _expr);
+            Value val = evalExpression(_expr, context, nullptr, _defaultValue);
             return parseCompOp(ValueConverter<std::string>::convert(val));
         }
     };
@@ -224,7 +246,7 @@ namespace massif::mvt {
 
     protected:
         virtual vt::LineCapMode buildValue(const ExpressionContext& context) const override {
-            Value val = std::visit(ExpressionEvaluator(context, nullptr), _expr);
+            Value val = evalExpression(_expr, context, nullptr, _defaultValue);
             return parseLineCapMode(ValueConverter<std::string>::convert(val));
         }
     };
@@ -235,7 +257,7 @@ namespace massif::mvt {
 
     protected:
         virtual vt::LineJoinMode buildValue(const ExpressionContext& context) const override {
-            Value val = std::visit(ExpressionEvaluator(context, nullptr), _expr);
+            Value val = evalExpression(_expr, context, nullptr, _defaultValue);
             return parseLineJoinMode(ValueConverter<std::string>::convert(val));
         }
     };
@@ -246,7 +268,7 @@ namespace massif::mvt {
 
     protected:
         virtual vt::LabelOrientation buildValue(const ExpressionContext& context) const override {
-            Value val = std::visit(ExpressionEvaluator(context, nullptr), _expr);
+            Value val = evalExpression(_expr, context, nullptr, _defaultValue);
             return parseLabelOrientation(ValueConverter<std::string>::convert(val));
         }
     };
@@ -257,7 +279,7 @@ namespace massif::mvt {
 
     protected:
         virtual std::string buildValue(const ExpressionContext& context) const override {
-            Value val = std::visit(ExpressionEvaluator(context, nullptr), _expr);
+            Value val = evalExpression(_expr, context, nullptr, _defaultValue);
             std::string markerType = toLower(ValueConverter<std::string>::convert(val));
             if (markerType.empty() || markerType == "auto") {
                 return std::string();
@@ -275,7 +297,7 @@ namespace massif::mvt {
 
     protected:
         virtual std::function<std::string(const std::string&)> buildValue(const ExpressionContext& context) const override {
-            Value val = std::visit(ExpressionEvaluator(context, nullptr), _expr);
+            Value val = evalExpression(_expr, context, nullptr, _defaultValue);
             std::string textTransform = toLower(ValueConverter<std::string>::convert(val));
             if (textTransform.empty() || textTransform == "none") {
                 return [](const std::string& text) { return text; };
@@ -302,7 +324,7 @@ namespace massif::mvt {
 
     protected:
         virtual std::optional<float> buildValue(const ExpressionContext& context) const override {
-            Value val = std::visit(ExpressionEvaluator(context, nullptr), _expr);
+            Value val = evalExpression(_expr, context, nullptr, _defaultValue);
             std::string horizontalAlignment = toLower(ValueConverter<std::string>::convert(val));
             if (horizontalAlignment.empty() || horizontalAlignment == "auto") {
                 return std::optional<float>();
@@ -326,7 +348,7 @@ namespace massif::mvt {
 
     protected:
         virtual std::optional<float> buildValue(const ExpressionContext& context) const override {
-            Value val = std::visit(ExpressionEvaluator(context, nullptr), _expr);
+            Value val = evalExpression(_expr, context, nullptr, _defaultValue);
             std::string verticalAlignment = toLower(ValueConverter<std::string>::convert(val));
             if (verticalAlignment.empty() || verticalAlignment == "auto") {
                 return std::optional<float>();
@@ -404,12 +426,14 @@ namespace massif::mvt {
         }
 
         // Map::Settings holds these by value and is copied, so the cache below - which is not
-        // copyable and is only ever a cache - is left out of the copy.
-        GenericFunctionProperty(const GenericFunctionProperty& other) :
+        // copyable and is only ever a cache - is left out of the copy. The BASE is copied
+        // explicitly, or it is default-initialized and the copy loses its _defaultValue.
+        GenericFunctionProperty(const GenericFunctionProperty& other) : Property(other),
             _defined(other._defined), _contextVars(other._contextVars), _viewStateVars(other._viewStateVars), _styleParamVars(other._styleParamVars), _func(other._func), _expr(other._expr) { }
 
         GenericFunctionProperty& operator = (const GenericFunctionProperty& other) {
             if (this != &other) {
+                Property::operator = (other);
                 _defined = other._defined;
                 _contextVars = other._contextVars;
                 _viewStateVars = other._viewStateVars;
@@ -431,10 +455,11 @@ namespace massif::mvt {
         }
 
         GenericFunctionProperty() = default;
-        template <typename S> explicit GenericFunctionProperty(const S& defaultValue) : _func(defaultValue), _expr(Value(defaultValue)) { }
-        
+        template <typename S> explicit GenericFunctionProperty(const S& defaultValue) : _func(defaultValue), _expr(Value(defaultValue)) { _defaultValue = Value(defaultValue); }
+
+        // _defaultValue before buildFunction: the build reads it.
         template <typename S>
-        void initialize(const S& defaultValue) { _expr = Value(defaultValue); _func = buildFunction(ExpressionContext()); }
+        void initialize(const S& defaultValue) { _expr = Value(defaultValue); _defaultValue = Value(defaultValue); _func = buildFunction(ExpressionContext()); }
 
         virtual T buildFunction(const ExpressionContext& context) const = 0;
 
@@ -460,9 +485,11 @@ namespace massif::mvt {
         virtual vt::FloatFunction buildFunction(const ExpressionContext& context) const override {
             if (_viewStateVars || readsLiveStyleParams(context)) {
                 Expression expr = _expr;
-                auto func = [expr, context](const vt::ViewState& viewState) -> float {
+                // By value: this function outlives the property that built it.
+                Value defaultValue = _defaultValue;
+                auto func = [expr, context, defaultValue](const vt::ViewState& viewState) -> float {
                     try {
-                        Value val = std::visit(ExpressionEvaluator(context, &viewState), expr);
+                        Value val = evalExpression(expr, context, &viewState, defaultValue);
                         return ValueConverter<float>::convert(val);
                     }
                     catch (const std::exception&) {
@@ -471,7 +498,7 @@ namespace massif::mvt {
                 };
                 return vt::FloatFunction(std::make_shared<std::function<float(const vt::ViewState&)>>(std::move(func)));
             } else {
-                Value val = std::visit(ExpressionEvaluator(context, nullptr), _expr);
+                Value val = evalExpression(_expr, context, nullptr, _defaultValue);
                 return vt::FloatFunction(ValueConverter<float>::convert(val));
             }
         }
@@ -485,9 +512,11 @@ namespace massif::mvt {
         virtual vt::ColorFunction buildFunction(const ExpressionContext& context) const override {
             if (_viewStateVars || readsLiveStyleParams(context)) {
                 Expression expr = _expr;
-                auto func = [expr, context](const vt::ViewState& viewState) -> vt::Color {
+                // By value: this function outlives the property that built it.
+                Value defaultValue = _defaultValue;
+                auto func = [expr, context, defaultValue](const vt::ViewState& viewState) -> vt::Color {
                     try {
-                        Value val = std::visit(ExpressionEvaluator(context, &viewState), expr);
+                        Value val = evalExpression(expr, context, &viewState, defaultValue);
                         return convertColor(val);
                     }
                     catch (const std::exception&) {
@@ -496,7 +525,7 @@ namespace massif::mvt {
                 };
                 return vt::ColorFunction(std::make_shared<std::function<vt::Color(const vt::ViewState&)>>(std::move(func)));
             } else {
-                Value val = std::visit(ExpressionEvaluator(context, nullptr), _expr);
+                Value val = evalExpression(_expr, context, nullptr, _defaultValue);
                 return vt::ColorFunction(convertColor(val));
             }
         }

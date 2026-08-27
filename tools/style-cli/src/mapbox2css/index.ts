@@ -674,10 +674,33 @@ function iconExpression(image: Json, layer: MapboxLayer, coverage: Coverage, opt
         return walk(condition);
     };
 
+    // A name built from a literal prefix and ONE field: `road_{ref_length}` and its expression
+    // spelling `concat('road_', get(ref_length))`. The parameter name is built the same way, so the
+    // lookup lands on icon-road_3 - which is what gets a junction its real shield artwork.
+    const prefixed = (prefix: string, field: string): string | null => {
+        const all = extractAllIcons(sprites.sheets, sprites.outDir, options.flattenSdf);
+        const matching = all.names.filter((n) => n.startsWith(prefix));
+        if (matching.length === 0) return null;
+        for (const name of matching) options.iconParams!.set(`${ICON_PARAM_PREFIX}${name}`, `icons/${name}.png`);
+        if (!sample) sample = all.sample;
+        return `[param::${ICON_PARAM_PREFIX}${prefix}[${field}]]`;
+    };
+
     const build = (node: Json): string | null => {
         if (typeof node === 'string') {
+            const token = node.match(/^([^{}]*)\{([A-Za-z0-9_:-]+)\}$/);
+            if (token) return prefixed(token[1], token[2]);
             const file = named(node);
             return file ? `'${file}'` : `''`;
+        }
+        if (Array.isArray(node) && node[0] === 'concat' && node.length === 3 && typeof node[1] === 'string') {
+            // concat(literal, get(f)); a to-string around the field changes nothing here.
+            let tail = node[2] as Json;
+            while (Array.isArray(tail) && tail[0] === 'to-string') tail = tail[1] as Json;
+            if (Array.isArray(tail) && tail[0] === 'get' && typeof tail[1] === 'string') {
+                return prefixed(node[1], tail[1]);
+            }
+            return null;
         }
         if (Array.isArray(node) && node[0] === 'image') return build(node[1] as Json);
         if (Array.isArray(node) && node[0] === 'get' && typeof node[1] === 'string') {
@@ -761,7 +784,8 @@ function markerDeclarations(layer: MapboxLayer, coverage: Coverage, options: Con
     // MapTiler names a POI's icon from the feature. The SDK resolves shield-file per feature and
     // mapnik interpolates [field] inside a string, so the whole sheet is written out and the field
     // goes in the file name - see dynamicIconField.
-    if (typeof image !== 'string') {
+    // A legacy token name (`road_{ref_length}`) is data-driven too, even though it is a string.
+    if (typeof image !== 'string' || /\{[A-Za-z0-9_:-]+\}/.test(image)) {
         const expr = iconExpression(image, layer, coverage, options);
         if (expr && options.iconSample) {
             const scale = layer.layout?.['text-field'] !== undefined

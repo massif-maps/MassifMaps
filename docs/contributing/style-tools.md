@@ -277,18 +277,26 @@ removed four layers from a MapTiler style whose render was already verified.
 
 ### A casing is not a line: `line-gap-width`
 
-A `*-case` layer draws TWO strips either side of a gap — the gap is the road, `line-width` is the
-casing on **one** side. CartoCSS has no gap, so both fold into the width and the fill layer above
-covers the middle, which is how a casing has always been drawn here:
+A `*-case` layer draws TWO strips either side of a gap, and **the gap is not drawn**: the gap is the
+road the casing runs along, `line-width` is the strip on **one** side. Each side becomes a rule of
+its own, offset by half the gap plus half its own width — the geometry mapbox draws:
 
 ```
-line-width: ((<gap>) + 2 * (<width>));
+::road_case_left  { line-width: <width>; line-offset: ((<gap>) + (<width>)) / 2; }
+::road_case_right { line-width: <width>; line-offset: (0 - (((<gap>) + (<width>)) / 2)); }
 ```
 
-Arithmetic over two zoom ramps stays a per-frame function — it compiles to
-`linear(…)+2*linear(…)` and the decoder evaluates it per frame, so nothing is baked. Dropped, the
-casing drew as a solid band the full width of the road: 28 layers of Standard, and the reason ours
-came out as lavender slabs where the browser draws a white road with a thin edge.
+Arithmetic over two zoom ramps stays a per-frame function, so nothing is baked. `0 - x` rather than
+`-x`: the grammar has no unary minus before a parenthesised value.
+
+Dropped entirely, the casing drew as a solid band the full width of the road — 28 layers of
+Standard, and the reason ours came out as lavender slabs where the browser draws a white road with a
+thin edge. Folding both into ONE band of `gap + 2*width` fixes that only where an opaque fill covers
+the middle; **12 of the 28 have no such cover** (Standard's bridge shadows have no fill layer at
+all, and several road fills fade in over zoom), and there a band paints straight across the road.
+The cost of doing it properly is one extra rule per casing — 114 rules to 142 on Standard — and
+twice the line geometry for those layers. Measured at Paris z15 the two forms differ in 0.68% of
+pixels, because that view happens to be all opaque fills; the difference is what the other 12 do.
 
 ### `*-emissive-strength`, approximated by the colour
 

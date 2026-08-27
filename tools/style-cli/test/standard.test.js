@@ -231,16 +231,29 @@ test('a style with no buildings declares no such parameter', () => {
     assert.equal(JSON.parse(project).styleparameters, undefined);
 });
 
-test('line-gap-width becomes the casing width it stands for', () => {
-    // A *-case layer is TWO strips either side of a gap: the gap is the road, line-width is the
-    // casing on ONE side. Dropped, the casing drew as a solid band the full width of the road -
-    // 28 layers of Mapbox Standard, and why ours came out as slabs where the browser draws a
-    // white road with a thin edge.
+test('line-gap-width becomes the two strips it stands for, not one band', () => {
+    // The gap is NOT DRAWN: `line-gap-width` is the road the casing runs along and `line-width` is
+    // the strip on ONE side. As a single band of gap + 2*width it only looks right where an opaque
+    // fill covers the middle, and 12 of Mapbox Standard's 28 casings have no such cover - its
+    // bridge shadows have no fill at all, so the band painted straight across the road.
     const cased = { id: 'road-case', type: 'line', 'source-layer': 'road',
         paint: { 'line-color': '#888', 'line-gap-width': 6, 'line-width': 1.5 } };
     const { mss } = convert({ layers: [cased] }, TABLE, { variables: false });
-    assert.match(mss, /line-width: \(\(6\) \+ 2 \* \(1\.5\)\);/);
-    assert.ok(!/line-width: 1\.5;/.test(mss), 'the casing width alone is not the width to draw');
+    // Each strip is its own rule, its centre half a gap plus half its own width off the line.
+    assert.match(mss, /::road_case_left \{/);
+    assert.match(mss, /::road_case_right \{/);
+    assert.match(mss, /line-offset: \(\(6\) \+ \(1\.5\)\) \/ 2;/);
+    assert.match(mss, /line-offset: \(0 - \(\(\(6\) \+ \(1\.5\)\) \/ 2\)\);/);
+    assert.match(mss, /line-width: 1\.5;/, 'each strip is its own width, not the whole span');
+});
+
+test('the negated offset is 0 - x, which is what the grammar takes', () => {
+    // `-(linear(...))` is a syntax error: there is no unary minus before a parenthesised value.
+    const cased = { id: 'c', type: 'line', 'source-layer': 'road', paint: { 'line-color': '#888',
+        'line-gap-width': ['interpolate', ['linear'], ['zoom'], 12, 3, 18, 12], 'line-width': 1 } };
+    const { mss } = convert({ layers: [cased] }, TABLE, { variables: false });
+    assert.ok(!/line-offset: -\(/.test(mss));
+    assert.match(mss, /line-offset: \(0 - \(/);
 });
 
 test('a gap and a width that ramp over zoom stay per-frame functions', () => {
@@ -249,7 +262,7 @@ test('a gap and a width that ramp over zoom stay per-frame functions', () => {
         'line-gap-width': ['interpolate', ['linear'], ['zoom'], 12, 3, 18, 12],
         'line-width': ['interpolate', ['linear'], ['zoom'], 14, 0.5, 18, 1] } };
     const { mss } = convert({ layers: [cased] }, TABLE, { variables: false });
-    assert.match(mss, /line-width: \(\(linear\(\[view::zoom\], \(12, 3\), \(18, 12\)\)\) \+ 2 \* \(linear\(/);
+    assert.match(mss, /line-offset: \(\(linear\(\[view::zoom\], \(12, 3\), \(18, 12\)\)\) \+ \(linear\(/);
 });
 
 /** A style whose lights differ per preset, which is how emissive-strength becomes visible. */

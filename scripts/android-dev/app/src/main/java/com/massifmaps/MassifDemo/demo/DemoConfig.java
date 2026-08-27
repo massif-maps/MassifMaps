@@ -66,6 +66,10 @@ public final class DemoConfig {
     /** Which project of that package to compile: assets/style/<name>.json. 'eink' is the one that
      *  turns every polygon pattern on (forest, scrub, rock, scree, wetland, vineyard). */
     public static String STYLE_ASSETS_NAME = "osm";
+    /** Which project of a DIR/ZIP package to compile, when it carries more than one. A converted
+     *  Mapbox Standard writes day/dawn/dusk/night.json over one style.mss, so this is the
+     *  time-of-day switch. Empty lets CompiledStyleSet pick the first project it finds. */
+    public static String LIGHT_PRESET = "";
     /** Style zip used by the offline "routes" layer. */
     public static String ROUTES_STYLE_ZIP_NAME = "inner.zip";
     /** MBTiles used by the offline "routes" layer. */
@@ -1142,6 +1146,7 @@ public final class DemoConfig {
         STYLE_ZIP_NAME = DemoCfg.cfgStr("styleZip", STYLE_ZIP_NAME);
         STYLE_ASSETS_PATH = DemoCfg.cfgStr("styleAssets", STYLE_ASSETS_PATH);
         STYLE_ASSETS_NAME = DemoCfg.cfgStr("styleName", STYLE_ASSETS_NAME);
+        LIGHT_PRESET = DemoCfg.cfgStr("lightPreset", LIGHT_PRESET);
         PERSISTENT_CACHE_MB = DemoCfg.cfgInt("cacheMb", PERSISTENT_CACHE_MB);
         DEM_PERSISTENT_CACHE_MB = DemoCfg.cfgInt("demCacheMb", DEM_PERSISTENT_CACHE_MB);
 

@@ -439,7 +439,8 @@ Everything below rests on that split — the icon stays on the feature, only the
   flag. No extra glyph run, no extra formatting: the block is placed against the icon's edge, so the
   style's own `horizontal-alignment` does not have to be mirrored, and `dx`/`dy` are re-applied as a
   gap along the anchor direction (a name pushed 2 px right of the icon is pushed 2 px LEFT on the
-  left side). A style with no `shield-anchors` builds no variants and takes exactly the old path.
+  left side). A style with neither `shield-anchors` nor `shield-text-optional` builds no variants
+  and takes exactly the old path.
 - **`LabelCuller::placeAnchoredLabel`** tries the side the label already holds first and then the
   style's order, taking the first free one — tangram's
   `do { … } while (isOccluded() && nextAnchor())` (`labelManager.cpp`), with their anchor set and
@@ -452,7 +453,11 @@ Everything below rests on that split — the icon stays on the feature, only the
   icon has to sit over it, and the formatter's own alignment is derived from the sign of `dx`, which
   means nothing once `dx` is a gap.
 - `shield-text-optional` appends a last variant that draws the icon alone. That is mapbox's
-  `text-optional`; here it costs one more variant, not a second label.
+  `text-optional`; here it costs one more variant, not a second label. It does **not** need
+  `shield-anchors` — a list of one placement plus the icon-only fallback is a valid list, and it is
+  the common case: no MapTiler style states a variable anchor, but 25 layers of outdoor-v4 state
+  `text-optional`. `buildLabelVariants` used to return early on an empty anchor list and never
+  reached the fallback, so those layers drew nothing where MapTiler drops the name and keeps the pin.
 - The side is carried across rebuilds by `snapPlacement`, so a label recreated by a tile-set change
   does not start at side 0 for one frame before the next pass moves it back.
 - **Placement is re-run when the camera zooms** (`MapRenderer::viewChanged`, ¼ of a zoom level). A

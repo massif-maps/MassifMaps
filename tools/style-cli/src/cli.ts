@@ -3,9 +3,9 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { convert } from './mapbox2css/index.js';
+import { VARIABLES_FILE, convert } from './mapbox2css/index.js';
 import { loadSprites } from './mapbox2css/sprite.js';
-import type { MapboxStyle, PropertyTable } from './mapbox2css/types.js';
+import type { Json, MapboxStyle, PropertyTable } from './mapbox2css/types.js';
 import { WasmMissing, runWasm, wasmAvailable } from './wasm.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -29,6 +29,13 @@ const USAGE = `Usage: massif-style <command> [options] [args]
                             the split. A layer with no equivalent is dropped and named in
                             the coverage report
       --no-sprite           skip the sprite; every icon-image is then dropped
+      --no-variables        keep the colours, fonts and sizes inline in style.mss instead of
+                            hoisting them into a variables.mss a variant can override
+      --no-presets          do not emit the extra lightPreset palettes (Mapbox Standard)
+      --config k=v          set one of the style's own config values, for a style that declares a
+                            schema (Mapbox Standard). Repeatable, and k=v,k2=v2 also works. Every
+                            config read is resolved to a constant, so this is a build-time choice:
+                            --config lightPreset=night is how the dark version is produced
       --sdf-flatten         resolve SDF icons to plain bitmaps, for an SDK without
                             marker-sdf; loses the zoom-driven size and the halo
       --contour-schema div  rewrite contour-layer nth_line tests onto a div (interval in
@@ -68,7 +75,32 @@ function parseFlags(args: string[]): { flags: Map<string, string>; positional: s
     return { flags, positional };
 }
 
-const VALUE_FLAGS = new Set(['contour-schema', 'contour-major-div', 'sprite-key', 'label-spacing', 'contour-elevation', 'schema']);
+const VALUE_FLAGS = new Set(['contour-schema', 'contour-major-div', 'sprite-key', 'label-spacing', 'contour-elevation', 'schema', 'config']);
+
+/**
+ * `--config key=value`, repeatable, for a style with a `schema` (Mapbox Standard). Values are read
+ * as JSON when they parse - so `show3dObjects=false` and `densityPointOfInterestLabels=2` arrive as
+ * a boolean and a number - and as a plain string otherwise, which is what a colour or a preset is.
+ */
+function parseConfig(args: string[]): Record<string, Json> {
+    const config: Record<string, Json> = {};
+    for (let i = 0; i < args.length; i++) {
+        const arg = args[i];
+        const pair = arg === '--config' ? args[++i] : arg.startsWith('--config=') ? arg.slice('--config='.length) : null;
+        if (!pair) continue;
+        for (const entry of pair.split(',')) {
+            const eq = entry.indexOf('=');
+            if (eq === -1) continue;
+            const [key, raw] = [entry.slice(0, eq).trim(), entry.slice(eq + 1).trim()];
+            try {
+                config[key] = JSON.parse(raw) as Json;
+            } catch {
+                config[key] = raw;
+            }
+        }
+    }
+    return config;
+}
 
 async function mapbox2css(args: string[]): Promise<number> {
     const { flags, positional } = parseFlags(args);
@@ -109,8 +141,11 @@ async function mapbox2css(args: string[]): Promise<number> {
         }
     }
 
-    const { mss, project, coverage } = convert(style, loadPropertyTable(), {
+    const { mss, project, coverage, variables, presets } = convert(style, loadPropertyTable(), {
         sprites,
+        variables: !flags.has('no-variables'),
+        config: parseConfig(args),
+        presets: flags.has('no-presets') ? [] : undefined,
         flattenSdf: flags.has('sdf-flatten'),
         labelSpacing: Number(flags.get('label-spacing') ?? 1),
         schema: schema === 'openmaptiles' ? 'openmaptiles' : undefined,
@@ -126,6 +161,17 @@ async function mapbox2css(args: string[]): Promise<number> {
     mkdirSync(outDir, { recursive: true });
     writeFileSync(join(outDir, 'style.mss'), mss);
     writeFileSync(join(outDir, 'project.json'), project);
+    if (variables) writeFileSync(join(outDir, VARIABLES_FILE), variables);
+    // One palette per other light preset, plus the project that picks it. Same style.mss.
+    for (const [preset, palette] of presets) {
+        writeFileSync(join(outDir, `${preset}.mss`), palette);
+        writeFileSync(join(outDir, `${preset}.json`), `${JSON.stringify({
+            extends: './project.json', styles: [`${preset}.mss`, 'style.mss'],
+        }, null, 2)}\n`);
+    }
+    if (presets.size > 0) {
+        process.stdout.write(`Light presets: ${[...presets.keys()].join(', ')} (one palette each, over the same style.mss).\n`);
+    }
     process.stdout.write(`${coverage.report()}\n`);
 
     if (flags.has('validate')) {

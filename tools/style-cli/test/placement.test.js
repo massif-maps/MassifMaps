@@ -5,6 +5,10 @@ import { test } from 'node:test';
 import { convert } from '../dist/mapbox2css/index.js';
 import { followsLine, resolvePlacement } from '../dist/mapbox2css/placement.js';
 
+/** These tests assert on the translated literals, so they read the style before the palette
+  * pass moves them out - see variables.test.js for the hoisting itself. */
+const NO_PALETTE = { variables: false };
+
 const TABLE = JSON.parse(readFileSync(new URL('../dist/generated/properties.json', import.meta.url), 'utf8'));
 
 function symbolLayer(layout) {
@@ -12,7 +16,7 @@ function symbolLayer(layout) {
 }
 
 function mss(layout) {
-    return convert({ layers: [symbolLayer(layout)] }, TABLE).mss;
+    return convert({ layers: [symbolLayer(layout)] }, TABLE, NO_PALETTE).mss;
 }
 
 test('a point label is a billboard, which is what MapBox auto-alignment resolves to', () => {
@@ -103,7 +107,7 @@ test('a sort key orders labels inside its layer, never across layers', () => {
     const town = { id: 't', type: 'symbol', 'source-layer': 'town_label',
         layout: { 'text-field': '{name}', 'symbol-sort-key': ['get', 'rank'] } };
     const city = { ...town, id: 'c', 'source-layer': 'city_label' };
-    const out = convert({ layers: [town, city] }, TABLE).mss;
+    const out = convert({ layers: [town, city] }, TABLE, NO_PALETTE).mss;
 
     const priorities = [...out.matchAll(/text-placement-priority: \((\d+) - /g)].map((m) => Number(m[1]));
     assert.equal(priorities.length, 2);
@@ -129,7 +133,7 @@ test('text-padding becomes a collision gap, and --label-spacing scales it', () =
     // buffer between them. Dropping it entirely was why a converted style drew far more labels.
     assert.match(mss({ 'text-padding': 3 }), /text-min-distance: \(2 \* 3\);/);
     assert.match(mss({}), /text-min-distance: 4;/); // MapBox's default padding is 2
-    const thinned = convert({ layers: [symbolLayer({ 'text-padding': 3 })] }, TABLE, { labelSpacing: 3 }).mss;
+    const thinned = convert({ layers: [symbolLayer({ 'text-padding': 3 })] }, TABLE, { ...NO_PALETTE, labelSpacing: 3 }).mss;
     assert.match(thinned, /text-min-distance: \(6 \* 3\);/);
 });
 

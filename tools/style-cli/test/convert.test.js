@@ -8,12 +8,16 @@ import { test } from 'node:test';
 
 import { convert } from '../dist/mapbox2css/index.js';
 
+/** These tests assert on the translated literals, so they read the style before the palette
+  * pass moves them out - see variables.test.js for the hoisting itself. */
+const NO_PALETTE = { variables: false };
+
 const HERE = dirname(fileURLToPath(import.meta.url));
 const style = JSON.parse(readFileSync(join(HERE, 'fixtures', 'style.json'), 'utf8'));
 const table = JSON.parse(readFileSync(join(HERE, '..', 'src', 'generated', 'properties.json'), 'utf8'));
 
 function run() {
-    return convert(style, table);
+    return convert(style, table, NO_PALETTE);
 }
 
 test('background becomes the Map block', () => {
@@ -95,7 +99,7 @@ test('a dash ramped over zoom still dashes, at the stop that actually dashes', (
     // base is not the answer either.
     const line = (dash) => ({ id: 'l', type: 'line', 'source-layer': 'pathway',
         paint: { 'line-dasharray': dash, 'line-width': 2 } });
-    const mss = (dash) => convert({ layers: [line(dash)] }, table).mss;
+    const mss = (dash) => convert({ layers: [line(dash)] }, table, NO_PALETTE).mss;
 
     assert.match(mss(['step', ['zoom'], ['literal', [1, 1]], 22, ['literal', [1, 1.5]]]),
         /line-dasharray: 2,2;/);

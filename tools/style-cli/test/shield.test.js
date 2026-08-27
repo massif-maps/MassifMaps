@@ -7,6 +7,10 @@ import { PNG } from 'pngjs';
 import { convert } from '../dist/mapbox2css/index.js';
 import { isShieldLayer } from '../dist/mapbox2css/shield.js';
 
+/** These tests assert on the translated literals, so they read the style before the palette
+  * pass moves them out - see variables.test.js for the hoisting itself. */
+const NO_PALETTE = { variables: false };
+
 const TABLE = JSON.parse(readFileSync(new URL('../dist/generated/properties.json', import.meta.url), 'utf8'));
 
 /** The MapTiler shape: the sprite name is built from the ref's length, one image per length. */
@@ -20,7 +24,7 @@ function symbol(layout, paint) {
 }
 
 function mss(layer) {
-    return convert({ layers: [layer] }, TABLE).mss;
+    return convert({ layers: [layer] }, TABLE, NO_PALETTE).mss;
 }
 
 test('an unspellable per-feature sprite behind centred text falls back to a plate', () => {
@@ -80,7 +84,7 @@ test('a text-field branching per country keeps its fallback rather than losing t
     // MapBox's own shields slice the ref for BR; CartoCSS has no slice, and the fallback is [ref].
     const brazil = ['case', ['==', ['get', 'iso_a2'], 'BR'], ['slice', ['get', 'ref'], 3], ['get', 'ref']];
     const { mss: out, coverage } = convert({ layers: [symbol(
-        { 'text-field': brazil, 'icon-image': PLATE_IMAGE }, { 'icon-color': '#1a73e8' })] }, TABLE);
+        { 'text-field': brazil, 'icon-image': PLATE_IMAGE }, { 'icon-color': '#1a73e8' })] }, TABLE, NO_PALETTE);
     assert.match(out, /text-name: \[ref\];/);
     assert.match(out, /text-background-fill: #1a73e8;/);
     assert.ok(coverage.report().includes('kept only its fallback branch'));
@@ -94,7 +98,7 @@ test('an icon beside text becomes ONE shield, not a marker that culls the label'
     const out = convert({ layers: [symbol(
         { 'text-field': '{name}', 'icon-image': 'circle', 'text-anchor': 'bottom', 'text-size': 12 },
         { 'icon-color': '#000000', 'text-color': '#333333' })] },
-    TABLE, { sprites: { sheets: sprites, outDir: '/tmp/massif-style-test' } }).mss;
+    TABLE, { ...NO_PALETTE, sprites: { sheets: sprites, outDir: '/tmp/massif-style-test' } }).mss;
 
     assert.ok(!out.includes('marker-'), 'a marker beside the text would be a second, colliding label');
     // The field is kept and tinted by the style, not resolved to pixels here.
@@ -131,14 +135,14 @@ test('an icon-overlap alone never builds a fileless marker', () => {
     // #0000ff - a blue ellipse over every airport whose sprite could not be resolved.
     const { mss: out } = convert({ layers: [symbol(
         { 'text-field': '{name}', 'icon-image': ['get', 'subclass'], 'icon-overlap': 'never',
-            'text-anchor': 'top', 'text-offset': [0, 1] }, { 'icon-color': '#333' })] }, TABLE);
+            'text-anchor': 'top', 'text-offset': [0, 1] }, { 'icon-color': '#333' })] }, TABLE, NO_PALETTE);
     assert.ok(!out.includes('marker-'));
     assert.match(out, /text-name: \[name\];/);
 });
 
 test('a shield whose text cannot be translated draws nothing, not an empty box', () => {
     const { mss: out, coverage } = convert({ layers: [symbol(
-        { 'text-field': ['slice', ['get', 'ref'], 3], 'icon-image': PLATE_IMAGE }, { 'icon-color': '#1a73e8' })] }, TABLE);
+        { 'text-field': ['slice', ['get', 'ref'], 3], 'icon-image': PLATE_IMAGE }, { 'icon-color': '#1a73e8' })] }, TABLE, NO_PALETTE);
     assert.ok(!out.includes('text-background-fill'));
     assert.ok(coverage.report().includes('no usable text-field'));
 });
@@ -152,7 +156,7 @@ test('a variable anchor becomes the shield anchor list, with its gap and its fal
         'text-field': '{name}', 'icon-image': 'pin', 'text-size': 12,
         'text-variable-anchor': ['right', 'left', 'top', 'bottom'],
         'text-optional': true, 'text-radial-offset': 0.5, 'text-justify': 'auto',
-    })] }, TABLE, { sprites: { sheets: sprites, outDir: '/tmp/massif-style-test' } });
+    })] }, TABLE, { ...NO_PALETTE, sprites: { sheets: sprites, outDir: '/tmp/massif-style-test' } });
 
     assert.match(out, /shield-anchors: 'right,left,top,bottom';/);
     assert.match(out, /shield-text-optional: true;/);
@@ -169,12 +173,12 @@ test('a corner anchor loses its hyphen, which is how the SDK spells it', () => {
     const out = convert({ layers: [symbol({
         'text-field': '{name}', 'icon-image': 'pin',
         'text-variable-anchor': ['top-left', 'bottom-right'],
-    })] }, TABLE, { sprites: { sheets: sprites, outDir: '/tmp/massif-style-test' } }).mss;
+    })] }, TABLE, { ...NO_PALETTE, sprites: { sheets: sprites, outDir: '/tmp/massif-style-test' } }).mss;
     assert.match(out, /shield-anchors: 'topleft,bottomright';/);
 });
 
 test('an anchor property on a layer with no icon says so, rather than reading as unmapped', () => {
-    const { coverage } = convert({ layers: [symbol({ 'text-field': '{name}', 'text-justify': 'center' })] }, TABLE);
+    const { coverage } = convert({ layers: [symbol({ 'text-field': '{name}', 'text-justify': 'center' })] }, TABLE, NO_PALETTE);
     assert.ok(coverage.report().includes('positions the text against an icon'));
 });
 

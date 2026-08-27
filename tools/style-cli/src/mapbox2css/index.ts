@@ -8,12 +8,41 @@ import { PLATE_MAP, asShieldDeclaration, isShieldLayer, plateRadius } from './sh
 import { type ExtractedIcon, type SpriteSet, extractAllIcons, extractIcon } from './sprite.js';
 import { type Schema, dropMissingFieldTests, mapSourceLayer, withMappingFilter } from './schema.js';
 import { collapseBranches, splitLayer } from './split.js';
+import { type HoistBlock, hoistVariables, paletteHeader } from './variables.js';
+import { LIGHT_PRESET, importOnly, presetsOf, resolveConfig, sceneBrightness } from './config.js';
+import { foldConfig, foldLayer } from './fold.js';
 import type { CartoProperty, Json, MapboxLayer, MapboxStyle, PropertyTable } from './types.js';
 
 export interface ConvertResult {
     mss: string;
     project: string;
     coverage: Coverage;
+    /** The palette stylesheet, for `variables.mss`. Null when hoisting is off. */
+    variables: string | null;
+    /** One more palette per extra `lightPreset`, over the SAME style.mss. Keyed by preset name. */
+    presets: Map<string, string>;
+}
+
+/** The palette is a stylesheet of its own, and has to be listed before the rules that read it. */
+export const VARIABLES_FILE = 'variables.mss';
+
+/** One pass of the emitter, for one config. See emitAll. */
+interface EmitResult {
+    mapBlock: string[];
+    blocks: Array<{ selector: string; owner: string; declarations: string[] }>;
+    order: Map<string, number>;
+    brightness: number | null;
+}
+
+/** Two passes share a stylesheet only if they emitted the same rules with the same properties. */
+function aligns(a: EmitResult, b: EmitResult): boolean {
+    if (a.blocks.length !== b.blocks.length || a.mapBlock.length !== b.mapBlock.length) return false;
+    const property = (declaration: string): string => declaration.slice(0, declaration.indexOf(':'));
+    const same = (x: string[], y: string[]): boolean =>
+        x.length === y.length && x.every((d, i) => property(d) === property(y[i]));
+    if (!same(a.mapBlock, b.mapBlock)) return false;
+    return a.blocks.every((block, i) =>
+        block.selector === b.blocks[i].selector && same(block.declarations, b.blocks[i].declarations));
 }
 
 /** MapBox text-anchor -> the CartoCSS (horizontal, vertical) alignment pair. */
@@ -49,16 +78,58 @@ export interface ConvertOptions {
     styleParams?: Map<string, Json>;
     /** Filled in during conversion: any icon, for the size and offset a per-feature name has none of. */
     iconSample?: ExtractedIcon | null;
+    /** Hoist colours, fonts and shared sizes into a palette stylesheet. On unless turned off. */
+    variables?: boolean;
+    /**
+     * Extra `lightPreset` values to emit a palette for, sharing one style.mss with the default.
+     * Empty for a style that has no such config - see config.ts.
+     */
+    presets?: string[];
+    /**
+     * Values for the style's own `config` knobs (Mapbox Standard's `schema`), overriding its
+     * defaults. Every config read is resolved to a constant - see fold.ts for why it has to be.
+     */
+    config?: Record<string, Json>;
 }
 
 export function convert(style: MapboxStyle, table: PropertyTable, options: ConvertOptions = {}): ConvertResult {
     options = { ...options, styleParams: options.styleParams ?? new Map() };
     const coverage = new Coverage();
     const allowed = new Map<string, CartoProperty>(table.properties.map((p) => [p.cartocss, p]));
-    const layers = style.layers ?? [];
+
+    // A style may be configurable (Mapbox Standard). Its config is resolved to constants BEFORE
+    // anything is translated: CartoCSS has no `let`/`to-hsla`/`at`, so a colour left reading its
+    // config converts to nothing at all. See fold.ts.
+    const importsOnly = importOnly(style);
+    if (importsOnly) coverage.drop('the whole style', importsOnly, 'imports');
+    const { parameters, undeclared } = resolveConfig(style);
+    for (const name of undeclared) {
+        coverage.approximate(`config "${name}" is read but declared in no schema; took what it was read as`);
+    }
+    const configValues = new Map<string, Json>(
+        [...parameters].map(([name, spec]) => [name, spec.default]));
+    for (const [name, value] of Object.entries(options.config ?? {})) configValues.set(name, value);
+    if (configValues.size > 0) {
+        coverage.approximate(`${configValues.size} config values baked in` +
+            (configValues.has(LIGHT_PRESET) ? ` (${LIGHT_PRESET} = ${String(configValues.get(LIGHT_PRESET))})` : ''));
+    }
+
+    // The scene's brightness is a style value here, not a runtime one - see config.ts.
+    const lights = (style as unknown as Record<string, Json>).lights;
+
+    // Emitting is a function of the config, because a configurable style is converted ONCE PER
+    // PRESET: folding preserves structure (see fold.ts), so the runs line up block for block and
+    // only their literals differ - which is what lets one style.mss carry a palette per preset.
+    function emitAll(values: Map<string, Json>, coverage: Coverage): EmitResult {
+    const brightness = lights === undefined ? null : sceneBrightness(lights, (node) => foldConfig(node, values));
+    const scene = brightness === null ? {} : { brightness };
+    const layers = (style.layers ?? []).map((layer) =>
+        (values.size > 0 || brightness !== null ? foldLayer(layer, values, scene) : layer));
 
     const mapBlock: string[] = [];
-    const blocks: string[] = [];
+    // Kept as selector + declarations rather than joined text: the palette pass rewrites the
+    // declarations after every layer is in, when it can tell a shared colour from a layer's own.
+    const blocks: Array<{ selector: string; owner: string; declarations: string[] }> = [];
     // Source-layer name -> the index of the first MapBox layer that draws it.
     const order = new Map<string, number>();
     // The TARGET source layer of every layer that made it through, in style order. Kept separately
@@ -155,36 +226,90 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
             return;
         }
 
-        blocks.push(`${selector} {\n${declarations.map((d) => `  ${d}`).join('\n')}\n}`);
+        blocks.push({ selector, owner: layer.id, declarations });
     }
 
     reportInterleaving(emitted, order, coverage);
     reportSources(style, layers, coverage);
+    return { mapBlock, blocks, order, brightness };
+    }
+
+    const base = emitAll(configValues, coverage);
+    if (base.brightness !== null) {
+        coverage.approximate(`["measure-light", "brightness"] resolved to ${base.brightness.toFixed(2)} from ` +
+            "the style's own ambient light; our renderer cannot measure it back, and a ramp over it " +
+            'whose stops are per-feature expressions snaps to the nearer end');
+    }
+    const { mapBlock, blocks, order } = base;
+
+    // The Map block goes through the palette pass with the rules: a variant that recolours the
+    // water and not the background behind it is not a variant anybody wants.
+    const withMap = (result: EmitResult): HoistBlock[] =>
+        [{ owner: 'map', declarations: result.mapBlock }, ...result.blocks];
+
+    // Every preset is converted, and all of them are hoisted TOGETHER. A variable then stands for
+    // the same sites in each one, so the palettes share `style.mss` and differ only in their
+    // values. Hoisting each preset on its own instead let a colour two layers happen to share by
+    // day - and not by night - name itself differently in the two files.
+    const presetConfigs = new Map<string, Map<string, Json>>();
+    for (const preset of options.presets ?? presetsOf(parameters)) {
+        if (preset === configValues.get(LIGHT_PRESET)) continue;
+        presetConfigs.set(preset, new Map(configValues).set(LIGHT_PRESET, preset));
+    }
+    const alternates = new Map<string, EmitResult>();
+    for (const [preset, values] of presetConfigs) {
+        const result = emitAll(values, new Coverage());
+        // Only a run that lines up block for block can share the rules; folding is written to
+        // guarantee that, and this is the check that it held.
+        if (aligns(base, result)) alternates.set(preset, result);
+        else coverage.drop(`preset "${preset}"`, 'its layers do not line up with the default preset', preset);
+    }
+
+    let hoisted = withMap(base);
+    let palette: string[] = [];
+    const presetPalettes = new Map<string, string>();
+    if (options.variables !== false) {
+        const result = hoistVariables(hoisted, allowed, [...alternates.values()].map(withMap));
+        hoisted = result.blocks;
+        palette = result.palette;
+        for (const [index, preset] of [...alternates.keys()].entries()) {
+            presetPalettes.set(preset, [...paletteHeader(style.name, preset), '', ...result.alternates[index], ''].join('\n'));
+        }
+    }
+    const selectors = ['Map', ...blocks.map((block) => block.selector)];
+    const [mapRule, ...ruleBlocks] = hoisted.map((block, index) => ({ ...block, selector: selectors[index] }));
 
     const header = [
         '/* Generated by massif-style mapbox2css. Do not edit by hand:',
         '   re-run the converter against the source style instead. */',
     ];
+    if (palette.length > 0) header.push(`/* Colours, fonts and shared sizes live in ${VARIABLES_FILE}. */`);
     if (style.name) header.push(`/* Source style: ${style.name} */`);
+
+    const render = (block: { selector: string; declarations: string[] }): string =>
+        `${block.selector} {\n${block.declarations.map((d) => `  ${d}`).join('\n')}\n}`;
 
     const mss = [
         ...header,
         '',
-        ...(mapBlock.length > 0 ? [`Map {\n${mapBlock.map((d) => `  ${d}`).join('\n')}\n}`, ''] : []),
-        ...blocks,
+        ...(mapRule.declarations.length > 0 ? [render(mapRule), ''] : []),
+        ...ruleBlocks.map(render),
         '',
     ].join('\n');
+
+    const variables = palette.length > 0 ? [...paletteHeader(style.name), '', ...palette, ''].join('\n') : null;
 
     // loadMapProject REVERSES this array (layerNames.insert(begin)), and MapBox layers run
     // bottom-to-top, so the project list is the draw order reversed.
     const projectLayers = [...order.entries()].sort((a, b) => a[1] - b[1]).map(([name]) => name).reverse();
+    const styles = variables ? [VARIABLES_FILE, 'style.mss'] : ['style.mss'];
     const project = JSON.stringify(
         options.styleParams!.size > 0
-            ? { styles: ['style.mss'], layers: projectLayers, styleparameters: Object.fromEntries([...options.styleParams!].sort()) }
-            : { styles: ['style.mss'], layers: projectLayers },
+            ? { styles, layers: projectLayers, styleparameters: Object.fromEntries([...options.styleParams!].sort()) }
+            : { styles, layers: projectLayers },
         null, 2) + '\n';
 
-    return { mss, project, coverage };
+    return { mss, project, coverage, variables, presets: presetPalettes };
 }
 
 function backgroundProperties(layer: MapboxLayer, coverage: Coverage): string[] {

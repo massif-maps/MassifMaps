@@ -112,6 +112,17 @@ export function translateExpression(expr: Json, notes?: string[]): string {
         case 'zoom':
             return '[view::zoom]';
 
+        // Mapbox Standard's runtime knobs - lightPreset, theme, showPointOfInterestLabels. A style
+        // parameter is the same idea: named, defaulted in the project, and set without a reload, so
+        // day/night stays ONE style here as it is there. convert() declares what it finds.
+        case 'config': {
+            if (typeof args[0] !== 'string') throw new Untranslatable('config with a computed name');
+            // ["config", name, importId] scopes the lookup to one import; a converted project has a
+            // single style, so the name alone identifies it.
+            if (args.length > 1) notes?.push(`config "${args[0]}" read across imports, taken as one parameter`);
+            return `[param::${args[0]}]`;
+        }
+
         case 'geometry-type':
             return GEOMETRY_TYPE_FIELD;
 
@@ -291,6 +302,11 @@ function translateMatch(args: Json[]): string {
  */
 function translateStep(args: Json[]): string {
     if (args.length < 3) throw new Untranslatable('malformed step');
+    // A step over ZOOM is a per-frame function and maps onto CartoCSS's own; over a FIELD it is a
+    // per-feature decision, which is a chain of ternaries. Unlike `interpolate` there is nothing to
+    // unroll - a step has finitely many outcomes, one per stop. Mapbox Standard sizes 10 label
+    // layers by `["step", ["get", "sizerank"], …]`, which was 35 text-sizes dropped.
+    if (translateExpression(args[0]) !== '[view::zoom]') return stepOnField(args);
     const input = requireZoom(args[0], 'step');
     const stops = [`(0, ${translateExpression(args[1])})`];
     for (let i = 2; i < args.length; i += 2) {
@@ -373,6 +389,18 @@ function resampleExponential(pairs: ReadonlyArray<readonly [Json, Json]>, base: 
     }
     const last = numeric[numeric.length - 1];
     out.push([round(last[0]), round(last[1])] as const);
+    return out;
+}
+
+/** `["step", x, base, k1, v1, …]` over a field: the highest stop x reaches, else the base. */
+function stepOnField(args: Json[]): string {
+    const input = translateExpression(args[0]);
+    let out = translateExpression(args[1]);
+    // Built from the bottom up, so the outermost test is the highest stop - which is the one a
+    // reader checks first and the order `step` itself resolves in.
+    for (let i = 2; i + 1 < args.length; i += 2) {
+        out = `((${input} >= ${translateExpression(args[i])}) ? ${translateExpression(args[i + 1])} : ${out})`;
+    }
     return out;
 }
 

@@ -52,6 +52,9 @@ tools/style-cli/
     cli.ts               subcommand dispatch
     wasm.ts              loads massif-style.mjs, calls main() with argv
     mapbox2css/          the translator
+      variables.ts       hoists the literals into the palette (see below)
+      config.ts          a style's own `config`/`schema`/`imports` (Mapbox Standard)
+      fold.ts            resolves those config reads to constants and evaluates what follows
     generated/
       properties.json    the CartoCSS allowlist, from scripts/gen-cartocss-properties.py
   wasm/                  build output, gitignored — CI fills it
@@ -142,6 +145,144 @@ Only headers are needed (`./b2 headers`), never a compiled Boost.
 `build_css2xml.yml` stays as it is — it builds native binaries for local debugging, which is a
 different job from shipping the tool.
 
+## The palette: `variables.mss`
+
+`mapbox2css` writes three files, not two. `style.mss` holds the rules and is generated — the next
+conversion overwrites it. Every colour, font face and shared size comes out into `variables.mss`
+instead, as `@name: value;`, and `project.json` lists it **first**:
+
+```json
+{ "styles": ["variables.mss", "style.mss"], "layers": ["…"] }
+```
+
+That order is load-bearing: `CartoCSSCompiler::buildPropertyLists` keeps the **first** declaration
+of a variable it reads, so a stylesheet ahead of the palette wins. A dark or eink version is
+therefore a copy of the palette plus a project of its own, and never a fork of the rules:
+
+```json
+{ "extends": "./project.json", "styles": ["dark.mss", "style.mss"] }
+```
+
+This is the shape the hand-written styles under `scripts/android-dev/.../assets/style` already use:
+`eink/style.less` is nothing but `@name: value;`, the rules live in `shared/*.less`, and `eink.json`
+lists the palette ahead of them.
+
+**What gets a name.** Every colour and every font face, however few layers use it — a variant that
+still has to edit `style.mss` for one colour is not a variant. Numbers only when **shared by two
+layers or more**, only for the roles a variant retunes (`size`, `stroke-width`, `halo-radius`,
+`spacing`, `opacity`, …) and never when the value only restates the property's own default. Without
+those two filters the palette filled with `@airport_labels_placement_priority: 9400000` and
+`@polygon_fill_opacity: 1`.
+
+**What it is named.** A font by its face (`@font_roboto_medium`), because what a variant swaps is
+the family. Everything else by the layers using it and the property's mapnik role:
+
+| Used by | Name | Example |
+|---|---|---|
+| one layer | its id + the role | `@glacier_fill`, `@ferry_stroke` |
+| layers sharing a prefix | the prefix + the role | `Minor road`, `Minor road bridge` → `@minor_road_stroke` |
+| layers sharing one token | that token + the role | four railways and three railway tunnels → `@railway_stroke` |
+| nothing in common | the symbolizer + the role | a white halo on 19 label layers → `@labels_halo_fill` |
+
+Collisions take a `_2`, `_3` suffix, most-used first, so the colour a variant most wants to change
+gets the bare name. The middle two rules are what earn the palette: naming by prefix alone left a
+quarter of topo-v4's entries as `@line_stroke_2 … @line_stroke_9`.
+
+A colour inside a zoom ramp is hoisted; **the ramp is not**. `linear([view::zoom], (8, @contour_stroke),
+(16, @contour_stroke_2))` keeps the style's own animation in `style.mss` and puts its two ends in the
+palette, which is the granularity a recolour needs. Spelling is not a difference either —
+`hsl(0, 0%, 100%)` and `hsl(0,0%,100%)` are one entry, or a variant would recolour half its map.
+
+`--no-variables` turns the whole pass off and leaves every literal inline.
+
+**The check that matters** is that a palette compiles to the *same map*. `css2xml` on topo-v4 with
+and without the pass produces byte-identical mapnik XML, and `test/variables.test.js` pins that
+against the fixture style.
+
+## A configurable style: Mapbox Standard
+
+Standard is not a style document in the sense the rest of this page assumes. Fetched plainly it is a
+**root document with no layers** — one `imports` entry pointing at the basemap fragment and a
+`config` block overriding its defaults — and converting that yields nothing. Ask for it the way a
+renderer does and the server flattens it:
+
+```
+https://api.mapbox.com/styles/v1/mapbox/standard?sdk=js-3.27.0&access_token=…
+```
+
+That returns 150 layers, a `schema` of 44 configurable values, and a `lights` block. `mapbox2css`
+reports the import-only case by name rather than emitting an empty style.
+
+### The config has to be resolved, not carried
+
+Standard is written against its own config: **878 `["config", …]` reads across its 150 layers**, and
+nearly every colour among them goes through one idiom — take the configured colour apart with
+`to-hsla`, bind the channels with `let`, adjust them, and rebuild with `hsl`:
+
+```json
+["let", "l_colorLand", ["at", 2, ["to-hsla", ["config", "colorLand"]]],
+  ["hsl", 20, 20, ["-", ["var", "l_colorLand"], 10]]]
+```
+
+CartoCSS has none of `let`, `var`, `at` or `to-hsla`. A style parameter would keep them in the
+expression, so the config is **resolved to constants before translation** ([`fold.ts`](../../tools/style-cli/src/mapbox2css/fold.ts)):
+substitute, then evaluate as far as the constants reach. That recovered 74 colour properties on its
+own and took coverage from 46% to 54%. `--config key=value` overrides any of them.
+
+Folding only removes branches whose test is now **decided**; nothing is reordered or rewritten. That
+is load-bearing, not tidiness — it is what makes every preset emit the same rules in the same order,
+which is what lets them share one `style.mss`.
+
+### `measure-light`, and where day/night actually lives
+
+`["measure-light", "brightness"]` appears **113 times**, always as a two-stop ramp switching a colour
+between a lit and an unlit form (`[0.25, 0.3]` in 66 of them). It is how the style says "night"
+without naming the preset, and our renderer has nothing that measures its own light back into a
+style value.
+
+The number is taken from the style's **own** `lights` block, which is config-driven like everything
+else: the ambient light's lightness times its intensity. That is a proxy, not Mapbox's internal
+formula — but it is read from the style rather than invented, and it separates the four presets the
+way they are written:
+
+| preset | dawn | day | dusk | night |
+|---|---|---|---|---|
+| brightness | 0.70 | 0.80 | 0.23 | 0.06 |
+
+Against the style's own 0.25/0.3 thresholds that puts dawn and day on the lit side, dusk and night
+on the unlit one. Where a ramp's stops are still per-feature expressions there is nothing to blend,
+so the value **snaps to the nearer end** and the coverage report says so.
+
+:::caution What does not survive
+Standard does most of its day/night with the **3D lighting**, not with different colours: 103
+`*-emissive-strength` properties, which have no CartoCSS equivalent and are dropped. The converted
+night palette is a real recolour — hillshade, ferries, landuse and labels all change — but it is
+not the whole difference, and a converted Standard will not look as dark as Mapbox's own.
+:::
+
+### One style, four palettes
+
+Every value of `lightPreset` is converted, and all of them are hoisted **together**, so a variable
+stands for the same sites in each. The output is one set of rules and a palette per preset:
+
+```
+style.mss        the rules, shared
+variables.mss    lightPreset = day (the schema's default)
+dawn.mss  dusk.mss  night.mss     the same variable names, that preset's values
+dawn.json dusk.json night.json    { "extends": "./project.json", "styles": ["night.mss", "style.mss"] }
+```
+
+Hoisting each preset separately is what this replaced, and it was subtly wrong: a colour that two
+layers share by day and not by night named itself differently in the two files, so the night palette
+declared variables `style.mss` never mentioned. Keying each entry on what it is in **every** pass
+fixes that by construction. A preset whose rules do not line up is refused and named in the coverage
+report rather than half-written — `--no-presets` skips them all.
+
+Measured, `--no-sprite`: **standard 61%** (594/969), **standard-satellite 65%** (337/521). Every
+preset project compiles with `css2xml`. What is left is mostly genuine: `*-emissive-strength`,
+`line-gap-width`, `line-blur`, and `feature-state` (runtime interaction state, which the SDK has no
+notion of).
+
 ## What mapbox2css does not carry
 
 Every skipped property is counted and named — `mapbox2css` prints a coverage report, and `--strict`
@@ -150,7 +291,7 @@ turns any drop into a non-zero exit. What it refuses, and why:
 - **Layer types** with no symbolizer: `heatmap`.
 - **The gap list** — `line-blur`, `line-gap-width`, `line-gradient`, `fill-extrusion-pattern`,
   every `*-translate`, most `raster-*` adjustments. These are the CartoCSS gaps, not converter bugs.
-- **Expressions with no CartoCSS form**: `feature-state`, `within`, `let`/`var`, `number-format`,
+- **Expressions with no CartoCSS form**: `feature-state`, `within`, `number-format`,
   `image`, `%` (absent from the grammar), `abs`/`floor`/`ceil` (absent from `_basicFuncMap`), and
   any `interpolate` over something other than zoom or with an exponential base other than 1.
 - **Draw order across source-layers.** One entry in the project's `layers` array pulls *every*
@@ -327,8 +468,12 @@ because a side to place the text on presupposes an icon to place it beside:
 | `text-radial-offset` | `shield-text-dx` — stated once, MIRRORED onto whichever side wins |
 | `text-justify` | `shield-text-horizontal-alignment` (`center` is `middle`; `auto` follows the side) |
 
-No MapTiler style uses a variable anchor today; `text-optional` alone covers 19 layers of
-streets-v4 and 26 of outdoor-v4.
+No MapTiler style uses a variable anchor today; `text-optional` alone covers 17 layers of
+streets-v4 and 25 of outdoor-v4. That is the common case, and it was the one the SDK dropped:
+`buildLabelVariants` returned early on an empty anchor list and so never reached the icon-only
+fallback, which is why those styles drew no POI icon at all where MapTiler drops the name and keeps
+the pin. `text-optional` is now a layout list on its own — the style's own placement, then the icon
+alone.
 
 ## Where an icon sits relative to its label
 

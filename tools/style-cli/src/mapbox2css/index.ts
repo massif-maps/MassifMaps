@@ -21,6 +21,8 @@ export interface ConvertResult {
     variables: string | null;
     /** One more palette per extra `lightPreset`, over the SAME style.mss. Keyed by preset name. */
     presets: Map<string, string>;
+    /** The preset project.json itself is, when there are others - so all of them have a name. */
+    defaultPreset: string | null;
 }
 
 /** The palette is a stylesheet of its own, and has to be listed before the rules that read it. */
@@ -123,8 +125,9 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
     function emitAll(values: Map<string, Json>, coverage: Coverage): EmitResult {
     const brightness = lights === undefined ? null : sceneBrightness(lights, (node) => foldConfig(node, values));
     const scene = brightness === null ? {} : { brightness };
-    const layers = (style.layers ?? []).map((layer) =>
-        (values.size > 0 || brightness !== null ? foldLayer(layer, values, scene) : layer));
+    // Always, even for a style with no config of its own: the viewport terms fold here too, and a
+    // filter left testing the pitch is untranslatable, which drops the whole LAYER.
+    const layers = (style.layers ?? []).map((layer) => foldLayer(layer, values, scene));
 
     const mapBlock: string[] = [];
     // Kept as selector + declarations rather than joined text: the palette pass rewrites the
@@ -268,6 +271,7 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
     let hoisted = withMap(base);
     let palette: string[] = [];
     const presetPalettes = new Map<string, string>();
+    let defaultPreset: string | null = null;
     if (options.variables !== false) {
         const result = hoistVariables(hoisted, allowed, [...alternates.values()].map(withMap));
         hoisted = result.blocks;
@@ -275,6 +279,10 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
         for (const [index, preset] of [...alternates.keys()].entries()) {
             presetPalettes.set(preset, [...paletteHeader(style.name, preset), '', ...result.alternates[index], ''].join('\n'));
         }
+        // The DEFAULT preset gets a named project too, so all four are picked the same way -
+        // CompiledStyleSet takes a style NAME and finds <name>.json, and "project" is not one.
+        const fallback = configValues.get(LIGHT_PRESET);
+        if (presetPalettes.size > 0 && typeof fallback === 'string') defaultPreset = fallback;
     }
     const selectors = ['Map', ...blocks.map((block) => block.selector)];
     const [mapRule, ...ruleBlocks] = hoisted.map((block, index) => ({ ...block, selector: selectors[index] }));
@@ -309,7 +317,7 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
             : { styles, layers: projectLayers },
         null, 2) + '\n';
 
-    return { mss, project, coverage, variables, presets: presetPalettes };
+    return { mss, project, coverage, variables, presets: presetPalettes, defaultPreset };
 }
 
 function backgroundProperties(layer: MapboxLayer, coverage: Coverage): string[] {

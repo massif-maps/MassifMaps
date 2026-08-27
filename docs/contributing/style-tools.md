@@ -253,6 +253,28 @@ Against the style's own 0.25/0.3 thresholds that puts dawn and day on the lit si
 on the unlit one. Where a ramp's stops are still per-feature expressions there is nothing to blend,
 so the value **snaps to the nearer end** and the coverage report says so.
 
+### The camera terms, which cost 27 whole layers
+
+`road-label`'s filter is
+
+```json
+["case", ["<=", ["pitch"], 40], true,
+  ["step", ["pitch"], true, 40, ["<", ["distance-from-center"], 1], 55, …]]
+```
+
+— true below 40 degrees of pitch, progressively stricter above it. Mapbox thins its labels by where
+a tile falls on a pitched screen; nothing feeds a camera angle back into a style here, and our own
+label culler does that job.
+
+Left unresolved this is an **untranslatable filter, which drops the whole LAYER** — 27 of them,
+every label in the style, while the coverage report still counted their properties as converted.
+`pitch`, `distance-from-center` and `line-progress` therefore resolve to what a flat, centred view
+sees, the clause folds to `true`, and the filter around it drops it.
+
+Folding is **conservative by construction**: a node is simplified only where a substitution actually
+happened. Without that rule it rewrote expressions in styles that have no config at all, and quietly
+removed four layers from a MapTiler style whose render was already verified.
+
 :::caution What does not survive
 Standard does most of its day/night with the **3D lighting**, not with different colours: 103
 `*-emissive-strength` properties, which have no CartoCSS equivalent and are dropped. The converted
@@ -278,10 +300,33 @@ declared variables `style.mss` never mentioned. Keying each entry on what it is 
 fixes that by construction. A preset whose rules do not line up is refused and named in the coverage
 report rather than half-written — `--no-presets` skips them all.
 
-Measured, `--no-sprite`: **standard 61%** (594/969), **standard-satellite 65%** (337/521). Every
-preset project compiles with `css2xml`. What is left is mostly genuine: `*-emissive-strength`,
-`line-gap-width`, `line-blur`, and `feature-state` (runtime interaction state, which the SDK has no
-notion of).
+Its sprite is named `mapbox://sprites/mapbox/standard/<hash>`, which is not a URL anything can
+fetch — it resolves to `https://api.mapbox.com/styles/v1/<user>/<style>/sprite`, and the hash is a
+cache token the path does not need.
+
+Measured with sprites: **standard 65%** (621/958). Every preset project compiles with `css2xml`.
+What is left is mostly genuine: `*-emissive-strength`, `line-gap-width`, `line-blur`, and
+`feature-state` (runtime interaction state, which the SDK has no notion of).
+
+**Its tiles are a separate problem.** Standard reads `mapbox-streets-v8`, whose layer names are not
+OpenMapTiles' — `road` against `transportation`, `place_label` against `place`. Pointed at an OMT
+source only the layers whose names coincide draw (`water`, `waterway`, `building`, `landuse`), so a
+real check needs a Mapbox token with **tiles** scope; a styles-scoped one returns 403 for both
+`/v4/<tileset>/{z}/{x}/{y}.vector.pbf` and its TileJSON. Retargeting the schema the way `--schema
+openmaptiles` does for MapTiler would lift that, and is not written.
+
+To try it on the bench, convert into a folder on the device and name the preset:
+
+```sh
+adb push out/ /sdcard/alpimaps_mbtiles/mbstd
+adb shell am start -n com.massifmaps.MassifDemo/.BenchActivity \
+  --es style dir --es styleDir mbstd --es lightPreset night
+```
+
+`--es lightPreset day|dawn|dusk|night` picks which project of the package `CompiledStyleSet`
+compiles, and it is a `DemoLive` key, so `am broadcast … --es lightPreset day` switches it without
+a relaunch. The package needs a `fonts/` folder: Standard asks for DIN Pro, which
+`assets/style/fonts` already carries.
 
 ## What mapbox2css does not carry
 

@@ -64,16 +64,26 @@ function reencodeSdf(alpha: number, scale: number): number {
     return Math.max(0, Math.min(255, Math.round(texels * MASSIF_SDF_UNIT + MASSIF_SDF_EDGE)));
 }
 
+/**
+ * `mapbox://sprites/<user>/<style>[/<hash>]` -> the API URL that actually serves it. Mapbox styles
+ * name their sheet with their own scheme, which is not a URL anything can fetch; the trailing hash
+ * is a cache token and the path without it serves the same sheet.
+ */
+export function resolveSpriteUrl(url: string): string {
+    const mapbox = /^mapbox:\/\/sprites\/([^/]+)\/([^/]+)/.exec(url);
+    return mapbox ? `https://api.mapbox.com/styles/v1/${mapbox[1]}/${mapbox[2]}/sprite` : url;
+}
+
 function resolveSpriteUrls(style: MapboxStyle): Map<string, string> {
     const out = new Map<string, string>();
     const sprite = (style as { sprite?: Json }).sprite;
     if (typeof sprite === 'string') {
-        out.set('default', sprite);
+        out.set('default', resolveSpriteUrl(sprite));
     } else if (Array.isArray(sprite)) {
         for (const entry of sprite) {
             const record = entry as { id?: string; url?: string };
             if (typeof record.id === 'string' && typeof record.url === 'string') {
-                out.set(record.id, record.url);
+                out.set(record.id, resolveSpriteUrl(record.url));
             }
         }
     }

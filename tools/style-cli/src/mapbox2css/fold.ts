@@ -103,10 +103,32 @@ function fromHsla(h: number, s: number, l: number, a: number): string {
         : `hsla(${round(h)}, ${round(s)}%, ${round(l)}%, ${round(a)})`;
 }
 
-/** Values the SCENE decides rather than the config - see config.ts's sceneBrightness. */
+/**
+ * Values the CAMERA decides rather than the config. None of them exist as a style value in this
+ * SDK, so they are resolved at conversion time to what a flat, centred view sees.
+ */
 export interface Scene {
+    /** See config.ts's sceneBrightness. */
     brightness?: number;
 }
+
+/**
+ * Viewport terms, and what they resolve to.
+ *
+ * Mapbox thins its labels by where the tile falls on a pitched screen. `road-label`'s filter is
+ * `["case", ["<=", ["pitch"], 40], true, ["step", ["pitch"], …, ["<", ["distance-from-center"], 1] …]]`
+ * - true below 40 degrees of pitch, and progressively stricter above it. Our label culler does its
+ * own thinning and nothing feeds a camera angle back into a style, so these resolve to the flat,
+ * centred view: the clause becomes `true` and folds out of the filter around it.
+ *
+ * Left alone they took 27 LAYERS with them - every label in the style - because an untranslatable
+ * filter drops the whole rule, not just the test.
+ */
+const VIEWPORT: Record<string, number> = {
+    pitch: 0,
+    'distance-from-center': 0,
+    'line-progress': 0,
+};
 
 interface Context {
     values: Map<string, Json>;
@@ -132,6 +154,9 @@ function fold(node: Json, context: Context): Json {
         if (head === 'measure-light' && node[1] === 'brightness' && context.scene.brightness !== undefined) {
             return context.scene.brightness;
         }
+        if (typeof head === 'string' && node.length === 1 && head in VIEWPORT) {
+            return VIEWPORT[head];
+        }
         // `let` binds names for its body only, so its bindings are folded first and the body is
         // folded UNDER them - a generic map over the children would lose the scope.
         if (head === 'let' && node.length >= 2 && node.length % 2 === 0) {
@@ -149,10 +174,18 @@ function fold(node: Json, context: Context): Json {
         if (head === 'var' && typeof node[1] === 'string' && context.bindings.has(node[1])) {
             return context.bindings.get(node[1]) as Json;
         }
-        return simplify(node.map((child) => fold(child as Json, context)));
+        // Simplified ONLY where something was actually substituted. Folding an expression nothing
+        // resolved into would rewrite styles that have no config at all - it removed four layers
+        // from a MapTiler style whose output was already verified on device - and the point here is
+        // to resolve what the SDK cannot express, not to optimise anyone's expressions.
+        const folded = node.map((child) => fold(child as Json, context));
+        return folded.some((child, i) => child !== node[i]) ? simplify(folded) : node;
     }
     if (node && typeof node === 'object') {
-        return Object.fromEntries(Object.entries(node).map(([k, v]) => [k, fold(v, context)]));
+        const entries = Object.entries(node);
+        const folded = entries.map(([key, child]) => [key, fold(child, context)] as const);
+        return folded.some(([, child], i) => child !== entries[i][1])
+            ? Object.fromEntries(folded) : node;
     }
     return node;
 }

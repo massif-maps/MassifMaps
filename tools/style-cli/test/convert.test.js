@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
 
 import { convert } from '../dist/mapbox2css/index.js';
+import { resolveSpriteUrl } from '../dist/mapbox2css/sprite.js';
 
 /** These tests assert on the translated literals, so they read the style before the palette
   * pass moves them out - see variables.test.js for the hoisting itself. */
@@ -136,4 +137,12 @@ test('a pattern takes the fill opacity, and the fill colour under it is dropped'
     assert.match(out, /polygon-pattern-opacity: 0.15;/);
     assert.ok(!out.includes('polygon-fill'), 'a solid fill under the hatch is not what MapBox draws');
     assert.ok(!out.includes('polygon-opacity'), 'and polygon-opacity would fade only that fill');
+});
+
+test("a mapbox:// sprite names an API URL, since nothing can fetch that scheme", () => {
+    // Mapbox styles name their sheet mapbox://sprites/<user>/<style>/<hash>; fetchBuffer read it as
+    // a file path and every icon in Standard was dropped.
+    assert.equal(resolveSpriteUrl('mapbox://sprites/mapbox/standard/7ixcpyhbhz67em71mmpln1klo'),
+        'https://api.mapbox.com/styles/v1/mapbox/standard/sprite');
+    assert.equal(resolveSpriteUrl('https://example.com/sprite'), 'https://example.com/sprite');
 });

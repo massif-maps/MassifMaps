@@ -179,3 +179,32 @@ test('a step over a FIELD becomes ternaries; over zoom it stays a function', () 
     assert.match(sized(['step', ['get', 'sizerank'], 18, 5, 12]), /text-size: \(\(\[sizerank\] >= 5\) \? 12 : 18\);/);
     assert.match(sized(['step', ['zoom'], 18, 5, 12]), /text-size: step\(\[view::zoom\], \(0, 18\), \(5, 12\)\);/);
 });
+
+test('the viewport terms resolve to a flat, centred view, so their clause folds away', () => {
+    // road-label's filter is true below 40 degrees of pitch and progressively stricter above it.
+    // Left unresolved it is an untranslatable filter, which drops the whole LAYER, not just the
+    // test - 27 layers, every label in the style.
+    const clause = ['case', ['<=', ['pitch'], 40], true,
+        ['step', ['pitch'], true, 40, ['<', ['distance-from-center'], 1]]];
+    assert.equal(fold(clause, {}), true);
+});
+
+test('a label layer whose filter tests the pitch still becomes a rule', () => {
+    const label = { id: 'road-label', type: 'symbol', 'source-layer': 'road',
+        layout: { 'text-field': '{name}' },
+        filter: ['all', ['has', 'name'], ['case', ['<=', ['pitch'], 40], true, false]] };
+    const { mss } = convert({ layers: [label] }, TABLE, { variables: false });
+    assert.match(mss, /#road.*::road_label \{/);
+    assert.match(mss, /text-name:/);
+});
+
+test('a format run keeps its text and drops the per-section styling', () => {
+    // Standard writes every POI name as ["format", ["coalesce", ...], {}] - CartoCSS styles the
+    // whole label at once, so only the text carries over.
+    const label = (field) => convert({ layers: [{ id: 'poi', type: 'symbol', 'source-layer': 'poi_label',
+        layout: { 'text-field': field } }] }, TABLE, { variables: false }).mss;
+    assert.match(label(['format', ['coalesce', ['get', 'name_en'], ['get', 'name']], {}]),
+        /text-name: \(\[name_en\]\) \?\? \(\[name\]\);/);
+    assert.match(label(['format', ['get', 'a'], {}, ' ', {}, ['get', 'b'], {}]),
+        /text-name: concat\(concat\(\[a\], ' '\), \[b\]\);/);
+});

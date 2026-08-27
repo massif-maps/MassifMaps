@@ -141,7 +141,7 @@ async function mapbox2css(args: string[]): Promise<number> {
         }
     }
 
-    const { mss, project, coverage, variables, presets } = convert(style, loadPropertyTable(), {
+    const { mss, project, coverage, variables, presets, defaultPreset } = convert(style, loadPropertyTable(), {
         sprites,
         variables: !flags.has('no-variables'),
         config: parseConfig(args),
@@ -169,8 +169,14 @@ async function mapbox2css(args: string[]): Promise<number> {
             extends: './project.json', styles: [`${preset}.mss`, 'style.mss'],
         }, null, 2)}\n`);
     }
+    if (defaultPreset) {
+        writeFileSync(join(outDir, `${defaultPreset}.json`), `${JSON.stringify({
+            extends: './project.json', styles: [VARIABLES_FILE, 'style.mss'],
+        }, null, 2)}\n`);
+    }
     if (presets.size > 0) {
-        process.stdout.write(`Light presets: ${[...presets.keys()].join(', ')} (one palette each, over the same style.mss).\n`);
+        process.stdout.write(`Light presets: ${[defaultPreset, ...presets.keys()].filter(Boolean).join(', ')}`
+            + ' (one palette each, over the same style.mss).\n');
     }
     process.stdout.write(`${coverage.report()}\n`);
 

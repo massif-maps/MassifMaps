@@ -138,6 +138,21 @@ export function translateExpression(expr: Json, notes?: string[]): string {
         case 'coalesce':
             return args.map((a) => `(${translateExpression(a as Json)})`).join(' ?? ');
 
+        // ["format", section, options, section, options, …]. The per-section options are the rich
+        // part - a font, a scale, a colour for that run alone - and CartoCSS styles the whole
+        // label at once, so only the TEXT is carried. Mapbox Standard writes every POI name as
+        // `["format", ["coalesce", …], {}]`, an empty options object, which loses nothing.
+        case 'format': {
+            const sections = args.filter((_, i) => i % 2 === 0);
+            const styled = args.filter((_, i) => i % 2 === 1)
+                .some((options) => !!options && typeof options === 'object' && Object.keys(options).length > 0);
+            if (styled) notes?.push('format section options dropped: CartoCSS styles the whole label at once');
+            if (sections.length === 0) throw new Untranslatable('format with no sections');
+            return sections
+                .map((section) => translateExpression(section as Json))
+                .reduce((acc, part) => `concat(${acc}, ${part})`);
+        }
+
         case 'to-string':
             return `('' + ${translateExpression(args[0] as Json)})`;
 

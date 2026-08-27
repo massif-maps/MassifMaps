@@ -230,7 +230,7 @@ export function extractIcon(
  * It grows the quad, and with it the label's collision box, so it is kept to what a typical
  * `icon-halo-width` of 2 needs rather than the widest a style could ask for.
  */
-const SDF_PADDING = 4;
+const SDF_PADDING = 6;
 
 function padField(source: PNG, pixelRatio: number): PNG {
     const p = Math.round(SDF_PADDING * pixelRatio);

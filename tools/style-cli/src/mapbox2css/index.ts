@@ -499,13 +499,14 @@ function shieldImageDeclarations(layer: MapboxLayer, icon: ExtractedIcon, scale:
     const out = [`shield-file: ${fileValue};`, 'shield-unlock-image: true;'];
     coverage.emit('shield-file');
     coverage.emit('shield-unlock-image');
-    // The file is in the SHEET's texels, so a 2x sheet has to be drawn at half scale to come out
-    // the size the style asked for.
-    const drawScale = scale / icon.pixelRatio;
-    if (drawScale !== 1) {
-        out.push(`shield-image-scale: ${round(drawScale)};`);
-        coverage.emit('shield-image-scale');
-    }
+    // icon-size is a zoom ramp of its own - mapbox animates an icon independently of its name - and
+    // shield-image-scale takes a function, so the ramp goes through whole rather than collapsed to
+    // a mean. Divided by the sheet's pixelRatio: a 2x sheet is drawn at half scale to come out the
+    // size the style asked for.
+    const sized = translateExpression(layer.layout?.['icon-size'] ?? 1);
+    const drawScale = `((${sized}) / ${icon.pixelRatio})`;
+    out.push(`shield-image-scale: ${drawScale};`);
+    coverage.emit('shield-image-scale');
 
     // A distance field stays crisp at any size and takes its colour from the style, so an SDF
     // sprite goes in as one rather than being resolved to pixels and tinted here.

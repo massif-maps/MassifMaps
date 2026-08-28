@@ -708,6 +708,20 @@ at the label's own size, which is what stops a repeat of the same name being dra
 tiles cut the same road (`TextSymbolizer`, next section); writing 4 px there disabled the floor. An
 explicit `text-padding` still wins.
 
+## Comparing against mapbox-gl: the zoom AND the tile level
+
+Two things are a level apart, not one. The style expressions are shifted (`[view::zoom] - 1`)
+because MapBox's tiles are 512 px wide and this SDK's are 256 — that part is handled. What is not
+is which tile LEVEL gets fetched: at the same view, mapbox-gl asks for level `floor(z)` and the SDK
+for `floor(z)+1`, and a level deeper carries a level's worth of extra POIs. At mapbox z13.67 we drew
+bicycle parkings its z13 tile does not even contain, which reads as "the ranking is wrong".
+
+`TileLayer::setZoomLevelBias(-1)` lines the two up — `--es vectorZoomBias -1` in the bench. It is a
+property of the SOURCE, not of the style, so the converter cannot emit it.
+
+The bench's readout prints `z=<sdk> (mb <sdk-1>)` and `wasm/mbref.html` prints `z=<mb> (sdk <mb+1>)`,
+so a side-by-side is not read a level off.
+
 ## A zoom ramp holds past its last stop
 
 MapBox's `interpolate` clamps outside its stop range; cglib's `fcurve`, which

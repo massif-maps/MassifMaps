@@ -205,8 +205,13 @@ public class SecondFragment extends Fragment {
                 getActivity().runOnUiThread(new Runnable() {
                     public void run() {
                         MapPos focus = mapView.getFocusPos();
-                        String text = String.format("z=%.2f  tilt=%.0f  %.5f, %.5f",
-                                mapView.getZoom(), mapView.getTilt(), focus.getY(), focus.getX());
+                        // mb= is the MapBox zoom the same view is at: their tiles are 512 px wide
+                        // and this SDK's are 256, so one level apart. Without it a side-by-side
+                        // against mbref.html compares two different zooms.
+                        String light = DemoConfig.LIGHT_PRESET.isEmpty() ? "-" : DemoConfig.LIGHT_PRESET;
+                        String text = String.format("z=%.2f (mb %.2f)  tilt=%.0f  %s  %.5f, %.5f",
+                                mapView.getZoom(), mapView.getZoom() - 1, mapView.getTilt(), light,
+                                focus.getY(), focus.getX());
                         if (zoomText != null) {
                             zoomText.setText(text);
                         }

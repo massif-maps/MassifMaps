@@ -356,6 +356,7 @@ public class DemoMap {
             compositeLayer = null;
             baseLayer = new VectorTileLayer(vectorSource(), baseDecoder);
             baseLayer.setTileCacheCapacity(DemoConfig.BASE_TILE_CACHE_MB * 1024L * 1024L);
+            baseLayer.setZoomLevelBias(DemoConfig.VECTOR_ZOOM_BIAS);
             return baseLayer;
         }
 
@@ -365,6 +366,7 @@ public class DemoMap {
         compositeLayer = layer;
         baseLayer = layer;
         layer.setTileCacheCapacity(DemoConfig.BASE_TILE_CACHE_MB * 1024L * 1024L);
+        layer.setZoomLevelBias(DemoConfig.VECTOR_ZOOM_BIAS);
         syncCompositeSources();
         if (DemoConfig.STYLE_SOURCE == DemoConfig.StyleSource.PROJECT && DemoConfig.PARAM_TOGGLE_INTERVAL_MS > 0) {
             startParamToggleLoop();

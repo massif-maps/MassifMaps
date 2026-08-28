@@ -149,6 +149,13 @@ public final class DemoConfig {
     public static int VECTOR_MIN_ZOOM = 0;
     public static int VECTOR_MAX_ZOOM = 14;
     public static String VECTOR_CACHE_DB = "akylas_vect.db";
+    /**
+     * Which tile LEVEL the base map asks for, relative to the view. 0 = this SDK's own rule
+     * (256 px tiles, level = floor(zoom)); -1 is what a source authored for MapBox's 512 px tiles
+     * wants, and is not cosmetic - a level deeper carries a level's worth of extra POIs, so at
+     * mapbox-gl's z13.67 we drew bicycle parkings its z13 tile does not even contain.
+     */
+    public static float VECTOR_ZOOM_BIAS = 0.0f;
     public static String HTTP_USER_AGENT = "AlpiMaps/1.4 (contact: contact@akylas.fr)";
 
     /** Shared elevation source: 3D terrain, hillshade, contours and the hypsometric tint all use it. */
@@ -1133,6 +1140,7 @@ public final class DemoConfig {
         // sources
         VECTOR_URL = DemoCfg.cfgStr("vectorUrl", VECTOR_URL);
         VECTOR_MAX_ZOOM = DemoCfg.cfgInt("vectorMaxZoom", VECTOR_MAX_ZOOM);
+        VECTOR_ZOOM_BIAS = DemoCfg.cfgFloat("vectorZoomBias", VECTOR_ZOOM_BIAS);
         DEM_URL = DemoCfg.cfgStr("demUrl", DEM_URL);
         DEM_MAX_ZOOM = DemoCfg.cfgInt("demMaxZoom", DEM_MAX_ZOOM);
         DEM_ENCODING = DemoCfg.cfgStr("demEncoding", DEM_ENCODING);

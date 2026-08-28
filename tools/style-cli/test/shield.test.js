@@ -6,6 +6,7 @@ import { PNG } from 'pngjs';
 
 import { convert } from '../dist/mapbox2css/index.js';
 import { isShieldLayer } from '../dist/mapbox2css/shield.js';
+import { extractAllIconPlates } from '../dist/mapbox2css/sprite.js';
 
 /** These tests assert on the translated literals, so they read the style before the palette
   * pass moves them out - see variables.test.js for the hoisting itself. */
@@ -210,6 +211,31 @@ test('a recolourable sprite that is not a field is drawn as artwork, never as on
     assert.ok(!out.includes('shield-sdf'), 'a colour bitmap is not a distance field');
     assert.ok(!out.includes('shield-icon-halo'), 'the ring is in the artwork, not grown from a field');
     assert.ok(coverage.report().includes('recolours its icon per feature'));
+});
+
+test('a sprite the split cannot handle still reaches the table, as its own silhouette', () => {
+    // MapBox's generic pin is not a disc with a glyph on it, so extractIconPlate rejects it - and a
+    // whole-sheet table that leaves it out draws no icon at all for the ~150 POIs that name it.
+    // The rule states the background separately anyway, so the sprite becomes the glyph.
+    const side = 12;
+    const data = Buffer.alloc(side * side * 4);
+    for (let y = 2; y < side - 2; y++) {
+        // A teardrop: wide at the top, one column at the bottom - nothing the disc test accepts.
+        const half = y < 6 ? 4 : 1;
+        for (let x = 6 - half; x < 6 + half; x++) {
+            const i = (y * side + x) * 4;
+            data[i] = 90; data[i + 1] = 90; data[i + 2] = 90; data[i + 3] = 255;
+        }
+    }
+    const sprites = new Map([['default', {
+        index: { marker: { x: 0, y: 0, width: side, height: side, pixelRatio: 1 } },
+        image: { width: side, height: side, data },
+    }]]);
+    const { entries, skipped } = extractAllIconPlates(sprites, '/tmp/massif-style-test');
+    assert.equal(skipped.length, 0, 'nothing is left out of a whole-sheet table');
+    assert.equal(entries.length, 1);
+    assert.ok(entries[0].icon.sdf, 'it is a field, so the rule may colour it per feature');
+    assert.ok(!entries[0].icon.plate, 'and it carries no plate: there was no disc to take one from');
 });
 
 test('only a STATED occlusion opacity is carried, and a label carries one', () => {

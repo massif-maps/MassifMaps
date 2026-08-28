@@ -269,6 +269,45 @@ function colourDistance(a: RGB, b: RGB): number {
 }
 
 /**
+ * A signed distance field over a coverage grid, in the SDK's encoding.
+ *
+ * A thresholded mask puts the edge half a texel out from the cell it measured, so the EDT only says
+ * where the field is DEEP; anywhere the artwork carries partial coverage the coverage itself is the
+ * answer, since it is the only record of where inside the texel the edge fell. The threshold is not
+ * allowed to decide on its own either: a stroke thinner than a texel never reaches 1.0 anywhere and
+ * thresholding it at 0.5 erased it outright - a bicycle's spokes came out as a handful of dots.
+ */
+function buildField(width: number, height: number, cell: (x: number, y: number) => number): PNG {
+    const field = new PNG({ width, height });
+    const ins = new Float64Array(width * height);
+    const outs = new Float64Array(width * height);
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            const isInk = cell(x, y) >= 0.5;
+            ins[y * width + x] = isInk ? 1e20 : 0;
+            outs[y * width + x] = isInk ? 0 : 1e20;
+        }
+    }
+    edt(ins, width, height);
+    edt(outs, width, height);
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            const i = y * width + x;
+            const partial = cell(x, y) > 0 && cell(x, y) < 1;
+            const raw = Math.sqrt(ins[i]) - Math.sqrt(outs[i]);
+            const base = raw - Math.sign(raw) * 0.5;
+            const signed = partial || Math.abs(base) <= 0.5 ? cell(x, y) - 0.5 : base;
+            const texels = Math.max(-FIELD_LIMIT, Math.min(FIELD_LIMIT, signed));
+            const value = Math.max(0, Math.min(255, Math.round(MASSIF_SDF_EDGE + texels * MASSIF_SDF_UNIT)));
+            const dst = i * 4;
+            field.data[dst] = field.data[dst + 1] = field.data[dst + 2] = value;
+            field.data[dst + 3] = 255;
+        }
+    }
+    return field;
+}
+
+/**
  * The GLYPH of a composite vector icon as a distance field, and the disc it sat on.
  *
  * MapBox's sheet ships ONE flat render of an `["image", name, { params }]` icon, with the icon's own
@@ -482,43 +521,7 @@ export function extractIconPlate(
 
     // The field, on the disc's own box: the quad the shield draws IS the plate's box then, so the
     // plate needs no padding and its border lands on the ring the crop just removed.
-    const field = new PNG({ width: discW, height: discH });
-    const cell = (x: number, y: number) => coverage(x0 + x, y0 + y);
-    const ins = new Float64Array(discW * discH);
-    const outs = new Float64Array(discW * discH);
-    for (let y = 0; y < discH; y++) {
-        for (let x = 0; x < discW; x++) {
-            const isInk = cell(x, y) >= 0.5;
-            ins[y * discW + x] = isInk ? 1e20 : 0;
-            outs[y * discW + x] = isInk ? 0 : 1e20;
-        }
-    }
-    edt(ins, discW, discH);
-    edt(outs, discW, discH);
-    for (let y = 0; y < discH; y++) {
-        for (let x = 0; x < discW; x++) {
-            const i = y * discW + x;
-            // Positive inside. A thresholded mask puts the edge half a texel out from the cell it
-            // measured, so the EDT only says where the field is DEEP; anywhere the artwork carries
-            // partial coverage the coverage itself is the answer, since it is the only record of
-            // where inside the texel the edge fell.
-            //
-            // The threshold is not allowed to decide on its own: a stroke thinner than a texel
-            // never reaches 1.0 anywhere, and thresholding it at 0.5 erased it outright - the
-            // bicycle's spokes and wheels came out as a handful of dots. Kept as coverage they are
-            // just under the edge, and the renderer's own antialias ramp draws them faintly, which
-            // is what the sprite says.
-            const partial = cell(x, y) > 0 && cell(x, y) < 1;
-            const raw = Math.sqrt(ins[i]) - Math.sqrt(outs[i]);
-            const base = raw - Math.sign(raw) * 0.5;
-            const signed = partial || Math.abs(base) <= 0.5 ? cell(x, y) - 0.5 : base;
-            const texels = Math.max(-FIELD_LIMIT, Math.min(FIELD_LIMIT, signed));
-            const value = Math.max(0, Math.min(255, Math.round(MASSIF_SDF_EDGE + texels * MASSIF_SDF_UNIT)));
-            const dst = i * 4;
-            field.data[dst] = field.data[dst + 1] = field.data[dst + 2] = value;
-            field.data[dst + 3] = 255;
-        }
-    }
+    const field = buildField(discW, discH, (x, y) => coverage(x0 + x, y0 + y));
 
     const iconsDir = join(outDir, GLYPH_DIR);
     mkdirSync(iconsDir, { recursive: true });
@@ -536,6 +539,53 @@ export function extractIconPlate(
     };
 }
 
+/**
+ * A sprite that is not a disc with a glyph on it, as a field of its own SILHOUETTE.
+ *
+ * MapBox composes a POI icon as `background` + `icon`, and its sheet ships the two already merged;
+ * the split above recovers them. What it cannot split - `marker`, MapBox's generic pin, first among
+ * them - still has to draw SOMETHING, and the layer states the background separately anyway, so the
+ * whole sprite becomes the glyph and the rule's own plate stands in for the disc. Left out, the
+ * ~150 POIs that name the generic pin drew their label with no icon at all.
+ *
+ * It flattens a multi-colour sprite to one shape, which is what the icon-fill of a POI rule means.
+ */
+export function extractIconSilhouette(
+    sprites: SpriteSet,
+    name: string,
+    outDir: string,
+    writeAs?: string,
+): ExtractedIcon | null {
+    const [sheetId, iconName] = splitIconName(name);
+    const sheet = sprites.get(sheetId);
+    const entry = sheet?.index[iconName];
+    if (!sheet || !entry || entry.sdf || entry.width < 1 || entry.height < 1) return null;
+
+    const alpha = (x: number, y: number): number =>
+        sheet.image.data[((entry.y + y) * sheet.image.width + (entry.x + x)) * 4 + 3] / 255;
+
+    let x0 = entry.width, y0 = entry.height, x1 = -1, y1 = -1;
+    for (let y = 0; y < entry.height; y++) {
+        for (let x = 0; x < entry.width; x++) {
+            if (alpha(x, y) <= 0) continue;
+            x0 = Math.min(x0, x); y0 = Math.min(y0, y);
+            x1 = Math.max(x1, x); y1 = Math.max(y1, y);
+        }
+    }
+    if (x1 < x0 || y1 < y0) return null;
+
+    const w = x1 - x0 + 1;
+    const h = y1 - y0 + 1;
+    const field = buildField(w, h, (x, y) => alpha(x0 + x, y0 + y));
+    const iconsDir = join(outDir, GLYPH_DIR);
+    mkdirSync(iconsDir, { recursive: true });
+    const file = `${safeFileName(writeAs ?? iconName)}.png`;
+    writeFileSync(join(iconsDir, file), PNG.sync.write(field));
+
+    const ratio = entry.pixelRatio && entry.pixelRatio > 0 ? entry.pixelRatio : 1;
+    return { file: `${GLYPH_DIR}/${file}`, width: w / ratio, height: h / ratio, sdf: true, pixelRatio: ratio };
+}
+
 /** Every icon of every sheet that IS a composite, split into a glyph field and a plate. */
 export function extractAllIconPlates(
     sprites: SpriteSet,
@@ -548,7 +598,11 @@ export function extractAllIconPlates(
     for (const [sheetId, sheet] of sprites) {
         for (const name of Object.keys(sheet.index)) {
             if (!/^[A-Za-z0-9_-]+$/.test(name) || seen.has(name)) continue;
-            const icon = extractIconPlate(sprites, sheetId === 'default' ? name : `${sheetId}:${name}`, outDir, name);
+            const qualified = sheetId === 'default' ? name : `${sheetId}:${name}`;
+            // A sprite that is not a composite still has to draw: its own silhouette, on the rule's
+            // plate. See extractIconSilhouette.
+            const icon = extractIconPlate(sprites, qualified, outDir, name)
+                ?? extractIconSilhouette(sprites, qualified, outDir, name);
             if (!icon) { skipped.push(name); continue; }
             seen.add(name);
             entries.push({ name, icon });

@@ -408,6 +408,131 @@ elements here) and only then discards what the layer predicate rules out. Sharin
 `FilteredPropertyState` across a project's layers would fix it, and that is an API change to the
 compiler rather than a local one.
 
+### Flattening the cascade is exponential in INDEPENDENT filter fields
+
+Every round above tuned the constant factor. The shape underneath is worse than linear, and it is
+worth knowing exactly what triggers it before designing anything on top.
+
+CartoCSS cascades: declarations from different selectors land on one feature and are resolved by
+specificity. `buildLayerAttachment` flattens that by enumerating every combination of filter
+conditions that yields a distinct declaration set — so a layer whose declarations are driven by
+**independent** fields produces their **cross product**. Measured on the host with
+`libs-massif/cartocss/test/CompileBench.cpp`, one layer, one property per field dimension, N values
+per field:
+
+| dimensions | N | declarations | compiled rules | compile |
+|---|---|---|---|---|
+| 2 | 8 | 17 | 81 | 0.1 ms |
+| 3 | 8 | 25 | 729 | 0.9 ms |
+| 4 | 8 | 33 | 6,561 | 29 ms |
+| 5 | 8 | 41 | 59,049 | 3.1 s |
+| 6 | 6 | 37 | 117,649 | 13.3 s |
+| 6 | 8 | 49 | — | **> 180 s** |
+
+Rules are exactly `(N+1)^dimensions`, and compile time tracks `declarations × rules`. **49
+declarations do not compile.** So the OpenMapTiles style that had not finished after 25 minutes is
+not a layer-count problem, and no constant-factor round reaches it.
+
+What decides it is whether the fields are independent, not how many predicates there are. The same
+declaration count, arranged the two ways:
+
+| 65 declarations, 4 properties | compiled rules | compile |
+|---|---|---|
+| all driven by **one** field (`[class=…]`, values mutually exclusive) | 17 | 0.1 ms |
+| each driven by **its own** field | 83,521 | 11.9 s |
+
+4,900× the rules from the same style. `PredicateIntersectsChecker` is what saves the first case: two
+predicates on the same field with different values cannot both hold, so the combination is pruned.
+
+**Real styles sit on the safe side, but not by much.** The bundled 23-layer `osm` project compiles
+835 source declarations to 3,731 rules over 296 (layer, attachment, zoom-range) groups. Its worst
+group, `transportation::casing` at z17, tests **14 distinct fields** and still yields only 100 rules
+— because those fields are dominated by one mutually-exclusive `class`. 103 of the 296 groups reach
+4 or more dimensions. Median rules per group is 4, mean 12.6, max 100; that count is also what
+`findFeatureSymbolizers` walks per distinct feature-data at decode, so the blowup would cost twice.
+
+A MapBox style is exactly the adversarial shape: each layer's paint properties are driven by
+independent `["get", …]` expressions. That is why `mapbox2css`'s `split.ts` caps its branch
+expansion at 8 and adds 24 attachments on topo-v4 — it is holding the dimensions apart by hand.
+
+**Reproduce:** build `CompileBench` per the command in its header, generate a layer with `d` fields ×
+`N` values, and read the `CSSBENCH_DUMP` line count as the rule count.
+
+#### And resolving it per feature instead would be CHEAPER at decode
+
+The alternative to flattening is to keep the selectors and resolve the cascade per feature at
+decode, memoised on the feature-data key `TileReader` already uses. Measured on the Crosscall with
+a temporary probe in `TileReader::processLayer` that, per distinct feature-data group, times the
+real rule walk and then a **shadow** pass evaluating every distinct filter of the style's
+zoom-prefiltered rule set once. `--es style assets` (23-layer bundled project), default city camera:
+
+| run | tiles | decode | groups/tile | rules/group | today | shadow | ratio |
+|---|---|---|---|---|---|---|---|
+| warm cache | 64 | 169.5 ms | 1360 | 13.9 | 15.08 ms (8.9%) | 11.95 ms (7.1%) | **0.79×** |
+| warm cache | 128 | 150.1 ms | 1366 | 13.9 | 14.21 ms (9.5%) | 11.44 ms (7.6%) | **0.80×** |
+| cold + zoomseq | 64 | 144.9 ms | 1481 | 13.9 | 14.86 ms (10.2%) | 11.96 ms (8.3%) | **0.81×** |
+| cold + zoomseq | 128 | 107.7 ms | 774 | 13.5 | 7.82 ms (7.3%) | 6.14 ms (5.7%) | **0.79×** |
+
+Evaluating **every** distinct filter once per group is *cheaper* than the walk that exists — even
+though the walk evaluates **fewer** predicates, because `FilterMode::FIRST` stops evaluating after
+the first match. So `findFeatureSymbolizers` is not paying for predicate evaluation; it is paying
+for the walk's bookkeeping — the filter-mode state machine, the `symbolizers.insert()` appends and
+a `shared_ptr` copy per matching rule.
+
+The absolutes carry probe overhead (two clock reads per group, ~1,400 groups a tile) and the decode
+column includes the shadow pass; the **ratio** is what the runs agree on, and both halves are timed
+the same way.
+
+So the per-feature model's predicate term costs **≤ 7.1% of decode**, replacing a term that costs
+8.9% — and it is an upper bound, because flattening turns the source predicates into conjunctions,
+so the source set is smaller than the 13.9 filters measured here.
+
+#### The second term, prototyped: the declaration walk costs 1.4%
+
+The model's other half is the declaration scan — walk the layer's declarations in decreasing
+specificity, take the first writer of each field, hash the winners to intern a symbolizer set.
+Prototyped in the probe as the real scan (one masked test per declaration that all its filters hold,
+a field-shadowing test, an FNV hash of the winners), over an array sized from the style's own
+numbers: `CartoCSSCompiler::measureDeclarations` on the bundled `osm` project gives declarations,
+distinct fields and filter refs per style, so scan length, mask density and field cardinality are the
+style's. Only which bits are set is synthetic, and the scan cost does not depend on that.
+
+How long that scan is, from the compiler:
+
+| | groups | declarations | per group |
+|---|---|---|---|
+| all zooms | 67 | 4,954 | median 18, mean 74, max 945 |
+| pruned at z16 | 57 | 2,954 | mean 137 |
+
+**Zoom pruning is what makes it cheap.** Zoom is fixed for a tile, so a declaration whose zoom
+filter is false is dead for the whole tile and is dropped once per (style, tile) — exactly what
+`preFilterStyleRules` already does for rules. That removes 32–42% of declarations (39% at z16), and
+because it hits the biggest styles hardest the mean scan falls 465 → 137.
+
+Crosscall, `--es style assets`, default city camera, same probe as above:
+
+| declarations | tiles | decode | decls/group | today | preds | walk | per-feature | ratio |
+|---|---|---|---|---|---|---|---|---|
+| all zooms | 64 | 171.3 ms | 465 | 15.88 (9.3%) | 12.84 (7.5%) | 4.55 (2.7%) | 17.38 (10.1%) | 1.10× |
+| all zooms | 128 | 146.9 ms | 466 | 14.76 (10.0%) | 11.89 (8.1%) | 4.24 (2.9%) | 16.13 (11.0%) | 1.09× |
+| **z16-pruned** | 64 | 181.0 ms | 137 | 18.46 (10.2%) | 14.82 (8.2%) | **2.52 (1.4%)** | 17.34 (9.6%) | **0.94×** |
+| **z16-pruned** | 128 | 146.9 ms | 136 | 15.76 (10.7%) | 12.85 (8.7%) | **2.20 (1.5%)** | 15.05 (10.2%) | **0.96×** |
+
+So the full per-feature model — predicates plus declaration walk plus intern hash — costs **0.94–0.96×
+the flattened rule walk it would replace**, once the zoom prefilter it needs anyway is applied.
+Without that prefilter it is 1.09–1.10×, so the prefilter is not an optimisation to add later; it is
+part of the design.
+
+Both terms are near-parity with today, which is the point: the per-feature model is not chosen for
+decode speed, it is chosen because it removes the `(N+1)^dimensions` load-side wall above, and it
+costs nothing at decode to do so.
+
+**Caveats.** The absolutes carry probe overhead (three clock reads per group, ~1,400 groups a tile)
+and `decode` includes both shadow terms; the ratio is what four runs agree on. The declaration
+array's *bits* are synthetic, so the branch-prediction pattern is not the real one — a real
+implementation could differ on the walk term, which is 1.4% of decode. The table is pruned at z16
+while a tilted view also decodes parent tiles at other zooms.
+
 **`setPixelScale` used to reload the style.** It rebuilt the symbolizer context by calling
 `updateCurrentStyleSet`, i.e. a full parse + compile, and `VectorTileLayer` calls it when the layer
 joins a map — so every startup paid the ~0.5 s twice. Split into `updateSymbolizerContext()`

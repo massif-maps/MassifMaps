@@ -26,6 +26,8 @@ namespace massif {
         take(buildingAmbient, other.buildingAmbient);
         take(buildingVerticalGradient, other.buildingVerticalGradient);
         take(buildingRoofShade, other.buildingRoofShade);
+        take(buildingHeightScale, other.buildingHeightScale);
+        take(buildingGrowOnAppear, other.buildingGrowOnAppear);
         take(buildingAoIntensity, other.buildingAoIntensity);
         take(textOcclusionOpacity, other.textOcclusionOpacity);
         take(buildingAoGroundAttenuation, other.buildingAoGroundAttenuation);
@@ -56,7 +58,7 @@ namespace massif {
     }
 
     bool StyleEnvironment::empty() const {
-        return !(sunAzimuth || sunAltitude || sunColor || sunIntensity || ambientIntensity || ambientColor || buildingLightIntensity || buildingAmbient || buildingVerticalGradient || buildingRoofShade || buildingAoIntensity || textOcclusionOpacity || buildingAoGroundAttenuation || terrainLightingEnabled ||
+        return !(sunAzimuth || sunAltitude || sunColor || sunIntensity || ambientIntensity || ambientColor || buildingLightIntensity || buildingAmbient || buildingVerticalGradient || buildingRoofShade || buildingHeightScale || buildingGrowOnAppear || buildingAoIntensity || textOcclusionOpacity || buildingAoGroundAttenuation || terrainLightingEnabled ||
                  shadowStrength || shadowBias || shadowSoftness || shadowDistance || shadowMapSize || shadowCascades ||
                  shadowCasterMargin || fogEnabled || fogColor || fogRangeStart || fogRangeEnd || fogHighColor || fogSpaceColor ||
                  fogHorizonBlend || fogVerticalRangeStart || fogVerticalRangeEnd || fogStarIntensity ||
@@ -128,6 +130,12 @@ namespace massif {
         }
         if (env.buildingRoofShade) {
             lighting.buildingRoofShade = *env.buildingRoofShade;
+        }
+        if (env.buildingHeightScale) {
+            lighting.buildingHeightScale = *env.buildingHeightScale;
+        }
+        if (env.buildingGrowOnAppear) {
+            lighting.buildingGrowOnAppear = *env.buildingGrowOnAppear;
         }
         if (env.buildingAoIntensity) {
             lighting.buildingAoIntensity = *env.buildingAoIntensity;

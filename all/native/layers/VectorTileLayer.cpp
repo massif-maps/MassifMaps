@@ -590,6 +590,12 @@ namespace massif {
                 value = TileRenderer::evaluateFloatFunc(property.getFunction(context), viewState);
             }
         };
+        // A flag written as a number, like building-rounded-roof beside it.
+        auto readBool = [&](const mvt::FloatFunctionProperty& property, std::optional<bool>& value) {
+            if (property.isDefined()) {
+                value = TileRenderer::evaluateFloatFunc(property.getFunction(context), viewState) != 0.0f;
+            }
+        };
         auto readColor = [&](const mvt::ColorFunctionProperty& property, std::optional<Color>& value) {
             if (property.isDefined()) {
                 value = TileRenderer::evaluateColorFunc(property.getFunction(context), viewState);
@@ -605,6 +611,8 @@ namespace massif {
         readFloat(mapSettings->buildingAmbient, env.buildingAmbient);
         readFloat(mapSettings->buildingVerticalGradient, env.buildingVerticalGradient);
         readFloat(mapSettings->buildingRoofShade, env.buildingRoofShade);
+        readFloat(mapSettings->buildingHeightScale, env.buildingHeightScale);
+        readBool(mapSettings->buildingGrowOnAppear, env.buildingGrowOnAppear);
         readFloat(mapSettings->buildingAoIntensity, env.buildingAoIntensity);
         readFloat(mapSettings->textOcclusionOpacity, env.textOcclusionOpacity);
         readFloat(mapSettings->buildingAoGroundAttenuation, env.buildingAoGroundAttenuation);

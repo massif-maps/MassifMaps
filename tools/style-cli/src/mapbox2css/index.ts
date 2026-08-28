@@ -490,7 +490,7 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
  * frame. A boolean becomes 1/0 for the same reason.
  *
  * Left out because the SDK has no equivalent: `flood-light-*` (a per-building light source),
- * `cutoff-fade-range` and `vertical-scale`. `emissive-strength` is approximated into the colour
+ * `cutoff-fade-range`. `emissive-strength` is approximated into the colour
  * instead - see emissive.ts.
  */
 /**
@@ -520,6 +520,10 @@ const BUILDING_MAP_SETTINGS: Record<string, string> = {
     'fill-extrusion-ambient-occlusion-ground-attenuation': 'building-ao-ground-attenuation',
     'fill-extrusion-edge-radius': 'building-edge-radius',
     'fill-extrusion-rounded-roof': 'building-rounded-roof',
+    // Standard grows its buildings out of the ground as they appear - 0 at z15, 1 at z15.3 - and
+    // this is how: a ZOOM ramp on the height, not a timed animation, so it is the same at every
+    // visit. Dropped, every extrusion snapped to full height the moment its layer switched on.
+    'fill-extrusion-vertical-scale': 'building-height-scale',
 };
 
 /**

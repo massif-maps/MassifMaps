@@ -226,11 +226,12 @@ public final class DemoConfig {
     public static boolean TERRAIN_ENABLED = true;
     public static float TERRAIN_EXAGGERATION = 1.0f;
     /** Auto-flatten: render flat once the terrain's on-screen parallax drops below this many
-     *  pixels, and once the tilt reaches AUTO_FLATTEN_TILT. Same values as the SDK defaults, so
-     *  '--es autoFlatten 0 --es autoFlattenTilt 0' is the A/B.
-     *  '--es autoFlatten 2 --es autoFlattenTilt 88 --es autoFlattenMs 300'. */
-    public static float AUTO_FLATTEN_PARALLAX = 2.0f;
-    public static float AUTO_FLATTEN_TILT = 88.0f;
+     *  pixels, and once the tilt reaches AUTO_FLATTEN_TILT. OFF here, unlike the SDK (2 / 88):
+     *  flattening drops the 3D passes, and with them the buildings and their shadows - which is
+     *  what this bench is usually looking at, and straight down is where a shadow reads best.
+     *  '--es autoFlatten 2 --es autoFlattenTilt 88 --es autoFlattenMs 300' is the A/B. */
+    public static float AUTO_FLATTEN_PARALLAX = 0.0f;
+    public static float AUTO_FLATTEN_TILT = 0.0f;
     public static long AUTO_FLATTEN_MS = 300;
     /** How far flattening goes: false = RENDER (terrain passes only), true = FULL (a flat map
      *  decodes and culls as a plain 2D one, for a re-decode at each switch). '--es fullSwitch true'. */

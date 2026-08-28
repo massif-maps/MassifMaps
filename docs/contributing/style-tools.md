@@ -805,6 +805,17 @@ trees still read as two.
 
 Every other `model` layer — buildings, wind turbines — has no such reduction and is still dropped.
 
+## Buildings grow by ZOOM, not on appear
+
+`fill-extrusion-vertical-scale` is how Standard raises its buildings out of the ground — 0 at z15,
+1 at z15.3. It is a **zoom ramp**, so it looks the same at every visit; it is carried now as
+`building-height-scale`, a Map setting.
+
+The SDK had an animation of its own in the same place: `uHeightScale` was the tile's fade-in blend,
+so every building rose each time its tile faded in, wherever the camera was. That is off unless a
+style asks for it (`building-grow-on-appear`), and the shadow **caster** keeps the stated height
+either way, so a fade cannot shrink a building's shadow out from under it.
+
 ## Where the sun is, not just how strong
 
 The `lights` block carries a **direction** as well as an intensity — Standard's day preset is

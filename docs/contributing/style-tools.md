@@ -539,6 +539,21 @@ Compiling is the expensive step and does not depend on the attachment
 ([the cascade's cost](../internals/rendering/10-performance.md)), so a layer several entries name is
 compiled once.
 
+## Turning a marker on the map: `icon-rotate`
+
+Standard's crosswalks are points carrying a `direction` in degrees, drawn with
+`icon-rotate: ["get", "direction"]` and `icon-rotation-alignment: map`. Dropped, every crossing laid
+its stripes on the same axis whatever way its street ran.
+
+`marker-transform: rotate(<expression>)` carries it: the angle is an expression, so it is read per
+feature, and `MarkersSymbolizer` switches a marker with a rotation to the POINT orientation — flat
+on the map, turning with it, which is exactly `icon-rotation-alignment: map`. A layer that rotates
+against the VIEWPORT is reported instead; the SDK has no screen-space rotation for a billboard.
+
+**No sign flip.** MapBox's angle is clockwise from north, and `rotate()` is applied in the tile's
+own frame where y grows *downward*, so a positive angle already reads clockwise. Negated, every
+crossing sat at twice its own angle off its street — which looked plausible enough to ship.
+
 ## Which labels a building may hide
 
 `text-occlusion-opacity` and `icon-occlusion-opacity` are carried, and only where the source

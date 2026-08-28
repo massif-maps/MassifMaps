@@ -1876,7 +1876,37 @@ function markerDeclarations(layer: MapboxLayer, coverage: Coverage, options: Con
         out.push(`marker-allow-overlap: ${layer.layout?.['icon-allow-overlap'] === true || overlap === 'always'};`);
         coverage.emit('marker-allow-overlap');
     }
+    out.push(...markerRotation(layer, coverage));
     return out;
+}
+
+/**
+ * `icon-rotate`, which turns a marker on the MAP.
+ *
+ * A rotation is a `marker-transform`, and its angle is an expression, so it is read per feature -
+ * which is what Standard's crosswalks need: they are points carrying a `direction` in degrees, and
+ * unrotated every one of them drew its stripes across the same axis whatever way its street ran.
+ *
+ * MarkersSymbolizer switches a marker with a rotation to the POINT orientation, so it lies flat and
+ * turns with the map. That is `icon-rotation-alignment: map` and nothing else, so a layer that
+ * rotates against the VIEWPORT is reported rather than silently laid down - the SDK has no
+ * screen-space rotation for a billboard.
+ */
+function markerRotation(layer: MapboxLayer, coverage: Coverage): string[] {
+    const rotate = layer.layout?.['icon-rotate'];
+    if (rotate === undefined || rotate === 0) return [];
+    if (layer.layout?.['icon-rotation-alignment'] !== 'map') {
+        coverage.drop('icon-rotate', 'the SDK turns a marker on the map, not against the viewport, ' +
+            'and this layer does not state icon-rotation-alignment: map', layer.id);
+        return [];
+    }
+    const translated = tryTranslate(rotate, 'icon-rotate', layer.id, coverage);
+    if (translated === null) return [];
+    coverage.emit('marker-transform');
+    // No sign flip. MapBox's icon-rotate turns clockwise from north, and `rotate()` is applied in
+    // the tile's own frame, where y grows DOWNWARD - so a positive angle about +z already reads
+    // clockwise on screen. Negated, every crossing sat at twice its own angle off its street.
+    return [`marker-transform: rotate(${translated});`];
 }
 
 function round(value: number): number {

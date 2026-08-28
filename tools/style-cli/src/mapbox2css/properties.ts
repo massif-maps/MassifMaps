@@ -109,7 +109,6 @@ export const KNOWN_GAPS: Record<string, string> = {
     'icon-optional': 'no CartoCSS equivalent',
     'icon-padding': 'collision padding has no CartoCSS equivalent',
     'icon-keep-upright': 'no CartoCSS equivalent',
-    'icon-rotate': 'no CartoCSS equivalent',
     'icon-text-fit': 'no CartoCSS equivalent',
     'icon-text-fit-padding': 'no CartoCSS equivalent',
     'icon-halo-blur': 'no CartoCSS equivalent',

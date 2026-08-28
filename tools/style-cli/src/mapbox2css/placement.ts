@@ -42,6 +42,7 @@ export const HANDLED_ELSEWHERE = new Set([
     'text-rotation-alignment',
     'text-pitch-alignment',
     'icon-image',
+    'icon-rotate',
     'icon-size',
     'icon-color',
     'icon-opacity',

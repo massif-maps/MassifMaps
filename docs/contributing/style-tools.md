@@ -708,6 +708,30 @@ at the label's own size, which is what stops a repeat of the same name being dra
 tiles cut the same road (`TextSymbolizer`, next section); writing 4 px there disabled the floor. An
 explicit `text-padding` still wins.
 
+## A zoom ramp holds past its last stop
+
+MapBox's `interpolate` clamps outside its stop range; cglib's `fcurve`, which
+`InterpolateExpression` evaluates through, **extrapolates**. So Standard's POI collision padding —
+`["interpolate", ["linear"], ["zoom"], 16, 6, 17, 4]` — reached **-0.36 px at z19** and the culler
+stopped thinning anything. Every ramp read past its last stop was wrong the same way, line widths
+and opacities included.
+
+`InterpolateExpression::evaluate` now clamps its input to the first and last key, when both are
+constants (a computed key cannot be clamped and still extrapolates). That is a **CartoCSS-wide**
+change, not a converter one: a hand-written `linear()` holds past its stops too, which is the only
+reading a zoom ramp ever had.
+
+## `sizerank` hides an icon, and its plate with it
+
+Standard drives `icon-opacity` from `sizerank` — from z17 a POI with `sizerank < 13` shows its
+**name alone**, no icon. `ShieldSymbolizer` faded the glyph and kept the disc behind it, so every
+prominent POI drew as a bare coloured dot beside its name ("Forum des Halles" blue, the Jardin
+Nelson Mandela green). The plate is the icon's background, so `shield-icon-opacity` now scales it
+and its border.
+
+Still missing on that path: `marker`, MapBox's generic pin, is not a disc with a glyph on it, so
+the split leaves it out and the ~150 POIs that name it draw their label with no icon at all.
+
 ## What actually has to be split into attachments
 
 Only what names a **resource**: `icon-image` (one file) and `text-font` (one loaded face, resolved

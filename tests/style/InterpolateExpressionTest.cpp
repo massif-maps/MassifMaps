@@ -84,4 +84,24 @@ void testInterpolateExpression() {
         TEST_CHECK(std::fabs(mvt::ValueConverter<float>::convert(linear.evaluate(5.0f, context)) - 50.0f) < 1.0e-3f,
             "base 1 leaves the input alone");
     }
+
+    // 5. Outside its keys a ramp HOLDS, both ways. cglib's fcurve extrapolates, so Standard's POI
+    //    minimum-distance (16, 6) -> (17, 4) reached -0.36 at z19 and the culler thinned nothing.
+    {
+        mvt::InterpolateExpression gap(Method::LINEAR, value(0.0),
+            { value(16.0), value(6.0), value(17.0), value(4.0) });
+        auto at = [&](float t) { return mvt::ValueConverter<float>::convert(gap.evaluate(t, context)); };
+
+        TEST_CHECK(std::fabs(at(16.5f) - 5.0f) < 1.0e-3f, "inside the span it still interpolates");
+        TEST_CHECK(std::fabs(at(19.18f) - 4.0f) < 1.0e-3f, "past the last key it holds that key's value");
+        TEST_CHECK(std::fabs(at(12.0f) - 6.0f) < 1.0e-3f, "and below the first key, the first one");
+    }
+
+    // ...and an exponential ramp clamps on the same keys, before its input is remapped.
+    {
+        mvt::InterpolateExpression width(Method::EXPONENTIAL, value(0.0),
+            { value(12.0), value(0.5), value(18.0), value(20.0) }, 1.5f);
+        TEST_CHECK(std::fabs(mvt::ValueConverter<float>::convert(width.evaluate(22.0f, context)) - 20.0f) < 1.0e-3f,
+            "an exponential ramp holds past its last key too");
+    }
 }

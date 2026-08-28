@@ -1019,7 +1019,7 @@ namespace massif {
             if (_buildingOrder == 0) {
                 tileRenderer->renderGeometry(false, true);
             }
-            if (_labelOrder == 0) {
+            if (_labelOrder >= 0 && drawsBillboardLabelsHere(0)) {
                 tileRenderer->renderLabels(false, true);
             }
         }
@@ -1066,7 +1066,7 @@ namespace massif {
                 tileRenderer->renderGeometry(false, true, isInline3DEnabled());
             }
             VT_STAT_SPLIT(pass3DGeometryNs, passClock);
-            if (_labelOrder == 1) {
+            if (_labelOrder >= 0 && drawsBillboardLabelsHere(1)) {
                 tileRenderer->renderLabels(false, true);
             }
             VT_STAT_SPLIT(pass3DLabels3DNs, passClock);

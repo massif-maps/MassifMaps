@@ -12,6 +12,7 @@
 #include "graphics/ViewState.h"
 #include "renderers/utils/GLResource.h"
 
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <memory>
@@ -215,6 +216,12 @@ namespace massif {
         // debug.massif.inline3d 0 sends the 3D extrusions back through the per-layer 3D overlay
         // instead of drawing them inline in the main framebuffer. Read once (Android only).
         static bool isInline3DEnabled();
+        // Is `pass` (0 = the layer's own, 1 = the last one) where the BILLBOARD labels belong?
+        // A billboard stands out of the map and has to follow the extrusions, which default to the
+        // last pass while the labels default to their layer's - drawn at the label order alone,
+        // every billboard of a layer was painted over by that layer's own buildings.
+        // Flat labels keep the label order: they lie on the ground and a building over one is right.
+        bool drawsBillboardLabelsHere(int pass) const { return std::max(_labelOrder, _buildingOrder) == pass; }
         void updateLabelOcclusionTest(const std::shared_ptr<vt::GLTileRenderer>& tileRenderer, const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions);
 
         static constexpr int SURFACE_RESET_DELAY = 500; // minimum interval (ms) between elevation-driven tile surface rebuilds

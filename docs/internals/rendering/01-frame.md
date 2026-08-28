@@ -80,6 +80,22 @@ Each layer's `onDrawFrame` in stack order, 2D pass first, then the 3D pass (`onD
 billboards. For a vector tile layer this reaches `TileRenderer::onDrawFrame` →
 `vt::GLTileRenderer` ([03-vt-renderer.md](03-vt-renderer.md)).
 
+Which pass a vector layer's own content lands in is two independent settings, `LabelRenderOrder`
+and `BuildingRenderOrder` (`LAYER` = the 2D pass, `LAST` = the 3D one), and they do **not** default
+to the same pass: labels to `LAYER`, buildings to `LAST`. Inside one pass the order is
+2D geometry → flat labels → extrusions → billboard labels, which is the order those four want.
+
+A **billboard label follows the later of the two** (`TileRenderer::drawsBillboardLabelsHere`).
+It stands out of the map, so with the default pair — labels at `LAYER`, buildings at `LAST` — its
+own layer's extrusions were drawn a whole pass after it and painted over every one: POI names cut
+mid-word by a roof, and the icon beside them gone entirely. A flat label keeps the label order; it
+lies on the ground and a building over it is correct.
+
+The pass split is the one place where a layer's content leaves its own place in the stack, and this
+puts one more thing in the later pass: a lower layer's billboards now draw over a higher layer's 2D
+geometry, as its extrusions already did. An app that wants everything strictly inside the layer
+sets `BuildingRenderOrder` to `LAYER` as well — the rule then puts both back in the 2D pass.
+
 ## What causes a frame
 
 The renderer is **not** a free-running loop. A frame is drawn when something calls

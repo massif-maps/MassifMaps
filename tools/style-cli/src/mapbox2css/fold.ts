@@ -302,6 +302,16 @@ function simplify(expr: Json[]): Json {
         case 'round':
         case 'sqrt': return arithmetic(head, args) ?? unchanged;
 
+        // `random(lo, hi, seed)` scatters a value per feature and CartoCSS has no seed to do it
+        // with, so it folds to the MIDDLE of its range - one green for every tree instead of a
+        // spread around one. The bounds are what carry the intent; the scatter is texture.
+        case 'random': {
+            const lo = constantOf(args[0] as Json);
+            const hi = constantOf(args[1] as Json);
+            if (typeof lo?.value !== 'number' || typeof hi?.value !== 'number') return unchanged;
+            return (lo.value + hi.value) / 2;
+        }
+
         case 'to-number': {
             const value = constantOf(args[0] as Json);
             if (!value) return unchanged;

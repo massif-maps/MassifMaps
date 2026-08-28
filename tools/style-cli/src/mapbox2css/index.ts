@@ -208,6 +208,14 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
             mapBlock.push(...buildingMapSettings(layer, buildingSettingsSeen, coverage));
         }
 
+        // The only 3D model worth standing in for is a TREE: Standard draws the whole `tree`
+        // source-layer as models from z15, and dropping it left every park a bare green slab.
+        // A building or a wind turbine has no such reduction, so those are still dropped.
+        if (layer.type === 'model' && layer['source-layer'] !== 'tree') {
+            coverage.drop(`layer type "model"`, 'no 3D models, and no 2D stand-in for this one', layer.id);
+            return;
+        }
+
         const symbolizer = LAYER_SYMBOLIZER[layer.type];
         if (!symbolizer) {
             coverage.drop(`layer type "${layer.type}"`, 'unsupported layer type', layer.id);
@@ -478,7 +486,8 @@ const BUILDING_MAP_DEFAULTS: Record<string, string> = {
     'building-vertical-gradient': '0.3',
     'building-ao-intensity': '0',              // gl-js: ambient-occlusion-intensity 0
     'building-ao-ground-radius': '3',          // gl-js: ambient-occlusion-ground-radius 3
-    'building-ao-ground-attenuation': '0.69',  // gl-js: ambient-occlusion-ground-attenuation 0.69
+    // NOT gl-js's 0.69: that number lives in a different formula. See groundAttenuation.
+    'building-ao-ground-attenuation': '1.75',
     'building-edge-radius': '0',               // gl-js: edge-radius 0
     'building-rounded-roof': '1',              // gl-js: rounded-roof true
 };
@@ -492,6 +501,29 @@ const BUILDING_MAP_SETTINGS: Record<string, string> = {
     'fill-extrusion-rounded-roof': 'building-rounded-roof',
 };
 
+/**
+ * MapBox's ground-attenuation is not the SDK's, and the two run in opposite directions.
+ *
+ * gl-js takes 0..1 and documents it as "lower values give a more crisp look" (default 0.69). The
+ * SDK's is the EXPONENT k of `(1 - d)^k` over the normalized distance from the wall
+ * (`polygon3dGroundFsh`), so a HIGHER value is the crisp one and its own default is 1.75. Carried
+ * verbatim, MapBox's 0.69 landed as a very low exponent: the band spread to the full radius and
+ * lost its contrast, which is exactly "too large, and less accentuated".
+ *
+ * The map is `k = 1.75 * 0.69 / a`: monotone, the right way round, and it puts each renderer's own
+ * default on the other's. It is a fit between two curves, not a conversion - a value far from 0.69
+ * only keeps the direction, not the profile.
+ */
+function groundAttenuation(value: Json, layerId: string, coverage: Coverage): string | null {
+    if (typeof value !== 'number' || !(value > 0)) {
+        coverage.approximate(`"${layerId}" drives ambient-occlusion-ground-attenuation with an ` +
+            'expression; the SDK\'s is an exponent in a different formula and only a constant can ' +
+            'be mapped onto it, so the default is kept');
+        return null;
+    }
+    return String(Math.round((1.75 * 0.69 / value) * 100) / 100);
+}
+
 function buildingMapSettings(layer: MapboxLayer, seen: Set<string>, coverage: Coverage): string[] {
     const out: string[] = [];
     for (const [from, to] of Object.entries(BUILDING_MAP_SETTINGS)) {
@@ -499,7 +531,9 @@ function buildingMapSettings(layer: MapboxLayer, seen: Set<string>, coverage: Co
         // dropped Standard's 0.4 bevel silently.
         const value = layer.paint?.[from] ?? layer.layout?.[from];
         if (value === undefined || seen.has(to)) continue;
-        const translated = typeof value === 'boolean'
+        const translated = to === 'building-ao-ground-attenuation'
+            ? groundAttenuation(value, layer.id, coverage)
+            : typeof value === 'boolean'
             ? (value ? '1' : '0')
             : tryTranslate(value, from, layer.id, coverage);
         if (translated === null) continue;
@@ -624,11 +658,13 @@ function layerDeclarations(
     // beside the text-* ones rather than replacing them - unless the icon is a road shield, whose
     // sprite is picked per feature and is drawn as a plate behind the text instead.
     const isShield = layer.type === 'symbol' && isShieldLayer(layer);
-    const iconDeclarations = layer.type !== 'symbol'
-        ? []
-        : isShield
-            ? plateDeclarations(layer, coverage)
-            : markerDeclarations(layer, coverage, options);
+    const iconDeclarations = layer.type === 'model'
+        ? canopyDeclarations(layer, coverage)
+        : layer.type !== 'symbol'
+            ? []
+            : isShield
+                ? plateDeclarations(layer, coverage)
+                : markerDeclarations(layer, coverage, options);
 
     if (symbolizer === 'text') {
         out.push(`text-placement: '${resolvePlacement(layer, 'text')}';`);
@@ -1882,6 +1918,49 @@ function markerDeclarations(layer: MapboxLayer, coverage: Coverage, options: Con
         coverage.emit('marker-clip');
     }
     out.push(...markerRotation(layer, coverage));
+    return out;
+}
+
+/**
+ * A tree, drawn as its canopy.
+ *
+ * Standard draws the `tree` source-layer as 3D models from z15 and there is nothing to port; a
+ * filled dot in the greenspace colour is what is left, and it is what the parks were missing.
+ *
+ * The size is a GROUND size, a crown about 3 m across, so the dots keep their spacing as the
+ * map zooms: base-2 between two stops five levels apart is exactly the doubling curve. The SDK's
+ * zoom counts 256 unscaled-DPI units per tile, so one unit at mapbox z15 is 17.8 m and the two
+ * stops follow from that. `marker-width` is a width, so these are diameters. A real crown is
+ * wider, but a flat disc reads heavier than the textured canopy MapBox draws and 8 m of it
+ * filled the parks in.
+ *
+ * The outline is the canopy colour darkened by 18 points of lightness, which is what separates one
+ * tree from the next where they touch; a marker's own default line is near-black and drew every
+ * tree as an outlined ring instead.
+ *
+ * `allow-overlap` with `clip` ON is deliberate and the one place the two are not emitted together
+ * (see markerDeclarations): a tile carries hundreds of trees, and pushing those through the label
+ * culler would cost far more than the half-tree an occasional tile edge cuts.
+ */
+function canopyDeclarations(layer: MapboxLayer, coverage: Coverage): string[] {
+    const out = [
+        'marker-width: exponential(2, ([view::zoom] - 1), (15, 2), (20, 64));',
+        'marker-allow-overlap: true;',
+        'marker-clip: true;',
+    ];
+    coverage.emit('marker-width');
+    coverage.emit('marker-allow-overlap');
+    coverage.emit('marker-clip');
+
+    const color = layer.paint?.['model-color'];
+    const translated = color === undefined ? null : tryTranslate(color, 'model-color', layer.id, coverage);
+    if (translated === null) {
+        out.push('marker-line-width: 0;');
+    } else {
+        out.push(`marker-line-color: darken(${translated}, 0.18);`, 'marker-line-width: 1;');
+        coverage.emit('marker-line-color');
+    }
+    coverage.emit('marker-line-width');
     return out;
 }
 

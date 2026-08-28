@@ -342,3 +342,47 @@ test('a recolourable sprite keeps its NAME, since the SDK cannot tint one per fe
     assert.ok(!coverage.dropped.has('icon-image') || !/data-driven/.test(
         coverage.dropped.get('icon-image')?.reason ?? ''), 'the name is no longer data-driven');
 });
+
+test('a tree becomes a canopy dot, and the random scatter its middle', () => {
+    // Standard draws the `tree` source-layer as 3D models from z15. Dropped as "unsupported layer
+    // type", every park came out a bare green slab. There is no model to port, so the canopy is
+    // what is left.
+    const trees = {
+        id: 'trees', type: 'model', source: 'composite', 'source-layer': 'tree', minzoom: 15,
+        layout: { 'model-id': 'oak1-lod4' },
+        paint: {
+            'model-color': 'hsl(120, 50%, 70%)',
+            'model-opacity': ['interpolate', ['linear'], ['zoom'], 15, 0, 16, 1],
+            'model-rotation': [0, 0, 90],
+        },
+    };
+    const { mss: out, coverage } = convert({ layers: [trees] }, TABLE, { variables: false });
+
+    assert.match(out, /#tree\[zoom >= 16\]/, 'the layer is kept, one level up for the 256 px tiles');
+    assert.match(out, /marker-fill: hsl\(120, 50%, 70%\);/, 'the model colour is the canopy');
+    assert.match(out, /marker-line-color: darken\(hsl\(120, 50%, 70%\), 0.18\);/,
+        'and a darker ring separates two');
+    assert.match(out, /marker-allow-overlap: true;/);
+    // NOT emitted with allow-overlap here, unlike a symbol layer: hundreds of trees per tile must
+    // not go through the label culler.
+    assert.match(out, /marker-clip: true;/);
+    assert.ok(coverage.report().includes('a canopy dot has no orientation'));
+
+    // Every other model layer has no 2D reduction and is still dropped.
+    const turbine = { ...trees, id: 'wind', 'source-layer': 'wind_turbine' };
+    const dropped = convert({ layers: [turbine] }, TABLE, { variables: false });
+    assert.equal(dropped.mss.includes('#wind_turbine'), false);
+    assert.ok(dropped.coverage.report().includes('no 2D stand-in for this one'));
+});
+
+test('a per-feature random folds to the middle of its range', () => {
+    // Standard tints each tree with `hsl(random(...), 50, random(...))` around the greenspace
+    // colour. CartoCSS has no seed to scatter with, so the bounds are what carries the intent.
+    assert.equal(fold(['random', ['config', 'lo'], 140, ['id']], { lo: 100 }, {}), 120);
+    // ...so the colour around it folds to one the style can state.
+    assert.equal(fold(['hsl', ['random', ['config', 'lo'], 140, ['id']], 50, 70], { lo: 100 }, {}),
+        'hsl(120, 50%, 70%)');
+    // Only where both bounds are constant; anything else is left for the caller to report.
+    assert.deepEqual(fold(['random', ['config', 'lo'], ['get', 'hi'], ['id']], { lo: 100 }, {}),
+        ['random', 100, ['get', 'hi'], ['id']]);
+});

@@ -13,6 +13,9 @@ export const LAYER_SYMBOLIZER: Record<string, string> = {
     'fill-extrusion': 'building',
     raster: 'raster',
     circle: 'marker',
+    // Only the TREE source-layer, as a canopy dot - see canopyDeclarations. Every other model
+    // layer is dropped in index.ts before it reaches this table.
+    model: 'marker',
 };
 
 export const PROPERTY_MAP: Record<string, Record<string, string>> = {
@@ -73,6 +76,11 @@ export const PROPERTY_MAP: Record<string, Record<string, string>> = {
     background: {
         'background-color': 'background-color',
     },
+    model: {
+        'model-color': 'marker-fill',
+        'model-opacity': 'marker-fill-opacity',
+        // The rest of the model is the model: see KNOWN_GAPS.
+    },
 };
 
 /**
@@ -131,4 +139,16 @@ export const KNOWN_GAPS: Record<string, string> = {
     'raster-saturation': 'no CartoCSS equivalent',
     'raster-contrast': 'no CartoCSS equivalent',
     'raster-fade-duration': 'no CartoCSS equivalent',
+    // A tree is drawn as a canopy dot, so everything that describes the MODEL goes.
+    'model-id': 'a tree is drawn as a canopy dot, not a 3D model',
+    'model-rotation': 'a canopy dot has no orientation',
+    'model-scale': 'the canopy is sized from the zoom, not per model',
+    'model-color-mix-intensity': 'there is no model colour to mix the tint into',
+    'model-cutoff-fade-range': 'no near-plane model fade',
+    'model-emissive-strength': 'no CartoCSS equivalent',
+    'model-roughness': 'no CartoCSS equivalent',
+    'model-cast-shadows': 'no CartoCSS equivalent',
+    'model-translation': 'no CartoCSS equivalent',
+    'model-ambient-occlusion-intensity': 'no CartoCSS equivalent',
+    'model-height-based-emissive-strength-multiplier': 'no CartoCSS equivalent',
 };

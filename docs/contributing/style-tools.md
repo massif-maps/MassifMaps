@@ -722,6 +722,38 @@ property of the SOURCE, not of the style, so the converter cannot emit it.
 The bench's readout prints `z=<sdk> (mb <sdk-1>)` and `wasm/mbref.html` prints `z=<mb> (sdk <mb+1>)`,
 so a side-by-side is not read a level off.
 
+## A tree is a canopy dot
+
+Standard draws the whole `tree` source-layer as 3D models from z15, and a dropped `model` layer left
+every park a bare green slab. There is no model to port, so the canopy is what is left: a filled
+marker in the layer's own `model-color`, ringed by that colour darkened 18 points so two touching
+trees still read as two.
+
+- **The size is a ground size.** `exponential(2, …, (15, 2), (20, 64))` — base 2 across five levels
+  is the doubling curve, so the dots keep their spacing as the map zooms. A real crown is wider, but
+  a flat disc reads heavier than MapBox's textured canopy.
+- **`allow-overlap` with `clip` ON**, the one place the two are not emitted together
+  ([above](#a-marker-that-overlaps-is-still-a-label-marker-clip)): a tile carries hundreds of trees
+  and the label culler must not see them.
+- **`random(lo, hi, seed)` folds to the middle of its range.** Standard tints each tree from
+  `hsl(random(…), 50, random(…))` around the greenspace colour; CartoCSS has no seed, so the bounds
+  are what carries the intent and every tree gets the one green.
+- The tiles must carry it: `tree` is in **`mapbox.mapbox-models-v1`**, not in `mapbox-streets-v8`,
+  so the bench needs the composite tileset in `--es vectorUrl` or the layer is simply empty.
+
+Every other `model` layer — buildings, wind turbines — has no such reduction and is still dropped.
+
+## MapBox's ground-attenuation is not the SDK's
+
+`fill-extrusion-ambient-occlusion-ground-attenuation` is 0..1 in gl-js, "lower is crisper", default
+0.69. The SDK's `building-ao-ground-attenuation` is the **exponent** of `(1 - d)^k` over the distance
+from the wall, so a higher value is the crisp one and its own default is 1.75. Carried verbatim,
+0.69 landed as a very low exponent: the band spread to the full radius and lost its contrast.
+
+A stated value is now mapped `k = 1.75 × 0.69 / a`, which puts each renderer's default on the
+other's; where the style states nothing — Standard's `3d-building` does not — the SDK's own 1.75 is
+written instead of gl-js's number.
+
 ## A zoom ramp holds past its last stop
 
 MapBox's `interpolate` clamps outside its stop range; cglib's `fcurve`, which

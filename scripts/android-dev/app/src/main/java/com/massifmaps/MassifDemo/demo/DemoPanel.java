@@ -422,7 +422,19 @@ public final class DemoPanel {
                 refreshStatus(demo);
             }
         });
+        // A converted Mapbox Standard writes one project per light preset over a shared
+        // style.mss, so this is a re-compile of the style, not an option apply.
+        choice(context, "light", LIGHT_PRESETS, indexOf(LIGHT_PRESETS, DemoConfig.LIGHT_PRESET), new IntSetting() {
+            public void set(int index) {
+                DemoConfig.LIGHT_PRESET = LIGHT_PRESETS[index];
+                demo.rebuildBaseLayer();
+                refreshStatus(demo);
+            }
+        });
     }
+
+    /** The projects a converted Mapbox Standard writes; "" lets the package pick its first. */
+    private static final String[] LIGHT_PRESETS = { "", "day", "dawn", "dusk", "night" };
 
     /**
      * The shield test style (StyleSource.POI): a font icon on every POI and the name on whichever

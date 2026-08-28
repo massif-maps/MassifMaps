@@ -600,6 +600,29 @@ function buildingLightSettings(lights: Json, seen: Set<string>, coverage: Covera
         out.push(`${name}: ${intensity};`);
         coverage.emit(name);
     }
+
+    // WHERE the sun is, not just how strong. MapBox states it per preset - day is `[180, 20]`,
+    // 20 degrees off the zenith - and without it the app's own sun lit the buildings: at the
+    // demo's default the roofs came out at 86% of their colour where the browser draws them at
+    // ~100%, which reads as "the building colour is wrong" and is not.
+    const direction = ((): number[] | null => {
+        const folded = fold(lights);
+        if (!Array.isArray(folded)) return null;
+        const light = folded.find((l) => !!l && typeof l === 'object'
+            && (l as Record<string, Json>).type === 'directional') as Record<string, Json> | undefined;
+        const value = (light?.properties as Record<string, Json> | undefined)?.direction;
+        const list = Array.isArray(value) && value[0] === 'literal' ? value[1] as Json : value as Json;
+        return Array.isArray(list) && list.length === 2 && list.every((v) => typeof v === 'number')
+            ? list as number[] : null;
+    })();
+    if (direction && !seen.has('sun-azimuth')) {
+        // MapBox's pair is [azimuthal, polar]: the azimuth runs clockwise from north, as the SDK's
+        // does, and the polar angle is measured from straight UP, so the altitude is its complement.
+        seen.add('sun-azimuth');
+        out.push(`sun-azimuth: ${round(direction[0])};`, `sun-altitude: ${round(90 - direction[1])};`);
+        coverage.emit('sun-azimuth');
+        coverage.emit('sun-altitude');
+    }
     // gl-js clamps a wall's shading to `mix(0.7, 0.98, 1 - lightIntensity)`
     // (fill_extrusion.vertex.glsl), so the floor RISES as the directional light weakens: at
     // Standard's 0.2 it is 0.92, not the 0.7 the constant alone suggests. The SDK's wall factor is

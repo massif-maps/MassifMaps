@@ -432,3 +432,22 @@ test('the flat and the 3D building layers are two states of one parameter', () =
     // An upper bound on the flat one, or both drew at `buildings: 2`.
     assert.ok(!/::_3d_building[^\n]*'param::buildings'<2/.test(out));
 });
+
+test('the directional light says WHERE the sun is, not only how strong', () => {
+    // Standard states it per preset - day is [180, 20] - and without it the app's own sun lit the
+    // buildings: at the bench's default the roofs came out at 86% of their colour where gl-js
+    // draws them at ~100%, which reads as "the building colour is wrong" and is not.
+    const style = {
+        lights: [
+            { id: 'ambient', type: 'ambient', properties: { intensity: 0.8 } },
+            { id: 'directional', type: 'directional', properties: { direction: ['literal', [180, 20]], intensity: 0.2 } },
+        ],
+        layers: [{ id: '3d-building', type: 'fill-extrusion', 'source-layer': 'building', minzoom: 15,
+            paint: { 'fill-extrusion-height': ['get', 'height'], 'fill-extrusion-color': '#eee' } }],
+    };
+    const out = convert(style, TABLE, { variables: false }).mss;
+    assert.match(out, /sun-azimuth: 180;/, 'the azimuth runs clockwise from north in both');
+    // MapBox's polar angle is measured from straight UP, so the altitude is its complement.
+    assert.match(out, /sun-altitude: 70;/);
+    assert.match(out, /building-ambient: 0.8;/);
+});

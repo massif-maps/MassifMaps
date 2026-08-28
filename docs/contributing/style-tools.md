@@ -805,6 +805,21 @@ trees still read as two.
 
 Every other `model` layer — buildings, wind turbines — has no such reduction and is still dropped.
 
+## Where the sun is, not just how strong
+
+The `lights` block carries a **direction** as well as an intensity — Standard's day preset is
+`[180, 20]` — and only the intensities were read. The app's own sun lit the buildings instead: at
+the bench's default the roofs measured **86%** of their colour where gl-js draws them at ~100%,
+which reads as "the building colour is wrong" and is not. The colours themselves are exact —
+`hsl(30, 53%, 93%)` on both sides.
+
+`direction` is `[azimuthal, polar]`: the azimuth runs clockwise from north, as `sun-azimuth` does,
+and the polar angle is measured from straight up, so `sun-altitude` is its complement.
+
+**Known limit:** the Map block is written from the default config, and these two are not hoisted
+into the per-preset palettes, so switching `lightPreset` to night keeps the day sun. Standard's dawn
+is `[120, 50]`, so this is visible.
+
 ## MapBox's ground-attenuation is not the SDK's
 
 `fill-extrusion-ambient-occlusion-ground-attenuation` is 0..1 in gl-js, "lower is crisper", default

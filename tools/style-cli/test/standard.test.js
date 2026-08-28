@@ -414,3 +414,21 @@ test('a per-feature random folds to the middle of its range', () => {
     assert.deepEqual(fold(['random', ['config', 'lo'], ['get', 'hi'], ['id']], { lo: 100 }, {}),
         ['random', 100, ['get', 'hi'], ['id']]);
 });
+
+test('the flat and the 3D building layers are two states of one parameter', () => {
+    // Standard draws footprints and extrusions as two layers over the same source, each gated on
+    // `show3dBuildings`/`show3dObjects`. Folded with the default config - 3D on - the flat pair
+    // resolved to `visibility: none` and was dropped, so `buildings: 1` left no buildings at all.
+    const gate = (on) => ['case', ['all', ['config', 'show3dBuildings'], ['config', 'show3dObjects']],
+        on ? 'visible' : 'none', on ? 'none' : 'visible'];
+    const flat = { id: '2d-building', type: 'fill-extrusion', 'source-layer': 'building', minzoom: 15,
+        layout: { visibility: gate(false) }, paint: { 'fill-extrusion-height': 0.05, 'fill-extrusion-color': '#ddd' } };
+    const solid = { id: '3d-building', type: 'fill-extrusion', 'source-layer': 'building', minzoom: 15,
+        layout: { visibility: gate(true) }, paint: { 'fill-extrusion-height': ['get', 'height'], 'fill-extrusion-color': '#ccc' } };
+    const out = convert({ layers: [flat, solid] }, TABLE, { variables: false }).mss;
+
+    assert.match(out, /#building\[zoom >= 16\]\['param::buildings'>0\]\['param::buildings'<2\][^\n]*::_2d_building \{/);
+    assert.match(out, /#building\[zoom >= 16\]\['param::buildings'>1\][^\n]*::_3d_building \{/);
+    // An upper bound on the flat one, or both drew at `buildings: 2`.
+    assert.ok(!/::_3d_building[^\n]*'param::buildings'<2/.test(out));
+});

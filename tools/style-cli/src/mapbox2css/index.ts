@@ -184,7 +184,20 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
     const scene = brightness === null ? {} : { brightness };
     // Always, even for a style with no config of its own: the viewport terms fold here too, and a
     // filter left testing the pitch is untranslatable, which drops the whole LAYER.
-    const layers = (style.layers ?? []).map((layer) => foldLayer(layer, values, scene));
+    // Which side of MapBox's 3D switch each layer is on, read BEFORE the fold: folded with the
+    // default config the flat pair resolves to `visibility: none` and is dropped (buildings3DGate).
+    const buildings3D = new Map<string, 'flat' | '3d'>();
+    for (const layer of style.layers ?? []) {
+        const gate = buildings3DGate(layer);
+        if (gate) buildings3D.set(layer.id, gate);
+    }
+    const layers = (style.layers ?? []).map((layer) => {
+        const folded = foldLayer(layer, values, scene);
+        if (!buildings3D.has(layer.id)) return folded;
+        // The `buildings` parameter carries the switch now, so the visibility must not.
+        const { visibility, ...layout } = folded.layout ?? {};
+        return { ...folded, layout } as MapboxLayer;
+    });
 
     const mapBlock: string[] = [];
     // Kept as selector + declarations rather than joined text: the palette pass rewrites the
@@ -325,7 +338,7 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
                         'only the major/minor split survives, the base interval is not in the style',
                     ));
             }
-            const buildings = buildingPredicate(symbolizer, sourceLayer);
+            const buildings = buildingPredicate(symbolizer, sourceLayer, buildings3D.get(layer.id) === 'flat');
             if (buildings) usesBuildings = true;
             const predicates = [
                 ...zoomPredicates(layer.minzoom, layer.maxzoom),
@@ -630,9 +643,39 @@ const BUILDINGS_3D = 2;
 /** A source layer of footprints, whatever the schema calls it. */
 const BUILDING_LAYER = /building/i;
 
-function buildingPredicate(symbolizer: string, sourceLayer: string): string | null {
+function buildingPredicate(symbolizer: string, sourceLayer: string, flat: boolean): string | null {
+    // The FLAT variant is the one MapBox draws when 3D is off, so it is the middle state and has
+    // to be shut off above it too - without the upper bound both variants drew at `buildings: 2`.
+    if (flat) return `['param::${BUILDINGS_PARAM}'>0]['param::${BUILDINGS_PARAM}'<2]`;
     if (symbolizer === 'building') return `['param::${BUILDINGS_PARAM}'>1]`;
     return BUILDING_LAYER.test(sourceLayer) ? `['param::${BUILDINGS_PARAM}'>0]` : null;
+}
+
+/**
+ * Which side of MapBox's 3D switch a layer is on, from its `visibility` alone.
+ *
+ * Standard draws footprints and extrusions as two layers over the same source, each gated on
+ * `["case", ["all", ["config", "show3dBuildings"], ["config", "show3dObjects"]], …]`. Folded with
+ * the default config - 3D on - the flat pair resolved to `"none"` and was dropped outright, so
+ * `buildings: 1` left the map with no buildings at all rather than with their footprints.
+ *
+ * Null for anything whose visibility does not turn on that switch: it is then a plain
+ * visibility and folding it is right.
+ */
+function buildings3DGate(layer: MapboxLayer): 'flat' | '3d' | null {
+    const visibility = layer.layout?.visibility;
+    if (!Array.isArray(visibility) || visibility[0] !== 'case' || visibility.length !== 4) return null;
+    const names = new Set<string>();
+    const walk = (node: Json): void => {
+        if (!Array.isArray(node)) return;
+        if (node[0] === 'config' && typeof node[1] === 'string') names.add(node[1]);
+        node.forEach((item) => walk(item as Json));
+    };
+    walk(visibility[1] as Json);
+    if (!names.has('show3dBuildings') && !names.has('show3dObjects')) return null;
+    if (visibility[2] === 'visible' && visibility[3] === 'none') return '3d';
+    if (visibility[2] === 'none' && visibility[3] === 'visible') return 'flat';
+    return null;
 }
 
 function backgroundProperties(layer: MapboxLayer, coverage: Coverage): string[] {

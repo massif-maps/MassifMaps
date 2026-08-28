@@ -554,6 +554,23 @@ against the VIEWPORT is reported instead; the SDK has no screen-space rotation f
 own frame where y grows *downward*, so a positive angle already reads clockwise. Negated, every
 crossing sat at twice its own angle off its street — which looked plausible enough to ship.
 
+## A marker that overlaps is still a label: `marker-clip`
+
+`MarkersSymbolizer` defaults `clip` to `allow-overlap`, and the two paths it selects between are not
+variations of one another: a clipped marker is tile **geometry**, drawn under the stencil tile mask
+like a road fill, while an unclipped one is a **label**. The mask is what keeps an over-zoomed
+source tile from painting outside the target tile it was handed to, so a glyph whose quad overhangs
+the tile edge loses that half — permanently, since the edge is fixed in the world.
+
+That is how Standard's oneway arrows drew: the arrow whose anchor sat 11 cm from the z16 boundary on
+Rue du Pont Neuf (lon 2.34492 / lat 48.86112, z20.18, tilt 90) lost the head that overhung north, at
+every zoom, and reordering the layer changed nothing because the cover comes from the *mask*, not
+from a layer above.
+
+So `marker-clip: false` is emitted with every `marker-allow-overlap`. A MapBox symbol is a symbol
+whatever its collision setting; only the SDK's default couples the two. Markers that do not state
+overlap already took the label path.
+
 ## Which labels a building may hide
 
 `text-occlusion-opacity` and `icon-occlusion-opacity` are carried, and only where the source

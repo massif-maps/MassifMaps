@@ -256,6 +256,22 @@ test('an icon-overlap alone never builds a fileless marker', () => {
     assert.match(out, /text-name: \[name\];/);
 });
 
+test('an overlapping marker stays a label, so a tile edge cannot cut it in half', () => {
+    // MarkersSymbolizer defaults `clip` to allow-overlap, and a clipped marker is tile GEOMETRY,
+    // stencil-masked to its own tile: the oneway arrow on the z16 boundary at Rue du Pont Neuf
+    // lost the half overhanging north. A MapBox symbol is a label whatever its collision setting.
+    const sprites = new Map([['default', {
+        index: { arrow: { x: 0, y: 0, width: 8, height: 8, pixelRatio: 1, sdf: false } },
+        image: { width: 8, height: 8, data: Buffer.alloc(8 * 8 * 4, 200) },
+    }]]);
+    const arrow = { id: 'oneway', type: 'symbol', 'source-layer': 'road',
+        layout: { 'icon-image': 'arrow', 'symbol-placement': 'line', 'icon-allow-overlap': true } };
+    const out = convert({ layers: [arrow] }, TABLE,
+        { ...NO_PALETTE, sprites: { sheets: sprites, outDir: '/tmp/massif-style-test' } }).mss;
+    assert.match(out, /marker-allow-overlap: true;/);
+    assert.match(out, /marker-clip: false;/);
+});
+
 test('a shield whose text cannot be translated draws nothing, not an empty box', () => {
     const { mss: out, coverage } = convert({ layers: [symbol(
         { 'text-field': ['slice', ['get', 'ref'], 3], 'icon-image': PLATE_IMAGE }, { 'icon-color': '#1a73e8' })] }, TABLE, NO_PALETTE);

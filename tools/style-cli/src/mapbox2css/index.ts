@@ -1875,6 +1875,11 @@ function markerDeclarations(layer: MapboxLayer, coverage: Coverage, options: Con
     if (layer.layout?.['icon-allow-overlap'] === true || overlap !== undefined) {
         out.push(`marker-allow-overlap: ${layer.layout?.['icon-allow-overlap'] === true || overlap === 'always'};`);
         coverage.emit('marker-allow-overlap');
+        // `marker-clip` defaults to allow-overlap in MarkersSymbolizer, and a clipped marker is
+        // tile GEOMETRY, stencil-masked to its tile: a oneway arrow sitting on a tile edge lost the
+        // half that overhangs. A MapBox symbol is a label whatever its collision setting.
+        out.push('marker-clip: false;');
+        coverage.emit('marker-clip');
     }
     out.push(...markerRotation(layer, coverage));
     return out;

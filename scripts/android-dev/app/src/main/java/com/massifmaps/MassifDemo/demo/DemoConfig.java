@@ -393,6 +393,10 @@ public final class DemoConfig {
     public static int SUN_DAY = (int) DemoAstro.nowUtc()[2];
     public static float SUN_AZIMUTH = 355f;
     public static float SUN_ALTITUDE = 9f;
+    /** Whether the demo's own sun beats one the style states. Off, so a converted MapBox style
+     *  lights as its source does; on, the sliders and --es sunAzimuth/sunAltitude take over.
+     *  '--es appSun true'. */
+    public static boolean APP_SUN = false;
     public static float SUN_INTENSITY = 1.0f;
     public static float AMBIENT_INTENSITY = 1.0f;
     /** Tint of everything in shadow. White = neutral; a cool blue reads as sky-lit at dusk. */
@@ -1276,6 +1280,7 @@ public final class DemoConfig {
         SUN_DAY = DemoCfg.cfgInt("sunDay", SUN_DAY);
         SUN_AZIMUTH = DemoCfg.cfgFloat("sunAzimuth", SUN_AZIMUTH);
         SUN_ALTITUDE = DemoCfg.cfgFloat("sunAltitude", SUN_ALTITUDE);
+        APP_SUN = DemoCfg.cfgBool("appSun", APP_SUN);
         SUN_INTENSITY = DemoCfg.cfgFloat("sunIntensity", SUN_INTENSITY);
         AMBIENT_INTENSITY = DemoCfg.cfgFloat("ambient", AMBIENT_INTENSITY);
         AMBIENT_COLOR_ARGB = DemoCfg.cfgColorInt("ambientColor", AMBIENT_COLOR_ARGB);

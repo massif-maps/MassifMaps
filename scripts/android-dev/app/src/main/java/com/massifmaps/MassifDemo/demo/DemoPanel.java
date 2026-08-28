@@ -768,6 +768,11 @@ public final class DemoPanel {
 
     private static void buildSunSection(Context context, final DemoMap demo) {
         header(context, "SUN");
+        // A style may state its own sun - a converted MapBox style states one per light preset -
+        // and by default that wins, so the sliders below do nothing until this is ticked.
+        check(context, "app sun overrides style", DemoConfig.APP_SUN, new BoolSetting() {
+            public void set(boolean value) { DemoConfig.APP_SUN = value; demo.lightOptions.setSunOverridingStyle(value); }
+        });
         check(context, "terrain lighting", DemoConfig.TERRAIN_LIGHTING, new BoolSetting() {
             public void set(boolean value) { DemoConfig.TERRAIN_LIGHTING = value; demo.lightOptions.setTerrainLightingEnabled(value); }
         });

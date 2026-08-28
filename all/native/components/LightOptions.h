@@ -132,6 +132,24 @@ namespace massif {
         void setAmbientColor(const Color& color);
 
         /**
+         * Returns whether this sun overrides the one a style states.
+         * @return True if the application's sun wins over the style's. The default is false.
+         */
+        bool isSunOverridingStyle() const;
+        /**
+         * Sets whether this sun overrides the one a style states.
+         *
+         * A style may state its own sun - a converted MapBox style does, one direction per light
+         * preset - and by default that is what lights the map, so it looks as its source does with
+         * no application code at all. An application that moves the sun itself, a day/night cycle
+         * being the usual reason, sets this and its own azimuth and altitude win instead.
+         *
+         * Only the DIRECTION is affected. Intensities and colours merge as before.
+         * @param overriding True to let this object's sun win over the style's.
+         */
+        void setSunOverridingStyle(bool overriding);
+
+        /**
          * Returns whether the sun lights the 3D terrain surface.
          * @return True if terrain surface lighting is enabled. The default is false.
          */
@@ -294,6 +312,7 @@ namespace massif {
         std::atomic<float> _sunIntensity;
         std::atomic<float> _ambientIntensity;
         std::atomic<int> _ambientColorARGB;
+        std::atomic<bool> _sunOverridesStyle;
         std::atomic<bool> _terrainLightingEnabled;
         std::atomic<float> _shadowStrength;
         std::atomic<int> _shadowMapSize;

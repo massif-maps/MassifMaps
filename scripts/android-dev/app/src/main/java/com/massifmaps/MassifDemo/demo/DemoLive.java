@@ -41,7 +41,7 @@ public final class DemoLive extends BroadcastReceiver {
         "viewDistance", "viewDistanceMeters", "coarsening", "stitch", "textOcclusion", "lodFactor", "lodGrazing"
     };
     private static final String[] LIGHT_KEYS = {
-        "daycycle", "sunHour", "sunAzimuth", "sunAltitude", "shadow", "shadowSoftness",
+        "daycycle", "sunHour", "sunAzimuth", "sunAltitude", "appSun", "shadow", "shadowSoftness",
         "shadowDistance", "shadowCascades", "shadowNormalOffset", "terrainLight", "ambient",
         "ambientColor", "sunColor", "sunIntensity"
     };

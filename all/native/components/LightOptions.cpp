@@ -16,6 +16,7 @@ namespace massif {
         // nothing changes for a map that does not ask for it.
         _ambientIntensity(1.0f),
         _ambientColorARGB(Color(255, 255, 255, 255).getARGB()),
+        _sunOverridesStyle(false),
         _terrainLightingEnabled(false),
         _shadowStrength(0.3f),
         _shadowMapSize(1024),
@@ -134,6 +135,16 @@ namespace massif {
     void LightOptions::setAmbientColor(const Color& color) {
         if (_ambientColorARGB.exchange(color.getARGB()) != color.getARGB()) {
             notifyOptionChanged("AmbientColor");
+        }
+    }
+
+    bool LightOptions::isSunOverridingStyle() const {
+        return _sunOverridesStyle.load();
+    }
+
+    void LightOptions::setSunOverridingStyle(bool overriding) {
+        if (_sunOverridesStyle.exchange(overriding) != overriding) {
+            notifyOptionChanged("SunOverridingStyle");
         }
     }
 

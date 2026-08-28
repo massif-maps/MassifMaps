@@ -1508,6 +1508,7 @@ public class DemoMap {
             lightOptions.setSunAzimuth(DemoConfig.SUN_AZIMUTH);
             lightOptions.setSunAltitude(DemoConfig.SUN_ALTITUDE);
         }
+        lightOptions.setSunOverridingStyle(DemoConfig.APP_SUN);
         lightOptions.setSunIntensity(DemoConfig.SUN_INTENSITY);
         lightOptions.setAmbientIntensity(DemoConfig.AMBIENT_INTENSITY);
         lightOptions.setAmbientColor(new Color(DemoConfig.AMBIENT_COLOR_ARGB));

@@ -86,8 +86,11 @@ namespace massif {
             lighting.shadowCasterMargin = lightOptions->getShadowCasterMargin();
         }
         // The sun direction is derived from two properties, so it is rebuilt whenever the style
-        // overrides either of them - the other one then comes from the options.
-        if (env.sunAzimuth || env.sunAltitude) {
+        // overrides either of them - the other one then comes from the options. Unless the app
+        // asked to keep its own: a day/night cycle has to be able to move the sun on a style that
+        // states one, and a converted MapBox style states one per light preset.
+        bool appSun = lightOptions && lightOptions->isSunOverridingStyle();
+        if ((env.sunAzimuth || env.sunAltitude) && !appSun) {
             double azimuth = (env.sunAzimuth ? *env.sunAzimuth : (lightOptions ? lightOptions->getSunAzimuth() : 315.0f)) * Const::DEG_TO_RAD;
             double altitude = (env.sunAltitude ? *env.sunAltitude : (lightOptions ? lightOptions->getSunAltitude() : 45.0f)) * Const::DEG_TO_RAD;
             double cosAltitude = std::cos(altitude);

@@ -722,6 +722,20 @@ property of the SOURCE, not of the style, so the converter cannot emit it.
 The bench's readout prints `z=<sdk> (mb <sdk-1>)` and `wasm/mbref.html` prints `z=<mb> (sdk <mb+1>)`,
 so a side-by-side is not read a level off.
 
+## A dash is a multiple of the line width
+
+MapBox's `line-dasharray` lengths are scaled by `line-width`; CartoCSS's are pixels, and CartoCSS
+takes ONE pattern where MapBox takes a ramp. Two rules follow from that:
+
+- **The pattern is the LAST stop that actually dashes.** MapTiler's disputed border ramps from a
+  solid `[1, 0]`, so the base is not the answer; Standard's steps go `[0.2, 0.2]` at z17 then
+  `[0.1, 0.1]` at z19, and between two dashing stops the last one has the widest line under it.
+  A pattern with no gap at all writes nothing — `[1, 0]` scaled by a width was a 430 px "dash",
+  which is a 430 px bitmap rasterized to draw an unbroken line.
+- **The width is read AT that stop's zoom**, not averaged over the ramp. Standard's steps ramp to
+  80 px by z22, so the mean is 43 px — a width nothing on screen ever has — and the 0.1 dash came
+  out at 4.3 px where gl-js draws 1.5. The stairs drew as coarse bands instead of fine treads.
+
 ## The light, not the colours: how a preset gets dark
 
 Standard's night preset uses the **same authored colours as day** — `colorLand` is

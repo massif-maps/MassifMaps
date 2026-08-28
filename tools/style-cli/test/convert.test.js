@@ -98,20 +98,38 @@ test('the generated CartoCSS compiles with massif-style', (t) => {
     assert.match(xml, /LineSymbolizer/);
 });
 
-test('a dash ramped over zoom still dashes, at the stop that actually dashes', () => {
+test('a dash ramped over zoom still dashes, at the LAST stop that dashes', () => {
     // CartoCSS takes ONE dash pattern. MapTiler ramps its footway dash with `step`, and taking
     // nothing left every path drawn solid; its disputed border ramps FROM a solid `[1, 0]`, so the
-    // base is not the answer either.
+    // base is not the answer either. Between two stops that both dash, the last one is the one
+    // whose line is widest - and a dash is a multiple of that width.
     const line = (dash) => ({ id: 'l', type: 'line', 'source-layer': 'pathway',
         paint: { 'line-dasharray': dash, 'line-width': 2 } });
     const mss = (dash) => convert({ layers: [line(dash)] }, table, NO_PALETTE).mss;
 
     assert.match(mss(['step', ['zoom'], ['literal', [1, 1]], 22, ['literal', [1, 1.5]]]),
-        /line-dasharray: 2,2;/);
-    assert.match(mss({ stops: [[14, [0.5, 0.5]], [18, [0.3, 0.1]]] }), /line-dasharray: 1,1;/);
+        /line-dasharray: 2,3;/);
+    assert.match(mss({ stops: [[14, [0.5, 0.5]], [18, [0.3, 0.1]]] }), /line-dasharray: 0.6,0.2;/);
     // [1, 0] has no gap - it IS a solid line - so the pattern below it is the one to draw.
     assert.match(mss(['step', ['zoom'], ['literal', [1, 0]], 5, ['literal', [3, 2, 0.1, 2]]]),
         /line-dasharray: 6,4,0.2,4;/);
+    // ...and a ramp that only ever states a solid pattern writes no dash at all, rather than a
+    // "dash" as long as the line width scaled it.
+    assert.ok(!mss(['step', ['zoom'], ['literal', [1, 0]], 5, ['literal', [1, 0]]]).includes('dasharray'));
+});
+
+test('a dash is scaled by the line width AT the zoom its stop starts', () => {
+    // MapBox dash lengths are multiples of the line width, and Standard's steps ramp that width to
+    // 80 px by z22: the mean of the stops is 43, so a 0.1 dash came out at 4.3 px where gl-js
+    // draws 1.5 - coarse bands instead of fine treads.
+    const steps = { id: 'l', type: 'line', 'source-layer': 'road', paint: {
+        'line-width': ['interpolate', ['exponential', 1.5], ['zoom'], 12, 0, 18, 6, 22, 80],
+        'line-dasharray': ['step', ['zoom'], ['literal', [1, 0]], 17, ['literal', [0.2, 0.2]],
+            19, ['literal', [0.1, 0.1]]],
+    } };
+    const out = convert({ layers: [steps] }, table, NO_PALETTE).mss;
+    // width(19) = 15.1 for that ramp, and 0.1 of it is what gl-js draws there.
+    assert.match(out, /line-dasharray: 1.51,1.51;/);
 });
 
 test('a fill pattern names a FILE, not the sheet-qualified sprite', () => {

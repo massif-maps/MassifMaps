@@ -862,9 +862,16 @@ function layerDeclarations(
 
         // MapBox dash lengths are multiples of the line width; CartoCSS's are pixels.
         if (name === 'line-dasharray') {
-            const pattern = dashPattern(value as Json);
-            if (pattern === null) {
+            const dash = dashPattern(value as Json);
+            if (dash === null) {
                 coverage.drop(name, 'no literal dash pattern to take', layer.id);
+                continue;
+            }
+            const { pattern, zoom } = dash;
+            // `[1, 0]` is MapBox's spelling of SOLID. Scaled by a line width it became a 430 px
+            // "dash", which is a 430 px bitmap rasterized to draw an unbroken line.
+            if (!pattern.some((v, i) => i % 2 === 1 && v > 0)) {
+                coverage.drop(name, 'the pattern has no gap, so the line is solid', layer.id);
                 continue;
             }
             if (pattern !== value) {
@@ -875,12 +882,13 @@ function layerDeclarations(
                     'CartoCSS takes one dash pattern, not a ramp');
             }
             const width = layer.paint?.['line-width'];
-            const scale = representativeScale(width, 1);
+            // At the zoom the pattern is CHOSEN at, not the mean of the width's stops: Standard's
+            // steps ramp to 80 px by z22, so the mean is 43 and its 0.2 dash came out at 8.6 px
+            // where gl-js draws under 2 - coarse bands instead of fine treads.
+            const scale = (zoom === null ? null : rampAt(width, zoom)) ?? representativeScale(width, 1);
             if (typeof width !== 'number') {
-                // Taking 1 here made a lift's `[0.05, 4]` a 0.05-PIXEL dash, which is nothing at
-                // all; the widths it ramps between are 3 and 4, so their mean is far closer.
-                coverage.approximate(`line-dasharray scaled by ${round(scale)}, the mean of a ` +
-                    'zoom-driven line-width: CartoCSS takes one dash pattern, not a ramp');
+                coverage.approximate(`line-dasharray scaled by ${round(scale)}, a zoom-driven ` +
+                    'line-width read at one zoom: CartoCSS takes one dash pattern, not a ramp');
             }
             out.push(`line-dasharray: ${pattern.map((v) => round(v * scale)).join(',')};`);
             coverage.emit('line-dasharray');
@@ -1190,15 +1198,77 @@ function dashPatterns(value: Json): number[][] {
 
 /**
  * The one dash pattern to draw, out of whatever MapBox states - CartoCSS takes a pattern, not a
- * ramp. The first one that actually dashes: MapTiler's disputed border ramps from `[1, 0]` (a
- * SOLID line, below z5) to `[3, 2, 0.1, 2]`, and taking the base there would draw it solid at every
- * zoom anyone looks at. Null when no literal pattern is reachable at all.
+ * ramp. The LAST one that actually dashes, with the zoom it starts at: MapTiler's disputed border
+ * ramps from `[1, 0]` (a SOLID line, below z5) to `[3, 2, 0.1, 2]`, and taking the base there would
+ * draw it solid at every zoom anyone looks at. Where several stops dash - Standard's steps go
+ * `[0.2, 0.2]` at z17 then `[0.1, 0.1]` at z19 - the last is the one whose line is widest, and a
+ * dash is a multiple of that width, so it is also the one that lands closest across the range.
+ * Null when no literal pattern is reachable at all.
  */
-function dashPattern(value: Json): number[] | null {
+function dashPattern(value: Json): { pattern: number[]; zoom: number | null } | null {
     const patterns = dashPatterns(value);
     if (!patterns.length) return null;
     const dashes = (p: number[]) => p.length > 1 && p.some((v, i) => i % 2 === 1 && v > 0);
-    return patterns.find(dashes) ?? patterns[0];
+    const dashing = patterns.filter(dashes);
+    const pattern = dashing.length ? dashing[dashing.length - 1] : patterns[0];
+    return { pattern, zoom: stopZoomOf(value, pattern) };
+}
+
+/** The zoom a `step` ramp switches to this pattern at, so the line width can be read there. */
+function stopZoomOf(value: Json, pattern: number[]): number | null {
+    if (!Array.isArray(value) || value[0] !== 'step') return null;
+    const same = (node: Json) => Array.isArray(node) && node.length === pattern.length
+        && node.every((v, i) => v === pattern[i]);
+    for (let i = 3; i + 1 < value.length; i += 2) {
+        const stop = value[i + 1] as Json;
+        const list = Array.isArray(stop) && stop[0] === 'literal' ? stop[1] as Json : stop;
+        if (same(list) && typeof value[i] === 'number') return value[i] as number;
+    }
+    return null;
+}
+
+/**
+ * A zoom ramp read at ONE zoom, or null when the shape is not one this can evaluate.
+ *
+ * The mean of a ramp's stops is no use for a dash: Standard's steps run `12, 0, 18, 6, 22, 80`, so
+ * the mean is 43 px - a width nothing on screen ever has - and MapBox's `0.2` dash came out at
+ * 8.6 px where gl-js draws well under 2.
+ */
+function rampAt(expr: Json | undefined, zoom: number): number | null {
+    if (typeof expr === 'number') return expr;
+    if (!Array.isArray(expr)) return null;
+    if (expr[0] === 'step') {
+        let value = expr[2] as Json;
+        for (let i = 3; i + 1 < expr.length; i += 2) {
+            if (typeof expr[i] !== 'number' || (expr[i] as number) > zoom) break;
+            value = expr[i + 1] as Json;
+        }
+        return typeof value === 'number' ? value : null;
+    }
+    if (expr[0] !== 'interpolate') return null;
+    const kind = expr[1] as Json;
+    const base = Array.isArray(kind) && kind[0] === 'exponential' && typeof kind[1] === 'number'
+        ? kind[1] as number : 1;
+    const stops: Array<[number, number]> = [];
+    for (let i = 3; i + 1 < expr.length; i += 2) {
+        if (typeof expr[i] === 'number' && typeof expr[i + 1] === 'number') {
+            stops.push([expr[i] as number, expr[i + 1] as number]);
+        }
+    }
+    if (!stops.length) return null;
+    if (zoom <= stops[0][0]) return stops[0][1];
+    if (zoom >= stops[stops.length - 1][0]) return stops[stops.length - 1][1];
+    for (let i = 1; i < stops.length; i++) {
+        const [z0, v0] = stops[i - 1];
+        const [z1, v1] = stops[i];
+        if (zoom > z1) continue;
+        const span = z1 - z0;
+        const t = base === 1 || span === 0
+            ? (zoom - z0) / span
+            : (Math.pow(base, zoom - z0) - 1) / (Math.pow(base, span) - 1);
+        return v0 + t * (v1 - v0);
+    }
+    return null;
 }
 
 /** The layout properties variableAnchorDeclarations owns, so the generic loop leaves them alone. */
@@ -1963,7 +2033,7 @@ function markerDeclarations(layer: MapboxLayer, coverage: Coverage, options: Con
  */
 function canopyDeclarations(layer: MapboxLayer, coverage: Coverage): string[] {
     const out = [
-        'marker-width: exponential(2, ([view::zoom] - 1), (15, 2), (20, 64));',
+        'marker-width: exponential(2, ([view::zoom] - 1), (15, 2), (20, 24));',
         'marker-allow-overlap: true;',
         'marker-clip: true;',
     ];

@@ -68,7 +68,7 @@ test('the Map background names itself, whatever else shares its colour', () => {
 test('a colour inside a zoom ramp is hoisted, the ramp is not', () => {
     // The ramp is the style's animation and means nothing in a palette; its stops are the palette.
     const { mss, variables } = run([line('Contour', { stops: [[8, '#aa4400'], [16, '#663300']] })]);
-    assert.match(mss, /line-color: linear\(\[view::zoom\], \(8, @contour_stroke\), \(16, @contour_stroke_2\)\);/);
+    assert.match(mss, /line-color: linear\(\(\[view::zoom\] - 1\), \(8, @contour_stroke\), \(16, @contour_stroke_2\)\);/);
     assert.match(variables, /@contour_stroke: #aa4400;/);
 });
 

@@ -23,12 +23,14 @@ function run() {
 
 test('background becomes the Map block', () => {
     const { mss } = run();
-    assert.match(mss, /Map \{\n\s+background-color: #f0f0f0;\n\}/);
+    // The Map block also carries the building lighting settings when a style has buildings.
+    assert.match(mss, /Map \{\n(?:\s+[a-z-]+: [^\n]*\n)*\}/);
+    assert.match(mss, /\n\s+background-color: #f0f0f0;\n/);
 });
 
 test('each MapBox layer becomes an attachment on its source-layer', () => {
     const { mss } = run();
-    assert.match(mss, /#transportation\[zoom >= 6\]\[zoom < 20\].*::road_casing \{/);
+    assert.match(mss, /#transportation\[zoom >= 7\]\[zoom < 21\].*::road_casing \{/);
     // road-fill's colour and opacity read a field, and both stay one expression - the decoder
     // evaluates them per feature, so there is nothing to split. See split.test.js.
     assert.match(mss, /#transportation.*::road_fill \{/);
@@ -48,16 +50,16 @@ test('the project layer list is the draw order REVERSED', () => {
 
 test('zoom-driven paint stays a per-frame function', () => {
     const { mss } = run();
-    assert.match(mss, /line-width: linear\(\[view::zoom\], \(6, 1\), \(16, 12\)\);/);
-    assert.match(mss, /line-width: step\(\[view::zoom\], \(0, 1\), \(10, 2\), \(14, 6\)\);/);
+    assert.match(mss, /line-width: linear\(\(\[view::zoom\] - 1\), \(6, 1\), \(16, 12\)\);/);
+    assert.match(mss, /line-width: step\(\(\[view::zoom\] - 1\), \(0, 1\), \(10, 2\), \(14, 6\)\);/);
 });
 
 test('unsupported layers and properties are dropped AND counted', () => {
     const { coverage } = run();
     assert.ok(coverage.dropped.has('layer type "heatmap"'), 'heatmap layer reported');
-    assert.equal(coverage.dropped.get('line-blur').reason, 'no CartoCSS equivalent');
+    assert.ok(!coverage.dropped.has('line-blur'), 'line-blur is carried now, not dropped');
     assert.equal(coverage.dropped.get('fill-antialias').reason, 'always on in the vt renderer');
-    assert.ok(coverage.droppedCount >= 4);
+    assert.ok(coverage.droppedCount >= 3);
     assert.match(coverage.report(), /^Coverage: \d+\/\d+ properties \(\d+%\)/);
 });
 
@@ -65,7 +67,9 @@ test('every emitted property exists in the generated allowlist', () => {
     const { mss, coverage } = run();
     const allowed = new Set(table.properties.map((p) => p.cartocss));
     for (const property of coverage.emitted.keys()) {
-        if (property === 'background-color') continue; // a Map setting, not a symbolizer property
+        // Map settings, not symbolizer properties: they are declared in CartoCSSMapLoader, so the
+        // generated symbolizer table does not list them.
+        if (property === 'background-color' || property.startsWith('building-')) continue;
         assert.ok(allowed.has(property), `${property} is not a known CartoCSS property`);
     }
     assert.ok(mss.length > 0);

@@ -177,7 +177,7 @@ test('a step over a FIELD becomes ternaries; over zoom it stays a function', () 
         layout: { 'text-field': '{name}', 'text-size': size } });
     const sized = (size) => convert({ layers: [label(size)] }, TABLE, { variables: false }).mss;
     assert.match(sized(['step', ['get', 'sizerank'], 18, 5, 12]), /text-size: \(\(\[sizerank\] >= 5\) \? 12 : 18\);/);
-    assert.match(sized(['step', ['zoom'], 18, 5, 12]), /text-size: step\(\[view::zoom\], \(0, 18\), \(5, 12\)\);/);
+    assert.match(sized(['step', ['zoom'], 18, 5, 12]), /text-size: step\(\(\[view::zoom\] - 1\), \(0, 18\), \(5, 12\)\);/);
 });
 
 test('the viewport terms resolve to a flat, centred view, so their clause folds away', () => {
@@ -231,27 +231,37 @@ test('a style with no buildings declares no such parameter', () => {
     assert.equal(JSON.parse(project).styleparameters, undefined);
 });
 
-test('line-gap-width becomes the two strips it stands for, not one band', () => {
+test('line-gap-width is carried, not split into the two strips it stands for', () => {
     // The gap is NOT DRAWN: `line-gap-width` is the road the casing runs along and `line-width` is
-    // the strip on ONE side. As a single band of gap + 2*width it only looks right where an opaque
-    // fill covers the middle, and 12 of Mapbox Standard's 28 casings have no such cover - its
-    // bridge shadows have no fill at all, so the band painted straight across the road.
+    // the strip on ONE side. The SDK draws that itself now (vt, GAPWIDTH), so one MapBox layer is
+    // one rule. It used to become one rule PER SIDE, each offset half a gap plus half its width -
+    // correct, but 142 rules on Standard against 114, and twice the line geometry.
     const cased = { id: 'road-case', type: 'line', 'source-layer': 'road',
         paint: { 'line-color': '#888', 'line-gap-width': 6, 'line-width': 1.5 } };
     const { mss } = convert({ layers: [cased] }, TABLE, { variables: false });
-    // Each strip is its own rule, its centre half a gap plus half its own width off the line.
-    assert.match(mss, /::road_case_left \{/);
-    assert.match(mss, /::road_case_right \{/);
-    assert.match(mss, /line-offset: \(\(6\) \+ \(1\.5\)\) \/ 2;/);
-    assert.match(mss, /line-offset: \(0 - \(\(\(6\) \+ \(1\.5\)\) \/ 2\)\);/);
-    assert.match(mss, /line-width: 1\.5;/, 'each strip is its own width, not the whole span');
+    assert.match(mss, /line-gap-width: 6;/);
+    assert.match(mss, /line-width: 1\.5;/, 'the width is the strip, not the whole span');
+    assert.ok(!/::road_case_left/.test(mss), 'no longer one rule per side');
+    assert.ok(!/::road_case_right/.test(mss));
+    assert.ok(!/line-offset:/.test(mss), 'and no offset: the shader cuts the middle out');
+});
+
+test('line-blur is carried too, so a soft shadow stays soft', () => {
+    // Standard's bridge shadows are width 10 / blur 10. Dropped, they draw as hard dark bars with
+    // a visible butt cap at each end.
+    const shadow = { id: 'bridge-shadow', type: 'line', 'source-layer': 'road',
+        paint: { 'line-color': '#888', 'line-width': 10, 'line-blur': 10 } };
+    const { mss } = convert({ layers: [shadow] }, TABLE, { variables: false });
+    assert.match(mss, /line-blur: 10;/);
 });
 
 test('the negated offset is 0 - x, which is what the grammar takes', () => {
-    // `-(linear(...))` is a syntax error: there is no unary minus before a parenthesised value.
-    const cased = { id: 'c', type: 'line', 'source-layer': 'road', paint: { 'line-color': '#888',
-        'line-gap-width': ['interpolate', ['linear'], ['zoom'], 12, 3, 18, 12], 'line-width': 1 } };
-    const { mss } = convert({ layers: [cased] }, TABLE, { variables: false });
+    // MapBox offsets a line to the RIGHT of its direction of travel and mapnik to the LEFT, so
+    // every offset is negated - and `-(linear(...))` is a syntax error, there being no unary minus
+    // before a parenthesised value.
+    const offset = { id: 'c', type: 'line', 'source-layer': 'road', paint: { 'line-color': '#888',
+        'line-offset': ['interpolate', ['linear'], ['zoom'], 12, 3, 18, 12], 'line-width': 1 } };
+    const { mss } = convert({ layers: [offset] }, TABLE, { variables: false });
     assert.ok(!/line-offset: -\(/.test(mss));
     assert.match(mss, /line-offset: \(0 - \(/);
 });
@@ -262,7 +272,8 @@ test('a gap and a width that ramp over zoom stay per-frame functions', () => {
         'line-gap-width': ['interpolate', ['linear'], ['zoom'], 12, 3, 18, 12],
         'line-width': ['interpolate', ['linear'], ['zoom'], 14, 0.5, 18, 1] } };
     const { mss } = convert({ layers: [cased] }, TABLE, { variables: false });
-    assert.match(mss, /line-offset: \(\(linear\(\[view::zoom\], \(12, 3\), \(18, 12\)\)\) \+ \(linear\(/);
+    assert.match(mss, /line-gap-width: linear\(\(\[view::zoom\] - 1\), \(12, 3\), \(18, 12\)\);/);
+    assert.match(mss, /line-width: linear\(\(\[view::zoom\] - 1\), \(14, 0\.5\), \(18, 1\)\);/);
 });
 
 /** A style whose lights differ per preset, which is how emissive-strength becomes visible. */
@@ -302,4 +313,32 @@ test('a layer that states no emissive strength is left as authored', () => {
         paint: { 'fill-color': 'hsl(20, 20%, 90%)' } }] };
     const { presets } = convert(plain, TABLE);
     assert.match(presets.get('night'), /@ground_fill: hsl\(20, 20%, 90%\);/);
+});
+
+test('runtime interaction state folds to unset, so the ordinary branch survives', () => {
+    // Nothing is selected or highlighted in the SDK and nothing can become so. Standard guards
+    // 3d-building's colour with `["to-boolean", ["feature-state", "select"]]`; left alone the
+    // whole property was refused, and BuildingSymbolizer's default fill is BLACK - which is
+    // exactly how every building came out.
+    const style = { layers: [{ id: '3d-building', type: 'fill-extrusion', 'source-layer': 'building',
+        paint: {
+            'fill-extrusion-color': ['case',
+                ['to-boolean', ['feature-state', 'select']], '#ff0000',
+                '#cccccc'],
+            'fill-extrusion-height': ['number', ['get', 'height']],
+        } }] };
+    const { mss } = convert(style, TABLE, { variables: false });
+    assert.match(mss, /building-fill: #cccccc;/);
+    assert.ok(!/#ff0000/.test(mss), 'the selected-feature branch is unreachable and goes');
+    assert.match(mss, /building-height: \[height\];/);
+});
+
+test('a recolourable sprite keeps its NAME, since the SDK cannot tint one per feature', () => {
+    // Standard writes `["image", name, { params: … }]`. The params are a runtime tint; the name is
+    // what the SDK can act on. Unwrapped, a zoom-driven oneway arrow becomes a real sprite again.
+    const style = { layers: [{ id: 'road-oneway-arrow', type: 'symbol', 'source-layer': 'road',
+        layout: { 'icon-image': ['image', 'oneway-small', { params: { color: '#fff' } }] } }] };
+    const { coverage } = convert(style, TABLE, { variables: false });
+    assert.ok(!coverage.dropped.has('icon-image') || !/data-driven/.test(
+        coverage.dropped.get('icon-image')?.reason ?? ''), 'the name is no longer data-driven');
 });

@@ -426,6 +426,109 @@ It defaults to `2`, so a converted style keeps drawing what its source drew unti
 otherwise — and an app that cannot afford the 3D pass on a given device turns it off with one
 parameter instead of editing the CartoCSS. A style with no buildings declares nothing.
 
+## A recolourable icon: the glyph is a field, the disc is a plate
+
+Mapbox Standard names its POI and transit icons `["image", <name>, { params: { background,
+background-stroke, icon, icon-stroke } }]` and colours those four slots per feature — the disc by
+the POI's class, the ring and the glyph by the light preset. The sprite sheet cannot carry that: it
+ships **one** flat render per icon, with the icon's own default colours baked in (a grey disc, a
+lighter ring, a black glyph).
+
+Two dead ends came first, both of them visible on a device:
+
+- **Declare it an SDF anyway.** `shield-sdf` makes the renderer read the RED channel as signed
+  distance, so a blue disc reads as *outside* and a white glyph as *inside*: the icons drew
+  inverted, disc gone, and the user reported it as "inversed colors".
+- **Draw the flat render as it comes.** Correct shape, but every POI is the sheet's neutral grey
+  where the browser draws it orange, blue or pink.
+
+What works is splitting the artwork (`extractIconPlate`). The flats are told apart by their distance
+from the transparent surround — the outermost texel row is the ring, everything past it the disc —
+and each becomes a different thing:
+
+| artwork | becomes | takes its colour from |
+|---|---|---|
+| the glyph | a distance field, `shield-file` + `shield-sdf` | `shield-icon-fill` ← the `icon` param |
+| the disc | the shield's icon PLATE | `shield-icon-background-fill` ← `background` |
+| the ring | that plate's border | `shield-icon-background-border-fill` ← `background-stroke` |
+
+Which colour inside the disc is the *glyph* is the part that took two tries, because MapBox composes
+an icon as `icon-stroke` under `icon` and the sheet renders both:
+
+- **Not the one with the most pixels.** An outlined glyph has more outline than fill, so `ⓘ` drew as
+  a white ring with the disc showing through the middle — the "no white in the centre" report.
+- **The one the other ENCLOSES.** Measured as the mean distance from the disc, because the two are
+  parted by an antialiased row and neither actually touches it.
+- And a **blend of the disc and the ring is not a flat at all**: it lies on the segment between
+  them, which is the test. Counted as one, a 32-texel roundel has more antialiasing than glyph.
+
+How much ink a texel holds is then its position along the **disc → ink axis**, not its nearest flat.
+A partly covered texel is a linear blend of the two, so the projection *is* the coverage. Snapping
+to the nearest flat instead cost every thin stroke: a bicycle's spokes never reach the ink colour
+anywhere, each of their texels is a blend, and on a blue roundel that blend is also a blend of the
+disc and the ring — so each read as "not ink" and the wheels drew as a ring of dots.
+
+`icon-stroke` — the outline MapBox draws *under* the glyph — is what the SDK grows from a distance
+field, so it becomes the icon **halo** (`shield-icon-halo-fill` / `-radius`, the radius measured off
+the artwork), not the plate's border: that one is the disc's ring. Standard sets it transparent
+while its POI background is a circle, so it is what a style asking for
+`backgroundPointOfInterestLabels: none` gets — a coloured glyph with a white outline and no disc.
+
+The field is cropped to the disc's own box, so the plate needs no padding and its border lands
+exactly where the ring was. Its radius is measured rather than assumed: a rounded rect of side `S`
+with corner radius `r` covers `S² - (4 - π)r²`, which reads 9 (a circle) off Standard's 20 px POI
+icons and 3 (a roundel) off its 16 px transit ones, without fitting an arc to 40 texels.
+
+**Nothing is baked.** The written PNG is greyscale — R=G=B=distance, alpha 255 — and all three
+colours are ordinary declarations, so they go through the palette pass and a `lightPreset` swaps
+them at runtime over the same files.
+
+Resolution is the other half. A notch one texel wide never reaches full coverage and closes at the
+size the icon is drawn, so the sheet is taken at the **densest variant the provider serves** —
+`@4x` for MapBox, where a POI icon is 80 texels rather than 40 and a fork keeps the gaps between its
+tines. MapTiler stops at `@2x` and the probe just falls through. It costs size: Standard's glyph
+fields go from 0.5 MB to 1.3 MB.
+
+The style's own antialias ramp had to be fixed with it, in the SDK — see
+[labels](../internals/rendering/06-labels.mdx#the-icon-run-has-its-own-antialias-ramp).
+
+**The params need not cover the whole layer.** Standard's transit label recolours seven networks by
+name and lets every other one through to the sheet's artwork, so `paris-metro` keeps its own roundel
+— white disc, blue ring, blue M — where the recoloured ones are blue squares. `shield-sdf` is a
+`BoolProperty` read with an expression context like everything else, so ONE rule says both: the test
+picks the field or the raster for `shield-file`, gates `shield-sdf`, and makes the plate's fill and
+border transparent for the features it does not cover (a plate with neither draws nothing).
+
+Two limits, both reported:
+
+- One rule states one plate geometry, so the radius and border are the median of what that rule's
+  icons measure. A `match` gives its sprite names as labels even when the branch resolves per
+  feature, and those are used in preference to the whole sheet — otherwise the transit rule takes
+  the POI circles' radius.
+- Artwork that is not a disc with something on it is left out of the lookup entirely: a rule that
+  declares `shield-sdf` declares it of *every* file it can name, and a raster cut left in the table
+  is read as a field and drawn as a blob. MapBox's generic pin is the one that costs something — a
+  plate is a rounded rect and cannot be a pin, so a POI with no icon of its own draws its label
+  alone where the browser draws a coloured pin.
+
+## Which labels a building may hide
+
+`text-occlusion-opacity` and `icon-occlusion-opacity` are carried, and only where the source
+**states** them. That is MapBox's own meaning: absent is "occluded by the terrain alone" — the
+SDK's default, and free — while a stated value is "occluded by 3D content too". Standard sets `0`
+on fifteen layers, all of them line and water names plus the road shields at `0.1`, and says
+nothing on `poi-label` or `transit-label`. Converted, its road names go behind a building and its
+POI labels stay drawn, which is the granularity the browser has.
+
+Both land on one CartoCSS property, because the SDK's is a `TextSymbolizer` one and a symbol's
+icon and text are one label: `text-occlusion-opacity`, renamed with the rest of the rule when the
+layer is a shield. `icon-occlusion-opacity` is taken only where the text states none (Standard
+states the pair together), and dropped on an icon-only layer — a marker is not a label.
+
+Defaulting them instead of translating only what is stated would turn the occlusion pass on for
+every label of every converted style; it costs ~0.85 ms a frame and both scopes above it default to
+off. See [labels](../internals/rendering/06-labels.mdx#asking-for-it) for the three scopes.
+
 ## What mapbox2css does not carry
 
 Every skipped property is counted and named — `mapbox2css` prints a coverage report, and `--strict`

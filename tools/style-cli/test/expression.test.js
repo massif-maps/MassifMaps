@@ -13,19 +13,19 @@ test('literals', () => {
 
 test('field and zoom access', () => {
     assert.equal(translateExpression(['get', 'name']), '[name]');
-    assert.equal(translateExpression(['zoom']), '[view::zoom]');
+    assert.equal(translateExpression(['zoom']), '([view::zoom] - 1)');
     assert.equal(translateExpression(['has', 'name']), '([name] != null)');
 });
 
 test('interpolate over zoom becomes a per-frame linear()', () => {
     assert.equal(
         translateExpression(['interpolate', ['linear'], ['zoom'], 6, 1, 16, 12]),
-        'linear([view::zoom], (6, 1), (16, 12))',
+        'linear(([view::zoom] - 1), (6, 1), (16, 12))',
     );
     // exponential base 1 IS linear, so it is accepted.
     assert.equal(
         translateExpression(['interpolate', ['exponential', 1], ['zoom'], 0, 0, 1, 1]),
-        'linear([view::zoom], (0, 0), (1, 1))',
+        'linear(([view::zoom] - 1), (0, 0), (1, 1))',
     );
 });
 
@@ -37,19 +37,16 @@ test('interpolate over anything but zoom is refused', () => {
 
 });
 
-test('an exponential ramp is resampled, not dropped and not flattened to linear', () => {
-    // CartoCSS has linear and cubic and no base. Dropping the property left the line at its
-    // default width - a MapTiler pathway drew as a fat solid grey line instead of a thin dashed
-    // one - and substituting a plain linear is out by about a third at the midpoint at base 2.
-    const out = translateExpression(['interpolate', ['exponential', 2], ['zoom'], 10, 0, 14, 8]);
-    assert.match(out, /^linear\(\[view::zoom\], /);
-    // Agrees at the stops...
-    assert.ok(out.includes('(10, 0)') && out.includes('(14, 8)'));
-    // ...and the midpoint follows the curve, not the chord: (2^2-1)/(2^4-1) = 0.2 -> 1.6, not 4.
-    assert.ok(out.includes('(12, 1.6)'), out);
-    // base 1 IS linear, so it stays exact with no extra stops.
+test('an exponential ramp is carried as one, not resampled and not flattened to linear', () => {
+    // The SDK interpolates the base itself now (mapnikvt InterpolateExpression, EXPONENTIAL), so
+    // the curve is handed over whole rather than approximated by extra stops. Flattening it to a
+    // plain linear is out by about a third at the midpoint at base 2, and dropping the property
+    // left a MapTiler pathway drawing as a fat solid grey line instead of a thin dashed one.
+    assert.equal(translateExpression(['interpolate', ['exponential', 2], ['zoom'], 10, 0, 14, 8]),
+        'exponential(2, ([view::zoom] - 1), (10, 0), (14, 8))');
+    // base 1 IS linear, so it stays a plain linear with no base to carry.
     assert.equal(translateExpression(['interpolate', ['exponential', 1], ['zoom'], 10, 0, 14, 8]),
-        'linear([view::zoom], (10, 0), (14, 8))');
+        'linear(([view::zoom] - 1), (10, 0), (14, 8))');
 });
 
 test('a slice compared to a literal is a prefix test, which CartoCSS spells as a regex', () => {
@@ -73,7 +70,7 @@ test('a slice compared to a literal is a prefix test, which CartoCSS spells as a
 test('step keeps its stops', () => {
     assert.equal(
         translateExpression(['step', ['zoom'], 1, 10, 2, 14, 6]),
-        'step([view::zoom], (0, 1), (10, 2), (14, 6))',
+        'step(([view::zoom] - 1), (0, 1), (10, 2), (14, 6))',
     );
 });
 
@@ -115,11 +112,11 @@ test('or is ||, but and CANNOT be && - the grammar makes it unparseable', () => 
 test('legacy stop functions become per-frame interpolation', () => {
     assert.equal(
         translateExpression({ stops: [[7, '#d0d0d0'], [11, '#dddddd']] }),
-        'linear([view::zoom], (7, #d0d0d0), (11, #dddddd))',
+        'linear(([view::zoom] - 1), (7, #d0d0d0), (11, #dddddd))',
     );
     assert.equal(
         translateExpression({ type: 'interval', stops: [[5, 1], [9, 2]] }),
-        'step([view::zoom], (5, 1), (9, 2))',
+        'step(([view::zoom] - 1), (5, 1), (9, 2))',
     );
 });
 
@@ -221,7 +218,40 @@ test('the in OPERATOR is not the in FILTER, and a style using it must not be dro
     assert.throws(() => translateExpression(['in', ['get', 'a'], 'substring']));
 });
 
-test('maxzoom is exclusive', () => {
-    assert.deepEqual(zoomPredicates(6, 20), ['[zoom >= 6]', '[zoom < 20]']);
+test('maxzoom is exclusive, and both ends carry the zoom shift', () => {
+    // A MapBox zoom is one level lower than the SDK's - see ZOOM_OFFSET.
+    assert.deepEqual(zoomPredicates(6, 20), ['[zoom >= 7]', '[zoom < 21]']);
     assert.deepEqual(zoomPredicates(undefined, undefined), []);
+});
+
+test('a type assertion carries only its value, and several are a coalesce', () => {
+    // MapBox uses `number`/`string`/`boolean` to prove a type to its own checker. CartoCSS is not
+    // typed, so the assertion means nothing and only the value survives. Refusing them dropped
+    // poi-label's whole FILTER - `["number", ["get", "filterrank"]]` - and with it every POI.
+    assert.equal(translateExpression(['number', ['get', 'filterrank']]), '[filterrank]');
+    assert.equal(translateExpression(['string', ['get', 'name']]), '[name]');
+    assert.equal(translateExpression(['number', ['get', 'a'], ['get', 'b']]), '([a] ?? [b])');
+});
+
+test('arithmetic is variadic, and a lone minus is negation', () => {
+    // `["+", a, b, c]` is a sum, not a malformed pair. poi-label's filter adds three terms.
+    assert.equal(translateExpression(['+', 1, 2, 3]), '(1 + 2 + 3)');
+    assert.equal(translateExpression(['*', ['get', 'a'], 2, 3]), '([a] * 2 * 3)');
+    // No unary minus before a parenthesised value in the grammar.
+    assert.equal(translateExpression(['-', ['get', 'a']]), '(0 - [a])');
+});
+
+test('sqrt goes through pow, there being no sqrt in CartoCSS', () => {
+    assert.equal(translateExpression(['sqrt', ['get', 'a']]), 'pow([a], 0.5)');
+});
+
+test('cubic-bezier is an easing, not CartoCSS cubic, which is a spline', () => {
+    // MapBox's cubic-bezier eases BETWEEN each pair of stops; CartoCSS's `cubic` is a spline
+    // THROUGH all of them and cglib's overshoots. Standard sizes its settlement labels this way,
+    // and taken as `cubic` "Paris" went 38 -> 71 device pixels over one zoom level where the
+    // easing moves 20.0 -> 20.3. Linear is within about a unit and cannot overshoot.
+    const out = translateExpression(
+        ['interpolate', ['cubic-bezier', 0.2, 0, 0.9, 1], ['zoom'], 3, 13, 6, 18, 8, 20, 15, 24]);
+    assert.match(out, /^linear\(/);
+    assert.ok(!out.includes('cubic('), 'never the spline');
 });

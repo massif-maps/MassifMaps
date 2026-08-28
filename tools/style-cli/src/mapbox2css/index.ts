@@ -5,12 +5,12 @@ import { translateFilter, zoomPredicates } from './filter.js';
 import { HANDLED_ELSEWHERE, followsLine, repeatsAlongLine, resolvePlacement } from './placement.js';
 import { KNOWN_GAPS, LAYER_SYMBOLIZER, PROPERTY_MAP, VALUE_MAP } from './properties.js';
 import { PLATE_MAP, asShieldDeclaration, isShieldLayer, plateRadius } from './shield.js';
-import { type ExtractedIcon, type SpriteSet, extractAllIcons, extractIcon } from './sprite.js';
+import { type ExtractedIcon, type IconPlate, type SpriteSet, extractAllIconPlates, extractAllIcons, extractIcon, extractIconPlate } from './sprite.js';
 import { type Schema, dropMissingFieldTests, mapSourceLayer, withMappingFilter } from './schema.js';
 import { collapseBranches, splitLayer } from './split.js';
 import { type HoistBlock, hoistVariables, paletteHeader } from './variables.js';
 import { LIGHT_PRESET, importOnly, presetsOf, resolveConfig, sceneBrightness } from './config.js';
-import { foldConfig, foldLayer } from './fold.js';
+import { ICON_PARAMS, ICON_PARAM_SCOPE, type IconParamScope, RECOLOURABLE_ICON, foldConfig, foldLayer } from './fold.js';
 import { applyLighting, emissiveProperty, lightingFactor } from './emissive.js';
 import type { CartoProperty, Json, MapboxLayer, MapboxStyle, PropertyTable } from './types.js';
 
@@ -22,6 +22,8 @@ export interface ConvertResult {
     variables: string | null;
     /** One more palette per extra `lightPreset`, over the SAME style.mss. Keyed by preset name. */
     presets: Map<string, string>;
+    /** styleparameters a preset restates, merged over the shared project by `extends`. */
+    presetOverrides?: Map<string, Record<string, Json>>;
     /** The preset project.json itself is, when there are others - so all of them have a name. */
     defaultPreset: string | null;
 }
@@ -60,6 +62,34 @@ const TEXT_ANCHOR: Record<string, readonly [string, string]> = {
     'bottom-left': ['left', 'bottom'],
     'bottom-right': ['right', 'bottom'],
 };
+
+/**
+ * One constant out of a value that branches, for the properties where a per-feature answer is not
+ * available: an anchor and an offset are baked into the label's layout when the rule is built.
+ *
+ * The branch taken is the LAST - the highest step key, a case's fallback. That is the detailed end
+ * of the ramp and what most features get: Standard anchors a POI by
+ * `step(sizerank, "center", 5, "top")` and every POI in a Paris tile has sizerank 16.
+ */
+function representativeConstant(value: Json): Json | null {
+    if (value === null || value === undefined) return null;
+    if (typeof value === 'string' || typeof value === 'number') return value;
+    if (!Array.isArray(value)) return null;
+
+    const head = value[0];
+    if (head === 'literal') return (value[1] ?? null) as Json;
+    // `step` and `interpolate` both end on a value; `interpolate` carries a curve and an input
+    // first, which changes nothing about where the last one is.
+    if ((head === 'step' || head === 'interpolate') && value.length >= 4) {
+        return representativeConstant(value[value.length - 1] as Json);
+    }
+    if ((head === 'case' || head === 'match') && value.length >= 4) {
+        return representativeConstant(value[value.length - 1] as Json);
+    }
+    // A plain array of scalars is already the value - an offset pair.
+    if (value.every((v) => typeof v === 'number')) return value as unknown as Json;
+    return null;
+}
 
 /** Attachment names are identifiers in the CartoCSS grammar. */
 function attachmentName(layerId: string): string {
@@ -151,11 +181,21 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
     // The TARGET source layer of every layer that made it through, in style order. Kept separately
     // because --schema renames them, and the interleaving check has to see what was emitted.
     const emitted: string[] = [];
+    // One map has one answer for each building setting; the first layer to state it wins.
+    const buildingSettingsSeen = new Set<string>();
 
     layers.forEach((layer, index) => {
         if (layer.type === 'background') {
             mapBlock.push(...light(layer, backgroundProperties(layer, coverage)));
             return;
+        }
+
+        // A fill-extrusion's LOOK is a Map setting here, not a symbolizer property: the SDK lights
+        // and bevels every building at once. Taken from the layers that draw the BUILDING source
+        // layer only - Standard's indoor walls state their own ambient occlusion and come first,
+        // so reading every extrusion gave the whole map the shading of an indoor floor plan.
+        if (layer.type === 'fill-extrusion' && BUILDING_LAYER.test(layer['source-layer'] ?? '')) {
+            mapBlock.push(...buildingMapSettings(layer, buildingSettingsSeen, coverage));
         }
 
         const symbolizer = LAYER_SYMBOLIZER[layer.type];
@@ -276,7 +316,15 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
         blocks.push({ selector, owner: layer.id, declarations: light(layer, declarations) });
     }
 
-    if (usesBuildings) options.styleParams!.set(BUILDINGS_PARAM, BUILDINGS_3D);
+    if (usesBuildings) {
+        options.styleParams!.set(BUILDINGS_PARAM, BUILDINGS_3D);
+        // Whatever the layers did not state, so a converted style is not left on the SDK's own
+        // (OSM-tuned) building lighting - see BUILDING_MAP_DEFAULTS.
+        if (lights !== undefined) {
+            mapBlock.push(...buildingLightSettings(lights, buildingSettingsSeen, coverage,
+                (node) => foldConfig(node, values)));
+        }
+    }
     // The MEDIAN index, not the first. `road` has 82 layers spanning indices 3 to 130 in Mapbox
     // Standard, and its FIRST is one early tunnel layer - ordering by that sank all 82 beneath
     // landuse, so the landuse polygons painted over every road. The median puts a source-layer
@@ -312,14 +360,26 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
         if (preset === configValues.get(LIGHT_PRESET)) continue;
         presetConfigs.set(preset, new Map(configValues).set(LIGHT_PRESET, preset));
     }
+    // A parameter TABLE is a per-preset value like a palette entry: poi-label's colours are a
+    // per-class table whose entries ramp with the scene brightness. Written into the shared
+    // project they were simply overwritten by whichever preset was emitted last - which is how
+    // every preset ended up drawing its POIs in the NIGHT colours.
+    const presetParams = new Map<string, Map<string, Json>>();
+    presetParams.set('', new Map(options.styleParams!));
+
     const alternates = new Map<string, EmitResult>();
     for (const [preset, values] of presetConfigs) {
+        options.styleParams!.clear();
         const result = emitAll(values, new Coverage());
+        presetParams.set(preset, new Map(options.styleParams!));
         // Only a run that lines up block for block can share the rules; folding is written to
         // guarantee that, and this is the check that it held.
         if (aligns(base, result)) alternates.set(preset, result);
         else coverage.drop(`preset "${preset}"`, 'its layers do not line up with the default preset', preset);
     }
+    // Back to the default preset's table, which is what the shared project carries.
+    options.styleParams!.clear();
+    for (const [name, value] of presetParams.get('') ?? []) options.styleParams!.set(name, value);
 
     let hoisted = withMap(base);
     let palette: string[] = [];
@@ -370,7 +430,137 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
             : { styles, layers: projectLayers },
         null, 2) + '\n';
 
-    return { mss, project, coverage, variables, presets: presetPalettes, defaultPreset };
+    // Only what DIFFERS from the shared table: a preset project extends project.json, and
+    // `extends` merges styleparameters, so an entry it does not restate is inherited.
+    const shared = presetParams.get('') ?? new Map<string, Json>();
+    const presetOverrides = new Map<string, Record<string, Json>>();
+    for (const [preset, params] of presetParams) {
+        if (preset === '') continue;
+        const differing = [...params].filter(([name, value]) => shared.get(name) !== value);
+        if (differing.length > 0) presetOverrides.set(preset, Object.fromEntries(differing.sort()));
+    }
+
+    return { mss, project, coverage, variables, presets: presetPalettes, defaultPreset, presetOverrides };
+}
+
+/**
+ * MapBox states a building's shading per LAYER; the SDK shades every building at once, from the Map
+ * block (`CartoCSSMapLoader`'s float settings). The names line up one for one, so the value is
+ * carried verbatim - a zoom ramp included, since these are FloatFunctionProperty and evaluated per
+ * frame. A boolean becomes 1/0 for the same reason.
+ *
+ * Left out because the SDK has no equivalent: `flood-light-*` (a per-building light source),
+ * `cutoff-fade-range` and `vertical-scale`. `emissive-strength` is approximated into the colour
+ * instead - see emissive.ts.
+ */
+/**
+ * What MapBox itself uses when a layer states nothing. The SDK's own defaults are tuned for the
+ * hand-written OSM style - ambient 0.35, ao-intensity 0.2, ao-attenuation 1.7 - and a converted
+ * MapBox style that inherits them comes out markedly darker than the browser draws it. Stating
+ * MapBox's defaults explicitly is what keeps the two comparable.
+ */
+const BUILDING_MAP_DEFAULTS: Record<string, string> = {
+    // gl-js clamps a wall's shading to a FLOOR of about 0.7 (fill_extrusion.vertex.glsl mixes
+    // 0.7..0.98 by light intensity); the SDK's wall factor is `1 - gradient` at the foot, so 0.3
+    // puts the foot in the same place. Its own default of 0.65 takes it to 0.35 - less than half
+    // the brightness gl-js gives it, which is why our side walls read so much darker.
+    'building-vertical-gradient': '0.3',
+    'building-ao-intensity': '0',              // gl-js: ambient-occlusion-intensity 0
+    'building-ao-ground-radius': '3',          // gl-js: ambient-occlusion-ground-radius 3
+    'building-ao-ground-attenuation': '0.69',  // gl-js: ambient-occlusion-ground-attenuation 0.69
+    'building-edge-radius': '0',               // gl-js: edge-radius 0
+    'building-rounded-roof': '1',              // gl-js: rounded-roof true
+};
+
+const BUILDING_MAP_SETTINGS: Record<string, string> = {
+    'fill-extrusion-vertical-gradient': 'building-vertical-gradient',
+    'fill-extrusion-ambient-occlusion-intensity': 'building-ao-intensity',
+    'fill-extrusion-ambient-occlusion-ground-radius': 'building-ao-ground-radius',
+    'fill-extrusion-ambient-occlusion-ground-attenuation': 'building-ao-ground-attenuation',
+    'fill-extrusion-edge-radius': 'building-edge-radius',
+    'fill-extrusion-rounded-roof': 'building-rounded-roof',
+};
+
+function buildingMapSettings(layer: MapboxLayer, seen: Set<string>, coverage: Coverage): string[] {
+    const out: string[] = [];
+    for (const [from, to] of Object.entries(BUILDING_MAP_SETTINGS)) {
+        // `fill-extrusion-edge-radius` is a LAYOUT property, not a paint one - reading only paint
+        // dropped Standard's 0.4 bevel silently.
+        const value = layer.paint?.[from] ?? layer.layout?.[from];
+        if (value === undefined || seen.has(to)) continue;
+        const translated = typeof value === 'boolean'
+            ? (value ? '1' : '0')
+            : tryTranslate(value, from, layer.id, coverage);
+        if (translated === null) continue;
+        seen.add(to);
+        out.push(`${to}: ${translated};`);
+        coverage.emit(to);
+    }
+    return out;
+}
+
+/**
+ * The building settings a converted MapBox style still needs after its own paint is read: MapBox's
+ * defaults for what it left unstated, and its LIGHTS as the SDK's two building light knobs. The
+ * lights block is MapBox's whole lighting model, and `building-ambient` / `building-light-intensity`
+ * are the same two numbers - the SDK's own 0.35 ambient is what made a white building read grey.
+ */
+function buildingLightSettings(lights: Json, seen: Set<string>, coverage: Coverage,
+        fold: (node: Json) => Json): string[] {
+    const out: string[] = [];
+    // The intensity may be a zoom RAMP, and these are FloatFunctionProperty, so it goes through
+    // whole. Requiring a plain number left Standard's directional light unstated - its 0.2 is a
+    // flat `interpolate(zoom, …)` - and the SDK fell back to 1.0, five times as strong, which is
+    // what made every wall so much darker than the browser draws it.
+    const intensityOf = (type: string): string | null => {
+        const folded = fold(lights);
+        if (!Array.isArray(folded)) return null;
+        const light = folded.find((l) => !!l && typeof l === 'object'
+            && (l as Record<string, Json>).type === type) as Record<string, Json> | undefined;
+        const intensity = (light?.properties as Record<string, Json> | undefined)?.intensity;
+        if (intensity === undefined) return null;
+        if (typeof intensity === 'number') return String(round(intensity));
+        try {
+            return translateExpression(intensity);
+        } catch {
+            return null;
+        }
+    };
+    for (const [type, name] of [['ambient', 'building-ambient'], ['directional', 'building-light-intensity']]) {
+        if (seen.has(name)) continue;
+        const intensity = intensityOf(type);
+        if (intensity === null) continue;
+        seen.add(name);
+        out.push(`${name}: ${intensity};`);
+        coverage.emit(name);
+    }
+    // gl-js clamps a wall's shading to `mix(0.7, 0.98, 1 - lightIntensity)`
+    // (fill_extrusion.vertex.glsl), so the floor RISES as the directional light weakens: at
+    // Standard's 0.2 it is 0.92, not the 0.7 the constant alone suggests. The SDK's wall factor is
+    // `1 - gradient` at the foot, so this is the same floor expressed its way. Measured: with a
+    // flat 0.3 the foot sat at 0.63 of the roof where the browser keeps it near 0.9.
+    const rawDirectional = ((): Json | undefined => {
+        const folded = fold(lights);
+        if (!Array.isArray(folded)) return undefined;
+        const light = folded.find((l) => !!l && typeof l === 'object'
+            && (l as Record<string, Json>).type === 'directional') as Record<string, Json> | undefined;
+        return (light?.properties as Record<string, Json> | undefined)?.intensity;
+    })();
+    // A flat ramp is still one number - representativeConstant takes the branch most features get.
+    const reduced = rawDirectional === undefined ? null : representativeConstant(rawDirectional);
+    const constant = typeof reduced === 'number' ? reduced : null;
+    if (!seen.has('building-vertical-gradient') && constant !== null && Number.isFinite(constant)) {
+        const floor = 0.7 + (1 - Math.min(Math.max(constant, 0), 1)) * 0.28;
+        seen.add('building-vertical-gradient');
+        out.push(`building-vertical-gradient: ${round(1 - floor)};`);
+    }
+
+    for (const [name, value] of Object.entries(BUILDING_MAP_DEFAULTS)) {
+        if (seen.has(name)) continue;
+        seen.add(name);
+        out.push(`${name}: ${value};`);
+    }
+    return out;
 }
 
 /**
@@ -465,10 +655,18 @@ function layerDeclarations(
         // MapBox names one anchor; CartoCSS splits it into a horizontal and a vertical alignment.
         // The senses agree - see the default derivation in TextSymbolizer.cpp, where a text pushed
         // right (dx > 0) defaults to alignment 'left', i.e. the edge nearest the anchor.
-        if (name === 'text-anchor' && typeof value === 'string') {
-            const anchor = TEXT_ANCHOR[value];
+        if (name === 'text-anchor') {
+            const constant = typeof value === 'string' ? value : representativeConstant(value as Json);
+            if (typeof constant !== 'string') {
+                coverage.drop(name, 'anchor branches on something with no constant form', layer.id);
+                continue;
+            }
+            if (constant !== value) {
+                coverage.approximate(`text-anchor on "${layer.id}" branches; took "${constant}"`);
+            }
+            const anchor = TEXT_ANCHOR[constant];
             if (!anchor) {
-                coverage.drop(name, `unknown anchor "${value}"`, layer.id);
+                coverage.drop(name, `unknown anchor "${constant}"`, layer.id);
                 continue;
             }
             out.push(`text-horizontal-alignment: '${anchor[0]}';`, `text-vertical-alignment: '${anchor[1]}';`);
@@ -480,9 +678,19 @@ function layerDeclarations(
         // Everything MapBox measures in ems of the text size. CartoCSS takes pixels, so each one
         // is multiplied by text-size - the expression form included, or a zoom-driven size would
         // silently pin the value to one zoom.
-        if (name === 'text-offset' && Array.isArray(value) && value.length === 2) {
-            const dx = ems(value[0], layer, coverage, name);
-            const dy = ems(value[1], layer, coverage, name);
+        if (name === 'text-offset') {
+            const pair = Array.isArray(value) && value.length === 2 && value.every((v) => typeof v === 'number')
+                ? value as Json[]
+                : representativeConstant(value as Json) as Json[] | null;
+            if (!Array.isArray(pair) || pair.length !== 2) {
+                coverage.drop(name, 'offset branches on something with no constant form', layer.id);
+                continue;
+            }
+            if (pair !== value) {
+                coverage.approximate(`text-offset on "${layer.id}" branches; took [${pair.join(', ')}]`);
+            }
+            const dx = ems(pair[0], layer, coverage, name);
+            const dy = ems(pair[1], layer, coverage, name);
             if (dx === null || dy === null) continue;
             out.push(`text-dx: ${dx};`, `text-dy: ${dy};`);
             coverage.emit('text-dx');
@@ -647,6 +855,31 @@ function layerDeclarations(
             continue;
         }
 
+        // One occlusion opacity per LABEL: it is a TextSymbolizer property here, so a symbol's
+        // icon and its text share it. MapBox states the pair together where it states both
+        // (Standard's natural-point-label sets 0 twice), so the icon's is taken only where the
+        // text states none - and an icon-only layer is a marker, which is not a label.
+        //
+        // Only a STATED value is carried, which is MapBox's own meaning: absent is "occluded by
+        // the terrain alone", the SDK's default, and 0 is "occluded by 3D content too". That is
+        // what makes Standard's road and water names go behind a building while its POI labels
+        // stay drawn - and what stops every label paying for the occlusion pass.
+        if (name === 'icon-occlusion-opacity') {
+            if (layer.paint?.['text-occlusion-opacity'] !== undefined) {
+                coverage.drop(name, 'the label carries one occlusion opacity, taken from text-occlusion-opacity', layer.id);
+                continue;
+            }
+            if (layer.layout?.['text-field'] === undefined) {
+                coverage.drop(name, 'an icon-only layer draws a marker, which is not a label', layer.id);
+                continue;
+            }
+            const translated = tryTranslate(value, name, layer.id, coverage);
+            if (translated === null) continue;
+            out.push(`text-occlusion-opacity: ${translated};`);
+            coverage.emit('text-occlusion-opacity');
+            continue;
+        }
+
         const target = table[name];
         if (!target) {
             coverage.drop(name, KNOWN_GAPS[name] ?? 'not mapped', layer.id);
@@ -737,6 +970,58 @@ function layerDeclarations(
 }
 
 /**
+ * The disc under a recolourable icon, as the shield's icon PLATE.
+ *
+ * MapBox draws these as ONE image whose `params` colour a disc, its ring and the glyph, and the
+ * sheet bakes only the icon's own defaults into its flat render. The glyph is the distance field
+ * above - extractIconPlate cropped it to the disc's own box - so the plate needs no padding and its
+ * border falls exactly where the artwork's ring was. All three colours are style properties here,
+ * so they are evaluated per feature, which is what gets a POI its class colour back.
+ */
+function iconPlateDeclarations(layer: MapboxLayer, icon: ExtractedIcon, coverage: Coverage): string[] {
+    const params = layer.layout?.[ICON_PARAMS] as Record<string, Json> | undefined;
+    if (!icon.plate || !params) return [];
+    const out: string[] = [];
+    // Where the plate covers only some features, its colours are transparent for the others - a
+    // plate with no fill and no border draws nothing (TileLabel::Style::Plate::draws).
+    const scoped = (value: string) => (icon.plateWhen ? `(${icon.plateWhen} ? ${value} : transparent)` : value);
+    const colour = (name: string, target: string, gate = false) => {
+        if (params[name] === undefined) return;
+        const translated = tryTranslate(params[name], `icon-image params.${name}`, layer.id, coverage);
+        if (translated === null) return;
+        out.push(`${target}: ${gate ? scoped(translated) : translated};`);
+        coverage.emit(target);
+    };
+
+    // The glyph, unless the layer states an icon-color of its own - that one is already out.
+    if (layer.paint?.['icon-color'] === undefined) colour('icon', 'shield-icon-fill');
+    colour('background', 'shield-icon-background-fill', true);
+    // Both paddings default to a text plate's, which would grow the disc off its own artwork.
+    out.push(`shield-icon-background-radius: ${round(icon.plate.radius)};`,
+        'shield-icon-background-padding-x: 0;',
+        'shield-icon-background-padding-y: 0;');
+    coverage.emit('shield-icon-background-radius');
+    coverage.emit('shield-icon-background-padding-x');
+    coverage.emit('shield-icon-background-padding-y');
+    if (icon.plate.borderWidth > 0) {
+        out.push(`shield-icon-background-border-width: ${round(icon.plate.borderWidth)};`);
+        coverage.emit('shield-icon-background-border-width');
+        colour('background-stroke', 'shield-icon-background-border-fill', true);
+    }
+    // MapBox's `icon-stroke` is the outline it draws UNDER the glyph, which is exactly what the
+    // SDK grows from a distance field - so it is the icon HALO, not the plate's border (that one is
+    // the disc's ring). Standard sets it transparent while its POI background is a circle, so this
+    // is what a style asking for `backgroundPointOfInterestLabels: none` gets: a coloured glyph
+    // with a white outline and no disc at all.
+    if (params['icon-stroke'] !== undefined && icon.plate.strokeWidth > 0) {
+        colour('icon-stroke', 'shield-icon-halo-fill');
+        out.push(`shield-icon-halo-radius: ${round(icon.plate.strokeWidth)};`);
+        coverage.emit('shield-icon-halo-radius');
+    }
+    return out;
+}
+
+/**
  * A road shield as the plate CartoCSS draws behind a label: the sprite is tinted by icon-color and
  * outlined by its halo, and `text-background-*` is exactly that without needing the image. See
  * shield.ts for what makes a layer one.
@@ -781,8 +1066,17 @@ function shieldImageDeclarations(layer: MapboxLayer, icon: ExtractedIcon, scale:
 
     // A distance field stays crisp at any size and takes its colour from the style, so an SDF
     // sprite goes in as one rather than being resolved to pixels and tinted here.
+    //
+    // Only a sprite the SHEET calls a field. `shield-sdf` makes the renderer read the red channel
+    // as signed distance (GlyphMode::SDF), so a colour bitmap handed to it comes out as whatever
+    // its red channel happened to cross the edge on: Standard's transit icons are a blue disc with
+    // a white glyph, and they drew as the glyph alone with the disc gone - the colours inverted.
     if (icon.sdf) {
-        out.push('shield-sdf: true;');
+        // Per FEATURE where the plate only covers some of them: a distance field for those, the
+        // sheet's own artwork for the rest. `sdf` is a BoolProperty read with an expression
+        // context, so the one rule can say both - which is what keeps Paris's own metro roundel
+        // (white disc, blue ring, blue M) instead of recolouring it as a generic transit square.
+        out.push(`shield-sdf: ${icon.plateWhen ?? 'true'};`);
         coverage.emit('shield-sdf');
         emitTranslated(out, coverage, layer, 'icon-color', 'shield-icon-fill', undefined, false);
         emitTranslated(out, coverage, layer, 'icon-opacity', 'shield-icon-opacity', undefined, false);
@@ -791,6 +1085,13 @@ function shieldImageDeclarations(layer: MapboxLayer, icon: ExtractedIcon, scale:
         // mapbox and now separate here.
         emitTranslated(out, coverage, layer, 'icon-halo-color', 'shield-icon-halo-fill', undefined, false);
         emitTranslated(out, coverage, layer, 'icon-halo-width', 'shield-icon-halo-radius', undefined, false);
+        out.push(...iconPlateDeclarations(layer, icon, coverage));
+    } else if (layer.layout?.[RECOLOURABLE_ICON] === true) {
+        // A recolourable sprite whose artwork is NOT a disc with a glyph on it (extractIconPlate
+        // took it apart where it is): the sheet ships one flat render with the icon's own default
+        // params and nothing here can tint it per feature.
+        coverage.approximate(`"${layer.id}" recolours its icon per feature; drawn with the ` +
+            "sprite sheet's own colours, so a per-class tint is lost");
     }
 
     out.push(...variableAnchorDeclarations(layer, coverage));
@@ -963,27 +1264,44 @@ function representativeScale(size: Json | undefined, fallback = 1): number {
  * subclass has no sprite gets its label without an icon, where MapTiler falls back to the dot.
  */
 function dynamicIconField(image: Json): { fields: string[]; fallback: string | null } | null {
+    // `["image", …]` is unwrapped in fold.ts (the SDK cannot tint a sprite per feature), and the
+    // type assertions around a name carry nothing, so both are seen through here rather than being
+    // matched on. Standard names a POI icon `case(has(maki_beta), coalesce(maki_beta, maki), maki)`.
     const fieldOf = (node: Json): string | null => {
-        if (!Array.isArray(node) || node[0] !== 'image') return null;
-        const arg = node[1];
-        return Array.isArray(arg) && arg[0] === 'get' && typeof arg[1] === 'string' ? arg[1] : null;
+        if (!Array.isArray(node)) return null;
+        if (node[0] === 'image' || node[0] === 'string' || node[0] === 'to-string') {
+            return fieldOf(node[1] as Json);
+        }
+        return node[0] === 'get' && typeof node[1] === 'string' ? node[1] : null;
     };
     const constantOf = (node: Json): string | null => {
         if (Array.isArray(node) && node[0] === 'image' && typeof node[1] === 'string') return node[1];
         return typeof node === 'string' ? node : null;
     };
-    if (Array.isArray(image) && image[0] === 'coalesce') {
-        const fields: string[] = [];
-        let fallback: string | null = null;
-        for (const branch of image.slice(1)) {
-            const field = fieldOf(branch as Json);
-            if (field) fields.push(field);
-            else fallback = constantOf(branch as Json) ?? fallback;
+
+    const fields: string[] = [];
+    let fallback: string | null = null;
+    // Only the VALUE branches name an icon; a condition tests something else entirely.
+    const gather = (node: Json): void => {
+        if (Array.isArray(node) && node[0] === 'coalesce') {
+            node.slice(1).forEach((branch) => gather(branch as Json));
+            return;
         }
-        return fields.length ? { fields, fallback } : null;
-    }
-    const field = fieldOf(image);
-    return field ? { fields: [field], fallback: null } : null;
+        if (Array.isArray(node) && node[0] === 'case' && node.length >= 4) {
+            for (let i = 2; i + 1 < node.length; i += 2) gather(node[i] as Json);
+            gather(node[node.length - 1] as Json);
+            return;
+        }
+        const field = fieldOf(node);
+        if (field !== null) {
+            if (!fields.includes(field)) fields.push(field);
+            return;
+        }
+        fallback = constantOf(node) ?? fallback;
+    };
+
+    gather(image);
+    return fields.length ? { fields, fallback } : null;
 }
 
 
@@ -1006,10 +1324,44 @@ function iconExpression(image: Json, layer: MapboxLayer, coverage: Coverage, opt
     let sample: ExtractedIcon | null = null;
     let tableIndex = 0;
 
+    // A recolourable icon is cut in two - the glyph as a field, the disc as the shield's plate - so
+    // the style's colours reach it per feature (extractIconPlate). Its own parameter table, because
+    // the two halves live under the same NAME and a rule must not pick up the other one's file.
+    const plateMode = layer.layout?.[ICON_PARAMS] !== undefined;
+    const paramPrefix = plateMode ? GLYPH_PARAM_PREFIX : ICON_PARAM_PREFIX;
+    // The params may cover only some of the layer's features (see IconParamScope). The rest keep
+    // the sheet's own artwork, so the rule has to pick per feature between a field and a raster -
+    // which `shield-sdf` allows, being read with an expression context like every other property.
+    const scope = layer.layout?.[ICON_PARAM_SCOPE] as IconParamScope | undefined;
+    const plateWhen = scope
+        ? `(${scope.labels.map((l) => `[${scope.field}] = '${l}'`).join(' || ')})`
+        : null;
+    // What the layer NAMES outright, and what a whole-sheet lookup could reach. Separate because
+    // one rule states one plate geometry: Standard's transit roundel is a rounded square and its
+    // POI icons are circles, and a median over the sheet gives the transit rule the POI's radius.
+    const namedPlates: IconPlate[] = [];
+    const sheetPlates: IconPlate[] = [];
+
+    // A `match` states its sprite names as LABELS even when the branch resolves per feature, and a
+    // rule carries one plate geometry: Standard's transit roundel is a rounded square while its POI
+    // icons are circles, so a median over the whole sheet gives the transit rule a circle's radius.
+    // Only the geometry is taken here - the name still comes from the whole-sheet table.
+    const notePlate = (name: string) => {
+        if (!plateMode) return;
+        const icon = extractIconPlate(sprites.sheets, name, sprites.outDir);
+        if (icon?.plate) namedPlates.push(icon.plate);
+    };
+
     const named = (name: string): string | null => {
-        const icon = extractIcon(sprites.sheets, name, sprites.outDir, options.flattenSdf, undefined, 1);
+        // In plate mode the rule declares `shield-sdf`, and that is a statement about EVERY file it
+        // can name: a raster cut handed to it is read as a distance field and comes out inverted.
+        // So a sprite with no field is not named at all - it draws nothing rather than a blob.
+        const icon = plateMode
+            ? extractIconPlate(sprites.sheets, name, sprites.outDir)
+            : extractIcon(sprites.sheets, name, sprites.outDir, options.flattenSdf, undefined, 1);
         if (!icon) return null;
-        if (!sample) sample = icon;
+        if (icon.plate) namedPlates.push(icon.plate);
+        if (!sample || (icon.plate && !sample.plate)) sample = icon;
         return icon.file;
     };
 
@@ -1047,19 +1399,43 @@ function iconExpression(image: Json, layer: MapboxLayer, coverage: Coverage, opt
     // spelling `concat('road_', get(ref_length))`. The parameter name is built the same way, so the
     // lookup lands on icon-road_3 - which is what gets a junction its real shield artwork.
     const prefixed = (prefix: string, field: string): string | null => {
-        const all = extractAllIcons(sprites.sheets, sprites.outDir, options.flattenSdf);
+        const all = ensureEverySprite();
         const matching = all.names.filter((n) => n.startsWith(prefix));
         if (matching.length === 0) return null;
-        for (const name of matching) options.styleParams!.set(`${ICON_PARAM_PREFIX}${name}`, `icons/${name}.png`);
-        if (!sample) sample = all.sample;
-        return `[param::${ICON_PARAM_PREFIX}${prefix}[${field}]]`;
+        for (const name of matching) options.styleParams!.set(`${paramPrefix}${name}`, all.file.get(name)!);
+        return `[param::${paramPrefix}${prefix}[${field}]]`;
     };
 
-    let everySprite: ReturnType<typeof extractAllIcons> | null = null;
+    /** Every sprite written out, each under the file the rule should name it by. */
+    let everySprite: { names: string[]; file: Map<string, string> } | null = null;
     const ensureEverySprite = () => {
         if (!everySprite) {
-            everySprite = extractAllIcons(sprites.sheets, sprites.outDir, options.flattenSdf);
-            if (!sample) sample = everySprite.sample;
+            const file = new Map<string, string>();
+            let best: ExtractedIcon | null;
+            if (plateMode) {
+                // ONLY the sprites that split. A rule that declares `shield-sdf` says it of every
+                // file it can name, so seeding this from the raster cut and overwriting the ones
+                // that split left a third of the table pointing at colour bitmaps - each read as a
+                // distance field, and each drawn as an inverted blob.
+                const glyphs = extractAllIconPlates(sprites.sheets, sprites.outDir);
+                for (const { name, icon } of glyphs.entries) {
+                    file.set(name, icon.file);
+                    if (icon.plate) sheetPlates.push(icon.plate);
+                }
+                if (glyphs.skipped.length > 0) {
+                    coverage.approximate(`"${layer.id}" resolves its icon through the whole sheet, ` +
+                        `and ${glyphs.skipped.length} of its sprites are not a disc with a glyph on ` +
+                        "it - MapBox's generic pin among them. Those are left out, so a feature " +
+                        'naming one draws its label alone');
+                }
+                best = glyphs.sample;
+            } else {
+                const raster = extractAllIcons(sprites.sheets, sprites.outDir, options.flattenSdf);
+                for (const name of raster.names) file.set(name, `icons/${name}.png`);
+                best = raster.sample;
+            }
+            everySprite = { names: [...file.keys()], file };
+            if (!sample || (best?.plate && !sample.plate)) sample = best;
         }
         return everySprite;
     };
@@ -1082,6 +1458,7 @@ function iconExpression(image: Json, layer: MapboxLayer, coverage: Coverage, opt
             const input = node[1] as Json;
             for (let i = 2; i + 1 < node.length; i += 2) {
                 const labels = Array.isArray(node[i]) ? node[i] as Json[] : [node[i] as Json];
+                for (const label of labels) if (typeof label === 'string') notePlate(label);
                 const test = labels.length === 1
                     ? ['==', input, labels[0]]
                     : ['any', ...labels.map((l) => ['==', input, l])];
@@ -1117,6 +1494,14 @@ function iconExpression(image: Json, layer: MapboxLayer, coverage: Coverage, opt
     };
 
     const build = (node: Json): string | null => {
+        // The type assertions and coercions carry nothing but their value, and Standard wraps every
+        // POI icon name in them - `case(has(maki_beta), to-string(coalesce(string(maki_beta),
+        // string(maki))), string(maki))`. Unseen, every branch built to null and the whole
+        // expression with it, which is why a POI drew its label and no icon.
+        if (Array.isArray(node) && node.length === 2
+            && (node[0] === 'string' || node[0] === 'to-string' || node[0] === 'number')) {
+            return build(node[1] as Json);
+        }
         if (typeof node === 'string') {
             const token = node.match(/^([^{}]*)\{([A-Za-z0-9_:-]+)\}$/);
             if (token) return prefixed(token[1], token[2]);
@@ -1150,8 +1535,16 @@ function iconExpression(image: Json, layer: MapboxLayer, coverage: Coverage, opt
             // Named after the value itself - the global one-parameter-per-sprite table covers it,
             // and the table is what gives `??` a miss to fall through on.
             const all = ensureEverySprite();
-            for (const name of all.names) options.styleParams!.set(`${ICON_PARAM_PREFIX}${name}`, `icons/${name}.png`);
-            return `[param::${ICON_PARAM_PREFIX}[${node[1]}]]`;
+            for (const name of all.names) options.styleParams!.set(`${paramPrefix}${name}`, all.file.get(name)!);
+            const field = `[param::${paramPrefix}[${node[1]}]]`;
+            if (!plateWhen || node[1] !== scope!.field) return field;
+            // The features the params do NOT cover: their own artwork, from the raster table, and
+            // `shield-sdf` false for them (see plateWhen in shieldImageDeclarations).
+            const raster = extractAllIcons(sprites.sheets, sprites.outDir, options.flattenSdf);
+            for (const name of raster.names) {
+                options.styleParams!.set(`${ICON_PARAM_PREFIX}${name}`, `icons/${name}.png`);
+            }
+            return `(${plateWhen} ? ${field} : [param::${ICON_PARAM_PREFIX}[${node[1]}]])`;
         }
         if (Array.isArray(node) && node[0] === 'coalesce') {
             const parts = (node as Json[]).slice(1).map((b) => build(b as Json)).filter((x): x is string => x !== null);
@@ -1189,6 +1582,7 @@ function iconExpression(image: Json, layer: MapboxLayer, coverage: Coverage, opt
         let wrote = 0;
         for (const { labels, value } of branches) {
             for (const label of labels) {
+                notePlate(label);
                 const selfNamed = Array.isArray(value) && value[0] === 'get' && value[1] === field;
                 const name = selfNamed ? label : (typeof value === 'string' ? value : null);
                 if (name === null) continue;
@@ -1206,6 +1600,22 @@ function iconExpression(image: Json, layer: MapboxLayer, coverage: Coverage, opt
 
     const expr = build(image);
     if (!expr || !sample) return null;
+    // One rule, one plate: the geometry is a declaration, not a per-feature lookup. The MEDIAN of
+    // what the layer's icons measure - Standard's POI sheet is one disc size and its transit sheet
+    // another, and each is a rule of its own, so the spread inside one is a rounding.
+    const plates = namedPlates.length > 0 ? namedPlates : sheetPlates;
+    if (plates.length > 0) {
+        const median = (values: number[]) => values.slice().sort((a, b) => a - b)[values.length >> 1];
+        sample = {
+            ...(sample as ExtractedIcon),
+            plateWhen: plateWhen ?? undefined,
+            plate: {
+                radius: median(plates.map((p) => p.radius)),
+                borderWidth: median(plates.map((p) => p.borderWidth)),
+                strokeWidth: median(plates.map((p) => p.strokeWidth)),
+            },
+        };
+    }
     options.iconSample = sample;
     coverage.note(`"${layer.id}": icon named per feature, resolved through style parameters`);
     return `(${expr})`;
@@ -1424,20 +1834,16 @@ function markerDeclarations(layer: MapboxLayer, coverage: Coverage, options: Con
         coverage.emit('marker-sdf');
     }
 
-    // icon-size scales the sprite's own size. A distance field is SCALED rather than resampled, so
-    // a zoom-driven size survives; a flattened bitmap can only take a constant.
+    // icon-size scales the sprite's own size. `marker-width` is read at DECODE (it sizes the
+    // raster), so a zoom-driven size is evaluated per tile zoom rather than per frame - which is
+    // how a raster marker has to behave anyway, and is why it is carried here for a plain sprite
+    // too. Dropping it left the marker at its native size: Standard draws a crosswalk at
+    // icon-size 0.2 from a 61 px sprite, so every crossing came out five times too big.
     const size = layer.layout?.['icon-size'];
     const sizeExpr = size === undefined
         ? String(round(icon.width))
-        : sdf
-            ? scaledSize(size, icon.width, name('icon-size', layer, coverage))
-            : typeof size === 'number' ? String(round(icon.width * size)) : null;
-    if (sizeExpr === null) {
-        coverage.drop('icon-size', 'a flattened bitmap cannot take a zoom-driven size (drop --sdf-flatten)', layer.id);
-        out.push(`marker-width: ${round(icon.width)};`);
-    } else {
-        out.push(`marker-width: ${sizeExpr};`);
-    }
+        : scaledSize(size, icon.width, name('icon-size', layer, coverage));
+    out.push(`marker-width: ${sizeExpr};`);
     coverage.emit('marker-width');
 
     // An SDF icon carries no colour of its own, so marker-color IS the icon colour and MapBox
@@ -1515,6 +1921,8 @@ const DEFAULT_SYMBOL_SPACING = 250;
 const FILL_OUTLINE_WIDTH = 0.4;
 /** One style parameter per sprite name, so a per-feature lookup can fall through when it misses. */
 const ICON_PARAM_PREFIX = 'icon-';
+/** The glyph FIELD of a recolourable icon, a different file under the same name. */
+const GLYPH_PARAM_PREFIX = 'glyph-';
 
 /** A value in ems of the layer's own text-size, as the pixels CartoCSS wants. */
 function ems(value: Json, layer: MapboxLayer, coverage: Coverage, from: string): string | null {

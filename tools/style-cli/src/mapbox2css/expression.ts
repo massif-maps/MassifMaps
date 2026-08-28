@@ -168,6 +168,26 @@ export function translateExpression(expr: Json, notes?: string[]): string {
         case 'to-number':
             return `(0 + ${translateExpression(args[0] as Json)})`;
 
+        case 'to-boolean':
+            return `(!(!${translateExpression(args[0] as Json)}))`;
+
+        // The type ASSERTIONS. MapBox uses them to prove a type to its own checker and errors at
+        // runtime if the value is not one; several arguments are tried in turn, which is a coalesce.
+        // CartoCSS is not typed, so the assertion carries no meaning and only the value survives.
+        // Cheap, and load-bearing: `["number", ["get", "filterrank"]]` sits in poi-label's FILTER,
+        // so refusing it dropped every POI in Mapbox Standard, and in 3d-building's height.
+        case 'number':
+        case 'string':
+        case 'boolean': {
+            if (args.length === 0) throw new Untranslatable(`${head} with no argument`);
+            return args.length === 1
+                ? translateExpression(args[0] as Json)
+                : `(${args.map((a) => translateExpression(a as Json)).join(' ?? ')})`;
+        }
+
+        case 'sqrt':
+            return `pow(${translateExpression(args[0] as Json)}, 0.5)`;
+
         case '!':
             return `(!${translateExpression(args[0] as Json)})`;
 
@@ -232,6 +252,17 @@ export function translateExpression(expr: Json, notes?: string[]): string {
                 const prefix = prefixTest(args[0] as Json, args[1] as Json, notes)
                     ?? prefixTest(args[1] as Json, args[0] as Json, notes);
                 if (prefix !== null) return head === '==' ? prefix : `(!${prefix})`;
+            }
+
+            // MapBox's arithmetic is VARIADIC - `["+", a, b, c]` is a sum, not a malformed pair -
+            // and `-` with one argument is negation. Taking only the two-argument form refused
+            // poi-label's whole filter over a three-term `+`, which is every POI in Standard.
+            if ((head === '+' || head === '*') && args.length > 2) {
+                return `(${args.map((x) => translateExpression(x as Json, notes)).join(` ${head} `)})`;
+            }
+            if (head === '-' && args.length === 1) {
+                // No unary minus before a parenthesised value in the grammar.
+                return `(0 - ${translateExpression(args[0] as Json, notes)})`;
             }
 
             if (BINARY[head] && args.length === 2) {
@@ -351,7 +382,12 @@ function translateInterpolate(args: Json[], notes?: string[]): string {
     let fn: string;
     let base: number | null = null;
     if (kind[0] === 'linear') fn = 'linear';
-    else if (kind[0] === 'cubic-bezier') fn = 'cubic';
+    // NOT CartoCSS's `cubic`. MapBox's is an EASING between each pair of stops; CartoCSS's is a
+    // spline THROUGH all of them, and cglib's overshoots hard - Standard sizes its settlement
+    // labels this way and Paris went from 38 to 71 device pixels over one zoom level, where the
+    // easing moves 20.0 to 20.3. Linear is within about a unit of the easing over these stops and
+    // cannot overshoot; carrying the control points properly would need a curve type in the SDK.
+    else if (kind[0] === 'cubic-bezier') { fn = 'linear'; notes?.push('cubic-bezier easing taken as linear'); }
     else if (kind[0] === 'exponential' && typeof kind[1] === 'number') {
         fn = 'linear';
         if (kind[1] !== 1) base = kind[1];

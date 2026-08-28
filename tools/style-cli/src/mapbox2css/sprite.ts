@@ -106,24 +106,33 @@ function withQuery(base: string, suffix: string): string {
 export async function loadSprites(style: MapboxStyle, keySuffix: string): Promise<SpriteSet> {
     const sheets: SpriteSet = new Map();
     for (const [id, base] of resolveSpriteUrls(style)) {
-        const url = base + keySuffix;
-        // The @2x sheet first. A 1x sprite is upscaled by the display's pixel ratio before it
-        // reaches the screen - about 2.6x on the device this was measured on - and a traffic light
-        // drawn from 19 texels reads as a smudge. pixelRatio in the index is what puts it back to
-        // its logical size, so the only cost is the download.
+        // The DENSEST sheet the provider serves, tried in order. A sprite is upscaled by the
+        // display's pixel ratio before it reaches the screen - about 2.6x on the device this was
+        // measured on - and a traffic light drawn from 19 texels reads as a smudge. pixelRatio in
+        // the index is what puts it back to its logical size, so the only cost is size.
+        //
+        // MapBox serves up to @4x, and a POI icon at 80 texels rather than 40 is what carries the
+        // notches between a fork's tines through the distance field: at @2x they are one texel of
+        // partial coverage and close up at the size the icon is drawn. MapTiler stops at @2x, so
+        // the loop just falls through for it.
+        //
+        // The variant belongs to the PATH, before the key: appended after it the URL reads
+        // `sprite.json?access_token=pk...@2x`, which asks for the 1x sheet with a corrupt token,
+        // fails, and falls back to 1x without a word. Every sprite in a keyed style was blurry.
         let index: Record<string, SpriteEntry> | undefined;
         let image: PNG | undefined;
-        for (const variant of ['@2x', '']) {
+        for (const variant of ['@4x', '@3x', '@2x', '']) {
+            const url = base + variant + keySuffix;
             try {
-                index = JSON.parse((await fetchBuffer(withQuery(url + variant, '.json'))).toString('utf8'));
-                image = PNG.sync.read(await fetchBuffer(withQuery(url + variant, '.png')));
+                index = JSON.parse((await fetchBuffer(withQuery(url, '.json'))).toString('utf8'));
+                image = PNG.sync.read(await fetchBuffer(withQuery(url, '.png')));
                 break;
             } catch {
                 index = undefined;
                 image = undefined;
             }
         }
-        if (!index || !image) throw new Error(`no sprite sheet at ${url}`);
+        if (!index || !image) throw new Error(`no sprite sheet at ${base}`);
         sheets.set(id, { index, image });
     }
     return sheets;
@@ -143,6 +152,24 @@ export interface ExtractedIcon {
     sdf: boolean;
     /** Texels per logical pixel in the written file, so a drawn size can divide it back out. */
     pixelRatio: number;
+    /** Set when the artwork was split into a glyph field and a plate - see extractIconPlate. */
+    plate?: IconPlate;
+    /** The CartoCSS test for the features the plate applies to, when it does not apply to all. */
+    plateWhen?: string;
+}
+
+/**
+ * The disc a MapBox vector icon is drawn on, measured off its flat render, in logical pixels. The
+ * SDK draws it as the shield's icon PLATE, so it takes the style's `background` colour per feature
+ * where the sheet's own is baked in.
+ */
+export interface IconPlate {
+    /** Corner radius. Half the side is a circle, 0 a square. */
+    radius: number;
+    /** The ring around the disc, which the field is cropped by so the border lands on it. */
+    borderWidth: number;
+    /** MapBox's `icon-stroke`: the outline drawn under the glyph, 0 when the artwork has none. */
+    strokeWidth: number;
 }
 
 /**
@@ -226,6 +253,309 @@ export function extractIcon(
         sdf: !!entry.sdf && !flatten,
         pixelRatio: ratio,
     };
+}
+
+/** Alpha at which a texel counts as one of the icon's flat colours rather than an edge. */
+const FLAT_ALPHA = 200;
+/** How far in from the silhouette the ring is looked for, in texels. */
+const RING_DEPTH = 3;
+/** Where the plate fields are written, so they never collide with the raster cut of the same name. */
+const GLYPH_DIR = 'icons-glyph';
+
+type RGB = readonly [number, number, number];
+
+function colourDistance(a: RGB, b: RGB): number {
+    return Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+}
+
+/**
+ * The GLYPH of a composite vector icon as a distance field, and the disc it sat on.
+ *
+ * MapBox's sheet ships ONE flat render of an `["image", name, { params }]` icon, with the icon's own
+ * default colours baked into it: a disc, a ring around it, the glyph, and their blends. Drawn as it
+ * comes, every POI icon is grey where mapbox tints it by class, and a distance field taken from it
+ * is nonsense - the red channel of a blue disc reads as "outside" and the white glyph as "inside",
+ * which drew the icons inverted.
+ *
+ * Split in two, neither half is baked: the glyph becomes a field the style colours per feature, and
+ * the disc becomes the shield's icon PLATE, whose fill, border and radius are style properties. The
+ * ring is cropped off the field so the plate's border sits exactly where the artwork's did.
+ *
+ * Returns null for anything that is not one of these - a plain single-colour sprite, or a real SDF.
+ */
+export function extractIconPlate(
+    sprites: SpriteSet,
+    name: string,
+    outDir: string,
+    writeAs?: string,
+): ExtractedIcon | null {
+    const [sheetId, iconName] = splitIconName(name);
+    const sheet = sprites.get(sheetId);
+    const entry = sheet?.index[iconName];
+    if (!sheet || !entry || entry.sdf || entry.width < 8 || entry.height < 8) return null;
+
+    const width = entry.width;
+    const height = entry.height;
+    const at = (x: number, y: number): readonly [number, number, number, number] => {
+        const i = ((entry.y + y) * sheet.image.width + (entry.x + x)) * 4;
+        const d = sheet.image.data;
+        return [d[i], d[i + 1], d[i + 2], d[i + 3]];
+    };
+
+    // Distance from the transparent surround, so the ring can be found whatever shape the icon is:
+    // a POI disc reaches the cell edge on the axes and a transit roundel at its corners, and one
+    // radius threshold cannot describe both. The grid is bordered so a silhouette touching the cell
+    // still has an outside to measure from.
+    const gw = width + 2;
+    const gh = height + 2;
+    const outward = new Float64Array(gw * gh);
+    for (let y = 0; y < gh; y++) {
+        for (let x = 0; x < gw; x++) {
+            const inside = x > 0 && y > 0 && x <= width && y <= height && at(x - 1, y - 1)[3] >= FLAT_ALPHA;
+            outward[y * gw + x] = inside ? 1e20 : 0;
+        }
+    }
+    edt(outward, gw, gh);
+    const depth = (x: number, y: number) => Math.sqrt(outward[(y + 1) * gw + (x + 1)]);
+
+    // The flat colours, by how much of the icon they cover. Their blends are the rest.
+    const counts = new Map<string, { colour: RGB; count: number }>();
+    let flats = 0;
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            const [r, g, b, a] = at(x, y);
+            if (a < FLAT_ALPHA) continue;
+            flats++;
+            const key = `${r},${g},${b}`;
+            const seen = counts.get(key);
+            if (seen) seen.count++; else counts.set(key, { colour: [r, g, b], count: 1 });
+        }
+    }
+    if (flats < 32) return null;
+    const palette = [...counts.values()].filter((c) => c.count >= flats * 0.015).map((c) => c.colour);
+    if (palette.length < 3) return null;
+
+    const dominant = (accept: (x: number, y: number) => boolean, exclude: RGB[]): RGB | null => {
+        const tally = new Map<string, { colour: RGB; count: number }>();
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                const [r, g, b, a] = at(x, y);
+                if (a < FLAT_ALPHA || !accept(x, y)) continue;
+                const colour: RGB = [r, g, b];
+                if (!palette.some((p) => colourDistance(p, colour) === 0)) continue;
+                if (exclude.some((e) => colourDistance(e, colour) === 0)) continue;
+                const key = `${r},${g},${b}`;
+                const seen = tally.get(key);
+                if (seen) seen.count++; else tally.set(key, { colour, count: 1 });
+            }
+        }
+        let best: { colour: RGB; count: number } | null = null;
+        for (const item of tally.values()) if (!best || item.count > best.count) best = item;
+        return best ? best.colour : null;
+    };
+
+    // The OUTERMOST texel row, which is the ring wherever there is one: a wider band is already
+    // mostly disc on an icon whose two flats meet without an antialiased row between them.
+    const ring = dominant((x, y) => depth(x, y) <= 1, []);
+    if (!ring) return null;
+    // How thick the ring actually is: the band is followed inward while it still dominates.
+    let ringTexels = 0;
+    while (ringTexels < RING_DEPTH) {
+        const band = dominant((x, y) => depth(x, y) > ringTexels && depth(x, y) <= ringTexels + 1, []);
+        if (!band || colourDistance(band, ring) > 0) break;
+        ringTexels++;
+    }
+    if (ringTexels === 0) return null;
+    const inner = (x: number, y: number) => depth(x, y) > ringTexels;
+    const disc = dominant(inner, [ring]);
+    if (!disc) return null;
+
+    // What is left inside the disc, ANTIALIASING discounted. A blend of the disc and the ring lies
+    // on the segment between them, and a 32-texel roundel carries more of it than it does glyph -
+    // taken for a flat it won the count, and the icon drew as a handful of specks.
+    const discToRing = colourDistance(disc, ring);
+    const isBlend = (c: RGB) => discToRing > 0
+        && colourDistance(c, disc) + colourDistance(c, ring) <= discToRing * 1.15;
+    const candidates = palette.filter((c) => colourDistance(c, disc) > 0
+        && colourDistance(c, ring) > 0 && !isBlend(c));
+    if (candidates.length === 0) return null;
+
+    // MapBox composes an icon as `icon-stroke` under `icon`, so the glyph's own colour is the one
+    // the other ENCLOSES - measured as the mean distance from the disc, since the two are parted by
+    // an antialiased row and neither touches it. Taken by pixel count instead, an outlined glyph
+    // gave its OUTLINE: the ⓘ drew as a white ring with the disc showing through the middle, which
+    // is what "no white in the centre" was.
+    const fromDisc = new Float64Array(width * height);
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            const [r, g, b, a] = at(x, y);
+            const onDisc = a >= FLAT_ALPHA && colourDistance([r, g, b], disc) === 0;
+            fromDisc[y * width + x] = onDisc ? 0 : 1e20;
+        }
+    }
+    edt(fromDisc, width, height);
+    let ink: RGB | null = null;
+    let deepest = -1;
+    for (const candidate of candidates) {
+        let total = 0;
+        let count = 0;
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                const [r, g, b, a] = at(x, y);
+                if (a < FLAT_ALPHA || !inner(x, y) || colourDistance([r, g, b], candidate) > 0) continue;
+                total += Math.sqrt(fromDisc[y * width + x]);
+                count++;
+            }
+        }
+        if (count === 0) continue;
+        const mean = total / count;
+        if (mean > deepest) { deepest = mean; ink = candidate; }
+    }
+    if (!ink) return null;
+
+    // MapBox's `icon-stroke` - the outline it draws UNDER the glyph - is the candidate the ink is
+    // not, and how far it reaches past the ink is what the SDK's icon halo has to grow.
+    let strokeWidth = 0;
+    const stroke = candidates.find((c) => colourDistance(c, ink) > 0) ?? null;
+    if (stroke) {
+        const fromInk = new Float64Array(width * height);
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                const [r, g, b, a] = at(x, y);
+                const onInk = a >= FLAT_ALPHA && colourDistance([r, g, b], ink) === 0;
+                fromInk[y * width + x] = onInk ? 0 : 1e20;
+            }
+        }
+        edt(fromInk, width, height);
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                const [r, g, b, a] = at(x, y);
+                if (a < FLAT_ALPHA || !inner(x, y) || colourDistance([r, g, b], stroke) > 0) continue;
+                strokeWidth = Math.max(strokeWidth, Math.min(3, Math.sqrt(fromInk[y * width + x])));
+            }
+        }
+    }
+
+    // How much INK a texel holds: its position along the disc -> ink axis. A partly covered texel
+    // is a linear blend of the two, so the projection IS the coverage, and it needs no list of what
+    // else the icon is painted with.
+    //
+    // Snapping to the nearest flat instead cost the thin strokes: a bicycle's spokes never reach
+    // the ink colour anywhere, every one of their texels is a blend, and on a blue roundel that
+    // blend is also a blend of the disc and the ring - so each was read as "not ink" and the wheels
+    // drew as a ring of dots.
+    const axis: RGB = [ink[0] - disc[0], ink[1] - disc[1], ink[2] - disc[2]];
+    const axisLength2 = axis[0] * axis[0] + axis[1] * axis[1] + axis[2] * axis[2];
+    const coverage = (x: number, y: number): number => {
+        const [r, g, b, a] = at(x, y);
+        // The ring is not part of the glyph, and the disc's own box catches its corners. A texel of
+        // margin past the ring, because a light ring projects high on this axis and a glyph never
+        // reaches the disc's edge anyway - without it every roundel kept four white corner specks.
+        if (a < FLAT_ALPHA || depth(x, y) <= ringTexels + 1 || axisLength2 === 0) return 0;
+        const t = ((r - disc[0]) * axis[0] + (g - disc[1]) * axis[1] + (b - disc[2]) * axis[2]) / axisLength2;
+        return Math.max(0, Math.min(1, t));
+    };
+
+    // The disc's own box and area: a rounded rect of side S with corner radius r covers
+    // S^2 - (4 - pi) r^2, which is the radius without fitting an arc to a 40-texel shape.
+    let x0 = width, y0 = height, x1 = -1, y1 = -1, area = 0;
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            if (!(at(x, y)[3] >= FLAT_ALPHA && inner(x, y))) continue;
+            area++;
+            x0 = Math.min(x0, x); y0 = Math.min(y0, y);
+            x1 = Math.max(x1, x); y1 = Math.max(y1, y);
+        }
+    }
+    if (x1 < x0 || y1 < y0) return null;
+    const discW = x1 - x0 + 1;
+    const discH = y1 - y0 + 1;
+    // A plate is a rounded RECT fitted to the icon's box, so it stands in for a disc or a roundel
+    // and for nothing else. MapBox's generic pin splits into flats just as cleanly and came out as
+    // a coloured pill with its glyph knocked out.
+    if (Math.abs(discW - discH) > 0.15 * Math.max(discW, discH)) return null;
+    let inkArea = 0;
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (coverage(x, y) >= 0.5) inkArea++;
+    if (inkArea === 0 || inkArea > area * 0.6) return null;
+    const radius = Math.min(Math.min(discW, discH) / 2,
+        Math.sqrt(Math.max(0, discW * discH - area) / (4 - Math.PI)));
+
+    // The field, on the disc's own box: the quad the shield draws IS the plate's box then, so the
+    // plate needs no padding and its border lands on the ring the crop just removed.
+    const field = new PNG({ width: discW, height: discH });
+    const cell = (x: number, y: number) => coverage(x0 + x, y0 + y);
+    const ins = new Float64Array(discW * discH);
+    const outs = new Float64Array(discW * discH);
+    for (let y = 0; y < discH; y++) {
+        for (let x = 0; x < discW; x++) {
+            const isInk = cell(x, y) >= 0.5;
+            ins[y * discW + x] = isInk ? 1e20 : 0;
+            outs[y * discW + x] = isInk ? 0 : 1e20;
+        }
+    }
+    edt(ins, discW, discH);
+    edt(outs, discW, discH);
+    for (let y = 0; y < discH; y++) {
+        for (let x = 0; x < discW; x++) {
+            const i = y * discW + x;
+            // Positive inside. A thresholded mask puts the edge half a texel out from the cell it
+            // measured, so the EDT only says where the field is DEEP; anywhere the artwork carries
+            // partial coverage the coverage itself is the answer, since it is the only record of
+            // where inside the texel the edge fell.
+            //
+            // The threshold is not allowed to decide on its own: a stroke thinner than a texel
+            // never reaches 1.0 anywhere, and thresholding it at 0.5 erased it outright - the
+            // bicycle's spokes and wheels came out as a handful of dots. Kept as coverage they are
+            // just under the edge, and the renderer's own antialias ramp draws them faintly, which
+            // is what the sprite says.
+            const partial = cell(x, y) > 0 && cell(x, y) < 1;
+            const raw = Math.sqrt(ins[i]) - Math.sqrt(outs[i]);
+            const base = raw - Math.sign(raw) * 0.5;
+            const signed = partial || Math.abs(base) <= 0.5 ? cell(x, y) - 0.5 : base;
+            const texels = Math.max(-FIELD_LIMIT, Math.min(FIELD_LIMIT, signed));
+            const value = Math.max(0, Math.min(255, Math.round(MASSIF_SDF_EDGE + texels * MASSIF_SDF_UNIT)));
+            const dst = i * 4;
+            field.data[dst] = field.data[dst + 1] = field.data[dst + 2] = value;
+            field.data[dst + 3] = 255;
+        }
+    }
+
+    const iconsDir = join(outDir, GLYPH_DIR);
+    mkdirSync(iconsDir, { recursive: true });
+    const file = `${safeFileName(writeAs ?? name)}.png`;
+    writeFileSync(join(iconsDir, file), PNG.sync.write(field));
+
+    const ratio = entry.pixelRatio && entry.pixelRatio > 0 ? entry.pixelRatio : 1;
+    return {
+        file: `${GLYPH_DIR}/${file}`,
+        width: discW / ratio,
+        height: discH / ratio,
+        sdf: true,
+        pixelRatio: ratio,
+        plate: { radius: radius / ratio, borderWidth: ringTexels / ratio, strokeWidth: strokeWidth / ratio },
+    };
+}
+
+/** Every icon of every sheet that IS a composite, split into a glyph field and a plate. */
+export function extractAllIconPlates(
+    sprites: SpriteSet,
+    outDir: string,
+): { entries: Array<{ name: string; icon: ExtractedIcon }>; skipped: string[]; sample: ExtractedIcon | null } {
+    const entries: Array<{ name: string; icon: ExtractedIcon }> = [];
+    const skipped: string[] = [];
+    const seen = new Set<string>();
+    let sample: ExtractedIcon | null = null;
+    for (const [sheetId, sheet] of sprites) {
+        for (const name of Object.keys(sheet.index)) {
+            if (!/^[A-Za-z0-9_-]+$/.test(name) || seen.has(name)) continue;
+            const icon = extractIconPlate(sprites, sheetId === 'default' ? name : `${sheetId}:${name}`, outDir, name);
+            if (!icon) { skipped.push(name); continue; }
+            seen.add(name);
+            entries.push({ name, icon });
+            if (!sample) sample = icon;
+        }
+    }
+    return { entries, skipped, sample };
 }
 
 /**

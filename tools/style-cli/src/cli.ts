@@ -141,7 +141,7 @@ async function mapbox2css(args: string[]): Promise<number> {
         }
     }
 
-    const { mss, project, coverage, variables, presets, defaultPreset } = convert(style, loadPropertyTable(), {
+    const { mss, project, coverage, variables, presets, defaultPreset, presetOverrides } = convert(style, loadPropertyTable(), {
         sprites,
         variables: !flags.has('no-variables'),
         config: parseConfig(args),
@@ -163,10 +163,13 @@ async function mapbox2css(args: string[]): Promise<number> {
     writeFileSync(join(outDir, 'project.json'), project);
     if (variables) writeFileSync(join(outDir, VARIABLES_FILE), variables);
     // One palette per other light preset, plus the project that picks it. Same style.mss.
+    const overrides = presetOverrides ?? new Map<string, Record<string, unknown>>();
     for (const [preset, palette] of presets) {
         writeFileSync(join(outDir, `${preset}.mss`), palette);
+        const params = overrides.get(preset);
         writeFileSync(join(outDir, `${preset}.json`), `${JSON.stringify({
             extends: './project.json', styles: [`${preset}.mss`, 'style.mss'],
+            ...(params ? { styleparameters: params } : {}),
         }, null, 2)}\n`);
     }
     if (defaultPreset) {

@@ -130,6 +130,20 @@ const VIEWPORT: Record<string, number> = {
     'line-progress': 0,
 };
 
+/**
+ * Runtime INTERACTION state, which the SDK has no notion of at all: nothing is hovered, selected or
+ * on an active indoor floor, and nothing can become so. Folded to the value MapBox itself gives an
+ * unset one, so the `case` around it collapses to the branch that draws the ordinary feature.
+ *
+ * Left alone they cost whole layers rather than one property: `["to-boolean", ["feature-state",
+ * "select"]]` guards 3d-building's colour, and a dropped fill left the symbolizer on its default
+ * black; `["is-active-floor"]` sits inside poi-label's filter.
+ */
+const UNSET_STATE: Record<string, Json> = {
+    'feature-state': null,
+    'is-active-floor': false,
+};
+
 interface Context {
     values: Map<string, Json>;
     scene: Scene;
@@ -157,6 +171,17 @@ function fold(node: Json, context: Context): Json {
         if (typeof head === 'string' && node.length === 1 && head in VIEWPORT) {
             return VIEWPORT[head];
         }
+        if (typeof head === 'string' && head in UNSET_STATE) {
+            return UNSET_STATE[head];
+        }
+        // `["image", name, { params: … }]` is Standard's RECOLOURABLE sprite. The SDK picks a
+        // sprite by name and cannot tint one per feature, so the name is what survives and the
+        // params go. Unwrapped here rather than in the translator because the icon-name machinery
+        // walks the raw tree - a `match` over a field whose branches are `image` nodes only reads
+        // as data-driven once the wrapper is off.
+        if (head === 'image' && node.length >= 2) {
+            return fold(node[1] as Json, context);
+        }
         // `let` binds names for its body only, so its bindings are folded first and the body is
         // folded UNDER them - a generic map over the children would lose the scope.
         if (head === 'let' && node.length >= 2 && node.length % 2 === 0) {
@@ -165,7 +190,15 @@ function fold(node: Json, context: Context): Json {
             for (let i = 1; i + 1 < node.length; i += 2) {
                 const name = node[i];
                 const value = fold(node[i + 1] as Json, scoped);
-                if (typeof name === 'string' && constantOf(value)) scoped.bindings.set(name, value);
+                // A constant binding always inlines. A NON-constant one inlines when it is read at
+                // most ONCE in what follows: `let` exists to avoid repeating a subexpression, so a
+                // single reader can never blow the expression up, and none at all is dead. The
+                // wrapper is what hides the shape from everything downstream - poi-label names its
+                // icon through one binding read once, beside four colour bindings its body never
+                // reads, and leaving the `let` on cost every POI icon in Standard.
+                const inline = typeof name === 'string'
+                    && (constantOf(value) !== null || countVar(node.slice(i + 2) as Json, name) <= 1);
+                if (inline) scoped.bindings.set(name as string, value);
                 else kept.push(name as Json, value);
             }
             const body = fold(node[node.length - 1] as Json, scoped);
@@ -190,6 +223,18 @@ function fold(node: Json, context: Context): Json {
     return node;
 }
 
+/** How many times `["var", name]` is read in a subtree. Stops counting at 2 - only 1 matters. */
+function countVar(node: Json, name: string): number {
+    if (!Array.isArray(node)) return 0;
+    if (node[0] === 'var' && node[1] === name) return 1;
+    let seen = 0;
+    for (const child of node) {
+        seen += countVar(child as Json, name);
+        if (seen > 1) return seen;
+    }
+    return seen;
+}
+
 /** Every operator whose value follows from constant arguments alone. */
 function simplify(expr: Json[]): Json {
     const [head, ...args] = expr;
@@ -203,6 +248,12 @@ function simplify(expr: Json[]): Json {
         case '!': {
             const operand = constantOf(args[0] as Json);
             return operand ? !operand.value : unchanged;
+        }
+        // Only meaningful here over a folded UNSET_STATE, which is the whole reason it is listed:
+        // it is what turns the `case` guarding a selected building into its ordinary colour.
+        case 'to-boolean': {
+            const operand = constantOf(args[0] as Json);
+            return operand ? !!operand.value : unchanged;
         }
         case '==':
         case '!=':
@@ -429,5 +480,99 @@ function simplifyRamp(head: string, args: Json[]): Json | null {
 
 /** The whole layer, folded - filter, layout and paint alike, since Standard keys all three. */
 export function foldLayer(layer: MapboxLayer, values: Map<string, Json>, scene: Scene = {}): MapboxLayer {
-    return foldConfig(layer as unknown as Json, values, scene) as unknown as MapboxLayer;
+    // The icon's `params` have to be taken before the fold, which unwraps
+    // `["image", name, { params }]` down to the name. They are the icon's colours - a disc, its
+    // ring and the glyph - and the sheet bakes only the icon's OWN defaults into its flat render,
+    // so these are the only place the style's per-feature colours survive. Folded on their own,
+    // since they read `config` and `let` like the rest of the layer.
+    const params = foldImageParams(layer.layout?.['icon-image'] as Json, values, scene);
+    const folded = foldConfig(layer as unknown as Json, values, scene) as unknown as MapboxLayer;
+    if (!params) return folded;
+    const scope = imageParamScope(layer.layout?.['icon-image'] as Json);
+    const layout: Record<string, Json> = {
+        ...folded.layout, [RECOLOURABLE_ICON]: true, [ICON_PARAMS]: params,
+    };
+    if (scope) layout[ICON_PARAM_SCOPE] = scope as unknown as Json;
+    return { ...folded, layout };
+}
+
+/** The synthetic layout keys foldLayer leaves behind; `icon-image` no longer says any of them. */
+export const RECOLOURABLE_ICON = 'massif:recolourable-icon';
+export const ICON_PARAMS = 'massif:icon-params';
+export const ICON_PARAM_SCOPE = 'massif:icon-param-scope';
+
+/** Which features the params apply to, when a `match` recolours some of its branches and not all. */
+export interface IconParamScope {
+    field: string;
+    labels: string[];
+}
+
+function hasImageParams(node: Json): boolean {
+    if (!Array.isArray(node)) return false;
+    if (node[0] === 'image' && node.length >= 3) return true;
+    return node.some((child) => hasImageParams(child as Json));
+}
+
+/**
+ * The branch the params belong to, when they do not cover the whole layer.
+ *
+ * Standard's transit label recolours seven networks by name and lets every other one through to the
+ * sheet's own artwork - `match(get(network), [bus, …], image(…, {params}), image(…))`. Applied to
+ * all of them, Paris's own metro roundel (white disc, blue ring, blue M) came out as the generic
+ * blue square with a white M. Null when the params cover everything, which needs no test at all.
+ */
+function imageParamScope(node: Json): IconParamScope | null {
+    if (!Array.isArray(node)) return null;
+    if (node[0] === 'match' && node.length >= 5 && node.length % 2 === 1
+        && !hasImageParams(node[node.length - 1] as Json)) {
+        let input = node[1] as Json;
+        while (Array.isArray(input) && (input[0] === 'string' || input[0] === 'to-string')) {
+            input = input[1] as Json;
+        }
+        if (Array.isArray(input) && input[0] === 'get' && typeof input[1] === 'string') {
+            for (let i = 2; i + 1 < node.length; i += 2) {
+                if (!hasImageParams(node[i + 1] as Json)) continue;
+                const raw = Array.isArray(node[i]) ? node[i] as Json[] : [node[i] as Json];
+                if (!raw.every((label) => typeof label === 'string')) return null;
+                return { field: input[1], labels: raw as string[] };
+            }
+        }
+    }
+    for (const child of node) {
+        const found = imageParamScope(child as Json);
+        if (found) return found;
+    }
+    return null;
+}
+
+/**
+ * The params of the FIRST `["image", name, { params }]` in the value, folded. A branching
+ * icon-image may state several - Standard's transit label recolours its known networks and falls
+ * through to a bare name - and one rule carries one set of colours, so the first is the rule's.
+ *
+ * Folded IN PLACE of that image node where the tree allows, because the bindings around it are
+ * still in scope there: Standard's POI icon decomposes its colour into four `let` vars before
+ * naming the icon, and the params read them. Taken out and folded alone they are `["var", …]` and
+ * nothing resolves - which cost the POI disc its class colour. A tree that does not collapse to
+ * the params (a `match` on a FEATURE field keeps every branch) falls back to folding them alone,
+ * which is enough where the params read only `config`.
+ */
+function foldImageParams(image: Json, values: Map<string, Json>, scene: Scene): Json | null {
+    let params: Json | null = null;
+    const substitute = (node: Json): Json => {
+        if (params !== null || !Array.isArray(node)) return node;
+        if (node[0] === 'image' && node.length >= 3 && node[2] && typeof node[2] === 'object' && !Array.isArray(node[2])) {
+            const own = (node[2] as Record<string, Json>).params;
+            if (own && typeof own === 'object' && !Array.isArray(own)) {
+                params = own;
+                return own;
+            }
+        }
+        return node.map(substitute) as unknown as Json;
+    };
+    const substituted = substitute(image);
+    if (params === null) return null;
+    const inPlace = foldConfig(substituted, values, scene);
+    if (inPlace && typeof inPlace === 'object' && !Array.isArray(inPlace)) return inPlace;
+    return foldConfig(params, values, scene);
 }

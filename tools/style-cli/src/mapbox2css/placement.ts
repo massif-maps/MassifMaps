@@ -34,6 +34,10 @@ export function repeatsAlongLine(layer: MapboxLayer): boolean {
 
 /** The properties resolvePlacement/markerDeclarations consume, so the loop must not re-report them. */
 export const HANDLED_ELSEWHERE = new Set([
+    // foldLayer's synthetic keys, not MapBox properties - see RECOLOURABLE_ICON / ICON_PARAMS.
+    'massif:recolourable-icon',
+    'massif:icon-params',
+    'massif:icon-param-scope',
     'symbol-placement',
     'text-rotation-alignment',
     'text-pitch-alignment',

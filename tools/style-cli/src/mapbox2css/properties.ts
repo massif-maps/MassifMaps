@@ -54,6 +54,9 @@ export const PROPERTY_MAP: Record<string, Record<string, string>> = {
         // pixels in index.ts; symbol-placement is one third of the placement, see placement.ts.
         'text-allow-overlap': 'text-allow-overlap',
         'symbol-spacing': 'text-spacing',
+        // Renamed to shield-occlusion-opacity with the rest of the rule when the layer is a
+        // shield. icon-occlusion-opacity is folded into this one in index.ts - a label carries one.
+        'text-occlusion-opacity': 'text-occlusion-opacity',
     },
     raster: {
         'raster-opacity': 'raster-opacity',

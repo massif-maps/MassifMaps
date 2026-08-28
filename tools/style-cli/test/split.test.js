@@ -75,8 +75,8 @@ test('a zoom-driven TEXT becomes zoom bands, because a string keyframe reads as 
         'text-field': ['step', ['zoom'], ['get', 'name'], 15, ['concat', ['get', 'name'], ' m']] } };
     const out = convert({ layers: [layer] }, TABLE, NO_PALETTE).mss;
     assert.ok(!/text-name: step\(/.test(out), 'a text ramp must not survive as an interpolation');
-    assert.match(out, /#poi_station\[zoom >= 0\]\[zoom < 15\]/);
-    assert.match(out, /#poi_station\[zoom >= 15\]/);
+    assert.match(out, /#poi_station\[zoom >= 1\]\[zoom < 16\]/);
+    assert.match(out, /#poi_station\[zoom >= 16\]/);
     assert.match(out, /text-name: \[name\];/);
     assert.match(out, /text-name: concat\(\[name\], ' m'\);/);
 });
@@ -88,8 +88,8 @@ test('a zoom-driven sprite name becomes one attachment per zoom band', () => {
         layout: { 'text-field': '{name}', 'icon-image': { stops: [[6, 'circle'], [12, ' ']] } },
     }] }, TABLE, NO_PALETTE).mss.split('\n').filter((l) => l.startsWith('#town_label'));
     assert.equal(blocks.length, 2);
-    assert.match(blocks[0], /\[zoom >= 6\]\[zoom < 12\]/);
-    assert.match(blocks[1], /\[zoom >= 12\]/);
+    assert.match(blocks[0], /\[zoom >= 7\]\[zoom < 13\]/);
+    assert.match(blocks[1], /\[zoom >= 13\]/);
 });
 
 test('text-name still reads fields, because the text is evaluated per feature', () => {

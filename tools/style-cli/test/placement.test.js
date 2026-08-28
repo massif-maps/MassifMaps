@@ -91,8 +91,8 @@ test('text-opacity fades the halo too, or a hidden label leaves a white ghost', 
     // MapTiler hides a label with step(zoom, 0, ..., 13, 1); CartoCSS's text-opacity is the FILL
     // only, so the halo stayed at 1 and drew the name in white at every zoom it should not be at.
     const out = mss({ 'text-opacity': ['step', ['zoom'], 0, 13, 1] });
-    assert.match(out, /text-opacity: step\(\[view::zoom\], \(0, 0\), \(13, 1\)\);/);
-    assert.match(out, /text-halo-opacity: step\(\[view::zoom\], \(0, 0\), \(13, 1\)\);/);
+    assert.match(out, /text-opacity: step\(\(\[view::zoom\] - 1\), \(0, 0\), \(13, 1\)\);/);
+    assert.match(out, /text-halo-opacity: step\(\(\[view::zoom\] - 1\), \(0, 0\), \(13, 1\)\);/);
 });
 
 test('the modern overlap spelling reaches the culler', () => {

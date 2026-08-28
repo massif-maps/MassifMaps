@@ -101,6 +101,11 @@ per tile), decided per parameter when the style loads:
 So a colour an app exposes as a setting (`"water_color"`) is free to change, while a table read per
 feature class still costs a decode.
 
+A table read per feature costs nothing **per frame**, though: since changing it decodes the tiles
+again anyway, `get([param::poi_rank], [class], 100)` is resolved while the tile is built and the
+renderer sees a constant — the same as a plain field expression, so features answering alike still
+share one style slot.
+
 Which side a given property falls on is in the
 [CartoCSS property reference](cartocss-properties.md), one **live** / **baked** column per property.
 The decision is made **per parameter across the whole style**, not per use: one baked use anywhere

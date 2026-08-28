@@ -188,6 +188,32 @@ back with a leader line; a name that loses its row steps to the next one instead
 - Unlike every other orientation, a callout is not dropped when the view meets the surface edge-on,
   which is what makes it work at a near-zero or negative tilt.
 
+## Ranking the app owns
+
+The `[rank]` a vector tile ships is one editor's idea of what matters, and an outdoor app wants a
+different one. Put the ranking in a [table style parameter](style-parameters.md) instead of in the
+style, and the app writes it:
+
+```json
+"styleparameters": {
+  "poi_rank": { "default": { "peak": 900, "alpine_hut": 800, "supermarket": 50, "zoo": 40 } }
+}
+```
+
+```css
+#poi {
+  marker-placement-priority: get([param::poi_rank], [class], 100);
+  text-placement-priority:   get([param::poi_rank], [class], 100);
+}
+```
+
+```java
+decoder.setStyleParameter("poi_rank", outdoorRanking);   // one call swaps the whole ranking
+```
+
+The lookup is resolved while the tile is decoded, so it costs nothing per frame. Changing the table
+re-decodes the visible tiles, which suits a profile the user picks — not a slider.
+
 ## Distance limits
 
 Cut labels that are too far to be useful (metres; `0`, the default, means no limit):

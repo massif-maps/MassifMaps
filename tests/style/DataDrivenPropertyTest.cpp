@@ -12,7 +12,9 @@
 #include <mapnikvt/ExpressionContext.h>
 #include <mapnikvt/ParserUtils.h>
 #include <mapnikvt/Properties.h>
+#include <mapnikvt/StyleParameterStore.h>
 
+#include <map>
 #include <memory>
 #include <string>
 #include <utility>
@@ -24,11 +26,16 @@ namespace vt = massif::vt;
 namespace {
     // The context TileReader hands a symbolizer: the feature's data, narrowed to the fields the
     // rule references (TileReader::processLayer -> exprContext.setFeatureData).
-    mvt::ExpressionContext contextWith(std::vector<std::pair<std::string, mvt::Value>> vars) {
+    mvt::ExpressionContext contextWith(std::vector<std::pair<std::string, mvt::Value>> vars, std::shared_ptr<const mvt::StyleParameterStore> store = std::shared_ptr<const mvt::StyleParameterStore>()) {
         mvt::ExpressionContext context;
         context.setFeatureData(std::make_shared<mvt::FeatureData>(
             1, mvt::FeatureData::GeometryType::LINE_GEOMETRY, std::move(vars)));
+        context.setStyleParameterStore(std::move(store));
         return context;
+    }
+
+    mvt::Value makeTable(std::map<std::string, mvt::Value> members) {
+        return mvt::Value(std::make_shared<const mvt::ValueObject>(std::move(members)));
     }
 
     vt::Color colorOf(const mvt::ColorFunctionProperty& prop, const mvt::ExpressionContext& context) {
@@ -131,5 +138,45 @@ void testDataDrivenProperty() {
         TEST_CHECK(a.function() == nullptr, "a field-driven colour folds to a constant, not a per-frame function");
         TEST_CHECK(a == b, "two features with the same field value share one style slot");
         TEST_CHECK(a != c, "two features with different field values do not");
+    }
+
+    // 7. A table parameter indexed by a field - get([param::ranks], [class]) - folds the same way.
+    // It is not live-capable (the field is not in the store), so a change decodes the tiles again;
+    // keeping the store behind a closure would only cost an interpreter run per feature per frame
+    // and a function object per feature, which splits the batches.
+    {
+        auto store = std::make_shared<mvt::StyleParameterStore>();
+        store->setValues({ { "ranks", makeTable({ { "peak", mvt::Value(900.0) } }) } });
+
+        mvt::FloatFunctionProperty rank(0.0f);
+        rank.setExpression(mvt::parseExpression("get([param::ranks], [class], 100)", false));
+        TEST_CHECK(!rank.isLiveCapable(), "a table read by a field is not a live parameter");
+
+        vt::FloatFunction peak = rank.getFunction(contextWith({ { "class", mvt::Value(std::string("peak")) } }, store));
+        vt::FloatFunction peak2 = rank.getFunction(contextWith({ { "class", mvt::Value(std::string("peak")) } }, store));
+        vt::FloatFunction zoo = rank.getFunction(contextWith({ { "class", mvt::Value(std::string("zoo")) } }, store));
+
+        TEST_CHECK(peak.function() == nullptr, "a table read by a field folds to a constant");
+        TEST_CHECK(peak(vt::ViewState()) == 900.0f, "and it is the table's value for that feature");
+        TEST_CHECK(zoo(vt::ViewState()) == 100.0f, "a key the table misses takes the fallback");
+        TEST_CHECK(peak == peak2, "two features answering alike share one function object");
+    }
+
+    // 8. A parameter-only property must NOT fold: it is live, and the tiles read it through the
+    // store, so setting the parameter repaints instead of decoding.
+    {
+        auto store = std::make_shared<mvt::StyleParameterStore>();
+        store->setValues({ { "boost", mvt::Value(10.0) } });
+
+        mvt::FloatFunctionProperty rank(0.0f);
+        rank.setExpression(mvt::parseExpression("[param::boost]", false));
+        TEST_CHECK(rank.isLiveCapable(), "a parameter-only property is live");
+
+        vt::FloatFunction func = rank.getFunction(contextWith({ }, store));
+        TEST_CHECK(func.function() != nullptr, "so it stays a function reading the store");
+        TEST_CHECK(func(vt::ViewState()) == 10.0f, "which gives the current value");
+
+        store->setValues({ { "boost", mvt::Value(20.0) } });
+        TEST_CHECK(func(vt::ViewState()) == 20.0f, "and follows a change with no new function");
     }
 }

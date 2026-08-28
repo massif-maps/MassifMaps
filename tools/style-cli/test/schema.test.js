@@ -69,9 +69,7 @@ test('the whole style is retargeted, project list included', () => {
     assert.deepEqual(JSON.parse(project).layers, ['landcover']);
 });
 
-test('the interleaving report still sees the layers after they are renamed', () => {
-    // The report walks the emitted TARGET layers; keyed on the original source-layer it found
-    // nothing to look up once --schema renamed them, and went silent instead of reporting more.
+test('a source-layer MapBox interleaves is drawn at each of its depths', () => {
     const style = {
         layers: [
             { id: 'a', type: 'fill', source: 's', 'source-layer': 'forest', paint: { 'fill-color': '#0f0' } },
@@ -79,9 +77,13 @@ test('the interleaving report still sees the layers after they are renamed', () 
             { id: 'c', type: 'fill', source: 's', 'source-layer': 'grass', paint: { 'fill-color': '#8f8' } },
         ],
     };
-    // forest and grass both become landcover, with water drawn between them - which a CartoCSS
-    // project cannot express, since its landcover entry pulls both attachments together.
-    assert.match(convert(style, TABLE, { schema: 'openmaptiles' }).coverage.report(), /draw out of order/);
+    // forest and grass both become landcover with water drawn between them, and a bare project
+    // entry pulls both attachments together - so landcover has to appear twice, each entry naming
+    // the attachment it draws. The list is the draw order REVERSED (loadMapProject inserts at the
+    // front), so `a` is last here.
+    const { project, coverage } = convert(style, TABLE, { schema: 'openmaptiles' });
+    assert.deepEqual(JSON.parse(project).layers, ['landcover::c', 'water', 'landcover::a']);
+    assert.match(coverage.report(), /drawn at more than one depth/);
 });
 
 test('without the option nothing is retargeted', () => {

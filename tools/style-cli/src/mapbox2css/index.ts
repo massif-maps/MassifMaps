@@ -31,11 +31,20 @@ export interface ConvertResult {
 /** The palette is a stylesheet of its own, and has to be listed before the rules that read it. */
 export const VARIABLES_FILE = 'variables.mss';
 
+/** A drawn attachment and where MapBox put it. See projectEntries. */
+interface DrawOrderEntry {
+    sourceLayer: string;
+    attachment: string;
+    index: number;
+}
+
 /** One pass of the emitter, for one config. See emitAll. */
 interface EmitResult {
     mapBlock: string[];
     blocks: Array<{ selector: string; owner: string; declarations: string[] }>;
     order: Map<string, number>;
+    /** Every attachment that made it out, with the MapBox index that decides where it draws. */
+    drawOrder: DrawOrderEntry[];
     brightness: number | null;
 }
 
@@ -178,6 +187,7 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
     // Source-layer name -> every MapBox layer index that draws it. One project entry pulls ALL of
     // them, so the whole source-layer has to sit at one depth and the question is which.
     const positions = new Map<string, number[]>();
+    const drawOrder: DrawOrderEntry[] = [];
     // The TARGET source layer of every layer that made it through, in style order. Kept separately
     // because --schema renames them, and the interleaving check has to see what was emitted.
     const emitted: string[] = [];
@@ -314,6 +324,7 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
         }
 
         blocks.push({ selector, owner: layer.id, declarations: light(layer, declarations) });
+        drawOrder.push({ sourceLayer, attachment, index: layerIndex });
     }
 
     if (usesBuildings) {
@@ -333,9 +344,9 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
         const sorted = [...at].sort((a, b) => a - b);
         return [name, sorted[sorted.length >> 1]];
     }));
-    reportInterleaving(emitted, order, coverage);
+    reportSplitLayers(drawOrder, coverage);
     reportSources(style, layers, coverage);
-    return { mapBlock, blocks, order, brightness };
+    return { mapBlock, blocks, order, drawOrder, brightness };
     }
 
     const base = emitAll(configValues, coverage);
@@ -344,7 +355,7 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
             "the style's own ambient light; our renderer cannot measure it back, and a ramp over it " +
             'whose stops are per-feature expressions snaps to the nearer end');
     }
-    const { mapBlock, blocks, order } = base;
+    const { mapBlock, blocks, drawOrder } = base;
 
     // The Map block goes through the palette pass with the rules: a variant that recolours the
     // water and not the background behind it is not a variant anybody wants.
@@ -422,7 +433,7 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
 
     // loadMapProject REVERSES this array (layerNames.insert(begin)), and MapBox layers run
     // bottom-to-top, so the project list is the draw order reversed.
-    const projectLayers = [...order.entries()].sort((a, b) => a[1] - b[1]).map(([name]) => name).reverse();
+    const projectLayers = projectEntries(drawOrder).reverse();
     const styles = variables ? [VARIABLES_FILE, 'style.mss'] : ['style.mss'];
     const project = JSON.stringify(
         options.styleParams!.size > 0
@@ -2065,23 +2076,45 @@ function reportSources(style: MapboxStyle, layers: MapboxLayer[], coverage: Cove
 }
 
 /**
- * One entry in the project's `layers` pulls EVERY attachment of that name, so two MapBox layers on
- * different source-layers cannot be interleaved. Report each inversion rather than let the style
- * quietly draw in the wrong order.
+ * The project's `layers`, in MapBox's own draw order.
+ *
+ * A bare entry pulls EVERY attachment of that source-layer, so a layer MapBox interleaves with
+ * another cannot be placed by one entry: Standard draws its pedestrian areas at index 3, its parks
+ * at 4 and its road casings at 60, all on two source-layers, and any single depth for `road` puts
+ * the pedestrian slab either over the park or under the casings.
+ *
+ * An entry may name ONE attachment (`road::pedestrian_polygon`), so a source-layer that MapBox
+ * splits is emitted once per RUN of consecutive attachments. A layer that forms one run keeps its
+ * bare entry, which is every layer of a style that interleaves nothing.
  */
-function reportInterleaving(emitted: string[], order: Map<string, number>, coverage: Coverage): void {
-    let inversions = 0;
-    let previous = -1;
-    for (const sourceLayer of emitted) {
-        const position = order.get(sourceLayer);
-        if (position === undefined) continue;
-        if (position < previous) inversions++;
-        previous = position;
+export function projectEntries(drawOrder: DrawOrderEntry[]): string[] {
+    const sorted = drawOrder.map((entry, at) => ({ entry, at }))
+        .sort((a, b) => a.entry.index - b.entry.index || a.at - b.at)
+        .map((item) => item.entry);
+
+    const runs: Array<{ sourceLayer: string; attachments: string[] }> = [];
+    for (const { sourceLayer, attachment } of sorted) {
+        const last = runs[runs.length - 1];
+        if (last && last.sourceLayer === sourceLayer) last.attachments.push(attachment);
+        else runs.push({ sourceLayer, attachments: [attachment] });
     }
-    if (inversions > 0) {
+
+    const split = new Set(runs.map((run) => run.sourceLayer)
+        .filter((name, at, all) => all.indexOf(name) !== at));
+    return runs.flatMap((run) => (split.has(run.sourceLayer)
+        ? run.attachments.map((attachment) => `${run.sourceLayer}::${attachment}`)
+        : [run.sourceLayer]));
+}
+
+/** What the split above cost, so a project that grew entries says why. */
+function reportSplitLayers(drawOrder: DrawOrderEntry[], coverage: Coverage): void {
+    const entries = projectEntries(drawOrder);
+    const split = new Set(entries.filter((entry) => entry.includes('::')).map((entry) => entry.split('::')[0]));
+    if (split.size > 0) {
         coverage.note(
-            `${inversions} layer(s) draw out of order: a CartoCSS project entry pulls every ` +
-            `attachment of its source-layer, so interleaved source-layers cannot be preserved.`,
+            `${split.size} source-layer(s) are drawn at more than one depth, because MapBox ` +
+            'interleaves them with another: ' + [...split].sort().join(', ') + '. Each is one ' +
+            'project entry per run of attachments, which is what keeps its draw order.',
         );
     }
 }

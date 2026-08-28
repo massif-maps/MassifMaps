@@ -511,6 +511,34 @@ Two limits, both reported:
   plate is a rounded rect and cannot be a pin, so a POI with no icon of its own draws its label
   alone where the browser draws a coloured pin.
 
+## Draw order: a project entry may name one attachment
+
+A bare entry in a project's `layers` pulls **every** attachment of that source-layer, so it places
+the whole layer at one depth. MapBox interleaves: Standard draws its pedestrian areas at index 3,
+its parks at 4 and its road casings at 60 — two source-layers, and no single depth for `road` works.
+Ordering by the median put the pedestrian slab over the Jardin Nelson-Mandela; ordering by the first
+index sank all 82 road layers under `landuse`.
+
+`CartoCSSMapLoader` now accepts an entry that names ONE attachment, so a source-layer can be drawn
+at several depths:
+
+```json
+"layers": ["road::road_pedestrian_polygon_fill", "landuse", "…", "road"]
+```
+
+A **bare entry keeps every attachment no other entry claims**, so a project that splits nothing is
+unaffected and none of the existing styles change. This is a loader feature, not a converter one —
+a hand-written project can use it too.
+
+`mapbox2css` emits one entry per RUN of consecutive attachments, which reproduces MapBox's order
+exactly and leaves a layer that interleaves with nothing on its bare entry. Standard goes from
+about 35 entries to 127, and six source-layers end up at more than one depth (`building`,
+`landuse`, `natural_label`, `place_label`, `road`, `structure`) — the coverage report names them.
+
+Compiling is the expensive step and does not depend on the attachment
+([the cascade's cost](../internals/rendering/10-performance.md)), so a layer several entries name is
+compiled once.
+
 ## Which labels a building may hide
 
 `text-occlusion-opacity` and `icon-occlusion-opacity` are carried, and only where the source
@@ -540,9 +568,8 @@ turns any drop into a non-zero exit. What it refuses, and why:
 - **Expressions with no CartoCSS form**: `feature-state`, `within`, `number-format`,
   `image`, `%` (absent from the grammar), `abs`/`floor`/`ceil` (absent from `_basicFuncMap`), and
   any `interpolate` over something other than zoom or with an exponential base other than 1.
-- **Draw order across source-layers.** One entry in the project's `layers` array pulls *every*
-  attachment of that name, so two MapBox layers on different source-layers cannot be interleaved.
-  The converter reports how many layers end up out of order rather than reordering silently.
+- **A model layer.** Standard plants its trees as glTF models from `mapbox-models-v1`; nothing here
+  draws one.
 
 Three traps the CartoCSS grammar sets, all of which the tests pin:
 

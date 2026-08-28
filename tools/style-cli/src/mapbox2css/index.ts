@@ -990,6 +990,17 @@ function layerDeclarations(
         }
     }
 
+    // Wrap BEFORE the word that would not fit, which is what MapBox does and what `wrap-width`
+    // means. CartoCSS defaults the other way and breaks AFTER it: `splitLines` measures the word it
+    // has just finished, so a line overshoots by one word and - because the test only runs at a
+    // wrap character - the LAST word never moves at all. "10TH ARRONDISSEMENT" and
+    // "Strasbourg - Saint-Denis" stayed on one line where mapbox-gl puts them on two.
+    const wrapDecl = out.find((d) => d.startsWith('text-wrap-width:'));
+    if (wrapDecl && !/text-wrap-width:\s*0\s*;/.test(wrapDecl)) {
+        out.push('text-wrap-before: true;');
+        coverage.emit('text-wrap-before');
+    }
+
     // text-name is what makes a text symbolizer exist at all; without it every other text property
     // is dropped with the rule - but an icon-only layer still has its marker to draw.
     if (symbolizer === 'text' && !out.some((d) => d.startsWith('text-name:'))) {

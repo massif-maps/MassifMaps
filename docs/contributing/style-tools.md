@@ -722,6 +722,18 @@ property of the SOURCE, not of the style, so the converter cannot emit it.
 The bench's readout prints `z=<sdk> (mb <sdk-1>)` and `wasm/mbref.html` prints `z=<mb> (sdk <mb+1>)`,
 so a side-by-side is not read a level off.
 
+## Where a label breaks: `text-wrap-before`
+
+MapBox puts a word on the current line only if it fits and starts a new line otherwise. CartoCSS
+defaults the other way: `TextFormatter::splitLines` measures the word it has just **finished**, so
+the line overshoots by one word — and since the test only runs at a wrap character, the **last word
+never moves at all**. "10TH ARRONDISSEMENT" and "Strasbourg – Saint-Denis" stayed on one line where
+mapbox-gl draws two.
+
+`text-wrap-before: true` is the greedy rule, and it is emitted wherever a non-zero wrap width is
+(shields included, where it is renamed with the rest of the rule). The width itself was already
+right: `text-max-width` ems × the text size.
+
 ## A tree is a canopy dot
 
 Standard draws the whole `tree` source-layer as 3D models from z15, and a dropped `model` layer left

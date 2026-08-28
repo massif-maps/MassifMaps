@@ -69,6 +69,19 @@ test('an unstated max-width still wraps, because MapBox wraps at 10 ems by defau
     assert.match(mss({}), /text-wrap-width: 160;/);
 });
 
+test('a wrapped label breaks BEFORE the word that would not fit', () => {
+    // CartoCSS breaks after it: splitLines measures the word it has just finished, so a line
+    // overshoots by one word - and because the test only runs at a wrap character, the LAST word
+    // never moves at all. "10TH ARRONDISSEMENT" stayed on one line where mapbox-gl uses two.
+    assert.match(mss({}), /text-wrap-before: true;/);
+    // Nothing to break before when the label is laid out along a line, so neither is written.
+    const online = mss({ 'symbol-placement': 'line' });
+    assert.ok(!online.includes('text-wrap-width'));
+    assert.ok(!online.includes('text-wrap-before'));
+    // ...and a stated max-width on such a layer is the explicit "no wrapping" instead.
+    assert.match(mss({ 'symbol-placement': 'line', 'text-max-width': 8 }), /text-wrap-width: 0;/);
+});
+
 test('a line-placed label is never wrapped', () => {
     assert.ok(followsLine(symbolLayer({ 'symbol-placement': 'line' })));
     assert.match(mss({ 'symbol-placement': 'line', 'text-max-width': 10, 'text-size': 12 }), /text-wrap-width: 0;/);

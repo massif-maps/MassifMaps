@@ -119,12 +119,15 @@ const CONFIGURABLE = {
         color: ['match', ['config', 'lightPreset'], 'night', 'hsl(0, 0%, 10%)', 'hsl(0, 0%, 100%)'],
         intensity: 1 } }],
     layers: [
+        // Self-lit, so the light leaves both colours alone and these stay tests of the PALETTE.
         { id: 'water', type: 'fill', 'source-layer': 'water',
-            paint: { 'fill-color': ['match', ['config', 'lightPreset'], 'night', '#001133', '#a0c8f0'] } },
+            paint: { 'fill-emissive-strength': 1,
+                'fill-color': ['match', ['config', 'lightPreset'], 'night', '#001133', '#a0c8f0'] } },
         // Shares the water's colour by day and not by night - the case that used to make the two
         // palettes name their variables differently.
         { id: 'pond', type: 'fill', 'source-layer': 'pond',
-            paint: { 'fill-color': ['match', ['config', 'lightPreset'], 'night', '#002244', '#a0c8f0'] } },
+            paint: { 'fill-emissive-strength': 1,
+                'fill-color': ['match', ['config', 'lightPreset'], 'night', '#002244', '#a0c8f0'] } },
     ],
 };
 
@@ -303,16 +306,41 @@ test('the default preset is drawn unlit, so it matches the source style', () => 
 test('a non-emissive layer follows the light down; a fully emissive one does not', () => {
     const { presets } = convert(LIT, TABLE);
     const night = presets.get('night');
-    // ambient 10% of the day's 100%, so a fully lit surface keeps a tenth of its lightness.
-    assert.match(night, /@ground_fill: hsl\(20, 20%, 9%\);/);
+    // ambient 10% of the day's 100%, read through LIT_GAMMA - the ambient-only proxy says far less
+    // light than gl-js actually draws. The light multiplies the CHANNELS, and scaling all three by
+    // the same k does not keep the HSL saturation NUMBER - 20% -> 2.22% here - while the channel
+    // ratios, which are what the eye reads, are untouched.
+    assert.match(night, /@ground_fill: hsl\(20, 2.22%, 19.39%\);/);
     assert.match(night, /@sign_fill: hsl\(20, 20%, 90%\);/, 'self-lit, so night does not touch it');
 });
 
-test('a layer that states no emissive strength is left as authored', () => {
-    const plain = { ...LIT, layers: [{ id: 'ground', type: 'fill', 'source-layer': 'land',
-        paint: { 'fill-color': 'hsl(20, 20%, 90%)' } }] };
+test('a coloured light casts its own hue, and only over the lit part', () => {
+    // Standard's night ambient is hsl(217, 100%, 11%) with the directional light at intensity 0,
+    // so the only light in the scene is blue - and a land drawn with the lightness alone came out
+    // brown. The cast is measured against the DEFAULT preset's light, so day is untouched.
+    const blue = { ...LIT, lights: [{ id: 'ambient', type: 'ambient', properties: {
+        color: ['match', ['config', 'lightPreset'], 'night', 'hsl(217, 100%, 10%)', 'hsl(0, 0%, 100%)'],
+        intensity: 1 } }] };
+    const { presets, variables } = convert(blue, TABLE);
+    const hue = /@ground_fill: hsl\(([\d.]+),/.exec(presets.get('night'));
+    assert.ok(hue, 'the ground is still written');
+    assert.ok(Number(hue[1]) > 180 && Number(hue[1]) < 260, `blue-cast, got ${hue[1]}`);
+    // The self-lit layer takes no cast at all, whatever the light is.
+    assert.match(presets.get('night'), /@sign_fill: hsl\(20, 20%, 90%\);/);
+    assert.match(variables, /hsl\(20, 20%, 90%\)/, 'and the default preset is as authored');
+});
+
+test('unstated emissive takes MapBox\'s default: a label is lit, geometry is not', () => {
+    // Standard's `roads-case` states none and gl-js still draws it dark at night; read as fully
+    // emissive it painted a white casing over the whole night map.
+    const plain = { ...LIT, layers: [
+        { id: 'ground', type: 'fill', 'source-layer': 'land', paint: { 'fill-color': 'hsl(20, 20%, 90%)' } },
+        { id: 'name', type: 'symbol', 'source-layer': 'place',
+            layout: { 'text-field': '{name}' }, paint: { 'text-color': 'hsl(20, 20%, 90%)' } },
+    ] };
     const { presets } = convert(plain, TABLE);
-    assert.match(presets.get('night'), /@ground_fill: hsl\(20, 20%, 90%\);/);
+    assert.match(presets.get('night'), /@ground_fill: hsl\(20, 2.22%, 19.39%\);/, 'geometry follows the light');
+    assert.match(presets.get('night'), /hsl\(20, 20%, 90%\)/, 'and a label keeps its own colour');
 });
 
 test('runtime interaction state folds to unset, so the ordinary branch survives', () => {

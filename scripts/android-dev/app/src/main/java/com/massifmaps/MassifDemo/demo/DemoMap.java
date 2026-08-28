@@ -351,6 +351,14 @@ public class DemoMap {
      */
     private Layer createBaseLayer() {
         baseDecoder = DemoStyles.create(DemoConfig.STYLE_SOURCE, dataPath);
+        // A compiled style's own switch, where it has one - see DemoConfig.STYLE_BUILDINGS.
+        if (!DemoConfig.STYLE_BUILDINGS.isEmpty()) {
+            try {
+                baseDecoder.setStyleParameter("buildings", DemoConfig.STYLE_BUILDINGS);
+            } catch (Exception e) {
+                Log.w(TAG, "style has no 'buildings' parameter: " + e.getMessage());
+            }
+        }
         // see BASE_TILE_CACHE_MB: the SDK default (10MB) is what makes a zoom step blank the map
         if (DemoConfig.BASE_MODE == DemoConfig.BaseMode.PLAIN) {
             compositeLayer = null;

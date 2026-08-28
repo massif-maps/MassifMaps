@@ -9,9 +9,9 @@ import { type ExtractedIcon, type IconPlate, type SpriteSet, extractAllIconPlate
 import { type Schema, dropMissingFieldTests, mapSourceLayer, withMappingFilter } from './schema.js';
 import { collapseBranches, splitLayer } from './split.js';
 import { type HoistBlock, hoistVariables, paletteHeader } from './variables.js';
-import { LIGHT_PRESET, importOnly, presetsOf, resolveConfig, sceneBrightness } from './config.js';
+import { LIGHT_PRESET, importOnly, presetsOf, resolveConfig, sceneBrightness, sceneLightColour } from './config.js';
 import { ICON_PARAMS, ICON_PARAM_SCOPE, type IconParamScope, RECOLOURABLE_ICON, foldConfig, foldLayer } from './fold.js';
-import { applyLighting, emissiveProperty, lightingFactor } from './emissive.js';
+import { applyLighting, emissiveDefault, emissiveProperty, lightCast, lightingFactor } from './emissive.js';
 import type { CartoProperty, Json, MapboxLayer, MapboxStyle, PropertyTable } from './types.js';
 
 export interface ConvertResult {
@@ -169,12 +169,18 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
     const defaultBrightness = lights === undefined ? null
         : sceneBrightness(lights, (node) => foldConfig(node, new Map(
             [...parameters].map(([name, spec]) => [name, spec.default]))));
+    // ...and the colour of its light, which is what the cast is measured against.
+    const defaultLightColour = lights === undefined ? null
+        : sceneLightColour(lights, (node) => foldConfig(node, new Map(
+            [...parameters].map(([name, spec]) => [name, spec.default]))));
 
     // Emitting is a function of the config, because a configurable style is converted ONCE PER
     // PRESET: folding preserves structure (see fold.ts), so the runs line up block for block and
     // only their literals differ - which is what lets one style.mss carry a palette per preset.
     function emitAll(values: Map<string, Json>, coverage: Coverage): EmitResult {
     const brightness = lights === undefined ? null : sceneBrightness(lights, (node) => foldConfig(node, values));
+    const cast = lightCast(lights === undefined ? null : sceneLightColour(lights, (node) => foldConfig(node, values)),
+        defaultLightColour);
     const scene = brightness === null ? {} : { brightness };
     // Always, even for a style with no config of its own: the viewport terms fold here too, and a
     // filter left testing the pitch is untranslatable, which drops the whole LAYER.
@@ -280,13 +286,15 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
             // Map settings are not symbolizer properties, so they are not in the table.
             const known = allowed.get(property);
             if (known ? known.kind !== 'color' : !property.endsWith('-color')) return declaration;
-            const source = emissiveProperty(property);
+            // A `model` layer's colour is the canopy's, so it reads the model's own strength.
+            const source = layer.type === 'model' ? 'model-emissive-strength' : emissiveProperty(property);
             const stated = source ? layer.paint?.[source] : undefined;
-            // Only where the style STATES one. A zoom ramp has no single answer, so it takes the
+            // Unstated takes MAPBOX's default for that property, which is 1 for a label and 0 for
+            // geometry - see EMISSIVE_DEFAULT. A zoom ramp has no single answer, so it takes the
             // mean of its stops, as every other zoom-driven value baked in here does.
-            const emissive = stated === undefined ? null
+            const emissive = stated === undefined ? emissiveDefault(source)
                 : typeof stated === 'number' ? stated : representativeScale(stated, 1);
-            const factor = lightingFactor(emissive, litFraction);
+            const factor = lightingFactor(emissive, litFraction, cast);
             if (factor === null) return declaration;
             const value = declaration.slice(colon + 1, declaration.lastIndexOf(';')).trim();
             const lit = applyLighting(value, factor);

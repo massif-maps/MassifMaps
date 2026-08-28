@@ -144,6 +144,23 @@ export function sceneBrightness(lights: Json, fold: (node: Json) => Json): numbe
     return lightness * intensity;
 }
 
+/**
+ * The AMBIENT light's colour, folded. Its brightness is `sceneBrightness`; this is its chroma, and
+ * it is what makes a preset read as night rather than as a dim day: Standard's night ambient is
+ * `hsl(217, 100%, 11%)` with the directional light at intensity 0, so the only light in the scene
+ * is blue. Returns null where the style states none.
+ */
+export function sceneLightColour(lights: Json, fold: (node: Json) => Json): string | null {
+    const folded = fold(lights);
+    if (!Array.isArray(folded)) return null;
+    const ambient = folded.find((light) => !!light && typeof light === 'object'
+        && (light as Record<string, Json>).type === 'ambient') as Record<string, Json> | undefined;
+    const properties = ambient?.properties;
+    if (!properties || typeof properties !== 'object' || Array.isArray(properties)) return null;
+    const colour = (properties as Record<string, Json>).color;
+    return typeof colour === 'string' ? colour : null;
+}
+
 /** The L of an `hsl()`/`hsla()` colour, 0-1. Standard writes every light colour that way. */
 function hslLightness(colour: Json): number | null {
     if (typeof colour !== 'string') return null;

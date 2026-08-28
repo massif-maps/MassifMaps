@@ -587,6 +587,14 @@ public final class DemoConfig {
     public static String INLINE_BUILDING_COLOR = "#d9cfc4";
     /** Extrude buildings: this is what gives the shadow pass real 3D casters. */
     public static boolean INLINE_BUILDINGS_3D = false;
+
+    /**
+     * The `buildings` style parameter of a COMPILED style (dir/zip/project), which a converted
+     * Mapbox Standard uses as 0 = none, 1 = footprints, 2 = extrusions. Empty leaves the style's
+     * own default. `--es bld3d` sets it too, so one key turns 3D buildings off whichever style is
+     * loaded - it used to reach the inline style only.
+     */
+    public static String STYLE_BUILDINGS = "";
     /** Line widths of the inline style, as CartoCSS expressions - so they can be made
      *  zoom-dependent for testing how a line behaves as you zoom and tilt. The defaults widen
      *  with zoom the way a real style does; pass a plain number to pin a width instead. */
@@ -1353,6 +1361,10 @@ public final class DemoConfig {
         INLINE_BACKGROUND_COLOR = DemoCfg.cfgColor("bg", INLINE_BACKGROUND_COLOR);
         INLINE_BUILDING_COLOR = DemoCfg.cfgColor("bldColor", INLINE_BUILDING_COLOR);
         INLINE_BUILDINGS_3D = DemoCfg.cfgBool("bld3d", INLINE_BUILDINGS_3D);
+        STYLE_BUILDINGS = DemoCfg.cfgStr("buildings", STYLE_BUILDINGS);
+        if (STYLE_BUILDINGS.isEmpty() && DemoCfg.cfg("bld3d") != null) {
+            STYLE_BUILDINGS = INLINE_BUILDINGS_3D ? "2" : "1";
+        }
         INLINE_BUILDING_HEIGHT = DemoCfg.cfgFloat("bldHeight", INLINE_BUILDING_HEIGHT);
         INLINE_ROAD_WIDTH = DemoCfg.cfgStr("roadWidth", INLINE_ROAD_WIDTH);
         INLINE_MOTORWAY_WIDTH = DemoCfg.cfgStr("motorwayWidth", INLINE_MOTORWAY_WIDTH);

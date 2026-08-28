@@ -722,6 +722,42 @@ property of the SOURCE, not of the style, so the converter cannot emit it.
 The bench's readout prints `z=<sdk> (mb <sdk-1>)` and `wasm/mbref.html` prints `z=<mb> (sdk <mb+1>)`,
 so a side-by-side is not read a level off.
 
+## The light, not the colours: how a preset gets dark
+
+Standard's night preset uses the **same authored colours as day** — `colorLand` is
+`hsl(20, 20%, 95%)` in both. What changes is the scene light, and gl-js applies it at draw time. The
+SDK draws every 2D colour as authored, so the light is folded into the colour at conversion
+([`emissive.ts`](https://github.com/massif-maps/MassifMaps/blob/master/tools/style-cli/src/mapbox2css/emissive.ts)):
+
+```
+shown_c = authored_c x (emissive + (1 - emissive) x brightness^(2/3) x cast_c)
+```
+
+Three things that each cost a round to get right:
+
+- **Unstated emissive is not "leave it alone".** MapBox's default is **1 for a label and 0 for
+  geometry**, so a name stays legible at night and a road does not. Read as fully emissive,
+  Standard's `roads-case` — which states nothing — painted a white casing over the whole night map,
+  and its trees stayed bright green.
+- **The light has a colour.** Night's ambient is `hsl(217, 100%, 11%)` with the directional light at
+  intensity 0, so the only light in the scene is blue; with the lightness alone the land came out
+  brown. `cast` is this preset's ambient chroma over the DEFAULT preset's — 1 for a white light, so
+  the default preset is still exactly as authored — floored at neutral, because a light tints and
+  does not subtract.
+- **The ambient-only proxy under-reads the light**, and both gammas are fitted to a MEASURED gl-js
+  night render (`wasm/mbref.html` over Les Halles, 2.34580 / 48.86300, z16.78):
+
+  | surface | authored | gl-js draws | emissive |
+  |---|---|---|---|
+  | land | `hsl(20, 20%, 95%)` | rgb 38, 40, 51 | 0 |
+  | park | `hsl(115, 60%, 80%)` | rgb 72, 91, 86 | 0.25 |
+
+  Solving both gives a lit term near (0.18, 0.175, 0.27) — luminance 0.18 where the proxy says
+  0.075, and a blue lift of 1.5x where the raw chroma ratio says 2.9x. A gamma on each keeps the
+  default preset at exactly 1 (`1^g = 1`), which no additive floor can do.
+
+Still an APPROXIMATION: no directional term and no per-vertex normal.
+
 ## Where a label breaks: `text-wrap-before`
 
 MapBox puts a word on the current line only if it fits and starts a new line otherwise. CartoCSS

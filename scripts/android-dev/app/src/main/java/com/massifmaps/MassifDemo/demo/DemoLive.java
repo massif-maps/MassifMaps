@@ -49,7 +49,7 @@ public final class DemoLive extends BroadcastReceiver {
     private static final String[] STYLE_KEYS = {
         "style", "styleLight", "bg", "bldColor", "bld3d", "bldLight", "bldAmbient", "bldGradient", "bldGradientHeight",
         "bldAoRadius", "bldAoIntensity", "bldAoAttenuation", "bldAoStep", "bldEdgeRadius", "bldRoofShade", "bldRoundedRoof",
-        "roadLabelOcclusion", "lightPreset"
+        "roadLabelOcclusion", "lightPreset", "bld3d", "buildings"
     };
     private static final String[] SKY_KEYS = {
         "sky", "skyColor", "horizonColor", "sunDisc",
@@ -95,6 +95,9 @@ public final class DemoLive extends BroadcastReceiver {
         }
         if (has(extras, STYLE_KEYS)) {
             demo.rebuildBaseLayer();
+        }
+        if (has(extras, CAMERA_KEYS)) {
+            demo.applyCamera();
         }
         if (has(extras, CAMERA_KEYS)) {
             demo.applyCamera();

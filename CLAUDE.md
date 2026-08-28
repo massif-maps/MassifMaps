@@ -191,6 +191,9 @@ adb shell am start -n com.massifmaps.MassifDemo/.BenchActivity --es ui false --e
   `roadLabelOcclusion` (the same for the road-name style layer alone, a re-decode),
   `ui false` (hide the panel), `anim zoom|pan|rotate|zoomseq|approach` (`approach` = dive close,
   pan along the slope, pull back out — the terrain close-approach repro shape).
+- **`--es buildings 0|1|2`** drives a COMPILED style's own `buildings` parameter (none /
+  footprints / extrusions), which is what a converted Mapbox Standard gates its 3D on. `--es bld3d`
+  sets it too — that key used to reach the inline style only.
 - **`--es vectorZoomBias -1` for a source authored for MapBox's 512 px tiles.** This SDK's tiles are
   256 px, so at the same view it asks for a level DEEPER than mapbox-gl does — and a level deeper
   carries a level's worth of extra POIs. Comparing at mapbox z13.67 we drew bicycle parkings its

@@ -28,6 +28,7 @@ namespace massif {
         take(buildingRoofShade, other.buildingRoofShade);
         take(buildingHeightScale, other.buildingHeightScale);
         take(buildingGrowOnAppear, other.buildingGrowOnAppear);
+        take(buildingFadeOnAppear, other.buildingFadeOnAppear);
         take(buildingAoIntensity, other.buildingAoIntensity);
         take(textOcclusionOpacity, other.textOcclusionOpacity);
         take(buildingAoGroundAttenuation, other.buildingAoGroundAttenuation);
@@ -58,7 +59,7 @@ namespace massif {
     }
 
     bool StyleEnvironment::empty() const {
-        return !(sunAzimuth || sunAltitude || sunColor || sunIntensity || ambientIntensity || ambientColor || buildingLightIntensity || buildingAmbient || buildingVerticalGradient || buildingRoofShade || buildingHeightScale || buildingGrowOnAppear || buildingAoIntensity || textOcclusionOpacity || buildingAoGroundAttenuation || terrainLightingEnabled ||
+        return !(sunAzimuth || sunAltitude || sunColor || sunIntensity || ambientIntensity || ambientColor || buildingLightIntensity || buildingAmbient || buildingVerticalGradient || buildingRoofShade || buildingHeightScale || buildingGrowOnAppear || buildingFadeOnAppear || buildingAoIntensity || textOcclusionOpacity || buildingAoGroundAttenuation || terrainLightingEnabled ||
                  shadowStrength || shadowBias || shadowSoftness || shadowDistance || shadowMapSize || shadowCascades ||
                  shadowCasterMargin || fogEnabled || fogColor || fogRangeStart || fogRangeEnd || fogHighColor || fogSpaceColor ||
                  fogHorizonBlend || fogVerticalRangeStart || fogVerticalRangeEnd || fogStarIntensity ||
@@ -136,6 +137,9 @@ namespace massif {
         }
         if (env.buildingGrowOnAppear) {
             lighting.buildingGrowOnAppear = *env.buildingGrowOnAppear;
+        }
+        if (env.buildingFadeOnAppear) {
+            lighting.buildingFadeOnAppear = *env.buildingFadeOnAppear;
         }
         if (env.buildingAoIntensity) {
             lighting.buildingAoIntensity = *env.buildingAoIntensity;

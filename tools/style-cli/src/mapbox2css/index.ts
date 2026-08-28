@@ -511,6 +511,10 @@ const BUILDING_MAP_DEFAULTS: Record<string, string> = {
     'building-ao-ground-attenuation': '1.75',
     'building-edge-radius': '0',               // gl-js: edge-radius 0
     'building-rounded-roof': '1',              // gl-js: rounded-roof true
+    // gl-js has no timed fade for an extrusion: a style that wants one ramps
+    // `fill-extrusion-opacity` over zoom, as Standard does between z15 and z15.3. The SDK fades
+    // every geometry in with its tile, which put a second, timed fade on top of that one.
+    'building-fade-on-appear': '0',
 };
 
 const BUILDING_MAP_SETTINGS: Record<string, string> = {

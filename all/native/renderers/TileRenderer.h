@@ -277,6 +277,7 @@ namespace massif {
         // buildings with it (off: no source style asks for that animation).
         float _buildingHeightScale = 1.0f;
         bool _buildingGrowOnAppear = false;
+        bool _buildingFadeOnAppear = true;
         std::atomic<float> _textOcclusionOpacity{1.0f};
         float _groundAOIntensity = 0.5f;
         float _groundAOAttenuation = 0.69f;

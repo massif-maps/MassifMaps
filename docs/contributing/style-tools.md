@@ -811,6 +811,11 @@ Every other `model` layer — buildings, wind turbines — has no such reduction
 1 at z15.3. It is a **zoom ramp**, so it looks the same at every visit; it is carried now as
 `building-height-scale`, a Map setting.
 
+A converted style also sits out the tile's **fade**: gl-js has no timed fade for an extrusion, it
+ramps `fill-extrusion-opacity` over zoom, so the SDK's own tile blend was a second fade on top of
+that one. `building-fade-on-appear: 0` turns it off for extrusions alone; it stays on everywhere
+else, because every other kind of geometry fades in with its tile.
+
 The SDK had an animation of its own in the same place: `uHeightScale` was the tile's fade-in blend,
 so every building rose each time its tile faded in, wherever the camera was. That is off unless a
 style asks for it (`building-grow-on-appear`), and the shadow **caster** keeps the stated height

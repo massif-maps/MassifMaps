@@ -258,12 +258,13 @@ namespace massif {
             _groundAOAttenuation = lighting.buildingAoGroundAttenuation;
             _buildingHeightScale = lighting.buildingHeightScale;
             _buildingGrowOnAppear = lighting.buildingGrowOnAppear;
+            _buildingFadeOnAppear = lighting.buildingFadeOnAppear;
             // Same reason again, and one step earlier than the rest: the owner reads this BEFORE
             // the layer passes, to decide whether to render the occluder buffer at all.
             _textOcclusionOpacity.store(resolveTextOcclusionOpacity(options->getTerrainOptions(), _styleEnvironment));
         }
         tileRenderer->setGroundAO(_groundAOIntensity, _groundAOAttenuation);
-        tileRenderer->setBuildingHeight(_buildingHeightScale, _buildingGrowOnAppear);
+        tileRenderer->setBuildingHeight(_buildingHeightScale, _buildingGrowOnAppear, _buildingFadeOnAppear);
         tileRenderer->setLabelOcclusionOpacity(_textOcclusionOpacity.load());
         try {
             _framePrepareResult = tileRenderer->startFrame(deltaSeconds * 3);
@@ -942,6 +943,7 @@ namespace massif {
             _groundAOAttenuation = lighting.buildingAoGroundAttenuation;
             _buildingHeightScale = lighting.buildingHeightScale;
             _buildingGrowOnAppear = lighting.buildingGrowOnAppear;
+            _buildingFadeOnAppear = lighting.buildingFadeOnAppear;
             _resolvedSunDir = lighting.sunDir;
             _resolvedBuildingSunDir = lighting.sunDir;
             _resolvedSunColor = lighting.sunColor;
@@ -974,7 +976,7 @@ namespace massif {
         }
         tileRenderer->setTerrainLighting(terrainLighting);
         tileRenderer->setGroundAO(_groundAOIntensity, _groundAOAttenuation);
-        tileRenderer->setBuildingHeight(_buildingHeightScale, _buildingGrowOnAppear);
+        tileRenderer->setBuildingHeight(_buildingHeightScale, _buildingGrowOnAppear, _buildingFadeOnAppear);
         tileRenderer->setTerrainDepthWrite(terrainMode && _terrainDepthWriteMode);
         if (auto options = _options.lock()) {
             tileRenderer->setDebugTileBorders(options->isDebugTileBorders());

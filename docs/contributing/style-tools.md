@@ -726,11 +726,20 @@ reading a zoom ramp ever had.
 Standard drives `icon-opacity` from `sizerank` — from z17 a POI with `sizerank < 13` shows its
 **name alone**, no icon. `ShieldSymbolizer` faded the glyph and kept the disc behind it, so every
 prominent POI drew as a bare coloured dot beside its name ("Forum des Halles" blue, the Jardin
-Nelson Mandela green). The plate is the icon's background, so `shield-icon-opacity` now scales it
-and its border.
+Nelson Mandela green). The plate is the icon's background, so `shield-icon-opacity` scales it and
+its border — **per frame**, not baked at decode: the opacity is a zoom ramp, so a tile decoded on
+the other side of the step kept its disc until it was decoded again, which is the coloured square
+that flashed while zooming.
 
-Still missing on that path: `marker`, MapBox's generic pin, is not a disc with a glyph on it, so
-the split leaves it out and the ~150 POIs that name it draw their label with no icon at all.
+## Every sprite gets a glyph
+
+The disc/glyph split only accepts a composite, and **433 of Standard's 595 sprites are not one** —
+`marker`, MapBox's generic pin, among them, which ~150 POIs name. Left out of the whole-sheet table,
+those labels drew with no icon at all.
+
+A sprite that does not split becomes a field of its own **silhouette**, and the rule's own plate
+stands in for the disc — which is how MapBox composes a POI icon anyway (`background` + `icon`). It
+flattens a multi-colour sprite to one shape, which is what a POI rule's `icon-fill` means.
 
 ## What actually has to be split into attachments
 

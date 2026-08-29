@@ -2643,12 +2643,11 @@ namespace massif {
                         std::array<double, TerrainShadowMap::MAX_CASCADES> shadowTexelMeters = { };
                         bool coverChanged = (_groundCoverTileIds != groundTileIds);
                         _groundCoverTileIds = groundTileIds;
-                        // Shadows OFF for now, deliberately. The caster pass and the light boxes
-                        // are wired to this cover and the sun does reach the ground and the paint,
-                        // but on the emulator the map reads as scattered acne instead of the
-                        // drape's cast shadows - same scene, same map, one path clean and the other
-                        // not. Half-working shadows are worse than none; flip this to true to work
-                        // on it, with the drape path as the reference to diff against.
+                        // Shadows OFF for now, deliberately. Turning them on works - the Opera casts
+                        // on its street and the buildings shadow each other - but the road overlay
+                        // wears a fine speckle of its own acne over the whole map, which the drape
+                        // path does not. Half-working shadows are worse than none; flip to true to
+                        // work on it, with the drape path as the reference to diff against.
                         applyTerrainShadows(groundLayers, groundTileIds, terrainOptions, viewState, groundPrevFBO, coverChanged, false, lighting, shadowTexelMeters);
 
                         FRAME_PROF_ADD(coverMs, profCoverStart);

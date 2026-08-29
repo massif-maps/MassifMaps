@@ -432,6 +432,10 @@ namespace massif {
         std::lock_guard<std::mutex> lock(_mutex);
 
         if (std::shared_ptr<vt::GLTileRenderer> tileRenderer = (_vtRenderer ? _vtRenderer->getTileRenderer() : std::shared_ptr<vt::GLTileRenderer>())) {
+            // What the fit falls back on when no tile carries a DEM: the same factor the elevation
+            // cache would report, minus the exaggeration a flat map does not have. Without it a 2D
+            // map failed the fit outright and drew no shadow at all.
+            tileRenderer->setMetersToInternal(Const::WORLD_SIZE / Const::EARTH_CIRCUMFERENCE);
             return tileRenderer->calculateShadowViewProj(tileIds, casterTileIds, sunDir, tileHeights, minHeight, maxHeight, distanceFactor, cameraDistance, mapSize, cascade, cascadeCount, boxCasterTileIds, depthRangeMeters, texelMeters, lightViewProj);
         }
         return false;
@@ -562,6 +566,19 @@ namespace massif {
     vt::GLTileRenderer::TerrainLighting TileRenderer::buildTerrainLighting(const ResolvedLighting& lighting) {
         vt::GLTileRenderer::TerrainLighting terrainLighting;
         terrainLighting.enabled = true;
+        // A style whose 2D colours already carry the light is lit NEUTRALLY rather than not at all.
+        // The ground's shadow multiply lives INSIDE the terrain shading block (applyTerrainShading),
+        // so switching that block off takes the shadow with it - the caster pass keeps running and
+        // nothing receives. White ambient at full weight makes the lit term exactly 1, which leaves
+        // the authored colour alone and lets the shadow through.
+        if (lighting.colorsPrelit) {
+            terrainLighting.sunDir = lighting.sunDir;
+            terrainLighting.sunColor = cglib::vec3<float>(1.0f, 1.0f, 1.0f);
+            terrainLighting.ambientColor = cglib::vec3<float>(1.0f, 1.0f, 1.0f);
+            terrainLighting.sunIntensity = 0.0f;
+            terrainLighting.ambientIntensity = 1.0f;
+            return terrainLighting;
+        }
         terrainLighting.sunDir = lighting.sunDir;
         terrainLighting.sunColor = cglib::vec3<float>(lighting.sunColor.getR() / 255.0f, lighting.sunColor.getG() / 255.0f, lighting.sunColor.getB() / 255.0f);
         terrainLighting.ambientColor = cglib::vec3<float>(lighting.ambientColor.getR() / 255.0f, lighting.ambientColor.getG() / 255.0f, lighting.ambientColor.getB() / 255.0f);
@@ -956,6 +973,9 @@ namespace massif {
             // shadow map, since the shadow multiplies the lit colour (the paint is drawn from this
             // layer's own pass, which runs after the owner has set the stack's sun, so it saw the
             // value this line computes).
+            // A pre-lit style is handled inside buildTerrainLighting, which lights it neutrally so
+            // the ground keeps its authored colour and still receives the shadow. Measured at the
+            // Opera, dusk: (68,64,83) against gl-js's (69,64,83); lit twice it was (14,16,31).
             if ((drapeFills || _terrainGroundActive) && lighting.terrainLightingEnabled) {
                 terrainLighting = buildTerrainLighting(lighting);
             }

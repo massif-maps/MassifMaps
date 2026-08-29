@@ -34,6 +34,7 @@ namespace massif {
         take(textOcclusionOpacity, other.textOcclusionOpacity);
         take(buildingAoGroundAttenuation, other.buildingAoGroundAttenuation);
         take(terrainLightingEnabled, other.terrainLightingEnabled);
+        take(colorsPrelit, other.colorsPrelit);
         take(shadowStrength, other.shadowStrength);
         take(shadowBias, other.shadowBias);
         take(shadowSoftness, other.shadowSoftness);
@@ -113,6 +114,9 @@ namespace massif {
         }
         if (env.terrainLightingEnabled) {
             lighting.terrainLightingEnabled = *env.terrainLightingEnabled;
+        }
+        if (env.colorsPrelit) {
+            lighting.colorsPrelit = *env.colorsPrelit;
         }
         // Buildings follow the sun unconditionally - terrainLightingEnabled decides whether the
         // GROUND is lit, and gating the walls on it too gave the extrusions a second lighting

@@ -50,6 +50,8 @@ namespace massif {
         std::optional<float> textOcclusionOpacity;
         std::optional<float> buildingAoGroundAttenuation;
         std::optional<bool> terrainLightingEnabled;
+        // The style says its 2D colours already carry the light - see Map::Settings::colorsPrelit.
+        std::optional<bool> colorsPrelit;
         std::optional<float> shadowStrength;
         std::optional<float> shadowBias;
         std::optional<float> shadowSoftness;
@@ -89,6 +91,9 @@ namespace massif {
      */
     struct ResolvedLighting {
         bool terrainLightingEnabled = false;
+        // Set by a style whose 2D colours are pre-lit: the ground is then drawn as authored while
+        // the terrain's shadows and the 3D pass carry on lighting normally.
+        bool colorsPrelit = false;
         cglib::vec3<float> sunDir = cglib::vec3<float>(0, 0, 1);
         Color sunColor = Color(255, 255, 255, 255);
         float sunIntensity = 1.0f;
@@ -112,8 +117,9 @@ namespace massif {
         float buildingHeightViewScale = 1.0f;
         // Whether a tile's fade-in raises its buildings; off, as no source style asks for it.
         bool buildingGrowOnAppear = false;
-        // Whether a tile's fade-in fades its buildings in; on, like every other geometry.
-        bool buildingFadeOnAppear = true;
+        // Whether a tile's fade-in fades its buildings in. OFF: a half-transparent wall shows the
+        // shadow it is itself casting, which is drawn at full strength from the first frame.
+        bool buildingFadeOnAppear = false;
         // The contact shadow on the ground around a footprint. Its RADIUS is decode-time geometry
         // (TileLayerBuilder::appendGroundSkirt); these two shade the skirt it produced.
         float buildingAoIntensity = 0.2f;

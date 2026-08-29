@@ -845,6 +845,54 @@ shadows. Half-working shadows are worse than none. To work on it, flip that argu
 Tangram-ng has **no** terrain shadows at all, so there is nothing to copy here — this is one of the
 few places the fork is ahead of the reference and therefore on its own.
 
+### Not done: mapbox's distance cutoff, and why it is not a per-tile zoom ramp
+
+A recurring request is that a tile arriving in the distance under tilt should ramp its buildings in
+rather than pop them at full height. The instinct is to evaluate `building-height-scale` per tile at
+that tile's own zoom. **mapbox does not do that**, and the reason is worth recording before anyone
+tries it: their `fill-extrusion-vertical-scale` is a plain `uniform highp float u_vertical_scale`
+applied as `base *= u_vertical_scale; height *= u_vertical_scale;` (`fill_extrusion.vertex.glsl`),
+evaluated once per frame at the camera zoom — exactly what we do. A per-tile zoom would make two
+adjacent tiles at different LOD draw different heights, and a footprint split across a tile boundary
+would step at the seam; with a ramp as steep as z15 → z15.3 one LOD level spans the whole ramp.
+
+What they have instead is `RENDER_CUTOFF`, driven by `fill-extrusion-cutoff-fade-range`, and it is a
+**per-building distance** term, not a per-tile one:
+
+```glsl
+vec4 ground = u_matrix * vec4(centroid_decoded, ele, 1.0);   // the building's CENTROID
+cutoff = cutoff_opacity(u_cutoff_params, ground.z);          // a function of its depth
+...
+scaled_pos.z = mix(c_ele, h, cutoff_scale);                  // height lerped ground -> full
+```
+
+```glsl
+float cutoff_opacity(vec4 p, float depth) {                  // src/shaders/_prelude.glsl
+    float linearDepth = (depth - p.x) / (p.y - p.x);
+    return clamp((linearDepth - p.z) / (p.w - p.z), 0.0, 1.0);
+}
+```
+
+Three properties that matter:
+
+- the term is per CENTROID, so a building is whole whatever tile carries it — no seam;
+- the shadow follows it: the fragment calls `shadowed_light_factor_normal_opacity(..., v_cutoff_opacity)`
+  and `discard`s at 0, which is the "fade the shadow with the ramp" half of the request;
+- buildings do not all collapse on one line — a per-building seed from the centroid and the height
+  staggers them, `if (cutoff < 0.8 - seed) cutoff = 0.0;`, so a tall building survives longer.
+
+Their constants (`src/render/cutoff.ts`): `CUTOFF_DISTANCE_BASE_MULTIPLIER` 1.4 × the
+camera-to-centre distance, `ZOOM_SCALE_EXPONENT` 0.85, `FADE_RANGE_HEIGHT_SCALE` 1.3,
+`ACTIVATION_PITCH_RAMP_WIDTH` 15°. `u_cutoff_params` is
+`[nearZ, farZ, relativeCutoffDistance, relativeCutoffFadeDistance]`. Two behaviours to keep in mind
+before porting: it only activates under PITCH, ramping in over 15°, and it is **disabled when
+terrain is on** (`if (cutoffFadeRange <= 0.0 || painter.terrain) return {shouldRenderCutoff: false}`,
+a TODO on their side) — which is most of our benches.
+
+Porting it is a per-vertex term from a centroid plus a four-float uniform, not the per-tile function
+plumbing it is easily mistaken for. The open question is whether `TileLayerBuilder` already carries a
+per-building centroid in the extrusion vertex layout, or whether one has to be added.
+
 ## Sky
 
 `SkyRenderer` draws a full-screen ray-direction quad before everything else, and reports whether it

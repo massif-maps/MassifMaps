@@ -606,6 +606,8 @@ public final class DemoConfig {
      * Empty leaves the style's own default. Live - a style parameter is a redraw, not a re-decode.
      */
     public static String STYLE_TILT_DROP = "";
+    /** A converted style's `building_ao` parameter: 0 turns the ground contact shadows off. Live. */
+    public static String STYLE_AO = "";
     /** Line widths of the inline style, as CartoCSS expressions - so they can be made
      *  zoom-dependent for testing how a line behaves as you zoom and tilt. The defaults widen
      *  with zoom the way a real style does; pass a plain number to pin a width instead. */
@@ -1375,6 +1377,7 @@ public final class DemoConfig {
         INLINE_BUILDINGS_3D = DemoCfg.cfgBool("bld3d", INLINE_BUILDINGS_3D);
         STYLE_BUILDINGS = DemoCfg.cfgStr("buildings", STYLE_BUILDINGS);
         STYLE_TILT_DROP = DemoCfg.cfgStr("bldTiltDrop", STYLE_TILT_DROP);
+        STYLE_AO = DemoCfg.cfgStr("bldAo", STYLE_AO);
         if (STYLE_BUILDINGS.isEmpty() && DemoCfg.cfg("bld3d") != null) {
             STYLE_BUILDINGS = INLINE_BUILDINGS_3D ? "2" : "1";
         }

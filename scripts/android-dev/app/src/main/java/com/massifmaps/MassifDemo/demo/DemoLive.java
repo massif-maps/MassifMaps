@@ -56,7 +56,7 @@ public final class DemoLive extends BroadcastReceiver {
         "skyType", "skyQuality", "skyAtmoSun", "skyAtmoColor", "skyAtmoHalo", "skyAtmoLum"
     };
     // Style PARAMETERS: live, no re-decode - so they are not in STYLE_KEYS.
-    private static final String[] PARAM_KEYS = { "bldTiltDrop" };
+    private static final String[] PARAM_KEYS = { "bldTiltDrop", "bldAo"};
     private static final String[] CAMERA_KEYS = { "lon", "lat", "zoom", "tilt", "rotation" };
 
     private final DemoMap demo;

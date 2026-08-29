@@ -352,6 +352,7 @@ public class DemoMap {
     public void applyStyleParameters() {
         setStyleParameter("buildings", DemoConfig.STYLE_BUILDINGS);
         setStyleParameter("building_tilt_drop", DemoConfig.STYLE_TILT_DROP);
+        setStyleParameter("building_ao", DemoConfig.STYLE_AO);
     }
 
     private void setStyleParameter(String name, String value) {

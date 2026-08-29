@@ -4,9 +4,10 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
 
-import { convert } from '../dist/mapbox2css/index.js';
+import { convert, sceneLights } from '../dist/mapbox2css/index.js';
 import { importOnly, resolveConfig, sceneBrightness } from '../dist/mapbox2css/config.js';
 import { foldConfig } from '../dist/mapbox2css/fold.js';
+import { groundRadiance } from '../dist/mapbox2css/emissive.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const TABLE = JSON.parse(readFileSync(join(HERE, '..', 'src', 'generated', 'properties.json'), 'utf8'));
@@ -102,13 +103,90 @@ test('a root style with no layers of its own says where its layers are', () => {
     assert.equal(importOnly({ layers: [{ id: 'a' }] }), null, 'a flattened style is not import-only');
 });
 
-test('the brightness comes from the style, not from a table of guesses', () => {
-    const lights = [{ id: 'ambient', type: 'ambient', properties: {
-        color: ['match', ['config', 'lightPreset'], 'night', 'hsl(217, 100%, 11%)', 'hsl(0, 0%, 100%)'],
-        intensity: ['match', ['config', 'lightPreset'], 'night', 0.5, 0.8] } }];
-    const at = (preset) => sceneBrightness(lights, (node) => fold(node, { lightPreset: preset }));
-    assert.equal(Math.round(at('day') * 100) / 100, 0.8);
-    assert.equal(Math.round(at('night') * 100) / 100, 0.06);
+/**
+ * Mapbox Standard's own `lights` block, verbatim from the published style. The four presets differ
+ * ONLY here, and every colour in the map is a function of these numbers, so this fixture is what
+ * makes the conformance tests below checkable without rendering anything.
+ */
+const STANDARD_LIGHTS = [
+    { id: 'ambient', type: 'ambient', properties: {
+        color: ['match', ['config', 'lightPreset'],
+            'dawn', 'hsl(28, 98%, 93%)', 'day', 'hsl(0, 0%, 100%)',
+            'dusk', 'hsl(228, 27%, 29%)', 'night', 'hsl(217, 100%, 11%)', 'hsl(0, 0%, 100%)'],
+        intensity: ['match', ['config', 'lightPreset'],
+            'dawn', 0.75, 'day', 0.8, 'dusk', 0.8, 'night', 0.5, 0.8] } },
+    { id: 'directional', type: 'directional', properties: {
+        direction: ['match', ['config', 'lightPreset'],
+            'dawn', ['literal', [120, 50]], 'day', ['literal', [180, 20]],
+            'dusk', ['literal', [240, 80]], 'night', ['literal', [270, 20]], ['literal', [180, 20]]],
+        color: ['match', ['config', 'lightPreset'],
+            'dawn', 'hsl(33, 98%, 77%)', 'day', 'hsl(0, 0%, 100%)',
+            'dusk', 'hsl(30, 98%, 76%)', 'night', 'hsl(225, 15%, 29%)', 'hsl(0, 0%, 100%)'],
+        intensity: ['interpolate', ['linear'], ['zoom'], 12,
+            ['match', ['config', 'lightPreset'], 'dawn', 0.5, 'day', 0.2, 'dusk', 0, 'night', 0, 0.2],
+            14, ['match', ['config', 'lightPreset'], 'dawn', 0.5, 'day', 0.2, 'dusk', 0.2, 'night', 0.5, 0.2]] } },
+];
+
+const atPreset = (fn) => (preset) => fn(STANDARD_LIGHTS, (node) => fold(node, { lightPreset: preset }));
+const round = (value, places) => Number(value.toFixed(places));
+
+/**
+ * `Style.calculateLightsBrightness` (src/style/style.ts), which is what `measure-light` reads.
+ *
+ * These four numbers ARE the ground truth for the whole palette: Standard reads the brightness 113
+ * times to switch a colour between its lit and its unlit form, so a proxy that lands even slightly
+ * off samples every one of those ramps at the wrong place. An ambient-only proxy read the presets
+ * as 0.80 / 0.70 / 0.23 / 0.06 and day and dawn came out alike.
+ *
+ * Confirmed against gl-js ITSELF, not only against its source: `map.style.getBrightness()` on the
+ * real Standard at z16.2 returns 0.477778 / 0.396486 / 0.026970 / 0.013517. The residual is 8-bit
+ * colour rounding. `wasm/mbref.html` is set up to repeat that measurement.
+ *
+ * The value is ZOOM-dependent, because the directional intensity is a zoom ramp: below its first
+ * stop gl-js clamps to z12, where dusk and night have no directional light at all (0.020151 at
+ * z9.12 against 0.026970 at z16.2). We bake ONE number, the top of the ramp, so a converted style
+ * matches from z14 up and drifts below it.
+ */
+test('the scene brightness is mapbox\'s own, directional light and W3C luminance included', () => {
+    const brightness = atPreset(sceneBrightness);
+    assert.equal(round(brightness('day'), 3), 0.478);
+    assert.equal(round(brightness('dawn'), 3), 0.396);
+    assert.equal(round(brightness('dusk'), 3), 0.027);
+    assert.equal(round(brightness('night'), 3), 0.014);
+});
+
+/**
+ * The common ramp - 66 of Standard's 113 reads switch between an unlit and a lit colour over
+ * `[0.25, 0.3]`. Which side each preset lands on is the single most visible consequence of the
+ * number above, so it is asserted as the BEHAVIOUR rather than left implied by the value.
+ */
+test('day and dawn take a brightness ramp\'s lit end, dusk and night its unlit one', () => {
+    const brightness = atPreset(sceneBrightness);
+    const lit = (preset) => brightness(preset) >= 0.3;
+    const unlit = (preset) => brightness(preset) <= 0.25;
+    assert.ok(lit('day') && lit('dawn'), 'day and dawn are lit');
+    assert.ok(unlit('dusk') && unlit('night'), 'dusk and night are not');
+});
+
+/**
+ * `calculateGroundRadiance` (3d-style/render/lights.ts) with the ground normal - the per-channel
+ * factor `apply_lighting_ground` multiplies every unlit 2D colour by, and what the converter folds
+ * into the palette in place of a render-time light.
+ *
+ * Dawn is the one that matters: mapbox draws it at FULL brightness with a fifth of its blue
+ * removed, which is what makes it read as dawn rather than as a slightly dimmer day.
+ */
+test('the ground radiance is mapbox\'s, per channel, so dawn is warm and not merely darker', () => {
+    const radiance = atPreset((lights, f) => groundRadiance(sceneLights(lights, f)));
+    const at = (preset) => radiance(preset).map((c) => round(c, 3));
+    assert.deepEqual(at('day'), [0.994, 0.994, 0.994]);
+    assert.deepEqual(at('dawn'), [1, 0.916, 0.807]);
+    assert.deepEqual(at('dusk'), [0.28, 0.267, 0.347]);
+    // Corroborated against a MEASURED gl-js night render (see emissive.ts): the land there needed
+    // a light of about (0.18, 0.175, 0.27), which the ported formula reproduces without fitting.
+    assert.deepEqual(at('night'), [0.175, 0.197, 0.278]);
+    const [dawnR, , dawnB] = radiance('dawn');
+    assert.ok(dawnR - dawnB > 0.15, `dawn is warm, got r-b ${dawnR - dawnB}`);
 });
 
 /** A configurable style, in the shape Standard uses: one colour per preset, one shared by both. */
@@ -306,11 +384,11 @@ test('the default preset is drawn unlit, so it matches the source style', () => 
 test('a non-emissive layer follows the light down; a fully emissive one does not', () => {
     const { presets } = convert(LIT, TABLE);
     const night = presets.get('night');
-    // ambient 10% of the day's 100%, read through LIT_GAMMA - the ambient-only proxy says far less
-    // light than gl-js actually draws. The light multiplies the CHANNELS, and scaling all three by
-    // the same k does not keep the HSL saturation NUMBER - 20% -> 2.22% here - while the channel
-    // ratios, which are what the eye reads, are untouched.
-    assert.match(night, /@ground_fill: hsl\(20, 2.22%, 19.39%\);/);
+    // MapBox's own ground radiance: an ambient at 10% is pow(0.1, 2.2) of light, and returning
+    // that to sRGB is 0.1 - so the ground is drawn at a tenth. The light multiplies the CHANNELS,
+    // and scaling all three by the same k does not keep the HSL saturation NUMBER - 20% -> 2.22%
+    // here - while the channel ratios, which are what the eye reads, are untouched.
+    assert.match(night, /@ground_fill: hsl\(20, 2.22%, 9%\);/);
     assert.match(night, /@sign_fill: hsl\(20, 20%, 90%\);/, 'self-lit, so night does not touch it');
 });
 
@@ -339,7 +417,7 @@ test('unstated emissive takes MapBox\'s default: a label is lit, geometry is not
             layout: { 'text-field': '{name}' }, paint: { 'text-color': 'hsl(20, 20%, 90%)' } },
     ] };
     const { presets } = convert(plain, TABLE);
-    assert.match(presets.get('night'), /@ground_fill: hsl\(20, 2.22%, 19.39%\);/, 'geometry follows the light');
+    assert.match(presets.get('night'), /@ground_fill: hsl\(20, 2.22%, 9%\);/, 'geometry follows the light');
     assert.match(presets.get('night'), /hsl\(20, 20%, 90%\)/, 'and a label keeps its own colour');
 });
 

@@ -18,18 +18,15 @@ import type { Json } from './types.js';
  * emissive layer is unchanged at any preset - which is what keeps labels and lit windows bright at
  * night - and a non-emissive one follows the light down.
  *
- * The light has a COLOUR, and it is carried: Standard's night ambient is `hsl(217, 100%, 11%)`
- * with the directional light at intensity 0, so the only light in the scene is blue and a night
- * land drawn with the lightness alone came out brown. The multiply is per CHANNEL,
+ * The light has a COLOUR and a DIRECTION, and both are carried: the multiply is per CHANNEL and
+ * the factor is MapBox's own ground radiance (`groundRadiance` below),
  *
- *     shown_c = authored_c x (emissive + (1 - emissive) x brightness x cast_c)
+ *     shown_c = authored_c x (emissive + (1 - emissive) x radiance_c)
  *
- * where `cast` is this preset's ambient chroma over the DEFAULT preset's, both taken at equal
- * luminance - so a white light (day) leaves every channel at 1 and the default preset is still
- * drawn exactly as authored.
+ * which is `mix(apply_lighting_ground(color), color, emissive_strength)` written out.
  *
- * This is an APPROXIMATION, not Mapbox's shading: no directional term and no per-vertex normal.
- * What it buys is a night preset that reads as night instead of as a slightly muted day.
+ * It is still an approximation of the whole model - a 2D layer has no normal, so every surface is
+ * lit as if it faced up - but the light itself is theirs rather than a fitted proxy.
  */
 
 /** Which mapbox emissive property lights a given CartoCSS property. */
@@ -45,6 +42,24 @@ const EMISSIVE_SOURCE: Array<[RegExp, string]> = [
 ];
 
 /**
+ * The mapbox LAYER TYPE decides the emissive property, not the CartoCSS name it was translated to.
+ * A `circle` becomes a marker, whose `icon-emissive-strength` a circle layer never states - so it
+ * read as fully emissive and stayed identical at every preset, where gl-js lights it
+ * (circle.fragment.glsl goes through apply_lighting_with_emission_ground). A fill's OUTLINE becomes
+ * a `line-color` and was looked up against `line-emissive-strength`, which a fill layer does not
+ * state either; mapbox lights the outline with the fill's own.
+ */
+const EMISSIVE_BY_LAYER_TYPE: Record<string, string> = {
+    circle: 'circle-emissive-strength',
+    fill: 'fill-emissive-strength',
+};
+
+/** The emissive property a layer of this TYPE uses, when the property name alone would mislead. */
+export function emissiveForLayerType(type: string | undefined): string | null {
+    return type ? EMISSIVE_BY_LAYER_TYPE[type] ?? null : null;
+}
+
+/**
  * What MapBox uses when a layer states none, which is NOT one value for all of them.
  *
  * A LABEL is emissive by default and stays legible at night; GEOMETRY is not, and is lit like any
@@ -54,6 +69,7 @@ const EMISSIVE_SOURCE: Array<[RegExp, string]> = [
 const EMISSIVE_DEFAULT: Record<string, number> = {
     'text-emissive-strength': 1,
     'icon-emissive-strength': 1,
+    'circle-emissive-strength': 0,
     'background-emissive-strength': 0,
     'line-emissive-strength': 0,
     'fill-emissive-strength': 0,
@@ -98,56 +114,65 @@ function chroma(colour: string | null): [number, number, number] | null {
     return luminance > 0 ? [rgb[0] / luminance, rgb[1] / luminance, rgb[2] / luminance] : null;
 }
 
+/** The lights block, resolved for one preset - everything the radiance below is a function of. */
+export interface SceneLights {
+    ambientColour: string;
+    ambientIntensity: number;
+    directionalColour: string;
+    directionalIntensity: number;
+    /** MapBox's polar angle, degrees from straight up. */
+    directionalPolar: number;
+}
+
+const toLinear = (c: number) => Math.pow(c, 2.2);
+const toSRGB = (c: number) => Math.pow(Math.max(0, Math.min(1, c)), 1 / 2.2);
+
 /**
- * How this preset's light colours a surface, relative to the style's own default preset. [1, 1, 1]
- * where either is unknown or the two match, which is what leaves the default preset as authored.
+ * What MapBox's own light does to a FLAT, upward-facing surface - `calculateGroundRadiance`
+ * (3d-style/render/lights.ts) with the ground normal, which is the value `apply_lighting_ground`
+ * multiplies every unlit 2D colour by.
+ *
+ * Ported rather than approximated. The proxy this replaces raised a scalar brightness to a fitted
+ * gamma and floored the colour ratio at neutral, which cost the two things that separate the
+ * presets: dawn came out 8% darker and NEUTRAL where MapBox draws it at full brightness with a
+ * fifth of its blue removed - so day and dawn looked alike - and every preset's tint was a lift
+ * only, never a subtraction.
  */
-export function lightCast(colour: string | null, defaultColour: string | null): [number, number, number] {
-    const here = chroma(colour);
-    const base = chroma(defaultColour);
-    if (!here || !base) return [1, 1, 1];
-    const ratio = [0, 1, 2].map((i) => (base[i] > 0 ? here[i] / base[i] : 1));
-    // A light TINTS, it does not subtract: mapbox's night ambient has no red at all, yet a night
-    // render is not red-free - their shader carries a neutral base the style does not describe.
-    // Measured on Standard at night (see CAST_GAMMA), the cast is a mild blue LIFT, so the ratio
-    // is floored at neutral and pulled towards it.
-    return ratio.map((c) => Math.pow(Math.max(1, c), CAST_GAMMA)) as [number, number, number];
+export function groundRadiance(lights: SceneLights | null): [number, number, number] | null {
+    if (!lights) return null;
+    const ambient = toHsla(lights.ambientColour);
+    const directional = toHsla(lights.directionalColour);
+    if (!ambient || !directional) return null;
+    const scale = (colour: [number, number, number], intensity: number) =>
+        hslToRgb(colour[0], colour[1], colour[2]).map((c) => toLinear(c) * intensity) as [number, number, number];
+    const amb = scale([ambient[0], ambient[1], ambient[2]], lights.ambientIntensity);
+    const dir = scale([directional[0], directional[1], directional[2]], lights.directionalIntensity);
+    const dirZ = Math.cos((lights.directionalPolar * Math.PI) / 180);
+    // The sky is brighter near the sun, and a face turned away from it loses up to 30% of the
+    // ambient. A ground normal is never turned away, so this is 1 whenever the sun is up.
+    const minFactor = 1 - 0.3 * Math.min(rgbLuminance(dir), 1);
+    const ambientDirectional = minFactor + (1 - minFactor) * Math.min(dirZ + 1, 1);
+    return [0, 1, 2].map((i) => toSRGB(amb[i] * ambientDirectional + dir[i] * Math.max(0, dirZ))) as
+        [number, number, number];
 }
 
 /**
- * The two numbers that fit this approximation to a MEASURED mapbox-gl night render, sampled from
- * `wasm/mbref.html` over Les Halles (2.34580 / 48.86300, z16.78, lightPreset night):
- *
- *   surface   authored              gl-js draws        emissive
- *   land      hsl(20, 20%, 95%)     rgb 38, 40, 51     0
- *   park      hsl(115, 60%, 80%)    rgb 72, 91, 86     0.25
- *
- * Solving both for the light gives a lit term of about (0.18, 0.175, 0.27) - luminance 0.18 where
- * the ambient-only proxy says 0.075, and a blue lift of 1.5x where the raw chroma ratio says 2.9x.
- * A gamma on each keeps the DEFAULT preset exactly at 1 (1^g = 1) while lifting every darker one,
- * which no additive floor can do.
- */
-const LIT_GAMMA = 2 / 3;
-const CAST_GAMMA = 1 / 3;
-
-/**
  * The per-channel factor a property's colours are multiplied by, or null when nothing has to
- * change - a fully emissive layer, or a scene with no light value to go by.
+ * change - a fully emissive layer, or a scene with no lights to go by.
  *
- * The cast multiplies the LIT term only, never the emissive one, so a self-lit surface keeps its
- * authored colour under any light - which is what stops a road casing turning into saturated blue
- * at night.
+ * MapBox's `mix(apply_lighting_ground(color), color, emissive_strength)`, exactly: a self-lit
+ * surface keeps its authored colour under any light, which is what stops a road casing turning
+ * blue at night, and an unlit one is the radiance.
  */
 export function lightingFactor(
     emissive: Json,
-    brightness: number | null,
-    cast: [number, number, number] = [1, 1, 1],
+    radiance: [number, number, number] | null,
 ): [number, number, number] | null {
-    if (brightness === null || typeof emissive !== 'number') return null;
+    if (radiance === null || typeof emissive !== 'number') return null;
     const strength = Math.max(0, Math.min(1, emissive));
     if (strength >= 1) return null;
-    const lit = (1 - strength) * Math.pow(Math.max(0, Math.min(1, brightness)), LIT_GAMMA);
-    const factor = cast.map((c) => Math.max(0, Math.min(1, strength + lit * c))) as [number, number, number];
+    const factor = radiance.map((c) => Math.max(0, Math.min(1, strength + (1 - strength) * c))) as
+        [number, number, number];
     return factor.every((f) => f >= 0.999) ? null : factor;
 }
 

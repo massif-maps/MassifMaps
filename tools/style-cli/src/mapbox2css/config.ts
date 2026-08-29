@@ -120,54 +120,106 @@ export function importOnly(style: MapboxStyle): string | null {
 /**
  * What `["measure-light", "brightness"]` resolves to for a given config.
  *
- * Standard reads the scene's brightness 113 times, always as a two-stop ramp that switches a colour
- * between its lit and its unlit form (`[0.25, 0.3]` in 66 of them). It is how the style says
- * "night" without naming the preset. Our renderer has its own lighting and nothing measures it back
- * into a style value, so the number has to be resolved at conversion time.
+ * Standard reads the scene's brightness 113 times, always as a ramp that switches a colour between
+ * its lit and its unlit form (`[0.25, 0.3]` in 66 of them). It is how the style says "night"
+ * without naming the preset. Our renderer has its own lighting and nothing measures it back into a
+ * style value, so the number has to be resolved at conversion time.
  *
- * It is taken from the style's OWN `lights` block, which is config-driven like everything else:
- * the ambient light's lightness times its intensity. Nothing here reproduces Mapbox's internal
- * formula - this is a proxy - but it is read from the style rather than invented, and it separates
- * the four presets the way they are written: dawn 0.70, day 0.80, dusk 0.23, night 0.06.
+ * This is `Style.calculateLightsBrightness` (src/style/style.ts) ported, not approximated: the
+ * DIRECTIONAL light counts too, weighted by how high it stands, and the luminance is the W3C
+ * relative one - a 2.4 gamma with a linear toe - not the colour's HSL lightness. The ambient-only
+ * proxy this replaces read Standard's presets as 0.80 / 0.70 / 0.23 / 0.06 where mapbox computes
+ * 0.478 / 0.397 / 0.026 / 0.013, so every ramp whose stops are not the common `[0.25, 0.3]` pair
+ * was sampled at the wrong place.
  */
 export function sceneBrightness(lights: Json, fold: (node: Json) => Json): number | null {
-    const folded = fold(lights);
-    if (!Array.isArray(folded)) return null;
-    const ambient = folded.find((light) => !!light && typeof light === 'object'
-        && (light as Record<string, Json>).type === 'ambient') as Record<string, Json> | undefined;
-    const properties = ambient?.properties;
-    if (!properties || typeof properties !== 'object' || Array.isArray(properties)) return null;
+    const scene = foldedLights(lights, fold);
+    if (!scene) return null;
+    const { ambient, directional } = scene;
+    const ambientBrightness = relativeLuminance(ambient.colour) * ambient.intensity;
+    // The polar angle is measured from straight up, so a sun at the zenith counts fully and one on
+    // the horizon not at all.
+    const polarIntensity = 1 - directional.polar / 90;
+    const directionalBrightness = relativeLuminance(directional.colour) * directional.intensity * polarIntensity;
+    return Number(((directionalBrightness + ambientBrightness) / 2).toFixed(6));
+}
 
-    const lightness = hslLightness((properties as Record<string, Json>).color);
-    const intensity = (properties as Record<string, Json>).intensity;
-    if (lightness === null || typeof intensity !== 'number') return null;
-    return lightness * intensity;
+/** One light, resolved. */
+interface FoldedLight {
+    colour: [number, number, number];
+    intensity: number;
+    polar: number;
 }
 
 /**
- * The AMBIENT light's colour, folded. Its brightness is `sceneBrightness`; this is its chroma, and
- * it is what makes a preset read as night rather than as a dim day: Standard's night ambient is
- * `hsl(217, 100%, 11%)` with the directional light at intensity 0, so the only light in the scene
- * is blue. Returns null where the style states none.
+ * The lights block folded for one config, as sRGB channels and plain numbers. An intensity may be
+ * a zoom ramp; `pick` takes its last stop, the value every zoom a building is drawn at gets.
  */
-export function sceneLightColour(lights: Json, fold: (node: Json) => Json): string | null {
+function foldedLights(lights: Json, fold: (node: Json) => Json):
+        { ambient: FoldedLight; directional: FoldedLight } | null {
     const folded = fold(lights);
     if (!Array.isArray(folded)) return null;
-    const ambient = folded.find((light) => !!light && typeof light === 'object'
-        && (light as Record<string, Json>).type === 'ambient') as Record<string, Json> | undefined;
-    const properties = ambient?.properties;
-    if (!properties || typeof properties !== 'object' || Array.isArray(properties)) return null;
-    const colour = (properties as Record<string, Json>).color;
-    return typeof colour === 'string' ? colour : null;
+    const propertiesOf = (type: string): Record<string, Json> | null => {
+        const light = folded.find((l) => !!l && typeof l === 'object'
+            && (l as Record<string, Json>).type === type) as Record<string, Json> | undefined;
+        const properties = light?.properties;
+        return properties && typeof properties === 'object' && !Array.isArray(properties)
+            ? properties as Record<string, Json> : null;
+    };
+    const ambient = propertiesOf('ambient');
+    if (!ambient) return null;
+    const directional = propertiesOf('directional') ?? {};
+    const rgb = (colour: Json): [number, number, number] | null =>
+        typeof colour === 'string' ? hslChannels(colour) : null;
+    const ambientRgb = rgb(ambient.color);
+    if (!ambientRgb) return null;
+    const directionalRgb = rgb(directional.color);
+    const direction = ((): number[] | null => {
+        const value = directional.direction;
+        const list = Array.isArray(value) && value[0] === 'literal' ? value[1] as Json : value as Json;
+        return Array.isArray(list) && list.length === 2 && list.every((v) => typeof v === 'number')
+            ? list as number[] : null;
+    })();
+    return {
+        ambient: { colour: ambientRgb, intensity: lastStop(ambient.intensity, 1), polar: 0 },
+        directional: directionalRgb && direction
+            ? { colour: directionalRgb, intensity: lastStop(directional.intensity, 1), polar: direction[1] }
+            : { colour: [0, 0, 0], intensity: 0, polar: 90 },
+    };
 }
 
-/** The L of an `hsl()`/`hsla()` colour, 0-1. Standard writes every light colour that way. */
-function hslLightness(colour: Json): number | null {
-    if (typeof colour !== 'string') return null;
+/** The last stop of a ramp, or the value itself when it is already one. */
+function lastStop(value: Json, fallback: number): number {
+    if (typeof value === 'number') return value;
+    if (!Array.isArray(value)) return fallback;
+    const head = value[0];
+    if (head === 'literal') return lastStop((value[1] ?? null) as Json, fallback);
+    if ((head === 'step' || head === 'interpolate' || head === 'case' || head === 'match') && value.length >= 4) {
+        return lastStop(value[value.length - 1] as Json, fallback);
+    }
+    return fallback;
+}
+
+/** W3C relative luminance of sRGB channels - mapbox's own, gamma 2.4 with a linear toe. */
+function relativeLuminance([r, g, b]: [number, number, number]): number {
+    const channel = (c: number) => (c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+    return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+}
+
+/** sRGB channels 0-1 of an `hsl()`/`hsla()` colour. Standard writes every light colour that way. */
+function hslChannels(colour: string): [number, number, number] | null {
     const match = /^hsla?\(([^()]*)\)$/i.exec(colour.trim());
     if (!match) return null;
     const parts = match[1].split(/[,/\s]+/).filter(Boolean).map((p) => parseFloat(p));
-    return parts.length >= 3 && Number.isFinite(parts[2]) ? parts[2] / 100 : null;
+    if (parts.length < 3 || parts.some((p) => !Number.isFinite(p))) return null;
+    const [h, s, l] = [parts[0], parts[1] / 100, parts[2] / 100];
+    const c = (1 - Math.abs(2 * l - 1)) * s;
+    const hp = (((h % 360) + 360) % 360) / 60;
+    const x = c * (1 - Math.abs((hp % 2) - 1));
+    const [r, g, b] = hp < 1 ? [c, x, 0] : hp < 2 ? [x, c, 0] : hp < 3 ? [0, c, x]
+        : hp < 4 ? [0, x, c] : hp < 5 ? [x, 0, c] : [c, 0, x];
+    const m = l - c / 2;
+    return [r + m, g + m, b + m];
 }
 
 /** The presets a converted Standard style can be built for, taken from what it actually declares. */

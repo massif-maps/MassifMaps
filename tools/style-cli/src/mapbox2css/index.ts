@@ -9,9 +9,10 @@ import { type ExtractedIcon, type IconPlate, type SpriteSet, extractAllIconPlate
 import { type Schema, dropMissingFieldTests, mapSourceLayer, withMappingFilter } from './schema.js';
 import { collapseBranches, splitLayer } from './split.js';
 import { type HoistBlock, hoistVariables, paletteHeader } from './variables.js';
-import { LIGHT_PRESET, importOnly, presetsOf, resolveConfig, sceneBrightness, sceneLightColour } from './config.js';
+import { LIGHT_PRESET, importOnly, presetsOf, resolveConfig, sceneBrightness } from './config.js';
 import { ICON_PARAMS, ICON_PARAM_SCOPE, type IconParamScope, RECOLOURABLE_ICON, foldConfig, foldLayer } from './fold.js';
-import { applyLighting, emissiveDefault, emissiveProperty, lightCast, lightingFactor } from './emissive.js';
+import { applyLighting, emissiveDefault, emissiveForLayerType, emissiveProperty, groundRadiance, lightingFactor } from './emissive.js';
+import type { SceneLights } from './emissive.js';
 import type { CartoProperty, Json, MapboxLayer, MapboxStyle, PropertyTable } from './types.js';
 
 export interface ConvertResult {
@@ -71,6 +72,45 @@ const TEXT_ANCHOR: Record<string, readonly [string, string]> = {
     'bottom-left': ['left', 'bottom'],
     'bottom-right': ['right', 'bottom'],
 };
+
+/**
+ * The `lights` block resolved to the five numbers the ground radiance is a function of. An
+ * intensity may be a zoom ramp, so it takes its representative constant - the top of the ramp,
+ * which is what every zoom a building is drawn at gets.
+ */
+export function sceneLights(lights: Json, fold: (node: Json) => Json): SceneLights | null {
+    const folded = fold(lights);
+    if (!Array.isArray(folded)) return null;
+    const of = (type: string) => {
+        const light = folded.find((l) => !!l && typeof l === 'object'
+            && (l as Record<string, Json>).type === type) as Record<string, Json> | undefined;
+        return (light?.properties ?? undefined) as Record<string, Json> | undefined;
+    };
+    const ambient = of('ambient');
+    if (!ambient) return null;
+    // The DIRECTIONAL one is optional: a style may state an ambient alone, and MapBox's radiance
+    // simply has no directional term then. Requiring both left such a style unlit at every preset.
+    const directional = of('directional') ?? {};
+    const number = (value: Json, fallback: number): number => {
+        const reduced = representativeConstant(value);
+        return typeof reduced === 'number' ? reduced : fallback;
+    };
+    const direction = ((): number[] | null => {
+        const value = directional.direction;
+        const list = Array.isArray(value) && value[0] === 'literal' ? value[1] as Json : value as Json;
+        return Array.isArray(list) && list.length === 2 && list.every((v) => typeof v === 'number')
+            ? list as number[] : null;
+    })();
+    if (!ambient || typeof ambient.color !== 'string') return null;
+    const lit = typeof directional.color === 'string' && direction !== null;
+    return {
+        ambientColour: ambient.color,
+        ambientIntensity: number(ambient.intensity, 1),
+        directionalColour: lit ? directional.color as string : 'hsl(0, 0%, 0%)',
+        directionalIntensity: lit ? number(directional.intensity, 1) : 0,
+        directionalPolar: lit ? (direction as number[])[1] : 0,
+    };
+}
 
 /**
  * One constant out of a value that branches, for the properties where a per-feature answer is not
@@ -169,18 +209,15 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
     const defaultBrightness = lights === undefined ? null
         : sceneBrightness(lights, (node) => foldConfig(node, new Map(
             [...parameters].map(([name, spec]) => [name, spec.default]))));
-    // ...and the colour of its light, which is what the cast is measured against.
-    const defaultLightColour = lights === undefined ? null
-        : sceneLightColour(lights, (node) => foldConfig(node, new Map(
-            [...parameters].map(([name, spec]) => [name, spec.default]))));
 
     // Emitting is a function of the config, because a configurable style is converted ONCE PER
     // PRESET: folding preserves structure (see fold.ts), so the runs line up block for block and
     // only their literals differ - which is what lets one style.mss carry a palette per preset.
     function emitAll(values: Map<string, Json>, coverage: Coverage): EmitResult {
     const brightness = lights === undefined ? null : sceneBrightness(lights, (node) => foldConfig(node, values));
-    const cast = lightCast(lights === undefined ? null : sceneLightColour(lights, (node) => foldConfig(node, values)),
-        defaultLightColour);
+    // MapBox's own light, resolved for THIS preset - what a flat surface facing up receives.
+    const radiance = groundRadiance(lights === undefined ? null
+        : sceneLights(lights, (node) => foldConfig(node, values)));
     const scene = brightness === null ? {} : { brightness };
     // Always, even for a style with no config of its own: the viewport terms fold here too, and a
     // filter left testing the pitch is untranslatable, which drops the whole LAYER.
@@ -291,8 +328,7 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
      * emissive.ts, which is also where the limits of the approximation are written down.
      */
     function light(layer: MapboxLayer, declarations: string[]): string[] {
-        if (brightness === null || !defaultBrightness) return declarations;
-        const litFraction = Math.max(0, Math.min(1, brightness / defaultBrightness));
+        if (radiance === null) return declarations;
         return declarations.map((declaration) => {
             const colon = declaration.indexOf(':');
             const property = declaration.slice(0, colon);
@@ -300,24 +336,70 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
             const known = allowed.get(property);
             if (known ? known.kind !== 'color' : !property.endsWith('-color')) return declaration;
             // A `model` layer's colour is the canopy's, so it reads the model's own strength.
-            const source = layer.type === 'model' ? 'model-emissive-strength' : emissiveProperty(property);
+            // The LAYER TYPE wins where the property name would mislead - a circle's colour and a
+            // fill's outline both translate to names whose mapbox counterpart the layer never states.
+            const source = layer.type === 'model' ? 'model-emissive-strength'
+                : emissiveForLayerType(layer.type) ?? emissiveProperty(property);
             const stated = source ? layer.paint?.[source] : undefined;
             // Unstated takes MAPBOX's default for that property, which is 1 for a label and 0 for
             // geometry - see EMISSIVE_DEFAULT. A zoom ramp has no single answer, so it takes the
             // mean of its stops, as every other zoom-driven value baked in here does.
-            const emissive = stated === undefined ? emissiveDefault(source)
-                : typeof stated === 'number' ? stated : representativeScale(stated, 1);
-            const factor = lightingFactor(emissive, litFraction, cast);
-            if (factor === null) return declaration;
             const value = declaration.slice(colon + 1, declaration.lastIndexOf(';')).trim();
+            // A ZOOM-ramped emissive keeps its ramp: Standard fades six layers - land, water,
+            // hillshade, recreation-polygon and the two ferries - between a lit and an unlit form
+            // over zoom, and land is the one that shows: 0.1 below z13 and 0 above z14, so a night
+            // map is markedly lighter zoomed out than zoomed in. Collapsed to one number the whole
+            // world got the zoomed-IN value and every low zoom came out too dark.
+            const stops = zoomStops(stated);
+            if (stops && !ZOOM_RAMP.test(value)) {
+                const lit = stops.map(([zoom, emissive]) => {
+                    const factor = lightingFactor(emissive, radiance);
+                    return [zoom, factor === null ? value : applyLighting(value, factor)] as const;
+                });
+                if (lit.some(([, colour]) => colour !== value)) {
+                    const frames = lit.map(([zoom, colour]) => `(${round(zoom - 1)}, ${colour})`).join(', ');
+                    return `${property}: linear(([view::zoom] - 1), ${frames});`;
+                }
+                return declaration;
+            }
+            // Unstated takes MAPBOX's default for that property, which is 1 for a label and 0 for
+            // geometry - see EMISSIVE_DEFAULT.
+            // The mean of the positive numbers is the LAST resort, not the first: it is what this
+            // used to do for everything, and it is still better than the property default when the
+            // expression cannot be resolved at all.
+            const emissive = stated === undefined ? emissiveDefault(source)
+                : typeof stated === 'number' ? stated
+                : representativeEmissive(stated, representativeScale(stated, 1), (name) => values.get(name));
+            const factor = lightingFactor(emissive, radiance);
+            if (factor === null) return declaration;
             const lit = applyLighting(value, factor);
             return lit === value ? declaration : `${property}: ${lit};`;
         });
     }
 
+    /**
+     * An emissive strength stated as an `interpolate(zoom, ...)` ramp, as its (zoom, value) pairs.
+     * Null for anything else - a constant, a ramp over something other than zoom, or a ramp whose
+     * values are still expressions after the fold.
+     */
+    function zoomStops(value: Json | undefined): Array<[number, number]> | null {
+        if (!Array.isArray(value) || value[0] !== 'interpolate') return null;
+        const input = value[2];
+        if (!Array.isArray(input) || input[0] !== 'zoom') return null;
+        const stops: Array<[number, number]> = [];
+        for (let i = 3; i + 1 < value.length; i += 2) {
+            const zoom = value[i];
+            const stop = representativeConstant(value[i + 1] as Json);
+            if (typeof zoom !== 'number' || typeof stop !== 'number') return null;
+            stops.push([zoom, stop]);
+        }
+        return stops.length >= 2 ? stops : null;
+    }
+
     function emitLayer(layer: MapboxLayer, attachment: string, sourceLayer: string, symbolizer: string, layerIndex: number): void {
         const paramised = paramiseValues(layer, options, coverage);
-        let declarations = layerDeclarations(paramised.layer, symbolizer, allowed, coverage, options, layerIndex);
+        const source = symbolizer === 'building' ? flattenExtrusionOpacity(paramised.layer) : paramised.layer;
+        let declarations = layerDeclarations(source, symbolizer, allowed, coverage, options, layerIndex);
         if (paramised.subs.size > 0) {
             declarations = declarations.map((declaration) => {
                 for (const [sentinel, lookup] of paramised.subs) declaration = declaration.split(sentinel).join(lookup);
@@ -352,13 +434,18 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
             return;
         }
 
-        blocks.push({ selector, owner: layer.id, declarations: light(layer, declarations) });
+        // An EXTRUSION is lit by the renderer, not baked: mapbox draws it through apply_lighting
+        // and its `fill-extrusion-emissive-strength` is 0, so folding the scene light in here as
+        // well multiplied it twice - once at conversion, once per fragment.
+        const renderLit = symbolizer === 'building';
+        blocks.push({ selector, owner: layer.id, declarations: renderLit ? declarations : light(layer, declarations) });
         drawOrder.push({ sourceLayer, attachment, index: layerIndex });
     }
 
     if (usesBuildings) {
         options.styleParams!.set(BUILDINGS_PARAM, BUILDINGS_3D);
         options.styleParams!.set(TILT_DROP_PARAM, TILT_DROP_PERCENT);
+        options.styleParams!.set(AO_PARAM, 1);
         // Whatever the layers did not state, so a converted style is not left on the SDK's own
         // (OSM-tuned) building lighting - see BUILDING_MAP_DEFAULTS.
         if (lights !== undefined) {
@@ -506,6 +593,12 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
  * `view::tilt` is a view-state variable, so the ramp costs no re-decode either: the property is
  * re-read every frame (MapRenderer::collectStyleEnvironment) against that frame's camera.
  */
+/**
+ * A live switch over the ground AO, so the contact shadows can be turned off on a running map
+ * without a re-decode - a style parameter is a redraw. It multiplies the intensity, so 0 is off and
+ * 1 is whatever the style asked for.
+ */
+const AO_PARAM = 'building_ao';
 const TILT_DROP_PARAM = 'building_tilt_drop';
 const TILT_DROP_PERCENT = 90;
 // `* 0.01`, not `/ 100`: the parameter is declared as a whole number and the two would be an
@@ -521,6 +614,9 @@ const HEIGHT_VIEW_SCALE = 'building-height-view-scale';
  * where they are what makes it stand on the ground rather than float. Shifted one level earlier;
  * -2 puts them at z16.
  */
+/** A value that already ramps over zoom; combining two ramps is not expressible here. */
+const ZOOM_RAMP = /\[view::zoom\]/;
+
 const AO_GROUND_ZOOM_SHIFT = -1;
 
 /** Move an `interpolate(..., ["zoom"], ...)` ramp's key frames, leaving its values alone. */
@@ -555,6 +651,9 @@ const BUILDING_MAP_DEFAULTS: Record<string, string> = {
     // `fill-extrusion-opacity` over zoom, as Standard does between z15 and z15.3. The SDK fades
     // every geometry in with its tile, which put a second, timed fade on top of that one.
     'building-fade-on-appear': '0',
+    // Every 2D colour in this file already carries mapbox's own ground radiance (see emissive.ts),
+    // so the SDK must not light the ground a second time. Says nothing about the shadows.
+    'colors-prelit': '1',
 };
 
 const BUILDING_MAP_SETTINGS: Record<string, string> = {
@@ -593,6 +692,43 @@ function groundAttenuation(value: Json, layerId: string, coverage: Coverage): st
     return String(Math.round((1.75 * 0.69 / value) * 100) / 100);
 }
 
+/**
+ * The ground AO's INTENSITY, ramped over the same zoom window as its radius.
+ *
+ * MapBox states a constant (0.15) beside a radius that ramps in, so the contact shadow arrives at
+ * full strength the moment the radius leaves zero - which reads as a hard switch, not as buildings
+ * settling onto the ground. Given the radius ramp, the intensity gets the same keyframes from 0.
+ * A constant radius leaves the intensity alone.
+ */
+function rampLikeGroundAO(intensity: Json, layer: MapboxLayer): Json {
+    if (typeof intensity !== 'number') return intensity;
+    const radius = layer.paint?.['fill-extrusion-ambient-occlusion-ground-radius'];
+    const shifted = shiftZoomStops(radius as Json, AO_GROUND_ZOOM_SHIFT);
+    if (!Array.isArray(shifted) || shifted[0] !== 'interpolate') return intensity;
+    const stops = shifted.slice(3).filter((_, i) => i % 2 === 0) as number[];
+    if (stops.length < 2) return intensity;
+    const first = stops[0];
+    const last = stops[stops.length - 1];
+    return ['interpolate', ['linear'], ['zoom'], first, 0, last, intensity] as unknown as Json;
+}
+
+/**
+ * A 3D building's OPACITY, taken as a constant.
+ *
+ * Standard fades an extrusion in by ramping `fill-extrusion-opacity` alongside its height. We draw
+ * the shadow map from the buildings at their FULL cast whatever their alpha, so during the fade the
+ * shadows are already at full strength and visible straight THROUGH the half-transparent walls that
+ * cast them. The height ramp alone is the better fade: a building grows out of the ground opaque,
+ * and its shadow grows with it.
+ */
+function flattenExtrusionOpacity(layer: MapboxLayer): MapboxLayer {
+    const opacity = layer.paint?.['fill-extrusion-opacity'];
+    if (!Array.isArray(opacity) || opacity[0] !== 'interpolate') return layer;
+    const constant = representativeConstant(opacity as Json);
+    if (constant === null) return layer;
+    return { ...layer, paint: { ...layer.paint, 'fill-extrusion-opacity': constant } };
+}
+
 function buildingMapSettings(layer: MapboxLayer, seen: Set<string>, coverage: Coverage): string[] {
     const out: string[] = [];
     for (const [from, to] of Object.entries(BUILDING_MAP_SETTINGS)) {
@@ -600,7 +736,9 @@ function buildingMapSettings(layer: MapboxLayer, seen: Set<string>, coverage: Co
         // dropped Standard's 0.4 bevel silently.
         const raw = layer.paint?.[from] ?? layer.layout?.[from];
         if (raw === undefined || seen.has(to)) continue;
-        const value = to === 'building-ao-ground-radius' ? shiftZoomStops(raw, AO_GROUND_ZOOM_SHIFT) : raw;
+        const value = to === 'building-ao-ground-radius' ? shiftZoomStops(raw, AO_GROUND_ZOOM_SHIFT)
+            : to === 'building-ao-intensity' ? rampLikeGroundAO(raw, layer)
+            : raw;
         const translated = to === 'building-ao-ground-attenuation'
             ? groundAttenuation(value, layer.id, coverage)
             : typeof value === 'boolean'
@@ -608,7 +746,9 @@ function buildingMapSettings(layer: MapboxLayer, seen: Set<string>, coverage: Co
             : tryTranslate(value, from, layer.id, coverage);
         if (translated === null) continue;
         seen.add(to);
-        out.push(`${to}: ${translated};`);
+        out.push(to === 'building-ao-intensity'
+            ? `${to}: [param::${AO_PARAM}] * (${translated});`
+            : `${to}: ${translated};`);
         coverage.emit(to);
     }
     return out;
@@ -664,6 +804,27 @@ function buildingLightSettings(lights: Json, seen: Set<string>, coverage: Covera
         return Array.isArray(list) && list.length === 2 && list.every((v) => typeof v === 'number')
             ? list as number[] : null;
     })();
+    // The light's COLOUR, which is what actually separates the presets. Their intensities barely
+    // move - dawn 0.75 against day's 0.8 - while the ambient goes from white to a warm cream at
+    // dawn and to hsl(228, 27%, 29%) at dusk, with an orange sun against it. Without these, dawn
+    // rendered as day and dusk as a washed-out day, and a roof kept the tone of the wall beside it
+    // because a white ambient at 0.8 drowns the directional term that separates them.
+    const colourOf = (type: string): string | null => {
+        const folded = fold(lights);
+        if (!Array.isArray(folded)) return null;
+        const light = folded.find((l) => !!l && typeof l === 'object'
+            && (l as Record<string, Json>).type === type) as Record<string, Json> | undefined;
+        const colour = (light?.properties as Record<string, Json> | undefined)?.color;
+        return typeof colour === 'string' ? colour : null;
+    };
+    for (const [type, name] of [['ambient', 'ambient-color'], ['directional', 'sun-color']]) {
+        if (seen.has(name)) continue;
+        const colour = colourOf(type);
+        if (colour === null) continue;
+        seen.add(name);
+        out.push(`${name}: ${colour};`);
+        coverage.emit(name);
+    }
     if (direction && !seen.has('sun-azimuth')) {
         // MapBox's pair is [azimuthal, polar]: the azimuth runs clockwise from north, as the SDK's
         // does, and the polar angle is measured from straight UP, so the altitude is its complement.
@@ -1485,6 +1646,67 @@ function iconClearance(layer: MapboxLayer, icon: ExtractedIcon, scale: number): 
  * takes the mean of its stops - the icon is then right in the middle of the range and a little off
  * at both ends, which beats drawing every sprite at full size.
  */
+/**
+ * An emissive strength out of a value that branches.
+ *
+ * NOT `representativeScale`: that one averages the strictly POSITIVE numbers it finds, which is
+ * right for a size (0 means unset) and wrong for an emissive, where 0 is the whole point. Standard
+ * writes the roads' as `0.4 + case(isHighClass, 0.2, 0)`; averaging gave 0.3, so every ordinary
+ * road at dusk came out a sixth too dark, and the water's `interpolate(zoom, ..., 0)` lost its 0
+ * stop entirely and kept 0.1 - which is why the water polygon and the waterway line, drawn with the
+ * same colour by mapbox, disagreed by 5 L points at night.
+ *
+ * This takes the branch most features get (the last one, as `representativeConstant` does) and
+ * folds the arithmetic around it, so the roads resolve to 0.4 and the water to 0.
+ */
+function representativeEmissive(value: Json | undefined, fallback: number | null,
+        config: (name: string) => Json | undefined = () => undefined): number | null {
+    const bound = new Map<string, Json>();
+    const fold = (node: Json): number | null => {
+        if (typeof node === 'number') return node;
+        if (!Array.isArray(node)) return null;
+        const head = node[0];
+        if (head === 'literal') return fold((node[1] ?? null) as Json);
+        // `let` binds name/value pairs and evaluates its last argument; `var` reads one back.
+        // Standard writes the ROADS' emissive that way, and without this the whole expression was
+        // unresolvable - which fell back to the property default of 0 and drew every road black.
+        if (head === 'let' && node.length >= 2) {
+            for (let i = 1; i + 1 < node.length - 1; i += 2) {
+                if (typeof node[i] === 'string') bound.set(node[i] as string, node[i + 1] as Json);
+            }
+            return fold(node[node.length - 1] as Json);
+        }
+        if (head === 'var' && typeof node[1] === 'string') {
+            const value = bound.get(node[1]);
+            return value === undefined ? null : fold(value);
+        }
+        if (head === 'to-boolean' || head === 'number') return fold((node[1] ?? null) as Json);
+        // A style knob the emissive is built from - Standard's roads are `roadsBrightness + …`.
+        if (head === 'config' && typeof node[1] === 'string') {
+            const value = config(node[1]);
+            return value === undefined ? null : fold(value as Json);
+        }
+        // The detailed end of a ramp, a case's fallback - what a feature in a dense tile gets.
+        if ((head === 'step' || head === 'interpolate' || head === 'case' || head === 'match') && node.length >= 4) {
+            return fold(node[node.length - 1] as Json);
+        }
+        if ((head === '+' || head === '-' || head === '*' || head === '/') && node.length === 3) {
+            const a = fold(node[1] as Json);
+            const b = fold(node[2] as Json);
+            if (a === null || b === null) return null;
+            return head === '+' ? a + b : head === '-' ? a - b : head === '*' ? a * b : (b === 0 ? null : a / b);
+        }
+        if ((head === 'min' || head === 'max') && node.length >= 3) {
+            const parts = node.slice(1).map((n) => fold(n as Json));
+            if (parts.some((n) => n === null)) return null;
+            return head === 'min' ? Math.min(...parts as number[]) : Math.max(...parts as number[]);
+        }
+        return null;
+    };
+    const folded = value === undefined ? null : fold(value);
+    return folded === null ? fallback : folded;
+}
+
 function representativeScale(size: Json | undefined, fallback = 1): number {
     if (size === undefined) return fallback;
     if (typeof size === 'number') return size;

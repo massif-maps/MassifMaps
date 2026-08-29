@@ -346,19 +346,32 @@ public class DemoMap {
     // --- base map --------------------------------------------------------------------------------
 
     /**
+     * A compiled style's own switches (dir/zip/project). Live: a style parameter is a redraw, not
+     * a re-decode, so this is called both when the layer is built and from DemoLive.
+     */
+    public void applyStyleParameters() {
+        setStyleParameter("buildings", DemoConfig.STYLE_BUILDINGS);
+        setStyleParameter("building_tilt_drop", DemoConfig.STYLE_TILT_DROP);
+    }
+
+    private void setStyleParameter(String name, String value) {
+        if (baseDecoder == null || value.isEmpty()) {
+            return;
+        }
+        try {
+            baseDecoder.setStyleParameter(name, value);
+        } catch (Exception e) {
+            Log.w(TAG, "style has no '" + name + "' parameter: " + e.getMessage());
+        }
+    }
+
+    /**
      * The base map: either a plain VectorTileLayer or a CompositeVectorTileLayer that weaves
      * hillshade / satellite / contour sources into the style's own layer order.
      */
     private Layer createBaseLayer() {
         baseDecoder = DemoStyles.create(DemoConfig.STYLE_SOURCE, dataPath);
-        // A compiled style's own switch, where it has one - see DemoConfig.STYLE_BUILDINGS.
-        if (!DemoConfig.STYLE_BUILDINGS.isEmpty()) {
-            try {
-                baseDecoder.setStyleParameter("buildings", DemoConfig.STYLE_BUILDINGS);
-            } catch (Exception e) {
-                Log.w(TAG, "style has no 'buildings' parameter: " + e.getMessage());
-            }
-        }
+        applyStyleParameters();
         // see BASE_TILE_CACHE_MB: the SDK default (10MB) is what makes a zoom step blank the map
         if (DemoConfig.BASE_MODE == DemoConfig.BaseMode.PLAIN) {
             compositeLayer = null;

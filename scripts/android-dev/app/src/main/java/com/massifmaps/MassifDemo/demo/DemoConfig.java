@@ -600,6 +600,12 @@ public final class DemoConfig {
      * loaded - it used to reach the inline style only.
      */
     public static String STYLE_BUILDINGS = "";
+    /**
+     * The `building_tilt_drop` style parameter of a converted MapBox style: how far, in PERCENT,
+     * the extrusions are flattened between tilt 80 and 90 (90 = a tenth of their height left).
+     * Empty leaves the style's own default. Live - a style parameter is a redraw, not a re-decode.
+     */
+    public static String STYLE_TILT_DROP = "";
     /** Line widths of the inline style, as CartoCSS expressions - so they can be made
      *  zoom-dependent for testing how a line behaves as you zoom and tilt. The defaults widen
      *  with zoom the way a real style does; pass a plain number to pin a width instead. */
@@ -1368,6 +1374,7 @@ public final class DemoConfig {
         INLINE_BUILDING_COLOR = DemoCfg.cfgColor("bldColor", INLINE_BUILDING_COLOR);
         INLINE_BUILDINGS_3D = DemoCfg.cfgBool("bld3d", INLINE_BUILDINGS_3D);
         STYLE_BUILDINGS = DemoCfg.cfgStr("buildings", STYLE_BUILDINGS);
+        STYLE_TILT_DROP = DemoCfg.cfgStr("bldTiltDrop", STYLE_TILT_DROP);
         if (STYLE_BUILDINGS.isEmpty() && DemoCfg.cfg("bld3d") != null) {
             STYLE_BUILDINGS = INLINE_BUILDINGS_3D ? "2" : "1";
         }

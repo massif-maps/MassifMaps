@@ -98,7 +98,12 @@ Where each applies it:
 |---|---|
 | 2D geometry (polygon, line, their patterns) | `GLTileRenderer::renderTileGeometry`, where the colours are already evaluated and memoised per frame — one multiply per DISTINCT colour, not per feature |
 | extrusions | `u_emissive` + `u_radiance` in the 3D lighting shader, which computes its own per-face term |
-| the map background | `VectorTileLayer::getBackgroundColor` — it is a Map setting, so it never passes through a symbolizer's colour path |
+| labels, shields, markers | `GLTileRenderer::renderLabelPass`, in the one block that evaluates a label style's colours — fill, halo, the secondary and icon runs, the icon halo, and both plates |
+| the map background | `GLTileRenderer::renderTileBackground` (a `vt::TileBackground`, built per tile from the Map setting), **and** `VectorTileLayer::getBackgroundColor`, which is a different surface: the terrain ground fill and the drape clear colour. Both take the same grade, or the two disagree where the ground shows through |
+
+The background caught this out once: `getBackgroundColor` was graded first and nothing changed on
+screen, because at that camera every pixel of background came from the per-tile `TileBackground`
+and none from the terrain ground.
 
 ### `LightOptions.DayCycleLightsEnabled` — the hour picks the light
 
@@ -110,6 +115,33 @@ can move on a running map. `sunDir.x ≥ 0` is what picks dawn over dusk at the 
 else distinguishes them.
 
 It replaces only those four values. The sun DIRECTION is the input it reads, never an output.
+
+### `view::brightness` — the one thing that had to stay live
+
+mapbox's `["measure-light", "brightness"]` is a scalar 0–1 that a style ramps over; Standard drives
+its one-way arrows and a few shields off it, and that is how they dim at night. Folded at
+conversion time it froze at whatever preset the conversion was run for — the arrows were emitted at
+`0.97`, so the label path was correct and invisible: text went 255 → 249 over a whole day.
+
+So the brightness is a VIEW VARIABLE. `ViewState::lightBrightness` carries it, `view::brightness`
+reads it (`ExpressionContext::getViewStateVariable`, beside `view::zoom` and `view::tilt`), and
+`TileRenderer` sets it on all three view states it builds — the draw one, the prepare one that the
+drape bake uses, and the culler's. A ramp over it is then re-evaluated per frame, with no re-decode,
+exactly like a zoom ramp:
+
+```
+marker-emissive-strength: linear([view::brightness], (0.25, 0.7), (0.5, 1));
+```
+
+`DayCycleLight::brightness` is mapbox's `calculateLightsBrightness` ported — the mean of the two
+lights' W3C relative luminance, the directional one weighted by the sun's height. It lands on their
+own numbers for day (0.478), dawn (0.396) and dusk (0.027). **Night is deliberately different**:
+mapbox's night light sits 30° above the horizon whatever the hour, an artistic moon, while a day
+cycle has the sun genuinely down, so the directional term is 0 and the value is 0.002 rather than
+0.0135. Both are far below the 0.25 stop every ramp starts at, so no ramp can tell them apart.
+
+Under `--live-light` the converter stops folding `measure-light` and emits `[view::brightness]`; the
+default mode still folds it, so nothing changes for a per-preset palette.
 
 ### `colors-prelit` does not mean "pre-lit by the converter"
 

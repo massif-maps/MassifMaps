@@ -110,6 +110,12 @@ export function fromHsla(h: number, s: number, l: number, a: number): string {
 export interface Scene {
     /** See config.ts's sceneBrightness. */
     brightness?: number;
+    /**
+     * Leave `["measure-light", "brightness"]` in the tree instead of folding it, so the translator
+     * emits `[view::brightness]` and the SDK resolves it per frame. Set by --live-light; `brightness`
+     * is still needed, because a ramp the translator cannot carry falls back to that constant.
+     */
+    liveBrightness?: boolean;
 }
 
 /**
@@ -165,7 +171,7 @@ function fold(node: Json, context: Context): Json {
         if (head === 'config' && typeof node[1] === 'string' && context.values.has(node[1])) {
             return literal(context.values.get(node[1]) as Json);
         }
-        if (head === 'measure-light' && node[1] === 'brightness' && context.scene.brightness !== undefined) {
+        if (head === 'measure-light' && node[1] === 'brightness' && context.scene.brightness !== undefined && !context.scene.liveBrightness) {
             return context.scene.brightness;
         }
         if (typeof head === 'string' && node.length === 1 && head in VIEWPORT) {

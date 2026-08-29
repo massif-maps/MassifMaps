@@ -575,6 +575,16 @@
       "baked": false
     },
     {
+      "cartocss": "marker-emissive-strength",
+      "mapnik": "emissive-strength",
+      "symbolizer": "marker",
+      "kind": "float",
+      "type": "FloatFunctionProperty",
+      "default": "1.0",
+      "live": true,
+      "baked": false
+    },
+    {
       "cartocss": "marker-feature-id",
       "mapnik": "feature-id",
       "symbolizer": "marker",
@@ -1152,6 +1162,16 @@
       "type": "FloatProperty",
       "default": "0.0",
       "live": false,
+      "baked": false
+    },
+    {
+      "cartocss": "shield-emissive-strength",
+      "mapnik": "emissive-strength",
+      "symbolizer": "shield",
+      "kind": "float",
+      "type": "FloatFunctionProperty",
+      "default": "1.0",
+      "live": true,
       "baked": false
     },
     {
@@ -1902,6 +1922,16 @@
       "type": "FloatProperty",
       "default": "0.0",
       "live": false,
+      "baked": false
+    },
+    {
+      "cartocss": "text-emissive-strength",
+      "mapnik": "emissive-strength",
+      "symbolizer": "text",
+      "kind": "float",
+      "type": "FloatFunctionProperty",
+      "default": "1.0",
+      "live": true,
       "baked": false
     },
     {

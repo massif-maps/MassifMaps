@@ -53,6 +53,7 @@ namespace massif {
         // The style says its 2D colours already carry the light - see Map::Settings::colorsPrelit.
         std::optional<bool> colorsPrelit;
         std::optional<float> buildingEmissive;
+        std::optional<float> backgroundEmissive;
         std::optional<float> shadowStrength;
         std::optional<float> shadowBias;
         std::optional<float> shadowSoftness;
@@ -98,6 +99,11 @@ namespace massif {
         // How much of an extrusion's colour is emitted rather than lit - mapbox's
         // fill-extrusion-emissive-strength. 0 means the scene light owns it entirely.
         float buildingEmissive = 0.0f;
+        // The same for the map BACKGROUND, which is a Map setting rather than a symbolizer - and
+        // the largest surface on screen. 1 = drawn as authored.
+        float backgroundEmissive = 1.0f;
+        // mapbox's ["measure-light", "brightness"], 0-1 - what a style's `view::brightness` reads.
+        float brightness = 1.0f;
         // What mapbox's light does to a flat, upward-facing surface: calculateGroundRadiance with
         // the ground normal, in LINEAR space. The one number a colour grade is a function of.
         cglib::vec3<float> radiance = cglib::vec3<float>(1.0f, 1.0f, 1.0f);

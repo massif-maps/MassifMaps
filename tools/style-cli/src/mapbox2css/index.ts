@@ -202,6 +202,11 @@ const EMISSIVE_TARGETS: Array<[string, string]> = [
     ['polygon-', 'polygon-emissive-strength'],
     ['line-', 'line-emissive-strength'],
     ['background-', 'background-emissive-strength'],
+    // A shield's icon and its text are one symbolizer here, so they take one value - mapbox's
+    // text-emissive-strength, which is the one its own shields state.
+    ['shield-', 'shield-emissive-strength'],
+    ['marker-', 'marker-emissive-strength'],
+    ['text-', 'text-emissive-strength'],
 ];
 
 export function convert(style: MapboxStyle, table: PropertyTable, options: ConvertOptions = {}): ConvertResult {
@@ -248,7 +253,9 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
     // MapBox's own light, resolved for THIS preset - what a flat surface facing up receives.
     const radiance = groundRadiance(lights === undefined ? null
         : sceneLights(lights, (node) => foldConfig(node, values)));
-    const scene = brightness === null ? {} : { brightness };
+    // Under --live-light the SDK resolves the brightness itself, per frame (view::brightness), so
+    // the ramps over it stay live instead of freezing at the preset the conversion was run for.
+    const scene = brightness === null ? {} : { brightness, liveBrightness: options.liveLight === true };
     // Always, even for a style with no config of its own: the viewport terms fold here too, and a
     // filter left testing the pitch is untranslatable, which drops the whole LAYER.
     // Which side of MapBox's 3D switch each layer is on, read BEFORE the fold: folded with the
@@ -360,8 +367,8 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
     function light(layer: MapboxLayer, declarations: string[]): string[] {
         if (radiance === null) return declarations;
         // Under --live-light the colour stays as the style authored it and the emissive rides along
-        // instead, for the renderer to apply. Only the two properties the SDK carries are emitted;
-        // a text or an icon defaults to 1 there as it does here, so saying nothing is already right.
+        // instead, for the renderer to apply. A value of 1 is never emitted: it is the default on
+        // both sides, and it is what most of Standard's labels resolve to.
         if (options.liveLight) {
             const emitted = new Set<string>();
             const extra: string[] = [];
@@ -371,6 +378,17 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
                 if (target === null || emitted.has(target)) continue;
                 const source = emissiveProperty(property);
                 const stated = source ? layer.paint?.[source] : undefined;
+                if (stated !== undefined && typeof stated !== 'number') {
+                    // Standard states most of these as a ramp over the scene brightness, which
+                    // --live-light keeps as `[view::brightness]` - so the strength itself follows
+                    // the hour rather than freezing at the preset the conversion was run for.
+                    const translated = tryTranslate(stated, source as string, layer.id, coverage);
+                    if (translated !== null && translated !== '1') {
+                        emitted.add(target);
+                        extra.push(`${target}: ${translated};`);
+                        continue;
+                    }
+                }
                 const emissive = stated === undefined ? emissiveDefault(source)
                     : typeof stated === 'number' ? stated
                     : representativeEmissive(stated, representativeScale(stated, 1), (name) => values.get(name));
@@ -519,9 +537,12 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
 
     const base = emitAll(configValues, coverage);
     if (base.brightness !== null) {
-        coverage.approximate(`["measure-light", "brightness"] resolved to ${base.brightness.toFixed(2)} from ` +
-            "the style's own ambient light; our renderer cannot measure it back, and a ramp over it " +
-            'whose stops are per-feature expressions snaps to the nearer end');
+        coverage.approximate(options.liveLight
+            ? '["measure-light", "brightness"] left live as [view::brightness], which the SDK resolves ' +
+              'per frame; a ramp over it whose stops are per-feature expressions still snaps to the nearer end'
+            : `["measure-light", "brightness"] resolved to ${base.brightness.toFixed(2)} from ` +
+              "the style's own ambient light; our renderer cannot measure it back, and a ramp over it " +
+              'whose stops are per-feature expressions snaps to the nearer end');
     }
     const { mapBlock, blocks, drawOrder } = base;
 

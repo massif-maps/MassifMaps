@@ -12,7 +12,7 @@ sidebar_position: 20
 `CartoCSSMapnikTranslator.cpp`. Edit those, then re-run the script — never this page.
 :::
 
-221 properties across 12 symbolizers.
+224 properties across 12 symbolizers.
 
 ## Reading the table
 
@@ -29,7 +29,7 @@ sidebar_position: 20
   than failing. Write an explicit guard — `[color] <> null ? [color] : '#0000ff'` — when the
   fallback should be something else.
 
-Live-capable properties: 52 of 221.
+Live-capable properties: 55 of 224.
 
 ## `building`
 
@@ -116,6 +116,7 @@ Live-capable properties: 52 of 221.
 | `marker-clip` | `clip` | bool | `false` |  |  |
 | `marker-color` | `color` | color | `#ffffff` | yes |  |
 | `marker-comp-op` | `comp-op` | comp-op | `src-over` |  |  |
+| `marker-emissive-strength` | `emissive-strength` | float | `1.0` | yes |  |
 | `marker-feature-id` | `feature-id` | value |  |  |  |
 | `marker-file` | `file` | string |  |  |  |
 | `marker-fill` | `fill` | color | `#0000ff` |  |  |
@@ -199,6 +200,7 @@ Live-capable properties: 52 of 221.
 | `shield-comp-op` | `comp-op` | comp-op | `src-over` |  |  |
 | `shield-dx` | `shield-dx` | float | `0.0` |  |  |
 | `shield-dy` | `shield-dy` | float | `0.0` |  |  |
+| `shield-emissive-strength` | `emissive-strength` | float | `1.0` | yes |  |
 | `shield-face-name` | — | ignored |  |  |  |
 | `shield-feature-id` | `feature-id` | value |  |  |  |
 | `shield-file` | `file` | string |  |  |  |
@@ -279,6 +281,7 @@ Live-capable properties: 52 of 221.
 | `text-comp-op` | `comp-op` | comp-op | `src-over` |  |  |
 | `text-dx` | `dx` | float | `0.0` |  |  |
 | `text-dy` | `dy` | float | `0.0` |  |  |
+| `text-emissive-strength` | `emissive-strength` | float | `1.0` | yes |  |
 | `text-face-name` | — | ignored |  |  |  |
 | `text-feature-id` | `feature-id` | value |  |  |  |
 | `text-fill` | `fill` | color | `#000000` | yes |  |

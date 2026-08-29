@@ -118,9 +118,35 @@ namespace {
                    "and going further under it changes almost nothing, because the direct term is clamped");
     }
 
+    void testBrightnessMatchesMapboxsOwnPresets() {
+        // A Standard label's emissive is a ramp over ["measure-light", "brightness"] with stops at
+        // 0.25 and 0.5, so our value has to land where mapbox's does or the ramp reads the wrong
+        // end. These four are gl-js's own, from Style.calculateLightsBrightness.
+        TEST_CHECK(nearly(DayCycleLight::brightness(DayCycleLight::DAY, sunUp(70.0f)), 0.4778f, 0.01f),
+                   "day is mapbox's 0.478");
+        TEST_CHECK(nearly(DayCycleLight::brightness(DayCycleLight::DAWN, sunUp(40.0f)), 0.3965f, 0.01f),
+                   "dawn is mapbox's 0.396");
+        TEST_CHECK(nearly(DayCycleLight::brightness(DayCycleLight::DUSK, sunUp(10.0f)), 0.0270f, 0.01f),
+                   "dusk is mapbox's 0.027");
+        // NOT night's 0.0135. Theirs is a light 30 degrees above the horizon whatever the hour -
+        // an artistic moon - and a day cycle has the sun genuinely down, so the directional term
+        // is 0 here. Both are far below the 0.25 stop every ramp starts at, so no ramp can tell
+        // them apart; what matters is that night stays the darkest of the four.
+        TEST_CHECK(DayCycleLight::brightness(DayCycleLight::NIGHT, sunUp(-20.0f)) <
+                   DayCycleLight::brightness(DayCycleLight::DUSK, sunUp(10.0f)),
+                   "night is darker than dusk, though not mapbox's own 0.014");
+        // Which is the property the ramps depend on: day sits above their upper stop of 0.5's
+        // neighbourhood and dusk far below the lower one of 0.25, so a label really does swing
+        // from one end of its ramp to the other over a day.
+        TEST_CHECK(DayCycleLight::brightness(DayCycleLight::DUSK, sunUp(10.0f)) < 0.25f &&
+                   DayCycleLight::brightness(DayCycleLight::DAY, sunUp(70.0f)) > 0.25f,
+                   "and the two straddle the 0.25 stop Standard's label ramps start at");
+    }
+
 }
 
 void testDayCycleLight() {
+    testBrightnessMatchesMapboxsOwnPresets();
     testTheAnchorsAreReachedExactly();
     testRisingPicksDawnOverDusk();
     testTheCurveIsContinuous();

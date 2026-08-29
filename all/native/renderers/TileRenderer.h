@@ -267,6 +267,9 @@ namespace massif {
         // The scene light on a flat, upward-facing surface, in linear space - see resolveLighting.
         cglib::vec3<float> _resolvedRadiance = cglib::vec3<float>(1.0f, 1.0f, 1.0f);
         float _buildingEmissive = 0.0f;
+        float _backgroundEmissive = 1.0f;
+        // mapbox's measure-light brightness, what a style reads as view::brightness.
+        float _resolvedBrightness = 1.0f;
         // The elevation DATA version last acted on, apart from the global one: a change to only
         // the exaggeration moves the global version without making any surface stale.
         unsigned int _elevationDataVersion = 0;

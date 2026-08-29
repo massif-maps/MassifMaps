@@ -37,6 +37,7 @@ namespace massif {
         take(terrainLightingEnabled, other.terrainLightingEnabled);
         take(colorsPrelit, other.colorsPrelit);
         take(buildingEmissive, other.buildingEmissive);
+        take(backgroundEmissive, other.backgroundEmissive);
         take(shadowStrength, other.shadowStrength);
         take(shadowBias, other.shadowBias);
         take(shadowSoftness, other.shadowSoftness);
@@ -129,6 +130,9 @@ namespace {
         }
         if (env.buildingEmissive) {
             lighting.buildingEmissive = *env.buildingEmissive;
+        }
+        if (env.backgroundEmissive) {
+            lighting.backgroundEmissive = *env.backgroundEmissive;
         }
         // Buildings follow the sun unconditionally - terrainLightingEnabled decides whether the
         // GROUND is lit, and gating the walls on it too gave the extrusions a second lighting
@@ -227,6 +231,7 @@ namespace {
             float radiance[3];
             DayCycleLight::groundRadiance(light, lighting.sunDir(2), radiance);
             lighting.radiance = cglib::vec3<float>(radiance[0], radiance[1], radiance[2]);
+            lighting.brightness = DayCycleLight::brightness(light, lighting.sunDir(2));
         }
         return lighting;
     }

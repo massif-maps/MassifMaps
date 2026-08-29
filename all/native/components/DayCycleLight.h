@@ -77,6 +77,31 @@ namespace massif {
         }
 
         /**
+         * mapbox's `calculateLightsBrightness` (3d-style/style/style.ts), which is what their
+         * `["measure-light", "brightness"]` reads: the mean of the two lights' relative luminance,
+         * the directional one weighted by how high the sun is. `sunUp` is the sun direction's z.
+         *
+         * Their own values are day 0.478, dawn 0.396, dusk 0.027, night 0.014 - the numbers a
+         * Standard label's emissive ramp is written against, so ours has to land on them.
+         */
+        static float brightness(const Setup& light, float sunUp) {
+            // W3C relative luminance, which is NOT the 2.2 gamma the radiance uses.
+            auto relativeLuminance = [](const float channels[3]) {
+                float linear[3];
+                for (int i = 0; i < 3; i++) {
+                    float c = std::max(0.0f, std::min(1.0f, channels[i]));
+                    linear[i] = c <= 0.03928f ? c / 12.92f : std::pow((c + 0.055f) / 1.055f, 2.4f);
+                }
+                return 0.2126f * linear[0] + 0.7152f * linear[1] + 0.0722f * linear[2];
+            };
+            // mapbox weights by 1 - polar/90, and polar is 90 minus the sun's height.
+            float height = std::asin(std::max(-1.0f, std::min(1.0f, sunUp))) * (180.0f / 3.14159265358979323846f);
+            float directWeight = std::max(0.0f, std::min(1.0f, height / 90.0f));
+            return (relativeLuminance(light.direct) * light.directIntensity * directWeight +
+                    relativeLuminance(light.ambient) * light.ambientIntensity) / 2.0f;
+        }
+
+        /**
          * mapbox's `calculateGroundRadiance` (3d-style/render/lights.ts) with the ground normal:
          * what a light does to a flat, upward-facing surface. `sunUp` is the sun direction's z.
          *

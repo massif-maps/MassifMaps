@@ -84,6 +84,14 @@ export const ZOOM_OFFSET = 1;
 export const ZOOM_INPUT = `([view::zoom] - ${ZOOM_OFFSET})`;
 
 /**
+ * mapbox's `["measure-light", "brightness"]`, left LIVE instead of folded to the preset's value.
+ * The SDK resolves `view::brightness` per frame from the same light the radiance comes from, so a
+ * ramp over it - which is how Standard dims its one-way arrows and a few labels - follows the hour
+ * with no re-decode. Only emitted under --live-light; otherwise the value is a build-time constant.
+ */
+export const BRIGHTNESS_INPUT = '[view::brightness]';
+
+/**
  * MapBox expression -> a CartoCSS expression string.
  *
  * Zoom-driven `interpolate`/`step` become CartoCSS `linear()`/`step()` over the view zoom, which
@@ -120,6 +128,13 @@ export function translateExpression(expr: Json, notes?: string[]): string {
 
         case 'zoom':
             return ZOOM_INPUT;
+
+        // Only reached when the fold was told to LEAVE it live (--live-light); otherwise it was
+        // already replaced by the preset's constant before translation.
+        case 'measure-light': {
+            if (args[0] !== 'brightness') throw new Untranslatable(`measure-light ${String(args[0])}`);
+            return BRIGHTNESS_INPUT;
+        }
 
         // Mapbox Standard's runtime knobs - lightPreset, theme, showPointOfInterestLabels. A style
         // parameter is the same idea: named, defaulted in the project, and set without a reload, so
@@ -471,7 +486,8 @@ function stepOnField(args: Json[]): string {
  */
 function requireZoom(input: Json, where: string): string {
     const translated = translateExpression(input);
-    if (translated !== ZOOM_INPUT) {
+    // The scene brightness is a view variable too, and a ramp over it interpolates the same way.
+    if (translated !== ZOOM_INPUT && translated !== BRIGHTNESS_INPUT) {
         throw new Untranslatable(`${where} over ${translated} rather than zoom`);
     }
     return translated;

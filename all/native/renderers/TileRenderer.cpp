@@ -244,14 +244,11 @@ namespace massif {
         // sets the view state. Without this the surface is drawn with the previous frame's camera
         // while everything else uses the current one, so the ground lags the buildings by exactly
         // one frame during a pan and snaps into place when the motion stops.
-        cglib::mat4x4<double> prepareModelViewMat = viewState.getModelviewMat() * cglib::translate4_matrix(cglib::vec3<double>(_horizontalLayerOffset, 0, 0));
-        vt::ViewState prepareViewState(viewState.getProjectionMat(), prepareModelViewMat, viewState.getZoom(), viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewState.getNormalizedResolution());
-        prepareViewState.planarProjection = isPlanarProjectionMode();
-        tileRenderer->setViewState(prepareViewState);
-        // Same reason for the contact shadows: the drape bake asks whether they are active before
-        // onDrawFrame has resolved any lighting, so on the first frame at a camera they baked with
-        // intensity 0 - and a cached drape is never re-baked for a uniform change, so they stayed
-        // missing until a zoom rebuilt the tiles.
+        // Resolved BEFORE the view state below, which carries the brightness a style's
+        // view::brightness reads. Same reason as the contact shadows: the drape bake asks whether
+        // they are active before onDrawFrame has resolved any lighting, so on the first frame at a
+        // camera they baked with intensity 0 - and a cached drape is never re-baked for a uniform
+        // change, so they stayed missing until a zoom rebuilt the tiles.
         if (auto options = _options.lock()) {
             ResolvedLighting lighting = resolveLighting(options->getLightOptions(), _styleEnvironment);
             _groundAOIntensity = lighting.buildingAoIntensity;
@@ -261,6 +258,8 @@ namespace massif {
             // colour was baked against the previous frame's light, and a cached drape is never
             // re-baked for it, so the ground simply never followed the sun.
             _resolvedRadiance = lighting.radiance;
+            _resolvedBrightness = lighting.brightness;
+            _backgroundEmissive = lighting.backgroundEmissive;
             _buildingHeightScale = lighting.buildingHeightScale;
         _buildingHeightViewScale = lighting.buildingHeightViewScale;
             _buildingGrowOnAppear = lighting.buildingGrowOnAppear;
@@ -269,8 +268,18 @@ namespace massif {
             // the layer passes, to decide whether to render the occluder buffer at all.
             _textOcclusionOpacity.store(resolveTextOcclusionOpacity(options->getTerrainOptions(), _styleEnvironment));
         }
+        // The cross-layer drape draws the terrain surface from MapRenderer, BEFORE onDrawFrame
+        // sets the view state. Without this the surface is drawn with the previous frame's camera
+        // while everything else uses the current one, so the ground lags the buildings by exactly
+        // one frame during a pan and snaps into place when the motion stops.
+        cglib::mat4x4<double> prepareModelViewMat = viewState.getModelviewMat() * cglib::translate4_matrix(cglib::vec3<double>(_horizontalLayerOffset, 0, 0));
+        vt::ViewState prepareViewState(viewState.getProjectionMat(), prepareModelViewMat, viewState.getZoom(), viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewState.getNormalizedResolution());
+        prepareViewState.planarProjection = isPlanarProjectionMode();
+        prepareViewState.lightBrightness = _resolvedBrightness;
+        tileRenderer->setViewState(prepareViewState);
         tileRenderer->setGroundAO(_groundAOIntensity, _groundAOAttenuation);
         tileRenderer->setRadiance(_resolvedRadiance);
+        tileRenderer->setBackgroundEmissive(_backgroundEmissive);
         tileRenderer->setBuildingHeight(_buildingHeightScale, _buildingHeightViewScale, _buildingGrowOnAppear, _buildingFadeOnAppear);
         tileRenderer->setLabelOcclusionOpacity(_textOcclusionOpacity.load());
         try {
@@ -602,6 +611,7 @@ namespace massif {
                 terrainLighting = buildTerrainLighting(lighting);
             }
             tileRenderer->setRadiance(_resolvedRadiance);
+            tileRenderer->setBackgroundEmissive(_backgroundEmissive);
             tileRenderer->setTerrainLighting(terrainLighting);
         }
     }
@@ -752,6 +762,7 @@ namespace massif {
         cglib::mat4x4<double> modelViewMat = viewState.getModelviewMat() * cglib::translate4_matrix(cglib::vec3<double>(_horizontalLayerOffset, 0, 0));
         vt::ViewState vtViewState(viewState.getProjectionMat(), modelViewMat, viewState.getZoom(), viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewState.getNormalizedResolution());
         vtViewState.planarProjection = isPlanarProjectionMode(); // labels rescale by view depth, so neither terrain elevation nor a tilt blows up their screen size
+        vtViewState.lightBrightness = _resolvedBrightness; // a style's view::brightness, so an emissive ramp over it follows the hour
         vtViewState.focusDistance = static_cast<float>(cglib::length(viewState.getCameraPos() - viewState.getFocusPos())); // what the zoom sizes labels at; vt guesses it from the ground plane otherwise
         tileRenderer->setViewState(vtViewState);
         // A line width is given in unscaled-DPI units; this is what one of them is worth in device
@@ -975,7 +986,9 @@ namespace massif {
             _resolvedSunColor = lighting.sunColor;
             _resolvedAmbientColor = lighting.ambientColor;
             _buildingEmissive = lighting.buildingEmissive;
+            _backgroundEmissive = lighting.backgroundEmissive;
             _resolvedRadiance = lighting.radiance;
+            _resolvedBrightness = lighting.brightness;
             // The terrain surface is what this lights, and it exists whenever the stack draws one:
             // baked under a drape, or the shared ground pass when the drape is off. Gating on the
             // drape alone left the ground AND the hillshade paint over it unlit - and with them the
@@ -1144,6 +1157,7 @@ namespace massif {
         vt::ViewState cullViewState(viewState.getProjectionMat(), modelViewMat, viewState.getZoom(),
 viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewState.getNormalizedResolution());
         cullViewState.planarProjection = isPlanarProjectionMode(); // keep culling envelopes consistent with the rendered label sizes
+        cullViewState.lightBrightness = _resolvedBrightness;
         cullViewState.focusDistance = static_cast<float>(cglib::length(viewState.getCameraPos() - viewState.getFocusPos()));
         culler.setViewState(cullViewState);
 

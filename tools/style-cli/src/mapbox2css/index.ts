@@ -172,6 +172,19 @@ export interface ConvertOptions {
      * defaults. Every config read is resolved to a constant - see fold.ts for why it has to be.
      */
     config?: Record<string, Json>;
+    /**
+     * Leave the 2D colours AUTHORED and carry MapBox's `*-emissive-strength` into the style, for an
+     * SDK that lights them at draw time.
+     *
+     * Off, every 2D colour is multiplied by the scene light here and the style says `colors-prelit`
+     * so the renderer does not light it again - one palette per light preset, fixed at conversion.
+     * On, the colours are the style's own and the renderer's own light moves them, so the hour can
+     * be changed at runtime and ONE palette covers every preset.
+     *
+     * It is all or nothing: `colors-prelit` is a property of the STYLE, not of one rule, so a file
+     * cannot have its fills lit live and its lines pre-lit.
+     */
+    liveLight?: boolean;
 }
 
 export function convert(style: MapboxStyle, table: PropertyTable, options: ConvertOptions = {}): ConvertResult {
@@ -329,6 +342,32 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
      */
     function light(layer: MapboxLayer, declarations: string[]): string[] {
         if (radiance === null) return declarations;
+        // Under --live-light the colour stays as the style authored it and the emissive rides along
+        // instead, for the renderer to apply. Only the two properties the SDK carries are emitted;
+        // a text or an icon defaults to 1 there as it does here, so saying nothing is already right.
+        if (options.liveLight) {
+            const emitted = new Set<string>();
+            const extra: string[] = [];
+            for (const declaration of declarations) {
+                const property = declaration.slice(0, declaration.indexOf(':'));
+                const target = property.startsWith('polygon-') ? 'polygon-emissive-strength'
+                    : property.startsWith('line-') ? 'line-emissive-strength'
+                    // The map's background is a Map setting, not a symbolizer, but it takes the same
+                    // term - and it is the largest surface, so leaving it out left a lit map on an
+                    // unlit sheet of paper.
+                    : property.startsWith('background-') ? 'background-emissive-strength' : null;
+                if (target === null || emitted.has(target)) continue;
+                const source = emissiveProperty(property);
+                const stated = source ? layer.paint?.[source] : undefined;
+                const emissive = stated === undefined ? emissiveDefault(source)
+                    : typeof stated === 'number' ? stated
+                    : representativeEmissive(stated, representativeScale(stated, 1), (name) => values.get(name));
+                if (emissive === null || emissive >= 1) continue;
+                emitted.add(target);
+                extra.push(`${target}: ${round(Math.max(0, emissive))};`);
+            }
+            return [...declarations, ...extra];
+        }
         return declarations.map((declaration) => {
             const colon = declaration.indexOf(':');
             const property = declaration.slice(0, colon);
@@ -651,8 +690,10 @@ const BUILDING_MAP_DEFAULTS: Record<string, string> = {
     // `fill-extrusion-opacity` over zoom, as Standard does between z15 and z15.3. The SDK fades
     // every geometry in with its tile, which put a second, timed fade on top of that one.
     'building-fade-on-appear': '0',
-    // Every 2D colour in this file already carries mapbox's own ground radiance (see emissive.ts),
-    // so the SDK must not light the ground a second time. Says nothing about the shadows.
+    // The 2D colours carry the light by the time the terrain surface samples them, so it must not
+    // light them a second time. True in BOTH modes: folded in here by default, and applied by the
+    // renderer at colour evaluation - which runs before the drape bake - under --live-light. Says
+    // nothing about the shadows, which a pre-lit style still receives.
     'colors-prelit': '1',
 };
 

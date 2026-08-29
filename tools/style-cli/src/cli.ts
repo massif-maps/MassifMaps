@@ -36,6 +36,11 @@ const USAGE = `Usage: massif-style <command> [options] [args]
                             schema (Mapbox Standard). Repeatable, and k=v,k2=v2 also works. Every
                             config read is resolved to a constant, so this is a build-time choice:
                             --config lightPreset=night is how the dark version is produced
+      --live-light          leave the 2D colours as the style authored them and carry its
+                            emissive strengths instead, for an SDK that lights them at draw
+                            time. One palette then covers every light preset and the hour can
+                            be changed at runtime. Off, the light is folded into the colours
+                            and a palette is emitted per preset
       --sdf-flatten         resolve SDF icons to plain bitmaps, for an SDK without
                             marker-sdf; loses the zoom-driven size and the halo
       --contour-schema div  rewrite contour-layer nth_line tests onto a div (interval in
@@ -144,6 +149,7 @@ async function mapbox2css(args: string[]): Promise<number> {
     const { mss, project, coverage, variables, presets, defaultPreset, presetOverrides } = convert(style, loadPropertyTable(), {
         sprites,
         variables: !flags.has('no-variables'),
+        liveLight: flags.has('live-light'),
         config: parseConfig(args),
         presets: flags.has('no-presets') ? [] : undefined,
         flattenSdf: flags.has('sdf-flatten'),

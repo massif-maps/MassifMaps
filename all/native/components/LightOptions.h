@@ -179,7 +179,7 @@ namespace massif {
 
         /**
          * Returns the shadow map resolution.
-         * @return The shadow map size in pixels, per cascade. The default is 1024.
+         * @return The shadow map size in pixels, per cascade. The default is 2048.
          */
         int getShadowMapSize() const;
         /**

@@ -19,13 +19,18 @@ namespace massif {
         _sunOverridesStyle(false),
         _terrainLightingEnabled(false),
         _shadowStrength(0.3f),
-        _shadowMapSize(1024),
+        // mapbox's 2048 px map (shadow_renderer.ts _shadowParameters), over THREE cascades rather
+        // than their two: measured side by side, the extra page is worth its cost here. It only
+        // became so once the cutout went back to 4.5 - at 2.5 the ladder divided down to 0.28x the
+        // camera-to-focus distance, well ABOVE the nearest ground on screen (0.84x at tilt 55), so
+        // two of the three pages held nothing. Costs a 6144 x 2048 depth24 atlas, 50 MB.
+        _shadowMapSize(2048),
         _shadowCascades(3),
         // 1.0 shadow-map texels. 0.25 leaves acne on a lit slope at this cascade count.
         _shadowBias(1.0f),
         _shadowNormalOffset(3.0f),
         _shadowSoftness(1.0f),
-        _shadowDistance(0.0f),
+        _shadowDistance(0.0f), // 0 = the built-in 4.5, which is mapbox's
         _shadowCasterMargin(3),
         _onChangeListeners(),
         _onChangeListenersMutex()

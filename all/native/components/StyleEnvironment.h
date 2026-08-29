@@ -52,6 +52,7 @@ namespace massif {
         std::optional<bool> terrainLightingEnabled;
         // The style says its 2D colours already carry the light - see Map::Settings::colorsPrelit.
         std::optional<bool> colorsPrelit;
+        std::optional<float> buildingEmissive;
         std::optional<float> shadowStrength;
         std::optional<float> shadowBias;
         std::optional<float> shadowSoftness;
@@ -94,6 +95,12 @@ namespace massif {
         // Set by a style whose 2D colours are pre-lit: the ground is then drawn as authored while
         // the terrain's shadows and the 3D pass carry on lighting normally.
         bool colorsPrelit = false;
+        // How much of an extrusion's colour is emitted rather than lit - mapbox's
+        // fill-extrusion-emissive-strength. 0 means the scene light owns it entirely.
+        float buildingEmissive = 0.0f;
+        // What mapbox's light does to a flat, upward-facing surface: calculateGroundRadiance with
+        // the ground normal, in LINEAR space. The one number a colour grade is a function of.
+        cglib::vec3<float> radiance = cglib::vec3<float>(1.0f, 1.0f, 1.0f);
         cglib::vec3<float> sunDir = cglib::vec3<float>(0, 0, 1);
         Color sunColor = Color(255, 255, 255, 255);
         float sunIntensity = 1.0f;

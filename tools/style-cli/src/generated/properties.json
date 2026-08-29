@@ -365,6 +365,16 @@
       "baked": false
     },
     {
+      "cartocss": "line-emissive-strength",
+      "mapnik": "stroke-emissive-strength",
+      "symbolizer": "line",
+      "kind": "float",
+      "type": "FloatFunctionProperty",
+      "default": "1.0",
+      "live": true,
+      "baked": false
+    },
+    {
       "cartocss": "line-end-arrow",
       "mapnik": "end-arrow",
       "symbolizer": "line",
@@ -832,6 +842,16 @@
       "type": "CompOpProperty",
       "default": "src-over",
       "live": false,
+      "baked": false
+    },
+    {
+      "cartocss": "polygon-emissive-strength",
+      "mapnik": "fill-emissive-strength",
+      "symbolizer": "polygon",
+      "kind": "float",
+      "type": "FloatFunctionProperty",
+      "default": "1.0",
+      "live": true,
       "baked": false
     },
     {

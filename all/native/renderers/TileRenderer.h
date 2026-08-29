@@ -264,6 +264,9 @@ namespace massif {
         cglib::vec3<float> _resolvedBuildingSunDir = cglib::vec3<float>(0, 0, 1);
         Color _resolvedSunColor = Color(255, 255, 255, 255);
         Color _resolvedAmbientColor = Color(255, 255, 255, 255);
+        // The scene light on a flat, upward-facing surface, in linear space - see resolveLighting.
+        cglib::vec3<float> _resolvedRadiance = cglib::vec3<float>(1.0f, 1.0f, 1.0f);
+        float _buildingEmissive = 0.0f;
         // The elevation DATA version last acted on, apart from the global one: a change to only
         // the exaggeration moves the global version without making any surface stale.
         unsigned int _elevationDataVersion = 0;

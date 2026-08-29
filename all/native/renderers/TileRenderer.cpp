@@ -256,6 +256,11 @@ namespace massif {
             ResolvedLighting lighting = resolveLighting(options->getLightOptions(), _styleEnvironment);
             _groundAOIntensity = lighting.buildingAoIntensity;
             _groundAOAttenuation = lighting.buildingAoGroundAttenuation;
+            // Same reason as the contact shadows above: the DRAPE BAKE evaluates every colour, and
+            // it runs here - before onDrawFrame has resolved any lighting. Set only there, a live
+            // colour was baked against the previous frame's light, and a cached drape is never
+            // re-baked for it, so the ground simply never followed the sun.
+            _resolvedRadiance = lighting.radiance;
             _buildingHeightScale = lighting.buildingHeightScale;
         _buildingHeightViewScale = lighting.buildingHeightViewScale;
             _buildingGrowOnAppear = lighting.buildingGrowOnAppear;
@@ -265,6 +270,7 @@ namespace massif {
             _textOcclusionOpacity.store(resolveTextOcclusionOpacity(options->getTerrainOptions(), _styleEnvironment));
         }
         tileRenderer->setGroundAO(_groundAOIntensity, _groundAOAttenuation);
+        tileRenderer->setRadiance(_resolvedRadiance);
         tileRenderer->setBuildingHeight(_buildingHeightScale, _buildingHeightViewScale, _buildingGrowOnAppear, _buildingFadeOnAppear);
         tileRenderer->setLabelOcclusionOpacity(_textOcclusionOpacity.load());
         try {
@@ -595,6 +601,7 @@ namespace massif {
             if (lighting.terrainLightingEnabled) {
                 terrainLighting = buildTerrainLighting(lighting);
             }
+            tileRenderer->setRadiance(_resolvedRadiance);
             tileRenderer->setTerrainLighting(terrainLighting);
         }
     }
@@ -967,6 +974,8 @@ namespace massif {
             _resolvedBuildingSunDir = lighting.sunDir;
             _resolvedSunColor = lighting.sunColor;
             _resolvedAmbientColor = lighting.ambientColor;
+            _buildingEmissive = lighting.buildingEmissive;
+            _resolvedRadiance = lighting.radiance;
             // The terrain surface is what this lights, and it exists whenever the stack draws one:
             // baked under a drape, or the shared ground pass when the drape is off. Gating on the
             // drape alone left the ground AND the hillshade paint over it unlit - and with them the
@@ -1497,6 +1506,8 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
                 glUniform3fv(glGetUniformLocation(shaderProgram, "u_sunColor"), 1, sunColor.data());
                 glUniform3fv(glGetUniformLocation(shaderProgram, "u_ambientColor"), 1, ambientColor.data());
                 glUniform2f(glGetUniformLocation(shaderProgram, "u_verticalGradient"), _buildingVerticalGradient, _buildingRoofShade);
+                glUniform1f(glGetUniformLocation(shaderProgram, "u_emissive"), _buildingEmissive);
+                glUniform3fv(glGetUniformLocation(shaderProgram, "u_radiance"), 1, _resolvedRadiance.data());
             });
             tileRenderer->setLightingShader3D(lightingShader3D);
 
@@ -1542,6 +1553,13 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
         uniform vec3 u_sunColor;     // linear, already scaled by the sun intensity
         uniform vec3 u_ambientColor; // linear, already scaled by the ambient intensity
         uniform vec2 u_verticalGradient; // x = how dark the foot of a wall goes, y = roof shade
+        // How much of the colour is EMITTED rather than lit (mapbox's *-emissive-strength): 1 draws
+        // it as authored whatever the hour, 0 hands it entirely to the scene light.
+        uniform float u_emissive;
+        // What the light does to a flat, upward-facing surface (calculateGroundRadiance), in LINEAR
+        // space. Passed even though the 3D pass computes its own per-face term, because it is what
+        // a replaceable grade is written against and what the emissive mixes back towards.
+        uniform vec3 u_radiance;
         vec4 applyLighting3D(lowp vec4 color, mediump vec3 normal, mediump float wallT, mediump float sideVertex, mediump float shadow, mediump float skyShadow) {
             // Ambient occlusion where a wall meets the ground: that corner is shadowed by the ground
             // and by the building's own footprint whatever the sun does, and it is the cue that
@@ -1589,6 +1607,10 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
             // whole reason their facades stay soft where a straight sRGB multiply crushes them.
             // Equivalent to linearTosRGB(sRGBToLinear(color) * lit), one pow instead of three.
             lit = pow(lit, vec3(1.0 / 2.2));
+            // An EMITTED surface keeps its authored colour whatever the light does - mapbox's
+            // `mix(apply_lighting(color), color, emissive_strength)`. At 0 this is a no-op, which is
+            // what every extrusion in a converted Standard asks for; a lit window asks for more.
+            lit = mix(lit, vec3(1.0), clamp(u_emissive, 0.0, 1.0));
             // Premultiplied, so scaling rgb alone is a valid tint and the clamp keeps rgb <= a.
             return vec4(min(baseColor * lit, vec3(color.a)), color.a);
         }

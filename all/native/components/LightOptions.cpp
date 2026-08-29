@@ -17,6 +17,7 @@ namespace massif {
         _ambientIntensity(1.0f),
         _ambientColorARGB(Color(255, 255, 255, 255).getARGB()),
         _sunOverridesStyle(false),
+        _dayCycleLights(false),
         _terrainLightingEnabled(false),
         _shadowStrength(0.3f),
         // mapbox's 2048 px map (shadow_renderer.ts _shadowParameters), over THREE cascades rather
@@ -150,6 +151,16 @@ namespace massif {
     void LightOptions::setSunOverridingStyle(bool overriding) {
         if (_sunOverridesStyle.exchange(overriding) != overriding) {
             notifyOptionChanged("SunOverridingStyle");
+        }
+    }
+
+    bool LightOptions::isDayCycleLightsEnabled() const {
+        return _dayCycleLights.load();
+    }
+
+    void LightOptions::setDayCycleLightsEnabled(bool enabled) {
+        if (_dayCycleLights.exchange(enabled) != enabled) {
+            notifyOptionChanged("DayCycleLightsEnabled");
         }
     }
 

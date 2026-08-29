@@ -12,7 +12,7 @@ sidebar_position: 20
 `CartoCSSMapnikTranslator.cpp`. Edit those, then re-run the script — never this page.
 :::
 
-217 properties across 12 symbolizers.
+219 properties across 12 symbolizers.
 
 ## Reading the table
 
@@ -29,7 +29,7 @@ sidebar_position: 20
   than failing. Write an explicit guard — `[color] <> null ? [color] : '#0000ff'` — when the
   fallback should be something else.
 
-Live-capable properties: 48 of 217.
+Live-capable properties: 50 of 219.
 
 ## `building`
 
@@ -85,6 +85,7 @@ Live-capable properties: 48 of 217.
 | `line-color` | `stroke` | color | `#000000` | yes |  |
 | `line-comp-op` | `comp-op` | comp-op | `src-over` |  |  |
 | `line-dasharray` | `stroke-dasharray` | string |  |  |  |
+| `line-emissive-strength` | `stroke-emissive-strength` | float | `1.0` | yes |  |
 | `line-end-arrow` | `end-arrow` | bool | `false` |  |  |
 | `line-gap-width` | `gap-width` | float | `0.0` | yes |  |
 | `line-geometry-transform` | `geometry-transform` | transform |  |  |  |
@@ -152,6 +153,7 @@ Live-capable properties: 48 of 217.
 | CartoCSS | mapnik | Value | Default | Live | Baked |
 |---|---|---|---|---|---|
 | `polygon-comp-op` | `comp-op` | comp-op | `src-over` |  |  |
+| `polygon-emissive-strength` | `fill-emissive-strength` | float | `1.0` | yes |  |
 | `polygon-fill` | `fill` | color | `#808080` | yes |  |
 | `polygon-geometry-transform` | `geometry-transform` | transform |  |  |  |
 | `polygon-opacity` | `fill-opacity` | float | `1.0` | yes |  |

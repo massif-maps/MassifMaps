@@ -150,6 +150,27 @@ namespace massif {
         void setSunOverridingStyle(bool overriding);
 
         /**
+         * Returns whether the sun's COLOURS follow its position.
+         * @return True if the light colours are derived from the sun's height. The default is false.
+         */
+        bool isDayCycleLightsEnabled() const;
+        /**
+         * Sets whether the light COLOURS follow the sun's position instead of being stated.
+         *
+         * A map that moves its sun with the clock wants the light to change with it: warm and low
+         * at dawn, white overhead, orange against a blue sky at dusk, and a dim blue at night. With
+         * this on, the ambient and sun colours and their intensities are derived from the sun's own
+         * height, interpolated between the four light setups MapBox Standard ships - so an hour of
+         * 12 renders as its `day` preset and 19 as its `dusk`, with everything in between.
+         *
+         * It replaces what the style and this object state for those four values; the DIRECTION is
+         * still whatever the sun position says. Off, nothing is derived and the values are taken as
+         * before.
+         * @param enabled True to derive the light colours from the sun's height.
+         */
+        void setDayCycleLightsEnabled(bool enabled);
+
+        /**
          * Returns whether the sun lights the 3D terrain surface.
          * @return True if terrain surface lighting is enabled. The default is false.
          */
@@ -313,6 +334,7 @@ namespace massif {
         std::atomic<float> _ambientIntensity;
         std::atomic<int> _ambientColorARGB;
         std::atomic<bool> _sunOverridesStyle;
+        std::atomic<bool> _dayCycleLights;
         std::atomic<bool> _terrainLightingEnabled;
         std::atomic<float> _shadowStrength;
         std::atomic<int> _shadowMapSize;

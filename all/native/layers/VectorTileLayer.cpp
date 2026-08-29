@@ -572,7 +572,26 @@ namespace massif {
     Color VectorTileLayer::getBackgroundColor(const ViewState& viewState) const {
         std::lock_guard<std::recursive_mutex> lock(_mutex);
 
-        return TileRenderer::evaluateColorFunc(_tileDecoder->getMapSettings()->backgroundColor.getFunction(getExpressionContext()), viewState);
+        std::shared_ptr<const mvt::Map::Settings> mapSettings = _tileDecoder->getMapSettings();
+        Color color = TileRenderer::evaluateColorFunc(mapSettings->backgroundColor.getFunction(getExpressionContext()), viewState);
+        // The background is a Map setting, so it misses the grade every symbolizer colour gets at
+        // draw time - and it is the largest surface on the map. Lit here by the same rule: at an
+        // emissive of 1, which is the default and what a pre-lit style leaves it at, this is a
+        // no-op.
+        float emissive = TileRenderer::evaluateFloatFunc(mapSettings->backgroundEmissive.getFunction(getExpressionContext()), viewState);
+        if (emissive < 1.0f) {
+            if (std::shared_ptr<Options> options = getOptions()) {
+                StyleEnvironment env;
+                getStyleEnvironment(viewState, env);
+                ResolvedLighting lighting = resolveLighting(options->getLightOptions(), env);
+                auto lit = [&](unsigned char c, int i) {
+                    float value = c / 255.0f * (emissive + (1.0f - emissive) * lighting.radiance(i));
+                    return static_cast<unsigned char>(std::max(0.0f, std::min(1.0f, value)) * 255.0f + 0.5f);
+                };
+                color = Color(lit(color.getR(), 0), lit(color.getG(), 1), lit(color.getB(), 2), color.getA());
+            }
+        }
+        return color;
     }
 
     bool VectorTileLayer::getStyleEnvironment(const ViewState& viewState, StyleEnvironment& env) const {
@@ -612,6 +631,7 @@ namespace massif {
         readFloat(mapSettings->buildingVerticalGradient, env.buildingVerticalGradient);
         readFloat(mapSettings->buildingRoofShade, env.buildingRoofShade);
         readBool(mapSettings->colorsPrelit, env.colorsPrelit);
+        readFloat(mapSettings->buildingEmissive, env.buildingEmissive);
         readFloat(mapSettings->buildingHeightScale, env.buildingHeightScale);
         readFloat(mapSettings->buildingHeightViewScale, env.buildingHeightViewScale);
         readBool(mapSettings->buildingGrowOnAppear, env.buildingGrowOnAppear);

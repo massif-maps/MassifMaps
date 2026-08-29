@@ -35,6 +35,7 @@ namespace massif {
         take(buildingAoGroundAttenuation, other.buildingAoGroundAttenuation);
         take(terrainLightingEnabled, other.terrainLightingEnabled);
         take(colorsPrelit, other.colorsPrelit);
+        take(buildingEmissive, other.buildingEmissive);
         take(shadowStrength, other.shadowStrength);
         take(shadowBias, other.shadowBias);
         take(shadowSoftness, other.shadowSoftness);
@@ -68,6 +69,69 @@ namespace massif {
                  skyType || skyAtmosphereSunIntensity || skyAtmosphereColor || skyAtmosphereHaloColor || skyAtmosphereLuminance ||
                  terrainMaxVisibleDistance);
     }
+
+namespace {
+    /** One of MapBox Standard's four light setups, as its `lights` block states them. */
+    struct LightSetup {
+        float ambient[3];   // sRGB 0-1
+        float ambientIntensity;
+        float direct[3];
+        float directIntensity;
+    };
+    // Standard's own values, verbatim. dawn hsl(28,98%,93%)/hsl(33,98%,77%), day white/white,
+    // dusk hsl(228,27%,29%)/hsl(30,98%,76%), night hsl(217,100%,11%)/hsl(225,15%,29%).
+    const LightSetup DAY_LIGHT   = { { 1.0000f, 1.0000f, 1.0000f }, 0.80f, { 1.0000f, 1.0000f, 1.0000f }, 0.20f };
+    const LightSetup DAWN_LIGHT  = { { 0.9986f, 0.9254f, 0.8614f }, 0.75f, { 0.9954f, 0.7925f, 0.5446f }, 0.50f };
+    const LightSetup DUSK_LIGHT  = { { 0.2117f, 0.2430f, 0.3683f }, 0.80f, { 0.9952f, 0.7600f, 0.5248f }, 0.20f };
+    const LightSetup NIGHT_LIGHT = { { 0.0000f, 0.0766f, 0.2200f }, 0.50f, { 0.2465f, 0.2683f, 0.3335f }, 0.50f };
+
+    float smoothStep(float edge0, float edge1, float x) {
+        float t = std::max(0.0f, std::min(1.0f, (x - edge0) / (edge1 - edge0)));
+        return t * t * (3.0f - 2.0f * t);
+    }
+
+    /**
+     * The light the sun's own height implies, blended between Standard's four setups.
+     *
+     * The presets are artistic, not physical, but they are anchored on a sun height: day states it
+     * 70 degrees up, dawn 40, dusk 10 and night puts it away. Reading the height back gives a
+     * CONTINUOUS curve through them, so an hour of 12 lands on `day` and 19 on `dusk` without a
+     * style having to state either. Colours are mixed in LINEAR space, or the midpoints go muddy.
+     *
+     * `rising` picks dawn over dusk at the same height; nothing else distinguishes them.
+     */
+    LightSetup lightAtSunHeight(float altitudeDegrees, bool rising) {
+        const LightSetup& twilight = rising ? DAWN_LIGHT : DUSK_LIGHT;
+        float day = smoothStep(12.0f, 38.0f, altitudeDegrees);
+        float night = 1.0f - smoothStep(-9.0f, 3.0f, altitudeDegrees);
+        float dusk = std::max(0.0f, 1.0f - day - night);
+        LightSetup out = { { 0, 0, 0 }, 0, { 0, 0, 0 }, 0 };
+        auto mixIn = [&out](const LightSetup& light, float weight) {
+            if (weight <= 0) {
+                return;
+            }
+            for (int i = 0; i < 3; i++) {
+                out.ambient[i] += std::pow(light.ambient[i], 2.2f) * weight;
+                out.direct[i] += std::pow(light.direct[i], 2.2f) * weight;
+            }
+            out.ambientIntensity += light.ambientIntensity * weight;
+            out.directIntensity += light.directIntensity * weight;
+        };
+        mixIn(DAY_LIGHT, day);
+        mixIn(twilight, dusk);
+        mixIn(NIGHT_LIGHT, night);
+        for (int i = 0; i < 3; i++) {
+            out.ambient[i] = std::pow(out.ambient[i], 1.0f / 2.2f);
+            out.direct[i] = std::pow(out.direct[i], 1.0f / 2.2f);
+        }
+        return out;
+    }
+
+    Color colorOf(const float channels[3]) {
+        auto byte = [](float c) { return static_cast<unsigned char>(std::max(0.0f, std::min(1.0f, c)) * 255.0f + 0.5f); };
+        return Color(byte(channels[0]), byte(channels[1]), byte(channels[2]), 255);
+    }
+}
 
     ResolvedLighting resolveLighting(const std::shared_ptr<LightOptions>& lightOptions, const StyleEnvironment& env) {
         ResolvedLighting lighting;
@@ -117,6 +181,9 @@ namespace massif {
         }
         if (env.colorsPrelit) {
             lighting.colorsPrelit = *env.colorsPrelit;
+        }
+        if (env.buildingEmissive) {
+            lighting.buildingEmissive = *env.buildingEmissive;
         }
         // Buildings follow the sun unconditionally - terrainLightingEnabled decides whether the
         // GROUND is lit, and gating the walls on it too gave the extrusions a second lighting
@@ -178,6 +245,52 @@ namespace massif {
         }
         if (env.shadowCasterMargin) {
             lighting.shadowCasterMargin = *env.shadowCasterMargin;
+        }
+
+        // The light COLOURS follow the sun's height when the app asked for a day cycle, replacing
+        // whatever the style and the options state for them. The direction is untouched - it is the
+        // input this reads.
+        if (lightOptions && lightOptions->isDayCycleLightsEnabled()) {
+            float altitude = std::asin(std::max(-1.0f, std::min(1.0f, lighting.sunDir(2)))) * static_cast<float>(Const::RAD_TO_DEG);
+            // East of north is morning: the same height then means dawn rather than dusk.
+            bool rising = lighting.sunDir(0) >= 0.0f;
+            LightSetup light = lightAtSunHeight(altitude, rising);
+            lighting.ambientColor = colorOf(light.ambient);
+            lighting.ambientIntensity = light.ambientIntensity;
+            lighting.sunColor = colorOf(light.direct);
+            lighting.sunIntensity = light.directIntensity;
+            lighting.buildingAmbient = light.ambientIntensity;
+            lighting.buildingLightIntensity = light.directIntensity;
+        }
+
+        // mapbox's calculateGroundRadiance (3d-style/render/lights.ts) with the ground normal: what
+        // their light does to a flat, upward-facing surface. Everything a colour grade needs is in
+        // this one vec3, and it is the same number the style converter folds into a pre-lit palette
+        // - so the two can be checked against each other.
+        {
+            auto linear = [](const Color& color, float intensity) {
+                return cglib::vec3<float>(std::pow(color.getR() / 255.0f, 2.2f) * intensity,
+                                          std::pow(color.getG() / 255.0f, 2.2f) * intensity,
+                                          std::pow(color.getB() / 255.0f, 2.2f) * intensity);
+            };
+            cglib::vec3<float> ambient = linear(lighting.ambientColor, lighting.ambientIntensity);
+            cglib::vec3<float> direct = linear(lighting.sunColor, lighting.sunIntensity);
+            float dirZ = lighting.sunDir(2);
+            // The sky is brighter near the sun; a ground normal never faces away, so this is 1
+            // whenever the sun is up.
+            float luminance = 0.2126f * direct(0) + 0.7152f * direct(1) + 0.0722f * direct(2);
+            float minFactor = 1.0f - 0.3f * std::min(luminance, 1.0f);
+            float ambientDirectional = minFactor + (1.0f - minFactor) * std::min(dirZ + 1.0f, 1.0f);
+            float up = std::max(0.0f, dirZ);
+            for (int i = 0; i < 3; i++) {
+                // Back to sRGB, as linearVec3TosRGB does: the sum above is LINEAR light, and it
+                // multiplies an sRGB colour. Left linear it was five times too dark at dusk - 0.06
+                // against the 0.29 the same formula gives in the converter.
+                lighting.radiance[i] = std::pow(std::max(0.0f, std::min(1.0f, ambient(i) * ambientDirectional + direct(i) * up)), 1.0f / 2.2f);
+            }
+            // Not neutralised for a pre-lit style: the grade only fires where a colour states an
+            // emissive below 1, and a style that folded its light in states none - so it selects
+            // itself, and the two modes need no second flag to tell them apart.
         }
         return lighting;
     }

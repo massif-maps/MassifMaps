@@ -28,6 +28,7 @@
 %attribute(massif::LightOptions, float, AmbientIntensity, getAmbientIntensity, setAmbientIntensity)
 %attributeval(massif::LightOptions, massif::Color, AmbientColor, getAmbientColor, setAmbientColor)
 %attribute(massif::LightOptions, bool, SunOverridingStyle, isSunOverridingStyle, setSunOverridingStyle)
+    %attribute(massif::LightOptions, bool, DayCycleLightsEnabled, isDayCycleLightsEnabled, setDayCycleLightsEnabled)
 %attribute(massif::LightOptions, bool, TerrainLightingEnabled, isTerrainLightingEnabled, setTerrainLightingEnabled)
 %attribute(massif::LightOptions, float, ShadowStrength, getShadowStrength, setShadowStrength)
 %attribute(massif::LightOptions, int, ShadowMapSize, getShadowMapSize, setShadowMapSize)

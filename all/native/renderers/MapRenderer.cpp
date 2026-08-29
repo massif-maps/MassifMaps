@@ -2062,13 +2062,18 @@ namespace massif {
                         shadowStrength = lighting.shadowStrength;
                         shadowSoftness = lighting.shadowSoftness;
                     }
-                } else if (_shadowMapValid) {
+                } else if (_shadowMapValid && _shadowMapAge < SHADOW_MAP_MAX_AGE) {
                     // A frame whose light box could not be fitted (a cascade with no
                     // ground in its slice, a cover with no decoded elevation yet) used
                     // to drop the shadows entirely for that frame - every shadow on
                     // screen blinking out and back. The last good map with the matrices
-                    // it was rendered with is a far better answer than none: it is at
-                    // worst one camera step stale, and the next good fit replaces it.
+                    // it was rendered with is a far better answer than none.
+                    //
+                    // Only while it is still RECENT, though. Held without a bound it stops
+                    // being one camera step stale and becomes a different scene: zooming out
+                    // past the zoom a style stops extruding at, the fit has nothing to fit and
+                    // the last map kept painting the shadows of buildings that were no longer
+                    // drawn - black blocks over a flat map, for as long as you stayed there.
                     lightViewProjs = _shadowMapViewProjs;
                     shadowBiases = _shadowMapBiases;
                     shadowTexture = _terrainShadowMap->getTexture();
@@ -2077,6 +2082,8 @@ namespace massif {
                     shadowStrength = lighting.shadowStrength;
                     shadowSoftness = lighting.shadowSoftness;
                     _shadowMapAge++;
+                } else {
+                    _shadowMapValid = false; // too old to stand in for a fit that keeps failing
                 }
             }
         }

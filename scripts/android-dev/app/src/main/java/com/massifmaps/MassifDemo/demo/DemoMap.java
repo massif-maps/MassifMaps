@@ -1523,6 +1523,7 @@ public class DemoMap {
             lightOptions.setSunAltitude(DemoConfig.SUN_ALTITUDE);
         }
         lightOptions.setSunOverridingStyle(DemoConfig.APP_SUN);
+        lightOptions.setDayCycleLightsEnabled(DemoConfig.DAY_CYCLE_LIGHTS);
         lightOptions.setSunIntensity(DemoConfig.SUN_INTENSITY);
         lightOptions.setAmbientIntensity(DemoConfig.AMBIENT_INTENSITY);
         lightOptions.setAmbientColor(new Color(DemoConfig.AMBIENT_COLOR_ARGB));

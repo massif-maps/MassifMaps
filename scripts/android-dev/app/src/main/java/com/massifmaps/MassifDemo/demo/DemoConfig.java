@@ -397,6 +397,8 @@ public final class DemoConfig {
      *  lights as its source does; on, the sliders and --es sunAzimuth/sunAltitude take over.
      *  '--es appSun true'. */
     public static boolean APP_SUN = false;
+    /** Derive the light COLOURS from the sun's height, instead of taking the style's. */
+    public static boolean DAY_CYCLE_LIGHTS = false;
     public static float SUN_INTENSITY = 1.0f;
     public static float AMBIENT_INTENSITY = 1.0f;
     /** Tint of everything in shadow. White = neutral; a cool blue reads as sky-lit at dusk. */
@@ -1289,6 +1291,7 @@ public final class DemoConfig {
         SUN_AZIMUTH = DemoCfg.cfgFloat("sunAzimuth", SUN_AZIMUTH);
         SUN_ALTITUDE = DemoCfg.cfgFloat("sunAltitude", SUN_ALTITUDE);
         APP_SUN = DemoCfg.cfgBool("appSun", APP_SUN);
+        DAY_CYCLE_LIGHTS = DemoCfg.cfgBool("dayCycleLights", DAY_CYCLE_LIGHTS);
         SUN_INTENSITY = DemoCfg.cfgFloat("sunIntensity", SUN_INTENSITY);
         AMBIENT_INTENSITY = DemoCfg.cfgFloat("ambient", AMBIENT_INTENSITY);
         AMBIENT_COLOR_ARGB = DemoCfg.cfgColorInt("ambientColor", AMBIENT_COLOR_ARGB);

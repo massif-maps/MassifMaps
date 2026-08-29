@@ -43,7 +43,7 @@ public final class DemoLive extends BroadcastReceiver {
     private static final String[] LIGHT_KEYS = {
         "daycycle", "sunHour", "sunAzimuth", "sunAltitude", "appSun", "shadow", "shadowSoftness",
         "shadowDistance", "shadowCascades", "shadowNormalOffset", "terrainLight", "ambient",
-        "ambientColor", "sunColor", "sunIntensity"
+        "ambientColor", "sunColor", "sunIntensity", "dayCycleLights"
     };
     // Anything written INTO the style: the tiles carry it, so it only changes on a re-decode.
     private static final String[] STYLE_KEYS = {

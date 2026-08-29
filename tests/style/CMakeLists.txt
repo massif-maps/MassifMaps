@@ -28,6 +28,7 @@ add_executable(style_tests
   ExpressionRoundTripTest.cpp
   InterpolateExpressionTest.cpp
   DataDrivenPropertyTest.cpp
+  ViewStatePropertyTest.cpp
   ${STYLE_SOURCES})
 
 target_include_directories(style_tests PRIVATE

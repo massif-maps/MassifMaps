@@ -27,6 +27,7 @@ namespace massif {
         take(buildingVerticalGradient, other.buildingVerticalGradient);
         take(buildingRoofShade, other.buildingRoofShade);
         take(buildingHeightScale, other.buildingHeightScale);
+        take(buildingHeightViewScale, other.buildingHeightViewScale);
         take(buildingGrowOnAppear, other.buildingGrowOnAppear);
         take(buildingFadeOnAppear, other.buildingFadeOnAppear);
         take(buildingAoIntensity, other.buildingAoIntensity);
@@ -137,6 +138,9 @@ namespace massif {
         }
         if (env.buildingHeightScale) {
             lighting.buildingHeightScale = *env.buildingHeightScale;
+        }
+        if (env.buildingHeightViewScale) {
+            lighting.buildingHeightViewScale = *env.buildingHeightViewScale;
         }
         if (env.buildingGrowOnAppear) {
             lighting.buildingGrowOnAppear = *env.buildingGrowOnAppear;

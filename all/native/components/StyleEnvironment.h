@@ -43,6 +43,7 @@ namespace massif {
         std::optional<float> buildingVerticalGradient;
         std::optional<float> buildingRoofShade;
         std::optional<float> buildingHeightScale;
+        std::optional<float> buildingHeightViewScale;
         std::optional<bool> buildingGrowOnAppear;
         std::optional<bool> buildingFadeOnAppear;
         std::optional<float> buildingAoIntensity;
@@ -107,6 +108,8 @@ namespace massif {
         float buildingRoofShade = 1.0f;
         // Every extrusion's height, multiplied - mapbox's fill-extrusion-vertical-scale.
         float buildingHeightScale = 1.0f;
+        // Drawn only - the shadow caster ignores it (see mvt::Map::Settings).
+        float buildingHeightViewScale = 1.0f;
         // Whether a tile's fade-in raises its buildings; off, as no source style asks for it.
         bool buildingGrowOnAppear = false;
         // Whether a tile's fade-in fades its buildings in; on, like every other geometry.

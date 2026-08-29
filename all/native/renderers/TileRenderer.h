@@ -276,6 +276,7 @@ namespace massif {
         // The style's extrusion height multiplier, and whether a tile's fade-in raises its
         // buildings with it (off: no source style asks for that animation).
         float _buildingHeightScale = 1.0f;
+        float _buildingHeightViewScale = 1.0f;
         bool _buildingGrowOnAppear = false;
         bool _buildingFadeOnAppear = true;
         std::atomic<float> _textOcclusionOpacity{1.0f};

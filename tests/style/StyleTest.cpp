@@ -10,12 +10,14 @@ void testLayerConfig();
 void testExpressionRoundTrip();
 void testDataDrivenProperty();
 void testInterpolateExpression();
+void testViewStateProperty();
 
 int main() {
     testLayerConfig();
     testExpressionRoundTrip();
     testDataDrivenProperty();
     testInterpolateExpression();
+    testViewStateProperty();
 
     std::printf("\n%d failure(s)\n", failures);
     return failures ? 1 : 0;

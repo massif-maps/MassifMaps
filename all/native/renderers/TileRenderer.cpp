@@ -257,6 +257,7 @@ namespace massif {
             _groundAOIntensity = lighting.buildingAoIntensity;
             _groundAOAttenuation = lighting.buildingAoGroundAttenuation;
             _buildingHeightScale = lighting.buildingHeightScale;
+        _buildingHeightViewScale = lighting.buildingHeightViewScale;
             _buildingGrowOnAppear = lighting.buildingGrowOnAppear;
             _buildingFadeOnAppear = lighting.buildingFadeOnAppear;
             // Same reason again, and one step earlier than the rest: the owner reads this BEFORE
@@ -264,7 +265,7 @@ namespace massif {
             _textOcclusionOpacity.store(resolveTextOcclusionOpacity(options->getTerrainOptions(), _styleEnvironment));
         }
         tileRenderer->setGroundAO(_groundAOIntensity, _groundAOAttenuation);
-        tileRenderer->setBuildingHeight(_buildingHeightScale, _buildingGrowOnAppear, _buildingFadeOnAppear);
+        tileRenderer->setBuildingHeight(_buildingHeightScale, _buildingHeightViewScale, _buildingGrowOnAppear, _buildingFadeOnAppear);
         tileRenderer->setLabelOcclusionOpacity(_textOcclusionOpacity.load());
         try {
             _framePrepareResult = tileRenderer->startFrame(deltaSeconds * 3);
@@ -942,6 +943,7 @@ namespace massif {
             _groundAOIntensity = lighting.buildingAoIntensity;
             _groundAOAttenuation = lighting.buildingAoGroundAttenuation;
             _buildingHeightScale = lighting.buildingHeightScale;
+        _buildingHeightViewScale = lighting.buildingHeightViewScale;
             _buildingGrowOnAppear = lighting.buildingGrowOnAppear;
             _buildingFadeOnAppear = lighting.buildingFadeOnAppear;
             _resolvedSunDir = lighting.sunDir;
@@ -976,7 +978,7 @@ namespace massif {
         }
         tileRenderer->setTerrainLighting(terrainLighting);
         tileRenderer->setGroundAO(_groundAOIntensity, _groundAOAttenuation);
-        tileRenderer->setBuildingHeight(_buildingHeightScale, _buildingGrowOnAppear, _buildingFadeOnAppear);
+        tileRenderer->setBuildingHeight(_buildingHeightScale, _buildingHeightViewScale, _buildingGrowOnAppear, _buildingFadeOnAppear);
         tileRenderer->setTerrainDepthWrite(terrainMode && _terrainDepthWriteMode);
         if (auto options = _options.lock()) {
             tileRenderer->setDebugTileBorders(options->isDebugTileBorders());
@@ -1520,7 +1522,7 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
         uniform vec3 u_sunColor;     // linear, already scaled by the sun intensity
         uniform vec3 u_ambientColor; // linear, already scaled by the ambient intensity
         uniform vec2 u_verticalGradient; // x = how dark the foot of a wall goes, y = roof shade
-        vec4 applyLighting3D(lowp vec4 color, mediump vec3 normal, mediump float wallT, mediump float sideVertex, mediump float shadow) {
+        vec4 applyLighting3D(lowp vec4 color, mediump vec3 normal, mediump float wallT, mediump float sideVertex, mediump float shadow, mediump float skyShadow) {
             // Ambient occlusion where a wall meets the ground: that corner is shadowed by the ground
             // and by the building's own footprint whatever the sun does, and it is the cue that
             // makes an extrusion stand on the terrain instead of floating over it - the shadow map
@@ -1545,8 +1547,11 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
             mediump float ambientDirectional = mix(1.0 - 0.3 * min(dirLuminance, 1.0), 1.0, min(ndl + 1.0, 1.0));
             // Environmental light blocked from below: a downward face keeps 92%, a roof all of it.
             mediump float vertical = mix(0.92, 1.0, normal.z * 0.5 + 0.5);
-            // Only the sun is shadowed. The ambient is the sky, and a wall in shadow still sees it.
-            mediump vec3 lit = u_ambientColor * (vertical * ambientDirectional) + u_sunColor * (max(0.0, ndl) * shadow);
+            // The sun is shadowed by the map AND by the back-face rule; the sky only by the map
+            // (skyShadow), so a wall merely turned away from the sun keeps all of it. Without the
+            // sky term a shadowed facade moved by 4% where the ground beside it went to a fifth -
+            // mapbox's own ratio, whose ambient is four times its directional.
+            mediump vec3 lit = u_ambientColor * (vertical * ambientDirectional * skyShadow) + u_sunColor * (max(0.0, ndl) * shadow);
             // The light is summed in LINEAR space and only then returned to sRGB, which is the
             // whole reason their facades stay soft where a straight sRGB multiply crushes them.
             // Equivalent to linearTosRGB(sRGBToLinear(color) * lit), one pow instead of three.

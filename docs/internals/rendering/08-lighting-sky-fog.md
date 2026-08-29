@@ -483,6 +483,30 @@ The term now goes into `applyLighting3D`, which requires the extrusion lighting 
 fragment** (`LightingShader(perVertex=false)`) — the shadow exists nowhere else. Unmeasured cost: one
 dot, one mix and one `pow(vec3)` per building fragment.
 
+### …but the sky term still has to go with the CASTER part of it
+
+Shadowing the sun alone left a shadow on a building all but invisible. The arithmetic: mapbox's day
+preset is **ambient 0.8 against a directional 0.2**, so removing the sun outright moves a wall by
+~4% of its luminance, while the ground beside it — which multiplies its FINAL colour by the shadow
+factor, ambient included — drops to a fifth. Two models, and the one on the buildings is the one
+nobody can see.
+
+`shadowFactorSlopeParts(ndl, out mapLit)` splits the answer the two consumers need:
+
+| | what dims it | why |
+|---|---|---|
+| the sun | the depth map **and** the back-face rule | a wall turned away is in its own shadow, and no depth comparison can decide that |
+| the sky (`skyShadow`) | the depth map **only** | standing in another building's shadow hides part of the sky; merely facing away from the sun does not |
+
+`mapLit` is 1 wherever the map was not consulted — back-facing, or outside every cascade — which is
+exactly what keeps the back-face trap above fixed. A receiver that wants to dim its ambient must use
+`mapLit` and never the return value.
+
+Judged at `lon 2.33150 lat 48.87050 z18.2 tilt 55`, `--es shadow 0.5 --es sunAltitude 25`: roof and
+courtyard shadows now read at the same depth as the street. At `shadow 0.9` both go near-black —
+that is the strength, not the split, and it is the ground's own model showing through on the walls
+now that the two agree.
+
 Worth recording how long this hid: three separate rounds blamed the lighting model, the ambient
 value and the sun altitude in turn. What settled it was bypassing stages rather than reasoning —
 `applyLighting3D` returning its input unchanged still gave black walls, which ruled the lighting out

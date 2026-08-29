@@ -465,6 +465,16 @@
       "baked": false
     },
     {
+      "cartocss": "line-pattern-emissive-strength",
+      "mapnik": "emissive-strength",
+      "symbolizer": "line-pattern",
+      "kind": "float",
+      "type": "FloatFunctionProperty",
+      "default": "1.0",
+      "live": true,
+      "baked": false
+    },
+    {
       "cartocss": "line-pattern-file",
       "mapnik": "file",
       "symbolizer": "line-pattern",
@@ -892,6 +902,16 @@
       "type": "CompOpProperty",
       "default": "src-over",
       "live": false,
+      "baked": false
+    },
+    {
+      "cartocss": "polygon-pattern-emissive-strength",
+      "mapnik": "emissive-strength",
+      "symbolizer": "polygon-pattern",
+      "kind": "float",
+      "type": "FloatFunctionProperty",
+      "default": "1.0",
+      "live": true,
       "baked": false
     },
     {

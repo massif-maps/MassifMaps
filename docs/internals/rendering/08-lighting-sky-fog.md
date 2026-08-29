@@ -67,6 +67,78 @@ shadows off the lighting is what pays for it, +1.2 ms of `layers` (+6% of the fr
 a contour that shades like the ground under it. Cheaper normals were not tried: a different normal
 than the surface's would make the two disagree exactly where the eye compares them.
 
+## A 2D colour's own emissive, and an hour-driven palette
+
+MapBox lights its 2D layers with the same scene lights as its 3D ones. `*-emissive-strength` is how
+much of a layer's colour is **emitted** rather than lit: at 1 it is drawn as authored under any
+light, at 0 the scene owns it entirely. That, not a different palette, is how Standard's `night`
+preset gets dark — a label stays legible while the roads under it go down with the light.
+
+The SDK carries it as `polygon-emissive-strength` / `line-emissive-strength` (plus their
+`-pattern-` forms), a `building-emissive-strength` Map setting for the extrusions, and a
+`background-emissive-strength` one for the map background. Every one of them defaults to **1**, so a
+style that says nothing renders exactly as it did before any of this existed.
+
+The factor is mapbox's own `calculateGroundRadiance` with the ground normal — what the scene light
+does to a flat, upward-facing surface. `resolveLighting` returns it as `ResolvedLighting::radiance`,
+and each surface applies
+
+```
+shown_c = authored_c × (emissive + (1 − emissive) × radiance_c)
+```
+
+which is their `mix(apply_lighting_ground(color), color, emissive_strength)` written out. It is per
+CHANNEL, so a light's colour moves the hue and not only the brightness — dusk removes blue rather
+than merely darkening. A 2D surface has no normal of its own, so every one of them is lit as if it
+faced up; that is the whole approximation, and it is mapbox's too.
+
+Where each applies it:
+
+| Surface | Where |
+|---|---|
+| 2D geometry (polygon, line, their patterns) | `GLTileRenderer::renderTileGeometry`, where the colours are already evaluated and memoised per frame — one multiply per DISTINCT colour, not per feature |
+| extrusions | `u_emissive` + `u_radiance` in the 3D lighting shader, which computes its own per-face term |
+| the map background | `VectorTileLayer::getBackgroundColor` — it is a Map setting, so it never passes through a symbolizer's colour path |
+
+### `LightOptions.DayCycleLightsEnabled` — the hour picks the light
+
+With this on, the ambient and sun **colours** and their intensities are derived from the sun's own
+height, interpolated in linear space between the four `lights` blocks MapBox Standard ships (day at
+70° up, dawn at 40°, dusk at 10°, night below). Hour 12 then renders as its `day` preset and 19 as
+its `dusk`, from **one** palette — a converted style no longer needs a file per preset, and the hour
+can move on a running map. `sunDir.x ≥ 0` is what picks dawn over dusk at the same height; nothing
+else distinguishes them.
+
+It replaces only those four values. The sun DIRECTION is the input it reads, never an output.
+
+### `colors-prelit` does not mean "pre-lit by the converter"
+
+The style-tools converter has two modes. By default it folds the light into the colours at
+conversion time and emits one palette per preset; with `--live-light` it leaves the colours authored
+and emits the emissive strengths instead. `colors-prelit: 1` is emitted in **both**, because what it
+states is that the 2D colours already carry the light *by the time the terrain surface samples
+them* — folded in for one, applied at colour evaluation (which runs before the drape bake) for the
+other. It tells `buildTerrainLighting` not to light the ground a second time, and says nothing about
+the shadows, which a pre-lit style still receives.
+
+The two modes then select themselves with no second flag: the grade only fires where a colour states
+an emissive below 1, and a folded palette states none.
+
+### Three things that had to be got right
+
+**The radiance is returned in sRGB.** The sum is linear light, and it multiplies an sRGB colour.
+Left linear it came out five times too dark at dusk — 0.06 against the 0.29 the same formula gives
+in the converter, which is what made the water black.
+
+**The renderer is given it in `prepareFrame`, not only `onDrawFrame`.** The drape bake evaluates
+every colour and runs in `prepareFrame`; set only in the latter, a colour was baked against the
+previous frame's light.
+
+**The radiance is part of `calculateDrapeFingerprint`.** A cached drape is never re-baked for a
+uniform change, so without this, moving the hour on a running map moved the buildings — lit by a
+per-frame uniform — and left the ground exactly as it was. It is quantised to 64 steps per channel,
+so a whole day cycle re-bakes a few dozen times rather than every frame.
+
 ## Cast shadows
 
 `MapRenderer::applyTerrainShadows` + `TerrainShadowMap` (all/native/renderers/utils/).

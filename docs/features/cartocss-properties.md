@@ -12,7 +12,7 @@ sidebar_position: 20
 `CartoCSSMapnikTranslator.cpp`. Edit those, then re-run the script — never this page.
 :::
 
-219 properties across 12 symbolizers.
+221 properties across 12 symbolizers.
 
 ## Reading the table
 
@@ -29,7 +29,7 @@ sidebar_position: 20
   than failing. Write an explicit guard — `[color] <> null ? [color] : '#0000ff'` — when the
   fallback should be something else.
 
-Live-capable properties: 50 of 219.
+Live-capable properties: 52 of 221.
 
 ## `building`
 
@@ -100,6 +100,7 @@ Live-capable properties: 50 of 219.
 | CartoCSS | mapnik | Value | Default | Live | Baked |
 |---|---|---|---|---|---|
 | `line-pattern-comp-op` | `comp-op` | comp-op | `src-over` |  |  |
+| `line-pattern-emissive-strength` | `emissive-strength` | float | `1.0` | yes |  |
 | `line-pattern-file` | `file` | string |  |  |  |
 | `line-pattern-fill` | `fill` | color | `#ffffff` | yes |  |
 | `line-pattern-geometry-transform` | `geometry-transform` | transform |  |  |  |
@@ -163,6 +164,7 @@ Live-capable properties: 50 of 219.
 | CartoCSS | mapnik | Value | Default | Live | Baked |
 |---|---|---|---|---|---|
 | `polygon-pattern-comp-op` | `comp-op` | comp-op | `src-over` |  |  |
+| `polygon-pattern-emissive-strength` | `emissive-strength` | float | `1.0` | yes |  |
 | `polygon-pattern-file` | `file` | string |  |  |  |
 | `polygon-pattern-fill` | `fill` | color | `#ffffff` | yes |  |
 | `polygon-pattern-geometry-transform` | `geometry-transform` | transform |  |  |  |

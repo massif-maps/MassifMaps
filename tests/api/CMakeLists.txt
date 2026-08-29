@@ -180,6 +180,8 @@ add_executable(api_tests
   DrapeStackCutsTest.cpp
   # Same: FlattenSwitch.h is the 2D/3D switch's phases and nothing else.
   FlattenSwitchTest.cpp
+  # Same: DayCycleLight.h is the hour-to-light curve and mapbox's ground radiance, nothing else.
+  DayCycleLightTest.cpp
   "${TEST_TABLE_DIR}/PropertyTable.inc"
   "${TEST_TABLE_DIR}/MethodDecls.inc"
   ${TEST_SDK_SOURCES})

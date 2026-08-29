@@ -187,6 +187,23 @@ export interface ConvertOptions {
     liveLight?: boolean;
 }
 
+/**
+ * Which emissive property a translated declaration carries its light on, LONGEST PREFIX FIRST.
+ *
+ * A pattern is its own symbolizer, and a property alone is enough to CREATE one: emitting
+ * `polygon-emissive-strength` on a rule whose only fill is a `polygon-pattern-file` would raise a
+ * second, grey polygon under the pattern. The background is a Map setting rather than a symbolizer
+ * but takes the same term - and it is the largest surface on the map, so leaving it out left a lit
+ * map on an unlit sheet of paper.
+ */
+const EMISSIVE_TARGETS: Array<[string, string]> = [
+    ['polygon-pattern-', 'polygon-pattern-emissive-strength'],
+    ['line-pattern-', 'line-pattern-emissive-strength'],
+    ['polygon-', 'polygon-emissive-strength'],
+    ['line-', 'line-emissive-strength'],
+    ['background-', 'background-emissive-strength'],
+];
+
 export function convert(style: MapboxStyle, table: PropertyTable, options: ConvertOptions = {}): ConvertResult {
     options = { ...options, styleParams: options.styleParams ?? new Map() };
     const coverage = new Coverage();
@@ -350,12 +367,7 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
             const extra: string[] = [];
             for (const declaration of declarations) {
                 const property = declaration.slice(0, declaration.indexOf(':'));
-                const target = property.startsWith('polygon-') ? 'polygon-emissive-strength'
-                    : property.startsWith('line-') ? 'line-emissive-strength'
-                    // The map's background is a Map setting, not a symbolizer, but it takes the same
-                    // term - and it is the largest surface, so leaving it out left a lit map on an
-                    // unlit sheet of paper.
-                    : property.startsWith('background-') ? 'background-emissive-strength' : null;
+                const target = EMISSIVE_TARGETS.find(([prefix]) => property.startsWith(prefix))?.[1] ?? null;
                 if (target === null || emitted.has(target)) continue;
                 const source = emissiveProperty(property);
                 const stated = source ? layer.paint?.[source] : undefined;

@@ -47,7 +47,23 @@ const SIZE_ROLES = new Set([
     'line-spacing', 'character-spacing', 'image-scale',
 ]);
 
-type Kind = 'font' | 'color' | 'number';
+type Kind = 'font' | 'color' | 'number' | 'scene';
+
+/**
+ * Map settings a light preset restates. They are not symbolizer properties, so `allowed` has no
+ * entry for them and kindOf used to return null: the palette pass then kept the DEFAULT preset's
+ * value for every variant, and dawn, dusk and night all rendered with the DAY sun - a roof lit
+ * from 70 degrees where MapBox lights it from 40, which is most of why their facades had nuance
+ * and ours did not.
+ *
+ * A scene setting is taken WHOLE, ramp included: naming one stop of `building-light-intensity`
+ * says nothing a reader of the palette could act on.
+ */
+const MAP_SCENE_SETTINGS = new Set([
+    'sun-azimuth', 'sun-altitude', 'sun-intensity', 'ambient-intensity',
+    'building-ambient', 'building-light-intensity', 'building-vertical-gradient',
+    'shadow-strength', 'fog-range-start', 'fog-range-end', 'fog-star-intensity',
+]);
 
 interface Entry {
     kind: Kind;
@@ -72,7 +88,8 @@ function kindOf(property: string, allowed: Map<string, CartoProperty>): Kind | n
     const known = allowed.get(property);
     if (!known) {
         // Map settings are not symbolizer properties, so they are not in the table.
-        return property.endsWith('-color') ? 'color' : null;
+        if (property.endsWith('-color')) return 'color';
+        return MAP_SCENE_SETTINGS.has(property) ? 'scene' : null;
     }
     if (known.kind === 'color') return 'color';
     return known.kind === 'float' && known.mapnik !== null && SIZE_ROLES.has(known.mapnik) ? 'number' : null;
@@ -148,6 +165,7 @@ function literals(property: string, value: string, kind: Kind, allowed: Map<stri
     // A font or a number only counts as the WHOLE value: a number inside a zoom ramp is a stop,
     // and naming a stop says nothing a reader of the palette could act on.
     if (kind === 'font') return /^'[^']*'$/.test(value) ? [value] : [];
+    if (kind === 'scene') return [value.trim()];
     return NUMBER.test(value) && !isDefault(property, value, allowed) ? [value] : [];
 }
 
@@ -214,6 +232,10 @@ export function hoistVariables(blocks: HoistBlock[], allowed: Map<string, CartoP
     // Named most-used first, so the colour a variant most wants to change gets the bare name and
     // the rarer ones carry the suffix. Ties keep first-appearance order, to stay reproducible.
     const named = [...entries.entries()]
+        // A scene setting earns a name only where a preset actually changes it; hoisting one every
+        // preset agrees on is a variable nobody would ever override.
+        .filter(([, entry]) => entry.kind !== 'scene'
+            || entry.variants.some((variant) => normalise(variant) !== normalise(entry.raw)))
         .filter(([, entry]) => entry.kind !== 'number' || entry.uses >= NUMBER_USES)
         .sort((a, b) => b[1].uses - a[1].uses || a[1].order - b[1].order);
 
@@ -259,7 +281,7 @@ export function hoistVariables(blocks: HoistBlock[], allowed: Map<string, CartoP
         }),
     }));
 
-    const order: Record<Kind, number> = { font: 0, color: 1, number: 2 };
+    const order: Record<Kind, number> = { font: 0, color: 1, number: 2, scene: 3 };
     const sorted = [...named]
         .map(([key, entry]) => ({ name: names.get(key)!, entry }))
         .sort((a, b) => order[a.entry.kind] - order[b.entry.kind] || a.name.localeCompare(b.name));

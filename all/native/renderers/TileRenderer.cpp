@@ -1541,6 +1541,11 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
             // Ambient and sun simply SUM - no headroom coupling - and the ambient itself is
             // direction-aware, which is what separates wall tones without any gradient ramp.
             mediump float ndl = dot(normal, u_sunDir);
+            // mapbox WRAPS N.L instead of clamping it at 0 (calculate_NdotL, _prelude_lighting.glsl):
+            // a face square to the sun still takes 41% of the directional, and every wall between
+            // "away" and "toward" gets its own share. Clamped, every away-facing wall came out
+            // identical and the roof read far brighter than its walls.
+            mediump float wrappedNdl = (clamp(ndl, -0.70710678, 1.0) + 0.70710678) / 1.70710678;
             // Sky is brighter near the sun: faces turned away lose up to 30% of the ambient,
             // scaled by how bright the sun actually is.
             mediump float dirLuminance = dot(u_sunColor, vec3(0.2126, 0.7152, 0.0722));
@@ -1551,7 +1556,14 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
             // (skyShadow), so a wall merely turned away from the sun keeps all of it. Without the
             // sky term a shadowed facade moved by 4% where the ground beside it went to a fifth -
             // mapbox's own ratio, whose ambient is four times its directional.
-            mediump vec3 lit = u_ambientColor * (vertical * ambientDirectional * skyShadow) + u_sunColor * (max(0.0, ndl) * shadow);
+            //
+            // Both are raised to 2.2 first, because this sum is LINEAR and the ground applies its
+            // own shadow to a finished sRGB colour. A strength of 0.8 leaves a fifth of the light
+            // there and pow(0.2, 1/2.2) = 0.48 here: the same setting, half the shadow. Squared
+            // into the linear domain, the two come out at the same depth.
+            mediump float linearSky = pow(skyShadow, 2.2);
+            mediump float linearSun = pow(shadow, 2.2);
+            mediump vec3 lit = u_ambientColor * (vertical * ambientDirectional * linearSky) + u_sunColor * (wrappedNdl * linearSun);
             // The light is summed in LINEAR space and only then returned to sRGB, which is the
             // whole reason their facades stay soft where a straight sRGB multiply crushes them.
             // Equivalent to linearTosRGB(sRGBToLinear(color) * lit), one pow instead of three.

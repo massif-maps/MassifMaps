@@ -821,6 +821,32 @@ so every building rose each time its tile faded in, wherever the camera was. Tha
 style asks for it (`building-grow-on-appear`), and the shadow **caster** keeps the stated height
 either way, so a fade cannot shrink a building's shadow out from under it.
 
+### …and they flatten by TILT, which the shadows ignore
+
+Tilt 90 is straight DOWN in this SDK, and at that angle a tall building covers the streets it stands
+in. The converter adds a ramp of its own — no gl-js equivalent — that scales the extrusions away as
+the camera turns onto the map:
+
+```css
+building-height-view-scale: linear([view::tilt], (80, 1), (90, 0.5));
+```
+
+It starts late (a 3D camera at tilt 55–75 is untouched) and stops at half, so a flattened building
+still shows its storeys instead of collapsing into its footprint.
+
+**Two properties, because the shadow treats them differently**, and that is the whole reason the
+second one exists:
+
+| property | means | shadow caster |
+|---|---|---|
+| `building-height-scale` | how much building is there — Standard's zoom ramp | **follows it**: no building, no shadow |
+| `building-height-view-scale` | how it is drawn for this camera | **ignores it**: the building is there, its shadow keeps its length |
+
+Folding the tilt term into `building-height-scale` and excluding the whole thing from the caster was
+tried first, and gave shadows of invisible buildings at z15.1 — the extrusions were still growing in
+while their shadows were already full length. `view::tilt` is a view-state variable, so neither ramp
+costs a re-decode: the properties are re-read every frame (`MapRenderer::collectStyleEnvironment`).
+
 ## Where the sun is, not just how strong
 
 The `lights` block carries a **direction** as well as an intensity — Standard's day preset is

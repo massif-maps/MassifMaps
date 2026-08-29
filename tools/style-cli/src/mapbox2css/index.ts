@@ -358,6 +358,7 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
 
     if (usesBuildings) {
         options.styleParams!.set(BUILDINGS_PARAM, BUILDINGS_3D);
+        options.styleParams!.set(TILT_DROP_PARAM, TILT_DROP_PERCENT);
         // Whatever the layers did not state, so a converted style is not left on the SDK's own
         // (OSM-tuned) building lighting - see BUILDING_MAP_DEFAULTS.
         if (lights !== undefined) {
@@ -494,12 +495,51 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
  * instead - see emissive.ts.
  */
 /**
+ * How far the extrusions are flattened as the camera turns onto the map. Tilt 90 is straight DOWN
+ * in this SDK, and at that angle a tall building covers the streets it stands in and reads as a
+ * stain rather than a building; scaling it away is what keeps a top-down 3D map legible.
+ *
+ * Nothing happens before tilt 80 - a 3D camera at 55-75 must be untouched - and the drop is a
+ * PERCENTAGE an app can change at any time: `building_tilt_drop` is a style parameter, so setting
+ * it is a redraw, not a re-decode. 90 leaves a tenth of the height, enough to read the storeys.
+ *
+ * `view::tilt` is a view-state variable, so the ramp costs no re-decode either: the property is
+ * re-read every frame (MapRenderer::collectStyleEnvironment) against that frame's camera.
+ */
+const TILT_DROP_PARAM = 'building_tilt_drop';
+const TILT_DROP_PERCENT = 90;
+// `* 0.01`, not `/ 100`: the parameter is declared as a whole number and the two would be an
+// INTEGER division - 90/100 = 0, and the flattening silently did nothing.
+const HEIGHT_TILT_RAMP = `1 - ([param::${TILT_DROP_PARAM}] * 0.01) * linear([view::tilt], (80, 0), (90, 1))`;
+
+/** Where it goes: the DRAWN height only. The shadow caster keeps the building's real height. */
+const HEIGHT_VIEW_SCALE = 'building-height-view-scale';
+
+/**
+ * MapBox raises the ground AO between its z17 and z17.8. Those are 512 px tiles, so on this SDK's
+ * own scale that is z18-z18.8: the contact shadows only appear once you are on top of a building,
+ * where they are what makes it stand on the ground rather than float. Shifted one level earlier;
+ * -2 puts them at z16.
+ */
+const AO_GROUND_ZOOM_SHIFT = -1;
+
+/** Move an `interpolate(..., ["zoom"], ...)` ramp's key frames, leaving its values alone. */
+function shiftZoomStops(value: Json, delta: number): Json {
+    if (!Array.isArray(value) || value[0] !== 'interpolate') return value;
+    const input = value[2];
+    if (!Array.isArray(input) || input[0] !== 'zoom') return value;
+    return value.map((item, i) => (i >= 3 && i % 2 === 1 && typeof item === 'number' ? item + delta : item)) as Json;
+}
+
+/**
  * What MapBox itself uses when a layer states nothing. The SDK's own defaults are tuned for the
  * hand-written OSM style - ambient 0.35, ao-intensity 0.2, ao-attenuation 1.7 - and a converted
  * MapBox style that inherits them comes out markedly darker than the browser draws it. Stating
  * MapBox's defaults explicitly is what keeps the two comparable.
  */
 const BUILDING_MAP_DEFAULTS: Record<string, string> = {
+    // No MapBox equivalent: gl-js has no tilt term. See HEIGHT_TILT_RAMP.
+    [HEIGHT_VIEW_SCALE]: HEIGHT_TILT_RAMP,
     // gl-js clamps a wall's shading to a FLOOR of about 0.7 (fill_extrusion.vertex.glsl mixes
     // 0.7..0.98 by light intensity); the SDK's wall factor is `1 - gradient` at the foot, so 0.3
     // puts the foot in the same place. Its own default of 0.65 takes it to 0.35 - less than half
@@ -558,8 +598,9 @@ function buildingMapSettings(layer: MapboxLayer, seen: Set<string>, coverage: Co
     for (const [from, to] of Object.entries(BUILDING_MAP_SETTINGS)) {
         // `fill-extrusion-edge-radius` is a LAYOUT property, not a paint one - reading only paint
         // dropped Standard's 0.4 bevel silently.
-        const value = layer.paint?.[from] ?? layer.layout?.[from];
-        if (value === undefined || seen.has(to)) continue;
+        const raw = layer.paint?.[from] ?? layer.layout?.[from];
+        if (raw === undefined || seen.has(to)) continue;
+        const value = to === 'building-ao-ground-radius' ? shiftZoomStops(raw, AO_GROUND_ZOOM_SHIFT) : raw;
         const translated = to === 'building-ao-ground-attenuation'
             ? groundAttenuation(value, layer.id, coverage)
             : typeof value === 'boolean'

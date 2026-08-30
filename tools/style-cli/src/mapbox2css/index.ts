@@ -1,6 +1,6 @@
 import { type ContourOptions, isContourLayer, rewriteContourFields, rewriteContourFilter } from './contour.js';
 import { Coverage } from './coverage.js';
-import { Untranslatable, expandTokens, translateExpression } from './expression.js';
+import { Untranslatable, ZOOM_INPUT, expandTokens, translateExpression } from './expression.js';
 import { translateFilter, zoomPredicates } from './filter.js';
 import { HANDLED_ELSEWHERE, followsLine, repeatsAlongLine, resolvePlacement } from './placement.js';
 import { KNOWN_GAPS, LAYER_SYMBOLIZER, PROPERTY_MAP, VALUE_MAP } from './properties.js';
@@ -206,6 +206,25 @@ export interface ConvertOptions {
      * instead of meeting at the same grey. Unset, the halo follows the label's own emissive.
      */
     haloEmissive?: number;
+
+    /**
+     * What a FILL, LINE or BACKGROUND emissive strength defaults to where the style states none.
+     *
+     * MapBox's own default is 0 - the colour is entirely at the mercy of the scene light - and a
+     * style written against their light model states a higher value wherever it wants something to
+     * hold up at night. MapTiler Streets states none anywhere, so every fill and line takes the 0
+     * and collapses to a few per cent of its colour as soon as the sun is down, far darker than
+     * Standard at the same hour. A floor here is what keeps such a style readable.
+     */
+    geometryEmissive?: number;
+
+    /**
+     * Give the extrusions a height ramp where the style states no `fill-extrusion-vertical-scale`.
+     *
+     * Standard grows its buildings out of the ground over a third of a zoom level; a style with no
+     * ramp pops them in at full height. The ramp is placed at the extrusion layer's own minzoom.
+     */
+    buildingHeightRamp?: boolean;
 }
 
 /**
@@ -224,6 +243,16 @@ const HALO_TARGETS: Record<string, string> = {
     'shield-emissive-strength': 'shield-halo-emissive-strength',
     'marker-emissive-strength': 'marker-halo-emissive-strength',
 };
+/** The emissive properties `--geometry-emissive` floors: everything that is not a label. */
+const GEOMETRY_EMISSIVE = new Set(['fill-emissive-strength', 'line-emissive-strength',
+    'background-emissive-strength', 'circle-emissive-strength']);
+
+/** MapBox's own default for unstated GEOMETRY is 0; a floor lifts it off the floor. */
+function geometryFloor(source: string | null, value: number | null, floor?: number): number | null {
+    if (floor === undefined || source === null || !GEOMETRY_EMISSIVE.has(source)) return value;
+    return Math.max(value ?? 0, floor);
+}
+
 function haloTargetOf(target: string): string | null {
     return HALO_TARGETS[target] ?? null;
 }
@@ -346,7 +375,7 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
         // layer only - Standard's indoor walls state their own ambient occlusion and come first,
         // so reading every extrusion gave the whole map the shading of an indoor floor plan.
         if (layer.type === 'fill-extrusion' && BUILDING_LAYER.test(layer['source-layer'] ?? '')) {
-            mapBlock.push(...buildingMapSettings(layer, buildingSettingsSeen, coverage));
+            mapBlock.push(...buildingMapSettings(layer, buildingSettingsSeen, coverage, options.buildingHeightRamp));
         }
 
         // The only 3D model worth standing in for is a TREE: Standard draws the whole `tree`
@@ -456,7 +485,8 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
                         continue;
                     }
                 }
-                const emissive = stated === undefined ? emissiveDefault(source, options.labelEmissive)
+                const emissive = stated === undefined
+                    ? geometryFloor(source, emissiveDefault(source, options.labelEmissive), options.geometryEmissive)
                     : typeof stated === 'number' ? stated
                     : representativeEmissive(stated, representativeScale(stated, 1), (name) => values.get(name));
                 if (emissive === null || emissive >= 1) continue;
@@ -884,7 +914,7 @@ function flattenExtrusionOpacity(layer: MapboxLayer, coverage?: Coverage): Mapbo
     return { ...layer, paint: { ...layer.paint, 'fill-extrusion-opacity': value } };
 }
 
-function buildingMapSettings(layer: MapboxLayer, seen: Set<string>, coverage: Coverage): string[] {
+function buildingMapSettings(layer: MapboxLayer, seen: Set<string>, coverage: Coverage, ramp?: boolean): string[] {
     const out: string[] = [];
     for (const [from, to] of Object.entries(BUILDING_MAP_SETTINGS)) {
         // `fill-extrusion-edge-radius` is a LAYOUT property, not a paint one - reading only paint
@@ -905,6 +935,15 @@ function buildingMapSettings(layer: MapboxLayer, seen: Set<string>, coverage: Co
             ? `${to}: [param::${AO_PARAM}] * (${translated});`
             : `${to}: ${translated};`);
         coverage.emit(to);
+    }
+    // A style that states no vertical scale pops its buildings in at full height. Standard grows
+    // them over a third of a zoom level, and the ramp is placed at the extrusion layer's own
+    // minzoom - which is where they first exist to grow.
+    if (ramp && !seen.has('building-height-scale')) {
+        const minZoom = typeof layer.minzoom === 'number' ? layer.minzoom : 15;
+        seen.add('building-height-scale');
+        out.push(`building-height-scale: linear(${ZOOM_INPUT}, (${round(minZoom)}, 0), (${round(minZoom + 0.3)}, 1));`);
+        coverage.emit('building-height-scale');
     }
     return out;
 }

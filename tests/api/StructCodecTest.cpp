@@ -296,4 +296,12 @@ void testMoreStructs() {
                "a stop with no sun height is meaningless and is refused");
     TEST_CHECK(!StructCodec::decode("{\"sunAltitude\":10,\"sunColor\":\"blue\"}", stop),
                "and a colour name is not a colour here");
+    // Clearing the curve - going back to the built-in one - is what an app does to UNDO a custom
+    // formula, and it must not read as "the value was rubbish, keep the old one".
+    decodedCurve = curve;
+    TEST_CHECK(StructCodec::decode("[]", decodedCurve) && decodedCurve.empty(),
+               "an empty curve is an empty curve, not a failure");
+    decodedCurve = curve;
+    TEST_CHECK(StructCodec::decode("", decodedCurve) && decodedCurve.empty(),
+               "and so is an empty string, which is what clearing a property spells");
 }

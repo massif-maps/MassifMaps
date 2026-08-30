@@ -337,6 +337,13 @@ namespace massif { namespace api { namespace StructCodec {
     }
 
     bool decode(const std::string& json, std::vector<LightStop>& value) {
+        // Clearing the curve is how an app goes back to the built-in one, and a property set to ""
+        // is what that spells through every binding. Refusing it left the previous curve standing,
+        // which reads as "the switch is broken" rather than as a rejected value.
+        if (json.empty()) {
+            value.clear();
+            return true;
+        }
         Variant array;
         if (!decode(json, array) || array.getType() != VariantType::VARIANT_TYPE_ARRAY) {
             return false;

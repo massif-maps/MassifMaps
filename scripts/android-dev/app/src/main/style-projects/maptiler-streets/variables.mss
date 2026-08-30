@@ -95,12 +95,12 @@
 @tunnel_stroke_2: hsl(0,0%,96%);
 @water_intermittent_fill: hsl(205,91%,83%);
 @wood_fill: hsl(87,46%,85%);
-@building_stroke_opacity: 0.4;
 @highway_size: 9;
 @highway_spacing: 200;
 @highway_wrap_width: 90;
 @labels_halo_radius: 0.8;
 @line_stroke_opacity: 0.5;
+@line_stroke_opacity_2: 0.4;
 @polygon_fill_opacity: 0.85;
 @river_labels_spacing: 400;
 @shield_halo_radius: 2;

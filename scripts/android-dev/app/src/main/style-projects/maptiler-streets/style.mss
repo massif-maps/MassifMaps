@@ -171,7 +171,7 @@ Map {
   line-join: 'round';
   line-color: @line_stroke_3;
   line-dasharray: 8.86,2.21;
-  line-opacity: @building_stroke_opacity;
+  line-opacity: @line_stroke_opacity_2;
   line-width: linear(([view::zoom] - 1), (14, 0.5), (16, 1), (18, 2), (22, 5));
   line-emissive-strength: 0;
 }
@@ -304,7 +304,7 @@ Map {
   polygon-fill: @building_fill;
   polygon-opacity: 0.3;
   line-color: linear(([view::zoom] - 1), (13, @building_stroke), (14, @building_stroke_2));
-  line-width: @building_stroke_opacity;
+  line-width: @line_stroke_opacity_2;
   polygon-emissive-strength: 0;
   line-emissive-strength: 0;
 }
@@ -312,7 +312,7 @@ Map {
   building-min-height: [render_min_height];
   building-fill: @building_3d_fill;
   building-height: [render_height];
-  building-fill-opacity: @building_stroke_opacity;
+  building-fill-opacity: 1;
 }
 #waterway[brunnel = 'bridge']::Aqueduct_outline {
   line-cap: 'round';

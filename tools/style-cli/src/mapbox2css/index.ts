@@ -535,7 +535,7 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
 
     function emitLayer(layer: MapboxLayer, attachment: string, sourceLayer: string, symbolizer: string, layerIndex: number): void {
         const paramised = paramiseValues(layer, options, coverage);
-        const source = symbolizer === 'building' ? flattenExtrusionOpacity(paramised.layer) : paramised.layer;
+        const source = symbolizer === 'building' ? flattenExtrusionOpacity(paramised.layer, coverage) : paramised.layer;
         let declarations = layerDeclarations(source, symbolizer, allowed, coverage, options, layerIndex);
         if (paramised.subs.size > 0) {
             declarations = declarations.map((declaration) => {
@@ -863,12 +863,25 @@ function rampLikeGroundAO(intensity: Json, layer: MapboxLayer): Json {
  * cast them. The height ramp alone is the better fade: a building grows out of the ground opaque,
  * and its shadow grows with it.
  */
-function flattenExtrusionOpacity(layer: MapboxLayer): MapboxLayer {
+function flattenExtrusionOpacity(layer: MapboxLayer, coverage?: Coverage): MapboxLayer {
     const opacity = layer.paint?.['fill-extrusion-opacity'];
-    if (!Array.isArray(opacity) || opacity[0] !== 'interpolate') return layer;
-    const constant = representativeConstant(opacity as Json);
-    if (constant === null) return layer;
-    return { ...layer, paint: { ...layer.paint, 'fill-extrusion-opacity': constant } };
+    let value: Json | undefined = opacity as Json | undefined;
+    if (Array.isArray(opacity) && opacity[0] === 'interpolate') {
+        const constant = representativeConstant(opacity as Json);
+        if (constant === null) return layer;
+        value = constant;
+    }
+    // A TRANSLUCENT extrusion is not something this renderer can draw. Its 3D pass runs with
+    // blending off and depth writes on - one opaque surface per pixel - so a fractional alpha is
+    // not composited, it is written straight into the frame: MapTiler's 0.4 turned a city into a
+    // wash of half-buildings showing through each other. Opaque is the closer answer of the two.
+    if (typeof value === 'number' && value < 1) {
+        coverage?.approximate(`fill-extrusion-opacity ${value} on "${layer.id}" drawn opaque: `
+            + 'the 3D pass has no translucent path, and a fractional alpha reads as a wash');
+        value = 1;
+    }
+    if (value === opacity || value === undefined) return layer;
+    return { ...layer, paint: { ...layer.paint, 'fill-extrusion-opacity': value } };
 }
 
 function buildingMapSettings(layer: MapboxLayer, seen: Set<string>, coverage: Coverage): string[] {

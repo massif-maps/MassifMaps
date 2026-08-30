@@ -208,6 +208,19 @@ uniform change, so without this, moving the hour on a running map moved the buil
 per-frame uniform — and left the ground exactly as it was. It is quantised to 64 steps per channel,
 so a whole day cycle re-bakes a few dozen times rather than every frame.
 
+### Known gap: a TRANSLUCENT extrusion has no path
+
+The 3D pass runs with blending off and depth writes on — one opaque surface per pixel, which is
+what lets the extrusions occlude each other and what the shadow map is drawn against. A
+`building-fill-opacity` below 1 therefore has nowhere to go: the fractional alpha is written
+straight into the frame rather than composited, and a city drawn that way reads as a wash of
+half-buildings showing through one another.
+
+MapTiler Streets states `fill-extrusion-opacity: 0.4`, so this is not hypothetical. The converter
+clamps it to 1 and says so in its coverage report; drawn opaque is much the closer of the two
+answers. The real fix is a depth pre-pass — extrusions rendered depth-only first, then blended with
+`GL_EQUAL` and no depth write — so exactly one translucent surface survives per pixel. Not done.
+
 ## Cast shadows
 
 `MapRenderer::applyTerrainShadows` + `TerrainShadowMap` (all/native/renderers/utils/).

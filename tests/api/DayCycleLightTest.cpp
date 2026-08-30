@@ -143,9 +143,40 @@ namespace {
                    "and the two straddle the 0.25 stop Standard's label ramps start at");
     }
 
+    void testACustomCurveReplacesTheBuiltInOne() {
+        // The built-in curve IS a stop list, so feeding its own stops back must reproduce it
+        // exactly - that is what makes an app-supplied curve a replacement rather than a variant.
+        for (float altitude = -30.0f; altitude <= 80.0f; altitude += 2.5f) {
+            DayCycleLight::Setup builtIn = DayCycleLight::atSunHeight(altitude, false);
+            DayCycleLight::Setup viaStops = DayCycleLight::atSunHeight(DayCycleLight::DUSK_CURVE, 4, altitude);
+            if (!nearly(builtIn.ambient[2], viaStops.ambient[2], 0.0005f) ||
+                !nearly(builtIn.directIntensity, viaStops.directIntensity, 0.0005f)) {
+                TEST_CHECK(false, "the built-in curve read as stops is the built-in curve");
+                return;
+            }
+        }
+        TEST_CHECK(true, "the built-in curve read as stops is the built-in curve");
+
+        // A curve of one stop is a fixed light at every hour - the simplest replacement there is.
+        DayCycleLight::Stop flat[1] = { { 0.0f, DayCycleLight::NIGHT } };
+        TEST_CHECK(DayCycleLight::atSunHeight(flat, 1, 80.0f).ambient[2] == DayCycleLight::NIGHT.ambient[2],
+                   "a one-stop curve holds at every sun height");
+
+        // And the curve HOLDS past its ends rather than extrapolating off the palette.
+        DayCycleLight::Stop pair[2] = { { 0.0f, DayCycleLight::NIGHT }, { 10.0f, DayCycleLight::DAY } };
+        TEST_CHECK(DayCycleLight::atSunHeight(pair, 2, -50.0f).ambient[2] == DayCycleLight::NIGHT.ambient[2] &&
+                   DayCycleLight::atSunHeight(pair, 2, 90.0f).ambient[2] == DayCycleLight::DAY.ambient[2],
+                   "and holds past both ends instead of extrapolating");
+        // Midway is a blend of the two, not either of them.
+        float mid = DayCycleLight::atSunHeight(pair, 2, 5.0f).ambientIntensity;
+        TEST_CHECK(mid > DayCycleLight::NIGHT.ambientIntensity && mid < DayCycleLight::DAY.ambientIntensity,
+                   "and interpolates between two stops");
+    }
+
 }
 
 void testDayCycleLight() {
+    testACustomCurveReplacesTheBuiltInOne();
     testBrightnessMatchesMapboxsOwnPresets();
     testTheAnchorsAreReachedExactly();
     testRisingPicksDawnOverDusk();

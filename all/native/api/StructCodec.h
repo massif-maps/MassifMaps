@@ -15,6 +15,7 @@
 #include "core/MapVec.h"
 #include "core/ScreenBounds.h"
 #include "core/ScreenPos.h"
+#include "components/LightStop.h"
 #include "core/Variant.h"
 #include "ui/ClickInfo.h"
 
@@ -50,6 +51,13 @@ namespace massif { namespace api {
          */
         std::string encode(const ClickInfo& value);
         std::string encode(const Variant& value);
+        /**
+         * One day-cycle light stop, as an OBJECT: five fields of three different kinds, and no
+         * order for them that an app would guess right.
+         */
+        std::string encode(const LightStop& value);
+        /** A light CURVE, as [stop, …] - the whole formula an hour is turned into a look by. */
+        std::string encode(const std::vector<LightStop>& value);
         /** A list of names - the shape a "which layers" filter has. */
         std::string encode(const std::vector<std::string>& value);
         /**
@@ -75,6 +83,8 @@ namespace massif { namespace api {
         bool decode(const std::string& json, MapTile& value);
         bool decode(const std::string& json, ClickInfo& value);
         bool decode(const std::string& json, Variant& value);
+        bool decode(const std::string& json, LightStop& value);
+        bool decode(const std::string& json, std::vector<LightStop>& value);
         bool decode(const std::string& json, std::vector<std::string>& value);
         bool decode(const std::string& json, std::vector<MapPos>& value);
         bool decode(const std::string& json, std::vector<std::vector<MapPos> >& value);

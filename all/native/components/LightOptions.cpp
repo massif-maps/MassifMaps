@@ -18,6 +18,9 @@ namespace massif {
         _ambientColorARGB(Color(255, 255, 255, 255).getARGB()),
         _sunOverridesStyle(false),
         _dayCycleLights(false),
+        _dayCycleLightStops(),
+        _dayCycleRisingLightStops(),
+        _dayCycleLightStopsMutex(),
         _terrainLightingEnabled(false),
         _shadowStrength(0.3f),
         // mapbox's 2048 px map (shadow_renderer.ts _shadowParameters), over THREE cascades rather
@@ -162,6 +165,38 @@ namespace massif {
         if (_dayCycleLights.exchange(enabled) != enabled) {
             notifyOptionChanged("DayCycleLightsEnabled");
         }
+    }
+
+    std::vector<LightStop> LightOptions::getDayCycleLightStops() const {
+        std::lock_guard<std::mutex> lock(_dayCycleLightStopsMutex);
+        return _dayCycleLightStops;
+    }
+
+    void LightOptions::setDayCycleLightStops(const std::vector<LightStop>& stops) {
+        {
+            std::lock_guard<std::mutex> lock(_dayCycleLightStopsMutex);
+            if (_dayCycleLightStops == stops) {
+                return;
+            }
+            _dayCycleLightStops = stops;
+        }
+        notifyOptionChanged("DayCycleLightStops");
+    }
+
+    std::vector<LightStop> LightOptions::getDayCycleRisingLightStops() const {
+        std::lock_guard<std::mutex> lock(_dayCycleLightStopsMutex);
+        return _dayCycleRisingLightStops;
+    }
+
+    void LightOptions::setDayCycleRisingLightStops(const std::vector<LightStop>& stops) {
+        {
+            std::lock_guard<std::mutex> lock(_dayCycleLightStopsMutex);
+            if (_dayCycleRisingLightStops == stops) {
+                return;
+            }
+            _dayCycleRisingLightStops = stops;
+        }
+        notifyOptionChanged("DayCycleRisingLightStops");
     }
 
     bool LightOptions::isTerrainLightingEnabled() const {

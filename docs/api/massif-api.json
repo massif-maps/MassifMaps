@@ -3613,6 +3613,33 @@
           "doc": "Returns the ambient light intensity."
         },
         {
+          "name": "dayCycleLightStops",
+          "type": "STRUCT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "std::vector<massif::LightStop>",
+          "doc": "Returns the day-cycle light curve - the \"formula\" an hour is turned into a look by."
+        },
+        {
+          "name": "dayCycleLightsEnabled",
+          "type": "BOOL",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "bool",
+          "doc": "Returns whether the sun's COLOURS follow its position."
+        },
+        {
+          "name": "dayCycleRisingLightStops",
+          "type": "STRUCT",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "std::vector<massif::LightStop>",
+          "doc": "Returns the curve used while the sun is RISING, if the app set one."
+        },
+        {
           "name": "shadowBias",
           "type": "FLOAT",
           "readOnly": false,
@@ -3721,6 +3748,15 @@
           "doc": "Returns the sun light intensity."
         },
         {
+          "name": "sunOverridingStyle",
+          "type": "BOOL",
+          "readOnly": false,
+          "static": false,
+          "position": false,
+          "cppType": "bool",
+          "doc": "Returns whether this sun overrides the one a style states."
+        },
+        {
           "name": "terrainLightingEnabled",
           "type": "BOOL",
           "readOnly": false,
@@ -3728,6 +3764,59 @@
           "position": false,
           "cppType": "bool",
           "doc": "Returns whether the sun lights the 3D terrain surface."
+        }
+      ],
+      "aliases": {},
+      "methods": [],
+      "events": []
+    },
+    "massif::LightStop": {
+      "base": null,
+      "properties": [
+        {
+          "name": "ambientColor",
+          "type": "COLOR",
+          "readOnly": true,
+          "static": false,
+          "position": false,
+          "cppType": "massif::Color",
+          "doc": "Returns the ambient colour."
+        },
+        {
+          "name": "ambientIntensity",
+          "type": "FLOAT",
+          "readOnly": true,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns the ambient intensity."
+        },
+        {
+          "name": "sunAltitude",
+          "type": "FLOAT",
+          "readOnly": true,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns the sun height this light belongs to."
+        },
+        {
+          "name": "sunColor",
+          "type": "COLOR",
+          "readOnly": true,
+          "static": false,
+          "position": false,
+          "cppType": "massif::Color",
+          "doc": "Returns the directional colour."
+        },
+        {
+          "name": "sunIntensity",
+          "type": "FLOAT",
+          "readOnly": true,
+          "static": false,
+          "position": false,
+          "cppType": "float",
+          "doc": "Returns the directional intensity."
         }
       ],
       "aliases": {},

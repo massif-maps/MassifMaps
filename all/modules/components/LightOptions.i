@@ -3,7 +3,7 @@
 
 %module LightOptions
 
-!proxy_imports(massif::LightOptions, graphics.Color)
+!proxy_imports(massif::LightOptions, graphics.Color, components.LightStop)
 
 %{
 #include "components/LightOptions.h"
@@ -15,6 +15,7 @@
 %include <massifswig.i>
 
 %import "graphics/Color.i"
+%import "components/LightStop.i"
 
 !shared_ptr(massif::LightOptions, components.LightOptions)
 
@@ -28,7 +29,9 @@
 %attribute(massif::LightOptions, float, AmbientIntensity, getAmbientIntensity, setAmbientIntensity)
 %attributeval(massif::LightOptions, massif::Color, AmbientColor, getAmbientColor, setAmbientColor)
 %attribute(massif::LightOptions, bool, SunOverridingStyle, isSunOverridingStyle, setSunOverridingStyle)
-    %attribute(massif::LightOptions, bool, DayCycleLightsEnabled, isDayCycleLightsEnabled, setDayCycleLightsEnabled)
+%attribute(massif::LightOptions, bool, DayCycleLightsEnabled, isDayCycleLightsEnabled, setDayCycleLightsEnabled)
+%attributeval(massif::LightOptions, %arg(std::vector<massif::LightStop>), DayCycleLightStops, getDayCycleLightStops, setDayCycleLightStops)
+%attributeval(massif::LightOptions, %arg(std::vector<massif::LightStop>), DayCycleRisingLightStops, getDayCycleRisingLightStops, setDayCycleRisingLightStops)
 %attribute(massif::LightOptions, bool, TerrainLightingEnabled, isTerrainLightingEnabled, setTerrainLightingEnabled)
 %attribute(massif::LightOptions, float, ShadowStrength, getShadowStrength, setShadowStrength)
 %attribute(massif::LightOptions, int, ShadowMapSize, getShadowMapSize, setShadowMapSize)

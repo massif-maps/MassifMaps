@@ -104,6 +104,8 @@ set(TEST_SDK_SOURCES
   "${SDK_BASE_DIR}/all/native/core/ScreenPos.cpp"
   # StructCodec carries a screen rectangle now - fitBounds takes one (see CameraMethods.cpp).
   "${SDK_BASE_DIR}/all/native/core/ScreenBounds.cpp"
+  # StructCodec carries a day-cycle light curve now, and a stop is a value class.
+  "${SDK_BASE_DIR}/all/native/components/LightStop.cpp"
   "${SDK_BASE_DIR}/all/native/components/FogOptions.cpp"
   "${SDK_BASE_DIR}/all/native/components/SkyOptions.cpp"
   "${SDK_BASE_DIR}/all/native/geometry/Feature.cpp"

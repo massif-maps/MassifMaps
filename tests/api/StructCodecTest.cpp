@@ -3,6 +3,7 @@
  */
 
 #include "api/StructCodec.h"
+#include "components/LightStop.h"
 #include "core/MapTile.h"
 #include "ui/ClickInfo.h"
 
@@ -271,4 +272,28 @@ void testMoreStructs() {
                decodedRings[1][0] == MapPos(5, 6, 0), "and round-trip");
     TEST_CHECK(!StructCodec::decode("[[1,2],[3,4]]", decodedRings),
                "a flat path is not a list of rings");
+
+    // A day-cycle light curve: the "formula" an app replaces to change the whole map's palette at
+    // every hour. An OBJECT per stop, because five fields of three kinds have no natural order.
+    std::vector<LightStop> curve;
+    curve.push_back(LightStop(-9.0f, Color(0, 20, 56, 255), 0.5f, Color(63, 68, 85, 255), 0.5f));
+    curve.push_back(LightStop(38.0f, Color(255, 255, 255, 255), 0.8f, Color(255, 255, 255, 255), 0.2f));
+    std::vector<LightStop> decodedCurve;
+    TEST_CHECK(StructCodec::decode(StructCodec::encode(curve), decodedCurve) &&
+               decodedCurve.size() == 2 && decodedCurve[0] == curve[0] && decodedCurve[1] == curve[1],
+               "a light curve round-trips");
+    TEST_CHECK(StructCodec::encode(curve).find("\"ambientColor\":\"#ff001438\"") != std::string::npos,
+               "and a stop's colours are written as #aarrggbb, which is what a style spells");
+    // Lenient on the way IN, so an app may write any of the spellings it already uses elsewhere.
+    LightStop stop;
+    TEST_CHECK(StructCodec::decode("{\"sunAltitude\":10,\"ambientColor\":\"#abc\"}", stop) &&
+               stop.getAmbientColor() == Color(0xffaabbcc),
+               "a short hex colour is accepted");
+    TEST_CHECK(StructCodec::decode("{\"sunAltitude\":10,\"sunColor\":-1}", stop) &&
+               stop.getSunColor() == Color(255, 255, 255, 255),
+               "and so is the plain ARGB number every other colour property carries");
+    TEST_CHECK(!StructCodec::decode("{\"ambientIntensity\":1}", stop),
+               "a stop with no sun height is meaningless and is refused");
+    TEST_CHECK(!StructCodec::decode("{\"sunAltitude\":10,\"sunColor\":\"blue\"}", stop),
+               "and a colour name is not a colour here");
 }

@@ -116,6 +116,43 @@ else distinguishes them.
 
 It replaces only those four values. The sun DIRECTION is the input it reads, never an output.
 
+#### The curve is a list of stops, and the app may replace it
+
+The four setups are not special-cased anywhere: they are a `DayCycleLight::Stop[]` — a light
+anchored on a sun height — and the curve is read off it. Below the first stop and above the last it
+holds; between two it smoothsteps in linear colour space. Written that way, MapBox's own curve is
+four stops, and the doubled twilight entry is what holds the preset flat between 3° and 12° so the
+sun passes THROUGH dusk instead of crossing it:
+
+| altitude | light |
+|---|---|
+| −9° | night |
+| 3° | dusk (dawn when rising) |
+| 12° | dusk (dawn when rising) |
+| 38° | day |
+
+`LightOptions.dayCycleLightStops` replaces it, and `dayCycleRisingLightStops` gives a rising sun a
+curve of its own (left empty, the one curve is used all day). An empty list is the built-in one.
+
+This is the whole extension point, and it is deliberately small: everything the SDK derives from
+the light — the 2D grade, the extrusion sun and ambient, the terrain shading, the brightness a
+style ramps its labels over — is a function of what the curve returns, so one list changes the
+whole map at every hour with no second theme, no shader and no re-decode. Changing it is a redraw:
+the tiles are untouched.
+
+Through the facade it is one JSON property, `light.dayCycleLightStops`, a list of objects:
+
+```json
+[{ "sunAltitude": 2, "ambientColor": "#ff2d95", "ambientIntensity": 0.85,
+   "sunColor": "#ff8a00", "sunIntensity": 0.6 }]
+```
+
+Colours are written back as `#aarrggbb` and read leniently — `#rgb`, `#rrggbb`, `#aarrggbb`, or the
+plain ARGB number every other colour property carries. A stop with no `sunAltitude` is refused
+rather than defaulted; it would have no place on the curve.
+
+The `day-cycle-light` gallery example is this, on two converted styles and two curves.
+
 ### `view::brightness` — the one thing that had to stay live
 
 mapbox's `["measure-light", "brightness"]` is a scalar 0–1 that a style ramps over; Standard drives

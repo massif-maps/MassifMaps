@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
 
 namespace massif {
 
@@ -34,46 +35,72 @@ namespace massif {
         static constexpr Setup DUSK  = { { 0.2117f, 0.2430f, 0.3683f }, 0.80f, { 0.9952f, 0.7600f, 0.5248f }, 0.20f };
         static constexpr Setup NIGHT = { { 0.0000f, 0.0766f, 0.2200f }, 0.50f, { 0.2465f, 0.2683f, 0.3335f }, 0.50f };
 
+        /** One light anchored on a sun height. A list of these is the whole curve. */
+        struct Stop {
+            float altitude;
+            Setup light;
+        };
+
+        // The built-in curve as stops - MapBox Standard's own, and the shape of any replacement.
+        // The doubled twilight stop is what holds the preset flat from 3 to 12 degrees, so the sun
+        // passes THROUGH dusk instead of crossing it.
+        static constexpr Stop DUSK_CURVE[4] = { { -9.0f, NIGHT }, { 3.0f, DUSK }, { 12.0f, DUSK }, { 38.0f, DAY } };
+        static constexpr Stop DAWN_CURVE[4] = { { -9.0f, NIGHT }, { 3.0f, DAWN }, { 12.0f, DAWN }, { 38.0f, DAY } };
+
         static float smoothStep(float edge0, float edge1, float x) {
+            if (edge1 <= edge0) {
+                return x < edge0 ? 0.0f : 1.0f;
+            }
             float t = std::max(0.0f, std::min(1.0f, (x - edge0) / (edge1 - edge0)));
             return t * t * (3.0f - 2.0f * t);
         }
 
         /**
-         * The light the sun's own height implies, blended between the four setups above.
+         * The light a given sun height implies, read off a curve of stops sorted by altitude.
          *
-         * The presets are artistic, not physical, but each is anchored on a sun height: day states
-         * it 70 degrees up, dawn 40, dusk 10, and night puts it away. Reading the height back gives
-         * a CONTINUOUS curve through them, so an hour of 12 lands on `day` and 19 on `dusk` without
-         * a style stating either. Mixed in LINEAR space, or the midpoints go muddy.
+         * Below the first stop and above the last the curve holds; between two it smoothsteps, in
+         * LINEAR colour space - mixed in sRGB the midpoints go muddy. The stops are what an app
+         * replaces to change the whole map's palette at every hour: everything downstream (the 2D
+         * grade, the 3D lighting, the brightness a style ramps over) is derived from the light this
+         * returns, so one list drives all of it.
+         */
+        static Setup atSunHeight(const Stop* stops, std::size_t count, float altitudeDegrees) {
+            if (count == 0) {
+                return DAY;
+            }
+            if (count == 1 || altitudeDegrees <= stops[0].altitude) {
+                return stops[0].light;
+            }
+            if (altitudeDegrees >= stops[count - 1].altitude) {
+                return stops[count - 1].light;
+            }
+            std::size_t upper = 1;
+            while (upper < count - 1 && stops[upper].altitude < altitudeDegrees) {
+                upper++;
+            }
+            const Setup& from = stops[upper - 1].light;
+            const Setup& to = stops[upper].light;
+            float t = smoothStep(stops[upper - 1].altitude, stops[upper].altitude, altitudeDegrees);
+            Setup out = { { 0, 0, 0 }, 0, { 0, 0, 0 }, 0 };
+            for (int i = 0; i < 3; i++) {
+                out.ambient[i] = std::pow(std::pow(from.ambient[i], 2.2f) * (1.0f - t) + std::pow(to.ambient[i], 2.2f) * t, 1.0f / 2.2f);
+                out.direct[i] = std::pow(std::pow(from.direct[i], 2.2f) * (1.0f - t) + std::pow(to.direct[i], 2.2f) * t, 1.0f / 2.2f);
+            }
+            out.ambientIntensity = from.ambientIntensity * (1.0f - t) + to.ambientIntensity * t;
+            out.directIntensity = from.directIntensity * (1.0f - t) + to.directIntensity * t;
+            return out;
+        }
+
+        /**
+         * The built-in curve: MapBox Standard's four light setups, anchored on the sun heights it
+         * states them at - day 70 degrees up, dawn 40, dusk 10, night away. An hour of 12 then
+         * lands on `day` and 19 on `dusk` without a style stating either.
          *
          * `rising` picks dawn over dusk at the same height; nothing else distinguishes them.
          */
         static Setup atSunHeight(float altitudeDegrees, bool rising) {
-            const Setup& twilight = rising ? DAWN : DUSK;
-            float day = smoothStep(12.0f, 38.0f, altitudeDegrees);
-            float night = 1.0f - smoothStep(-9.0f, 3.0f, altitudeDegrees);
-            float dusk = std::max(0.0f, 1.0f - day - night);
-            Setup out = { { 0, 0, 0 }, 0, { 0, 0, 0 }, 0 };
-            auto mixIn = [&out](const Setup& light, float weight) {
-                if (weight <= 0) {
-                    return;
-                }
-                for (int i = 0; i < 3; i++) {
-                    out.ambient[i] += std::pow(light.ambient[i], 2.2f) * weight;
-                    out.direct[i] += std::pow(light.direct[i], 2.2f) * weight;
-                }
-                out.ambientIntensity += light.ambientIntensity * weight;
-                out.directIntensity += light.directIntensity * weight;
-            };
-            mixIn(DAY, day);
-            mixIn(twilight, dusk);
-            mixIn(NIGHT, night);
-            for (int i = 0; i < 3; i++) {
-                out.ambient[i] = std::pow(out.ambient[i], 1.0f / 2.2f);
-                out.direct[i] = std::pow(out.direct[i], 1.0f / 2.2f);
-            }
-            return out;
+            const Stop* curve = rising ? DAWN_CURVE : DUSK_CURVE;
+            return atSunHeight(curve, 4, altitudeDegrees);
         }
 
         /**

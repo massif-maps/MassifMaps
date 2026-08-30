@@ -73,6 +73,20 @@ namespace massif {
     }
 
 namespace {
+    /** An app-supplied curve, read through the same interpolation the built-in one uses. */
+    DayCycleLight::Setup atSunHeight(const std::vector<LightStop>& stops, float altitudeDegrees) {
+        std::vector<DayCycleLight::Stop> curve;
+        curve.reserve(stops.size());
+        for (const LightStop& stop : stops) {
+            const Color& ambient = stop.getAmbientColor();
+            const Color& sun = stop.getSunColor();
+            curve.push_back({ stop.getSunAltitude(), {
+                { ambient.getR() / 255.0f, ambient.getG() / 255.0f, ambient.getB() / 255.0f }, stop.getAmbientIntensity(),
+                { sun.getR() / 255.0f, sun.getG() / 255.0f, sun.getB() / 255.0f }, stop.getSunIntensity() } });
+        }
+        return DayCycleLight::atSunHeight(curve.data(), curve.size(), altitudeDegrees);
+    }
+
     Color colorOf(const float channels[3]) {
         auto byte = [](float c) { return static_cast<unsigned char>(std::max(0.0f, std::min(1.0f, c)) * 255.0f + 0.5f); };
         return Color(byte(channels[0]), byte(channels[1]), byte(channels[2]), 255);
@@ -203,7 +217,14 @@ namespace {
             float altitude = std::asin(std::max(-1.0f, std::min(1.0f, lighting.sunDir(2)))) * static_cast<float>(Const::RAD_TO_DEG);
             // East of north is morning: the same height then means dawn rather than dusk.
             bool rising = lighting.sunDir(0) >= 0.0f;
-            DayCycleLight::Setup light = DayCycleLight::atSunHeight(altitude, rising);
+            // The app's own curve when it set one - that list is the whole formula, and everything
+            // below is derived from the light it returns.
+            std::vector<LightStop> stops = rising ? lightOptions->getDayCycleRisingLightStops() : std::vector<LightStop>();
+            if (stops.empty()) {
+                stops = lightOptions->getDayCycleLightStops();
+            }
+            DayCycleLight::Setup light = stops.empty() ? DayCycleLight::atSunHeight(altitude, rising)
+                                                       : atSunHeight(stops, altitude);
             lighting.ambientColor = colorOf(light.ambient);
             lighting.ambientIntensity = light.ambientIntensity;
             lighting.sunColor = colorOf(light.direct);

@@ -1078,6 +1078,22 @@ public final class DemoPanel {
         slider(context, "tile LOD (x tangram, 0=finest)", 0, 4, DemoConfig.TILE_LOD_FACTOR, true, new FloatSetting() {
             public void set(float value) { DemoConfig.TILE_LOD_FACTOR = value; demo.mapView.getOptions().setTileLODFactor(value); }
         });
+        // The GRAZING half of the same test. Unbounded it swings with the camera, so under a tilt
+        // one side of the horizon keeps its detail and the other loses a level; 0 = no limit.
+        slider(context, "tile LOD grazing limit (levels, 0=none)", 0, 4, DemoConfig.TILE_LOD_GRAZING, true, new FloatSetting() {
+            public void set(float value) { DemoConfig.TILE_LOD_GRAZING = value; demo.mapView.getOptions().setTileLODForeshorteningLimit(value); }
+        });
+        // Which zoom the vector tiles are FETCHED at, against the view's. -1 is what a style
+        // written for MapBox's 512 px tiles wants; it also shifts every `[zoom >= N]` rule a level
+        // away from the `view::zoom` ramps beside it, which is what hides a height ramp.
+        slider(context, "vector zoom bias (levels)", -2, 2, DemoConfig.VECTOR_ZOOM_BIAS, true, new FloatSetting() {
+            public void set(float value) {
+                DemoConfig.VECTOR_ZOOM_BIAS = value;
+                if (demo.baseLayer != null) {
+                    demo.baseLayer.setZoomLevelBias(value);
+                }
+            }
+        });
         slider(context, "tile coarsening (levels)", 0, 6, DemoConfig.TERRAIN_MAX_TILE_ZOOM_COARSENING, true, new FloatSetting() {
             public void set(float value) { DemoConfig.TERRAIN_MAX_TILE_ZOOM_COARSENING = (int) value; demo.terrainOptions.setMaxTileZoomCoarsening((int) value); }
         });

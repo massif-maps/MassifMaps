@@ -74,6 +74,19 @@ static const double kStartHour = 17.4;
 
     [self buildLayer:map];
 
+    // A TERRAIN, for the shadows. Cast shadows are drawn from the drape pass and land on the
+    // terrain surface - with no terrain there is no surface to receive them and nothing casts at
+    // all, however high shadowStrength goes. Paris is flat, so this is here for the light.
+    [[map terrain:[[MSFSpec of:@"terrain"]
+        set:@"source" value:[[[[MSFSpec of:@"persistent-cache"]
+            set:@"databasePath" value:[host cachePath:@"mapterhorn-dem.db"]]
+            set:@"capacity" value:@(200 * 1024 * 1024)]
+            set:@"source" value:[[[[MSFSpec of:@"http"]
+                set:@"url" value:@"https://tiles.mapterhorn.com/{z}/{x}/{y}.webp"]
+                set:@"maxZoom" value:@16]
+                set:@"metaData" value:[[MSFSpec object] set:@"dem_encoding" value:@"terrarium"]]]]]
+        apply:[[[MSFSpec object] set:@"exaggeration" value:@1] set:@"cameraClearance" value:@40]];
+
     // The curve is only read while this is on; off, the style's and the app's own sun colours
     // stand, which is what every map did before the curve existed.
     [map light:[[[[[[MSFSpec of:@"light"]

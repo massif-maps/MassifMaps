@@ -81,6 +81,23 @@ public class DayCycleLightExample extends MapExample {
 
         buildLayer(map);
 
+        // A TERRAIN, for the shadows. Cast shadows are drawn from the drape pass and land on the
+        // terrain surface - with no terrain there is no surface to receive them and nothing casts
+        // at all, however high shadowStrength goes. Paris is flat, so this is here for the light
+        // rather than for the relief.
+        map.terrain(Spec.of("terrain")
+            .set("source", Spec.of("persistent-cache")
+                .set("databasePath", host.cachePath("mapterhorn-dem.db"))
+                .set("capacity", 200 * 1024 * 1024)
+                .set("source", Spec.of("http")
+                    .set("url", "https://tiles.mapterhorn.com/{z}/{x}/{y}.webp")
+                    .set("minZoom", 1)
+                    .set("maxZoom", 16)
+                    // Picks the elevation decoder per tile; without it the SDK assumes mapbox
+                    // encoding and terrarium heights come out in the hundreds of kilometres.
+                    .set("metaData", Spec.object().set("dem_encoding", "terrarium")))))
+           .apply(Spec.object().set("exaggeration", 1).set("cameraClearance", 40));
+
         // The curve is only read while this is on; off, the style's and the app's own sun colours
         // stand, which is what every map did before the curve existed.
         map.light(Spec.of("light")

@@ -936,7 +936,7 @@ Map {
   shield-icon-background-border-width: 0.75;
   shield-icon-halo-fill: @label_icon_halo_fill;
   shield-icon-halo-radius: 0.75;
-  shield-dy: -17.25;
+  shield-dy: -8.62;
   shield-emissive-strength: 0.6;
   shield-halo-emissive-strength: 0;
 }
@@ -1092,7 +1092,7 @@ Map {
   shield-icon-background-border-fill: @label_icon_halo_fill;
   shield-icon-halo-fill: @poi_label_icon_fill;
   shield-icon-halo-radius: 0.75;
-  shield-dy: -16.33;
+  shield-dy: -8.17;
   shield-emissive-strength: 0.6;
   shield-halo-emissive-strength: 0;
 }
@@ -1127,7 +1127,7 @@ Map {
   shield-icon-background-padding-y: 0;
   shield-icon-background-border-width: 0.75;
   shield-icon-background-border-fill: (([network] = 'bus' || [network] = 'ferry' || [network] = 'rail' || [network] = 'rail-light' || [network] = 'rail-metro' || [network] = 'bicycle-share' || [network] = 'entrance') ? @label_icon_fill : transparent);
-  shield-dy: -16.6;
+  shield-dy: -8.3;
   shield-emissive-strength: 0.6;
   shield-halo-emissive-strength: 0;
 }
@@ -1162,7 +1162,7 @@ Map {
   shield-icon-background-padding-y: 0;
   shield-icon-background-border-width: 0.75;
   shield-icon-background-border-fill: (([network] = 'bus' || [network] = 'ferry' || [network] = 'rail' || [network] = 'rail-light' || [network] = 'rail-metro' || [network] = 'bicycle-share' || [network] = 'entrance') ? @label_icon_fill : transparent);
-  shield-dy: -16.6;
+  shield-dy: -8.3;
   shield-emissive-strength: 0.6;
   shield-halo-emissive-strength: 0;
 }
@@ -1197,7 +1197,7 @@ Map {
   shield-icon-background-padding-y: 0;
   shield-icon-background-border-width: 0.75;
   shield-icon-background-border-fill: (([network] = 'bus' || [network] = 'ferry' || [network] = 'rail' || [network] = 'rail-light' || [network] = 'rail-metro' || [network] = 'bicycle-share' || [network] = 'entrance') ? @label_icon_fill : transparent);
-  shield-dy: -16.6;
+  shield-dy: -8.3;
   shield-emissive-strength: 0.6;
   shield-halo-emissive-strength: 0;
 }
@@ -1232,7 +1232,7 @@ Map {
   shield-icon-background-padding-y: 0;
   shield-icon-background-border-width: 0.75;
   shield-icon-background-border-fill: (([network] = 'bus' || [network] = 'ferry' || [network] = 'rail' || [network] = 'rail-light' || [network] = 'rail-metro' || [network] = 'bicycle-share' || [network] = 'entrance') ? @label_icon_fill : transparent);
-  shield-dy: -16.6;
+  shield-dy: -8.3;
   shield-emissive-strength: 0.6;
   shield-halo-emissive-strength: 0;
 }
@@ -1269,7 +1269,7 @@ Map {
   shield-icon-background-padding-y: 0;
   shield-icon-background-border-width: 0.75;
   shield-icon-background-border-fill: @label_icon_fill;
-  shield-dy: -14.6;
+  shield-dy: -7.3;
   shield-emissive-strength: 0.6;
   shield-halo-emissive-strength: 0;
 }

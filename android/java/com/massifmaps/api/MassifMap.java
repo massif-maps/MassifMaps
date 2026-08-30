@@ -249,6 +249,33 @@ public final class MassifMap implements AutoCloseable {
         return layer;
     }
 
+    /**
+     * Takes a layer this map built off the map and RELEASES its id, so the same id can be built
+     * again. `remove(MassifLayer)` only takes it off the stack: the id stays registered, and
+     * building it a second time fails with RESULT_DUPLICATE_ID - which is what an app swapping a
+     * basemap between two styles hits first.
+     * @param id The layer id, as given to addLayer.
+     * @return True if a layer of that id was on this map.
+     */
+    public boolean removeLayer(String id) {
+        boolean owns = false;
+        for (java.util.Iterator<String[]> it = owned.iterator(); it.hasNext(); ) {
+            String[] object = it.next();
+            if ("layer".equals(object[0]) && object[1].equals(id)) {
+                it.remove();
+                owns = true;
+            }
+        }
+        MassifLayer layer = layer(id);
+        if (layer != null) {
+            view.getLayers().remove(layer.layer());
+        }
+        if (owns || layer != null) {
+            MassifApi.unregisterObject("layer", id);
+        }
+        return layer != null;
+    }
+
     /** Builds an object of any kind, owned by this map. @see Massif#object */
     public MassifObject object(String kind, String id, Spec spec) {
         MassifObject object = Massif.object(kind, id, spec);

@@ -187,6 +187,14 @@ NS_SWIFT_NAME(MassifMap)
                                 error:(NSError **)error;
 
 /**
+ * Takes a layer this map built off the map and RELEASES its id, so the same id can be built again.
+ * `-remove:` only takes it off the stack: the id stays registered, and building it a second time
+ * fails with a duplicate-id error - which is what an app swapping a basemap between two styles
+ * hits first. Returns YES if a layer of that id was on this map.
+ */
+- (BOOL)removeLayer:(NSString *)objectId;
+
+/**
  * Adopts the layer at a stack position, so a map built with the object API can be driven through
  * the facade without rebuilding it.
  */

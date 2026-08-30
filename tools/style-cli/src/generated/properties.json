@@ -625,6 +625,16 @@
       "baked": false
     },
     {
+      "cartocss": "marker-halo-emissive-strength",
+      "mapnik": "halo-emissive-strength",
+      "symbolizer": "marker",
+      "kind": "float",
+      "type": "FloatFunctionProperty",
+      "default": "-1.0",
+      "live": true,
+      "baked": false
+    },
+    {
       "cartocss": "marker-halo-fill",
       "mapnik": "halo-fill",
       "symbolizer": "marker",
@@ -1211,6 +1221,16 @@
       "kind": "color",
       "type": "ColorFunctionProperty",
       "default": "#000000",
+      "live": true,
+      "baked": false
+    },
+    {
+      "cartocss": "shield-halo-emissive-strength",
+      "mapnik": "halo-emissive-strength",
+      "symbolizer": "shield",
+      "kind": "float",
+      "type": "FloatFunctionProperty",
+      "default": "-1.0",
       "live": true,
       "baked": false
     },
@@ -1961,6 +1981,16 @@
       "kind": "color",
       "type": "ColorFunctionProperty",
       "default": "#000000",
+      "live": true,
+      "baked": false
+    },
+    {
+      "cartocss": "text-halo-emissive-strength",
+      "mapnik": "halo-emissive-strength",
+      "symbolizer": "text",
+      "kind": "float",
+      "type": "FloatFunctionProperty",
+      "default": "-1.0",
       "live": true,
       "baked": false
     },

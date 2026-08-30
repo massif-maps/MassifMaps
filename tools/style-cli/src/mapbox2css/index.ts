@@ -197,6 +197,15 @@ export interface ConvertOptions {
      * Only used under `--live-light`; the folding path has no unstated values to fill in.
      */
     labelEmissive?: number;
+
+    /**
+     * The same for a label's HALO, which the SDK grades separately.
+     *
+     * This is what makes a name readable over a map that darkens: the ink keeps a high emissive and
+     * stays bright, the outline takes a low one and goes dark with the scene, so the two separate
+     * instead of meeting at the same grey. Unset, the halo follows the label's own emissive.
+     */
+    haloEmissive?: number;
 }
 
 /**
@@ -208,6 +217,33 @@ export interface ConvertOptions {
  * but takes the same term - and it is the largest surface on the map, so leaving it out left a lit
  * map on an unlit sheet of paper.
  */
+/** The label emissive properties `--label-emissive` caps, and their halo counterparts. */
+const LABEL_EMISSIVE = new Set(['text-emissive-strength', 'icon-emissive-strength']);
+const HALO_TARGETS: Record<string, string> = {
+    'text-emissive-strength': 'text-halo-emissive-strength',
+    'shield-emissive-strength': 'shield-halo-emissive-strength',
+    'marker-emissive-strength': 'marker-halo-emissive-strength',
+};
+function haloTargetOf(target: string): string | null {
+    return HALO_TARGETS[target] ?? null;
+}
+
+/**
+ * A label's emissive, never above `cap`.
+ *
+ * A stated RAMP is reduced to its representative value first and then capped, so the ramp's shape
+ * is lost - the label dims by the scene light rather than by its own curve over it. That is the
+ * trade the cap makes: Standard states a flat 1 on its shields, and nothing short of overriding
+ * that makes them follow the light at all.
+ */
+function capStops(stated: Json | undefined, cap: number, lookup: (name: string) => Json | undefined): string | null {
+    const value = stated === undefined ? 1
+        : typeof stated === 'number' ? stated
+        : representativeEmissive(stated, representativeScale(stated, 1), lookup) ?? 1;
+    const capped = Math.max(0, Math.min(cap, value));
+    return capped >= 1 ? null : String(round(capped));
+}
+
 const EMISSIVE_TARGETS: Array<[string, string]> = [
     ['polygon-pattern-', 'polygon-pattern-emissive-strength'],
     ['line-pattern-', 'line-pattern-emissive-strength'],
@@ -394,6 +430,21 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
                 if (target === null || emitted.has(target)) continue;
                 const source = emissiveProperty(property);
                 const stated = source ? layer.paint?.[source] : undefined;
+                // A CAP, not just a default: Standard states 1 on its shields deliberately, so a
+                // style that wants them to follow the light has to be able to say so over the top.
+                const cap = LABEL_EMISSIVE.has(source ?? '') ? options.labelEmissive : undefined;
+                if (cap !== undefined) {
+                    const stops = capStops(stated, cap, (name) => values.get(name));
+                    if (stops !== null) {
+                        emitted.add(target);
+                        extra.push(`${target}: ${stops};`);
+                    }
+                    const halo = haloTargetOf(target);
+                    if (halo !== null && options.haloEmissive !== undefined) {
+                        extra.push(`${halo}: ${round(Math.max(0, options.haloEmissive))};`);
+                    }
+                    continue;
+                }
                 if (stated !== undefined && typeof stated !== 'number') {
                     // Standard states most of these as a ramp over the scene brightness, which
                     // --live-light keeps as `[view::brightness]` - so the strength itself follows
@@ -1714,9 +1765,20 @@ function variableAnchorDeclarations(layer: MapboxLayer, coverage: Coverage): str
  * UP to half the icon, never the two added: a POI states 0.8 em, already clear of its pin, and
  * adding half an icon on top of that floated the name well below it.
  */
+/** A value as authored when it is a constant, else the branch representativeConstant picks. */
+function literalOrRepresentative(value: Json | undefined): Json | undefined {
+    if (value === undefined || !Array.isArray(value)) return value;
+    // A plain [x, y] offset is a literal, not an expression.
+    if (value.every((v) => typeof v === 'number')) return value;
+    return representativeConstant(value) ?? undefined;
+}
+
 function iconClearance(layer: MapboxLayer, icon: ExtractedIcon, scale: number): number {
-    const anchor = layer.layout?.['text-anchor'];
-    const offset = layer.layout?.['text-offset'];
+    // Both may BRANCH - Standard's poi-label states its anchor as a step over zoom and its offset
+    // as a case over the feature - and read literally each one falls back to "no anchor", which
+    // skipped the top-up entirely and left every POI name sitting on its own icon.
+    const anchor = literalOrRepresentative(layer.layout?.['text-anchor']);
+    const offset = literalOrRepresentative(layer.layout?.['text-offset']);
     const dy = Array.isArray(offset) && typeof offset[1] === 'number' ? offset[1] : 0;
     if (layer.layout?.['text-radial-offset'] !== undefined) return 0;
     // The offset is in ems of the text size, the icon in pixels, so they meet at a representative

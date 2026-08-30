@@ -41,10 +41,15 @@ const USAGE = `Usage: massif-style <command> [options] [args]
                             time. One palette then covers every light preset and the hour can
                             be changed at runtime. Off, the light is folded into the colours
                             and a palette is emitted per preset
-      --label-emissive N    what a text or icon emissive defaults to where the style states
-                            none. MapBox's own default is 1 - a label drawn as authored at
-                            any hour - which is what leaves the labels bright over a style
-                            with no light model of its own. Needs --live-light
+      --label-emissive N    a CAP on every text and icon emissive, and the default where the
+                            style states none. MapBox's own default is 1 - a label drawn as
+                            authored at any hour - and Standard states 1 on its shields
+                            deliberately, so a cap is what makes them follow the light too.
+                            Needs --live-light
+      --halo-emissive N     the same for a label's HALO, which the SDK grades separately: the
+                            ink keeps its emissive and stays bright while the outline takes
+                            this one and goes dark with the scene, so a name stays readable
+                            over a map that darkens. Needs --live-light
       --sdf-flatten         resolve SDF icons to plain bitmaps, for an SDK without
                             marker-sdf; loses the zoom-driven size and the halo
       --contour-schema div  rewrite contour-layer nth_line tests onto a div (interval in
@@ -84,7 +89,7 @@ function parseFlags(args: string[]): { flags: Map<string, string>; positional: s
     return { flags, positional };
 }
 
-const VALUE_FLAGS = new Set(['contour-schema', 'contour-major-div', 'sprite-key', 'label-spacing', 'label-emissive', 'contour-elevation', 'schema', 'config']);
+const VALUE_FLAGS = new Set(['contour-schema', 'contour-major-div', 'sprite-key', 'label-spacing', 'label-emissive', 'halo-emissive', 'contour-elevation', 'schema', 'config']);
 
 /**
  * `--config key=value`, repeatable, for a style with a `schema` (Mapbox Standard). Values are read
@@ -155,6 +160,7 @@ async function mapbox2css(args: string[]): Promise<number> {
         variables: !flags.has('no-variables'),
         liveLight: flags.has('live-light'),
         labelEmissive: flags.has('label-emissive') ? Number(flags.get('label-emissive')) : undefined,
+        haloEmissive: flags.has('halo-emissive') ? Number(flags.get('halo-emissive')) : undefined,
         config: parseConfig(args),
         presets: flags.has('no-presets') ? [] : undefined,
         flattenSdf: flags.has('sdf-flatten'),

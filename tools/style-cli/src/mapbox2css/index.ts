@@ -1804,7 +1804,15 @@ function iconClearance(layer: MapboxLayer, icon: ExtractedIcon, scale: number): 
     if (!below && !above) return 0;
     const shortfall = icon.height * scale / 2 - emPixels;
     if (shortfall <= 0) return 0;
-    return round((below ? 1 : -1) * shortfall);
+    // HALF the shortfall, and the half is empirical.
+    //
+    // By the model it should be 0: the SDK honours the anchor (TextFormatter::layoutLines puts the
+    // block's top edge on the offset point when alignment.y is +1), which is exactly what MapBox
+    // means by `text-anchor: top`, so the stated offset already clears the icon on both sides.
+    // Measured against Standard at the Louvre, 0 sits a shade tight and the full shortfall pushes
+    // the name visibly further off its icon than mapbox-gl does - our extracted sprite is drawn
+    // larger than MapBox draws the same icon, and the shortfall is computed from ours.
+    return round((below ? 1 : -1) * shortfall * 0.5);
 }
 
 /**

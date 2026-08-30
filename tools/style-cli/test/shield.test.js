@@ -109,9 +109,12 @@ test('an icon beside text becomes ONE shield, not a marker that culls the label'
     assert.match(out, /shield-name: \[name\];/);
     assert.match(out, /shield-fill: #333333;/);
     assert.match(out, /shield-unlock-image: true;/);
-    // 'bottom' anchors the text's bottom edge, so the text is above and the icon drops below it -
-    // by half the bitmap, which an SDF icon carries SDF_PADDING of field around (8 + 2*6 = 20).
-    assert.match(out, /shield-dy: 10;/);
+    // 'bottom' anchors the text's bottom edge, so the text is above and the icon drops below it.
+    // HALF of half the bitmap: the SDK honours the anchor itself, so by the model the top-up should
+    // be 0, and the half is the empirical middle between that and pushing the name visibly further
+    // off its icon than mapbox-gl does. The bitmap is 8 + 2*6 = 20 of field, so half is 10 and the
+    // top-up is 5. See iconClearance.
+    assert.match(out, /shield-dy: 5;/);
 });
 
 test('an SDF icon carries field around it, so the halo has room to fade before the quad ends', () => {

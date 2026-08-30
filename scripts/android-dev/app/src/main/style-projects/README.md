@@ -12,7 +12,8 @@ Both were produced by the converter, and both carry the **upstream provider's sp
 
 ```sh
 massif-style mapbox2css --live-light --sprite-key '?access_token=…' standard.json  mapbox-standard
-massif-style mapbox2css --live-light --sprite-key '?key=…'          streets.json   maptiler-streets
+massif-style mapbox2css --live-light --label-emissive 0.35 --sprite-key '?key=…' \
+    streets.json maptiler-streets
 ```
 
 They are here so the `day-cycle-light` example can be run and the light curve judged against a real
@@ -20,7 +21,7 @@ map. **They are to be replaced by open-licensed equivalents**, for two reasons:
 
 - the 595 icons in `mapbox-standard/icons` and `icons-glyph` are Mapbox's, and `maptiler-streets`
   carries MapTiler's — neither is ours to redistribute;
-- they cost 4 MB of the APK (3.66 MB + 339 KB compressed), against 1.4 KB for the two hand-written
+- they cost 2.9 MB of the APK (2.60 MB + 320 KB compressed), against 1.4 KB for the two hand-written
   projects beside them.
 
 Nothing in the SDK depends on either: the example names them by folder, and a replacement keeping

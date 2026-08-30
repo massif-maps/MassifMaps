@@ -17,7 +17,7 @@
     __weak id<MSFExampleHost> _host;
     NSUInteger _style;
     NSUInteger _formula;
-    NSUInteger _hour;
+    double _hour;
 }
 
 + (NSString *)exampleId {
@@ -59,31 +59,31 @@ static NSArray<NSArray<NSString *> *> *formulas(void) {
         @"\"sunColor\":\"#ff00d4\",\"sunIntensity\":0.5},"
         @"{\"sunAltitude\":60,\"ambientColor\":\"#00fff0\",\"ambientIntensity\":1.0,"
         @"\"sunColor\":\"#fff700\",\"sunIntensity\":0.45}]";
-    return @[ @[ @"Mapbox", @"" ], @[ @"Psychedelic", psychedelic ] ];
+    // An EMPTY list is the built-in curve. Not @"", which reads as "no value" through some
+    // bindings - the property has to arrive as a list for the SDK to clear the old one.
+    return @[ @[ @"Mapbox", @"[]" ], @[ @"Psychedelic", psychedelic ] ];
 }
 
-/**
- * Four hours that land ON the curve's own anchors, so each one shows a different light rather than
- * a blend: noon is the sun overhead, 17.4h puts it 10 degrees up (dusk's anchor), 22h has it well
- * under, and 8.7h is 40 degrees on the way UP - which is dawn, not dusk, because the azimuth below
- * has the sun east of north there.
- */
-static const double kHours[] = { 12.0, 17.4, 22.0, 8.7 };
-static NSArray<NSString *> *hourNames(void) {
-    return @[ @"noon", @"dusk", @"night", @"dawn" ];
-}
+/** The hour is swept, not picked: the curve is continuous and that is the point of it. */
+static const double kStartHour = 17.4;
 
 - (void)startWithHost:(id<MSFExampleHost>)host {
     _host = host;
+    _hour = kStartHour;
     MSFMassifMap *map = host.map;
 
     [self buildLayer:map];
 
     // The curve is only read while this is on; off, the style's and the app's own sun colours
     // stand, which is what every map did before the curve existed.
-    [map light:[[[MSFSpec of:@"light"]
+    [map light:[[[[[MSFSpec of:@"light"]
         set:@"dayCycleLightsEnabled" value:@YES]
-        set:@"sunOverridingStyle" value:@YES]];
+        set:@"sunOverridingStyle" value:@YES]
+        // Buildings cast: a low sun is what the curve is most worth looking at, and it is also
+        // when the shadows are longest. They follow the same sun the curve reads, so they stretch
+        // and swing round as the hour is swept.
+        set:@"shadowStrength" value:@0.35]
+        set:@"shadowSoftness" value:@1.2]];
 
     [self applyFormula];
     [self applyHour];
@@ -99,10 +99,11 @@ static NSArray<NSString *> *hourNames(void) {
         [self applyFormula];
         [self caption];
     }];
-    [host button:@"Hour" action:^{
-        self->_hour = (self->_hour + 1) % (sizeof(kHours) / sizeof(kHours[0]));
+    // A slider, because the curve is continuous: sweeping it is what shows the sun passing THROUGH
+    // dusk rather than jumping between four presets.
+    [host slider:@"Hour" min:0 max:24 value:kStartHour action:^(float value) {
+        self->_hour = value;
         [self applyHour];
-        [self caption];
     }];
     [host caption:@"Two styles, two formulas: the hour picks the light, the curve picks the look."];
 }
@@ -159,17 +160,16 @@ static NSArray<NSString *> *hourNames(void) {
 
 /** An hour is a sun POSITION; the curve turns that into a light. */
 - (void)applyHour {
-    double h = kHours[_hour];
-    double altitude = 62.0 * sin(M_PI * (h - 6.0) / 12.0);
-    double azimuth = 90.0 + (h - 6.0) * 15.0;
+    double altitude = 62.0 * sin(M_PI * (_hour - 6.0) / 12.0);
+    double azimuth = 90.0 + (_hour - 6.0) * 15.0;
     [_host.map.light apply:[[[MSFSpec object]
         set:@"sunAzimuth" value:@(azimuth)]
         set:@"sunAltitude" value:@(altitude)]];
 }
 
 - (void)caption {
-    [_host caption:[NSString stringWithFormat:@"%@ - %@ formula on %@",
-                    hourNames()[_hour], formulas()[_formula][0], styles()[_style][0]]];
+    [_host caption:[NSString stringWithFormat:@"%@ formula on %@",
+                    formulas()[_formula][0], styles()[_style][0]]];
 }
 
 @end

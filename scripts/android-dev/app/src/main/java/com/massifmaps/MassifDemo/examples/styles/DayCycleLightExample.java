@@ -60,23 +60,19 @@ public class DayCycleLightExample extends MapExample {
         + "]";
 
     private static final String[][] FORMULAS = {
-        { "Mapbox", "" },
+        // An EMPTY list is the built-in curve. Not "", which reads as "no value" through some
+        // bindings - the property has to arrive as a list for the SDK to clear the old one.
+        { "Mapbox", "[]" },
         { "Psychedelic", PSYCHEDELIC },
     };
 
-    /**
-     * Four hours that land ON the curve's own anchors, so each one shows a different light rather
-     * than a blend: noon is the sun overhead, 17.4h puts it 10 degrees up (dusk's anchor), 22h has
-     * it well under, and 8.7h is 40 degrees on the way UP - which is dawn, not dusk, because the
-     * azimuth below has the sun east of north there.
-     */
-    private static final float[] HOURS = { 12f, 17.4f, 22f, 8.7f };
-    private static final String[] HOUR_NAMES = { "noon", "dusk", "night", "dawn" };
+    /** The hour is swept, not picked: the curve is continuous and that is the point of it. */
+    private static final float START_HOUR = 17.4f;
 
     private ExampleHost host;
     private int style;
     private int formula;
-    private int hour;
+    private float hour = START_HOUR;
 
     @Override
     public void onStart(ExampleHost host) {
@@ -89,7 +85,12 @@ public class DayCycleLightExample extends MapExample {
         // stand, which is what every map did before the curve existed.
         map.light(Spec.of("light")
             .set("dayCycleLightsEnabled", true)
-            .set("sunOverridingStyle", true));
+            .set("sunOverridingStyle", true)
+            // Buildings cast: a low sun is what the curve is most worth looking at, and it is also
+            // when the shadows are longest. They follow the same sun the curve reads, so they
+            // stretch and swing round as the hour is swept.
+            .set("shadowStrength", 0.35)
+            .set("shadowSoftness", 1.2));
 
         applyFormula();
         applyHour();
@@ -100,8 +101,7 @@ public class DayCycleLightExample extends MapExample {
             public void run() {
                 style = (style + 1) % STYLES.length;
                 buildLayer(DayCycleLightExample.this.host.map());
-                DayCycleLightExample.this.host.caption(HOUR_NAMES[hour] + " - " + FORMULAS[formula][0]
-                    + " formula on " + STYLES[style][0]);
+                DayCycleLightExample.this.host.caption(FORMULAS[formula][0] + " formula on " + STYLES[style][0]);
             }
         });
         host.button("Formula", new Runnable() {
@@ -109,17 +109,16 @@ public class DayCycleLightExample extends MapExample {
             public void run() {
                 formula = (formula + 1) % FORMULAS.length;
                 applyFormula();
-                DayCycleLightExample.this.host.caption(HOUR_NAMES[hour] + " - " + FORMULAS[formula][0]
-                    + " formula on " + STYLES[style][0]);
+                DayCycleLightExample.this.host.caption(FORMULAS[formula][0] + " formula on " + STYLES[style][0]);
             }
         });
-        host.button("Hour", new Runnable() {
+        // A slider, because the curve is continuous: sweeping it is what shows the sun passing
+        // THROUGH dusk rather than jumping between four presets.
+        host.slider("Hour", 0f, 24f, START_HOUR, new ExampleHost.OnValue() {
             @Override
-            public void run() {
-                hour = (hour + 1) % HOURS.length;
+            public void onValue(float value) {
+                hour = value;
                 applyHour();
-                DayCycleLightExample.this.host.caption(HOUR_NAMES[hour] + " - " + FORMULAS[formula][0]
-                    + " formula on " + STYLES[style][0]);
             }
         });
         host.caption("Two styles, two formulas: the hour picks the light, the curve picks the look.");
@@ -175,9 +174,8 @@ public class DayCycleLightExample extends MapExample {
 
     /** An hour is a sun POSITION; the curve turns that into a light. */
     private void applyHour() {
-        float h = HOURS[hour];
-        double altitude = 62.0 * Math.sin(Math.PI * (h - 6.0) / 12.0);
-        double azimuth = 90.0 + (h - 6.0) * 15.0;
+        double altitude = 62.0 * Math.sin(Math.PI * (hour - 6.0) / 12.0);
+        double azimuth = 90.0 + (hour - 6.0) * 15.0;
         host.map().light().apply(Spec.object()
             .set("sunAzimuth", azimuth)
             .set("sunAltitude", altitude));

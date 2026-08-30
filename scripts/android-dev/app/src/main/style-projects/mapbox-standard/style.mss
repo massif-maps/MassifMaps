@@ -5,7 +5,7 @@
 
 Map {
   background-color: @background;
-  background-emissive-strength: linear(([view::zoom] - 1), (13, 0.1), (14, linear([view::brightness], (0.25, 0), (0.3, 0.25))));
+  background-emissive-strength: linear([view::brightness], (0.25, 0), (0.3, 0.25));
   building-ao-intensity: [param::building_ao] * (linear(([view::zoom] - 1), (16, 0), (16.8, 0.15)));
   building-ao-ground-radius: linear(([view::zoom] - 1), (16, 0), (16.8, 8));
   building-edge-radius: 0.4;
@@ -39,13 +39,13 @@ Map {
   polygon-emissive-strength: linear([view::brightness], (0.25, 0), (0.3, 0.25));
 }
 #landuse[zoom >= 9] when(((0 + [sizerank]) >= 0)) when((((0 + [sizerank]) - exponential(1.5, ([view::zoom] - 1), (12, 0), (18, 14))) <= 14)) when((([type] = 'skateboard' || [type] = 'playground' || [type] = 'parking' || [type] = 'surface') ? false : true))::landuse {
-  polygon-fill: linear([view::brightness], (0.1, (([class] = 'wood') ? @landuse_fill : (([class] = 'scrub') ? @landuse_fill_2 : (([class] = 'agriculture' || [class] = 'grass') ? @landuse_fill_3 : (([class] = 'park') ? @landuse_fill_4 : (([class] = 'airport') ? @landuse_fill_8 : (([class] = 'cemetery') ? @landuse_fill_9 : (([class] = 'glacier') ? @landuse_fill_5 : (([class] = 'hospital') ? @landuse_fill_10 : (([class] = 'pitch') ? @landuse_fill_11 : (([class] = 'sand') ? @polygon_fill_2 : (([class] = 'school') ? @landuse_fill_12 : (([class] = 'commercial_area') ? @landuse_fill_13 : (([class] = 'residential') ? @landuse_fill_6 : (([class] = 'facility' || [class] = 'industrial') ? @landuse_fill_14 : @landuse_fill_7))))))))))))))), (0.4, (([class] = 'wood') ? @landuse_fill : (([class] = 'scrub') ? @landuse_fill_2 : (([class] = 'agriculture' || [class] = 'grass') ? @landuse_fill_3 : (([class] = 'park') ? @landuse_fill_4 : (([class] = 'airport') ? @landuse_fill_15 : (([class] = 'cemetery') ? @landuse_fill_16 : (([class] = 'glacier') ? @landuse_fill_5 : (([class] = 'hospital') ? @landuse_fill_17 : (([class] = 'pitch') ? @landuse_fill_18 : (([class] = 'sand') ? @polygon_fill_3 : (([class] = 'school') ? @landuse_fill_19 : (([class] = 'commercial_area') ? @landuse_fill_20 : (([class] = 'residential') ? @landuse_fill_6 : (([class] = 'facility' || [class] = 'industrial') ? @landuse_fill_21 : @landuse_fill_7))))))))))))))));
+  polygon-fill: linear([view::brightness], (0.1, (([class] = 'wood') ? @landuse_fill : (([class] = 'scrub') ? @landuse_fill_2 : (([class] = 'agriculture' || [class] = 'grass') ? @landuse_fill_3 : (([class] = 'park') ? @landuse_fill_4 : (([class] = 'airport') ? @landuse_fill_8 : (([class] = 'cemetery') ? @landuse_fill_9 : (([class] = 'glacier') ? @landuse_fill_5 : (([class] = 'hospital') ? @landuse_fill_10 : (([class] = 'pitch') ? @landuse_fill_11 : (([class] = 'sand') ? @polygon_fill : (([class] = 'school') ? @landuse_fill_12 : (([class] = 'commercial_area') ? @landuse_fill_13 : (([class] = 'residential') ? @landuse_fill_6 : (([class] = 'facility' || [class] = 'industrial') ? @landuse_fill_14 : @landuse_fill_7))))))))))))))), (0.4, (([class] = 'wood') ? @landuse_fill : (([class] = 'scrub') ? @landuse_fill_2 : (([class] = 'agriculture' || [class] = 'grass') ? @landuse_fill_3 : (([class] = 'park') ? @landuse_fill_4 : (([class] = 'airport') ? @landuse_fill_15 : (([class] = 'cemetery') ? @landuse_fill_16 : (([class] = 'glacier') ? @landuse_fill_5 : (([class] = 'hospital') ? @landuse_fill_17 : (([class] = 'pitch') ? @landuse_fill_18 : (([class] = 'sand') ? @polygon_fill_2 : (([class] = 'school') ? @landuse_fill_19 : (([class] = 'commercial_area') ? @landuse_fill_20 : (([class] = 'residential') ? @landuse_fill_6 : (([class] = 'facility' || [class] = 'industrial') ? @landuse_fill_21 : @landuse_fill_7))))))))))))))));
   polygon-opacity: linear(([view::zoom] - 1), (9, (([class] = 'airport') ? 0.8 : (([class] = 'sand') ? 0.3 : 0.2))), (10, (([class] = 'residential') ? 0 : (([class] = 'grass' || [class] = 'scrub' || [class] = 'glacier' || [class] = 'pitch' || [class] = 'sand' || [class] = 'airport' || [class] = 'industrial' || [class] = 'hospital' || [class] = 'school' || [class] = 'facility' || [class] = 'commercial_area') ? 1 : (([class] = 'sand') ? 0.8 : linear([view::brightness], (0.1, 0.8), (0.4, 1)))))));
   polygon-emissive-strength: 0.25;
 }
 #landuse[zoom >= 15] when(((0 + [sizerank]) >= 0)) when((((0 + [sizerank]) - exponential(1.5, ([view::zoom] - 1), (12, 0), (18, 14))) <= 14)) when(([type] = 'skateboard' || [type] = 'playground' || [type] = 'parking' || [type] = 'surface' || [type] = 'sand'))::recreation_polygon {
   polygon-opacity: linear(([view::zoom] - 1), (14, 0), (15, 1));
-  polygon-fill: linear([view::brightness], (0.1, (([type] = 'parking' || [type] = 'playground' || [type] = 'skateboard' || [type] = 'surface') ? @recreation_polygon_fill : @polygon_fill_2)), (0.4, (([type] = 'parking' || [type] = 'playground' || [type] = 'skateboard' || [type] = 'surface') ? @recreation_polygon_fill_2 : @polygon_fill_3)));
+  polygon-fill: linear([view::brightness], (0.1, (([type] = 'parking' || [type] = 'playground' || [type] = 'skateboard' || [type] = 'surface') ? @recreation_polygon_fill : @polygon_fill)), (0.4, (([type] = 'parking' || [type] = 'playground' || [type] = 'skateboard' || [type] = 'surface') ? @recreation_polygon_fill_2 : @polygon_fill_2)));
   polygon-emissive-strength: linear(([view::zoom] - 1), (12, 0.25), (14, 0.25));
 }
 #hillshade[zoom < 17]::hillshade {
@@ -68,13 +68,13 @@ Map {
 #waterway[zoom >= 9]::waterway {
   line-cap: step(([view::zoom] - 1), (0, 'butt'), (11, 'round'));
   line-join: 'round';
-  line-color: @polygon_fill;
+  line-color: @line_stroke_4;
   line-width: exponential(1.3, ([view::zoom] - 1), (9, (([class] = 'canal' || [class] = 'river') ? 0.1 : 0)), (20, (([class] = 'canal' || [class] = 'river') ? 8 : 3)));
   line-opacity: linear(([view::zoom] - 1), (8, 0), (8.5, 1));
   line-emissive-strength: 0;
 }
 #water::water {
-  polygon-fill: linear(([view::zoom] - 1), (13, @polygon_fill), (14, linear([view::brightness], (0, @water_fill), (0.02, @polygon_fill))));
+  polygon-fill: linear([view::brightness], (0, @water_fill), (0.02, @line_stroke_4));
   polygon-emissive-strength: linear(([view::zoom] - 1), (5, 0.1), (7, 0));
 }
 #structure[zoom >= 14][class = 'land']['mapnik::geometry_type' = 3]::land_structure_polygon {
@@ -747,7 +747,7 @@ Map {
 }
 #building[zoom >= 16]['param::buildings'>0]['param::buildings'<2][type != 'building:part'][underground = 'false']::_2d_building_outline {
   line-width: @label_halo_radius_2;
-  line-color: linear(([view::zoom] - 1), (14, @v2d_building_outline_stroke), (16, linear([view::brightness], (0.3, @v2d_building_outline_stroke_2), (0.4, @v2d_building_outline_stroke_3))));
+  line-color: linear([view::brightness], (0.3, @v2d_building_outline_stroke), (0.4, @v2d_building_outline_stroke_2));
   line-opacity: 1;
   line-emissive-strength: 0.1;
 }
@@ -871,7 +871,7 @@ Map {
   text-transform: 'uppercase';
   text-occlusion-opacity: 0;
   text-fill: linear([view::brightness], (0.3, @ferry_aerialway_label_fill), (0.4, @ferry_aerialway_label_fill_2));
-  text-halo-fill: linear([view::brightness], (0.25, @label_halo_fill), (0.3, @polygon_fill));
+  text-halo-fill: linear([view::brightness], (0.25, @label_halo_fill), (0.3, @line_stroke_4));
   text-halo-radius: @label_halo_radius;
   text-placement-priority: 12300000;
   text-spacing: @label_spacing;
@@ -1294,13 +1294,13 @@ Map {
 }
 #place_label[zoom >= 3][zoom < 14][filterrank <= 3] when((([class] = 'settlement' || [class] = 'disputed_settlement') ? (([$localized] != null) ? true : (([worldview] = 'all' || [worldview] = 'US') ? true : false)) : false)) when(step(([view::zoom] - 1), (0, ([symbolrank] > 6)), (4, ([symbolrank] >= 7)), (6, ([symbolrank] >= 8)), (7, ([symbolrank] >= 10)), (10, ([symbolrank] >= 11)), (11, ([symbolrank] >= 13)), (12, ([symbolrank] >= 15))))::settlement_minor_label {
   text-placement: 'billboard';
-  text-line-spacing: (-0.1 * linear(([view::zoom] - 1), (3, (([symbolrank] >= 9) ? 10 : 11)), (6, (([symbolrank] >= 12) ? 10 : (([symbolrank] >= 9) ? 12 : 14))), (8, (([symbolrank] >= 15) ? 10 : (([symbolrank] >= 12) ? 12 : (([symbolrank] >= 9) ? 14 : 16)))), (13, (([symbolrank] >= 15) ? 14 : (([symbolrank] >= 12) ? 16 : (([symbolrank] >= 9) ? 20 : 22))))));
-  text-size: linear(([view::zoom] - 1), (3, (([symbolrank] >= 9) ? 10 : 11)), (6, (([symbolrank] >= 12) ? 10 : (([symbolrank] >= 9) ? 12 : 14))), (8, (([symbolrank] >= 15) ? 10 : (([symbolrank] >= 12) ? 12 : (([symbolrank] >= 9) ? 14 : 16)))), (13, (([symbolrank] >= 15) ? 14 : (([symbolrank] >= 12) ? 16 : (([symbolrank] >= 9) ? 20 : 22)))));
+  text-line-spacing: (-0.1 * (([symbolrank] >= 15) ? 14 : (([symbolrank] >= 12) ? 16 : (([symbolrank] >= 9) ? 20 : 22))));
+  text-size: (([symbolrank] >= 15) ? 14 : (([symbolrank] >= 12) ? 16 : (([symbolrank] >= 9) ? 20 : 22)));
   text-face-name: @font_din_pro_regular;
   text-horizontal-alignment: 'middle';
   text-vertical-alignment: 'middle';
   text-name: ([name_en]) ?? ([name]);
-  text-wrap-width: (7 * linear(([view::zoom] - 1), (3, (([symbolrank] >= 9) ? 10 : 11)), (6, (([symbolrank] >= 12) ? 10 : (([symbolrank] >= 9) ? 12 : 14))), (8, (([symbolrank] >= 15) ? 10 : (([symbolrank] >= 12) ? 12 : (([symbolrank] >= 9) ? 14 : 16)))), (13, (([symbolrank] >= 15) ? 14 : (([symbolrank] >= 12) ? 16 : (([symbolrank] >= 9) ? 20 : 22))))));
+  text-wrap-width: (7 * (([symbolrank] >= 15) ? 14 : (([symbolrank] >= 12) ? 16 : (([symbolrank] >= 9) ? 20 : 22))));
   text-opacity: 1;
   text-halo-opacity: 1;
   text-fill: linear([view::brightness], (0.25, @label_fill_3), (0.3, @label_halo_fill));
@@ -1314,13 +1314,13 @@ Map {
 }
 #place_label[zoom >= 3][zoom < 16][filterrank <= 3] when((([class] = 'settlement' || [class] = 'disputed_settlement') ? (([$localized] != null) ? true : (([worldview] = 'all' || [worldview] = 'US') ? true : false)) : false)) when(step(([view::zoom] - 1), (0, false), (2, ([symbolrank] <= 6)), (4, ([symbolrank] < 7)), (6, ([symbolrank] < 8)), (7, ([symbolrank] < 10)), (10, ([symbolrank] < 11)), (11, ([symbolrank] < 13)), (12, ([symbolrank] < 15)), (13, ([symbolrank] >= 11)), (14, ([symbolrank] >= 15))))::settlement_major_label {
   text-placement: 'billboard';
-  text-line-spacing: (-0.1 * linear(([view::zoom] - 1), (3, (([symbolrank] >= 6) ? 11 : 13)), (6, (([symbolrank] >= 7) ? 14 : (([symbolrank] >= 6) ? 16 : 18))), (8, (([symbolrank] >= 10) ? 14 : (([symbolrank] >= 9) ? 16 : 20))), (15, (([symbolrank] >= 15) ? 14 : (([symbolrank] >= 12) ? 16 : (([symbolrank] >= 9) ? 20 : 24))))));
-  text-size: linear(([view::zoom] - 1), (3, (([symbolrank] >= 6) ? 11 : 13)), (6, (([symbolrank] >= 7) ? 14 : (([symbolrank] >= 6) ? 16 : 18))), (8, (([symbolrank] >= 10) ? 14 : (([symbolrank] >= 9) ? 16 : 20))), (15, (([symbolrank] >= 15) ? 14 : (([symbolrank] >= 12) ? 16 : (([symbolrank] >= 9) ? 20 : 24)))));
+  text-line-spacing: (-0.1 * (([symbolrank] >= 15) ? 14 : (([symbolrank] >= 12) ? 16 : (([symbolrank] >= 9) ? 20 : 24))));
+  text-size: (([symbolrank] >= 15) ? 14 : (([symbolrank] >= 12) ? 16 : (([symbolrank] >= 9) ? 20 : 24)));
   text-face-name: @font_din_pro_medium;
   text-horizontal-alignment: 'middle';
   text-vertical-alignment: 'middle';
   text-name: ([name_en]) ?? ([name]);
-  text-wrap-width: (7 * linear(([view::zoom] - 1), (3, (([symbolrank] >= 6) ? 11 : 13)), (6, (([symbolrank] >= 7) ? 14 : (([symbolrank] >= 6) ? 16 : 18))), (8, (([symbolrank] >= 10) ? 14 : (([symbolrank] >= 9) ? 16 : 20))), (15, (([symbolrank] >= 15) ? 14 : (([symbolrank] >= 12) ? 16 : (([symbolrank] >= 9) ? 20 : 24))))));
+  text-wrap-width: (7 * (([symbolrank] >= 15) ? 14 : (([symbolrank] >= 12) ? 16 : (([symbolrank] >= 9) ? 20 : 24))));
   text-opacity: 1;
   text-halo-opacity: 1;
   text-fill: linear([view::brightness], (0.25, @label_fill_3), (0.3, @label_halo_fill));
@@ -1334,12 +1334,12 @@ Map {
 }
 #place_label[zoom >= 4][zoom < 10] when((([class] = 'state' || [class] = 'disputed_state') ? (([$localized] != null) ? true : (([worldview] = 'all' || [worldview] = 'US') ? true : false)) : false))::state_label {
   text-placement: 'billboard';
-  text-size: linear(([view::zoom] - 1), (4, (([symbolrank] >= 7) ? 7 : (([symbolrank] >= 6) ? 8 : 9))), (9, (([symbolrank] >= 7) ? 14 : (([symbolrank] >= 6) ? 16 : 21))));
+  text-size: (([symbolrank] >= 7) ? 14 : (([symbolrank] >= 6) ? 16 : 21));
   text-transform: 'uppercase';
   text-face-name: @font_din_pro_bold;
   text-name: ([name_en]) ?? ([name]);
-  text-character-spacing: (0.15 * linear(([view::zoom] - 1), (4, (([symbolrank] >= 7) ? 7 : (([symbolrank] >= 6) ? 8 : 9))), (9, (([symbolrank] >= 7) ? 14 : (([symbolrank] >= 6) ? 16 : 21)))));
-  text-wrap-width: (6 * linear(([view::zoom] - 1), (4, (([symbolrank] >= 7) ? 7 : (([symbolrank] >= 6) ? 8 : 9))), (9, (([symbolrank] >= 7) ? 14 : (([symbolrank] >= 6) ? 16 : 21)))));
+  text-character-spacing: (0.15 * (([symbolrank] >= 7) ? 14 : (([symbolrank] >= 6) ? 16 : 21)));
+  text-wrap-width: (6 * (([symbolrank] >= 7) ? 14 : (([symbolrank] >= 6) ? 16 : 21)));
   text-fill: linear([view::brightness], (0.25, @label_fill_3), (0.3, @label_halo_fill));
   text-halo-fill: linear([view::brightness], (0.25, @label_halo_fill_4), (0.3, @label_halo_fill_3));
   text-halo-radius: @label_halo_radius;
@@ -1354,10 +1354,10 @@ Map {
 #place_label[zoom >= 2][zoom < 11] when((([class] = 'country' || [class] = 'disputed_country') ? (([$localized] != null) ? true : (([worldview] = 'all' || [worldview] = 'US') ? true : false)) : false))::country_label {
   text-placement: 'billboard';
   text-name: ([name_en]) ?? ([name]);
-  text-line-spacing: (-0.1 * linear(([view::zoom] - 1), (1, (([symbolrank] >= 5) ? 8 : (([symbolrank] >= 4) ? 9 : 11))), (9, (([symbolrank] >= 5) ? 17 : (([symbolrank] >= 4) ? 19 : 22)))));
-  text-wrap-width: (6 * linear(([view::zoom] - 1), (1, (([symbolrank] >= 5) ? 8 : (([symbolrank] >= 4) ? 9 : 11))), (9, (([symbolrank] >= 5) ? 17 : (([symbolrank] >= 4) ? 19 : 22)))));
+  text-line-spacing: (-0.1 * (([symbolrank] >= 5) ? 17 : (([symbolrank] >= 4) ? 19 : 22)));
+  text-wrap-width: (6 * (([symbolrank] >= 5) ? 17 : (([symbolrank] >= 4) ? 19 : 22)));
   text-face-name: @font_din_pro_medium;
-  text-size: linear(([view::zoom] - 1), (1, (([symbolrank] >= 5) ? 8 : (([symbolrank] >= 4) ? 9 : 11))), (9, (([symbolrank] >= 5) ? 17 : (([symbolrank] >= 4) ? 19 : 22))));
+  text-size: (([symbolrank] >= 5) ? 17 : (([symbolrank] >= 4) ? 19 : 22));
   text-opacity: 1;
   text-halo-opacity: 1;
   text-fill: linear([view::brightness], (0.25, @label_fill_3), (0.3, @label_halo_fill));

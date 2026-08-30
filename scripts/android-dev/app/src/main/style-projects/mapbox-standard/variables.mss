@@ -86,6 +86,7 @@
 @line_stroke: hsl(295, 10%, 93%);
 @line_stroke_2: hsl(295, 10%, 97%);
 @line_stroke_3: hsl(224, 25%, 80%);
+@line_stroke_4: hsl(200, 100%, 80%);
 @national_park_fill: hsl(115, 30%, 84%);
 @natural_fill: hsl(210, 20%, 80%);
 @natural_fill_2: hsl(210, 20%, 46%);
@@ -123,9 +124,8 @@
 @poi_label_icon_background_fill_8: hsl(110, 70%, 40%);
 @poi_label_icon_background_fill_9: hsl(200, 20%, 55%);
 @poi_label_icon_fill: hsla(0, 0, 0, 0);
-@polygon_fill: hsl(200, 100%, 80%);
-@polygon_fill_2: hsl(52, 65%, 75%);
-@polygon_fill_3: hsl(52, 65%, 86%);
+@polygon_fill: hsl(52, 65%, 75%);
+@polygon_fill_2: hsl(52, 65%, 86%);
 @rail_stroke: hsl(0, 0%, 30%);
 @rail_stroke_2: hsl(0, 0%, 65%);
 @recreation_polygon_fill: hsla(20, 3%, 90%, 0.2);
@@ -162,9 +162,8 @@
 @tunnel_stroke_2: hsla(224, 25%, 90%, 0.8);
 @v2d_building_fill: hsl(0, 0%, 58%);
 @v2d_building_fill_2: hsl(40, 43%, 91%);
-@v2d_building_outline_stroke: hsla(0, 0%, 100%, 0);
-@v2d_building_outline_stroke_2: hsl(0, 18%, 43%);
-@v2d_building_outline_stroke_3: hsl(40, 43%, 73%);
+@v2d_building_outline_stroke: hsl(0, 18%, 43%);
+@v2d_building_outline_stroke_2: hsl(40, 43%, 73%);
 @v3d_building_fill: hsl(30, 53%, 93%);
 @water_fill: hsl(200, 100%, 25%);
 @waterway_shadow_stroke: hsl(219, 100%, 79%);

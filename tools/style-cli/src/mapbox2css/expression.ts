@@ -385,6 +385,11 @@ function translateStep(args: Json[]): string {
     return `step(${input}, ${stops.join(', ')})`;
 }
 
+/** A stop value that is itself a ramp, which is the one thing a CartoCSS ramp cannot hold. */
+function isRamp(value: Json): boolean {
+    return Array.isArray(value) && (value[0] === 'interpolate' || value[0] === 'step');
+}
+
 /**
  * ["interpolate", ["linear"], ["zoom"], z, v, ...] -> linear([view::zoom], (z, v), ...).
  * ["exponential", 1] is linear, so it is accepted; any other base is not.
@@ -414,6 +419,17 @@ function translateInterpolate(args: Json[], notes?: string[]): string {
     const pairs: Array<readonly [Json, Json]> = [];
     for (let i = 1; i < rest.length; i += 2) {
         pairs.push([rest[i] as Json, rest[i + 1] as Json] as const);
+    }
+
+    // CartoCSS has no NESTED ramp. `linear(z, (13, c), (14, linear(brightness, ...)))` parses and
+    // then draws NOTHING - Mapbox Standard writes its water fill exactly that way and every lake
+    // came out empty (device A/B: replacing the inner ramp with a constant brought them back). The
+    // inner ramp is the one that carries the day/night difference, so the outer collapses onto it.
+    const nested = pairs.filter(([, value]) => isRamp(value));
+    if (nested.length > 0) {
+        notes?.push(`a ramp over ${input} collapsed onto the ramp at one of its stops: ` +
+            'CartoCSS cannot nest two, and a nested one silently draws nothing');
+        return translateExpression(nested[nested.length - 1][1], notes);
     }
 
     // The SDK interpolates an exponential ramp itself, so the curve is carried rather than

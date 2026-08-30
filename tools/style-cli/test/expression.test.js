@@ -255,3 +255,15 @@ test('cubic-bezier is an easing, not CartoCSS cubic, which is a spline', () => {
     assert.match(out, /^linear\(/);
     assert.ok(!out.includes('cubic('), 'never the spline');
 });
+
+test('a ramp at the stop of another ramp collapses: CartoCSS cannot nest two', () => {
+    // Mapbox Standard writes its water fill as a zoom ramp whose far stop is a brightness ramp.
+    // The nested form parses and then draws NOTHING - every lake came out empty on device.
+    const notes = [];
+    const out = translateExpression(['interpolate', ['linear'], ['zoom'],
+        13, '#aaddff',
+        14, ['interpolate', ['linear'], ['measure-light', 'brightness'], 0, '#004466', 0.02, '#aaddff']], notes);
+    assert.ok(!/linear\([^)]*linear\(/.test(out), out);
+    assert.match(out, /view::brightness/);
+    assert.match(notes.join(' '), /cannot nest/);
+});

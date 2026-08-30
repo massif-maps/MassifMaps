@@ -17,7 +17,9 @@
     __weak id<MSFExampleHost> _host;
     NSUInteger _style;
     NSUInteger _formula;
-    double _hour;
+    double _sunAltitude;
+    BOOL _rising;
+    NSUInteger _preset;
 }
 
 + (NSString *)exampleId {
@@ -60,7 +62,7 @@ static NSArray<NSArray<NSString *> *> *formulas(void) {
         @"{\"sunAltitude\":60,\"ambientColor\":\"#00fff0\",\"ambientIntensity\":1.0,"
         @"\"sunColor\":\"#fff700\",\"sunIntensity\":0.45}]";
     NSString *mapbox =
-        @"[{\"sunAltitude\":-9,\"ambientColor\":\"#001438\",\"ambientIntensity\":0.5,"
+        @"[{\"sunAltitude\":-9,\"ambientColor\":\"#464d69\",\"ambientIntensity\":0.5,"
         @"\"sunColor\":\"#3f4455\",\"sunIntensity\":0.5},"
         @"{\"sunAltitude\":3,\"ambientColor\":\"#363e5e\",\"ambientIntensity\":0.8,"
         @"\"sunColor\":\"#fec286\",\"sunIntensity\":0.2},"
@@ -73,12 +75,20 @@ static NSArray<NSArray<NSString *> *> *formulas(void) {
     return @[ @[ @"Mapbox", mapbox ], @[ @"Psychedelic", psychedelic ] ];
 }
 
-/** The hour is swept, not picked: the curve is continuous and that is the point of it. */
-static const double kStartHour = 17.4;
+/**
+ * The SUN HEIGHT is what the curve is anchored on, so it is what the slider sweeps. An hour is one
+ * step further away, and a day's worth of hours crosses the twilight band (3 to 12 degrees up) in
+ * about 33 minutes - 2.3% of a 0-24 slider - so dawn and dusk are unreachable by dragging one.
+ */
+static const double kStartAltitude = 10.0;
+static const double kPresetAltitudes[] = { 40.0, 70.0, 10.0, -30.0 };
+static const BOOL kPresetRising[] = { YES, NO, NO, NO };
+static NSArray<NSString *> *presetNames(void) { return @[ @"dawn", @"day", @"dusk", @"night" ]; }
 
 - (void)startWithHost:(id<MSFExampleHost>)host {
     _host = host;
-    _hour = kStartHour;
+    _sunAltitude = kStartAltitude;
+    _preset = 2;
     MSFMassifMap *map = host.map;
 
     // How far a TILTED far field may coarsen: unbounded, the grazing term makes the horizon band
@@ -130,11 +140,19 @@ static const double kStartHour = 17.4;
         [self applyFormula];
         [self caption];
     }];
-    // A slider, because the curve is continuous: sweeping it is what shows the sun passing THROUGH
-    // dusk rather than jumping between four presets.
-    [host slider:@"Hour" min:0 max:24 value:kStartHour action:^(float value) {
-        self->_hour = value;
+    [host slider:@"Sun" min:-30 max:70 value:kStartAltitude action:^(float value) {
+        self->_sunAltitude = value;
         [self applyHour];
+        [self caption];
+    }];
+    // Straight to MapBox's own four, so the render can be held against theirs. Each sets the
+    // AZIMUTH too: nothing but the direction of travel separates dawn from dusk at the same height.
+    [host button:@"Preset" action:^{
+        self->_preset = (self->_preset + 1) % 4;
+        self->_sunAltitude = kPresetAltitudes[self->_preset];
+        self->_rising = kPresetRising[self->_preset];
+        [self applyHour];
+        [self caption];
     }];
     [host caption:@"Two styles, two formulas: the hour picks the light, the curve picks the look."];
 }
@@ -186,15 +204,14 @@ static const double kStartHour = 17.4;
 
 /** An hour is a sun POSITION; the curve turns that into a light. */
 - (void)applyHour {
-    double altitude = 62.0 * sin(M_PI * (_hour - 6.0) / 12.0);
-    double azimuth = 90.0 + (_hour - 6.0) * 15.0;
     [_host.map.light apply:[[[MSFSpec object]
-        set:@"sunAzimuth" value:@(azimuth)]
-        set:@"sunAltitude" value:@(altitude)]];
+        set:@"sunAzimuth" value:@(_rising ? 90.0 : 270.0)]
+        set:@"sunAltitude" value:@(_sunAltitude)]];
 }
 
 - (void)caption {
-    [_host caption:[NSString stringWithFormat:@"%@ formula on %@",
+    [_host caption:[NSString stringWithFormat:@"%@ - sun %.0f\u00b0 %@ - %@ on %@",
+                    presetNames()[_preset], _sunAltitude, _rising ? @"rising" : @"setting",
                     formulas()[_formula][0], styles()[_style][0]]];
 }
 

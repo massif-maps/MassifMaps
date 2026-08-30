@@ -68,7 +68,7 @@ public class DayCycleLightExample extends MapExample {
      */
     private static final String MAPBOX =
         "["
-        + "{\"sunAltitude\":-9,\"ambientColor\":\"#001438\",\"ambientIntensity\":0.5,"
+        + "{\"sunAltitude\":-9,\"ambientColor\":\"#464d69\",\"ambientIntensity\":0.5,"
         + "\"sunColor\":\"#3f4455\",\"sunIntensity\":0.5},"
         + "{\"sunAltitude\":3,\"ambientColor\":\"#363e5e\",\"ambientIntensity\":0.8,"
         + "\"sunColor\":\"#fec286\",\"sunIntensity\":0.2},"
@@ -83,13 +83,27 @@ public class DayCycleLightExample extends MapExample {
         { "Psychedelic", PSYCHEDELIC },
     };
 
-    /** The hour is swept, not picked: the curve is continuous and that is the point of it. */
-    private static final float START_HOUR = 17.4f;
+    /**
+     * The SUN HEIGHT is what the curve is anchored on, so it is what the slider sweeps.
+     *
+     * An hour is one step further away: it has to be turned into a height first, and a day's worth
+     * of hours crosses the twilight band (3 to 12 degrees up) in about 33 minutes - 2.3% of a 0-24
+     * slider - so dawn and dusk are unreachable by dragging one. Sweeping the height instead lands
+     * on every preset exactly, which is also how a render is compared against MapBox's own.
+     */
+    private static final float START_ALTITUDE = 10f;
+
+    /** MapBox's four presets, as the sun heights the curve anchors them at. */
+    private static final float[] PRESET_ALTITUDES = { 40f, 70f, 10f, -30f };
+    private static final boolean[] PRESET_RISING = { true, false, false, false };
+    private static final String[] PRESET_NAMES = { "dawn", "day", "dusk", "night" };
+    private int preset = 2;
 
     private ExampleHost host;
     private int style;
     private int formula;
-    private float hour = START_HOUR;
+    private float sunAltitude = START_ALTITUDE;
+    private boolean rising;
 
     @Override
     public void onStart(ExampleHost host) {
@@ -146,7 +160,7 @@ public class DayCycleLightExample extends MapExample {
             public void run() {
                 style = (style + 1) % STYLES.length;
                 buildLayer(DayCycleLightExample.this.host.map());
-                DayCycleLightExample.this.host.caption(FORMULAS[formula][0] + " formula on " + STYLES[style][0]);
+                DayCycleLightExample.this.host.caption(describe());
             }
         });
         host.button("Formula", new Runnable() {
@@ -154,16 +168,30 @@ public class DayCycleLightExample extends MapExample {
             public void run() {
                 formula = (formula + 1) % FORMULAS.length;
                 applyFormula();
-                DayCycleLightExample.this.host.caption(FORMULAS[formula][0] + " formula on " + STYLES[style][0]);
+                DayCycleLightExample.this.host.caption(describe());
             }
         });
         // A slider, because the curve is continuous: sweeping it is what shows the sun passing
         // THROUGH dusk rather than jumping between four presets.
-        host.slider("Hour", 0f, 24f, START_HOUR, new ExampleHost.OnValue() {
+        host.slider("Sun", -30f, 70f, START_ALTITUDE, new ExampleHost.OnValue() {
             @Override
             public void onValue(float value) {
-                hour = value;
+                sunAltitude = value;
                 applyHour();
+                DayCycleLightExample.this.host.caption(describe());
+            }
+        });
+        // Straight to MapBox's own four, so the render can be held against theirs. Each sets the
+        // AZIMUTH too: nothing but the direction of travel separates dawn from dusk at the same
+        // height, and the SDK reads that from the sun's easting.
+        host.button("Preset", new Runnable() {
+            @Override
+            public void run() {
+                preset = (preset + 1) % PRESET_ALTITUDES.length;
+                sunAltitude = PRESET_ALTITUDES[preset];
+                rising = PRESET_RISING[preset];
+                applyHour();
+                DayCycleLightExample.this.host.caption(PRESET_NAMES[preset] + " - " + describe());
             }
         });
         host.caption("Two styles, two formulas: the hour picks the light, the curve picks the look.");
@@ -212,12 +240,15 @@ public class DayCycleLightExample extends MapExample {
             .set("dayCycleLightStops", FORMULAS[formula][1]));
     }
 
-    /** An hour is a sun POSITION; the curve turns that into a light. */
+    private String describe() {
+        return String.format(java.util.Locale.US, "sun %.0f\u00b0 %s - %s on %s",
+            sunAltitude, rising ? "rising" : "setting", FORMULAS[formula][0], STYLES[style][0]);
+    }
+
+    /** The curve reads a sun POSITION. East of north is morning, which is what picks dawn. */
     private void applyHour() {
-        double altitude = 62.0 * Math.sin(Math.PI * (hour - 6.0) / 12.0);
-        double azimuth = 90.0 + (hour - 6.0) * 15.0;
         host.map().light().apply(Spec.object()
-            .set("sunAzimuth", azimuth)
-            .set("sunAltitude", altitude));
+            .set("sunAzimuth", rising ? 90.0 : 270.0)
+            .set("sunAltitude", sunAltitude));
     }
 }

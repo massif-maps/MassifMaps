@@ -77,8 +77,16 @@ const EMISSIVE_DEFAULT: Record<string, number> = {
     'model-emissive-strength': 0,
 };
 
-export function emissiveDefault(source: string | null): number | null {
-    return source === null ? null : EMISSIVE_DEFAULT[source] ?? null;
+/** Which of the defaults above are a LABEL's - the ones `--label-emissive` may override. */
+const LABEL_EMISSIVE = new Set(['text-emissive-strength', 'icon-emissive-strength']);
+
+export function emissiveDefault(source: string | null, labelDefault?: number): number | null {
+    if (source === null) return null;
+    // A style with no light model of its own states no emissive anywhere, so mapbox's defaults are
+    // all it has - and theirs keep a label fully emissive, which leaves the labels sitting bright
+    // over a map that darkens around them. `--label-emissive` is how such a style says otherwise.
+    if (labelDefault !== undefined && LABEL_EMISSIVE.has(source)) return labelDefault;
+    return EMISSIVE_DEFAULT[source] ?? null;
 }
 
 /** A colour literal in any spelling the translator emits. None of them nest a paren. */

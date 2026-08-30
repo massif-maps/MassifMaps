@@ -185,6 +185,18 @@ export interface ConvertOptions {
      * cannot have its fills lit live and its lines pre-lit.
      */
     liveLight?: boolean;
+
+    /**
+     * What a TEXT or ICON emissive strength defaults to where the style states none.
+     *
+     * MapBox's own default is 1 - a label is drawn as authored at any hour, which is what keeps a
+     * name legible over a night map - and that is what this is when unset. A style with no light
+     * model at all (MapTiler Streets states no emissive anywhere) then has bright labels sitting
+     * over a map that darkens around them; a value here dims them with it.
+     *
+     * Only used under `--live-light`; the folding path has no unstated values to fill in.
+     */
+    labelEmissive?: number;
 }
 
 /**
@@ -393,7 +405,7 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
                         continue;
                     }
                 }
-                const emissive = stated === undefined ? emissiveDefault(source)
+                const emissive = stated === undefined ? emissiveDefault(source, options.labelEmissive)
                     : typeof stated === 'number' ? stated
                     : representativeEmissive(stated, representativeScale(stated, 1), (name) => values.get(name));
                 if (emissive === null || emissive >= 1) continue;

@@ -243,7 +243,7 @@ export function extractIcon(
         scale === 1 ? '' : `x${Math.round(scale * 100)}`,
     ].filter(Boolean).join('-');
     const file = `${safeFileName(writeAs ?? name)}${suffix ? `-${suffix}` : ''}.png`;
-    writeFileSync(join(iconsDir, file), PNG.sync.write(out));
+    writeFileSync(join(iconsDir, file), PNG.sync.write(out, ICON_PNG));
 
     const ratio = entry.pixelRatio && entry.pixelRatio > 0 ? entry.pixelRatio : 1;
     return {
@@ -261,6 +261,19 @@ const FLAT_ALPHA = 200;
 const RING_DEPTH = 3;
 /** Where the plate fields are written, so they never collide with the raster cut of the same name. */
 const GLYPH_DIR = 'icons-glyph';
+
+/**
+ * How the icons are encoded. Both are LOSSLESS - the pixels the SDK reads are identical - and
+ * together they halve the sprite, which is most of what a converted style weighs (3.9 MB of PNG
+ * for Mapbox Standard's 595 icons, 2.0 MB after).
+ *
+ * A distance FIELD carries its value in one channel: buildField writes r=g=b and a fully opaque
+ * alpha, so three of the four bytes per pixel are a copy and a constant. `colorType: 0` writes the
+ * red channel alone, which a decoder expands right back to r=g=b=v, a=255.
+ */
+const FIELD_PNG = { colorType: 0, deflateLevel: 9, filterType: -1 } as const;
+/** A colour icon needs all four channels; only the deflate is worth tightening. */
+const ICON_PNG = { deflateLevel: 9, filterType: -1 } as const;
 
 type RGB = readonly [number, number, number];
 
@@ -526,7 +539,7 @@ export function extractIconPlate(
     const iconsDir = join(outDir, GLYPH_DIR);
     mkdirSync(iconsDir, { recursive: true });
     const file = `${safeFileName(writeAs ?? name)}.png`;
-    writeFileSync(join(iconsDir, file), PNG.sync.write(field));
+    writeFileSync(join(iconsDir, file), PNG.sync.write(field, FIELD_PNG));
 
     const ratio = entry.pixelRatio && entry.pixelRatio > 0 ? entry.pixelRatio : 1;
     return {
@@ -580,7 +593,7 @@ export function extractIconSilhouette(
     const iconsDir = join(outDir, GLYPH_DIR);
     mkdirSync(iconsDir, { recursive: true });
     const file = `${safeFileName(writeAs ?? iconName)}.png`;
-    writeFileSync(join(iconsDir, file), PNG.sync.write(field));
+    writeFileSync(join(iconsDir, file), PNG.sync.write(field, FIELD_PNG));
 
     const ratio = entry.pixelRatio && entry.pixelRatio > 0 ? entry.pixelRatio : 1;
     return { file: `${GLYPH_DIR}/${file}`, width: w / ratio, height: h / ratio, sdf: true, pixelRatio: ratio };

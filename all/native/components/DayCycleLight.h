@@ -28,12 +28,21 @@ namespace massif {
             float directIntensity;
         };
 
-        // Standard's own values, verbatim. dawn hsl(28,98%,93%)/hsl(33,98%,77%), day white/white,
-        // dusk hsl(228,27%,29%)/hsl(30,98%,76%), night hsl(217,100%,11%)/hsl(225,15%,29%).
+        // Standard's own values. dawn hsl(28,98%,93%)/hsl(33,98%,77%), day white/white,
+        // dusk hsl(228,27%,29%)/hsl(30,98%,76%).
         static constexpr Setup DAY   = { { 1.0000f, 1.0000f, 1.0000f }, 0.80f, { 1.0000f, 1.0000f, 1.0000f }, 0.20f };
         static constexpr Setup DAWN  = { { 0.9986f, 0.9254f, 0.8614f }, 0.75f, { 0.9954f, 0.7925f, 0.5446f }, 0.50f };
         static constexpr Setup DUSK  = { { 0.2117f, 0.2430f, 0.3683f }, 0.80f, { 0.9952f, 0.7600f, 0.5248f }, 0.20f };
-        static constexpr Setup NIGHT = { { 0.0000f, 0.0766f, 0.2200f }, 0.50f, { 0.2465f, 0.2683f, 0.3335f }, 0.50f };
+        // NIGHT's ambient is NOT Standard's hsl(217,100%,11%), and deliberately.
+        //
+        // Their night preset keeps a DIRECTIONAL light 30 degrees above the horizon whatever the
+        // hour - an artistic moon - and half of what their night ground receives comes from it. A
+        // day cycle drives the direction from the real sun, which at night is under the ground, so
+        // `max(0, sunUp)` drops that half and only their very dark ambient is left: the ground came
+        // out at (0.00, 0.06, 0.16) against the (0.20, 0.22, 0.30) mapbox-gl draws, with no red at
+        // all. The moon's contribution is folded into the ambient instead, which lands on their
+        // number - the curve exists to reproduce what Standard RENDERS, not what it states.
+        static constexpr Setup NIGHT = { { 0.2745f, 0.3010f, 0.4115f }, 0.50f, { 0.2465f, 0.2683f, 0.3335f }, 0.50f };
 
         /** One light anchored on a sun height. A list of these is the whole curve. */
         struct Stop {

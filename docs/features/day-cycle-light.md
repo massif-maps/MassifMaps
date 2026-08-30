@@ -16,16 +16,33 @@ and how an **app** replaces the curve that decides what the light is at a given 
 
 ```java
 map.light(Spec.of("light")
-    .set("dayCycleLightsEnabled", true)   // the hour drives the light
+    .set("dayCycleLightsEnabled", true)   // the sun's height drives the light
     .set("sunOverridingStyle", true)      // the app's sun beats the style's
     .set("terrainLightingEnabled", true)  // needed for cast shadows - see below
     .set("shadowStrength", 0.35));
 
-// An hour is a sun POSITION; the curve turns that into a light.
+// The curve is anchored on the sun's HEIGHT, so that is what to drive.
 map.light().apply(Spec.object()
-    .set("sunAzimuth", 90 + (hour - 6) * 15)
-    .set("sunAltitude", 62 * Math.sin(Math.PI * (hour - 6) / 12)));
+    .set("sunAltitude", 10)     // dusk
+    .set("sunAzimuth", 270));   // setting; 90 would make the same height dawn
 ```
+
+:::tip Drive the height, not the hour
+An hour is one step further away — it has to be turned into a height first, and a plausible day
+cycle crosses the twilight band (3° to 12°) in about **33 minutes**. On a 0–24 slider that is 2.3%
+of the travel, so dawn and dusk are unreachable by dragging even though the curve passes exactly
+through them. Setting `sunAltitude` directly lands on every preset:
+
+| MapBox preset | `sunAltitude` | `sunAzimuth` |
+|---|---|---|
+| dawn | 40 | 90 (east — rising) |
+| day | 70 | any |
+| dusk | 10 | 270 (west — setting) |
+| night | −30 | any |
+
+Nothing but the direction of travel separates dawn from dusk at the same height, and the SDK reads
+that from the sun's easting.
+:::
 
 With `dayCycleLightsEnabled` off nothing is derived and the style's own values stand, which is what
 every map did before this existed.
@@ -98,7 +115,7 @@ three different kinds have no order anybody would guess:
 
 ```json
 [
-  { "sunAltitude": -9, "ambientColor": "#001438", "ambientIntensity": 0.5,
+  { "sunAltitude": -9, "ambientColor": "#464d69", "ambientIntensity": 0.5,
     "sunColor": "#3f4455", "sunIntensity": 0.5 },
   { "sunAltitude":  3, "ambientColor": "#363e5e", "ambientIntensity": 0.8,
     "sunColor": "#fec286", "sunIntensity": 0.2 },
@@ -111,6 +128,14 @@ three different kinds have no order anybody would guess:
 
 That **is** the built-in curve — MapBox Standard's four light setups at the sun heights it states
 them for. Passing an empty list selects exactly it.
+
+The night ambient is the one value that is **not** Standard's own (`hsl(217,100%,11%)`). Their night
+preset keeps a directional light 30° above the horizon whatever the hour — an artistic moon — and
+half of what their night ground receives comes from it. A real day cycle has the sun under the
+ground, so that half is dropped and only their very dark ambient is left: the ground came out at
+(0.00, 0.06, 0.16) against the (0.20, 0.22, 0.30) mapbox-gl draws, with no red at all. The moon's
+contribution is folded into the ambient instead, which lands on their number. The curve exists to
+reproduce what Standard *renders*, not what it states.
 
 - `sunAltitude` is required; a stop with no height has no place on a curve and is refused.
 - Colours read `#rgb`, `#rrggbb`, `#aarrggbb`, or the plain ARGB number every other colour property

@@ -41,9 +41,12 @@ namespace {
                    nearly(dusk.ambient[2], DayCycleLight::DUSK.ambient[2]),
                    "a sun 10 degrees up is dusk exactly, not a blend of it");
 
+        // NOT Standard's stated ambient. Their night keeps a directional light 30 degrees up
+        // whatever the hour; a day cycle has the sun under the ground and drops it, so the moon's
+        // half is folded into the ambient instead. What is pinned is the RESULT - see below.
         DayCycleLight::Setup night = DayCycleLight::atSunHeight(-20.0f, false);
-        TEST_CHECK(nearly(night.ambient[0], 0.0f) && nearly(night.ambient[2], 0.22f),
-                   "a sun below the horizon is Standard's blue night ambient");
+        TEST_CHECK(night.ambient[2] > night.ambient[0] && night.ambient[0] > 0.0f,
+                   "a sun below the horizon is a blue night ambient with a little of every channel");
     }
 
     void testRisingPicksDawnOverDusk() {
@@ -92,6 +95,15 @@ namespace {
         TEST_CHECK(nearly(radiance[0], 0.9945f) && nearly(radiance[1], 0.9945f) &&
                    nearly(radiance[2], 0.9945f),
                    "and a high white sun is very nearly no grade at all");
+
+        // The night ground, which is where the two models diverge and had to be brought back:
+        // mapbox-gl draws it at (0.20, 0.22, 0.30). Ours reached (0.00, 0.06, 0.16) while the
+        // NIGHT ambient was Standard's own, because their below-horizon moon is dropped by a real
+        // day cycle. This is the number the fold was chosen to land on.
+        DayCycleLight::groundRadiance(DayCycleLight::NIGHT, sunUp(-20.0f), radiance);
+        TEST_CHECK(nearly(radiance[0], 0.20f, 0.01f) && nearly(radiance[1], 0.22f, 0.01f) &&
+                   nearly(radiance[2], 0.30f, 0.01f),
+                   "and night lands on mapbox's own night ground radiance");
     }
 
     void testRadianceCarriesColourNotOnlyBrightness() {
@@ -102,8 +114,10 @@ namespace {
         DayCycleLight::groundRadiance(DayCycleLight::NIGHT, sunUp(-10.0f), night);
         TEST_CHECK(dusk[2] > dusk[0] && dusk[0] > dusk[1],
                    "dusk's radiance is bluest and least green, as its ambient is");
-        TEST_CHECK(night[2] > night[0] * 2.0f,
-                   "and night's is overwhelmingly blue");
+        // Blue-LEANING, not overwhelmingly blue: mapbox's night ground is (0.20, 0.22, 0.30), a
+        // cold grey rather than a blue wash. It read as a wash while the moon's half was missing.
+        TEST_CHECK(night[2] > night[1] && night[1] > night[0],
+                   "and night's leans blue, coldest in red");
         TEST_CHECK(night[0] < dusk[0], "night is darker than dusk in every channel");
     }
 

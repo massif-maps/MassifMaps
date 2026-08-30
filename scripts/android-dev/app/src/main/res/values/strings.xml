@@ -8,5 +8,6 @@
 
     <string name="example_back">Back</string>
     <string name="example_source">View source</string>
+    <string name="example_settings">Settings</string>
     <string name="example_source_missing">Source not bundled - run a gradle build.</string>
 </resources>

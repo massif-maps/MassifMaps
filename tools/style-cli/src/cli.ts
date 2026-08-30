@@ -16,6 +16,7 @@ const USAGE = `Usage: massif-style <command> [options] [args]
                                     [--sprite-key '?key=...']
                                     [--contour-schema div] [--contour-major-div N]
                                     [--label-spacing N] [--schema openmaptiles]
+                                    [--source-schema mapbox|maptiler]
       translate a MapBox/MapLibre style to a CartoCSS project
 
       --sprite-key          query string appended to the style's sprite URLs, for a
@@ -23,11 +24,18 @@ const USAGE = `Usage: massif-style <command> [options] [args]
       --label-spacing N     multiply the collision gap between labels; 1 is what the
                             style asks for, higher thins the map out
       --schema NAME         retarget the style's source layers at another tile schema.
-                            'openmaptiles' rewrites MapTiler planet_v4's per-feature-type
-                            layers (forest, grass, city_label, peak, ...) onto the
-                            OpenMapTiles layer plus the class filter that stands in for
-                            the split. A layer with no equivalent is dropped and named in
-                            the coverage report
+                            'openmaptiles' is the only target. A MapTiler planet_v4 style
+                            becomes the OpenMapTiles layer plus the class filter that
+                            stands in for its per-feature-type split (forest, grass,
+                            city_label, peak, ...); a MapBox Streets v8 style is further
+                            away and also gets its field names (height ->
+                            render_height), its field values (class 'street' -> 'minor')
+                            and its one-layer-two-targets splits (road is both
+                            transportation and transportation_name) rewritten. A layer
+                            with no equivalent is dropped and named in the coverage report
+      --source-schema NAME  which vocabulary the style itself is written in, 'mapbox' or
+                            'maptiler'. Detected from the source layer names when unset,
+                            and conversion stops rather than guess when they are ambiguous
       --no-sprite           skip the sprite; every icon-image is then dropped
       --no-variables        keep the colours, fonts and sizes inline in style.mss instead of
                             hoisting them into a variables.mss a variant can override
@@ -96,7 +104,7 @@ function parseFlags(args: string[]): { flags: Map<string, string>; positional: s
     return { flags, positional };
 }
 
-const VALUE_FLAGS = new Set(['contour-schema', 'contour-major-div', 'sprite-key', 'label-spacing', 'label-emissive', 'halo-emissive', 'geometry-emissive', 'contour-elevation', 'schema', 'config']);
+const VALUE_FLAGS = new Set(['contour-schema', 'contour-major-div', 'sprite-key', 'label-spacing', 'label-emissive', 'halo-emissive', 'geometry-emissive', 'contour-elevation', 'schema', 'source-schema', 'config']);
 
 /**
  * `--config key=value`, repeatable, for a style with a `schema` (Mapbox Standard). Values are read
@@ -143,6 +151,12 @@ async function mapbox2css(args: string[]): Promise<number> {
         return 2;
     }
 
+    const sourceSchema = flags.get('source-schema');
+    if (sourceSchema !== undefined && sourceSchema !== 'mapbox' && sourceSchema !== 'maptiler') {
+        process.stderr.write(`Unknown --source-schema "${sourceSchema}"; "mapbox" or "maptiler".\n`);
+        return 2;
+    }
+
     const style = JSON.parse(readFileSync(input, 'utf8')) as MapboxStyle;
 
     // Icons need the sprite sheet, which the style only points at - so this is opt-in and says
@@ -175,6 +189,7 @@ async function mapbox2css(args: string[]): Promise<number> {
         flattenSdf: flags.has('sdf-flatten'),
         labelSpacing: Number(flags.get('label-spacing') ?? 1),
         schema: schema === 'openmaptiles' ? 'openmaptiles' : undefined,
+        sourceSchema,
         contour: contourSchema === 'div'
             ? {
                 schema: 'div',

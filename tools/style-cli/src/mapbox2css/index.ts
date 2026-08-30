@@ -6,7 +6,7 @@ import { HANDLED_ELSEWHERE, followsLine, repeatsAlongLine, resolvePlacement } fr
 import { KNOWN_GAPS, LAYER_SYMBOLIZER, PROPERTY_MAP, VALUE_MAP } from './properties.js';
 import { PLATE_MAP, asShieldDeclaration, isShieldLayer, plateRadius } from './shield.js';
 import { type ExtractedIcon, type IconPlate, type SpriteSet, extractAllIconPlates, extractAllIcons, extractIcon, extractIconPlate } from './sprite.js';
-import { type Schema, dropMissingFieldTests, mapSourceLayer, withMappingFilter } from './schema.js';
+import { ICON_ALIASES, type Schema, type SourceSchema, detectSourceSchema, mapSourceLayer, retargetLayer } from './schema.js';
 import { collapseBranches, splitLayer } from './split.js';
 import { type HoistBlock, hoistVariables, paletteHeader } from './variables.js';
 import { LIGHT_PRESET, importOnly, presetsOf, resolveConfig, sceneBrightness } from './config.js';
@@ -156,6 +156,8 @@ export interface ConvertOptions {
     labelSpacing?: number;
     /** Retarget the style's source layers at another tile schema - see schema.ts. */
     schema?: Schema;
+    /** Which vocabulary the style's own source layers are in. Detected from them when unset. */
+    sourceSchema?: SourceSchema;
     /** Filled in during conversion: the style parameters the output declares (icons, colour tables). */
     styleParams?: Map<string, Json>;
     /** Filled in during conversion: any icon, for the size and offset a per-feature name has none of. */
@@ -296,6 +298,21 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
     // config converts to nothing at all. See fold.ts.
     const importsOnly = importOnly(style);
     if (importsOnly) coverage.drop('the whole style', importsOnly, 'imports');
+
+    // Which vocabulary the style's own source layers are in. Only read when retargeting, and only
+    // guessed at when the caller did not say - a wrong table draws the wrong features everywhere.
+    const detected = options.schema
+        ? detectSourceSchema((style.layers ?? []).map((l) => l['source-layer'] ?? ''))
+        : null;
+    if (options.schema && !options.sourceSchema) {
+        if (!detected) {
+            throw new Error('cannot tell which schema this style is written against; ' +
+                'pass --source-schema mapbox or --source-schema maptiler');
+        }
+        coverage.approximate(`source layers read as the ${detected} schema`);
+    }
+    const sourceSchema: SourceSchema = options.sourceSchema ?? detected ?? 'maptiler';
+    options = { ...options, sourceSchema };
     const { parameters, undeclared } = resolveConfig(style);
     for (const name of undeclared) {
         coverage.approximate(`config "${name}" is read but declared in no schema; took what it was read as`);
@@ -399,41 +416,64 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
         }
 
         // Retargeting at another tile schema is a rename plus a filter clause - what the source
-        // schema said by splitting into layers, the target says with a `class` field.
-        let target = sourceLayer;
-        let schemaLayer = layer;
+        // schema said by splitting into layers, the target says with a `class` field. One source
+        // layer can feed SEVERAL target ones (MapBox draws a road and its name off the same one);
+        // each keeps only the part of the filter that can match it.
+        const targets: Array<{ target: string; layer: MapboxLayer }> = [];
         if (options.schema) {
-            const { mapping, why } = mapSourceLayer(sourceLayer, options.schema);
-            if (!mapping) {
+            const { mappings, why } = mapSourceLayer(sourceLayer, options.schema, sourceSchema);
+            if (mappings.length === 0) {
                 coverage.drop(`source-layer "${sourceLayer}"`, why ?? 'no equivalent', layer.id);
                 return;
             }
-            target = mapping.layer;
-            const merged = dropMissingFieldTests(withMappingFilter(layer, mapping), mapping.layer, (field) =>
-                coverage.approximate(
-                    `"${field}" test dropped on "${layer.id}": the target schema has no such field, ` +
-                    'and a test on it can only fail, which would draw nothing at all'));
-            if (merged === false) {
+            // The RAW layer, then folded again per target. foldLayer records which FIELD a
+            // recolourable icon is keyed by, as a bare name; retargeting the folded layer renamed
+            // the expression and left that name behind, so every POI fell back to flat sprite
+            // artwork and lost its category-coloured plate. Folding after the rename costs one
+            // extra fold per target and keeps the two in step.
+            const raw = (style.layers ?? [])[index];
+            for (const mapping of mappings) {
+                const retargetedLayer = retargetLayer(raw, mapping, sourceSchema, {
+                    dropped: (field) => coverage.approximate(
+                        `"${field}" test dropped on "${layer.id}": the target schema has no such field, ` +
+                        'and a test on it can only fail, which would draw nothing at all'),
+                    approximate: (what) => coverage.approximate(`on "${layer.id}": ${what}`),
+                });
+                if (!retargetedLayer) continue;
+                const folded = foldLayer(retargetedLayer, values, scene);
+                // Same visibility strip the pre-folded pass does: the `buildings` parameter carries
+                // the 3D switch now, so the layer's own visibility must not.
+                const { visibility, ...layout } = buildings3D.has(layer.id) ? (folded.layout ?? {}) : {};
+                targets.push({
+                    target: mapping.layer,
+                    layer: buildings3D.has(layer.id) ? ({ ...folded, layout } as MapboxLayer) : folded,
+                });
+            }
+            if (targets.length === 0) {
                 coverage.drop(`layer "${layer.id}"`, 'its filter can never match the target schema', layer.id);
                 return;
             }
-            schemaLayer = { ...layer, filter: (merged ?? undefined) as MapboxLayer['filter'] };
+        } else {
+            targets.push({ target: sourceLayer, layer });
         }
-        (positions.get(target) ?? positions.set(target, []).get(target)!).push(index);
-        emitted.push(target);
 
-        // The contour schemas name the elevation differently; renaming it here means the filter,
-        // the label and every paint expression all see the field the tiles actually carry.
-        const retargeted = options.contour
-            ? (rewriteContourFields(schemaLayer as unknown as Json, options.contour) as unknown as MapboxLayer)
-            : schemaLayer;
+        for (const { target, layer: schemaLayer } of targets) {
+            (positions.get(target) ?? positions.set(target, []).get(target)!).push(index);
+            emitted.push(target);
 
-        // A field-driven paint value becomes one attachment per branch - see split.ts.
-        const variants = splitLayer(isContourLayer(layer) ? retargeted : schemaLayer, coverage);
-        variants.forEach((variant, branch) => {
-            const suffix = variants.length > 1 ? `_b${branch + 1}` : '';
-            emitLayer(variant, `${attachmentName(layer.id)}${suffix}`, target, symbolizer, index);
-        });
+            // The contour schemas name the elevation differently; renaming it here means the filter,
+            // the label and every paint expression all see the field the tiles actually carry.
+            const retargeted = options.contour
+                ? (rewriteContourFields(schemaLayer as unknown as Json, options.contour) as unknown as MapboxLayer)
+                : schemaLayer;
+
+            // A field-driven paint value becomes one attachment per branch - see split.ts.
+            const variants = splitLayer(isContourLayer(layer) ? retargeted : schemaLayer, coverage);
+            variants.forEach((variant, branch) => {
+                const suffix = variants.length > 1 ? `_b${branch + 1}` : '';
+                emitLayer(variant, `${attachmentName(layer.id)}${suffix}`, target, symbolizer, index);
+            });
+        }
     });
 
     /**
@@ -2004,6 +2044,19 @@ function dynamicIconField(image: Json): { fields: string[]; fallback: string | n
  * one attachment per branch, which cost a rule each and ran into MAX_VARIANTS: MapTiler's
  * accommodation table has nine branches, so it did not split at all and every hotel lost its icon.
  */
+/**
+ * The sprite table again under the names the TARGET tiles use. A per-feature icon is looked up by
+ * the field's value at draw time, so a class OpenMapTiles spells `town_hall` cannot be rewritten in
+ * the style - only answered for. See ICON_ALIASES.
+ */
+function aliasSprites(names: string[], file: Map<string, string>, prefix: string, options: ConvertOptions): void {
+    if (!options.schema) return;
+    const have = new Set(names);
+    for (const [alias, sprite] of Object.entries(ICON_ALIASES[options.sourceSchema ?? 'maptiler'])) {
+        if (have.has(sprite) && !have.has(alias)) options.styleParams!.set(`${prefix}${alias}`, file.get(sprite)!);
+    }
+}
+
 function iconExpression(image: Json, layer: MapboxLayer, coverage: Coverage, options: ConvertOptions): string | null {
     const sprites = options.sprites!;
     const slug = safeParamName(layer.id);
@@ -2222,6 +2275,7 @@ function iconExpression(image: Json, layer: MapboxLayer, coverage: Coverage, opt
             // and the table is what gives `??` a miss to fall through on.
             const all = ensureEverySprite();
             for (const name of all.names) options.styleParams!.set(`${paramPrefix}${name}`, all.file.get(name)!);
+            aliasSprites(all.names, all.file, paramPrefix, options);
             const field = `[param::${paramPrefix}[${node[1]}]]`;
             if (!plateWhen || node[1] !== scope!.field) return field;
             // The features the params do NOT cover: their own artwork, from the raster table, and
@@ -2230,6 +2284,7 @@ function iconExpression(image: Json, layer: MapboxLayer, coverage: Coverage, opt
             for (const name of raster.names) {
                 options.styleParams!.set(`${ICON_PARAM_PREFIX}${name}`, `icons/${name}.png`);
             }
+            aliasSprites(raster.names, new Map(raster.names.map((n) => [n, `icons/${n}.png`])), ICON_PARAM_PREFIX, options);
             return `(${plateWhen} ? ${field} : [param::${ICON_PARAM_PREFIX}[${node[1]}]])`;
         }
         if (Array.isArray(node) && node[0] === 'coalesce') {

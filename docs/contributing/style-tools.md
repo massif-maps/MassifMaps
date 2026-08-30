@@ -1005,26 +1005,91 @@ plain number has no curve to sample and still falls back to linear, reported.
 
 ## Retargeting at another tile schema (`--schema`)
 
-MapTiler's `planet_v4` splits by **source layer** what OpenMapTiles splits by a **`class` field**: it
-has a `forest` layer and a `grass` layer where OpenMapTiles has one `landcover` with
-`class = 'wood' | 'grass'`. So `--schema openmaptiles` is a rename plus an extra filter clause, per
-layer — the table is in [`schema.ts`](https://github.com/massif-maps/MassifMaps/blob/master/tools/style-cli/src/mapbox2css/schema.ts).
+`--schema openmaptiles` rewrites a style to read an OpenMapTiles tileset (self-hosted, or MapTiler's
+own `v3`). Two source vocabularies are understood — **MapTiler `planet_v4`** and **MapBox Streets
+v8** — and which one a style is written in is read off its source-layer names, with
+`--source-schema mapbox|maptiler` to say it outright. A style whose names belong to neither
+clearly is **refused**, not guessed at. The tables are in
+[`schema.ts`](https://github.com/massif-maps/MassifMaps/blob/master/tools/style-cli/src/mapbox2css/schema.ts).
 
 Only what is actually equivalent is listed. A source layer with no entry is **dropped and named in
 the coverage report** rather than guessed at: a wrong guess draws the wrong features, which is worse
-than drawing none and much harder to notice. On MapTiler topo-v4 that leaves two — `archipelago_label`
-and `country_disputed_label`, both of which depend on fields OpenMapTiles has no equivalent for.
+than drawing none and much harder to notice.
 
-**Fields are the second half of the problem, and the harder one.** MapTiler gates every place label
-on `iso_a2`; OpenMapTiles `place` carries `class`, `name` and `rank` and nothing else, so the test
-can only fail and the layer draws nothing at all — strictly worse than not testing. `MISSING_FIELDS`
-lists those per target layer and an existence test on one is dropped and reported. Substituting a
-bare `true` is not enough: `["all", true, …]` is not a filter and the whole layer is then dropped as
-malformed, so the constant is folded into its parent instead, and a filter that collapses to `false`
-drops the layer with that reason.
+### MapTiler `planet_v4`: a rename and a class test
+
+`planet_v4` splits by **source layer** what OpenMapTiles splits by a **`class` field**: it has a
+`forest` layer and a `grass` layer where OpenMapTiles has one `landcover` with
+`class = 'wood' | 'grass'`. So that half is a rename plus an extra filter clause, per layer. On
+MapTiler topo-v4 two layers have no equivalent — `archipelago_label` and `country_disputed_label`,
+both depending on fields OpenMapTiles has no counterpart for.
 
 Verified at La Clusaz z14.5 against an OpenMapTiles tileset: landcover, roads, buildings, water,
 water names, road names, and village *and* hamlet labels all render.
+
+### MapBox Streets v8: three more moves
+
+MapBox Streets is further away, and a rename is not enough for any of it:
+
+| What differs | Example | How it is expressed |
+|---|---|---|
+| the field **name** | `height` → `render_height`, `type` → `subclass`, `maki` → `class` | `fields` — renamed in the filter, in every expression, and in a `{token}` text field |
+| the field **values** | `class = 'street'` → `'minor'`, `admin_level` 0/1/2 → 2/4/6, `oneway = "true"` → `1` | `values`, applied in the filter **and** in the paint — a style picks a road's colour with a `match` on the same field it filters on |
+| a value the target expresses with a **second field** | `class = 'motorway_link'` → `class = 'motorway'` AND `ramp = 1`; `structure = 'none'` → no `brunnel` at all | `predicates`, wherever the value is tested |
+| a field the target lacks whose **absence is not the answer** | a shield's sprite is named `shield-reflen`, and OpenMapTiles has neither | `constants` pins it — here to Standard's `default-4` plate, which draws a shield where dropping the fields drew none |
+| one source layer, **several targets** | `road` is both `transportation` and `transportation_name`; `landuse` is both `landuse` and `landcover`; `natural_label` is `water_name`, `mountain_peak` and `place` | a list of mappings, each emitted only where its filter can still match |
+
+The ramp case is the one worth reading twice. OpenMapTiles has no `*_link` class — a ramp is the base
+class with `ramp = 1` — so the base classes have to **exclude** ramps as well, or Standard's link
+layers draw every ramp twice, once at link width and once at motorway width.
+
+The multi-target case is what sorts a MapBox layer between the target ones: a `values` table with a
+`'*'` entry answers for everything not listed, so `natural_label`'s water-name layer maps every class
+it tests to a `water_name` one, maps them all to `null` for `mountain_peak`, and that mapping's
+filter collapses to `false` and is simply not emitted.
+
+Not carried over at all, and reported: `structure` (gates, fences, crosswalks, land structures),
+`motorway_junction`, `depth`, `hillshade` (use a DEM layer), the indoor layers, `tree` and
+`wind_turbine`.
+
+### Fields the target does not carry
+
+This is the second half of the problem and the harder one. MapTiler gates every place label on
+`iso_a2` and MapBox Standard gates every POI on `filterrank`; against a tileset that carries neither,
+the test can only fail and the layer draws **nothing at all** — strictly worse than not testing.
+`MISSING_FIELDS` lists them per source vocabulary and target layer, and a test on one is dropped and
+reported. An existence test gets its honest answer (`has` → true, `!has` → false); a **comparison**
+is answered `true`, so the layer draws too much rather than nothing, which is visible and named in
+the report instead of reading as a broken style.
+
+Substituting a bare `true` is not enough: `["all", true, …]` is not a filter and the whole layer is
+then dropped as malformed, so the constant is folded into its parent instead, and a filter that
+collapses to `false` drops the layer with that reason.
+
+Two renames are approximations rather than equivalences, and both say so in the report:
+`symbolrank` → `rank` (both "lower is more important", not the same scale — but dropping it would
+make Standard's major and minor settlement layers draw the same labels twice), and `maki` → `class`
+(OpenMapTiles' POI class names are already maki-ish, which is what the sprite is keyed by).
+
+**A filter that loses EVERY test is the dangerous case**, so the converter names it. MapBox selects
+its transit stops with `mode` and `stop_type`; OpenMapTiles has neither, so with both dropped the
+layer had nothing left to select on and labelled every POI on the map in the transit style, drawing
+over the real POI layer. The mapping now carries a class test in their place, and any other layer
+this happens to is reported as *"every test in its filter was on a field the target does not carry,
+so it now draws the whole layer"*.
+
+### POIs: one field, two jobs
+
+OpenMapTiles puts on `class` what MapBox reads off two fields — the icon NAME (`maki`) and the
+coarse CATEGORY that picks the label colour (MapBox's own `class`). One field serves both, because a
+category test becomes a test for the OpenMapTiles classes that belong to it: `class = 'food_and_drink'`
+becomes `class in (restaurant, fast_food, cafe, bar, …)`. Each class belongs to exactly one category
+— a `match` takes its first branch, so a class listed twice would answer with whichever MapBox wrote
+first.
+
+The icon is looked up by the field's value at DRAW time, so a class OpenMapTiles spells `town_hall`
+cannot be rewritten in the style, only answered for: `ICON_ALIASES` adds a second sprite-table entry
+under the name the tiles carry (`town_hall` → the sheet's `town-hall`, `railway` → `rail`).
 
 **Draw order is the part that cannot be preserved, and it is separate from placement.** A CartoCSS
 project entry pulls **every attachment of its source-layer** together, so MapBox layers of different
@@ -1033,6 +1098,27 @@ layer(s) draw out of order"). `--schema` makes that worse by construction, since
 now share one target source-layer. Label **placement** does not go through that: the priority is
 computed straight from the MapBox layer index (see below), so which label wins a collision is exact
 even where draw order is approximate.
+
+## A ramp cannot hold another ramp
+
+CartoCSS's `linear()`/`exponential()` take constant stop values. A stop whose value is itself an
+interpolation **parses and then draws nothing at all** — no warning, no fallback colour, just an
+empty polygon. Mapbox Standard writes its water fill exactly that way:
+
+```
+interpolate linear zoom
+  13 -> hsl(200,100%,80%)
+  14 -> interpolate linear ["measure-light","brightness"] 0 -> dark, 0.02 -> hsl(200,100%,80%)
+```
+
+and under `--live-light` — where `measure-light` stays live as `[view::brightness]` instead of being
+resolved to a constant — every lake and river came out empty. Confirmed on device by replacing the
+INNER ramp with a constant, which brought the water straight back while the outer ramp stayed.
+
+The outer ramp now **collapses onto the inner one** and the swap is reported. The inner is the one
+kept because it is what carries the day/night difference, which is the whole point of `--live-light`;
+the outer's own variation over zoom is lost. Four declarations in Standard are affected: the water
+fill, the background emissive, and two polygon opacities.
 
 ## Bracketed predicates, not `when()`
 

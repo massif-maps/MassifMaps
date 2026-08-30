@@ -21,7 +21,15 @@ runtime, so what compiles here renders there. `mapbox2css` is TypeScript.
 massif-style css2xml --roundtrip project.json out.xml   # also parse the XML back and diff
 massif-style mapbox2css style.json out/ --validate      # compile the result before writing it
 massif-style mapbox2css topo.json out/ --contour-schema div   # nth_line -> div contour attributes
+massif-style mapbox2css standard.json out/ --schema openmaptiles   # read OpenMapTiles tiles instead
 ```
+
+`--schema openmaptiles` retargets the style at an OpenMapTiles tileset. Both **MapBox Streets v8**
+and **MapTiler `planet_v4`** are understood as the source, detected from the style's own source-layer
+names (`--source-schema mapbox|maptiler` says it outright). Layer names, field names and field values
+are all rewritten, one source layer can feed several target ones, and anything without an equivalent
+is dropped and named in the coverage report rather than guessed at. See
+[the docs](https://massif-maps.github.io/MassifMaps/docs/contributing/style-tools#retargeting-at-another-tile-schema---schema).
 
 `--contour-schema div` rewrites contour-layer `nth_line` tests onto a `div` (interval in metres)
 attribute, for tiles built with the gdal ladder rather than MapTiler's schema. Only the major/minor

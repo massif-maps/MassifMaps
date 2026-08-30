@@ -1,3 +1,4 @@
+import { renameField } from './schema.js';
 import type { Json, MapboxLayer } from './types.js';
 
 /** MapBox source-layers that carry contour lines. */
@@ -71,28 +72,4 @@ export function rewriteContourFields(value: Json, options: ContourOptions): Json
     const to = options.elevationField ?? DEFAULT_ELEVATION_FIELD;
     if (options.schema !== 'div' || to === MAPBOX_ELEVATION_FIELD) return value;
     return renameField(value, MAPBOX_ELEVATION_FIELD, to);
-}
-
-function renameField(value: Json, from: string, to: string): Json {
-
-    if (Array.isArray(value)) {
-        // The legacy spelling names the field as a bare string in argument 1.
-        if (typeof value[0] === 'string' && value[1] === from && value[0] !== 'get') {
-            return [value[0], to, ...value.slice(2)] as unknown as Json;
-        }
-        if (value[0] === 'get' && value[1] === from) {
-            return ['get', to] as unknown as Json;
-        }
-        return value.map((item) => renameField(item as Json, from, to)) as unknown as Json;
-    }
-    // The token form a text-field uses: "{height}".
-    if (typeof value === 'string' && value.includes(`{${from}}`)) {
-        return value.split(`{${from}}`).join(`{${to}}`);
-    }
-    if (value && typeof value === 'object') {
-        return Object.fromEntries(
-            Object.entries(value).map(([key, item]) => [key, renameField(item as Json, from, to)]),
-        ) as unknown as Json;
-    }
-    return value;
 }

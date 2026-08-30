@@ -365,7 +365,11 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
      * emissive.ts, which is also where the limits of the approximation are written down.
      */
     function light(layer: MapboxLayer, declarations: string[]): string[] {
-        if (radiance === null) return declarations;
+        // The emissive branch does NOT need the scene light: it emits what a layer STATES (or what
+        // mapbox defaults it to), for the renderer to light. A style with no `lights` block of its
+        // own - MapTiler Streets states none - is exactly the case that needs it, because mapbox
+        // defaults geometry to 0 where this SDK draws an unstated colour as authored.
+        if (radiance === null && !options.liveLight) return declarations;
         // Under --live-light the colour stays as the style authored it and the emissive rides along
         // instead, for the renderer to apply. A value of 1 is never emitted: it is the default on
         // both sides, and it is what most of Standard's labels resolve to.
@@ -398,6 +402,7 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
             }
             return [...declarations, ...extra];
         }
+        if (radiance === null) return declarations;
         return declarations.map((declaration) => {
             const colon = declaration.indexOf(':');
             const property = declaration.slice(0, colon);

@@ -14,6 +14,7 @@ public final class ExampleRegistry {
         com.massifmaps.MassifDemo.examples.camera.FlyToExample.class,
         com.massifmaps.MassifDemo.examples.sources.GeoJsonLineExample.class,
         com.massifmaps.MassifDemo.examples.styles.StyleParametersExample.class,
+        com.massifmaps.MassifDemo.examples.styles.DayCycleLightExample.class,
         com.massifmaps.MassifDemo.examples.terrain.Terrain3DExample.class,
         com.massifmaps.MassifDemo.examples.terrain.Switch2D3DExample.class,
         com.massifmaps.MassifDemo.examples.terrain.AtmosphereExample.class,

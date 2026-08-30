@@ -5,87 +5,88 @@
 
 Map {
   background-color: linear(([view::zoom] - 1), (6, @background_2), (14, @background));
-  background-emissive-strength: 0;
+  background-emissive-strength: 0.25;
+  building-height-scale: linear(([view::zoom] - 1), (15, 0), (15.3, 1));
 }
 
 #globallandcover[zoom < 9][class = 'grass']::Meadow {
   polygon-fill: @meadow_fill;
   polygon-opacity: linear(([view::zoom] - 1), (0, 1), (8, 0.1));
-  polygon-emissive-strength: 0;
+  polygon-emissive-strength: 0.25;
 }
 #globallandcover[zoom < 9][class = 'scrub']::Scrub {
   polygon-fill: @scrub_fill;
   polygon-opacity: linear(([view::zoom] - 1), (0, 1), (8, 0.1));
-  polygon-emissive-strength: 0;
+  polygon-emissive-strength: 0.25;
 }
 #globallandcover[zoom < 9][class = 'crop']::Crop {
   polygon-fill: @crop_fill;
   polygon-opacity: linear(([view::zoom] - 1), (0, 1), (8, 0.1));
-  polygon-emissive-strength: 0;
+  polygon-emissive-strength: 0.25;
 }
 #landuse when(([class] = 'residential' || [class] = 'suburbs' || [class] = 'neighbourhood'))::Residential {
   polygon-fill: linear(([view::zoom] - 1), (4, @residential_fill), (16, @residential_fill_2));
-  polygon-emissive-strength: 0;
+  polygon-emissive-strength: 0.25;
 }
 #landcover[class = 'ice']::Glacier {
   polygon-fill: @shield_halo_fill;
   polygon-opacity: linear(([view::zoom] - 1), (0, 1), (10, 0.7));
-  polygon-emissive-strength: 0;
+  polygon-emissive-strength: 0.25;
 }
 #globallandcover[zoom < 9] when(([class] = 'forest' || [class] = 'tree'))::Forest {
   polygon-fill: @forest_fill;
   polygon-opacity: linear(([view::zoom] - 1), (1, 0.8), (8, 0));
-  polygon-emissive-strength: 0;
+  polygon-emissive-strength: 0.25;
 }
 #landcover[class = 'sand']::Sand {
   polygon-fill: @sand_fill;
   polygon-opacity: @polygon_fill_opacity;
-  polygon-emissive-strength: 0;
+  polygon-emissive-strength: 0.25;
 }
 #landcover[class = 'wood']::Wood {
   polygon-fill: @wood_fill;
   polygon-opacity: 1;
-  polygon-emissive-strength: 0;
+  polygon-emissive-strength: 0.25;
 }
 #landuse[zoom < 25] when(([class] = 'industrial' || [class] = 'quarry'))::Industrial {
   polygon-fill: linear(([view::zoom] - 1), (9, (([class] = 'industrial') ? @industrial_fill_2 : (([class] = 'quarry') ? @industrial_fill_3 : @industrial_fill))), (16, (([class] = 'industrial') ? @industrial_fill_4 : (([class] = 'quarry') ? @industrial_fill_5 : @industrial_fill))));
   polygon-opacity: step(([view::zoom] - 1), (0, 1), (9, (([class] = 'quarry') ? 0 : 1)), (10, 1));
-  polygon-emissive-strength: 0;
+  polygon-emissive-strength: 0.25;
 }
 #landcover[class = 'grass']::Grass {
   polygon-fill: @grass_fill;
   polygon-opacity: @line_stroke_opacity;
-  polygon-emissive-strength: 0;
+  polygon-emissive-strength: 0.25;
 }
 #aeroway[zoom >= 12]['mapnik::geometry_type' = 3]::Airport_zone {
   polygon-fill: @airport_zone_fill;
   polygon-opacity: 1;
-  polygon-emissive-strength: 0;
+  polygon-emissive-strength: 0.25;
 }
 #transportation['mapnik::geometry_type' = 3][brunnel = null] when(([class] != 'bridge' ? [class] != 'pier' : false)) when(([subclass] = 'pedestrian' || [subclass] = 'platform'))::Pedestrian {
   polygon-fill: @pedestrian_fill;
   polygon-opacity: 0.7;
-  polygon-emissive-strength: 0;
+  polygon-emissive-strength: 0.25;
 }
 #landuse[zoom >= 10][class = 'cemetery']::Cemetery {
   polygon-fill: @cemetery_fill;
   polygon-opacity: linear(([view::zoom] - 1), (9, 0.25), (16, 1));
-  polygon-emissive-strength: 0;
+  polygon-emissive-strength: 0.25;
 }
 #landuse[zoom >= 10][class = 'hospital']::Hospital {
   polygon-fill: @hospital_fill;
   polygon-opacity: linear(([view::zoom] - 1), (9, 0.25), (16, 1));
-  polygon-emissive-strength: 0;
+  polygon-emissive-strength: 0.25;
 }
 #landuse[zoom >= 10] when(([class] = 'pitch' || [class] = 'stadium' || [class] = 'playground'))::Stadium {
   polygon-fill: @stadium_fill;
   polygon-opacity: linear(([view::zoom] - 1), (9, 0.25), (16, 1));
-  polygon-emissive-strength: 0;
+  polygon-emissive-strength: 0.25;
 }
 #landuse[zoom >= 10] when(([class] = 'college' || [class] = 'school' || [class] = 'university'))::School {
   polygon-fill: @school_fill;
   polygon-opacity: linear(([view::zoom] - 1), (9, 0.25), (16, 1));
-  polygon-emissive-strength: 0;
+  polygon-emissive-strength: 0.25;
 }
 #waterway[zoom >= 15][brunnel = 'tunnel']::River_tunnel {
   line-cap: 'round';
@@ -93,33 +94,33 @@ Map {
   line-dasharray: 15.92,31.84;
   line-opacity: @line_stroke_opacity;
   line-width: linear(([view::zoom] - 1), (12, 0.5), (20, 6));
-  line-emissive-strength: 0;
+  line-emissive-strength: 0.25;
 }
 #waterway[brunnel != 'tunnel']::River {
   line-cap: 'round';
   line-color: @river_stroke;
   line-width: linear(([view::zoom] - 1), (12, 0.5), (20, 6));
-  line-emissive-strength: 0;
+  line-emissive-strength: 0.25;
 }
 #water[intermittent = 1]::Water_intermittent {
   polygon-fill: @water_intermittent_fill;
   polygon-opacity: @polygon_fill_opacity;
-  polygon-emissive-strength: 0;
+  polygon-emissive-strength: 0.25;
 }
 #water[intermittent != 1]::Water {
   polygon-fill: @polygon_fill;
   polygon-opacity: (([intermittent] = 1) ? 0.85 : 1);
-  polygon-emissive-strength: 0;
+  polygon-emissive-strength: 0.25;
 }
 #aeroway[zoom >= 12]::Aeroway {
   line-color: @shield_halo_fill;
   line-width: linear(([view::zoom] - 1), (11, (([class] = 'runway') ? 3 : 0.5)), (20, (([class] = 'runway') ? 16 : 6)));
-  line-emissive-strength: 0;
+  line-emissive-strength: 0.25;
 }
 #aeroway[zoom >= 12] when(([class] = 'helipad' || [class] = 'heliport'))::Heliport {
   polygon-fill: @shield_halo_fill;
   polygon-opacity: 1;
-  polygon-emissive-strength: 0;
+  polygon-emissive-strength: 0.25;
 }
 #transportation[zoom >= 7][class = 'ferry']::Ferry_line {
   line-join: 'round';
@@ -127,7 +128,7 @@ Map {
   line-dasharray: 12.8,12.8;
   line-opacity: linear(([view::zoom] - 1), (6, 0.5), (7, 0.8), (8, 1));
   line-width: linear(([view::zoom] - 1), (10, 0.5), (14, 1.1));
-  line-emissive-strength: 0;
+  line-emissive-strength: 0.25;
 }
 #transportation[zoom >= 5][brunnel = 'tunnel'] when(([class] != 'bridge' ? ([class] != 'ferry' ? ([class] != 'rail' ? ([class] != 'transit' ? ([class] != 'pier' ? ([class] != 'path' ? ([class] != 'aerialway' ? ([class] != 'motorway_construction' ? ([class] != 'trunk_construction' ? ([class] != 'primary_construction' ? ([class] != 'secondary_construction' ? ([class] != 'tertiary_construction' ? ([class] != 'minor_construction' ? ([class] != 'service_construction' ? [class] != 'track_construction' : false) : false) : false) : false) : false) : false) : false) : false) : false) : false) : false) : false) : false) : false))::Tunnel_outline {
   line-cap: 'butt';
@@ -135,7 +136,7 @@ Map {
   line-color: (([class] = 'motorway') ? @outline_stroke : (([class] = 'trunk' || [class] = 'primary') ? @outline_stroke : @outline_stroke_2));
   line-dasharray: 3.49,1.75;
   line-width: linear(([view::zoom] - 1), (6, 0), (7, 0.5), (10, (([class] = 'motorway') ? (([ramp] = 1) ? 0 : 2.5) : (([class] = 'trunk' || [class] = 'primary') ? 2 : 0))), (12, (([class] = 'motorway') ? (([ramp] = 1) ? 2 : 6) : (([class] = 'trunk' || [class] = 'primary') ? 3 : (([class] = 'secondary' || [class] = 'tertiary') ? 2 : (([class] = 'minor' || [class] = 'service' || [class] = 'track') ? 1 : 0.5))))), (14, (([class] = 'motorway') ? (([ramp] = 1) ? 5 : 8) : (([class] = 'trunk') ? 4 : (([class] = 'primary') ? 6 : (([class] = 'secondary') ? 6 : (([class] = 'tertiary') ? 4 : (([class] = 'minor' || [class] = 'service' || [class] = 'track') ? 3 : 3))))))), (16, (([class] = 'motorway' || [class] = 'trunk' || [class] = 'primary') ? 10 : (([class] = 'secondary') ? 8 : (([class] = 'tertiary') ? 8 : (([class] = 'minor' || [class] = 'service' || [class] = 'track') ? 4 : 4))))), (20, (([class] = 'motorway' || [class] = 'trunk' || [class] = 'primary') ? 26 : (([class] = 'secondary') ? 26 : (([class] = 'tertiary') ? 26 : (([class] = 'minor' || [class] = 'service' || [class] = 'track') ? 18 : 18))))));
-  line-emissive-strength: 0;
+  line-emissive-strength: 0.25;
 }
 #transportation[zoom >= 5][brunnel = 'tunnel'] when(([class] != 'ferry' ? ([class] != 'rail' ? ([class] != 'transit' ? ([class] != 'pier' ? ([class] != 'bridge' ? ([class] != 'path' ? ([class] != 'aerialway' ? ([class] != 'motorway_construction' ? ([class] != 'trunk_construction' ? ([class] != 'primary_construction' ? ([class] != 'secondary_construction' ? ([class] != 'tertiary_construction' ? ([class] != 'minor_construction' ? ([class] != 'service_construction' ? [class] != 'track_construction' : false) : false) : false) : false) : false) : false) : false) : false) : false) : false) : false) : false) : false) : false))::Tunnel {
   line-cap: 'butt';
@@ -143,20 +144,20 @@ Map {
   line-color: (([class] = 'motorway') ? @line_stroke : (([class] = 'trunk' || [class] = 'primary') ? @tunnel_stroke : @tunnel_stroke_2));
   line-opacity: 1;
   line-width: linear(([view::zoom] - 1), (5, 0), (6, (([class] = 'motorway') ? (([brunnel] = 'bridge') ? 0 : 1) : (([class] = 'trunk' || [class] = 'primary') ? 0 : 0))), (10, (([class] = 'motorway') ? (([ramp] = 1) ? 0 : 2.5) : (([class] = 'trunk' || [class] = 'primary') ? 1.5 : 1))), (12, (([class] = 'motorway') ? (([ramp] = 1) ? 1 : 4) : (([class] = 'trunk') ? 2.5 : (([class] = 'primary') ? 2.5 : (([class] = 'secondary' || [class] = 'tertiary') ? 1.5 : (([class] = 'minor' || [class] = 'service' || [class] = 'track') ? 1 : 1)))))), (14, (([class] = 'motorway') ? (([ramp] = 1) ? 5 : 6) : (([class] = 'trunk') ? 3 : (([class] = 'primary') ? 5 : (([class] = 'secondary') ? 4 : (([class] = 'tertiary') ? 3 : (([class] = 'minor' || [class] = 'service' || [class] = 'track') ? 2 : 2))))))), (16, (([class] = 'motorway' || [class] = 'trunk' || [class] = 'primary') ? 8 : (([class] = 'secondary') ? 7 : (([class] = 'tertiary') ? 6 : (([class] = 'minor' || [class] = 'service' || [class] = 'track') ? 4 : 4))))), (20, (([class] = 'motorway' || [class] = 'trunk' || [class] = 'primary') ? 24 : (([class] = 'secondary') ? 24 : (([class] = 'tertiary') ? 24 : (([class] = 'minor' || [class] = 'service' || [class] = 'track') ? 16 : 16))))));
-  line-emissive-strength: 0;
+  line-emissive-strength: 0.25;
 }
 #transportation[brunnel = 'tunnel'][class = 'rail']::Railway_tunnel {
   line-color: @line_stroke_2;
   line-opacity: @line_stroke_opacity;
   line-width: linear(([view::zoom] - 1), (14, 0.4), (15, 0.75), (20, 2));
-  line-emissive-strength: 0;
+  line-emissive-strength: 0.25;
 }
 #transportation[brunnel = 'tunnel'][class = 'rail']::Railway_tunnel_hatching {
   line-color: @line_stroke_2;
   line-dasharray: 2.06,82.53;
   line-opacity: @line_stroke_opacity;
   line-width: linear(([view::zoom] - 1), (14.5, 0), (15, 3), (20, 8));
-  line-emissive-strength: 0;
+  line-emissive-strength: 0.25;
 }
 #transportation[zoom >= 13]['mapnik::geometry_type' = 2] when(([class] = 'path' || [class] = 'pedestrian'))[brunnel = 'tunnel']::Footway_tunnel_outline {
   line-cap: 'round';
@@ -164,7 +165,7 @@ Map {
   line-color: @shield_halo_fill;
   line-opacity: 1;
   line-width: linear(([view::zoom] - 1), (14, 0), (16, 0), (18, 4), (22, 8));
-  line-emissive-strength: 0;
+  line-emissive-strength: 0.25;
 }
 #transportation[zoom >= 13]['mapnik::geometry_type' = 2] when(([class] = 'path' || [class] = 'pedestrian'))[brunnel = 'tunnel']::Footway_tunnel {
   line-cap: 'butt';
@@ -173,18 +174,18 @@ Map {
   line-dasharray: 8.86,2.21;
   line-opacity: @line_stroke_opacity_2;
   line-width: linear(([view::zoom] - 1), (14, 0.5), (16, 1), (18, 2), (22, 5));
-  line-emissive-strength: 0;
+  line-emissive-strength: 0.25;
 }
 #transportation['mapnik::geometry_type' = 3][class = 'pier']::Pier {
   polygon-fill: @background;
-  polygon-emissive-strength: 0;
+  polygon-emissive-strength: 0.25;
 }
 #transportation['mapnik::geometry_type' = 2][class = 'pier']::Pier_road {
   line-cap: 'round';
   line-join: 'round';
   line-color: @background;
   line-width: linear(([view::zoom] - 1), (15, 1), (17, 4));
-  line-emissive-strength: 0;
+  line-emissive-strength: 0.25;
 }
 #transportation[zoom >= 14][zoom < 18][brunnel != 'tunnel'] when(([class] = 'motorway' || [class] = 'primary' || [class] = 'trunk'))::Bridge_outline {
   line-cap: 'butt';
@@ -192,12 +193,12 @@ Map {
   line-color: @bridge_outline_stroke;
   line-opacity: @line_stroke_opacity;
   line-width: linear(([view::zoom] - 1), (13, (([class] = 'trunk' || [class] = 'primary') ? 5 : 8)), (15, (([class] = 'trunk' || [class] = 'primary') ? 15 : 22)), (17, (([class] = 'trunk' || [class] = 'primary') ? 20 : 24)));
-  line-emissive-strength: 0;
+  line-emissive-strength: 0.25;
 }
 #transportation['mapnik::geometry_type' = 3][brunnel = 'bridge']::Bridge {
   polygon-fill: @background;
   polygon-opacity: 0.6;
-  polygon-emissive-strength: 0;
+  polygon-emissive-strength: 0.25;
 }
 #transportation[zoom >= 5][brunnel != 'tunnel'] when(([class] != 'aerialway' ? ([class] != 'bridge' ? ([class] != 'ferry' ? ([class] != 'minor_construction' ? ([class] != 'motorway' ? ([class] != 'motorway_construction' ? ([class] != 'path' ? ([class] != 'path_construction' ? ([class] != 'pier' ? ([class] != 'primary' ? ([class] != 'primary_construction' ? ([class] != 'rail' ? ([class] != 'secondary_construction' ? ([class] != 'service_construction' ? ([class] != 'tertiary_construction' ? ([class] != 'track_construction' ? ([class] != 'transit' ? [class] != 'trunk_construction' : false) : false) : false) : false) : false) : false) : false) : false) : false) : false) : false) : false) : false) : false) : false) : false) : false))::Minor_road_outline {
   line-cap: 'butt';
@@ -205,7 +206,7 @@ Map {
   line-color: @outline_stroke_2;
   line-opacity: 1;
   line-width: linear(([view::zoom] - 1), (6, 0), (7, 0.5), (12, (([class] = 'secondary' || [class] = 'tertiary') ? 2 : (([class] = 'minor' || [class] = 'service' || [class] = 'track') ? 1 : 0.5))), (14, (([class] = 'secondary') ? 6 : (([class] = 'tertiary') ? 4 : (([class] = 'minor' || [class] = 'service' || [class] = 'track') ? 3 : 3)))), (16, (([class] = 'secondary') ? 8 : (([class] = 'tertiary') ? 8 : (([class] = 'minor' || [class] = 'service' || [class] = 'track') ? 4 : 4)))), (20, (([class] = 'secondary') ? 26 : (([class] = 'tertiary') ? 26 : (([class] = 'minor' || [class] = 'service' || [class] = 'track') ? 18 : 18)))));
-  line-emissive-strength: 0;
+  line-emissive-strength: 0.25;
 }
 #transportation[zoom >= 5][brunnel != 'tunnel'] when(([class] = 'primary' || [class] = 'trunk'))::Major_road_outline {
   line-cap: 'butt';
@@ -213,7 +214,7 @@ Map {
   line-color: @outline_stroke;
   line-opacity: 1;
   line-width: linear(([view::zoom] - 1), (6, 0), (7, 0.5), (10, (([class] = 'trunk' || [class] = 'primary') ? 2.4 : 0)), (12, (([class] = 'trunk' || [class] = 'primary') ? 3 : 0.5)), (14, (([class] = 'trunk') ? 4 : (([class] = 'primary') ? 6 : 3))), (16, (([class] = 'trunk' || [class] = 'primary') ? 10 : 4)), (20, (([class] = 'trunk' || [class] = 'primary') ? 26 : 18)));
-  line-emissive-strength: 0;
+  line-emissive-strength: 0.25;
 }
 #transportation[zoom >= 5][brunnel != 'tunnel'][class = 'motorway']::Highway_outline {
   line-cap: 'butt';
@@ -221,7 +222,7 @@ Map {
   line-color: @outline_stroke;
   line-opacity: 1;
   line-width: linear(([view::zoom] - 1), (6, 0), (7, 0.5), (10, (([class] = 'motorway') ? (([ramp] = 1) ? 0 : 2.5) : 0)), (12, (([class] = 'motorway') ? (([ramp] = 1) ? 2 : 6) : 0.5)), (14, (([class] = 'motorway') ? (([ramp] = 1) ? 5 : 8) : 3)), (16, (([class] = 'motorway') ? 10 : 4)), (20, (([class] = 'motorway') ? 26 : 18)));
-  line-emissive-strength: 0;
+  line-emissive-strength: 0.25;
 }
 #transportation[zoom >= 5] when(([class] = 'motorway_construction' || [class] = 'trunk_construction' || [class] = 'primary_construction' || [class] = 'secondary_construction' || [class] = 'tertiary_construction' || [class] = 'minor_construction' || [class] = 'service_construction' || [class] = 'track_construction'))::Road_under_construction {
   line-cap: 'square';
@@ -230,35 +231,35 @@ Map {
   line-dasharray: 11.56,11.56;
   line-opacity: (([brunnel] = 'tunnel') ? 0.7 : 1);
   line-width: linear(([view::zoom] - 1), (5, (([class] = 'motorway_construction') ? (([brunnel] = 'bridge') ? 0 : 0.5) : (([class] = 'trunk_construction' || [class] = 'primary_construction') ? 0 : 0))), (10, (([class] = 'motorway_construction') ? (([ramp] = 1) ? 0 : 2.5) : (([class] = 'trunk_construction' || [class] = 'primary_construction') ? 1.5 : 1))), (12, (([class] = 'motorway_construction') ? (([ramp] = 1) ? 1 : 4) : (([class] = 'trunk_construction') ? 2.5 : (([class] = 'primary_construction') ? 2.5 : (([class] = 'secondary_construction' || [class] = 'tertiary_construction') ? 1.5 : (([class] = 'minor_construction' || [class] = 'service_construction' || [class] = 'track_construction') ? 1 : 1)))))), (14, (([class] = 'motorway_construction') ? (([ramp] = 1) ? 5 : 6) : (([class] = 'trunk_construction') ? 3 : (([class] = 'primary_construction') ? 5 : (([class] = 'secondary_construction') ? 4 : (([class] = 'tertiary_construction') ? 3 : (([class] = 'minor_construction' || [class] = 'service_construction' || [class] = 'track_construction') ? 2 : 2))))))), (16, (([class] = 'motorway_construction' || [class] = 'trunk_construction' || [class] = 'primary_construction') ? 8 : (([class] = 'secondary_construction') ? 7 : (([class] = 'tertiary_construction') ? 6 : (([class] = 'minor_construction' || [class] = 'service_construction' || [class] = 'track_construction') ? 4 : 4))))), (20, (([class] = 'motorway_construction' || [class] = 'trunk_construction' || [class] = 'primary_construction') ? 24 : (([class] = 'secondary_construction') ? 24 : (([class] = 'tertiary_construction') ? 24 : (([class] = 'minor_construction' || [class] = 'service_construction' || [class] = 'track_construction') ? 16 : 16))))));
-  line-emissive-strength: 0;
+  line-emissive-strength: 0.25;
 }
 #transportation[zoom >= 5][brunnel != 'tunnel'] when(([class] != 'aerialway' ? ([class] != 'bridge' ? ([class] != 'ferry' ? ([class] != 'minor_construction' ? ([class] != 'motorway' ? ([class] != 'motorway_construction' ? ([class] != 'path' ? ([class] != 'path_construction' ? ([class] != 'pier' ? ([class] != 'primary' ? ([class] != 'primary_construction' ? ([class] != 'rail' ? ([class] != 'secondary_construction' ? ([class] != 'service_construction' ? ([class] != 'tertiary_construction' ? ([class] != 'track_construction' ? ([class] != 'transit' ? [class] != 'trunk_construction' : false) : false) : false) : false) : false) : false) : false) : false) : false) : false) : false) : false) : false) : false) : false) : false) : false))::Minor_road {
   line-cap: 'butt';
   line-join: 'round';
   line-color: @shield_halo_fill;
   line-width: linear(([view::zoom] - 1), (5, 0.5), (10, 1), (12, (([class] = 'secondary' || [class] = 'tertiary') ? 1.5 : (([class] = 'minor' || [class] = 'service' || [class] = 'track') ? 1 : 1))), (14, (([class] = 'secondary') ? 4 : (([class] = 'tertiary') ? 3 : (([class] = 'minor' || [class] = 'service' || [class] = 'track') ? 2 : 2)))), (16, (([class] = 'secondary') ? 7 : (([class] = 'tertiary') ? 6 : (([class] = 'minor' || [class] = 'service' || [class] = 'track') ? 4 : 4)))), (20, (([class] = 'secondary') ? 24 : (([class] = 'tertiary') ? 24 : (([class] = 'minor' || [class] = 'service' || [class] = 'track') ? 16 : 16)))));
-  line-emissive-strength: 0;
+  line-emissive-strength: 0.25;
 }
 #transportation[zoom >= 5][brunnel != 'tunnel'] when(([class] = 'primary' || [class] = 'trunk'))::Major_road {
   line-cap: 'butt';
   line-join: 'round';
   line-color: linear(([view::zoom] - 1), (6, @line_stroke), (8, @road_stroke));
   line-width: linear(([view::zoom] - 1), (6, 0.75), (10, (([class] = 'trunk' || [class] = 'primary') ? 1.5 : 1)), (12, (([class] = 'trunk' || [class] = 'primary') ? 2.5 : 1)), (14, (([class] = 'trunk') ? 3 : (([class] = 'primary') ? 5 : 2))), (16, (([class] = 'trunk' || [class] = 'primary') ? 8 : 4)), (20, (([class] = 'trunk' || [class] = 'primary') ? 24 : 16)));
-  line-emissive-strength: 0;
+  line-emissive-strength: 0.25;
 }
 #transportation[zoom >= 5][brunnel != 'tunnel'][class = 'motorway']::Highway {
   line-cap: 'butt';
   line-join: 'round';
   line-color: @line_stroke;
   line-width: linear(([view::zoom] - 1), (5, 0.5), (6, (([class] = 'motorway') ? (([brunnel] = 'bridge') ? 0 : 1) : 0)), (10, (([class] = 'motorway') ? (([ramp] = 1) ? 0 : 2.5) : 1)), (12, (([class] = 'motorway') ? (([ramp] = 1) ? 1 : 4) : 1)), (14, (([class] = 'motorway') ? (([ramp] = 1) ? 5 : 6) : 2)), (16, (([class] = 'motorway') ? 8 : 4)), (20, (([class] = 'motorway') ? 24 : 16)));
-  line-emissive-strength: 0;
+  line-emissive-strength: 0.25;
 }
 #transportation[zoom >= 13]['mapnik::geometry_type' = 2] when(([class] = 'path' || [class] = 'pedestrian'))[brunnel != 'tunnel']::Path_outline {
   line-cap: 'round';
   line-join: 'miter';
   line-color: @shield_halo_fill;
   line-width: linear(([view::zoom] - 1), (14, 0), (16, 0), (18, 4), (22, 8));
-  line-emissive-strength: 0;
+  line-emissive-strength: 0.25;
 }
 #transportation[zoom >= 13]['mapnik::geometry_type' = 2][class = 'path_pedestrian'][brunnel != 'tunnel']::Path_minor {
   line-cap: 'butt';
@@ -266,7 +267,7 @@ Map {
   line-color: @path_stroke;
   line-dasharray: 8.86,2.21;
   line-width: linear(([view::zoom] - 1), (14, 0.5), (16, 1), (18, 2), (22, 5));
-  line-emissive-strength: 0;
+  line-emissive-strength: 0.25;
 }
 #transportation[zoom >= 13]['mapnik::geometry_type' = 2] when(([class] = 'path' || [class] = 'pedestrian'))[brunnel != 'tunnel']::Path {
   line-cap: 'butt';
@@ -274,39 +275,39 @@ Map {
   line-color: @path_stroke;
   line-dasharray: 8.86,2.21;
   line-width: linear(([view::zoom] - 1), (14, 0.5), (16, 1), (18, 2), (22, 5));
-  line-emissive-strength: 0;
+  line-emissive-strength: 0.25;
 }
 #transportation when([brunnel] != 'tunnel')[class = 'rail']::Major_rail {
   line-color: linear(([view::zoom] - 1), (8, @major_rail_stroke), (16, @line_stroke_4));
   line-opacity: (([service] = 'yard') ? 0.5 : 1);
   line-width: linear(([view::zoom] - 1), (14, 0.4), (15, 0.75), (20, 2));
-  line-emissive-strength: 0;
+  line-emissive-strength: 0.25;
 }
 #transportation when([brunnel] != 'tunnel')[class = 'rail']::Major_rail_hatching {
   line-color: @major_rail_stroke;
   line-dasharray: 2.06,92.85;
   line-opacity: (([service] = 'yard') ? 0.5 : 1);
   line-width: linear(([view::zoom] - 1), (14.5, 0), (15, 3), (20, 8));
-  line-emissive-strength: 0;
+  line-emissive-strength: 0.25;
 }
 #transportation when(([subclass] = 'light_rail' || [subclass] = 'tram'))::Minor_rail {
   line-color: @line_stroke_2;
   line-width: linear(([view::zoom] - 1), (14, 0.4), (15, 0.75), (20, 2));
-  line-emissive-strength: 0;
+  line-emissive-strength: 0.25;
 }
 #transportation when(([subclass] = 'tram' || [subclass] = 'light_rail'))::Minor_rail_hatching {
   line-color: @line_stroke_2;
   line-dasharray: 1.96,39.27;
   line-width: linear(([view::zoom] - 1), (14.5, 0), (15, 2), (20, 6));
-  line-emissive-strength: 0;
+  line-emissive-strength: 0.25;
 }
 #building[zoom >= 14][zoom < 16]['param::buildings'>0]::Building {
   polygon-fill: @building_fill;
   polygon-opacity: 0.3;
   line-color: linear(([view::zoom] - 1), (13, @building_stroke), (14, @building_stroke_2));
   line-width: @line_stroke_opacity_2;
-  polygon-emissive-strength: 0;
-  line-emissive-strength: 0;
+  polygon-emissive-strength: 0.25;
+  line-emissive-strength: 0.25;
 }
 #building[zoom >= 16]['param::buildings'>1][hide_3d = null]::Building_3D {
   building-min-height: [render_min_height];
@@ -319,21 +320,21 @@ Map {
   line-join: 'round';
   line-color: @aqueduct_outline_stroke;
   line-width: linear(([view::zoom] - 1), (14, 1), (20, 6));
-  line-emissive-strength: 0;
+  line-emissive-strength: 0.25;
 }
 #waterway['mapnik::geometry_type' = 2][brunnel = 'bridge']::Aqueduct {
   line-cap: 'round';
   line-join: 'round';
   line-color: @polygon_fill;
   line-width: linear(([view::zoom] - 1), (12, 0.5), (20, 5));
-  line-emissive-strength: 0;
+  line-emissive-strength: 0.25;
 }
 #transportation[zoom >= 14][class = 'aerialway']::Cablecar {
   line-cap: 'round';
   line-blur: 1;
   line-color: @shield_halo_fill;
   line-width: linear(([view::zoom] - 1), (13, 2), (19, 4));
-  line-emissive-strength: 0;
+  line-emissive-strength: 0.25;
 }
 #transportation[zoom >= 14][class = 'aerialway']::Cablecar_dash {
   line-cap: 'round';
@@ -341,13 +342,13 @@ Map {
   line-color: @cablecar_dash_stroke;
   line-dasharray: 14.4,14.4;
   line-width: linear(([view::zoom] - 1), (13, 1), (19, 2));
-  line-emissive-strength: 0;
+  line-emissive-strength: 0.25;
 }
 #boundary[zoom >= 4] when(([admin_level] = 3 || [admin_level] = 4 || [admin_level] = 5 || [admin_level] = 6 || [admin_level] = 7 || [admin_level] = 8))[maritime = 0]::Other_border {
   line-color: @line_stroke_4;
   line-dasharray: 5.45,2.73;
   line-width: linear(([view::zoom] - 1), (3, 0.75), (4, 0.8), (11, (([admin_level] <= 6) ? 1.75 : 1.5)), (18, (([admin_level] <= 6) ? 3 : 2)));
-  line-emissive-strength: 0;
+  line-emissive-strength: 0.25;
 }
 #boundary[zoom >= 1][admin_level = 2][disputed = 1][maritime = 0]::Disputed_border {
   line-cap: 'round';
@@ -355,14 +356,14 @@ Map {
   line-color: @line_stroke_3;
   line-dasharray: 14,14;
   line-width: linear(([view::zoom] - 1), (1, 0.5), (5, 1.5), (10, 2), (24, 12));
-  line-emissive-strength: 0;
+  line-emissive-strength: 0.25;
 }
 #boundary[zoom >= 1][admin_level = 2][disputed = 0][maritime = 0]::Country_border {
   line-cap: 'round';
   line-join: 'round';
   line-color: @country_border_stroke;
   line-width: linear(([view::zoom] - 1), (1, 0.5), (5, 1.5), (10, 2), (24, 12));
-  line-emissive-strength: 0;
+  line-emissive-strength: 0.25;
 }
 #waterway[zoom >= 14]['mapnik::geometry_type' = 2]::River_labels {
   text-placement: 'line';
@@ -715,7 +716,7 @@ Map {
   shield-icon-halo-fill: @shield_halo_fill;
   shield-icon-halo-radius: 2;
   shield-text-optional: true;
-  shield-dy: -5.03;
+  shield-dy: -2.52;
   shield-emissive-strength: 0.45;
   shield-halo-emissive-strength: 0;
 }
@@ -746,7 +747,7 @@ Map {
   shield-icon-halo-fill: @shield_halo_fill;
   shield-icon-halo-radius: 2;
   shield-text-optional: true;
-  shield-dy: -1.03;
+  shield-dy: -0.52;
   shield-emissive-strength: 0.45;
   shield-halo-emissive-strength: 0;
 }
@@ -777,7 +778,7 @@ Map {
   shield-icon-halo-fill: @shield_halo_fill;
   shield-icon-halo-radius: 2;
   shield-text-optional: true;
-  shield-dy: -5.03;
+  shield-dy: -2.52;
   shield-emissive-strength: 0.45;
   shield-halo-emissive-strength: 0;
 }
@@ -808,7 +809,7 @@ Map {
   shield-icon-halo-fill: @shield_halo_fill;
   shield-icon-halo-radius: 2;
   shield-text-optional: true;
-  shield-dy: -5.03;
+  shield-dy: -2.52;
   shield-emissive-strength: 0.45;
   shield-halo-emissive-strength: 0;
 }
@@ -839,7 +840,7 @@ Map {
   shield-icon-halo-fill: @shield_halo_fill;
   shield-icon-halo-radius: 2;
   shield-text-optional: true;
-  shield-dy: -1.03;
+  shield-dy: -0.52;
   shield-emissive-strength: 0.45;
   shield-halo-emissive-strength: 0;
 }
@@ -870,7 +871,7 @@ Map {
   shield-icon-halo-fill: @shield_halo_fill;
   shield-icon-halo-radius: 2;
   shield-text-optional: true;
-  shield-dy: -1.03;
+  shield-dy: -0.52;
   shield-emissive-strength: 0.45;
   shield-halo-emissive-strength: 0;
 }
@@ -901,7 +902,7 @@ Map {
   shield-icon-halo-fill: @shield_halo_fill;
   shield-icon-halo-radius: 2;
   shield-text-optional: true;
-  shield-dy: -5.03;
+  shield-dy: -2.52;
   shield-emissive-strength: 0.45;
   shield-halo-emissive-strength: 0;
 }
@@ -932,7 +933,7 @@ Map {
   shield-icon-halo-fill: @shield_halo_fill;
   shield-icon-halo-radius: 2;
   shield-text-optional: true;
-  shield-dy: -5.03;
+  shield-dy: -2.52;
   shield-emissive-strength: 0.45;
   shield-halo-emissive-strength: 0;
 }
@@ -963,7 +964,7 @@ Map {
   shield-icon-halo-fill: @shield_halo_fill;
   shield-icon-halo-radius: 2;
   shield-text-optional: true;
-  shield-dy: -5.03;
+  shield-dy: -2.52;
   shield-emissive-strength: 0.45;
   shield-halo-emissive-strength: 0;
 }
@@ -994,7 +995,7 @@ Map {
   shield-icon-halo-fill: @shield_halo_fill;
   shield-icon-halo-radius: 2;
   shield-text-optional: true;
-  shield-dy: -5.03;
+  shield-dy: -2.52;
   shield-emissive-strength: 0.45;
   shield-halo-emissive-strength: 0;
 }
@@ -1049,7 +1050,7 @@ Map {
   shield-icon-halo-fill: @shield_halo_fill;
   shield-icon-halo-radius: 2;
   shield-text-optional: true;
-  shield-dy: -3;
+  shield-dy: -1.5;
   shield-emissive-strength: 0.45;
   shield-halo-emissive-strength: 0;
 }
@@ -1094,7 +1095,7 @@ Map {
   shield-icon-halo-fill: @shield_halo_fill;
   shield-icon-halo-radius: linear(([view::zoom] - 1), (8, 1), (12, 2));
   shield-text-optional: true;
-  shield-dy: -4.54;
+  shield-dy: -2.27;
   shield-emissive-strength: 0.45;
   shield-halo-emissive-strength: 0;
 }
@@ -1124,7 +1125,7 @@ Map {
   shield-icon-halo-fill: @shield_halo_fill;
   shield-icon-halo-radius: linear(([view::zoom] - 1), (8, 1), (12, 2));
   shield-text-optional: true;
-  shield-dy: -4.54;
+  shield-dy: -2.27;
   shield-emissive-strength: 0.45;
   shield-halo-emissive-strength: 0;
 }
@@ -1154,7 +1155,7 @@ Map {
   shield-icon-halo-fill: @shield_halo_fill;
   shield-icon-halo-radius: linear(([view::zoom] - 1), (8, 1), (12, 2));
   shield-text-optional: true;
-  shield-dy: -4.54;
+  shield-dy: -2.27;
   shield-emissive-strength: 0.45;
   shield-halo-emissive-strength: 0;
 }
@@ -1200,7 +1201,7 @@ Map {
   shield-icon-fill: @town_labels_icon_fill;
   shield-icon-halo-fill: @labels_icon_halo_fill;
   shield-icon-halo-radius: 1;
-  shield-dy: 3.61;
+  shield-dy: 1.8;
   shield-emissive-strength: 0.45;
   shield-halo-emissive-strength: 0;
 }
@@ -1247,7 +1248,7 @@ Map {
   shield-icon-opacity: 1;
   shield-icon-halo-fill: @labels_icon_halo_fill;
   shield-icon-halo-radius: 1;
-  shield-dy: 4.45;
+  shield-dy: 2.23;
   shield-emissive-strength: 0.45;
   shield-halo-emissive-strength: 0;
 }
@@ -1294,7 +1295,7 @@ Map {
   shield-icon-opacity: 1;
   shield-icon-halo-fill: @labels_icon_halo_fill;
   shield-icon-halo-radius: 1;
-  shield-dy: 5.22;
+  shield-dy: 2.61;
   shield-emissive-strength: 0.45;
   shield-halo-emissive-strength: 0;
 }

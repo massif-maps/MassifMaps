@@ -59,10 +59,27 @@ public class DayCycleLightExample extends MapExample {
         + "\"sunColor\":\"#fff700\",\"sunIntensity\":0.45}"
         + "]";
 
+    /**
+     * The BUILT-IN curve, written out. Passing an empty list selects exactly this, but the point of
+     * an example is to show the shape - these are MapBox Standard's own four light setups at the
+     * sun heights it states them for, and every one is an ordinary value an app can change. The
+     * doubled twilight stop holds the preset flat from 3 to 12 degrees, so the sun passes THROUGH
+     * dusk instead of crossing it.
+     */
+    private static final String MAPBOX =
+        "["
+        + "{\"sunAltitude\":-9,\"ambientColor\":\"#001438\",\"ambientIntensity\":0.5,"
+        + "\"sunColor\":\"#3f4455\",\"sunIntensity\":0.5},"
+        + "{\"sunAltitude\":3,\"ambientColor\":\"#363e5e\",\"ambientIntensity\":0.8,"
+        + "\"sunColor\":\"#fec286\",\"sunIntensity\":0.2},"
+        + "{\"sunAltitude\":12,\"ambientColor\":\"#363e5e\",\"ambientIntensity\":0.8,"
+        + "\"sunColor\":\"#fec286\",\"sunIntensity\":0.2},"
+        + "{\"sunAltitude\":38,\"ambientColor\":\"#ffffff\",\"ambientIntensity\":0.8,"
+        + "\"sunColor\":\"#ffffff\",\"sunIntensity\":0.2}"
+        + "]";
+
     private static final String[][] FORMULAS = {
-        // An EMPTY list is the built-in curve. Not "", which reads as "no value" through some
-        // bindings - the property has to arrive as a list for the SDK to clear the old one.
-        { "Mapbox", "[]" },
+        { "Mapbox", MAPBOX },
         { "Psychedelic", PSYCHEDELIC },
     };
 
@@ -78,6 +95,13 @@ public class DayCycleLightExample extends MapExample {
     public void onStart(ExampleHost host) {
         this.host = host;
         MassifMap map = host.map();
+
+        // How far a TILTED far field may coarsen. The LOD area test drops a tile a level for
+        // distance and again for the grazing angle it is seen at; unbounded, the second term makes
+        // the horizon band jump between levels as the camera turns, so one side of the screen keeps
+        // its buildings and the other loses them. This caps the grazing half alone - distance still
+        // coarsens freely, which is what keeps the far field cheap.
+        map.options().set("tileLODForeshorteningLimit", 1.0);
 
         buildLayer(map);
 
@@ -171,11 +195,6 @@ public class DayCycleLightExample extends MapExample {
                 .set("databasePath", host.cachePath(mapbox ? "mapbox-vector.db" : "openfreemap.db"))
                 .set("capacity", 100 * 1024 * 1024)
                 .set("source", source))
-            // MapBox's tiles are 512 px and this SDK's are 256, so at the same view it would ask
-            // for a level DEEPER than mapbox-gl does - and a level deeper carries a level's worth
-            // of extra labels. The converted style already reads ([view::zoom] - 1); this is the
-            // fetch side of the same offset.
-            .set("zoomLevelBias", mapbox ? -1.0 : 0.0)
             .set("style", Spec.of("mbvt")
                 .set("project", Spec.of("project")
                     .set("assets", Spec.of("zip")

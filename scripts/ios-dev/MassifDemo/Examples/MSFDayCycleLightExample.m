@@ -59,9 +59,18 @@ static NSArray<NSArray<NSString *> *> *formulas(void) {
         @"\"sunColor\":\"#ff00d4\",\"sunIntensity\":0.5},"
         @"{\"sunAltitude\":60,\"ambientColor\":\"#00fff0\",\"ambientIntensity\":1.0,"
         @"\"sunColor\":\"#fff700\",\"sunIntensity\":0.45}]";
-    // An EMPTY list is the built-in curve. Not @"", which reads as "no value" through some
-    // bindings - the property has to arrive as a list for the SDK to clear the old one.
-    return @[ @[ @"Mapbox", @"[]" ], @[ @"Psychedelic", psychedelic ] ];
+    NSString *mapbox =
+        @"[{\"sunAltitude\":-9,\"ambientColor\":\"#001438\",\"ambientIntensity\":0.5,"
+        @"\"sunColor\":\"#3f4455\",\"sunIntensity\":0.5},"
+        @"{\"sunAltitude\":3,\"ambientColor\":\"#363e5e\",\"ambientIntensity\":0.8,"
+        @"\"sunColor\":\"#fec286\",\"sunIntensity\":0.2},"
+        @"{\"sunAltitude\":12,\"ambientColor\":\"#363e5e\",\"ambientIntensity\":0.8,"
+        @"\"sunColor\":\"#fec286\",\"sunIntensity\":0.2},"
+        @"{\"sunAltitude\":38,\"ambientColor\":\"#ffffff\",\"ambientIntensity\":0.8,"
+        @"\"sunColor\":\"#ffffff\",\"sunIntensity\":0.2}]";
+    // The BUILT-IN curve written out: MapBox Standard's four light setups at the sun heights it
+    // states them for. An empty list would select exactly this; spelled out, it shows the shape.
+    return @[ @[ @"Mapbox", mapbox ], @[ @"Psychedelic", psychedelic ] ];
 }
 
 /** The hour is swept, not picked: the curve is continuous and that is the point of it. */
@@ -71,6 +80,11 @@ static const double kStartHour = 17.4;
     _host = host;
     _hour = kStartHour;
     MSFMassifMap *map = host.map;
+
+    // How far a TILTED far field may coarsen: unbounded, the grazing term makes the horizon band
+    // jump between levels as the camera turns, so one side keeps its buildings and the other does
+    // not. This caps the grazing half alone; distance still coarsens freely.
+    [map.options set:@"tileLODForeshorteningLimit" value:@1.0];
 
     [self buildLayer:map];
 
@@ -144,18 +158,13 @@ static const double kStartHour = 17.4;
             set:@"maxZoom" value:@14];
 
     [map addLayer:@"basemap"
-             spec:[[[[MSFSpec of:@"vector"]
+             spec:[[[MSFSpec of:@"vector"]
                  // Cached on disk in front of the server: both are other people's tiles, and a demo
                  // that gets panned around re-fetches the same ones on every run.
                  set:@"source" value:[[[[MSFSpec of:@"persistent-cache"]
                      set:@"databasePath" value:[_host cachePath:(mapbox ? @"mapbox-vector.db" : @"openfreemap.db")]]
                      set:@"capacity" value:@(100 * 1024 * 1024)]
                      set:@"source" value:source]]
-                 // MapBox's tiles are 512 px and this SDK's are 256, so at the same view it would
-                 // ask for a level DEEPER than mapbox-gl does - and a level deeper carries a level's
-                 // worth of extra labels. The converted style already reads ([view::zoom] - 1);
-                 // this is the fetch side of the same offset.
-                 set:@"zoomLevelBias" value:@(mapbox ? -1.0 : 0.0)]
                  set:@"style" value:[[MSFSpec of:@"mbvt"]
                      set:@"project" value:[[MSFSpec of:@"project"]
                          set:@"assets" value:[[MSFSpec of:@"zip"]

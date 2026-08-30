@@ -11,9 +11,10 @@ build product and is never committed.
 Both were produced by the converter, and both carry the **upstream provider's sprite artwork**:
 
 ```sh
-massif-style mapbox2css --live-light --sprite-key '?access_token=…' standard.json  mapbox-standard
-massif-style mapbox2css --live-light --label-emissive 0.35 --sprite-key '?key=…' \
-    streets.json maptiler-streets
+massif-style mapbox2css --live-light --label-emissive 0.6 --halo-emissive 0 \
+    --sprite-key '?access_token=…' standard.json mapbox-standard
+massif-style mapbox2css --live-light --label-emissive 0.45 --halo-emissive 0 \
+    --sprite-key '?key=…' streets.json maptiler-streets
 ```
 
 They are here so the `day-cycle-light` example can be run and the light curve judged against a real

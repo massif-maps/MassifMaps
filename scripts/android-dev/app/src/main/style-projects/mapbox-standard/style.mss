@@ -179,7 +179,8 @@ Map {
   marker-width: @oneway_width;
   marker-allow-overlap: true;
   marker-clip: false;
-  marker-emissive-strength: linear([view::brightness], (0.25, 0.7), (0.5, 1));
+  marker-emissive-strength: 0.6;
+  marker-halo-emissive-strength: 0;
 }
 #road[zoom >= 19][zoom < 25][structure = 'tunnel'][oneway = 'true'] when(step(([view::zoom] - 1), (0, (([class] = 'primary' || [class] = 'secondary' || [class] = 'street' || [class] = 'street_limited' || [class] = 'tertiary') ? true : false)), (16, (([class] = 'primary' || [class] = 'secondary' || [class] = 'tertiary' || [class] = 'street' || [class] = 'street_limited' || [class] = 'primary_link' || [class] = 'secondary_link' || [class] = 'tertiary_link' || [class] = 'service' || [class] = 'track') ? true : false))))::tunnel_oneway_arrow_b2 {
   marker-file: url('icons/oneway-large.png');
@@ -187,7 +188,8 @@ Map {
   marker-width: @oneway_width_2;
   marker-allow-overlap: true;
   marker-clip: false;
-  marker-emissive-strength: linear([view::brightness], (0.25, 0.7), (0.5, 1));
+  marker-emissive-strength: 0.6;
+  marker-halo-emissive-strength: 0;
 }
 #road[zoom >= 17][zoom < 19][structure = 'tunnel'] when(([class] = 'trunk' || [class] = 'trunk_link'))[oneway = 'true']::tunnel_oneway_arrow_trunk_b1 {
   marker-file: url('icons/oneway-small.png');
@@ -195,7 +197,8 @@ Map {
   marker-width: @oneway_width;
   marker-allow-overlap: true;
   marker-clip: false;
-  marker-emissive-strength: linear([view::brightness], (0.25, 0.7), (0.5, 1));
+  marker-emissive-strength: 0.6;
+  marker-halo-emissive-strength: 0;
 }
 #road[zoom >= 19][zoom < 25][structure = 'tunnel'] when(([class] = 'trunk' || [class] = 'trunk_link'))[oneway = 'true']::tunnel_oneway_arrow_trunk_b2 {
   marker-file: url('icons/oneway-large.png');
@@ -203,7 +206,8 @@ Map {
   marker-width: @oneway_width_2;
   marker-allow-overlap: true;
   marker-clip: false;
-  marker-emissive-strength: linear([view::brightness], (0.25, 0.7), (0.5, 1));
+  marker-emissive-strength: 0.6;
+  marker-halo-emissive-strength: 0;
 }
 #road[zoom >= 17][zoom < 19][structure = 'tunnel'] when(([class] = 'motorway' || [class] = 'motorway_link'))[oneway = 'true']::tunnel_oneway_arrow_motorway_b1 {
   marker-file: url('icons/oneway-small.png');
@@ -211,7 +215,8 @@ Map {
   marker-width: @oneway_width;
   marker-allow-overlap: true;
   marker-clip: false;
-  marker-emissive-strength: linear([view::brightness], (0.25, 0.7), (0.5, 1));
+  marker-emissive-strength: 0.6;
+  marker-halo-emissive-strength: 0;
 }
 #road[zoom >= 19][zoom < 25][structure = 'tunnel'] when(([class] = 'motorway' || [class] = 'motorway_link'))[oneway = 'true']::tunnel_oneway_arrow_motorway_b2 {
   marker-file: url('icons/oneway-large.png');
@@ -219,7 +224,8 @@ Map {
   marker-width: @oneway_width_2;
   marker-allow-overlap: true;
   marker-clip: false;
-  marker-emissive-strength: linear([view::brightness], (0.25, 0.7), (0.5, 1));
+  marker-emissive-strength: 0.6;
+  marker-halo-emissive-strength: 0;
 }
 #road[zoom >= 13][structure = 'tunnel'] when(([class] = 'path' || [class] = 'track')) when((([type] = 'cycleway') ? step(([view::zoom] - 1), (0, false), (15, true)) : (([type] = 'piste') ? true : false)))['mapnik::geometry_type' = 2]::tunnel_path_cycleway_piste {
   line-width: linear(([view::zoom] - 1), (12, (([type] = 'piste') ? 0.5 : 0)), (18, (([type] = 'piste') ? 4 : 2)), (22, (([type] = 'piste') ? 40 : 20)));
@@ -319,6 +325,8 @@ Map {
 #road[zoom >= 16] when(([class] = 'turning_circle' || [class] = 'turning_loop'))['mapnik::geometry_type' = 1]::turning_feature {
   marker-width: exponential(1.5, ([view::zoom] - 1), (15, 4.5), (16, 8), (18, 20), (22, 200));
   marker-fill: @line_stroke_3;
+  marker-emissive-strength: 0.6;
+  marker-halo-emissive-strength: 0;
 }
 #road[zoom >= 16] when(([class] = 'street' || [class] = 'street_limited' || [class] = 'primary' || [class] = 'trunk_link' || [class] = 'secondary_link' || [class] = 'tertiary_link' || [class] = 'tertiary' || [class] = 'secondary' || [class] = 'trunk' || [class] = 'primary_link' || [class] = 'motorway_link'))['mapnik::geometry_type' = 3] when((([type] = 'service') ? false : true))::road_polygon_case {
   line-cap: step(([view::zoom] - 1), (0, 'butt'), (14, 'round'));
@@ -390,7 +398,8 @@ Map {
   marker-width: @oneway_width;
   marker-allow-overlap: true;
   marker-clip: false;
-  marker-emissive-strength: linear([view::brightness], (0.25, 0.7), (0.5, 1));
+  marker-emissive-strength: 0.6;
+  marker-halo-emissive-strength: 0;
 }
 #road[zoom >= 19][zoom < 25][oneway = 'true'] when(step(([view::zoom] - 1), (0, (([class] = 'primary' || [class] = 'secondary' || [class] = 'tertiary' || [class] = 'street' || [class] = 'street_limited') ? true : false)), (16, (([class] = 'primary' || [class] = 'secondary' || [class] = 'tertiary' || [class] = 'street' || [class] = 'street_limited' || [class] = 'primary_link' || [class] = 'secondary_link' || [class] = 'tertiary_link' || [class] = 'service' || [class] = 'track') ? true : false)))) when(([structure] = 'none' || [structure] = 'ford'))::road_oneway_arrow_b2 {
   marker-file: url('icons/oneway-large.png');
@@ -398,7 +407,8 @@ Map {
   marker-width: @oneway_width_2;
   marker-allow-overlap: true;
   marker-clip: false;
-  marker-emissive-strength: linear([view::brightness], (0.25, 0.7), (0.5, 1));
+  marker-emissive-strength: 0.6;
+  marker-halo-emissive-strength: 0;
 }
 #road[zoom >= 17][zoom < 19][oneway = 'true'] when(([class] = 'trunk' || [class] = 'trunk_link')) when(([structure] = 'none' || [structure] = 'ford'))::road_oneway_arrow_trunk_b1 {
   marker-file: url('icons/oneway-small.png');
@@ -406,7 +416,8 @@ Map {
   marker-width: @oneway_width;
   marker-allow-overlap: true;
   marker-clip: false;
-  marker-emissive-strength: linear([view::brightness], (0.25, 0.7), (0.5, 1));
+  marker-emissive-strength: 0.6;
+  marker-halo-emissive-strength: 0;
 }
 #road[zoom >= 19][zoom < 25][oneway = 'true'] when(([class] = 'trunk' || [class] = 'trunk_link')) when(([structure] = 'none' || [structure] = 'ford'))::road_oneway_arrow_trunk_b2 {
   marker-file: url('icons/oneway-large.png');
@@ -414,7 +425,8 @@ Map {
   marker-width: @oneway_width_2;
   marker-allow-overlap: true;
   marker-clip: false;
-  marker-emissive-strength: linear([view::brightness], (0.25, 0.7), (0.5, 1));
+  marker-emissive-strength: 0.6;
+  marker-halo-emissive-strength: 0;
 }
 #road[zoom >= 17][zoom < 19][oneway = 'true'] when(([class] = 'motorway' || [class] = 'motorway_link')) when(([structure] = 'none' || [structure] = 'ford'))::road_oneway_arrow_motorway_b1 {
   marker-file: url('icons/oneway-small.png');
@@ -422,7 +434,8 @@ Map {
   marker-width: @oneway_width;
   marker-allow-overlap: true;
   marker-clip: false;
-  marker-emissive-strength: linear([view::brightness], (0.25, 0.7), (0.5, 1));
+  marker-emissive-strength: 0.6;
+  marker-halo-emissive-strength: 0;
 }
 #road[zoom >= 19][zoom < 25][oneway = 'true'] when(([class] = 'motorway' || [class] = 'motorway_link')) when(([structure] = 'none' || [structure] = 'ford'))::road_oneway_arrow_motorway_b2 {
   marker-file: url('icons/oneway-large.png');
@@ -430,7 +443,8 @@ Map {
   marker-width: @oneway_width_2;
   marker-allow-overlap: true;
   marker-clip: false;
-  marker-emissive-strength: linear([view::brightness], (0.25, 0.7), (0.5, 1));
+  marker-emissive-strength: 0.6;
+  marker-halo-emissive-strength: 0;
 }
 #structure[zoom >= 18][zoom < 19][class = 'crosswalk']['mapnik::geometry_type' = 1]::crosswalks_b1 {
   marker-file: url('icons/crosswalk-small.png');
@@ -439,7 +453,8 @@ Map {
   marker-allow-overlap: true;
   marker-clip: false;
   marker-transform: rotate([direction]);
-  marker-emissive-strength: linear([view::brightness], (0.25, 0.7), (0.5, 1));
+  marker-emissive-strength: 0.6;
+  marker-halo-emissive-strength: 0;
 }
 #structure[zoom >= 19][zoom < 25][class = 'crosswalk']['mapnik::geometry_type' = 1]::crosswalks_b2 {
   marker-file: url('icons/crosswalk-large.png');
@@ -448,7 +463,8 @@ Map {
   marker-allow-overlap: true;
   marker-clip: false;
   marker-transform: rotate([direction]);
-  marker-emissive-strength: linear([view::brightness], (0.25, 0.7), (0.5, 1));
+  marker-emissive-strength: 0.6;
+  marker-halo-emissive-strength: 0;
 }
 #road[zoom >= 16][structure = 'bridge'][class = 'path'] when(step(([view::zoom] - 1), (0, (!(([type] = 'steps' || [type] = 'sidewalk' || [type] = 'crossing') ? true : false))), (16, ([type] != 'steps'))))['mapnik::geometry_type' = 2]::bridge_path_case {
   line-width: exponential(1.5, ([view::zoom] - 1), (14, 0.5), (18, 1), (22, 2));
@@ -649,7 +665,8 @@ Map {
   marker-width: @oneway_width;
   marker-allow-overlap: true;
   marker-clip: false;
-  marker-emissive-strength: linear([view::brightness], (0.25, 0.7), (0.5, 1));
+  marker-emissive-strength: 0.6;
+  marker-halo-emissive-strength: 0;
 }
 #road[zoom >= 19][zoom < 25][structure = 'bridge'][oneway = 'true'] when(step(([view::zoom] - 1), (0, (([class] = 'primary' || [class] = 'secondary' || [class] = 'tertiary' || [class] = 'street' || [class] = 'street_limited') ? true : false)), (16, (([class] = 'primary' || [class] = 'secondary' || [class] = 'tertiary' || [class] = 'street' || [class] = 'street_limited' || [class] = 'primary_link' || [class] = 'secondary_link' || [class] = 'tertiary_link' || [class] = 'service' || [class] = 'track') ? true : false))))::bridge_oneway_arrow_b2 {
   marker-file: url('icons/oneway-large.png');
@@ -657,7 +674,8 @@ Map {
   marker-width: @oneway_width_2;
   marker-allow-overlap: true;
   marker-clip: false;
-  marker-emissive-strength: linear([view::brightness], (0.25, 0.7), (0.5, 1));
+  marker-emissive-strength: 0.6;
+  marker-halo-emissive-strength: 0;
 }
 #road[zoom >= 17][zoom < 19][structure = 'bridge'] when(([class] = 'trunk' || [class] = 'trunk_link'))[oneway = 'true']::bridge_oneway_arrow_trunk_b1 {
   marker-file: url('icons/oneway-small.png');
@@ -665,7 +683,8 @@ Map {
   marker-width: @oneway_width;
   marker-allow-overlap: true;
   marker-clip: false;
-  marker-emissive-strength: linear([view::brightness], (0.25, 0.7), (0.5, 1));
+  marker-emissive-strength: 0.6;
+  marker-halo-emissive-strength: 0;
 }
 #road[zoom >= 19][zoom < 25][structure = 'bridge'] when(([class] = 'trunk' || [class] = 'trunk_link'))[oneway = 'true']::bridge_oneway_arrow_trunk_b2 {
   marker-file: url('icons/oneway-large.png');
@@ -673,7 +692,8 @@ Map {
   marker-width: @oneway_width_2;
   marker-allow-overlap: true;
   marker-clip: false;
-  marker-emissive-strength: linear([view::brightness], (0.25, 0.7), (0.5, 1));
+  marker-emissive-strength: 0.6;
+  marker-halo-emissive-strength: 0;
 }
 #road[zoom >= 17][zoom < 19][structure = 'bridge'] when(([class] = 'motorway' || [class] = 'motorway_link'))[oneway = 'true']::bridge_oneway_arrow_motorway_b1 {
   marker-file: url('icons/oneway-small.png');
@@ -681,7 +701,8 @@ Map {
   marker-width: @oneway_width;
   marker-allow-overlap: true;
   marker-clip: false;
-  marker-emissive-strength: linear([view::brightness], (0.25, 0.7), (0.5, 1));
+  marker-emissive-strength: 0.6;
+  marker-halo-emissive-strength: 0;
 }
 #road[zoom >= 19][zoom < 25][structure = 'bridge'] when(([class] = 'motorway' || [class] = 'motorway_link'))[oneway = 'true']::bridge_oneway_arrow_motorway_b2 {
   marker-file: url('icons/oneway-large.png');
@@ -689,7 +710,8 @@ Map {
   marker-width: @oneway_width_2;
   marker-allow-overlap: true;
   marker-clip: false;
-  marker-emissive-strength: linear([view::brightness], (0.25, 0.7), (0.5, 1));
+  marker-emissive-strength: 0.6;
+  marker-halo-emissive-strength: 0;
 }
 #road[zoom >= 15][structure = 'bridge'] when(([class] = 'path' || [class] = 'track')) when((([type] = 'cycleway') ? step(([view::zoom] - 1), (0, false), (15, true)) : (([type] = 'piste') ? true : false)))['mapnik::geometry_type' = 2]::bridge_path_cycleway_piste {
   line-color: @path_stroke;
@@ -768,11 +790,15 @@ Map {
   marker-clip: true;
   marker-line-color: darken(@trees_fill, 0.18);
   marker-line-width: @label_halo_radius;
+  marker-emissive-strength: 0.6;
+  marker-halo-emissive-strength: 0;
 }
 #wind_turbine[zoom >= 16]::wind_turbine_shadow {
   marker-width: exponential(1.6, ([view::zoom] - 1), (16, 2), (22, 260));
   marker-fill: @wind_turbine_shadow_fill;
   marker-fill-opacity: exponential(1.8, ([view::zoom] - 1), (15, 0), (15.5, 1));
+  marker-emissive-strength: 0.6;
+  marker-halo-emissive-strength: 0;
 }
 #indoor_structure[zoom >= 17]::indoor_building_footprint {
   polygon-fill: @indoor_building_footprint_fill;
@@ -801,6 +827,8 @@ Map {
   text-placement-priority: 12000000;
   text-spacing: @label_spacing;
   text-min-distance: @label_spacing;
+  text-emissive-strength: 0.6;
+  text-halo-emissive-strength: 0;
 }
 #road[zoom >= 11][name != null] when(step(([view::zoom] - 1), (0, (([class] = 'motorway' || [class] = 'trunk') ? true : false)), (12, (([class] = 'motorway' || [class] = 'trunk' || [class] = 'primary' || [class] = 'secondary') ? true : false)), (13, (([class] = 'motorway' || [class] = 'trunk' || [class] = 'primary' || [class] = 'secondary' || [class] = 'tertiary' || [class] = 'street' || [class] = 'street_limited') ? true : false)), (15, (([class] = 'path' || [class] = 'pedestrian' || [class] = 'golf' || [class] = 'ferry' || [class] = 'aerialway') ? false : true))))::road_label {
   text-placement: 'billboard-line';
@@ -816,6 +844,8 @@ Map {
   text-placement-priority: 12100000;
   text-spacing: @label_spacing;
   text-min-distance: @label_spacing;
+  text-emissive-strength: 0.6;
+  text-halo-emissive-strength: 0;
 }
 #road[zoom >= 17][class = 'golf']::golf_hole_label {
   text-placement: 'billboard';
@@ -829,7 +859,8 @@ Map {
   text-min-distance: @label_minimum_distance;
   text-wrap-width: 120;
   text-wrap-before: true;
-  text-emissive-strength: 0.7;
+  text-emissive-strength: 0.6;
+  text-halo-emissive-strength: 0;
 }
 #road[zoom >= 16] when((([class] = 'aerialway') ? true : (([class] = 'ferry') ? true : false)))::ferry_aerialway_label {
   text-placement: 'billboard-line';
@@ -845,6 +876,8 @@ Map {
   text-placement-priority: 12300000;
   text-spacing: @label_spacing;
   text-min-distance: @label_spacing;
+  text-emissive-strength: 0.6;
+  text-halo-emissive-strength: 0;
 }
 #natural_label[zoom >= 14] when((([class] = 'canal' || [class] = 'river' || [class] = 'stream' || [class] = 'disputed_canal' || [class] = 'disputed_river' || [class] = 'disputed_stream') ? (([$localized] != null) ? true : (([worldview] = 'all' || [worldview] = 'US') ? true : false)) : false))['mapnik::geometry_type' = 2]::waterway_label {
   text-placement: 'billboard-line';
@@ -856,6 +889,8 @@ Map {
   text-fill: linear([view::brightness], (0.3, @label_fill_4), (0.4, @label_fill_5));
   text-placement-priority: 12400000;
   text-min-distance: linear(([view::zoom] - 1), (15, 250), (17, 400));
+  text-emissive-strength: 0.6;
+  text-halo-emissive-strength: 0;
 }
 #natural_label[zoom >= 5] when((([class] = 'glacier' || [class] = 'landform' || [class] = 'disputed_glacier' || [class] = 'disputed_landform') ? (([$localized] != null) ? true : (([worldview] = 'all' || [worldview] = 'US') ? true : false)) : false))[filterrank <= 2]['mapnik::geometry_type' = 2]::natural_line_label {
   text-placement: 'billboard-line';
@@ -867,6 +902,8 @@ Map {
   text-halo-fill: linear([view::brightness], (0.25, @label_halo_fill), (0.3, @label_halo_fill_2));
   text-fill: linear([view::brightness], (0.25, @natural_fill), (0.3, @natural_fill_2));
   text-placement-priority: 12500000;
+  text-emissive-strength: 0.6;
+  text-halo-emissive-strength: 0;
 }
 #natural_label[zoom >= 5] when((([class] = 'dock' || [class] = 'glacier' || [class] = 'landform' || [class] = 'water_feature' || [class] = 'wetland' || [class] = 'disputed_dock' || [class] = 'disputed_glacier' || [class] = 'disputed_landform' || [class] = 'disputed_water_feature' || [class] = 'disputed_wetland') ? (([$localized] != null) ? true : (([worldview] = 'all' || [worldview] = 'US') ? true : false)) : false))[filterrank <= 2]['mapnik::geometry_type' = 1]::natural_point_label {
   shield-placement: 'billboard';
@@ -899,7 +936,9 @@ Map {
   shield-icon-background-border-width: 0.75;
   shield-icon-halo-fill: @label_icon_halo_fill;
   shield-icon-halo-radius: 0.75;
-  shield-emissive-strength: linear([view::brightness], (0.25, 1), (0.5, 1));
+  shield-dy: -17.25;
+  shield-emissive-strength: 0.6;
+  shield-halo-emissive-strength: 0;
 }
 #natural_label[zoom >= 2] when((([class] = 'bay' || [class] = 'ocean' || [class] = 'reservoir' || [class] = 'sea' || [class] = 'water' || [class] = 'disputed_bay' || [class] = 'disputed_ocean' || [class] = 'disputed_reservoir' || [class] = 'disputed_sea' || [class] = 'disputed_water') ? (([$localized] != null) ? true : (([worldview] = 'all' || [worldview] = 'US') ? true : false)) : false))['mapnik::geometry_type' = 2]::water_line_label {
   text-placement: 'billboard-line';
@@ -910,6 +949,8 @@ Map {
   text-occlusion-opacity: 0;
   text-fill: linear([view::brightness], (0.3, @label_fill_4), (0.4, @label_fill_5));
   text-placement-priority: 12700000;
+  text-emissive-strength: 0.6;
+  text-halo-emissive-strength: 0;
 }
 #natural_label[zoom >= 2] when((([class] = 'bay' || [class] = 'ocean' || [class] = 'reservoir' || [class] = 'sea' || [class] = 'water' || [class] = 'disputed_bay' || [class] = 'disputed_ocean' || [class] = 'disputed_reservoir' || [class] = 'disputed_sea' || [class] = 'disputed_water') ? (([$localized] != null) ? true : (([worldview] = 'all' || [worldview] = 'US') ? true : false)) : false))['mapnik::geometry_type' = 1]['mapnik::feature_id' != 1]::water_point_label {
   text-placement: 'billboard';
@@ -924,6 +965,8 @@ Map {
   text-placement-priority: 12800000;
   text-min-distance: @label_minimum_distance;
   text-wrap-before: true;
+  text-emissive-strength: 0.6;
+  text-halo-emissive-strength: 0;
 }
 #road[zoom >= 16][class = 'intersection'][name != null]::road_intersection {
   shield-placement: 'billboard';
@@ -939,7 +982,8 @@ Map {
   shield-file: url('icons/intersection.png');
   shield-unlock-image: true;
   shield-image-scale: ((1) / 4.0);
-  shield-emissive-strength: linear([view::brightness], (0.25, 0.75), (0.3, 1));
+  shield-emissive-strength: 0.6;
+  shield-halo-emissive-strength: 0;
 }
 #road[zoom >= 7][reflen != null][reflen <= 6] when((([class] = 'pedestrian' || [class] = 'service') ? false : true)) when((([type] = 'footway' || [type] = 'corridor') ? false : true)) when(step(([view::zoom] - 1), (0, ([mapnik::geometry_type] = 1)), (11, (([len]) ?? (0) > 5000)), (12, (([len]) ?? (0) > 2500)), (13, (([len]) ?? (0) > 1000)), (14, true)))::road_number_shield {
   shield-placement: 'billboard';
@@ -957,7 +1001,8 @@ Map {
   shield-file: (((([shield_beta] != null)) ? url('icons/[shield_beta]-[reflen].png') ?? url('icons/[shield]-[reflen].png') ?? url('icons/default-[reflen].png') : url('icons/[shield]-[reflen].png')));
   shield-unlock-image: true;
   shield-image-scale: ((1) / 4.0);
-  shield-emissive-strength: linear([view::brightness], (0.25, 0.75), (0.3, 1));
+  shield-emissive-strength: 0.6;
+  shield-halo-emissive-strength: 0;
 }
 #motorway_junction[zoom >= 15][reflen != null]::road_exit_shield {
   shield-placement: 'billboard';
@@ -973,7 +1018,8 @@ Map {
   shield-file: (url('icons/motorway-exit-[reflen].png'));
   shield-unlock-image: true;
   shield-image-scale: ((1) / 4.0);
-  shield-emissive-strength: linear([view::brightness], (0.25, 0.75), (0.3, 1));
+  shield-emissive-strength: 0.6;
+  shield-halo-emissive-strength: 0;
 }
 #structure[zoom >= 19][class = 'entrance']::building_entrance {
   shield-placement: 'billboard';
@@ -995,6 +1041,8 @@ Map {
   shield-file: url('icons/marker.png');
   shield-unlock-image: true;
   shield-image-scale: ((1) / 4.0);
+  shield-emissive-strength: 0.6;
+  shield-halo-emissive-strength: 0;
 }
 #place_label[zoom >= 17][class = 'settlement_subdivision'][type = 'block']::block_number_label {
   text-placement: 'billboard';
@@ -1009,6 +1057,8 @@ Map {
   text-placement-priority: 13500000;
   text-min-distance: @label_minimum_distance;
   text-wrap-before: true;
+  text-emissive-strength: 0.6;
+  text-halo-emissive-strength: 0;
 }
 #poi_label[zoom >= 7] when((([maki_beta] = 'terminal') ? false : true)) when(([filterrank] <= (step(([view::zoom] - 1), (0, -2), (16, -1), (18, 0)) + (([class] = 'park_like') ? 4 : (([class] = 'visitor_amenities') ? 2 : (([class] = 'store_like') ? 3 : (([class] = 'lodging') ? 1 : 2)))) + 3))) when((([type] = 'Toilets') ? (([view::zoom] - 1) >= 17) : true))::poi_label {
   shield-placement: 'billboard';
@@ -1042,7 +1092,9 @@ Map {
   shield-icon-background-border-fill: @label_icon_halo_fill;
   shield-icon-halo-fill: @poi_label_icon_fill;
   shield-icon-halo-radius: 0.75;
-  shield-emissive-strength: 0.9;
+  shield-dy: -16.33;
+  shield-emissive-strength: 0.6;
+  shield-halo-emissive-strength: 0;
 }
 #transit_stop_label[zoom >= 13][zoom < 14] when(step(([view::zoom] - 1), (0, (([mode] != 'bus') ? ([stop_type] != 'entrance') : false)), (17, ([stop_type] != 'entrance')), (19, true)))::transit_label_b1 {
   shield-placement: 'billboard';
@@ -1075,6 +1127,9 @@ Map {
   shield-icon-background-padding-y: 0;
   shield-icon-background-border-width: 0.75;
   shield-icon-background-border-fill: (([network] = 'bus' || [network] = 'ferry' || [network] = 'rail' || [network] = 'rail-light' || [network] = 'rail-metro' || [network] = 'bicycle-share' || [network] = 'entrance') ? @label_icon_fill : transparent);
+  shield-dy: -16.6;
+  shield-emissive-strength: 0.6;
+  shield-halo-emissive-strength: 0;
 }
 #transit_stop_label[zoom >= 14][zoom < 15] when(step(([view::zoom] - 1), (0, (([mode] != 'bus') ? ([stop_type] != 'entrance') : false)), (17, ([stop_type] != 'entrance')), (19, true)))::transit_label_b2 {
   shield-placement: 'billboard';
@@ -1107,6 +1162,9 @@ Map {
   shield-icon-background-padding-y: 0;
   shield-icon-background-border-width: 0.75;
   shield-icon-background-border-fill: (([network] = 'bus' || [network] = 'ferry' || [network] = 'rail' || [network] = 'rail-light' || [network] = 'rail-metro' || [network] = 'bicycle-share' || [network] = 'entrance') ? @label_icon_fill : transparent);
+  shield-dy: -16.6;
+  shield-emissive-strength: 0.6;
+  shield-halo-emissive-strength: 0;
 }
 #transit_stop_label[zoom >= 15][zoom < 19] when(step(([view::zoom] - 1), (0, (([mode] != 'bus') ? ([stop_type] != 'entrance') : false)), (17, ([stop_type] != 'entrance')), (19, true)))::transit_label_b3 {
   shield-placement: 'billboard';
@@ -1139,6 +1197,9 @@ Map {
   shield-icon-background-padding-y: 0;
   shield-icon-background-border-width: 0.75;
   shield-icon-background-border-fill: (([network] = 'bus' || [network] = 'ferry' || [network] = 'rail' || [network] = 'rail-light' || [network] = 'rail-metro' || [network] = 'bicycle-share' || [network] = 'entrance') ? @label_icon_fill : transparent);
+  shield-dy: -16.6;
+  shield-emissive-strength: 0.6;
+  shield-halo-emissive-strength: 0;
 }
 #transit_stop_label[zoom >= 19][zoom < 25] when(step(([view::zoom] - 1), (0, (([mode] != 'bus') ? ([stop_type] != 'entrance') : false)), (17, ([stop_type] != 'entrance')), (19, true)))::transit_label_b4 {
   shield-placement: 'billboard';
@@ -1171,6 +1232,9 @@ Map {
   shield-icon-background-padding-y: 0;
   shield-icon-background-border-width: 0.75;
   shield-icon-background-border-fill: (([network] = 'bus' || [network] = 'ferry' || [network] = 'rail' || [network] = 'rail-light' || [network] = 'rail-metro' || [network] = 'bicycle-share' || [network] = 'entrance') ? @label_icon_fill : transparent);
+  shield-dy: -16.6;
+  shield-emissive-strength: 0.6;
+  shield-halo-emissive-strength: 0;
 }
 #airport_label[zoom >= 9] when((([class] = 'military' || [class] = 'civil' || [class] = 'disputed_military' || [class] = 'disputed_civil') ? (([$localized] != null) ? true : (([worldview] = 'all' || [worldview] = 'US') ? true : false)) : false))::airport_label {
   shield-placement: 'billboard';
@@ -1206,6 +1270,8 @@ Map {
   shield-icon-background-border-width: 0.75;
   shield-icon-background-border-fill: @label_icon_fill;
   shield-dy: -14.6;
+  shield-emissive-strength: 0.6;
+  shield-halo-emissive-strength: 0;
 }
 #place_label[zoom >= 11][zoom < 16] when((([class] = 'disputed_settlement_subdivision' || [class] = 'settlement_subdivision') ? (([$localized] != null) ? true : (([worldview] = 'all' || [worldview] = 'US') ? true : false)) : false)) when(([filterrank] <= 3))::settlement_subdivision_label {
   text-placement: 'billboard';
@@ -1223,6 +1289,8 @@ Map {
   text-fill: linear([view::brightness], (0.25, @settlement_subdivision_label_fill), (0.3, @settlement_subdivision_label_fill_2));
   text-placement-priority: 14300000;
   text-wrap-before: true;
+  text-emissive-strength: 0.6;
+  text-halo-emissive-strength: 0;
 }
 #place_label[zoom >= 3][zoom < 14][filterrank <= 3] when((([class] = 'settlement' || [class] = 'disputed_settlement') ? (([$localized] != null) ? true : (([worldview] = 'all' || [worldview] = 'US') ? true : false)) : false)) when(step(([view::zoom] - 1), (0, ([symbolrank] > 6)), (4, ([symbolrank] >= 7)), (6, ([symbolrank] >= 8)), (7, ([symbolrank] >= 10)), (10, ([symbolrank] >= 11)), (11, ([symbolrank] >= 13)), (12, ([symbolrank] >= 15))))::settlement_minor_label {
   text-placement: 'billboard';
@@ -1241,6 +1309,8 @@ Map {
   text-placement-priority: (14400000 - [symbolrank]);
   text-min-distance: @label_minimum_distance;
   text-wrap-before: true;
+  text-emissive-strength: 0.6;
+  text-halo-emissive-strength: 0;
 }
 #place_label[zoom >= 3][zoom < 16][filterrank <= 3] when((([class] = 'settlement' || [class] = 'disputed_settlement') ? (([$localized] != null) ? true : (([worldview] = 'all' || [worldview] = 'US') ? true : false)) : false)) when(step(([view::zoom] - 1), (0, false), (2, ([symbolrank] <= 6)), (4, ([symbolrank] < 7)), (6, ([symbolrank] < 8)), (7, ([symbolrank] < 10)), (10, ([symbolrank] < 11)), (11, ([symbolrank] < 13)), (12, ([symbolrank] < 15)), (13, ([symbolrank] >= 11)), (14, ([symbolrank] >= 15))))::settlement_major_label {
   text-placement: 'billboard';
@@ -1259,6 +1329,8 @@ Map {
   text-placement-priority: (14600000 - [symbolrank]);
   text-min-distance: @label_minimum_distance;
   text-wrap-before: true;
+  text-emissive-strength: 0.6;
+  text-halo-emissive-strength: 0;
 }
 #place_label[zoom >= 4][zoom < 10] when((([class] = 'state' || [class] = 'disputed_state') ? (([$localized] != null) ? true : (([worldview] = 'all' || [worldview] = 'US') ? true : false)) : false))::state_label {
   text-placement: 'billboard';
@@ -1276,6 +1348,8 @@ Map {
   text-placement-priority: 14700000;
   text-min-distance: @label_minimum_distance;
   text-wrap-before: true;
+  text-emissive-strength: 0.6;
+  text-halo-emissive-strength: 0;
 }
 #place_label[zoom >= 2][zoom < 11] when((([class] = 'country' || [class] = 'disputed_country') ? (([$localized] != null) ? true : (([worldview] = 'all' || [worldview] = 'US') ? true : false)) : false))::country_label {
   text-placement: 'billboard';
@@ -1292,6 +1366,8 @@ Map {
   text-placement-priority: 14800000;
   text-min-distance: @label_minimum_distance;
   text-wrap-before: true;
+  text-emissive-strength: 0.6;
+  text-halo-emissive-strength: 0;
 }
 #natural_label[zoom >= 1][zoom < 4][class = 'continent']::continent_label {
   text-placement: 'billboard';
@@ -1310,4 +1386,6 @@ Map {
   text-placement-priority: 14900000;
   text-min-distance: @label_minimum_distance;
   text-wrap-before: true;
+  text-emissive-strength: 0.6;
+  text-halo-emissive-strength: 0;
 }

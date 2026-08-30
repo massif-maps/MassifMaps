@@ -86,6 +86,10 @@ public class DayCycleLightExample extends MapExample {
         map.light(Spec.of("light")
             .set("dayCycleLightsEnabled", true)
             .set("sunOverridingStyle", true)
+            // Without this the ground is never lit, and the shadow multiply lives in the same
+            // block - so the buildings cast nothing. The style says `colors-prelit`, so lighting
+            // the ground here does NOT light its colours twice: it only lets the shadows land.
+            .set("terrainLightingEnabled", true)
             // Buildings cast: a low sun is what the curve is most worth looking at, and it is also
             // when the shadows are longest. They follow the same sun the curve reads, so they
             // stretch and swing round as the hour is swept.

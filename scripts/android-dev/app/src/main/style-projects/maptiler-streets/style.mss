@@ -377,7 +377,8 @@ Map {
   text-halo-radius: linear(([view::zoom] - 1), (10, 1), (18, 2));
   text-placement-priority: 5700000;
   text-min-distance: @river_labels_spacing;
-  text-emissive-strength: 0.35;
+  text-emissive-strength: 0.45;
+  text-halo-emissive-strength: 0;
 }
 #water_name[zoom >= 1]['mapnik::geometry_type' = 1][name != null][class != 'lake']::Ocean_labels {
   text-placement: 'billboard';
@@ -393,7 +394,8 @@ Map {
   text-placement-priority: 5800000;
   text-min-distance: @text_minimum_distance;
   text-wrap-before: true;
-  text-emissive-strength: 0.35;
+  text-emissive-strength: 0.45;
+  text-halo-emissive-strength: 0;
 }
 #water_name[zoom >= 1]['mapnik::geometry_type' = 2][class = 'lake']::Lake_labels {
   text-placement: 'line';
@@ -408,7 +410,8 @@ Map {
   text-placement-priority: 5900000;
   text-spacing: @text_spacing;
   text-min-distance: @text_spacing;
-  text-emissive-strength: 0.35;
+  text-emissive-strength: 0.45;
+  text-halo-emissive-strength: 0;
 }
 #housenumber[zoom >= 19]::Housenumber {
   text-placement: 'billboard';
@@ -422,7 +425,8 @@ Map {
   text-min-distance: @text_minimum_distance;
   text-wrap-width: 100;
   text-wrap-before: true;
-  text-emissive-strength: 0.35;
+  text-emissive-strength: 0.45;
+  text-halo-emissive-strength: 0;
 }
 #transportation_name[zoom >= 14] when(([subclass] = 'gondola' || [subclass] = 'cable_car'))::Gondola {
   text-placement: 'line';
@@ -439,7 +443,8 @@ Map {
   text-placement-priority: 6100000;
   text-spacing: @text_spacing;
   text-min-distance: @text_spacing;
-  text-emissive-strength: 0.35;
+  text-emissive-strength: 0.45;
+  text-halo-emissive-strength: 0;
 }
 #transportation_name[zoom >= 13][class = 'ferry']::Ferry {
   text-placement: 'line';
@@ -456,7 +461,8 @@ Map {
   text-placement-priority: 6200000;
   text-spacing: @text_spacing;
   text-min-distance: @text_spacing;
-  text-emissive-strength: 0.35;
+  text-emissive-strength: 0.45;
+  text-halo-emissive-strength: 0;
 }
 #transportation[zoom >= 17][oneway != null] when(([class] = 'motorway' || [class] = 'trunk' || [class] = 'primary' || [class] = 'secondary' || [class] = 'tertiary' || [class] = 'minor' || [class] = 'service'))::Oneway {
   marker-file: url('icons/oneway.png');
@@ -467,7 +473,8 @@ Map {
   marker-opacity: @line_stroke_opacity;
   marker-halo-opacity: 0.5;
   marker-transform: rotate((([oneway] = 1) ? 0 : 0));
-  marker-emissive-strength: 0.35;
+  marker-emissive-strength: 0.45;
+  marker-halo-emissive-strength: 0;
 }
 #transportation_name[zoom >= 9] when(([subclass] != 'gondola' ? [subclass] != 'cable_car' : false)) when(([class] != 'ferry' ? [class] != 'service' : false))::Road_labels {
   text-placement: 'line';
@@ -486,7 +493,8 @@ Map {
   text-halo-radius: @text_halo_radius;
   text-placement-priority: 6400000;
   text-min-distance: step(([view::zoom] - 1), (0, 250), (21, 1000));
-  text-emissive-strength: 0.35;
+  text-emissive-strength: 0.45;
+  text-halo-emissive-strength: 0;
 }
 #transportation_name[zoom >= 17][ref_length > 0]['mapnik::geometry_type' = 1][subclass = 'junction']::Highway_junction {
   text-placement: 'billboard';
@@ -505,7 +513,8 @@ Map {
   text-min-distance: @text_minimum_distance;
   text-wrap-width: @highway_wrap_width;
   text-wrap-before: true;
-  text-emissive-strength: 0.35;
+  text-emissive-strength: 0.45;
+  text-halo-emissive-strength: 0;
 }
 #transportation_name[zoom >= 9][ref_length <= 6]['mapnik::geometry_type' = 2] when(([network] != 'us-interstate' ? ([network] != 'us-highway' ? [network] != 'us-state' : false) : false)) when([class] != 'path')[class = 'motorway']::Highway_shield_b1 {
   shield-placement: 'billboard-line-repeat';
@@ -530,7 +539,8 @@ Map {
   shield-icon-fill: @shield_halo_fill;
   shield-icon-halo-fill: @labels_icon_halo_fill;
   shield-icon-halo-radius: 1;
-  shield-emissive-strength: 0.35;
+  shield-emissive-strength: 0.45;
+  shield-halo-emissive-strength: 0;
 }
 #transportation_name[zoom >= 9][ref_length <= 6]['mapnik::geometry_type' = 2] when(([network] != 'us-interstate' ? ([network] != 'us-highway' ? [network] != 'us-state' : false) : false)) when([class] != 'path') when((!([class] = 'motorway')))::Highway_shield_b2 {
   shield-placement: 'billboard-line-repeat';
@@ -555,7 +565,8 @@ Map {
   shield-icon-fill: @shield_halo_fill;
   shield-icon-halo-fill: @labels_icon_halo_fill;
   shield-icon-halo-radius: 1;
-  shield-emissive-strength: 0.35;
+  shield-emissive-strength: 0.45;
+  shield-halo-emissive-strength: 0;
 }
 #transportation_name[zoom >= 8][ref_length <= 6]['mapnik::geometry_type' = 2] when(([network] = 'us-highway' || [network] = 'us-state')) when([class] != 'path')[class = 'motorway']::Highway_shield__US__b1 {
   text-placement: 'billboard';
@@ -574,7 +585,8 @@ Map {
   text-min-distance: @text_minimum_distance;
   text-wrap-width: @highway_wrap_width;
   text-wrap-before: true;
-  text-emissive-strength: 0.35;
+  text-emissive-strength: 0.45;
+  text-halo-emissive-strength: 0;
 }
 #transportation_name[zoom >= 8][ref_length <= 6]['mapnik::geometry_type' = 2] when(([network] = 'us-highway' || [network] = 'us-state')) when([class] != 'path') when((!([class] = 'motorway')))::Highway_shield__US__b2 {
   text-placement: 'billboard';
@@ -593,7 +605,8 @@ Map {
   text-min-distance: @text_minimum_distance;
   text-wrap-width: @highway_wrap_width;
   text-wrap-before: true;
-  text-emissive-strength: 0.35;
+  text-emissive-strength: 0.45;
+  text-halo-emissive-strength: 0;
 }
 #transportation_name[zoom >= 8][ref_length <= 6]['mapnik::geometry_type' = 2][network = 'us-interstate'] when([class] != 'path')[class = 'motorway']::Highway_shield_interstate_top__US__b1 {
   text-placement: 'billboard';
@@ -612,7 +625,8 @@ Map {
   text-min-distance: @text_minimum_distance;
   text-wrap-width: @highway_wrap_width;
   text-wrap-before: true;
-  text-emissive-strength: 0.35;
+  text-emissive-strength: 0.45;
+  text-halo-emissive-strength: 0;
 }
 #transportation_name[zoom >= 8][ref_length <= 6]['mapnik::geometry_type' = 2][network = 'us-interstate'] when([class] != 'path') when((!([class] = 'motorway')))::Highway_shield_interstate_top__US__b2 {
   text-placement: 'billboard';
@@ -631,7 +645,8 @@ Map {
   text-min-distance: @text_minimum_distance;
   text-wrap-width: @highway_wrap_width;
   text-wrap-before: true;
-  text-emissive-strength: 0.35;
+  text-emissive-strength: 0.45;
+  text-halo-emissive-strength: 0;
 }
 #transportation_name[zoom >= 8][ref_length <= 6]['mapnik::geometry_type' = 2][network = 'us-interstate'] when([class] != 'path')[class = 'motorway']::Highway_shield_interstate__US__b1 {
   text-placement: 'billboard';
@@ -650,7 +665,8 @@ Map {
   text-min-distance: @text_minimum_distance;
   text-wrap-width: @highway_wrap_width;
   text-wrap-before: true;
-  text-emissive-strength: 0.35;
+  text-emissive-strength: 0.45;
+  text-halo-emissive-strength: 0;
 }
 #transportation_name[zoom >= 8][ref_length <= 6]['mapnik::geometry_type' = 2][network = 'us-interstate'] when([class] != 'path') when((!([class] = 'motorway')))::Highway_shield_interstate__US__b2 {
   text-placement: 'billboard';
@@ -669,7 +685,8 @@ Map {
   text-min-distance: @text_minimum_distance;
   text-wrap-width: @highway_wrap_width;
   text-wrap-before: true;
-  text-emissive-strength: 0.35;
+  text-emissive-strength: 0.45;
+  text-halo-emissive-strength: 0;
 }
 #poi[zoom >= 17]['mapnik::geometry_type' = 1] when(([class] = 'atm' || [class] = 'bank' || [class] = 'bbq' || [class] = 'cemetery' || [class] = 'courthouse' || [class] = 'drinking_water' || [class] = 'fire_station' || [class] = 'fountain' || [class] = 'hairdresser' || [class] = 'office' || [class] = 'post' || [class] = 'prison' || [class] = 'recycling' || [class] = 'shower' || [class] = 'telephone' || [class] = 'toilets' || [class] = 'townhall' || [class] = 'town_hall'))::Public {
   shield-placement: 'billboard';
@@ -699,7 +716,8 @@ Map {
   shield-icon-halo-radius: 2;
   shield-text-optional: true;
   shield-dy: -5.03;
-  shield-emissive-strength: 0.35;
+  shield-emissive-strength: 0.45;
+  shield-halo-emissive-strength: 0;
 }
 #poi[zoom >= 17]['mapnik::geometry_type' = 1] when(([class] = 'american_football' || [class] = 'athletics' || [class] = 'archery' || [class] = 'baseball' || [class] = 'basketball' || [class] = 'climbing' || [class] = 'equestrian' || [class] = 'fitness' || [class] = 'fitness_centre' || [class] = 'golf' || [class] = 'motor' || [class] = 'multi' || [class] = 'playground' || [class] = 'pitch' || [class] = 'running' || [class] = 'sauna' || [class] = 'soccer' || [class] = 'sport' || [class] = 'stadium' || [class] = 'sports_centre' || [class] = 'sports_hall' || [class] = 'swimming' || [class] = 'swimming_area' || [class] = 'swimming_pool' || [class] = 'tennis' || [class] = 'volleyball' || [class] = 'water_park'))[name != null]::Sport {
   shield-placement: 'billboard';
@@ -729,7 +747,8 @@ Map {
   shield-icon-halo-radius: 2;
   shield-text-optional: true;
   shield-dy: -1.03;
-  shield-emissive-strength: 0.35;
+  shield-emissive-strength: 0.45;
+  shield-halo-emissive-strength: 0;
 }
 #poi[zoom >= 16]['mapnik::geometry_type' = 1] when(([class] = 'college' || [class] = 'childcare' || [class] = 'dancing_school' || [class] = 'driving_school' || [class] = 'kindergarten' || [class] = 'school' || [class] = 'university'))[name != null]::Education {
   shield-placement: 'billboard';
@@ -759,7 +778,8 @@ Map {
   shield-icon-halo-radius: 2;
   shield-text-optional: true;
   shield-dy: -5.03;
-  shield-emissive-strength: 0.35;
+  shield-emissive-strength: 0.45;
+  shield-halo-emissive-strength: 0;
 }
 #poi[zoom >= 15]['mapnik::geometry_type' = 1] when(([class] = 'apartment' || [class] = 'aquarium' || [class] = 'attraction' || [class] = 'campsite' || [class] = 'camp_site' || [class] = 'caravan_site' || [class] = 'castle' || [class] = 'chalet' || [class] = 'guest_house' || [class] = 'hotel' || [class] = 'hostel' || [class] = 'information' || [class] = 'lodging' || [class] = 'motel' || [class] = 'reservoir' || [class] = 'ruins' || [class] = 'theme_park' || [class] = 'zoo'))[subclass != 'board'][name != null]::Tourism {
   shield-placement: 'billboard';
@@ -789,7 +809,8 @@ Map {
   shield-icon-halo-radius: 2;
   shield-text-optional: true;
   shield-dy: -5.03;
-  shield-emissive-strength: 0.35;
+  shield-emissive-strength: 0.45;
+  shield-halo-emissive-strength: 0;
 }
 #poi[zoom >= 15]['mapnik::geometry_type' = 1] when(([class] = 'art_gallery' || [class] = 'archeological_site' || [class] = 'cinema' || [class] = 'community_centre' || [class] = 'gallery' || [class] = 'library' || [class] = 'monastery' || [class] = 'monument' || [class] = 'museum' || [class] = 'opera' || [class] = 'place_of_worship' || [class] = 'planetarium' || [class] = 'theatre'))[subclass != 'artwork'][name != null]::Culture {
   shield-placement: 'billboard';
@@ -819,7 +840,8 @@ Map {
   shield-icon-halo-radius: 2;
   shield-text-optional: true;
   shield-dy: -1.03;
-  shield-emissive-strength: 0.35;
+  shield-emissive-strength: 0.45;
+  shield-halo-emissive-strength: 0;
 }
 #poi[zoom >= 15]['mapnik::geometry_type' = 1] when(([class] = 'alcohol_shop' || [class] = 'bakery' || [class] = 'book' || [class] = 'books' || [class] = 'butcher' || [class] = 'chemist' || [class] = 'clothing_store' || [class] = 'convenience' || [class] = 'gift' || [class] = 'grocery' || [class] = 'laundry' || [class] = 'mall' || [class] = 'music' || [class] = 'shop' || [class] = 'supermarket'))[name != null]::Shopping {
   shield-placement: 'billboard';
@@ -849,7 +871,8 @@ Map {
   shield-icon-halo-radius: 2;
   shield-text-optional: true;
   shield-dy: -1.03;
-  shield-emissive-strength: 0.35;
+  shield-emissive-strength: 0.45;
+  shield-halo-emissive-strength: 0;
 }
 #poi[zoom >= 15][zoom < 23]['mapnik::geometry_type' = 1] when(([class] = 'bar' || [class] = 'beer' || [class] = 'biergarten' || [class] = 'cafe' || [class] = 'fast_food' || [class] = 'food_court' || [class] = 'ice_cream' || [class] = 'pub' || [class] = 'restaurant'))[name != null]::Food {
   shield-placement: 'billboard';
@@ -879,7 +902,8 @@ Map {
   shield-icon-halo-radius: 2;
   shield-text-optional: true;
   shield-dy: -5.03;
-  shield-emissive-strength: 0.35;
+  shield-emissive-strength: 0.45;
+  shield-halo-emissive-strength: 0;
 }
 #poi[zoom >= 15]['mapnik::geometry_type' = 1] when(([class] = 'bicycle' || [class] = 'bicycle_parking' || [class] = 'bicycle_rental' || [class] = 'car' || [class] = 'car_rental' || [class] = 'car_repair' || [class] = 'charging_station' || [class] = 'ferry_terminal' || [class] = 'fuel' || [class] = 'harbor' || [class] = 'heliport' || [class] = 'highway_rest_area' || [class] = 'motorcycle_parking' || [class] = 'parking' || [class] = 'parking_garage' || [class] = 'parking_paid' || [class] = 'scooter' || [class] = 'terminal' || [class] = 'toll'))::Transport {
   shield-placement: 'billboard';
@@ -909,7 +933,8 @@ Map {
   shield-icon-halo-radius: 2;
   shield-text-optional: true;
   shield-dy: -5.03;
-  shield-emissive-strength: 0.35;
+  shield-emissive-strength: 0.45;
+  shield-halo-emissive-strength: 0;
 }
 #poi[zoom >= 15][class = 'park'][name != null]::Park {
   shield-placement: 'billboard';
@@ -939,7 +964,8 @@ Map {
   shield-icon-halo-radius: 2;
   shield-text-optional: true;
   shield-dy: -5.03;
-  shield-emissive-strength: 0.35;
+  shield-emissive-strength: 0.45;
+  shield-halo-emissive-strength: 0;
 }
 #poi[zoom >= 15]['mapnik::geometry_type' = 1] when(([class] = 'clinic' || [class] = 'dentist' || [class] = 'doctors' || [class] = 'first_aid' || [class] = 'hospital' || [class] = 'pharmacy' || [class] = 'veterinary'))[name != null]::Healthcare {
   shield-placement: 'billboard';
@@ -969,7 +995,8 @@ Map {
   shield-icon-halo-radius: 2;
   shield-text-optional: true;
   shield-dy: -5.03;
-  shield-emissive-strength: 0.35;
+  shield-emissive-strength: 0.45;
+  shield-halo-emissive-strength: 0;
 }
 #place[zoom >= 5] when(([class] != 'continent' ? ([class] != 'country' ? ([class] != 'state' ? ([class] != 'region' ? ([class] != 'province' ? ([class] != 'city' ? ([class] != 'town' ? [class] != 'place' : false) : false) : false) : false) : false) : false) : false))::Place_labels {
   text-placement: 'billboard';
@@ -991,7 +1018,8 @@ Map {
   text-halo-opacity: step(([view::zoom] - 1), (0, 1), (8, (([class] = 'island') ? 0 : 1)), (9, (([class] = 'island') ? 1 : 1)));
   text-placement-priority: (8000000 - (0 + [rank]));
   text-wrap-before: true;
-  text-emissive-strength: 0.35;
+  text-emissive-strength: 0.45;
+  text-halo-emissive-strength: 0;
 }
 #poi[zoom >= 13] when(([class] = 'bus' || [class] = 'railway'))[name != null]::Station {
   shield-placement: 'billboard';
@@ -1022,7 +1050,8 @@ Map {
   shield-icon-halo-radius: 2;
   shield-text-optional: true;
   shield-dy: -3;
-  shield-emissive-strength: 0.35;
+  shield-emissive-strength: 0.45;
+  shield-halo-emissive-strength: 0;
 }
 #aeroway[zoom >= 16][class = 'gate']::Airport_gate {
   text-placement: 'billboard';
@@ -1036,7 +1065,8 @@ Map {
   text-min-distance: @text_minimum_distance;
   text-wrap-width: (10 * linear(([view::zoom] - 1), (15, 10), (22, 18)));
   text-wrap-before: true;
-  text-emissive-strength: 0.35;
+  text-emissive-strength: 0.45;
+  text-halo-emissive-strength: 0;
 }
 #aerodrome_label[zoom >= 9][zoom < 10][iata != null] when([class] != 'public')::Airport_b1 {
   shield-placement: 'billboard';
@@ -1065,7 +1095,8 @@ Map {
   shield-icon-halo-radius: linear(([view::zoom] - 1), (8, 1), (12, 2));
   shield-text-optional: true;
   shield-dy: -4.54;
-  shield-emissive-strength: 0.35;
+  shield-emissive-strength: 0.45;
+  shield-halo-emissive-strength: 0;
 }
 #aerodrome_label[zoom >= 10][zoom < 13][iata != null] when([class] != 'public')::Airport_b2 {
   shield-placement: 'billboard';
@@ -1094,7 +1125,8 @@ Map {
   shield-icon-halo-radius: linear(([view::zoom] - 1), (8, 1), (12, 2));
   shield-text-optional: true;
   shield-dy: -4.54;
-  shield-emissive-strength: 0.35;
+  shield-emissive-strength: 0.45;
+  shield-halo-emissive-strength: 0;
 }
 #aerodrome_label[zoom >= 13][zoom < 25][iata != null] when([class] != 'public')::Airport_b3 {
   shield-placement: 'billboard';
@@ -1123,7 +1155,8 @@ Map {
   shield-icon-halo-radius: linear(([view::zoom] - 1), (8, 1), (12, 2));
   shield-text-optional: true;
   shield-dy: -4.54;
-  shield-emissive-strength: 0.35;
+  shield-emissive-strength: 0.45;
+  shield-halo-emissive-strength: 0;
 }
 #place[zoom >= 4][zoom < 10] when(([class] = 'state' || [class] = 'province'))[rank <= 6]::State_labels {
   text-placement: 'billboard';
@@ -1141,7 +1174,8 @@ Map {
   text-halo-opacity: step(([view::zoom] - 1), (0, 0), (3, (([rank] <= 3) ? 1 : 0)), (8, (([rank] = 0) ? 0 : 1)));
   text-placement-priority: (8400000 - (0 + [rank]));
   text-wrap-before: true;
-  text-emissive-strength: 0.35;
+  text-emissive-strength: 0.45;
+  text-halo-emissive-strength: 0;
 }
 #place[zoom >= 7][zoom < 13][class = 'town']::Town_labels_b1 {
   shield-placement: 'billboard';
@@ -1167,7 +1201,8 @@ Map {
   shield-icon-halo-fill: @labels_icon_halo_fill;
   shield-icon-halo-radius: 1;
   shield-dy: 3.61;
-  shield-emissive-strength: 0.35;
+  shield-emissive-strength: 0.45;
+  shield-halo-emissive-strength: 0;
 }
 #place[zoom >= 13][zoom < 17][class = 'town']::Town_labels_b2 {
   text-placement: 'billboard';
@@ -1185,7 +1220,8 @@ Map {
   text-placement-priority: (8500000 - (0 + [rank]));
   text-min-distance: @text_minimum_distance;
   text-wrap-before: true;
-  text-emissive-strength: 0.35;
+  text-emissive-strength: 0.45;
+  text-halo-emissive-strength: 0;
 }
 #place[zoom >= 5][zoom < 14][class = 'city'][capital != 2]::City_labels_b1 {
   shield-placement: 'billboard';
@@ -1212,7 +1248,8 @@ Map {
   shield-icon-halo-fill: @labels_icon_halo_fill;
   shield-icon-halo-radius: 1;
   shield-dy: 4.45;
-  shield-emissive-strength: 0.35;
+  shield-emissive-strength: 0.45;
+  shield-halo-emissive-strength: 0;
 }
 #place[zoom >= 14][zoom < 17][class = 'city'][capital != 2]::City_labels_b2 {
   text-placement: 'billboard';
@@ -1230,7 +1267,8 @@ Map {
   text-placement-priority: (8600000 - (0 + [rank]));
   text-min-distance: @text_minimum_distance;
   text-wrap-before: true;
-  text-emissive-strength: 0.35;
+  text-emissive-strength: 0.45;
+  text-halo-emissive-strength: 0;
 }
 #place[zoom >= 5][zoom < 14][class = 'city'][capital = 2]::Capital_city_labels_b1 {
   shield-placement: 'billboard';
@@ -1257,7 +1295,8 @@ Map {
   shield-icon-halo-fill: @labels_icon_halo_fill;
   shield-icon-halo-radius: 1;
   shield-dy: 5.22;
-  shield-emissive-strength: 0.35;
+  shield-emissive-strength: 0.45;
+  shield-halo-emissive-strength: 0;
 }
 #place[zoom >= 14][zoom < 17][class = 'city'][capital = 2]::Capital_city_labels_b2 {
   text-placement: 'billboard';
@@ -1275,7 +1314,8 @@ Map {
   text-placement-priority: (8700000 - (0 + [rank]));
   text-min-distance: @text_minimum_distance;
   text-wrap-before: true;
-  text-emissive-strength: 0.35;
+  text-emissive-strength: 0.45;
+  text-halo-emissive-strength: 0;
 }
 #place[zoom >= 2][zoom < 13][class = 'country'][iso_a2 != null][iso_a2 != 'VA']::Country_labels {
   text-placement: 'billboard';
@@ -1294,7 +1334,8 @@ Map {
   text-halo-opacity: linear(([view::zoom] - 1), (4, (([rank] > 4) ? 0 : 1)), (5.9, (([rank] > 4) ? 0 : 1)), (6, (([rank] > 4) ? 1 : 1)));
   text-placement-priority: (8800000 - (0 + [rank]));
   text-wrap-before: true;
-  text-emissive-strength: 0.35;
+  text-emissive-strength: 0.45;
+  text-halo-emissive-strength: 0;
 }
 #place[zoom < 2][class = 'continent']::Continent_labels {
   text-placement: 'billboard';
@@ -1309,5 +1350,6 @@ Map {
   text-min-distance: @text_minimum_distance;
   text-wrap-width: (10 * linear(([view::zoom] - 1), (0, 12), (2, 13)));
   text-wrap-before: true;
-  text-emissive-strength: 0.35;
+  text-emissive-strength: 0.45;
+  text-halo-emissive-strength: 0;
 }

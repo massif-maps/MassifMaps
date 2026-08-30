@@ -76,9 +76,13 @@ static const double kStartHour = 17.4;
 
     // The curve is only read while this is on; off, the style's and the app's own sun colours
     // stand, which is what every map did before the curve existed.
-    [map light:[[[[[MSFSpec of:@"light"]
+    [map light:[[[[[[MSFSpec of:@"light"]
         set:@"dayCycleLightsEnabled" value:@YES]
         set:@"sunOverridingStyle" value:@YES]
+        // Without this the ground is never lit, and the shadow multiply lives in the same block -
+        // so the buildings cast nothing. The style says `colors-prelit`, so lighting the ground
+        // here does NOT light its colours twice: it only lets the shadows land.
+        set:@"terrainLightingEnabled" value:@YES]
         // Buildings cast: a low sun is what the curve is most worth looking at, and it is also
         // when the shadows are longest. They follow the same sun the curve reads, so they stretch
         // and swing round as the hour is swept.

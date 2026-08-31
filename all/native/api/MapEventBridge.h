@@ -8,6 +8,7 @@
 #define _MASSIF_API_MAPEVENTBRIDGE_H_
 
 #include "api/Context.h"
+#include "components/DirectorPtr.h"
 #include "layers/VectorElementEventListener.h"
 #include "layers/VectorTileEventListener.h"
 #include "ui/MapEventListener.h"
@@ -69,7 +70,9 @@ namespace massif { namespace api {
 
     private:
         PayloadEmitter _emitter;
-        std::shared_ptr<MapEventListener> _chained;
+        // DirectorPtr: installing a bridge takes the app's own listener out of the SDK's
+        // ThreadSafeDirectorPtr slot, so this becomes the only thing pinning its binding peer.
+        DirectorPtr<MapEventListener> _chained;
     };
 
     /**
@@ -88,7 +91,7 @@ namespace massif { namespace api {
 
     private:
         PayloadEmitter _emitter;
-        std::shared_ptr<VectorTileEventListener> _chained;
+        DirectorPtr<VectorTileEventListener> _chained;
     };
 
     /**
@@ -104,7 +107,7 @@ namespace massif { namespace api {
 
     private:
         PayloadEmitter _emitter;
-        std::shared_ptr<VectorElementEventListener> _chained;
+        DirectorPtr<VectorElementEventListener> _chained;
     };
 
 } }

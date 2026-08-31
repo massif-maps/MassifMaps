@@ -1240,7 +1240,7 @@ to link, so nothing in `tests/` could reach it. The subscription half now lives 
 ### The listener registry is swept, not mirrored
 
 `Context` keeps a raw pointer to the handler's user data, so the binding layer holds a
-`shared_ptr<EventListener>` per subscription to stop the director being collected under it. `off`
+`DirectorPtr<EventListener>` per subscription to stop the director being collected under it. `off`
 knows which entry to drop; **`offEvent`, `offAll` and the death of a target do not name the
 subscriptions they remove**, so every listener taken that way stayed referenced for the life of the
 process. `MassifMap.detach` calls `offAll`, which made it one leak per screen.
@@ -1250,6 +1250,31 @@ registry is swept against the context instead — `Context::isSubscribed` — on
 remove. Subscribing is the only thing that grows it, so an orphan cannot outlive one call.
 `testBindingListenerLifetime` holds `weak_ptr`s to the listeners, which is what makes a leak
 something a test can see at all.
+
+### A listener is held with `DirectorPtr`, never `shared_ptr`
+
+A `shared_ptr` holds the **C++** half of a director. The binding's half — the Java or Objective-C
+object the upcall lands on — is reached through a *weak* reference until `retainDirector` pins it
+(`scripts/swig/java/director.swg`, which calls `swig_java_change_ownership`). `DirectorPtr<T>`
+retains on construct and releases on destruct, and is how every listener in `all/native` is held
+(`ThreadSafeDirectorPtr<MapEventListener>` in `TouchHandler`, `DirectorPtr<TileDataSource>` in the
+wrapping sources).
+
+The facade was the exception until 2026-08-31: the subscription registry and the three
+`MapEventBridge` chained listeners were plain `shared_ptr`s. The C++ object stayed alive and the
+Java peer did not, so **any handler was collectable the moment `on` returned** — the next GC took
+it and the following event killed the app inside `drain()` with SWIG's `null upcall object`. The
+higher an event's rate the sooner it hit, so `onMove` was the reliable reproducer.
+
+A host test has no JVM, so `retainDirector` is a no-op there and the crash itself is not
+reproducible. `testBindingListenerRetain` counts the calls instead: a listener that also implements
+`massif::Director` asserts one retain on subscribe and a matching release on each of the four
+removal paths. The older `testBindingListenerLifetime` covers only the `shared_ptr` half and passed
+throughout.
+
+Chaining has the same trap for a different reason: installing a bridge takes the app's own listener
+*out of* the SDK's `ThreadSafeDirectorPtr` slot and puts the bridge there, so `MapEventBridge::_chained`
+becomes the only thing pinning it.
 
 Only one drain is posted per batch — the drain empties the whole queue, so a second post would
 find nothing.

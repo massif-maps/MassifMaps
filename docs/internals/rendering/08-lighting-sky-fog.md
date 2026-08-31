@@ -108,9 +108,11 @@ and none from the terrain ground.
 ### `LightOptions.DayCycleLightsEnabled` — the hour picks the light
 
 With this on, the ambient and sun **colours** and their intensities are derived from the sun's own
-height, interpolated in linear space between the four `lights` blocks MapBox Standard ships (day at
-70° up, dawn at 40°, dusk at 10°, night below). Hour 12 then renders as its `day` preset and 19 as
-its `dusk`, from **one** palette — a converted style no longer needs a file per preset, and the hour
+height, interpolated in linear space between the four `lights` blocks MapBox Standard ships. They
+are anchored where the sun ACTUALLY IS at each of those hours — night below −9°, dawn or dusk
+through the 3–12° twilight band, day from 38° up — not at the light directions Standard states for
+them (its `dawn` block points a light 40° up, which in a real day cycle is the middle of the
+morning). Hour 12 then renders as its `day` preset and 19 as its `dusk`, from **one** palette — a converted style no longer needs a file per preset, and the hour
 can move on a running map. `sunDir.x ≥ 0` is what picks dawn over dusk at the same height; nothing
 else distinguishes them.
 
@@ -133,6 +135,16 @@ sun passes THROUGH dusk instead of crossing it:
 
 `LightOptions.dayCycleLightStops` replaces it, and `dayCycleRisingLightStops` gives a rising sun a
 curve of its own (left empty, the one curve is used all day). An empty list is the built-in one.
+
+**A replacement has to write BOTH, or the morning is wrong.** Setting only `dayCycleLightStops`
+leaves a rising sun reading the setting curve, so a converted Standard renders its `dusk` light at
+dawn — the `day-cycle-light` example did exactly that until it carried two lists.
+
+**A preset comes out EXACTLY only where the curve is flat**: below the first stop, above the last,
+and inside the doubled twilight entry. Everywhere else the answer is a smoothstep of two, so a sun
+30° up is neither `dusk` nor `day` and no hour makes it one — matching a mapbox `lightPreset`
+screenshot means putting the sun inside one of those three regions (`tests/api/DayCycleLightTest.cpp`
+pins both halves of this).
 
 This is the whole extension point, and it is deliberately small: everything the SDK derives from
 the light — the 2D grade, the extrusion sun and ambient, the terrain shading, the brightness a

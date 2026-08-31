@@ -101,9 +101,11 @@ namespace massif {
         }
 
         /**
-         * The built-in curve: MapBox Standard's four light setups, anchored on the sun heights it
-         * states them at - day 70 degrees up, dawn 40, dusk 10, night away. An hour of 12 then
-         * lands on `day` and 19 on `dusk` without a style stating either.
+         * The built-in curve: MapBox Standard's four light setups, anchored where the sun ACTUALLY
+         * IS at each of those hours - night below -9, twilight through 3 to 12, day from 38 up -
+         * not at the light directions Standard states (its `dawn` block points a light 40 degrees
+         * up, which in a real day cycle is mid-morning). An hour of 12 then lands on `day` and 19
+         * on `dusk` without a style stating either.
          *
          * `rising` picks dawn over dusk at the same height; nothing else distinguishes them.
          */

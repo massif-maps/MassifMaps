@@ -187,10 +187,65 @@ namespace {
                    "and interpolates between two stops");
     }
 
+    /** The 8-bit spelling of a light channel - what a hand-written curve writes as #rrggbb. */
+    int byteOf(float channel) {
+        return static_cast<int>(std::max(0.0f, std::min(1.0f, channel)) * 255.0f + 0.5f);
+    }
+
+    void testAPresetIsReachedExactlyOrNotAtAll() {
+        // What the `day-cycle-light` example depends on: an HOUR only reproduces a MapBox
+        // lightPreset where the curve is FLAT - past its ends, or inside the doubled twilight stop.
+        // Anywhere else it is a blend of two, which is why an arbitrary hour never matches a
+        // lightPreset screenshot. These four altitudes are the example's own preset hours.
+        DayCycleLight::Setup dawn = DayCycleLight::atSunHeight(DayCycleLight::DAWN_CURVE, 4, 6.5f);
+        TEST_CHECK(dawn.ambient[0] == DayCycleLight::DAWN.ambient[0] &&
+                   dawn.directIntensity == DayCycleLight::DAWN.directIntensity,
+                   "a rising sun 6.5 degrees up is Standard's dawn exactly");
+        DayCycleLight::Setup dusk = DayCycleLight::atSunHeight(DayCycleLight::DUSK_CURVE, 4, 7.1f);
+        TEST_CHECK(dusk.ambient[0] == DayCycleLight::DUSK.ambient[0] &&
+                   dusk.directIntensity == DayCycleLight::DUSK.directIntensity,
+                   "a setting sun 7.1 degrees up is its dusk exactly");
+        TEST_CHECK(DayCycleLight::atSunHeight(DayCycleLight::DUSK_CURVE, 4, 41.1f).ambientIntensity ==
+                   DayCycleLight::DAY.ambientIntensity,
+                   "41.1 degrees is past the 38 stop, so it is day exactly");
+        TEST_CHECK(DayCycleLight::atSunHeight(DayCycleLight::DUSK_CURVE, 4, -33.9f).ambient[2] ==
+                   DayCycleLight::NIGHT.ambient[2],
+                   "and -33.9 is below the -9 stop, so it is night exactly");
+
+        // The other half of the same claim: 30 degrees up is NOT a preset, whatever the hour.
+        DayCycleLight::Setup between = DayCycleLight::atSunHeight(DayCycleLight::DUSK_CURVE, 4, 30.0f);
+        TEST_CHECK(between.ambientIntensity != DayCycleLight::DAY.ambientIntensity ||
+                   between.ambient[0] != DayCycleLight::DUSK.ambient[0],
+                   "a sun 30 degrees up is a blend of dusk and day, not either of them");
+    }
+
+    void testTheSetupsSurviveBeingWrittenAsHex() {
+        // An app-supplied curve carries its colours as 8-bit Colors, so a hand-written list can
+        // only be byte-for-byte the built-in one if these are the bytes. The `day-cycle-light`
+        // example spells exactly these out; a Setup edited without them is the drift this catches.
+        TEST_CHECK(byteOf(DayCycleLight::DAWN.ambient[0]) == 0xff &&
+                   byteOf(DayCycleLight::DAWN.ambient[1]) == 0xec &&
+                   byteOf(DayCycleLight::DAWN.ambient[2]) == 0xdc,
+                   "dawn's ambient is #ffecdc");
+        TEST_CHECK(byteOf(DayCycleLight::DAWN.direct[0]) == 0xfe &&
+                   byteOf(DayCycleLight::DAWN.direct[1]) == 0xca &&
+                   byteOf(DayCycleLight::DAWN.direct[2]) == 0x8b,
+                   "and its sun #feca8b");
+        TEST_CHECK(byteOf(DayCycleLight::DUSK.ambient[0]) == 0x36 &&
+                   byteOf(DayCycleLight::DUSK.ambient[2]) == 0x5e &&
+                   byteOf(DayCycleLight::DUSK.direct[1]) == 0xc2,
+                   "dusk is #363e5e over #fec286");
+        TEST_CHECK(byteOf(DayCycleLight::NIGHT.ambient[0]) == 0x46 &&
+                   byteOf(DayCycleLight::NIGHT.direct[2]) == 0x55,
+                   "and night #464d69 over #3f4455");
+    }
+
 }
 
 void testDayCycleLight() {
     testACustomCurveReplacesTheBuiltInOne();
+    testAPresetIsReachedExactlyOrNotAtAll();
+    testTheSetupsSurviveBeingWrittenAsHex();
     testBrightnessMatchesMapboxsOwnPresets();
     testTheAnchorsAreReachedExactly();
     testRisingPicksDawnOverDusk();

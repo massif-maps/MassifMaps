@@ -199,6 +199,18 @@ it is gone I have to zoom much further to get it back" was — the asymmetry is 
 (`LINE_LAYOUT_FAILURE_GRACE`, `*_KEEP` thresholds) holding a placed run that a fresh search could no
 longer win.
 
+**The run never leaves the line.** `pointAt` clamps at both ends and the fit test is exact —
+`runLength > total` is `NO_ROOM`, and the pen start is clamped to `[0, total - runLength]`. This is
+tangram's rule (`LineSampler::advance` clamps, `CurvedLabel::updateScreenTransform` rejects
+`start < 0 || start + width > sumLength()`). Until 2026-08 both ends were given `PLACEMENT_ROOM_FACTOR`
+of slack — a run up to 1.5x the line was accepted, and `pointAt` continued the line straight past
+its last vertex to carry it. The slack was there to stop a run at the edge of what fits blinking as
+the projected line changes length under the camera; the cost was a street name running off the end of
+its road, and off the curve on a bent one, so what absorbs the flapping is now
+`LINE_LAYOUT_FAILURE_GRACE` alone. The per-glyph direction window slides back to stay on the line
+rather than being clamped against its end, where it would collapse and read as `UNREADABLE`.
+Covered by `tests/vt/LineLabelTest.cpp`.
+
 ### Text drawn as geometry (`text-clip`)
 
 `text-clip` takes the text off the label pipeline entirely: `TextSymbolizer` builds `vt::TextStyle`

@@ -17,8 +17,9 @@
     __weak id<MSFExampleHost> _host;
     NSUInteger _style;
     NSUInteger _formula;
+    double _hour;
     double _sunAltitude;
-    BOOL _rising;
+    double _sunAzimuth;
     NSUInteger _preset;
 }
 
@@ -61,7 +62,7 @@ static NSArray<NSArray<NSString *> *> *formulas(void) {
         @"\"sunColor\":\"#ff00d4\",\"sunIntensity\":0.5},"
         @"{\"sunAltitude\":60,\"ambientColor\":\"#00fff0\",\"ambientIntensity\":1.0,"
         @"\"sunColor\":\"#fff700\",\"sunIntensity\":0.45}]";
-    NSString *mapbox =
+    NSString *mapboxSetting =
         @"[{\"sunAltitude\":-9,\"ambientColor\":\"#464d69\",\"ambientIntensity\":0.5,"
         @"\"sunColor\":\"#3f4455\",\"sunIntensity\":0.5},"
         @"{\"sunAltitude\":3,\"ambientColor\":\"#363e5e\",\"ambientIntensity\":0.8,"
@@ -70,24 +71,71 @@ static NSArray<NSArray<NSString *> *> *formulas(void) {
         @"\"sunColor\":\"#fec286\",\"sunIntensity\":0.2},"
         @"{\"sunAltitude\":38,\"ambientColor\":\"#ffffff\",\"ambientIntensity\":0.8,"
         @"\"sunColor\":\"#ffffff\",\"sunIntensity\":0.2}]";
-    // The BUILT-IN curve written out: MapBox Standard's four light setups at the sun heights it
-    // states them for. An empty list would select exactly this; spelled out, it shows the shape.
-    return @[ @[ @"Mapbox", mapbox ], @[ @"Psychedelic", psychedelic ] ];
+    // The same curve with Standard's `dawn` light in the twilight band instead of its `dusk` one.
+    // TWO curves, because dawn and dusk are different lights at the SAME sun height: the SDK reads
+    // the setting one while the sun is west and the rising one while it is east, so setting only
+    // dayCycleLightStops is what made a morning render as dusk.
+    NSString *mapboxRising =
+        @"[{\"sunAltitude\":-9,\"ambientColor\":\"#464d69\",\"ambientIntensity\":0.5,"
+        @"\"sunColor\":\"#3f4455\",\"sunIntensity\":0.5},"
+        @"{\"sunAltitude\":3,\"ambientColor\":\"#ffecdc\",\"ambientIntensity\":0.75,"
+        @"\"sunColor\":\"#feca8b\",\"sunIntensity\":0.5},"
+        @"{\"sunAltitude\":12,\"ambientColor\":\"#ffecdc\",\"ambientIntensity\":0.75,"
+        @"\"sunColor\":\"#feca8b\",\"sunIntensity\":0.5},"
+        @"{\"sunAltitude\":38,\"ambientColor\":\"#ffffff\",\"ambientIntensity\":0.8,"
+        @"\"sunColor\":\"#ffffff\",\"sunIntensity\":0.2}]";
+    // { name, setting curve, rising curve } - one curve for both when a formula has no dawn.
+    return @[ @[ @"Mapbox", mapboxSetting, mapboxRising ],
+              @[ @"Psychedelic", psychedelic, psychedelic ] ];
 }
 
+/** Paris, and the camera the example opens on. */
+static const double kLon = 2.3376;
+static const double kLat = 48.8600;
+
 /**
- * The SUN HEIGHT is what the curve is anchored on, so it is what the slider sweeps. An hour is one
- * step further away, and a day's worth of hours crosses the twilight band (3 to 12 degrees up) in
- * about 33 minutes - 2.3% of a 0-24 slider - so dawn and dusk are unreachable by dragging one.
+ * The EQUINOX, as its Julian day at noon UTC (2026-03-20). On it the sun rises at 6 and sets at 18
+ * local solar time at every latitude, so the slider's hours mean the same thing anywhere.
  */
-static const double kStartAltitude = 10.0;
-static const double kPresetAltitudes[] = { 40.0, 70.0, 10.0, -30.0 };
-static const BOOL kPresetRising[] = { YES, NO, NO, NO };
-static NSArray<NSString *> *presetNames(void) { return @[ @"dawn", @"day", @"dusk", @"night" ]; }
+static const double kJulianNoon = 2461120.0;
+
+/** Local solar time: 12 is the sun at its highest, whatever the longitude. */
+static const double kStartHour = 17.4;
+/**
+ * The hours that land on MapBox's four presets EXACTLY, at this camera on this date: dawn 6:48
+ * (sun 6.5° and east), day 12:00 (41.1°, past the 38° stop), dusk 17:24 (7.1° and west), night
+ * 22:00 (-33.9°, below the -9° stop). Anywhere else on the slider the curve blends two.
+ */
+static const double kPresetHours[] = { 6.8, 12.0, 17.4, 22.0 };
+
+/**
+ * Local solar time to a sun position - the NOAA low-accuracy form, good to ~0.1 degree, which is
+ * what LightOptions.setSunPositionFromTime computes in C++; the facade cannot reach that method,
+ * so the example spells it out.
+ */
+static void sunPosition(double hour, double *altitude, double *azimuth) {
+    double n = kJulianNoon + (hour - kLon / 15.0 - 12.0) / 24.0 - 2451545.0;
+    double meanLong = 280.460 + 0.9856474 * n;
+    double meanAnom = (357.528 + 0.9856003 * n) * M_PI / 180.0;
+    double eclipticLong = (meanLong + 1.915 * sin(meanAnom) + 0.020 * sin(2 * meanAnom)) * M_PI / 180.0;
+    double obliquity = (23.439 - 0.0000004 * n) * M_PI / 180.0;
+    double rightAsc = atan2(cos(obliquity) * sin(eclipticLong), cos(eclipticLong));
+    double decl = asin(sin(obliquity) * sin(eclipticLong));
+
+    // Greenwich mean sidereal time, then the local hour angle.
+    double gmst = fmod(18.697374558 + 24.06570982441908 * n, 24.0);
+    double hourAngle = ((gmst < 0 ? gmst + 24.0 : gmst) * 15.0 + kLon) * M_PI / 180.0 - rightAsc;
+
+    double lat = kLat * M_PI / 180.0;
+    *altitude = asin(sin(lat) * sin(decl) + cos(lat) * cos(decl) * cos(hourAngle)) * 180.0 / M_PI;
+    // atan2 here is measured from south; the SDK wants clockwise from north.
+    *azimuth = atan2(sin(hourAngle), cos(hourAngle) * sin(lat) - tan(decl) * cos(lat))
+             * 180.0 / M_PI + 180.0;
+}
 
 - (void)startWithHost:(id<MSFExampleHost>)host {
     _host = host;
-    _sunAltitude = kStartAltitude;
+    _hour = kStartHour;
     _preset = 2;
     MSFMassifMap *map = host.map;
 
@@ -126,9 +174,14 @@ static NSArray<NSString *> *presetNames(void) { return @[ @"dawn", @"day", @"dus
         set:@"shadowStrength" value:@0.35]
         set:@"shadowSoftness" value:@1.2]];
 
+    // A sky, because the hour is the whole example: the atmosphere is integrated against the SAME
+    // sun, so it reddens and darkens with the slider without a value of its own. Options starts
+    // with no SkyOptions, so nothing is drawn behind the map until this line.
+    [map skyWithSpec:[MSFSpec of:@"sky"] error:nil];
+
     [self applyFormula];
     [self applyHour];
-    [map.camera moveTo:[MSFPosition positionWithLng:2.3376 lat:48.8600] zoom:17.2 rotation:20 tilt:45];
+    [map.camera moveTo:[MSFPosition positionWithLng:kLon lat:kLat] zoom:17.2 rotation:20 tilt:45];
 
     [host button:@"Style" action:^{
         self->_style = (self->_style + 1) % styles().count;
@@ -140,17 +193,17 @@ static NSArray<NSString *> *presetNames(void) { return @[ @"dawn", @"day", @"dus
         [self applyFormula];
         [self caption];
     }];
-    [host slider:@"Sun" min:-30 max:70 value:kStartAltitude action:^(float value) {
-        self->_sunAltitude = value;
+    // The HOUR, because that is what a day is: the sun walks its real arc, so dawn and dusk come
+    // with the azimuth swinging round rather than being picked by hand.
+    [host slider:@"Hour" min:0 max:24 value:kStartHour action:^(float value) {
+        self->_hour = value;
         [self applyHour];
         [self caption];
     }];
-    // Straight to MapBox's own four, so the render can be held against theirs. Each sets the
-    // AZIMUTH too: nothing but the direction of travel separates dawn from dusk at the same height.
+    // Straight to MapBox's own four, so the render can be held against theirs.
     [host button:@"Preset" action:^{
         self->_preset = (self->_preset + 1) % 4;
-        self->_sunAltitude = kPresetAltitudes[self->_preset];
-        self->_rising = kPresetRising[self->_preset];
+        self->_hour = kPresetHours[self->_preset];
         [self applyHour];
         [self caption];
     }];
@@ -193,25 +246,51 @@ static NSArray<NSString *> *presetNames(void) { return @[ @"dawn", @"day", @"dus
 }
 
 /**
- * The whole formula, in one property. An empty list is the built-in curve; a list of stops replaces
- * it, and everything the SDK derives from the light follows without a re-decode - the tiles are
- * untouched, so this is a redraw.
+ * The whole formula, in two properties. An empty list is the built-in curve; a list of stops
+ * replaces it, and everything the SDK derives from the light follows without a re-decode - the
+ * tiles are untouched, so this is a redraw. Both are written every time, or a formula without a
+ * dawn of its own would keep the previous one's.
  */
 - (void)applyFormula {
-    [_host.map.light apply:[[MSFSpec object]
-        set:@"dayCycleLightStops" value:formulas()[_formula][1]]];
+    [_host.map.light apply:[[[MSFSpec object]
+        set:@"dayCycleLightStops" value:formulas()[_formula][1]]
+        set:@"dayCycleRisingLightStops" value:formulas()[_formula][2]]];
 }
 
-/** An hour is a sun POSITION; the curve turns that into a light. */
+/** The curve reads a sun POSITION, and the hour is where the sun actually is at that hour. */
 - (void)applyHour {
+    sunPosition(_hour, &_sunAltitude, &_sunAzimuth);
     [_host.map.light apply:[[[MSFSpec object]
-        set:@"sunAzimuth" value:@(_rising ? 90.0 : 270.0)]
+        set:@"sunAzimuth" value:@(_sunAzimuth)]
         set:@"sunAltitude" value:@(_sunAltitude)]];
 }
 
+/**
+ * Which MapBox preset this hour actually renders. The curve only returns one EXACTLY where it is
+ * flat - below -9, between 3 and 12, above 38 - and everything else is a blend of two, which is why
+ * an arbitrary hour never matches a `lightPreset` screenshot.
+ */
+- (NSString *)light {
+    if (_formula != 0) {
+        return @"custom curve";
+    }
+    NSString *twilight = _sunAzimuth <= 180.0 ? @"dawn" : @"dusk";
+    if (_sunAltitude <= -9.0) {
+        return @"night";
+    }
+    if (_sunAltitude >= 38.0) {
+        return @"day";
+    }
+    if (_sunAltitude >= 3.0 && _sunAltitude <= 12.0) {
+        return twilight;
+    }
+    return _sunAltitude < 3.0 ? [@"night to " stringByAppendingString:twilight]
+                              : [twilight stringByAppendingString:@" to day"];
+}
+
 - (void)caption {
-    [_host caption:[NSString stringWithFormat:@"%@ - sun %.0f\u00b0 %@ - %@ on %@",
-                    presetNames()[_preset], _sunAltitude, _rising ? @"rising" : @"setting",
+    [_host caption:[NSString stringWithFormat:@"%02d:%02d - sun %.0f\u00b0 - %@ - %@ on %@",
+                    (int)_hour, (int)((_hour - (int)_hour) * 60), _sunAltitude, [self light],
                     formulas()[_formula][0], styles()[_style][0]]];
 }
 

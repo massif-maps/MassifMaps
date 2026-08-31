@@ -307,8 +307,15 @@ namespace massif::css {
             { "text-occlusion-opacity", &mvt::Map::Settings::textOcclusionOpacity },
             { "building-edge-radius", &mvt::Map::Settings::buildingEdgeRadius },
             { "building-roof-shade", &mvt::Map::Settings::buildingRoofShade },
+            { "building-height-scale", &mvt::Map::Settings::buildingHeightScale },
+            { "building-height-view-scale", &mvt::Map::Settings::buildingHeightViewScale },
+            { "building-grow-on-appear", &mvt::Map::Settings::buildingGrowOnAppear },
+            { "building-fade-on-appear", &mvt::Map::Settings::buildingFadeOnAppear },
             { "building-rounded-roof", &mvt::Map::Settings::buildingRoundedRoof },
             { "terrain-lighting", &mvt::Map::Settings::terrainLighting },
+            { "colors-prelit", &mvt::Map::Settings::colorsPrelit },
+            { "building-emissive-strength", &mvt::Map::Settings::buildingEmissive },
+            { "background-emissive-strength", &mvt::Map::Settings::backgroundEmissive },
             { "shadow-strength", &mvt::Map::Settings::shadowStrength },
             { "shadow-bias", &mvt::Map::Settings::shadowBias },
             { "shadow-softness", &mvt::Map::Settings::shadowSoftness },
@@ -386,35 +393,69 @@ namespace massif::css {
         map->setParameters(parameters);
         map->setStyleParameters(styleParameters);
 
-        // Compile and build layers
-        for (const std::string& layerName : layerNames) {
-            std::map<std::string, AttachmentStyle> attachmentStyleMap;
-            try {
-                std::map<std::pair<int, int>, std::list<AttachmentPropertySets>> layerZoomAttachments;
+        // What each entry of the project's `layers` draws. An entry may name ONE attachment -
+        // `road::pedestrian_polygon` - so a source layer can be drawn at several DEPTHS, which one
+        // entry per layer cannot express: a style that draws a pedestrian area under its parks and
+        // its road casings over them needs the same source layer in two places, and pinning it to
+        // one put the pedestrian slab over the park. A bare entry keeps every attachment no other
+        // entry claims, so a project that splits nothing behaves exactly as before.
+        std::map<std::string, std::set<std::string>> claimedAttachments;
+        for (const std::string& entry : layerNames) {
+            std::size_t sep = entry.find("::");
+            if (sep != std::string::npos) {
+                claimedAttachments[entry.substr(0, sep)].insert(entry.substr(sep));
+            }
+        }
 
-                CartoCSSCompiler compiler;
-                compiler.setIgnoreLayerPredicates(_ignoreLayerPredicates);
-                compiler.compileLayer(styleSheet, layerName, 0, MAX_ZOOM + 1, layerZoomAttachments, constantFieldMap);
-                CartoCSSMapnikTranslator translator(_logger);
-                for (auto it = layerZoomAttachments.begin(); it != layerZoomAttachments.end(); it++) {
-                    updateAttachmentStyleMap(translator, map, it->first.first, it->first.second, it->second, attachmentStyleMap);
+        // Compile and build layers. Compiling is the expensive step and does not depend on the
+        // attachment, so a layer named by several entries is compiled once.
+        std::map<std::string, std::vector<AttachmentStyle>> compiledLayers;
+        for (const std::string& entry : layerNames) {
+            std::size_t sep = entry.find("::");
+            std::string layerName = entry.substr(0, sep == std::string::npos ? entry.size() : sep);
+            std::string attachment = sep == std::string::npos ? std::string() : entry.substr(sep);
+
+            auto compiledIt = compiledLayers.find(layerName);
+            if (compiledIt == compiledLayers.end()) {
+                std::map<std::string, AttachmentStyle> attachmentStyleMap;
+                try {
+                    std::map<std::pair<int, int>, std::list<AttachmentPropertySets>> layerZoomAttachments;
+
+                    CartoCSSCompiler compiler;
+                    compiler.setIgnoreLayerPredicates(_ignoreLayerPredicates);
+                    compiler.compileLayer(styleSheet, layerName, 0, MAX_ZOOM + 1, layerZoomAttachments, constantFieldMap);
+                    CartoCSSMapnikTranslator translator(_logger);
+                    for (auto it = layerZoomAttachments.begin(); it != layerZoomAttachments.end(); it++) {
+                        updateAttachmentStyleMap(translator, map, it->first.first, it->first.second, it->second, attachmentStyleMap);
+                    }
                 }
+                catch (const std::exception& ex) {
+                    throw LoaderException(std::string("Error while building properties for layer ") + layerName + ": " + ex.what());
+                }
+                compiledIt = compiledLayers.emplace(layerName, getSortedAttachmentStyles(attachmentStyleMap)).first;
             }
-            catch (const std::exception& ex) {
-                throw LoaderException(std::string("Error while building properties for layer ") + layerName + ": " + ex.what());
-            }
-            if (attachmentStyleMap.empty()) {
-                continue;
-            }
-            std::vector<AttachmentStyle> attachmentStyles = getSortedAttachmentStyles(attachmentStyleMap);
 
-            // Create style for each attachment
+            auto claimedIt = claimedAttachments.find(layerName);
+
+            // Create style for each attachment this entry draws
             std::vector<std::string> styleNames;
-            for (const AttachmentStyle& attachmentStyle : attachmentStyles) {
+            for (const AttachmentStyle& attachmentStyle : compiledIt->second) {
+                bool drawnHere = attachment.empty()
+                    ? claimedIt == claimedAttachments.end() || claimedIt->second.count(attachmentStyle.attachment) == 0
+                    : attachmentStyle.attachment == attachment;
+                if (!drawnHere) {
+                    continue;
+                }
                 std::string styleName = layerName + attachmentStyle.attachment;
                 std::shared_ptr<mvt::Style> style = buildStyle(attachmentStyle, styleName);
                 map->addStyle(style);
                 styleNames.push_back(styleName);
+            }
+            if (styleNames.empty()) {
+                if (!attachment.empty()) {
+                    _logger->write(mvt::Logger::Severity::WARNING, "Layer " + layerName + " has no attachment " + attachment);
+                }
+                continue;
             }
 
             // Finally build the layer

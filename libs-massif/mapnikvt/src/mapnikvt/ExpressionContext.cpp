@@ -83,6 +83,10 @@ namespace massif::mvt {
                 // TextLabelStyle::rankFunc); 0 in every other evaluation, including the one the
                 // renderer does per batch.
                 return viewState.labelDistance;
+            } else if (name == "view::brightness") {
+                // mapbox's ["measure-light", "brightness"]. Resolved per frame, so a label whose
+                // emissive ramps over it follows the hour with no re-decode.
+                return viewState.lightBrightness;
             }
             return Value();
         }

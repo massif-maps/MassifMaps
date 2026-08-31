@@ -39,6 +39,10 @@ namespace massif::vt {
         // perspective divide would otherwise blow them up towards the camera on a tilted view)
         // and snap to the pixel grid. Terrain only made it visible - the geometry z is the
         // terrain height there - but the correction is a property of the projection, not of it.
+        // mapbox's ["measure-light", "brightness"]: how bright the scene light is, 0-1. A style
+        // reads it as `view::brightness` and it is resolved per frame, so a label that dims with
+        // the hour does so without a re-decode.
+        float lightBrightness = 1.0f;
         bool planarProjection = false;
         cglib::mat4x4<double> projectionMatrix = cglib::mat4x4<double>::identity();
         cglib::mat4x4<double> cameraMatrix = cglib::mat4x4<double>::identity();

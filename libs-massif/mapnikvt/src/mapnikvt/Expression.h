@@ -127,7 +127,7 @@ namespace massif::mvt {
             EXPONENTIAL
         };
         
-        explicit InterpolateExpression(Method method, Expression timeExpr, std::vector<Expression> keyFrames, float base = 1.0f) : _method(method), _base(base), _timeExpr(std::move(timeExpr)), _keyFrames(std::move(keyFrames)), _discrete(discreteKeyFrames(method, _keyFrames)), _fcurve(_discrete ? std::nullopt : buildConstantFCurve(method, _keyFrames)) { }
+        explicit InterpolateExpression(Method method, Expression timeExpr, std::vector<Expression> keyFrames, float base = 1.0f) : _method(method), _base(base), _timeExpr(std::move(timeExpr)), _keyFrames(std::move(keyFrames)), _discrete(discreteKeyFrames(method, _keyFrames)), _keyRange(constantKeyRange(_keyFrames)), _fcurve(_discrete ? std::nullopt : buildConstantFCurve(method, _keyFrames)) { }
 
         Method getMethod() const { return _method; }
         float getBase() const { return _base; }
@@ -140,6 +140,7 @@ namespace massif::mvt {
         float remapExponential(float t) const;
         Value evaluateDiscrete(float t, const ExpressionContext& context) const;
 
+        static std::optional<std::pair<float, float>> constantKeyRange(const std::vector<Expression>&);
         static std::variant<cglib::fcurve2<float>, cglib::fcurve5<float>> buildFCurve(Method method, const std::vector<Expression>& , const ExpressionContext& context);
         static std::optional<std::variant<cglib::fcurve2<float>, cglib::fcurve5<float>>> buildConstantFCurve(Method method, const std::vector<Expression>&);
         static bool discreteKeyFrames(Method method, const std::vector<Expression>&);
@@ -153,6 +154,9 @@ namespace massif::mvt {
         // A STEP over values that are neither numbers nor colours - mapbox writes line-join and
         // line-cap that way. There is no curve for those: see evaluateDiscrete.
         const bool _discrete;
+        // First and last key positions, when both are constants: outside them the curve HOLDS,
+        // as mapbox's `interpolate` does. cglib's fcurve extrapolates instead.
+        const std::optional<std::pair<float, float>> _keyRange;
         const std::optional<std::variant<cglib::fcurve2<float>, cglib::fcurve5<float>>> _fcurve;
     };
 

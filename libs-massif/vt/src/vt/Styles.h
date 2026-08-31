@@ -138,6 +138,8 @@ namespace massif::vt {
         LineJoinMode joinMode;
         LineCapMode capMode;
         ColorFunction colorFunc;
+        // How much of the colour is EMITTED rather than lit - see PolygonStyle. 1 = as authored.
+        FloatFunction emissiveFunc;
         FloatFunction widthFunc;
         FloatFunction offsetFunc;
         // mapbox's `line-gap-width`: the width of a GAP down the middle that is not drawn, so one
@@ -171,16 +173,20 @@ namespace massif::vt {
 
         bool hasEndArrow() const { return (endArrowWidth > 0 && endArrowLength > 0) || (endArrowShape && endArrowShape->size() >= 3); }
 
-        explicit LineStyle(CompOp compOp, LineJoinMode joinMode, LineCapMode capMode, ColorFunction colorFunc, FloatFunction widthFunc, FloatFunction offsetFunc, float splitDotLimit, float miterDotLimit, std::shared_ptr<const BitmapPattern> strokePattern, const std::optional<Transform>& transform, float endArrowWidth = 0, float endArrowLength = 0, bool endArrowOnly = false, std::shared_ptr<const std::vector<cglib::vec2<float>>> endArrowShape = std::shared_ptr<const std::vector<cglib::vec2<float>>>(), FloatFunction gapWidthFunc = FloatFunction(0), FloatFunction blurFunc = FloatFunction(0)) : compOp(compOp), joinMode(joinMode), capMode(capMode), colorFunc(std::move(colorFunc)), widthFunc(std::move(widthFunc)), offsetFunc(std::move(offsetFunc)), gapWidthFunc(std::move(gapWidthFunc)), blurFunc(std::move(blurFunc)), splitDotLimit(splitDotLimit), miterDotLimit(miterDotLimit), strokePattern(std::move(strokePattern)), transform(transform), endArrowWidth(endArrowWidth), endArrowLength(endArrowLength), endArrowOnly(endArrowOnly), endArrowShape(std::move(endArrowShape)) { }
+        explicit LineStyle(CompOp compOp, LineJoinMode joinMode, LineCapMode capMode, ColorFunction colorFunc, FloatFunction widthFunc, FloatFunction offsetFunc, float splitDotLimit, float miterDotLimit, std::shared_ptr<const BitmapPattern> strokePattern, const std::optional<Transform>& transform, float endArrowWidth = 0, float endArrowLength = 0, bool endArrowOnly = false, std::shared_ptr<const std::vector<cglib::vec2<float>>> endArrowShape = std::shared_ptr<const std::vector<cglib::vec2<float>>>(), FloatFunction gapWidthFunc = FloatFunction(0), FloatFunction blurFunc = FloatFunction(0), FloatFunction emissiveFunc = FloatFunction(1.0f)) : compOp(compOp), joinMode(joinMode), capMode(capMode), colorFunc(std::move(colorFunc)), emissiveFunc(std::move(emissiveFunc)), widthFunc(std::move(widthFunc)), offsetFunc(std::move(offsetFunc)), gapWidthFunc(std::move(gapWidthFunc)), blurFunc(std::move(blurFunc)), splitDotLimit(splitDotLimit), miterDotLimit(miterDotLimit), strokePattern(std::move(strokePattern)), transform(transform), endArrowWidth(endArrowWidth), endArrowLength(endArrowLength), endArrowOnly(endArrowOnly), endArrowShape(std::move(endArrowShape)) { }
     };
 
     struct PolygonStyle final {
         CompOp compOp;
         ColorFunction colorFunc;
+        // How much of the colour is EMITTED rather than lit by the scene - mapbox's
+        // *-emissive-strength. 1 draws it exactly as authored, which is what every style did before
+        // this existed, so it is the default and adding the term changes nothing on its own.
+        FloatFunction emissiveFunc;
         std::shared_ptr<const BitmapPattern> pattern;
         std::optional<Transform> transform;
 
-        explicit PolygonStyle(CompOp compOp, ColorFunction colorFunc, std::shared_ptr<const BitmapPattern> pattern, const std::optional<Transform>& transform) : compOp(compOp), colorFunc(std::move(colorFunc)), pattern(std::move(pattern)), transform(transform) { }
+        explicit PolygonStyle(CompOp compOp, ColorFunction colorFunc, std::shared_ptr<const BitmapPattern> pattern, const std::optional<Transform>& transform, FloatFunction emissiveFunc = FloatFunction(1.0f)) : compOp(compOp), colorFunc(std::move(colorFunc)), emissiveFunc(std::move(emissiveFunc)), pattern(std::move(pattern)), transform(transform) { }
     };
 
     // How an extrusion is capped. FLAT is one polygon at the top, as every extrusion has always
@@ -220,6 +226,16 @@ namespace massif::vt {
         // Added to the placement priority by the culler, once per label and per pass - see
         // TextLabelStyle::rankFunc.
         FloatFunction rankFunc = FloatFunction(0.0f);
+        // How much of the label's colour is EMITTED rather than lit by the scene - mapbox's
+        // text-/icon-emissive-strength. 1 keeps a label legible at any hour, which is mapbox's
+        // default and what every style did before this existed. Set after construction, like
+        // occlusionOpacity.
+        FloatFunction emissiveFunc = FloatFunction(1.0f);
+        // The HALO's own emissive, when it differs from the label's. Unset, the halo takes the
+        // label's - which is what keeps the two moving together. Set low against a high text
+        // emissive it goes dark as the light drops, which is how a bright name stays readable over
+        // a dark map: light ink, black outline.
+        std::optional<FloatFunction> haloEmissiveFunc;
 
         explicit PointLabelStyle(LabelOrientation orientation, ColorFunction colorFunc, FloatFunction sizeFunc, bool autoflip, std::shared_ptr<const BitmapImage> image, const std::optional<Transform>& transform, float maxDistance = 0.0f, bool sdfMode = false, ColorFunction haloColorFunc = ColorFunction(), FloatFunction haloRadiusFunc = FloatFunction()) : orientation(orientation), colorFunc(std::move(colorFunc)), sizeFunc(std::move(sizeFunc)), autoflip(autoflip), image(std::move(image)), transform(transform), maxDistance(maxDistance), sdfMode(sdfMode), haloColorFunc(std::move(haloColorFunc)), haloRadiusFunc(std::move(haloRadiusFunc)) { }
     };
@@ -291,6 +307,20 @@ namespace massif::vt {
         // independently of text-size, so the draw re-scales by the ratio of the two.
         std::optional<FloatFunction> iconScaleFunc;
         float iconRefScale = 0.0f;
+        // mapbox's icon-opacity, live: the icon PLATE is the icon's background, so it fades with
+        // the glyph on it. Baked at decode instead, a POI whose icon a zoom step hides kept its
+        // disc until the tile was decoded again.
+        std::optional<FloatFunction> iconOpacityFunc;
+        // How much of the label's colour is EMITTED rather than lit by the scene - mapbox's
+        // text-/icon-emissive-strength. 1 keeps a label legible at any hour, which is mapbox's
+        // default and what every style did before this existed. Set after construction, like
+        // occlusionOpacity.
+        FloatFunction emissiveFunc = FloatFunction(1.0f);
+        // The HALO's own emissive, when it differs from the label's. Unset, the halo takes the
+        // label's - which is what keeps the two moving together. Set low against a high text
+        // emissive it goes dark as the light drops, which is how a bright name stays readable over
+        // a dark map: light ink, black outline.
+        std::optional<FloatFunction> haloEmissiveFunc;
 
         explicit TextLabelStyle(LabelOrientation orientation, ColorFunction colorFunc, FloatFunction sizeFunc, ColorFunction haloColorFunc, FloatFunction haloRadiusFunc, bool autoflip, float angle, float backgroundScale, const cglib::vec2<float>& backgroundOffset, std::shared_ptr<const BitmapImage> backgroundImage, float maxDistance = 0.0f, const std::optional<ColorFunction>& secondaryColorFunc = std::optional<ColorFunction>(), FloatFunction rankFunc = FloatFunction(0.0f), float calloutScreenAnchor = -1.0f, float calloutOffset = 0.0f, float calloutStep = 0.0f, int calloutMaxRows = 8, int calloutPersistPasses = 0, float calloutLineWidth = 1.0f, const std::optional<cglib::vec2<float>>& calloutLineAnchor = std::optional<cglib::vec2<float>>(), const std::optional<cglib::vec2<float>>& calloutBandAnchor = std::optional<cglib::vec2<float>>(), const LabelPlateStyle& textPlate = LabelPlateStyle(), const LabelPlateStyle& iconPlate = LabelPlateStyle(), LabelLineAlign textLineAlign = LabelLineAlign::CENTER, std::vector<LabelAnchor> anchors = std::vector<LabelAnchor>(), bool textOptional = false, std::vector<Font::Glyph> iconGlyphs = std::vector<Font::Glyph>(), const std::optional<ColorFunction>& iconColorFunc = std::optional<ColorFunction>()) : orientation(orientation), colorFunc(std::move(colorFunc)), sizeFunc(std::move(sizeFunc)), haloColorFunc(std::move(haloColorFunc)), haloRadiusFunc(std::move(haloRadiusFunc)), autoflip(autoflip), angle(angle), backgroundScale(backgroundScale), backgroundOffset(backgroundOffset), backgroundImage(std::move(backgroundImage)), maxDistance(maxDistance), secondaryColorFunc(secondaryColorFunc), rankFunc(std::move(rankFunc)), calloutScreenAnchor(calloutScreenAnchor), calloutOffset(calloutOffset), calloutStep(calloutStep), calloutMaxRows(calloutMaxRows), calloutPersistPasses(calloutPersistPasses), calloutLineWidth(calloutLineWidth), calloutLineAnchor(calloutLineAnchor), calloutBandAnchor(calloutBandAnchor), textPlate(textPlate), iconPlate(iconPlate), textLineAlign(textLineAlign), anchors(std::move(anchors)), textOptional(textOptional), iconGlyphs(std::move(iconGlyphs)), iconColorFunc(iconColorFunc) { }
     };

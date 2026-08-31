@@ -234,6 +234,13 @@ namespace massif::mvt {
         if (_discrete) {
             return evaluateDiscrete(t, context);
         }
+        // Past the last key the curve HOLDS, and likewise before the first one - mapbox's
+        // `interpolate`, and the only reading that makes sense of a zoom ramp: cglib extrapolates,
+        // so Standard's POI minimum-distance (16, 6) -> (17, 4) went NEGATIVE by z19 and the
+        // culler stopped thinning anything.
+        if (_keyRange) {
+            t = std::min(std::max(t, _keyRange->first), _keyRange->second);
+        }
         float time = (_method == Method::EXPONENTIAL ? remapExponential(t) : t);
         if (_fcurve) {
             return std::visit(Evaluator(time), *_fcurve);
@@ -277,6 +284,21 @@ namespace massif::mvt {
             }
         }
         return false;
+    }
+
+    /** The key positions, when every one of them is a constant - a computed key cannot be clamped. */
+    std::optional<std::pair<float, float>> InterpolateExpression::constantKeyRange(const std::vector<Expression>& keyFrames) {
+        std::optional<std::pair<float, float>> range;
+        for (std::size_t i = 0; i + 1 < keyFrames.size(); i += 2) {
+            auto keyVal = std::get_if<mvt::Value>(&keyFrames[i]);
+            if (!keyVal) {
+                return std::nullopt;
+            }
+            float key = ValueConverter<float>::convert(*keyVal);
+            range = range ? std::make_pair(std::min(range->first, key), std::max(range->second, key))
+                          : std::make_pair(key, key);
+        }
+        return range;
     }
 
     std::optional<std::variant<cglib::fcurve2<float>, cglib::fcurve5<float>>> InterpolateExpression::buildConstantFCurve(Method method, const std::vector<Expression>& keyFrames) {

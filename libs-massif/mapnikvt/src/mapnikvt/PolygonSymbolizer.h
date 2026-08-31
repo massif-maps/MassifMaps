@@ -16,6 +16,7 @@ namespace massif::mvt {
         explicit PolygonSymbolizer(std::shared_ptr<Logger> logger) : GeometrySymbolizer(std::move(logger)) {
             bindProperty("fill", &_fill);
             bindProperty("fill-opacity", &_fillOpacity);
+            bindProperty("fill-emissive-strength", &_fillEmissive);
         }
 
         virtual FeatureProcessor createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const override;
@@ -23,6 +24,8 @@ namespace massif::mvt {
     protected:
         ColorFunctionProperty _fill = ColorFunctionProperty("#808080");
         FloatFunctionProperty _fillOpacity = FloatFunctionProperty(1.0f);
+        // mapbox's fill-emissive-strength: 1 draws the fill as authored, 0 hands it to the light.
+        FloatFunctionProperty _fillEmissive = FloatFunctionProperty(1.0f);
 
         ColorFunctionBuilder _fillFuncBuilder;
     };

@@ -43,6 +43,8 @@ namespace massif::vt {
 
             int parameterCount;
             std::array<ColorFunction, MAX_PARAMETERS> colorFuncs;
+            // Per slot, how much of the colour is emitted rather than lit. 1 = as authored.
+            std::array<FloatFunction, MAX_PARAMETERS> emissiveFuncs;
             std::array<FloatFunction, MAX_PARAMETERS> widthFuncs; // for lines, points
             std::array<FloatFunction, MAX_PARAMETERS> offsetFuncs; // for lines, points (stroke width in case of points)
             std::array<FloatFunction, MAX_PARAMETERS> gapWidthFuncs; // for lines: an undrawn gap down the middle
@@ -56,7 +58,7 @@ namespace massif::vt {
             CompOp compOp;
             int glyphRenderSize;
 
-            StyleParameters() : parameterCount(0), colorFuncs(), widthFuncs(), offsetFuncs(), gapWidthFuncs(), blurFuncs(), strokeScales(), pattern(), translate(), compOp(CompOp::SRC_OVER), glyphRenderSize(64) { patternScales.fill(1.0f); }
+            StyleParameters() : parameterCount(0), colorFuncs(), emissiveFuncs(), widthFuncs(), offsetFuncs(), gapWidthFuncs(), blurFuncs(), strokeScales(), pattern(), translate(), compOp(CompOp::SRC_OVER), glyphRenderSize(64) { patternScales.fill(1.0f); emissiveFuncs.fill(FloatFunction(1.0f)); }
         };
 
         // A run of vertices that a style parameter can repoint, so a feature it picks out repaints

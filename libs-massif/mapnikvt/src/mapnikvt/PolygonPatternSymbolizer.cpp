@@ -24,7 +24,7 @@ namespace massif::mvt {
         std::optional<vt::Transform> geometryTransform = _geometryTransform.getValue(exprContext);
         vt::ColorFunction fillFunc = _fillFuncBuilder.createColorOpacityFunction(colorFunc, opacityFunc);
 
-        vt::PolygonStyle style(compOp, fillFunc, bitmapPattern, geometryTransform);
+        vt::PolygonStyle style(compOp, fillFunc, bitmapPattern, geometryTransform, _emissive.getFunction(exprContext));
 
         return [style, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
             bool suppressWarning = false;

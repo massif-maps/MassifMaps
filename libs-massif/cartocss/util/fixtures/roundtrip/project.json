@@ -3,6 +3,7 @@
   "layers": ["transportation", "satellite", "contour", "hillshade", "landcover"],
   "styleparameters": {
     "selected_id": { "default": "", "selects": true },
-    "relief": { "default": true }
+    "relief": { "default": true },
+    "building_tilt_drop": { "default": 90 }
   }
 }

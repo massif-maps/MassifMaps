@@ -18,6 +18,7 @@ namespace massif::mvt {
             bindProperty("fill", &_fill);
             bindProperty("opacity", &_opacity);
             bindProperty("offset", &_offset);
+            bindProperty("emissive-strength", &_emissive);
         }
 
         virtual FeatureProcessor createFeatureProcessor(const ExpressionContext& exprContext, const SymbolizerContext& symbolizerContext) const override;
@@ -30,6 +31,9 @@ namespace massif::mvt {
         ColorFunctionProperty _fill = ColorFunctionProperty("#ffffff");
         FloatFunctionProperty _opacity = FloatFunctionProperty(1.0f);
         FloatFunctionProperty _offset = FloatFunctionProperty(0.0f);
+        // mapbox's line-emissive-strength: 1 draws the pattern's tint as authored, 0 hands it to
+        // the light.
+        FloatFunctionProperty _emissive = FloatFunctionProperty(1.0f);
 
         FloatFunctionBuilder _widthFuncBuilder;
         ColorFunctionBuilder _fillFuncBuilder;

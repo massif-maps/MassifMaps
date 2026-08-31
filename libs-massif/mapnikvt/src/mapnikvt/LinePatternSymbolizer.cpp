@@ -26,7 +26,7 @@ namespace massif::mvt {
         vt::FloatFunction widthFunc = _widthFuncBuilder.createFloatFunction(bitmapPattern->bitmap->height);
         vt::ColorFunction fillFunc = _fillFuncBuilder.createColorOpacityFunction(colorFunc, opacityFunc);
 
-        vt::LineStyle style(compOp, vt::LineJoinMode::MITER, vt::LineCapMode::NONE, fillFunc, widthFunc, offsetFunc, PATTERN_DOT_LIMIT, PATTERN_DOT_LIMIT, bitmapPattern, geometryTransform);
+        vt::LineStyle style(compOp, vt::LineJoinMode::MITER, vt::LineCapMode::NONE, fillFunc, widthFunc, offsetFunc, PATTERN_DOT_LIMIT, PATTERN_DOT_LIMIT, bitmapPattern, geometryTransform, 0, 0, false, std::shared_ptr<const std::vector<cglib::vec2<float>>>(), vt::FloatFunction(0), vt::FloatFunction(0), _emissive.getFunction(exprContext));
 
         std::shared_ptr<vt::StrokeMap> strokeMap = symbolizerContext.getStrokeMap();
 

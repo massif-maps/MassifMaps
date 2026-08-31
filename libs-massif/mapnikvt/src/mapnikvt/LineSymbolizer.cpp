@@ -94,7 +94,7 @@ namespace massif::mvt {
             }
         }
 
-        vt::LineStyle style(compOp, strokeLinejoin, strokeLinecap, strokeFunc, strokeWidthFunc, offsetFunc, splitDotLimit, miterDotLimit, strokePattern, geometryTransform, arrowWidth, arrowLength, arrowOnly, arrowShape, gapWidthFunc, blurFunc);
+        vt::LineStyle style(compOp, strokeLinejoin, strokeLinecap, strokeFunc, strokeWidthFunc, offsetFunc, splitDotLimit, miterDotLimit, strokePattern, geometryTransform, arrowWidth, arrowLength, arrowOnly, arrowShape, gapWidthFunc, blurFunc, _strokeEmissive.getFunction(exprContext));
         
         std::shared_ptr<vt::StrokeMap> strokeMap = symbolizerContext.getStrokeMap();
 

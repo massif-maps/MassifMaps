@@ -31,6 +31,7 @@ namespace massif::vt {
         U_TILEUNITOFFSET,
         U_UVSCALE,
         U_HEIGHTSCALE,
+        U_SHADOWHEIGHTSCALE,
         U_COLORTABLE,
         U_WIDTHTABLE,
         U_OFFSETTABLE,
@@ -178,6 +179,7 @@ namespace massif::vt {
         { "uTileUnitOffset",   U_TILEUNITOFFSET },
         { "uUVScale",          U_UVSCALE },
         { "uHeightScale",      U_HEIGHTSCALE },
+        { "uShadowHeightScale", U_SHADOWHEIGHTSCALE },
         { "uColorTable",       U_COLORTABLE },
         { "uWidthTable",       U_WIDTHTABLE },
         { "uOffsetTable",      U_OFFSETTABLE },
@@ -734,6 +736,10 @@ namespace massif::vt {
         mediump float shadowFactorSlope(mediump float ndl) {
             return shadowFactorScreen();
         }
+        mediump float shadowFactorSlopeParts(mediump float ndl, out mediump float mapLit) {
+            mapLit = shadowFactorScreen();
+            return mapLit;
+        }
         mediump float shadowFactor() {
             return shadowFactorScreen();
         }
@@ -796,7 +802,11 @@ namespace massif::vt {
         // angle one shadow texel spans a large depth range, and a constant bias cannot cover it.
         // Left constant, the residual self-shadowing lands in bands of constant height - which on
         // a hillside reads as ripples following the contour lines.
-        mediump float shadowFactorSlope(mediump float ndl) {
+        // mapLit is the part of the answer the shadow MAP gave: 1 wherever the map was not
+        // consulted (back-facing, or outside every cascade). A receiver that dims its ambient in
+        // shadow must use this and not the return value, or its own back faces lose the sky too.
+        mediump float shadowFactorSlopeParts(mediump float ndl, out mediump float mapLit) {
+            mapLit = 1.0;
             // Cascades, near page first: a fragment takes the sharpest page it falls inside. The
             // margin keeps the PCF taps of the chosen page off its border, where they would read
             // the neighbouring cascade's texels.
@@ -912,8 +922,13 @@ namespace massif::vt {
             // the map cannot say anything useful there anyway: its texels are seen edge-on, so the
             // depth stored for one covers the whole face. Shadowing those outright is both correct
             // and what makes it safe to keep the bias small everywhere else.
+            mapLit = mix(1.0, lit, uShadowParams.y);
             lit = min(lit, facing);
             return mix(1.0, lit, uShadowParams.y);
+        }
+        mediump float shadowFactorSlope(mediump float ndl) {
+            mediump float mapLit;
+            return shadowFactorSlopeParts(ndl, mapLit);
         }
         mediump float shadowFactor() {
             return shadowFactorSlope(1.0);
@@ -1149,7 +1164,8 @@ namespace massif::vt {
             // ground out to white at a high sun, and a clipped highlight cannot show a shadow.
             mediump vec3 lit = uAmbientColor.rgb * uLightParams.y + uSunColor.rgb * ((1.0 - uLightParams.y) * ndl * uLightParams.x);
         #ifdef TERRAIN_SHADOW
-            // The shadow multiplies the FINAL colour, exactly as it does on the 3D extrusions.
+            // The shadow multiplies the FINAL colour; an extrusion dims its ambient by the map
+            // part alone (skyShadow), which is the same depth of shadow under a caster.
             // Folding it into N.L instead made it vanish at ambient 1 (where N.L has no weight
             // left), so ground and buildings disagreed about what a shadow is. Shadow depth is
             // the strength parameter's job, not the ambient level's.
@@ -1231,7 +1247,8 @@ namespace massif::vt {
             // ground out to white at a high sun, and a clipped highlight cannot show a shadow.
             mediump vec3 lit = uAmbientColor.rgb * uLightParams.y + uSunColor.rgb * ((1.0 - uLightParams.y) * ndl * uLightParams.x);
         #ifdef TERRAIN_SHADOW
-            // The shadow multiplies the FINAL colour, exactly as it does on the 3D extrusions.
+            // The shadow multiplies the FINAL colour; an extrusion dims its ambient by the map
+            // part alone (skyShadow), which is the same depth of shadow under a caster.
             // Folding it into N.L instead made it vanish at ambient 1 (where N.L has no weight
             // left), so ground and buildings disagreed about what a shadow is. Shadow depth is
             // the strength parameter's job, not the ambient level's.
@@ -2258,6 +2275,10 @@ namespace massif::vt {
         uniform mat3 uTileMatrix;
         uniform float uUVScale;
         uniform float uHeightScale;
+        // The height the SHADOW MAP was baked at. Equal to uHeightScale unless the style flattens
+        // its buildings for the camera (building-height-view-scale), which the caster ignores: the
+        // lookup has to follow the caster, or every roof lands under its own building's shadow.
+        uniform float uShadowHeightScale;
         uniform vec4 uColorTable[16];
         varying highp_opt vec2 vTilePos;
         varying lowp vec4 vColor;
@@ -2319,9 +2340,10 @@ namespace massif::vt {
                 baseZ = max(baseZ, footprintGround(aVertexUV + vec2(0.0, reach)));
                 baseZ = max(baseZ, footprintGround(aVertexUV - vec2(0.0, reach)));
             }
-            pos = vec3(pos.xy, baseZ) + aVertexNormal * (aVertexHeight * uHeightScale);
+            vec3 basePos = vec3(pos.xy, baseZ);
+            pos = basePos + aVertexNormal * (aVertexHeight * uHeightScale);
             vec3 normal = normalize(mix(aVertexNormal, aVertexBinormal, sideVertex));
-            applyShadowPos(pos, normal);
+            applyShadowPos(basePos + aVertexNormal * (aVertexHeight * uShadowHeightScale), normal);
         #ifdef TERRAIN_SHADOW
             vShadowNormal = normal;
         #endif
@@ -2337,7 +2359,7 @@ namespace massif::vt {
         #ifdef LIGHTING_VSH
             // Unshadowed: the shadow is a per-fragment term, so a per-vertex lighting still takes
             // it as a plain multiply in the fragment shader (and loses its ambient doing so).
-            vColor = applyLighting3D(color, normal, wallT, sideVertex, 1.0);
+            vColor = applyLighting3D(color, normal, wallT, sideVertex, 1.0, 1.0);
         #else
             vColor = color;
         #endif
@@ -2374,15 +2396,20 @@ namespace massif::vt {
             // what shredded the buildings on zooming out. It also lets the back-face rule shadow
             // a wall facing away from the sun, which no depth comparison can decide.
             mediump float shadow = 1.0;
+            // Only what the MAP occluded dims the sky as well (skyShadow): standing in another
+            // building's shadow does hide part of the sky, and with mapbox's ambient at 0.8 against
+            // a directional 0.2 the sun term alone moved a shadowed wall by ~4% - invisible, while
+            // the ground beside it went to a fifth of its light.
+            mediump float skyShadow = 1.0;
         #ifdef TERRAIN_SHADOW
-            shadow = shadowFactorSlope(max(0.0, dot(normalize(vShadowNormal), uSunDir)));
+            shadow = shadowFactorSlopeParts(max(0.0, dot(normalize(vShadowNormal), uSunDir)), skyShadow);
         #endif
         #ifdef LIGHTING_FSH
             // The shadow goes INTO the lighting, where it dims the sun alone. Multiplied over the
             // finished colour instead it took the ambient with it, and since a wall facing away
             // from the sun is fully shadowed by the back-face rule above, every such wall went
             // black - the whole reason facades did not match mapbox.
-            glFragColor = applyFog(applyLighting3D(vColor, normalize(vNormal), vWallT, vSideVertex, shadow));
+            glFragColor = applyFog(applyLighting3D(vColor, normalize(vNormal), vWallT, vSideVertex, shadow, skyShadow));
         #else
             glFragColor = applyFog(vColor);
             glFragColor.rgb *= shadow;

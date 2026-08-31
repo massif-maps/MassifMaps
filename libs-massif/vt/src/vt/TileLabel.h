@@ -59,6 +59,8 @@ namespace massif::vt {
             // The icon's own size ramp and the value it was baked at (see TextLabelStyle).
             std::optional<FloatFunction> iconScaleFunc;
             float iconRefScale = 0.0f;
+            // mapbox's icon-opacity, live - what the icon PLATE fades by (see TextLabelStyle).
+            std::optional<FloatFunction> iconOpacityFunc;
             // The text size the icon run was measured in ems of. The icon keeps the SIZE IN PIXELS
             // that gives, whatever the text does afterwards - mapbox sizes an icon by icon-size and
             // the name by text-size, and they are not the same ramp. 0 leaves the icon on the text.
@@ -107,6 +109,12 @@ namespace massif::vt {
             // Justification of the text's lines for a label with no variants; a variant carries
             // its own (see Variant::lineAlign). -1 flush left, 0 centred, +1 flush right.
             float textLineAlign = 0.0f;
+            // How much of every colour on this label is emitted rather than lit by the scene -
+            // mapbox's text-/icon-emissive-strength. 1 = drawn as authored, which keeps a label
+            // legible at night and is mapbox's own default.
+            FloatFunction emissiveFunc = FloatFunction(1.0f);
+            // The halo's own, when it differs - see TextLabelStyle. Unset takes the label's.
+            std::optional<FloatFunction> haloEmissiveFunc;
 
             explicit Style(LabelOrientation orientation, ColorFunction colorFunc, FloatFunction sizeFunc, ColorFunction haloColorFunc, FloatFunction haloRadiusFunc, bool autoflip, float scale, float ascent, float descent, const std::optional<Transform>& transform, std::shared_ptr<const GlyphMap> glyphMap, int glyphRenderSize, float maxDistance = 0.0f, const std::optional<ColorFunction>& secondaryColorFunc = std::optional<ColorFunction>(), FloatFunction rankFunc = FloatFunction(0.0f), float calloutScreenAnchor = -1.0f, float calloutOffset = 0.0f, float calloutStep = 0.0f, int calloutMaxRows = 8, int calloutPersistPasses = 0, float calloutLineWidth = 1.0f, const std::optional<cglib::vec2<float>>& calloutLineAnchor = std::optional<cglib::vec2<float>>(), const std::optional<cglib::vec2<float>>& calloutBandAnchor = std::optional<cglib::vec2<float>>(), const std::optional<GlyphMap::Glyph>& calloutLineGlyph = std::optional<GlyphMap::Glyph>(), const Plate& textPlate = Plate(), const Plate& iconPlate = Plate(), float textLineAlign = 0.0f, const std::optional<ColorFunction>& iconColorFunc = std::optional<ColorFunction>()) : orientation(orientation), colorFunc(std::move(colorFunc)), sizeFunc(std::move(sizeFunc)), haloColorFunc(std::move(haloColorFunc)), haloRadiusFunc(std::move(haloRadiusFunc)), autoflip(autoflip), scale(scale), ascent(ascent), descent(descent), transform(transform), glyphMap(std::move(glyphMap)), glyphRenderSize(glyphRenderSize), maxDistance(maxDistance), secondaryColorFunc(secondaryColorFunc), rankFunc(std::move(rankFunc)), calloutScreenAnchor(calloutScreenAnchor), calloutOffset(calloutOffset), calloutStep(calloutStep), calloutMaxRows(calloutMaxRows), calloutPersistPasses(calloutPersistPasses), calloutLineWidth(calloutLineWidth), calloutLineAnchor(calloutLineAnchor), calloutBandAnchor(calloutBandAnchor), calloutLineGlyph(calloutLineGlyph), textPlate(textPlate), iconPlate(iconPlate), textLineAlign(textLineAlign), iconColorFunc(iconColorFunc) { }
         };

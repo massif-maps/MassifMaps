@@ -69,9 +69,41 @@ namespace massif::mvt {
             // but darkening it is what makes a block read as 3D rather than as a lit slab - it is
             // how mapbox's buildings look, and it is a styling choice, not a lighting one.
             FloatFunctionProperty buildingRoofShade = FloatFunctionProperty(1.0f);
+            // Every extrusion's height, multiplied. mapbox's `fill-extrusion-vertical-scale`, and
+            // the way Standard grows its buildings out of the ground as they appear (0 at z15, 1 at
+            // z15.3) - a ZOOM ramp, not a timed animation, so it is the same at every visit.
+            FloatFunctionProperty buildingHeightScale = FloatFunctionProperty(1.0f);
+            // The same, but a CAMERA effect: the shadow caster ignores it. A style flattens its
+            // extrusions as the view turns onto the map (a view::tilt ramp) so a top-down city
+            // stays legible - the buildings are still there, so their shadows keep their length.
+            // Anything that means "the building is not there yet" belongs in buildingHeightScale,
+            // which the caster does follow: no building, no shadow.
+            FloatFunctionProperty buildingHeightViewScale = FloatFunctionProperty(1.0f);
+            // Whether a tile's fade-in also RAISES its buildings. Off: the walls used to be scaled
+            // by the tile blend, so every building grew out of the ground each time its tile faded
+            // in - a timed animation no source style asks for. A style that wants one writes it as
+            // a zoom ramp on buildingHeightScale, which is what mapbox does.
+            FloatFunctionProperty buildingGrowOnAppear = FloatFunctionProperty(0.0f);
+            // Whether a tile's fade-in also fades its buildings IN. On, like every other kind of
+            // geometry; a style that ramps its own extrusion opacity over zoom turns it off and
+            // owns the appearance itself.
+            FloatFunctionProperty buildingFadeOnAppear = FloatFunctionProperty(1.0f);
             // 0 makes the bevel a flat facet with its own tone instead of a rolled edge.
             FloatFunctionProperty buildingRoundedRoof = FloatFunctionProperty(1.0f);
             FloatFunctionProperty terrainLighting = FloatFunctionProperty(0.0f);   // 0/1: light the terrain with the sun
+            // 0/1: the style's 2D colours ALREADY carry the scene light, so the ground must not be
+            // lit a second time. A converted MapBox style folds mapbox's own ground radiance into
+            // every colour at conversion time; lighting it again multiplied a dusk ground by its
+            // dark blue ambient twice and took it to a fifth of what gl-js draws. Says nothing about
+            // the terrain's shadows, which stay on.
+            FloatFunctionProperty colorsPrelit = FloatFunctionProperty(0.0f);
+            // How much of an extrusion's colour is EMITTED rather than lit, mapbox's
+            // fill-extrusion-emissive-strength. 0 is at the mercy of the scene light, 1 is drawn as
+            // authored whatever the hour. Above 1 it overdrives, as their mix() does.
+            FloatFunctionProperty buildingEmissive = FloatFunctionProperty(0.0f);
+            // The same question for the map's BACKGROUND, which is a Map setting rather than a
+            // symbolizer: mapbox's background-emissive-strength. 1 draws it as authored.
+            FloatFunctionProperty backgroundEmissive = FloatFunctionProperty(1.0f);
             FloatFunctionProperty shadowStrength = FloatFunctionProperty(0.0f);    // 0 = no shadows
             FloatFunctionProperty shadowBias = FloatFunctionProperty(0.25f);       // meters
             FloatFunctionProperty shadowSoftness = FloatFunctionProperty(1.0f);    // PCF radius in shadow texels

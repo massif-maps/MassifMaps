@@ -21,6 +21,8 @@ namespace massif::mvt {
             bindProperty("color", &_color);
             bindProperty("opacity", &_opacity);
             bindProperty("fill", &_fill);
+            bindProperty("emissive-strength", &_emissive);
+            bindProperty("halo-emissive-strength", &_haloEmissive);
             bindProperty("fill-opacity", &_fillOpacity);
             bindProperty("width", &_width, true); // sizes the generated marker bitmap
             bindProperty("height", &_height, true); // sizes the generated marker bitmap
@@ -70,6 +72,11 @@ namespace massif::mvt {
         MarkerTypeProperty _markerType = MarkerTypeProperty("auto");
         ColorFunctionProperty _color = ColorFunctionProperty("#ffffff");
         FloatFunctionProperty _opacity = FloatFunctionProperty(1.0f);
+        // mapbox's text-/icon-emissive-strength: 1 keeps the label as authored at any hour, which
+        // is mapbox's own default; 0 hands it to the scene light.
+        FloatFunctionProperty _emissive = FloatFunctionProperty(1.0f);
+        // The HALO's own, when it should not follow the label's - see TextLabelStyle.
+        FloatFunctionProperty _haloEmissive = FloatFunctionProperty(-1.0f);
         ColorProperty _fill = ColorProperty("#0000ff");
         FloatProperty _fillOpacity = FloatProperty(1.0f);
         FloatFunctionProperty _width = FloatFunctionProperty(0.0f);

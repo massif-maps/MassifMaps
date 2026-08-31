@@ -177,6 +177,14 @@ namespace massif::mvt {
         float maxDistance = _maxDistance.getValue(exprContext);
         float placementPriority = _placementPriority.getValue(exprContext);
         vt::FloatFunction rankFunc = _rank.getFunction(exprContext);
+        vt::FloatFunction emissiveFunc = _emissive.getFunction(exprContext);
+        // -1 is "unstated": the halo then takes the label's own, which is what every style did
+        // before the property existed.
+        vt::FloatFunction haloEmissiveRaw = _haloEmissive.getFunction(exprContext);
+        std::optional<vt::FloatFunction> haloEmissiveFunc;
+        if (!(haloEmissiveRaw == vt::FloatFunction(-1.0f))) {
+            haloEmissiveFunc = haloEmissiveRaw;
+        }
         float orientationAngle = _orientationAngle.getValue(exprContext);
         float sizeStatic = _size.getStaticValue(exprContext);
         bool unlockImage = _unlockImage.getValue(exprContext);
@@ -220,6 +228,12 @@ namespace massif::mvt {
         bool sdfBackground = sdfMode && backgroundImage && backgroundImage->bitmap;
         if (_iconFill.isDefined() && (!iconGlyphs.empty() || sdfBackground)) {
             iconColorFunc = _iconFillFuncBuilder.createColorOpacityFunction(_iconFill.getFunction(exprContext), _iconOpacity.getFunction(exprContext));
+        }
+        // The plate behind the icon fades with it: it IS the icon's background. Only where the
+        // style states one, so a rule that never touches icon-opacity costs nothing.
+        std::optional<vt::FloatFunction> iconOpacityFunc;
+        if (_iconOpacity.isDefined() && iconPlate.enabled()) {
+            iconOpacityFunc = _iconOpacity.getFunction(exprContext);
         }
 
         // The icon's own halo. Built only when a radius asks for one, so a style that sets none
@@ -328,9 +342,11 @@ namespace massif::mvt {
             };
         }
 
-        return [compOp, fillFunc, haloFillFunc, sizeFunc, haloRadiusFunc, fontScale, imageScale, imageScaleFunc, iconHaloColorFunc, iconHaloRadiusFunc, repeatAlongLine, billboardRepeat, orientation, text, hash, orientationAngle, formatter, backgroundOffset, backgroundImage, sdfMode, spacing, textSize, tileId, tileSize, labelIdOverride, groupId, placementPriority, rankFunc, minimumDistance, maxDistance, anchors, textOptional, iconGlyphs, iconColorFunc, textLineAlign, textPlate, iconPlate, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
+        return [compOp, fillFunc, haloFillFunc, sizeFunc, haloRadiusFunc, fontScale, imageScale, imageScaleFunc, iconHaloColorFunc, iconHaloRadiusFunc, repeatAlongLine, billboardRepeat, orientation, text, hash, orientationAngle, formatter, backgroundOffset, backgroundImage, sdfMode, spacing, textSize, tileId, tileSize, labelIdOverride, groupId, placementPriority, rankFunc, minimumDistance, maxDistance, anchors, textOptional, iconGlyphs, iconColorFunc, iconOpacityFunc, textLineAlign, textPlate, iconPlate, emissiveFunc, haloEmissiveFunc, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
             vt::TextLabelStyle style(orientation, fillFunc, sizeFunc, haloFillFunc, haloRadiusFunc, true, orientationAngle, imageScale, backgroundOffset, backgroundImage, maxDistance,
                                      std::optional<vt::ColorFunction>(), rankFunc);
+            style.emissiveFunc = emissiveFunc;
+            style.haloEmissiveFunc = haloEmissiveFunc;
             style.iconHaloColorFunc = iconHaloColorFunc;
             style.iconHaloRadiusFunc = iconHaloRadiusFunc;
             style.iconScaleFunc = imageScaleFunc;
@@ -340,6 +356,7 @@ namespace massif::mvt {
             style.textOptional = textOptional;
             style.iconGlyphs = iconGlyphs;
             style.iconColorFunc = iconColorFunc;
+            style.iconOpacityFunc = iconOpacityFunc;
             style.textLineAlign = textLineAlign;
             style.textPlate = textPlate;
             style.iconPlate = iconPlate;

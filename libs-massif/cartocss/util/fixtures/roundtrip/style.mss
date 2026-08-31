@@ -17,8 +17,13 @@ Map {
   shadow-strength: 0.7;
   shadow-cascades: 3;
   terrain-lighting: 1;
+  colors-prelit: 1;
   building-roof-shade: 0.8;
   building-ao-intensity: 0.25;
+  /* what mapbox2css emits: the style's zoom ramp, and our tilt ramp the shadows ignore */
+  building-height-scale: linear(([view::zoom] - 1), (15, 0), (15.3, 1));
+  building-height-view-scale: 1 - ([param::building_tilt_drop] * 0.01) * linear([view::tilt], (80, 0), (90, 1));
+  building-fade-on-appear: 0;
   text-occlusion-opacity: 0.3;
   fog-color: #b0c4de;
   fog-range-end: 6;

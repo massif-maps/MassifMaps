@@ -886,7 +886,11 @@ namespace massif::vt {
         
         std::uint16_t offset = static_cast<std::uint16_t>(vertices.size() - _cachedVertices.size());
         for (std::uint16_t idx : _cachedIndices) {
-            if (!(haloStyleIndex >= 0 && _cachedAttribs[idx](1) != 0)) { // do not add non-SDF glyphs if halo is enabled in the second pass
+            // A non-SDF glyph is drawn ONCE, in the halo pass, so that it lands under the ink. Per
+            // RUN, like the pass above: gated on the text's halo instead, an icon bitmap on a
+            // label whose text has a halo but whose icon has none was dropped by both passes.
+            int glyphHaloIndex = (_cachedAttribs[idx](0) == 2 ? iconHaloStyleIndex : haloStyleIndex);
+            if (!(glyphHaloIndex >= 0 && _cachedAttribs[idx](1) != 0)) {
                 indices.append(idx + offset);
             }
         }

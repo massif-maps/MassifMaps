@@ -20,6 +20,14 @@ namespace massif::mvt {
         float spacing = _spacing.getValue(exprContext);
         float placementPriority = _placementPriority.getValue(exprContext);
         vt::FloatFunction rankFunc = _rank.getFunction(exprContext);
+        vt::FloatFunction emissiveFunc = _emissive.getFunction(exprContext);
+        // -1 is "unstated": the halo then takes the label's own, which is what every style did
+        // before the property existed.
+        vt::FloatFunction haloEmissiveRaw = _haloEmissive.getFunction(exprContext);
+        std::optional<vt::FloatFunction> haloEmissiveFunc;
+        if (!(haloEmissiveRaw == vt::FloatFunction(-1.0f))) {
+            haloEmissiveFunc = haloEmissiveRaw;
+        }
         float maxDistance = _maxDistance.getValue(exprContext);
         float widthStatic = _width.getStaticValue(exprContext);
         float heightStatic = _height.getStaticValue(exprContext);
@@ -207,9 +215,11 @@ namespace massif::mvt {
             };
         }
 
-        return [compOp, fillFunc, normalizedSizeFunc, bitmapImage, transform, orientation, placement, placementPriority, rankFunc, spacing, bitmapSize, tileId, tileSize, glyphMap, groupId, labelIdOverride, allowOverlapSameFeatureId, sameFeatureIdDependent, hash, maxDistance, sdfMode, haloFillFunc, haloRadiusFunc, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
+        return [compOp, fillFunc, normalizedSizeFunc, bitmapImage, transform, orientation, placement, placementPriority, rankFunc, spacing, bitmapSize, tileId, tileSize, glyphMap, groupId, labelIdOverride, allowOverlapSameFeatureId, sameFeatureIdDependent, hash, maxDistance, sdfMode, haloFillFunc, haloRadiusFunc, emissiveFunc, haloEmissiveFunc, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
             vt::PointLabelStyle style(orientation, fillFunc, normalizedSizeFunc, false, bitmapImage, transform, maxDistance, sdfMode, haloFillFunc, haloRadiusFunc);
             style.rankFunc = rankFunc;
+            style.emissiveFunc = emissiveFunc;
+            style.haloEmissiveFunc = haloEmissiveFunc;
             vt::TileLayerBuilder::PointLabelProcessor pointProcessor;
             for (std::size_t featureIndex = 0; featureIndex < featureCollection.size(); featureIndex++) {
                 if (!pointProcessor) {
@@ -274,6 +284,8 @@ namespace massif::mvt {
                         for (const auto& transformedPoints : generateTransformedPoints(vertices, spacing, bitmapSize, tileSize)) {
                             vt::PointLabelStyle transformedStyle(orientation, fillFunc, normalizedSizeFunc, false, bitmapImage, transformedPoints.first * (transform ? *transform : vt::Transform()), maxDistance);
                             transformedStyle.rankFunc = rankFunc;
+                            transformedStyle.emissiveFunc = emissiveFunc;
+                            transformedStyle.haloEmissiveFunc = haloEmissiveFunc;
                             pointProcessor = layerBuilder.createPointLabelProcessor(transformedStyle, glyphMap);
                             if (pointProcessor) {
                                     for (const auto& vertex : transformedPoints.second) {

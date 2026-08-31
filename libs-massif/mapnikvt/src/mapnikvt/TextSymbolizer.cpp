@@ -68,6 +68,14 @@ namespace massif::mvt {
         std::optional<cglib::vec2<float>> calloutLineAnchor = parseBoxAnchor(_calloutLineAnchor.getValue(exprContext));
         std::optional<cglib::vec2<float>> calloutBandAnchor = parseBoxAnchor(_calloutAlign.getValue(exprContext));
         vt::FloatFunction rankFunc = _rank.getFunction(exprContext);
+        vt::FloatFunction emissiveFunc = _emissive.getFunction(exprContext);
+        // -1 is "unstated": the halo then takes the label's own, which is what every style did
+        // before the property existed.
+        vt::FloatFunction haloEmissiveRaw = _haloEmissive.getFunction(exprContext);
+        std::optional<vt::FloatFunction> haloEmissiveFunc;
+        if (!(haloEmissiveRaw == vt::FloatFunction(-1.0f))) {
+            haloEmissiveFunc = haloEmissiveRaw;
+        }
         std::optional<vt::ColorFunction> secondaryColorFunc;
         if (_secondaryFill.isDefined() || _secondaryOpacity.isDefined()) {
             secondaryColorFunc = _secondaryFillFuncBuilder.createColorOpacityFunction(_secondaryFill.getFunction(exprContext), _secondaryOpacity.getFunction(exprContext));
@@ -197,8 +205,10 @@ namespace massif::mvt {
             };
         }
 
-        return [compOp, fillFunc, haloFillFunc, sizeFunc, haloRadiusFunc, fontScale, orientation, repeatAlongLine, billboardRepeat, lineRun, text, hash, orientationAngle, formatter, backgroundOffset, backgroundImage, spacing, textSize, tileId, tileSize, labelIdOverride, groupId, placementPriority, minimumDistance, maxDistance, occlusionOpacity, secondaryColorFunc, rankFunc, calloutScreenAnchor, calloutOffset, calloutStep, calloutMaxRows, calloutPersistPasses, calloutLineWidth, calloutLineAnchor, calloutBandAnchor, textPlate, allowOverlapSameFeatureId, sameFeatureIdDependent, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
+        return [compOp, fillFunc, haloFillFunc, sizeFunc, haloRadiusFunc, fontScale, orientation, repeatAlongLine, billboardRepeat, lineRun, text, hash, orientationAngle, formatter, backgroundOffset, backgroundImage, spacing, textSize, tileId, tileSize, labelIdOverride, groupId, placementPriority, minimumDistance, maxDistance, occlusionOpacity, secondaryColorFunc, rankFunc, calloutScreenAnchor, calloutOffset, calloutStep, calloutMaxRows, calloutPersistPasses, calloutLineWidth, calloutLineAnchor, calloutBandAnchor, textPlate, emissiveFunc, haloEmissiveFunc, allowOverlapSameFeatureId, sameFeatureIdDependent, this](const FeatureCollection& featureCollection, vt::TileLayerBuilder& layerBuilder) {
             vt::TextLabelStyle style(orientation, fillFunc, sizeFunc, haloFillFunc, haloRadiusFunc, true, orientationAngle, fontScale, backgroundOffset, backgroundImage, maxDistance, secondaryColorFunc, rankFunc, calloutScreenAnchor, calloutOffset, calloutStep, calloutMaxRows, calloutPersistPasses, calloutLineWidth, calloutLineAnchor, calloutBandAnchor, textPlate);
+            style.emissiveFunc = emissiveFunc;
+            style.haloEmissiveFunc = haloEmissiveFunc;
             if (occlusionOpacity >= 0.0f) {
                 style.occlusionOpacity = occlusionOpacity;
             }

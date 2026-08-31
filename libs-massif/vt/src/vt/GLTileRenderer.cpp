@@ -346,6 +346,12 @@ namespace massif::vt {
             }
         }
         if (metersToInternal <= 0) {
+            // No DEM anywhere - a flat 2D map. The factor is the projection's, not the tile's, so
+            // the caller states it and the whole fit works with no elevation: buildings then cast
+            // on a flat map exactly as they do on terrain.
+            metersToInternal = _metersToInternal;
+        }
+        if (metersToInternal <= 0) {
             texelMeters = -3; // diagnostic: which fit bail-out fired
             return false;
         }
@@ -696,15 +702,13 @@ namespace massif::vt {
         // handled by the slope-scaled caster offset, which the tightened light frustum made
         // effective again.
         _shadowCasterViewProj = &lightViewProj;
+        _shadowCasterSun = true;
         forEachVisibleExtrusion(&tileIds, [this, &draws](const RenderTileLayer& renderLayer, const std::shared_ptr<TileGeometry>& geometry) {
-            // The tile's OWN blend, not 1: an extrusion fades in by GROWING - blend scales its
-            // height - so a caster drawn at full height throws the shadow of a finished building
-            // from under a half-grown one, and the shadow pops out of existence when the tile is
-            // finally dropped.
             renderTileGeometry(renderLayer.sourceTileId, renderLayer.targetTileId, renderLayer.blend, 1.0f, renderLayer.tileSize, geometry);
             draws++;
             return true;
         });
+        _shadowCasterSun = false;
         _shadowCasterViewProj = nullptr;
         return draws;
     }
@@ -712,10 +716,11 @@ namespace massif::vt {
     float GLTileRenderer::shadowCasterFadeSignature() const {
         std::lock_guard<std::mutex> lock(_mutex);
 
-        // A number that moves exactly as fast as the caster geometry does. An extrusion fades in
-        // by GROWING, so its blend IS its height: the owner refreshes the shadow map when this has
-        // moved far enough to see, instead of every frame of every fade (which costs a full caster
-        // pass each time) or never (which leaves the shadow of a building that is not that shape).
+        // A number that moves exactly as fast as the caster SET does: a tile's blend is how far it
+        // has arrived, so this tracks extrusions appearing and leaving. The owner refreshes the
+        // shadow map when it has moved far enough to see, instead of every frame of every fade
+        // (a full caster pass each time) or never (the shadow of a building that is not there).
+        // The caster's HEIGHT no longer follows the blend - see buildingHeightScale.
         float signature = 0.0f;
         int count = 0;
         forEachVisibleExtrusion(nullptr, [&signature, &count](const RenderTileLayer& renderLayer, const std::shared_ptr<TileGeometry>&) {
@@ -727,7 +732,12 @@ namespace massif::vt {
         // as one does, and the map would be redrawn on every frame of exactly the moment this is
         // meant to protect. A single tile fading alone moves the mean by less than the step and
         // rides on the age cap instead.
-        return count > 0 ? signature / count : 0.0f;
+        //
+        // Times the caster's own height scale: a style that ramps its extrusions to nothing over
+        // zoom (Standard, 0 at z15) changes the caster geometry without touching a single tile
+        // blend, so the map was never refreshed and the buildings' shadows stayed on an empty map
+        // after they had gone.
+        return count > 0 ? _buildingHeightScale * signature / count : 0.0f;
     }
 
     float GLTileRenderer::groundAOZoomFade(float zoom) {
@@ -742,6 +752,15 @@ namespace massif::vt {
 
         _groundAOIntensity = intensity;
         _groundAOAttenuation = attenuation;
+    }
+
+    void GLTileRenderer::setBuildingHeight(float scale, float viewScale, bool growOnAppear, bool fadeOnAppear) {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        _buildingHeightScale = scale;
+        _buildingHeightViewScale = viewScale;
+        _buildingGrowOnAppear = growOnAppear;
+        _buildingFadeOnAppear = fadeOnAppear;
     }
 
     bool GLTileRenderer::isGroundAOActive() const {
@@ -2044,23 +2063,19 @@ namespace massif::vt {
         if (!(tileScale > 0) || !(_terrainShadowNormalOffset > 0) || _terrainShadowMapSize <= 0) {
             return offsets;
         }
-        // CLAMPED to the near cascade's offset, not each cascade's own. The offset moves the sample
-        // across the shadow map, so on the far cascade - whose texel is metres of ground - three of
-        // them walk a roof out of the mountain shadow it stands in, and the further the value is
-        // raised the more of the roof loses it. mapbox does not hit this: two cascades over a
-        // shorter range, so their worst texel is small. Acne is a NEAR-surface problem anyway.
-        double nearOffsetWorld = 0;
+        // EACH cascade gets its OWN texel, which is mapbox's model (shadow_renderer setupShadows:
+        // offset0 from cascade 0's radius, offset1 from the last one's). Clamped to the near
+        // cascade's instead, an outer page whose texel is metres of ground was offset by a
+        // near-page texel of centimetres - far too little to lift a wall off its own depth - so
+        // every building that fell out of the near pages wore a grey patch of its own acne. That is
+        // why one cascade was clean and three were not: with one page there is no other to clamp to.
         for (int i = 0; i < _terrainShadowCascades; i++) {
             const cglib::mat4x4<double>& m = _terrainShadowViewProjs[i];
             double boxScale = cglib::length(cglib::vec3<double>(m(0, 0), m(0, 1), m(0, 2)));
             if (!(boxScale > 0)) {
                 continue;
             }
-            double offsetWorld = _terrainShadowNormalOffset * 2.0 / (boxScale * _terrainShadowMapSize);
-            if (i == 0) {
-                nearOffsetWorld = offsetWorld;
-            }
-            offsets[i] = static_cast<float>(std::min(offsetWorld, nearOffsetWorld) / tileScale);
+            offsets[i] = static_cast<float>(_terrainShadowNormalOffset * 2.0 / (boxScale * _terrainShadowMapSize) / tileScale);
         }
         return offsets;
     }
@@ -3463,9 +3478,38 @@ namespace massif::vt {
             std::shared_ptr<const BitmapPattern> labelPattern = labelStyle->glyphMap->getBitmapPattern();
             const std::shared_ptr<const Bitmap>& labelBitmap = labelPattern->bitmap;
             if (lastLabelStyle != labelStyle) {
-                cglib::vec4<float> color = cglib::vec4<float>(evaluateColorFunc(labelStyle->colorFunc).rgba());
+                // The scene light, as far as the label's emissive lets it through. mapbox lights a
+                // label like any other surface, but defaults text and icon to 1 - a no-op here -
+                // which is what keeps a name legible over a night map. One factor for every colour
+                // the style carries, evaluated once per label STYLE.
+                float labelEmissive = evaluateFloatFunc(labelStyle->emissiveFunc);
+                auto lit = [this, labelEmissive](const cglib::vec4<float>& rgba) {
+                    if (labelEmissive >= 1.0f) {
+                        return rgba;
+                    }
+                    cglib::vec4<float> out = rgba;
+                    for (int c = 0; c < 3; c++) {
+                        out(c) *= labelEmissive + (1.0f - labelEmissive) * _radiance(c);
+                    }
+                    return out;
+                };
+                // The halo may be lit HARDER than the ink it outlines: a name kept legible by a high
+                // emissive over a map that darkens still wants its outline to go dark with the map,
+                // or the two meet at the same grey and the outline stops separating anything.
+                float haloEmissive = labelStyle->haloEmissiveFunc ? evaluateFloatFunc(*labelStyle->haloEmissiveFunc) : labelEmissive;
+                auto litHalo = [this, haloEmissive](const cglib::vec4<float>& rgba) {
+                    if (haloEmissive >= 1.0f) {
+                        return rgba;
+                    }
+                    cglib::vec4<float> out = rgba;
+                    for (int c = 0; c < 3; c++) {
+                        out(c) *= haloEmissive + (1.0f - haloEmissive) * _radiance(c);
+                    }
+                    return out;
+                };
+                cglib::vec4<float> color = lit(cglib::vec4<float>(evaluateColorFunc(labelStyle->colorFunc).rgba()));
                 float size = evaluateFloatFunc(labelStyle->sizeFunc);
-                cglib::vec4<float> haloColor = cglib::vec4<float>(evaluateColorFunc(labelStyle->haloColorFunc).rgba());
+                cglib::vec4<float> haloColor = litHalo(cglib::vec4<float>(evaluateColorFunc(labelStyle->haloColorFunc).rgba()));
                 // Already in SCREEN PIXELS: the symbolizer scaled the style's radius by the pixel
                 // scale, and labelFsh measures the halo against the same one screen pixel the
                 // antialias ramp is. The cap is where the encoded field runs out.
@@ -3482,18 +3526,30 @@ namespace massif::vt {
                 // The second run of text may have its own colour, which is one more slot in the
                 // batch - exactly like the halo and the plate.
                 bool hasSecondaryColor = static_cast<bool>(labelStyle->secondaryColorFunc);
-                cglib::vec4<float> secondaryColor = hasSecondaryColor ? cglib::vec4<float>(evaluateColorFunc(*labelStyle->secondaryColorFunc).rgba()) : color;
+                cglib::vec4<float> secondaryColor = hasSecondaryColor ? lit(cglib::vec4<float>(evaluateColorFunc(*labelStyle->secondaryColorFunc).rgba())) : color;
                 // And so may the icon run - a font icon in its own colour next to the name.
                 bool hasIconColor = static_cast<bool>(labelStyle->iconColorFunc);
-                cglib::vec4<float> iconColor = hasIconColor ? cglib::vec4<float>(evaluateColorFunc(*labelStyle->iconColorFunc).rgba()) : color;
+                cglib::vec4<float> iconColor = hasIconColor ? lit(cglib::vec4<float>(evaluateColorFunc(*labelStyle->iconColorFunc).rgba())) : color;
                 // And its own halo - an icon never takes the text's (see Label::appendLabelPlates).
                 float iconHaloRadius = labelStyle->iconHaloRadiusFunc ? std::min(evaluateFloatFunc(*labelStyle->iconHaloRadiusFunc), MAX_ICON_HALO_PIXELS) : 0.0f;
                 bool hasIconHalo = iconHaloRadius > 0.0f && labelStyle->iconHaloColorFunc;
-                cglib::vec4<float> iconHaloColor = hasIconHalo ? cglib::vec4<float>(evaluateColorFunc(*labelStyle->iconHaloColorFunc).rgba()) : color;
+                cglib::vec4<float> iconHaloColor = hasIconHalo ? litHalo(cglib::vec4<float>(evaluateColorFunc(*labelStyle->iconHaloColorFunc).rgba())) : color;
+                // The em size the ICON RUN is drawn at, which is not the text's: the run keeps a
+                // fixed pixel size of its own (Label::calculateVertexData scales it by
+                // iconRefSize/size, then by its own ramp). The width table is what labelVsh divides
+                // uSDFRamp by, so an icon sharing the text's slot got the text's antialias ramp -
+                // 20 px of icon smoothed as if it were 13 px of text, which fattened every thin
+                // stroke until it closed: a fork lost the gaps between its tines.
+                float iconSize = labelStyle->iconRefSize > 0.0f ? labelStyle->iconRefSize : size;
+                if (labelStyle->iconScaleFunc && labelStyle->iconRefScale > 0.0f) {
+                    iconSize *= evaluateFloatFunc(*labelStyle->iconScaleFunc) / labelStyle->iconRefScale;
+                }
+                // A slot of its own whenever that ramp would differ, not only for a coloured icon.
+                bool hasIconRun = hasIconColor || iconSize != size;
                 // The style layer's own occluded opacity, or this layer's default where it sets
                 // none - and a batch carries one, so a change ends it like a change of atlas does.
                 float labelOcclusionOpacity = labelStyle->occlusionOpacity.value_or(_labelOcclusionOpacity);
-                if (bitmap != labelBitmap || labelBatchParams.occlusionOpacity != labelOcclusionOpacity || labelBatchParams.scale != labelStyle->scale || labelBatchParams.glyphRenderSize != labelStyle->glyphRenderSize || labelBatchParams.parameterCount + 2 + plateCount + (hasSecondaryColor ? 1 : 0) + (hasIconColor ? 1 : 0) + (hasIconHalo ? 1 : 0) > LabelBatchParameters::MAX_PARAMETERS) {
+                if (bitmap != labelBitmap || labelBatchParams.occlusionOpacity != labelOcclusionOpacity || labelBatchParams.scale != labelStyle->scale || labelBatchParams.glyphRenderSize != labelStyle->glyphRenderSize || labelBatchParams.parameterCount + 2 + plateCount + (hasSecondaryColor ? 1 : 0) + (hasIconRun ? 1 : 0) + (hasIconHalo ? 1 : 0) > LabelBatchParameters::MAX_PARAMETERS) {
                     renderLabelBatch(labelBatchParams, bitmap);
                     bitmap = labelBitmap;
                     labelBatchParams.labelCount = 0;
@@ -3546,8 +3602,13 @@ namespace massif::vt {
                     // as styleIndex + 1, so a REUSED pair has to be consecutive as well.
                     bool border = plate.drawsBorder();
                     int slots = (border ? 2 : 1);
-                    cglib::vec4<float> fillColor = cglib::vec4<float>(plate.style.color.rgba());
-                    cglib::vec4<float> borderColor = cglib::vec4<float>(plate.style.borderColor.rgba());
+                    // The icon's plate is its background, so icon-opacity fades it with the glyph
+                    // on it - LIVE, because that opacity is a zoom ramp: baked at decode, a POI
+                    // whose icon a zoom step hides kept its disc until the tile was decoded again,
+                    // which is the coloured square that flashed while zooming.
+                    float plateOpacity = (i == 1 && labelStyle->iconOpacityFunc ? evaluateFloatFunc(*labelStyle->iconOpacityFunc) : 1.0f);
+                    cglib::vec4<float> fillColor = lit(cglib::vec4<float>(plate.style.color.rgba())) * plateOpacity;
+                    cglib::vec4<float> borderColor = lit(cglib::vec4<float>(plate.style.borderColor.rgba())) * plateOpacity;
                     int index = labelBatchParams.parameterCount - slots;
                     for (; index >= 0; index--) {
                         if (labelBatchParams.colorTable[index] == fillColor && labelBatchParams.widthTable[index] == size && labelBatchParams.strokeWidthTable[index] == 0
@@ -3585,29 +3646,29 @@ namespace massif::vt {
                 iconHaloStyleIndex = -1;
                 if (hasIconHalo) {
                     for (iconHaloStyleIndex = labelBatchParams.parameterCount; --iconHaloStyleIndex >= 0; ) {
-                        if (labelBatchParams.colorTable[iconHaloStyleIndex] == iconHaloColor && labelBatchParams.widthTable[iconHaloStyleIndex] == size && labelBatchParams.strokeWidthTable[iconHaloStyleIndex] == iconHaloRadius) {
+                        if (labelBatchParams.colorTable[iconHaloStyleIndex] == iconHaloColor && labelBatchParams.widthTable[iconHaloStyleIndex] == iconSize && labelBatchParams.strokeWidthTable[iconHaloStyleIndex] == iconHaloRadius) {
                             break;
                         }
                     }
                     if (iconHaloStyleIndex < 0) {
                         iconHaloStyleIndex = labelBatchParams.parameterCount++;
                         labelBatchParams.colorTable[iconHaloStyleIndex] = iconHaloColor;
-                        labelBatchParams.widthTable[iconHaloStyleIndex] = size;
+                        labelBatchParams.widthTable[iconHaloStyleIndex] = iconSize;
                         labelBatchParams.strokeWidthTable[iconHaloStyleIndex] = iconHaloRadius;
                     }
                 }
 
                 iconStyleIndex = -1;
-                if (hasIconColor) {
+                if (hasIconRun) {
                     for (iconStyleIndex = labelBatchParams.parameterCount; --iconStyleIndex >= 0; ) {
-                        if (labelBatchParams.colorTable[iconStyleIndex] == iconColor && labelBatchParams.widthTable[iconStyleIndex] == size && labelBatchParams.strokeWidthTable[iconStyleIndex] == 0) {
+                        if (labelBatchParams.colorTable[iconStyleIndex] == iconColor && labelBatchParams.widthTable[iconStyleIndex] == iconSize && labelBatchParams.strokeWidthTable[iconStyleIndex] == 0) {
                             break;
                         }
                     }
                     if (iconStyleIndex < 0) {
                         iconStyleIndex = labelBatchParams.parameterCount++;
                         labelBatchParams.colorTable[iconStyleIndex] = iconColor;
-                        labelBatchParams.widthTable[iconStyleIndex] = size;
+                        labelBatchParams.widthTable[iconStyleIndex] = iconSize;
                         labelBatchParams.strokeWidthTable[iconStyleIndex] = 0;
                     }
                 }
@@ -4960,6 +5021,15 @@ namespace massif::vt {
         auto combine = [&hash](std::size_t value) {
             hash ^= value + 0x9e3779b9 + (hash << 6) + (hash >> 2);
         };
+        // The scene light is baked in with the colours, so moving the sun makes every cached drape
+        // stale - without this, changing the hour on a running map moved the buildings, which are
+        // lit by a per-frame uniform, and left the ground exactly as it was. QUANTISED to 64 steps
+        // per channel so a day cycle re-bakes a few dozen times over its whole range rather than
+        // once per frame.
+        for (int i = 0; i < 3; i++) {
+            combine(static_cast<std::size_t>(std::max(0.0f, std::min(1.0f, _radiance(i))) * 64.0f) * (i + 1));
+        }
+        combine(static_cast<std::size_t>(std::max(0.0f, std::min(1.0f, _backgroundEmissive)) * 64.0f) * 4);
         for (auto it = renderTile.renderLayers.begin(); it != renderTile.renderLayers.end(); it++) {
             const RenderTileLayer& renderLayer = it->second;
             // The contact shadows count too: they are baked INTO the drape, but the extrusions
@@ -5359,6 +5429,15 @@ namespace massif::vt {
         if (!background->getPattern() && !backgroundColor.value()) {
             return;
         }
+        // The map's background is the largest surface on screen and its colour is a Map setting, so
+        // it never passes through a symbolizer's grade - graded here by the same rule.
+        if (_backgroundEmissive < 1.0f) {
+            std::array<float, 4> rgba = backgroundColor.rgba();
+            for (int c = 0; c < 3; c++) {
+                rgba[c] *= _backgroundEmissive + (1.0f - _backgroundEmissive) * _radiance(c);
+            }
+            backgroundColor = Color(rgba[0], rgba[1], rgba[2], rgba[3]);
+        }
 
         bool flatDrape = (_drapeMVPOverride != nullptr);
         bool terrainVTF = _terrainMode && (bool) _terrainTextureProvider;
@@ -5653,9 +5732,25 @@ namespace massif::vt {
         setupGeometryCommonUniforms(shaderProgram, sourceTileId, targetTileId, geometry, GeometryDrawMode { flatDrape, terrainVTF, shadowReceiver, terrainLit, terrainFlag });
         VT_STAT_SPLIT(geomTerrainNs, statClock);
 
+        // An extrusion may sit out the tile's fade: a style that ramps its own opacity over zoom -
+        // Standard goes 0 at z15 to full at z15.3 - then owns the whole appearance, instead of
+        // fading a second time on a timer whenever a tile arrives.
+        float colorBlend = (geometry->getType() == TileGeometry::Type::POLYGON3D && !_buildingFadeOnAppear ? 1.0f : blend);
         std::array<cglib::vec4<float>, TileGeometry::StyleParameters::MAX_PARAMETERS> colors;
         for (int i = 0; i < styleParams.parameterCount; i++) {
-            Color color = Color::fromColorOpacity(evaluateColorFunc(styleParams.colorFuncs[i]) * blend, opacity);
+            // The scene light, applied where the colour is already evaluated once per frame and
+            // cached - so this costs one multiply per DISTINCT colour, not per feature. mapbox's
+            // `mix(apply_lighting_ground(color), color, emissive_strength)`: at emissive 1, which is
+            // the default and what every style did before this existed, it is exactly a no-op.
+            Color color = Color::fromColorOpacity(evaluateColorFunc(styleParams.colorFuncs[i]) * colorBlend, opacity);
+            float emissive = evaluateFloatFunc(styleParams.emissiveFuncs[i]);
+            if (emissive < 1.0f) {
+                std::array<float, 4> rgba = color.rgba();
+                for (int c = 0; c < 3; c++) {
+                    rgba[c] *= emissive + (1.0f - emissive) * _radiance(c);
+                }
+                color = Color(rgba[0], rgba[1], rgba[2], rgba[3]);
+            }
             colors[i] = cglib::vec4<float>(color.rgba());
         }
         VT_STAT_SPLIT(geomStyleEvalNs, statClock);
@@ -5765,7 +5860,7 @@ namespace massif::vt {
                 glUniform1fv(shaderProgram.uniforms[U_STROKESCALETABLE], styleParams.parameterCount, strokeScales.data());
             }
         } else if (geometry->getType() == TileGeometry::Type::POLYGON3DGROUND) {
-            glUniform1f(shaderProgram.uniforms[U_HEIGHTSCALE], blend / vertexGeomLayoutParams.heightScale * vertexGeomLayoutParams.coordScale);
+            glUniform1f(shaderProgram.uniforms[U_HEIGHTSCALE], buildingHeightScale(blend) / vertexGeomLayoutParams.heightScale * vertexGeomLayoutParams.coordScale);
             glUniform1f(shaderProgram.uniforms[U_BINORMALSCALE], 1.0f / vertexGeomLayoutParams.binormalScale);
             glUniform2f(shaderProgram.uniforms[U_GROUNDAOPARAMS], _groundAOIntensity * (_groundAOBakePass ? 1.0f : groundAOZoomFade(_viewState.zoom)), _groundAOAttenuation);
             // Same tile clip the walls get - see polygon3DGroundFsh for why it is not optional.
@@ -5773,8 +5868,10 @@ namespace massif::vt {
             cglib::mat3x3<float> groundTileMatrix = cglib::mat3x3<float>::convert(cglib::inverse(calculateTileMatrix2D(targetTileId)) * calculateTileMatrix2D(sourceTileId));
             glUniformMatrix3fv(shaderProgram.uniforms[U_TILEMATRIX], 1, GL_FALSE, groundTileMatrix.data());
         } else if (geometry->getType() == TileGeometry::Type::POLYGON3D) {
+            float heightUnits = 1.0f / vertexGeomLayoutParams.heightScale * vertexGeomLayoutParams.coordScale;
             glUniform1f(shaderProgram.uniforms[U_UVSCALE], 1.0f / vertexGeomLayoutParams.texCoordScale);
-            glUniform1f(shaderProgram.uniforms[U_HEIGHTSCALE], blend / vertexGeomLayoutParams.heightScale * vertexGeomLayoutParams.coordScale);
+            glUniform1f(shaderProgram.uniforms[U_HEIGHTSCALE], buildingHeightScale(blend) * heightUnits);
+            glUniform1f(shaderProgram.uniforms[U_SHADOWHEIGHTSCALE], casterHeightScale(blend) * heightUnits);
             cglib::mat3x3<float> tileMatrix = cglib::mat3x3<float>::convert(cglib::inverse(calculateTileMatrix2D(targetTileId)) * calculateTileMatrix2D(sourceTileId));
             if (styleParams.translate) {
                 float zoomScale = std::pow(2.0f, sourceTileId.zoom - _viewState.zoom);

@@ -14,7 +14,9 @@ Windows/Linux/macOS need later. Does **not** cover what the renderer draws — t
 Status as of 2026-08-18: Phase 0 run — gates 0.1 and 0.2 pass, gate 0.3 is **not answered** (see
 [Phase 0 results](#phase-0--results)). Phases 2 and 3 are done and **verified on an Adreno 610
 device**; an iOS device is still owed. The Apple source was decided against upstream ANGLE, see
-[MetalANGLE master, not upstream](#metalangle-master-not-upstream-angle).
+[MetalANGLE master, not upstream](#metalangle-master-not-upstream-angle). Phase 4 closed with
+nothing shipped; what ES 3.0 is still worth taking, re-derived from measured costs rather than from
+the feature list, is in [Second harvest pass](#second-harvest-pass-2026-08-26).
 
 ## Where we are
 
@@ -459,7 +461,8 @@ Method and numbers in [round 18](../performance-log.md#18-phase-4-opened-by-meas
 | 5. `glMapBufferRange` for label streaming | **No-op** — the six label buffers are a few KB each. Reverted |
 
 The list was written from what ES 3.0 *offers* rather than from what this renderer *spends*, and
-ordered by expected payoff before anything was measured. There are two cameras with two bottlenecks
+ordered by expected payoff before anything was measured. The exercise re-run the other way round is
+[Second harvest pass](#second-harvest-pass-2026-08-26). There are two cameras with two bottlenecks
 and it addresses neither: the 2D city is CPU-bound on **320 geometry draws/frame**, and the terrain
 frame is GPU-bound with **55% of it in the shadow pass** — a cost that is casters × cascades, which
 item 2 could not touch however the texture is laid out.
@@ -512,6 +515,132 @@ maturity grounds alone: ANGLE-on-Vulkan needs a 2016-or-later driver, so it is *
 tail than D3D11's 2011 floor. Linux and macOS have no equivalent cut — Mesa serves GLES 3.x on
 anything post-2012 (llvmpipe does 3.2 in software), and the macOS floor is "Metal-capable", which
 macOS 10.14+ requires anyway.
+
+## Second harvest pass (2026-08-26)
+
+Phase 4 closed on a method error, not on a verdict about ES 3.0: it listed what the version
+*offers* and ordered by expected payoff before measuring. This pass inverts that — it starts from
+the costs already written down in this documentation set and asks which of them ES 3.0 can reach.
+
+**Nothing below is measured.** The ordering is by *which recorded number an item attacks*, not by
+expected size, and every one of them needs its own Adreno 610 A/B before it becomes work. The
+tracking issue is [#189](https://github.com/massif-maps/MassifMaps/issues/189).
+
+### 1. `GL_PIXEL_PACK_BUFFER` + `glFenceSync` for the occlusion read-back
+
+The largest recorded stall in the tree that ES 3.0 addresses. `TerrainRenderer.h` records the
+`glReadPixels` occlusion read-back at **55-62 ms on an Adreno 610, peaking at 134 ms** — a full
+pipeline stall on top of the ~20 ms depth render. Two workarounds already pay for it: a second GL
+context (`TerrainDepthWorker`) and a 500 ms throttle while the camera moves, and the throttle is
+what makes occlusion lag a gesture.
+
+A pixel-pack buffer plus a fence turns the read-back into "poll last frame's buffer, take it when
+the fence signals". Both are ES 3.0 core, neither needs the second context to go away.
+
+**What is needed**: a PBO ring in `TerrainDepthWorker::readPixels` (`TerrainDepthWorker.cpp`, the
+`glReadPixels` at the end of the job) and in `MapRenderer::captureRendering`; a `glFenceSync` +
+`glClientWaitSync(0)` poll instead of the blocking read; and the throttle constants in
+`TerrainRenderer.h` (`DEPTH_READBACK_THROTTLE`, `DEPTH_READBACK_MOVING_INTERVAL`,
+`DEPTH_SUBMIT_MOVING_INTERVAL`) re-derived once the stall is gone — they are the measurement of the
+problem, so they are also the verification.
+**Verified when**: the terrain camera holds its frame rate with the moving interval lowered toward
+one read-back per frame, at the same mesh resolution the 13.3/14.3/14.9 fps table was taken at.
+
+### 2. Uniform buffer objects for the per-draw style storm
+
+Phase 4 listed UBOs and priced them against `styleUpload ≈ 0.46 ms/frame`. That is the wrong
+bucket. The cost is in `GLTileRenderer::useProgram`'s own note: per-draw setup — everything before
+`glDrawElements` — is **24-31 µs against 10-12 µs for the draw itself, at 250-560 draws a frame**.
+
+What that setup is, for a 2D geometry draw: `U_COLORTABLE`, `U_WIDTHTABLE`, `U_OFFSETTABLE`,
+`U_STROKESCALETABLE` and `U_PATTERNTABLE`, each `TileGeometry::StyleParameters::MAX_PARAMETERS`
+wide, uploaded per *tile* — although the draw loop is already style-layer-major, so every tile of a
+layer sends the same values. Vertex layout is not the problem; `bindGeometryVertexLayout` already
+takes the VAO path.
+
+This is the same target as [#144](https://github.com/massif-maps/MassifMaps/issues/144) step 1
+(hoist the per-layer uniforms out of the per-tile loop, ~1.5 ms/frame estimated). A UBO is the
+stronger form of that hoist: one `glBindBufferRange` per style layer, no dirty tracking, and the
+block survives a program switch.
+
+**What is needed**: a `std::uniform` block in the 2D geometry shaders
+(`GLTileRendererShaders.h`), a per-style-layer buffer built where `StyleParameters` is resolved,
+and `glBindBufferRange` at the point the layer loop changes layer in `renderGeometry2D`. ESSL 3.00
+is already the compiled form, so no shader-version work.
+**Verified when**: `geomStyleNs` (already in `RenderStats`) drops at the city camera and the frame
+rate moves with it. Do #144 step 1 first if it is cheaper — they are alternatives, not a sequence.
+
+### 3. 32-bit indices
+
+`GLTileRenderer::renderLabels` flushes the label batch at `_labelVertices.size() >= 32768` for no
+reason other than the 16-bit index cap. `GL_UNSIGNED_INT` indices are ES 3.0 core (they needed
+`OES_element_index_uint` on ES 2.0), so the flush can go.
+
+**What is needed**: `_labelIndices` to `std::uint32_t`, the `glDrawElements` type at the label draw,
+and the flush condition deleted. `VertexArray<std::uint16_t>` appears in the `Label` build
+signatures too, so the change reaches `Label.h`.
+**Verified when**: flushes per frame at the city camera go to one, and the label pass time does not
+regress — the batch gets bigger, so this is a trade, not a free win.
+
+### 4. Vertex buffers for the vector-element renderers
+
+`BillboardRenderer`, `PointRenderer`, `LineRenderer`, `PolygonRenderer`, `Polygon3DRenderer` and
+`CelestialRenderer` contain **no `glGenBuffers` at all** — every frame passes `indexBuf.data()`
+straight to `glDrawElements` from client memory, so the driver copies the whole vertex set per
+draw and the attribute pointers are re-specified with it.
+
+Not an ES 3.0 feature — ES 2.0 had VBOs — but it belongs on this list for one reason: **a bound VAO
+makes client-side arrays illegal**, so the day these renderers gain a VAO they must gain buffers in
+the same change. ES 3.0 is what makes the streaming side clean (orphaning, `glBufferSubData` into a
+ring).
+
+**What is needed**: per-renderer VBO + IBO + VAO, orphan-on-write streaming, and the client arrays
+deleted. Six files, each independent.
+**Verified when**: an app with many vector elements (the demo's `elements` layer) holds frame rate
+with more of them. This only matters where those layers are used, so measure there, not at the
+terrain camera.
+
+### 5. Immutable and sized texture storage
+
+`glTexStorage2D` appears **nowhere** in the tree, and `GL_LUMINANCE` / `GL_LUMINANCE_ALPHA` are
+still in use (`GLTileRenderer::buildCompiledBitmap`, and `Bitmap::ColorFormat`'s `GRAYSCALE` /
+`GRAYSCALE_ALPHA`, which are those two tokens spelled numerically).
+
+ES 3.0 gives `GL_R8` / `GL_RG8` plus `GL_TEXTURE_SWIZZLE_R/G/B/A`, which reproduces luminance and
+luminance-alpha sampling with no shader change, and `glTexStorage2D`, which lets the driver skip
+per-level validation, pick a layout once, and makes NPOT mip completeness a non-question.
+
+**What is needed**: the format swap first (it is the prerequisite — unsized formats cannot be used
+with immutable storage), then `glTexStorage2D` + `glTexSubImage2D` at the drape cache, the tile
+bitmap path and the shadow map.
+**Verified when**: no visual diff at the bench cameras, and the glyph atlas still samples
+identically — the swizzle is where this breaks if it breaks.
+
+### 6. ETC2 for style bitmaps
+
+No compressed texture format is used anywhere: no `glCompressedTexImage2D`, no ETC2, no ASTC. ES
+3.0 guarantees ETC2/EAC on every device, which is what makes this worth raising now — on ES 2.0 it
+needed a per-device probe and a fallback.
+
+Style bitmap atlases and pattern textures upload as RGBA8; ETC2 is 4:1 on both memory and sampling
+bandwidth. The cost is an encode path, so this is a project rather than a patch, and it should be
+priced against [`build-and-size.md`](../build-and-size.md) rather than against frame rate.
+
+### 7. MSAA renderbuffers and `glBlitFramebuffer`
+
+`glRenderbufferStorageMultisample` and `glBlitFramebuffer` are ES 3.0 core and neither is used.
+This is a **feature**, not a performance item: antialiased edges on the drape and the other
+offscreen targets without supersampling them. `glBlitFramebuffer` is also the sanctioned
+replacement for the hand-rolled depth-tested blit that froze the screen during the peak-finder work.
+
+### Checked this pass and not proposed
+
+| Idea | Why not |
+|---|---|
+| `GL_OVR_multiview2` for the 3 shadow cascades | On a tiler it is implemented as view-instancing, so the vertex work is unchanged and it saves draw *submission* only. The cascades are already snapped and cached, and the pass is 55% of the terrain frame because of casters × cascades — the same thing that killed Phase 4 item 2 |
+| `gl_VertexID` fullscreen quads | Removes a VBO bind on ~6 draws a frame across `SkyRenderer`, `MapRenderer` and `GLTileRenderer`. Cleanup, not performance |
+| Packed vertex attributes (Phase 4 item 3) | Parked for the right reason and it still holds: draws come from tile × style layer, not the index cap. Item 3 above is the load-bearing part of it |
+| Instancing the shared-mesh per-tile draws | Still the best draw-count target (62 tile masks ≈ 2.4 ms CPU, 23 background quads), still open — but it is already recorded under [Phase 4](#phase-4--harvest-closed-nothing-shipped) and it is an ES 2.0 extension, so it is not a finding of this pass |
 
 ## What this plan deliberately does not do
 

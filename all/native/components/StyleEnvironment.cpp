@@ -1,4 +1,5 @@
 #include "StyleEnvironment.h"
+#include "components/DayCycleLight.h"
 #include "components/TerrainOptions.h"
 #include "components/LightOptions.h"
 #include "components/FogOptions.h"
@@ -26,10 +27,17 @@ namespace massif {
         take(buildingAmbient, other.buildingAmbient);
         take(buildingVerticalGradient, other.buildingVerticalGradient);
         take(buildingRoofShade, other.buildingRoofShade);
+        take(buildingHeightScale, other.buildingHeightScale);
+        take(buildingHeightViewScale, other.buildingHeightViewScale);
+        take(buildingGrowOnAppear, other.buildingGrowOnAppear);
+        take(buildingFadeOnAppear, other.buildingFadeOnAppear);
         take(buildingAoIntensity, other.buildingAoIntensity);
         take(textOcclusionOpacity, other.textOcclusionOpacity);
         take(buildingAoGroundAttenuation, other.buildingAoGroundAttenuation);
         take(terrainLightingEnabled, other.terrainLightingEnabled);
+        take(colorsPrelit, other.colorsPrelit);
+        take(buildingEmissive, other.buildingEmissive);
+        take(backgroundEmissive, other.backgroundEmissive);
         take(shadowStrength, other.shadowStrength);
         take(shadowBias, other.shadowBias);
         take(shadowSoftness, other.shadowSoftness);
@@ -56,13 +64,34 @@ namespace massif {
     }
 
     bool StyleEnvironment::empty() const {
-        return !(sunAzimuth || sunAltitude || sunColor || sunIntensity || ambientIntensity || ambientColor || buildingLightIntensity || buildingAmbient || buildingVerticalGradient || buildingRoofShade || buildingAoIntensity || textOcclusionOpacity || buildingAoGroundAttenuation || terrainLightingEnabled ||
+        return !(sunAzimuth || sunAltitude || sunColor || sunIntensity || ambientIntensity || ambientColor || buildingLightIntensity || buildingAmbient || buildingVerticalGradient || buildingRoofShade || buildingHeightScale || buildingGrowOnAppear || buildingFadeOnAppear || buildingAoIntensity || textOcclusionOpacity || buildingAoGroundAttenuation || terrainLightingEnabled ||
                  shadowStrength || shadowBias || shadowSoftness || shadowDistance || shadowMapSize || shadowCascades ||
                  shadowCasterMargin || fogEnabled || fogColor || fogRangeStart || fogRangeEnd || fogHighColor || fogSpaceColor ||
                  fogHorizonBlend || fogVerticalRangeStart || fogVerticalRangeEnd || fogStarIntensity ||
                  skyType || skyAtmosphereSunIntensity || skyAtmosphereColor || skyAtmosphereHaloColor || skyAtmosphereLuminance ||
                  terrainMaxVisibleDistance);
     }
+
+namespace {
+    /** An app-supplied curve, read through the same interpolation the built-in one uses. */
+    DayCycleLight::Setup atSunHeight(const std::vector<LightStop>& stops, float altitudeDegrees) {
+        std::vector<DayCycleLight::Stop> curve;
+        curve.reserve(stops.size());
+        for (const LightStop& stop : stops) {
+            const Color& ambient = stop.getAmbientColor();
+            const Color& sun = stop.getSunColor();
+            curve.push_back({ stop.getSunAltitude(), {
+                { ambient.getR() / 255.0f, ambient.getG() / 255.0f, ambient.getB() / 255.0f }, stop.getAmbientIntensity(),
+                { sun.getR() / 255.0f, sun.getG() / 255.0f, sun.getB() / 255.0f }, stop.getSunIntensity() } });
+        }
+        return DayCycleLight::atSunHeight(curve.data(), curve.size(), altitudeDegrees);
+    }
+
+    Color colorOf(const float channels[3]) {
+        auto byte = [](float c) { return static_cast<unsigned char>(std::max(0.0f, std::min(1.0f, c)) * 255.0f + 0.5f); };
+        return Color(byte(channels[0]), byte(channels[1]), byte(channels[2]), 255);
+    }
+}
 
     ResolvedLighting resolveLighting(const std::shared_ptr<LightOptions>& lightOptions, const StyleEnvironment& env) {
         ResolvedLighting lighting;
@@ -83,8 +112,11 @@ namespace massif {
             lighting.shadowCasterMargin = lightOptions->getShadowCasterMargin();
         }
         // The sun direction is derived from two properties, so it is rebuilt whenever the style
-        // overrides either of them - the other one then comes from the options.
-        if (env.sunAzimuth || env.sunAltitude) {
+        // overrides either of them - the other one then comes from the options. Unless the app
+        // asked to keep its own: a day/night cycle has to be able to move the sun on a style that
+        // states one, and a converted MapBox style states one per light preset.
+        bool appSun = lightOptions && lightOptions->isSunOverridingStyle();
+        if ((env.sunAzimuth || env.sunAltitude) && !appSun) {
             double azimuth = (env.sunAzimuth ? *env.sunAzimuth : (lightOptions ? lightOptions->getSunAzimuth() : 315.0f)) * Const::DEG_TO_RAD;
             double altitude = (env.sunAltitude ? *env.sunAltitude : (lightOptions ? lightOptions->getSunAltitude() : 45.0f)) * Const::DEG_TO_RAD;
             double cosAltitude = std::cos(altitude);
@@ -107,6 +139,15 @@ namespace massif {
         if (env.terrainLightingEnabled) {
             lighting.terrainLightingEnabled = *env.terrainLightingEnabled;
         }
+        if (env.colorsPrelit) {
+            lighting.colorsPrelit = *env.colorsPrelit;
+        }
+        if (env.buildingEmissive) {
+            lighting.buildingEmissive = *env.buildingEmissive;
+        }
+        if (env.backgroundEmissive) {
+            lighting.backgroundEmissive = *env.backgroundEmissive;
+        }
         // Buildings follow the sun unconditionally - terrainLightingEnabled decides whether the
         // GROUND is lit, and gating the walls on it too gave the extrusions a second lighting
         // model that changed shape as the terrain was toggled.
@@ -128,6 +169,18 @@ namespace massif {
         }
         if (env.buildingRoofShade) {
             lighting.buildingRoofShade = *env.buildingRoofShade;
+        }
+        if (env.buildingHeightScale) {
+            lighting.buildingHeightScale = *env.buildingHeightScale;
+        }
+        if (env.buildingHeightViewScale) {
+            lighting.buildingHeightViewScale = *env.buildingHeightViewScale;
+        }
+        if (env.buildingGrowOnAppear) {
+            lighting.buildingGrowOnAppear = *env.buildingGrowOnAppear;
+        }
+        if (env.buildingFadeOnAppear) {
+            lighting.buildingFadeOnAppear = *env.buildingFadeOnAppear;
         }
         if (env.buildingAoIntensity) {
             lighting.buildingAoIntensity = *env.buildingAoIntensity;
@@ -155,6 +208,51 @@ namespace massif {
         }
         if (env.shadowCasterMargin) {
             lighting.shadowCasterMargin = *env.shadowCasterMargin;
+        }
+
+        // The light COLOURS follow the sun's height when the app asked for a day cycle, replacing
+        // whatever the style and the options state for them. The direction is untouched - it is the
+        // input this reads.
+        if (lightOptions && lightOptions->isDayCycleLightsEnabled()) {
+            float altitude = std::asin(std::max(-1.0f, std::min(1.0f, lighting.sunDir(2)))) * static_cast<float>(Const::RAD_TO_DEG);
+            // East of north is morning: the same height then means dawn rather than dusk.
+            bool rising = lighting.sunDir(0) >= 0.0f;
+            // The app's own curve when it set one - that list is the whole formula, and everything
+            // below is derived from the light it returns.
+            std::vector<LightStop> stops = rising ? lightOptions->getDayCycleRisingLightStops() : std::vector<LightStop>();
+            if (stops.empty()) {
+                stops = lightOptions->getDayCycleLightStops();
+            }
+            DayCycleLight::Setup light = stops.empty() ? DayCycleLight::atSunHeight(altitude, rising)
+                                                       : atSunHeight(stops, altitude);
+            lighting.ambientColor = colorOf(light.ambient);
+            lighting.ambientIntensity = light.ambientIntensity;
+            lighting.sunColor = colorOf(light.direct);
+            lighting.sunIntensity = light.directIntensity;
+            lighting.buildingAmbient = light.ambientIntensity;
+            lighting.buildingLightIntensity = light.directIntensity;
+        }
+
+        // mapbox's calculateGroundRadiance (3d-style/render/lights.ts) with the ground normal: what
+        // their light does to a flat, upward-facing surface. Everything a colour grade needs is in
+        // this one vec3, and it is the same number the style converter folds into a pre-lit palette
+        // - so the two can be checked against each other.
+        // Not neutralised for a pre-lit style: the grade only fires where a colour states an
+        // emissive below 1, and a style that folded its light in states none - so it selects
+        // itself, and the two modes need no second flag to tell them apart.
+        {
+            const Color& ambientColor = lighting.ambientColor;
+            const Color& sunColor = lighting.sunColor;
+            DayCycleLight::Setup light = {
+                { ambientColor.getR() / 255.0f, ambientColor.getG() / 255.0f, ambientColor.getB() / 255.0f },
+                lighting.ambientIntensity,
+                { sunColor.getR() / 255.0f, sunColor.getG() / 255.0f, sunColor.getB() / 255.0f },
+                lighting.sunIntensity
+            };
+            float radiance[3];
+            DayCycleLight::groundRadiance(light, lighting.sunDir(2), radiance);
+            lighting.radiance = cglib::vec3<float>(radiance[0], radiance[1], radiance[2]);
+            lighting.brightness = DayCycleLight::brightness(light, lighting.sunDir(2));
         }
         return lighting;
     }

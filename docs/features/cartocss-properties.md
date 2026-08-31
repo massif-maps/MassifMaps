@@ -12,7 +12,7 @@ sidebar_position: 20
 `CartoCSSMapnikTranslator.cpp`. Edit those, then re-run the script — never this page.
 :::
 
-212 properties across 12 symbolizers.
+227 properties across 12 symbolizers.
 
 ## Reading the table
 
@@ -24,8 +24,12 @@ sidebar_position: 20
   tile**, however live its type is.
 - Liveness is decided **per parameter across the whole style**, not per use: one baked use
   anywhere makes the parameter baked everywhere.
+- **Default** is also the fallback: a value reading a field the feature does not carry (or a
+  parameter with no value) evaluates to unset, and an unset value takes the default rather
+  than failing. Write an explicit guard — `[color] <> null ? [color] : '#0000ff'` — when the
+  fallback should be something else.
 
-Live-capable properties: 43 of 212.
+Live-capable properties: 58 of 227.
 
 ## `building`
 
@@ -76,11 +80,14 @@ Live-capable properties: 43 of 212.
 | `line-arrow-rotation` | `arrow-rotation` | float | `0.0` |  |  |
 | `line-arrow-scale` | `arrow-scale` | float | `1.0` |  |  |
 | `line-arrow-width` | `arrow-width` | float | `3.0` |  |  |
+| `line-blur` | `blur` | float | `0.0` | yes |  |
 | `line-cap` | `stroke-linecap` | enum | `butt` |  |  |
 | `line-color` | `stroke` | color | `#000000` | yes |  |
 | `line-comp-op` | `comp-op` | comp-op | `src-over` |  |  |
 | `line-dasharray` | `stroke-dasharray` | string |  |  |  |
+| `line-emissive-strength` | `stroke-emissive-strength` | float | `1.0` | yes |  |
 | `line-end-arrow` | `end-arrow` | bool | `false` |  |  |
+| `line-gap-width` | `gap-width` | float | `0.0` | yes |  |
 | `line-geometry-transform` | `geometry-transform` | transform |  |  |  |
 | `line-join` | `stroke-linejoin` | enum | `miter` |  |  |
 | `line-miterlimit` | `stroke-miterlimit` | float | `4.0` |  | yes |
@@ -93,6 +100,7 @@ Live-capable properties: 43 of 212.
 | CartoCSS | mapnik | Value | Default | Live | Baked |
 |---|---|---|---|---|---|
 | `line-pattern-comp-op` | `comp-op` | comp-op | `src-over` |  |  |
+| `line-pattern-emissive-strength` | `emissive-strength` | float | `1.0` | yes |  |
 | `line-pattern-file` | `file` | string |  |  |  |
 | `line-pattern-fill` | `fill` | color | `#ffffff` | yes |  |
 | `line-pattern-geometry-transform` | `geometry-transform` | transform |  |  |  |
@@ -108,10 +116,12 @@ Live-capable properties: 43 of 212.
 | `marker-clip` | `clip` | bool | `false` |  |  |
 | `marker-color` | `color` | color | `#ffffff` | yes |  |
 | `marker-comp-op` | `comp-op` | comp-op | `src-over` |  |  |
+| `marker-emissive-strength` | `emissive-strength` | float | `1.0` | yes |  |
 | `marker-feature-id` | `feature-id` | value |  |  |  |
 | `marker-file` | `file` | string |  |  |  |
 | `marker-fill` | `fill` | color | `#0000ff` |  |  |
 | `marker-fill-opacity` | `fill-opacity` | float | `1.0` |  |  |
+| `marker-halo-emissive-strength` | `halo-emissive-strength` | float | `-1.0` | yes |  |
 | `marker-halo-fill` | `halo-fill` | color | `#ffffff` | yes |  |
 | `marker-halo-opacity` | `halo-opacity` | float | `1.0` | yes |  |
 | `marker-halo-radius` | `halo-radius` | float | `0.0` | yes |  |
@@ -146,6 +156,7 @@ Live-capable properties: 43 of 212.
 | CartoCSS | mapnik | Value | Default | Live | Baked |
 |---|---|---|---|---|---|
 | `polygon-comp-op` | `comp-op` | comp-op | `src-over` |  |  |
+| `polygon-emissive-strength` | `fill-emissive-strength` | float | `1.0` | yes |  |
 | `polygon-fill` | `fill` | color | `#808080` | yes |  |
 | `polygon-geometry-transform` | `geometry-transform` | transform |  |  |  |
 | `polygon-opacity` | `fill-opacity` | float | `1.0` | yes |  |
@@ -155,6 +166,7 @@ Live-capable properties: 43 of 212.
 | CartoCSS | mapnik | Value | Default | Live | Baked |
 |---|---|---|---|---|---|
 | `polygon-pattern-comp-op` | `comp-op` | comp-op | `src-over` |  |  |
+| `polygon-pattern-emissive-strength` | `emissive-strength` | float | `1.0` | yes |  |
 | `polygon-pattern-file` | `file` | string |  |  |  |
 | `polygon-pattern-fill` | `fill` | color | `#ffffff` | yes |  |
 | `polygon-pattern-geometry-transform` | `geometry-transform` | transform |  |  |  |
@@ -189,10 +201,12 @@ Live-capable properties: 43 of 212.
 | `shield-comp-op` | `comp-op` | comp-op | `src-over` |  |  |
 | `shield-dx` | `shield-dx` | float | `0.0` |  |  |
 | `shield-dy` | `shield-dy` | float | `0.0` |  |  |
+| `shield-emissive-strength` | `emissive-strength` | float | `1.0` | yes |  |
 | `shield-face-name` | — | ignored |  |  |  |
 | `shield-feature-id` | `feature-id` | value |  |  |  |
 | `shield-file` | `file` | string |  |  |  |
 | `shield-fill` | `fill` | color | `#000000` | yes |  |
+| `shield-halo-emissive-strength` | `halo-emissive-strength` | float | `-1.0` | yes |  |
 | `shield-halo-fill` | `halo-fill` | color | `#ffffff` | yes |  |
 | `shield-halo-opacity` | `halo-opacity` | float | `1.0` | yes |  |
 | `shield-halo-radius` | `halo-radius` | float | `0.0` | yes |  |
@@ -210,9 +224,12 @@ Live-capable properties: 43 of 212.
 | `shield-icon-dy` | `icon-dy` | float | `0.0` |  |  |
 | `shield-icon-face-name` | `icon-face-name` | string |  |  |  |
 | `shield-icon-fill` | `icon-fill` | color | `#000000` | yes |  |
+| `shield-icon-halo-fill` | `icon-halo-fill` | color | `#000000` | yes |  |
+| `shield-icon-halo-radius` | `icon-halo-radius` | float | `0.0` | yes |  |
 | `shield-icon-name` | `icon-name` | string |  |  |  |
 | `shield-icon-opacity` | `icon-opacity` | float | `1.0` | yes |  |
 | `shield-icon-size` | `icon-size` | float | `0.0` |  |  |
+| `shield-image-scale` | `image-scale` | float | `1.0` | yes |  |
 | `shield-line-spacing` | `line-spacing` | float | `0.0` |  |  |
 | `shield-max-distance` | `max-distance` | float | `0.0` |  |  |
 | `shield-min-distance` | `minimum-distance` | float | `0.0` |  |  |
@@ -266,9 +283,11 @@ Live-capable properties: 43 of 212.
 | `text-comp-op` | `comp-op` | comp-op | `src-over` |  |  |
 | `text-dx` | `dx` | float | `0.0` |  |  |
 | `text-dy` | `dy` | float | `0.0` |  |  |
+| `text-emissive-strength` | `emissive-strength` | float | `1.0` | yes |  |
 | `text-face-name` | — | ignored |  |  |  |
 | `text-feature-id` | `feature-id` | value |  |  |  |
 | `text-fill` | `fill` | color | `#000000` | yes |  |
+| `text-halo-emissive-strength` | `halo-emissive-strength` | float | `-1.0` | yes |  |
 | `text-halo-fill` | `halo-fill` | color | `#ffffff` | yes |  |
 | `text-halo-opacity` | `halo-opacity` | float | `1.0` | yes |  |
 | `text-halo-radius` | `halo-radius` | float | `0.0` | yes |  |

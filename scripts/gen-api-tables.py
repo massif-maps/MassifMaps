@@ -51,6 +51,7 @@ ACCESSIBLE_TYPES = {'BOOL', 'INT', 'FLOAT', 'COLOR', 'ENUM', 'STRING'}
 # maps, BalloonPopupMargins, ClickInfo - stay accessorless until someone needs them.
 CODEC_TYPES = {'massif::MapPos', 'massif::MapVec', 'massif::ScreenPos', 'massif::MapRange',
                'massif::MapBounds', 'massif::MapTile', 'massif::ClickInfo',
+               'massif::LightStop', 'std::vector<massif::LightStop>',
                'std::vector<std::string>',
                'std::map<std::string, std::string>', 'std::map<std::string, massif::Variant>'}
 

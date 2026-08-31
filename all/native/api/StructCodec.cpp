@@ -80,6 +80,80 @@ namespace massif { namespace api { namespace StructCodec {
         return value.toString();
     }
 
+    namespace {
+        /** "#aarrggbb" - what a style writes and what an app reads back. */
+        std::string encodeColor(const Color& color) {
+            static const char* HEX = "0123456789abcdef";
+            unsigned int argb = static_cast<unsigned int>(color.getARGB());
+            std::string out = "#";
+            for (int shift = 28; shift >= 0; shift -= 4) {
+                out += HEX[(argb >> shift) & 0xf];
+            }
+            return out;
+        }
+
+        /** Lenient: "#rgb", "#rrggbb", "#aarrggbb", or the plain ARGB number the facade uses. */
+        bool decodeColor(const Variant& value, Color& color) {
+            if (value.getType() == VariantType::VARIANT_TYPE_INTEGER || value.getType() == VariantType::VARIANT_TYPE_DOUBLE) {
+                color = Color(static_cast<unsigned int>(value.getLong()));
+                return true;
+            }
+            if (value.getType() != VariantType::VARIANT_TYPE_STRING) {
+                return false;
+            }
+            std::string text = value.getString();
+            if (text.empty() || text[0] != '#') {
+                return false;
+            }
+            std::string digits = text.substr(1);
+            if (digits.size() == 3) {
+                std::string expanded;
+                for (char ch : digits) {
+                    expanded += ch;
+                    expanded += ch;
+                }
+                digits = expanded;
+            }
+            if (digits.size() == 6) {
+                digits = "ff" + digits;
+            }
+            if (digits.size() != 8) {
+                return false;
+            }
+            unsigned int argb = 0;
+            for (char ch : digits) {
+                int digit = ch >= '0' && ch <= '9' ? ch - '0'
+                          : ch >= 'a' && ch <= 'f' ? ch - 'a' + 10
+                          : ch >= 'A' && ch <= 'F' ? ch - 'A' + 10 : -1;
+                if (digit < 0) {
+                    return false;
+                }
+                argb = (argb << 4) | static_cast<unsigned int>(digit);
+            }
+            color = Color(argb);
+            return true;
+        }
+    }
+
+    std::string encode(const LightStop& value) {
+        std::ostringstream stream;
+        stream.precision(17);
+        stream << "{\"sunAltitude\":" << value.getSunAltitude()
+               << ",\"ambientColor\":\"" << encodeColor(value.getAmbientColor()) << "\""
+               << ",\"ambientIntensity\":" << value.getAmbientIntensity()
+               << ",\"sunColor\":\"" << encodeColor(value.getSunColor()) << "\""
+               << ",\"sunIntensity\":" << value.getSunIntensity() << "}";
+        return stream.str();
+    }
+
+    std::string encode(const std::vector<LightStop>& value) {
+        std::string json = "[";
+        for (std::size_t index = 0; index < value.size(); index++) {
+            json += (index ? "," : "") + encode(value[index]);
+        }
+        return json + "]";
+    }
+
     std::string encode(const std::vector<std::string>& value) {
         std::vector<Variant> items;
         for (const std::string& item : value) {
@@ -237,6 +311,52 @@ namespace massif { namespace api { namespace StructCodec {
         }
         value = MapTile(static_cast<int>(numbers[0]), static_cast<int>(numbers[1]),
                         static_cast<int>(numbers[2]), 0);
+        return true;
+    }
+
+    bool decode(const std::string& json, LightStop& value) {
+        std::map<std::string, Variant> fields;
+        if (!decode(json, fields)) {
+            return false;
+        }
+        Color ambientColor(255, 255, 255, 255), sunColor(255, 255, 255, 255);
+        // Every field is optional but a stop with no sun height is meaningless, so that one is not.
+        if (!fields.count("sunAltitude")) {
+            return false;
+        }
+        if (fields.count("ambientColor") && !decodeColor(fields["ambientColor"], ambientColor)) {
+            return false;
+        }
+        if (fields.count("sunColor") && !decodeColor(fields["sunColor"], sunColor)) {
+            return false;
+        }
+        value = LightStop(static_cast<float>(fields["sunAltitude"].getDouble()),
+                          ambientColor, static_cast<float>(fields["ambientIntensity"].getDouble()),
+                          sunColor, static_cast<float>(fields["sunIntensity"].getDouble()));
+        return true;
+    }
+
+    bool decode(const std::string& json, std::vector<LightStop>& value) {
+        // Clearing the curve is how an app goes back to the built-in one, and a property set to ""
+        // is what that spells through every binding. Refusing it left the previous curve standing,
+        // which reads as "the switch is broken" rather than as a rejected value.
+        if (json.empty()) {
+            value.clear();
+            return true;
+        }
+        Variant array;
+        if (!decode(json, array) || array.getType() != VariantType::VARIANT_TYPE_ARRAY) {
+            return false;
+        }
+        std::vector<LightStop> stops;
+        for (int index = 0; index < array.getArraySize(); index++) {
+            LightStop stop;
+            if (!decode(array.getArrayElement(index).toString(), stop)) {
+                return false;
+            }
+            stops.push_back(stop);
+        }
+        value.swap(stops);
         return true;
     }
 

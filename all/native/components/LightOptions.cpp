@@ -16,15 +16,25 @@ namespace massif {
         // nothing changes for a map that does not ask for it.
         _ambientIntensity(1.0f),
         _ambientColorARGB(Color(255, 255, 255, 255).getARGB()),
+        _sunOverridesStyle(false),
+        _dayCycleLights(false),
+        _dayCycleLightStops(),
+        _dayCycleRisingLightStops(),
+        _dayCycleLightStopsMutex(),
         _terrainLightingEnabled(false),
         _shadowStrength(0.3f),
-        _shadowMapSize(1024),
+        // mapbox's 2048 px map (shadow_renderer.ts _shadowParameters), over THREE cascades rather
+        // than their two: measured side by side, the extra page is worth its cost here. It only
+        // became so once the cutout went back to 4.5 - at 2.5 the ladder divided down to 0.28x the
+        // camera-to-focus distance, well ABOVE the nearest ground on screen (0.84x at tilt 55), so
+        // two of the three pages held nothing. Costs a 6144 x 2048 depth24 atlas, 50 MB.
+        _shadowMapSize(2048),
         _shadowCascades(3),
         // 1.0 shadow-map texels. 0.25 leaves acne on a lit slope at this cascade count.
         _shadowBias(1.0f),
         _shadowNormalOffset(3.0f),
         _shadowSoftness(1.0f),
-        _shadowDistance(0.0f),
+        _shadowDistance(0.0f), // 0 = the built-in 4.5, which is mapbox's
         _shadowCasterMargin(3),
         _onChangeListeners(),
         _onChangeListenersMutex()
@@ -135,6 +145,58 @@ namespace massif {
         if (_ambientColorARGB.exchange(color.getARGB()) != color.getARGB()) {
             notifyOptionChanged("AmbientColor");
         }
+    }
+
+    bool LightOptions::isSunOverridingStyle() const {
+        return _sunOverridesStyle.load();
+    }
+
+    void LightOptions::setSunOverridingStyle(bool overriding) {
+        if (_sunOverridesStyle.exchange(overriding) != overriding) {
+            notifyOptionChanged("SunOverridingStyle");
+        }
+    }
+
+    bool LightOptions::isDayCycleLightsEnabled() const {
+        return _dayCycleLights.load();
+    }
+
+    void LightOptions::setDayCycleLightsEnabled(bool enabled) {
+        if (_dayCycleLights.exchange(enabled) != enabled) {
+            notifyOptionChanged("DayCycleLightsEnabled");
+        }
+    }
+
+    std::vector<LightStop> LightOptions::getDayCycleLightStops() const {
+        std::lock_guard<std::mutex> lock(_dayCycleLightStopsMutex);
+        return _dayCycleLightStops;
+    }
+
+    void LightOptions::setDayCycleLightStops(const std::vector<LightStop>& stops) {
+        {
+            std::lock_guard<std::mutex> lock(_dayCycleLightStopsMutex);
+            if (_dayCycleLightStops == stops) {
+                return;
+            }
+            _dayCycleLightStops = stops;
+        }
+        notifyOptionChanged("DayCycleLightStops");
+    }
+
+    std::vector<LightStop> LightOptions::getDayCycleRisingLightStops() const {
+        std::lock_guard<std::mutex> lock(_dayCycleLightStopsMutex);
+        return _dayCycleRisingLightStops;
+    }
+
+    void LightOptions::setDayCycleRisingLightStops(const std::vector<LightStop>& stops) {
+        {
+            std::lock_guard<std::mutex> lock(_dayCycleLightStopsMutex);
+            if (_dayCycleRisingLightStops == stops) {
+                return;
+            }
+            _dayCycleRisingLightStops = stops;
+        }
+        notifyOptionChanged("DayCycleRisingLightStops");
     }
 
     bool LightOptions::isTerrainLightingEnabled() const {

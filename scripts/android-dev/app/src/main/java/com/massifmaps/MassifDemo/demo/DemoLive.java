@@ -41,20 +41,22 @@ public final class DemoLive extends BroadcastReceiver {
         "viewDistance", "viewDistanceMeters", "coarsening", "stitch", "textOcclusion", "lodFactor", "lodGrazing"
     };
     private static final String[] LIGHT_KEYS = {
-        "daycycle", "sunHour", "sunAzimuth", "sunAltitude", "shadow", "shadowSoftness",
+        "daycycle", "sunHour", "sunAzimuth", "sunAltitude", "appSun", "shadow", "shadowSoftness",
         "shadowDistance", "shadowCascades", "shadowNormalOffset", "terrainLight", "ambient",
-        "ambientColor", "sunColor", "sunIntensity"
+        "ambientColor", "sunColor", "sunIntensity", "dayCycleLights"
     };
     // Anything written INTO the style: the tiles carry it, so it only changes on a re-decode.
     private static final String[] STYLE_KEYS = {
         "style", "styleLight", "bg", "bldColor", "bld3d", "bldLight", "bldAmbient", "bldGradient", "bldGradientHeight",
         "bldAoRadius", "bldAoIntensity", "bldAoAttenuation", "bldAoStep", "bldEdgeRadius", "bldRoofShade", "bldRoundedRoof",
-        "roadLabelOcclusion"
+        "roadLabelOcclusion", "lightPreset", "bld3d", "buildings"
     };
     private static final String[] SKY_KEYS = {
         "sky", "skyColor", "horizonColor", "sunDisc",
         "skyType", "skyQuality", "skyAtmoSun", "skyAtmoColor", "skyAtmoHalo", "skyAtmoLum"
     };
+    // Style PARAMETERS: live, no re-decode - so they are not in STYLE_KEYS.
+    private static final String[] PARAM_KEYS = { "bldTiltDrop", "bldAo"};
     private static final String[] CAMERA_KEYS = { "lon", "lat", "zoom", "tilt", "rotation" };
 
     private final DemoMap demo;
@@ -95,6 +97,12 @@ public final class DemoLive extends BroadcastReceiver {
         }
         if (has(extras, STYLE_KEYS)) {
             demo.rebuildBaseLayer();
+        }
+        if (has(extras, PARAM_KEYS)) {
+            demo.applyStyleParameters();
+        }
+        if (has(extras, CAMERA_KEYS)) {
+            demo.applyCamera();
         }
         if (has(extras, CAMERA_KEYS)) {
             demo.applyCamera();

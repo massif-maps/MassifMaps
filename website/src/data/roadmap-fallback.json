@@ -51,14 +51,14 @@
         "description": "Planned work, shown on the website roadmap page"
       }
     ],
-    "state": "open",
+    "state": "closed",
     "locked": false,
     "assignees": [],
     "milestone": null,
     "comments": 0,
     "created_at": "2026-08-21T09:46:16Z",
-    "updated_at": "2026-08-21T09:46:16Z",
-    "closed_at": null,
+    "updated_at": "2026-08-25T14:53:41Z",
+    "closed_at": "2026-08-25T14:53:41Z",
     "assignee": null,
     "author_association": "NONE",
     "issue_field_values": [],
@@ -76,7 +76,27 @@
       "total_blocking": 0
     },
     "body": "## Symptom\n\nZoomed out with 3D terrain (z8-9 and below), the ground ends in a disc well inside the\nscreen instead of reaching the horizon.\n\n## Cause: the absolute view distance is zoom-independent\n\n`ViewState::calculateViewDistance` lets an absolute distance in metres take over completely:\n\n```cpp\nfloat absolute = terrainOptions->getViewDistance();\nif (absolute > 0) {\n    return absolute * Const::WORLD_SIZE / Const::EARTH_CIRCUMFERENCE;\n}\nfactor = terrainOptions->getViewDistanceFactor();\n```\n\nTangram's factor rule (`2 * cameraDistance / cos(pitch + fovy/2)`, capped at 127 tile widths)\nis **scale-invariant** — `cameraDistance` is proportional to `2^-zoom`, so the drawn ground keeps\nthe same size on screen at every zoom. An absolute distance in metres does not, so it becomes\nthe binding constraint as soon as the camera is high enough.\n\nDerived, 1080x2400, fovy 60, tilt 90, z8:\n\n| | |\n|---|---|\n| camera height | ~1270 km |\n| tangram factor rule | ~2500 km |\n| `VIEW_DISTANCE_METERS` (android-dev demo default) | 170 km |\n\n~15x short. The SDK default is `_viewDistance = 0` (factor rule), so this affects apps that pin\nmetres, the style property `terrain-max-visible-distance`, and the demo.\n\nOnly tile culling is cut (`TileLayer::_maxVisibleDistance`); the far plane is `max(far, viewDistance)`\nand is never shortened. That matches the symptom — the ground stops, the sky/background continues.\n\nCheap A/B:\n\n```sh\nadb shell am broadcast -a com.massifmaps.MassifDemo.CONFIG --es viewDistanceMeters 0 --es zoom 8\n```\n\n### Fix\n\nTake `max(absolute, factorRule)` instead of letting the absolute value win outright, in\n`ViewState::calculateViewDistance` and in `TileLayer::calculateVisibleTiles` for the style's\n`terrain-max-visible-distance`. The absolute distance exists to **extend** the view when the camera\nis close to the terrain, never to shorten it when zoomed out. The factor rule keeps the app's own\nfactor, so a deliberate `0.5` is still respected.\n\nBehaviour change, no API change.\n\n## Second part: auto-flatten at low zoom and at tilt 90\n\nBeyond the view distance, 3D terrain buys nothing once the displacement is sub-pixel (zoomed out)\nor seen straight down, and still costs the drape RTT, the terrain passes and the elevation fetches.\nMapbox-style: switch to flat automatically, remember what the app asked for, make it configurable.\n\n### Criterion — parallax, not a zoom threshold\n\n```\nparallaxPx ~= halfDiagonalPx * heightRangeMeters * exaggeration / cameraDistanceMeters\nflatten = parallaxPx < AutoFlattenParallax  ||  tilt >= AutoFlattenTilt\n```\n\nDerived, Alps (4 km height range), 1300 px half-diagonal: **z8 -> ~4 px**, **z13 -> ~130 px**.\nOne knob covers zoom and tilt together and adapts to flat country for free. Hysteresis is mandatory\n(restore at 1.5x, tilt -2 deg) or it thrashes on the boundary. The tilt term is separate because at\nz13 top-down the parallax is still large but the 3D buys nothing.\n\n### Two levers, very different price\n\n**L1 - exaggeration to 0.** `ElevationManager::setExaggeration` bumps only the *global* version, not\nthe data version: heights are GPU-side and CPU display heights scale by the same factor. Zero\nre-decode, animatable, pixel-identical to flat. No perf win.\n\n**L2 - terrain off.** Drops the terrain passes, the drape and the elevation fetches. Today\n`TileLayer::loadData` compares `_terrainEnabled` and calls `clearTileCaches(true)` +\n`resetTileTransformer()`, which drops the *visible* cache too: blank map until every visible tile is\nre-decoded.\n\nPlan: ramp L1 to 0, then flip L2 while the two renderings are already identical.\n\n### L2 without the re-decode\n\nThe cache blowup is not required. Keep `TileLayer::loadData` and `resetTileTransformer` reading the\napp's `isEnabled()`, so the transformer and every decoded tile stay put; move only the render and\ncull consumers to a new internal `isActive()`.\n\n| Site | Reads |\n|---|---|\n| `TileLayer::loadData` cache compare, `TileLayer::resetTileTransformer` | `isEnabled()` — unchanged |\n| `MapRenderer` terrain height range | `isEnabled()` — the criterion needs it |\n| `TileLayer::calculateVisibleTiles` LOD, `MapRenderer` terrain depth source, `TileRenderer`, `SkyRenderer`, `BillboardPlacementWorker`, `VectorLayer`, `HillshadeRasterTileLayer` | `isActive()` |\n\n`vt::GLTileRenderer::setTerrainMode` is a live flag (only `updateTerrainSkirts()`, no cache\ninvalidation), so flipping it per frame is safe. The effective flag has to join the re-cull\nchange-detect block in `loadData` so a still map re-culls.\n\nTiles decoded in terrain mode render correctly flat: displacement is GPU-side and the only\ndecode-time difference is subdivision density — extra triangles, harmless.\n\n### Exaggeration ownership\n\n`TerrainOptions::_exaggeration` keeps the app's requested value; the `ElevationManager` receives\n`requested * (1 - flatten)`. Needed either way: the parallax test reads the height range through\n`getDisplayHeightRange`, which is already exaggeration-scaled, so ramping the app's own value would\nzero the criterion and the map could never un-flatten.\n\nCamera clearance needs no change — at exaggeration 0, `getDisplayHeight` returns 0 and the clamp\nfalls back to sea level on its own.\n\n### API\n\nOn `TerrainOptions` (mirrored in `all/modules/*.i`, needs a SWIG regen):\n\n- `setAutoFlattenParallax(float px)` — 0 disables\n- `setAutoFlattenTilt(float degrees)` — 0 disables\n- `setAutoFlattenDuration(float seconds)` — default 0.3\n- `isFlattened()` read-back\n\nAll default to **off**, so upgrading changes nothing until an app opts in. The android-dev demo turns\nthem on; flip the SDK defaults once device-verified.\n\n## Also in scope\n\n- android-dev: `AUTO_FLATTEN_*` in `DemoConfig`, `--es autoFlatten` / `--es autoFlattenTilt`,\n  `DemoLive` keys, `DemoPanel` sliders\n- `docs/internals/rendering/04-terrain.md`: the two levers, why exaggeration to 0 needs no\n  re-decode, the parallax formula, the hysteresis, the view-distance `max()` rule\n- `docs/internals/rendering/11-tangram-diff.md`: tangram has no absolute view distance at all\n  (`core/src/view/view.cpp`), and their zoom-dependent lever is `m_maxPitchStops` (a max-pitch\n  ramp over zoom), not a mode switch — we picked parallax instead\n- `TerrainOptions.h`: the `getMinZoom` doc block is orphaned above `getDrapeResolution`\n\n## Risks\n\n- **Label re-anchor per ramp frame.** `setExaggeration` bumps the global version, so `TileRenderer`'s\n  `scaleOnly` path calls `invalidateLabelElevation()` every frame for the length of the ramp. Cost\n  unmeasured; may need suppressing while ramping.\n- **Terrain-decoded tiles with `terrainMode` false** is an untested combination — the one thing that\n  could blink.\n- The open terrain-toggle crash in the backlog may live on exactly this path.\n\n## Done means\n\n- z8: the ground fills the screen instead of a 170 km disc\n- tilt sweep 60 -> 90 and zoom sweep z12 -> z7: no blank map, no visible seam, no thrash at the\n  boundary\n- frame time at z13 / tilt 90 measurably lower\n- verified on device, not on the emulator\n\n## Not verified\n\nNo build and no device run yet. Every number above is derived from the formulas in\n`ViewState::calculateViewDistance` and the camera model, not measured.\n",
-    "closed_by": null,
+    "closed_by": {
+      "login": "farfromrefug",
+      "id": 655344,
+      "node_id": "MDQ6VXNlcjY1NTM0NA==",
+      "avatar_url": "https://avatars.githubusercontent.com/u/655344?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/farfromrefug",
+      "html_url": "https://github.com/farfromrefug",
+      "followers_url": "https://api.github.com/users/farfromrefug/followers",
+      "following_url": "https://api.github.com/users/farfromrefug/following{/other_user}",
+      "gists_url": "https://api.github.com/users/farfromrefug/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/farfromrefug/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/farfromrefug/subscriptions",
+      "organizations_url": "https://api.github.com/users/farfromrefug/orgs",
+      "repos_url": "https://api.github.com/users/farfromrefug/repos",
+      "events_url": "https://api.github.com/users/farfromrefug/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/farfromrefug/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
     "reactions": {
       "url": "https://api.github.com/repos/massif-maps/MassifMaps/issues/156/reactions",
       "total_count": 0,
@@ -91,7 +111,7 @@
     },
     "timeline_url": "https://api.github.com/repos/massif-maps/MassifMaps/issues/156/timeline",
     "performed_via_github_app": null,
-    "state_reason": null,
+    "state_reason": "completed",
     "pinned_comment": null
   },
   {

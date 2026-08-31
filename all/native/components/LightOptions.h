@@ -8,6 +8,7 @@
 #define _MASSIF_LIGHTOPTIONS_H_
 
 #include "graphics/Color.h"
+#include "components/LightStop.h"
 
 #include <atomic>
 #include <memory>
@@ -132,6 +133,82 @@ namespace massif {
         void setAmbientColor(const Color& color);
 
         /**
+         * Returns whether this sun overrides the one a style states.
+         * @return True if the application's sun wins over the style's. The default is false.
+         */
+        bool isSunOverridingStyle() const;
+        /**
+         * Sets whether this sun overrides the one a style states.
+         *
+         * A style may state its own sun - a converted MapBox style does, one direction per light
+         * preset - and by default that is what lights the map, so it looks as its source does with
+         * no application code at all. An application that moves the sun itself, a day/night cycle
+         * being the usual reason, sets this and its own azimuth and altitude win instead.
+         *
+         * Only the DIRECTION is affected. Intensities and colours merge as before.
+         * @param overriding True to let this object's sun win over the style's.
+         */
+        void setSunOverridingStyle(bool overriding);
+
+        /**
+         * Returns whether the sun's COLOURS follow its position.
+         * @return True if the light colours are derived from the sun's height. The default is false.
+         */
+        bool isDayCycleLightsEnabled() const;
+        /**
+         * Sets whether the light COLOURS follow the sun's position instead of being stated.
+         *
+         * A map that moves its sun with the clock wants the light to change with it: warm and low
+         * at dawn, white overhead, orange against a blue sky at dusk, and a dim blue at night. With
+         * this on, the ambient and sun colours and their intensities are derived from the sun's own
+         * height, interpolated between the four light setups MapBox Standard ships - so an hour of
+         * 12 renders as its `day` preset and 19 as its `dusk`, with everything in between.
+         *
+         * It replaces what the style and this object state for those four values; the DIRECTION is
+         * still whatever the sun position says. Off, nothing is derived and the values are taken as
+         * before.
+         * @param enabled True to derive the light colours from the sun's height.
+         */
+        void setDayCycleLightsEnabled(bool enabled);
+
+        /**
+         * Returns the day-cycle light curve - the "formula" an hour is turned into a look by.
+         * @return The stops, sorted by sun height. Empty means the built-in MapBox Standard curve.
+         */
+        std::vector<LightStop> getDayCycleLightStops() const;
+        /**
+         * Sets the day-cycle light curve, replacing the built-in one.
+         *
+         * The list IS the formula: every colour on the map is derived from the light it returns -
+         * the grade a 2D surface takes, the sun and ambient a building and the terrain are lit
+         * with, and the brightness a style ramps its labels over - so one list changes the whole
+         * palette at every hour, in 2D and in 3D, with no second theme and no re-decode.
+         *
+         * Stops are read in the order given and should be sorted by sun height; below the first and
+         * above the last the curve holds, and between two it interpolates in linear colour space.
+         * Pass an empty list to go back to the built-in curve, which is MapBox Standard's own.
+         *
+         * Only used while DayCycleLightsEnabled is on.
+         * @param stops The stops, sorted by sun height.
+         */
+        void setDayCycleLightStops(const std::vector<LightStop>& stops);
+
+        /**
+         * Returns the curve used while the sun is RISING, if the app set one.
+         * @return The rising stops. Empty means the setting curve is used for both.
+         */
+        std::vector<LightStop> getDayCycleRisingLightStops() const;
+        /**
+         * Sets a separate curve for a RISING sun, so dawn need not look like dusk.
+         *
+         * Nothing but the direction of travel distinguishes the two at the same sun height, and
+         * MapBox states them as different lights - dawn warm and bright, dusk cold. Left empty, the
+         * one curve is used all day.
+         * @param stops The stops, sorted by sun height.
+         */
+        void setDayCycleRisingLightStops(const std::vector<LightStop>& stops);
+
+        /**
          * Returns whether the sun lights the 3D terrain surface.
          * @return True if terrain surface lighting is enabled. The default is false.
          */
@@ -161,7 +238,7 @@ namespace massif {
 
         /**
          * Returns the shadow map resolution.
-         * @return The shadow map size in pixels, per cascade. The default is 1024.
+         * @return The shadow map size in pixels, per cascade. The default is 2048.
          */
         int getShadowMapSize() const;
         /**
@@ -294,6 +371,11 @@ namespace massif {
         std::atomic<float> _sunIntensity;
         std::atomic<float> _ambientIntensity;
         std::atomic<int> _ambientColorARGB;
+        std::atomic<bool> _sunOverridesStyle;
+        std::atomic<bool> _dayCycleLights;
+        std::vector<LightStop> _dayCycleLightStops;
+        std::vector<LightStop> _dayCycleRisingLightStops;
+        mutable std::mutex _dayCycleLightStopsMutex;
         std::atomic<bool> _terrainLightingEnabled;
         std::atomic<float> _shadowStrength;
         std::atomic<int> _shadowMapSize;

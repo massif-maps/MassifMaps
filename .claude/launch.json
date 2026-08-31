@@ -4,9 +4,26 @@
     {
       "name": "docs",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "website", "run", "start"],
+      "runtimeArgs": [
+        "--prefix",
+        "website",
+        "run",
+        "start"
+      ],
       "port": 3000,
       "autoPort": true
+    },
+    {
+      "name": "styleref",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8099",
+        "--directory",
+        "tools/style-cli/wasm"
+      ],
+      "port": 8099
     }
   ]
 }

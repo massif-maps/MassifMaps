@@ -26,6 +26,7 @@ import com.massifmaps.MassifDemo.examples.ExampleHost;
 import com.massifmaps.MassifDemo.examples.ExampleLive;
 import com.massifmaps.MassifDemo.examples.Examples;
 import com.massifmaps.MassifDemo.examples.MapExample;
+import com.massifmaps.MassifDemo.examples.ExampleSettings;
 import com.massifmaps.api.MassifMap;
 import com.massifmaps.components.PanningMode;
 import com.massifmaps.api.Position;
@@ -51,6 +52,7 @@ public class ExampleActivity extends AppCompatActivity implements ExampleHost {
 
     private MapView mapView;
     private MassifMap map;
+    private boolean settingsBuilt;
     private MapExample example;
     private Examples.Entry entry;
     private LinearLayout controls;
@@ -93,6 +95,22 @@ public class ExampleActivity extends AppCompatActivity implements ExampleHost {
                 finish();
             }
         });
+        // The gear. Its panel is built on FIRST open, not here: the example has not run yet, so
+        // every value it would read back would be the SDK's default rather than what the example
+        // set. See ExampleSettings.
+        findViewById(R.id.settingsButton).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                View scroll = findViewById(R.id.settingsScroll);
+                boolean show = scroll.getVisibility() != View.VISIBLE;
+                if (show && !settingsBuilt) {
+                    ExampleSettings.build(ExampleActivity.this,
+                        (LinearLayout) findViewById(R.id.settingsPanel), map);
+                    settingsBuilt = true;
+                }
+                scroll.setVisibility(show ? View.VISIBLE : View.GONE);
+            }
+        });
         findViewById(R.id.codeButton).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -119,6 +137,7 @@ public class ExampleActivity extends AppCompatActivity implements ExampleHost {
         if ("false".equals(getIntent().getStringExtra("ui"))) {
             findViewById(R.id.exampleBar).setVisibility(View.GONE);
             findViewById(R.id.controlScroll).setVisibility(View.GONE);
+            findViewById(R.id.settingsScroll).setVisibility(View.GONE);
             findViewById(R.id.sliders).setVisibility(View.GONE);
             caption.setVisibility(View.GONE);
             chromeHidden = true;

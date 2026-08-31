@@ -42,10 +42,18 @@ namespace massif {
         std::optional<float> buildingAmbient;
         std::optional<float> buildingVerticalGradient;
         std::optional<float> buildingRoofShade;
+        std::optional<float> buildingHeightScale;
+        std::optional<float> buildingHeightViewScale;
+        std::optional<bool> buildingGrowOnAppear;
+        std::optional<bool> buildingFadeOnAppear;
         std::optional<float> buildingAoIntensity;
         std::optional<float> textOcclusionOpacity;
         std::optional<float> buildingAoGroundAttenuation;
         std::optional<bool> terrainLightingEnabled;
+        // The style says its 2D colours already carry the light - see Map::Settings::colorsPrelit.
+        std::optional<bool> colorsPrelit;
+        std::optional<float> buildingEmissive;
+        std::optional<float> backgroundEmissive;
         std::optional<float> shadowStrength;
         std::optional<float> shadowBias;
         std::optional<float> shadowSoftness;
@@ -85,6 +93,20 @@ namespace massif {
      */
     struct ResolvedLighting {
         bool terrainLightingEnabled = false;
+        // Set by a style whose 2D colours are pre-lit: the ground is then drawn as authored while
+        // the terrain's shadows and the 3D pass carry on lighting normally.
+        bool colorsPrelit = false;
+        // How much of an extrusion's colour is emitted rather than lit - mapbox's
+        // fill-extrusion-emissive-strength. 0 means the scene light owns it entirely.
+        float buildingEmissive = 0.0f;
+        // The same for the map BACKGROUND, which is a Map setting rather than a symbolizer - and
+        // the largest surface on screen. 1 = drawn as authored.
+        float backgroundEmissive = 1.0f;
+        // mapbox's ["measure-light", "brightness"], 0-1 - what a style's `view::brightness` reads.
+        float brightness = 1.0f;
+        // What mapbox's light does to a flat, upward-facing surface: calculateGroundRadiance with
+        // the ground normal, in LINEAR space. The one number a colour grade is a function of.
+        cglib::vec3<float> radiance = cglib::vec3<float>(1.0f, 1.0f, 1.0f);
         cglib::vec3<float> sunDir = cglib::vec3<float>(0, 0, 1);
         Color sunColor = Color(255, 255, 255, 255);
         float sunIntensity = 1.0f;
@@ -102,6 +124,15 @@ namespace massif {
         // fades over is decode-time geometry, not a uniform - see TileLayerBuilder::appendWallQuad.
         float buildingVerticalGradient = 0.0f;
         float buildingRoofShade = 1.0f;
+        // Every extrusion's height, multiplied - mapbox's fill-extrusion-vertical-scale.
+        float buildingHeightScale = 1.0f;
+        // Drawn only - the shadow caster ignores it (see mvt::Map::Settings).
+        float buildingHeightViewScale = 1.0f;
+        // Whether a tile's fade-in raises its buildings; off, as no source style asks for it.
+        bool buildingGrowOnAppear = false;
+        // Whether a tile's fade-in fades its buildings in. OFF: a half-transparent wall shows the
+        // shadow it is itself casting, which is drawn at full strength from the first frame.
+        bool buildingFadeOnAppear = false;
         // The contact shadow on the ground around a footprint. Its RADIUS is decode-time geometry
         // (TileLayerBuilder::appendGroundSkirt); these two shade the skirt it produced.
         float buildingAoIntensity = 0.2f;

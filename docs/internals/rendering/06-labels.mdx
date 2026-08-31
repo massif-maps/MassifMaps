@@ -44,6 +44,18 @@ Two invariants live in this picture and both have caused visible bugs: `LabelCul
 **not** clear the grid (layers must collide with each other), and `snapPlacement` must prefer the
 same `(tileId, localId)` copy. Details below.
 
+## Where a label wraps
+
+`text-wrap-width` is in **style pixels**, and is the one length in `TextSymbolizer::getFormatterOptions`
+that is NOT multiplied by `fontScale`. `TextFormatter::splitLines` accumulates a word's width from
+`glyph.advance * _fontSize`, where `_fontSize` is the style size — so a threshold in device pixels
+was compared against a width in style pixels and every label wrapped `fontScale` times too late. On
+a 2.6x screen a 8-em maximum became a 21-em one, which is to say nothing wrapped at all: MapTiler's
+"Médiathèque Annecy - Bonlieu" stayed on one line where the same style wraps it to two in a browser.
+
+Where a label breaks is a property of the style, not of the display, so the offsets beside it
+(`dx`/`dy`, the secondary run's) scale and this one does not.
+
 ## Building the label set
 
 On **every tile-set change**, `buildLabelMaps` recreates all `vt::Label` objects from the current
@@ -60,7 +72,11 @@ tile set — and a placement rebuilt from a differently clipped copy of a line c
 `LabelCuller`.
 
 **Draw order is one list per pass**, sorted by priority → layer index → global id, and the batch
-changes glyph atlas mid-list. Grouping the labels by atlas first — which is what a
+changes glyph atlas mid-list. It runs **bottom to top** — what is drawn last is on top — which is the
+OPPOSITE of the culler's order, where the most important label is placed FIRST so it claims its slot
+(`LabelCuller::process`). The draw list used to copy the culler's direction, so of two labels that
+overlap the LESS important one was drawn over the other: a road name covering the town name it
+crossed. The `layerIndex` tie-break had always run bottom-to-top, which is what gave it away. Grouping the labels by atlas first — which is what a
 `unordered_map<Bitmap, ...>` did — put two labels from different atlases in **pointer-hash order**,
 so an icon and the small label meant to sit on it were drawn in whichever order the allocator
 happened to give. It only showed below the raster-ladder boundary, where the smaller label lands in
@@ -136,6 +152,12 @@ Consequences of the split, all keyed on `isLineRun()` / `isScreenLineRun()`:
   which is the camera basis for one and the tangent frame for the other.
 - Anchor pixel-snapping is skipped for both: it snaps the anchor to a quarter-pixel grid, which is
   meaningless once the glyphs are laid out along a line rather than in a box.
+- **How far the run sits off the line comes from the CR pseudo-glyph**, like it does for a point
+  label: `TextFormatter::layoutLines` puts the block's vertical alignment and its `text-dy` in that
+  glyph's `advance(1)`, and `buildLineVertexData` applies it perpendicular to the run. Ignoring it —
+  which it did until 2026-08 — laid every line label on its **baseline**, so the text floated above
+  its road by about an ascender and `text-dy` did nothing at all on a line. The culler saw the
+  centred box all along: its box comes from the point pen walk (`walkGlyphs`), which never dropped it.
 - `TextSymbolizer` feeds all three the same anchors, `text-spacing` and measured run length
   (`repeatAlongLine`), and hands the line itself only to the two that lay a run out (`lineRun`). The
   bare vertex with an empty vertex list — why `billboard-line` could not follow anything before the
@@ -212,7 +234,7 @@ The line shader learned the same lesson earlier, on a route casing breaking up o
 
 That path shares the SDF encoding with labels and has to be kept in step with it: its antialias ramp
 is `2 · GLYPH_SDF_UNIT · (glyphRenderSize − GLYPH_RENDER_SPREAD) / _fullResolution`, the same rule
-`renderLabelBatch` uses, and its halo is converted with `HALO_PIXELS_PER_UNIT` like a label's. The
+`renderLabelBatch` uses, and its halo reaches it in screen pixels like a label's. The
 form written for the single 27-texel raster and a spread of 4 survived the raster ladder and the
 spread change (4 → 8) and ended up measuring a ramp up to **six screen pixels**, which is a glyph
 dissolving into its own halo.
@@ -515,6 +537,22 @@ small text is not a magnified small raster.
 A shield may carry both: the bitmap (`shield-file`) is the first prefix glyph and the icon run
 follows it, so they sit side by side rather than on top of each other.
 
+### The icon run has its own antialias ramp
+
+The icon run keeps a fixed PIXEL size of its own — `Label::calculateVertexData` scales it by
+`iconRefSize / size` and then by `iconScaleFunc`, so it does not ride the text's size ramp. The
+**antialias ramp has to follow it**: `labelVsh` reads `uSDFRamp / uWidthTable[styleIndex]`, so an
+icon sharing the text's style slot is smoothed as if it were the text's size.
+
+`renderLabelPass` therefore gives the icon run a slot of its own whenever that ramp would differ,
+not only when the icon has a colour, and puts the icon's own em size in the width table. Sharing the
+text's, a 20 px POI icon was smoothed with a 13 px ramp — half again too wide — and every thin
+stroke fattened until it closed: a fork's tines fused into one blob.
+
+The remedy is only half of it. What the ramp cannot invent is resolution: a notch one texel wide
+never reaches full coverage and closes at the size the icon is drawn. `mapbox2css` takes the densest
+sprite sheet the provider serves (`@4x` for MapBox) for the same reason.
+
 ### Plates behind the text and behind the icon (fork-specific)
 
 A label may carry two plates — one behind the text, one behind the icon run — each a rounded
@@ -643,6 +681,25 @@ once (cached) to what the platform accepts:
 One visible consequence: the default popup face `HelveticaNeue-Light` now maps to `sans-serif-light`
 on Android instead of rendering as plain Roboto Regular.
 
+### Bold and italic are asked for by NAME, and only the shortfall is drawn on
+
+`parseFontStyle` reads the weight and the slant out of the face NAME (`"DIN Pro Bold"` → 700,
+`"… Medium Italic"` → 500 + italic), because Android reaches Roboto's bold and italic through
+variable-font axes rather than separate files. `applyVariationAxes` sets whatever axis the face has
+(`wght`, `wdth`, `ital`, `slnt`), and **whatever is left is synthesised per glyph** —
+`FT_Outline_Embolden` and a shear matrix in `addFreeTypeGlyph`.
+
+A static face that is ALREADY the style asked for has no axis to satisfy the request, so the request
+survived to the synthesis step and was drawn on top of it. A style shipping real
+`DINPro-Bold.woff2` and `DINPro-MediumItalic.woff2` files — which the bundled one does, matched by
+`normalizeFontName` turning both `"DIN Pro Bold"` and `DINPro-Bold` into `dinprobold` — got **double
+bold** and a real italic sheared a second time over its own slant. Measured on the eink style: 32-38%
+more ink in a label than it should have had.
+
+`subtractFaceStyle` takes the face's own style off the request first. The weight comes from OS/2
+`usWeightClass`, not from `FT_STYLE_FLAG_BOLD`, because the flag only knows bold and a Medium file
+is 500; only the difference is emboldened, and only upwards, since an outline cannot be thinned.
+
 ## On the GL thread
 
 - **Fades.** `updateLabel` moves opacity toward `visible ? 1 : 0`; invisible-but-fading labels stay
@@ -702,15 +759,24 @@ on Android instead of rendering as plain Roboto Regular.
   (`TileLayerBuilder`, pass 0 of `tesselateGlyph`), and `pointFsh` punches the ink out the same way.
 - **Halo width is measured in antialias ramps, not in glyph texels.** `labelFsh` shifts the
   coverage ramp outward by the halo, and the ramp is one screen pixel of signed distance, so a halo
-  reaching the renderer in screen pixels (`HALO_PIXELS_PER_UNIT`) is as wide as the style asks
-  whatever raster the label landed on. It used to be converted with the glyph's RENDER size
-  instead — harmless while every glyph was rastered at 27 texels, wrong the moment the raster ladder
+  reaching the renderer in screen pixels is as wide as the style asks whatever raster the label
+  landed on. It used to be converted with the glyph's RENDER size instead — harmless while every
+  glyph was rastered at 27 texels, wrong the moment the raster ladder
   (16/28/40, see [10-performance.md](10-performance.md)) made that size depend on the label. The
   factor is `renderSize / (renderSize - spread)`: **3.0** on the smallest raster against **1.2** on
   the largest, so one `text-halo-radius` drew a halo two and a half times wider on a small label
   than on a large one, and up to **five times** what the single-raster build drew — a soft white
   glow instead of an outline, reported as "halo huge at radius 2, fine at 1". If halos ever look
   wrong again, check that term before the style.
+- **`text-halo-radius` is a STYLE pixel, like `text-size`** — the symbolizer multiplies it by the
+  pixel scale, and only `MAX_HALO_PIXELS` (where the encoded field runs out) caps it. It did not
+  used to be: a back-compat factor of `HALO_RADIUS_SCALE · HALO_PIXELS_PER_UNIT` = 1.4725 handed the
+  renderer device pixels, so a halo kept its absolute width as the dpi rose while its text grew, and
+  shrank against its own glyphs. `text-size`, `text-dx` and `text-dy` never had the problem — they
+  reach the renderer in **ems**, which scale with the label. Measured at La Clusaz on a 2.625x
+  screen, `text-halo-radius: 1.2`: **1.8 px before, 3.1 px after**, against the 3.2 px MapBox draws
+  for `text-halo-width: 1.2`. `text-min-distance` carried the same defect and was fixed with it.
+  **This widens every existing style's halos on a hi-dpi screen** (×1.8 at 2.625, ×2.0 at 3).
 - **A style `transform` no longer ends the batch.** The translate was a factor of the batch's
   `labelMatrix`, and the batch broke both when a label carried one and when the previous label did —
   so every transformed label was a draw of its own, **30 of a city frame's 68 label draws**.
@@ -944,9 +1010,9 @@ The per-label value rides on the **batch**, not on a per-style slot in the param
 property of the style layer, so consecutive labels share it, and a slot would have to join the
 colour/size key every label is matched on. A change of occluded opacity ends a batch the way a
 change of glyph atlas does.
-- A layer whose `LabelRenderOrder` is not `LAST` draws its labels in the 2D pass, before the buffer
-  for this frame exists, so it samples the previous frame's — one frame of lag while the camera
-  moves.
+- A layer whose `LabelRenderOrder` is not `LAST` draws its FLAT labels in the 2D pass, before the
+  buffer for this frame exists, so it samples the previous frame's — one frame of lag while the
+  camera moves. Its billboards follow the buildings (see below) and sample the current one.
 - The anchor decides for the whole label. A long line label whose anchor is in a gap between two
   buildings stays fully drawn; that is mapbox's behaviour too, and it is the price of never cutting
   a word.

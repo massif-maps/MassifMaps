@@ -104,6 +104,8 @@ set(TEST_SDK_SOURCES
   "${SDK_BASE_DIR}/all/native/core/ScreenPos.cpp"
   # StructCodec carries a screen rectangle now - fitBounds takes one (see CameraMethods.cpp).
   "${SDK_BASE_DIR}/all/native/core/ScreenBounds.cpp"
+  # StructCodec carries a day-cycle light curve now, and a stop is a value class.
+  "${SDK_BASE_DIR}/all/native/components/LightStop.cpp"
   "${SDK_BASE_DIR}/all/native/components/FogOptions.cpp"
   "${SDK_BASE_DIR}/all/native/components/SkyOptions.cpp"
   "${SDK_BASE_DIR}/all/native/geometry/Feature.cpp"
@@ -206,6 +208,8 @@ add_executable(api_tests
   DrapeStackCutsTest.cpp
   # Same: FlattenSwitch.h is the 2D/3D switch's phases and nothing else.
   FlattenSwitchTest.cpp
+  # Same: DayCycleLight.h is the hour-to-light curve and mapbox's ground radiance, nothing else.
+  DayCycleLightTest.cpp
   "${TEST_TABLE_DIR}/PropertyTable.inc"
   "${TEST_TABLE_DIR}/MethodDecls.inc"
   "${TEST_SCHEMA_DIR}/massif-api.json"

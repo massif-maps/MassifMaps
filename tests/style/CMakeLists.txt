@@ -16,6 +16,7 @@ set(STYLE_SOURCES
   "${SDK_BASE_DIR}/libs-massif/mapnikvt/src/mapnikvt/Value.cpp"
   "${SDK_BASE_DIR}/libs-massif/mapnikvt/src/mapnikvt/Feature.cpp"
   "${SDK_BASE_DIR}/libs-massif/mapnikvt/src/mapnikvt/ParserUtils.cpp"
+  "${SDK_BASE_DIR}/libs-massif/mapnikvt/src/mapnikvt/GeneratorUtils.cpp"
   "${SDK_BASE_DIR}/libs-massif/mapnikvt/src/mapnikvt/ParseTables.cpp"
   "${SDK_BASE_DIR}/libs-massif/mapnikvt/src/mapnikvt/CSSColorParser.cpp"
   "${SDK_BASE_DIR}/libs-massif/mapnikvt/src/mapnikvt/StringUtils.cpp"
@@ -31,6 +32,10 @@ add_executable(style_tests
   LayerConfigTest.cpp
   CartoCSSParseTest.cpp
   StyleParameterFoldTest.cpp
+  ExpressionRoundTripTest.cpp
+  InterpolateExpressionTest.cpp
+  DataDrivenPropertyTest.cpp
+  ViewStatePropertyTest.cpp
   ${STYLE_SOURCES})
 
 target_include_directories(style_tests PRIVATE

@@ -49,21 +49,21 @@ public final class DemoStyles {
                     pack = openZip(dataPath);
                 }
                 if (pack != null) {
-                    return new MBVectorTileDecoder(new CompiledStyleSet(pack));
+                    return new MBVectorTileDecoder(styleSet(pack));
                 }
                 break;
             }
             case ZIP: {
                 AssetPackage pack = openZip(dataPath);
                 if (pack != null) {
-                    return new MBVectorTileDecoder(new CompiledStyleSet(pack));
+                    return new MBVectorTileDecoder(styleSet(pack));
                 }
                 break;
             }
             case ASSETS: {
                 AssetPackage pack = openAppAssets();
                 if (pack != null) {
-                    return new MBVectorTileDecoder(new CompiledStyleSet(pack, "osm"));
+                    return new MBVectorTileDecoder(new CompiledStyleSet(pack, DemoConfig.STYLE_ASSETS_NAME));
                 }
                 break;
             }
@@ -90,6 +90,24 @@ public final class DemoStyles {
         }
         lastLoadedDescription = "inline CartoCSS";
         return new MBVectorTileDecoder(new CartoCSSStyleSet(inlineStyle()));
+    }
+
+    /**
+     * The project to compile out of a package that holds several. A converted Mapbox Standard
+     * writes one per light preset over a shared style.mss, so --es lightPreset night picks the
+     * dark one. Falls back to whichever project CompiledStyleSet finds first, which is what every
+     * single-project style wants.
+     */
+    private static CompiledStyleSet styleSet(AssetPackage pack) {
+        String preset = DemoConfig.LIGHT_PRESET;
+        if (preset != null && !preset.isEmpty()) {
+            try {
+                return new CompiledStyleSet(pack, preset);
+            } catch (Exception e) {
+                Log.w(TAG, "no style project '" + preset + "' in this package: " + e.getMessage());
+            }
+        }
+        return new CompiledStyleSet(pack);
     }
 
     /**

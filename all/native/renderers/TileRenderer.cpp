@@ -244,23 +244,43 @@ namespace massif {
         // sets the view state. Without this the surface is drawn with the previous frame's camera
         // while everything else uses the current one, so the ground lags the buildings by exactly
         // one frame during a pan and snaps into place when the motion stops.
-        cglib::mat4x4<double> prepareModelViewMat = viewState.getModelviewMat() * cglib::translate4_matrix(cglib::vec3<double>(_horizontalLayerOffset, 0, 0));
-        vt::ViewState prepareViewState(viewState.getProjectionMat(), prepareModelViewMat, viewState.getZoom(), viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewState.getNormalizedResolution());
-        prepareViewState.planarProjection = isPlanarProjectionMode();
-        tileRenderer->setViewState(prepareViewState);
-        // Same reason for the contact shadows: the drape bake asks whether they are active before
-        // onDrawFrame has resolved any lighting, so on the first frame at a camera they baked with
-        // intensity 0 - and a cached drape is never re-baked for a uniform change, so they stayed
-        // missing until a zoom rebuilt the tiles.
+        // Resolved BEFORE the view state below, which carries the brightness a style's
+        // view::brightness reads. Same reason as the contact shadows: the drape bake asks whether
+        // they are active before onDrawFrame has resolved any lighting, so on the first frame at a
+        // camera they baked with intensity 0 - and a cached drape is never re-baked for a uniform
+        // change, so they stayed missing until a zoom rebuilt the tiles.
         if (auto options = _options.lock()) {
             ResolvedLighting lighting = resolveLighting(options->getLightOptions(), _styleEnvironment);
             _groundAOIntensity = lighting.buildingAoIntensity;
             _groundAOAttenuation = lighting.buildingAoGroundAttenuation;
+            // Same reason as the contact shadows above: the DRAPE BAKE evaluates every colour, and
+            // it runs here - before onDrawFrame has resolved any lighting. Set only there, a live
+            // colour was baked against the previous frame's light, and a cached drape is never
+            // re-baked for it, so the ground simply never followed the sun.
+            _resolvedRadiance = lighting.radiance;
+            _resolvedBrightness = lighting.brightness;
+            _backgroundEmissive = lighting.backgroundEmissive;
+            _buildingHeightScale = lighting.buildingHeightScale;
+        _buildingHeightViewScale = lighting.buildingHeightViewScale;
+            _buildingGrowOnAppear = lighting.buildingGrowOnAppear;
+            _buildingFadeOnAppear = lighting.buildingFadeOnAppear;
             // Same reason again, and one step earlier than the rest: the owner reads this BEFORE
             // the layer passes, to decide whether to render the occluder buffer at all.
             _textOcclusionOpacity.store(resolveTextOcclusionOpacity(options->getTerrainOptions(), _styleEnvironment));
         }
+        // The cross-layer drape draws the terrain surface from MapRenderer, BEFORE onDrawFrame
+        // sets the view state. Without this the surface is drawn with the previous frame's camera
+        // while everything else uses the current one, so the ground lags the buildings by exactly
+        // one frame during a pan and snaps into place when the motion stops.
+        cglib::mat4x4<double> prepareModelViewMat = viewState.getModelviewMat() * cglib::translate4_matrix(cglib::vec3<double>(_horizontalLayerOffset, 0, 0));
+        vt::ViewState prepareViewState(viewState.getProjectionMat(), prepareModelViewMat, viewState.getZoom(), viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewState.getNormalizedResolution());
+        prepareViewState.planarProjection = isPlanarProjectionMode();
+        prepareViewState.lightBrightness = _resolvedBrightness;
+        tileRenderer->setViewState(prepareViewState);
         tileRenderer->setGroundAO(_groundAOIntensity, _groundAOAttenuation);
+        tileRenderer->setRadiance(_resolvedRadiance);
+        tileRenderer->setBackgroundEmissive(_backgroundEmissive);
+        tileRenderer->setBuildingHeight(_buildingHeightScale, _buildingHeightViewScale, _buildingGrowOnAppear, _buildingFadeOnAppear);
         tileRenderer->setLabelOcclusionOpacity(_textOcclusionOpacity.load());
         try {
             _framePrepareResult = tileRenderer->startFrame(deltaSeconds * 3);
@@ -427,6 +447,10 @@ namespace massif {
         std::lock_guard<std::mutex> lock(_mutex);
 
         if (std::shared_ptr<vt::GLTileRenderer> tileRenderer = (_vtRenderer ? _vtRenderer->getTileRenderer() : std::shared_ptr<vt::GLTileRenderer>())) {
+            // What the fit falls back on when no tile carries a DEM: the same factor the elevation
+            // cache would report, minus the exaggeration a flat map does not have. Without it a 2D
+            // map failed the fit outright and drew no shadow at all.
+            tileRenderer->setMetersToInternal(Const::WORLD_SIZE / Const::EARTH_CIRCUMFERENCE);
             return tileRenderer->calculateShadowViewProj(tileIds, casterTileIds, sunDir, tileHeights, minHeight, maxHeight, distanceFactor, cameraDistance, mapSize, cascade, cascadeCount, boxCasterTileIds, depthRangeMeters, texelMeters, lightViewProj);
         }
         return false;
@@ -557,6 +581,19 @@ namespace massif {
     vt::GLTileRenderer::TerrainLighting TileRenderer::buildTerrainLighting(const ResolvedLighting& lighting) {
         vt::GLTileRenderer::TerrainLighting terrainLighting;
         terrainLighting.enabled = true;
+        // A style whose 2D colours already carry the light is lit NEUTRALLY rather than not at all.
+        // The ground's shadow multiply lives INSIDE the terrain shading block (applyTerrainShading),
+        // so switching that block off takes the shadow with it - the caster pass keeps running and
+        // nothing receives. White ambient at full weight makes the lit term exactly 1, which leaves
+        // the authored colour alone and lets the shadow through.
+        if (lighting.colorsPrelit) {
+            terrainLighting.sunDir = lighting.sunDir;
+            terrainLighting.sunColor = cglib::vec3<float>(1.0f, 1.0f, 1.0f);
+            terrainLighting.ambientColor = cglib::vec3<float>(1.0f, 1.0f, 1.0f);
+            terrainLighting.sunIntensity = 0.0f;
+            terrainLighting.ambientIntensity = 1.0f;
+            return terrainLighting;
+        }
         terrainLighting.sunDir = lighting.sunDir;
         terrainLighting.sunColor = cglib::vec3<float>(lighting.sunColor.getR() / 255.0f, lighting.sunColor.getG() / 255.0f, lighting.sunColor.getB() / 255.0f);
         terrainLighting.ambientColor = cglib::vec3<float>(lighting.ambientColor.getR() / 255.0f, lighting.ambientColor.getG() / 255.0f, lighting.ambientColor.getB() / 255.0f);
@@ -573,6 +610,8 @@ namespace massif {
             if (lighting.terrainLightingEnabled) {
                 terrainLighting = buildTerrainLighting(lighting);
             }
+            tileRenderer->setRadiance(_resolvedRadiance);
+            tileRenderer->setBackgroundEmissive(_backgroundEmissive);
             tileRenderer->setTerrainLighting(terrainLighting);
         }
     }
@@ -723,6 +762,7 @@ namespace massif {
         cglib::mat4x4<double> modelViewMat = viewState.getModelviewMat() * cglib::translate4_matrix(cglib::vec3<double>(_horizontalLayerOffset, 0, 0));
         vt::ViewState vtViewState(viewState.getProjectionMat(), modelViewMat, viewState.getZoom(), viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewState.getNormalizedResolution());
         vtViewState.planarProjection = isPlanarProjectionMode(); // labels rescale by view depth, so neither terrain elevation nor a tilt blows up their screen size
+        vtViewState.lightBrightness = _resolvedBrightness; // a style's view::brightness, so an emissive ramp over it follows the hour
         vtViewState.focusDistance = static_cast<float>(cglib::length(viewState.getCameraPos() - viewState.getFocusPos())); // what the zoom sizes labels at; vt guesses it from the ground plane otherwise
         tileRenderer->setViewState(vtViewState);
         // A line width is given in unscaled-DPI units; this is what one of them is worth in device
@@ -937,16 +977,27 @@ namespace massif {
             _buildingRoofShade = lighting.buildingRoofShade;
             _groundAOIntensity = lighting.buildingAoIntensity;
             _groundAOAttenuation = lighting.buildingAoGroundAttenuation;
+            _buildingHeightScale = lighting.buildingHeightScale;
+        _buildingHeightViewScale = lighting.buildingHeightViewScale;
+            _buildingGrowOnAppear = lighting.buildingGrowOnAppear;
+            _buildingFadeOnAppear = lighting.buildingFadeOnAppear;
             _resolvedSunDir = lighting.sunDir;
             _resolvedBuildingSunDir = lighting.sunDir;
             _resolvedSunColor = lighting.sunColor;
             _resolvedAmbientColor = lighting.ambientColor;
+            _buildingEmissive = lighting.buildingEmissive;
+            _backgroundEmissive = lighting.backgroundEmissive;
+            _resolvedRadiance = lighting.radiance;
+            _resolvedBrightness = lighting.brightness;
             // The terrain surface is what this lights, and it exists whenever the stack draws one:
             // baked under a drape, or the shared ground pass when the drape is off. Gating on the
             // drape alone left the ground AND the hillshade paint over it unlit - and with them the
             // shadow map, since the shadow multiplies the lit colour (the paint is drawn from this
             // layer's own pass, which runs after the owner has set the stack's sun, so it saw the
             // value this line computes).
+            // A pre-lit style is handled inside buildTerrainLighting, which lights it neutrally so
+            // the ground keeps its authored colour and still receives the shadow. Measured at the
+            // Opera, dusk: (68,64,83) against gl-js's (69,64,83); lit twice it was (14,16,31).
             if ((drapeFills || _terrainGroundActive) && lighting.terrainLightingEnabled) {
                 terrainLighting = buildTerrainLighting(lighting);
             }
@@ -969,6 +1020,7 @@ namespace massif {
         }
         tileRenderer->setTerrainLighting(terrainLighting);
         tileRenderer->setGroundAO(_groundAOIntensity, _groundAOAttenuation);
+        tileRenderer->setBuildingHeight(_buildingHeightScale, _buildingHeightViewScale, _buildingGrowOnAppear, _buildingFadeOnAppear);
         tileRenderer->setTerrainDepthWrite(terrainMode && _terrainDepthWriteMode);
         if (auto options = _options.lock()) {
             tileRenderer->setDebugTileBorders(options->isDebugTileBorders());
@@ -1019,7 +1071,7 @@ namespace massif {
             if (_buildingOrder == 0) {
                 tileRenderer->renderGeometry(false, true);
             }
-            if (_labelOrder == 0) {
+            if (_labelOrder >= 0 && drawsBillboardLabelsHere(0)) {
                 tileRenderer->renderLabels(false, true);
             }
         }
@@ -1066,7 +1118,7 @@ namespace massif {
                 tileRenderer->renderGeometry(false, true, isInline3DEnabled());
             }
             VT_STAT_SPLIT(pass3DGeometryNs, passClock);
-            if (_labelOrder == 1) {
+            if (_labelOrder >= 0 && drawsBillboardLabelsHere(1)) {
                 tileRenderer->renderLabels(false, true);
             }
             VT_STAT_SPLIT(pass3DLabels3DNs, passClock);
@@ -1105,6 +1157,7 @@ namespace massif {
         vt::ViewState cullViewState(viewState.getProjectionMat(), modelViewMat, viewState.getZoom(),
 viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewState.getNormalizedResolution());
         cullViewState.planarProjection = isPlanarProjectionMode(); // keep culling envelopes consistent with the rendered label sizes
+        cullViewState.lightBrightness = _resolvedBrightness;
         cullViewState.focusDistance = static_cast<float>(cglib::length(viewState.getCameraPos() - viewState.getFocusPos()));
         culler.setViewState(cullViewState);
 
@@ -1467,6 +1520,8 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
                 glUniform3fv(glGetUniformLocation(shaderProgram, "u_sunColor"), 1, sunColor.data());
                 glUniform3fv(glGetUniformLocation(shaderProgram, "u_ambientColor"), 1, ambientColor.data());
                 glUniform2f(glGetUniformLocation(shaderProgram, "u_verticalGradient"), _buildingVerticalGradient, _buildingRoofShade);
+                glUniform1f(glGetUniformLocation(shaderProgram, "u_emissive"), _buildingEmissive);
+                glUniform3fv(glGetUniformLocation(shaderProgram, "u_radiance"), 1, _resolvedRadiance.data());
             });
             tileRenderer->setLightingShader3D(lightingShader3D);
 
@@ -1512,7 +1567,14 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
         uniform vec3 u_sunColor;     // linear, already scaled by the sun intensity
         uniform vec3 u_ambientColor; // linear, already scaled by the ambient intensity
         uniform vec2 u_verticalGradient; // x = how dark the foot of a wall goes, y = roof shade
-        vec4 applyLighting3D(lowp vec4 color, mediump vec3 normal, mediump float wallT, mediump float sideVertex, mediump float shadow) {
+        // How much of the colour is EMITTED rather than lit (mapbox's *-emissive-strength): 1 draws
+        // it as authored whatever the hour, 0 hands it entirely to the scene light.
+        uniform float u_emissive;
+        // What the light does to a flat, upward-facing surface (calculateGroundRadiance), in LINEAR
+        // space. Passed even though the 3D pass computes its own per-face term, because it is what
+        // a replaceable grade is written against and what the emissive mixes back towards.
+        uniform vec3 u_radiance;
+        vec4 applyLighting3D(lowp vec4 color, mediump vec3 normal, mediump float wallT, mediump float sideVertex, mediump float shadow, mediump float skyShadow) {
             // Ambient occlusion where a wall meets the ground: that corner is shadowed by the ground
             // and by the building's own footprint whatever the sun does, and it is the cue that
             // makes an extrusion stand on the terrain instead of floating over it - the shadow map
@@ -1531,18 +1593,38 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
             // Ambient and sun simply SUM - no headroom coupling - and the ambient itself is
             // direction-aware, which is what separates wall tones without any gradient ramp.
             mediump float ndl = dot(normal, u_sunDir);
+            // CLAMPED, which is what fill_extrusion does (shadowed_light_factor_normal,
+            // _prelude_shadow.fragment.glsl). The WRAPPED form next to it, calculate_NdotL, is for
+            // model layers - reaching for it here flattens the whole point: a low dawn sun should
+            // leave a roof (N.L = sin(altitude)) well under the wall facing it, and wrapping lifts
+            // the roof by half the gap. The nuance between the walls comes from the ambient below.
+            mediump float sunNdl = max(0.0, ndl);
             // Sky is brighter near the sun: faces turned away lose up to 30% of the ambient,
             // scaled by how bright the sun actually is.
             mediump float dirLuminance = dot(u_sunColor, vec3(0.2126, 0.7152, 0.0722));
             mediump float ambientDirectional = mix(1.0 - 0.3 * min(dirLuminance, 1.0), 1.0, min(ndl + 1.0, 1.0));
             // Environmental light blocked from below: a downward face keeps 92%, a roof all of it.
             mediump float vertical = mix(0.92, 1.0, normal.z * 0.5 + 0.5);
-            // Only the sun is shadowed. The ambient is the sky, and a wall in shadow still sees it.
-            mediump vec3 lit = u_ambientColor * (vertical * ambientDirectional) + u_sunColor * (max(0.0, ndl) * shadow);
+            // The sun is shadowed by the map AND by the back-face rule; the sky only by the map
+            // (skyShadow), so a wall merely turned away from the sun keeps all of it. Without the
+            // sky term a shadowed facade moved by 4% where the ground beside it went to a fifth -
+            // mapbox's own ratio, whose ambient is four times its directional.
+            //
+            // Both are raised to 2.2 first, because this sum is LINEAR and the ground applies its
+            // own shadow to a finished sRGB colour. A strength of 0.8 leaves a fifth of the light
+            // there and pow(0.2, 1/2.2) = 0.48 here: the same setting, half the shadow. Squared
+            // into the linear domain, the two come out at the same depth.
+            mediump float linearSky = pow(skyShadow, 2.2);
+            mediump float linearSun = pow(shadow, 2.2);
+            mediump vec3 lit = u_ambientColor * (vertical * ambientDirectional * linearSky) + u_sunColor * (sunNdl * linearSun);
             // The light is summed in LINEAR space and only then returned to sRGB, which is the
             // whole reason their facades stay soft where a straight sRGB multiply crushes them.
             // Equivalent to linearTosRGB(sRGBToLinear(color) * lit), one pow instead of three.
             lit = pow(lit, vec3(1.0 / 2.2));
+            // An EMITTED surface keeps its authored colour whatever the light does - mapbox's
+            // `mix(apply_lighting(color), color, emissive_strength)`. At 0 this is a no-op, which is
+            // what every extrusion in a converted Standard asks for; a lit window asks for more.
+            lit = mix(lit, vec3(1.0), clamp(u_emissive, 0.0, 1.0));
             // Premultiplied, so scaling rgb alone is a valid tint and the clamp keeps rgb <= a.
             return vec4(min(baseColor * lit, vec3(color.a)), color.a);
         }

@@ -151,25 +151,45 @@ namespace massif {
 
             std::string family;
             std::string style = splitSuffix(normalizedName, STYLE_SUFFIXES, family);
-            for (int i = 0; FONT_ALIASES[i].name; i++) {
-                if (family != FONT_ALIASES[i].name) {
+
+            // A weight can sit between the family and the style ('Roboto Medium Italic'), and it is
+            // not part of any family name here - 'robotomedium' matches no alias, so the whole name
+            // went unresolved and the label was drawn in the fallback font. Taking the weight off
+            // too leaves the family that does match; the weight itself is applied by the renderer,
+            // through the face's variable axes (vt::FontManager).
+            std::string weightFamily;
+            std::string weight = splitSuffix(family, FAMILY_WEIGHT_SUFFIXES, weightFamily);
+
+            const std::string families[] = { family, weightFamily };
+            for (const std::string& candidateFamily : families) {
+                if (candidateFamily.empty()) {
                     continue;
                 }
-                std::string candidates = FONT_ALIASES[i].fileCandidates;
-                for (std::size_t pos = 0; pos < candidates.size(); ) {
-                    std::size_t spacePos = candidates.find(' ', pos);
-                    std::string candidate = candidates.substr(pos, spacePos == std::string::npos ? std::string::npos : spacePos - pos);
-                    pos = (spacePos == std::string::npos ? candidates.size() : spacePos + 1);
+                for (int i = 0; FONT_ALIASES[i].name; i++) {
+                    if (candidateFamily != FONT_ALIASES[i].name) {
+                        continue;
+                    }
+                    std::string candidates = FONT_ALIASES[i].fileCandidates;
+                    for (std::size_t pos = 0; pos < candidates.size(); ) {
+                        std::size_t spacePos = candidates.find(' ', pos);
+                        std::string candidate = candidates.substr(pos, spacePos == std::string::npos ? std::string::npos : spacePos - pos);
+                        pos = (spacePos == std::string::npos ? candidates.size() : spacePos + 1);
 
-                    fileName = findFontFile(fontMap, candidate + style);
-                    if (fileName.empty()) {
-                        fileName = findFontFile(fontMap, candidate);
+                        // Most specific first: the family's own weighted-and-styled file if it ships
+                        // one ('sans-serif-medium'), then the styled one, then the family itself.
+                        fileName = findFontFile(fontMap, candidate + weight + style);
+                        if (fileName.empty()) {
+                            fileName = findFontFile(fontMap, candidate + style);
+                        }
+                        if (fileName.empty()) {
+                            fileName = findFontFile(fontMap, candidate);
+                        }
+                        if (!fileName.empty()) {
+                            return fileName;
+                        }
                     }
-                    if (!fileName.empty()) {
-                        return fileName;
-                    }
+                    break;
                 }
-                break;
             }
 
             if (!allowFallback) {

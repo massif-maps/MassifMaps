@@ -150,6 +150,7 @@ public class DemoMap {
     private TileDataSource cachedVector;
     private TileDataSource cachedRaster;
     private TileDataSource cachedContourTiles;
+    private TileDataSource cachedLandform;
     private GeoJSONVectorTileDataSource cachedManeuvers;
     private int maneuverLayerIndex = -1;
     private final ManeuverArrowBuilder maneuverBuilder = new ManeuverArrowBuilder();
@@ -345,16 +346,39 @@ public class DemoMap {
     // --- base map --------------------------------------------------------------------------------
 
     /**
+     * A compiled style's own switches (dir/zip/project). Live: a style parameter is a redraw, not
+     * a re-decode, so this is called both when the layer is built and from DemoLive.
+     */
+    public void applyStyleParameters() {
+        setStyleParameter("buildings", DemoConfig.STYLE_BUILDINGS);
+        setStyleParameter("building_tilt_drop", DemoConfig.STYLE_TILT_DROP);
+        setStyleParameter("building_ao", DemoConfig.STYLE_AO);
+    }
+
+    private void setStyleParameter(String name, String value) {
+        if (baseDecoder == null || value.isEmpty()) {
+            return;
+        }
+        try {
+            baseDecoder.setStyleParameter(name, value);
+        } catch (Exception e) {
+            Log.w(TAG, "style has no '" + name + "' parameter: " + e.getMessage());
+        }
+    }
+
+    /**
      * The base map: either a plain VectorTileLayer or a CompositeVectorTileLayer that weaves
      * hillshade / satellite / contour sources into the style's own layer order.
      */
     private Layer createBaseLayer() {
         baseDecoder = DemoStyles.create(DemoConfig.STYLE_SOURCE, dataPath);
+        applyStyleParameters();
         // see BASE_TILE_CACHE_MB: the SDK default (10MB) is what makes a zoom step blank the map
         if (DemoConfig.BASE_MODE == DemoConfig.BaseMode.PLAIN) {
             compositeLayer = null;
             baseLayer = new VectorTileLayer(vectorSource(), baseDecoder);
             baseLayer.setTileCacheCapacity(DemoConfig.BASE_TILE_CACHE_MB * 1024L * 1024L);
+            baseLayer.setZoomLevelBias(DemoConfig.VECTOR_ZOOM_BIAS);
             return baseLayer;
         }
 
@@ -364,6 +388,7 @@ public class DemoMap {
         compositeLayer = layer;
         baseLayer = layer;
         layer.setTileCacheCapacity(DemoConfig.BASE_TILE_CACHE_MB * 1024L * 1024L);
+        layer.setZoomLevelBias(DemoConfig.VECTOR_ZOOM_BIAS);
         syncCompositeSources();
         if (DemoConfig.STYLE_SOURCE == DemoConfig.StyleSource.PROJECT && DemoConfig.PARAM_TOGGLE_INTERVAL_MS > 0) {
             startParamToggleLoop();
@@ -396,6 +421,12 @@ public class DemoMap {
             compositeLayer.addVectorDataSource("contour", contourSource());
         } else {
             compositeLayer.removeExternalDataSource("contour");
+        }
+        // landform: a SECOND tileset merged in, for a style whose layers do not all come from one.
+        if (!DemoConfig.LANDFORM_URL.isEmpty()) {
+            compositeLayer.addVectorDataSource(DemoConfig.LANDFORM_SLOT, landformSource());
+        } else if (cachedLandform != null) {
+            compositeLayer.removeExternalDataSource(DemoConfig.LANDFORM_SLOT);
         }
         checkCompositeSlots();
         mapView.requestRender();
@@ -1243,6 +1274,22 @@ public class DemoMap {
     // SHARED TILE SOURCES (created once, used by several layers)
     // =============================================================================================
 
+    /**
+     * The extra tileset a multi-source style needs. MapTiler's topo draws peaks and volcanoes from
+     * a 'landform' tileset while everything else comes from the planet one, and a z13 planet tile
+     * carries no peak layer at all - which is why they drew nothing until this existed.
+     */
+    public TileDataSource landformSource() {
+        if (cachedLandform == null) {
+            HTTPTileDataSource source = new HTTPTileDataSource(DemoConfig.LANDFORM_MIN_ZOOM, DemoConfig.LANDFORM_MAX_ZOOM, DemoConfig.LANDFORM_URL);
+            source.setHTTPHeaders(userAgentHeaders());
+            PersistentCacheTileDataSource cache = new PersistentCacheTileDataSource(source, cacheDbPath(DemoConfig.LANDFORM_CACHE_DB));
+            cache.setCapacity(DemoConfig.PERSISTENT_CACHE_MB * 1024L * 1024L);
+            cachedLandform = cache;
+        }
+        return cachedLandform;
+    }
+
     /** Master vector tiles of the base map, persistently cached. */
     public TileDataSource vectorSource() {
         if (cachedVector == null) {
@@ -1475,6 +1522,8 @@ public class DemoMap {
             lightOptions.setSunAzimuth(DemoConfig.SUN_AZIMUTH);
             lightOptions.setSunAltitude(DemoConfig.SUN_ALTITUDE);
         }
+        lightOptions.setSunOverridingStyle(DemoConfig.APP_SUN);
+        lightOptions.setDayCycleLightsEnabled(DemoConfig.DAY_CYCLE_LIGHTS);
         lightOptions.setSunIntensity(DemoConfig.SUN_INTENSITY);
         lightOptions.setAmbientIntensity(DemoConfig.AMBIENT_INTENSITY);
         lightOptions.setAmbientColor(new Color(DemoConfig.AMBIENT_COLOR_ARGB));

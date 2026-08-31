@@ -67,6 +67,172 @@ shadows off the lighting is what pays for it, +1.2 ms of `layers` (+6% of the fr
 a contour that shades like the ground under it. Cheaper normals were not tried: a different normal
 than the surface's would make the two disagree exactly where the eye compares them.
 
+## A 2D colour's own emissive, and an hour-driven palette
+
+MapBox lights its 2D layers with the same scene lights as its 3D ones. `*-emissive-strength` is how
+much of a layer's colour is **emitted** rather than lit: at 1 it is drawn as authored under any
+light, at 0 the scene owns it entirely. That, not a different palette, is how Standard's `night`
+preset gets dark — a label stays legible while the roads under it go down with the light.
+
+The SDK carries it as `polygon-emissive-strength` / `line-emissive-strength` (plus their
+`-pattern-` forms), a `building-emissive-strength` Map setting for the extrusions, and a
+`background-emissive-strength` one for the map background. Every one of them defaults to **1**, so a
+style that says nothing renders exactly as it did before any of this existed.
+
+The factor is mapbox's own `calculateGroundRadiance` with the ground normal — what the scene light
+does to a flat, upward-facing surface. `resolveLighting` returns it as `ResolvedLighting::radiance`,
+and each surface applies
+
+```
+shown_c = authored_c × (emissive + (1 − emissive) × radiance_c)
+```
+
+which is their `mix(apply_lighting_ground(color), color, emissive_strength)` written out. It is per
+CHANNEL, so a light's colour moves the hue and not only the brightness — dusk removes blue rather
+than merely darkening. A 2D surface has no normal of its own, so every one of them is lit as if it
+faced up; that is the whole approximation, and it is mapbox's too.
+
+Where each applies it:
+
+| Surface | Where |
+|---|---|
+| 2D geometry (polygon, line, their patterns) | `GLTileRenderer::renderTileGeometry`, where the colours are already evaluated and memoised per frame — one multiply per DISTINCT colour, not per feature |
+| extrusions | `u_emissive` + `u_radiance` in the 3D lighting shader, which computes its own per-face term |
+| labels, shields, markers | `GLTileRenderer::renderLabelPass`, in the one block that evaluates a label style's colours — fill, halo, the secondary and icon runs, the icon halo, and both plates |
+| the map background | `GLTileRenderer::renderTileBackground` (a `vt::TileBackground`, built per tile from the Map setting), **and** `VectorTileLayer::getBackgroundColor`, which is a different surface: the terrain ground fill and the drape clear colour. Both take the same grade, or the two disagree where the ground shows through |
+
+The background caught this out once: `getBackgroundColor` was graded first and nothing changed on
+screen, because at that camera every pixel of background came from the per-tile `TileBackground`
+and none from the terrain ground.
+
+### `LightOptions.DayCycleLightsEnabled` — the hour picks the light
+
+With this on, the ambient and sun **colours** and their intensities are derived from the sun's own
+height, interpolated in linear space between the four `lights` blocks MapBox Standard ships. They
+are anchored where the sun ACTUALLY IS at each of those hours — night below −9°, dawn or dusk
+through the 3–12° twilight band, day from 38° up — not at the light directions Standard states for
+them (its `dawn` block points a light 40° up, which in a real day cycle is the middle of the
+morning). Hour 12 then renders as its `day` preset and 19 as its `dusk`, from **one** palette — a converted style no longer needs a file per preset, and the hour
+can move on a running map. `sunDir.x ≥ 0` is what picks dawn over dusk at the same height; nothing
+else distinguishes them.
+
+It replaces only those four values. The sun DIRECTION is the input it reads, never an output.
+
+#### The curve is a list of stops, and the app may replace it
+
+The four setups are not special-cased anywhere: they are a `DayCycleLight::Stop[]` — a light
+anchored on a sun height — and the curve is read off it. Below the first stop and above the last it
+holds; between two it smoothsteps in linear colour space. Written that way, MapBox's own curve is
+four stops, and the doubled twilight entry is what holds the preset flat between 3° and 12° so the
+sun passes THROUGH dusk instead of crossing it:
+
+| altitude | light |
+|---|---|
+| −9° | night |
+| 3° | dusk (dawn when rising) |
+| 12° | dusk (dawn when rising) |
+| 38° | day |
+
+`LightOptions.dayCycleLightStops` replaces it, and `dayCycleRisingLightStops` gives a rising sun a
+curve of its own (left empty, the one curve is used all day). An empty list is the built-in one.
+
+**A replacement has to write BOTH, or the morning is wrong.** Setting only `dayCycleLightStops`
+leaves a rising sun reading the setting curve, so a converted Standard renders its `dusk` light at
+dawn — the `day-cycle-light` example did exactly that until it carried two lists.
+
+**A preset comes out EXACTLY only where the curve is flat**: below the first stop, above the last,
+and inside the doubled twilight entry. Everywhere else the answer is a smoothstep of two, so a sun
+30° up is neither `dusk` nor `day` and no hour makes it one — matching a mapbox `lightPreset`
+screenshot means putting the sun inside one of those three regions (`tests/api/DayCycleLightTest.cpp`
+pins both halves of this).
+
+This is the whole extension point, and it is deliberately small: everything the SDK derives from
+the light — the 2D grade, the extrusion sun and ambient, the terrain shading, the brightness a
+style ramps its labels over — is a function of what the curve returns, so one list changes the
+whole map at every hour with no second theme, no shader and no re-decode. Changing it is a redraw:
+the tiles are untouched.
+
+Through the facade it is one JSON property, `light.dayCycleLightStops`, a list of objects:
+
+```json
+[{ "sunAltitude": 2, "ambientColor": "#ff2d95", "ambientIntensity": 0.85,
+   "sunColor": "#ff8a00", "sunIntensity": 0.6 }]
+```
+
+Colours are written back as `#aarrggbb` and read leniently — `#rgb`, `#rrggbb`, `#aarrggbb`, or the
+plain ARGB number every other colour property carries. A stop with no `sunAltitude` is refused
+rather than defaulted; it would have no place on the curve.
+
+The `day-cycle-light` gallery example is this, on two converted styles and two curves.
+
+### `view::brightness` — the one thing that had to stay live
+
+mapbox's `["measure-light", "brightness"]` is a scalar 0–1 that a style ramps over; Standard drives
+its one-way arrows and a few shields off it, and that is how they dim at night. Folded at
+conversion time it froze at whatever preset the conversion was run for — the arrows were emitted at
+`0.97`, so the label path was correct and invisible: text went 255 → 249 over a whole day.
+
+So the brightness is a VIEW VARIABLE. `ViewState::lightBrightness` carries it, `view::brightness`
+reads it (`ExpressionContext::getViewStateVariable`, beside `view::zoom` and `view::tilt`), and
+`TileRenderer` sets it on all three view states it builds — the draw one, the prepare one that the
+drape bake uses, and the culler's. A ramp over it is then re-evaluated per frame, with no re-decode,
+exactly like a zoom ramp:
+
+```
+marker-emissive-strength: linear([view::brightness], (0.25, 0.7), (0.5, 1));
+```
+
+`DayCycleLight::brightness` is mapbox's `calculateLightsBrightness` ported — the mean of the two
+lights' W3C relative luminance, the directional one weighted by the sun's height. It lands on their
+own numbers for day (0.478), dawn (0.396) and dusk (0.027). **Night is deliberately different**:
+mapbox's night light sits 30° above the horizon whatever the hour, an artistic moon, while a day
+cycle has the sun genuinely down, so the directional term is 0 and the value is 0.002 rather than
+0.0135. Both are far below the 0.25 stop every ramp starts at, so no ramp can tell them apart.
+
+Under `--live-light` the converter stops folding `measure-light` and emits `[view::brightness]`; the
+default mode still folds it, so nothing changes for a per-preset palette.
+
+### `colors-prelit` does not mean "pre-lit by the converter"
+
+The style-tools converter has two modes. By default it folds the light into the colours at
+conversion time and emits one palette per preset; with `--live-light` it leaves the colours authored
+and emits the emissive strengths instead. `colors-prelit: 1` is emitted in **both**, because what it
+states is that the 2D colours already carry the light *by the time the terrain surface samples
+them* — folded in for one, applied at colour evaluation (which runs before the drape bake) for the
+other. It tells `buildTerrainLighting` not to light the ground a second time, and says nothing about
+the shadows, which a pre-lit style still receives.
+
+The two modes then select themselves with no second flag: the grade only fires where a colour states
+an emissive below 1, and a folded palette states none.
+
+### Three things that had to be got right
+
+**The radiance is returned in sRGB.** The sum is linear light, and it multiplies an sRGB colour.
+Left linear it came out five times too dark at dusk — 0.06 against the 0.29 the same formula gives
+in the converter, which is what made the water black.
+
+**The renderer is given it in `prepareFrame`, not only `onDrawFrame`.** The drape bake evaluates
+every colour and runs in `prepareFrame`; set only in the latter, a colour was baked against the
+previous frame's light.
+
+**The radiance is part of `calculateDrapeFingerprint`.** A cached drape is never re-baked for a
+uniform change, so without this, moving the hour on a running map moved the buildings — lit by a
+per-frame uniform — and left the ground exactly as it was. It is quantised to 64 steps per channel,
+so a whole day cycle re-bakes a few dozen times rather than every frame.
+
+### Known gap: a TRANSLUCENT extrusion has no path
+
+The 3D pass runs with blending off and depth writes on — one opaque surface per pixel, which is
+what lets the extrusions occlude each other and what the shadow map is drawn against. A
+`building-fill-opacity` below 1 therefore has nowhere to go: the fractional alpha is written
+straight into the frame rather than composited, and a city drawn that way reads as a wash of
+half-buildings showing through one another.
+
+MapTiler Streets states `fill-extrusion-opacity: 0.4`, so this is not hypothetical. The converter
+clamps it to 1 and says so in its coverage report; drawn opaque is much the closer of the two
+answers. The real fix is a depth pre-pass — extrusions rendered depth-only first, then blended with
+`GL_EQUAL` and no depth write — so exactly one translucent surface survives per pixel. Not done.
+
 ## Cast shadows
 
 `MapRenderer::applyTerrainShadows` + `TerrainShadowMap` (all/native/renderers/utils/).
@@ -483,6 +649,30 @@ The term now goes into `applyLighting3D`, which requires the extrusion lighting 
 fragment** (`LightingShader(perVertex=false)`) — the shadow exists nowhere else. Unmeasured cost: one
 dot, one mix and one `pow(vec3)` per building fragment.
 
+### …but the sky term still has to go with the CASTER part of it
+
+Shadowing the sun alone left a shadow on a building all but invisible. The arithmetic: mapbox's day
+preset is **ambient 0.8 against a directional 0.2**, so removing the sun outright moves a wall by
+~4% of its luminance, while the ground beside it — which multiplies its FINAL colour by the shadow
+factor, ambient included — drops to a fifth. Two models, and the one on the buildings is the one
+nobody can see.
+
+`shadowFactorSlopeParts(ndl, out mapLit)` splits the answer the two consumers need:
+
+| | what dims it | why |
+|---|---|---|
+| the sun | the depth map **and** the back-face rule | a wall turned away is in its own shadow, and no depth comparison can decide that |
+| the sky (`skyShadow`) | the depth map **only** | standing in another building's shadow hides part of the sky; merely facing away from the sun does not |
+
+`mapLit` is 1 wherever the map was not consulted — back-facing, or outside every cascade — which is
+exactly what keeps the back-face trap above fixed. A receiver that wants to dim its ambient must use
+`mapLit` and never the return value.
+
+Judged at `lon 2.33150 lat 48.87050 z18.2 tilt 55`, `--es shadow 0.5 --es sunAltitude 25`: roof and
+courtyard shadows now read at the same depth as the street. At `shadow 0.9` both go near-black —
+that is the strength, not the split, and it is the ground's own model showing through on the walls
+now that the two agree.
+
 Worth recording how long this hid: three separate rounds blamed the lighting model, the ambient
 value and the sun altitude in turn. What settled it was bypassing stages rather than reasoning —
 `applyLighting3D` returning its input unchanged still gave black walls, which ruled the lighting out
@@ -820,6 +1010,54 @@ shadows. Half-working shadows are worse than none. To work on it, flip that argu
 
 Tangram-ng has **no** terrain shadows at all, so there is nothing to copy here — this is one of the
 few places the fork is ahead of the reference and therefore on its own.
+
+### Not done: mapbox's distance cutoff, and why it is not a per-tile zoom ramp
+
+A recurring request is that a tile arriving in the distance under tilt should ramp its buildings in
+rather than pop them at full height. The instinct is to evaluate `building-height-scale` per tile at
+that tile's own zoom. **mapbox does not do that**, and the reason is worth recording before anyone
+tries it: their `fill-extrusion-vertical-scale` is a plain `uniform highp float u_vertical_scale`
+applied as `base *= u_vertical_scale; height *= u_vertical_scale;` (`fill_extrusion.vertex.glsl`),
+evaluated once per frame at the camera zoom — exactly what we do. A per-tile zoom would make two
+adjacent tiles at different LOD draw different heights, and a footprint split across a tile boundary
+would step at the seam; with a ramp as steep as z15 → z15.3 one LOD level spans the whole ramp.
+
+What they have instead is `RENDER_CUTOFF`, driven by `fill-extrusion-cutoff-fade-range`, and it is a
+**per-building distance** term, not a per-tile one:
+
+```glsl
+vec4 ground = u_matrix * vec4(centroid_decoded, ele, 1.0);   // the building's CENTROID
+cutoff = cutoff_opacity(u_cutoff_params, ground.z);          // a function of its depth
+...
+scaled_pos.z = mix(c_ele, h, cutoff_scale);                  // height lerped ground -> full
+```
+
+```glsl
+float cutoff_opacity(vec4 p, float depth) {                  // src/shaders/_prelude.glsl
+    float linearDepth = (depth - p.x) / (p.y - p.x);
+    return clamp((linearDepth - p.z) / (p.w - p.z), 0.0, 1.0);
+}
+```
+
+Three properties that matter:
+
+- the term is per CENTROID, so a building is whole whatever tile carries it — no seam;
+- the shadow follows it: the fragment calls `shadowed_light_factor_normal_opacity(..., v_cutoff_opacity)`
+  and `discard`s at 0, which is the "fade the shadow with the ramp" half of the request;
+- buildings do not all collapse on one line — a per-building seed from the centroid and the height
+  staggers them, `if (cutoff < 0.8 - seed) cutoff = 0.0;`, so a tall building survives longer.
+
+Their constants (`src/render/cutoff.ts`): `CUTOFF_DISTANCE_BASE_MULTIPLIER` 1.4 × the
+camera-to-centre distance, `ZOOM_SCALE_EXPONENT` 0.85, `FADE_RANGE_HEIGHT_SCALE` 1.3,
+`ACTIVATION_PITCH_RAMP_WIDTH` 15°. `u_cutoff_params` is
+`[nearZ, farZ, relativeCutoffDistance, relativeCutoffFadeDistance]`. Two behaviours to keep in mind
+before porting: it only activates under PITCH, ramping in over 15°, and it is **disabled when
+terrain is on** (`if (cutoffFadeRange <= 0.0 || painter.terrain) return {shouldRenderCutoff: false}`,
+a TODO on their side) — which is most of our benches.
+
+Porting it is a per-vertex term from a centroid plus a four-float uniform, not the per-tile function
+plumbing it is easily mistaken for. The open question is whether `TileLayerBuilder` already carries a
+per-building centroid in the extrusion vertex layout, or whether one has to be added.
 
 ## Sky
 

@@ -422,7 +422,19 @@ public final class DemoPanel {
                 refreshStatus(demo);
             }
         });
+        // A converted Mapbox Standard writes one project per light preset over a shared
+        // style.mss, so this is a re-compile of the style, not an option apply.
+        choice(context, "light", LIGHT_PRESETS, indexOf(LIGHT_PRESETS, DemoConfig.LIGHT_PRESET), new IntSetting() {
+            public void set(int index) {
+                DemoConfig.LIGHT_PRESET = LIGHT_PRESETS[index];
+                demo.rebuildBaseLayer();
+                refreshStatus(demo);
+            }
+        });
     }
+
+    /** The projects a converted Mapbox Standard writes; "" lets the package pick its first. */
+    private static final String[] LIGHT_PRESETS = { "", "day", "dawn", "dusk", "night" };
 
     /**
      * The shield test style (StyleSource.POI): a font icon on every POI and the name on whichever
@@ -756,6 +768,11 @@ public final class DemoPanel {
 
     private static void buildSunSection(Context context, final DemoMap demo) {
         header(context, "SUN");
+        // A style may state its own sun - a converted MapBox style states one per light preset -
+        // and by default that wins, so the sliders below do nothing until this is ticked.
+        check(context, "app sun overrides style", DemoConfig.APP_SUN, new BoolSetting() {
+            public void set(boolean value) { DemoConfig.APP_SUN = value; demo.lightOptions.setSunOverridingStyle(value); }
+        });
         check(context, "terrain lighting", DemoConfig.TERRAIN_LIGHTING, new BoolSetting() {
             public void set(boolean value) { DemoConfig.TERRAIN_LIGHTING = value; demo.lightOptions.setTerrainLightingEnabled(value); }
         });
@@ -1060,6 +1077,22 @@ public final class DemoPanel {
         // Changes the visible tile set, so apply on release only.
         slider(context, "tile LOD (x tangram, 0=finest)", 0, 4, DemoConfig.TILE_LOD_FACTOR, true, new FloatSetting() {
             public void set(float value) { DemoConfig.TILE_LOD_FACTOR = value; demo.mapView.getOptions().setTileLODFactor(value); }
+        });
+        // The GRAZING half of the same test. Unbounded it swings with the camera, so under a tilt
+        // one side of the horizon keeps its detail and the other loses a level; 0 = no limit.
+        slider(context, "tile LOD grazing limit (levels, 0=none)", 0, 4, DemoConfig.TILE_LOD_GRAZING, true, new FloatSetting() {
+            public void set(float value) { DemoConfig.TILE_LOD_GRAZING = value; demo.mapView.getOptions().setTileLODForeshorteningLimit(value); }
+        });
+        // Which zoom the vector tiles are FETCHED at, against the view's. -1 is what a style
+        // written for MapBox's 512 px tiles wants; it also shifts every `[zoom >= N]` rule a level
+        // away from the `view::zoom` ramps beside it, which is what hides a height ramp.
+        slider(context, "vector zoom bias (levels)", -2, 2, DemoConfig.VECTOR_ZOOM_BIAS, true, new FloatSetting() {
+            public void set(float value) {
+                DemoConfig.VECTOR_ZOOM_BIAS = value;
+                if (demo.baseLayer != null) {
+                    demo.baseLayer.setZoomLevelBias(value);
+                }
+            }
         });
         slider(context, "tile coarsening (levels)", 0, 6, DemoConfig.TERRAIN_MAX_TILE_ZOOM_COARSENING, true, new FloatSetting() {
             public void set(float value) { DemoConfig.TERRAIN_MAX_TILE_ZOOM_COARSENING = (int) value; demo.terrainOptions.setMaxTileZoomCoarsening((int) value); }

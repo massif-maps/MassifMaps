@@ -1,6 +1,7 @@
 package com.massifmaps.MassifDemo.demo;
 
 import android.content.Intent;
+import android.util.Log;
 
 /**
  * Intent-extra overrides for {@link DemoConfig}.
@@ -19,6 +20,8 @@ import android.content.Intent;
  * shell quoting variant. Numbers are parsed as floats, booleans with Boolean.parseBoolean.
  */
 public final class DemoCfg {
+    private static final String TAG = "DemoCfg";
+
 
     private static Intent sIntent;
 
@@ -64,14 +67,26 @@ public final class DemoCfg {
         return v != null ? Boolean.parseBoolean(v) : def;
     }
 
+    /**
+     * A number, or the default when the extra is not one. `--es shadow true` used to take the whole
+     * app down before the map was ever built: `shadow` is a STRENGTH, and one mistyped extra out of
+     * thirty is not worth a crash on a bench.
+     */
     public static float cfgFloat(String key, float def) {
         String v = cfg(key);
-        return v != null ? Float.parseFloat(v) : def;
+        if (v == null) {
+            return def;
+        }
+        try {
+            return Float.parseFloat(v);
+        } catch (NumberFormatException e) {
+            Log.w(TAG, "--es " + key + " " + v + " is not a number, keeping " + def);
+            return def;
+        }
     }
 
     public static int cfgInt(String key, int def) {
-        String v = cfg(key);
-        return v != null ? (int) Float.parseFloat(v) : def;
+        return (int) cfgFloat(key, def);
     }
 
     /** '#' starts a comment in the adb shell, so colours are passed bare ("ff00ff"). */

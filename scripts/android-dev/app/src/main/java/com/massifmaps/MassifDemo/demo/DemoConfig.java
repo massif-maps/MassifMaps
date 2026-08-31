@@ -63,6 +63,13 @@ public final class DemoConfig {
     public static String STYLE_ZIP_NAME = "osm.zip";
     /** Style project inside the APK assets, read by AndroidAssetPackage for StyleSource.ASSETS. */
     public static String STYLE_ASSETS_PATH = "style";
+    /** Which project of that package to compile: assets/style/<name>.json. 'eink' is the one that
+     *  turns every polygon pattern on (forest, scrub, rock, scree, wetland, vineyard). */
+    public static String STYLE_ASSETS_NAME = "osm";
+    /** Which project of a DIR/ZIP package to compile, when it carries more than one. A converted
+     *  Mapbox Standard writes day/dawn/dusk/night.json over one style.mss, so this is the
+     *  time-of-day switch. Empty lets CompiledStyleSet pick the first project it finds. */
+    public static String LIGHT_PRESET = "";
     /** Style zip used by the offline "routes" layer. */
     public static String ROUTES_STYLE_ZIP_NAME = "inner.zip";
     /** MBTiles used by the offline "routes" layer. */
@@ -107,6 +114,17 @@ public final class DemoConfig {
     public static boolean COMPOSITE_HILLSHADE = false;
     public static boolean COMPOSITE_SATELLITE = false;
     public static boolean COMPOSITE_CONTOUR = true;
+    /**
+     * A SECOND vector tileset merged into the master style. A MapBox style may draw from several
+     * tilesets - MapTiler's topo keeps its peaks and volcanoes in a 'landform' one - and a CartoCSS
+     * project has a single datasource, so the extra tileset needs its own composite slot here.
+     * Empty = off.
+     */
+    public static String LANDFORM_URL = "";
+    public static String LANDFORM_SLOT = "peak";
+    public static String LANDFORM_CACHE_DB = "landform.db";
+    public static int LANDFORM_MIN_ZOOM = 0;
+    public static int LANDFORM_MAX_ZOOM = 14;
     /** Single-pass segmented rendering (A/B switch of the composite renderer). */
     public static boolean COMPOSITE_SINGLE_PASS = true;
     /** Per-source zoom bias: +1 fetches the DEM one zoom deeper than the base map. */
@@ -131,6 +149,13 @@ public final class DemoConfig {
     public static int VECTOR_MIN_ZOOM = 0;
     public static int VECTOR_MAX_ZOOM = 14;
     public static String VECTOR_CACHE_DB = "akylas_vect.db";
+    /**
+     * Which tile LEVEL the base map asks for, relative to the view. 0 = this SDK's own rule
+     * (256 px tiles, level = floor(zoom)); -1 is what a source authored for MapBox's 512 px tiles
+     * wants, and is not cosmetic - a level deeper carries a level's worth of extra POIs, so at
+     * mapbox-gl's z13.67 we drew bicycle parkings its z13 tile does not even contain.
+     */
+    public static float VECTOR_ZOOM_BIAS = 0.0f;
     public static String HTTP_USER_AGENT = "AlpiMaps/1.4 (contact: contact@akylas.fr)";
 
     /** Shared elevation source: 3D terrain, hillshade, contours and the hypsometric tint all use it. */
@@ -201,11 +226,12 @@ public final class DemoConfig {
     public static boolean TERRAIN_ENABLED = true;
     public static float TERRAIN_EXAGGERATION = 1.0f;
     /** Auto-flatten: render flat once the terrain's on-screen parallax drops below this many
-     *  pixels, and once the tilt reaches AUTO_FLATTEN_TILT. Same values as the SDK defaults, so
-     *  '--es autoFlatten 0 --es autoFlattenTilt 0' is the A/B.
-     *  '--es autoFlatten 2 --es autoFlattenTilt 88 --es autoFlattenMs 300'. */
-    public static float AUTO_FLATTEN_PARALLAX = 2.0f;
-    public static float AUTO_FLATTEN_TILT = 88.0f;
+     *  pixels, and once the tilt reaches AUTO_FLATTEN_TILT. OFF here, unlike the SDK (2 / 88):
+     *  flattening drops the 3D passes, and with them the buildings and their shadows - which is
+     *  what this bench is usually looking at, and straight down is where a shadow reads best.
+     *  '--es autoFlatten 2 --es autoFlattenTilt 88 --es autoFlattenMs 300' is the A/B. */
+    public static float AUTO_FLATTEN_PARALLAX = 0.0f;
+    public static float AUTO_FLATTEN_TILT = 0.0f;
     public static long AUTO_FLATTEN_MS = 300;
     /** How far flattening goes: false = RENDER (terrain passes only), true = FULL (a flat map
      *  decodes and culls as a plain 2D one, for a re-decode at each switch). '--es fullSwitch true'. */
@@ -367,6 +393,12 @@ public final class DemoConfig {
     public static int SUN_DAY = (int) DemoAstro.nowUtc()[2];
     public static float SUN_AZIMUTH = 355f;
     public static float SUN_ALTITUDE = 9f;
+    /** Whether the demo's own sun beats one the style states. Off, so a converted MapBox style
+     *  lights as its source does; on, the sliders and --es sunAzimuth/sunAltitude take over.
+     *  '--es appSun true'. */
+    public static boolean APP_SUN = false;
+    /** Derive the light COLOURS from the sun's height, instead of taking the style's. */
+    public static boolean DAY_CYCLE_LIGHTS = false;
     public static float SUN_INTENSITY = 1.0f;
     public static float AMBIENT_INTENSITY = 1.0f;
     /** Tint of everything in shadow. White = neutral; a cool blue reads as sky-lit at dusk. */
@@ -562,6 +594,22 @@ public final class DemoConfig {
     public static String INLINE_BUILDING_COLOR = "#d9cfc4";
     /** Extrude buildings: this is what gives the shadow pass real 3D casters. */
     public static boolean INLINE_BUILDINGS_3D = false;
+
+    /**
+     * The `buildings` style parameter of a COMPILED style (dir/zip/project), which a converted
+     * Mapbox Standard uses as 0 = none, 1 = footprints, 2 = extrusions. Empty leaves the style's
+     * own default. `--es bld3d` sets it too, so one key turns 3D buildings off whichever style is
+     * loaded - it used to reach the inline style only.
+     */
+    public static String STYLE_BUILDINGS = "";
+    /**
+     * The `building_tilt_drop` style parameter of a converted MapBox style: how far, in PERCENT,
+     * the extrusions are flattened between tilt 80 and 90 (90 = a tenth of their height left).
+     * Empty leaves the style's own default. Live - a style parameter is a redraw, not a re-decode.
+     */
+    public static String STYLE_TILT_DROP = "";
+    /** A converted style's `building_ao` parameter: 0 turns the ground contact shadows off. Live. */
+    public static String STYLE_AO = "";
     /** Line widths of the inline style, as CartoCSS expressions - so they can be made
      *  zoom-dependent for testing how a line behaves as you zoom and tilt. The defaults widen
      *  with zoom the way a real style does; pass a plain number to pin a width instead. */
@@ -1106,12 +1154,16 @@ public final class DemoConfig {
         COMPOSITE_HILLSHADE = DemoCfg.cfgBool("hs", COMPOSITE_HILLSHADE);
         COMPOSITE_SATELLITE = DemoCfg.cfgBool("sat", COMPOSITE_SATELLITE);
         COMPOSITE_CONTOUR = DemoCfg.cfgBool("contour", COMPOSITE_CONTOUR);
+        LANDFORM_URL = DemoCfg.cfgStr("landformUrl", LANDFORM_URL);
+        LANDFORM_SLOT = DemoCfg.cfgStr("landformSlot", LANDFORM_SLOT);
+        LANDFORM_MAX_ZOOM = DemoCfg.cfgInt("landformMaxZoom", LANDFORM_MAX_ZOOM);
         COMPOSITE_SINGLE_PASS = DemoCfg.cfgBool("singlePass", COMPOSITE_SINGLE_PASS);
         COMPOSITE_HILLSHADE_ZOOM_BIAS = DemoCfg.cfgFloat("hsBias", COMPOSITE_HILLSHADE_ZOOM_BIAS);
 
         // sources
         VECTOR_URL = DemoCfg.cfgStr("vectorUrl", VECTOR_URL);
         VECTOR_MAX_ZOOM = DemoCfg.cfgInt("vectorMaxZoom", VECTOR_MAX_ZOOM);
+        VECTOR_ZOOM_BIAS = DemoCfg.cfgFloat("vectorZoomBias", VECTOR_ZOOM_BIAS);
         DEM_URL = DemoCfg.cfgStr("demUrl", DEM_URL);
         DEM_MAX_ZOOM = DemoCfg.cfgInt("demMaxZoom", DEM_MAX_ZOOM);
         DEM_ENCODING = DemoCfg.cfgStr("demEncoding", DEM_ENCODING);
@@ -1124,6 +1176,8 @@ public final class DemoConfig {
         STYLE_DIR_NAME = DemoCfg.cfgStr("styleDir", STYLE_DIR_NAME);
         STYLE_ZIP_NAME = DemoCfg.cfgStr("styleZip", STYLE_ZIP_NAME);
         STYLE_ASSETS_PATH = DemoCfg.cfgStr("styleAssets", STYLE_ASSETS_PATH);
+        STYLE_ASSETS_NAME = DemoCfg.cfgStr("styleName", STYLE_ASSETS_NAME);
+        LIGHT_PRESET = DemoCfg.cfgStr("lightPreset", LIGHT_PRESET);
         PERSISTENT_CACHE_MB = DemoCfg.cfgInt("cacheMb", PERSISTENT_CACHE_MB);
         DEM_PERSISTENT_CACHE_MB = DemoCfg.cfgInt("demCacheMb", DEM_PERSISTENT_CACHE_MB);
 
@@ -1236,6 +1290,8 @@ public final class DemoConfig {
         SUN_DAY = DemoCfg.cfgInt("sunDay", SUN_DAY);
         SUN_AZIMUTH = DemoCfg.cfgFloat("sunAzimuth", SUN_AZIMUTH);
         SUN_ALTITUDE = DemoCfg.cfgFloat("sunAltitude", SUN_ALTITUDE);
+        APP_SUN = DemoCfg.cfgBool("appSun", APP_SUN);
+        DAY_CYCLE_LIGHTS = DemoCfg.cfgBool("dayCycleLights", DAY_CYCLE_LIGHTS);
         SUN_INTENSITY = DemoCfg.cfgFloat("sunIntensity", SUN_INTENSITY);
         AMBIENT_INTENSITY = DemoCfg.cfgFloat("ambient", AMBIENT_INTENSITY);
         AMBIENT_COLOR_ARGB = DemoCfg.cfgColorInt("ambientColor", AMBIENT_COLOR_ARGB);
@@ -1322,6 +1378,12 @@ public final class DemoConfig {
         INLINE_BACKGROUND_COLOR = DemoCfg.cfgColor("bg", INLINE_BACKGROUND_COLOR);
         INLINE_BUILDING_COLOR = DemoCfg.cfgColor("bldColor", INLINE_BUILDING_COLOR);
         INLINE_BUILDINGS_3D = DemoCfg.cfgBool("bld3d", INLINE_BUILDINGS_3D);
+        STYLE_BUILDINGS = DemoCfg.cfgStr("buildings", STYLE_BUILDINGS);
+        STYLE_TILT_DROP = DemoCfg.cfgStr("bldTiltDrop", STYLE_TILT_DROP);
+        STYLE_AO = DemoCfg.cfgStr("bldAo", STYLE_AO);
+        if (STYLE_BUILDINGS.isEmpty() && DemoCfg.cfg("bld3d") != null) {
+            STYLE_BUILDINGS = INLINE_BUILDINGS_3D ? "2" : "1";
+        }
         INLINE_BUILDING_HEIGHT = DemoCfg.cfgFloat("bldHeight", INLINE_BUILDING_HEIGHT);
         INLINE_ROAD_WIDTH = DemoCfg.cfgStr("roadWidth", INLINE_ROAD_WIDTH);
         INLINE_MOTORWAY_WIDTH = DemoCfg.cfgStr("motorwayWidth", INLINE_MOTORWAY_WIDTH);

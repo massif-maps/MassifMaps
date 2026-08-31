@@ -1,0 +1,7 @@
+{
+  "extends": "./project.json",
+  "styles": [
+    "variables.mss",
+    "style.mss"
+  ]
+}

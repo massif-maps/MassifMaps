@@ -315,6 +315,16 @@
       "baked": false
     },
     {
+      "cartocss": "line-blur",
+      "mapnik": "blur",
+      "symbolizer": "line",
+      "kind": "float",
+      "type": "FloatFunctionProperty",
+      "default": "0.0",
+      "live": true,
+      "baked": false
+    },
+    {
       "cartocss": "line-cap",
       "mapnik": "stroke-linecap",
       "symbolizer": "line",
@@ -355,6 +365,16 @@
       "baked": false
     },
     {
+      "cartocss": "line-emissive-strength",
+      "mapnik": "stroke-emissive-strength",
+      "symbolizer": "line",
+      "kind": "float",
+      "type": "FloatFunctionProperty",
+      "default": "1.0",
+      "live": true,
+      "baked": false
+    },
+    {
       "cartocss": "line-end-arrow",
       "mapnik": "end-arrow",
       "symbolizer": "line",
@@ -362,6 +382,16 @@
       "type": "BoolProperty",
       "default": "false",
       "live": false,
+      "baked": false
+    },
+    {
+      "cartocss": "line-gap-width",
+      "mapnik": "gap-width",
+      "symbolizer": "line",
+      "kind": "float",
+      "type": "FloatFunctionProperty",
+      "default": "0.0",
+      "live": true,
       "baked": false
     },
     {
@@ -432,6 +462,16 @@
       "type": "CompOpProperty",
       "default": "src-over",
       "live": false,
+      "baked": false
+    },
+    {
+      "cartocss": "line-pattern-emissive-strength",
+      "mapnik": "emissive-strength",
+      "symbolizer": "line-pattern",
+      "kind": "float",
+      "type": "FloatFunctionProperty",
+      "default": "1.0",
+      "live": true,
       "baked": false
     },
     {
@@ -535,6 +575,16 @@
       "baked": false
     },
     {
+      "cartocss": "marker-emissive-strength",
+      "mapnik": "emissive-strength",
+      "symbolizer": "marker",
+      "kind": "float",
+      "type": "FloatFunctionProperty",
+      "default": "1.0",
+      "live": true,
+      "baked": false
+    },
+    {
       "cartocss": "marker-feature-id",
       "mapnik": "feature-id",
       "symbolizer": "marker",
@@ -572,6 +622,16 @@
       "type": "FloatProperty",
       "default": "1.0",
       "live": false,
+      "baked": false
+    },
+    {
+      "cartocss": "marker-halo-emissive-strength",
+      "mapnik": "halo-emissive-strength",
+      "symbolizer": "marker",
+      "kind": "float",
+      "type": "FloatFunctionProperty",
+      "default": "-1.0",
+      "live": true,
       "baked": false
     },
     {
@@ -815,6 +875,16 @@
       "baked": false
     },
     {
+      "cartocss": "polygon-emissive-strength",
+      "mapnik": "fill-emissive-strength",
+      "symbolizer": "polygon",
+      "kind": "float",
+      "type": "FloatFunctionProperty",
+      "default": "1.0",
+      "live": true,
+      "baked": false
+    },
+    {
       "cartocss": "polygon-fill",
       "mapnik": "fill",
       "symbolizer": "polygon",
@@ -852,6 +922,16 @@
       "type": "CompOpProperty",
       "default": "src-over",
       "live": false,
+      "baked": false
+    },
+    {
+      "cartocss": "polygon-pattern-emissive-strength",
+      "mapnik": "emissive-strength",
+      "symbolizer": "polygon-pattern",
+      "kind": "float",
+      "type": "FloatFunctionProperty",
+      "default": "1.0",
+      "live": true,
       "baked": false
     },
     {
@@ -1095,6 +1175,16 @@
       "baked": false
     },
     {
+      "cartocss": "shield-emissive-strength",
+      "mapnik": "emissive-strength",
+      "symbolizer": "shield",
+      "kind": "float",
+      "type": "FloatFunctionProperty",
+      "default": "1.0",
+      "live": true,
+      "baked": false
+    },
+    {
       "cartocss": "shield-face-name",
       "mapnik": null,
       "symbolizer": "shield",
@@ -1131,6 +1221,16 @@
       "kind": "color",
       "type": "ColorFunctionProperty",
       "default": "#000000",
+      "live": true,
+      "baked": false
+    },
+    {
+      "cartocss": "shield-halo-emissive-strength",
+      "mapnik": "halo-emissive-strength",
+      "symbolizer": "shield",
+      "kind": "float",
+      "type": "FloatFunctionProperty",
+      "default": "-1.0",
       "live": true,
       "baked": false
     },
@@ -1305,6 +1405,26 @@
       "baked": false
     },
     {
+      "cartocss": "shield-icon-halo-fill",
+      "mapnik": "icon-halo-fill",
+      "symbolizer": "shield",
+      "kind": "color",
+      "type": "ColorFunctionProperty",
+      "default": "#000000",
+      "live": true,
+      "baked": false
+    },
+    {
+      "cartocss": "shield-icon-halo-radius",
+      "mapnik": "icon-halo-radius",
+      "symbolizer": "shield",
+      "kind": "float",
+      "type": "FloatFunctionProperty",
+      "default": "0.0",
+      "live": true,
+      "baked": false
+    },
+    {
       "cartocss": "shield-icon-name",
       "mapnik": "icon-name",
       "symbolizer": "shield",
@@ -1332,6 +1452,16 @@
       "type": "FloatProperty",
       "default": "0.0",
       "live": false,
+      "baked": false
+    },
+    {
+      "cartocss": "shield-image-scale",
+      "mapnik": "image-scale",
+      "symbolizer": "shield",
+      "kind": "float",
+      "type": "FloatFunctionProperty",
+      "default": "1.0",
+      "live": true,
       "baked": false
     },
     {
@@ -1815,6 +1945,16 @@
       "baked": false
     },
     {
+      "cartocss": "text-emissive-strength",
+      "mapnik": "emissive-strength",
+      "symbolizer": "text",
+      "kind": "float",
+      "type": "FloatFunctionProperty",
+      "default": "1.0",
+      "live": true,
+      "baked": false
+    },
+    {
       "cartocss": "text-face-name",
       "mapnik": null,
       "symbolizer": "text",
@@ -1841,6 +1981,16 @@
       "kind": "color",
       "type": "ColorFunctionProperty",
       "default": "#000000",
+      "live": true,
+      "baked": false
+    },
+    {
+      "cartocss": "text-halo-emissive-strength",
+      "mapnik": "halo-emissive-strength",
+      "symbolizer": "text",
+      "kind": "float",
+      "type": "FloatFunctionProperty",
+      "default": "-1.0",
       "live": true,
       "baked": false
     },

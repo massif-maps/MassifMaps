@@ -68,6 +68,15 @@
             android:textColor="?attr/colorOnSurface" />
 
         <com.google.android.material.button.MaterialButton
+            android:id="@+id/settingsButton"
+            style="@style/Widget.Material3.Button.IconButton.Filled.Tonal"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:contentDescription="@string/example_settings"
+            app:icon="@drawable/ic_settings" />
+
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/codeButton"
             style="@style/Widget.Material3.Button.IconButton.Filled.Tonal"
             android:layout_width="wrap_content"
@@ -77,6 +86,34 @@
             app:icon="@drawable/ic_code" />
 
     </LinearLayout>
+
+    <!-- The gear panel: the lighting, LOD and terrain knobs on top of whatever the example set.
+         Filled once, on first open, by ExampleSettings - which talks to the map through the facade
+         so it needs to know nothing about the example. -->
+    <ScrollView
+        android:id="@+id/settingsScroll"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="8dp"
+        android:background="@color/massif_scrim"
+        android:padding="12dp"
+        android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@id/sliders"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHeight_max="420dp"
+        app:layout_constraintTop_toBottomOf="@id/exampleBar"
+        app:layout_constraintVertical_bias="1.0"
+        app:layout_constraintWidth_default="wrap"
+        app:layout_constraintWidth_max="320dp">
+
+        <LinearLayout
+            android:id="@+id/settingsPanel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+
+    </ScrollView>
 
     <!-- Sliders, in their own row ABOVE the scrolling one: a horizontal scroll container steals
          the drag, so a slider inside it cannot be moved at all. -->

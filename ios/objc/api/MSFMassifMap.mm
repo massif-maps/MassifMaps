@@ -306,6 +306,25 @@ static void MSFInstallUiDispatcher(void) {
     return [self add:layer];
 }
 
+- (BOOL)removeLayer:(NSString *)objectId {
+    BOOL owns = NO;
+    for (NSInteger index = (NSInteger) _owned.count - 1; index >= 0; index--) {
+        NSArray<NSString *> *object = _owned[index];
+        if ([object[0] isEqualToString:@"layer"] && [object[1] isEqualToString:objectId]) {
+            [_owned removeObjectAtIndex:index];
+            owns = YES;
+        }
+    }
+    MSFMassifLayer *layer = [self layer:objectId];
+    if (layer) {
+        [self remove:layer];
+    }
+    if (owns || layer) {
+        [MSFMassifApi unregisterObject:@"layer" objectId:objectId];
+    }
+    return layer != nil;
+}
+
 - (void)own:(NSString *)kind objectId:(NSString *)objectId {
     if (!_owned) {
         _owned = [NSMutableArray array];

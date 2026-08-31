@@ -53,6 +53,23 @@ source.setLayerFeatureCollection(layer, null, arrow);
 `setLayerFeatureCollection` replaces the whole layer, so an app showing several arrows (the current
 maneuver and the next) keeps its own id → collection map and rebuilds from it.
 
+### With the surface API
+
+`ManeuverArrowBuilder` has no spec type — it produces geometry rather than being a map object — but
+the source that serves the arrow does, so only the builder itself stays object-API:
+
+```java
+MassifSource arrows = map.source("maneuver-src", Spec.of("geojson").set("maxZoom", 24));
+int layer = arrows.createLayer("maneuver");
+// The builder returns SDK geometry, so the object-API setter is the one that takes it directly.
+((GeoJSONVectorTileDataSource) Massif.rawSource("maneuver-src"))
+    .setLayerFeatureCollection(layer, null, arrow);
+
+map.addLayer("maneuver", Spec.of("vector")
+    .set("source", "maneuver-src")
+    .set("style", "route-style"));
+```
+
 ## Styling contract
 
 Two rules, four attachments, no assets:

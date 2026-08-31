@@ -40,6 +40,23 @@ source.setLayerGeoJSONString(routes, geoJsonText)  // or setLayerGeoJSON(Variant
 mapView.layers.add(VectorTileLayer(source, MBVectorTileDecoder(styleSet)))
 ```
 
+### With the surface API
+
+```java
+// The source re-tiles whatever it is given, so an update is one call rather than a rebuild.
+MassifSource tour = map.source("tour-data", Spec.of("geojson").set("maxZoom", 14));
+int layer = tour.createLayer("tour");
+tour.setLayerGeoJSON(layer, routeGeoJson);
+
+map.addLayer("tour", Spec.of("vector")
+    .set("source", "tour-data")
+    .set("style", "route-style"));
+```
+
+`addFeature`, `updateFeature` and `removeFeature` are reachable the same way, so incremental edits
+need no object-API access either. Runnable, on three platforms:
+[the GeoJSON line example](/examples#geojson-line).
+
 Style it by layer name, like any other vector source:
 
 ```css

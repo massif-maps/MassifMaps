@@ -48,14 +48,9 @@ jobs:
         run: |
           brew install autoconf automake libtool
 
-      - name: prepare boost
-        run: |
-          wget https://boostorg.jfrog.io/artifactory/main/release/1.85.0/source/boost_1_85_0.zip
-          unzip boost_1_85_0.zip
-          ln -s ../boost_1_85_0 libs-external/boost
-          cd boost_1_85_0
-          ./bootstrap.sh
-          ./b2 headers
+      # The same Boost as every other build here. boostorg.jfrog.io is retired anyway.
+      - name: Prepare Boost
+        uses: ./.github/actions/prepare-boost
       
       - name: Build CSS2XML
         run: |

@@ -137,10 +137,16 @@ Two things this repository does not have yet and this workflow is the first to n
   and has never been published, so nothing has authenticated to npm from here before.
 - `permissions: id-token: write` on the publishing job, which is what `--provenance` signs with.
 
-Boost is fetched from `archives.boost.io`. The older
-[`build_css2xml.yml`](https://github.com/massif-maps/MassifMaps/blob/master/.github/workflows/build_css2xml.yml)
-still points at `boostorg.jfrog.io`; check it still resolves before relying on that workflow.
-Only headers are needed (`./b2 headers`), never a compiled Boost.
+Boost comes from [`.github/actions/prepare-boost`](https://github.com/massif-maps/MassifMaps/blob/master/.github/actions/prepare-boost/action.yml),
+the same action `build.yml` uses, so the wasm is built against the **same Boost as the SDK**. That
+is not housekeeping: the wasm compiles the style compiler, and `boost.spirit.karma` resolves an
+ambiguous grammar differently between versions **and between compilers**. A generator alternative
+that wrote a nested `or` without parentheses under emcc, and with them under clang, corrupted every
+converted style's filters while every native check passed — see
+[06-labels](../internals/rendering/06-labels.mdx) for how that surfaced. Two toolchains compiling
+one grammar is how it hid; one pinned Boost is half of not repeating it, and the other half is
+[massif-maps-libs#78](https://github.com/massif-maps/massif-maps-libs/pull/78), which took the
+choice out of the grammar. Only headers are needed, never a compiled Boost.
 
 `build_css2xml.yml` stays as it is — it builds native binaries for local debugging, which is a
 different job from shipping the tool.

@@ -1,0 +1,9 @@
+{
+  "label": "Tools",
+  "position": 7,
+  "link": {
+    "type": "generated-index",
+    "title": "Tools",
+    "description": "Command-line tools that ship beside the SDK. Today: style conversion."
+  }
+}

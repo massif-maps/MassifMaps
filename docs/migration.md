@@ -150,7 +150,7 @@ the product. There is **no renamed equivalent**; bring your own source.
 
 | Gone | Replace with |
 |---|---|
-| `CartoOnlineVectorTileLayer` and the hosted basemap | any `TileDataSource` + a CartoCSS style — see [Layers & data sources](/docs/guides/layers-and-data-sources) |
+| `CartoOnlineVectorTileLayer` and the hosted basemap | any `TileDataSource` + a CartoCSS style — see [the source reference](/docs/api/reference/source) |
 | CARTO offline map packages and their `PackageManager` endpoints | your own package server, [MBTiles](/docs/guides/offline-maps) or [PMTiles](/docs/features/pmtiles) |
 | CARTO hosted routing and geocoding endpoints | the embedded Valhalla / SGRE engines, or any HTTP service |
 | CARTO API keys and the mobile app registration flow | nothing — there is no key to set |

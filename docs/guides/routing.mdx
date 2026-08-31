@@ -1,330 +1,152 @@
 ---
 title: Routing
+description: "Valhalla routing — online against any endpoint, offline from tiles on the device — plus map matching and indoor routing."
 sidebar_position: 8
 slug: /guides/routing
 ---
 
-:::warning Describes a removed API
-This guide came from the original CARTO documentation. The CARTO online services it
-uses are **not part of Massif Maps** — `CartoOnlineRoutingService` and the hosted basemap, offline-package
-and routing endpoints behind them were dropped from the fork. The concepts still apply;
-the class names in these snippets do not. See [Migrating to Massif Maps](/docs/migration)
-and bring your own tile source and style.
-:::
-
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-## Mobile Routing
+# Routing
 
-**Routing** in Massif Maps provides fastest path between two or more geographic locations.
+Massif Maps embeds **Valhalla**: turn-by-turn routing for car, bicycle, pedestrian and more, run
+either against an HTTP endpoint or entirely offline from tiles on the device. The same service also
+does **map matching** — snapping a recorded GPS trace back onto the road network. Indoor routing
+uses a separate engine, **SGRE**, over a graph you supply.
 
-The resulting Route includes waypoints and instructions. It can be displayed as turn-by-turn directions on your map, or just a line or list of instructions. Routing functionality through the Mobile SDK includes [online routing](#online-routing), based on CARTOs online service (or third party services), and [offline routing](#offline-routing), which requires that you install an offline data package. Offline packages have to be downloaded via **Package Manager**.
+Routing is a service you create, a request you create, and a call. Nothing about it touches the
+map, so a route can be computed with no map view at all.
 
-Mobile SDK supports the following routing features:
+:::info No hosted service
+The CARTO routing endpoints are gone with the rest of the CARTO services. Point
+`customServiceURL` at a Valhalla server you run or a public one, or ship offline tiles.
+:::
 
- - Find the **fastest route from A to B**
- - Find the **fastest route between X points**, in a given order
- - Get the complete result by **route geometry** and display it on the map
- - Get instructions for **navigation actions** (turn left/right, u-turn, leave roundabout etc.)
- - Specify **instruction details**, such as the street name, turn angle, azimuth, distance and time for the next leg
- - Plan for **turn restrictions** and **one-way streets** as part of the route
- - **Fast calculations even in offline mode**, approximately 50-300 ms is expected, even for long routes
- - **Multi-country route calculations**, even in offline mode
+## Online
 
-### Online Routing
- 
-Online routing requires that you create a simple call and request to calculate the route.
-
-First create the `CartoOnlineRoutingService` and then  the route with the `calculateRoute` request. 
-
-**Note:** Calculating online routing makes a network call, so do NOT do it in UI thread.
-
-<Tabs groupId="language">
-
+<Tabs groupId="lang">
 <TabItem value="java" label="Java">
 
 ```java
+MassifObject router = Massif.object("routing", "router", Spec.of("valhalla-online"));
+router.set("customServiceURL", "https://valhalla1.openstreetmap.de/{service}");
+router.set("profile", "bicycle");
 
-CartoOnlineRoutingService onlineRoutingService = new CartoOnlineRoutingService("nutiteq.osm.car");
+MassifObject request = Massif.object("routing", "query", Spec.of("request")
+    .set("projection", "EPSG:4326")
+    .set("points", new double[][] {{5.7249, 45.1877}, {5.7148, 45.1916}}));
 
-// create separate task, as network request is done
+// Free-form Valhalla options are JSON, so they are a call rather than a property.
+request.call("setCustomParameter", "language", "fr-FR");
 
-AsyncTask<Void, Void, RoutingResult> task = new AsyncTask<Void, Void, RoutingResult>() {
-
-    protected RoutingResult doInBackground(Void... v) {
-        MapPosVector poses = new MapPosVector();
-        poses.add(startPos);
-        poses.add(stopPos);
-        RoutingRequest request = new RoutingRequest(baseProjection, poses);
-        
-        // Routing request is done here:
-        RoutingResult result = onlineRoutingService.calculateRoute(request);
-
-        return result;
+router.callAsync("calculateRoute", route -> {
+    double metres = route.getDouble("totalDistance", 0);
+    long steps = route.getLong("instructionCount", 0);
+    for (int i = 0; i < steps; i++) {
+        MassifObject step = route.call("getInstruction", i);
+        Log.i(TAG, step.getString("streetName", "") + ": " + step.getString("instruction", ""));
     }
-
-    protected void onPostExecute(RoutingResult result) {
-        if (result == null) {
-            Log.e(Const.LOG_TAG,"routing error");
-            return;
-        }
-
-        String routeText = "The route is " + (int) (result.getTotalDistance() / 100) / 10f + "km (" + result.getTotalTime() + " s)";
-        Log.i(Const.LOG_TAG,routeText);
-
-        // get instruction details
-        RoutingInstructionVector instructions = result.getInstructions();
-
-        // Remember: Put your operations back on the main thread to change the UI
-        
-        for (int i = 0; i < instructions.size(); i++) {
-            RoutingInstruction instruction = instructions.get(i);
-            Log.d(Const.LOG_TAG, instruction.toString());
-        }
-
-    }
-};
-
-task.execute();
-
+}, request);
 ```
 
 </TabItem>
+<TabItem value="ts" label="TypeScript (NativeScript)">
 
-<TabItem value="csharp" label="C#">
+```ts
+import { create } from '@nativescript-community/ui-massifmaps/api';
 
-```csharp
-  
-var onlineRoutingService = new CartoOnlineRoutingService("nutiteq.osm.car");
+const router = create('routing', 'router', { type: 'valhalla-online' });
+router.set('customServiceURL', 'https://valhalla1.openstreetmap.de/{service}');
+router.set('profile', 'bicycle');
 
-// create separate task, as network request is done
-ThreadPool.QueueUserWorkItem(delegate
-{
-    MapPosVector poses = new MapPosVector();
-    poses.Add(startPos);
-    poses.Add(stopPos);
-
-    RoutingRequest request = new RoutingRequest(baseProject, poses);
-    RoutingResult result = onlineRoutingService.CalculateRoute(request);
-
-    // get total route results
-    String routeText = "The route is " + (int)(result.TotalDistance / 100) / 10f + "km (" + result.TotalTime + " sec) ";
-    Log.Debug(routeText);
-
-    // get instructions, just log them
-    RoutingInstructionVector instructions = result.Instructions;
-    
-
-    // Remember: Put your operations back on the main thread to change the UI
-    for (int i = 0; i < instructions.Count; i++)
-    {
-        RoutingInstruction instruction = instructions[i];
-        Log.Debug(instruction.ToString());
-    }
+const request = create('routing', 'query', {
+    type: 'request',
+    projection: 'EPSG:4326',
+    points: [[5.7249, 45.1877], [5.7148, 45.1916]]
 });
 
+const metres = await router.callAsync('calculateRoute', [request],
+    (route) => route.getDouble('totalDistance'));
 ```
 
 </TabItem>
-
-<TabItem value="objectivec" label="Objective-C">
-
-```objectivec
-  
-MSFCartoOnlineRoutingService* onlineRoutingService = [[MSFCartoOnlineRoutingService alloc] initWithApiKey:@"nutiteq.osm.car"];
-
-// Set route start end end points
-MSFMapPosVector* poses = [[MSFMapPosVector alloc] init];
-[poses add:startPos];
-[poses add:stopPos];
-
-MSFRoutingRequest* request = [[MSFRoutingRequest alloc] initWithProjection:[[mapView getOptions] getBaseProjection] points:poses];
-
-// This calculation should be in background thread
-dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-    MSFRoutingResult* route = [onlineRoutingService calculateRoute:request];
-    
-    // Process results in main thread, so it can update UI
-    dispatch_async(dispatch_get_main_queue(), ^{
-        
-        if (route == nil){
-            NSLog(@"route error");
-            return;
-        }
-        
-        NSDateFormatter* dateFormatter = [[NSDateFormatter alloc] init];
-        [dateFormatter setDateFormat:@"HH:mm:ss"];
-        [dateFormatter setTimeZone:[NSTimeZone timeZoneForSecondsFromGMT:0]];
-        
-        NSString* routeDesc = [NSString stringWithFormat:@"Route: %0.3f km, travel %@.",
-                               [route getTotalDistance]/1000.0,
-                               [dateFormatter stringFromDate: [NSDate dateWithTimeIntervalSince1970:[route getTotalTime]]]];
-        
-        NSLog(@"%@",routeDesc);
-        
-        // Get instructions
-        for (int i=0; i < [[route getInstructions] size]; i++){
-            MSFRoutingInstruction* instruction = [[route getInstructions] get:i];
-            NSLog(@"%@", [instruction description]);
-        }
-    });
-});
-
-```
-
-</TabItem>
-
-<TabItem value="swift" label="Swift">
-
-```swift
-  
-let onlineRoutingService = MSFCartoOnlineRoutingService(source: "nutiteq.osm.car");
-
-// Sample positions, from from Tallinn (Estonia) to Tartu (Estonia)
-let startPos = projection?.fromWgs84(MSFMapPos(x: 24.7536, y: 59.4370))
-let stopPos = projection?.fromWgs84(MSFMapPos(x: 26.7290, y: 58.3776))
-
-// This calculation should be in background thread
-DispatchQueue.global(qos: .userInitiated).async {
-    
-    let poses = MSFMapPosVector()
-    poses?.add(startPos)
-    poses?.add(stopPos)
-    
-    let request = MSFRoutingRequest(projection: projection, points: poses)
-    let result = onlineRoutingService?.calculateRoute(request)
-    
-    let km = ((result?.getTotalDistance())! / 100) / 10
-    let seconds = result?.getTotalTime()
-    let routeText = "The route is \(km) km ( \(seconds) s)"
-    
-    print("RouteText: " + routeText)
-    
-    // Get instruction details
-    let instructions = result?.getInstructions()
-    
-    for i in 0..<Int((instructions?.size())!) {
-        let instruction = instructions?.get(Int32(i))
-    }
-}
-
-```
-
-</TabItem>
-
-<TabItem value="kotlin" label="Kotlin">
-
-```kotlin
-  
-val onlineRoutingService = CartoOnlineRoutingService("nutiteq.osm.car");
-
-// Sample positions, from from Tallinn (Estonia) to Tartu (Estonia)
-val startPos = projection?.fromWgs84(MapPos(24.7536, 59.4370))
-val stopPos = projection?.fromWgs84(MapPos(26.7290, 58.3776))
-
-// Remember: Put your operations back on the main thread to change the UI
-// Note:
-// doAsync requires anko coroutines dependency
-// compile "org.jetbrains.anko:anko-sdk25-coroutines:$anko_version"
-doAsync {
-
-    val poses = MapPosVector()
-    poses.add(startPos)
-    poses.add(stopPos)
-
-    val request = RoutingRequest(projection, poses)
-    val result = onlineRoutingService.calculateRoute(request)
-
-    val routeText = "The route is " + (result.totalDistance / 100) / 10f + "km (" + result.totalTime + " s)"
-    println("RouteText: " + routeText)
-    // get instruction details
-    val instructions = result.instructions
-
-    for (i in 0..instructions.size()) {
-        val instruction = instructions.get(i.toInt())
-    }
-}
-
-```
-
-</TabItem>
-
 </Tabs>
 
-### Offline Routing
+Points are **`[longitude, latitude]`** in the projection the request names. `{service}` in the URL
+is substituted per Valhalla endpoint (`route`, `trace_route`, …).
 
-Offline routing requires a more complicated preparation of your offline map packages, listener events, package initialization, and routing calculation parameters.
+Measured against the public OSM endpoint on a phone: a 1 km walking route came back in **681 ms**,
+72 positions and 21 instructions.
 
-First, you need to initialize a package manager and a listener to download packages, and then download routing map package using this. View the **PackageManager** page to find more about it.
+## Offline
 
-If the required routing packages are downloaded and routing service is ready, you can calculate routing.
-
-- Create `PackageManagerRoutingService`
-- Define `RoutingRequest` with at least two points. 
-- Calculate the route with the `calculateRoute` request, read response as *RoutingResult*.
-
-#### Limitations of offline routing
-
-Massif Maps provides two built-in offline routing engines: the basic routing engine is based on **OSRM project** and the alternative one is using **Valhalla routing engine**. The OSRM-based routing engine is better optimized for low memory usage and calculation speed, including very large road networks using *Contraction Hierarchy* representation and algorithms. However, this has some expected limitations:
-
-- Route profile is precalculated and hardcoded in the data. For different profiles, such as driving or walking, download different map data packages to accomodate for offline routing
-- Only the fastest route is calculated, there is no shortest route choice
-- There are no alternative routes provided
-- There is no live data in routing, traffic and temporarily closed roads do not appear
-- You have to download whole country package, no custom bounding box area downloads are possible
-
-Valhalla routing engine is more flexible, but requires more memory and is slower. Starting from SDK 4.2, Valhalla routing engine is not included in the precompiled SDK packages. It is still supported in custom SDK builds.
-
-**Note:** SDK itself does not include live navigation features, such as following a GPS location, initiating automatic recalculations, or guided voice instructions. These features can still be built on top of routing by your device application, and our sample apps have code for this.
-
-To download *OSRM* offline packages using `PackageManager`, use `"routing:nutiteq.osm.car"` as source ID. To download *Valhalla* routing engine offline packages, use `"routing:carto.streets"`  as source ID. You can then request list of country packages (we have all countries in the world covered, but some are divided to smaller parts), or use custom bounding box area to download route data for e.g. smaller metropolitan area.
-
-Note that the routing is very similar to online routing, just the service name is different. Following code assumes that you already have `PackageManager` with correct packages, and have downloaded a package.
+Ship a Valhalla tile package (`.vtiles`) with the app or download it, then point the service at it.
+No network, no key, and the same request and result shape:
 
 ```java
-
-    PackageManagerRoutingService service = new PackageManagerRoutingService(packageManager);
-    
-    // create separate task, as network request is done
-    
-    AsyncTask<Void, Void, RoutingResult> task = new AsyncTask<Void, Void, RoutingResult>() {
-
-        protected RoutingResult doInBackground(Void... v) {
-            MapPosVector poses = new MapPosVector();
-            poses.add(startPos);
-            poses.add(stopPos);
-            RoutingRequest request = new RoutingRequest(baseProjection, poses);
-            
-            // Routing request is done here:
-            RoutingResult result = service.calculateRoute(request);
-
-            return result;
-        }
-
-        protected void onPostExecute(RoutingResult result) {
-            if (result == null) {
-                Log.e(Const.LOG_TAG,"routing error");
-                return;
-            }
-
-            String routeText = "The route is " + (int) (result.getTotalDistance() / 100) / 10f + "km (" + result.getTotalTime() + " s)";
-            Log.i(Const.LOG_TAG,routeText);
-
-            // get instruction details
-            RoutingInstructionVector instructions = result.getInstructions();
-
-            // Remember: Put your operations back on the main thread to change the UI
-            
-            for (int i = 0; i < instructions.size(); i++) {
-                RoutingInstruction instruction = instructions.get(i);
-                Log.d(Const.LOG_TAG, instruction.toString());
-            }
-
-        }
-    };
-
-    task.execute();
-    
-
+MassifObject router = Massif.object("routing", "router", Spec.of("valhalla-offline")
+    .set("path", "/sdcard/routing/france.vtiles"));
+router.set("profile", "auto");
 ```
+
+`multi-valhalla-offline` takes several packages and picks the one that covers the request, which is
+what a per-country download UI wants:
+
+```java
+MassifObject router = Massif.object("routing", "router", Spec.of("multi-valhalla-offline"));
+router.call("add", "/sdcard/routing/france.vtiles");
+router.call("add", "/sdcard/routing/switzerland.vtiles");
+```
+
+Building the tiles is Valhalla's own job — `valhalla_build_tiles` over an OSM extract. The result
+is a directory or a tar; the SDK reads it as it is.
+
+Offline routing runs on the device's CPU, so a very long route over a large package takes seconds
+rather than the hundreds of milliseconds a server takes. Keep the packages regional.
+
+## Reading the result
+
+| | |
+|---|---|
+| `totalDistance` / `totalTime` | metres and seconds |
+| `pointCount` / `instructionCount` | counts, as properties |
+| `getInstruction(i)` | one maneuver: `action`, `pointIndex`, `distance`, `streetName`, `instruction` |
+| `getPoints()` | the whole path as a **flat** `x0,y0,x1,y1,…` buffer |
+
+The path is deliberately not readable as a property: a 9 km cycling route is 562 positions, which
+as JSON is a 15 KB string to build, cross and parse. The flat buffer is one crossing and no copy —
+and it applies no projection, so read `projection.name` to know what the numbers are.
+
+To draw the route, feed those positions to a `line` element, or — for many routes at once — through
+the [GeoJSON tiling pyramid](/docs/features/geojson-vector-tiles). Turn arrows are a feature of
+their own: [maneuver arrows](/docs/features/maneuver-arrows).
+
+## Map matching
+
+Same service, a different request. `match-request` adds the accuracy of the measured points, in
+metres:
+
+```java
+MassifObject request = Massif.object("routing", "trace", Spec.of("match-request")
+    .set("projection", "EPSG:4326")
+    .set("accuracy", 10)
+    .set("points", recordedTrace));
+
+router.callAsync("matchRoute", result -> …, request);
+```
+
+## Indoor routing
+
+`SGRERoutingService` routes over a graph the app provides as GeoJSON — corridors, stairs, lifts,
+with your own edge costs. It is a separate engine from Valhalla and is not tied to OSM data at
+all. See the [SGRE sources](https://github.com/massif-maps/massif-maps-libs/tree/develop/sgre) and
+`all/modules/routing/` for the request shape.
+
+## Routing without the map
+
+The repository also ships **`routing-lib`**: Valhalla and its bindings, with no renderer and no map
+view. If your app only needs routes, that is a much smaller dependency — see
+[the installation guide](/docs/getting-started/installation#building-from-source).
+
+Full spec keys, properties and methods: [routing reference](/docs/api/reference/routing).

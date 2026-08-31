@@ -43,6 +43,21 @@ let layer = MSFVectorTileLayer(dataSource: source, decoder: decoder)
 mapView.getLayers()?.add(layer)
 ```
 
+### With the surface API
+
+`pmtiles` is a [`source` spec type](/docs/api/reference/source), so a NativeScript / React Native /
+C ABI caller builds one from JSON, with no native construction and no `adopt` step:
+
+```json
+{"type":"vector",
+ "source":{"type":"pmtiles","path":"/sdcard/maps/basemap.pmtiles"},
+ "style":{"type":"mbvt","project":{"type":"project",
+          "assets":{"type":"dir","path":"/sdcard/massif_style"},"name":"osm"}}}
+```
+
+`minZoom` / `maxZoom` are accepted like every other source, but `getMinZoom()`/`getMaxZoom()` read
+the archive header either way, so leaving them out is the normal case.
+
 ## Metadata & extent
 
 ```kotlin
@@ -72,4 +87,4 @@ directories and the tile data.
 ## See also
 
 - [Offline Maps](/docs/guides/offline-maps) — MBTiles and offline packages.
-- [Layers & Data Sources](/docs/guides/layers-and-data-sources) — how sources feed layers.
+- [Source reference](/docs/api/reference/source) — every source type and how they nest.

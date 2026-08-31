@@ -32,6 +32,8 @@ Read the page, do not re-derive it. `docs/` is the source of truth and the publi
 | binary size, build time, ccache/ninja | [`docs/internals/build-and-size.md`](docs/internals/build-and-size.md) |
 | upgrade a vendored dep, platform quirks | [`docs/maintenance/`](docs/maintenance/index.md) |
 | what an app developer sees | `docs/features/`, `docs/guides/`, `docs/getting-started/` |
+| the surface API for an app — concepts + **generated** per-kind reference | [`docs/api/index.mdx`](docs/api/index.mdx), `docs/api/reference/` (`scripts/gen-api-docs.py`) |
+| the `massif-style` CLI, for a style author | [`docs/tools/style-cli.md`](docs/tools/style-cli.md) |
 | the facade API — verbs, property table, specs, events | [`docs/internals/api-facade.md`](docs/internals/api-facade.md) |
 | renames from the CARTO SDK | [`docs/migration.md`](docs/migration.md) |
 | superseded designs — **not current** | `docs/_archive/` |

@@ -66,6 +66,23 @@ composite.removeExternalDataSource("hillshade")
 composite.addVectorDataSource("labels", extraLabelsSource) // shortcut for VECTOR type
 ```
 
+### With the surface API
+
+The layer itself is a spec:
+
+```java
+map.addLayer("base", Spec.of("composite-vector")
+    .set("source", "osm")
+    .set("style", "outdoor"));
+```
+
+:::note External sources are still object-API
+`addExternalDataSource` takes a `TileDataSource` and a `CompositeSourceType`, and carries no
+generated method entry — the [layer reference](/docs/api/reference/layer) lists what is
+reachable. Use `rawLayer` / the object API for the external sources themselves, and the spec for
+everything else.
+:::
+
 ### Source types
 
 | Type | Renders as | Notes |

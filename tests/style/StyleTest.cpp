@@ -7,6 +7,8 @@
 int failures = 0;
 
 void testLayerConfig();
+void testCartoCSSParse();
+void testStyleParameterFold();
 void testExpressionRoundTrip();
 void testDataDrivenProperty();
 void testInterpolateExpression();
@@ -14,6 +16,8 @@ void testViewStateProperty();
 
 int main() {
     testLayerConfig();
+    testCartoCSSParse();
+    testStyleParameterFold();
     testExpressionRoundTrip();
     testDataDrivenProperty();
     testInterpolateExpression();

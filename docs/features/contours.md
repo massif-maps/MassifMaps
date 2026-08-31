@@ -62,6 +62,23 @@ val contourLayer = VectorTileLayer(contourSource, decoder)
 mapView.layers.add(contourLayer)
 ```
 
+### With the surface API
+
+`ContourTileDataSource` has no `!spec` declaration, so there is no `{"type": "contour"}`. Build it
+and [adopt](/docs/api/#bringing-an-existing-app-across) it — its properties, including
+`baseInterval`, are reachable through the id afterwards:
+
+```java
+Massif.adopt("contours-src", new ContourTileDataSource(dem));
+
+map.addLayer("contours", Spec.of("vector")
+    .set("source", "contours-src")
+    .set("style", "contour-style"));
+
+// Still a live property: change the spacing without rebuilding the layer.
+Massif.source("contours-src").set("baseInterval", 50);
+```
+
 Example CartoCSS for the emitted `contour` layer (index vs intermediate lines via `div`):
 
 ```css

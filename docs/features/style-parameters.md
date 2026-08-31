@@ -47,7 +47,7 @@ decoder.setStyleParameters(Map.of("lang", "fr", "buildings", "1"));
 decoder.setJSONStyleParameters("{\"lang\":\"fr\"}");
 ```
 
-Through the [facade API](../internals/api-facade.md) the same parameters are a **property bag** on
+Through the [surface API](/docs/api/) the same parameters are a **property bag** on
 the style — the rest of the path is the parameter's name, and the property itself takes every one
 at once:
 
@@ -57,8 +57,10 @@ style.apply(Spec.object().set("params", Spec.object().set("lang", "fr").set("bui
 ```
 
 A parameter the style does not declare is refused there rather than dropped, which is the one
-difference worth knowing: `setStyleParameter` returns `false` for it, and the facade turns that
-into `RESULT_UNKNOWN_PROPERTY`.
+difference worth knowing: `setStyleParameter` returns `false` for it, and the surface API turns
+that into `RESULT_UNKNOWN_PROPERTY`.
+
+Runnable, on three platforms: [the style parameters example](/examples#style-parameters).
 
 ## Reading them
 

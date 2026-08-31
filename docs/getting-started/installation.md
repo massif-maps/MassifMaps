@@ -46,6 +46,27 @@ Use Swift Package Manager:
 You can also download a prebuilt framework from the
 [Releases page](https://github.com/massif-maps/MassifMaps/releases).
 
+## JavaScript, through an integration
+
+You do not have to write native code. A **framework integration** wraps the same Android and iOS
+artifacts, so every renderer feature is reachable from JavaScript.
+
+```bash
+npm install @nativescript-community/ui-massifmaps
+```
+
+```ts
+import { MassifMap } from '@nativescript-community/ui-massifmaps/api';
+```
+
+NativeScript is the one that ships today — Vue, Svelte, Angular and plain TypeScript, on Android
+and iOS. Flutter and React Native bindings are planned, same shape: a binding over the published
+native builds, no second renderer. The full list, versions and status:
+**[Integrations](/integrations)**.
+
+Every [example](/examples) carries its NativeScript source beside the Java and Objective-C ones, so
+the same map reads the same in all three.
+
 ## No license key
 
 The original CARTO SDK required `MapView.registerLicense(...)` at startup. Massif Maps does not:

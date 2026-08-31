@@ -595,6 +595,7 @@ MassifSpecType const MassifSpecTypeSourceMergedMbvt = @"merged-mbvt";
 MassifSpecType const MassifSpecTypeSourceMulti = @"multi";
 MassifSpecType const MassifSpecTypeSourceOrdered = @"ordered";
 MassifSpecType const MassifSpecTypeSourcePersistentCache = @"persistent-cache";
+MassifSpecType const MassifSpecTypeSourcePmtiles = @"pmtiles";
 MassifSpecType const MassifSpecTypeStyleMbvt = @"mbvt";
 MassifSpecType const MassifSpecTypeStylesetCartocss = @"cartocss";
 MassifSpecType const MassifSpecTypeStylesetProject = @"project";

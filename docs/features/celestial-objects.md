@@ -51,6 +51,13 @@ layer.add(plane)
 mapView.layers.insert(0, layer)    // FIRST: the map and the terrain then draw over the sky
 ```
 
+:::note Surface API
+`CelestialLayer`, `CelestialSprite` and `CelestialArc` have no spec types, so this is object-API
+today. `Massif.adopt("sky-objects", layer)` gives the layer an id, and its properties — including
+`postProcessed` and `visible` — are then reachable by path. What is readable per class is in
+[value types](/docs/api/reference/types#celestiallayer).
+:::
+
 - **Distance 0 means infinitely far** — the object keeps its direction whatever the camera does, so
   it never parallaxes when the map pans. That is what a sun, a moon or a star needs. A finite
   distance gives real parallax.

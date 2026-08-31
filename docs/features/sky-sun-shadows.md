@@ -60,6 +60,28 @@ as shadow acne instead of shadows. `ShadowStrength` therefore affects 3D objects
 terrain surface. Sun *lighting* of the terrain (`TerrainLightingEnabled`) is unaffected.
 :::
 
+### With the surface API
+
+`light`, `sky` and `fog` are each a spec and a property path, so the whole day cycle is writable
+from a slider without touching an options class:
+
+```java
+map.light(Spec.of("light")
+    .set("sunAzimuth", 315)
+    .set("sunAltitude", 45)
+    .set("ambientColor", 0xffb8c8e0)
+    .set("terrainLightingEnabled", true));
+
+map.set("light.sunAltitude", 12);        // one path, one write
+map.sky().apply(Spec.object()
+    .set("type", "SKY_TYPE_ATMOSPHERE")
+    .set("quality", "SKY_QUALITY_HIGH"));
+```
+
+Every property of all four options classes:
+[the options reference](/docs/api/reference/options). Runnable:
+[the atmosphere example](/examples#atmosphere).
+
 Two details worth knowing about the shadow model: the shadow pass floors the sun altitude at 15°
 (a 9° sun throws a 4.4 km shadow off a 700 m hill and the cascade ladder goes useless), while N·L
 lighting keeps the true sun; and the shadow map is snapped and cached, so a still camera re-renders

@@ -214,6 +214,19 @@ decoder.setStyleParameter("poi_rank", outdoorRanking);   // one call swaps the w
 The lookup is resolved while the tile is decoded, so it costs nothing per frame. Changing the table
 re-decodes the visible tiles, which suits a profile the user picks — not a slider.
 
+`text-rank` / `shield-rank` / `marker-rank` add to that priority **per placement pass**, which is
+the only place `view::distance` means anything, so the table decides the order and the view breaks
+the ties:
+
+```css
+#poi {
+  marker-placement-priority: get([param::poi_rank], [class], 100);
+  marker-rank: 0 - [view::distance]/50;      /* of two equals, the nearer one keeps its slot */
+}
+```
+
+Ranking never changes how a label looks — only which of two colliding labels survives.
+
 ## Distance limits
 
 Cut labels that are too far to be useful (metres; `0`, the default, means no limit):

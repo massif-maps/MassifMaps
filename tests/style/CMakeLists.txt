@@ -20,11 +20,18 @@ set(STYLE_SOURCES
   "${SDK_BASE_DIR}/libs-massif/mapnikvt/src/mapnikvt/ParseTables.cpp"
   "${SDK_BASE_DIR}/libs-massif/mapnikvt/src/mapnikvt/CSSColorParser.cpp"
   "${SDK_BASE_DIR}/libs-massif/mapnikvt/src/mapnikvt/StringUtils.cpp"
+  # The CartoCSS parser, for the nesting-depth guard. Its own tree types only - the compiler and
+  # the mapnik translator are not reached from a parse.
+  "${SDK_BASE_DIR}/libs-massif/cartocss/src/cartocss/CartoCSSParser.cpp"
+  "${SDK_BASE_DIR}/libs-massif/cartocss/src/cartocss/Expression.cpp"
+  "${SDK_BASE_DIR}/libs-massif/cartocss/src/cartocss/Predicate.cpp"
 )
 
 add_executable(style_tests
   StyleTest.cpp
   LayerConfigTest.cpp
+  CartoCSSParseTest.cpp
+  StyleParameterFoldTest.cpp
   ExpressionRoundTripTest.cpp
   InterpolateExpressionTest.cpp
   DataDrivenPropertyTest.cpp
@@ -36,6 +43,7 @@ target_include_directories(style_tests PRIVATE
   # TestCheck.h is the whole framework and lives with the api tests.
   "${CMAKE_CURRENT_SOURCE_DIR}/../api"
   "${SDK_BASE_DIR}/libs-massif/mapnikvt/src"
+  "${SDK_BASE_DIR}/libs-massif/cartocss/src"
   # vt headers only - no vt object is linked.
   "${SDK_BASE_DIR}/libs-massif/vt/src"
   "${SDK_BASE_DIR}/libs-external/cglib"
@@ -47,3 +55,6 @@ target_include_directories(style_tests PRIVATE
   "${SDK_BASE_DIR}/libs-external/tinyformat")
 
 add_test(NAME style COMMAND style_tests)
+# A parser that regresses to exponential backtracking does not fail the depth guard, it never
+# returns. The whole suite runs in about a second, so this only ever fires on that.
+set_tests_properties(style PROPERTIES TIMEOUT 60)

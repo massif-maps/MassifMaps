@@ -371,7 +371,7 @@ public class DemoMap {
      * hillshade / satellite / contour sources into the style's own layer order.
      */
     private Layer createBaseLayer() {
-        baseDecoder = DemoStyles.create(DemoConfig.STYLE_SOURCE, dataPath);
+        baseDecoder = DemoStyles.create(context, DemoConfig.STYLE_SOURCE, dataPath);
         applyStyleParameters();
         // see BASE_TILE_CACHE_MB: the SDK default (10MB) is what makes a zoom step blank the map
         if (DemoConfig.BASE_MODE == DemoConfig.BaseMode.PLAIN) {

@@ -92,6 +92,29 @@ paint surface, …). Consequences worth knowing:
   `Shader::getUniformLoc` returns **0** — a valid location that then clobbers uniform 0. Always use
   `glGetUniformLocation` with a `>= 0` guard (`SkyRenderer` is the pattern to copy).
 
+## Line borders (`line-border-width` / `line-border-color`)
+
+maplibre's line border: a casing `line-border-width` px wide on **each** side of the line. One rule
+replaces the `::case` / `::fill` attachment pair a CartoCSS style used to need.
+
+The line quad is extruded **in the vertex shader** from `uWidthTable`, so the same vertex buffer
+draws at any width. `renderTileGeometry` uses that: with a border it issues **two**
+`glDrawElements` over one buffer — border table first (`widths[i] + borderHalf`, border colour),
+then the fill table. Half the tesselation, half the vertex memory and half the decode CPU of a
+casing/fill pair, for the same two draws.
+
+- **Border first, for the whole batch** — that is what keeps a junction clean. mapbox orders a whole
+  casing layer under a whole fill layer; this is that order inside one draw pair, so a crossing
+  road's fill still covers this road's casing. Colouring border and fill in a *single* pass from the
+  fragment's distance would be one draw, but the two features are in the same batch with no ordering
+  between them and the casing would stripe across every intersection.
+- **`line-gap-width` composes**: the border pass shrinks the gap by the same `borderHalf`, so both
+  edges of a casing strip keep their border.
+- **Shared with the fill, by construction**: joins, caps, `line-offset`, the end arrow and the dash
+  pattern — one geometry. A solid casing under a *dashed* fill is still two rules, since the pattern
+  covers the border too.
+- Ordering against **other** style layers is unchanged: the pair sits where the layer sits.
+
 ## Line end arrows
 
 `line-end-arrow: true` puts an arrow head on a line's last vertex, sized by `line-arrow-width` and

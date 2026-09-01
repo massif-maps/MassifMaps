@@ -124,6 +124,8 @@ from the panel or with `--es <name> true|false`; the base map has `--es base pla
 synthetic GeoJSON on the start camera, one feature per reported symptom, each with its A/B knob —
 `bugLabelSize` (two label attachments, text gone at <= 10), `bugBackOpacity` (a `back/` instance
 punches the main line out), `bugLineColor` (a translucent line breaks at its joins),
+`bugLineBorder` (draws `#bugsel` as one `line-border-*` rule instead of the `back/` casing pair —
+the A/B for the border pass; pair it with `--es bugBackOpacity -1` so both forms are opaque),
 `bugAllowOverlap`/`bugTextClip` (allow-overlap alone routes line labels onto the clipped
 geometry path). `--es bugs true --es ui false` is enough to see all four.
 

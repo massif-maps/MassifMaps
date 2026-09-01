@@ -1,4 +1,5 @@
 import { type ContourOptions, isContourLayer, rewriteContourFields, rewriteContourFilter } from './contour.js';
+import { foldCasings } from './casing.js';
 import { Coverage } from './coverage.js';
 import { Untranslatable, ZOOM_INPUT, expandTokens, translateExpression } from './expression.js';
 import { translateFilter, zoomPredicates } from './filter.js';
@@ -152,6 +153,8 @@ export interface ConvertOptions {
     sprites?: { sheets: SpriteSet; outDir: string };
     /** Resolve SDF sprites to plain bitmaps, for an SDK without marker-sdf. Loses size and halo. */
     flattenSdf?: boolean;
+    /** Fold a casing layer into the fill it runs under, as one `line-border-*` rule - see casing.ts. */
+    foldCasings?: boolean;
     /** Multiplies the collision gap MapBox's text-padding asks for. 1 keeps the style's own. */
     labelSpacing?: number;
     /** Retarget the style's source layers at another tile schema - see schema.ts. */
@@ -366,6 +369,14 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
         const { visibility, ...layout } = folded.layout ?? {};
         return { ...folded, layout } as MapboxLayer;
     });
+    if (options.foldCasings) {
+        const { layers: merged, folded } = foldCasings(layers);
+        layers.splice(0, layers.length, ...merged);
+        if (folded.length > 0) {
+            coverage.approximate(`${folded.length} casing layer(s) folded into their fill as line-border-* ` +
+                `(${folded.map((f) => f.casing).join(', ')}); the casing now draws per class, not under every fill`);
+        }
+    }
 
     const mapBlock: string[] = [];
     // Kept as selector + declarations rather than joined text: the palette pass rewrites the

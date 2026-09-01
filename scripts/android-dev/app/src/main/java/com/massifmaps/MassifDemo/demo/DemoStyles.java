@@ -813,19 +813,27 @@ public final class DemoStyles {
 
         // --- 2. a 'back/' instance under the main line ----------------------------------------
         float width = DemoConfig.BUG_SEL_WIDTH;
-        mss.append("#bugsel::selected {\n")
-           .append("  back/line-color: ").append(DemoConfig.BUG_BACK_COLOR).append(";\n")
-           .append("  back/line-width: ").append(width + 5f).append(";\n")
-           .append("  back/line-join: round;\n")
-           .append("  back/line-cap: round;\n");
-        if (DemoConfig.BUG_BACK_OPACITY >= 0) {
-            mss.append("  back/line-opacity: ").append(DemoConfig.BUG_BACK_OPACITY).append(";\n");
+        mss.append("#bugsel::selected {\n");
+        if (!DemoConfig.BUG_LINE_BORDER) {
+            mss.append("  back/line-color: ").append(DemoConfig.BUG_BACK_COLOR).append(";\n")
+               .append("  back/line-width: ").append(width + 5f).append(";\n")
+               .append("  back/line-join: round;\n")
+               .append("  back/line-cap: round;\n");
+            if (DemoConfig.BUG_BACK_OPACITY >= 0) {
+                mss.append("  back/line-opacity: ").append(DemoConfig.BUG_BACK_OPACITY).append(";\n");
+            }
         }
         mss.append("  line-join: miter;\n")
            .append("  line-cap: round;\n")
            .append("  line-color: #e2001a;\n")
-           .append("  line-width: ").append(width + 2f).append(";\n")
-           .append("}\n");
+           .append("  line-width: ").append(width + 2f).append(";\n");
+        if (DemoConfig.BUG_LINE_BORDER) {
+            // The same casing as ONE rule, drawn from the line's own buffer. 1.5 is half the
+            // back/ pair's width difference, so the two forms should look alike.
+            mss.append("  line-border-width: 1.5;\n")
+               .append("  line-border-color: ").append(DemoConfig.BUG_BACK_COLOR).append(";\n");
+        }
+        mss.append("}\n");
 
         // --- 3+4. a translucent line, and its line labels --------------------------------------
         mss.append("#bugline {\n")

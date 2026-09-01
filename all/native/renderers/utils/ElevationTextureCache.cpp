@@ -496,6 +496,40 @@ namespace massif {
         }
     }
 
+    bool ElevationTextureCache::getDisplayHeight(double internalX, double internalY, double& height) const {
+        MapPos pos(internalX, internalY, 0);
+        // The grid the last query landed in, first: a caller sampling a bridge's two portals, or a
+        // label's every vertex, walks the same tile over and over, and the scan below is linear in
+        // the cache.
+        std::shared_ptr<ElevationTileGrid> grid = _lastSampledGrid;
+        if (!grid || !grid->getInternalBounds().contains(pos)) {
+            grid.reset();
+            // Most DETAILED entry covering the point. Several cover it - an ancestor stands in for
+            // a tile whose own level has not arrived - and the smallest is the closest to what the
+            // ground is actually drawn from.
+            double bestSize = 0;
+            for (auto it = _cache.begin(); it != _cache.end(); it++) {
+                const std::shared_ptr<ElevationTileGrid>& candidate = it->second.grid;
+                if (!candidate || !candidate->getInternalBounds().contains(pos)) {
+                    continue;
+                }
+                const MapBounds& bounds = candidate->getInternalBounds();
+                double size = bounds.getMax().getX() - bounds.getMin().getX();
+                if (!grid || size < bestSize) {
+                    grid = candidate;
+                    bestSize = size;
+                }
+            }
+            if (!grid) {
+                return false;
+            }
+            _lastSampledGrid = grid;
+        }
+        double meters = grid->sampleHeight(internalX, internalY);
+        height = meters * _elevationManager->getExaggeration() * _elevationManager->getDisplayScale(internalY);
+        return true;
+    }
+
     void ElevationTextureCache::beginFrame() {
         // Textures encoded since the last frame go up now, ahead of the draws that sample them,
         // and border refinements are patched into the ones already there.

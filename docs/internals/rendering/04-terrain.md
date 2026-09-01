@@ -332,24 +332,52 @@ mapbox splits the two ends, and that is what is implemented here:
 | | aligned to | result |
 |---|---|---|
 | base ring | the terrain under each vertex | the wall meets the slope everywhere, no gap, no float |
-| everything above it | ONE elevation, the **highest ground under the footprint** | the roof stays level; walls simply grow taller downhill |
+| everything above it | ONE elevation, resolved at the footprint's **centroid** | the roof stays level; walls simply grow taller downhill |
 
 The centroid rides in the **texcoord slot**, which was free because for an extrusion `_texCoords`
-was a byte-for-byte duplicate of `_coords`. `polygon3DVsh` feeds it to `applyTerrain` for the anchor
-and keeps the position for the tile clip. `packGeometry` forces `texCoordScale == coordScale` for
-`POLYGON3D` so both are in the raw coord units `applyTerrain` expects.
+was a byte-for-byte duplicate of `_coords`. It is no longer read by the shader — the CPU pass below
+reads it back out of the vertex data to know where to ask for the ground, and `polygon3DVsh` keeps
+the position for the tile clip. `packGeometry` forces `texCoordScale == coordScale` for `POLYGON3D`,
+which is what lets one scale convert either of them.
 
-### Raising the prism clear of the hill
+### The base is resolved on the CPU, not sampled in the shader
 
-The centroid alone is not enough: everything uphill of it is swallowed by the slope. The tesselator
-therefore also stores the footprint's **reach from that centroid** (`_polygon3DExtent`, in 1/512 of
-a tile — 1 m at zoom 16, capped at a quarter tile) in the attribute byte the extrusion shader never
-read, and the vertex stage samples the ground at the centroid **and at that reach in four
-directions**, taking the highest. The whole prism is lifted to it.
+The base is **one `ElevationManager::getDisplayHeight` query at the centroid**, run on the render
+thread by `GLTileRenderer::resolveExtrusionBases` and patched into a per-vertex slot
+(`TileGeometry::setVertexBase`, `baseOffset` in the vertex layout). The vertex shader only scales
+it: `aVertexBase * uBaseScale + uElevationScale.w`.
 
-That is 5 elevation samples per above-ground vertex instead of 1. Measured on an Adreno 610 at the
-Grenoble city camera it costs **+0.35 ms** on the `layers3D` pass (2.30 vs 1.95 ms median), ~3% of
-the frame — see the [performance log](../performance-log.md).
+It has to be that way because **the elevation texture bound is the one the tile being drawn
+carries**. Under overzoom one source tile's geometry is drawn once per target tile, so a footprint
+spanning two of them was sampled through two different textures, got two different bases, and tore
+open along a straight line that crossed every building it met. A CPU query against the global
+elevation source is tile-independent by construction. Reproduced in Paris at
+`lon 2.34466 lat 48.84847 zoom 19.04 rotation 66 tilt 45`; `--es exaggeration 0` made it vanish,
+which is what pinned it to the elevation path rather than the geometry.
+
+`getDisplayHeight` returns **internal z units with the exaggeration and the Mercator stretch already
+applied** — not metres. `uBaseScale` is therefore only `1 / frameScaleZ`, the same factor folded
+into `uElevationScale.x` for heights that do come from the texture. Feeding it through the metres
+conversion instead applies the Mercator stretch twice and drops the exaggeration.
+
+**mapbox-gl-js lands in the same place from the other end.** Their `a_centroid_pos` carries a
+CPU-computed elevation (`fill_extrusion.vertex.glsl`), a building on a border is hidden until
+resolved (`HIDDEN_CENTROID`), and `updateBorders` reconciles the two halves — matching them by
+`building_id`, and **giving up the flat roof entirely when the neighbours are at different zooms**.
+We need none of that reconciliation: their lookup is per tile and each half carries its own clipped
+footprint, while ours is one global query at a centroid both halves already share.
+
+What we do copy is the timing. Nothing is guessed before elevation exists — an extrusion whose tile
+has no elevation texture yet is **not drawn at all**, because a base of 0 is sea level, not
+"unknown". `invalidateExtrusionBases` then re-resolves when the elevation version moves, including
+an exaggeration ramp, since the exaggeration is inside that height. It is a counter rather than the
+labels' per-tile list because `setVertexBase` is a no-op when the height has not moved, so a
+needless re-resolve costs the queries and uploads nothing.
+
+This **removes** the previous model's 5 elevation samples per above-ground vertex, measured at
+**+0.35 ms** on the `layers3D` pass on an Adreno 610 at the Grenoble city camera (2.30 vs 1.95 ms
+median) — see the [performance log](../performance-log.md). Not re-measured since.
+
 
 ### The dead ends
 
@@ -372,13 +400,22 @@ retiles them. The clip stays per vertex.
 building, and it takes the max *after* adding the height: the wall then has zero height wherever
 the hill reaches the roof, so whole faces are simply gone. Taking the ground per vertex instead
 keeps the walls but bends the roof down the slope — tangram's melted look, by another route. The
-max has to be over the FOOTPRINT and applied to the BASE, which is what the reach samples do.
+max has to be over the FOOTPRINT and applied to the BASE.
+
+**Sampling the footprint in the shader cannot be made tile-independent.** The previous model took
+the max of 5 texture samples — the centroid plus a stored reach in four directions — and it was
+wrong twice over. The reach was stored as a fraction of the tile in a signed byte, so its cap of 127
+became a zoom threshold: a 30 m footprint hit it at z19 and a 50 m one at z18, and past that every
+large building suddenly stood a little shorter. Widening the unit fixed that and left the tile-seam
+crack untouched, because the samples still went through whichever elevation texture the drawing tile
+had bound. The units were the smaller of the two bugs.
 
 ### What is still wrong
 
-The reach is a **circle around the centroid**, so a long thin building samples ground it does not
-stand on, and an L-shaped one misses the far end of its wings. Four samples on the axes also miss a
-ridge that runs diagonally between them.
+The base is **one query at the centroid**, so a footprint is again represented by a single point:
+a long thin building on a slope, or an L-shaped one, takes the ground at its middle rather than the
+highest ground it stands on, and can still be partly buried uphill. Sampling the real footprint is
+possible now that the query is on the CPU — the polygon is right there — but it is not done.
 
 A footprint **split across two tiles** gets a different centroid and a different reach in each half,
 so the two can lift to different heights and step at the tile seam. Pre-existing for the centroid,

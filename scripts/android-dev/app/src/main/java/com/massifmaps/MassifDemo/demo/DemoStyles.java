@@ -913,6 +913,7 @@ public final class DemoStyles {
            .append("  line-width: ").append(DemoConfig.BUG_BRIDGE_WIDTH).append(";\n")
            .append("  line-join: round;\n")
            .append("  line-cap: butt;\n")
+           .append("  line-elevation-mode: ").append(DemoConfig.BUG_BRIDGE_MODE).append(";\n")
            .append("}\n");
         mss.append("#bugtunnel {\n")
            .append("  line-color: ").append(DemoConfig.BUG_TUNNEL_COLOR).append(";\n")
@@ -920,6 +921,7 @@ public final class DemoStyles {
            .append("  line-join: round;\n")
            .append("  line-cap: butt;\n")
            .append("  line-dasharray: 12, 8;\n")
+           .append("  line-elevation-mode: ").append(DemoConfig.BUG_TUNNEL_MODE).append(";\n")
            .append("}");
         return mss.toString();
     }

@@ -827,6 +827,9 @@ public final class DemoConfig {
     public static String BUG_BRIDGE_COLOR = "#e67e22";
     public static String BUG_TUNNEL_COLOR = "#8e44ad";
     public static float BUG_BRIDGE_WIDTH = 8f;
+    /** line-elevation-mode of the two span features: drape (the old behaviour), span, underground. */
+    public static String BUG_BRIDGE_MODE = "span";
+    public static String BUG_TUNNEL_MODE = "underground";
     /** Line labels along #bugline (the text-allow-overlap case). */
     public static boolean BUG_LINE_LABEL = true;
     public static float BUG_TEXT_SIZE = 14f;
@@ -1175,6 +1178,8 @@ public final class DemoConfig {
         BUG_BRIDGE_COLOR = DemoCfg.cfgColor("bugBridgeColor", BUG_BRIDGE_COLOR);
         BUG_TUNNEL_COLOR = DemoCfg.cfgColor("bugTunnelColor", BUG_TUNNEL_COLOR);
         BUG_BRIDGE_WIDTH = DemoCfg.cfgFloat("bugBridgeWidth", BUG_BRIDGE_WIDTH);
+        BUG_BRIDGE_MODE = DemoCfg.cfgStr("bugBridgeMode", BUG_BRIDGE_MODE);
+        BUG_TUNNEL_MODE = DemoCfg.cfgStr("bugTunnelMode", BUG_TUNNEL_MODE);
         BUG_LINE_LABEL = DemoCfg.cfgBool("bugLineLabel", BUG_LINE_LABEL);
         BUG_TEXT_SIZE = DemoCfg.cfgFloat("bugTextSize", BUG_TEXT_SIZE);
         BUG_TEXT_ALLOW_OVERLAP = DemoCfg.cfgBool("bugAllowOverlap", BUG_TEXT_ALLOW_OVERLAP);

@@ -153,7 +153,7 @@ export interface ConvertOptions {
     sprites?: { sheets: SpriteSet; outDir: string };
     /** Resolve SDF sprites to plain bitmaps, for an SDK without marker-sdf. Loses size and halo. */
     flattenSdf?: boolean;
-    /** Fold a casing layer into the fill it runs under, as one `line-border-*` rule - see casing.ts. */
+    /** Fold a casing layer into the fill it runs under, as one `line-border-*` rule. On unless turned off - see casing.ts. */
     foldCasings?: boolean;
     /** Multiplies the collision gap MapBox's text-padding asks for. 1 keeps the style's own. */
     labelSpacing?: number;
@@ -369,7 +369,7 @@ export function convert(style: MapboxStyle, table: PropertyTable, options: Conve
         const { visibility, ...layout } = folded.layout ?? {};
         return { ...folded, layout } as MapboxLayer;
     });
-    if (options.foldCasings) {
+    if (options.foldCasings !== false) {
         const { layers: merged, folded } = foldCasings(layers);
         layers.splice(0, layers.length, ...merged);
         if (folded.length > 0) {

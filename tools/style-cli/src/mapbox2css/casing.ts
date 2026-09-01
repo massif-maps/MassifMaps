@@ -39,6 +39,12 @@ function pairs(casing: MapboxLayer, fill: MapboxLayer): boolean {
     if (!same(layout(casing) as Json, layout(fill) as Json)) return false;
     const paint = (l: MapboxLayer) => Object.keys((l.paint ?? {}) as Record<string, Json>);
     if (![...paint(casing), ...paint(fill)].every((k) => FOLDABLE.has(k))) return false;
+    // A casing is a WIDTH, stated on both. Two layers that merely draw the same features in the
+    // same colour are not a pair, and the border would come out of a width neither of them has.
+    const width = (l: MapboxLayer) => (l.paint as Record<string, Json>)?.['line-width'];
+    const [wc, wf] = [width(casing), width(fill)];
+    if (wc === undefined || wf === undefined) return false;
+    if (typeof wc === 'number' && typeof wf === 'number' && wc <= wf) return false;
     // The border takes the line's own opacity - see LineSymbolizer. Unstated is 1, and a casing
     // that states it while its fill does not is the common way to write the same thing.
     const opacity = (l: MapboxLayer) => (l.paint as Record<string, Json>)?.['line-opacity'] ?? 1;

@@ -347,22 +347,21 @@ const CASED = (fillPaint = {}) => ({ layers: [
       paint: { 'line-color': '#fff', 'line-width': 5, ...fillPaint } },
 ] });
 
-test('--fold-casings turns a casing/fill pair into one line-border-* rule', () => {
-    const { mss } = convert(CASED(), TABLE, { variables: false, foldCasings: true });
+test('a casing/fill pair becomes one line-border-* rule', () => {
+    const { mss } = convert(CASED(), TABLE, { variables: false });
     assert.match(mss, /line-border-color: #888;/);
     assert.match(mss, /line-border-width: \(\(8 - 5\) \/ 2\);/, 'half the width difference');
     assert.ok(!/#road\[class = 'street'\]::road_case/.test(mss), 'the casing layer is gone');
 });
 
-test('the fold is opt-in: without the flag both layers stay', () => {
-    const { mss } = convert(CASED(), TABLE, { variables: false });
+test('--no-fold-casings keeps the casing as its own rule', () => {
+    const { mss } = convert(CASED(), TABLE, { variables: false, foldCasings: false });
     assert.ok(!/line-border/.test(mss));
     assert.match(mss, /::road_case/, 'the casing is still its own rule');
 });
 
 test('a dashed fill is not folded: the pattern would cover the border too', () => {
-    const { mss } = convert(CASED({ 'line-dasharray': [2, 2] }), TABLE,
-        { variables: false, foldCasings: true });
+    const { mss } = convert(CASED({ 'line-dasharray': [2, 2] }), TABLE, { variables: false });
     assert.ok(!/line-border/.test(mss));
     assert.match(mss, /::road_case/);
 });

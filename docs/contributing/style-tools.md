@@ -738,17 +738,31 @@ adb shell am start -n com.massifmaps.MassifDemo/.BenchActivity --es ui false \
 - **`vectorZoomBias -1`** for a 512 px tileset, as the next section explains.
 - A Mapbox tiles token is a **tiles**-scoped one; a styles-scoped token 403s on `/v4/`.
 
-## Folding a casing into its fill: `--fold-casings`
+## Folding a casing into its fill
 
-`--fold-casings` merges a casing layer into the fill layer it runs under, as one `line-border-*`
-rule ([the border pass](../internals/rendering/03-vt-renderer.md#line-borders-line-border-width--line-border-color)).
-It only fires on a pair that describes ONE road — same source layer, filter, zoom range and
-join/cap, no dash or pattern, and the same opacity — and it reports every pair it folded.
+A casing layer is merged into the fill layer it runs under, as one `line-border-*` rule
+([the border pass](../internals/rendering/03-vt-renderer.md#line-borders-line-border-width--line-border-color)).
+`--no-fold-casings` turns it off.
 
-It is opt-in because it **moves the casing in the draw order**. A style writes every casing layer
-before every fill layer, so a minor road's fill covers a major road's casing at a junction; folded,
-each class carries its own casing and the major road's casing runs unbroken across the minor road.
-Both are ordinary map looks, but only one is what the source style said.
+It only fires on a pair that describes ONE road — same source layer, filter, zoom range, join/cap
+and opacity, no dash or pattern, and **both stating a `line-width`** (two layers that merely draw
+the same features in the same colour are not a casing pair). Every fold is named in the report.
+
+It **moves the casing in the draw order**, which is the one thing to look at. A style writes every
+casing layer before every fill layer, so a minor road's fill covers a major road's casing at a
+junction; folded, each class carries its own casing and the major road's casing runs unbroken
+across the minor road. Both are ordinary map looks, but only one is what the source style said.
+
+What real styles do with it:
+
+| style | folded |
+|---|---|
+| Mapbox Standard | **0** — its casings already carry `line-gap-width`, so they are one rule each, and their filters and layouts differ from their fills. The output is byte-identical with the fold on or off |
+| MapTiler streets | 3 — `Minor road outline`, `Major road outline`, `Highway outline` |
+| MapTiler outdoor v4 | 0 |
+
+The border width comes out as `((casingWidth) - (fillWidth)) / 2`, which goes **negative** at zooms
+where the casing's own ramp has not started; the SDK clamps a negative border width to no border.
 
 ## Comparing against mapbox-gl: the zoom AND the tile level
 

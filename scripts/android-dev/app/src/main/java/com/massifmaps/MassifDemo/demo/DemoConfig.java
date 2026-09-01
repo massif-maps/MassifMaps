@@ -811,6 +811,22 @@ public final class DemoConfig {
     /** Translucent on purpose: alpha < 1 is what turns the vt single-blend stencil pass on. */
     public static String BUG_LINE_COLOR = "#00000077";
     public static float BUG_LINE_WIDTH = 10f;
+    /**
+     * The synthetic BRIDGE / TUNNEL span (DemoMap.buildBugBridgeGeoJSON). One chord across the
+     * Bastille ridge, 207 m at its south end and 641 m at its north, with the ground bulging ~60 m
+     * ABOVE the chord in between - so a bridge that goes straight is visibly not the terrain, and a
+     * tunnel on the same chord is genuinely inside the hill at mid-span.
+     *
+     * The span carries INTERMEDIATE vertices on purpose: a two-point line is already straight
+     * undraped, and would prove nothing.
+     */
+    public static double BUG_SPAN_LON = 5.7240;
+    public static double BUG_SPAN_LAT_START = 45.1930;
+    public static double BUG_SPAN_LAT_END = 45.2074;
+    public static int BUG_SPAN_VERTICES = 24;
+    public static String BUG_BRIDGE_COLOR = "#e67e22";
+    public static String BUG_TUNNEL_COLOR = "#8e44ad";
+    public static float BUG_BRIDGE_WIDTH = 8f;
     /** Line labels along #bugline (the text-allow-overlap case). */
     public static boolean BUG_LINE_LABEL = true;
     public static float BUG_TEXT_SIZE = 14f;
@@ -1152,6 +1168,13 @@ public final class DemoConfig {
         BUG_LINE_BORDER = DemoCfg.cfgBool("bugLineBorder", BUG_LINE_BORDER);
         BUG_LINE_COLOR = DemoCfg.cfgColor("bugLineColor", BUG_LINE_COLOR);
         BUG_LINE_WIDTH = DemoCfg.cfgFloat("bugLineWidth", BUG_LINE_WIDTH);
+        BUG_SPAN_LON = DemoCfg.cfgFloat("bugSpanLon", (float) BUG_SPAN_LON);
+        BUG_SPAN_LAT_START = DemoCfg.cfgFloat("bugSpanLatStart", (float) BUG_SPAN_LAT_START);
+        BUG_SPAN_LAT_END = DemoCfg.cfgFloat("bugSpanLatEnd", (float) BUG_SPAN_LAT_END);
+        BUG_SPAN_VERTICES = DemoCfg.cfgInt("bugSpanVertices", BUG_SPAN_VERTICES);
+        BUG_BRIDGE_COLOR = DemoCfg.cfgColor("bugBridgeColor", BUG_BRIDGE_COLOR);
+        BUG_TUNNEL_COLOR = DemoCfg.cfgColor("bugTunnelColor", BUG_TUNNEL_COLOR);
+        BUG_BRIDGE_WIDTH = DemoCfg.cfgFloat("bugBridgeWidth", BUG_BRIDGE_WIDTH);
         BUG_LINE_LABEL = DemoCfg.cfgBool("bugLineLabel", BUG_LINE_LABEL);
         BUG_TEXT_SIZE = DemoCfg.cfgFloat("bugTextSize", BUG_TEXT_SIZE);
         BUG_TEXT_ALLOW_OVERLAP = DemoCfg.cfgBool("bugAllowOverlap", BUG_TEXT_ALLOW_OVERLAP);

@@ -864,11 +864,40 @@ public class DemoMap {
             source.setLayerGeoJSONString(source.createLayer("bugline"), buildBugLineGeoJSON());
             source.setLayerGeoJSONString(source.createLayer("bugsel"), buildBugSelGeoJSON());
             source.setLayerGeoJSONString(source.createLayer("bugpoints"), buildBugPointsGeoJSON());
+            source.setLayerGeoJSONString(source.createLayer("bugbridge"), buildBugSpanGeoJSON("bridge", 0));
+            source.setLayerGeoJSONString(source.createLayer("bugtunnel"), buildBugSpanGeoJSON("tunnel", 0.0010));
         } catch (IOException e) {
             Log.w(TAG, "bug repro geojson rejected: " + e.getMessage());
             return null;
         }
         return new VectorTileLayer(source, decoder);
+    }
+
+    /**
+     * The synthetic BRIDGE / TUNNEL span: one chord across the Bastille ridge (see
+     * DemoConfig.BUG_SPAN_*). Draped, it climbs every metre of the 430 m the ground gains between
+     * its ends; that is the "before" both behaviours are judged against.
+     *
+     * The vertices in BETWEEN are the point. A two-point line is already a straight chord once it
+     * leaves the drape bake, so it would show a fix that is not there - real bridge geometry is
+     * digitised, and each of those vertices is what currently gets pulled down onto the ground.
+     *
+     * @param brunnel carried as a feature property, so a style can filter on it the way a
+     *                converted MapBox style filters [structure].
+     * @param lonOffset moves the tunnel off the bridge so the two are separately readable.
+     */
+    private String buildBugSpanGeoJSON(String brunnel, double lonOffset) {
+        double lon = DemoConfig.BUG_SPAN_LON + lonOffset;
+        int n = Math.max(1, DemoConfig.BUG_SPAN_VERTICES);
+        StringBuilder coords = new StringBuilder();
+        for (int i = 0; i <= n; i++) {
+            double lat = DemoConfig.BUG_SPAN_LAT_START
+                    + (DemoConfig.BUG_SPAN_LAT_END - DemoConfig.BUG_SPAN_LAT_START) * i / (double) n;
+            coords.append(i > 0 ? "," : "").append('[').append(lon).append(',').append(lat).append(']');
+        }
+        return "{\"type\":\"FeatureCollection\",\"features\":[{\"type\":\"Feature\","
+                + "\"properties\":{\"brunnel\":\"" + brunnel + "\"},"
+                + "\"geometry\":{\"type\":\"LineString\",\"coordinates\":[" + coords + "]}}]}";
     }
 
     /** A zigzag across the view: every vertex is a join, which is where the break shows. */

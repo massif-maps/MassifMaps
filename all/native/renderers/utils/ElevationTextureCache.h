@@ -72,6 +72,25 @@ namespace massif {
         void beginFrame();
 
         /**
+         * Ground height at an internal position, in internal z units (exaggeration and the mercator
+         * stretch applied), sampled from the grid a cached TEXTURE was built from.
+         *
+         * This is tangram's model: it samples the elevation raster the tile renders with
+         * (`ElevationManager::getElevation` -> `elevationLerp(*raster.texture, ...)`), so there is
+         * one representation and a CPU query cannot disagree with what is drawn. Ours has been the
+         * odd one out - ElevationManager's grid LRU is independent of this cache, so a grid is
+         * routinely evicted while the texture built from it goes on rendering, and a CACHED_ONLY
+         * query answers "no data" for ground that is plainly on screen. Measured at the Millau
+         * camera: 0 hits in 3900 queries, with the terrain drawn correctly throughout.
+         *
+         * The grid is already held by the entry (CacheEntry::grid), so this needs no extra
+         * retention - only somewhere to ask.
+         *
+         * @return False when no cached texture covers the point.
+         */
+        bool getDisplayHeight(double internalX, double internalY, double& height) const;
+
+        /**
          * Resolves every tile at the elevation source's own maximum detail instead of at the level
          * the terrain mesh can express. For a cache feeding per-fragment shading (the terrain
          * paint): the mesh cap costs two zoom levels of relief, which at high zoom is all of it.
@@ -178,6 +197,9 @@ namespace massif {
         const std::shared_ptr<ElevationManager> _elevationManager;
         const std::shared_ptr<GLResourceManager> _glResourceManager;
         std::map<long long, CacheEntry> _cache; // keyed by the grid tile id
+        // Tangram keeps the last texture in a weak_ptr for the same reason: a dense query walks the
+        // same tile thousands of times, and the scan below is over every cached entry.
+        mutable std::shared_ptr<ElevationTileGrid> _lastSampledGrid;
         std::map<long long, MapTile> _frameResolved; // render tile id -> its elevation grid tile (zoom -1: no data), reset every frame
         int _detailLevels = 0; // elevation levels resolved BEYOND what the mesh can express
         std::uint64_t _accessCounter = 0; // monotonic LRU clock

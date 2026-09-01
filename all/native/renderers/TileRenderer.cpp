@@ -912,9 +912,20 @@ namespace massif {
             // An extrusion BAKES its ground into its vertices, so unlike a label it cannot accept
             // "0 means no data": a base of 0 where the ground is 215 m sinks the whole prism under
             // the terrain. This one reports whether a grid answered.
-            tileRenderer->setExtrusionElevationProvider([elevationManager](const cglib::vec3<double>& pos, double& height) {
-                return elevationManager->getDisplayHeightCached(pos(0), pos(1), height);
-            });
+            // From the TEXTURE cache, not the grid LRU: the two are independent, so a grid is
+            // routinely evicted while the texture built from it keeps rendering, and a CACHED_ONLY
+            // query then answers "no data" for ground that is plainly on screen (measured at the
+            // Millau camera: 0 hits in 3900). tangram samples the raster the tile draws with for
+            // exactly this reason - one representation, so a CPU query cannot disagree with it.
+            if (std::shared_ptr<ElevationTextureCache> elevationTextureCache = _elevationTextureCache) {
+                tileRenderer->setExtrusionElevationProvider([elevationTextureCache](const cglib::vec3<double>& pos, double& height) {
+                    return elevationTextureCache->getDisplayHeight(pos(0), pos(1), height);
+                });
+            } else {
+                tileRenderer->setExtrusionElevationProvider([elevationManager](const cglib::vec3<double>& pos, double& height) {
+                    return elevationManager->getDisplayHeightCached(pos(0), pos(1), height);
+                });
+            }
         } else {
             tileRenderer->setLabelElevationProvider(std::function<double(const cglib::vec3<double>&)>());
             tileRenderer->setExtrusionElevationProvider(std::function<bool(const cglib::vec3<double>&, double&)>());

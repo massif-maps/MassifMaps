@@ -10,12 +10,14 @@ void testPlateBitmap();
 void testLineLabel();
 void testExtrusionCorner();
 void testExtrusionRingOrientation();
+void testLineJoinReach();
 
 int main() {
     testPlateBitmap();
     testLineLabel();
     testExtrusionCorner();
     testExtrusionRingOrientation();
+    testLineJoinReach();
 
     std::printf("\n%d failure(s)\n", failures);
     return failures ? 1 : 0;

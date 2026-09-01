@@ -192,12 +192,28 @@ A navigation maneuver arrow is one line with this property set: see
 ## Line joins
 
 `TileLayerBuilder::tesselateLine` picks per vertex between a miter, a bevel, a round fan and a split,
-from the dot product of consecutive binormals. Three things about it:
+from the dot product of consecutive binormals. What is load-bearing in it:
 
 - **`line-miterlimit` is a ratio**, miter length over line width, and the stroke width must not enter
   it. It used to (`asin(min(width/limit, 1))` as the half-angle), which cut in two wrong directions at
   once: a 0.8-wide contour kept mitering into a needle five half-widths long, while any line wider than
   the limit never mitered at all. `dot = 2/limit² − 1` is the whole rule.
+- **The INNER corner gets no miter at all** (`INNER_MITER_LIMIT` = 1). `line-miterlimit` only picks
+  which branch runs; the bevel/round branch it falls into still placed that corner at the true miter
+  point, `1/cos(turn/2)` half-widths out. At 161° — one notch short of the split branch's `−0.95` —
+  that is **6.06 half-widths**, and any segment shorter than it gets a needle out past its own end:
+  the spike roundabouts and slip roads grew at z11–12 and lost by z12.2, where the same geometry is
+  many half-widths long. Tesselating a 161° hairpin on segments of 1, 2 and 4 half-widths reached
+  5.08 / 4.10 / 2.21 half-widths, now 1.01 at every angle (`tests/vt/LineJoinTest.cpp`).
+
+  **No build-time value smaller than the whole miter would do**, which is why this is 1 rather than
+  tangram's 3: the miter is in half-widths, a *screen* quantity, and the segment it has to fit inside
+  is in tile units, so the ratio is a zoom the tesselator does not have. Swept on device at
+  z9.58/tilt 89 over Paris with a 10 px round-joined motorway line, the spike is unchanged at a cap
+  of 4 or 3, small at 2 and gone only at 1. The overlap this trades it for costs nothing measured:
+  at `line-opacity: 0.45` the darkest blended pixel is `(193,58,44)` at a cap of 1 and of 4 alike.
+  A `line-join: miter` still reaches `line-miterlimit` — that is what the limit means, and only the
+  inner corner is capped.
 - **A sharp join must not overlap itself.** Two full-width quads meeting at a point overlap in a lens on
   the inside of the turn, and every pixel of that lens blends twice — which is what darkened a line with
   `line-opacity` at each hairpin. The inner corners are collapsed onto the centre line instead (mapbox's
@@ -212,8 +228,10 @@ from the dot product of consecutive binormals. Three things about it:
 - **`line-join: round` builds tangram's 5-triangle fan** (`ROUND_JOIN_TRIANGLES`, their
   `JoinTypes::round`). Getting it right took three device rounds, all invisible in a syntax check:
   the fan vertices must sit **between** the two cross-sections (appended after them, the next segment
-  links to fan vertices and the line comes apart); the hub must be on the **centre line**, not the miter
-  point (that point is at zero alpha in the antialias ramp); and two extra triangles must close the
+  links to fan vertices and the line comes apart) — in the **split** branch as well as the bevel one,
+  where it was the reason a segment following a turn past 161° lost its inner half; the hub must be
+  on the **centre line**, not the miter point (that point is at zero alpha in the antialias ramp);
+  and two extra triangles must close the
   sliver against each quad's end chord, which runs from its outer corner to the miter point and so does
   not pass through the hub. Winding mirrors with the turn direction — 2D geometry is drawn with back-face
   culling on, and a fan wound one way loses every join that turns the other way. Below ~10° the fan is

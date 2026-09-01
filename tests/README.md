@@ -26,10 +26,11 @@ builders in, so a case that needs one belongs behind a device check instead.
 
 `vt/` covers what of the renderer links without the renderer: the label plate cell
 (`LabelPlateBitmap.h`, header-only) — what the fill and border shapes in one atlas cell have to
-satisfy for one quad to draw both — and line-label layout (`Label.cpp`, the one `.cpp` of `vt`
-linked here, which reaches no font, no tile builder and no GL): that a glyph run stays on the line
-it names. Anything else reached through a `.cpp` of `vt` drags the tile builders, freetype and
-harfbuzz in, and belongs behind a device check instead.
+satisfy for one quad to draw both — line-label layout (`Label.cpp`): that a glyph run stays on the
+line it names — and line tesselation (`TileLayerBuilder.cpp` and the six TUs it names): how far out
+of its own width a line reaches at a join. That last chain wants tess2 and bidi but **no font** —
+`TextFormatter` reaches `Font` through its interface only, so freetype and harfbuzz stay out.
+Anything reaching GL still belongs behind a device check instead.
 
 It does **not** cover anything that needs a real map. Two things make that a hard boundary rather
 than a choice:
@@ -75,7 +76,7 @@ that turns into a long list, the class probably belongs behind a device check in
 `style/StyleTest.cpp` is the same `main` for the style side; a new case is a function there plus
 its `.cpp` in `style/CMakeLists.txt`. Keep `STYLE_SOURCES` short for the same reason.
 
-`vt/VtTest.cpp` is that `main` for the vt side. It links one source of `vt` (`Label.cpp`), so a new
-case there has to reach its subject through a header or through that one object — adding another
-`.cpp` is the signal that the case belongs on a device instead, because the next ones pull the tile
-builders and the font stack.
+`vt/VtTest.cpp` is that `main` for the vt side. It links `Label.cpp` and the tile-builder chain, so
+a new case has to reach its subject through a header or through those objects — adding another
+`.cpp` is the signal to check what it pulls first, because the font stack and GL are one include
+away and neither belongs here.

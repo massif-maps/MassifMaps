@@ -92,7 +92,7 @@ public class DemoMap {
 
     /** One switchable layer of the demo. */
     public enum Feature {
-        CELESTIAL, STARS, BASE, SATELLITE, API_SOURCE, HILLSHADE, HYPSO, CONTOUR, CONTOUR_TILES, ROUTES, ROUTE_TEST, ROUTE_SELECT, MANEUVERS, ELEMENTS, BUGS, PEAKS
+        CELESTIAL, STARS, BASE, SATELLITE, API_SOURCE, HILLSHADE, HYPSO, CONTOUR, CONTOUR_TILES, ROUTES, ROUTE_TEST, ROUTE_SELECT, MANEUVERS, ELEMENTS, SPANS, BUGS, PEAKS
     }
 
     /** Bottom -> top draw order. Toggling a layer never reorders the others. */
@@ -102,6 +102,7 @@ public class DemoMap {
         Feature.CELESTIAL, Feature.STARS,
         Feature.BASE, Feature.SATELLITE, Feature.API_SOURCE, Feature.HILLSHADE, Feature.HYPSO,
         Feature.CONTOUR, Feature.CONTOUR_TILES, Feature.ROUTES, Feature.ROUTE_TEST, Feature.ROUTE_SELECT, Feature.MANEUVERS, Feature.ELEMENTS,
+        Feature.SPANS,
         Feature.BUGS,
         // Last: the summit names go over everything the map draws.
         Feature.PEAKS
@@ -252,6 +253,7 @@ public class DemoMap {
             case MANEUVERS: return DemoConfig.LAYER_MANEUVERS;
             case ELEMENTS: return DemoConfig.LAYER_ELEMENTS;
             case API_SOURCE: return DemoConfig.LAYER_API_SOURCE;
+            case SPANS: return DemoConfig.LAYER_SPANS;
             case BUGS: return DemoConfig.LAYER_BUGS;
             case PEAKS: return DemoConfig.LAYER_PEAKS;
             default: return false;
@@ -337,6 +339,7 @@ public class DemoMap {
             case MANEUVERS: return createManeuversLayer();
             case ELEMENTS: return createElementsLayer();
             case API_SOURCE: return createApiSourceLayer();
+            case SPANS: return createSpansLayer();
             case BUGS: return createBugsLayer();
             case PEAKS: return createPeaksLayer();
             default: return null;
@@ -855,6 +858,20 @@ public class DemoMap {
      *   bugsel     one line -> the 'back/' instance case. 'bugBackOpacity' -1 removes the property.
      *   bugline    one zigzag -> the translucent-line join case, and the line-label case.
      */
+    /**
+     * Bridges and tunnels from a COARSER tile than the base map's.
+     *
+     * A chord is only right while the feature's own portals are in the tile, and a long bridge is
+     * cut by the tile at every zoom you would actually look at it from - tiles SHRINK as the zoom
+     * rises, so Millau (2.46 km) fits at z13 and below and is split from z14 up. Drawing the spans
+     * from a lower zoom keeps them whole; the base map keeps its own detail.
+     */
+    private Layer createSpansLayer() {
+        VectorTileLayer layer = new VectorTileLayer(vectorSource(), DemoStyles.createSpanDecoder());
+        layer.setZoomLevelBias(DemoConfig.SPAN_ZOOM_BIAS);
+        return layer;
+    }
+
     private Layer createBugsLayer() {
         MBVectorTileDecoder decoder = DemoStyles.createBugDecoder();
         GeoJSONVectorTileDataSource source = new GeoJSONVectorTileDataSource(0, 24);

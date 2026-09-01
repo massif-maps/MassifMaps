@@ -104,6 +104,17 @@ public final class DemoConfig {
     public static boolean LAYER_HYPSO = false;
     /** Markers on summits + a line across the valley: the terrain occlusion / drape test set. */
     public static boolean LAYER_ELEMENTS = true;
+    /**
+     * The SPAN layer: bridges and tunnels drawn from a COARSER tile than the base map, so a long
+     * one is not cut by the tile it lands in. A chord needs the feature's real portals, and those
+     * are only present while the whole span fits one tile - Millau is 2.46 km against ~1.75 km at
+     * z14, so at the zoom you look at it from it is always split. -2 makes the tile 4x wider.
+     */
+    public static boolean LAYER_SPANS = false;
+    public static float SPAN_ZOOM_BIAS = -2.0f;
+    public static String SPAN_BRIDGE_COLOR = "#7f8fa6";
+    public static String SPAN_TUNNEL_COLOR = "#b0a0c8";
+    public static float SPAN_WIDTH = 10f;
     /** Offline routes layer (needs ROUTES_MBTILES_NAME + ROUTES_STYLE_ZIP_NAME on the device). */
     public static boolean LAYER_ROUTES = false;
     /** Synthetic mountain-road route (GeoJSON tiles + CartoCSS): the line join / cap / opacity bench. */
@@ -1148,6 +1159,11 @@ public final class DemoConfig {
         LAYER_SATELLITE = DemoCfg.cfgBool("satLayer", LAYER_SATELLITE);
         LAYER_HYPSO = DemoCfg.cfgBool("hypso", LAYER_HYPSO);
         LAYER_ELEMENTS = DemoCfg.cfgBool("elements", LAYER_ELEMENTS);
+        LAYER_SPANS = DemoCfg.cfgBool("spans", LAYER_SPANS);
+        SPAN_ZOOM_BIAS = DemoCfg.cfgFloat("spanZoomBias", SPAN_ZOOM_BIAS);
+        SPAN_BRIDGE_COLOR = DemoCfg.cfgColor("spanBridgeColor", SPAN_BRIDGE_COLOR);
+        SPAN_TUNNEL_COLOR = DemoCfg.cfgColor("spanTunnelColor", SPAN_TUNNEL_COLOR);
+        SPAN_WIDTH = DemoCfg.cfgFloat("spanWidth", SPAN_WIDTH);
         LAYER_ROUTES = DemoCfg.cfgBool("routes", LAYER_ROUTES);
         LAYER_ROUTE_TEST = DemoCfg.cfgBool("routeTest", LAYER_ROUTE_TEST);
         LAYER_ROUTE_SELECT = DemoCfg.cfgBool("routeSelect", LAYER_ROUTE_SELECT);

@@ -5753,6 +5753,7 @@ namespace massif::vt {
         bool styleOffsetting = std::count(styleParams.offsetFuncs.begin(), styleParams.offsetFuncs.begin() + styleParams.parameterCount, FloatFunction(0)) != styleParams.parameterCount;
         bool styleGapWidth = std::count(styleParams.gapWidthFuncs.begin(), styleParams.gapWidthFuncs.begin() + styleParams.parameterCount, FloatFunction(0)) != styleParams.parameterCount;
         bool styleBlur = std::count(styleParams.blurFuncs.begin(), styleParams.blurFuncs.begin() + styleParams.parameterCount, FloatFunction(0)) != styleParams.parameterCount;
+        bool styleBorder = std::count(styleParams.borderWidthFuncs.begin(), styleParams.borderWidthFuncs.begin() + styleParams.parameterCount, FloatFunction(0)) != styleParams.parameterCount;
 
         // Flat drape pass: draw the fill into the per-tile drape texture with NO terrain
         // displacement, NO depth bias, and a tile-local orthographic MVP (set by the caller).
@@ -5823,13 +5824,12 @@ namespace massif::vt {
         // Standard goes 0 at z15 to full at z15.3 - then owns the whole appearance, instead of
         // fading a second time on a timer whenever a tile arrives.
         float colorBlend = (geometry->getType() == TileGeometry::Type::POLYGON3D && !_buildingFadeOnAppear ? 1.0f : blend);
-        std::array<cglib::vec4<float>, TileGeometry::StyleParameters::MAX_PARAMETERS> colors;
-        for (int i = 0; i < styleParams.parameterCount; i++) {
-            // The scene light, applied where the colour is already evaluated once per frame and
-            // cached - so this costs one multiply per DISTINCT colour, not per feature. mapbox's
-            // `mix(apply_lighting_ground(color), color, emissive_strength)`: at emissive 1, which is
-            // the default and what every style did before this existed, it is exactly a no-op.
-            Color color = Color::fromColorOpacity(evaluateColorFunc(styleParams.colorFuncs[i]) * colorBlend, opacity);
+        // The scene light, applied where the colour is already evaluated once per frame and
+        // cached - so this costs one multiply per DISTINCT colour, not per feature. mapbox's
+        // `mix(apply_lighting_ground(color), color, emissive_strength)`: at emissive 1, which is
+        // the default and what every style did before this existed, it is exactly a no-op.
+        auto evaluateStyleColor = [&](const ColorFunction& colorFunc, int i) {
+            Color color = Color::fromColorOpacity(evaluateColorFunc(colorFunc) * colorBlend, opacity);
             float emissive = evaluateFloatFunc(styleParams.emissiveFuncs[i]);
             if (emissive < 1.0f) {
                 std::array<float, 4> rgba = color.rgba();
@@ -5838,8 +5838,14 @@ namespace massif::vt {
                 }
                 color = Color(rgba[0], rgba[1], rgba[2], rgba[3]);
             }
-            colors[i] = cglib::vec4<float>(color.rgba());
+            return cglib::vec4<float>(color.rgba());
+        };
+        std::array<cglib::vec4<float>, TileGeometry::StyleParameters::MAX_PARAMETERS> colors, borderColors;
+        for (int i = 0; i < styleParams.parameterCount; i++) {
+            colors[i] = evaluateStyleColor(styleParams.colorFuncs[i], i);
         }
+        // Lines only, for the border draw below.
+        std::array<float, TileGeometry::StyleParameters::MAX_PARAMETERS> fillWidths, fillGapWidths, borderWidths, borderGapWidths;
         VT_STAT_SPLIT(geomStyleEvalNs, statClock);
         VT_STAT_ADD(styleParameters, styleParams.parameterCount);
 
@@ -5904,6 +5910,14 @@ namespace massif::vt {
                     // browser draws it and reads as an edge of the road itself.
                     widths[i] = gapWidths[i] > 0.0f ? gapWidths[i] + width : width * 0.5f;
                 }
+                if (styleBorder) {
+                    // maplibre's `line-border-width`: pixels on EACH side, outside the line. The
+                    // gap shrinks by the same amount so a casing keeps its border on both edges.
+                    float borderHalf = 0.5f * _fullResolution * std::abs(evaluateFloatFunc(styleParams.borderWidthFuncs[i])) * geometry->getGeometryScale() / tileSize;
+                    borderWidths[i] = (borderHalf > 0.0f && widths[i] > 0.0f ? widths[i] + borderHalf : 0.0f);
+                    borderGapWidths[i] = std::max(0.0f, gapWidths[i] - borderHalf);
+                    borderColors[i] = evaluateStyleColor(styleParams.borderColorFuncs[i], i);
+                }
             }
             VT_STAT_SPLIT(geomStyleEvalNs, statClock);
 
@@ -5937,6 +5951,10 @@ namespace massif::vt {
             if (styleBlur) {
                 glUniform1fv(shaderProgram.uniforms[U_BLURTABLE], styleParams.parameterCount, blurs.data());
             }
+            if (styleBorder) {
+                fillWidths = widths;
+                fillGapWidths = gapWidths;
+            }
 
             if (styleParams.pattern) {
                 std::array<float, TileGeometry::StyleParameters::MAX_PARAMETERS> strokeScales;
@@ -5968,9 +5986,12 @@ namespace massif::vt {
             glUniformMatrix3fv(shaderProgram.uniforms[U_TILEMATRIX], 1, GL_FALSE, tileMatrix.data());
         }
 
-        if (std::all_of(colors.begin(), colors.begin() + styleParams.parameterCount, [](const cglib::vec4<float>& color) {
-            return std::all_of(color.cbegin(), color.cend(), [](float val) { return val < 1.0f / 256.0f; });
-        })) {
+        auto allTransparent = [&](const std::array<cglib::vec4<float>, TileGeometry::StyleParameters::MAX_PARAMETERS>& table) {
+            return std::all_of(table.begin(), table.begin() + styleParams.parameterCount, [](const cglib::vec4<float>& color) {
+                return std::all_of(color.cbegin(), color.cend(), [](float val) { return val < 1.0f / 256.0f; });
+            });
+        };
+        if (allTransparent(colors) && (!styleBorder || allTransparent(borderColors))) {
             VT_STAT_SPLIT(geomStyleNs, statClock);
             VT_STAT_INC(geometrySkips);
             return;
@@ -6016,6 +6037,25 @@ namespace massif::vt {
             _lightingShader3D->setupFunc(shaderProgram.program, _viewState);
         }
         VT_STAT_SPLIT(geomBindNs, statClock);
+
+        // The same buffer, extruded wider by the vertex shader. Drawn for the WHOLE batch first,
+        // which is mapbox's casing-layer-under-fill-layer order and what keeps a junction clean.
+        if (styleBorder) {
+            glUniform4fv(shaderProgram.uniforms[U_COLORTABLE], styleParams.parameterCount, borderColors[0].data());
+            glUniform1fv(shaderProgram.uniforms[U_WIDTHTABLE], styleParams.parameterCount, borderWidths.data());
+            if (styleGapWidth) {
+                glUniform1fv(shaderProgram.uniforms[U_GAPWIDTHTABLE], styleParams.parameterCount, borderGapWidths.data());
+            }
+            glDrawElements(GL_TRIANGLES, geometry->getIndicesCount(), GL_UNSIGNED_SHORT, 0);
+            VT_STAT_INC(geometryDraws);
+            VT_STAT_ADD(geometryIndices, geometry->getIndicesCount());
+
+            glUniform4fv(shaderProgram.uniforms[U_COLORTABLE], styleParams.parameterCount, colors[0].data());
+            glUniform1fv(shaderProgram.uniforms[U_WIDTHTABLE], styleParams.parameterCount, fillWidths.data());
+            if (styleGapWidth) {
+                glUniform1fv(shaderProgram.uniforms[U_GAPWIDTHTABLE], styleParams.parameterCount, fillGapWidths.data());
+            }
+        }
 
         glDrawElements(GL_TRIANGLES, geometry->getIndicesCount(), GL_UNSIGNED_SHORT, 0);
         VT_STAT_SPLIT(geomDrawNs, statClock);

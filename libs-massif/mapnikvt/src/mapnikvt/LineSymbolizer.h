@@ -25,6 +25,8 @@ namespace massif::mvt {
             bindProperty("offset", &_offset);
             bindProperty("gap-width", &_gapWidth);
             bindProperty("blur", &_blur);
+            bindProperty("border-width", &_borderWidth);
+            bindProperty("border-color", &_borderColor);
             bindProperty("end-arrow", &_endArrow);
             bindProperty("arrow-width", &_arrowWidth);
             bindProperty("arrow-length", &_arrowLength);
@@ -63,6 +65,10 @@ namespace massif::mvt {
         // mapbox's `line-blur`: widens the antialias ramp on both edges, in pixels. A soft shadow
         // under a bridge is drawn this way, and without it the shadow reads as a hard bar.
         FloatFunctionProperty _blur = FloatFunctionProperty(0.0f);
+        // maplibre's `line-border-*`: a casing this many pixels wide on EACH side of the line,
+        // drawn from the same geometry one draw earlier, so one rule replaces a casing/fill pair.
+        FloatFunctionProperty _borderWidth = FloatFunctionProperty(0.0f);
+        ColorFunctionProperty _borderColor = ColorFunctionProperty("#000000");
         // An arrow head at the last vertex, sized in multiples of the line width. A casing rule
         // repeats the same three properties with its own width and gets an even border for free.
         BoolProperty _endArrow = BoolProperty(false);
@@ -79,6 +85,7 @@ namespace massif::mvt {
         FloatProperty _arrowRotation = FloatProperty(0.0f);
 
         ColorFunctionBuilder _strokeFuncBuilder;
+        ColorFunctionBuilder _borderColorFuncBuilder;
     };
 }
 

@@ -50,6 +50,9 @@ namespace massif::vt {
             std::array<FloatFunction, MAX_PARAMETERS> offsetFuncs; // for lines, points (stroke width in case of points)
             std::array<FloatFunction, MAX_PARAMETERS> gapWidthFuncs; // for lines: an undrawn gap down the middle
             std::array<FloatFunction, MAX_PARAMETERS> blurFuncs; // for lines: a widened antialias ramp
+            // for lines: a casing drawn from the same buffer, one draw before the fill
+            std::array<ColorFunction, MAX_PARAMETERS> borderColorFuncs;
+            std::array<FloatFunction, MAX_PARAMETERS> borderWidthFuncs;
             std::array<float, MAX_PARAMETERS> strokeScales; // for patterned lines
             // 1 where the slot samples 'pattern', 0 where it is a plain fill. Lines and points
             // leave it at 1 - a line selects its stroke through the stroke atlas instead.
@@ -59,7 +62,7 @@ namespace massif::vt {
             CompOp compOp;
             int glyphRenderSize;
 
-            StyleParameters() : parameterCount(0), colorFuncs(), emissiveFuncs(), widthFuncs(), offsetFuncs(), gapWidthFuncs(), blurFuncs(), strokeScales(), pattern(), translate(), compOp(CompOp::SRC_OVER), glyphRenderSize(64) { patternScales.fill(1.0f); emissiveFuncs.fill(FloatFunction(1.0f)); }
+            StyleParameters() : parameterCount(0), colorFuncs(), emissiveFuncs(), widthFuncs(), offsetFuncs(), gapWidthFuncs(), blurFuncs(), borderColorFuncs(), borderWidthFuncs(), strokeScales(), pattern(), translate(), compOp(CompOp::SRC_OVER), glyphRenderSize(64) { patternScales.fill(1.0f); emissiveFuncs.fill(FloatFunction(1.0f)); }
         };
 
         // A run of vertices that a style parameter can repoint, so a feature it picks out repaints

@@ -127,6 +127,22 @@ punches the main line out), `bugLineColor` (a translucent line breaks at its joi
 `bugAllowOverlap`/`bugTextClip` (allow-overlap alone routes line labels onto the clipped
 geometry path). `--es bugs true --es ui false` is enough to see all four.
 
+It also carries the **bridge / tunnel span** (`bugbridge`, `bugtunnel`): one chord across the
+Bastille ridge, 207 m at its south end and 641 m at its north, with the ground bulging ~60 m ABOVE
+the chord in between — so "goes straight" is unmistakable, and a tunnel on the same chord is
+genuinely inside the hill at mid-span. They are their own vt layers so the drape bake can be turned
+off by name:
+
+```sh
+--es bugs true --es terrain true --es noDrape '^contour|bug(bridge|tunnel)'
+```
+
+Quote the filter for the DEVICE shell (the `|` is re-parsed there), and note `noDrape` needs a
+RELAUNCH — an already-baked drape texture is not invalidated when the filter changes. Real bridges
+are a poor substitute: Millau's DEM sits 220 m above the actual deck and the viaduct is longer than
+a z14 tile. The span keeps INTERMEDIATE vertices on purpose (`bugSpanVertices`) — a two-point line
+is already straight once it leaves the bake and would show a fix that is not there.
+
 Change defaults in `DemoConfig` only — those fields are also what the panel mutates. These files
 may carry **uncommitted** local edits (camera, per-demo knobs): read before touching, keep changes
 additive, never restore from a backup or an older commit.

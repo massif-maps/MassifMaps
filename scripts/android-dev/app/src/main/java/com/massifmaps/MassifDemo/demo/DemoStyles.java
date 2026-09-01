@@ -894,7 +894,25 @@ public final class DemoStyles {
                 mss.append("  text-clip: ").append(DemoConfig.BUG_TEXT_CLIP).append(";\n");
             }
         }
-        mss.append("}");
+        mss.append("}\n");
+
+        // --- 5. the bridge / tunnel span --------------------------------------------------------
+        // Their own vt layer names, so NoDrapeLayerFilter can take them out of the drape bake by
+        // name: --es noDrape '^contour|bug(bridge|tunnel)'. Deliberately WIDE, so the shape is
+        // readable from the start camera rather than a hairline on a hillside.
+        mss.append("#bugbridge {\n")
+           .append("  line-color: ").append(DemoConfig.BUG_BRIDGE_COLOR).append(";\n")
+           .append("  line-width: ").append(DemoConfig.BUG_BRIDGE_WIDTH).append(";\n")
+           .append("  line-join: round;\n")
+           .append("  line-cap: butt;\n")
+           .append("}\n");
+        mss.append("#bugtunnel {\n")
+           .append("  line-color: ").append(DemoConfig.BUG_TUNNEL_COLOR).append(";\n")
+           .append("  line-width: ").append(DemoConfig.BUG_BRIDGE_WIDTH).append(";\n")
+           .append("  line-join: round;\n")
+           .append("  line-cap: butt;\n")
+           .append("  line-dasharray: 12, 8;\n")
+           .append("}");
         return mss.toString();
     }
 

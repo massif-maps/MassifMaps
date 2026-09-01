@@ -917,13 +917,18 @@ namespace massif {
             // query then answers "no data" for ground that is plainly on screen (measured at the
             // Millau camera: 0 hits in 3900). tangram samples the raster the tile draws with for
             // exactly this reason - one representation, so a CPU query cannot disagree with it.
+            //
+            // vt works in NORMALIZED map coordinates (-0.5..0.5); the SDK's internal space is
+            // Const::WORLD_SIZE wide. Handing the normalized pair straight over put every query in
+            // the corner of the world, where it sampled ocean and answered 0 m - which is what a
+            // bridge deck at sea level was made of.
             if (std::shared_ptr<ElevationTextureCache> elevationTextureCache = _elevationTextureCache) {
                 tileRenderer->setExtrusionElevationProvider([elevationTextureCache](const cglib::vec3<double>& pos, double& height) {
-                    return elevationTextureCache->getDisplayHeight(pos(0), pos(1), height);
+                    return elevationTextureCache->getDisplayHeight(pos(0) * Const::WORLD_SIZE, pos(1) * Const::WORLD_SIZE, height);
                 });
             } else {
                 tileRenderer->setExtrusionElevationProvider([elevationManager](const cglib::vec3<double>& pos, double& height) {
-                    return elevationManager->getDisplayHeightCached(pos(0), pos(1), height);
+                    return elevationManager->getDisplayHeightCached(pos(0) * Const::WORLD_SIZE, pos(1) * Const::WORLD_SIZE, height);
                 });
             }
         } else {

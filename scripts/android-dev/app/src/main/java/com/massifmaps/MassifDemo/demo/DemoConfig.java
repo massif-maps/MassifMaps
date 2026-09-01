@@ -40,6 +40,10 @@ public final class DemoConfig {
         /** AndroidAssetPackage over the style project bundled in the APK assets (assets/style).
          *  The smallest complete example of a style a composite layer can weave sources into. */
         ASSETS,
+        /** ZippedAssetPackage over assets/styles/<STYLE_ASSET_ZIP_NAME>.zip - the style projects
+         *  gradle's zipStyleProjects builds from app/src/main/style-projects, and the same zips the
+         *  gallery examples load as 'assets://styles/<name>.zip'. */
+        ASSETZIP,
         /** Shield test style: a CartoCSS string that uses the APK asset package for its FONTS, so
          *  it can put a font icon next to a name and let the culler pick the side (see
          *  DemoStyles.poiTestStyle). Dense on purpose - every POI and every place carries one. */
@@ -63,6 +67,9 @@ public final class DemoConfig {
     public static String STYLE_ZIP_NAME = "osm.zip";
     /** Style project inside the APK assets, read by AndroidAssetPackage for StyleSource.ASSETS. */
     public static String STYLE_ASSETS_PATH = "style";
+    /** Which assets/styles/<name>.zip StyleSource.ASSETZIP reads. One per folder under
+     *  app/src/main/style-projects: alpine, hybrid, mapbox-standard, maptiler-streets. */
+    public static String STYLE_ASSET_ZIP_NAME = "alpine";
     /** Which project of that package to compile: assets/style/<name>.json. 'eink' is the one that
      *  turns every polygon pattern on (forest, scrub, rock, scree, wetland, vineyard). */
     public static String STYLE_ASSETS_NAME = "osm";
@@ -1166,7 +1173,11 @@ public final class DemoConfig {
 
         // sources
         VECTOR_URL = DemoCfg.cfgStr("vectorUrl", VECTOR_URL);
+        VECTOR_MIN_ZOOM = DemoCfg.cfgInt("vectorMinZoom", VECTOR_MIN_ZOOM);
         VECTOR_MAX_ZOOM = DemoCfg.cfgInt("vectorMaxZoom", VECTOR_MAX_ZOOM);
+        // Its own db per source, or the persistent cache answers a mapbox request with the
+        // OpenMapTiles tile it already has under the same key - an empty map and no error.
+        VECTOR_CACHE_DB = DemoCfg.cfgStr("vectorCacheDb", VECTOR_CACHE_DB);
         VECTOR_ZOOM_BIAS = DemoCfg.cfgFloat("vectorZoomBias", VECTOR_ZOOM_BIAS);
         DEM_URL = DemoCfg.cfgStr("demUrl", DEM_URL);
         DEM_MAX_ZOOM = DemoCfg.cfgInt("demMaxZoom", DEM_MAX_ZOOM);
@@ -1180,6 +1191,7 @@ public final class DemoConfig {
         STYLE_DIR_NAME = DemoCfg.cfgStr("styleDir", STYLE_DIR_NAME);
         STYLE_ZIP_NAME = DemoCfg.cfgStr("styleZip", STYLE_ZIP_NAME);
         STYLE_ASSETS_PATH = DemoCfg.cfgStr("styleAssets", STYLE_ASSETS_PATH);
+        STYLE_ASSET_ZIP_NAME = DemoCfg.cfgStr("styleAssetZip", STYLE_ASSET_ZIP_NAME);
         STYLE_ASSETS_NAME = DemoCfg.cfgStr("styleName", STYLE_ASSETS_NAME);
         LIGHT_PRESET = DemoCfg.cfgStr("lightPreset", LIGHT_PRESET);
         PERSISTENT_CACHE_MB = DemoCfg.cfgInt("cacheMb", PERSISTENT_CACHE_MB);

@@ -104,6 +104,7 @@ Map {
   polygon-emissive-strength: 0;
 }
 #road[zoom >= 17][structure = 'tunnel'][class = 'path'][type != 'steps']['mapnik::geometry_type' = 2]::tunnel_path_case {
+  line-elevation-mode: underground;
   line-join: 'round';
   line-width: exponential(1.5, ([view::zoom] - 1), (14, 0.5), (18, 1), (22, 2));
   line-color: @case_stroke;
@@ -112,6 +113,7 @@ Map {
   line-emissive-strength: 0.15;
 }
 #road[zoom >= 17][structure = 'tunnel'][type = 'pedestrian']['mapnik::geometry_type' = 2]::tunnel_pedestrian_case {
+  line-elevation-mode: underground;
   line-join: 'round';
   line-width: exponential(1.5, ([view::zoom] - 1), (14, 0.5), (18, 1), (22, 2));
   line-color: @case_stroke;
@@ -120,12 +122,14 @@ Map {
   line-emissive-strength: 0.15;
 }
 #road[zoom >= 17][structure = 'tunnel'][type = 'steps']['mapnik::geometry_type' = 2]::tunnel_steps_case {
+  line-elevation-mode: underground;
   line-join: 'round';
   line-width: exponential(1.5, ([view::zoom] - 1), (12, 0), (18, 6), (22, 80));
   line-color: @line_stroke;
   line-emissive-strength: 0.15;
 }
 #road[zoom >= 14][structure = 'tunnel'] when(step(([view::zoom] - 1), (0, (([class] = 'motorway' || [class] = 'trunk') ? true : false)), (14, (([class] = 'motorway' || [class] = 'motorway_link' || [class] = 'trunk' || [class] = 'trunk_link' || [class] = 'primary' || [class] = 'secondary' || [class] = 'tertiary') ? true : false)), (15, (([class] = 'motorway' || [class] = 'motorway_link' || [class] = 'trunk' || [class] = 'trunk_link' || [class] = 'primary' || [class] = 'primary_link' || [class] = 'secondary' || [class] = 'secondary_link' || [class] = 'tertiary' || [class] = 'tertiary_link' || [class] = 'street' || [class] = 'street_limited') ? true : false)), (16, ((([class] = 'motorway' || [class] = 'motorway_link' || [class] = 'trunk' || [class] = 'trunk_link' || [class] = 'primary' || [class] = 'primary_link' || [class] = 'secondary' || [class] = 'secondary_link' || [class] = 'tertiary' || [class] = 'tertiary_link' || [class] = 'street' || [class] = 'street_limited' || [class] = 'track' || [class] = 'service') ? true : false) ? (([type] = 'piste') ? false : true) : false))))['mapnik::geometry_type' = 2]::tunnel_roads_case {
+  line-elevation-mode: underground;
   line-join: 'miter';
   line-cap: 'butt';
   line-width: exponential(1.5, ([view::zoom] - 1), (14, (([class] = 'motorway' || [class] = 'trunk' || [class] = 'primary' || [class] = 'secondary' || [class] = 'tertiary') ? 1 : 0.8)), (22, 2));
@@ -135,12 +139,14 @@ Map {
   line-emissive-strength: 0;
 }
 #road[zoom >= 17][structure = 'tunnel'][class = 'path'] when(([type] = 'hiking' || [type] = 'mountain_bike' || [type] = 'trail'))['mapnik::geometry_type' = 2]::tunnel_path_trail {
+  line-elevation-mode: underground;
   line-cap: step(([view::zoom] - 1), (0, 'butt'), (16, 'round'));
   line-width: exponential(1.5, ([view::zoom] - 1), (12, 0), (18, 6), (22, 80));
   line-color: @tunnel_stroke;
   line-emissive-strength: 0.15;
 }
 #road[zoom >= 17][structure = 'tunnel'][class = 'path'][type != 'steps']['mapnik::geometry_type' = 2]::tunnel_path {
+  line-elevation-mode: underground;
   line-cap: 'round';
   line-join: 'round';
   line-width: exponential(1.5, ([view::zoom] - 1), (12, 0), (18, 6), (22, 80));
@@ -148,12 +154,14 @@ Map {
   line-emissive-strength: 0.15;
 }
 #road[zoom >= 17][structure = 'tunnel'][type = 'steps']['mapnik::geometry_type' = 2]::tunnel_steps {
+  line-elevation-mode: underground;
   line-width: exponential(1.5, ([view::zoom] - 1), (12, 0), (18, 6), (22, 80));
   line-color: @tunnel_stroke;
   line-dasharray: 1.51,1.51;
   line-emissive-strength: 0.15;
 }
 #road[zoom >= 17][structure = 'tunnel'][type = 'pedestrian'][class = 'pedestrian']['mapnik::geometry_type' = 2]::tunnel_pedestrian {
+  line-elevation-mode: underground;
   line-cap: 'round';
   line-join: 'round';
   line-width: exponential(1.5, ([view::zoom] - 1), (12, 0), (18, 6), (22, 80));
@@ -161,12 +169,14 @@ Map {
   line-emissive-strength: 0.15;
 }
 #road[zoom >= 15][structure = 'tunnel'][class = 'construction']['mapnik::geometry_type' = 2]::tunnel_construction {
+  line-elevation-mode: underground;
   line-width: exponential(1.5, ([view::zoom] - 1), (14, 2), (18, 20), (22, 200));
   line-color: @tunnel_stroke_2;
   line-dasharray: 4.22,4.22;
   line-emissive-strength: 0.2;
 }
 #road[zoom >= 14][structure = 'tunnel'] when(step(([view::zoom] - 1), (0, (([class] = 'motorway' || [class] = 'motorway_link' || [class] = 'trunk' || [class] = 'trunk_link' || [class] = 'primary' || [class] = 'primary_link' || [class] = 'secondary' || [class] = 'secondary_link' || [class] = 'tertiary' || [class] = 'tertiary_link' || [class] = 'street' || [class] = 'street_limited') ? true : false)), (15, ((([class] = 'motorway' || [class] = 'motorway_link' || [class] = 'trunk' || [class] = 'trunk_link' || [class] = 'primary' || [class] = 'primary_link' || [class] = 'secondary' || [class] = 'secondary_link' || [class] = 'tertiary' || [class] = 'tertiary_link' || [class] = 'street' || [class] = 'street_limited' || [class] = 'track' || [class] = 'service') ? true : false) ? (([type] = 'piste') ? false : true) : false))))['mapnik::geometry_type' = 2]::tunnel_roads {
+  line-elevation-mode: underground;
   line-join: 'miter';
   line-cap: 'butt';
   line-width: exponential(1.5, ([view::zoom] - 1), (12, (([class] = 'motorway' || [class] = 'trunk') ? 3.2 : (([class] = 'primary') ? 3 : (([class] = 'secondary' || [class] = 'tertiary') ? 2.2 : (([class] = 'motorway_link' || [class] = 'trunk_link') ? 0.8 : (([class] = 'street' || [class] = 'street_limited') ? 0.5 : (([class] = 'primary_link' || [class] = 'secondary_link' || [class] = 'tertiary_link') ? 0.4 : 0))))))), (18, (([class] = 'motorway' || [class] = 'trunk') ? 30 : (([class] = 'primary') ? 28 : (([class] = 'secondary' || [class] = 'tertiary') ? 26 : (([class] = 'motorway_link' || [class] = 'trunk_link' || [class] = 'street' || [class] = 'street_limited') ? 20 : (([class] = 'primary_link' || [class] = 'secondary_link' || [class] = 'tertiary_link') ? 18 : 10)))))), (22, (([class] = 'motorway' || [class] = 'trunk') ? 300 : (([class] = 'primary') ? 280 : (([class] = 'secondary' || [class] = 'tertiary') ? 260 : (([class] = 'motorway_link' || [class] = 'trunk_link' || [class] = 'street' || [class] = 'street_limited') ? 200 : (([class] = 'primary_link' || [class] = 'secondary_link' || [class] = 'tertiary_link') ? 180 : 100)))))));
@@ -174,6 +184,7 @@ Map {
   line-emissive-strength: 0.2;
 }
 #road[zoom >= 17][zoom < 19][structure = 'tunnel'][oneway = 'true'] when(step(([view::zoom] - 1), (0, (([class] = 'primary' || [class] = 'secondary' || [class] = 'street' || [class] = 'street_limited' || [class] = 'tertiary') ? true : false)), (16, (([class] = 'primary' || [class] = 'secondary' || [class] = 'tertiary' || [class] = 'street' || [class] = 'street_limited' || [class] = 'primary_link' || [class] = 'secondary_link' || [class] = 'tertiary_link' || [class] = 'service' || [class] = 'track') ? true : false))))::tunnel_oneway_arrow_b1 {
+  line-elevation-mode: underground;
   marker-file: url('icons/oneway-small.png');
   marker-placement: 'line';
   marker-width: @oneway_width;
@@ -183,6 +194,7 @@ Map {
   marker-halo-emissive-strength: 0;
 }
 #road[zoom >= 19][zoom < 25][structure = 'tunnel'][oneway = 'true'] when(step(([view::zoom] - 1), (0, (([class] = 'primary' || [class] = 'secondary' || [class] = 'street' || [class] = 'street_limited' || [class] = 'tertiary') ? true : false)), (16, (([class] = 'primary' || [class] = 'secondary' || [class] = 'tertiary' || [class] = 'street' || [class] = 'street_limited' || [class] = 'primary_link' || [class] = 'secondary_link' || [class] = 'tertiary_link' || [class] = 'service' || [class] = 'track') ? true : false))))::tunnel_oneway_arrow_b2 {
+  line-elevation-mode: underground;
   marker-file: url('icons/oneway-large.png');
   marker-placement: 'line';
   marker-width: @oneway_width_2;
@@ -192,6 +204,7 @@ Map {
   marker-halo-emissive-strength: 0;
 }
 #road[zoom >= 17][zoom < 19][structure = 'tunnel'] when(([class] = 'trunk' || [class] = 'trunk_link'))[oneway = 'true']::tunnel_oneway_arrow_trunk_b1 {
+  line-elevation-mode: underground;
   marker-file: url('icons/oneway-small.png');
   marker-placement: 'line';
   marker-width: @oneway_width;
@@ -201,6 +214,7 @@ Map {
   marker-halo-emissive-strength: 0;
 }
 #road[zoom >= 19][zoom < 25][structure = 'tunnel'] when(([class] = 'trunk' || [class] = 'trunk_link'))[oneway = 'true']::tunnel_oneway_arrow_trunk_b2 {
+  line-elevation-mode: underground;
   marker-file: url('icons/oneway-large.png');
   marker-placement: 'line';
   marker-width: @oneway_width_2;
@@ -210,6 +224,7 @@ Map {
   marker-halo-emissive-strength: 0;
 }
 #road[zoom >= 17][zoom < 19][structure = 'tunnel'] when(([class] = 'motorway' || [class] = 'motorway_link'))[oneway = 'true']::tunnel_oneway_arrow_motorway_b1 {
+  line-elevation-mode: underground;
   marker-file: url('icons/oneway-small.png');
   marker-placement: 'line';
   marker-width: @oneway_width;
@@ -219,6 +234,7 @@ Map {
   marker-halo-emissive-strength: 0;
 }
 #road[zoom >= 19][zoom < 25][structure = 'tunnel'] when(([class] = 'motorway' || [class] = 'motorway_link'))[oneway = 'true']::tunnel_oneway_arrow_motorway_b2 {
+  line-elevation-mode: underground;
   marker-file: url('icons/oneway-large.png');
   marker-placement: 'line';
   marker-width: @oneway_width_2;
@@ -228,6 +244,7 @@ Map {
   marker-halo-emissive-strength: 0;
 }
 #road[zoom >= 13][structure = 'tunnel'] when(([class] = 'path' || [class] = 'track')) when((([type] = 'cycleway') ? step(([view::zoom] - 1), (0, false), (15, true)) : (([type] = 'piste') ? true : false)))['mapnik::geometry_type' = 2]::tunnel_path_cycleway_piste {
+  line-elevation-mode: underground;
   line-width: linear(([view::zoom] - 1), (12, (([type] = 'piste') ? 0.5 : 0)), (18, (([type] = 'piste') ? 4 : 2)), (22, (([type] = 'piste') ? 40 : 20)));
   line-color: @path_stroke;
   line-opacity: linear(([view::zoom] - 1), (15, (([type] = 'piste') ? 1 : 0)), (16, 0.5));
@@ -467,47 +484,55 @@ Map {
   marker-halo-emissive-strength: 0;
 }
 #road[zoom >= 16][structure = 'bridge'][class = 'path'] when(step(([view::zoom] - 1), (0, (!(([type] = 'steps' || [type] = 'sidewalk' || [type] = 'crossing') ? true : false))), (16, ([type] != 'steps'))))['mapnik::geometry_type' = 2]::bridge_path_case {
+  line-elevation-mode: span;
   line-width: exponential(1.5, ([view::zoom] - 1), (14, 0.5), (18, 1), (22, 2));
   line-color: @case_stroke;
   line-gap-width: exponential(1.5, ([view::zoom] - 1), (12, 0), (18, 6), (22, 80));
   line-emissive-strength: 0.15;
 }
 #road[zoom >= 15][type = 'steps'][structure = 'bridge']['mapnik::geometry_type' = 2]::bridge_steps_case {
+  line-elevation-mode: span;
   line-width: exponential(1.5, ([view::zoom] - 1), (15, 2), (17, 4.6), (18, 7));
   line-color: @case_stroke;
   line-emissive-strength: 0.15;
 }
 #road[zoom >= 16][structure = 'bridge'][class = 'pedestrian']['mapnik::geometry_type' = 2]::bridge_pedestrian_case {
+  line-elevation-mode: span;
   line-width: exponential(1.5, ([view::zoom] - 1), (14, 0.5), (18, 1), (22, 2));
   line-color: @case_stroke;
   line-gap-width: exponential(1.5, ([view::zoom] - 1), (12, 0), (18, 6), (22, 80));
   line-emissive-strength: 0.15;
 }
 #road[zoom >= 15][structure = 'bridge'][class = 'path'] when(([type] = 'hiking' || [type] = 'mountain_bike' || [type] = 'trail'))['mapnik::geometry_type' = 2]::bridge_path_trail {
+  line-elevation-mode: span;
   line-cap: step(([view::zoom] - 1), (0, 'butt'), (16, 'round'));
   line-width: exponential(1.5, ([view::zoom] - 1), (12, 0), (18, 6), (22, 80));
   line-color: linear(([view::zoom] - 1), (15, @line_stroke_2), (16, @line_stroke));
   line-emissive-strength: 0.25;
 }
 #road[zoom >= 15][structure = 'bridge'][class = 'path'][type != 'steps']['mapnik::geometry_type' = 2]::bridge_path {
+  line-elevation-mode: span;
   line-cap: step(([view::zoom] - 1), (0, 'butt'), (16, 'round'));
   line-width: exponential(1.5, ([view::zoom] - 1), (12, 0), (18, 6), (22, 80));
   line-color: linear(([view::zoom] - 1), (15, @line_stroke_2), (16, @line_stroke));
   line-emissive-strength: 0.25;
 }
 #road[zoom >= 15][type = 'steps'][structure = 'bridge']['mapnik::geometry_type' = 2]::bridge_steps {
+  line-elevation-mode: span;
   line-width: exponential(1.5, ([view::zoom] - 1), (12, 0), (18, 6), (22, 80));
   line-color: linear(([view::zoom] - 1), (15, @line_stroke_2), (16, @line_stroke));
   line-dasharray: 1.51,1.51;
   line-emissive-strength: 0.25;
 }
 #road[zoom >= 14][structure = 'bridge'][class = 'pedestrian']['mapnik::geometry_type' = 2]::bridge_pedestrian {
+  line-elevation-mode: span;
   line-cap: step(([view::zoom] - 1), (0, 'butt'), (16, 'round'));
   line-width: exponential(1.5, ([view::zoom] - 1), (12, 0), (18, 6), (22, 80));
   line-color: linear(([view::zoom] - 1), (15, @line_stroke_2), (16, @line_stroke));
   line-emissive-strength: 0.25;
 }
 #road[zoom >= 17][structure = 'bridge'] when((([class] = 'track') ? true : (([class] = 'service') ? step(([view::zoom] - 1), (0, false), (14, true)) : false)))['mapnik::geometry_type' = 2]::bridge_minor_shadow {
+  line-elevation-mode: span;
   line-width: exponential(1.5, ([view::zoom] - 1), (14, 2), (22, 10));
   line-color: @bridge_stroke_3;
   line-gap-width: exponential(1.5, ([view::zoom] - 1), (14, 1), (18, 10), (22, 100));
@@ -515,12 +540,14 @@ Map {
   line-emissive-strength: 0;
 }
 #road[zoom >= 17][structure = 'bridge'] when((([class] = 'track') ? true : (([class] = 'service') ? step(([view::zoom] - 1), (0, false), (14, true)) : false))) when((([type] = 'piste') ? false : true))['mapnik::geometry_type' = 2]::bridge_minor_case {
+  line-elevation-mode: span;
   line-width: exponential(1.5, ([view::zoom] - 1), (14, 0.8), (22, 2));
   line-color: @case_stroke_2;
   line-gap-width: exponential(1.5, ([view::zoom] - 1), (14, 1), (18, 10), (22, 100));
   line-emissive-strength: 0;
 }
 #road[zoom >= 16][structure = 'bridge'] when(([class] = 'street' || [class] = 'street_limited'))['mapnik::geometry_type' = 2]::bridge_street_shadow {
+  line-elevation-mode: span;
   line-width: exponential(1.5, ([view::zoom] - 1), (14, 2), (22, 10));
   line-color: @bridge_stroke_3;
   line-gap-width: exponential(1.5, ([view::zoom] - 1), (12, 0.5), (18, 20), (22, 200));
@@ -529,6 +556,7 @@ Map {
   line-emissive-strength: 0;
 }
 #road[zoom >= 16][structure = 'bridge'] when(([class] = 'street' || [class] = 'street_limited'))['mapnik::geometry_type' = 2]::bridge_street_case {
+  line-elevation-mode: span;
   line-width: exponential(1.5, ([view::zoom] - 1), (14, 0.8), (22, 2));
   line-color: @case_stroke_2;
   line-gap-width: exponential(1.5, ([view::zoom] - 1), (12, 0.5), (18, 20), (22, 200));
@@ -536,6 +564,7 @@ Map {
   line-emissive-strength: 0;
 }
 #road[zoom >= 16] when(([class] = 'primary_link' || [class] = 'secondary_link' || [class] = 'tertiary_link'))[structure = 'bridge']['mapnik::geometry_type' = 2]::bridge_minor_link_shadow {
+  line-elevation-mode: span;
   line-join: step(([view::zoom] - 1), (0, 'miter'), (14, 'round'));
   line-width: exponential(1.5, ([view::zoom] - 1), (14, 2), (22, 10));
   line-color: @bridge_stroke_3;
@@ -545,6 +574,7 @@ Map {
   line-emissive-strength: 0;
 }
 #road[zoom >= 16] when(([class] = 'primary_link' || [class] = 'secondary_link' || [class] = 'tertiary_link'))[structure = 'bridge']['mapnik::geometry_type' = 2]::bridge_minor_link_case {
+  line-elevation-mode: span;
   line-join: step(([view::zoom] - 1), (0, 'miter'), (14, 'round'));
   line-width: exponential(1.5, ([view::zoom] - 1), (14, 0.8), (22, 2));
   line-color: @case_stroke_2;
@@ -553,6 +583,7 @@ Map {
   line-emissive-strength: 0;
 }
 #road[zoom >= 16][structure = 'bridge'] when(([class] = 'secondary' || [class] = 'tertiary'))['mapnik::geometry_type' = 2]::bridge_secondary_tertiary_shadow {
+  line-elevation-mode: span;
   line-color: @bridge_stroke_3;
   line-gap-width: exponential(1.5, ([view::zoom] - 1), (3, 0), (18, 26), (22, 260));
   line-opacity: step(([view::zoom] - 1), (0, 0), (10, 1));
@@ -561,6 +592,7 @@ Map {
   line-emissive-strength: 0;
 }
 #road[zoom >= 16][structure = 'bridge'] when(([class] = 'secondary' || [class] = 'tertiary'))['mapnik::geometry_type' = 2]::bridge_secondary_tertiary_case {
+  line-elevation-mode: span;
   line-width: exponential(1.5, ([view::zoom] - 1), (14, 1), (22, 2));
   line-color: @case_stroke_2;
   line-gap-width: exponential(1.5, ([view::zoom] - 1), (3, 0), (18, 26), (22, 260));
@@ -568,6 +600,7 @@ Map {
   line-emissive-strength: 0;
 }
 #road[zoom >= 16][structure = 'bridge'][class = 'primary']['mapnik::geometry_type' = 2]::bridge_primary_shadow {
+  line-elevation-mode: span;
   line-color: @bridge_stroke_3;
   line-gap-width: exponential(1.5, ([view::zoom] - 1), (3, 0.8), (18, 28), (22, 280));
   line-opacity: step(([view::zoom] - 1), (0, 0), (10, 1));
@@ -576,6 +609,7 @@ Map {
   line-emissive-strength: 0;
 }
 #road[zoom >= 16][structure = 'bridge'][class = 'primary']['mapnik::geometry_type' = 2]::bridge_primary_case {
+  line-elevation-mode: span;
   line-width: exponential(1.5, ([view::zoom] - 1), (14, 1), (22, 2));
   line-color: @case_stroke_2;
   line-gap-width: exponential(1.5, ([view::zoom] - 1), (3, 0.8), (18, 28), (22, 280));
@@ -583,6 +617,7 @@ Map {
   line-emissive-strength: 0;
 }
 #road[zoom >= 16][structure = 'bridge'] when(([class] = 'motorway_link' || [class] = 'trunk_link'))[layer <= 1]['mapnik::geometry_type' = 2]::bridge_major_link_shadow {
+  line-elevation-mode: span;
   line-width: exponential(1.5, ([view::zoom] - 1), (14, 2), (22, 10));
   line-color: (([class] = 'motorway_link') ? @bridge_stroke_4 : @bridge_stroke_5);
   line-gap-width: exponential(1.5, ([view::zoom] - 1), (12, 0.8), (18, 20), (22, 200));
@@ -590,12 +625,14 @@ Map {
   line-emissive-strength: 0;
 }
 #road[zoom >= 16][structure = 'bridge'] when(([class] = 'motorway_link' || [class] = 'trunk_link'))[layer <= 1]['mapnik::geometry_type' = 2]::bridge_major_link_case {
+  line-elevation-mode: span;
   line-width: exponential(1.5, ([view::zoom] - 1), (14, 0.8), (22, 2));
   line-color: (([class] = 'motorway_link') ? @case_stroke_3 : @case_stroke_4);
   line-gap-width: exponential(1.5, ([view::zoom] - 1), (12, 0.8), (18, 20), (22, 200));
   line-emissive-strength: 0;
 }
 #road[zoom >= 16][structure = 'bridge'] when(([class] = 'motorway' || [class] = 'trunk'))[layer <= 1]['mapnik::geometry_type' = 2]::bridge_motorway_trunk_shadow {
+  line-elevation-mode: span;
   line-color: (([class] = 'motorway') ? @bridge_stroke_4 : @bridge_stroke_5);
   line-gap-width: exponential(1.5, ([view::zoom] - 1), (3, 0.8), (18, 30), (22, 300));
   line-width: exponential(1.5, ([view::zoom] - 1), (14, 2), (22, 10));
@@ -603,18 +640,21 @@ Map {
   line-emissive-strength: 0;
 }
 #road[zoom >= 16][structure = 'bridge'] when(([class] = 'motorway' || [class] = 'trunk'))[layer <= 1]['mapnik::geometry_type' = 2]::bridge_motorway_trunk_case {
+  line-elevation-mode: span;
   line-width: exponential(1.5, ([view::zoom] - 1), (14, 1), (22, 2));
   line-color: (([class] = 'motorway') ? @case_stroke_3 : @case_stroke_4);
   line-gap-width: exponential(1.5, ([view::zoom] - 1), (3, 0.8), (18, 30), (22, 300));
   line-emissive-strength: 0;
 }
 #road[zoom >= 15][structure = 'bridge'][class = 'construction']['mapnik::geometry_type' = 2]::bridge_construction {
+  line-elevation-mode: span;
   line-width: exponential(1.5, ([view::zoom] - 1), (14, 2), (18, 20), (22, 200));
   line-color: @line_stroke_3;
   line-dasharray: 4.22,4.22;
   line-emissive-strength: 0.4;
 }
 #road[zoom >= 14][structure = 'bridge'] when(step(([view::zoom] - 1), (0, (([class] = 'motorway' || [class] = 'motorway_link' || [class] = 'trunk' || [class] = 'trunk_link' || [class] = 'primary' || [class] = 'primary_link' || [class] = 'secondary' || [class] = 'secondary_link' || [class] = 'tertiary' || [class] = 'tertiary_link' || [class] = 'street' || [class] = 'street_limited') ? true : false)), (13, ((([class] = 'motorway' || [class] = 'motorway_link' || [class] = 'trunk' || [class] = 'trunk_link' || [class] = 'primary' || [class] = 'primary_link' || [class] = 'secondary' || [class] = 'secondary_link' || [class] = 'tertiary' || [class] = 'tertiary_link' || [class] = 'street' || [class] = 'street_limited' || [class] = 'track' || [class] = 'service') ? true : false) ? (([type] = 'piste') ? false : true) : false)))) when(((([class] = 'motorway' || [class] = 'motorway_link' || [class] = 'trunk' || [class] = 'trunk_link') ? true : false) ? ([layer] <= 1) : true))['mapnik::geometry_type' = 2]::bridge_roads {
+  line-elevation-mode: span;
   line-join: 'miter';
   line-cap: 'round';
   line-width: exponential(1.5, ([view::zoom] - 1), (12, (([class] = 'motorway' || [class] = 'trunk') ? 3.2 : (([class] = 'primary') ? 3 : (([class] = 'secondary' || [class] = 'tertiary') ? 2.2 : (([class] = 'motorway_link' || [class] = 'trunk_link') ? 0.8 : (([class] = 'street' || [class] = 'street_limited') ? 0.5 : (([class] = 'primary_link' || [class] = 'secondary_link' || [class] = 'tertiary_link') ? 0.4 : 0))))))), (18, (([class] = 'motorway' || [class] = 'trunk') ? 30 : (([class] = 'primary') ? 28 : (([class] = 'secondary' || [class] = 'tertiary') ? 26 : (([class] = 'motorway_link' || [class] = 'trunk_link' || [class] = 'street' || [class] = 'street_limited') ? 20 : (([class] = 'primary_link' || [class] = 'secondary_link' || [class] = 'tertiary_link') ? 18 : 10)))))), (22, (([class] = 'motorway' || [class] = 'trunk') ? 300 : (([class] = 'primary') ? 280 : (([class] = 'secondary' || [class] = 'tertiary') ? 260 : (([class] = 'motorway_link' || [class] = 'trunk_link' || [class] = 'street' || [class] = 'street_limited') ? 200 : (([class] = 'primary_link' || [class] = 'secondary_link' || [class] = 'tertiary_link') ? 180 : 100)))))));
@@ -622,6 +662,7 @@ Map {
   line-emissive-strength: 0.4;
 }
 #road[zoom >= 16][structure = 'bridge'][layer >= 2] when(([class] = 'motorway_link' || [class] = 'trunk_link'))['mapnik::geometry_type' = 2]::bridge_major_link_2_shadow {
+  line-elevation-mode: span;
   line-width: exponential(1.5, ([view::zoom] - 1), (14, 2), (22, 10));
   line-color: (([class] = 'motorway_link') ? @bridge_stroke_4 : @bridge_stroke_5);
   line-gap-width: exponential(1.5, ([view::zoom] - 1), (12, 0.8), (18, 20), (22, 200));
@@ -629,12 +670,14 @@ Map {
   line-emissive-strength: 0;
 }
 #road[zoom >= 16][structure = 'bridge'][layer >= 2] when(([class] = 'motorway_link' || [class] = 'trunk_link'))['mapnik::geometry_type' = 2]::bridge_major_link_2_case {
+  line-elevation-mode: span;
   line-width: exponential(1.5, ([view::zoom] - 1), (14, 0.8), (22, 2));
   line-color: (([class] = 'motorway_link') ? @case_stroke_3 : @case_stroke_4);
   line-gap-width: exponential(1.5, ([view::zoom] - 1), (12, 0.8), (18, 20), (22, 200));
   line-emissive-strength: 0;
 }
 #road[zoom >= 16][structure = 'bridge'][layer >= 2] when(([class] = 'motorway' || [class] = 'trunk'))['mapnik::geometry_type' = 2]::bridge_motorway_trunk_2_shadow {
+  line-elevation-mode: span;
   line-color: (([class] = 'motorway') ? @bridge_stroke_4 : @bridge_stroke_5);
   line-gap-width: exponential(1.5, ([view::zoom] - 1), (3, 0.8), (18, 30), (22, 300));
   line-width: exponential(1.5, ([view::zoom] - 1), (14, 2), (22, 10));
@@ -642,24 +685,28 @@ Map {
   line-emissive-strength: 0;
 }
 #road[zoom >= 16][structure = 'bridge'][layer >= 2] when(([class] = 'motorway' || [class] = 'trunk'))['mapnik::geometry_type' = 2]::bridge_motorway_trunk_2_case {
+  line-elevation-mode: span;
   line-width: exponential(1.5, ([view::zoom] - 1), (14, 1), (22, 2));
   line-color: (([class] = 'motorway') ? @case_stroke_3 : @case_stroke_4);
   line-gap-width: exponential(1.5, ([view::zoom] - 1), (3, 0.8), (18, 30), (22, 300));
   line-emissive-strength: 0;
 }
 #road[zoom >= 13][structure = 'bridge'][layer >= 2] when(([class] = 'motorway_link' || [class] = 'trunk_link'))['mapnik::geometry_type' = 2]::bridge_major_link_2 {
+  line-elevation-mode: span;
   line-cap: 'round';
   line-width: exponential(1.5, ([view::zoom] - 1), (12, 0.8), (18, 20), (22, 200));
   line-color: (([class] = 'motorway_link') ? @bridge_stroke : @bridge_stroke_2);
   line-emissive-strength: 0.6;
 }
 #road[zoom >= 14][structure = 'bridge'][layer >= 2] when(([class] = 'motorway' || [class] = 'trunk'))['mapnik::geometry_type' = 2]::bridge_motorway_trunk_2 {
+  line-elevation-mode: span;
   line-cap: step(([view::zoom] - 1), (0, 'butt'), (14, 'round'));
   line-width: exponential(1.5, ([view::zoom] - 1), (3, 0.8), (18, 30), (22, 300));
   line-color: (([class] = 'motorway') ? @bridge_stroke : @bridge_stroke_2);
   line-emissive-strength: 0.6;
 }
 #road[zoom >= 17][zoom < 19][structure = 'bridge'][oneway = 'true'] when(step(([view::zoom] - 1), (0, (([class] = 'primary' || [class] = 'secondary' || [class] = 'tertiary' || [class] = 'street' || [class] = 'street_limited') ? true : false)), (16, (([class] = 'primary' || [class] = 'secondary' || [class] = 'tertiary' || [class] = 'street' || [class] = 'street_limited' || [class] = 'primary_link' || [class] = 'secondary_link' || [class] = 'tertiary_link' || [class] = 'service' || [class] = 'track') ? true : false))))::bridge_oneway_arrow_b1 {
+  line-elevation-mode: span;
   marker-file: url('icons/oneway-small.png');
   marker-placement: 'line';
   marker-width: @oneway_width;
@@ -669,6 +716,7 @@ Map {
   marker-halo-emissive-strength: 0;
 }
 #road[zoom >= 19][zoom < 25][structure = 'bridge'][oneway = 'true'] when(step(([view::zoom] - 1), (0, (([class] = 'primary' || [class] = 'secondary' || [class] = 'tertiary' || [class] = 'street' || [class] = 'street_limited') ? true : false)), (16, (([class] = 'primary' || [class] = 'secondary' || [class] = 'tertiary' || [class] = 'street' || [class] = 'street_limited' || [class] = 'primary_link' || [class] = 'secondary_link' || [class] = 'tertiary_link' || [class] = 'service' || [class] = 'track') ? true : false))))::bridge_oneway_arrow_b2 {
+  line-elevation-mode: span;
   marker-file: url('icons/oneway-large.png');
   marker-placement: 'line';
   marker-width: @oneway_width_2;
@@ -678,6 +726,7 @@ Map {
   marker-halo-emissive-strength: 0;
 }
 #road[zoom >= 17][zoom < 19][structure = 'bridge'] when(([class] = 'trunk' || [class] = 'trunk_link'))[oneway = 'true']::bridge_oneway_arrow_trunk_b1 {
+  line-elevation-mode: span;
   marker-file: url('icons/oneway-small.png');
   marker-placement: 'line';
   marker-width: @oneway_width;
@@ -687,6 +736,7 @@ Map {
   marker-halo-emissive-strength: 0;
 }
 #road[zoom >= 19][zoom < 25][structure = 'bridge'] when(([class] = 'trunk' || [class] = 'trunk_link'))[oneway = 'true']::bridge_oneway_arrow_trunk_b2 {
+  line-elevation-mode: span;
   marker-file: url('icons/oneway-large.png');
   marker-placement: 'line';
   marker-width: @oneway_width_2;
@@ -696,6 +746,7 @@ Map {
   marker-halo-emissive-strength: 0;
 }
 #road[zoom >= 17][zoom < 19][structure = 'bridge'] when(([class] = 'motorway' || [class] = 'motorway_link'))[oneway = 'true']::bridge_oneway_arrow_motorway_b1 {
+  line-elevation-mode: span;
   marker-file: url('icons/oneway-small.png');
   marker-placement: 'line';
   marker-width: @oneway_width;
@@ -705,6 +756,7 @@ Map {
   marker-halo-emissive-strength: 0;
 }
 #road[zoom >= 19][zoom < 25][structure = 'bridge'] when(([class] = 'motorway' || [class] = 'motorway_link'))[oneway = 'true']::bridge_oneway_arrow_motorway_b2 {
+  line-elevation-mode: span;
   marker-file: url('icons/oneway-large.png');
   marker-placement: 'line';
   marker-width: @oneway_width_2;
@@ -714,6 +766,7 @@ Map {
   marker-halo-emissive-strength: 0;
 }
 #road[zoom >= 15][structure = 'bridge'] when(([class] = 'path' || [class] = 'track')) when((([type] = 'cycleway') ? step(([view::zoom] - 1), (0, false), (15, true)) : (([type] = 'piste') ? true : false)))['mapnik::geometry_type' = 2]::bridge_path_cycleway_piste {
+  line-elevation-mode: span;
   line-color: @path_stroke;
   line-width: linear(([view::zoom] - 1), (12, (([type] = 'piste') ? 0.5 : 0)), (18, (([type] = 'piste') ? 4 : 2)), (22, (([type] = 'piste') ? 40 : 20)));
   line-offset: (0 - (linear(([view::zoom] - 1), (12, 0), (18, (([type] = 'piste') ? 0 : -2)), (22, (([type] = 'piste') ? 0 : -20)))));
@@ -722,12 +775,14 @@ Map {
   line-emissive-strength: 0.6;
 }
 #road[zoom >= 14][structure = 'bridge'] when(([class] = 'major_rail' || [class] = 'minor_rail'))::bridge_rail {
+  line-elevation-mode: span;
   line-gap-width: linear(([view::zoom] - 1), (15, 0), (16, 1), (18, 2), (22, 20));
   line-color: linear([view::brightness], (0.1, @rail_stroke), (0.4, @rail_stroke_2));
   line-width: exponential(1.5, ([view::zoom] - 1), (14, 0.5), (22, 2));
   line-emissive-strength: 0;
 }
 #road[zoom >= 14][structure = 'bridge'] when(([class] = 'major_rail' || [class] = 'minor_rail'))::bridge_rail_tracks {
+  line-elevation-mode: span;
   line-color: linear([view::brightness], (0.1, @rail_stroke), (0.4, @rail_stroke_2));
   line-width: exponential(1.5, ([view::zoom] - 1), (16, 2), (18, 6), (20, 16), (22, 32));
   line-dasharray: 0.3,3;

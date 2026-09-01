@@ -47,7 +47,9 @@ public final class ExampleSettings {
         { Kind.SLIDER, Group.LIGHT, "ambientIntensity", "ambient intensity",   0f,   1f },
 
         { null, "Shadows", Boolean.FALSE },
-        { Kind.SLIDER, Group.LIGHT, "shadowStrength", "strength", 0f, 1f },
+        // Past 1 on purpose: 1 is the physical depth (the SDK scales it by the sun's share of the
+        // light), and the panel has to be able to exaggerate it to see what a knob does.
+        { Kind.SLIDER, Group.LIGHT, "shadowStrength", "strength", 0f, 2f },
         { Kind.SLIDER, Group.LIGHT, "shadowSoftness", "softness", 0f, 4f },
         { Kind.SLIDER, Group.LIGHT, "shadowDistance", "distance", 0f, 8f },
         { Kind.INT,    Group.LIGHT, "shadowCascades", "cascades", 1f, 4f },

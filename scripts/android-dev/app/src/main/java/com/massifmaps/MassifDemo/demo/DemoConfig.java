@@ -405,7 +405,8 @@ public final class DemoConfig {
     public static int AMBIENT_COLOR_ARGB = 0xFFFFFFFF;
     /** Colour of the direct sun. Warm at a low sun is what makes a dusk scene read as dusk. */
     public static int SUN_COLOR_ARGB = 0xFFFFFFFF;
-    public static float SHADOW_STRENGTH = 0.3f;
+    /** 1 = mapbox's own shadow depth; the SDK scales it by the sun's share of the light. */
+    public static float SHADOW_STRENGTH = 1.0f;
     public static float SHADOW_SOFTNESS = 1.0f;
     public static int SHADOW_MAP_SIZE = 1024;
     public static int SHADOW_CASCADES = 3;

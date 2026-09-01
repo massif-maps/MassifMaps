@@ -174,8 +174,9 @@ public class DayCycleLightExample extends MapExample {
             .set("terrainLightingEnabled", true)
             // Buildings cast: a low sun is what the curve is most worth looking at, and it is also
             // when the shadows are longest. They follow the same sun the curve reads, so they
-            // stretch and swing round as the hour is swept.
-            .set("shadowStrength", 0.35)
+            // stretch and swing round as the hour is swept - and fade out as it sets, because the
+            // SDK scales this by how much of the light is direct. 1 is the physical depth.
+            .set("shadowStrength", 1.0)
             .set("shadowSoftness", 1.2));
 
         // A sky, because the hour is the whole example: the atmosphere is integrated against the

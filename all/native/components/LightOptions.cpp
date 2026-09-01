@@ -22,7 +22,9 @@ namespace massif {
         _dayCycleRisingLightStops(),
         _dayCycleLightStopsMutex(),
         _terrainLightingEnabled(false),
-        _shadowStrength(0.3f),
+        // mapbox's `shadow-intensity` default. With the direct-share scaling in resolveLighting
+        // this is their shadow exactly, so 1 is the physical depth rather than the maximum.
+        _shadowStrength(1.0f),
         // mapbox's 2048 px map (shadow_renderer.ts _shadowParameters), over THREE cascades rather
         // than their two: measured side by side, the extra page is worth its cost here. It only
         // became so once the cutout went back to 4.5 - at 2.5 the ladder divided down to 0.28x the
@@ -214,7 +216,9 @@ namespace massif {
     }
 
     void LightOptions::setShadowStrength(float strength) {
-        float value = std::min(1.0f, std::max(0.0f, strength));
+        // No upper bound: 1 is the physically correct depth, so exaggerating past it is a look
+        // choice a style or an app is allowed to make. resolveLighting clamps what it resolves to.
+        float value = std::max(0.0f, strength);
         if (_shadowStrength.exchange(value) != value) {
             notifyOptionChanged("ShadowStrength");
         }

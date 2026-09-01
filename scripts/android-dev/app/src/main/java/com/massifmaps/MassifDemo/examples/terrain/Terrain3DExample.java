@@ -114,7 +114,7 @@ public class Terrain3DExample extends MapExample {
             .set("terrainLightingEnabled", true)
             .set("sunAzimuth", 315)
             .set("sunAltitude", 42)
-            .set("shadowStrength", 0.35)
+            .set("shadowStrength", 1.0)
             .set("shadowSoftness", 1.5));
 
         // tilt 90 is straight down in this SDK, so a landscape view is a LOW tilt.

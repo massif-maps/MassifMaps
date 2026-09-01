@@ -117,7 +117,7 @@ public class AtmosphereExample extends MapExample {
 
         map.light(Spec.of("light")
             .set("terrainLightingEnabled", true)
-            .set("shadowStrength", 0.35)
+            .set("shadowStrength", 1.0)
             .set("shadowSoftness", 1.5));
 
         applyMoment();
@@ -213,7 +213,9 @@ public class AtmosphereExample extends MapExample {
      * about the sky, not about ephemerides, and the demo bench has the real one.
      *
      * The fog is NOT tinted here - resolveFog lights the configured colour with the same sun the
-     * ground gets, so a fog tuned for daylight darkens through the night on its own.
+     * ground gets, so a fog tuned for daylight darkens through the night on its own. Neither is
+     * the shadow strength: the SDK scales it by how much of the light is direct, so it fades out
+     * as the sun sets without the hour touching it.
      */
     private void applyHour() {
         double altitude = 62.0 * Math.sin(Math.PI * (hour - 6.0) / 12.0);
@@ -225,8 +227,7 @@ public class AtmosphereExample extends MapExample {
             .set("sunAzimuth", azimuth)
             .set("sunAltitude", altitude)
             .set("sunIntensity", 0.15 + 0.85 * sunUp)
-            .set("ambientIntensity", 0.45 - 0.15 * sunUp)
-            .set("shadowStrength", 0.35 * sunUp));
+            .set("ambientIntensity", 0.45 - 0.15 * sunUp));
     }
 
     /**

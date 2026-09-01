@@ -253,6 +253,12 @@ namespace {
             DayCycleLight::groundRadiance(light, lighting.sunDir(2), radiance);
             lighting.radiance = cglib::vec3<float>(radiance[0], radiance[1], radiance[2]);
             lighting.brightness = DayCycleLight::brightness(light, lighting.sunDir(2));
+            // A shadow only hides the DIRECT light, so what reaches the shaders is the strength
+            // times that light's share (DayCycleLight::directShare) - 1 is mapbox's shadow
+            // exactly, above it exaggerates. Under the horizon the share is 0, which also skips
+            // the caster pass entirely - see MapRenderer::applyTerrainShadows. Clamped because the
+            // shaders read it as `mix(1, lit, strength)` and a value past 1 inverts that.
+            lighting.shadowStrength = std::min(1.0f, lighting.shadowStrength * DayCycleLight::directShare(light, lighting.sunDir(2)));
         }
         return lighting;
     }

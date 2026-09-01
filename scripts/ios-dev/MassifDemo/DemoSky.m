@@ -27,7 +27,7 @@
                                                 a:255]];
     [light setSunIntensity:0.15f + 0.85f * day];
     [light setAmbientIntensity:0.25f + 0.55f * day];
-    [light setShadowStrength:0.85f * day]; // no sun, no shadows
+    [light setShadowStrength:[DemoConfig floatFor:@"shadow"]]; // the SDK fades it with the sun itself
 
     int skyR = (int)(10 + 48 * day), skyG = (int)(14 + 102 * day), skyB = (int)(40 + 156 * day);
     int horR = (int)(25 + (146 + 60 * warm) * day), horG = (int)(25 + 181 * day), horB = (int)(55 + 181 * day);

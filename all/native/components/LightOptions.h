@@ -225,14 +225,18 @@ namespace massif {
 
         /**
          * Returns the shadow strength.
-         * @return The shadow strength. The default is 0 (no shadows).
+         * @return The shadow strength. The default is 1 (MapBox's own shadow-intensity default).
          */
         float getShadowStrength() const;
         /**
-         * Sets how strongly the sun's shadows darken the terrain, 0 (off) to 1 (full).
-         * Shadows are cast by the terrain itself onto the terrain, so ridges shade valleys
-         * at low sun. Requires terrain lighting.
-         * @param strength The new shadow strength (clamped to 0..1).
+         * Sets how strongly the sun's shadows darken the terrain. Shadows are cast by the terrain
+         * itself onto the terrain, so ridges shade valleys at low sun. Requires terrain lighting.
+         *
+         * NOT the depth drawn: a shadow only hides the direct light, so this is multiplied by the
+         * sun's share of the scene light, which is 0 once the sun is under the horizon. 1 is
+         * therefore the physically correct shadow - MapBox's - and not a maximum: values above it
+         * exaggerate, and are clamped where the two are resolved together.
+         * @param strength The new shadow strength (0 = off, 1 = physical; negatives clamped away).
          */
         void setShadowStrength(float strength);
 

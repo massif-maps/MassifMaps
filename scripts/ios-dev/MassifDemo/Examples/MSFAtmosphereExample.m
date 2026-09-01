@@ -122,7 +122,7 @@ static MSFSpec *dem(id<MSFExampleHost> host) {
 
     [map lightWithSpec:[[[[MSFSpec of:@"light"]
         set:@"terrainLightingEnabled" value:@YES]
-        set:@"shadowStrength" value:@0.35]
+        set:@"shadowStrength" value:@1.0]
         set:@"shadowSoftness" value:@1.5] error:nil];
 
     [self applyMoment];
@@ -203,7 +203,9 @@ static MSFSpec *dem(id<MSFExampleHost> host) {
  * the sky, not about ephemerides, and the demo bench has the real one.
  *
  * The fog is NOT tinted here - resolveFog lights the configured colour with the same sun the ground
- * gets, so a fog tuned for daylight darkens through the night on its own.
+ * gets, so a fog tuned for daylight darkens through the night on its own. Neither is the shadow
+ * strength: the SDK scales it by how much of the light is direct, so it fades out as the sun sets
+ * without the hour touching it.
  */
 - (void)applyHour {
     double altitude = 62.0 * sin(M_PI * (_hour - 6.0) / 12.0);
@@ -215,8 +217,7 @@ static MSFSpec *dem(id<MSFExampleHost> host) {
         set:@"sunAzimuth" value:@(azimuth)]
         set:@"sunAltitude" value:@(altitude)]
         set:@"sunIntensity" value:@(0.15 + 0.85 * sunUp)]
-        set:@"ambientIntensity" value:@(0.45 - 0.15 * sunUp)]
-        set:@"shadowStrength" value:@(0.35 * sunUp)]];
+        set:@"ambientIntensity" value:@(0.45 - 0.15 * sunUp)]];
 }
 
 /**

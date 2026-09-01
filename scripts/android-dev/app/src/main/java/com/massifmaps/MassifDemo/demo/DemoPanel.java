@@ -805,7 +805,8 @@ public final class DemoPanel {
         });
 
         header(context, "SHADOWS");
-        slider(context, "strength", 0, 1, DemoConfig.SHADOW_STRENGTH, false, new FloatSetting() {
+        // Past 1 on purpose: 1 is the physical depth, and a bench wants to be able to exaggerate.
+        slider(context, "strength", 0, 2, DemoConfig.SHADOW_STRENGTH, false, new FloatSetting() {
             public void set(float value) { DemoConfig.SHADOW_STRENGTH = value; demo.lightOptions.setShadowStrength(value); }
         });
         slider(context, "softness (texels)", 0, 4, DemoConfig.SHADOW_SOFTNESS, false, new FloatSetting() {

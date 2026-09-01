@@ -48,7 +48,7 @@ light.setSunPositionFromTime(2026, 8, 14, 7, 30, 45.188, 5.719)   // UTC + lat/l
 | `AmbientIntensity` | `0.35` | Light in the shadow, and the brightness floor everywhere. |
 | `AmbientColor` | white | Tint of that shadow light. A cool blue is what makes dusk read as sky-lit rather than just darker. Applies to the terrain surface and to 3D buildings alike. |
 | `TerrainLightingEnabled` | `false` | Shade the terrain surface from its geometric normal. |
-| `ShadowStrength` | `0.0` | `0` = no shadows. |
+| `ShadowStrength` | `1.0` | `0` = no shadows. Not the depth drawn: it is multiplied by the sun's share of the scene light (MapBox's `calculateGroundShadowFactor`), so `1` is their shadow exactly and shadows fade to nothing as the sun sets. Values above `1` exaggerate. |
 | `ShadowMapSize` / `ShadowCascades` | `1024` / `3` | Cascaded shadow map, up to 4 cascades. |
 | `ShadowBias` / `ShadowSoftness` / `ShadowDistance` | `0.25` / `1.0` / `0` | `ShadowDistance` 0 = derived from the view. |
 | `ShadowCasterMargin` | `3` | Ring of off-screen tiles that may still cast into the view. |

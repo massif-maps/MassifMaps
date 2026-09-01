@@ -1598,7 +1598,10 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
             // model layers - reaching for it here flattens the whole point: a low dawn sun should
             // leave a roof (N.L = sin(altitude)) well under the wall facing it, and wrapping lifts
             // the roof by half the gap. The nuance between the walls comes from the ambient below.
-            mediump float sunNdl = max(0.0, ndl);
+            // Faded out as the sun crosses the horizon: a wall's normal has no z, so N.L stays
+            // positive with the sun BELOW the map and a night facade was lit from underground.
+            // The ground needs no such term - its normal points up, so N.L closes on its own.
+            mediump float sunNdl = max(0.0, ndl) * smoothstep(-0.035, 0.0, u_sunDir.z);
             // Sky is brighter near the sun: faces turned away lose up to 30% of the ambient,
             // scaled by how bright the sun actually is.
             mediump float dirLuminance = dot(u_sunColor, vec3(0.2126, 0.7152, 0.0722));

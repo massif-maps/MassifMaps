@@ -254,6 +254,39 @@ Design points, each measured:
   grey wash that appears and disappears with the cover. The **shadow pass alone** floors the sun
   altitude at 15°, keeping the azimuth, which caps shadow length at ~3.7× the relief. N·L lighting
   keeps the true sun, so a low sun still reads as a low sun.
+- **`shadowStrength` is not the depth drawn.** A shadow hides the DIRECT light and nothing else, so
+  `resolveLighting` multiplies the strength by that light's share of the scene —
+  `DayCycleLight::directShare`, which is mapbox's `calculateGroundShadowFactor`
+  (3d-style/render/shadow_utils.ts) read the other way round: their fully shadowed ground keeps
+  `ambient / (ambient + direct)`, with `direct` weighted by `max(0, sunUp)`. Under the horizon the
+  share is 0, so the caster pass is skipped outright. **The default is `1`** — mapbox's
+  `shadow-intensity` default, and with the share applied that is their shadow exactly rather than a
+  maximum. Above 1 exaggerates; the product is clamped to 1 because the shaders read it as
+  `mix(1, lit, strength)`, which a value past 1 would invert. The bench and the example panel let it
+  reach 2 for that reason.
+
+  What this fixed, on the `day-cycle-light` example at Paris (`shadowStrength 0.35`): the shadow map
+  was still being drawn all night — cast from the 15° floor above, azimuth intact — so shadow blocks
+  were visible on the ground and on facades at 22:04 with the sun 34° down, and they swung round
+  until sunrise. The same constant strength over a dimming scene is why dusk shadows read as *deeper*
+  than midday ones.
+
+  The share is not monotone in the hour, and that is Standard's palette rather than a bug: its dusk
+  ambient is a dark blue, so the warm sun is a bigger fraction of a much smaller total than the white
+  sun is at noon. Read off the built-in dusk curve:
+
+  | sun altitude | ≤ 0° | 2.5° | 7.5° | 12.5° | 20° | 30° | 41° |
+  |---|---|---|---|---|---|---|---|
+  | share | 0 | 0.13 | 0.30 | **0.41** | 0.19 | 0.13 | 0.14 |
+
+  So the deepest shadows of the day fall in the twilight band, they thin out over the last two
+  degrees, and midday keeps about a seventh of the strength an application sets.
+- **A wall's N·L does not close on its own.** An extrusion's normal has no z, so
+  `dot(N, sunDir)` stays positive with the sun *below* the map — night facades were lit from
+  underground, and (before the fade above) passed the back-face test and got a shadow-map lookup that
+  dimmed their ambient. `LIGHTING_SHADER_3D` fades the direct term over the horizon crossing
+  (`smoothstep(-0.035, 0, u_sunDir.z)`, i.e. −2° to 0°). The ground needs no such term: its normal
+  points up, so N·L reaches 0 by itself.
 - **Caster margin, bounded by the shadow THROW.** Casters are the cover plus a ring, because a
   mountain off screen still throws its shadow into the view. The ring's reach is
   `relief / tan(sun altitude)` — capped at about 3.7 x the relief by the 15-degree floor — and NOT a

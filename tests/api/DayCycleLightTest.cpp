@@ -132,6 +132,44 @@ namespace {
                    "and going further under it changes almost nothing, because the direct term is clamped");
     }
 
+    void testShadowsAreWorthTheDirectLightAndNoMore() {
+        // A shadow can only take the direct light away, so its depth is that light's share:
+        // mapbox's calculateGroundShadowFactor states the complement. With Standard's day preset -
+        // ambient 0.8 against a directional 0.2, both white - a sun straight overhead makes the
+        // share exactly the directional intensity.
+        TEST_CHECK(nearly(DayCycleLight::directShare(DayCycleLight::DAY, 1.0f), 0.2f),
+                   "a white 0.8/0.2 light at zenith leaves a fifth of itself to a shadow");
+
+        // The bug this exists for: below the horizon there is no direct light, so there is no
+        // shadow to cast, at any strength. Without it the shadow map was still drawn all night -
+        // from a sun altitude floored at 15 degrees - and swung round with the azimuth.
+        TEST_CHECK(DayCycleLight::directShare(DayCycleLight::NIGHT, sunUp(-34.0f)) == 0.0f,
+                   "a sun 34 degrees under the map casts no shadow");
+        TEST_CHECK(DayCycleLight::directShare(DayCycleLight::DAY, sunUp(0.0f)) == 0.0f,
+                   "and neither does one exactly on the horizon");
+
+        // Monotone in the sun's height for one light, which is what makes the fade a fade rather
+        // than a switch: the shadows thin out over the last degrees instead of vanishing at once.
+        float previous = -1.0f;
+        for (float altitude = 0.0f; altitude <= 60.0f; altitude += 5.0f) {
+            float share = DayCycleLight::directShare(DayCycleLight::DAY, sunUp(altitude));
+            if (share < previous) {
+                TEST_CHECK(false, "the share only grows as the sun rises");
+                return;
+            }
+            previous = share;
+        }
+        TEST_CHECK(true, "the share only grows as the sun rises");
+
+        // Recorded because it looks like a bug and is not: Standard's dusk ambient is a DARK blue,
+        // so its warm sun is a bigger share of a much smaller total than the white sun is at noon.
+        // Dusk shadows are therefore relatively deeper than midday ones - mapbox's palette says so
+        // - even though both are far below the strength an application sets.
+        TEST_CHECK(DayCycleLight::directShare(DayCycleLight::DUSK, sunUp(10.0f)) >
+                   DayCycleLight::directShare(DayCycleLight::DAY, sunUp(41.0f)),
+                   "dusk's share beats midday's, because its ambient collapses faster than its sun");
+    }
+
     void testBrightnessMatchesMapboxsOwnPresets() {
         // A Standard label's emissive is a ramp over ["measure-light", "brightness"] with stops at
         // 0.25 and 0.5, so our value has to land where mapbox's does or the ramp reads the wrong
@@ -253,4 +291,5 @@ void testDayCycleLight() {
     testGroundRadianceMatchesTheConverter();
     testRadianceCarriesColourNotOnlyBrightness();
     testTheSunBelowTheHorizonAddsNothing();
+    testShadowsAreWorthTheDirectLightAndNoMore();
 }

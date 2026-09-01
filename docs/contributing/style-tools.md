@@ -781,9 +781,11 @@ has an interposed layer — so it is a diagnostic and an escape hatch, not the d
 | MapTiler outdoor v4 | 1 plain — `Track outline` | 0 | |
 
 Measured with the default on Standard at Paris z16: **5.7% of pixels differ**, all of it the casing
-becoming more prominent because those seven layers no longer paint over it. Whether that is closer
-to gl-js than the source order is **unverified** — check it against `wasm/mbref.html` before
-treating either as correct.
+becoming more prominent because those seven layers no longer paint over it. Checked against
+`wasm/mbref.html` (gl-js drawing the real Mapbox Standard, same camera, `day`): **the folded order
+is what gl-js draws** — so on this style the fold is not a divergence, it is the source layer order
+being one the SDK does not reproduce unfolded. One camera and one preset, so do not read it as a
+general result.
 
 The border width comes out as an expression that can go **negative** at zooms where the casing's own
 ramp has not started; the SDK clamps a negative border width to no border.

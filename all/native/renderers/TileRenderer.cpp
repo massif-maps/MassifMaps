@@ -805,6 +805,12 @@ namespace massif {
                             bool scaleOnly = (_elevationDataVersion != 0 && elevationDataVersion == _elevationDataVersion);
                             _elevationDataVersion = elevationDataVersion;
 
+                            // An extrusion's base is a CPU getDisplayHeight, so it goes stale on a
+                            // scale change as well as on new data - the exaggeration is IN that
+                            // height. Not narrowed to the changed tiles: re-resolving a base that
+                            // did not move uploads nothing (TileGeometry::setVertexBase).
+                            tileRenderer->invalidateExtrusionBases();
+
                             std::vector<MapTile> changedTiles;
                             if (scaleOnly) {
                                 _elevationVersion = elevationVersion;
@@ -903,8 +909,15 @@ namespace massif {
             tileRenderer->setLabelElevationProvider([elevationManager](const cglib::vec3<double>& pos) {
                 return elevationManager->getDisplayHeight(pos(0), pos(1), ElevationManager::LoadMode::CACHED_ONLY);
             });
+            // An extrusion BAKES its ground into its vertices, so unlike a label it cannot accept
+            // "0 means no data": a base of 0 where the ground is 215 m sinks the whole prism under
+            // the terrain. This one reports whether a grid answered.
+            tileRenderer->setExtrusionElevationProvider([elevationManager](const cglib::vec3<double>& pos, double& height) {
+                return elevationManager->getDisplayHeightCached(pos(0), pos(1), height);
+            });
         } else {
             tileRenderer->setLabelElevationProvider(std::function<double(const cglib::vec3<double>&)>());
+            tileRenderer->setExtrusionElevationProvider(std::function<bool(const cglib::vec3<double>&, double&)>());
         }
         tileRenderer->setTerrainMode(terrainMode, terrainDepthBias);
         tileRenderer->setTileMasks(tileMasksMode());

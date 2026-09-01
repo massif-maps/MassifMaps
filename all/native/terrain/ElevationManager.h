@@ -113,6 +113,14 @@ namespace massif {
          */
         double getDisplayHeight(double internalX, double internalY, LoadMode mode) const;
         /**
+         * The same, but says whether there was any data. Returns false and leaves height untouched
+         * when no decoded grid covers the point - which getDisplayHeight cannot express, since it
+         * returns 0 both for "sea level" and for "nothing loaded". A caller that BAKES the answer
+         * into geometry needs that difference.
+         * @return True if a cached grid answered.
+         */
+        bool getDisplayHeightCached(double internalX, double internalY, double& height) const;
+        /**
          * Returns the display height gradient (dz/dx, dz/dy, unitless) at the given internal coordinates.
          */
         void getDisplayGradient(double internalX, double internalY, LoadMode mode, double& dhdx, double& dhdy) const;

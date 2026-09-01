@@ -7,6 +7,7 @@ add_executable(vt_tests
   PlateBitmapTest.cpp
   LineLabelTest.cpp
   ExtrusionCornerTest.cpp
+  ExtrusionBaseTest.cpp
   "${SDK_BASE_DIR}/libs-massif/vt/src/vt/Label.cpp")
 
 target_include_directories(vt_tests PRIVATE

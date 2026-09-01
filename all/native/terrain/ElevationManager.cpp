@@ -194,6 +194,20 @@ namespace massif {
         return meters * _exaggeration.load() * getDisplayScale(internalY);
     }
 
+    bool ElevationManager::getDisplayHeightCached(double internalX, double internalY, double& height) const {
+        // getDisplayHeight cannot say whether it HAS data - it returns 0 either way, and 0 is a
+        // legal height. A caller that bakes the answer into geometry needs the difference: an
+        // extrusion given a base of 0 where the ground is 215 m sits below the terrain and
+        // disappears. Same lookup, minus the guess.
+        double wrappedX = wrapInternalX(internalX);
+        std::shared_ptr<ElevationTileGrid> grid = getGridForInternalPos(wrappedX, internalY, LoadMode::CACHED_ONLY);
+        if (!grid) {
+            return false;
+        }
+        height = getElevationMeters(internalX, internalY, LoadMode::CACHED_ONLY) * _exaggeration.load() * getDisplayScale(internalY);
+        return true;
+    }
+
     void ElevationManager::getDisplayGradient(double internalX, double internalY, LoadMode mode, double& dhdx, double& dhdy) const {
         dhdx = 0;
         dhdy = 0;

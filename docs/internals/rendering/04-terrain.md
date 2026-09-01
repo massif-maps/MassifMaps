@@ -351,12 +351,6 @@ That is 5 elevation samples per above-ground vertex instead of 1. Measured on an
 Grenoble city camera it costs **+0.35 ms** on the `layers3D` pass (2.30 vs 1.95 ms median), ~3% of
 the frame — see the [performance log](../performance-log.md).
 
-The **wall dedupe is keyed on that anchor too** (`wallEdgeKey`). Two features sharing a footprint
-edge only have coincident walls if they stand at the same height, and that is now per footprint:
-suppressing the second wall regardless left a hole wherever the two anchors differ — one missing
-wall where two wings of a building meet. Duplicate footprints from two source layers, the case the
-dedupe exists for, share a centroid and are still deduped.
-
 ### The dead ends
 
 **maplibre's rigid prism buries buildings.** Their `fill_extrusion.vertex.glsl` anchors the base at

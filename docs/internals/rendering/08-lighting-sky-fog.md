@@ -762,24 +762,56 @@ anyway for a metric AO falloff, a roof-edge term and emissive — none of which 
 approximates. Per-fragment lands as its own measured PR rather than smuggled in under a gradient fix.
 
 
-### Rounded roof edges
+### Rounded edges
 
-`building-edge-radius` (metres, **0 = off**, mapbox's default too). The wall stops at
-`maxHeight - radius`, the roof ring is inset by the same amount, and **one quad per footprint edge**
-bridges the two — against [#132]'s projected +30% roof vertices, there are no extra roof vertices
-beyond the inset ring.
+`building-edge-radius` (metres, **0 = off**, mapbox's default too) rounds an extrusion's edges in
+**both** directions — the horizontal one where a wall meets its roof, and the vertical one where two
+walls meet. `TileLayerBuilder::appendPolygon3DRing` is a port of mapbox's `fill_extrusion_bucket`
+and the two roundings come from one construction:
 
-The rounding is in the **normals**, not in subdivision. `_attribs[1]` went from a 0/1 `sideVertex`
-flag to a 0..127 blend, and the vertex stage does `normalize(mix(aVertexNormal, aVertexBinormal,
-side))`: the band's lower edge carries the wall's normal, its upper edge the roof's, so
-wall → bevel → roof shades continuously. Reusing that byte means no vertex-size increase, and the
-same blend now weights the facade gradient so it fades out as a surface turns to face up.
+| | offset | direction |
+|---|---|---|
+| roof ring | `radius × min(4, 1/cos(halfAngle))` | along the corner bisector, inward |
+| wall ends | `min(dPrev/3, dNext/3, radius × tan(halfAngle))` | along the edge, inward at **both** ends |
+
+Both are tangent points of one cylinder of that radius dropped into the corner. The wall backing off
+opens a wedge at every vertical corner, and that wedge is filled from the **same vertex columns** the
+two walls already use — index-only, no extra vertex. A corner triangle up to the inset roof vertex
+closes the top where the roof and the two walls meet.
+
+The rounding is in the **normals**, not in subdivision, in both directions:
+
+- **Horizontal.** `_attribs[1]` went from a 0/1 `sideVertex` flag to a 0..127 blend, and the vertex
+  stage does `normalize(mix(aVertexNormal, aVertexBinormal, side))`: the band's lower edge carries
+  the wall's normal, its upper edge the roof's, so wall → chamfer → roof shades continuously.
+  Reusing that byte means no vertex-size increase, and the same blend weights the facade gradient so
+  it fades out as a surface turns to face up.
+- **Vertical.** The wedge's two columns carry the two walls' own binormals, so the same
+  `normalize(mix(...))` interpolates one wall's normal into the next across it. No new attribute,
+  no shader change — the binormal was already per vertex.
+
+**Cutting the walls back and filling the wedge are one change, not two.** The cutback alone notches
+a building at every ground-level corner, which is what an earlier attempt here concluded from and
+why the vertical edge stayed sharp for a release. mapbox cuts back at the base too; it just fills
+the hole.
 
 **0.8 m matches mapbox** on Grenoble data; 2 m already reads as too soft.
 
-The bevel follows the wall dedupe — an edge whose wall was suppressed as a duplicate gets no bevel,
-or it would round an edge it did not draw. It is skipped entirely for a building shorter than
-`2 × radius`.
+`building-rounded-roof: 0` holds the ROOF band at a side value of 64 — a flat rim facet — and does
+not touch the vertical corner, which always rolls. mapbox has no equivalent (their flag just zeroes
+the roof drop in the vertex shader, `u_edge_radius`), so this is ours and the property name is taken
+literally.
+
+The chamfers follow the ROOF dedupe (`drawRoof`), not the walls: a feature whose roof was suppressed
+as a duplicate draws neither, or it would leave an unclosed ring where the roof should be. The whole
+edge radius is skipped for a building shorter than `2 × radius`, and for a **shaped roof**, whose
+eaves sit on the original footprint — so a pitched-roof building keeps sharp vertical corners.
+
+**Cost per footprint edge**, two gradient bands, radius on: 9 vertices (2 columns × 3 rows, 2 roof-
+chamfer rows, 1 shared roof-ring vertex) and 11 triangles, against 16 vertices and 6 triangles for
+the old unshared-triangle walls plus mitred bevel. Vertices nearly halve **while** the feature is
+added, which is the number that matters here — this vertex stage does 5 `applyTerrain` calls per
+vertex. Extra fill is the chamfer surface itself. Not yet measured on device.
 
 Insetting is where this goes wrong, twice over, and both are worth knowing:
 
@@ -793,6 +825,34 @@ Insetting is where this goes wrong, twice over, and both are worth knowing:
 
 Degenerate edges are skipped rather than rejected: an MVT ring that repeats its first point at the
 end has one, and bailing on it left **every** building sharp.
+
+**A wall only backs off from a corner this tile can also fill.** With one of a corner's two edges
+outside `_polygonClipBox` the wedge is never emitted, and a lone cut-back wall leaves a gap straight
+through the building at the tile border. `cut` is zeroed at those corners, so the two walls meet
+exactly as they did before the radius existed.
+
+#### Ring orientation is a builder invariant
+
+`tesselatePolygon3D` now orients a footprint's rings against each other **once**, right after the
+duplicate-point cleanup: the outer ring counter-clockwise, every hole the other way. Everything
+downstream reads the traversal direction and nothing re-derives winding — the wall's outward normal
+`(t.y, -t.x)`, the quad windings, the roof inset in `insetRings`, and `appendGroundSkirt`'s
+`inwardSign`.
+
+MVT asks for that orientation and real tiles do not always deliver it. Before, each ring was taken
+on its own winding, so a **courtyard wound like its parent**:
+
+- had every wall normal pointing into the material, so its walls were back-faces and
+  `glCullFace(GL_BACK)` dropped them — the building was **see-through from inside the courtyard**,
+  worst close up where it fills the screen;
+- had its roof ring inset toward the hole's own centre rather than into the material, which
+  inverted the chamfer band and culled it too — so a hole got **no bevel at all**, in either
+  direction.
+
+One orientation pass fixes both. `insetRings` lost its per-ring `sign` in the same change; keeping
+it would immediately undo the orientation for holes. `roofKey` and the footprint centroid are order-
+and winding-independent, and `appendRoof`'s centroid divides by the signed area on both sides, so
+none of them care which way a ring is walked.
 
 ### Contact shadow on the ground
 
@@ -952,18 +1012,23 @@ building.
 z-fighting can. Second discriminator — acne tracks the sun (`--es sunHour`), z-fighting tracks the
 camera and is unchanged by the hour.
 
-`TileLayerBuilder` therefore keeps `_polygon3DWalls`, a map from footprint edge to the height range
-already walled on it for this layer and tile. A wall is emitted only over the range no earlier
-feature covered — as up to two quads, since a wall taller at both ends sticks out below *and* above
-what is there. The edge key quantises both endpoints to 1/32768 of a tile (7 cm at z14, finer than
-any tiler's grid) and is undirected, because two features walk a shared edge in opposite directions.
+`TileLayerBuilder` **used to** keep `_polygon3DWalls`, a map from footprint edge to the height range
+already walled on it, and emit a wall only over the range no earlier feature covered. That was ours,
+not a port: **mapbox-gl-js does not do it**: `fill_extrusion_bucket` tesselates every polygon
+independently, and its `buildingGroups` — keyed on a `building_id` property carried in the tile —
+exists only to give every part of one building an identical centroid for the ground AO and flood
+light. Their tiles ship parts already resolved against their parent, so coincident faces never reach
+the renderer. Tangram has no handling either (`Builders::buildPolygonExtrusion`, one extrusion per
+polygon), so it shows the same artifact on the same data.
 
-This is ours, not a port. **mapbox-gl-js does not do it**: `fill_extrusion_bucket` tesselates every
-polygon independently, and its `buildingGroups` — keyed on a `building_id` property carried in the
-tile — exists only to give every part of one building an identical centroid for the ground AO and
-flood light. Their tiles ship parts already resolved against their parent, so coincident faces never
-reach the renderer. Tangram has no handling either (`Builders::buildPolygonExtrusion`, one extrusion
-per polygon), so it shows the same artifact on the same data.
+**It was dropped** when the walls moved onto mapbox's chamfered-corner model (see [Rounded
+edges](#rounded-edges)). That model emits one shared vertex column per footprint corner and fills
+the corner wedge from those columns by index, which needs every edge of a ring to produce the same
+column layout — a per-edge height range read out of a map, from whatever an unrelated feature
+happened to write earlier in the tile, does not. Restoring it means emitting the columns
+unconditionally and *indexing* only the surviving bands, which is a bigger change than the artifact
+has been worth so far. If the stipple comes back on OpenMapTiles-style data that ships
+`building:part` unresolved, that is the fix, not a return to skipping walls.
 
 Known gaps:
 

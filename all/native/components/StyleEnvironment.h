@@ -121,7 +121,7 @@ namespace massif {
         float buildingAmbient = 0.5f;
         // How dark the foot of a wall goes, as a fraction of its colour. Off by default: mapbox has
         // no facade gradient, the direction-aware ambient separates the walls instead. The reach it
-        // fades over is decode-time geometry, not a uniform - see TileLayerBuilder::appendWallQuad.
+        // fades over is decode-time geometry, not a uniform - see TileLayerBuilder::packGradientT.
         float buildingVerticalGradient = 0.0f;
         float buildingRoofShade = 1.0f;
         // Every extrusion's height, multiplied - mapbox's fill-extrusion-vertical-scale.

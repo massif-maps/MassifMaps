@@ -1581,7 +1581,7 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
             // cannot resolve it, its texels are metres wide.
             //
             // wallT is the ramp itself, baked per vertex by the tesselator from the wall's ABSOLUTE
-            // height and the style's reach (TileLayerBuilder::appendWallQuad). Both are style values
+            // height and the style's reach (TileLayerBuilder::packGradientT). Both are style values
             // in one unit there, where the shader's own height carries a packing and a tile scale;
             // and being absolute, every part of a building shares one ramp instead of restarting.
             // sideVertex weights it: 1 on a wall, 0 on a roof, and partway on the bevel that

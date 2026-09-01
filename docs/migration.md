@@ -397,7 +397,8 @@ Roofs now read **lighter than walls in daylight and darker at dawn**, as mapbox 
 of `N.L` and is not tunable. A 60° floor on the building sun's altitude, present only in unreleased
 6.1 builds, was removed: it was compensating for a shadow bug and it suppressed that inversion.
 
-Buildings also gain a rounded roof edge (`building-edge-radius`, metres, 0 = off as before), a
+Buildings also gain rounded edges (`building-edge-radius`, metres, 0 = off as before — it rounds
+both the roof edge and the vertical corner where two walls meet), a
 `building-roof-shade` knob, and pitched roofs from OSM `roof:shape` / `roof:height` where the tiles
 carry them. All default to the previous flat-capped, sharp-edged geometry.
 

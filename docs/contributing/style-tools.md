@@ -714,6 +714,42 @@ at the label's own size, which is what stops a repeat of the same name being dra
 tiles cut the same road (`TextSymbolizer`, next section); writing 4 px there disabled the floor. An
 explicit `text-padding` still wins.
 
+## Rendering a converted style: match the TILES to the style
+
+A converted style has to be judged against the tileset it was authored for, or it looks broken when
+it is not. A Mapbox style read against OpenMapTiles tiles draws water and buildings and **no roads
+at all** — `mapbox-streets-v8` calls the layer `road`, OpenMapTiles calls it `transportation` — and
+that reads as a style regression rather than as the wrong tiles.
+
+Push the output to the device and point the bench at the matching source:
+
+```sh
+massif-style mapbox2css style.json out/ --no-sprite
+adb push out /sdcard/alpimaps_mbtiles/mystyle
+adb shell am start -n com.massifmaps.MassifDemo/.BenchActivity --es ui false \
+  --es style dir --es styleDir mystyle \
+  --es vectorUrl 'https://api.mapbox.com/v4/mapbox.mapbox-streets-v8/{z}/{x}/{y}.vector.pbf?access_token=<token>' \
+  --es vectorMaxZoom 16 --es vectorZoomBias -1 --es tilt 90
+```
+
+- **`vectorMaxZoom` is the TILESET's own maxzoom** (16 for `mapbox-streets-v8`, 15 for MapTiler v4,
+  14 for the akylas France tiles). Rendering above it overzooms a parent tile and the decoder's clip
+  box then drops most long features — a handful of POIs where the tile carries hundreds.
+- **`vectorZoomBias -1`** for a 512 px tileset, as the next section explains.
+- A Mapbox tiles token is a **tiles**-scoped one; a styles-scoped token 403s on `/v4/`.
+
+## Folding a casing into its fill: `--fold-casings`
+
+`--fold-casings` merges a casing layer into the fill layer it runs under, as one `line-border-*`
+rule ([the border pass](../internals/rendering/03-vt-renderer.md#line-borders-line-border-width--line-border-color)).
+It only fires on a pair that describes ONE road — same source layer, filter, zoom range and
+join/cap, no dash or pattern, and the same opacity — and it reports every pair it folded.
+
+It is opt-in because it **moves the casing in the draw order**. A style writes every casing layer
+before every fill layer, so a minor road's fill covers a major road's casing at a junction; folded,
+each class carries its own casing and the major road's casing runs unbroken across the minor road.
+Both are ordinary map looks, but only one is what the source style said.
+
 ## Comparing against mapbox-gl: the zoom AND the tile level
 
 Two things are a level apart, not one. The style expressions are shifted (`[view::zoom] - 1`)

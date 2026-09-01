@@ -797,6 +797,9 @@ public final class DemoConfig {
     public static String BUG_BACK_COLOR = "#1f6feb";
     /** back/line-opacity. < 0 omits the property, which is the case that draws correctly. */
     public static float BUG_BACK_OPACITY = 0.6f;
+    /** Draw #bugsel as ONE `line-border-*` rule instead of the back/ casing pair - same look,
+     *  one style rule and one tesselation. The A/B for the border pass. */
+    public static boolean BUG_LINE_BORDER = false;
 
     /** Translucent on purpose: alpha < 1 is what turns the vt single-blend stencil pass on. */
     public static String BUG_LINE_COLOR = "#00000077";
@@ -1139,6 +1142,7 @@ public final class DemoConfig {
         BUG_SEL_WIDTH = DemoCfg.cfgFloat("bugSelWidth", BUG_SEL_WIDTH);
         BUG_BACK_COLOR = DemoCfg.cfgColor("bugBackColor", BUG_BACK_COLOR);
         BUG_BACK_OPACITY = DemoCfg.cfgFloat("bugBackOpacity", BUG_BACK_OPACITY);
+        BUG_LINE_BORDER = DemoCfg.cfgBool("bugLineBorder", BUG_LINE_BORDER);
         BUG_LINE_COLOR = DemoCfg.cfgColor("bugLineColor", BUG_LINE_COLOR);
         BUG_LINE_WIDTH = DemoCfg.cfgFloat("bugLineWidth", BUG_LINE_WIDTH);
         BUG_LINE_LABEL = DemoCfg.cfgBool("bugLineLabel", BUG_LINE_LABEL);

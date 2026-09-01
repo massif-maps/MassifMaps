@@ -325,6 +325,26 @@
       "baked": false
     },
     {
+      "cartocss": "line-border-color",
+      "mapnik": "border-color",
+      "symbolizer": "line",
+      "kind": "color",
+      "type": "ColorFunctionProperty",
+      "default": "#000000",
+      "live": true,
+      "baked": false
+    },
+    {
+      "cartocss": "line-border-width",
+      "mapnik": "border-width",
+      "symbolizer": "line",
+      "kind": "float",
+      "type": "FloatFunctionProperty",
+      "default": "0.0",
+      "live": true,
+      "baked": false
+    },
+    {
       "cartocss": "line-cap",
       "mapnik": "stroke-linecap",
       "symbolizer": "line",

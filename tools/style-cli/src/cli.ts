@@ -67,6 +67,10 @@ const USAGE = `Usage: massif-style <command> [options] [args]
                             style states no fill-extrusion-vertical-scale of its own
       --sdf-flatten         resolve SDF icons to plain bitmaps, for an SDK without
                             marker-sdf; loses the zoom-driven size and the halo
+      --fold-casings        fold a casing layer into the fill it runs under, as one
+                            line-border-* rule. Halves those rules and their geometry,
+                            and MOVES the casing: it then draws per class instead of
+                            under every fill
       --contour-schema div  rewrite contour-layer nth_line tests onto a div (interval in
                             metres) attribute; --contour-major-div is the major threshold,
                             and --contour-elevation is what the target tiles call the
@@ -187,6 +191,7 @@ async function mapbox2css(args: string[]): Promise<number> {
         config: parseConfig(args),
         presets: flags.has('no-presets') ? [] : undefined,
         flattenSdf: flags.has('sdf-flatten'),
+        foldCasings: flags.has('fold-casings'),
         labelSpacing: Number(flags.get('label-spacing') ?? 1),
         schema: schema === 'openmaptiles' ? 'openmaptiles' : undefined,
         sourceSchema,

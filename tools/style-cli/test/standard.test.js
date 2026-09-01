@@ -327,6 +327,46 @@ test('line-gap-width is carried, not split into the two strips it stands for', (
     assert.ok(!/line-offset:/.test(mss), 'and no offset: the shader cuts the middle out');
 });
 
+test('line-border-* is carried, so a casing stays one rule', () => {
+    // maplibre's line border. The SDK draws it from the line's own buffer one draw earlier, so a
+    // source layer that already declares it converts 1:1 instead of becoming a casing/fill pair.
+    const bordered = { id: 'road', type: 'line', 'source-layer': 'road', paint: {
+        'line-color': '#fff', 'line-width': 4, 'line-border-width': 1, 'line-border-color': '#333' } };
+    const { mss } = convert({ layers: [bordered] }, TABLE, { variables: false });
+    assert.match(mss, /line-border-width: 1;/);
+    assert.match(mss, /line-border-color: #333;/);
+});
+
+/** A casing layer and the fill it runs under, the shape --fold-casings looks for. */
+const CASED = (fillPaint = {}) => ({ layers: [
+    { id: 'road-case', type: 'line', source: 's', 'source-layer': 'road',
+      filter: ['==', 'class', 'street'], layout: { 'line-cap': 'round' },
+      paint: { 'line-color': '#888', 'line-width': 8 } },
+    { id: 'road', type: 'line', source: 's', 'source-layer': 'road',
+      filter: ['==', 'class', 'street'], layout: { 'line-cap': 'round' },
+      paint: { 'line-color': '#fff', 'line-width': 5, ...fillPaint } },
+] });
+
+test('--fold-casings turns a casing/fill pair into one line-border-* rule', () => {
+    const { mss } = convert(CASED(), TABLE, { variables: false, foldCasings: true });
+    assert.match(mss, /line-border-color: #888;/);
+    assert.match(mss, /line-border-width: \(\(8 - 5\) \/ 2\);/, 'half the width difference');
+    assert.ok(!/#road\[class = 'street'\]::road_case/.test(mss), 'the casing layer is gone');
+});
+
+test('the fold is opt-in: without the flag both layers stay', () => {
+    const { mss } = convert(CASED(), TABLE, { variables: false });
+    assert.ok(!/line-border/.test(mss));
+    assert.match(mss, /::road_case/, 'the casing is still its own rule');
+});
+
+test('a dashed fill is not folded: the pattern would cover the border too', () => {
+    const { mss } = convert(CASED({ 'line-dasharray': [2, 2] }), TABLE,
+        { variables: false, foldCasings: true });
+    assert.ok(!/line-border/.test(mss));
+    assert.match(mss, /::road_case/);
+});
+
 test('line-blur is carried too, so a soft shadow stays soft', () => {
     // Standard's bridge shadows are width 10 / blur 10. Dropped, they draw as hard dark bars with
     // a visible butt cap at each end.

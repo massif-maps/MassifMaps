@@ -742,27 +742,51 @@ adb shell am start -n com.massifmaps.MassifDemo/.BenchActivity --es ui false \
 
 A casing layer is merged into the fill layer it runs under, as one `line-border-*` rule
 ([the border pass](../internals/rendering/03-vt-renderer.md#line-borders-line-border-width--line-border-color)).
-`--no-fold-casings` turns it off.
+`--no-fold-casings` turns it off. Two shapes are recognised:
 
-It only fires on a pair that describes ONE road — same source layer, filter, zoom range, join/cap
-and opacity, no dash or pattern, and **both stating a `line-width`** (two layers that merely draw
-the same features in the same colour are not a casing pair). Every fold is named in the report.
+| | what the casing is | the border |
+|---|---|---|
+| **plain** | a wider line under a narrower one | half the width difference, `((cw) - (fw)) / 2` |
+| **gapped** | `line-gap-width` equal to the fill's `line-width` — the casing already hugs the fill | the casing's **own** width, exactly. No arithmetic |
 
-It **moves the casing in the draw order**, which is the one thing to look at. A style writes every
-casing layer before every fill layer, so a minor road's fill covers a major road's casing at a
-junction; folded, each class carries its own casing and the major road's casing runs unbroken
-across the minor road. Both are ordinary map looks, but only one is what the source style said.
+Either way the pair must describe ONE road: same source layer, zoom range, join/cap and opacity, no
+dash or pattern (the pattern rides the whole quad, so it would cover the border too), and both
+stating a `line-width`. `line-sort-key` is ordering within a layer, not shape, so it is ignored.
 
-What real styles do with it:
+Two things the gapped shape needs that the plain one does not, both of them real in Mapbox Standard:
 
-| style | folded |
-|---|---|
-| Mapbox Standard | **0** — its casings already carry `line-gap-width`, so they are one rule each, and their filters and layouts differ from their fills. The output is byte-identical with the fold on or off |
-| MapTiler streets | 3 — `Minor road outline`, `Major road outline`, `Highway outline` |
-| MapTiler outdoor v4 | 0 |
+- **The filters differ** — a casing usually draws a subset of the fill's classes. A MapBox filter
+  already IS a boolean expression, so the border width is wrapped as
+  `["case", <casingFilter>, <casingWidth>, 0]` rather than the pair being refused.
+- **The zoom ranges differ** — Standard cases from z15 over a fill that starts at z3, so what is
+  left of the casing's `minzoom`/`maxzoom` is carried by a `step` on the width. The fill may also
+  ramp its own `line-opacity`, and the border takes the LINE's opacity: the fold only goes ahead
+  when the fill is opaque everywhere the casing draws.
 
-The border width comes out as `((casingWidth) - (fillWidth)) / 2`, which goes **negative** at zooms
-where the casing's own ramp has not started; the SDK clamps a negative border width to no border.
+### It moves the casing, and `strict` is the escape hatch
+
+Folding moves the casing down to the fill's position. A style writes every casing layer before every
+fill layer, so a minor road's fill covers a major road's casing at a junction; folded, each class
+carries its own casing and the major road's casing runs unbroken across the minor road. Worse, a
+layer drawn BETWEEN the two ends up *under* the casing instead of over it.
+
+`--fold-casings strict` refuses any pair with something still drawn between them, and names each
+refusal in the report. In practice that refuses everything — every casing in the three styles below
+has an interposed layer — so it is a diagnostic and an escape hatch, not the default.
+
+| style | folded (default) | strict | what strict refuses |
+|---|---|---|---|
+| Mapbox Standard | 3 gapped — `roads-case`, `road-path-case`, `road-pedestrian-case` | 0 | seven layers sit between `roads-case` and `roads`: turning features, four road polygon fills, construction |
+| MapTiler streets | 3 plain — the three road outlines | 0 | `Road under construction` |
+| MapTiler outdoor v4 | 1 plain — `Track outline` | 0 | |
+
+Measured with the default on Standard at Paris z16: **5.7% of pixels differ**, all of it the casing
+becoming more prominent because those seven layers no longer paint over it. Whether that is closer
+to gl-js than the source order is **unverified** — check it against `wasm/mbref.html` before
+treating either as correct.
+
+The border width comes out as an expression that can go **negative** at zooms where the casing's own
+ramp has not started; the SDK clamps a negative border width to no border.
 
 ## Comparing against mapbox-gl: the zoom AND the tile level
 

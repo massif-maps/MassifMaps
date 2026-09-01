@@ -360,6 +360,39 @@ test('--no-fold-casings keeps the casing as its own rule', () => {
     assert.match(mss, /::road_case/, 'the casing is still its own rule');
 });
 
+test('a gapped casing folds into the fill it hugs, with no subtraction', () => {
+    // Mapbox Standard's shape: the casing is a line-gap-width the size of the fill, so its own
+    // width IS the border. Its filter is a subset of the fill's, so the border is gated on it.
+    const gapped = { layers: [
+        { id: 'roads-case', type: 'line', source: 's', 'source-layer': 'road', minzoom: 15,
+          filter: ['==', ['get', 'class'], 'motorway'],
+          paint: { 'line-color': '#555', 'line-gap-width': 6, 'line-width': 2 } },
+        { id: 'roads', type: 'line', source: 's', 'source-layer': 'road', minzoom: 15,
+          filter: ['in', ['get', 'class'], ['literal', ['motorway', 'street']]],
+          paint: { 'line-color': '#fff', 'line-width': 6 } },
+    ] };
+    const { mss } = convert(gapped, TABLE, { variables: false });
+    assert.match(mss, /line-border-color: #555;/);
+    assert.match(mss, /line-border-width: .*\?\s*2\s*:\s*0/, 'the casing width, gated on its filter');
+    assert.ok(!/::roads_case/.test(mss), 'the casing layer is gone');
+});
+
+test('--fold-casings strict refuses a pair with a layer drawn between them', () => {
+    const between = { layers: [
+        { id: 'road-case', type: 'line', source: 's', 'source-layer': 'road',
+          filter: ['==', 'class', 'street'], paint: { 'line-color': '#888', 'line-width': 8 } },
+        { id: 'plaza', type: 'fill', source: 's', 'source-layer': 'road',
+          paint: { 'fill-color': '#eee' } },
+        { id: 'road', type: 'line', source: 's', 'source-layer': 'road',
+          filter: ['==', 'class', 'street'], paint: { 'line-color': '#fff', 'line-width': 5 } },
+    ] };
+    assert.match(convert(between, TABLE, { variables: false }).mss, /line-border-width/,
+        'the default folds it anyway');
+    const strict = convert(between, TABLE, { variables: false, foldCasings: 'strict' });
+    assert.ok(!/line-border/.test(strict.mss), 'strict does not');
+    assert.match(strict.coverage.report(), /NOT folded because another layer draws between/);
+});
+
 test('a dashed fill is not folded: the pattern would cover the border too', () => {
     const { mss } = convert(CASED({ 'line-dasharray': [2, 2] }), TABLE, { variables: false });
     assert.ok(!/line-border/.test(mss));

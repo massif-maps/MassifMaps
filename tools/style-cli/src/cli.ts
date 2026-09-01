@@ -71,6 +71,10 @@ const USAGE = `Usage: massif-style <command> [options] [args]
                             folded into the fill it runs under as one line-border-* rule,
                             which halves those rules and their geometry but MOVES the
                             casing: it then draws per class instead of under every fill
+      --fold-casings strict  fold only where nothing is drawn BETWEEN the casing and its
+                            fill, so the fold cannot change what covers what. Refuses
+                            Mapbox Standard's road casings, which have seven layers in
+                            between; every pair it refuses is named in the report
       --contour-schema div  rewrite contour-layer nth_line tests onto a div (interval in
                             metres) attribute; --contour-major-div is the major threshold,
                             and --contour-elevation is what the target tiles call the
@@ -108,7 +112,7 @@ function parseFlags(args: string[]): { flags: Map<string, string>; positional: s
     return { flags, positional };
 }
 
-const VALUE_FLAGS = new Set(['contour-schema', 'contour-major-div', 'sprite-key', 'label-spacing', 'label-emissive', 'halo-emissive', 'geometry-emissive', 'contour-elevation', 'schema', 'source-schema', 'config']);
+const VALUE_FLAGS = new Set(['fold-casings', 'contour-schema', 'contour-major-div', 'sprite-key', 'label-spacing', 'label-emissive', 'halo-emissive', 'geometry-emissive', 'contour-elevation', 'schema', 'source-schema', 'config']);
 
 /**
  * `--config key=value`, repeatable, for a style with a `schema` (Mapbox Standard). Values are read
@@ -191,7 +195,8 @@ async function mapbox2css(args: string[]): Promise<number> {
         config: parseConfig(args),
         presets: flags.has('no-presets') ? [] : undefined,
         flattenSdf: flags.has('sdf-flatten'),
-        foldCasings: !flags.has('no-fold-casings'),
+        foldCasings: flags.has('no-fold-casings') ? false
+            : flags.get('fold-casings') === 'strict' ? 'strict' : true,
         labelSpacing: Number(flags.get('label-spacing') ?? 1),
         schema: schema === 'openmaptiles' ? 'openmaptiles' : undefined,
         sourceSchema,

@@ -14,6 +14,7 @@ namespace massif::vt {
         A_VERTEXNORMAL,
         A_VERTEXBINORMAL,
         A_VERTEXHEIGHT,
+        A_VERTEXBASE,
         A_VERTEXCOLOR,
         A_VERTEXATTRIBS,
         A_VERTEXOFFSET
@@ -31,6 +32,7 @@ namespace massif::vt {
         U_TILEUNITOFFSET,
         U_UVSCALE,
         U_HEIGHTSCALE,
+        U_BASESCALE,
         U_SHADOWHEIGHTSCALE,
         U_COLORTABLE,
         U_WIDTHTABLE,
@@ -162,6 +164,7 @@ namespace massif::vt {
         { "aVertexNormal",   A_VERTEXNORMAL },
         { "aVertexBinormal", A_VERTEXBINORMAL },
         { "aVertexHeight",   A_VERTEXHEIGHT },
+        { "aVertexBase",     A_VERTEXBASE },
         { "aVertexColor",    A_VERTEXCOLOR },
         { "aVertexAttribs",  A_VERTEXATTRIBS },
         { "aVertexOffset",   A_VERTEXOFFSET }
@@ -179,6 +182,7 @@ namespace massif::vt {
         { "uTileUnitOffset",   U_TILEUNITOFFSET },
         { "uUVScale",          U_UVSCALE },
         { "uHeightScale",      U_HEIGHTSCALE },
+        { "uBaseScale",        U_BASESCALE },
         { "uShadowHeightScale", U_SHADOWHEIGHTSCALE },
         { "uColorTable",       U_COLORTABLE },
         { "uWidthTable",       U_WIDTHTABLE },
@@ -2267,6 +2271,13 @@ namespace massif::vt {
         attribute vec3 aVertexBinormal;
         attribute vec2 aVertexUV;
         attribute float aVertexHeight;
+        // The ground this footprint stands on, in INTERNAL z units - exaggeration and the mercator
+        // stretch already in, straight from ElevationManager::getDisplayHeight - resolved on the
+        // CPU (see TileGeometry::setVertexBase). Identical for every vertex of one building, which
+        // is what sampling the elevation texture here could not guarantee: the texture bound is the
+        // one the TILE BEING DRAWN carries, so a building spanning two tiles got two bases and tore
+        // apart. uBaseScale is the only conversion left, internal z -> this vertex frame.
+        attribute float aVertexBase;
         attribute vec4 aVertexAttribs;
         #ifdef TRANSFORM
         uniform mat4 uTransformMatrix;
@@ -2275,6 +2286,9 @@ namespace massif::vt {
         uniform mat3 uTileMatrix;
         uniform float uUVScale;
         uniform float uHeightScale;
+        #ifdef TERRAIN
+        uniform float uBaseScale;   // internal z units -> this vertex frame (1 / frameScaleZ)
+        #endif
         // The height the SHADOW MAP was baked at. Equal to uHeightScale unless the style flattens
         // its buildings for the camera (building-height-view-scale), which the caster ignores: the
         // lookup has to follow the caster, or every roof lands under its own building's shadow.
@@ -2293,15 +2307,6 @@ namespace massif::vt {
         varying mediump vec3 vShadowNormal;
         #endif
 
-        // Ground height at a point of THIS extrusion's footprint frame, transform included.
-        float footprintGround(vec2 c) {
-            vec3 a = vec3(c, aVertexPosition.z);
-        #ifdef TRANSFORM
-            a = vec3(uTransformMatrix * vec4(a, 1.0));
-        #endif
-            return applyTerrain(a).z;
-        }
-
         void main(void) {
             int styleIndex = int(aVertexAttribs[0]);
             // 0 on the roof, 1 on a wall, and BETWEEN on the bevel band that rounds the edge
@@ -2312,34 +2317,34 @@ namespace massif::vt {
             // foot of the building, 1 once past the gradient's reach.
             float wallT = aVertexAttribs[3] * (1.0 / 127.0);
             vec3 pos = aVertexPosition;
-            // Anything ABOVE the ground is measured from ONE elevation - the footprint's centroid,
-            // which the tesselator put in the texcoord slot - so the roof stays level instead of
-            // shearing down the slope. The ground ring itself keeps the terrain under each vertex,
-            // so the wall still meets the slope everywhere and the walls simply grow taller
-            // downhill. mapbox's fill-extrusion base-alignment terrain + height-alignment flat.
-            // Anchoring the base to the centroid too (maplibre's rigid prism) buries a building
-            // whole wherever the hillside rises more than its own height.
-            vec3 anchor = vec3(aVertexUV, aVertexPosition.z);
+            // Anything ABOVE the ground is measured from ONE elevation - the HIGHEST ground under
+            // the footprint - so the roof stays level instead of shearing down the slope, and no
+            // part of the building is left buried. The ground ring itself keeps the terrain under
+            // each vertex, so the wall still meets the slope everywhere and the walls simply grow
+            // taller downhill. mapbox's fill-extrusion base-alignment terrain + height-alignment
+            // flat. Anchoring the base to one point too (maplibre's rigid prism) buries a building
+            // whole wherever the hillside rises more than its own height; clamping the finished top
+            // to the ground instead collapses those walls to nothing.
+            //
+            // That one elevation is resolved on the CPU and arrives in aVertexBase - see there for
+            // why sampling it here could not be made to agree across a tile border.
         #ifdef TRANSFORM
             pos = vec3(uTransformMatrix * vec4(pos, 1.0));
-            anchor = vec3(uTransformMatrix * vec4(anchor, 1.0));
         #endif
             float groundZ = applyTerrain(pos).z;
             float baseZ = groundZ;
-            if (aVertexHeight > 0.0) {
-                // The HIGHEST ground the footprint stands on: the centroid and its reach in four
-                // directions, the reach being the tesselator's own footprint extent. The prism is
-                // RAISED to it, so the roof stays flat AND no part of the building is left under
-                // the hill. Anchoring at the centroid alone buried everything uphill of it;
-                // clamping the finished top to the ground instead collapsed those walls to nothing
-                // (whole faces missing); taking the ground per vertex bends the roof down the slope.
-                float reach = float(aVertexAttribs[2]) * (1.0 / 512.0) / uUVScale;
-                baseZ = applyTerrain(anchor).z;
-                baseZ = max(baseZ, footprintGround(aVertexUV + vec2(reach, 0.0)));
-                baseZ = max(baseZ, footprintGround(aVertexUV - vec2(reach, 0.0)));
-                baseZ = max(baseZ, footprintGround(aVertexUV + vec2(0.0, reach)));
-                baseZ = max(baseZ, footprintGround(aVertexUV - vec2(0.0, reach)));
+        #ifdef TERRAIN
+            // Flat ground has one elevation everywhere, so the base is the ground and the CPU pass
+            // has nothing to resolve - uElevationScale is not even declared without TERRAIN.
+            //
+            // An unresolved base (the pack-time sentinel, still there while the elevation for this
+            // tile has not arrived) falls back to the ground under this vertex. That is the
+            // pre-CPU behaviour: a roof that shears down the slope, which is wrong but visible -
+            // skipping the draw instead loses the building entirely, and a base of 0 buries it.
+            if (aVertexHeight > 0.0 && aVertexBase > -1.0e29) {
+                baseZ = aVertexBase * uBaseScale + uElevationScale.w;
             }
+        #endif
             vec3 basePos = vec3(pos.xy, baseZ);
             pos = basePos + aVertexNormal * (aVertexHeight * uHeightScale);
             vec3 normal = normalize(mix(aVertexNormal, aVertexBinormal, sideVertex));

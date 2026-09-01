@@ -188,10 +188,9 @@ namespace massif::vt {
         VertexArray<cglib::vec2<float>> _binormals;
         VertexArray<float> _heights;
         VertexArray<cglib::vec4<std::int8_t>> _attribs;
-        // The current extrusion's footprint centroid, carried by every one of its vertices.
+        // The current extrusion's footprint centroid, carried by every one of its vertices. The
+        // renderer resolves the ground there once, on the CPU (GLTileRenderer::resolveExtrusionBases).
         cglib::vec2<float> _polygon3DCentroid = cglib::vec2<float>(0, 0);
-        // ...and how far its footprint reaches from that centroid, in 1/512 of a tile.
-        std::int8_t _polygon3DExtent = 0;
         float _polygon3DGradientHeight = 0.0f;
         // Roofs already emitted this layer, matched whole - which catches a duplicated footprint,
         // the case that actually z-fights. A building:part normally differs in height from its

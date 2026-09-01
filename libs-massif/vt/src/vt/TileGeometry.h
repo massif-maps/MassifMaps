@@ -15,6 +15,7 @@
 
 #include <atomic>
 #include <cstdint>
+#include <cstring>
 #include <memory>
 #include <optional>
 #include <array>
@@ -74,6 +75,10 @@ namespace massif::vt {
             std::uint8_t styleIndices[2];
         };
 
+        // Written into every extrusion's base slot at pack time and recognised by polygon3DVsh.
+        // Any value a real ground could take would be indistinguishable from a resolved base.
+        static constexpr float UNRESOLVED_BASE = -1.0e30f;
+
         struct VertexGeometryLayoutParameters {
             int vertexSize;
             int dimensions;
@@ -83,12 +88,20 @@ namespace massif::vt {
             int normalOffset;
             int binormalOffset;
             int heightOffset;
+            // Extrusions only: the ground the prism stands on, in internal z units, resolved on
+            // the CPU from the SDK's elevation source and patched in after the fact (see
+            // setVertexBase). Sampled in the vertex shader it came from the elevation texture the
+            // TILE BEING DRAWN happens to have bound, so one building spanning two tiles got two
+            // bases and cracked apart. Starts at UNRESOLVED_BASE, which the shader reads as "use
+            // the ground under this vertex" - the pre-CPU behaviour, so a building whose elevation
+            // never resolves is drawn slightly wrong rather than not at all.
+            int baseOffset;
             float coordScale;
             float texCoordScale;
             float binormalScale;
             float heightScale;
 
-            VertexGeometryLayoutParameters() : vertexSize(0), dimensions(2), coordOffset(-1), attribsOffset(-1), texCoordOffset(-1), normalOffset(-1), binormalOffset(-1), heightOffset(-1), coordScale(0), texCoordScale(0), binormalScale(0), heightScale(0) { }
+            VertexGeometryLayoutParameters() : vertexSize(0), dimensions(2), coordOffset(-1), attribsOffset(-1), texCoordOffset(-1), normalOffset(-1), binormalOffset(-1), heightOffset(-1), baseOffset(-1), coordScale(0), texCoordScale(0), binormalScale(0), heightScale(0) { }
         };
 
         explicit TileGeometry(Type type, float geomScale, const StyleParameters& styleParameters, const VertexGeometryLayoutParameters& vertexGeometryLayoutParameters, VertexArray<std::uint8_t> vertexGeometry, VertexArray<std::uint16_t> indices, std::vector<std::pair<std::size_t, long long>> ids, std::vector<std::pair<std::size_t, std::uint16_t>> geoPosIndexes) : _type(type), _geomScale(geomScale), _styleParameters(styleParameters), _vertexGeometryLayoutParameters(vertexGeometryLayoutParameters), _indicesCount(static_cast<unsigned int>(indices.size())), _vertexGeometry(std::move(vertexGeometry)), _indices(std::move(indices)), _ids(std::move(ids)), _geoPosIndexes(std::move(geoPosIndexes)), _geoPosIndexesCount(static_cast<unsigned int>(indices.size())) { }
@@ -152,12 +165,46 @@ namespace massif::vt {
             return true;
         }
 
+        /**
+         * Writes the CPU-resolved ground height (metres) of one vertex, the same way a style slot
+         * is repointed: patch the bytes already uploaded and grow the dirty range.
+         *
+         * Every vertex of one footprint gets the SAME value - that is the whole point, and it is
+         * what a vertex-shader sample could not guarantee across a tile border.
+         */
+        bool setVertexBase(std::size_t vertexIndex, float base) {
+            if (_vertexGeometryLayoutParameters.baseOffset < 0 || _vertexGeometry.empty()) {
+                return false;
+            }
+            std::size_t vertexSize = _vertexGeometryLayoutParameters.vertexSize;
+            std::size_t first = vertexIndex * vertexSize + _vertexGeometryLayoutParameters.baseOffset;
+            float current;
+            std::memcpy(&current, &_vertexGeometry[first], sizeof(float));
+            if (current == base) {
+                return false;
+            }
+            std::memcpy(&_vertexGeometry[first], &base, sizeof(float));
+            std::size_t last = first + sizeof(float);
+            _dirtyVertexBytes = (_dirtyVertexBytes ? std::make_pair(std::min(_dirtyVertexBytes->first, first), std::max(_dirtyVertexBytes->second, last)) : std::make_pair(first, last));
+            return true;
+        }
+
+        /** Whether the bases have been resolved at least once - an extrusion is not drawn before. */
+        bool isBaseResolved() const { return _baseResolved; }
+        void setBaseResolved(bool resolved) { _baseResolved = resolved; }
+
+        /** The elevation data version the bases were resolved against, so a new DEM tile redoes them. */
+        unsigned int getBaseElevationVersion() const { return _baseElevationVersion; }
+        void setBaseElevationVersion(unsigned int version) { _baseElevationVersion = version; }
+
         const std::optional<std::pair<std::size_t, std::size_t>>& getDirtyVertexBytes() const { return _dirtyVertexBytes; }
 
         void clearDirtyVertexBytes() { _dirtyVertexBytes.reset(); }
 
         void releaseVertexArrays() {
-            if (_featureStyleRanges.empty()) { // the vertex data is what a style slot change patches
+            // The vertex data is what a style slot change patches - and what the extrusion base
+            // pass rewrites every time a DEM tile lands, so a base slot pins it too.
+            if (_featureStyleRanges.empty() && _vertexGeometryLayoutParameters.baseOffset < 0) {
                 _vertexGeometry.clear();
                 _vertexGeometry.shrink_to_fit();
             }
@@ -199,6 +246,8 @@ namespace massif::vt {
         StyleStateRef _styleState;
         std::uint64_t _appliedStateKey = 0;
         std::optional<std::pair<std::size_t, std::size_t>> _dirtyVertexBytes; // byte range to re-upload
+        bool _baseResolved = false;          // extrusions: the CPU ground pass has run at least once
+        unsigned int _baseElevationVersion = 0; // ...against this elevation data version
 
         VertexArray<std::uint8_t> _vertexGeometry;
         VertexArray<std::uint16_t> _indices;

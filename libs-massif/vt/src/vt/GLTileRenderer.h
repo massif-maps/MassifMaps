@@ -392,6 +392,13 @@ namespace massif::vt {
         // whole-data-set changes (data source, exaggeration, change-log overflow).
         void invalidateLabelElevation();
         void invalidateLabelElevation(const std::vector<TileId>& tileIds);
+        // The same for the extrusion bases (see resolveExtrusionBases): new elevation data means
+        // every building's ground has to be asked for again.
+        void invalidateExtrusionBases();
+        // The ground under an extrusion, in internal z units. Unlike the label provider this one
+        // REPORTS whether there was data: a base is baked into the vertices, so guessing 0 where
+        // the ground is 215 m puts the whole prism under the terrain.
+        void setExtrusionElevationProvider(std::function<bool(const cglib::vec3<double>&, double&)> provider);
         void setLabelOcclusionTest(std::function<bool(const cglib::vec3<double>&)> occlusionTest);
         void setLayerBlendingSpeed(float speed);
         void setLabelBlendingSpeed(float speed);
@@ -679,6 +686,23 @@ namespace massif::vt {
         void updateTerrainCoverTiles();
         void buildTerrainEdgeCoarsening();
         void setupTerrainLightingUniforms(const ShaderProgram& shaderProgram, const TileId& tileId, const cglib::mat4x4<double>& vertexFrameMatrix);
+        /**
+         * Resolves an extrusion's ground on the CPU and patches it into the vertex data.
+         *
+         * The base has to be the SAME for every vertex of a building, and a vertex-shader sample
+         * cannot promise that: the elevation texture bound is the one the TILE BEING DRAWN carries,
+         * so a footprint spanning two tiles was sampled through two textures, got two bases, and
+         * tore open along the tile line. One CPU query against the global ElevationManager is
+         * tile-independent by construction. mapbox-gl-js reaches the same place from the other end
+         * (fill_extrusion_bucket's centroid buffer) but needs updateBorders to reconcile the two
+         * halves, because their lookup is per tile and each half carries its own clipped footprint.
+         *
+         * Returns false while the elevation for this tile has not loaded. The geometry is still
+         * DRAWN in that case - its slots keep TileGeometry::UNRESOLVED_BASE and polygon3DVsh falls
+         * back to the ground under each vertex, which is the pre-CPU behaviour. Skipping the draw
+         * instead loses the building outright, and any wrong-but-plausible base buries it.
+         */
+        bool resolveExtrusionBases(const TileId& sourceTileId, const TileId& targetTileId, const std::shared_ptr<TileGeometry>& geometry) const;
         void renderTileMask(const TileId& tileId);
         void renderStencilDebugOverlay();
         // Bakes the DEM-derived paint of one target tile into the currently bound drape
@@ -919,6 +943,8 @@ namespace massif::vt {
         std::vector<std::pair<TileId, GLint>> _debugOrderedTileMasks;
         TerrainTextureProvider _terrainTextureProvider;
         std::function<double(const cglib::vec3<double>&)> _labelElevationProvider;
+        std::function<bool(const cglib::vec3<double>&, double&)> _extrusionElevationProvider;
+        std::atomic<unsigned int> _extrusionBaseVersion { 1 }; // bumped by invalidateExtrusionBases
         std::vector<TileId> _pendingLabelElevationTiles; // elevation tiles whose labels must be re-anchored
         bool _pendingLabelElevationAll = false;
         std::function<bool(const cglib::vec3<double>&)> _labelOcclusionTest;

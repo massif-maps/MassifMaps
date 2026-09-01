@@ -517,12 +517,6 @@ namespace massif::vt {
         return [style, transform, invTransTransform, styleIndex, this](long long id, const VerticesList& verticesList, float minHeight, float maxHeight) {
             std::size_t i0 = _coords.size();
             tesselatePolygon3D(verticesList, minHeight, maxHeight, static_cast<std::int8_t>(styleIndex), style);
-            // The footprint's reach, over every vertex this feature produced. Stamped here rather
-            // than at each append: the vertex stage needs it on all of them, and the tesselator has
-            // half a dozen paths that emit one.
-            for (std::size_t i = i0; i < _attribs.size(); i++) {
-                _attribs[i](2) = _polygon3DExtent;
-            }
             _ids.fill(id, _indices.size() - _ids.size());
             _groundIds.fill(id, _groundIndices.size() - _groundIds.size());
             _geoPosIndexes.fill(0, _indices.size() - _geoPosIndexes.size());
@@ -1139,6 +1133,15 @@ namespace massif::vt {
             vertexGeomLayoutParams.vertexSize = (vertexGeomLayoutParams.vertexSize + 3) & ~3;
         }
 
+        // The ground an extrusion stands on, resolved on the CPU after the fact and patched into
+        // the uploaded vertices. A full float: it is written per building rather than per tile, so
+        // a shared int16 scale would have to be chosen before any of them are known.
+        if (type == TileGeometry::Type::POLYGON3D) {
+            vertexGeomLayoutParams.baseOffset = vertexGeomLayoutParams.vertexSize;
+            vertexGeomLayoutParams.vertexSize += sizeof(float);
+            vertexGeomLayoutParams.vertexSize = (vertexGeomLayoutParams.vertexSize + 3) & ~3;
+        }
+
         vertexGeomLayoutParams.coordScale = coordScale;
         vertexGeomLayoutParams.binormalScale = binormalScale;
         vertexGeomLayoutParams.texCoordScale = texCoordScale;
@@ -1163,6 +1166,11 @@ namespace massif::vt {
                 compressedAttribsPtr[1] = attrib(1);
                 compressedAttribsPtr[2] = attrib(2);
                 compressedAttribsPtr[3] = attrib(3);
+            }
+
+            if (vertexGeomLayoutParams.baseOffset >= 0) {
+                float unresolved = TileGeometry::UNRESOLVED_BASE;
+                std::memcpy(baseCompressedPtr + vertexGeomLayoutParams.baseOffset, &unresolved, sizeof(float));
             }
 
             if (!texCoords.empty()) {
@@ -1710,24 +1718,11 @@ namespace massif::vt {
                 centroid = centroid + p;
             }
             centroid = centroid * (1.0f / pointsList[0].size());
-            // Through the transformer, like the coords beside it: calculatePoint FLIPS Y, and the
-            // vertex stage hands this straight to applyTerrain. Stored unflipped it samples the
-            // elevation at a mirrored position - which on a hillside is a different hill.
+            // Through the transformer, like the coords beside it: calculatePoint FLIPS Y, and
+            // GLTileRenderer::resolveExtrusionBases reads this back to know where to ask for the
+            // ground. Stored unflipped it asks at a mirrored position - a different hill entirely.
             cglib::vec3<float> anchor = _transformer->calculatePoint(centroid);
             _polygon3DCentroid = cglib::vec2<float>(anchor(0), anchor(1));
-            // ...and how far the footprint reaches from it, so the vertex stage can find the
-            // HIGHEST ground the building stands on and lift the whole prism above it. Anchored at
-            // the centroid alone, everything uphill of it is swallowed by the slope.
-            // In 1/128 of a tile, so the byte spans a WHOLE tile. The unit is a fraction of the
-            // tile and a footprint is a bigger fraction of it at every zoom, so at 1/512 the cap
-            // of 127 (a quarter tile) was reached from about z18: the reach stopped growing, the
-            // taps below fell short of the footprint, and the prism dropped to a lower ground -
-            // every large building suddenly a little shorter, at a zoom that depended on its size.
-            float extent = 0.0f;
-            for (const cglib::vec2<float>& p : pointsList[0]) {
-                extent = std::max(extent, cglib::length(p - centroid));
-            }
-            _polygon3DExtent = static_cast<std::int8_t>(std::min(127.0f, std::round(extent * 512.0f)));
         }
         // Edge radius: the wall stops short of the roof and a bevel band bridges the two, with the
         // roof ring inset by the same amount. What makes it read as ROUNDED is that the band's

@@ -967,6 +967,19 @@ namespace massif::vt {
         _pendingLabelElevationTiles.insert(_pendingLabelElevationTiles.end(), tileIds.begin(), tileIds.end());
     }
 
+    void GLTileRenderer::setExtrusionElevationProvider(std::function<bool(const cglib::vec3<double>&, double&)> provider) {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        _extrusionElevationProvider = std::move(provider);
+        invalidateExtrusionBases();
+    }
+
+    void GLTileRenderer::invalidateExtrusionBases() {
+        // A counter rather than the labels' per-tile list: setVertexBase is a no-op when the height
+        // has not moved, so a needless re-resolve costs the elevation queries and uploads nothing.
+        _extrusionBaseVersion.fetch_add(1, std::memory_order_relaxed);
+    }
+
     void GLTileRenderer::updateTerrainSkirts() {
         // Tile border skirts are DISABLED: their walls (textured with stretched tile
         // edge/background pixels) rasterize over neighbouring tile content wherever a
@@ -3294,6 +3307,9 @@ namespace massif::vt {
                 }
                 for (const std::shared_ptr<TileGeometry>& geometry : renderLayer->layer->getGeometries()) {
                     if (geometry->getType() == TileGeometry::Type::POLYGON3D) {
+                        // Always drawn: an extrusion whose ground has not resolved yet keeps the
+                        // sentinel and the shader falls back to the ground under each vertex.
+                        resolveExtrusionBases(renderLayer->sourceTileId, renderLayer->targetTileId, geometry);
                         // NOTE: geometry comp op is not supported for 3D polygons. Blending is disabled, setGLBlendState not needed
                         renderTileGeometry(renderLayer->sourceTileId, renderLayer->targetTileId, renderLayer->blend, pass.geometryOpacity, renderLayer->tileSize, geometry);
                     }
@@ -3886,6 +3902,7 @@ namespace massif::vt {
             glUniform4f(shaderProgram.uniforms[U_ELEVATIONDECODE], 0.0f, 0.0f, 0.0f, 0.0f);
             glUniform1f(shaderProgram.uniforms[U_ELEVATIONOFFSET], 0.0f);
             glUniform4f(shaderProgram.uniforms[U_ELEVATIONSCALE], 0.0f, 0.0f, 0.0f, 0.0f);
+            glUniform1f(shaderProgram.uniforms[U_BASESCALE], 0.0f);
             glUniform4f(shaderProgram.uniforms[U_ELEVATIONTEXELSIZE], 1.0f, 1.0f, 1.0f, 1.0f);
             glUniform2f(shaderProgram.uniforms[U_ELEVATIONLATTICECELL], 0.0f, 0.0f);
             glUniform2f(shaderProgram.uniforms[U_TILEUNITSCALE], 0.0f, 0.0f); // no tile clipping without elevation
@@ -3930,6 +3947,10 @@ namespace massif::vt {
             glUniform2f(shaderProgram.uniforms[U_ELEVATIONLATTICECELL], 0.0f, 0.0f);
         }
         double frameScaleZ = (vertexFrameMatrix(2, 2) != 0 ? vertexFrameMatrix(2, 2) : 1.0);
+        // An extrusion's CPU base is already in INTERNAL z units - getDisplayHeight applied the
+        // exaggeration and the mercator stretch - so it owes only the frame scale, the same
+        // 1/frameScaleZ folded into uElevationScale.x for heights that come from the texture.
+        glUniform1f(shaderProgram.uniforms[U_BASESCALE], static_cast<float>(1.0 / frameScaleZ));
         glUniform4f(shaderProgram.uniforms[U_ELEVATIONSCALE],
             static_cast<float>(terrainTexture.metersToInternal / frameScaleZ),
             static_cast<float>(frameOrigin(1) * terrainTexture.mercatorYScale),
@@ -3957,6 +3978,72 @@ namespace massif::vt {
         glUniform4f(shaderProgram.uniforms[U_SUNCOLOR], _terrainLighting.sunColor(0), _terrainLighting.sunColor(1), _terrainLighting.sunColor(2), 1.0f);
         glUniform4f(shaderProgram.uniforms[U_AMBIENTCOLOR], _terrainLighting.ambientColor(0), _terrainLighting.ambientColor(1), _terrainLighting.ambientColor(2), 1.0f);
         glUniform2f(shaderProgram.uniforms[U_LIGHTPARAMS], _terrainLighting.sunIntensity, _terrainLighting.ambientIntensity);
+    }
+
+    bool GLTileRenderer::resolveExtrusionBases(const TileId& sourceTileId, const TileId& targetTileId, const std::shared_ptr<TileGeometry>& geometry) const {
+        const TileGeometry::VertexGeometryLayoutParameters& params = geometry->getVertexGeometryLayoutParameters();
+        if (params.baseOffset < 0 || params.texCoordOffset < 0 || !_extrusionElevationProvider) {
+            return true; // not an extrusion, or no elevation at all - the ground is the base
+        }
+        unsigned int version = _extrusionBaseVersion.load(std::memory_order_relaxed);
+        if (geometry->isBaseResolved() && geometry->getBaseElevationVersion() == version) {
+            return true;
+        }
+        // Nothing to resolve against yet: leave the sentinel in place and try again next frame.
+        // The elevation is asked of the TARGET tile because that is what the draw itself binds
+        // from - under overzoom the source tile is a coarser ancestor with no elevation entry.
+        // NOT a reason to skip the draw: the shader falls back to the per-vertex ground, which is
+        // wrong on a slope but visible, where a base of 0 would bury the building at sea level.
+        if (!resolveTerrainTexture(targetTileId).first) {
+            return false;
+        }
+        const VertexArray<std::uint8_t>& vertexGeometry = geometry->getVertexGeometry();
+        if (vertexGeometry.empty() || params.vertexSize <= 0) {
+            return false;
+        }
+
+        // The centroid rides in the texcoord slot, at the coord scale (see packGeometry). Tile
+        // matrix and shader agree only on UNFLIPPED tile coords - the transformer flipped y when
+        // the centroid was stored, and polygon3DVsh flips it back for exactly this reason.
+        cglib::mat3x3<double> tileMatrix = calculateTileMatrix2D(sourceTileId, 1.0f);
+        std::size_t vertexCount = vertexGeometry.size() / params.vertexSize;
+        // One elevation query per FOOTPRINT, not per vertex: every vertex of a building carries the
+        // same centroid and a city tile runs to tens of thousands of vertices over a few hundred
+        // buildings. The vertices of one footprint are contiguous, so remembering the last one is
+        // the whole cache - the same trick ElevationManager::getGridForInternalPos plays.
+        std::int32_t lastU = 0, lastV = 0;
+        double lastHeight = 0;
+        bool haveLast = false;
+        bool haveHeight = false;
+        bool allResolved = true;
+        for (std::size_t i = 0; i < vertexCount; i++) {
+            const std::int16_t* texCoordPtr = reinterpret_cast<const std::int16_t*>(vertexGeometry.data() + i * params.vertexSize + params.texCoordOffset);
+            std::int32_t u = texCoordPtr[0];
+            std::int32_t v = texCoordPtr[1];
+            if (!haveLast || u != lastU || v != lastV) {
+                cglib::vec2<double> tilePos(u / static_cast<double>(params.texCoordScale),
+                                            1.0 - v / static_cast<double>(params.texCoordScale));
+                cglib::vec2<double> internalPos = cglib::transform_point(tilePos, tileMatrix);
+                haveHeight = _extrusionElevationProvider(cglib::vec3<double>(internalPos(0), internalPos(1), 0), lastHeight);
+                lastU = u;
+                lastV = v;
+                haveLast = true;
+            }
+            // A footprint whose DEM has not decoded yet keeps the sentinel and is retried next
+            // frame. Writing the provider's 0 instead is what buried every building: a base of 0
+            // where the ground is 215 m puts the whole prism under the terrain surface.
+            if (haveHeight) {
+                geometry->setVertexBase(i, static_cast<float>(lastHeight));
+            } else {
+                allResolved = false;
+            }
+        }
+        if (!allResolved) {
+            return false; // still drawn, on the per-vertex ground, until the elevation lands
+        }
+        geometry->setBaseResolved(true);
+        geometry->setBaseElevationVersion(version);
+        return true;
     }
 
     void GLTileRenderer::renderTileMask(const TileId& tileId) {
@@ -6046,6 +6133,10 @@ namespace massif::vt {
             if (vertexGeomLayoutParams.heightOffset >= 0) {
                 enableVertexAttrib(shaderProgram.attribs[A_VERTEXHEIGHT], 1, GL_SHORT, GL_FALSE, vertexGeomLayoutParams.vertexSize, bufferGLOffset(vertexGeomLayoutParams.heightOffset));
             }
+
+            if (vertexGeomLayoutParams.baseOffset >= 0) {
+                enableVertexAttrib(shaderProgram.attribs[A_VERTEXBASE], 1, GL_FLOAT, GL_FALSE, vertexGeomLayoutParams.vertexSize, bufferGLOffset(vertexGeomLayoutParams.baseOffset));
+            }
         }
 
         if (!(vertexGeomLayoutParams.attribsOffset >= 0)) {
@@ -6064,6 +6155,10 @@ namespace massif::vt {
         if (compiledGeometry.geometryVAO != 0) {
             glBindVertexArray(0);
         } else {
+            if (vertexGeomLayoutParams.baseOffset >= 0) {
+                disableVertexAttrib(shaderProgram.attribs[A_VERTEXBASE]);
+            }
+
             if (vertexGeomLayoutParams.heightOffset >= 0) {
                 disableVertexAttrib(shaderProgram.attribs[A_VERTEXHEIGHT]);
             }

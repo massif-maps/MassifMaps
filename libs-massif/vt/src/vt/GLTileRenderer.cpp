@@ -5913,7 +5913,10 @@ namespace massif::vt {
                 if (styleBorder) {
                     // maplibre's `line-border-width`: pixels on EACH side, outside the line. The
                     // gap shrinks by the same amount so a casing keeps its border on both edges.
-                    float borderHalf = 0.5f * _fullResolution * std::abs(evaluateFloatFunc(styleParams.borderWidthFuncs[i])) * geometry->getGeometryScale() / tileSize;
+                    // CLAMPED, not abs: a style computing the border from two width ramps goes
+                    // negative wherever the casing's ramp has not started yet, and a negative
+                    // border means no border - mirrored it would draw one the road never has.
+                    float borderHalf = 0.5f * _fullResolution * std::max(0.0f, evaluateFloatFunc(styleParams.borderWidthFuncs[i])) * geometry->getGeometryScale() / tileSize;
                     borderWidths[i] = (borderHalf > 0.0f && widths[i] > 0.0f ? widths[i] + borderHalf : 0.0f);
                     borderGapWidths[i] = std::max(0.0f, gapWidths[i] - borderHalf);
                     borderColors[i] = evaluateStyleColor(styleParams.borderColorFuncs[i], i);

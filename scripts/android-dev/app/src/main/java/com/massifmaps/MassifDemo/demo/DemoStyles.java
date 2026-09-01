@@ -919,6 +919,39 @@ public final class DemoStyles {
     }
 
     /** The CartoCSS is written here, the FONTS come from the APK asset package (as the POI style). */
+    /**
+     * The SPAN layer's style: bridges and tunnels only, off the base map's own source layer, so a
+     * second VectorTileLayer at a coarser zoom bias can draw them while the base map draws
+     * everything else. [structure] is what a MapBox source tags them with; OpenMapTiles uses
+     * [brunnel], and both are matched so the layer works against either source.
+     */
+    public static MBVectorTileDecoder createSpanDecoder() {
+        StringBuilder mss = new StringBuilder();
+        mss.append("#road[structure='bridge'],\n")
+           .append("#road[brunnel='bridge'] {\n")
+           .append("  line-color: ").append(DemoConfig.SPAN_BRIDGE_COLOR).append(";\n")
+           .append("  line-width: ").append(DemoConfig.SPAN_WIDTH).append(";\n")
+           .append("  line-join: round;\n")
+           .append("  line-cap: butt;\n")
+           .append("  line-elevation-mode: span;\n")
+           .append("}\n");
+        mss.append("#road[structure='tunnel'],\n")
+           .append("#road[brunnel='tunnel'] {\n")
+           .append("  line-color: ").append(DemoConfig.SPAN_TUNNEL_COLOR).append(";\n")
+           .append("  line-width: ").append(DemoConfig.SPAN_WIDTH).append(";\n")
+           .append("  line-join: round;\n")
+           .append("  line-cap: butt;\n")
+           .append("  line-dasharray: 14, 10;\n")
+           .append("  line-elevation-mode: underground;\n")
+           .append("}");
+        String css = mss.toString();
+        Log.i(TAG, "span style:\n" + css);
+        AssetPackage pack = openAppAssets();
+        return pack != null
+                ? new MBVectorTileDecoder(new CartoCSSStyleSet(css, pack))
+                : new MBVectorTileDecoder(new CartoCSSStyleSet(css));
+    }
+
     public static MBVectorTileDecoder createBugDecoder() {
         String css = bugStyle();
         Log.i(TAG, "bug repro style:\n" + css);

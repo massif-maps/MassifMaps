@@ -67,6 +67,8 @@ namespace massif::mvt {
                 // angle - which made the cut depend on the static width in two wrong directions: a
                 // thin line kept mitering into a 5x-long needle at a hairpin, and a line wider than
                 // the limit never mitered at all.
+                // It picks the BRANCH only; the inner corner every branch places is bounded by
+                // vt's INNER_MITER_LIMIT instead - see TileLayerBuilder.
                 // ratio = 1 / cos(turn / 2) = 1 / sqrt((1 + dot) / 2)  =>  dot = 2 / ratio^2 - 1.
                 float strokeMiterLimit = std::max(_strokeMiterLimit.getStaticValue(exprContext), 1.0f);
                 miterDotLimit = 2.0f / (strokeMiterLimit * strokeMiterLimit) - 1.0f;

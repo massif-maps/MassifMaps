@@ -26,6 +26,14 @@ namespace {
     // every angle, but their line shader has no antialias ramp: here five near-degenerate slivers
     // each carry their own ramp, and the ramps cut a hairline seam across the line.
     static const float ROUND_JOIN_DOT_LIMIT = 0.985f;
+    // Half-widths the INNER corner of a bevel/round join may reach. It is the true miter point,
+    // 1 / cos(turn / 2), which runs away at a near-reversal and needles out past any segment
+    // shorter than it - the spike roundabouts and slip roads grew at z11-12. stroke-miterlimit
+    // cannot bound it (it only picks which branch runs), and no build-time value can either: the
+    // miter is in half-widths, a SCREEN quantity, while the segment it must fit in is in tile
+    // units. 1 - no miter, the two quads simply meeting - is the only value that holds at every
+    // zoom, and measured on device it costs no extra blending on a translucent line.
+    static const float INNER_MITER_LIMIT = 1.0f;
 
     // The pen walk Label::buildPointVertexData does. 'textPart' selects which half of the run is
     // measured: the icon glyphs come first, and the first CR pseudo-glyph resets the pen onto the
@@ -1983,8 +1991,7 @@ namespace massif::vt {
                     cglib::vec4<std::int8_t> outerAttribs(styleIndex, 0, outerSide, 0);
                     cglib::vec4<std::int8_t> centreAttribs(styleIndex, 0, 0, 0);
 
-                    for (int n = 0; n < 2; n++) {
-                        const cglib::vec2<float>& b = (n == 0 ? prevBinormal : binormal);
+                    auto appendCrossSection = [&](const cglib::vec2<float>& b) {
                         _coords.append(p0, p0);
                         if (innerSecond) {
                             _texCoords.append(outerTexCoord, centreTexCoord);
@@ -1995,7 +2002,10 @@ namespace massif::vt {
                             _binormals.append(centre, b);
                             _attribs.append(centreAttribs, outerAttribs);
                         }
-                    }
+                    };
+
+                    // The cross-section that ENDS the incoming quad.
+                    appendCrossSection(prevBinormal);
 
                     // Winding mirrors with the turn side - back faces are culled for 2D geometry.
                     // A round join must stay round HERE too: this branch takes over from the bevel
@@ -2005,7 +2015,6 @@ namespace massif::vt {
                     // sharper than a right angle.
                     std::size_t hubIndex = i0 + (innerSecond ? 1 : 0);
                     std::size_t lastRimIndex = i0 + (innerSecond ? 0 : 1);
-                    std::size_t outerIndexB = i0 + (innerSecond ? 2 : 3);
                     std::size_t fanTriangles = (style.joinMode == LineJoinMode::ROUND ? ROUND_JOIN_TRIANGLES : 1);
                     if (fanTriangles > 1) {
                         cglib::vec2<float> outerA = (innerSecond ? -prevBinormal : prevBinormal);
@@ -2034,7 +2043,14 @@ namespace massif::vt {
                             lastRimIndex = radialIndex;
                         }
                     }
-                    _indices.append(hubIndex, lastRimIndex, outerIndexB);
+
+                    // The cross-section that STARTS the outgoing quad - last, so the next iteration
+                    // finds it where it expects, as the bevel branch below already does. Emitted
+                    // before the fan, the quad was built off two of the fan's rim vertices and the
+                    // segment after the join lost its inner half.
+                    std::size_t i1 = _coords.size();
+                    appendCrossSection(binormal);
+                    _indices.append(hubIndex, lastRimIndex, i1 + (innerSecond ? 0 : 1));
                 }
             }
             else if ((style.joinMode == LineJoinMode::ROUND && dot < ROUND_JOIN_DOT_LIMIT) || dot < style.miterDotLimit) {
@@ -2043,7 +2059,8 @@ namespace massif::vt {
                 // angle, so it does not wait for the miter limit the way a bevel does.
                 cglib::vec2<float> lerpedBinormal = cglib::unit(binormal + prevBinormal);
                 std::int8_t sin = static_cast<std::int8_t>(127.0f * cglib::dot_product(prevTangent, lerpedBinormal));
-                cglib::vec2<float> lerpedScaledBinormal = lerpedBinormal * (1 / std::sqrt((1 + dot) * 0.5f));
+                // Only the INNER corner uses this here - see INNER_MITER_LIMIT.
+                cglib::vec2<float> lerpedScaledBinormal = lerpedBinormal * std::min(1 / std::sqrt((1 + dot) * 0.5f), INNER_MITER_LIMIT);
                 bool innerSecond = cglib::dot_product(prevTangent, binormal) < 0;
 
                 // The cross-section that ENDS the incoming quad. The next loop iteration links the

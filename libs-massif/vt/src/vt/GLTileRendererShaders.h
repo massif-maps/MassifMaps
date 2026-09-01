@@ -2308,7 +2308,7 @@ namespace massif::vt {
             // between them (see TileLayerBuilder edge radius). It blends the two normals, which is
             // where the softness comes from - the band itself is one quad, not a subdivided fillet.
             float sideVertex = aVertexAttribs[1] * (1.0 / 127.0);
-            // The facade gradient, baked per vertex by the tesselator (appendWallQuad): 0 at the
+            // The facade gradient, baked per vertex by the tesselator (packGradientT): 0 at the
             // foot of the building, 1 once past the gradient's reach.
             float wallT = aVertexAttribs[3] * (1.0 / 127.0);
             vec3 pos = aVertexPosition;

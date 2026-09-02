@@ -611,6 +611,10 @@ public final class DemoConfig {
     public static String STYLE_TILT_DROP = "";
     /** A converted style's `building_ao` parameter: 0 turns the ground contact shadows off. Live. */
     public static String STYLE_AO = "";
+    /** A converted style's `building_opacity` parameter: the extrusion fill's alpha. Below 1 the
+     *  walls are see-through, which is how an EDGE artifact is told apart from a SHADOW one - the
+     *  geometry stays visible with the shading taken out of the way. Live. */
+    public static String STYLE_BUILDING_OPACITY = "";
     /** Line widths of the inline style, as CartoCSS expressions - so they can be made
      *  zoom-dependent for testing how a line behaves as you zoom and tilt. The defaults widen
      *  with zoom the way a real style does; pass a plain number to pin a width instead. */
@@ -1386,6 +1390,7 @@ public final class DemoConfig {
         STYLE_BUILDINGS = DemoCfg.cfgStr("buildings", STYLE_BUILDINGS);
         STYLE_TILT_DROP = DemoCfg.cfgStr("bldTiltDrop", STYLE_TILT_DROP);
         STYLE_AO = DemoCfg.cfgStr("bldAo", STYLE_AO);
+        STYLE_BUILDING_OPACITY = DemoCfg.cfgStr("bldOpacity", STYLE_BUILDING_OPACITY);
         if (STYLE_BUILDINGS.isEmpty() && DemoCfg.cfg("bld3d") != null) {
             STYLE_BUILDINGS = INLINE_BUILDINGS_3D ? "2" : "1";
         }

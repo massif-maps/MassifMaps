@@ -353,6 +353,7 @@ public class DemoMap {
         setStyleParameter("buildings", DemoConfig.STYLE_BUILDINGS);
         setStyleParameter("building_tilt_drop", DemoConfig.STYLE_TILT_DROP);
         setStyleParameter("building_ao", DemoConfig.STYLE_AO);
+        setStyleParameter("building_opacity", DemoConfig.STYLE_BUILDING_OPACITY);
     }
 
     private void setStyleParameter(String name, String value) {

@@ -1022,6 +1022,19 @@ public final class DemoPanel {
         check(context, "3D buildings (inline style)", DemoConfig.INLINE_BUILDINGS_3D, new BoolSetting() {
             public void set(boolean value) { DemoConfig.INLINE_BUILDINGS_3D = value; demo.rebuildBaseLayer(); }
         });
+        // See-through walls, for telling a GEOMETRY artifact from a SHADOW one: with the fill
+        // translucent the mesh's own edges stay visible while the shading is out of the way. A
+        // converted style reads it as `param::building_opacity`, so it is a redraw, not a re-decode.
+        slider(context, "building opacity (converted style)", 0f, 1f,
+               DemoConfig.STYLE_BUILDING_OPACITY.isEmpty()
+                   ? 1f : Float.parseFloat(DemoConfig.STYLE_BUILDING_OPACITY),
+               false, new FloatSetting() {
+            public void set(float value) {
+                DemoConfig.STYLE_BUILDING_OPACITY = Float.toString(value);
+                demo.applyStyleParameters();
+                demo.mapView.requestRender();
+            }
+        });
 
         header(context, "FOG / DISTANCE");
         // The master switch on FogOptions: every value below stays configured while it is off.

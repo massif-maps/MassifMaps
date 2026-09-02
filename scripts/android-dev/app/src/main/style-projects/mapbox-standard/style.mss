@@ -810,7 +810,7 @@ Map {
 #building[zoom >= 16]['param::buildings'>1][extrude = 'true'][underground = 'false']::_3d_building {
   building-fill: @v3d_building_fill;
   building-height: ([est_height]) ?? ([height]);
-  building-fill-opacity: 1;
+  building-fill-opacity: [param::building_opacity];
   building-min-height: (([min_height] >= 0) ? [min_height] : 0);
 }
 #road[zoom >= 13] when((([layer] != null) ? ([layer] >= 0) : true)) when(step(([view::zoom] - 1), (0, (([class] = 'pedestrian') ? true : false)), (15, (([class] = 'path' || [class] = 'pedestrian') ? true : false))))::path_pedestrian_label {

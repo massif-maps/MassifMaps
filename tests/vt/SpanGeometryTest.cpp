@@ -100,6 +100,29 @@ void testSpanGeometry() {
     TEST_CHECK(!SpanGeometry::chordSpansGroup(span2(1230), span2(2460)),
                "half a deck is a missing portal, not a chord");
 
+    // A bed polygon and an extruded deck both need the ring's two ENDS, and a ring has none: the
+    // span is its longest axis. Getting this wrong puts the chord across the deck's WIDTH, which
+    // resolves as a metre-long span and leaves the deck on the ground.
+    {
+        // A deck-shaped ring: 2460 m long, 32 m wide, wound as a rectangle.
+        std::vector<cglib::vec2<float>> ring;
+        for (int i = 0; i <= 10; i++) {
+            ring.push_back(cglib::vec2<float>(at(-16, i * 246.0)(0), at(-16, i * 246.0)(1)));
+        }
+        for (int i = 10; i >= 0; i--) {
+            ring.push_back(cglib::vec2<float>(at(16, i * 246.0)(0), at(16, i * 246.0)(1)));
+        }
+        auto ends = SpanGeometry::farthestPair(ring);
+        double length = std::sqrt(cglib::norm(ends.second - ends.first)) / METRE;
+        TEST_CHECK(length > 2400 && length < 2500,
+                   "a deck-shaped ring spans its LENGTH, not its width");
+        // ...and the pair must be one from each end, not two corners of the same abutment.
+        double across = std::abs(static_cast<double>(ends.first(1) - ends.second(1))) / METRE;
+        TEST_CHECK(across > 2400, "...with one end at each abutment");
+    }
+    TEST_CHECK(SpanGeometry::farthestPair(std::vector<cglib::vec2<float>>()).first == cglib::vec2<float>(0, 0),
+               "an empty ring has no span, and must not read off the end of it");
+
     // A crossing structure must not be absorbed: the D41 passes under the viaduct near its foot.
     TEST_CHECK(!SpanGeometry::piecesMeet(a0, a1, true, false, at(-500, 990), at(500, 990), false, false, tolerance2),
                "a crossing bridge is a different structure");

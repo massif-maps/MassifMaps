@@ -49,7 +49,9 @@ public final class DemoLive extends BroadcastReceiver {
     private static final String[] STYLE_KEYS = {
         "style", "styleLight", "bg", "bldColor", "bld3d", "bldLight", "bldAmbient", "bldGradient", "bldGradientHeight",
         "bldAoRadius", "bldAoIntensity", "bldAoAttenuation", "bldAoStep", "bldEdgeRadius", "bldRoofShade", "bldRoundedRoof",
-        "roadLabelOcclusion", "lightPreset", "bld3d", "buildings", "styleAssetZip"
+        "roadLabelOcclusion", "lightPreset", "bld3d", "buildings", "styleAssetZip",
+        // deck3d gates a rule FILTER, so it selects which rules match - a re-decode, not a param apply.
+        "deck3d"
     };
     private static final String[] SKY_KEYS = {
         "sky", "skyColor", "horizonColor", "sunDisc",

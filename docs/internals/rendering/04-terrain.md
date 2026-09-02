@@ -529,6 +529,34 @@ borrow runs and hands it the 3440 m chord it resolved at z14.
 - A layer whose geometry is *all* spans still occupies its place in the drape unit stack. Dropping
   it shifts every later layer's coverage-mask index, which masked the whole road network away.
 
+### The deck as an extrusion
+
+`building-elevation-mode: span` stands a `BuildingSymbolizer`'s prism on the **chord** instead of on
+the ground, so `min-height`/`height` become a thickness measured from the deck rather than a height
+above the terrain (negative values hang the structure below the road surface). It is the same
+mechanism the span lines already use and not a second one: both write a per-vertex `baseOffset`, so
+`resolveExtrusionBases` simply hands a geometry carrying span records to `resolveSpanBases`, which
+takes the base from each vertex's own position along the chord. A building keeps the old path — one
+elevation query per footprint centroid, giving the flat base a building wants.
+
+`Polygon3DStyle` therefore carries an `elevationMode`, and `TileLayerBuilder` splits the batch on it
+(a deck and a building resolve their bases differently, so they cannot share one geometry) and emits
+the same `SpanVertexInfo` a filled bed does. Both get their two ends from
+`SpanGeometry::farthestPair` — a ring has no ends, so its span is its longest axis, found
+centroid → farthest → farthest again. Getting that wrong lays the chord across the deck's *width*,
+which resolves as a metre-long span and leaves the deck on the ground; `tests/vt/SpanGeometryTest.cpp`
+pins it on a 2460 × 32 m ring.
+
+What this buys beyond looks: labels, POIs and one-way arrows on a deck stop being a special case,
+because the deck becomes the same "POI on top of a building" query, and the existing extrusion
+shadow pass applies to it unchanged.
+
+**Not visually confirmed.** The code compiles and the geometry rule is covered on the host, but the
+emulator runs available here would not load the A75's tiles at a camera close enough to judge a
+6.5 m slab — at z14.32 it is nearly edge-on. Judge it at the viaduct's north abutment
+(`--es lat 44.08074 --es lon 3.00495 --es zoom 15.17 --es tilt 19 --es rotation 130.14`) with
+`--es deck3d 1`, and check the deck runs *straight* rather than following the ground under it.
+
 The pure geometry is in `vt/SpanGeometry.h` and tested on the host (`tests/vt/SpanGeometryTest.cpp`);
 none of these rules fails loudly when wrong.
 

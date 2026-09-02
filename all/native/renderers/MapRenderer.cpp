@@ -55,6 +55,7 @@
 #include "utils/ThreadUtils.h"
 
 #include <vt/RenderStats.h>
+#include <vt/GLTileRenderer.h> // the shadow cutout/fade constants, so the fade is not a second 4.5
 
 #include <algorithm>
 #include <limits>
@@ -2157,10 +2158,21 @@ namespace massif {
                     lighting.terrainLightingEnabled ? 1 : 0, static_cast<int>(coverTileIds.size()));
             }
         }
+        // Where the outermost cascade fades out, as a view depth: mapbox's u_shadow_fade_range,
+        // [far * 0.75, far] against the same cutout the boxes are cut at, so the fade always ends
+        // exactly where the shadow map does. In internal units, which is what 1 / gl_FragCoord.w is.
+        cglib::vec2<float> shadowFadeRange(0.0f, 0.0f);
+        {
+            double distanceFactor = lighting.shadowDistance > 0 ? lighting.shadowDistance : vt::GLTileRenderer::SHADOW_CUTOUT_DISTANCE_FACTOR;
+            double cutout = distanceFactor * cglib::length(viewState.getCameraPos() - viewState.getFocusPos());
+            if (cutout > 0) {
+                shadowFadeRange = cglib::vec2<float>(static_cast<float>(cutout * vt::GLTileRenderer::SHADOW_FADE_START_FRACTION), static_cast<float>(cutout));
+            }
+        }
         for (const std::shared_ptr<TileLayer>& tileLayer : tileLayers) {
             // The SHADOW sun, not the lighting one: the normal offset is scaled by the angle
             // between the surface and the direction the map was actually rendered from.
-            tileLayer->setTerrainShadowMap(shadowTexture, shadowMapSize, shadowCascades, shadowBias, shadowDepthScales, shadowStrength, shadowSoftness, _terrainShadowMap && _terrainShadowMap->isDepthTexture(), _terrainShadowMap && _terrainShadowMap->isHardwarePCF(), lighting.shadowNormalOffset, shadowSunDir, lightViewProjs);
+            tileLayer->setTerrainShadowMap(shadowTexture, shadowMapSize, shadowCascades, shadowBias, shadowDepthScales, shadowStrength, shadowSoftness, _terrainShadowMap && _terrainShadowMap->isDepthTexture(), _terrainShadowMap && _terrainShadowMap->isHardwarePCF(), lighting.shadowNormalOffset, shadowFadeRange, shadowSunDir, lightViewProjs);
             // The sun goes with it, and for the same reason: the surface is drawn a few
             // lines below, while each layer's own onDrawFrame - which also sets this -
             // runs later in the frame. The surface would light itself with the previous

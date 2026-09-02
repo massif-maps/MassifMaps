@@ -135,7 +135,7 @@ namespace massif {
         float shadowCasterFadeSignature(const std::vector<vt::TileId>* coveredBy) const;
         int consumeShadowCastersMissingElevation();
         int renderShadowCasters(const std::vector<vt::TileId>& tileIds, const cglib::mat4x4<double>& lightViewProj, bool castGround);
-        void setTerrainShadowMap(unsigned int texture, int mapSize, int cascades, const cglib::vec3<float>& depthBias, const std::array<float, 4>& depthScales, float strength, float softness, bool depthTexture, bool hardwarePCF, float normalOffset, const cglib::vec3<float>& sunDir, const std::array<cglib::mat4x4<double>, 4>& lightViewProjs);
+        void setTerrainShadowMap(unsigned int texture, int mapSize, int cascades, const cglib::vec3<float>& depthBias, const std::array<float, 4>& depthScales, float strength, float softness, bool depthTexture, bool hardwarePCF, float normalOffset, const cglib::vec2<float>& fadeRange, const cglib::vec3<float>& sunDir, const std::array<cglib::mat4x4<double>, 4>& lightViewProjs);
         void setTerrainShadowMask(unsigned int texture, float invScreenWidth, float invScreenHeight);
         int renderTerrainShadowMask(const std::vector<vt::TileId>& tileIds);
         bool isGroundAOActive() const;

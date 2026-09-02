@@ -1164,8 +1164,8 @@ namespace massif {
         return 0;
     }
 
-    void TileLayer::setTerrainShadowMap(unsigned int texture, int mapSize, int cascades, const cglib::vec3<float>& depthBias, const std::array<float, 4>& depthScales, float strength, float softness, bool depthTexture, bool hardwarePCF, float normalOffset, const cglib::vec3<float>& sunDir, const std::array<cglib::mat4x4<double>, 4>& lightViewProjs) {
-        _tileRenderer->setTerrainShadowMap(texture, mapSize, cascades, depthBias, depthScales, strength, softness, depthTexture, hardwarePCF, normalOffset, sunDir, lightViewProjs);
+    void TileLayer::setTerrainShadowMap(unsigned int texture, int mapSize, int cascades, const cglib::vec3<float>& depthBias, const std::array<float, 4>& depthScales, float strength, float softness, bool depthTexture, bool hardwarePCF, float normalOffset, const cglib::vec2<float>& fadeRange, const cglib::vec3<float>& sunDir, const std::array<cglib::mat4x4<double>, 4>& lightViewProjs) {
+        _tileRenderer->setTerrainShadowMap(texture, mapSize, cascades, depthBias, depthScales, strength, softness, depthTexture, hardwarePCF, normalOffset, fadeRange, sunDir, lightViewProjs);
     }
 
     void TileLayer::setTerrainSunLighting(const ResolvedLighting& lighting) {

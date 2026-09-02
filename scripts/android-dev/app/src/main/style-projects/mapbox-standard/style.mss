@@ -807,7 +807,7 @@ Map {
 #building[zoom >= 16]['param::buildings'>0]['param::buildings'<2][type != 'building:part'][underground = 'false']::_2d_building {
   building-height: 0.05;
   building-fill: linear([view::brightness], (0.3, @v2d_building_fill), (0.4, @v2d_building_fill_2));
-  building-min-height: 0;
+  building-min-height: -7;
   building-fill-opacity: 1;
 }
 #building[zoom >= 16]['param::buildings'>0]['param::buildings'<2][type != 'building:part'][underground = 'false']::_2d_building_outline {

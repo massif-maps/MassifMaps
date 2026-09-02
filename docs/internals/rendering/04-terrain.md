@@ -421,6 +421,77 @@ A footprint **split across two tiles** gets a different centroid and a different
 so the two can lift to different heights and step at the tile seam. Pre-existing for the centroid,
 now inherited by the reach.
 
+## Bridges and tunnels: spans
+
+A road on 3D terrain is **draped** — painted into the terrain texture — so it follows every bump
+the DEM has. That is right for a road on the ground and wrong for one on a bridge: the deck sags
+into the valley it crosses, and a tunnel climbs over the hill it goes through. A DSM makes it
+worse, since it catches the deck itself as terrain and spikes the middle upward.
+
+`line-elevation-mode` / `polygon-elevation-mode` (`drape` | `span` | `underground`) mark the
+features that do not lie on the ground. A span leaves the drape bake by construction —
+`isDrapeableGeometry` returns false for any geometry carrying span records, whatever the layer
+filter says — and takes its height from a **chord** between its two portals instead of from the
+DEM under it.
+
+### Portals, and why the tile is the test
+
+A span's portals are the feature's own two ends. The tile grid cuts a long bridge into pieces, and
+an end the tile cut is not a portal: a chord between two cut points dives to whatever the ground
+does at the cut.
+
+The classification tests the **tile**, not the clip box. The source clips at its own buffer
+(mapbox: 1/64 of a tile), so every cut end lands well inside our 1/8 clip box and would read as a
+real portal — which is what drew the Millau viaduct as two 30% ramps and a middle. The same point
+is inside the *neighbouring* tile's copy, which is where its portal is seen.
+
+### Joining the pieces
+
+The pieces are matched **by geometry, not by feature id**: `LineSymbolizer` passes
+`FeatureCollection::getLocalId`, a layer offset plus an index, so one OSM way gets a different id
+in every tile it crosses. Two pieces are one structure when the ends the tile *cut* meet — the
+buffer makes neighbouring copies overlap rather than touch, so this is proximity (13–18 m between
+the Millau pieces at z15) with a direction test to keep a crossing bridge out of the chain.
+
+Joined, the Millau viaduct resolves as one chord of **2472 m at 3.3%**, against 2460 m at 3.025%
+in reality. The portals are sampled at the junctions, where the approach road is draped and so sits
+on the DEM — anchoring the deck to the same value is what makes the two meet instead of stepping.
+
+A resolved chord is remembered in a small LRU, because a bridge's portals are a property of the
+world and not of what is on screen: zooming into one end drops the far piece from the visible set,
+and without the cache the chord shortens to whatever is still loaded and the deck changes angle.
+
+### Everything else that stands on the deck
+
+- The **bed polygon** (mapbox's `structure`/`class=land`) takes `polygon-elevation-mode`; its
+  portals are the two vertices farthest apart, which for a deck-shaped ring are its ends.
+- **Labels, POIs and one-way arrows** ask `spanHeightAt` before the terrain: lifted up to 151 m at
+  mid-span on the viaduct, tapering to 0 at the abutments. The allowance scales with the span
+  (2%, floor 25 m) because a long deck *curves* in plan while its chord is straight — Millau's
+  ~20 km radius puts mid-deck some 36 m off its own chord, and a fixed 25 m missed exactly the
+  labels standing on the bridge.
+- A span is lit **flat**, not by `terrainNdl`. Borrowing the terrain's normal is right for a road
+  lying on the ground and wrong for one flying over it: the deck came out shaded by the valley wall
+  beneath it and stepped in tone against its own draped approach.
+- A layer whose geometry is *all* spans still occupies its place in the drape unit stack. Dropping
+  it shifts every later layer's coverage-mask index, which masked the whole road network away.
+
+The pure geometry is in `vt/SpanGeometry.h` and tested on the host (`tests/vt/SpanGeometryTest.cpp`);
+none of these rules fails loudly when wrong.
+
+### What is still wrong
+
+**A bridge whose middle tile is not visible does not resolve.** The join needs the pieces, and at
+z15 with part of the deck off screen the chain breaks where a piece is missing — measured gaps of
+442–485 m against an 88 m tolerance — so the span falls back to draped and anything anchored to it
+goes with it. The chord cache is meant to cover this and does not yet.
+
+**Tunnels are unimplemented.** `underground` parses and is carried through, but nothing draws a
+tunnel see-through against the terrain in front of it.
+
+**The converter emits neither property.** `mapbox2css` does not translate `[structure]` into
+`line-elevation-mode`, so a regenerated style loses the annotations.
+
 ## Near and far planes
 
 Terrain mode floors the near plane at **camera height / 50**, which is tangram's

@@ -11,6 +11,7 @@ void testLineLabel();
 void testExtrusionCorner();
 void testExtrusionRingOrientation();
 void testExtrusionBase();
+void testSpanGeometry();
 
 int main() {
     testPlateBitmap();
@@ -18,6 +19,7 @@ int main() {
     testExtrusionCorner();
     testExtrusionRingOrientation();
     testExtrusionBase();
+    testSpanGeometry();
 
     std::printf("\n%d failure(s)\n", failures);
     return failures ? 1 : 0;

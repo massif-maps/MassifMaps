@@ -302,6 +302,23 @@ Design points, each measured:
   corners across the plaza. The wedges scaled with the CASCADE COUNT (1 clean, 2 a thin line, 3 the
   full wedge) because a page-index probe showed the whole view sitting in cascade 0 — more cascades
   only shrink that box, which raises the screen-space derivatives and hits the clamp harder.
+  **Then it had to come back, for the GROUND only.** Removing it wholesale traded the facade speckle
+  for a mesh over the whole ground below ~z17, reaching every zoom down to 0. mapbox needs no
+  receiver-plane term because their ground cannot self-shadow — their shadow receiver is a flat
+  plane at `z = 0` (`ground_shadow.vertex.glsl`) and terrain never casts, only extrusions do. Ours
+  DOES cast the terrain, so the depth stored for a texel CENTRE is up to half a texel from the
+  fragment reading it, which on ground at a grazing sun is metres of height. Porting their bias
+  whole meant dropping the one term our own feature depends on.
+
+  It is now gated to the ground by `SHADOW_RECEIVER_3D_FLAG`, set on the `polygon3d` receiver
+  program alone. Each receiver keeps only the defence that suits it: the ground has no normal to
+  offset along and uses the plane bias; an extrusion has the normal offset and must NOT use the
+  plane bias, because its shadow position is discontinuous across the bevel band at a vertical edge
+  — a quad straddling it sees a huge derivative, the bias saturates unevenly, and that is the
+  serrated wedge. The clamp is master's `0.02 / uShadowParams.x` again, and it has to stay
+  SCALE-FREE: capping it in metres instead (`uShadowBias.z * depthScale`) collapses to nothing in
+  normalised depth as the light box grows, so the bias dies at low zoom and the mesh returns — which
+  is exactly what a metric cap did before this was understood.
 - **The cascade count is NOT the lever, and 3 stays the default.** The wedges above scale with it,
   so dropping to mapbox's 2 looked like a fix — but it only made the near box coarser, which hid
   them. With the bias ported, 3 cascades is as clean as 2 at the same camera, so the count change

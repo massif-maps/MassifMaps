@@ -354,6 +354,7 @@ public class DemoMap {
      */
     public void applyStyleParameters() {
         setStyleParameter("buildings", DemoConfig.STYLE_BUILDINGS);
+        setStyleParameter("deck3d", DemoConfig.STYLE_DECK3D);
         setStyleParameter("building_tilt_drop", DemoConfig.STYLE_TILT_DROP);
         setStyleParameter("building_ao", DemoConfig.STYLE_AO);
     }

@@ -453,13 +453,25 @@ in every tile it crosses. Two pieces are one structure when the ends the tile *c
 buffer makes neighbouring copies overlap rather than touch, so this is proximity (13–18 m between
 the Millau pieces at z15) with a direction test to keep a crossing bridge out of the chain.
 
-Joined, the Millau viaduct resolves as one chord of **2472 m at 3.3%**, against 2460 m at 3.025%
-in reality. The portals are sampled at the junctions, where the approach road is draped and so sits
+Joined, the Millau viaduct resolves as one chord — **2472 m at 3.3%** against 2460 m at 3.025% in
+reality when it was first measured, **3440 m** on the tile set measured since (see below). The
+portals are sampled at the junctions, where the approach road is draped and so sits
 on the DEM — anchoring the deck to the same value is what makes the two meet instead of stepping.
 
 A resolved chord is remembered in a small LRU, because a bridge's portals are a property of the
 world and not of what is on screen: zooming into one end drops the far piece from the visible set,
 and without the cache the chord shortens to whatever is still loaded and the deck changes angle.
+A piece with no portal of its own borrows a cached chord by its own **midpoint**, since a piece in
+the middle of a long deck is cut at both ends and has none to offer.
+
+**Two portals are not a resolved chord.** Neighbouring tiles each hold a copy of the same abutment,
+so a group whose far portal is off screen still collects two portal points — 45 m apart at z15,
+across pieces running 1305 m — and that chord passed every other test here. Measured on the viaduct
+at z15.16, all eleven of its pieces resolved to that 45 m chord: the deck sagged onto the DEM and
+its labels went with it, which is what read as "the join fails when part of the bridge is off
+screen". The rule is `SpanGeometry::chordSpansGroup` — a chord must reach across **the group's own
+diameter** (95%, for the buffer overlap) — and a group that fails it is unresolved, so the cache
+borrow runs and hands it the 3440 m chord it resolved at z14.
 
 ### Everything else that stands on the deck
 
@@ -481,10 +493,13 @@ none of these rules fails loudly when wrong.
 
 ### What is still wrong
 
-**A bridge whose middle tile is not visible does not resolve.** The join needs the pieces, and at
-z15 with part of the deck off screen the chain breaks where a piece is missing — measured gaps of
-442–485 m against an 88 m tolerance — so the span falls back to draped and anything anchored to it
-goes with it. The chord cache is meant to cover this and does not yet.
+**A structure never seen whole has no chord to borrow.** The cache carries a bridge across a zoom
+or a pan, but it is only ever filled by a group that resolved on its own. Opening the map already
+zoomed into one abutment leaves the deck draped until the far end comes into view once.
+
+**The chord runs long.** The viaduct joins as 3440 m against a 2460 m deck — the chain reaches into
+the structure beyond its northern abutment. Not visibly wrong at the cameras tested (the extra
+length is bridge too), but it is not the bridge, and 2472 m is what an earlier tile set gave.
 
 **Tunnels are unimplemented.** `underground` parses and is carried through, but nothing draws a
 tunnel see-through against the terrain in front of it.

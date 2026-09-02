@@ -86,6 +86,20 @@ void testSpanGeometry() {
     TEST_CHECK(!SpanGeometry::piecesMeet(a0, a1, true, true, b0, b1, true, true, tolerance2),
                "a real portal ends the run, so it never continues into another piece");
 
+    // A chord must reach across the pieces it was collected from. At z15 the viaduct's two
+    // northern tiles each hold a copy of the SAME abutment, so the group collected two portals
+    // 45 m apart while its pieces ran 1305 m - and that passed every other test here, so the
+    // deck resolved to a 45 m chord instead of borrowing its 3440 m one from the cache.
+    auto span2 = [](double metres) { return (metres * METRE) * (metres * METRE); };
+    TEST_CHECK(!SpanGeometry::chordSpansGroup(span2(45), span2(1305)),
+               "two portals on the same abutment do not span a kilometre of deck");
+    TEST_CHECK(SpanGeometry::chordSpansGroup(span2(2460), span2(2460)),
+               "a chord between the structure's own two ends spans it exactly");
+    TEST_CHECK(SpanGeometry::chordSpansGroup(span2(2460), span2(2500)),
+               "...and the buffer overlap reaching past it by a fraction still does");
+    TEST_CHECK(!SpanGeometry::chordSpansGroup(span2(1230), span2(2460)),
+               "half a deck is a missing portal, not a chord");
+
     // A crossing structure must not be absorbed: the D41 passes under the viaduct near its foot.
     TEST_CHECK(!SpanGeometry::piecesMeet(a0, a1, true, false, at(-500, 990), at(500, 990), false, false, tolerance2),
                "a crossing bridge is a different structure");

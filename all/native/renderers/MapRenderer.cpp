@@ -1496,6 +1496,14 @@ namespace massif {
         // At the APP's exaggeration, not the ramped one: the ramp is what this decides.
         double minZ = 0, maxZ = 0;
         elevationManager->getDisplayHeightRange(_viewState.getCameraPos()(1), terrainOptions->getExaggeration(), minZ, maxZ);
+        // NO DATA is not FLAT. Before the first DEM tile decodes the range is 0, which reads as
+        // zero parallax and flattens the map - and flattening stops the elevation decode, so the
+        // range stays 0 and 3D never comes back. Whether terrain appeared at all then depended on
+        // whether a DEM tile happened to land before the first evaluation. Unknown means "do not
+        // flatten yet": the rule is re-evaluated every frame and answers properly once data lands.
+        if (!(maxZ > minZ)) {
+            return std::numeric_limits<double>::infinity();
+        }
         double halfWidth = _viewState.getHalfWidth(), halfHeight = _viewState.getHalfHeight();
         return AutoFlatten::parallax(std::sqrt(halfWidth * halfWidth + halfHeight * halfHeight), maxZ - minZ, _viewState.calculateCameraDistance());
     }
@@ -3177,6 +3185,15 @@ namespace massif {
                             blankTiles.push_back(request);       // shows a flat fill: a hole
                         }
                     }
+                    // The tiles that carry a bridge or a tunnel, and nothing else. A map with no
+                    // spans leaves this empty, so it pays for no texture, no bake and no lookup.
+                    // Negative: the cache reads stack > 0 as a one-channel mask, 0 as the ground's
+                    // colour drape, so a negative index is another COLOUR drape without touching it.
+                    const int SPAN_DRAPE_STACK = -1;
+                    std::map<vt::TileId, std::size_t> spanDrapeTiles;
+                    for (std::size_t i = 0; i < drapeLayers.size(); i++) {
+                        drapeLayers[i]->collectSpanDrapeTiles(spanDrapeTiles);
+                    }
                     auto bakeTile = [&](const BakeRequest& request) {
                         bool needsBake = false, hasContent = false;
                         unsigned int texture = _terrainDrapeCache->acquire(request.tileId, 0, request.fingerprint, needsBake, hasContent);
@@ -3347,6 +3364,35 @@ namespace massif {
                         || partialTiles.size() > DRAPE_BAKE_BUDGET_PARTIAL
                         || staleTiles.size() > DRAPE_BAKE_BUDGET_STALE) {
                         requestRedraw();
+                    }
+                    // The DECK's own drape, baked per RENDER tile rather than per drape leaf: the
+                    // deck is drawn with its render tile, and one draw cannot sample several
+                    // textures - the same limit the coverage masks carry. Its own small loop, run
+                    // only when something in view actually has a span.
+                    if (!spanDrapeTiles.empty()) {
+                        std::map<vt::TileId, unsigned int> spanDrapeTextures;
+                        beginOffscreen();
+                        for (auto it = spanDrapeTiles.begin(); it != spanDrapeTiles.end(); it++) {
+                            bool spanNeedsBake = false, spanHasContent = false;
+                            unsigned int spanTexture = _terrainDrapeCache->acquire(it->first, SPAN_DRAPE_STACK, it->second, spanNeedsBake, spanHasContent);
+                            if (spanTexture == 0) {
+                                continue;
+                            }
+                            if (spanNeedsBake) {
+                                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, spanTexture, 0);
+                                glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+                                glClear(GL_COLOR_BUFFER_BIT);
+                                for (std::size_t i = 0; i < drapeLayers.size(); i++) {
+                                    drapeLayers[i]->bakeSpanDrapeTile(it->first);
+                                }
+                                _terrainDrapeCache->markBaked(it->first, SPAN_DRAPE_STACK, it->second, 0);
+                                TerrainDrapeCache::generateMipmaps(spanTexture);
+                            }
+                            spanDrapeTextures[it->first] = spanTexture;
+                        }
+                        for (std::size_t i = 0; i < drapeLayers.size(); i++) {
+                            drapeLayers[i]->setSpanDrapeTextures(spanDrapeTextures);
+                        }
                     }
                     VT_STAT_ADD(drapeBakeNs, std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - bakeStart).count());
                     if (bakeStarted) {

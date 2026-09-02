@@ -794,6 +794,22 @@ namespace massif {
                         terrainDepthBias = terrainOptions->getDepthBias() * 0.1f;
                         activeTerrainOptions = terrainOptions;
                         const std::shared_ptr<ElevationManager>& elevationManager = terrainOptions->getElevationManager();
+                        // A CPU base is sampled from the TEXTURE cache, which fills a few frames
+                        // after the grid loads - so the manager's version alone leaves a base
+                        // resolved against an ancestor and never revisited. Scoped to the tiles
+                        // that actually landed: buildings outnumber bridges, and re-resolving all
+                        // of them on every DEM arrival is what made this expensive.
+                        if (std::shared_ptr<ElevationTextureCache> elevationTextureCache = _elevationTextureCache) {
+                            std::vector<MapTile> contentChanges = elevationTextureCache->drainContentChanges();
+                            if (!contentChanges.empty()) {
+                                std::vector<vt::TileId> contentTileIds;
+                                contentTileIds.reserve(contentChanges.size());
+                                for (const MapTile& mapTile : contentChanges) {
+                                    contentTileIds.emplace_back(mapTile.getZoom(), mapTile.getX(), mapTile.getY());
+                                }
+                                tileRenderer->invalidateExtrusionBases(contentTileIds);
+                            }
+                        }
                         unsigned int elevationVersion = elevationManager->getVersion();
                         if (elevationVersion != _elevationVersion) {
                             auto now = std::chrono::steady_clock::now();
@@ -909,6 +925,9 @@ namespace massif {
             tileRenderer->setLabelElevationProvider([elevationManager](const cglib::vec3<double>& pos) {
                 return elevationManager->getDisplayHeight(pos(0), pos(1), ElevationManager::LoadMode::CACHED_ONLY);
             });
+            // Label anchors come through in INTERNAL coordinates; the span chords are in vt's
+            // normalized ones, and a deck lookup needs them in the same space.
+            tileRenderer->setLabelPositionScale(1.0 / Const::WORLD_SIZE);
             // An extrusion BAKES its ground into its vertices, so unlike a label it cannot accept
             // "0 means no data": a base of 0 where the ground is 215 m sinks the whole prism under
             // the terrain. This one reports whether a grid answered.
@@ -923,17 +942,17 @@ namespace massif {
             // the corner of the world, where it sampled ocean and answered 0 m - which is what a
             // bridge deck at sea level was made of.
             if (std::shared_ptr<ElevationTextureCache> elevationTextureCache = _elevationTextureCache) {
-                tileRenderer->setExtrusionElevationProvider([elevationTextureCache](const cglib::vec3<double>& pos, double& height) {
-                    return elevationTextureCache->getDisplayHeight(pos(0) * Const::WORLD_SIZE, pos(1) * Const::WORLD_SIZE, height);
+                tileRenderer->setExtrusionElevationProvider([elevationTextureCache](const cglib::vec3<double>& pos, int zoom, double& height) {
+                    return elevationTextureCache->getDisplayHeight(pos(0) * Const::WORLD_SIZE, pos(1) * Const::WORLD_SIZE, zoom, height);
                 });
             } else {
-                tileRenderer->setExtrusionElevationProvider([elevationManager](const cglib::vec3<double>& pos, double& height) {
+                tileRenderer->setExtrusionElevationProvider([elevationManager](const cglib::vec3<double>& pos, int, double& height) {
                     return elevationManager->getDisplayHeightCached(pos(0) * Const::WORLD_SIZE, pos(1) * Const::WORLD_SIZE, height);
                 });
             }
         } else {
             tileRenderer->setLabelElevationProvider(std::function<double(const cglib::vec3<double>&)>());
-            tileRenderer->setExtrusionElevationProvider(std::function<bool(const cglib::vec3<double>&, double&)>());
+            tileRenderer->setExtrusionElevationProvider(std::function<bool(const cglib::vec3<double>&, int, double&)>());
         }
         tileRenderer->setTerrainMode(terrainMode, terrainDepthBias);
         tileRenderer->setTileMasks(tileMasksMode());

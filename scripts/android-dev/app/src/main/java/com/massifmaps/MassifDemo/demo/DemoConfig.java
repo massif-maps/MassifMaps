@@ -615,6 +615,12 @@ public final class DemoConfig {
      *  walls are see-through, which is how an EDGE artifact is told apart from a SHADOW one - the
      *  geometry stays visible with the shading taken out of the way. Live. */
     public static String STYLE_BUILDING_OPACITY = "";
+    /** A converted style's `building_edge_radius` / `building_rounded_roof` parameters: the chamfer
+     *  that rounds a vertical edge and the roof it runs into. 0 / 0 removes the bevel band, which is
+     *  the geometry a wall-corner artifact has to be tested against. Live (a re-decode: it is mesh,
+     *  not paint). Same adb keys as the inline knobs, so one name covers either style. */
+    public static String STYLE_EDGE_RADIUS = "";
+    public static String STYLE_ROUNDED_ROOF = "";
     /** Line widths of the inline style, as CartoCSS expressions - so they can be made
      *  zoom-dependent for testing how a line behaves as you zoom and tilt. The defaults widen
      *  with zoom the way a real style does; pass a plain number to pin a width instead. */
@@ -1391,6 +1397,8 @@ public final class DemoConfig {
         STYLE_TILT_DROP = DemoCfg.cfgStr("bldTiltDrop", STYLE_TILT_DROP);
         STYLE_AO = DemoCfg.cfgStr("bldAo", STYLE_AO);
         STYLE_BUILDING_OPACITY = DemoCfg.cfgStr("bldOpacity", STYLE_BUILDING_OPACITY);
+        STYLE_EDGE_RADIUS = DemoCfg.cfgStr("bldEdgeRadius", STYLE_EDGE_RADIUS);
+        STYLE_ROUNDED_ROOF = DemoCfg.cfgStr("bldRoundedRoof", STYLE_ROUNDED_ROOF);
         if (STYLE_BUILDINGS.isEmpty() && DemoCfg.cfg("bld3d") != null) {
             STYLE_BUILDINGS = INLINE_BUILDINGS_3D ? "2" : "1";
         }

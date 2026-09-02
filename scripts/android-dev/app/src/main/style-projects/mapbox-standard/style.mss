@@ -8,7 +8,7 @@ Map {
   background-emissive-strength: linear([view::brightness], (0.25, 0), (0.3, 0.25));
   building-ao-intensity: [param::building_ao] * (linear(([view::zoom] - 1), (16, 0), (16.8, 0.15)));
   building-ao-ground-radius: linear(([view::zoom] - 1), (16, 0), (16.8, 8));
-  building-edge-radius: 0.4;
+  building-edge-radius: [param::building_edge_radius];
   building-height-scale: linear(([view::zoom] - 1), (15, 0), (15.3, 1));
   building-ambient: @building_ambient;
   building-light-intensity: @building_light_intensity;
@@ -19,7 +19,7 @@ Map {
   building-vertical-gradient: @building_vertical_gradient;
   building-height-view-scale: 1 - ([param::building_tilt_drop] * 0.01) * linear([view::tilt], (80, 0), (90, 1));
   building-ao-ground-attenuation: 1.75;
-  building-rounded-roof: 1;
+  building-rounded-roof: [param::building_rounded_roof];
   building-fade-on-appear: 0;
   colors-prelit: 1;
 }

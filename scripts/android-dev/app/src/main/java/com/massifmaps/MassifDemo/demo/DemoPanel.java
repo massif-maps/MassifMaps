@@ -1035,6 +1035,26 @@ public final class DemoPanel {
                 demo.mapView.requestRender();
             }
         });
+        // The BEVEL: the chamfer rounding a vertical edge, and the roof it runs into. Mesh, so
+        // each change is a re-decode - hence applyOnRelease. 0 / off is the no-bevel comparison a
+        // wall-corner artifact has to be judged against.
+        slider(context, "building edge radius (converted style)", 0f, 2f,
+               DemoConfig.STYLE_EDGE_RADIUS.isEmpty()
+                   ? 0.4f : Float.parseFloat(DemoConfig.STYLE_EDGE_RADIUS),
+               true, new FloatSetting() {
+            public void set(float value) {
+                DemoConfig.STYLE_EDGE_RADIUS = Float.toString(value);
+                demo.applyStyleParameters();
+            }
+        });
+        check(context, "rounded roof (converted style)",
+              DemoConfig.STYLE_ROUNDED_ROOF.isEmpty() || Float.parseFloat(DemoConfig.STYLE_ROUNDED_ROOF) > 0f,
+              new BoolSetting() {
+            public void set(boolean value) {
+                DemoConfig.STYLE_ROUNDED_ROOF = value ? "1.0" : "0.0";
+                demo.applyStyleParameters();
+            }
+        });
 
         header(context, "FOG / DISTANCE");
         // The master switch on FogOptions: every value below stays configured while it is off.

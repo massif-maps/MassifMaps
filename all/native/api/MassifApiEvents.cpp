@@ -5,6 +5,7 @@
  */
 
 #include "api/MassifApi.h"
+#include "components/DirectorPtr.h"
 #include "components/Exceptions.h"
 
 #include <cstdint>
@@ -20,8 +21,12 @@ namespace massif { namespace api {
 
     namespace {
         // The listener a subscription belongs to, kept alive for as long as the subscription is.
-        std::map<int, std::shared_ptr<EventListener> >& listeners() {
-            static std::map<int, std::shared_ptr<EventListener> > registry;
+        // DirectorPtr, not shared_ptr: a shared_ptr holds the C++ half only, and the binding's
+        // half - the Java or Objective-C object the director upcalls into - is reached through a
+        // WEAK reference until retainDirector pins it. Every listener in all/native is held this
+        // way; the facade was the one that was not, and its handlers died at the next GC.
+        std::map<int, DirectorPtr<EventListener> >& listeners() {
+            static std::map<int, DirectorPtr<EventListener> > registry;
             return registry;
         }
 
@@ -41,7 +46,7 @@ namespace massif { namespace api {
          */
         void pruneListeners() {
             const std::shared_ptr<Context>& context = Context::GetDefault();
-            std::map<int, std::shared_ptr<EventListener> >& registry = listeners();
+            std::map<int, DirectorPtr<EventListener> >& registry = listeners();
             for (auto it = registry.begin(); it != registry.end(); ) {
                 it = context->isSubscribed(static_cast<Subscription>(it->first)) ? std::next(it)
                                                                                 : registry.erase(it);
@@ -59,7 +64,7 @@ namespace massif { namespace api {
             static_cast<Handle>(handle), event, &dispatchToListener, listener.get(), consume,
             static_cast<Delivery>(delivery), coalesce, projection, throttleMs);
         if (subscription != NULL_SUBSCRIPTION) {
-            listeners()[static_cast<int>(subscription)] = listener;
+            listeners()[static_cast<int>(subscription)] = DirectorPtr<EventListener>(listener);
         }
         // Subscribing is the only thing that grows the registry, so sweeping here bounds it: a
         // listener orphaned by a destroy cannot outlive the next subscription.
@@ -69,9 +74,10 @@ namespace massif { namespace api {
 
     void MassifApi::setUiDispatcher(const std::shared_ptr<UiDispatcher>& dispatcher) {
         // Held for as long as it is installed: Context keeps only a raw pointer, so nothing else
-        // would stop a director being collected the moment this returns.
-        static std::shared_ptr<UiDispatcher> held;
-        held = dispatcher;
+        // would stop a director being collected the moment this returns. DirectorPtr for the same
+        // reason as the listener registry above.
+        static DirectorPtr<UiDispatcher> held;
+        held = DirectorPtr<UiDispatcher>(dispatcher);
         if (!dispatcher) {
             Context::GetDefault()->setUiDispatcher(nullptr, nullptr);
             return;

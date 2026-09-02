@@ -5,6 +5,7 @@
 
 #include "api/Context.h"
 #include "api/MassifApi.h"
+#include "components/Director.h"
 #include "components/Exceptions.h"
 #include "api/PropertyTable.h"
 #include "components/FogOptions.h"
@@ -239,6 +240,7 @@ namespace {
 }
 
 void testBindingListenerLifetime();
+void testBindingListenerRetain();
 
 /**
  * MassifApi::on, the entry point every SWIG binding subscribes through.
@@ -346,6 +348,71 @@ void testBindingListenerLifetime() {
 
     MassifApi::offAll(static_cast<int>(sweeper));
     context->unregisterObject("options", "lifetime-sweeper");
+
+    testBindingListenerRetain();
+}
+
+namespace {
+
+    /**
+     * A listener that is also a Director, which is what a SWIG binding actually hands over.
+     *
+     * The binding half - the Java or Objective-C object - is reached through a WEAK reference, so
+     * holding the C++ listener is not enough to keep it alive. retainDirector is what pins it, and
+     * counting the calls is the only way a host test (which has no JVM) can see that it happened.
+     */
+    struct RetainingListener : EventListener, Director {
+        int retains = 0;
+
+        bool onEvent(int, const std::string&, int) override { return false; }
+
+        void retainDirector() override { retains++; }
+        void releaseDirector() override { retains--; }
+        void* getDirectorObject() const override { return nullptr; }
+    };
+
+}
+
+/**
+ * A subscription must RETAIN its listener's director, not merely hold the C++ object.
+ *
+ * The registry used to be a plain shared_ptr map. That keeps the C++ half alive and nothing else,
+ * so the Java peer of every handler was collectable the moment `on` returned - the next GC took
+ * it, and the following event crashed the app in drain() with SWIG's "null upcall object".
+ */
+void testBindingListenerRetain() {
+    const std::shared_ptr<Context>& context = Context::GetDefault();
+    Handle target = registerFog(context, "retain-target");
+
+    auto listener = std::make_shared<RetainingListener>();
+    TEST_CHECK(listener->retains == 0, "a listener starts unretained");
+
+    int subscription = MassifApi::on(static_cast<int>(target), "click", listener, 0, false);
+    TEST_CHECK(subscription != 0, "subscribed");
+    TEST_CHECK(listener->retains == 1, "subscribing retains the director, pinning the binding peer");
+
+    // Every removal path has to give it back, or the peer is pinned for the process.
+    MassifApi::off(subscription);
+    TEST_CHECK(listener->retains == 0, "off releases it");
+
+    MassifApi::on(static_cast<int>(target), "click", listener, 0, false);
+    TEST_CHECK(MassifApi::offEvent(static_cast<int>(target), "click") == 1, "offEvent removed one");
+    TEST_CHECK(listener->retains == 0, "offEvent releases it");
+
+    MassifApi::on(static_cast<int>(target), "move", listener, 0, false);
+    TEST_CHECK(MassifApi::offAll(static_cast<int>(target)) == 1, "offAll removed the remainder");
+    TEST_CHECK(listener->retains == 0, "offAll releases it");
+
+    // A destroyed target does not name its subscriptions; the sweep on the next add is what frees
+    // them, same as for the shared_ptr half above.
+    MassifApi::on(static_cast<int>(target), "click", listener, 0, false);
+    context->unregisterObject("options", "retain-target");
+    Handle sweeper = registerFog(context, "retain-sweeper");
+    MassifApi::on(static_cast<int>(sweeper), "click", std::make_shared<CountingListener>(), 0, false);
+    TEST_CHECK(listener->retains == 0, "and the sweep after a destroy releases it too");
+
+    MassifApi::offAll(static_cast<int>(sweeper));
+    context->unregisterObject("options", "retain-sweeper");
 }
 
 namespace {

@@ -1686,6 +1686,10 @@ namespace massif {
     // The tile zoom the caster ring's reach is derived from: coarse enough that one tile spans the
     // massif whose shadow reaches the view, not just the ground under it. ~28 km at latitude 45.
     static const int SHADOW_RELIEF_ZOOM = 10;
+    // Ceiling on the caster set. The ring's quadtree subdivision is 4^(maxCoverZoom - ringZoom),
+    // so a coarse ring against a deep cover is unbounded; this is what keeps it a frame cost
+    // rather than an OOM.
+    static const std::size_t MAX_SHADOW_CASTER_TILES = 2048;
     static const int SHADOW_MAP_MAX_AGE = 30;
     // Frames between two refreshes driven by newly arrived tile content.
     static const int SHADOW_MAP_CONTENT_INTERVAL = 4;
@@ -1714,7 +1718,11 @@ namespace massif {
         int shadowMapSize = 0, shadowCascades = 1;
         float shadowSoftness = 1.0f;
         
-        std::array<float, TerrainShadowMap::MAX_CASCADES> shadowBiases = { };
+        // mapbox's u_shadow_bias (3d-style/render/shadow_renderer.ts): constant, slope scale,
+        // slope CAP, in normalised light depth and shared by every cascade. LightOptions'
+        // ShadowBias scales the triple, so 1 is theirs exactly.
+        cglib::vec3<float> shadowBias(0.0f, 0.0f, 0.0f);
+        std::array<float, TerrainShadowMap::MAX_CASCADES> shadowDepthScales = { };
         std::array<cglib::mat4x4<double>, TerrainShadowMap::MAX_CASCADES> lightViewProjs;
         lightViewProjs.fill(cglib::mat4x4<double>::identity());
         // The styles get a say in every light and shadow property; whatever they do
@@ -1737,6 +1745,19 @@ namespace massif {
                 }
                 shadowSunDir(2) = MIN_SHADOW_SUN_SIN;
             }
+        }
+        // mapbox's constants, verbatim. The pair they ship depends on whether the normal offset
+        // is on, because that offset already moves the sample off the surface and the constant
+        // then has far less to cover.
+        {
+            // mapbox's SHAPE with our units: a constant, a term growing as the surface turns away
+            // from the light, and a cap on it - in METRES, because our light box normalises a depth
+            // of tens of thousands of km and a fraction of that is not a shadow bias but a shrug.
+            // The normal offset already moves the sample off the surface, so the constant is
+            // halved when it is on, as theirs is.
+            float scale = std::max(0.0f, lighting.shadowBias);
+            float constant = (lighting.shadowNormalOffset > 0.0f ? 1.0f : 2.0f);
+            shadowBias = cglib::vec3<float>(constant, 0.25f, 4.0f) * scale;
         }
         bool shadowsWanted = false;
         {
@@ -1764,11 +1785,30 @@ namespace massif {
                 if (std::shared_ptr<ElevationManager> elevationManager = terrainOptions->getElevationManager()) {
                     bool first = true;
                     tileHeights.reserve(coverTileIds.size());
-                    for (const vt::TileId& tileId : coverTileIds) {
+                    // Only tiles that REALLY have elevation shape the slab. getMinMaxDisplayHeight
+                    // falls back to 0..maxSeenElevation - the highest ground anywhere in the session
+                    // - for a tile whose DEM has not arrived, and getMinMaxDisplayHeightExact throws
+                    // that flag away because it returns void. One unloaded tile therefore stretched
+                    // the slab to a massif visited earlier: measured over flat Paris, after the
+                    // Matterhorn example, a slab of ~121 km and a light box of 30,000 km - a depth
+                    // map far too coarse to separate a building from the ground under it.
+                    //
+                    // tileHeights still gets an entry PER COVER TILE: vt narrows each cascade's slab
+                    // with it and only trusts it when the two lists are the same length. A tile with
+                    // no data contributes the overall range instead, which cannot narrow wrongly.
+                    std::vector<bool> tileKnown;
+                    tileKnown.reserve(coverTileIds.size());
+                    tileHeights.assign(coverTileIds.size(), std::make_pair(0.0, 0.0));
+                    for (std::size_t i = 0; i < coverTileIds.size(); i++) {
+                        const vt::TileId& tileId = coverTileIds[i];
                         double tileMin = 0, tileMax = 0;
-                        elevationManager->getMinMaxDisplayHeightExact(MapTile(tileId.x, tileId.y, tileId.zoom, 0), tileMin, tileMax);
+                        bool known = elevationManager->getMinMaxDisplayHeightCached(MapTile(tileId.x, tileId.y, tileId.zoom, 0), tileMin, tileMax);
+                        tileKnown.push_back(known);
+                        if (!known) {
+                            continue;
+                        }
                         double tileHeadroom = std::max(1.0e-5, (tileMax - tileMin) * 0.25);
-                        tileHeights.emplace_back(tileMin - tileHeadroom, tileMax + tileHeadroom);
+                        tileHeights[i] = std::make_pair(tileMin - tileHeadroom, tileMax + tileHeadroom);
                         if (first) {
                             minHeight = tileMin;
                             maxHeight = tileMax;
@@ -1776,6 +1816,11 @@ namespace massif {
                         } else {
                             minHeight = std::min(minHeight, tileMin);
                             maxHeight = std::max(maxHeight, tileMax);
+                        }
+                    }
+                    for (std::size_t i = 0; i < tileKnown.size(); i++) {
+                        if (!tileKnown[i]) {
+                            tileHeights[i] = std::make_pair(minHeight, maxHeight);
                         }
                     }
                     if (!first) {
@@ -1837,8 +1882,9 @@ namespace massif {
                         int coarseZoom = std::min(sample.zoom, SHADOW_RELIEF_ZOOM);
                         int shift = sample.zoom - coarseZoom;
                         double coarseMin = 0, coarseMax = 0;
-                        elevationManager->getMinMaxDisplayHeightExact(MapTile(sample.x >> shift, sample.y >> shift, coarseZoom, 0), coarseMin, coarseMax);
-                        relief = std::max(relief, coarseMax - coarseMin);
+                        if (elevationManager->getMinMaxDisplayHeightCached(MapTile(sample.x >> shift, sample.y >> shift, coarseZoom, 0), coarseMin, coarseMax)) {
+                            relief = std::max(relief, coarseMax - coarseMin);
+                        }
                     }
                     double sunUp = std::max(0.05f, shadowSunDir(2));
                     double throwDistance = relief * std::sqrt(std::max(0.0, 1.0 - sunUp * sunUp)) / sunUp;
@@ -1896,8 +1942,16 @@ namespace massif {
                                 continue; // something finer or equal already casts over this ground
                             }
                             if (takenAncestors.count(keyOf(tileId)) > 0 && tileId.zoom < maxCoverZoom) {
-                                for (int corner = 0; corner < 4; corner++) {
-                                    pending.emplace_back(tileId.zoom + 1, tileId.x * 2 + (corner & 1), tileId.y * 2 + (corner >> 1));
+                                // BOUNDED. Subdividing a ring tile down to maxCoverZoom is 4^(levels)
+                                // tiles - from a ring generated at zoom 10 against a cover at 18 that
+                                // is 65536 per candidate, which is an out-of-memory kill rather than
+                                // a slow frame. The ring exists so off-screen relief still casts;
+                                // dropping a candidate that would blow the budget loses one distant
+                                // shadow, which is strictly better than losing the process.
+                                if (casterTileIds.size() + pending.size() < MAX_SHADOW_CASTER_TILES) {
+                                    for (int corner = 0; corner < 4; corner++) {
+                                        pending.emplace_back(tileId.zoom + 1, tileId.x * 2 + (corner & 1), tileId.y * 2 + (corner >> 1));
+                                    }
                                 }
                                 continue;
                             }
@@ -1917,8 +1971,7 @@ namespace massif {
                 if (std::shared_ptr<ElevationManager> elevationManager = terrainOptions->getElevationManager()) {
                     for (const vt::TileId& tileId : casterTileIds) {
                         double casterMin = 0, casterMax = 0;
-                        elevationManager->getMinMaxDisplayHeightExact(MapTile(tileId.x, tileId.y, tileId.zoom, 0), casterMin, casterMax);
-                        if (casterMax > casterMin) {
+                        if (elevationManager->getMinMaxDisplayHeightCached(MapTile(tileId.x, tileId.y, tileId.zoom, 0), casterMin, casterMax) && casterMax > casterMin) {
                             minHeight = std::min(minHeight, casterMin);
                             maxHeight = std::max(maxHeight, casterMax);
                         }
@@ -1940,8 +1993,8 @@ namespace massif {
                         // normalised light depth, and each cascade's box spans its
                         // own depth. Dividing per cascade is what keeps the shadow
                         // attached to its caster at every zoom and margin.
-                        shadowBiases[cascade] = static_cast<float>(lighting.shadowBias / std::max(1.0, depthRangeMeters));
                         shadowTexelMeters[cascade] = texelMeters;
+                        shadowDepthScales[cascade] = static_cast<float>(1.0 / std::max(1.0, depthRangeMeters));
                     } else if (cascade > 0) {
                         // No ground in this cascade's distance slice - looking down,
                         // everything visible can be nearer than the first split.
@@ -1949,7 +2002,6 @@ namespace massif {
                         // costs one redundant page; leaving it stale would shadow
                         // with a box from another frame.
                         lightViewProjs[cascade] = lightViewProjs[cascade - 1];
-                        shadowBiases[cascade] = shadowBiases[cascade - 1];
                         cascadeCasterTiles[cascade] = cascadeCasterTiles[cascade - 1];
                     } else {
                         boxesValid = false;
@@ -1966,9 +2018,16 @@ namespace massif {
                     // matrix repeats while the camera moves inside one texel step - so recompute
                     // only on a real change. A growing extrusion changes the geometry without
                     // changing the tile list, so track how far it has MOVED, not that it moves.
-                    float fadeSignature = 0.0f;
-                    for (const std::shared_ptr<TileLayer>& tileLayer : tileLayers) {
-                        fadeSignature = std::max(fadeSignature, tileLayer->shadowCasterFadeSignature());
+                    // PER CASCADE, over that cascade's own caster tiles: a building appearing in
+                    // the near page has nothing to say about the outer ones, and refreshing all of
+                    // them for it was most of the cost. Measured on the Crosscall (Adreno 610): a
+                    // caster pass is ~8 ms settled and ~33 ms cold, so the number of pages redrawn
+                    // per arriving tile is what this budget is made of.
+                    std::array<float, TerrainShadowMap::MAX_CASCADES> fadeSignatures = { };
+                    for (int cascade = 0; cascade < cascades; cascade++) {
+                        for (const std::shared_ptr<TileLayer>& tileLayer : tileLayers) {
+                            fadeSignatures[cascade] = std::max(fadeSignatures[cascade], tileLayer->shadowCasterFadeSignature(&cascadeCasterTiles[cascade]));
+                        }
                     }
                     // The atlas layout itself changed: every page has to be redrawn.
                     bool refreshAll = !_shadowMapValid
@@ -1979,9 +2038,6 @@ namespace massif {
                     // not. A shadow left behind by a moving camera is in the wrong
                     // place and unmissable; a building whose shadow is a step behind
                     // its own growth is not.
-                    if (!refreshAll && std::abs(fadeSignature - _shadowMapFadeSignature) > SHADOW_MAP_FADE_STEP) {
-                        refreshAll = true;
-                    }
                     if (!refreshAll && contentChanged && _shadowMapAge >= SHADOW_MAP_CONTENT_INTERVAL) {
                         refreshAll = true;
                     }
@@ -1996,6 +2052,7 @@ namespace massif {
                     bool refreshAny = false;
                     for (int cascade = 0; cascade < cascades; cascade++) {
                         refreshCascade[cascade] = refreshAll
+                            || std::abs(fadeSignatures[cascade] - _shadowMapFadeSignatures[cascade]) > SHADOW_MAP_FADE_STEP
                             || !(_shadowMapViewProjs[cascade] == lightViewProjs[cascade])
                             || _shadowMapCasterTiles[cascade] != cascadeCasterTiles[cascade];
                         refreshAny = refreshAny || refreshCascade[cascade];
@@ -2032,8 +2089,8 @@ namespace massif {
                                     shadowCastersNoElevation += tileLayer->consumeShadowCastersMissingElevation();
                                 }
                                 _shadowMapViewProjs[cascade] = lightViewProjs[cascade];
-                                _shadowMapBiases[cascade] = shadowBiases[cascade];
                                 _shadowMapCasterTiles[cascade] = cascadeCasterTiles[cascade];
+                                _shadowMapFadeSignatures[cascade] = fadeSignatures[cascade];
                                 shadowCasterDraws += static_cast<int>(cascadeCasterTiles[cascade].size());
                             }
                             _terrainShadowMap->endPass(prevFBO, viewState.getWidth(), viewState.getHeight());
@@ -2042,7 +2099,6 @@ namespace massif {
                             _shadowMapValid = true;
                             _shadowMapSize = _terrainShadowMap->getSize();
                             _shadowMapCascades = cascades;
-                            _shadowMapFadeSignature = fadeSignature;
                             _shadowMapAge = 0;
                             shadowPasses++;
                         } else {
@@ -2055,7 +2111,6 @@ namespace massif {
                         // did not need refreshing holds the box it was rendered with, and sampling
                         // it with a newer matrix would slide every shadow in it.
                         lightViewProjs = _shadowMapViewProjs;
-                        shadowBiases = _shadowMapBiases;
                         shadowTexture = _terrainShadowMap->getTexture();
                         shadowMapSize = _terrainShadowMap->getSize();
                         shadowCascades = cascades;
@@ -2075,7 +2130,6 @@ namespace massif {
                     // the last map kept painting the shadows of buildings that were no longer
                     // drawn - black blocks over a flat map, for as long as you stayed there.
                     lightViewProjs = _shadowMapViewProjs;
-                    shadowBiases = _shadowMapBiases;
                     shadowTexture = _terrainShadowMap->getTexture();
                     shadowMapSize = _shadowMapSize;
                     shadowCascades = _shadowMapCascades;
@@ -2106,7 +2160,7 @@ namespace massif {
         for (const std::shared_ptr<TileLayer>& tileLayer : tileLayers) {
             // The SHADOW sun, not the lighting one: the normal offset is scaled by the angle
             // between the surface and the direction the map was actually rendered from.
-            tileLayer->setTerrainShadowMap(shadowTexture, shadowMapSize, shadowCascades, shadowBiases, shadowStrength, shadowSoftness, _terrainShadowMap && _terrainShadowMap->isDepthTexture(), _terrainShadowMap && _terrainShadowMap->isHardwarePCF(), lighting.shadowNormalOffset, shadowSunDir, lightViewProjs);
+            tileLayer->setTerrainShadowMap(shadowTexture, shadowMapSize, shadowCascades, shadowBias, shadowDepthScales, shadowStrength, shadowSoftness, _terrainShadowMap && _terrainShadowMap->isDepthTexture(), _terrainShadowMap && _terrainShadowMap->isHardwarePCF(), lighting.shadowNormalOffset, shadowSunDir, lightViewProjs);
             // The sun goes with it, and for the same reason: the surface is drawn a few
             // lines below, while each layer's own onDrawFrame - which also sets this -
             // runs later in the frame. The surface would light itself with the previous

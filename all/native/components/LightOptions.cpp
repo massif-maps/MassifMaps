@@ -25,14 +25,14 @@ namespace massif {
         // mapbox's `shadow-intensity` default. With the direct-share scaling in resolveLighting
         // this is their shadow exactly, so 1 is the physical depth rather than the maximum.
         _shadowStrength(1.0f),
-        // mapbox's 2048 px map (shadow_renderer.ts _shadowParameters), over THREE cascades rather
-        // than their two: measured side by side, the extra page is worth its cost here. It only
-        // became so once the cutout went back to 4.5 - at 2.5 the ladder divided down to 0.28x the
-        // camera-to-focus distance, well ABOVE the nearest ground on screen (0.84x at tilt 55), so
-        // two of the three pages held nothing. Costs a 6144 x 2048 depth24 atlas, 50 MB.
+        // mapbox's 2048 px map (shadow_renderer.ts _shadowParameters).
         _shadowMapSize(2048),
+        // THREE, against mapbox's two: our slices are theirs (cascade 0 to 1.5x the camera
+        // distance, the cutout at 4.5x), so a third page only adds a nearer, sharper one - and
+        // dropping to two made its texels 3x coarser, which washed the building shadows out at
+        // z16.5. Costs a 6144 x 2048 depth24 atlas, 50 MB.
         _shadowCascades(3),
-        // 1.0 shadow-map texels. 0.25 leaves acne on a lit slope at this cascade count.
+        // A SCALE on mapbox's bias triple, so 1 is theirs unchanged.
         _shadowBias(1.0f),
         _shadowNormalOffset(3.0f),
         _shadowSoftness(1.0f),

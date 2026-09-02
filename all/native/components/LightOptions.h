@@ -318,17 +318,19 @@ namespace massif {
         void setShadowSoftness(float softness);
 
         /**
-         * Returns the shadow depth bias.
-         * @return The shadow depth bias in meters. The default is 0.5.
+         * Returns the shadow depth bias scale.
+         * @return The scale on MapBox's shadow bias. The default is 1 (theirs unchanged).
          */
         float getShadowBias() const;
         /**
-         * Sets the shadow depth bias in meters: the depth slack that keeps a lit surface from
-         * shadowing itself. Too small gives acne (dark speckle on lit slopes), too large detaches
-         * shadows from what casts them. It is metric on purpose - expressed as a fraction of the
-         * light frustum it would grow with the shadowed area, and the shadow would drift away
-         * from its caster as the view zoomed out.
-         * @param bias The new shadow bias.
+         * Scales the shadow depth bias: the depth slack that keeps a lit surface from shadowing
+         * itself. Too small gives acne (dark speckle on lit slopes), too large detaches shadows
+         * from what casts them.
+         *
+         * UNITLESS. The bias itself is MapBox's - a constant plus a term growing with the angle
+         * between the surface and the light, capped - in normalised light depth, so 1 is their
+         * shadow exactly and this only scales it.
+         * @param bias The new shadow bias scale.
          */
         void setShadowBias(float bias);
 

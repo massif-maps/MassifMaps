@@ -49,8 +49,8 @@ light.setSunPositionFromTime(2026, 8, 14, 7, 30, 45.188, 5.719)   // UTC + lat/l
 | `AmbientColor` | white | Tint of that shadow light. A cool blue is what makes dusk read as sky-lit rather than just darker. Applies to the terrain surface and to 3D buildings alike. |
 | `TerrainLightingEnabled` | `false` | Shade the terrain surface from its geometric normal. |
 | `ShadowStrength` | `1.0` | `0` = no shadows. Not the depth drawn: it is multiplied by the sun's share of the scene light (MapBox's `calculateGroundShadowFactor`), so `1` is their shadow exactly and shadows fade to nothing as the sun sets. Values above `1` exaggerate. |
-| `ShadowMapSize` / `ShadowCascades` | `1024` / `3` | Cascaded shadow map, up to 4 cascades. |
-| `ShadowBias` / `ShadowSoftness` / `ShadowDistance` | `0.25` / `1.0` / `0` | `ShadowDistance` 0 = derived from the view. |
+| `ShadowMapSize` / `ShadowCascades` | `2048` / `3` | Cascaded shadow map, up to 4 cascades. MapBox uses two; the third page is a nearer, sharper one and the slices are theirs either way. |
+| `ShadowBias` / `ShadowSoftness` / `ShadowDistance` | `1.0` / `1.0` / `0` | `ShadowBias` is a UNITLESS scale on MapBox's bias (a constant plus a capped slope term, in normalised light depth), so 1 is theirs unchanged. `ShadowDistance` 0 = derived from the view. |
 | `ShadowCasterMargin` | `3` | Ring of off-screen tiles that may still cast into the view. |
 
 :::caution Terrain cast shadows are wired but off

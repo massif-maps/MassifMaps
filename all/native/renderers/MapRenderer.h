@@ -336,9 +336,9 @@ namespace massif {
         int _shadowMapSize = 0;
         int _shadowMapCascades = 0;
         int _shadowMapAge = 0;
-        float _shadowMapFadeSignature = 0.0f;
+        // Per cascade: what the caster content of THAT page was when it was last drawn.
+        std::array<float, 4> _shadowMapFadeSignatures = { };
         std::array<cglib::mat4x4<double>, 4> _shadowMapViewProjs;
-        std::array<float, 4> _shadowMapBiases = { };
         // Per cascade: the pages are refreshed independently, and the outer one - which holds most
         // of the casters - keeps its box over far more camera movement than the near one.
         std::array<std::vector<vt::TileId>, 4> _shadowMapCasterTiles;

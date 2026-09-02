@@ -287,6 +287,29 @@ Design points, each measured:
   dimmed their ambient. `LIGHTING_SHADER_3D` fades the direct term over the horizon crossing
   (`smoothstep(-0.035, 0, u_sunDir.z)`, i.e. −2° to 0°). The ground needs no such term: its normal
   points up, so N·L reaches 0 by itself.
+- **The depth bias is mapbox's, ported whole.** `0.5·bias.x + clamp(bias.y · tan(acos(N·L)), 0, bias.z)`
+  (`_prelude_shadow.fragment.glsl`), with their constants — `[0.00010, 0.0012, 0.012]` when the
+  normal offset is on, `[0.00036, 0.0012, 0.012]` when it is not — in NORMALISED light depth and
+  shared by every cascade, as theirs is. `LightOptions.ShadowBias` scales the triple, so 1 is
+  theirs unchanged.
+
+  What it replaced, and why: a per-cascade metric bias (`shadowBias / depthRangeMeters`) plus a
+  receiver-plane term from screen-space derivatives. That term's clamp, `0.02 / uShadowParams.x`,
+  let ONE texel be worth 0.02 of the light box — more than mapbox's entire bias budget (0.012) —
+  and it was subtracted from the reference depth *and* added per PCF tap. Every silhouette it
+  touched over-darkened. Symptom at `lon 2.33355 lat 48.86327 z19.09 rot -21 tilt 45`, hour 8:25,
+  `shadowStrength 2`: dense speckle over every facade, plus long tapering wedges thrown from wall
+  corners across the plaza. The wedges scaled with the CASCADE COUNT (1 clean, 2 a thin line, 3 the
+  full wedge) because a page-index probe showed the whole view sitting in cascade 0 — more cascades
+  only shrink that box, which raises the screen-space derivatives and hits the clamp harder.
+- **The cascade count is NOT the lever, and 3 stays the default.** The wedges above scale with it,
+  so dropping to mapbox's 2 looked like a fix — but it only made the near box coarser, which hid
+  them. With the bias ported, 3 cascades is as clean as 2 at the same camera, so the count change
+  was reverted. What it cost while it was in: `sliceFarAt` already reproduces mapbox's split
+  exactly (cascade 0 at `cutout / 3` = 1.5 × the camera distance, the cutout at 4.5 ×), so going
+  from 3 to 2 moves the near page from 0.5 × to 1.5 × — 3 × coarser texels — and since
+  `shadowSoftness` is counted in TEXELS the penumbra widens in metres with it. At z16.5 over the
+  Louvre that washed the building shadows out and dropped the smallest of them entirely.
 - **Caster margin, bounded by the shadow THROW.** Casters are the cover plus a ring, because a
   mountain off screen still throws its shadow into the view. The ring's reach is
   `relief / tan(sun altitude)` — capped at about 3.7 x the relief by the 15-degree floor — and NOT a

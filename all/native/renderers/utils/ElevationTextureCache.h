@@ -86,15 +86,35 @@ namespace massif {
          * The grid is already held by the entry (CacheEntry::grid), so this needs no extra
          * retention - only somewhere to ask.
          *
-         * @return False when no cached texture covers the point.
+         * Sampled at the level the RENDERER draws `zoom` with - the same getDetailDataTile mapping
+         * getTexture resolves through - not at whatever level happens to be the most detailed one
+         * cached. Picking the most detailed made the answer depend on load order: the same bridge
+         * portal measured 441 m and 663 m within one run, so two halves of one deck were baked at
+         * different heights.
+         *
+         * @return False when the renderer has no elevation for the tile holding the point.
          */
-        bool getDisplayHeight(double internalX, double internalY, double& height) const;
+        bool getDisplayHeight(double internalX, double internalY, int zoom, double& height) const;
 
         /**
          * Resolves every tile at the elevation source's own maximum detail instead of at the level
          * the terrain mesh can express. For a cache feeding per-fragment shading (the terrain
          * paint): the mesh cap costs two zoom levels of relief, which at high zoom is all of it.
          */
+        /**
+         * The grid tiles that entered the cache since the last call, and clears the list. A CPU
+         * height query is answered from these entries, so a chord or a building base resolved
+         * while only an ancestor was cached must be resolved again once the tile's own level lands
+         * - on this terrain the two differ by 50-70 m, and the stale copy is drawn beside the
+         * fresh one. ElevationManager's own data version cannot stand in: the grid loads, and the
+         * texture is encoded some frames later.
+         *
+         * Reported per TILE rather than as a counter so the renderer re-resolves only what stands
+         * over them, which is mapbox's model - a global bump re-did every building on screen each
+         * time any DEM tile landed.
+         */
+        std::vector<MapTile> drainContentChanges();
+
         void setDetailLevels(int extraLevels);
 
         void clear();
@@ -197,10 +217,8 @@ namespace massif {
         const std::shared_ptr<ElevationManager> _elevationManager;
         const std::shared_ptr<GLResourceManager> _glResourceManager;
         std::map<long long, CacheEntry> _cache; // keyed by the grid tile id
-        // Tangram keeps the last texture in a weak_ptr for the same reason: a dense query walks the
-        // same tile thousands of times, and the scan below is over every cached entry.
-        mutable std::shared_ptr<ElevationTileGrid> _lastSampledGrid;
         std::map<long long, MapTile> _frameResolved; // render tile id -> its elevation grid tile (zoom -1: no data), reset every frame
+        std::vector<MapTile> _contentChanges; // grid tiles that landed, drained by the renderer
         int _detailLevels = 0; // elevation levels resolved BEYOND what the mesh can express
         std::uint64_t _accessCounter = 0; // monotonic LRU clock
         std::uint64_t _frameStartCounter = 0; // LRU clock at the start of the current frame

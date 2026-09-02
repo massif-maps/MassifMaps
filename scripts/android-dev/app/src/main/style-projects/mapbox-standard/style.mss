@@ -80,6 +80,16 @@ Map {
 #structure[zoom >= 14][class = 'land']['mapnik::geometry_type' = 3]::land_structure_polygon {
   polygon-fill: @background;
   polygon-emissive-strength: linear([view::brightness], (0.25, 0), (0.3, 0.25));
+  polygon-elevation-mode: 'span';
+}
+/* PROTOTYPE: the bridge bed as an EXTRUSION instead of a flat ribbon, to see what an
+   extruded deck looks like and whether it shadows. min-height is a CONSTANT above the terrain,
+   so this floats level with the ground rather than straight - a real deck needs the chord fed
+   into the per-vertex extrusion base. Remove with the rest of the prototype. */
+#structure[zoom >= 14][class = 'land']['mapnik::geometry_type' = 3]['param::deck3d'>0]::land_structure_deck {
+  building-fill: #98a0b0;
+  building-min-height: 120;
+  building-height: 126;
 }
 #structure[zoom >= 14][class = 'land']['mapnik::geometry_type' = 2]::land_structure_line {
   line-cap: 'square';

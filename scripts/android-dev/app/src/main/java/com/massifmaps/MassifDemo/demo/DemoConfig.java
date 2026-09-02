@@ -621,6 +621,12 @@ public final class DemoConfig {
      */
     public static String STYLE_BUILDINGS = "";
     /**
+     * PROTOTYPE: `deck3d` draws the bridge BED as an extrusion instead of a flat ribbon, to see
+     * how an extruded deck reads and whether it shadows. Its height is a constant above the
+     * terrain, so it is not yet a straight deck - see the style's land_structure_deck.
+     */
+    public static String STYLE_DECK3D = "";
+    /**
      * The `building_tilt_drop` style parameter of a converted MapBox style: how far, in PERCENT,
      * the extrusions are flattened between tilt 80 and 90 (90 = a tenth of their height left).
      * Empty leaves the style's own default. Live - a style parameter is a redraw, not a re-decode.
@@ -1439,6 +1445,7 @@ public final class DemoConfig {
         INLINE_BUILDING_COLOR = DemoCfg.cfgColor("bldColor", INLINE_BUILDING_COLOR);
         INLINE_BUILDINGS_3D = DemoCfg.cfgBool("bld3d", INLINE_BUILDINGS_3D);
         STYLE_BUILDINGS = DemoCfg.cfgStr("buildings", STYLE_BUILDINGS);
+        STYLE_DECK3D = DemoCfg.cfgStr("deck3d", STYLE_DECK3D);
         STYLE_TILT_DROP = DemoCfg.cfgStr("bldTiltDrop", STYLE_TILT_DROP);
         STYLE_AO = DemoCfg.cfgStr("bldAo", STYLE_AO);
         if (STYLE_BUILDINGS.isEmpty() && DemoCfg.cfg("bld3d") != null) {

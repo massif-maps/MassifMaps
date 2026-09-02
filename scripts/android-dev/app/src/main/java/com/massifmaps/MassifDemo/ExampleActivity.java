@@ -417,6 +417,12 @@ public class ExampleActivity extends AppCompatActivity implements ExampleHost {
     }
 
     @Override
+    public float option(String key, float fallback) {
+        Bundle extras = getIntent() != null ? getIntent().getExtras() : null;
+        return extras != null ? (float) number(extras, key, fallback) : fallback;
+    }
+
+    @Override
     public void postDelayed(Runnable action, long millis) {
         ui.postDelayed(action, millis);
     }

@@ -49,6 +49,15 @@ public interface ExampleHost {
     /** A short message. Use sparingly - a caption is usually the better place. */
     void toast(String text);
 
+    /**
+     * A numeric launch extra ('--es hour 12'), or the fallback when it is absent or unparseable.
+     *
+     * For the state an example would otherwise only reach through one of its own sliders: a
+     * screenshot or an A/B has to be able to start there, and a hand on a slider is not a run
+     * anyone can repeat. Same keys as the camera extras ExampleActivity already reads.
+     */
+    float option(String key, float fallback);
+
     /** Runs something on the UI thread after a delay, cancelled when the example stops. */
     void postDelayed(Runnable action, long millis);
 

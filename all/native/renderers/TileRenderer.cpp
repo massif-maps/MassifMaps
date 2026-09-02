@@ -391,6 +391,31 @@ namespace massif {
         return 0;
     }
 
+    void TileRenderer::collectSpanDrapeTiles(std::map<vt::TileId, std::size_t>& spanTiles) const {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        if (std::shared_ptr<vt::GLTileRenderer> tileRenderer = (_vtRenderer ? _vtRenderer->getTileRenderer() : std::shared_ptr<vt::GLTileRenderer>())) {
+            tileRenderer->collectSpanDrapeTiles(spanTiles);
+        }
+    }
+
+    int TileRenderer::bakeSpanDrapeTile(const vt::TileId& tileId) {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        if (std::shared_ptr<vt::GLTileRenderer> tileRenderer = (_vtRenderer ? _vtRenderer->getTileRenderer() : std::shared_ptr<vt::GLTileRenderer>())) {
+            return tileRenderer->bakeSpanDrapeTile(tileId);
+        }
+        return 0;
+    }
+
+    void TileRenderer::setSpanDrapeTextures(const std::map<vt::TileId, unsigned int>& textures) {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        if (std::shared_ptr<vt::GLTileRenderer> tileRenderer = (_vtRenderer ? _vtRenderer->getTileRenderer() : std::shared_ptr<vt::GLTileRenderer>())) {
+            tileRenderer->setSpanDrapeTextures(textures);
+        }
+    }
+
     void TileRenderer::collectDrapeStackOrder(std::vector<std::pair<int, bool> >& units) const {
         std::lock_guard<std::mutex> lock(_mutex);
 

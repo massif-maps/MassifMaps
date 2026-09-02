@@ -1338,6 +1338,6 @@
     "landcover-fill-color-scrub": "#f0fbef",
     "landcover-fill-color-snow": "#ffffff",
     "landcover-fill-color-wood": "#c2efbe",
-    "deck3d": 0
+    "deck3d": 1
   }
 }

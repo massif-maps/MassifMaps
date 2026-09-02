@@ -551,11 +551,28 @@ What this buys beyond looks: labels, POIs and one-way arrows on a deck stop bein
 because the deck becomes the same "POI on top of a building" query, and the existing extrusion
 shadow pass applies to it unchanged.
 
-**Not visually confirmed.** The code compiles and the geometry rule is covered on the host, but the
-emulator runs available here would not load the A75's tiles at a camera close enough to judge a
-6.5 m slab — at z14.32 it is nearly edge-on. Judge it at the viaduct's north abutment
-(`--es lat 44.08074 --es lon 3.00495 --es zoom 15.17 --es tilt 19 --es rotation 130.14`) with
-`--es deck3d 1`, and check the deck runs *straight* rather than following the ground under it.
+Two things had to be got out of the way before any of it drew, and both are worth knowing on their
+own:
+
+**A style's building height ramp flattens a deck to nothing.** A converted Mapbox Standard carries
+`building-height-scale: linear(zoom, (15, 0), (15.3, 1))`, so every extrusion is multiplied by
+**zero** below mb zoom 15 — which is every camera a bridge is looked at. A span deck now takes none
+of the three building multipliers (the ramp, the tilt drop, grow-on-appear): they all mean "this
+building is not there yet", and a bridge is structure.
+
+**A style parameter can only narrow what draws, never widen it.** A rule whose filter is false for
+the parameter's *declared* value is pruned when the style compiles and cannot come back at runtime.
+`--es buildings 1` works because Standard declares `buildings: 2` and the runtime value only
+removes rules; `--es deck3d 1` could never work while `deck3d` was declared `0`, and every test run
+through that knob was silently testing nothing. The demo declares `deck3d: 1` for this reason, and
+`--es deck3d 0` turns it off — the direction that works.
+
+**What it looks like.** Verified side-on from west of the viaduct
+(`--es lat 44.0790 --es lon 2.9960 --es zoom 15.0 --es tilt 12 --es rotation 90`): the deck reads as
+a solid band with thickness. From ABOVE it correctly shows only the road surface, and at a 6.5 m
+thickness that is ~2 px at z14 — so "the deck is missing" from a top-down camera is the geometry
+being thin, not a rendering failure. What makes a bridge read at those zooms is its shadow and its
+piers, neither of which this draws yet.
 
 The pure geometry is in `vt/SpanGeometry.h` and tested on the host (`tests/vt/SpanGeometryTest.cpp`);
 none of these rules fails loudly when wrong.

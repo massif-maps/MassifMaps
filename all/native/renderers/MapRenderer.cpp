@@ -2158,7 +2158,20 @@ namespace massif {
         return (other.x >> deltaZoom) == tileId.x && (other.y >> deltaZoom) == tileId.y;
     }
 
-    void MapRenderer::collectTerrainCover(const std::vector<std::shared_ptr<TileLayer> >& tileLayers, const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions, const std::vector<vt::TileId>& seedTileIds, std::vector<std::map<vt::TileId, std::size_t> >& layerTiles, std::map<vt::TileId, std::size_t>& collectedTiles, std::vector<vt::TileId>& leaves, int& coverZoom, int& maxCollectedZoom) {
+    std::vector<vt::TileId> MapRenderer::collectTerrainCoverTileIds(const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions) const {
+        std::vector<vt::TileId> tileIds;
+        if (_terrainRenderer) {
+            std::vector<MapTile> terrainTiles;
+            _terrainRenderer->collectVisibleTiles(viewState, terrainOptions, terrainTiles);
+            tileIds.reserve(terrainTiles.size());
+            for (const MapTile& terrainTile : terrainTiles) {
+                tileIds.emplace_back(terrainTile.getZoom(), terrainTile.getX(), terrainTile.getY());
+            }
+        }
+        return tileIds;
+    }
+
+    void MapRenderer::collectTerrainCover(const std::vector<std::shared_ptr<TileLayer> >& tileLayers, const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions, const std::vector<vt::TileId>& seedTileIds, bool extendSeedsOnly, std::vector<std::map<vt::TileId, std::size_t> >& layerTiles, std::map<vt::TileId, std::size_t>& collectedTiles, std::vector<vt::TileId>& leaves, int& coverZoom, int& maxCollectedZoom) {
         // Collected PER LAYER, then merged. The union is what the cover is built from,
         // but which layers actually have something to bake for a tile is what tells a
         // texture baked from the full stack apart from one baked while only the
@@ -2180,8 +2193,24 @@ namespace massif {
         // with no terrain at all, falling through to the flat background plane. That is the
         // "tiles blink white while zooming" report. The terrain's own cover is camera-driven and
         // always covers the view, which is where tangram takes its ground tiles from.
-        for (const vt::TileId& tileId : seedTileIds) {
-            collectedTiles.emplace(tileId, static_cast<std::size_t>(0));
+        //
+        // `extendSeedsOnly` is the drape's version of the same seed. Every leaf there costs a cache
+        // texture and a bake, so it takes only the seeds that reach DEEPER than any tile the layers
+        // gave: where the data already follows the camera the cover is exactly what it was, and the
+        // seed only adds levels past a source's maxzoom - which is where the drape used to freeze
+        // while the live geometry stayed sharp. With no data at all it seeds nothing, rather than
+        // baking a screenful of blank textures.
+        int dataMaxZoom = -1;
+        for (auto it = collectedTiles.begin(); it != collectedTiles.end(); it++) {
+            dataMaxZoom = std::max(dataMaxZoom, it->first.zoom);
+        }
+        if (!(extendSeedsOnly && dataMaxZoom < 0)) {
+            for (const vt::TileId& tileId : seedTileIds) {
+                if (extendSeedsOnly && tileId.zoom <= dataMaxZoom) {
+                    continue;
+                }
+                collectedTiles.emplace(tileId, static_cast<std::size_t>(0));
+            }
         }
         // A layer that bakes something not made of tiles - a terrain paint - cannot
         // contribute a cover, so a stack of nothing but such layers (a hillshade-only
@@ -2538,22 +2567,14 @@ namespace massif {
 
                         // The terrain's own visible cover seeds the ground: it is what the camera
                         // can see, not what the layers happen to have fetched.
-                        std::vector<vt::TileId> terrainCoverTileIds;
-                        if (_terrainRenderer) {
-                            std::vector<MapTile> terrainTiles;
-                            _terrainRenderer->collectVisibleTiles(viewState, terrainOptions, terrainTiles);
-                            terrainCoverTileIds.reserve(terrainTiles.size());
-                            for (const MapTile& terrainTile : terrainTiles) {
-                                terrainCoverTileIds.emplace_back(terrainTile.getZoom(), terrainTile.getX(), terrainTile.getY());
-                            }
-                        }
+                        std::vector<vt::TileId> terrainCoverTileIds = collectTerrainCoverTileIds(viewState, terrainOptions);
                         std::vector<std::map<vt::TileId, std::size_t> > groundLayerTiles;
                         std::map<vt::TileId, std::size_t> groundCollectedTiles;
                         std::vector<vt::TileId> groundTileIds;
                         std::vector<int> groundProxyDepths;
                         std::vector<bool> groundStandingIn; // parallel: this tile is drawn in place of a finer one
                         int groundZoom = 0, groundMaxCollectedZoom = 0;
-                        collectTerrainCover(groundLayers, viewState, terrainOptions, terrainCoverTileIds, groundLayerTiles, groundCollectedTiles, groundTileIds, groundZoom, groundMaxCollectedZoom);
+                        collectTerrainCover(groundLayers, viewState, terrainOptions, terrainCoverTileIds, false, groundLayerTiles, groundCollectedTiles, groundTileIds, groundZoom, groundMaxCollectedZoom);
 
                         // A leaf whose DEM has not arrived is drawn FLAT, and the paint skips it
                         // (it has nothing to shade), so it flashes in the bare ground colour until
@@ -2723,7 +2744,15 @@ namespace massif {
                     std::map<vt::TileId, std::size_t> collectedTiles;
                     std::vector<vt::TileId> leaves;
                     int drapeZoom = 0, maxCollectedZoom = 0;
-                    collectTerrainCover(drapeLayers, viewState, terrainOptions, std::vector<vt::TileId>(), layerTiles, collectedTiles, leaves, drapeZoom, maxCollectedZoom);
+                    // Seeded from the CAMERA where it reaches deeper than the layers do. Built from
+                    // the collected tiles alone the cover cannot split past the deepest tile a
+                    // source gave, so once the camera zooms past a source's maxzoom the drape's
+                    // metres-per-texel freeze while the live geometry keeps its full precision -
+                    // the ground goes soft and stays soft. mapbox-gl-js drapes onto a proxy source
+                    // of its own (terrain.ts, maxzoom = the MAP's max zoom, reparseOverscaled);
+                    // the terrain cover is ours, and it reaches floor(camera zoom) whatever the
+                    // vector source stops at.
+                    collectTerrainCover(drapeLayers, viewState, terrainOptions, collectTerrainCoverTileIds(viewState, terrainOptions), true, layerTiles, collectedTiles, leaves, drapeZoom, maxCollectedZoom);
                     std::map<vt::TileId, std::size_t> drapeTiles;
                     // Which drape layers have content to bake into each leaf right now. Compared
                     // against what the cached texture was actually baked from, this separates

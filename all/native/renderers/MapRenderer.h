@@ -249,7 +249,16 @@ namespace massif {
         // build on it - the drape bakes one texture per leaf, the shared ground draws one surface
         // per leaf - because the surfaces of two different tesselations of the same height field
         // do not agree and fight wherever they overlap.
-        void collectTerrainCover(const std::vector<std::shared_ptr<TileLayer> >& tileLayers, const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions, const std::vector<vt::TileId>& seedTileIds, std::vector<std::map<vt::TileId, std::size_t> >& layerTiles, std::map<vt::TileId, std::size_t>& collectedTiles, std::vector<vt::TileId>& leaves, int& coverZoom, int& maxCollectedZoom);
+        // `extendSeedsOnly` keeps the seed to the levels the layers do NOT reach, which is what the
+        // drape wants: one leaf there is one cache texture and one bake, so it pays for the extra
+        // depth past a source's maxzoom and for nothing else. The shared ground takes the seed
+        // whole (false) - it has no texture budget and needs the full view covered.
+        void collectTerrainCover(const std::vector<std::shared_ptr<TileLayer> >& tileLayers, const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions, const std::vector<vt::TileId>& seedTileIds, bool extendSeedsOnly, std::vector<std::map<vt::TileId, std::size_t> >& layerTiles, std::map<vt::TileId, std::size_t>& collectedTiles, std::vector<vt::TileId>& leaves, int& coverZoom, int& maxCollectedZoom);
+
+        // The terrain's own camera-driven cover, the seed both paths above are built from. It is
+        // what the camera can see rather than what the layers fetched, so it reaches
+        // floor(camera zoom) whatever zoom a data source stops at.
+        std::vector<vt::TileId> collectTerrainCoverTileIds(const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions) const;
 
         // Directional shadows for one terrain stack: resolves the light from the styles, fits a
         // light box per cascade to the cover, re-renders the caster pass only when it has actually

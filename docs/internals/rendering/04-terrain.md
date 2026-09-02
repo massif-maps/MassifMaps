@@ -231,6 +231,47 @@ fatal rather than wasteful, because every leaf takes a drape cache entry: two su
 cache and the eviction pass drops the *entire* previous generation, which is what both the seed and
 the stand-in read from. The symptom is `seeded 0, blank 16` and a screen of flat fills.
 
+**...but the camera seeds the levels the data does not reach.** Built from the collected tiles alone
+the cover cannot split past the deepest tile a source gave, so once the camera zooms past a source's
+maxzoom the drape's metres-per-texel freeze: the ground goes soft and *stays* soft while the live
+geometry beside it keeps its full precision. A drape texture is a fixed size
+(`TileRenderer::resolveDrapeResolution`, one per frame), so the only thing that buys sharpness at
+depth is a finer leaf.
+
+`collectTerrainCover` therefore also takes the terrain's own camera-driven cover as a seed. The
+shared ground takes it whole — it has no texture budget and needs the view covered, which is what
+stops it blinking white on a zoom out. The drape takes it with `extendSeedsOnly`: only the seeds
+that reach *deeper* than any collected tile, and none at all when the layers have nothing yet. Where
+the data already follows the camera the cover is byte-for-byte what it was; the seed pays for the
+extra depth and nothing else.
+
+Measured, emulator, 44.0804/3.0037 z15.08 t19 rot130, `mapbox-standard` over mapbox streets:
+
+| source maxzoom | split level | leaves |
+|---|---|---|
+| 16 (data reaches the camera), before and after | 15 | 11 |
+| 14, before | 14 (the `min(maxCollectedZoom, …)` cap) | — |
+| 14, after | **15** | 11 |
+
+So the cover no longer depends on where the source stops: 0.86 m/texel at that camera either way,
+against 1.72 m/texel when it was pinned to z14.
+
+This is mapbox-gl-js's model with our own cover standing in for their proxy source — theirs is a
+`TerrainInternalSource('proxy', 'geojson', 512, 0, ceil(map.transform.maxZoom), reparseOverscaled)`
+(`src/terrain/terrain.ts`), a source of its own so that no data source's maxzoom bounds it, drawn
+into a `tileSize * 2` = 1024² buffer. Worth knowing before reaching for their model for anything
+else: their cover caps at `floor(camera zoom)` exactly as ours does (`shouldSplit` returns false at
+`it.zoom === maxZoom`), and 1024² over a 512 px tile is *coarser* on the ground than our
+`2 × tileDrawSize × dpiScale` over a 256 px one. Past the source max was the only place they were
+ahead.
+
+**Still open: the oblique near ground.** At a low tilt the ground at the bottom of the screen is
+magnified several times past what a cover at `floor(camera zoom)` resolves, and neither model splits
+deeper there — `--es drapeResolution 2048` visibly sharpens it, which is what says it is texel-bound
+rather than cover-bound. The fix would be a per-tile resolution (near leaves large, far leaves
+small, same byte budget) or a split rule with a pitch term; mapbox's `distToSplitScale` is not it,
+that one makes grazing tiles *coarser*.
+
 ### The drape cache: budget, seeding, and completeness
 
 `TerrainDrapeCache` keeps a generation of tiles alive past the visible cover, because a zoom or a

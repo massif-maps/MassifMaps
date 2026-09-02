@@ -255,7 +255,7 @@ namespace massif {
 
         /**
          * Returns the number of shadow cascades.
-         * @return The cascade count. The default is 3.
+         * @return The cascade count. The default is 2, as mapbox uses.
          */
         int getShadowCascades() const;
         /**

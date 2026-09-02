@@ -409,7 +409,7 @@ public final class DemoConfig {
     public static float SHADOW_STRENGTH = 1.0f;
     public static float SHADOW_SOFTNESS = 1.0f;
     public static int SHADOW_MAP_SIZE = 1024;
-    public static int SHADOW_CASCADES = 3;
+    public static int SHADOW_CASCADES = 2;
     public static float SHADOW_BIAS = 1.0f;
     public static float SHADOW_NORMAL_OFFSET = 3.0f;   // shadow-map texels
     public static float SHADOW_DISTANCE = 0f;   // multiples of the camera-to-focus distance, 0 = built-in 4.5

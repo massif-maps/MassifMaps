@@ -244,7 +244,7 @@ with the rendered geometry.
 
 Design points, each measured:
 
-- **Cascades** (up to `TerrainShadowMap::MAX_CASCADES = 4`, default 3 × 1024). Each cascade fits its
+- **Cascades** (up to `TerrainShadowMap::MAX_CASCADES = 4`, default 2 × 1024, mapbox's count). Each cascade fits its
   light box to **its own** piece of ground's relief, not the whole scene's — at a low sun that is
   what sets the box size.
 - **The shadow sun is not always the lighting sun.** A shadow is as long as the caster is tall over
@@ -302,6 +302,7 @@ Design points, each measured:
   corners across the plaza. The wedges scaled with the CASCADE COUNT (1 clean, 2 a thin line, 3 the
   full wedge) because a page-index probe showed the whole view sitting in cascade 0 — more cascades
   only shrink that box, which raises the screen-space derivatives and hits the clamp harder.
+
   **Then it had to come back, for the GROUND only.** Removing it wholesale traded the facade speckle
   for a mesh over the whole ground below ~z17, reaching every zoom down to 0. mapbox needs no
   receiver-plane term because their ground cannot self-shadow — their shadow receiver is a flat
@@ -319,12 +320,13 @@ Design points, each measured:
   SCALE-FREE: capping it in metres instead (`uShadowBias.z * depthScale`) collapses to nothing in
   normalised depth as the light box grows, so the bias dies at low zoom and the mesh returns — which
   is exactly what a metric cap did before this was understood.
-- **The cascade count is NOT the lever, and 3 stays the default.** The wedges above scale with it,
-  so dropping to mapbox's 2 looked like a fix — but it only made the near box coarser, which hid
-  them. With the bias ported, 3 cascades is as clean as 2 at the same camera, so the count change
-  was reverted. What it cost while it was in: `sliceFarAt` already reproduces mapbox's split
-  exactly (cascade 0 at `cutout / 3` = 1.5 × the camera distance, the cutout at 4.5 ×), so going
-  from 3 to 2 moves the near page from 0.5 × to 1.5 × — 3 × coarser texels — and since
+- **The cascade count IS part of it, and 2 — mapbox's own count — is now the default.** This was
+  read the other way round once: dropping to 2 was called a masking effect of a coarser near box and
+  reverted. It is not. More cascades make each box smaller, which raises the screen-space
+  derivatives on a building's bevel band and serrates its vertical edges; at 2 the wedge is gone.
+  The trade is real and stated rather than hidden: `sliceFarAt` reproduces mapbox's split exactly
+  (cascade 0 at `cutout / 3` = 1.5 × the camera distance, the cutout at 4.5 ×), so going from 3 to 2
+  moves the near page from 0.5 × to 1.5 × — 3 × coarser texels — and since
   `shadowSoftness` is counted in TEXELS the penumbra widens in metres with it. At z16.5 over the
   Louvre that washed the building shadows out and dropped the smallest of them entirely.
 - **Caster margin, bounded by the shadow THROW.** Casters are the cover plus a ring, because a

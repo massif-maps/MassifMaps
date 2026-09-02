@@ -31,7 +31,7 @@ namespace massif {
         // distance, the cutout at 4.5x), so a third page only adds a nearer, sharper one - and
         // dropping to two made its texels 3x coarser, which washed the building shadows out at
         // z16.5. Costs a 6144 x 2048 depth24 atlas, 50 MB.
-        _shadowCascades(3),
+        _shadowCascades(2),
         // A SCALE on mapbox's bias triple, so 1 is theirs unchanged.
         _shadowBias(1.0f),
         _shadowNormalOffset(3.0f),

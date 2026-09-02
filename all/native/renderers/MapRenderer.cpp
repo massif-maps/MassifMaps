@@ -1496,12 +1496,13 @@ namespace massif {
         // At the APP's exaggeration, not the ramped one: the ramp is what this decides.
         double minZ = 0, maxZ = 0;
         elevationManager->getDisplayHeightRange(_viewState.getCameraPos()(1), terrainOptions->getExaggeration(), minZ, maxZ);
-        // NO DATA is not FLAT. Before the first DEM tile decodes the range is 0, which reads as
-        // zero parallax and flattens the map - and flattening stops the elevation decode, so the
-        // range stays 0 and 3D never comes back. Whether terrain appeared at all then depended on
-        // whether a DEM tile happened to land before the first evaluation. Unknown means "do not
-        // flatten yet": the rule is re-evaluated every frame and answers properly once data lands.
-        if (!(maxZ > minZ)) {
+        // NO DATA, and PARTIAL data, are not FLAT. A view whose DEM is still arriving reports a
+        // small height range, which reads as small parallax and flattens the map - and flattening
+        // stops the elevation decode, so the range never grows and 3D never comes back. Whether
+        // terrain appeared at all then depended on which tiles happened to land first, which is why
+        // the same launch gave 3D or 2D at random. Unknown means "do not flatten yet": the rule is
+        // re-evaluated every frame and answers properly once the data settles.
+        if (!(maxZ > minZ) || !_autoFlattenSeenTerrain || _autoFlattenDataQuiet < TERRAIN_SWITCH_WARM_TIMEOUT) {
             return std::numeric_limits<double>::infinity();
         }
         double halfWidth = _viewState.getHalfWidth(), halfHeight = _viewState.getHalfHeight();
@@ -1515,6 +1516,23 @@ namespace massif {
         }
         if (!terrainOptions || !terrainOptions->isEnabled()) {
             return false;
+        }
+
+        // Terrain reached at least once: only then may the rule flatten. See the member.
+        _autoFlattenSeenTerrain = _autoFlattenSeenTerrain || _flattenSwitchState.phase == FlattenSwitch::Phase::TERRAIN;
+
+        // How long the elevation data has been still. Every DEM tile that lands bumps the data
+        // version, so this is exactly "nothing new has arrived recently" - see
+        // calculateTerrainParallax, which will not decide before it.
+        if (std::shared_ptr<ElevationManager> elevationManager = terrainOptions->getElevationManager()) {
+            unsigned int dataVersion = elevationManager->getDataVersion();
+            if (dataVersion != _autoFlattenDataVersion) {
+                _autoFlattenDataVersion = dataVersion;
+                _autoFlattenDataQuiet = 0.0f;
+                requestRedraw(); // nothing else asks for the frame the wait ends on
+            } else {
+                _autoFlattenDataQuiet += deltaSeconds;
+            }
         }
 
         // Not while the app is driving the ratio itself: the rule would take it straight back.

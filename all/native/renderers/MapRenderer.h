@@ -304,6 +304,18 @@ namespace massif {
         // reads them; what is kept here is the phase the switch is in.
         FlattenSwitch::State _flattenSwitchState;
         AutoFlatten::Trigger _autoFlattenTrigger;
+        // Auto-flattening reads its parallax from the elevation height range, and that range is
+        // only meaningful once the DEM has stopped arriving: a partly loaded view reports a small
+        // range, which reads as small parallax and flattens the map - and flattening stops the
+        // elevation decode, so it never recovers. These watch the data version and hold the rule
+        // off until it has been still for TERRAIN_SWITCH_WARM_TIMEOUT.
+        unsigned int _autoFlattenDataVersion = 0;
+        float _autoFlattenDataQuiet = 0.0f;
+        // Auto-flattening turns 3D OFF once it stops earning its cost - it is a transition OUT of
+        // terrain, never a starting state. Until terrain has been reached once it cannot fire, or
+        // a view whose DEM has not arrived flattens itself at startup and never recovers, because
+        // flattening is what stops the elevation decode that would prove it wrong.
+        bool _autoFlattenSeenTerrain = false;
         std::weak_ptr<TerrainOptions> _flattenSwitchOptions;
 
         std::shared_ptr<GLResourceManager> _glResourceManager;

@@ -504,7 +504,7 @@ class ProjectionSurface;
         void calculateVisibleTilesRecursive(const std::shared_ptr<CullState>& cullState, const MapTile& mapTile, const MapBounds& dataExtent);
 
         void sortTiles(std::vector<MapTile>& tiles, const ViewState& viewState, bool preloadingTiles);
-        void buildFetchTiles(const std::vector<MapTile>& visTiles, bool preloadingTiles, std::vector<FetchTileInfo>& fetchTileList);
+        void buildFetchTiles(const std::vector<MapTile>& visTiles, bool preloadingTiles, std::vector<FetchTileInfo>& fetchTileList, bool fetchOnly = false);
 
         bool findParentTile(const MapTile& visTile, const MapTile& tile, int depth, bool preloadingCache, bool preloadingTile);
         int findChildTiles(const MapTile& visTile, const MapTile& tile, int depth, bool preloadingCache, bool preloadingTile);
@@ -521,6 +521,13 @@ class ProjectionSurface;
 
         static const int PARENT_PRIORITY_OFFSET;
         static const int PRELOADING_PRIORITY_OFFSET;
+        // How many zoom levels coarser than a stranded span piece its reference tile is fetched
+        // at: 8x the tile edge, so a 2.4 km viaduct seen at z17 is looked for in z14 tiles rather
+        // than walked twenty tiles at a time. And how many such tiles one cull may ask for.
+        static const int SPAN_REFERENCE_ZOOM_DROP;
+        static const int SPAN_REFERENCE_MIN_ZOOM;
+        static const std::size_t MAX_SPAN_REFERENCE_TILES;
+        void collectSpanReferenceTiles();
         static const double PRELOADING_TILE_SCALE;
         
         std::atomic<bool> _calculatingTiles;
@@ -557,6 +564,18 @@ class ProjectionSurface;
 
         std::vector<MapTile> _visibleTiles;
         std::vector<MapTile> _preloadingTiles;
+        // Tiles fetched UNSEEN so a bridge's chord can resolve - see collectSpanReferenceTiles.
+        std::vector<MapTile> _spanReferenceTiles;
+        // STICKY: a reference tile is kept once named. Rebuilt from scratch each cull, a tile no
+        // longer named dropped out, its pieces vanished, the ends they had resolved came back and
+        // named it again - a cull storm that fetched and decoded without end (OOM-killed at 2.8 GB).
+        struct SpanReference {
+            MapTile tile;
+            unsigned int lastNamed = 0;
+        };
+        std::vector<SpanReference> _spanReferences;
+        unsigned int _spanReferenceCull = 0;
+        std::size_t _lastSpanReferenceCount = 0;
         std::unordered_map<MapTile, std::shared_ptr<UTFGridTile> > _utfGridTiles;
         std::shared_ptr<CullState> _tileCullState;
 

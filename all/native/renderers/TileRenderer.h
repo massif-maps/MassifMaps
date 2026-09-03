@@ -123,6 +123,7 @@ namespace massif {
         void collectDrapeTiles(std::map<vt::TileId, std::size_t>& drapeTiles) const;
         int bakeDrapeTile(const vt::TileId& tileId);
         void collectSpanDrapeTiles(std::map<vt::TileId, std::size_t>& spanTiles) const;
+        void collectUnresolvedSpanEnds(std::vector<std::pair<int, cglib::vec2<double>>>& ends) const;
         int bakeSpanDrapeTile(const vt::TileId& tileId);
         void setSpanDrapeTextures(const std::map<vt::TileId, unsigned int>& textures);
         // This layer's style layers with drapeable content, in draw order, each flagged draped or

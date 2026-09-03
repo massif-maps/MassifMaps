@@ -626,6 +626,42 @@ removes rules; `--es deck3d 1` could never work while `deck3d` was declared `0`,
 through that knob was silently testing nothing. The demo declares `deck3d: 1` for this reason, and
 `--es deck3d 0` turns it off — the direction that works.
 
+**The deck hangs under its road, in metres.** `min-height: -7; height: -0.3` is a prism from 7 m
+under the chord to 0.3 m under it, and for a while it stood 6.7 m *above* the road instead: the
+builder converted the offset with `calculateHeight`, which answers in TILE units, and
+`resolveSpanBases` added it to a chord held in INTERNAL units — at z15 the -7 m became a rounding
+error and the whole thickness went up. `SpanRecord::baseOffset` is now metres, converted where the
+chord is, with the same factor the vertex shader applies to a DEM sample (`metersToInternal` from
+any elevation texture, times the mercator stretch at the vertex).
+
+**What the deck wears.** The span drape — the tile's span content baked on its own, sampled by the
+extrusion — goes on the ROOF only (`vSpanRoof`): a wall's tile position runs along the deck's edge,
+and sampling the drape there smeared whatever the road's edge held down the whole face as vertical
+ribbing. And it is baked over the deck's own BOUNDS (`_spanDrapeBounds`, the pieces' ends plus a
+margin of 4 % of the tile, never under ~25 m), not the whole tile: a deck stands above the ground
+and is that much closer to the camera, so its drape is magnified past the ground's, and a
+tile-wide bake of a narrow deck spent most of the texture on empty tile. `bakeSpanDrapeTile`
+premultiplies `SpanGeometry::clipZoomToBounds`, `resolveSpanDrape` composes
+`drapeTransformInBounds` into the sampling transform, both host-tested. In practice the roof drape
+is rarely seen at all: a style whose bridge fills and casings are spans draws them LIVE on the
+chord, above the roof, and live lines are sharp at any height — which is the real answer to "the
+drape on a high bridge loses resolution".
+
+**A piece never seen whole.** A map opened in the middle of a long bridge holds none of its
+portals, so every piece is unresolved and the deck drapes onto the valley. `buildSpanUnions` now
+reports every cut end it could not give a chord, stepped a twentieth of a tile past the cut
+(`SpanGeometry::beyondCutEnd`, past the source's buffer), and `TileLayer::collectSpanReferenceTiles`
+fetches the tile each point lands in as a preloading tile — cached, handed to the renderer, never
+drawn. Three levels COARSER than the piece (`SPAN_REFERENCE_ZOOM_DROP`), floored at z14
+(`SPAN_REFERENCE_MIN_ZOOM`, where OSM-derived tile sets still carry their bridges; a z11 tile has
+no span in it at all): a piece already at the floor walks to its neighbour at the same zoom, one
+hop per cull. The zoom groups in `buildSpanUnions` run coarsest first and remember their chords
+as they go, so the fine pieces borrow the reference tile's chord in the same pass. Measured at
+Millau, cold start at z17 mid-deck: 102 stranded ends to 0. The log line
+`TileLayer: N span reference tiles for M stranded span ends` is the convergence; a piece that can
+never resolve (an approach ramp classed as a span) keeps one reference tile alive and flips the
+count by a few, which is what the line looks like when it is done.
+
 **What it looks like.** Verified side-on from west of the viaduct
 (`--es lat 44.0790 --es lon 2.9960 --es zoom 15.0 --es tilt 12 --es rotation 90`): the deck reads as
 a solid band with thickness. From ABOVE it correctly shows only the road surface, and at a 6.5 m
@@ -637,10 +673,6 @@ The pure geometry is in `vt/SpanGeometry.h` and tested on the host (`tests/vt/Sp
 none of these rules fails loudly when wrong.
 
 ### What is still wrong
-
-**A structure never seen whole has no chord to borrow.** The cache carries a bridge across a zoom
-or a pan, but it is only ever filled by a group that resolved on its own. Opening the map already
-zoomed into one abutment leaves the deck draped until the far end comes into view once.
 
 **The chord runs long.** The viaduct joins as 3440 m against a 2460 m deck — the chain reaches into
 the structure beyond its northern abutment. Not visibly wrong at the cameras tested (the extra

@@ -399,6 +399,14 @@ namespace massif {
         }
     }
 
+    void TileRenderer::collectUnresolvedSpanEnds(std::vector<std::pair<int, cglib::vec2<double>>>& ends) const {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        if (std::shared_ptr<vt::GLTileRenderer> tileRenderer = (_vtRenderer ? _vtRenderer->getTileRenderer() : std::shared_ptr<vt::GLTileRenderer>())) {
+            tileRenderer->collectUnresolvedSpanEnds(ends);
+        }
+    }
+
     int TileRenderer::bakeSpanDrapeTile(const vt::TileId& tileId) {
         std::lock_guard<std::mutex> lock(_mutex);
 

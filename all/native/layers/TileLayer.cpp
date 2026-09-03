@@ -28,6 +28,10 @@
 #include <vt/TileTransformer.h>
 #include <vt/RenderStats.h>
 
+#include <algorithm>
+#include <cmath>
+#include <set>
+
 namespace massif {
 
 #ifdef __ANDROID__
@@ -426,6 +430,10 @@ namespace massif {
         if (_preloading) {
             buildFetchTiles(_preloadingTiles, true, fetchTileList);
         }
+        // The tiles a stranded bridge's chord is in, fetched like preloading tiles: cached in the
+        // preloading cache, handed to the renderer, never drawn (they are outside the view).
+        collectSpanReferenceTiles();
+        buildFetchTiles(_spanReferenceTiles, true, fetchTileList, true);
 
         // If there are multiple missing visible tiles with shared parent, then fetch the parent tile to provide quick rendering
         std::unordered_map<MapTile, int> childTileCountMap;
@@ -620,6 +628,79 @@ namespace massif {
         return clickInfo.getClickType() == ClickType::CLICK_TYPE_SINGLE || clickInfo.getClickType() == ClickType::CLICK_TYPE_LONG; // by default, disable 'click through' for single and long clicks
     }
 
+    void TileLayer::collectSpanReferenceTiles() {
+        // A span piece cut by the tile grid takes its chord from the two portals of the whole
+        // structure, which live in other tiles - and a map opened in the middle of a bridge holds
+        // none of them, so the deck stays draped onto the valley until the abutments come into
+        // view. The renderer reports every cut end it could not resolve, stepped just past the
+        // cut; the tile that point lands in, a few levels COARSER so a long deck is a handful of
+        // tiles rather than a chain of twenty, is fetched unseen. Its pieces resolve on their own
+        // (or report their own cut ends, which walks the chain one hop per cull) and lend the
+        // chord back through the renderer's chord cache.
+        _spanReferenceTiles.clear();
+        if (!_terrainActive || !_tileRenderer) {
+            _spanReferences.clear();
+            return;
+        }
+        std::vector<std::pair<int, cglib::vec2<double>>> ends;
+        _tileRenderer->collectUnresolvedSpanEnds(ends);
+        _spanReferenceCull++;
+        std::set<long long> seen;
+        for (const SpanReference& reference : _spanReferences) {
+            seen.insert(getTileId(reference.tile));
+        }
+        std::size_t named = 0;
+        for (const std::pair<int, cglib::vec2<double>>& end : ends) {
+            // Coarser than the piece, but not below where a tile set still carries its bridges
+            // (OSM-derived sets: z13-14). A piece already at the floor walks to its NEIGHBOUR at
+            // the same zoom instead, one hop per cull, which is how the two halves of a long
+            // deck meet - dropping further hands back tiles with no span in them at all.
+            int zoom = std::max(getMinZoom(), std::min(end.first, std::max(SPAN_REFERENCE_MIN_ZOOM, end.first - SPAN_REFERENCE_ZOOM_DROP)));
+            if (zoom < 0 || zoom > end.first) {
+                continue;
+            }
+            // Renderer world: normalized to [-0.5, 0.5], y northward; tiles are XYZ, y southward.
+            int extent = 1 << zoom;
+            int x = static_cast<int>(std::floor((end.second(0) + 0.5) * extent));
+            int y = static_cast<int>(std::floor((0.5 - end.second(1)) * extent));
+            if (y < 0 || y >= extent) {
+                continue;
+            }
+            MapTile tile(x, y, zoom, _frameNr);
+            long long tileId = getTileId(tile);
+            if (seen.insert(tileId).second) {
+                _spanReferences.push_back(SpanReference { tile, _spanReferenceCull });
+                named++;
+            } else {
+                for (SpanReference& reference : _spanReferences) {
+                    if (getTileId(reference.tile) == tileId) {
+                        reference.lastNamed = _spanReferenceCull;
+                    }
+                }
+            }
+            if (named >= MAX_SPAN_REFERENCE_TILES) {
+                break;
+            }
+        }
+        // Bounded: past the cap the tiles not named for longest go, never a tile named this cull.
+        while (_spanReferences.size() > 2 * MAX_SPAN_REFERENCE_TILES) {
+            auto oldest = std::min_element(_spanReferences.begin(), _spanReferences.end(),
+                [](const SpanReference& a, const SpanReference& b) { return a.lastNamed < b.lastNamed; });
+            if (oldest->lastNamed == _spanReferenceCull) {
+                break;
+            }
+            _spanReferences.erase(oldest);
+        }
+        for (const SpanReference& reference : _spanReferences) {
+            _spanReferenceTiles.push_back(MapTile(reference.tile.getX(), reference.tile.getY(), reference.tile.getZoom(), _frameNr));
+        }
+        // Rare and short-lived: a line per change is what says whether a stranded deck converged.
+        if (_spanReferenceTiles.size() != _lastSpanReferenceCount) {
+            _lastSpanReferenceCount = _spanReferenceTiles.size();
+            Log::Infof("TileLayer: %d span reference tiles for %d stranded span ends", static_cast<int>(_spanReferenceTiles.size()), static_cast<int>(ends.size()));
+        }
+    }
+
     void TileLayer::calculateVisibleTiles(const std::shared_ptr<CullState>& cullState) {
         // Remove last visible and preloading tiles
         _visibleTiles.clear();
@@ -744,7 +825,6 @@ namespace massif {
         if (tile.getZoom() > Const::MAX_SUPPORTED_ZOOM_LEVEL) {
             return;
         }
-
         int tileMask = (1 << tile.getZoom()) - 1;
         MapTile flippedTile(tile.getX() & tileMask, tileMask - (tile.getY() & tileMask), tile.getZoom(), 0);
         if (!calculateMapTileBounds(flippedTile).intersects(dataExtent)) {
@@ -901,11 +981,25 @@ namespace massif {
         });
     }
     
-    void TileLayer::buildFetchTiles(const std::vector<MapTile>& visTiles, bool preloadingTiles, std::vector<FetchTileInfo>& fetchTileList) {
+    void TileLayer::buildFetchTiles(const std::vector<MapTile>& visTiles, bool preloadingTiles, std::vector<FetchTileInfo>& fetchTileList, bool fetchOnly) {
         for (const MapTile& visTile : visTiles) {
             int tileMask = (1 << visTile.getZoom()) - 1;
             MapTile tile(visTile.getX() & tileMask, visTile.getY() & tileMask, visTile.getZoom(), visTile.getFrameNr());
             long long tileId = getTileId(tile);
+
+            // A tile wanted only for what it CONTAINS, never drawn (the span reference tiles): it
+            // takes the fetch and nothing else. The substitution search below walks a coarse tile's
+            // whole subtree and builds draw data for every cached descendant it meets - for a tile
+            // three levels above the camera that is hundreds of draw datas per cull, per tile,
+            // which is what filled the heap until the app was killed.
+            if (fetchOnly) {
+                bool cached = tileExists(tileId, preloadingTiles) || tileExists(tileId, !preloadingTiles);
+                bool valid = tileValid(tileId, preloadingTiles) || tileValid(tileId, !preloadingTiles);
+                if ((!cached || !valid) && !prefetchTile(tileId, preloadingTiles)) {
+                    fetchTileList.push_back({ tile, preloadingTiles, PRELOADING_PRIORITY_OFFSET });
+                }
+                continue;
+            }
 
             // Check caches
             if (tileExists(tileId, preloadingTiles) || tileExists(tileId, !preloadingTiles)) {
@@ -1385,6 +1479,9 @@ namespace massif {
     // its tiles (traced contours) that preview is a full pass whose result is thrown away.
     const int TileLayer::PARENT_PRIORITY_OFFSET = -1;
     const int TileLayer::PRELOADING_PRIORITY_OFFSET = -2;
+    const int TileLayer::SPAN_REFERENCE_ZOOM_DROP = 3;
+    const int TileLayer::SPAN_REFERENCE_MIN_ZOOM = 14;
+    const std::size_t TileLayer::MAX_SPAN_REFERENCE_TILES = 16;
     const double TileLayer::PRELOADING_TILE_SCALE = 1.5;
     
 }

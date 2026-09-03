@@ -1283,18 +1283,14 @@ namespace massif::vt {
             return LineLayout::NO_ROOM;
         }
 
-        // Past either end the line is CONTINUED in its own direction rather than clamped: the ends
-        // are where the tile that carries this copy of the feature was cut, not where the road
-        // stops, and a run allowed to reach a little past them (see below) has to keep going
-        // straight there instead of piling its last glyphs onto the end point.
+        // Clamped at both ends, as tangram's LineSampler::advance is: nothing is ever sampled past
+        // the geometry, so no glyph can be drawn on a straight continuation of the line.
         auto pointAt = [&points, &lengths](float distance) {
             if (distance <= 0) {
-                cglib::vec2<float> edge = points[1] - points.front();
-                return points.front() + (cglib::norm(edge) > 0 ? cglib::unit(edge) * distance : cglib::vec2<float>(0, 0));
+                return points.front();
             }
             if (distance >= lengths.back()) {
-                cglib::vec2<float> edge = points.back() - points[points.size() - 2];
-                return points.back() + (cglib::norm(edge) > 0 ? cglib::unit(edge) * (distance - lengths.back()) : cglib::vec2<float>(0, 0));
+                return points.back();
             }
             std::size_t i = 0;
             while (i + 2 < points.size() && lengths[i + 1] < distance) {
@@ -1319,7 +1315,7 @@ namespace massif::vt {
         // out on is the PROJECTED one: with a tilted view its far half is compressed by the
         // perspective divide, so a run that has room on the ground can still overrun the end.
         // Slide the run back onto the line rather than dropping the label - the smallest camera
-        // move changes the compression, and dropping made labels blink in and out while panning.
+        // move changes the compression, and blinking labels are worse than a shifted one.
         float runLength = 0;
         float lineLength = 0;
         for (const Font::Glyph& glyph : _glyphs) {
@@ -1330,16 +1326,15 @@ namespace massif::vt {
             lineLength += glyph.advance(0);
             runLength = std::max(runLength, lineLength);
         }
-        // The run may reach a little past either end, on the line's own direction: the projected
-        // length of a line running away from a tilted camera changes with every camera step, and
-        // an exact fit test on it means a label that blinks out whenever the compression takes a
-        // fraction of a glyph more than the line has left. The allowance is the same room the
-        // anchor is given on the ground (clampPlacementAnchor).
-        float overhang = std::min(runLength, total) * static_cast<float>(PLACEMENT_ROOM_FACTOR - 1.0);
-        if (runLength > total + 2 * overhang) {
-            return LineLayout::NO_ROOM; // the line is genuinely too short to carry the text
+        // The run has to fit INSIDE the line, tangram's CurvedLabel::updateScreenTransform test: a
+        // run given room past the end was drawn on a straight continuation of the line, off the
+        // road it names. A run at the edge of what fits alternates between fitting and not as the
+        // camera moves; that is what LINE_LAYOUT_FAILURE_GRACE absorbs (see updateLineVertexData),
+        // not an allowance here.
+        if (runLength > total) {
+            return LineLayout::NO_ROOM; // the line is too short to carry the text
         }
-        penStart = std::min(std::max(penStart, -overhang), total - runLength + overhang);
+        penStart = std::min(std::max(penStart, 0.0f), total - runLength);
 
         // WHICH WAY THE WORD READS, decided on the projected line over the span the glyphs cover -
         // tangram's CurvedLabel::updateScreenTransform. A segment past the tolerance forces its
@@ -1461,10 +1456,13 @@ namespace massif::vt {
 
             // Direction over the glyph's OWN span, not the direction of whatever tiny segment it
             // happens to start on: a line that shakes at a scale below the glyphs would otherwise
-            // rotate every one of them on its own and tear the word apart.
+            // rotate every one of them on its own and tear the word apart. The window slides back
+            // to stay on the line rather than being clamped against its end, where it would
+            // collapse to nothing and the run would read as unreadable.
+            float spanLength = std::max(advance, MIN_LINE_GLYPH_SPAN);
+            float spanStart = std::max(0.0f, std::min(offset, total - spanLength));
             cglib::vec2<float> pen = pointAt(offset);
-            cglib::vec2<float> next = pointAt(offset + std::max(advance, MIN_LINE_GLYPH_SPAN));
-            cglib::vec2<float> spanVec = next - pen;
+            cglib::vec2<float> spanVec = pointAt(spanStart + spanLength) - pointAt(spanStart);
             if (cglib::norm(spanVec) == 0) {
                 readable = false;
                 break;

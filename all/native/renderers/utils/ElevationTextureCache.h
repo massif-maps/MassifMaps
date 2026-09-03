@@ -225,6 +225,11 @@ namespace massif {
         std::map<long long, CacheEntry> _cache; // keyed by the grid tile id
         std::map<long long, MapTile> _frameResolved; // render tile id -> its elevation grid tile (zoom -1: no data), reset every frame
         std::vector<MapTile> _contentChanges; // grid tiles that landed, drained by the renderer
+        // How far above the level the source carries a CPU height query may fall back. One level
+        // covers the common "the tile is decoded but not yet in the texture cache" frame; beyond
+        // that the answer is a smoothed average of a region, not the ground under the point.
+        static const int BASE_MAX_ANCESTOR_LEVELS = 1;
+
         int _detailLevels = 0; // elevation levels resolved BEYOND what the mesh can express
         std::uint64_t _accessCounter = 0; // monotonic LRU clock
         std::uint64_t _frameStartCounter = 0; // LRU clock at the start of the current frame

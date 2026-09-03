@@ -474,6 +474,24 @@ an exaggeration ramp, since the exaggeration is inside that height. It is a coun
 labels' per-tile list because `setVertexBase` is a no-op when the height has not moved, so a
 needless re-resolve costs the queries and uploads nothing.
 
+**A refused answer beats a coarse one.** `ElevationTextureCache::getDisplayHeight` walks up to an
+ancestor when the tile it wants is not in the texture cache - the same walk `getTexture` does, so
+the query lands on the field the surface is drawn from. The walk is bounded to
+`BASE_MAX_ANCESTOR_LEVELS = 1`: measured over Paris at z18.5, a footprint that fell all the way
+through came back at **127 m against a DEM that says 34 m**, and it kept that height because a base
+is baked into the vertices. Refused instead, the vertex keeps its sentinel and `polygon3DVsh` falls
+back to the ground under it - the same field the surface is drawn from, so the walls still meet the
+ground - a span is skipped until its chord resolves, and `invalidateExtrusionBases` re-resolves once
+the tile lands. On the emulator that took the outliers from about half of the logged footprint
+samples to **0 of 608**, and with them the buildings that jumped to a wrong height for a frame or
+two while zooming.
+
+What it does NOT fix: the base is still ONE sample at the centroid of each footprint, so on a
+0.84 m-posting lidar DEM the parts of one block disagree by a few metres and their roofs step
+against each other. mapbox never sees it because `mapbox-terrain-dem-v1` is ~30 m posting, flat
+across a block; their `flatElevation` also reads the footprint's own span
+(`_prelude_terrain.vertex.glsl`: centroid sample plus slope x span) rather than a bare centroid.
+
 This **removes** the previous model's 5 elevation samples per above-ground vertex, measured at
 **+0.35 ms** on the `layers3D` pass on an Adreno 610 at the Grenoble city camera (2.30 vs 1.95 ms
 median) — see the [performance log](../performance-log.md). Not re-measured since.

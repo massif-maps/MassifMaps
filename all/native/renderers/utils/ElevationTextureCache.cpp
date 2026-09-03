@@ -558,8 +558,24 @@ namespace massif {
         // grid LRU drops a grid while the texture built from it goes on rendering, which is what
         // made a CACHED_ONLY query answer "no data" for ground plainly on screen.
         vt::TileId tileId(zoom, x, y);
+        int dataZoom = -1;
         for (;;) {
             MapTile dataTile = _elevationManager->getDetailDataTile(MapTile(tileId.x, tileId.y, tileId.zoom, 0), _detailLevels);
+            if (dataZoom < 0) {
+                dataZoom = dataTile.getZoom();
+            }
+            // A base is BAKED into the vertices, so an ancestor far above the level the source
+            // actually carries is not a coarser answer but a wrong one: measured over Paris, a
+            // footprint that fell through to a far ancestor came back at 127 m where the DEM says
+            // 34 m, and neighbouring footprints in the same block disagreed by 14 m - which is the
+            // stepped rooflines and the holes between two halves of one building. Refusing it is
+            // strictly better than baking it: the vertex keeps its sentinel, polygon3DVsh falls
+            // back to the ground under each vertex - the SAME field the surface is drawn from, so
+            // the building meets the ground - and the base resolves for real once the tile lands
+            // (TileRenderer re-resolves on every elevation arrival).
+            if (dataZoom - dataTile.getZoom() > BASE_MAX_ANCESTOR_LEVELS) {
+                return false;
+            }
             auto cacheIt = _cache.find(dataTile.getTileId());
             if (cacheIt != _cache.end() && cacheIt->second.grid) {
                 double meters = cacheIt->second.grid->sampleNodeHeight(internalX, internalY); // the surface, as the extrusion base must sit on it

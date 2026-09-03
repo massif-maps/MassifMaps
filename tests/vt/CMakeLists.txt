@@ -14,6 +14,7 @@ add_executable(vt_tests
   ExtrusionBevelTest.cpp
   LineJoinTest.cpp
   ExtrusionBaseTest.cpp
+  ShadowCasterClipTest.cpp
   SpanGeometryTest.cpp
   "${SDK_BASE_DIR}/libs-massif/vt/src/vt/Label.cpp"
   "${SDK_BASE_DIR}/libs-massif/vt/src/vt/TileLayerBuilder.cpp"

@@ -240,7 +240,10 @@ answers. The real fix is a depth pre-pass — extrusions rendered depth-only fir
 The caster pass draws **exactly the terrain surfaces that are about to be drawn on screen**, from the
 sun, into a packed-depth texture; the surface shader then looks itself up in it. Casters and
 receivers share one vertex shader and one elevation fetch, so the shadow geometry cannot disagree
-with the rendered geometry.
+with the rendered geometry. The extrusion caster keeps the drawn extrusion's half-open tile clip
+too (`polygon3DShadowCasterFsh`): under overzoom every target tile holds the whole source geometry,
+and an unclipped copy whose base has not resolved yet stood above the drawn building and shadowed
+its roof (a wedge with a texel ladder, Louvre Pyramid, 2026-09-03).
 
 Design points, each measured:
 

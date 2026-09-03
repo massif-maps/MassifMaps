@@ -14,6 +14,7 @@ void testExtrusionBevel();
 void testLineJoinReach();
 void testExtrusionBase();
 void testSpanGeometry();
+void testShadowCasterClip();
 
 int main() {
     testPlateBitmap();
@@ -24,6 +25,7 @@ int main() {
     testLineJoinReach();
     testExtrusionBase();
     testSpanGeometry();
+    testShadowCasterClip();
 
     std::printf("\n%d failure(s)\n", failures);
     return failures ? 1 : 0;

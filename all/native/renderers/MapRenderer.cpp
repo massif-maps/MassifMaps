@@ -1568,6 +1568,15 @@ namespace massif {
                 manual = terrainOptions->isManualFlatten(); // setFlattened hands the ratio back
             }
         } else {
+            // The rule turned off while its last answer was ON: hand the state back, or the map
+            // stays flat for good. Seen at startup: the SDK's defaults (2 px / 88 degrees) ran on
+            // the first frame, at the default tilt of 90, before the app set its own thresholds to
+            // 0 - and with the rule off nothing ever asked for 3D again. Only what the rule itself
+            // set is released; an app's explicit setFlattened(true) is not the rule's to undo.
+            if (_autoFlattenTrigger.last == 1 && !manual && terrainOptions->isFlattened()) {
+                Log::Info("MapRenderer: auto-flatten disabled while ON - releasing the flat state it set");
+                terrainOptions->setFlattened(false);
+            }
             _autoFlattenTrigger = AutoFlatten::Trigger(); // re-arm: the next answer is an edge again
         }
 

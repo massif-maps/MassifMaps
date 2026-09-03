@@ -879,6 +879,12 @@ places its focus at sea level; the next frame lifts it, and the camera-to-focus 
 built is preserved, so the camera follows the ground's height difference as mapbox's does. Both
 spots read z16.27 after it.
 
+**The auto-flatten rule hands back what it set.** The SDK's defaults (2 px, 88°) run on the first
+frame, at the default tilt of 90, before an app has set its own thresholds — and an app that then
+sets them to 0 turned the rule off with its last answer ON, so nothing ever asked for 3D again:
+the map came up flat, at random, whenever that first frame beat the app's setters. A rule disabled
+while ON now releases the flat state it set (never an app's own `setFlattened(true)`), and logs it.
+
 `TerrainOptions::CameraClearance` keeps the camera a height above the ground under it. It is a
 **bound on the zoom** (`ViewState::getTerrainMaxZoom`, clamped in `CameraZoomEvent::calculate`)
 plus a per-frame correction in `MapRenderer` for the paths that lower the camera without zooming —

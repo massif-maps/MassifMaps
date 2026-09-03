@@ -3045,6 +3045,18 @@ namespace massif {
                     // a tile that takes seconds to appear is not.
                     static const double DRAPE_BAKE_TIME_BUDGET = 16.0;       // ms, camera moving
                     static const double DRAPE_BAKE_TIME_BUDGET_STILL = 60.0; // ms, camera at rest
+                    // The moving budget outlives the move by this. debug.massif.drapesettle <ms>
+                    // overrides it for an A/B (0 = the at-rest budget the frame the camera stops).
+                    static const double DRAPE_BAKE_SETTLE_MS = [] {
+                        double settle = 300.0;
+#ifdef __ANDROID__
+                        char property[PROP_VALUE_MAX] = { 0 };
+                        if (__system_property_get("debug.massif.drapesettle", property) > 0) {
+                            settle = std::atof(property);
+                        }
+#endif
+                        return settle;
+                    }();
                     struct BakeRequest { vt::TileId tileId; std::size_t fingerprint; std::size_t drapedIndex; };
                     std::vector<BakeRequest> blankTiles, standInTiles, partialTiles, staleTiles, restackTiles;
 
@@ -3241,6 +3253,30 @@ namespace massif {
                             blankTiles.push_back(request);       // shows a flat fill: a hole
                         }
                     }
+                    // Nearest the focus first, within each class: the budget lets a few bakes
+                    // through per frame, and in cover order the corner of the screen could fill
+                    // before the point the user is looking at. Measured in tile lengths of the
+                    // tile's own zoom, so a coarse tile at the edge does not outrank a fine one
+                    // under the focus.
+                    cglib::vec3<double> bakeFocus = viewState.getFocusPos();
+                    auto focusDistance = [focusX = bakeFocus(0) / Const::WORLD_SIZE, focusY = bakeFocus(1) / Const::WORLD_SIZE](const vt::TileId& tileId) {
+                        double extent = static_cast<double>(1 << tileId.zoom);
+                        double dx = (tileId.x + 0.5) / extent - 0.5 - focusX;
+                        double dy = 0.5 - (tileId.y + 0.5) / extent - focusY;
+                        return (dx * dx + dy * dy) * extent * extent;
+                    };
+                    {
+                        auto nearestFirst = [&focusDistance](std::vector<BakeRequest>& requests) {
+                            std::stable_sort(requests.begin(), requests.end(), [&focusDistance](const BakeRequest& a, const BakeRequest& b) {
+                                return focusDistance(a.tileId) < focusDistance(b.tileId);
+                            });
+                        };
+                        nearestFirst(blankTiles);
+                        nearestFirst(restackTiles);
+                        nearestFirst(standInTiles);
+                        nearestFirst(partialTiles);
+                        nearestFirst(staleTiles);
+                    }
                     // The tiles that carry a bridge or a tunnel, and nothing else. A map with no
                     // spans leaves this empty, so it pays for no texture, no bake and no lookup.
                     // Negative: the cache reads stack > 0 as a one-channel mask, 0 as the ground's
@@ -3370,7 +3406,16 @@ namespace massif {
                     // Same "did the camera move since the previous frame" test the occlusion
                     // read-back throttle uses (TerrainRenderer::updateDepthBuffer).
                     const cglib::mat4x4<double>& bakeMVPMatrix = viewState.getModelviewProjectionMat();
-                    bool bakeCameraMoving = !(_drapeBakeLastMVPMatrix == bakeMVPMatrix);
+                    std::chrono::steady_clock::time_point bakeNow = std::chrono::steady_clock::now();
+                    if (!(_drapeBakeLastMVPMatrix == bakeMVPMatrix)) {
+                        _drapeBakeLastMoveTime = bakeNow;
+                    }
+                    // ...and for a settle window past the last move: a fast zoom is a chain of
+                    // gestures with rests of a few frames between them, and opening the at-rest
+                    // budget in each rest made every one a 60 ms frame while the new zoom's cover
+                    // baked - the map hung between the user's fingers. Watched at Paris, z15-18
+                    // fast: 100-144 bakes queued, 39 frames over 100 ms, the worst 375 ms.
+                    bool bakeCameraMoving = std::chrono::duration<double, std::milli>(bakeNow - _drapeBakeLastMoveTime).count() < DRAPE_BAKE_SETTLE_MS;
                     _drapeBakeLastMVPMatrix = bakeMVPMatrix;
                     double bakeTimeBudget = (bakeCameraMoving ? DRAPE_BAKE_TIME_BUDGET : DRAPE_BAKE_TIME_BUDGET_STILL);
                     std::chrono::steady_clock::time_point bakeStart = std::chrono::steady_clock::now();
@@ -3428,13 +3473,32 @@ namespace massif {
                     if (!spanDrapeTiles.empty()) {
                         std::map<vt::TileId, unsigned int> spanDrapeTextures;
                         beginOffscreen();
-                        for (auto it = spanDrapeTiles.begin(); it != spanDrapeTiles.end(); it++) {
+                        // Under the frame's bake budget like every other class, nearest the focus
+                        // first, and one always goes through. Unbudgeted, an integer zoom renamed
+                        // every bridge tile in view and baked them all in one frame - 150-210 ms of
+                        // it at Paris, the frame the user feels at each zoom level. A deck whose
+                        // drape is not baked yet draws its plain roof for those frames and asks
+                        // for the next.
+                        std::vector<std::pair<vt::TileId, std::size_t>> spanBakeOrder(spanDrapeTiles.begin(), spanDrapeTiles.end());
+                        std::stable_sort(spanBakeOrder.begin(), spanBakeOrder.end(), [&focusDistance](const std::pair<vt::TileId, std::size_t>& a, const std::pair<vt::TileId, std::size_t>& b) {
+                            return focusDistance(a.first) < focusDistance(b.first);
+                        });
+                        int spanBakedThisFrame = 0;
+                        bool spanBakesLeft = false;
+                        for (auto it = spanBakeOrder.begin(); it != spanBakeOrder.end(); it++) {
                             bool spanNeedsBake = false, spanHasContent = false;
                             unsigned int spanTexture = _terrainDrapeCache->acquire(it->first, SPAN_DRAPE_STACK, it->second, spanNeedsBake, spanHasContent);
                             if (spanTexture == 0) {
                                 continue;
                             }
+                            if (spanNeedsBake && spanBakedThisFrame > 0 && !bakeTimeLeft()) {
+                                spanBakesLeft = true;
+                                continue; // not handed over: an unbaked texture is not a drape
+                            }
                             if (spanNeedsBake) {
+                                spanBakedThisFrame++;
+                                bakedThisFrame++;
+                                VT_STAT_INC(drapeBakes);
                                 glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, spanTexture, 0);
                                 glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
                                 glClear(GL_COLOR_BUFFER_BIT);
@@ -3448,6 +3512,9 @@ namespace massif {
                         }
                         for (std::size_t i = 0; i < drapeLayers.size(); i++) {
                             drapeLayers[i]->setSpanDrapeTextures(spanDrapeTextures);
+                        }
+                        if (spanBakesLeft) {
+                            requestRedraw();
                         }
                     }
                     VT_STAT_ADD(drapeBakeNs, std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - bakeStart).count());

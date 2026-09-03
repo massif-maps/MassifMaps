@@ -350,6 +350,17 @@ Three things then keep the bakes off the critical path:
   whole cover at once, which is exactly the second class. Raising the budget to bake a renamed cover
   in one frame was measured on device: worst frame **128 ms → 300 ms**, with no visible difference
   in the stand-ins it was meant to remove.
+  Two rules on top of the classes (2026-09-03): within a class the tiles bake **nearest the focus
+  first**, in tile lengths of their own zoom, so the point the user looks at fills before a corner;
+  and the moving budget (16 ms) outlives the last camera move by a **300 ms settle window**
+  (`DRAPE_BAKE_SETTLE_MS`) before the at-rest budget (60 ms) opens. A fast zoom is a chain of
+  gestures with rests of a few frames between them, and opening the at-rest budget in each rest
+  made every one a 60 ms frame while the new zoom's cover baked — watched live at Paris, z15–18
+  fast: 100–144 bakes queued, 39 frames over 100 ms, the worst 375 ms, which read as the map
+  hanging between the fingers. The deck's own drape (the span bake, per render tile) is under the
+  same budget now, nearest first, one always through: unbudgeted, an integer zoom renamed every
+  bridge tile in view and baked them all in one frame — 150–210 ms of `drape` in that frame at
+  Paris, 43–71 ms after. A deck whose drape is not baked yet draws its plain roof for those frames.
 - **Seeding.** A tile entering the cover has no texture and until its bake is budgeted it can only
   be a flat fill — the white sheet over the terrain on every zoom out. But the cache already holds
   this ground: the finer tiles it replaces, or a coarser one covering it. Copying those into the new
@@ -928,17 +939,33 @@ sets them to 0 turned the rule off with its last answer ON, so nothing ever aske
 the map came up flat, at random, whenever that first frame beat the app's setters. A rule disabled
 while ON now releases the flat state it set (never an app's own `setFlattened(true)`), and logs it.
 
-`TerrainOptions::CameraClearance` keeps the camera a height above the ground under it. It is a
-**bound on the zoom** (`ViewState::getTerrainMaxZoom`, clamped in `CameraZoomEvent::calculate`)
-plus a per-frame correction in `MapRenderer` for the paths that lower the camera without zooming —
-panning into a hillside, tilting, a DEM tile arriving. Three rules keep a gesture against that
-bound from throwing the map somewhere else:
+**The clearance is mapbox's, a fraction of the height, not a fixed 60 m.** The camera is kept a
+height above the ground *under it* (`terrain/CameraClearance.h`, the port of
+`transform._minimumHeightOverTerrain` / `_constrainCamera`): a sixteenth of its distance to sea
+level — `mercatorZ(min(seaLevelZoom, maxZoom) + MAX_DRAPE_OVERZOOM)`, with their constant 4 — so
+it shrinks with every zoom in and never blocks one by itself. The fixed 60 m it replaces was the
+real cap on the zoom, not the sea-level reference: the camera-to-focus distance at z21 is about
+60 m on a phone, so flat ground straight down stopped at ~z21, tilt 45 at ~z20.5, and a slope
+under the camera on a 600 m hill ate the rest down to z18. `TerrainOptions::CameraClearance` is
+now an optional **floor** in metres under that rule, default 0. What the rule inherits from
+mapbox: on very high ground the sea-level share is a cap of its own — 3842 m at Aiguille du Midi
+needs a 256 m orbit straight down, about z19. It is a
+**bound on the zoom** (`ViewState::getTerrainMaxZoom`, clamped in `CameraZoomEvent::calculate`),
+solved on the camera-to-focus vector so it lands exactly on the shell, plus a per-frame
+correction in `MapRenderer` for the paths that lower the camera without zooming — panning into
+a hillside, a DEM tile arriving. Three rules keep a gesture against that bound from throwing the
+map somewhere else:
 
 - **The bound stops a zoom in; it never drives a zoom out.** A zoom event scales the map about its
   pivot, and with the pivot under the fingers, clamping a zoom-*in* request to below the current
   zoom scales the map the other way about that point — the map jumps sideways, once per pinch tick.
-  Getting back onto the shell is the renderer's correction, which zooms about the focus and moves
-  nothing sideways.
+  `ViewState::clampZoom` honours the same rule. Getting back onto the shell is the renderer's
+  correction, and it is mapbox's: the camera is **lifted at a constant distance to the focus**, so
+  the zoom is kept and the tilt gives (`_constrainCamera` keeps `cameraToCenter`'s length). Only
+  past the tilt range's top does the rest come from a zoom out about the focus. And it lifts only
+  a camera under the ground, or after a pan (their `adaptCameraAltitude` = dragging): after a
+  zoom the ground under the moved camera differs by a little, and lifting for that turned every
+  pinch tick on a slope into a tilt.
 - **A zoom is never cancelled for want of a ground hit.** `TouchHandler::calculatePivotPos` falls
   back to the focus when the ray under the fingers misses the anchor plane or lands past the far
   plane. Close to the terrain the far plane is short and half the screen is sky, so requiring a hit

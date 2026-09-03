@@ -366,6 +366,9 @@ namespace massif {
 
         unsigned int _layersElevationVersion = 0;
         std::optional<std::chrono::steady_clock::time_point> _lastElevationRefreshTime;
+        // When the camera last moved, for the drape bake budget: a gesture's end keeps the
+        // moving budget for a settle window, so a chain of quick zooms stays smooth.
+        std::chrono::steady_clock::time_point _drapeBakeLastMoveTime = std::chrono::steady_clock::time_point();
 
         // Render thread only: the layers held back for drawOverlayLayers this frame, and whether
         // the effect resolved into the screen framebuffer's secondary color texture.

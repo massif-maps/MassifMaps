@@ -981,6 +981,23 @@ namespace massif {
                 }
             }
             if (elevationManager) {
+                // The focus sits ON the ground, as in mapbox (transform._centerAltitude): the zoom
+                // is the camera's distance to the terrain at the focus, so the ground there keeps
+                // the zoom's scale whatever its elevation. The map's projection surface is planar
+                // (the terrain one only places vector elements), so every camera event puts the
+                // focus at sea level and the ground under it moves as elevation arrives; lift the
+                // focus onto it, and the camera with it, whenever they differ. Cached-only, and
+                // only when a grid answers: "no data" is not a valley. Without this the ground
+                // rose towards a fixed camera (a 270 m hill drew 1.34x closer than asked), and a
+                // 3800 m one rose past the camera, which the clearance answered by zooming out to
+                // z12.8 for a z16.27 request.
+                {
+                    const cglib::vec3<double>& focusPos = _viewState.getFocusPos();
+                    double terrainZ = 0;
+                    if (elevationManager->getDisplayHeightCached(focusPos(0), focusPos(1), terrainZ)) {
+                        _viewState.liftFocus(terrainZ - focusPos(2));
+                    }
+                }
                 cglib::vec3<double> cameraPos = _viewState.getCameraPos();
                 double minZ = 0, maxZ = 0;
                 elevationManager->getDisplayHeightRange(cameraPos(1), minZ, maxZ);
@@ -1546,6 +1563,8 @@ namespace massif {
             bool flatten = AutoFlatten::shouldFlatten(parallax, parallaxThreshold, _viewState.getTilt(), tiltThreshold, terrainOptions->isFlattened());
             // Only on a CHANGE of the rule's own answer - see AutoFlatten::Trigger.
             if (_autoFlattenTrigger.changed(flatten)) {
+                Log::Infof("MapRenderer: auto-flatten %s (parallax %.1f px vs %.1f, tilt %.1f vs %.1f, data quiet %.1f s, seen terrain %d)",
+                    flatten ? "ON" : "off", parallax, parallaxThreshold, _viewState.getTilt(), tiltThreshold, _autoFlattenDataQuiet, _autoFlattenSeenTerrain ? 1 : 0);
                 terrainOptions->setFlattened(flatten);
                 manual = terrainOptions->isManualFlatten(); // setFlattened hands the ratio back
             }
@@ -1565,6 +1584,8 @@ namespace massif {
                                       : _flattenSwitchState.ratio <= 0.0f ? FlattenSwitch::Phase::TERRAIN
                                                                           : FlattenSwitch::Phase::RAMPING;
             terrainOptions->applyFlattenRatio(_flattenSwitchState.ratio); // hands the state over: from here setFlattened only asks
+            Log::Infof("MapRenderer: terrain switch seeded - ratio %.2f, decode3D %d, phase %d, flattened %d, manual %d",
+                _flattenSwitchState.ratio, _flattenSwitchState.decode3D ? 1 : 0, static_cast<int>(_flattenSwitchState.phase), terrainOptions->isFlattened() ? 1 : 0, manual ? 1 : 0);
         }
 
         FlattenSwitch::Input input;
@@ -1591,6 +1612,12 @@ namespace massif {
         FlattenSwitch::State next = FlattenSwitch::step(_flattenSwitchState, input);
         bool decodeChanged = next.decode3D != _flattenSwitchState.decode3D;
         bool ratioChanged = next.ratio != _flattenSwitchState.ratio;
+        if (next.phase != _flattenSwitchState.phase) {
+            // The 2D/3D switch's phase is rare and is the whole story of "why is this map flat".
+            Log::Infof("MapRenderer: terrain switch phase %d -> %d (ratio %.2f -> %.2f, flatten asked %d, manual %d, tiles ready %d, warm %.1f s)",
+                static_cast<int>(_flattenSwitchState.phase), static_cast<int>(next.phase), _flattenSwitchState.ratio, next.ratio,
+                input.flatten ? 1 : 0, input.manual ? 1 : 0, input.tilesReady ? 1 : 0, next.warmSeconds);
+        }
         _flattenSwitchState = next;
         terrainOptions->setSwitching(FlattenSwitch::isWaitingForTiles(next, input));
         if (!decodeChanged && !ratioChanged) {

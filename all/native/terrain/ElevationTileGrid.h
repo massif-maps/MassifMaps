@@ -35,7 +35,7 @@ namespace massif {
      */
     class ElevationTileGrid {
     public:
-        ElevationTileGrid(const MapTile& tile, const MapBounds& internalBounds, const std::shared_ptr<Bitmap>& bitmap, const std::array<double, 4>& coeffs);
+        ElevationTileGrid(const MapTile& tile, const MapBounds& internalBounds, const std::shared_ptr<Bitmap>& bitmap, const std::array<double, 4>& coeffs, int nodesPerEdge, int boxCells);
 
         const MapTile& getTile() const { return _tile; }
         const MapBounds& getInternalBounds() const { return _internalBounds; }
@@ -54,6 +54,19 @@ namespace massif {
          * Coordinates are clamped to the grid bounds.
          */
         float sampleHeight(double internalX, double internalY) const;
+        /**
+         * The height the terrain SURFACE has at the given internal coordinates: a bilinear sample
+         * of the node field (ElevationNodeField), which is the DEM box-filtered to the mesh cell.
+         * This is what a query that must agree with the drawn ground asks - a label anchor, an
+         * extrusion base, the raycast. sampleHeight is the DEM itself, which the surface cannot
+         * carry. Falls back to sampleHeight on a grid built without nodes.
+         * The node field is this grid's own: its edge nodes clamp at the tile border where the
+         * GPU texture reads the neighbour, so the two can differ by a fraction of a texel step
+         * along a DEM tile edge and nowhere else.
+         */
+        float sampleNodeHeight(double internalX, double internalY) const;
+        /** Mesh nodes per grid edge the node field was built for, 0 for none. */
+        int getNodesPerEdge() const { return _nodesPerEdge; }
         /**
          * Elevation gradient (dh/dx, dh/dy) in meters per internal unit at the given internal coordinates.
          */
@@ -109,10 +122,30 @@ namespace massif {
         void encodeTextureBorders(const std::array<std::shared_ptr<ElevationTileGrid>, 8>& neighbours, BorderStrips& strips) const;
 
         /**
+         * The node field as a texture in this grid's own encoding: (nodes + 1)^2 texels, texel
+         * (i, j) = node (i, j), rows south-to-north like the raster. The interior is the field
+         * built at decode time; the EDGE nodes are recomputed here because their box reaches half
+         * a cell into the neighbour (same rule as the border texels above: a same-level neighbour
+         * texel-exactly, a coarser one sampled at the texel centre, none at all clamped), so the
+         * two tiles sharing an edge compute the same node from the same texels. On an edge shared
+         * with a coarser neighbour the box is widened to that neighbour's cell, so our node meets
+         * the value its lattice interpolates there - the node-field form of the edge box filter.
+         */
+        void encodeNodeTexture(const std::array<std::shared_ptr<ElevationTileGrid>, 8>& neighbours, std::vector<std::uint8_t>& textureData) const;
+        /**
+         * The four edge rows/columns of the node texture, (nodes + 1) texels each, which are the
+         * only node texels a neighbour landing can change. south/north are (nodes + 1) x 1,
+         * west/east 1 x (nodes + 1).
+         */
+        void encodeNodeTextureBorders(const std::array<std::shared_ptr<ElevationTileGrid>, 8>& neighbours, BorderStrips& strips) const;
+
+        /**
          * Wraps a DEM bitmap (mapbox/terrarium RGB encoded) in an elevation grid using the given
          * color component coefficients. Returns null if the bitmap has an unsupported format.
+         * nodesPerEdge is the mesh lattice this grid's node field is built for (0 = none), boxCells
+         * how many of its cells a node averages (ElevationNodeField::DEFAULT_BOX_CELLS).
          */
-        static std::shared_ptr<ElevationTileGrid> DecodeBitmap(const MapTile& tile, const MapBounds& internalBounds, const std::shared_ptr<Bitmap>& bitmap, const std::array<double, 4>& coeffs);
+        static std::shared_ptr<ElevationTileGrid> DecodeBitmap(const MapTile& tile, const MapBounds& internalBounds, const std::shared_ptr<Bitmap>& bitmap, const std::array<double, 4>& coeffs, int nodesPerEdge, int boxCells);
 
     private:
         // The padded texture's texel at (gx, gy), gx in [-1, width] and gy in [-1, height], written
@@ -141,6 +174,15 @@ namespace massif {
 
         float getHeight(int gx, int gy) const { return decodeTexel(texel(gx, gy)); }
 
+        // Height of node (i, j) for the node TEXTURE: the field's own value inside, a box over
+        // 'texel' (which answers outside the grid) on an edge, widened by the edge's scale.
+        template <typename TexelFn>
+        float nodeTexelHeight(int i, int j, const std::array<int, 4>& edgeScales, const TexelFn& texel) const;
+        // Neighbour texel access in metres for the node boxes, and how much coarser each
+        // neighbour (W, E, S, N) is than this grid, as a power of two (1 = not coarser).
+        std::function<float(int, int)> makeNodeTexelSampler(const std::array<std::shared_ptr<ElevationTileGrid>, 8>& neighbours) const;
+        std::array<int, 4> edgeBoxScales(const std::array<std::shared_ptr<ElevationTileGrid>, 8>& neighbours) const;
+
         const MapTile _tile;
         const MapBounds _internalBounds;
         const std::shared_ptr<Bitmap> _bitmap;
@@ -151,6 +193,9 @@ namespace massif {
         int _bytesPerTexel;
         float _minHeight;
         float _maxHeight;
+        int _nodesPerEdge;
+        int _boxCells;
+        std::vector<float> _nodeHeights; // (_nodesPerEdge + 1)^2, row-major, rows south-to-north
     };
 }
 

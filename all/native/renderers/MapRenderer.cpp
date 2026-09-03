@@ -1497,6 +1497,15 @@ namespace massif {
         // At the APP's exaggeration, not the ramped one: the ramp is what this decides.
         double minZ = 0, maxZ = 0;
         elevationManager->getDisplayHeightRange(_viewState.getCameraPos()(1), terrainOptions->getExaggeration(), minZ, maxZ);
+        // NO DATA, and PARTIAL data, are not FLAT. A view whose DEM is still arriving reports a
+        // small height range, which reads as small parallax and flattens the map - and flattening
+        // stops the elevation decode, so the range never grows and 3D never comes back. Whether
+        // terrain appeared at all then depended on which tiles happened to land first, which is why
+        // the same launch gave 3D or 2D at random. Unknown means "do not flatten yet": the rule is
+        // re-evaluated every frame and answers properly once the data settles.
+        if (!(maxZ > minZ) || !_autoFlattenSeenTerrain || _autoFlattenDataQuiet < TERRAIN_SWITCH_WARM_TIMEOUT) {
+            return std::numeric_limits<double>::infinity();
+        }
         double halfWidth = _viewState.getHalfWidth(), halfHeight = _viewState.getHalfHeight();
         return AutoFlatten::parallax(std::sqrt(halfWidth * halfWidth + halfHeight * halfHeight), maxZ - minZ, _viewState.calculateCameraDistance());
     }
@@ -1508,6 +1517,23 @@ namespace massif {
         }
         if (!terrainOptions || !terrainOptions->isEnabled()) {
             return false;
+        }
+
+        // Terrain reached at least once: only then may the rule flatten. See the member.
+        _autoFlattenSeenTerrain = _autoFlattenSeenTerrain || _flattenSwitchState.phase == FlattenSwitch::Phase::TERRAIN;
+
+        // How long the elevation data has been still. Every DEM tile that lands bumps the data
+        // version, so this is exactly "nothing new has arrived recently" - see
+        // calculateTerrainParallax, which will not decide before it.
+        if (std::shared_ptr<ElevationManager> elevationManager = terrainOptions->getElevationManager()) {
+            unsigned int dataVersion = elevationManager->getDataVersion();
+            if (dataVersion != _autoFlattenDataVersion) {
+                _autoFlattenDataVersion = dataVersion;
+                _autoFlattenDataQuiet = 0.0f;
+                requestRedraw(); // nothing else asks for the frame the wait ends on
+            } else {
+                _autoFlattenDataQuiet += deltaSeconds;
+            }
         }
 
         // Not while the app is driving the ratio itself: the rule would take it straight back.
@@ -2224,7 +2250,20 @@ namespace massif {
         return (other.x >> deltaZoom) == tileId.x && (other.y >> deltaZoom) == tileId.y;
     }
 
-    void MapRenderer::collectTerrainCover(const std::vector<std::shared_ptr<TileLayer> >& tileLayers, const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions, const std::vector<vt::TileId>& seedTileIds, std::vector<std::map<vt::TileId, std::size_t> >& layerTiles, std::map<vt::TileId, std::size_t>& collectedTiles, std::vector<vt::TileId>& leaves, int& coverZoom, int& maxCollectedZoom) {
+    std::vector<vt::TileId> MapRenderer::collectTerrainCoverTileIds(const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions) const {
+        std::vector<vt::TileId> tileIds;
+        if (_terrainRenderer) {
+            std::vector<MapTile> terrainTiles;
+            _terrainRenderer->collectVisibleTiles(viewState, terrainOptions, terrainTiles);
+            tileIds.reserve(terrainTiles.size());
+            for (const MapTile& terrainTile : terrainTiles) {
+                tileIds.emplace_back(terrainTile.getZoom(), terrainTile.getX(), terrainTile.getY());
+            }
+        }
+        return tileIds;
+    }
+
+    void MapRenderer::collectTerrainCover(const std::vector<std::shared_ptr<TileLayer> >& tileLayers, const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions, const std::vector<vt::TileId>& seedTileIds, bool extendSeedsOnly, std::vector<std::map<vt::TileId, std::size_t> >& layerTiles, std::map<vt::TileId, std::size_t>& collectedTiles, std::vector<vt::TileId>& leaves, int& coverZoom, int& maxCollectedZoom) {
         // Collected PER LAYER, then merged. The union is what the cover is built from,
         // but which layers actually have something to bake for a tile is what tells a
         // texture baked from the full stack apart from one baked while only the
@@ -2246,8 +2285,24 @@ namespace massif {
         // with no terrain at all, falling through to the flat background plane. That is the
         // "tiles blink white while zooming" report. The terrain's own cover is camera-driven and
         // always covers the view, which is where tangram takes its ground tiles from.
-        for (const vt::TileId& tileId : seedTileIds) {
-            collectedTiles.emplace(tileId, static_cast<std::size_t>(0));
+        //
+        // `extendSeedsOnly` is the drape's version of the same seed. Every leaf there costs a cache
+        // texture and a bake, so it takes only the seeds that reach DEEPER than any tile the layers
+        // gave: where the data already follows the camera the cover is exactly what it was, and the
+        // seed only adds levels past a source's maxzoom - which is where the drape used to freeze
+        // while the live geometry stayed sharp. With no data at all it seeds nothing, rather than
+        // baking a screenful of blank textures.
+        int dataMaxZoom = -1;
+        for (auto it = collectedTiles.begin(); it != collectedTiles.end(); it++) {
+            dataMaxZoom = std::max(dataMaxZoom, it->first.zoom);
+        }
+        if (!(extendSeedsOnly && dataMaxZoom < 0)) {
+            for (const vt::TileId& tileId : seedTileIds) {
+                if (extendSeedsOnly && tileId.zoom <= dataMaxZoom) {
+                    continue;
+                }
+                collectedTiles.emplace(tileId, static_cast<std::size_t>(0));
+            }
         }
         // A layer that bakes something not made of tiles - a terrain paint - cannot
         // contribute a cover, so a stack of nothing but such layers (a hillshade-only
@@ -2604,22 +2659,14 @@ namespace massif {
 
                         // The terrain's own visible cover seeds the ground: it is what the camera
                         // can see, not what the layers happen to have fetched.
-                        std::vector<vt::TileId> terrainCoverTileIds;
-                        if (_terrainRenderer) {
-                            std::vector<MapTile> terrainTiles;
-                            _terrainRenderer->collectVisibleTiles(viewState, terrainOptions, terrainTiles);
-                            terrainCoverTileIds.reserve(terrainTiles.size());
-                            for (const MapTile& terrainTile : terrainTiles) {
-                                terrainCoverTileIds.emplace_back(terrainTile.getZoom(), terrainTile.getX(), terrainTile.getY());
-                            }
-                        }
+                        std::vector<vt::TileId> terrainCoverTileIds = collectTerrainCoverTileIds(viewState, terrainOptions);
                         std::vector<std::map<vt::TileId, std::size_t> > groundLayerTiles;
                         std::map<vt::TileId, std::size_t> groundCollectedTiles;
                         std::vector<vt::TileId> groundTileIds;
                         std::vector<int> groundProxyDepths;
                         std::vector<bool> groundStandingIn; // parallel: this tile is drawn in place of a finer one
                         int groundZoom = 0, groundMaxCollectedZoom = 0;
-                        collectTerrainCover(groundLayers, viewState, terrainOptions, terrainCoverTileIds, groundLayerTiles, groundCollectedTiles, groundTileIds, groundZoom, groundMaxCollectedZoom);
+                        collectTerrainCover(groundLayers, viewState, terrainOptions, terrainCoverTileIds, false, groundLayerTiles, groundCollectedTiles, groundTileIds, groundZoom, groundMaxCollectedZoom);
 
                         // A leaf whose DEM has not arrived is drawn FLAT, and the paint skips it
                         // (it has nothing to shade), so it flashes in the bare ground colour until
@@ -2789,7 +2836,15 @@ namespace massif {
                     std::map<vt::TileId, std::size_t> collectedTiles;
                     std::vector<vt::TileId> leaves;
                     int drapeZoom = 0, maxCollectedZoom = 0;
-                    collectTerrainCover(drapeLayers, viewState, terrainOptions, std::vector<vt::TileId>(), layerTiles, collectedTiles, leaves, drapeZoom, maxCollectedZoom);
+                    // Seeded from the CAMERA where it reaches deeper than the layers do. Built from
+                    // the collected tiles alone the cover cannot split past the deepest tile a
+                    // source gave, so once the camera zooms past a source's maxzoom the drape's
+                    // metres-per-texel freeze while the live geometry keeps its full precision -
+                    // the ground goes soft and stays soft. mapbox-gl-js drapes onto a proxy source
+                    // of its own (terrain.ts, maxzoom = the MAP's max zoom, reparseOverscaled);
+                    // the terrain cover is ours, and it reaches floor(camera zoom) whatever the
+                    // vector source stops at.
+                    collectTerrainCover(drapeLayers, viewState, terrainOptions, collectTerrainCoverTileIds(viewState, terrainOptions), true, layerTiles, collectedTiles, leaves, drapeZoom, maxCollectedZoom);
                     std::map<vt::TileId, std::size_t> drapeTiles;
                     // Which drape layers have content to bake into each leaf right now. Compared
                     // against what the cached texture was actually baked from, this separates
@@ -3214,6 +3269,15 @@ namespace massif {
                             blankTiles.push_back(request);       // shows a flat fill: a hole
                         }
                     }
+                    // The tiles that carry a bridge or a tunnel, and nothing else. A map with no
+                    // spans leaves this empty, so it pays for no texture, no bake and no lookup.
+                    // Negative: the cache reads stack > 0 as a one-channel mask, 0 as the ground's
+                    // colour drape, so a negative index is another COLOUR drape without touching it.
+                    const int SPAN_DRAPE_STACK = -1;
+                    std::map<vt::TileId, std::size_t> spanDrapeTiles;
+                    for (std::size_t i = 0; i < drapeLayers.size(); i++) {
+                        drapeLayers[i]->collectSpanDrapeTiles(spanDrapeTiles);
+                    }
                     auto bakeTile = [&](const BakeRequest& request) {
                         bool needsBake = false, hasContent = false;
                         unsigned int texture = _terrainDrapeCache->acquire(request.tileId, 0, request.fingerprint, needsBake, hasContent);
@@ -3384,6 +3448,35 @@ namespace massif {
                         || partialTiles.size() > DRAPE_BAKE_BUDGET_PARTIAL
                         || staleTiles.size() > DRAPE_BAKE_BUDGET_STALE) {
                         requestRedraw();
+                    }
+                    // The DECK's own drape, baked per RENDER tile rather than per drape leaf: the
+                    // deck is drawn with its render tile, and one draw cannot sample several
+                    // textures - the same limit the coverage masks carry. Its own small loop, run
+                    // only when something in view actually has a span.
+                    if (!spanDrapeTiles.empty()) {
+                        std::map<vt::TileId, unsigned int> spanDrapeTextures;
+                        beginOffscreen();
+                        for (auto it = spanDrapeTiles.begin(); it != spanDrapeTiles.end(); it++) {
+                            bool spanNeedsBake = false, spanHasContent = false;
+                            unsigned int spanTexture = _terrainDrapeCache->acquire(it->first, SPAN_DRAPE_STACK, it->second, spanNeedsBake, spanHasContent);
+                            if (spanTexture == 0) {
+                                continue;
+                            }
+                            if (spanNeedsBake) {
+                                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, spanTexture, 0);
+                                glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+                                glClear(GL_COLOR_BUFFER_BIT);
+                                for (std::size_t i = 0; i < drapeLayers.size(); i++) {
+                                    drapeLayers[i]->bakeSpanDrapeTile(it->first);
+                                }
+                                _terrainDrapeCache->markBaked(it->first, SPAN_DRAPE_STACK, it->second, 0);
+                                TerrainDrapeCache::generateMipmaps(spanTexture);
+                            }
+                            spanDrapeTextures[it->first] = spanTexture;
+                        }
+                        for (std::size_t i = 0; i < drapeLayers.size(); i++) {
+                            drapeLayers[i]->setSpanDrapeTextures(spanDrapeTextures);
+                        }
                     }
                     VT_STAT_ADD(drapeBakeNs, std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - bakeStart).count());
                     if (bakeStarted) {

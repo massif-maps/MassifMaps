@@ -456,6 +456,11 @@ class ProjectionSurface;
         int renderTerrainGround(const Color& color);
         void collectDrapeTiles(std::map<vt::TileId, std::size_t>& drapeTiles) const;
         int bakeDrapeTile(const vt::TileId& tileId);
+        // The deck's own drape - the span content of a tile, baked apart from the ground's - so a
+        // bridge's road lands on the deck carrying it. Only for tiles that have a span at all.
+        void collectSpanDrapeTiles(std::map<vt::TileId, std::size_t>& spanTiles) const;
+        int bakeSpanDrapeTile(const vt::TileId& tileId);
+        void setSpanDrapeTextures(const std::map<vt::TileId, unsigned int>& textures);
         // The ordered draped/live style layers of this layer, for the cross-layer cut (#175).
         void collectDrapeStackOrder(std::vector<std::pair<int, bool> >& units) const;
         int bakeDrapeCoverage(const vt::TileId& tileId, int fromStyleLayerIdx);

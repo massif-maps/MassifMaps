@@ -249,7 +249,16 @@ namespace massif {
         // build on it - the drape bakes one texture per leaf, the shared ground draws one surface
         // per leaf - because the surfaces of two different tesselations of the same height field
         // do not agree and fight wherever they overlap.
-        void collectTerrainCover(const std::vector<std::shared_ptr<TileLayer> >& tileLayers, const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions, const std::vector<vt::TileId>& seedTileIds, std::vector<std::map<vt::TileId, std::size_t> >& layerTiles, std::map<vt::TileId, std::size_t>& collectedTiles, std::vector<vt::TileId>& leaves, int& coverZoom, int& maxCollectedZoom);
+        // `extendSeedsOnly` keeps the seed to the levels the layers do NOT reach, which is what the
+        // drape wants: one leaf there is one cache texture and one bake, so it pays for the extra
+        // depth past a source's maxzoom and for nothing else. The shared ground takes the seed
+        // whole (false) - it has no texture budget and needs the full view covered.
+        void collectTerrainCover(const std::vector<std::shared_ptr<TileLayer> >& tileLayers, const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions, const std::vector<vt::TileId>& seedTileIds, bool extendSeedsOnly, std::vector<std::map<vt::TileId, std::size_t> >& layerTiles, std::map<vt::TileId, std::size_t>& collectedTiles, std::vector<vt::TileId>& leaves, int& coverZoom, int& maxCollectedZoom);
+
+        // The terrain's own camera-driven cover, the seed both paths above are built from. It is
+        // what the camera can see rather than what the layers fetched, so it reaches
+        // floor(camera zoom) whatever zoom a data source stops at.
+        std::vector<vt::TileId> collectTerrainCoverTileIds(const ViewState& viewState, const std::shared_ptr<TerrainOptions>& terrainOptions) const;
 
         // Directional shadows for one terrain stack: resolves the light from the styles, fits a
         // light box per cascade to the cover, re-renders the caster pass only when it has actually
@@ -295,6 +304,18 @@ namespace massif {
         // reads them; what is kept here is the phase the switch is in.
         FlattenSwitch::State _flattenSwitchState;
         AutoFlatten::Trigger _autoFlattenTrigger;
+        // Auto-flattening reads its parallax from the elevation height range, and that range is
+        // only meaningful once the DEM has stopped arriving: a partly loaded view reports a small
+        // range, which reads as small parallax and flattens the map - and flattening stops the
+        // elevation decode, so it never recovers. These watch the data version and hold the rule
+        // off until it has been still for TERRAIN_SWITCH_WARM_TIMEOUT.
+        unsigned int _autoFlattenDataVersion = 0;
+        float _autoFlattenDataQuiet = 0.0f;
+        // Auto-flattening turns 3D OFF once it stops earning its cost - it is a transition OUT of
+        // terrain, never a starting state. Until terrain has been reached once it cannot fire, or
+        // a view whose DEM has not arrived flattens itself at startup and never recovers, because
+        // flattening is what stops the elevation decode that would prove it wrong.
+        bool _autoFlattenSeenTerrain = false;
         std::weak_ptr<TerrainOptions> _flattenSwitchOptions;
 
         std::shared_ptr<GLResourceManager> _glResourceManager;

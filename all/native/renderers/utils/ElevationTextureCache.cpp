@@ -385,6 +385,7 @@ namespace massif {
             VT_STAT_SPLIT(demUploadNs, uploadClock);
             VT_STAT_INC(demUploads);
             _cache.insert_or_assign(encoded.gridTileId, std::move(entry));
+            if (encoded.grid) { _contentChanges.push_back(encoded.grid->getTile()); }
         }
     }
 
@@ -496,6 +497,44 @@ namespace massif {
         }
     }
 
+    bool ElevationTextureCache::getDisplayHeight(double internalX, double internalY, int zoom, double& height) const {
+        if (zoom < 0) {
+            return false;
+        }
+        // The tile HOLDING the point, which is not the tile being drawn: a span reaches past its
+        // own tile by design, and its far portal belongs to a neighbour.
+        int extent = 1 << zoom;
+        double u = internalX / Const::WORLD_SIZE + 0.5;
+        double v = 0.5 - internalY / Const::WORLD_SIZE;
+        int x = static_cast<int>(std::floor(u * extent));
+        int y = static_cast<int>(std::floor(v * extent));
+        if (x < 0 || y < 0 || x >= extent || y >= extent) {
+            return false;
+        }
+        // The same mapping getTexture resolves a tile through (getDetailDataTile), walking up to
+        // an ancestor exactly as it does - so the query lands on the height field the surface is
+        // drawn from. Deliberately NOT _frameResolved: that is filled as tiles are drawn, and a
+        // span resolving before its tile's texture is fetched would find nothing and drape.
+        //
+        // The grid comes from the entry the TEXTURE holds, not from ElevationManager: the manager's
+        // grid LRU drops a grid while the texture built from it goes on rendering, which is what
+        // made a CACHED_ONLY query answer "no data" for ground plainly on screen.
+        vt::TileId tileId(zoom, x, y);
+        for (;;) {
+            MapTile dataTile = _elevationManager->getDetailDataTile(MapTile(tileId.x, tileId.y, tileId.zoom, 0), _detailLevels);
+            auto cacheIt = _cache.find(dataTile.getTileId());
+            if (cacheIt != _cache.end() && cacheIt->second.grid) {
+                double meters = cacheIt->second.grid->sampleHeight(internalX, internalY);
+                height = meters * _elevationManager->getExaggeration() * _elevationManager->getDisplayScale(internalY);
+                return true;
+            }
+            if (tileId.zoom <= 0) {
+                return false;
+            }
+            tileId = tileId.getParent();
+        }
+    }
+
     void ElevationTextureCache::beginFrame() {
         // Textures encoded since the last frame go up now, ahead of the draws that sample them,
         // and border refinements are patched into the ones already there.
@@ -507,6 +546,12 @@ namespace massif {
 #endif
         _frameResolved.clear();
         _frameStartCounter = _accessCounter;
+    }
+
+    std::vector<MapTile> ElevationTextureCache::drainContentChanges() {
+        std::vector<MapTile> changes;
+        changes.swap(_contentChanges);
+        return changes;
     }
 
     void ElevationTextureCache::clear() {

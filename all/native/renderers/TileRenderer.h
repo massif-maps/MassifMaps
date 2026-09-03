@@ -122,6 +122,9 @@ namespace massif {
         int renderTerrainGround(const Color& color);
         void collectDrapeTiles(std::map<vt::TileId, std::size_t>& drapeTiles) const;
         int bakeDrapeTile(const vt::TileId& tileId);
+        void collectSpanDrapeTiles(std::map<vt::TileId, std::size_t>& spanTiles) const;
+        int bakeSpanDrapeTile(const vt::TileId& tileId);
+        void setSpanDrapeTextures(const std::map<vt::TileId, unsigned int>& textures);
         // This layer's style layers with drapeable content, in draw order, each flagged draped or
         // live. The owner concatenates them across layers to place a live layer in the whole stack
         // (see GLTileRenderer::collectDrapeStackOrder).

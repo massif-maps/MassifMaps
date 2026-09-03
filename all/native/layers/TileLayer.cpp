@@ -1072,6 +1072,18 @@ namespace massif {
         return _tileRenderer->bakeDrapeTile(tileId);
     }
 
+    void TileLayer::collectSpanDrapeTiles(std::map<vt::TileId, std::size_t>& spanTiles) const {
+        _tileRenderer->collectSpanDrapeTiles(spanTiles);
+    }
+
+    int TileLayer::bakeSpanDrapeTile(const vt::TileId& tileId) {
+        return _tileRenderer->bakeSpanDrapeTile(tileId);
+    }
+
+    void TileLayer::setSpanDrapeTextures(const std::map<vt::TileId, unsigned int>& textures) {
+        _tileRenderer->setSpanDrapeTextures(textures);
+    }
+
     void TileLayer::collectDrapeStackOrder(std::vector<std::pair<int, bool> >& units) const {
         _tileRenderer->collectDrapeStackOrder(units);
     }

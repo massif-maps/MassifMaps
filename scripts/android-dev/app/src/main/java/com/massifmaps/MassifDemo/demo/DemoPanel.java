@@ -525,6 +525,12 @@ public final class DemoPanel {
         slider(context, "occlusion tolerance", 0f, 0.5f, DemoConfig.TERRAIN_OCCLUSION_TOLERANCE, false, new FloatSetting() {
             public void set(float value) { DemoConfig.TERRAIN_OCCLUSION_TOLERANCE = value; demo.terrainOptions.setBillboardOcclusionTolerance(value); }
         });
+        // How close the camera may get to the ground under it. It BOUNDS THE ZOOM, so lowering it
+        // is the only way to reach a high zoom over terrain - which is what judging the drape at
+        // z17+ needs. 0 removes the clamp entirely and lets the camera fly through the ground.
+        slider(context, "camera clearance (m)", 0f, 500f, DemoConfig.TERRAIN_CAMERA_CLEARANCE, true, new FloatSetting() {
+            public void set(float value) { DemoConfig.TERRAIN_CAMERA_CLEARANCE = value; demo.terrainOptions.setCameraClearance(value); }
+        });
         // Exaggeration and the resolutions re-tesselate / drop every cached tile texture, so they
         // are applied on release only - applying them per pixel of drag is a guaranteed stall.
         slider(context, "exaggeration", 0f, 3f, DemoConfig.TERRAIN_EXAGGERATION, true, new FloatSetting() {

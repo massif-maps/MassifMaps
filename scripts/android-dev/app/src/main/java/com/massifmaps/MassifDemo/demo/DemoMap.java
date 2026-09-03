@@ -92,7 +92,7 @@ public class DemoMap {
 
     /** One switchable layer of the demo. */
     public enum Feature {
-        CELESTIAL, STARS, BASE, SATELLITE, API_SOURCE, HILLSHADE, HYPSO, CONTOUR, CONTOUR_TILES, ROUTES, ROUTE_TEST, ROUTE_SELECT, MANEUVERS, ELEMENTS, BUGS, PEAKS
+        CELESTIAL, STARS, BASE, SATELLITE, API_SOURCE, HILLSHADE, HYPSO, CONTOUR, CONTOUR_TILES, ROUTES, ROUTE_TEST, ROUTE_SELECT, MANEUVERS, ELEMENTS, SPANS, BUGS, PEAKS
     }
 
     /** Bottom -> top draw order. Toggling a layer never reorders the others. */
@@ -102,6 +102,7 @@ public class DemoMap {
         Feature.CELESTIAL, Feature.STARS,
         Feature.BASE, Feature.SATELLITE, Feature.API_SOURCE, Feature.HILLSHADE, Feature.HYPSO,
         Feature.CONTOUR, Feature.CONTOUR_TILES, Feature.ROUTES, Feature.ROUTE_TEST, Feature.ROUTE_SELECT, Feature.MANEUVERS, Feature.ELEMENTS,
+        Feature.SPANS,
         Feature.BUGS,
         // Last: the summit names go over everything the map draws.
         Feature.PEAKS
@@ -252,6 +253,7 @@ public class DemoMap {
             case MANEUVERS: return DemoConfig.LAYER_MANEUVERS;
             case ELEMENTS: return DemoConfig.LAYER_ELEMENTS;
             case API_SOURCE: return DemoConfig.LAYER_API_SOURCE;
+            case SPANS: return DemoConfig.LAYER_SPANS;
             case BUGS: return DemoConfig.LAYER_BUGS;
             case PEAKS: return DemoConfig.LAYER_PEAKS;
             default: return false;
@@ -337,6 +339,7 @@ public class DemoMap {
             case MANEUVERS: return createManeuversLayer();
             case ELEMENTS: return createElementsLayer();
             case API_SOURCE: return createApiSourceLayer();
+            case SPANS: return createSpansLayer();
             case BUGS: return createBugsLayer();
             case PEAKS: return createPeaksLayer();
             default: return null;
@@ -351,6 +354,7 @@ public class DemoMap {
      */
     public void applyStyleParameters() {
         setStyleParameter("buildings", DemoConfig.STYLE_BUILDINGS);
+        setStyleParameter("deck3d", DemoConfig.STYLE_DECK3D);
         setStyleParameter("building_tilt_drop", DemoConfig.STYLE_TILT_DROP);
         setStyleParameter("building_ao", DemoConfig.STYLE_AO);
         setStyleParameter("building_opacity", DemoConfig.STYLE_BUILDING_OPACITY);
@@ -374,7 +378,7 @@ public class DemoMap {
      * hillshade / satellite / contour sources into the style's own layer order.
      */
     private Layer createBaseLayer() {
-        baseDecoder = DemoStyles.create(DemoConfig.STYLE_SOURCE, dataPath);
+        baseDecoder = DemoStyles.create(context, DemoConfig.STYLE_SOURCE, dataPath);
         applyStyleParameters();
         // see BASE_TILE_CACHE_MB: the SDK default (10MB) is what makes a zoom step blank the map
         if (DemoConfig.BASE_MODE == DemoConfig.BaseMode.PLAIN) {
@@ -858,6 +862,20 @@ public class DemoMap {
      *   bugsel     one line -> the 'back/' instance case. 'bugBackOpacity' -1 removes the property.
      *   bugline    one zigzag -> the translucent-line join case, and the line-label case.
      */
+    /**
+     * Bridges and tunnels from a COARSER tile than the base map's.
+     *
+     * A chord is only right while the feature's own portals are in the tile, and a long bridge is
+     * cut by the tile at every zoom you would actually look at it from - tiles SHRINK as the zoom
+     * rises, so Millau (2.46 km) fits at z13 and below and is split from z14 up. Drawing the spans
+     * from a lower zoom keeps them whole; the base map keeps its own detail.
+     */
+    private Layer createSpansLayer() {
+        VectorTileLayer layer = new VectorTileLayer(vectorSource(), DemoStyles.createSpanDecoder());
+        layer.setZoomLevelBias(DemoConfig.SPAN_ZOOM_BIAS);
+        return layer;
+    }
+
     private Layer createBugsLayer() {
         MBVectorTileDecoder decoder = DemoStyles.createBugDecoder();
         GeoJSONVectorTileDataSource source = new GeoJSONVectorTileDataSource(0, 24);
@@ -867,11 +885,40 @@ public class DemoMap {
             source.setLayerGeoJSONString(source.createLayer("bugline"), buildBugLineGeoJSON());
             source.setLayerGeoJSONString(source.createLayer("bugsel"), buildBugSelGeoJSON());
             source.setLayerGeoJSONString(source.createLayer("bugpoints"), buildBugPointsGeoJSON());
+            source.setLayerGeoJSONString(source.createLayer("bugbridge"), buildBugSpanGeoJSON("bridge", 0));
+            source.setLayerGeoJSONString(source.createLayer("bugtunnel"), buildBugSpanGeoJSON("tunnel", 0.0010));
         } catch (IOException e) {
             Log.w(TAG, "bug repro geojson rejected: " + e.getMessage());
             return null;
         }
         return new VectorTileLayer(source, decoder);
+    }
+
+    /**
+     * The synthetic BRIDGE / TUNNEL span: one chord across the Bastille ridge (see
+     * DemoConfig.BUG_SPAN_*). Draped, it climbs every metre of the 430 m the ground gains between
+     * its ends; that is the "before" both behaviours are judged against.
+     *
+     * The vertices in BETWEEN are the point. A two-point line is already a straight chord once it
+     * leaves the drape bake, so it would show a fix that is not there - real bridge geometry is
+     * digitised, and each of those vertices is what currently gets pulled down onto the ground.
+     *
+     * @param brunnel carried as a feature property, so a style can filter on it the way a
+     *                converted MapBox style filters [structure].
+     * @param lonOffset moves the tunnel off the bridge so the two are separately readable.
+     */
+    private String buildBugSpanGeoJSON(String brunnel, double lonOffset) {
+        double lon = DemoConfig.BUG_SPAN_LON + lonOffset;
+        int n = Math.max(1, DemoConfig.BUG_SPAN_VERTICES);
+        StringBuilder coords = new StringBuilder();
+        for (int i = 0; i <= n; i++) {
+            double lat = DemoConfig.BUG_SPAN_LAT_START
+                    + (DemoConfig.BUG_SPAN_LAT_END - DemoConfig.BUG_SPAN_LAT_START) * i / (double) n;
+            coords.append(i > 0 ? "," : "").append('[').append(lon).append(',').append(lat).append(']');
+        }
+        return "{\"type\":\"FeatureCollection\",\"features\":[{\"type\":\"Feature\","
+                + "\"properties\":{\"brunnel\":\"" + brunnel + "\"},"
+                + "\"geometry\":{\"type\":\"LineString\",\"coordinates\":[" + coords + "]}}]}";
     }
 
     /** A zigzag across the view: every vertex is a join, which is where the break shows. */

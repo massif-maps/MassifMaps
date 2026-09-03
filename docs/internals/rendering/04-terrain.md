@@ -831,6 +831,22 @@ without its permanent cost.
 
 ## The camera against the terrain
 
+**The focus rides on the ground.** The map's projection surface is planar
+(`TerrainProjectionSurface` only places vector elements), so every camera event puts the focus at
+sea level, and the zoom — the camera's distance to the focus — was a distance to sea level. As
+elevation arrives the ground under the focus rises towards a fixed camera: at the Bastille (470 m)
+a z16.27 / tilt 20 camera sat at 362 m ASL, *inside* the hill it looked at, which is what drew the
+near roads eight times too wide and blurred (the drape is magnified by however much closer the
+ground is), and at Aiguille du Midi (3842 m) the clearance below zoomed out until the camera cleared
+the peaks: z12.73 for a z16.27 request. mapbox defines zoom as the distance to the terrain at the
+centre (`transform._centerAltitude`, `_updateCameraOnTerrain`) and lifts the camera with it.
+`MapRenderer` now does the same every frame in terrain mode: when a decoded grid answers under the
+focus, `ViewState::liftFocus` moves focus and camera together onto it (zoom, tilt and rotation kept).
+Cached-only and only when a grid answers — an evicted grid is not a valley. A pan or zoom event still
+places its focus at sea level; the next frame lifts it, and the camera-to-focus vector the event
+built is preserved, so the camera follows the ground's height difference as mapbox's does. Both
+spots read z16.27 after it.
+
 `TerrainOptions::CameraClearance` keeps the camera a height above the ground under it. It is a
 **bound on the zoom** (`ViewState::getTerrainMaxZoom`, clamped in `CameraZoomEvent::calculate`)
 plus a per-frame correction in `MapRenderer` for the paths that lower the camera without zooming —

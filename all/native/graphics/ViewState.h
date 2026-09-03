@@ -59,6 +59,13 @@ namespace massif {
          * @param focusPos The new focus position.
          */
         void setFocusPos(const cglib::vec3<double>& focusPos);
+        /**
+         * Moves the focus AND the camera by deltaZ, keeping zoom, tilt and rotation: the
+         * camera-to-focus vector is untouched. MapRenderer uses it to keep the focus ON the
+         * terrain under it, which is what makes the zoom the camera's distance to the ground at
+         * the focus, as in mapbox, rather than to sea level.
+         */
+        void liftFocus(double deltaZ);
 
         /**
          * Returns the up direction vector.

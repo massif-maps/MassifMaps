@@ -142,6 +142,15 @@ namespace massif {
         }
         _focusPos = focusPos;
     }
+
+    void ViewState::liftFocus(double deltaZ) {
+        if (!std::isfinite(deltaZ) || deltaZ == 0) {
+            return;
+        }
+        _focusPos(2) += deltaZ;
+        _cameraPos(2) += deltaZ;
+        _cameraChanged = true;
+    }
     
     const cglib::vec3<double>& ViewState::getUpVec() const {
         return _upVec;

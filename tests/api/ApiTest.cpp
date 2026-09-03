@@ -65,6 +65,7 @@ void testSetAll();
 void testAliases();
 void testWriteProjection();
 void testAutoFlatten();
+void testElevationNodeField();
 void testDayCycleLight();
 void testDrapeStackCuts();
 void testFlattenSwitch();
@@ -423,6 +424,7 @@ int main() {
     testAliases();
     testWriteProjection();
     testAutoFlatten();
+    testElevationNodeField();
     testDayCycleLight();
     testDrapeStackCuts();
     testFlattenSwitch();

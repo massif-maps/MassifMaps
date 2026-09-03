@@ -152,6 +152,10 @@ namespace massif {
             std::array<std::shared_ptr<ElevationTileGrid>, 8> neighbours;
             std::shared_ptr<BorderBitmap> bitmap; // what the texture is rebuilt from after a context loss
             std::shared_ptr<Texture> texture;
+            // The node texture beside it: the grid's node field (ElevationTileGrid::encodeNodeTexture),
+            // which the vertex stage displaces from. Same lifetime, same patching.
+            std::shared_ptr<BorderBitmap> nodeBitmap;
+            std::shared_ptr<Texture> nodeTexture;
             std::uint64_t lastUsed = 0; // LRU stamp
         };
 
@@ -174,6 +178,7 @@ namespace massif {
             std::shared_ptr<ElevationTileGrid> grid;
             std::array<std::shared_ptr<ElevationTileGrid>, 8> neighbours;
             std::shared_ptr<BorderBitmap> bitmap;
+            std::shared_ptr<BorderBitmap> nodeBitmap;
         };
 
         // A neighbour arriving changes ONLY the 2-texel ring of the texture (the border itself,
@@ -188,6 +193,7 @@ namespace massif {
             std::shared_ptr<ElevationTileGrid> grid;
             std::array<std::shared_ptr<ElevationTileGrid>, 8> neighbours;
             ElevationTileGrid::BorderStrips strips;
+            ElevationTileGrid::BorderStrips nodeStrips; // the node texture's edge rows/columns
         };
 
         // The texture carries the source raster's texels (3 bytes for an RGB DEM), so the cap is
@@ -231,6 +237,7 @@ namespace massif {
         std::deque<EncodedTexture> _encodedQueue; // waiting for the GL thread to upload
         std::deque<BorderPatch> _patchQueue;      // waiting for the GL thread to patch
         std::vector<std::uint8_t> _encodeScratch; // worker-thread only: the encode buffer, reused
+        std::vector<std::uint8_t> _nodeScratch;   // worker-thread only: the node texture buffer
         std::unique_ptr<std::thread> _encodeThread;
         bool _encodeStopped = false;
     };

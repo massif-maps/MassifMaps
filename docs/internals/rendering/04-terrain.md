@@ -37,10 +37,10 @@ pixel and it fixes itself" was the symptom. `ElevationManager::setDataChangedLis
 3D-terrain example, cold: frames stopped at elevation version 43 while loading ran on to 159; with
 the listener the last frame follows the last decoded tile by 146 ms and has consumed it.
 
-`setSurfaceResolution` caps the elevation level to what the mesh can express (roughly one texel per
-half surface cell), which costs about two zoom levels of detail. That cap is right for geometry and
-wrong for per-fragment shading, which is why the terrain paint can opt out of it
-([07-hillshade-contours.md](07-hillshade-contours.md#the-dem-level)).
+`setSurfaceResolution` no longer caps the elevation level (it did, at one texel per half cell, and
+the cap blurred the hillshade). It sizes the **node field** every decoded grid carries instead —
+the DEM box-filtered to one mesh cell, which is what the surface is displaced from and what every
+display-height query answers with. See [The node texture](#the-node-texture).
 
 **Which DEM tile a render tile uses** is tangram's rule verbatim
 (`RasterSource::addRasterTask`): `subTileID = tileId.zoomBiasAdjusted(zoomDiff).withMaxSourceZoom(maxZoom)`
@@ -56,7 +56,8 @@ one) costs another level per hop, which is why the elevation-tile entry points c
 
 ### CPU height queries
 
-`getDisplayHeight`/`getElevationMeters` are point queries, and their callers are dense: the label
+`getDisplayHeight` answers with the node field (the drawn surface), `getElevationMeters` with the
+DEM — see [The node texture](#the-node-texture). Both are point queries, and their callers are dense: the label
 re-anchor walks every vertex of every label, the raycast marches a ray. Three things make one sample
 cheap, and each of them was a measured frame cost before it existed:
 
@@ -103,6 +104,64 @@ tile loads, ancestors addressed through uv sub-rects (`u_raster_offsets`), edges
 shader (`res/scenes/elevation.yaml`). No re-encode, no border machinery — but also no cross-level
 edge filtering, which is a seam feature this fork wants. The port that keeps both is to upload the
 grid's own samples and patch borders as small `glTexSubImage2D` strips.
+
+### The node texture
+
+The vertex stage does **not** displace from the texture above. It samples a second, small texture
+per DEM tile — the **node texture** — holding one height per mesh node: the DEM averaged over a
+box of `ElevationNodeField::DEFAULT_BOX_CELLS` (two) mesh cells centred on the node
+(`ElevationNodeField`, `ElevationTileGrid::encodeNodeTexture`). 129×129 texels for a
+512-texel grid under a 64-cell mesh, ~50 KB, same encoding as the DEM so the same decode uniforms
+read it (`uElevationNodeTexture`, `uElevationNodeUV`, `uElevationNodeTexelSize`; the lattice clamp's
+`uElevationLatticeCell` is in node-uv units).
+
+Why: a lattice that samples the DEM point by point **aliases** every relief finer than its cell. On
+a lidar-grade DEM (mapterhorn z16, 0.84 m texels) under a 6.7 m cell that is a road's cut and fill,
+a wall, a terrace — and every road edge at a grazing tilt came out as a regular sawtooth with the
+cell's period, plus a one-sided dark band (the cut face). Measured at Grenoble z16 33810/23522: the
+64-lattice's residual against the DEM was p95 0.80 m, p99 1.53 m, max 13.7 m, and the >0.5 m
+residuals traced the switchbacks as double lines. `demMaxZoom 13` made it vanish, 14 halved it;
+`meshResolution 254` shrank the period 4× and kept the amplitude. The fragment stage (shading,
+contours, the paint) keeps the full texture, which is what PR #49 removed the old level cap for.
+Camera to judge it at: `--es lat 45.201650 --es lon 5.727543 --es rotation -15.12 --es zoom 16.27
+--es tilt 20`, mapbox-standard, on emulator-5554.
+
+**Why two cells and not one.** A node sits on a texel boundary, so the old bilinear at a node was
+already a 2-texel box; the runs above were therefore a half-cell box (default), a one-cell box
+(`demMaxZoom 14`) and a two-cell box (`demMaxZoom 13`) — and a one-cell node field rendered
+pixel-identical to the `demMaxZoom 14` run (mean difference 0.01), still stepped. A one-cell box
+removes what the lattice cannot sample but leaves a road's cut as a full step within one cell, and
+a step of H over one cell is drawn as a staircase of H/2 at a grazing tilt. Roughness of the node
+field (p95 of the per-cell Laplacian, Grenoble z15 DEM, mesh 64):
+
+| box | half cell (old) | 1 cell | 2 cells | 4 cells |
+|---|---|---|---|---|
+| p95 | 5.0 m | 3.75 m | 2.36 m | 1.20 m |
+
+Two is where the staircase stops reading as one; wider trades real relief for it. The box scales
+with the cell, so a finer mesh gets its detail back. `adb shell setprop debug.massif.nodebox <cells>`
+overrides it for a measurement.
+
+Why not mipmaps of the elevation texture: the texture is padded to 514, and from level 2 up the
+texel centres no longer sit on the tile edge, so two tiles sharing a DEM border would compute
+different edge-node heights — a crack at every DEM tile border. The node texture puts a texel ON
+every node, and the edge nodes are computed from both grids (a same-level neighbour texel-exactly,
+a coarser one sampled at the texel centre, and widened to the coarser neighbour's cell so our node
+meets what its lattice interpolates), so both tiles get the same number. A neighbour landing
+patches the four edge rows/columns along with the DEM ring.
+
+At the nominal zoom a surface vertex is a node and reads one texel; an overzoomed tile's vertices
+interpolate the field bilinearly, so relief between nodes is not recovered there (the mesh could
+not carry it without aliasing anyway). The CPU side samples the same field
+(`ElevationTileGrid::sampleNodeHeight`, behind every `getDisplayHeight`), so label anchors,
+extrusion bases, the raycast and the occlusion depth mesh sit on the drawn ground; its edge nodes
+clamp where the texture reads the neighbour, a fraction of a texel step along DEM tile edges only.
+`getElevation`/`getElevationMeters` stay the DEM itself. The full-detail terrain paint cache
+(`setDetailLevels`) reuses the manager's grids, whose field is built for the nominal level, so in
+that off-by-default mode its node texture is twice as dense as its mesh and filters half a cell.
+
+mapbox never meets this: GRID_DIM 128 over a maxzoom-14 512-texel DEM is one texel per node at
+z16 by construction of the data, not by a rule.
 
 ### The decoder is per tile, not per source
 

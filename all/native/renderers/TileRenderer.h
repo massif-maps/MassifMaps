@@ -175,7 +175,9 @@ namespace massif {
     
         bool cullLabels(vt::LabelCuller& culler, const ViewState& viewState);
 
-        bool refreshTiles(const std::vector<std::shared_ptr<TileDrawData> >& drawDatas);
+        // `spanReferenceTiles`: fetched unseen for a stranded bridge's chord, unioned by the
+        // renderer and never drawn - see TileLayer::collectSpanReferenceTiles.
+        bool refreshTiles(const std::vector<std::shared_ptr<TileDrawData> >& drawDatas, const std::vector<std::shared_ptr<const vt::Tile> >& spanReferenceTiles = {});
 
         void calculateRayIntersectedElements(const cglib::ray3<double>& ray, const ViewState& viewState, float radius, std::vector<vt::GLTileRenderer::GeometryIntersectionInfo>& results) const;
         void calculateRayIntersectedElements3D(const cglib::ray3<double>& ray, const ViewState& viewState, float radius, std::vector<vt::GLTileRenderer::GeometryIntersectionInfo>& results) const;
@@ -317,6 +319,7 @@ namespace massif {
         std::shared_ptr<LabelOcclusionState> _labelOcclusionState;
 
         std::map<vt::TileId, std::shared_ptr<const vt::Tile> > _tiles;
+        std::vector<std::shared_ptr<const vt::Tile> > _spanReferenceTiles;
         
         mutable std::mutex _mutex;
     };

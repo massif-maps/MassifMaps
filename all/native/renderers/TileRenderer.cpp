@@ -961,6 +961,13 @@ namespace massif {
             // Label anchors come through in INTERNAL coordinates; the span chords are in vt's
             // normalized ones, and a deck lookup needs them in the same space.
             tileRenderer->setLabelPositionScale(1.0 / Const::WORLD_SIZE);
+#ifdef __ANDROID__
+            {
+                // debug.massif.labelanchor 0: anchor labels in the frame, the pre-2026-09 path.
+                char property[PROP_VALUE_MAX] = { 0 };
+                tileRenderer->setLabelAnchorOnCull(!(__system_property_get("debug.massif.labelanchor", property) > 0 && property[0] == '0'));
+            }
+#endif
             // An extrusion BAKES its ground into its vertices, so unlike a label it cannot accept
             // "0 means no data": a base of 0 where the ground is 215 m sinks the whole prism under
             // the terrain. This one reports whether a grid answered.
@@ -1252,7 +1259,7 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
         return true;
     }
     
-    bool TileRenderer::refreshTiles(const std::vector<std::shared_ptr<TileDrawData> >& drawDatas) {
+    bool TileRenderer::refreshTiles(const std::vector<std::shared_ptr<TileDrawData> >& drawDatas, const std::vector<std::shared_ptr<const vt::Tile> >& spanReferenceTiles) {
         // Timed separately from the work: this runs inside the layer draw pass, and the tile
         // threads hold this mutex while storing decoded tiles - which is exactly when the set
         // changes. A long wait here and a short one inside setVisibleTiles mean different fixes.
@@ -1265,7 +1272,7 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
             tiles[drawData->getVTTileId()] = drawData->getVTTile();
         }
 
-        bool changed = (tiles != _tiles) || (_horizontalLayerOffset != 0);
+        bool changed = (tiles != _tiles) || (spanReferenceTiles != _spanReferenceTiles) || (_horizontalLayerOffset != 0);
         if (!changed) {
             return false;
         }
@@ -1275,10 +1282,11 @@ viewState.getRotation(), viewState.getTilt(), viewState.getAspectRatio(), viewSt
                 if (_horizontalLayerOffset != 0) {
                     tileRenderer->teleportVisibleTiles((int)std::round(_horizontalLayerOffset / Const::WORLD_SIZE), 0);
                 }
-                tileRenderer->setVisibleTiles(tiles);
+                tileRenderer->setVisibleTiles(tiles, spanReferenceTiles);
             }
         }
         _tiles = std::move(tiles);
+        _spanReferenceTiles = spanReferenceTiles;
         _horizontalLayerOffset = 0;
         // The changed path only - the unchanged one returns above and costs nothing. INCLUDES
         // setVisibleTiles, whose own splits break it down further.

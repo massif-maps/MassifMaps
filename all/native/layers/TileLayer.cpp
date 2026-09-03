@@ -649,13 +649,24 @@ namespace massif {
         for (const SpanReference& reference : _spanReferences) {
             seen.insert(getTileId(reference.tile));
         }
+        // Finest zoom first - the renderer lists its ends coarsest first, and named in that order
+        // the horizon's pieces took every slot and the deck under the camera never got its tile.
+        // And a HARD bound: a set full of tiles all named this cull takes no new one, or a city
+        // view at z14 (a thousand stranded ends) grew it to 121 tiles and a second per union build.
         std::size_t named = 0;
-        for (const std::pair<int, cglib::vec2<double>>& end : ends) {
+        for (auto endIt = ends.rbegin(); endIt != ends.rend(); endIt++) {
+            const std::pair<int, cglib::vec2<double>>& end = *endIt;
             // Coarser than the piece, but not below where a tile set still carries its bridges
             // (OSM-derived sets: z13-14). A piece already at the floor walks to its NEIGHBOUR at
             // the same zoom instead, one hop per cull, which is how the two halves of a long
             // deck meet - dropping further hands back tiles with no span in them at all.
+            // And never past the data source's own max zoom: a tile beyond it is the same source
+            // data cut again at the finer grid, so a z19 piece (z16 source) took its reference at
+            // z16 by luck and a z20 one would have had a z17 cut with the same stranded ends.
             int zoom = std::max(getMinZoom(), std::min(end.first, std::max(SPAN_REFERENCE_MIN_ZOOM, end.first - SPAN_REFERENCE_ZOOM_DROP)));
+            if (std::shared_ptr<TileDataSource> dataSource = getDataSource()) {
+                zoom = std::min(zoom, dataSource->getMaxZoom());
+            }
             if (zoom < 0 || zoom > end.first) {
                 continue;
             }
@@ -669,6 +680,9 @@ namespace massif {
             MapTile tile(x, y, zoom, _frameNr);
             long long tileId = getTileId(tile);
             if (seen.insert(tileId).second) {
+                if (_spanReferences.size() >= 2 * MAX_SPAN_REFERENCE_TILES) {
+                    continue;
+                }
                 _spanReferences.push_back(SpanReference { tile, _spanReferenceCull });
                 named++;
             } else {
@@ -1397,9 +1411,22 @@ namespace massif {
                 }
             }
 
-            refresh = loadTile(layer) && !_preloadingTile;
+            bool loaded = loadTile(layer);
+            refresh = loaded && !_preloadingTile;
             if (refresh) {
                 loadUTFGridTile(layer);
+            }
+            // A span reference tile is fetched as a preloading tile but wanted NOW: nothing reads
+            // it until the next cull, and with the camera still there is none - the deck it was
+            // fetched for stayed stranded until the user panned.
+            if (loaded && _preloadingTile) {
+                std::lock_guard<std::recursive_mutex> lock(layer->_mutex);
+                for (const MapTile& referenceTile : layer->_spanReferenceTiles) {
+                    if (layer->getTileId(referenceTile) == _tileId) {
+                        refresh = true;
+                        break;
+                    }
+                }
             }
         }
         catch (const std::exception& ex) {

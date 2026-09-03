@@ -647,20 +647,63 @@ is rarely seen at all: a style whose bridge fills and casings are spans draws th
 chord, above the roof, and live lines are sharp at any height — which is the real answer to "the
 drape on a high bridge loses resolution".
 
+Three rules that took a round each: the bounds hold the DECK's records, not only the draped road's
+(a deck wider than the road's margin sampled the clamped edge texel as dark streaks); the composite
+is PREMULTIPLIED like every other bake (mixed as straight alpha, a half-covered texel came out half
+black — a fringe down every line); and a span extrusion **discards every fragment outside its own
+tile** (`polygon3DFsh`, the `SPAN` flag, drape or no drape). That last one is the seam fix: a roof
+triangle is emitted whole into every target tile it touches (`TileLayerBuilder::appendPolygon3D`
+keeps a triangle whose bbox reaches the polygon clip box), so past a tile edge a neighbour's copy
+of the same deck could win the depth test with a drape that stops at ITS tile — a plain strip of
+roof along every cut, which read as a wall between pieces at different heights. It was never a
+height step: with the drape forced off the whole roof was exactly the strip's colour. And a copy
+drawn before its drape is baked is the same deck uncut with walls only near its own tile, so
+wherever it won, the deck's side went missing — hence the cut applies to every span extrusion,
+not only the draped ones. mapbox cuts its extrusions at the tile for the same reason. The
+trade-off is the one mapbox has: a tile whose deck geometry has not resolved (`resolveSpanBases`
+is all-or-nothing per geometry) is a gap in the deck now, where an uncut neighbour used to cover
+it. A span extrusion also gets no ground-AO skirt (it hangs from a chord, the skirt was a halo
+sliding over ground it never touches) and is skipped by the label occlusion depth pass (it hid
+its own road's arrows and name).
+
+The union build is timed in the profile build's `RenderStats: tileSetChange … spanUnionsMs` line:
+at Grenoble it is 3.5–6.8 ms per second of panning against 55–100 ms of cull work, most of it
+label maps.
+
 **A piece never seen whole.** A map opened in the middle of a long bridge holds none of its
 portals, so every piece is unresolved and the deck drapes onto the valley. `buildSpanUnions` now
 reports every cut end it could not give a chord, stepped a twentieth of a tile past the cut
 (`SpanGeometry::beyondCutEnd`, past the source's buffer), and `TileLayer::collectSpanReferenceTiles`
-fetches the tile each point lands in as a preloading tile — cached, handed to the renderer, never
-drawn. Three levels COARSER than the piece (`SPAN_REFERENCE_ZOOM_DROP`), floored at z14
+fetches the tile each point lands in as a preloading tile — cached, never drawn, and handed to the
+renderer as its own list (`setVisibleTiles(tiles, spanReferenceTiles)`): it joins the span unions
+and nothing else, no render tile, no labels, so a reference that overlaps the view does not double
+its geometry. Three levels COARSER than the piece (`SPAN_REFERENCE_ZOOM_DROP`), floored at z14
 (`SPAN_REFERENCE_MIN_ZOOM`, where OSM-derived tile sets still carry their bridges; a z11 tile has
-no span in it at all): a piece already at the floor walks to its neighbour at the same zoom, one
-hop per cull. The zoom groups in `buildSpanUnions` run coarsest first and remember their chords
-as they go, so the fine pieces borrow the reference tile's chord in the same pass. Measured at
-Millau, cold start at z17 mid-deck: 102 stranded ends to 0. The log line
-`TileLayer: N span reference tiles for M stranded span ends` is the convergence; a piece that can
-never resolve (an approach ramp classed as a span) keeps one reference tile alive and flips the
-count by a few, which is what the line looks like when it is done.
+no span in it at all) and never past the data source's max zoom: a tile beyond it is the same
+source data cut again at the finer grid, with the same stranded ends. A piece already at the floor
+walks to its neighbour at the same zoom, one hop per cull. The zoom groups in `buildSpanUnions` run
+coarsest first and remember their chords as they go (512 of them — a city view holds one per
+structure per zoom group, and at 64 the cache evicted chords the pieces on screen still borrowed),
+so the fine pieces borrow the reference tile's chord in the same pass. Two plumbing faults kept
+this from working at all under overzoom: the fetch-only path (`buildFetchTiles(..., fetchOnly)`,
+the OOM fix — no draw data, no substitution search) never handed the tile over, and a preloading
+tile's arrival triggers no cull, so with the camera still nothing ever read it. A reference
+tile's arrival now refreshes like a visible one's (`FetchTaskBase::run`). And they live in their
+own map (`VectorTileLayer::_spanReferenceCache`, pruned to the tiles named), not the preloading
+LRU: twenty coarse city tiles at a few MB each evicted one another there, every refetch re-culled,
+and the map sat in an endless 80-culls-a-second loop with the deck flipping between two chords.
+The set is hard-bounded at 32 (a set full of tiles all named this cull takes no new one) and the
+ends are named finest zoom first: named coarsest first, a city at z14 with a thousand stranded
+ends grew it to 121 tiles, the horizon took every slot, and the union pass — quadratic then —
+ran a second per build at 2 fps. The pass is bucketed by end now (a cell per tolerance, 3x3
+lookup), 3.5 ms per second of panning at the same view.
+Measured at Grenoble,
+Pont de la Porte de France, z19.24 over a z16 source: 218 stranded ends to 8, all eight z14/z15
+pieces at the horizon; the deck's 68 z19 and 16 z18 pieces share one chord and hold it through a
+pan. The log line `TileLayer: N span reference tiles for M stranded span ends` is the
+convergence; a piece that can never resolve (an approach ramp classed as a span) keeps one
+reference tile alive and flips the count by a few, which is what the line looks like when it is
+done.
 
 **What it looks like.** Verified side-on from west of the viaduct
 (`--es lat 44.0790 --es lon 2.9960 --es zoom 15.0 --es tilt 12 --es rotation 90`): the deck reads as

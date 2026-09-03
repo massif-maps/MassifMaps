@@ -492,6 +492,10 @@ class ProjectionSurface;
         std::shared_ptr<TileRenderer> _tileRenderer;
     
         FetchingTileTasks _fetchingTileTasks;
+
+        // Tiles fetched UNSEEN so a bridge's chord can resolve - see collectSpanReferenceTiles.
+        // The subclass hands their decoded tiles to the renderer from refreshDrawData.
+        std::vector<MapTile> _spanReferenceTiles;
         
     private:
         struct FetchTileInfo {
@@ -564,8 +568,6 @@ class ProjectionSurface;
 
         std::vector<MapTile> _visibleTiles;
         std::vector<MapTile> _preloadingTiles;
-        // Tiles fetched UNSEEN so a bridge's chord can resolve - see collectSpanReferenceTiles.
-        std::vector<MapTile> _spanReferenceTiles;
         // STICKY: a reference tile is kept once named. Rebuilt from scratch each cull, a tile no
         // longer named dropped out, its pieces vanished, the ends they had resolved came back and
         // named it again - a cull storm that fetched and decoded without end (OOM-killed at 2.8 GB).

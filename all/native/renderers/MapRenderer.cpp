@@ -184,21 +184,23 @@ namespace massif {
 
             // The tile-set change path, which runs INSIDE the layer draw pass and was untimed.
             // refreshMs is the total and includes the setVisibleTiles split that follows it.
-            static long long lastTileSet[7] = { 0 };
-            const long long tileSet[7] = {
+            static long long lastTileSet[9] = { 0 };
+            const long long tileSet[9] = {
                 RenderStats::refreshTilesLockNs.load(), RenderStats::refreshTilesNs.load(),
                 RenderStats::setVisibleTilesLockNs.load(), RenderStats::terrainCoarseningNs.load(),
                 RenderStats::tileSurfacesNs.load(), RenderStats::labelMapsNs.load(),
-                RenderStats::renderTilesNs.load()
+                RenderStats::renderTilesNs.load(), RenderStats::spanUnionsNs.load(),
+                RenderStats::labelAnchorNs.load()
             };
             Log::Infof("RenderStats: tileSetChange refreshLockMs=%.1f refreshMs=%.1f | "
                        "setVisibleLockMs=%.1f coarsenMs=%.1f surfacesMs=%.1f labelMapsMs=%.1f "
-                       "renderTilesMs=%.1f (per interval)",
+                       "renderTilesMs=%.1f spanUnionsMs=%.1f labelAnchorMs=%.1f (per interval)",
                        (tileSet[0] - lastTileSet[0]) / 1.0e6, (tileSet[1] - lastTileSet[1]) / 1.0e6,
                        (tileSet[2] - lastTileSet[2]) / 1.0e6, (tileSet[3] - lastTileSet[3]) / 1.0e6,
                        (tileSet[4] - lastTileSet[4]) / 1.0e6, (tileSet[5] - lastTileSet[5]) / 1.0e6,
-                       (tileSet[6] - lastTileSet[6]) / 1.0e6);
-            for (int i = 0; i < 7; i++) { lastTileSet[i] = tileSet[i]; }
+                       (tileSet[6] - lastTileSet[6]) / 1.0e6, (tileSet[7] - lastTileSet[7]) / 1.0e6,
+                       (tileSet[8] - lastTileSet[8]) / 1.0e6);
+            for (int i = 0; i < 9; i++) { lastTileSet[i] = tileSet[i]; }
 
             // buildLabelMaps by phase. signature/list run whatever happens; merge/carry are the
             // ones reuse actually shortens.

@@ -430,6 +430,38 @@ namespace massif {
         void setViewDistance(float distance);
 
         /**
+         * Returns the drape cache budget in megabytes.
+         * @return The drape cache budget in megabytes. The default is 96.
+         */
+        int getDrapeCacheSize() const;
+        /**
+         * Sets how much video memory the cached drape textures may take, in megabytes. The cache
+         * has to hold the LIVE cover AND the generation it just replaced: a leaf whose own bake has
+         * not landed stands in on the cached tiles under it, so a budget that fits only one cover
+         * evicts the previous generation on every frame of a zoom and those leaves are painted in
+         * the flat background colour instead - the ground blinking during a fast zoom.
+         * It also decides the automatic drape resolution (see DrapeResolution and DrapeWorkingSet),
+         * since the two have to agree.
+         * @param megabytes The new budget in megabytes, or 0 for the default of 96.
+         */
+        void setDrapeCacheSize(int megabytes);
+
+        /**
+         * Returns how many drape tiles the automatic resolution assumes are cached at once.
+         * @return The assumed working set in tiles. The default is 64.
+         */
+        int getDrapeWorkingSet() const;
+        /**
+         * Sets how many drape tiles the automatic resolution (DrapeResolution 0) assumes have to
+         * fit the budget at once: the live cover plus the generation a zoom or pan is about to need
+         * back. The resolution is halved until that many fit DrapeCacheSize.
+         * Lower values buy sharpness at the price of a cache that thrashes; a real cover was
+         * measured at 15-34 leaves, so a working set below that cannot hold even the live cover.
+         * @param tiles The assumed working set in tiles. The default is 64.
+         */
+        void setDrapeWorkingSet(int tiles);
+
+        /**
          * Returns how many zoom levels below the camera a tile may coarsen to.
          * @return The maximum tile zoom coarsening. The default is 3.
          */
@@ -799,6 +831,8 @@ namespace massif {
         std::atomic<float> _textOcclusionOpacity;
         std::atomic<float> _viewDistanceFactor;
         std::atomic<float> _viewDistance;
+        std::atomic<int> _drapeCacheSize;
+        std::atomic<int> _drapeWorkingSet;
         std::atomic<int> _maxTileZoomCoarsening;
 
         // Contours are the one thing the drape's resolution visibly costs: they are hairline, and a

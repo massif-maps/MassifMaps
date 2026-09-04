@@ -28,6 +28,27 @@ namespace massif {
      */
     struct DrapeStandIn {
         /**
+         * Whether a cached texture shows this tile's ground. A bake with NO layer in it is not a
+         * picture: the tile's own content had not arrived and the finer proxies covering it are
+         * left out of the bake (they do not cover the target), so drawing that texture puts the
+         * flat clear colour over ground the cached finer generation still shows - measured as one
+         * leaf drawn blank for 4 s across a zoom out, over cached descendants that had the map.
+         * A seed is a picture (it IS the finer generation, copied in).
+         */
+        static bool hasPicture(bool baked, bool seeded, std::size_t layerMask) {
+            return (baked && layerMask != 0) || seeded;
+        }
+
+        /**
+         * Whether a tile's own bake has everything that was asked for, so nothing has to stand in
+         * over it. Never true of an empty bake, whatever was wanted: the descendants are drawn over
+         * it until a bake with content lands.
+         */
+        static bool isComplete(bool baked, std::size_t wantedMask, std::size_t bakedMask) {
+            return baked && bakedMask != 0 && (wantedMask & ~bakedMask) == 0;
+        }
+
+        /**
          * The candidates that together cover `tileId` once: those inside it, minus any whose own
          * ancestor is already among them. Returns indices into `candidates`, in the order given.
          *

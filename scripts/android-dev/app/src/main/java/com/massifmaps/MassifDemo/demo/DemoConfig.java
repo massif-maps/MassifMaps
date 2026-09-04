@@ -283,6 +283,9 @@ public final class DemoConfig {
      *  explicitly, so the extrusions' contact shadow baked into the drape is more than a texel
      *  wide: at 512 a drape texel is ~1.7 m on the ground and the shadow reaches under 1 m. */
     public static int TERRAIN_DRAPE_RESOLUTION = 1024;
+    /** TerrainOptions.DrapeCacheSize / DrapeWorkingSet: 0 = the SDK defaults (96 MB, 64 tiles). */
+    public static int TERRAIN_DRAPE_CACHE_SIZE = 0;
+    public static int TERRAIN_DRAPE_WORKING_SET = 0;
     /** Style layers kept OUT of the drape bake and drawn live instead. They land on top of every
      *  draped layer whatever the style order, which is why an empty filter is the A/B for the
      *  contours-over-roads ordering. '--es noDrape ""' drapes everything. */
@@ -1282,6 +1285,8 @@ public final class DemoConfig {
         TERRAIN_DRAPE_FILLS = DemoCfg.cfgBool("drape", TERRAIN_DRAPE_FILLS);
         TERRAIN_DRAPE_LINES = DemoCfg.cfgBool("drapeLines", TERRAIN_DRAPE_LINES);
         TERRAIN_DRAPE_RESOLUTION = DemoCfg.cfgInt("drapeResolution", TERRAIN_DRAPE_RESOLUTION);
+        TERRAIN_DRAPE_CACHE_SIZE = DemoCfg.cfgInt("drapeCacheSize", TERRAIN_DRAPE_CACHE_SIZE);
+        TERRAIN_DRAPE_WORKING_SET = DemoCfg.cfgInt("drapeWorkingSet", TERRAIN_DRAPE_WORKING_SET);
         TERRAIN_NO_DRAPE_FILTER = DemoCfg.cfgStr("noDrape", TERRAIN_NO_DRAPE_FILTER);
         TERRAIN_TILE_EDGE_STITCHING = DemoCfg.cfgBool("stitch", TERRAIN_TILE_EDGE_STITCHING);
         TERRAIN_SEAMLESS_TILE_EDGES = DemoCfg.cfgBool("seamlessEdges", TERRAIN_SEAMLESS_TILE_EDGES);

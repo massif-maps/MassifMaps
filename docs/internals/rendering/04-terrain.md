@@ -369,7 +369,14 @@ Three things then keep the bakes off the critical path:
   hanging between the fingers. The deck's own drape (the span bake, per render tile) is under the
   same budget now, nearest first, one always through: unbudgeted, an integer zoom renamed every
   bridge tile in view and baked them all in one frame — 150–210 ms of `drape` in that frame at
-  Paris, 43–71 ms after. A deck whose drape is not baked yet draws its plain roof for those frames.
+  Paris, 43–71 ms after. A deck whose drape has never been baked draws its plain roof for those
+  frames. Two more rules (2026-09-04), from a z20→19 step at the Louvre with 14 span tiles in view:
+  the span bakes run **right after the blank ground**, not last — run last they queued behind the
+  zoom's ground re-bakes at one per frame and the decks were bare for 14 frames; and a deck whose
+  drape is **baked but re-fingerprinted** (its proxy gave way to the native tile, which happens once
+  per deck per zoom step) is handed over as it is while its re-bake waits, an older road on the deck
+  rather than a bare one. Only a texture that has never been baked stays out of the hand-over. Bare
+  deck draws over that step: 27 → measured after the change in the same log.
 - **Seeding.** A tile entering the cover has no texture and until its bake is budgeted it can only
   be a flat fill — the white sheet over the terrain on every zoom out. But the cache already holds
   this ground: the finer tiles it replaces, or a coarser one covering it. Copying those into the new
@@ -425,10 +432,43 @@ surfaces actually drawn as a flat fill in a frame: worst frame **11 of 19 (58 %)
 What is left is a cold cache, where there is genuinely nothing to stand in on — the remaining fills
 cluster in the first second after launch.
 
+### The cache has to hold two generations, not one
+
+Searching the cache is worthless if the cache has already been emptied, and it had: the budget was
+sized for **one** cover. Two things did it, both measured on the same pinch at dusk (where a flat
+fill is obvious — it is painted in the style's background colour, unlit, so it reads as a light
+patch on lit ground):
+
+- `DrapeResolution` **defaulted to 1024**, so the automatic path never ran and the cache held
+  `96 MB / 4 MB = 24` tiles against a cover of 17–28 leaves.
+- the entry-count cap counted **coverage masks as whole tiles** (28 colour + 28 masks = 56 against
+  a cap of 24), which its own comment says it should not — a mask is a quarter of a drape in bytes.
+
+Together they evicted 21–28 entries *every frame* of a zoom, so `seeded 0`, `blank 16`, and the
+stand-in had nothing to read. The resolution now defaults to automatic, the count cap counts colour
+entries only, and `DRAPE_WORKING_SET` is **64** — the live cover plus the generation behind it —
+which steps the bake to 512. Both ends of that trade are now the app's: `TerrainOptions::
+DrapeCacheSize` (MB) and `TerrainOptions::DrapeWorkingSet` (tiles); an app that wants mapbox's 1024
+raises the budget to pay for it.
+
+Measured, four fast two-level zooms: frames drawing a flat fill **13 → 7**, worst frame **18 of 23
+(78 %) → 11 of 20 (55 %)**, and — the point — a **second pass over the same ground fell from 14–18
+fills to 1–2**, because the previous generation now survives to stand in. The first traversal is
+still cold and that is honest: there is nothing cached to show yet.
+
 A leaf already drawing its **own** bake does not get the finer generation stacked on top of it even
 when that bake is incomplete: it covers this ground and is merely missing a layer, with the re-bake
 already queued. Stacking a finer tesselation over it was a two-frame mesh pop at every integer zoom
 out (`showsOwnBake` in `MapRenderer`, same rule as `showsAncestor` above it).
+
+The exception is a bake with **nothing in it**. A render tile whose native tile has not arrived
+holds only the finer proxies it retains, and the bake leaves those out (they do not *cover* the
+target), so the bake produces no layer at all and is still marked baked. Drawn as the tile's own
+picture that texture is the flat clear colour — measured at a z20→19 step as one z18 leaf blank for
+4 s over cached z19/z20 drapes that had the map. An empty bake is therefore not a picture
+(`DrapeStandIn::hasPicture`): the leaf seeds from the cached generation like a fresh tile, or draws
+the descendants over itself, and it is never *complete* (`DrapeStandIn::isComplete`) until a bake
+with content lands. `findBaked` skips it too, so it never stands in for a neighbour.
 
 ### The outgoing generation at an integer zoom out
 

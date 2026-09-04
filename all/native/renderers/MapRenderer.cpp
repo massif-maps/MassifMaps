@@ -30,6 +30,7 @@
 #include "renderers/PostProcessEffect.h"
 #include "renderers/TerrainRenderer.h"
 #include "renderers/utils/TerrainDrapeCache.h"
+#include "terrain/DrapeStandIn.h"
 #include "renderers/utils/TerrainShadowMap.h"
 #include "renderers/utils/ScreenMaskBuffer.h"
 
@@ -2867,7 +2868,9 @@ namespace massif {
                     if (!_terrainDrapeCache) {
                         _terrainDrapeCache = std::make_unique<TerrainDrapeCache>();
                     }
-                    _terrainDrapeCache->setResolution(TileRenderer::resolveDrapeResolution(terrainOptions->getDrapeResolution(), viewState, _options));
+                    _terrainDrapeCache->setMaxBytes(static_cast<std::size_t>(std::max(0, terrainOptions->getDrapeCacheSize())) * 1024 * 1024);
+                    _terrainDrapeCache->setResolution(TileRenderer::resolveDrapeResolution(terrainOptions->getDrapeResolution(), viewState, _options,
+                        static_cast<std::size_t>(terrainOptions->getDrapeCacheSize()), terrainOptions->getDrapeWorkingSet()));
                     // WHICH layers bake, not what is in them. Switching the base map's style
                     // builds a new layer object, so the cached textures - including the ones held
                     // off screen for panning - are pictures of the previous style. They are only
@@ -3237,7 +3240,7 @@ namespace massif {
                         // that is THE flash. Usable = every layer that has something is in it.
                         std::size_t wantedMask = drapeTileLayerMasks[it->first];
                         std::size_t bakedMask = _terrainDrapeCache->bakedLayerMask(it->first, 0);
-                        bool complete = baked && (wantedMask & ~bakedMask) == 0;
+                        bool complete = DrapeStandIn::isComplete(baked, wantedMask, bakedMask);
                         // A seed already IS the finer generation, composited into this tile's own
                         // texture, so nothing has to be drawn over it.
                         bool showsStandIn = hasContent && !baked;
@@ -3525,6 +3528,68 @@ namespace massif {
                     for (auto it = restackTiles.begin(); it != restackTiles.end() && budget > 0 && bakeTimeLeft(); it++, budget--) {
                         bakeTile(*it);
                     }
+                    // The DECK's own drape, baked per RENDER tile rather than per drape leaf: the
+                    // deck is drawn with its render tile, and one draw cannot sample several
+                    // textures - the same limit the coverage masks carry. Its own small loop, run
+                    // only when something in view actually has a span. Right after the blank ground:
+                    // a deck with no drape is a hole in the picture like a flat fill is, while the
+                    // stand-in, partial and stale classes below already show one. Run last, every
+                    // deck in view queued behind a zoom's ground re-bakes at one per frame.
+                    if (!spanDrapeTiles.empty()) {
+                        std::map<vt::TileId, unsigned int> spanDrapeTextures;
+                        beginOffscreen();
+                        // Under the frame's bake budget like every other class, nearest the focus
+                        // first, and one always goes through. Unbudgeted, an integer zoom renamed
+                        // every bridge tile in view and baked them all in one frame - 150-210 ms of
+                        // it at Paris, the frame the user feels at each zoom level. A deck whose
+                        // drape is not baked yet draws its plain roof for those frames and asks
+                        // for the next.
+                        std::vector<std::pair<vt::TileId, std::size_t>> spanBakeOrder(spanDrapeTiles.begin(), spanDrapeTiles.end());
+                        std::stable_sort(spanBakeOrder.begin(), spanBakeOrder.end(), [&focusDistance](const std::pair<vt::TileId, std::size_t>& a, const std::pair<vt::TileId, std::size_t>& b) {
+                            return focusDistance(a.first) < focusDistance(b.first);
+                        });
+                        int spanBakedThisFrame = 0;
+                        bool spanBakesLeft = false;
+                        for (auto it = spanBakeOrder.begin(); it != spanBakeOrder.end(); it++) {
+                            bool spanNeedsBake = false, spanHasContent = false;
+                            unsigned int spanTexture = _terrainDrapeCache->acquire(it->first, SPAN_DRAPE_STACK, it->second, spanNeedsBake, spanHasContent);
+                            if (spanTexture == 0) {
+                                continue;
+                            }
+                            if (spanNeedsBake && spanBakedThisFrame > 0 && !bakeTimeLeft()) {
+                                spanBakesLeft = true;
+                                // Baked before, from a stack that has since changed: handed over as
+                                // it is, an older road on the deck rather than a bare deck. Every
+                                // deck re-fingerprints once per zoom step, when its proxy gives way
+                                // to the native tile, and budgeted out it was drawn bare for those
+                                // frames - the dark flash on bridges. An unbaked texture stays out.
+                                if (_terrainDrapeCache->isBaked(it->first, SPAN_DRAPE_STACK)) {
+                                    spanDrapeTextures[it->first] = spanTexture;
+                                }
+                                continue;
+                            }
+                            if (spanNeedsBake) {
+                                spanBakedThisFrame++;
+                                bakedThisFrame++;
+                                VT_STAT_INC(drapeBakes);
+                                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, spanTexture, 0);
+                                glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+                                glClear(GL_COLOR_BUFFER_BIT);
+                                for (std::size_t i = 0; i < drapeLayers.size(); i++) {
+                                    drapeLayers[i]->bakeSpanDrapeTile(it->first);
+                                }
+                                _terrainDrapeCache->markBaked(it->first, SPAN_DRAPE_STACK, it->second, 0);
+                                TerrainDrapeCache::generateMipmaps(spanTexture);
+                            }
+                            spanDrapeTextures[it->first] = spanTexture;
+                        }
+                        for (std::size_t i = 0; i < drapeLayers.size(); i++) {
+                            drapeLayers[i]->setSpanDrapeTextures(spanDrapeTextures);
+                        }
+                        if (spanBakesLeft) {
+                            requestRedraw();
+                        }
+                    }
                     budget = DRAPE_BAKE_BUDGET_STANDIN;
                     for (auto it = standInTiles.begin(); it != standInTiles.end() && budget > 0 && bakeTimeLeft(); it++, budget--) {
                         bakeTile(*it);
@@ -3557,57 +3622,6 @@ namespace massif {
                         || partialTiles.size() > DRAPE_BAKE_BUDGET_PARTIAL
                         || staleTiles.size() > DRAPE_BAKE_BUDGET_STALE) {
                         requestRedraw();
-                    }
-                    // The DECK's own drape, baked per RENDER tile rather than per drape leaf: the
-                    // deck is drawn with its render tile, and one draw cannot sample several
-                    // textures - the same limit the coverage masks carry. Its own small loop, run
-                    // only when something in view actually has a span.
-                    if (!spanDrapeTiles.empty()) {
-                        std::map<vt::TileId, unsigned int> spanDrapeTextures;
-                        beginOffscreen();
-                        // Under the frame's bake budget like every other class, nearest the focus
-                        // first, and one always goes through. Unbudgeted, an integer zoom renamed
-                        // every bridge tile in view and baked them all in one frame - 150-210 ms of
-                        // it at Paris, the frame the user feels at each zoom level. A deck whose
-                        // drape is not baked yet draws its plain roof for those frames and asks
-                        // for the next.
-                        std::vector<std::pair<vt::TileId, std::size_t>> spanBakeOrder(spanDrapeTiles.begin(), spanDrapeTiles.end());
-                        std::stable_sort(spanBakeOrder.begin(), spanBakeOrder.end(), [&focusDistance](const std::pair<vt::TileId, std::size_t>& a, const std::pair<vt::TileId, std::size_t>& b) {
-                            return focusDistance(a.first) < focusDistance(b.first);
-                        });
-                        int spanBakedThisFrame = 0;
-                        bool spanBakesLeft = false;
-                        for (auto it = spanBakeOrder.begin(); it != spanBakeOrder.end(); it++) {
-                            bool spanNeedsBake = false, spanHasContent = false;
-                            unsigned int spanTexture = _terrainDrapeCache->acquire(it->first, SPAN_DRAPE_STACK, it->second, spanNeedsBake, spanHasContent);
-                            if (spanTexture == 0) {
-                                continue;
-                            }
-                            if (spanNeedsBake && spanBakedThisFrame > 0 && !bakeTimeLeft()) {
-                                spanBakesLeft = true;
-                                continue; // not handed over: an unbaked texture is not a drape
-                            }
-                            if (spanNeedsBake) {
-                                spanBakedThisFrame++;
-                                bakedThisFrame++;
-                                VT_STAT_INC(drapeBakes);
-                                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, spanTexture, 0);
-                                glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-                                glClear(GL_COLOR_BUFFER_BIT);
-                                for (std::size_t i = 0; i < drapeLayers.size(); i++) {
-                                    drapeLayers[i]->bakeSpanDrapeTile(it->first);
-                                }
-                                _terrainDrapeCache->markBaked(it->first, SPAN_DRAPE_STACK, it->second, 0);
-                                TerrainDrapeCache::generateMipmaps(spanTexture);
-                            }
-                            spanDrapeTextures[it->first] = spanTexture;
-                        }
-                        for (std::size_t i = 0; i < drapeLayers.size(); i++) {
-                            drapeLayers[i]->setSpanDrapeTextures(spanDrapeTextures);
-                        }
-                        if (spanBakesLeft) {
-                            requestRedraw();
-                        }
                     }
                     VT_STAT_ADD(drapeBakeNs, std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - bakeStart).count());
                     if (bakeStarted) {
@@ -3667,6 +3681,7 @@ namespace massif {
                     glDepthFunc(GL_LESS);
                     glDepthMask(GL_FALSE);
                     _terrainDrapeCache->endFrame();
+
 
                     // Ground with nothing on it is the one failure the user sees immediately, and
                     // it has two quite different causes - a tile drawn in the flat clear colour,

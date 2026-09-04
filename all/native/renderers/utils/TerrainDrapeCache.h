@@ -78,10 +78,15 @@ namespace massif {
          * poison the entry for good on any path that acquires and then does not bake.
          * layerMask is the set of drape layers that actually put something in the texture.
          */
-        // What the cached drape textures may cost in total. Public because the automatic bake
-        // resolution is chosen against it (TileRenderer::resolveDrapeResolution): the two have to
-        // agree, or the cache evicts what the resolution assumed would stay.
+        // What the cached drape textures may cost in total, the DEFAULT for setMaxBytes. Public
+        // because the automatic bake resolution is chosen against it
+        // (TileRenderer::resolveDrapeResolution): the two have to agree, or the cache evicts what
+        // the resolution assumed would stay.
         static const std::size_t MAX_BYTES;
+        /**
+         * Overrides the byte budget (TerrainOptions::DrapeCacheSize). 0 restores MAX_BYTES.
+         */
+        void setMaxBytes(std::size_t maxBytes);
         // debug.massif.drapebudget 0 restores the pre-budget behaviour - a tile COUNT cap and an
         // uncapped bake resolution - so the two can be measured against each other in one build.
         static bool isBudgetEnabled();
@@ -182,6 +187,7 @@ namespace massif {
         static const std::size_t MIN_ENTRIES;         // ... but never fewer than this, whatever the resolution costs
         std::size_t maxEntries() const;
 
+        std::size_t _maxBytes;
         int _resolution;
         std::size_t _stackSignature;
         unsigned int _frameBuffer;

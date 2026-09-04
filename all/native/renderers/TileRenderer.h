@@ -104,7 +104,7 @@ namespace massif {
          * which is owned by MapRenderer and must agree with every layer's renderer, resolves it
          * the same way.
          */
-        static int resolveDrapeResolution(int setting, const ViewState& viewState, const std::shared_ptr<Options>& options);
+        static int resolveDrapeResolution(int setting, const ViewState& viewState, const std::shared_ptr<Options>& options, std::size_t budgetMegabytes = 0, int workingSet = 0);
         // Metres a draped line is drawn in front of the ground (see GLTileRenderer::setTerrainLineClearance).
         static float terrainLineClearanceMeters();
         // Style layers kept out of the drape bake and drawn live instead: the application's
@@ -118,11 +118,13 @@ namespace massif {
         static constexpr int MAX_DRAPE_RESOLUTION = 2048;
         // Tiles the automatic resolution assumes are cached at once: the live cover plus what a pan
         // is about to need back. The resolution is lowered until that many fit the cache budget.
-        // 24, not 64: at 64 the arithmetic pins the automatic resolution to 512 on EVERY device
-        // (64 x 1024^2 x 4 = 256 MB against a 96 MB budget), which is half mapbox's linear
-        // resolution for the same tile - they bake at 1024 - and that is the drape sharpness gap.
-        // A real cover was measured at 15-34 leaves, so 64 was buying headroom nothing used.
-        static constexpr std::size_t DRAPE_WORKING_SET = 24;
+        // 64, the DEFAULT for TerrainOptions::DrapeWorkingSet: a real cover was measured at 15-34
+        // leaves and the cache has to hold the generation a stand-in reads from as well, so a
+        // working set at the size of one cover (24) evicts that generation every frame of a zoom -
+        // the ground blinking in the flat background colour. It costs the drape sharpness gap
+        // against mapbox, who bake the same tile at 1024; an app that wants that raises
+        // DrapeCacheSize to pay for it.
+        static constexpr std::size_t DRAPE_WORKING_SET = 64;
         int renderTerrainGround(const Color& color);
         void collectDrapeTiles(std::map<vt::TileId, std::size_t>& drapeTiles) const;
         int bakeDrapeTile(const vt::TileId& tileId);

@@ -36,7 +36,7 @@ public final class DemoLive extends BroadcastReceiver {
         "fogHigh", "fogSpace", "fogStars", "fogBlend", "fogVertStart", "fogVertEnd"
     };
     private static final String[] TERRAIN_KEYS = {
-        "terrain", "drape", "drapeLines", "drapeResolution", "noDrape", "meshResolution", "exaggeration",
+        "terrain", "drape", "drapeLines", "drapeResolution", "drapeCacheSize", "drapeWorkingSet", "noDrape", "meshResolution", "exaggeration",
         "autoFlatten", "autoFlattenTilt", "autoFlattenMs", "fullSwitch",
         "viewDistance", "viewDistanceMeters", "coarsening", "stitch", "textOcclusion", "lodFactor", "lodGrazing",
         "clearance"

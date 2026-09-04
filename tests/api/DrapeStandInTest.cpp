@@ -89,9 +89,27 @@ namespace {
         TEST_CHECK(cover(leaf, {}).empty(), "an empty cache gives an empty cover, not a crash");
     }
 
+    void testEmptyBakeIsNotAPicture() {
+        TEST_CHECK(!DrapeStandIn::hasPicture(true, false, 0), "a bake with no layer in it does not show the ground");
+        TEST_CHECK(DrapeStandIn::hasPicture(true, false, 1), "a bake with a layer in it does");
+        TEST_CHECK(DrapeStandIn::hasPicture(false, true, 0), "a seed is the finer generation copied in: a picture");
+        TEST_CHECK(!DrapeStandIn::hasPicture(false, false, 0), "a fresh texture holds another tile's picture");
+    }
+
+    void testEmptyBakeIsNeverComplete() {
+        TEST_CHECK(!DrapeStandIn::isComplete(true, 0, 0), "nothing wanted, nothing baked: still stand in until content lands");
+        TEST_CHECK(!DrapeStandIn::isComplete(true, 1, 0), "a wanted layer missing from an empty bake");
+        TEST_CHECK(DrapeStandIn::isComplete(true, 1, 1), "every wanted layer baked");
+        TEST_CHECK(DrapeStandIn::isComplete(true, 1, 3), "more baked than wanted is complete too");
+        TEST_CHECK(!DrapeStandIn::isComplete(true, 3, 1), "one of two wanted layers missing");
+        TEST_CHECK(!DrapeStandIn::isComplete(false, 0, 0), "an unbaked tile is not complete");
+    }
+
 }
 
 void testDrapeStandIn() {
+    testEmptyBakeIsNotAPicture();
+    testEmptyBakeIsNeverComplete();
     testFourLevelsDownIsStillFound();
     testCoarsestWinsOverItsOwnChildren();
     testSiblingsAreAllKept();

@@ -41,7 +41,7 @@ namespace massif {
         _tileEdgeStitchingEnabled(true),
         _drapeFillsEnabled(true),
         _drapeLinesEnabled(true),
-        _drapeResolution(1024),
+        _drapeResolution(0),
         _minZoom(5),
         _maxTileZoomOffset(100),
         _backgroundColorARGB(0),
@@ -60,6 +60,8 @@ namespace massif {
         // what it coarsens is the far horizon. On the default view distance it coarsens tiles that
         // are still large on screen, and the result is a blurred band with a hard tile edge down
         // the middle of the view.
+        _drapeCacheSize(0),
+        _drapeWorkingSet(0),
         _maxTileZoomCoarsening(3),
         _noDrapeLayerFilter(DEFAULT_NO_DRAPE_LAYER_FILTER),
         _surfaceShaderSource(),
@@ -402,6 +404,28 @@ namespace massif {
     std::map<std::string, Color> TerrainOptions::getSurfaceColorParameters() const {
         std::lock_guard<std::mutex> lock(_surfaceMutex);
         return _surfaceColorParameters;
+    }
+
+    int TerrainOptions::getDrapeCacheSize() const {
+        return _drapeCacheSize.load();
+    }
+
+    void TerrainOptions::setDrapeCacheSize(int megabytes) {
+        int clamped = std::max(0, megabytes);
+        if (_drapeCacheSize.exchange(clamped) != clamped) {
+            notifyOptionChanged("DrapeCacheSize");
+        }
+    }
+
+    int TerrainOptions::getDrapeWorkingSet() const {
+        return _drapeWorkingSet.load();
+    }
+
+    void TerrainOptions::setDrapeWorkingSet(int tiles) {
+        int clamped = std::max(0, tiles);
+        if (_drapeWorkingSet.exchange(clamped) != clamped) {
+            notifyOptionChanged("DrapeWorkingSet");
+        }
     }
 
     int TerrainOptions::getMaxTileZoomCoarsening() const {

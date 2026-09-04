@@ -161,6 +161,27 @@ test('a line label repeats every 250 px, because that is MapBox\'s default and C
     assert.ok(!mss({}).includes('text-spacing:'));
 });
 
+test('an icon-only line layer gets symbol-spacing too, which is where the oneway arrows live', () => {
+    // symbol-spacing maps to text-spacing, and a layer with no text-field throws away every text-*
+    // declaration it built - so it reached the arrows nowhere and MarkersSymbolizer's own default of
+    // 100 stood in for MapBox's 250: two and a half times the arrows mapbox-gl draws.
+    const sprites = new Map([['default', {
+        index: { arrow: { x: 0, y: 0, width: 8, height: 8, pixelRatio: 1, sdf: true } },
+        image: { width: 8, height: 8, data: Buffer.alloc(8 * 8 * 4, 200) },
+    }]]);
+    const arrows = (layout) => convert({ layers: [{
+        id: 'oneway', type: 'symbol', 'source-layer': 'road',
+        layout: { 'icon-image': 'arrow', 'symbol-placement': 'line', ...layout },
+    }] }, TABLE, { ...NO_PALETTE, sprites: { sheets: sprites, outDir: '/tmp/massif-style-test' } }).mss;
+
+    assert.match(arrows({}), /marker-spacing: 250;/);
+    assert.match(arrows({ 'symbol-spacing': 120 }), /marker-spacing: 120;/);
+    // line-center draws one symbol at the middle, which is what spacing 0 - the decoder's own
+    // "unset" - already does.
+    assert.ok(!arrows({ 'symbol-placement': 'line-center' }).includes('marker-spacing:'));
+    assert.ok(!arrows({ 'symbol-placement': 'point' }).includes('marker-spacing:'));
+});
+
 test('a line label repeats at symbol-spacing, not at its text-padding', () => {
     // text-padding is the culler's collision margin in MapBox, symbol-spacing the gap between one
     // repeat and the next. Feeding the padding to min-distance let the same name be drawn twice

@@ -480,6 +480,11 @@ the artwork), not the plate's border: that one is the disc's ring. Standard sets
 while its POI background is a circle, so it is what a style asking for
 `backgroundPointOfInterestLabels: none` gets — a coloured glyph with a white outline and no disc.
 
+A border is only written **with a colour to draw it in**. `shield-icon-background-border-fill`
+defaults to black and `LabelPlateStyle::hasBorder` is colour-AND-width, so a width on its own drew
+an opaque black ring round the artwork: Standard's `natural_point_label` states no
+`background-stroke` at all, and every peak came out as a mountain glyph in a black circle.
+
 The field is cropped to the disc's own box, so the plate needs no padding and its border lands
 exactly where the ring was. Its radius is measured rather than assumed: a rounded rect of side `S`
 with corner radius `r` covers `S² - (4 - π)r²`, which reads 9 (a circle) off Standard's 20 px POI
@@ -1013,6 +1018,38 @@ because a side to place the text on presupposes an icon to place it beside:
 | `text-radial-offset` | `shield-text-dx` — stated once, MIRRORED onto whichever side wins |
 | `text-justify` | `shield-text-horizontal-alignment` (`center` is `middle`; `auto` follows the side) |
 
+### `--shield-anchors`: giving a style one it never asked for
+
+Mapbox Standard states `text-variable-anchor` on **no** layer, so every POI name sits in the one
+place the style puts it and is dropped **with its icon** when it does not fit. `--shield-anchors`
+adds the list the style is missing, plus `shield-text-optional`, to every shield that declares
+neither:
+
+```sh
+massif-style mapbox2css --shield-anchors standard.json out/         # right,left,top,bottom
+massif-style mapbox2css --shield-anchors top,bottom standard.json out/
+```
+
+A layer that states its own `text-variable-anchor` keeps it. The **`shield-dy` top-up below is
+dropped** when anchors are on: the culler places the text against the icon's own edge and mirrors
+`dx`/`dy` as the gap, so moving the image as well would separate the two twice.
+
+### `--icon-font`: a glyph instead of a sprite
+
+`shield-icon-name` + `shield-icon-face-name` draw the icon as a **glyph of an icon font**, shaped
+into the label's own atlas through the font fallback chain. `--icon-font FACE --icon-font-map FILE`
+converts a style that way: the map is `{"mountain": ""}` (a character, a `U+E90A`/`0xE90A`/hex
+codepoint, or a number — all three are read), and it replaces the sprite lookup **value-for-value**,
+so a data-driven `icon-image` resolves through the same style-parameter table it always did, holding
+characters instead of file paths.
+
+Two things it does not cover, deliberately:
+
+- a name the face has no glyph for draws **no icon**, and the coverage report names it. Country
+  artwork — an RER roundel, a national motorway plate — has no font equivalent, and one font against
+  a sheet of several hundred PNGs is the trade the mode is for;
+- a **marker** keeps its sprite. A oneway arrow or a crossing is not a label and has no glyph run.
+
 No MapTiler style uses a variable anchor today; `text-optional` alone covers 17 layers of
 streets-v4 and 25 of outdoor-v4. That is the common case, and it was the one the SDK dropped:
 `buildLabelVariants` returned early on an empty anchor list and so never reached the icon-only
@@ -1026,6 +1063,15 @@ The image is moved clear of the text by half its height, but **only when the sty
 about where the text goes**. A stated `text-offset` IS the style's own answer, and the vertical
 alignment beside it already puts the text clear; adding half an icon on top doubled the gap, so a
 POI name floated well below its pin where MapTiler draws the two nearly touching.
+
+Two things about *which* height, both of which made the gap too big:
+
+- it is the **artwork's**, not the quad's. An SDF sprite is written with `SDF_PADDING` of
+  transparent margin on each side (see above), and measuring that put an 8 px icon at 20;
+- for a per-feature `icon-image` it is the **median** of the sprites the layer can name, not
+  whichever one the walk reached first. Standard's POI sheet spans a ~20 px glyph and a ~54 px badge,
+  and the first one taken hung every `natural_point_label` name a badge's height off a peak's
+  mountain glyph.
 
 ## Two operators that cost whole layers
 
@@ -1198,6 +1244,13 @@ it once. Measured at La Clusaz, z14.5: one contour label on screen before, ten a
 
 `symbol-placement: line-center` is excluded — it draws one label at the middle whatever the spacing
 says, and 0 is how CartoCSS spells that.
+
+**An icon-only line layer needs the same thing, and got none of it.** `symbol-spacing` maps to
+`text-spacing`, and a layer with no `text-field` throws away every `text-*` declaration it built — so
+the property reached the oneway arrows nowhere and `MarkersSymbolizer`'s own default of **100** stood
+in for MapBox's 250. Every arrow was drawn two and a half times too often. It is now emitted as
+`marker-spacing`, a static property, so a zoom-driven `symbol-spacing` is read at one representative
+stop and said so in the report.
 
 **Honest limits.** Porting `text-padding` changed placement only slightly. A deliberate A/B at
 `text-min-distance: 24` removed roughly a third of the labels, so the lever works and its unit is

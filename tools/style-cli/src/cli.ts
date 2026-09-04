@@ -10,6 +10,18 @@ import { WasmMissing, runWasm, wasmAvailable } from './wasm.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
+/**
+ * Sides a POI name may take when --shield-anchors is passed with no list of its own. MapBox's own
+ * styles that DO use text-variable-anchor state exactly this order, and the horizontal sides come
+ * first because a name beside an icon reads better than one under it.
+ */
+const DEFAULT_SHIELD_ANCHORS = 'right,left,top,bottom';
+
+/** What ShieldSymbolizer::parseAnchors accepts - the corners spelled without the hyphen. */
+const SHIELD_ANCHORS = new Set([
+    'center', 'top', 'bottom', 'left', 'right', 'topleft', 'topright', 'bottomleft', 'bottomright',
+]);
+
 const USAGE = `Usage: massif-style <command> [options] [args]
 
   mapbox2css <style.json> <out-dir> [--validate] [--strict] [--no-sprite]
@@ -23,6 +35,21 @@ const USAGE = `Usage: massif-style <command> [options] [args]
                             provider that needs a key
       --label-spacing N     multiply the collision gap between labels; 1 is what the
                             style asks for, higher thins the map out
+      --shield-anchors [sides]
+                            let a POI name take the first FREE side of its icon instead of
+                            the one fixed place the style states, and draw the icon alone
+                            when no side fits (shield-anchors + shield-text-optional).
+                            Sides in preference order, comma separated; the default is
+                            '${DEFAULT_SHIELD_ANCHORS}'. A layer that already states
+                            text-variable-anchor keeps its own list
+      --icon-font FACE      draw every SHIELD icon as a glyph of the FACE icon font instead of a
+                            sprite (shield-icon-name + shield-icon-face-name), so the style ships
+                            one font rather than a sheet of PNGs. Needs --icon-font-map. A marker
+                            (a oneway arrow, a crossing) keeps its sprite - it has no glyph run
+      --icon-font-map FILE  JSON mapping the style's icon-image names onto that face's characters:
+                            {"mountain": "\\ue90a"} or {"mountain": "U+E90A"} or {"mountain": 59658}.
+                            A name absent from it draws no icon, so country artwork (an RER
+                            roundel, a national motorway plate) is lost - that is the trade
       --schema NAME         retarget the style's source layers at another tile schema.
                             'openmaptiles' is the only target. A MapTiler planet_v4 style
                             becomes the OpenMapTiles layer plus the class filter that
@@ -108,7 +135,7 @@ function parseFlags(args: string[]): { flags: Map<string, string>; positional: s
     return { flags, positional };
 }
 
-const VALUE_FLAGS = new Set(['contour-schema', 'contour-major-div', 'sprite-key', 'label-spacing', 'label-emissive', 'halo-emissive', 'geometry-emissive', 'contour-elevation', 'schema', 'source-schema', 'config']);
+const VALUE_FLAGS = new Set(['shield-anchors', 'icon-font', 'icon-font-map', 'contour-schema', 'contour-major-div', 'sprite-key', 'label-spacing', 'label-emissive', 'halo-emissive', 'geometry-emissive', 'contour-elevation', 'schema', 'source-schema', 'config']);
 
 /**
  * `--config key=value`, repeatable, for a style with a `schema` (Mapbox Standard). Values are read
@@ -135,6 +162,45 @@ function parseConfig(args: string[]): Record<string, Json> {
     return config;
 }
 
+/**
+ * The icon face's own character per icon name. An icon-font builder emits the codepoint in any of
+ * three ways - the character itself, a `U+E90A`/`0xE90A`/`e90a` codepoint, or a number - and all
+ * three are the same thing, so all three are read rather than making the caller convert.
+ */
+function readGlyphMap(file: string): Map<string, string> | null {
+    let raw: unknown;
+    try {
+        raw = JSON.parse(readFileSync(file, 'utf8'));
+    } catch (error) {
+        process.stderr.write(`--icon-font-map ${file}: ${error instanceof Error ? error.message : String(error)}\n`);
+        return null;
+    }
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+        process.stderr.write(`--icon-font-map ${file}: expected an object of name -> character.\n`);
+        return null;
+    }
+    const glyphs = new Map<string, string>();
+    for (const [name, value] of Object.entries(raw as Record<string, unknown>)) {
+        if (typeof value === 'number') {
+            glyphs.set(name, String.fromCodePoint(value));
+            continue;
+        }
+        if (typeof value !== 'string' || value.length === 0) {
+            process.stderr.write(`--icon-font-map ${file}: "${name}" is not a character or a codepoint.\n`);
+            return null;
+        }
+        const codepoint = /^(?:U\+|0x|\\u)?([0-9a-f]{4,6})$/i.exec(value);
+        // A bare 4-6 hex-digit string is a codepoint, never a name: no icon face carries a glyph
+        // whose CHARACTER is "e90a".
+        glyphs.set(name, codepoint ? String.fromCodePoint(parseInt(codepoint[1], 16)) : value);
+    }
+    if (glyphs.size === 0) {
+        process.stderr.write(`--icon-font-map ${file}: no glyphs in it.\n`);
+        return null;
+    }
+    return glyphs;
+}
+
 async function mapbox2css(args: string[]): Promise<number> {
     const { flags, positional } = parseFlags(args);
     const [input, outDir] = positional;
@@ -159,6 +225,33 @@ async function mapbox2css(args: string[]): Promise<number> {
     if (sourceSchema !== undefined && sourceSchema !== 'mapbox' && sourceSchema !== 'maptiler') {
         process.stderr.write(`Unknown --source-schema "${sourceSchema}"; "mapbox" or "maptiler".\n`);
         return 2;
+    }
+
+    let shieldAnchors;
+    if (flags.has('shield-anchors')) {
+        shieldAnchors = (flags.get('shield-anchors') || DEFAULT_SHIELD_ANCHORS)
+            .split(',').map((a) => a.trim().replace('-', '')).filter(Boolean);
+        const unknown = shieldAnchors.filter((a) => !SHIELD_ANCHORS.has(a));
+        if (unknown.length > 0) {
+            process.stderr.write(`Unknown --shield-anchors side(s): ${unknown.join(', ')}; `
+                + `one of ${[...SHIELD_ANCHORS].join(', ')}.\n`);
+            return 2;
+        }
+    }
+
+    const face = flags.get('icon-font');
+    const mapFile = flags.get('icon-font-map');
+    if ((face === undefined) !== (mapFile === undefined)) {
+        process.stderr.write('--icon-font and --icon-font-map go together: the face names the font, '
+            + "the map says which character it carries each of the style's icons at.\n");
+        return 2;
+    }
+    let iconFont;
+    if (face && mapFile) {
+        const glyphs = readGlyphMap(mapFile);
+        if (glyphs === null) return 2;
+        iconFont = { face, glyphs };
+        process.stdout.write(`Icon font "${face}": ${glyphs.size} glyph(s).\n`);
     }
 
     const style = JSON.parse(readFileSync(input, 'utf8')) as MapboxStyle;
@@ -193,6 +286,8 @@ async function mapbox2css(args: string[]): Promise<number> {
         flattenSdf: flags.has('sdf-flatten'),
         foldCasings: flags.has('fold-casings'),
         labelSpacing: Number(flags.get('label-spacing') ?? 1),
+        shieldAnchors: shieldAnchors?.join(','),
+        iconFont,
         schema: schema === 'openmaptiles' ? 'openmaptiles' : undefined,
         sourceSchema,
         contour: contourSchema === 'div'

@@ -173,6 +173,7 @@
 @label_halo_radius_3: 1.5;
 @label_minimum_distance: 4;
 @label_spacing: 250;
+@oneway_spacing: 200;
 @oneway_width: 13;
 @oneway_width_2: 15;
 @road_size: 9;

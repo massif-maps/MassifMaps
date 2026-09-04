@@ -197,6 +197,7 @@ Map {
   line-elevation-mode: underground;
   marker-file: url('icons/oneway-small.png');
   marker-placement: 'line';
+  marker-spacing: @oneway_spacing;
   marker-width: @oneway_width;
   marker-allow-overlap: true;
   marker-clip: false;
@@ -207,6 +208,7 @@ Map {
   line-elevation-mode: underground;
   marker-file: url('icons/oneway-large.png');
   marker-placement: 'line';
+  marker-spacing: @oneway_spacing;
   marker-width: @oneway_width_2;
   marker-allow-overlap: true;
   marker-clip: false;
@@ -217,6 +219,7 @@ Map {
   line-elevation-mode: underground;
   marker-file: url('icons/oneway-small.png');
   marker-placement: 'line';
+  marker-spacing: @oneway_spacing;
   marker-width: @oneway_width;
   marker-allow-overlap: true;
   marker-clip: false;
@@ -227,6 +230,7 @@ Map {
   line-elevation-mode: underground;
   marker-file: url('icons/oneway-large.png');
   marker-placement: 'line';
+  marker-spacing: @oneway_spacing;
   marker-width: @oneway_width_2;
   marker-allow-overlap: true;
   marker-clip: false;
@@ -237,6 +241,7 @@ Map {
   line-elevation-mode: underground;
   marker-file: url('icons/oneway-small.png');
   marker-placement: 'line';
+  marker-spacing: @oneway_spacing;
   marker-width: @oneway_width;
   marker-allow-overlap: true;
   marker-clip: false;
@@ -247,6 +252,7 @@ Map {
   line-elevation-mode: underground;
   marker-file: url('icons/oneway-large.png');
   marker-placement: 'line';
+  marker-spacing: @oneway_spacing;
   marker-width: @oneway_width_2;
   marker-allow-overlap: true;
   marker-clip: false;
@@ -422,6 +428,7 @@ Map {
 #road[zoom >= 17][zoom < 19][oneway = 'true'] when(step(([view::zoom] - 1), (0, (([class] = 'primary' || [class] = 'secondary' || [class] = 'tertiary' || [class] = 'street' || [class] = 'street_limited') ? true : false)), (16, (([class] = 'primary' || [class] = 'secondary' || [class] = 'tertiary' || [class] = 'street' || [class] = 'street_limited' || [class] = 'primary_link' || [class] = 'secondary_link' || [class] = 'tertiary_link' || [class] = 'service' || [class] = 'track') ? true : false)))) when(([structure] = 'none' || [structure] = 'ford'))::road_oneway_arrow_b1 {
   marker-file: url('icons/oneway-small.png');
   marker-placement: 'line';
+  marker-spacing: @oneway_spacing;
   marker-width: @oneway_width;
   marker-allow-overlap: true;
   marker-clip: false;
@@ -431,6 +438,7 @@ Map {
 #road[zoom >= 19][zoom < 25][oneway = 'true'] when(step(([view::zoom] - 1), (0, (([class] = 'primary' || [class] = 'secondary' || [class] = 'tertiary' || [class] = 'street' || [class] = 'street_limited') ? true : false)), (16, (([class] = 'primary' || [class] = 'secondary' || [class] = 'tertiary' || [class] = 'street' || [class] = 'street_limited' || [class] = 'primary_link' || [class] = 'secondary_link' || [class] = 'tertiary_link' || [class] = 'service' || [class] = 'track') ? true : false)))) when(([structure] = 'none' || [structure] = 'ford'))::road_oneway_arrow_b2 {
   marker-file: url('icons/oneway-large.png');
   marker-placement: 'line';
+  marker-spacing: @oneway_spacing;
   marker-width: @oneway_width_2;
   marker-allow-overlap: true;
   marker-clip: false;
@@ -440,6 +448,7 @@ Map {
 #road[zoom >= 17][zoom < 19][oneway = 'true'] when(([class] = 'trunk' || [class] = 'trunk_link')) when(([structure] = 'none' || [structure] = 'ford'))::road_oneway_arrow_trunk_b1 {
   marker-file: url('icons/oneway-small.png');
   marker-placement: 'line';
+  marker-spacing: @oneway_spacing;
   marker-width: @oneway_width;
   marker-allow-overlap: true;
   marker-clip: false;
@@ -449,6 +458,7 @@ Map {
 #road[zoom >= 19][zoom < 25][oneway = 'true'] when(([class] = 'trunk' || [class] = 'trunk_link')) when(([structure] = 'none' || [structure] = 'ford'))::road_oneway_arrow_trunk_b2 {
   marker-file: url('icons/oneway-large.png');
   marker-placement: 'line';
+  marker-spacing: @oneway_spacing;
   marker-width: @oneway_width_2;
   marker-allow-overlap: true;
   marker-clip: false;
@@ -458,6 +468,7 @@ Map {
 #road[zoom >= 17][zoom < 19][oneway = 'true'] when(([class] = 'motorway' || [class] = 'motorway_link')) when(([structure] = 'none' || [structure] = 'ford'))::road_oneway_arrow_motorway_b1 {
   marker-file: url('icons/oneway-small.png');
   marker-placement: 'line';
+  marker-spacing: @oneway_spacing;
   marker-width: @oneway_width;
   marker-allow-overlap: true;
   marker-clip: false;
@@ -467,6 +478,7 @@ Map {
 #road[zoom >= 19][zoom < 25][oneway = 'true'] when(([class] = 'motorway' || [class] = 'motorway_link')) when(([structure] = 'none' || [structure] = 'ford'))::road_oneway_arrow_motorway_b2 {
   marker-file: url('icons/oneway-large.png');
   marker-placement: 'line';
+  marker-spacing: @oneway_spacing;
   marker-width: @oneway_width_2;
   marker-allow-overlap: true;
   marker-clip: false;
@@ -719,6 +731,7 @@ Map {
   line-elevation-mode: span;
   marker-file: url('icons/oneway-small.png');
   marker-placement: 'line';
+  marker-spacing: @oneway_spacing;
   marker-width: @oneway_width;
   marker-allow-overlap: true;
   marker-clip: false;
@@ -729,6 +742,7 @@ Map {
   line-elevation-mode: span;
   marker-file: url('icons/oneway-large.png');
   marker-placement: 'line';
+  marker-spacing: @oneway_spacing;
   marker-width: @oneway_width_2;
   marker-allow-overlap: true;
   marker-clip: false;
@@ -739,6 +753,7 @@ Map {
   line-elevation-mode: span;
   marker-file: url('icons/oneway-small.png');
   marker-placement: 'line';
+  marker-spacing: @oneway_spacing;
   marker-width: @oneway_width;
   marker-allow-overlap: true;
   marker-clip: false;
@@ -749,6 +764,7 @@ Map {
   line-elevation-mode: span;
   marker-file: url('icons/oneway-large.png');
   marker-placement: 'line';
+  marker-spacing: @oneway_spacing;
   marker-width: @oneway_width_2;
   marker-allow-overlap: true;
   marker-clip: false;
@@ -759,6 +775,7 @@ Map {
   line-elevation-mode: span;
   marker-file: url('icons/oneway-small.png');
   marker-placement: 'line';
+  marker-spacing: @oneway_spacing;
   marker-width: @oneway_width;
   marker-allow-overlap: true;
   marker-clip: false;
@@ -769,6 +786,7 @@ Map {
   line-elevation-mode: span;
   marker-file: url('icons/oneway-large.png');
   marker-placement: 'line';
+  marker-spacing: @oneway_spacing;
   marker-width: @oneway_width_2;
   marker-allow-overlap: true;
   marker-clip: false;
@@ -998,10 +1016,8 @@ Map {
   shield-icon-background-radius: 9.25;
   shield-icon-background-padding-x: 0;
   shield-icon-background-padding-y: 0;
-  shield-icon-background-border-width: 0.75;
   shield-icon-halo-fill: @label_icon_halo_fill;
   shield-icon-halo-radius: 0.75;
-  shield-dy: -8.62;
   shield-emissive-strength: 0.6;
   shield-halo-emissive-strength: 0;
 }
@@ -1157,7 +1173,6 @@ Map {
   shield-icon-background-border-fill: @label_icon_halo_fill;
   shield-icon-halo-fill: @poi_label_icon_fill;
   shield-icon-halo-radius: 0.75;
-  shield-dy: -8.17;
   shield-emissive-strength: 0.6;
   shield-halo-emissive-strength: 0;
 }
@@ -1192,7 +1207,6 @@ Map {
   shield-icon-background-padding-y: 0;
   shield-icon-background-border-width: 0.75;
   shield-icon-background-border-fill: (([network] = 'bus' || [network] = 'ferry' || [network] = 'rail' || [network] = 'rail-light' || [network] = 'rail-metro' || [network] = 'bicycle-share' || [network] = 'entrance') ? @label_icon_fill : transparent);
-  shield-dy: -8.3;
   shield-emissive-strength: 0.6;
   shield-halo-emissive-strength: 0;
 }
@@ -1227,7 +1241,6 @@ Map {
   shield-icon-background-padding-y: 0;
   shield-icon-background-border-width: 0.75;
   shield-icon-background-border-fill: (([network] = 'bus' || [network] = 'ferry' || [network] = 'rail' || [network] = 'rail-light' || [network] = 'rail-metro' || [network] = 'bicycle-share' || [network] = 'entrance') ? @label_icon_fill : transparent);
-  shield-dy: -8.3;
   shield-emissive-strength: 0.6;
   shield-halo-emissive-strength: 0;
 }
@@ -1262,7 +1275,6 @@ Map {
   shield-icon-background-padding-y: 0;
   shield-icon-background-border-width: 0.75;
   shield-icon-background-border-fill: (([network] = 'bus' || [network] = 'ferry' || [network] = 'rail' || [network] = 'rail-light' || [network] = 'rail-metro' || [network] = 'bicycle-share' || [network] = 'entrance') ? @label_icon_fill : transparent);
-  shield-dy: -8.3;
   shield-emissive-strength: 0.6;
   shield-halo-emissive-strength: 0;
 }
@@ -1297,7 +1309,6 @@ Map {
   shield-icon-background-padding-y: 0;
   shield-icon-background-border-width: 0.75;
   shield-icon-background-border-fill: (([network] = 'bus' || [network] = 'ferry' || [network] = 'rail' || [network] = 'rail-light' || [network] = 'rail-metro' || [network] = 'bicycle-share' || [network] = 'entrance') ? @label_icon_fill : transparent);
-  shield-dy: -8.3;
   shield-emissive-strength: 0.6;
   shield-halo-emissive-strength: 0;
 }
@@ -1334,7 +1345,6 @@ Map {
   shield-icon-background-padding-y: 0;
   shield-icon-background-border-width: 0.75;
   shield-icon-background-border-fill: @label_icon_fill;
-  shield-dy: -7.3;
   shield-emissive-strength: 0.6;
   shield-halo-emissive-strength: 0;
 }

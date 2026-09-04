@@ -91,13 +91,13 @@ namespace massif { namespace api {
     }
 
     int MassifInterop::adopt(const std::string& kind, const std::string& objectId,
-                             const std::shared_ptr<VectorDataSource>& source) {
-        if (!source) {
+                             const std::shared_ptr<VectorDataSource>& vectorSource) {
+        if (!vectorSource) {
             return NULL_HANDLE;
         }
-        const VectorDataSource& concrete = *source;
+        const VectorDataSource& concrete = *vectorSource;
         Handle handle = NULL_HANDLE;
-        if (Context::GetDefault()->registerObject(kind, objectId, source,
+        if (Context::GetDefault()->registerObject(kind, objectId, vectorSource,
                 internedClassName(typeid(concrete), "massif::VectorDataSource"), handle) != RESULT_OK) {
             return NULL_HANDLE;
         }

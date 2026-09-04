@@ -751,6 +751,14 @@ screen". The rule is `SpanGeometry::chordSpansGroup` — a chord must reach acro
 diameter** (95%, for the buffer overlap) — and a group that fails it is unresolved, so the cache
 borrow runs and hands it the 3440 m chord it resolved at z14.
 
+**An unresolved deck is not drawn — and does not cast.** The on-screen draw waits for the whole
+piece (`renderGeometry3D`), because a deck with resolved and sentinel vertices mixed fans a wall from
+the chord down to the ground. The shadow caster pass runs *first* in the frame and used to take every
+visible extrusion regardless: that wall, invisible on screen, was in the shadow map, and its shadow
+landed on the roofs and the water beside the bridge until the base resolved — the dark flash on the
+Louvre passage and the Pont des Arts at every zoom step (2026-09-05). `renderShadowCasters` now
+resolves the bases and applies the same rule.
+
 ### Everything else that stands on the deck
 
 - The **bed polygon** (mapbox's `structure`/`class=land`) takes `polygon-elevation-mode`; its

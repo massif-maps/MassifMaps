@@ -376,7 +376,13 @@ Three things then keep the bakes off the critical path:
   drape is **baked but re-fingerprinted** (its proxy gave way to the native tile, which happens once
   per deck per zoom step) is handed over as it is while its re-bake waits, an older road on the deck
   rather than a bare one. Only a texture that has never been baked stays out of the hand-over. Bare
-  deck draws over that step: 27 → measured after the change in the same log.
+  deck draws over that step: 27 → 11-16, and their span 2.7 s → 0.35-1.5 s. Then, 2026-09-05,
+  `DRAPE_BAKE_BUDGET_SPAN = 3` span bakes go through before the time budget is consulted (was one):
+  emulator A/B, same build, `debug.massif.spanbudget` 1 vs 3 over two 0.1-step 20→19 zooms — decks
+  waiting for a drape 30 vs 25 deck-frames, both over 3 frames (~0.18 s), and zero on the second zoom
+  of each pair since the textures stay cached. Small on the emulator, where the reorder already
+  drains the queue in 3 frames; the case it is for is a GPU where one ground bake fills the 16 ms
+  budget and spans would otherwise dress one per frame. That case is not measured.
 - **Seeding.** A tile entering the cover has no texture and until its bake is budgeted it can only
   be a flat fill — the white sheet over the terrain on every zoom out. But the cache already holds
   this ground: the finer tiles it replaces, or a coarser one covering it. Copying those into the new

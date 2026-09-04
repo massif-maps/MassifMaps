@@ -3136,6 +3136,12 @@ namespace massif {
                     // panning kept walking back over them and flashing the old style tile by tile.
                     // Cleared at the blank-tile rate instead: a couple of frames, like a zoom.
                     static const int DRAPE_BAKE_BUDGET_RESTACK = 8;
+                    // Span bakes let through per frame BEFORE the time budget is consulted (one, before
+                    // 2026-09-05). Every deck in view gets a new target id at an integer zoom; on a GPU
+                    // where one ground bake fills the 16 ms budget the decks then dress one per frame.
+                    // A span bake is bounded to the deck's own footprint. Emulator A/B in
+                    // docs/internals/rendering/04-terrain.md - small there, the slow GPU is the target.
+                    static const int DRAPE_BAKE_BUDGET_SPAN = 3;
                     // Wall-clock ceiling for all of the classes above together, per frame.
                     // Measured on an Adreno 610 from a cold start in 3D: 5-11 bakes a second get
                     // through against 10-51 queued, while the bakes themselves cost 12-31 ms a
@@ -3539,7 +3545,7 @@ namespace massif {
                         std::map<vt::TileId, unsigned int> spanDrapeTextures;
                         beginOffscreen();
                         // Under the frame's bake budget like every other class, nearest the focus
-                        // first, and one always goes through. Unbudgeted, an integer zoom renamed
+                        // first, and DRAPE_BAKE_BUDGET_SPAN always go through. Unbudgeted, an integer zoom renamed
                         // every bridge tile in view and baked them all in one frame - 150-210 ms of
                         // it at Paris, the frame the user feels at each zoom level. A deck whose
                         // drape is not baked yet draws its plain roof for those frames and asks
@@ -3556,7 +3562,7 @@ namespace massif {
                             if (spanTexture == 0) {
                                 continue;
                             }
-                            if (spanNeedsBake && spanBakedThisFrame > 0 && !bakeTimeLeft()) {
+                            if (spanNeedsBake && spanBakedThisFrame >= DRAPE_BAKE_BUDGET_SPAN && !bakeTimeLeft()) {
                                 spanBakesLeft = true;
                                 // Baked before, from a stack that has since changed: handed over as
                                 // it is, an older road on the deck rather than a bare deck. Every

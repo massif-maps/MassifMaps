@@ -40,6 +40,7 @@
 #include "terrain/CameraClearance.h"
 #include "terrain/DrapeStackCuts.h"
 #include "terrain/DrapeTuning.h"
+#include "terrain/ShadowCasterRing.h"
 #include "terrain/ElevationManager.h"
 #include "renderers/utils/Shader.h"
 #include "renderers/utils/Texture.h"
@@ -1968,24 +1969,31 @@ namespace massif {
                     // The cover's footprint at the ring's zoom, widened by the margin.
                     std::vector<vt::TileId> candidates;
                     {
-                        int minX = 0, minY = 0, maxX = 0, maxY = 0;
+                        ShadowCasterRing::Grid grid;
+                        grid.zoom = ringZoom;
                         bool first = true;
                         for (const vt::TileId& tileId : coverTileIds) {
                             int shift = tileId.zoom - ringZoom;
                             int x = (shift >= 0 ? tileId.x >> shift : tileId.x << -shift);
                             int y = (shift >= 0 ? tileId.y >> shift : tileId.y << -shift);
                             if (first) {
-                                minX = maxX = x;
-                                minY = maxY = y;
+                                grid.minX = grid.maxX = x;
+                                grid.minY = grid.maxY = y;
                                 first = false;
                             } else {
-                                minX = std::min(minX, x); maxX = std::max(maxX, x);
-                                minY = std::min(minY, y); maxY = std::max(maxY, y);
+                                grid.minX = std::min(grid.minX, x); grid.maxX = std::max(grid.maxX, x);
+                                grid.minY = std::min(grid.minY, y); grid.maxY = std::max(grid.maxY, y);
                             }
                         }
                         if (!first) {
-                            for (int y = minY - casterMargin; y <= maxY + casterMargin; y++) {
-                                for (int x = minX - casterMargin; x <= maxX + casterMargin; x++) {
+                            // BOUNDED, like the subdivision below: over flat ground the throw is 0
+                            // and ringZoom stays at maxCoverZoom, where a cover that reaches the
+                            // horizon is thousands of tiles a side - an out-of-memory kill before a
+                            // single candidate is looked at (Paris, z17-19, tilt 45: 2.9 GB RSS).
+                            grid = ShadowCasterRing::fit(grid, casterMargin, MAX_SHADOW_CASTER_TILES);
+                            ringZoom = grid.zoom;
+                            for (int y = grid.minY - casterMargin; y <= grid.maxY + casterMargin; y++) {
+                                for (int x = grid.minX - casterMargin; x <= grid.maxX + casterMargin; x++) {
                                     candidates.emplace_back(ringZoom, x, y);
                                 }
                             }

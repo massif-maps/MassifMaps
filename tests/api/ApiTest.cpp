@@ -70,6 +70,7 @@ void testElevationNodeField();
 void testDayCycleLight();
 void testDrapeStackCuts();
 void testDrapeTuning();
+void testShadowCasterRing();
 void testFlattenSwitch();
 
 namespace {
@@ -431,6 +432,7 @@ int main() {
     testDayCycleLight();
     testDrapeStackCuts();
     testDrapeTuning();
+    testShadowCasterRing();
     testFlattenSwitch();
 
     std::printf("\n%d failure(s)\n", failures);

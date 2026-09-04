@@ -47,6 +47,13 @@ namespace massif::vt {
         // shader define, so a change does not recompile every terrain program - but the shader
         // declares this many matrices and varyings, so raising it means touching the shader too.
         static constexpr int MAX_SHADOW_CASCADES = 4;
+        // How far shadows reach, as a multiple of the camera-to-focus distance. mapbox's model
+        // verbatim (3d-style/render/shadow_renderer.ts: cameraToCenterDistance * 1.5 * 3.0). Public
+        // because the outer cascade's fade range is derived from the same number.
+        static constexpr double SHADOW_CUTOUT_DISTANCE_FACTOR = 4.5;
+        // Fraction of that distance the outer cascade starts fading at - mapbox's
+        // u_shadow_fade_range = [far * 0.75, far].
+        static constexpr double SHADOW_FADE_START_FRACTION = 0.75;
 
         struct LightingShader {
             bool perVertex;
@@ -301,7 +308,7 @@ namespace massif::vt {
         void setBackgroundEmissive(float emissive) { _backgroundEmissive = emissive; }
         // The projection's metres-to-internal factor, so shadows do not need a DEM to be fitted.
         void setMetersToInternal(double metersToInternal) { _metersToInternal = metersToInternal; }
-        void setTerrainShadowMap(GLuint texture, int mapSize, int cascades, const std::array<float, MAX_SHADOW_CASCADES>& depthBiases, float strength, float softness, bool depthTexture, bool hardwarePCF, float normalOffset, const cglib::vec3<float>& sunDir, const std::array<cglib::mat4x4<double>, MAX_SHADOW_CASCADES>& lightViewProjs);
+        void setTerrainShadowMap(GLuint texture, int mapSize, int cascades, const cglib::vec3<float>& depthBias, const std::array<float, MAX_SHADOW_CASCADES>& depthScales, float strength, float softness, bool depthTexture, bool hardwarePCF, float normalOffset, const cglib::vec2<float>& fadeRange, const cglib::vec3<float>& sunDir, const std::array<cglib::mat4x4<double>, MAX_SHADOW_CASCADES>& lightViewProjs);
         // Light-space view-projection fitted to the given terrain tiles; false if the set is empty
         // or no elevation is loaded. minHeight/maxHeight bound the shadowed volume - a generous slab
         // is what makes a low sun pixelated, since the box is fitted around it. The box is snapped
@@ -315,7 +322,7 @@ namespace massif::vt {
         int renderTerrainShadowMask(const std::vector<TileId>& tileIds);
         // Moves as the caster geometry does: 3D extrusions fade in by growing, so the sum of
         // their blend factors says how far the shadow map has drifted from what is on screen.
-        float shadowCasterFadeSignature() const;
+        float shadowCasterFadeSignature(const std::vector<TileId>* coveredBy) const;
         // Draws this renderer's shadow casters for one terrain tile into the bound framebuffer.
         // Returns the number of draws issued.
         int renderShadowCasters(const std::vector<TileId>& tileIds, const cglib::mat4x4<double>& lightViewProj, bool castGround);
@@ -497,7 +504,7 @@ namespace massif::vt {
         // The ground under an extrusion, in internal z units. Unlike the label provider this one
         // REPORTS whether there was data: a base is baked into the vertices, so guessing 0 where
         // the ground is 215 m puts the whole prism under the terrain.
-        void setExtrusionElevationProvider(std::function<bool(const cglib::vec3<double>&, int, double&)> provider);
+        void setExtrusionElevationProvider(std::function<bool(const cglib::vec3<double>&, int, bool, double&)> provider);
         void setLabelOcclusionTest(std::function<bool(const cglib::vec3<double>&)> occlusionTest);
         void setLayerBlendingSpeed(float speed);
         void setLabelBlendingSpeed(float speed);
@@ -704,6 +711,9 @@ namespace massif::vt {
         unsigned int surfaceShadowFlags() const;
         cglib::vec4<float> calculateShadowNormalOffsets(const cglib::mat4x4<double>& tileFrame) const;
         void setupShadowNormalOffsetUniforms(const ShaderProgram& shaderProgram, const cglib::mat4x4<double>& tileFrame) const;
+        void setupShadowFadeRangeUniform(const ShaderProgram& shaderProgram) const;
+        // Whether an extrusion layer is solid enough to cast - mapbox's noShadowCutoff.
+        bool extrusionCastsShadow(const RenderTileLayer& renderLayer) const;
         void setupSurfaceShadowUniforms(const ShaderProgram& shaderProgram, const cglib::mat4x4<double>& surfaceFrame, bool hasElevation);
         // Binds the program only when it is not the one already bound (see the definition).
         void useProgram(const ShaderProgram& shaderProgram);
@@ -766,6 +776,9 @@ namespace massif::vt {
             float layerOpacity = 1.0f;
             float geometryOpacity = 1.0f;
             CompOp layerCompOp = CompOp::SRC_OVER;
+            // An extrusion whose own colour is translucent (fill opacity below 1) is drawn in two
+            // passes, so only its nearest surface blends - see renderGeometry3D.
+            bool translucentExtrusions = false;
         };
         // Opens the 3D pass for one style layer: the overlay framebuffer when the layer needs one,
         // the terrain occluder pre-pass, and the depth/blend state the draws run under. Anything
@@ -1069,7 +1082,11 @@ namespace massif::vt {
         cglib::vec3<float> _radiance = cglib::vec3<float>(1.0f, 1.0f, 1.0f);
         float _backgroundEmissive = 1.0f;
         int _terrainShadowCascades = 1;
-        std::array<float, MAX_SHADOW_CASCADES> _terrainShadowBiases = { { 0.0f, 0.0f, 0.0f, 0.0f } };
+        // mapbox's u_shadow_bias: constant, slope scale, slope cap - normalised depth, all cascades.
+        cglib::vec3<float> _terrainShadowBias = cglib::vec3<float>(0.0f, 0.0f, 0.0f);
+        // 1 / each cascade's light-box depth in metres: the bias above is metric, the shader compares
+        // in normalised depth, and every box normalises its own.
+        std::array<float, MAX_SHADOW_CASCADES> _terrainShadowDepthScales = { { 0.0f, 0.0f, 0.0f, 0.0f } };
         GLuint _terrainShadowMaskTexture = 0;
         cglib::vec2<float> _terrainShadowMaskScale = cglib::vec2<float>(0.0f, 0.0f);
         bool _terrainShadowMaskPass = false; // the draw that produces the mask, not one that reads it
@@ -1080,6 +1097,8 @@ namespace massif::vt {
         int _shadowCastersMissingElevation = 0;
         mutable bool _essl3Failed = false;       // an ESSL 3.00 program did not build; see hasShaderVersionFallback
         float _terrainShadowNormalOffset = 3.0f; // in shadow-map texels; mapbox's default
+        // View depth the outermost cascade fades out over, in internal units. Zero = no fade.
+        cglib::vec2<float> _terrainShadowFadeRange = cglib::vec2<float>(0.0f, 0.0f);
         cglib::vec3<float> _terrainShadowSunDir = cglib::vec3<float>(0.0f, 0.0f, 1.0f);
         unsigned int _warmedRasterShaderFlags = 0; // flag set warmTerrainRasterShader last built for (0 = none)
         Color _fogColor;
@@ -1100,7 +1119,7 @@ namespace massif::vt {
         std::vector<std::pair<TileId, GLint>> _debugOrderedTileMasks;
         TerrainTextureProvider _terrainTextureProvider;
         std::function<double(const cglib::vec3<double>&)> _labelElevationProvider;
-        std::function<bool(const cglib::vec3<double>&, int, double&)> _extrusionElevationProvider;
+        std::function<bool(const cglib::vec3<double>&, int, bool, double&)> _extrusionElevationProvider;
         std::atomic<unsigned int> _extrusionBaseVersion { 1 }; // bumped by invalidateExtrusionBases
         std::vector<TileId> _pendingLabelElevationTiles; // elevation tiles whose labels must be re-anchored
         double _labelPositionScale = 1.0; // label anchors are in internal coordinates, not vt's

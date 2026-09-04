@@ -980,6 +980,7 @@ namespace massif::vt {
         _heights.clear();
         _attribs.clear();
         _spanInfos.clear();
+        _polygon3DAnchorExtent = 0.0f;
         _indices.clear();
         _ids.clear();
         _geoPosIndexes.clear();
@@ -1118,6 +1119,15 @@ namespace massif::vt {
         float binormalScale = calculateScale(binormals, _indices);
         // For an extrusion the texcoord slot carries the footprint centroid, and the vertex stage
         // hands it straight to applyTerrain - which expects raw coord units. Same scale, then.
+        if (_builderParameters.type == TileGeometry::Type::POLYGON3D && _polygon3DAnchorExtent > 0.0f) {
+            // The anchor shares the coord scale (the shader converts either with one uniform), but
+            // it can lie far outside the coords the scale was fitted to: under deep overzoom the
+            // centroid of a palace is several tiles away from the piece this tile draws, and at
+            // the coords' scale it overflowed the int16 and wrapped - a base read at a garbage
+            // position, different in every tile, which is what broke buildings apart when zooming
+            // in close. Fit the scale to the anchors as well; a coord loses nothing it can show.
+            coordScale = std::min(coordScale, std::pow(2.0f, std::floor(std::log(32767.0f / (_polygon3DAnchorExtent + 1.0f)) / std::log(2.0f))));
+        }
         float texCoordScale = (_builderParameters.type == TileGeometry::Type::POLYGON3D ? coordScale : calculateScale(texCoords, _indices));
         float heightScale = calculateScale(heights, _indices);
         for (std::size_t offset = 0; offset < _indices.size(); ) {
@@ -1493,7 +1503,25 @@ namespace massif::vt {
                     return 0.0f; // the two edges double back on each other
                 }
                 bisector = bisector * (1.0f / bisectorLen);
-                insetList[ring][i] = points[i] - bisector * (radius * std::min(4.0f, 1.0f / cosHalfAngle));
+                // A DIVERGENCE FROM MAPBOX, deliberately. Theirs is
+                // `edgeRadius * Math.min(4, 1 / cosHalfAngle)` with no edge-length term
+                // (fill_extrusion_bucket, the top-ring loop), and everything else here matches them:
+                // same miter cap, same metres, and the tile-unit radius agrees to five figures on
+                // the same tile. We fold anyway. On a real Mapbox footprint an edge of 1.4 extent
+                // units meets an inset of 4.1, so BOTH its ends are pulled past each other, the roof
+                // ring turns inside out and chamfer vertices land outside the building - a wedge at
+                // the corner. Rounding the ring as mapbox does cannot absorb it: the overshoot is
+                // 1.2 extent units and rounding moves a point by at most 0.5.
+                //
+                // So this bound is ours. A third of the shorter adjacent edge is not invented
+                // either - it is what extrusionCornerCutback already imposes on the WALL at the same
+                // corner, so the roof ring now obeys the rule its own walls do. A third rather than
+                // a half leaves the band width rather than collapsing it to a point.
+                //
+                // UNRESOLVED: why mapbox does not show this with the same formula on the same data.
+                // See tests/vt/ExtrusionBevelTest.cpp for the two footprints this is measured on.
+                float maxInset = std::min(lenPrev, lenNext) / 3.0f;
+                insetList[ring][i] = points[i] - bisector * std::min(radius * std::min(4.0f, 1.0f / cosHalfAngle), maxInset);
                 any = true;
             }
         }
@@ -1852,6 +1880,7 @@ namespace massif::vt {
             // ground. Stored unflipped it asks at a mirrored position - a different hill entirely.
             cglib::vec3<float> anchor = _transformer->calculatePoint(centroid);
             _polygon3DCentroid = cglib::vec2<float>(anchor(0), anchor(1));
+            _polygon3DAnchorExtent = std::max(_polygon3DAnchorExtent, std::max(std::abs(anchor(0)), std::abs(anchor(1))));
         }
         // Edge radius: the wall stops short of the roof and a bevel band bridges the two, with the
         // roof ring inset by the same amount. What makes it read as ROUNDED is that the band's

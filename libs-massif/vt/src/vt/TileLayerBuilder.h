@@ -218,6 +218,9 @@ namespace massif::vt {
         // The current extrusion's footprint centroid, carried by every one of its vertices. The
         // renderer resolves the ground there once, on the CPU (GLTileRenderer::resolveExtrusionBases).
         cglib::vec2<float> _polygon3DCentroid = cglib::vec2<float>(0, 0);
+        // How far any anchor of this layer lies from the tile, so packGeometry can fit the coord
+        // scale to it: a palace's centroid is tiles away from the z20 piece drawing it.
+        float _polygon3DAnchorExtent = 0.0f;
         float _polygon3DGradientHeight = 0.0f;
         // Roofs already emitted this layer, matched whole - which catches a duplicated footprint,
         // the case that actually z-fights. A building:part normally differs in height from its

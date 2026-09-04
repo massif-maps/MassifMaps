@@ -73,15 +73,16 @@ namespace {
 }
 
 namespace massif::vt {
-    // How far shadows reach, as a multiple of the camera-to-focus distance. mapbox's model verbatim
-    // (3d-style/render/shadow_renderer.ts: cameraToCenterDistance * 1.5 * 3.0). A METRIC radius
-    // cannot hold at two zooms - the budget this replaces was 10 m x mapSize, i.e. ~10 km at every
-    // camera, which ended a mountain's shadow one screen away at z12.
-    static constexpr double SHADOW_CUTOUT_DISTANCE_FACTOR = 4.5;
+    // SHADOW_CUTOUT_DISTANCE_FACTOR is in the header - the fade range is derived from it too. A
+    // METRIC radius cannot hold at two zooms: the budget it replaced was 10 m x mapSize, i.e.
+    // ~10 km at every camera, which ended a mountain's shadow one screen away at z12.
     // The cascade ladder steps by this between pages, anchored on the cutout, so two cascades split
     // at cutout/3 - mapbox's cascadeSplitDist = cameraToCenterDistance * 1.5 against a cutout of
     // 4.5x, exactly.
     static constexpr double SHADOW_CASCADE_STEP = 3.0;
+    // mapbox's noShadowCutoff (src/render/draw_fill_extrusion.ts, terrain branch): the opacity
+    // below which a FADING extrusion stops casting rather than casting at full strength.
+    static constexpr float SHADOW_NO_CAST_OPACITY_CUTOFF = 0.65f;
     GLTileRenderer::GLTileRenderer(std::shared_ptr<GLExtensions> glExtensions, std::shared_ptr<const TileTransformer> transformer, float scale) :
         _tileSurfaceBuilder(transformer), _glExtensions(std::move(glExtensions)), _transformer(std::move(transformer)), _scale(scale)
     {
@@ -234,18 +235,20 @@ namespace massif::vt {
         _tileMasks = mode;
     }
 
-    void GLTileRenderer::setTerrainShadowMap(GLuint texture, int mapSize, int cascades, const std::array<float, MAX_SHADOW_CASCADES>& depthBiases, float strength, float softness, bool depthTexture, bool hardwarePCF, float normalOffset, const cglib::vec3<float>& sunDir, const std::array<cglib::mat4x4<double>, MAX_SHADOW_CASCADES>& lightViewProjs) {
+    void GLTileRenderer::setTerrainShadowMap(GLuint texture, int mapSize, int cascades, const cglib::vec3<float>& depthBias, const std::array<float, MAX_SHADOW_CASCADES>& depthScales, float strength, float softness, bool depthTexture, bool hardwarePCF, float normalOffset, const cglib::vec2<float>& fadeRange, const cglib::vec3<float>& sunDir, const std::array<cglib::mat4x4<double>, MAX_SHADOW_CASCADES>& lightViewProjs) {
         std::lock_guard<std::mutex> lock(_mutex);
 
         _terrainShadowTexture = texture;
         _terrainShadowMapSize = mapSize;
         _terrainShadowCascades = std::max(1, std::min(MAX_SHADOW_CASCADES, cascades));
-        _terrainShadowBiases = depthBiases;
+        _terrainShadowBias = depthBias;
+        _terrainShadowDepthScales = depthScales;
         _terrainShadowStrength = strength;
         _terrainShadowSoftness = softness;
         _terrainShadowDepthTexture = depthTexture;
         _terrainShadowHardwarePCF = hardwarePCF;
         _terrainShadowNormalOffset = normalOffset;
+        _terrainShadowFadeRange = fadeRange;
         _terrainShadowSunDir = sunDir;
         _terrainShadowViewProjs = lightViewProjs;
         // Pages beyond the cascade count do not exist in the atlas, and the receiver lookup is
@@ -514,24 +517,19 @@ namespace massif::vt {
         cglib::vec4<double> lightCenter = cglib::transform(cglib::vec4<double>(sphereCenter(0), sphereCenter(1), sphereCenter(2), 1.0), lightView);
         double l = lightCenter(0) - sphereRadius, r = lightCenter(0) + sphereRadius;
         double b = lightCenter(1) - sphereRadius, t = lightCenter(1) + sphereRadius;
-        double n = 0, f = 0;
-        {
-            // The depth range still comes from the slab the receivers live in; the caster loop below
-            // widens it to whatever actually casts into this box.
-            bool fitFirst = true;
-            for (int corner = 0; corner < 4; corner++) {
-                for (int level = 0; level < 2; level++) {
-                    double x = (corner & 1 ? maxX : minX), y = (corner & 2 ? maxY : minY);
-                    cglib::vec4<double> p = cglib::transform(cglib::vec4<double>(x, y, level ? maxZ : minZ, 1.0), lightView);
-                    if (fitFirst) {
-                        n = f = -p(2);
-                        fitFirst = false;
-                    } else {
-                        n = std::min(n, -p(2)); f = std::max(f, -p(2));
-                    }
-                }
-            }
-        }
+        // DEPTH is bounded by the SAME bounding sphere the sides are, plus the room a caster needs
+        // to stand above it - mapbox's lightMatrixNearZ / lightMatrixFarZ, whose far plane is the
+        // sphere radius plus verticalRange / shadowDirection.z.
+        //
+        // Seeded from the drawn tile RECTANGLE instead, and then widened again by every caster
+        // tile's own box, the range became the whole cover projected along a low sun: measured at
+        // 3.0e7 m over Paris. A 24-bit map quantises that to ~1.8 m per step, so a building and the
+        // ground under it stored the same depth and no bias could separate them - which is what the
+        // serrated spikes and the acne that survived every bias value actually were.
+        double casterHeadroom = (casterMaxZ - casterMinZ) / std::max(0.05, dir(2));
+        double centerDepth = -lightCenter(2);
+        double n = centerDepth - sphereRadius - casterHeadroom;
+        double f = centerDepth + sphereRadius + casterHeadroom;
         // Snap the box to a world-anchored lattice of whole shadow texels, and quantise its size so
         // the texel size itself only changes in steps. Fitted exactly, the box breathes with every
         // camera movement: the same piece of ground falls in a different texel each frame, so every
@@ -594,7 +592,6 @@ namespace massif::vt {
             if (tileR < l - marginX || tileL > r + marginX || tileT < b - marginY || tileB > t + marginY) {
                 continue;
             }
-            n = std::min(n, tileN); f = std::max(f, tileF);
             boxCasterTileIds.push_back(tileId);
         }
         snapAxis(n, f, true);
@@ -609,6 +606,22 @@ namespace massif::vt {
         // guessing from the picture.
         texelMeters = std::max(r - l, t - b) / std::max(1, mapSize) / metersToInternal;
         return true;
+    }
+
+    bool GLTileRenderer::extrusionCastsShadow(const RenderTileLayer& renderLayer) const {
+        // mapbox's rule verbatim: on terrain, a layer whose extrusion opacity is below the cutoff
+        // AND is a zoom-dependent expression does not cast, so a building ramping to nothing over
+        // zoom does not keep a full-strength shadow while it disappears. A CONSTANT translucent
+        // opacity still casts, which is what the null function() test - our ZoomDependentExpression
+        // check, see UnaryFunction - keeps.
+        const FloatFunction& opacityFunc = renderLayer.layer->getOpacityFunc();
+        if (opacityFunc.function() && opacityFunc(_viewState) < SHADOW_NO_CAST_OPACITY_CUTOFF) {
+            return false;
+        }
+        // Ours, on the same threshold: the tile ARRIVAL blend. mapbox has no equivalent - it never
+        // casts from a tile outside the render set - and a caster drawn at full strength while its
+        // building is still fading in is a shadow with no building under it.
+        return renderLayer.blend >= SHADOW_NO_CAST_OPACITY_CUTOFF;
     }
 
     template <typename Func>
@@ -707,6 +720,9 @@ namespace massif::vt {
         _shadowCasterViewProj = &lightViewProj;
         _shadowCasterSun = true;
         forEachVisibleExtrusion(&tileIds, [this, &draws](const RenderTileLayer& renderLayer, const std::shared_ptr<TileGeometry>& geometry) {
+            if (!extrusionCastsShadow(renderLayer)) {
+                return true;
+            }
             renderTileGeometry(renderLayer.sourceTileId, renderLayer.targetTileId, renderLayer.blend, 1.0f, renderLayer.tileSize, geometry);
             draws++;
             return true;
@@ -716,7 +732,7 @@ namespace massif::vt {
         return draws;
     }
 
-    float GLTileRenderer::shadowCasterFadeSignature() const {
+    float GLTileRenderer::shadowCasterFadeSignature(const std::vector<TileId>* coveredBy) const {
         std::lock_guard<std::mutex> lock(_mutex);
 
         // A number that moves exactly as fast as the caster SET does: a tile's blend is how far it
@@ -726,7 +742,13 @@ namespace massif::vt {
         // The caster's HEIGHT no longer follows the blend - see buildingHeightScale.
         float signature = 0.0f;
         int count = 0;
-        forEachVisibleExtrusion(nullptr, [&signature, &count](const RenderTileLayer& renderLayer, const std::shared_ptr<TileGeometry>&) {
+        forEachVisibleExtrusion(coveredBy, [this, &signature, &count](const RenderTileLayer& renderLayer, const std::shared_ptr<TileGeometry>&) {
+            // Only what actually casts, or a layer crossing the no-cast cutoff would change the
+            // caster set without moving the signature - and the map would keep the shadows of
+            // buildings it has just stopped drawing into it.
+            if (!extrusionCastsShadow(renderLayer)) {
+                return false;
+            }
             signature += renderLayer.blend;
             count++;
             return false; // one contribution per layer, not per geometry batch
@@ -740,7 +762,14 @@ namespace massif::vt {
         // zoom (Standard, 0 at z15) changes the caster geometry without touching a single tile
         // blend, so the map was never refreshed and the buildings' shadows stayed on an empty map
         // after they had gone.
-        return count > 0 ? _buildingHeightScale * signature / count : 0.0f;
+        // The COUNT as well as the mean, and this is the load-bearing half: extrusions arrive with
+        // their blend already at 1 unless the style asked to fade them in (buildingFadeOnAppear is
+        // off by default), so the mean sits at 1.0 while the caster set grows from nothing to a
+        // city. The map was then never refreshed for the one event it most needs - the buildings
+        // appearing - and it kept casting from ground-only pages until something else moved.
+        // A count change steps the signature by a whole unit, far past SHADOW_MAP_FADE_STEP, while
+        // a fade still only moves the mean fraction it always did.
+        return count > 0 ? _buildingHeightScale * (static_cast<float>(count) + signature / count) : 0.0f;
     }
 
     float GLTileRenderer::groundAOZoomFade(float zoom) {
@@ -970,7 +999,7 @@ namespace massif::vt {
         _pendingLabelElevationTiles.insert(_pendingLabelElevationTiles.end(), tileIds.begin(), tileIds.end());
     }
 
-    void GLTileRenderer::setExtrusionElevationProvider(std::function<bool(const cglib::vec3<double>&, int, double&)> provider) {
+    void GLTileRenderer::setExtrusionElevationProvider(std::function<bool(const cglib::vec3<double>&, int, bool, double&)> provider) {
         std::lock_guard<std::mutex> lock(_mutex);
 
         _extrusionElevationProvider = std::move(provider);
@@ -1475,6 +1504,12 @@ namespace massif::vt {
             }
             _pendingExtrusionBaseTiles.clear();
         }
+
+        // Only the extrusions standing over an elevation tile that just landed. A building's
+        // centroid is inside its own tile, so matching the geometry's SOURCE tile against the
+        // changed one is exact - and it is what keeps a DEM tile arriving from re-resolving every
+        // base on screen. Spans are excluded: a chord samples its portals, which are routinely
+        // outside the tile, so they follow the global version instead.
 
         // Update labels
         _visiblePassLabels = _passLabels;
@@ -2117,6 +2152,15 @@ namespace massif::vt {
         glUniform3f(shaderProgram.uniforms[U_SHADOWSUNDIR], _terrainShadowSunDir(0), _terrainShadowSunDir(1), _terrainShadowSunDir(2));
     }
 
+    void GLTileRenderer::setupShadowFadeRangeUniform(const ShaderProgram& shaderProgram) const {
+        // Zeroed for the orthographic drape bake, for the reason fogFlag() gives: there
+        // gl_FragCoord.w is 1 - a whole world in internal units - so a view-depth fade would put
+        // every baked fragment past the end of the range and BURN a shadowless bake into the
+        // cached drape texture.
+        cglib::vec2<float> fadeRange = _drapeMVPOverride ? cglib::vec2<float>(0.0f, 0.0f) : _terrainShadowFadeRange;
+        glUniform2f(shaderProgram.uniforms[U_SHADOWFADERANGE], fadeRange(0), fadeRange(1));
+    }
+
     cglib::vec4<float> GLTileRenderer::calculateShadowNormalOffsets(const cglib::mat4x4<double>& tileFrame) const {
         // The normal offset is a number of shadow-map TEXELS, and the shader adds it to a
         // tile-local position. One texel is (box width / mapSize) in world units, and the box width
@@ -2169,7 +2213,9 @@ namespace massif::vt {
         // and it reads as a solid dark block the exact shape of the tile. It has no relief to shadow
         // anyway, so it takes no shadow until its heights are there.
         glUniform4f(shaderProgram.uniforms[U_SHADOWPARAMS], 1.0f / std::max(1, _terrainShadowMapSize), hasElevation ? _terrainShadowStrength : 0.0f, _terrainShadowSoftness, 1.0f / _terrainShadowCascades);
-        glUniform4f(shaderProgram.uniforms[U_SHADOWBIAS], _terrainShadowBiases[0], _terrainShadowBiases[1], _terrainShadowBiases[2], _terrainShadowBiases[3]);
+        glUniform3f(shaderProgram.uniforms[U_SHADOWBIAS], _terrainShadowBias(0), _terrainShadowBias(1), _terrainShadowBias(2));
+        glUniform4f(shaderProgram.uniforms[U_SHADOWDEPTHSCALE], _terrainShadowDepthScales[0], _terrainShadowDepthScales[1], _terrainShadowDepthScales[2], _terrainShadowDepthScales[3]);
+        setupShadowFadeRangeUniform(shaderProgram);
     }
 
     void GLTileRenderer::setTerrainShadowMask(GLuint texture, float invScreenWidth, float invScreenHeight) {
@@ -3356,7 +3402,13 @@ namespace massif::vt {
             int layerOrdinal = _terrainLayerOrdinalBase + static_cast<int>(std::distance(_terrainStyleLayerIndices.begin(), _terrainStyleLayerIndices.find(it->first)));
             Pass3DState pass = begin3DPass(renderLayers, renderTiles, allowInline);
 
-            // Render tile layers for this layer
+            // Render tile layers for this layer. Translucent extrusions go through twice: first
+            // depth only, then colour with the depth pulled one unit towards the camera, so of all
+            // the fragments a pixel receives exactly one blends - the nearest, and the first drawn
+            // among equals. That is mapbox's depth prepass plus stencilModeFor3D (each pixel once),
+            // without the stencil, which the 2D pass owns here: two coincident party walls no
+            // longer fight, and a building no longer shows its inner walls through its front.
+            auto drawTileLayers = [&](bool depthOnly) {
             for (const RenderTileLayer* renderLayer : renderLayers) {
                 // Only under the shared ground, which is where the ordinal model applies at all;
                 // the other paths take their clearance from pushing the surface back instead.
@@ -3364,6 +3416,9 @@ namespace massif::vt {
                     _terrainDrawLayerOffset = proxyDepth(renderLayer) - layerOrdinal;
                 }
                 for (const std::shared_ptr<TileGeometry>& geometry : renderLayer->layer->getGeometries()) {
+                    if (depthOnly && geometry->getType() != TileGeometry::Type::POLYGON3D) {
+                        continue;
+                    }
                     if (geometry->getType() == TileGeometry::Type::POLYGON3D) {
                         // Always drawn: an extrusion whose ground has not resolved yet keeps the
                         // sentinel and the shader falls back to the ground under each vertex.
@@ -3387,6 +3442,19 @@ namespace massif::vt {
                 }
                 _terrainDrawLayerOffset = 0.0f;
             }
+            };
+            if (pass.translucentExtrusions) {
+                glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+                drawTileLayers(true);
+                glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+                glEnable(GL_POLYGON_OFFSET_FILL);
+                glPolygonOffset(0.0f, -1.0f);
+                drawTileLayers(false);
+                glDisable(GL_POLYGON_OFFSET_FILL);
+                glPolygonOffset(0.0f, 0.0f);
+            } else {
+                drawTileLayers(false);
+            }
 
             end3DPass(pass);
         }
@@ -3409,6 +3477,28 @@ namespace massif::vt {
         // Inline only when the extrusions are the frame's last tile content (buildingOrder 1) -
         // they write depth and would otherwise occlude the 2D content drawn after them.
         state.useOverlay = !allowInline || static_cast<bool>(layer->getCompOp()) || state.geometryOpacity < 1.0f - 1.0f / 255.0f;
+        // A LAYER opacity below 1 takes the overlay above: opaque in its own buffer, composited
+        // once. A translucent fill colour does not - it is per feature, evaluated into the colour
+        // table - and blended straight into the scene it showed every wall through every other
+        // wall, and two coincident party walls fought for the pixel. Mark it, so the draw below
+        // can resolve the nearest surface first.
+        if (!state.useOverlay) {
+            for (const RenderTileLayer* renderLayer : renderLayers) {
+                for (const std::shared_ptr<TileGeometry>& geometry : renderLayer->layer->getGeometries()) {
+                    if (geometry->getType() != TileGeometry::Type::POLYGON3D) {
+                        continue;
+                    }
+                    const TileGeometry::StyleParameters& styleParams = geometry->getStyleParameters();
+                    for (int i = 0; i < styleParams.parameterCount && !state.translucentExtrusions; i++) {
+                        float alpha = evaluateColorFunc(styleParams.colorFuncs[i]).rgba()[3];
+                        state.translucentExtrusions = alpha > 1.0f / 256.0f && alpha < 1.0f - 1.0f / 256.0f;
+                    }
+                }
+                if (_buildingFadeOnAppear && renderLayer->blend < 1.0f) {
+                    state.translucentExtrusions = true;
+                }
+            }
+        }
 
         // Prepare the overlay buffer.
         if (state.useOverlay) {
@@ -4093,52 +4183,99 @@ namespace massif::vt {
         // from - under overzoom the source tile is a coarser ancestor with no elevation entry.
         // NOT a reason to skip the draw: the shader falls back to the per-vertex ground, which is
         // wrong on a slope but visible, where a base of 0 would bury the building at sea level.
-        if (!resolveTerrainTexture(targetTileId).first) {
+        const std::pair<bool, TerrainTexture>& terrain = resolveTerrainTexture(targetTileId);
+        if (!terrain.first) {
             return false;
         }
+        float metersToInternal = terrain.second.metersToInternal;
         const VertexArray<std::uint8_t>& vertexGeometry = geometry->getVertexGeometry();
         if (vertexGeometry.empty() || params.vertexSize <= 0) {
             return false;
         }
 
-        // The centroid rides in the texcoord slot, at the coord scale (see packGeometry). Tile
+        // The anchor rides in the texcoord slot, at the coord scale (see packGeometry). Tile
         // matrix and shader agree only on UNFLIPPED tile coords - the transformer flipped y when
-        // the centroid was stored, and polygon3DVsh flips it back for exactly this reason.
+        // the anchor was stored, and polygon3DVsh flips it back for exactly this reason.
         cglib::mat3x3<double> tileMatrix = calculateTileMatrix2D(sourceTileId, 1.0f);
+        std::shared_ptr<const TileTransformer::VertexTransformer> tileTransformer = _transformer->createTileVertexTransformer(sourceTileId);
         std::size_t vertexCount = vertexGeometry.size() / params.vertexSize;
-        // One elevation query per FOOTPRINT, not per vertex: every vertex of a building carries the
-        // same centroid and a city tile runs to tens of thousands of vertices over a few hundred
-        // buildings. The vertices of one footprint are contiguous, so remembering the last one is
-        // the whole cache - the same trick ElevationManager::getGridForInternalPos plays.
-        std::int32_t lastU = 0, lastV = 0;
-        double lastHeight = 0;
-        bool haveLast = false;
-        bool haveHeight = false;
-        bool allResolved = true;
-        for (std::size_t i = 0; i < vertexCount; i++) {
+        // The vertices of one footprint are contiguous and carry the same anchor, so a run of one
+        // anchor IS a footprint. Two passes: the anchors first, one cheap query each, and nothing
+        // is written unless every anchor answered - then the floors, one query per rising vertex
+        // position, once. Interleaved, a geometry with one anchor still waiting for its DEM redid
+        // every floor query on every frame, and the render thread held its mutex for seconds.
+        struct Run {
+            std::size_t begin, end;
+            cglib::vec2<float> anchor;
+            double base;
+        };
+        std::vector<Run> runs;
+        for (std::size_t i = 0; i < vertexCount; ) {
             const std::int16_t* texCoordPtr = reinterpret_cast<const std::int16_t*>(vertexGeometry.data() + i * params.vertexSize + params.texCoordOffset);
             std::int32_t u = texCoordPtr[0];
             std::int32_t v = texCoordPtr[1];
-            if (!haveLast || u != lastU || v != lastV) {
-                cglib::vec2<double> tilePos(u / static_cast<double>(params.texCoordScale),
-                                            1.0 - v / static_cast<double>(params.texCoordScale));
-                cglib::vec2<double> internalPos = cglib::transform_point(tilePos, tileMatrix);
-                haveHeight = _extrusionElevationProvider(cglib::vec3<double>(internalPos(0), internalPos(1), 0), sourceTileId.zoom, lastHeight);
-                lastU = u;
-                lastV = v;
-                haveLast = true;
+            std::size_t j = i + 1;
+            for (; j < vertexCount; j++) {
+                const std::int16_t* next = reinterpret_cast<const std::int16_t*>(vertexGeometry.data() + j * params.vertexSize + params.texCoordOffset);
+                if (next[0] != u || next[1] != v) {
+                    break;
+                }
             }
-            // A footprint whose DEM has not decoded yet keeps the sentinel and is retried next
-            // frame. Writing the provider's 0 instead is what buried every building: a base of 0
-            // where the ground is 215 m puts the whole prism under the terrain surface.
-            if (haveHeight) {
-                geometry->setVertexBase(i, static_cast<float>(lastHeight));
-            } else {
-                allResolved = false;
+            // The anchor is the footprint's centroid. The ground is the SMOOTHED field (provider
+            // flag): a building's base ignores the metre-scale bumps a lidar DEM has, so the
+            // pieces of one building - parts, tile halves, zoom copies - agree to centimetres
+            // without seeing each other. A footprint whose DEM has not decoded yet keeps the
+            // sentinel and is retried next frame: writing the provider's 0 instead is what buried
+            // every building, a base of 0 where the ground is 215 m puts the prism under the
+            // terrain.
+            Run run { i, j, cglib::vec2<float>(u / params.texCoordScale, v / params.texCoordScale), 0.0 };
+            cglib::vec2<double> internalPos = cglib::transform_point(cglib::vec2<double>(run.anchor(0), 1.0 - run.anchor(1)), tileMatrix);
+            if (!_extrusionElevationProvider(cglib::vec3<double>(internalPos(0), internalPos(1), 0), sourceTileId.zoom, true, run.base)) {
+                return false; // still drawn, on the per-vertex ground, until the elevation lands
             }
+            runs.push_back(run);
+            i = j;
         }
-        if (!allResolved) {
-            return false; // still drawn, on the per-vertex ground, until the elevation lands
+        for (const Run& run : runs) {
+            double tileUnitsPerMeter = tileTransformer->calculateHeight(run.anchor, 1.0f);
+            cglib::vec2<double> internalPos = cglib::transform_point(cglib::vec2<double>(run.anchor(0), 1.0 - run.anchor(1)), tileMatrix);
+            double metersToZ = metersToInternal * std::cosh(2.0 * 3.14159265358979323846 * internalPos(1));
+            // mapbox's floor (fill_extrusion.vertex.glsl: max(c_ele + height, ele + base + 2)),
+            // PER VERTEX as theirs is: a vertex that rises keeps at least 2 m above the drawn
+            // ground under it, so a low part whose smoothed anchor sits under its own lidar street
+            // is still a building and not a hole, and nothing on a hillside is buried uphill -
+            // which is what mapbox's flatElevation lift was for; the lift is not kept, its span
+            // corners lie off the footprint and one on the Tuileries terrace lifted a wing 5 m.
+            // Per vertex because every other form was PER TILE: a floor over the foot ring read
+            // only the ring vertices this tile's clip kept, and the same slab came out 31.6 m in
+            // one tile and 34.4 m in the next. The ground is asked through the provider, not the
+            // tile's texture, so a vertex past the tile edge gets its real ground. Roofs of LOW
+            // parts follow the ground where the floor bites; tall buildings never feel it.
+            std::int16_t lastX = 0, lastY = 0;
+            double lastGround = 0;
+            bool haveLastGround = false, lastGroundValid = false;
+            for (std::size_t k = run.begin; k < run.end; k++) {
+                double vertexBase = run.base;
+                if (params.heightOffset >= 0 && params.coordOffset >= 0 && params.coordScale > 0) {
+                    const std::uint8_t* vertex = vertexGeometry.data() + k * params.vertexSize;
+                    std::int16_t heightUnits = reinterpret_cast<const std::int16_t*>(vertex + params.heightOffset)[0];
+                    const std::int16_t* coord = reinterpret_cast<const std::int16_t*>(vertex + params.coordOffset);
+                    if (heightUnits > 0) {
+                        if (!haveLastGround || coord[0] != lastX || coord[1] != lastY) {
+                            cglib::vec2<double> at = cglib::transform_point(cglib::vec2<double>(coord[0] / static_cast<double>(params.coordScale), 1.0 - coord[1] / static_cast<double>(params.coordScale)), tileMatrix);
+                            lastGroundValid = _extrusionElevationProvider(cglib::vec3<double>(at(0), at(1), 0), sourceTileId.zoom, false, lastGround);
+                            lastX = coord[0];
+                            lastY = coord[1];
+                            haveLastGround = true;
+                        }
+                        if (lastGroundValid && tileUnitsPerMeter > 0) {
+                            double heightZ = heightUnits / static_cast<double>(params.heightScale) / tileUnitsPerMeter * metersToZ;
+                            vertexBase = std::max(vertexBase, lastGround + 2.0 * metersToZ - heightZ);
+                        }
+                    }
+                }
+                geometry->setVertexBase(k, static_cast<float>(vertexBase));
+            }
         }
         geometry->setBaseResolved(true);
         geometry->setBaseElevationVersion(version);
@@ -4414,8 +4551,8 @@ namespace massif::vt {
                     continue;
                 }
                 double h0 = 0, h1 = 0;
-                if (_extrusionElevationProvider(cglib::vec3<double>(span.portal0(0), span.portal0(1), 0), span.zoom, h0)
-                 && _extrusionElevationProvider(cglib::vec3<double>(span.portal1(0), span.portal1(1), 0), span.zoom, h1)) {
+                if (_extrusionElevationProvider(cglib::vec3<double>(span.portal0(0), span.portal0(1), 0), span.zoom, false, h0)
+                 && _extrusionElevationProvider(cglib::vec3<double>(span.portal1(0), span.portal1(1), 0), span.zoom, false, h1)) {
                     span.height0 = h0;
                     span.height1 = h1;
                     span.haveHeights = true;
@@ -4612,8 +4749,8 @@ namespace massif::vt {
             // built - labels need it a pass earlier than this - so this is the late arrival.
             double h0 = it->second.height0, h1 = it->second.height1;
             if (!it->second.haveHeights) {
-                if (!_extrusionElevationProvider(cglib::vec3<double>(w0(0), w0(1), 0), sourceTileId.zoom, h0)
-                 || !_extrusionElevationProvider(cglib::vec3<double>(w1(0), w1(1), 0), sourceTileId.zoom, h1)) {
+                if (!_extrusionElevationProvider(cglib::vec3<double>(w0(0), w0(1), 0), sourceTileId.zoom, false, h0)
+                 || !_extrusionElevationProvider(cglib::vec3<double>(w1(0), w1(1), 0), sourceTileId.zoom, false, h1)) {
                     allResolved = false;
                     continue;
                 }
@@ -6575,7 +6712,7 @@ namespace massif::vt {
             if (_shadowCasterViewProj) {
                 // Caster pass: same vertex shader (so the extrusion is identical to the drawn
                 // one), depth-packing fragment shader, no lighting.
-                shaderProgramPtr = &buildShaderProgram("polygon3dshadow", polygon3DVsh, shadowCasterFsh, LightingMode::NONE, RasterFilterMode::NONE, (styleParams.translate ? TRANSFORM_FLAG : 0) | (terrainVTF ? TERRAIN_VTF_FLAG : 0));
+                shaderProgramPtr = &buildShaderProgram("polygon3dshadow", polygon3DVsh, polygon3DShadowCasterFsh, LightingMode::NONE, RasterFilterMode::NONE, (styleParams.translate ? TRANSFORM_FLAG : 0) | (terrainVTF ? TERRAIN_VTF_FLAG : 0));
                 break;
             }
             // TERRAIN_FLAG (depth bias) too: in terrain mode the extrusions are depth-tested
@@ -6589,7 +6726,7 @@ namespace massif::vt {
                 GLuint spanDrapeTexture = 0;
                 cglib::vec4<float> spanDrapeTransform(0, 0, 1, 1);
                 bool spanDrape = !geometry->getSpanRecords().empty() && resolveSpanDrape(targetTileId, spanDrapeTexture, spanDrapeTransform);
-                shaderProgramPtr = &buildShaderProgram("polygon3d", polygon3DVsh, polygon3DFsh, LightingMode::GEOMETRY3D, RasterFilterMode::NONE, (styleParams.pattern ? PATTERN_FLAG : 0) | (styleParams.translate ? TRANSFORM_FLAG : 0) | (terrainVTF ? TERRAIN_VTF_FLAG | TERRAIN_FLAG : 0) | (shadowReceiver ? shadowReceiverFlags() | SHADOW_SINGLE_TAP_FLAG : 0) | (!geometry->getSpanRecords().empty() ? SPAN_FLAG : 0) | (spanDrape ? SPAN_DRAPE_FLAG : 0) | fogFlag());
+                shaderProgramPtr = &buildShaderProgram("polygon3d", polygon3DVsh, polygon3DFsh, LightingMode::GEOMETRY3D, RasterFilterMode::NONE, (styleParams.pattern ? PATTERN_FLAG : 0) | (styleParams.translate ? TRANSFORM_FLAG : 0) | (terrainVTF ? TERRAIN_VTF_FLAG | TERRAIN_FLAG : 0) | (shadowReceiver ? shadowReceiverFlags() | SHADOW_SINGLE_TAP_FLAG | SHADOW_RECEIVER_3D_FLAG : 0) | (!geometry->getSpanRecords().empty() ? SPAN_FLAG : 0) | (spanDrape ? SPAN_DRAPE_FLAG : 0) | fogFlag());
                 _pendingSpanDrape = spanDrape ? spanDrapeTexture : 0;
                 _pendingSpanDrapeTransform = spanDrapeTransform;
             }
@@ -6912,7 +7049,9 @@ namespace massif::vt {
             glUniform1i(shaderProgram.uniforms[U_SHADOWTEXTURE], 2);
             glActiveTexture(GL_TEXTURE0);
             glUniform4f(shaderProgram.uniforms[U_SHADOWPARAMS], 1.0f / std::max(1, _terrainShadowMapSize), _terrainShadowStrength, _terrainShadowSoftness, 1.0f / _terrainShadowCascades);
-            glUniform4f(shaderProgram.uniforms[U_SHADOWBIAS], _terrainShadowBiases[0], _terrainShadowBiases[1], _terrainShadowBiases[2], _terrainShadowBiases[3]);
+            glUniform3f(shaderProgram.uniforms[U_SHADOWBIAS], _terrainShadowBias(0), _terrainShadowBias(1), _terrainShadowBias(2));
+        glUniform4f(shaderProgram.uniforms[U_SHADOWDEPTHSCALE], _terrainShadowDepthScales[0], _terrainShadowDepthScales[1], _terrainShadowDepthScales[2], _terrainShadowDepthScales[3]);
+            setupShadowFadeRangeUniform(shaderProgram);
         }
         // The location is -1 on a program built without DRAPE_MASK - a point, or any geometry the
         // mask does not apply to - and binding a texture for it is pure waste.

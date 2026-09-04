@@ -79,6 +79,8 @@ namespace massif::vt {
         U_SHADOWTEXTURE,
         U_SHADOWPARAMS,
         U_SHADOWBIAS,
+        U_SHADOWDEPTHSCALE,
+        U_SHADOWFADERANGE,
         U_SHADOWNORMALOFFSET,
         U_SHADOWSUNDIR,
         U_SHADOWMASK,
@@ -168,7 +170,11 @@ namespace massif::vt {
         // A bridge DECK samples its own drape - the span content of its tile, baked apart from the
         // ground's (bakeSpanDrapeTile) - so the road it carries lands on the deck rather than on
         // the valley floor beside it. Only compiled in for a tile that has a span drape.
-        SPAN_DRAPE_FLAG = 268435456
+        SPAN_DRAPE_FLAG = 268435456,
+        // The shadow receiver is a 3D EXTRUSION, not the ground. An extrusion defends against acne
+        // with the normal offset; the ground has no normal and defends with the receiver-plane
+        // bias. Each one hurts the other, so the shader has to tell them apart.
+        SHADOW_RECEIVER_3D_FLAG = 536870912
     };
 
     static const std::map<std::string, int> attribMap = {
@@ -242,6 +248,8 @@ namespace massif::vt {
         { "uShadowTexture",     U_SHADOWTEXTURE },
         { "uShadowParams",      U_SHADOWPARAMS },
         { "uShadowBias",        U_SHADOWBIAS },
+        { "uShadowDepthScale",  U_SHADOWDEPTHSCALE },
+        { "uShadowFadeRange",   U_SHADOWFADERANGE },
         { "uShadowNormalOffset", U_SHADOWNORMALOFFSET },
         { "uShadowSunDir",      U_SHADOWSUNDIR },
         { "uShadowMask",        U_SHADOWMASK },
@@ -270,6 +278,7 @@ namespace massif::vt {
         { OFFSET_FLAG,      "OFFSET" },
         { GAPWIDTH_FLAG,    "GAPWIDTH" },
         { BLUR_FLAG,        "BLUR" },
+        { SHADOW_RECEIVER_3D_FLAG, "SHADOW_RECEIVER_3D" },
         { PATTERN_FLAG,     "PATTERN" },
         { DERIVATIVES_FLAG, "DERIVATIVES" },
         { TERRAIN_FLAG,     "TERRAIN_DEPTH_BIAS" },
@@ -803,7 +812,17 @@ namespace massif::vt {
         uniform sampler2D uShadowTexture;
         #endif
         uniform mediump vec4 uShadowParams; // x = 1/mapSize within one cascade, y = strength, z = PCF radius in texels, w = 1/cascade count
-        uniform mediump vec4 uShadowBias;   // normalised depth bias, per cascade
+        // mapbox's u_shadow_bias SHAPE (3d-style/render/shadow_renderer.ts): x = constant, y = how
+        // fast the bias grows as the surface turns away from the light, z = the CAP on that growth.
+        // In METRES, not their normalised depth: our light box spans hundreds of km even fitted to
+        // the cascade sphere, so their 0.0001 came out as a kilometres-deep bias that erased every
+        // shadow. uShadowDepthScale converts, per cascade, because each box normalises its own depth.
+        uniform mediump vec3 uShadowBias;
+        uniform highp vec4 uShadowDepthScale; // 1 / depth range in metres, per cascade
+        // Where the outermost cascade fades out, as a VIEW DEPTH in internal units:
+        // mapbox's u_shadow_fade_range = [far * 0.75, far]. Zero means do not fade - the
+        // orthographic drape bake, whose gl_FragCoord.w is 1 and carries no view depth.
+        uniform highp vec2 uShadowFadeRange;
         varying highp vec3 vShadowPos0;
         #if SHADOW_CASCADES >= 2
         varying highp vec3 vShadowPos1;
@@ -854,63 +873,61 @@ namespace massif::vt {
             mediump float margin = uShadowParams.x * (uShadowParams.z + 1.0);
             highp vec3 pos = vShadowPos0;
             mediump float page = 0.0;
-            mediump float bias = uShadowBias.x;
         #if SHADOW_CASCADES >= 2
             if (outsideShadowPage(pos, margin)) {
                 pos = vShadowPos1;
                 page = 1.0;
-                bias = uShadowBias.y;
             }
         #endif
         #if SHADOW_CASCADES >= 3
             if (outsideShadowPage(pos, margin)) {
                 pos = vShadowPos2;
                 page = 2.0;
-                bias = uShadowBias.z;
             }
         #endif
         #if SHADOW_CASCADES >= 4
             if (outsideShadowPage(pos, margin)) {
                 pos = vShadowPos3;
                 page = 3.0;
-                bias = uShadowBias.w;
             }
         #endif
-            // Derivatives are taken before any early return: a fragment that leaves the function
-            // early would leave its quad neighbours with an undefined gradient.
-            highp vec2 dzduv = vec2(0.0);
             highp float o = uShadowParams.x * uShadowParams.z;
             highp float ref = pos.z;
-        #ifdef DERIVATIVES
-            // Receiver-plane depth bias: how the receiver's own depth changes per unit of shadow
-            // uv, from screen-space derivatives. Each PCF tap then compares against the receiver's
-            // PLANE instead of against one point on it. Without it every off-centre tap needs the
-            // constant bias to cover a whole texel of slope, which is why the acne only cleared at
-            // a bias large enough to detach the shadows.
-            highp vec3 dpdx = dFdx(pos);
-            highp vec3 dpdy = dFdy(pos);
-            highp float det = dpdx.x * dpdy.y - dpdx.y * dpdy.x;
-            if (abs(det) > 1.0e-12) {
-                dzduv.x = ( dpdy.y * dpdx.z - dpdx.y * dpdy.z) / det;
-                dzduv.y = (-dpdy.x * dpdx.z + dpdx.x * dpdy.z) / det;
-                // A near-silhouette texel has an unbounded gradient; clamp it so it cannot invert
-                // the comparison and punch holes in the shadow. The limit is a cap on how much
-                // depth the receiver plane may rise over ONE texel, as a fraction of the box
-                // depth. Derived from the PCF radius instead, it allowed a single texel to be
-                // worth half the whole light box - which does not bias the comparison so much as
-                // delete it, and is what left holes in the shadow on steep ground.
-                highp float limit = 0.02 / max(1.0e-6, uShadowParams.x);
-                dzduv = clamp(dzduv, vec2(-limit), vec2(limit));
-                // The stored depth belongs to the TEXEL CENTRE, up to half a texel away from this
-                // fragment; on a slope lit at a grazing angle that half texel is metres of height,
-                // so the surface shadows itself in regular stripes - the bands seen inside a long
-                // shadow stretched downhill. Subtracting the receiver plane's own rise over half a
-                // texel makes the bias exactly as large as the local slope demands and no larger,
-                // where a constant big enough for the worst slope would detach every shadow.
-                ref -= 0.5 * uShadowParams.x * (abs(dzduv.x) + abs(dzduv.y));
+            mediump float facing = smoothstep(0.0, 0.15, ndl);
+            // RECEIVER-PLANE slope, from screen-space derivatives: how this receiver's own depth
+            // changes per unit of shadow uv. The stored depth belongs to the TEXEL CENTRE, up to
+            // half a texel from this fragment, and on ground seen at a grazing sun that half texel
+            // is metres of height - so without this the SURFACE shadows itself in a regular mesh.
+            // mapbox needs no equivalent: their ground receiver is a flat plane at z=0 and terrain
+            // never casts (ground_shadow.vertex.glsl), so their bias never had a self-shadowing
+            // ground to cover. Ours does, which is why this cannot be dropped for their model.
+            // GROUND ONLY. On an extrusion the shadow position is DISCONTINUOUS across the bevel
+            // band at a vertical edge, so a quad straddling it sees a huge derivative and the bias
+            // saturates on some fragments and not others - which is the serrated wedge at a corner.
+            // An extrusion has the normal offset for its acne and needs no plane bias; the ground
+            // has no normal and needs nothing else.
+            // Taken BEFORE any early return: a fragment that returns early leaves its quad
+            // neighbours with an undefined gradient.
+            highp vec2 dzduv = vec2(0.0);
+        #if defined(DERIVATIVES) && !defined(SHADOW_RECEIVER_3D)
+            {
+                highp vec3 dpdx = dFdx(pos);
+                highp vec3 dpdy = dFdy(pos);
+                highp float det = dpdx.x * dpdy.y - dpdx.y * dpdy.x;
+                if (abs(det) > 1.0e-12) {
+                    dzduv.x = ( dpdy.y * dpdx.z - dpdx.y * dpdy.z) / det;
+                    dzduv.y = (-dpdy.x * dpdx.z + dpdx.x * dpdy.z) / det;
+                    // SCALE-FREE cap: how far the receiver may rise over ONE texel, as a fraction
+                    // of the box depth. It has to be scale-free - a metric ceiling collapses to
+                    // nothing in normalised depth as the box grows, so the bias dies at low zoom
+                    // and the mesh comes back, which is what a metres-based cap did here.
+                    // A near-silhouette texel has an unbounded gradient; this is also what stops it
+                    // inverting the comparison and punching holes in the shadow.
+                    highp float limit = 0.02 / max(1.0e-6, uShadowParams.x);
+                    dzduv = clamp(dzduv, vec2(-limit), vec2(limit));
+                }
             }
         #endif
-            mediump float facing = smoothstep(0.0, 0.15, ndl);
             if (pos.x < 0.0 || pos.x > 1.0 || pos.y < 0.0 || pos.y > 1.0 || pos.z < 0.0 || pos.z > 1.0) {
                 // Outside every cascade: unshadowed rather than black - but the back-face rule
                 // below still applies, or the ground would brighten along a hard ring exactly where
@@ -924,13 +941,36 @@ namespace massif::vt {
             if (facing <= 0.0) {
                 return mix(1.0, 0.0, uShadowParams.y);
             }
-            // The constant bias grows as the surface turns away from the light, but only up to a
-            // point: divided by N.L it runs away exactly where the shadows are - the slopes facing
-            // away from the sun - and lifts the reference depth in front of every caster there,
-            // which is the second source of holes. Beyond this the back-face rule below takes over.
-            ref -= bias / max(0.5, ndl);
+            // mapbox's slope-scaled bias, verbatim (_prelude_shadow.fragment.glsl): a constant plus
+            // a term that grows with the angle between the surface and the light, CAPPED. The cap
+            // is what our own model was missing - a receiver-plane bias from screen-space
+            // derivatives, whose clamp allowed one texel to be worth 0.02 of the light box, more
+            // than mapbox's entire bias budget, and darkened every silhouette it touched
+            // (docs/internals/rendering/08-lighting-sky-fog.md).
+            // tan(acos(x)) written as sqrt(1-x*x)/x: the direct form runs to infinity as the
+            // surface turns edge-on to the light, and this block is mediump - the overflow came
+            // back as a NaN that poisoned ref for EVERY fragment, which reads as the shadows
+            // simply not being there. The floor on x caps the ratio at 20, well past the point
+            // where uShadowBias.z clamps it anyway.
+            mediump float ndlBias = clamp(ndl, 0.05, 1.0);
+            mediump float slope = sqrt(1.0 - ndlBias * ndlBias) / ndlBias;
+            highp float depthScale = uShadowDepthScale.x;
+        #if SHADOW_CASCADES >= 2
+            if (page > 0.5) { depthScale = uShadowDepthScale.y; }
+        #endif
+        #if SHADOW_CASCADES >= 3
+            if (page > 1.5) { depthScale = uShadowDepthScale.z; }
+        #endif
+        #if SHADOW_CASCADES >= 4
+            if (page > 2.5) { depthScale = uShadowDepthScale.w; }
+        #endif
+            ref -= (0.5 * uShadowBias.x + clamp(uShadowBias.y * slope, 0.0, uShadowBias.z)) * depthScale;
+            // The receiver plane's own rise over HALF a texel, which is the worst the texel-centre
+            // quantisation can be wrong by. Bounded by the clamp on dzduv above, not by a metric
+            // ceiling: the quantity is a fraction of the light box and its bound has to be one too.
+            ref -= 0.5 * uShadowParams.x * (abs(dzduv.x) + abs(dzduv.y));
             // Page space -> atlas space. The offsets stay in page space so the kernel is square in
-            // the map, and the bias terms above stay in the units the derivatives produced.
+            // the map.
             highp vec2 atlasScale = vec2(uShadowParams.w, 1.0);
             highp vec2 atlasBase = vec2(page * uShadowParams.w, 0.0);
             mediump float lit = 0.0;
@@ -944,20 +984,26 @@ namespace massif::vt {
             for (int j = 0; j < 2; j++) {
                 for (int i = 0; i < 2; i++) {
                     highp vec2 offset = vec2(float(i) * 2.0 - 1.0, float(j) * 2.0 - 1.0) * d;
-                    lit += shadowTap(atlasBase + (pos.xy + offset) * atlasScale, ref + dot(offset, dzduv));
+                    lit += shadowTap(atlasBase + (pos.xy + offset) * atlasScale, ref);
                 }
             }
             lit *= 0.25;
         #endif
             // The outermost cascade ends somewhere - at the shadow distance, or at the point where
             // covering more ground would only coarsen every texel. Ending it abruptly draws a line
-            // across the terrain, so the shadow fades out over the outer margin of the LAST page.
+            // across the terrain, so the shadow fades out first. Faded over VIEW DEPTH, mapbox's
+            // model (_prelude_shadow.fragment.glsl: mix(occlusion, 0.0, smoothstep(u_fade_range.x,
+            // u_fade_range.y, view_depth))), not over the page's own uv edge: a page edge is a
+            // straight line in LIGHT space, which projects to a hard line crossing the map that
+            // swings with the camera. View depth fades it as a ring at the horizon instead.
             // Earlier pages must not fade: a fragment leaving one of those is picked up by the next
             // cascade, and fading there would thin the shadow along every cascade boundary.
             mediump float lastPage = 1.0 / uShadowParams.w - 1.0;
-            if (page >= lastPage - 0.5) {
-                mediump float edge = min(min(pos.x, 1.0 - pos.x), min(pos.y, 1.0 - pos.y));
-                lit = mix(1.0, lit, smoothstep(0.0, 0.08, edge));
+            if (page >= lastPage - 0.5 && uShadowFadeRange.y > 0.0) {
+                // 1 / gl_FragCoord.w is the clip w, i.e. the distance along the view axis - the
+                // same quantity mapbox carries in a varying, without the varying.
+                highp float viewDepth = 1.0 / max(1.0e-9, gl_FragCoord.w);
+                lit = mix(lit, 1.0, smoothstep(uShadowFadeRange.x, uShadowFadeRange.y, viewDepth));
             }
             // A surface turned away from the sun is in its own shadow whatever the map says, and
             // the map cannot say anything useful there anyway: its texels are seen edge-on, so the
@@ -1103,6 +1149,26 @@ namespace massif::vt {
         void main(void) {
             highp float depth = gl_FragCoord.z;
             highp vec3 enc = vec3(1.0, 255.0, 65025.0) * depth; // 'packed' is a reserved word
+            enc = fract(enc);
+            enc -= enc.yzz * vec3(1.0 / 255.0, 1.0 / 255.0, 0.0);
+            glFragColor = vec4(enc, 1.0);
+        }
+    )GLSL";
+
+    // The extrusion caster: the same depth packing, behind the same half-open tile clip the drawn
+    // extrusion applies (polygon3DFsh). Under overzoom every target tile holds the whole source
+    // geometry, and a buffer-margin copy from the neighbouring source tile holds it again - drawn
+    // unclipped, a copy whose base has not resolved yet stands above the drawn one and shadows
+    // its whole roof. mapbox draws the same bucket in both passes, so its clip is the same too.
+    static const std::string polygon3DShadowCasterFsh = R"GLSL(
+        varying highp_opt vec2 vTilePos;
+
+        void main(void) {
+            if (vTilePos.x < 0.0 || vTilePos.x >= 1.0 || vTilePos.y < 0.0 || vTilePos.y >= 1.0) {
+                discard;
+            }
+            highp float depth = gl_FragCoord.z;
+            highp vec3 enc = vec3(1.0, 255.0, 65025.0) * depth;
             enc = fract(enc);
             enc -= enc.yzz * vec3(1.0 / 255.0, 1.0 / 255.0, 0.0);
             glFragColor = vec4(enc, 1.0);
@@ -2325,7 +2391,10 @@ namespace massif::vt {
             // every target tile derived from it, and each of those draws displaces them with ITS
             // OWN elevation texture - so without this the same footprint casts a second shadow at
             // a neighbouring tile's height, floating beside the right one.
-            if (min(vTilePos.x, vTilePos.y) < -0.01 || max(vTilePos.x, vTilePos.y) > 1.01) {
+            // HALF-OPEN, [0,1), for the reason the wall's own clip gives: a symmetric tolerance
+            // overlaps the plane instead of partitioning it, so both neighbours keep a band either
+            // side of every border and the same skirt is drawn twice.
+            if (vTilePos.x < 0.0 || vTilePos.x >= 1.0 || vTilePos.y < 0.0 || vTilePos.y >= 1.0) {
                 discard;
             }
             // Distance to the footprint SEGMENT, per fragment - not a value interpolated between
@@ -2493,7 +2562,17 @@ namespace massif::vt {
         #endif
 
         void main(void) {
-            if (min(vTilePos.x, vTilePos.y) < -0.01 || max(vTilePos.x, vTilePos.y) > 1.01) {
+            // HALF-OPEN, [0,1): under overzoom every target tile derived from one source tile draws
+            // the whole building, and this is what keeps each fragment to the tile that owns it.
+            // A symmetric tolerance does NOT partition the plane - it overlaps it, so both
+            // neighbours keep a band 0.02 of a tile wide either side of every border and rasterise
+            // the SAME wall twice from two tile origins. The two copies land microns apart and
+            // z-fight, which reads edge-on as a thin vertical fin standing on the roofline, on the
+            // tile grid and scaling with the tile level rather than with anything in the building.
+            // Half-open gives a border fragment to exactly one side: no doubled band, and no gap,
+            // because the two tiles' vTilePos differ by float noise (~1e-7 of a tile) at worst.
+            // Not on the centroid - see the vertex stage for why that was tried and rejected.
+            if (vTilePos.x < 0.0 || vTilePos.x >= 1.0 || vTilePos.y < 0.0 || vTilePos.y >= 1.0) {
                 discard;
             }
             // Extrusions receive as well as cast: a building in the shadow of a ridge, or of a

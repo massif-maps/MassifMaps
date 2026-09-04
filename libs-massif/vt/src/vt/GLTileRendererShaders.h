@@ -36,6 +36,7 @@ namespace massif::vt {
         U_FLOATINGBASE,
         U_SPANDRAPETEXTURE,
         U_SPANDRAPETRANSFORM,
+        U_SPANDRAPELIGHT,
         U_SHADOWHEIGHTSCALE,
         U_COLORTABLE,
         U_WIDTHTABLE,
@@ -204,6 +205,7 @@ namespace massif::vt {
         { "uBaseScale",        U_BASESCALE },
         { "uSpanDrapeTexture", U_SPANDRAPETEXTURE },
         { "uSpanDrapeTransform", U_SPANDRAPETRANSFORM },
+        { "uSpanDrapeLight", U_SPANDRAPELIGHT },
         { "uFloatingBase",     U_FLOATINGBASE },
         { "uShadowHeightScale", U_SHADOWHEIGHTSCALE },
         { "uColorTable",       U_COLORTABLE },
@@ -2550,6 +2552,11 @@ namespace massif::vt {
         // tile position into it, the same sub-rect an ancestor drape tile needs elsewhere.
         uniform sampler2D uSpanDrapeTexture;
         uniform mediump vec4 uSpanDrapeTransform;
+        // The GROUND's light for a flat, up-facing surface, which is what a deck is. Resolved on
+        // the CPU because a deck is horizontal, so the ground's per-fragment term is constant over
+        // it - see spanDrapeLight(). 1 for a `colors-prelit` style, where the ground is lit
+        // neutrally and the drape already carries its light.
+        uniform mediump vec3 uSpanDrapeLight;
         varying lowp float vSpanRoof;
         #endif
         #ifdef TERRAIN_SHADOW
@@ -2617,21 +2624,38 @@ namespace massif::vt {
             lowp vec4 draped = texture2D(uSpanDrapeTexture, drapeUV);
             // Past the baked bounds there is no road: nothing, not the clamped edge texel.
             draped *= step(0.0, drapeUV.x) * step(drapeUV.x, 1.0) * step(0.0, drapeUV.y) * step(drapeUV.y, 1.0);
+        #endif
+        #ifdef LIGHTING_FSH
+            // The deck's OWN colour: its walls, and the roof wherever the drape covers nothing.
+            // The shadow goes INTO the lighting, where it dims the sun alone. Multiplied over the
+            // finished colour instead it took the ambient with it, and since a wall facing away
+            // from the sun is fully shadowed by the back-face rule above, every such wall went
+            // black - the whole reason facades did not match mapbox.
+            surfaceColor = applyLighting3D(surfaceColor, normalize(vNormal), vWallT, vSideVertex, shadow, skyShadow);
+        #endif
+        #ifdef SPAN_DRAPE
+            // A draped pixel is a FINISHED GROUND pixel - the bake drew the road exactly as the
+            // ground draws it - so it takes the GROUND's light, and takes it once. Composited
+            // before applyLighting3D it went through the extrusion's light as well, which is a
+            // facade model: an ambient/sun sum in linear space plus the roof-shade term, applied
+            // to a piece of road. Invisible at noon, where that factor is ~1; at night it left a
+            // deck at a quarter of the road it carries (Pont Neuf, z17.5, hour 22: deck 37 against
+            // a quay road at 101, the deck darker than the water).
+            lowp vec3 drapeColor = draped.rgb * uSpanDrapeLight;
+        #ifdef LIGHTING_FSH
+            // The ground multiplies its own shadow into the same term (backgroundFsh). In the
+            // per-vertex path the tail below multiplies the whole fragment by it instead.
+            drapeColor *= shadow;
+        #endif
             // PREMULTIPLIED, like every other bake this renderer samples (see the pattern composite
             // in the surface shader): the bake draws the road onto a cleared, fully transparent
             // target, so a half-covered texel holds half the road's colour, not the road's colour
             // at half alpha. Mixed as straight alpha it came out half black - a dark fringe down
             // every line on the deck, and a dark band wherever the bake had nothing.
-            surfaceColor = vec4(surfaceColor.rgb * (1.0 - draped.a * vSpanRoof) + draped.rgb * vSpanRoof, surfaceColor.a);
+            surfaceColor = vec4(surfaceColor.rgb * (1.0 - draped.a * vSpanRoof) + drapeColor * vSpanRoof, surfaceColor.a);
         #endif
-        #ifdef LIGHTING_FSH
-            // The shadow goes INTO the lighting, where it dims the sun alone. Multiplied over the
-            // finished colour instead it took the ambient with it, and since a wall facing away
-            // from the sun is fully shadowed by the back-face rule above, every such wall went
-            // black - the whole reason facades did not match mapbox.
-            glFragColor = applyFog(applyLighting3D(surfaceColor, normalize(vNormal), vWallT, vSideVertex, shadow, skyShadow));
-        #else
             glFragColor = applyFog(surfaceColor);
+        #ifndef LIGHTING_FSH
             glFragColor.rgb *= shadow;
         #endif
         }

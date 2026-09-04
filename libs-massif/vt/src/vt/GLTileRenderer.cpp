@@ -1,5 +1,6 @@
 #include "GLTileRenderer.h"
 #include "SpanGeometry.h"
+#include "SpanDrapeLight.h"
 #include "GLTileRendererShaders.h"
 #include "Color.h"
 #include "TileGeometryIterator.h"
@@ -5222,6 +5223,10 @@ namespace massif::vt {
         }
     }
 
+    cglib::vec3<float> GLTileRenderer::spanDrapeLight() const {
+        return SpanDrapeLight::resolve(_terrainLighting.enabled, _terrainLighting.sunDir, _terrainLighting.sunColor, _terrainLighting.sunIntensity, _terrainLighting.ambientColor, _terrainLighting.ambientIntensity);
+    }
+
     int GLTileRenderer::bakeSpanDrapeTile(const TileId& targetTileId) {
         std::lock_guard<std::mutex> lock(_mutex);
 
@@ -6944,6 +6949,8 @@ namespace massif::vt {
                 glBindTexture(GL_TEXTURE_2D, _pendingSpanDrape);
                 glUniform1i(shaderProgram.uniforms[U_SPANDRAPETEXTURE], 4); // units 0-3 are taken (see renderTileGeometry)
                 glUniform4fv(shaderProgram.uniforms[U_SPANDRAPETRANSFORM], 1, _pendingSpanDrapeTransform.data());
+                cglib::vec3<float> drapeLight = spanDrapeLight();
+                glUniform3fv(shaderProgram.uniforms[U_SPANDRAPELIGHT], 1, drapeLight.data());
                 glActiveTexture(GL_TEXTURE0);
             }
             cglib::mat3x3<float> tileMatrix = cglib::mat3x3<float>::convert(cglib::inverse(calculateTileMatrix2D(targetTileId)) * calculateTileMatrix2D(sourceTileId));

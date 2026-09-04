@@ -729,6 +729,7 @@ namespace massif::vt {
         bool isLayerDraped(const std::shared_ptr<const TileLayer>& layer) const;
         bool hasSpanContent(const RenderTileLayer& renderLayer) const;
         bool resolveSpanDrape(const TileId& targetTileId, GLuint& texture, cglib::vec4<float>& uvTransform) const;
+        cglib::vec3<float> spanDrapeLight() const;
         std::map<TileId, GLuint> _spanDrapeTextures;
         // The part of each span drape tile the bake covers, in drape uv (u0, v0, u1, v1): the deck's
         // own extent rather than the whole tile, so a narrow deck gets the texture's full width
